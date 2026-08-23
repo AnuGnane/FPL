@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+data/raw/
+data/history/
+data/live/
+models/*.joblib
+models/*.json
+reports/*.html
+reports/*.json
+.DS_Store

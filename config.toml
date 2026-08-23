@@ -1,0 +1,16 @@
+[fpl]
+entry_id = 0        # REQUIRED before `gaffer advise` — user's FPL team ID
+league_id = 0       # REQUIRED for rival tracking — mini-league ID
+
+[optimizer]
+horizon = 6
+decay = 0.85
+vice_weight = 0.1
+bench_weight = 0.10
+ft_value = 1.5
+itb_value = 0.05    # points per 1.0m in the bank at horizon end
+hit_cost = 4
+
+[data]
+train_seasons = ["2022-23", "2023-24", "2024-25", "2025-26"]
+current_season = "2026-27"
