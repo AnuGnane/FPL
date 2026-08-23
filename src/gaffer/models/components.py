@@ -18,19 +18,42 @@ DEFCON_FEATURES = ["tackles_r3", "tackles_r5", "tackles_r38", "cbi_r3",
                    "minutes_r5", "opp_elo", "home"]
 
 
+# Game rules, not exposed anywhere in the API: a defender scores the
+# defensive contribution on 10+ CBIT (clearances, blocks, interceptions,
+# tackles); a midfielder or forward needs 12+ CBIRT, which adds recoveries.
+DEF_CBIT_THRESHOLD = 10
+MID_FWD_CBIRT_THRESHOLD = 12
+
+
+def defcon_target(df: pd.DataFrame) -> pd.Series:
+    """Did each row hit its position's defensive-contribution threshold?
+
+    The stored ``defcon`` column is a raw action *count*, not a flag, so the
+    threshold has to be applied here from the component stats. Rows whose
+    components are missing (pre-2025/26, where these stats did not exist)
+    come back 0 and are excluded from training by ``fit``, never trained on
+    as negatives.
+    """
+    cbit = df["tackles"].fillna(0) + df["cbi"].fillna(0)
+    cbirt = cbit + df["recoveries"].fillna(0)
+    hit = (df["position"] == "DEF").where(df["position"].notna(), False)
+    return (hit & (cbit >= DEF_CBIT_THRESHOLD)
+            | ~hit & (cbirt >= MID_FWD_CBIRT_THRESHOLD)).astype(int)
+
+
 class DefconModel:
     """P(defensive-contribution threshold hit). Trained only on rows where the
-    defcon stat exists (2025/26 onwards); older rows have NaN targets."""
+    component stats exist (2025/26 onwards); older rows lack them entirely."""
 
     def __init__(self, feature_cols: list[str] = DEFCON_FEATURES):
         self.feature_cols = feature_cols
         self.clf = LGBMClassifier(**LGB_KW)
 
     def fit(self, df: pd.DataFrame) -> "DefconModel":
-        sub = df[(df["minutes"] > 0) & df["defcon"].notna()
-                 & (df["position"] != "GKP")]
+        sub = df[(df["minutes"] > 0) & df["tackles"].notna()
+                 & df["cbi"].notna() & (df["position"] != "GKP")]
         self.cols_ = [c for c in self.feature_cols if c in sub.columns]
-        self.clf.fit(sub[self.cols_], (sub["defcon"] > 0).astype(int))
+        self.clf.fit(sub[self.cols_], defcon_target(sub))
         return self
 
     def predict(self, df: pd.DataFrame) -> pd.DataFrame:

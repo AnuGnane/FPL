@@ -64,11 +64,23 @@ comp["e_cards"] = holdout.apply(card_penalty, axis=1).values
 scoring = scoring_table(json.load(open("tests/fixtures/bootstrap_sample.json")))
 ep = ep_matrix(assemble_ep(comp, scoring))
 
-truth = holdout[["code", "gw", "total_points", "minutes"]]
+# One truth row per player-gameweek, matching ep_matrix's DGW summing. Left
+# per-fixture, a double gameweek would score the model's summed ep twice
+# against half its points while the per-fixture baselines went unpenalised.
+truth = holdout.groupby(["code", "gw"], as_index=False).agg(
+    total_points=("total_points", "sum"), minutes=("minutes", "sum"))
+
+
+def baseline(col: str):
+    """Naive predictor from a rolling column, one row per player-gameweek.
+
+    A baseline carries one value per match, and a DGW's two matches share a
+    near-identical rolling average, so taking the first is fine.
+    """
+    b = holdout[["code", "gw", col]].rename(columns={col: "ep"}).dropna()
+    return b.groupby(["code", "gw"], as_index=False).agg(ep=("ep", "first"))
+
+
 print("MODEL   :", evaluate_predictions(ep, truth))
-last5 = holdout[["code", "gw", "total_points_r5"]].rename(
-    columns={"total_points_r5": "ep"}).dropna()
-print("LAST-5  :", evaluate_predictions(last5, truth))
-ppg = holdout[["code", "gw", "total_points_r38"]].rename(
-    columns={"total_points_r38": "ep"}).dropna()
-print("SEASON  :", evaluate_predictions(ppg, truth))
+print("LAST-5  :", evaluate_predictions(baseline("total_points_r5"), truth))
+print("SEASON  :", evaluate_predictions(baseline("total_points_r38"), truth))
