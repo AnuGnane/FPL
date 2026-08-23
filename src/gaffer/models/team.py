@@ -53,7 +53,12 @@ def add_team_rolling(tg: pd.DataFrame, stats: list[str] = TEAM_ROLL_STATS,
     own result. Built as one concat block rather than column-by-column
     inserts to avoid fragmenting the frame.
     """
-    tg = tg.sort_values(["code", "season_idx", "gw"]).reset_index(drop=True)
+    # kickoff_time breaks the tie between a double gameweek's two fixtures,
+    # which otherwise share (code, season_idx, gw) and order arbitrarily.
+    sort_cols = ["code", "season_idx", "gw"]
+    if "kickoff_time" in tg.columns:
+        sort_cols.append("kickoff_time")
+    tg = tg.sort_values(sort_cols).reset_index(drop=True)
     g = tg.groupby("code", sort=False)
     feats: dict[str, pd.Series] = {}
     for stat in stats:
