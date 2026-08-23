@@ -1,6 +1,6 @@
 [fpl]
-entry_id = 0        # REQUIRED before `gaffer advise` — user's FPL team ID
-league_id = 0       # REQUIRED for rival tracking — mini-league ID
+entry_id = 2210493   # user's FPL team ID
+league_id = 1794743  # mini-league ID for rival tracking
 
 [optimizer]
 horizon = 6
