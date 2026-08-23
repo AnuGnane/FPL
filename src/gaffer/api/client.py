@@ -35,8 +35,15 @@ class FPLClient:
                         json.dumps(data))
                 return data
             except (httpx.HTTPStatusError, httpx.TransportError) as exc:
+                # Client errors (except rate limiting) will not fix themselves:
+                # fail fast rather than burning the retry budget on backoff.
+                if isinstance(exc, httpx.HTTPStatusError):
+                    status = exc.response.status_code
+                    if 400 <= status < 500 and status != 429:
+                        raise
                 last_exc = exc
-                time.sleep(self.backoff ** attempt if self.backoff else 0)
+                if attempt < self.retries - 1:
+                    time.sleep(self.backoff ** attempt if self.backoff else 0)
         raise last_exc
 
     def get_bootstrap(self):
