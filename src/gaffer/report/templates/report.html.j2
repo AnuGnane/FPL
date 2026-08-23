@@ -1,0 +1,80 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<title>gaffer — GW{{ a.gw }}</title>
+<style>
+ body{font:15px/1.5 -apple-system,Helvetica,sans-serif;margin:2rem auto;
+      max-width:900px;padding:0 1rem;color:#1a1a2e}
+ h1{border-bottom:3px solid #37003c} h2{color:#37003c;margin-top:2rem}
+ table{border-collapse:collapse;width:100%;margin:.5rem 0}
+ th,td{border:1px solid #ddd;padding:.4rem .6rem;text-align:left}
+ th{background:#37003c;color:#fff} tr:nth-child(even){background:#f7f7fb}
+ .action{background:#e8f5e9;border-left:4px solid #2e7d32;padding:1rem;
+         margin:1rem 0} .warn{background:#fff3e0;border-left:4px solid #ef6c00;
+         padding:.6rem;margin:.5rem 0}
+ .diff{color:#2e7d32;font-weight:600}
+</style></head><body>
+<h1>gaffer — Gameweek {{ a.gw }}</h1>
+<p>Deadline: <strong>{{ a.deadline }}</strong> ·
+   Expected XI points: <strong>{{ a.expected_pts }}</strong></p>
+
+<div class="action"><h2 style="margin-top:0">This week's actions</h2>
+<ul>
+{% for b in a.buys %}<li>BUY <strong>{{ b.name }}</strong> ({{ b.ep }} xPts)</li>{% endfor %}
+{% for s in a.sells %}<li>SELL <strong>{{ s.name }}</strong> ({{ s.ep }} xPts)</li>{% endfor %}
+{% if not a.buys %}<li>No transfers — bank the free transfer.</li>{% endif %}
+{% if a.hits %}<li class="warn">Taking {{ a.hits }} hit(s): −{{ a.hits * 4 }} pts, maths clears it.</li>{% endif %}
+<li>Captain: <strong>{{ a.captain.name }}</strong> · Vice: <strong>{{ a.vice.name }}</strong></li>
+</ul></div>
+
+<h2>Starting XI &amp; bench order</h2>
+<table><tr><th>#</th><th>XI</th><th>xPts</th></tr>
+{% for p in a.xi %}<tr><td>{{ loop.index }}</td><td>{{ p.name }}</td><td>{{ p.ep }}</td></tr>{% endfor %}
+</table>
+<p>Bench (in order): {% for p in a.bench %}{{ p.name }} ({{ p.ep }}){{ ", " if not loop.last }}{% endfor %}</p>
+
+<h2>Captain options</h2>
+<table><tr><th>Player</th><th>Pos</th><th>xPts</th><th>P(haul)</th><th>League EO%</th><th></th></tr>
+{% for c in a.captain_options %}
+<tr><td>{{ c.name }}</td><td>{{ c.position }}</td><td>{{ "%.2f"|format(c.ep) }}</td>
+    <td>{{ "%.0f%%"|format(c.p_haul * 100) }}</td><td>{{ c.league_eo }}</td>
+    <td>{% if c.differential %}<span class="diff">differential</span>{% endif %}</td></tr>
+{% endfor %}</table>
+
+<h2>Chips</h2>
+<table><tr><th>Chip</th><th>GW</th><th>Expected gain</th><th></th></tr>
+{% for c in a.chip_table %}<tr><td>{{ c.chip }}</td><td>{{ c.gw }}</td><td>{{ "%.2f"|format(c.gain) }}</td><td>{{ c.note | default("") }}</td></tr>{% endfor %}
+</table>
+<p>Wildcard now: gain {{ a.wildcard_now.gain_over_horizon }} pts over horizon —
+<strong>{{ "recommended" if a.wildcard_now.recommend else "not recommended" }}</strong></p>
+
+{% if a.alternatives %}<h2>Differential alternatives</h2>
+<table><tr><th>Player</th><th>xPts</th><th>P(haul)</th><th>League EO%</th></tr>
+{% for x in a.alternatives %}<tr><td>{{ x.name }}</td><td>{{ "%.2f"|format(x.ep) }}</td>
+<td>{{ "%.0f%%"|format(x.p_haul * 100) }}</td><td>{{ x.league_eo }}</td></tr>{% endfor %}
+</table>{% endif %}
+
+{% if a.threats %}<h2>Threat board — high-EO players you don't own</h2>
+<table><tr><th>Player</th><th>Pos</th><th>xPts</th><th>League EO%</th></tr>
+{% for t in a.threats %}<tr><td>{{ t.name }}</td><td>{{ t.position }}</td>
+<td>{{ "%.2f"|format(t.ep) }}</td><td>{{ t.league_eo }}</td></tr>{% endfor %}
+</table>{% endif %}
+
+{% if a.price_alerts %}<h2>Price alerts (tonight, 00:00 UK)</h2>
+{% for p in a.price_alerts %}<p class="warn">{{ p.name }} — projected
+{{ p.direction }} ({{ p.price_change_percent }}%)
+{% if p.calibrating %}[calibrating — low confidence]{% endif %}</p>{% endfor %}
+{% endif %}
+
+{% if a.plan_by_gw %}<h2>Multi-week plan</h2>
+<table><tr><th>GW</th><th>Buys</th><th>Sells</th><th>Hits</th><th>xPts</th></tr>
+{% for g in a.plan_by_gw %}<tr><td>{{ g.gw }}</td>
+<td>{% for b in g.buys %}{{ b.name }}{{ ", " if not loop.last }}{% endfor %}</td>
+<td>{% for s in g.sells %}{{ s.name }}{{ ", " if not loop.last }}{% endfor %}</td>
+<td>{{ g.hits }}</td><td>{{ g.expected_pts | default("") }}</td></tr>{% endfor %}</table>{% endif %}
+
+{% if health %}<h2>Model health</h2>
+<p>Last GW: MAE (starters) {{ health.mae_starters }} ·
+   captain pick scored {{ health.captain_actual }} pts ·
+   advice plan {{ health.advice_pts }} vs your actual {{ health.actual_pts }}</p>
+{% endif %}
+</body></html>
