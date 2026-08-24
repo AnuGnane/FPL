@@ -190,3 +190,73 @@ class LiveState(BaseModel):
     matches_in_play: int
     players: list[LivePlayer]
     table: list[LiveTableRow]
+
+
+class PlayerRow(BaseModel):
+    code: int
+    element: int
+    name: str
+    position: str
+    team_code: int
+    team_name: str
+    price: float
+    ep_next: float
+    ep_horizon: float
+    ownership: float
+    league_eo: float
+    available: bool
+    status: str
+    news: str
+    chance_of_playing: float | None
+    penalties_order: int | None
+    free_kicks_order: int | None
+    corners_order: int | None
+    in_squad: bool
+
+
+class Component(BaseModel):
+    label: str
+    points: float
+
+
+class MinutesOutput(BaseModel):
+    p_play: float
+    p60: float
+
+
+class OddsInfluence(BaseModel):
+    weight: float
+    e_goals_against: float | None
+    p_cs_model: float
+    p_cs_blended: float
+    e_gc_model: float
+    e_gc_blended: float
+
+
+class FixtureExplain(BaseModel):
+    gw: int
+    opponent: str
+    home: bool
+    kickoff_time: str | None
+    components: list[Component]
+    minutes: MinutesOutput
+    calibration_delta: float
+    odds: OddsInfluence
+    ep: float
+
+
+class NextFixture(BaseModel):
+    gw: int
+    opponent: str
+    home: bool
+
+
+class PlayerExplain(BaseModel):
+    code: int
+    name: str
+    position: str
+    team_name: str
+    ep_next: float
+    fixtures: list[FixtureExplain]
+    next_fixtures: list[NextFixture]
+    set_pieces: dict[str, int | None]

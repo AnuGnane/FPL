@@ -22,7 +22,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from gaffer.errors import GafferError
 from gaffer.web.jobs import JobRegistry
-from gaffer.web.routers import advice, league, live, whatif
+from gaffer.web.routers import advice, league, live, players, whatif
 
 log = logging.getLogger("gaffer.web")
 
@@ -70,6 +70,7 @@ def create_app() -> FastAPI:
     app.include_router(advice.router)
     app.include_router(league.router)
     app.include_router(live.router)
+    app.include_router(players.router)
     app.include_router(whatif.router)
 
     assets = static_dir() / "assets"
