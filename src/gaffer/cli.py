@@ -152,5 +152,24 @@ def backtest(season: str = "2025-26", start_gw: int = 5, horizon: int = 1,
     typer.echo(result)
 
 
+@app.command()
+def ui(port: int = typer.Option(8927, help="Port to serve on (default 8927)."),
+       open_browser: bool = typer.Option(
+           True, "--open-browser/--no-open-browser",
+           help="Open the UI in your default browser on start.")):
+    """Serve the local web UI on 127.0.0.1 until Ctrl-C."""
+    import webbrowser
+
+    import uvicorn
+
+    from gaffer.web.app import create_app
+
+    url = f"http://127.0.0.1:{port}"
+    typer.echo(f"gaffer UI on {url} — Ctrl-C to stop")
+    if open_browser:
+        webbrowser.open(url)
+    uvicorn.run(create_app(), host="127.0.0.1", port=port, log_level="info")
+
+
 def main():
     app()

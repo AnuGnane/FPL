@@ -10,3 +10,8 @@ reports/*.html
 reports/*.json
 logs/
 .DS_Store
+.superpowers/
+src/gaffer/web/static/*
+!src/gaffer/web/static/.gitkeep
+frontend/node_modules/
+frontend/dist/

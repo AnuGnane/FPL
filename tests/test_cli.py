@@ -9,7 +9,7 @@ def test_cli_help_lists_commands():
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
     for cmd in ["advise", "refresh", "train", "prices", "league", "live",
-                "backtest", "build-history"]:
+                "backtest", "build-history", "ui"]:
         assert cmd in result.output
 
 
@@ -26,7 +26,7 @@ def test_every_command_help_renders():
     """Each command's body imports lazily, so --help is the cheapest proof
     that no command is wired to a name that does not exist yet."""
     for cmd in ["advise", "refresh", "train", "prices", "league", "live",
-                "backtest", "build-history"]:
+                "backtest", "build-history", "ui"]:
         result = runner.invoke(app, [cmd, "--help"])
         assert result.exit_code == 0, f"{cmd} --help failed: {result.output}"
 
@@ -81,3 +81,36 @@ def test_league_reports_empty_league(tmp_path, monkeypatch):
     result = runner.invoke(app, ["league"])
     assert result.exit_code == 0
     assert "No rivals" in result.output
+
+
+def test_ui_command_is_registered_and_documents_its_port():
+    result = runner.invoke(app, ["ui", "--help"])
+    assert result.exit_code == 0
+    assert "8927" in result.output
+    assert "--port" in result.output
+
+
+def test_ui_binds_loopback_and_opens_the_browser(monkeypatch):
+    calls = {}
+
+    def fake_run(application, host, port, log_level):
+        calls["host"] = host
+        calls["port"] = port
+
+    monkeypatch.setattr("uvicorn.run", fake_run)
+    monkeypatch.setattr("webbrowser.open",
+                        lambda url: calls.setdefault("url", url))
+    result = runner.invoke(app, ["ui", "--port", "9100"])
+    assert result.exit_code == 0
+    assert calls["host"] == "127.0.0.1"      # never 0.0.0.0
+    assert calls["port"] == 9100
+    assert calls["url"] == "http://127.0.0.1:9100"
+
+
+def test_ui_can_skip_the_browser(monkeypatch):
+    opened = []
+    monkeypatch.setattr("uvicorn.run", lambda *a, **k: None)
+    monkeypatch.setattr("webbrowser.open", lambda url: opened.append(url))
+    result = runner.invoke(app, ["ui", "--no-open-browser"])
+    assert result.exit_code == 0
+    assert opened == []
