@@ -14,6 +14,10 @@ export interface Staleness {
   deadline_passed: boolean
   stale: boolean
   reason: string
+  // Fresh advice can still be underinformed: the newest gameweek the model
+  // has ingested, and the warning when that lags the gameweek just played.
+  data_through_gw: number | null
+  data_warning: string | null
 }
 
 export interface Strategy {

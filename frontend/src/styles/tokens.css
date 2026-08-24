@@ -86,6 +86,13 @@ button:disabled { opacity: 0.5; cursor: default; }
   justify-content: space-between;
 }
 
+/* "the advice is current, the model just hasn't seen last week" — a
+   different problem from stale advice, so a different colour and no button. */
+.banner-data {
+  border-left-color: var(--bad);
+  background: #2a1412;
+}
+
 .tag { font-size: 11px; padding: 2px 6px; border-radius: 6px; background: var(--pitch-700); }
 .tag-attack { background: #2b4a86; }
 .tag-cover { background: #4a3b16; }
