@@ -55,3 +55,13 @@ def test_scoring_table_has_position_values():
 
 def test_next_gw():
     assert next_gw(RAW) in {ev["id"] for ev in RAW["events"]}
+
+
+def test_next_gw_between_seasons_is_actionable():
+    import pytest
+
+    from gaffer.errors import GafferError
+
+    raw = {"events": [{"id": 38, "is_next": False}]}
+    with pytest.raises(GafferError, match="no upcoming gameweek"):
+        next_gw(raw)

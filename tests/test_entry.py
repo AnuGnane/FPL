@@ -77,3 +77,15 @@ def test_fetch_my_team_builds_state():
     assert team.free_transfers == 4
     assert team.chips_by_gw == {3: "wildcard"}
     assert team.chips_used == ["wildcard"]
+
+
+def test_fetch_my_team_refuses_gw1():
+    """Before GW1 there is no completed gameweek to read a squad from; the
+    picks endpoint would 404 on GW0."""
+    import pytest
+
+    from gaffer.errors import GafferError
+
+    with pytest.raises(GafferError, match="GW1"):
+        fetch_my_team(_FakeClient(), entry_id=99, next_gw=1,
+                      players=pd.DataFrame())

@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 import pandas as pd
 
 from gaffer.api.client import FPLClient
+from gaffer.errors import GafferError
 
 FT_CAP = 5
 FT_START_GW = 2
@@ -58,6 +59,12 @@ def fetch_my_team(
     players: pd.DataFrame,
 ) -> MyTeam:
     """Assemble the current squad state ahead of ``next_gw``'s deadline."""
+    if next_gw <= 1:
+        # There is no GW0 picks endpoint; asking for one 404s.
+        raise GafferError(
+            "GW1: no completed gameweek to load your squad from — "
+            "initial-squad advice isn't supported yet; pick your GW1 team in "
+            "the app and run gaffer advise from GW2")
     last_gw = next_gw - 1
     picks_raw = client.get_entry_picks(entry_id, last_gw)
     transfers = client.get_entry_transfers(entry_id)

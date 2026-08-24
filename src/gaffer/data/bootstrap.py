@@ -5,6 +5,7 @@ from __future__ import annotations
 import pandas as pd
 
 from gaffer.api.parse import to_float, to_int
+from gaffer.errors import GafferError
 
 POS = {1: "GKP", 2: "DEF", 3: "MID", 4: "FWD"}
 POSITIONS = ["GKP", "DEF", "MID", "FWD"]
@@ -95,7 +96,9 @@ def next_gw(raw: dict) -> int:
     for ev in raw["events"]:
         if ev.get("is_next"):
             return ev["id"]
-    raise ValueError("no next gameweek found")
+    raise GafferError(
+        "no upcoming gameweek in the bootstrap — season may be over or not "
+        "yet published")
 
 
 # Scoring identifiers we assemble expected points from.

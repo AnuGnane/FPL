@@ -17,6 +17,7 @@ def advise():
     """Full weekly run: refresh -> predict -> optimize -> report."""
     from gaffer.advise import run_advise
     from gaffer.config import load_config
+    from gaffer.errors import GafferError
     from gaffer.report.render import render_report
 
     cfg = load_config()
@@ -26,6 +27,9 @@ def advise():
     try:
         advice = run_advise(cfg)
     except SystemExit as e:  # missing models, raised before any network call
+        typer.echo(str(e))
+        raise typer.Exit(1)
+    except GafferError as e:  # season boundary: GW1, or no next GW at all
         typer.echo(str(e))
         raise typer.Exit(1)
     from gaffer.tracking import latest_health
