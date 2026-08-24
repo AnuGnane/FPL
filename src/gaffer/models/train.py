@@ -47,6 +47,10 @@ DEFAULT_E_GC = 1.4
 # holdout and gets an identity calibration instead.
 CALIBRATION_HOLDOUT_GWS = 10
 CALIBRATION_MIN_SLOTS = 14
+# The delta is a *conditional* bias, E[actual - ep | 60+ minutes], because
+# apply() scales it by p60. Same threshold the scoring uses for the 60-minute
+# appearance point, and the same one evaluate_predictions calls a starter.
+CALIBRATION_MIN_MINUTES = 60
 
 BONUS_MIN_ROWS = 2000
 """Appearance rows the bonus model needs before a season stands alone.
@@ -160,9 +164,11 @@ def fit_calibration(df: pd.DataFrame, tg: pd.DataFrame,
     than a season-wise split would leave it, so the bias it is measured for
     is closer to the production model's.
 
-    Only appearances (``minutes > 0``) are used — the level bias being
-    corrected is a starter bias, and non-playing filler rows would drag the
-    low end of every curve toward zero.
+    Only 60-minute appearances are used. The correction decomposes as
+    ``expected bias = P(60+ minutes) * E[bias | 60+ minutes]``, and
+    :meth:`CalibrationModel.apply` supplies the first factor from ``p60``,
+    so what is fit here has to be the second. Fitting on every appearance
+    would mix cameos into the conditional and double-count the gate.
 
     A frame with too few distinct slots to leave a meaningful inner training
     set returns an unfitted (identity) model.
@@ -191,10 +197,10 @@ def fit_calibration(df: pd.DataFrame, tg: pd.DataFrame,
     # ep and position both come off ``assembled``, which is row-for-row
     # ``comp``, which is row-for-row ``hold`` — so ``actual`` lines up
     # positionally. Every frame here has a fresh RangeIndex.
-    played = (hold["minutes"] > 0).to_numpy()
-    ep = assembled.loc[played, "ep"].reset_index(drop=True)
-    position = assembled.loc[played, "position"].reset_index(drop=True)
-    actual = hold.loc[played, "total_points"].reset_index(drop=True)
+    started = (hold["minutes"] >= CALIBRATION_MIN_MINUTES).to_numpy()
+    ep = assembled.loc[started, "ep"].reset_index(drop=True)
+    position = assembled.loc[started, "position"].reset_index(drop=True)
+    actual = hold.loc[started, "total_points"].reset_index(drop=True)
     return CalibrationModel().fit(ep, actual, position)
 
 

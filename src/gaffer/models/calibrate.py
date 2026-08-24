@@ -4,6 +4,15 @@ The assembled expected points carry a known level bias (v1 holdout: 60+-minute
 starters under-predicted by ~1.1 pts). This corrects it with one additive
 delta per position group, scaled by ``p60``.
 
+The shape follows from decomposing the bias a row actually carries::
+
+    expected bias = P(60+ minutes) * E[bias | 60+ minutes]
+
+``p60`` is already the model's estimate of the first factor, so the fitted
+delta is the second and nothing else — see :meth:`CalibrationModel.fit`. The
+product is what gets added. A player nailed to start ninety minutes takes the
+full correction; one who will not get off the bench takes none of it.
+
 An earlier version fit isotonic regression per position instead. It fixed the
 level but wrecked the thing the tool is actually for. Two measured failures on
 the 2025/26 GW30-38 holdout:
@@ -39,13 +48,14 @@ class CalibrationModel:
 
     def fit(self, ep: pd.Series, actual: pd.Series,
             position: pd.Series) -> "CalibrationModel":
-        """Learn mean(actual - ep) per position group.
+        """Learn ``E[actual - ep | 60+ minutes]`` per position group.
 
-        The caller restricts the rows to appearances (see
-        ``train.fit_calibration``). That is the right population precisely
-        because :meth:`apply` gates on ``p60``: the delta is measured on
-        players who played and is handed out in proportion to how likely a
-        player is to play.
+        The caller restricts the rows to 60-minute appearances (see
+        ``train.fit_calibration``), which is what makes the delta the
+        conditional half of the decomposition in the module docstring. Feed
+        it every appearance instead and the cameos pull the mean toward the
+        unconditional bias, which :meth:`apply` would then multiply by
+        ``p60`` a second time.
         """
         resid = actual.to_numpy(dtype=float) - ep.to_numpy(dtype=float)
         pos = position.to_numpy()

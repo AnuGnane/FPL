@@ -138,6 +138,26 @@ def test_train_all_fits_calibration_out_of_sample():
     assert out["ep"].notna().all()
 
 
+def test_fit_calibration_measures_the_delta_on_60_minute_rows_only():
+    """The delta is the *conditional* bias E[actual - ep | 60+ minutes].
+
+    ``apply`` already multiplies by ``p60``, so mixing cameo rows into the
+    fit would estimate the unconditional bias and double-count the gate.
+    Here every 60+ row scores 10 while every cameo scores -100: a fit that
+    let cameos in could not come out positive.
+    """
+    df = _player_frame(seasons=(0, 1), players=160)
+    played = df["minutes"] > 0
+    cameo = played & (df.index % 7 == 0)
+    df.loc[played, "total_points"] = 10
+    df.loc[cameo, ["minutes", "total_points"]] = [30, -100]
+    cal = fit_calibration(df, _team_frame(seasons=(0, 1)),
+                          scoring_table(load_bootstrap_sample()))
+    assert cal.by_pos, "expected enough 60+ rows per group to fit"
+    for group, delta in cal.by_pos.items():
+        assert delta > 0, (group, delta)
+
+
 def test_fit_calibration_on_too_few_gameweek_slots_is_unfitted():
     # 8 distinct (season_idx, gw) slots, at or under CALIBRATION_MIN_SLOTS:
     # holding 10 out would leave nothing to fit the inner model on.
