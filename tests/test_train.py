@@ -1,8 +1,10 @@
 import random
 
 import pandas as pd
-from gaffer.models.train import (bonus_season_floor, evaluate_predictions,
-                                 fit_calibration, train_all)
+from gaffer.models.train import (CALIBRATION_HOLDOUT_GWS,
+                                 CALIBRATION_MIN_SLOTS, bonus_season_floor,
+                                 evaluate_predictions, fit_calibration,
+                                 train_all)
 from gaffer.assets import load_bootstrap_sample
 from gaffer.data.bootstrap import scoring_table
 from gaffer.models.attacking import ATTACK_FEATURES
@@ -136,8 +138,39 @@ def test_train_all_fits_calibration_out_of_sample():
     assert len(out) == 2
 
 
-def test_fit_calibration_on_a_single_season_is_unfitted():
+def test_fit_calibration_on_too_few_gameweek_slots_is_unfitted():
+    # 8 distinct (season_idx, gw) slots, at or under CALIBRATION_MIN_SLOTS:
+    # holding 10 out would leave nothing to fit the inner model on.
     df = _player_frame(seasons=(0,))
     tg = _team_frame(seasons=(0,))
+    assert len(df[["season_idx", "gw"]].drop_duplicates()) <= CALIBRATION_MIN_SLOTS
     cal = fit_calibration(df, tg, scoring_table(load_bootstrap_sample()))
     assert cal.by_pos == {}
+
+
+def test_fit_calibration_splits_on_gameweek_slots_not_seasons():
+    # The boundary is the 10th slot from the end, so the inner training set
+    # reaches into the newest season rather than stopping at its start.
+    df = _player_frame(seasons=(0, 1))
+    slots = (df[["season_idx", "gw"]].drop_duplicates()
+             .sort_values(["season_idx", "gw"]))
+    assert len(slots) > CALIBRATION_MIN_SLOTS
+    bs, bg = slots.iloc[-CALIBRATION_HOLDOUT_GWS][["season_idx", "gw"]]
+    held = slots[(slots.season_idx > bs)
+                 | ((slots.season_idx == bs) & (slots.gw >= bg))]
+    assert len(held) == CALIBRATION_HOLDOUT_GWS
+    # Holdout straddles the season boundary: it is not "the newest season".
+    assert held.season_idx.nunique() == 2
+
+
+def test_train_all_survives_defcon_stats_only_in_the_newest_season():
+    # Mirrors the real frame: tackles/cbi arrived in 2025/26, so the inner
+    # calibration split can land on rows that have none. A season-wise
+    # holdout crashed LightGBM here with an empty design matrix.
+    df = _player_frame(seasons=(0, 1))
+    old = df["season_idx"] == 0
+    df.loc[old, ["tackles", "cbi", "recoveries"]] = float("nan")
+    models = train_all(df, _team_frame(seasons=(0, 1)), save=False)
+    assert "calibration" in models
+    assert models["calibration"].apply(pd.Series([3.0]),
+                                       pd.Series(["MID"])).notna().all()

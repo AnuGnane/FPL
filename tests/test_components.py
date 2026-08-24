@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from gaffer.models.components import (DEF_CBIT_THRESHOLD,
+from gaffer.models.components import (DEF_CBIT_THRESHOLD, DEFCON_PRIOR,
                                       MID_FWD_CBIRT_THRESHOLD, BonusModel,
                                       DefconModel, SavesModel, card_penalty,
                                       defcon_target)
@@ -62,6 +62,18 @@ def test_defcon_fit_ignores_rows_without_defcon_data():
                                   "minutes_r5"])
     m.fit(df)     # must not raise on NaN targets
     assert (defcon_target(old) == 0).all()
+
+
+def test_defcon_falls_back_to_the_prior_when_no_row_has_the_stats():
+    # What the calibration refit hands us on a pre-2025/26 inner split: the
+    # component stats are missing everywhere, so there is nothing to fit.
+    df = _defcon_frame()
+    df[["tackles", "cbi", "recoveries"]] = np.nan
+    m = DefconModel(feature_cols=["tackles_r5", "cbi_r5", "recoveries_r5",
+                                  "minutes_r5"])
+    m.fit(df)                                  # must not raise
+    pred = m.predict(df)
+    assert (pred["p_defcon"] == DEFCON_PRIOR).all()
 
 
 def test_card_penalty():

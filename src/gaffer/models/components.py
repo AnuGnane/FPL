@@ -24,6 +24,12 @@ DEFCON_FEATURES = ["tackles_r3", "tackles_r5", "tackles_r38", "cbi_r3",
 DEF_CBIT_THRESHOLD = 10
 MID_FWD_CBIRT_THRESHOLD = 12
 
+# Fallback rate when no row carries the component stats at all — the measured
+# threshold-hit rate over real 2025/26 outfield appearances. A frame from
+# before 2025/26 has no defcon signal to learn from, and a flat prior is
+# honest about that where a crash or a hard zero would not be.
+DEFCON_PRIOR = 0.13
+
 
 def defcon_target(df: pd.DataFrame) -> pd.Series:
     """Did each row hit its position's defensive-contribution threshold?
@@ -53,12 +59,20 @@ class DefconModel:
         sub = df[(df["minutes"] > 0) & df["tackles"].notna()
                  & df["cbi"].notna() & (df["position"] != "GKP")]
         self.cols_ = [c for c in self.feature_cols if c in sub.columns]
-        self.clf.fit(sub[self.cols_], defcon_target(sub))
+        # No row carries the component stats (a frame entirely before
+        # 2025/26, which the calibration refit can hand us). LightGBM raises
+        # on an empty design matrix, so fall back to the flat prior.
+        self.constant_ = DEFCON_PRIOR if sub.empty else None
+        if self.constant_ is None:
+            self.clf.fit(sub[self.cols_], defcon_target(sub))
         return self
 
     def predict(self, df: pd.DataFrame) -> pd.DataFrame:
         out = df[["code", "season_idx", "gw"]].copy()
-        out["p_defcon"] = self.clf.predict_proba(df[self.cols_])[:, 1]
+        if getattr(self, "constant_", None) is not None:
+            out["p_defcon"] = self.constant_
+        else:
+            out["p_defcon"] = self.clf.predict_proba(df[self.cols_])[:, 1]
         out.loc[df["position"] == "GKP", "p_defcon"] = 0.0
         return out
 
