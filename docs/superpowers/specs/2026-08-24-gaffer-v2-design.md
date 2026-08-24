@@ -187,6 +187,20 @@ authenticated FPL endpoints (tool stays advisor-only), UI beyond CLI + HTML repo
   mae_starters/captain_pts/top15_pts AND 60+ bias |mean residual| < 0.4.
   Odds features cannot be holdout-tested (no historical odds) — verified by
   smoke test + graceful-degradation tests only; noted honestly at the gate.
+- GATE A OUTCOME (2026-08-24, user-approved): calibration redesigned twice
+  during the gate (isotonic → additive p60-gated per-position delta fit on
+  60-minute appearances; decomposition `E[bias] = P(60+)·E[bias|60+]`).
+  Final: mae_starters 2.427 (v1 2.356), captain_pts 5.78 (tie — ranking-movers
+  are live-only by design), top15_pts 81.6 (+1.0), bias_60 −0.483 (from −1.11),
+  beats both baselines on all five shared metrics. The original criteria set
+  mae_starters and bias_60 targets that are in direct tension (removing signed
+  bias inflates absolute error); ACCEPTED as the better model for the MILP's
+  decisions (XI totals + level truth) with the ranking provably unchanged.
+  Also fixed at the gate: latent train_all crash (calibration holdout now the
+  last 10 gameweek slots, not the newest season; DefconModel constant fallback
+  DEFCON_PRIOR=0.13) and removal of the pens_missed history proxy (constant-
+  where-present noise; pen_taker is live-order-only, learns as snapshots
+  accumulate).
 - **Gate C** (after Phase C): horizon-6 + chips 2025/26 replay ≥ 55.94/GW.
 
 ## 8. Rollout
