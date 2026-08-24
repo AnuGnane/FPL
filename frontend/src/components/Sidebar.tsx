@@ -8,6 +8,7 @@ const PAGES: Array<[string, string]> = [
   ['/players', 'Players'],
   ['/history', 'History'],
   ['/health', 'Runs & Health'],
+  ['/ticker', 'Fixture Ticker'],
 ]
 
 export default function Sidebar() {

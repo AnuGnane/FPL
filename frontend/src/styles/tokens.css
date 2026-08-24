@@ -139,3 +139,8 @@ tr.changed { background: #23331c; }
 tr.you { background: var(--pitch-700); font-weight: 600; }
 .chart { width: 100%; height: auto; }
 a { color: var(--pitch-300); }
+
+/* The ticker's cell backgrounds are set inline from the difficulty, so the
+   cells only need tight, centred text that stays legible over them. */
+.ticker td { text-align: center; font-size: 12px; white-space: nowrap; color: #f2f7f3; }
+.ticker th[scope="row"] { color: var(--chalk); font-weight: 600; }

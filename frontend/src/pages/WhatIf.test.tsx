@@ -54,11 +54,21 @@ const RESULT = {
   verdict: 'your version costs 2.8 expected points',
 }
 
+// The page embeds the read-only fixture ticker, so every mock has to answer
+// its GET as well as the solve's.
+const TICKER = {
+  gws: [3], source: 'elo',
+  teams: [{ code: 300, name: 'Liverpool', short_name: 'LIV',
+            mean_difficulty: 0.2,
+            cells: [{ gw: 3, opponent: 'ARS', home: true, difficulty: 0.2 }] }],
+}
+
 beforeEach(() => {
   apiGet.mockReset()
   apiPost.mockReset()
   apiGet.mockImplementation(async (path: string) => {
     if (path.startsWith('/api/players?')) return PLAYERS
+    if (path.startsWith('/api/fixtures/ticker')) return TICKER
     if (path.startsWith('/api/jobs/')) {
       return { id: 'j1', status: 'done', result: RESULT, error: null }
     }
@@ -125,6 +135,7 @@ describe('What-If Lab', () => {
     apiPost.mockResolvedValue({ job_id: 'j2' })
     apiGet.mockImplementation(async (path: string) => {
       if (path.startsWith('/api/players?')) return PLAYERS
+      if (path.startsWith('/api/fixtures/ticker')) return TICKER
       return { id: 'j2', status: 'error', result: null,
                error: 'no legal squad satisfies those constraints' }
     })

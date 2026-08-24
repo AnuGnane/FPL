@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ApiError, apiPost } from '../api/client'
 import { useJob } from '../api/useJob'
 import ConstraintsPanel from '../components/ConstraintsPanel'
+import FixtureTicker from '../components/FixtureTicker'
 import PlanDiffTable from '../components/PlanDiffTable'
 import type { WhatIfRequest, WhatIfResult } from '../types'
 
@@ -58,6 +59,7 @@ export default function WhatIf() {
       )}
       {job.status === 'error' && <p className="bad">{job.error}</p>}
       {diff && <PlanDiffTable diff={diff} />}
+      <FixtureTicker weeks={6} />
     </>
   )
 }

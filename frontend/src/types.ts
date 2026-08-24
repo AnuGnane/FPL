@@ -238,3 +238,63 @@ export interface LiveState {
   players: LivePlayer[]
   table: LiveTableRow[]
 }
+
+export interface HistoryData {
+  runs: Array<{
+    gw: number
+    deadline: string
+    captain: string
+    buys: string[]
+    sells: string[]
+    hits: number
+    expected_pts: number
+    actual_pts: number | null
+  }>
+  prices: Array<{
+    code: number
+    name: string
+    points: Array<{ gw: number; price: number }>
+  }>
+  backtests: Array<Record<string, unknown>>
+}
+
+export interface HealthData {
+  data: Array<{
+    source: string
+    path: string
+    present: boolean
+    modified_at: string | null
+    age_hours: number | null
+  }>
+  models: Array<{
+    name: string
+    saved_at: string | null
+    metrics: Record<string, unknown>
+  }>
+  launchd: {
+    log: string
+    present: boolean
+    modified_at: string | null
+    last_line: string | null
+  }
+  odds_key_present: boolean
+  model_health: Record<string, unknown> | null
+  artifacts: Array<{ name: string; bytes: number }>
+}
+
+export interface TickerData {
+  gws: number[]
+  source: 'odds' | 'elo'
+  teams: Array<{
+    code: number
+    name: string
+    short_name: string
+    mean_difficulty: number
+    cells: Array<{
+      gw: number
+      opponent: string
+      home: boolean
+      difficulty: number
+    }>
+  }>
+}
