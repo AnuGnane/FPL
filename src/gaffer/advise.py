@@ -38,6 +38,7 @@ from gaffer.data.league import (effective_ownership, fetch_rival_entries,
 from gaffer.data.live import refresh_live
 from gaffer.data.odds import OddsClient, odds_frame
 from gaffer.features.engineer import build_prediction_frame, feature_columns
+from gaffer.league_mode import compute_strategy, tilt_ep, win_probability
 from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
 from gaffer.models.components import card_penalty
 from gaffer.models.minutes import apply_availability
@@ -89,6 +90,11 @@ class Advice:
     price_alerts: list[dict]
     expected_pts: float
     plan_by_gw: list[dict] = field(default_factory=list)
+    # League strategy is optional: no league configured, an API failure or a
+    # league with no rivals all leave these empty, and the advice is then the
+    # plain points-max advice v1 produced.
+    strategy: dict | None = None
+    win_probs: list = field(default_factory=list)
 
 
 SETPIECE_ORDER_COLS = ["penalties_order", "direct_freekicks_order",
@@ -278,6 +284,28 @@ def predict_components(pred_frame: pd.DataFrame, tg_future: pd.DataFrame,
     return comp
 
 
+DIFFERENTIAL_EO = 0.3
+"""Below this league-EO fraction a buy is an attacking punt on the field."""
+
+TEMPLATE_EO = 0.7
+"""At or above it, buying is covering a player the league already owns."""
+
+
+def transfer_tag(eo_pct: float | None, has_strategy: bool) -> str:
+    """Label a buy ``attack`` / ``cover`` / "" by how owned it is in the league.
+
+    ``eo_pct`` is effective ownership in *percent* (captaincy can push it past
+    100), and a player nobody owns is simply absent from the EO map. Without a
+    strategy there is no league to be different from, so nothing is tagged.
+    """
+    if not has_strategy:
+        return ""
+    eo = (eo_pct or 0.0) / 100.0
+    if eo < DIFFERENTIAL_EO:
+        return "attack"
+    return "cover" if eo >= TEMPLATE_EO else ""
+
+
 def _named(codes: list[int], name_of: dict, ep_by: dict, gw: int) -> list[dict]:
     return [{"code": int(c), "name": name_of.get(c, str(c)),
              "ep": round(float(ep_by.get((c, gw), 0.0)), 2)} for c in codes]
@@ -353,7 +381,44 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
 
     my = fetch_my_team(client, cfg.entry_id, gw, players)
     ep_by = {(int(r.code), int(r.gw)): float(r.ep) for r in ep.itertuples()}
-    pool = build_pool(players, ep_by, my.picks, gws)
+
+    # The league has to be read *before* the pool is built. The rank-aware
+    # tilt decides which players are even worth considering — a chaser's
+    # differential is often outside the top-N by raw EP — so applying it after
+    # build_pool would leave the tilt with nothing new to pick from.
+    #
+    # Every failure mode lands in the same place: no league configured, a dead
+    # endpoint, a league with no rivals yet. All of them leave strategy None
+    # and league_eo empty, lam is then 0.0, and tilt_ep is an exact
+    # passthrough — the solve is bit-identical to the v1 points-max one.
+    league_eo: dict[int, float] = {}
+    strat = None
+    win_probs: list[dict] = []
+    if cfg.league_id:
+        try:
+            rivals = fetch_rival_entries(client, cfg.league_id, cfg.entry_id)
+            if not rivals.empty:
+                rival_picks = fetch_rival_picks(
+                    client, rivals["entry"].tolist(), gw - 1)
+                eo_by_element = effective_ownership(rival_picks)
+                code_of_element = dict(zip(players["element"], players["code"]))
+                league_eo = {code_of_element[el]: v
+                             for el, v in eo_by_element.items()
+                             if el in code_of_element}
+                entry = client.get_entry(cfg.entry_id)
+                my_total = int(entry.get("summary_overall_points") or 0)
+                strat = compute_strategy(my_total, rivals, gw)
+                win_probs = [
+                    {"name": str(r.entry_name), "total": int(r.total),
+                     "p_win": round(win_probability(my_total, int(r.total),
+                                                    strat.weeks_left), 3)}
+                    for r in rivals.itertuples()]
+        except Exception as e:  # noqa: BLE001 — the league must never block advice
+            print(f"league unavailable, continuing without: {e}")
+            league_eo, strat, win_probs = {}, None, []
+
+    pool_ep = tilt_ep(ep_by, league_eo, strat.lam if strat else 0.0)
+    pool = build_pool(players, pool_ep, my.picks, gws)
     state = SolveInput(owned_codes=my.picks["code"].tolist(), bank=my.bank,
                        free_transfers=my.free_transfers, gws=gws)
     opt_kw = dict(decay=cfg.decay, bench_weight=cfg.bench_weight,
@@ -375,15 +440,6 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     wc_now = (wildcard_now_assessment(pool, state, base=plan, **opt_kw)
               if "wildcard" in chip_names else None)
 
-    league_eo: dict[int, float] = {}
-    if cfg.league_id:
-        rivals = fetch_rival_entries(client, cfg.league_id, cfg.entry_id)
-        rival_picks = fetch_rival_picks(client, rivals["entry"].tolist(), gw - 1)
-        eo_by_element = effective_ownership(rival_picks)
-        code_of_element = dict(zip(players["element"], players["code"]))
-        league_eo = {code_of_element[el]: v for el, v in eo_by_element.items()
-                     if el in code_of_element}
-
     ep_gw1 = ep_named[ep_named["gw"] == gw]
     cap_tab = captain_table(ep_gw1, first.xi, league_eo)
     if first.buys:
@@ -398,10 +454,20 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     alerts = price_alerts(players, list(watch))
 
     name_of = dict(zip(players["code"], players["name"]))
+    buys = _named(first.buys, name_of, ep_by, gw)
+    for b in buys:
+        b["tag"] = transfer_tag(league_eo.get(b["code"]), strat is not None)
+    strategy = None
+    if strat is not None:
+        strategy = asdict(strat)
+        # A dead-level league gives sign * 0.0 == -0.0, which reads as a typo
+        # in the report. It is zero either way.
+        strategy["lam"] = abs(strategy["lam"]) if strategy["lam"] == 0 \
+            else strategy["lam"]
     advice = Advice(
         gw=gw,
         deadline=deadline,
-        buys=_named(first.buys, name_of, ep_by, gw),
+        buys=buys,
         sells=_named(first.sells, name_of, ep_by, gw),
         hits=first.hits,
         xi=_named(first.xi, name_of, ep_by, gw),
@@ -420,6 +486,8 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
                      "sells": _named(p.sells, name_of, ep_by, p.gw),
                      "expected_pts": round(float(p.expected_pts), 2)}
                     for p in plan.gw_plans],
+        strategy=strategy,
+        win_probs=win_probs,
     )
     REPORTS.mkdir(exist_ok=True)
     (REPORTS / f"gw{gw}-advice.json").write_text(

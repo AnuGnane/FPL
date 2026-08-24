@@ -70,3 +70,40 @@ def test_report_renders_without_a_wildcard_assessment(tmp_path):
     html = render_report(advice, out_dir=tmp_path).read_text()
     assert "already played" in html
     assert "None" not in html
+
+
+def _league_advice(stance="chase", lam=0.35, gap=42):
+    advice = _advice()
+    advice.strategy = {"lam": lam, "gap": gap, "weeks_left": 36,
+                       "stance": stance, "rival_name": "Klopp on Wood"}
+    advice.win_probs = [
+        {"name": "Klopp on Wood", "total": 180, "p_win": 0.31},
+        {"name": "Xhaka Khan", "total": 120, "p_win": 0.72},
+    ]
+    advice.buys = [{"code": 20, "name": "Star", "ep": 7.5, "tag": "attack"}]
+    return advice
+
+
+def test_league_panel_shows_stance_standings_and_transfer_tags(tmp_path):
+    html = render_report(_league_advice(), out_dir=tmp_path).read_text()
+    assert "Klopp on Wood" in html          # the top rival, named
+    assert "42" in html and "0.35" in html  # gap and lambda
+    assert "differential" in html.lower()   # chase copy
+    assert "Xhaka Khan" in html and "72%" in html   # standings + p_win
+    assert "attack" in html                 # buy tag
+
+
+def test_league_panel_defend_copy_never_prints_negative_zero(tmp_path):
+    html = render_report(_league_advice("defend", -0.5, 90),
+                         out_dir=tmp_path).read_text()
+    assert "-0.0" not in html and "−0.0" not in html
+    assert "0.50" in html
+    html = render_report(_league_advice("neutral", 0.0, 3),
+                         out_dir=tmp_path).read_text()
+    assert "-0.0" not in html and "−0.0" not in html
+
+
+def test_report_omits_the_league_panel_without_a_strategy(tmp_path):
+    html = render_report(_advice(), out_dir=tmp_path).read_text()
+    assert "League strategy" not in html
+    assert "P(I finish above" not in html

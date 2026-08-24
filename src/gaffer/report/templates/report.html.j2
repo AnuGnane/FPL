@@ -19,12 +19,42 @@
 
 <div class="action"><h2 style="margin-top:0">This week's actions</h2>
 <ul>
-{% for b in a.buys %}<li>BUY <strong>{{ b.name }}</strong> ({{ b.ep }} xPts)</li>{% endfor %}
+{% for b in a.buys %}<li>BUY <strong>{{ b.name }}</strong> ({{ b.ep }} xPts)
+{%- if b.tag %} <span class="diff">{{ b.tag }}</span>{% endif %}</li>{% endfor %}
 {% for s in a.sells %}<li>SELL <strong>{{ s.name }}</strong> ({{ s.ep }} xPts)</li>{% endfor %}
 {% if not a.buys %}<li>No transfers — bank the free transfer.</li>{% endif %}
 {% if a.hits %}<li class="warn">Taking {{ a.hits }} hit(s): −{{ a.hits * 4 }} pts, maths clears it.</li>{% endif %}
 <li>Captain: <strong>{{ a.captain.name }}</strong> · Vice: <strong>{{ a.vice.name }}</strong></li>
 </ul></div>
+
+{% if a.strategy %}{% set s = a.strategy %}
+<h2>League strategy</h2>
+<p>
+{%- if s.stance == "chase" %}
+Chasing <strong>{{ s.rival_name }}</strong>, top of the league: −{{ s.gap }} pts
+with {{ s.weeks_left }} gameweeks left, λ={{ "%.2f"|format(s.lam) }} — favoring
+differentials, since matching the leader loses.
+{%- elif s.stance == "defend" %}
+Defending a lead over <strong>{{ s.rival_name }}</strong>, the best-placed
+rival: +{{ s.gap }} pts with {{ s.weeks_left }} gameweeks left,
+λ={{ "%.2f"|format(s.lam) }} — mirroring the field, since a shared score keeps
+the lead.
+{%- else %}
+Level with <strong>{{ s.rival_name }}</strong>, the best-placed rival:
+{{ s.gap }} pts apart with {{ s.weeks_left }} gameweeks left, λ=0.00 — too
+close to steer either way, so this is a straight points-max plan.
+{%- endif %}
+</p>
+{% if a.win_probs %}
+<table><tr><th>Rival</th><th>Total</th><th>P(I finish above them)</th></tr>
+{% for w in a.win_probs %}<tr><td>{{ w.name }}</td><td>{{ w.total }}</td>
+<td>{{ "%.0f%%"|format(w.p_win * 100) }}</td></tr>{% endfor %}
+</table>
+<p><small><span class="diff">attack</span> = a buy under 30% league EO (a punt
+on the field); <span class="diff">cover</span> = 70% or more (protecting
+against a template player).</small></p>
+{% endif %}
+{% endif %}
 
 <h2>Starting XI &amp; bench order</h2>
 <table><tr><th>#</th><th>XI</th><th>xPts</th></tr>
