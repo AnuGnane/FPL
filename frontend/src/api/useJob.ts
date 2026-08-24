@@ -19,8 +19,12 @@ export function useJob() {
   const [result, setResult] = useState<unknown>(null)
   const [error, setError] = useState<string | null>(null)
   const timer = useRef<number | null>(null)
+  // The job this hook is currently watching. A GET for a previous job (or for
+  // any job after an unmount) can still be in flight, and must not paint.
+  const watching = useRef<string | null>(null)
 
   const stop = useCallback(() => {
+    watching.current = null
     if (timer.current !== null) {
       window.clearInterval(timer.current)
       timer.current = null
@@ -31,9 +35,12 @@ export function useJob() {
 
   const poll = useCallback((jobId: string) => {
     stop()
+    watching.current = jobId
     timer.current = window.setInterval(async () => {
+      if (watching.current !== jobId) return
       try {
         const job = await apiGet<JobRecord>(`/api/jobs/${jobId}`)
+        if (watching.current !== jobId) return
         setStatus(job.status)
         if (job.status === 'done') {
           setResult(job.result)
@@ -43,6 +50,7 @@ export function useJob() {
           stop()
         }
       } catch (e) {
+        if (watching.current !== jobId) return
         setStatus('error')
         setError(e instanceof Error ? e.message : String(e))
         stop()

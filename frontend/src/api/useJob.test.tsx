@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useJob } from './useJob'
 
@@ -42,6 +42,34 @@ describe('useJob', () => {
       { timeout: 4000 })
     expect(result.current.error).toContain('no legal squad')
   })
+
+  it('ignores a response for a job it has already moved on from', async () => {
+    let releaseA = () => {}
+    const held = new Promise<void>((resolve) => { releaseA = resolve })
+    const json = (body: unknown) => new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.includes('jobA')) {
+        await held
+        return json({ id: 'jobA', status: 'done',
+                      result: { from: 'A' }, error: null })
+      }
+      return json({ id: 'jobB', status: 'running', result: null, error: null })
+    }))
+
+    const { result } = renderHook(() => useJob())
+    act(() => result.current.attach('jobA'))
+    // Let A's first poll go out, then move the hook onto B while it hangs.
+    await new Promise((r) => setTimeout(r, 1200))
+    act(() => result.current.attach('jobB'))
+    releaseA()
+
+    await new Promise((r) => setTimeout(r, 1500))
+    expect(result.current.result).toBeNull()
+    expect(result.current.status).toBe('running')
+  }, 10000)
 
   it('surfaces a rejected submission without starting a poll', async () => {
     stubSequence([[429, { detail: '5 jobs already queued' }]])
