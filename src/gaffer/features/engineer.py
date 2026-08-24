@@ -57,16 +57,17 @@ def _order_score(order: pd.Series) -> pd.Series:
     return out
 
 
-def add_setpiece(df: pd.DataFrame, miss_window: int = 38) -> pd.DataFrame:
+def add_setpiece(df: pd.DataFrame) -> pd.DataFrame:
     """``pen_taker`` and ``setpiece_taker`` from the bootstrap order columns.
 
-    The orders only exist on live snapshots; every historical row carries
-    NaN for them. For penalties there is one usable back-fill: a player who
-    missed a penalty demonstrably takes them, so from the match *after* the
-    miss (same shift(1)-before-rolling discipline as
-    :func:`add_player_rolling`) the trailing ``miss_window`` matches set
-    ``pen_taker`` to 1.0. Absence of a miss proves nothing, so it stays NaN
-    rather than 0.0. Set pieces have no equivalent proxy.
+    The orders only exist on live snapshots, so every historical row carries
+    NaN and LightGBM simply ignores the column until live snapshots
+    accumulate. An earlier version back-filled ``pen_taker`` on history from
+    ``pens_missed`` — a player who missed a penalty demonstrably takes them.
+    It measured out as noise: over the real 113k-row history it produced
+    1770 non-null values whose ``nunique()`` was 1, a constant-where-present
+    column that could only add split noise to the attacking model. Absence
+    of evidence stays NaN rather than being manufactured into a feature.
 
     Columns whose source is absent are simply skipped (all-NaN output).
     """
@@ -83,19 +84,7 @@ def add_setpiece(df: pd.DataFrame, miss_window: int = 38) -> pd.DataFrame:
             return absent
         return pd.to_numeric(df[name], errors="coerce")
 
-    pen_order = src("penalties_order")
-    pen_taker = _order_score(pen_order)
-    if "pens_missed" in df.columns and "code" in df.columns:
-        missed = pd.to_numeric(df["pens_missed"], errors="coerce")
-        shifted = missed.groupby(df["code"]).shift(1)
-        rolled = (shifted.groupby(df["code"])
-                  .rolling(miss_window, min_periods=1).sum()
-                  .reset_index(level=0, drop=True))
-        proxy = pd.Series(float("nan"), index=df.index, dtype="float64")
-        proxy[rolled > 0] = 1.0
-        # Live order wins where present; the proxy fills history rows only.
-        pen_taker = pen_taker.where(pen_order.notna(), proxy)
-    df["pen_taker"] = pen_taker
+    df["pen_taker"] = _order_score(src("penalties_order"))
     best = pd.DataFrame({"direct": src("direct_freekicks_order"),
                          "corners": src("corners_and_indirect_freekicks_order")}
                         ).min(axis=1)  # NaN-safe: NaN only if both are absent

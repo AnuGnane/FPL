@@ -131,11 +131,11 @@ def test_train_all_fits_calibration_out_of_sample():
     # A tiny synthetic holdout is below CalibrationModel.MIN_ROWS, so the
     # model is very likely unfitted (identity); the contract under test is
     # that it is present and that apply() works.
-    ep = pd.Series([2.0, 4.0])
-    pos = pd.Series(["MID", "FWD"])
-    out = models["calibration"].apply(ep, pos)
+    frame = pd.DataFrame({"ep": [2.0, 4.0], "position": ["MID", "FWD"],
+                          "p60": [1.0, 0.8]})
+    out = models["calibration"].apply(frame)
     assert list(out.index) == [0, 1]
-    assert len(out) == 2
+    assert out["ep"].notna().all()
 
 
 def test_fit_calibration_on_too_few_gameweek_slots_is_unfitted():
@@ -172,5 +172,6 @@ def test_train_all_survives_defcon_stats_only_in_the_newest_season():
     df.loc[old, ["tackles", "cbi", "recoveries"]] = float("nan")
     models = train_all(df, _team_frame(seasons=(0, 1)), save=False)
     assert "calibration" in models
-    assert models["calibration"].apply(pd.Series([3.0]),
-                                       pd.Series(["MID"])).notna().all()
+    out = models["calibration"].apply(
+        pd.DataFrame({"ep": [3.0], "position": ["MID"], "p60": [1.0]}))
+    assert out["ep"].notna().all()

@@ -98,9 +98,15 @@ def test_pen_taker_from_live_penalties_order():
     assert list(out["pen_taker"]) == [1.0, 0.5, 0.0]
 
 
-def test_pen_taker_history_proxy_from_pens_missed():
-    """History rows have no order column, so a missed penalty is the only
-    evidence the player takes them — and only from the *next* match on."""
+def test_pen_taker_is_nan_on_history_rows_even_after_a_missed_penalty():
+    """No back-fill from ``pens_missed``.
+
+    The proxy looked reasonable but measured out as noise: across the real
+    113k-row history it left 1770 non-null values, every one of them
+    identical, so it carried no signal and only gave the attacking model a
+    near-constant column to split on. History rows stay NaN and LightGBM
+    ignores them; the feature comes alive as live snapshots accumulate.
+    """
     df = pd.DataFrame({
         "code": [1, 1, 1, 1, 2, 2, 2, 2],
         "season_idx": [0] * 8,
@@ -108,21 +114,18 @@ def test_pen_taker_history_proxy_from_pens_missed():
         "pens_missed": [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         "penalties_order": [np.nan] * 8,
     })
-    out = add_setpiece(df).set_index(["code", "gw"])["pen_taker"]
-    assert np.isnan(out[(1, 1)]) and np.isnan(out[(1, 2)])
-    assert np.isnan(out[(1, 3)])            # the miss must not see itself
-    assert out[(1, 4)] == 1.0
-    assert out.loc[2].isna().all()          # never missed -> unknown, not 0
+    assert add_setpiece(df)["pen_taker"].isna().all()
 
 
-def test_pen_taker_proxy_expires_after_38_matches():
-    n = 45
-    df = _setpiece_frame(pens_missed=[1.0] + [0.0] * (n - 1),
-                         penalties_order=[np.nan] * n)
-    out = add_setpiece(df)
-    assert out.loc[out.gw == 2, "pen_taker"].iloc[0] == 1.0
-    assert out.loc[out.gw == 39, "pen_taker"].iloc[0] == 1.0
-    assert np.isnan(out.loc[out.gw == 40, "pen_taker"].iloc[0])
+def test_pen_taker_still_reads_a_live_order_alongside_pens_missed():
+    """Dropping the proxy must not disturb the real source: where the
+    bootstrap order is present it still wins, miss history or not."""
+    df = _setpiece_frame(pens_missed=[1.0, 0.0, 0.0],
+                         penalties_order=[np.nan, 1.0, 3.0])
+    out = add_setpiece(df)["pen_taker"]
+    assert np.isnan(out.iloc[0])
+    assert out.iloc[1] == 1.0
+    assert out.iloc[2] == 0.0
 
 
 def test_setpiece_taker_takes_nan_safe_best_of_both_orders():

@@ -74,18 +74,15 @@ def assemble_ep(components: pd.DataFrame,
 def apply_calibration(assembled: pd.DataFrame, cal) -> pd.DataFrame:
     """Calibrate per-fixture ``ep``, before :func:`ep_matrix` collapses rows.
 
-    Sitting here rather than after ``ep_matrix`` means each fixture of a double
-    gameweek is calibrated on its own scale and only then summed — calibrating
-    the summed total would feed the isotonic map a value from a distribution it
-    was never fit on. ``ep`` and ``position`` come off the same frame, so they
-    cannot silently drift out of alignment. ``cal`` of ``None`` (an old model
+    Sitting here rather than after ``ep_matrix`` means each fixture of a
+    double gameweek gets its own correction and only then sums — a DGW player
+    is expected to start twice, so he earns the starter correction twice,
+    which collapsing first would hide. ``cal`` of ``None`` (an old model
     directory with no calibration artifact) is the identity.
     """
     if cal is None:
         return assembled
-    assembled = assembled.copy()
-    assembled["ep"] = cal.apply(assembled["ep"], assembled["position"]).values
-    return assembled
+    return cal.apply(assembled)
 
 
 def ep_matrix(per_fixture: pd.DataFrame) -> pd.DataFrame:
