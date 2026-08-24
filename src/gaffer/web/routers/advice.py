@@ -6,8 +6,8 @@ import pandas as pd
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from gaffer.artifacts import (latest_gw, load_advice, load_solve_state,
-                              upcoming_gw)
+from gaffer.artifacts import (data_warning, ingested_through, latest_gw,
+                              load_advice, load_solve_state, upcoming_gw)
 from gaffer.errors import GafferError
 from gaffer.web.jobs import ADVISE_TIMEOUT_S, JobQueueFull
 from gaffer.web.schemas import AdviceLatest, JobAccepted, Staleness
@@ -46,10 +46,15 @@ def staleness_for(advice_gw: int, deadline: str,
         reason = f"GW{advice_gw}'s deadline has passed"
     else:
         reason = f"current for GW{advice_gw}"
+    # Read from the parquet, not from the stored advice payload: an advice
+    # file written days ago still gets today's answer about what the model
+    # has actually ingested.
+    through = ingested_through()
     return Staleness(advice_gw=advice_gw, current_gw=current,
                      generated_at=generated_at, deadline=deadline,
                      deadline_passed=passed, stale=bool(behind or passed),
-                     reason=reason)
+                     reason=reason, data_through_gw=through,
+                     data_warning=data_warning(current, through))
 
 
 PLAYER_KEYS = ("xi", "bench", "buys", "sells", "captain", "vice")

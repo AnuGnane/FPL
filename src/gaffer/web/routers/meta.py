@@ -16,8 +16,9 @@ import pandas as pd
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import JSONResponse
 
-from gaffer.artifacts import (REPORTS, latest_gw, load_advice, load_snapshot,
-                              load_solve_state, milp_pool, raw_ep_by)
+from gaffer.artifacts import (REPORTS, ingested_through, latest_gw,
+                              load_advice, load_snapshot, load_solve_state,
+                              milp_pool, raw_ep_by)
 from gaffer.data import store
 from gaffer.data.elo import compute_elo, expected_score
 from gaffer.data.odds import poisson_win_prob
@@ -188,7 +189,8 @@ def health() -> Health:
         if path.is_file():
             artifacts.append(ArtifactItem(name=f"reports/{path.name}",
                                           bytes=path.stat().st_size))
-    return Health(data=sources, models=models,
+    return Health(data=sources, data_through_gw=ingested_through(),
+                  models=models,
                   launchd=LaunchdHealth(log=str(ADVISE_LOG),
                                         present=log_present,
                                         modified_at=log_modified,

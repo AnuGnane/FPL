@@ -213,3 +213,8 @@ def test_data_refresh_queues_a_job(client, monkeypatch):
             break
     assert job["status"] == "done", job["error"]
     assert job["result"] == {"rows": 7}
+
+
+def test_health_reports_how_far_the_ingested_season_reaches(client):
+    """The ingest fixture holds GW2 and GW3, so the model has seen GW3."""
+    assert client.get("/api/health").json()["data_through_gw"] == 3

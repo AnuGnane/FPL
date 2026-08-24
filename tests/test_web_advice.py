@@ -172,3 +172,43 @@ def test_latest_serves_positions_for_an_advice_json_without_them(client):
     """The fixture advice JSON above carries no positions at all."""
     xi = client.get("/api/advice/latest").json()["advice"]["xi"]
     assert [p["position"] for p in xi] == ["MID"]
+
+
+# --- how much of the season the model has seen ------------------------------
+
+
+def _write_player_gw(root, gws):
+    (root / "data" / "live").mkdir(parents=True, exist_ok=True)
+    pd.DataFrame([{"season": "2026-27", "season_idx": 4, "gw": g,
+                   "code": 100, "total_points": 4} for g in gws],
+                 columns=["season", "season_idx", "gw", "code",
+                          "total_points"]).to_parquet(
+        root / "data" / "live" / "player_gw.parquet", index=False)
+
+
+def test_staleness_flags_a_season_with_no_ingested_gameweeks(client):
+    """The real bug: advise ran before FPL finalized GW1, so nothing of this
+    season is on disk and the next deadline is GW4."""
+    body = client.get("/api/advice/latest").json()
+    assert body["staleness"]["data_through_gw"] is None
+    assert "GW1-GW3" in body["staleness"]["data_warning"]
+    assert "gaffer advise" in body["staleness"]["data_warning"]
+
+
+def test_staleness_is_computed_from_the_parquet_not_the_advice_json(client,
+                                                                    tmp_path):
+    """The stored advice is old and says nothing; a fresh ingest still shows
+    through the API without re-running anything."""
+    _write_player_gw(tmp_path, [1, 2, 3])
+    body = client.get("/api/advice/latest").json()
+    assert body["staleness"]["data_through_gw"] == 3
+    assert body["staleness"]["data_warning"] is None
+
+
+def test_staleness_warns_when_only_the_last_gameweek_is_missing(client,
+                                                               tmp_path):
+    _write_player_gw(tmp_path, [1, 2])
+    body = client.get("/api/advice/latest").json()
+    assert body["staleness"]["data_through_gw"] == 2
+    assert body["staleness"]["data_warning"].startswith(
+        "model has no data for GW3 ")

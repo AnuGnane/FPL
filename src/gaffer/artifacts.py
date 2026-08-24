@@ -271,10 +271,9 @@ def ingested_through(season_idx: int | None = None) -> int | None:
     df = store.load("live/player_gw.parquet")
     if df.empty:
         return None
-    if season_idx is None:
-        df = df[df["season_idx"] == df["season_idx"].max()]
-    else:
-        df = df[df["season_idx"] == season_idx]
+    if "season_idx" in df.columns:
+        want = df["season_idx"].max() if season_idx is None else season_idx
+        df = df[df["season_idx"] == want]
     gws = pd.to_numeric(df["gw"], errors="coerce").dropna()
     return int(gws.max()) if not gws.empty else None
 

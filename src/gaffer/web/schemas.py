@@ -23,6 +23,10 @@ class Staleness(BaseModel):
     deadline_passed: bool
     stale: bool
     reason: str
+    # A different kind of stale: the advice can be current for the upcoming
+    # gameweek and still have been built without last gameweek's results.
+    data_through_gw: int | None = None
+    data_warning: str | None = None
 
 
 class AdviceLatest(BaseModel):
@@ -347,6 +351,8 @@ class ArtifactItem(BaseModel):
 
 class Health(BaseModel):
     data: list[SourceHealth]
+    # File mtimes say when the ingest ran; this says what it got.
+    data_through_gw: int | None = None
     models: list[ModelHealth]
     launchd: LaunchdHealth
     odds_key_present: bool
