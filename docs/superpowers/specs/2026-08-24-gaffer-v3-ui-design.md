@@ -234,3 +234,17 @@ context.
   odds training backfill, SIGMA from tracking (model backlog, v2 spec §9).
 - Auth, remote access, multi-user anything (localhost-only by design).
 - Websockets/streaming (polling suffices locally).
+
+## 7. Final review outcome (2026-08-24)
+
+Executed as 19 tasks on `feat/gaffer-v3` (Opus implementers, Fable reviews).
+Final state: 335 Python tests + 46 frontend tests green; wheel verified to
+carry the built SPA. Whole-branch adversarial review found no critical issues;
+the 2 important and 5 of the minor findings were fixed pre-merge (chip-plan
+422 hardening, free-hit force_in drop, force_in-owned validation, useJob
+stale-poll guard, per-team live status, explain snapshot guard, stronger MILP
+additivity test). Deferred to backlog as accepted behavior at mini-league
+scale: stale-λ wording vs live standings on League Race, per-entry FPL fan-out
+on `/api/league/race` (sequential, uncached), job-registry eviction, and an
+"unlimited" max-hits option in the What-If panel (the UI documents the 0-cap
+default instead).
