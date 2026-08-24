@@ -208,3 +208,33 @@ export interface RivalDetailData {
   your_differentials: SquadPlayer[]
   live_points: number | null
 }
+
+export interface LivePlayer {
+  element: number
+  code: number
+  name: string
+  position: string
+  multiplier: number
+  points: number
+  provisional_bonus: number
+  minutes: number
+  status: 'played' | 'playing' | 'yet to play'
+}
+
+export interface LiveTableRow {
+  entry: number
+  name: string
+  pre_total: number
+  live: number
+  projected: number
+  delta: number
+}
+
+export interface LiveState {
+  active: boolean
+  gw: number | null
+  my_points: number
+  matches_in_play: number
+  players: LivePlayer[]
+  table: LiveTableRow[]
+}
