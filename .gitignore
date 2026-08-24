@@ -11,8 +11,11 @@ reports/*.json
 logs/
 .DS_Store
 .superpowers/
-src/gaffer/web/static/*
-!src/gaffer/web/static/.gitkeep
+# Build output of frontend/ (`npm run build`); the wheel ships it via the
+# hatch `artifacts` entry, so nothing in here is tracked — not even a
+# placeholder, which every build with emptyOutDir would delete again. A clone
+# without it serves the "frontend not built" 503 until you build.
+src/gaffer/web/static/
 frontend/node_modules/
 frontend/dist/
 frontend/tsconfig.tsbuildinfo

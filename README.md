@@ -142,6 +142,50 @@ each match, and no autosubs are applied — the XI is scored as picked, so bench
 points never count. Between gameweeks it prints "no gameweek in progress" and
 exits clean.
 
+## Local web UI
+
+```
+uv run gaffer ui
+```
+
+Serves the whole tool as a local web app on <http://127.0.0.1:8927> and opens
+your browser. `--port N` moves it; `--no-open-browser` leaves the browser
+alone. It binds the loopback interface only and has no login — that is the
+whole security model, so do not put it behind a public proxy.
+
+Seven pages: **This Week** (the recommendation, with a pitch view and a
+re-run button), **What-If Lab** (lock, ban or force in players and re-solve
+the real MILP), **League Race** (standings, trajectory, win probability and
+what λ is doing), **Live** (in-gameweek points, auto-refreshing), **Players**
+(the candidate pool, with the "why 6.8?" breakdown behind every name),
+**History** (past runs, expected versus actual, price charts) and **Runs &
+Health** (data freshness, model metrics, the launchd log, re-run buttons).
+A fixture ticker sits alongside them and is embedded read-only in the
+What-If Lab.
+
+The pages read the artifacts `gaffer advise` writes, so the UI works offline
+apart from League Race, Live and the rival pages, which need the FPL API and
+say so when it is unreachable. Nothing here logs into FPL or submits anything;
+you still apply the advice yourself.
+
+### Developing the UI
+
+The shipped wheel contains a pre-built frontend, so **end users never need
+node**. To work on it:
+
+```
+cd frontend
+npm install
+npm run dev        # http://localhost:5173, proxies /api to 127.0.0.1:8927
+npm run test       # Vitest + React Testing Library
+npm run build      # emits into src/gaffer/web/static/, which the wheel ships
+```
+
+Run `uv run gaffer ui` in another terminal while `npm run dev` is up: the Vite
+dev server proxies `/api` to it, so the React app hot-reloads against the real
+backend. The build output is untracked, so a fresh clone serves a "frontend
+not built" message until you run `npm run build` once.
+
 ## Backtesting
 
 ```
