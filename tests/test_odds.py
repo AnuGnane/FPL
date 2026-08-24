@@ -240,8 +240,8 @@ def test_resolve_team_unknown_raises_naming_team():
 
 def test_odds_frame_two_rows_per_fixture_favorite_scores_more():
     df = odds_frame(SAMPLE_ODDS, _TEAMS, _EVENTS)
-    assert list(df.columns) == ["team_code", "gw", "odds_e_goals_for",
-                                "odds_e_goals_against"]
+    assert list(df.columns) == ["team_code", "opp_code", "gw",
+                                "odds_e_goals_for", "odds_e_goals_against"]
     assert len(df) == 2
     assert set(df["gw"]) == {2}          # 2026-08-29T14:00 -> GW2 window
     home = df[df.team_code == 3].iloc[0]   # Arsenal, the favorite (2.4 v 2.9)
@@ -270,7 +270,8 @@ def test_odds_frame_skips_fixture_outside_all_deadline_windows():
     assert odds_frame(early, _TEAMS, _EVENTS).empty
     # ...but the columns still exist so a merge on an empty frame works
     assert list(odds_frame(early, _TEAMS, _EVENTS).columns) == [
-        "team_code", "gw", "odds_e_goals_for", "odds_e_goals_against"]
+        "team_code", "opp_code", "gw", "odds_e_goals_for",
+        "odds_e_goals_against"]
 
 
 def test_odds_frame_unmapped_team_raises_gaffer_error():
@@ -322,8 +323,117 @@ def test_run_advise_fetches_odds_before_building_the_team_future():
     src = inspect.getsource(run_advise)
     fetch = src.index("odds_frame(raw_odds, teams, events)")
     build = src.index("tg_future = build_team_future(")
-    merge = src.index("tg_future.merge(")
+    merge = src.index("merge_team_odds(tg_future, odds_df)")
     assert fetch < build < merge
     assert "if cfg.odds_api_key:" in src
     assert "except Exception" in src
-    assert 'how="left"' in src
+    # The odds join itself is a left join keyed by fixture, not just by team.
+    from gaffer.advise import merge_team_odds
+    msrc = inspect.getsource(merge_team_odds)
+    assert 'how="left"' in msrc
+    assert '["code", "gw", "opp_code"]' in msrc
+    assert '["team_code", "gw", "opp_code"]' in msrc
+    # The DGW drop_duplicates hack collapsed a team's two fixtures into one;
+    # opp_code in the key replaces it.
+    assert "drop_duplicates" not in msrc
+    assert "drop_duplicates" not in src
+
+
+def test_run_advise_persists_the_weekly_odds_frame():
+    """Snapshotted for a future training backfill: history frames have no
+    odds, so the only way to ever train on them is to bank them weekly."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    assert 'store.save(odds_df, f"live/odds/gw{gw}.parquet")' in src
+
+
+def test_predict_components_blends_odds_before_merging_onto_players():
+    """The blend has to land on the team frame while it is still one row per
+    team-fixture — after the many-to-one merge onto players it would be
+    applied once per player."""
+    import inspect
+
+    from gaffer.advise import predict_components
+
+    src = inspect.getsource(predict_components)
+    blend = src.index("blend_team_odds(")
+    merge = src.index("comp.merge(tp")
+    assert blend < merge
+
+
+_DGW_ODDS = [
+    dict(SAMPLE_ODDS[0]),
+    {"home_team": "Liverpool", "away_team": "Arsenal",
+     "commence_time": "2026-08-31T19:00:00Z",
+     "bookmakers": [{"key": "bk1", "markets": [
+         {"key": "h2h", "outcomes": [
+             {"name": "Liverpool", "price": 2.0},
+             {"name": "Arsenal", "price": 3.6},
+             {"name": "Draw", "price": 3.5}]},
+         {"key": "totals", "outcomes": [
+             {"name": "Over", "point": 2.5, "price": 1.7},
+             {"name": "Under", "point": 2.5, "price": 2.1}]}]}]},
+]
+
+
+def test_odds_frame_carries_opp_code_for_both_rows():
+    df = odds_frame(SAMPLE_ODDS, _TEAMS, _EVENTS).set_index("team_code")
+    assert df.loc[3, "opp_code"] == 43        # Arsenal's opponent, Man City
+    assert df.loc[43, "opp_code"] == 3
+
+
+def test_odds_frame_double_gameweek_merges_onto_team_future_without_fanout():
+    """A DGW gives one team two rows in the same gameweek; only ``opp_code``
+    tells them apart, so it has to be part of the merge key."""
+    from gaffer.advise import build_team_future, merge_team_odds
+
+    odds = odds_frame(_DGW_ODDS, _TEAMS, _EVENTS)
+    assert len(odds[odds["team_code"] == 3]) == 2      # Arsenal twice in GW2
+
+    tg = pd.DataFrame([
+        {"season_idx": 1, "gw": 1, "kickoff_time": "2026-08-23T14:00:00Z",
+         "code": c, "opp_code": o, "home": h, "gf": 1, "ga": 1, "cs": 0}
+        for c, o, h in ((3, 14, 1.0), (14, 3, 0.0), (43, 3, 1.0), (3, 43, 0.0))
+    ])
+    future = pd.DataFrame([
+        {"team_code": 3, "opp_code": 43, "was_home": True, "gw": 2,
+         "season_idx": 1, "kickoff_time": "2026-08-29T14:00:00Z"},
+        {"team_code": 3, "opp_code": 14, "was_home": False, "gw": 2,
+         "season_idx": 1, "kickoff_time": "2026-08-31T19:00:00Z"},
+    ])
+    elo_final = {3: 1600.0, 43: 1580.0, 14: 1590.0}
+    tg_future = build_team_future(tg, future, gws=[2], season_idx=1,
+                                  elo_final=elo_final)
+    assert len(tg_future) == 2
+    assert "opp_code" in tg_future.columns
+
+    merged = merge_team_odds(tg_future, odds)
+    assert len(merged) == 2                            # no fan-out
+    assert "team_code" not in merged.columns
+    by_opp = merged.set_index("opp_code")
+    exp = odds[odds["team_code"] == 3].set_index("opp_code")
+    for opp in (43, 14):
+        assert by_opp.loc[opp, "odds_e_goals_for"] == pytest.approx(
+            exp.loc[opp, "odds_e_goals_for"])
+        assert by_opp.loc[opp, "odds_e_goals_against"] == pytest.approx(
+            exp.loc[opp, "odds_e_goals_against"])
+    # ...and the two fixtures really do carry different odds, so a merge that
+    # collapsed them would be caught above rather than passing by accident.
+    assert (by_opp.loc[43, "odds_e_goals_against"]
+            != by_opp.loc[14, "odds_e_goals_against"])
+
+
+def test_merge_team_odds_leaves_uncovered_fixtures_as_nan():
+    from gaffer.advise import merge_team_odds
+
+    tg_future = pd.DataFrame([
+        {"code": 3, "opp_code": 43, "gw": 2, "season_idx": 1},
+        {"code": 14, "opp_code": 99, "gw": 2, "season_idx": 1},
+    ])
+    merged = merge_team_odds(tg_future, odds_frame(SAMPLE_ODDS, _TEAMS, _EVENTS))
+    assert len(merged) == 2
+    assert merged.set_index("code").loc[3, "odds_e_goals_for"] > 0
+    assert pd.isna(merged.set_index("code").loc[14, "odds_e_goals_for"])

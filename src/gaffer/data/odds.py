@@ -187,7 +187,7 @@ def resolve_team(name: str) -> str:
         "TEAM_ALIASES in gaffer/data/odds.py")
 
 
-ODDS_FRAME_COLS = ["team_code", "gw", "odds_e_goals_for",
+ODDS_FRAME_COLS = ["team_code", "opp_code", "gw", "odds_e_goals_for",
                    "odds_e_goals_against"]
 
 
@@ -235,8 +235,13 @@ def _p_over25(bookmaker: dict) -> float:
 
 def odds_frame(raw_odds: list, teams: pd.DataFrame,
                events: pd.DataFrame) -> pd.DataFrame:
-    """Bookmaker odds -> ``[team_code, gw, odds_e_goals_for,
+    """Bookmaker odds -> ``[team_code, opp_code, gw, odds_e_goals_for,
     odds_e_goals_against]``, two rows per fixture.
+
+    ``opp_code`` is part of the output, not decoration: in a double gameweek
+    one team has two fixtures under the same ``gw``, and the opponent is the
+    only thing that tells them apart. Without it the join onto the team-future
+    frame either fans out or has to throw one fixture away.
 
     The **first** bookmaker listed for a fixture is used — The Odds API
     returns them in its own order and averaging across books with different
@@ -284,8 +289,10 @@ def odds_frame(raw_odds: list, teams: pd.DataFrame,
         p_home, p_draw, p_away = devig(triple)
         mu_h, mu_a = invert_odds(p_home, p_draw, p_away, _p_over25(books[0]))
 
-        rows.append({"team_code": code_of[home], "gw": gw,
+        rows.append({"team_code": code_of[home], "opp_code": code_of[away],
+                     "gw": gw,
                      "odds_e_goals_for": mu_h, "odds_e_goals_against": mu_a})
-        rows.append({"team_code": code_of[away], "gw": gw,
+        rows.append({"team_code": code_of[away], "opp_code": code_of[home],
+                     "gw": gw,
                      "odds_e_goals_for": mu_a, "odds_e_goals_against": mu_h})
     return pd.DataFrame(rows, columns=ODDS_FRAME_COLS)

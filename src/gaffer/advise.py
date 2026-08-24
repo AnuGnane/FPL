@@ -42,7 +42,8 @@ from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
 from gaffer.models.components import card_penalty
 from gaffer.models.minutes import apply_availability
 from gaffer.models.persistence import load_model, model_exists
-from gaffer.models.team import add_team_rolling
+from gaffer.models.team import (ODDS_AGAINST_COL, add_team_rolling,
+                                blend_team_odds)
 from gaffer.models.train import load_training_frame
 from gaffer.optimize.chips import evaluate_chips, wildcard_now_assessment
 from gaffer.optimize.differentials import (captain_table, threat_board,
@@ -212,6 +213,26 @@ def build_team_future(tg: pd.DataFrame, future: pd.DataFrame, gws: list[int],
     return out
 
 
+def merge_team_odds(tg_future: pd.DataFrame,
+                    odds_df: pd.DataFrame) -> pd.DataFrame:
+    """Attach bookmaker odds to the team-future frame, keyed by fixture.
+
+    ``build_team_future`` names the team column ``code``; ``odds_frame`` uses
+    ``team_code``. The key is the *fixture* — ``(team, gw, opponent)`` — not
+    just ``(team, gw)``: a double gameweek gives a team two rows under one
+    ``gw``, so a team-and-gw key fans each of them out into two. Keying by
+    opponent keeps the per-fixture prices where they belong.
+
+    Fixtures the feed did not cover land as NaN, which ``blend_team_odds``
+    reads as "keep the model's own output".
+    """
+    return tg_future.merge(
+        odds_df,
+        left_on=["code", "gw", "opp_code"],
+        right_on=["team_code", "gw", "opp_code"], how="left",
+    ).drop(columns=["team_code"])
+
+
 def predict_components(pred_frame: pd.DataFrame, tg_future: pd.DataFrame,
                        players: pd.DataFrame) -> pd.DataFrame:
     """Every component prediction on one row per player-fixture.
@@ -243,6 +264,12 @@ def predict_components(pred_frame: pd.DataFrame, tg_future: pd.DataFrame,
 
     tp = load_model("team").predict(tg_future)
     tp["opp_code"] = tg_future["opp_code"].values
+    # Blend the market in while tp is still one row per team-fixture: the
+    # merge below is many-to-one, so blending after it would apply the same
+    # correction once per player in the squad.
+    if ODDS_AGAINST_COL in tg_future.columns:
+        tp[ODDS_AGAINST_COL] = tg_future[ODDS_AGAINST_COL].values
+    tp = blend_team_odds(tp).drop(columns=[ODDS_AGAINST_COL], errors="ignore")
     tp = tp.rename(columns={"code": "team_code"})
     comp = comp.merge(tp, on=["team_code", "season_idx", "gw", "opp_code"],
                       how="left")
@@ -306,13 +333,13 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
             print(f"odds unavailable, continuing without: {e}")
     tg_future = build_team_future(tg, future, gws, season_idx, elo_final)
     if odds_df is not None and not odds_df.empty:
-        # build_team_future names the team column `code`; odds_frame uses
-        # `team_code`. Fixtures the feed did not cover land as NaN, which is
-        # exactly what the team model's odds guard trains against.
-        tg_future = tg_future.merge(
-            odds_df.drop_duplicates(subset=["team_code", "gw"]),
-            left_on=["code", "gw"], right_on=["team_code", "gw"], how="left",
-        ).drop(columns=["team_code"])
+        # Banked every week on purpose. Bookmakers price only upcoming
+        # fixtures, so no historical row can ever be backfilled from the API;
+        # snapshotting each gameweek is the only way a future model could be
+        # trained on odds as a feature rather than blended with them after the
+        # fact. Nothing reads these yet.
+        store.save(odds_df, f"live/odds/gw{gw}.parquet")
+        tg_future = merge_team_odds(tg_future, odds_df)
 
     comp = predict_components(pred_frame, tg_future, players)
     # Optional artifact: model directories trained before calibration existed

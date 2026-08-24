@@ -8,6 +8,7 @@ CS point only lands on 60+ minutes) and the position scoring table.
 
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 from lightgbm import LGBMClassifier, LGBMRegressor
 
@@ -21,6 +22,20 @@ TEAM_FEATURES = ["elo_diff", "home", "team_gf_r5", "team_ga_r5", "team_cs_r10",
                  "odds_e_goals_for", "odds_e_goals_against"]
 
 ODDS_COLS = ["odds_e_goals_for", "odds_e_goals_against"]
+
+ODDS_AGAINST_COL = "odds_e_goals_against"
+
+ODDS_BLEND_WEIGHT = 0.7
+"""How much of the blended team output comes from the market.
+
+Odds cannot enter as a *feature*: bookmakers only price upcoming fixtures, so
+every historical training row is NaN on the odds columns and LightGBM never
+learns a split on them — a populated prediction-time value would change
+nothing. They enter at prediction time instead, as a weighted blend against
+the model's own output. 0.7 leans on the market (it prices team news the
+rolling features cannot see) while keeping the model as a floor for fixtures
+the feed misprices or covers thinly.
+"""
 
 
 def build_team_gw(fixtures: pd.DataFrame) -> pd.DataFrame:
@@ -71,6 +86,33 @@ def add_team_rolling(tg: pd.DataFrame, stats: list[str] = TEAM_ROLL_STATS,
                 shifted.groupby(tg["code"]).rolling(w, min_periods=1).mean()
                 .reset_index(level=0, drop=True))
     return pd.concat([tg, pd.DataFrame(feats, index=tg.index)], axis=1)
+
+
+def blend_team_odds(team_preds: pd.DataFrame) -> pd.DataFrame:
+    """Blend market odds into team predictions where odds exist.
+
+    ``p_cs``: independent-Poisson P(concede 0) = ``exp(-mu_against)``, the
+    same independence assumption ``invert_odds`` used to recover the mus, so
+    the two ends of the odds path agree.
+
+    Rows without odds keep the pure model output — a fixture the feed did not
+    cover, or a week with no API key at all, must degrade to the model rather
+    than to a blend against NaN. A frame with no odds column whatsoever comes
+    back untouched, so any caller that never joins odds on is safe to route
+    through here.
+
+    One row per team-fixture is assumed: apply this *before* the many-to-one
+    merge onto player rows, or the blend lands once per player.
+    """
+    if ODDS_AGAINST_COL not in team_preds.columns:
+        return team_preds
+    out = team_preds.copy()
+    has = out[ODDS_AGAINST_COL].notna()
+    mu = out.loc[has, ODDS_AGAINST_COL].astype(float)
+    w = ODDS_BLEND_WEIGHT
+    out.loc[has, "p_cs"] = w * np.exp(-mu) + (1 - w) * out.loc[has, "p_cs"]
+    out.loc[has, "e_gc"] = w * mu + (1 - w) * out.loc[has, "e_gc"]
+    return out
 
 
 class TeamModel:

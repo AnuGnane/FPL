@@ -1,6 +1,9 @@
-import pandas as pd
 import numpy as np
-from gaffer.models.team import (TEAM_FEATURES, TeamModel, add_team_rolling,
+import pandas as pd
+import pytest
+
+from gaffer.models.team import (ODDS_BLEND_WEIGHT, TEAM_FEATURES, TeamModel,
+                                add_team_rolling, blend_team_odds,
                                 build_team_gw)
 
 
@@ -110,3 +113,45 @@ def test_team_model_tolerates_missing_odds_columns_entirely():
 
 def test_team_features_includes_odds_columns():
     assert TEAM_FEATURES[-2:] == ["odds_e_goals_for", "odds_e_goals_against"]
+
+
+# ------------------------------------------------------------ blend_team_odds
+
+def _team_preds() -> pd.DataFrame:
+    """Two team-fixture predictions: one covered by the odds feed, one not."""
+    return pd.DataFrame([
+        {"code": 1, "season_idx": 4, "gw": 2, "p_cs": 0.3, "e_gc": 1.5,
+         "odds_e_goals_against": 1.0},
+        {"code": 2, "season_idx": 4, "gw": 2, "p_cs": 0.44, "e_gc": 1.2,
+         "odds_e_goals_against": np.nan},
+    ])
+
+
+def test_blend_team_odds_matches_hand_computed_blend():
+    out = blend_team_odds(_team_preds())
+    row = out[out["code"] == 1].iloc[0]
+    w = ODDS_BLEND_WEIGHT
+    assert row["p_cs"] == pytest.approx(w * np.exp(-1.0) + (1 - w) * 0.3)
+    assert row["p_cs"] == pytest.approx(0.3475156)
+    assert row["e_gc"] == pytest.approx(w * 1.0 + (1 - w) * 1.5)
+    assert row["e_gc"] == pytest.approx(1.15)
+
+
+def test_blend_team_odds_leaves_rows_without_odds_untouched():
+    out = blend_team_odds(_team_preds())
+    row = out[out["code"] == 2].iloc[0]
+    assert row["p_cs"] == pytest.approx(0.44)
+    assert row["e_gc"] == pytest.approx(1.2)
+
+
+def test_blend_team_odds_does_not_mutate_the_caller_frame():
+    preds = _team_preds()
+    blend_team_odds(preds)
+    assert preds.loc[0, "p_cs"] == pytest.approx(0.3)
+    assert preds.loc[0, "e_gc"] == pytest.approx(1.5)
+
+
+def test_blend_team_odds_without_the_odds_column_returns_frame_unchanged():
+    preds = _team_preds().drop(columns=["odds_e_goals_against"])
+    out = blend_team_odds(preds)
+    pd.testing.assert_frame_equal(out, preds)
