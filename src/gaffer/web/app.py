@@ -22,6 +22,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from gaffer.errors import GafferError
 from gaffer.web.jobs import JobRegistry
+from gaffer.web.routers import advice
 
 log = logging.getLogger("gaffer.web")
 
@@ -65,6 +66,8 @@ def create_app() -> FastAPI:
             return JSONResponse(status_code=404,
                                 content={"detail": f"no such job: {job_id}"})
         return job
+
+    app.include_router(advice.router)
 
     assets = static_dir() / "assets"
     if assets.is_dir():

@@ -226,6 +226,40 @@ def milp_pool(state: SolveState, ep_by: dict[tuple[int, int], float],
     })
 
 
+def load_snapshot(rel: str) -> pd.DataFrame:
+    """A bootstrap snapshot written by :func:`save_snapshots`."""
+    from gaffer.data import store
+
+    if not store.exists(rel):
+        raise GafferError(
+            f"data/{rel} has not been written yet — run `gaffer advise` first")
+    return store.load(rel)
+
+
+def upcoming_gw(now: pd.Timestamp | None = None) -> int | None:
+    """The gameweek whose deadline has not passed, from the events snapshot.
+
+    Read from disk rather than the API so a stale-advice banner still renders
+    with no network. ``None`` means every deadline in the snapshot is behind
+    us — an end-of-season or a very old snapshot.
+    """
+    events = load_snapshot("live/events.parquet")
+    ts = pd.Timestamp.now(tz="UTC") if now is None else now
+    deadlines = pd.to_datetime(events["deadline_time"], utc=True,
+                               format="mixed")
+    future = events[deadlines > ts]
+    return int(future["gw"].min()) if not future.empty else None
+
+
+def load_advice(gw: int) -> dict:
+    """The advice payload ``run_advise`` wrote for ``gw``."""
+    path = REPORTS / f"gw{gw}-advice.json"
+    if not path.exists():
+        raise GafferError(
+            f"no advice for GW{gw} — run `gaffer advise` first")
+    return json.loads(path.read_text())
+
+
 def save_snapshots(players: pd.DataFrame, teams: pd.DataFrame,
                    events: pd.DataFrame, fixtures: pd.DataFrame) -> None:
     """Bootstrap tables the web layer reads when the FPL API is unreachable.
