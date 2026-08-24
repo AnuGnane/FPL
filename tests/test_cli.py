@@ -114,3 +114,48 @@ def test_ui_can_skip_the_browser(monkeypatch):
     result = runner.invoke(app, ["ui", "--no-open-browser"])
     assert result.exit_code == 0
     assert opened == []
+
+
+def _stub_advice(**kw):
+    from gaffer.advise import Advice
+
+    base = dict(gw=2, deadline="2026-08-22T17:30:00Z", buys=[], sells=[],
+                hits=0, xi=[], bench=[],
+                captain={"name": "Salah"}, vice={"name": "Bloke"},
+                captain_options=[], chip_table=[], wildcard_now=None,
+                alternatives=[], threats=[], price_alerts=[],
+                expected_pts=61.5)
+    return Advice(**{**base, **kw})
+
+
+def _advise_run(tmp_path, monkeypatch, advice):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "config.toml").write_text(
+        '[fpl]\nentry_id = 1\nleague_id = 0\n')
+    monkeypatch.setattr("gaffer.advise.run_advise", lambda cfg: advice)
+    monkeypatch.setattr("gaffer.report.render.render_report",
+                        lambda a, model_health=None: "reports/gw2.md")
+    monkeypatch.setattr("gaffer.tracking.latest_health", lambda: None)
+    return runner.invoke(app, ["advise"])
+
+
+def test_advise_warns_loudly_when_the_model_has_not_seen_last_gameweek(
+        tmp_path, monkeypatch):
+    """The bug this exists for: FPL had not marked GW1 data_checked, so the
+    GW2 advice was built off last season alone and nothing said so."""
+    warning = ("model has no data for GW1 — FPL usually finalizes it the "
+               "morning after the last match; re-run gaffer advise after that")
+    result = _advise_run(tmp_path, monkeypatch,
+                         _stub_advice(data_through_gw=None,
+                                      data_warning=warning))
+    assert result.exit_code == 0
+    assert "no data for GW1" in result.output
+    assert "WARNING" in result.output
+
+
+def test_advise_says_nothing_extra_when_the_data_is_current(tmp_path,
+                                                            monkeypatch):
+    result = _advise_run(tmp_path, monkeypatch,
+                         _stub_advice(data_through_gw=1, data_warning=None))
+    assert result.exit_code == 0
+    assert "WARNING" not in result.output

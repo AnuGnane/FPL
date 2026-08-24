@@ -142,3 +142,17 @@ def test_weekly_report_is_untouched_by_the_initial_squad_variant(tmp_path):
     assert "build this squad" not in html
     assert "SELL" in html and "Dud" in html
     assert "Chips" in html and "bboost" in html
+
+
+def test_report_shows_the_data_gap_warning_when_there_is_one(tmp_path):
+    from dataclasses import replace
+
+    warning = "model has no data for GW1 — re-run gaffer advise after that"
+    html = render_report(replace(_advice(), data_warning=warning),
+                         out_dir=tmp_path).read_text()
+    assert "no data for GW1" in html
+
+
+def test_report_has_no_warning_box_when_the_data_is_current(tmp_path):
+    html = render_report(_advice(), out_dir=tmp_path).read_text()
+    assert "no data for" not in html

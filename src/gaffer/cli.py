@@ -38,6 +38,10 @@ def advise():
     health = latest_health()
     path = render_report(advice, model_health=health)
     typer.echo(f"\n=== GW{advice.gw} — deadline {advice.deadline} ===")
+    if advice.data_warning:
+        # Loud, and above the picks: the advice below was built without last
+        # gameweek's results, and that changes how much to trust it.
+        typer.echo(f"\n!!! WARNING: {advice.data_warning} !!!\n")
     for b in advice.buys:
         typer.echo(f"BUY  {b['name']} ({b['ep']} xPts)")
     for s in advice.sells:

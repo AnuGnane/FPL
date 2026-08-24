@@ -304,3 +304,30 @@ def test_run_advise_builds_a_position_map_beside_the_name_map():
     assert "pos_of = dict(zip(players[\"code\"], players[\"position\"]))" in src
     assert "_named(" in src
     assert src.count("_named(") == src.count("name_of, pos_of, ep_by")
+
+
+# --- telling the user how much of the season the model has seen -------------
+
+
+def test_advice_carries_the_data_gap_fields_with_safe_defaults():
+    """Additive: advice JSON written before this existed still loads."""
+    import dataclasses
+
+    from gaffer.advise import Advice
+
+    fields = {f.name: f for f in dataclasses.fields(Advice)}
+    assert fields["data_through_gw"].default is None
+    assert fields["data_warning"].default is None
+
+
+def test_run_advise_records_the_data_gap_after_refreshing():
+    """Source-level seam (no cheap end-to-end harness for run_advise): the
+    ingested-through read has to happen *after* refresh_live, or it reports
+    last week's disk state."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    assert src.index("refresh_live(") < src.index("ingested_through(")
+    assert "data_through_gw=" in src and "data_warning=" in src

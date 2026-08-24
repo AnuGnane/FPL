@@ -29,9 +29,9 @@ from pathlib import Path
 import pandas as pd
 
 from gaffer.api.client import FPLClient
-from gaffer.artifacts import (SolveState, components_frame, pool_rows,
-                              save_components, save_snapshots,
-                              save_solve_state)
+from gaffer.artifacts import (SolveState, components_frame, data_warning,
+                              ingested_through, pool_rows, save_components,
+                              save_snapshots, save_solve_state)
 from gaffer.config import Config
 from gaffer.data import store
 from gaffer.data.bootstrap import (build_events, build_players, build_teams,
@@ -106,6 +106,13 @@ class Advice:
     # advice). Appended last and defaulted so payloads written before it —
     # and every positional construction — still load.
     mode: str = "weekly"
+    # How much of the current season the model was actually trained on, and
+    # the warning to show when that is behind the gameweek just played (FPL
+    # finalizes a GW the morning after its last match; advise run before that
+    # sees nothing of it). Appended last and defaulted, so older payloads and
+    # every positional construction still load.
+    data_through_gw: int | None = None
+    data_warning: str | None = None
 
 
 INITIAL_BUDGET = 1000
@@ -401,6 +408,11 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     season_idx = len(cfg.train_seasons)
 
     refresh_live(client, cfg.current_season, season_idx)
+    # refresh_live drops every gameweek FPL has not marked data_checked, so
+    # this is the honest answer to "what has the model actually seen?" — and
+    # it must be read after the refresh, not before.
+    through = ingested_through(season_idx)
+    gap_warning = data_warning(gw, through)
     # Model health has to be scored *after* the refresh: it joins the stored
     # predictions for gw-1 with that gameweek's actuals, and those actuals only
     # land in data/live/player_gw.parquet once refresh_live has pulled them.
@@ -616,6 +628,8 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         strategy=strategy,
         win_probs=win_probs,
         mode="weekly" if my is not None else "initial_squad",
+        data_through_gw=through,
+        data_warning=gap_warning,
     )
     REPORTS.mkdir(exist_ok=True)
     (REPORTS / f"gw{gw}-advice.json").write_text(

@@ -17,6 +17,10 @@
 <h1>gaffer — Gameweek {{ a.gw }}{% if initial %} — build this squad{% endif %}</h1>
 <p>Deadline: <strong>{{ a.deadline }}</strong> ·
    Expected XI points: <strong>{{ a.expected_pts }}</strong></p>
+{% if a.data_warning %}
+<p style="border-left:4px solid #b26a00;background:#fff6e5;padding:10px 14px">
+  <strong>Heads up:</strong> {{ a.data_warning }}</p>
+{% endif %}
 
 <div class="action"><h2 style="margin-top:0">{{ "Your opening squad" if initial else "This week's actions" }}</h2>
 <ul>
