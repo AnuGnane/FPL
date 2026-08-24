@@ -38,12 +38,11 @@ tool would really have scored:
 
 from __future__ import annotations
 
-import json
 from collections import Counter
-from pathlib import Path
 
 import pandas as pd
 
+from gaffer.assets import load_bootstrap_sample
 from gaffer.config import load_config
 from gaffer.data import store
 from gaffer.data.bootstrap import scoring_table
@@ -67,9 +66,9 @@ MAX_FREE_TRANSFERS = 5
 DEFAULT_P_CS = 0.25
 DEFAULT_E_GC = 1.4
 
-BOOTSTRAP_FIXTURE = Path("tests/fixtures/bootstrap_sample.json")
-"""Scoring rules for the replay. The live rules come from the API; a replay
-must run offline, so it reads the same payload shape from the fixture."""
+# Scoring rules for the replay. The live rules come from the API; a replay
+# must run offline, so it reads the same payload shape from the bundled
+# package asset (gaffer.assets), which works from an installed wheel too.
 
 
 def _formation_legal(positions: list[str]) -> bool:
@@ -183,7 +182,7 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
     opt_kw = dict(decay=cfg.decay, bench_weight=cfg.bench_weight,
                   vice_weight=cfg.vice_weight, ft_value=cfg.ft_value,
                   itb_value=cfg.itb_value, hit_cost=cfg.hit_cost)
-    scoring = scoring_table(json.loads(BOOTSTRAP_FIXTURE.read_text()))
+    scoring = scoring_table(load_bootstrap_sample())
 
     full, _, _ = load_training_frame()
     season_rows = full[full["season_idx"] == season_idx]

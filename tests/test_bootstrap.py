@@ -1,6 +1,4 @@
-import json
-from pathlib import Path
-
+from gaffer.assets import load_bootstrap_sample
 from gaffer.data.bootstrap import (
     build_events,
     build_players,
@@ -9,7 +7,7 @@ from gaffer.data.bootstrap import (
     scoring_table,
 )
 
-RAW = json.loads(Path("tests/fixtures/bootstrap_sample.json").read_text())
+RAW = load_bootstrap_sample()
 
 
 def test_build_players_parses_numerics():
