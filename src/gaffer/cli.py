@@ -122,6 +122,27 @@ def league():
 
 
 @app.command()
+def live():
+    """Live points for you and your rivals while the gameweek is on."""
+    from gaffer.api.client import FPLClient
+    from gaffer.config import load_config
+    from gaffer.errors import GafferError
+    from gaffer.live_gw import run_live
+
+    cfg = load_config()
+    if not cfg.entry_id:
+        typer.echo("Set fpl.entry_id in config.toml first.")
+        raise typer.Exit(1)
+    try:
+        run_live(cfg, FPLClient())
+    except GafferError as e:
+        # Between gameweeks there is simply nothing to show. That is a quiet
+        # no-op, not a failure: print the message and exit clean.
+        typer.echo(str(e))
+        raise typer.Exit(0)
+
+
+@app.command()
 def backtest(season: str = "2025-26", start_gw: int = 5, horizon: int = 1,
              chips: bool = False):
     """Replay a past season following the tool's advice."""
