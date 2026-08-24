@@ -85,3 +85,44 @@ def test_passing_base_matches_re_solving_it():
 
     assert (wildcard_now_assessment(pool, state, **CFG)
             == wildcard_now_assessment(pool, state, base=base, **CFG))
+
+
+def _pool_gws(gws):
+    """_pool() with the EP dict spanning ``gws`` instead of [1, 2]."""
+    pool = _pool()
+    pool["ep"] = [dict.fromkeys(gws, 3.0) for _ in pool["code"]]
+    return pool
+
+
+def test_second_half_chips_offered_when_horizon_crosses_gw19():
+    """A wildcard spent in GW5 is gone for the rest of the first half, but a
+    fresh one arrives at GW20 — a horizon straddling the boundary must offer
+    it there."""
+    from gaffer.advise import chips_available_for
+
+    gws = [18, 19, 20, 21]
+    state = SolveInput(owned_codes=list(OWNED), bank=0,
+                       free_transfers=1, gws=gws)
+    chips_by_gw = {5: "wildcard"}
+    avail_by_gw = {g: chips_available_for(chips_by_gw, g) for g in gws}
+    table = evaluate_chips(_pool_gws(gws), state, avail_by_gw=avail_by_gw,
+                           **CFG)
+    wc_gws = sorted(table[table.chip == "wildcard"]["gw"].tolist())
+    assert wc_gws == [20, 21]
+    # never played, so available in both halves
+    assert sorted(table[table.chip == "bboost"]["gw"].tolist()) == gws
+    assert sorted(table[table.chip == "freehit"]["gw"].tolist()) == gws
+
+
+def test_flat_chips_available_path_is_unchanged():
+    """The flat list stays supported and equals the per-gw mapping that repeats
+    it for every gameweek."""
+    gws = [1, 2]
+    pool = _pool()
+    state = SolveInput(owned_codes=list(OWNED), bank=0,
+                       free_transfers=1, gws=gws)
+    chips = ["wildcard", "bboost", "3xc", "freehit"]
+    flat = evaluate_chips(pool, state, chips, **CFG)
+    mapped = evaluate_chips(pool, state,
+                            avail_by_gw={g: list(chips) for g in gws}, **CFG)
+    pd.testing.assert_frame_equal(flat, mapped)

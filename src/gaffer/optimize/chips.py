@@ -11,7 +11,9 @@ re-solving the horizon. See :func:`free_hit_gain`.
 
 Chip *eligibility* is the caller's job. In 2026/27 each chip comes in two
 halves (the first set expires after GW19) and this module has no notion of
-that -- pass only the chips that are actually playable in ``chips_available``.
+that -- pass only the chips that are actually playable. A horizon can straddle
+the boundary, so availability is per gameweek: pass ``avail_by_gw`` when the
+two halves differ, or the flat ``chips_available`` list when they do not.
 """
 
 from __future__ import annotations
@@ -40,32 +42,47 @@ away the plan you had.
 
 
 def evaluate_chips(pool: pd.DataFrame, state: SolveInput,
-                   chips_available: list[str], base: Plan | None = None,
+                   chips_available: list[str] | None = None,
+                   base: Plan | None = None,
+                   avail_by_gw: dict[int, list[str]] | None = None,
                    **cfg) -> pd.DataFrame:
     """Objective delta of playing each available chip in each horizon GW vs the
     no-chip plan. Chips: wildcard, bboost, 3xc (freehit separately below).
     Returns [chip, gw, gain] sorted by gain desc.
 
     ``base`` is the already-solved no-chip plan; pass it to skip re-solving.
+
+    Availability comes either as a flat ``chips_available`` list applied to
+    every gameweek, or -- when the horizon crosses the GW19/20 chip-set
+    boundary and the two halves differ -- as ``avail_by_gw``, a gameweek ->
+    chips mapping. ``avail_by_gw`` wins when both are given; a gameweek missing
+    from it has no chips available.
     """
     if base is None:
         base = solve_plan(pool, state, **cfg)
+
+    def available(gw: int) -> list[str]:
+        if avail_by_gw is not None:
+            return avail_by_gw.get(gw, [])
+        return chips_available or []
+
     rows = []
     for gw in state.gws:
-        if "wildcard" in chips_available:
+        chips = available(gw)
+        if "wildcard" in chips:
             p = solve_plan(pool, replace(state, wildcard_gw=gw), **cfg)
             rows.append({"chip": "wildcard", "gw": gw,
                          "gain": p.objective - base.objective})
-        if "bboost" in chips_available:
+        if "bboost" in chips:
             p = solve_plan(pool, replace(state, bench_boost_gw=gw), **cfg)
             rows.append({"chip": "bboost", "gw": gw,
                          "gain": p.objective - base.objective})
-        if "3xc" in chips_available:
+        if "3xc" in chips:
             p = solve_plan(pool, replace(state, triple_captain_gw=gw), **cfg)
             rows.append({"chip": "3xc", "gw": gw,
                          "gain": p.objective - base.objective})
-    if "freehit" in chips_available:
-        for gw in state.gws:
+    for gw in state.gws:
+        if "freehit" in available(gw):
             rows.append({"chip": "freehit", "gw": gw,
                          "gain": free_hit_gain(pool, state, gw, base=base,
                                                **cfg)})

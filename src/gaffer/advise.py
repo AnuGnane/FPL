@@ -471,10 +471,14 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     wc_now = None
     if my is not None:
         chip_names = chips_available_for(my.chips_by_gw, gw)
+        # Availability is per gameweek, not per horizon: a horizon reaching
+        # past GW19 gets the fresh second-half set from GW20 on, whatever was
+        # spent in the first half (and vice versa).
+        avail_by_gw = {g: chips_available_for(my.chips_by_gw, g) for g in gws}
         # `plan` is the no-chip baseline every chip is scored against; pass it
         # in rather than letting each helper re-solve the same MILP.
-        chip_table = evaluate_chips(pool, state, chip_names, base=plan,
-                                    **opt_kw)
+        chip_table = evaluate_chips(pool, state, base=plan,
+                                    avail_by_gw=avail_by_gw, **opt_kw)
         chip_rows = chip_table.to_dict("records")
         for row in chip_rows:
             if row["chip"] == "freehit":
