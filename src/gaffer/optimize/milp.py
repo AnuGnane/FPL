@@ -96,7 +96,7 @@ def solve_plan(pool: pd.DataFrame, state: SolveInput, *, decay: float,
             raise GafferError(
                 f"{label}: player code {missing[0]} is not in the candidate "
                 f"pool (it may also be banned)")
-    pos =dict(zip(pool["code"], pool["position"]))
+    pos = dict(zip(pool["code"], pool["position"]))
     club = dict(zip(pool["code"], pool["team_code"]))
     cost = dict(zip(pool["code"], pool["cost"]))
     sell = dict(zip(pool["code"], pool["sell"]))

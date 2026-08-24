@@ -6,9 +6,9 @@ against is defined in exactly one place and FastAPI enforces it.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class JobAccepted(BaseModel):
@@ -31,3 +31,50 @@ class AdviceLatest(BaseModel):
     deadline: str
     advice: dict[str, Any]
     staleness: Staleness
+
+
+CHIP_CODES = {"wc": "wildcard", "bb": "bboost", "fh": "freehit",
+              "tc": "3xc"}
+"""UI chip codes -> the names ``chips_available_for`` uses."""
+
+
+class WhatIfRequest(BaseModel):
+    lock: list[int] = Field(default_factory=list)
+    ban: list[int] = Field(default_factory=list)
+    force_in: list[int] = Field(default_factory=list)
+    max_hits: int = 0
+    chip: Literal["none", "wc", "bb", "fh", "tc"] = "none"
+    horizon: int | None = None
+
+
+class PlayerRef(BaseModel):
+    code: int
+    name: str
+    position: str
+    ep: float
+
+
+class PlanSummary(BaseModel):
+    gw: int
+    xi: list[PlayerRef]
+    bench: list[PlayerRef]
+    captain: PlayerRef
+    vice: PlayerRef
+    buys: list[PlayerRef]
+    sells: list[PlayerRef]
+    hits: int
+    expected_pts: float
+    """Raw expected points for ``gw`` alone, net of hits."""
+    horizon_pts: float
+    """The same measure summed over the gameweeks the two plans share."""
+
+
+class WhatIfResult(BaseModel):
+    baseline: PlanSummary
+    yours: PlanSummary
+    delta_xpts: float
+    xi_in: list[PlayerRef]
+    xi_out: list[PlayerRef]
+    transfers_changed: bool
+    captain_changed: bool
+    verdict: str
