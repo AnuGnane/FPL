@@ -8,8 +8,7 @@ on purpose: at GW35 the tool really does know GW30-34, and the models
 themselves never saw a row from GW30 onwards during fitting.
 """
 
-import json
-
+from gaffer.assets import load_bootstrap_sample
 from gaffer.data.bootstrap import scoring_table
 from gaffer.models.assemble import assemble_ep, ep_matrix
 from gaffer.models.components import card_penalty
@@ -61,7 +60,7 @@ comp = comp.merge(tp.rename(columns={"code": "team_code"}),
 comp["p_cs"] = comp["p_cs"].fillna(0.25)
 comp["e_gc"] = comp["e_gc"].fillna(1.4)
 comp["e_cards"] = holdout.apply(card_penalty, axis=1).values
-scoring = scoring_table(json.load(open("tests/fixtures/bootstrap_sample.json")))
+scoring = scoring_table(load_bootstrap_sample())
 ep = ep_matrix(assemble_ep(comp, scoring))
 
 # One truth row per player-gameweek, matching ep_matrix's DGW summing. Left
