@@ -16,7 +16,8 @@ from gaffer.assets import load_bootstrap_sample
 from gaffer.data import store
 from gaffer.data.bootstrap import scoring_table
 from gaffer.data.elo import compute_elo
-from gaffer.features.engineer import (add_context, add_player_rolling,
+from gaffer.features.engineer import (ROTATION_FEATURES, add_context,
+                                      add_player_rolling, add_rotation,
                                       add_setpiece)
 from gaffer.models.assemble import assemble_ep
 from gaffer.models.attacking import ATTACK_FEATURES, AttackingModel
@@ -30,7 +31,22 @@ from gaffer.models.team import (TEAM_FEATURES, TeamModel, add_team_rolling,
 
 MINUTES_FEATURES = ["minutes_r1", "minutes_r3", "minutes_r5", "minutes_r10",
                     "starts_r1", "starts_r3", "starts_r5", "starts_r10",
-                    "days_rest", "home"]
+                    "days_rest", "home"] + ROTATION_FEATURES
+"""Feature set for :class:`MinutesModel`.
+
+The ``starts_r*`` means answer "is he a starter?" on a season-long timescale
+and react to a change of role far too slowly: they blend across the season
+boundary, so a player benched in the opener under a new manager still reads
+like a nailed-on starter. :data:`ROTATION_FEATURES` were added to close that
+gap and measured at a last-10-slot holdout: p_play log-loss 0.27703 ->
+0.27322 and p60 0.26025 -> 0.25627 (paired t = -3.35 / -3.32, and the same
+direction on the two earlier 10-slot windows). Downstream over the same
+holdout, mae_starters 2.446 -> 2.436, 60-minute bias -0.471 -> -0.458,
+captain 5.2 -> 5.9, top15 76.0 -> 74.7 (paired t = -0.67 over ten
+gameweeks — noise). ``season_start_share`` lands second in the p_play
+classifier's importances and the ``starts_r*`` means fall away behind it,
+which is the substitution the change was after.
+"""
 
 # Team-level clean sheet / goals conceded held at league-average constants
 # by the simple component path (backtest replay, calibration fitting). It
@@ -105,6 +121,7 @@ def load_training_frame(max_season_idx: int | None = None,
     elo = compute_elo(fixtures)
     elo_final = elo.attrs["final"]
     df = add_player_rolling(player_gw)
+    df = add_rotation(df)
     df = add_setpiece(df)
     df = add_context(df, elo, elo_final)
     tg = add_team_rolling(build_team_gw(fixtures))

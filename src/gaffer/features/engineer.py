@@ -14,6 +14,16 @@ ROLL_STATS = ["total_points", "minutes", "starts", "goals", "assists", "xg",
               "defcon", "tackles", "cbi", "recoveries", "yc"]
 WINDOWS = [1, 3, 5, 10, 38]
 
+ROTATION_FEATURES = ["season_start_share", "days_since_last_start",
+                     "sub_streak"]
+MAX_DAYS_SINCE_START = 60
+"""Days beyond which "hasn't started recently" stops carrying information.
+
+Past two months the gap is a summer, an injury or a loan spell, and the
+model should read them all the same way rather than splitting on the length
+of the layoff.
+"""
+
 
 def add_player_rolling(df: pd.DataFrame, stats: list[str] = ROLL_STATS,
                        windows: list[int] = WINDOWS) -> pd.DataFrame:
@@ -42,6 +52,118 @@ def add_player_rolling(df: pd.DataFrame, stats: list[str] = ROLL_STATS,
                 shifted.groupby(df["code"]).rolling(w, min_periods=1).mean()
                 .reset_index(level=0, drop=True))
     return pd.concat([df, pd.DataFrame(feats, index=df.index)], axis=1)
+
+
+def _rotation_state(df: pd.DataFrame) -> dict[str, pd.Series]:
+    """The raw parts of the rotation signals, *inclusive* of each row's
+    own match.
+
+    Not features — they read the current row's outcome. They describe the
+    state a player is in once a match has been played, which is what both
+    callers need: :func:`add_rotation` shifts them off the current row
+    to build training features, and :func:`latest_rotation` reads the last
+    played match's state to broadcast onto future rows.
+    """
+    code = df["code"]
+    nan = pd.Series(float("nan"), index=df.index, dtype="float64")
+    starts = (pd.to_numeric(df["starts"], errors="coerce")
+              if "starts" in df.columns else nan)
+    mins = (pd.to_numeric(df["minutes"], errors="coerce")
+            if "minutes" in df.columns else nan)
+    kt = (pd.to_datetime(df["kickoff_time"], errors="coerce", utc=True)
+          if "kickoff_time" in df.columns
+          else pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns, UTC]"))
+
+    # Share of this season's matches so far that the player started. Grouping
+    # by (code, season_idx) is what keeps August from reading May.
+    season_key = [code, df["season_idx"]]
+    n = starts.notna().astype(int).groupby(season_key).cumsum()
+    total = starts.fillna(0.0).groupby(season_key).cumsum()
+    share = (total / n).where(n > 0)
+
+    # Kickoff of the most recent start at or before this row.
+    last_start_kt = kt.where(starts == 1).groupby(code).ffill()
+
+    # Appearances since the last start. Blocks open at each start, so the
+    # within-block appearance rank is the streak: 1 at the start itself
+    # (streak 0), 2 at the next appearance (streak 1). Before a player's
+    # first start there is no opening start to discount, hence the +1.
+    played = (mins > 0)
+    blocks = ((starts == 1) & played).astype(int).groupby(code).cumsum()
+    rank = played.astype(int).groupby([code, blocks]).cumsum()
+    streak = (rank - 1 + (blocks == 0).astype(int)).astype("float64")
+    return {"share": share, "last_start_kt": last_start_kt, "kt": kt,
+            "streak": streak.where(played)}
+
+
+def add_rotation(df: pd.DataFrame) -> pd.DataFrame:
+    """Rotation features: how a player's *role* has been trending.
+
+    The rolling means in :func:`add_player_rolling` answer this too slowly.
+    ``starts_r5`` blends across the season boundary, so a nailed-on starter
+    benched in the opener under a new manager still reads ~0.8 — seasons of
+    starts against one benching. These three read the current season and the
+    recent past on their own terms:
+
+    ``season_start_share``
+        mean ``starts`` over this season's earlier matches only. NaN before
+        a player's first match of the season.
+    ``days_since_last_start``
+        days to the previous match the player started, clipped at
+        :data:`MAX_DAYS_SINCE_START`. NaN until a first start.
+    ``sub_streak``
+        consecutive earlier appearances without a start; 0 when the last
+        appearance was a start. Matches the player did not appear in are
+        skipped rather than counted — an unused substitute says nothing
+        about the manager's preference between playing options.
+
+    Same ``shift(1)`` discipline as everything else: nothing from the row's
+    own match reaches its features. Columns whose source is absent come out
+    all-NaN, which LightGBM splits on natively.
+    """
+    sort_cols = [c for c in ("code", "season_idx", "gw", "kickoff_time")
+                 if c in df.columns]
+    df = df.sort_values(sort_cols).reset_index(drop=True)
+    st = _rotation_state(df)
+    code = df["code"]
+    prior_start_kt = st["last_start_kt"].groupby(code).shift(1)
+    feats = {
+        "season_start_share": st["share"].groupby(
+            [code, df["season_idx"]]).shift(1),
+        "days_since_last_start": (st["kt"] - prior_start_kt).dt.days
+        .clip(0, MAX_DAYS_SINCE_START).astype("float64"),
+        "sub_streak": st["streak"].groupby(code).ffill().groupby(code).shift(1),
+    }
+    return pd.concat([df, pd.DataFrame(feats, index=df.index)], axis=1)
+
+
+def latest_rotation(hist: pd.DataFrame) -> pd.DataFrame:
+    """Each player's as-of-today rotation state, indexed by ``code``.
+
+    The counterpart of :func:`latest_player_rolling` for
+    :data:`ROTATION_FEATURES`: the state at the last match played, evaluated
+    one row past the end of history. ``days_since_last_start`` is therefore
+    measured at that last match rather than at the future kickoff — the same
+    choice the form vector makes, and it keeps every future row of a player
+    identical, which is the point of the broadcast.
+
+    ``_rot_season_idx`` rides along so the caller can tell whether that state
+    belongs to the season being predicted; ``season_start_share`` is
+    meaningless across a boundary and must not be carried over one.
+    """
+    sort_cols = [c for c in ("code", "season_idx", "gw", "kickoff_time")
+                 if c in hist.columns]
+    h = hist.sort_values(sort_cols)
+    st = _rotation_state(h)
+    frame = pd.DataFrame({
+        "code": h["code"],
+        "_rot_season_idx": h["season_idx"],
+        "season_start_share": st["share"],
+        "days_since_last_start": (st["kt"] - st["last_start_kt"]).dt.days
+        .clip(0, MAX_DAYS_SINCE_START).astype("float64"),
+        "sub_streak": st["streak"].groupby(h["code"]).ffill(),
+    })
+    return frame.groupby("code", sort=False).tail(1).set_index("code")
 
 
 def _order_score(order: pd.Series) -> pd.Series:
@@ -176,9 +298,16 @@ def build_prediction_frame(hist: pd.DataFrame, future: pd.DataFrame,
     out = combined[combined["_future"]].drop(columns=["_future"])
     out = out.reset_index(drop=True)
     latest = latest_player_rolling(hist, stats, windows)
+    rot = latest_rotation(hist).reindex(out["code"]).reset_index(drop=True)
+    # A state carried over from an earlier season is not this season's start
+    # share — before a player's first match of the new season it is undefined.
+    stale = rot["_rot_season_idx"] != out["season_idx"]
+    rot.loc[stale, "season_start_share"] = float("nan")
     return pd.concat(
-        [out.drop(columns=latest.columns, errors="ignore"),
-         latest.reindex(out["code"]).reset_index(drop=True)], axis=1)
+        [out.drop(columns=list(latest.columns) + ROTATION_FEATURES,
+                  errors="ignore"),
+         latest.reindex(out["code"]).reset_index(drop=True),
+         rot.drop(columns=["_rot_season_idx"])], axis=1)
 
 
 def feature_columns(stats: list[str] = ROLL_STATS,
@@ -186,4 +315,4 @@ def feature_columns(stats: list[str] = ROLL_STATS,
     """Canonical model input columns for the given stats/windows."""
     cols = [f"{s}_r{w}" for s in stats for w in windows]
     return cols + ["team_elo", "opp_elo", "elo_diff", "home", "days_rest",
-                   "pen_taker", "setpiece_taker"]
+                   "pen_taker", "setpiece_taker"] + ROTATION_FEATURES

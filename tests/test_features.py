@@ -1,7 +1,8 @@
 import numpy as np
 import pandas as pd
 
-from gaffer.features.engineer import (add_player_rolling, add_setpiece,
+from gaffer.features.engineer import (ROTATION_FEATURES, add_player_rolling,
+                                      add_rotation, add_setpiece,
                                       build_prediction_frame, feature_columns)
 
 
@@ -67,7 +68,8 @@ def _three_future(code=1):
     })
 
 
-ROLL_SPOTS = ["total_points_r1", "minutes_r1", "minutes_r3", "starts_r5"]
+ROLL_SPOTS = ["total_points_r1", "minutes_r1", "minutes_r3", "starts_r5",
+              *ROTATION_FEATURES]
 
 
 def test_future_rows_share_one_as_of_today_form_vector():
@@ -159,6 +161,171 @@ def test_double_gameweek_fixtures_order_by_kickoff():
     # Earlier DGW match sees GW5; the later one sees the earlier DGW match.
     assert by_kick["2025-09-24T14:00:00Z"] == 2.0
     assert by_kick["2025-09-27T19:00:00Z"] == 5.0
+
+
+def _rot(starts, minutes=None, seasons=None, gws=None, kickoffs=None, code=1):
+    """One player's match history, one row per match, weekly kickoffs."""
+    n = len(starts)
+    if kickoffs is None:
+        kickoffs = [d.strftime("%Y-%m-%dT14:00:00Z") for d in
+                    pd.date_range("2025-08-09", periods=n, freq="7D")]
+    if minutes is None:
+        minutes = [90 if s else 20 for s in starts]
+    return pd.DataFrame({
+        "code": [code] * n,
+        "season_idx": [0] * n if seasons is None else seasons,
+        "gw": list(range(1, n + 1)) if gws is None else gws,
+        "kickoff_time": kickoffs,
+        "starts": starts,
+        "minutes": minutes,
+    })
+
+
+def test_season_start_share_sees_only_the_current_season():
+    """Where ``starts_r5`` blends August into last May, this feature resets.
+
+    A nailed-on starter benched in the opener under a new manager reads 0.0
+    here and still ~0.8 on the rolling window — that gap is the point.
+    """
+    df = _rot([1, 1, 1, 0, 0, 1], seasons=[0, 0, 0, 1, 1, 1],
+              gws=[36, 37, 38, 1, 2, 3])
+    out = add_rotation(add_player_rolling(df, stats=["starts"], windows=[5]))
+    share = out.set_index(["season_idx", "gw"])["season_start_share"]
+    assert np.isnan(share[(0, 36)])            # first match of the frame
+    assert share[(0, 37)] == 1.0
+    assert share[(0, 38)] == 1.0
+    assert np.isnan(share[(1, 1)])             # first match of a new season
+    assert share[(1, 2)] == 0.0                # one benching, nothing else
+    assert share[(1, 3)] == 0.0                # two benchings
+    # the rolling window is still dragging last season's starts along
+    assert out.set_index(["season_idx", "gw"])["starts_r5"][(1, 2)] == 0.75
+
+
+def test_season_start_share_excludes_the_current_row():
+    df = _rot([0, 1, 1])
+    share = add_rotation(df)["season_start_share"].tolist()
+    assert np.isnan(share[0])
+    assert share[1] == 0.0    # gw1 only; gw2's own start must not leak in
+    assert share[2] == 0.5
+
+
+def test_days_since_last_start_measures_the_gap_to_the_last_start():
+    df = _rot([1, 0, 0, 1, 0])
+    days = add_rotation(df)["days_since_last_start"].tolist()
+    assert np.isnan(days[0])   # no earlier start
+    assert days[1] == 7.0      # gw1's start, a week ago
+    assert days[2] == 14.0
+    assert days[3] == 21.0     # still gw1's start: gw2 and gw3 were benchings
+    assert days[4] == 7.0      # gw4 reset it
+
+
+def test_days_since_last_start_is_clipped_at_sixty_days():
+    kick = ["2025-08-09T14:00:00Z", "2025-08-16T14:00:00Z",
+            "2026-01-10T14:00:00Z"]
+    df = _rot([1, 0, 0], kickoffs=kick)
+    assert add_rotation(df)["days_since_last_start"].iloc[2] == 60.0
+
+
+def test_days_since_last_start_is_nan_for_a_player_who_never_started():
+    df = _rot([0, 0, 0])
+    assert add_rotation(df)["days_since_last_start"].isna().all()
+
+
+def test_sub_streak_counts_appearances_since_the_last_start():
+    df = _rot([1, 0, 0, 1, 0], minutes=[90, 20, 15, 80, 10])
+    streak = add_rotation(df)["sub_streak"].tolist()
+    assert np.isnan(streak[0])   # no earlier appearance
+    assert streak[1] == 0.0      # last appearance was a start
+    assert streak[2] == 1.0
+    assert streak[3] == 2.0
+    assert streak[4] == 0.0      # gw4's start reset it
+
+
+def test_sub_streak_ignores_matches_the_player_did_not_appear_in():
+    """An unused substitute is not a benching signal on its own: the streak
+    counts appearances, so a 0-minute row neither extends nor resets it."""
+    df = _rot([1, 0, 0, 0], minutes=[90, 20, 0, 25])
+    streak = add_rotation(df)["sub_streak"].tolist()
+    assert streak[1] == 0.0
+    assert streak[2] == 1.0      # carried across the unused-sub row
+    assert streak[3] == 1.0
+
+
+def test_sub_streak_counts_every_appearance_before_a_first_start():
+    df = _rot([0, 0, 0], minutes=[20, 20, 20])
+    streak = add_rotation(df)["sub_streak"].tolist()
+    assert np.isnan(streak[0])
+    assert streak[1] == 1.0
+    assert streak[2] == 2.0
+
+
+def test_rotation_features_never_cross_players():
+    df = pd.concat([_rot([1, 1, 1], code=1), _rot([0, 0, 0], code=2)],
+                   ignore_index=True)
+    out = add_rotation(df).set_index(["code", "gw"])
+    assert out["season_start_share"][(1, 3)] == 1.0
+    assert out["season_start_share"][(2, 3)] == 0.0
+    assert out["days_since_last_start"][(1, 3)] == 7.0
+    assert np.isnan(out["days_since_last_start"][(2, 3)])
+    assert out["sub_streak"][(1, 3)] == 0.0
+    assert out["sub_streak"][(2, 3)] == 2.0
+
+
+def test_add_rotation_tolerates_missing_source_columns():
+    out = add_rotation(_frame().drop(columns=["minutes"]))
+    for col in ROTATION_FEATURES:
+        assert col in out.columns
+
+
+def test_feature_columns_include_rotation_features():
+    cols = feature_columns()
+    for col in ROTATION_FEATURES:
+        assert col in cols
+
+
+def _benched_history(code=1):
+    """Five starts, then dropped to the bench for three."""
+    return _rot([1, 1, 1, 1, 1, 0, 0, 0], minutes=[90] * 5 + [20, 15, 10],
+                code=code)
+
+
+def test_prediction_frame_broadcasts_the_as_of_today_rotation_state():
+    """Same as-of-today discipline as the rolling form vector: every future
+    row of a player carries the state at the last played match."""
+    pred = build_prediction_frame(_benched_history(), _three_future(),
+                                  stats=["starts"], windows=[5])
+    for col in ROTATION_FEATURES:
+        vals = pred[col].tolist()
+        assert not np.isnan(vals[0]), col
+        assert vals[0] == vals[1] == vals[2], (col, vals)
+    assert pred["season_start_share"].iloc[0] == 5 / 8
+    # last start was gw5 (2025-09-06); the last match played was gw8
+    # (2025-09-27), which is where an as-of-today feature is evaluated.
+    assert pred["days_since_last_start"].iloc[0] == 21.0
+    assert pred["sub_streak"].iloc[0] == 3.0
+
+
+def test_prediction_frame_rotation_is_nan_for_a_player_with_no_history():
+    future = pd.concat([_three_future(code=1), _three_future(code=2)],
+                       ignore_index=True)
+    pred = build_prediction_frame(_benched_history(), future,
+                                  stats=["starts"], windows=[5])
+    rookie = pred[pred["code"] == 2]
+    for col in ROTATION_FEATURES:
+        assert rookie[col].isna().all(), col
+
+
+def test_prediction_frame_season_start_share_resets_in_a_new_season():
+    """The opening gameweek of a new season: the player has no matches in it
+    yet, so the share is undefined rather than last season's."""
+    hist = _benched_history()
+    future = _three_future()
+    future["season_idx"] = 1
+    pred = build_prediction_frame(hist, future, stats=["starts"], windows=[5])
+    assert pred["season_start_share"].isna().all()
+    # the other two are genuine cross-season knowledge and survive
+    assert pred["sub_streak"].tolist() == [3.0, 3.0, 3.0]
+    assert pred["days_since_last_start"].tolist() == [21.0] * 3
 
 
 def _setpiece_frame(**cols):

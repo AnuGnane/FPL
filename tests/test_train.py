@@ -7,6 +7,7 @@ from gaffer.models.train import (CALIBRATION_HOLDOUT_GWS,
                                  train_all)
 from gaffer.assets import load_bootstrap_sample
 from gaffer.data.bootstrap import scoring_table
+from gaffer.features.engineer import ROTATION_FEATURES
 from gaffer.models.attacking import ATTACK_FEATURES
 from gaffer.models.components import (BONUS_FEATURES, DEFCON_FEATURES,
                                       SAVES_FEATURES)
@@ -43,6 +44,15 @@ def test_bonus_floor_counts_only_appearances():
     # model nothing, so the floor must still reach back.
     df = pd.concat([_frame({3: 5000}), _frame({4: 5000}, minutes=0)])
     assert bonus_season_floor(df) == 3
+
+
+def test_minutes_features_include_the_rotation_signals():
+    """Gated in on a last-10-slot holdout: p_play log-loss 0.27703 ->
+    0.27322, p60 0.26025 -> 0.25627, with mae_starters and the 60-minute
+    bias both improving downstream. The rolling ``starts_r*`` means alone
+    read a benching in the opener as a rounding error."""
+    for col in ROTATION_FEATURES:
+        assert col in MINUTES_FEATURES
 
 
 def test_evaluate_beats_worse_baseline():
