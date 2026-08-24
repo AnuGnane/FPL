@@ -52,13 +52,43 @@ def staleness_for(advice_gw: int, deadline: str,
                      reason=reason)
 
 
+PLAYER_KEYS = ("xi", "bench", "buys", "sells", "captain", "vice")
+"""Advice keys holding player dicts the UI renders by position."""
+
+
+def with_positions(payload: dict, pool: pd.DataFrame) -> dict:
+    """Backfill ``position`` on player entries written before it was saved.
+
+    ``advise`` only started emitting positions in v3.1, and a user with last
+    week's advice on disk must not have to re-run the whole pipeline to get a
+    pitch. The solved pool already knows every candidate's position, so read
+    it from there and leave anything already positioned alone.
+    """
+    pos_of = {int(c): str(p)
+              for c, p in zip(pool["code"], pool["position"])}
+
+    def fill(entry: dict) -> dict:
+        if entry.get("position"):
+            return entry
+        return {**entry, "position": pos_of.get(int(entry["code"]), "")}
+
+    out = dict(payload)
+    for key in PLAYER_KEYS:
+        value = out.get(key)
+        if isinstance(value, list):
+            out[key] = [fill(e) for e in value if isinstance(e, dict)]
+        elif isinstance(value, dict) and "code" in value:
+            out[key] = fill(value)
+    return out
+
+
 @router.get("/latest", response_model=AdviceLatest)
 def latest() -> AdviceLatest:
     gw = latest_gw()
     if gw is None:
         raise GafferError("no advice on disk yet — run `gaffer advise` first")
     state = load_solve_state(gw)
-    payload = load_advice(gw)
+    payload = with_positions(load_advice(gw), state.pool)
     return AdviceLatest(
         gw=gw, mode=state.mode, deadline=state.deadline, advice=payload,
         staleness=staleness_for(gw, state.deadline, state.generated_at))

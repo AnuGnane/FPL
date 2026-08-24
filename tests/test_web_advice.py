@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from gaffer.artifacts import SolveState, pool_rows, save_solve_state
 from gaffer.web.app import create_app
+from gaffer.web.routers.advice import with_positions
 
 PAST = "2026-08-01T17:30:00Z"
 FUTURE = "2099-09-18T17:30:00Z"
@@ -128,3 +129,46 @@ def test_rerun_beyond_the_queue_cap_is_429(client, monkeypatch):
     assert resp.status_code == 429
     assert "queued" in resp.json()["detail"]
     gate.set()
+
+
+# --- backfilling artifacts written before positions were saved --------------
+
+
+def test_with_positions_fills_missing_positions_from_the_solve_state():
+    """Advice JSON written by an older `gaffer advise` has no ``position``,
+    and the user must not have to re-run to get a pitch."""
+    pool = pd.DataFrame([{"code": 100, "position": "MID"},
+                         {"code": 101, "position": "DEF"}])
+    payload = with_positions(
+        {"xi": [{"code": 100, "name": "Salah", "ep": 6.4}],
+         "bench": [{"code": 101, "name": "Dud", "ep": 1.9}],
+         "buys": [], "sells": [],
+         "captain": {"code": 100, "name": "Salah", "ep": 6.4},
+         "vice": {"code": 101, "name": "Dud", "ep": 1.9},
+         "expected_pts": 61.5},
+        pool)
+    assert payload["xi"][0]["position"] == "MID"
+    assert payload["bench"][0]["position"] == "DEF"
+    assert payload["captain"]["position"] == "MID"
+    assert payload["vice"]["position"] == "DEF"
+    assert payload["expected_pts"] == 61.5          # nothing else disturbed
+
+
+def test_with_positions_leaves_a_complete_payload_untouched():
+    pool = pd.DataFrame([{"code": 100, "position": "MID"}])
+    given = {"xi": [{"code": 100, "name": "Salah", "ep": 6.4,
+                     "position": "FWD"}]}
+    assert with_positions(given, pool)["xi"][0]["position"] == "FWD"
+
+
+def test_with_positions_survives_a_code_the_pool_never_saw():
+    pool = pd.DataFrame([{"code": 100, "position": "MID"}])
+    out = with_positions({"xi": [{"code": 999, "name": "Ghost", "ep": 0.0}]},
+                         pool)
+    assert out["xi"][0]["position"] == ""
+
+
+def test_latest_serves_positions_for_an_advice_json_without_them(client):
+    """The fixture advice JSON above carries no positions at all."""
+    xi = client.get("/api/advice/latest").json()["advice"]["xi"]
+    assert [p["position"] for p in xi] == ["MID"]
