@@ -44,6 +44,65 @@ def add_player_rolling(df: pd.DataFrame, stats: list[str] = ROLL_STATS,
     return pd.concat([df, pd.DataFrame(feats, index=df.index)], axis=1)
 
 
+def _order_score(order: pd.Series) -> pd.Series:
+    """FPL set-piece queue position -> [0, 1]. First choice is worth the
+    whole feature, second choice half, anyone further down nothing. An
+    absent order stays NaN: LightGBM splits on missing natively, and
+    "not listed" is genuinely different from "listed fifth"."""
+    v = pd.to_numeric(order, errors="coerce")
+    out = pd.Series(float("nan"), index=v.index, dtype="float64")
+    out[v == 1] = 1.0
+    out[v == 2] = 0.5
+    out[v >= 3] = 0.0
+    return out
+
+
+def add_setpiece(df: pd.DataFrame, miss_window: int = 38) -> pd.DataFrame:
+    """``pen_taker`` and ``setpiece_taker`` from the bootstrap order columns.
+
+    The orders only exist on live snapshots; every historical row carries
+    NaN for them. For penalties there is one usable back-fill: a player who
+    missed a penalty demonstrably takes them, so from the match *after* the
+    miss (same shift(1)-before-rolling discipline as
+    :func:`add_player_rolling`) the trailing ``miss_window`` matches set
+    ``pen_taker`` to 1.0. Absence of a miss proves nothing, so it stays NaN
+    rather than 0.0. Set pieces have no equivalent proxy.
+
+    Columns whose source is absent are simply skipped (all-NaN output).
+    """
+    sort_cols = [c for c in ("code", "season_idx", "gw", "kickoff_time")
+                 if c in df.columns]
+    if "code" in df.columns:
+        df = df.sort_values(sort_cols).reset_index(drop=True)
+    else:
+        df = df.copy()
+    absent = pd.Series(float("nan"), index=df.index, dtype="float64")
+
+    def src(name: str) -> pd.Series:
+        if name not in df.columns:
+            return absent
+        return pd.to_numeric(df[name], errors="coerce")
+
+    pen_order = src("penalties_order")
+    pen_taker = _order_score(pen_order)
+    if "pens_missed" in df.columns and "code" in df.columns:
+        missed = pd.to_numeric(df["pens_missed"], errors="coerce")
+        shifted = missed.groupby(df["code"]).shift(1)
+        rolled = (shifted.groupby(df["code"])
+                  .rolling(miss_window, min_periods=1).sum()
+                  .reset_index(level=0, drop=True))
+        proxy = pd.Series(float("nan"), index=df.index, dtype="float64")
+        proxy[rolled > 0] = 1.0
+        # Live order wins where present; the proxy fills history rows only.
+        pen_taker = pen_taker.where(pen_order.notna(), proxy)
+    df["pen_taker"] = pen_taker
+    best = pd.DataFrame({"direct": src("direct_freekicks_order"),
+                         "corners": src("corners_and_indirect_freekicks_order")}
+                        ).min(axis=1)  # NaN-safe: NaN only if both are absent
+    df["setpiece_taker"] = _order_score(best)
+    return df
+
+
 def add_context(df: pd.DataFrame, elo: pd.DataFrame | None,
                 elo_final: dict | None) -> pd.DataFrame:
     """Team/opponent Elo (own team via ``team_code``, opponent via
@@ -87,6 +146,7 @@ def build_prediction_frame(hist: pd.DataFrame, future: pd.DataFrame,
     hist["_future"] = False
     combined = pd.concat([hist, future], ignore_index=True)
     combined = add_player_rolling(combined, stats, windows)
+    combined = add_setpiece(combined)
     combined = add_context(combined, elo, elo_final)
     out = combined[combined["_future"]].drop(columns=["_future"])
     return out.reset_index(drop=True)
@@ -96,4 +156,5 @@ def feature_columns(stats: list[str] = ROLL_STATS,
                     windows: list[int] = WINDOWS) -> list[str]:
     """Canonical model input columns for the given stats/windows."""
     cols = [f"{s}_r{w}" for s in stats for w in windows]
-    return cols + ["team_elo", "opp_elo", "elo_diff", "home", "days_rest"]
+    return cols + ["team_elo", "opp_elo", "elo_diff", "home", "days_rest",
+                   "pen_taker", "setpiece_taker"]

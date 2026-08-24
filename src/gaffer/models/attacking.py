@@ -22,6 +22,8 @@ ATTACK_FEATURES = [
     "xgi_r5", "xgi_r10", "goals_r5", "goals_r38", "assists_r5", "assists_r38",
     "bps_r5", "minutes_r5", "starts_r5",
     "team_elo", "opp_elo", "elo_diff", "home", "days_rest",
+    # Defenders take corners, so every position group gets these.
+    "pen_taker", "setpiece_taker",
 ]
 
 

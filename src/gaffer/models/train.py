@@ -16,7 +16,8 @@ from gaffer.assets import load_bootstrap_sample
 from gaffer.data import store
 from gaffer.data.bootstrap import scoring_table
 from gaffer.data.elo import compute_elo
-from gaffer.features.engineer import add_context, add_player_rolling
+from gaffer.features.engineer import (add_context, add_player_rolling,
+                                      add_setpiece)
 from gaffer.models.assemble import assemble_ep
 from gaffer.models.attacking import ATTACK_FEATURES, AttackingModel
 from gaffer.models.calibrate import CalibrationModel
@@ -91,6 +92,7 @@ def load_training_frame(max_season_idx: int | None = None,
     elo = compute_elo(fixtures)
     elo_final = elo.attrs["final"]
     df = add_player_rolling(player_gw)
+    df = add_setpiece(df)
     df = add_context(df, elo, elo_final)
     tg = add_team_rolling(build_team_gw(fixtures))
     own = elo.rename(columns={"elo_pre": "team_elo_own"})

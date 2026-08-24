@@ -89,6 +89,10 @@ class Advice:
     plan_by_gw: list[dict] = field(default_factory=list)
 
 
+SETPIECE_ORDER_COLS = ["penalties_order", "direct_freekicks_order",
+                       "corners_and_indirect_freekicks_order"]
+
+
 def future_fixture_frame(fixtures: pd.DataFrame, players: pd.DataFrame,
                          teams: pd.DataFrame, gws: list[int],
                          season_idx: int) -> pd.DataFrame:
@@ -111,7 +115,12 @@ def future_fixture_frame(fixtures: pd.DataFrame, players: pd.DataFrame,
                              "team_code": p.team_code,
                              "opp_code": code_of[opp], "was_home": home,
                              "gw": m.gw, "season_idx": season_idx,
-                             "kickoff_time": m.kickoff_time})
+                             "kickoff_time": m.kickoff_time,
+                             # Set-piece orders live only on the players
+                             # frame; carry them so add_setpiece can derive
+                             # pen_taker/setpiece_taker for future rows.
+                             **{f: getattr(p, f, float("nan"))
+                                for f in SETPIECE_ORDER_COLS}})
     return pd.DataFrame(rows)
 
 

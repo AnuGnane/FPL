@@ -48,3 +48,24 @@ def test_unfitted_position_group_predicts_zero():
     assert (defs["e_goals"] == 0.0).all()
     assert (defs["e_assists"] == 0.0).all()
     assert (fwds["e_goals"] > 0).any()
+
+
+def test_attacking_model_handles_all_nan_setpiece_features():
+    """pen_taker/setpiece_taker are NaN for every history row until live
+    snapshots accumulate; LightGBM must train and predict through that."""
+    df = _frame()
+    df["pen_taker"] = np.nan
+    df["setpiece_taker"] = np.nan
+    m = AttackingModel(feature_cols=["xg_r5", "xa_r5", "minutes_r5",
+                                     "pen_taker", "setpiece_taker"])
+    m.fit(df[df.gw <= 30])
+    assert "pen_taker" in m.cols_ and "setpiece_taker" in m.cols_
+    pred = m.predict(df[df.gw > 30])
+    assert (pred["e_goals"] >= 0).all()
+    assert pred["e_goals"].notna().all()
+
+
+def test_attack_features_include_setpiece_columns():
+    from gaffer.models.attacking import ATTACK_FEATURES
+    assert "pen_taker" in ATTACK_FEATURES
+    assert "setpiece_taker" in ATTACK_FEATURES
