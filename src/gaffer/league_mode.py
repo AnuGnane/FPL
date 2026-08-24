@@ -41,6 +41,23 @@ def compute_strategy(my_total: int, rivals: pd.DataFrame,
     return Strategy(lam, gap, weeks, stance, rival)
 
 
+def tilt_ep(ep_by: dict, eo_pct: dict, lam: float) -> dict:
+    """Tilted EP for MILP pool construction ONLY. Raw ep is what reports show.
+
+    eo_pct: league effective ownership in percent (captaincy can push >100);
+    clamped to [0, 1] as a fraction. lam=0 returns an equal dict — the v1
+    points-max solution is reproduced exactly (regression-tested).
+    """
+    if lam == 0.0:
+        return dict(ep_by)
+    out = {}
+    for key, ep in ep_by.items():
+        code = key[0]
+        eo1 = min(eo_pct.get(code, 0.0) / 100.0, 1.0)
+        out[key] = ep * (1 + lam * (1 - eo1))
+    return out
+
+
 def win_probability(my_total: int, their_total: int, weeks_left: int) -> float:
     """P(I finish above them): normal approximation, independent scores."""
     if weeks_left <= 0:
