@@ -8,4 +8,5 @@ models/*.joblib
 models/*.json
 reports/*.html
 reports/*.json
+logs/
 .DS_Store

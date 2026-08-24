@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+ "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.gaffer.prices</string>
+  <key>ProgramArguments</key><array>
+    <string>/bin/zsh</string><string>-lc</string>
+    <string>cd __PROJECT_DIR__ &amp;&amp; uv run gaffer prices &gt;&gt; logs/prices.log 2&gt;&amp;1</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict><key>Hour</key><integer>23</integer><key>Minute</key><integer>15</integer></dict>
+</dict></plist>
