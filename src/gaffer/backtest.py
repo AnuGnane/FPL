@@ -47,8 +47,9 @@ from gaffer.config import load_config
 from gaffer.data import store
 from gaffer.data.bootstrap import scoring_table
 from gaffer.models.assemble import assemble_ep, ep_matrix
-from gaffer.models.components import card_penalty
-from gaffer.models.train import load_training_frame, train_all
+from gaffer.models.train import (DEFAULT_E_GC, DEFAULT_P_CS,  # noqa: F401
+                                 load_training_frame,
+                                 predict_components_simple, train_all)
 from gaffer.optimize.milp import SolveInput, build_pool, solve_plan
 
 XI_BOUNDS = {"GKP": (1, 1), "DEF": (3, 5), "MID": (2, 5), "FWD": (1, 3)}
@@ -60,11 +61,10 @@ STARTING_BUDGET = 1000
 MAX_FREE_TRANSFERS = 5
 
 # Team-level clean sheet / goals conceded are held at league-average
-# constants in the backtest rather than run through the team model. It keeps
+# constants in the backtest rather than run through the team model (see
+# DEFAULT_P_CS / DEFAULT_E_GC, re-exported above from models.train). It keeps
 # the replay to one model refit per window and removes a source of
 # per-gameweek variance that is not what this harness measures.
-DEFAULT_P_CS = 0.25
-DEFAULT_E_GC = 1.4
 
 # Scoring rules for the replay. The live rules come from the API; a replay
 # must run offline, so it reads the same payload shape from the bundled
@@ -116,31 +116,6 @@ def score_gw(actuals: pd.DataFrame, xi: list[int], bench: list[int],
     elif played(vice):
         total += float(pts_of.get(vice, 0) or 0)
     return int(round(total - 4 * hits))
-
-
-def _predict_components(models: dict, rows: pd.DataFrame) -> pd.DataFrame:
-    """Every component prediction for one gameweek's player-fixture rows.
-
-    Stitched positionally: each ``predict`` returns one row per input row in
-    input order, and a double gameweek makes ``(code, gw)`` non-unique.
-    """
-    rows = rows.reset_index(drop=True)
-    comp = rows[["code", "season_idx", "gw", "position", "team_code"]].copy()
-    comp["e_cards"] = rows.apply(card_penalty, axis=1).values
-
-    mp = models["minutes"].predict(rows)
-    for col in ["p_play", "p60", "e_min"]:
-        comp[col] = mp[col].values
-    for name, cols in (("attacking", ["e_goals", "e_assists"]),
-                       ("defcon", ["p_defcon"]),
-                       ("saves", ["e_saves"]),
-                       ("bonus", ["e_bonus"])):
-        out = models[name].predict(rows)
-        for col in cols:
-            comp[col] = out[col].values
-    comp["p_cs"] = DEFAULT_P_CS
-    comp["e_gc"] = DEFAULT_E_GC
-    return comp
 
 
 def _players_frame(season_rows: pd.DataFrame, gw: int) -> pd.DataFrame:
@@ -205,7 +180,7 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
                                             max_gw=gw)
             models = train_all(df, tg, save=False)
 
-        comp = _predict_components(models, rows)
+        comp = predict_components_simple(models, rows)
         ep = ep_matrix(assemble_ep(comp, scoring))
         ep_by = {(int(r.code), int(r.gw)): float(r.ep) for r in ep.itertuples()}
         players = _players_frame(season_rows, gw)
