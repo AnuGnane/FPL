@@ -501,7 +501,11 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     name_of = dict(zip(players["code"], players["name"]))
     buys = _named(first.buys, name_of, ep_by, gw)
     for b in buys:
-        b["tag"] = transfer_tag(league_eo.get(b["code"]), strat is not None)
+        # An empty EO map is "nobody's ownership is known", not "nobody owns
+        # them" — at GW1 no rival picks are public yet, and tagging all 15
+        # opening picks "attack" off a missing map would be pure noise.
+        b["tag"] = transfer_tag(league_eo.get(b["code"]),
+                                strat is not None and bool(league_eo))
     strategy = None
     if strat is not None:
         strategy = asdict(strat)

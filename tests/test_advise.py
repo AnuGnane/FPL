@@ -177,3 +177,14 @@ def test_run_advise_falls_back_to_initial_squad_advice_at_gw1():
         i = src.index(ref)
         before = src[max(0, i - 400):i]
         assert "my is None" in before or "my is not None" in before, ref
+
+
+def test_run_advise_only_tags_buys_when_league_ownership_is_known():
+    """At GW1 no rival picks are public, so the EO map is empty. An empty map
+    means "unknown", and must not tag every opening pick as a differential."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    assert "strat is not None and bool(league_eo)" in src
