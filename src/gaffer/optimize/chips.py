@@ -86,6 +86,10 @@ def evaluate_chips(pool: pd.DataFrame, state: SolveInput,
             rows.append({"chip": "freehit", "gw": gw,
                          "gain": free_hit_gain(pool, state, gw, base=base,
                                                **cfg)})
+    if not rows:
+        # Every chip spent is a normal late-season state; hand back the empty
+        # frame rather than letting the column-less DataFrame blow up below.
+        return pd.DataFrame(columns=["chip", "gw", "gain"])
     return (pd.DataFrame(rows)
             .assign(gain=lambda d: d["gain"].round(2))
             .sort_values("gain", ascending=False).reset_index(drop=True))

@@ -128,6 +128,16 @@ def test_flat_chips_available_path_is_unchanged():
     pd.testing.assert_frame_equal(flat, mapped)
 
 
+def test_evaluate_chips_returns_an_empty_table_when_nothing_is_available():
+    """A squad that has spent every chip is a normal late-season state, not an
+    error — the caller gets an empty [chip, gw, gain] frame to fold."""
+    state = SolveInput(owned_codes=list(OWNED), bank=0,
+                       free_transfers=1, gws=[1, 2])
+    table = evaluate_chips(_pool(), state, chips_available=[], **CFG)
+    assert table.empty
+    assert list(table.columns) == ["chip", "gw", "gain"]
+
+
 def test_chip_plan_highlights_the_best_week_and_the_cost_of_playing_now():
     import pandas as pd
 

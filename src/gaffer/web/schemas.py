@@ -260,3 +260,106 @@ class PlayerExplain(BaseModel):
     fixtures: list[FixtureExplain]
     next_fixtures: list[NextFixture]
     set_pieces: dict[str, int | None]
+
+
+class ChipWeek(BaseModel):
+    gw: int
+    gain: float
+
+
+class ChipPlanRow(BaseModel):
+    chip: str
+    weeks: list[ChipWeek]
+    best_gw: int
+    best_gain: float
+    now_gain: float | None
+    play_now_delta: float | None
+
+
+class ChipPlan(BaseModel):
+    gw: int
+    chips: list[ChipPlanRow]
+
+
+class HistoryRun(BaseModel):
+    gw: int
+    deadline: str
+    captain: str
+    buys: list[str]
+    sells: list[str]
+    hits: int
+    expected_pts: float
+    actual_pts: int | None
+
+
+class PricePoint(BaseModel):
+    gw: int
+    price: float
+
+
+class PriceSeries(BaseModel):
+    code: int
+    name: str
+    points: list[PricePoint]
+
+
+class History(BaseModel):
+    runs: list[HistoryRun]
+    prices: list[PriceSeries]
+    backtests: list[dict[str, Any]]
+
+
+class SourceHealth(BaseModel):
+    source: str
+    path: str
+    present: bool
+    modified_at: str | None
+    age_hours: float | None
+
+
+class ModelHealth(BaseModel):
+    name: str
+    saved_at: str | None
+    metrics: dict[str, Any]
+
+
+class LaunchdHealth(BaseModel):
+    log: str
+    present: bool
+    modified_at: str | None
+    last_line: str | None
+
+
+class ArtifactItem(BaseModel):
+    name: str
+    bytes: int
+
+
+class Health(BaseModel):
+    data: list[SourceHealth]
+    models: list[ModelHealth]
+    launchd: LaunchdHealth
+    odds_key_present: bool
+    model_health: dict[str, Any] | None
+    artifacts: list[ArtifactItem]
+
+
+class TickerCell(BaseModel):
+    gw: int
+    opponent: str
+    home: bool
+    difficulty: float
+
+
+class TickerTeam(BaseModel):
+    code: int
+    name: str
+    short_name: str
+    cells: list[TickerCell]
+    mean_difficulty: float
+
+
+class Ticker(BaseModel):
+    gws: list[int]
+    source: Literal["odds", "elo"]
+    teams: list[TickerTeam]
