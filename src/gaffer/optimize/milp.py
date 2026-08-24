@@ -23,6 +23,8 @@ from dataclasses import dataclass, field
 import pandas as pd
 import pulp
 
+from gaffer.errors import GafferError
+
 SQUAD_COMPOSITION = {"GKP": 2, "DEF": 5, "MID": 5, "FWD": 3}
 XI_BOUNDS = {"GKP": (1, 1), "DEF": (3, 5), "MID": (2, 5), "FWD": (1, 3)}
 MAX_PER_CLUB = 3
@@ -41,6 +43,17 @@ class SolveInput:
     bench_boost_gw: int | None = None
     triple_captain_gw: int | None = None
     locked_out: list[int] = field(default_factory=list)   # codes banned
+    # What-if constraints (spec §3.2). All three default to "no constraint",
+    # so an unconstrained solve is bit-identical to the pre-v3 one.
+    locked_in: list[int] = field(default_factory=list)
+    """Codes that must be in the squad in every gameweek of the horizon."""
+    force_in_gw: list[int] = field(default_factory=list)
+    """Codes that must be transferred in during the *first* gameweek."""
+    max_hits: int | None = None
+    """Upper bound on hits per gameweek. ``None`` leaves it to the objective.
+
+    Never applied to a wildcard week, where hits are free by the rules.
+    """
 
 
 @dataclass
@@ -75,7 +88,15 @@ def solve_plan(pool: pd.DataFrame, state: SolveInput, *, decay: float,
     """
     pool = pool[~pool["code"].isin(state.locked_out)].reset_index(drop=True)
     codes = pool["code"].tolist()
-    pos = dict(zip(pool["code"], pool["position"]))
+    known = set(codes)
+    for label, wanted in (("lock", state.locked_in),
+                          ("force_in", state.force_in_gw)):
+        missing = [c for c in wanted if c not in known]
+        if missing:
+            raise GafferError(
+                f"{label}: player code {missing[0]} is not in the candidate "
+                f"pool (it may also be banned)")
+    pos =dict(zip(pool["code"], pool["position"]))
     club = dict(zip(pool["code"], pool["team_code"]))
     cost = dict(zip(pool["code"], pool["cost"]))
     sell = dict(zip(pool["code"], pool["sell"]))
@@ -140,6 +161,12 @@ def solve_plan(pool: pd.DataFrame, state: SolveInput, *, decay: float,
             prob += hits[t] <= nt
             prob += ftv[t] <= prev_ft - nt + hits[t] + 1
         prob += ftv[t] <= MAX_FREE_TRANSFERS
+        for c in state.locked_in:
+            prob += sq[c][t] == 1
+        if state.max_hits is not None and not wc:
+            prob += hits[t] <= state.max_hits
+    for c in state.force_in_gw:
+        prob += tin[c][T[0]] == 1
 
     obj = []
     for t_i, t in enumerate(T):

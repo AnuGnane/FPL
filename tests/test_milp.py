@@ -1,4 +1,5 @@
 import pandas as pd
+import pytest
 from gaffer.optimize.milp import solve_plan, SolveInput, build_pool
 
 OWNED = [1, 2,               # GKP x2
@@ -122,3 +123,75 @@ def test_build_pool_keeps_owned_and_uses_sell_prices():
             assert sell[c] == now[c]
     # ep is carried through as a {gw: points} dict
     assert pool.loc[pool["code"] == 4, "ep"].iloc[0] == {1: 4.0, 2: 4.0}
+
+
+def test_locked_in_player_is_kept_in_every_gameweek():
+    # Code 8 is a non-owned DEF on 2.0 EP: nothing would buy him voluntarily.
+    plan = solve_plan(_pool(), SolveInput(owned_codes=list(OWNED), bank=0,
+                                          free_transfers=2, gws=[1, 2],
+                                          locked_in=[8]),
+                      decay=0.85, bench_weight=0.1, vice_weight=0.1,
+                      ft_value=1.5, itb_value=0.05, hit_cost=4)
+    for gw in plan.gw_plans:
+        assert 8 in gw.squad
+
+
+def test_force_in_buys_the_player_in_the_first_gameweek():
+    plan = solve_plan(_pool(), SolveInput(owned_codes=list(OWNED), bank=0,
+                                          free_transfers=2, gws=[1, 2],
+                                          force_in_gw=[8]),
+                      decay=0.85, bench_weight=0.1, vice_weight=0.1,
+                      ft_value=1.5, itb_value=0.05, hit_cost=4)
+    assert 8 in plan.gw_plans[0].buys
+
+
+def test_max_hits_caps_the_hits_taken_each_gameweek():
+    pool = _pool(star_ep=30.0)
+    pool.loc[pool["code"] == 19, "ep"] = [{1: 30.0, 2: 30.0}]
+    plan = solve_plan(pool, SolveInput(owned_codes=list(OWNED), bank=0,
+                                       free_transfers=0, gws=[1, 2],
+                                       max_hits=0),
+                      decay=0.85, bench_weight=0.1, vice_weight=0.1,
+                      ft_value=1.5, itb_value=0.05, hit_cost=4)
+    for gw in plan.gw_plans:
+        assert gw.hits == 0
+
+
+def test_max_hits_does_not_bind_on_a_wildcard_week():
+    # Under a wildcard hits are free, so a cap must not restrict transfers.
+    pool = _pool(star_ep=30.0)
+    pool.loc[pool["code"] == 19, "ep"] = [{1: 30.0, 2: 30.0}]
+    plan = solve_plan(pool, SolveInput(owned_codes=list(OWNED), bank=0,
+                                       free_transfers=0, gws=[1, 2],
+                                       wildcard_gw=1, max_hits=0),
+                      decay=0.85, bench_weight=0.1, vice_weight=0.1,
+                      ft_value=1.5, itb_value=0.05, hit_cost=4)
+    assert 20 in plan.gw_plans[0].squad
+    assert 19 in plan.gw_plans[0].squad
+    assert plan.gw_plans[0].hits == 0
+
+
+def test_defaults_leave_the_solve_untouched():
+    """The new fields are opt-in: an unconstrained solve must be identical."""
+    kw = dict(decay=0.85, bench_weight=0.1, vice_weight=0.1, ft_value=1.5,
+              itb_value=0.05, hit_cost=4)
+    before = solve_plan(_pool(star_ep=9.0), _state(ft=1), **kw)
+    after = solve_plan(_pool(star_ep=9.0),
+                       SolveInput(owned_codes=list(OWNED), bank=0,
+                                  free_transfers=1, gws=[1, 2],
+                                  locked_in=[], force_in_gw=[],
+                                  max_hits=None), **kw)
+    assert before.gw_plans[0].squad == after.gw_plans[0].squad
+    assert abs(before.objective - after.objective) < 1e-9
+
+
+def test_unknown_locked_player_is_a_readable_error():
+    from gaffer.errors import GafferError
+
+    with pytest.raises(GafferError) as exc:
+        solve_plan(_pool(), SolveInput(owned_codes=list(OWNED), bank=0,
+                                       free_transfers=1, gws=[1, 2],
+                                       locked_in=[999]),
+                   decay=0.85, bench_weight=0.1, vice_weight=0.1,
+                   ft_value=1.5, itb_value=0.05, hit_cost=4)
+    assert "999" in str(exc.value)
