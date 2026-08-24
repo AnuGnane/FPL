@@ -107,3 +107,37 @@ def test_report_omits_the_league_panel_without_a_strategy(tmp_path):
     html = render_report(_advice(), out_dir=tmp_path).read_text()
     assert "League strategy" not in html
     assert "P(I finish above" not in html
+
+
+def _initial_advice():
+    advice = _advice()
+    advice.gw = 1
+    advice.mode = "initial_squad"
+    advice.buys = [{"code": i, "name": f"P{i}", "ep": 5.0, "tag": ""}
+                   for i in range(15)]
+    advice.sells = []
+    advice.hits = 0
+    advice.chip_table = []
+    advice.wildcard_now = None
+    return advice
+
+
+def test_initial_squad_report_builds_a_squad_instead_of_transferring(tmp_path):
+    """GW1 has no squad to transfer out of and no chip decision to make; the
+    XI, bench and captain still render exactly as they do every other week."""
+    html = render_report(_initial_advice(), out_dir=tmp_path).read_text()
+    assert "build this squad" in html
+    assert "SELL" not in html
+    assert "No transfers" not in html
+    assert "Chips" not in html and "Wildcard" not in html
+    assert "already played" not in html
+    # The squad itself is unchanged territory.
+    assert "Starting XI" in html and "P1" in html and "B1" in html
+    assert "Captain options" in html
+
+
+def test_weekly_report_is_untouched_by_the_initial_squad_variant(tmp_path):
+    html = render_report(_advice(), out_dir=tmp_path).read_text()
+    assert "build this squad" not in html
+    assert "SELL" in html and "Dud" in html
+    assert "Chips" in html and "bboost" in html

@@ -13,17 +13,20 @@
          padding:.6rem;margin:.5rem 0}
  .diff{color:#2e7d32;font-weight:600}
 </style></head><body>
-<h1>gaffer — Gameweek {{ a.gw }}</h1>
+{% set initial = a.mode == "initial_squad" %}
+<h1>gaffer — Gameweek {{ a.gw }}{% if initial %} — build this squad{% endif %}</h1>
 <p>Deadline: <strong>{{ a.deadline }}</strong> ·
    Expected XI points: <strong>{{ a.expected_pts }}</strong></p>
 
-<div class="action"><h2 style="margin-top:0">This week's actions</h2>
+<div class="action"><h2 style="margin-top:0">{{ "Your opening squad" if initial else "This week's actions" }}</h2>
 <ul>
-{% for b in a.buys %}<li>BUY <strong>{{ b.name }}</strong> ({{ b.ep }} xPts)
+{% for b in a.buys %}<li>{{ "PICK" if initial else "BUY" }} <strong>{{ b.name }}</strong> ({{ b.ep }} xPts)
 {%- if b.tag %} <span class="diff">{{ b.tag }}</span>{% endif %}</li>{% endfor %}
+{% if not initial %}
 {% for s in a.sells %}<li>SELL <strong>{{ s.name }}</strong> ({{ s.ep }} xPts)</li>{% endfor %}
 {% if not a.buys %}<li>No transfers — bank the free transfer.</li>{% endif %}
 {% if a.hits %}<li class="warn">Taking {{ a.hits }} hit(s): −{{ a.hits * 4 }} pts, maths clears it.</li>{% endif %}
+{% endif %}
 <li>Captain: <strong>{{ a.captain.name }}</strong> · Vice: <strong>{{ a.vice.name }}</strong></li>
 </ul></div>
 
@@ -70,6 +73,7 @@ against a template player).</small></p>
     <td>{% if c.differential %}<span class="diff">differential</span>{% endif %}</td></tr>
 {% endfor %}</table>
 
+{% if not initial %}
 <h2>Chips</h2>
 <table><tr><th>Chip</th><th>GW</th><th>Expected gain</th><th></th></tr>
 {% for c in a.chip_table %}<tr><td>{{ c.chip }}</td><td>{{ c.gw }}</td><td>{{ "%.2f"|format(c.gain) }}</td><td>{{ c.note | default("") }}</td></tr>{% endfor %}
@@ -77,6 +81,7 @@ against a template player).</small></p>
 {% if a.wildcard_now %}<p>Wildcard now: gain {{ a.wildcard_now.gain_over_horizon }} pts over horizon —
 <strong>{{ "recommended" if a.wildcard_now.recommend else "not recommended" }}</strong></p>
 {% else %}<p>Wildcard already played this half of the season.</p>{% endif %}
+{% endif %}
 
 {% if a.alternatives %}<h2>Differential alternatives</h2>
 <table><tr><th>Player</th><th>xPts</th><th>P(haul)</th><th>League EO%</th></tr>

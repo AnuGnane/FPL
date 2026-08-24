@@ -63,8 +63,7 @@ def fetch_my_team(
         # There is no GW0 picks endpoint; asking for one 404s.
         raise GafferError(
             "GW1: no completed gameweek to load your squad from — "
-            "initial-squad advice isn't supported yet; pick your GW1 team in "
-            "the app and run gaffer advise from GW2")
+            "there is no squad yet, so build one from scratch")
     last_gw = next_gw - 1
     picks_raw = client.get_entry_picks(entry_id, last_gw)
     transfers = client.get_entry_transfers(entry_id)

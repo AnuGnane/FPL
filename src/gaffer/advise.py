@@ -36,6 +36,7 @@ from gaffer.data.entry import fetch_my_team
 from gaffer.data.league import (effective_ownership, fetch_rival_entries,
                                 fetch_rival_picks)
 from gaffer.data.live import refresh_live
+from gaffer.errors import GafferError
 from gaffer.data.odds import OddsClient, odds_frame
 from gaffer.features.engineer import build_prediction_frame, feature_columns
 from gaffer.league_mode import compute_strategy, tilt_ep, win_probability
@@ -95,6 +96,31 @@ class Advice:
     # plain points-max advice v1 produced.
     strategy: dict | None = None
     win_probs: list = field(default_factory=list)
+    # "weekly" (a squad exists, transfers are the decision) or
+    # "initial_squad" (GW1: there is no squad yet, so the 15 buys *are* the
+    # advice). Appended last and defaulted so payloads written before it —
+    # and every positional construction — still load.
+    mode: str = "weekly"
+
+
+INITIAL_BUDGET = 1000
+"""GW1 budget in 0.1m units: 100.0m, all of it in the bank."""
+
+INITIAL_FREE_TRANSFERS = 15
+"""Building the first squad is 15 transfers and no hits."""
+
+
+def initial_squad_state(gws: list[int]) -> tuple[SolveInput, pd.DataFrame]:
+    """The GW1 solve state: nothing owned, full budget, transfers free.
+
+    Returns the ``SolveInput`` and the empty picks frame ``build_pool`` needs
+    (it reads only ``code`` and ``sell``, so an empty two-column frame leaves
+    the owned set empty and prices every player at ``now_cost``). Same shape
+    the backtest uses for its own first build.
+    """
+    return (SolveInput(owned_codes=[], bank=INITIAL_BUDGET,
+                       free_transfers=INITIAL_FREE_TRANSFERS, gws=gws),
+            pd.DataFrame(columns=["code", "sell"]))
 
 
 SETPIECE_ORDER_COLS = ["penalties_order", "direct_freekicks_order",
@@ -379,7 +405,14 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
                         how="left")
     store.save(ep_named[ep_named["gw"] == gw], f"live/predictions/gw{gw}.parquet")
 
-    my = fetch_my_team(client, cfg.entry_id, gw, players)
+    # GW1 has no completed gameweek to read a squad from, so fetch_my_team
+    # refuses. That is not a failure: it is the initial-squad case, and the
+    # MILP builds one from scratch as happily as it transfers.
+    try:
+        my = fetch_my_team(client, cfg.entry_id, gw, players)
+    except GafferError as e:
+        print(f"{e}")
+        my = None
     ep_by = {(int(r.code), int(r.gw)): float(r.ep) for r in ep.itertuples()}
 
     # The league has to be read *before* the pool is built. The rank-aware
@@ -418,27 +451,38 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
             league_eo, strat, win_probs = {}, None, []
 
     pool_ep = tilt_ep(ep_by, league_eo, strat.lam if strat else 0.0)
-    pool = build_pool(players, pool_ep, my.picks, gws)
-    state = SolveInput(owned_codes=my.picks["code"].tolist(), bank=my.bank,
-                       free_transfers=my.free_transfers, gws=gws)
+    if my is None:
+        state, my_picks = initial_squad_state(gws)
+    else:
+        my_picks = my.picks
+        state = SolveInput(owned_codes=my.picks["code"].tolist(), bank=my.bank,
+                           free_transfers=my.free_transfers, gws=gws)
+    pool = build_pool(players, pool_ep, my_picks, gws)
     opt_kw = dict(decay=cfg.decay, bench_weight=cfg.bench_weight,
                   vice_weight=cfg.vice_weight, ft_value=cfg.ft_value,
                   itb_value=cfg.itb_value, hit_cost=cfg.hit_cost)
     plan = solve_plan(pool, state, **opt_kw)
     first = plan.gw_plans[0]
 
-    chip_names = chips_available_for(my.chips_by_gw, gw)
-    # `plan` is the no-chip baseline every chip is scored against; pass it in
-    # rather than letting each helper re-solve the same MILP.
-    chip_table = evaluate_chips(pool, state, chip_names, base=plan, **opt_kw)
-    chip_rows = chip_table.to_dict("records")
-    for row in chip_rows:
-        if row["chip"] == "freehit":
-            row["note"] = "conservative lower bound"
-    # "Should I wildcard right now?" is only a question if the wildcard is
-    # still available in this half of the season.
-    wc_now = (wildcard_now_assessment(pool, state, base=plan, **opt_kw)
-              if "wildcard" in chip_names else None)
+    # Chips are a weekly question only. At GW1 nothing has been played, no
+    # chip history exists to read, and playing one on the squad you are still
+    # assembling is not a decision worth costing — so skip the whole block.
+    chip_rows: list[dict] = []
+    wc_now = None
+    if my is not None:
+        chip_names = chips_available_for(my.chips_by_gw, gw)
+        # `plan` is the no-chip baseline every chip is scored against; pass it
+        # in rather than letting each helper re-solve the same MILP.
+        chip_table = evaluate_chips(pool, state, chip_names, base=plan,
+                                    **opt_kw)
+        chip_rows = chip_table.to_dict("records")
+        for row in chip_rows:
+            if row["chip"] == "freehit":
+                row["note"] = "conservative lower bound"
+        # "Should I wildcard right now?" is only a question if the wildcard is
+        # still available in this half of the season.
+        wc_now = (wildcard_now_assessment(pool, state, base=plan, **opt_kw)
+                  if "wildcard" in chip_names else None)
 
     ep_gw1 = ep_named[ep_named["gw"] == gw]
     cap_tab = captain_table(ep_gw1, first.xi, league_eo)
@@ -450,7 +494,8 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
                                      "league_eo"])
     threats = threat_board(ep_gw1, first.squad, league_eo)
 
-    watch = set(first.buys + first.sells + my.picks["code"].tolist())
+    owned_now = [] if my is None else my.picks["code"].tolist()
+    watch = set(first.buys + first.sells + owned_now)
     alerts = price_alerts(players, list(watch))
 
     name_of = dict(zip(players["code"], players["name"]))
@@ -488,6 +533,7 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
                     for p in plan.gw_plans],
         strategy=strategy,
         win_probs=win_probs,
+        mode="weekly" if my is not None else "initial_squad",
     )
     REPORTS.mkdir(exist_ok=True)
     (REPORTS / f"gw{gw}-advice.json").write_text(

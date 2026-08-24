@@ -29,7 +29,8 @@ def advise():
     except SystemExit as e:  # missing models, raised before any network call
         typer.echo(str(e))
         raise typer.Exit(1)
-    except GafferError as e:  # season boundary: GW1, or no next GW at all
+    except GafferError as e:  # season boundary: no next GW at all
+                              # (GW1 is handled inside run_advise)
         typer.echo(str(e))
         raise typer.Exit(1)
     from gaffer.tracking import latest_health

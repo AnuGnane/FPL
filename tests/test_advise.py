@@ -107,3 +107,73 @@ def test_run_advise_reports_raw_ep_not_the_tilted_values():
     assert "pool_ep" not in src[src.index("ep_gw1 ="):]
     # _named renders from ep_by, the untilted dict.
     assert "_named(first.xi, name_of, ep_by, gw)" in src
+
+
+# --- GW1 initial squad ------------------------------------------------------
+
+
+def test_advice_defaults_to_weekly_mode_and_accepts_initial_squad():
+    """``mode`` is appended last and defaulted, so every existing positional
+    construction and every advice JSON written before it still loads."""
+    assert _bare_advice().mode == "weekly"
+    assert _bare_advice(mode="initial_squad").mode == "initial_squad"
+
+
+def test_initial_squad_state_is_an_empty_squad_on_the_full_budget():
+    from gaffer.advise import initial_squad_state
+
+    state, picks = initial_squad_state([1, 2, 3])
+    assert state.owned_codes == []
+    assert state.bank == 1000                  # 100.0m, in 0.1m units
+    assert state.free_transfers == 15          # building 15 costs no hits
+    assert state.gws == [1, 2, 3]
+    # build_pool only reads code/sell; an empty frame with those columns keeps
+    # the "owned" set empty and every sell price at now_cost.
+    assert list(picks.columns) == ["code", "sell"]
+    assert picks.empty
+
+
+def test_initial_squad_solve_buys_fifteen_and_takes_no_hits():
+    """With nothing owned the first gw plan's buys *are* the squad, its sells
+    are empty, and 15 free transfers make the hit count zero."""
+    from gaffer.advise import initial_squad_state
+    from gaffer.optimize.milp import solve_plan
+
+    rows, code = [], 1
+    for pos, n in [("GKP", 2), ("DEF", 6), ("MID", 7), ("FWD", 5)]:
+        for _ in range(n):
+            rows.append({"code": code, "position": pos, "team_code": code % 8,
+                         "cost": 50, "sell": 50, "ep": {1: 2.0}})
+            code += 1
+    pool = pd.DataFrame(rows)
+
+    state, _ = initial_squad_state([1])
+    first = solve_plan(pool, state, decay=0.85, bench_weight=0.1,
+                       vice_weight=0.1, ft_value=1.5, itb_value=0.05,
+                       hit_cost=4).gw_plans[0]
+    assert sorted(first.buys) == sorted(first.squad)
+    assert len(first.buys) == 15
+    assert first.sells == []
+    assert first.hits == 0
+
+
+def test_run_advise_falls_back_to_initial_squad_advice_at_gw1():
+    """Source-level seam (no cheap end-to-end harness for run_advise): the
+    GW1 GafferError out of fetch_my_team must become initial-squad advice
+    rather than propagating to the CLI as a clean exit."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    fetch = src.index("fetch_my_team(")
+    caught = src.index("except GafferError", fetch)
+    assert caught - fetch < 200                # the try wraps *that* call
+    assert "my = None" in src[caught:caught + 200]
+    assert "initial_squad_state(gws)" in src
+    assert '"initial_squad"' in src
+    # Everything downstream that reads the squad has to be guarded.
+    for ref in ["my.picks", "my.bank", "my.free_transfers", "my.chips_by_gw"]:
+        i = src.index(ref)
+        before = src[max(0, i - 400):i]
+        assert "my is None" in before or "my is not None" in before, ref
