@@ -8,6 +8,21 @@ HTML report.
 It never logs into FPL and never makes transfers. It reads public FPL endpoints
 only; you apply its advice yourself in the official app.
 
+## First-time setup
+
+A fresh clone has no data and no models. Set `fpl.entry_id` in `config.toml`,
+then:
+
+```
+uv run gaffer build-history   # downloads data/history/*.parquet (slow, once)
+uv run gaffer train           # trains the component models into models/
+uv run gaffer advise          # the weekly run
+```
+
+`build-history` caches the downloads under `data/raw/vaastav/`, so re-running
+it is cheap. `train` refuses nothing but `advise` refuses to run without the
+model files.
+
 ## Weekly ritual
 
 Before the Friday deadline:
@@ -29,6 +44,7 @@ to `logs/advise.log`.
 | Command | What it does |
 |---|---|
 | `gaffer advise` | Full weekly run: refresh, predict, optimize, report. Requires trained models and `fpl.entry_id` in config. |
+| `gaffer build-history` | Download the `train_seasons` archives into `data/history/`. Run once, before the first `train`. |
 | `gaffer refresh` | Pull the latest FPL data into `data/live/`. |
 | `gaffer train` | (Re)train all models on history + live data; writes to `models/`. |
 | `gaffer prices` | Likely price changes tonight among the 200 most-owned players. |
@@ -69,9 +85,14 @@ uv run gaffer train
 
 Trains the component models (minutes, attacking, defcon, saves, bonus, team)
 and saves each as a `.joblib` plus a `.meta.json` in `models/`. `advise` refuses
-to run if any model file is missing. Retrain after adding a season to
-`train_seasons`, or periodically as the current season accumulates data — the
-Thursday automation retrains every week.
+to run if any model file is missing. Retrain periodically as the current season
+accumulates data — the Thursday automation retrains every week.
+
+At a season rollover, edit both `[data]` keys together: append the finished
+season to `train_seasons` **and** set `current_season` to the new one, then run
+`gaffer build-history` and `gaffer train`. `season_idx` is derived from
+`len(train_seasons)`, so adding a season without moving `current_season` on
+makes the live season collide with the one you just archived.
 
 ## Where things live
 

@@ -8,7 +8,8 @@ runner = CliRunner()
 def test_cli_help_lists_commands():
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
-    for cmd in ["advise", "refresh", "train", "prices", "league", "backtest"]:
+    for cmd in ["advise", "refresh", "train", "prices", "league",
+                "backtest", "build-history"]:
         assert cmd in result.output
 
 
@@ -24,7 +25,8 @@ def test_advise_fails_cleanly_without_models(tmp_path, monkeypatch):
 def test_every_command_help_renders():
     """Each command's body imports lazily, so --help is the cheapest proof
     that no command is wired to a name that does not exist yet."""
-    for cmd in ["advise", "refresh", "train", "prices", "league", "backtest"]:
+    for cmd in ["advise", "refresh", "train", "prices", "league",
+                "backtest", "build-history"]:
         result = runner.invoke(app, [cmd, "--help"])
         assert result.exit_code == 0, f"{cmd} --help failed: {result.output}"
 

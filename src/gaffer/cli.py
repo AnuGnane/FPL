@@ -62,6 +62,19 @@ def refresh():
     typer.echo(f"Refreshed {len(df)} player-GW rows.")
 
 
+@app.command("build-history")
+def build_history_cmd():
+    """Download the historical seasons into data/history/ (run once)."""
+    from gaffer.config import load_config
+    from gaffer.data.history import build_history, build_history_fixtures
+
+    cfg = load_config()
+    df = build_history(cfg.train_seasons)
+    fx = build_history_fixtures(cfg.train_seasons)
+    typer.echo(f"History: {len(df)} player-GW rows, {len(fx)} fixtures "
+               f"across {len(cfg.train_seasons)} seasons -> data/history/.")
+
+
 @app.command()
 def train():
     """(Re)train all models on history + live data."""
