@@ -31,9 +31,10 @@ tool would really have scored:
   flat here, so the replay has less money to spend than a real manager.
 * **Models retrained every 4 gameweeks**, not weekly, so predictions are on
   average two gameweeks staler than a live run's.
-* **Single-gameweek optimization** (``gws=[gw]``): the MILP maximises this
-  week only, with no multi-week horizon, no free-transfer planning value and
-  no fixture-swing anticipation.
+* **Myopic by default** (``horizon=1``): the MILP maximises this week only,
+  with no free-transfer planning value and no fixture-swing anticipation.
+  Pass ``horizon=N`` for a receding-horizon replay — plan N weeks, execute
+  the first, re-plan next week — which is what the weekly advisor does.
 """
 
 from __future__ import annotations
@@ -146,8 +147,21 @@ def _actuals_frame(rows: pd.DataFrame) -> pd.DataFrame:
 
 
 def run_backtest(season: str = "2025-26", start_gw: int = 5,
-                 retrain_every: int = 4) -> dict:
+                 retrain_every: int = 4, horizon: int = 1) -> dict:
     """Replay ``season`` from ``start_gw`` to GW38 following the tool.
+
+    ``horizon`` turns the replay into a receding-horizon plan: each week the
+    MILP optimises over ``[gw, ..., gw + horizon - 1]`` (clipped at GW38),
+    but only the first gameweek's plan is executed — squad, bank and free
+    transfers all come from ``plan.gw_plans[0]``, and the later gameweek
+    plans are thrown away and re-planned next week with fresh information.
+    ``horizon=1`` is the old myopic behaviour.
+
+    Planning ahead is leakage-free: every feature is backward-looking (the
+    rolling windows in :func:`gaffer.features.engineer.add_player_rolling`
+    are shifted one match back) and the fixture list for future gameweeks
+    was known before the deadline in reality too. The *actuals* scored each
+    week remain those of the current gameweek alone.
 
     Returns {"season", "from_gw", "total", "per_gw", "log"} and writes the
     per-gameweek log to ``data/live/backtest_log.parquet``.
@@ -180,7 +194,14 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
                                             max_gw=gw)
             models = train_all(df, tg, save=False)
 
-        comp = predict_components_simple(models, rows)
+        # Plan over the horizon, execute the first week only. Blank
+        # gameweeks inside the horizon simply have no rows here: build_pool
+        # fills the missing (code, gw) keys with ep 0.0, which is how the
+        # MILP already treats a player with no fixture.
+        gws = list(range(gw, min(gw + horizon - 1, LAST_GW) + 1))
+        horizon_rows = season_rows[season_rows["gw"].isin(gws)]
+
+        comp = predict_components_simple(models, horizon_rows)
         ep = ep_matrix(apply_calibration(assemble_ep(comp, scoring),
                                          models.get("calibration")))
         ep_by = {(int(r.code), int(r.gw)): float(r.ep) for r in ep.itertuples()}
@@ -191,7 +212,7 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
         if not squad:
             picks = pd.DataFrame(columns=["code", "sell"])
             state = SolveInput(owned_codes=[], bank=STARTING_BUDGET,
-                               free_transfers=15, gws=[gw])
+                               free_transfers=15, gws=gws)
         else:
             # sell price = this gameweek's value (see module docstring)
             price_now = dict(zip(players["code"], players["now_cost"]))
@@ -200,9 +221,10 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
             picks = pd.DataFrame({"code": squad,
                                   "sell": [sell_of[c] for c in squad]})
             state = SolveInput(owned_codes=list(squad), bank=bank,
-                               free_transfers=free_transfers, gws=[gw])
+                               free_transfers=free_transfers, gws=gws)
 
-        pool = build_pool(players, ep_by, picks, [gw])
+        pool = build_pool(players, ep_by, picks, gws)
+        # gw_plans[1:] are discarded: next week re-plans from scratch.
         plan = solve_plan(pool, state, **opt_kw).gw_plans[0]
 
         cost_of = dict(zip(pool["code"], pool["cost"]))
