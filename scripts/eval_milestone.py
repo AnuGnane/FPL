@@ -10,7 +10,7 @@ themselves never saw a row from GW30 onwards during fitting.
 
 from gaffer.assets import load_bootstrap_sample
 from gaffer.data.bootstrap import scoring_table
-from gaffer.models.assemble import assemble_ep, ep_matrix
+from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
 from gaffer.models.components import card_penalty
 from gaffer.models.train import (evaluate_predictions, load_training_frame,
                                  train_all)
@@ -61,7 +61,9 @@ comp["p_cs"] = comp["p_cs"].fillna(0.25)
 comp["e_gc"] = comp["e_gc"].fillna(1.4)
 comp["e_cards"] = holdout.apply(card_penalty, axis=1).values
 scoring = scoring_table(load_bootstrap_sample())
-ep = ep_matrix(assemble_ep(comp, scoring))
+# Same seam as advise/backtest: calibrate per fixture, then collapse.
+ep = ep_matrix(apply_calibration(assemble_ep(comp, scoring),
+                                 models.get("calibration")))
 
 # One truth row per player-gameweek, matching ep_matrix's DGW summing. Left
 # per-fixture, a double gameweek would score the model's summed ep twice
@@ -80,6 +82,20 @@ def baseline(col: str):
     return b.groupby(["code", "gw"], as_index=False).agg(ep=("ep", "first"))
 
 
+def bias_60(pred):
+    """Signed mean of (ep - actual) over rows a player actually started.
+
+    Same inner join as :func:`evaluate_predictions`, so the row set matches
+    its ``mae_starters``. Negative means the model under-predicts starters.
+    """
+    j = pred.merge(truth, on=["code", "gw"], how="inner")
+    st = j[j["minutes"] >= 60]
+    return round(float((st["ep"] - st["total_points"]).mean()), 3)
+
+
+print("NOTE    : odds features are inactive in this eval "
+      "(no historical odds; odds blend in at prediction time only)")
 print("MODEL   :", evaluate_predictions(ep, truth))
+print("          bias_60:", bias_60(ep))
 print("LAST-5  :", evaluate_predictions(baseline("total_points_r5"), truth))
 print("SEASON  :", evaluate_predictions(baseline("total_points_r38"), truth))
