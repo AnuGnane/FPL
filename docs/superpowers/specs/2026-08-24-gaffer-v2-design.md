@@ -72,6 +72,15 @@ authenticated FPL endpoints (tool stays advisor-only), UI beyond CLI + HTML repo
   have them NaN, prediction rows have them populated when a key is configured.
   Missing key / request failure / stale cache → NaN → current Elo-driven
   behavior. Never blocks the advise run.
+- AMENDED during implementation (Task 8 review): all-NaN training columns mean
+  LightGBM never learns splits on them, making the feature inert as originally
+  specified. Fix: odds enter predictions by DIRECT BLENDING at prediction time —
+  where odds exist, `p_cs = 0.7·exp(−odds_e_goals_against) + 0.3·model` and
+  `e_gc = 0.7·odds_e_goals_against + 0.3·model` (pinned `ODDS_BLEND_WEIGHT =
+  0.7`); rows without odds keep pure model output. The odds frame carries
+  `opp_code` so double gameweeks merge per-fixture without fan-out, and each
+  week's frame is persisted to `live/odds/gw{N}.parquet` so accumulated history
+  can later train the model-feature path properly (deferred).
 - Budget: ≤ 4 requests per weekly run, free tier 500/month. Cache the pull per
   (date, gw) so re-runs in the same day cost nothing.
 
