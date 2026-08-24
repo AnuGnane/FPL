@@ -124,3 +124,39 @@ class LeagueRace(BaseModel):
     lam: float
     stance: str
     lam_explained: str
+
+
+class RivalSummary(BaseModel):
+    entry: int
+    name: str
+    player_name: str
+    rank: int
+    total: int
+    event_total: int
+    overlap: int
+    differentials: int
+
+
+class SquadPlayer(BaseModel):
+    code: int
+    element: int
+    name: str
+    position: str
+    price: float
+    is_captain: bool
+    multiplier: int
+
+
+class RivalDetail(BaseModel):
+    entry: int
+    name: str
+    player_name: str
+    total: int
+    team_value: float
+    chips_used: list[str]
+    captain: SquadPlayer | None
+    squad: list[SquadPlayer]
+    shared: list[SquadPlayer]
+    their_differentials: list[SquadPlayer]
+    your_differentials: list[SquadPlayer]
+    live_points: int | None

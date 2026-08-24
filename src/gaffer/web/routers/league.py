@@ -14,7 +14,8 @@ from gaffer.artifacts import latest_gw, load_solve_state
 from gaffer.config import load_config
 from gaffer.errors import GafferError
 from gaffer.league_mode import Strategy, explain_lam, win_probability
-from gaffer.web.schemas import (GapPoint, GwPoint, LeagueRace, StandingRow,
+from gaffer.web.schemas import (GapPoint, GwPoint, LeagueRace, RivalDetail,
+                                RivalSummary, SquadPlayer, StandingRow,
                                 Trajectory, WinProb)
 
 router = APIRouter(prefix="/api/league", tags=["league"])
@@ -105,3 +106,109 @@ def race() -> LeagueRace:
                       standings=standings, trajectory=trajectory, gap=gap,
                       win_probability=win_probs, lam=lam, stance=stance,
                       lam_explained=explain_lam(strategy))
+
+
+def _players_snapshot():
+    from gaffer.artifacts import load_snapshot
+
+    return load_snapshot("live/players.parquet")
+
+
+def _my_codes() -> set[int]:
+    gw = latest_gw()
+    if gw is None:
+        raise GafferError("no saved squad — run `gaffer advise` first")
+    return {int(c) for c in load_solve_state(gw).owned_codes}
+
+
+def _last_scored_gw() -> int:
+    """Picks are public for finished gameweeks only, so plan-GW minus one."""
+    gw = latest_gw()
+    if gw is None:
+        raise GafferError("no saved advice — run `gaffer advise` first")
+    return max(1, load_solve_state(gw).gw - 1)
+
+
+def _squad(picks: list[dict], players) -> list[SquadPlayer]:
+    by_element = {int(r.element): r for r in players.itertuples()}
+    out = []
+    for pick in picks:
+        row = by_element.get(int(pick["element"]))
+        if row is None:
+            continue          # a player removed from the game since the pick
+        out.append(SquadPlayer(
+            code=int(row.code), element=int(row.element), name=str(row.name),
+            position=str(row.position), price=round(int(row.now_cost) / 10, 1),
+            is_captain=int(pick.get("multiplier", 0)) >= 2,
+            multiplier=int(pick.get("multiplier", 0))))
+    return out
+
+
+@router.get("/rivals", response_model=list[RivalSummary])
+def rivals() -> list[RivalSummary]:
+    cfg = _config()
+    client = fpl_client()
+    players = _players_snapshot()
+    mine = _my_codes()
+    gw = _last_scored_gw()
+    out = []
+    for row in _standings(client, cfg.league_id):
+        if int(row["entry"]) == cfg.entry_id:
+            continue
+        try:
+            picks = _guard(client.get_entry_picks, int(row["entry"]), gw)
+        except GafferError:
+            picks = {"picks": []}     # joined late: no public picks yet
+        codes = {p.code for p in _squad(picks.get("picks", []), players)}
+        out.append(RivalSummary(
+            entry=int(row["entry"]), name=str(row["entry_name"]),
+            player_name=str(row["player_name"]), rank=int(row["rank"]),
+            total=int(row["total"]), event_total=int(row["event_total"]),
+            overlap=len(codes & mine), differentials=len(codes - mine)))
+    return out
+
+
+@router.get("/rivals/{entry_id}", response_model=RivalDetail)
+def rival(entry_id: int) -> RivalDetail:
+    from gaffer.live_gw import active_gameweek, entry_live_points
+
+    cfg = _config()
+    client = fpl_client()
+    players = _players_snapshot()
+    mine = _my_codes()
+    row = next((r for r in _standings(client, cfg.league_id)
+                if int(r["entry"]) == entry_id), None)
+    if row is None:
+        raise GafferError(f"entry {entry_id} is not in league {cfg.league_id}")
+
+    picks_payload = _guard(client.get_entry_picks, entry_id, _last_scored_gw())
+    squad = _squad(picks_payload.get("picks", []), players)
+    history = _guard(client.get_entry_history, entry_id)
+    entry_history = picks_payload.get("entry_history") or {}
+    value = (int(entry_history.get("value", 0))
+             + int(entry_history.get("bank", 0))) / 10
+
+    live_points = None
+    live_gw = active_gameweek(_guard(client.get_event_status))
+    if live_gw is not None:
+        elements = _guard(client.get_event_live, live_gw)["elements"]
+        points_of = {int(e["id"]): (e.get("stats") or {})
+                     .get("total_points", 0) for e in elements}
+        live_picks = _guard(client.get_entry_picks, entry_id, live_gw)
+        live_points = entry_live_points(live_picks["picks"], points_of, {})
+
+    their = {p.code for p in squad}
+    my_squad = _squad([{"element": int(r.element), "multiplier": 1}
+                       for r in players[players["code"].isin(mine)]
+                       .itertuples()], players)
+    return RivalDetail(
+        entry=entry_id, name=str(row["entry_name"]),
+        player_name=str(row["player_name"]), total=int(row["total"]),
+        team_value=round(value, 1),
+        chips_used=[str(c["name"]) for c in history.get("chips", [])],
+        captain=next((p for p in squad if p.is_captain), None),
+        squad=squad,
+        shared=[p for p in squad if p.code in mine],
+        their_differentials=[p for p in squad if p.code not in mine],
+        your_differentials=[p for p in my_squad if p.code not in their],
+        live_points=live_points)

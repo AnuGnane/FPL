@@ -122,3 +122,32 @@ def test_race_surfaces_a_dead_api_as_a_retriable_error(tmp_path, monkeypatch):
     resp = TestClient(create_app()).get("/api/league/race")
     assert resp.status_code == 422
     assert "FPL API" in resp.json()["detail"]
+
+
+def test_rivals_list_summarises_every_entry_but_you(client):
+    rows = client.get("/api/league/rivals").json()
+    assert [r["entry"] for r in rows] == [2]
+    row = rows[0]
+    assert row["name"] == "Ten Hag Hive" and row["total"] == 190
+    assert row["overlap"] == 1          # code 100 (Salah) is in your squad too
+    assert row["differentials"] == 1    # code 101 is theirs, not yours
+
+
+def test_rival_detail_lists_the_squad_captain_chips_and_overlap(client):
+    body = client.get("/api/league/rivals/2").json()
+    assert body["entry"] == 2 and body["name"] == "Ten Hag Hive"
+    assert body["team_value"] == 101.8          # (value 1013 + bank 5) / 10
+    assert body["captain"]["name"] == "Salah"
+    assert body["chips_used"] == []
+    squad = {p["name"] for p in body["squad"]}
+    assert squad == {"Salah", "Dud"}
+    assert [p["name"] for p in body["shared"]] == ["Salah"]
+    assert [p["name"] for p in body["their_differentials"]] == ["Dud"]
+    assert body["your_differentials"] == []
+    assert body["live_points"] is None           # no gameweek in progress
+
+
+def test_rival_detail_for_an_unknown_entry_is_a_readable_422(client):
+    resp = client.get("/api/league/rivals/999")
+    assert resp.status_code == 422
+    assert "999" in resp.json()["detail"]
