@@ -101,3 +101,27 @@ button:disabled { opacity: 0.5; cursor: default; }
   cursor: pointer;
   text-decoration: underline dotted;
 }
+
+.pitch { display: flex; flex-direction: column; gap: 12px; }
+.pitch-row { display: flex; gap: 12px; justify-content: center; }
+.pitch-player {
+  background: var(--pitch-700);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.bench-strip { display: flex; gap: 16px; flex-wrap: wrap; }
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 12, 7, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.modal { max-width: 720px; max-height: 85vh; overflow: auto; }
+.bar { height: 10px; border-radius: 5px; }

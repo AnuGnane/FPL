@@ -6,7 +6,9 @@ import App from './App'
 
 vi.mock('./api/client', () => ({
   ApiError: class extends Error {},
-  apiGet: vi.fn(async () => ({})),
+  // The shell test only cares about routing, so every page stays pending:
+  // a resolved empty body would feed the real pages a payload they can't read.
+  apiGet: vi.fn(() => new Promise(() => {})),
   apiPost: vi.fn(async () => ({ job_id: 'x' })),
 }))
 
