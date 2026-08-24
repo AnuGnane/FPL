@@ -259,6 +259,9 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     teams = build_teams(raw)
     events = build_events(raw)
     gw = next_gw(raw)
+    from gaffer.tracking import update_health
+    if gw > 1:
+        update_health(gw - 1)
     deadline = str(events.loc[events["gw"] == gw, "deadline_time"].iloc[0])
     gws = list(range(gw, min(gw + cfg.horizon, LAST_GW + 1)))
     season_idx = len(cfg.train_seasons)

@@ -1,10 +1,8 @@
 """The ``gaffer`` command line.
 
 Every command body imports its dependencies lazily. Loading the whole
-pipeline (lightgbm, pulp, jinja) to print ``--help`` would be slow, and it
-would also couple the CLI to modules that do not exist yet: ``gaffer.tracking``
-and ``gaffer.backtest`` land in later tasks, so the commands that touch them
-must stay importable until then.
+pipeline (lightgbm, pulp, jinja) to print ``--help`` would be slow, so each
+command pulls in only what it needs when it actually runs.
 """
 
 from __future__ import annotations
@@ -30,11 +28,9 @@ def advise():
     except SystemExit as e:  # missing models, raised before any network call
         typer.echo(str(e))
         raise typer.Exit(1)
-    try:  # tracking module arrives in Task 24
-        from gaffer.tracking import latest_health
-        health = latest_health()
-    except ImportError:
-        health = None
+    from gaffer.tracking import latest_health
+
+    health = latest_health()
     path = render_report(advice, model_health=health)
     typer.echo(f"\n=== GW{advice.gw} — deadline {advice.deadline} ===")
     for b in advice.buys:
