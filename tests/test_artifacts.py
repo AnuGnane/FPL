@@ -2,9 +2,10 @@ import pandas as pd
 import pytest
 
 from gaffer.artifacts import (COMPONENT_COLS, SolveState, components_frame,
-                              latest_gw, load_components, load_solve_state,
-                              milp_pool, pool_rows, raw_ep_by,
-                              save_components, save_solve_state)
+                              data_warning, ingested_through, latest_gw,
+                              load_components, load_solve_state, milp_pool,
+                              pool_rows, raw_ep_by, save_components,
+                              save_solve_state)
 
 SCORING = {
     "goals_scored": {"GKP": 10, "DEF": 6, "MID": 5, "FWD": 4},
@@ -113,3 +114,73 @@ def test_latest_gw_picks_the_newest_saved_state(tmp_path, monkeypatch):
     save_solve_state(_state())
     save_solve_state(replace(_state(), gw=11))
     assert latest_gw() == 11
+
+
+# --- how much of the current season the model has actually seen -------------
+
+
+def _player_gw(rows):
+    return pd.DataFrame(rows, columns=["season", "season_idx", "gw", "code",
+                                       "total_points"])
+
+
+def _save_player_gw(root, rows):
+    (root / "data" / "live").mkdir(parents=True, exist_ok=True)
+    _player_gw(rows).to_parquet(root / "data" / "live" / "player_gw.parquet",
+                                index=False)
+
+
+def test_ingested_through_is_none_without_a_parquet(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    assert ingested_through() is None
+
+
+def test_ingested_through_is_none_when_the_parquet_is_empty(tmp_path,
+                                                            monkeypatch):
+    """The real state after a pre-`data_checked` refresh: the file exists and
+    holds nothing, because every unchecked gameweek was dropped."""
+    monkeypatch.chdir(tmp_path)
+    _save_player_gw(tmp_path, [])
+    assert ingested_through() is None
+
+
+def test_ingested_through_is_the_newest_gw_on_disk(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    _save_player_gw(tmp_path, [
+        {"season": "2026-27", "season_idx": 4, "gw": 1, "code": 100,
+         "total_points": 5},
+        {"season": "2026-27", "season_idx": 4, "gw": 2, "code": 100,
+         "total_points": 7}])
+    assert ingested_through() == 2
+
+
+def test_ingested_through_can_be_asked_about_one_season(tmp_path,
+                                                        monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    _save_player_gw(tmp_path, [
+        {"season": "2025-26", "season_idx": 3, "gw": 38, "code": 100,
+         "total_points": 2},
+        {"season": "2026-27", "season_idx": 4, "gw": 1, "code": 100,
+         "total_points": 5}])
+    assert ingested_through(4) == 1
+    assert ingested_through(3) == 38
+    assert ingested_through(9) is None
+    assert ingested_through() == 1      # newest season by default
+
+
+def test_no_warning_when_the_data_reaches_last_gameweek():
+    assert data_warning(5, 4) is None
+    assert data_warning(1, None) is None       # nothing has been played yet
+    assert data_warning(None, None) is None    # season over
+
+
+def test_missing_gw1_warning_names_the_gameweek_and_the_fix():
+    msg = data_warning(2, None)
+    assert msg is not None
+    assert "GW1" in msg and "gaffer advise" in msg
+    assert "morning after the last match" in msg
+
+
+def test_warning_spans_every_missing_gameweek():
+    assert "GW3-GW6" in data_warning(7, 2)
+    assert data_warning(7, 5).startswith("model has no data for GW6 ")

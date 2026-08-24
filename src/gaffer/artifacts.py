@@ -251,6 +251,55 @@ def upcoming_gw(now: pd.Timestamp | None = None) -> int | None:
     return int(future["gw"].min()) if not future.empty else None
 
 
+def ingested_through(season_idx: int | None = None) -> int | None:
+    """Newest gameweek present in ``data/live/player_gw.parquet``.
+
+    The one place anything asks "how much of this season has the model
+    actually seen?". ``refresh_live`` drops every gameweek FPL has not marked
+    ``data_checked``, so running ``gaffer advise`` on the evening of GW1
+    leaves this at ``None`` — the model is predicting GW2 off last season
+    alone, and every surface that shows advice needs to say so.
+
+    ``season_idx`` restricts the answer to one season; the default takes the
+    newest season in the file, which is the current one (``refresh_live``
+    rewrites the whole table from today's bootstrap).
+    """
+    from gaffer.data import store
+
+    if not store.exists("live/player_gw.parquet"):
+        return None
+    df = store.load("live/player_gw.parquet")
+    if df.empty:
+        return None
+    if season_idx is None:
+        df = df[df["season_idx"] == df["season_idx"].max()]
+    else:
+        df = df[df["season_idx"] == season_idx]
+    gws = pd.to_numeric(df["gw"], errors="coerce").dropna()
+    return int(gws.max()) if not gws.empty else None
+
+
+DATA_WARNING_TAIL = ("FPL usually finalizes it the morning after the last "
+                     "match; re-run gaffer advise after that")
+
+
+def data_warning(upcoming: int | None, through: int | None) -> str | None:
+    """The one warning string, shared by the CLI, the report and the API.
+
+    ``None`` when the model has results for every gameweek before ``upcoming``
+    — including the start of the season, when there is nothing to be missing.
+    """
+    if upcoming is None or upcoming <= 1:
+        return None
+    last_played = upcoming - 1
+    if through is not None and through >= last_played:
+        return None
+    start = (through or 0) + 1
+    span = f"GW{start}" if start >= last_played \
+        else f"GW{start}-GW{last_played}"
+    return f"model has no data for {span} — {DATA_WARNING_TAIL}"
+
+
 def load_advice(gw: int) -> dict:
     """The advice payload ``run_advise`` wrote for ``gw``."""
     path = REPORTS / f"gw{gw}-advice.json"
