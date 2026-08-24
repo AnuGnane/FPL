@@ -63,3 +63,21 @@ def test_rolling_spans_season_boundary():
     new_season = out.loc[
         (out.season_idx == 1) & (out.gw == 1), "total_points_r3"].iloc[0]
     assert new_season == (3 + 9) / 2  # last season's form carries over
+
+
+def test_double_gameweek_fixtures_order_by_kickoff():
+    """Both of a DGW's fixtures share (code, season_idx, gw); without
+    kickoff_time in the sort the r1 window can see the later match."""
+    df = pd.DataFrame({
+        "code": [1, 1, 1],
+        "season_idx": [0, 0, 0],
+        "gw": [5, 6, 6],
+        "kickoff_time": ["2025-09-20T14:00:00Z", "2025-09-27T19:00:00Z",
+                         "2025-09-24T14:00:00Z"],
+        "total_points": [2.0, 9.0, 5.0],
+    })
+    out = add_player_rolling(df, stats=["total_points"], windows=[1])
+    by_kick = out.set_index("kickoff_time")["total_points_r1"]
+    # Earlier DGW match sees GW5; the later one sees the earlier DGW match.
+    assert by_kick["2025-09-24T14:00:00Z"] == 2.0
+    assert by_kick["2025-09-27T19:00:00Z"] == 5.0

@@ -23,7 +23,12 @@ def add_player_rolling(df: pd.DataFrame, stats: list[str] = ROLL_STATS,
     features. NaNs inside a window (missing stat / future rows) are skipped
     by ``mean()``.
     """
-    df = df.sort_values(["code", "season_idx", "gw"]).reset_index(drop=True)
+    # kickoff_time breaks the tie between a double gameweek's two fixtures,
+    # which otherwise share (code, season_idx, gw) and order arbitrarily.
+    sort_cols = ["code", "season_idx", "gw"]
+    if "kickoff_time" in df.columns:
+        sort_cols.append("kickoff_time")
+    df = df.sort_values(sort_cols).reset_index(drop=True)
     missing = [s for s in stats if s not in df.columns]
     if missing:
         df = df.assign(**{s: float("nan") for s in missing})
