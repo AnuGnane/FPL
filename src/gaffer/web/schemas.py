@@ -78,3 +78,49 @@ class WhatIfResult(BaseModel):
     transfers_changed: bool
     captain_changed: bool
     verdict: str
+
+
+class StandingRow(BaseModel):
+    entry: int
+    name: str
+    player_name: str
+    rank: int
+    total: int
+    event_total: int
+    is_you: bool
+
+
+class GwPoint(BaseModel):
+    gw: int
+    points: int
+    total: int
+
+
+class Trajectory(BaseModel):
+    entry: int
+    name: str
+    points: list[GwPoint]
+
+
+class GapPoint(BaseModel):
+    gw: int
+    gap: int
+    """Your total minus the leader's, negative when you are behind."""
+
+
+class WinProb(BaseModel):
+    name: str
+    total: int
+    p_win: float
+
+
+class LeagueRace(BaseModel):
+    league_id: int
+    entry_id: int
+    standings: list[StandingRow]
+    trajectory: list[Trajectory]
+    gap: list[GapPoint]
+    win_probability: list[WinProb]
+    lam: float
+    stance: str
+    lam_explained: str

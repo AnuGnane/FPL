@@ -64,3 +64,19 @@ def win_probability(my_total: int, their_total: int, weeks_left: int) -> float:
         return 1.0 if my_total >= their_total else 0.0
     z = (my_total - their_total) / (SIGMA * math.sqrt(2 * weeks_left))
     return 0.5 * (1 + math.erf(z / math.sqrt(2)))
+
+
+def explain_lam(strategy: Strategy) -> str:
+    """The tilt in a sentence, for the League Race panel (spec §3.3)."""
+    if strategy.stance == "chase":
+        return (f"λ {strategy.lam:+.2f}: you are {strategy.gap} points behind "
+                f"{strategy.rival_name} with {strategy.weeks_left} gameweeks "
+                f"left, so the optimizer favours differentials — players your "
+                f"rivals do not own.")
+    if strategy.stance == "defend":
+        return (f"λ {strategy.lam:+.2f}: you are {strategy.gap} points ahead "
+                f"of {strategy.rival_name} with {strategy.weeks_left} "
+                f"gameweeks left, so the optimizer leans to mirror rival "
+                f"ownership and protect the lead.")
+    return (f"λ 0.00: the gap to {strategy.rival_name} is inside the noise, "
+            f"so there is no tilt at all — this is the plain points-max plan.")

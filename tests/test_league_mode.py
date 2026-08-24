@@ -96,3 +96,18 @@ def test_zero_lambda_reproduces_v1_solution():
     assert same.captain == base.captain
     assert sorted(same.buys) == sorted(base.buys)
     assert sorted(same.sells) == sorted(base.sells)
+
+
+def test_explain_lam_puts_the_tilt_in_words():
+    from gaffer.league_mode import Strategy, explain_lam
+
+    chase = explain_lam(Strategy(0.4, 84, 30, "chase", "Ten Hag Hive"))
+    assert "84 points behind Ten Hag Hive" in chase
+    assert "differentials" in chase
+
+    defend = explain_lam(Strategy(-0.3, 40, 12, "defend", "Ten Hag Hive"))
+    assert "40 points ahead of Ten Hag Hive" in defend
+    assert "mirror" in defend
+
+    level = explain_lam(Strategy(0.0, 3, 30, "neutral", "Ten Hag Hive"))
+    assert "points-max" in level
