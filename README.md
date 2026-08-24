@@ -3,7 +3,7 @@
 An advisor-only Fantasy Premier League tool. It predicts player points with
 per-component LightGBM models, plans transfers over a multi-gameweek horizon
 with a MILP (PuLP modelling, HiGHS solver with a CBC fallback), and writes an
-HTML report.
+HTML report. `gaffer ui` serves the same advice as a local web app.
 
 It never logs into FPL and never makes transfers. It reads public FPL endpoints
 only; you apply its advice yourself in the official app.
@@ -55,6 +55,7 @@ to `logs/advise.log`.
 | `gaffer league` | Mini-league standings and rival ownership for `fpl.league_id`. |
 | `gaffer live` | In-gameweek tracker: your live points and the projected league table while matches are on. |
 | `gaffer backtest [--season 2025-26] [--start-gw 5] [--horizon N] [--chips]` | Replay a past season following the tool's own advice. |
+| `gaffer ui [--port N] [--no-open-browser]` | Serve the local web UI on 127.0.0.1:8927. |
 
 ## Configuration
 
@@ -153,10 +154,13 @@ your browser. `--port N` moves it; `--no-open-browser` leaves the browser
 alone. It binds the loopback interface only and has no login — that is the
 whole security model, so do not put it behind a public proxy.
 
-Seven pages: **This Week** (the recommendation, with a pitch view and a
-re-run button), **What-If Lab** (lock, ban or force in players and re-solve
-the real MILP), **League Race** (standings, trajectory, win probability and
-what λ is doing), **Live** (in-gameweek points, auto-refreshing), **Players**
+Seven pages: **This Week** (the recommendation, with a pitch view, the chip
+planner's best week for each unused chip, and a re-run button), **What-If
+Lab** (lock, ban or force in players, cap the hits, and re-solve the real
+MILP against the saved pool — the plan diff shows what changed), **League
+Race** (standings, trajectory, win probability and what λ is doing, with
+rival intel a click away: each rival's squad, overlap and differentials
+against yours), **Live** (in-gameweek points, auto-refreshing), **Players**
 (the candidate pool, with the "why 6.8?" breakdown behind every name),
 **History** (past runs, expected versus actual, price charts) and **Runs &
 Health** (data freshness, model metrics, the launchd log, re-run buttons).
@@ -232,6 +236,8 @@ makes the live season collide with the one you just archived.
 - `models/` — trained model files (gitignored)
 - `reports/` — `gw{N}-report.html` and `gw{N}-advice.json` (gitignored)
 - `logs/` — output from the launchd jobs (gitignored)
+- `frontend/` — React/Vite source for the web UI; built output lands in
+  `src/gaffer/web/static/` (gitignored, shipped in the wheel)
 
 ## Price changes
 
@@ -263,3 +269,5 @@ uv run pytest -q
 
 - Design spec: `docs/superpowers/specs/2026-08-23-fpl-ml-advisor-design.md`
 - Implementation plan: `docs/superpowers/plans/2026-08-23-fpl-ml-advisor.md`
+- v3 design spec: `docs/superpowers/specs/2026-08-24-gaffer-v3-ui-design.md`
+- v3 implementation plan: `docs/superpowers/plans/2026-08-24-gaffer-v3-ui.md`
