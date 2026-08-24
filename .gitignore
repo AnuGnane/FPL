@@ -15,3 +15,4 @@ src/gaffer/web/static/*
 !src/gaffer/web/static/.gitkeep
 frontend/node_modules/
 frontend/dist/
+frontend/tsconfig.tsbuildinfo

@@ -1,0 +1,28 @@
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
+import { describe, expect, it, vi } from 'vitest'
+import App from './App'
+
+vi.mock('./api/client', () => ({
+  ApiError: class extends Error {},
+  apiGet: vi.fn(async () => ({})),
+  apiPost: vi.fn(async () => ({ job_id: 'x' })),
+}))
+
+describe('app shell', () => {
+  it('lists the seven pages of layout A', () => {
+    render(<MemoryRouter><App /></MemoryRouter>)
+    for (const label of ['This Week', 'What-If Lab', 'League Race', 'Live',
+      'Players', 'History', 'Runs & Health']) {
+      expect(screen.getByRole('link', { name: label })).toBeInTheDocument()
+    }
+  })
+
+  it('navigates to the What-If Lab', async () => {
+    render(<MemoryRouter><App /></MemoryRouter>)
+    await userEvent.click(screen.getByRole('link', { name: 'What-If Lab' }))
+    expect(await screen.findByRole('heading', { name: /what-if lab/i }))
+      .toBeInTheDocument()
+  })
+})
