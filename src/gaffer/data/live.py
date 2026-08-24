@@ -108,6 +108,40 @@ def history_to_rows(
     return rows
 
 
+def _carry_setpiece_orders(df: pd.DataFrame,
+                           players: pd.DataFrame) -> pd.DataFrame:
+    """Set-piece orders that accumulate instead of being retro-stamped.
+
+    Element summaries carry no set-piece info, and the bootstrap reports only
+    *today's* assignment. ``refresh_live`` rebuilds the whole parquet on every
+    run, so stamping the current orders onto every row would rewrite history
+    each week — a player who lost the penalties in GW12 would look as though
+    he never took them, and the promised accumulation of snapshots would never
+    happen.
+
+    So: a (element, gw) pair the stored parquet already holds keeps whatever
+    was recorded for it then, and only rows for a gameweek the parquet has
+    never seen get today's bootstrap orders.
+    """
+    prev = (store.load("live/player_gw.parquet")
+            if store.exists("live/player_gw.parquet") else None)
+    seen_gws = set() if prev is None else set(prev["gw"].dropna())
+    fresh = ~df["gw"].isin(seen_gws)
+    for col in SET_PIECE_COLS:
+        by_element = dict(zip(players["element"], players[col]))
+        today = pd.to_numeric(df["element"].map(by_element), errors="coerce")
+        if prev is None or col not in prev.columns:
+            df[col] = today
+            continue
+        stored = dict(zip(zip(prev["element"], prev["gw"]), prev[col]))
+        kept = pd.to_numeric(
+            pd.Series(list(zip(df["element"], df["gw"])),
+                      index=df.index).map(stored),
+            errors="coerce")
+        df[col] = kept.where(~fresh, today)
+    return df
+
+
 def refresh_live(
     client: FPLClient,
     season: str,
@@ -140,12 +174,7 @@ def refresh_live(
         )
         time.sleep(sleep_s)  # politeness: ~600 calls
     df = pd.DataFrame(all_rows, columns=CANONICAL_COLS)
-    # Element summaries carry no set-piece info: stamp each row with the order
-    # the bootstrap reports right now, so accumulating snapshots record who was
-    # actually on set pieces at the time rather than only today's assignment.
-    for col in SET_PIECE_COLS:
-        by_element = dict(zip(players["element"], players[col]))
-        df[col] = pd.to_numeric(df["element"].map(by_element), errors="coerce")
     df = df[~df["gw"].isin(unchecked)]
+    df = _carry_setpiece_orders(df, players)
     store.save(df, "live/player_gw.parquet")
     return df

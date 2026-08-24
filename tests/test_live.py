@@ -113,3 +113,34 @@ def test_refresh_live_snapshots_set_piece_orders(tmp_path, monkeypatch):
     assert r["penalties_order"] == 1
     assert pd.isna(r["direct_freekicks_order"])
     assert r["corners_and_indirect_freekicks_order"] == 2
+
+
+def test_refresh_live_keeps_stored_orders_for_gws_it_already_has(
+        tmp_path, monkeypatch):
+    """Set-piece duty accumulates. A player who loses the penalties in GW2
+    must not have GW1 rewritten to say he never took them."""
+    import copy
+
+    monkeypatch.setattr(store, "DATA_DIR", tmp_path)
+
+    class Week1(FakeClient):
+        pass
+
+    refresh_live(Week1(), season="2026-27", season_idx=4, sleep_s=0)
+
+    class Week2(FakeClient):
+        BOOTSTRAP = copy.deepcopy(FakeClient.BOOTSTRAP)
+        BOOTSTRAP["events"] = [{"id": 1, "data_checked": True},
+                               {"id": 2, "data_checked": True}]
+        BOOTSTRAP["elements"][0]["penalties_order"] = 3
+        BOOTSTRAP["elements"][0]["corners_and_indirect_freekicks_order"] = None
+
+    df = refresh_live(Week2(), season="2026-27", season_idx=4, sleep_s=0)
+    by_gw = df.set_index("gw")
+
+    # GW1 was already stored: it keeps the order that was in force then.
+    assert by_gw.loc[1, "penalties_order"] == 1
+    assert by_gw.loc[1, "corners_and_indirect_freekicks_order"] == 2
+    # GW2 is new, so it carries today's bootstrap.
+    assert by_gw.loc[2, "penalties_order"] == 3
+    assert pd.isna(by_gw.loc[2, "corners_and_indirect_freekicks_order"])
