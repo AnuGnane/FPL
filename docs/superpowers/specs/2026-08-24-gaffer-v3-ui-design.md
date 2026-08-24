@@ -248,3 +248,34 @@ scale: stale-λ wording vs live standings on League Race, per-entry FPL fan-out
 on `/api/league/race` (sequential, uncached), job-registry eviction, and an
 "unlimited" max-hits option in the What-If panel (the UI documents the 0-cap
 default instead).
+
+## 8. v3.1 fix cycle (2026-08-25)
+
+Triggered by first real-world use. Root causes found and fixed (12 commits,
+379 Python + 53 frontend tests):
+
+1. Empty pitch — advice entries lacked `position`; now emitted by `advise`
+   and backfilled by the router for old artifacts.
+2. **Future-row feature collapse (critical)** — `build_prediction_frame` let
+   rolling windows slide over appended NaN future rows, so GW+2/+3 recency
+   features went missing and p_play collapsed (pool mean 0.41→0.27→0.26;
+   Haaland 0.17 at GW+3). Fixed: as-of-today form vector broadcast onto every
+   future row; fixture context still varies. Post-fix replay (2025/26,
+   GW5–38, chips off): h1 54.65/GW bit-identical; h3 53.44/GW with 19 hits —
+   **the old h3 "11 hits" advantage was an artifact of the bug** (depressed
+   future EPs suppressed transfers). h1 vs h3 statistically indistinguishable
+   (t=-0.51). Horizon default stays 3 for the product features that need the
+   window; the gate-C hit-count rationale is withdrawn.
+3. Chip timing bias — chips were scored inside the decayed objective
+   (later week ≡ ×0.85^t) and wildcards credited only truncated horizon
+   weeks. Now evaluated undecayed with per-week wildcard normalization;
+   UI states the window. Follow-ups: per-week wildcard threshold; free-hit
+   conservatism (undecayed baseline lowered FH gains).
+4. Data-gap visibility — advise before FPL marks a GW data_checked left the
+   model blind to it with no indication. Now surfaced in CLI warning, Advice
+   fields, /api staleness + health, and a distinct UI banner.
+5. Rotation-aware minutes model (gate ACCEPTED) — new leak-safe features
+   season_start_share / days_since_last_start / sub_streak. Holdout: p_play
+   log-loss 0.2770→0.2732, p60 0.2603→0.2563 (t≈-3.3, replicated on two more
+   windows); downstream moves within noise. season_start_share ranks 2nd of
+   13 by splits, displacing starts_r1/r3/r5. Models retrained.
