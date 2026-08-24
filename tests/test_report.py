@@ -44,3 +44,19 @@ def test_render_report_handles_real_payload(tmp_path):
     verdict = "recommended" if advice.wildcard_now["recommend"] else "not recommended"
     assert f"<strong>{verdict}</strong>" in html
     assert "conservative lower bound" in html
+
+
+def test_model_health_hides_plan_comparison_when_unknown(tmp_path):
+    """advice_pts/actual_pts are not computed yet; the line must stay out of
+    the report rather than rendering "advice plan None vs your actual None"."""
+    health = {"gw": 2, "mae_starters": 1.4, "captain_actual": 9,
+              "advice_pts": None, "actual_pts": None}
+    html = render_report(_advice(), out_dir=tmp_path,
+                         model_health=health).read_text()
+    assert "MAE (starters) 1.4" in html
+    assert "advice plan" not in html.lower()
+
+    health = {**health, "advice_pts": 60.0, "actual_pts": 58}
+    html = render_report(_advice(), out_dir=tmp_path,
+                         model_health=health).read_text()
+    assert "Advice plan 60.0 vs your actual 58" in html

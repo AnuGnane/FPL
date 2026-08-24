@@ -74,7 +74,9 @@
 
 {% if health %}<h2>Model health</h2>
 <p>Last GW: MAE (starters) {{ health.mae_starters }} ·
-   captain pick scored {{ health.captain_actual }} pts ·
-   advice plan {{ health.advice_pts }} vs your actual {{ health.actual_pts }}</p>
+   captain pick scored {{ health.captain_actual }} pts</p>
+{% if health.get("advice_pts") is not none and health.get("actual_pts") is not none %}
+<p>Advice plan {{ health.advice_pts }} vs your actual {{ health.actual_pts }}</p>
+{% endif %}
 {% endif %}
 </body></html>
