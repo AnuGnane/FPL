@@ -18,6 +18,7 @@ class Config:
     hit_cost: int = 4
     train_seasons: list[str] = field(default_factory=list)
     current_season: str = "2026-27"
+    odds_api_key: str = ""
 
 
 def load_config(path: Path | str = "config.toml") -> Config:
@@ -27,4 +28,7 @@ def load_config(path: Path | str = "config.toml") -> Config:
         league_id=raw["fpl"]["league_id"],
         **raw.get("optimizer", {}),
         **raw.get("data", {}),
+        # Read explicitly rather than splatted: [odds] is optional and its
+        # TOML key does not match the dataclass field name.
+        odds_api_key=raw.get("odds", {}).get("api_key", ""),
     )
