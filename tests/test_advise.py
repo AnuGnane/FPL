@@ -188,3 +188,61 @@ def test_run_advise_only_tags_buys_when_league_ownership_is_known():
 
     src = inspect.getsource(run_advise)
     assert "strat is not None and bool(league_eo)" in src
+
+
+# --- the tilt stays inside squad selection ---------------------------------
+#
+# Spec invariant: tilt shapes *which players are picked*. Anything printed,
+# and anything compared against a raw-points threshold, has to be real
+# expected points — otherwise a chasing lambda inflates a chip's apparent
+# gain past 8.0 and burns a wildcard on nothing.
+
+
+def test_raw_xi_pts_sums_untilted_ep_over_the_chosen_xi():
+    from gaffer.advise import raw_xi_pts
+    from gaffer.optimize.milp import GwPlan
+
+    ep_by = {(1, 7): 5.0, (2, 7): 3.5, (3, 7): 1.0, (1, 8): 99.0}
+    plan = GwPlan(gw=7, squad=[1, 2, 3], xi=[1, 2], xi_rows=[], bench=[3],
+                  captain=1, vice=2, buys=[], sells=[], hits=0,
+                  expected_pts=123.0)          # the tilted MILP objective
+    # XI only, this gameweek only, and nothing from the tilted objective.
+    assert raw_xi_pts(plan, ep_by) == 8.5
+    # A player with no fixture this week contributes nothing rather than
+    # raising KeyError.
+    assert raw_xi_pts(GwPlan(gw=9, squad=[1], xi=[1], xi_rows=[], bench=[],
+                             captain=1, vice=1, buys=[], sells=[], hits=0,
+                             expected_pts=4.0), ep_by) == 0.0
+
+
+def test_run_advise_scores_chips_on_an_untilted_pool():
+    """Source-level seam (no cheap end-to-end harness for run_advise).
+
+    evaluate_chips and wildcard_now_assessment compare objective deltas
+    against raw-point thresholds (8.0 / 4.0), so they must be handed a pool
+    built from ``ep_by``, not ``pool_ep``, and a base solved on it."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    # A second, untilted pool exists and is what the chip block consumes.
+    assert "build_pool(players, ep_by, my_picks, gws)" in src
+    chips = src.index("chip_table = evaluate_chips(")
+    assert "chip_pool" in src[chips:src.index("\n", chips)]
+    wc = src.index("wildcard_now_assessment(")
+    assert "chip_pool" in src[wc:src.index("\n", wc)]
+    # ... and neither is scored against the tilted plan.
+    assert "base=chip_base" in src[chips:]
+
+
+def test_run_advise_reports_raw_xi_points_not_the_tilted_objective():
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    assert "expected_pts=round(raw_xi_pts(first, ep_by), 2)" in src
+    assert 'raw_xi_pts(p, ep_by)' in src
+    assert "first.expected_pts" not in src
+    assert "p.expected_pts" not in src

@@ -332,6 +332,21 @@ def transfer_tag(eo_pct: float | None, has_strategy: bool) -> str:
     return "cover" if eo >= TEMPLATE_EO else ""
 
 
+def raw_xi_pts(gw_plan, ep_by: dict) -> float:
+    """Real expected points of a solved gameweek's XI.
+
+    ``GwPlan.expected_pts`` is the MILP's own objective, and under a non-zero
+    league tilt that objective is measured in tilted units — a number that
+    would be a lie on a printed xPts column. The squad it chose is still the
+    squad; re-summing the untilted ``ep_by`` over that XI is what the manager
+    should actually expect. A player with no fixture this gameweek is simply
+    absent from ``ep_by`` and contributes nothing, exactly as ``build_pool``
+    already treats them.
+    """
+    return sum(float(ep_by.get((int(c), int(gw_plan.gw)), 0.0))
+               for c in gw_plan.xi)
+
+
 def _named(codes: list[int], name_of: dict, ep_by: dict, gw: int) -> list[dict]:
     return [{"code": int(c), "name": name_of.get(c, str(c)),
              "ep": round(float(ep_by.get((c, gw), 0.0)), 2)} for c in codes]
@@ -464,6 +479,21 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     plan = solve_plan(pool, state, **opt_kw)
     first = plan.gw_plans[0]
 
+    # Chips are priced in *raw* points: evaluate_chips and
+    # wildcard_now_assessment return objective deltas, and those deltas are
+    # compared against fixed point thresholds (8.0 to play a chip, 4.0 to
+    # recommend a wildcard). A chasing lambda scales the whole objective up,
+    # so scoring chips on the tilted pool would inflate every gain and could
+    # burn a wildcard on a differential shuffle worth nothing. When lam is 0
+    # the tilt is an exact passthrough and the main plan *is* the raw base —
+    # no second solve, and the payload is byte-identical to v1.
+    lam = strat.lam if strat is not None else 0.0
+    if lam:
+        chip_pool = build_pool(players, ep_by, my_picks, gws)
+        chip_base = solve_plan(chip_pool, state, **opt_kw)
+    else:
+        chip_pool, chip_base = pool, plan
+
     # Chips are a weekly question only. At GW1 nothing has been played, no
     # chip history exists to read, and playing one on the squad you are still
     # assembling is not a decision worth costing — so skip the whole block.
@@ -477,7 +507,7 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         avail_by_gw = {g: chips_available_for(my.chips_by_gw, g) for g in gws}
         # `plan` is the no-chip baseline every chip is scored against; pass it
         # in rather than letting each helper re-solve the same MILP.
-        chip_table = evaluate_chips(pool, state, base=plan,
+        chip_table = evaluate_chips(chip_pool, state, base=chip_base,
                                     avail_by_gw=avail_by_gw, **opt_kw)
         chip_rows = chip_table.to_dict("records")
         for row in chip_rows:
@@ -485,7 +515,8 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
                 row["note"] = "conservative lower bound"
         # "Should I wildcard right now?" is only a question if the wildcard is
         # still available in this half of the season.
-        wc_now = (wildcard_now_assessment(pool, state, base=plan, **opt_kw)
+        wc_now = (wildcard_now_assessment(chip_pool, state, base=chip_base,
+                                          **opt_kw)
                   if "wildcard" in chip_names else None)
 
     ep_gw1 = ep_named[ep_named["gw"] == gw]
@@ -533,11 +564,11 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         alternatives=alts.to_dict("records"),
         threats=threats.to_dict("records"),
         price_alerts=alerts.to_dict("records"),
-        expected_pts=round(float(first.expected_pts), 2),
+        expected_pts=round(raw_xi_pts(first, ep_by), 2),
         plan_by_gw=[{"gw": p.gw, "hits": p.hits,
                      "buys": _named(p.buys, name_of, ep_by, p.gw),
                      "sells": _named(p.sells, name_of, ep_by, p.gw),
-                     "expected_pts": round(float(p.expected_pts), 2)}
+                     "expected_pts": round(raw_xi_pts(p, ep_by), 2)}
                     for p in plan.gw_plans],
         strategy=strategy,
         win_probs=win_probs,
