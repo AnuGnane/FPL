@@ -17,7 +17,10 @@ TEAM_ROLL_STATS = ["gf", "ga", "cs"]
 TEAM_WINDOWS = (5, 10, 38)
 
 TEAM_FEATURES = ["elo_diff", "home", "team_gf_r5", "team_ga_r5", "team_cs_r10",
-                 "team_gf_r38", "team_ga_r38"]
+                 "team_gf_r38", "team_ga_r38",
+                 "odds_e_goals_for", "odds_e_goals_against"]
+
+ODDS_COLS = ["odds_e_goals_for", "odds_e_goals_against"]
 
 
 def build_team_gw(fixtures: pd.DataFrame) -> pd.DataFrame:
@@ -83,7 +86,27 @@ class TeamModel:
         self.cs_clf = LGBMClassifier(**LGB_KW)
         self.gc_reg = LGBMRegressor(**LGB_KW)
 
+    @staticmethod
+    def _with_odds(tg: pd.DataFrame) -> pd.DataFrame:
+        """Guarantee the odds columns exist, as NaN when absent.
+
+        Bookmaker odds only cover upcoming fixtures, so history frames and
+        any caller predating Task 8 arrive without these columns. Filling
+        them here — the one point every fit and predict passes through —
+        keeps LightGBM's feature schema identical on both sides, rather
+        than letting ``fit``'s intersect silently drop a feature ``predict``
+        would then supply. The caller's frame is never mutated.
+        """
+        missing = [c for c in ODDS_COLS if c not in tg.columns]
+        if not missing:
+            return tg
+        tg = tg.copy()
+        for col in missing:
+            tg[col] = float("nan")
+        return tg
+
     def fit(self, tg: pd.DataFrame) -> "TeamModel":
+        tg = self._with_odds(tg)
         # Rolling columns are absent on early frames / callers that skip
         # add_team_rolling; intersect rather than KeyError.
         cols = [c for c in self.feature_cols if c in tg.columns]
@@ -95,6 +118,7 @@ class TeamModel:
     def predict(self, tg: pd.DataFrame) -> pd.DataFrame:
         """One row per input row: code, season_idx, gw, p_cs, e_gc."""
         out = tg[["code", "season_idx", "gw"]].copy()
+        tg = self._with_odds(tg)
         out["p_cs"] = self.cs_clf.predict_proba(tg[self.cols_])[:, 1]
         out["e_gc"] = self.gc_reg.predict(tg[self.cols_]).clip(0, None)
         return out

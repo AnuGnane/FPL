@@ -12,8 +12,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
+import pandas as pd
 
 from gaffer.data import store
+from gaffer.errors import GafferError
 
 BASE = "https://api.the-odds-api.com/v4"
 
@@ -113,3 +115,177 @@ def invert_odds(p_home: float, p_draw: float, p_away: float,
             if err < best_err:
                 best_err, best = err, (mh, ma)
     return best
+
+
+# The Odds API uses long official club names; the FPL bootstrap uses short
+# ones. Season-agnostic on purpose: recently-relegated clubs stay in the table
+# so a promotion does not need a code change. Keys that already match an FPL
+# name are listed too, so a bookmaker that shortens a name still resolves.
+TEAM_ALIASES = {
+    "Arsenal": "Arsenal",
+    "Aston Villa": "Aston Villa",
+    "AFC Bournemouth": "Bournemouth",
+    "Bournemouth": "Bournemouth",
+    "Brentford": "Brentford",
+    "Brighton and Hove Albion": "Brighton",
+    "Brighton & Hove Albion": "Brighton",
+    "Brighton": "Brighton",
+    "Burnley": "Burnley",
+    "Chelsea": "Chelsea",
+    "Coventry City": "Coventry City",
+    "Coventry": "Coventry City",
+    "Crystal Palace": "Crystal Palace",
+    "Everton": "Everton",
+    "Fulham": "Fulham",
+    "Hull City": "Hull City",
+    "Hull": "Hull City",
+    "Ipswich Town": "Ipswich Town",
+    "Ipswich": "Ipswich Town",
+    "Leeds United": "Leeds",
+    "Leeds": "Leeds",
+    "Leicester City": "Leicester",
+    "Leicester": "Leicester",
+    "Liverpool": "Liverpool",
+    "Luton Town": "Luton",
+    "Luton": "Luton",
+    "Manchester City": "Man City",
+    "Manchester United": "Man Utd",
+    "Newcastle United": "Newcastle",
+    "Nottingham Forest": "Nott'm Forest",
+    "Sheffield United": "Sheffield Utd",
+    "Southampton": "Southampton",
+    "Sunderland": "Sunderland",
+    "Tottenham Hotspur": "Spurs",
+    "West Ham United": "West Ham",
+    "Wolverhampton Wanderers": "Wolves",
+    "Wolves": "Wolves",
+}
+
+# Every FPL-side name the table can produce, so an already-short name passed
+# in resolves to itself rather than falling through to the error.
+_FPL_NAMES = set(TEAM_ALIASES.values())
+
+NEUTRAL_P_OVER25 = 0.55
+"""Stand-in when a fixture carries no totals market at all — roughly the
+long-run EPL rate of 3+ goals, so the inversion leans on h2h alone."""
+
+
+def resolve_team(name: str) -> str:
+    """The Odds API club name -> FPL bootstrap name.
+
+    Raises :class:`GafferError` on an unknown name rather than guessing: a
+    silently mismatched club would attach one team's odds to another, which
+    is far worse than losing the odds signal for a week. ``run_advise``
+    catches this so the weekly run survives a bookmaker renaming a club.
+    """
+    if name in TEAM_ALIASES:
+        return TEAM_ALIASES[name]
+    if name in _FPL_NAMES:
+        return name
+    raise GafferError(
+        f"unknown team name from the odds feed: {name!r} — add it to "
+        "TEAM_ALIASES in gaffer/data/odds.py")
+
+
+ODDS_FRAME_COLS = ["team_code", "gw", "odds_e_goals_for",
+                   "odds_e_goals_against"]
+
+
+def _gw_windows(events: pd.DataFrame) -> list[tuple[pd.Timestamp, pd.Timestamp, int]]:
+    """[(start, end, gw)] half-open deadline windows, ordered by gw."""
+    ev = events[["gw", "deadline_time"]].copy()
+    ev["deadline_time"] = pd.to_datetime(ev["deadline_time"], utc=True,
+                                         format="mixed")
+    ev = ev.sort_values("gw").reset_index(drop=True)
+    starts = ev["deadline_time"].tolist()
+    ends = starts[1:] + [pd.Timestamp.max.tz_localize("UTC")]
+    return list(zip(starts, ends, ev["gw"].astype(int).tolist()))
+
+
+def _market(bookmaker: dict, key: str) -> dict | None:
+    for m in bookmaker.get("markets", []):
+        if m.get("key") == key:
+            return m
+    return None
+
+
+def _p_over25(bookmaker: dict) -> float:
+    """De-vigged P(3+ goals) from the totals market.
+
+    Prefers the 2.5 line; if the bookmaker only quotes other points (a 3.0
+    line on a lopsided fixture, say) the closest point is used, which biases
+    the total slightly but keeps the fixture. With no totals market at all,
+    ``NEUTRAL_P_OVER25``.
+    """
+    market = _market(bookmaker, "totals")
+    if market is None:
+        return NEUTRAL_P_OVER25
+    by_point: dict[float, dict[str, float]] = {}
+    for o in market.get("outcomes", []):
+        point, name = o.get("point"), str(o.get("name", "")).lower()
+        if point is None or name not in ("over", "under"):
+            continue
+        by_point.setdefault(float(point), {})[name] = float(o["price"])
+    pairs = {p: v for p, v in by_point.items() if {"over", "under"} <= set(v)}
+    if not pairs:
+        return NEUTRAL_P_OVER25
+    point = min(pairs, key=lambda p: (abs(p - 2.5), p))
+    return devig([pairs[point]["over"], pairs[point]["under"]])[0]
+
+
+def odds_frame(raw_odds: list, teams: pd.DataFrame,
+               events: pd.DataFrame) -> pd.DataFrame:
+    """Bookmaker odds -> ``[team_code, gw, odds_e_goals_for,
+    odds_e_goals_against]``, two rows per fixture.
+
+    The **first** bookmaker listed for a fixture is used — The Odds API
+    returns them in its own order and averaging across books with different
+    market coverage would mix vig structures.
+
+    h2h outcomes are matched by *name* (home team / away team / ``Draw``),
+    never by list position, and de-vigged before inversion; the Over/Under
+    pair is de-vigged separately (``invert_odds`` validates nothing). The
+    resulting (mu_h, mu_a) become goals-for/against on the home row and the
+    same pair swapped on the away row.
+
+    A fixture whose ``commence_time`` falls in no gameweek window
+    (``deadline_time <= commence_time`` < the next deadline) is skipped —
+    it belongs to no gameweek we can join on. So is a fixture missing its
+    h2h market. An unmapped club name raises :class:`GafferError`.
+    """
+    code_of = dict(zip(teams["name"], teams["code"]))
+    windows = _gw_windows(events)
+    rows = []
+    for fixture in raw_odds or []:
+        books = fixture.get("bookmakers") or []
+        if not books:
+            continue
+        home_raw, away_raw = fixture["home_team"], fixture["away_team"]
+        home, away = resolve_team(home_raw), resolve_team(away_raw)
+        if home not in code_of or away not in code_of:
+            continue        # not a club in this season's bootstrap
+
+        kickoff = pd.to_datetime(fixture["commence_time"], utc=True,
+                                 format="mixed")
+        gw = next((g for start, end, g in windows if start <= kickoff < end),
+                  None)
+        if gw is None:
+            continue
+
+        h2h = _market(books[0], "h2h")
+        if h2h is None:
+            continue
+        prices = {str(o.get("name")): float(o["price"])
+                  for o in h2h.get("outcomes", [])}
+        try:
+            triple = [prices[home_raw], prices["Draw"], prices[away_raw]]
+        except KeyError:
+            continue        # incomplete h2h market
+        p_home, p_draw, p_away = devig(triple)
+        mu_h, mu_a = invert_odds(p_home, p_draw, p_away, _p_over25(books[0]))
+
+        rows.append({"team_code": code_of[home], "gw": gw,
+                     "odds_e_goals_for": mu_h, "odds_e_goals_against": mu_a})
+        rows.append({"team_code": code_of[away], "gw": gw,
+                     "odds_e_goals_for": mu_a, "odds_e_goals_against": mu_h})
+    return pd.DataFrame(rows, columns=ODDS_FRAME_COLS)

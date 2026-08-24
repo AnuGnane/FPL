@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
-from gaffer.models.team import build_team_gw, add_team_rolling, TeamModel
+from gaffer.models.team import (TEAM_FEATURES, TeamModel, add_team_rolling,
+                                build_team_gw)
 
 
 def test_build_team_gw_two_rows_per_fixture():
@@ -48,3 +49,64 @@ def test_add_team_rolling_is_leakage_safe():
     assert pd.isna(out.loc[1, "team_ga_r5"])
     assert out.loc[2, "team_ga_r5"] == 0.0
     assert out.loc[3, "team_ga_r5"] == 1.5
+
+
+def _odds_training_frame(with_odds_values: bool) -> pd.DataFrame:
+    rng = np.random.default_rng(7)
+    rows = []
+    for gw in range(1, 60):
+        strong_cs = int(rng.random() < 0.6)
+        weak_cs = int(rng.random() < 0.1)
+        rows.append({"code": 1, "season_idx": 0, "gw": gw, "home": 1.0,
+                     "cs": strong_cs, "ga": 0 if strong_cs else 1,
+                     "gf": 2, "elo_diff": 200.0,
+                     "team_gf_r5": 2.0, "team_ga_r5": 0.5,
+                     "team_cs_r10": 0.6, "team_gf_r38": 2.0,
+                     "team_ga_r38": 0.5})
+        rows.append({"code": 2, "season_idx": 0, "gw": gw, "home": 0.0,
+                     "cs": weak_cs, "ga": 0 if weak_cs else 2,
+                     "gf": 0, "elo_diff": -200.0,
+                     "team_gf_r5": 0.5, "team_ga_r5": 2.0,
+                     "team_cs_r10": 0.1, "team_gf_r38": 0.5,
+                     "team_ga_r38": 2.0})
+    df = pd.DataFrame(rows)
+    if with_odds_values:
+        df["odds_e_goals_for"] = np.where(df["code"] == 1, 2.0, 0.7)
+        df["odds_e_goals_against"] = np.where(df["code"] == 1, 0.6, 2.1)
+    else:
+        df["odds_e_goals_for"] = np.nan
+        df["odds_e_goals_against"] = np.nan
+    return df
+
+
+def test_team_model_fits_with_all_nan_odds_columns():
+    df = _odds_training_frame(with_odds_values=False)
+    m = TeamModel().fit(df[df.gw <= 45])
+    assert "odds_e_goals_for" in m.cols_
+    pred = m.predict(df[df.gw > 45])
+    assert len(pred) == len(df[df.gw > 45])
+    assert pred["p_cs"].between(0, 1).all()
+    assert pred["e_gc"].notna().all()
+
+
+def test_team_model_fits_with_populated_odds_columns():
+    df = _odds_training_frame(with_odds_values=True)
+    m = TeamModel().fit(df[df.gw <= 45])
+    pred = m.predict(df[df.gw > 45])
+    assert pred[pred.code == 1]["p_cs"].mean() > pred[pred.code == 2]["p_cs"].mean()
+    assert pred[pred.code == 2]["e_gc"].mean() > pred[pred.code == 1]["e_gc"].mean()
+
+
+def test_team_model_tolerates_missing_odds_columns_entirely():
+    """Training frames built before odds existed must still fit and predict."""
+    df = _odds_training_frame(with_odds_values=False).drop(
+        columns=["odds_e_goals_for", "odds_e_goals_against"])
+    m = TeamModel().fit(df[df.gw <= 45])
+    assert "odds_e_goals_for" in m.cols_          # guard supplied it as NaN
+    pred = m.predict(df[df.gw > 45])
+    assert pred["e_gc"].notna().all()
+    assert "odds_e_goals_for" not in df.columns   # caller's frame untouched
+
+
+def test_team_features_includes_odds_columns():
+    assert TEAM_FEATURES[-2:] == ["odds_e_goals_for", "odds_e_goals_against"]

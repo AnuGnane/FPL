@@ -2,12 +2,15 @@ import json
 from pathlib import Path
 
 import httpx
+import pandas as pd
 import pytest
 
 import gaffer.data.odds as odds_mod
 import gaffer.data.store as store
 from gaffer.config import load_config
-from gaffer.data.odds import OddsClient, devig, invert_odds
+from gaffer.data.odds import (OddsClient, devig, invert_odds, odds_frame,
+                              resolve_team)
+from gaffer.errors import GafferError
 
 SAMPLE_ODDS = [{
     "home_team": "Arsenal", "away_team": "Manchester City",
@@ -198,3 +201,129 @@ def test_invert_odds_is_deterministic():
     second = invert_odds(ph, pd_, pa, pover)
     assert first == second
     assert isinstance(first, tuple) and len(first) == 2
+
+
+# ---------------------------------------------------------------- odds_frame
+
+_TEAMS = pd.DataFrame([
+    {"team_id": 1, "code": 3, "name": "Arsenal", "short_name": "ARS"},
+    {"team_id": 2, "code": 43, "name": "Man City", "short_name": "MCI"},
+    {"team_id": 3, "code": 14, "name": "Liverpool", "short_name": "LIV"},
+])
+
+_EVENTS = pd.DataFrame([
+    {"gw": 1, "deadline_time": "2026-08-22T10:00:00Z"},
+    {"gw": 2, "deadline_time": "2026-08-29T10:00:00Z"},
+    {"gw": 3, "deadline_time": "2026-09-05T10:00:00Z"},
+])
+
+
+def test_resolve_team_aliases_and_identity():
+    assert resolve_team("Manchester City") == "Man City"
+    assert resolve_team("Tottenham Hotspur") == "Spurs"
+    assert resolve_team("Nottingham Forest") == "Nott'm Forest"
+    assert resolve_team("Brighton and Hove Albion") == "Brighton"
+    assert resolve_team("AFC Bournemouth") == "Bournemouth"
+    assert resolve_team("Coventry") == "Coventry City"
+    assert resolve_team("Hull") == "Hull City"
+    assert resolve_team("Leeds United") == "Leeds"
+    # already an FPL name -> identity
+    assert resolve_team("Arsenal") == "Arsenal"
+    assert resolve_team("Nott'm Forest") == "Nott'm Forest"
+
+
+def test_resolve_team_unknown_raises_naming_team():
+    with pytest.raises(GafferError) as exc:
+        resolve_team("Racing Club de Lens")
+    assert "Racing Club de Lens" in str(exc.value)
+
+
+def test_odds_frame_two_rows_per_fixture_favorite_scores_more():
+    df = odds_frame(SAMPLE_ODDS, _TEAMS, _EVENTS)
+    assert list(df.columns) == ["team_code", "gw", "odds_e_goals_for",
+                                "odds_e_goals_against"]
+    assert len(df) == 2
+    assert set(df["gw"]) == {2}          # 2026-08-29T14:00 -> GW2 window
+    home = df[df.team_code == 3].iloc[0]   # Arsenal, the favorite (2.4 v 2.9)
+    away = df[df.team_code == 43].iloc[0]
+    assert home["odds_e_goals_for"] > home["odds_e_goals_against"]
+    assert away["odds_e_goals_for"] == home["odds_e_goals_against"]
+    assert away["odds_e_goals_against"] == home["odds_e_goals_for"]
+    assert away["odds_e_goals_for"] < away["odds_e_goals_against"]
+
+
+def test_odds_frame_uses_first_bookmaker_only():
+    payload = [dict(SAMPLE_ODDS[0])]
+    second = {"key": "bk2", "markets": [
+        {"key": "h2h", "outcomes": [
+            {"name": "Arsenal", "price": 9.0},
+            {"name": "Manchester City", "price": 1.2},
+            {"name": "Draw", "price": 6.0}]}]}
+    payload[0]["bookmakers"] = SAMPLE_ODDS[0]["bookmakers"] + [second]
+    df = odds_frame(payload, _TEAMS, _EVENTS)
+    ref = odds_frame(SAMPLE_ODDS, _TEAMS, _EVENTS)
+    assert df["odds_e_goals_for"].tolist() == ref["odds_e_goals_for"].tolist()
+
+
+def test_odds_frame_skips_fixture_outside_all_deadline_windows():
+    early = [dict(SAMPLE_ODDS[0], commence_time="2026-08-01T14:00:00Z")]
+    assert odds_frame(early, _TEAMS, _EVENTS).empty
+    # ...but the columns still exist so a merge on an empty frame works
+    assert list(odds_frame(early, _TEAMS, _EVENTS).columns) == [
+        "team_code", "gw", "odds_e_goals_for", "odds_e_goals_against"]
+
+
+def test_odds_frame_unmapped_team_raises_gaffer_error():
+    bad = [dict(SAMPLE_ODDS[0], home_team="Racing Club de Lens")]
+    with pytest.raises(GafferError) as exc:
+        odds_frame(bad, _TEAMS, _EVENTS)
+    assert "Racing Club de Lens" in str(exc.value)
+
+
+def test_odds_frame_without_totals_market_uses_neutral_prior():
+    no_totals = [{
+        "home_team": "Arsenal", "away_team": "Liverpool",
+        "commence_time": "2026-08-29T14:00:00Z",
+        "bookmakers": [{"key": "bk1", "markets": [
+            {"key": "h2h", "outcomes": [
+                {"name": "Arsenal", "price": 2.4},
+                {"name": "Liverpool", "price": 2.9},
+                {"name": "Draw", "price": 3.4}]}]}]}]
+    df = odds_frame(no_totals, _TEAMS, _EVENTS)
+    assert len(df) == 2
+    assert df["odds_e_goals_for"].notna().all()
+
+
+def test_odds_frame_matches_h2h_outcomes_by_name_not_position():
+    shuffled = [{
+        "home_team": "Arsenal", "away_team": "Manchester City",
+        "commence_time": "2026-08-29T14:00:00Z",
+        "bookmakers": [{"key": "bk1", "markets": [
+            {"key": "h2h", "outcomes": [
+                {"name": "Draw", "price": 3.4},
+                {"name": "Manchester City", "price": 2.9},
+                {"name": "Arsenal", "price": 2.4}]},
+            {"key": "totals", "outcomes": [
+                {"name": "Under", "point": 2.5, "price": 1.9},
+                {"name": "Over", "point": 2.5, "price": 1.9}]}]}]}]
+    df = odds_frame(shuffled, _TEAMS, _EVENTS)
+    ref = odds_frame(SAMPLE_ODDS, _TEAMS, _EVENTS)
+    assert df["odds_e_goals_for"].tolist() == ref["odds_e_goals_for"].tolist()
+
+
+def test_run_advise_fetches_odds_before_building_the_team_future():
+    """No cheap end-to-end harness for run_advise (see test_assemble), so pin
+    the seam at the source level: odds are fetched first, guarded so a bad
+    feed cannot block advice, and merged onto tg_future afterwards."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    fetch = src.index("odds_frame(raw_odds, teams, events)")
+    build = src.index("tg_future = build_team_future(")
+    merge = src.index("tg_future.merge(")
+    assert fetch < build < merge
+    assert "if cfg.odds_api_key:" in src
+    assert "except Exception" in src
+    assert 'how="left"' in src

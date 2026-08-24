@@ -36,6 +36,7 @@ from gaffer.data.entry import fetch_my_team
 from gaffer.data.league import (effective_ownership, fetch_rival_entries,
                                 fetch_rival_picks)
 from gaffer.data.live import refresh_live
+from gaffer.data.odds import OddsClient, odds_frame
 from gaffer.features.engineer import build_prediction_frame, feature_columns
 from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
 from gaffer.models.components import card_penalty
@@ -293,7 +294,25 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     pred_frame = build_prediction_frame(hist_raw, future, elo=None,
                                         elo_final=elo_final)
     pred_frame = _rate_elo(pred_frame, elo_final, "team_elo")
+    # Bookmaker odds are a best-effort extra: a dead key, a renamed club or a
+    # rate limit must degrade the advice, never withhold it.
+    odds_df = None
+    if cfg.odds_api_key:
+        try:
+            raw_odds = OddsClient(cfg.odds_api_key).get_epl_odds()
+            if raw_odds:
+                odds_df = odds_frame(raw_odds, teams, events)
+        except Exception as e:  # noqa: BLE001 — odds must never block advice
+            print(f"odds unavailable, continuing without: {e}")
     tg_future = build_team_future(tg, future, gws, season_idx, elo_final)
+    if odds_df is not None and not odds_df.empty:
+        # build_team_future names the team column `code`; odds_frame uses
+        # `team_code`. Fixtures the feed did not cover land as NaN, which is
+        # exactly what the team model's odds guard trains against.
+        tg_future = tg_future.merge(
+            odds_df.drop_duplicates(subset=["team_code", "gw"]),
+            left_on=["code", "gw"], right_on=["team_code", "gw"], how="left",
+        ).drop(columns=["team_code"])
 
     comp = predict_components(pred_frame, tg_future, players)
     # Optional artifact: model directories trained before calibration existed
