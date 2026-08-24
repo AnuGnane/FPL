@@ -75,9 +75,13 @@ against a template player).</small></p>
 
 {% if not initial %}
 <h2>Chips</h2>
-<table><tr><th>Chip</th><th>GW</th><th>Expected gain</th><th></th></tr>
-{% for c in a.chip_table %}<tr><td>{{ c.chip }}</td><td>{{ c.gw }}</td><td>{{ "%.2f"|format(c.gain) }}</td><td>{{ c.note | default("") }}</td></tr>{% endfor %}
+<table><tr><th>Chip</th><th>GW</th><th>Expected gain</th><th>Per week</th><th></th></tr>
+{% for c in a.chip_table %}<tr><td>{{ c.chip }}</td><td>{{ c.gw }}</td><td>{{ "%.2f"|format(c.gain) }}</td><td>{% if c.per_week is defined %}{{ "%.2f"|format(c.per_week) }}{% endif %}</td><td>{{ c.note | default("") }}</td></tr>{% endfor %}
 </table>
+<p><small>Gains are expected points over the horizon, undiscounted. A wildcard is
+credited with every week from the one it is played, so compare wildcard weeks on
+<em>per week</em>: its total shrinks later in the window only because there is less
+horizon left to count.</small></p>
 {% if a.wildcard_now %}<p>Wildcard now: gain {{ a.wildcard_now.gain_over_horizon }} pts over horizon —
 <strong>{{ "recommended" if a.wildcard_now.recommend else "not recommended" }}</strong></p>
 {% else %}<p>Wildcard already played this half of the season.</p>{% endif %}

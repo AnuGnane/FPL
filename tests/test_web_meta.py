@@ -101,13 +101,15 @@ def test_chip_plan_scores_every_available_chip_week(client, monkeypatch):
     monkeypatch.setattr(
         "gaffer.web.routers.meta.evaluate_chips",
         lambda pool, state, **kw: pd.DataFrame(
-            [{"chip": "bboost", "gw": 3, "gain": 4.0},
-             {"chip": "bboost", "gw": 4, "gain": 9.5}]))
+            [{"chip": "bboost", "gw": 3, "gain": 4.0, "per_week": 4.0},
+             {"chip": "bboost", "gw": 4, "gain": 9.5, "per_week": 9.5}]))
     body = client.get("/api/chips/plan").json()
     assert body["gw"] == 3
     bb = body["chips"][0]
     assert bb["chip"] == "bboost" and bb["best_gw"] == 4
     assert bb["play_now_delta"] == -5.5
+    # the payload says how wide the window was, and prices it per week
+    assert bb["weeks_scored"] == 2 and bb["best_gain_per_week"] == 9.5
 
 
 def _full_squad_state(drop_owned: int | None = None):

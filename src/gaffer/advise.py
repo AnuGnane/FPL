@@ -51,7 +51,8 @@ from gaffer.models.persistence import load_model, model_exists
 from gaffer.models.team import (ODDS_AGAINST_COL, ODDS_BLEND_WEIGHT,
                                 add_team_rolling, blend_team_odds)
 from gaffer.models.train import load_training_frame
-from gaffer.optimize.chips import evaluate_chips, wildcard_now_assessment
+from gaffer.optimize.chips import (chip_baseline, evaluate_chips,
+                                   wildcard_now_assessment)
 from gaffer.optimize.differentials import (captain_table, threat_board,
                                            transfer_alternatives)
 from gaffer.optimize.milp import SolveInput, build_pool, solve_plan
@@ -522,14 +523,10 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     # recommend a wildcard). A chasing lambda scales the whole objective up,
     # so scoring chips on the tilted pool would inflate every gain and could
     # burn a wildcard on a differential shuffle worth nothing. When lam is 0
-    # the tilt is an exact passthrough and the main plan *is* the raw base —
-    # no second solve, and the payload is byte-identical to v1.
+    # the tilt is an exact passthrough, so the raw pool is the same pool.
     lam = strat.lam if strat is not None else 0.0
-    if lam and my is not None:      # no chip block at GW1, so no second solve
-        chip_pool = build_pool(players, ep_by, my_picks, gws)
-        chip_base = solve_plan(chip_pool, state, **opt_kw)
-    else:
-        chip_pool, chip_base = pool, plan
+    chip_pool = (build_pool(players, ep_by, my_picks, gws)
+                 if lam and my is not None else pool)
 
     # Hoisted out of the chip block below so the saved solve state records it
     # either way: at GW1 there is no chip history to read, and "no chips
@@ -547,8 +544,11 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         # past GW19 gets the fresh second-half set from GW20 on, whatever was
         # spent in the first half (and vice versa).
         avail_by_gw = {g: chips_available_for(my.chips_by_gw, g) for g in gws}
-        # `plan` is the no-chip baseline every chip is scored against; pass it
-        # in rather than letting each helper re-solve the same MILP.
+        # The no-chip baseline every chip is scored against. Solved here
+        # rather than reusing `plan` because chips are scored undecayed (the
+        # decay made every chip's best week the current one); solved once
+        # rather than inside each helper, which would repeat the same MILP.
+        chip_base = chip_baseline(chip_pool, state, **opt_kw)
         chip_table = evaluate_chips(chip_pool, state, base=chip_base,
                                     avail_by_gw=avail_by_gw, **opt_kw)
         chip_rows = chip_table.to_dict("records")

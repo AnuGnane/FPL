@@ -362,13 +362,16 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
         # applied. Everything the chip changes about *this* week is folded
         # into (plan, captain_mult, bench_boost); the free hit alone also
         # suspends the week's transfers, because its squad is borrowed.
+        #
+        # ``base`` is deliberately not reused here: chips are scored in an
+        # undecayed frame, so they need their own baseline (evaluate_chips
+        # solves one when it is not given one).
         chip, captain_mult, bench_boost, keep_squad = "", 2, False, False
         if chips and squad:
             avail = chips_available_for(played_by_gw, gw)
             if avail:
                 chip = _pick_chip(
-                    evaluate_chips(pool, state, avail, base=base, **opt_kw),
-                    gw)
+                    evaluate_chips(pool, state, avail, **opt_kw), gw)
         if chip == "wildcard":
             # Unlimited transfers, no hits (the MILP enforces both from
             # wildcard_gw); the new squad is permanent.

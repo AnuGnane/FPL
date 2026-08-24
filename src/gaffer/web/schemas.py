@@ -268,6 +268,9 @@ class PlayerExplain(BaseModel):
 class ChipWeek(BaseModel):
     gw: int
     gain: float
+    per_week: float
+    """``gain`` divided by the horizon weeks the chip is credited with — the
+    weeks from ``gw`` onwards for a wildcard, one for every other chip."""
 
 
 class ChipPlanRow(BaseModel):
@@ -275,6 +278,10 @@ class ChipPlanRow(BaseModel):
     weeks: list[ChipWeek]
     best_gw: int
     best_gain: float
+    best_gain_per_week: float
+    weeks_scored: int
+    """How many gameweeks were looked at, so the UI can say how far ahead
+    "best" reaches rather than implying the whole season."""
     now_gain: float | None
     play_now_delta: float | None
 
