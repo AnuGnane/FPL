@@ -25,3 +25,12 @@ def test_elo_pre_is_prematch_not_postmatch():
     elo = compute_elo(fixtures)
     gw2_home = elo[(elo.code == 2) & (elo.gw == 2)].iloc[0]
     assert gw2_home["elo_pre"] < 1500        # team 2 lost gw1 before this match
+
+
+def test_expected_score_favours_the_stronger_side_and_home_advantage():
+    from gaffer.data.elo import expected_score
+
+    assert abs(expected_score(1500, 1500, home=False) - 0.5) < 1e-9
+    assert expected_score(1500, 1500, home=True) > 0.5
+    assert expected_score(1700, 1400, home=True) > 0.85
+    assert 0.0 <= expected_score(1300, 1800, home=False) <= 1.0

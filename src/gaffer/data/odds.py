@@ -7,6 +7,7 @@ features as best-effort.
 from __future__ import annotations
 
 import json
+import math
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -296,3 +297,19 @@ def odds_frame(raw_odds: list, teams: pd.DataFrame,
                      "gw": gw,
                      "odds_e_goals_for": mu_a, "odds_e_goals_against": mu_h})
     return pd.DataFrame(rows, columns=ODDS_FRAME_COLS)
+
+
+def poisson_win_prob(mu_for: float, mu_against: float,
+                     max_goals: int = 10) -> float:
+    """P(win) under independent Poisson scorelines.
+
+    The same independence assumption :func:`invert_odds` used to recover the
+    two means, so the fixture ticker's difficulty and the clean-sheet blend
+    are telling the same story about the same fixture.
+    """
+    def pmf(mu: float, k: int) -> float:
+        return math.exp(-mu) * mu ** k / math.factorial(k)
+
+    home = [pmf(max(mu_for, 1e-9), k) for k in range(max_goals + 1)]
+    away = [pmf(max(mu_against, 1e-9), k) for k in range(max_goals + 1)]
+    return sum(home[h] * sum(away[:h]) for h in range(1, max_goals + 1))

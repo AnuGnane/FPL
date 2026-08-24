@@ -134,3 +134,30 @@ def wildcard_now_assessment(pool: pd.DataFrame, state: SolveInput,
     return {"gain_over_horizon": round(gain, 2),
             "wc_squad": wc.gw_plans[0].squad,
             "recommend": gain > WILDCARD_RECOMMEND_THRESHOLD}
+
+
+def chip_plan(table: pd.DataFrame, now_gw: int) -> list[dict]:
+    """Fold the chip x gameweek table into one row per chip (spec §3.7).
+
+    ``evaluate_chips`` already enumerates every playable chip in every
+    gameweek of the horizon, so nothing new is solved here — this only picks
+    the best week out and prices the impatience of playing on unlock, which
+    v2 §9 recorded as the standing weakness.
+
+    ``now_gain`` and ``play_now_delta`` are ``None`` when the chip is not
+    playable in ``now_gw`` at all; there is no "cost of playing now" for a
+    chip you cannot play now.
+    """
+    out = []
+    for chip, rows in table.groupby("chip", sort=False):
+        weeks = [{"gw": int(r.gw), "gain": float(r.gain)}
+                 for r in rows.sort_values("gw").itertuples()]
+        best = max(weeks, key=lambda w: w["gain"])
+        now = next((w["gain"] for w in weeks if w["gw"] == now_gw), None)
+        out.append({
+            "chip": str(chip), "weeks": weeks, "best_gw": best["gw"],
+            "best_gain": round(best["gain"], 2),
+            "now_gain": None if now is None else round(now, 2),
+            "play_now_delta": None if now is None
+            else round(now - best["gain"], 2)})
+    return sorted(out, key=lambda row: -row["best_gain"])

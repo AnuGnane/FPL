@@ -40,3 +40,14 @@ def compute_elo(fixtures: pd.DataFrame) -> pd.DataFrame:
         subset=["season_idx", "gw", "code"], keep="first")
     out.attrs["final"] = ratings
     return out
+
+
+def expected_score(own_elo: float, opp_elo: float, home: bool) -> float:
+    """Elo win expectation for one side of a fixture, in [0, 1].
+
+    The same logistic ``compute_elo`` updates against, home advantage
+    included. It is an *expected score* (a draw counts a half), not a win
+    probability — which is exactly what a fixture-difficulty cell wants.
+    """
+    edge = (own_elo + (HOME_ADV if home else 0.0)) - opp_elo
+    return 1.0 / (1.0 + 10 ** (-edge / 400.0))

@@ -472,3 +472,13 @@ def test_run_advise_degrades_when_the_odds_frame_will_not_merge():
     tail = src[merge:merge + 400]
     assert "except Exception" in tail
     assert "odds unusable" in tail
+
+
+def test_poisson_win_prob_is_a_probability_that_tracks_the_supremacy():
+    from gaffer.data.odds import poisson_win_prob
+
+    even = poisson_win_prob(1.4, 1.4)
+    assert 0.3 < even < 0.45                  # draws take the rest
+    assert poisson_win_prob(2.5, 0.7) > even
+    assert poisson_win_prob(0.7, 2.5) < even
+    assert 0.0 <= poisson_win_prob(0.0, 3.0) <= 1.0

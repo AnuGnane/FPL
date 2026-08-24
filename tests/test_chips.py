@@ -126,3 +126,33 @@ def test_flat_chips_available_path_is_unchanged():
     mapped = evaluate_chips(pool, state,
                             avail_by_gw={g: list(chips) for g in gws}, **CFG)
     pd.testing.assert_frame_equal(flat, mapped)
+
+
+def test_chip_plan_highlights_the_best_week_and_the_cost_of_playing_now():
+    import pandas as pd
+
+    from gaffer.optimize.chips import chip_plan
+
+    table = pd.DataFrame([
+        {"chip": "bboost", "gw": 3, "gain": 4.0},
+        {"chip": "bboost", "gw": 5, "gain": 9.5},
+        {"chip": "3xc", "gw": 3, "gain": 6.0},
+    ])
+    plan = {row["chip"]: row for row in chip_plan(table, now_gw=3)}
+    bb = plan["bboost"]
+    assert bb["best_gw"] == 5 and bb["best_gain"] == 9.5
+    assert bb["now_gain"] == 4.0
+    assert bb["play_now_delta"] == -5.5      # playing now costs 5.5
+    assert [w["gw"] for w in bb["weeks"]] == [3, 5]
+    tc = plan["3xc"]
+    assert tc["best_gw"] == 3 and tc["play_now_delta"] == 0.0
+
+
+def test_chip_plan_handles_a_chip_with_no_week_in_the_window():
+    import pandas as pd
+
+    from gaffer.optimize.chips import chip_plan
+
+    table = pd.DataFrame([{"chip": "wildcard", "gw": 7, "gain": 2.0}])
+    row = chip_plan(table, now_gw=3)[0]
+    assert row["now_gain"] is None and row["play_now_delta"] is None
