@@ -37,7 +37,7 @@ from gaffer.data.league import (effective_ownership, fetch_rival_entries,
                                 fetch_rival_picks)
 from gaffer.data.live import refresh_live
 from gaffer.features.engineer import build_prediction_frame, feature_columns
-from gaffer.models.assemble import assemble_ep, ep_matrix
+from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
 from gaffer.models.components import card_penalty
 from gaffer.models.minutes import apply_availability
 from gaffer.models.persistence import load_model, model_exists
@@ -287,7 +287,11 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     tg_future = build_team_future(tg, future, gws, season_idx, elo_final)
 
     comp = predict_components(pred_frame, tg_future, players)
-    ep = ep_matrix(assemble_ep(comp, scoring_table(raw)))
+    # Optional artifact: model directories trained before calibration existed
+    # have no such file, and None means the identity map.
+    cal = load_model("calibration") if model_exists("calibration") else None
+    ep = ep_matrix(apply_calibration(assemble_ep(comp, scoring_table(raw)),
+                                     cal))
     ep_named = ep.merge(players[["code", "name", "position"]], on="code",
                         how="left")
     store.save(ep_named[ep_named["gw"] == gw], f"live/predictions/gw{gw}.parquet")

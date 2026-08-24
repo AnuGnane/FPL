@@ -1,8 +1,14 @@
+import inspect
 import math
 
 import pandas as pd
+from sklearn.isotonic import IsotonicRegression
 
-from gaffer.models.assemble import assemble_ep, ep_matrix, p_haul
+from gaffer.advise import run_advise
+from gaffer.backtest import run_backtest
+from gaffer.models.assemble import (apply_calibration, assemble_ep, ep_matrix,
+                                    p_haul)
+from gaffer.models.calibrate import CalibrationModel
 
 SCORING = {
     "goals_scored": {"GKP": 10, "DEF": 6, "MID": 5, "FWD": 4},
@@ -90,3 +96,61 @@ def test_ep_matrix_omits_blank_gameweeks():
     mat = ep_matrix(assemble_ep(pd.concat([comp, other], ignore_index=True), SCORING))
     assert sorted(mat["gw"]) == [2, 4]
     assert 3 not in set(mat["gw"])
+
+
+def _doubling_cal():
+    """A CalibrationModel that doubles MID ep and leaves other positions be."""
+    iso = IsotonicRegression(out_of_bounds="clip")
+    iso.fit([1, 2, 3, 4], [2, 4, 6, 8])
+    cal = CalibrationModel()
+    cal.by_pos["MID"] = iso
+    return cal
+
+
+def _assembled():
+    """Two MID fixtures in one gameweek (a DGW pair) plus one FWD fixture."""
+    return pd.DataFrame(
+        [{"code": 1, "gw": 2, "position": "MID", "ep": 1.0, "p_haul": 0.2},
+         {"code": 1, "gw": 2, "position": "MID", "ep": 2.0, "p_haul": 0.4},
+         {"code": 2, "gw": 2, "position": "FWD", "ep": 3.0, "p_haul": 0.5}],
+        index=[5, 6, 7],   # non-default index: the write must not realign
+    )
+
+
+def test_apply_calibration_maps_ep_by_position():
+    assembled = _assembled()
+    out = apply_calibration(assembled, _doubling_cal())
+    assert list(out["ep"]) == [2.0, 4.0, 3.0]
+    # p_haul comes from the components, not from ep, so it is untouched.
+    assert list(out["p_haul"]) == list(assembled["p_haul"])
+    # the caller's frame is left alone
+    assert list(assembled["ep"]) == [1.0, 2.0, 3.0]
+
+
+def test_apply_calibration_without_a_model_is_a_no_op():
+    assembled = _assembled()
+    out = apply_calibration(assembled, None)
+    assert list(out["ep"]) == [1.0, 2.0, 3.0]
+    assert list(out["p_haul"]) == list(assembled["p_haul"])
+
+
+def test_apply_calibration_happens_before_the_double_gameweek_sums():
+    assembled = _assembled()
+    cal = ep_matrix(apply_calibration(assembled, _doubling_cal()))
+    plain = ep_matrix(assembled)
+    # each fixture is calibrated, then summed: 2*1 + 2*2 = 6, not 2*(1+2)... which
+    # happens to agree here, but the FWD row pins that only MIDs moved.
+    assert float(cal.loc[cal["code"] == 1, "ep"].iloc[0]) == 6.0
+    assert float(cal.loc[cal["code"] == 2, "ep"].iloc[0]) == 3.0
+    assert float(plain.loc[plain["code"] == 1, "ep"].iloc[0]) == 3.0
+    # p_haul survives the calibration untouched
+    assert list(cal["p_haul"]) == list(plain["p_haul"])
+
+
+def test_advise_and_backtest_wire_calibration_into_the_ep_pipeline():
+    """The application point is pinned by spec: inside ``ep_matrix(...)``,
+    wrapping ``assemble_ep``. Neither entry point has a cheap end-to-end
+    harness, so pin the seam at the source level."""
+    for fn in (run_advise, run_backtest):
+        src = inspect.getsource(fn)
+        assert "ep_matrix(apply_calibration(assemble_ep(" in src, fn.__name__

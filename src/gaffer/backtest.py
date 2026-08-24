@@ -46,7 +46,7 @@ from gaffer.assets import load_bootstrap_sample
 from gaffer.config import load_config
 from gaffer.data import store
 from gaffer.data.bootstrap import scoring_table
-from gaffer.models.assemble import assemble_ep, ep_matrix
+from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
 from gaffer.models.train import (DEFAULT_E_GC, DEFAULT_P_CS,  # noqa: F401
                                  load_training_frame,
                                  predict_components_simple, train_all)
@@ -181,7 +181,8 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
             models = train_all(df, tg, save=False)
 
         comp = predict_components_simple(models, rows)
-        ep = ep_matrix(assemble_ep(comp, scoring))
+        ep = ep_matrix(apply_calibration(assemble_ep(comp, scoring),
+                                         models.get("calibration")))
         ep_by = {(int(r.code), int(r.gw)): float(r.ep) for r in ep.itertuples()}
         players = _players_frame(season_rows, gw)
         pos_of.update(dict(zip(players["code"], players["position"])))
