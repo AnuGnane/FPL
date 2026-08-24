@@ -23,11 +23,15 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
 
 from gaffer.api.client import FPLClient
+from gaffer.artifacts import (SolveState, components_frame, pool_rows,
+                              save_components, save_snapshots,
+                              save_solve_state)
 from gaffer.config import Config
 from gaffer.data import store
 from gaffer.data.bootstrap import (build_events, build_players, build_teams,
@@ -44,8 +48,8 @@ from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
 from gaffer.models.components import card_penalty
 from gaffer.models.minutes import apply_availability
 from gaffer.models.persistence import load_model, model_exists
-from gaffer.models.team import (ODDS_AGAINST_COL, add_team_rolling,
-                                blend_team_odds)
+from gaffer.models.team import (ODDS_AGAINST_COL, ODDS_BLEND_WEIGHT,
+                                add_team_rolling, blend_team_odds)
 from gaffer.models.train import load_training_frame
 from gaffer.optimize.chips import evaluate_chips, wildcard_now_assessment
 from gaffer.optimize.differentials import (captain_table, threat_board,
@@ -290,7 +294,10 @@ def predict_components(pred_frame: pd.DataFrame, tg_future: pd.DataFrame,
         mp, players[["code", "status", "chance_of_playing"]])
 
     keys = ["code", "season_idx", "gw", "opp_code"]
-    comp = pf[keys + ["position", "team_code", "e_cards"]].reset_index(drop=True)
+    carried = ["position", "team_code", "e_cards", "was_home",
+               "kickoff_time", "pen_taker", "setpiece_taker"]
+    comp = pf[keys + [c for c in carried if c in pf.columns]] \
+        .reset_index(drop=True)
     for col in ["p_play", "p60"]:
         comp[col] = mp[col].values
     for name, cols in (("attacking", ["e_goals", "e_assists"]),
@@ -303,12 +310,21 @@ def predict_components(pred_frame: pd.DataFrame, tg_future: pd.DataFrame,
 
     tp = load_model("team").predict(tg_future)
     tp["opp_code"] = tg_future["opp_code"].values
+    # Keep the model's own numbers before the market touches them: the
+    # explainability page shows both sides of the blend and the weight that
+    # was actually applied, and after blending there is no way back.
+    tp["p_cs_model"] = tp["p_cs"].values
+    tp["e_gc_model"] = tp["e_gc"].values
     # Blend the market in while tp is still one row per team-fixture: the
     # merge below is many-to-one, so blending after it would apply the same
     # correction once per player in the squad.
     if ODDS_AGAINST_COL in tg_future.columns:
         tp[ODDS_AGAINST_COL] = tg_future[ODDS_AGAINST_COL].values
-    tp = blend_team_odds(tp).drop(columns=[ODDS_AGAINST_COL], errors="ignore")
+    tp = blend_team_odds(tp)
+    if ODDS_AGAINST_COL not in tp.columns:
+        tp[ODDS_AGAINST_COL] = float("nan")
+    tp["odds_weight"] = (tp[ODDS_AGAINST_COL].notna().astype(float)
+                         * ODDS_BLEND_WEIGHT)
     tp = tp.rename(columns={"code": "team_code"})
     comp = comp.merge(tp, on=["team_code", "season_idx", "gw", "opp_code"],
                       how="left")
@@ -385,6 +401,7 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         update_health(gw - 1)
     fx = fixture_frame(client.get_fixtures())
     save_live_fixtures(fx, teams, season_idx)
+    save_snapshots(players, teams, events, fx)
 
     hist, tg, elo_final = load_training_frame()
     future = future_fixture_frame(fx, players, teams, gws, season_idx)
@@ -427,8 +444,8 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     # Optional artifact: model directories trained before calibration existed
     # have no such file, and None means the identity map.
     cal = load_model("calibration") if model_exists("calibration") else None
-    ep = ep_matrix(apply_calibration(assemble_ep(comp, scoring_table(raw)),
-                                     cal))
+    scoring = scoring_table(raw)
+    ep = ep_matrix(apply_calibration(assemble_ep(comp, scoring), cal))
     ep_named = ep.merge(players[["code", "name", "position"]], on="code",
                         how="left")
     store.save(ep_named[ep_named["gw"] == gw], f"live/predictions/gw{gw}.parquet")
@@ -506,6 +523,11 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         chip_base = solve_plan(chip_pool, state, **opt_kw)
     else:
         chip_pool, chip_base = pool, plan
+
+    # Hoisted out of the chip block below so the saved solve state records it
+    # either way: at GW1 there is no chip history to read, and "no chips
+    # available" is the honest answer for a what-if re-solve to work from.
+    avail_by_gw: dict[int, list[str]] = {g: [] for g in gws}
 
     # Chips are a weekly question only. At GW1 nothing has been played, no
     # chip history exists to read, and playing one on the squad you are still
@@ -590,4 +612,13 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     REPORTS.mkdir(exist_ok=True)
     (REPORTS / f"gw{gw}-advice.json").write_text(
         json.dumps(asdict(advice), indent=1, default=str))
+    save_components(components_frame(comp, scoring, cal, players, teams), gw)
+    save_solve_state(SolveState(
+        gw=gw, gws=gws, deadline=deadline,
+        generated_at=datetime.now(timezone.utc).isoformat(),
+        mode=advice.mode, bank=state.bank,
+        free_transfers=state.free_transfers, owned_codes=owned_now,
+        lam=lam, league_eo=league_eo, avail_by_gw=avail_by_gw,
+        opt={**opt_kw, "horizon": cfg.horizon},
+        pool=pool_rows(pool, players, owned_now, ep_by, gws)))
     return advice

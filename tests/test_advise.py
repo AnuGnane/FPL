@@ -246,3 +246,35 @@ def test_run_advise_reports_raw_xi_points_not_the_tilted_objective():
     assert 'raw_xi_pts(p, ep_by)' in src
     assert "first.expected_pts" not in src
     assert "p.expected_pts" not in src
+
+
+def test_predict_components_keeps_the_pre_blend_team_output():
+    """Explainability has to show what the market changed, so the model's own
+    clean-sheet number survives the blend alongside the blended one."""
+    import inspect
+
+    from gaffer.advise import predict_components
+
+    src = inspect.getsource(predict_components)
+    assert 'tp["p_cs_model"] = tp["p_cs"].values' in src
+    assert 'tp["e_gc_model"] = tp["e_gc"].values' in src
+    # weight is recorded per row: 0.0 where the feed covered nothing.
+    assert 'tp["odds_weight"]' in src
+    # and the carried player columns include what the UI renders per fixture.
+    for col in ["was_home", "kickoff_time", "pen_taker", "setpiece_taker"]:
+        assert f'"{col}"' in src
+
+
+def test_run_advise_persists_the_components_file_and_solve_state():
+    """Source-level seam: run_advise has no cheap end-to-end harness, and the
+    whole web UI is unusable if these two writes go missing."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    assert "save_components(" in src
+    assert "save_solve_state(" in src
+    assert "save_snapshots(players, teams, events, fx)" in src
+    # Raw ep_by, never pool_ep: the stored pool is the untilted one.
+    assert "pool_rows(pool, players, owned_now, ep_by, gws)" in src
