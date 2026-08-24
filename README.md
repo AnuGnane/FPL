@@ -35,6 +35,10 @@ That refreshes live data, predicts, optimizes, prints the action list, and
 writes `reports/gw{N}-report.html` (plus `reports/gw{N}-advice.json`). Open the
 HTML report for the detail behind the terminal summary.
 
+Before GW1 there is no squad to transfer from, so the run builds an opening
+fifteen out of the full 100.0m budget instead of erroring — the "buys" are the
+whole squad and there are no chips to consider yet.
+
 Or let the installed Thursday 18:00 launchd job do it and read the report at
 your leisure — that run does `gaffer train` first, then `gaffer advise`, logging
 to `logs/advise.log`.
@@ -49,7 +53,8 @@ to `logs/advise.log`.
 | `gaffer train` | (Re)train all models on history + live data; writes to `models/`. |
 | `gaffer prices` | Likely price changes tonight among the 200 most-owned players. |
 | `gaffer league` | Mini-league standings and rival ownership for `fpl.league_id`. |
-| `gaffer backtest [--season 2025-26] [--start-gw 5]` | Replay a past season following the tool's own advice. |
+| `gaffer live` | In-gameweek tracker: your live points and the projected league table while matches are on. |
+| `gaffer backtest [--season 2025-26] [--start-gw 5] [--horizon N] [--chips]` | Replay a past season following the tool's own advice. |
 
 ## Configuration
 
@@ -69,6 +74,9 @@ ft_value = 1.5       # points value of holding a free transfer
 itb_value = 0.05     # points per 1.0m in the bank at horizon end
 hit_cost = 4         # points charged per extra transfer
 
+[odds]
+# api_key = "..."    # optional, from the-odds-api.com
+
 [data]
 train_seasons = ["2022-23", "2023-24", "2024-25", "2025-26"]
 current_season = "2026-27"
@@ -77,6 +85,79 @@ current_season = "2026-27"
 `entry_id` is the number in your FPL team URL. `league_id` likewise from the
 mini-league URL.
 
+## Bookmaker odds (optional)
+
+`[odds].api_key` takes a free key from [the-odds-api.com](https://the-odds-api.com)
+— the free tier allows 500 requests a month and `advise` spends one pull a
+week, so a weekly run never comes close to the cap.
+
+With a key, market prices for the upcoming fixtures are inverted into an
+expected goals-against per team and blended into the team model's clean-sheet
+and goals-conceded predictions (70% market, 30% model) for the fixtures the
+feed covers. Everything else — fixtures the feed misses, a dead key, a club
+name that fails to match — falls back to the pure model output.
+
+With no key at all the whole step is skipped silently; odds never block or
+change the shape of the advice, they only sharpen the defensive predictions.
+
+## League strategy
+
+When `league_id` is set, `advise` reads your mini-league and picks a stance
+against the leader (or, if you lead, the closest rival):
+
+- **chase** — you are behind by more than noise, so the optimizer favours
+  players your rivals do *not* own. Catching up needs differentials.
+- **defend** — you are ahead by more than noise, so it mirrors rival ownership
+  and protects the lead.
+- **neutral** — the gap is inside the noise, so it is exactly the v1
+  points-max solve, no tilt at all.
+
+The stance is automatic; there is no flag. It comes from λ, a tilt strength
+derived from the points gap, the weeks left in the season, and a per-gameweek
+score sigma. λ is positive when chasing, negative when defending, zero when
+neutral, and capped at ±0.5. It only tilts the pool the MILP chooses from —
+reported expected points are always the raw model numbers.
+
+Alongside it the report carries:
+
+- **attack / cover tags** on each buy: `attack` for a player under 30% rival
+  effective ownership (a punt on the field), `cover` at 70% or above (matching
+  a player the league already has), blank in between. Untagged when there is no
+  league to be different from.
+- **a win-probability column** in the league table: P(you finish above that
+  rival), a normal approximation from the current gap and the weeks remaining.
+  Treat it as a rough steer, not a forecast — it assumes independent scores and
+  a fixed sigma.
+
+## Live gameweek
+
+```
+uv run gaffer live
+```
+
+Read-only, for while the matches are on. Prints your live points and a
+projected league table, with two caveats it states itself: bonus points are
+provisional, reconstructed 3/2/1 from the current BPS table until FPL settles
+each match, and no autosubs are applied — the XI is scored as picked, so bench
+points never count. Between gameweeks it prints "no gameweek in progress" and
+exits clean.
+
+## Backtesting
+
+```
+uv run gaffer backtest --season 2025-26 --start-gw 5 --horizon 6 --chips
+```
+
+Replays a past season following the tool's own advice, retraining as the
+season goes so no future data leaks in.
+
+- `--horizon N` plans N gameweeks ahead but executes only the first, then
+  re-plans next week — the same receding horizon the weekly run uses.
+  `--horizon 1` (the default) is the myopic single-week replay.
+- `--chips` lets the replay play wildcard, bench boost, triple captain and
+  free hit when a chip clears its gain threshold, tracking the two half-season
+  chip sets separately (the first set expires after GW19).
+
 ## Retraining
 
 ```
@@ -84,7 +165,10 @@ uv run gaffer train
 ```
 
 Trains the component models (minutes, attacking, defcon, saves, bonus, team)
-and saves each as a `.joblib` plus a `.meta.json` in `models/`. `advise` refuses
+plus a calibration model that corrects the known level bias in the assembled
+expected points (one additive per-position delta, scaled by each player's
+chance of a 60-minute appearance), and saves each as a `.joblib` plus a
+`.meta.json` in `models/`. `advise` refuses
 to run if any model file is missing. Retrain periodically as the current season
 accumulates data — the Thursday automation retrains every week.
 
