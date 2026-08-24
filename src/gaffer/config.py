@@ -9,7 +9,7 @@ from pathlib import Path
 class Config:
     entry_id: int
     league_id: int
-    horizon: int = 6
+    horizon: int = 3
     decay: float = 0.85
     vice_weight: float = 0.1
     bench_weight: float = 0.10

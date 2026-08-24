@@ -238,3 +238,25 @@ OUTCOME note in §7.*
 Branch `feat/gaffer-v2`. Subagent-driven execution: Opus implementers, Fable
 orchestrates/reviews. Phases A → B → C; user reviews at both gates. Odds key
 setup is a user action documented in README when Phase A lands.
+
+## 9. Gate C outcome (2026-08-24, user-approved process)
+
+The first horizon-6+chips replay (61.85/GW) was INVALID: the final review found
+the horizon harness fed future-GW rows whose rolling features contained
+unplayed results (~2.5 pts/GW phantom edge). After the leakage fix (commit
+440e3d7, incl. a second Elo leak), the honest 2x2 + horizon sweep on the
+leak-free harness (2025/26, GW5-38, chip-free unless noted):
+
+  h1 54.65 (17 hits) | h2 52.09 (15) | h3 54.06 (11) | h6 52.79 (18)
+  chips add +0.4-0.6/GW at h1/h6 (all eight fired on unlock, ~2.6 pts each)
+  Phase A vs v1's inherited 55.94 baseline: -1.29/GW (cross-code, one season,
+  within noise; gate A holdout improvements stand on their own metrics)
+
+No horizon difference is statistically meaningful (weekly SD 15.3, n=34; no
+pair reaches |t|>1.4). The decision-quality signal is real: hits fall
+monotonically h1->h3 and rebound at h6 (noise-chasing). DECISION: default
+horizon set to 3 (fewest hits/transfers, score tied with best, avoids h6
+noise-chasing); the >=55.94 gate threshold is WITHDRAWN as it was derived from
+the contaminated v1-era comparison. Post-merge follow-ups: chip-timing policy
+(hold chips for high-value weeks instead of fire-on-unlock), calibration
+effect on hit appetite, multi-season replay for statistical power.

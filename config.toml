@@ -3,7 +3,7 @@ entry_id = 2210493   # user's FPL team ID
 league_id = 1794743  # mini-league ID for rival tracking
 
 [optimizer]
-horizon = 6
+horizon = 3          # 2025/26 sweep: fewest hits (11 vs 17-18), score tied with h1; h6 chases noise
 decay = 0.85
 vice_weight = 0.1
 bench_weight = 0.10
