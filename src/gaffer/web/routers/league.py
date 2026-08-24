@@ -181,7 +181,8 @@ def rival(entry_id: int) -> RivalDetail:
     if row is None:
         raise GafferError(f"entry {entry_id} is not in league {cfg.league_id}")
 
-    picks_payload = _guard(client.get_entry_picks, entry_id, _last_scored_gw())
+    squad_gw = _last_scored_gw()
+    picks_payload = _guard(client.get_entry_picks, entry_id, squad_gw)
     squad = _squad(picks_payload.get("picks", []), players)
     history = _guard(client.get_entry_history, entry_id)
     entry_history = picks_payload.get("entry_history") or {}
@@ -207,7 +208,7 @@ def rival(entry_id: int) -> RivalDetail:
         team_value=round(value, 1),
         chips_used=[str(c["name"]) for c in history.get("chips", [])],
         captain=next((p for p in squad if p.is_captain), None),
-        squad=squad,
+        squad_gw=squad_gw, squad=squad,
         shared=[p for p in squad if p.code in mine],
         their_differentials=[p for p in squad if p.code not in mine],
         your_differentials=[p for p in my_squad if p.code not in their],

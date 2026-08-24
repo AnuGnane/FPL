@@ -139,6 +139,7 @@ def test_rival_detail_lists_the_squad_captain_chips_and_overlap(client):
     assert body["team_value"] == 101.8          # (value 1013 + bank 5) / 10
     assert body["captain"]["name"] == "Salah"
     assert body["chips_used"] == []
+    assert body["squad_gw"] == 2       # picks are public for finished GWs only
     squad = {p["name"] for p in body["squad"]}
     assert squad == {"Salah", "Dud"}
     assert [p["name"] for p in body["shared"]] == ["Salah"]

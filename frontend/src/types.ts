@@ -143,3 +143,68 @@ export interface PlayerRow {
   corners_order: number | null
   in_squad: boolean
 }
+
+export interface StandingRow {
+  entry: number
+  name: string
+  player_name: string
+  rank: number
+  total: number
+  event_total: number
+  is_you: boolean
+}
+
+export interface LeagueRaceData {
+  league_id: number
+  entry_id: number
+  standings: StandingRow[]
+  trajectory: Array<{
+    entry: number
+    name: string
+    points: Array<{ gw: number; points: number; total: number }>
+  }>
+  gap: Array<{ gw: number; gap: number }>
+  win_probability: Array<{ name: string; total: number; p_win: number }>
+  lam: number
+  stance: string
+  lam_explained: string
+}
+
+export interface SquadPlayer {
+  code: number
+  element: number
+  name: string
+  position: string
+  price: number
+  is_captain: boolean
+  multiplier: number
+}
+
+export interface RivalSummary {
+  entry: number
+  name: string
+  player_name: string
+  rank: number
+  total: number
+  event_total: number
+  overlap: number
+  differentials: number
+}
+
+export interface RivalDetailData {
+  entry: number
+  name: string
+  player_name: string
+  total: number
+  team_value: number
+  chips_used: string[]
+  captain: SquadPlayer | null
+  // The gameweek the squad was picked in: picks are public only for finished
+  // gameweeks, so this trails `live_points`' gameweek while one is in play.
+  squad_gw: number
+  squad: SquadPlayer[]
+  shared: SquadPlayer[]
+  their_differentials: SquadPlayer[]
+  your_differentials: SquadPlayer[]
+  live_points: number | null
+}

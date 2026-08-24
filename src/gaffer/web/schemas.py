@@ -155,6 +155,9 @@ class RivalDetail(BaseModel):
     team_value: float
     chips_used: list[str]
     captain: SquadPlayer | None
+    # The gameweek the squad was picked in — picks are public for finished
+    # gameweeks only, so this trails ``live_points`` while one is in play.
+    squad_gw: int
     squad: list[SquadPlayer]
     shared: list[SquadPlayer]
     their_differentials: list[SquadPlayer]

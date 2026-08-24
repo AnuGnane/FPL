@@ -135,3 +135,7 @@ button:disabled { opacity: 0.5; cursor: default; }
 .matches button { background: var(--pitch-700); color: var(--chalk);
   text-align: left; }
 tr.changed { background: #23331c; }
+
+tr.you { background: var(--pitch-700); font-weight: 600; }
+.chart { width: 100%; height: auto; }
+a { color: var(--pitch-300); }
