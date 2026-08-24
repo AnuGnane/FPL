@@ -34,7 +34,8 @@ export interface Advice {
   sells: PlayerRef[]
   hits: number
   expected_pts: number
-  chip_table: Array<{ chip: string; gw: number; gain: number }>
+  chip_table: Array<{ chip: string; gw: number; gain: number
+                      per_week: number }>
   strategy: Strategy | null
 }
 
@@ -48,9 +49,15 @@ export interface AdviceLatest {
 
 export interface ChipPlanRow {
   chip: string
-  weeks: Array<{ gw: number; gain: number }>
+  weeks: Array<{ gw: number; gain: number; per_week: number }>
   best_gw: number
   best_gain: number
+  /** Gain divided by the horizon weeks the chip is credited with. A wildcard
+   *  covers every week from the one it is played, so only this is comparable
+   *  between its weeks; for the one-week chips it equals best_gain. */
+  best_gain_per_week: number
+  /** How many gameweeks were scored — the window "best" was chosen from. */
+  weeks_scored: number
   now_gain: number | null
   play_now_delta: number | null
 }

@@ -27,7 +27,7 @@ const LATEST = {
     sells: [{ code: 102, name: 'Dud', ep: 1.2 }],
     hits: 1,
     expected_pts: 61.5,
-    chip_table: [{ chip: 'bboost', gw: 5, gain: 9.5 }],
+    chip_table: [{ chip: 'bboost', gw: 5, gain: 9.5, per_week: 9.5 }],
     strategy: { lam: 0.25, gap: 84, weeks_left: 36, stance: 'chase',
                 rival_name: 'Ten Hag Hive' },
   },
@@ -63,8 +63,13 @@ beforeEach(() => {
     if (path === '/api/advice/latest') return LATEST
     if (path === '/api/chips/plan') {
       return { gw: 3, chips: [{ chip: 'bboost', weeks: [], best_gw: 5,
-                                best_gain: 9.5, now_gain: 4.0,
-                                play_now_delta: -5.5 }] }
+                                best_gain: 9.5, best_gain_per_week: 9.5,
+                                weeks_scored: 3, now_gain: 4.0,
+                                play_now_delta: -5.5 },
+                               { chip: 'wildcard', weeks: [], best_gw: 4,
+                                 best_gain: 6.2, best_gain_per_week: 3.1,
+                                 weeks_scored: 3, now_gain: 9.0,
+                                 play_now_delta: 2.8 }] }
     }
     if (path === '/api/players/100/explain') return EXPLAIN
     throw new Error(`unexpected GET ${path}`)
@@ -96,10 +101,23 @@ describe('This Week', () => {
 
   it('shows the chip best-week hint and the league strategy banner', async () => {
     renderPage()
-    expect(await screen.findByText(/best week is GW5/)).toBeInTheDocument()
+    // The window is stated, so "best" cannot be mistaken for the whole season.
+    expect(await screen.findByText(/GW5 — best of the next 3 GWs/))
+      .toBeInTheDocument()
+    expect(screen.getByText(/playing now costs 5.5/)).toBeInTheDocument()
     expect(screen.getByText(/84 points behind Ten Hag Hive/))
       .toBeInTheDocument()
   })
+
+  it('prices a wildcard per week, since it covers the rest of the window',
+    async () => {
+      renderPage()
+      // 6.2 over two weeks beats 9.0 over three: the per-week figure is what
+      // makes the weeks comparable, so it is the one shown.
+      expect(await screen.findByText(/\+3.1\/wk/)).toBeInTheDocument()
+      expect(screen.getByText(/GW4 — best of the next 3 GWs/))
+        .toBeInTheDocument()
+    })
 
   it('renders the page while the chip plan is still loading', async () => {
     let releaseChips: (value: unknown) => void = () => {}

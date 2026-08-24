@@ -129,7 +129,15 @@ export default function ThisWeek() {
         <ul>
           {(chips ?? []).map((chip) => (
             <li key={chip.chip}>
-              {chip.chip}: best week is GW{chip.best_gw} (+{chip.best_gain})
+              {/* "best week" on its own reads as best week of the season; it
+                  is only ever the best of the horizon that was scored. And a
+                  wildcard's total counts every week it covers, so its weeks
+                  are comparable only per week. */}
+              {chip.chip}: GW{chip.best_gw} — best of the next{' '}
+              {chip.weeks_scored} GW{chip.weeks_scored === 1 ? '' : 's'}{' '}
+              (+{chip.best_gain}
+              {chip.best_gain_per_week !== chip.best_gain
+                && `, +${chip.best_gain_per_week}/wk`})
               {chip.play_now_delta !== null && chip.play_now_delta < 0
                 && ` — playing now costs ${Math.abs(chip.play_now_delta)}`}
             </li>
