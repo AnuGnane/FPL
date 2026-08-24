@@ -29,6 +29,15 @@ Deliberately conservative: a wildcard is a scarce, one-shot asset, so a
 marginal gain is not a reason to burn it.
 """
 
+CHIP_PLAY_THRESHOLD = 4.0
+"""Objective points a bench boost, triple captain or free hit must gain
+before we play it.
+
+Lower than the wildcard bar because these three are one-week chips: playing
+one costs you nothing but the chip itself, whereas a wildcard also throws
+away the plan you had.
+"""
+
 
 def evaluate_chips(pool: pd.DataFrame, state: SolveInput,
                    chips_available: list[str], base: Plan | None = None,

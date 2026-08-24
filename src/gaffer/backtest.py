@@ -18,8 +18,10 @@ scoring while the expected-points side is collapsed by ``ep_matrix``.
 v1 simplifications — all of them conservative, i.e. they understate what the
 tool would really have scored:
 
-* **No chips.** No wildcard, free hit, bench boost or triple captain is ever
-  played, so the replay forgoes every points spike a chip would have bought.
+* **No chips by default.** Pass ``chips=True`` to let the replay play a
+  wildcard, free hit, bench boost or triple captain when the chip module
+  values one above its threshold; without it the replay forgoes every points
+  spike a chip would have bought.
 * **Captain -> vice fallback only.** The real game's fallback chain is
   modelled one step deep; a blanking captain *and* vice scores nothing extra.
 * **Simplified autosubs.** Bench players are taken in order and the first
@@ -40,9 +42,11 @@ tool would really have scored:
 from __future__ import annotations
 
 from collections import Counter
+from dataclasses import replace
 
 import pandas as pd
 
+from gaffer.advise import chips_available_for
 from gaffer.assets import load_bootstrap_sample
 from gaffer.config import load_config
 from gaffer.data import store
@@ -51,6 +55,9 @@ from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
 from gaffer.models.train import (DEFAULT_E_GC, DEFAULT_P_CS,  # noqa: F401
                                  load_training_frame,
                                  predict_components_simple, train_all)
+from gaffer.optimize.chips import (CHIP_PLAY_THRESHOLD,
+                                   WILDCARD_RECOMMEND_THRESHOLD,
+                                   evaluate_chips)
 from gaffer.optimize.milp import SolveInput, build_pool, solve_plan
 
 XI_BOUNDS = {"GKP": (1, 1), "DEF": (3, 5), "MID": (2, 5), "FWD": (1, 3)}
@@ -80,13 +87,23 @@ def _formation_legal(positions: list[str]) -> bool:
 
 
 def score_gw(actuals: pd.DataFrame, xi: list[int], bench: list[int],
-             captain: int, vice: int, hits: int) -> int:
+             captain: int, vice: int, hits: int, captain_mult: int = 2,
+             bench_boost: bool = False) -> int:
     """Actual FPL points for one gameweek's team.
 
     ``actuals``: [code, total_points, minutes, position], one row per player
     (double gameweeks already aggregated). Codes missing from the frame are
     treated as 0 points / 0 minutes, which is what a player who did not
     feature at all scored.
+
+    ``captain_mult`` is the armband multiplier: the captain (or the vice, if
+    the captain did not feature) adds ``(captain_mult - 1)`` extra copies of
+    their score, so the default 2 is the ordinary double and 3 is the triple
+    captain chip.
+
+    ``bench_boost`` scores all fifteen. Autosubs are skipped entirely under
+    the chip, as in the real game — every bench player is already on the
+    pitch, so there is nobody left to substitute in.
     """
     pts_of = dict(zip(actuals["code"], actuals["total_points"]))
     mins_of = dict(zip(actuals["code"], actuals["minutes"]))
@@ -96,27 +113,52 @@ def score_gw(actuals: pd.DataFrame, xi: list[int], bench: list[int],
         return float(mins_of.get(code, 0) or 0) > 0
 
     xi = list(xi)
-    on_pitch = set(xi)
-    for i, starter in enumerate(xi):
-        if played(starter):
-            continue
-        for sub in bench:
-            if sub in on_pitch or not played(sub):
+    if not bench_boost:
+        on_pitch = set(xi)
+        for i, starter in enumerate(xi):
+            if played(starter):
                 continue
-            trial = list(xi)
-            trial[i] = sub
-            if _formation_legal([str(pos_of.get(c, "MID")) for c in trial]):
-                on_pitch.discard(starter)
-                on_pitch.add(sub)
-                xi = trial
-                break
+            for sub in bench:
+                if sub in on_pitch or not played(sub):
+                    continue
+                trial = list(xi)
+                trial[i] = sub
+                if _formation_legal([str(pos_of.get(c, "MID")) for c in trial]):
+                    on_pitch.discard(starter)
+                    on_pitch.add(sub)
+                    xi = trial
+                    break
 
-    total = sum(float(pts_of.get(c, 0) or 0) for c in xi)
+    scorers = list(xi) + (list(bench) if bench_boost else [])
+    total = sum(float(pts_of.get(c, 0) or 0) for c in scorers)
+    extra = captain_mult - 1
     if played(captain):
-        total += float(pts_of.get(captain, 0) or 0)
+        total += extra * float(pts_of.get(captain, 0) or 0)
     elif played(vice):
-        total += float(pts_of.get(vice, 0) or 0)
+        total += extra * float(pts_of.get(vice, 0) or 0)
     return int(round(total - 4 * hits))
+
+
+def _pick_chip(table: pd.DataFrame, gw: int) -> str:
+    """Best chip worth playing *this* gameweek, or "" for none.
+
+    ``table`` is :func:`gaffer.optimize.chips.evaluate_chips` output — one
+    row per (chip, horizon gameweek). Rows for later gameweeks are dropped:
+    the replay only ever executes the current week, and a chip that looks
+    best in three weeks' time is a decision for three weeks' time, taken
+    again then with better information.
+    """
+    if table is None or table.empty:
+        return ""
+    now = table[table["gw"] == gw]
+    best, best_gain = "", None
+    for r in now.itertuples():
+        floor = (WILDCARD_RECOMMEND_THRESHOLD if r.chip == "wildcard"
+                 else CHIP_PLAY_THRESHOLD)
+        gain = float(r.gain)
+        if gain >= floor and (best_gain is None or gain > best_gain):
+            best, best_gain = str(r.chip), gain
+    return best
 
 
 def _players_frame(season_rows: pd.DataFrame, gw: int) -> pd.DataFrame:
@@ -147,7 +189,8 @@ def _actuals_frame(rows: pd.DataFrame) -> pd.DataFrame:
 
 
 def run_backtest(season: str = "2025-26", start_gw: int = 5,
-                 retrain_every: int = 4, horizon: int = 1) -> dict:
+                 retrain_every: int = 4, horizon: int = 1,
+                 chips: bool = False) -> dict:
     """Replay ``season`` from ``start_gw`` to GW38 following the tool.
 
     ``horizon`` turns the replay into a receding-horizon plan: each week the
@@ -163,8 +206,14 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
     was known before the deadline in reality too. The *actuals* scored each
     week remain those of the current gameweek alone.
 
-    Returns {"season", "from_gw", "total", "per_gw", "log"} and writes the
-    per-gameweek log to ``data/live/backtest_log.parquet``.
+    ``chips`` turns on chip play. Each week, after the ordinary solve, the
+    still-available chips (two sets a season, the first expiring after GW19)
+    are valued against that solve and the best one clearing its threshold is
+    played — at most one per week, never in the opening squad-build week,
+    which is already a wildcard in all but name.
+
+    Returns {"season", "from_gw", "total", "per_gw", "log", "chips_played"}
+    and writes the per-gameweek log to ``data/live/backtest_log.parquet``.
     """
     cfg = load_config()
     season_idx = cfg.train_seasons.index(season)
@@ -182,6 +231,7 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
     free_transfers = 1
     sell_of: dict[int, int] = {}
     pos_of: dict[int, str] = {}
+    played_by_gw: dict[int, str] = {}
     log: list[dict] = []
     total = 0
 
@@ -225,45 +275,91 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
 
         pool = build_pool(players, ep_by, picks, gws)
         # gw_plans[1:] are discarded: next week re-plans from scratch.
-        plan = solve_plan(pool, state, **opt_kw).gw_plans[0]
-
+        base = solve_plan(pool, state, **opt_kw)
+        plan = base.gw_plans[0]
         cost_of = dict(zip(pool["code"], pool["cost"]))
         pool_sell = dict(zip(pool["code"], pool["sell"]))
-        if not squad:
-            bank = STARTING_BUDGET - sum(int(cost_of[c]) for c in plan.squad)
+
+        # --- chips -------------------------------------------------------
+        # Valued against the plan we would otherwise have played, then
+        # applied. Everything the chip changes about *this* week is folded
+        # into (plan, captain_mult, bench_boost); the free hit alone also
+        # suspends the week's transfers, because its squad is borrowed.
+        chip, captain_mult, bench_boost, keep_squad = "", 2, False, False
+        if chips and squad:
+            avail = chips_available_for(played_by_gw, gw)
+            if avail:
+                chip = _pick_chip(
+                    evaluate_chips(pool, state, avail, base=base, **opt_kw),
+                    gw)
+        if chip == "wildcard":
+            # Unlimited transfers, no hits (the MILP enforces both from
+            # wildcard_gw); the new squad is permanent.
+            plan = solve_plan(pool, replace(state, wildcard_gw=gw),
+                              **opt_kw).gw_plans[0]
+        elif chip == "3xc":
+            captain_mult = 3
+        elif chip == "bboost":
+            bench_boost = True
+        elif chip == "freehit":
+            # One week of a squad conjured out of the whole sell value of
+            # the real one; free_transfers=15 only means "nothing here is a
+            # hit". Afterwards the real squad and bank come straight back,
+            # untouched, so this week's ordinary plan is never executed.
+            budget = bank + sum(int(pool_sell.get(c, sell_of.get(c, 0)))
+                                for c in squad)
+            fh_state = SolveInput(owned_codes=[], bank=budget,
+                                  free_transfers=15, gws=[gw],
+                                  locked_out=list(state.locked_out))
+            plan = solve_plan(pool, fh_state, **opt_kw).gw_plans[0]
+            keep_squad = True
+        if chip:
+            played_by_gw[gw] = chip
+
+        if keep_squad:
+            n_buys, hits, buys, sells = 0, 0, [], []
         else:
-            bank += (sum(int(pool_sell[c]) for c in plan.sells)
-                     - sum(int(cost_of[c]) for c in plan.buys))
-        squad = list(plan.squad)
-        for c in squad:
-            sell_of.setdefault(c, int(cost_of.get(c, 0)))
-        for c in plan.buys:
-            sell_of[c] = int(cost_of[c])
+            n_buys, hits = len(plan.buys), plan.hits
+            buys, sells = list(plan.buys), list(plan.sells)
+            if not squad:
+                bank = STARTING_BUDGET - sum(int(cost_of[c])
+                                             for c in plan.squad)
+            else:
+                bank += (sum(int(pool_sell[c]) for c in plan.sells)
+                         - sum(int(cost_of[c]) for c in plan.buys))
+            squad = list(plan.squad)
+            for c in squad:
+                sell_of.setdefault(c, int(cost_of.get(c, 0)))
+            for c in plan.buys:
+                sell_of[c] = int(cost_of[c])
 
         actuals = _actuals_frame(rows)
-        missing = [c for c in squad if c not in set(actuals["code"])]
+        known = set(actuals["code"])
+        missing = [c for c in set(plan.squad) | set(squad) if c not in known]
         if missing:
             actuals = pd.concat([actuals, pd.DataFrame(
                 {"code": missing, "total_points": 0, "minutes": 0,
                  "position": [pos_of.get(c, "MID") for c in missing]})],
                 ignore_index=True)
         pts = score_gw(actuals, plan.xi, plan.bench, plan.captain, plan.vice,
-                       plan.hits)
+                       hits, captain_mult=captain_mult,
+                       bench_boost=bench_boost)
         total += pts
 
         if len(log) == 0:          # initial squad build, not transfers
             n_buys, free_transfers = 0, 1
         else:
-            n_buys = len(plan.buys)
+            # A wildcard's transfers are free and unlimited, and a free hit
+            # makes none at all, so both weeks feed the ordinary formula a
+            # transfer-free week and simply bank another FT.
+            counted = 0 if chip == "wildcard" else n_buys
             free_transfers = min(
                 MAX_FREE_TRANSFERS,
-                max(0, free_transfers - n_buys + plan.hits) + 1)
+                max(0, free_transfers - counted + hits) + 1)
         log.append({"gw": gw, "points": pts, "total": total,
-                    "hits": plan.hits, "transfers": n_buys,
-                    "buys": ", ".join(name_of.get(c, str(c))
-                                      for c in plan.buys),
-                    "sells": ", ".join(name_of.get(c, str(c))
-                                       for c in plan.sells),
+                    "hits": hits, "transfers": n_buys, "chip": chip,
+                    "buys": ", ".join(name_of.get(c, str(c)) for c in buys),
+                    "sells": ", ".join(name_of.get(c, str(c)) for c in sells),
                     "captain": name_of.get(plan.captain, str(plan.captain)),
                     "bank": bank, "free_transfers": free_transfers,
                     "expected_pts": round(float(plan.expected_pts), 2)})
@@ -272,4 +368,4 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
     per_gw = round(total / len(log), 2) if log else 0.0
     store.save(pd.DataFrame(log), "live/backtest_log.parquet")
     return {"season": season, "from_gw": start_gw, "total": total,
-            "per_gw": per_gw, "log": log}
+            "per_gw": per_gw, "log": log, "chips_played": played_by_gw}

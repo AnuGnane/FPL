@@ -121,11 +121,12 @@ def league():
 
 
 @app.command()
-def backtest(season: str = "2025-26", start_gw: int = 5, horizon: int = 1):
+def backtest(season: str = "2025-26", start_gw: int = 5, horizon: int = 1,
+             chips: bool = False):
     """Replay a past season following the tool's advice."""
     from gaffer.backtest import run_backtest
 
-    result = run_backtest(season, start_gw, horizon=horizon)
+    result = run_backtest(season, start_gw, horizon=horizon, chips=chips)
     typer.echo(result)
 
 

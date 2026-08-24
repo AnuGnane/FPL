@@ -160,3 +160,115 @@ def test_backtest_horizon_one_keeps_the_single_gw_call_shape(monkeypatch):
     assert calls["solve_gws"] == [[1], [2], [3]]
     assert calls["pool_gws"] == [[1], [2], [3]]
     assert len(out["log"]) == 3
+
+
+# --- chips ---------------------------------------------------------------
+#
+# ``score_gw``'s two contract tests above are left untouched on purpose: the
+# chip arguments are keyword-only defaults, so the old call shape has to keep
+# scoring 40 and 26.
+
+
+def test_score_gw_triple_captain_adds_the_captain_twice_over():
+    pts = score_gw(_actuals(), xi=list(range(1, 12)), bench=[12, 13, 14, 15],
+                   captain=1, vice=2, hits=1, captain_mult=3)
+    # Same XI as the doubling case (34 after the autosub); the captain now
+    # adds (3-1)*10 = 20 instead of 10 -> 54, one hit -> 50.
+    assert pts == 50
+
+
+def test_score_gw_bench_boost_scores_all_fifteen_and_skips_autosubs():
+    pts = score_gw(_actuals(), xi=list(range(1, 12)), bench=[12, 13, 14, 15],
+                   captain=1, vice=2, hits=0, bench_boost=True)
+    # No autosub, so code 5 stays in the XI on 0: XI = 28. Bench adds
+    # 6+2+2+2 = 12 -> 40, captain 1 doubles -> +10 => 50.
+    assert pts == 50
+
+
+def _stub_evaluate_chips(monkeypatch, calls, gains):
+    """Stand in for ``evaluate_chips``: one row per available chip, gain from
+    ``gains[(gw, chip)]`` (0 otherwise). Records the availability list it was
+    handed so the half-season bookkeeping can be asserted."""
+    calls["avail"] = []
+
+    def fake(pool, state, chips_available, base=None, **cfg):
+        calls["avail"].append(list(chips_available))
+        gw = state.gws[0]
+        rows = [{"chip": c, "gw": gw, "gain": float(gains.get((gw, c), 0.0))}
+                for c in chips_available]
+        return (pd.DataFrame(rows)
+                .sort_values("gain", ascending=False).reset_index(drop=True))
+
+    monkeypatch.setattr(bt, "evaluate_chips", fake)
+
+
+def test_backtest_plays_no_chips_by_default(monkeypatch):
+    calls = _install_stubs(monkeypatch, _season_rows([1, 2, 3]))
+    _stub_evaluate_chips(monkeypatch, calls, {(2, "3xc"): 50.0})
+    out = run_backtest(season="2025-26", start_gw=1, retrain_every=4)
+    assert out["chips_played"] == {}
+    assert [r["chip"] for r in out["log"]] == ["", "", ""]
+    assert calls["avail"] == []
+
+
+def test_backtest_plays_triple_captain_and_spends_it_for_the_half(monkeypatch):
+    calls = _install_stubs(monkeypatch, _season_rows([1, 2, 3]))
+    _stub_evaluate_chips(monkeypatch, calls, {(2, "3xc"): 50.0})
+    out = run_backtest(season="2025-26", start_gw=1, retrain_every=4,
+                       chips=True)
+    rows = {r["gw"]: r for r in out["log"]}
+
+    assert [r["chip"] for r in out["log"]] == ["", "3xc", ""]
+    assert out["chips_played"] == {2: "3xc"}
+    # Every stub player scores 2 off 90 minutes: XI 22 + the captain again.
+    assert rows[1]["points"] == 24 and rows[3]["points"] == 24
+    assert rows[2]["points"] == 26           # captain tripled
+    # GW1 builds the squad, so chips are first weighed in GW2; by GW3 the
+    # 3xc is spent for this half of the season.
+    assert calls["avail"] == [["wildcard", "freehit", "bboost", "3xc"],
+                              ["wildcard", "freehit", "bboost"]]
+
+
+FH_GW = 2
+
+
+def _fh_alt_squad(monkeypatch):
+    """Make the free-hit solve (owns nothing, single gameweek, GW2) return a
+    *different* 15, so a replay that failed to revert would show it."""
+    inner = bt.solve_plan
+
+    def spy(pool, state, **kw):
+        plan = inner(pool, state, **kw)
+        if not state.owned_codes and list(state.gws) == [FH_GW]:
+            alt = list(pool["code"])[-15:]
+            plan.gw_plans[0] = GwPlan(
+                gw=FH_GW, squad=alt, xi=alt[:11], xi_rows=[], bench=alt[11:],
+                captain=alt[0], vice=alt[1], buys=list(alt), sells=[],
+                hits=0, expected_pts=99.0)
+        return plan
+
+    monkeypatch.setattr(bt, "solve_plan", spy)
+
+
+def test_backtest_free_hit_scores_one_week_then_reverts(monkeypatch):
+    calls = _install_stubs(monkeypatch, _season_rows([1, 2, 3]))
+    _stub_evaluate_chips(monkeypatch, calls, {(FH_GW, "freehit"): 50.0})
+    _fh_alt_squad(monkeypatch)
+    out = run_backtest(season="2025-26", start_gw=1, retrain_every=4,
+                       chips=True)
+    rows = {r["gw"]: r for r in out["log"]}
+
+    assert rows[2]["chip"] == "freehit"
+    assert out["chips_played"] == {2: "freehit"}
+    # Solves: GW1 build, GW2 base, GW2 free hit, GW3 base.
+    assert calls["owned"][2] == []
+    before, after = calls["owned"][1], calls["owned"][3]
+    fh_squad = calls["plans"][2][0].squad
+    assert set(after) == set(before)         # permanent squad reverted
+    assert set(after) != set(fh_squad)       # ... and it is not the FH squad
+    assert rows[2]["bank"] == rows[1]["bank"]
+    assert rows[2]["transfers"] == 0 and rows[2]["hits"] == 0
+    assert rows[2]["points"] == 24           # the free-hit XI was scored
+    # The free hit is spent for the half.
+    assert calls["avail"] == [["wildcard", "freehit", "bboost", "3xc"],
+                              ["wildcard", "bboost", "3xc"]]
