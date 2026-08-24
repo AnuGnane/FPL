@@ -501,7 +501,7 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     # the tilt is an exact passthrough and the main plan *is* the raw base —
     # no second solve, and the payload is byte-identical to v1.
     lam = strat.lam if strat is not None else 0.0
-    if lam:
+    if lam and my is not None:      # no chip block at GW1, so no second solve
         chip_pool = build_pool(players, ep_by, my_picks, gws)
         chip_base = solve_plan(chip_pool, state, **opt_kw)
     else:
