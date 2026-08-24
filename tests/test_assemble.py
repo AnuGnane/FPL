@@ -219,3 +219,18 @@ def test_advise_and_backtest_wire_calibration_into_the_ep_pipeline():
     for fn in (run_advise, run_backtest):
         src = inspect.getsource(fn)
         assert "ep_matrix(apply_calibration(assemble_ep(" in src, fn.__name__
+
+
+def test_ep_breakdown_terms_sum_to_assembled_ep():
+    """The breakdown is a second implementation of the same arithmetic, so
+    the only guard against drift is that its terms re-add to ``ep``."""
+    from gaffer.models.assemble import ep_breakdown
+
+    comp = pd.concat([_components(), _gkp_components()], ignore_index=True)
+    assembled = assemble_ep(comp, SCORING)
+    broken = ep_breakdown(assembled, SCORING)
+    terms = ["ep_minutes", "ep_goals", "ep_assists", "ep_cs", "ep_gc",
+             "ep_saves", "ep_defcon", "ep_bonus", "ep_cards", "ep_pensave"]
+    total = broken[terms].sum(axis=1)
+    for got, want in zip(total, assembled["ep"]):
+        assert abs(got - want) < 1e-9

@@ -116,3 +116,46 @@ def ep_matrix(per_fixture: pd.DataFrame) -> pd.DataFrame:
     """
     return (per_fixture.groupby(["code", "gw"], as_index=False)
             .agg(ep=("ep", "sum"), p_haul=("p_haul", "max")))
+
+
+BREAKDOWN_COLS = ["ep_minutes", "ep_goals", "ep_assists", "ep_cs", "ep_gc",
+                  "ep_saves", "ep_defcon", "ep_bonus", "ep_cards",
+                  "ep_pensave"]
+
+
+def ep_breakdown(assembled: pd.DataFrame,
+                 scoring: dict[str, dict[str, float]]) -> pd.DataFrame:
+    """Split each row's ``ep`` into the additive terms that produced it.
+
+    Deliberately a second spelling of :func:`assemble_ep`'s expression rather
+    than a refactor of it: the aggregate is on the hot path of every solve and
+    every backtest week, and a per-term frame there would cost memory for a
+    number only the explainability page reads. The two are pinned together by
+    a test that re-adds the terms.
+    """
+    df = assembled.copy()
+    pos = df["position"]
+
+    def s(key: str) -> pd.Series:
+        return pos.map(scoring[key]).astype(float)
+
+    def s_opt(key: str, default: float) -> pd.Series:
+        table = scoring.get(key) or {}
+        return pos.map(lambda p: float(table.get(p, default))).astype(float)
+
+    df["ep_minutes"] = (df["p_play"] * s("minutes_0_59")
+                        + df["p60"] * (s("minutes_60_plus")
+                                       - s("minutes_0_59")))
+    df["ep_goals"] = df["p_play"] * df["e_goals"] * s("goals_scored")
+    df["ep_assists"] = df["p_play"] * df["e_assists"] * s("assists")
+    df["ep_cs"] = df["p60"] * df["p_cs"] * s("clean_sheets")
+    df["ep_gc"] = df["p60"] * df["e_gc"] * s("goals_conceded")
+    df["ep_saves"] = df["p_play"] * df["e_saves"] * s("saves")
+    df["ep_defcon"] = (df["p_play"] * df["p_defcon"]
+                       * s("defensive_contribution"))
+    df["ep_bonus"] = df["p_play"] * df["e_bonus"] * s_opt("bonus", 1.0)
+    df["ep_cards"] = df["p_play"] * df["e_cards"]
+    df["ep_pensave"] = (df["p_play"] * (pos == "GKP").astype(float)
+                        * PEN_FACED_RATE * PEN_SAVE_RATE
+                        * s_opt("penalties_saved", 0.0))
+    return df
