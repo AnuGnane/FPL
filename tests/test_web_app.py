@@ -54,3 +54,20 @@ def test_missing_build_says_how_to_build_it(tmp_path, monkeypatch):
     resp = client.get("/")
     assert resp.status_code == 503
     assert "npm run build" in resp.json()["detail"]
+
+
+def test_jobs_endpoint_reports_a_finished_job(client):
+    registry = client.app.state.jobs
+    job_id = registry.submit(lambda: {"ok": 1}, timeout_s=5.0)
+    for _ in range(500):
+        body = client.get(f"/api/jobs/{job_id}").json()
+        if body["status"] == "done":
+            break
+    assert body["status"] == "done"
+    assert body["result"] == {"ok": 1}
+
+
+def test_jobs_endpoint_404s_an_unknown_id(client):
+    resp = client.get("/api/jobs/deadbeef")
+    assert resp.status_code == 404
+    assert "deadbeef" in resp.json()["detail"]

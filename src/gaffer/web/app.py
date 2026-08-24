@@ -21,6 +21,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from gaffer.errors import GafferError
+from gaffer.web.jobs import JobRegistry
 
 log = logging.getLogger("gaffer.web")
 
@@ -38,6 +39,7 @@ def static_dir() -> Path:
 
 def create_app() -> FastAPI:
     app = FastAPI(title="gaffer", docs_url=None, redoc_url=None)
+    app.state.jobs = JobRegistry()
 
     @app.exception_handler(GafferError)
     async def _domain_error(_: Request, exc: GafferError) -> JSONResponse:
@@ -55,6 +57,14 @@ def create_app() -> FastAPI:
     @app.get("/api/ping")
     def ping() -> dict:
         return {"ok": True, "app": "gaffer"}
+
+    @app.get("/api/jobs/{job_id}")
+    def job_status(job_id: str, request: Request):
+        job = request.app.state.jobs.get(job_id)
+        if job is None:
+            return JSONResponse(status_code=404,
+                                content={"detail": f"no such job: {job_id}"})
+        return job
 
     assets = static_dir() / "assets"
     if assets.is_dir():
