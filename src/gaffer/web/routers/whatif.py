@@ -48,6 +48,11 @@ def _validate(req: WhatIfRequest, state) -> None:
         raise _fail("unknown_player",
                     f"player {unknown[0]} is not in this week's candidate "
                     f"pool", unknown)
+    forced_and_owned = sorted(set(req.force_in) & set(state.owned_codes))
+    if forced_and_owned:
+        raise _fail("force_in_owned",
+                    f"you already own player {forced_and_owned[0]} — use "
+                    f"lock to keep him", forced_and_owned)
     forced_and_banned = sorted(set(req.force_in) & set(req.ban))
     if forced_and_banned:
         raise _fail("force_in_and_ban",
@@ -135,7 +140,7 @@ def solve_whatif(req: WhatIfRequest, gw: int) -> dict:
         yours_state = SolveInput(
             owned_codes=[], bank=budget, free_transfers=15, gws=[gws[0]],
             locked_out=list(req.ban), locked_in=list(req.lock),
-            max_hits=None)
+            force_in_gw=list(req.force_in), max_hits=None)
     try:
         yours = solve_plan(pool, yours_state, **opt).gw_plans
     except RuntimeError as exc:

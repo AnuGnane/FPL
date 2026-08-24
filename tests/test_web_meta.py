@@ -110,6 +110,51 @@ def test_chip_plan_scores_every_available_chip_week(client, monkeypatch):
     assert bb["play_now_delta"] == -5.5
 
 
+def _full_squad_state(drop_owned: int | None = None):
+    """A 20-man pool, 15 of them owned, free hit available in GW3."""
+    rows, code = [], 1
+    for pos, n in [("GKP", 2), ("DEF", 6), ("MID", 7), ("FWD", 5)]:
+        for _ in range(n):
+            rows.append({"code": code, "position": pos,
+                         "team_code": code % 8, "cost": 50, "sell": 50})
+            code += 1
+    owned = [1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 16, 17, 18]
+    frame = pd.DataFrame(rows)
+    if drop_owned is not None:
+        frame = frame[frame["code"] != drop_owned]
+    players = pd.DataFrame({"code": frame["code"],
+                            "name": [f"P{c}" for c in frame["code"]]})
+    ep_by = {(int(c), g): 2.0 for c in frame["code"] for g in (3, 4)}
+    save_solve_state(SolveState(
+        gw=3, gws=[3, 4], deadline="2026-09-11T17:30:00Z",
+        generated_at="2026-09-10T09:00:00Z", mode="weekly", bank=0,
+        free_transfers=1, owned_codes=owned, lam=0.0, league_eo={},
+        avail_by_gw={3: ["freehit"], 4: []},
+        opt={"decay": 0.85, "bench_weight": 0.1, "vice_weight": 0.1,
+             "ft_value": 1.5, "itb_value": 0.05, "hit_cost": 4, "horizon": 2},
+        pool=pool_rows(frame, players, owned, ep_by, [3, 4])))
+
+
+def test_chip_plan_on_an_infeasible_saved_state_is_a_readable_422(client):
+    # An owned player missing from the saved pool shrinks the free-hit budget
+    # below the price of any legal fifteen, so the from-scratch solve fails.
+    _full_squad_state(drop_owned=1)
+    resp = client.get("/api/chips/plan")
+    assert resp.status_code == 422
+    assert "gaffer advise" in resp.json()["detail"]
+
+
+def test_chip_plan_on_an_older_solve_state_is_a_readable_422(client,
+                                                             tmp_path):
+    meta = tmp_path / "reports" / "solve_state_gw3.json"
+    payload = json.loads(meta.read_text())
+    payload["opt"].pop("hit_cost")
+    meta.write_text(json.dumps(payload))
+    resp = client.get("/api/chips/plan")
+    assert resp.status_code == 422
+    assert "gaffer advise" in resp.json()["detail"]
+
+
 def test_history_pairs_expected_with_actual_once_a_gw_resolves(client):
     body = client.get("/api/history").json()
     run = body["runs"][0]

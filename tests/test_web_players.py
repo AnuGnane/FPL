@@ -131,3 +131,14 @@ def test_explain_for_a_player_with_no_components_is_a_readable_422(client):
     resp = client.get("/api/players/101/explain")
     assert resp.status_code == 422
     assert "101" in resp.json()["detail"]
+
+
+def test_explain_for_a_player_missing_from_the_snapshot_is_a_422(client):
+    # A components file that outlives the players snapshot it was built
+    # against: the code is explainable but there is no row to name it from.
+    stale = _components()
+    stale["code"] = 102
+    save_components(stale, 3)
+    resp = client.get("/api/players/102/explain")
+    assert resp.status_code == 422
+    assert "102" in resp.json()["detail"]

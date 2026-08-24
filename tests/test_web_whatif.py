@@ -20,7 +20,8 @@ def _pool_frame(star_ep=9.0):
     return pd.DataFrame(rows), star_ep
 
 
-def _save_state(gws=(1, 2), star_ep=9.0, lam=0.0, league_eo=None):
+def _save_state(gws=(1, 2), star_ep=9.0, lam=0.0, league_eo=None,
+                chips=("wildcard", "bboost")):
     frame, star_ep = _pool_frame(star_ep)
     players = pd.DataFrame({"code": frame["code"],
                             "name": [f"P{c}" for c in frame["code"]]})
@@ -31,7 +32,7 @@ def _save_state(gws=(1, 2), star_ep=9.0, lam=0.0, league_eo=None):
         generated_at="2026-09-10T09:00:00Z", mode="weekly", bank=0,
         free_transfers=1, owned_codes=list(OWNED), lam=lam,
         league_eo=league_eo or {},
-        avail_by_gw={g: ["wildcard", "bboost"] for g in gws},
+        avail_by_gw={g: list(chips) for g in gws},
         opt={"decay": 0.85, "bench_weight": 0.1, "vice_weight": 0.1,
              "ft_value": 1.5, "itb_value": 0.05, "hit_cost": 4,
              "horizon": len(gws)},
@@ -122,6 +123,26 @@ def test_an_available_chip_is_solved(client):
     # A wildcard makes transfers free, so the cap must not have blocked it.
     assert job["result"]["yours"]["hits"] == 0
     assert 20 in [p["code"] for p in job["result"]["yours"]["xi"]]
+
+
+def test_free_hit_honours_force_in(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    _save_state(chips=("freehit",))
+    client = TestClient(create_app())
+    job = _run(client, {"chip": "fh", "force_in": [19]})
+    assert job["status"] == "done", job["error"]
+    codes = ([p["code"] for p in job["result"]["yours"]["xi"]]
+             + [p["code"] for p in job["result"]["yours"]["bench"]])
+    assert 19 in codes
+
+
+def test_forcing_in_a_player_you_already_own_is_a_structured_422(client):
+    resp = client.post("/api/whatif", json={"force_in": [1]})
+    assert resp.status_code == 422
+    detail = resp.json()["detail"]
+    assert detail["constraint"] == "force_in_owned"
+    assert detail["players"] == [1]
+    assert "lock" in detail["error"]
 
 
 def test_displayed_points_are_raw_not_tilted(tmp_path, monkeypatch):

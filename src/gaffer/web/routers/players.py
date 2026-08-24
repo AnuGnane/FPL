@@ -152,7 +152,11 @@ def explain(code: int) -> PlayerExplain:
             ep=round(float(row.ep), 2)))
 
     snapshot = load_snapshot("live/players.parquet")
-    me = snapshot[snapshot["code"] == code].iloc[0]
+    rows = snapshot[snapshot["code"] == code]
+    if rows.empty:
+        raise GafferError(f"player {code} not in the saved snapshot — run "
+                          "`gaffer advise`")
+    me = rows.iloc[0]
     teams = load_snapshot("live/teams.parquet")
     team_name = dict(zip(teams["code"], teams["name"]))
     id_to_code = dict(zip(teams["team_id"], teams["code"]))

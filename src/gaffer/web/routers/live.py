@@ -46,6 +46,24 @@ def _status(minutes: int, in_play: bool) -> str:
     return "playing" if minutes > 0 else "yet to play"
 
 
+def _finished_by_team(fixtures: list[dict]) -> dict[int, bool]:
+    """team id -> "every fixture this team has in the gameweek is over".
+
+    Per-team, not gameweek-wide: a Saturday-lunchtime player has *played*
+    while the Sunday games are still to come. In a double gameweek a team is
+    only done when both of its matches are.
+    """
+    out: dict[int, bool] = {}
+    for fixture in fixtures:
+        done = bool(fixture.get("finished"))
+        for side in ("team_h", "team_a"):
+            team = fixture.get(side)
+            if team is None:
+                continue
+            out[int(team)] = out.get(int(team), True) and done
+    return out
+
+
 @router.get("/live", response_model=LiveState)
 def live() -> LiveState:
     cfg = load_config()
@@ -64,7 +82,7 @@ def live() -> LiveState:
                  for e in elements}
     minutes_of = {int(e["id"]): (e.get("stats") or {}).get("minutes", 0)
                   for e in elements}
-    finished = all(f.get("finished") for f in fixtures) if fixtures else False
+    finished_by_team = _finished_by_team(fixtures)
 
     mine = _guard(client.get_entry_picks, cfg.entry_id, gw)
     my_points = entry_live_points(mine["picks"], points_of, bonus)
@@ -81,13 +99,14 @@ def live() -> LiveState:
         if row is None:
             continue          # a player removed from the game since the pick
         minutes = int(minutes_of.get(element, 0))
+        team_done = finished_by_team.get(int(row.team_id), False)
         players.append(LivePlayer(
             element=element, code=int(row.code), name=str(row.name),
             position=str(row.position),
             multiplier=int(pick.get("multiplier", 0)),
             points=int(points_of.get(element, 0)),
             provisional_bonus=int(bonus.get(element, 0)),
-            minutes=minutes, status=_status(minutes, not finished)))
+            minutes=minutes, status=_status(minutes, not team_done)))
 
     rows = [{"entry": cfg.entry_id, "name": "You", "pre_total": my_pre,
              "live": my_points}]

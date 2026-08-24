@@ -181,7 +181,13 @@ def test_defaults_leave_the_solve_untouched():
                                   free_transfers=1, gws=[1, 2],
                                   locked_in=[], force_in_gw=[],
                                   max_hits=None), **kw)
-    assert before.gw_plans[0].squad == after.gw_plans[0].squad
+    assert len(before.gw_plans) == len(after.gw_plans)
+    for was, now in zip(before.gw_plans, after.gw_plans):
+        assert was.gw == now.gw
+        assert (was.squad, was.xi, was.captain, was.vice, was.hits,
+                was.buys, was.sells) == (now.squad, now.xi, now.captain,
+                                         now.vice, now.hits, now.buys,
+                                         now.sells)
     assert abs(before.objective - after.objective) < 1e-9
 
 

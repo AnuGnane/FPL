@@ -53,13 +53,23 @@ def chips_plan() -> ChipPlan:
     state = _state()
     ep_by = raw_ep_by(state)          # chips are priced in raw points
     pool = milp_pool(state, ep_by, state.gws)
-    opt = {k: state.opt[k] for k in ("decay", "bench_weight", "vice_weight",
-                                     "ft_value", "itb_value", "hit_cost")}
     solve_state = SolveInput(owned_codes=state.owned_codes, bank=state.bank,
                              free_transfers=state.free_transfers,
                              gws=state.gws)
-    table = evaluate_chips(pool, solve_state, avail_by_gw=state.avail_by_gw,
-                           **opt)
+    # A state saved by an older build can be missing an ``opt`` key, and a
+    # pool that no longer holds every owned player makes the free-hit
+    # from-scratch solve infeasible. Both are recoverable by re-running the
+    # advice, so say that rather than returning a 500.
+    try:
+        opt = {k: state.opt[k] for k in ("decay", "bench_weight",
+                                         "vice_weight", "ft_value",
+                                         "itb_value", "hit_cost")}
+        table = evaluate_chips(pool, solve_state,
+                               avail_by_gw=state.avail_by_gw, **opt)
+    except (RuntimeError, KeyError) as exc:
+        raise GafferError(
+            "chip evaluation failed for this saved state — re-run "
+            f"`gaffer advise` ({exc})") from exc
     rows = [] if table.empty else chip_plan(table, now_gw=state.gws[0])
     return ChipPlan(gw=state.gw, chips=[ChipPlanRow(**row) for row in rows])
 

@@ -15,7 +15,14 @@ LIVE = {"elements": [
                                             "value": 12}]}]},
 ]}
 
-FIXTURES = [{"id": 11, "event": 3, "started": True, "finished": False}]
+FIXTURES = [{"id": 11, "event": 3, "team_h": 1, "team_a": 2,
+             "started": True, "finished": False}]
+
+# Salah's match (team 1) is over; Dud's (team 2) is still going.
+SPLIT_FIXTURES = [{"id": 11, "event": 3, "team_h": 1, "team_a": 3,
+                   "started": True, "finished": True},
+                  {"id": 12, "event": 3, "team_h": 2, "team_a": 4,
+                   "started": True, "finished": False}]
 
 MY_PICKS = {"picks": [{"element": 7, "position": 1, "multiplier": 2},
                       {"element": 8, "position": 2, "multiplier": 1}],
@@ -23,8 +30,9 @@ MY_PICKS = {"picks": [{"element": 7, "position": 1, "multiplier": 2},
 
 
 class FakeClient:
-    def __init__(self, active=True):
+    def __init__(self, active=True, fixtures=None):
         self.active = active
+        self.fixtures = FIXTURES if fixtures is None else fixtures
 
     def get_event_status(self):
         if not self.active:
@@ -37,7 +45,7 @@ class FakeClient:
         return LIVE
 
     def get_fixtures(self):
-        return FIXTURES
+        return self.fixtures
 
     def get_entry_picks(self, entry_id, gw):
         return MY_PICKS
@@ -91,6 +99,19 @@ def test_live_reports_points_provisional_bonus_and_the_league_table(client):
     assert salah["provisional_bonus"] == 3 and salah["status"] == "playing"
     assert [r["name"] for r in body["table"]][0] in ("You FC",
                                                      "Ten Hag Hive")
+
+
+def test_player_status_follows_his_own_fixture_not_the_gameweek(tmp_path,
+                                                                monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    _config(tmp_path)
+    monkeypatch.setattr(
+        "gaffer.web.routers.live.fpl_client",
+        lambda: FakeClient(active=True, fixtures=SPLIT_FIXTURES))
+    body = TestClient(create_app()).get("/api/live").json()
+    status = {p["name"]: p["status"] for p in body["players"]}
+    assert status["Salah"] == "played"       # his match has finished
+    assert status["Dud"] == "playing"        # his has not
 
 
 def test_live_between_gameweeks_is_a_quiet_inactive_payload(tmp_path,
