@@ -72,3 +72,37 @@ def test_saved_model_round_trips_identical_predictions(tmp_path, monkeypatch):
     meta = json.loads((tmp_path / "minutes.meta.json").read_text())
     assert "saved_at" in meta
     assert meta["rows"] == len(df)
+
+
+def test_availability_recovers_over_the_horizon():
+    """A flag describes the imminent gameweek. It must bite hardest there and
+    relax later, or a one-match ban zeroes a player for the whole horizon and
+    the optimizer sells a fully-fit asset."""
+    from gaffer.models.minutes import RECOVERY
+
+    gws = [5, 6, 7]
+    pred = pd.DataFrame({"code": [1] * 3, "gw": gws,
+                         "p_play": [0.9] * 3, "p60": [0.8] * 3,
+                         "e_min": [80.0] * 3})
+    avail = pd.DataFrame({"code": [1], "status": ["s"],
+                          "chance_of_playing": [0]})
+    out = apply_availability(pred, avail).set_index("gw")
+
+    assert out.loc[5, "p_play"] == 0.0                      # suspended now
+    for h, gw in enumerate(gws):
+        expected = 0.9 * (1 - (1 - 0.0) * RECOVERY ** h)
+        assert abs(out.loc[gw, "p_play"] - expected) < 1e-9
+    assert out.loc[7, "p_play"] > out.loc[6, "p_play"] > out.loc[5, "p_play"]
+    # e_min follows the same schedule, and p60 stays under p_play.
+    assert abs(out.loc[6, "e_min"] - 80.0 * (1 - RECOVERY)) < 1e-9
+    assert (out["p60"] <= out["p_play"] + 1e-9).all()
+
+
+def test_available_players_are_untouched_across_the_horizon():
+    pred = pd.DataFrame({"code": [1, 1], "gw": [5, 6],
+                         "p_play": [0.9, 0.9], "p60": [0.8, 0.8],
+                         "e_min": [80.0, 80.0]})
+    avail = pd.DataFrame({"code": [1], "status": ["a"],
+                          "chance_of_playing": [None]})
+    out = apply_availability(pred, avail)
+    assert (out["p_play"] == 0.9).all() and (out["e_min"] == 80.0).all()
