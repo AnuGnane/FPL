@@ -519,8 +519,8 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
 
     # Chips are priced in *raw* points: evaluate_chips and
     # wildcard_now_assessment return objective deltas, and those deltas are
-    # compared against fixed point thresholds (8.0 to play a chip, 4.0 to
-    # recommend a wildcard). A chasing lambda scales the whole objective up,
+    # compared against fixed point thresholds (8.0 to recommend a wildcard,
+    # 4.0 to play the others). A chasing lambda scales the whole objective up,
     # so scoring chips on the tilted pool would inflate every gain and could
     # burn a wildcard on a differential shuffle worth nothing. When lam is 0
     # the tilt is an exact passthrough, so the raw pool is the same pool.
