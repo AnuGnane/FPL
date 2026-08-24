@@ -50,6 +50,10 @@ def build_players(raw: dict) -> pd.DataFrame:
             "transfers_in_event": e.get("transfers_in_event", 0),
             "transfers_out_event": e.get("transfers_out_event", 0),
             "penalties_order": to_int(e.get("penalties_order")),
+            "direct_freekicks_order": to_int(e.get("direct_freekicks_order")),
+            "corners_and_indirect_freekicks_order": to_int(
+                e.get("corners_and_indirect_freekicks_order")
+            ),
             "price_change_calibrating": bool(e.get("price_change_calibrating")),
             "price_change_locked_until": e.get("price_change_locked_until"),
             "price_change_projections": str(e.get("price_change_projections", "")),

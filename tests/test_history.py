@@ -48,6 +48,10 @@ def test_merged_gw_to_canonical_maps_and_joins_code():
     r = out.iloc[0]
     assert r["code"] == 777 and r["position"] == "GKP" and r["opp_code"] == 91
     assert pd.isna(r["defcon"])  # column absent pre-2025/26 -> NaN, not crash
+    # set-piece orders are a live-only snapshot; history backfills them as NA
+    assert pd.isna(r["penalties_order"])
+    assert pd.isna(r["direct_freekicks_order"])
+    assert pd.isna(r["corners_and_indirect_freekicks_order"])
 
 
 def test_merged_gw_to_canonical_drops_assistant_manager_rows():

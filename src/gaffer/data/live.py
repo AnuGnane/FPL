@@ -53,6 +53,17 @@ CANONICAL_COLS = [
     "recoveries",
     "value",
     "selected",
+    # Set-piece duty as recorded AT SNAPSHOT TIME — the live table is the only
+    # place this is ever observed, so history rows backfill to NA.
+    "penalties_order",
+    "direct_freekicks_order",
+    "corners_and_indirect_freekicks_order",
+]
+
+SET_PIECE_COLS = [
+    "penalties_order",
+    "direct_freekicks_order",
+    "corners_and_indirect_freekicks_order",
 ]
 
 RENAME = {
@@ -129,6 +140,12 @@ def refresh_live(
         )
         time.sleep(sleep_s)  # politeness: ~600 calls
     df = pd.DataFrame(all_rows, columns=CANONICAL_COLS)
+    # Element summaries carry no set-piece info: stamp each row with the order
+    # the bootstrap reports right now, so accumulating snapshots record who was
+    # actually on set pieces at the time rather than only today's assignment.
+    for col in SET_PIECE_COLS:
+        by_element = dict(zip(players["element"], players[col]))
+        df[col] = pd.to_numeric(df["element"].map(by_element), errors="coerce")
     df = df[~df["gw"].isin(unchecked)]
     store.save(df, "live/player_gw.parquet")
     return df

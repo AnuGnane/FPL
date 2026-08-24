@@ -72,6 +72,9 @@ class FakeClient:
                 "team": 3,
                 "team_code": 8,
                 "now_cost": 55,
+                "penalties_order": 1,
+                "direct_freekicks_order": None,
+                "corners_and_indirect_freekicks_order": 2,
             }
         ],
         "teams": [{"id": 3, "code": 14, "name": "Chelsea", "short_name": "CHE"}],
@@ -94,3 +97,19 @@ def test_refresh_live_drops_unchecked_gws(tmp_path, monkeypatch):
     assert saved["gw"].tolist() == [1]
     assert list(saved.columns) == CANONICAL_COLS
     assert saved.iloc[0]["element"] == 10 and saved.iloc[0]["opp_code"] == 14
+
+
+def test_refresh_live_snapshots_set_piece_orders(tmp_path, monkeypatch):
+    """Each live row records the set-piece order in force at snapshot time."""
+    monkeypatch.setattr(store, "DATA_DIR", tmp_path)
+    df = refresh_live(FakeClient(), season="2026-27", season_idx=4, sleep_s=0)
+    for c in (
+        "penalties_order",
+        "direct_freekicks_order",
+        "corners_and_indirect_freekicks_order",
+    ):
+        assert c in CANONICAL_COLS
+    r = df.iloc[0]
+    assert r["penalties_order"] == 1
+    assert pd.isna(r["direct_freekicks_order"])
+    assert r["corners_and_indirect_freekicks_order"] == 2

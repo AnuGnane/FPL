@@ -28,6 +28,29 @@ def test_build_players_parses_numerics():
     assert players["position"].isin(["GKP", "DEF", "MID", "FWD"]).all()
 
 
+def test_build_players_carries_set_piece_orders():
+    import pandas as pd
+
+    players = build_players(RAW).set_index("element")
+    assert {
+        "penalties_order",
+        "direct_freekicks_order",
+        "corners_and_indirect_freekicks_order",
+    } <= set(players.columns)
+    saka = players.loc[12]  # on all three set-piece lists
+    assert saka["penalties_order"] == 1
+    assert saka["direct_freekicks_order"] == 2
+    assert saka["corners_and_indirect_freekicks_order"] == 2
+    rice = players.loc[13]  # freekicks/corners but not penalties
+    assert pd.isna(rice["penalties_order"])
+    assert rice["direct_freekicks_order"] == 1
+    assert rice["corners_and_indirect_freekicks_order"] == 1
+    raya = players.loc[1]  # goalkeeper, on nothing
+    assert pd.isna(raya["penalties_order"])
+    assert pd.isna(raya["direct_freekicks_order"])
+    assert pd.isna(raya["corners_and_indirect_freekicks_order"])
+
+
 def test_build_teams_and_events():
     teams = build_teams(RAW)
     assert {"team_id", "code", "name"} <= set(teams.columns)
