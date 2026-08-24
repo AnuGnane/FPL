@@ -170,6 +170,15 @@ def fit_calibration(df: pd.DataFrame, tg: pd.DataFrame,
     so what is fit here has to be the second. Fitting on every appearance
     would mix cameos into the conditional and double-count the gate.
 
+    The inner refit assembles EP through the *simple* component path, whose
+    clean sheet and goals conceded are held at the constants above rather than
+    run through the team model, so the delta learned here absorbs that path's
+    level error along with the components' own. ``advise`` then composes the
+    delta with the real team model and the bookmaker blend. That mismatch is
+    an accepted approximation, measured at gate A: the calibrated model beat
+    both baselines on all five shared metrics and moved the 60-minute starter
+    bias from -1.11 to -0.483.
+
     A frame with too few distinct slots to leave a meaningful inner training
     set returns an unfitted (identity) model.
     """

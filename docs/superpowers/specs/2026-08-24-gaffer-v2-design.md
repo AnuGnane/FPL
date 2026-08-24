@@ -22,37 +22,67 @@ authenticated FPL endpoints (tool stays advisor-only), UI beyond CLI + HTML repo
 
 ### 2.1 Calibration layer (`src/gaffer/models/calibrate.py`)
 
-- Post-assembly correction: isotonic regression per position group
-  (GKP/DEF/MID/FWD), mapping assembled `ep` → expected actual points.
-- Trained in `train_all` on out-of-sample predictions: refit component models on
-  seasons `< max`, predict the last available season, fit isotonic on
-  (predicted ep, actual total_points) restricted to rows with `minutes > 0`.
-- Applied as the final step of the EP pipeline in `advise.predict_components`
-  and the backtest, AFTER `assemble_ep`, BEFORE `ep_matrix` (per-fixture, so DGWs
-  still sum). `p_haul` stays uncalibrated (it is a probability, not EP).
+*Rewritten to describe what shipped. This section originally specified
+isotonic regression; it was redesigned twice during gate A — see the GATE A
+OUTCOME note in §7 for the historical record and the measured numbers.*
+
+- Post-assembly correction: an **additive, p60-gated, per-position delta**.
+  `CalibrationModel` stores one scalar per position group (GKP/DEF/MID/FWD)
+  and `apply()` adds `p60 * delta` to the assembled `ep`. It is not a
+  monotone remap of ep — it is a level correction, which is what the measured
+  bias actually was.
+- The delta is the *conditional* bias `E[actual - ep | 60+ minutes]`, fit on
+  60-minute appearances only. The correction decomposes as
+  `E[bias] = P(60+ minutes) * E[bias | 60+ minutes]`, and `apply()` supplies
+  the first factor from `p60`, so what is fit has to be the second. Fitting on
+  every appearance would mix cameos into the conditional and double-count the
+  gate.
+- Fit in `train_all` on genuinely out-of-sample predictions: the last
+  **10 `(season_idx, gw)` slots** present are held out, every component is
+  refit on the rows strictly before them, those slots are predicted and
+  assembled, and the delta is learned from those predictions. The holdout is
+  a gameweek-slot boundary rather than a whole season on purpose: some
+  component stats exist only in the newest season (`tackles`/`cbi` arrived in
+  2025/26), so a season-wise holdout left `DefconModel` with zero eligible
+  rows and crashed the refit.
+- The inner refit runs the **simple component path** (constant `p_cs` /
+  `e_gc`), so the fitted delta absorbs that path's level error as well as the
+  components' own. Accepted, gate-A-measured approximation — see
+  `fit_calibration`'s docstring.
+- Applied as the final step of the EP pipeline in `advise` and the backtest,
+  AFTER `assemble_ep`, BEFORE `ep_matrix` (per-fixture, so DGWs still sum).
+  `p_haul` stays uncalibrated (it is a probability, not EP).
 - Persistence via existing `save_model`/`load_model` (joblib + meta sidecar),
   name `calibration`. If the artifact is missing, EP passes through unchanged
-  (identity fallback) — old model directories keep working.
-- Gate metric: calibrated model must beat v1's holdout numbers
-  (mae_starters 2.356, captain_pts 5.78, top15_pts 80.6) on the same
-  2025/26 GW30–38 eval, and the 60+ starter mean residual must shrink from
-  −1.1 toward 0 (target |bias| < 0.4).
+  (identity fallback) — old model directories keep working. A frame with too
+  few distinct slots to spare the holdout also returns the identity model.
 
 ### 2.2 Set-piece features (`features/engineer.py`, `models/attacking.py`)
 
+*Rewritten to describe what shipped. This section originally specified a
+`pens_missed` history proxy; it was removed at gate A — see the GATE A
+OUTCOME note in §7.*
+
 - Live: bootstrap fields `penalties_order`, `direct_freekicks_order`,
-  `corners_and_indirect_freekicks_order` → features `pen_taker` (1.0 if order==1,
-  0.5 if order==2, else 0), `setpiece_taker` (analogous on the better of the two
-  set-piece orders). Added to `build_players` and threaded into prediction frames.
-- History: pinned proxy — `pen_taker = 1.0` where the player's trailing-38-match
-  rolling `penalties_missed` count is > 0 (missing a penalty proves takership;
-  scored penalties are not separately recorded in the vaastav merged data), else
-  NaN. Sparse but honest; NaN (unknown) is the fallback everywhere, and LightGBM
-  handles missing natively, so weak inference cannot hurt. `setpiece_taker` has
-  no historical signal at all → NaN for all history rows.
+  `corners_and_indirect_freekicks_order` → features `pen_taker` (1.0 if
+  order==1, 0.5 if order==2, 0.0 if order>=3) and `setpiece_taker`
+  (the same scoring applied to the better of the two set-piece orders).
+  Added to `build_players` and threaded into prediction frames.
+- History: **nothing**. Both features are NaN on every historical row. The
+  orders are only ever observable on a live bootstrap snapshot, so absence of
+  evidence stays NaN rather than being manufactured into a feature; LightGBM
+  splits on missing natively and simply ignores the column until snapshots
+  accumulate.
+- The `pens_missed` proxy the original spec called for was measured and
+  dropped: over the real 113k-row history it produced 1770 non-null values
+  whose `nunique()` was 1 — a constant-where-present column that could only
+  add split noise to the attacking model.
 - Forward fix: `refresh_live` snapshots the three bootstrap order fields into
-  the live `player_gw` rows from 2026-27 onward, so future retrains learn the
-  real feature from accumulating live data rather than the proxy.
+  the live `player_gw` rows, and **accumulates** them — a row for a gameweek
+  the parquet already holds keeps the order recorded then, and only rows for a
+  new gameweek take today's bootstrap. Retrains therefore learn the real
+  feature from a growing record of who was on set pieces *at the time*, not
+  from today's assignment stamped backwards over the season.
 - Features appended to the attacking models' feature list for MID/FWD and
   GKP_DEF groups alike (defenders take corners too).
 
