@@ -437,3 +437,38 @@ def test_merge_team_odds_leaves_uncovered_fixtures_as_nan():
     assert len(merged) == 2
     assert merged.set_index("code").loc[3, "odds_e_goals_for"] > 0
     assert pd.isna(merged.set_index("code").loc[14, "odds_e_goals_for"])
+
+
+def test_merge_team_odds_refuses_a_double_listed_fixture():
+    """A fixture listed twice by the feed would fan the team-future row out
+    into two, and every player at that club would then be scored twice.
+    The merge is declared many-to-one so it raises instead."""
+    import pandas as pd
+    import pytest
+    from pandas.errors import MergeError
+
+    from gaffer.advise import merge_team_odds
+
+    tg_future = pd.DataFrame([
+        {"code": 3, "gw": 2, "opp_code": 43, "season_idx": 1},
+    ])
+    one = {"team_code": 3, "gw": 2, "opp_code": 43, "odds_goals_against": 1.2}
+    clean = merge_team_odds(tg_future, pd.DataFrame([one]))
+    assert len(clean) == 1 and clean["odds_goals_against"].iloc[0] == 1.2
+
+    with pytest.raises(MergeError):
+        merge_team_odds(tg_future, pd.DataFrame([one, dict(one)]))
+
+
+def test_run_advise_degrades_when_the_odds_frame_will_not_merge():
+    """Odds are a best-effort extra everywhere else; a malformed feed must
+    not take the week's advice down with it."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    merge = src.index("merge_team_odds(tg_future, odds_df)")
+    tail = src[merge:merge + 400]
+    assert "except Exception" in tail
+    assert "odds unusable" in tail

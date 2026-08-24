@@ -132,17 +132,24 @@ def entry_live_points(picks: list[dict], points_of: dict[int, int],
 def league_live_table(rows: list[dict]) -> list[dict]:
     """Project the mini-league table forward, with the rank change so far.
 
-    ``rows`` are ``{"name", "pre_total", "live"}``. Each returned row gains
-    ``projected`` (pre_total + live) and ``delta``, the places gained (+) or
-    lost (-) against the pre-gameweek order.
+    ``rows`` are ``{"entry", "name", "pre_total", "live"}``. Each returned row
+    gains ``projected`` (pre_total + live) and ``delta``, the places gained
+    (+) or lost (-) against the pre-gameweek order.
+
+    Ranks are keyed by ``entry`` — the FPL entry id — because mini-league
+    entry names are not unique: two rivals sharing a name would collapse into
+    one pre-gameweek rank and both get the same wrong arrow. ``name`` is the
+    fallback for callers that have no ids.
     """
-    pre_order = [r["name"] for r in
-                 sorted(rows, key=lambda r: -r["pre_total"])]
-    pre_rank = {name: i for i, name in enumerate(pre_order)}
+    def key(r: dict):
+        return r.get("entry", r["name"])
+
+    pre_order = sorted(rows, key=lambda r: -r["pre_total"])
+    pre_rank = {key(r): i for i, r in enumerate(pre_order)}
     out = [dict(r, projected=r["pre_total"] + r["live"]) for r in rows]
     out.sort(key=lambda r: -r["projected"])
     for i, row in enumerate(out):
-        row["delta"] = pre_rank[row["name"]] - i
+        row["delta"] = pre_rank[key(row)] - i
     return out
 
 
@@ -175,7 +182,8 @@ def run_live(cfg, client) -> list[dict]:
     # subtract it back out to get a pre-gameweek total comparable with the
     # league standings (which only refresh once the gameweek is scored).
     my_pre = history.get("total_points", 0) - history.get("points", 0)
-    rows = [{"name": "You", "pre_total": my_pre, "live": my_live}]
+    rows = [{"entry": cfg.entry_id, "name": "You",
+             "pre_total": my_pre, "live": my_live}]
 
     if cfg.league_id:
         rivals = fetch_rival_entries(client, cfg.league_id, cfg.entry_id)
@@ -184,6 +192,7 @@ def run_live(cfg, client) -> list[dict]:
             if rival.entry not in picks:
                 continue        # picks not public (joined late) — skip
             rows.append({
+                "entry": int(rival.entry),
                 "name": str(rival.entry_name),
                 "pre_total": int(rival.total),
                 "live": entry_live_points(picks[rival.entry], points_of, bonus),

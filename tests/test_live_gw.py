@@ -266,3 +266,39 @@ def test_run_live_works_with_an_empty_league(capsys):
     table = run_live(CFG, _NoLeague())
     assert [r["name"] for r in table] == ["You"]
     assert "27" in capsys.readouterr().out
+
+
+def test_league_live_table_ranks_duplicate_entry_names_separately():
+    """Mini-league entry names are not unique. Keying the pre-gameweek rank
+    by name collapsed two rivals called the same thing into one rank, so both
+    got the same (wrong) movement arrow."""
+    rows = [{"name": "You", "entry": 1, "pre_total": 100, "live": 0},
+            {"name": "Twin", "entry": 2, "pre_total": 90, "live": 60},
+            {"name": "Twin", "entry": 3, "pre_total": 80, "live": 0}]
+    table = league_live_table(rows)
+    by_entry = {r["entry"]: r for r in table}
+    # Pre order: You(0), Twin#2(1), Twin#3(2).
+    # Projected:  Twin#2 150, You 100, Twin#3 80.
+    assert [r["entry"] for r in table] == [2, 1, 3]
+    assert by_entry[2]["delta"] == 1        # up one
+    assert by_entry[1]["delta"] == -1       # down one
+    assert by_entry[3]["delta"] == 0        # still last
+
+
+def test_league_live_table_still_ranks_by_name_without_ids():
+    rows = [{"name": "You", "pre_total": 100, "live": 0},
+            {"name": "Rival", "pre_total": 90, "live": 60}]
+    table = league_live_table(rows)
+    assert [r["name"] for r in table] == ["Rival", "You"]
+    assert table[0]["delta"] == 1 and table[1]["delta"] == -1
+
+
+def test_run_live_rows_carry_the_entry_id():
+    """Source-level seam: the unique key has to reach league_live_table."""
+    import inspect
+
+    from gaffer.live_gw import run_live
+
+    src = inspect.getsource(run_live)
+    assert '"entry": int(rival.entry)' in src
+    assert '"entry": cfg.entry_id' in src

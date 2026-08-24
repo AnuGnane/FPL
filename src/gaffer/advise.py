@@ -257,11 +257,18 @@ def merge_team_odds(tg_future: pd.DataFrame,
 
     Fixtures the feed did not cover land as NaN, which ``blend_team_odds``
     reads as "keep the model's own output".
+
+    ``validate="many_to_one"`` is the guard that makes the key mean what the
+    paragraph above claims. A feed that lists one fixture twice would
+    otherwise fan the team's row out silently and double the expected points
+    of every player at that club; instead the merge raises, and the caller
+    drops the odds for the week.
     """
     return tg_future.merge(
         odds_df,
         left_on=["code", "gw", "opp_code"],
         right_on=["team_code", "gw", "opp_code"], how="left",
+        validate="many_to_one",
     ).drop(columns=["team_code"])
 
 
@@ -408,7 +415,13 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         # trained on odds as a feature rather than blended with them after the
         # fact. Nothing reads these yet.
         store.save(odds_df, f"live/odds/gw{gw}.parquet")
-        tg_future = merge_team_odds(tg_future, odds_df)
+        try:
+            tg_future = merge_team_odds(tg_future, odds_df)
+        except Exception as e:  # noqa: BLE001 — odds must never block advice
+            # A double-listed fixture trips the many_to_one guard. The raw
+            # frame is already banked above; this week simply runs on the
+            # team model alone.
+            print(f"odds unusable, continuing without: {e}")
 
     comp = predict_components(pred_frame, tg_future, players)
     # Optional artifact: model directories trained before calibration existed
