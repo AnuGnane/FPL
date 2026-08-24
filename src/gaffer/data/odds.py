@@ -71,3 +71,45 @@ class OddsClient:
                     "apiKey": self.api_key},
             snapshot="odds",
         )
+
+
+GOAL_CAP = 10
+GRID = [round(0.2 + 0.05 * i, 2) for i in range(int((4.0 - 0.2) / 0.05) + 1)]
+
+
+def devig(prices: list[float]) -> list[float]:
+    """Proportionally normalize implied probabilities (strip the vig)."""
+    implied = [1.0 / p for p in prices]
+    s = sum(implied)
+    return [x / s for x in implied]
+
+
+def invert_odds(p_home: float, p_draw: float, p_away: float,
+                p_over25: float) -> tuple[float, float]:
+    """Least-squares grid search for independent-Poisson (mu_h, mu_a)."""
+    from math import exp, factorial
+
+    def pmf(mu):
+        return [exp(-mu) * mu**k / factorial(k) for k in range(GOAL_CAP + 1)]
+
+    pmfs = {mu: pmf(mu) for mu in GRID}
+    best, best_err = (1.3, 1.3), float("inf")
+    for mh in GRID:
+        ph_ = pmfs[mh]
+        for ma in GRID:
+            pa_ = pmfs[ma]
+            win = draw = over = 0.0
+            for h in range(GOAL_CAP + 1):
+                for a in range(GOAL_CAP + 1):
+                    pr = ph_[h] * pa_[a]
+                    if h > a:
+                        win += pr
+                    elif h == a:
+                        draw += pr
+                    if h + a >= 3:
+                        over += pr
+            err = ((win - p_home) ** 2 + (draw - p_draw) ** 2
+                   + 0.5 * (over - p_over25) ** 2)
+            if err < best_err:
+                best_err, best = err, (mh, ma)
+    return best

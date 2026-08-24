@@ -2,11 +2,12 @@ import json
 from pathlib import Path
 
 import httpx
+import pytest
 
 import gaffer.data.odds as odds_mod
 import gaffer.data.store as store
 from gaffer.config import load_config
-from gaffer.data.odds import OddsClient
+from gaffer.data.odds import OddsClient, devig, invert_odds
 
 SAMPLE_ODDS = [{
     "home_team": "Arsenal", "away_team": "Manchester City",
@@ -154,3 +155,46 @@ def test_config_odds_section_populated(tmp_path):
 
 def test_shipped_config_toml_loads():
     assert load_config("config.toml").odds_api_key == ""
+
+
+def _poisson_probs(mu_h, mu_a, cap=10):
+    from math import exp, factorial
+    ph = [exp(-mu_h) * mu_h**k / factorial(k) for k in range(cap + 1)]
+    pa = [exp(-mu_a) * mu_a**k / factorial(k) for k in range(cap + 1)]
+    win = draw = away = over = 0.0
+    for h in range(cap + 1):
+        for a in range(cap + 1):
+            pr = ph[h] * pa[a]
+            if h > a: win += pr
+            elif h == a: draw += pr
+            else: away += pr
+            if h + a >= 3: over += pr
+    return win, draw, away, over
+
+
+def test_devig_normalizes_implied_probabilities():
+    p = devig([2.0, 4.0, 4.0])
+    assert p == pytest.approx([0.5, 0.25, 0.25])
+    p = devig([1.8, 3.6, 3.6])
+    assert sum(p) == pytest.approx(1.0)
+
+
+def test_invert_odds_recovers_known_mus():
+    ph, pd_, pa, pover = _poisson_probs(1.8, 1.0)
+    mu_h, mu_a = invert_odds(ph, pd_, pa, pover)
+    assert mu_h == pytest.approx(1.8, abs=0.1)
+    assert mu_a == pytest.approx(1.0, abs=0.1)
+
+
+def test_invert_odds_symmetric_case():
+    ph, pd_, pa, pover = _poisson_probs(1.3, 1.3)
+    mu_h, mu_a = invert_odds(ph, pd_, pa, pover)
+    assert mu_h == pytest.approx(mu_a, abs=0.051)   # grid step tolerance
+
+
+def test_invert_odds_is_deterministic():
+    ph, pd_, pa, pover = _poisson_probs(2.1, 0.7)
+    first = invert_odds(ph, pd_, pa, pover)
+    second = invert_odds(ph, pd_, pa, pover)
+    assert first == second
+    assert isinstance(first, tuple) and len(first) == 2
