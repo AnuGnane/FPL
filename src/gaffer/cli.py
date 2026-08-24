@@ -93,7 +93,13 @@ def league():
     from gaffer.data.league import fetch_rival_entries
 
     cfg = load_config()
+    if not cfg.league_id:
+        typer.echo("Set fpl.league_id in config.toml first.")
+        raise typer.Exit(1)
     rivals = fetch_rival_entries(FPLClient(), cfg.league_id, cfg.entry_id)
+    if rivals.empty:
+        typer.echo(f"No rivals in league {cfg.league_id} yet.")
+        return
     typer.echo(rivals.to_string(index=False))
 
 

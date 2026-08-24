@@ -80,3 +80,22 @@ def test_fetch_rival_picks_skips_unavailable_entries():
 
 def test_effective_ownership_empty():
     assert effective_ownership({}) == {}
+
+
+class _EmptyStandingsClient:
+    """A league with no standings yet (freshly created / pre-GW1)."""
+
+    def get_league_standings(self, league_id, page=1):
+        return {"standings": {"has_next": False, "results": []}}
+
+
+def test_fetch_rival_entries_handles_empty_league():
+    df = fetch_rival_entries(_EmptyStandingsClient(), league_id=1,
+                             exclude_entry=8)
+    assert df.empty
+    assert list(df.columns) == [
+        "entry", "entry_name", "player_name", "rank", "last_rank",
+        "total", "event_total"]
+    # downstream: no rivals -> no picks -> no EO, no crash
+    assert fetch_rival_picks(_FakePicksClient(), df["entry"].tolist(), gw=3) == {}
+    assert effective_ownership({}) == {}

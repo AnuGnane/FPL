@@ -26,6 +26,11 @@ def fetch_rival_entries(client: FPLClient, league_id: int,
         if not data["standings"].get("has_next") or len(rows) >= max_rivals:
             break
         page += 1
+    if not rows:
+        # A league with no standings yet (freshly created, or before GW1 is
+        # scored) returns an empty results list; pd.DataFrame([])[COLS] would
+        # KeyError on every column.
+        return pd.DataFrame(columns=STANDINGS_COLS)
     df = pd.DataFrame(rows)[STANDINGS_COLS]
     return df[df["entry"] != exclude_entry].head(max_rivals)
 

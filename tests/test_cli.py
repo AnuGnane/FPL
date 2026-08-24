@@ -27,3 +27,28 @@ def test_every_command_help_renders():
     for cmd in ["advise", "refresh", "train", "prices", "league", "backtest"]:
         result = runner.invoke(app, [cmd, "--help"])
         assert result.exit_code == 0, f"{cmd} --help failed: {result.output}"
+
+
+def test_league_without_league_id_fails_cleanly(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "config.toml").write_text('[fpl]\nentry_id = 1\nleague_id = 0\n')
+    result = runner.invoke(app, ["league"])
+    assert result.exit_code != 0
+    assert "league_id" in result.output
+
+
+def test_league_reports_empty_league(tmp_path, monkeypatch):
+    import pandas as pd
+
+    from gaffer.data import league as league_mod
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "config.toml").write_text('[fpl]\nentry_id = 1\nleague_id = 5\n')
+    monkeypatch.setattr(
+        league_mod, "fetch_rival_entries",
+        lambda *a, **k: pd.DataFrame(columns=league_mod.STANDINGS_COLS))
+    monkeypatch.setattr("gaffer.api.client.FPLClient.__init__",
+                        lambda self, *a, **k: None)
+    result = runner.invoke(app, ["league"])
+    assert result.exit_code == 0
+    assert "No rivals" in result.output
