@@ -32,9 +32,86 @@ def test_prediction_frame_future_rows_get_history_features():
     pred = build_prediction_frame(hist, future, stats=["total_points"],
                                   windows=[3])
     assert len(pred) == 2
-    # gw5 window = gw2-4 actuals; gw6 window skips gw5's NaN
+    # Both rows are predictions made today, so both see the same as-of-today
+    # form: the last three played matches.
     assert pred.loc[pred.gw == 5, "total_points_r3"].iloc[0] == (4 + 100 + 6) / 3
-    assert pred.loc[pred.gw == 6, "total_points_r3"].iloc[0] == (100 + 6) / 2
+    assert pred.loc[pred.gw == 6, "total_points_r3"].iloc[0] == (4 + 100 + 6) / 3
+
+
+def _history(code=1, n=8):
+    return pd.DataFrame({
+        "code": [code] * n,
+        "season_idx": [0] * n,
+        "gw": list(range(1, n + 1)),
+        "kickoff_time": [d.strftime("%Y-%m-%dT14:00:00Z") for d in
+                         pd.date_range("2025-08-09", periods=n, freq="7D")],
+        "team_code": [3] * n,
+        "opp_code": list(range(20, 20 + n)),
+        "was_home": [i % 2 == 0 for i in range(n)],
+        "total_points": [2.0, 4.0, 1.0, 9.0, 6.0, 3.0, 12.0, 5.0][:n],
+        "minutes": [90, 45, 90, 90, 12, 90, 90, 78][:n],
+        "starts": [1, 0, 1, 1, 0, 1, 1, 1][:n],
+    })
+
+
+def _three_future(code=1):
+    return pd.DataFrame({
+        "code": [code] * 3,
+        "season_idx": [0] * 3,
+        "gw": [9, 10, 11],
+        "kickoff_time": ["2025-10-04T14:00:00Z", "2025-10-08T19:45:00Z",
+                         "2025-10-18T14:00:00Z"],
+        "team_code": [3] * 3,
+        "opp_code": [40, 41, 42],
+        "was_home": [True, False, True],
+    })
+
+
+ROLL_SPOTS = ["total_points_r1", "minutes_r1", "minutes_r3", "starts_r5"]
+
+
+def test_future_rows_share_one_as_of_today_form_vector():
+    """A prediction made today for GW+2 knows exactly what a prediction for
+    GW+1 knows: the same played matches. Only fixture context may differ."""
+    hist = _history()
+    pred = build_prediction_frame(hist, _three_future(),
+                                  stats=["total_points", "minutes", "starts"],
+                                  windows=[1, 3, 5])
+    assert len(pred) == 3
+    for col in ROLL_SPOTS:
+        vals = pred[col].tolist()
+        assert not np.isnan(vals[0]), col
+        assert vals[0] == vals[1] == vals[2], (col, vals)
+    # and that shared vector is the one the GW+1 row already got: the window
+    # ending at the last played match.
+    assert pred["total_points_r1"].iloc[0] == 5.0
+    assert pred["minutes_r1"].iloc[0] == 78
+    assert pred["minutes_r3"].iloc[0] == (90 + 90 + 78) / 3
+    assert pred["starts_r5"].iloc[0] == (1 + 0 + 1 + 1 + 1) / 5
+
+
+def test_future_rows_still_vary_by_fixture_context():
+    pred = build_prediction_frame(_history(), _three_future(),
+                                  stats=["total_points"], windows=[1])
+    assert pred["opp_code"].tolist() == [40, 41, 42]
+    assert pred["home"].tolist() == [1.0, 0.0, 1.0]
+    # days_rest comes from the schedule's kickoff gaps, which are real
+    # knowledge and must keep varying per row.
+    assert pred["days_rest"].tolist() == [7.0, 4.0, 9.0]
+
+
+def test_future_rows_for_a_player_with_no_history_stay_nan():
+    hist = _history(code=1)
+    future = pd.concat([_three_future(code=1), _three_future(code=2)],
+                       ignore_index=True)
+    pred = build_prediction_frame(hist, future,
+                                  stats=["total_points", "minutes", "starts"],
+                                  windows=[1, 3, 5])
+    rookie = pred[pred["code"] == 2]
+    assert len(rookie) == 3
+    for col in ROLL_SPOTS:
+        assert rookie[col].isna().all(), col
+    assert not pred.loc[pred["code"] == 1, "minutes_r1"].isna().any()
 
 
 def test_rolling_never_crosses_players():

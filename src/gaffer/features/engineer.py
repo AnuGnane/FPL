@@ -116,6 +116,33 @@ def add_context(df: pd.DataFrame, elo: pd.DataFrame | None,
     return df
 
 
+def latest_player_rolling(hist: pd.DataFrame, stats: list[str] = ROLL_STATS,
+                          windows: list[int] = WINDOWS) -> pd.DataFrame:
+    """Each player's as-of-today form vector, indexed by ``code``.
+
+    The values a next-fixture row would see: window ``w`` is the mean of the
+    player's last ``w`` played matches. That is ``shift(1)``-then-roll
+    evaluated one row past the end of history, computed here as an unshifted
+    roll ending at the last played match — the same window, without needing a
+    placeholder row. Players absent from ``hist`` are simply absent here.
+    """
+    sort_cols = [c for c in ("code", "season_idx", "gw", "kickoff_time")
+                 if c in hist.columns]
+    h = hist.sort_values(sort_cols)
+    codes = h["code"]
+    absent = pd.Series(float("nan"), index=h.index, dtype="float64")
+    feats: dict[str, pd.Series] = {}
+    for stat in stats:
+        s = h[stat] if stat in h.columns else absent
+        for w in windows:
+            feats[f"{stat}_r{w}"] = (
+                s.groupby(codes).rolling(w, min_periods=1).mean()
+                .reset_index(level=0, drop=True))
+    frame = pd.DataFrame(feats, index=h.index)
+    frame.insert(0, "code", codes)
+    return frame.groupby("code", sort=False).tail(1).set_index("code")
+
+
 def build_prediction_frame(hist: pd.DataFrame, future: pd.DataFrame,
                            stats: list[str] = ROLL_STATS,
                            windows: list[int] = WINDOWS,
@@ -124,21 +151,34 @@ def build_prediction_frame(hist: pd.DataFrame, future: pd.DataFrame,
     """Feature rows for upcoming fixtures, built purely from history.
 
     ``future``: one row per player per upcoming fixture (code, season_idx,
-    gw, opp_code, was_home, team_code, position, kickoff_time). It is
-    appended to history with NaN stats, features are computed over the
-    combined frame, and only the future rows are returned — so a GW+2 row's
-    window skips the NaNs of the GW+1 row ahead of it.
+    gw, opp_code, was_home, team_code, position, kickoff_time).
+
+    A prediction made today for GW+3 knows exactly what a prediction for GW+1
+    knows — the matches already played — so every future row of a player
+    carries the *same* form vector, :func:`latest_player_rolling`. Appending
+    the future rows to history and rolling over the lot instead made the
+    window slide over the appended NaNs: a GW+2 row's ``_r1`` window held only
+    GW+1's NaN and came out NaN, which LightGBM read as a low-minutes player
+    and which collapsed ``p_play`` further out the horizon. Only fixture
+    context — opponent, home, Elo, rest days, set-piece order — varies per
+    future row. A player with no history keeps NaN features.
+
+    Training features are unaffected: :func:`add_player_rolling` still builds
+    them over history alone, where every row is a played match.
     """
     future = future.copy()
     future["_future"] = True
     hist = hist.copy()
     hist["_future"] = False
     combined = pd.concat([hist, future], ignore_index=True)
-    combined = add_player_rolling(combined, stats, windows)
     combined = add_setpiece(combined)
     combined = add_context(combined, elo, elo_final)
     out = combined[combined["_future"]].drop(columns=["_future"])
-    return out.reset_index(drop=True)
+    out = out.reset_index(drop=True)
+    latest = latest_player_rolling(hist, stats, windows)
+    return pd.concat(
+        [out.drop(columns=latest.columns, errors="ignore"),
+         latest.reindex(out["code"]).reset_index(drop=True)], axis=1)
 
 
 def feature_columns(stats: list[str] = ROLL_STATS,
