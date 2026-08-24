@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../api/client'
+import { useDebounced } from '../api/useDebounced'
 import type { PlayerRow, WhatIfRequest } from '../types'
 
 type ListKey = 'lock' | 'ban' | 'force_in'
@@ -19,15 +20,16 @@ function PlayerPicker(
 ) {
   const [query, setQuery] = useState('')
   const [matches, setMatches] = useState<PlayerRow[]>([])
+  const search = useDebounced(query)
 
   useEffect(() => {
-    if (query.length < 2) { setMatches([]); return }
+    if (search.length < 2) { setMatches([]); return }
     let live = true
-    apiGet<PlayerRow[]>(`/api/players?search=${encodeURIComponent(query)}`)
+    apiGet<PlayerRow[]>(`/api/players?search=${encodeURIComponent(search)}`)
       .then((rows) => { if (live) setMatches(rows.slice(0, 8)) })
       .catch(() => { if (live) setMatches([]) })
     return () => { live = false }
-  }, [query])
+  }, [search])
 
   return (
     <div className="picker">

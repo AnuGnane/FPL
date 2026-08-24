@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { apiGet } from '../api/client'
 import type { PlayerExplain } from '../types'
 
@@ -8,17 +8,38 @@ export default function ExplainModal(
 ) {
   const [data, setData] = useState<PlayerExplain | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
+    // A second click while the first request is in flight must not repaint
+    // the modal with the player the user already moved off.
     let live = true
+    setData(null)
+    setError(null)
     apiGet<PlayerExplain>(`/api/players/${code}/explain`)
       .then((body) => { if (live) setData(body) })
       .catch((e: Error) => { if (live) setError(e.message) })
     return () => { live = false }
   }, [code])
 
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  // Enough of a focus trap for a modal this small: the close button is the
+  // first thing keyboard and screen-reader users land on.
+  useEffect(() => { closeRef.current?.focus() }, [])
+
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div
+      className="modal-backdrop"
+      data-testid="modal-backdrop"
+      onClick={onClose}
+    >
       <div
         className="modal card"
         role="dialog"
@@ -26,7 +47,7 @@ export default function ExplainModal(
         aria-label="Expected points explained"
         onClick={(event) => event.stopPropagation()}
       >
-        <button onClick={onClose}>Close</button>
+        <button ref={closeRef} onClick={onClose}>Close</button>
         {error && <p className="bad">{error}</p>}
         {!data && !error && <p className="muted">Loading…</p>}
         {data && (
@@ -35,8 +56,26 @@ export default function ExplainModal(
               {data.name} · {data.position} · {data.team_name} ·{' '}
               {data.ep_next} xPts
             </h2>
-            {data.fixtures.map((fixture) => (
-              <section key={`${fixture.gw}-${fixture.opponent}`}>
+            {/* A double gameweek arrives as two fixture blocks; the sum is
+                the number that decides a captaincy, so state it. */}
+            {Object.entries(
+              data.fixtures.reduce<Record<number, number[]>>((acc, fixture) => {
+                acc[fixture.gw] = [...(acc[fixture.gw] ?? []), fixture.ep]
+                return acc
+              }, {}),
+            )
+              .filter(([, eps]) => eps.length > 1)
+              .map(([gw, eps]) => (
+                <p key={gw} className="muted">
+                  GW{gw} total: {Math.round(
+                    eps.reduce((a, b) => a + b, 0) * 100) / 100} xPts across{' '}
+                  {eps.length} fixtures
+                </p>
+              ))}
+            {data.fixtures.map((fixture, index) => (
+              // A double can be two fixtures against the same opponent, so
+              // the index is part of the key.
+              <section key={`${fixture.gw}-${fixture.opponent}-${index}`}>
                 <h3>
                   GW{fixture.gw} {fixture.home ? 'vs' : 'at'}{' '}
                   {fixture.opponent} — {fixture.ep} xPts
