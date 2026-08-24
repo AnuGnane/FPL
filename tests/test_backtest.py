@@ -272,3 +272,52 @@ def test_backtest_free_hit_scores_one_week_then_reverts(monkeypatch):
     # The free hit is spent for the half.
     assert calls["avail"] == [["wildcard", "freehit", "bboost", "3xc"],
                               ["wildcard", "bboost", "3xc"]]
+
+
+# --- horizon feature rows carry no future information --------------------
+#
+# The replay's later-gameweek rows used to come straight out of the
+# untruncated training frame, so a GW+1 row's shift(1) rolling window held
+# the GW result that had not been played yet at the decision deadline.
+
+
+def _explosion_season(explode_gw, n=3, gws=(1, 2, 3, 4)):
+    """Raw (unengineered) player-match rows; player 101 hauls in
+    ``explode_gw`` and scores 2 everywhere else."""
+    rows = []
+    for gw in gws:
+        for i in range(n):
+            code = 101 + i
+            pts = 50 if (code == 101 and gw == explode_gw) else 2
+            rows.append({
+                "season_idx": 0, "gw": gw, "code": code, "element": 1 + i,
+                "name": f"P{i}", "position": POSITIONS[i],
+                "team_code": 1 + i, "opp_code": 20 + i, "was_home": True,
+                "kickoff_time": f"2025-01-{gw:02d}T12:00:00Z",
+                "total_points": pts, "minutes": 90, "starts": 1,
+            })
+    return pd.DataFrame(rows)
+
+
+def test_horizon_rows_do_not_see_results_after_the_decision_gw():
+    hist = _explosion_season(explode_gw=2)
+    # Deciding at GW2: plan GW2..GW4, execute GW2. The GW3 row's r1 window
+    # may only see matches strictly before GW2.
+    out = bt.horizon_feature_rows(hist, gw=2, gws=[2, 3, 4], season_idx=0,
+                                  elo_at={})
+    gw3 = out[(out["code"] == 101) & (out["gw"] == 3)]
+    assert len(gw3) == 1
+    # GW1 scored 2; the GW2 explosion (50) is unplayed at the deadline.
+    assert float(gw3["total_points_r1"].iloc[0]) == 2.0
+    assert float(gw3["total_points_r3"].iloc[0]) == 2.0
+
+
+def test_horizon_rows_keep_the_known_fixture_list():
+    hist = _explosion_season(explode_gw=2)
+    out = bt.horizon_feature_rows(hist, gw=2, gws=[2, 3, 4], season_idx=0,
+                                  elo_at={})
+    assert sorted(out["gw"].unique().tolist()) == [3, 4]
+    gw3 = out[(out["code"] == 101) & (out["gw"] == 3)].iloc[0]
+    assert int(gw3["opp_code"]) == 20 and float(gw3["home"]) == 1.0
+    # The outcome columns are blanked: they are not known at the deadline.
+    assert pd.isna(gw3["total_points"])

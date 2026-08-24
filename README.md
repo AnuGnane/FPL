@@ -149,7 +149,11 @@ uv run gaffer backtest --season 2025-26 --start-gw 5 --horizon 6 --chips
 ```
 
 Replays a past season following the tool's own advice, retraining as the
-season goes so no future data leaks in.
+season goes. Two things are truncated at each week's deadline, not one: the
+training data the models are refit on, and the feature rows for the later
+gameweeks of the horizon — those are rebuilt each week from history up to
+that deadline plus the fixture list, so a GW+1 row never carries a result
+that had not been played yet.
 
 - `--horizon N` plans N gameweeks ahead but executes only the first, then
   re-plans next week — the same receding horizon the weekly run uses.

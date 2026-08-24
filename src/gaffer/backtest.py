@@ -4,10 +4,19 @@ The harness re-runs the whole pipeline over a finished season. At each
 gameweek it retrains on data strictly before that gameweek, predicts every
 component, solves for the squad, then scores the resulting XI against what
 actually happened. Nothing downstream of the deadline is ever visible to the
-model: ``load_training_frame(max_season_idx, max_gw)`` truncates the training
-frame, and the per-gameweek feature rows are leakage-safe by construction —
-:func:`gaffer.features.engineer.add_player_rolling` shifts every rolling
-window one match back, so a GW row's features only see earlier matches.
+model. Two separate mechanisms enforce that:
+
+* ``load_training_frame(max_season_idx, max_gw)`` truncates the *training*
+  frame, so the fitted models never saw the gameweek they predict;
+* the *feature rows* for the current gameweek are leakage-safe by
+  construction — :func:`gaffer.features.engineer.add_player_rolling` shifts
+  every rolling window one match back — but the rows for the **later**
+  gameweeks of a receding horizon are not, because their shifted windows sit
+  on matches played after the decision deadline. :func:`horizon_feature_rows`
+  therefore re-engineers them the way the live advisor does: history
+  truncated strictly before the decision gameweek, plus the known fixture
+  list (opponent, home, kickoff) for the rest of the horizon with every
+  outcome column blanked.
 
 Two joins repeat the lessons the weekly advisor learned the hard way:
 component predictions are stitched **positionally** (``predict`` returns one
@@ -51,6 +60,8 @@ from gaffer.assets import load_bootstrap_sample
 from gaffer.config import load_config
 from gaffer.data import store
 from gaffer.data.bootstrap import scoring_table
+from gaffer.features.engineer import (ROLL_STATS, build_prediction_frame,
+                                      feature_columns)
 from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
 from gaffer.models.train import (DEFAULT_E_GC, DEFAULT_P_CS,  # noqa: F401
                                  load_training_frame,
@@ -180,6 +191,54 @@ def _players_frame(season_rows: pd.DataFrame, gw: int) -> pd.DataFrame:
     return p.rename(columns={"value": "now_cost"}).reset_index(drop=True)
 
 
+def elo_as_of(season_rows: pd.DataFrame, gw: int) -> dict:
+    """Latest leakage-free Elo per team at the ``gw`` deadline.
+
+    ``team_elo`` on a stored row is ``elo_pre`` — the rating *before* that
+    match — so a team playing in ``gw`` carries exactly the rating a manager
+    would have seen at the deadline. A team blanking in ``gw`` falls back to
+    its most recent earlier row, which is one match stale but still contains
+    nothing from after the deadline.
+    """
+    if "team_elo" not in season_rows.columns:
+        return {}
+    prior = season_rows[season_rows["gw"] <= gw].dropna(subset=["team_elo"])
+    if prior.empty:
+        return {}
+    last = (prior.sort_values("gw").drop_duplicates("team_code", keep="last"))
+    return dict(zip(last["team_code"], last["team_elo"]))
+
+
+def horizon_feature_rows(hist_raw: pd.DataFrame, gw: int, gws: list[int],
+                         season_idx: int, elo_at: dict) -> pd.DataFrame:
+    """Feature rows for ``gws[1:]`` as they could be built at the ``gw``
+    deadline.
+
+    ``hist_raw`` is the *unengineered* player-match frame (the training frame
+    with :func:`feature_columns` stripped, the same shape ``advise`` feeds
+    ``build_prediction_frame``). History is truncated to matches strictly
+    before ``gw``; the later-gameweek rows are reduced to what was genuinely
+    known then — identity, opponent, home, kickoff — with every outcome
+    column in ``ROLL_STATS`` blanked so no unplayed result can reach a
+    rolling window. Elo comes from ``elo_at`` rather than the row's own
+    stored ``elo_pre``, which for a future gameweek already reflects results
+    from after the deadline.
+    """
+    season = hist_raw[hist_raw["season_idx"] == season_idx]
+    future = season[season["gw"].isin(gws[1:])].copy()
+    future = future.drop(columns=[c for c in ROLL_STATS
+                                  if c in future.columns])
+    prior = hist_raw[(hist_raw["season_idx"] < season_idx)
+                     | ((hist_raw["season_idx"] == season_idx)
+                        & (hist_raw["gw"] < gw))]
+    out = build_prediction_frame(prior, future, elo=None, elo_final=elo_at)
+    if elo_at and {"team_code", "opp_code"} <= set(out.columns):
+        out["team_elo"] = out["team_code"].map(elo_at)
+        out["opp_elo"] = out["opp_code"].map(elo_at)
+        out["elo_diff"] = out["team_elo"] - out["opp_elo"]
+    return out
+
+
 def _actuals_frame(rows: pd.DataFrame) -> pd.DataFrame:
     """Per-code actual points and minutes, double gameweeks summed."""
     return (rows.groupby("code", as_index=False)
@@ -200,11 +259,13 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
     plans are thrown away and re-planned next week with fresh information.
     ``horizon=1`` is the old myopic behaviour.
 
-    Planning ahead is leakage-free: every feature is backward-looking (the
-    rolling windows in :func:`gaffer.features.engineer.add_player_rolling`
-    are shifted one match back) and the fixture list for future gameweeks
-    was known before the deadline in reality too. The *actuals* scored each
-    week remain those of the current gameweek alone.
+    Planning ahead is leakage-free, but not for free: the later gameweeks'
+    feature rows are re-engineered every week by :func:`horizon_feature_rows`
+    from history truncated at that week's deadline plus the fixture list,
+    which was genuinely known then. Reading them out of the stored frame
+    instead would put results that had not been played yet into a GW+1 row's
+    shifted rolling window. The *actuals* scored each week remain those of
+    the current gameweek alone.
 
     ``chips`` turns on chip play. Each week, after the ordinary solve, the
     still-available chips (two sets a season, the first expiring after GW19)
@@ -224,6 +285,13 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
 
     full, _, _ = load_training_frame()
     season_rows = full[full["season_idx"] == season_idx]
+    # Unengineered copy for horizon_feature_rows. load_training_frame already
+    # engineered the features and build_prediction_frame engineers them
+    # again; pandas would happily keep both copies under one name and every
+    # df[col] would then hand the model a two-column block. Same strip
+    # advise.py does before build_prediction_frame.
+    hist_raw = full.drop(columns=[c for c in feature_columns()
+                                  if c in full.columns])
 
     models: dict = {}
     squad: list[int] = []
@@ -249,7 +317,16 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
         # fills the missing (code, gw) keys with ep 0.0, which is how the
         # MILP already treats a player with no fixture.
         gws = list(range(gw, min(gw + horizon - 1, LAST_GW) + 1))
-        horizon_rows = season_rows[season_rows["gw"].isin(gws)]
+        # The current gameweek's stored rows are already leakage-safe; the
+        # later ones are rebuilt from history truncated at this deadline.
+        # With horizon=1 there is nothing to rebuild and this is exactly the
+        # old single-gameweek slice.
+        horizon_rows = rows
+        if len(gws) > 1:
+            later = horizon_feature_rows(hist_raw, gw, gws, season_idx,
+                                         elo_as_of(season_rows, gw))
+            horizon_rows = (pd.concat([rows, later], ignore_index=True)
+                            .reindex(columns=list(rows.columns)))
 
         comp = predict_components_simple(models, horizon_rows)
         ep = ep_matrix(apply_calibration(assemble_ep(comp, scoring),
