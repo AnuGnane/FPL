@@ -370,8 +370,15 @@ def raw_xi_pts(gw_plan, ep_by: dict) -> float:
                for c in gw_plan.xi)
 
 
-def _named(codes: list[int], name_of: dict, ep_by: dict, gw: int) -> list[dict]:
+def _named(codes: list[int], name_of: dict, pos_of: dict, ep_by: dict,
+           gw: int) -> list[dict]:
+    """Code -> the dict every report and UI table renders a player from.
+
+    ``position`` is part of the contract: the web pitch groups the XI by line
+    and has nothing to lay out without it.
+    """
     return [{"code": int(c), "name": name_of.get(c, str(c)),
+             "position": str(pos_of.get(c, "")),
              "ep": round(float(ep_by.get((c, gw), 0.0)), 2)} for c in codes]
 
 
@@ -569,7 +576,8 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     alerts = price_alerts(players, list(watch))
 
     name_of = dict(zip(players["code"], players["name"]))
-    buys = _named(first.buys, name_of, ep_by, gw)
+    pos_of = dict(zip(players["code"], players["position"]))
+    buys = _named(first.buys, name_of, pos_of, ep_by, gw)
     for b in buys:
         # An empty EO map is "nobody's ownership is known", not "nobody owns
         # them" — at GW1 no rival picks are public yet, and tagging all 15
@@ -587,12 +595,12 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         gw=gw,
         deadline=deadline,
         buys=buys,
-        sells=_named(first.sells, name_of, ep_by, gw),
+        sells=_named(first.sells, name_of, pos_of, ep_by, gw),
         hits=first.hits,
-        xi=_named(first.xi, name_of, ep_by, gw),
-        bench=_named(first.bench, name_of, ep_by, gw),
-        captain=_named([first.captain], name_of, ep_by, gw)[0],
-        vice=_named([first.vice], name_of, ep_by, gw)[0],
+        xi=_named(first.xi, name_of, pos_of, ep_by, gw),
+        bench=_named(first.bench, name_of, pos_of, ep_by, gw),
+        captain=_named([first.captain], name_of, pos_of, ep_by, gw)[0],
+        vice=_named([first.vice], name_of, pos_of, ep_by, gw)[0],
         captain_options=cap_tab.to_dict("records"),
         chip_table=chip_rows,
         wildcard_now=wc_now,
@@ -601,8 +609,8 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         price_alerts=alerts.to_dict("records"),
         expected_pts=round(raw_xi_pts(first, ep_by), 2),
         plan_by_gw=[{"gw": p.gw, "hits": p.hits,
-                     "buys": _named(p.buys, name_of, ep_by, p.gw),
-                     "sells": _named(p.sells, name_of, ep_by, p.gw),
+                     "buys": _named(p.buys, name_of, pos_of, ep_by, p.gw),
+                     "sells": _named(p.sells, name_of, pos_of, ep_by, p.gw),
                      "expected_pts": round(raw_xi_pts(p, ep_by), 2)}
                     for p in plan.gw_plans],
         strategy=strategy,

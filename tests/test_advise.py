@@ -106,7 +106,7 @@ def test_run_advise_reports_raw_ep_not_the_tilted_values():
     assert "ep_gw1 = ep_named[ep_named[\"gw\"] == gw]" in src
     assert "pool_ep" not in src[src.index("ep_gw1 ="):]
     # _named renders from ep_by, the untilted dict.
-    assert "_named(first.xi, name_of, ep_by, gw)" in src
+    assert "_named(first.xi, name_of, pos_of, ep_by, gw)" in src
 
 
 # --- GW1 initial squad ------------------------------------------------------
@@ -278,3 +278,29 @@ def test_run_advise_persists_the_components_file_and_solve_state():
     assert "save_snapshots(players, teams, events, fx)" in src
     # Raw ep_by, never pool_ep: the stored pool is the untilted one.
     assert "pool_rows(pool, players, owned_now, ep_by, gws)" in src
+
+
+def test_named_carries_position_so_the_pitch_can_group_the_xi():
+    """The web UI lays the XI out by line. Without a ``position`` on every
+    named entry the pitch has nothing to group on and renders empty."""
+    from gaffer.advise import _named
+
+    named = _named([100, 101], {100: "Salah", 101: "Dud"},
+                   {100: "MID", 101: "DEF"}, {(100, 3): 6.4}, 3)
+    assert named == [{"code": 100, "name": "Salah", "position": "MID",
+                      "ep": 6.4},
+                     {"code": 101, "name": "Dud", "position": "DEF",
+                      "ep": 0.0}]
+
+
+def test_run_advise_builds_a_position_map_beside_the_name_map():
+    """Every GwPlan-consuming ``_named`` call site gets positions, so the
+    advice JSON is complete for future runs."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    assert "pos_of = dict(zip(players[\"code\"], players[\"position\"]))" in src
+    assert "_named(" in src
+    assert src.count("_named(") == src.count("name_of, pos_of, ep_by")
