@@ -284,7 +284,7 @@ def predict_components(pred_frame: pd.DataFrame, tg_future: pd.DataFrame,
 
     keys = ["code", "season_idx", "gw", "opp_code"]
     comp = pf[keys + ["position", "team_code", "e_cards"]].reset_index(drop=True)
-    for col in ["p_play", "p60", "e_min"]:
+    for col in ["p_play", "p60"]:
         comp[col] = mp[col].values
     for name, cols in (("attacking", ["e_goals", "e_assists"]),
                        ("defcon", ["p_defcon"]),

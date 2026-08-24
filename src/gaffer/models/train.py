@@ -130,7 +130,7 @@ def predict_components_simple(models: dict, rows: pd.DataFrame) -> pd.DataFrame:
     comp["e_cards"] = rows.apply(card_penalty, axis=1).values
 
     mp = models["minutes"].predict(rows)
-    for col in ["p_play", "p60", "e_min"]:
+    for col in ["p_play", "p60"]:
         comp[col] = mp[col].values
     for name, cols in (("attacking", ["e_goals", "e_assists"]),
                        ("defcon", ["p_defcon"]),

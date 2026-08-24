@@ -4,7 +4,8 @@ import math
 import pandas as pd
 from gaffer.advise import run_advise
 from gaffer.backtest import run_backtest
-from gaffer.models.assemble import (apply_calibration, assemble_ep, ep_matrix,
+from gaffer.models.assemble import (PEN_FACED_RATE, PEN_SAVE_RATE,
+                                    apply_calibration, assemble_ep, ep_matrix,
                                     p_haul)
 from gaffer.models.calibrate import CalibrationModel
 
@@ -23,7 +24,7 @@ SCORING = {
 def _components():
     return pd.DataFrame([{
         "code": 1, "season_idx": 4, "gw": 2, "position": "DEF",
-        "p_play": 1.0, "p60": 1.0, "e_min": 90.0,
+        "p_play": 1.0, "p60": 1.0,
         "e_goals": 0.1, "e_assists": 0.1, "p_cs": 0.5, "e_gc": 0.6,
         "e_saves": 0.0, "p_defcon": 0.5, "e_bonus": 0.4, "e_cards": -0.1,
     }])
@@ -154,6 +155,61 @@ def test_apply_calibration_happens_before_the_double_gameweek_sums():
     assert float(plain.loc[plain["code"] == 1, "ep"].iloc[0]) == 3.0
     # p_haul survives the calibration untouched
     assert list(cal["p_haul"]) == list(plain["p_haul"])
+
+
+def _gkp_components():
+    comp = _components()
+    comp.loc[0, "position"] = "GKP"
+    return comp
+
+
+def test_gkp_ep_includes_the_penalty_save_term():
+    scoring = dict(SCORING, penalties_saved={"GKP": 5, "DEF": 0, "MID": 0,
+                                             "FWD": 0})
+    with_pens = assemble_ep(_gkp_components(), scoring).iloc[0]["ep"]
+    without = assemble_ep(_gkp_components(), SCORING).iloc[0]["ep"]
+    # p_play(1) * PEN_FACED_RATE(0.06) * PEN_SAVE_RATE(0.30) * 5 = 0.09
+    assert abs(with_pens - without - 0.09) < 1e-9
+    assert abs(with_pens - (without + PEN_FACED_RATE * PEN_SAVE_RATE * 5)) < 1e-9
+
+
+def test_penalty_save_term_scales_by_playing_probability():
+    scoring = dict(SCORING, penalties_saved={"GKP": 5, "DEF": 0, "MID": 0,
+                                             "FWD": 0})
+    comp = _gkp_components()
+    comp.loc[0, "p_play"] = 0.5
+    base = assemble_ep(comp, SCORING).iloc[0]["ep"]
+    assert abs(assemble_ep(comp, scoring).iloc[0]["ep"] - base - 0.045) < 1e-9
+
+
+def test_outfielders_are_unaffected_by_the_penalty_save_term():
+    scoring = dict(SCORING, penalties_saved={"GKP": 5, "DEF": 5, "MID": 5,
+                                             "FWD": 5})
+    comp = _components()
+    comp.loc[0, "position"] = "MID"
+    assert (assemble_ep(comp, scoring).iloc[0]["ep"]
+            == assemble_ep(comp, SCORING).iloc[0]["ep"])
+
+
+def test_bonus_uses_the_scoring_table_multiplier():
+    scoring = dict(SCORING, bonus={"GKP": 1, "DEF": 1, "MID": 2, "FWD": 1})
+    comp = _components()
+    comp.loc[0, "position"] = "MID"
+    doubled = assemble_ep(comp, scoring).iloc[0]["ep"]
+    plain = assemble_ep(comp, SCORING).iloc[0]["ep"]
+    # e_bonus 0.4 at p_play 1.0: the multiplier of 2 adds one more 0.4.
+    assert abs(doubled - plain - 0.4) < 1e-9
+
+
+def test_absent_penalties_saved_and_bonus_keys_keep_todays_behaviour():
+    """Old fixture tables carry neither key; the multiplier defaults to 1 for
+    bonus and the penalty-save term to 0."""
+    assert "penalties_saved" not in SCORING and "bonus" not in SCORING
+    assert abs(assemble_ep(_components(), SCORING).iloc[0]["ep"] - 5.9) < 1e-9
+    gkp = assemble_ep(_gkp_components(), SCORING).iloc[0]["ep"]
+    # GKP: appearance 2.0 + goals .1*10 + assists .3 + cs 1*.5*4=2.0
+    # + gc .6*-0.5=-0.3 + saves 0 + defcon 0 + bonus .4 + cards -.1
+    assert abs(gkp - (2.0 + 1.0 + 0.3 + 2.0 - 0.3 + 0.4 - 0.1)) < 1e-9
 
 
 def test_advise_and_backtest_wire_calibration_into_the_ep_pipeline():

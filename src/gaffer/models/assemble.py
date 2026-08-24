@@ -12,6 +12,15 @@ import math
 import pandas as pd
 
 
+PEN_FACED_RATE = 0.06
+"""Penalties faced per gameweek by a starting keeper — a league-average prior,
+not modelled per team or per keeper."""
+
+PEN_SAVE_RATE = 0.30
+"""Share of faced penalties a keeper saves — a league-average prior, not
+modelled per keeper."""
+
+
 def _num(value) -> float:
     """``value`` as a float, with NaN/None/unparseable mapped to 0.0.
 
@@ -42,6 +51,11 @@ def assemble_ep(components: pd.DataFrame,
     player who reaches 60 minutes, so they scale by ``p60``. Appearance points
     are ``p_play`` for turning out at all plus the extra step at 60 minutes.
 
+    Keepers additionally earn a penalty-save term from the league-average
+    priors :data:`PEN_FACED_RATE` and :data:`PEN_SAVE_RATE`; the points value
+    still comes from the table. Rules an older table predates
+    (``penalties_saved``, ``bonus``) fall back to a no-op.
+
     NaN components (a team missing from the clean-sheet model, say) propagate
     into ``ep`` for that row rather than being imputed here; callers decide
     what a missing component should default to.
@@ -52,6 +66,11 @@ def assemble_ep(components: pd.DataFrame,
     def s(key: str) -> pd.Series:
         return pos.map(scoring[key]).astype(float)
 
+    def s_opt(key: str, default: float) -> pd.Series:
+        """``s`` for a rule an older scoring table may not carry at all."""
+        table = scoring.get(key) or {}
+        return pos.map(lambda p: float(table.get(p, default))).astype(float)
+
     df["ep"] = (
         df["p_play"] * s("minutes_0_59")
         + df["p60"] * (s("minutes_60_plus") - s("minutes_0_59"))
@@ -61,8 +80,10 @@ def assemble_ep(components: pd.DataFrame,
         + df["p60"] * df["e_gc"] * s("goals_conceded")
         + df["p_play"] * df["e_saves"] * s("saves")
         + df["p_play"] * df["p_defcon"] * s("defensive_contribution")
-        + df["p_play"] * df["e_bonus"]
+        + df["p_play"] * df["e_bonus"] * s_opt("bonus", 1.0)
         + df["p_play"] * df["e_cards"]
+        + df["p_play"] * (pos == "GKP").astype(float)
+        * PEN_FACED_RATE * PEN_SAVE_RATE * s_opt("penalties_saved", 0.0)
     )
     df["p_haul"] = [
         p_haul(_num(pl) * _num(g), _num(pl) * _num(a))
