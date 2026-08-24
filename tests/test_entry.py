@@ -89,3 +89,34 @@ def test_fetch_my_team_refuses_gw1():
     with pytest.raises(GafferError, match="GW1"):
         fetch_my_team(_FakeClient(), entry_id=99, next_gw=1,
                       players=pd.DataFrame())
+
+
+class _FreeHitClient:
+    """GW3 free hit: element 2 was bought under the chip at 90 and reverted.
+    The real purchase price is the GW2 transfer at 70."""
+
+    def get_entry_picks(self, entry_id, gw):
+        return {"picks": [{"element": 2}], "entry_history": {"bank": 0}}
+
+    def get_entry_transfers(self, entry_id):
+        return [
+            {"event": 2, "time": "2025-08-25T10:00:00Z", "element_in": 2,
+             "element_in_cost": 70, "element_out": 9, "element_out_cost": 65},
+            {"event": 3, "time": "2025-09-01T10:00:00Z", "element_in": 2,
+             "element_in_cost": 90, "element_out": 8, "element_out_cost": 80},
+        ]
+
+    def get_entry_history(self, entry_id):
+        return {"chips": [{"event": 3, "name": "freehit"}]}
+
+
+def test_free_hit_transfers_do_not_overwrite_purchase_price():
+    players = pd.DataFrame(
+        [{"element": 2, "code": 102, "name": "Beta", "position": "FWD",
+          "team_code": 7, "now_cost": 76, "cost_change_start": 11}]
+    )
+    team = fetch_my_team(_FreeHitClient(), entry_id=99, next_gw=5,
+                         players=players)
+    picks = team.picks.set_index("element")
+    assert picks.loc[2, "purchase"] == 70    # not the reverted FH price of 90
+    assert picks.loc[2, "sell"] == 73        # 70 + (76-70)//2

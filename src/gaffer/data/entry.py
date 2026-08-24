@@ -70,10 +70,20 @@ def fetch_my_team(
     transfers = client.get_entry_transfers(entry_id)
     history = client.get_entry_history(entry_id)
 
+    chips_by_gw = {c["event"]: c["name"] for c in history.get("chips", [])}
+
     # Purchase price per owned element: the most recent transfer-in cost if we
     # ever bought them, otherwise the season-start price (GW1 squad).
+    #
+    # Free Hit weeks are skipped wholesale: *every* transfer made under the
+    # chip reverts at the end of that gameweek, so recording their prices
+    # would overwrite the real purchase price of a player we still own and
+    # inflate their sell value — and with it the optimizer's budget.
+    fh_gws = {gw for gw, name in chips_by_gw.items() if name == "freehit"}
     purchase: dict[int, int] = {}
     for t in sorted(transfers, key=lambda t: t["time"]):
+        if t.get("event") in fh_gws:
+            continue
         purchase[t["element_in"]] = t["element_in_cost"]
     price_now = dict(zip(players["element"], players["now_cost"]))
     start_price = dict(
@@ -102,7 +112,6 @@ def fetch_my_team(
     transfers_by_gw: dict[int, int] = {}
     for t in transfers:
         transfers_by_gw[t["event"]] = transfers_by_gw.get(t["event"], 0) + 1
-    chips_by_gw = {c["event"]: c["name"] for c in history.get("chips", [])}
     ft = compute_free_transfers(transfers_by_gw, chips_by_gw, next_gw)
 
     return MyTeam(
