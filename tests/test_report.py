@@ -60,3 +60,13 @@ def test_model_health_hides_plan_comparison_when_unknown(tmp_path):
     html = render_report(_advice(), out_dir=tmp_path,
                          model_health=health).read_text()
     assert "Advice plan 60.0 vs your actual 58" in html
+
+
+def test_report_renders_without_a_wildcard_assessment(tmp_path):
+    """The wildcard is already spent this half, so run_advise skips the
+    assessment entirely and the payload carries None."""
+    advice = _advice()
+    advice.wildcard_now = None
+    html = render_report(advice, out_dir=tmp_path).read_text()
+    assert "already played" in html
+    assert "None" not in html

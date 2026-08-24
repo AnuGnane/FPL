@@ -67,3 +67,21 @@ def test_wildcard_now_assessment_recommends_only_when_it_pays():
 
     ok = wildcard_now_assessment(_pool(), state, **CFG)
     assert ok["recommend"] is False
+
+
+def test_passing_base_matches_re_solving_it():
+    """run_advise already solves the no-chip plan; the chip helpers must accept
+    it rather than re-solving the same MILP."""
+    from gaffer.optimize.milp import solve_plan
+
+    pool, state = _pool(), SolveInput(owned_codes=list(OWNED), bank=0,
+                                      free_transfers=1, gws=[1, 2])
+    base = solve_plan(pool, state, **CFG)
+
+    chips = ["wildcard", "bboost", "3xc", "freehit"]
+    a = evaluate_chips(pool, state, chips, **CFG)
+    b = evaluate_chips(pool, state, chips, base=base, **CFG)
+    pd.testing.assert_frame_equal(a, b)
+
+    assert (wildcard_now_assessment(pool, state, **CFG)
+            == wildcard_now_assessment(pool, state, base=base, **CFG))

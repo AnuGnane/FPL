@@ -31,11 +31,16 @@ marginal gain is not a reason to burn it.
 
 
 def evaluate_chips(pool: pd.DataFrame, state: SolveInput,
-                   chips_available: list[str], **cfg) -> pd.DataFrame:
+                   chips_available: list[str], base: Plan | None = None,
+                   **cfg) -> pd.DataFrame:
     """Objective delta of playing each available chip in each horizon GW vs the
     no-chip plan. Chips: wildcard, bboost, 3xc (freehit separately below).
-    Returns [chip, gw, gain] sorted by gain desc."""
-    base = solve_plan(pool, state, **cfg)
+    Returns [chip, gw, gain] sorted by gain desc.
+
+    ``base`` is the already-solved no-chip plan; pass it to skip re-solving.
+    """
+    if base is None:
+        base = solve_plan(pool, state, **cfg)
     rows = []
     for gw in state.gws:
         if "wildcard" in chips_available:

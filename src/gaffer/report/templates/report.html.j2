@@ -44,8 +44,9 @@
 <table><tr><th>Chip</th><th>GW</th><th>Expected gain</th><th></th></tr>
 {% for c in a.chip_table %}<tr><td>{{ c.chip }}</td><td>{{ c.gw }}</td><td>{{ "%.2f"|format(c.gain) }}</td><td>{{ c.note | default("") }}</td></tr>{% endfor %}
 </table>
-<p>Wildcard now: gain {{ a.wildcard_now.gain_over_horizon }} pts over horizon —
+{% if a.wildcard_now %}<p>Wildcard now: gain {{ a.wildcard_now.gain_over_horizon }} pts over horizon —
 <strong>{{ "recommended" if a.wildcard_now.recommend else "not recommended" }}</strong></p>
+{% else %}<p>Wildcard already played this half of the season.</p>{% endif %}
 
 {% if a.alternatives %}<h2>Differential alternatives</h2>
 <table><tr><th>Player</th><th>xPts</th><th>P(haul)</th><th>League EO%</th></tr>

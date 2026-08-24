@@ -81,7 +81,7 @@ class Advice:
     vice: dict
     captain_options: list[dict]
     chip_table: list[dict]
-    wildcard_now: dict
+    wildcard_now: dict | None
     alternatives: list[dict]
     threats: list[dict]
     price_alerts: list[dict]
@@ -304,12 +304,17 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     first = plan.gw_plans[0]
 
     chip_names = chips_available_for(my.chips_by_gw, gw)
-    chip_table = evaluate_chips(pool, state, chip_names, **opt_kw)
+    # `plan` is the no-chip baseline every chip is scored against; pass it in
+    # rather than letting each helper re-solve the same MILP.
+    chip_table = evaluate_chips(pool, state, chip_names, base=plan, **opt_kw)
     chip_rows = chip_table.to_dict("records")
     for row in chip_rows:
         if row["chip"] == "freehit":
             row["note"] = "conservative lower bound"
-    wc_now = wildcard_now_assessment(pool, state, **opt_kw)
+    # "Should I wildcard right now?" is only a question if the wildcard is
+    # still available in this half of the season.
+    wc_now = (wildcard_now_assessment(pool, state, base=plan, **opt_kw)
+              if "wildcard" in chip_names else None)
 
     league_eo: dict[int, float] = {}
     if cfg.league_id:
