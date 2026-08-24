@@ -160,3 +160,33 @@ class RivalDetail(BaseModel):
     their_differentials: list[SquadPlayer]
     your_differentials: list[SquadPlayer]
     live_points: int | None
+
+
+class LivePlayer(BaseModel):
+    element: int
+    code: int
+    name: str
+    position: str
+    multiplier: int
+    points: int
+    provisional_bonus: int
+    minutes: int
+    status: Literal["played", "playing", "yet to play"]
+
+
+class LiveTableRow(BaseModel):
+    entry: int
+    name: str
+    pre_total: int
+    live: int
+    projected: int
+    delta: int
+
+
+class LiveState(BaseModel):
+    active: bool
+    gw: int | None
+    my_points: int
+    matches_in_play: int
+    players: list[LivePlayer]
+    table: list[LiveTableRow]
