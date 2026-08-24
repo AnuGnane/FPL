@@ -65,6 +65,16 @@ export function useJob() {
     }
   }, [poll])
 
+  // For callers that post the job themselves (the what-if page, so a
+  // structured 422 lands next to its input instead of becoming a job error)
+  // and only need the polling half.
+  const attach = useCallback((jobId: string) => {
+    setStatus('running')
+    setResult(null)
+    setError(null)
+    poll(jobId)
+  }, [poll])
+
   const reset = useCallback(() => {
     stop()
     setStatus('idle')
@@ -72,5 +82,5 @@ export function useJob() {
     setError(null)
   }, [stop])
 
-  return { status, result, error, start, reset }
+  return { status, result, error, start, attach, reset }
 }

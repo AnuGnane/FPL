@@ -86,3 +86,60 @@ export interface PlayerExplain {
   next_fixtures: Array<{ gw: number; opponent: string; home: boolean }>
   set_pieces: Record<string, number | null>
 }
+
+export interface PlanSummary {
+  gw: number
+  xi: PlayerRef[]
+  bench: PlayerRef[]
+  captain: PlayerRef
+  vice: PlayerRef
+  buys: PlayerRef[]
+  sells: PlayerRef[]
+  hits: number
+  // Both point measures count the captain twice and subtract hit costs, so
+  // they read higher than This Week's plain XI sum. Label them wherever shown.
+  expected_pts: number
+  horizon_pts: number
+}
+
+export interface WhatIfResult {
+  baseline: PlanSummary
+  yours: PlanSummary
+  delta_xpts: number
+  xi_in: PlayerRef[]
+  xi_out: PlayerRef[]
+  transfers_changed: boolean
+  captain_changed: boolean
+  verdict: string
+}
+
+export interface WhatIfRequest {
+  lock: number[]
+  ban: number[]
+  force_in: number[]
+  max_hits: number
+  chip: 'none' | 'wc' | 'bb' | 'fh' | 'tc'
+  horizon: number | null
+}
+
+export interface PlayerRow {
+  code: number
+  element: number
+  name: string
+  position: string
+  team_code: number
+  team_name: string
+  price: number
+  ep_next: number
+  ep_horizon: number
+  ownership: number
+  league_eo: number
+  available: boolean
+  status: string
+  news: string
+  chance_of_playing: number | null
+  penalties_order: number | null
+  free_kicks_order: number | null
+  corners_order: number | null
+  in_squad: boolean
+}

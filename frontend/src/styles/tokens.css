@@ -125,3 +125,13 @@ button:disabled { opacity: 0.5; cursor: default; }
 }
 .modal { max-width: 720px; max-height: 85vh; overflow: auto; }
 .bar { height: 10px; border-radius: 5px; }
+
+.picker { margin-bottom: 12px; }
+.picker input, select { margin-left: 8px; padding: 6px; border-radius: 6px;
+  border: 1px solid var(--line); background: var(--pitch-900);
+  color: var(--chalk); }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.matches { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.matches button { background: var(--pitch-700); color: var(--chalk);
+  text-align: left; }
+tr.changed { background: #23331c; }
