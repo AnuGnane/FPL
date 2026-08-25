@@ -67,18 +67,26 @@ Integration:
 - `load_training_frame` (src/gaffer/models/train.py) applies
   `apply_new_bps` before feature engineering, so `bps_r3/r5/r38`,
   `bonus_r5/r38` and the bonus target are all consistent with 2026/27 rules.
-- `BonusModel` (src/gaffer/models/components.py) drops the season-recency
-  floor as its primary defense and trains on all seasons of the re-derived
-  target. `bonus_season_floor` stays in code, used only if re-derivation is
-  impossible (missing `cbi`), with a comment saying so.
+- `BonusModel` (src/gaffer/models/components.py) keeps the season-recency
+  floor. **Correction found during planning:** `cbi` counts only exist in
+  our history from 2025-26, so re-derivation can only restate 2025-26 (and
+  the current season arrives new-rules); older seasons keep an old-rules
+  bonus target no matter what. The floor is therefore still the defense
+  against mixed regimes — what this cycle improves is the data inside the
+  floor's window (2025-26's target corrected for CBI per-3), not the
+  window itself. The original design ("drop the floor, train on all
+  seasons of a fully restated history") is only reachable if per-match CBI
+  counts for 2022-25 are ever sourced.
 - Prediction-time features come from the same adjusted history, so there is
   no train/serve skew.
 
 Gate (v2-style, measured on the last-10-(season_idx,gw)-slot holdout with
-re-derived truth): bonus MAE must not regress vs the recency-floor model
-scored against the same re-derived truth; overall EP `mae_starters` must not
-materially regress. Accept on measured improvement or neutral-with-cleaner-
-semantics; record numbers in this spec's outcome section.
+re-derived truth): bonus MAE for the floor-window model trained on the
+*restated* target must not regress vs the same model trained on the stored
+old-rules target, both scored against re-derived truth; overall EP
+`mae_starters` must not materially regress. Accept on measured improvement
+or neutral-with-cleaner-semantics; record numbers in this spec's outcome
+section.
 
 ## 2. `gaffer evaluate` — the standing harness
 
