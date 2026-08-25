@@ -481,6 +481,7 @@ UNDERSTAT_TEAM_ALIASES = {
     "Brighton": "Brighton",
     "Burnley": "Burnley",
     "Chelsea": "Chelsea",
+    "Coventry": "Coventry City",
     "Crystal Palace": "Crystal Palace",
     "Everton": "Everton",
     "Fulham": "Fulham",

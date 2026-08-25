@@ -728,6 +728,14 @@ def test_every_understat_alias_target_is_an_fpl_name():
     assert unknown == []
 
 
+def test_the_alias_table_covers_the_current_seasons_promoted_clubs():
+    """A club understat spells short and FPL spells long ("Coventry" vs
+    "Coventry City") has no code without an entry here, and its whole
+    season of team rows drops."""
+    for name in ("Coventry", "Hull", "Ipswich"):
+        assert name in UNDERSTAT_TEAM_ALIASES
+
+
 def test_build_understat_player_writes_the_parquet(tmp_path, monkeypatch):
     import gaffer.data.store as store_mod
 
