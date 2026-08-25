@@ -303,9 +303,10 @@ def odds_frame(raw_odds: list, teams: pd.DataFrame,
     market coverage would mix vig structures.
 
     h2h outcomes are matched by *name* (home team / away team / ``Draw``),
-    never by list position, and de-vigged before inversion; the Over/Under
-    pair is de-vigged separately (``invert_odds`` validates nothing). The
-    resulting (mu_h, mu_a) become goals-for/against on the home row and the
+    never by list position, and de-vigged with :func:`shin_devig` before
+    inversion; the Over/Under pair keeps proportional :func:`devig` (a
+    two-way total carries no favourite-longshot bias worth modelling, and
+    ``invert_odds`` validates nothing). The resulting (mu_h, mu_a) become goals-for/against on the home row and the
     same pair swapped on the away row.
 
     A fixture whose ``commence_time`` falls in no gameweek window
@@ -341,7 +342,7 @@ def odds_frame(raw_odds: list, teams: pd.DataFrame,
             triple = [prices[home_raw], prices["Draw"], prices[away_raw]]
         except KeyError:
             continue        # incomplete h2h market
-        p_home, p_draw, p_away = devig(triple)
+        p_home, p_draw, p_away = shin_devig(triple)
         mu_h, mu_a = invert_odds(p_home, p_draw, p_away, _p_over25(books[0]))
 
         rows.append({"team_code": code_of[home], "opp_code": code_of[away],

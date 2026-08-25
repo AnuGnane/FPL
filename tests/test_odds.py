@@ -549,3 +549,32 @@ def test_shin_devig_on_a_single_outcome_returns_one():
     from gaffer.data.odds import shin_devig
 
     assert shin_devig([1.5]) == [1.0]
+
+
+def test_odds_frame_devigs_the_match_triple_with_shin():
+    """The 1X2 triple is where favourite-longshot bias bites; the totals
+    pair keeps proportional devig on purpose."""
+    import inspect
+
+    from gaffer.data.odds import _p_over25, odds_frame
+
+    src = inspect.getsource(odds_frame)
+    assert "shin_devig(triple)" in src
+    # "= devig(triple)", not "devig(triple)": the latter is a substring of
+    # "shin_devig(triple)" and would never be absent.
+    assert "= devig(triple)" not in src
+    assert "devig(" in inspect.getsource(_p_over25)
+
+
+def test_odds_frame_favourite_gets_the_shin_boost():
+    """Same fixture, hand-computed: the home mu recovered from Shin-devigged
+    probabilities is at least as big as the proportional one."""
+    from gaffer.data.odds import devig, invert_odds, shin_devig
+
+    triple = [2.4, 3.4, 2.9]
+    ph_s, pd_s, pa_s = shin_devig(triple)
+    ph_p, pd_p, pa_p = devig(triple)
+    assert ph_s > ph_p
+    mu_shin = invert_odds(ph_s, pd_s, pa_s, 0.5)
+    mu_prop = invert_odds(ph_p, pd_p, pa_p, 0.5)
+    assert mu_shin[0] >= mu_prop[0]
