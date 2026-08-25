@@ -125,9 +125,19 @@ def _team_frame(seasons=(0, 1), gws=8, teams=6) -> pd.DataFrame:
     for season in seasons:
         for gw in range(1, gws + 1):
             for t in range(teams):
+                ga = rng.randint(0, 3)
                 row = {"season_idx": season, "gw": gw, "code": t,
                        "opp_code": (t + 1) % teams,
-                       "cs": (t + gw) % 2, "ga": rng.randint(0, 3)}
+                       # build_team_gw-shaped: the scoreline and the kickoff
+                       # are what the Dixon-Coles head folds back into
+                       # matches, and add_team_rolling already sorts on the
+                       # kickoff to break a double gameweek's tie.
+                       "kickoff_time": (pd.Timestamp("2020-08-01", tz="UTC")
+                                        + pd.Timedelta(days=7 * (season * gws
+                                                                 + gw))
+                                        ).isoformat(),
+                       "gf": rng.randint(0, 3),
+                       "cs": (t + gw) % 2, "ga": ga}
                 for col in TEAM_FEATURES:
                     row.setdefault(col, rng.random() * 2)
                 row["home"] = (t + gw) % 2
@@ -362,3 +372,44 @@ def test_train_all_keeps_the_bonus_floor_even_on_a_re_derived_frame():
     df["bps_old"] = df["bps_r5"] if "bps_r5" in df.columns else 0.0
     models = train_all(df, _team_frame(seasons=(0, 1)), save=False)
     assert models["bonus"].min_season_idx == bonus_season_floor(df)
+
+
+# --- the team head is Dixon-Coles now -------------------------------------
+
+def test_build_team_model_returns_the_dixon_coles_model():
+    from gaffer.models.dixon_coles import DixonColesModel
+    from gaffer.models.train import build_team_model
+
+    assert isinstance(build_team_model(), DixonColesModel)
+
+
+def test_build_team_model_can_still_produce_the_gbm_fallback(monkeypatch):
+    """G1 may fail. TeamModel stays for one cycle, reachable by flipping one
+    constant rather than by reverting a commit."""
+    from gaffer.models import train as train_mod
+    from gaffer.models.team import TeamModel
+
+    monkeypatch.setattr(train_mod, "TEAM_MODEL", "gbm")
+    assert isinstance(train_mod.build_team_model(), TeamModel)
+
+
+def test_train_all_fits_the_team_head_through_the_single_constructor_site():
+    """One site is what keeps the protected blend seam untouched: nothing
+    downstream of train_all knows which class it got."""
+    import inspect
+
+    from gaffer.models.train import train_all
+
+    src = inspect.getsource(train_all)
+    assert "build_team_model()" in src
+    assert "TeamModel(" not in src
+    assert "DixonColesModel(" not in src
+
+
+def test_train_all_team_head_predicts_the_contract_frame():
+    models = train_all(_player_frame(seasons=(0, 1)),
+                       _team_frame(seasons=(0, 1)), save=False)
+    tg = _team_frame(seasons=(0, 1))
+    out = models["team"].predict(tg.dropna(subset=["elo_diff"]))
+    assert list(out.columns) == ["code", "season_idx", "gw", "p_cs", "e_gc"]
+    assert len(out) == len(tg.dropna(subset=["elo_diff"]))

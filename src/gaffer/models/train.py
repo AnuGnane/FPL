@@ -27,6 +27,7 @@ from gaffer.models.components import (BonusModel, DefconModel, SavesModel,
                                       card_penalty)
 from gaffer.models.minutes import MinutesModel
 from gaffer.models.persistence import save_model
+from gaffer.models.dixon_coles import DixonColesModel
 from gaffer.models.team import (TEAM_FEATURES, TeamModel, add_team_rolling,
                                 build_team_gw)
 
@@ -274,6 +275,29 @@ def fit_calibration(df: pd.DataFrame, tg: pd.DataFrame,
     return CalibrationModel().fit(ep, actual, position)
 
 
+TEAM_MODEL = "dixon_coles"
+"""Which class predicts team clean sheets and goals conceded.
+
+``"dixon_coles"`` is the shipped head: one fitted scoreline distribution per
+fixture, which the v4b measurement showed beats the GBM pair on CS log loss.
+``"gbm"`` restores :class:`gaffer.models.team.TeamModel`, kept for one cycle
+so a regression is a one-constant revert rather than an archaeology exercise.
+"""
+
+
+def build_team_model():
+    """The team head, constructed in exactly one place.
+
+    Both classes expose the same ``fit(team_gw)`` / ``predict(team_gw) ->
+    [code, season_idx, gw, p_cs, e_gc]`` contract, so nothing downstream —
+    ``advise.predict_components`` and its protected ``blend_team_odds(``
+    before ``comp.merge(tp`` seam included — can tell which one it is holding.
+    """
+    if TEAM_MODEL == "dixon_coles":
+        return DixonColesModel()
+    return TeamModel(TEAM_FEATURES)
+
+
 def train_all(df: pd.DataFrame, tg: pd.DataFrame, save: bool = True,
               _fit_cal: bool = True) -> dict:
     """Fit every component on the given frames.
@@ -289,7 +313,7 @@ def train_all(df: pd.DataFrame, tg: pd.DataFrame, save: bool = True,
     doubles the cost of a full refit; that is a weekly job, so it is fine.
     """
     minutes = MinutesModel(MINUTES_FEATURES).fit(df)
-    team = TeamModel(TEAM_FEATURES).fit(tg.dropna(subset=["elo_diff"]))
+    team = build_team_model().fit(tg.dropna(subset=["elo_diff"]))
     attacking = AttackingModel(ATTACK_FEATURES).fit(df)
     defcon = DefconModel().fit(df)
     saves = SavesModel().fit(df)
