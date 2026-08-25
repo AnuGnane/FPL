@@ -357,6 +357,22 @@ def test_fit_blend_weight_lands_between_two_noisy_signals():
     assert 0.2 < w < 0.8
 
 
+def test_fit_blend_weight_prefers_the_smaller_w_when_the_curve_is_flat():
+    """Two signals of identical quality leave the loss curve flat, so no w
+    beats the argmin by more than noise. The 1-SE rule then has to take the
+    *smallest* w in that band rather than the noise-won extreme: the raw
+    argmin on this draw is 0.41, but every w down to ~0.29 is within one
+    standard error of it."""
+    rng = np.random.default_rng(1)
+    n = 2000
+    truth = rng.uniform(0.1, 0.9, n)
+    cs = (rng.random(n) < truth).astype(float)
+    jitter = lambda: np.clip(truth + rng.normal(0, 0.10, n), 0.01, 0.99)
+    frame = pd.DataFrame({"p_cs_odds": jitter(), "p_cs_model": jitter(),
+                          "cs": cs})
+    assert fit_blend_weight(frame) <= 0.30
+
+
 def test_fit_blend_weight_is_quantized_to_two_decimals():
     rng = np.random.default_rng(3)
     frame = pd.DataFrame({"p_cs_odds": rng.random(500),

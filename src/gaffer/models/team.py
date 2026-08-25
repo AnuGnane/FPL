@@ -198,6 +198,21 @@ def fit_blend_weight(frame: pd.DataFrame,
     being right on average and wrong in every bin is the failure mode that
     matters. An empty or unusable frame falls back to
     :data:`ODDS_BLEND_WEIGHT`, which is exactly what it was there for.
+
+    The winner is picked by the *one-standard-error rule*, not the raw
+    argmin: among the grid, take the smallest ``w`` whose mean loss sits
+    within one standard error of the best. Two reasons, both about the fit
+    being a weaker guide than it looks. First, the loss curve over ``w`` is
+    nearly flat near its floor, so the argmin routinely wins by a margin a
+    bootstrap on the per-row loss difference cannot separate from zero —
+    left alone it lands on an extreme (``w = 1``, the market alone) on
+    evidence that thin. Second, and worse, the fit and the serve do not see
+    the same market: the fit uses football-data's *closing average* odds
+    across books, while prediction time uses a single-book snapshot taken
+    before the deadline. Closing average is the sharper source, so a weight
+    fitted on it overstates how much to trust what we actually serve. The
+    1-SE rule spends that uncertainty on the conservative side — less
+    market, more model — which is the side that degrades gracefully.
     """
     cols = ["p_cs_odds", "p_cs_model", "cs"]
     if frame is None or frame.empty or any(c not in frame for c in cols):
@@ -208,14 +223,26 @@ def fit_blend_weight(frame: pd.DataFrame,
     odds = sub["p_cs_odds"].to_numpy(dtype="float64")
     model = sub["p_cs_model"].to_numpy(dtype="float64")
     y = sub["cs"].to_numpy(dtype="float64")
-    best_w, best_loss = ODDS_BLEND_WEIGHT, float("inf")
-    for i in range(int(round(1.0 / step)) + 1):
-        w = round(i * step, 2)
+    grid = [round(i * step, 2) for i in range(int(round(1.0 / step)) + 1)]
+    # Per-row losses, kept whole: the 1-SE band needs the *paired* spread of
+    # the difference against the argmin, which a mean-only sweep throws away.
+    per_row = []
+    for w in grid:
         p = np.clip(w * odds + (1.0 - w) * model, 1e-12, 1.0 - 1e-12)
-        loss = float(-(y * np.log(p) + (1.0 - y) * np.log(1.0 - p)).mean())
-        if loss < best_loss:
-            best_loss, best_w = loss, w
-    return best_w
+        per_row.append(-(y * np.log(p) + (1.0 - y) * np.log(1.0 - p)))
+    means = np.array([float(r.mean()) for r in per_row])
+    best = int(np.argmin(means))
+    n = len(y)
+    if n < 2:
+        return grid[best]
+    for i, w in enumerate(grid):
+        if i == best:
+            break
+        diff = per_row[i] - per_row[best]
+        se = float(np.std(diff, ddof=1)) / np.sqrt(n)
+        if means[i] - means[best] <= se:
+            return w
+    return grid[best]
 
 
 def odds_blend_weight() -> float:
