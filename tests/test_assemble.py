@@ -234,3 +234,15 @@ def test_ep_breakdown_terms_sum_to_assembled_ep():
     total = broken[terms].sum(axis=1)
     for got, want in zip(total, assembled["ep"]):
         assert abs(got - want) < 1e-9
+
+
+def test_absent_defensive_contribution_key_drops_the_term():
+    """Defensive contribution arrived in 2025/26, so a table restated to an
+    earlier season's rules simply has no such key — the benchmark evaluation
+    hands one in. The term drops out rather than raising."""
+    older = {k: v for k, v in SCORING.items() if k != "defensive_contribution"}
+    ep = assemble_ep(_components(), older).iloc[0]["ep"]
+    assert abs(ep - (5.9 - 1.0)) < 1e-9        # the 0.5 * 2 defcon term
+    from gaffer.models.assemble import ep_breakdown
+    broken = ep_breakdown(assemble_ep(_components(), older), older)
+    assert float(broken.iloc[0]["ep_defcon"]) == 0.0

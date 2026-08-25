@@ -54,7 +54,9 @@ def assemble_ep(components: pd.DataFrame,
     Keepers additionally earn a penalty-save term from the league-average
     priors :data:`PEN_FACED_RATE` and :data:`PEN_SAVE_RATE`; the points value
     still comes from the table. Rules an older table predates
-    (``penalties_saved``, ``bonus``) fall back to a no-op.
+    (``penalties_saved``, ``bonus``) or a restated one deliberately omits
+    (``defensive_contribution``, which 2024-25 did not award) fall back to a
+    no-op.
 
     NaN components (a team missing from the clean-sheet model, say) propagate
     into ``ep`` for that row rather than being imputed here; callers decide
@@ -79,7 +81,8 @@ def assemble_ep(components: pd.DataFrame,
         + df["p60"] * df["p_cs"] * s("clean_sheets")
         + df["p60"] * df["e_gc"] * s("goals_conceded")
         + df["p_play"] * df["e_saves"] * s("saves")
-        + df["p_play"] * df["p_defcon"] * s("defensive_contribution")
+        + df["p_play"] * df["p_defcon"]
+        * s_opt("defensive_contribution", 0.0)
         + df["p_play"] * df["e_bonus"] * s_opt("bonus", 1.0)
         + df["p_play"] * df["e_cards"]
         + df["p_play"] * (pos == "GKP").astype(float)
@@ -152,7 +155,7 @@ def ep_breakdown(assembled: pd.DataFrame,
     df["ep_gc"] = df["p60"] * df["e_gc"] * s("goals_conceded")
     df["ep_saves"] = df["p_play"] * df["e_saves"] * s("saves")
     df["ep_defcon"] = (df["p_play"] * df["p_defcon"]
-                       * s("defensive_contribution"))
+                       * s_opt("defensive_contribution", 0.0))
     df["ep_bonus"] = df["p_play"] * df["e_bonus"] * s_opt("bonus", 1.0)
     df["ep_cards"] = df["p_play"] * df["e_cards"]
     df["ep_pensave"] = (df["p_play"] * (pos == "GKP").astype(float)

@@ -328,6 +328,29 @@ def benchmark_split(df: pd.DataFrame,
             df[df["season_idx"] == test_idx])
 
 
+BENCHMARK_ABSENT_RULES = ("defensive_contribution",)
+"""Scoring rules the 2024-25 season did not have.
+
+Defensive contribution points arrived in 2025/26. The bundled scoring table
+is always the *current* season's, so pricing 2024-25 expected points with it
+hands every defender and midfielder points that season never awarded — a
+systematic upward bias against the truth the benchmark scores against, and
+against the published OpenFPL / FPL Review numbers alongside it.
+"""
+
+
+def benchmark_scoring(scoring: dict) -> dict:
+    """``scoring`` restated to the test season's vintage.
+
+    A copy with :data:`BENCHMARK_ABSENT_RULES` removed. ``assemble_ep`` reads
+    the rules it may not find through ``s_opt``, which falls back to a no-op
+    for a missing key, so dropping one simply drops that term from EP.
+    Benchmark mode only: current mode is scored against the current season,
+    where the rule is real.
+    """
+    return {k: v for k, v in scoring.items() if k not in BENCHMARK_ABSENT_RULES}
+
+
 def evaluate_benchmark(max_train_idx: int = BENCHMARK_TRAIN_MAX_IDX,
                        test_idx: int = BENCHMARK_TEST_IDX) -> dict:
     """Train on the early seasons, predict every gameweek of the test season.
@@ -348,7 +371,8 @@ def evaluate_benchmark(max_train_idx: int = BENCHMARK_TRAIN_MAX_IDX,
     train_tg, _ = benchmark_split(tg, max_train_idx, test_idx)
     models = train_all(train_df, train_tg.dropna(subset=["elo_diff"]),
                        save=False)
-    scoring = scoring_table(load_bootstrap_sample())
+    # The bundled table is the current season's; the test season is not.
+    scoring = benchmark_scoring(scoring_table(load_bootstrap_sample()))
 
     parts = []
     for gw in sorted(int(g) for g in test_df["gw"].dropna().unique()):

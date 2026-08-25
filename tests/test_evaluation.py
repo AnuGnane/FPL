@@ -319,3 +319,34 @@ def test_format_report_names_the_two_derived_decomposition_numbers():
     assert "forecast_gap_h3" in text and "850" in text
     assert "planning_ceiling" in text and "100" in text
     assert "oracle_h3" in text
+
+
+# --- the benchmark's scoring vintage -------------------------------------
+#
+# The bundled scoring table is the *current* season's. Pricing 2024-25 with
+# it hands every defender free defensive-contribution points that season
+# never awarded, which is a systematic upward bias against the truth the
+# benchmark is scored on.
+
+import inspect  # noqa: E402
+
+from gaffer.evaluation import (benchmark_scoring, evaluate_benchmark,  # noqa: E402
+                               evaluate_current)
+
+
+def test_benchmark_scoring_drops_the_defensive_contribution_rule():
+    scoring = {"goals_scored": {"MID": 5}, "defensive_contribution": {"DEF": 2}}
+    assert "defensive_contribution" not in benchmark_scoring(scoring)
+
+
+def test_benchmark_scoring_keeps_every_other_rule_and_copies():
+    scoring = {"goals_scored": {"MID": 5}, "defensive_contribution": {"DEF": 2}}
+    out = benchmark_scoring(scoring)
+    assert out["goals_scored"] == {"MID": 5}
+    assert "defensive_contribution" in scoring       # input untouched
+    assert benchmark_scoring(out) == out             # already-absent is fine
+
+
+def test_only_the_benchmark_path_restates_the_scoring_table():
+    assert "benchmark_scoring(" in inspect.getsource(evaluate_benchmark)
+    assert "benchmark_scoring(" not in inspect.getsource(evaluate_current)
