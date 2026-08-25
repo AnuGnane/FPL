@@ -104,13 +104,17 @@ everything before, predict the held-out slots) reporting:
   secondary cut);
 - log loss for p_play, p60 and the CS head, plus 10-bin reliability data
   per head: for each bin, `n`, mean predicted, observed frequency;
-- baselines scored on the identical yardstick: last-5-mean points and
-  season-PPG (reusing the existing baseline scoring in the train/eval
-  path).
+- baselines scored on the identical yardstick: last-5-mean points and the
+  rolling-38-match PPG (emitted as `last38_ppg` — the window crosses season
+  boundaries, so it is not a true season PPG and is named accordingly).
 
 **benchmark mode**: train on seasons ≤ 2023-24 (idx 0–1), predict every GW
 of 2024-25 (idx 2) at 1-GW horizon, walking forward so each GW's features
-use only prior data (reuse the replay's `horizon_feature_rows` machinery).
+use only prior data. **As-built note:** at a 1-GW horizon the stored rows'
+rolling features are already leakage-safe (every rolling column shifts one
+match back), so the mode predicts from them directly rather than routing
+through the replay's `horizon_feature_rows`; the leak property is pinned by
+test on the feature builder.
 Report the same stratified table beside hardcoded reference constants from
 OpenFPL (arXiv:2508.09992) and FPL Review's numbers as published there —
 constants live in `evaluation.py` with citation comments:
@@ -130,7 +134,7 @@ controlled comparison.
                                "starters": {"...": {}}},
                 "heads": {"p_play": {"log_loss": 0.0, "reliability": [{"n":0,"pred":0.0,"obs":0.0}]},
                           "p60": {}, "cs": {}},
-                "baselines": {"last5": {"...": {}}, "season_ppg": {"...": {}}}},
+                "baselines": {"last5": {"...": {}}, "last38_ppg": {"...": {}}}},
   "benchmark": {"run_at": "...", "git_sha": "...", "test_season": "2024-25",
                 "stratified": {"...": {}},
                 "references": {"openfpl": {"...": {}}, "fplreview": {"...": {}}},
@@ -147,10 +151,11 @@ controlled comparison.
 - `"oracle"`: the EP matrix is each player's **actual** `total_points` in
   that GW (0 for players who did not play), fed through the identical MILP
   pipeline — same pool construction, same solver, same chip logic, league
-  tilt off. Availability filtering still applies as of the decision time
-  (the oracle knows scores, not injuries announced later — this keeps the
-  oracle reachable-in-principle rather than clairvoyant about news; the
-  simplification is documented).
+  tilt off. **As-built note:** the replay applies no availability filtering
+  in either mode (it never has — its docstring says so), so the original
+  "availability still applies" sentence described a filter that does not
+  exist. Both columns of the 2×2 are equally unfiltered, which keeps the
+  model-vs-oracle comparison fair.
 
 CLI: `gaffer evaluate --decompose` runs the 2×2 — {model, oracle} ×
 {h1, h3} — over the 2025/26 GW5–38 replay and writes to the
