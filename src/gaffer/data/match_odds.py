@@ -213,6 +213,29 @@ def download_season(season: str, cache_dir: Path = CACHE_DIR,
 JOIN_COLS = ["season_idx", "gw", "kickoff_time", "home_code", "away_code",
              "p_home", "p_draw", "p_away", "p_over25"]
 
+FPL_RENAMES = {
+    # canonical current bootstrap name -> names earlier season bootstraps used
+    "Ipswich Town": ["Ipswich"],
+}
+"""FPL renames clubs between seasons, and our alias tables target the CURRENT
+name.
+
+``FOOTBALL_DATA_ALIASES`` and ``odds.TEAM_ALIASES`` are both written against
+the live bootstrap's vocabulary, but a historical join looks a code up in the
+*old* season's ``{name: code}`` table, where the club may still be spelled the
+way it was then. Without this bridge every one of that club's fixtures misses
+its code and drops silently as "unmatched"."""
+
+
+def _code_for(name: str, name_to_code: dict[str, int]) -> int | float:
+    """A season's code for a club, trying its earlier names before giving up."""
+    if name in name_to_code:
+        return name_to_code[name]
+    for old in FPL_RENAMES.get(name, ()):
+        if old in name_to_code:
+            return name_to_code[old]
+    return float("nan")
+
 
 def join_to_fixtures(parsed: pd.DataFrame, fixtures: pd.DataFrame,
                      name_to_code: dict[str, int]
@@ -235,8 +258,8 @@ def join_to_fixtures(parsed: pd.DataFrame, fixtures: pd.DataFrame,
     kt = pd.to_datetime(fx["kickoff_time"], utc=True, format="mixed")
     fx["_date"] = kt.dt.tz_convert("Europe/London").dt.date
     left = parsed.copy()
-    left["home_code"] = left["home_name"].map(name_to_code)
-    left["away_code"] = left["away_name"].map(name_to_code)
+    left["home_code"] = [_code_for(n, name_to_code) for n in left["home_name"]]
+    left["away_code"] = [_code_for(n, name_to_code) for n in left["away_name"]]
     left["_date"] = left["date"]
     merged = left.merge(
         fx[["season_idx", "gw", "kickoff_time", "home_code", "away_code",

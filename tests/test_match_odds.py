@@ -247,6 +247,32 @@ def test_join_to_fixtures_keeps_a_double_gameweek_apart():
     assert list(out["gw"]) == [1, 2]
 
 
+def test_join_to_fixtures_bridges_an_fpl_club_rename():
+    """FPL called the club "Ipswich" in 2024-25 and "Ipswich Town" later; the
+    alias tables carry the current name, so the older season's name table has
+    to be reached through the rename bridge or every row drops."""
+    rows = _csv_rows({"HomeTeam": ["Ipswich", "Nott'm Forest"],
+                      "AwayTeam": ["Wolves", "Bournemouth"]})
+    parsed = parse_football_data(rows, season="2024-25", season_idx=2)
+    assert list(parsed["home_name"]) == ["Ipswich Town", "Nott'm Forest"]
+    names = dict(_NAME_TO_CODE)
+    names.pop("Man Utd")
+    names["Ipswich"] = 1          # the 2024-25 bootstrap's spelling
+    out, report = join_to_fixtures(parsed, _fixtures(), names)
+    assert report == {"rows": 2, "matched": 2, "unmatched": 0}
+    assert list(out["home_code"]) == [1, 17]
+
+
+def test_join_to_fixtures_still_drops_a_club_no_table_knows():
+    """The rename bridge must not turn a genuinely unknown club into a
+    match."""
+    parsed = parse_football_data(_csv_rows(), season="2024-25", season_idx=2)
+    out, report = join_to_fixtures(parsed, _fixtures(),
+                                   {"Man Utd": 1, "Wolves": 39})
+    assert len(out) == 1
+    assert report == {"rows": 2, "matched": 1, "unmatched": 1}
+
+
 def test_build_match_odds_writes_the_parquet(tmp_path, monkeypatch):
     import gaffer.data.store as store_mod
 
