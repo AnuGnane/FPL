@@ -286,6 +286,34 @@ def test_build_match_odds_writes_the_parquet(tmp_path, monkeypatch):
     assert (tmp_path / MATCH_ODDS_PATH).exists()
 
 
+def test_build_match_odds_skips_a_season_with_an_unknown_club(tmp_path,
+                                                              monkeypatch,
+                                                              capsys):
+    """The alias table only covers the seasons anyone has looked at. One
+    club it has never heard of used to raise out of build_match_odds and
+    take the whole build-history command with it."""
+    import gaffer.data.store as store_mod
+
+    monkeypatch.setattr(store_mod, "DATA_DIR", tmp_path)
+    old = ("Date,HomeTeam,AwayTeam,AvgCH,AvgCD,AvgCA,AvgC>2.5,AvgC<2.5\n"
+           "16/08/2024,Barnsley,Wolves,1.80,3.80,4.50,1.90,1.95\n")
+
+    def handler(request):
+        return httpx.Response(200,
+                              text=old if "/2324/" in str(request.url)
+                              else _CSV)
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    out = build_match_odds(["2023-24", "2024-25"], _fixtures(),
+                           {"2023-24": _NAME_TO_CODE,
+                            "2024-25": _NAME_TO_CODE},
+                           cache_dir=tmp_path / "raw", client=client,
+                           season_indexes={"2023-24": 1, "2024-25": 2})
+    assert len(out) == 2          # the good season's rows still land
+    printed = capsys.readouterr().out
+    assert "skipping 2023-24" in printed and "Barnsley" in printed
+
+
 def test_build_match_odds_survives_a_season_the_archive_lacks(tmp_path,
                                                               monkeypatch):
     import gaffer.data.store as store_mod

@@ -290,9 +290,9 @@ def build_match_odds(seasons: list[str], fixtures: pd.DataFrame,
     produced it. ``current_season``, if given and present in ``seasons``, is
     the only file re-downloaded.
 
-    A season with no archive file, no usable prices or no name table is
-    skipped with a printed line; the parquet is still written from what did
-    resolve, and an entirely empty result writes an empty frame with the right
+    A season with no archive file, no usable prices, no name table or a club
+    the alias table has never heard of is skipped with a printed line; the
+    parquet is still written from what did resolve, and an entirely empty result writes an empty frame with the right
     columns so downstream ``store.load`` never sees a missing schema.
     """
     indexes = season_indexes or {s: i for i, s in enumerate(seasons)}
@@ -302,7 +302,16 @@ def build_match_odds(seasons: list[str], fixtures: pd.DataFrame,
                               refresh=season == current_season)
         if raw is None:
             continue
-        parsed = parse_football_data(raw, season, indexes[season])
+        try:
+            parsed = parse_football_data(raw, season, indexes[season])
+        except GafferError as e:
+            # ``resolve_fd_team`` raises rather than guess, and it is right
+            # to: a misattributed club's closing odds are worse than none.
+            # But the alias table only covers the seasons someone has looked
+            # at, and one unheard-of club in one archive file must cost that
+            # season, not the whole build-history command.
+            print(f"football-data: skipping {season}: {e}")
+            continue
         if parsed.empty:
             print(f"football-data: no usable price columns for {season}")
             continue
