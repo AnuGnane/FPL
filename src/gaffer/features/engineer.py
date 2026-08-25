@@ -443,3 +443,119 @@ def merge_understat_team(df: pd.DataFrame,
     out = out.merge(opp, on=["opp_code", "_date"], how="left",
                     validate="many_to_one")
     return out.drop(columns=["_date"])
+
+
+SHRINK_K = 10.0
+"""Prior weight, in nineties, for the empirical-Bayes rates.
+
+``k`` is literally "how many matches of league-average evidence the prior is
+worth". Ten means a player needs about ten full appearances before his own
+record outweighs what his position at his club normally does — which is
+roughly where a goals rate stops being noise.
+"""
+
+SHRINK_K_GRID = [2.0, 5.0, 10.0, 20.0]
+SHRUNK_FEATURES = ["shrunk_goals90", "shrunk_assists90"]
+
+
+def _shrunk_rate(df: pd.DataFrame, stat: str, k: float) -> pd.Series:
+    """``(sum stat + k * prior) / (sum nineties + k)``, all sums leakage-free.
+
+    The player's own record is ``shift(1)`` then ``cumsum`` within his own
+    rows, whose order is chronological inside each code group. The
+    position-by-club prior CANNOT be built the same way: the frame is sorted
+    by *player*, not by time, so a per-row cumsum over the (position, club)
+    group would fold in other players' future matches — and teammates share
+    fixtures, so even a time-sorted row cumsum would leak the current match's
+    own result through the teammate's row. The prior is therefore accumulated
+    at gameweek-slot granularity: per-(position, club, slot) totals, cumsummed
+    over slots with the current slot subtracted out, so a row's prior contains
+    strictly-earlier gameweeks only.
+    """
+    code = df["code"]
+    val = pd.to_numeric(df[stat], errors="coerce").fillna(0.0)
+    nineties = (pd.to_numeric(df["minutes"], errors="coerce").fillna(0.0)
+                / 90.0)
+
+    own_val = val.groupby(code).shift(1).fillna(0.0).groupby(code).cumsum()
+    own_90 = nineties.groupby(code).shift(1).fillna(0.0).groupby(code).cumsum()
+
+    slots = pd.DataFrame({
+        "pos": df["position"].to_numpy(),
+        "team": df["team_code"].to_numpy(),
+        # gw <= 38, so *100 keeps (season, gw) ordered in one integer key.
+        "slot": (pd.to_numeric(df["season_idx"]).astype(int) * 100
+                 + pd.to_numeric(df["gw"]).astype(int)).to_numpy(),
+        "val": val.to_numpy(), "n90": nineties.to_numpy()})
+    agg = (slots.groupby(["pos", "team", "slot"], as_index=False)
+           [["val", "n90"]].sum().sort_values(["pos", "team", "slot"]))
+    g = agg.groupby(["pos", "team"])
+    # cumsum minus the current slot's own total == everything strictly before.
+    before_val = g["val"].cumsum() - agg["val"]
+    before_90 = g["n90"].cumsum() - agg["n90"]
+    prior_rate = before_val / before_90.where(before_90 > 0.0)
+    lookup = dict(zip(zip(agg["pos"], agg["team"], agg["slot"]), prior_rate))
+    prior = pd.Series(
+        [lookup[key] for key in zip(slots["pos"], slots["team"],
+                                    slots["slot"])],
+        index=df.index, dtype="float64")
+    return (own_val + k * prior) / (own_90 + k)
+
+
+def add_shrunken_rates(df: pd.DataFrame,
+                       k: float = SHRINK_K) -> pd.DataFrame:
+    """``shrunk_goals90`` and ``shrunk_assists90``.
+
+    A rolling mean over five matches is a terrible estimate of a rate when
+    only three matches exist, and August is full of those. Shrinking toward
+    the position-by-club prior gives a sensible number from the first
+    gameweek and converges on the player's own record as he plays — the
+    standard empirical-Bayes trade, applied to the two rates the attacking
+    heads care about most.
+
+    Rows before the prior has any evidence at all come back NaN, which
+    LightGBM splits on natively.
+    """
+    sort_cols = [c for c in ("code", "season_idx", "gw", "kickoff_time")
+                 if c in df.columns]
+    out = df.sort_values(sort_cols).reset_index(drop=True)
+    for stat, col in (("goals", "shrunk_goals90"),
+                      ("assists", "shrunk_assists90")):
+        if stat in out.columns:
+            out[col] = _shrunk_rate(out, stat, k)
+        else:
+            out[col] = float("nan")
+    return out
+
+
+def best_shrinkage_k(df: pd.DataFrame, k_grid: list[float] = SHRINK_K_GRID,
+                     holdout_slots: int = 10) -> float:
+    """The ``k`` whose shrunken goals rate best predicts held-out goals.
+
+    Scored by correlation against the *actual* goals-per-90 on the last
+    ``holdout_slots`` gameweek slots, with the rates themselves built from
+    earlier rows only — so this is a genuine out-of-sample choice and not a
+    fit of the fit. A frame too short to hold anything out returns
+    :data:`SHRINK_K` rather than pretending to have measured something.
+    """
+    slots = (df[["season_idx", "gw"]].drop_duplicates()
+             .sort_values(["season_idx", "gw"]))
+    if len(slots) <= holdout_slots:
+        return SHRINK_K
+    bs, bg = slots.iloc[-holdout_slots][["season_idx", "gw"]]
+    best_k, best_score = SHRINK_K, -2.0
+    for k in k_grid:
+        rated = add_shrunken_rates(df, k=k)
+        hold = rated[(rated["season_idx"] > bs)
+                     | ((rated["season_idx"] == bs) & (rated["gw"] >= bg))]
+        hold = hold[pd.to_numeric(hold["minutes"], errors="coerce") > 0]
+        actual = (pd.to_numeric(hold["goals"], errors="coerce")
+                  / (pd.to_numeric(hold["minutes"], errors="coerce") / 90.0))
+        pair = pd.DataFrame({"pred": hold["shrunk_goals90"],
+                             "actual": actual}).dropna()
+        if len(pair) < 2 or pair["pred"].nunique() < 2:
+            continue
+        score = float(pair["pred"].corr(pair["actual"]))
+        if score > best_score:
+            best_score, best_k = score, float(k)
+    return best_k

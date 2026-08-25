@@ -534,3 +534,119 @@ def test_merge_understat_team_does_not_add_rows():
                         "opp_code": 4,
                         "kickoff_time": "2024-08-24T14:00:00Z"}])
     assert len(merge_understat_team(df, rolled)) == 1
+
+
+from gaffer.features.engineer import (SHRINK_K, SHRINK_K_GRID,
+                                      SHRUNK_FEATURES, add_shrunken_rates,
+                                      best_shrinkage_k)
+
+
+def _goal_rows(spec, code=1, position="FWD", team_code=3):
+    """spec: list of (gw, minutes, goals, assists)."""
+    return pd.DataFrame([
+        {"code": code, "season_idx": 0, "gw": gw, "position": position,
+         "team_code": team_code,
+         "kickoff_time": f"2024-08-{10 + gw:02d}T14:00:00Z",
+         "minutes": m, "goals": g, "assists": a}
+        for gw, m, g, a in spec])
+
+
+def test_add_shrunken_rates_adds_both_columns():
+    out = add_shrunken_rates(_goal_rows([(1, 90, 1, 0), (2, 90, 0, 1)]))
+    for col in SHRUNK_FEATURES:
+        assert col in out.columns
+
+
+def test_add_shrunken_rates_is_leakage_safe():
+    """A match's own goal must not raise its own shrunken rate."""
+    a = add_shrunken_rates(_goal_rows([(1, 90, 0, 0), (2, 90, 5, 0)]))
+    b = add_shrunken_rates(_goal_rows([(1, 90, 0, 0), (2, 90, 0, 0)]))
+    assert a.loc[1, "shrunk_goals90"] == b.loc[1, "shrunk_goals90"]
+
+
+def test_add_shrunken_rates_pulls_a_thin_sample_toward_the_prior():
+    """One match with a goal is not a one-goal-per-90 player."""
+    frame = pd.concat([
+        _goal_rows([(1, 90, 1, 0), (2, 90, 0, 0)], code=1),
+        _goal_rows([(1, 90, 0, 0), (2, 90, 0, 0)], code=2),
+        _goal_rows([(1, 90, 0, 0), (2, 90, 0, 0)], code=3),
+    ], ignore_index=True)
+    out = add_shrunken_rates(frame, k=10.0).set_index(["code", "gw"])
+    assert 0.0 < out.loc[(1, 2), "shrunk_goals90"] < 0.5
+
+
+def test_add_shrunken_rates_lets_go_of_the_prior_with_evidence():
+    """Thirty matches of a goal each has to read close to one per 90.
+
+    The scoreless teammate keeps the prior at 0.5 rather than 1.0 — with only
+    one player in the (position, club) group the prior *is* his own rate and
+    the shrunken value would sit at 1.0 from the first match, proving nothing.
+    """
+    frame = pd.concat([
+        _goal_rows([(gw, 90, 1, 0) for gw in range(1, 32)], code=1),
+        _goal_rows([(gw, 90, 0, 0) for gw in range(1, 32)], code=2),
+    ], ignore_index=True)
+    out = add_shrunken_rates(frame, k=10.0).set_index(["code", "gw"])
+    assert out.loc[(1, 31), "shrunk_goals90"] > out.loc[(1, 5),
+                                                        "shrunk_goals90"]
+    assert out.loc[(1, 31), "shrunk_goals90"] > 0.6
+
+
+def test_add_shrunken_rates_prior_excludes_the_same_gameweek():
+    """A teammate's goals in the very same fixture must not enter the prior —
+    the row would be predicting a match partly from that match's own result.
+    Likewise nothing later: the frame is sorted by player, not by time, so a
+    naive per-row cumsum over the (position, club) group would see both."""
+    loud = pd.concat([
+        _goal_rows([(1, 90, 0, 0), (2, 90, 0, 0)], code=1),
+        _goal_rows([(1, 90, 0, 0), (2, 90, 5, 0)], code=2),
+    ], ignore_index=True)
+    quiet = pd.concat([
+        _goal_rows([(1, 90, 0, 0), (2, 90, 0, 0)], code=1),
+        _goal_rows([(1, 90, 0, 0), (2, 90, 0, 0)], code=2),
+    ], ignore_index=True)
+    a = add_shrunken_rates(loud, k=10.0).set_index(["code", "gw"])
+    b = add_shrunken_rates(quiet, k=10.0).set_index(["code", "gw"])
+    assert a.loc[(1, 2), "shrunk_goals90"] == b.loc[(1, 2), "shrunk_goals90"]
+
+
+def test_add_shrunken_rates_with_no_history_at_all_is_the_prior():
+    """The first row of a (position, club) group has neither a player sample
+    nor a prior, and NaN is the honest answer."""
+    out = add_shrunken_rates(_goal_rows([(1, 90, 0, 0)]))
+    assert pd.isna(out.loc[0, "shrunk_goals90"])
+
+
+def test_add_shrunken_rates_separates_positions_within_a_club():
+    """A defender's prior is other defenders, not the club's strikers."""
+    frame = pd.concat([
+        _goal_rows([(gw, 90, 1, 0) for gw in range(1, 11)], code=1,
+                   position="FWD"),
+        _goal_rows([(gw, 90, 0, 0) for gw in range(1, 11)], code=2,
+                   position="DEF"),
+        _goal_rows([(gw, 90, 0, 0) for gw in range(1, 11)], code=3,
+                   position="DEF"),
+    ], ignore_index=True)
+    out = add_shrunken_rates(frame, k=20.0).set_index(["code", "gw"])
+    assert out.loc[(2, 10), "shrunk_goals90"] < out.loc[(1, 10),
+                                                        "shrunk_goals90"]
+
+
+def test_add_shrunken_rates_ignores_zero_minute_rows_in_the_denominator():
+    out = add_shrunken_rates(_goal_rows([(1, 0, 0, 0), (2, 90, 1, 0),
+                                         (3, 90, 0, 0)])).set_index("gw")
+    assert out.loc[3, "shrunk_goals90"] > 0.0
+
+
+def test_best_shrinkage_k_picks_from_the_grid():
+    frame = pd.concat([
+        _goal_rows([(gw, 90, gw % 2, 0) for gw in range(1, 26)], code=1),
+        _goal_rows([(gw, 90, 0, 0) for gw in range(1, 26)], code=2),
+    ], ignore_index=True)
+    k = best_shrinkage_k(frame, holdout_slots=5)
+    assert k in SHRINK_K_GRID
+
+
+def test_best_shrinkage_k_on_a_frame_with_no_holdout_returns_the_default():
+    k = best_shrinkage_k(_goal_rows([(1, 90, 0, 0)]), holdout_slots=5)
+    assert k == SHRINK_K
