@@ -379,3 +379,73 @@ class Ticker(BaseModel):
     gws: list[int]
     source: Literal["odds", "elo"]
     teams: list[TickerTeam]
+
+
+class CategoryMetrics(BaseModel):
+    rmse: float
+    mae: float
+    n: int
+
+
+class ReferenceMetrics(BaseModel):
+    """A published number: no row count, because we did not measure it."""
+
+    rmse: float
+    mae: float
+
+
+class ReliabilityBin(BaseModel):
+    n: int
+    pred: float
+    obs: float
+
+
+class HeadMetrics(BaseModel):
+    log_loss: float
+    reliability: list[ReliabilityBin]
+
+
+class CurrentEvaluation(BaseModel):
+    run_at: str
+    git_sha: str
+    holdout_slots: int
+    stratified: dict[str, dict[str, CategoryMetrics]]
+    """cut ("all" / "starters") -> return category -> metrics."""
+    heads: dict[str, HeadMetrics]
+    baselines: dict[str, dict[str, CategoryMetrics]]
+
+
+class BenchmarkEvaluation(BaseModel):
+    run_at: str
+    git_sha: str
+    test_season: str
+    stratified: dict[str, dict[str, CategoryMetrics]]
+    references: dict[str, dict[str, ReferenceMetrics]]
+    caveat: str
+
+
+class DecompositionCell(BaseModel):
+    total: int
+    per_gw: float
+    hits: int
+
+
+class Decomposition(BaseModel):
+    run_at: str
+    git_sha: str
+    season: str
+    start_gw: int
+    cells: dict[str, DecompositionCell]
+    """``{model,oracle}_h{1,3}`` -> that replay's outcome."""
+    forecast_gap_h3: float
+    """oracle_h3 - model_h3: what better forecasting could still win."""
+    planning_ceiling: float
+    """oracle_h3 - oracle_h1: the ceiling on multi-week planning."""
+
+
+class Quality(BaseModel):
+    """Whichever modes have been run. Each is independent and may be absent."""
+
+    current: CurrentEvaluation | None = None
+    benchmark: BenchmarkEvaluation | None = None
+    decomposition: Decomposition | None = None
