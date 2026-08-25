@@ -77,9 +77,32 @@ class Plan:
     gw_plans: list[GwPlan]
 
 
+@dataclass
+class FixedMoves:
+    """Transfers the caller has already decided on.
+
+    The scenario policy (``optimize/policy.py``) picks a set of moves by how
+    often they survive noise, then needs a *coherent* plan built around
+    exactly those moves — a recommended buy with no recommended sell is not a
+    plan anyone can execute. Rather than assembling one by hand and hoping it
+    is legal, it hands the moves back to the MILP as constraints and lets the
+    solver fill in the XI, the captain and the bank.
+
+    ``gw`` defaults to the first horizon week, which is the only week the
+    policy ever gates. ``no_transfer`` is the "hold and roll the FT" branch:
+    it pins *this* week shut and leaves the rest of the horizon free, because
+    holding this week says nothing about next week.
+    """
+    buys: list[int] = field(default_factory=list)
+    sells: list[int] = field(default_factory=list)
+    gw: int | None = None
+    no_transfer: bool = False
+
+
 def solve_plan(pool: pd.DataFrame, state: SolveInput, *, decay: float,
                bench_weight: float, vice_weight: float, ft_value: float,
-               itb_value: float, hit_cost: int) -> Plan:
+               itb_value: float, hit_cost: int,
+               fixed_moves: FixedMoves | None = None) -> Plan:
     """Solve the multi-period plan.
 
     pool: [code, position, team_code, cost, sell, ep] where ep is a dict
@@ -167,6 +190,32 @@ def solve_plan(pool: pd.DataFrame, state: SolveInput, *, decay: float,
             prob += hits[t] <= state.max_hits
     for c in state.force_in_gw:
         prob += tin[c][T[0]] == 1
+
+    # --- forced moves from the decision policy ---------------------------
+    # Deliberately after force_in_gw so the two cannot be confused: this one
+    # names both sides of the trade and can also pin the week shut entirely.
+    if fixed_moves is not None:
+        fm_gw = fixed_moves.gw if fixed_moves.gw is not None else T[0]
+        if fm_gw not in T:
+            raise GafferError(
+                f"fixed_moves: gameweek {fm_gw} is not in the horizon {T}")
+        if fixed_moves.no_transfer and (fixed_moves.buys
+                                        or fixed_moves.sells):
+            raise GafferError(
+                "fixed_moves: no_transfer cannot be combined with buys or "
+                "sells — the policy must choose one or the other")
+        missing = [c for c in list(fixed_moves.buys) + list(fixed_moves.sells)
+                   if c not in known]
+        if missing:
+            raise GafferError(
+                f"fixed_moves: player code {missing[0]} is not in the "
+                "candidate pool (it may also be banned)")
+        for c in fixed_moves.buys:
+            prob += tin[c][fm_gw] == 1
+        for c in fixed_moves.sells:
+            prob += tout[c][fm_gw] == 1
+        if fixed_moves.no_transfer:
+            prob += pulp.lpSum(tin[c][fm_gw] for c in codes) == 0
 
     obj = []
     for t_i, t in enumerate(T):

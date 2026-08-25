@@ -201,3 +201,129 @@ def test_unknown_locked_player_is_a_readable_error():
                    decay=0.85, bench_weight=0.1, vice_weight=0.1,
                    ft_value=1.5, itb_value=0.05, hit_cost=4)
     assert "999" in str(exc.value)
+
+
+# --- v4c: fixed moves ------------------------------------------------------
+
+from gaffer.errors import GafferError
+from gaffer.optimize.milp import FixedMoves
+from tests.test_v4c_degradation import GOLDEN_KW, golden_pool
+
+
+def _owned_state(pool, gws=(1, 2)):
+    """A legal starting squad drawn off the golden pool, with one FT and
+    enough bank to make a swap possible."""
+    by_pos = {}
+    for r in pool.itertuples():
+        by_pos.setdefault(r.position, []).append(int(r.code))
+    owned = (by_pos["GKP"][:2] + by_pos["DEF"][:5] + by_pos["MID"][:5]
+             + by_pos["FWD"][:3])
+    return SolveInput(owned_codes=owned, bank=200, free_transfers=1,
+                      gws=list(gws))
+
+
+def test_fixed_moves_none_is_the_identity():
+    """The rail: the new argument at its default cannot move a single float."""
+    pool = golden_pool()
+    state = _owned_state(pool)
+    a = solve_plan(pool, state, **GOLDEN_KW)
+    b = solve_plan(pool, state, **GOLDEN_KW, fixed_moves=None)
+    assert round(a.objective, 9) == round(b.objective, 9)
+    assert a.gw_plans[0].squad == b.gw_plans[0].squad
+
+
+def test_fixed_moves_forces_the_named_buy_in_the_first_week():
+    pool = golden_pool()
+    state = _owned_state(pool)
+    spare = [int(c) for c in pool["code"] if c not in state.owned_codes]
+    target = spare[0]
+    plan = solve_plan(pool, state, **GOLDEN_KW,
+                      fixed_moves=FixedMoves(buys=[target]))
+    assert target in plan.gw_plans[0].buys
+    assert target in plan.gw_plans[0].squad
+
+
+def test_fixed_moves_forces_the_named_sell_in_the_first_week():
+    pool = golden_pool()
+    state = _owned_state(pool)
+    target = state.owned_codes[-1]
+    plan = solve_plan(pool, state, **GOLDEN_KW,
+                      fixed_moves=FixedMoves(sells=[target]))
+    assert target in plan.gw_plans[0].sells
+    assert target not in plan.gw_plans[0].squad
+
+
+def test_fixed_moves_can_force_a_paired_swap():
+    pool = golden_pool()
+    state = _owned_state(pool)
+    out_code = state.owned_codes[-1]
+    in_code = [int(c) for c in pool["code"]
+               if c not in state.owned_codes][0]
+    plan = solve_plan(pool, state, **GOLDEN_KW,
+                      fixed_moves=FixedMoves(buys=[in_code],
+                                             sells=[out_code]))
+    first = plan.gw_plans[0]
+    assert in_code in first.buys and out_code in first.sells
+
+
+def test_no_transfer_forbids_every_first_week_move():
+    """The 'hold, roll the FT' branch of the policy needs this to be
+    enforceable, not merely preferred."""
+    pool = golden_pool()
+    state = _owned_state(pool)
+    plan = solve_plan(pool, state, **GOLDEN_KW,
+                      fixed_moves=FixedMoves(no_transfer=True))
+    first = plan.gw_plans[0]
+    assert first.buys == [] and first.sells == [] and first.hits == 0
+
+
+def test_no_transfer_leaves_later_horizon_weeks_free():
+    """Holding this week is a statement about this week only."""
+    pool = golden_pool()
+    state = _owned_state(pool)
+    plan = solve_plan(pool, state, **GOLDEN_KW,
+                      fixed_moves=FixedMoves(no_transfer=True))
+    assert plan.gw_plans[0].buys == []
+    assert len(plan.gw_plans) == 2
+
+
+def test_fixed_moves_targets_the_first_horizon_week_by_default():
+    pool = golden_pool()
+    state = _owned_state(pool, gws=(3, 4))
+    spare = [int(c) for c in pool["code"] if c not in state.owned_codes][0]
+    plan = solve_plan(pool, state, **GOLDEN_KW,
+                      fixed_moves=FixedMoves(buys=[spare]))
+    assert spare in plan.gw_plans[0].buys
+
+
+def test_fixed_moves_honours_an_explicit_gameweek():
+    pool = golden_pool()
+    state = _owned_state(pool, gws=(3, 4))
+    spare = [int(c) for c in pool["code"] if c not in state.owned_codes][0]
+    plan = solve_plan(pool, state, **GOLDEN_KW,
+                      fixed_moves=FixedMoves(buys=[spare], gw=4))
+    assert spare in plan.gw_plans[1].buys
+
+
+def test_fixed_moves_on_an_unknown_code_raises_with_a_useful_message():
+    """Same discipline as locked_in: silently ignoring a forced move would
+    produce a plan that quietly is not the one the policy chose."""
+    pool = golden_pool()
+    state = _owned_state(pool)
+    with pytest.raises(GafferError) as exc:
+        solve_plan(pool, state, **GOLDEN_KW,
+                   fixed_moves=FixedMoves(buys=[999999]))
+    assert "fixed_moves" in str(exc.value)
+    assert "999999" in str(exc.value)
+
+
+def test_fixed_moves_with_no_transfer_and_a_buy_raises():
+    """The two settings contradict each other; resolving it silently would
+    hide a policy bug."""
+    pool = golden_pool()
+    state = _owned_state(pool)
+    with pytest.raises(GafferError) as exc:
+        solve_plan(pool, state, **GOLDEN_KW,
+                   fixed_moves=FixedMoves(buys=[int(pool.loc[0, "code"])],
+                                          no_transfer=True))
+    assert "no_transfer" in str(exc.value)
