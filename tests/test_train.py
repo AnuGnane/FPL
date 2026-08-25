@@ -321,6 +321,37 @@ def test_load_training_frame_does_not_restate_an_archived_new_rules_season(
     assert set(stored.loc[stored["code"] == 100, "bps"]) == {29.0}
 
 
+def test_load_training_frame_gives_the_live_season_its_own_index(monkeypatch):
+    """Once a new-rules season is archived, the BPS rules boundary points at
+    *that* season — but the live frame is a different, later season and needs
+    its own index. Stamping it with the boundary merges two seasons under one
+    index: duplicate ``(code, season_idx, gw)`` rows, interleaved rolling
+    windows, double-counted Elo."""
+    from gaffer.models import train as train_mod
+
+    old = _bps_history(year=2022, season_idx=0)
+    new = _bps_history(year=2026, season_idx=1)
+    new["season"] = "2026-27"
+    history = pd.concat([old, new], ignore_index=True)
+    fixtures = pd.concat([_bps_fixtures(year=2022, season_idx=0),
+                          _bps_fixtures(year=2026, season_idx=1)],
+                         ignore_index=True)
+    live = _bps_history(year=2027).drop(columns=["season_idx"])
+    _stub_store(monkeypatch, train_mod, history=history, fixtures=fixtures,
+                live=live,
+                live_fixtures=_bps_fixtures(year=2027, season_idx=2))
+
+    df, _tg, _elo = train_mod.load_training_frame()
+    # The live season sits past the archived new-rules season, not on top.
+    assert set(df["season_idx"]) == {0, 1, 2}
+    assert not df.duplicated(subset=["code", "season_idx", "gw"]).any()
+    # And the archived new-rules season is still not restated.
+    archived = df[df["season_idx"] == 1]
+    assert set(archived.loc[archived["code"] == 100, "bps"]) == {30.0}
+    stored = df[df["season_idx"] == 0]
+    assert set(stored.loc[stored["code"] == 100, "bps"]) == {29.0}
+
+
 def test_train_all_keeps_the_bonus_floor_even_on_a_re_derived_frame():
     """Restatement is partial — ``cbi`` counts only exist from 2025-26, so an
     older season is re-ranked only in the fixtures where the CBI adjustment

@@ -100,7 +100,11 @@ def first_new_rules_idx(player_gw: pd.DataFrame) -> int:
 
     The oldest stored season labelled :data:`FIRST_NEW_RULES_SEASON` or later
     if history already holds one, otherwise one past the newest stored season
-    — the index the live frame is about to be given.
+    — where the live frame, itself new-rules, will land.
+
+    This is the *rules boundary*, not the live season's index. The two agree
+    only until a new-rules season is archived into history; after that the
+    boundary stays on the archived season while the live frame moves on.
     """
     if "season" in player_gw.columns:
         new = player_gw[player_gw["season"].astype("string")
@@ -123,14 +127,18 @@ def load_training_frame(max_season_idx: int | None = None,
     """
     player_gw = store.load("history/player_gw.parquet")
     fixtures = store.load("history/fixtures.parquet")
-    # Where the 2026/27 rules start. Fixed before the concat, so that in the
-    # pre-ingestion state (no live frame yet, e.g. before the season's first
-    # data_checked gameweek) the newest stored season is still restated rather
-    # than mistaken for the current one. Once a new-rules season has been
-    # archived into history the boundary is that season's own index; until
-    # then history is entirely old-rules and the boundary sits one past its
-    # newest season, which is also the index the live frame is given.
-    current_idx = first_new_rules_idx(player_gw)
+    # Two different numbers, both fixed before the concat. ``current_idx`` is
+    # the index the live frame is about to be given: one past the newest
+    # season on disk, always, so a live season never lands on top of an
+    # archived one. ``rules_idx`` is where the 2026/27 rules start, which is
+    # the archived new-rules season's own index once one exists; until then
+    # history is entirely old-rules and the boundary sits one past it, so that
+    # in the pre-ingestion state (no live frame yet, e.g. before the season's
+    # first data_checked gameweek) the newest stored season is still restated
+    # rather than mistaken for the current one. They coincide only while no
+    # new-rules season has been archived.
+    current_idx = int(player_gw["season_idx"].max()) + 1
+    rules_idx = first_new_rules_idx(player_gw)
     if store.exists("live/player_gw.parquet"):
         live = store.load("live/player_gw.parquet")
         live["season_idx"] = current_idx
@@ -143,7 +151,7 @@ def load_training_frame(max_season_idx: int | None = None,
     # mean one thing. Re-deriving before truncation rather than after keeps
     # every fixture's ranking whole; truncation only ever drops entire
     # gameweeks, so the two orders agree anyway.
-    player_gw = apply_new_bps(player_gw, current_idx=current_idx,
+    player_gw = apply_new_bps(player_gw, current_idx=rules_idx,
                               fixtures=fixtures)
     if max_season_idx is not None:
         keep = (player_gw["season_idx"] < max_season_idx) | (
