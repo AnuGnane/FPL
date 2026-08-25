@@ -225,3 +225,96 @@ def test_fit_on_a_single_round_robin_still_converges():
     model = DixonColesModel().fit(build_team_gw(fx))
     assert len(model.attack_) == 12
     assert np.isfinite(model.gamma_)
+
+
+def _future_rows(codes=(0, 1), opp=(1, 0), home=(1.0, 0.0)):
+    return pd.DataFrame([
+        {"code": c, "opp_code": o, "home": h, "season_idx": 1, "gw": 5,
+         "kickoff_time": "2021-01-01T15:00:00Z"}
+        for c, o, h in zip(codes, opp, home)])
+
+
+def test_predict_returns_the_team_model_contract_columns():
+    """Parity with TeamModel is the whole reason the swap is one line."""
+    from gaffer.models.team import TeamModel
+
+    model, _ = _fitted()
+    out = model.predict(_future_rows())
+    assert list(out.columns) == ["code", "season_idx", "gw", "p_cs", "e_gc"]
+    assert len(out) == 2
+
+    gbm = TeamModel(feature_cols=["home"])
+    tg = build_team_gw(_synthetic_fixtures(_TRUE_ATTACK, _TRUE_DEFENCE,
+                                           repeats=1))
+    gbm.fit(tg)
+    assert list(gbm.predict(tg.head(2)).columns) == list(out.columns)
+
+
+def test_predict_is_row_for_row_with_its_input():
+    """Every caller stitches component outputs positionally, so a dropped or
+    reordered row silently misattributes a clean sheet."""
+    model, _ = _fitted()
+    rows = _future_rows(codes=(3, 7, 3), opp=(7, 3, 7),
+                        home=(1.0, 0.0, 0.0))
+    out = model.predict(rows)
+    assert list(out["code"]) == [3, 7, 3]
+
+
+def test_predict_probabilities_are_in_range():
+    model, _ = _fitted()
+    out = model.predict(_future_rows(codes=tuple(range(12)),
+                                     opp=tuple(reversed(range(12))),
+                                     home=tuple([1.0] * 12)))
+    assert (out["p_cs"] >= 0.0).all() and (out["p_cs"] <= 1.0).all()
+    assert (out["e_gc"] >= 0.0).all()
+
+
+def test_predict_gives_the_stronger_team_the_better_clean_sheet():
+    model, _ = _fitted()
+    out = model.predict(_future_rows(codes=(0, 11), opp=(11, 0),
+                                     home=(1.0, 0.0)))
+    assert out.loc[0, "p_cs"] > out.loc[1, "p_cs"]
+    assert out.loc[1, "e_gc"] > out.loc[0, "e_gc"]
+
+
+def test_predict_home_advantage_helps_the_same_pairing():
+    model, _ = _fitted()
+    at_home = model.predict(_future_rows(codes=(4,), opp=(5,), home=(1.0,)))
+    away = model.predict(_future_rows(codes=(4,), opp=(5,), home=(0.0,)))
+    assert at_home.loc[0, "e_gc"] < away.loc[0, "e_gc"]
+
+
+def test_predict_uses_the_promoted_fallback_for_an_unseen_club():
+    """A promoted club appears in the fixture list with no history at all;
+    predicting NaN for it would knock out every player in its squad."""
+    model, _ = _fitted()
+    out = model.predict(_future_rows(codes=(999,), opp=(0,), home=(1.0,)))
+    assert out["p_cs"].notna().all()
+    assert 0.0 < float(out.loc[0, "p_cs"]) < 1.0
+
+
+def test_predict_treats_two_unseen_clubs_as_equals():
+    model, _ = _fitted()
+    out = model.predict(_future_rows(codes=(999, 998), opp=(998, 999),
+                                     home=(1.0, 0.0)))
+    # Same parameters both sides: only the home advantage separates them.
+    assert out.loc[0, "p_cs"] > out.loc[1, "p_cs"]
+
+
+def test_predict_handles_a_double_gameweek_row_pair():
+    """The team-future frame is already one row per fixture, so a DGW needs
+    nothing special — but it must not be collapsed."""
+    model, _ = _fitted()
+    rows = _future_rows(codes=(2, 2), opp=(6, 8), home=(1.0, 0.0))
+    out = model.predict(rows)
+    assert len(out) == 2
+    assert out["p_cs"].nunique() == 2
+
+
+def test_predict_without_a_home_column_treats_every_row_as_neutral():
+    """Frames from the simple component path carry no ``home``; a KeyError
+    there would take the whole backtest down."""
+    model, _ = _fitted()
+    rows = _future_rows().drop(columns=["home"])
+    out = model.predict(rows)
+    assert out["p_cs"].notna().all()

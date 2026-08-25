@@ -272,3 +272,41 @@ class DixonColesModel:
         self.converged_ = bool(res.success)
         self._fallback(matches, codes, attack, defence)
         return self
+
+    def _params(self, code) -> tuple[float, float]:
+        """Attack/defence for one club, promoted fallback where unseen."""
+        return (self.attack_.get(code, self.fallback_attack_),
+                self.defence_.get(code, self.fallback_defence_))
+
+    def predict(self, tg: pd.DataFrame) -> pd.DataFrame:
+        """One row per input row: code, season_idx, gw, p_cs, e_gc.
+
+        Byte-for-byte the same contract as :meth:`TeamModel.predict`, and
+        positional like every other component: a double gameweek's two
+        fixtures stay two rows, because the caller stitches on position and
+        would otherwise attach one fixture's clean sheet to both.
+
+        A row whose ``home`` is missing is treated as neutral (no home
+        advantage either way) rather than raising — the simple component path
+        hands over frames without it.
+        """
+        out = tg[["code", "season_idx", "gw"]].copy().reset_index(drop=True)
+        rows = tg.reset_index(drop=True)
+        home = (pd.to_numeric(rows["home"], errors="coerce").fillna(0.5)
+                if "home" in rows.columns
+                else pd.Series(0.5, index=rows.index, dtype="float64"))
+        p_cs, e_gc = [], []
+        for code, opp, is_home in zip(rows["code"], rows["opp_code"], home):
+            att, dfn = self._params(code)
+            opp_att, opp_dfn = self._params(opp)
+            # gamma is the *home* team's edge; a neutral 0.5 splits it, which
+            # is what a frame with no home flag deserves.
+            lam = math.exp(att + opp_dfn + self.gamma_ * float(is_home))
+            mu = math.exp(opp_att + dfn
+                          + self.gamma_ * (1.0 - float(is_home)))
+            stats = fixture_outcomes(lam, mu, self.rho_, self.cap)
+            p_cs.append(stats["p_cs_home"])
+            e_gc.append(stats["e_gc_home"])
+        out["p_cs"] = p_cs
+        out["e_gc"] = e_gc
+        return out
