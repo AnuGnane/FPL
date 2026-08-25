@@ -8,8 +8,8 @@ import pytest
 import gaffer.data.odds as odds_mod
 import gaffer.data.store as store
 from gaffer.config import load_config
-from gaffer.data.odds import (OddsClient, devig, invert_odds, odds_frame,
-                              resolve_team)
+from gaffer.data.odds import (ODDS_FRAME_COLS, OddsClient, devig, invert_odds,
+                              odds_frame, resolve_team)
 from gaffer.errors import GafferError
 
 SAMPLE_ODDS = [{
@@ -590,3 +590,126 @@ def test_predict_components_still_blends_before_merging_onto_players():
     src = inspect.getsource(predict_components)
     assert src.index("blend_team_odds(") < src.index("comp.merge(tp")
     assert "odds_blend_weight()" in src
+
+
+# --- anytime goalscorer props ---------------------------------------------
+
+from gaffer.data.odds import (AGS_EG_CAP, AGS_MARKET, ags_frame,
+                              next_gw_event_ids, normalize_ags)
+
+_AGS_EVENT = {
+    "id": "evt1", "home_team": "Arsenal", "away_team": "Manchester City",
+    "commence_time": "2026-08-29T14:00:00Z",
+    "bookmakers": [{"key": "bk1", "markets": [
+        {"key": "player_goal_scorer_anytime", "outcomes": [
+            {"name": "Bukayo Saka", "price": 3.0},
+            {"name": "Kai Havertz", "price": 3.5},
+            {"name": "Erling Haaland", "price": 1.8}]}]}]}
+
+
+def test_get_player_goalscorer_odds_without_a_key_makes_no_request():
+    def refuse(request):
+        raise AssertionError("no key means no request")
+
+    assert OddsClient("", client=_client(refuse)).get_player_goalscorer_odds(
+        ["evt1"]) is None
+
+
+def test_get_player_goalscorer_odds_requests_the_event_endpoint(tmp_path,
+                                                                monkeypatch):
+    monkeypatch.setattr(store, "DATA_DIR", tmp_path)
+    seen = {}
+
+    def handler(request):
+        seen["url"] = str(request.url).split("?")[0]
+        seen["params"] = dict(request.url.params)
+        return httpx.Response(200, json=_AGS_EVENT)
+
+    out = OddsClient("k", client=_client(handler)).get_player_goalscorer_odds(
+        ["evt1"])
+    assert seen["url"] == (
+        "https://api.the-odds-api.com/v4/sports/soccer_epl/events/evt1/odds")
+    assert seen["params"]["markets"] == AGS_MARKET
+    assert out == [_AGS_EVENT]
+
+
+def test_get_player_goalscorer_odds_returns_none_on_an_exhausted_quota(
+        tmp_path, monkeypatch):
+    """401/402/429 on the free tier is the normal end of the month, not an
+    error worth failing the weekly run over."""
+    monkeypatch.setattr(store, "DATA_DIR", tmp_path)
+    client = OddsClient("k", client=_client(
+        lambda r: httpx.Response(402)), retries=1)
+    assert client.get_player_goalscorer_odds(["evt1"]) is None
+
+
+def test_next_gw_event_ids_picks_only_the_coming_gameweek():
+    """The 29 Aug kickoff sits inside GW2's deadline window in ``_EVENTS``;
+    asking for any other gameweek must spend no requests."""
+    assert next_gw_event_ids([_AGS_EVENT], _EVENTS, gw=2) == ["evt1"]
+    assert next_gw_event_ids([_AGS_EVENT], _EVENTS, gw=1) == []
+    assert next_gw_event_ids([], _EVENTS, gw=2) == []
+
+
+def test_normalize_ags_scales_lambdas_to_the_match_odds_mu():
+    """One-sided prices carry an overround that no devig can strip, so the
+    market-consistent fix is to make the team's implied goals match the
+    number the two-sided match odds already gave us."""
+    lam = normalize_ags({"Bukayo Saka": 3.0, "Kai Havertz": 3.5}, mu=1.6)
+    assert abs(sum(lam.values()) - 1.6) < 1e-12
+    # Ordering survives the scaling: the shorter price stays the bigger lambda.
+    assert lam["Bukayo Saka"] > lam["Kai Havertz"]
+
+
+def test_normalize_ags_on_an_empty_book_is_empty():
+    assert normalize_ags({}, mu=1.6) == {}
+
+
+def test_normalize_ags_with_a_zero_mu_is_all_zero():
+    lam = normalize_ags({"A": 3.0}, mu=0.0)
+    assert lam == {"A": 0.0}
+
+
+def test_ags_frame_maps_names_and_teams_onto_codes():
+    players = pd.DataFrame([
+        {"code": 11, "name": "Bukayo Saka", "team_code": 3},
+        {"code": 12, "name": "Kai Havertz", "team_code": 3},
+        {"code": 13, "name": "Erling Haaland", "team_code": 43}])
+    odds_df = odds_frame(SAMPLE_ODDS, _TEAMS, _EVENTS)
+    out = ags_frame([_AGS_EVENT], players, _TEAMS, _EVENTS, odds_df)
+    assert set(out.columns) == {"code", "gw", "team_code", "opp_code",
+                                "lambda_ags"}
+    assert set(out["code"]) == {11, 12, 13}
+    # Arsenal's two priced players carry Arsenal's devigged mu between them.
+    arsenal = out[out["team_code"] == 3]
+    mu = float(odds_df[(odds_df["team_code"] == 3)]["odds_e_goals_for"].iloc[0])
+    assert abs(arsenal["lambda_ags"].sum() - mu) < 1e-9
+
+
+def test_ags_frame_drops_players_the_bootstrap_does_not_carry():
+    players = pd.DataFrame([{"code": 11, "name": "Bukayo Saka",
+                             "team_code": 3}])
+    out = ags_frame([_AGS_EVENT], players, _TEAMS,
+                    _EVENTS, odds_frame(SAMPLE_ODDS, _TEAMS, _EVENTS))
+    assert set(out["code"]) == {11}
+
+
+def test_ags_frame_without_match_odds_for_the_fixture_is_empty():
+    """No devigged mu means no normalization target, and an un-normalized
+    one-sided price is an overround, not a probability."""
+    players = pd.DataFrame([{"code": 11, "name": "Bukayo Saka",
+                             "team_code": 3}])
+    out = ags_frame([_AGS_EVENT], players, _TEAMS, _EVENTS,
+                    pd.DataFrame(columns=ODDS_FRAME_COLS))
+    assert out.empty
+
+
+def test_ags_frame_on_none_is_empty():
+    players = pd.DataFrame([{"code": 11, "name": "Bukayo Saka",
+                             "team_code": 3}])
+    assert ags_frame(None, players, _TEAMS, _EVENTS,
+                     odds_frame(SAMPLE_ODDS, _TEAMS, _EVENTS)).empty
+
+
+def test_ags_cap_is_a_sane_per_appearance_ceiling():
+    assert AGS_EG_CAP == 2.0

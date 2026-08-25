@@ -75,6 +75,36 @@ class OddsClient:
             snapshot="odds",
         )
 
+    def get_player_goalscorer_odds(self, event_ids: list[str]) -> list | None:
+        """Anytime-goalscorer prices for the given fixtures, best effort.
+
+        One request per event — the-odds-api has no bulk player-props
+        endpoint — so the caller passes only the *next* gameweek's fixtures
+        and takes one snapshot per advise run; ten calls a week fits inside
+        the free tier's monthly budget.
+
+        Returns ``None`` on a missing key, an exhausted quota (401/402/429) or
+        a transport failure, exactly like :meth:`get_epl_odds`: player props
+        are the most optional signal in the model and must never be able to
+        block a week's advice.
+        """
+        if not self.api_key:
+            return None
+        out = []
+        for event_id in event_ids:
+            try:
+                data = self._get(
+                    f"sports/soccer_epl/events/{event_id}/odds",
+                    params={"regions": "eu", "markets": AGS_MARKET,
+                            "oddsFormat": "decimal", "apiKey": self.api_key},
+                    snapshot=f"ags-{event_id}")
+            except (httpx.HTTPStatusError, httpx.TransportError) as exc:
+                print(f"player props unavailable ({exc})")
+                return None
+            if data:
+                out.append(data)
+        return out or None
+
 
 GOAL_CAP = 10
 GRID = [round(0.2 + 0.05 * i, 2) for i in range(int((4.0 - 0.2) / 0.05) + 1)]
@@ -368,3 +398,133 @@ def poisson_win_prob(mu_for: float, mu_against: float,
     home = [pmf(max(mu_for, 1e-9), k) for k in range(max_goals + 1)]
     away = [pmf(max(mu_against, 1e-9), k) for k in range(max_goals + 1)]
     return sum(home[h] * sum(away[:h]) for h in range(1, max_goals + 1))
+
+
+AGS_MARKET = "player_goal_scorer_anytime"
+AGS_EG_CAP = 2.0
+"""Ceiling on odds-implied expected goals *per appearance*.
+
+``lambda / p_play`` divides by a probability, so a fringe player with a
+0.05 chance of playing and a long price would otherwise come out at an
+absurd per-appearance rate. Nobody in this league is a two-goals-a-game
+player; the cap is where the arithmetic stops being a signal.
+"""
+
+AGS_FRAME_COLS = ["code", "gw", "team_code", "opp_code", "lambda_ags"]
+
+
+def next_gw_event_ids(raw_odds: list, events: pd.DataFrame,
+                      gw: int) -> list[str]:
+    """The-odds-api event ids whose kickoff falls in gameweek ``gw``.
+
+    The free tier is metered per request, so only the gameweek being advised
+    is worth spending calls on.
+    """
+    windows = _gw_windows(events)
+    out = []
+    for fixture in raw_odds or []:
+        kickoff = pd.to_datetime(fixture["commence_time"], utc=True,
+                                 format="mixed")
+        found = next((g for start, end, g in windows
+                      if start <= kickoff < end), None)
+        if found == gw and fixture.get("id"):
+            out.append(str(fixture["id"]))
+    return out
+
+
+def normalize_ags(prices: dict[str, float], mu: float) -> dict[str, float]:
+    """One-sided anytime prices -> per-player expected goals summing to ``mu``.
+
+    Anytime-scorer markets quote backs only, so there is no complementary
+    price to devig against and neither Shin nor proportional normalization
+    applies. What *is* available is a second, two-sided estimate of the same
+    quantity: the devigged match odds already say how many goals this team is
+    expected to score. Converting each price to a rate with
+    ``lambda = -ln(1 - p)`` and scaling the lot so they sum to that ``mu`` is
+    the market-consistent way to strip the one-sided overround — it keeps the
+    market's *relative* view of who scores and takes the *level* from the
+    market's own better-measured number.
+    """
+    raw = {}
+    for name, price in prices.items():
+        p = min(max(1.0 / float(price), 1e-9), 1.0 - 1e-9)
+        raw[name] = -math.log(1.0 - p)
+    total = sum(raw.values())
+    if not raw or total <= 0.0:
+        return {name: 0.0 for name in raw}
+    scale = float(mu) / total
+    return {name: value * scale for name, value in raw.items()}
+
+
+def ags_frame(raw_ags: list | None, players: pd.DataFrame,
+              teams: pd.DataFrame, events: pd.DataFrame,
+              odds_df: pd.DataFrame) -> pd.DataFrame:
+    """Player props -> ``[code, gw, team_code, opp_code, lambda_ags]``.
+
+    Each fixture's priced players are split by club, normalized against that
+    club's devigged ``odds_e_goals_for`` from :func:`odds_frame`, and matched
+    to FPL codes by normalized name *and* club. A fixture with no match-odds
+    row is skipped entirely: without a devigged mu there is nothing to
+    normalize against, and an un-normalized one-sided book is an overround
+    rather than a set of probabilities.
+
+    Players the bootstrap does not carry are dropped; FPL players nobody
+    priced simply get no row and keep pure model output downstream.
+    """
+    from gaffer.data.names import normalize_name
+
+    if raw_ags is None or odds_df is None or odds_df.empty:
+        return pd.DataFrame(columns=AGS_FRAME_COLS)
+    code_of_team = dict(zip(teams["name"], teams["code"]))
+    by_name_team = {(normalize_name(r.name), int(r.team_code)): int(r.code)
+                    for r in players.itertuples()}
+    mu_of = {(int(r.team_code), int(r.opp_code), int(r.gw)):
+             float(r.odds_e_goals_for) for r in odds_df.itertuples()}
+    windows = _gw_windows(events)
+
+    rows = []
+    for fixture in raw_ags:
+        books = fixture.get("bookmakers") or []
+        market = _market(books[0], AGS_MARKET) if books else None
+        if market is None:
+            continue
+        try:
+            home = resolve_team(fixture["home_team"])
+            away = resolve_team(fixture["away_team"])
+        except GafferError as exc:
+            print(f"player props: {exc}")
+            continue
+        if home not in code_of_team or away not in code_of_team:
+            continue
+        home_code, away_code = code_of_team[home], code_of_team[away]
+        kickoff = pd.to_datetime(fixture["commence_time"], utc=True,
+                                 format="mixed")
+        gw = next((g for start, end, g in windows
+                   if start <= kickoff < end), None)
+        if gw is None:
+            continue
+
+        # Split the book by the club each priced player actually plays for:
+        # the market lists both sides together and normalization is per team.
+        by_team: dict[int, dict[str, float]] = {home_code: {}, away_code: {}}
+        matched: dict[str, int] = {}
+        for outcome in market.get("outcomes", []):
+            name = normalize_name(outcome.get("name"))
+            for team_code in (home_code, away_code):
+                code = by_name_team.get((name, int(team_code)))
+                if code is not None:
+                    by_team[team_code][str(outcome["name"])] = float(
+                        outcome["price"])
+                    matched[str(outcome["name"])] = code
+                    break
+
+        for team_code, opp_code in ((home_code, away_code),
+                                    (away_code, home_code)):
+            mu = mu_of.get((int(team_code), int(opp_code), int(gw)))
+            if mu is None or not by_team[team_code]:
+                continue
+            for name, lam in normalize_ags(by_team[team_code], mu).items():
+                rows.append({"code": matched[name], "gw": int(gw),
+                             "team_code": int(team_code),
+                             "opp_code": int(opp_code), "lambda_ags": lam})
+    return pd.DataFrame(rows, columns=AGS_FRAME_COLS)
