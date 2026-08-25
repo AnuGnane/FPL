@@ -17,6 +17,7 @@ LightGBM to do it.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -163,26 +164,55 @@ def git_sha() -> str:
     return done.stdout.strip() if done.returncode == 0 else "unknown"
 
 
+def _read_artifact() -> dict:
+    """The artifact's JSON, with a decode error stated in domain terms.
+
+    Both callers read the same file and both are reached from the web layer,
+    where an escaping ``JSONDecodeError`` is a bare 500 that says nothing
+    about what to do next.
+    """
+    try:
+        return json.loads(EVALUATION_PATH.read_text())
+    except json.JSONDecodeError as exc:
+        raise GafferError(
+            f"{EVALUATION_PATH} is not readable JSON — it may be corrupt or "
+            f"mid-write; re-run `gaffer evaluate` to rebuild it ({exc})"
+        ) from exc
+
+
 def load_evaluation() -> dict:
-    """The whole artifact. Missing file is a domain error, not a crash."""
+    """The whole artifact. Missing or corrupt file is a domain error."""
     if not EVALUATION_PATH.exists():
         raise GafferError(
             "no evaluation on disk — run `gaffer evaluate` first")
-    return json.loads(EVALUATION_PATH.read_text())
+    return _read_artifact()
 
 
 def save_evaluation(key: str, payload: dict) -> Path:
-    """Merge ``payload`` in under ``key``, leaving the other keys alone."""
+    """Merge ``payload`` in under ``key``, leaving the other keys alone.
+
+    Written through a sibling temp file and ``os.replace``, which is atomic on
+    POSIX: a reader either sees the whole previous artifact or the whole new
+    one, never the half-written middle. Evaluation runs take hours and the web
+    layer reads this file on every request, so the two do overlap.
+    """
     stored: dict = {}
     if EVALUATION_PATH.exists():
-        stored = json.loads(EVALUATION_PATH.read_text())
+        stored = _read_artifact()
     stored[key] = payload
-    REPORTS.mkdir(exist_ok=True)
     # allow_nan=False: NaN/Infinity are a Python extension that no other JSON
     # reader accepts. Letting one through here buys a valid-looking artifact
     # that only fails weeks later, as a 500 from /api/quality, a long way from
-    # whatever produced the NaN.
-    EVALUATION_PATH.write_text(json.dumps(stored, indent=1, allow_nan=False))
+    # whatever produced the NaN. Serialised before the temp file is opened, so
+    # a rejected payload leaves nothing behind at all.
+    text = json.dumps(stored, indent=1, allow_nan=False)
+    REPORTS.mkdir(exist_ok=True)
+    tmp = EVALUATION_PATH.with_name(EVALUATION_PATH.name + ".tmp")
+    try:
+        tmp.write_text(text)
+        os.replace(tmp, EVALUATION_PATH)
+    finally:
+        tmp.unlink(missing_ok=True)
     return EVALUATION_PATH
 
 

@@ -184,6 +184,38 @@ def test_save_evaluation_refuses_to_write_a_nan(tmp_path, monkeypatch):
         save_evaluation("current", {"mae": float("nan")})
 
 
+def test_load_evaluation_on_a_corrupt_artifact_is_a_domain_error(
+        tmp_path, monkeypatch):
+    """A half-written or truncated artifact is a routine operational state —
+    a run killed mid-write, a partial copy — not an unhandled crash that the
+    web layer turns into a 500."""
+    monkeypatch.chdir(tmp_path)
+    save_evaluation("current", {"holdout_slots": 10})
+    EVALUATION_PATH.write_text('{"current": {"holdout')
+    with pytest.raises(GafferError) as exc:
+        load_evaluation()
+    assert "corrupt" in str(exc.value)
+
+
+def test_save_evaluation_leaves_no_temp_file_behind(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    path = save_evaluation("current", {"holdout_slots": 10})
+    assert [p.name for p in path.parent.iterdir()] == [path.name]
+
+
+def test_save_evaluation_keeps_the_old_artifact_when_the_write_fails(
+        tmp_path, monkeypatch):
+    """The replace is the last step, so a rejected payload cannot leave the
+    artifact truncated — last night's numbers are still on disk."""
+    monkeypatch.chdir(tmp_path)
+    save_evaluation("current", {"holdout_slots": 10})
+    with pytest.raises(ValueError):
+        save_evaluation("benchmark", {"mae": float("nan")})
+    assert load_evaluation()["current"]["holdout_slots"] == 10
+    assert [p.name for p in EVALUATION_PATH.parent.iterdir()] == [
+        EVALUATION_PATH.name]
+
+
 def test_run_at_is_an_iso_utc_stamp():
     assert run_at().endswith("+00:00")
 
