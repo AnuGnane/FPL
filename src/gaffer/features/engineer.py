@@ -316,3 +316,130 @@ def feature_columns(stats: list[str] = ROLL_STATS,
     cols = [f"{s}_r{w}" for s in stats for w in windows]
     return cols + ["team_elo", "opp_elo", "elo_diff", "home", "days_rest",
                    "pen_taker", "setpiece_taker"] + ROTATION_FEATURES
+
+
+US_STATS = ["us_shots", "us_key_passes", "us_npxg", "us_xgchain",
+            "us_xgbuildup"]
+US_FEATURE_NAMES = {"us_shots": "us_shots90", "us_key_passes": "us_kp90",
+                    "us_npxg": "us_npxg90", "us_xgchain": "us_xgchain90",
+                    "us_xgbuildup": "us_xgbuildup90"}
+US_WINDOWS = [3, 5, 10, 38]
+
+TEAM_US_STATS = ["us_xga", "ppda"]
+TEAM_US_WINDOWS = [5, 38]
+TEAM_US_FEATURES = [f"{side}_{stat}_r{w}"
+                    for side in ("team", "opp")
+                    for stat in TEAM_US_STATS
+                    for w in TEAM_US_WINDOWS]
+"""Own and opponent defensive shape. The opponent's is the attacking signal:
+a forward's chances come from how leaky and how passive the defence in front
+of him is, which ``opp_us_xga`` and ``opp_ppda`` measure directly and Elo
+only summarizes."""
+
+
+def understat_feature_columns(windows: list[int] = US_WINDOWS) -> list[str]:
+    """Every player-level Understat feature name, in a stable order."""
+    return [f"{name}_r{w}" for name in US_FEATURE_NAMES.values()
+            for w in windows]
+
+
+def add_understat_rolling(df: pd.DataFrame,
+                          windows: list[int] = US_WINDOWS) -> pd.DataFrame:
+    """Rolling per-90 Understat rates from past matches only.
+
+    Per-90 rather than per-match: a substitute's four shots in 20 minutes and
+    a starter's four in 90 are different players, and a per-match mean calls
+    them the same. The rate is ``sum(stat) / sum(minutes) * 90`` over the
+    window, both sums taken from the ``shift(1)``-ed series — the identical
+    leakage discipline :func:`add_player_rolling` uses, for the identical
+    reason.
+
+    A window with no minutes at all yields NaN rather than an infinity;
+    LightGBM splits on missing natively and an ``inf`` would propagate into
+    a crash. Frames with no Understat columns at all (no parquet on disk, or
+    the source disabled) come back with every feature present and empty, so
+    the model's feature schema never depends on whether the scrape ran.
+    """
+    sort_cols = ["code", "season_idx", "gw"]
+    if "kickoff_time" in df.columns:
+        sort_cols.append("kickoff_time")
+    df = df.sort_values(sort_cols).reset_index(drop=True)
+    missing = [c for c in US_STATS + ["us_minutes"] if c not in df.columns]
+    if missing:
+        df = df.assign(**{c: float("nan") for c in missing})
+    code = df["code"]
+    mins = pd.to_numeric(df["us_minutes"], errors="coerce")
+    shifted_mins = mins.groupby(code).shift(1)
+    denom = {}
+    for w in windows:
+        rolled = (shifted_mins.groupby(code).rolling(w, min_periods=1).sum()
+                  .reset_index(level=0, drop=True))
+        denom[w] = rolled.where(rolled > 0.0)
+    feats: dict[str, pd.Series] = {}
+    for stat in US_STATS:
+        shifted = (pd.to_numeric(df[stat], errors="coerce")
+                   .groupby(code).shift(1))
+        for w in windows:
+            num = (shifted.groupby(code).rolling(w, min_periods=1).sum()
+                   .reset_index(level=0, drop=True))
+            feats[f"{US_FEATURE_NAMES[stat]}_r{w}"] = num / denom[w] * 90.0
+    return pd.concat([df, pd.DataFrame(feats, index=df.index)], axis=1)
+
+
+def add_understat_team_rolling(
+        ut: pd.DataFrame,
+        windows: list[int] = TEAM_US_WINDOWS) -> pd.DataFrame:
+    """Rolling team xGA and PPDA from a team's past matches only.
+
+    Input is the Understat team parquet: one row per team per match, keyed by
+    ``(team_code, date)``. Output adds ``team_<stat>_r<w>`` columns; the
+    opponent's copies are attached by :func:`merge_understat_team`, which is
+    where the same numbers get read from the other side of the fixture.
+    """
+    ut = ut.sort_values(["team_code", "date"]).reset_index(drop=True)
+    code = ut["team_code"]
+    feats: dict[str, pd.Series] = {}
+    for stat in TEAM_US_STATS:
+        shifted = (pd.to_numeric(ut[stat], errors="coerce")
+                   .groupby(code).shift(1))
+        for w in windows:
+            feats[f"team_{stat}_r{w}"] = (
+                shifted.groupby(code).rolling(w, min_periods=1).mean()
+                .reset_index(level=0, drop=True))
+    return pd.concat([ut, pd.DataFrame(feats, index=ut.index)], axis=1)
+
+
+def merge_understat_team(df: pd.DataFrame,
+                         rolled: pd.DataFrame | None) -> pd.DataFrame:
+    """Attach own and opponent team Understat features to player rows.
+
+    Joined on ``(team_code, match date)``, the only key both frames share —
+    Understat carries no gameweek number. ``rolled`` of ``None`` (no parquet,
+    or the source disabled) still produces every column as all-NaN, which is
+    what keeps the model's feature schema stable across that switch.
+    """
+    out = df.copy()
+    own_cols = [f"team_{s}_r{w}" for s in TEAM_US_STATS
+                for w in TEAM_US_WINDOWS]
+    if rolled is None or rolled.empty:
+        for col in TEAM_US_FEATURES:
+            out[col] = float("nan")
+        return out
+    out["_date"] = pd.to_datetime(out["kickoff_time"], errors="coerce",
+                                  utc=True).dt.tz_convert(
+                                      "Europe/London").dt.date
+    keyed = rolled[["team_code", "date"] + own_cols].copy()
+    # Both sides have to be plain ``date`` objects: the player frame's key is
+    # derived from a timestamp and the parquet's may come back as a string,
+    # and a string-vs-date merge matches nothing while looking fine.
+    keyed["date"] = pd.to_datetime(keyed["date"], errors="coerce").dt.date
+    keyed = keyed.drop_duplicates(subset=["team_code", "date"])
+    own = keyed.rename(columns={"date": "_date"})
+    out = out.merge(own, on=["team_code", "_date"], how="left",
+                    validate="many_to_one")
+    opp = keyed.rename(columns={"date": "_date", "team_code": "opp_code",
+                                **{c: c.replace("team_", "opp_", 1)
+                                   for c in own_cols}})
+    out = out.merge(opp, on=["opp_code", "_date"], how="left",
+                    validate="many_to_one")
+    return out.drop(columns=["_date"])

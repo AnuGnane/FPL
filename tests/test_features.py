@@ -406,3 +406,131 @@ def test_prediction_frame_carries_setpiece_features():
                                   windows=[3])
     assert pred["pen_taker"].iloc[0] == 0.5
     assert pred["setpiece_taker"].iloc[0] == 1.0
+
+
+# --- Understat rolling features -------------------------------------------
+
+from gaffer.features.engineer import (TEAM_US_FEATURES, US_WINDOWS,
+                                      add_understat_rolling,
+                                      add_understat_team_rolling,
+                                      merge_understat_team,
+                                      understat_feature_columns)
+
+
+def _us_rows(spec, code=1):
+    """spec: list of (gw, us_minutes, us_shots)."""
+    return pd.DataFrame([
+        {"code": code, "season_idx": 0, "gw": gw,
+         "kickoff_time": f"2024-08-{10 + gw:02d}T14:00:00Z",
+         "us_minutes": m, "us_shots": s, "us_key_passes": 1.0,
+         "us_npxg": 0.1, "us_xgchain": 0.2, "us_xgbuildup": 0.1}
+        for gw, m, s in spec])
+
+
+def test_add_understat_rolling_is_leakage_safe():
+    """A match's own shots must never reach its own features."""
+    out = add_understat_rolling(_us_rows([(1, 90, 4), (2, 90, 2)])
+                                ).set_index("gw")
+    assert pd.isna(out.loc[1, "us_shots90_r3"])
+    assert out.loc[2, "us_shots90_r3"] == 4.0
+
+
+def test_add_understat_rolling_is_a_per_ninety_not_a_per_match_mean():
+    """Two matches, 90 and 45 minutes, five shots between them: the rate is
+    5 / 135 * 90, not the mean of 4 and 1."""
+    out = add_understat_rolling(_us_rows([(1, 90, 4), (2, 45, 1), (3, 90, 0)])
+                                ).set_index("gw")
+    assert abs(out.loc[3, "us_shots90_r3"] - 5.0 / 135.0 * 90.0) < 1e-9
+
+
+def test_add_understat_rolling_window_only_reaches_back_w_matches():
+    out = add_understat_rolling(
+        _us_rows([(1, 90, 9), (2, 90, 0), (3, 90, 0), (4, 90, 0),
+                  (5, 90, 0)])).set_index("gw")
+    assert out.loc[5, "us_shots90_r3"] == 0.0
+    assert abs(out.loc[5, "us_shots90_r38"] - 9.0 / 360.0 * 90.0) < 1e-9
+
+
+def test_add_understat_rolling_zero_minutes_window_is_nan_not_inf():
+    """An unused substitute run of matches would divide by zero, and an
+    infinity in a feature column is a crash downstream, not a signal."""
+    out = add_understat_rolling(_us_rows([(1, 0, 0), (2, 90, 1)])
+                                ).set_index("gw")
+    assert pd.isna(out.loc[2, "us_shots90_r3"])
+
+
+def test_add_understat_rolling_keeps_players_separate():
+    frame = pd.concat([_us_rows([(1, 90, 6), (2, 90, 0)], code=1),
+                       _us_rows([(1, 90, 0), (2, 90, 0)], code=2)],
+                      ignore_index=True)
+    out = add_understat_rolling(frame).set_index(["code", "gw"])
+    assert out.loc[(1, 2), "us_shots90_r3"] == 6.0
+    assert out.loc[(2, 2), "us_shots90_r3"] == 0.0
+
+
+def test_add_understat_rolling_without_any_understat_columns_is_all_nan():
+    """The degradation rail: no Understat parquet means the columns exist and
+    are empty, so LightGBM's schema is identical either way."""
+    frame = pd.DataFrame([{"code": 1, "season_idx": 0, "gw": 1,
+                           "kickoff_time": "2024-08-11T14:00:00Z"}])
+    out = add_understat_rolling(frame)
+    for col in understat_feature_columns():
+        assert col in out.columns
+        assert out[col].isna().all()
+
+
+def test_understat_feature_columns_covers_every_stat_and_window():
+    cols = understat_feature_columns()
+    assert len(cols) == 5 * len(US_WINDOWS)
+    assert "us_kp90_r5" in cols and "us_xgbuildup90_r38" in cols
+
+
+def _ut_rows(team_code, dates, xga, ppda):
+    return pd.DataFrame([
+        {"team_code": team_code, "season_idx": 0, "date": d,
+         "us_xga": g, "ppda": p}
+        for d, g, p in zip(dates, xga, ppda)])
+
+
+def test_add_understat_team_rolling_is_leakage_safe():
+    ut = _ut_rows(3, ["2024-08-17", "2024-08-24", "2024-08-31"],
+                  [0.5, 2.5, 1.0], [9.0, 11.0, 10.0])
+    out = add_understat_team_rolling(ut).set_index("date")
+    assert pd.isna(out.loc["2024-08-17", "team_us_xga_r5"])
+    assert out.loc["2024-08-24", "team_us_xga_r5"] == 0.5
+    assert out.loc["2024-08-31", "team_us_xga_r5"] == 1.5
+
+
+def test_merge_understat_team_attaches_own_and_opponent_columns():
+    ut = pd.concat([
+        _ut_rows(3, ["2024-08-17", "2024-08-24"], [0.5, 2.5], [9.0, 11.0]),
+        _ut_rows(4, ["2024-08-17", "2024-08-24"], [3.0, 1.0], [14.0, 13.0]),
+    ], ignore_index=True)
+    rolled = add_understat_team_rolling(ut)
+    df = pd.DataFrame([{"code": 1, "season_idx": 0, "gw": 2, "team_code": 3,
+                        "opp_code": 4,
+                        "kickoff_time": "2024-08-24T14:00:00Z"}])
+    out = merge_understat_team(df, rolled)
+    assert out.loc[0, "team_us_xga_r5"] == 0.5
+    assert out.loc[0, "opp_us_xga_r5"] == 3.0
+    assert out.loc[0, "opp_ppda_r5"] == 14.0
+    assert set(TEAM_US_FEATURES) <= set(out.columns)
+
+
+def test_merge_understat_team_without_data_still_creates_the_columns():
+    df = pd.DataFrame([{"code": 1, "season_idx": 0, "gw": 2, "team_code": 3,
+                        "opp_code": 4,
+                        "kickoff_time": "2024-08-24T14:00:00Z"}])
+    out = merge_understat_team(df, None)
+    for col in TEAM_US_FEATURES:
+        assert col in out.columns and out[col].isna().all()
+
+
+def test_merge_understat_team_does_not_add_rows():
+    """A many-to-one join that fans out would double a player's gameweek."""
+    ut = _ut_rows(3, ["2024-08-24", "2024-08-24"], [2.5, 2.5], [11.0, 11.0])
+    rolled = add_understat_team_rolling(ut)
+    df = pd.DataFrame([{"code": 1, "season_idx": 0, "gw": 2, "team_code": 3,
+                        "opp_code": 4,
+                        "kickoff_time": "2024-08-24T14:00:00Z"}])
+    assert len(merge_understat_team(df, rolled)) == 1
