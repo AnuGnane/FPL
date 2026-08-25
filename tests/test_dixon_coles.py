@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pandas as pd
 
-from gaffer.models.dixon_coles import (GOAL_CAP, fixture_outcomes,
+from gaffer.models.dixon_coles import (GOAL_CAP, RHO_BOUNDS, fixture_outcomes,
                                        scoreline_pmf, tau_correction)
 
 
@@ -80,3 +80,148 @@ def test_fixture_outcomes_stronger_side_has_the_better_clean_sheet():
     strong = fixture_outcomes(2.2, 0.6, -0.12)
     weak = fixture_outcomes(0.6, 2.2, -0.12)
     assert strong["p_cs_home"] > weak["p_cs_home"]
+
+
+from gaffer.models.dixon_coles import DEFAULT_XI, DixonColesModel
+from gaffer.models.team import build_team_gw
+
+
+def _synthetic_fixtures(attack, defence, gamma=0.28, repeats=8, seed=7,
+                        season_idx=0, start_day=0):
+    """Double round-robins sampled from known Dixon-Coles parameters."""
+    rng = np.random.default_rng(seed)
+    n = len(attack)
+    rows, day = [], start_day
+    for _ in range(repeats):
+        for i in range(n):
+            for j in range(n):
+                if i == j:
+                    continue
+                lam = math.exp(attack[i] + defence[j] + gamma)
+                mu = math.exp(attack[j] + defence[i])
+                rows.append({
+                    "season_idx": season_idx, "gw": 1 + day // 20,
+                    "kickoff_time": (pd.Timestamp("2020-01-01", tz="UTC")
+                                     + pd.Timedelta(days=day)).isoformat(),
+                    "home_code": i, "away_code": j,
+                    "home_goals": int(rng.poisson(lam)),
+                    "away_goals": int(rng.poisson(mu))})
+                day += 1
+    return pd.DataFrame(rows)
+
+
+_TRUE_ATTACK = np.linspace(0.5, -0.5, 12) - np.linspace(0.5, -0.5, 12).mean()
+_TRUE_DEFENCE = np.linspace(-0.4, 0.4, 12)
+
+
+def _fitted(xi=0.0):
+    fx = _synthetic_fixtures(_TRUE_ATTACK, _TRUE_DEFENCE)
+    return DixonColesModel(xi=xi).fit(build_team_gw(fx)), fx
+
+
+def test_matches_from_team_gw_rebuilds_one_row_per_match():
+    fx = _synthetic_fixtures(_TRUE_ATTACK, _TRUE_DEFENCE, repeats=1)
+    tg = build_team_gw(fx)
+    matches = DixonColesModel.matches_from_team_gw(tg)
+    assert len(matches) == len(fx)
+    assert set(matches.columns) >= {"season_idx", "gw", "kickoff_time",
+                                    "home_code", "away_code", "home_goals",
+                                    "away_goals"}
+    assert matches["home_goals"].sum() == fx["home_goals"].sum()
+
+
+def test_fit_recovers_the_attack_parameters():
+    model, _ = _fitted()
+    fitted = np.array([model.attack_[c] for c in range(12)])
+    assert np.abs(fitted - _TRUE_ATTACK).max() < 0.25
+    assert np.corrcoef(fitted, _TRUE_ATTACK)[0, 1] > 0.9
+
+
+def test_fit_recovers_the_defence_parameters_up_to_the_shared_level():
+    """Only differences are identified: the attack constraint fixes the
+    overall scale, and a constant added to every defence is absorbed by the
+    attacks."""
+    model, _ = _fitted()
+    fitted = np.array([model.defence_[c] for c in range(12)])
+    centred = fitted - fitted.mean()
+    assert np.abs(centred - (_TRUE_DEFENCE - _TRUE_DEFENCE.mean())).max() < 0.25
+
+
+def test_fit_recovers_the_home_advantage():
+    model, _ = _fitted()
+    assert abs(model.gamma_ - 0.28) < 0.1
+
+
+def test_fit_holds_mean_log_attack_at_zero():
+    """Identifiability: without it every attack could rise by a constant and
+    every defence fall by the same one with no change in likelihood."""
+    model, _ = _fitted()
+    assert abs(float(np.mean(list(model.attack_.values())))) < 1e-9
+
+
+def test_fit_keeps_rho_inside_its_bracket():
+    model, _ = _fitted()
+    assert RHO_BOUNDS[0] <= model.rho_ <= RHO_BOUNDS[1]
+
+
+def _two_era_fixtures(seed=5):
+    """A team that was poor for six round-robins and good for six."""
+    n, rows, day = 6, [], 0
+    rng = np.random.default_rng(seed)
+    for boost in (-0.6, 0.8):
+        for _ in range(6):
+            for i in range(n):
+                for j in range(n):
+                    if i == j:
+                        continue
+                    a = [0.0] * n
+                    a[0] = boost
+                    lam = math.exp(a[i] + 0.25)
+                    mu = math.exp(a[j])
+                    rows.append({
+                        "season_idx": 0, "gw": 1 + day // 20,
+                        "kickoff_time": (pd.Timestamp("2020-01-01", tz="UTC")
+                                         + pd.Timedelta(days=day)).isoformat(),
+                        "home_code": i, "away_code": j,
+                        "home_goals": int(rng.poisson(lam)),
+                        "away_goals": int(rng.poisson(mu))})
+                    day += 1
+    return pd.DataFrame(rows)
+
+
+def test_decay_pulls_the_fit_toward_recent_form():
+    """The reason the decay exists: a team that improved halfway through has
+    to read as good now, not as the average of its two selves."""
+    tg = build_team_gw(_two_era_fixtures())
+    flat = DixonColesModel(xi=0.0).fit(tg).attack_[0]
+    decayed = DixonColesModel(xi=0.02).fit(tg).attack_[0]
+    assert decayed > flat + 0.2
+
+
+def test_default_xi_is_the_pinned_constant():
+    assert DixonColesModel().xi == DEFAULT_XI
+
+
+def test_fit_stores_a_promoted_team_fallback_from_the_bottom_three():
+    """A newly-promoted club has no Premier League history at all; the
+    bottom three of the latest season are the closest thing to a prior."""
+    model, _ = _fitted()
+    bottom = model.bottom_codes_
+    assert len(bottom) == 3
+    assert abs(model.fallback_attack_
+               - float(np.mean([model.attack_[c] for c in bottom]))) < 1e-12
+    assert abs(model.fallback_defence_
+               - float(np.mean([model.defence_[c] for c in bottom]))) < 1e-12
+
+
+def test_the_bottom_three_are_the_weakest_teams_in_the_latest_season():
+    model, _ = _fitted()
+    # Attack was built descending, so the weakest codes are the last three.
+    assert set(model.bottom_codes_) <= {9, 10, 11}
+
+
+def test_fit_on_a_single_round_robin_still_converges():
+    fx = _synthetic_fixtures(_TRUE_ATTACK, _TRUE_DEFENCE, repeats=1)
+    model = DixonColesModel().fit(build_team_gw(fx))
+    assert len(model.attack_) == 12
+    assert np.isfinite(model.gamma_)
