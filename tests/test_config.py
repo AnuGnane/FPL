@@ -14,3 +14,25 @@ def test_load_config(tmp_path: Path):
     assert cfg.entry_id == 123
     assert cfg.horizon == 6
     assert cfg.train_seasons == ["2022-23"]
+
+
+def test_config_defaults_the_new_v4b_switches_on(tmp_path):
+    """Both new sources default to enabled and degrade on their own when the
+    data is not there — no config edit needed to get the old behaviour."""
+    path = tmp_path / "config.toml"
+    path.write_text("[fpl]\nentry_id = 1\nleague_id = 2\n")
+    cfg = load_config(path)
+    assert cfg.player_props is True
+    assert cfg.understat_enabled is True
+    assert cfg.ags_blend_weight == 0.5
+
+
+def test_config_reads_the_new_v4b_switches(tmp_path):
+    path = tmp_path / "config.toml"
+    path.write_text("[fpl]\nentry_id = 1\nleague_id = 2\n"
+                    "[odds]\nplayer_props = false\nags_blend_weight = 0.3\n"
+                    "[understat]\nenabled = false\n")
+    cfg = load_config(path)
+    assert cfg.player_props is False
+    assert cfg.ags_blend_weight == 0.3
+    assert cfg.understat_enabled is False

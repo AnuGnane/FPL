@@ -90,6 +90,33 @@ def build_history_cmd():
 
 
 @app.command()
+def understat():
+    """Scrape Understat into data/history/ (long first run; resumable)."""
+    from gaffer.config import load_config
+    from gaffer.data.history import season_name_codes
+    from gaffer.data.understat import (build_understat_player,
+                                       build_understat_team,
+                                       history_player_index)
+
+    cfg = load_config()
+    if not cfg.understat_enabled:
+        typer.echo("Understat disabled in config.toml ([understat] enabled).")
+        return
+    seasons = list(cfg.train_seasons) + [cfg.current_season]
+    indexes = {s: i for i, s in enumerate(seasons)}
+    names = season_name_codes(cfg.train_seasons)
+    # One name->code table across seasons: codes are stable, and a club that
+    # appears in several seasons resolves the same way in all of them.
+    flat = {name: code for table in names.values()
+            for name, code in table.items()}
+    players = build_understat_player(seasons, indexes,
+                                     history_player_index(cfg.train_seasons))
+    teams = build_understat_team(seasons, indexes, flat)
+    typer.echo(f"Understat: {len(players)} player-match rows, "
+               f"{len(teams)} team-match rows -> data/history/.")
+
+
+@app.command()
 def train():
     """(Re)train all models on history + live data."""
     from gaffer.models.train import load_training_frame, train_all

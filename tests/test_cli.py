@@ -196,3 +196,12 @@ def test_build_history_also_builds_the_match_odds_parquet():
 
     src = inspect.getsource(build_history_cmd)
     assert "build_match_odds(" in src
+
+
+def test_understat_is_a_command():
+    from typer.testing import CliRunner
+
+    from gaffer.cli import app
+
+    result = CliRunner().invoke(app, ["--help"])
+    assert "understat" in result.output

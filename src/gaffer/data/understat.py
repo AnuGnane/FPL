@@ -308,3 +308,158 @@ def map_understat_players(us_players: pd.DataFrame, fpl_players: pd.DataFrame,
     for name in unmatched_names[:20]:
         print(f"  unmatched: {name}")
     return pd.DataFrame(rows, columns=["understat_id", "code"]), report
+
+
+UNDERSTAT_PLAYER_PATH = "history/understat_player.parquet"
+UNDERSTAT_TEAM_PATH = "history/understat_team.parquet"
+
+PLAYER_PARQUET_COLS = ["season", "season_idx", "understat_id", "code",
+                       "player_name", "team", "date", "minutes", "us_shots",
+                       "us_key_passes", "us_npxg", "us_xgchain",
+                       "us_xgbuildup"]
+TEAM_PARQUET_COLS = ["season", "season_idx", "team", "team_code", "date",
+                     "us_xg", "us_xga", "ppda", "deep", "deep_allowed"]
+
+# Understat's own club titles -> FPL bootstrap names. Values are FPL bootstrap
+# names, so this table lands in the same vocabulary as TEAM_ALIASES and
+# FOOTBALL_DATA_ALIASES — which also scopes it, like those two, to the clubs
+# the configured seasons can actually contain. Relegated clubs stay, so a
+# promotion needs no code change; going further back than the odds tables
+# reach means adding the older clubs to all three at once.
+UNDERSTAT_TEAM_ALIASES = {
+    "Arsenal": "Arsenal",
+    "Aston Villa": "Aston Villa",
+    "Bournemouth": "Bournemouth",
+    "Brentford": "Brentford",
+    "Brighton": "Brighton",
+    "Burnley": "Burnley",
+    "Chelsea": "Chelsea",
+    "Crystal Palace": "Crystal Palace",
+    "Everton": "Everton",
+    "Fulham": "Fulham",
+    "Hull": "Hull City",
+    "Ipswich": "Ipswich Town",
+    "Leeds": "Leeds",
+    "Leicester": "Leicester",
+    "Liverpool": "Liverpool",
+    "Luton": "Luton",
+    "Manchester City": "Man City",
+    "Manchester United": "Man Utd",
+    "Newcastle United": "Newcastle",
+    "Nottingham Forest": "Nott'm Forest",
+    "Sheffield United": "Sheffield Utd",
+    "Southampton": "Southampton",
+    "Sunderland": "Sunderland",
+    "Tottenham": "Spurs",
+    "West Ham": "West Ham",
+    "Wolverhampton Wanderers": "Wolves",
+}
+
+
+def build_understat_player(seasons: list[str],
+                           season_indexes: dict[str, int],
+                           fpl_players: pd.DataFrame,
+                           client: UnderstatClient | None = None,
+                           store_result: bool = True) -> pd.DataFrame:
+    """Scrape every played match of every season -> the player parquet.
+
+    ``fpl_players`` is ``[code, name, team_name]`` — the FPL side of the id
+    mapping. Rows for players the mapping could not resolve are dropped, so
+    the parquet only ever carries stats that belong to a code we can join on;
+    the ``code`` column is why this frame is usable at all and is why it is
+    stored alongside the ``understat_id`` the spec lists.
+
+    Cached matches cost nothing, so re-running after a killed backfill is
+    cheap and only the running season ever adds pages.
+    """
+    from gaffer.data import store
+
+    client = client or UnderstatClient()
+    frames = []
+    for season in seasons:
+        idx = season_indexes[season]
+        fixtures = client.league_matches(season)
+        played = fixtures[fixtures["is_result"]]
+        print(f"understat {season}: {len(played)} played matches")
+        for m in played.itertuples():
+            rows = client.match_players(m.match_id, m.date, m.home_team,
+                                        m.away_team)
+            if rows.empty:
+                continue
+            rows = rows.copy()
+            rows["season"] = season
+            rows["season_idx"] = int(idx)
+            frames.append(rows)
+    if not frames:
+        out = pd.DataFrame(columns=PLAYER_PARQUET_COLS)
+        if store_result:
+            store.save(out, UNDERSTAT_PLAYER_PATH)
+        return out
+    us = pd.concat(frames, ignore_index=True)
+    mapping, _report = map_understat_players(us, fpl_players,
+                                             UNDERSTAT_TEAM_ALIASES)
+    out = us.merge(mapping, on="understat_id", how="inner")
+    out = out[PLAYER_PARQUET_COLS]
+    if store_result:
+        store.save(out, UNDERSTAT_PLAYER_PATH)
+    return out
+
+
+def build_understat_team(seasons: list[str], season_indexes: dict[str, int],
+                         name_to_code: dict[str, int],
+                         client: UnderstatClient | None = None,
+                         store_result: bool = True) -> pd.DataFrame:
+    """Per-team per-match xG/xGA/PPDA/deep -> the team parquet.
+
+    ``name_to_code`` maps FPL bootstrap names to team codes. A club with no
+    code — a season the bootstrap tables do not cover — is dropped rather than
+    carried with a NaN key that would silently never join.
+    """
+    from gaffer.data import store
+
+    client = client or UnderstatClient()
+    frames = []
+    for season in seasons:
+        rows = client.team_history(season, season_indexes[season])
+        if rows.empty:
+            continue
+        rows = rows.copy()
+        rows["team_code"] = rows["team"].map(
+            lambda t: name_to_code.get(UNDERSTAT_TEAM_ALIASES.get(t, t)))
+        frames.append(rows[rows["team_code"].notna()])
+    if not frames:
+        out = pd.DataFrame(columns=TEAM_PARQUET_COLS)
+    else:
+        out = pd.concat(frames, ignore_index=True)
+        out["team_code"] = out["team_code"].astype(int)
+        out = out[TEAM_PARQUET_COLS]
+    if store_result:
+        store.save(out, UNDERSTAT_TEAM_PATH)
+    return out
+
+
+def history_player_index(seasons: list[str]) -> pd.DataFrame:
+    """``[code, name, team_name]`` for every player in stored history.
+
+    The FPL side of the id mapping, built offline from what is already on
+    disk: a scrape must not need a live bootstrap call, and history covers
+    seasons the current bootstrap has forgotten. The newest row per code wins,
+    because that is the club the player is at now and the one a same-club
+    match is most likely to hit.
+    """
+    from gaffer.data import store
+    from gaffer.data.history import season_name_codes
+
+    player_gw = store.load("history/player_gw.parquet")
+    code_to_name: dict[int, str] = {}
+    for _season, table in season_name_codes(seasons).items():
+        for name, code in table.items():
+            code_to_name[int(code)] = name
+    latest = (player_gw.sort_values(["season_idx", "gw"])
+              .groupby("code", as_index=False).tail(1))
+    return pd.DataFrame({
+        "code": latest["code"].astype(int),
+        "name": latest["name"],
+        "team_name": latest["team_code"].map(
+            lambda c: code_to_name.get(int(c)) if pd.notna(c) else None),
+    })

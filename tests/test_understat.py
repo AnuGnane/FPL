@@ -402,3 +402,92 @@ def test_load_overrides_returns_a_dict_and_skips_doc_keys():
     overrides = load_overrides()
     assert isinstance(overrides, dict)
     assert not any(k.startswith("_") for k in overrides)
+
+
+# --- parquet builders -----------------------------------------------------
+
+from gaffer.data.understat import (UNDERSTAT_TEAM_ALIASES,
+                                   UNDERSTAT_PLAYER_PATH,
+                                   UNDERSTAT_TEAM_PATH, build_understat_player,
+                                   build_understat_team)
+
+
+def _league_and_match_handler(request):
+    if "/league/" in str(request.url):
+        return httpx.Response(200, text=(_embed("datesData", _DATES)
+                                         + _embed("teamsData", _TEAMS)))
+    return httpx.Response(200, text=_match_html())
+
+
+def test_every_understat_alias_target_is_an_fpl_name():
+    from gaffer.data.odds import TEAM_ALIASES
+
+    unknown = sorted(set(UNDERSTAT_TEAM_ALIASES.values())
+                     - set(TEAM_ALIASES.values()))
+    assert unknown == []
+
+
+def test_build_understat_player_writes_the_parquet(tmp_path, monkeypatch):
+    import gaffer.data.store as store_mod
+
+    monkeypatch.setattr(store_mod, "DATA_DIR", tmp_path)
+    client = UnderstatClient(client=_http(_league_and_match_handler),
+                             cache_dir=tmp_path / "raw", sleep=0.0)
+    fpl = _fpl([(1, "Bruno Fernandes", "Man Utd"),
+                (2, "Matheus Cunha", "Wolves")])
+    out = build_understat_player(["2024-25"], {"2024-25": 2}, fpl,
+                                 client=client)
+    assert (tmp_path / UNDERSTAT_PLAYER_PATH).exists()
+    assert set(out.columns) == {"season", "season_idx", "understat_id", "code",
+                                "player_name", "team", "date", "minutes",
+                                "us_shots", "us_key_passes", "us_npxg",
+                                "us_xgchain", "us_xgbuildup"}
+    assert set(out["code"]) == {1, 2}
+
+
+def test_build_understat_player_only_fetches_played_matches(tmp_path):
+    """The unplayed fixture in datesData has no page worth caching."""
+    seen = []
+
+    def handler(request):
+        seen.append(str(request.url))
+        return _league_and_match_handler(request)
+
+    client = UnderstatClient(client=_http(handler),
+                             cache_dir=tmp_path / "raw", sleep=0.0)
+    build_understat_player(["2024-25"], {"2024-25": 2},
+                           _fpl([(1, "Bruno Fernandes", "Man Utd")]),
+                           client=client, store_result=False)
+    assert any("/match/18001" in u for u in seen)
+    assert not any("/match/18002" in u for u in seen)
+
+
+def test_build_understat_player_drops_unmapped_players(tmp_path):
+    """An unmatched player contributes nothing rather than something wrong."""
+    client = UnderstatClient(client=_http(_league_and_match_handler),
+                             cache_dir=tmp_path / "raw", sleep=0.0)
+    out = build_understat_player(["2024-25"], {"2024-25": 2},
+                                 _fpl([(1, "Bruno Fernandes", "Man Utd")]),
+                                 client=client, store_result=False)
+    assert set(out["code"]) == {1}
+
+
+def test_build_understat_team_writes_the_parquet(tmp_path, monkeypatch):
+    import gaffer.data.store as store_mod
+
+    monkeypatch.setattr(store_mod, "DATA_DIR", tmp_path)
+    client = UnderstatClient(client=_http(_league_and_match_handler),
+                             cache_dir=tmp_path / "raw", sleep=0.0)
+    out = build_understat_team(["2024-25"], {"2024-25": 2},
+                               {"Arsenal": 3}, client=client)
+    assert (tmp_path / UNDERSTAT_TEAM_PATH).exists()
+    assert list(out["team_code"]) == [3, 3]
+    assert "ppda" in out.columns
+
+
+def test_build_understat_team_drops_a_club_with_no_code(tmp_path):
+    client = UnderstatClient(client=_http(_league_and_match_handler),
+                             cache_dir=tmp_path / "raw", sleep=0.0)
+    out = build_understat_team(["2024-25"], {"2024-25": 2}, {},
+                               client=client, store_result=False)
+    assert out.empty
