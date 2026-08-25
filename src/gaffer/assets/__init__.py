@@ -34,3 +34,31 @@ def load_understat_overrides() -> dict:
         files(__package__).joinpath(UNDERSTAT_OVERRIDES).read_text(
             encoding="utf-8")
     )
+
+
+DECISION_PRIORS = "decision_priors.json"
+
+
+def decision_priors_exist() -> bool:
+    """Whether the calibrated decision priors are shipped.
+
+    Unlike the other two assets in this package, this one is genuinely
+    optional: spec §7's degradation rail says a clone without it must fall
+    back to a flat ``ft_value`` and flat chip thresholds, which is exactly
+    the pre-v4c behaviour.
+    """
+    return files(__package__).joinpath(DECISION_PRIORS).is_file()
+
+
+def load_decision_priors() -> dict | None:
+    """The calibrated λ and θ inputs, or ``None`` when the asset is absent.
+
+    ``None`` rather than an empty dict, so a caller cannot accidentally treat
+    "no calibration" as "calibration says zero" — the two mean opposite things
+    to the chip policy.
+    """
+    if not decision_priors_exist():
+        return None
+    return json.loads(
+        files(__package__).joinpath(DECISION_PRIORS).read_text(
+            encoding="utf-8"))

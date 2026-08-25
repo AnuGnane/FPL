@@ -129,3 +129,28 @@ class LambdaLookup:
     def bank_value(self, k: int, t: int) -> float:
         """Total value of holding ``k`` transfers — what a wildcard destroys."""
         return sum(self(j, t) for j in range(1, int(k) + 1))
+
+
+SEASON_WEEKS = 38
+
+
+def lambda_from_priors(priors: dict | None) -> LambdaLookup:
+    """Build the λ lookup from a decision-priors payload.
+
+    All three season phases are pooled into one distribution. Splitting the DP
+    by phase would need a phase-indexed state, and the phase is already
+    implicit in ``t``: an early-season decision *is* a decision with thirty
+    weeks left. The phases are kept separate in the asset because the
+    calibrator reports them, and because a later cycle may want them.
+
+    ``None``, or an asset with no samples, gives an empty lookup — the caller's
+    signal to keep the flat ``ft_value``.
+    """
+    if not priors:
+        return LambdaLookup({})
+    pooled: list[float] = []
+    for samples in (priors.get("transfer_surplus") or {}).values():
+        pooled.extend(float(s) for s in samples)
+    if not pooled:
+        return LambdaLookup({})
+    return LambdaLookup(lambda_table(pooled, weeks=SEASON_WEEKS))

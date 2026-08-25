@@ -188,3 +188,22 @@ def thresholds_from_priors(chip_surplus: dict[str, dict[int, list[float]]],
         return float(table.get(int(gw), 0.0))
 
     return lookup
+
+
+def chip_thresholds_from_asset(priors: dict | None,
+                               dgw_probs: dict[int, float] | None = None):
+    """``(chip, gw) -> theta`` from a decision-priors payload.
+
+    The asset stores gameweeks as JSON object keys, which are strings; this is
+    where they become integers. ``None`` or an empty ``chip_surplus`` gives
+    :func:`flat_thresholds`, which is the pre-v4c behaviour exactly.
+    """
+    if not priors:
+        return flat_thresholds()
+    raw = priors.get("chip_surplus") or {}
+    parsed = {chip: {int(gw): [float(s) for s in samples]
+                     for gw, samples in by_gw.items()}
+              for chip, by_gw in raw.items() if by_gw}
+    if not parsed:
+        return flat_thresholds()
+    return thresholds_from_priors(parsed, dgw_probs)

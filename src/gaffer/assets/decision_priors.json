@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "generated_at": null,
+  "seasons": [],
+  "note": "Placeholder shipped with the v4c schema. Empty distributions mean every consumer falls back to flat ft_value and flat chip thresholds. Run `gaffer calibrate-decisions` to fill it.",
+  "transfer_surplus": {
+    "early": [],
+    "mid": [],
+    "late": []
+  },
+  "chip_surplus": {
+    "wildcard": {},
+    "bboost": {},
+    "3xc": {},
+    "freehit": {}
+  }
+}
