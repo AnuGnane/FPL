@@ -180,3 +180,77 @@ def run_scenarios(pool: pd.DataFrame, state: SolveInput,
             print(f"scenario solve failed, dropping it: {exc}")
     return ScenarioRun(plans=plans, attempted=n, completed=len(plans),
                        failures=failures, seed=seed)
+
+
+FREQ_COLUMNS = ("kind", "code", "gw", "label", "count", "frequency")
+"""Move-frequency table schema.
+
+``code`` is the player code for ``buy``/``sell``/``captain`` and ``0`` for the
+kinds that are not about a player (``hit``, ``chip``, ``no_transfer``);
+``label`` carries the human-readable name (the chip name, or the kind itself),
+so the report and the UI never have to reconstruct one.
+"""
+
+MOVE_KINDS = ("buy", "sell", "hit", "chip", "captain", "no_transfer")
+
+
+def move_frequencies(plans: list[Plan]) -> pd.DataFrame:
+    """Per candidate move, the share of scenarios containing it.
+
+    Buys and sells are read from the **first** horizon week only: weeks two
+    and three are re-planned from scratch next Tuesday, so gating them would
+    put a threshold on a decision nobody is taking. Hits and chips are read
+    from every week, because "this squad needs a hit in three weeks" is real
+    information about *this* week's transfer.
+
+    Within one scenario a move is counted once no matter how many times it
+    appears, and a buy counts the same whether it arrived alone or as half of
+    a double move — the key is the player, not the plan shape.
+
+    Chips are read off ``plan.chip`` / ``plan.chip_gw`` when the caller has
+    attached them (the chip sweep does); a plan without them contributes no
+    chip rows rather than an implicit "no chip", because chip *availability*
+    is not a per-scenario fact.
+    """
+    n = len(plans)
+    empty = pd.DataFrame(columns=list(FREQ_COLUMNS))
+    if n == 0:
+        return empty
+
+    counts: dict[tuple[str, int, int, str], int] = {}
+
+    def bump(kind: str, code: int, gw: int, label: str) -> None:
+        counts[(kind, code, gw, label)] = counts.get(
+            (kind, code, gw, label), 0) + 1
+
+    for plan in plans:
+        seen: set[tuple[str, int, int, str]] = set()
+
+        def once(kind: str, code: int, gw: int, label: str) -> None:
+            key = (kind, code, gw, label)
+            if key not in seen:
+                seen.add(key)
+                bump(*key)
+
+        first = plan.gw_plans[0]
+        for code in first.buys:
+            once("buy", int(code), int(first.gw), "buy")
+        for code in first.sells:
+            once("sell", int(code), int(first.gw), "sell")
+        if not first.buys and not first.sells:
+            once("no_transfer", 0, int(first.gw), "no_transfer")
+        once("captain", int(first.captain), int(first.gw), "captain")
+        for gp in plan.gw_plans:
+            if gp.hits:
+                once("hit", 0, int(gp.gw), "hit")
+        chip = getattr(plan, "chip", None)
+        if chip:
+            once("chip", 0, int(getattr(plan, "chip_gw", first.gw)), str(chip))
+
+    rows = [{"kind": kind, "code": code, "gw": gw, "label": label,
+             "count": c, "frequency": c / n}
+            for (kind, code, gw, label), c in counts.items()]
+    out = pd.DataFrame(rows, columns=list(FREQ_COLUMNS))
+    return out.sort_values(["kind", "frequency", "code"],
+                           ascending=[True, False, True]).reset_index(
+                               drop=True)

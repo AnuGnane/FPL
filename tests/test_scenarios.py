@@ -238,3 +238,120 @@ def test_run_scenarios_zero_noise_reproduces_the_deterministic_optimum():
     raw = solve_plan(pool, state, **SOLVE_KW)
     for plan in run.plans:
         assert plan.gw_plans[0].squad == raw.gw_plans[0].squad
+
+
+# --- move_frequencies ------------------------------------------------------
+
+from gaffer.optimize.milp import GwPlan, Plan
+from gaffer.optimize.scenarios import FREQ_COLUMNS, move_frequencies
+
+
+def _plan(buys, sells, captain, hits=0, gw=5, chip=None) -> Plan:
+    gp = GwPlan(gw=gw, squad=[], xi=[], xi_rows=[], bench=[], captain=captain,
+                vice=0, buys=list(buys), sells=list(sells), hits=hits,
+                expected_pts=0.0)
+    plan = Plan(objective=0.0, gw_plans=[gp])
+    if chip is not None:
+        plan.chip, plan.chip_gw = chip, gw     # set by the chip sweep
+    return plan
+
+
+def test_move_frequencies_has_the_documented_columns():
+    out = move_frequencies([_plan([1], [2], 9)])
+    assert list(out.columns) == list(FREQ_COLUMNS)
+
+
+def test_a_buy_in_every_scenario_has_frequency_one():
+    out = move_frequencies([_plan([1], [2], 9), _plan([1], [3], 9)])
+    row = out[(out["kind"] == "buy") & (out["code"] == 1)].iloc[0]
+    assert row["frequency"] == 1.0 and row["count"] == 2
+
+
+def test_a_buy_in_half_the_scenarios_has_frequency_one_half():
+    out = move_frequencies([_plan([1], [2], 9), _plan([4], [2], 9)])
+    row = out[(out["kind"] == "buy") & (out["code"] == 1)].iloc[0]
+    assert row["frequency"] == 0.5
+
+
+def test_a_buy_inside_a_double_move_counts_the_same_as_one_alone():
+    """The key is the player, not the plan shape: 'how often does the model
+    want this player' is the question the threshold is answering."""
+    out = move_frequencies([_plan([1], [2], 9), _plan([1, 7], [2, 8], 9)])
+    row = out[(out["kind"] == "buy") & (out["code"] == 1)].iloc[0]
+    assert row["frequency"] == 1.0
+
+
+def test_a_repeated_buy_within_one_scenario_counts_once():
+    out = move_frequencies([_plan([1, 1], [2], 9)])
+    assert int(out[(out["kind"] == "buy") & (out["code"] == 1)]
+               .iloc[0]["count"]) == 1
+
+
+def test_no_transfer_is_its_own_counted_move():
+    """'Roll the FT' has to compete on the same scale as the transfers, or
+    holding could never win."""
+    out = move_frequencies([_plan([], [], 9), _plan([1], [2], 9)])
+    row = out[out["kind"] == "no_transfer"].iloc[0]
+    assert row["frequency"] == 0.5
+
+
+def test_captain_frequencies_are_a_distribution_over_scenarios():
+    out = move_frequencies([_plan([], [], 9), _plan([], [], 9),
+                            _plan([], [], 4)])
+    caps = out[out["kind"] == "captain"].set_index("code")["frequency"]
+    assert abs(caps[9] - 2 / 3) < 1e-12
+    assert abs(caps[4] - 1 / 3) < 1e-12
+
+
+def test_hits_are_counted_per_horizon_week():
+    out = move_frequencies([_plan([1], [2], 9, hits=1),
+                            _plan([1], [2], 9, hits=0)])
+    row = out[out["kind"] == "hit"].iloc[0]
+    assert row["frequency"] == 0.5 and row["gw"] == 5
+
+
+def test_a_week_with_no_hit_in_any_scenario_produces_no_hit_row():
+    out = move_frequencies([_plan([1], [2], 9), _plan([1], [2], 9)])
+    assert out[out["kind"] == "hit"].empty
+
+
+def test_only_the_first_horizon_week_produces_buy_and_sell_rows():
+    """Weeks two and three are re-planned from scratch next week; counting
+    their moves would gate a decision nobody is taking."""
+    gp1 = GwPlan(gw=5, squad=[], xi=[], xi_rows=[], bench=[], captain=9,
+                 vice=0, buys=[1], sells=[2], hits=0, expected_pts=0.0)
+    gp2 = GwPlan(gw=6, squad=[], xi=[], xi_rows=[], bench=[], captain=9,
+                 vice=0, buys=[5], sells=[6], hits=0, expected_pts=0.0)
+    out = move_frequencies([Plan(objective=0.0, gw_plans=[gp1, gp2])])
+    assert set(out[out["kind"] == "buy"]["code"]) == {1}
+    assert set(out[out["kind"] == "sell"]["code"]) == {2}
+
+
+def test_hits_in_later_horizon_weeks_are_still_counted():
+    """A hit planned for week three is information about this week's decision
+    — it says the current squad is about to need surgery."""
+    gp1 = GwPlan(gw=5, squad=[], xi=[], xi_rows=[], bench=[], captain=9,
+                 vice=0, buys=[], sells=[], hits=0, expected_pts=0.0)
+    gp2 = GwPlan(gw=6, squad=[], xi=[], xi_rows=[], bench=[], captain=9,
+                 vice=0, buys=[5], sells=[6], hits=1, expected_pts=0.0)
+    out = move_frequencies([Plan(objective=0.0, gw_plans=[gp1, gp2])])
+    assert list(out[out["kind"] == "hit"]["gw"]) == [6]
+
+
+def test_chip_frequencies_are_keyed_by_chip_and_week():
+    out = move_frequencies([_plan([], [], 9, chip="bboost"),
+                            _plan([], [], 9, chip="bboost"),
+                            _plan([], [], 9)])
+    row = out[out["kind"] == "chip"].iloc[0]
+    assert row["label"] == "bboost" and abs(row["frequency"] - 2 / 3) < 1e-12
+
+
+def test_move_frequencies_of_no_scenarios_is_an_empty_typed_frame():
+    out = move_frequencies([])
+    assert out.empty and list(out.columns) == list(FREQ_COLUMNS)
+
+
+def test_move_frequencies_is_sorted_by_descending_frequency():
+    out = move_frequencies([_plan([1, 2], [3], 9), _plan([1], [3], 9)])
+    buys = out[out["kind"] == "buy"]["frequency"].tolist()
+    assert buys == sorted(buys, reverse=True)
