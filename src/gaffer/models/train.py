@@ -16,7 +16,7 @@ from gaffer.assets import load_bootstrap_sample
 from gaffer.data import store
 from gaffer.data.bootstrap import scoring_table
 from gaffer.data.elo import compute_elo
-from gaffer.features.bps import apply_new_bps
+from gaffer.features.bps import FIRST_NEW_RULES_SEASON, apply_new_bps
 from gaffer.features.engineer import (ROTATION_FEATURES, add_context,
                                       add_player_rolling, add_rotation,
                                       add_setpiece)
@@ -95,6 +95,21 @@ def bonus_season_floor(df: pd.DataFrame, min_rows: int = BONUS_MIN_ROWS) -> int:
     return int(seasons[-1])
 
 
+def first_new_rules_idx(player_gw: pd.DataFrame) -> int:
+    """Lowest ``season_idx`` scored under the 2026/27 BPS rules.
+
+    The oldest stored season labelled :data:`FIRST_NEW_RULES_SEASON` or later
+    if history already holds one, otherwise one past the newest stored season
+    — the index the live frame is about to be given.
+    """
+    if "season" in player_gw.columns:
+        new = player_gw[player_gw["season"].astype("string")
+                        >= FIRST_NEW_RULES_SEASON]
+        if not new.empty:
+            return int(new["season_idx"].min())
+    return int(player_gw["season_idx"].max()) + 1
+
+
 def load_training_frame(max_season_idx: int | None = None,
                         max_gw: int | None = None
                         ) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
@@ -108,13 +123,14 @@ def load_training_frame(max_season_idx: int | None = None,
     """
     player_gw = store.load("history/player_gw.parquet")
     fixtures = store.load("history/fixtures.parquet")
-    # Everything in the history store predates the 2026/27 rule change; the
-    # live season is the only frame already scored under it. Fix the boundary
-    # before the concat, so that in the pre-ingestion state (no live frame
-    # yet, e.g. before the season's first data_checked gameweek) the newest
-    # stored season is still restated rather than mistaken for the current
-    # one.
-    current_idx = int(player_gw["season_idx"].max()) + 1
+    # Where the 2026/27 rules start. Fixed before the concat, so that in the
+    # pre-ingestion state (no live frame yet, e.g. before the season's first
+    # data_checked gameweek) the newest stored season is still restated rather
+    # than mistaken for the current one. Once a new-rules season has been
+    # archived into history the boundary is that season's own index; until
+    # then history is entirely old-rules and the boundary sits one past its
+    # newest season, which is also the index the live frame is given.
+    current_idx = first_new_rules_idx(player_gw)
     if store.exists("live/player_gw.parquet"):
         live = store.load("live/player_gw.parquet")
         live["season_idx"] = current_idx

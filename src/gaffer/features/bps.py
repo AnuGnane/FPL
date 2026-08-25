@@ -21,6 +21,17 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+FIRST_NEW_RULES_SEASON = "2026-27"
+"""The first season scored under the rules this module restates history *to*.
+
+The boundary is a property of the game's rule change, not of what happens to
+be newest on disk. Deriving it from ``max(season_idx) + 1`` was only ever
+right while no new-rules season had been archived; the day 2026-27 lands in
+the history store, that reading would start "correcting" a season that needs
+no correction. Season labels sort lexicographically in FPL's ``YYYY-YY`` form,
+so ``season >= FIRST_NEW_RULES_SEASON`` is the whole test.
+"""
+
 
 def adjust_bps(df: pd.DataFrame, current_idx: int) -> pd.Series:
     """Per-row BPS restated under the 2026/27 CBI rule.

@@ -296,6 +296,31 @@ def test_load_training_frame_restates_every_stored_season_when_no_live(
     assert set(df.loc[df["code"] == 100, "bps"]) == {29.0}
 
 
+def test_load_training_frame_does_not_restate_an_archived_new_rules_season(
+        monkeypatch):
+    """The day 2026-27 is archived into history it is still new-rules data.
+    Pinning the boundary to "whatever is newest on disk" would quietly start
+    correcting a season that needs no correction."""
+    from gaffer.models import train as train_mod
+
+    old = _bps_history(year=2022, season_idx=0)
+    new = _bps_history(year=2026, season_idx=1)
+    new["season"] = "2026-27"
+    history = pd.concat([old, new], ignore_index=True)
+    fixtures = pd.concat([_bps_fixtures(year=2022, season_idx=0),
+                          _bps_fixtures(year=2026, season_idx=1)],
+                         ignore_index=True)
+    _stub_store(monkeypatch, train_mod, history=history, fixtures=fixtures)
+
+    df, _tg, _elo = train_mod.load_training_frame()
+    archived = df[df["season_idx"] == 1]
+    assert set(archived.loc[archived["code"] == 100, "bps"]) == {30.0}
+    assert set(archived.loc[archived["code"] == 100, "bonus"]) == {3.0}
+    # The genuinely old season is still restated.
+    stored = df[df["season_idx"] == 0]
+    assert set(stored.loc[stored["code"] == 100, "bps"]) == {29.0}
+
+
 def test_train_all_keeps_the_bonus_floor_even_on_a_re_derived_frame():
     """Restatement is partial — ``cbi`` counts only exist from 2025-26, so an
     older season is re-ranked only in the fixtures where the CBI adjustment
