@@ -35,19 +35,16 @@ Spec: `specs/2026-08-25-gaffer-v4a-measure-design.md` · Plan: `plans/2026-08-25
 
 ## In progress
 
-### v4b — model (forecasting quality) ← CURRENT
-Goal: close the forecast gap v4a measured. Benchmark table in v4a spec §7 is the before-photo.
-Spec: `specs/2026-08-25-gaffer-v4b-model-design.md` · Plan: `plans/2026-08-25-gaffer-v4b-model.md` (24 tasks) · Branch: `feat/gaffer-v4b`
-- [x] Brainstorm → spec
-- [x] Implementation plan
-- [ ] Understat xG ingestion (shot-level → per-90 rolling xG/xA/shots/key passes/xGChain/xGBuildup; team xGA/PPDA)
-- [ ] Dixon-Coles time-decayed attack/defence team model replacing Elo (fixes CS calibration; scoreline distribution → CS, GC bands, saves)
-- [ ] Odds devigging (Shin/power, not naive normalization)
-- [ ] Odds into training as fitted convex-combination prior (replace fixed 0.7 blend; backfill historical closing odds)
-- [ ] Anytime-goalscorer / assist odds → per-fixture λ for attacking EP
-- [ ] Shrunken per-player rate features (empirical-Bayes toward position×team priors)
-- [ ] Re-run `gaffer evaluate` benchmark + current; record before/after in spec §Outcome
-- [ ] Merge gate: no regression on any stratified cell; CS log loss improved
+### v4b — model (done, merged `5c97fb1` 2026-08-25)
+Spec: `specs/2026-08-25-gaffer-v4b-model-design.md` (§13 = full outcome) · Plan: `plans/2026-08-25-gaffer-v4b-model.md`
+- [x] Understat ingestion (site moved to JSON endpoints mid-cycle — client rewritten; 44,797 player-match rows, 92.9% id-mapped, 20/20 clubs every season)
+- [x] Dixon-Coles team head (G1: CS log loss 0.6076 → 0.5474 controlled, honest reliability bins; ξ=0.0065)
+- [x] Shin devigging + football-data closing odds (1,520/1,520 fixtures matched)
+- [x] Fitted odds blend: w=0.80 via 1-SE rule (raw argmin 1.0 won on noise vs a sharper odds source than serve time)
+- [x] xG/team/shrunken features (G2: benchmark haulers 5.245 → 5.184, within 0.8% of OpenFPL; k=20)
+- [x] AGS odds layer (G3 no-key half proven byte-identical; live spot-check pending the odds API key)
+- [x] Final adversarial review: 4 blockers found + fixed + re-verified (MERGE verdict); deferred nits recorded in spec §13
+- Suite: 711 Python + 58 frontend, tsc clean
 
 ## Planned
 
