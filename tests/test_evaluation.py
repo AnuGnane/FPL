@@ -350,3 +350,51 @@ def test_benchmark_scoring_keeps_every_other_rule_and_copies():
 def test_only_the_benchmark_path_restates_the_scoring_table():
     assert "benchmark_scoring(" in inspect.getsource(evaluate_benchmark)
     assert "benchmark_scoring(" not in inspect.getsource(evaluate_current)
+
+
+# --- the decomposition 2x2 -----------------------------------------------
+
+from gaffer.evaluation import run_decomposition  # noqa: E402
+
+
+def _fake_backtest(totals):
+    """Stand in for ``run_backtest``, keyed by (ep_source, horizon)."""
+    seen = []
+
+    def fake(season="2025-26", start_gw=5, retrain_every=4, horizon=1,
+             chips=False, ep_source="model"):
+        seen.append((ep_source, horizon))
+        total = totals[(ep_source, horizon)]
+        return {"season": season, "from_gw": start_gw, "total": total,
+                "per_gw": round(total / 34, 2),
+                "log": [{"gw": g, "hits": 1 if g == 6 else 0}
+                        for g in range(5, 39)],
+                "chips_played": {}}
+
+    return fake, seen
+
+
+def test_run_decomposition_runs_the_full_two_by_two(monkeypatch):
+    fake, seen = _fake_backtest({("model", 1): 1800, ("model", 3): 1850,
+                                 ("oracle", 1): 2600, ("oracle", 3): 2700})
+    monkeypatch.setattr("gaffer.backtest.run_backtest", fake)
+    out = run_decomposition(season="2025-26", start_gw=5)
+    assert sorted(seen) == [("model", 1), ("model", 3),
+                            ("oracle", 1), ("oracle", 3)]
+    assert sorted(out["cells"]) == ["model_h1", "model_h3",
+                                    "oracle_h1", "oracle_h3"]
+    assert out["cells"]["oracle_h3"] == {"total": 2700, "per_gw": 79.41,
+                                         "hits": 1}
+
+
+def test_run_decomposition_names_the_two_derived_numbers(monkeypatch):
+    fake, _ = _fake_backtest({("model", 1): 1800, ("model", 3): 1850,
+                              ("oracle", 1): 2600, ("oracle", 3): 2700})
+    monkeypatch.setattr("gaffer.backtest.run_backtest", fake)
+    out = run_decomposition(season="2025-26", start_gw=5)
+    # What better forecasting can win, at the horizon we actually plan on.
+    assert out["forecast_gap_h3"] == 850.0
+    # The most multi-week planning can ever be worth, forecasting perfect.
+    assert out["planning_ceiling"] == 100.0
+    assert out["season"] == "2025-26" and out["start_gw"] == 5
+    assert out["git_sha"] and out["run_at"]

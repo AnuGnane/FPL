@@ -404,10 +404,55 @@ def evaluate_benchmark(max_train_idx: int = BENCHMARK_TRAIN_MAX_IDX,
     }
 
 
+DECOMPOSITION_HORIZONS = (1, 3)
+DECOMPOSITION_SOURCES = ("model", "oracle")
+
+
 def run_decomposition(season: str = "2025-26", start_gw: int = 5) -> dict:
-    # Replaced in full by the decomposition task; the CLI imports it eagerly
-    # so it has to exist before --decompose does anything.
-    raise GafferError("decomposition is not implemented yet")
+    """Split the replay's shortfall into forecasting error and headroom.
+
+    Four full replays — {model, oracle} x {h1, h3}. The two numbers that come
+    out are the ones worth arguing about:
+
+    ``forecast_gap_h3``
+        ``oracle_h3 - model_h3``: everything a perfect forecast would add at
+        the horizon the tool actually plans on. This is the size of the prize
+        for model work.
+    ``planning_ceiling``
+        ``oracle_h3 - oracle_h1``: what looking three weeks ahead is worth
+        when the forecast is already perfect — the absolute ceiling on
+        multi-week planning, and usually a good deal smaller than people
+        expect.
+
+    Slow: the two model runs retrain every four gameweeks across a season.
+    Run it under ``caffeinate -i``; machine sleep has killed long runs here
+    before.
+    """
+    from gaffer import backtest
+
+    cells: dict[str, dict] = {}
+    for source in DECOMPOSITION_SOURCES:
+        for horizon in DECOMPOSITION_HORIZONS:
+            out = backtest.run_backtest(season=season, start_gw=start_gw,
+                                        horizon=horizon, ep_source=source)
+            cells[f"{source}_h{horizon}"] = {
+                "total": int(out["total"]),
+                "per_gw": float(out["per_gw"]),
+                "hits": int(sum(int(r["hits"]) for r in out["log"])),
+            }
+            print(f"{source} h{horizon}: {out['total']}", flush=True)
+
+    return {
+        "run_at": run_at(),
+        "git_sha": git_sha(),
+        "season": season,
+        "start_gw": int(start_gw),
+        "cells": cells,
+        "forecast_gap_h3": float(cells["oracle_h3"]["total"]
+                                 - cells["model_h3"]["total"]),
+        "planning_ceiling": float(cells["oracle_h3"]["total"]
+                                  - cells["oracle_h1"]["total"]),
+    }
 
 
 def format_report(key: str, payload: dict) -> str:
