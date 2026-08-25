@@ -17,7 +17,10 @@ from __future__ import annotations
 
 import json
 import re
+import time
+from pathlib import Path
 
+import httpx
 import pandas as pd
 
 from gaffer.errors import GafferError
@@ -143,3 +146,92 @@ def match_player_rows(html: str, match_id: str, date, home_team: str,
                 "us_xgbuildup": _num(entry.get("xGBuildup")),
             })
     return pd.DataFrame(rows, columns=PLAYER_COLS)
+
+
+CACHE_DIR = Path("data/raw/understat")
+SLEEP_SECONDS = 1.0
+"""Minimum gap between uncached requests.
+
+Understat is a free site with no API and no rate-limit documentation. One
+second is what a person browsing looks like, and a five-season backfill is
+~1900 pages — half an hour, once, and cached forever after.
+"""
+
+
+def season_year(season: str) -> str:
+    """``"2024-25"`` -> ``"2024"``, understat's season key."""
+    return season[:4]
+
+
+class UnderstatClient:
+    """Fetches understat pages, caches every match forever.
+
+    A played match's page can never change, so it is written to
+    ``data/raw/understat/match/<id>.json`` on first read and served from disk
+    afterwards. That is what makes the backfill resumable: a run killed
+    halfway costs only the pages it had not reached. Failures are per page —
+    a 503 costs that one match and returns an empty frame — and nothing
+    failed is ever cached, so the next run retries it.
+    """
+
+    def __init__(self, client: httpx.Client | None = None,
+                 cache_dir: Path | str | None = None,
+                 sleep: float = SLEEP_SECONDS, retries: int = 3):
+        self._http = client if client is not None else httpx.Client(
+            timeout=30, follow_redirects=True,
+            headers={"User-Agent": "gaffer/1.0 (personal FPL research)"})
+        self.cache_dir = Path(cache_dir) if cache_dir is not None else CACHE_DIR
+        self.sleep = float(sleep)
+        self.retries = int(retries)
+
+    def _get(self, url: str) -> str | None:
+        """Page text, or ``None`` after exhausting the retries."""
+        for attempt in range(self.retries):
+            if self.sleep:
+                time.sleep(self.sleep)
+            try:
+                resp = self._http.get(url)
+                resp.raise_for_status()
+                return resp.text
+            except (httpx.HTTPStatusError, httpx.TransportError) as exc:
+                if attempt == self.retries - 1:
+                    print(f"understat: giving up on {url} ({exc})")
+        return None
+
+    def league_matches(self, season: str) -> pd.DataFrame:
+        """Every fixture id understat knows for a season."""
+        html = self._get(f"{UNDERSTAT_BASE}/league/EPL/{season_year(season)}")
+        if html is None:
+            return pd.DataFrame(columns=MATCH_COLS)
+        return league_matches(html)
+
+    def team_history(self, season: str, season_idx: int) -> pd.DataFrame:
+        """Per-team per-match xG/xGA/PPDA/deep from the league page."""
+        html = self._get(f"{UNDERSTAT_BASE}/league/EPL/{season_year(season)}")
+        if html is None:
+            return pd.DataFrame(columns=TEAM_COLS)
+        return team_match_rows(html, season, season_idx)
+
+    def match_players(self, match_id: str, date, home_team: str,
+                      away_team: str) -> pd.DataFrame:
+        """One match's player rows, from cache where possible."""
+        path = self.cache_dir / "match" / f"{match_id}.json"
+        if path.exists():
+            cached = json.loads(path.read_text())
+            frame = pd.DataFrame(cached, columns=PLAYER_COLS)
+            frame["date"] = date
+            return frame
+        html = self._get(f"{UNDERSTAT_BASE}/match/{match_id}")
+        if html is None:
+            return pd.DataFrame(columns=PLAYER_COLS)
+        try:
+            rows = match_player_rows(html, match_id, date, home_team,
+                                     away_team)
+        except GafferError as exc:
+            print(f"understat: unparseable match {match_id} ({exc})")
+            return pd.DataFrame(columns=PLAYER_COLS)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # The date is re-applied on read rather than stored: it is a date
+        # object, JSON has no such type, and the caller always knows it.
+        path.write_text(rows.drop(columns=["date"]).to_json(orient="records"))
+        return rows

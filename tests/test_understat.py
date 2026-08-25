@@ -185,3 +185,127 @@ def test_match_player_rows_on_an_empty_roster_is_an_empty_frame():
                             date=pd.Timestamp("2024-08-16").date(),
                             home_team="A", away_team="B")
     assert out.empty
+
+
+# --- UnderstatClient ------------------------------------------------------
+
+import httpx
+
+from gaffer.data.understat import UnderstatClient
+
+
+def _http(handler) -> httpx.Client:
+    return httpx.Client(transport=httpx.MockTransport(handler))
+
+
+def test_league_page_requests_the_season_url(tmp_path):
+    seen = {}
+
+    def handler(request):
+        seen["url"] = str(request.url)
+        return httpx.Response(200, text=_embed("datesData", _DATES))
+
+    client = UnderstatClient(client=_http(handler), cache_dir=tmp_path,
+                             sleep=0.0)
+    out = client.league_matches("2024-25")
+    assert seen["url"] == "https://understat.com/league/EPL/2024"
+    assert list(out["match_id"]) == ["18001", "18002"]
+
+
+def test_match_page_is_cached_by_id_and_never_refetched(tmp_path):
+    calls = {"n": 0}
+
+    def handler(request):
+        calls["n"] += 1
+        return httpx.Response(200, text=_match_html())
+
+    client = UnderstatClient(client=_http(handler), cache_dir=tmp_path,
+                             sleep=0.0)
+    first = client.match_players("18001", pd.Timestamp("2024-08-16").date(),
+                                 "Manchester United",
+                                 "Wolverhampton Wanderers")
+    second = client.match_players("18001", pd.Timestamp("2024-08-16").date(),
+                                  "Manchester United",
+                                  "Wolverhampton Wanderers")
+    assert calls["n"] == 1
+    assert len(first) == len(second) == 2
+    assert (tmp_path / "match" / "18001.json").exists()
+
+
+def test_cached_match_survives_a_process_restart(tmp_path):
+    """The 1900-page backfill has to be resumable: a fresh client must read
+    the same cache."""
+    def handler(request):
+        return httpx.Response(200, text=_match_html())
+
+    UnderstatClient(client=_http(handler), cache_dir=tmp_path,
+                    sleep=0.0).match_players(
+        "18001", pd.Timestamp("2024-08-16").date(), "A", "B")
+
+    def refuse(request):
+        raise AssertionError("cached match must not be refetched")
+
+    out = UnderstatClient(client=_http(refuse), cache_dir=tmp_path,
+                          sleep=0.0).match_players(
+        "18001", pd.Timestamp("2024-08-16").date(), "A", "B")
+    assert len(out) == 2
+
+
+def test_uncached_fetches_sleep_between_requests(tmp_path, monkeypatch):
+    """Politeness is not optional on somebody else's free website."""
+    slept = []
+    monkeypatch.setattr("gaffer.data.understat.time.sleep", slept.append)
+
+    def handler(request):
+        return httpx.Response(200, text=_match_html())
+
+    client = UnderstatClient(client=_http(handler), cache_dir=tmp_path,
+                             sleep=1.0)
+    client.match_players("18001", pd.Timestamp("2024-08-16").date(), "A", "B")
+    client.match_players("18002", pd.Timestamp("2024-08-17").date(), "A", "B")
+    assert slept == [1.0, 1.0]
+
+
+def test_a_cache_hit_does_not_sleep(tmp_path, monkeypatch):
+    slept = []
+    monkeypatch.setattr("gaffer.data.understat.time.sleep", slept.append)
+    client = UnderstatClient(
+        client=_http(lambda r: httpx.Response(200, text=_match_html())),
+        cache_dir=tmp_path, sleep=1.0)
+    client.match_players("18001", pd.Timestamp("2024-08-16").date(), "A", "B")
+    slept.clear()
+    client.match_players("18001", pd.Timestamp("2024-08-16").date(), "A", "B")
+    assert slept == []
+
+
+def test_a_failed_match_fetch_returns_empty_and_caches_nothing(tmp_path):
+    """One dead page must cost one match, not the backfill — and must not
+    poison the cache with an empty result that never retries."""
+    client = UnderstatClient(
+        client=_http(lambda r: httpx.Response(503)), cache_dir=tmp_path,
+        sleep=0.0, retries=1)
+    out = client.match_players("18001", pd.Timestamp("2024-08-16").date(),
+                               "A", "B")
+    assert out.empty
+    assert not (tmp_path / "match" / "18001.json").exists()
+
+
+def test_team_history_reads_the_league_page_once_per_season(tmp_path):
+    calls = {"n": 0}
+
+    def handler(request):
+        calls["n"] += 1
+        return httpx.Response(200, text=_embed("teamsData", _TEAMS))
+
+    client = UnderstatClient(client=_http(handler), cache_dir=tmp_path,
+                             sleep=0.0)
+    out = client.team_history("2024-25", season_idx=2)
+    assert len(out) == 2
+    assert calls["n"] == 1
+
+
+def test_season_year_is_the_starting_year():
+    from gaffer.data.understat import season_year
+
+    assert season_year("2024-25") == "2024"
+    assert season_year("2020-21") == "2020"
