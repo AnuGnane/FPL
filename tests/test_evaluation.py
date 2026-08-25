@@ -156,3 +156,60 @@ def test_run_at_is_an_iso_utc_stamp():
 def test_git_sha_is_a_string_even_outside_a_repo(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     assert isinstance(git_sha(), str)
+
+
+from gaffer.evaluation import (baseline_metrics, before_mask,  # noqa: E402
+                               holdout_boundary)
+
+
+def _slot_frame(slots):
+    """One row per (season_idx, gw) slot, plus a baseline column."""
+    return pd.DataFrame([{"season_idx": s, "gw": g, "code": 1, "ep": 1.0,
+                          "total_points_r5": 2.0}
+                         for s, g in slots])
+
+
+def test_holdout_boundary_is_the_tenth_slot_from_the_end():
+    frame = _slot_frame([(0, g) for g in range(1, 26)])
+    assert holdout_boundary(frame, holdout_slots=10) == (0, 16)
+
+
+def test_holdout_boundary_crosses_the_season_line():
+    frame = _slot_frame([(0, g) for g in range(1, 20)]
+                        + [(1, g) for g in range(1, 6)])
+    assert holdout_boundary(frame, holdout_slots=10) == (0, 15)
+
+
+def test_holdout_boundary_refuses_a_frame_with_no_room_for_a_holdout():
+    frame = _slot_frame([(0, g) for g in range(1, 6)])
+    with pytest.raises(GafferError) as exc:
+        holdout_boundary(frame, holdout_slots=10)
+    assert "slots" in str(exc.value)
+
+
+def test_before_mask_keeps_only_strictly_earlier_slots():
+    frame = _slot_frame([(0, 14), (0, 15), (0, 16), (1, 1)])
+    mask = before_mask(frame, 0, 16)
+    assert list(mask) == [True, True, False, False]
+
+
+def test_baseline_metrics_scores_a_rolling_column_on_the_same_yardstick():
+    hold = pd.DataFrame({"code": [1, 2], "gw": [10, 10],
+                         "total_points_r5": [2.0, 6.0]})
+    truth = pd.DataFrame({"code": [1, 2], "gw": [10, 10],
+                          "total_points": [2, 5], "minutes": [90, 90]})
+    out = baseline_metrics(hold, "total_points_r5", truth)
+    assert out["blanks"] == {"rmse": 0.0, "mae": 0.0, "n": 1}
+    assert out["haulers"] == {"rmse": 1.0, "mae": 1.0, "n": 1}
+
+
+def test_baseline_metrics_collapses_a_double_gameweek_to_one_row():
+    """``ep_matrix`` sums a DGW's fixtures, so the truth frame has one row
+    per player-gameweek; a per-fixture baseline would otherwise be scored
+    twice and go unpenalised for it."""
+    hold = pd.DataFrame({"code": [1, 1], "gw": [10, 10],
+                         "total_points_r5": [3.0, 3.0]})
+    truth = pd.DataFrame({"code": [1], "gw": [10], "total_points": [3],
+                          "minutes": [180]})
+    out = baseline_metrics(hold, "total_points_r5", truth)
+    assert out["all"]["n"] == 1

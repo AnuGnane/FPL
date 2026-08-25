@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 from gaffer.artifacts import REPORTS
 from gaffer.errors import GafferError
@@ -169,3 +170,111 @@ def save_evaluation(key: str, payload: dict) -> Path:
     REPORTS.mkdir(exist_ok=True)
     EVALUATION_PATH.write_text(json.dumps(stored, indent=1))
     return EVALUATION_PATH
+
+
+HOLDOUT_SLOTS = 10
+"""Gameweek slots held out in current mode.
+
+The same ten as :data:`gaffer.models.train.CALIBRATION_HOLDOUT_GWS`, and for
+the same reason: long enough to say something, short enough that the inner
+model still sees nearly all of the newest season. Splitting on slots rather
+than seasons also keeps components whose stats only exist in the newest
+season (``tackles``/``cbi``) from losing every eligible training row.
+"""
+
+STARTER_MINUTES = 60
+"""What counts as a start, matching ``evaluate_predictions``."""
+
+
+def before_mask(frame: pd.DataFrame, season_idx: int, gw: int) -> pd.Series:
+    """Rows strictly before the ``(season_idx, gw)`` slot."""
+    return ((frame["season_idx"] < season_idx)
+            | ((frame["season_idx"] == season_idx) & (frame["gw"] < gw)))
+
+
+def holdout_boundary(df: pd.DataFrame,
+                     holdout_slots: int = HOLDOUT_SLOTS) -> tuple[int, int]:
+    """First held-out ``(season_idx, gw)`` slot, counting from the end."""
+    slots = (df[["season_idx", "gw"]].drop_duplicates()
+             .sort_values(["season_idx", "gw"]))
+    if len(slots) <= holdout_slots:
+        raise GafferError(
+            f"only {len(slots)} gameweek slots in the frame — need more than "
+            f"{holdout_slots} to hold one out")
+    row = slots.iloc[-holdout_slots]
+    return int(row["season_idx"]), int(row["gw"])
+
+
+def baseline_metrics(hold: pd.DataFrame, col: str,
+                     truth: pd.DataFrame) -> dict[str, dict[str, float]]:
+    """A naive predictor scored on exactly the model's yardstick.
+
+    ``col`` is a leakage-safe rolling column: ``total_points_r5`` is the
+    last-five-match mean and ``total_points_r38`` is the season-to-date
+    average, the two predictors a human would actually use. A double
+    gameweek's two rows carry a near-identical rolling average, so taking the
+    first is right where the truth frame has already summed the fixtures.
+    """
+    b = (hold[["code", "gw", col]].rename(columns={col: "ep"}).dropna()
+         .groupby(["code", "gw"], as_index=False).agg(ep=("ep", "first")))
+    j = b.merge(truth, on=["code", "gw"], how="inner")
+    return stratified_metrics(j["ep"], j["total_points"])
+
+
+def evaluate_current(holdout_slots: int = HOLDOUT_SLOTS) -> dict:
+    """Score the model on the last ``holdout_slots`` gameweek slots.
+
+    Components are refit on everything strictly before the boundary and the
+    held-out slots are predicted through the same assemble/calibrate seam the
+    weekly advice uses, so what is measured here is what a live run would
+    have produced. The probability heads are read straight off the models
+    rather than off the assembled points: ``p_cs`` in the simple component
+    path is a constant, so the clean-sheet head has to be scored against the
+    team model's own output on the held-out team-gameweeks.
+    """
+    from gaffer.assets import load_bootstrap_sample
+    from gaffer.data.bootstrap import scoring_table
+    from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
+    from gaffer.models.train import (load_training_frame,
+                                     predict_components_simple, train_all)
+
+    df, tg, _ = load_training_frame()
+    bs, bg = holdout_boundary(df, holdout_slots)
+    df_before, tg_before = before_mask(df, bs, bg), before_mask(tg, bs, bg)
+    models = train_all(df[df_before],
+                       tg[tg_before].dropna(subset=["elo_diff"]), save=False)
+
+    hold = df[~df_before].reset_index(drop=True)
+    scoring = scoring_table(load_bootstrap_sample())
+    comp = predict_components_simple(models, hold)
+    ep = ep_matrix(apply_calibration(assemble_ep(comp, scoring),
+                                     models.get("calibration")))
+    truth = hold.groupby(["code", "gw"], as_index=False).agg(
+        total_points=("total_points", "sum"), minutes=("minutes", "sum"))
+    scored = ep.merge(truth, on=["code", "gw"], how="inner")
+    starters = scored[scored["minutes"] >= STARTER_MINUTES]
+
+    mp = models["minutes"].predict(hold)
+    hold_tg = tg[~tg_before].dropna(subset=["elo_diff"]).reset_index(drop=True)
+    tp = models["team"].predict(hold_tg)
+    return {
+        "run_at": run_at(),
+        "git_sha": git_sha(),
+        "holdout_slots": int(holdout_slots),
+        "stratified": {
+            "all": stratified_metrics(scored["ep"], scored["total_points"]),
+            "starters": stratified_metrics(starters["ep"],
+                                           starters["total_points"]),
+        },
+        "heads": {
+            "p_play": head_metrics(mp["p_play"],
+                                   (hold["minutes"] > 0).astype(float)),
+            "p60": head_metrics(
+                mp["p60"], (hold["minutes"] >= STARTER_MINUTES).astype(float)),
+            "cs": head_metrics(tp["p_cs"], hold_tg["cs"].astype(float)),
+        },
+        "baselines": {
+            "last5": baseline_metrics(hold, "total_points_r5", truth),
+            "season_ppg": baseline_metrics(hold, "total_points_r38", truth),
+        },
+    }
