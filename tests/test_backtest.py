@@ -361,6 +361,21 @@ def test_backtest_model_ep_source_is_bit_identical_to_the_default(monkeypatch):
     assert default["total"] == 72          # 3 gameweeks x (XI 22 + captain 2)
 
 
+def test_oracle_replay_never_builds_horizon_feature_rows(monkeypatch):
+    """The oracle reads its EP off the played rows, so the re-engineered
+    later-gameweek features are dead work on the slowest loop we have. A stub
+    that would blow up if called is the only honest way to pin that."""
+    _install_stubs(monkeypatch, _season_rows([1, 2, 3]))
+
+    def _boom(*a, **k):
+        raise AssertionError("horizon_feature_rows called on the oracle path")
+
+    monkeypatch.setattr(bt, "horizon_feature_rows", _boom)
+    out = run_backtest(season="2025-26", start_gw=1, horizon=3,
+                       ep_source="oracle")
+    assert out["total"] > 0
+
+
 def test_backtest_rejects_an_unknown_ep_source(monkeypatch):
     _install_stubs(monkeypatch, _season_rows([1, 2, 3]))
     with pytest.raises(ValueError) as exc:

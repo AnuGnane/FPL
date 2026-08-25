@@ -358,8 +358,11 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
         # later ones are rebuilt from history truncated at this deadline.
         # With horizon=1 there is nothing to rebuild and this is exactly the
         # old single-gameweek slice.
+        # An oracle run reads its expected points straight off the played
+        # rows, so the rebuilt later-gameweek features are never looked at:
+        # building them is pure cost on the slowest loop in the codebase.
         horizon_rows = rows
-        if len(gws) > 1:
+        if len(gws) > 1 and ep_source != "oracle":
             later = horizon_feature_rows(hist_raw, gw, gws, season_idx,
                                          elo_as_of(season_rows, gw))
             horizon_rows = (pd.concat([rows, later], ignore_index=True)
