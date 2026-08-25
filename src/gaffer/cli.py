@@ -222,6 +222,25 @@ def backtest(season: str = "2025-26", start_gw: int = 5, horizon: int = 1,
     typer.echo(result)
 
 
+@app.command("calibrate-decisions")
+def calibrate_decisions(start_gw: int = 5):
+    """Replay past seasons to rebuild src/gaffer/assets/decision_priors.json.
+
+    Slow (one backtest per season) and refreshed rarely — once a season, or
+    when the model shifts materially. The asset it writes ships in git.
+    """
+    from gaffer.calibrate_decisions import (ASSET_PATH,  # noqa: F401
+                                            run_calibration, write_priors)
+    from gaffer.config import load_config
+
+    cfg = load_config()
+    payload = run_calibration(cfg.train_seasons, start_gw=start_gw)
+    dest = write_priors(payload, "src/gaffer/assets/decision_priors.json")
+    n = sum(len(v) for v in payload["transfer_surplus"].values())
+    typer.echo(f"Calibrated {n} transfer-surplus samples across "
+               f"{len(payload['seasons'])} seasons -> {dest}")
+
+
 @app.command()
 def evaluate(mode: str = typer.Option(
                  "current", help="current (last-10-slot holdout) or "

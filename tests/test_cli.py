@@ -9,7 +9,8 @@ def test_cli_help_lists_commands():
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
     for cmd in ["advise", "refresh", "train", "prices", "league", "live",
-                "backtest", "evaluate", "build-history", "ui"]:
+                "backtest", "evaluate", "build-history", "ui",
+                "calibrate-decisions"]:
         assert cmd in result.output
 
 
@@ -26,7 +27,8 @@ def test_every_command_help_renders():
     """Each command's body imports lazily, so --help is the cheapest proof
     that no command is wired to a name that does not exist yet."""
     for cmd in ["advise", "refresh", "train", "prices", "league", "live",
-                "backtest", "evaluate", "build-history", "ui"]:
+                "backtest", "evaluate", "build-history", "ui",
+                "calibrate-decisions"]:
         result = runner.invoke(app, [cmd, "--help"])
         assert result.exit_code == 0, f"{cmd} --help failed: {result.output}"
 
@@ -216,3 +218,16 @@ def test_understat_name_table_includes_the_current_seasons_clubs():
 
     src = inspect.getsource(understat)
     assert "build_teams(" in src
+
+
+def test_calibrate_decisions_writes_the_shipped_asset():
+    """The asset lives in the package, not in data/ — it is curated knowledge
+    that has to survive a wiped data directory and reach a fresh clone."""
+    import inspect
+
+    from gaffer.cli import calibrate_decisions
+
+    src = inspect.getsource(calibrate_decisions)
+    assert "run_calibration(" in src
+    assert "write_priors(" in src
+    assert "src/gaffer/assets/decision_priors.json" in src
