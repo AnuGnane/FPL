@@ -377,7 +377,7 @@ starters zeros 3.480 → **3.405**; tickers wobbled +2.4% on n=412 in current
 mode while improving in benchmark mode — no consistent regression, no
 feature block dropped.
 
-### G3 — AGS blend (no-key half PASSED; live half FAILED — blend is a silent no-op)
+### G3 — AGS blend (no-key half PASSED; live half FAILED, then PASSED after fix — see post-fix re-run below)
 
 *No-key half (automated).* The two graceful-degradation tests in
 `tests/test_degradation.py` that were parked as `xfail` in Task 20 now pass
@@ -416,6 +416,21 @@ merged without error, 40 odds rows, ~15 API credits per off+on pair
 and a fixture test built from a real snapshot) is queued for the next
 cycle touching odds; until then AGS is dormant, not wrong — EP is exactly
 the model-only output.
+
+*Post-fix re-run (2026-08-25, after `fix/ags-live-matching` merged at
+`f2c86ed`).* **PASSED.** The fix (`_ags_player` reads `description` when
+`name` is Yes/No; `_ags_name_index` keys on normalized full name as well as
+web_name; two conservative Understat-style sweeps — sorted-token and
+token-subset, exactly-one-unclaimed-candidate; `AGS_MIN_COVERAGE = 0.5`
+per-event guard) matched 379/404 outcomes (93.8%) in offline replay. The
+live off/on pair now differs as designed: **368/612 players changed EP**,
+max |Δ| **0.80** (well under the ~1.5 investigate bar), all top deltas on
+priced attackers and negative — the market tempers the model's optimism:
+Palmer 5.94→5.14 (−0.80), Haaland 6.33→5.61 (−0.72), Calvert-Lewin
+5.80→5.09 (−0.71), Foden 5.18→4.57 (−0.62), Cunha 6.30→5.83 (−0.47).
+Captain pick unchanged (B.Fernandes); XI EP 58.21→55.78. Odds fetch clean
+(10/10 fixtures, 3 bookmakers), ~15 credits for the pair (~470/500 monthly
+remaining). AGS layer is live end-to-end.
 
 ### Final review round
 
