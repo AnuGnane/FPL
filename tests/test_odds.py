@@ -687,11 +687,17 @@ def test_ags_frame_maps_names_and_teams_onto_codes():
 
 
 def test_ags_frame_drops_players_the_bootstrap_does_not_carry():
-    players = pd.DataFrame([{"code": 11, "name": "Bukayo Saka",
-                             "team_code": 3}])
+    """Haaland is priced but absent from the bootstrap, so he gets no row.
+
+    Both Arsenal names still match, which keeps the event above the coverage
+    guard — the guard's job is a *rump*, not a single missing player.
+    """
+    players = pd.DataFrame([
+        {"code": 11, "name": "Bukayo Saka", "team_code": 3},
+        {"code": 12, "name": "Kai Havertz", "team_code": 3}])
     out = ags_frame([_AGS_EVENT], players, _TEAMS,
                     _EVENTS, odds_frame(SAMPLE_ODDS, _TEAMS, _EVENTS))
-    assert set(out["code"]) == {11}
+    assert set(out["code"]) == {11, 12}
 
 
 def test_ags_frame_without_match_odds_for_the_fixture_is_empty():
@@ -713,6 +719,185 @@ def test_ags_frame_on_none_is_empty():
 
 def test_ags_cap_is_a_sane_per_appearance_ceiling():
     assert AGS_EG_CAP == 2.0
+
+
+# --- the live events-endpoint shape ---------------------------------------
+#
+# What the real ``player_goal_scorer_anytime`` market serves (trimmed from
+# ``data/raw/ags-*-20260825T2056*.json``, the GW2 spot-check snapshots): the
+# outcome *name* is the Yes/No side and the player sits in *description*.
+# The pre-fix fixtures above fabricated ``name = <player>``, which is why the
+# suite was green while the live blend matched 0 of 404 priced outcomes.
+
+
+def _yes(player: str, price: float) -> dict:
+    return {"name": "Yes", "description": player, "price": price}
+
+
+def _no(player: str, price: float) -> dict:
+    return {"name": "No", "description": player, "price": price}
+
+
+def _live_event(outcomes: list) -> dict:
+    return {"id": "evt1", "home_team": "Arsenal",
+            "away_team": "Manchester City",
+            "commence_time": "2026-08-29T14:00:00Z",
+            "bookmakers": [{"key": "bk1", "markets": [
+                {"key": "player_goal_scorer_anytime",
+                 "outcomes": outcomes}]}]}
+
+
+_LIVE_AGS_EVENT = _live_event([
+    _yes("Bukayo Saka", 3.0), _no("Bukayo Saka", 1.36),
+    _yes("Kai Havertz", 3.5), _no("Kai Havertz", 1.28),
+    _yes("Gabriel Jesus", 4.2), _no("Gabriel Jesus", 1.19),
+    _yes("Bruno Fernandes", 5.0), _no("Bruno Fernandes", 1.14),
+    _yes("Erling Haaland", 1.8), _no("Erling Haaland", 1.9),
+    _yes("Phil Foden", 3.4), _no("Phil Foden", 1.3),
+])
+
+# ``name`` is the web_name the bootstrap actually serves — "B.Fernandes",
+# never "Bruno Fernandes" — so the full-name columns are what has to match.
+_LIVE_PLAYERS = pd.DataFrame([
+    {"code": 11, "name": "Saka", "first_name": "Bukayo",
+     "second_name": "Saka", "team_code": 3},
+    {"code": 12, "name": "Havertz", "first_name": "Kai",
+     "second_name": "Havertz", "team_code": 3},
+    {"code": 13, "name": "G.Jesus", "first_name": "Gabriel",
+     "second_name": "Jesus", "team_code": 3},
+    {"code": 14, "name": "B.Fernandes", "first_name": "Bruno",
+     "second_name": "Fernandes", "team_code": 3},
+    {"code": 21, "name": "Haaland", "first_name": "Erling",
+     "second_name": "Haaland", "team_code": 43},
+    {"code": 22, "name": "Foden", "first_name": "Phil",
+     "second_name": "Foden", "team_code": 43},
+])
+
+
+def test_ags_frame_reads_the_player_from_the_description_field():
+    """The live shape must match, and the lambdas must stay plausible."""
+    odds_df = odds_frame(SAMPLE_ODDS, _TEAMS, _EVENTS)
+    out = ags_frame([_LIVE_AGS_EVENT], _LIVE_PLAYERS, _TEAMS, _EVENTS,
+                    odds_df)
+    assert set(out["code"]) == {11, 12, 13, 14, 21, 22}
+    # Four Arsenal players share Arsenal's devigged mu — not one rump player
+    # swallowing the lot, which is what the pre-fix web_name match produced.
+    mu = float(odds_df[odds_df["team_code"] == 3]["odds_e_goals_for"].iloc[0])
+    arsenal = out[out["team_code"] == 3]
+    assert len(arsenal) == 4
+    assert abs(arsenal["lambda_ags"].sum() - mu) < 1e-9
+    assert arsenal["lambda_ags"].max() < 0.75
+    assert out["lambda_ags"].min() > 0.0
+
+
+def test_ags_frame_ignores_the_no_side_of_the_market():
+    """Every player is quoted twice; only the Yes price is a scoring rate."""
+    out = ags_frame([_LIVE_AGS_EVENT], _LIVE_PLAYERS, _TEAMS, _EVENTS,
+                    odds_frame(SAMPLE_ODDS, _TEAMS, _EVENTS))
+    assert len(out) == 6
+    # The short "No" price would outrank every Yes price if it leaked in.
+    assert out.loc[out["code"] == 11, "lambda_ags"].iloc[0] < (
+        out.loc[out["code"] == 21, "lambda_ags"].iloc[0])
+
+
+def test_ags_frame_still_matches_the_old_name_holds_player_shape():
+    """Some books (and every pre-fix fixture) put the player in ``name``."""
+    players = pd.DataFrame([
+        {"code": 11, "name": "Bukayo Saka", "team_code": 3},
+        {"code": 12, "name": "Kai Havertz", "team_code": 3},
+        {"code": 13, "name": "Erling Haaland", "team_code": 43}])
+    out = ags_frame([_AGS_EVENT], players, _TEAMS, _EVENTS,
+                    odds_frame(SAMPLE_ODDS, _TEAMS, _EVENTS))
+    assert set(out["code"]) == {11, 12, 13}
+
+
+def test_ags_frame_matches_a_reordered_full_name():
+    """"Magalhaes Gabriel" against the bootstrap's "Gabriel Magalhaes" — the
+    same tokens in the other order, and only one Arsenal player they can
+    mean."""
+    players = _LIVE_PLAYERS.copy()
+    players.loc[players["code"] == 13, ["name", "first_name", "second_name"]
+                ] = ["Gabriel", "Gabriel", "Magalhães"]
+    event = _live_event([
+        _yes("Bukayo Saka", 3.0), _yes("Kai Havertz", 3.5),
+        _yes("Magalhaes Gabriel", 6.5), _yes("Bruno Fernandes", 5.0),
+        _yes("Erling Haaland", 1.8), _yes("Phil Foden", 3.4)])
+    out = ags_frame([event], players, _TEAMS, _EVENTS,
+                    odds_frame(SAMPLE_ODDS, _TEAMS, _EVENTS))
+    assert 13 in set(out["code"])
+
+
+def test_ags_frame_refuses_an_ambiguous_reordered_name():
+    """Two same-club players with the same tokens: no reorder can pick one,
+    so neither is claimed rather than one being guessed."""
+    players = pd.DataFrame([
+        {"code": 11, "name": "Saka", "first_name": "Bukayo",
+         "second_name": "Saka", "team_code": 3},
+        {"code": 12, "name": "Havertz", "first_name": "Kai",
+         "second_name": "Havertz", "team_code": 3},
+        {"code": 13, "name": "Gabriel", "first_name": "Silva",
+         "second_name": "Gabriel Magalhães", "team_code": 3},
+        {"code": 14, "name": "Magalhaes", "first_name": "Magalhães",
+         "second_name": "Silva Gabriel", "team_code": 3},
+        {"code": 21, "name": "Haaland", "first_name": "Erling",
+         "second_name": "Haaland", "team_code": 43}])
+    # Equal to neither full name, an exact token-multiset match for both.
+    event = _live_event([
+        _yes("Bukayo Saka", 3.0), _yes("Kai Havertz", 3.5),
+        _yes("Gabriel Magalhaes Silva", 6.5), _yes("Erling Haaland", 1.8)])
+    out = ags_frame([event], players, _TEAMS, _EVENTS,
+                    odds_frame(SAMPLE_ODDS, _TEAMS, _EVENTS))
+    assert set(out["code"]) == {11, 12, 21}
+
+
+def test_ags_frame_matches_a_shortened_market_name():
+    """The market writes "Bruno Fernandes"; the bootstrap carries the whole
+    legal name. One side's tokens inside the other's, one candidate, one
+    player."""
+    players = _LIVE_PLAYERS.copy()
+    players.loc[players["code"] == 14, "second_name"] = "Borges Fernandes"
+    players.loc[players["code"] == 13, ["first_name", "second_name"]] = [
+        "Gabriel Fernando", "de Jesus"]
+    out = ags_frame([_LIVE_AGS_EVENT], players, _TEAMS, _EVENTS,
+                    odds_frame(SAMPLE_ODDS, _TEAMS, _EVENTS))
+    assert {13, 14} <= set(out["code"])
+
+
+def test_ags_frame_refuses_an_ambiguous_shortened_name():
+    """A bare "Gabriel" fits two Arsenal Gabriels, so it fits neither."""
+    players = _LIVE_PLAYERS.copy()
+    players.loc[players["code"] == 13, ["first_name", "second_name"]] = [
+        "Gabriel", "Magalhães"]
+    players.loc[players["code"] == 14, ["first_name", "second_name"]] = [
+        "Gabriel", "Martinelli"]
+    event = _live_event([
+        _yes("Bukayo Saka", 3.0), _yes("Kai Havertz", 3.5),
+        _yes("Gabriel", 6.5), _yes("Erling Haaland", 1.8),
+        _yes("Phil Foden", 3.4)])
+    out = ags_frame([event], players, _TEAMS, _EVENTS,
+                    odds_frame(SAMPLE_ODDS, _TEAMS, _EVENTS))
+    assert set(out["code"]) == {11, 12, 21, 22}
+
+
+def test_ags_frame_skips_an_event_whose_names_barely_match():
+    """The G3 failure mode: a handful of matched names would otherwise be
+    scaled to the whole team's mu and hand a squad player a striker's rate."""
+    priced = [_yes(f"Unknown Player {i}", 6.0) for i in range(16)]
+    priced += [_yes("Bukayo Saka", 3.0), _yes("Erling Haaland", 1.8)]
+    out = ags_frame([_live_event(priced)], _LIVE_PLAYERS, _TEAMS, _EVENTS,
+                    odds_frame(SAMPLE_ODDS, _TEAMS, _EVENTS))
+    assert out.empty
+
+
+def test_ags_frame_keeps_an_event_with_most_names_matched():
+    """The same guard must not fire on the ordinary 80%-coverage case."""
+    priced = [_yes(f"Unknown Player {i}", 6.0) for i in range(2)]
+    priced += [_yes(p, 4.0) for p in ("Bukayo Saka", "Kai Havertz",
+                                      "Gabriel Jesus", "Bruno Fernandes",
+                                      "Erling Haaland", "Phil Foden")]
+    out = ags_frame([_live_event(priced)], _LIVE_PLAYERS, _TEAMS, _EVENTS,
+                    odds_frame(SAMPLE_ODDS, _TEAMS, _EVENTS))
+    assert set(out["code"]) == {11, 12, 13, 14, 21, 22}
 
 
 from gaffer.data.odds import AGS_BLEND_WEIGHT_DEFAULT, blend_attacking_odds

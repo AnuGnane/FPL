@@ -412,6 +412,73 @@ player; the cap is where the arithmetic stops being a signal.
 
 AGS_FRAME_COLS = ["code", "gw", "team_code", "opp_code", "lambda_ags"]
 
+AGS_MIN_COVERAGE = 0.5
+"""Share of an event's priced players that must match before it is blended.
+
+:func:`normalize_ags` scales the matched players to the *whole team's* mu, so
+a small unmatched majority does not merely lose signal — it hands the missing
+players' goals to the few that did match. The v4b live spot-check caught
+exactly that: six web_name matches out of 404 priced outcomes came out at
+``lambda = 2.10``, a rate no footballer has.
+
+The guard is per *event*, not per team, because an outcome nobody matched has
+no club: the club is the thing the match would have told us. Half is the
+level at which the leftovers can no longer dominate what survived.
+"""
+
+
+def _ags_player(outcome: dict) -> str:
+    """The player an outcome is about, across both shapes of the market.
+
+    The live events endpoint quotes ``name = "Yes"``/``"No"`` and puts the
+    player in ``description``; some feeds (and every pre-v4b fixture) put the
+    player straight in ``name``. "No" prices are the complement of the thing
+    being modelled and are dropped by returning the empty string.
+    """
+    name = outcome.get("name")
+    side = name.strip().casefold() if isinstance(name, str) else ""
+    if side in ("yes", "no"):
+        if side == "no":
+            return ""
+        description = outcome.get("description")
+        return description if isinstance(description, str) else ""
+    return name if isinstance(name, str) else ""
+
+
+def _ags_name_index(players: pd.DataFrame) -> tuple[dict, dict]:
+    """``(name, team_code) -> code``, and ``team_code -> {code: tokens}``.
+
+    Two keys per player: the bootstrap's ``name`` (a web_name abbreviation
+    like "B.Fernandes", which the odds feed never writes but older fixtures
+    do) and the normalized ``first_name + second_name``, which is what the
+    market actually prints. Matching on the web_name alone is what made the
+    live blend a no-op — it caught 6 of 404 priced outcomes.
+
+    The second index holds one token tuple per player for the token sweeps,
+    taken from the fullest name available: the full name says "Gabriel
+    Fernando de Jesus" where the web_name says only "G.Jesus", and a sweep
+    over the abbreviation would match on a bare initial.
+    """
+    from gaffer.data.names import normalize_name
+
+    has_full = ("first_name" in players.columns
+                and "second_name" in players.columns)
+    by_name_team: dict[tuple[str, int], int] = {}
+    by_tokens_team: dict[int, dict[int, tuple[str, ...]]] = {}
+    for r in players.itertuples():
+        keys = [normalize_name(r.name)]
+        if has_full:
+            keys.append(normalize_name(f"{r.first_name} {r.second_name}"))
+        keys = [k for k in keys if k]
+        if not keys:
+            continue
+        team_code = int(r.team_code)
+        for key in keys:
+            by_name_team.setdefault((key, team_code), int(r.code))
+        by_tokens_team.setdefault(team_code, {})[int(r.code)] = tuple(
+            max(keys, key=len).split())
+    return by_name_team, by_tokens_team
+
 
 def next_gw_event_ids(raw_odds: list, events: pd.DataFrame,
                       gw: int) -> list[str]:
@@ -468,6 +535,17 @@ def ags_frame(raw_ags: list | None, players: pd.DataFrame,
     normalize against, and an un-normalized one-sided book is an overround
     rather than a set of probabilities.
 
+    Matching runs two passes over each event, most conservative first, in the
+    same spirit as :func:`~gaffer.data.understat.map_understat_players`:
+    a normalized equality pass against both the web_name and the full name,
+    then a sorted-token pass for the reorderings ("Magalhaes Gabriel"), taken
+    only when exactly one *club-mate* answers to those tokens. No edit
+    distance — a wrong player's shot volume is worse than none.
+
+    An event whose matched share falls below :data:`AGS_MIN_COVERAGE` is
+    dropped whole, because the mu scaling would otherwise pay the missing
+    players' goals to the rump that matched.
+
     Players the bootstrap does not carry are dropped; FPL players nobody
     priced simply get no row and keep pure model output downstream.
     """
@@ -476,8 +554,7 @@ def ags_frame(raw_ags: list | None, players: pd.DataFrame,
     if raw_ags is None or odds_df is None or odds_df.empty:
         return pd.DataFrame(columns=AGS_FRAME_COLS)
     code_of_team = dict(zip(teams["name"], teams["code"]))
-    by_name_team = {(normalize_name(r.name), int(r.team_code)): int(r.code)
-                    for r in players.itertuples()}
+    by_name_team, by_tokens_team = _ags_name_index(players)
     mu_of = {(int(r.team_code), int(r.opp_code), int(r.gw)):
              float(r.odds_e_goals_for) for r in odds_df.itertuples()}
     windows = _gw_windows(events)
@@ -508,15 +585,58 @@ def ags_frame(raw_ags: list | None, players: pd.DataFrame,
         # the market lists both sides together and normalization is per team.
         by_team: dict[int, dict[str, float]] = {home_code: {}, away_code: {}}
         matched: dict[str, int] = {}
+        priced: list[tuple[str, str, float]] = []
         for outcome in market.get("outcomes", []):
-            name = normalize_name(outcome.get("name"))
+            player = _ags_player(outcome)
+            name = normalize_name(player)
+            if not name:
+                continue
+            priced.append((player, name, float(outcome["price"])))
+
+        def claim(player: str, team_code: int, code: int, price: float
+                  ) -> None:
+            by_team[int(team_code)][player] = price
+            matched[player] = int(code)
+
+        unresolved = []
+        for player, name, price in priced:
             for team_code in (home_code, away_code):
                 code = by_name_team.get((name, int(team_code)))
                 if code is not None:
-                    by_team[team_code][str(outcome["name"])] = float(
-                        outcome["price"])
-                    matched[str(outcome["name"])] = code
+                    claim(player, team_code, code, price)
                     break
+            else:
+                unresolved.append((player, name, price))
+
+        def sweep(rule) -> None:
+            """One pass over what is still unmatched, taken only where
+            exactly one unclaimed player in this fixture answers."""
+            claimed = set(matched.values())
+            for player, name, price in list(unresolved):
+                if player in matched:
+                    continue
+                tokens = tuple(name.split())
+                hits = [(team_code, code)
+                        for team_code in (home_code, away_code)
+                        for code, cand in by_tokens_team.get(
+                            int(team_code), {}).items()
+                        if code not in claimed and cand and rule(tokens, cand)]
+                if len(hits) == 1:
+                    claim(player, hits[0][0], hits[0][1], price)
+                    claimed.add(hits[0][1])
+
+        # The same tokens in another order — "Magalhaes Gabriel" against the
+        # bootstrap's "Gabriel Magalhães".
+        sweep(lambda a, b: sorted(a) == sorted(b))
+        # The two sources disagree about how much of the legal name to print:
+        # the market writes "Bruno Fernandes", the bootstrap "Bruno Borges
+        # Fernandes"; "Gabriel Jesus" against "Gabriel Fernando de Jesus".
+        # Understat's pass 3, and it does the same work here.
+        sweep(lambda a, b: set(a) <= set(b) or set(b) <= set(a))
+
+        # The mu scaling is only honest when most of the book was matched.
+        if len(matched) < AGS_MIN_COVERAGE * len(priced):
+            continue
 
         for team_code, opp_code in ((home_code, away_code),
                                     (away_code, home_code)):
