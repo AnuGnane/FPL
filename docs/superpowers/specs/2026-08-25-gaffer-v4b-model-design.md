@@ -331,13 +331,17 @@ effect of Dixon-Coles lands through the advise/backtest path instead.
 
 ### Fitted parameters (Tasks 9/17/21)
 
-- **Odds blend weight w = 1.00** (fitted on 2,686 walk-forward CS rows over
+- **Odds blend weight w = 0.80** (fitted on 2,686 walk-forward CS rows over
   1,520 priced fixtures). The loss curve is smooth and monotone — 0.5349 at
-  w=0 (pure Dixon-Coles), 0.5158 at w=0.8, 0.5150 at w=1 — and essentially
-  flat past 0.8, with both sides well calibrated (mean p 0.259 odds / 0.262
-  model vs 0.237 realized). Closing odds dominate the CS signal where they
-  exist; Dixon-Coles serves every fixture without odds (most of the horizon,
-  and any feed gap). Refit at every `gaffer train`.
+  w=0 (pure Dixon-Coles), 0.5158 at w=0.8, 0.5150 at w=1 — but the raw
+  argmin (1.00) beat 0.7 by a margin that does not clear noise (paired
+  bootstrap CI crosses zero), and the fit uses closing *average* odds while
+  serve time sees a single-book pre-deadline snapshot. `fit_blend_weight`
+  therefore applies a 1-SE rule (smallest w within one standard error of the
+  argmin's per-row loss), which lands at 0.80. Both sides are well
+  calibrated (mean p 0.259 odds / 0.262 model vs 0.237 realized); closing
+  odds dominate where they exist; Dixon-Coles serves every fixture without
+  odds. Refit at every `gaffer train`.
 - **Shrinkage k = 20** nineties (grid {2, 5, 10, 20}, out-of-sample
   correlation on the last 10 slots) — the heavy-shrinkage end: individual
   scoring rates are noisy enough that the position×club prior deserves about
@@ -387,3 +391,38 @@ week whose fixtures the market has priced. To be recorded here: how many
 players moved, the largest absolute EP delta (a delta above ~1.5 points is
 not plausible for a 0.5-weight blend on a capped goals term), and whether the
 biggest movers are the players the market disagrees with the model about.
+
+### Final review round
+
+Adversarial whole-branch review (Opus, verified findings only) produced 4
+blockers + 6 minors; all four blockers and three minors were fixed and
+re-verified against the original failure scenarios on real data:
+
+- **F1** blend weight w=1.0 won on noise against a sharper odds source than
+  serve time sees → 1-SE rule, w=0.80 (`32e6800`).
+- **F2** Coventry/Hull/Ipswich silently featureless (promoted clubs absent
+  from the historical name table; FPL renamed Ipswich) → live-bootstrap
+  merge + `_code_for` rename bridge + printed drops; coverage now 20/20
+  clubs every season (`11eca52`, `49a1ef8`).
+- **F3** `gaffer backtest` served all-NaN team-Understat features (0/30 vs
+  advise's 30/30) → date-truncated rolled frame, verified to also block the
+  backwards broadcast a naive fix would have introduced (`ec0f0d4`).
+- **F4** promoted-team prior averaged long-relegated ghost clubs → bottom
+  three restricted to clubs present in the latest season (`3d9b066`).
+- **F5** stale-by-one latest shrunken rates (`4a08a06`), **F6** understat
+  cache poisoning on empty/torn writes (`08915bb`), **F7** one unknown
+  football-data club aborting build-history (`7bb6675`).
+
+Post-fix: CS log loss improved further to **0.5474** (GBM control 0.6076);
+benchmark table unchanged-or-better in every cell; suite 711 passed.
+
+Deferred, recorded as known nits for a later cycle: `walk_forward_cs`
+hardcodes `DixonColesModel` (only bites on the `TEAM_MODEL="gbm"` escape
+hatch); `_shrunk_rate` raises on NaN position/team/gw (real parquets are
+clean); `build_match_odds` never refreshes the running season's CSV at its
+CLI call site; `ags_frame` same-club name-collision overwrite and
+cross-bookmaker mu; AGS blends only the next GW while the optimizer compares
+across the horizon; non-atomic `store.save`; `cli.understat`'s new live
+bootstrap fetch is unguarded (offline → crash rather than degrade); the
+defensive `has_opp` branch in `merge_understat_team` is currently
+unreachable and its comment overclaims.
