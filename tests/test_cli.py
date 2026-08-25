@@ -185,3 +185,14 @@ def test_evaluate_rejects_an_unknown_mode(tmp_path, monkeypatch):
     result = runner.invoke(app, ["evaluate", "--mode", "nonsense"])
     assert result.exit_code != 0
     assert "nonsense" in result.output
+
+
+def test_build_history_also_builds_the_match_odds_parquet():
+    """Closing odds are part of the training corpus now, so the one-shot
+    corpus command has to produce them."""
+    import inspect
+
+    from gaffer.cli import build_history_cmd
+
+    src = inspect.getsource(build_history_cmd)
+    assert "build_match_odds(" in src

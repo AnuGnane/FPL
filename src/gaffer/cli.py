@@ -71,13 +71,22 @@ def refresh():
 def build_history_cmd():
     """Download the historical seasons into data/history/ (run once)."""
     from gaffer.config import load_config
-    from gaffer.data.history import build_history, build_history_fixtures
+    from gaffer.data.history import (build_history, build_history_fixtures,
+                                     season_name_codes)
+    from gaffer.data.match_odds import build_match_odds
 
     cfg = load_config()
     df = build_history(cfg.train_seasons)
     fx = build_history_fixtures(cfg.train_seasons)
+    # Closing odds are part of the corpus now: without them the odds blend
+    # weight can only be guessed and Dixon-Coles can never be scored against
+    # the market. They join onto the fixtures frame just built.
+    odds = build_match_odds(
+        cfg.train_seasons, fx, season_name_codes(cfg.train_seasons),
+        season_indexes={s: i for i, s in enumerate(cfg.train_seasons)})
     typer.echo(f"History: {len(df)} player-GW rows, {len(fx)} fixtures "
                f"across {len(cfg.train_seasons)} seasons -> data/history/.")
+    typer.echo(f"Match odds: {len(odds)} priced fixtures.")
 
 
 @app.command()

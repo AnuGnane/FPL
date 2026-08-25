@@ -136,3 +136,23 @@ def build_history_fixtures(
     df = pd.concat(frames, ignore_index=True).dropna(subset=["gw"])
     store.save(df, "history/fixtures.parquet")
     return df
+
+
+def season_name_codes(
+    seasons: list[str],
+    cache_dir: Path = Path("data/raw/vaastav"),
+) -> dict[str, dict[str, int]]:
+    """``{season: {bootstrap team name: code}}`` from the cached teams.csv.
+
+    A team code is only meaningful next to the season whose bootstrap
+    produced it, so the tables are kept per season rather than merged. The
+    files are already on disk from :func:`build_history`, so this costs
+    nothing after the first run.
+    """
+    out: dict[str, dict[str, int]] = {}
+    for season in seasons:
+        teams = _download_csv(
+            f"{VAASTAV}/{season}/teams.csv", cache_dir / season / "teams.csv"
+        )
+        out[season] = dict(zip(teams["name"], teams["code"].astype(int)))
+    return out
