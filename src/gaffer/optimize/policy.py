@@ -27,7 +27,7 @@ from dataclasses import dataclass, field
 
 import pandas as pd
 
-from gaffer.optimize.milp import Plan
+from gaffer.optimize.milp import FixedMoves, Plan, SolveInput, solve_plan
 
 NEAR_MISS_BAND = 0.20
 """How far below its bar a move can sit and still be worth printing.
@@ -145,3 +145,53 @@ def decide(frequencies: pd.DataFrame, raw_plan: Plan,
                     captain_frequency=captain_frequency, hit=hit, chip=chip,
                     chip_gw=chip_gw, hold=hold, raw_optimum_agrees=raw_agrees,
                     near_misses=near_misses, frequencies=frequencies)
+
+
+def coherent_plan(pool: pd.DataFrame, state: SolveInput, decision: Decision,
+                  **solve_cfg) -> Plan:
+    """The best legal plan that does what the frequencies decided.
+
+    Threshold-passing moves are not a plan. Two buys can pass at 80% each in
+    scenarios that never contained both; a buy can pass with no sell behind
+    it; a hold can pass while a chip also does. Rather than reconciling those
+    by hand, the passing moves go back to the MILP as
+    :class:`~gaffer.optimize.milp.FixedMoves` and the solver does what it is
+    for: finds the best legal completion.
+
+    The captain is then overridden to the plurality winner, because the
+    re-solve optimizes EP and the armband was decided on robustness. If he is
+    not in the re-solved XI he is promoted into it, swapping out the lowest-EP
+    XI player who shares his position — an armband on a benched player is not
+    a legal team sheet.
+
+    An infeasible forced set degrades to the unconstrained solve. Deadlines do
+    not wait for a policy bug, and a slightly-less-robust plan beats no advice.
+    """
+    if decision.hold:
+        fixed = FixedMoves(no_transfer=True)
+    else:
+        fixed = FixedMoves(buys=list(decision.buys),
+                           sells=list(decision.sells))
+    try:
+        plan = solve_plan(pool, state, **solve_cfg, fixed_moves=fixed)
+    except Exception as exc:  # noqa: BLE001 — see docstring
+        print(f"coherence re-solve infeasible, using the raw optimum: {exc}")
+        return solve_plan(pool, state, **solve_cfg)
+
+    first = plan.gw_plans[0]
+    wanted = int(decision.captain)
+    if wanted and wanted in first.squad and first.captain != wanted:
+        pos = dict(zip(pool["code"], pool["position"]))
+        if wanted not in first.xi:
+            same = [c for c in first.xi if pos.get(c) == pos.get(wanted)]
+            if same:
+                ep_of = {int(r.code): float(r.ep.get(first.gw, 0.0))
+                         for r in pool.itertuples()}
+                drop = min(same, key=lambda c: ep_of.get(c, 0.0))
+                first.xi = [c for c in first.xi if c != drop] + [wanted]
+                first.bench = [c for c in first.bench if c != wanted] + [drop]
+        if wanted in first.xi:
+            if first.vice == wanted:
+                first.vice = first.captain
+            first.captain = wanted
+    return plan

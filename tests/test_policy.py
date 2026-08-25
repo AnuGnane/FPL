@@ -159,3 +159,89 @@ def test_buys_and_sells_come_back_in_descending_frequency():
     freq = _freq([("buy", 1, 5, "buy", 0.70), ("buy", 3, 5, "buy", 0.95),
                   ("captain", 9, 5, "captain", 1.0)])
     assert decide(freq, _raw(buys=[1, 3]), TH).buys == [3, 1]
+
+
+# --- coherence re-solve ----------------------------------------------------
+
+from gaffer.optimize.milp import SolveInput, solve_plan
+from gaffer.optimize.policy import coherent_plan
+from tests.test_milp import _owned_state
+from tests.test_v4c_degradation import GOLDEN_KW, golden_pool
+
+
+def test_a_held_decision_re_solves_with_the_week_pinned_shut():
+    pool = golden_pool()
+    state = _owned_state(pool)
+    d = Decision(hold=True, captain=int(pool.loc[0, "code"]))
+    plan = coherent_plan(pool, state, d, **GOLDEN_KW)
+    assert plan.gw_plans[0].buys == [] and plan.gw_plans[0].sells == []
+
+
+def test_a_gated_swap_appears_in_the_coherent_plan():
+    pool = golden_pool()
+    state = _owned_state(pool)
+    out_code = state.owned_codes[-1]
+    in_code = [int(c) for c in pool["code"]
+               if c not in state.owned_codes][0]
+    d = Decision(buys=[in_code], sells=[out_code], captain=in_code)
+    plan = coherent_plan(pool, state, d, **GOLDEN_KW)
+    assert in_code in plan.gw_plans[0].buys
+    assert out_code in plan.gw_plans[0].sells
+
+
+def test_a_buy_with_no_gated_sell_gets_a_sell_chosen_by_the_solver():
+    """The consistency rail: the MILP finds the cheapest way to make room,
+    rather than the policy inventing one."""
+    pool = golden_pool()
+    state = _owned_state(pool)
+    in_code = [int(c) for c in pool["code"]
+               if c not in state.owned_codes][0]
+    d = Decision(buys=[in_code], sells=[], captain=in_code)
+    plan = coherent_plan(pool, state, d, **GOLDEN_KW)
+    first = plan.gw_plans[0]
+    assert in_code in first.buys
+    assert len(first.sells) >= 1
+    assert len(first.squad) == 15
+
+
+def test_the_coherent_plan_keeps_the_gated_captain():
+    """The armband is decided by plurality, not by whatever the re-solve
+    would have picked on its own."""
+    pool = golden_pool()
+    state = _owned_state(pool)
+    wanted = state.owned_codes[0]
+    d = Decision(captain=wanted, hold=True)
+    plan = coherent_plan(pool, state, d, **GOLDEN_KW)
+    assert plan.gw_plans[0].captain == wanted
+
+
+def test_the_captain_override_promotes_him_into_the_xi_if_needed():
+    """A captain who is not in the re-solve's XI is an illegal armband."""
+    pool = golden_pool()
+    state = _owned_state(pool)
+    d = Decision(captain=state.owned_codes[0], hold=True)
+    plan = coherent_plan(pool, state, d, **GOLDEN_KW)
+    first = plan.gw_plans[0]
+    assert first.captain in first.xi
+
+
+def test_an_infeasible_forced_set_falls_back_to_the_raw_plan():
+    """A gate that cannot be satisfied must degrade to advice, not to a
+    traceback in front of a deadline."""
+    pool = golden_pool()
+    state = _owned_state(pool)
+    # Every spare player forced in at once: no bank, no FTs, not legal.
+    spares = [int(c) for c in pool["code"] if c not in state.owned_codes]
+    d = Decision(buys=spares, sells=[], captain=state.owned_codes[0])
+    plan = coherent_plan(pool, state, d, **GOLDEN_KW)
+    assert len(plan.gw_plans[0].squad) == 15
+
+
+def test_coherent_plan_passes_the_solver_config_through():
+    """Same knobs as the deterministic solve, or the re-solve is optimizing a
+    different problem than the sweep was."""
+    import inspect
+
+    src = inspect.getsource(coherent_plan)
+    assert "**solve_cfg" in src
+    assert "fixed_moves=" in src
