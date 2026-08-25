@@ -110,3 +110,89 @@ def test_flat_thresholds_ignore_the_gameweek_entirely():
     is unmistakably the *old* behaviour."""
     flat = flat_thresholds()
     assert flat("bboost", 5) == flat("bboost", 19) == flat("bboost", 38)
+
+
+# --- the DGW scenario hook -------------------------------------------------
+
+from gaffer.optimize.chip_policy import (CHIP_SCENARIOS_PATH,
+                                         DGW_SURPLUS_MULTIPLIER,
+                                         apply_dgw_scenarios,
+                                         load_chip_scenarios,
+                                         thresholds_from_priors)
+
+
+def test_the_scenario_file_is_absent_this_cycle():
+    """Spec §10: the hook ships, the data does not. If this starts failing
+    because someone populated it, delete this test — but do it knowingly."""
+    assert not CHIP_SCENARIOS_PATH.exists()
+
+
+def test_loading_an_absent_scenario_file_is_an_empty_dict_not_an_error():
+    assert load_chip_scenarios("data/does-not-exist.toml") == {}
+
+
+def test_loading_a_scenario_file_reads_the_dgw_table(tmp_path):
+    p = tmp_path / "chip_scenarios.toml"
+    p.write_text("[dgw]\n26 = 0.7\n29 = 0.4\n")
+    assert load_chip_scenarios(p) == {26: 0.7, 29: 0.4}
+
+
+def test_a_scenario_file_with_no_dgw_table_is_empty(tmp_path):
+    p = tmp_path / "chip_scenarios.toml"
+    p.write_text("[bgw]\n18 = 0.5\n")
+    assert load_chip_scenarios(p) == {}
+
+
+def test_applying_no_scenarios_leaves_the_distributions_alone():
+    dist = {26: [4.0, 8.0], 27: [3.0]}
+    assert apply_dgw_scenarios(dist, {}) == dist
+
+
+def test_a_certain_dgw_scales_every_sample():
+    out = apply_dgw_scenarios({26: [4.0]}, {26: 1.0})
+    assert set(out[26]) == {4.0 * DGW_SURPLUS_MULTIPLIER}
+
+
+def test_a_probable_dgw_mixes_scaled_and_plain_samples():
+    out = apply_dgw_scenarios({26: [4.0]}, {26: 0.7})
+    assert out[26].count(8.0) == 7
+    assert out[26].count(4.0) == 3
+
+
+def test_a_dgw_on_a_week_with_no_samples_is_ignored():
+    assert apply_dgw_scenarios({26: [4.0]}, {30: 0.9}) == {26: [4.0]}
+
+
+def test_a_dgw_belief_raises_the_thresholds_before_that_week():
+    """The behavioural point of the hook: knowing a double is coming should
+    make the tool refuse to burn the chip beforehand."""
+    dist = {"bboost": {t: [4.0] for t in range(5, 20)}}
+    plain = thresholds_from_priors(dist)
+    informed = thresholds_from_priors(dist, {18: 1.0})
+    assert informed("bboost", 10) > plain("bboost", 10)
+
+
+def test_thresholds_from_priors_falls_back_flat_for_an_unknown_chip():
+    from gaffer.optimize.chips import CHIP_PLAY_THRESHOLD
+
+    lookup = thresholds_from_priors({"bboost": {10: [4.0]}})
+    assert lookup("3xc", 10) == CHIP_PLAY_THRESHOLD
+
+
+def test_thresholds_from_priors_is_zero_at_each_expiry():
+    """No chip stranded — spec §9's D3 condition, expressed as a unit test so
+    the replay only has to confirm it."""
+    dist = {"bboost": {t: [4.0] for t in range(1, 39)}}
+    lookup = thresholds_from_priors(dist)
+    assert lookup("bboost", 19) == 0.0
+    assert lookup("bboost", 38) == 0.0
+
+
+def test_the_two_chip_halves_are_solved_independently():
+    """A chip held in the first half cannot be saved for the second, so a
+    fat GW30 tail must not raise the GW10 bar."""
+    dist = {"bboost": {**{t: [1.0] for t in range(1, 20)},
+                       **{t: [40.0] for t in range(20, 39)}}}
+    lookup = thresholds_from_priors(dist)
+    assert lookup("bboost", 10) < 5.0
+    assert lookup("bboost", 25) > 5.0
