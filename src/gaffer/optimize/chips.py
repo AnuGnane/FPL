@@ -32,7 +32,8 @@ from dataclasses import replace
 
 import pandas as pd
 
-from gaffer.optimize.milp import Plan, SolveInput, solve_plan
+from gaffer.optimize.milp import (SEASON_LAST_GW, Plan, SolveInput,
+                                  solve_plan)
 
 CHIP_EVAL_DECAY = 1.0
 """Time discount used when *scoring* chips: none.
@@ -220,7 +221,18 @@ def wildcard_now_assessment(pool: pd.DataFrame, state: SolveInput,
         base = solve_plan(pool, state, **cfg)
     wc = solve_plan(pool, replace(state, wildcard_gw=state.gws[0]), **cfg)
     gain = wc.objective - base.objective
+    # A wildcard resets the free-transfer bank. Priced at zero, a wildcard
+    # looks cheapest exactly when it is most expensive — sitting on five
+    # banked transfers is five weeks of options the chip throws away. The
+    # lambda table knows what each of them is worth.
+    ft_lambda = cfg.get("ft_lambda")
+    ft_bank_cost = 0.0
+    if ft_lambda is not None and not ft_lambda.empty:
+        weeks_left = max(1, SEASON_LAST_GW - state.gws[-1])
+        ft_bank_cost = ft_lambda.bank_value(state.free_transfers, weeks_left)
+    gain = gain - ft_bank_cost
     return {"gain_over_horizon": round(gain, 2),
+            "ft_bank_cost": round(ft_bank_cost, 2),
             "wc_squad": wc.gw_plans[0].squad,
             "recommend": gain > WILDCARD_RECOMMEND_THRESHOLD}
 

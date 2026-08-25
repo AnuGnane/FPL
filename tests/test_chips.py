@@ -271,3 +271,72 @@ def test_chip_plan_handles_a_chip_with_no_week_in_the_window():
     row = chip_plan(table, now_gw=3)[0]
     assert row["now_gain"] is None and row["play_now_delta"] is None
     assert row["weeks_scored"] == 1
+
+
+# --- v4c: the wildcard destroys a bank of free transfers -------------------
+
+from dataclasses import replace
+
+from gaffer.optimize.ft_value import LambdaLookup
+from tests.test_v4c_degradation import GOLDEN_KW, golden_pool
+from tests.test_milp import _owned_state
+
+
+def test_wildcard_assessment_without_a_lambda_table_is_unchanged():
+    """The rail: no priors, no behaviour change."""
+    pool = golden_pool()
+    state = _owned_state(pool)
+    a = wildcard_now_assessment(pool, state, **GOLDEN_KW)
+    b = wildcard_now_assessment(pool, state, **GOLDEN_KW, ft_lambda=None)
+    assert a == b
+
+
+def test_an_empty_lambda_table_is_also_unchanged():
+    pool = golden_pool()
+    state = _owned_state(pool)
+    a = wildcard_now_assessment(pool, state, **GOLDEN_KW)
+    b = wildcard_now_assessment(pool, state, **GOLDEN_KW,
+                                ft_lambda=LambdaLookup({}))
+    assert a["gain_over_horizon"] == b["gain_over_horizon"]
+
+
+def test_the_wildcard_gain_is_reduced_by_the_banked_ft_value():
+    """Five banked transfers are five options the wildcard throws away."""
+    pool = golden_pool()
+    state = replace(_owned_state(pool), free_transfers=5)
+    lam = LambdaLookup({(k, t): 1.0 for k in range(1, 6)
+                        for t in range(1, 39)})
+    plain = wildcard_now_assessment(pool, state, **GOLDEN_KW)
+    priced = wildcard_now_assessment(pool, state, **GOLDEN_KW, ft_lambda=lam)
+    assert (abs(priced["gain_over_horizon"]
+                - (plain["gain_over_horizon"] - 5.0)) < 0.01)
+
+
+def test_the_assessment_reports_what_it_deducted():
+    """Printing the number is the difference between a defensible decision
+    and a mysterious one."""
+    pool = golden_pool()
+    state = replace(_owned_state(pool), free_transfers=3)
+    lam = LambdaLookup({(k, t): 2.0 for k in range(1, 6)
+                        for t in range(1, 39)})
+    out = wildcard_now_assessment(pool, state, **GOLDEN_KW, ft_lambda=lam)
+    assert out["ft_bank_cost"] == 6.0
+
+
+def test_a_bank_of_one_free_transfer_costs_only_its_own_lambda():
+    pool = golden_pool()
+    state = replace(_owned_state(pool), free_transfers=1)
+    lam = LambdaLookup({(1, t): 2.0 for t in range(1, 39)} |
+                       {(k, t): 0.5 for k in range(2, 6)
+                        for t in range(1, 39)})
+    out = wildcard_now_assessment(pool, state, **GOLDEN_KW, ft_lambda=lam)
+    assert out["ft_bank_cost"] == 2.0
+
+
+def test_the_deduction_can_flip_a_marginal_recommendation_off():
+    pool = golden_pool()
+    state = replace(_owned_state(pool), free_transfers=5)
+    huge = LambdaLookup({(k, t): 100.0 for k in range(1, 6)
+                         for t in range(1, 39)})
+    assert wildcard_now_assessment(pool, state, **GOLDEN_KW,
+                                   ft_lambda=huge)["recommend"] is False
