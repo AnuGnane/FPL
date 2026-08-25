@@ -607,17 +607,38 @@ def latest_shrunken_rates(hist: pd.DataFrame,
             .groupby("code", sort=False).tail(1).set_index("code"))
 
 
-def latest_understat_team(rolled: pd.DataFrame) -> pd.DataFrame:
-    """Each club's newest team-level Understat vector, indexed by team code.
+def latest_understat_team(rolled: pd.DataFrame,
+                          windows: list[int] = TEAM_US_WINDOWS
+                          ) -> pd.DataFrame:
+    """Each club's as-of-today team-level Understat vector, by team code.
 
     The Elo pattern: a future fixture has no row of its own, so it inherits
-    the club's latest state.
+    the club's latest state. That state *includes the last played match* —
+    the same convention :func:`latest_understat_rolling` follows for players,
+    and the reason both recompute an unshifted roll rather than tailing the
+    ``shift(1)``-ed training frame.
+
+    The distinction is the whole train/serve contract. A training row at slot
+    ``t`` may only see matches strictly before ``t``, which is what the
+    shifted roll in :func:`add_understat_team_rolling` enforces. A future
+    fixture is not at any played slot: everything already played is legal
+    evidence, so tailing the shifted frame would hand the model a vector one
+    match stale — populated differently in training and at serve time, which
+    is exactly the skew the broadcast exists to prevent.
     """
-    own_cols = [f"team_{s}_r{w}" for s in TEAM_US_STATS
-                for w in TEAM_US_WINDOWS]
+    own_cols = [f"team_{s}_r{w}" for s in TEAM_US_STATS for w in windows]
     frame = rolled.sort_values(["team_code", "date"])
-    return (frame[["team_code"] + own_cols]
-            .groupby("team_code", sort=False).tail(1).set_index("team_code"))
+    codes = frame["team_code"]
+    feats: dict[str, pd.Series] = {}
+    for stat in TEAM_US_STATS:
+        vals = pd.to_numeric(frame[stat], errors="coerce")
+        for w in windows:
+            feats[f"team_{stat}_r{w}"] = (
+                vals.groupby(codes).rolling(w, min_periods=1).mean()
+                .reset_index(level=0, drop=True))
+    out = pd.DataFrame(feats, index=frame.index)[own_cols]
+    out.insert(0, "team_code", codes)
+    return out.groupby("team_code", sort=False).tail(1).set_index("team_code")
 
 
 

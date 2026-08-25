@@ -690,7 +690,7 @@ def test_latest_understat_team_is_the_last_value_per_club():
     ], ignore_index=True)
     latest = latest_understat_team(add_understat_team_rolling(ut))
     assert sorted(latest.index) == [3, 4]
-    assert latest.loc[3, "team_us_xga_r5"] == 0.5
+    assert latest.loc[3, "team_us_xga_r5"] == 1.5
 
 
 def test_merge_understat_team_falls_back_to_the_latest_for_future_rows():
@@ -707,11 +707,8 @@ def test_merge_understat_team_falls_back_to_the_latest_for_future_rows():
                             "kickoff_time": "2024-10-19T14:00:00Z"}])
     out = merge_understat_team(future, rolled,
                                latest=latest_understat_team(rolled))
-    # The club's latest rolled value, which is the last played match's own
-    # leakage-safe window — the same number ``latest_understat_team`` returns
-    # and the same convention the opponent's column below follows.
-    assert out.loc[0, "team_us_xga_r5"] == 0.5
-    assert out.loc[0, "opp_us_xga_r5"] == 3.0
+    assert out.loc[0, "team_us_xga_r5"] == 1.5
+    assert out.loc[0, "opp_us_xga_r5"] == 2.0
 
 
 def test_feature_columns_covers_every_new_block():
@@ -760,7 +757,7 @@ def test_build_prediction_frame_takes_the_team_understat_frame():
     ], ignore_index=True)
     out = build_prediction_frame(hist, future,
                                  understat_team=add_understat_team_rolling(ut))
-    assert out.loc[0, "opp_us_xga_r5"] == 3.0
+    assert out.loc[0, "opp_us_xga_r5"] == 2.0
 
 
 def test_build_prediction_frame_without_understat_still_makes_the_columns():
