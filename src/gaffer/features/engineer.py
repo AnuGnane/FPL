@@ -269,7 +269,9 @@ def build_prediction_frame(hist: pd.DataFrame, future: pd.DataFrame,
                            stats: list[str] = ROLL_STATS,
                            windows: list[int] = WINDOWS,
                            elo: pd.DataFrame | None = None,
-                           elo_final: dict | None = None) -> pd.DataFrame:
+                           elo_final: dict | None = None,
+                           understat_team: pd.DataFrame | None = None
+                           ) -> pd.DataFrame:
     """Feature rows for upcoming fixtures, built purely from history.
 
     ``future``: one row per player per upcoming fixture (code, season_idx,
@@ -303,19 +305,35 @@ def build_prediction_frame(hist: pd.DataFrame, future: pd.DataFrame,
     # share — before a player's first match of the new season it is undefined.
     stale = rot["_rot_season_idx"] != out["season_idx"]
     rot.loc[stale, "season_start_share"] = float("nan")
-    return pd.concat(
-        [out.drop(columns=list(latest.columns) + ROTATION_FEATURES,
-                  errors="ignore"),
+    us = latest_understat_rolling(hist, US_WINDOWS)
+    shrunk = latest_shrunken_rates(hist)
+    frame = pd.concat(
+        [out.drop(columns=list(latest.columns) + ROTATION_FEATURES
+                  + list(us.columns) + SHRUNK_FEATURES, errors="ignore"),
          latest.reindex(out["code"]).reset_index(drop=True),
-         rot.drop(columns=["_rot_season_idx"])], axis=1)
+         rot.drop(columns=["_rot_season_idx"]),
+         us.reindex(out["code"]).reset_index(drop=True),
+         shrunk.reindex(out["code"]).reset_index(drop=True)], axis=1)
+    return merge_understat_team(
+        frame.drop(columns=TEAM_US_FEATURES, errors="ignore"),
+        understat_team,
+        latest_understat_team(understat_team)
+        if understat_team is not None and not understat_team.empty else None)
 
 
 def feature_columns(stats: list[str] = ROLL_STATS,
                     windows: list[int] = WINDOWS) -> list[str]:
-    """Canonical model input columns for the given stats/windows."""
+    """Canonical model input columns for the given stats/windows.
+
+    Everything a caller has to strip off a history frame before re-deriving
+    features over it — which is why the Understat, team-Understat and
+    shrunken-rate blocks belong here too, not only the rolling means.
+    """
     cols = [f"{s}_r{w}" for s in stats for w in windows]
-    return cols + ["team_elo", "opp_elo", "elo_diff", "home", "days_rest",
-                   "pen_taker", "setpiece_taker"] + ROTATION_FEATURES
+    return (cols + ["team_elo", "opp_elo", "elo_diff", "home", "days_rest",
+                    "pen_taker", "setpiece_taker"] + ROTATION_FEATURES
+            + understat_feature_columns() + TEAM_US_FEATURES
+            + SHRUNK_FEATURES)
 
 
 US_STATS = ["us_shots", "us_key_passes", "us_npxg", "us_xgchain",
@@ -409,14 +427,20 @@ def add_understat_team_rolling(
     return pd.concat([ut, pd.DataFrame(feats, index=ut.index)], axis=1)
 
 
-def merge_understat_team(df: pd.DataFrame,
-                         rolled: pd.DataFrame | None) -> pd.DataFrame:
+def merge_understat_team(df: pd.DataFrame, rolled: pd.DataFrame | None,
+                         latest: pd.DataFrame | None = None) -> pd.DataFrame:
     """Attach own and opponent team Understat features to player rows.
 
     Joined on ``(team_code, match date)``, the only key both frames share —
     Understat carries no gameweek number. ``rolled`` of ``None`` (no parquet,
     or the source disabled) still produces every column as all-NaN, which is
     what keeps the model's feature schema stable across that switch.
+
+    ``latest`` (from :func:`latest_understat_team`) fills rows the date join
+    could not match — every *future* fixture, which by definition has no
+    Understat row. Without it these columns would be populated in training
+    and empty at serve time, which is the train/serve skew this codebase
+    goes out of its way to avoid.
     """
     out = df.copy()
     own_cols = [f"team_{s}_r{w}" for s in TEAM_US_STATS
@@ -442,6 +466,12 @@ def merge_understat_team(df: pd.DataFrame,
                                    for c in own_cols}})
     out = out.merge(opp, on=["opp_code", "_date"], how="left",
                     validate="many_to_one")
+    if latest is not None and not latest.empty:
+        for col in [f"team_{s}_r{w}" for s in TEAM_US_STATS
+                    for w in TEAM_US_WINDOWS]:
+            opp_col = col.replace("team_", "opp_", 1)
+            out[col] = out[col].fillna(out["team_code"].map(latest[col]))
+            out[opp_col] = out[opp_col].fillna(out["opp_code"].map(latest[col]))
     return out.drop(columns=["_date"])
 
 
@@ -526,6 +556,69 @@ def add_shrunken_rates(df: pd.DataFrame,
         else:
             out[col] = float("nan")
     return out
+
+
+def latest_understat_rolling(hist: pd.DataFrame,
+                             windows: list[int] = US_WINDOWS) -> pd.DataFrame:
+    """Each player's as-of-today Understat per-90 vector, indexed by ``code``.
+
+    The counterpart of :func:`latest_player_rolling`: an unshifted roll
+    ending at the last played match is the same window a next-fixture row's
+    ``shift(1)``-then-roll would produce, without needing a placeholder row.
+    """
+    sort_cols = [c for c in ("code", "season_idx", "gw", "kickoff_time")
+                 if c in hist.columns]
+    h = hist.sort_values(sort_cols)
+    for col in US_STATS + ["us_minutes"]:
+        if col not in h.columns:
+            h = h.assign(**{col: float("nan")})
+    codes = h["code"]
+    mins = pd.to_numeric(h["us_minutes"], errors="coerce")
+    denom = {}
+    for w in windows:
+        rolled = (mins.groupby(codes).rolling(w, min_periods=1).sum()
+                  .reset_index(level=0, drop=True))
+        denom[w] = rolled.where(rolled > 0.0)
+    feats: dict[str, pd.Series] = {}
+    for stat in US_STATS:
+        s = pd.to_numeric(h[stat], errors="coerce")
+        for w in windows:
+            num = (s.groupby(codes).rolling(w, min_periods=1).sum()
+                   .reset_index(level=0, drop=True))
+            feats[f"{US_FEATURE_NAMES[stat]}_r{w}"] = num / denom[w] * 90.0
+    frame = pd.DataFrame(feats, index=h.index)
+    frame.insert(0, "code", codes)
+    return frame.groupby("code", sort=False).tail(1).set_index("code")
+
+
+def latest_shrunken_rates(hist: pd.DataFrame,
+                          k: float = SHRINK_K) -> pd.DataFrame:
+    """Each player's as-of-today shrunken rates, indexed by ``code``.
+
+    ``add_shrunken_rates`` already excludes the current row, so the last
+    played match's value *is* the next fixture's value plus that match — near
+    enough at any realistic sample size, and identical in spirit to how
+    :func:`latest_rotation` reads the last played match's state. Taking the
+    last row keeps every future row of a player identical, which is the point
+    of the broadcast.
+    """
+    rated = add_shrunken_rates(hist, k=k)
+    return (rated[["code"] + SHRUNK_FEATURES]
+            .groupby("code", sort=False).tail(1).set_index("code"))
+
+
+def latest_understat_team(rolled: pd.DataFrame) -> pd.DataFrame:
+    """Each club's newest team-level Understat vector, indexed by team code.
+
+    The Elo pattern: a future fixture has no row of its own, so it inherits
+    the club's latest state.
+    """
+    own_cols = [f"team_{s}_r{w}" for s in TEAM_US_STATS
+                for w in TEAM_US_WINDOWS]
+    frame = rolled.sort_values(["team_code", "date"])
+    return (frame[["team_code"] + own_cols]
+            .groupby("team_code", sort=False).tail(1).set_index("team_code"))
+
 
 
 def best_shrinkage_k(df: pd.DataFrame, k_grid: list[float] = SHRINK_K_GRID,

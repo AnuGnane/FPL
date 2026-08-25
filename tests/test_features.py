@@ -650,3 +650,127 @@ def test_best_shrinkage_k_picks_from_the_grid():
 def test_best_shrinkage_k_on_a_frame_with_no_holdout_returns_the_default():
     k = best_shrinkage_k(_goal_rows([(1, 90, 0, 0)]), holdout_slots=5)
     assert k == SHRINK_K
+
+
+from gaffer.features.engineer import (build_prediction_frame,
+                                      latest_shrunken_rates,
+                                      latest_understat_rolling,
+                                      latest_understat_team)
+
+
+def test_latest_understat_rolling_is_the_next_rows_form_vector():
+    """The value a hypothetical next match would see: the same window,
+    evaluated one row past the end of history."""
+    hist = _us_rows([(1, 90, 4), (2, 90, 2)])
+    latest = latest_understat_rolling(hist)
+    assert abs(latest.loc[1, "us_shots90_r3"] - 6.0 / 180.0 * 90.0) < 1e-9
+
+
+def test_latest_understat_rolling_is_one_row_per_player():
+    hist = pd.concat([_us_rows([(1, 90, 4), (2, 90, 2)], code=1),
+                      _us_rows([(1, 90, 0)], code=2)], ignore_index=True)
+    latest = latest_understat_rolling(hist)
+    assert sorted(latest.index) == [1, 2]
+
+
+def test_latest_shrunken_rates_is_one_row_per_player():
+    hist = pd.concat([_goal_rows([(gw, 90, 1, 0) for gw in range(1, 11)],
+                                 code=1),
+                      _goal_rows([(gw, 90, 0, 0) for gw in range(1, 11)],
+                                 code=2)], ignore_index=True)
+    latest = latest_shrunken_rates(hist)
+    assert sorted(latest.index) == [1, 2]
+    assert latest.loc[1, "shrunk_goals90"] > latest.loc[2, "shrunk_goals90"]
+
+
+def test_latest_understat_team_is_the_last_value_per_club():
+    ut = pd.concat([
+        _ut_rows(3, ["2024-08-17", "2024-08-24"], [0.5, 2.5], [9.0, 11.0]),
+        _ut_rows(4, ["2024-08-17", "2024-08-24"], [3.0, 1.0], [14.0, 13.0]),
+    ], ignore_index=True)
+    latest = latest_understat_team(add_understat_team_rolling(ut))
+    assert sorted(latest.index) == [3, 4]
+    assert latest.loc[3, "team_us_xga_r5"] == 0.5
+
+
+def test_merge_understat_team_falls_back_to_the_latest_for_future_rows():
+    """A fixture in three weeks has no Understat row of its own; without the
+    broadcast the column is NaN at serve time and NaN-free in training, which
+    is exactly the train/serve skew this codebase keeps avoiding."""
+    ut = pd.concat([
+        _ut_rows(3, ["2024-08-17", "2024-08-24"], [0.5, 2.5], [9.0, 11.0]),
+        _ut_rows(4, ["2024-08-17", "2024-08-24"], [3.0, 1.0], [14.0, 13.0]),
+    ], ignore_index=True)
+    rolled = add_understat_team_rolling(ut)
+    future = pd.DataFrame([{"code": 1, "season_idx": 0, "gw": 9,
+                            "team_code": 3, "opp_code": 4,
+                            "kickoff_time": "2024-10-19T14:00:00Z"}])
+    out = merge_understat_team(future, rolled,
+                               latest=latest_understat_team(rolled))
+    # The club's latest rolled value, which is the last played match's own
+    # leakage-safe window — the same number ``latest_understat_team`` returns
+    # and the same convention the opponent's column below follows.
+    assert out.loc[0, "team_us_xga_r5"] == 0.5
+    assert out.loc[0, "opp_us_xga_r5"] == 3.0
+
+
+def test_feature_columns_covers_every_new_block():
+    from gaffer.features.engineer import feature_columns
+
+    cols = set(feature_columns())
+    assert set(understat_feature_columns()) <= cols
+    assert set(TEAM_US_FEATURES) <= cols
+    assert set(SHRUNK_FEATURES) <= cols
+
+
+def _pred_hist():
+    rows = _us_rows([(1, 90, 4), (2, 90, 2)])
+    rows["position"] = "FWD"
+    rows["team_code"] = 3
+    rows["opp_code"] = 4
+    rows["was_home"] = True
+    rows["minutes"] = 90
+    rows["goals"] = 1
+    rows["assists"] = 0
+    rows["starts"] = 1
+    return rows
+
+
+def test_build_prediction_frame_broadcasts_the_new_features():
+    hist = _pred_hist()
+    future = pd.DataFrame([{"code": 1, "season_idx": 0, "gw": 3,
+                            "position": "FWD", "team_code": 3, "opp_code": 4,
+                            "was_home": True,
+                            "kickoff_time": "2024-08-24T14:00:00Z"}])
+    out = build_prediction_frame(hist, future)
+    assert out["us_shots90_r3"].notna().all()
+    assert out["shrunk_goals90"].notna().all()
+    assert len(out) == 1
+
+
+def test_build_prediction_frame_takes_the_team_understat_frame():
+    hist = _pred_hist()
+    future = pd.DataFrame([{"code": 1, "season_idx": 0, "gw": 3,
+                            "position": "FWD", "team_code": 3, "opp_code": 4,
+                            "was_home": True,
+                            "kickoff_time": "2024-08-24T14:00:00Z"}])
+    ut = pd.concat([
+        _ut_rows(3, ["2024-08-11", "2024-08-18"], [0.5, 2.5], [9.0, 11.0]),
+        _ut_rows(4, ["2024-08-11", "2024-08-18"], [3.0, 1.0], [14.0, 13.0]),
+    ], ignore_index=True)
+    out = build_prediction_frame(hist, future,
+                                 understat_team=add_understat_team_rolling(ut))
+    assert out.loc[0, "opp_us_xga_r5"] == 3.0
+
+
+def test_build_prediction_frame_without_understat_still_makes_the_columns():
+    hist = _pred_hist().drop(columns=["us_minutes", "us_shots",
+                                      "us_key_passes", "us_npxg",
+                                      "us_xgchain", "us_xgbuildup"])
+    future = pd.DataFrame([{"code": 1, "season_idx": 0, "gw": 3,
+                            "position": "FWD", "team_code": 3, "opp_code": 4,
+                            "was_home": True,
+                            "kickoff_time": "2024-08-24T14:00:00Z"}])
+    out = build_prediction_frame(hist, future)
+    for col in understat_feature_columns() + TEAM_US_FEATURES:
+        assert col in out.columns
