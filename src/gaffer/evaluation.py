@@ -164,16 +164,27 @@ def git_sha() -> str:
     return done.stdout.strip() if done.returncode == 0 else "unknown"
 
 
+def _reject_constant(name: str) -> None:
+    """Refuse the bare ``NaN``/``Infinity`` literals Python's json accepts.
+
+    They are not JSON, nothing else can read them back, and any artifact
+    carrying one was written before the encoder learned to refuse them — so
+    it is exactly the corrupt-artifact case, handled where that already is.
+    """
+    raise ValueError(f"{name} is not valid JSON")
+
+
 def _read_artifact() -> dict:
     """The artifact's JSON, with a decode error stated in domain terms.
 
     Both callers read the same file and both are reached from the web layer,
-    where an escaping ``JSONDecodeError`` is a bare 500 that says nothing
-    about what to do next.
+    where an escaping ``ValueError`` is a bare 500 that says nothing about
+    what to do next.
     """
     try:
-        return json.loads(EVALUATION_PATH.read_text())
-    except json.JSONDecodeError as exc:
+        return json.loads(EVALUATION_PATH.read_text(),
+                          parse_constant=_reject_constant)
+    except ValueError as exc:
         raise GafferError(
             f"{EVALUATION_PATH} is not readable JSON — it may be corrupt or "
             f"mid-write; re-run `gaffer evaluate` to rebuild it ({exc})"

@@ -197,6 +197,20 @@ def test_load_evaluation_on_a_corrupt_artifact_is_a_domain_error(
     assert "corrupt" in str(exc.value)
 
 
+def test_load_evaluation_rejects_a_nan_bearing_legacy_artifact(
+        tmp_path, monkeypatch):
+    """Python's json writes bare ``NaN``/``Infinity`` and reads them straight
+    back, so a pre-fix artifact would load into the web layer as a float that
+    no downstream JSON encoder can emit. It is a corrupt artifact, and the
+    fix for it is the same one the message already names."""
+    monkeypatch.chdir(tmp_path)
+    save_evaluation("current", {"holdout_slots": 10})
+    EVALUATION_PATH.write_text('{"current": {"mae": NaN}}')
+    with pytest.raises(GafferError) as exc:
+        load_evaluation()
+    assert "gaffer evaluate" in str(exc.value)
+
+
 def test_save_evaluation_leaves_no_temp_file_behind(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     path = save_evaluation("current", {"holdout_slots": 10})
