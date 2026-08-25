@@ -16,6 +16,7 @@ from gaffer.assets import load_bootstrap_sample
 from gaffer.data import store
 from gaffer.data.bootstrap import scoring_table
 from gaffer.data.elo import compute_elo
+from gaffer.features.bps import apply_new_bps
 from gaffer.features.engineer import (ROTATION_FEATURES, add_context,
                                       add_player_rolling, add_rotation,
                                       add_setpiece)
@@ -99,16 +100,34 @@ def load_training_frame(max_season_idx: int | None = None,
                         ) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
     """player_gw history (+ live season appended if present) with features,
     plus team_gw with features and final elo map. Optionally truncated for
-    backtesting (strictly before max_season_idx/max_gw)."""
+    backtesting (strictly before max_season_idx/max_gw).
+
+    ``bps``/``bonus`` arrive restated under the 2026/27 rules (see
+    :mod:`gaffer.features.bps`); the stored values survive as
+    ``bps_old``/``bonus_old``.
+    """
     player_gw = store.load("history/player_gw.parquet")
     fixtures = store.load("history/fixtures.parquet")
+    # Everything in the history store predates the 2026/27 rule change; the
+    # live season is the only frame already scored under it. Fix the boundary
+    # before the concat, so that in the pre-ingestion state (no live frame
+    # yet, e.g. before the season's first data_checked gameweek) the newest
+    # stored season is still restated rather than mistaken for the current
+    # one.
+    current_idx = int(player_gw["season_idx"].max()) + 1
     if store.exists("live/player_gw.parquet"):
         live = store.load("live/player_gw.parquet")
-        live["season_idx"] = player_gw["season_idx"].max() + 1
+        live["season_idx"] = current_idx
         player_gw = pd.concat([player_gw, live], ignore_index=True)
     if store.exists("live/fixtures.parquet"):
         lfx = store.load("live/fixtures.parquet")
         fixtures = pd.concat([fixtures, lfx], ignore_index=True)
+    # Restate BPS and bonus under the 2026/27 rules *before* anything reads
+    # them, so the bonus target and the bps_r*/bonus_r* rolling features all
+    # mean one thing. Re-deriving before truncation rather than after keeps
+    # every fixture's ranking whole; truncation only ever drops entire
+    # gameweeks, so the two orders agree anyway.
+    player_gw = apply_new_bps(player_gw, current_idx=current_idx)
     if max_season_idx is not None:
         keep = (player_gw["season_idx"] < max_season_idx) | (
             (player_gw["season_idx"] == max_season_idx)

@@ -205,3 +205,92 @@ def test_train_all_survives_defcon_stats_only_in_the_newest_season():
     out = models["calibration"].apply(
         pd.DataFrame({"ep": [3.0], "position": ["MID"], "p60": [1.0]}))
     assert out["ep"].notna().all()
+
+
+# --- re-derived BPS reaches the feature builder ---------------------------
+
+def _bps_history(year=2022, season_idx=0):
+    """One season of a single two-team fixture per gameweek."""
+    rows = []
+    for gw in range(1, 4):
+        for i in range(4):
+            rows.append({
+                "season": f"{year}-{year - 1999}",
+                "season_idx": season_idx, "gw": gw, "code": 100 + i,
+                "element": 1 + i, "name": f"P{i}",
+                "position": ["GKP", "DEF", "MID", "FWD"][i],
+                "team_code": 1 if i < 2 else 2,
+                "opp_code": 2 if i < 2 else 1,
+                "was_home": i < 2, "minutes": 90,
+                "kickoff_time": f"{year}-08-{10 + gw:02d}T14:00:00Z",
+                "bps": [30.0, 25.0, 20.0, 10.0][i],
+                "bonus": [3.0, 2.0, 1.0, 0.0][i],
+                "cbi": 6.0 if i == 0 else 0.0,
+                "total_points": 5, "starts": 1, "value": 50,
+            })
+    return pd.DataFrame(rows)
+
+
+def _bps_fixtures(year=2022, season_idx=0):
+    rows = []
+    for gw in range(1, 4):
+        rows.append({
+            "season_idx": season_idx, "gw": gw,
+            "kickoff_time": f"{year}-08-{10 + gw:02d}T14:00:00Z",
+            "home_code": 1, "away_code": 2,
+            "home_goals": 1, "away_goals": 0})
+    return pd.DataFrame(rows)
+
+
+def _stub_store(monkeypatch, train_mod, history, fixtures,
+                live=None, live_fixtures=None):
+    frames = {"history/player_gw.parquet": history,
+              "history/fixtures.parquet": fixtures,
+              "live/player_gw.parquet": live,
+              "live/fixtures.parquet": live_fixtures}
+    monkeypatch.setattr(train_mod.store, "exists",
+                        lambda rel: frames.get(rel) is not None)
+    monkeypatch.setattr(train_mod.store, "load",
+                        lambda rel: frames[rel].copy())
+
+
+def test_load_training_frame_re_derives_bonus_under_the_new_bps_rules(
+        monkeypatch):
+    """The bonus target and every bps_r* / bonus_r* feature have to mean the
+    same thing on both sides of the 2026/27 rule change, so every *stored*
+    season is restated before feature engineering. Only the live season is
+    already scored under the new rules and passes through untouched."""
+    from gaffer.models import train as train_mod
+
+    live = _bps_history(year=2023).drop(columns=["season_idx"])
+    _stub_store(monkeypatch, train_mod,
+                history=_bps_history(year=2022, season_idx=0),
+                fixtures=_bps_fixtures(year=2022, season_idx=0),
+                live=live,
+                live_fixtures=_bps_fixtures(year=2023, season_idx=1))
+
+    df, _tg, _elo = train_mod.load_training_frame()
+    assert "bps_old" in df.columns and "bonus_old" in df.columns
+    old = df[df["season_idx"] == 0]
+    new = df[df["season_idx"] == 1]
+    # The stored season is restated; the live season is not.
+    assert set(old.loc[old["code"] == 100, "bps"]) == {29.0}
+    assert set(new.loc[new["code"] == 100, "bps"]) == {30.0}
+    # And the rolling features were built from the adjusted column.
+    gw3 = old[(old["code"] == 100) & (old["gw"] == 3)]
+    assert float(gw3["bps_r38"].iloc[0]) == 29.0
+
+
+def test_load_training_frame_restates_every_stored_season_when_no_live(
+        monkeypatch):
+    """Before the first data_checked gameweek of a new season there is no
+    live frame yet, and the newest *stored* season is still old-rules — it
+    must not be mistaken for the current one and skipped."""
+    from gaffer.models import train as train_mod
+
+    _stub_store(monkeypatch, train_mod,
+                history=_bps_history(year=2022, season_idx=0),
+                fixtures=_bps_fixtures(year=2022, season_idx=0))
+
+    df, _tg, _elo = train_mod.load_training_frame()
+    assert set(df.loc[df["code"] == 100, "bps"]) == {29.0}
