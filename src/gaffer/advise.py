@@ -653,12 +653,24 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     name_of = dict(zip(players["code"], players["name"]))
     pos_of = dict(zip(players["code"], players["position"]))
     buys = _named(first.buys, name_of, pos_of, ep_by, gw)
+    sells = _named(first.sells, name_of, pos_of, ep_by, gw)
     for b in buys:
         # An empty EO map is "nobody's ownership is known", not "nobody owns
         # them" — at GW1 no rival picks are public yet, and tagging all 15
         # opening picks "attack" off a missing map would be pure noise.
         b["tag"] = transfer_tag(league_eo.get(b["code"]),
                                 strat is not None and bool(league_eo))
+    # Frequencies ride on the move dicts as well as on the standalone table:
+    # the CLI and the UI both render per-move, and re-joining a DataFrame in
+    # a Jinja template is not a thing anyone should have to do.
+    freq_of = {(str(r["kind"]), int(r["code"])): float(r["frequency"])
+               for r in move_freqs}
+    for b in buys:
+        if ("buy", b["code"]) in freq_of:
+            b["frequency"] = freq_of[("buy", b["code"])]
+    for s in sells:
+        if ("sell", s["code"]) in freq_of:
+            s["frequency"] = freq_of[("sell", s["code"])]
     strategy = None
     if strat is not None:
         strategy = asdict(strat)
@@ -670,7 +682,7 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         gw=gw,
         deadline=deadline,
         buys=buys,
-        sells=_named(first.sells, name_of, pos_of, ep_by, gw),
+        sells=sells,
         hits=first.hits,
         xi=_named(first.xi, name_of, pos_of, ep_by, gw),
         bench=_named(first.bench, name_of, pos_of, ep_by, gw),

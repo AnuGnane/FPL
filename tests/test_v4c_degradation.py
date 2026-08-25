@@ -155,3 +155,81 @@ def test_solve_plan_is_deterministic_across_repeated_solves():
     assert round(a.objective, 9) == round(b.objective, 9)
     assert a.gw_plans[0].squad == b.gw_plans[0].squad
     assert a.gw_plans[0].captain == b.gw_plans[0].captain
+
+
+# --- the scenario-on path, which must NOT change the n = 0 output ----------
+
+def _scenario_advice():
+    a = _fixture_advice()
+    a.buys[0]["frequency"] = 0.85
+    a.sells[0]["frequency"] = 0.90
+    a.raw_optimum_agrees = True
+    a.scenarios = {"n": 40, "completed": 39, "failures": 1, "seed": 20260825,
+                   "hold": False, "captain_frequency": 0.72,
+                   "near_misses": [{"kind": "buy", "code": 5, "gw": 7,
+                                    "label": "buy", "frequency": 0.55}]}
+    return a
+
+
+def test_advise_prints_frequencies_when_scenarios_ran(tmp_path, monkeypatch):
+    import gaffer.advise as advise_mod
+    import gaffer.config as config_mod
+    import gaffer.report.render as render_mod
+    import gaffer.tracking as tracking_mod
+
+    cfg_path = tmp_path / "config.toml"
+    cfg_path.write_text(
+        '[fpl]\nentry_id = 1\nleague_id = 2\n'
+        '[data]\ntrain_seasons = ["2025-26"]\ncurrent_season = "2026-27"\n'
+        '[scenarios]\nn = 40\n')
+    real_load = config_mod.load_config
+    monkeypatch.setattr(config_mod, "load_config",
+                        lambda path="config.toml": real_load(cfg_path))
+    monkeypatch.setattr(advise_mod, "run_advise",
+                        lambda cfg, client=None: _scenario_advice())
+    monkeypatch.setattr(render_mod, "render_report",
+                        lambda advice, **kw: "reports/gw7.html")
+    monkeypatch.setattr(tracking_mod, "latest_health", lambda: None)
+
+    out = runner.invoke(app, ["advise"]).output
+    assert "BUY  Bruno Fernandes (6.4 xPts) [85% of sims]" in out
+    assert "SELL Cole Palmer (4.1 xPts) [90% of sims]" in out
+    assert "Scenarios: 39/40 solved, seed 20260825" in out
+    assert "single-solve optimum agreed" in out
+    assert "Captain: Erling Haaland | Vice: Bukayo Saka [72% of sims]" in out
+
+
+def test_advise_prints_the_disagreement_line_when_the_gate_held_moves_back(
+        tmp_path, monkeypatch):
+    import gaffer.advise as advise_mod
+    import gaffer.config as config_mod
+    import gaffer.report.render as render_mod
+    import gaffer.tracking as tracking_mod
+
+    a = _scenario_advice()
+    a.raw_optimum_agrees = False
+    a.buys, a.sells = [], []
+    a.scenarios["hold"] = True
+
+    cfg_path = tmp_path / "config.toml"
+    cfg_path.write_text('[fpl]\nentry_id = 1\nleague_id = 2\n'
+                        '[scenarios]\nn = 40\n')
+    real_load = config_mod.load_config
+    monkeypatch.setattr(config_mod, "load_config",
+                        lambda path="config.toml": real_load(cfg_path))
+    monkeypatch.setattr(advise_mod, "run_advise",
+                        lambda cfg, client=None: a)
+    monkeypatch.setattr(render_mod, "render_report",
+                        lambda advice, **kw: "reports/gw7.html")
+    monkeypatch.setattr(tracking_mod, "latest_health", lambda: None)
+
+    out = runner.invoke(app, ["advise"]).output
+    assert "No transfers — bank the FT." in out
+    assert "single-solve optimum differed" in out
+    assert "Nearest miss: buy 5 at 55%" in out
+
+
+def test_the_n_zero_output_is_still_byte_identical(tmp_path, monkeypatch):
+    """Re-run rail 1 after the CLI grew conditional lines. This is the whole
+    point of the exercise."""
+    test_advise_prints_exactly_the_pre_v4c_block(tmp_path, monkeypatch)

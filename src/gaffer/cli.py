@@ -42,15 +42,38 @@ def advise():
         # Loud, and above the picks: the advice below was built without last
         # gameweek's results, and that changes how much to trust it.
         typer.echo(f"\n!!! WARNING: {advice.data_warning} !!!\n")
+    def _pct(move: dict) -> str:
+        """' [85% of sims]' when the scenario sweep ran, '' otherwise.
+
+        Conditional because the n = 0 output is a pinned regression rail:
+        tests/test_v4c_degradation.py compares it character for character.
+        """
+        f = move.get("frequency")
+        return "" if f is None else f" [{round(f * 100)}% of sims]"
+
     for b in advice.buys:
-        typer.echo(f"BUY  {b['name']} ({b['ep']} xPts)")
+        typer.echo(f"BUY  {b['name']} ({b['ep']} xPts){_pct(b)}")
     for s in advice.sells:
-        typer.echo(f"SELL {s['name']} ({s['ep']} xPts)")
+        typer.echo(f"SELL {s['name']} ({s['ep']} xPts){_pct(s)}")
     if not advice.buys:
         typer.echo("No transfers — bank the FT.")
     if advice.hits:
         typer.echo(f"Hits: -{advice.hits * 4}")
-    typer.echo(f"Captain: {advice.captain['name']} | Vice: {advice.vice['name']}")
+    cap_pct = ""
+    if advice.scenarios and advice.scenarios.get("captain_frequency"):
+        cap_pct = (f" [{round(advice.scenarios['captain_frequency'] * 100)}"
+                   "% of sims]")
+    typer.echo(f"Captain: {advice.captain['name']} | "
+               f"Vice: {advice.vice['name']}{cap_pct}")
+    if advice.scenarios:
+        s = advice.scenarios
+        typer.echo(f"Scenarios: {s['completed']}/{s['n']} solved, "
+                   f"seed {s['seed']}")
+        agreed = "agreed" if advice.raw_optimum_agrees else "differed"
+        typer.echo(f"The single-solve optimum {agreed}.")
+        for miss in s.get("near_misses", [])[:3]:
+            typer.echo(f"Nearest miss: {miss['label']} {miss['code']} at "
+                       f"{round(miss['frequency'] * 100)}%")
     typer.echo(f"Expected XI points: {advice.expected_pts}")
     typer.echo(f"Report: {path}")
 

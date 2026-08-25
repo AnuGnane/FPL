@@ -12,8 +12,12 @@
          margin:1rem 0} .warn{background:#fff3e0;border-left:4px solid #ef6c00;
          padding:.6rem;margin:.5rem 0}
  .diff{color:#2e7d32;font-weight:600}
+ .freq{color:#555;font-size:.9em} .muted{color:#555;font-size:.9em}
 </style></head><body>
 {% set initial = a.mode == "initial_squad" %}
+{# `advice` is the spelling the rest of the stack (CLI, API, web) uses for the
+   payload; alias it so the v4c scenario blocks below read the same way. #}
+{% set advice = a %}
 <h1>gaffer — Gameweek {{ a.gw }}{% if initial %} — build this squad{% endif %}</h1>
 <p>Deadline: <strong>{{ a.deadline }}</strong> ·
    Expected XI points: <strong>{{ a.expected_pts }}</strong></p>
@@ -23,11 +27,20 @@
 {% endif %}
 
 <div class="action"><h2 style="margin-top:0">{{ "Your opening squad" if initial else "This week's actions" }}</h2>
+{% if advice.scenarios %}
+<p class="muted">
+  {{ advice.scenarios.completed }}/{{ advice.scenarios.n }} scenarios
+  solved (seed {{ advice.scenarios.seed }}) — the single-solve optimum
+  {{ 'agreed' if advice.raw_optimum_agrees else 'differed' }}.
+</p>
+{% endif %}
 <ul>
 {% for b in a.buys %}<li>{{ "PICK" if initial else "BUY" }} <strong>{{ b.name }}</strong> ({{ b.ep }} xPts)
+{%- if advice.scenarios %} <span class="freq">{{ (b.frequency * 100) | round | int if b.frequency else '—' }}% of sims</span>{% endif %}
 {%- if b.tag %} <span class="diff">{{ b.tag }}</span>{% endif %}</li>{% endfor %}
 {% if not initial %}
-{% for s in a.sells %}<li>SELL <strong>{{ s.name }}</strong> ({{ s.ep }} xPts)</li>{% endfor %}
+{% for s in a.sells %}<li>SELL <strong>{{ s.name }}</strong> ({{ s.ep }} xPts)
+{%- if advice.scenarios %} <span class="freq">{{ (s.frequency * 100) | round | int if s.frequency else '—' }}% of sims</span>{% endif %}</li>{% endfor %}
 {% if not a.buys %}<li>No transfers — bank the free transfer.</li>{% endif %}
 {% if a.hits %}<li class="warn">Taking {{ a.hits }} hit(s): −{{ a.hits * 4 }} pts, maths clears it.</li>{% endif %}
 {% endif %}

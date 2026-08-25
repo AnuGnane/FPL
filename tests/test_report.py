@@ -156,3 +156,13 @@ def test_report_shows_the_data_gap_warning_when_there_is_one(tmp_path):
 def test_report_has_no_warning_box_when_the_data_is_current(tmp_path):
     html = render_report(_advice(), out_dir=tmp_path).read_text()
     assert "no data for" not in html
+
+
+def test_the_report_template_has_a_frequency_column_guarded_by_scenarios():
+    """Guarded, not unconditional: with n = 0 the report is the old one."""
+    from pathlib import Path
+
+    src = Path("src/gaffer/report/templates/report.html.j2").read_text()
+    assert "% of sims" in src
+    assert "advice.scenarios" in src
+    assert src.index("advice.scenarios") < src.index("% of sims")
