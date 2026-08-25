@@ -7,6 +7,7 @@ const PAGES: Array<[string, string]> = [
   ['/live', 'Live'],
   ['/players', 'Players'],
   ['/history', 'History'],
+  ['/quality', 'Model Quality'],
   ['/health', 'Runs & Health'],
   ['/ticker', 'Fixture Ticker'],
 ]

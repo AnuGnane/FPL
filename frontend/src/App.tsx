@@ -5,6 +5,7 @@ import History from './pages/History'
 import LeagueRace from './pages/LeagueRace'
 import Live from './pages/Live'
 import Players from './pages/Players'
+import Quality from './pages/Quality'
 import RivalDetail from './pages/RivalDetail'
 import Rivals from './pages/Rivals'
 import ThisWeek from './pages/ThisWeek'
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/live" element={<Live />} />
           <Route path="/players" element={<Players />} />
           <Route path="/history" element={<History />} />
+          <Route path="/quality" element={<Quality />} />
           <Route path="/health" element={<Health />} />
           <Route path="/ticker" element={<Ticker />} />
         </Routes>

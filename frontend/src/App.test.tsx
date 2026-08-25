@@ -13,10 +13,10 @@ vi.mock('./api/client', () => ({
 }))
 
 describe('app shell', () => {
-  it('lists the seven pages of layout A', () => {
+  it('lists every page in the sidebar', () => {
     render(<MemoryRouter><App /></MemoryRouter>)
     for (const label of ['This Week', 'What-If Lab', 'League Race', 'Live',
-      'Players', 'History', 'Runs & Health']) {
+      'Players', 'History', 'Model Quality', 'Runs & Health']) {
       expect(screen.getByRole('link', { name: label })).toBeInTheDocument()
     }
   })

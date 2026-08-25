@@ -309,3 +309,67 @@ export interface TickerData {
     }>
   }>
 }
+
+export interface CategoryMetrics {
+  rmse: number
+  mae: number
+  n: number
+}
+
+export interface ReferenceMetrics {
+  rmse: number
+  mae: number
+}
+
+export interface ReliabilityBin {
+  n: number
+  pred: number
+  obs: number
+}
+
+export interface HeadMetrics {
+  log_loss: number
+  reliability: ReliabilityBin[]
+}
+
+export type StratifiedTable = Record<string, CategoryMetrics>
+
+export interface CurrentEvaluation {
+  run_at: string
+  git_sha: string
+  holdout_slots: number
+  stratified: Record<string, StratifiedTable>
+  heads: Record<string, HeadMetrics>
+  baselines: Record<string, StratifiedTable>
+}
+
+export interface BenchmarkEvaluation {
+  run_at: string
+  git_sha: string
+  test_season: string
+  stratified: Record<string, StratifiedTable>
+  references: Record<string, Record<string, ReferenceMetrics>>
+  caveat: string
+}
+
+export interface DecompositionCell {
+  total: number
+  per_gw: number
+  hits: number
+}
+
+export interface DecompositionData {
+  run_at: string
+  git_sha: string
+  season: string
+  start_gw: number
+  cells: Record<string, DecompositionCell>
+  forecast_gap_h3: number
+  planning_ceiling: number
+}
+
+export interface QualityData {
+  current: CurrentEvaluation | null
+  benchmark: BenchmarkEvaluation | null
+  decomposition: DecompositionData | null
+}
