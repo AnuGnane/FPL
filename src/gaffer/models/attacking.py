@@ -14,6 +14,8 @@ from __future__ import annotations
 import pandas as pd
 from lightgbm import LGBMRegressor
 
+from gaffer.features.engineer import (SHRUNK_FEATURES,
+                                      understat_feature_columns)
 from gaffer.models.minutes import LGB_KW
 
 ATTACK_FEATURES = [
@@ -24,6 +26,12 @@ ATTACK_FEATURES = [
     "team_elo", "opp_elo", "elo_diff", "home", "days_rest",
     # Defenders take corners, so every position group gets these.
     "pen_taker", "setpiece_taker",
+] + understat_feature_columns() + SHRUNK_FEATURES + [
+    # The opponent's defensive shape is the attacking signal: how leaky and
+    # how passive the defence in front of the player is. FPL's own xg/xa stay
+    # exactly where they are — Understat contributes the *marginal* signal
+    # (shot volume, chance creation, non-penalty split), not a replacement.
+    "opp_us_xga_r5", "opp_us_xga_r38", "opp_ppda_r5", "opp_ppda_r38",
 ]
 
 

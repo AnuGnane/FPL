@@ -78,7 +78,11 @@ class DefconModel:
 
 
 SAVES_FEATURES = ["saves_r3", "saves_r5", "saves_r38", "opp_elo", "elo_diff",
-                  "home"]
+                  "home",
+                  # Shots faced is what a keeper's save count is made of, and
+                  # the opponent's expected goals against us is the closest
+                  # measurable proxy for shot volume coming our way.
+                  "opp_us_xga_r5", "opp_us_xga_r38"]
 
 
 class SavesModel:

@@ -441,3 +441,55 @@ def test_train_all_without_match_odds_stores_the_constant(tmp_path,
                         _team_frame(seasons=(0, 1)), save=True)
     stored = persistence.load_params("blend")["odds_blend_weight"]
     assert stored == ODDS_BLEND_WEIGHT
+
+
+def test_load_training_frame_attaches_the_understat_features(monkeypatch,
+                                                             tmp_path):
+    """The join is by (code, UK match date) — Understat has no gameweek
+    number, and the date is the only key both sources agree on."""
+    from gaffer.features.engineer import understat_feature_columns
+    from gaffer.models import train as train_mod
+
+    hist = _bps_history(year=2022, season_idx=0)
+    fx = _bps_fixtures(year=2022, season_idx=0)
+    us = pd.DataFrame([
+        {"season": "2022-23", "season_idx": 0, "understat_id": "1",
+         "code": 100, "player_name": "P0", "team": "Arsenal",
+         "date": pd.Timestamp("2022-08-11").date(), "minutes": 90.0,
+         "us_shots": 4.0, "us_key_passes": 2.0, "us_npxg": 0.5,
+         "us_xgchain": 0.9, "us_xgbuildup": 0.3},
+        {"season": "2022-23", "season_idx": 0, "understat_id": "1",
+         "code": 100, "player_name": "P0", "team": "Arsenal",
+         "date": pd.Timestamp("2022-08-12").date(), "minutes": 90.0,
+         "us_shots": 2.0, "us_key_passes": 1.0, "us_npxg": 0.2,
+         "us_xgchain": 0.4, "us_xgbuildup": 0.1},
+    ])
+    frames = {"history/player_gw.parquet": hist,
+              "history/fixtures.parquet": fx,
+              "history/understat_player.parquet": us}
+    monkeypatch.setattr(train_mod.store, "exists", lambda rel: rel in frames)
+    monkeypatch.setattr(train_mod.store, "load", lambda rel: frames[rel].copy())
+
+    df, _tg, _elo = train_mod.load_training_frame()
+    for col in understat_feature_columns():
+        assert col in df.columns
+    row = df[(df["code"] == 100) & (df["gw"] == 3)]
+    assert float(row["us_shots90_r38"].iloc[0]) == 3.0
+
+
+def test_load_training_frame_without_understat_still_has_the_columns(
+        monkeypatch):
+    """No parquet on disk is the default state; every new column has to
+    exist and be empty so the feature schema never depends on the scrape."""
+    from gaffer.features.engineer import (SHRUNK_FEATURES, TEAM_US_FEATURES,
+                                          understat_feature_columns)
+    from gaffer.models import train as train_mod
+
+    _stub_store(monkeypatch, train_mod,
+                history=_bps_history(year=2022, season_idx=0),
+                fixtures=_bps_fixtures(year=2022, season_idx=0))
+    df, _tg, _elo = train_mod.load_training_frame()
+    for col in understat_feature_columns() + TEAM_US_FEATURES:
+        assert col in df.columns and df[col].isna().all()
+    for col in SHRUNK_FEATURES:
+        assert col in df.columns

@@ -69,3 +69,48 @@ def test_attack_features_include_setpiece_columns():
     from gaffer.models.attacking import ATTACK_FEATURES
     assert "pen_taker" in ATTACK_FEATURES
     assert "setpiece_taker" in ATTACK_FEATURES
+
+
+def test_attack_features_carry_the_understat_and_shrunken_blocks():
+    from gaffer.features.engineer import (SHRUNK_FEATURES, TEAM_US_FEATURES,
+                                          understat_feature_columns)
+    from gaffer.models.attacking import ATTACK_FEATURES
+
+    cols = set(ATTACK_FEATURES)
+    assert set(understat_feature_columns()) <= cols
+    assert set(SHRUNK_FEATURES) <= cols
+    assert {"opp_us_xga_r5", "opp_ppda_r5"} <= cols
+    # FPL's own xg/xa stay: Understat is the marginal signal, not a
+    # replacement for the expected-stats the feed already gives us.
+    assert "xg_r5" in cols and "xa_r5" in cols
+
+
+def test_saves_features_carry_the_opponent_team_understat_block():
+    from gaffer.models.components import SAVES_FEATURES
+
+    assert {"opp_us_xga_r5", "opp_us_xga_r38"} <= set(SAVES_FEATURES)
+
+
+def test_attacking_model_fits_with_the_new_columns_all_nan():
+    """The degradation rail at the model level: no Understat data means the
+    columns are present and empty, and LightGBM must simply ignore them."""
+    import numpy as np
+    import pandas as pd
+
+    from gaffer.models.attacking import ATTACK_FEATURES, AttackingModel
+
+    rng = np.random.default_rng(0)
+    rows = []
+    for i in range(200):
+        rows.append({"code": 100 + i % 10, "season_idx": 0, "gw": 1 + i % 20,
+                     "position": "MID", "minutes": 90,
+                     "goals": int(rng.random() < 0.2),
+                     "assists": int(rng.random() < 0.2),
+                     "xg_r5": rng.random(), "xa_r5": rng.random()})
+    df = pd.DataFrame(rows)
+    for col in ATTACK_FEATURES:
+        if col not in df.columns:
+            df[col] = float("nan")
+    model = AttackingModel().fit(df)
+    out = model.predict(df)
+    assert out["e_goals"].notna().all()

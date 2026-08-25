@@ -17,9 +17,13 @@ from gaffer.data import store
 from gaffer.data.bootstrap import scoring_table
 from gaffer.data.elo import compute_elo
 from gaffer.features.bps import FIRST_NEW_RULES_SEASON, apply_new_bps
-from gaffer.features.engineer import (ROTATION_FEATURES, add_context,
+from gaffer.data.understat import UNDERSTAT_PLAYER_PATH, UNDERSTAT_TEAM_PATH
+from gaffer.features.engineer import (ROTATION_FEATURES, US_STATS, add_context,
                                       add_player_rolling, add_rotation,
-                                      add_setpiece)
+                                      add_setpiece, add_shrunken_rates,
+                                      add_understat_rolling,
+                                      add_understat_team_rolling,
+                                      merge_understat_team)
 from gaffer.models.assemble import assemble_ep
 from gaffer.models.attacking import ATTACK_FEATURES, AttackingModel
 from gaffer.models.calibrate import CalibrationModel
@@ -117,6 +121,52 @@ def first_new_rules_idx(player_gw: pd.DataFrame) -> int:
     return int(player_gw["season_idx"].max()) + 1
 
 
+def attach_understat(df: pd.DataFrame) -> pd.DataFrame:
+    """Join the Understat parquets onto player rows and build their features.
+
+    The join key is ``(code, UK match date)``: Understat carries no gameweek
+    number, and a date plus a player is unique even in a double gameweek. A
+    player-match with no Understat row keeps NaN stats, which LightGBM splits
+    on natively — no imputation, deliberately, because "we have no shot data
+    for him" is genuinely different from "he had no shots".
+
+    With no parquet on disk at all the feature columns are still created,
+    empty, so the model's schema is identical whether or not the scrape ever
+    ran.
+    """
+    if store.exists(UNDERSTAT_PLAYER_PATH):
+        us = store.load(UNDERSTAT_PLAYER_PATH)
+    else:
+        us = pd.DataFrame()
+    if not us.empty:
+        keyed = us.rename(columns={"minutes": "us_minutes"})
+        keyed = keyed[["code", "date", "us_minutes"] + US_STATS]
+        keyed["date"] = pd.to_datetime(keyed["date"], errors="coerce").dt.date
+        keyed = keyed.drop_duplicates(subset=["code", "date"])
+        df = df.copy()
+        df["_date"] = pd.to_datetime(df["kickoff_time"], errors="coerce",
+                                     utc=True).dt.tz_convert(
+                                         "Europe/London").dt.date
+        df = df.merge(keyed.rename(columns={"date": "_date"}),
+                      on=["code", "_date"], how="left", validate="many_to_one")
+        df = df.drop(columns=["_date"])
+    df = add_understat_rolling(df)
+    df = merge_understat_team(df, understat_team_rolled())
+    return add_shrunken_rates(df)
+
+
+def understat_team_rolled() -> pd.DataFrame | None:
+    """The rolled Understat team frame, or ``None`` when there is no parquet.
+
+    Shared by training and by ``advise``'s prediction frame, so both sides see
+    the same team-level numbers.
+    """
+    if not store.exists(UNDERSTAT_TEAM_PATH):
+        return None
+    ut = store.load(UNDERSTAT_TEAM_PATH)
+    return add_understat_team_rolling(ut) if not ut.empty else None
+
+
 def load_training_frame(max_season_idx: int | None = None,
                         max_gw: int | None = None
                         ) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
@@ -171,6 +221,7 @@ def load_training_frame(max_season_idx: int | None = None,
     df = add_rotation(df)
     df = add_setpiece(df)
     df = add_context(df, elo, elo_final)
+    df = attach_understat(df)
     tg = add_team_rolling(build_team_gw(fixtures))
     own = elo.rename(columns={"elo_pre": "team_elo_own"})
     tg = tg.merge(own, on=["season_idx", "gw", "code"], how="left")
