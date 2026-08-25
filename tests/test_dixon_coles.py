@@ -220,6 +220,39 @@ def test_the_bottom_three_are_the_weakest_teams_in_the_latest_season():
     assert set(model.bottom_codes_) <= {9, 10, 11}
 
 
+def _two_season_fixtures(relegated=(1, 2)):
+    """Two seasons of round robins; ``relegated`` play only in season 0."""
+    rows, day = [], 0
+    for season_idx in (0, 1):
+        codes = [0, 1, 2, 3, 4, 5] if season_idx == 0 else [0, 3, 4, 5, 6, 7]
+        for _ in range(4):
+            for i in codes:
+                for j in codes:
+                    if i == j:
+                        continue
+                    rows.append({
+                        "season_idx": season_idx, "gw": 1 + day // 20,
+                        "kickoff_time": (pd.Timestamp("2020-01-01", tz="UTC")
+                                         + pd.Timedelta(days=day)).isoformat(),
+                        "home_code": i, "away_code": j,
+                        "home_goals": 2 if i > j else 0,
+                        "away_goals": 0 if i > j else 2})
+                    day += 1
+    return pd.DataFrame(rows)
+
+
+def test_the_bottom_three_ignore_clubs_absent_from_the_latest_season():
+    """A club relegated before the latest season plays no matches in it, so
+    a points table seeded over every code it has ever seen leaves it on
+    zero — and three ghosts win "bottom three" ahead of the sides actually
+    down there."""
+    from gaffer.models.dixon_coles import DixonColesModel
+
+    model = DixonColesModel().fit(build_team_gw(_two_season_fixtures()))
+    assert set(model.bottom_codes_) <= {0, 3, 4, 5, 6, 7}
+    assert not ({1, 2} & set(model.bottom_codes_))
+
+
 def test_fit_on_a_single_round_robin_still_converges():
     fx = _synthetic_fixtures(_TRUE_ATTACK, _TRUE_DEFENCE, repeats=1)
     model = DixonColesModel().fit(build_team_gw(fx))

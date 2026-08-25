@@ -222,7 +222,12 @@ class DixonColesModel:
         """
         index = {c: i for i, c in enumerate(codes)}
         latest = matches[matches["season_idx"] == matches["season_idx"].max()]
-        points: dict = {c: 0.0 for c in codes}
+        # Only the clubs that actually played in the latest season have a
+        # table position in it. Seeding every code the fit ever saw leaves a
+        # side relegated seasons ago sitting on zero points, and three such
+        # ghosts then win "bottom three" ahead of the teams really down there.
+        present = set(latest["home_code"]) | set(latest["away_code"])
+        points: dict = {c: 0.0 for c in codes if c in present}
         for m in latest.itertuples():
             if m.home_goals > m.away_goals:
                 points[m.home_code] += 3.0
