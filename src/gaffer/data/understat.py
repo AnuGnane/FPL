@@ -16,6 +16,7 @@ only a running season ever re-fetches.
 
 from __future__ import annotations
 
+import html
 import json
 import time
 from pathlib import Path
@@ -50,6 +51,18 @@ def _require(payload, key: str, url: str):
     return payload[key]
 
 
+def _text(value):
+    """Understat's own text, HTML-unescaped.
+
+    The JSON endpoints serve the site's HTML-escaped strings verbatim, so an
+    apostrophe arrives as ``&#039;`` — "N&#039;Golo Kant&eacute;". Left alone
+    that normalizes to an "039" token and the player matches nothing, so
+    every name and club title that lands in a frame is unescaped on the way
+    in, once, at the edge.
+    """
+    return html.unescape(value) if isinstance(value, str) else value
+
+
 def _num(value) -> float:
     """Understat ships every number as a string, and ``None`` for absent."""
     try:
@@ -70,8 +83,8 @@ def league_matches(dates: list) -> pd.DataFrame:
             "match_id": str(m["id"]),
             "date": pd.to_datetime(m["datetime"], errors="coerce").date()
             if m.get("datetime") else None,
-            "home_team": m["h"]["title"],
-            "away_team": m["a"]["title"],
+            "home_team": _text(m["h"]["title"]),
+            "away_team": _text(m["a"]["title"]),
             "is_result": bool(m.get("isResult")),
         })
     return pd.DataFrame(rows, columns=MATCH_COLS)
@@ -92,7 +105,7 @@ def team_match_rows(teams: dict, season: str, season_idx: int) -> pd.DataFrame:
             att, dfn = _num(ppda.get("att")), _num(ppda.get("def"))
             rows.append({
                 "season": season, "season_idx": int(season_idx),
-                "team": team["title"],
+                "team": _text(team["title"]),
                 "date": pd.to_datetime(h["date"], errors="coerce").date()
                 if h.get("date") else None,
                 "us_xg": _num(h.get("xG")), "us_xga": _num(h.get("xGA")),
@@ -128,7 +141,8 @@ def match_player_rows(match: dict, match_id: str, date, home_team: str,
             pid = str(entry["player_id"])
             rows.append({
                 "match_id": str(match_id), "date": date,
-                "understat_id": pid, "player_name": entry.get("player"),
+                "understat_id": pid,
+                "player_name": _text(entry.get("player")),
                 "team": team,
                 "minutes": _num(entry.get("time")),
                 "us_shots": _num(entry.get("shots")),
@@ -240,6 +254,11 @@ class UnderstatClient:
             cached = json.loads(path.read_text())
             frame = pd.DataFrame(cached, columns=PLAYER_COLS)
             frame["date"] = date
+            # Caches written before names were unescaped still hold the raw
+            # ``&#039;``, and those files are never re-fetched — so the
+            # unescape is applied on the way out as well as on the way in.
+            for col in ("player_name", "team"):
+                frame[col] = frame[col].map(_text)
             return frame
         url = f"{UNDERSTAT_BASE}/getMatchData/{match_id}"
         payload = self._get_json(url)
@@ -329,13 +348,18 @@ def map_understat_players(us_players: pd.DataFrame, fpl_players: pd.DataFrame,
     fpl["norm_name"] = fpl["name"].map(normalize_name)
     by_name_club = {(r.norm_name, r.team_name): int(r.code)
                     for r in fpl.itertuples()}
-    counts = fpl["norm_name"].value_counts()
-    unique_names = {r.norm_name: int(r.code) for r in fpl.itertuples()
-                    if counts.get(r.norm_name, 0) == 1}
-    by_club: dict[object, list[tuple[int, tuple[str, ...]]]] = {}
+    # ``fpl`` carries one row per club a code ever played for, so every count
+    # below is over distinct *codes*: a player with three clubs is still one
+    # player, and counting his rows would make his own name look contested.
+    codes_by_name: dict[str, set[int]] = {}
+    by_club: dict[object, dict[int, tuple[str, ...]]] = {}
     for r in fpl.itertuples():
-        by_club.setdefault(r.team_name, []).append(
-            (int(r.code), tuple(r.norm_name.split())))
+        codes_by_name.setdefault(r.norm_name, set()).add(int(r.code))
+        by_club.setdefault(r.team_name, {}).setdefault(
+            int(r.code), tuple(r.norm_name.split()))
+    unique_names = {name: next(iter(codes))
+                    for name, codes in codes_by_name.items()
+                    if len(codes) == 1}
 
     resolved: dict[str, tuple[str, int]] = {}
     claimed: set[int] = set()
@@ -356,8 +380,9 @@ def map_understat_players(us_players: pd.DataFrame, fpl_players: pd.DataFrame,
             take(r.understat_id, "cross_club", code)
 
     def candidates(norm_club) -> list[tuple[int, tuple[str, ...]]]:
-        """Same-club FPL players no pass has claimed yet."""
-        return [(code, toks) for code, toks in by_club.get(norm_club, [])
+        """Same-club FPL players no pass has claimed yet, one per code."""
+        return [(code, toks)
+                for code, toks in by_club.get(norm_club, {}).items()
                 if code not in claimed]
 
     def sweep(bucket: str, rule) -> None:
@@ -541,27 +566,46 @@ def build_understat_team(seasons: list[str], season_indexes: dict[str, int],
 
 
 def history_player_index(seasons: list[str]) -> pd.DataFrame:
-    """``[code, name, team_name]`` for every player in stored history.
+    """``[code, name, team_name]``, one row per club a code ever played for.
 
     The FPL side of the id mapping, built offline from what is already on
     disk: a scrape must not need a live bootstrap call, and history covers
-    seasons the current bootstrap has forgotten. The newest row per code wins,
-    because that is the club the player is at now and the one a same-club
-    match is most likely to hit.
+    seasons the current bootstrap has forgotten.
+
+    A code gets a row for *every* club it appeared for across ``seasons``, not
+    just its newest one, because understat's rows span the same seasons: the
+    2022-23 half of the scrape has Solanke at Bournemouth, and pinning his
+    code to Spurs would lose the same-club match for him and for every other
+    player who has since transferred. Multiple rows per code are therefore
+    expected downstream, and :func:`map_understat_players` dedupes its
+    candidate sets by code so two routes to one club never read as two rival
+    players.
+
+    The *name* still comes from the newest row per code — one spelling per
+    player, the current one — and a club whose code has no bootstrap name in
+    any of the seasons is dropped rather than carried as a null that would
+    silently never match.
     """
     from gaffer.data import store
     from gaffer.data.history import season_name_codes
 
     player_gw = store.load("history/player_gw.parquet")
-    code_to_name: dict[int, str] = {}
+    # A club's bootstrap name is per season, and the odd rename means one
+    # team code can carry two: keep both, so either spelling matches.
+    code_to_names: dict[int, set[str]] = {}
     for _season, table in season_name_codes(seasons).items():
         for name, code in table.items():
-            code_to_name[int(code)] = name
-    latest = (player_gw.sort_values(["season_idx", "gw"])
-              .groupby("code", as_index=False).tail(1))
-    return pd.DataFrame({
-        "code": latest["code"].astype(int),
-        "name": latest["name"],
-        "team_name": latest["team_code"].map(
-            lambda c: code_to_name.get(int(c)) if pd.notna(c) else None),
-    })
+            code_to_names.setdefault(int(code), set()).add(name)
+
+    ordered = player_gw.sort_values(["season_idx", "gw"])
+    latest_name = {int(r.code): r.name for r
+                   in ordered.groupby("code", as_index=False).tail(1)
+                   .itertuples()}
+    pairs = ordered[["code", "team_code"]].dropna().drop_duplicates()
+    rows = []
+    for r in pairs.itertuples():
+        code = int(r.code)
+        for club in sorted(code_to_names.get(int(r.team_code), ())):
+            rows.append({"code": code, "name": latest_name[code],
+                         "team_name": club})
+    return pd.DataFrame(rows, columns=["code", "name", "team_name"])

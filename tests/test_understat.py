@@ -750,3 +750,141 @@ def test_build_understat_team_drops_a_club_with_no_code(tmp_path):
     out = build_understat_team(["2024-25"], {"2024-25": 2}, {},
                                client=client, store_result=False)
     assert out.empty
+
+
+# --- html entities in understat's own text --------------------------------
+
+def test_match_player_rows_unescape_html_entities_in_names():
+    """Understat serves its JSON HTML-escaped, and an apostrophe comes back
+    as ``&#039;`` — which normalizes to a "039" token that matches nothing."""
+    match = {"rosters": {"h": {"1": {"player_id": "9", "player":
+                                     "N&#039;Golo Kant&eacute;", "time": "90"}},
+                         "a": {}},
+             "shots": {"h": [], "a": []}}
+    rows = match_player_rows(match, "1", None, "Chelsea", "Arsenal")
+    assert list(rows["player_name"]) == ["N'Golo Kanté"]
+    assert normalize_name(rows["player_name"].iloc[0]) == "ngolo kante"
+
+
+def test_league_matches_unescape_html_entities_in_club_titles():
+    dates = [{"id": "1", "isResult": True, "datetime": "2024-08-16 20:00:00",
+              "h": {"id": "1", "title": "Nott&#039;m Forest"},
+              "a": {"id": "2", "title": "Arsenal"}}]
+    rows = league_matches(dates)
+    assert rows["home_team"].iloc[0] == "Nott'm Forest"
+
+
+def test_team_match_rows_unescape_html_entities_in_club_titles():
+    teams = {"1": {"title": "Nott&#039;m Forest",
+                   "history": [{"date": "2024-08-16", "xG": "1.0",
+                                "xGA": "0.5", "deep": "3",
+                                "deep_allowed": "1",
+                                "ppda": {"att": "100", "def": "10"}}]}}
+    rows = team_match_rows(teams, "2024-25", 0)
+    assert rows["team"].iloc[0] == "Nott'm Forest"
+
+
+# --- every club a code ever held ------------------------------------------
+
+def _stub_history(monkeypatch, player_gw, tables):
+    import gaffer.data.history as history_mod
+    import gaffer.data.store as store_mod
+
+    monkeypatch.setattr(store_mod, "load", lambda path: player_gw)
+    monkeypatch.setattr(history_mod, "season_name_codes", lambda s: tables)
+
+
+def test_history_player_index_carries_every_club_a_code_played_for(
+        monkeypatch):
+    """Understat's rows span five seasons, so pinning a code to its newest
+    club alone loses the same-club match for every player who transferred."""
+    from gaffer.data.understat import history_player_index
+
+    player_gw = pd.DataFrame([
+        {"season_idx": 0, "gw": 1, "code": 100, "name": "Dominic Solanke",
+         "team_code": 91},
+        {"season_idx": 2, "gw": 5, "code": 100, "name": "Dominic Solanke",
+         "team_code": 6},
+    ])
+    _stub_history(monkeypatch, player_gw,
+                  {"2022-23": {"Bournemouth": 91, "Spurs": 6}})
+    out = history_player_index(["2022-23"])
+    assert set(out["team_name"]) == {"Bournemouth", "Spurs"}
+    assert set(out["code"]) == {100}
+    assert set(out["name"]) == {"Dominic Solanke"}
+
+
+def test_history_player_index_takes_the_newest_name_per_code(monkeypatch):
+    """A rename mid-history should not leave two spellings behind."""
+    from gaffer.data.understat import history_player_index
+
+    player_gw = pd.DataFrame([
+        {"season_idx": 0, "gw": 1, "code": 101, "name": "Joe Gomez",
+         "team_code": 14},
+        {"season_idx": 1, "gw": 3, "code": 101, "name": "Joseph Gomez",
+         "team_code": 14},
+    ])
+    _stub_history(monkeypatch, player_gw, {"2022-23": {"Liverpool": 14}})
+    out = history_player_index(["2022-23", "2023-24"])
+    assert out.to_dict("records") == [
+        {"code": 101, "name": "Joseph Gomez", "team_name": "Liverpool"}]
+
+
+def test_history_player_index_drops_a_club_with_no_bootstrap_name(
+        monkeypatch):
+    from gaffer.data.understat import history_player_index
+
+    player_gw = pd.DataFrame([
+        {"season_idx": 0, "gw": 1, "code": 102, "name": "Someone",
+         "team_code": 999},
+    ])
+    _stub_history(monkeypatch, player_gw, {"2022-23": {"Arsenal": 3}})
+    assert history_player_index(["2022-23"]).empty
+
+
+# --- the mapping against a multi-club FPL index ---------------------------
+
+def test_the_mapping_matches_a_club_the_player_has_since_left():
+    """Understat has Solanke at Bournemouth in 2022-23; the FPL index now
+    carries both of his clubs, so the same-club pass reaches him."""
+    us = _us([("70", "Dominic Solanke", "Bournemouth")])
+    fpl = _fpl([(100, "Dominic Solanke-Mikale", "Bournemouth"),
+                (100, "Dominic Solanke-Mikale", "Spurs"),
+                (101, "Someone Else", "Bournemouth")])
+    out, report = map_understat_players(
+        us, fpl, team_aliases={"Bournemouth": "Bournemouth"})
+    assert list(out["code"]) == [100]
+    assert report["token_subset"] == 1 and report["unmatched"] == 0
+
+
+def test_two_rows_for_one_code_at_one_club_are_not_an_ambiguity():
+    """A code can reach the same club by two routes; deduping candidates by
+    code is what keeps that from reading as two rival players."""
+    us = _us([("71", "Gabriel Martinelli", "Arsenal")])
+    fpl = _fpl([(110, "Gabriel Martinelli Silva", "Arsenal"),
+                (110, "Gabriel Martinelli Silva", "Arsenal")])
+    out, report = map_understat_players(us, fpl,
+                                        team_aliases={"Arsenal": "Arsenal"})
+    assert list(out["code"]) == [110]
+    assert report["token_subset"] == 1
+
+
+def test_cross_club_uniqueness_counts_codes_not_rows():
+    """One player with three clubs is still one player: the league-unique
+    name pass must not read his own rows as rivals."""
+    us = _us([("72", "Kai Havertz", "Arsenal")])
+    fpl = _fpl([(120, "Kai Havertz", "Chelsea"),
+                (120, "Kai Havertz", "Arsenal"),
+                (120, "Kai Havertz", "Spurs")])
+    out, report = map_understat_players(us, fpl, team_aliases={})
+    assert list(out["code"]) == [120]
+    assert report["exact"] == 1
+
+
+def test_cross_club_still_refuses_two_codes_sharing_a_name():
+    us = _us([("73", "Danny Ward", "Leicester")])
+    fpl = _fpl([(130, "Danny Ward", "Huddersfield"),
+                (130, "Danny Ward", "Cardiff City"),
+                (131, "Danny Ward", "Nowhere")])
+    out, report = map_understat_players(us, fpl, team_aliases={})
+    assert out.empty and report["unmatched"] == 1
