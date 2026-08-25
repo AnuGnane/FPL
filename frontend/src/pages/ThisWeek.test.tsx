@@ -172,4 +172,62 @@ describe('This Week', () => {
     expect(screen.getByText('Attacking')).toBeInTheDocument()
     expect(screen.getByText('2.71')).toBeInTheDocument()
   })
+  // --- v4c: the scenario frequency column ---------------------------------
+
+  function renderWithAdvice(advice: Record<string, unknown>) {
+    apiGet.mockImplementation(async (path: string) => {
+      if (path === '/api/advice/latest') return { ...LATEST, advice }
+      if (path === '/api/chips/plan') return { gw: 3, chips: [] }
+      throw new Error(`unexpected GET ${path}`)
+    })
+    renderPage()
+  }
+
+  const SCENARIOS = {
+    n: 40, completed: 39, failures: 1, seed: 20260825, hold: false,
+    captain_frequency: 0.72, near_misses: [],
+  }
+
+  it('shows a % of sims column when the scenario sweep ran', async () => {
+    renderWithAdvice({
+      ...LATEST.advice,
+      buys: [{ code: 1, name: 'Bruno Fernandes', position: 'MID', ep: 6.4,
+               frequency: 0.85 }],
+      sells: [{ code: 2, name: 'Cole Palmer', position: 'MID', ep: 4.1,
+                frequency: 0.9 }],
+      scenarios: SCENARIOS,
+      raw_optimum_agrees: true,
+    })
+    expect(await screen.findByText('% of sims')).toBeInTheDocument()
+    expect(screen.getByText('85%')).toBeInTheDocument()
+    expect(screen.getByText('90%')).toBeInTheDocument()
+  })
+
+  it('omits the column entirely when scenarios did not run', async () => {
+    renderWithAdvice(LATEST.advice)
+    await screen.findByText('Transfers')
+    expect(screen.queryByText('% of sims')).toBeNull()
+  })
+
+  it('renders a dash for a move with no frequency', async () => {
+    renderWithAdvice({
+      ...LATEST.advice,
+      buys: [{ code: 1, name: 'Bruno Fernandes', position: 'MID', ep: 6.4 }],
+      sells: [],
+      scenarios: { ...SCENARIOS, completed: 40, failures: 0, seed: 1,
+                   captain_frequency: 0.5 },
+      raw_optimum_agrees: false,
+    })
+    expect(await screen.findByText('\u2014')).toBeInTheDocument()
+  })
+
+  it('reports whether the single-solve optimum agreed', async () => {
+    renderWithAdvice({
+      ...LATEST.advice,
+      scenarios: { ...SCENARIOS, seed: 1, captain_frequency: 0.5 },
+      raw_optimum_agrees: false,
+    })
+    expect(await screen.findByText(/39\/40 scenarios/)).toBeInTheDocument()
+    expect(screen.getByText(/differed/)).toBeInTheDocument()
+  })
 })

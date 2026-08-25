@@ -212,3 +212,28 @@ def test_staleness_warns_when_only_the_last_gameweek_is_missing(client,
     assert body["staleness"]["data_through_gw"] == 2
     assert body["staleness"]["data_warning"].startswith(
         "model has no data for GW3 ")
+
+
+def test_the_advice_endpoint_passes_scenario_fields_through_untouched():
+    """AdviceLatest.advice is dict[str, Any] by design, so the v4c fields need
+    no schema change — but 'by design' should be a test, not a belief."""
+    from gaffer.web.schemas import AdviceLatest
+
+    payload = {
+        "gw": 7, "mode": "weekly", "deadline": "2026-10-03T10:00:00Z",
+        "advice": {"gw": 7, "buys": [{"code": 1, "frequency": 0.85}],
+                   "move_frequencies": [{"kind": "buy", "code": 1, "gw": 7,
+                                         "label": "buy", "count": 34,
+                                         "frequency": 0.85}],
+                   "raw_optimum_agrees": True,
+                   "scenarios": {"n": 40, "completed": 39, "seed": 1}},
+        "staleness": {"advice_gw": 7, "current_gw": 7,
+                      "generated_at": "2026-10-01T00:00:00Z",
+                      "deadline": "2026-10-03T10:00:00Z",
+                      "deadline_passed": False, "stale": False,
+                      "reason": ""},
+    }
+    out = AdviceLatest(**payload)
+    assert out.advice["raw_optimum_agrees"] is True
+    assert out.advice["scenarios"]["completed"] == 39
+    assert out.advice["buys"][0]["frequency"] == 0.85

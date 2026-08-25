@@ -4,6 +4,29 @@ export interface PlayerRef {
   position?: string
   ep: number
   tag?: string
+  /** Share of noised scenarios that contained this move. Absent when the
+   *  scenario sweep did not run ([scenarios] n = 0). */
+  frequency?: number
+}
+
+export interface MoveFrequency {
+  kind: 'buy' | 'sell' | 'hit' | 'chip' | 'captain' | 'no_transfer'
+  code: number
+  gw: number
+  label: string
+  count: number
+  frequency: number
+}
+
+export interface ScenarioReport {
+  n: number
+  completed: number
+  failures: number
+  seed: number
+  hold: boolean
+  captain_frequency: number
+  near_misses: Array<{ kind: string; code: number; gw: number; label: string
+                       frequency: number }>
 }
 
 export interface Staleness {
@@ -41,6 +64,11 @@ export interface Advice {
   chip_table: Array<{ chip: string; gw: number; gain: number
                       per_week: number }>
   strategy: Strategy | null
+  // v4c: present only when the scenario sweep ran. Optional so an advice
+  // payload written before v4c still types.
+  move_frequencies?: MoveFrequency[]
+  raw_optimum_agrees?: boolean | null
+  scenarios?: ScenarioReport | null
 }
 
 export interface AdviceLatest {

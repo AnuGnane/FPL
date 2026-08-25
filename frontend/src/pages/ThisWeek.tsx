@@ -82,16 +82,41 @@ export default function ThisWeek() {
       </div>
       <div className="card">
         <h2>Transfers</h2>
+        {advice.scenarios && (
+          <p className="muted">
+            {advice.scenarios.completed}/{advice.scenarios.n} scenarios solved
+            (seed {advice.scenarios.seed}) — the single-solve optimum{' '}
+            {advice.raw_optimum_agrees ? 'agreed' : 'differed'}.
+          </p>
+        )}
         {advice.buys.length === 0 && advice.sells.length === 0 && (
           <p className="muted">No transfers — bank the free transfer.</p>
         )}
         <table>
+          {advice.scenarios && (
+            <thead>
+              <tr>
+                <th />
+                <th>Player</th>
+                <th>xPts</th>
+                <th>% of sims</th>
+                <th />
+              </tr>
+            </thead>
+          )}
           <tbody>
             {advice.buys.map((player) => (
               <tr key={`in-${player.code}`}>
                 <td>IN</td>
                 <td><PlayerName code={player.code} name={player.name} /></td>
                 <td>{player.ep}</td>
+                {advice.scenarios && (
+                  <td>
+                    {player.frequency === undefined
+                      ? '—'
+                      : `${Math.round(player.frequency * 100)}%`}
+                  </td>
+                )}
                 <td>
                   {player.tag && (
                     <span className={`tag tag-${player.tag}`}>{player.tag}</span>
@@ -104,6 +129,13 @@ export default function ThisWeek() {
                 <td>OUT</td>
                 <td><PlayerName code={player.code} name={player.name} /></td>
                 <td>{player.ep}</td>
+                {advice.scenarios && (
+                  <td>
+                    {player.frequency === undefined
+                      ? '—'
+                      : `${Math.round(player.frequency * 100)}%`}
+                  </td>
+                )}
                 <td />
               </tr>
             ))}
