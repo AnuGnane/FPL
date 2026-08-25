@@ -184,3 +184,37 @@ def test_missing_gw1_warning_names_the_gameweek_and_the_fix():
 def test_warning_spans_every_missing_gameweek():
     assert "GW3-GW6" in data_warning(7, 2)
     assert data_warning(7, 5).startswith("model has no data for GW6 ")
+
+
+def test_save_and_load_params_round_trip(tmp_path, monkeypatch):
+    import gaffer.models.persistence as persistence
+
+    monkeypatch.setattr(persistence, "MODELS_DIR", tmp_path)
+    persistence.save_params("blend", {"odds_blend_weight": 0.62})
+    assert persistence.params_exist("blend")
+    assert persistence.load_params("blend")["odds_blend_weight"] == 0.62
+
+
+def test_params_exist_is_false_before_anything_is_saved(tmp_path, monkeypatch):
+    import gaffer.models.persistence as persistence
+
+    monkeypatch.setattr(persistence, "MODELS_DIR", tmp_path)
+    assert persistence.params_exist("blend") is False
+
+
+def test_load_params_on_a_missing_file_returns_an_empty_dict(tmp_path,
+                                                             monkeypatch):
+    """A fresh clone has no artifacts; every reader falls back to its own
+    default rather than crashing on the way to a first train."""
+    import gaffer.models.persistence as persistence
+
+    monkeypatch.setattr(persistence, "MODELS_DIR", tmp_path)
+    assert persistence.load_params("blend") == {}
+
+
+def test_save_params_stamps_the_save_time(tmp_path, monkeypatch):
+    import gaffer.models.persistence as persistence
+
+    monkeypatch.setattr(persistence, "MODELS_DIR", tmp_path)
+    persistence.save_params("blend", {"odds_blend_weight": 0.5})
+    assert "saved_at" in persistence.load_params("blend")

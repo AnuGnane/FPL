@@ -318,3 +318,109 @@ def test_predict_without_a_home_column_treats_every_row_as_neutral():
     rows = _future_rows().drop(columns=["home"])
     out = model.predict(rows)
     assert out["p_cs"].notna().all()
+
+
+from gaffer.models.dixon_coles import walk_forward_cs
+from gaffer.models.team import fit_blend_weight
+
+
+def test_fit_blend_weight_recovers_a_pure_odds_mixture():
+    """If the odds column is the truth and the model column is noise, the
+    fit has to land on w = 1."""
+    rng = np.random.default_rng(0)
+    p = rng.uniform(0.05, 0.95, 4000)
+    cs = (rng.random(4000) < p).astype(float)
+    frame = pd.DataFrame({"p_cs_odds": p, "p_cs_model": rng.random(4000),
+                          "cs": cs})
+    assert fit_blend_weight(frame) >= 0.95
+
+
+def test_fit_blend_weight_recovers_a_pure_model_mixture():
+    rng = np.random.default_rng(1)
+    p = rng.uniform(0.05, 0.95, 4000)
+    cs = (rng.random(4000) < p).astype(float)
+    frame = pd.DataFrame({"p_cs_odds": rng.random(4000), "p_cs_model": p,
+                          "cs": cs})
+    assert fit_blend_weight(frame) <= 0.05
+
+
+def test_fit_blend_weight_lands_between_two_noisy_signals():
+    """Both sides carry the signal plus independent noise, so neither alone
+    is optimal and the fit has to compromise."""
+    rng = np.random.default_rng(2)
+    truth = rng.uniform(0.1, 0.9, 8000)
+    cs = (rng.random(8000) < truth).astype(float)
+    jitter = lambda: np.clip(truth + rng.normal(0, 0.12, 8000), 0.01, 0.99)
+    frame = pd.DataFrame({"p_cs_odds": jitter(), "p_cs_model": jitter(),
+                          "cs": cs})
+    w = fit_blend_weight(frame)
+    assert 0.2 < w < 0.8
+
+
+def test_fit_blend_weight_is_quantized_to_two_decimals():
+    rng = np.random.default_rng(3)
+    frame = pd.DataFrame({"p_cs_odds": rng.random(500),
+                          "p_cs_model": rng.random(500),
+                          "cs": rng.integers(0, 2, 500).astype(float)})
+    w = fit_blend_weight(frame)
+    assert w == round(w, 2)
+    assert 0.0 <= w <= 1.0
+
+
+def test_fit_blend_weight_on_an_empty_frame_returns_the_constant():
+    from gaffer.models.team import ODDS_BLEND_WEIGHT
+
+    empty = pd.DataFrame(columns=["p_cs_odds", "p_cs_model", "cs"])
+    assert fit_blend_weight(empty) == ODDS_BLEND_WEIGHT
+
+
+def test_fit_blend_weight_ignores_rows_missing_either_side():
+    frame = pd.DataFrame({"p_cs_odds": [0.9, float("nan"), 0.8],
+                          "p_cs_model": [0.9, 0.5, float("nan")],
+                          "cs": [1.0, 0.0, 1.0]})
+    assert fit_blend_weight(frame) == round(fit_blend_weight(frame.head(1)), 2)
+
+
+def _odds_for(fx: pd.DataFrame) -> pd.DataFrame:
+    """Closing-odds rows for every fixture, priced off the true scoreline."""
+    rows = []
+    for m in fx.itertuples():
+        total = m.home_goals + m.away_goals
+        rows.append({"season_idx": m.season_idx, "gw": m.gw,
+                     "kickoff_time": m.kickoff_time,
+                     "home_code": m.home_code, "away_code": m.away_code,
+                     "p_home": 0.45, "p_draw": 0.27, "p_away": 0.28,
+                     "p_over25": 0.6 if total >= 3 else 0.4})
+    return pd.DataFrame(rows)
+
+
+def test_walk_forward_cs_predicts_each_half_from_earlier_data_only():
+    fx = pd.concat([
+        _synthetic_fixtures(_TRUE_ATTACK, _TRUE_DEFENCE, repeats=3,
+                            season_idx=0, seed=4),
+        _synthetic_fixtures(_TRUE_ATTACK, _TRUE_DEFENCE, repeats=3,
+                            season_idx=1, seed=5, start_day=800),
+    ], ignore_index=True)
+    tg = build_team_gw(fx)
+    out = walk_forward_cs(tg, _odds_for(fx), xi=DEFAULT_XI)
+    assert set(out.columns) == {"season_idx", "gw", "code", "opp_code",
+                                "p_cs_odds", "p_cs_model", "cs"}
+    # The first half has nothing before it and is not scored.
+    assert out["season_idx"].min() >= 0
+    assert len(out) > 0
+    assert out["p_cs_model"].between(0.0, 1.0).all()
+    assert out["p_cs_odds"].between(0.0, 1.0).all()
+    assert set(out["cs"].unique()) <= {0.0, 1.0}
+
+
+def test_walk_forward_cs_without_odds_returns_an_empty_frame():
+    """No football-data file means no fittable weight — and the caller has to
+    fall back to the constant rather than fit on nothing."""
+    fx = _synthetic_fixtures(_TRUE_ATTACK, _TRUE_DEFENCE, repeats=2)
+    out = walk_forward_cs(build_team_gw(fx),
+                          pd.DataFrame(columns=["season_idx", "gw",
+                                                "home_code", "away_code",
+                                                "p_home", "p_draw", "p_away",
+                                                "p_over25"]),
+                          xi=DEFAULT_XI)
+    assert out.empty

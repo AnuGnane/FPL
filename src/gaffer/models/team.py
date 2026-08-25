@@ -13,6 +13,7 @@ import pandas as pd
 from lightgbm import LGBMClassifier, LGBMRegressor
 
 from gaffer.models.minutes import LGB_KW
+from gaffer.models.persistence import load_params, params_exist
 
 TEAM_ROLL_STATS = ["gf", "ga", "cs"]
 TEAM_WINDOWS = (5, 10, 38)
@@ -164,3 +165,54 @@ class TeamModel:
         out["p_cs"] = self.cs_clf.predict_proba(tg[self.cols_])[:, 1]
         out["e_gc"] = self.gc_reg.predict(tg[self.cols_]).clip(0, None)
         return out
+
+
+BLEND_PARAMS_NAME = "blend"
+BLEND_GRID_STEP = 0.01
+
+
+def fit_blend_weight(frame: pd.DataFrame,
+                     step: float = BLEND_GRID_STEP) -> float:
+    """The convex weight on the market, fitted by log loss.
+
+    ``frame`` is :func:`gaffer.models.dixon_coles.walk_forward_cs`'s output:
+    out-of-sample ``p_cs_model``, market ``p_cs_odds`` and the realized
+    ``cs``. One scalar over ``[0, 1]``, so a grid at 0.01 is both exhaustive
+    and instant — no optimizer, no local minimum to worry about.
+
+    Log loss rather than Brier or accuracy because calibration is the thing
+    the number is for: the MILP multiplies this probability by points, so
+    being right on average and wrong in every bin is the failure mode that
+    matters. An empty or unusable frame falls back to
+    :data:`ODDS_BLEND_WEIGHT`, which is exactly what it was there for.
+    """
+    cols = ["p_cs_odds", "p_cs_model", "cs"]
+    if frame is None or frame.empty or any(c not in frame for c in cols):
+        return ODDS_BLEND_WEIGHT
+    sub = frame[cols].apply(pd.to_numeric, errors="coerce").dropna()
+    if sub.empty:
+        return ODDS_BLEND_WEIGHT
+    odds = sub["p_cs_odds"].to_numpy(dtype="float64")
+    model = sub["p_cs_model"].to_numpy(dtype="float64")
+    y = sub["cs"].to_numpy(dtype="float64")
+    best_w, best_loss = ODDS_BLEND_WEIGHT, float("inf")
+    for i in range(int(round(1.0 / step)) + 1):
+        w = round(i * step, 2)
+        p = np.clip(w * odds + (1.0 - w) * model, 1e-12, 1.0 - 1e-12)
+        loss = float(-(y * np.log(p) + (1.0 - y) * np.log(1.0 - p)).mean())
+        if loss < best_loss:
+            best_loss, best_w = loss, w
+    return best_w
+
+
+def odds_blend_weight() -> float:
+    """The fitted weight from the artifact bundle, else the constant.
+
+    Read at prediction time rather than baked into the pickle so a refit of
+    the weight alone is possible, and so the number is greppable on disk when
+    a blended clean sheet looks wrong.
+    """
+    if not params_exist(BLEND_PARAMS_NAME):
+        return ODDS_BLEND_WEIGHT
+    stored = load_params(BLEND_PARAMS_NAME).get("odds_blend_weight")
+    return ODDS_BLEND_WEIGHT if stored is None else float(stored)

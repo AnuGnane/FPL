@@ -310,3 +310,72 @@ class DixonColesModel:
         out["p_cs"] = p_cs
         out["e_gc"] = e_gc
         return out
+
+
+BLEND_FOLDS_PER_SEASON = 2
+"""Walk-forward granularity for the blend-weight frame.
+
+Refitting Dixon-Coles before every fixture would be honest and unusable; per
+half-season it is 10 fits over five seasons, each on strictly earlier data.
+The weight being estimated is one scalar, and it does not move at the
+resolution the extra fidelity would buy.
+"""
+
+
+def walk_forward_cs(tg: pd.DataFrame, match_odds: pd.DataFrame,
+                    xi: float = DEFAULT_XI) -> pd.DataFrame:
+    """Out-of-sample model and odds clean-sheet probabilities, side by side.
+
+    For each half-season fold after the first, Dixon-Coles is fitted on every
+    match strictly before the fold and used to predict the fold's fixtures;
+    the closing odds for the same fixtures are inverted to independent-Poisson
+    mus and turned into ``p_cs_odds = exp(-mu_against)``, the identical
+    assumption :func:`gaffer.models.team.blend_team_odds` makes at serve time.
+    Realized ``cs`` comes along as the target.
+
+    Returns ``[season_idx, gw, code, opp_code, p_cs_odds, p_cs_model, cs]``,
+    two rows per priced fixture. An empty frame means there is nothing to fit
+    a weight on — no odds file, or no fold with data on both sides.
+    """
+    from gaffer.data.odds import invert_odds
+
+    empty = pd.DataFrame(columns=["season_idx", "gw", "code", "opp_code",
+                                  "p_cs_odds", "p_cs_model", "cs"])
+    if match_odds is None or match_odds.empty:
+        return empty
+    # Odds -> per-team expected goals against, once for the whole history.
+    mus = [invert_odds(float(m.p_home), float(m.p_draw), float(m.p_away),
+                       float(m.p_over25)) for m in match_odds.itertuples()]
+    odds_rows = []
+    for (mu_h, mu_a), m in zip(mus, match_odds.itertuples()):
+        odds_rows.append({"season_idx": m.season_idx, "gw": m.gw,
+                          "code": m.home_code, "opp_code": m.away_code,
+                          "p_cs_odds": math.exp(-mu_a)})
+        odds_rows.append({"season_idx": m.season_idx, "gw": m.gw,
+                          "code": m.away_code, "opp_code": m.home_code,
+                          "p_cs_odds": math.exp(-mu_h)})
+    odds_cs = pd.DataFrame(odds_rows)
+
+    played = tg.dropna(subset=["ga"]).copy()
+    played["_fold"] = (played["season_idx"].astype(int) * BLEND_FOLDS_PER_SEASON
+                       + (played["gw"].astype(int) > 19).astype(int))
+    folds = sorted(played["_fold"].unique())
+    out = []
+    for fold in folds[1:]:
+        before = played[played["_fold"] < fold]
+        current = played[played["_fold"] == fold]
+        if before.empty or current.empty:
+            continue
+        model = DixonColesModel(xi=xi).fit(before)
+        pred = model.predict(current)
+        block = current[["season_idx", "gw", "code", "opp_code", "cs"]].copy()
+        block = block.reset_index(drop=True)
+        block["p_cs_model"] = pred["p_cs"].to_numpy()
+        out.append(block)
+    if not out:
+        return empty
+    frame = pd.concat(out, ignore_index=True).merge(
+        odds_cs, on=["season_idx", "gw", "code", "opp_code"], how="inner")
+    frame["cs"] = pd.to_numeric(frame["cs"], errors="coerce").astype(float)
+    return frame[["season_idx", "gw", "code", "opp_code", "p_cs_odds",
+                  "p_cs_model", "cs"]]
