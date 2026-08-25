@@ -39,6 +39,22 @@ banked transfer by how many weeks are left to spend it in. A duplicate of
 ``advise.LAST_GW`` on purpose: ``milp`` must not import ``advise``.
 """
 
+DEFAULT_BENCH_CURVE = [0.21, 0.06, 0.002]
+"""Autosub-weighted bench values for the 1st, 2nd and 3rd outfield sub.
+
+Uniform 0.10 says the third substitute is as likely to earn you points as the
+first, which is not close to true: the first bench outfielder comes on
+regularly, the third essentially never. The bench goalkeeper rides on the
+first weight — he plays exactly when your starting keeper does not, which is
+about as often as the first outfield sub appears.
+
+Not the default in ``config.toml``: Gate D2 measures it first.
+"""
+
+BENCH_SLOTS = 3
+"""Outfield bench slots. The fourth bench player is the reserve keeper, who is
+priced by the first curve weight rather than by a slot of his own."""
+
 DEFAULT_TOP_N = {"GKP": 8, "DEF": 22, "MID": 26, "FWD": 14}
 
 
@@ -112,7 +128,9 @@ def solve_plan(pool: pd.DataFrame, state: SolveInput, *, decay: float,
                bench_weight: float, vice_weight: float, ft_value: float,
                itb_value: float, hit_cost: int,
                fixed_moves: FixedMoves | None = None,
-               ft_lambda: "LambdaLookup | None" = None) -> Plan:
+               ft_lambda: "LambdaLookup | None" = None,
+               ft_use_penalty: float = 0.0,
+               bench_curve: list[float] | None = None) -> Plan:
     """Solve the multi-period plan.
 
     pool: [code, position, team_code, cost, sell, ep] where ep is a dict
@@ -129,6 +147,10 @@ def solve_plan(pool: pd.DataFrame, state: SolveInput, *, decay: float,
             raise GafferError(
                 f"{label}: player code {missing[0]} is not in the candidate "
                 f"pool (it may also be banned)")
+    if bench_curve is not None and len(bench_curve) != BENCH_SLOTS:
+        raise GafferError(
+            f"bench_curve needs exactly three weights (1st/2nd/3rd outfield "
+            f"substitute), got {len(bench_curve)}")
     pos = dict(zip(pool["code"], pool["position"]))
     club = dict(zip(pool["code"], pool["team_code"]))
     cost = dict(zip(pool["code"], pool["cost"]))
@@ -150,6 +172,10 @@ def solve_plan(pool: pd.DataFrame, state: SolveInput, *, decay: float,
     hits = V("hit", T, lowBound=0, cat="Integer")
     ftv = V("ft", T, lowBound=0, upBound=MAX_FREE_TRANSFERS, cat="Integer")
     bank = V("bank", T, lowBound=0)
+    # Bench-slot indicators, declared only when a curve is in play so the
+    # default problem is byte-identical to the pre-v4c one.
+    slot = (V("slot", (codes, T, list(range(BENCH_SLOTS))), cat="Binary")
+            if bench_curve is not None else None)
 
     for t_i, t in enumerate(T):
         wc = (state.wildcard_gw == t)
@@ -163,6 +189,20 @@ def solve_plan(pool: pd.DataFrame, state: SolveInput, *, decay: float,
             prob += cap[c][t] <= xi[c][t]
             prob += vice[c][t] <= xi[c][t]
             prob += cap[c][t] + vice[c][t] <= 1
+        if slot is not None:
+            benched = {c: sq[c][t] - xi[c][t] for c in codes}
+            outfield = [c for c in codes if pos[c] != "GKP"]
+            for s in range(BENCH_SLOTS):
+                # Exactly one player fills each outfield bench slot.
+                prob += pulp.lpSum(slot[c][t][s] for c in outfield) == 1
+            for c in outfield:
+                # A player can fill at most one slot, and only if benched.
+                prob += pulp.lpSum(slot[c][t][s]
+                                   for s in range(BENCH_SLOTS)) <= benched[c]
+            for c in codes:
+                if pos[c] == "GKP":
+                    for s in range(BENCH_SLOTS):
+                        prob += slot[c][t][s] == 0
         # composition
         for p, n in SQUAD_COMPOSITION.items():
             prob += pulp.lpSum(sq[c][t] for c in codes if pos[c] == p) == n
@@ -230,14 +270,35 @@ def solve_plan(pool: pd.DataFrame, state: SolveInput, *, decay: float,
     obj = []
     for t_i, t in enumerate(T):
         d = decay ** t_i
+        wc = (state.wildcard_gw == t)
+        nt = pulp.lpSum(tin[c][t] for c in codes)
         cap_mult = 2.0 if state.triple_captain_gw == t else 1.0
         bw = 1.0 if state.bench_boost_gw == t else bench_weight
         for c in codes:
             e = ep[c][t]
             obj.append(d * e * (xi[c][t] + cap_mult * cap[c][t]
                                 + vice_weight * vice[c][t]))
-            obj.append(d * e * bw * (sq[c][t] - xi[c][t]))
+            if bench_curve is None or state.bench_boost_gw == t:
+                # No curve, or a bench boost — under a boost every bench
+                # player scores in full, so slot weights would understate the
+                # chip.
+                obj.append(d * e * bw * (sq[c][t] - xi[c][t]))
+            elif pos[c] == "GKP":
+                # The reserve keeper is priced by the first curve weight: he
+                # plays exactly when the starter does not.
+                obj.append(d * e * bench_curve[0] * (sq[c][t] - xi[c][t]))
+            else:
+                for s in range(BENCH_SLOTS):
+                    obj.append(d * e * bench_curve[s] * slot[c][t][s])
         obj.append(-hit_cost * d * hits[t])
+        # A tiny friction per transfer made. EP-neutral churn is what the
+        # scenario noise flips week to week, and a fraction of a point of
+        # resistance settles it without ever outweighing a real gain. Waived
+        # on a wildcard: fifteen transfers there are the chip working as
+        # designed.
+        if ft_use_penalty:
+            if not wc:
+                obj.append(-ft_use_penalty * d * nt)
     # Terminal value of the banked free transfers.
     #
     # Flat ft_value says the fifth banked transfer is worth as much as the

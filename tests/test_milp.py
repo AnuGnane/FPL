@@ -408,3 +408,107 @@ def test_lambda_pricing_is_concave_in_the_banked_count():
     plan = solve_plan(pool, state, **GOLDEN_KW,
                       ft_lambda=LambdaLookup(table))
     assert len(plan.gw_plans[0].squad) == 15
+
+
+# --- v4c: objective craft --------------------------------------------------
+
+from dataclasses import replace
+
+from gaffer.optimize.milp import DEFAULT_BENCH_CURVE
+
+
+def test_the_default_bench_curve_is_the_spec_triple():
+    assert DEFAULT_BENCH_CURVE == [0.21, 0.06, 0.002]
+
+
+def test_bench_curve_none_is_the_identity():
+    pool = golden_pool()
+    state = _owned_state(pool)
+    a = solve_plan(pool, state, **GOLDEN_KW)
+    b = solve_plan(pool, state, **GOLDEN_KW, bench_curve=None,
+                   ft_use_penalty=0.0)
+    assert round(a.objective, 9) == round(b.objective, 9)
+
+
+def test_a_bench_curve_changes_the_objective():
+    pool = golden_pool()
+    state = _owned_state(pool)
+    a = solve_plan(pool, state, **GOLDEN_KW)
+    b = solve_plan(pool, state, **GOLDEN_KW,
+                   bench_curve=DEFAULT_BENCH_CURVE)
+    assert round(a.objective, 6) != round(b.objective, 6)
+
+
+def test_a_bench_curve_still_produces_a_legal_squad():
+    pool = golden_pool()
+    state = _owned_state(pool)
+    first = solve_plan(pool, state, **GOLDEN_KW,
+                       bench_curve=DEFAULT_BENCH_CURVE).gw_plans[0]
+    assert len(first.squad) == 15 and len(first.xi) == 11
+    assert len(first.bench) == 4
+
+
+def test_the_bench_curve_must_have_three_weights():
+    """Three outfield bench slots; the bench keeper rides on the first
+    weight, per spec's '{GK + 1st: 0.21}'."""
+    pool = golden_pool()
+    state = _owned_state(pool)
+    with pytest.raises(GafferError) as exc:
+        solve_plan(pool, state, **GOLDEN_KW, bench_curve=[0.2, 0.1])
+    assert "three" in str(exc.value)
+
+
+def test_bench_boost_overrides_the_curve_entirely():
+    """Under a bench boost every bench player scores in full; a curve that
+    survived would understate the chip by more than the chip is worth."""
+    import inspect
+
+    src = inspect.getsource(solve_plan)
+    assert "state.bench_boost_gw == t" in src
+    pool = golden_pool()
+    state = _owned_state(pool)
+    boosted = solve_plan(pool, replace(state, bench_boost_gw=1),
+                         **GOLDEN_KW, bench_curve=DEFAULT_BENCH_CURVE)
+    plain = solve_plan(pool, state, **GOLDEN_KW,
+                       bench_curve=DEFAULT_BENCH_CURVE)
+    assert boosted.objective > plain.objective
+
+
+def test_a_convex_curve_prefers_a_stronger_first_bench_slot():
+    """The behavioural claim: the curve buys a better first substitute and
+    stops paying for the third."""
+    pool = golden_pool()
+    state = SolveInput(owned_codes=[], bank=1000, free_transfers=15,
+                       gws=[1, 2])
+    ep_of = {int(r.code): float(r.ep[1]) for r in pool.itertuples()}
+    flat = solve_plan(pool, state, **GOLDEN_KW).gw_plans[0]
+    curved = solve_plan(pool, state, **GOLDEN_KW,
+                        bench_curve=DEFAULT_BENCH_CURVE).gw_plans[0]
+    assert (max(ep_of[c] for c in curved.bench)
+            >= max(ep_of[c] for c in flat.bench))
+
+
+def test_ft_use_penalty_zero_is_the_identity():
+    pool = golden_pool()
+    state = _owned_state(pool)
+    a = solve_plan(pool, state, **GOLDEN_KW)
+    b = solve_plan(pool, state, **GOLDEN_KW, ft_use_penalty=0.0)
+    assert round(a.objective, 9) == round(b.objective, 9)
+
+
+def test_a_large_ft_use_penalty_stops_marginal_churn():
+    pool = golden_pool()
+    state = _owned_state(pool)
+    busy = solve_plan(pool, state, **GOLDEN_KW).gw_plans[0]
+    calm = solve_plan(pool, state, **GOLDEN_KW,
+                      ft_use_penalty=50.0).gw_plans[0]
+    assert len(calm.buys) <= len(busy.buys)
+
+
+def test_the_churn_penalty_is_waived_on_a_wildcard_week():
+    """Fifteen transfers on a wildcard are the chip working, not churn."""
+    import inspect
+
+    src = inspect.getsource(solve_plan)
+    penalty = src.index("ft_use_penalty *")
+    assert "if not wc:" in src[max(0, penalty - 200):penalty + 200]
