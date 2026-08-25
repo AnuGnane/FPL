@@ -136,8 +136,11 @@ def apply_new_bps(df: pd.DataFrame, current_idx: int) -> pd.DataFrame:
 
     The originals are kept as ``bps_old`` / ``bonus_old`` — partly so a
     regression can be diffed against the stored truth, partly because their
-    presence is how :func:`gaffer.models.train.train_all` knows the frame has
-    been re-derived and the bonus model no longer needs its recency floor.
+    presence marks a frame as restated (see :mod:`gaffer.models.train`).
+
+    Only rows older than ``current_idx`` are restated. Current-season rows
+    were already scored under the new rules, so their stored bonus is the
+    truth: re-ranking them could only corrupt it on a data quirk.
 
     The index is reset because the fixture grouping addresses rows by label:
     a frame concatenated without ``ignore_index`` would have duplicates.
@@ -146,5 +149,6 @@ def apply_new_bps(df: pd.DataFrame, current_idx: int) -> pd.DataFrame:
     out["bps_old"] = out["bps"]
     out["bonus_old"] = out["bonus"]
     out["bps"] = adjust_bps(out, current_idx)
-    out["bonus"] = rederive_bonus(out, out["bps"])
+    old = pd.to_numeric(out["season_idx"], errors="coerce") < current_idx
+    out["bonus"] = rederive_bonus(out, out["bps"]).where(old, out["bonus"])
     return out

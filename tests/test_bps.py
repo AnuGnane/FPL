@@ -148,6 +148,19 @@ def test_apply_new_bps_restates_the_old_season_and_leaves_the_new_alone():
     assert list(out["bonus"]) == [3.0, 2.0, 1.0, 0.0, 3.0, 2.0, 1.0, 0.0]
 
 
+def test_apply_new_bps_keeps_the_stored_current_season_bonus():
+    """Current-season rows are already scored under the new rules, so their
+    stored bonus is the truth even when a re-ranking would disagree — a data
+    quirk must not be allowed to overwrite what the game actually awarded."""
+    frame = _two_fixture_frame()
+    # The stored 3 deliberately sits on the *second*-highest BPS row.
+    frame.loc[4:, "bonus"] = [2.0, 3.0, 1.0, 0.0]
+    out = apply_new_bps(frame, current_idx=3)
+    assert list(out["bonus"][4:]) == [2.0, 3.0, 1.0, 0.0]
+    # The older season is still restated.
+    assert list(out["bonus"][:4]) == [3.0, 2.0, 1.0, 0.0]
+
+
 def test_apply_new_bps_reorders_bonus_when_the_adjustment_changes_the_lead():
     frame = _fixture([30.0, 29.0, 20.0], season_idx=0)
     frame["cbi"] = [6.0, 0.0, 0.0]
