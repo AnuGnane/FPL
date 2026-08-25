@@ -37,8 +37,9 @@ Spec: `specs/2026-08-25-gaffer-v4a-measure-design.md` · Plan: `plans/2026-08-25
 
 ### v4b — model (forecasting quality) ← CURRENT
 Goal: close the forecast gap v4a measured. Benchmark table in v4a spec §7 is the before-photo.
-- [ ] Brainstorm → spec
-- [ ] Implementation plan
+Spec: `specs/2026-08-25-gaffer-v4b-model-design.md` · Plan: `plans/2026-08-25-gaffer-v4b-model.md` (24 tasks) · Branch: `feat/gaffer-v4b`
+- [x] Brainstorm → spec
+- [x] Implementation plan
 - [ ] Understat xG ingestion (shot-level → per-90 rolling xG/xA/shots/key passes/xGChain/xGBuildup; team xGA/PPDA)
 - [ ] Dixon-Coles time-decayed attack/defence team model replacing Elo (fixes CS calibration; scoreline distribution → CS, GC bands, saves)
 - [ ] Odds devigging (Shin/power, not naive normalization)
