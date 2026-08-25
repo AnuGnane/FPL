@@ -377,7 +377,7 @@ starters zeros 3.480 → **3.405**; tickers wobbled +2.4% on n=412 in current
 mode while improving in benchmark mode — no consistent regression, no
 feature block dropped.
 
-### G3 — AGS blend (no-key half PASSED; live half pending)
+### G3 — AGS blend (no-key half PASSED; live half FAILED — blend is a silent no-op)
 
 *No-key half (automated).* The two graceful-degradation tests in
 `tests/test_degradation.py` that were parked as `xfail` in Task 20 now pass
@@ -386,11 +386,36 @@ unmarked: with no `[odds] api_key` configured, `run_advise` never builds an
 object unchanged, so the no-AGS path is byte-identical by construction rather
 than by tolerance. Full suite green at 673 passed, 0 xfailed.
 
-*Live half (spot check).* Pending — requires a configured odds API key on a
-week whose fixtures the market has priced. To be recorded here: how many
-players moved, the largest absolute EP delta (a delta above ~1.5 points is
-not plausible for a 0.5-weight blend on a capped goals term), and whether the
-biggest movers are the players the market disagrees with the model about.
+*Live half (spot check, run 2026-08-25 with a real key, GW2).* **FAILED.**
+Two `gaffer advise` runs (`player_props` off/on) produced byte-identical EP
+for all 612 players — zero deltas — despite the run fetching all 10 GW2
+fixtures' AGS snapshots (`data/raw/ags-*-20260825T2056*.json`, 3 bookmakers
+each, 404 priced outcomes). Root cause, confirmed by replaying the snapshots
+through `ags_frame` offline:
+
+1. **Wrong field.** The events-endpoint AGS market quotes
+   `outcome["name"] = "Yes"` and puts the player in
+   `outcome["description"]`; `ags_frame` matches on `name`, so 0/404
+   outcomes ever match and the frame is always empty. The no-key
+   regression tests passed because their fixtures fabricated
+   `name = <player>`.
+2. **Wrong name key.** Even matching on `description`, FPL `web_name`
+   ("B.Fernandes") matches only 6/404 full market names ("Bruno
+   Fernandes") — and those six get grossly inflated λ because
+   `normalize_ags` scales a 6-player rump to the full team mu. Matching
+   on normalized `first_name + second_name` from the bootstrap recovers
+   326/404 (81%) with plausible λ (João Pedro 0.392, Welbeck 0.344,
+   Šeško 0.314); the 78 leftovers are word-order/alias cases
+   ("Magalhaes Gabriel") that the Understat-style multi-sweep matcher
+   would absorb.
+
+The live CS odds blend half of the run is healthy: h2h/totals fetched and
+merged without error, 40 odds rows, ~15 API credits per off+on pair
+(485/500 monthly remaining after the check). Fix (swap match key to
+`description` × full-name index, reuse the sweep matcher for the tail,
+and a fixture test built from a real snapshot) is queued for the next
+cycle touching odds; until then AGS is dormant, not wrong — EP is exactly
+the model-only output.
 
 ### Final review round
 
