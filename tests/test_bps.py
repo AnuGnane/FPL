@@ -1,7 +1,7 @@
 import pandas as pd
 
-from gaffer.features.bps import (adjust_bps, award_bonus, fixture_pair,
-                                 rederive_bonus)
+from gaffer.features.bps import (adjust_bps, apply_new_bps, award_bonus,
+                                 fixture_pair, rederive_bonus)
 
 
 def _rows(spec):
@@ -39,6 +39,7 @@ def test_adjust_bps_treats_a_missing_cbi_count_as_no_adjustment():
 def test_adjust_bps_keeps_a_missing_bps_missing():
     out = adjust_bps(_rows([(0, float("nan"), 6.0)]), current_idx=3)
     assert out.isna().all()
+
 
 def test_award_bonus_standard_three_two_one():
     assert award_bonus([30.0, 25.0, 20.0, 10.0]) == [3, 2, 1, 0]
@@ -116,3 +117,48 @@ def test_rederive_bonus_reads_an_explicit_adjusted_series():
     adjusted = pd.Series([10.0, 40.0, 20.0], index=frame.index)
     out = rederive_bonus(frame, adjusted)
     assert list(out) == [1.0, 3.0, 2.0]
+
+
+def _two_fixture_frame():
+    """One old-season fixture with CBI counts, one current-season fixture."""
+    old = _fixture([30.0, 25.0, 20.0, 10.0], season_idx=0)
+    old["cbi"] = [6.0, 0.0, 0.0, 0.0]
+    old["bonus"] = [3.0, 2.0, 1.0, 0.0]
+    new = _fixture([30.0, 25.0, 20.0, 10.0], season_idx=3, team=5, opp=6,
+                   kickoff="2026-01-10T14:00:00Z")
+    new["cbi"] = [12.0, 0.0, 0.0, 0.0]
+    new["bonus"] = [3.0, 2.0, 1.0, 0.0]
+    return pd.concat([old, new], ignore_index=True)
+
+
+def test_apply_new_bps_keeps_the_old_columns_alongside_the_new():
+    out = apply_new_bps(_two_fixture_frame(), current_idx=3)
+    assert list(out["bps_old"]) == [30.0, 25.0, 20.0, 10.0,
+                                    30.0, 25.0, 20.0, 10.0]
+    assert list(out["bonus_old"]) == [3.0, 2.0, 1.0, 0.0,
+                                      3.0, 2.0, 1.0, 0.0]
+
+
+def test_apply_new_bps_restates_the_old_season_and_leaves_the_new_alone():
+    out = apply_new_bps(_two_fixture_frame(), current_idx=3)
+    # Old season: the 6-CBI leader drops a point of BPS but keeps the lead.
+    assert list(out["bps"][:4]) == [29.0, 25.0, 20.0, 10.0]
+    # Current season: untouched despite a fat CBI count.
+    assert list(out["bps"][4:]) == [30.0, 25.0, 20.0, 10.0]
+    assert list(out["bonus"]) == [3.0, 2.0, 1.0, 0.0, 3.0, 2.0, 1.0, 0.0]
+
+
+def test_apply_new_bps_reorders_bonus_when_the_adjustment_changes_the_lead():
+    frame = _fixture([30.0, 29.0, 20.0], season_idx=0)
+    frame["cbi"] = [6.0, 0.0, 0.0]
+    frame["bonus"] = [3.0, 2.0, 1.0]
+    out = apply_new_bps(frame, current_idx=3)
+    # 30 - 1 = 29 ties the runner-up: tie for first among two -> 3, 3, 1.
+    assert list(out["bonus"]) == [3.0, 3.0, 1.0]
+
+
+def test_apply_new_bps_preserves_every_other_column():
+    frame = _two_fixture_frame()
+    out = apply_new_bps(frame, current_idx=3)
+    assert set(frame.columns) <= set(out.columns)
+    assert len(out) == len(frame)

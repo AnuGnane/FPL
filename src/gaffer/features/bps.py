@@ -129,3 +129,22 @@ def rederive_bonus(df: pd.DataFrame,
         awards = award_bonus([float(v) for v in values.loc[idx]])
         out.loc[idx] = [float(a) for a in awards]
     return out
+
+
+def apply_new_bps(df: pd.DataFrame, current_idx: int) -> pd.DataFrame:
+    """``bps`` and ``bonus`` restated under the 2026/27 rules.
+
+    The originals are kept as ``bps_old`` / ``bonus_old`` — partly so a
+    regression can be diffed against the stored truth, partly because their
+    presence is how :func:`gaffer.models.train.train_all` knows the frame has
+    been re-derived and the bonus model no longer needs its recency floor.
+
+    The index is reset because the fixture grouping addresses rows by label:
+    a frame concatenated without ``ignore_index`` would have duplicates.
+    """
+    out = df.reset_index(drop=True).copy()
+    out["bps_old"] = out["bps"]
+    out["bonus_old"] = out["bonus"]
+    out["bps"] = adjust_bps(out, current_idx)
+    out["bonus"] = rederive_bonus(out, out["bps"])
+    return out
