@@ -45,7 +45,7 @@ const payload = {
       p60: { log_loss: 0.2563, reliability: [{ n: 10, pred: 0.5, obs: 0.5 }] },
       cs: { log_loss: 0.5511, reliability: [{ n: 10, pred: 0.3, obs: 0.28 }] },
     },
-    baselines: { last5: table, season_ppg: table },
+    baselines: { last5: table, last38_ppg: table },
   },
   benchmark: {
     run_at: '2026-08-25T01:00:00+00:00', git_sha: 'abc1234',
@@ -93,7 +93,7 @@ describe('Quality', () => {
     expect(screen.getByText(/last-10-slot holdout/i)).toBeInTheDocument()
     expect(screen.getAllByText('Haulers').length).toBeGreaterThan(0)
     expect(screen.getByText(/last-5 mean/i)).toBeInTheDocument()
-    expect(screen.getByText(/season ppg/i)).toBeInTheDocument()
+    expect(screen.getByText(/last-38 mean/i)).toBeInTheDocument()
   })
 
   it('puts the published numbers next to ours in the benchmark', async () => {

@@ -254,8 +254,11 @@ def baseline_metrics(hold: pd.DataFrame, col: str,
     """A naive predictor scored on exactly the model's yardstick.
 
     ``col`` is a leakage-safe rolling column: ``total_points_r5`` is the
-    last-five-match mean and ``total_points_r38`` is the season-to-date
-    average, the two predictors a human would actually use. A double
+    last-five-match mean and ``total_points_r38`` is the mean of the player's
+    last 38 *matches*, which rolls straight across season boundaries and so is
+    not a season-to-date average — early in a season most of its window is
+    last season's form. Between them they bracket the two horizons a human
+    would eyeball. A double
     gameweek's two rows carry a near-identical rolling average, so taking the
     first is right where the truth frame has already summed the fixtures.
     """
@@ -319,7 +322,9 @@ def evaluate_current(holdout_slots: int = HOLDOUT_SLOTS) -> dict:
         },
         "baselines": {
             "last5": baseline_metrics(hold, "total_points_r5", truth),
-            "season_ppg": baseline_metrics(hold, "total_points_r38", truth),
+            # Not a season PPG: the window is the last 38 matches wherever
+            # they fall, season boundaries included.
+            "last38_ppg": baseline_metrics(hold, "total_points_r38", truth),
         },
     }
 

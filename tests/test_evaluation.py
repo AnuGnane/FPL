@@ -352,7 +352,7 @@ def _current_payload():
             "heads": {"p_play": {"log_loss": 0.2771,
                                  "reliability": [{"n": 5, "pred": 0.5,
                                                   "obs": 0.4}]}},
-            "baselines": {"last5": table, "season_ppg": table}}
+            "baselines": {"last5": table, "last38_ppg": table}}
 
 
 def test_format_report_prints_every_category_and_the_baselines():

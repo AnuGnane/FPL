@@ -115,7 +115,7 @@ function CurrentSection({ current }: { current: CurrentEvaluation }) {
             ['Model (all)', current.stratified.all ?? {}],
             ['Model (starters)', current.stratified.starters ?? {}],
             ['Last-5 mean', current.baselines.last5 ?? {}],
-            ['Season PPG', current.baselines.season_ppg ?? {}],
+            ['Last-38 mean', current.baselines.last38_ppg ?? {}],
           ]}
         />
       </div>

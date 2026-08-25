@@ -17,7 +17,7 @@ PAYLOAD = {
                              "reliability": [{"n": 40, "pred": 0.9,
                                               "obs": 0.88}]}},
         "baselines": {"last5": CATEGORY_TABLE,
-                      "season_ppg": CATEGORY_TABLE},
+                      "last38_ppg": CATEGORY_TABLE},
     },
     "benchmark": {
         "run_at": "2026-08-25T01:00:00+00:00", "git_sha": "abc1234",
