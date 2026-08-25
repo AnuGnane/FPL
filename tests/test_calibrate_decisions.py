@@ -215,3 +215,62 @@ def test_run_calibration_survives_a_season_that_cannot_be_replayed(
     out = run_calibration(["2023-24", "2024-25"])
     assert out["seasons"] == ["2024-25"]
     assert out["transfer_surplus"]["early"] == [2.0]
+
+
+# --- B3: the surplus draw must really be one transfer's worth --------------
+
+def _hit_bait_pool():
+    """A board where several huge upgrades sit one transfer away each.
+
+    The golden pool's EP steps are a tenth of a point, so no hit is ever worth
+    taking on it. Here every position has a junk half the squad is drawn from
+    and a stellar half it is not, so the unconstrained optimum happily pays
+    four points a time to buy more than one of them.
+    """
+    import pandas as pd
+
+    rows, code = [], 200
+    for pos, n in (("GKP", 4), ("DEF", 10), ("MID", 10), ("FWD", 6)):
+        for i in range(n):
+            stellar = i >= n // 2
+            ep = 12.0 if stellar else 1.0
+            rows.append({"code": code, "position": pos,
+                         "team_code": code % 12, "cost": 40, "sell": 40,
+                         "ep": {1: ep, 2: ep}})
+            code += 1
+    frame = pd.DataFrame(rows)
+    by_pos = {}
+    for r in frame.itertuples():
+        by_pos.setdefault(r.position, []).append(int(r.code))
+    junk = (by_pos["GKP"][:2] + by_pos["DEF"][:5] + by_pos["MID"][:5]
+            + by_pos["FWD"][:3])
+    return frame, junk
+
+
+def test_the_surplus_sample_is_one_transfer_and_no_hits():
+    """B3. The 'spent' solve was unconstrained: free_transfers=1 caps nothing
+    on its own, so a week where the optimum bought three players for two hits
+    was recorded as what a *single* free transfer is worth — and recorded
+    gross of the hit cost on top. Every lambda in the shipped table was built
+    from that."""
+    from dataclasses import replace
+
+    from gaffer.optimize.milp import FixedMoves, SolveInput, solve_plan
+    from tests.test_v4c_degradation import GOLDEN_KW
+
+    pool, junk = _hit_bait_pool()
+    state = SolveInput(owned_codes=junk, bank=0, free_transfers=1, gws=[1])
+
+    greedy = solve_plan(pool, state, **GOLDEN_KW)
+    assert greedy.gw_plans[0].hits > 0, "fixture no longer baits a hit"
+
+    held = solve_plan(pool, state, **GOLDEN_KW,
+                      fixed_moves=FixedMoves(no_transfer=True))
+    one = solve_plan(pool, replace(state, max_hits=0), **GOLDEN_KW)
+    assert len(one.gw_plans[0].buys) <= 1
+
+    sample = best_single_transfer(pool, state, **GOLDEN_KW)
+    assert sample == pytest.approx(one.gw_plans[0].expected_pts
+                                   - held.gw_plans[0].expected_pts)
+    assert sample < (greedy.gw_plans[0].expected_pts
+                     - held.gw_plans[0].expected_pts)

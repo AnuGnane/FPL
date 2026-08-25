@@ -63,12 +63,22 @@ def best_single_transfer(pool: pd.DataFrame, state: SolveInput,
     Floored at zero. Nobody is forced to transfer, so a negative surplus is
     not a thing that can happen to a manager; letting one into the DP would
     teach it that transfers are a liability.
+
+    The spent solve is pinned to *one* transfer and *no* hits. ``state`` says
+    ``free_transfers=1``, but that caps nothing on its own — the solver is
+    free to buy four players and pay for three of them, and ``expected_pts``
+    is gross of the hit cost, so an unconstrained solve records a hit-taking
+    week as the surplus of a single free transfer plus the points it paid to
+    take. ``max_hits=0`` makes the MILP's own ``hits >= nt - prev_ft`` bind at
+    ``nt <= 1``, which is exactly the question being asked.
     """
+    from dataclasses import replace
+
     from gaffer.optimize.milp import FixedMoves
 
     held = solve_plan(pool, state, **solve_cfg,
                       fixed_moves=FixedMoves(no_transfer=True))
-    spent = solve_plan(pool, state, **solve_cfg)
+    spent = solve_plan(pool, replace(state, max_hits=0), **solve_cfg)
     gain = (spent.gw_plans[0].expected_pts - held.gw_plans[0].expected_pts)
     return max(0.0, float(gain))
 
