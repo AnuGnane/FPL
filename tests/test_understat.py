@@ -1,3 +1,5 @@
+import json
+
 import pandas as pd
 import pytest
 
@@ -354,6 +356,46 @@ def test_a_failed_match_fetch_returns_empty_and_caches_nothing(tmp_path):
                                "A", "B")
     assert out.empty
     assert not (tmp_path / "match" / "18001.json").exists()
+
+
+def test_an_empty_roster_is_not_cached(tmp_path):
+    """A match understat has not processed yet answers with empty rosters.
+    Caching that writes the hole in permanently: the file is never
+    re-fetched, so the match is lost for good."""
+    empty = {"rosters": {"h": {}, "a": {}}, "shots": {"h": [], "a": []}}
+    client = UnderstatClient(
+        client=_http(lambda r: httpx.Response(200, json=empty)),
+        cache_dir=tmp_path, sleep=0.0)
+    out = client.match_players("18001", pd.Timestamp("2024-08-16").date(),
+                               "A", "B")
+    assert out.empty
+    assert not (tmp_path / "match" / "18001.json").exists()
+
+
+def test_a_torn_cache_file_is_refetched_rather_than_raising(tmp_path):
+    """A write interrupted mid-flight leaves half a JSON document, and a
+    JSONDecodeError there takes down a scrape of thousands of matches."""
+    path = tmp_path / "match" / "18001.json"
+    path.parent.mkdir(parents=True)
+    path.write_text('[{"match_id": "18001", "understat_')
+    client = UnderstatClient(
+        client=_http(lambda r: httpx.Response(200, json=_match())),
+        cache_dir=tmp_path, sleep=0.0)
+    out = client.match_players("18001", pd.Timestamp("2024-08-16").date(),
+                               "Manchester United",
+                               "Wolverhampton Wanderers")
+    assert len(out) == 2
+    # And the refetch repaired the file.
+    assert json.loads(path.read_text())
+
+
+def test_the_match_cache_is_written_atomically(tmp_path):
+    """os.replace, not a direct write: a scrape killed mid-write must leave
+    either the old file or the new one, never a truncated one."""
+    import inspect
+
+    src = inspect.getsource(UnderstatClient.match_players)
+    assert "os.replace" in src
 
 
 def test_team_history_reads_the_league_page_once_per_season(tmp_path):

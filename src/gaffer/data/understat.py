@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import html
 import json
+import os
 import time
 from pathlib import Path
 
@@ -248,10 +249,25 @@ class UnderstatClient:
 
     def match_players(self, match_id: str, date, home_team: str,
                       away_team: str) -> pd.DataFrame:
-        """One match's player rows, from cache where possible."""
+        """One match's player rows, from cache where possible.
+
+        The cache is permanent — a played match never changes — which makes
+        every way of writing the wrong thing into it unrecoverable without
+        hand-deleting files. So: an empty roster (understat has not processed
+        the match yet) is returned but never written, the write goes through
+        a temp file and :func:`os.replace` so a killed scrape leaves either
+        the old file or the new one, and a file that will not parse is
+        treated as absent and re-fetched rather than raising through the
+        whole backfill.
+        """
         path = self.cache_dir / "match" / f"{match_id}.json"
+        cached = None
         if path.exists():
-            cached = json.loads(path.read_text())
+            try:
+                cached = json.loads(path.read_text())
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                cached = None  # torn or truncated: re-fetch over the top
+        if cached is not None:
             frame = pd.DataFrame(cached, columns=PLAYER_COLS)
             frame["date"] = date
             # Caches written before names were unescaped still hold the raw
@@ -266,10 +282,14 @@ class UnderstatClient:
             return pd.DataFrame(columns=PLAYER_COLS)
         _require(payload, "rosters", url)
         rows = match_player_rows(payload, match_id, date, home_team, away_team)
+        if rows.empty:
+            return rows
         path.parent.mkdir(parents=True, exist_ok=True)
         # The date is re-applied on read rather than stored: it is a date
         # object, JSON has no such type, and the caller always knows it.
-        path.write_text(rows.drop(columns=["date"]).to_json(orient="records"))
+        tmp = path.with_suffix(f".{os.getpid()}.tmp")
+        tmp.write_text(rows.drop(columns=["date"]).to_json(orient="records"))
+        os.replace(tmp, path)
         return rows
 
 
