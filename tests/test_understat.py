@@ -437,8 +437,10 @@ def test_map_understat_players_refuses_an_ambiguous_cross_club_name():
 def test_map_understat_players_applies_the_override_file():
     # The two sources spell this one differently enough that no
     # normalization saves it — which is exactly what the override file is for.
+    # Different clubs in the two sources, so no pass but the file can
+    # place him: understat has him at Fulham, FPL history at Leicester.
     us = _us([("13", "Bobby De Cordova-Reid", "Fulham")])
-    fpl = _fpl([(10, "Bobby Reid", "Fulham")])
+    fpl = _fpl([(10, "Bobby Reid", "Leicester")])
     out, report = map_understat_players(us, fpl, team_aliases={},
                                         overrides={"13": 10})
     assert list(out["code"]) == [10]
@@ -452,7 +454,199 @@ def test_map_understat_players_reports_unmatched_names(capsys):
     assert out.empty
     assert report["rows"] == 1 and report["unmatched"] == 1
     assert report["exact"] == report["cross_club"] == report["override"] == 0
+    assert report["token_subset"] == report["surname_club"] == 0
     assert "Nobody At All" in report["unmatched_names"][0]
+
+
+# --- pass 3: token subset at the same club --------------------------------
+
+def test_token_subset_matches_a_display_name_inside_a_legal_name():
+    """vaastav carries the full legal name, understat the display name."""
+    us = _us([("20", "Gabriel Martinelli", "Arsenal"),
+              ("21", "Alisson", "Liverpool"),
+              ("22", "Darwin Núñez", "Liverpool"),
+              ("23", "Luis Díaz", "Liverpool")])
+    fpl = _fpl([(30, "Gabriel Martinelli Silva", "Arsenal"),
+                (31, "Alisson Ramses Becker", "Liverpool"),
+                (32, "Darwin Núñez Ribeiro", "Liverpool"),
+                (33, "Luis Díaz Marulanda", "Liverpool")])
+    out, report = map_understat_players(
+        us, fpl, team_aliases={"Arsenal": "Arsenal",
+                               "Liverpool": "Liverpool"})
+    assert dict(zip(out["understat_id"], out["code"])) == {
+        "20": 30, "21": 31, "22": 32, "23": 33}
+    assert report["token_subset"] == 4 and report["unmatched"] == 0
+
+
+def test_token_subset_matches_the_other_direction_too():
+    """The longer name can be understat's: the subset test is symmetric."""
+    us = _us([("24", "Thiago Alcántara do Nascimento", "Liverpool")])
+    fpl = _fpl([(34, "Thiago Alcántara", "Liverpool")])
+    out, report = map_understat_players(us, fpl,
+                                        team_aliases={"Liverpool":
+                                                      "Liverpool"})
+    assert list(out["code"]) == [34]
+    assert report["token_subset"] == 1
+
+
+def test_token_subset_refuses_two_same_club_candidates():
+    """"Gabriel" sits inside three Arsenal legal names at once; guessing
+    between them would attach one player's shots to another."""
+    us = _us([("25", "Gabriel", "Arsenal")])
+    fpl = _fpl([(35, "Gabriel dos Santos Magalhães", "Arsenal"),
+                (36, "Gabriel Martinelli Silva", "Arsenal"),
+                (37, "Gabriel Fernando de Jesus", "Arsenal")])
+    out, report = map_understat_players(us, fpl,
+                                        team_aliases={"Arsenal": "Arsenal"})
+    assert out.empty
+    assert report["token_subset"] == 0 and report["unmatched"] == 1
+
+
+def test_token_subset_frees_up_once_the_narrower_names_are_claimed():
+    """The pass sweeps every understat id before pass 4 runs, so the two
+    unambiguous Arsenal Gabriels are claimed first and the bare "Gabriel"
+    then has exactly one candidate left."""
+    us = _us([("25", "Gabriel", "Arsenal"),
+              ("26", "Gabriel Martinelli", "Arsenal"),
+              ("27", "Gabriel Jesus", "Arsenal")])
+    fpl = _fpl([(35, "Gabriel dos Santos Magalhães", "Arsenal"),
+                (36, "Gabriel Martinelli Silva", "Arsenal"),
+                (37, "Gabriel Fernando de Jesus", "Arsenal")])
+    out, report = map_understat_players(us, fpl,
+                                        team_aliases={"Arsenal": "Arsenal"})
+    assert dict(zip(out["understat_id"], out["code"])) == {
+        "25": 35, "26": 36, "27": 37}
+    assert report["token_subset"] == 2 and report["surname_club"] == 1
+
+
+def test_token_subset_never_reaches_across_clubs():
+    us = _us([("28", "Gabriel Martinelli", "Arsenal")])
+    fpl = _fpl([(38, "Gabriel Martinelli Silva", "Chelsea"),
+                (39, "Somebody Else", "Chelsea")])
+    out, report = map_understat_players(us, fpl,
+                                        team_aliases={"Arsenal": "Arsenal"})
+    assert out.empty
+    assert report["token_subset"] == 0 and report["unmatched"] == 1
+
+
+def test_token_subset_skips_a_code_an_earlier_pass_already_claimed():
+    """Understat carries two ids for the same player; the exact pass owns
+    the code and the second id must not claim it as well."""
+    us = _us([("40", "Alisson Ramses Becker", "Liverpool"),
+              ("41", "Alisson", "Liverpool")])
+    fpl = _fpl([(50, "Alisson Ramses Becker", "Liverpool")])
+    out, report = map_understat_players(us, fpl,
+                                        team_aliases={"Liverpool":
+                                                      "Liverpool"})
+    assert out.to_dict("records") == [{"understat_id": "40", "code": 50}]
+    assert report["exact"] == 1 and report["token_subset"] == 0
+    assert report["unmatched"] == 1
+
+
+# --- pass 4: shared token plus a first-name prefix -------------------------
+
+def test_surname_club_bridges_a_shortened_first_name():
+    """"Ben"/"Benjamin" is a nickname, not a subset — the shared surname
+    plus the first-name prefix is what makes it safe."""
+    us = _us([("42", "Ben White", "Arsenal")])
+    fpl = _fpl([(51, "Benjamin White", "Arsenal"),
+                (52, "Bukayo Saka", "Arsenal")])
+    out, report = map_understat_players(us, fpl,
+                                        team_aliases={"Arsenal": "Arsenal"})
+    assert list(out["code"]) == [51]
+    assert report["surname_club"] == 1
+
+
+def test_surname_club_needs_a_shared_token_not_just_a_first_name():
+    """Two Arsenal Bens are two players; the surname has to agree."""
+    us = _us([("43", "Ben White", "Arsenal")])
+    fpl = _fpl([(53, "Benjamin Cottrell", "Arsenal")])
+    out, report = map_understat_players(us, fpl,
+                                        team_aliases={"Arsenal": "Arsenal"})
+    assert out.empty
+    assert report["surname_club"] == 0 and report["unmatched"] == 1
+
+
+def test_surname_club_needs_the_first_names_to_be_prefix_kin():
+    """A bare surname match is not enough: two Beyers at Burnley are not
+    the same footballer."""
+    us = _us([("44", "Louis Beyer", "Burnley")])
+    fpl = _fpl([(54, "Jordan Beyer", "Burnley")])
+    out, report = map_understat_players(us, fpl,
+                                        team_aliases={"Burnley": "Burnley"})
+    assert out.empty
+    assert report["surname_club"] == 0 and report["unmatched"] == 1
+
+
+def test_surname_club_refuses_two_same_club_candidates():
+    us = _us([("45", "Kaine Hayden", "Aston Villa")])
+    fpl = _fpl([(55, "Kaine Kesler Hayden", "Aston Villa"),
+                (56, "Kaine Kesler-Hayden", "Aston Villa")])
+    out, report = map_understat_players(us, fpl,
+                                        team_aliases={"Aston Villa":
+                                                      "Aston Villa"})
+    assert out.empty
+    assert report["surname_club"] == 0 and report["unmatched"] == 1
+
+
+def test_surname_club_never_reaches_across_clubs():
+    us = _us([("46", "Ben White", "Arsenal")])
+    fpl = _fpl([(57, "Benjamin White", "Chelsea")])
+    out, report = map_understat_players(us, fpl,
+                                        team_aliases={"Arsenal": "Arsenal"})
+    assert out.empty
+    assert report["surname_club"] == 0 and report["unmatched"] == 1
+
+
+def test_surname_club_skips_a_code_an_earlier_pass_already_claimed():
+    us = _us([("47", "Benjamin White", "Arsenal"),
+              ("48", "Ben White", "Arsenal")])
+    fpl = _fpl([(58, "Benjamin White", "Arsenal")])
+    out, report = map_understat_players(us, fpl,
+                                        team_aliases={"Arsenal": "Arsenal"})
+    assert out.to_dict("records") == [{"understat_id": "47", "code": 58}]
+    assert report["exact"] == 1 and report["surname_club"] == 0
+
+
+def test_the_new_passes_leave_exact_and_cross_club_alone():
+    """Same-club exact still wins over a subset candidate, and a unique
+    league-wide name still resolves cross-club."""
+    us = _us([("60", "Bruno Fernandes", "Manchester United"),
+              ("61", "Kai Havertz", "Arsenal")])
+    fpl = _fpl([(70, "Bruno Fernandes", "Man Utd"),
+                (71, "Bruno Fernandes da Silva", "Man Utd"),
+                (72, "Kai Havertz", "Chelsea")])
+    out, report = map_understat_players(
+        us, fpl, team_aliases={"Manchester United": "Man Utd",
+                               "Arsenal": "Arsenal"})
+    assert dict(zip(out["understat_id"], out["code"])) == {"60": 70, "61": 72}
+    assert report["exact"] == 1 and report["cross_club"] == 1
+    assert report["token_subset"] == 0 and report["surname_club"] == 0
+
+
+def test_the_summary_line_carries_the_new_counters(capsys):
+    us = _us([("62", "Darwin Núñez", "Liverpool"),
+              ("63", "Ben White", "Arsenal")])
+    fpl = _fpl([(80, "Darwin Núñez Ribeiro", "Liverpool"),
+                (81, "Benjamin White", "Arsenal")])
+    map_understat_players(us, fpl, team_aliases={"Liverpool": "Liverpool",
+                                                 "Arsenal": "Arsenal"})
+    printed = capsys.readouterr().out
+    assert "1 token-subset" in printed and "1 surname-club" in printed
+
+
+def test_the_override_file_still_runs_after_the_new_passes():
+    """A name neither new pass can bridge — no shared token at all — still
+    lands on the manual file."""
+    us = _us([("64", "Fabinho", "Liverpool")])
+    fpl = _fpl([(90, "Fabio Henrique Tavares", "Liverpool")])
+    out, report = map_understat_players(us, fpl,
+                                        team_aliases={"Liverpool":
+                                                      "Liverpool"},
+                                        overrides={"64": 90})
+    assert list(out["code"]) == [90]
+    assert report["override"] == 1
+    assert report["token_subset"] == report["surname_club"] == 0
 
 
 def test_map_understat_players_is_one_row_per_understat_id():

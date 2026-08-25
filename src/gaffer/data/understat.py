@@ -262,24 +262,59 @@ def load_overrides() -> dict[str, int]:
             if not k.startswith("_")}
 
 
+def _prefix_kin(a: str, b: str) -> bool:
+    """True when one first name is a shortening of the other.
+
+    "ben"/"benjamin", "joe"/"joseph", "alex"/"alexander" — the display name
+    keeps the stem and drops the tail, so a prefix test in either direction
+    catches them while "louis"/"jordan" is refused outright.
+    """
+    return bool(a) and bool(b) and (a.startswith(b) or b.startswith(a))
+
+
 def map_understat_players(us_players: pd.DataFrame, fpl_players: pd.DataFrame,
                           team_aliases: dict[str, str],
                           overrides: dict[str, int] | None = None
                           ) -> tuple[pd.DataFrame, dict]:
     """``understat_id -> code`` lookup, plus a report of how each id resolved.
 
-    Three passes, most conservative first. A normalized full-name match at the
-    *same club* is unambiguous. A normalized full-name match that is unique
-    across the whole league is next — that is the transfer case, where the two
-    sources disagree about the club but only one player can be meant. Anything
-    left goes to the manual override file, and whatever survives that is
-    logged by name and dropped: an unmapped player contributes NaN features,
-    which LightGBM handles natively, where a wrong mapping would attach one
-    player's shot volume to another.
+    Five passes, most conservative first, each one a full sweep over every
+    understat id before the next begins:
+
+    1. ``exact`` — a normalized full-name match at the *same club*.
+    2. ``cross_club`` — a normalized full-name match that is unique across the
+       whole league. That is the transfer case, where the two sources disagree
+       about the club but only one player can be meant.
+    3. ``token_subset`` — the two sources disagree about how much of the legal
+       name to print. vaastav writes "Gabriel Martinelli Silva", "Alisson
+       Ramses Becker", "Darwin Núñez Ribeiro"; understat writes the display
+       name. When one side's normalized tokens are a subset of the other's and
+       exactly one *same-club* FPL player qualifies, they are the same man.
+    4. ``surname_club`` — the shortened first name, which no subset test
+       reaches: "Ben White" against "Benjamin White". The rule is a shared
+       token (the surname, in practice) *plus* first names that are prefix kin
+       — both halves are required, because a shared surname alone puts Louis
+       Beyer on Jordan Beyer, and a shared first name alone puts any two
+       club-mates together. Again exactly one same-club candidate, or refuse.
+    5. ``override`` — the manual file, for names no rule can bridge
+       ("Fabinho" against "Fabio Henrique Tavares").
+
+    Whatever survives is logged by name and dropped: an unmapped player
+    contributes NaN features, which LightGBM handles natively, where a wrong
+    mapping would attach one player's shot volume to another.
+
+    Passes 3 and 4 are same-club only — never cross-club — because their
+    matches are loose enough that the club is the only thing keeping them
+    honest, and they claim each code at most once: understat carries a second
+    id for some players ("Joe Gomez" *and* "Joseph Gomez"), and the second one
+    must not re-claim a code an earlier pass already took. Sweeping rather
+    than cascading is also what lets a bare "Gabriel" resolve — pass 3 first
+    claims the two unambiguous Arsenal Gabriels, which leaves pass 4 exactly
+    one candidate for the third.
 
     ``team_aliases`` maps understat club names to FPL bootstrap names; a club
-    missing from it simply never matches on the same-club pass and falls
-    through to the cross-club one.
+    missing from it simply never matches on a same-club pass and falls through
+    to the cross-club one.
     """
     overrides = load_overrides() if overrides is None else overrides
     us = us_players[["understat_id", "player_name", "team"]].drop_duplicates(
@@ -297,29 +332,80 @@ def map_understat_players(us_players: pd.DataFrame, fpl_players: pd.DataFrame,
     counts = fpl["norm_name"].value_counts()
     unique_names = {r.norm_name: int(r.code) for r in fpl.itertuples()
                     if counts.get(r.norm_name, 0) == 1}
+    by_club: dict[object, list[tuple[int, tuple[str, ...]]]] = {}
+    for r in fpl.itertuples():
+        by_club.setdefault(r.team_name, []).append(
+            (int(r.code), tuple(r.norm_name.split())))
 
-    rows, report = [], {"rows": int(len(us)), "exact": 0, "cross_club": 0,
-                        "override": 0, "unmatched": 0}
-    unmatched_names = []
+    resolved: dict[str, tuple[str, int]] = {}
+    claimed: set[int] = set()
+
+    def take(understat_id, bucket: str, code: int) -> None:
+        resolved[str(understat_id)] = (bucket, int(code))
+        claimed.add(int(code))
+
     for r in us.itertuples():
         code = by_name_club.get((r.norm_name, r.norm_club))
-        bucket = "exact"
-        if code is None:
-            code = unique_names.get(r.norm_name)
-            bucket = "cross_club"
-        if code is None:
-            code = overrides.get(str(r.understat_id))
-            bucket = "override"
-        if code is None:
+        if code is not None:
+            take(r.understat_id, "exact", code)
+    for r in us.itertuples():
+        if str(r.understat_id) in resolved:
+            continue
+        code = unique_names.get(r.norm_name)
+        if code is not None:
+            take(r.understat_id, "cross_club", code)
+
+    def candidates(norm_club) -> list[tuple[int, tuple[str, ...]]]:
+        """Same-club FPL players no pass has claimed yet."""
+        return [(code, toks) for code, toks in by_club.get(norm_club, [])
+                if code not in claimed]
+
+    def sweep(bucket: str, rule) -> None:
+        """One pass: ``rule(us_tokens, fpl_tokens)`` on unclaimed club-mates,
+        taken only when exactly one candidate says yes."""
+        for r in us.itertuples():
+            if str(r.understat_id) in resolved:
+                continue
+            us_toks = tuple(r.norm_name.split())
+            if not us_toks:
+                continue
+            hits = [code for code, toks in candidates(r.norm_club)
+                    if toks and rule(us_toks, toks)]
+            if len(hits) == 1:
+                take(r.understat_id, bucket, hits[0])
+
+    sweep("token_subset",
+          lambda a, b: set(a) <= set(b) or set(b) <= set(a))
+    sweep("surname_club",
+          lambda a, b: bool(set(a) & set(b)) and _prefix_kin(a[0], b[0]))
+
+    for r in us.itertuples():
+        if str(r.understat_id) in resolved:
+            continue
+        code = overrides.get(str(r.understat_id))
+        if code is not None:
+            take(r.understat_id, "override", code)
+
+    rows, report = [], {"rows": int(len(us)), "exact": 0, "cross_club": 0,
+                        "token_subset": 0, "surname_club": 0, "override": 0,
+                        "unmatched": 0}
+    unmatched_names = []
+    for r in us.itertuples():
+        hit = resolved.get(str(r.understat_id))
+        if hit is None:
             report["unmatched"] += 1
             unmatched_names.append(f"{r.player_name} ({r.team}, "
                                    f"id {r.understat_id})")
             continue
+        bucket, code = hit
         report[bucket] += 1
         rows.append({"understat_id": str(r.understat_id), "code": int(code)})
     report["unmatched_names"] = unmatched_names
     print(f"understat id mapping: {report['exact']} exact, "
-          f"{report['cross_club']} cross-club, {report['override']} override, "
+          f"{report['cross_club']} cross-club, "
+          f"{report['token_subset']} token-subset, "
+          f"{report['surname_club']} surname-club, "
+          f"{report['override']} override, "
           f"{report['unmatched']} unmatched")
     for name in unmatched_names[:20]:
         print(f"  unmatched: {name}")
