@@ -300,46 +300,54 @@ def test_an_empty_lambda_table_is_also_unchanged():
     assert a["gain_over_horizon"] == b["gain_over_horizon"]
 
 
-def test_the_wildcard_gain_is_reduced_by_the_banked_ft_value():
-    """Five banked transfers are five options the wildcard throws away."""
+def test_the_wildcard_does_not_charge_for_the_banked_transfers():
+    """B2. The MILP models a wildcard week as ``ftv <= prev_ft + 1`` — banked
+    transfers *survive* the chip, which is the rule since 2024-25. Deducting
+    their lambda value on top of that was charging the manager twice for a
+    bank he never loses, and the two halves of the codebase disagreed about
+    what a wildcard costs."""
+    from dataclasses import replace as dc_replace
+
+    from gaffer.optimize.chips import CHIP_EVAL_DECAY
+    from gaffer.optimize.milp import solve_plan
+
     pool = golden_pool()
     state = replace(_owned_state(pool), free_transfers=5)
     lam = LambdaLookup({(k, t): 1.0 for k in range(1, 6)
                         for t in range(1, 39)})
-    plain = wildcard_now_assessment(pool, state, **GOLDEN_KW)
+    cfg = {**GOLDEN_KW, "decay": CHIP_EVAL_DECAY, "ft_lambda": lam}
+    base = solve_plan(pool, state, **cfg)
+    wc = solve_plan(pool, dc_replace(state, wildcard_gw=state.gws[0]), **cfg)
     priced = wildcard_now_assessment(pool, state, **GOLDEN_KW, ft_lambda=lam)
-    assert (abs(priced["gain_over_horizon"]
-                - (plain["gain_over_horizon"] - 5.0)) < 0.01)
+    assert (priced["gain_over_horizon"]
+            == round(wc.objective - base.objective, 2))
 
 
-def test_the_assessment_reports_what_it_deducted():
-    """Printing the number is the difference between a defensible decision
-    and a mysterious one."""
+def test_a_huge_lambda_table_cannot_talk_the_wildcard_out_of_itself():
+    """The old deduction was unbounded in the table, so a big enough lambda
+    turned every wildcard off regardless of what the solver said."""
+    pool = golden_pool()
+    state = replace(_owned_state(pool), free_transfers=5)
+    huge = LambdaLookup({(k, t): 100.0 for k in range(1, 6)
+                         for t in range(1, 39)})
+    plain = wildcard_now_assessment(pool, state, **GOLDEN_KW)
+    priced = wildcard_now_assessment(pool, state, **GOLDEN_KW, ft_lambda=huge)
+    # 5 banked transfers at lambda 100 was a 400-point deduction under the old
+    # code, which turned every wildcard off. Whatever the solver now says, it
+    # cannot be hundreds of points below the unpriced answer.
+    assert priced["recommend"] == plain["recommend"]
+    assert priced["gain_over_horizon"] > plain["gain_over_horizon"] - 10
+
+
+def test_the_assessment_no_longer_reports_a_bank_deduction():
+    """Nothing is deducted, so there is no number to report — a key pinned at
+    0.0 would only invite the deduction back."""
     pool = golden_pool()
     state = replace(_owned_state(pool), free_transfers=3)
     lam = LambdaLookup({(k, t): 2.0 for k in range(1, 6)
                         for t in range(1, 39)})
     out = wildcard_now_assessment(pool, state, **GOLDEN_KW, ft_lambda=lam)
-    assert out["ft_bank_cost"] == 6.0
-
-
-def test_a_bank_of_one_free_transfer_costs_only_its_own_lambda():
-    pool = golden_pool()
-    state = replace(_owned_state(pool), free_transfers=1)
-    lam = LambdaLookup({(1, t): 2.0 for t in range(1, 39)} |
-                       {(k, t): 0.5 for k in range(2, 6)
-                        for t in range(1, 39)})
-    out = wildcard_now_assessment(pool, state, **GOLDEN_KW, ft_lambda=lam)
-    assert out["ft_bank_cost"] == 2.0
-
-
-def test_the_deduction_can_flip_a_marginal_recommendation_off():
-    pool = golden_pool()
-    state = replace(_owned_state(pool), free_transfers=5)
-    huge = LambdaLookup({(k, t): 100.0 for k in range(1, 6)
-                         for t in range(1, 39)})
-    assert wildcard_now_assessment(pool, state, **GOLDEN_KW,
-                                   ft_lambda=huge)["recommend"] is False
+    assert "ft_bank_cost" not in out
 
 
 # --- v4c: theta-aware chip planning ----------------------------------------

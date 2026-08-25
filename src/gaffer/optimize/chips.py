@@ -220,19 +220,14 @@ def wildcard_now_assessment(pool: pd.DataFrame, state: SolveInput,
     if base is None:
         base = solve_plan(pool, state, **cfg)
     wc = solve_plan(pool, replace(state, wildcard_gw=state.gws[0]), **cfg)
+    # No deduction for the banked free transfers. A wildcard does not reset
+    # the bank — it has not since 2024-25 — and ``milp`` models that directly
+    # (``ftv[t] <= prev_ft + 1`` on a wildcard week), so the lambda value of
+    # the bank is already inside ``wc.objective``. Subtracting it again here
+    # charged the manager twice for transfers he keeps, and left the two
+    # halves of the codebase disagreeing about what a wildcard costs.
     gain = wc.objective - base.objective
-    # A wildcard resets the free-transfer bank. Priced at zero, a wildcard
-    # looks cheapest exactly when it is most expensive — sitting on five
-    # banked transfers is five weeks of options the chip throws away. The
-    # lambda table knows what each of them is worth.
-    ft_lambda = cfg.get("ft_lambda")
-    ft_bank_cost = 0.0
-    if ft_lambda is not None and not ft_lambda.empty:
-        weeks_left = max(1, SEASON_LAST_GW - state.gws[-1])
-        ft_bank_cost = ft_lambda.bank_value(state.free_transfers, weeks_left)
-    gain = gain - ft_bank_cost
     return {"gain_over_horizon": round(gain, 2),
-            "ft_bank_cost": round(ft_bank_cost, 2),
             "wc_squad": wc.gw_plans[0].squad,
             "recommend": gain > WILDCARD_RECOMMEND_THRESHOLD}
 
