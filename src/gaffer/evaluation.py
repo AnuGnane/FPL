@@ -16,7 +16,15 @@ LightGBM to do it.
 
 from __future__ import annotations
 
+import json
+import subprocess
+from datetime import datetime, timezone
+from pathlib import Path
+
 import numpy as np
+
+from gaffer.artifacts import REPORTS
+from gaffer.errors import GafferError
 
 RETURN_CATEGORIES = ["zeros", "blanks", "tickers", "haulers", "all"]
 """OpenFPL's return buckets, defined on *actual* points, plus the pooled cut.
@@ -115,3 +123,49 @@ def head_metrics(pred, actual) -> dict:
     """One probability head's scoreline: log loss plus its reliability curve."""
     return {"log_loss": round(log_loss(pred, actual), 4),
             "reliability": reliability(pred, actual)}
+
+
+EVALUATION_PATH = REPORTS / "evaluation.json"
+"""One artifact, three independent keys.
+
+``current`` and ``benchmark`` are different protocols and ``decomposition``
+is a pair of replays that takes hours; each is written on its own and none of
+them may take the others down with it, so writes merge rather than replace.
+"""
+
+
+def run_at() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def git_sha() -> str:
+    """Short HEAD sha, or ``"unknown"``.
+
+    Which commit produced a number is half of what makes it comparable to the
+    next one, and a missing git is never a reason to fail an evaluation.
+    """
+    try:
+        done = subprocess.run(["git", "rev-parse", "--short", "HEAD"],
+                              capture_output=True, text=True, timeout=5)
+    except (OSError, subprocess.SubprocessError):
+        return "unknown"
+    return done.stdout.strip() if done.returncode == 0 else "unknown"
+
+
+def load_evaluation() -> dict:
+    """The whole artifact. Missing file is a domain error, not a crash."""
+    if not EVALUATION_PATH.exists():
+        raise GafferError(
+            "no evaluation on disk — run `gaffer evaluate` first")
+    return json.loads(EVALUATION_PATH.read_text())
+
+
+def save_evaluation(key: str, payload: dict) -> Path:
+    """Merge ``payload`` in under ``key``, leaving the other keys alone."""
+    stored: dict = {}
+    if EVALUATION_PATH.exists():
+        stored = json.loads(EVALUATION_PATH.read_text())
+    stored[key] = payload
+    REPORTS.mkdir(exist_ok=True)
+    EVALUATION_PATH.write_text(json.dumps(stored, indent=1))
+    return EVALUATION_PATH

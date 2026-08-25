@@ -102,3 +102,57 @@ def test_head_metrics_packs_log_loss_and_the_curve_together():
     out = head_metrics([0.5, 0.5], [1, 0])
     assert round(out["log_loss"], 4) == round(float(np.log(2)), 4)
     assert isinstance(out["reliability"], list)
+
+
+import json  # noqa: E402
+
+import pytest  # noqa: E402
+
+from gaffer.errors import GafferError  # noqa: E402
+from gaffer.evaluation import (EVALUATION_PATH, git_sha,  # noqa: E402
+                               load_evaluation, run_at, save_evaluation)
+
+
+def test_load_evaluation_without_the_artifact_says_how_to_make_one(
+        tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(GafferError) as exc:
+        load_evaluation()
+    assert "gaffer evaluate" in str(exc.value)
+
+
+def test_save_evaluation_writes_under_its_mode_key(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    path = save_evaluation("current", {"run_at": "now", "holdout_slots": 10})
+    assert path == EVALUATION_PATH
+    assert json.loads(path.read_text())["current"]["holdout_slots"] == 10
+
+
+def test_save_evaluation_does_not_clobber_the_other_mode(tmp_path,
+                                                         monkeypatch):
+    """A benchmark run takes an hour; losing last night's current-mode
+    numbers to it would make the artifact useless as a regression baseline."""
+    monkeypatch.chdir(tmp_path)
+    save_evaluation("current", {"holdout_slots": 10})
+    save_evaluation("benchmark", {"test_season": "2024-25"})
+    save_evaluation("decomposition", {"season": "2025-26"})
+    stored = load_evaluation()
+    assert stored["current"]["holdout_slots"] == 10
+    assert stored["benchmark"]["test_season"] == "2024-25"
+    assert stored["decomposition"]["season"] == "2025-26"
+
+
+def test_save_evaluation_replaces_its_own_key(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    save_evaluation("current", {"holdout_slots": 10})
+    save_evaluation("current", {"holdout_slots": 5})
+    assert load_evaluation()["current"] == {"holdout_slots": 5}
+
+
+def test_run_at_is_an_iso_utc_stamp():
+    assert run_at().endswith("+00:00")
+
+
+def test_git_sha_is_a_string_even_outside_a_repo(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    assert isinstance(git_sha(), str)
