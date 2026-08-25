@@ -82,6 +82,14 @@ def fixture_key(df: pd.DataFrame,
     singleton pseudo-fixtures where the re-derivation hands each of them the
     3 bonus of a one-man ranking. Rows matching no fixture get ``None``.
 
+    A team playing twice at one kickoff is impossible, so a key that two
+    different fixtures both claim means the fixture list is corrupt — a
+    duplicated ingest, a postponement re-added rather than moved. That key is
+    dropped rather than last-wins-overwritten or raised on: the rows fall to
+    the unmatched branch and keep their stored bonus, which is the safe
+    direction, whereas last-wins keys half a match onto the wrong fixture and
+    an exception lets one bad ingest row kill an entire training run.
+
     Without ``fixtures`` the key falls back to :func:`fixture_pair`, which is
     what synthetic frames (and callers with no fixture list) still use.
     """
@@ -91,7 +99,7 @@ def fixture_key(df: pd.DataFrame,
                      df["kickoff_time"].astype("string"), fixture_pair(df))),
             index=df.index, dtype=object)
 
-    lookup: dict[tuple, tuple] = {}
+    lookup: dict[tuple, tuple | None] = {}
     for s, g, k, h, a in zip(
             pd.to_numeric(fixtures["season_idx"], errors="coerce"),
             pd.to_numeric(fixtures["gw"], errors="coerce"),
@@ -99,8 +107,9 @@ def fixture_key(df: pd.DataFrame,
             pd.to_numeric(fixtures["home_code"], errors="coerce"),
             pd.to_numeric(fixtures["away_code"], errors="coerce")):
         ident = (s, g, k, h, a)
-        lookup[(s, g, k, h)] = ident
-        lookup[(s, g, k, a)] = ident
+        for team in (h, a):
+            seen = lookup.get((s, g, k, team), ident)
+            lookup[(s, g, k, team)] = ident if seen == ident else None
 
     rows = zip(pd.to_numeric(df["season_idx"], errors="coerce"),
                pd.to_numeric(df["gw"], errors="coerce"),

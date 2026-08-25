@@ -215,6 +215,39 @@ def test_rederive_bonus_passes_through_the_stored_bonus_with_no_fixture_match():
     assert list(out) == [2.0, 1.0]
 
 
+def test_fixture_key_drops_an_ambiguous_key_instead_of_last_wins():
+    """A team can only play once per kickoff, so a team appearing twice at one
+    kickoff means the fixture list is corrupt (duplicated ingest, a re-added
+    postponement). Last-wins would silently key half a match onto the wrong
+    fixture; dropping the ambiguous key sends those rows to the stored-bonus
+    passthrough instead, and leaves the rest of the gameweek alone."""
+    k1 = "2025-08-16T14:00:00Z"
+    k2 = "2025-08-16T16:30:00Z"
+    fixtures = pd.DataFrame([
+        {"season_idx": 0, "gw": 1, "kickoff_time": k1,
+         "home_code": 1, "away_code": 2},
+        {"season_idx": 0, "gw": 1, "kickoff_time": k1,
+         "home_code": 3, "away_code": 2},  # team 2 twice at one kickoff
+        {"season_idx": 0, "gw": 1, "kickoff_time": k2,
+         "home_code": 5, "away_code": 6},
+    ])
+    ambiguous = _fixture([30.0, 25.0], team=1, opp=2, kickoff=k1)
+    ambiguous["team_code"] = 1  # both rows are team 1, facing the dupe
+    ambiguous["opp_code"] = 2
+    clean = _fixture([30.0, 25.0], team=5, opp=6, kickoff=k2)
+    frame = pd.concat([ambiguous, clean], ignore_index=True)
+    frame["bonus"] = [1.0, 3.0, 1.0, 3.0]
+
+    key = fixture_key(frame, fixtures)
+    # Rows pointing at the duplicated team match nothing at all.
+    assert key.iloc[0] is None and key.iloc[1] is None
+    assert key.iloc[2] is not None
+
+    out = rederive_bonus(frame, fixtures=fixtures)
+    assert list(out[:2]) == [1.0, 3.0]   # stored bonus, untouched
+    assert list(out[2:]) == [3.0, 2.0]   # the clean fixture still restates
+
+
 def test_apply_new_bps_keeps_the_stored_bonus_where_no_bps_moved():
     """Seasons before 2025-26 carry no ``cbi``, so the restatement is provably
     a no-op there — and stored truth beats a reconstruction that only
