@@ -11,6 +11,9 @@ ft_value = 1.5
 itb_value = 0.05    # points per 1.0m in the bank at horizon end
 hit_cost = 4
 
+[scenarios]
+n = 40               # gate D1: gated replay 1818 vs raw 1743 (+75), fewer transfers and hits
+
 [odds]
 # api_key = "get one free at the-odds-api.com (500 requests/month)"
 

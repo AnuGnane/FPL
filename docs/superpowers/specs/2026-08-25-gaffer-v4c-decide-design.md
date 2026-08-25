@@ -214,3 +214,32 @@ with n=4 in CI-speed tests.
 ## 12. Outcome
 
 (Filled as gates are measured; completed at cycle end.)
+
+### Gate D1 — scenarios and policy (2026-08-25): PASS
+
+Replay 2025-26 GW5–38, horizon 3, N=40, seed 20260825+gw, thresholds
+60%/75%. Driver: throwaway `scripts/d1_gated_replay.py` monkeypatching the
+replay's `solve_plan` (deleted after recording, per plan Task 12).
+
+| | raw optimum | gated (flat 60′ xmins) | gated (real xmins) |
+| --- | --- | --- | --- |
+| replay total | 1743 | 1711 | **1818 (+75)** |
+| transfers made | 56 | 58 | 50 |
+| hits taken | 23 | 27 | 18 |
+| weeks held (gate blocked all moves) | n/a | 6/34 | 4/34 |
+| captain agreement rate | n/a | 23/34 | 28/34 |
+
+The first run used the plan's flat 60-minute xmins stub and FAILED (−32,
+*more* transfers and hits). Diagnosis: flat 60 gives a nailed-on starter
+(92−60)/134 ≈ 24 % EP noise where production advise gives him ~1.5 %, so
+captaincy plurality and premium-move frequencies were computed under wildly
+inflated noise on exactly the players that decide the total (captain
+overridden 11/34 weeks). The driver was amended — zero product-code change —
+to stash the component frame the replay already computes each week and derive
+xmins exactly as `run_advise` does (`real_xmins_weeks: 34/34`). With honest
+noise the gate does what it was designed to do: fewer moves, fewer hits, more
+points. `[scenarios] n = 40` set in `config.toml`.
+
+Method caveat: single seed, one season. The flat-stub run doubles as an
+unplanned sensitivity check — the gate's value depends on the noise model
+being minutes-aware, which production is.
