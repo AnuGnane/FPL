@@ -331,3 +331,92 @@ def test_run_advise_records_the_data_gap_after_refreshing():
     src = inspect.getsource(run_advise)
     assert src.index("refresh_live(") < src.index("ingested_through(")
     assert "data_through_gw=" in src and "data_warning=" in src
+
+
+# --- v4c: the scenario layer -----------------------------------------------
+
+def test_run_advise_runs_scenarios_after_the_deterministic_solve():
+    """Source-level seam again. The raw optimum still runs first — it anchors
+    the report and it is the fallback when scenarios are off."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    raw = src.index("plan = solve_plan(pool, state, **solve_kw)")
+    sweep = src.index("run_scenarios(")
+    gate = src.index("decide(")
+    assert raw < sweep < gate
+
+
+def test_run_advise_guards_the_whole_scenario_block_on_the_config():
+    """n = 0 must not merely produce the same answer — it must not run."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    assert "if cfg.scenarios_n > 0:" in src
+    assert src.index("if cfg.scenarios_n > 0:") < src.index("run_scenarios(")
+
+
+def test_the_scenario_block_never_mentions_pool_ep():
+    """Protected: tests/test_advise.py:97 asserts pool_ep does not appear
+    after 'ep_gw1 =', and the scenario layer takes the pool frame anyway —
+    build_pool has already folded the tilted values into it."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    block = src[src.index("if cfg.scenarios_n > 0:"):src.index("ep_gw1 =")]
+    assert "pool_ep" not in block
+    assert "noised_pool" in block or "run_scenarios(pool" in block
+
+
+def test_run_advise_still_pins_every_protected_ordering():
+    """Belt and braces: this cycle edits run_advise three times, so re-assert
+    all four protected literals in one place that fails loudly."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    assert "ep_matrix(apply_calibration(assemble_ep(" in src
+    assert src.index("fetch_rival_entries(") < src.index("tilt_ep(")
+    assert src.index("tilt_ep(") < src.index("pool = build_pool(")
+    assert "build_pool(players, pool_ep," in src
+    assert "ep_named = ep.merge(" in src
+    assert 'ep_gw1 = ep_named[ep_named["gw"] == gw]' in src
+    assert "pool_ep" not in src[src.index("ep_gw1 ="):]
+    assert '_named(first.xi, name_of, pos_of, ep_by, gw)' in src
+    assert (src.index("odds_frame(raw_odds, teams, events)")
+            < src.index("tg_future = build_team_future("))
+    assert (src.index("tg_future = build_team_future(")
+            < src.index("merge_team_odds(tg_future, odds_df)"))
+
+
+def test_advice_carries_the_scenario_fields_with_safe_defaults():
+    from gaffer.advise import Advice
+    import dataclasses
+
+    fields = {f.name: f for f in dataclasses.fields(Advice)}
+    for name in ("move_frequencies", "raw_optimum_agrees", "scenarios"):
+        assert name in fields
+        assert (fields[name].default is not dataclasses.MISSING
+                or fields[name].default_factory is not dataclasses.MISSING)
+
+
+def test_solve_state_opt_stays_json_serializable():
+    """SolveState.opt is written to disk and read by the What-If page; a
+    callable in there would break the round trip."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    assert "opt_kw = dict(" in src
+    assert "solve_kw = dict(opt_kw" in src
+    # The lambda lookup rides on solve_kw, never on the serialized opt_kw.
+    assert "ft_lambda" not in src[src.index("opt_kw = dict("):
+                                  src.index("solve_kw = dict(opt_kw")]

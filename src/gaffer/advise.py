@@ -58,6 +58,9 @@ from gaffer.optimize.chips import (chip_baseline, evaluate_chips,
 from gaffer.optimize.differentials import (captain_table, threat_board,
                                            transfer_alternatives)
 from gaffer.optimize.milp import SolveInput, build_pool, solve_plan
+from gaffer.optimize.policy import Thresholds, coherent_plan, decide
+from gaffer.optimize.scenarios import (move_frequencies, run_scenarios,
+                                       xmins_by_player_gw)
 from gaffer.prices import price_alerts
 
 REPORTS = Path("reports")
@@ -115,6 +118,12 @@ class Advice:
     # every positional construction still load.
     data_through_gw: int | None = None
     data_warning: str | None = None
+    # --- v4c decision layer ------------------------------------------------
+    # All three default to the pre-v4c shape, so an Advice built without a
+    # scenario sweep is exactly the object it always was.
+    move_frequencies: list[dict] = field(default_factory=list)
+    raw_optimum_agrees: bool | None = None
+    scenarios: dict | None = None
 
 
 INITIAL_BUDGET = 1000
@@ -545,8 +554,43 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     opt_kw = dict(decay=cfg.decay, bench_weight=cfg.bench_weight,
                   vice_weight=cfg.vice_weight, ft_value=cfg.ft_value,
                   itb_value=cfg.itb_value, hit_cost=cfg.hit_cost)
-    plan = solve_plan(pool, state, **opt_kw)
+    # opt_kw is serialized into SolveState.opt at the end of this function, so
+    # it stays plain JSON. solve_kw is the same bundle plus anything that is
+    # only meaningful in-process.
+    solve_kw = dict(opt_kw)
+    plan = solve_plan(pool, state, **solve_kw)
     first = plan.gw_plans[0]
+
+    # --- scenario re-solving and the decision policy ----------------------
+    # The raw optimum above still runs, and still anchors the report. What
+    # follows only *gates* it: N noised re-solves of the same board, and a
+    # recommendation assembled from the moves that survived. With
+    # [scenarios] n = 0 none of this executes and `plan` is the advice, which
+    # is exactly the pre-v4c behaviour.
+    move_freqs: list[dict] = []
+    raw_agrees: bool | None = None
+    scenario_report: dict | None = None
+    if cfg.scenarios_n > 0:
+        xmins = xmins_by_player_gw(comp)
+        run = run_scenarios(pool, state, xmins, n=cfg.scenarios_n,
+                            seed=cfg.scenarios_seed, **solve_kw)
+        if run.completed:
+            freqs = move_frequencies(run.plans)
+            decision = decide(
+                freqs, plan,
+                Thresholds(transfer=cfg.transfer_threshold,
+                           irreversible=cfg.irreversible_threshold))
+            plan = coherent_plan(pool, state, decision, **solve_kw)
+            first = plan.gw_plans[0]
+            move_freqs = freqs.to_dict("records")
+            raw_agrees = decision.raw_optimum_agrees
+            scenario_report = {
+                "n": run.attempted, "completed": run.completed,
+                "failures": run.failures, "seed": run.seed,
+                "hold": decision.hold,
+                "captain_frequency": decision.captain_frequency,
+                "near_misses": decision.near_misses,
+            }
 
     # Chips are priced in *raw* points: evaluate_chips and
     # wildcard_now_assessment return objective deltas, and those deltas are
@@ -649,6 +693,9 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         mode="weekly" if my is not None else "initial_squad",
         data_through_gw=through,
         data_warning=gap_warning,
+        move_frequencies=move_freqs,
+        raw_optimum_agrees=raw_agrees,
+        scenarios=scenario_report,
     )
     REPORTS.mkdir(exist_ok=True)
     (REPORTS / f"gw{gw}-advice.json").write_text(
