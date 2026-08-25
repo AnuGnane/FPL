@@ -378,3 +378,59 @@ def evaluate_benchmark(max_train_idx: int = BENCHMARK_TRAIN_MAX_IDX,
         "references": REFERENCES,
         "caveat": BENCHMARK_CAVEAT,
     }
+
+
+def run_decomposition(season: str = "2025-26", start_gw: int = 5) -> dict:
+    # Replaced in full by the decomposition task; the CLI imports it eagerly
+    # so it has to exist before --decompose does anything.
+    raise GafferError("decomposition is not implemented yet")
+
+
+def format_report(key: str, payload: dict) -> str:
+    """The artifact as a table a human can read in a terminal.
+
+    The JSON is the record; this is what makes a run worth watching while it
+    happens. The caveat is printed as well as stored on purpose — a bare
+    comparison to somebody else's published numbers invites exactly the wrong
+    conclusion.
+    """
+    lines = [f"=== {key} (run_at {payload.get('run_at')}, "
+             f"sha {payload.get('git_sha')}) ==="]
+    if key == "decomposition":
+        lines.append(f"{payload.get('season')} from GW{payload.get('start_gw')}")
+        for name, cell in payload["cells"].items():
+            lines.append(f"{name:10s} total {cell['total']:5d}  "
+                         f"per_gw {cell['per_gw']:6.2f}  "
+                         f"hits {cell['hits']}")
+        lines.append(f"forecast_gap_h3   {payload['forecast_gap_h3']:8.1f}  "
+                     "points better forecasting could still win")
+        lines.append(f"planning_ceiling  {payload['planning_ceiling']:8.1f}  "
+                     "most multi-week planning can ever be worth")
+        return "\n".join(lines)
+
+    for cut, table in payload.get("stratified", {}).items():
+        lines.append(f"-- {cut}")
+        for cat in RETURN_CATEGORIES:
+            m = table[cat]
+            lines.append(f"   {cat:9s} rmse {m['rmse']:7.3f}  "
+                         f"mae {m['mae']:7.3f}  n {m['n']}")
+    for name, table in payload.get("baselines", {}).items():
+        lines.append(f"-- baseline {name}")
+        for cat in RETURN_CATEGORIES:
+            m = table[cat]
+            lines.append(f"   {cat:9s} rmse {m['rmse']:7.3f}  "
+                         f"mae {m['mae']:7.3f}  n {m['n']}")
+    for source, table in payload.get("references", {}).items():
+        lines.append(f"-- {source} (published)")
+        for cat, m in table.items():
+            lines.append(f"   {cat:9s} rmse {m['rmse']:7.3f}  "
+                         f"mae {m['mae']:7.3f}")
+    for head, m in payload.get("heads", {}).items():
+        lines.append(f"-- head {head}: log loss {m['log_loss']:.4f}, "
+                     f"{len(m['reliability'])} reliability bins")
+        for b in m["reliability"]:
+            lines.append(f"   pred {b['pred']:.3f}  obs {b['obs']:.3f}  "
+                         f"n {b['n']}")
+    if payload.get("caveat"):
+        lines.append(f"CAVEAT: {payload['caveat']}")
+    return "\n".join(lines)

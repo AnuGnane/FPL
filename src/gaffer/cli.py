@@ -157,6 +157,35 @@ def backtest(season: str = "2025-26", start_gw: int = 5, horizon: int = 1,
 
 
 @app.command()
+def evaluate(mode: str = typer.Option(
+                 "current", help="current (last-10-slot holdout) or "
+                                 "benchmark (train <=2023-24, test 2024-25)."),
+             decompose: bool = typer.Option(
+                 False, "--decompose",
+                 help="Run the {model,oracle} x {h1,h3} replay 2x2 instead. "
+                      "Hours: launch it under `caffeinate -i`."),
+             season: str = "2025-26", start_gw: int = 5):
+    """Score the model and write reports/evaluation.json."""
+    from gaffer.evaluation import (evaluate_benchmark, evaluate_current,
+                                   format_report, run_decomposition,
+                                   save_evaluation)
+
+    if decompose:
+        key, payload = "decomposition", run_decomposition(season=season,
+                                                          start_gw=start_gw)
+    elif mode == "benchmark":
+        key, payload = "benchmark", evaluate_benchmark()
+    elif mode == "current":
+        key, payload = "current", evaluate_current()
+    else:
+        typer.echo(f"unknown mode: {mode} (expected current or benchmark)")
+        raise typer.Exit(1)
+    path = save_evaluation(key, payload)
+    typer.echo(format_report(key, payload))
+    typer.echo(f"Wrote {path}")
+
+
+@app.command()
 def ui(port: int = typer.Option(8927, help="Port to serve on (default 8927)."),
        open_browser: bool = typer.Option(
            True, "--open-browser/--no-open-browser",

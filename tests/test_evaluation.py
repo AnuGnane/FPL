@@ -272,3 +272,50 @@ def test_benchmark_features_for_a_gameweek_use_only_strictly_prior_rows():
     at_gw4 = test[test["gw"] == 4].iloc[0]
     assert float(at_gw3["total_points_r1"]) == 2.0     # the haul is invisible
     assert float(at_gw4["total_points_r1"]) == 50.0    # ... until next week
+
+
+from gaffer.evaluation import format_report  # noqa: E402
+
+
+def _current_payload():
+    table = {c: {"rmse": 1.0, "mae": 0.5, "n": 10} for c in RETURN_CATEGORIES}
+    return {"run_at": "2026-08-25T00:00:00+00:00", "git_sha": "abc1234",
+            "holdout_slots": 10,
+            "stratified": {"all": table, "starters": table},
+            "heads": {"p_play": {"log_loss": 0.2771,
+                                 "reliability": [{"n": 5, "pred": 0.5,
+                                                  "obs": 0.4}]}},
+            "baselines": {"last5": table, "season_ppg": table}}
+
+
+def test_format_report_prints_every_category_and_the_baselines():
+    text = format_report("current", _current_payload())
+    for cat in RETURN_CATEGORIES:
+        assert cat in text
+    assert "baseline last5" in text
+    assert "abc1234" in text
+    assert "0.2771" in text
+
+
+def test_format_report_prints_the_reference_columns_and_the_caveat():
+    table = {c: {"rmse": 1.0, "mae": 0.5, "n": 10} for c in RETURN_CATEGORIES}
+    text = format_report("benchmark", {
+        "run_at": "x", "git_sha": "y", "test_season": "2024-25",
+        "stratified": {"all": table}, "references": REFERENCES,
+        "caveat": BENCHMARK_CAVEAT})
+    assert "openfpl" in text and "fplreview" in text
+    assert "5.142" in text
+    assert "yardstick" in text
+
+
+def test_format_report_names_the_two_derived_decomposition_numbers():
+    text = format_report("decomposition", {
+        "run_at": "x", "git_sha": "y", "season": "2025-26", "start_gw": 5,
+        "cells": {"model_h1": {"total": 1800, "per_gw": 52.9, "hits": 4},
+                  "model_h3": {"total": 1850, "per_gw": 54.4, "hits": 3},
+                  "oracle_h1": {"total": 2600, "per_gw": 76.5, "hits": 2},
+                  "oracle_h3": {"total": 2700, "per_gw": 79.4, "hits": 1}},
+        "forecast_gap_h3": 850.0, "planning_ceiling": 100.0})
+    assert "forecast_gap_h3" in text and "850" in text
+    assert "planning_ceiling" in text and "100" in text
+    assert "oracle_h3" in text

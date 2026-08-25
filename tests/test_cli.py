@@ -9,7 +9,7 @@ def test_cli_help_lists_commands():
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
     for cmd in ["advise", "refresh", "train", "prices", "league", "live",
-                "backtest", "build-history", "ui"]:
+                "backtest", "evaluate", "build-history", "ui"]:
         assert cmd in result.output
 
 
@@ -26,7 +26,7 @@ def test_every_command_help_renders():
     """Each command's body imports lazily, so --help is the cheapest proof
     that no command is wired to a name that does not exist yet."""
     for cmd in ["advise", "refresh", "train", "prices", "league", "live",
-                "backtest", "build-history", "ui"]:
+                "backtest", "evaluate", "build-history", "ui"]:
         result = runner.invoke(app, [cmd, "--help"])
         assert result.exit_code == 0, f"{cmd} --help failed: {result.output}"
 
@@ -159,3 +159,29 @@ def test_advise_says_nothing_extra_when_the_data_is_current(tmp_path,
                          _stub_advice(data_through_gw=1, data_warning=None))
     assert result.exit_code == 0
     assert "WARNING" not in result.output
+
+
+def test_evaluate_writes_the_artifact_and_prints_the_table(tmp_path,
+                                                           monkeypatch):
+    import json
+
+    monkeypatch.chdir(tmp_path)
+    payload = {"run_at": "now", "git_sha": "abc1234", "holdout_slots": 10,
+               "stratified": {"all": {c: {"rmse": 1.0, "mae": 0.5, "n": 3}
+                                      for c in ["zeros", "blanks", "tickers",
+                                                "haulers", "all"]}},
+               "heads": {}, "baselines": {}}
+    monkeypatch.setattr("gaffer.evaluation.evaluate_current",
+                        lambda *a, **k: payload)
+    result = runner.invoke(app, ["evaluate"])
+    assert result.exit_code == 0, result.output
+    stored = json.loads((tmp_path / "reports" / "evaluation.json").read_text())
+    assert stored["current"]["git_sha"] == "abc1234"
+    assert "haulers" in result.output
+
+
+def test_evaluate_rejects_an_unknown_mode(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["evaluate", "--mode", "nonsense"])
+    assert result.exit_code != 0
+    assert "nonsense" in result.output
