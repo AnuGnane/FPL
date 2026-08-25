@@ -413,3 +413,31 @@ def test_train_all_team_head_predicts_the_contract_frame():
     out = models["team"].predict(tg.dropna(subset=["elo_diff"]))
     assert list(out.columns) == ["code", "season_idx", "gw", "p_cs", "e_gc"]
     assert len(out) == len(tg.dropna(subset=["elo_diff"]))
+
+
+def test_train_all_stores_the_fitted_blend_weight(tmp_path, monkeypatch):
+    """The weight is a training output like any other component, and the
+    weekly refit is where it gets refreshed."""
+    import gaffer.models.persistence as persistence
+
+    monkeypatch.setattr(persistence, "MODELS_DIR", tmp_path)
+    train_all(_player_frame(seasons=(0, 1)), _team_frame(seasons=(0, 1)),
+              save=True)
+    assert "odds_blend_weight" in persistence.load_params("blend")
+
+
+def test_train_all_without_match_odds_stores_the_constant(tmp_path,
+                                                          monkeypatch):
+    """No football-data file is the default state of a fresh clone; the
+    stored weight then has to be the documented fallback, not a fit on
+    nothing."""
+    import gaffer.models.persistence as persistence
+    from gaffer.models import train as train_mod
+    from gaffer.models.team import ODDS_BLEND_WEIGHT
+
+    monkeypatch.setattr(persistence, "MODELS_DIR", tmp_path)
+    monkeypatch.setattr(train_mod.store, "exists", lambda rel: False)
+    train_mod.train_all(_player_frame(seasons=(0, 1)),
+                        _team_frame(seasons=(0, 1)), save=True)
+    stored = persistence.load_params("blend")["odds_blend_weight"]
+    assert stored == ODDS_BLEND_WEIGHT

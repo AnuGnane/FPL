@@ -4,7 +4,7 @@ import pytest
 
 from gaffer.models.team import (ODDS_BLEND_WEIGHT, TEAM_FEATURES, TeamModel,
                                 add_team_rolling, blend_team_odds,
-                                build_team_gw)
+                                build_team_gw, odds_blend_weight)
 
 
 def test_build_team_gw_two_rows_per_fixture():
@@ -128,7 +128,9 @@ def _team_preds() -> pd.DataFrame:
 
 
 def test_blend_team_odds_matches_hand_computed_blend():
-    out = blend_team_odds(_team_preds())
+    """Explicit weight: the default now resolves through the artifact, and a
+    fitted weight on disk must not be able to change what this test means."""
+    out = blend_team_odds(_team_preds(), weight=ODDS_BLEND_WEIGHT)
     row = out[out["code"] == 1].iloc[0]
     w = ODDS_BLEND_WEIGHT
     assert row["p_cs"] == pytest.approx(w * np.exp(-1.0) + (1 - w) * 0.3)
@@ -138,7 +140,7 @@ def test_blend_team_odds_matches_hand_computed_blend():
 
 
 def test_blend_team_odds_leaves_rows_without_odds_untouched():
-    out = blend_team_odds(_team_preds())
+    out = blend_team_odds(_team_preds(), weight=ODDS_BLEND_WEIGHT)
     row = out[out["code"] == 2].iloc[0]
     assert row["p_cs"] == pytest.approx(0.44)
     assert row["e_gc"] == pytest.approx(1.2)
@@ -155,3 +157,40 @@ def test_blend_team_odds_without_the_odds_column_returns_frame_unchanged():
     preds = _team_preds().drop(columns=["odds_e_goals_against"])
     out = blend_team_odds(preds)
     pd.testing.assert_frame_equal(out, preds)
+
+
+def test_blend_team_odds_honours_an_explicit_weight():
+    out = blend_team_odds(_team_preds(), weight=0.0)
+    row = out[out["code"] == 1].iloc[0]
+    assert row["p_cs"] == pytest.approx(0.3)
+    assert row["e_gc"] == pytest.approx(1.5)
+
+
+def test_blend_team_odds_defaults_to_the_fitted_artifact_weight(tmp_path,
+                                                                monkeypatch):
+    import gaffer.models.persistence as persistence
+
+    monkeypatch.setattr(persistence, "MODELS_DIR", tmp_path)
+    persistence.save_params("blend", {"odds_blend_weight": 1.0})
+    out = blend_team_odds(_team_preds())
+    row = out[out["code"] == 1].iloc[0]
+    assert row["e_gc"] == pytest.approx(1.0)
+    assert row["p_cs"] == pytest.approx(np.exp(-1.0))
+
+
+def test_odds_blend_weight_falls_back_to_the_module_constant(tmp_path,
+                                                             monkeypatch):
+    """No artifact — a fresh clone, or a train that never saw closing odds —
+    must behave exactly as the codebase did before the fit existed."""
+    import gaffer.models.persistence as persistence
+
+    monkeypatch.setattr(persistence, "MODELS_DIR", tmp_path)
+    assert odds_blend_weight() == ODDS_BLEND_WEIGHT
+
+
+def test_odds_blend_weight_reads_the_stored_value(tmp_path, monkeypatch):
+    import gaffer.models.persistence as persistence
+
+    monkeypatch.setattr(persistence, "MODELS_DIR", tmp_path)
+    persistence.save_params("blend", {"odds_blend_weight": 0.42})
+    assert odds_blend_weight() == 0.42

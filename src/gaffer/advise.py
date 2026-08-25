@@ -49,7 +49,8 @@ from gaffer.models.components import card_penalty
 from gaffer.models.minutes import apply_availability
 from gaffer.models.persistence import load_model, model_exists
 from gaffer.models.team import (ODDS_AGAINST_COL, ODDS_BLEND_WEIGHT,
-                                add_team_rolling, blend_team_odds)
+                                add_team_rolling, blend_team_odds,
+                                odds_blend_weight)
 from gaffer.models.train import load_training_frame
 from gaffer.optimize.chips import (chip_baseline, evaluate_chips,
                                    wildcard_now_assessment)
@@ -328,11 +329,11 @@ def predict_components(pred_frame: pd.DataFrame, tg_future: pd.DataFrame,
     # correction once per player in the squad.
     if ODDS_AGAINST_COL in tg_future.columns:
         tp[ODDS_AGAINST_COL] = tg_future[ODDS_AGAINST_COL].values
-    tp = blend_team_odds(tp)
+    tp = blend_team_odds(tp, weight=odds_blend_weight())
     if ODDS_AGAINST_COL not in tp.columns:
         tp[ODDS_AGAINST_COL] = float("nan")
     tp["odds_weight"] = (tp[ODDS_AGAINST_COL].notna().astype(float)
-                         * ODDS_BLEND_WEIGHT)
+                         * odds_blend_weight())
     tp = tp.rename(columns={"code": "team_code"})
     comp = comp.merge(tp, on=["team_code", "season_idx", "gw", "opp_code"],
                       how="left")

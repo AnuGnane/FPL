@@ -26,10 +26,12 @@ from gaffer.models.calibrate import CalibrationModel
 from gaffer.models.components import (BonusModel, DefconModel, SavesModel,
                                       card_penalty)
 from gaffer.models.minutes import MinutesModel
-from gaffer.models.persistence import save_model
-from gaffer.models.dixon_coles import DixonColesModel
-from gaffer.models.team import (TEAM_FEATURES, TeamModel, add_team_rolling,
-                                build_team_gw)
+from gaffer.data.match_odds import MATCH_ODDS_PATH
+from gaffer.models.persistence import save_model, save_params
+from gaffer.models.dixon_coles import DixonColesModel, walk_forward_cs
+from gaffer.models.team import (BLEND_PARAMS_NAME, TEAM_FEATURES, TeamModel,
+                                add_team_rolling, build_team_gw,
+                                fit_blend_weight)
 
 MINUTES_FEATURES = ["minutes_r1", "minutes_r3", "minutes_r5", "minutes_r10",
                     "starts_r1", "starts_r3", "starts_r5", "starts_r10",
@@ -324,6 +326,17 @@ def train_all(df: pd.DataFrame, tg: pd.DataFrame, save: bool = True,
         models["calibration"] = fit_calibration(
             df, tg, scoring_table(load_bootstrap_sample()))
     if save:
+        # The odds blend weight is a training output like any other: fitted on
+        # the closing-odds record, stored beside the pickles, read back by
+        # blend_team_odds at prediction time. No football-data file on disk
+        # means walk_forward_cs returns nothing and fit_blend_weight hands
+        # back the module constant, which is the pre-v4b behaviour exactly.
+        match_odds = (store.load(MATCH_ODDS_PATH)
+                      if store.exists(MATCH_ODDS_PATH)
+                      else pd.DataFrame())
+        weight = fit_blend_weight(walk_forward_cs(tg, match_odds))
+        save_params(BLEND_PARAMS_NAME, {"odds_blend_weight": weight,
+                                        "rows": len(match_odds)})
         for name, m in models.items():
             save_model(m, name, meta={"rows": len(df)})
     return models

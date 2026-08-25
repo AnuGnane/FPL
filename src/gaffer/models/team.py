@@ -33,9 +33,15 @@ Odds cannot enter as a *feature*: bookmakers only price upcoming fixtures, so
 every historical training row is NaN on the odds columns and LightGBM never
 learns a split on them — a populated prediction-time value would change
 nothing. They enter at prediction time instead, as a weighted blend against
-the model's own output. 0.7 leans on the market (it prices team news the
-rolling features cannot see) while keeping the model as a floor for fixtures
-the feed misprices or covers thinly.
+the model's own output.
+
+0.7 was a guess. It is now only the *fallback*: with historical closing odds
+on disk, :func:`fit_blend_weight` estimates the weight by log loss on
+walk-forward predictions and :func:`odds_blend_weight` serves the fitted value
+instead. The constant still applies wherever there is no artifact — a fresh
+clone, or a train that never saw a football-data file. It leans on the market
+(which prices team news the rolling features cannot see) while keeping the
+model as a floor for fixtures the feed misprices or covers thinly.
 """
 
 
@@ -89,12 +95,19 @@ def add_team_rolling(tg: pd.DataFrame, stats: list[str] = TEAM_ROLL_STATS,
     return pd.concat([tg, pd.DataFrame(feats, index=tg.index)], axis=1)
 
 
-def blend_team_odds(team_preds: pd.DataFrame) -> pd.DataFrame:
+def blend_team_odds(team_preds: pd.DataFrame,
+                    weight: float | None = None) -> pd.DataFrame:
     """Blend market odds into team predictions where odds exist.
 
     ``p_cs``: independent-Poisson P(concede 0) = ``exp(-mu_against)``, the
     same independence assumption ``invert_odds`` used to recover the mus, so
     the two ends of the odds path agree.
+
+    ``weight`` defaults to :func:`odds_blend_weight` — the value fitted at
+    train time on historical closing odds and stored in the artifact bundle,
+    falling back to :data:`ODDS_BLEND_WEIGHT` when no artifact exists. Pass it
+    explicitly to pin a number, which is what the tests and the explainability
+    path do.
 
     Rows without odds keep the pure model output — a fixture the feed did not
     cover, or a week with no API key at all, must degrade to the model rather
@@ -110,7 +123,7 @@ def blend_team_odds(team_preds: pd.DataFrame) -> pd.DataFrame:
     out = team_preds.copy()
     has = out[ODDS_AGAINST_COL].notna()
     mu = out.loc[has, ODDS_AGAINST_COL].astype(float)
-    w = ODDS_BLEND_WEIGHT
+    w = odds_blend_weight() if weight is None else float(weight)
     out.loc[has, "p_cs"] = w * np.exp(-mu) + (1 - w) * out.loc[has, "p_cs"]
     out.loc[has, "e_gc"] = w * mu + (1 - w) * out.loc[has, "e_gc"]
     return out

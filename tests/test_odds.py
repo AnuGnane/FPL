@@ -578,3 +578,15 @@ def test_odds_frame_favourite_gets_the_shin_boost():
     mu_shin = invert_odds(ph_s, pd_s, pa_s, 0.5)
     mu_prop = invert_odds(ph_p, pd_p, pa_p, 0.5)
     assert mu_shin[0] >= mu_prop[0]
+
+
+def test_predict_components_still_blends_before_merging_onto_players():
+    """Re-pin after the weight argument landed: the protected ordering is
+    what the fitted weight must not disturb."""
+    import inspect
+
+    from gaffer.advise import predict_components
+
+    src = inspect.getsource(predict_components)
+    assert src.index("blend_team_odds(") < src.index("comp.merge(tp")
+    assert "odds_blend_weight()" in src

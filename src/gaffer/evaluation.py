@@ -293,6 +293,7 @@ def evaluate_current(holdout_slots: int = HOLDOUT_SLOTS) -> dict:
     from gaffer.assets import load_bootstrap_sample
     from gaffer.data.bootstrap import scoring_table
     from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
+    from gaffer.models.team import odds_blend_weight
     from gaffer.models.train import (load_training_frame,
                                      predict_components_simple, train_all)
 
@@ -319,6 +320,9 @@ def evaluate_current(holdout_slots: int = HOLDOUT_SLOTS) -> dict:
         "run_at": run_at(),
         "git_sha": git_sha(),
         "holdout_slots": int(holdout_slots),
+        # The weight actually in force for this run — a blended clean sheet
+        # is only interpretable next to it.
+        "odds_blend_weight": odds_blend_weight(),
         "stratified": {
             "all": stratified_metrics(scored["ep"], scored["total_points"]),
             "starters": stratified_metrics(starters["ep"],
@@ -525,6 +529,8 @@ def format_report(key: str, payload: dict) -> str:
     """
     lines = [f"=== {key} (run_at {payload.get('run_at')}, "
              f"sha {payload.get('git_sha')}) ==="]
+    if payload.get("odds_blend_weight") is not None:
+        lines.append(f"odds blend weight w = {payload['odds_blend_weight']:.2f}")
     if key == "decomposition":
         lines.append(f"{payload.get('season')} from GW{payload.get('start_gw')}")
         for name, cell in payload["cells"].items():
