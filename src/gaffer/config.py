@@ -22,11 +22,26 @@ class Config:
     player_props: bool = True
     ags_blend_weight: float = 0.5
     understat_enabled: bool = True
+    # --- v4c decision layer ------------------------------------------------
+    # Every one of these defaults to the pre-v4c behaviour. n = 0 means "solve
+    # once, deterministically"; the two objective knobs are neutral elements.
+    scenarios_n: int = 0
+    scenarios_seed: int = 20260825
+    transfer_threshold: float = 0.60
+    irreversible_threshold: float = 0.75
+    decision_priors: bool = True
+    ft_use_penalty: float = 0.0
+    bench_curve: list[float] | None = None
 
 
 def load_config(path: Path | str = "config.toml") -> Config:
     raw = tomllib.loads(Path(path).read_text())
     odds = raw.get("odds", {})
+    # [scenarios] is optional and its TOML keys are deliberately shorter than
+    # the field names (n, seed), so it is read key-by-key like [odds] rather
+    # than splatted. [optimizer] keeps splatting, so ft_use_penalty and
+    # bench_curve need no line here.
+    scen = raw.get("scenarios", {})
     return Config(
         entry_id=raw["fpl"]["entry_id"],
         league_id=raw["fpl"]["league_id"],
@@ -42,4 +57,10 @@ def load_config(path: Path | str = "config.toml") -> Config:
         ags_blend_weight=float(odds.get("ags_blend_weight", 0.5)),
         understat_enabled=bool(
             raw.get("understat", {}).get("enabled", True)),
+        scenarios_n=int(scen.get("n", 0)),
+        scenarios_seed=int(scen.get("seed", 20260825)),
+        transfer_threshold=float(scen.get("transfer_threshold", 0.60)),
+        irreversible_threshold=float(
+            scen.get("irreversible_threshold", 0.75)),
+        decision_priors=bool(scen.get("decision_priors", True)),
     )
