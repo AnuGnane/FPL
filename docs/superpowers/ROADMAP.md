@@ -33,8 +33,6 @@ Spec: `specs/2026-08-25-gaffer-v4a-measure-design.md` · Plan: `plans/2026-08-25
   zeros 1.074 vs 0.818 (team-news gap); CS head badly calibrated (LL 0.619);
   h3 beats h1 by 2.79 pts/GW; planning ceiling ≈175 pts/season; forecast gap dominates.
 
-## In progress
-
 ### v4b — model (done, merged `5c97fb1` 2026-08-25)
 Spec: `specs/2026-08-25-gaffer-v4b-model-design.md` (§13 = full outcome) · Plan: `plans/2026-08-25-gaffer-v4b-model.md`
 - [x] Understat ingestion (site moved to JSON endpoints mid-cycle — client rewritten; 44,797 player-match rows, 92.9% id-mapped, 20/20 clubs every season)
@@ -46,14 +44,17 @@ Spec: `specs/2026-08-25-gaffer-v4b-model-design.md` (§13 = full outcome) · Pla
 - [x] Final adversarial review: 4 blockers found + fixed + re-verified (MERGE verdict); deferred nits recorded in spec §13
 - Suite: 711 Python + 58 frontend, tsc clean
 
-## Planned
+## In progress
 
-### v4c — decide (optimization quality)
+### v4c — decide (in progress; spec done `9939ca5`)
+Spec: `specs/2026-08-25-gaffer-v4c-decide-design.md` · Plan: `plans/2026-08-25-gaffer-v4c-decide.md` (drafting)
 - [ ] Scenario re-solving: N noised solves → move-frequency tables ("bought in 78% of sims") + UI column
 - [ ] FT/hit shadow price λ(k,t) from small DP; hit rule `gain > 4 + λ`
 - [ ] Chip optimal-stopping thresholds θ_t (backward recursion, declining to expiry)
 - [ ] Probability-weighted DGW/BGW fixture scenarios (Crellin-style)
 - [ ] Objective craft: itb_value, vice-captain weight, convex bench weights, ft_use_penalty
+
+## Planned
 
 ### v4d — compete (league mode v2)
 - [ ] z = deficit/σ risk dial (variance seeking iff behind)
@@ -66,8 +67,8 @@ Spec: `specs/2026-08-25-gaffer-v4b-model-design.md` (§13 = full outcome) · Pla
 - [ ] Three-mode minutes model {DNP, sub, start}, cup-fixture congestion features
 
 ## Operational / housekeeping
-- [ ] Untrack `reports/` artifacts + `.claude/scheduled_tasks.lock` (user commit 5efb1a0); gitignore `reports/`
-- [ ] Set odds API key in `config.toml` `[odds]` (free tier at the-odds-api.com)
+- [x] Untrack `reports/` artifacts + `.claude/`; gitignore both (`31dc239`)
+- [x] Set odds API key in `config.toml` `[odds]` (done 2026-08-25; G3 live spot-check recorded in v4b spec §13)
 
 ## Explicitly rejected (don't re-add)
 - Price-change chasing · per-player finishing multipliers · big horizon extension · fabricated "EO thresholds"
