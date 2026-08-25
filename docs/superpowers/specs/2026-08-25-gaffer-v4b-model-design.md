@@ -288,5 +288,47 @@ identical behaviour to v4a (the degradation rail is itself a test).
 
 ## 13. Outcome
 
-(To be filled at cycle end: fitted w, chosen ξ, G1–G3 results, before/after
-stratified tables, benchmark deltas vs OpenFPL/FPLReview.)
+(Filled as gates are measured; completed at cycle end.)
+
+### Ingestion (workstream 1)
+
+football-data closing odds: **1,520/1,520 fixtures matched** across
+2022-23…2025-26 (1,482 on the first run; the 38 missing were every Ipswich
+fixture of 2024-25 — FPL renamed the club "Ipswich" → "Ipswich Town" between
+seasons, bridged by `FPL_RENAMES` in `match_odds.py`, commit `208a695`).
+
+### G1 — Dixon-Coles CS head (PASSED, controlled)
+
+ξ grid on the current-mode holdout (last 10 (season, gw) slots, ~200
+team-GW rows), CS log loss:
+
+| ξ | CS log loss |
+| --- | --- |
+| 0.003 | 0.5510 |
+| 0.0065 | 0.5506 |
+| 0.01 | 0.5505 |
+
+Flat to within noise → `DEFAULT_XI` pinned at the published 0.0065.
+
+The v4a baseline (0.6190) was measured on the pre-GW1-2026/27 corpus, and
+unchanged heads (p_play 0.2732→0.2996, p60 0.2563→0.2782) show the corpus
+shift alone moves log losses. So G1 was decided by a **controlled re-run of
+the GBM team head (`TEAM_MODEL = "gbm"`) on the identical corpus**:
+
+- GBM CS log loss **0.6076**; worst reliability bins pred 0.046/obs 0.175
+  and pred 0.153/obs 0.294.
+- Dixon-Coles CS log loss **0.5506** (−9.4%); reliability bins track the
+  diagonal through the populated range (e.g. pred 0.255/obs 0.272,
+  pred 0.350/obs 0.333).
+
+Stratified EP cells are bit-identical between the two runs **by design**:
+`predict_components_simple` scores the CS head separately and uses constant
+`DEFAULT_P_CS`/`DEFAULT_E_GC` in the EP assembly, so the no-regression check
+on EP cells is unaffected by the team-head switch in this mode. The EP-level
+effect of Dixon-Coles lands through the advise/backtest path instead.
+
+`TEAM_MODEL` stays `"dixon_coles"`.
+
+### G2 — pending (Task 21)
+
+### G3 — pending (Task 23)

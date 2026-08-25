@@ -34,8 +34,12 @@ rates, and the pmf is renormalized anyway, so the truncation costs nothing
 measurable and bounds every sum in here."""
 
 DEFAULT_XI = 0.0065
-"""Decay rate per day, ~1-year half-life — the published starting point.
-Task 10 measures the grid {0.003, 0.0065, 0.01} and pins the winner here."""
+"""Decay rate per day, ~1-year half-life — the published Dixon-Coles value.
+
+Measured on the current-mode holdout over the grid {0.003, 0.0065, 0.01}:
+CS log loss 0.5510 / 0.5506 / 0.5505 — flat to within noise on ~200 held-out
+team-gameweeks, so the published value stays. See the v4b spec's Outcome
+table."""
 
 RHO_BOUNDS = (-0.4, 0.4)
 """Bracket for the low-score correction. Real fits land near -0.1; the bound
