@@ -58,3 +58,60 @@ def stratified_metrics(pred, actual) -> dict[str, dict[str, float]]:
             "n": n,
         }
     return out
+
+
+RELIABILITY_BINS = 10
+LOG_LOSS_EPS = 1e-15
+"""Clip for the log: a head that returns a hard 0 or 1 must not make the
+whole metric infinite on a single wrong row."""
+
+
+def _paired(pred, actual) -> tuple[np.ndarray, np.ndarray]:
+    """Prediction/outcome arrays with the incomplete rows dropped.
+
+    Positional, not index-aligned: every ``predict`` in this codebase returns
+    one row per input row in input order, and pandas would happily align two
+    frames with different indexes into nonsense.
+    """
+    p = np.asarray(pred, dtype="float64")
+    y = np.asarray(actual, dtype="float64")
+    ok = ~(np.isnan(p) | np.isnan(y))
+    return p[ok], y[ok]
+
+
+def log_loss(pred, actual) -> float:
+    """Mean binary cross-entropy. NaN on an empty input, never an exception."""
+    p, y = _paired(pred, actual)
+    if p.size == 0:
+        return float("nan")
+    p = np.clip(p, LOG_LOSS_EPS, 1.0 - LOG_LOSS_EPS)
+    return float(-(y * np.log(p) + (1.0 - y) * np.log(1.0 - p)).mean())
+
+
+def reliability(pred, actual, bins: int = RELIABILITY_BINS) -> list[dict]:
+    """Reliability curve: per equal-width probability bin, ``n``, the mean
+    prediction and the observed frequency.
+
+    A head is calibrated when ``pred`` and ``obs`` match bin by bin, which is
+    what the optimizer actually depends on — it multiplies by these numbers.
+    Empty bins are omitted rather than emitted as zeros, so the curve never
+    dives to the origin for a head whose predictions all sit in one place.
+    """
+    p, y = _paired(pred, actual)
+    edges = np.linspace(0.0, 1.0, bins + 1)
+    idx = np.clip(np.digitize(p, edges[1:-1], right=False), 0, bins - 1)
+    out = []
+    for b in range(bins):
+        sel = idx == b
+        n = int(sel.sum())
+        if n == 0:
+            continue
+        out.append({"n": n, "pred": round(float(p[sel].mean()), 4),
+                    "obs": round(float(y[sel].mean()), 4)})
+    return out
+
+
+def head_metrics(pred, actual) -> dict:
+    """One probability head's scoreline: log loss plus its reliability curve."""
+    return {"log_loss": round(log_loss(pred, actual), 4),
+            "reliability": reliability(pred, actual)}

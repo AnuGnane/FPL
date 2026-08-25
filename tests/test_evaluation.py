@@ -46,3 +46,59 @@ def test_stratified_metrics_accepts_pandas_series():
     out = stratified_metrics(pred, actual)
     assert out["all"]["n"] == 2
     assert out["blanks"]["mae"] == 1.0
+
+
+from gaffer.evaluation import head_metrics, log_loss, reliability  # noqa: E402
+
+
+def test_log_loss_of_a_perfect_confident_prediction_is_about_zero():
+    assert log_loss([1.0, 0.0, 1.0], [1, 0, 1]) < 1e-6
+
+
+def test_log_loss_punishes_a_confident_mistake():
+    assert log_loss([0.99], [0]) > log_loss([0.5], [0])
+
+
+def test_log_loss_of_a_coin_flip_is_ln_two():
+    assert abs(log_loss([0.5, 0.5], [1, 0]) - np.log(2)) < 1e-9
+
+
+def test_log_loss_ignores_rows_with_a_missing_prediction():
+    assert abs(log_loss([0.5, float("nan")], [1, 0]) - np.log(2)) < 1e-9
+
+
+def test_reliability_returns_at_most_ten_bins_with_counts():
+    bins = reliability(np.linspace(0.0, 1.0, 200),
+                       (np.linspace(0.0, 1.0, 200) > 0.5).astype(int))
+    assert 1 <= len(bins) <= 10
+    assert sum(b["n"] for b in bins) == 200
+    assert set(bins[0]) == {"n", "pred", "obs"}
+
+
+def test_reliability_of_a_calibrated_head_tracks_the_diagonal():
+    rng = np.random.default_rng(4)
+    p = rng.random(20000)
+    y = (rng.random(20000) < p).astype(int)
+    for b in reliability(p, y):
+        assert abs(b["pred"] - b["obs"]) < 0.05
+
+
+def test_reliability_of_an_overconfident_head_sits_below_the_diagonal():
+    # Predicts 0.9 everywhere; only half of them happen.
+    p = np.full(1000, 0.9)
+    y = np.tile([1, 0], 500)
+    bins = reliability(p, y)
+    assert len(bins) == 1
+    assert bins[0]["pred"] > bins[0]["obs"]
+
+
+def test_reliability_skips_empty_bins():
+    bins = reliability([0.05, 0.06], [0, 1])
+    assert len(bins) == 1
+    assert bins[0]["n"] == 2
+
+
+def test_head_metrics_packs_log_loss_and_the_curve_together():
+    out = head_metrics([0.5, 0.5], [1, 0])
+    assert round(out["log_loss"], 4) == round(float(np.log(2)), 4)
+    assert isinstance(out["reliability"], list)
