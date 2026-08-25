@@ -49,6 +49,11 @@ New module `src/gaffer/features/bps.py` (pure functions, no I/O):
 - `rederive_bonus(df) -> pd.Series`: group rows into fixtures by
   `(season_idx, gw, kickoff_time, fixture_pair)` where `fixture_pair` is the
   unordered `{team_code, opp_code}` pair (both sides of one match share it).
+  **As-built (final review C1):** the pair key is only the no-fixtures
+  fallback — in production the fixture identity comes from joining the real
+  fixtures frame via kickoff + `opp_code`, because `team_code` is the
+  player's *current* club and transferred players otherwise form phantom
+  singleton fixtures. See §7.
   Within each fixture, rank by adjusted BPS descending and award bonus with
   FPL tie rules:
   - tie for 1st among k players → each gets 3; next award skips to what the
@@ -212,3 +217,69 @@ TDD per task. Protected behaviors:
   covering (v4d); news ingestion for minutes (later); running OpenFPL's
   actual code on our data (revisit only if the published-numbers comparison
   proves misleading).
+
+## 7. Outcome (recorded at cycle close, 2026-08-25)
+
+Executed on feat/gaffer-v4a: 15 plan tasks + one final adversarial review
+round (findings C1 critical, I2–I4 important, M5–M9 minor — all fixed) + a
+re-review round (NEW-1 important, NEW-2/NEW-4 — all fixed; NEW-3 recorded
+as a theoretical nit: `s_opt` raises on a present-but-null rule entry, no
+producer of that shape exists). Suite: 379 → 475 Python, 53 → 58 frontend.
+
+**C1, the cycle's big catch:** `team_code` in the store is the player's
+*current* club, so the original pair-key grouped transferred players into
+singleton pseudo-fixtures — 141 phantom 3-bonus awards in 2025-26 alone,
+re-derived season total 2846 vs stored 2419 (+17.4%), ~70× the CBI signal.
+After keying on real fixtures (join via kickoff + opp_code) and the no-op
+rail (stored bonus kept where restatement provably changed no BPS):
+seasons 2022-25 are exact no-ops, and 2025-26 has 181 genuinely flipped
+rows, net +4 bonus. That is the honest size of the CBI per-3 correction.
+
+**Gate §1 (bonus target): ACCEPTED as neutral-with-cleaner-semantics.**
+Floor-window BonusModel on the last-10-slot holdout (boundary season_idx 3
+gw 29, floor 3, 2,992 appearance rows), MAE vs re-derived truth:
+restated-target 0.3699 vs stored-target 0.3689 — a 0.001 dead heat (181
+changed training rows cannot move more). Overall EP, identical protocol,
+restated vs old-rules counterfactual: equal-or-better in every cell
+(starters-all MAE 2.465 vs 2.471, haulers 4.092 vs 4.091). No regression;
+the target now matches the rules 2026/27 data arrives under.
+
+**Current mode (holdout ending 2025-26 GW29+):** model beats both baselines
+where it matters — haulers RMSE 4.950 vs last5 5.682 / last38 5.852;
+tickers 1.591 vs 1.958 / 1.588 — and loses the zeros end to last5 (1.024
+vs 0.989), the OpenFPL-shaped decomposition exactly. p_play (log loss
+0.2732) and p60 (0.2563) are well calibrated across all ten bins. The CS
+head is badly calibrated (log loss 0.6190; predicts 0.04–0.25 where 0.15–
+0.38 is observed) — first concrete evidence for v4b's Dixon-Coles team
+model.
+
+**Benchmark mode (identical 2024-25 test season):** haulers RMSE 5.245 vs
+OpenFPL 5.142 / FPL Review 5.172; tickers 1.628 vs 1.517/1.594; zeros
+1.074 vs 0.818/0.689; blanks 1.673 vs 1.291/1.189. Within ~2% of the
+published models on the high-return tail despite two training seasons to
+OpenFPL's four and no xG features; clearly behind on zeros/blanks, which
+is the minutes/news gap. This table is v4b's before-photo.
+
+**Decomposition ({model, oracle} × {h1, h3}, 2025/26 GW5–38):**
+
+| cell | total | per GW | hits |
+|---|---|---|---|
+| model_h1 | 1836 | 54.00 | 19 |
+| model_h3 | 1931 | 56.79 | 16 |
+| oracle_h1 | 4161 | 122.38 | 257 |
+| oracle_h3 | 4336 | 127.53 | 190 |
+
+`forecast_gap_h3` = 2405, `planning_ceiling` = 175.
+
+Reading: (1) **h3 now beats h1 by +95 pts (2.79/GW) on the model path** —
+v3.1's post-fix replay had h3 *behind* h1 (53.44 vs 54.65); on the restated
+pipeline the ordering flips, so multi-week planning is already paying for
+itself and the v2 "no significant difference" conclusion is superseded.
+(2) **planning_ceiling = 175 pts (~5.1/GW)**: even with perfect forecasts,
+a 3-week window adds ~5/GW over greedy — real headroom for v4c's chip
+thresholds and FT shadow prices, and it bounds what they can win. (3) The
+2405-pt forecast gap is a loose upper bound, not a target — the oracle
+buys 257 hits because with certain knowledge hits always pay; no forecast
+improvement approaches clairvoyance. Its practical reading: forecasting,
+not optimization, dominates remaining loss, which is why v4b (model)
+precedes v4c (decision layer).
