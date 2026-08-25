@@ -60,6 +60,7 @@ from gaffer.assets import load_bootstrap_sample
 from gaffer.config import load_config
 from gaffer.data import store
 from gaffer.data.bootstrap import scoring_table
+from gaffer.data.understat import UNDERSTAT_TEAM_PATH
 from gaffer.features.engineer import (ROLL_STATS, build_prediction_frame,
                                       feature_columns)
 from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
@@ -209,8 +210,31 @@ def elo_as_of(season_rows: pd.DataFrame, gw: int) -> dict:
     return dict(zip(last["team_code"], last["team_elo"]))
 
 
+def understat_team_as_of(ut: pd.DataFrame | None,
+                         cut: "pd.Timestamp | None") -> pd.DataFrame | None:
+    """The rolled team-Understat frame as it stood before ``cut``.
+
+    Truncation happens on the *raw* rows, before the roll. Rolling first and
+    filtering after would still leave :func:`latest_understat_team`
+    broadcasting the end-of-history vector onto every future fixture — a club's
+    April xGA reaching a January decision, which is a straight leak and worse
+    than the all-NaN columns this replaces.
+    """
+    from gaffer.features.engineer import add_understat_team_rolling
+
+    if ut is None or ut.empty or cut is None:
+        return None
+    dates = pd.to_datetime(ut["date"], errors="coerce")
+    prior = ut[dates < cut]
+    if prior.empty:
+        return None
+    return add_understat_team_rolling(prior.reset_index(drop=True))
+
+
 def horizon_feature_rows(hist_raw: pd.DataFrame, gw: int, gws: list[int],
-                         season_idx: int, elo_at: dict) -> pd.DataFrame:
+                         season_idx: int, elo_at: dict,
+                         understat_team: pd.DataFrame | None = None
+                         ) -> pd.DataFrame:
     """Feature rows for ``gws[1:]`` as they could be built at the ``gw``
     deadline.
 
@@ -223,6 +247,12 @@ def horizon_feature_rows(hist_raw: pd.DataFrame, gw: int, gws: list[int],
     rolling window. Elo comes from ``elo_at`` rather than the row's own
     stored ``elo_pre``, which for a future gameweek already reflects results
     from after the deadline.
+
+    ``understat_team`` is the *raw* Understat team parquet. It is truncated to
+    matches before this deadline and rolled here, so the replay serves the
+    same team-level columns ``advise`` does — left out, the backtest scores a
+    model whose team-Understat features are entirely NaN, which is not the
+    model the live path runs.
     """
     season = hist_raw[hist_raw["season_idx"] == season_idx]
     future = season[season["gw"].isin(gws[1:])].copy()
@@ -231,7 +261,14 @@ def horizon_feature_rows(hist_raw: pd.DataFrame, gw: int, gws: list[int],
     prior = hist_raw[(hist_raw["season_idx"] < season_idx)
                      | ((hist_raw["season_idx"] == season_idx)
                         & (hist_raw["gw"] < gw))]
-    out = build_prediction_frame(prior, future, elo=None, elo_final=elo_at)
+    # The deadline in wall-clock terms: this gameweek's earliest kickoff.
+    cut_kick = pd.to_datetime(season.loc[season["gw"] == gw, "kickoff_time"],
+                              errors="coerce", utc=True).min()
+    cut = None if pd.isna(cut_kick) else cut_kick.tz_convert(
+        "Europe/London").tz_localize(None).normalize()
+    out = build_prediction_frame(prior, future, elo=None, elo_final=elo_at,
+                                 understat_team=understat_team_as_of(
+                                     understat_team, cut))
     if elo_at and {"team_code", "opp_code"} <= set(out.columns):
         out["team_elo"] = out["team_code"].map(elo_at)
         out["opp_elo"] = out["opp_code"].map(elo_at)
@@ -326,6 +363,10 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
     # advise.py does before build_prediction_frame.
     hist_raw = full.drop(columns=[c for c in feature_columns()
                                   if c in full.columns])
+    # Loaded whole and truncated per deadline inside horizon_feature_rows —
+    # the parquet is small and re-reading it 38 times would not be.
+    understat_team_raw = (store.load(UNDERSTAT_TEAM_PATH)
+                          if store.exists(UNDERSTAT_TEAM_PATH) else None)
 
     models: dict = {}
     squad: list[int] = []
@@ -364,7 +405,8 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
         horizon_rows = rows
         if len(gws) > 1 and ep_source != "oracle":
             later = horizon_feature_rows(hist_raw, gw, gws, season_idx,
-                                         elo_as_of(season_rows, gw))
+                                         elo_as_of(season_rows, gw),
+                                         understat_team=understat_team_raw)
             horizon_rows = (pd.concat([rows, later], ignore_index=True)
                             .reindex(columns=list(rows.columns)))
 

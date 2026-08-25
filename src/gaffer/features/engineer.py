@@ -461,17 +461,27 @@ def merge_understat_team(df: pd.DataFrame, rolled: pd.DataFrame | None,
     own = keyed.rename(columns={"date": "_date"})
     out = out.merge(own, on=["team_code", "_date"], how="left",
                     validate="many_to_one")
-    opp = keyed.rename(columns={"date": "_date", "team_code": "opp_code",
-                                **{c: c.replace("team_", "opp_", 1)
-                                   for c in own_cols}})
-    out = out.merge(opp, on=["opp_code", "_date"], how="left",
-                    validate="many_to_one")
+    # Frames off the simple component path carry no ``opp_code``; the own
+    # side still joins, and the opponent's columns stay NaN rather than
+    # taking the whole merge down with a KeyError.
+    has_opp = "opp_code" in out.columns
+    if has_opp:
+        opp = keyed.rename(columns={"date": "_date", "team_code": "opp_code",
+                                    **{c: c.replace("team_", "opp_", 1)
+                                       for c in own_cols}})
+        out = out.merge(opp, on=["opp_code", "_date"], how="left",
+                        validate="many_to_one")
+    else:
+        for col in own_cols:
+            out[col.replace("team_", "opp_", 1)] = float("nan")
     if latest is not None and not latest.empty:
         for col in [f"team_{s}_r{w}" for s in TEAM_US_STATS
                     for w in TEAM_US_WINDOWS]:
             opp_col = col.replace("team_", "opp_", 1)
             out[col] = out[col].fillna(out["team_code"].map(latest[col]))
-            out[opp_col] = out[opp_col].fillna(out["opp_code"].map(latest[col]))
+            if has_opp:
+                out[opp_col] = out[opp_col].fillna(
+                    out["opp_code"].map(latest[col]))
     return out.drop(columns=["_date"])
 
 

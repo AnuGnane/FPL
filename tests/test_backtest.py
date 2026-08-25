@@ -324,6 +324,42 @@ def test_horizon_rows_keep_the_known_fixture_list():
     assert pd.isna(gw3["total_points"])
 
 
+def _understat_team_raw():
+    """Raw understat team rows: club 1 leaks 1.0 xGA before the GW2 deadline
+    and 9.0 after it."""
+    return pd.DataFrame([
+        {"season": "2024-25", "season_idx": 0, "team_code": 1,
+         "date": pd.Timestamp("2025-01-01").date(), "us_xg": 1.0,
+         "us_xga": 1.0, "ppda": 10.0, "deep": 5, "deep_allowed": 5},
+        {"season": "2024-25", "season_idx": 0, "team_code": 1,
+         "date": pd.Timestamp("2025-01-04").date(), "us_xg": 1.0,
+         "us_xga": 9.0, "ppda": 10.0, "deep": 5, "deep_allowed": 5},
+    ])
+
+
+def test_horizon_rows_carry_the_team_understat_features():
+    """advise serves these columns; a backtest that leaves them all-NaN is
+    scoring a model the live path does not run."""
+    from gaffer.features.engineer import TEAM_US_FEATURES
+
+    out = bt.horizon_feature_rows(_explosion_season(explode_gw=2), gw=2,
+                                  gws=[2, 3, 4], season_idx=0, elo_at={},
+                                  understat_team=_understat_team_raw())
+    assert set(TEAM_US_FEATURES) <= set(out.columns)
+    own = out[out["team_code"] == 1]["team_us_xga_r5"]
+    assert own.notna().all()
+
+
+def test_horizon_rows_truncate_team_understat_at_the_deadline():
+    """The broadcast of a club's latest vector reaches every future row, so
+    an untruncated frame would push end-of-history xGA backwards in time."""
+    out = bt.horizon_feature_rows(_explosion_season(explode_gw=2), gw=2,
+                                  gws=[2, 3, 4], season_idx=0, elo_at={},
+                                  understat_team=_understat_team_raw())
+    vals = set(out["team_us_xga_r5"].dropna().round(3))
+    assert vals == {1.0}
+
+
 # --- perfect-foresight ("oracle") EP -------------------------------------
 
 def test_oracle_ep_is_the_actual_points_per_player_gameweek():
