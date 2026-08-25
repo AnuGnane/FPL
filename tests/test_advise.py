@@ -420,3 +420,41 @@ def test_solve_state_opt_stays_json_serializable():
     # The lambda lookup rides on solve_kw, never on the serialized opt_kw.
     assert "ft_lambda" not in src[src.index("opt_kw = dict("):
                                   src.index("solve_kw = dict(opt_kw")]
+
+
+def test_run_advise_resolves_the_decision_priors_before_solving():
+    """lambda has to be in the solver bundle for the very first solve, or the
+    raw optimum and the scenarios are priced differently."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    assert "load_decision_priors()" in src
+    assert "lambda_from_priors(" in src
+    assert "chip_thresholds_from_asset(" in src
+    assert (src.index("lambda_from_priors(")
+            < src.index("plan = solve_plan(pool, state, **solve_kw)"))
+
+
+def test_the_priors_are_switchable_off_from_config():
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    assert "cfg.decision_priors" in src
+
+
+def test_run_advise_still_pins_every_protected_ordering_after_the_priors():
+    """Third and final re-pin. advise.py is edited by Tasks 9, 10 and 21."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    assert "ep_matrix(apply_calibration(assemble_ep(" in src
+    assert src.index("fetch_rival_entries(") < src.index("tilt_ep(")
+    assert src.index("tilt_ep(") < src.index("pool = build_pool(")
+    assert "build_pool(players, pool_ep," in src
+    assert "pool_ep" not in src[src.index("ep_gw1 ="):]

@@ -237,7 +237,7 @@ def wildcard_now_assessment(pool: pd.DataFrame, state: SolveInput,
             "recommend": gain > WILDCARD_RECOMMEND_THRESHOLD}
 
 
-def chip_plan(table: pd.DataFrame, now_gw: int) -> list[dict]:
+def chip_plan(table: pd.DataFrame, now_gw: int, thresholds=None) -> list[dict]:
     """Fold the chip x gameweek table into one row per chip (spec §3.7).
 
     ``evaluate_chips`` already enumerates every playable chip in every
@@ -264,12 +264,24 @@ def chip_plan(table: pd.DataFrame, now_gw: int) -> list[dict]:
                  for r in rows.sort_values("gw").itertuples()]
         best = max(weeks, key=lambda w: w["per_week"])
         now = next((w["gain"] for w in weeks if w["gw"] == now_gw), None)
-        out.append({
+        now_gain = None if now is None else round(now, 2)
+        entry = {
             "chip": str(chip), "weeks": weeks, "best_gw": best["gw"],
             "best_gain": round(best["gain"], 2),
             "best_gain_per_week": round(best["per_week"], 2),
             "weeks_scored": len(weeks),
-            "now_gain": None if now is None else round(now, 2),
+            "now_gain": now_gain,
             "play_now_delta": None if now is None
-            else round(now - best["gain"], 2)})
+            else round(now - best["gain"], 2)}
+        # theta_t: the surplus the best remaining week is expected to offer.
+        # Playing now is only right when this week beats waiting — a flat bar
+        # cannot express that, which is why a five-point bench boost in
+        # September used to get burned three months early.
+        theta = None if thresholds is None else float(thresholds(chip, now_gw))
+        play_now = None
+        if theta is not None and now_gain is not None:
+            play_now = bool(now_gain >= theta)
+        entry["threshold_now"] = theta
+        entry["play_now"] = play_now
+        out.append(entry)
     return sorted(out, key=lambda row: -row["best_gain"])

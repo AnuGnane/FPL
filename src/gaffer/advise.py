@@ -29,6 +29,7 @@ from pathlib import Path
 import pandas as pd
 
 from gaffer.api.client import FPLClient
+from gaffer.assets import load_decision_priors
 from gaffer.artifacts import (SolveState, components_frame, data_warning,
                               ingested_through, pool_rows, save_components,
                               save_snapshots, save_solve_state)
@@ -57,6 +58,9 @@ from gaffer.optimize.chips import (chip_baseline, evaluate_chips,
                                    wildcard_now_assessment)
 from gaffer.optimize.differentials import (captain_table, threat_board,
                                            transfer_alternatives)
+from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
+                                         load_chip_scenarios)
+from gaffer.optimize.ft_value import lambda_from_priors
 from gaffer.optimize.milp import SolveInput, build_pool, solve_plan
 from gaffer.optimize.policy import Thresholds, coherent_plan, decide
 from gaffer.optimize.scenarios import (move_frequencies, run_scenarios,
@@ -551,13 +555,20 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         state = SolveInput(owned_codes=my.picks["code"].tolist(), bank=my.bank,
                            free_transfers=my.free_transfers, gws=gws)
     pool = build_pool(players, pool_ep, my_picks, gws)
+    # Calibrated decision tables, or the flat pre-v4c values when the asset
+    # is absent or switched off. Resolved before the first solve so the raw
+    # optimum and every scenario are priced identically.
+    priors = load_decision_priors() if cfg.decision_priors else None
+    ft_lambda = lambda_from_priors(priors)
+    chip_thresholds = chip_thresholds_from_asset(
+        priors, load_chip_scenarios())
     opt_kw = dict(decay=cfg.decay, bench_weight=cfg.bench_weight,
                   vice_weight=cfg.vice_weight, ft_value=cfg.ft_value,
                   itb_value=cfg.itb_value, hit_cost=cfg.hit_cost)
     # opt_kw is serialized into SolveState.opt at the end of this function, so
     # it stays plain JSON. solve_kw is the same bundle plus anything that is
     # only meaningful in-process.
-    solve_kw = dict(opt_kw)
+    solve_kw = dict(opt_kw, ft_lambda=ft_lambda)
     plan = solve_plan(pool, state, **solve_kw)
     first = plan.gw_plans[0]
 
@@ -630,6 +641,13 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         for row in chip_rows:
             if row["chip"] == "freehit":
                 row["note"] = "conservative lower bound"
+            # The theta_t bar for that chip in that week: the surplus the best
+            # remaining week is expected to offer. Playing is only right when
+            # the week on the row beats waiting, which a flat constant cannot
+            # say. With no priors asset this is the old flat bar exactly.
+            theta = float(chip_thresholds(str(row["chip"]), int(row["gw"])))
+            row["threshold"] = round(theta, 2)
+            row["play_now"] = bool(float(row["gain"]) >= theta)
         # "Should I wildcard right now?" is only a question if the wildcard is
         # still available in this half of the season.
         wc_now = (wildcard_now_assessment(chip_pool, state, base=chip_base,

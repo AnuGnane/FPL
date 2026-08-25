@@ -476,3 +476,53 @@ def test_oracle_h1_xi_outscores_the_model_xi_on_the_same_fixture_data(
     # XIs are directly comparable.
     assert oracle["log"][0]["points"] >= model["log"][0]["points"]
     assert oracle["total"] >= model["total"]
+
+
+# --- v4c: theta-aware chip picking -----------------------------------------
+
+def test_pick_chip_defaults_to_the_flat_constants():
+    """Rail: no thresholds argument reproduces the pre-v4c choice."""
+    from gaffer.backtest import _pick_chip
+    from gaffer.optimize.chips import CHIP_PLAY_THRESHOLD
+
+    table = pd.DataFrame([
+        {"chip": "bboost", "gw": 7, "gain": CHIP_PLAY_THRESHOLD + 0.1,
+         "per_week": 1.0}])
+    assert _pick_chip(table, 7) == "bboost"
+
+    below = pd.DataFrame([
+        {"chip": "bboost", "gw": 7, "gain": CHIP_PLAY_THRESHOLD - 0.1,
+         "per_week": 1.0}])
+    assert _pick_chip(below, 7) == ""
+
+
+def test_pick_chip_honours_an_injected_threshold_lookup():
+    from gaffer.backtest import _pick_chip
+
+    table = pd.DataFrame([
+        {"chip": "bboost", "gw": 7, "gain": 6.0, "per_week": 6.0}])
+    assert _pick_chip(table, 7, thresholds=lambda c, g: 5.0) == "bboost"
+    assert _pick_chip(table, 7, thresholds=lambda c, g: 7.0) == ""
+
+
+def test_pick_chip_uses_a_per_chip_threshold():
+    from gaffer.backtest import _pick_chip
+
+    table = pd.DataFrame([
+        {"chip": "wildcard", "gw": 7, "gain": 9.0, "per_week": 3.0},
+        {"chip": "bboost", "gw": 7, "gain": 6.0, "per_week": 6.0}])
+    only_bb = _pick_chip(table, 7,
+                         thresholds=lambda c, g: 100.0 if c == "wildcard"
+                         else 5.0)
+    assert only_bb == "bboost"
+
+
+def test_run_backtest_still_pins_the_calibration_seam():
+    """Protected: tests/test_assemble.py asserts this literal on
+    run_backtest as well as run_advise."""
+    import inspect
+
+    from gaffer.backtest import run_backtest
+
+    assert ("ep_matrix(apply_calibration(assemble_ep("
+            in inspect.getsource(run_backtest))

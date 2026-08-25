@@ -340,3 +340,54 @@ def test_the_deduction_can_flip_a_marginal_recommendation_off():
                          for t in range(1, 39)})
     assert wildcard_now_assessment(pool, state, **GOLDEN_KW,
                                    ft_lambda=huge)["recommend"] is False
+
+
+# --- v4c: theta-aware chip planning ----------------------------------------
+
+from gaffer.optimize.chips import chip_plan
+
+
+def test_chip_plan_without_thresholds_is_unchanged():
+    """Rail: the default argument reproduces today's output exactly."""
+    table = pd.DataFrame([
+        {"chip": "bboost", "gw": 7, "gain": 6.0, "per_week": 6.0},
+        {"chip": "3xc", "gw": 8, "gain": 3.0, "per_week": 3.0}])
+    assert chip_plan(table, 7) == chip_plan(table, 7, thresholds=None)
+
+
+def test_chip_plan_reports_the_threshold_for_the_current_week():
+    table = pd.DataFrame([
+        {"chip": "bboost", "gw": 7, "gain": 6.0, "per_week": 6.0}])
+    out = chip_plan(table, 7, thresholds=lambda chip, gw: 4.5)
+    assert out[0]["threshold_now"] == 4.5
+
+
+def test_chip_plan_says_play_when_the_surplus_clears_the_threshold():
+    table = pd.DataFrame([
+        {"chip": "bboost", "gw": 7, "gain": 6.0, "per_week": 6.0}])
+    out = chip_plan(table, 7, thresholds=lambda chip, gw: 4.5)
+    assert out[0]["play_now"] is True
+
+
+def test_chip_plan_says_wait_when_a_better_week_is_expected():
+    """The whole point: a six-point bench boost in GW7 is not enough when
+    December is worth twelve."""
+    table = pd.DataFrame([
+        {"chip": "bboost", "gw": 7, "gain": 6.0, "per_week": 6.0}])
+    out = chip_plan(table, 7, thresholds=lambda chip, gw: 12.0)
+    assert out[0]["play_now"] is False
+
+
+def test_chip_plan_at_expiry_plays_on_any_positive_surplus():
+    """theta is zero at expiry by construction, so nothing is stranded."""
+    table = pd.DataFrame([
+        {"chip": "bboost", "gw": 19, "gain": 0.5, "per_week": 0.5}])
+    out = chip_plan(table, 19, thresholds=lambda chip, gw: 0.0)
+    assert out[0]["play_now"] is True
+
+
+def test_chip_plan_with_no_row_for_this_week_reports_no_play_decision():
+    table = pd.DataFrame([
+        {"chip": "bboost", "gw": 9, "gain": 6.0, "per_week": 6.0}])
+    out = chip_plan(table, 7, thresholds=lambda chip, gw: 4.0)
+    assert out[0]["play_now"] is None

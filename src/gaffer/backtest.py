@@ -67,9 +67,13 @@ from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
 from gaffer.models.train import (DEFAULT_E_GC, DEFAULT_P_CS,  # noqa: F401
                                  load_training_frame,
                                  predict_components_simple, train_all)
-from gaffer.optimize.chips import (CHIP_PLAY_THRESHOLD,
-                                   WILDCARD_RECOMMEND_THRESHOLD,
+from gaffer.assets import load_decision_priors
+from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
+                                         flat_thresholds)
+from gaffer.optimize.chips import (CHIP_PLAY_THRESHOLD,  # noqa: F401
+                                   WILDCARD_RECOMMEND_THRESHOLD,  # noqa: F401
                                    evaluate_chips)
+from gaffer.optimize.ft_value import lambda_from_priors
 from gaffer.optimize.milp import SolveInput, build_pool, solve_plan
 
 XI_BOUNDS = {"GKP": (1, 1), "DEF": (3, 5), "MID": (2, 5), "FWD": (1, 3)}
@@ -151,7 +155,7 @@ def score_gw(actuals: pd.DataFrame, xi: list[int], bench: list[int],
     return int(round(total - 4 * hits))
 
 
-def _pick_chip(table: pd.DataFrame, gw: int) -> str:
+def _pick_chip(table: pd.DataFrame, gw: int, thresholds=None) -> str:
     """Best chip worth playing *this* gameweek, or "" for none.
 
     ``table`` is :func:`gaffer.optimize.chips.evaluate_chips` output — one
@@ -165,8 +169,10 @@ def _pick_chip(table: pd.DataFrame, gw: int) -> str:
     now = table[table["gw"] == gw]
     best, best_gain = "", None
     for r in now.itertuples():
-        floor = (WILDCARD_RECOMMEND_THRESHOLD if r.chip == "wildcard"
-                 else CHIP_PLAY_THRESHOLD)
+        # thresholds is the theta_t lookup when one is calibrated; without it
+        # the flat constants stand, which is the pre-v4c behaviour exactly.
+        floor = (flat_thresholds()(str(r.chip), gw) if thresholds is None
+                 else float(thresholds(str(r.chip), gw)))
         gain = float(r.gain)
         if gain >= floor and (best_gain is None or gain > best_gain):
             best, best_gain = str(r.chip), gain
@@ -351,7 +357,12 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
     season_idx = cfg.train_seasons.index(season)
     opt_kw = dict(decay=cfg.decay, bench_weight=cfg.bench_weight,
                   vice_weight=cfg.vice_weight, ft_value=cfg.ft_value,
-                  itb_value=cfg.itb_value, hit_cost=cfg.hit_cost)
+                  itb_value=cfg.itb_value, hit_cost=cfg.hit_cost,
+                  ft_use_penalty=cfg.ft_use_penalty,
+                  bench_curve=cfg.bench_curve)
+    priors = load_decision_priors() if cfg.decision_priors else None
+    opt_kw["ft_lambda"] = lambda_from_priors(priors)
+    chip_thresholds = chip_thresholds_from_asset(priors)
     scoring = scoring_table(load_bootstrap_sample())
 
     full, _, _ = load_training_frame()
@@ -456,7 +467,8 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
             avail = chips_available_for(played_by_gw, gw)
             if avail:
                 chip = _pick_chip(
-                    evaluate_chips(pool, state, avail, **opt_kw), gw)
+                    evaluate_chips(pool, state, avail, **opt_kw), gw,
+                    thresholds=chip_thresholds)
         if chip == "wildcard":
             # Unlimited transfers, no hits (the MILP enforces both from
             # wildcard_gw); the new squad is permanent.
