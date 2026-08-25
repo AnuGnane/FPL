@@ -278,3 +278,103 @@ def evaluate_current(holdout_slots: int = HOLDOUT_SLOTS) -> dict:
             "season_ppg": baseline_metrics(hold, "total_points_r38", truth),
         },
     }
+
+
+BENCHMARK_TRAIN_MAX_IDX = 1
+"""Newest season the benchmark may train on: season_idx 1 = 2023-24."""
+
+BENCHMARK_TEST_IDX = 2
+BENCHMARK_TEST_SEASON = "2024-25"
+"""The season OpenFPL published its test numbers on."""
+
+REFERENCES = {
+    # OpenFPL, arXiv:2508.09992 — per-return-category RMSE and MAE on
+    # 2024-25, the same categories used here. FPL Review's numbers are the
+    # ones published alongside them in that paper, not measured by us.
+    "openfpl": {
+        "zeros": {"rmse": 0.818, "mae": 0.427},
+        "blanks": {"rmse": 1.291, "mae": 0.749},
+        "tickers": {"rmse": 1.517, "mae": 1.127},
+        "haulers": {"rmse": 5.142, "mae": 4.317},
+    },
+    "fplreview": {
+        "zeros": {"rmse": 0.689, "mae": 0.237},
+        "blanks": {"rmse": 1.189, "mae": 0.597},
+        "tickers": {"rmse": 1.594, "mae": 1.227},
+        "haulers": {"rmse": 5.172, "mae": 4.381},
+    },
+}
+
+BENCHMARK_CAVEAT = (
+    "Same test season (2024-25) and the same return categories, but OpenFPL "
+    "trained on four seasons (2020-21 to 2023-24) against our two, and the "
+    "feature sets differ. Treat these as a yardstick, not a controlled "
+    "comparison.")
+
+
+def benchmark_split(df: pd.DataFrame,
+                    max_train_idx: int = BENCHMARK_TRAIN_MAX_IDX,
+                    test_idx: int = BENCHMARK_TEST_IDX
+                    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """``(train, test)`` for the published-numbers benchmark.
+
+    A hard season split, not a slot split: the comparison is only meaningful
+    if the model has seen nothing at all from the test season during fitting.
+    The test frame's own features are still leakage-safe within the season —
+    every rolling column shifts one match back — which is exactly the
+    walk-forward the benchmark wants.
+    """
+    return (df[df["season_idx"] <= max_train_idx],
+            df[df["season_idx"] == test_idx])
+
+
+def evaluate_benchmark(max_train_idx: int = BENCHMARK_TRAIN_MAX_IDX,
+                       test_idx: int = BENCHMARK_TEST_IDX) -> dict:
+    """Train on the early seasons, predict every gameweek of the test season.
+
+    One fit, then a gameweek at a time at a 1-gameweek horizon. Walking the
+    gameweeks rather than predicting the season in one shot is not a
+    formality: it is what keeps the loop honest about the horizon it claims,
+    and it mirrors the replay's per-gameweek shape.
+    """
+    from gaffer.assets import load_bootstrap_sample
+    from gaffer.data.bootstrap import scoring_table
+    from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
+    from gaffer.models.train import (load_training_frame,
+                                     predict_components_simple, train_all)
+
+    df, tg, _ = load_training_frame()
+    train_df, test_df = benchmark_split(df, max_train_idx, test_idx)
+    train_tg, _ = benchmark_split(tg, max_train_idx, test_idx)
+    models = train_all(train_df, train_tg.dropna(subset=["elo_diff"]),
+                       save=False)
+    scoring = scoring_table(load_bootstrap_sample())
+
+    parts = []
+    for gw in sorted(int(g) for g in test_df["gw"].dropna().unique()):
+        rows = test_df[test_df["gw"] == gw].reset_index(drop=True)
+        if rows.empty:
+            continue
+        comp = predict_components_simple(models, rows)
+        ep = ep_matrix(apply_calibration(assemble_ep(comp, scoring),
+                                         models.get("calibration")))
+        truth = rows.groupby(["code", "gw"], as_index=False).agg(
+            total_points=("total_points", "sum"),
+            minutes=("minutes", "sum"))
+        parts.append(ep.merge(truth, on=["code", "gw"], how="inner"))
+        print(f"benchmark gw{gw}: {len(parts[-1])} rows", flush=True)
+
+    scored = pd.concat(parts, ignore_index=True)
+    starters = scored[scored["minutes"] >= STARTER_MINUTES]
+    return {
+        "run_at": run_at(),
+        "git_sha": git_sha(),
+        "test_season": BENCHMARK_TEST_SEASON,
+        "stratified": {
+            "all": stratified_metrics(scored["ep"], scored["total_points"]),
+            "starters": stratified_metrics(starters["ep"],
+                                           starters["total_points"]),
+        },
+        "references": REFERENCES,
+        "caveat": BENCHMARK_CAVEAT,
+    }

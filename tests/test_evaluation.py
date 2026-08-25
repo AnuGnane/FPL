@@ -213,3 +213,62 @@ def test_baseline_metrics_collapses_a_double_gameweek_to_one_row():
                           "minutes": [180]})
     out = baseline_metrics(hold, "total_points_r5", truth)
     assert out["all"]["n"] == 1
+
+
+from gaffer.evaluation import (BENCHMARK_CAVEAT,  # noqa: E402
+                               BENCHMARK_TEST_IDX, BENCHMARK_TRAIN_MAX_IDX,
+                               REFERENCES, benchmark_split)
+from gaffer.features.engineer import add_player_rolling  # noqa: E402
+
+
+def test_reference_constants_match_the_published_openfpl_table():
+    """arXiv:2508.09992, Table 3. Pinned so a typo cannot silently make the
+    model look better than the paper it is being compared to."""
+    assert REFERENCES["openfpl"] == {
+        "zeros": {"rmse": 0.818, "mae": 0.427},
+        "blanks": {"rmse": 1.291, "mae": 0.749},
+        "tickers": {"rmse": 1.517, "mae": 1.127},
+        "haulers": {"rmse": 5.142, "mae": 4.317},
+    }
+    assert REFERENCES["fplreview"] == {
+        "zeros": {"rmse": 0.689, "mae": 0.237},
+        "blanks": {"rmse": 1.189, "mae": 0.597},
+        "tickers": {"rmse": 1.594, "mae": 1.227},
+        "haulers": {"rmse": 5.172, "mae": 4.381},
+    }
+
+
+def test_the_caveat_names_the_training_asymmetry():
+    assert "four seasons" in BENCHMARK_CAVEAT
+    assert "yardstick" in BENCHMARK_CAVEAT
+
+
+def test_benchmark_split_trains_on_the_first_two_seasons_only():
+    frame = pd.DataFrame({"season_idx": [0, 1, 2, 3], "gw": [1, 1, 1, 1]})
+    train, test = benchmark_split(frame)
+    assert int(train["season_idx"].max()) <= BENCHMARK_TRAIN_MAX_IDX
+    assert set(test["season_idx"]) == {BENCHMARK_TEST_IDX}
+
+
+def test_benchmark_test_rows_never_reach_the_training_set():
+    frame = pd.DataFrame({"season_idx": [0, 1, 2, 3], "gw": [1, 1, 1, 1],
+                          "marker": ["a", "b", "leak", "d"]})
+    train, _ = benchmark_split(frame)
+    assert "leak" not in set(train["marker"])
+
+
+def test_benchmark_features_for_a_gameweek_use_only_strictly_prior_rows():
+    """The walk-forward is not a re-engineering loop: the stored rolling
+    columns already shift one match back, so GW g's features cannot contain
+    GW g. Pin that, because the whole benchmark rests on it."""
+    rows = []
+    for gw in range(1, 6):
+        rows.append({"code": 1, "season_idx": 2, "gw": gw,
+                     "kickoff_time": f"2024-09-{gw:02d}T14:00:00Z",
+                     "total_points": 50 if gw == 3 else 2, "minutes": 90})
+    frame = add_player_rolling(pd.DataFrame(rows))
+    _, test = benchmark_split(frame)
+    at_gw3 = test[test["gw"] == 3].iloc[0]
+    at_gw4 = test[test["gw"] == 4].iloc[0]
+    assert float(at_gw3["total_points_r1"]) == 2.0     # the haul is invisible
+    assert float(at_gw4["total_points_r1"]) == 50.0    # ... until next week
