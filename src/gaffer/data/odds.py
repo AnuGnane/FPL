@@ -87,6 +87,60 @@ def devig(prices: list[float]) -> list[float]:
     return [x / s for x in implied]
 
 
+SHIN_MAX_Z = 0.4
+"""Upper bracket for the insider proportion.
+
+Real books sit well under 0.1; the bracket only has to contain the root, and
+z -> 1 is where the closed form is singular.
+"""
+
+SHIN_TOL = 1e-13
+SHIN_MAX_ITER = 300
+
+
+def _shin_probs(implied: list[float], booksum: float, z: float) -> list[float]:
+    """Shin's implied true probabilities for a given insider proportion."""
+    return [(math.sqrt(z * z + 4.0 * (1.0 - z) * pi * pi / booksum) - z)
+            / (2.0 * (1.0 - z)) for pi in implied]
+
+
+def shin_devig(prices: list[float]) -> list[float]:
+    """Strip the vig under Shin's insider-trading model, for n outcomes.
+
+    Bookmakers pad longshots more heavily than favourites, because the loss
+    they are insuring against is bigger there. :func:`devig` divides that pad
+    away uniformly and so systematically under-prices big favourites — which
+    in FPL are exactly the clean-sheet and goalscorer bets the model cares
+    about (Strumbelj 2014). Shin instead assumes a proportion ``z`` of the
+    money is informed and solves for the ``z`` that makes the implied
+    probabilities sum to one.
+
+    ``sum(p(z))`` is ``sqrt(booksum)`` at ``z = 0`` and decreases in ``z``, so
+    a plain bisection on the bracket finds the root without a derivative. A
+    book with no overround (``booksum <= 1``) has no pad to remove and comes
+    back as the normalized implied probabilities, and a one-outcome market is
+    a certainty.
+    """
+    implied = [1.0 / p for p in prices]
+    booksum = sum(implied)
+    if len(implied) < 2 or booksum <= 1.0:
+        return [pi / booksum for pi in implied]
+    lo, hi = 0.0, SHIN_MAX_Z
+    for _ in range(SHIN_MAX_ITER):
+        mid = 0.5 * (lo + hi)
+        if sum(_shin_probs(implied, booksum, mid)) > 1.0:
+            lo = mid
+        else:
+            hi = mid
+        if hi - lo < SHIN_TOL:
+            break
+    out = _shin_probs(implied, booksum, 0.5 * (lo + hi))
+    # The bisection lands within tolerance, not exactly; renormalize so the
+    # caller can rely on the sum without carrying the solver's slack.
+    total = sum(out)
+    return [x / total for x in out]
+
+
 def invert_odds(p_home: float, p_draw: float, p_away: float,
                 p_over25: float) -> tuple[float, float]:
     """Least-squares grid search for independent-Poisson (mu_h, mu_a)."""

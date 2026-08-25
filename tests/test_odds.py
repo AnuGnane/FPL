@@ -482,3 +482,70 @@ def test_poisson_win_prob_is_a_probability_that_tracks_the_supremacy():
     assert poisson_win_prob(2.5, 0.7) > even
     assert poisson_win_prob(0.7, 2.5) < even
     assert 0.0 <= poisson_win_prob(0.0, 3.0) <= 1.0
+
+
+# --- Shin devigging --------------------------------------------------------
+
+def test_shin_devig_outputs_sum_to_one():
+    from gaffer.data.odds import shin_devig
+
+    for prices in ([1.30, 3.50], [2.4, 3.4, 2.9], [1.2, 7.0, 15.0]):
+        assert abs(sum(shin_devig(prices)) - 1.0) < 1e-12
+
+
+def test_shin_devig_preserves_the_order_of_the_prices():
+    from gaffer.data.odds import shin_devig
+
+    out = shin_devig([1.2, 7.0, 15.0])
+    assert out[0] > out[1] > out[2]
+
+
+def test_shin_devig_shrinks_the_longshot_more_than_proportional_devig():
+    """The whole point of the change: the pad on a longshot is bigger than
+    the pad on a favourite, so removing it proportionally leaves the
+    favourite under-priced."""
+    from gaffer.data.odds import devig, shin_devig
+
+    prices = [1.30, 3.50]
+    shin, prop = shin_devig(prices), devig(prices)
+    assert shin[0] > prop[0]        # favourite gains
+    assert shin[1] < prop[1]        # longshot shrinks
+
+
+def test_shin_devig_pins_a_hand_checked_two_way_market():
+    from gaffer.data.odds import shin_devig
+
+    out = shin_devig([1.30, 3.50])
+    assert round(out[0], 4) == 0.7418
+    assert round(out[1], 4) == 0.2582
+
+
+def test_shin_devig_on_equal_prices_is_uniform():
+    from gaffer.data.odds import shin_devig
+
+    assert shin_devig([2.0, 2.0]) == [0.5, 0.5]
+    for p in shin_devig([3.0, 3.0, 3.0]):
+        assert abs(p - 1 / 3) < 1e-12
+
+
+def test_shin_devig_on_a_vig_free_book_is_the_implied_probabilities():
+    """Booksum <= 1 has no pad to remove; inventing one would push
+    probabilities the wrong way."""
+    from gaffer.data.odds import shin_devig
+
+    out = shin_devig([2.0, 4.0, 4.0])
+    assert abs(out[0] - 0.5) < 1e-12
+
+
+def test_shin_devig_does_not_diverge_on_an_extreme_favourite():
+    from gaffer.data.odds import shin_devig
+
+    out = shin_devig([1.01, 40.0])
+    assert abs(sum(out) - 1.0) < 1e-12
+    assert 0.0 < out[1] < 0.05
+
+
+def test_shin_devig_on_a_single_outcome_returns_one():
+    from gaffer.data.odds import shin_devig
+
+    assert shin_devig([1.5]) == [1.0]
