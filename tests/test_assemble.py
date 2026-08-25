@@ -246,3 +246,18 @@ def test_absent_defensive_contribution_key_drops_the_term():
     from gaffer.models.assemble import ep_breakdown
     broken = ep_breakdown(assemble_ep(_components(), older), older)
     assert float(broken.iloc[0]["ep_defcon"]) == 0.0
+
+
+def test_an_unknown_position_makes_defcon_nan_like_every_other_term():
+    """The fallback is for a *rule* the table predates, not for a position
+    the table has never heard of. An unrecognised position is a data fault
+    and every other term surfaces it as NaN; defcon quietly scored it 0,
+    hiding the fault behind a plausible number."""
+    from gaffer.models.assemble import ep_breakdown
+
+    comp = _components()
+    comp.loc[0, "position"] = "WNG"
+    assembled = assemble_ep(comp, SCORING)
+    assert pd.isna(assembled.iloc[0]["ep"])
+    broken = ep_breakdown(assembled, SCORING)
+    assert pd.isna(broken.iloc[0]["ep_defcon"])

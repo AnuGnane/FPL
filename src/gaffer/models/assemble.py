@@ -69,9 +69,17 @@ def assemble_ep(components: pd.DataFrame,
         return pos.map(scoring[key]).astype(float)
 
     def s_opt(key: str, default: float) -> pd.Series:
-        """``s`` for a rule an older scoring table may not carry at all."""
-        table = scoring.get(key) or {}
-        return pos.map(lambda p: float(table.get(p, default))).astype(float)
+        """``s`` for a rule an older scoring table may not carry at all.
+
+        The fallback keys on the *rule* being absent, not on the position
+        lookup failing. A table that carries the rule is looked up exactly
+        like every other term, so an unrecognised position yields NaN and the
+        data fault is visible; swallowing it into ``default`` would price a
+        broken row at a plausible-looking number instead.
+        """
+        if key not in scoring:
+            return pd.Series(float(default), index=pos.index, dtype="float64")
+        return s(key)
 
     df["ep"] = (
         df["p_play"] * s("minutes_0_59")
@@ -143,8 +151,10 @@ def ep_breakdown(assembled: pd.DataFrame,
         return pos.map(scoring[key]).astype(float)
 
     def s_opt(key: str, default: float) -> pd.Series:
-        table = scoring.get(key) or {}
-        return pos.map(lambda p: float(table.get(p, default))).astype(float)
+        """See :func:`assemble_ep`'s ``s_opt`` — kept identical to it."""
+        if key not in scoring:
+            return pd.Series(float(default), index=pos.index, dtype="float64")
+        return s(key)
 
     df["ep_minutes"] = (df["p_play"] * s("minutes_0_59")
                         + df["p60"] * (s("minutes_60_plus")
