@@ -243,3 +243,44 @@ points. `[scenarios] n = 40` set in `config.toml`.
 Method caveat: single seed, one season. The flat-stub run doubles as an
 unplanned sensitivity check — the gate's value depends on the noise model
 being minutes-aware, which production is.
+
+### Calibration (2026-08-26): asset shipped
+
+`gaffer calibrate-decisions` over 2022-23…2025-26: 131 transfer-surplus
+samples (medians 3.83 / 4.45 / 6.40 early/mid/late). λ strictly decreasing in
+k, decaying in t (λ(1..5, t=33) = 14.06 / 9.14 / 7.17 / 5.83 / 4.51); θ
+non-increasing within each half, exactly 0.0 at GW19 and GW38 for all four
+chips. Levels run ~4.5× the research sketch because samples are 3-GW-horizon
+objective deltas, not single-week gains — recorded, and D2/D3 measured the
+levels as shipped. Note: the λ DP is the multi-spend harmonic-value recursion
+(the plan's original recursion was degenerate — one spend per week against
+one arrival per week means a banked FT beyond the first never binds and
+λ(k≥2) ≡ 0; deviation reviewed and accepted).
+
+### Gates D2 and D3 (2026-08-26): both PASS
+
+Replay 2025-26 GW5–38, horizon 3, chips on, four arms (θ/λ isolation via
+driver monkeypatch, zero source edits):
+
+| replay | total | hits | transfers | chip points | chips stranded |
+| --- | --- | --- | --- | --- | --- |
+| flat baseline | 1810 | 18 | 70 | 432 | none |
+| λ + objective only | 1814 | 16 | 66 | 428 | none |
+| θ only | **1883** | 12 | 64 | **555** | none |
+| both | 1796 | 14 | 65 | 479 | none |
+
+**D2 PASS**: λ+objective 1814 ≥ 1810 with hits 16 ≤ 18. **D3 PASS**: θ chip
+points 555 ≥ 432 (+123, every chip better-timed: freehit GW19/33, wildcard
+GW34+, bboost GW36, 3xc GW38), no chip stranded in any arm. θ is the
+cycle's single biggest win: +73 total on its own.
+
+**Recorded anomaly**: the both-on arm (1796) underperformed the baseline and
+both isolated halves — λ and θ interact negatively (the suspected mechanism
+is the flagged double-count: a non-empty `ft_lambda` re-prices the terminal
+FT bank inside the chip-evaluation solves on top of the wildcard's explicit
+FT-bank deduction, making chip weeks look worse exactly when θ is willing to
+wait for them). Per spec §9's rule both halves ship on (each passed its own
+gate); the interaction is a named candidate for the next measurement cycle,
+and single-seed noise (±~30 pts) cannot rank 1796 vs 1810 with confidence.
+Defaults set: `decision_priors = true`, `itb_value = 0.08`,
+`ft_use_penalty = 0.2`, `bench_curve = [0.21, 0.06, 0.002]`.

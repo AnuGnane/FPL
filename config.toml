@@ -8,11 +8,14 @@ decay = 0.85
 vice_weight = 0.1
 bench_weight = 0.10
 ft_value = 1.5
-itb_value = 0.05    # points per 1.0m in the bank at horizon end
+itb_value = 0.08          # O'Brien: £1m ~ +21.8 pts over half a season; gate D2
+ft_use_penalty = 0.2
+bench_curve = [0.21, 0.06, 0.002]
 hit_cost = 4
 
 [scenarios]
 n = 40               # gate D1: gated replay 1818 vs raw 1743 (+75), fewer transfers and hits
+decision_priors = true
 
 [odds]
 # api_key = "get one free at the-odds-api.com (500 requests/month)"
