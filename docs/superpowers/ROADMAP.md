@@ -44,15 +44,18 @@ Spec: `specs/2026-08-25-gaffer-v4b-model-design.md` (§13 = full outcome) · Pla
 - [x] Final adversarial review: 4 blockers found + fixed + re-verified (MERGE verdict); deferred nits recorded in spec §13
 - Suite: 711 Python + 58 frontend, tsc clean
 
-## In progress
+### v4c — decide (done 2026-08-26, on `feat/gaffer-v4c`)
+Spec: `specs/2026-08-25-gaffer-v4c-decide-design.md` (§12 = full outcome) · Plan: `plans/2026-08-25-gaffer-v4c-decide.md`
+- [x] Scenario re-solving: N=40 noised solves → move-frequency gating (D1: 1818 vs 1743 raw, fewer transfers/hits) + CLI/UI "% of sims"
+- [x] FT/hit shadow price λ(k,t) DP (multi-spend recursion; plan's sketch was degenerate) — D2 pass: 1814 vs 1810, hits 16 vs 18
+- [x] Chip optimal-stopping thresholds θ_t — D3 pass, the cycle's big win: +73 total, chip points 555 vs 432, nothing stranded
+- [x] Objective craft: itb 0.08, convex bench curve, ft_use_penalty 0.2 (measured inside D2)
+- [x] Replay-calibrated decision_priors.json asset + `gaffer calibrate-decisions`
+- [ ] DGW/BGW `chip_scenarios.toml` population — hook shipped; data lands ~Jan (Crellin)
+- Recorded anomaly: λ+θ together (1796) < either alone; suspected ft_lambda/chip-eval double-count — next cycle
+- Suite: 923 Python + 62 frontend; advise wall-clock 68 s with the full stack on
 
-### v4c — decide (in progress; spec done `9939ca5`)
-Spec: `specs/2026-08-25-gaffer-v4c-decide-design.md` · Plan: `plans/2026-08-25-gaffer-v4c-decide.md` (drafting)
-- [ ] Scenario re-solving: N noised solves → move-frequency tables ("bought in 78% of sims") + UI column
-- [ ] FT/hit shadow price λ(k,t) from small DP; hit rule `gain > 4 + λ`
-- [ ] Chip optimal-stopping thresholds θ_t (backward recursion, declining to expiry)
-- [ ] Probability-weighted DGW/BGW fixture scenarios (Crellin-style)
-- [ ] Objective craft: itb_value, vice-captain weight, convex bench weights, ft_use_penalty
+## In progress
 
 ## Planned
 

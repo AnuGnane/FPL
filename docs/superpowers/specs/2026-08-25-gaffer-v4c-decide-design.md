@@ -284,3 +284,27 @@ gate); the interaction is a named candidate for the next measurement cycle,
 and single-seed noise (±~30 pts) cannot rank 1796 vs 1810 with confidence.
 Defaults set: `decision_priors = true`, `itb_value = 0.08`,
 `ft_use_penalty = 0.2`, `bench_curve = [0.21, 0.06, 0.002]`.
+
+### After-photo (2026-08-26)
+
+Suites: 923 Python (from 721 at cycle start) + 62 frontend, `npm run build`
+clean. Degradation rail green (n=0 CLI output byte-identical; solve_plan
+objective identity under all four new arguments at their defaults). All four
+protected source-text suites untouched and green. Timed live advise with the
+full stack on (n=40, priors, crafted objective): **68 s wall-clock** against
+the ≤~6 min budget; 40/40 scenarios solved, frequencies rendered in CLI and
+web, raw optimum demoted to one line.
+
+Corrections to this spec discovered during the cycle: (1) §9's D3
+prerequisite was wrong — the backtest has accepted `chips=True` since v1
+(now pinned by `test_run_backtest_already_accepts_the_chips_flag`); the real
+gap was `unplayed_chips` reporting, added in Task 22. (2) §5's λ recursion
+was degenerate as sketched (see Calibration note above).
+
+Observed behaviour worth a future look: the coherence re-solve may take hits
+the 75 % gate declined when completing forced buys (seen live: two forced
+buys → −8 hits with `hit` at 57 %). Measured net-positive inside D1's +75,
+but "gate the completion's hits too" is a candidate refinement. Deferred
+alongside: the λ×θ interaction anomaly above; per-phase λ states (the DP
+pools phases, t already implies phase); DGW `chip_scenarios.toml` population
+(~Jan, Crellin files).
