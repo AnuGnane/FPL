@@ -24,11 +24,20 @@ import pandas as pd
 import pulp
 
 from gaffer.errors import GafferError
+from gaffer.optimize.ft_value import LambdaLookup
 
 SQUAD_COMPOSITION = {"GKP": 2, "DEF": 5, "MID": 5, "FWD": 3}
 XI_BOUNDS = {"GKP": (1, 1), "DEF": (3, 5), "MID": (2, 5), "FWD": (1, 3)}
 MAX_PER_CLUB = 3
 MAX_FREE_TRANSFERS = 5
+
+SEASON_LAST_GW = 38
+"""Last gameweek of a season.
+
+Needed here rather than imported from ``advise`` so the objective can price a
+banked transfer by how many weeks are left to spend it in. A duplicate of
+``advise.LAST_GW`` on purpose: ``milp`` must not import ``advise``.
+"""
 
 DEFAULT_TOP_N = {"GKP": 8, "DEF": 22, "MID": 26, "FWD": 14}
 
@@ -102,7 +111,8 @@ class FixedMoves:
 def solve_plan(pool: pd.DataFrame, state: SolveInput, *, decay: float,
                bench_weight: float, vice_weight: float, ft_value: float,
                itb_value: float, hit_cost: int,
-               fixed_moves: FixedMoves | None = None) -> Plan:
+               fixed_moves: FixedMoves | None = None,
+               ft_lambda: "LambdaLookup | None" = None) -> Plan:
     """Solve the multi-period plan.
 
     pool: [code, position, team_code, cost, sell, ep] where ep is a dict
@@ -228,7 +238,27 @@ def solve_plan(pool: pd.DataFrame, state: SolveInput, *, decay: float,
                                 + vice_weight * vice[c][t]))
             obj.append(d * e * bw * (sq[c][t] - xi[c][t]))
         obj.append(-hit_cost * d * hits[t])
-    obj.append(ft_value * ftv[T[-1]])
+    # Terminal value of the banked free transfers.
+    #
+    # Flat ft_value says the fifth banked transfer is worth as much as the
+    # first, which is the assumption that makes the solver hoard. With a
+    # lambda table the value is concave: ftge[j] is "the terminal count is at
+    # least j", each priced by its own shadow price, and their sum is the
+    # count. Lambda is decreasing in j, so maximization fills the low indices
+    # first without being told to; the ordering constraints are insurance
+    # against a degenerate table, not the mechanism.
+    if ft_lambda is None or ft_lambda.empty:
+        obj.append(ft_value * ftv[T[-1]])
+    else:
+        weeks_left = max(1, SEASON_LAST_GW - T[-1])
+        ftge = V("ftge", list(range(1, MAX_FREE_TRANSFERS + 1)),
+                 cat="Binary")
+        prob += ftv[T[-1]] == pulp.lpSum(
+            ftge[j] for j in range(1, MAX_FREE_TRANSFERS + 1))
+        for j in range(2, MAX_FREE_TRANSFERS + 1):
+            prob += ftge[j] <= ftge[j - 1]
+        for j in range(1, MAX_FREE_TRANSFERS + 1):
+            obj.append(ft_lambda(j, weeks_left) * ftge[j])
     obj.append((itb_value / 10.0) * bank[T[-1]])
     prob += pulp.lpSum(obj)
 

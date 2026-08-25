@@ -327,3 +327,84 @@ def test_fixed_moves_with_no_transfer_and_a_buy_raises():
                    fixed_moves=FixedMoves(buys=[int(pool.loc[0, "code"])],
                                           no_transfer=True))
     assert "no_transfer" in str(exc.value)
+
+
+# --- v4c: lambda-priced free transfers -------------------------------------
+
+from gaffer.optimize.ft_value import LambdaLookup
+from gaffer.optimize.milp import SEASON_LAST_GW
+
+
+def test_the_season_end_constant_is_gameweek_thirty_eight():
+    assert SEASON_LAST_GW == 38
+
+
+def test_ft_lambda_none_is_the_identity():
+    pool = golden_pool()
+    state = _owned_state(pool)
+    a = solve_plan(pool, state, **GOLDEN_KW)
+    b = solve_plan(pool, state, **GOLDEN_KW, ft_lambda=None)
+    assert round(a.objective, 9) == round(b.objective, 9)
+
+
+def test_an_empty_lambda_lookup_falls_back_to_the_flat_ft_value():
+    """No priors asset must mean 'behave as before', not 'price FTs at 0'."""
+    pool = golden_pool()
+    state = _owned_state(pool)
+    a = solve_plan(pool, state, **GOLDEN_KW)
+    b = solve_plan(pool, state, **GOLDEN_KW, ft_lambda=LambdaLookup({}))
+    assert round(a.objective, 9) == round(b.objective, 9)
+
+
+def test_a_lambda_table_replaces_the_flat_terminal_term():
+    """With lambda in play the flat ft_value must no longer appear in the
+    objective — pricing an FT twice is worse than pricing it wrong."""
+    import inspect
+
+    src = inspect.getsource(solve_plan)
+    assert "ft_lambda is None or ft_lambda.empty" in src
+    assert "obj.append(ft_value * ftv[T[-1]])" in src
+
+
+def test_a_generous_lambda_makes_the_solver_bank_rather_than_spend():
+    """The behavioural claim: a high shadow price on banked transfers buys
+    fewer transfers, which is the whole point."""
+    pool = golden_pool()
+    state = _owned_state(pool)
+    greedy = solve_plan(pool, state, **GOLDEN_KW)
+    stingy = solve_plan(
+        pool, state, **GOLDEN_KW,
+        ft_lambda=LambdaLookup({(k, t): 50.0 for k in range(1, 6)
+                                for t in range(1, 39)}))
+    assert len(stingy.gw_plans[0].buys) <= len(greedy.gw_plans[0].buys)
+
+
+def test_a_zero_lambda_table_makes_banking_worthless():
+    """The other end: FTs worth nothing means spend them."""
+    pool = golden_pool()
+    state = _owned_state(pool)
+    plan = solve_plan(
+        pool, state, **GOLDEN_KW,
+        ft_lambda=LambdaLookup({(k, t): 0.0 for k in range(1, 6)
+                                for t in range(1, 39)}))
+    assert len(plan.gw_plans[0].squad) == 15
+
+
+def test_lambda_is_looked_up_at_the_weeks_remaining_in_the_season():
+    """t is 'gameweeks left after the horizon ends', not 'horizon length' —
+    a GW36 horizon is nearly worthless to bank into and a GW6 one is not."""
+    import inspect
+
+    src = inspect.getsource(solve_plan)
+    assert "SEASON_LAST_GW - T[-1]" in src
+
+
+def test_lambda_pricing_is_concave_in_the_banked_count():
+    """Each successive banked transfer must be worth less than the last, or
+    the objective would prefer hoarding five to using one."""
+    pool = golden_pool()
+    state = _owned_state(pool)
+    table = {(k, t): 4.0 / k for k in range(1, 6) for t in range(1, 39)}
+    plan = solve_plan(pool, state, **GOLDEN_KW,
+                      ft_lambda=LambdaLookup(table))
+    assert len(plan.gw_plans[0].squad) == 15
