@@ -401,7 +401,10 @@ class ReliabilityBin(BaseModel):
 
 
 class HeadMetrics(BaseModel):
-    log_loss: float
+    log_loss: float | None
+    """``None`` for a head with nothing to score — see
+    :func:`gaffer.evaluation.head_metrics`. Nullable rather than NaN because
+    NaN is not JSON."""
     reliability: list[ReliabilityBin]
 
 

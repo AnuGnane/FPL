@@ -76,7 +76,9 @@ function StratifiedTableView(
 function Reliability({ label, head }: { label: string; head: HeadMetrics }) {
   return (
     <div>
-      <p className="muted">{label} — log loss {head.log_loss}</p>
+      <p className="muted">
+        {label} — log loss {head.log_loss ?? 'n/a'}
+      </p>
       <LineChart
         label={`${label} reliability`}
         series={[

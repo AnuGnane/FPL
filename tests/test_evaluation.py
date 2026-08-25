@@ -104,6 +104,33 @@ def test_head_metrics_packs_log_loss_and_the_curve_together():
     assert isinstance(out["reliability"], list)
 
 
+def test_stratified_metrics_drops_a_non_finite_pair():
+    """One NaN ep must not poison a whole category's RMSE and MAE — the
+    artifact is JSON, and a NaN in it is neither valid nor renderable."""
+    out = stratified_metrics([1.0, float("nan"), 3.0], [0, 0, 0])
+    assert out["zeros"]["n"] == 2
+    assert out["zeros"]["mae"] == 2.0
+    assert out["all"]["n"] == 2
+
+
+def test_stratified_metrics_drops_a_non_finite_actual():
+    out = stratified_metrics([1.0, 2.0], [0, float("nan")])
+    assert out["zeros"]["n"] == 1
+    assert out["all"]["n"] == 1
+
+
+def test_stratified_metrics_of_only_non_finite_rows_is_zeros_not_nan():
+    out = stratified_metrics([float("nan")], [float("nan")])
+    assert out["all"] == {"rmse": 0.0, "mae": 0.0, "n": 0}
+
+
+def test_head_metrics_reports_a_missing_log_loss_as_none_not_nan():
+    """``None`` is JSON's null; ``NaN`` is not JSON at all, and the artifact
+    it lands in is served straight to the web layer."""
+    out = head_metrics([], [])
+    assert out["log_loss"] is None
+
+
 import json  # noqa: E402
 
 import pytest  # noqa: E402
@@ -147,6 +174,14 @@ def test_save_evaluation_replaces_its_own_key(tmp_path, monkeypatch):
     save_evaluation("current", {"holdout_slots": 10})
     save_evaluation("current", {"holdout_slots": 5})
     assert load_evaluation()["current"] == {"holdout_slots": 5}
+
+
+def test_save_evaluation_refuses_to_write_a_nan(tmp_path, monkeypatch):
+    """A NaN written here is invalid JSON that only fails on read, three
+    weeks later, as a 500 from /api/quality. Fail at write time instead."""
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(ValueError):
+        save_evaluation("current", {"mae": float("nan")})
 
 
 def test_run_at_is_an_iso_utc_stamp():

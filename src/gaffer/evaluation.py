@@ -46,15 +46,32 @@ def categorize(points) -> np.ndarray:
     return out
 
 
+def _paired(pred, actual) -> tuple[np.ndarray, np.ndarray]:
+    """Prediction/outcome arrays with the non-finite rows dropped.
+
+    Positional, not index-aligned: every ``predict`` in this codebase returns
+    one row per input row in input order, and pandas would happily align two
+    frames with different indexes into nonsense.
+    """
+    p = np.asarray(pred, dtype="float64")
+    y = np.asarray(actual, dtype="float64")
+    ok = np.isfinite(p) & np.isfinite(y)
+    return p[ok], y[ok]
+
+
 def stratified_metrics(pred, actual) -> dict[str, dict[str, float]]:
     """RMSE and MAE per return category plus ``all``, with row counts.
 
     An empty category reports zeros rather than NaN: the artifact is JSON and
     a NaN there is neither valid JSON nor readable in the UI. ``n`` is the
     field that says whether the numbers mean anything.
+
+    Non-finite pairs are dropped for the same reason: a single NaN ``ep`` —
+    one player missing a component — would otherwise turn its whole category's
+    RMSE and MAE into NaN and take the artifact down with it. Dropping is
+    honest here because ``n`` reports how many rows survived.
     """
-    p = np.asarray(pred, dtype="float64")
-    a = np.asarray(actual, dtype="float64")
+    p, a = _paired(pred, actual)
     cats = categorize(a)
     out: dict[str, dict[str, float]] = {}
     for name in RETURN_CATEGORIES:
@@ -73,19 +90,6 @@ RELIABILITY_BINS = 10
 LOG_LOSS_EPS = 1e-15
 """Clip for the log: a head that returns a hard 0 or 1 must not make the
 whole metric infinite on a single wrong row."""
-
-
-def _paired(pred, actual) -> tuple[np.ndarray, np.ndarray]:
-    """Prediction/outcome arrays with the incomplete rows dropped.
-
-    Positional, not index-aligned: every ``predict`` in this codebase returns
-    one row per input row in input order, and pandas would happily align two
-    frames with different indexes into nonsense.
-    """
-    p = np.asarray(pred, dtype="float64")
-    y = np.asarray(actual, dtype="float64")
-    ok = ~(np.isnan(p) | np.isnan(y))
-    return p[ok], y[ok]
 
 
 def log_loss(pred, actual) -> float:
@@ -121,8 +125,14 @@ def reliability(pred, actual, bins: int = RELIABILITY_BINS) -> list[dict]:
 
 
 def head_metrics(pred, actual) -> dict:
-    """One probability head's scoreline: log loss plus its reliability curve."""
-    return {"log_loss": round(log_loss(pred, actual), 4),
+    """One probability head's scoreline: log loss plus its reliability curve.
+
+    A head with nothing to score reports ``log_loss: None`` rather than NaN:
+    ``None`` is JSON's null and survives the round trip to the UI, where NaN
+    is not JSON at all.
+    """
+    ll = log_loss(pred, actual)
+    return {"log_loss": None if np.isnan(ll) else round(ll, 4),
             "reliability": reliability(pred, actual)}
 
 
@@ -168,7 +178,11 @@ def save_evaluation(key: str, payload: dict) -> Path:
         stored = json.loads(EVALUATION_PATH.read_text())
     stored[key] = payload
     REPORTS.mkdir(exist_ok=True)
-    EVALUATION_PATH.write_text(json.dumps(stored, indent=1))
+    # allow_nan=False: NaN/Infinity are a Python extension that no other JSON
+    # reader accepts. Letting one through here buys a valid-looking artifact
+    # that only fails weeks later, as a 500 from /api/quality, a long way from
+    # whatever produced the NaN.
+    EVALUATION_PATH.write_text(json.dumps(stored, indent=1, allow_nan=False))
     return EVALUATION_PATH
 
 
@@ -495,7 +509,9 @@ def format_report(key: str, payload: dict) -> str:
             lines.append(f"   {cat:9s} rmse {m['rmse']:7.3f}  "
                          f"mae {m['mae']:7.3f}")
     for head, m in payload.get("heads", {}).items():
-        lines.append(f"-- head {head}: log loss {m['log_loss']:.4f}, "
+        ll = m["log_loss"]
+        lines.append(f"-- head {head}: log loss "
+                     f"{'n/a' if ll is None else format(ll, '.4f')}, "
                      f"{len(m['reliability'])} reliability bins")
         for b in m["reliability"]:
             lines.append(f"   pred {b['pred']:.3f}  obs {b['obs']:.3f}  "

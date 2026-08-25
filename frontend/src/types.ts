@@ -328,7 +328,8 @@ export interface ReliabilityBin {
 }
 
 export interface HeadMetrics {
-  log_loss: number
+  /** null for a head with nothing to score — NaN is not JSON. */
+  log_loss: number | null
   reliability: ReliabilityBin[]
 }
 
