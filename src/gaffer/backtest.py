@@ -247,9 +247,30 @@ def _actuals_frame(rows: pd.DataFrame) -> pd.DataFrame:
                  position=("position", "first")))
 
 
+EP_SOURCES = ("model", "oracle")
+
+
+def oracle_ep(season_rows: pd.DataFrame, gws: list[int]) -> pd.DataFrame:
+    """Perfect-foresight expected points: what each player actually scored.
+
+    Same shape ``ep_matrix`` returns — one row per (code, gw), a double
+    gameweek's fixtures summed — so it drops into the pool builder unchanged.
+    A player with no fixture simply has no row, which ``build_pool`` already
+    reads as 0.0, and a player who did not feature carries his real 0.
+
+    This is the ceiling half of the decomposition, not a model: the gap
+    between it and the ordinary replay is what better forecasting could win,
+    and the gap between its own h3 and h1 runs is what multi-week planning
+    could ever be worth.
+    """
+    rows = season_rows[season_rows["gw"].isin(gws)]
+    return (rows.groupby(["code", "gw"], as_index=False)
+            .agg(ep=("total_points", "sum")))
+
+
 def run_backtest(season: str = "2025-26", start_gw: int = 5,
                  retrain_every: int = 4, horizon: int = 1,
-                 chips: bool = False) -> dict:
+                 chips: bool = False, ep_source: str = "model") -> dict:
     """Replay ``season`` from ``start_gw`` to GW38 following the tool.
 
     ``horizon`` turns the replay into a receding-horizon plan: each week the
@@ -273,9 +294,22 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
     played — at most one per week, never in the opening squad-build week,
     which is already a wildcard in all but name.
 
+    ``ep_source`` selects where expected points come from. ``"model"`` is the
+    ordinary replay and is bit-identical to the pre-oracle behaviour.
+    ``"oracle"`` swaps in each player's *actual* points for the gameweek
+    (:func:`oracle_ep`) and feeds them through the identical pipeline — same
+    pool, same solver, same chip logic. Two simplifications are worth being
+    explicit about: the replay never applies league tilt or availability
+    filtering in either mode, so an oracle run is clairvoyant about scores
+    and no more privileged than the model run about news; and it skips model
+    training altogether, since nothing reads the fitted components.
+
     Returns {"season", "from_gw", "total", "per_gw", "log", "chips_played"}
     and writes the per-gameweek log to ``data/live/backtest_log.parquet``.
     """
+    if ep_source not in EP_SOURCES:
+        raise ValueError(f"unknown ep_source: {ep_source!r} "
+                         f"(expected one of {EP_SOURCES})")
     cfg = load_config()
     season_idx = cfg.train_seasons.index(season)
     opt_kw = dict(decay=cfg.decay, bench_weight=cfg.bench_weight,
@@ -307,7 +341,10 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
         rows = season_rows[season_rows["gw"] == gw]
         if rows.empty:
             continue
-        if not models or (gw - start_gw) % retrain_every == 0:
+        # An oracle run never reads a fitted component, so it skips the
+        # refits entirely — the same replay, minutes instead of hours.
+        if ep_source == "model" and (not models
+                                     or (gw - start_gw) % retrain_every == 0):
             df, tg, _ = load_training_frame(max_season_idx=season_idx,
                                             max_gw=gw)
             models = train_all(df, tg, save=False)
@@ -328,9 +365,12 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
             horizon_rows = (pd.concat([rows, later], ignore_index=True)
                             .reindex(columns=list(rows.columns)))
 
-        comp = predict_components_simple(models, horizon_rows)
-        ep = ep_matrix(apply_calibration(assemble_ep(comp, scoring),
-                                         models.get("calibration")))
+        if ep_source == "oracle":
+            ep = oracle_ep(season_rows, gws)
+        else:
+            comp = predict_components_simple(models, horizon_rows)
+            ep = ep_matrix(apply_calibration(assemble_ep(comp, scoring),
+                                             models.get("calibration")))
         ep_by = {(int(r.code), int(r.gw)): float(r.ep) for r in ep.itertuples()}
         players = _players_frame(season_rows, gw)
         pos_of.update(dict(zip(players["code"], players["position"])))

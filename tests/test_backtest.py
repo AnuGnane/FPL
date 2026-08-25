@@ -1,4 +1,5 @@
 import pandas as pd
+import pytest
 from gaffer import backtest as bt
 from gaffer.backtest import run_backtest, score_gw
 from gaffer.config import Config
@@ -321,3 +322,106 @@ def test_horizon_rows_keep_the_known_fixture_list():
     assert int(gw3["opp_code"]) == 20 and float(gw3["home"]) == 1.0
     # The outcome columns are blanked: they are not known at the deadline.
     assert pd.isna(gw3["total_points"])
+
+
+# --- perfect-foresight ("oracle") EP -------------------------------------
+
+def test_oracle_ep_is_the_actual_points_per_player_gameweek():
+    rows = _season_rows([1, 2])
+    out = bt.oracle_ep(rows, [1, 2])
+    assert sorted(out.columns) == ["code", "ep", "gw"]
+    assert set(out["ep"]) == {2.0}
+    assert len(out) == 40
+
+
+def test_oracle_ep_sums_a_double_gameweek_and_drops_other_gameweeks():
+    rows = pd.concat([_season_rows([1]), _season_rows([1]), _season_rows([2])],
+                     ignore_index=True)
+    out = bt.oracle_ep(rows, [1])
+    assert set(out["gw"]) == {1}
+    assert set(out["ep"]) == {4.0}
+
+
+def test_oracle_ep_scores_a_player_who_did_not_feature_at_zero():
+    rows = _season_rows([1])
+    rows.loc[rows["code"] == 101, ["total_points", "minutes"]] = [0, 0]
+    out = bt.oracle_ep(rows, [1])
+    assert float(out.loc[out["code"] == 101, "ep"].iloc[0]) == 0.0
+
+
+def test_backtest_model_ep_source_is_bit_identical_to_the_default(monkeypatch):
+    """The default path must not move: everything measured before this change
+    was measured on it."""
+    _install_stubs(monkeypatch, _season_rows([1, 2, 3]))
+    default = run_backtest(season="2025-26", start_gw=1, retrain_every=4)
+    _install_stubs(monkeypatch, _season_rows([1, 2, 3]))
+    explicit = run_backtest(season="2025-26", start_gw=1, retrain_every=4,
+                            ep_source="model")
+    assert explicit == default
+    assert default["total"] == 72          # 3 gameweeks x (XI 22 + captain 2)
+
+
+def test_backtest_rejects_an_unknown_ep_source(monkeypatch):
+    _install_stubs(monkeypatch, _season_rows([1, 2, 3]))
+    with pytest.raises(ValueError) as exc:
+        run_backtest(season="2025-26", start_gw=1, ep_source="crystal ball")
+    assert "crystal ball" in str(exc.value)
+
+
+# --- oracle dominance ----------------------------------------------------
+#
+# The solver and the pool builder stay real here — the point of the check is
+# that the oracle's EP actually reaches the MILP — so only the training and
+# prediction machinery is stubbed out.
+
+def _scored_season_rows(gws, n=20):
+    """Player i scores i points every gameweek, at a flat price.
+
+    A strictly-ranked pool is what makes the comparison meaningful: with the
+    model EP flat at 1.0, only the oracle can tell the 19-point player from
+    the 0-point one.
+    """
+    rows = []
+    for gw in gws:
+        for i in range(n):
+            rows.append({
+                "season_idx": 0, "gw": gw, "code": 101 + i,
+                "element": 1 + i, "name": f"P{i}", "position": POSITIONS[i],
+                "team_code": 1 + i % 7, "value": 40,
+                "kickoff_time": f"2025-01-{gw:02d}T12:00:00Z",
+                "total_points": i, "minutes": 90,
+            })
+    return pd.DataFrame(rows)
+
+
+def _install_solver_stubs(monkeypatch, season_rows):
+    """Everything except ``build_pool`` and ``solve_plan``, which stay real."""
+    monkeypatch.setattr(bt, "load_config", lambda *a, **k: Config(
+        entry_id=1, league_id=1, train_seasons=["2025-26"]))
+    monkeypatch.setattr(bt, "load_bootstrap_sample", lambda *a, **k: {})
+    monkeypatch.setattr(bt, "scoring_table", lambda *a, **k: {})
+    monkeypatch.setattr(bt, "load_training_frame",
+                        lambda *a, **k: (season_rows, pd.DataFrame(), None))
+    monkeypatch.setattr(bt, "train_all", lambda *a, **k: {})
+    monkeypatch.setattr(bt, "predict_components_simple",
+                        lambda models, rows: rows)
+    monkeypatch.setattr(bt, "assemble_ep", lambda comp, scoring: comp)
+    monkeypatch.setattr(bt, "apply_calibration", lambda df, cal: df)
+    monkeypatch.setattr(bt, "ep_matrix",
+                        lambda df: df[["code", "gw"]].assign(ep=1.0))
+    monkeypatch.setattr(bt.store, "save", lambda *a, **k: None)
+
+
+def test_oracle_h1_xi_outscores_the_model_xi_on_the_same_fixture_data(
+        monkeypatch):
+    rows = _scored_season_rows([1, 2, 3])
+    _install_solver_stubs(monkeypatch, rows)
+    model = run_backtest(season="2025-26", start_gw=1, retrain_every=4,
+                         ep_source="model")
+    _install_solver_stubs(monkeypatch, rows)
+    oracle = run_backtest(season="2025-26", start_gw=1, retrain_every=4,
+                          ep_source="oracle")
+    # GW1 is the squad build: no transfers, no hits either side, so the two
+    # XIs are directly comparable.
+    assert oracle["log"][0]["points"] >= model["log"][0]["points"]
+    assert oracle["total"] >= model["total"]
