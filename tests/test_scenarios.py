@@ -139,3 +139,102 @@ def test_noised_pool_replaces_the_ep_dicts_without_mutating_the_original():
     assert pool.loc[0, "ep"] == {5: 6.0, 6: 5.0}
     assert out.loc[0, "ep"] != pool.loc[0, "ep"]
     assert set(out.loc[0, "ep"]) == {5, 6}
+
+
+# --- run_scenarios ---------------------------------------------------------
+
+from gaffer.optimize.milp import SolveInput
+from gaffer.optimize.scenarios import ScenarioRun, run_scenarios
+
+SOLVE_KW = dict(decay=0.85, bench_weight=0.10, vice_weight=0.1,
+                ft_value=1.5, itb_value=0.05, hit_cost=4)
+
+
+def _board() -> tuple[pd.DataFrame, SolveInput]:
+    """A legal 15-player board with spares, over one gameweek."""
+    rows, code = [], 200
+    for pos, count, base in [("GKP", 3, 45), ("DEF", 7, 45),
+                             ("MID", 7, 55), ("FWD", 4, 60)]:
+        for i in range(count):
+            rows.append({"code": code, "position": pos,
+                         "team_code": code % 8, "cost": base + i,
+                         "sell": base + i, "ep": {5: 2.0 + 0.3 * i}})
+            code += 1
+    pool = pd.DataFrame(rows)
+    state = SolveInput(owned_codes=[], bank=1000, free_transfers=15, gws=[5])
+    return pool, state
+
+
+def test_run_scenarios_returns_one_plan_per_scenario():
+    pool, state = _board()
+    run = run_scenarios(pool, state, {}, n=3, seed=1, **SOLVE_KW)
+    assert isinstance(run, ScenarioRun)
+    assert len(run.plans) == 3
+    assert run.attempted == 3 and run.completed == 3
+
+
+def test_run_scenarios_with_n_zero_solves_nothing():
+    """The degradation rail's load-bearing case."""
+    pool, state = _board()
+    run = run_scenarios(pool, state, {}, n=0, seed=1, **SOLVE_KW)
+    assert run.plans == [] and run.attempted == 0 and run.completed == 0
+
+
+def test_run_scenarios_is_reproducible_under_a_seed():
+    pool, state = _board()
+    xm = {(int(c), 5): 20.0 for c in pool["code"]}
+    a = run_scenarios(pool, state, xm, n=3, seed=99, **SOLVE_KW)
+    b = run_scenarios(pool, state, xm, n=3, seed=99, **SOLVE_KW)
+    assert [p.gw_plans[0].squad for p in a.plans] == \
+           [p.gw_plans[0].squad for p in b.plans]
+
+
+def test_run_scenarios_with_a_different_seed_explores_differently():
+    pool, state = _board()
+    xm = {(int(c), 5): 0.0 for c in pool["code"]}
+    a = run_scenarios(pool, state, xm, n=4, seed=1, **SOLVE_KW)
+    b = run_scenarios(pool, state, xm, n=4, seed=2, **SOLVE_KW)
+    assert [p.gw_plans[0].captain for p in a.plans] != \
+           [p.gw_plans[0].captain for p in b.plans]
+
+
+def test_run_scenarios_records_the_seed_it_used():
+    """The report prints it, and reproducing an old piece of advice is the
+    only way to argue with it."""
+    pool, state = _board()
+    assert run_scenarios(pool, state, {}, n=2, seed=77, **SOLVE_KW).seed == 77
+
+
+def test_run_scenarios_drops_a_failing_solve_and_counts_it(monkeypatch):
+    """39/40 is a report line, not an error."""
+    import gaffer.optimize.scenarios as scen
+
+    pool, state = _board()
+    calls = {"n": 0}
+    real = scen.solve_plan
+
+    def flaky(*a, **kw):
+        calls["n"] += 1
+        if calls["n"] == 2:
+            raise RuntimeError("MILP not optimal: Infeasible")
+        return real(*a, **kw)
+
+    monkeypatch.setattr(scen, "solve_plan", flaky)
+    run = run_scenarios(pool, state, {}, n=3, seed=1, **SOLVE_KW)
+    assert run.attempted == 3 and run.completed == 2
+    assert len(run.plans) == 2
+    assert run.failures == 1
+
+
+def test_run_scenarios_zero_noise_reproduces_the_deterministic_optimum():
+    """With every player pinned at 92 xMins the noise is identically zero, so
+    every scenario has to agree with the plain solve. This is the sanity
+    check that the noise is the only thing varying."""
+    from gaffer.optimize.milp import solve_plan
+
+    pool, state = _board()
+    xm = {(int(c), 5): 92.0 for c in pool["code"]}
+    run = run_scenarios(pool, state, xm, n=2, seed=5, **SOLVE_KW)
+    raw = solve_plan(pool, state, **SOLVE_KW)
+    for plan in run.plans:
+        assert plan.gw_plans[0].squad == raw.gw_plans[0].squad

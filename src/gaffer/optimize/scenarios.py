@@ -29,6 +29,8 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
+from gaffer.optimize.milp import Plan, SolveInput, solve_plan
+
 NOISE_FLOOR_XMINS = 92.0
 """xMins at which the noise scale reaches zero.
 
@@ -127,3 +129,54 @@ def noised_pool(pool: pd.DataFrame, xmins: dict[tuple[int, int], float],
         cells.append({gw: noised[(int(code), int(gw))] for gw in cell})
     out["ep"] = cells
     return out
+
+
+@dataclass
+class ScenarioRun:
+    """The outcome of a scenario sweep.
+
+    ``attempted`` and ``completed`` differ when a noised board defeated the
+    solver. That difference is printed, not raised: the frequencies are still
+    meaningful over the scenarios that did finish, and refusing to give advice
+    because 1 solve in 40 went sideways would be the worse failure.
+    """
+    plans: list[Plan]
+    attempted: int
+    completed: int
+    failures: int
+    seed: int
+
+
+def run_scenarios(pool: pd.DataFrame, state: SolveInput,
+                  xmins: dict[tuple[int, int], float], *, n: int, seed: int,
+                  **solve_cfg) -> ScenarioRun:
+    """``n`` solves of the same board under ``n`` independent EP draws.
+
+    ``solve_cfg`` is the ordinary :func:`~gaffer.optimize.milp.solve_plan`
+    keyword bundle — the same ``opt_kw`` the deterministic solve uses, so a
+    scenario differs from the raw optimum in the EP values and in nothing
+    else.
+
+    Sequential on purpose. At ~7s a solve, 40 scenarios is under five minutes,
+    which spec §3 budgets for; a process pool would buy maybe 4x for the cost
+    of pickling a PuLP problem per worker and a class of bugs that only ever
+    appear on someone else's machine.
+
+    ``n = 0`` returns an empty run without touching the solver at all — that is
+    the degradation rail, and it has to be free.
+    """
+    if n <= 0:
+        return ScenarioRun(plans=[], attempted=0, completed=0, failures=0,
+                           seed=seed)
+    rng = np.random.default_rng(seed)
+    plans: list[Plan] = []
+    failures = 0
+    for _ in range(n):
+        board = noised_pool(pool, xmins, rng)
+        try:
+            plans.append(solve_plan(board, state, **solve_cfg))
+        except Exception as exc:  # noqa: BLE001 — one bad draw is not fatal
+            failures += 1
+            print(f"scenario solve failed, dropping it: {exc}")
+    return ScenarioRun(plans=plans, attempted=n, completed=len(plans),
+                       failures=failures, seed=seed)
