@@ -1,0 +1,4 @@
+{
+  "_note": "understat player id -> FPL player code. Add an entry when the refresh prints an unmatched name that is really a player we carry. Keys starting with _ are documentation and are ignored.",
+  "_example": "\"1250\": 141746"
+}

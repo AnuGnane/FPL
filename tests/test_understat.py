@@ -309,3 +309,96 @@ def test_season_year_is_the_starting_year():
 
     assert season_year("2024-25") == "2024"
     assert season_year("2020-21") == "2020"
+
+
+# --- understat -> FPL id mapping ------------------------------------------
+
+from gaffer.data.understat import load_overrides, map_understat_players
+
+
+def _us(rows):
+    """[(understat_id, player_name, team)]"""
+    return pd.DataFrame([{"understat_id": i, "player_name": n, "team": t}
+                         for i, n, t in rows])
+
+
+def _fpl(rows):
+    """[(code, name, team_name)]"""
+    return pd.DataFrame([{"code": c, "name": n, "team_name": t}
+                         for c, n, t in rows])
+
+
+def test_map_understat_players_matches_on_name_and_club():
+    us = _us([("1250", "Bruno Fernandes", "Manchester United")])
+    fpl = _fpl([(1, "Bruno Fernandes", "Man Utd"),
+                (2, "Bruno Guimarães", "Newcastle")])
+    out, report = map_understat_players(us, fpl,
+                                        team_aliases={"Manchester United":
+                                                      "Man Utd"})
+    assert out.to_dict("records") == [{"understat_id": "1250", "code": 1}]
+    assert report["exact"] == 1 and report["unmatched"] == 0
+
+
+def test_map_understat_players_ignores_accents_and_punctuation():
+    us = _us([("9", "N'Golo Kanté", "Chelsea")])
+    fpl = _fpl([(5, "Ngolo Kante", "Chelsea")])
+    out, _ = map_understat_players(us, fpl, team_aliases={"Chelsea": "Chelsea"})
+    assert list(out["code"]) == [5]
+
+
+def test_map_understat_players_falls_back_to_a_unique_cross_club_name():
+    """A January transfer puts the player at one club in one source and
+    another in the other; a unique full-name match is safe."""
+    us = _us([("11", "Kai Havertz", "Arsenal")])
+    fpl = _fpl([(7, "Kai Havertz", "Chelsea")])
+    out, report = map_understat_players(us, fpl,
+                                        team_aliases={"Arsenal": "Arsenal"})
+    assert list(out["code"]) == [7]
+    assert report["cross_club"] == 1
+
+
+def test_map_understat_players_refuses_an_ambiguous_cross_club_name():
+    """Two players share a normalized name and neither club agrees — a coin
+    flip here attaches one player's shots to another."""
+    us = _us([("12", "Danny Ward", "Leicester")])
+    fpl = _fpl([(8, "Danny Ward", "Huddersfield"),
+                (9, "Danny Ward", "Cardiff City")])
+    out, report = map_understat_players(us, fpl, team_aliases={})
+    assert out.empty
+    assert report["unmatched"] == 1
+
+
+def test_map_understat_players_applies_the_override_file():
+    # The two sources spell this one differently enough that no
+    # normalization saves it — which is exactly what the override file is for.
+    us = _us([("13", "Bobby De Cordova-Reid", "Fulham")])
+    fpl = _fpl([(10, "Bobby Reid", "Fulham")])
+    out, report = map_understat_players(us, fpl, team_aliases={},
+                                        overrides={"13": 10})
+    assert list(out["code"]) == [10]
+    assert report["override"] == 1
+
+
+def test_map_understat_players_reports_unmatched_names(capsys):
+    us = _us([("14", "Nobody At All", "Nowhere")])
+    fpl = _fpl([(11, "Someone Else", "Arsenal")])
+    out, report = map_understat_players(us, fpl, team_aliases={})
+    assert out.empty
+    assert report["rows"] == 1 and report["unmatched"] == 1
+    assert report["exact"] == report["cross_club"] == report["override"] == 0
+    assert "Nobody At All" in report["unmatched_names"][0]
+
+
+def test_map_understat_players_is_one_row_per_understat_id():
+    """A player appears in 38 match frames; the mapping is a lookup table,
+    not a row-for-row join."""
+    us = _us([("15", "Cole Palmer", "Chelsea")] * 38)
+    fpl = _fpl([(12, "Cole Palmer", "Chelsea")])
+    out, _ = map_understat_players(us, fpl, team_aliases={"Chelsea": "Chelsea"})
+    assert len(out) == 1
+
+
+def test_load_overrides_returns_a_dict_and_skips_doc_keys():
+    overrides = load_overrides()
+    assert isinstance(overrides, dict)
+    assert not any(k.startswith("_") for k in overrides)

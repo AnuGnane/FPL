@@ -23,6 +23,7 @@ from pathlib import Path
 import httpx
 import pandas as pd
 
+from gaffer.data.names import normalize_name
 from gaffer.errors import GafferError
 
 UNDERSTAT_BASE = "https://understat.com"
@@ -235,3 +236,75 @@ class UnderstatClient:
         # object, JSON has no such type, and the caller always knows it.
         path.write_text(rows.drop(columns=["date"]).to_json(orient="records"))
         return rows
+
+
+def load_overrides() -> dict[str, int]:
+    """Manual id mappings, documentation keys stripped."""
+    from gaffer.assets import load_understat_overrides
+
+    return {k: int(v) for k, v in load_understat_overrides().items()
+            if not k.startswith("_")}
+
+
+def map_understat_players(us_players: pd.DataFrame, fpl_players: pd.DataFrame,
+                          team_aliases: dict[str, str],
+                          overrides: dict[str, int] | None = None
+                          ) -> tuple[pd.DataFrame, dict]:
+    """``understat_id -> code`` lookup, plus a report of how each id resolved.
+
+    Three passes, most conservative first. A normalized full-name match at the
+    *same club* is unambiguous. A normalized full-name match that is unique
+    across the whole league is next — that is the transfer case, where the two
+    sources disagree about the club but only one player can be meant. Anything
+    left goes to the manual override file, and whatever survives that is
+    logged by name and dropped: an unmapped player contributes NaN features,
+    which LightGBM handles natively, where a wrong mapping would attach one
+    player's shot volume to another.
+
+    ``team_aliases`` maps understat club names to FPL bootstrap names; a club
+    missing from it simply never matches on the same-club pass and falls
+    through to the cross-club one.
+    """
+    overrides = load_overrides() if overrides is None else overrides
+    us = us_players[["understat_id", "player_name", "team"]].drop_duplicates(
+        subset=["understat_id"]).copy()
+    # Not ``_name``: DataFrame.itertuples renames any column starting with an
+    # underscore to a positional ``_1``, and the attribute access below would
+    # silently read the wrong field.
+    us["norm_name"] = us["player_name"].map(normalize_name)
+    us["norm_club"] = us["team"].map(lambda t: team_aliases.get(t, t))
+
+    fpl = fpl_players[["code", "name", "team_name"]].copy()
+    fpl["norm_name"] = fpl["name"].map(normalize_name)
+    by_name_club = {(r.norm_name, r.team_name): int(r.code)
+                    for r in fpl.itertuples()}
+    counts = fpl["norm_name"].value_counts()
+    unique_names = {r.norm_name: int(r.code) for r in fpl.itertuples()
+                    if counts.get(r.norm_name, 0) == 1}
+
+    rows, report = [], {"rows": int(len(us)), "exact": 0, "cross_club": 0,
+                        "override": 0, "unmatched": 0}
+    unmatched_names = []
+    for r in us.itertuples():
+        code = by_name_club.get((r.norm_name, r.norm_club))
+        bucket = "exact"
+        if code is None:
+            code = unique_names.get(r.norm_name)
+            bucket = "cross_club"
+        if code is None:
+            code = overrides.get(str(r.understat_id))
+            bucket = "override"
+        if code is None:
+            report["unmatched"] += 1
+            unmatched_names.append(f"{r.player_name} ({r.team}, "
+                                   f"id {r.understat_id})")
+            continue
+        report[bucket] += 1
+        rows.append({"understat_id": str(r.understat_id), "code": int(code)})
+    report["unmatched_names"] = unmatched_names
+    print(f"understat id mapping: {report['exact']} exact, "
+          f"{report['cross_club']} cross-club, {report['override']} override, "
+          f"{report['unmatched']} unmatched")
+    for name in unmatched_names[:20]:
+        print(f"  unmatched: {name}")
+    return pd.DataFrame(rows, columns=["understat_id", "code"]), report
