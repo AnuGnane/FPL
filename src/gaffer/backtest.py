@@ -155,6 +155,28 @@ def score_gw(actuals: pd.DataFrame, xi: list[int], bench: list[int],
     return int(round(total - 4 * hits))
 
 
+CHIP_HALVES = ("first_half", "second_half")
+
+
+def unplayed_chips(played_by_gw: dict[int, str]) -> dict[str, list[str]]:
+    """Chips that expired unused, per half.
+
+    2026/27 grants two of every chip; the first set dies after GW19. A chip
+    left unplayed at the end of its window is points thrown away for nothing,
+    and it is exactly the failure mode a stopping threshold could introduce —
+    a bar that never comes down strands the chip. theta_t comes down to zero
+    at expiry by construction, and this is how the replay proves it.
+    """
+    from gaffer.advise import CHIPS, FIRST_HALF_LAST_GW
+
+    first_used = {name for g, name in played_by_gw.items()
+                  if g <= FIRST_HALF_LAST_GW}
+    second_used = {name for g, name in played_by_gw.items()
+                   if g > FIRST_HALF_LAST_GW}
+    return {"first_half": [c for c in CHIPS if c not in first_used],
+            "second_half": [c for c in CHIPS if c not in second_used]}
+
+
 def _pick_chip(table: pd.DataFrame, gw: int, thresholds=None) -> str:
     """Best chip worth playing *this* gameweek, or "" for none.
 
@@ -347,8 +369,8 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
     and no more privileged than the model run about news; and it skips model
     training altogether, since nothing reads the fitted components.
 
-    Returns {"season", "from_gw", "total", "per_gw", "log", "chips_played"}
-    and writes the per-gameweek log to ``data/live/backtest_log.parquet``.
+    Returns {"season", "from_gw", "total", "per_gw", "log", "chips_played",
+    "unplayed_chips"} and writes the per-gameweek log to ``data/live/backtest_log.parquet``.
     """
     if ep_source not in EP_SOURCES:
         raise ValueError(f"unknown ep_source: {ep_source!r} "
@@ -545,4 +567,5 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
     per_gw = round(total / len(log), 2) if log else 0.0
     store.save(pd.DataFrame(log), "live/backtest_log.parquet")
     return {"season": season, "from_gw": start_gw, "total": total,
-            "per_gw": per_gw, "log": log, "chips_played": played_by_gw}
+            "per_gw": per_gw, "log": log, "chips_played": played_by_gw,
+            "unplayed_chips": unplayed_chips(played_by_gw)}

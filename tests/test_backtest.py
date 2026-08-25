@@ -526,3 +526,70 @@ def test_run_backtest_still_pins_the_calibration_seam():
 
     assert ("ep_matrix(apply_calibration(assemble_ep("
             in inspect.getsource(run_backtest))
+
+
+# --- v4c: the chip replay, as D3 needs it ----------------------------------
+
+def test_run_backtest_already_accepts_the_chips_flag():
+    """Spec §9 claims the harness is chip-free; it is not. Pin the reality so
+    the D3 measurement is not built on a false premise."""
+    import inspect
+
+    from gaffer.backtest import run_backtest
+
+    sig = inspect.signature(run_backtest)
+    assert sig.parameters["chips"].default is False
+
+
+def test_run_backtest_reports_which_chips_went_unplayed():
+    """D3's second condition — 'no chip stranded unplayed at expiry' — needs
+    the replay to say so, not the reader to infer it."""
+    import inspect
+
+    from gaffer.backtest import run_backtest
+
+    src = inspect.getsource(run_backtest)
+    assert "unplayed_chips" in src
+
+
+def test_unplayed_chips_of_a_replay_with_no_chips_is_every_chip_twice():
+    """Both halves: four chips before GW19 and four after."""
+    from gaffer.backtest import unplayed_chips
+
+    assert unplayed_chips({}) == {"first_half": ["wildcard", "freehit",
+                                                 "bboost", "3xc"],
+                                  "second_half": ["wildcard", "freehit",
+                                                  "bboost", "3xc"]}
+
+
+def test_unplayed_chips_accounts_for_the_half_a_chip_was_played_in():
+    from gaffer.backtest import unplayed_chips
+
+    out = unplayed_chips({7: "bboost", 25: "bboost"})
+    assert "bboost" not in out["first_half"]
+    assert "bboost" not in out["second_half"]
+
+
+def test_a_chip_played_in_one_half_is_still_available_in_the_other():
+    from gaffer.backtest import unplayed_chips
+
+    out = unplayed_chips({7: "wildcard"})
+    assert "wildcard" not in out["first_half"]
+    assert "wildcard" in out["second_half"]
+
+
+def test_the_boundary_gameweek_counts_as_the_first_half():
+    from gaffer.backtest import unplayed_chips
+
+    assert "3xc" not in unplayed_chips({19: "3xc"})["first_half"]
+    assert "3xc" in unplayed_chips({20: "3xc"})["first_half"]
+
+
+def test_chip_points_are_attributable_per_chip_from_the_log():
+    """D3 compares 'chip-attributed points'; the log has to carry the chip
+    name on the week it was played, which it already does."""
+    import pandas as pd
+
+    log = pd.DataFrame([{"gw": 7, "points": 80, "chip": "bboost"},
+                        {"gw": 8, "points": 55, "chip": ""}])
+    assert log[log["chip"] == "bboost"]["points"].sum() == 80
