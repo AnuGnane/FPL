@@ -9,7 +9,6 @@ scattered across six suites.
 
 import numpy as np
 import pandas as pd
-import pytest
 
 from gaffer.features.engineer import (TEAM_US_FEATURES, add_shrunken_rates,
                                       add_understat_rolling,
@@ -73,7 +72,6 @@ def test_blend_team_odds_without_an_odds_column_is_the_identity():
     assert out.equals(preds)
 
 
-@pytest.mark.xfail(reason="AGS layer lands in Tasks 22-23", strict=False)
 def test_odds_client_without_a_key_makes_no_request_for_player_props():
     from gaffer.data.odds import OddsClient
 
@@ -87,7 +85,6 @@ def test_odds_client_without_a_key_makes_no_request_for_player_props():
     assert client.get_player_goalscorer_odds(["abc"]) is None
 
 
-@pytest.mark.xfail(reason="AGS layer lands in Tasks 22-23", strict=False)
 def test_blend_attacking_odds_with_no_odds_is_byte_identical():
     """Gate G3's no-key half: the AGS layer must be provably invisible when
     the market is not there."""

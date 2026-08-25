@@ -528,3 +528,49 @@ def ags_frame(raw_ags: list | None, players: pd.DataFrame,
                              "team_code": int(team_code),
                              "opp_code": int(opp_code), "lambda_ags": lam})
     return pd.DataFrame(rows, columns=AGS_FRAME_COLS)
+
+
+AGS_BLEND_WEIGHT_DEFAULT = 0.5
+"""Share of ``e_goals`` taken from the anytime-scorer market.
+
+Every other weight in this codebase is fitted; this one cannot be. The-odds-
+api serves only live prices, so there is no historical anytime-scorer record
+to fit against — a known limitation, revisited once a season of weekly
+snapshots has accumulated (``data/raw/ags-*.json``). Half is the honest prior
+for two estimators nobody has measured against each other yet.
+"""
+
+
+def blend_attacking_odds(comp: pd.DataFrame, ags: pd.DataFrame | None,
+                         weight: float = AGS_BLEND_WEIGHT_DEFAULT
+                         ) -> pd.DataFrame:
+    """Blend odds-implied expected goals into the model's ``e_goals``.
+
+    ``lambda_ags`` is a per-*fixture* expectation, while ``e_goals`` is a
+    per-*appearance* rate that assembly multiplies by ``p_play`` — so the
+    market number is divided by ``p_play`` before the two are comparable, and
+    capped at :data:`AGS_EG_CAP` because that division blows up for a fringe
+    player. Rows with no price, or no chance of playing, keep pure model
+    output.
+
+    Called before ``assemble_ep``'s inputs are built, which keeps the
+    protected ``ep_matrix(apply_calibration(assemble_ep(`` literal in
+    ``run_advise`` exactly where it is. A missing or empty ``ags`` returns the
+    caller's frame untouched — the no-key path has to be byte-identical to
+    the no-AGS path, and gate G3 tests that it is.
+    """
+    if ags is None or ags.empty or "e_goals" not in comp.columns:
+        return comp
+    keyed = (ags[["code", "gw", "opp_code", "lambda_ags"]]
+             .drop_duplicates(subset=["code", "gw", "opp_code"]))
+    out = comp.merge(keyed, on=["code", "gw", "opp_code"], how="left",
+                     validate="many_to_one")
+    p_play = pd.to_numeric(out["p_play"], errors="coerce")
+    has = out["lambda_ags"].notna() & (p_play > 0)
+    out["e_goals_odds"] = float("nan")
+    out.loc[has, "e_goals_odds"] = (
+        out.loc[has, "lambda_ags"] / p_play[has]).clip(upper=AGS_EG_CAP)
+    w = float(weight)
+    out.loc[has, "e_goals"] = (w * out.loc[has, "e_goals_odds"]
+                               + (1.0 - w) * out.loc[has, "e_goals"])
+    return out

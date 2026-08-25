@@ -331,4 +331,17 @@ effect of Dixon-Coles lands through the advise/backtest path instead.
 
 ### G2 — pending (Task 21)
 
-### G3 — pending (Task 23)
+### G3 — AGS blend (no-key half PASSED; live half pending)
+
+*No-key half (automated).* The two graceful-degradation tests in
+`tests/test_degradation.py` that were parked as `xfail` in Task 20 now pass
+unmarked: with no `[odds] api_key` configured, `run_advise` never builds an
+`ags` frame and `blend_attacking_odds(comp, None)` returns the caller's frame
+object unchanged, so the no-AGS path is byte-identical by construction rather
+than by tolerance. Full suite green at 673 passed, 0 xfailed.
+
+*Live half (spot check).* Pending — requires a configured odds API key on a
+week whose fixtures the market has priced. To be recorded here: how many
+players moved, the largest absolute EP delta (a delta above ~1.5 points is
+not plausible for a 0.5-weight blend on a capped goals term), and whether the
+biggest movers are the players the market disagrees with the model about.

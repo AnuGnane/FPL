@@ -41,7 +41,8 @@ from gaffer.data.league import (effective_ownership, fetch_rival_entries,
                                 fetch_rival_picks)
 from gaffer.data.live import refresh_live
 from gaffer.errors import GafferError
-from gaffer.data.odds import OddsClient, odds_frame
+from gaffer.data.odds import (OddsClient, ags_frame, blend_attacking_odds,
+                              next_gw_event_ids, odds_frame)
 from gaffer.features.engineer import build_prediction_frame, feature_columns
 from gaffer.league_mode import compute_strategy, tilt_ep, win_probability
 from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
@@ -439,6 +440,7 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     # Bookmaker odds are a best-effort extra: a dead key, a renamed club or a
     # rate limit must degrade the advice, never withhold it.
     odds_df = None
+    raw_odds = None
     if cfg.odds_api_key:
         try:
             raw_odds = OddsClient(cfg.odds_api_key).get_epl_odds()
@@ -463,6 +465,21 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
             print(f"odds unusable, continuing without: {e}")
 
     comp = predict_components(pred_frame, tg_future, players)
+    # Player props are the most optional signal here: the free tier meters
+    # every request, the market may not exist for a fixture, and a quota that
+    # ran out mid-month must cost the blend and nothing else. Only the next
+    # gameweek's fixtures are priced, so only they are worth a request.
+    ags = None
+    if cfg.odds_api_key and cfg.player_props and raw_odds:
+        try:
+            event_ids = next_gw_event_ids(raw_odds, events, gw)
+            raw_ags = OddsClient(cfg.odds_api_key).get_player_goalscorer_odds(
+                event_ids)
+            if raw_ags:
+                ags = ags_frame(raw_ags, players, teams, events, odds_df)
+        except Exception as e:  # noqa: BLE001 — props must never block advice
+            print(f"player props unusable, continuing without: {e}")
+    comp = blend_attacking_odds(comp, ags, weight=cfg.ags_blend_weight)
     # Optional artifact: model directories trained before calibration existed
     # have no such file, and None means the identity map.
     cal = load_model("calibration") if model_exists("calibration") else None

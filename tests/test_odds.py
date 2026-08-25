@@ -713,3 +713,96 @@ def test_ags_frame_on_none_is_empty():
 
 def test_ags_cap_is_a_sane_per_appearance_ceiling():
     assert AGS_EG_CAP == 2.0
+
+
+from gaffer.data.odds import AGS_BLEND_WEIGHT_DEFAULT, blend_attacking_odds
+
+
+def _comp() -> pd.DataFrame:
+    return pd.DataFrame({
+        "code": [11, 12], "gw": [1, 1], "opp_code": [43, 43],
+        "p_play": [0.9, 0.5], "e_goals": [0.20, 0.10],
+        "e_assists": [0.15, 0.05]})
+
+
+def _ags() -> pd.DataFrame:
+    return pd.DataFrame({"code": [11], "gw": [1], "team_code": [3],
+                         "opp_code": [43], "lambda_ags": [0.45]})
+
+
+def test_blend_attacking_odds_mixes_the_two_expectations():
+    out = blend_attacking_odds(_comp(), _ags(), weight=0.5)
+    # e_goals_odds = lambda / p_play = 0.45 / 0.9 = 0.5
+    assert abs(out.loc[0, "e_goals_odds"] - 0.5) < 1e-12
+    assert abs(out.loc[0, "e_goals"] - (0.5 * 0.5 + 0.5 * 0.20)) < 1e-12
+
+
+def test_blend_attacking_odds_leaves_unpriced_players_alone():
+    out = blend_attacking_odds(_comp(), _ags(), weight=0.5)
+    assert out.loc[1, "e_goals"] == 0.10
+    assert pd.isna(out.loc[1, "e_goals_odds"])
+
+
+def test_blend_attacking_odds_caps_the_per_appearance_rate():
+    """A fringe player with a long price and a tiny p_play would otherwise
+    imply an absurd per-appearance rate."""
+    comp = _comp()
+    comp.loc[0, "p_play"] = 0.05
+    out = blend_attacking_odds(comp, _ags(), weight=1.0)
+    assert out.loc[0, "e_goals"] == AGS_EG_CAP
+
+
+def test_blend_attacking_odds_ignores_a_zero_p_play():
+    comp = _comp()
+    comp.loc[0, "p_play"] = 0.0
+    out = blend_attacking_odds(comp, _ags(), weight=1.0)
+    assert out.loc[0, "e_goals"] == 0.20
+
+
+def test_blend_attacking_odds_does_not_add_or_reorder_rows():
+    """Components are stitched positionally everywhere downstream."""
+    out = blend_attacking_odds(_comp(), _ags(), weight=0.5)
+    assert list(out["code"]) == [11, 12]
+    assert len(out) == 2
+
+
+def test_blend_attacking_odds_leaves_assists_untouched():
+    """The free tier drops assist props, so there is nothing to blend there
+    and pretending otherwise would double-count the goals signal."""
+    out = blend_attacking_odds(_comp(), _ags(), weight=1.0)
+    assert list(out["e_assists"]) == [0.15, 0.05]
+
+
+def test_default_ags_weight_is_a_half():
+    """No historical AGS record exists to fit on — a known limitation, an
+    even split until a season of snapshots accumulates."""
+    assert AGS_BLEND_WEIGHT_DEFAULT == 0.5
+
+
+def test_run_advise_blends_player_props_before_assembling_ep():
+    """Source-level seam (no cheap end-to-end harness for run_advise): the
+    AGS blend has to land on the component frame before assemble_ep reads
+    it, and the protected calibration literal must survive intact."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    comp = src.index("comp = predict_components(")
+    blend = src.index("blend_attacking_odds(")
+    assemble = src.index("ep_matrix(apply_calibration(assemble_ep(")
+    assert comp < blend < assemble
+    assert "cfg.player_props" in src
+    assert "except Exception" in src[blend - 600:blend + 600]
+
+
+def test_run_advise_still_orders_the_league_tilt_seam():
+    """The other two protected orderings must not have moved."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    assert (src.index("fetch_rival_entries(") < src.index("tilt_ep(")
+            < src.index("pool = build_pool("))
+    assert "build_pool(players, pool_ep," in src
