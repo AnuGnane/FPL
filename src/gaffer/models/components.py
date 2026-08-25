@@ -109,8 +109,16 @@ BONUS_FEATURES = ["bps_r3", "bps_r5", "bps_r38", "xgi_r5", "bonus_r5",
 
 
 class BonusModel:
-    """E[bonus]. BPS was rebalanced for 2026/27, so train on the most recent
-    season only (pass min_season_idx) and expect weekly refits to adapt."""
+    """E[bonus] per appearance, trained on the newest seasons only.
+
+    The floor survives the 2026/27 re-derivation on purpose:
+    :func:`gaffer.features.bps.apply_new_bps` can only restate seasons that
+    carry ``cbi`` counts (2025-26 onward), and nothing records how often a
+    player was tackled, so older seasons keep an old-rules bonus target.
+    :func:`gaffer.models.train.bonus_season_floor` picks the newest window
+    with enough rows to fit on — which is exactly the restated-or-new part
+    of the history.
+    """
 
     def __init__(self, feature_cols: list[str] = BONUS_FEATURES,
                  min_season_idx: int = 3):

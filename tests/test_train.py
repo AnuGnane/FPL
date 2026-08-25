@@ -294,3 +294,14 @@ def test_load_training_frame_restates_every_stored_season_when_no_live(
 
     df, _tg, _elo = train_mod.load_training_frame()
     assert set(df.loc[df["code"] == 100, "bps"]) == {29.0}
+
+
+def test_train_all_keeps_the_bonus_floor_even_on_a_re_derived_frame():
+    """Restatement is partial — ``cbi`` counts only exist from 2025-26, so
+    older seasons keep their old-rules bonus even after ``apply_new_bps``
+    (its ``bps_old`` marker is present here). The recency floor is still
+    what keeps those regimes out of the fit."""
+    df = _player_frame(seasons=(0, 1))
+    df["bps_old"] = df["bps_r5"] if "bps_r5" in df.columns else 0.0
+    models = train_all(df, _team_frame(seasons=(0, 1)), save=False)
+    assert models["bonus"].min_season_idx == bonus_season_floor(df)
