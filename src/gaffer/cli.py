@@ -92,7 +92,9 @@ def build_history_cmd():
 @app.command()
 def understat():
     """Scrape Understat into data/history/ (long first run; resumable)."""
+    from gaffer.api.client import FPLClient
     from gaffer.config import load_config
+    from gaffer.data.bootstrap import build_teams
     from gaffer.data.history import season_name_codes
     from gaffer.data.understat import (build_understat_player,
                                        build_understat_team,
@@ -109,6 +111,11 @@ def understat():
     # appears in several seasons resolves the same way in all of them.
     flat = {name: code for table in names.values()
             for name, code in table.items()}
+    # The scrape covers the current season too, and its promoted clubs are in
+    # no historical bootstrap: without the live table their team rows have no
+    # code and drop, leaving that season three clubs short.
+    live = build_teams(FPLClient().get_bootstrap())
+    flat.update({r.name: int(r.code) for r in live.itertuples()})
     players = build_understat_player(seasons, indexes,
                                      history_player_index(cfg.train_seasons))
     teams = build_understat_team(seasons, indexes, flat)

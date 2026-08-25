@@ -752,6 +752,43 @@ def test_build_understat_team_drops_a_club_with_no_code(tmp_path):
     assert out.empty
 
 
+_RENAMED_TEAMS = {
+    "88": {"id": "88", "title": "Ipswich", "history": [
+        {"date": "2024-08-17 14:00:00", "xG": 0.9, "xGA": 2.2,
+         "ppda": {"att": 300, "def": 20}, "deep": 3, "deep_allowed": 12},
+    ]},
+}
+
+
+def _renamed_handler(request):
+    return httpx.Response(200, json={"dates": _DATES,
+                                     "teams": _RENAMED_TEAMS, "players": []})
+
+
+def test_build_understat_team_bridges_a_club_fpl_has_since_renamed(tmp_path):
+    """The alias table targets the CURRENT bootstrap spelling ("Ipswich
+    Town"), but an older season's name->code table still says "Ipswich".
+    Without the rename bridge that club has no code in any historical
+    season and drops out of the parquet entirely."""
+    client = UnderstatClient(client=_http(_renamed_handler),
+                             cache_dir=tmp_path / "raw", sleep=0.0)
+    out = build_understat_team(["2024-25"], {"2024-25": 2},
+                               {"Ipswich": 40}, client=client,
+                               store_result=False)
+    assert list(out["team_code"]) == [40]
+
+
+def test_build_understat_team_names_the_clubs_it_drops(tmp_path, capsys):
+    """A silent filter is how three clubs went missing from a season without
+    anyone noticing; the names have to reach the console."""
+    client = UnderstatClient(client=_http(_renamed_handler),
+                             cache_dir=tmp_path / "raw", sleep=0.0)
+    build_understat_team(["2024-25"], {"2024-25": 2}, {}, client=client,
+                         store_result=False)
+    out = capsys.readouterr().out
+    assert "2024-25" in out and "Ipswich Town" in out
+
+
 # --- html entities in understat's own text --------------------------------
 
 def test_match_player_rows_unescape_html_entities_in_names():

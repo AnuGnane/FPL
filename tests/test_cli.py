@@ -205,3 +205,14 @@ def test_understat_is_a_command():
 
     result = CliRunner().invoke(app, ["--help"])
     assert "understat" in result.output
+
+
+def test_understat_name_table_includes_the_current_seasons_clubs():
+    """Built from train_seasons alone, the table has no entry for a club
+    promoted this season, so every one of its understat rows drops."""
+    import inspect
+
+    from gaffer.cli import understat
+
+    src = inspect.getsource(understat)
+    assert "build_teams(" in src

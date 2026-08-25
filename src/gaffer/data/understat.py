@@ -540,9 +540,17 @@ def build_understat_team(seasons: list[str], season_indexes: dict[str, int],
 
     ``name_to_code`` maps FPL bootstrap names to team codes. A club with no
     code — a season the bootstrap tables do not cover — is dropped rather than
-    carried with a NaN key that would silently never join.
+    carried with a NaN key that would silently never join. The dropped names
+    are printed per season: silence here is how a whole promoted club goes
+    missing from a season's features without anyone noticing.
+
+    The lookup goes through :func:`gaffer.data.match_odds._code_for` rather
+    than a plain dict hit, because ``UNDERSTAT_TEAM_ALIASES`` targets the
+    *current* bootstrap spelling ("Ipswich Town") while an older season's
+    table still carries the one it used then ("Ipswich").
     """
     from gaffer.data import store
+    from gaffer.data.match_odds import _code_for
 
     client = client or UnderstatClient()
     frames = []
@@ -551,9 +559,14 @@ def build_understat_team(seasons: list[str], season_indexes: dict[str, int],
         if rows.empty:
             continue
         rows = rows.copy()
-        rows["team_code"] = rows["team"].map(
-            lambda t: name_to_code.get(UNDERSTAT_TEAM_ALIASES.get(t, t)))
-        frames.append(rows[rows["team_code"].notna()])
+        fpl_names = rows["team"].map(lambda t: UNDERSTAT_TEAM_ALIASES.get(t, t))
+        rows["team_code"] = [_code_for(n, name_to_code) for n in fpl_names]
+        keep = rows["team_code"].notna()
+        dropped = sorted(set(fpl_names[~keep]))
+        if dropped:
+            print(f"understat teams: no FPL code in {season} for "
+                  f"{', '.join(dropped)}")
+        frames.append(rows[keep])
     if not frames:
         out = pd.DataFrame(columns=TEAM_PARQUET_COLS)
     else:
