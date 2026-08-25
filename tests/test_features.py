@@ -683,6 +683,19 @@ def test_latest_shrunken_rates_is_one_row_per_player():
     assert latest.loc[1, "shrunk_goals90"] > latest.loc[2, "shrunk_goals90"]
 
 
+def test_latest_shrunken_rates_include_the_last_played_match():
+    """The broadcast is the *next* fixture's value, and at the next fixture
+    every match already played is legal evidence — the same convention the
+    other three latest_* broadcasts follow. Tailing the shifted training
+    column instead serves a vector one match stale, so a hat-trick on the
+    final matchday would not reach the model until the week after."""
+    hist = _goal_rows([(1, 90, 0, 0), (2, 90, 0, 0), (3, 90, 3, 0)])
+    latest = latest_shrunken_rates(hist)
+    # Own record 3 goals in 3 nineties; the position-by-club prior is this
+    # lone player's own 1.0, so the shrunk rate is 1.0 either way it mixes.
+    assert abs(latest.loc[1, "shrunk_goals90"] - 1.0) < 1e-9
+
+
 def test_latest_understat_team_is_the_last_value_per_club():
     ut = pd.concat([
         _ut_rows(3, ["2024-08-17", "2024-08-24"], [0.5, 2.5], [9.0, 11.0]),

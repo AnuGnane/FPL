@@ -500,7 +500,8 @@ SHRINK_K_GRID = [2.0, 5.0, 10.0, 20.0]
 SHRUNK_FEATURES = ["shrunk_goals90", "shrunk_assists90"]
 
 
-def _shrunk_rate(df: pd.DataFrame, stat: str, k: float) -> pd.Series:
+def _shrunk_rate(df: pd.DataFrame, stat: str, k: float,
+                 as_of_end: bool = False) -> pd.Series:
     """``(sum stat + k * prior) / (sum nineties + k)``, all sums leakage-free.
 
     The player's own record is ``shift(1)`` then ``cumsum`` within his own
@@ -513,14 +514,26 @@ def _shrunk_rate(df: pd.DataFrame, stat: str, k: float) -> pd.Series:
     at gameweek-slot granularity: per-(position, club, slot) totals, cumsummed
     over slots with the current slot subtracted out, so a row's prior contains
     strictly-earlier gameweeks only.
+
+    ``as_of_end`` drops both exclusions — no ``shift(1)`` on the player's own
+    sums, no current-slot subtraction on the prior — so a row's value counts
+    its own match too. That is wrong for a *training* row, whose window may
+    only see matches strictly before it, and right for the as-of-end-of-
+    history broadcast onto a future fixture, where every played match is
+    legal evidence. Only :func:`latest_shrunken_rates` passes it.
     """
     code = df["code"]
     val = pd.to_numeric(df[stat], errors="coerce").fillna(0.0)
     nineties = (pd.to_numeric(df["minutes"], errors="coerce").fillna(0.0)
                 / 90.0)
 
-    own_val = val.groupby(code).shift(1).fillna(0.0).groupby(code).cumsum()
-    own_90 = nineties.groupby(code).shift(1).fillna(0.0).groupby(code).cumsum()
+    if as_of_end:
+        own_val = val.groupby(code).cumsum()
+        own_90 = nineties.groupby(code).cumsum()
+    else:
+        own_val = val.groupby(code).shift(1).fillna(0.0).groupby(code).cumsum()
+        own_90 = (nineties.groupby(code).shift(1).fillna(0.0)
+                  .groupby(code).cumsum())
 
     slots = pd.DataFrame({
         "pos": df["position"].to_numpy(),
@@ -533,8 +546,8 @@ def _shrunk_rate(df: pd.DataFrame, stat: str, k: float) -> pd.Series:
            [["val", "n90"]].sum().sort_values(["pos", "team", "slot"]))
     g = agg.groupby(["pos", "team"])
     # cumsum minus the current slot's own total == everything strictly before.
-    before_val = g["val"].cumsum() - agg["val"]
-    before_90 = g["n90"].cumsum() - agg["n90"]
+    before_val = g["val"].cumsum() - (0.0 if as_of_end else agg["val"])
+    before_90 = g["n90"].cumsum() - (0.0 if as_of_end else agg["n90"])
     prior_rate = before_val / before_90.where(before_90 > 0.0)
     lookup = dict(zip(zip(agg["pos"], agg["team"], agg["slot"]), prior_rate))
     prior = pd.Series(
@@ -607,16 +620,24 @@ def latest_shrunken_rates(hist: pd.DataFrame,
                           k: float = SHRINK_K) -> pd.DataFrame:
     """Each player's as-of-today shrunken rates, indexed by ``code``.
 
-    ``add_shrunken_rates`` already excludes the current row, so the last
-    played match's value *is* the next fixture's value plus that match — near
-    enough at any realistic sample size, and identical in spirit to how
-    :func:`latest_rotation` reads the last played match's state. Taking the
-    last row keeps every future row of a player identical, which is the point
-    of the broadcast.
+    The value a hypothetical next fixture would carry, which means it
+    *includes the last played match* — the same contract
+    :func:`latest_player_rolling`, :func:`latest_understat_rolling` and
+    :func:`latest_understat_team` all keep. The stored training column
+    cannot supply it: ``add_shrunken_rates`` excludes each row's own match by
+    construction, so tailing it would serve a vector one match stale, with a
+    final-matchday hat-trick reaching the model a week late. The rates are
+    therefore recomputed here with the exclusions off.
     """
-    rated = add_shrunken_rates(hist, k=k)
-    return (rated[["code"] + SHRUNK_FEATURES]
-            .groupby("code", sort=False).tail(1).set_index("code"))
+    sort_cols = [c for c in ("code", "season_idx", "gw", "kickoff_time")
+                 if c in hist.columns]
+    h = hist.sort_values(sort_cols).reset_index(drop=True)
+    out = pd.DataFrame({"code": h["code"]})
+    for stat, col in (("goals", "shrunk_goals90"),
+                      ("assists", "shrunk_assists90")):
+        out[col] = (_shrunk_rate(h, stat, k, as_of_end=True)
+                    if stat in h.columns else float("nan"))
+    return out.groupby("code", sort=False).tail(1).set_index("code")
 
 
 def latest_understat_team(rolled: pd.DataFrame,
