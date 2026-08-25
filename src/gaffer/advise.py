@@ -564,10 +564,12 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         priors, load_chip_scenarios())
     opt_kw = dict(decay=cfg.decay, bench_weight=cfg.bench_weight,
                   vice_weight=cfg.vice_weight, ft_value=cfg.ft_value,
-                  itb_value=cfg.itb_value, hit_cost=cfg.hit_cost)
+                  itb_value=cfg.itb_value, hit_cost=cfg.hit_cost,
+                  ft_use_penalty=cfg.ft_use_penalty,
+                  bench_curve=cfg.bench_curve)
     # opt_kw is serialized into SolveState.opt at the end of this function, so
-    # it stays plain JSON. solve_kw is the same bundle plus anything that is
-    # only meaningful in-process.
+    # it stays plain JSON — floats and a list of three floats. solve_kw is the
+    # same bundle plus anything that is only meaningful in-process.
     solve_kw = dict(opt_kw, ft_lambda=ft_lambda)
     plan = solve_plan(pool, state, **solve_kw)
     first = plan.gw_plans[0]
@@ -737,6 +739,10 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         mode=advice.mode, bank=state.bank,
         free_transfers=state.free_transfers, owned_codes=owned_now,
         lam=lam, league_eo=league_eo, avail_by_gw=avail_by_gw,
-        opt={**opt_kw, "horizon": cfg.horizon},
+        # The lambda lookup is not JSON, but "were the priors on" is, and it
+        # is all the web re-solve needs to rebuild the same lookup from the
+        # shipped asset and price a What-If baseline exactly like this advice.
+        opt={**opt_kw, "horizon": cfg.horizon,
+             "decision_priors": bool(cfg.decision_priors)},
         pool=pool_rows(pool, players, owned_now, ep_by, gws)))
     return advice

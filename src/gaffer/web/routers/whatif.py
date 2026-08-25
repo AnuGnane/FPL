@@ -18,7 +18,8 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from gaffer.artifacts import latest_gw, load_solve_state, milp_pool, raw_ep_by
+from gaffer.artifacts import (latest_gw, load_solve_state, milp_pool,
+                              raw_ep_by, solve_kw_from_state)
 from gaffer.errors import GafferError
 from gaffer.league_mode import tilt_ep
 from gaffer.optimize.milp import GwPlan, SolveInput, solve_plan
@@ -114,8 +115,7 @@ def solve_whatif(req: WhatIfRequest, gw: int) -> dict:
     ep_by = raw_ep_by(state)
     pool_ep = tilt_ep(ep_by, state.league_eo, state.lam)
     pool = milp_pool(state, pool_ep, gws)
-    opt = {k: state.opt[k] for k in ("decay", "bench_weight", "vice_weight",
-                                     "ft_value", "itb_value", "hit_cost")}
+    opt = solve_kw_from_state(state)
     meta = {int(r.code): {"name": str(r.name), "position": str(r.position)}
             for r in state.pool.drop_duplicates("code").itertuples()}
 

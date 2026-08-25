@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse
 
 from gaffer.artifacts import (REPORTS, ingested_through, latest_gw,
                               load_advice, load_snapshot, load_solve_state,
-                              milp_pool, raw_ep_by)
+                              milp_pool, raw_ep_by, solve_kw_from_state)
 from gaffer.data import store
 from gaffer.data.elo import compute_elo, expected_score
 from gaffer.data.odds import poisson_win_prob
@@ -62,9 +62,7 @@ def chips_plan() -> ChipPlan:
     # from-scratch solve infeasible. Both are recoverable by re-running the
     # advice, so say that rather than returning a 500.
     try:
-        opt = {k: state.opt[k] for k in ("decay", "bench_weight",
-                                         "vice_weight", "ft_value",
-                                         "itb_value", "hit_cost")}
+        opt = solve_kw_from_state(state)
         table = evaluate_chips(pool, solve_state,
                                avail_by_gw=state.avail_by_gw, **opt)
     except (RuntimeError, KeyError) as exc:

@@ -458,3 +458,37 @@ def test_run_advise_still_pins_every_protected_ordering_after_the_priors():
     assert src.index("tilt_ep(") < src.index("pool = build_pool(")
     assert "build_pool(players, pool_ep," in src
     assert "pool_ep" not in src[src.index("ep_gw1 ="):]
+
+
+# --- v4c final review: the objective knobs must reach production ----------
+
+
+def test_run_advise_opt_kw_carries_the_objective_craft_knobs():
+    """B1: the backtest solved with ft_use_penalty and bench_curve and the
+    advice did not, so the replayed numbers described a different objective
+    from the one the user was actually shown."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    block = src[src.index("opt_kw = dict("):
+                src.index("solve_kw = dict(opt_kw")]
+    assert "ft_use_penalty=cfg.ft_use_penalty" in block
+    assert "bench_curve=cfg.bench_curve" in block
+
+
+def test_run_advise_records_whether_the_priors_were_on():
+    """B7: SolveState.opt cannot carry the lambda lookup, but it can carry the
+    one boolean the web re-solve needs to rebuild it from the asset."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    assert '"decision_priors": bool(cfg.decision_priors)' in src
+    # It rides on the saved state, never on the solver bundle: solve_plan has
+    # no such keyword.
+    block = src[src.index("opt_kw = dict("):
+                src.index("solve_kw = dict(opt_kw")]
+    assert "decision_priors" not in block

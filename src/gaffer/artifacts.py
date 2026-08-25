@@ -226,6 +226,36 @@ def milp_pool(state: SolveState, ep_by: dict[tuple[int, int], float],
     })
 
 
+OPT_REQUIRED_KEYS = ("decay", "bench_weight", "vice_weight", "ft_value",
+                     "itb_value", "hit_cost")
+"""``SolveState.opt`` keys every saved state has ever carried.
+
+A state written by an older build is missing everything else, so the rest are
+read with defaults; these six are read directly and raise ``KeyError``, which
+is the routers' signal to say "re-run `gaffer advise`" rather than 500.
+"""
+
+
+def solve_kw_from_state(state: SolveState) -> dict:
+    """The ``solve_plan`` keyword bundle a saved state re-solves under.
+
+    ``opt`` is JSON on disk, so the free-transfer lambda lookup cannot live in
+    it — but the boolean saying whether it was on can, and rebuilding the
+    lookup from the shipped asset here is what stops a What-If baseline being
+    priced differently from the advice it is supposed to be a baseline for.
+    """
+    kw = {k: state.opt[k] for k in OPT_REQUIRED_KEYS}
+    if "ft_use_penalty" in state.opt:
+        kw["ft_use_penalty"] = float(state.opt["ft_use_penalty"])
+    if state.opt.get("bench_curve") is not None:
+        kw["bench_curve"] = [float(w) for w in state.opt["bench_curve"]]
+    if state.opt.get("decision_priors"):
+        from gaffer.assets import load_decision_priors
+        from gaffer.optimize.ft_value import lambda_from_priors
+        kw["ft_lambda"] = lambda_from_priors(load_decision_priors())
+    return kw
+
+
 def load_snapshot(rel: str) -> pd.DataFrame:
     """A bootstrap snapshot written by :func:`save_snapshots`."""
     from gaffer.data import store

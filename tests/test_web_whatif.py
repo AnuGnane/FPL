@@ -154,3 +154,63 @@ def test_displayed_points_are_raw_not_tilted(tmp_path, monkeypatch):
     assert job["status"] == "done", job["error"]
     star = [p for p in job["result"]["yours"]["xi"] if p["code"] == 20]
     assert star and star[0]["ep"] == 9.0     # not 9.0 * 1.5
+
+
+# --- B7: the web re-solve must price like the advice that saved the state --
+
+
+def _state_with(opt_extra):
+    frame, star_ep = _pool_frame()
+    players = pd.DataFrame({"code": frame["code"],
+                            "name": [f"P{c}" for c in frame["code"]]})
+    gws = (1, 2)
+    ep_by = {(int(c), g): (star_ep if c == 20 else 2.0)
+             for c in frame["code"] for g in gws}
+    return SolveState(
+        gw=1, gws=list(gws), deadline="2026-09-11T17:30:00Z",
+        generated_at="2026-09-10T09:00:00Z", mode="weekly", bank=0,
+        free_transfers=1, owned_codes=list(OWNED), lam=0.0, league_eo={},
+        avail_by_gw={g: [] for g in gws},
+        opt={"decay": 0.85, "bench_weight": 0.1, "vice_weight": 0.1,
+             "ft_value": 1.5, "itb_value": 0.05, "hit_cost": 4,
+             "horizon": 2, **opt_extra},
+        pool=pool_rows(frame, players, OWNED, ep_by, list(gws)))
+
+
+def test_a_state_saved_before_v4c_still_re_solves():
+    """Old states carry only the original six keys and no priors flag."""
+    from gaffer.artifacts import solve_kw_from_state
+
+    kw = solve_kw_from_state(_state_with({}))
+    assert set(kw) == {"decay", "bench_weight", "vice_weight", "ft_value",
+                       "itb_value", "hit_cost"}
+
+
+def test_the_objective_craft_knobs_ride_on_the_saved_state():
+    from gaffer.artifacts import solve_kw_from_state
+
+    kw = solve_kw_from_state(_state_with(
+        {"ft_use_penalty": 0.3, "bench_curve": [0.21, 0.06, 0.002]}))
+    assert kw["ft_use_penalty"] == 0.3
+    assert kw["bench_curve"] == [0.21, 0.06, 0.002]
+    assert "ft_lambda" not in kw
+
+
+def test_the_priors_flag_rebuilds_the_lambda_lookup_from_the_asset():
+    """The flag is the whole point: without it the What-If baseline prices
+    banked transfers at zero while the advice priced them off the asset."""
+    from gaffer.artifacts import solve_kw_from_state
+
+    kw = solve_kw_from_state(_state_with({"decision_priors": True}))
+    assert "ft_lambda" in kw
+    assert not kw["ft_lambda"].empty
+
+
+def test_both_re_solving_routers_use_the_shared_bundle():
+    import inspect
+
+    from gaffer.web.routers import meta, whatif
+
+    assert "solve_kw_from_state(state)" in inspect.getsource(
+        whatif.solve_whatif)
+    assert "solve_kw_from_state(state)" in inspect.getsource(meta.chips_plan)
