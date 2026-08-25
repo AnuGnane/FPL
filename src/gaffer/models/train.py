@@ -127,7 +127,8 @@ def load_training_frame(max_season_idx: int | None = None,
     # mean one thing. Re-deriving before truncation rather than after keeps
     # every fixture's ranking whole; truncation only ever drops entire
     # gameweeks, so the two orders agree anyway.
-    player_gw = apply_new_bps(player_gw, current_idx=current_idx)
+    player_gw = apply_new_bps(player_gw, current_idx=current_idx,
+                              fixtures=fixtures)
     if max_season_idx is not None:
         keep = (player_gw["season_idx"] < max_season_idx) | (
             (player_gw["season_idx"] == max_season_idx)

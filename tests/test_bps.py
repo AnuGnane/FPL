@@ -1,7 +1,7 @@
 import pandas as pd
 
 from gaffer.features.bps import (adjust_bps, apply_new_bps, award_bonus,
-                                 fixture_pair, rederive_bonus)
+                                 fixture_key, fixture_pair, rederive_bonus)
 
 
 def _rows(spec):
@@ -175,3 +175,61 @@ def test_apply_new_bps_preserves_every_other_column():
     out = apply_new_bps(frame, current_idx=3)
     assert set(frame.columns) <= set(out.columns)
     assert len(out) == len(frame)
+
+
+def _fixture_table(gw=1, season_idx=0, home=1, away=2,
+                   kickoff="2025-08-16T14:00:00Z"):
+    return pd.DataFrame([{"season_idx": season_idx, "gw": gw,
+                          "kickoff_time": kickoff,
+                          "home_code": home, "away_code": away}])
+
+
+def test_fixture_key_matches_both_sides_of_a_real_fixture():
+    key = fixture_key(_fixture([30.0, 25.0]), _fixture_table())
+    assert key.iloc[0] == key.iloc[1]
+    assert key.notna().all()
+
+
+def test_rederive_bonus_keys_a_transferred_player_on_his_real_fixture():
+    """``team_code`` in the store is the player's *current* club, so a player
+    who has since moved shares no ``{team, opp}`` pair with the team-mates he
+    played that match alongside. Keyed on the pair he lands in a group of one
+    and is handed 3 bonus he never won; keyed on the fixture his ``opp_code``
+    points at, he is ranked where he belongs."""
+    frame = _fixture([30.0, 25.0, 20.0])
+    frame.loc[2, "team_code"] = 99  # sold to a club not in this match
+    frame["bonus"] = [3.0, 2.0, 1.0]
+
+    phantom = rederive_bonus(frame)
+    assert phantom.iloc[2] == 3.0  # the bug, under the pair key
+
+    out = rederive_bonus(frame, fixtures=_fixture_table())
+    assert list(out) == [3.0, 2.0, 1.0]
+
+
+def test_rederive_bonus_passes_through_the_stored_bonus_with_no_fixture_match():
+    frame = _fixture([30.0, 25.0])
+    frame["opp_code"] = [77, 77]  # a fixture the table does not carry
+    frame["bonus"] = [2.0, 1.0]
+    out = rederive_bonus(frame, fixtures=_fixture_table())
+    assert list(out) == [2.0, 1.0]
+
+
+def test_apply_new_bps_keeps_the_stored_bonus_where_no_bps_moved():
+    """Seasons before 2025-26 carry no ``cbi``, so the restatement is provably
+    a no-op there — and stored truth beats a reconstruction that only
+    disagrees because our BPS is an approximation."""
+    frame = _fixture([30.0, 25.0, 20.0], season_idx=0)
+    frame["cbi"] = [float("nan")] * 3
+    # The stored bonus deliberately disagrees with a fresh ranking.
+    frame["bonus"] = [1.0, 3.0, 2.0]
+    out = apply_new_bps(frame, current_idx=3, fixtures=_fixture_table())
+    assert list(out["bonus"]) == [1.0, 3.0, 2.0]
+
+
+def test_apply_new_bps_still_re_ranks_a_group_whose_bps_moved():
+    frame = _fixture([30.0, 29.0, 20.0], season_idx=0)
+    frame["cbi"] = [6.0, 0.0, 0.0]
+    frame["bonus"] = [3.0, 2.0, 1.0]
+    out = apply_new_bps(frame, current_idx=3, fixtures=_fixture_table())
+    assert list(out["bonus"]) == [3.0, 3.0, 1.0]
