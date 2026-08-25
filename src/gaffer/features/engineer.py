@@ -475,13 +475,15 @@ def merge_understat_team(df: pd.DataFrame, rolled: pd.DataFrame | None,
     return out.drop(columns=["_date"])
 
 
-SHRINK_K = 10.0
+SHRINK_K = 20.0
 """Prior weight, in nineties, for the empirical-Bayes rates.
 
 ``k`` is literally "how many matches of league-average evidence the prior is
-worth". Ten means a player needs about ten full appearances before his own
-record outweighs what his position at his club normally does — which is
-roughly where a goals rate stops being noise.
+worth". Chosen by out-of-sample correlation against held-out goals-per-90 on
+the last ten gameweek slots over the grid {2, 5, 10, 20} — see the v4b
+spec's Outcome table. Twenty is the grid's heavy-shrinkage end: individual
+scoring rates are noisy enough that the position-by-club prior deserves
+roughly half a season's benefit of the doubt.
 """
 
 SHRINK_K_GRID = [2.0, 5.0, 10.0, 20.0]

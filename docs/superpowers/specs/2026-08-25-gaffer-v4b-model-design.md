@@ -329,7 +329,49 @@ effect of Dixon-Coles lands through the advise/backtest path instead.
 
 `TEAM_MODEL` stays `"dixon_coles"`.
 
-### G2 — pending (Task 21)
+### Fitted parameters (Tasks 9/17/21)
+
+- **Odds blend weight w = 1.00** (fitted on 2,686 walk-forward CS rows over
+  1,520 priced fixtures). The loss curve is smooth and monotone — 0.5349 at
+  w=0 (pure Dixon-Coles), 0.5158 at w=0.8, 0.5150 at w=1 — and essentially
+  flat past 0.8, with both sides well calibrated (mean p 0.259 odds / 0.262
+  model vs 0.237 realized). Closing odds dominate the CS signal where they
+  exist; Dixon-Coles serves every fixture without odds (most of the horizon,
+  and any feed gap). Refit at every `gaffer train`.
+- **Shrinkage k = 20** nineties (grid {2, 5, 10, 20}, out-of-sample
+  correlation on the last 10 slots) — the heavy-shrinkage end: individual
+  scoring rates are noisy enough that the position×club prior deserves about
+  half a season's benefit of the doubt.
+- **Understat ingestion**: 1,530 matches scraped (understat.com moved to
+  JSON endpoints mid-cycle — `getLeagueData`/`getMatchData` — client
+  rewritten, commit `84a5b20`); id mapping 846 exact + 36 cross-club +
+  172 token-subset + 14 surname-club = **1,068/1,150 resolved (92.9%)**,
+  44,797 player-match rows. The 82 unmatched are structurally unreachable
+  (27 at clubs FPL history never carried, ~40 mononym-vs-legal-name with no
+  token bridge, the rest deliberate ambiguity refusals).
+
+### G2 — xG/shrunken features (PASSED)
+
+Benchmark mode (2024-25 test season, apples-to-apples with v4a and the
+published models), RMSE by category, `all` cut:
+
+| category | v4a | v4b | OpenFPL | FPLReview |
+| --- | --- | --- | --- | --- |
+| zeros | 1.074 | 1.074 | 0.818 | 0.689 |
+| blanks | 1.673 | 1.666 | 1.291 | 1.189 |
+| tickers | 1.628 | 1.618 | 1.517 | 1.594 |
+| haulers | 5.245 | **5.184** | 5.142 | 5.172 |
+
+Gate (benchmark haulers ≤ 5.245): **passed**, −0.061. Now within 0.8% of
+OpenFPL and 0.2% of FPLReview on haulers, still with two training seasons to
+their four. Zeros unchanged as designed (team news is the "later" cycle).
+
+Current mode, controlled against the same-corpus pre-feature run (the plan's
+literal "≤ 4.950" is a pre-GW1-2026/27-corpus number; the pre-feature run on
+today's corpus already read 5.183): starters haulers 5.183 → **5.174**,
+starters zeros 3.480 → **3.405**; tickers wobbled +2.4% on n=412 in current
+mode while improving in benchmark mode — no consistent regression, no
+feature block dropped.
 
 ### G3 — AGS blend (no-key half PASSED; live half pending)
 
