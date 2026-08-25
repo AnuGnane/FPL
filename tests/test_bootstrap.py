@@ -28,6 +28,16 @@ def test_build_players_parses_numerics():
     assert players["position"].isin(["GKP", "DEF", "MID", "FWD"]).all()
 
 
+def test_build_players_carries_the_full_name_halves():
+    """``name`` is the web_name ("Raya"); the odds feed writes the full legal
+    name, so both halves have to survive the bootstrap parse."""
+    players = build_players(RAW).set_index("element")
+    assert {"first_name", "second_name"} <= set(players.columns)
+    raya = players.loc[1]
+    assert raya["first_name"] == "David"
+    assert raya["second_name"] == "Raya Martín"
+
+
 def test_build_players_carries_set_piece_orders():
     import pandas as pd
 

@@ -39,6 +39,11 @@ def build_players(raw: dict) -> pd.DataFrame:
             "code": e["code"],
             "element": e["id"],
             "name": e["web_name"],
+            # The web_name is an abbreviation ("B.Fernandes") that no other
+            # source writes. Both halves of the legal name are kept so the
+            # odds feed's "Bruno Fernandes" has something to match against.
+            "first_name": e.get("first_name", ""),
+            "second_name": e.get("second_name", ""),
             "position": POS[e["element_type"]],
             "team_id": e["team"],
             "team_code": e["team_code"],
