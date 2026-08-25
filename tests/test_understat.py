@@ -1,20 +1,10 @@
-import json
-
 import pandas as pd
 import pytest
 
 from gaffer.data.names import normalize_name
-from gaffer.data.understat import (match_player_rows, parse_embedded_json,
-                                   league_matches, team_match_rows)
+from gaffer.data.understat import (match_player_rows, league_matches,
+                                   team_match_rows)
 from gaffer.errors import GafferError
-
-
-def _embed(var: str, payload) -> str:
-    """An understat page fragment: hex-escaped JSON inside JSON.parse('...')."""
-    raw = json.dumps(payload)
-    escaped = "".join(f"\\x{ord(c):02x}" if c in '"\'\\<>&' else c
-                      for c in raw)
-    return f"<script>var {var} = JSON.parse('{escaped}');</script>"
 
 
 def test_normalize_name_strips_case_accents_and_punctuation():
@@ -34,26 +24,6 @@ def test_normalize_name_of_none_is_empty():
     assert normalize_name(float("nan")) == ""
 
 
-def test_parse_embedded_json_decodes_the_hex_escaped_blob():
-    html = _embed("playersData", [{"id": "1", "player": "Kanté"}])
-    assert parse_embedded_json(html, "playersData") == [
-        {"id": "1", "player": "Kanté"}]
-
-
-def test_parse_embedded_json_finds_the_right_variable_among_several():
-    html = (_embed("teamsData", {"1": {"title": "Arsenal"}})
-            + _embed("datesData", [{"id": "9"}]))
-    assert parse_embedded_json(html, "datesData") == [{"id": "9"}]
-
-
-def test_parse_embedded_json_raises_on_a_missing_variable():
-    """A silent empty result would look exactly like a season with no data
-    and would poison the cache with nothing."""
-    with pytest.raises(GafferError) as exc:
-        parse_embedded_json("<html></html>", "playersData")
-    assert "playersData" in str(exc.value)
-
-
 _DATES = [
     {"id": "18001", "isResult": True, "datetime": "2024-08-16 20:00:00",
      "h": {"id": "89", "title": "Manchester United"},
@@ -67,7 +37,7 @@ _DATES = [
 
 
 def test_league_matches_lists_ids_dates_and_played_flags():
-    out = league_matches(_embed("datesData", _DATES))
+    out = league_matches(_DATES)
     assert list(out["match_id"]) == ["18001", "18002"]
     assert list(out["is_result"]) == [True, False]
     assert out.loc[0, "date"] == pd.Timestamp("2024-08-16").date()
@@ -75,7 +45,7 @@ def test_league_matches_lists_ids_dates_and_played_flags():
 
 
 def test_league_matches_on_an_empty_season_is_an_empty_frame():
-    out = league_matches(_embed("datesData", []))
+    out = league_matches([])
     assert out.empty
     assert list(out.columns) == ["match_id", "date", "home_team", "away_team",
                                  "is_result"]
@@ -92,8 +62,7 @@ _TEAMS = {
 
 
 def test_team_match_rows_flattens_history_with_ppda():
-    out = team_match_rows(_embed("teamsData", _TEAMS), season="2024-25",
-                          season_idx=2)
+    out = team_match_rows(_TEAMS, season="2024-25", season_idx=2)
     assert list(out.columns) == ["season", "season_idx", "team", "date",
                                  "us_xg", "us_xga", "ppda", "deep",
                                  "deep_allowed"]
@@ -109,8 +78,7 @@ def test_team_match_rows_with_a_zero_defensive_action_count_is_nan():
     teams = {"83": {"id": "83", "title": "Arsenal", "history": [
         {"date": "2024-08-17 14:00:00", "xG": 1.0, "xGA": 1.0,
          "ppda": {"att": 100, "def": 0}, "deep": 1, "deep_allowed": 1}]}}
-    out = team_match_rows(_embed("teamsData", teams), season="2024-25",
-                          season_idx=2)
+    out = team_match_rows(teams, season="2024-25", season_idx=2)
     assert pd.isna(out.loc[0, "ppda"])
 
 
@@ -132,12 +100,13 @@ _SHOTS = {
 }
 
 
-def _match_html() -> str:
-    return _embed("rostersData", _ROSTER) + _embed("shotsData", _SHOTS)
+def _match() -> dict:
+    """What getMatchData returns: rosters and shots side by side."""
+    return {"rosters": _ROSTER, "shots": _SHOTS, "tmpl": "..."}
 
 
 def test_match_player_rows_carries_the_marginal_understat_stats():
-    out = match_player_rows(_match_html(), match_id="18001",
+    out = match_player_rows(_match(), match_id="18001",
                             date=pd.Timestamp("2024-08-16").date(),
                             home_team="Manchester United",
                             away_team="Wolverhampton Wanderers")
@@ -156,7 +125,7 @@ def test_match_player_rows_carries_the_marginal_understat_stats():
 def test_match_player_rows_derives_npxg_by_dropping_penalty_shots():
     """The roster blob has no npxG field; the shot list does, and a penalty
     is exactly the shot a per-90 shooting rate must not be credited with."""
-    out = match_player_rows(_match_html(), match_id="18001",
+    out = match_player_rows(_match(), match_id="18001",
                             date=pd.Timestamp("2024-08-16").date(),
                             home_team="Manchester United",
                             away_team="Wolverhampton Wanderers")
@@ -170,8 +139,8 @@ def test_match_player_rows_gives_a_player_with_no_shots_zero_npxg():
                             "assists": "0", "shots": "0", "key_passes": "2",
                             "xG": "0", "xA": "0.1", "xGChain": "0.3",
                             "xGBuildup": "0.3"}}, "a": {}}
-    html = _embed("rostersData", roster) + _embed("shotsData", {"h": [], "a": []})
-    out = match_player_rows(html, match_id="18001",
+    out = match_player_rows({"rosters": roster, "shots": {"h": [], "a": []}},
+                            match_id="18001",
                             date=pd.Timestamp("2024-08-16").date(),
                             home_team="Manchester United",
                             away_team="Wolves")
@@ -179,9 +148,8 @@ def test_match_player_rows_gives_a_player_with_no_shots_zero_npxg():
 
 
 def test_match_player_rows_on_an_empty_roster_is_an_empty_frame():
-    html = _embed("rostersData", {"h": {}, "a": {}}) + _embed(
-        "shotsData", {"h": [], "a": []})
-    out = match_player_rows(html, match_id="18001",
+    match = {"rosters": {"h": {}, "a": {}}, "shots": {"h": [], "a": []}}
+    out = match_player_rows(match, match_id="18001",
                             date=pd.Timestamp("2024-08-16").date(),
                             home_team="A", away_team="B")
     assert out.empty
@@ -198,18 +166,89 @@ def _http(handler) -> httpx.Client:
     return httpx.Client(transport=httpx.MockTransport(handler))
 
 
-def test_league_page_requests_the_season_url(tmp_path):
+_LEAGUE = {"dates": _DATES, "teams": _TEAMS, "players": []}
+
+
+def test_league_data_requests_the_json_endpoint(tmp_path):
     seen = {}
 
     def handler(request):
         seen["url"] = str(request.url)
-        return httpx.Response(200, text=_embed("datesData", _DATES))
+        seen["headers"] = dict(request.headers)
+        return httpx.Response(200, json=_LEAGUE)
 
     client = UnderstatClient(client=_http(handler), cache_dir=tmp_path,
                              sleep=0.0)
     out = client.league_matches("2024-25")
-    assert seen["url"] == "https://understat.com/league/EPL/2024"
+    assert seen["url"] == "https://understat.com/getLeagueData/EPL/2024"
     assert list(out["match_id"]) == ["18001", "18002"]
+
+
+def test_the_default_client_announces_itself_as_an_xhr(tmp_path):
+    """The JSON endpoints answer the site's own ajax calls; without the
+    header understat serves a page instead of the payload."""
+    headers = UnderstatClient(cache_dir=tmp_path)._http.headers
+    assert headers["X-Requested-With"] == "XMLHttpRequest"
+    assert "gaffer" in headers["User-Agent"]
+
+
+def test_league_payload_is_fetched_once_per_season(tmp_path):
+    """Fixtures and team history come out of the same document — asking for
+    both must not cost understat two downloads."""
+    calls = {"n": 0}
+
+    def handler(request):
+        calls["n"] += 1
+        return httpx.Response(200, json=_LEAGUE)
+
+    client = UnderstatClient(client=_http(handler), cache_dir=tmp_path,
+                             sleep=0.0)
+    assert len(client.league_matches("2024-25")) == 2
+    assert len(client.team_history("2024-25", season_idx=2)) == 2
+    assert calls["n"] == 1
+
+
+def test_a_league_payload_without_dates_raises(tmp_path):
+    """A season with no fixtures is an empty list; a missing key means
+    understat changed its endpoint, and that must not look like no data."""
+    client = UnderstatClient(
+        client=_http(lambda r: httpx.Response(200, json={"players": []})),
+        cache_dir=tmp_path, sleep=0.0)
+    with pytest.raises(GafferError) as exc:
+        client.league_matches("2024-25")
+    assert "dates" in str(exc.value)
+
+
+def test_an_empty_season_is_an_empty_frame_not_an_error(tmp_path):
+    client = UnderstatClient(
+        client=_http(lambda r: httpx.Response(
+            200, json={"dates": [], "teams": {}, "players": []})),
+        cache_dir=tmp_path, sleep=0.0)
+    assert client.league_matches("2024-25").empty
+    assert client.team_history("2024-25", season_idx=2).empty
+
+
+def test_a_match_payload_without_rosters_raises(tmp_path):
+    client = UnderstatClient(
+        client=_http(lambda r: httpx.Response(200, json={"tmpl": "..."})),
+        cache_dir=tmp_path, sleep=0.0)
+    with pytest.raises(GafferError) as exc:
+        client.match_players("18001", pd.Timestamp("2024-08-16").date(),
+                             "A", "B")
+    assert "rosters" in str(exc.value)
+
+
+def test_match_data_requests_the_json_endpoint(tmp_path):
+    seen = {}
+
+    def handler(request):
+        seen["url"] = str(request.url)
+        return httpx.Response(200, json=_match())
+
+    client = UnderstatClient(client=_http(handler), cache_dir=tmp_path,
+                             sleep=0.0)
+    client.match_players("18001", pd.Timestamp("2024-08-16").date(), "A", "B")
+    assert seen["url"] == "https://understat.com/getMatchData/18001"
 
 
 def test_match_page_is_cached_by_id_and_never_refetched(tmp_path):
@@ -217,7 +256,7 @@ def test_match_page_is_cached_by_id_and_never_refetched(tmp_path):
 
     def handler(request):
         calls["n"] += 1
-        return httpx.Response(200, text=_match_html())
+        return httpx.Response(200, json=_match())
 
     client = UnderstatClient(client=_http(handler), cache_dir=tmp_path,
                              sleep=0.0)
@@ -232,11 +271,38 @@ def test_match_page_is_cached_by_id_and_never_refetched(tmp_path):
     assert (tmp_path / "match" / "18001.json").exists()
 
 
+def test_a_cache_file_written_before_the_endpoint_change_still_reads(tmp_path):
+    """Understat moved to JSON endpoints; the on-disk cache format did not.
+    Thousands of already-scraped matches must not need re-fetching."""
+    import json as _json
+
+    legacy = [{"match_id": "18001", "understat_id": "1250",
+               "player_name": "Bruno Fernandes", "team": "Manchester United",
+               "minutes": 90.0, "us_shots": 4.0, "us_key_passes": 3.0,
+               "us_npxg": 0.09, "us_xgchain": 1.2, "us_xgbuildup": 0.4}]
+    path = tmp_path / "match" / "18001.json"
+    path.parent.mkdir(parents=True)
+    path.write_text(_json.dumps(legacy))
+
+    def refuse(request):
+        raise AssertionError("a cached match must not be refetched")
+
+    out = UnderstatClient(client=_http(refuse), cache_dir=tmp_path,
+                          sleep=0.0).match_players(
+        "18001", pd.Timestamp("2024-08-16").date(), "A", "B")
+    assert list(out["understat_id"]) == ["1250"]
+    assert out.loc[0, "date"] == pd.Timestamp("2024-08-16").date()
+    assert list(out.columns) == ["match_id", "date", "understat_id",
+                                 "player_name", "team", "minutes", "us_shots",
+                                 "us_key_passes", "us_npxg", "us_xgchain",
+                                 "us_xgbuildup"]
+
+
 def test_cached_match_survives_a_process_restart(tmp_path):
     """The 1900-page backfill has to be resumable: a fresh client must read
     the same cache."""
     def handler(request):
-        return httpx.Response(200, text=_match_html())
+        return httpx.Response(200, json=_match())
 
     UnderstatClient(client=_http(handler), cache_dir=tmp_path,
                     sleep=0.0).match_players(
@@ -257,7 +323,7 @@ def test_uncached_fetches_sleep_between_requests(tmp_path, monkeypatch):
     monkeypatch.setattr("gaffer.data.understat.time.sleep", slept.append)
 
     def handler(request):
-        return httpx.Response(200, text=_match_html())
+        return httpx.Response(200, json=_match())
 
     client = UnderstatClient(client=_http(handler), cache_dir=tmp_path,
                              sleep=1.0)
@@ -270,7 +336,7 @@ def test_a_cache_hit_does_not_sleep(tmp_path, monkeypatch):
     slept = []
     monkeypatch.setattr("gaffer.data.understat.time.sleep", slept.append)
     client = UnderstatClient(
-        client=_http(lambda r: httpx.Response(200, text=_match_html())),
+        client=_http(lambda r: httpx.Response(200, json=_match())),
         cache_dir=tmp_path, sleep=1.0)
     client.match_players("18001", pd.Timestamp("2024-08-16").date(), "A", "B")
     slept.clear()
@@ -295,7 +361,7 @@ def test_team_history_reads_the_league_page_once_per_season(tmp_path):
 
     def handler(request):
         calls["n"] += 1
-        return httpx.Response(200, text=_embed("teamsData", _TEAMS))
+        return httpx.Response(200, json=_LEAGUE)
 
     client = UnderstatClient(client=_http(handler), cache_dir=tmp_path,
                              sleep=0.0)
@@ -413,10 +479,9 @@ from gaffer.data.understat import (UNDERSTAT_TEAM_ALIASES,
 
 
 def _league_and_match_handler(request):
-    if "/league/" in str(request.url):
-        return httpx.Response(200, text=(_embed("datesData", _DATES)
-                                         + _embed("teamsData", _TEAMS)))
-    return httpx.Response(200, text=_match_html())
+    if "getLeagueData" in str(request.url):
+        return httpx.Response(200, json=_LEAGUE)
+    return httpx.Response(200, json=_match())
 
 
 def test_every_understat_alias_target_is_an_fpl_name():
@@ -458,8 +523,8 @@ def test_build_understat_player_only_fetches_played_matches(tmp_path):
     build_understat_player(["2024-25"], {"2024-25": 2},
                            _fpl([(1, "Bruno Fernandes", "Man Utd")]),
                            client=client, store_result=False)
-    assert any("/match/18001" in u for u in seen)
-    assert not any("/match/18002" in u for u in seen)
+    assert any("getMatchData/18001" in u for u in seen)
+    assert not any("getMatchData/18002" in u for u in seen)
 
 
 def test_build_understat_player_drops_unmapped_players(tmp_path):

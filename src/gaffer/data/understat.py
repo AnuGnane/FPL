@@ -7,16 +7,16 @@ non-penalty xG, xGChain and xGBuildup per player-match, and per-team xGA,
 PPDA and deep completions. Those separate a striker on two big chances from
 one on six half-chances — the same xG, very different next week.
 
-There is no API. Every page ships its data as hex-escaped JSON inside a
-``JSON.parse('...')`` call, which is what :func:`parse_embedded_json` picks
-apart. Match pages never change once played, so they are cached forever by id
-and only a running season ever re-fetches.
+There is no documented API, but the site's own pages fetch their data over
+ajax, and those endpoints — ``getLeagueData/EPL/<year>`` and
+``getMatchData/<id>`` — answer plain JSON to anyone who asks like a browser
+does. Match data never changes once played, so it is cached forever by id and
+only a running season ever re-fetches.
 """
 
 from __future__ import annotations
 
 import json
-import re
 import time
 from pathlib import Path
 
@@ -36,27 +36,18 @@ PLAYER_COLS = ["match_id", "date", "understat_id", "player_name", "team",
 MATCH_COLS = ["match_id", "date", "home_team", "away_team", "is_result"]
 
 
-def parse_embedded_json(html: str, var_name: str):
-    """The payload of ``var <var_name> = JSON.parse('...')``.
+def _require(payload, key: str, url: str):
+    """One key out of a JSON payload, or a loud failure.
 
-    The blob is hex-escaped ASCII, so ``unicode_escape`` undoes the escaping;
-    that decoder works byte-wise, though, so any real UTF-8 in the page comes
-    back mojibake and has to be re-encoded through latin-1 to recover. A page
-    without the variable raises rather than returning empty: "the season has
-    no data" and "understat changed its markup" must not look the same.
+    Understat answering without the key it has always carried means the
+    endpoint changed shape, and that must never be mistaken for a season with
+    nothing in it — an empty list is data, a missing key is a broken scraper.
     """
-    match = re.search(var_name + r"\s*=\s*JSON\.parse\('(.*?)'\)", html,
-                      re.DOTALL)
-    if match is None:
+    if not isinstance(payload, dict) or key not in payload:
         raise GafferError(
-            f"understat page carries no {var_name} blob — the markup changed, "
-            "or the URL was wrong")
-    decoded = match.group(1).encode("utf-8").decode("unicode_escape")
-    try:
-        decoded = decoded.encode("latin-1").decode("utf-8")
-    except (UnicodeEncodeError, UnicodeDecodeError):
-        pass        # already clean ASCII
-    return json.loads(decoded)
+            f"understat response from {url} carries no {key!r} key — the "
+            "endpoint changed, or the URL was wrong")
+    return payload[key]
 
 
 def _num(value) -> float:
@@ -67,14 +58,14 @@ def _num(value) -> float:
         return float("nan")
 
 
-def league_matches(html: str) -> pd.DataFrame:
-    """``datesData`` -> ``[match_id, date, home_team, away_team, is_result]``.
+def league_matches(dates: list) -> pd.DataFrame:
+    """``dates`` -> ``[match_id, date, home_team, away_team, is_result]``.
 
     ``is_result`` is what makes an incremental refresh cheap: a fixture that
     has not been played has nothing to cache and must be re-checked next week.
     """
     rows = []
-    for m in parse_embedded_json(html, "datesData") or []:
+    for m in dates or []:
         rows.append({
             "match_id": str(m["id"]),
             "date": pd.to_datetime(m["datetime"], errors="coerce").date()
@@ -86,8 +77,8 @@ def league_matches(html: str) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=MATCH_COLS)
 
 
-def team_match_rows(html: str, season: str, season_idx: int) -> pd.DataFrame:
-    """``teamsData`` -> one row per team per match.
+def team_match_rows(teams: dict, season: str, season_idx: int) -> pd.DataFrame:
+    """``teams`` -> one row per team per match.
 
     PPDA is passes allowed per defensive action, which understat reports as
     the two counts rather than the ratio. A zero denominator (never seen in
@@ -95,7 +86,7 @@ def team_match_rows(html: str, season: str, season_idx: int) -> pd.DataFrame:
     column is a crash somewhere downstream rather than a signal.
     """
     rows = []
-    for team in (parse_embedded_json(html, "teamsData") or {}).values():
+    for team in (teams or {}).values():
         for h in team.get("history", []):
             ppda = h.get("ppda") or {}
             att, dfn = _num(ppda.get("att")), _num(ppda.get("def"))
@@ -112,18 +103,18 @@ def team_match_rows(html: str, season: str, season_idx: int) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=TEAM_COLS)
 
 
-def match_player_rows(html: str, match_id: str, date, home_team: str,
+def match_player_rows(match: dict, match_id: str, date, home_team: str,
                       away_team: str) -> pd.DataFrame:
-    """One match page -> one row per player who appeared.
+    """One ``getMatchData`` payload -> one row per player who appeared.
 
-    ``rostersData`` carries minutes, shots, key passes, xGChain and xGBuildup
-    but *not* non-penalty xG, so npxG is summed off ``shotsData`` with the
-    penalties dropped. A penalty is worth ~0.76 xG and says nothing about how
-    a player creates chances from open play, which is the whole reason the
-    non-penalty split is the one worth rolling.
+    ``rosters`` carries minutes, shots, key passes, xGChain and xGBuildup but
+    *not* non-penalty xG, so npxG is summed off ``shots`` with the penalties
+    dropped. A penalty is worth ~0.76 xG and says nothing about how a player
+    creates chances from open play, which is the whole reason the non-penalty
+    split is the one worth rolling.
     """
-    rosters = parse_embedded_json(html, "rostersData") or {}
-    shots = parse_embedded_json(html, "shotsData") or {}
+    rosters = match.get("rosters") or {}
+    shots = match.get("shots") or {}
     npxg: dict[str, float] = {}
     for side in ("h", "a"):
         for shot in shots.get(side, []) or []:
@@ -165,53 +156,81 @@ def season_year(season: str) -> str:
 
 
 class UnderstatClient:
-    """Fetches understat pages, caches every match forever.
+    """Fetches understat's JSON endpoints, caches every match forever.
 
-    A played match's page can never change, so it is written to
+    A played match can never change, so it is written to
     ``data/raw/understat/match/<id>.json`` on first read and served from disk
     afterwards. That is what makes the backfill resumable: a run killed
-    halfway costs only the pages it had not reached. Failures are per page —
-    a 503 costs that one match and returns an empty frame — and nothing
-    failed is ever cached, so the next run retries it.
+    halfway costs only the matches it had not reached. Failures are per
+    request — a 503 costs that one match and returns an empty frame — and
+    nothing failed is ever cached, so the next run retries it.
+
+    The league document holds fixtures *and* team history, so it is memoized
+    per season for the life of the client: a backfill that wants both pays
+    for one download, not two.
     """
+
+    HEADERS = {
+        "User-Agent": "gaffer/1.0 (personal FPL research)",
+        # The endpoints exist to serve understat's own in-page ajax; without
+        # this header the site answers with HTML instead of the payload.
+        "X-Requested-With": "XMLHttpRequest",
+    }
 
     def __init__(self, client: httpx.Client | None = None,
                  cache_dir: Path | str | None = None,
                  sleep: float = SLEEP_SECONDS, retries: int = 3):
         self._http = client if client is not None else httpx.Client(
-            timeout=30, follow_redirects=True,
-            headers={"User-Agent": "gaffer/1.0 (personal FPL research)"})
+            timeout=30, follow_redirects=True, headers=dict(self.HEADERS))
         self.cache_dir = Path(cache_dir) if cache_dir is not None else CACHE_DIR
         self.sleep = float(sleep)
         self.retries = int(retries)
+        self._league: dict[str, dict] = {}
 
-    def _get(self, url: str) -> str | None:
-        """Page text, or ``None`` after exhausting the retries."""
+    def _get_json(self, url: str):
+        """Decoded JSON, or ``None`` after exhausting the retries.
+
+        Understat labels these responses ``text/javascript``, so the decode is
+        forced rather than content-type driven; a body that is not JSON at all
+        is treated like any other bad response and retried.
+        """
         for attempt in range(self.retries):
             if self.sleep:
                 time.sleep(self.sleep)
             try:
-                resp = self._http.get(url)
+                resp = self._http.get(url, headers=self.HEADERS)
                 resp.raise_for_status()
-                return resp.text
-            except (httpx.HTTPStatusError, httpx.TransportError) as exc:
+                return json.loads(resp.text)
+            except (httpx.HTTPStatusError, httpx.TransportError,
+                    ValueError) as exc:
                 if attempt == self.retries - 1:
                     print(f"understat: giving up on {url} ({exc})")
         return None
 
+    def _league_data(self, season: str) -> tuple[dict | None, str]:
+        """The season's league document, downloaded at most once."""
+        url = f"{UNDERSTAT_BASE}/getLeagueData/EPL/{season_year(season)}"
+        if season not in self._league:
+            payload = self._get_json(url)
+            if payload is None:
+                return None, url
+            self._league[season] = payload
+        return self._league[season], url
+
     def league_matches(self, season: str) -> pd.DataFrame:
         """Every fixture id understat knows for a season."""
-        html = self._get(f"{UNDERSTAT_BASE}/league/EPL/{season_year(season)}")
-        if html is None:
+        payload, url = self._league_data(season)
+        if payload is None:
             return pd.DataFrame(columns=MATCH_COLS)
-        return league_matches(html)
+        return league_matches(_require(payload, "dates", url))
 
     def team_history(self, season: str, season_idx: int) -> pd.DataFrame:
-        """Per-team per-match xG/xGA/PPDA/deep from the league page."""
-        html = self._get(f"{UNDERSTAT_BASE}/league/EPL/{season_year(season)}")
-        if html is None:
+        """Per-team per-match xG/xGA/PPDA/deep from the league document."""
+        payload, url = self._league_data(season)
+        if payload is None:
             return pd.DataFrame(columns=TEAM_COLS)
-        return team_match_rows(html, season, season_idx)
+        return team_match_rows(_require(payload, "teams", url), season,
+                               season_idx)
 
     def match_players(self, match_id: str, date, home_team: str,
                       away_team: str) -> pd.DataFrame:
@@ -222,15 +241,12 @@ class UnderstatClient:
             frame = pd.DataFrame(cached, columns=PLAYER_COLS)
             frame["date"] = date
             return frame
-        html = self._get(f"{UNDERSTAT_BASE}/match/{match_id}")
-        if html is None:
+        url = f"{UNDERSTAT_BASE}/getMatchData/{match_id}"
+        payload = self._get_json(url)
+        if payload is None:
             return pd.DataFrame(columns=PLAYER_COLS)
-        try:
-            rows = match_player_rows(html, match_id, date, home_team,
-                                     away_team)
-        except GafferError as exc:
-            print(f"understat: unparseable match {match_id} ({exc})")
-            return pd.DataFrame(columns=PLAYER_COLS)
+        _require(payload, "rosters", url)
+        rows = match_player_rows(payload, match_id, date, home_team, away_team)
         path.parent.mkdir(parents=True, exist_ok=True)
         # The date is re-applied on read rather than stored: it is a date
         # object, JSON has no such type, and the caller always knows it.
