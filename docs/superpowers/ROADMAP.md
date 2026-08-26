@@ -55,15 +55,17 @@ Spec: `specs/2026-08-25-gaffer-v4c-decide-design.md` (§12 = full outcome) · Pl
 - [x] Final adversarial review: 8 blockers fixed (incl. wildcard FT-bank double-charge = the λ×θ anomaly mechanism, confirmed; calibrator decontaminated), re-measured: D2 +43, both-on 1865 (+55) — MERGE
 - Suite: 944 Python + 62 frontend; advise wall-clock 62.8 s with the full stack on
 
-## In progress
+### v4d — compete (done, league mode v2)
+Spec: `specs/2026-08-26-gaffer-v4d-compete-design.md` (§12 = full outcome) · Plan: `plans/2026-08-26-gaffer-v4d-compete.md`
+- [x] z-dial with tanh λ map + z_deadband 0.25 (review amendment), σ from league history with fallback chain [8, 30]
+- [x] Observed-squad covering: threat-softmax weights → cover table → anchored tilt_ep v2 (normalized so chase can't discount hit_cost/ft_value/itb)
+- [x] EO-aware captaincy with 0.15-xPts override margin; "last armband" notes in CLI/report
+- [x] Tier-resolved live EO (300-sample top-10k, honest SE, graceful degradation)
+- [x] Gate E1 PASS (adapted to shadow-rival replay — API rollover destroyed 2025-26 rival data): wins 3–3, gap-0 cost 0, −10 deficit converted +7; confounded pre-fix run recorded
+- [x] Final adversarial review: FIX-FIRST, 4 blockers + 4 important fixed (whatif percent/fraction mismatch the sharpest), re-verified
+- Suite: 1034 Python + 64 frontend, tsc clean
 
-### v4d — compete (league mode v2)
-Spec: `specs/2026-08-26-gaffer-v4d-compete-design.md` (approved 2026-08-26)
-- [ ] z = deficit/σ risk dial (variance seeking iff behind), σ estimated from league history
-- [ ] Rival covering: observed-squad cover weights consumed by tilt_ep v2
-- [ ] EO-aware mean-variance captaincy at the advise captain-override seam
-- [ ] Tier-resolved live EO in tracker (sampled top-10k, display only)
-- [ ] Gate E1: league replay GW20–38 vs recorded rivals, injected gap grid
+## In progress
 
 ## Planned
 
