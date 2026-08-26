@@ -290,7 +290,9 @@ def availability_frame(official: pd.DataFrame,
        no gameweek axis, so ``apply_availability`` is what applies it.
     4. Where the sources disagree about *this* gameweek, the most pessimistic
        view wins, and only downward — a news row can lower a chance, never
-       raise one.
+       raise one. That holds between the two news readings as well: the
+       return date implies a chance, an explicit ``news_chance_pct`` states
+       one, and the lower of whichever exist is what meets the official flag.
 
     With both news frames empty the output is the official frame with five
     empty columns beside it, which is why the all-sources-down path is
@@ -320,6 +322,18 @@ def availability_frame(official: pd.DataFrame,
         if not inj.empty:
             inj["_chance"] = [_news_chance(g, gw)
                               for g in inj["expected_return_gw"]]
+            # The site also prints a percentage beside some players, which is
+            # a chance_of_playing for *this* week said out loud. Where both
+            # readings exist they meet at the lower one, the same way news
+            # meets the official flag below: 25% beside a "back this week"
+            # date is the sharper claim, and a later return date is already
+            # a zero that no percentage can lift.
+            if "news_chance_pct" in inj.columns:
+                both = pd.concat(
+                    [pd.to_numeric(inj["_chance"], errors="coerce"),
+                     pd.to_numeric(inj["news_chance_pct"], errors="coerce")],
+                    axis=1)
+                inj["_chance"] = both.min(axis=1, skipna=True)
             keyed = inj.set_index("code")
             hit = out["code"].isin(keyed.index)
             for col in ("injury_type", "expected_return_gw", "source",

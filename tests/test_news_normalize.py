@@ -103,6 +103,62 @@ def test_news_never_raises_a_players_official_chance():
     assert out.loc[101, "chance_of_playing"] == 25
 
 
+def _injury_pct(code, itype, status, date, pct):
+    """A row from the injury table's percentage status column."""
+    row = _injury(code, itype, status, date)
+    row["news_chance_pct"] = pct
+    return row
+
+
+def test_a_percentage_status_lowers_an_unflagged_player():
+    """The site prints "25%" beside a player FPL has not flagged at all. That
+    is a chance_of_playing handed to us a day early, and it is the whole
+    reason for reading the column."""
+    injuries = pd.DataFrame([
+        _injury_pct(100, "knock", "doubtful",
+                    pd.Timestamp("2026-09-05").date(), 25.0)])
+    out = availability_frame(_official(), injuries, None, gw=5,
+                             events=_events()).set_index("code")
+    assert out.loc[100, "chance_of_playing"] == 25.0
+    assert out.loc[100, "status"] == "i"
+
+
+def test_a_percentage_status_never_raises_an_official_chance():
+    """One-way, like every other news input: FPL has him at 25 and the site
+    says 75, and 25 stands."""
+    official = pd.DataFrame([{"code": 101, "status": "d",
+                              "chance_of_playing": 25}])
+    injuries = pd.DataFrame([
+        _injury_pct(101, "knock", "doubtful",
+                    pd.Timestamp("2026-09-05").date(), 75.0)])
+    out = availability_frame(official, injuries, None, gw=5,
+                             events=_events()).set_index("code")
+    assert out.loc[101, "chance_of_playing"] == 25
+
+
+def test_a_percentage_never_softens_a_return_date_in_a_later_gameweek():
+    """Ruled out until GW8 is a zero for GW5 whatever percentage sits beside
+    it — the two readings meet at the more pessimistic one."""
+    injuries = pd.DataFrame([
+        _injury_pct(100, "hamstring", "out",
+                    pd.Timestamp("2026-09-20").date(), 75.0)])
+    out = availability_frame(_official(), injuries, None, gw=5,
+                             events=_events()).set_index("code")
+    assert out.loc[100, "chance_of_playing"] == 0
+    assert out.loc[100, "expected_return_gw"] == 8
+
+
+def test_a_percentage_beats_a_return_date_in_the_advised_gameweek():
+    """Back this week reads as a coin flip, but the site saying 25% is a
+    sharper claim about the same week and the lower of the two wins."""
+    injuries = pd.DataFrame([
+        _injury_pct(100, "knock", "doubtful",
+                    pd.Timestamp("2026-09-05").date(), 25.0)])
+    out = availability_frame(_official(), injuries, None, gw=5,
+                             events=_events()).set_index("code")
+    assert out.loc[100, "chance_of_playing"] == 25.0
+
+
 def test_a_listed_injury_returning_this_week_is_a_doubt_not_a_zero():
     from gaffer.data.news.normalize import NEWS_RETURNS_THIS_GW
 

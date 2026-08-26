@@ -190,23 +190,69 @@ def test_parse_injury_table_reads_every_row():
     rows = parse_injury_table(_injury_html())
     assert len(rows) == 5
     assert list(rows.columns) == ["name", "club", "injury_type", "status",
-                                  "expected_return_date"]
+                                  "expected_return_date", "news_chance_pct"]
     saka = rows[rows["name"] == "Bukayo Saka"].iloc[0]
-    assert saka["club"] == "Arsenal"
+    # The page carries no club column at all, so every row matches on the
+    # name alone, through the uniqueness rule.
+    assert saka["club"] == ""
     assert saka["injury_type"] == "hamstring"
     assert saka["status"] == "out"
     assert saka["expected_return_date"] == pd.Timestamp("2026-09-12").date()
+    assert pd.isna(saka["news_chance_pct"])   # "Ruled Out" is not a number
+
+
+def test_parse_injury_table_reads_the_reason_column_not_the_prose():
+    """The type comes off "Reason", which is a short vocabulary, not off the
+    "Further Detail" quote, which is a sentence that happens to name body
+    parts. "Suspended" is the ban the return curves already know."""
+    from gaffer.data.news.premierinjuries import parse_injury_table
+
+    rows = parse_injury_table(_injury_html()).set_index("name")
+    assert rows.loc["Erling Haaland", "injury_type"] == "knock"
+    assert rows.loc["Magalhaes Gabriel", "injury_type"] == "groin"
+    assert rows.loc["Joe Bloggs", "injury_type"] == "suspension"
+    # "Other" is the site's shrug, and the pooled curve answers it.
+    assert rows.loc["Cole Palmer", "injury_type"] == "unknown"
+
+
+def test_parse_injury_table_reads_a_percentage_status_as_a_doubt():
+    """The status column is either "Ruled Out" or a percentage, and the
+    percentage is a chance_of_playing the site is handing us outright."""
+    from gaffer.data.news.premierinjuries import parse_injury_table
+
+    rows = parse_injury_table(_injury_html()).set_index("name")
+    assert rows.loc["Erling Haaland", "status"] == "doubtful"
+    assert rows.loc["Erling Haaland", "news_chance_pct"] == 75.0
+    assert rows.loc["Joe Bloggs", "news_chance_pct"] == 100.0
 
 
 def test_parse_injury_table_keeps_a_row_with_no_return_date():
-    """"Doubtful, no date" is real information — it must not be dropped just
-    because the return column is blank."""
+    """"No Return Date" is the site's literal text where a date would go. The
+    row is real information — it must not be dropped, and it must not parse
+    into a date."""
     from gaffer.data.news.premierinjuries import parse_injury_table
 
     rows = parse_injury_table(_injury_html())
     palmer = rows[rows["name"] == "Cole Palmer"].iloc[0]
     assert palmer["expected_return_date"] is None
-    assert palmer["status"] == "doubtful"
+    assert palmer["status"] == "out"
+
+
+def test_parse_injury_table_tolerates_cells_without_their_label():
+    """Every cell prints its own column label, and the parse strips it. If
+    the site ever stops printing them the columns are still in order, so the
+    positional reading stands in rather than the row being lost."""
+    from gaffer.data.news.premierinjuries import parse_injury_table
+
+    html = ("<table><tr><td>Bukayo Saka</td><td>Hamstring Injury</td>"
+            "<td>Aug 20: 'tight'</td><td>12/09/2026</td>"
+            "<td>Not Available</td><td>Ruled Out</td><td>TRACK</td>"
+            "</tr></table>")
+    row = parse_injury_table(html).iloc[0]
+    assert row["name"] == "Bukayo Saka"
+    assert row["injury_type"] == "hamstring"
+    assert row["status"] == "out"
+    assert row["expected_return_date"] == pd.Timestamp("2026-09-12").date()
 
 
 def test_parse_injury_table_on_a_rewritten_page_returns_empty_not_garbage():
@@ -223,11 +269,13 @@ def test_fetch_injuries_matches_codes_and_caches_the_page(tmp_path):
     now = datetime(2026, 9, 4, 9, 0, tzinfo=timezone.utc)
     out = fetch_injuries(_players(), _teams(), cache_dir=tmp_path,
                          client=client, now=now)
-    # Barnsley's player is unmatched (4/5 = 80%, above the floor).
+    # The unrostered player is unmatched (4/5 = 80%, above the floor), and
+    # every match is made without a club column to key on.
     assert sorted(out["code"]) == [100, 101, 102, 103]
     assert list(out.columns) == ["code", "injury_type", "news_status",
-                                 "expected_return_date", "source",
-                                 "fetched_at"]
+                                 "expected_return_date", "news_chance_pct",
+                                 "source", "fetched_at"]
+    assert out.set_index("code").loc[102, "news_chance_pct"] == 75.0
     assert (out["source"] == "premierinjuries").all()
     assert len(calls) == 1
 
