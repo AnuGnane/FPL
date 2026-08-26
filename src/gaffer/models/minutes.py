@@ -181,41 +181,9 @@ class ThreeModeModel:
         return out
 
 
-RECOVERY = 0.7
-"""Per-gameweek decay of an availability flag over the planning horizon.
-
-A status flag describes *this* gameweek: a one-match ban or a knock is spent
-by the next one, so applying the raw factor across the whole horizon would
-zero a player for six gameweeks and make the MILP sell fully-fit assets. The
-damping is therefore relaxed geometrically — ``1 - (1 - f) * 0.7**h`` at h
-gameweeks past the first — full strength where it matters most (the imminent
-gameweek, the least decayed term in the objective) and fading toward
-available later on. It is a heuristic, not a model of injury duration: a
-long-term injury recovers on paper faster than in reality, and the news feed
-is re-read every week anyway.
-"""
-
-
-def apply_availability(pred: pd.DataFrame, avail: pd.DataFrame) -> pd.DataFrame:
-    """avail: code, status, chance_of_playing (from live bootstrap).
-    status i/s/u/n (injured/suspended/unavailable/not in squad) -> factor from
-    chance_of_playing (None means 0). 'd' (doubtful) -> chance_of_playing.
-    'a' -> 1.0.
-
-    If ``pred`` carries a ``gw`` column the factor is applied in full to the
-    horizon's first gameweek and recovers geometrically after it (see
-    :data:`RECOVERY`); without one it is applied uniformly to every row.
-    """
-    out = pred.merge(avail, on="code", how="left")
-    cop = out["chance_of_playing"].astype("float") / 100.0
-    factor = pd.Series(1.0, index=out.index)
-    flagged = out["status"].isin(["i", "s", "u", "n", "d"])
-    factor[flagged] = cop[flagged].fillna(0.0)
-    if "gw" in out.columns and len(out):
-        horizon_start = out["gw"].min()
-        h = (out["gw"] - horizon_start).astype(float)
-        factor = 1 - (1 - factor) * RECOVERY ** h
-    for col in ["p_play", "p60"]:
-        out[col] = out[col] * factor
-    out["e_min"] = out["e_min"] * factor
-    return out.drop(columns=["status", "chance_of_playing"])
+# Availability moved to models/availability.py in v5: it grew a line-up gate,
+# an injury-curve horizon decay and an asset dependency, none of which belong
+# in the module that fits the model. Re-exported because it is a published
+# seam — advise.py imports it from here, and so does every test written
+# before the move.
+from gaffer.models.availability import RECOVERY, apply_availability  # noqa: E402,F401

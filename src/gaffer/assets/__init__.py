@@ -62,3 +62,31 @@ def load_decision_priors() -> dict | None:
     return json.loads(
         files(__package__).joinpath(DECISION_PRIORS).read_text(
             encoding="utf-8"))
+
+
+INJURY_CURVES = "injury_return_curves.json"
+
+
+def injury_curves_exist() -> bool:
+    """Whether the calibrated per-injury return curves are shipped.
+
+    Optional like :data:`DECISION_PRIORS` and for the same reason: spec §7's
+    degradation rail says a clone without it falls back to the pooled curve
+    and then to the flat ``RECOVERY`` geometric, which is the pre-v5
+    behaviour exactly.
+    """
+    return files(__package__).joinpath(INJURY_CURVES).is_file()
+
+
+def load_injury_curves() -> dict | None:
+    """``{"curves": {type: [P(returned by h)]}, "pooled": [...]}``, or None.
+
+    ``None`` rather than an empty dict, so a caller cannot mistake "no
+    calibration" for "calibration says he never returns" — the two are
+    opposite instructions to the horizon decay.
+    """
+    if not injury_curves_exist():
+        return None
+    return json.loads(
+        files(__package__).joinpath(INJURY_CURVES).read_text(
+            encoding="utf-8"))
