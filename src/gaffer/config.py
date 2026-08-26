@@ -45,6 +45,17 @@ class Config:
     z_deadband: float = 0.25
     tier_eo: bool = True
     tier_sample: int = 300
+    # --- v5 news layer -----------------------------------------------------
+    # Defaults are shipped-behaviour-ON, individually switchable. Every source
+    # degrades to the official-flags path by itself (spec §7), so these exist
+    # to turn off a *working* source, not to survive a broken one.
+    # The Transfermarkt return curves are a committed asset rather than a
+    # runtime source, so they carry no flag here.
+    news_enabled: bool = True
+    news_injuries: bool = True
+    news_lineups: bool = True
+    news_cache_hours: int = 6
+    news_min_coverage: float = 0.5
 
 
 def load_config(path: Path | str = "config.toml") -> Config:
@@ -56,6 +67,7 @@ def load_config(path: Path | str = "config.toml") -> Config:
     # bench_curve need no line here.
     scen = raw.get("scenarios", {})
     league = raw.get("league", {})
+    news = raw.get("news", {})
     return Config(
         entry_id=raw["fpl"]["entry_id"],
         league_id=raw["fpl"]["league_id"],
@@ -85,4 +97,12 @@ def load_config(path: Path | str = "config.toml") -> Config:
         z_deadband=float(league.get("z_deadband", 0.25)),
         tier_eo=bool(league.get("tier_eo", True)),
         tier_sample=int(league.get("tier_sample", 300)),
+        # Read key-by-key like [odds] and [league]: the TOML keys are
+        # deliberately shorter than the dataclass fields (enabled, injuries)
+        # so the section reads as prose in config.toml.
+        news_enabled=bool(news.get("enabled", True)),
+        news_injuries=bool(news.get("injuries", True)),
+        news_lineups=bool(news.get("lineups", True)),
+        news_cache_hours=int(news.get("cache_hours", 6)),
+        news_min_coverage=float(news.get("min_coverage", 0.5)),
     )

@@ -165,3 +165,41 @@ tier_sample = 50
     assert cfg.z_deadband == 0.4
     assert cfg.tier_eo is False
     assert cfg.tier_sample == 50
+
+
+def test_news_section_defaults_to_shipped_behaviour_on(tmp_path):
+    """v5's news layer ships enabled. Nobody has to edit config.toml to get
+    it, and every source degrades on its own when the site is down."""
+    path = tmp_path / "config.toml"
+    path.write_text("[fpl]\nentry_id = 1\nleague_id = 2\n")
+    cfg = load_config(path)
+    assert cfg.news_enabled is True
+    assert cfg.news_injuries is True
+    assert cfg.news_lineups is True
+    assert cfg.news_cache_hours == 6
+    assert cfg.news_min_coverage == 0.5
+
+
+def test_news_section_is_read(tmp_path):
+    path = tmp_path / "config.toml"
+    path.write_text("[fpl]\nentry_id = 1\nleague_id = 2\n"
+                    "[news]\nenabled = false\ninjuries = false\n"
+                    "lineups = false\ncache_hours = 24\nmin_coverage = 0.8\n")
+    cfg = load_config(path)
+    assert cfg.news_enabled is False
+    assert cfg.news_injuries is False
+    assert cfg.news_lineups is False
+    assert cfg.news_cache_hours == 24
+    assert cfg.news_min_coverage == 0.8
+
+
+def test_news_sources_can_be_switched_off_individually(tmp_path):
+    """The master switch and the per-source switches are independent: a
+    broken line-ups page must not cost the injury feed."""
+    path = tmp_path / "config.toml"
+    path.write_text("[fpl]\nentry_id = 1\nleague_id = 2\n"
+                    "[news]\nlineups = false\n")
+    cfg = load_config(path)
+    assert cfg.news_enabled is True
+    assert cfg.news_injuries is True
+    assert cfg.news_lineups is False
