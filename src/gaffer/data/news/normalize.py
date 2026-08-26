@@ -47,13 +47,50 @@ def player_name_index(players: pd.DataFrame) -> tuple[dict, dict]:
     return by_name_team, by_tokens_team
 
 
+_CLUB_ALIASES_RAW: dict[str, str] = {
+    "nottingham forest": "nott'm forest",
+    "manchester united": "man utd",
+    "manchester city": "man city",
+    "tottenham hotspur": "spurs",
+    "tottenham": "spurs",
+    "wolverhampton wanderers": "wolves",
+    "wolverhampton": "wolves",
+    "newcastle united": "newcastle",
+    "brighton and hove albion": "brighton",
+    "brighton & hove albion": "brighton",
+    "west ham united": "west ham",
+    "afc bournemouth": "bournemouth",
+    "leeds united": "leeds",
+    "leicester city": "leicester",
+    "sheffield united": "sheff utd",
+}
+"""Press spellings the normalizer cannot reach -> the bootstrap's own.
+
+``normalize_name`` folds accents and punctuation, not vocabulary: nothing in
+it turns "Nottingham Forest" into "Nott'm Forest" or "Spurs" into
+"Tottenham Hotspur". An alias is only consulted *after* the built map has been
+asked, so a bootstrap that already spells a club out in full keeps winning.
+"""
+
+CLUB_ALIASES: dict[str, str] = {
+    normalize_name(k): normalize_name(v)
+    for k, v in _CLUB_ALIASES_RAW.items()}
+"""The same table with both sides run through :func:`normalize_name`.
+
+Written out longhand above and normalized here rather than the other way
+round, so the source reads as club names and the lookup keys cannot drift
+from whatever the normalizer currently does to an apostrophe.
+"""
+
+
 def club_code_map(teams: pd.DataFrame) -> dict[str, int]:
     """``normalized club string -> team_code``, from names and short names.
 
     The news sites write "Man City", "Spurs" and "Nott'm Forest" where the
-    bootstrap writes its own spellings, and the normalizer collapses most of
-    that by itself. A club string nothing answers to resolves to nothing and
-    its rows fall through to the all-clubs sweep — never to a guess.
+    bootstrap writes its own spellings, and :data:`CLUB_ALIASES` carries the
+    ones normalization alone cannot bridge. A club string nothing answers to
+    resolves to nothing and its rows fall through to the uniqueness rule —
+    never to a guess.
     """
     out: dict[str, int] = {}
     for r in teams.itertuples():
@@ -62,6 +99,17 @@ def club_code_map(teams: pd.DataFrame) -> dict[str, int]:
             if key:
                 out.setdefault(key, int(r.code))
     return out
+
+
+def club_code(clubs: dict[str, int], raw) -> int | None:
+    """One club cell -> a team_code, via the map and then the alias table."""
+    key = normalize_name(raw or "")
+    if not key:
+        return None
+    if key in clubs:
+        return clubs[key]
+    alias = CLUB_ALIASES.get(key)
+    return clubs.get(alias) if alias else None
 
 
 def match_codes(rows: pd.DataFrame, players: pd.DataFrame,
@@ -73,9 +121,10 @@ def match_codes(rows: pd.DataFrame, players: pd.DataFrame,
     :func:`gaffer.data.odds.ags_frame` uses:
 
     1. normalized equality against both the web_name and the full name, within
-       the club the row names (or across all clubs when the club string does
-       not resolve — a source that writes "Wolverhampton" must still find
-       Wolves' players);
+       the club the row names — and, when the club string resolves to nothing
+       even through :data:`CLUB_ALIASES`, across all clubs but **only when
+       exactly one unclaimed player answers**, the same uniqueness rule the
+       sweeps keep;
     2. a token pass — same tokens reordered, or one name a subset of the
        other — taken **only when exactly one unclaimed candidate answers**.
 
@@ -104,14 +153,26 @@ def match_codes(rows: pd.DataFrame, players: pd.DataFrame,
         name = normalize_name(getattr(r, "name", ""))
         if not name:
             continue
-        club = clubs.get(normalize_name(getattr(r, "club", "")))
-        candidates = [club] if club is not None else all_teams
-        for team_code in candidates:
-            code = by_name_team.get((name, int(team_code)))
+        club = club_code(clubs, getattr(r, "club", ""))
+        if club is not None:
+            code = by_name_team.get((name, int(club)))
             if code is not None and code not in claimed:
                 codes[i] = code
                 claimed.add(code)
-                break
+                continue
+            pending.append(i)
+            continue
+        # No club to key on, so the league is the search space and the
+        # sweeps' uniqueness rule applies here too: two Danny Wards answer to
+        # the same exact name, and taking whichever comes first in team order
+        # benches a fit keeper on the other one's hamstring.
+        hits = {by_name_team[(name, t)] for t in all_teams
+                if (name, t) in by_name_team
+                and by_name_team[(name, t)] not in claimed}
+        if len(hits) == 1:
+            code = hits.pop()
+            codes[i] = code
+            claimed.add(code)
         else:
             pending.append(i)
 
@@ -123,7 +184,7 @@ def match_codes(rows: pd.DataFrame, players: pd.DataFrame,
                 continue
             row = rows.iloc[i]
             tokens = tuple(normalize_name(row.get("name", "")).split())
-            club = clubs.get(normalize_name(row.get("club", "")))
+            club = club_code(clubs, row.get("club", ""))
             candidates = [club] if club is not None else all_teams
             hits = [code
                     for team_code in candidates

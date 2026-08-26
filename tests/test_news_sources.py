@@ -98,6 +98,79 @@ def test_match_codes_on_an_empty_frame_returns_an_empty_frame():
     assert "code" in out.columns
 
 
+def _namesakes() -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Two Danny Wards, one at Forest and one at Leicester.
+
+    The real pair: the press writes the club out in full, the bootstrap
+    abbreviates it, and picking the wrong one benches a fit starter.
+    """
+    players = pd.DataFrame([
+        {"code": 200, "name": "Ward", "first_name": "Danny",
+         "second_name": "Ward", "team_code": 17},
+        {"code": 201, "name": "Ward", "first_name": "Danny",
+         "second_name": "Ward", "team_code": 13},
+    ])
+    teams = pd.DataFrame([
+        {"code": 17, "name": "Nott'm Forest", "short_name": "NFO"},
+        {"code": 13, "name": "Leicester", "short_name": "LEI"},
+    ])
+    return players, teams
+
+
+def test_match_codes_uses_the_club_alias_to_pick_the_right_namesake():
+    """The reviewer's scenario: "Nottingham Forest" is not a bootstrap
+    spelling, and without the alias the exact pass took whichever namesake
+    came first in team order — a fit Leicester keeper benched by a Forest
+    keeper's hamstring."""
+    from gaffer.data.news.normalize import match_codes
+
+    players, teams = _namesakes()
+    rows = pd.DataFrame([{"name": "Danny Ward",
+                          "club": "Nottingham Forest"}])
+    out = match_codes(rows, players, teams, label="test")
+    assert out["code"].tolist() == [200]
+
+
+def test_match_codes_matches_nobody_when_two_namesakes_answer():
+    """No alias, no resolvable club, two candidates: the exact pass must be
+    as conservative as the token sweeps and take neither."""
+    from gaffer.data.news.normalize import match_codes
+
+    players, teams = _namesakes()
+    rows = pd.DataFrame([{"name": "Danny Ward", "club": "Notts County"}])
+    out = match_codes(rows, players, teams, label="test", min_coverage=0.0)
+    assert out.empty
+
+
+def test_match_codes_resolves_the_press_full_club_names():
+    from gaffer.data.news.normalize import match_codes
+
+    players = pd.DataFrame([
+        {"code": 102, "name": "Haaland", "first_name": "Erling",
+         "second_name": "Haaland", "team_code": 43},
+        {"code": 300, "name": "Haaland", "first_name": "Erling",
+         "second_name": "Haaland", "team_code": 1},
+    ])
+    teams = pd.DataFrame([
+        {"code": 43, "name": "Man City", "short_name": "MCI"},
+        {"code": 1, "name": "Man Utd", "short_name": "MUN"},
+    ])
+    rows = pd.DataFrame([{"name": "Erling Haaland",
+                          "club": "Manchester City"}])
+    out = match_codes(rows, players, teams, label="test")
+    assert out["code"].tolist() == [102]
+
+
+def test_match_codes_still_takes_a_lone_candidate_with_an_unresolved_club():
+    """A club string nothing answers to is not a reason to drop a name only
+    one player in the league carries."""
+    from gaffer.data.news.normalize import match_codes
+
+    rows = pd.DataFrame([{"name": "Bukayo Saka", "club": "Arsenal FC XI"}])
+    out = match_codes(rows, _players(), _teams(), label="test")
+    assert out["code"].tolist() == [100]
+
+
 def _injury_html() -> str:
     return (FIXTURES / "premierinjuries.html").read_text()
 
