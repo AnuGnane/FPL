@@ -1,6 +1,6 @@
 [fpl]
-entry_id = 2210493   # user's FPL team ID
-league_id = 1794743  # mini-league ID for rival tracking
+entry_id = 0        # your FPL team ID
+league_id = 0       # your mini-league ID
 
 [optimizer]
 horizon = 3          # 2025/26 sweep: fewest hits (11 vs 17-18), score tied with h1; h6 chases noise
@@ -18,7 +18,7 @@ n = 40               # gate D1: gated replay 1818 vs raw 1743 (+75), fewer trans
 decision_priors = true
 
 [odds]
-api_key = "3f569bd0fc809c31d9e8c45c8c969084"
+# api_key = "get one free at the-odds-api.com (500 requests/month)"
 
 [data]
 train_seasons = ["2022-23", "2023-24", "2024-25", "2025-26"]
