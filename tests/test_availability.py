@@ -104,6 +104,19 @@ def test_a_bench_hint_gates_the_first_gameweek_only():
     assert abs(out.loc[6, "p_play"] - 0.9) < 1e-9      # untouched beyond GW1
 
 
+def test_a_double_gameweek_hint_gates_one_fixture_not_both():
+    """A predicted XI names one team sheet. In a double gameweek both rows
+    carry the same gw, and gating both said the site had predicted the
+    Wednesday tie as well — it had not."""
+    out = apply_availability(_pred([5, 5, 6]),
+                             _avail(status="a", chance_of_playing=None,
+                                    p_start_hint=0.25),
+                             curves=_CURVES).reset_index(drop=True)
+    assert abs(out.loc[0, "p_play"] - 0.25) < 1e-9
+    assert abs(out.loc[1, "p_play"] - 0.9) < 1e-9
+    assert abs(out.loc[2, "p_play"] - 0.9) < 1e-9
+
+
 def test_a_starter_hint_never_raises_the_model():
     """Line-ups gate, they do not inflate. A 1.0 hint on a player the model
     prices at 0.4 leaves him at 0.4."""

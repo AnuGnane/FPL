@@ -128,10 +128,20 @@ def _gate_first_gw(out: pd.DataFrame) -> pd.DataFrame:
     alone: an untouched ``p60`` beside a halved ``p_play`` is the incoherence
     the three-mode model was built to remove, and ``e_min`` feeds the
     scenario sweep's nailedness score.
+
+    At most **one row per player** is gated, even in a double gameweek: a
+    predicted line-up is one team sheet for one match, and applying it to both
+    of a double's fixtures claims the site predicted a tie it never wrote
+    about. The row taken is the first in frame order, which is the earliest
+    fixture — ``predict_components`` builds the frame in fixture order — and
+    that is the match the published XI is about.
     """
     hint = pd.to_numeric(out["p_start_hint"], errors="coerce")
     first = (out["gw"] == out["gw"].min()) if "gw" in out.columns \
         else pd.Series(True, index=out.index)
+    if "code" in out.columns:
+        extra = out.loc[first, "code"].duplicated()
+        first = first & ~out.index.isin(extra.index[extra])
     bites = first & hint.notna() & (hint < out["p_play"])
     if not bites.any():
         return out
