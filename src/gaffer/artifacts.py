@@ -13,8 +13,10 @@ it. Two files per run land under ``reports/``:
 The tilt is deliberately *not* baked into the stored expected points. Chips
 and every displayed points number use raw values (see ``advise.run_advise``),
 and ``league_mode.tilt_ep`` reproduces the tilted pool on demand from ``lam``
-and ``league_eo`` — so one file serves both, and neither can drift from the
-other.
+and the saved ``cover`` fractions — so one file serves both, and neither can
+drift from the other. ``league_eo`` is a *percent* kept for display; it is not
+what the tilt reads (a state written before ``cover`` existed falls back to
+``cover_from_eo(league_eo)``, which converts it).
 """
 
 from __future__ import annotations
@@ -128,6 +130,12 @@ class SolveState:
     opt: dict                        # decay/bench_weight/.../horizon
     pool: pd.DataFrame = field(
         default_factory=lambda: pd.DataFrame(columns=POOL_COLS))
+    # The threat-weighted cover *fraction* advise actually tilted on, in [0,1]
+    # per code. ``None`` means the state predates the field: a re-solve then
+    # falls back to ``cover_from_eo(league_eo)``, which is the same table under
+    # equal weights and no armbands. Appended last and defaulted so every
+    # existing keyword construction still works.
+    cover: dict[int, float] | None = None
 
 
 def pool_rows(pool: pd.DataFrame, players: pd.DataFrame,
@@ -169,6 +177,8 @@ def save_solve_state(state: SolveState) -> tuple[Path, Path]:
         "owned_codes": [int(c) for c in state.owned_codes],
         "lam": float(state.lam),
         "league_eo": {str(k): float(v) for k, v in state.league_eo.items()},
+        "cover": (None if state.cover is None
+                  else {str(k): float(v) for k, v in state.cover.items()}),
         "avail_by_gw": {str(g): list(c)
                         for g, c in state.avail_by_gw.items()},
         "opt": dict(state.opt),
@@ -192,7 +202,9 @@ def load_solve_state(gw: int) -> SolveState:
         league_eo={int(k): float(v) for k, v in raw["league_eo"].items()},
         avail_by_gw={int(g): list(c)
                      for g, c in raw["avail_by_gw"].items()},
-        opt=dict(raw["opt"]), pool=pd.read_parquet(parquet))
+        opt=dict(raw["opt"]), pool=pd.read_parquet(parquet),
+        cover=(None if raw.get("cover") is None
+               else {int(k): float(v) for k, v in raw["cover"].items()}))
 
 
 def latest_gw() -> int | None:

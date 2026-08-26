@@ -21,7 +21,7 @@ def _pool_frame(star_ep=9.0):
 
 
 def _save_state(gws=(1, 2), star_ep=9.0, lam=0.0, league_eo=None,
-                chips=("wildcard", "bboost")):
+                chips=("wildcard", "bboost"), cover=None):
     frame, star_ep = _pool_frame(star_ep)
     players = pd.DataFrame({"code": frame["code"],
                             "name": [f"P{c}" for c in frame["code"]]})
@@ -36,7 +36,8 @@ def _save_state(gws=(1, 2), star_ep=9.0, lam=0.0, league_eo=None,
         opt={"decay": 0.85, "bench_weight": 0.1, "vice_weight": 0.1,
              "ft_value": 1.5, "itb_value": 0.05, "hit_cost": 4,
              "horizon": len(gws)},
-        pool=pool_rows(frame, players, OWNED, ep_by, list(gws))))
+        pool=pool_rows(frame, players, OWNED, ep_by, list(gws)),
+        cover=cover))
 
 
 @pytest.fixture()
@@ -154,6 +155,63 @@ def test_displayed_points_are_raw_not_tilted(tmp_path, monkeypatch):
     assert job["status"] == "done", job["error"]
     star = [p for p in job["result"]["yours"]["xi"] if p["code"] == 20]
     assert star and star[0]["ep"] == 9.0     # not 9.0 * 1.5
+
+
+# --- B1: the re-solve tilts on a cover *fraction*, never on an EO percent --
+
+
+def _recorded_cover(tmp_path, monkeypatch, **state_kw) -> dict:
+    """Run one solve_whatif and hand back the cover table tilt_ep was given."""
+    from gaffer.web.routers import whatif as whatif_mod
+    from gaffer.web.schemas import WhatIfRequest
+
+    monkeypatch.chdir(tmp_path)
+    _save_state(**state_kw)
+    seen: list[dict] = []
+    real = whatif_mod.tilt_ep
+
+    def spy(ep_by, cover, lam):
+        seen.append(dict(cover))
+        return real(ep_by, cover, lam)
+
+    monkeypatch.setattr(whatif_mod, "tilt_ep", spy)
+    whatif_mod.solve_whatif(WhatIfRequest(), 1)
+    assert len(seen) == 1
+    return seen[0]
+
+
+def test_an_old_state_tilts_on_the_eo_converted_to_a_fraction(tmp_path,
+                                                              monkeypatch):
+    """A state written before ``cover`` existed still has league_eo, which is
+    a *percent*. Feeding 90.0 straight into a formula expecting [0, 1] clamps
+    every non-trivial EO to 1.0 and silently kills the tilt."""
+    cover = _recorded_cover(tmp_path, monkeypatch, lam=0.5,
+                            league_eo={20: 90.0})
+    assert cover == pytest.approx({20: 0.9})
+
+
+def test_the_saved_cover_table_is_what_the_re_solve_tilts_on(tmp_path,
+                                                             monkeypatch):
+    """advise tilts on the threat-weighted cover table, not on league EO; a
+    re-solve that used EO instead would optimise a different board."""
+    cover = _recorded_cover(tmp_path, monkeypatch, lam=0.5,
+                            league_eo={20: 90.0}, cover={20: 0.25})
+    assert cover == pytest.approx({20: 0.25})
+
+
+def test_a_state_saved_without_cover_still_loads(tmp_path, monkeypatch):
+    """Forward compatibility: the field defaults to None on an old artifact."""
+    import json
+
+    from gaffer.artifacts import load_solve_state, solve_state_paths
+
+    monkeypatch.chdir(tmp_path)
+    _save_state(lam=0.5, league_eo={20: 90.0})
+    _, meta = solve_state_paths(1)
+    raw = json.loads(meta.read_text())
+    raw.pop("cover", None)
+    meta.write_text(json.dumps(raw))
+    assert load_solve_state(1).cover is None
 
 
 # --- B7: the web re-solve must price like the advice that saved the state --

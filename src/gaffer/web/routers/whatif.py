@@ -21,7 +21,7 @@ from fastapi.responses import JSONResponse
 from gaffer.artifacts import (latest_gw, load_solve_state, milp_pool,
                               raw_ep_by, solve_kw_from_state)
 from gaffer.errors import GafferError
-from gaffer.league_mode import tilt_ep
+from gaffer.league_mode import cover_from_eo, tilt_ep
 from gaffer.optimize.milp import GwPlan, SolveInput, solve_plan
 from gaffer.web.jobs import WHATIF_TIMEOUT_S, JobQueueFull
 from gaffer.web.schemas import (CHIP_CODES, JobAccepted, PlanSummary,
@@ -113,7 +113,13 @@ def solve_whatif(req: WhatIfRequest, gw: int) -> dict:
     horizon = req.horizon or state.opt.get("horizon") or len(state.gws)
     gws = state.gws[:max(1, int(horizon))]
     ep_by = raw_ep_by(state)
-    pool_ep = tilt_ep(ep_by, state.league_eo, state.lam)
+    # tilt_ep wants cover *fractions* in [0, 1]. The saved table is the one
+    # advise tilted on; league_eo is a percent, so a state written before the
+    # field existed has to be converted, not passed through — 90.0 would clamp
+    # to 1.0 and re-solve a board the advice never saw.
+    cover = (state.cover if state.cover is not None
+             else cover_from_eo(state.league_eo))
+    pool_ep = tilt_ep(ep_by, cover, state.lam)
     pool = milp_pool(state, pool_ep, gws)
     opt = solve_kw_from_state(state)
     meta = {int(r.code): {"name": str(r.name), "position": str(r.position)}

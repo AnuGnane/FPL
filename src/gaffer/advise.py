@@ -825,7 +825,7 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         generated_at=datetime.now(timezone.utc).isoformat(),
         mode=advice.mode, bank=state.bank,
         free_transfers=state.free_transfers, owned_codes=owned_now,
-        lam=lam, league_eo=league_eo, avail_by_gw=avail_by_gw,
+        lam=lam, league_eo=league_eo, cover=cover, avail_by_gw=avail_by_gw,
         # The lambda lookup is not JSON, but "were the priors on" is, and it
         # is all the web re-solve needs to rebuild the same lookup from the
         # shipped asset and price a What-If baseline exactly like this advice.
