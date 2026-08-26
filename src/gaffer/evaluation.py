@@ -26,6 +26,7 @@ import numpy as np
 import pandas as pd
 
 from gaffer.artifacts import REPORTS
+from gaffer.config import load_config
 from gaffer.errors import GafferError
 
 RETURN_CATEGORIES = ["zeros", "blanks", "tickers", "haulers", "all"]
@@ -415,14 +416,33 @@ def score_news_shadow(shadow: pd.DataFrame,
 
 
 def evaluate_news_shadow() -> dict:
-    """:func:`score_news_shadow` over the banked log and the live results."""
+    """:func:`score_news_shadow` over the banked log and the live results.
+
+    The log spans seasons; the truth does not. ``live/player_gw.parquet`` is
+    this season's results and carries no season column, so last season's GW5
+    row would join this season's GW5 minutes — a different fixture, often a
+    different club — and quietly corrupt the N2 readout at the rollover. The
+    cut is made here rather than in the scorer, which stays season-agnostic
+    and scores whatever it is handed.
+
+    A config that will not load, or a log banked before the season column
+    existed, leaves the log whole: the filter sharpens the readout, it is not
+    a gate on producing one.
+    """
     from gaffer.data import store
     from gaffer.news_shadow import load_shadow
 
     actuals = (store.load("live/player_gw.parquet")
                if store.exists("live/player_gw.parquet")
                else pd.DataFrame(columns=["gw", "code", "minutes"]))
-    return score_news_shadow(load_shadow(), actuals)
+    shadow = load_shadow()
+    try:
+        season = str(load_config().current_season)
+        if season and shadow is not None and "season" in shadow.columns:
+            shadow = shadow[shadow["season"].astype(str) == season]
+    except Exception as e:  # noqa: BLE001 — a readout is better than none
+        print(f"news-shadow: scoring every season ({e})")
+    return score_news_shadow(shadow, actuals)
 
 
 BENCHMARK_TRAIN_MAX_IDX = 1

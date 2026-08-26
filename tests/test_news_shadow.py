@@ -98,15 +98,71 @@ def test_a_log_written_before_the_season_column_still_appends(tmp_path,
     assert len(load_shadow()) == 4
 
 
-def test_the_scorer_keeps_the_same_gameweek_from_two_seasons():
-    from gaffer.evaluation import score_news_shadow
-
-    shadow = pd.DataFrame({
+def _two_season_log() -> pd.DataFrame:
+    return pd.DataFrame({
         "season": ["2025-26", "2026-27"], "gw": [5, 5], "code": [1, 1],
         "p_play_news": [0.1, 0.9], "p_play_flags": [0.9, 0.9],
         "e_min_news": [10.0, 80.0], "e_min_flags": [80.0, 80.0]})
+
+
+def test_the_scorer_takes_the_last_row_within_one_season():
+    """Two advise runs in the same week bank two rows, and the later one is
+    the prediction that stood at the deadline."""
+    from gaffer.evaluation import score_news_shadow
+
+    shadow = pd.DataFrame({
+        "season": ["2026-27", "2026-27"], "gw": [5, 5], "code": [1, 1],
+        "p_play_news": [0.1, 0.9], "p_play_flags": [0.9, 0.9],
+        "e_min_news": [10.0, 80.0], "e_min_flags": [80.0, 80.0]})
     actuals = pd.DataFrame({"gw": [5], "code": [1], "minutes": [90]})
-    assert score_news_shadow(shadow, actuals)["rows"] == 2
+    out = score_news_shadow(shadow, actuals)
+    assert out["rows"] == 1
+    assert out["overall"]["mae_news"] == 10.0     # the 80-minute row won
+
+
+def test_the_evaluation_scores_only_the_current_season(monkeypatch):
+    """The truth side is ``live/player_gw.parquet``, which is this season and
+    carries no season column. Last season's GW5 row joined against it would
+    be scored on this season's GW5 minutes — a different match, often a
+    different club — so the log is cut to the current season first."""
+    from gaffer import evaluation
+    from gaffer.config import Config
+    from gaffer.data import store as store_mod
+    from gaffer.news_shadow import SHADOW_PATH
+
+    actuals = pd.DataFrame({"gw": [5], "code": [1], "minutes": [90]})
+    monkeypatch.setattr("gaffer.news_shadow.load_shadow",
+                        lambda: _two_season_log())
+    monkeypatch.setattr(store_mod, "exists", lambda p: p == SHADOW_PATH
+                        or p == "live/player_gw.parquet")
+    monkeypatch.setattr(store_mod, "load", lambda p: actuals)
+    monkeypatch.setattr(evaluation, "load_config",
+                        lambda: Config(entry_id=1, league_id=2,
+                                       current_season="2026-27"))
+    out = evaluation.evaluate_news_shadow()
+    assert out["rows"] == 1
+    # 2026-27's row is the 80-minute one; 2025-26's would have scored 10.
+    assert out["overall"]["mae_news"] == 10.0
+
+
+def test_the_evaluation_scores_the_whole_log_when_the_config_is_unreadable(
+        monkeypatch):
+    """The season filter is a sharpening, not a gate: no config, no season
+    column, nothing to match — score what is banked rather than nothing."""
+    from gaffer import evaluation
+    from gaffer.data import store as store_mod
+
+    def boom():
+        raise RuntimeError("no config.toml on this machine")
+
+    actuals = pd.DataFrame({"gw": [5], "code": [1], "minutes": [90]})
+    monkeypatch.setattr("gaffer.news_shadow.load_shadow",
+                        lambda: _two_season_log())
+    monkeypatch.setattr(store_mod, "exists",
+                        lambda p: p == "live/player_gw.parquet")
+    monkeypatch.setattr(store_mod, "load", lambda p: actuals)
+    monkeypatch.setattr(evaluation, "load_config", boom)
+    assert evaluation.evaluate_news_shadow()["rows"] == 2
 
 
 def test_write_shadow_appends_across_runs(tmp_path, monkeypatch):
