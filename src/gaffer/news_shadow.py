@@ -19,19 +19,21 @@ from datetime import datetime, timezone
 
 import pandas as pd
 
+from gaffer.config import load_config
 from gaffer.data import store
 
 SHADOW_PATH = "live/news_shadow.parquet"
 
-SHADOW_COLS = ["gw", "code", "p_play_news", "p_play_flags", "e_min_news",
-               "e_min_flags", "run_at"]
+SHADOW_COLS = ["season", "gw", "code", "p_play_news", "p_play_flags",
+               "e_min_news", "e_min_flags", "run_at"]
 
 REQUIRED_INPUT = ("code", "gw", "p_play", "p_play_flags", "e_min",
                   "e_min_flags")
 
 
 def shadow_rows(comp: pd.DataFrame, gw: int,
-                run_at: str | None = None) -> pd.DataFrame:
+                run_at: str | None = None,
+                season: str = "") -> pd.DataFrame:
     """The component frame -> one shadow row per player, for ``gw`` only.
 
     Only the first gameweek of the horizon: the scorer joins these against
@@ -49,9 +51,25 @@ def shadow_rows(comp: pd.DataFrame, gw: int,
         e_min_news=("e_min", "sum"),
         e_min_flags=("e_min_flags", "sum"))
     grouped.insert(0, "gw", int(gw))
+    # The log outlives a season rollover and gameweek 5 comes round again;
+    # without this the scorer's key collides across years.
+    grouped.insert(0, "season", str(season or ""))
     grouped["run_at"] = run_at or datetime.now(timezone.utc).isoformat(
         timespec="seconds")
     return grouped[SHADOW_COLS]
+
+
+def _current_season() -> str:
+    """``cfg.current_season``, or ``""`` when there is no readable config.
+
+    Read here rather than passed in, so the one line in ``run_advise`` stays
+    one line. Its own try, because the shadow log is instrumentation: a
+    machine with no config.toml must still bank the week.
+    """
+    try:
+        return str(load_config().current_season or "")
+    except Exception:  # noqa: BLE001 — instrumentation never blocks
+        return ""
 
 
 def write_shadow(comp, gw: int):
@@ -66,7 +84,7 @@ def write_shadow(comp, gw: int):
     try:
         if comp is None or not set(REQUIRED_INPUT) <= set(comp.columns):
             return None
-        rows = shadow_rows(comp, gw)
+        rows = shadow_rows(comp, gw, season=_current_season())
         if rows.empty:
             return None
         tied = ((rows["p_play_news"] - rows["p_play_flags"]).abs() < 1e-12) \
@@ -75,6 +93,8 @@ def write_shadow(comp, gw: int):
             return None
         existing = (store.load(SHADOW_PATH) if store.exists(SHADOW_PATH)
                     else pd.DataFrame(columns=SHADOW_COLS))
+        if "season" not in existing.columns:
+            existing = existing.assign(season="")
         merged = pd.concat([existing, rows], ignore_index=True)
         return store.save(merged[SHADOW_COLS], SHADOW_PATH)
     except Exception as exc:  # noqa: BLE001 — instrumentation never blocks

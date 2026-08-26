@@ -4,8 +4,10 @@ publish.
 A player who played 120 minutes of a midweek EFL Cup tie is a different
 rotation risk on Saturday, and nothing in the FPL feed says the tie happened:
 ``fixtures.parquet`` carries league matches only. FPL-Core-Insights publishes
-per-tournament match files keyed by the official FPL team ids, which is what
-makes them joinable to our own frames without a name table.
+per-tournament match files keyed by the stable FPL team *code* — Brentford is
+94 there, not its 2025-26 season id of 5 — with a fallback through the
+season's id table for anything that is not a code (see :func:`_team_code`).
+Either way they join onto our own frames without a name table.
 
 Only the *dates* are taken. Cup minutes, cup goals and cup xG are deliberately
 left on the floor: they are a different competition against different

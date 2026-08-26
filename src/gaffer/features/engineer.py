@@ -176,7 +176,9 @@ def add_congestion(df: pd.DataFrame,
     """
     sort_cols = [c for c in ("code", "season_idx", "gw", "kickoff_time")
                  if c in df.columns]
-    out = df.sort_values(sort_cols).reset_index(drop=True)
+    # Stable, because a double gameweek ties on every sort column and the
+    # 14-day scan below reads the rows in the order it is handed them.
+    out = df.sort_values(sort_cols, kind="stable").reset_index(drop=True)
     if "kickoff_time" not in out.columns:
         for col in CONGESTION_FEATURES:
             out[col] = float("nan")

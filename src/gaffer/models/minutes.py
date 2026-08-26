@@ -39,7 +39,9 @@ def mode_labels(df: pd.DataFrame) -> pd.Series:
     starts = starts.fillna((mins >= SIXTY_MINUTES).astype("float64"))
     label = pd.Series(DNP, index=df.index, dtype="int64")
     label[mins > 0] = SUB
-    label[(mins > 0) & (starts == 1)] = START
+    # ``>= 1`` rather than ``== 1``: the column is a count, and a double
+    # gameweek's aggregated row carries a 2.
+    label[(mins > 0) & (starts >= 1)] = START
     return label
 
 

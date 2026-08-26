@@ -55,9 +55,14 @@ def cache_path(cache_dir: Path, prefix: str, cache_hours: int,
     of wall-clock time, so "have we already read this today" is an
     ``exists()`` rather than a stored timestamp, and yesterday's snapshot stays
     on disk for debugging rather than being overwritten.
+
+    ``cache_hours`` is clamped to ``[1, 24]``: it comes out of config.toml, a
+    zero divides by zero, and anything above a day makes the bucket arithmetic
+    meaningless without making the window any longer than the date stamp
+    already allows.
     """
     now = now or datetime.now(timezone.utc)
-    hours = max(int(cache_hours), 1)
+    hours = min(max(int(cache_hours), 1), 24)
     bucket = (now.hour // hours) * hours
     stamp = f"{now:%Y%m%d}T{bucket:02d}"
     return Path(cache_dir) / f"{prefix}-{stamp}.html"

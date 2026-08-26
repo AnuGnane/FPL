@@ -366,14 +366,18 @@ def score_news_shadow(shadow: pd.DataFrame,
     off the same model run, so any difference between the columns is the news
     layer's doing by construction.
     """
-    cols = ["gw", "code", "p_play_news", "p_play_flags", "e_min_news",
-            "e_min_flags"]
     if shadow is None or shadow.empty or actuals is None or actuals.empty:
         return {"run_at": run_at(), "git_sha": git_sha(), "rows": 0,
                 "overall": {}, "by_gw": []}
+    # Gameweek 5 comes round every year, so the log's key is the season's as
+    # well where the column exists. Logs banked before it does keep the old
+    # two-part key rather than being dropped.
+    key = (["season", "gw", "code"] if "season" in shadow.columns
+           else ["gw", "code"])
+    cols = key + ["p_play_news", "p_play_flags", "e_min_news", "e_min_flags"]
     truth = (actuals.groupby(["gw", "code"], as_index=False)
              .agg(minutes=("minutes", "sum")))
-    joined = (shadow[cols].groupby(["gw", "code"], as_index=False).last()
+    joined = (shadow[cols].groupby(key, as_index=False).last()
               .merge(truth, on=["gw", "code"], how="inner"))
     if joined.empty:
         return {"run_at": run_at(), "git_sha": git_sha(), "rows": 0,
@@ -596,6 +600,25 @@ def run_decomposition(season: str = "2025-26", start_gw: int = 5) -> dict:
     }
 
 
+def _format_news_shadow(payload: dict) -> str:
+    """Gate N2's table: news against flags, per gameweek and cumulative."""
+    if not payload.get("rows"):
+        return ("news shadow: nothing to score yet — the log needs a "
+                "completed gameweek.")
+    lines = [f"news shadow ({payload['rows']} player-gameweeks)",
+             "  gw   brier news / flags    mae news / flags"]
+    for row in payload["by_gw"]:
+        lines.append(
+            f"  GW{row['gw']:<3} {row['brier_news']:.4f} / "
+            f"{row['brier_flags']:.4f}      {row['mae_news']:.2f} / "
+            f"{row['mae_flags']:.2f}")
+    o = payload["overall"]
+    lines.append(f"  all   {o['brier_news']:.4f} / "
+                 f"{o['brier_flags']:.4f}      {o['mae_news']:.2f} / "
+                 f"{o['mae_flags']:.2f}")
+    return "\n".join(lines)
+
+
 def format_report(key: str, payload: dict) -> str:
     """The artifact as a table a human can read in a terminal.
 
@@ -604,26 +627,14 @@ def format_report(key: str, payload: dict) -> str:
     comparison to somebody else's published numbers invites exactly the wrong
     conclusion.
     """
+    # The shadow table is its own report with its own header, so it is
+    # answered before the generic header is built rather than after.
+    if key == "news_shadow":
+        return _format_news_shadow(payload)
     lines = [f"=== {key} (run_at {payload.get('run_at')}, "
              f"sha {payload.get('git_sha')}) ==="]
     if payload.get("odds_blend_weight") is not None:
         lines.append(f"odds blend weight w = {payload['odds_blend_weight']:.2f}")
-    if key == "news_shadow":
-        if not payload.get("rows"):
-            return ("news shadow: nothing to score yet — the log needs a "
-                    "completed gameweek.")
-        lines = [f"news shadow ({payload['rows']} player-gameweeks)",
-                 "  gw   brier news / flags    mae news / flags"]
-        for row in payload["by_gw"]:
-            lines.append(
-                f"  GW{row['gw']:<3} {row['brier_news']:.4f} / "
-                f"{row['brier_flags']:.4f}      {row['mae_news']:.2f} / "
-                f"{row['mae_flags']:.2f}")
-        o = payload["overall"]
-        lines.append(f"  all   {o['brier_news']:.4f} / "
-                     f"{o['brier_flags']:.4f}      {o['mae_news']:.2f} / "
-                     f"{o['mae_flags']:.2f}")
-        return "\n".join(lines)
     if key == "decomposition":
         lines.append(f"{payload.get('season')} from GW{payload.get('start_gw')}")
         for name, cell in payload["cells"].items():

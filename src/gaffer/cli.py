@@ -120,6 +120,26 @@ def build_history_cmd():
 
 
 @app.command()
+def cups():
+    """Ingest cup, European and EFL match dates into data/history/."""
+    from gaffer.config import load_config
+    from gaffer.data.cups import download_cup_matches
+    from gaffer.data.history import season_name_codes
+
+    cfg = load_config()
+    # The current season as well as the training ones: congestion is a
+    # prediction-time feature, and this week's midweek tie is the whole point.
+    seasons = list(cfg.train_seasons) + [cfg.current_season]
+    names = {name: code
+             for table in season_name_codes(cfg.train_seasons).values()
+             for name, code in table.items()}
+    out = download_cup_matches(
+        seasons, {s: i for i, s in enumerate(seasons)}, names=names)
+    typer.echo(f"Cups: {len(out)} club-match dates across {len(seasons)} "
+               "seasons -> data/history/cup_matches.parquet.")
+
+
+@app.command()
 def understat():
     """Scrape Understat into data/history/ (long first run; resumable)."""
     from gaffer.api.client import FPLClient

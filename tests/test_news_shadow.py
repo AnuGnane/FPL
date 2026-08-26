@@ -56,6 +56,59 @@ def test_shadow_rows_collapse_a_double_gameweek_to_one_row():
     assert abs(rows["e_min_flags"].iloc[0] - 160.0) < 1e-9
 
 
+def test_the_log_stamps_the_season_it_was_written_in(tmp_path, monkeypatch):
+    """Gameweek 5 comes round every year. Without the season the log's own
+    key collides across a rollover and the scorer's ``last()`` throws away
+    last season's row."""
+    from gaffer import news_shadow as shadow_mod
+    from gaffer.config import Config
+    from gaffer.data import store as store_mod
+
+    monkeypatch.setattr(store_mod, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(shadow_mod, "load_config",
+                        lambda: Config(entry_id=1, league_id=2,
+                                       current_season="2026-27"))
+    write_shadow(_comp(), gw=5)
+    out = load_shadow()
+    assert (out["season"] == "2026-27").all()
+
+
+def test_a_broken_config_still_banks_the_row(tmp_path, monkeypatch):
+    """Instrumentation never blocks, and it never drops a week either."""
+    from gaffer import news_shadow as shadow_mod
+    from gaffer.data import store as store_mod
+
+    def boom():
+        raise RuntimeError("no config.toml on this machine")
+
+    monkeypatch.setattr(store_mod, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(shadow_mod, "load_config", boom)
+    assert write_shadow(_comp(), gw=5) is not None
+    assert (load_shadow()["season"] == "").all()
+
+
+def test_a_log_written_before_the_season_column_still_appends(tmp_path,
+                                                              monkeypatch):
+    from gaffer.data import store as store_mod
+
+    monkeypatch.setattr(store_mod, "DATA_DIR", tmp_path)
+    old = shadow_rows(_comp(), gw=5).drop(columns=["season"])
+    store_mod.save(old, SHADOW_PATH)
+    assert write_shadow(_comp(), gw=5) is not None
+    assert len(load_shadow()) == 4
+
+
+def test_the_scorer_keeps_the_same_gameweek_from_two_seasons():
+    from gaffer.evaluation import score_news_shadow
+
+    shadow = pd.DataFrame({
+        "season": ["2025-26", "2026-27"], "gw": [5, 5], "code": [1, 1],
+        "p_play_news": [0.1, 0.9], "p_play_flags": [0.9, 0.9],
+        "e_min_news": [10.0, 80.0], "e_min_flags": [80.0, 80.0]})
+    actuals = pd.DataFrame({"gw": [5], "code": [1], "minutes": [90]})
+    assert score_news_shadow(shadow, actuals)["rows"] == 2
+
+
 def test_write_shadow_appends_across_runs(tmp_path, monkeypatch):
     from gaffer.data import store as store_mod
 

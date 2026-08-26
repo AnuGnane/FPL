@@ -127,6 +127,17 @@ def test_a_frame_with_no_appearances_at_all_predicts_zero():
     assert np.allclose(pred["e_min"], 0.0)
 
 
+def test_mode_labels_treat_any_positive_starts_value_as_a_start():
+    """``starts`` is an integer count in the aggregated frames — a double
+    gameweek's two starts sum to 2 — and an equality against 1 silently
+    demoted every doubled-up starter to a substitute."""
+    from gaffer.models.minutes import START
+    from gaffer.models.minutes import mode_labels
+
+    df = pd.DataFrame({"minutes": [180, 90], "starts": [2, 1]})
+    assert mode_labels(df).tolist() == [START, START]
+
+
 def test_mode_labels_read_starts_not_the_60_minute_threshold():
     """A 75-minute substitute is a sub, and a starter hooked at 40 is a
     start. The old p60 head could not tell those apart at all."""

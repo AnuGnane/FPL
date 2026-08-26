@@ -254,6 +254,19 @@ def test_fetch_injuries_degrades_to_empty_when_the_host_is_down(tmp_path,
     assert "unavailable" in capsys.readouterr().out
 
 
+def test_cache_path_clamps_the_window_to_a_day(tmp_path):
+    """``cache_hours`` comes out of config.toml, so it can be anything. Above
+    24 the bucket arithmetic collapses to a single window and the filename
+    stops carrying the day; below 1 it divides by zero."""
+    from gaffer.data.news import cache_path
+
+    now = datetime(2026, 9, 4, 23, tzinfo=timezone.utc)
+    assert (cache_path(tmp_path, "x", 999, now).name
+            == cache_path(tmp_path, "x", 24, now).name)
+    assert (cache_path(tmp_path, "x", 0, now).name
+            == cache_path(tmp_path, "x", 1, now).name)
+
+
 def test_fetch_injuries_degrades_on_any_httpx_error_not_just_transport(
         tmp_path, capsys):
     """``TooManyRedirects`` and ``DecodingError`` are ``RequestError`` but not

@@ -200,6 +200,38 @@ def test_build_history_also_builds_the_match_odds_parquet():
     assert "build_match_odds(" in src
 
 
+def test_cups_ingests_every_training_season_and_the_current_one(monkeypatch):
+    """The congestion feature is served as well as trained, so the ingest has
+    to cover the season being predicted."""
+    import pandas as pd
+
+    from gaffer.config import Config
+    from gaffer.data import cups as cups_mod
+    from gaffer.data import history as history_mod
+
+    seen = {}
+
+    def fake(seasons, indexes, *a, **k):
+        seen["seasons"] = list(seasons)
+        return pd.DataFrame({"team_code": [3, 8]})
+
+    monkeypatch.setattr(cups_mod, "download_cup_matches", fake)
+    monkeypatch.setattr(history_mod, "season_name_codes", lambda s: {})
+    monkeypatch.setattr("gaffer.config.load_config", lambda *a, **k: Config(
+        entry_id=1, league_id=2, train_seasons=["2023-24", "2024-25"],
+        current_season="2025-26"))
+
+    result = CliRunner().invoke(app, ["cups"])
+    assert result.exit_code == 0, result.output
+    assert seen["seasons"] == ["2023-24", "2024-25", "2025-26"]
+    assert "2 club-match dates" in result.output
+
+
+def test_cups_is_a_command():
+    result = CliRunner().invoke(app, ["--help"])
+    assert "cups" in result.output
+
+
 def test_understat_is_a_command():
     from typer.testing import CliRunner
 
