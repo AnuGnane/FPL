@@ -145,3 +145,86 @@ def test_the_old_sigma_pin_is_still_importable_under_both_names():
     from gaffer.league_mode import SIGMA, SIGMA_FALLBACK
 
     assert SIGMA == SIGMA_FALLBACK == 18.0
+
+
+# --- v4d: sigma from league history ----------------------------------------
+
+
+def _history(series: dict[int, list[int]]) -> pd.DataFrame:
+    """{entry: [gw1 points, gw2 points, ...]} -> the fetcher's frame shape."""
+    rows = [{"entry": entry, "gw": i + 1, "points": p}
+            for entry, points in series.items()
+            for i, p in enumerate(points)]
+    return pd.DataFrame(rows, columns=["entry", "gw", "points"])
+
+
+def test_margin_sigma_is_the_stdev_of_the_margin_series():
+    from gaffer.league_mode import margin_sigma
+
+    # Margins: +10, -10, +10, -10, +10, -10 -> stdev ~ 10.95, inside bounds.
+    hist = _history({1: [60, 40, 60, 40, 60, 40],
+                     2: [50, 50, 50, 50, 50, 50]})
+    out = margin_sigma(hist, my_entry=1)
+    assert out[2] == pytest.approx(10.954, abs=1e-3)
+
+
+def test_margin_sigma_floors_a_mirrored_squad():
+    """Identical squads produce near-zero margins; without the floor z would
+    explode and lam would saturate on noise."""
+    from gaffer.league_mode import SIGMA_FLOOR, margin_sigma
+
+    hist = _history({1: [50, 51, 50, 51, 50, 51],
+                     2: [50, 51, 50, 51, 50, 50]})
+    assert margin_sigma(hist, my_entry=1)[2] == SIGMA_FLOOR
+
+
+def test_margin_sigma_caps_a_wild_series():
+    from gaffer.league_mode import SIGMA_CAP, margin_sigma
+
+    hist = _history({1: [120, 20, 120, 20, 120, 20],
+                     2: [20, 120, 20, 120, 20, 120]})
+    assert margin_sigma(hist, my_entry=1)[2] == SIGMA_CAP
+
+
+def test_margin_sigma_falls_back_to_the_pooled_league_sigma():
+    """A rival with three weeks of history borrows the league's pooled
+    margin spread rather than trusting three points."""
+    from gaffer.league_mode import margin_sigma
+
+    hist = pd.concat([
+        _history({1: [60, 40, 60, 40, 60, 40],
+                  2: [50, 50, 50, 50, 50, 50]}),
+        _history({3: [49, 51, 49]}),
+    ], ignore_index=True)
+    out = margin_sigma(hist, my_entry=1)
+    pooled_borrower, established = out[3], out[2]
+    assert pooled_borrower != pytest.approx(established, abs=1e-9)
+    assert 8.0 <= pooled_borrower <= 30.0
+
+
+def test_margin_sigma_falls_back_to_the_pin_with_no_history_at_all():
+    from gaffer.league_mode import SIGMA_FALLBACK, margin_sigma
+
+    hist = _history({1: [50], 2: [40]})     # one week: nothing poolable
+    assert margin_sigma(hist, my_entry=1)[2] == SIGMA_FALLBACK
+
+
+def test_margin_sigma_of_an_empty_frame_is_empty():
+    from gaffer.league_mode import margin_sigma
+
+    assert margin_sigma(pd.DataFrame(columns=["entry", "gw", "points"]),
+                        my_entry=1) == {}
+    assert margin_sigma(None, my_entry=1) == {}
+
+
+def test_margin_sigma_only_pairs_gameweeks_we_both_played():
+    """A rival who joined at GW3 has no GW1-2 margin; pairing on index
+    instead of gameweek would invent two."""
+    from gaffer.league_mode import margin_sigma
+
+    hist = pd.concat([_history({1: [50, 60, 70, 80, 90, 100, 55]}),
+                      pd.DataFrame([{"entry": 2, "gw": g, "points": p}
+                                    for g, p in [(3, 70), (4, 80)]])],
+                     ignore_index=True)
+    out = margin_sigma(hist, my_entry=1)
+    assert out[2] == pytest.approx(18.0)    # 2 shared weeks -> the pin

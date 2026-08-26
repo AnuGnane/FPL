@@ -7,6 +7,7 @@ zero leaves the optimizer exactly at v1 points-max.
 from __future__ import annotations
 
 import math
+import statistics
 from dataclasses import dataclass
 
 import pandas as pd
@@ -45,6 +46,54 @@ class LeagueParams:
                    sigma_cap=float(getattr(cfg, "sigma_cap", SIGMA_CAP)),
                    sigma_min_weeks=int(getattr(cfg, "sigma_min_weeks",
                                                SIGMA_MIN_WEEKS)))
+
+
+def _bounded(sigma: float, params: LeagueParams) -> float:
+    return min(max(float(sigma), params.sigma_floor), params.sigma_cap)
+
+
+def _stdev(series: list[float]) -> float | None:
+    """Sample stdev, or None when there is not enough of a series to have one."""
+    if len(series) < 2:
+        return None
+    return float(statistics.stdev(series))
+
+
+def margin_sigma(history, my_entry: int,
+                 params: LeagueParams | None = None) -> dict[int, float]:
+    """rival entry -> sigma of the per-GW margin (my points minus theirs).
+
+    Margin sigma is squad-overlap-aware for free: mirrored squads produce
+    small margins, so a small sigma, so the same points gap counts for more.
+    That is exactly what the flat 18.0 pin got wrong.
+
+    Fallback chain, in order: the rival's own margin series when it has at
+    least ``sigma_min_weeks`` shared gameweeks; the pooled league-wide margin
+    series when it does not; :data:`SIGMA_FALLBACK` when there is no poolable
+    history either. The result is bounded last, so no branch can escape
+    ``[sigma_floor, sigma_cap]``.
+    """
+    p = params or LeagueParams()
+    if history is None or len(history) == 0 or "entry" not in history.columns:
+        return {}
+    mine = history[history["entry"] == my_entry]
+    my_points = {int(g): float(pts)
+                 for g, pts in zip(mine["gw"], mine["points"])}
+    margins: dict[int, list[float]] = {}
+    for entry, group in history[history["entry"] != my_entry].groupby("entry"):
+        margins[int(entry)] = [my_points[int(g)] - float(pts)
+                               for g, pts in zip(group["gw"], group["points"])
+                               if int(g) in my_points]
+    pooled = [m for series in margins.values() for m in series]
+    pooled_sigma = (_stdev(pooled) if len(pooled) >= p.sigma_min_weeks
+                    else None)
+    out: dict[int, float] = {}
+    for entry, series in margins.items():
+        own = _stdev(series) if len(series) >= p.sigma_min_weeks else None
+        sigma = own if own is not None else pooled_sigma
+        out[entry] = _bounded(sigma if sigma is not None else SIGMA_FALLBACK,
+                              p)
+    return out
 
 
 @dataclass
