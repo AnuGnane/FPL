@@ -155,3 +155,131 @@ def match_codes(rows: pd.DataFrame, players: pd.DataFrame,
         print(f"news: {label} matched {len(matched)}/{len(out)} players")
     matched["code"] = matched["code"].astype(int)
     return matched.reset_index(drop=True)
+
+
+AVAIL_COLS = ["code", "status", "chance_of_playing", "injury_type",
+              "expected_return_gw", "p_start_hint", "source", "fetched_at"]
+
+OFFICIAL_AUTHORITATIVE = ("s", "u", "n")
+"""Official statuses news may never soften: suspended, unavailable, not in
+squad. All three are administrative facts rather than medical opinions — a ban
+is a ban whoever predicts the XI (spec §4 rule 1)."""
+
+NEWS_RETURNS_THIS_GW = 50.0
+"""``chance_of_playing`` a listed injury implies when its return date lands in
+the gameweek being advised. He is expected back *this* week and might make it,
+which is a coin flip rather than the zero a later return date earns."""
+
+
+def gw_for_date(events: pd.DataFrame | None, date) -> int | None:
+    """The first gameweek whose deadline falls on or after ``date``.
+
+    ``None`` when there is no calendar, no date, or the date is past the end of
+    the season — all three mean "we cannot place this return", and the horizon
+    decay then falls back to the pooled curve rather than inventing a gameweek.
+    """
+    if events is None or date is None or len(events) == 0:
+        return None
+    deadlines = pd.to_datetime(events["deadline_time"], errors="coerce",
+                               utc=True)
+    target = pd.Timestamp(date, tz="UTC")
+    ok = events.loc[deadlines >= target, "gw"]
+    return int(ok.min()) if len(ok) else None
+
+
+def _news_chance(return_gw, gw: int) -> float | None:
+    """The current-gameweek ``chance_of_playing`` a news row implies.
+
+    Keyed off the *return gameweek* rather than the prose, because the prose is
+    a headline and the date is a claim: back after this week is a zero, back
+    this week is a coin flip, no date at all says nothing about this week and
+    leaves the official number exactly where it was.
+    """
+    if return_gw is None or pd.isna(return_gw):
+        return None
+    return 0.0 if int(return_gw) > int(gw) else NEWS_RETURNS_THIS_GW
+
+
+def availability_frame(official: pd.DataFrame,
+                       injuries: pd.DataFrame | None,
+                       lineups: pd.DataFrame | None,
+                       gw: int,
+                       events: pd.DataFrame | None = None) -> pd.DataFrame:
+    """One row per official player code, sharpened by whatever news exists.
+
+    ``official`` is the bootstrap slice ``[code, status, chance_of_playing]``.
+    ``injuries`` and ``lineups`` are the fetchers' frames, either of which may
+    be ``None`` or empty. The result is the frame
+    :func:`gaffer.models.availability.apply_availability` consumes:
+
+    ``code, status, chance_of_playing, injury_type, expected_return_gw,
+    p_start_hint, source, fetched_at``
+
+    Precedence, spec §4, in order:
+
+    1. Official ``s``/``u``/``n`` is authoritative — news never lifts a ban,
+       and no hint or injury row is attached to one.
+    2. For ``i``/``d`` and unflagged players a listed injury supplies
+       ``injury_type`` and ``expected_return_gw`` even when the official flag
+       has not caught up. That head start is the point of the source.
+    3. ``p_start_hint`` comes from line-ups alone and is carried, not folded
+       in: it applies to the horizon's first gameweek only, and this frame has
+       no gameweek axis, so ``apply_availability`` is what applies it.
+    4. Where the sources disagree about *this* gameweek, the most pessimistic
+       view wins, and only downward — a news row can lower a chance, never
+       raise one.
+
+    With both news frames empty the output is the official frame with five
+    empty columns beside it, which is why the all-sources-down path is
+    byte-identical to the flags-only one.
+    """
+    out = (official[["code", "status", "chance_of_playing"]]
+           .drop_duplicates(subset=["code"]).reset_index(drop=True))
+    for col in ("injury_type", "expected_return_gw", "p_start_hint",
+                "source", "fetched_at"):
+        out[col] = None
+    open_codes = set(out.loc[~out["status"].isin(OFFICIAL_AUTHORITATIVE),
+                             "code"])
+
+    if injuries is not None and not injuries.empty:
+        inj = injuries[injuries["code"].isin(open_codes)].copy()
+        inj = inj.drop_duplicates(subset=["code"])
+        if not inj.empty:
+            inj["expected_return_gw"] = [
+                gw_for_date(events, d) for d in inj["expected_return_date"]]
+            inj["_chance"] = [_news_chance(g, gw)
+                              for g in inj["expected_return_gw"]]
+            keyed = inj.set_index("code")
+            hit = out["code"].isin(keyed.index)
+            for col in ("injury_type", "expected_return_gw", "source",
+                        "fetched_at"):
+                out.loc[hit, col] = out.loc[hit, "code"].map(keyed[col])
+            # Rule 4, one-way. 101.0 stands in for "unflagged", so an
+            # unflagged player is lowered by any news claim and a flagged one
+            # only by a stricter one.
+            cop = pd.to_numeric(out["chance_of_playing"], errors="coerce")
+            news = out["code"].map(keyed["_chance"]).astype("float64")
+            bites = hit & news.notna() & (news < cop.fillna(101.0))
+            out.loc[bites, "chance_of_playing"] = news[bites]
+            # An unflagged player the press has out needs a status the
+            # multiplier recognises; a player FPL already flagged keeps his.
+            unflagged = bites & ~out["status"].isin(["i", "d"])
+            out.loc[unflagged, "status"] = "i"
+
+    if lineups is not None and not lineups.empty:
+        hints = lineups[lineups["code"].isin(open_codes)].copy()
+        hints = hints.drop_duplicates(subset=["code"]).set_index("code")
+        if not hints.empty:
+            got = out["code"].isin(hints.index)
+            out.loc[got, "p_start_hint"] = out.loc[got, "code"].map(
+                hints["p_start_hint"])
+            no_source = got & out["source"].isna()
+            out.loc[no_source, "source"] = "lineups"
+            no_stamp = got & out["fetched_at"].isna()
+            out.loc[no_stamp, "fetched_at"] = out.loc[no_stamp, "code"].map(
+                hints["fetched_at"])
+
+    out["expected_return_gw"] = pd.to_numeric(out["expected_return_gw"],
+                                              errors="coerce")
+    out["p_start_hint"] = pd.to_numeric(out["p_start_hint"], errors="coerce")
+    return out[AVAIL_COLS]
