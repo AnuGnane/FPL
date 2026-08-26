@@ -67,11 +67,15 @@ Spec: `specs/2026-08-26-gaffer-v4d-compete-design.md` (§12 = full outcome) · P
 
 ## In progress
 
-## Planned
+### v5 — news (minutes/news ingestion)
+Spec: `specs/2026-08-26-gaffer-v5-news-design.md` (approved 2026-08-26)
+- [ ] `data/news/` package: premierinjuries + FFS lineups fetchers, Transfermarkt → injury_return_curves.json asset, precedence normalizer
+- [ ] Availability v2: per-injury-type horizon decay (3-deep fallback to today's 0.7)
+- [ ] ThreeModeModel {DNP, sub, start} replaces the heads; cup congestion + shrunken-rate features
+- [ ] Gate N1: benchmark zeros RMSE 1.074 → ≤ 1.024, no stratum regresses > 0.02
+- [ ] Gate N2: news shadow log + `gaffer evaluate --news-shadow`
 
-### Later — news ingestion (own cycle, external-data heavy)
-- [ ] premierinjuries.com / predicted-lineups ingestion for minutes model (the zeros/blanks gap)
-- [ ] Three-mode minutes model {DNP, sub, start}, cup-fixture congestion features
+## Planned
 
 ## Operational / housekeeping
 - [x] Untrack `reports/` artifacts + `.claude/`; gitignore both (`31dc239`)
