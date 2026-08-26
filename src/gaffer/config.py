@@ -42,6 +42,7 @@ class Config:
     sigma_floor: float = 8.0
     sigma_cap: float = 30.0
     sigma_min_weeks: int = 6
+    z_deadband: float = 0.25
     tier_eo: bool = True
     tier_sample: int = 300
 
@@ -81,6 +82,7 @@ def load_config(path: Path | str = "config.toml") -> Config:
         sigma_floor=float(league.get("sigma_floor", 8.0)),
         sigma_cap=float(league.get("sigma_cap", 30.0)),
         sigma_min_weeks=int(league.get("sigma_min_weeks", 6)),
+        z_deadband=float(league.get("z_deadband", 0.25)),
         tier_eo=bool(league.get("tier_eo", True)),
         tier_sample=int(league.get("tier_sample", 300)),
     )

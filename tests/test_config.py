@@ -142,6 +142,7 @@ def test_league_section_defaults_to_the_spec_values(tmp_path):
     assert cfg.sigma_floor == 8.0
     assert cfg.sigma_cap == 30.0
     assert cfg.sigma_min_weeks == 6
+    assert cfg.z_deadband == 0.25
     assert cfg.tier_eo is True
     assert cfg.tier_sample == 300
 
@@ -154,11 +155,13 @@ lambda_cap = 0.25
 sigma_floor = 5.0
 sigma_cap = 40.0
 sigma_min_weeks = 3
+z_deadband = 0.4
 tier_eo = false
 tier_sample = 50
 """))
     assert (cfg.z_scale, cfg.lambda_cap) == (2.0, 0.25)
     assert (cfg.sigma_floor, cfg.sigma_cap) == (5.0, 40.0)
     assert cfg.sigma_min_weeks == 3
+    assert cfg.z_deadband == 0.4
     assert cfg.tier_eo is False
     assert cfg.tier_sample == 50

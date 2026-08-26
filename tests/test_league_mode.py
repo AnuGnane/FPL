@@ -9,16 +9,30 @@ RIVALS = pd.DataFrame({"entry_name": ["Leader", "Mid", "Tail"],
                        "total": [500, 460, 400]})
 
 
-def test_a_small_gap_is_a_small_chase_not_a_dead_zone():
-    """v4d replaces the clamp ramp: the dial is smooth in z, so five points
-    behind is a small tilt rather than none at all."""
+def test_a_gap_inside_the_deadband_leaves_the_dial_at_exactly_zero():
+    """Reverses the earlier "a small gap is a small chase" pin. The review
+    found the consequence: tanh is never zero off zero, so on a live league
+    lam was *always* non-zero and the production path could never reach the
+    lam = 0 rails every degradation test is written against. A deadband on z
+    makes neutral reachable — five points behind at GW10 is z ~ 0.05, noise.
+    """
+    s = compute_strategy(my_total=495, rivals=RIVALS, current_gw=10)
+    assert s.z == 0.0            # 5 / (18 * sqrt(29)) ~ 0.05, inside the band
+    assert s.lam == 0.0
+    assert s.stance == "neutral"
+    assert s.gap == 5            # the gap itself is still reported honestly
+
+
+def test_a_gap_just_outside_the_deadband_still_chases_smoothly():
+    """The band is a floor on noise, not a step change: past it the dial is
+    the same smooth tanh it always was."""
     import math
 
-    s = compute_strategy(my_total=495, rivals=RIVALS, current_gw=10)
-    z = 5 / (18.0 * math.sqrt(29))
+    s = compute_strategy(my_total=440, rivals=RIVALS, current_gw=10)
+    z = 60 / (18.0 * math.sqrt(29))
+    assert z > 0.25
     assert s.stance == "chase"
     assert s.lam == pytest.approx(0.5 * math.tanh(z / 1.5))
-    assert 0.0 < s.lam < 0.02
 
 
 def test_big_gap_chases_with_positive_lambda():
@@ -165,10 +179,13 @@ def test_league_params_default_to_the_module_constants():
     from gaffer.league_mode import (LAMBDA_CAP, SIGMA_CAP, SIGMA_FLOOR,
                                     SIGMA_MIN_WEEKS, Z_SCALE, LeagueParams)
 
+    from gaffer.league_mode import Z_DEADBAND
+
     p = LeagueParams()
     assert (p.z_scale, p.lambda_cap) == (Z_SCALE, LAMBDA_CAP)
     assert (p.sigma_floor, p.sigma_cap) == (SIGMA_FLOOR, SIGMA_CAP)
     assert p.sigma_min_weeks == SIGMA_MIN_WEEKS
+    assert p.z_deadband == Z_DEADBAND == 0.25
 
 
 def test_league_params_read_a_config_without_importing_it():
@@ -178,10 +195,11 @@ def test_league_params_read_a_config_without_importing_it():
     from gaffer.league_mode import LeagueParams
 
     cfg = SimpleNamespace(z_scale=2.0, lambda_cap=0.25, sigma_floor=5.0,
-                          sigma_cap=40.0, sigma_min_weeks=3)
+                          sigma_cap=40.0, sigma_min_weeks=3, z_deadband=0.4)
     p = LeagueParams.from_config(cfg)
     assert (p.z_scale, p.lambda_cap, p.sigma_floor) == (2.0, 0.25, 5.0)
     assert (p.sigma_cap, p.sigma_min_weeks) == (40.0, 3)
+    assert p.z_deadband == 0.4
 
 
 def test_the_old_sigma_pin_is_still_importable_under_both_names():

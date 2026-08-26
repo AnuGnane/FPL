@@ -26,6 +26,15 @@ SIGMA_CAP = 30.0
 SIGMA_MIN_WEEKS = 6
 LAST_GW = 38
 
+Z_DEADBAND = 0.25
+"""Below this |z| the league is level and the dial is off.
+
+tanh is never exactly zero off zero, so without a band a live league always
+produced some lambda: the lam = 0 rails every degradation test is written
+against were unreachable in production, and a one-point swing tilted the
+board. A quarter of a normalized margin spread is inside the week-to-week
+noise of a mini-league, so it is treated as no gap at all."""
+
 THREAT_SIGMAS = 3.0
 """Ahead: rivals more than this many sigma-root-W back are not threats."""
 
@@ -41,6 +50,7 @@ class LeagueParams:
     sigma_floor: float = SIGMA_FLOOR
     sigma_cap: float = SIGMA_CAP
     sigma_min_weeks: int = SIGMA_MIN_WEEKS
+    z_deadband: float = Z_DEADBAND
 
     @classmethod
     def from_config(cls, cfg) -> "LeagueParams":
@@ -49,7 +59,8 @@ class LeagueParams:
                    sigma_floor=float(getattr(cfg, "sigma_floor", SIGMA_FLOOR)),
                    sigma_cap=float(getattr(cfg, "sigma_cap", SIGMA_CAP)),
                    sigma_min_weeks=int(getattr(cfg, "sigma_min_weeks",
-                                               SIGMA_MIN_WEEKS)))
+                                               SIGMA_MIN_WEEKS)),
+                   z_deadband=float(getattr(cfg, "z_deadband", Z_DEADBAND)))
 
 
 def _bounded(sigma: float, params: LeagueParams) -> float:
@@ -206,6 +217,9 @@ def compute_strategy(my_total: int, rivals: pd.DataFrame, current_gw: int,
     threat in normalized units — the rival with the largest P(catch me),
     which is not always the rival with the largest total.
 
+    A |z| under ``z_deadband`` is treated as level: lam is exactly 0.0 and the
+    stance is neutral. ``gap`` still reports the real points difference.
+
     ``history`` and ``my_entry`` are optional: without them every sigma is
     the pin, which is exactly the pre-v4d spread.
     """
@@ -238,6 +252,11 @@ def compute_strategy(my_total: int, rivals: pd.DataFrame, current_gw: int,
                 rival_row, sigma_m, nearest = row, sigma, norm
         z = -nearest
         gap = my_total - int(rival_row["total"])
+    if abs(z) < p.z_deadband:
+        # Inside the band the gap is noise: lam is exactly 0.0 and the stance
+        # is neutral, which is the only way the production path can reach the
+        # points-max rails at all (tanh alone never returns zero off zero).
+        z = 0.0
     if z == 0.0:
         z = 0.0          # a dead-level league gives -0.0, which reads as a typo
     lam = p.lambda_cap * math.tanh(abs(z) / p.z_scale) * _sign(z)
