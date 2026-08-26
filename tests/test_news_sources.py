@@ -24,6 +24,14 @@ def _players() -> pd.DataFrame:
          "second_name": "Palmer", "team_code": 8},
         {"code": 104, "name": "Rice", "first_name": "Declan",
          "second_name": "Rice", "team_code": 3},
+        {"code": 105, "name": "O'Riley", "first_name": "Matt",
+         "second_name": "O'Riley", "team_code": 36},
+        {"code": 106, "name": "Welbeck", "first_name": "Danny",
+         "second_name": "Welbeck", "team_code": 36},
+        {"code": 107, "name": "Mitoma", "first_name": "Kaoru",
+         "second_name": "Mitoma", "team_code": 36},
+        {"code": 108, "name": "Verbruggen", "first_name": "Bart",
+         "second_name": "Verbruggen", "team_code": 36},
     ])
 
 
@@ -32,6 +40,7 @@ def _teams() -> pd.DataFrame:
         {"code": 3, "name": "Arsenal", "short_name": "ARS"},
         {"code": 43, "name": "Man City", "short_name": "MCI"},
         {"code": 8, "name": "Chelsea", "short_name": "CHE"},
+        {"code": 36, "name": "Brighton", "short_name": "BHA"},
     ])
 
 
@@ -187,9 +196,10 @@ def test_scraped_entities_are_unescaped_before_anything_reads_them():
     assert row["name"] == "Matt O'Riley"
 
     line = parse_lineups(
-        '<div data-club="Brighton &amp; Hove Albion">'
-        '<ul class="starting-xi"><li>Matt O&#039;Riley</li></ul>'
-        "</div>").iloc[0]
+        "<h2>Brighton &amp; Hove Albion</h2>"
+        '<ul class="story-parts"><li class="headers"><strong>Out:</strong>'
+        '<ul class="players"><li>Matt O&#039;Riley</li></ul></li></ul>'
+    ).iloc[0]
     assert line["club"] == "Brighton & Hove Albion"
     assert line["name"] == "Matt O'Riley"
 
@@ -207,11 +217,11 @@ def test_an_unescaped_club_and_name_resolve_to_a_code():
         {"code": 200, "name": "O'Riley", "first_name": "Matt",
          "second_name": "O'Riley", "team_code": 36}])
     rows = parse_lineups(
-        '<div data-club="Brighton &amp; Hove Albion">'
-        '<ul class="starting-xi"><li>Matt O&#039;Riley</li></ul>'
-        "</div>")
+        "<h2>Brighton &amp; Hove Albion</h2>"
+        '<ul class="story-parts"><li class="headers"><strong>Out:</strong>'
+        '<ul class="players"><li>Matt O&#039;Riley</li></ul></li></ul>')
     assert club_code(club_code_map(teams), rows["club"].iloc[0]) == 36
-    assert match_codes(rows, players, teams,
+    assert match_codes(rows.drop(columns=["code"]), players, teams,
                        label="test")["code"].tolist() == [200]
 
 
@@ -381,26 +391,57 @@ def _lineups_html() -> str:
     return (FIXTURES / "ffs_lineups.html").read_text()
 
 
-def test_parse_lineups_assigns_one_slot_per_named_player():
+def test_parse_lineups_reads_the_pitch_and_the_absence_lists():
+    """The real page shape: an ``<h2>`` per club, a pitch of ``row-N`` lists
+    whose ``<li>`` carry ``title="Surname (First)"`` and an FPL photo URL,
+    then ``Out:``/``Doubts:``/``Banned:`` lists of bare names."""
     from gaffer.data.news.lineups import P_START_HINT, parse_lineups
 
     rows = parse_lineups(_lineups_html())
-    assert list(rows.columns) == ["name", "club", "slot"]
+    assert list(rows.columns) == ["name", "club", "slot", "code"]
     by_name = dict(zip(rows["name"], rows["slot"]))
     assert by_name["Bukayo Saka"] == "start"
-    assert by_name["Gabriel Magalhaes"] == "bench"
-    assert by_name["Joe Bloggs"] == "out"
-    assert P_START_HINT == {"start": 1.0, "bench": 0.25, "out": 0.0}
+    assert by_name["Gabriel Magalhães"] == "out"
+    assert by_name["Danny Welbeck"] == "doubt"
+    assert by_name["Bart Verbruggen"] == "out"
+    assert P_START_HINT == {"start": 1.0, "doubt": 0.25, "out": 0.0}
 
 
-def test_parse_lineups_covers_every_fixture_block():
+def test_parse_lineups_reorders_the_surname_first_title_and_takes_the_code():
+    """``title="Saka (Bukayo)"`` is the bootstrap's name inside out, and the
+    photo filename is the FPL player code outright — so the XI joins on the
+    code and the reordered name is only ever the fallback."""
+    from gaffer.data.news.lineups import parse_lineups
+
+    rows = parse_lineups(_lineups_html()).set_index("name")
+    assert rows.loc["Bukayo Saka", "code"] == 100
+    assert rows.loc["Declan Rice", "code"] == 104
+    # The absence lists carry no photo at all.
+    assert pd.isna(rows.loc["Danny Welbeck", "code"])
+
+
+def test_parse_lineups_strips_the_doubt_percentage_from_the_name():
+    from gaffer.data.news.lineups import parse_lineups
+
+    assert "Danny Welbeck" in set(parse_lineups(_lineups_html())["name"])
+
+
+def test_parse_lineups_ignores_the_latest_news_prose():
+    """The prose paragraph names half the squad and is not a list. A parse
+    that read it would hint players nobody has said anything about."""
     from gaffer.data.news.lineups import parse_lineups
 
     rows = parse_lineups(_lineups_html())
-    assert set(rows["club"]) == {"Arsenal", "Chelsea", "Man City"}
-    # Arsenal names four (two starters, a sub, one unavailable), Chelsea and
-    # Man City one apiece.
-    assert len(rows) == 6
+    arsenal = rows[rows["club"] == "Arsenal"]
+    assert len(arsenal) == 3          # two starters, one out
+    assert "Kaoru Mitoma" not in set(arsenal["name"])
+
+
+def test_parse_lineups_unescapes_the_club_heading():
+    from gaffer.data.news.lineups import parse_lineups
+
+    assert set(parse_lineups(_lineups_html())["club"]) == {
+        "Arsenal", "Brighton & Hove Albion"}
 
 
 def test_parse_lineups_on_a_rewritten_page_returns_empty():
@@ -417,12 +458,116 @@ def test_fetch_lineups_maps_slots_to_hints_and_codes(tmp_path):
     client = httpx.Client(transport=_transport(calls, _lineups_html()))
     out = fetch_lineups(_players(), _teams(), cache_dir=tmp_path,
                         client=client).set_index("code")
-    assert out.loc[100, "p_start_hint"] == 1.0     # Saka starts
-    assert out.loc[101, "p_start_hint"] == 0.25    # Gabriel benched
-    assert out.loc[102, "p_start_hint"] == 1.0     # Haaland starts
-    assert out.loc[104, "p_start_hint"] == 1.0     # Rice starts
+    assert out.loc[100, "p_start_hint"] == 1.0     # Saka, joined by code
+    assert out.loc[104, "p_start_hint"] == 1.0     # Rice, joined by code
+    assert out.loc[101, "p_start_hint"] == 0.0     # Gabriel is Out
+    assert out.loc[105, "p_start_hint"] == 1.0     # O'Riley, joined by code
+    assert out.loc[107, "p_start_hint"] == 1.0     # Mitoma, unknown photo code
+    assert out.loc[106, "p_start_hint"] == 0.25    # Welbeck is a doubt
+    assert out.loc[108, "p_start_hint"] == 0.0     # Verbruggen is banned
+    assert len(out) == 7
     assert (out["source"] == "lineups").all()
     assert len(calls) == 1
+
+
+def test_fetch_lineups_leaves_a_player_on_no_list_unhinted(tmp_path):
+    """A mere omission from the predicted XI is not evidence this cycle: 102
+    and 103 are named nowhere on the page and get no row at all."""
+    from gaffer.data.news.lineups import fetch_lineups
+
+    client = httpx.Client(transport=_transport([], _lineups_html()))
+    out = fetch_lineups(_players(), _teams(), cache_dir=tmp_path,
+                        client=client)
+    assert 102 not in set(out["code"])
+    assert 103 not in set(out["code"])
+
+
+def test_fetch_lineups_prefers_the_photo_code_over_the_title_name(tmp_path):
+    """The code in the photo URL is the FPL code outright; the title is a
+    name a human typed. Where they disagree the code wins, and no name
+    matching is even attempted for that row."""
+    from gaffer.data.news.lineups import fetch_lineups
+
+    markup = ("<h2>Arsenal</h2>"
+              '<ul class="row-1"><li title="Rice (Declan)">'
+              '<img src="https://resources.premierleague.com/premierleague25'
+              '/photos/players/110x140/100.png?v=2026"></li></ul>')
+    client = httpx.Client(transport=_transport([], markup))
+    out = fetch_lineups(_players(), _teams(), cache_dir=tmp_path,
+                        client=client)
+    assert out["code"].tolist() == [100]
+
+
+def test_fetch_lineups_ignores_a_pitch_under_a_heading_that_is_not_a_club(
+        tmp_path):
+    """The live page carries a "Scout Picks" widget built from byte-identical
+    pitch markup under an editorial heading. Its eleven photo codes are real
+    FPL codes, so nothing downstream would notice eleven bogus predicted
+    starters — the heading is the only thing that tells them apart."""
+    from gaffer.data.news.lineups import fetch_lineups
+
+    markup = ("<h2>Follow us on social</h2>"
+              '<ul class="row-1"><li title="Saka (Bukayo) - Midfielder">'
+              '<img src="https://resources.premierleague.com/premierleague25'
+              '/photos/players/110x140/100.png"></li></ul>')
+    client = httpx.Client(transport=_transport([], markup))
+    assert fetch_lineups(_players(), _teams(), cache_dir=tmp_path,
+                         client=client).empty
+
+
+def test_fetch_lineups_drops_a_pitch_entry_whose_photo_is_at_another_club(
+        tmp_path):
+    """The photo says who and the ``<h2>`` says where. Where they disagree
+    the entry is furniture, not a line-up, and a wrong 1.0 ceiling is exactly
+    the mistake the code join was supposed to make impossible."""
+    from gaffer.data.news.lineups import fetch_lineups
+
+    markup = ("<h2>Arsenal</h2>"
+              '<ul class="row-1"><li title="Haaland (Erling)">'
+              '<img src="https://resources.premierleague.com/premierleague25'
+              '/photos/players/110x140/102.png"></li></ul>')
+    client = httpx.Client(transport=_transport([], markup))
+    out = fetch_lineups(_players(), _teams(), cache_dir=tmp_path,
+                        client=client, min_coverage=0.0)
+    assert out.empty
+
+
+def test_fetch_lineups_keeps_the_absence_lists_inside_their_own_club(tmp_path):
+    """"Welbeck" under the Arsenal heading is not Brighton's Welbeck. The
+    club the ``<h2>`` names scopes the match, and an absentee nobody at that
+    club answers to is dropped rather than guessed at."""
+    from gaffer.data.news.lineups import fetch_lineups
+
+    markup = ("<h2>Arsenal</h2>"
+              '<ul class="story-parts"><li class="headers">'
+              "<strong>Out:</strong>"
+              '<ul class="players"><li>Danny Welbeck</li></ul></li></ul>')
+    client = httpx.Client(transport=_transport([], markup))
+    out = fetch_lineups(_players(), _teams(), cache_dir=tmp_path,
+                        client=client, min_coverage=0.0)
+    assert out.empty
+
+
+def test_fetch_lineups_keeps_the_code_join_when_the_name_batch_is_discarded(
+        tmp_path, capsys):
+    """The coverage floor guards *name matching*, which is the pass that can
+    silently mis-resolve. A row joined on the photo code cannot be wrong, so
+    a page whose absence lists have all been renamed still yields its XI."""
+    from gaffer.data.news.lineups import fetch_lineups
+
+    markup = ("<h2>Arsenal</h2>"
+              '<ul class="row-1"><li title="Saka (Bukayo)">'
+              '<img src="https://resources.premierleague.com/premierleague25'
+              '/photos/players/110x140/100.png"></li></ul>'
+              '<ul class="story-parts"><li class="headers">'
+              "<strong>Out:</strong><ul class=\"players\">"
+              + "".join(f"<li>Nobody {i}</li>" for i in range(5))
+              + "</ul></li></ul>")
+    client = httpx.Client(transport=_transport([], markup))
+    out = fetch_lineups(_players(), _teams(), cache_dir=tmp_path,
+                        client=client)
+    assert out["code"].tolist() == [100]
+    assert "lineups" in capsys.readouterr().out
 
 
 def test_fetch_lineups_degrades_to_empty_when_the_page_is_down(tmp_path):
