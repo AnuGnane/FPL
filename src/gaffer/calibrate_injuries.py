@@ -121,6 +121,30 @@ def run_calibration(clubs: dict[str, int],
     return fit_curves(spells)
 
 
+def _check_cdf(name: str, curve) -> None:
+    """Reject anything shipped as ``P(returned by h)`` that is not one.
+
+    :func:`_cdf` cannot produce a bad curve, which is exactly why this belongs
+    at the *write* boundary rather than in the fit: what reaches the asset may
+    have been hand-edited, merged from an older schema, or built by a caller
+    that fitted its own numbers. Each of the three faults rewrites the horizon
+    decay for a whole season and none of them looks wrong in the JSON.
+    """
+    values = [float(v) for v in curve]
+    if values and values[0] != 0.0:
+        raise ValueError(
+            f"injury curve '{name}' does not start at 0 ({values[0]}) — h=0 "
+            "is the gameweek the injury is in, and nobody returns inside it")
+    if any(v < 0.0 or v > 1.0 for v in values):
+        raise ValueError(
+            f"injury curve '{name}' leaves [0, 1] — it is read as a "
+            "probability and nothing downstream clamps it")
+    if any(b < a for a, b in zip(values, values[1:])):
+        raise ValueError(
+            f"injury curve '{name}' is not non-decreasing — a return "
+            "probability that falls says a player un-returned")
+
+
 def write_curves(payload: dict, path: Path | str = ASSET_PATH) -> Path:
     """Validate and write the asset.
 
@@ -139,6 +163,9 @@ def write_curves(payload: dict, path: Path | str = ASSET_PATH) -> Path:
         raise ValueError(
             "injury curves carry no pooled fallback — every unseen injury "
             "type would decay on nothing")
+    for name, curve in [("pooled", payload["pooled"]),
+                        *sorted((payload.get("curves") or {}).items())]:
+        _check_cdf(name, curve)
     dest = Path(path)
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")

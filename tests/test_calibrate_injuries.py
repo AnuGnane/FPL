@@ -107,6 +107,35 @@ def test_write_curves_refuses_a_payload_with_no_pooled_curve(tmp_path):
                      tmp_path / "injury_return_curves.json")
 
 
+def _payload(**curves) -> dict:
+    pooled = curves.pop("pooled", [0.0, 0.5, 1.0])
+    return {"version": 1, "generated_at": "x", "horizon": 8,
+            "curves": curves, "pooled": pooled}
+
+
+@pytest.mark.parametrize("bad, why", [
+    ({"pooled": [0.2, 0.5, 1.0]}, "start at 0"),
+    ({"knock": [0.2, 0.5, 1.0]}, "start at 0"),
+    ({"pooled": [0.0, 0.7, 0.4]}, "non-decreasing"),
+    ({"knock": [0.0, 0.7, 0.4]}, "non-decreasing"),
+    ({"pooled": [0.0, 0.5, 1.4]}, r"\[0, 1\]"),
+    ({"knock": [0.0, -0.1, 1.0]}, r"\[0, 1\]"),
+])
+def test_write_curves_refuses_a_curve_that_is_not_a_cdf(bad, why, tmp_path):
+    """The asset is read as ``P(returned by h)``. A curve that starts above
+    zero says a player was back the week he got injured; one that dips says
+    he un-returned; one outside [0, 1] is not a probability at all. Any of
+    the three silently rewrites the horizon decay for a whole season."""
+    with pytest.raises(ValueError, match=why):
+        write_curves(_payload(**bad), tmp_path / "curves.json")
+
+
+def test_write_curves_accepts_a_well_formed_pair(tmp_path):
+    dest = write_curves(_payload(knock=[0.0, 1.0, 1.0]),
+                        tmp_path / "curves.json")
+    assert Path(dest).exists()
+
+
 def test_write_curves_round_trips_through_the_asset_loader(tmp_path,
                                                             monkeypatch):
     from gaffer import assets

@@ -95,6 +95,18 @@ def test_without_the_asset_every_row_uses_the_flat_geometric():
         assert abs(out.loc[gw, "p_play"] - 0.9 * (1 - RECOVERY ** h)) < 1e-9
 
 
+def test_the_first_gameweek_keeps_the_official_factor_whatever_the_curve_says():
+    """Belt and braces beside the asset validation: h = 0 is *this* week, and
+    this week's number is the official flag. A curve whose first element is
+    not zero — a hand-edited asset, an older schema — must not lift a zeroed
+    player back into the XI."""
+    out = apply_availability(_pred([5, 6]),
+                             _avail(injury_type="hamstring"),
+                             curves={"curves": {"hamstring": [0.8, 0.9]},
+                                     "pooled": [0.8, 0.9]}).set_index("gw")
+    assert out.loc[5, "p_play"] == 0.0
+
+
 def test_a_return_date_floors_every_gameweek_before_it_at_zero():
     """The date the news layer worked to obtain was carried through the frame
     and never read. A hamstring listed as back for GW7 must be a zero in GW5

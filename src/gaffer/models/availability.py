@@ -130,6 +130,14 @@ def _relax(factor: pd.Series, h: pd.Series, injury_type,
                 and not pd.isna(back) and int(week) < int(back)):
             relaxed.append(0.0)
             continue
+        if steps <= 0:
+            # The horizon's first gameweek is *this* one, and this one's
+            # number is the official flag — no curve, however malformed, gets
+            # to relax it. ``write_curves`` already refuses a curve that does
+            # not start at zero; this is the second lock on the same door,
+            # because an asset can reach a clone without passing that gate.
+            relaxed.append(f)
+            continue
         # A missing type is not an unseen one: an unflagged knock or an ending
         # ban has no injury behind it to pool with, so it never reaches the
         # curve chain at all.
