@@ -44,7 +44,7 @@ Spec: `specs/2026-08-25-gaffer-v4b-model-design.md` (§13 = full outcome) · Pla
 - [x] Final adversarial review: 4 blockers found + fixed + re-verified (MERGE verdict); deferred nits recorded in spec §13
 - Suite: 711 Python + 58 frontend, tsc clean
 
-### v4c — decide (done 2026-08-26, on `feat/gaffer-v4c`)
+### v4c — decide (done, merged `2e6c454` 2026-08-26)
 Spec: `specs/2026-08-25-gaffer-v4c-decide-design.md` (§12 = full outcome) · Plan: `plans/2026-08-25-gaffer-v4c-decide.md`
 - [x] Scenario re-solving: N=40 noised solves → move-frequency gating (D1: 1818 vs 1743 raw, fewer transfers/hits) + CLI/UI "% of sims"
 - [x] FT/hit shadow price λ(k,t) DP (multi-spend recursion; plan's sketch was degenerate) — D2 pass: 1814 vs 1810, hits 16 vs 18
@@ -52,8 +52,8 @@ Spec: `specs/2026-08-25-gaffer-v4c-decide-design.md` (§12 = full outcome) · Pl
 - [x] Objective craft: itb 0.08, convex bench curve, ft_use_penalty 0.2 (measured inside D2)
 - [x] Replay-calibrated decision_priors.json asset + `gaffer calibrate-decisions`
 - [ ] DGW/BGW `chip_scenarios.toml` population — hook shipped; data lands ~Jan (Crellin)
-- Recorded anomaly: λ+θ together (1796) < either alone; suspected ft_lambda/chip-eval double-count — next cycle
-- Suite: 923 Python + 62 frontend; advise wall-clock 68 s with the full stack on
+- [x] Final adversarial review: 8 blockers fixed (incl. wildcard FT-bank double-charge = the λ×θ anomaly mechanism, confirmed; calibrator decontaminated), re-measured: D2 +43, both-on 1865 (+55) — MERGE
+- Suite: 944 Python + 62 frontend; advise wall-clock 62.8 s with the full stack on
 
 ## In progress
 
