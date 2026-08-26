@@ -432,13 +432,16 @@ def build_prediction_frame(hist: pd.DataFrame, future: pd.DataFrame,
     rot.loc[stale, "season_start_share"] = float("nan")
     us = latest_understat_rolling(hist, US_WINDOWS)
     shrunk = latest_shrunken_rates(hist)
+    modes = latest_shrunken_modes(hist)
     frame = pd.concat(
         [out.drop(columns=list(latest.columns) + ROTATION_FEATURES
-                  + list(us.columns) + SHRUNK_FEATURES, errors="ignore"),
+                  + list(us.columns) + SHRUNK_FEATURES
+                  + SHRUNK_MODE_FEATURES, errors="ignore"),
          latest.reindex(out["code"]).reset_index(drop=True),
          rot.drop(columns=["_rot_season_idx"]),
          us.reindex(out["code"]).reset_index(drop=True),
-         shrunk.reindex(out["code"]).reset_index(drop=True)], axis=1)
+         shrunk.reindex(out["code"]).reset_index(drop=True),
+         modes.reindex(out["code"]).reset_index(drop=True)], axis=1)
     return merge_understat_team(
         frame.drop(columns=TEAM_US_FEATURES, errors="ignore"),
         understat_team,
@@ -459,7 +462,7 @@ def feature_columns(stats: list[str] = ROLL_STATS,
                     "pen_taker", "setpiece_taker"] + ROTATION_FEATURES
             + CONGESTION_FEATURES
             + understat_feature_columns() + TEAM_US_FEATURES
-            + SHRUNK_FEATURES)
+            + SHRUNK_FEATURES + SHRUNK_MODE_FEATURES)
 
 
 US_STATS = ["us_shots", "us_key_passes", "us_npxg", "us_xgchain",
@@ -625,6 +628,82 @@ roughly half a season's benefit of the doubt.
 SHRINK_K_GRID = [2.0, 5.0, 10.0, 20.0]
 SHRUNK_FEATURES = ["shrunk_goals90", "shrunk_assists90"]
 
+SHRINK_K_MODE = 8.0
+"""Prior weight, in *matches*, for the mode rates.
+
+Read the same way :data:`SHRINK_K` is: "how many matches of position-by-club
+evidence the prior is worth". Lower than the goals-rate k because the quantity
+is far less noisy — whether a man started is observed exactly, where whether
+he was going to score is a coin flip on a small number — so his own record
+earns its weight back in a handful of matches rather than half a season.
+Chosen off :func:`best_mode_shrinkage_k` on the last ten gameweek slots over
+the grid {2, 4, 8, 16}, the same offline procedure and the same pinning
+convention v4b used for ``SHRINK_K = 20``.
+"""
+
+SHRINK_K_MODE_GRID = [2.0, 4.0, 8.0, 16.0]
+SHRUNK_MODE_FEATURES = ["shrunk_start_rate", "shrunk_min_per_app"]
+
+
+def _shrunk_ratio(df: pd.DataFrame, val: pd.Series, den: pd.Series,
+                  k: float, as_of_end: bool = False) -> pd.Series:
+    """``(sum val + k * prior) / (sum den + k)``, all sums leakage-free.
+
+    The generalisation of :func:`_shrunk_rate` over the *denominator*: v4b's
+    rates are per-ninety, but a start rate is per-match and a
+    minutes-per-appearance is per-appearance, and all three are the same
+    empirical-Bayes estimator with a different unit of exposure.
+
+    The player's own record is ``shift(1)`` then ``cumsum`` within his own
+    rows, whose order is chronological inside each code group. The
+    position-by-club prior CANNOT be built the same way: the frame is sorted
+    by *player*, not by time, so a per-row cumsum over the (position, club)
+    group would fold in other players' future matches — and teammates share
+    fixtures, so even a time-sorted row cumsum would leak the current match's
+    own result through the teammate's row. The prior is therefore accumulated
+    at gameweek-slot granularity: per-(position, club, slot) totals, cumsummed
+    over slots with the current slot subtracted out, so a row's prior contains
+    strictly-earlier gameweeks only.
+
+    ``as_of_end`` drops both exclusions — no ``shift(1)`` on the player's own
+    sums, no current-slot subtraction on the prior — so a row's value counts
+    its own match too. That is wrong for a *training* row, whose window may
+    only see matches strictly before it, and right for the as-of-end-of-
+    history broadcast onto a future fixture, where every played match is
+    legal evidence.
+    """
+    code = df["code"]
+    val = val.astype("float64").fillna(0.0)
+    den = den.astype("float64").fillna(0.0)
+
+    if as_of_end:
+        own_val = val.groupby(code).cumsum()
+        own_den = den.groupby(code).cumsum()
+    else:
+        own_val = val.groupby(code).shift(1).fillna(0.0).groupby(code).cumsum()
+        own_den = den.groupby(code).shift(1).fillna(0.0).groupby(code).cumsum()
+
+    slots = pd.DataFrame({
+        "pos": df["position"].to_numpy(),
+        "team": df["team_code"].to_numpy(),
+        # gw <= 38, so *100 keeps (season, gw) ordered in one integer key.
+        "slot": (pd.to_numeric(df["season_idx"]).astype(int) * 100
+                 + pd.to_numeric(df["gw"]).astype(int)).to_numpy(),
+        "val": val.to_numpy(), "den": den.to_numpy()})
+    agg = (slots.groupby(["pos", "team", "slot"], as_index=False)
+           [["val", "den"]].sum().sort_values(["pos", "team", "slot"]))
+    g = agg.groupby(["pos", "team"])
+    # cumsum minus the current slot's own total == everything strictly before.
+    before_val = g["val"].cumsum() - (0.0 if as_of_end else agg["val"])
+    before_den = g["den"].cumsum() - (0.0 if as_of_end else agg["den"])
+    prior_rate = before_val / before_den.where(before_den > 0.0)
+    lookup = dict(zip(zip(agg["pos"], agg["team"], agg["slot"]), prior_rate))
+    prior = pd.Series(
+        [lookup[key] for key in zip(slots["pos"], slots["team"],
+                                    slots["slot"])],
+        index=df.index, dtype="float64")
+    return (own_val + k * prior) / (own_den + k)
+
 
 def _shrunk_rate(df: pd.DataFrame, stat: str, k: float,
                  as_of_end: bool = False) -> pd.Series:
@@ -647,40 +726,14 @@ def _shrunk_rate(df: pd.DataFrame, stat: str, k: float,
     only see matches strictly before it, and right for the as-of-end-of-
     history broadcast onto a future fixture, where every played match is
     legal evidence. Only :func:`latest_shrunken_rates` passes it.
+
+    See :func:`_shrunk_ratio` for the mechanics.
     """
-    code = df["code"]
-    val = pd.to_numeric(df[stat], errors="coerce").fillna(0.0)
-    nineties = (pd.to_numeric(df["minutes"], errors="coerce").fillna(0.0)
-                / 90.0)
-
-    if as_of_end:
-        own_val = val.groupby(code).cumsum()
-        own_90 = nineties.groupby(code).cumsum()
-    else:
-        own_val = val.groupby(code).shift(1).fillna(0.0).groupby(code).cumsum()
-        own_90 = (nineties.groupby(code).shift(1).fillna(0.0)
-                  .groupby(code).cumsum())
-
-    slots = pd.DataFrame({
-        "pos": df["position"].to_numpy(),
-        "team": df["team_code"].to_numpy(),
-        # gw <= 38, so *100 keeps (season, gw) ordered in one integer key.
-        "slot": (pd.to_numeric(df["season_idx"]).astype(int) * 100
-                 + pd.to_numeric(df["gw"]).astype(int)).to_numpy(),
-        "val": val.to_numpy(), "n90": nineties.to_numpy()})
-    agg = (slots.groupby(["pos", "team", "slot"], as_index=False)
-           [["val", "n90"]].sum().sort_values(["pos", "team", "slot"]))
-    g = agg.groupby(["pos", "team"])
-    # cumsum minus the current slot's own total == everything strictly before.
-    before_val = g["val"].cumsum() - (0.0 if as_of_end else agg["val"])
-    before_90 = g["n90"].cumsum() - (0.0 if as_of_end else agg["n90"])
-    prior_rate = before_val / before_90.where(before_90 > 0.0)
-    lookup = dict(zip(zip(agg["pos"], agg["team"], agg["slot"]), prior_rate))
-    prior = pd.Series(
-        [lookup[key] for key in zip(slots["pos"], slots["team"],
-                                    slots["slot"])],
-        index=df.index, dtype="float64")
-    return (own_val + k * prior) / (own_90 + k)
+    return _shrunk_ratio(
+        df,
+        pd.to_numeric(df[stat], errors="coerce").fillna(0.0),
+        pd.to_numeric(df["minutes"], errors="coerce").fillna(0.0) / 90.0,
+        k, as_of_end)
 
 
 def add_shrunken_rates(df: pd.DataFrame,
@@ -707,6 +760,63 @@ def add_shrunken_rates(df: pd.DataFrame,
         else:
             out[col] = float("nan")
     return out
+
+
+def add_shrunken_modes(df: pd.DataFrame,
+                       k: float = SHRINK_K_MODE) -> pd.DataFrame:
+    """``shrunk_start_rate`` and ``shrunk_min_per_app``.
+
+    The two numbers the three-mode model most wants and the rolling means are
+    worst at. ``starts_r5`` over three matches of a new signing is a third,
+    two thirds or one, and none of those is an estimate of anything;
+    shrinking toward the position-by-club prior gives a usable number from
+    the first gameweek and converges on his own record as he plays.
+
+    The denominators are what makes them different from
+    :func:`add_shrunken_rates`. The start rate is per *match in the squad* —
+    every row counts, because being left out is exactly the signal. The
+    minutes rate is per *appearance* — a DNP is not a zero-minute cameo, and
+    counting it as one reads a rotated-out starter as a 20-minute substitute.
+
+    Rows before the prior has any evidence at all come back NaN, which
+    LightGBM splits on natively.
+    """
+    sort_cols = [c for c in ("code", "season_idx", "gw", "kickoff_time")
+                 if c in df.columns]
+    out = df.sort_values(sort_cols).reset_index(drop=True)
+    for col, val, den in _mode_rate_parts(out):
+        out[col] = (_shrunk_ratio(out, val, den, k) if val is not None
+                    else float("nan"))
+    return out
+
+
+def _mode_rate_parts(df: pd.DataFrame):
+    """``(column, numerator, denominator)`` for each mode rate.
+
+    One place defines what the two rates are made of, so
+    :func:`add_shrunken_modes` and :func:`latest_shrunken_modes` cannot drift
+    apart — the train/serve skew this module keeps repeating itself about.
+    """
+    ones = pd.Series(1.0, index=df.index, dtype="float64")
+    # The prior keys are part of the requirement, not just the numerators:
+    # _shrunk_ratio accumulates position-by-club totals per gameweek slot, so
+    # a frame without them yields the all-NaN column the module's convention
+    # gives any feature whose source is absent.
+    needed = {"starts", "minutes", "position", "team_code", "season_idx", "gw"}
+    if needed <= set(df.columns):
+        mins = pd.to_numeric(df["minutes"], errors="coerce").fillna(0.0)
+        starts = pd.to_numeric(df["starts"], errors="coerce")
+        # A missing ``starts`` (a season the feed predates) is inferred from
+        # the minutes rather than dropped: 60+ is a start in all but a
+        # handful of cases, and a hole here would blank the feature for a
+        # whole season.
+        starts = starts.fillna((mins >= 60).astype("float64"))
+        played = (mins > 0).astype("float64")
+        yield "shrunk_start_rate", starts, ones
+        yield "shrunk_min_per_app", mins, played
+    else:
+        yield "shrunk_start_rate", None, None
+        yield "shrunk_min_per_app", None, None
 
 
 def latest_understat_rolling(hist: pd.DataFrame,
@@ -763,6 +873,25 @@ def latest_shrunken_rates(hist: pd.DataFrame,
                       ("assists", "shrunk_assists90")):
         out[col] = (_shrunk_rate(h, stat, k, as_of_end=True)
                     if stat in h.columns else float("nan"))
+    return out.groupby("code", sort=False).tail(1).set_index("code")
+
+
+def latest_shrunken_modes(hist: pd.DataFrame,
+                          k: float = SHRINK_K_MODE) -> pd.DataFrame:
+    """Each player's as-of-today mode rates, indexed by ``code``.
+
+    The same as-of-end contract :func:`latest_shrunken_rates` keeps and for
+    the same reason: the stored training column excludes each row's own match
+    by construction, so tailing it would serve a vector one match stale — a
+    debut start reaching the model a week late.
+    """
+    sort_cols = [c for c in ("code", "season_idx", "gw", "kickoff_time")
+                 if c in hist.columns]
+    h = hist.sort_values(sort_cols).reset_index(drop=True)
+    out = pd.DataFrame({"code": h["code"]})
+    for col, val, den in _mode_rate_parts(h):
+        out[col] = (_shrunk_ratio(h, val, den, k, as_of_end=True)
+                    if val is not None else float("nan"))
     return out.groupby("code", sort=False).tail(1).set_index("code")
 
 
@@ -825,6 +954,38 @@ def best_shrinkage_k(df: pd.DataFrame, k_grid: list[float] = SHRINK_K_GRID,
         actual = (pd.to_numeric(hold["goals"], errors="coerce")
                   / (pd.to_numeric(hold["minutes"], errors="coerce") / 90.0))
         pair = pd.DataFrame({"pred": hold["shrunk_goals90"],
+                             "actual": actual}).dropna()
+        if len(pair) < 2 or pair["pred"].nunique() < 2:
+            continue
+        score = float(pair["pred"].corr(pair["actual"]))
+        if score > best_score:
+            best_score, best_k = score, float(k)
+    return best_k
+
+
+def best_mode_shrinkage_k(df: pd.DataFrame,
+                          k_grid: list[float] = SHRINK_K_MODE_GRID,
+                          holdout_slots: int = 10) -> float:
+    """The ``k`` whose shrunken start rate best predicts held-out starts.
+
+    The mode-rate twin of :func:`best_shrinkage_k`, scored by correlation
+    against the *actual* start indicator on the last ``holdout_slots``
+    gameweek slots, with the rates built from earlier rows only. Offline: its
+    answer is pinned as :data:`SHRINK_K_MODE` rather than refitted per run, so
+    a training run is deterministic and a change of k is a reviewable diff.
+    """
+    slots = (df[["season_idx", "gw"]].drop_duplicates()
+             .sort_values(["season_idx", "gw"]))
+    if len(slots) <= holdout_slots:
+        return SHRINK_K_MODE
+    bs, bg = slots.iloc[-holdout_slots][["season_idx", "gw"]]
+    best_k, best_score = SHRINK_K_MODE, -2.0
+    for k in k_grid:
+        rated = add_shrunken_modes(df, k=k)
+        hold = rated[(rated["season_idx"] > bs)
+                     | ((rated["season_idx"] == bs) & (rated["gw"] >= bg))]
+        actual = pd.to_numeric(hold.get("starts"), errors="coerce")
+        pair = pd.DataFrame({"pred": hold["shrunk_start_rate"],
                              "actual": actual}).dropna()
         if len(pair) < 2 or pair["pred"].nunique() < 2:
             continue

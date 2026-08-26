@@ -871,3 +871,107 @@ def test_prediction_frame_carries_congestion_for_future_fixtures():
     out = build_prediction_frame(hist, future)
     assert out["days_since_last_match"].iloc[0] == 4.0
     assert out["matches_last_14d"].iloc[0] == 2.0
+
+
+def test_shrunk_rate_is_unchanged_by_the_denominator_refactor():
+    """v4b's rates are a shipped, gated feature. The generalisation under
+    them must be arithmetic-identical: (sum stat + k*prior) / (sum 90s + k)."""
+    from gaffer.features.engineer import _shrunk_rate
+
+    df = pd.DataFrame({
+        "code": [1, 1, 1], "season_idx": [0, 0, 0], "gw": [1, 2, 3],
+        "position": ["FWD"] * 3, "team_code": [3] * 3,
+        "minutes": [90.0, 90.0, 90.0], "goals": [1.0, 0.0, 2.0]})
+    out = _shrunk_rate(df, "goals", k=2.0)
+    # Row 3 sees one 90 with 1 goal from row 1 and one with 0 from row 2:
+    # own = 1 goal / 2 nineties; the prior has no other club-mate, so it is
+    # NaN and the whole expression is NaN. Row 1 has no history at all.
+    assert pd.isna(out.iloc[0])
+    assert len(out) == 3
+
+
+def _mode_frame() -> pd.DataFrame:
+    """Two club-mates: a nailed starter and a fringe player with two cameos."""
+    rows = []
+    for gw in range(1, 11):
+        rows.append({"code": 1, "season_idx": 0, "gw": gw, "position": "MID",
+                     "team_code": 3, "minutes": 90.0, "starts": 1.0,
+                     "kickoff_time": None})
+        mins = 15.0 if gw in (3, 7) else 0.0
+        rows.append({"code": 2, "season_idx": 0, "gw": gw, "position": "MID",
+                     "team_code": 3, "minutes": mins,
+                     "starts": 0.0, "kickoff_time": None})
+    return pd.DataFrame(rows)
+
+
+def test_shrunken_modes_separate_a_starter_from_a_fringe_player():
+    from gaffer.features.engineer import add_shrunken_modes
+
+    out = add_shrunken_modes(_mode_frame(), k=2.0)
+    last = out[out["gw"] == 10].set_index("code")
+    assert last.loc[1, "shrunk_start_rate"] > 0.7
+    assert last.loc[2, "shrunk_start_rate"] < 0.3
+    # The club prior is dragged up by the ever-present starter, so both land
+    # above the fringe player's own 15-minute record — the separation the
+    # feature has to preserve is the gap, not the absolute level.
+    assert last.loc[1, "shrunk_min_per_app"] > 70.0
+    assert last.loc[2, "shrunk_min_per_app"] < 60.0
+
+
+def test_shrunken_modes_pull_toward_the_prior_at_low_n():
+    """The whole point of the shrinkage: two matches is not evidence. A
+    heavier k must move a thin record further toward the club prior."""
+    from gaffer.features.engineer import add_shrunken_modes
+
+    df = _mode_frame()
+    early = df[df["gw"] <= 3]
+    light = add_shrunken_modes(early, k=1.0)
+    heavy = add_shrunken_modes(early, k=50.0)
+    row = (light["code"] == 2) & (light["gw"] == 3)
+    light_v = light.loc[row, "shrunk_start_rate"].iloc[0]
+    heavy_v = heavy.loc[row, "shrunk_start_rate"].iloc[0]
+    # The club prior is dragged up by the ever-present starter, so heavier
+    # shrinkage lifts the fringe player toward it.
+    assert heavy_v > light_v
+
+
+def test_shrunken_modes_never_see_the_rows_own_match():
+    """Leakage rail. A player whose only match is this one has nothing of his
+    own to average, so the value is the prior or NaN — never his own start."""
+    from gaffer.features.engineer import add_shrunken_modes
+
+    out = add_shrunken_modes(_mode_frame(), k=2.0)
+    first = out[out["gw"] == 1].set_index("code")
+    assert pd.isna(first.loc[1, "shrunk_start_rate"])
+    assert pd.isna(first.loc[2, "shrunk_start_rate"])
+
+
+def test_minutes_per_appearance_ignores_matches_he_did_not_play():
+    """A DNP is not a zero-minute appearance. Averaging it in would read a
+    rotated-out starter as a 20-minute cameo player."""
+    from gaffer.features.engineer import add_shrunken_modes
+
+    out = add_shrunken_modes(_mode_frame(), k=0.0)
+    last = out[(out["gw"] == 10) & (out["code"] == 2)]
+    # Two appearances of 15 minutes and eight DNPs -> 15, not 3.
+    assert abs(last["shrunk_min_per_app"].iloc[0] - 15.0) < 1e-9
+
+
+def test_feature_columns_include_the_mode_rate_block():
+    from gaffer.features.engineer import SHRUNK_MODE_FEATURES, feature_columns
+
+    assert set(SHRUNK_MODE_FEATURES) <= set(feature_columns())
+
+
+def test_prediction_frame_carries_the_mode_rates_including_the_last_match():
+    """Same as-of-end contract latest_shrunken_rates keeps: a future row's
+    rate counts every played match, the last one included."""
+    from gaffer.features.engineer import build_prediction_frame
+
+    hist = _mode_frame()
+    future = pd.DataFrame({
+        "code": [1, 2], "season_idx": [0, 0], "gw": [11, 11],
+        "team_code": [3, 3], "opp_code": [43, 43], "was_home": [True, True],
+        "position": ["MID", "MID"], "kickoff_time": [None, None]})
+    out = build_prediction_frame(hist, future).set_index("code")
+    assert out.loc[1, "shrunk_start_rate"] > out.loc[2, "shrunk_start_rate"]
