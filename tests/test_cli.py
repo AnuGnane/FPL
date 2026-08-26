@@ -275,3 +275,20 @@ def test_calibrate_injuries_is_registered_and_needs_a_club_table(tmp_path):
                                       str(tmp_path / "missing.json")])
     assert result.exit_code == 1
     assert "club table" in result.stdout
+
+
+def test_evaluate_accepts_the_news_shadow_flag(monkeypatch, tmp_path):
+    """Gate N2's readout has to be reachable without a model on disk."""
+    from typer.testing import CliRunner
+
+    from gaffer import evaluation
+    from gaffer.cli import app
+
+    monkeypatch.setattr(evaluation, "evaluate_news_shadow",
+                        lambda: {"run_at": "x", "git_sha": "y", "rows": 0,
+                                 "overall": {}, "by_gw": []})
+    monkeypatch.setattr(evaluation, "save_evaluation",
+                        lambda key, payload: tmp_path / "evaluation.json")
+    result = CliRunner().invoke(app, ["evaluate", "--news-shadow"])
+    assert result.exit_code == 0
+    assert "nothing to score yet" in result.stdout

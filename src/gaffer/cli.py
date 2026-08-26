@@ -283,13 +283,19 @@ def evaluate(mode: str = typer.Option(
                  False, "--decompose",
                  help="Run the {model,oracle} x {h1,h3} replay 2x2 instead. "
                       "Hours: launch it under `caffeinate -i`."),
+             news_shadow: bool = typer.Option(
+                 False, "--news-shadow",
+                 help="Score the banked news shadow log against completed "
+                      "gameweeks instead (gate N2)."),
              season: str = "2025-26", start_gw: int = 5):
     """Score the model and write reports/evaluation.json."""
     from gaffer.evaluation import (evaluate_benchmark, evaluate_current,
-                                   format_report, run_decomposition,
-                                   save_evaluation)
+                                   evaluate_news_shadow, format_report,
+                                   run_decomposition, save_evaluation)
 
-    if decompose:
+    if news_shadow:
+        key, payload = "news_shadow", evaluate_news_shadow()
+    elif decompose:
         key, payload = "decomposition", run_decomposition(season=season,
                                                           start_gw=start_gw)
     elif mode == "benchmark":

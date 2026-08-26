@@ -344,6 +344,83 @@ def evaluate_current(holdout_slots: int = HOLDOUT_SLOTS) -> dict:
     }
 
 
+SHADOW_PLAYED_MINUTES = 0
+"""Minutes above which a player counts as having played at all.
+
+The Brier score's outcome is "did he turn out", not "did he start": a
+one-minute cameo is a two-point appearance and a returning injury's whole
+question. The 60-minute threshold belongs to ``p60``, not here.
+"""
+
+
+def score_news_shadow(shadow: pd.DataFrame,
+                      actuals: pd.DataFrame) -> dict:
+    """Gate N2's readout: news predictions vs flags-only, on played weeks.
+
+    Brier on "played at all" and MAE on minutes, computed for both sides of
+    each shadow row and reported per gameweek and cumulatively. Gameweeks
+    with no actuals yet are simply absent — the log is written every week and
+    scored whenever the results land.
+
+    This measures the *availability layer* and nothing else: both sides come
+    off the same model run, so any difference between the columns is the news
+    layer's doing by construction.
+    """
+    cols = ["gw", "code", "p_play_news", "p_play_flags", "e_min_news",
+            "e_min_flags"]
+    if shadow is None or shadow.empty or actuals is None or actuals.empty:
+        return {"run_at": run_at(), "git_sha": git_sha(), "rows": 0,
+                "overall": {}, "by_gw": []}
+    truth = (actuals.groupby(["gw", "code"], as_index=False)
+             .agg(minutes=("minutes", "sum")))
+    joined = (shadow[cols].groupby(["gw", "code"], as_index=False).last()
+              .merge(truth, on=["gw", "code"], how="inner"))
+    if joined.empty:
+        return {"run_at": run_at(), "git_sha": git_sha(), "rows": 0,
+                "overall": {}, "by_gw": []}
+    played = (joined["minutes"] > SHADOW_PLAYED_MINUTES).astype(float)
+    for side in ("news", "flags"):
+        joined[f"_brier_{side}"] = (joined[f"p_play_{side}"] - played) ** 2
+        joined[f"_ae_{side}"] = (joined[f"e_min_{side}"]
+                                 - joined["minutes"]).abs()
+
+    def _summary(frame: pd.DataFrame) -> dict:
+        return {
+            "brier_news": round(float(frame["_brier_news"].mean()), 4),
+            "brier_flags": round(float(frame["_brier_flags"].mean()), 4),
+            "mae_news": round(float(frame["_ae_news"].mean()), 3),
+            "mae_flags": round(float(frame["_ae_flags"].mean()), 3),
+            "rows": int(len(frame)),
+        }
+
+    by_gw = []
+    for gw in sorted(int(g) for g in joined["gw"].unique()):
+        week = joined[joined["gw"] == gw]
+        row = {"gw": gw, **_summary(week)}
+        upto = joined[joined["gw"] <= gw]
+        cum = _summary(upto)
+        row["cum_brier_news"] = cum["brier_news"]
+        row["cum_brier_flags"] = cum["brier_flags"]
+        row["cum_mae_news"] = cum["mae_news"]
+        row["cum_mae_flags"] = cum["mae_flags"]
+        by_gw.append(row)
+
+    return {"run_at": run_at(), "git_sha": git_sha(),
+            "rows": int(len(joined)), "overall": _summary(joined),
+            "by_gw": by_gw}
+
+
+def evaluate_news_shadow() -> dict:
+    """:func:`score_news_shadow` over the banked log and the live results."""
+    from gaffer.data import store
+    from gaffer.news_shadow import load_shadow
+
+    actuals = (store.load("live/player_gw.parquet")
+               if store.exists("live/player_gw.parquet")
+               else pd.DataFrame(columns=["gw", "code", "minutes"]))
+    return score_news_shadow(load_shadow(), actuals)
+
+
 BENCHMARK_TRAIN_MAX_IDX = 1
 """Newest season the benchmark may train on: season_idx 1 = 2023-24."""
 
@@ -531,6 +608,22 @@ def format_report(key: str, payload: dict) -> str:
              f"sha {payload.get('git_sha')}) ==="]
     if payload.get("odds_blend_weight") is not None:
         lines.append(f"odds blend weight w = {payload['odds_blend_weight']:.2f}")
+    if key == "news_shadow":
+        if not payload.get("rows"):
+            return ("news shadow: nothing to score yet — the log needs a "
+                    "completed gameweek.")
+        lines = [f"news shadow ({payload['rows']} player-gameweeks)",
+                 "  gw   brier news / flags    mae news / flags"]
+        for row in payload["by_gw"]:
+            lines.append(
+                f"  GW{row['gw']:<3} {row['brier_news']:.4f} / "
+                f"{row['brier_flags']:.4f}      {row['mae_news']:.2f} / "
+                f"{row['mae_flags']:.2f}")
+        o = payload["overall"]
+        lines.append(f"  all   {o['brier_news']:.4f} / "
+                     f"{o['brier_flags']:.4f}      {o['mae_news']:.2f} / "
+                     f"{o['mae_flags']:.2f}")
+        return "\n".join(lines)
     if key == "decomposition":
         lines.append(f"{payload.get('season')} from GW{payload.get('start_gw')}")
         for name, cell in payload["cells"].items():

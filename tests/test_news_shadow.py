@@ -82,3 +82,72 @@ def test_write_shadow_skips_a_run_where_news_changed_nothing(tmp_path,
                          "p_play_flags": [0.9], "e_min": [80.0],
                          "e_min_flags": [80.0]})
     assert write_shadow(tied, gw=5) is None
+
+
+def _shadow() -> pd.DataFrame:
+    """Two gameweeks. In GW5 the news layer is right about code 1 (it said
+    0.1, he did not play; flags said 0.9). In GW6 it is wrong about code 2."""
+    return pd.DataFrame({
+        "gw": [5, 5, 6, 6],
+        "code": [1, 2, 1, 2],
+        "p_play_news": [0.1, 0.9, 0.9, 0.2],
+        "p_play_flags": [0.9, 0.9, 0.9, 0.9],
+        "e_min_news": [10.0, 85.0, 85.0, 20.0],
+        "e_min_flags": [85.0, 85.0, 85.0, 85.0],
+        "run_at": ["2026-09-04T09:00:00+00:00"] * 4})
+
+
+def _actuals() -> pd.DataFrame:
+    return pd.DataFrame({
+        "gw": [5, 5, 6, 6], "code": [1, 2, 1, 2],
+        "minutes": [0.0, 90.0, 90.0, 90.0]})
+
+
+def test_score_news_shadow_scores_brier_and_mae_on_both_sides():
+    from gaffer.evaluation import score_news_shadow
+
+    out = score_news_shadow(_shadow(), _actuals())
+    assert out["rows"] == 4
+    assert set(out["overall"]) == {"brier_news", "brier_flags", "mae_news",
+                                   "mae_flags", "rows"}
+    # GW5's code 1 is the whole story: news said 0.1 and he played 0 minutes.
+    assert out["overall"]["brier_news"] < out["overall"]["brier_flags"]
+    assert out["overall"]["mae_news"] < out["overall"]["mae_flags"]
+
+
+def test_score_news_shadow_reports_per_gameweek_and_cumulative():
+    from gaffer.evaluation import score_news_shadow
+
+    out = score_news_shadow(_shadow(), _actuals())
+    gws = {row["gw"]: row for row in out["by_gw"]}
+    assert set(gws) == {5, 6}
+    assert gws[5]["brier_news"] < gws[5]["brier_flags"]   # news was right
+    assert gws[6]["brier_news"] > gws[6]["brier_flags"]   # news was wrong
+    # The cumulative column is the running total, not the weekly number.
+    assert gws[6]["cum_brier_news"] == out["overall"]["brier_news"]
+
+
+def test_score_news_shadow_ignores_gameweeks_with_no_actuals_yet():
+    from gaffer.evaluation import score_news_shadow
+
+    out = score_news_shadow(_shadow(), _actuals()[_actuals()["gw"] == 5])
+    assert out["rows"] == 2
+    assert [row["gw"] for row in out["by_gw"]] == [5]
+
+
+def test_score_news_shadow_on_an_empty_log_says_so_rather_than_dividing():
+    from gaffer.evaluation import score_news_shadow
+
+    out = score_news_shadow(pd.DataFrame(columns=SHADOW_COLS),
+                            _actuals())
+    assert out["rows"] == 0
+    assert out["by_gw"] == []
+
+
+def test_format_report_renders_the_shadow_table():
+    from gaffer.evaluation import format_report, score_news_shadow
+
+    text = format_report("news_shadow", score_news_shadow(_shadow(),
+                                                          _actuals()))
+    assert "news" in text and "flags" in text
+    assert "GW5" in text
