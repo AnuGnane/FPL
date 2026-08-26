@@ -13,6 +13,7 @@ yields an empty frame, and an empty frame is the official-flags path.
 
 from __future__ import annotations
 
+import html
 import re
 from datetime import datetime
 from pathlib import Path
@@ -90,8 +91,14 @@ def normalize_injury_type(text: str) -> str:
     return UNKNOWN_INJURY
 
 
-def _cell_text(html: str) -> str:
-    return _TAG.sub(" ", html).replace("&nbsp;", " ").strip()
+def _cell_text(markup: str) -> str:
+    """One cell's markup -> its text, entities and all.
+
+    ``html.unescape`` because the page is HTML and HTML spells an apostrophe
+    ``&#039;``: "O&#039;Riley" is a different string from the bootstrap's name
+    and matched nothing.
+    """
+    return html.unescape(_TAG.sub(" ", markup)).replace("\xa0", " ").strip()
 
 
 def _return_date(text: str):
@@ -154,7 +161,7 @@ def _status(text: str) -> tuple[str, float | None]:
     return STATUS_WORDS.get(value.casefold(), "doubtful"), None
 
 
-def parse_injury_table(html: str) -> pd.DataFrame:
+def parse_injury_table(markup: str) -> pd.DataFrame:
     """The injury table -> ``[name, club, injury_type, status, date, pct]``.
 
     Every cell of every row prints the name of its own column in front of the
@@ -170,7 +177,7 @@ def parse_injury_table(html: str) -> pd.DataFrame:
     the degradation the rails want.
     """
     rows = []
-    for block in _ROW.findall(html or ""):
+    for block in _ROW.findall(markup or ""):
         cells = [_cell_text(c) for c in _CELL.findall(block)]
         if len(cells) < 5:
             continue
@@ -201,10 +208,10 @@ def fetch_injuries(players: pd.DataFrame, teams: pd.DataFrame,
     floor — and an empty frame is what makes the whole layer inert.
     """
     dest = cache_path(cache_dir, "premierinjuries", cache_hours, now)
-    html = cached_text(PI_URL, dest, client)
-    if not html:
+    markup = cached_text(PI_URL, dest, client)
+    if not markup:
         return pd.DataFrame(columns=INJURY_COLS)
-    parsed = parse_injury_table(html)
+    parsed = parse_injury_table(markup)
     if parsed.empty:
         print("news: premierinjuries parsed no rows — official flags only")
         return pd.DataFrame(columns=INJURY_COLS)

@@ -14,6 +14,7 @@ by applying the hint to the horizon's first gameweek alone (spec §4 rule 3).
 
 from __future__ import annotations
 
+import html
 import re
 from datetime import datetime
 from pathlib import Path
@@ -47,20 +48,24 @@ _ITEM = re.compile(r"<li[^>]*>(.*?)</li>", re.S | re.I)
 _TAG = re.compile(r"<[^>]+>")
 
 
-def parse_lineups(html: str) -> pd.DataFrame:
+def parse_lineups(markup: str) -> pd.DataFrame:
     """The predicted line-ups page -> ``[name, club, slot]``.
 
     Same shallow-regex posture as the injury table, and the same failure mode:
     a redesign yields zero rows, which is the official-flags path.
     """
     rows = []
-    for club, block in _TEAM.findall(html or ""):
+    for club, block in _TEAM.findall(markup or ""):
+        # Both sides are HTML: the club lives in an attribute that spells
+        # "Brighton &amp; Hove Albion", which misses the alias table, and the
+        # names carry "&#039;" where the bootstrap has an apostrophe.
+        club = html.unescape(club).strip()
         for cls, body in _LIST.findall(block):
             slot = SLOT_CLASSES.get(cls)
             if slot is None:
                 continue
             for item in _ITEM.findall(body):
-                name = _TAG.sub(" ", item).strip()
+                name = html.unescape(_TAG.sub(" ", item)).strip()
                 if name:
                     rows.append({"name": name, "club": club, "slot": slot})
     return pd.DataFrame(rows, columns=PARSE_COLS)
@@ -73,10 +78,10 @@ def fetch_lineups(players: pd.DataFrame, teams: pd.DataFrame,
                   now: datetime | None = None) -> pd.DataFrame:
     """Predicted line-ups as ``[code, p_start_hint, source, fetched_at]``."""
     dest = cache_path(cache_dir, "lineups", cache_hours, now)
-    html = cached_text(FFS_URL, dest, client)
-    if not html:
+    markup = cached_text(FFS_URL, dest, client)
+    if not markup:
         return pd.DataFrame(columns=LINEUP_COLS)
-    parsed = parse_lineups(html)
+    parsed = parse_lineups(markup)
     if parsed.empty:
         print("news: predicted line-ups parsed no rows — official flags only")
         return pd.DataFrame(columns=LINEUP_COLS)

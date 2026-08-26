@@ -13,6 +13,7 @@ be up on a Friday afternoon.
 
 from __future__ import annotations
 
+import html
 import re
 from pathlib import Path
 
@@ -42,15 +43,15 @@ def club_url(club_slug: str, club_id: int) -> str:
             "/plus/1")
 
 
-def parse_injury_spells(html: str) -> pd.DataFrame:
+def parse_injury_spells(markup: str) -> pd.DataFrame:
     """The injury-history table -> ``[season, injury_type, days_out, games]``.
 
     A row with no parseable duration is dropped: the curve is a distribution
     over lengths, and a spell of unknown length is not a sample of it.
     """
     rows = []
-    for block in _ROW.findall(html or ""):
-        cells = [_TAG.sub(" ", c).replace("&nbsp;", " ").strip()
+    for block in _ROW.findall(markup or ""):
+        cells = [html.unescape(_TAG.sub(" ", c)).replace("\xa0", " ").strip()
                  for c in _CELL.findall(block)]
         if len(cells) < 5 or cells[0].casefold() == "season":
             continue

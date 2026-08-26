@@ -171,6 +171,50 @@ def test_match_codes_still_takes_a_lone_candidate_with_an_unresolved_club():
     assert out["code"].tolist() == [100]
 
 
+def test_scraped_entities_are_unescaped_before_anything_reads_them():
+    """A scraped page is HTML, and HTML spells an ampersand ``&amp;`` and an
+    apostrophe ``&#039;``. Left escaped, "Brighton &amp; Hove Albion" misses
+    the club alias table by a word nobody wrote and "O&#039;Riley" is a
+    different name from the one in the bootstrap."""
+    from gaffer.data.news.lineups import parse_lineups
+    from gaffer.data.news.premierinjuries import parse_injury_table
+
+    row = parse_injury_table(
+        "<table><tr><td>Player Matt O&#039;Riley</td>"
+        "<td>Reason Knee Injury</td><td>Further Detail &amp; so on</td>"
+        "<td>Potential Return 12/09/2026</td><td>Condition x</td>"
+        "<td>Status Ruled Out</td></tr></table>").iloc[0]
+    assert row["name"] == "Matt O'Riley"
+
+    line = parse_lineups(
+        '<div data-club="Brighton &amp; Hove Albion">'
+        '<ul class="starting-xi"><li>Matt O&#039;Riley</li></ul>'
+        "</div>").iloc[0]
+    assert line["club"] == "Brighton & Hove Albion"
+    assert line["name"] == "Matt O'Riley"
+
+
+def test_an_unescaped_club_and_name_resolve_to_a_code():
+    """The end of that: through the alias table and the name index, which is
+    where the escaping was actually costing matches."""
+    from gaffer.data.news.lineups import parse_lineups
+    from gaffer.data.news.normalize import (club_code, club_code_map,
+                                            match_codes)
+
+    teams = pd.DataFrame([
+        {"code": 36, "name": "Brighton", "short_name": "BHA"}])
+    players = pd.DataFrame([
+        {"code": 200, "name": "O'Riley", "first_name": "Matt",
+         "second_name": "O'Riley", "team_code": 36}])
+    rows = parse_lineups(
+        '<div data-club="Brighton &amp; Hove Albion">'
+        '<ul class="starting-xi"><li>Matt O&#039;Riley</li></ul>'
+        "</div>")
+    assert club_code(club_code_map(teams), rows["club"].iloc[0]) == 36
+    assert match_codes(rows, players, teams,
+                       label="test")["code"].tolist() == [200]
+
+
 def _injury_html() -> str:
     return (FIXTURES / "premierinjuries.html").read_text()
 
