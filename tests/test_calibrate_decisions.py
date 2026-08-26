@@ -274,3 +274,100 @@ def test_the_surplus_sample_is_one_transfer_and_no_hits():
                                    - held.gw_plans[0].expected_pts)
     assert sample < (greedy.gw_plans[0].expected_pts
                      - held.gw_plans[0].expected_pts)
+
+
+# --- B4: the calibration must not measure its own previous output ----------
+
+def _stub_replay(monkeypatch, seen, state_gws=(5,)):
+    """Stand in for run_backtest: one weekly solve through bt.solve_plan."""
+    import gaffer.backtest as bt
+    from gaffer.optimize.milp import SolveInput
+
+    pool, junk = _hit_bait_pool()
+
+    def fake_run_backtest(season, start_gw=5, horizon=1, **_):
+        state = SolveInput(owned_codes=junk, bank=0, free_transfers=1,
+                           gws=list(state_gws))
+        from tests.test_v4c_degradation import GOLDEN_KW
+        from gaffer.optimize.ft_value import lambda_from_priors
+        kw = dict(GOLDEN_KW, ft_use_penalty=0.4,
+                  bench_curve=[0.21, 0.06, 0.002],
+                  ft_lambda=lambda_from_priors(load_decision_priors()))
+        bt.solve_plan(pool, state, **kw)
+        return {}
+
+    monkeypatch.setattr(bt, "run_backtest", fake_run_backtest)
+    real_solve = bt.solve_plan
+
+    def spy(pool_, state_, **kw):
+        seen.append(dict(kw))
+        return real_solve(pool_, state_, **kw)
+
+    monkeypatch.setattr(bt, "solve_plan", spy)
+    return pool, junk
+
+
+def test_the_measurement_solves_never_see_the_priors_asset(monkeypatch):
+    """B4. observing_solve forwarded the running replay's kw straight into
+    the sample solves — and that kw carries ft_lambda built from the asset
+    the calibration is about to overwrite. Regenerating then measured the
+    previous generation's objective and drifted."""
+    import gaffer.calibrate_decisions as cal
+    import gaffer.optimize.chips as chips_mod
+
+    seen: list[dict] = []
+    _stub_replay(monkeypatch, [])
+
+    real_best = cal.best_single_transfer
+    real_eval = chips_mod.evaluate_chips
+    monkeypatch.setattr(cal, "best_single_transfer",
+                        lambda p, s_, **kw: (seen.append(dict(kw)),
+                                             real_best(p, s_, **kw))[1])
+    monkeypatch.setattr(chips_mod, "evaluate_chips",
+                        lambda p, s_, *a, **kw: (seen.append(dict(kw)),
+                                                 real_eval(p, s_, *a, **kw))[1])
+    cal.walk_season("2024-25", start_gw=5)
+
+    assert len(seen) == 2, "both measurements should have been taken"
+    for kw in seen:
+        assert "ft_lambda" not in kw
+        assert "ft_use_penalty" not in kw
+        assert "bench_curve" not in kw
+        assert kw["decay"] == 0.85     # the plain knobs still come through
+
+
+def test_the_replay_itself_is_run_without_the_asset(monkeypatch):
+    """The squad trajectory the samples are drawn along must be neutral too,
+    or turning the priors on quietly changes what a 'typical week' is."""
+    import gaffer.backtest as bt
+    from gaffer.calibrate_decisions import walk_season
+
+    during = []
+
+    def fake_run_backtest(season, start_gw=5, horizon=1, **_):
+        during.append(bt.load_decision_priors())
+        return {}
+
+    monkeypatch.setattr(bt, "run_backtest", fake_run_backtest)
+    walk_season("2024-25", start_gw=5)
+    assert during == [None]
+    # And put back afterwards — walk_season is not allowed to leave the
+    # backtest module blinded for the rest of the process.
+    assert bt.load_decision_priors() is not None
+
+
+def test_a_failed_transfer_sample_does_not_drop_the_chip_samples(monkeypatch):
+    """n12. One except around both measurements meant a transfer solve that
+    fell over took the week's four chip surpluses with it."""
+    import gaffer.calibrate_decisions as cal
+
+    seen: list[dict] = []
+    _stub_replay(monkeypatch, seen)
+
+    def boom(*a, **kw):
+        raise RuntimeError("no")
+
+    monkeypatch.setattr(cal, "best_single_transfer", boom)
+    transfers, chips = cal.walk_season("2024-25", start_gw=5)
+    assert transfers == []
+    assert {row["chip"] for row in chips} == set(cal.CHIPS)

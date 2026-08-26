@@ -50,6 +50,24 @@ def phase_of(gw: int) -> str:
     return "early" if gw < PHASE_BOUNDS["early"][0] else "late"
 
 
+CONTAMINATING_KW = ("ft_lambda", "ft_use_penalty", "bench_curve")
+"""Solver knobs a calibration sample must never be measured under.
+
+``ft_lambda`` is literally this module's own previous output: measuring the
+surplus of a transfer on a board that already prices banked transfers off the
+old table is a feedback loop, and the asset walks every time it is
+regenerated. ``ft_use_penalty`` and ``bench_curve`` are not feedback, but they
+are objective *craft* — the distributions are supposed to describe what a week
+offers, not what one configuration of the optimiser makes of it.
+"""
+
+
+def neutral_cfg(kw: dict) -> dict:
+    """``kw`` stripped back to the plain objective the samples are measured
+    under. See :data:`CONTAMINATING_KW`."""
+    return {k: v for k, v in kw.items() if k not in CONTAMINATING_KW}
+
+
 def best_single_transfer(pool: pd.DataFrame, state: SolveInput,
                          **solve_cfg) -> float:
     """EP gain from the best one-transfer move, over making none.
@@ -100,31 +118,48 @@ def walk_season(season: str, start_gw: int = 5,
     transfers: list[dict] = []
     chips: list[dict] = []
     real_solve = bt.solve_plan
+    real_priors = bt.load_decision_priors
 
     def observing_solve(pool, state, **kw):
         plan = real_solve(pool, state, **kw)
         if state.owned_codes:
+            gw = int(state.gws[0])
+            cfg = neutral_cfg(kw)
             one_ft = SolveInput(
                 owned_codes=list(state.owned_codes), bank=state.bank,
                 free_transfers=1, gws=list(state.gws))
+            # Two separate guards: a transfer solve that falls over used to
+            # take the week's four chip surpluses down with it, which is a
+            # much bigger hole in the distribution than the one sample that
+            # actually failed.
             try:
                 transfers.append({
-                    "gw": int(state.gws[0]),
-                    "surplus": best_single_transfer(pool, one_ft, **kw)})
-                table = evaluate_chips(pool, state, list(CHIPS), **kw)
+                    "gw": gw,
+                    "surplus": best_single_transfer(pool, one_ft, **cfg)})
+            except Exception as exc:  # noqa: BLE001
+                print(f"calibration: no transfer sample for GW{gw} ({exc})")
+            try:
+                table = evaluate_chips(pool, state, list(CHIPS), **cfg)
+            except Exception as exc:  # noqa: BLE001
+                print(f"calibration: no chip samples for GW{gw} ({exc})")
+            else:
                 for r in table.itertuples():
-                    if int(r.gw) == int(state.gws[0]):
+                    if int(r.gw) == gw:
                         chips.append({"gw": int(r.gw), "chip": str(r.chip),
                                       "gain": float(r.gain)})
-            except Exception as exc:  # noqa: BLE001
-                print(f"calibration: skipping GW{state.gws[0]} ({exc})")
         return plan
 
     bt.solve_plan = observing_solve
+    # Blind the replay to the shipped asset for the duration. Without this the
+    # calibration measures the objective *its own previous output* built — the
+    # lambda table prices the weekly solve, the theta table decides which
+    # chips get played, and regenerating drifts a little further every time.
+    bt.load_decision_priors = lambda: None
     try:
         bt.run_backtest(season=season, start_gw=start_gw, horizon=horizon)
     finally:
         bt.solve_plan = real_solve
+        bt.load_decision_priors = real_priors
     return transfers, chips
 
 
