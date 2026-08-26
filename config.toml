@@ -18,7 +18,7 @@ n = 40               # gate D1: gated replay 1818 vs raw 1743 (+75), fewer trans
 decision_priors = true
 
 [odds]
-api_key = "8f3fadafa3f8911c876f467527a4b6e5"
+# api_key = "get one free at the-odds-api.com (500 requests/month)"
 
 [data]
 train_seasons = ["2022-23", "2023-24", "2024-25", "2025-26"]
