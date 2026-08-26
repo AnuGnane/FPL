@@ -511,6 +511,48 @@ def test_tilted_captaincy_of_a_one_man_xi_names_him_twice():
     assert tilted_captaincy([1], EP_OF, {}, 0.4) == (1, 1)
 
 
+def test_captaincy_override_needs_a_real_margin_not_a_hairline():
+    """The seam swapped the armband on any tilted win at all, so a 0.01xPts
+    edge — well inside the model's own error — moved the captain."""
+    from gaffer.league_mode import CAPTAIN_OVERRIDE_MARGIN, captaincy_override
+
+    assert CAPTAIN_OVERRIDE_MARGIN == 0.15
+    # 8.95 * 1.4 = 12.53 against 9.0 * 1.4 = 12.6: the challenger loses.
+    ep = {1: 9.0, 2: 8.95}
+    assert captaincy_override([1, 2], ep, {}, 0.4, incumbent=1) is None
+
+
+def test_captaincy_override_returns_none_inside_the_margin():
+    from gaffer.league_mode import captaincy_override
+
+    # Fully covered incumbent 9.0 -> 9.0; uncovered 6.5 -> 6.5 * 1.4 = 9.1.
+    # A 0.1 tilted edge is inside the 0.15 margin: leave the armband alone.
+    ep = {1: 9.0, 2: 6.5}
+    assert captaincy_override([1, 2], ep, {1: 1.0}, 0.4, incumbent=1) is None
+
+
+def test_captaincy_override_fires_once_the_margin_is_cleared():
+    from gaffer.league_mode import captaincy_override
+
+    # uncovered 6.7 -> 9.38 against a covered 9.0: a 0.38 edge, cleared.
+    ep = {1: 9.0, 2: 6.7, 3: 5.0}
+    assert captaincy_override([1, 2, 3], ep, {1: 1.0}, 0.4,
+                              incumbent=1) == (2, 1)
+
+
+def test_captaincy_override_at_zero_lambda_is_always_none():
+    """The rail: with no tilt the v4c armband stands, whatever the covers."""
+    from gaffer.league_mode import captaincy_override
+
+    ep = {1: 9.0, 2: 8.6, 3: 7.0}
+    for cover in ({}, {1: 1.0}, {2: 1.0, 3: 0.5}):
+        assert captaincy_override([1, 2, 3], ep, cover, 0.0, incumbent=1) \
+            is None
+        # even when the incumbent is not the raw argmax
+        assert captaincy_override([1, 2, 3], ep, cover, 0.0, incumbent=3) \
+            is None
+
+
 def test_captaincy_note_names_the_threat_being_covered():
     from gaffer.league_mode import captaincy_note
 

@@ -46,8 +46,8 @@ from gaffer.data.odds import (OddsClient, ags_frame, blend_attacking_odds,
                               next_gw_event_ids, odds_frame)
 from gaffer.features.engineer import build_prediction_frame, feature_columns
 from gaffer.league_mode import (LeagueParams, captain_cover, captaincy_note,
-                                compute_strategy, cover_table, tilt_ep,
-                                tilted_captaincy, win_probability)
+                                captaincy_override, compute_strategy,
+                                cover_table, tilt_ep, win_probability)
 from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
 from gaffer.models.components import card_penalty
 from gaffer.models.minutes import apply_availability
@@ -670,15 +670,19 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     # --- EO-aware captaincy (spec 2026-08-26 §6) ---------------------------
     # The plurality above picks a candidate; when the league is live and the
     # dial is off zero, the tilted score over the *final* XI is the last
-    # word. At lam = 0 tilted_captaincy is argmax raw EP, so v4c's armband
-    # stands untouched and both report fields stay None.
+    # word — but only by a margin, never on a hairline: the armband is the
+    # highest-variance decision of the week and a hundredth of an expected
+    # point is inside the model's own error. At lam = 0 captaincy_override
+    # returns None, so v4c's armband stands untouched and both report fields
+    # stay None.
     captain_note: str | None = None
     demoted_captain: dict | None = None
     if strat is not None and strat.lam:
         ep_of_gw = {code: ep_by.get((code, gw), 0.0) for code in first.xi}
-        new_captain, new_vice = tilted_captaincy(list(first.xi), ep_of_gw,
-                                                 cap_cover, strat.lam)
-        if new_captain != first.captain:
+        override = captaincy_override(list(first.xi), ep_of_gw, cap_cover,
+                                      strat.lam, int(first.captain))
+        if override is not None:
+            new_captain, new_vice = override
             demoted_captain = {"code": int(first.captain),
                                "ep": round(float(ep_of_gw.get(
                                    first.captain, 0.0)), 2)}

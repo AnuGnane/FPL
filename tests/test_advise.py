@@ -602,7 +602,9 @@ def test_run_advise_re_picks_the_captain_after_the_plan_is_fixed():
     from gaffer.advise import run_advise
 
     src = inspect.getsource(run_advise)
-    seam = src.index("tilted_captaincy(")
+    # captaincy_override wraps tilted_captaincy behind the override margin
+    # (B4); it is what the seam calls now.
+    seam = src.index("captaincy_override(")
     chips = src.index("chip_pool = (build_pool(")   # note the paren: line 640
     assert src.index("coherent_plan(") < seam < chips
     assert "captaincy_note(" in src

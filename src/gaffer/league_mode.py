@@ -321,6 +321,14 @@ def explain_lam(strategy: Strategy) -> str:
             f"so there is no tilt at all — this is the plain points-max plan.")
 
 
+def _cap_score(code: int, ep_of: dict[int, float],
+               cap_cover: dict[int, float], lam: float) -> float:
+    """The one armband formula, shared by the ranking and the override
+    margin so the two can never be computed differently."""
+    covered = min(max(float(cap_cover.get(code, 0.0)), 0.0), 1.0)
+    return float(ep_of.get(code, 0.0)) * (1 + lam * (1 - covered))
+
+
 def tilted_captaincy(xi: list[int], ep_of: dict[int, float],
                      cap_cover: dict[int, float],
                      lam: float) -> tuple[int, int]:
@@ -332,13 +340,39 @@ def tilted_captaincy(xi: list[int], ep_of: dict[int, float],
     fall back to raw EP and then to the code, so the answer never depends on
     the order the MILP happened to list the XI in.
     """
-    def score(code: int) -> float:
-        covered = min(max(float(cap_cover.get(code, 0.0)), 0.0), 1.0)
-        return float(ep_of.get(code, 0.0)) * (1 + lam * (1 - covered))
-
-    ranked = sorted(xi, key=lambda c: (-score(c), -float(ep_of.get(c, 0.0)),
-                                       int(c)))
+    ranked = sorted(xi, key=lambda c: (-_cap_score(c, ep_of, cap_cover, lam),
+                                       -float(ep_of.get(c, 0.0)), int(c)))
     return ranked[0], (ranked[1] if len(ranked) > 1 else ranked[0])
+
+
+CAPTAIN_OVERRIDE_MARGIN = 0.15
+"""xPts of tilted score the challenger must clear to take the armband.
+
+The tilted argmax alone would swap captains on a hairline — a hundredth of an
+expected point, far inside the component model's own error — and the armband
+is the single highest-variance decision of the week. The incumbent keeps it
+unless the tilt says something worth saying."""
+
+
+def captaincy_override(xi: list[int], ep_of: dict[int, float],
+                       cap_cover: dict[int, float], lam: float,
+                       incumbent: int) -> tuple[int, int] | None:
+    """(captain, vice) when the tilt earns the swap, else ``None``.
+
+    :func:`tilted_captaincy` picks the tilted argmax; this adds the hysteresis
+    the advise seam needs. ``None`` means "leave the plan's own armband
+    alone", and lam = 0 always means ``None`` — the v4c captain stands.
+    """
+    if lam == 0.0:
+        return None
+    captain, vice = tilted_captaincy(xi, ep_of, cap_cover, lam)
+    if captain == incumbent:
+        return None
+    edge = (_cap_score(captain, ep_of, cap_cover, lam)
+            - _cap_score(incumbent, ep_of, cap_cover, lam))
+    if edge <= CAPTAIN_OVERRIDE_MARGIN:
+        return None
+    return captain, vice
 
 
 def captaincy_note(lam: float, chosen: int, demoted: int,

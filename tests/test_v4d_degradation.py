@@ -100,7 +100,9 @@ def test_nothing_v4d_inserted_reads_the_tilted_pool():
     from gaffer.advise import run_advise
 
     src = inspect.getsource(run_advise)
-    for marker in ("cover_table(", "captain_cover(", "tilted_captaincy("):
+    # ``captaincy_override`` is the seam's entry point since B4; it wraps
+    # tilted_captaincy behind the override margin.
+    for marker in ("cover_table(", "captain_cover(", "captaincy_override("):
         line_start = src.rindex("\n", 0, src.index(marker)) + 1
         line_end = src.index("\n", src.index(marker))
         assert "pool_ep" not in src[line_start:line_end]
