@@ -86,8 +86,15 @@ def test_no_injury_type_at_all_falls_back_to_the_flat_geometric():
         assert abs(out.loc[gw, "p_play"] - 0.9 * (1 - RECOVERY ** h)) < 1e-9
 
 
-def test_without_the_asset_every_row_uses_the_flat_geometric():
-    """The terminal rail: behaviour with no curves is exactly today's."""
+def test_without_the_asset_every_row_uses_the_flat_geometric(monkeypatch):
+    """The terminal rail: behaviour with no curves is exactly today's.
+
+    The asset ships in git, so "without it" is simulated at the loader — the
+    clone this pins is one where the file is missing, not this one.
+    """
+    import gaffer.models.availability as avail_mod
+
+    monkeypatch.setattr(avail_mod, "load_injury_curves", lambda: None)
     out = apply_availability(_pred([5, 6, 7]),
                              _avail(injury_type="hamstring"),
                              curves=None).set_index("gw")

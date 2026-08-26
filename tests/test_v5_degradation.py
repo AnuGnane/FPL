@@ -234,8 +234,17 @@ def test_the_pooled_curve_answers_an_unseen_type():
     assert out["p_play"].tolist() == pytest.approx([0.0, 0.5, 0.7])
 
 
-def test_no_asset_at_all_is_the_v4_geometric_exactly():
-    """The terminal rail. This is the arithmetic v4 shipped, written out."""
+def test_no_asset_at_all_is_the_v4_geometric_exactly(monkeypatch):
+    """The terminal rail. This is the arithmetic v4 shipped, written out.
+
+    ``curves=None`` means "load the shipped asset", so the absent asset is
+    simulated at the loader rather than by the repository happening not to
+    carry one — the rail is about a clone without the file, and it has to hold
+    just as firmly now that the file is committed.
+    """
+    import gaffer.models.availability as avail_mod
+
+    monkeypatch.setattr(avail_mod, "load_injury_curves", lambda: None)
     out = apply_availability(_one(), _flagged("knee"), curves=None)
     expected = [1 - RECOVERY ** h for h in range(3)]
     for got, want in zip(out["p_play"], expected):
