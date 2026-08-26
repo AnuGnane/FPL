@@ -57,13 +57,15 @@ Spec: `specs/2026-08-25-gaffer-v4c-decide-design.md` (§12 = full outcome) · Pl
 
 ## In progress
 
-## Planned
-
 ### v4d — compete (league mode v2)
-- [ ] z = deficit/σ risk dial (variance seeking iff behind)
-- [ ] Rival covering: overlap term signed by z (we observe actual rival squads)
-- [ ] EO-aware mean-variance captaincy
-- [ ] Tier-resolved live EO in tracker
+Spec: `specs/2026-08-26-gaffer-v4d-compete-design.md` (approved 2026-08-26)
+- [ ] z = deficit/σ risk dial (variance seeking iff behind), σ estimated from league history
+- [ ] Rival covering: observed-squad cover weights consumed by tilt_ep v2
+- [ ] EO-aware mean-variance captaincy at the advise captain-override seam
+- [ ] Tier-resolved live EO in tracker (sampled top-10k, display only)
+- [ ] Gate E1: league replay GW20–38 vs recorded rivals, injected gap grid
+
+## Planned
 
 ### Later — news ingestion (own cycle, external-data heavy)
 - [ ] premierinjuries.com / predicted-lineups ingestion for minutes model (the zeros/blanks gap)
