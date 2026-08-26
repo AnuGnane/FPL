@@ -177,6 +177,24 @@ def unplayed_chips(played_by_gw: dict[int, str]) -> dict[str, list[str]]:
             "second_half": [c for c in CHIPS if c not in second_used]}
 
 
+def chip_points(log: list[dict] | pd.DataFrame) -> dict[str, int]:
+    """``{chip: points scored in the weeks it was played}``.
+
+    Whole-week points, not the chip's marginal gain: this is the D3 headline
+    ("what did the wildcard weeks actually return"), and the marginal number
+    is what ``optimize.chips`` estimates *before* the fact. Weeks with no chip
+    are dropped rather than gathered under an empty-string key.
+    """
+    rows = (log.to_dict("records") if isinstance(log, pd.DataFrame)
+            else list(log))
+    out: dict[str, int] = {}
+    for row in rows:
+        chip = str(row.get("chip") or "")
+        if chip:
+            out[chip] = out.get(chip, 0) + int(row.get("points", 0))
+    return out
+
+
 def _pick_chip(table: pd.DataFrame, gw: int, thresholds=None) -> str:
     """Best chip worth playing *this* gameweek, or "" for none.
 
@@ -568,4 +586,5 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
     store.save(pd.DataFrame(log), "live/backtest_log.parquet")
     return {"season": season, "from_gw": start_gw, "total": total,
             "per_gw": per_gw, "log": log, "chips_played": played_by_gw,
+            "chip_points": chip_points(log),
             "unplayed_chips": unplayed_chips(played_by_gw)}

@@ -586,10 +586,31 @@ def test_the_boundary_gameweek_counts_as_the_first_half():
 
 
 def test_chip_points_are_attributable_per_chip_from_the_log():
-    """D3 compares 'chip-attributed points'; the log has to carry the chip
-    name on the week it was played, which it already does."""
-    import pandas as pd
+    """D3 compares 'chip-attributed points', so there has to be one place
+    that does the attributing. The old version of this test built a two-row
+    DataFrame and asserted that pandas can filter it."""
+    from gaffer.backtest import chip_points
 
-    log = pd.DataFrame([{"gw": 7, "points": 80, "chip": "bboost"},
-                        {"gw": 8, "points": 55, "chip": ""}])
-    assert log[log["chip"] == "bboost"]["points"].sum() == 80
+    log = [{"gw": 7, "points": 80, "chip": "bboost"},
+           {"gw": 8, "points": 55, "chip": ""},
+           {"gw": 9, "points": 71, "chip": "bboost"},
+           {"gw": 20, "points": 90, "chip": "wildcard"}]
+    assert chip_points(log) == {"bboost": 151, "wildcard": 90}
+
+
+def test_a_season_with_no_chips_played_attributes_nothing():
+    from gaffer.backtest import chip_points
+
+    assert chip_points([{"gw": 7, "points": 80, "chip": ""}]) == {}
+    assert chip_points([]) == {}
+
+
+def test_the_backtest_reports_the_attribution_it_logged():
+    """The helper and the log must not be able to drift apart."""
+    from gaffer.backtest import chip_points
+
+    log = [{"gw": 7, "points": 80, "chip": "bboost"},
+           {"gw": 8, "points": 55, "chip": ""}]
+    result = {"log": log, "chips_played": {7: "bboost"},
+              "chip_points": chip_points(log)}
+    assert set(result["chip_points"]) == set(result["chips_played"].values())

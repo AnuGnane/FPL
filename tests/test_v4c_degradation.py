@@ -137,7 +137,10 @@ def test_solve_plan_objective_is_unchanged_by_the_new_arguments():
     state = SolveInput(owned_codes=[], bank=1000, free_transfers=15,
                        gws=[1, 2])
     plan = solve_plan(pool, state, **GOLDEN_KW)
-    assert round(plan.objective, 6) == round(plan.objective, 6)
+    # Regenerate this literal only from a gate task that deliberately changes
+    # the objective, and say so in that task's commit. Any other diff here is
+    # the rail doing its job.
+    assert round(plan.objective, 6) == 56.34025
     # Pin the shape too: a changed bench weighting would move these.
     first = plan.gw_plans[0]
     assert len(first.squad) == 15 and len(first.xi) == 11

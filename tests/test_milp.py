@@ -380,14 +380,25 @@ def test_a_generous_lambda_makes_the_solver_bank_rather_than_spend():
 
 
 def test_a_zero_lambda_table_makes_banking_worthless():
-    """The other end: FTs worth nothing means spend them."""
+    """The other end: FTs worth nothing means spend them.
+
+    A table of zeroes is not the same thing as no table — a table replaces the
+    flat ``ft_value`` term outright — so the equivalent objective is the flat
+    one with ``ft_value`` itself zeroed. That the two agree to nine places is
+    the claim: nothing else in the lambda branch prices a banked transfer.
+    """
     pool = golden_pool()
     state = _owned_state(pool)
-    plan = solve_plan(
+    zeros = solve_plan(
         pool, state, **GOLDEN_KW,
         ft_lambda=LambdaLookup({(k, t): 0.0 for k in range(1, 6)
                                 for t in range(1, 39)}))
-    assert len(plan.gw_plans[0].squad) == 15
+    worthless = solve_plan(pool, state, **{**GOLDEN_KW, "ft_value": 0.0})
+    assert round(zeros.objective, 9) == round(worthless.objective, 9)
+    # And it is a real difference: the flat table does value the bank.
+    priced = solve_plan(pool, state, **GOLDEN_KW)
+    assert round(priced.objective, 9) > round(zeros.objective, 9)
+    assert len(zeros.gw_plans[0].squad) == 15
 
 
 def test_lambda_is_looked_up_at_the_weeks_remaining_in_the_season():
@@ -401,12 +412,32 @@ def test_lambda_is_looked_up_at_the_weeks_remaining_in_the_season():
 
 def test_lambda_pricing_is_concave_in_the_banked_count():
     """Each successive banked transfer must be worth less than the last, or
-    the objective would prefer hoarding five to using one."""
+    the objective would prefer hoarding five to using one.
+
+    The objective sums ``lambda(j, t) * ftge[j]`` over j, and ``ftge`` is
+    ordered, so the terminal value of ending on k banked transfers is exactly
+    ``bank_value(k, t)`` — the quantity asserted on here. Concavity is
+    ``value(2) - value(1) >= value(3) - value(2)``.
+    """
+    table = {(k, t): 4.0 / k for k in range(1, 6) for t in range(1, 39)}
+    lam = LambdaLookup(table)
+    step = [lam.bank_value(k, 20) - lam.bank_value(k - 1, 20)
+            for k in range(1, 6)]
+    assert step[1] >= step[2] >= step[3] >= step[4]
+    assert step[0] > step[4], "a flat table would prove nothing"
+
+    # The shipped asset has to have the same shape, or the objective hoards.
+    from gaffer.assets import load_decision_priors
+    from gaffer.optimize.ft_value import lambda_from_priors
+
+    shipped = lambda_from_priors(load_decision_priors())
+    real = [shipped.bank_value(k, 20) - shipped.bank_value(k - 1, 20)
+            for k in range(1, 6)]
+    assert real == sorted(real, reverse=True), real
+
     pool = golden_pool()
     state = _owned_state(pool)
-    table = {(k, t): 4.0 / k for k in range(1, 6) for t in range(1, 39)}
-    plan = solve_plan(pool, state, **GOLDEN_KW,
-                      ft_lambda=LambdaLookup(table))
+    plan = solve_plan(pool, state, **GOLDEN_KW, ft_lambda=lam)
     assert len(plan.gw_plans[0].squad) == 15
 
 
