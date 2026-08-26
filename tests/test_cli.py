@@ -262,3 +262,16 @@ def test_advise_prints_the_captain_note_and_the_demoted_pick(tmp_path,
     assert ("Captain: Erling Haaland (differential vs Ten Hag Hive's "
             "last armband)") in out
     assert "Raw-EP captain: Mohamed Salah (8.8 xPts)" in out
+
+
+def test_calibrate_injuries_is_registered_and_needs_a_club_table(tmp_path):
+    """The command must exist and must refuse to scrape without a club list —
+    a stale twenty-club table is how you calibrate on the Championship."""
+    from typer.testing import CliRunner
+
+    from gaffer.cli import app
+
+    result = CliRunner().invoke(app, ["calibrate-injuries", "--clubs",
+                                      str(tmp_path / "missing.json")])
+    assert result.exit_code == 1
+    assert "club table" in result.stdout

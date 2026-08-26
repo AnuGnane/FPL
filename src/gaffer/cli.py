@@ -248,6 +248,33 @@ def calibrate_decisions(start_gw: int = 5):
                f"{len(payload['seasons'])} seasons -> {dest}")
 
 
+@app.command("calibrate-injuries")
+def calibrate_injuries(clubs: str = typer.Option(
+        "clubs.json", help="JSON file of {transfermarkt slug: club id}.")):
+    """Scrape injury spells to rebuild src/gaffer/assets/injury_return_curves.json.
+
+    Slow, network-heavy and refreshed rarely — once a season, or when the
+    club list changes. The asset it writes ships in git; without it the
+    horizon decay falls back to the flat RECOVERY constant, which is the
+    pre-v5 behaviour.
+    """
+    import json
+    from pathlib import Path
+
+    from gaffer.calibrate_injuries import (ASSET_PATH, run_calibration,
+                                           write_curves)
+
+    path = Path(clubs)
+    if not path.exists():
+        typer.echo(f"No club table at {path}. Write a JSON file of "
+                   '{"arsenal-fc": 11, ...} — Transfermarkt slug to club id.')
+        raise typer.Exit(1)
+    payload = run_calibration(json.loads(path.read_text()))
+    dest = write_curves(payload, ASSET_PATH)
+    typer.echo(f"Fitted {len(payload['curves'])} typed curves from "
+               f"{payload['spells']} spells -> {dest}")
+
+
 @app.command()
 def evaluate(mode: str = typer.Option(
                  "current", help="current (last-10-slot holdout) or "
