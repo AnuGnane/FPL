@@ -343,8 +343,14 @@ def explain_lam(strategy: Strategy) -> str:
                 f"of {strategy.rival_name} with {strategy.weeks_left} "
                 f"gameweeks left, so the optimizer leans to mirror rival "
                 f"ownership and protect the lead.")
-    return (f"λ 0.00: you are exactly level with {strategy.rival_name} — "
-            f"no tilt, so this is the plain points-max plan.")
+    # Neutral has two causes since the deadband landed, and they are not the
+    # same sentence: a dead-level scoreline, or a gap the dial is treating as
+    # noise. Claiming "exactly level" on a five-point gap would be a lie.
+    if strategy.gap == 0:
+        return (f"λ 0.00: you are exactly level with {strategy.rival_name} — "
+                f"no tilt, so this is the plain points-max plan.")
+    return (f"λ 0.00: the gap to {strategy.rival_name} is inside the "
+            f"deadband — no tilt, so this is the plain points-max plan.")
 
 
 def _cap_score(code: int, ep_of: dict[int, float],

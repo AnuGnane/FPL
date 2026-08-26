@@ -173,6 +173,35 @@ def test_explain_lam_puts_the_tilt_in_words():
     assert "points-max" in level
 
 
+def test_explain_lam_tells_a_dead_heat_from_a_deadbanded_gap():
+    """Neutral has two causes since the deadband: a level scoreline, and a
+    gap the dial is treating as noise. Saying "exactly level" on the second
+    would be a lie the standings table sitting next to it disproves."""
+    from gaffer.league_mode import Strategy, explain_lam
+
+    dead_heat = explain_lam(Strategy(0.0, 0, 30, "neutral", "Ten Hag Hive"))
+    assert dead_heat.startswith("λ 0.00: ")
+    assert "exactly level with Ten Hag Hive" in dead_heat
+    assert "deadband" not in dead_heat
+
+    # The gap compute_strategy reports is the real one even inside the band.
+    banded = explain_lam(Strategy(0.0, 5, 30, "neutral", "Ten Hag Hive"))
+    assert banded.startswith("λ 0.00: ")
+    assert "the gap to Ten Hag Hive is inside the deadband" in banded
+    assert "exactly level" not in banded
+    assert "points-max" in banded
+
+
+def test_the_deadband_sentence_is_what_a_small_gap_actually_renders():
+    """End to end: the strategy the dial builds five points behind is the one
+    the panel explains, so the two cannot drift apart."""
+    from gaffer.league_mode import explain_lam
+
+    s = compute_strategy(my_total=495, rivals=RIVALS, current_gw=10)
+    assert s.stance == "neutral" and s.gap == 5
+    assert "inside the deadband" in explain_lam(s)
+
+
 # --- v4d: the dial's parameters --------------------------------------------
 
 
