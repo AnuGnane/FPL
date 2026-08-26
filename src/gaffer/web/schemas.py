@@ -179,6 +179,11 @@ class LivePlayer(BaseModel):
     provisional_bonus: int
     minutes: int
     status: Literal["played", "playing", "yet to play"]
+    # v4d: display only, and all three optional — a tracker with no tier
+    # sample renders exactly the table it rendered before.
+    tier_eo: float | None = None
+    tier_eo_se: float | None = None
+    selected_by_percent: float | None = None
 
 
 class LiveTableRow(BaseModel):
@@ -197,6 +202,7 @@ class LiveState(BaseModel):
     matches_in_play: int
     players: list[LivePlayer]
     table: list[LiveTableRow]
+    notice: str | None = None
 
 
 class PlayerRow(BaseModel):

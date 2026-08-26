@@ -122,4 +122,68 @@ def test_live_between_gameweeks_is_a_quiet_inactive_payload(tmp_path,
                         lambda: FakeClient(active=False))
     body = TestClient(create_app()).get("/api/live").json()
     assert body == {"active": False, "gw": None, "my_points": 0,
-                    "matches_in_play": 0, "players": [], "table": []}
+                    "matches_in_play": 0, "players": [], "table": [],
+                    "notice": None}
+
+
+# --- v4d: tier-resolved EO -------------------------------------------------
+
+def test_live_players_carry_tier_eo_and_overall_ownership(tmp_path,
+                                                          monkeypatch):
+    """The tracker's player table gains the top-10k sample and the overall
+    ownership already on the snapshot."""
+    import gaffer.web.routers.live as live_mod
+
+    monkeypatch.chdir(tmp_path)
+    _config(tmp_path)
+    monkeypatch.setattr(live_mod, "fpl_client", lambda: FakeClient())
+    monkeypatch.setattr(live_mod, "tier_eo_table",
+                        lambda client, gw, sample=300: {
+                            7: {"eo": 143.5, "se": 2.1, "n": 300}})
+
+    body = TestClient(create_app()).get("/api/live").json()
+    salah = next(p for p in body["players"] if p["element"] == 7)
+    assert salah["tier_eo"] == 143.5
+    assert salah["tier_eo_se"] == 2.1
+    assert salah["selected_by_percent"] == 45.0
+    assert body["notice"] is None
+    dud = next(p for p in body["players"] if p["element"] == 8)
+    assert dud["tier_eo"] is None          # not in the sample: no number
+
+
+def test_live_degrades_to_a_notice_when_tier_eo_fails(tmp_path, monkeypatch):
+    """Rate limit, page shape change, anything: the tracker still renders."""
+    import gaffer.web.routers.live as live_mod
+
+    def _boom(client, gw, sample=300):
+        raise RuntimeError("429 Too Many Requests")
+
+    monkeypatch.chdir(tmp_path)
+    _config(tmp_path)
+    monkeypatch.setattr(live_mod, "fpl_client", lambda: FakeClient())
+    monkeypatch.setattr(live_mod, "tier_eo_table", _boom)
+
+    body = TestClient(create_app()).get("/api/live").json()
+    assert body["active"] is True
+    assert body["players"][0]["tier_eo"] is None
+    assert "top-10k EO unavailable" in body["notice"]
+
+
+def test_live_skips_tier_eo_entirely_when_it_is_switched_off(tmp_path,
+                                                             monkeypatch):
+    import gaffer.web.routers.live as live_mod
+
+    monkeypatch.chdir(tmp_path)
+    _config(tmp_path)                       # writes the players snapshot too
+    (tmp_path / "config.toml").write_text(
+        '[fpl]\nentry_id = 1\nleague_id = 5\n[league]\ntier_eo = false\n')
+
+    def _boom(client, gw, sample=300):
+        raise AssertionError("tier EO fetched with tier_eo = false")
+
+    monkeypatch.setattr(live_mod, "fpl_client", lambda: FakeClient())
+    monkeypatch.setattr(live_mod, "tier_eo_table", _boom)
+
+    body = TestClient(create_app()).get("/api/live").json()
+    assert body["notice"] is None
+    assert body["players"][0]["tier_eo"] is None

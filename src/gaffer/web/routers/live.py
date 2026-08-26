@@ -10,6 +10,7 @@ from fastapi import APIRouter
 
 from gaffer.artifacts import load_snapshot
 from gaffer.config import load_config
+from gaffer.data.tier_eo import tier_eo_table
 from gaffer.errors import GafferError
 from gaffer.live_gw import (active_gameweek, entry_live_points,
                             league_live_table, provisional_bonus)
@@ -92,6 +93,15 @@ def live() -> LiveState:
 
     snapshot = load_snapshot("live/players.parquet")
     by_element = {int(r.element): r for r in snapshot.itertuples()}
+    # Tier EO is a display column, never a blocker: any failure leaves the
+    # table exactly as it was plus a one-line notice.
+    tier: dict[int, dict] = {}
+    notice: str | None = None
+    if getattr(cfg, "tier_eo", True):
+        try:
+            tier = tier_eo_table(client, gw, sample=cfg.tier_sample)
+        except Exception as exc:  # noqa: BLE001 — network, JSON, page drift
+            notice = f"top-10k EO unavailable ({exc}) — league EO only"
     players = []
     for pick in mine["picks"]:
         element = int(pick["element"])
@@ -100,13 +110,18 @@ def live() -> LiveState:
             continue          # a player removed from the game since the pick
         minutes = int(minutes_of.get(element, 0))
         team_done = finished_by_team.get(int(row.team_id), False)
+        sampled = tier.get(element) or {}
         players.append(LivePlayer(
             element=element, code=int(row.code), name=str(row.name),
             position=str(row.position),
             multiplier=int(pick.get("multiplier", 0)),
             points=int(points_of.get(element, 0)),
             provisional_bonus=int(bonus.get(element, 0)),
-            minutes=minutes, status=_status(minutes, not team_done)))
+            minutes=minutes, status=_status(minutes, not team_done),
+            tier_eo=sampled.get("eo"), tier_eo_se=sampled.get("se"),
+            selected_by_percent=(float(row.selected_by_percent)
+                                 if getattr(row, "selected_by_percent", None)
+                                 is not None else None)))
 
     rows = [{"entry": cfg.entry_id, "name": "You", "pre_total": my_pre,
              "live": my_points}]
@@ -130,4 +145,5 @@ def live() -> LiveState:
     in_play = sum(1 for f in fixtures
                   if f.get("started") and not f.get("finished"))
     return LiveState(active=True, gw=gw, my_points=my_points,
-                     matches_in_play=in_play, players=players, table=table)
+                     matches_in_play=in_play, players=players, table=table,
+                     notice=notice)

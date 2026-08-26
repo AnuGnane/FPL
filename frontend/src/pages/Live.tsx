@@ -60,11 +60,12 @@ export default function Live() {
           Bonus is provisional (reconstructed from BPS) and no autosubs are
           applied.
         </p>
+        {data.notice && <p className="muted">{data.notice}</p>}
         <table>
           <thead>
             <tr>
               <th>Player</th><th>Pts</th><th>Bonus</th><th>Mins</th>
-              <th>Status</th>
+              <th>Status</th><th>Top 10k EO</th><th>Owned</th>
             </tr>
           </thead>
           <tbody>
@@ -79,6 +80,10 @@ export default function Live() {
                   ? `+${player.provisional_bonus}` : '–'}</td>
                 <td>{player.minutes}</td>
                 <td className="muted">{player.status}</td>
+                <td>{player.tier_eo == null ? '–'
+                  : `${player.tier_eo}% ±${player.tier_eo_se ?? 0}`}</td>
+                <td>{player.selected_by_percent == null ? '–'
+                  : `${player.selected_by_percent}%`}</td>
               </tr>
             ))}
           </tbody>

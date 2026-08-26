@@ -258,6 +258,9 @@ export interface LivePlayer {
   provisional_bonus: number
   minutes: number
   status: 'played' | 'playing' | 'yet to play'
+  tier_eo?: number | null
+  tier_eo_se?: number | null
+  selected_by_percent?: number | null
 }
 
 export interface LiveTableRow {
@@ -276,6 +279,7 @@ export interface LiveState {
   matches_in_play: number
   players: LivePlayer[]
   table: LiveTableRow[]
+  notice?: string | null
 }
 
 export interface HistoryData {

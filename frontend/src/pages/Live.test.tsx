@@ -17,9 +17,18 @@ const ACTIVE = {
   active: true, gw: 3, my_points: 66, matches_in_play: 2,
   players: [{ element: 7, code: 100, name: 'Salah', position: 'MID',
               multiplier: 2, points: 9, provisional_bonus: 3, minutes: 90,
-              status: 'playing' }],
+              status: 'playing', tier_eo: 143.5, tier_eo_se: 2.1,
+              selected_by_percent: 45 }],
   table: [{ entry: 1, name: 'You', pre_total: 106, live: 66, projected: 172,
             delta: 1 }],
+  notice: null,
+}
+
+const NO_TIER = {
+  ...ACTIVE,
+  players: [{ ...ACTIVE.players[0], tier_eo: null, tier_eo_se: null,
+              selected_by_percent: null }],
+  notice: 'top-10k EO unavailable (429) — league EO only',
 }
 
 const IDLE = {
@@ -71,4 +80,20 @@ describe('Live', () => {
       await act(() => vi.advanceTimersByTimeAsync(120000))
       expect(apiGet).toHaveBeenCalledTimes(1)
     })
+
+  it('shows the sampled top-10k EO with its error bar', async () => {
+    apiGet.mockResolvedValue(ACTIVE)
+    await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+    expect(screen.getByText('Top 10k EO')).toBeInTheDocument()
+    expect(screen.getByText('143.5% ±2.1')).toBeInTheDocument()
+    expect(screen.getByText('45%')).toBeInTheDocument()
+  })
+
+  it('renders the table and a notice when tier EO is unavailable', async () => {
+    apiGet.mockResolvedValue(NO_TIER)
+    await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+    expect(screen.getByText('Salah')).toBeInTheDocument()
+    expect(screen.getAllByText('–').length).toBeGreaterThan(0)
+    expect(screen.getByText(/top-10k EO unavailable/)).toBeInTheDocument()
+  })
 })
