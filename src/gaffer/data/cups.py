@@ -173,7 +173,7 @@ def _cached_get(http: httpx.Client, url: str, dest: Path) -> str | None:
     try:
         resp = http.get(url)
         resp.raise_for_status()
-    except (httpx.HTTPStatusError, httpx.TransportError) as exc:
+    except httpx.HTTPError as exc:
         print(f"cups: skipping {url} ({exc})")
         return None
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -195,7 +195,7 @@ def download_cup_matches(seasons: list[str], season_indexes: dict[str, int],
     http = _http(client)
     try:
         tree = http.get(CUPS_TREE_URL).json()
-    except (httpx.HTTPStatusError, httpx.TransportError, ValueError) as exc:
+    except (httpx.HTTPError, ValueError) as exc:
         print(f"cups: tree listing unavailable ({exc})")
         tree = {}
     codes_by_season: dict[str, dict[int, int]] = {}

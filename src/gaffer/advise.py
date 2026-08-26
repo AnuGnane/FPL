@@ -323,17 +323,24 @@ def news_availability(cfg: Config, players: pd.DataFrame,
     :func:`availability_frame` with empty news inputs reproduces the official
     frame exactly. Advice never blocks on news, and each degraded source
     prints one line — the same shape the league and tier-EO paths use.
+
+    "Degraded" includes *returning nothing*, not only raising: a rewritten
+    page and a match rate under the floor both come back as an empty frame,
+    and an unremarked empty frame reads as "nobody in the league is injured".
+    Every enabled source that answered with nothing is named.
     """
     official = players[["code", "status", "chance_of_playing"]]
     if not cfg.news_enabled:
         return official
     injuries = lineups = None
+    spoke_up: set[str] = set()
     if cfg.news_injuries:
         try:
             injuries = fetch_injuries(players, teams,
                                       cache_hours=cfg.news_cache_hours,
                                       min_coverage=cfg.news_min_coverage)
         except Exception as e:  # noqa: BLE001 — news must never block advice
+            spoke_up.add("premierinjuries")
             print(f"news: premierinjuries unavailable — official flags "
                   f"only ({e})")
     if cfg.news_lineups:
@@ -342,8 +349,15 @@ def news_availability(cfg: Config, players: pd.DataFrame,
                                     cache_hours=cfg.news_cache_hours,
                                     min_coverage=cfg.news_min_coverage)
         except Exception as e:  # noqa: BLE001 — news must never block advice
+            spoke_up.add("line-ups")
             print(f"news: predicted line-ups unavailable — official flags "
                   f"only ({e})")
+    for enabled, frame, name in ((cfg.news_injuries, injuries,
+                                  "premierinjuries"),
+                                 (cfg.news_lineups, lineups, "line-ups")):
+        if enabled and name not in spoke_up and (frame is None
+                                                 or frame.empty):
+            print(f"news: {name} returned nothing — official flags only")
     if (injuries is None or injuries.empty) and (lineups is None
                                                  or lineups.empty):
         return official

@@ -76,7 +76,7 @@ def cached_text(url: str, dest: Path, client: httpx.Client | None = None
     try:
         resp = http.get(url)
         resp.raise_for_status()
-    except (httpx.HTTPStatusError, httpx.TransportError) as exc:
+    except httpx.HTTPError as exc:
         print(f"news: {url} unavailable ({exc})")
         return None
     dest.parent.mkdir(parents=True, exist_ok=True)

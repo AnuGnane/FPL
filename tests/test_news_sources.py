@@ -254,6 +254,24 @@ def test_fetch_injuries_degrades_to_empty_when_the_host_is_down(tmp_path,
     assert "unavailable" in capsys.readouterr().out
 
 
+def test_fetch_injuries_degrades_on_any_httpx_error_not_just_transport(
+        tmp_path, capsys):
+    """``TooManyRedirects`` and ``DecodingError`` are ``RequestError`` but not
+    ``TransportError``, and a redirect loop on a news host was reaching the
+    advise path as an exception."""
+    from gaffer.data.news.premierinjuries import fetch_injuries
+
+    def loop(request: httpx.Request) -> httpx.Response:
+        raise httpx.TooManyRedirects("too many redirects",
+                                     request=request)
+
+    client = httpx.Client(transport=httpx.MockTransport(loop))
+    out = fetch_injuries(_players(), _teams(), cache_dir=tmp_path,
+                         client=client)
+    assert out.empty
+    assert "unavailable" in capsys.readouterr().out
+
+
 def _lineups_html() -> str:
     return (FIXTURES / "ffs_lineups.html").read_text()
 

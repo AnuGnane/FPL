@@ -128,6 +128,35 @@ def test_a_fetcher_that_raises_never_reaches_the_caller(monkeypatch):
     assert list(out.columns) == ["code", "status", "chance_of_playing"]
 
 
+def test_an_enabled_source_that_returns_nothing_is_named(monkeypatch, capsys):
+    """A source that comes back empty is as degraded as one that raised, and
+    silence about it reads as "the league has no injuries this week"."""
+    from gaffer import advise as advise_mod
+
+    monkeypatch.setattr(advise_mod, "fetch_injuries",
+                        lambda *a, **k: pd.DataFrame())
+    monkeypatch.setattr(advise_mod, "fetch_lineups",
+                        lambda *a, **k: pd.DataFrame())
+    cfg = Config(entry_id=1, league_id=2)
+    advise_mod.news_availability(cfg, _players(), _teams(), _events(), gw=5)
+    printed = capsys.readouterr().out
+    assert "premierinjuries returned nothing" in printed
+    assert "line-ups returned nothing" in printed
+
+
+def test_a_disabled_source_is_not_reported_as_empty(monkeypatch, capsys):
+    """Off is not degraded. Only a source we asked and got nothing from."""
+    from gaffer import advise as advise_mod
+
+    monkeypatch.setattr(advise_mod, "fetch_injuries",
+                        lambda *a, **k: pd.DataFrame())
+    cfg = Config(entry_id=1, league_id=2, news_lineups=False)
+    advise_mod.news_availability(cfg, _players(), _teams(), _events(), gw=5)
+    printed = capsys.readouterr().out
+    assert "premierinjuries returned nothing" in printed
+    assert "line-ups returned nothing" not in printed
+
+
 # --- rail 3: the three-deep asset fallback ---------------------------------
 
 _TYPED = {"curves": {"knee": [0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.0, 1.0, 1.0]},

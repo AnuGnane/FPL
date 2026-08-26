@@ -81,7 +81,7 @@ def fetch_club_spells(club_slug: str, club_id: int,
     try:
         resp = http.get(club_url(club_slug, club_id))
         resp.raise_for_status()
-    except (httpx.HTTPStatusError, httpx.TransportError) as exc:
+    except httpx.HTTPError as exc:
         print(f"transfermarkt: {club_slug} unavailable ({exc})")
         return pd.DataFrame(columns=SPELL_COLS)
     dest.parent.mkdir(parents=True, exist_ok=True)
