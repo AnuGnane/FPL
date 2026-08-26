@@ -18,8 +18,7 @@ from gaffer.data.bootstrap import scoring_table
 from gaffer.data.elo import compute_elo
 from gaffer.features.bps import FIRST_NEW_RULES_SEASON, apply_new_bps
 from gaffer.data.understat import UNDERSTAT_PLAYER_PATH, UNDERSTAT_TEAM_PATH
-from gaffer.features.engineer import (CONGESTION_FEATURES, ROTATION_FEATURES,
-                                      SHRUNK_MODE_FEATURES, US_STATS,
+from gaffer.features.engineer import (ROTATION_FEATURES, US_STATS,
                                       add_congestion, add_context,
                                       add_player_rolling, add_rotation,
                                       add_setpiece, add_shrunken_modes,
@@ -42,8 +41,7 @@ from gaffer.models.team import (BLEND_PARAMS_NAME, TEAM_FEATURES, TeamModel,
 
 MINUTES_FEATURES = ["minutes_r1", "minutes_r3", "minutes_r5", "minutes_r10",
                     "starts_r1", "starts_r3", "starts_r5", "starts_r10",
-                    "days_rest", "home"] + ROTATION_FEATURES \
-                   + CONGESTION_FEATURES + SHRUNK_MODE_FEATURES
+                    "days_rest", "home"] + ROTATION_FEATURES
 """Feature set for :class:`ThreeModeModel`.
 
 The ``starts_r*`` means answer "is he a starter?" on a season-long timescale
@@ -59,14 +57,13 @@ gameweeks — noise). ``season_start_share`` lands second in the p_play
 classifier's importances and the ``starts_r*`` means fall away behind it,
 which is the substitution the change was after.
 
-v5 adds two blocks. :data:`~gaffer.features.engineer.CONGESTION_FEATURES`
-answer "how much football has this squad just played, and how soon does it
-play again" — including the cup ties the FPL calendar does not carry, which is
-the half of rotation risk no FPL-only feature set can see.
-:data:`~gaffer.features.engineer.SHRUNK_MODE_FEATURES` answer "is he a
-starter" and "how long does he last" with an estimate that is usable in
-August, where ``starts_r5`` over three matches is not an estimate of anything.
-Both are gated at N1 rather than asserted here.
+v5 built congestion and shrunken mode-rate features (see
+:mod:`gaffer.features.engineer`) and gate N1 measured them on the 2024-25
+benchmark: zeros RMSE 1.082-1.084 with them vs 1.069-1.073 without — a
+regression, likely because cup congestion data exists only from 2025-26, so
+the feature is partly a season indicator. They are therefore NOT fed to the
+minutes model; the builders stay for the tracker and for re-evaluation once
+cup coverage spans the training window. Recorded in the v5 design doc §12.
 """
 
 # Team-level clean sheet / goals conceded held at league-average constants
