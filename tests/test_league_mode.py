@@ -289,3 +289,126 @@ def test_strategy_carries_the_new_fields_with_defaults():
     assert s.z == 0.0
     assert s.sigma_m == SIGMA_FALLBACK
     assert s.cover_weights == {}
+
+
+# --- v4d: threat weights and covering --------------------------------------
+
+
+def test_threat_weights_behind_are_all_on_the_leader():
+    """Behind, the win condition is one entry: the leader. Nobody else is
+    between me and the title, so nobody else gets weight."""
+    from gaffer.league_mode import threat_weights
+
+    rivals = pd.DataFrame({"entry": [11, 12, 13],
+                           "entry_name": ["Leader", "Mid", "Tail"],
+                           "total": [500, 460, 400]})
+    w = threat_weights(my_total=450, rivals=rivals, sigmas={}, weeks_left=9)
+    assert w == {11: 1.0}
+
+
+def test_threat_weights_ahead_favour_the_nearest_and_sum_to_one():
+    from gaffer.league_mode import threat_weights
+
+    rivals = pd.DataFrame({"entry": [11, 12],
+                           "entry_name": ["Close", "Far"],
+                           "total": [495, 460]})
+    w = threat_weights(my_total=500, rivals=rivals, sigmas={11: 18.0,
+                                                            12: 18.0},
+                       weeks_left=9)
+    assert sum(w.values()) == pytest.approx(1.0)
+    assert w[11] > w[12]
+
+
+def test_threat_weights_ahead_ignore_a_rival_two_hundred_adrift():
+    """A rival beyond 3 sigma-root-W back contributes ~nothing, so covering
+    his squad must not shape my pool at all."""
+    from gaffer.league_mode import threat_weights
+
+    rivals = pd.DataFrame({"entry": [11, 12],
+                           "entry_name": ["Close", "Gone"],
+                           "total": [495, 300]})
+    w = threat_weights(my_total=500, rivals=rivals,
+                       sigmas={11: 18.0, 12: 18.0}, weeks_left=9)
+    assert set(w) == {11}
+    assert w[11] == pytest.approx(1.0)
+
+
+def test_threat_weights_with_nobody_in_range_fall_back_to_the_nearest():
+    """An empty weight table would make every cover zero, which reads as
+    'nobody owns anybody' — the nearest rival is the honest answer."""
+    from gaffer.league_mode import threat_weights
+
+    rivals = pd.DataFrame({"entry": [11, 12], "entry_name": ["A", "B"],
+                           "total": [100, 50]})
+    w = threat_weights(my_total=500, rivals=rivals,
+                       sigmas={11: 8.0, 12: 8.0}, weeks_left=1)
+    assert w == {11: 1.0}
+
+
+def test_threat_weights_without_entry_ids_are_empty():
+    """The report-only rivals frame in the tests has no entry column; an
+    exception there would take the whole advice down."""
+    from gaffer.league_mode import threat_weights
+
+    assert threat_weights(500, RIVALS, {}, 9) == {}
+
+
+PICKS = {11: [{"element": 1, "multiplier": 2},      # captained
+              {"element": 2, "multiplier": 1},
+              {"element": 3, "multiplier": 0}],     # benched
+         12: [{"element": 2, "multiplier": 1},
+              {"element": 4, "multiplier": 1}]}
+
+
+def test_cover_counts_captaincy_double_and_the_bench_zero():
+    from gaffer.league_mode import cover_table
+
+    cover = cover_table(PICKS, {11: 0.5, 12: 0.5})
+    assert cover[1] == pytest.approx(1.0)      # 0.5 * 2, clamped at 1
+    assert cover[2] == pytest.approx(1.0)      # 0.5 + 0.5
+    assert cover[4] == pytest.approx(0.5)
+    assert 3 not in cover                      # benched: owned by nobody
+
+
+def test_cover_clamps_after_weighting_not_before():
+    """0.6 * 2 = 1.2 must become 1.0 at the end, not 0.6 * min(2, 1)."""
+    from gaffer.league_mode import cover_table
+
+    cover = cover_table({11: [{"element": 1, "multiplier": 2}]}, {11: 0.6})
+    assert cover[1] == 1.0
+
+
+def test_cover_ignores_a_rival_with_no_weight():
+    from gaffer.league_mode import cover_table
+
+    assert cover_table(PICKS, {11: 1.0}) == {1: 1.0, 2: 1.0}
+
+
+def test_cover_with_equal_weights_reduces_to_league_eo():
+    """The generalization is strict: equal weights and no captaincy give
+    exactly effective_ownership / 100."""
+    from gaffer.data.league import effective_ownership
+    from gaffer.league_mode import cover_from_eo, cover_table
+
+    picks = {11: [{"element": 1, "multiplier": 1},
+                  {"element": 2, "multiplier": 1}],
+             12: [{"element": 1, "multiplier": 1}],
+             13: [{"element": 3, "multiplier": 1}]}
+    equal = {e: 1 / 3 for e in picks}
+    # effective_ownership rounds to one decimal place of a percent, so the
+    # comparison is to that precision — 0.667 against 0.6666..., not exact.
+    assert cover_table(picks, equal) == pytest.approx(
+        cover_from_eo(effective_ownership(picks)), abs=0.01)
+
+
+def test_captain_cover_counts_only_armbands():
+    from gaffer.league_mode import captain_cover
+
+    caps = captain_cover(PICKS, {11: 0.7, 12: 0.3})
+    assert caps == {1: pytest.approx(0.7)}
+
+
+def test_cover_from_eo_clamps_the_over_hundred_case():
+    from gaffer.league_mode import cover_from_eo
+
+    assert cover_from_eo({1: 180.0, 2: 40.0}) == {1: 1.0, 2: 0.4}

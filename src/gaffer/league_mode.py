@@ -26,6 +26,9 @@ SIGMA_CAP = 30.0
 SIGMA_MIN_WEEKS = 6
 LAST_GW = 38
 
+THREAT_SIGMAS = 3.0
+"""Ahead: rivals more than this many sigma-root-W back are not threats."""
+
 
 @dataclass(frozen=True)
 class LeagueParams:
@@ -117,8 +120,80 @@ def _sign(x: float) -> float:
 def threat_weights(my_total: int, rivals: pd.DataFrame,
                    sigmas: dict[int, float], weeks_left: int,
                    params: LeagueParams | None = None) -> dict[int, float]:
-    """Rival threat weights; Task 5 gives this its softmax body."""
-    return {}
+    """rival entry -> threat weight, summing to 1.
+
+    Behind, the relevant side is the leader alone: he is the win condition.
+    Ahead, it is every rival within ``THREAT_SIGMAS`` normalized units behind
+    me, softmaxed on ``-|gap_r| / (sigma_mr * sqrt(W))`` so a rival 200 points
+    adrift contributes nothing. A rivals frame with no ``entry`` column (the
+    report-only shape) yields no weights rather than raising.
+    """
+    p = params or LeagueParams()
+    if rivals.empty or "entry" not in rivals.columns:
+        return {}
+    root = math.sqrt(max(1, weeks_left))
+    fallback = _bounded(SIGMA_FALLBACK, p)
+    scored = []
+    for _, row in rivals.iterrows():
+        entry, total = int(row["entry"]), int(row["total"])
+        sigma = sigmas.get(entry, fallback)
+        scored.append((entry, total, (my_total - total) / (sigma * root)))
+    if max(total for _, total, _ in scored) > my_total:
+        leader = max(scored, key=lambda s: s[1])
+        return {leader[0]: 1.0}
+    relevant = [s for s in scored if 0.0 <= s[2] <= THREAT_SIGMAS]
+    if not relevant:
+        nearest = min(scored, key=lambda s: abs(s[2]))
+        return {nearest[0]: 1.0}
+    shift = max(-s[2] for s in relevant)          # softmax, numerically safe
+    exps = {s[0]: math.exp(-s[2] - shift) for s in relevant}
+    total_exp = sum(exps.values())
+    return {entry: value / total_exp for entry, value in exps.items()}
+
+
+def cover_table(rival_picks: dict[int, list[dict]],
+                weights: dict[int, float]) -> dict[int, float]:
+    """element -> covered fraction in [0, 1] over the rivals that matter.
+
+    ``own`` is 0 (benched or unowned), 1 (owned) or 2 (captained): captaincy
+    counts double, and a triple captain is still 2. The sum is clamped to
+    [0, 1] *after* weighting, exactly as ``min(EO%/100, 1)`` clamped league EO.
+    With equal weights and no armbands this reduces to league EO / 100.
+    """
+    out: dict[int, float] = {}
+    for entry, picks in rival_picks.items():
+        weight = weights.get(int(entry))
+        if not weight:
+            continue
+        for pick in picks:
+            own = min(int(pick.get("multiplier", 0)), 2)
+            if own <= 0:
+                continue
+            element = int(pick["element"])
+            out[element] = out.get(element, 0.0) + weight * own
+    return {element: min(value, 1.0) for element, value in out.items()}
+
+
+def captain_cover(rival_picks: dict[int, list[dict]],
+                  weights: dict[int, float]) -> dict[int, float]:
+    """element -> weighted share of the threats who captain him."""
+    out: dict[int, float] = {}
+    for entry, picks in rival_picks.items():
+        weight = weights.get(int(entry))
+        if not weight:
+            continue
+        for pick in picks:
+            if int(pick.get("multiplier", 0)) >= 2:
+                element = int(pick["element"])
+                out[element] = out.get(element, 0.0) + weight
+    return {element: min(value, 1.0) for element, value in out.items()}
+
+
+def cover_from_eo(eo_pct: dict[int, float]) -> dict[int, float]:
+    """League EO percent -> the v1 cover fraction. The old tilt, one table
+    away: it is what ``cover_table`` reduces to under equal weights."""
+    return {key: min(float(value) / 100.0, 1.0)
+            for key, value in eo_pct.items()}
 
 
 def compute_strategy(my_total: int, rivals: pd.DataFrame, current_gw: int,
