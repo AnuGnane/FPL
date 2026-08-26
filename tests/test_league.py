@@ -178,3 +178,59 @@ def test_fetch_rival_history_of_nobody_is_an_empty_frame(tmp_path):
                        transport=_history_transport({}, calls))
     df = fetch_rival_history(client, [], gw=1, raw_dir=tmp_path / "league")
     assert df.empty and list(df.columns) == ["entry", "gw", "points"]
+
+
+# --- v4d: recorded rival picks for gate E1 ---------------------------------
+
+from gaffer.data.league import fetch_rival_picks_history
+
+
+def _picks_transport(calls: list):
+    """entry/{id}/event/{gw}/picks/ for any entry; GW 3 is never public."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        parts = request.url.path.rstrip("/").split("/")
+        entry, gw = int(parts[-4]), int(parts[-2])
+        calls.append((entry, gw))
+        if gw == 3:
+            return httpx.Response(404, json={"detail": "Not found."})
+        return httpx.Response(200, json={"picks": [
+            {"element": entry * 10 + gw, "position": 1, "multiplier": 2}]})
+
+    return httpx.MockTransport(handler)
+
+
+def test_fetch_rival_picks_history_keys_on_entry_and_gameweek(tmp_path):
+    calls: list = []
+    client = FPLClient(raw_dir=tmp_path / "raw", retries=1,
+                       transport=_picks_transport(calls))
+    out = fetch_rival_picks_history(client, [7, 8], season="2025-26",
+                                    gws=[1, 2], raw_dir=tmp_path / "league")
+    assert sorted(out) == [(7, 1), (7, 2), (8, 1), (8, 2)]
+    assert out[(8, 2)][0]["element"] == 82
+
+
+def test_fetch_rival_picks_history_skips_a_gameweek_that_is_not_public(
+        tmp_path):
+    calls: list = []
+    client = FPLClient(raw_dir=tmp_path / "raw", retries=1,
+                       transport=_picks_transport(calls))
+    out = fetch_rival_picks_history(client, [7], season="2025-26",
+                                    gws=[2, 3], raw_dir=tmp_path / "league")
+    assert sorted(out) == [(7, 2)]
+
+
+def test_fetch_rival_picks_history_caches_permanently_per_season(tmp_path):
+    """Recorded picks are facts: fetched once, then read off disk forever."""
+    calls: list = []
+    cache = tmp_path / "league"
+    client = FPLClient(raw_dir=tmp_path / "raw", retries=1,
+                       transport=_picks_transport(calls))
+    fetch_rival_picks_history(client, [7], season="2025-26", gws=[1],
+                              raw_dir=cache)
+    assert (cache / "2025-26" / "7-1.json").exists()
+    assert calls == [(7, 1)]
+    again = fetch_rival_picks_history(client, [7], season="2025-26", gws=[1],
+                                      raw_dir=cache)
+    assert calls == [(7, 1)]
+    assert again[(7, 1)][0]["element"] == 71

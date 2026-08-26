@@ -614,3 +614,35 @@ def test_the_backtest_reports_the_attribution_it_logged():
     result = {"log": log, "chips_played": {7: "bboost"},
               "chip_points": chip_points(log)}
     assert set(result["chip_points"]) == set(result["chips_played"].values())
+
+
+# --- v4d: the league tilt seam gate E1 injects -----------------------------
+
+def test_run_backtest_without_a_tilt_is_the_default_replay(monkeypatch):
+    """Default None means today's behaviour, to the point."""
+    import inspect
+
+    _install_stubs(monkeypatch, _season_rows([1, 2, 3]))
+    default = run_backtest(season="2025-26", start_gw=1, retrain_every=4)
+    _install_stubs(monkeypatch, _season_rows([1, 2, 3]))
+    explicit = run_backtest(season="2025-26", start_gw=1, retrain_every=4,
+                            tilt=None)
+    assert explicit == default
+    assert inspect.signature(run_backtest).parameters["tilt"].default is None
+
+
+def test_run_backtest_applies_an_injected_tilt_before_the_pool_is_built(
+        monkeypatch):
+    """Gate E1 replays the dial by handing the loop a tilt; it has to reach
+    the pool, which is what decides *which* players are candidates."""
+    _install_stubs(monkeypatch, _season_rows([1, 2, 3]))
+    seen: list[int] = []
+
+    def tilt(ep_by, gw):
+        seen.append(gw)
+        return {key: value * 2 for key, value in ep_by.items()}
+
+    out = run_backtest(season="2025-26", start_gw=1, retrain_every=4,
+                       tilt=tilt)
+    assert seen == [1, 2, 3]
+    assert out["total"] > 0

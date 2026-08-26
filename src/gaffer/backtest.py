@@ -353,7 +353,8 @@ def oracle_ep(season_rows: pd.DataFrame, gws: list[int]) -> pd.DataFrame:
 
 def run_backtest(season: str = "2025-26", start_gw: int = 5,
                  retrain_every: int = 4, horizon: int = 1,
-                 chips: bool = False, ep_source: str = "model") -> dict:
+                 chips: bool = False, ep_source: str = "model",
+                 tilt=None) -> dict:
     """Replay ``season`` from ``start_gw`` to GW38 following the tool.
 
     ``horizon`` turns the replay into a receding-horizon plan: each week the
@@ -382,10 +383,17 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
     ``"oracle"`` swaps in each player's *actual* points for the gameweek
     (:func:`oracle_ep`) and feeds them through the identical pipeline — same
     pool, same solver, same chip logic. Two simplifications are worth being
-    explicit about: the replay never applies league tilt or availability
-    filtering in either mode, so an oracle run is clairvoyant about scores
-    and no more privileged than the model run about news; and it skips model
-    training altogether, since nothing reads the fitted components.
+    explicit about: the replay applies no availability filtering in either
+    mode, and no league tilt unless one is injected, so an oracle run is
+    clairvoyant about scores and no more privileged than the model run about
+    news; and it skips model training altogether, since nothing reads the
+    fitted components.
+
+    ``tilt`` is the gate-E1 seam: an optional ``(ep_by, gw) -> ep_by``
+    callable applied to the expected-points dict immediately before the pool
+    is built, so a replayed league tilt shapes *which* players are candidates
+    exactly as it does in ``advise``. ``None`` — the default — leaves the
+    replay bit-identical to the pre-v4d one.
 
     Returns {"season", "from_gw", "total", "per_gw", "log", "chips_played",
     "unplayed_chips"} and writes the per-gameweek log to ``data/live/backtest_log.parquet``.
@@ -468,6 +476,8 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
             ep = ep_matrix(apply_calibration(assemble_ep(comp, scoring),
                                              models.get("calibration")))
         ep_by = {(int(r.code), int(r.gw)): float(r.ep) for r in ep.itertuples()}
+        if tilt is not None:
+            ep_by = tilt(ep_by, gw)
         players = _players_frame(season_rows, gw)
         pos_of.update(dict(zip(players["code"], players["position"])))
         name_of = dict(zip(players["code"], players["name"]))

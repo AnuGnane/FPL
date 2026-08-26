@@ -95,3 +95,34 @@ def fetch_rival_history(client: FPLClient, entries: list[int], gw: int,
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(rows))
     return pd.DataFrame(rows, columns=HISTORY_COLS)
+
+
+def fetch_rival_picks_history(client: FPLClient, entries: list[int],
+                              season: str, gws: list[int],
+                              raw_dir: Path | str = RAW_LEAGUE
+                              ) -> dict[tuple[int, int], list[dict]]:
+    """(entry, gw) -> the squad that entry actually played that gameweek.
+
+    Cached permanently under ``{raw_dir}/{season}/{entry}-{gw}.json``: a
+    finished gameweek's picks are a historical fact and will never change,
+    so a replay re-run costs no API calls at all. A gameweek an entry never
+    played (joined late, private) is absent from the result rather than
+    fatal.
+    """
+    base = Path(raw_dir) / season
+    out: dict[tuple[int, int], list[dict]] = {}
+    for entry in entries:
+        for gw in gws:
+            key = (int(entry), int(gw))
+            path = base / f"{key[0]}-{key[1]}.json"
+            if path.exists():
+                out[key] = json.loads(path.read_text())
+                continue
+            try:
+                picks = client.get_entry_picks(key[0], key[1])["picks"]
+            except Exception:
+                continue        # never played / not public — skip
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(picks))
+            out[key] = picks
+    return out
