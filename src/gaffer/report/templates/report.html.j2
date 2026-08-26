@@ -44,7 +44,11 @@
 {% if not a.buys %}<li>No transfers — bank the free transfer.</li>{% endif %}
 {% if a.hits %}<li class="warn">Taking {{ a.hits }} hit(s): −{{ a.hits * 4 }} pts, maths clears it.</li>{% endif %}
 {% endif %}
-<li>Captain: <strong>{{ a.captain.name }}</strong> · Vice: <strong>{{ a.vice.name }}</strong></li>
+<li>Captain: <strong>{{ a.captain.name }}</strong>
+{%- if a.captain_note %} <span class="diff">{{ a.captain_note }}</span>{% endif %}
+ · Vice: <strong>{{ a.vice.name }}</strong></li>
+{% if a.demoted_captain %}<li class="muted">Raw-EP captain:
+{{ a.demoted_captain.name }} ({{ a.demoted_captain.ep }} xPts)</li>{% endif %}
 </ul></div>
 
 {% if a.strategy %}{% set s = a.strategy %}

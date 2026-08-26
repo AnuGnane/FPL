@@ -590,3 +590,28 @@ def test_run_advise_still_reports_league_eo_for_the_annotation_tables():
     src = inspect.getsource(run_advise)
     assert "captain_table(ep_gw1, first.xi, league_eo)" in src
     assert "threat_board(ep_gw1, first.squad, league_eo)" in src
+
+
+def test_run_advise_re_picks_the_captain_after_the_plan_is_fixed():
+    """Authority order: the v4c plurality picks a candidate, then the tilted
+    score over the final XI is the last word. The seam therefore sits after
+    the scenario block and before the chip block — and, like everything else
+    inserted into run_advise, it never mentions the tilted pool."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    seam = src.index("tilted_captaincy(")
+    chips = src.index("chip_pool = (build_pool(")   # note the paren: line 640
+    assert src.index("coherent_plan(") < seam < chips
+    assert "captaincy_note(" in src
+    assert "pool_ep" not in src[seam:chips]
+
+
+def test_advice_carries_the_demoted_captain_and_the_note():
+    from gaffer.advise import Advice
+
+    a = _bare_advice()
+    assert a.captain_note is None
+    assert a.demoted_captain is None

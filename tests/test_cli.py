@@ -231,3 +231,33 @@ def test_calibrate_decisions_writes_the_shipped_asset():
     assert "run_calibration(" in src
     assert "write_priors(" in src
     assert "src/gaffer/assets/decision_priors.json" in src
+
+
+def test_advise_prints_the_captain_note_and_the_demoted_pick(tmp_path,
+                                                             monkeypatch):
+    """When the dial moves the armband both picks are shown, mirroring the
+    v4c raw-optimum treatment."""
+    import gaffer.advise as advise_mod
+    import gaffer.config as config_mod
+    import gaffer.report.render as render_mod
+    import gaffer.tracking as tracking_mod
+    from tests.test_v4c_degradation import _fixture_advice
+
+    advice = _fixture_advice()
+    advice.captain_note = "differential vs Ten Hag Hive"
+    advice.demoted_captain = {"code": 9, "name": "Mohamed Salah", "ep": 8.8}
+
+    cfg_path = tmp_path / "config.toml"
+    cfg_path.write_text('[fpl]\nentry_id = 1\nleague_id = 2\n')
+    real_load = config_mod.load_config
+    monkeypatch.setattr(config_mod, "load_config",
+                        lambda path="config.toml": real_load(cfg_path))
+    monkeypatch.setattr(advise_mod, "run_advise",
+                        lambda cfg, client=None: advice)
+    monkeypatch.setattr(render_mod, "render_report",
+                        lambda advice, **kw: "reports/gw7.html")
+    monkeypatch.setattr(tracking_mod, "latest_health", lambda: None)
+
+    out = runner.invoke(app, ["advise"]).output
+    assert "Captain: Erling Haaland (differential vs Ten Hag Hive)" in out
+    assert "Raw-EP captain: Mohamed Salah (8.8 xPts)" in out

@@ -22,7 +22,7 @@ obvious way:
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -45,8 +45,9 @@ from gaffer.errors import GafferError
 from gaffer.data.odds import (OddsClient, ags_frame, blend_attacking_odds,
                               next_gw_event_ids, odds_frame)
 from gaffer.features.engineer import build_prediction_frame, feature_columns
-from gaffer.league_mode import (LeagueParams, captain_cover, compute_strategy,
-                                cover_table, tilt_ep, win_probability)
+from gaffer.league_mode import (LeagueParams, captain_cover, captaincy_note,
+                                compute_strategy, cover_table, tilt_ep,
+                                tilted_captaincy, win_probability)
 from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
 from gaffer.models.components import card_penalty
 from gaffer.models.minutes import apply_availability
@@ -130,6 +131,11 @@ class Advice:
     move_frequencies: list[dict] = field(default_factory=list)
     raw_optimum_agrees: bool | None = None
     scenarios: dict | None = None
+    # --- v4d league mode ---------------------------------------------------
+    # Both are None unless the league tilt actually moved the armband, so an
+    # Advice built without a league is the object it always was.
+    captain_note: str | None = None
+    demoted_captain: dict | None = None
 
 
 INITIAL_BUDGET = 1000
@@ -661,6 +667,26 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
                 "near_misses": decision.near_misses,
             }
 
+    # --- EO-aware captaincy (spec 2026-08-26 §6) ---------------------------
+    # The plurality above picks a candidate; when the league is live and the
+    # dial is off zero, the tilted score over the *final* XI is the last
+    # word. At lam = 0 tilted_captaincy is argmax raw EP, so v4c's armband
+    # stands untouched and both report fields stay None.
+    captain_note: str | None = None
+    demoted_captain: dict | None = None
+    if strat is not None and strat.lam:
+        ep_of_gw = {code: ep_by.get((code, gw), 0.0) for code in first.xi}
+        new_captain, new_vice = tilted_captaincy(list(first.xi), ep_of_gw,
+                                                 cap_cover, strat.lam)
+        if new_captain != first.captain:
+            demoted_captain = {"code": int(first.captain),
+                               "ep": round(float(ep_of_gw.get(
+                                   first.captain, 0.0)), 2)}
+            captain_note = captaincy_note(strat.lam, new_captain,
+                                          int(first.captain), rival_captains,
+                                          strat.cover_weights, rival_names)
+            first = replace(first, captain=new_captain, vice=new_vice)
+
     # Chips are priced in *raw* points: evaluate_chips and
     # wildcard_now_assessment return objective deltas, and those deltas are
     # compared against fixed point thresholds (8.0 to recommend a wildcard,
@@ -728,6 +754,9 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
 
     name_of = dict(zip(players["code"], players["name"]))
     pos_of = dict(zip(players["code"], players["position"]))
+    if demoted_captain is not None:
+        demoted_captain["name"] = name_of.get(demoted_captain["code"],
+                                              str(demoted_captain["code"]))
     buys = _named(first.buys, name_of, pos_of, ep_by, gw)
     sells = _named(first.sells, name_of, pos_of, ep_by, gw)
     for b in buys:
@@ -784,6 +813,8 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         move_frequencies=move_freqs,
         raw_optimum_agrees=raw_agrees,
         scenarios=scenario_report,
+        captain_note=captain_note,
+        demoted_captain=demoted_captain,
     )
     REPORTS.mkdir(exist_ok=True)
     (REPORTS / f"gw{gw}-advice.json").write_text(

@@ -426,3 +426,84 @@ def test_cover_from_eo_clamps_the_over_hundred_case():
     from gaffer.league_mode import cover_from_eo
 
     assert cover_from_eo({1: 180.0, 2: 40.0}) == {1: 1.0, 2: 0.4}
+
+
+# --- v4d: EO-aware captaincy -----------------------------------------------
+
+EP_OF = {1: 9.0, 2: 8.6, 3: 7.0}
+
+
+def test_tilted_captaincy_at_zero_lambda_is_argmax_raw_ep():
+    """The rail: with no tilt the armband is exactly where v4c put it."""
+    from gaffer.league_mode import tilted_captaincy
+
+    assert tilted_captaincy([3, 1, 2], EP_OF, {1: 1.0}, 0.0) == (1, 2)
+
+
+def test_tilted_captaincy_chasing_prefers_the_uncaptained_ceiling():
+    """Behind: a captain nobody relevant is captaining scores higher — the
+    variance-seeking split the rank payoff implies."""
+    from gaffer.league_mode import tilted_captaincy
+
+    captain, vice = tilted_captaincy([1, 2, 3], EP_OF, {1: 1.0, 2: 0.0}, 0.4)
+    assert captain == 2          # 8.6 * 1.4 = 12.04 beats 9.0 * 1.0
+    # The vice keeps the same rule on the same tilted score (spec §6), so the
+    # uncovered 7.0 (7.0 * 1.4 = 9.8) outranks the fully covered 9.0.
+    assert vice == 3
+
+
+def test_tilted_captaincy_defending_mirrors_the_threats_armband():
+    from gaffer.league_mode import tilted_captaincy
+
+    captain, _ = tilted_captaincy([1, 2, 3], EP_OF, {1: 1.0, 2: 0.0}, -0.3)
+    assert captain == 1          # 9.0 * 1.0 beats 8.6 * 0.7
+
+
+def test_tilted_captaincy_breaks_ties_on_raw_ep_then_code():
+    """Determinism matters: two equal tilted scores must not depend on the
+    order the XI came out of the MILP."""
+    from gaffer.league_mode import tilted_captaincy
+
+    ep = {5: 6.0, 6: 6.0}
+    assert tilted_captaincy([6, 5], ep, {}, 0.4) == (5, 6)
+
+
+def test_tilted_captaincy_of_a_one_man_xi_names_him_twice():
+    from gaffer.league_mode import tilted_captaincy
+
+    assert tilted_captaincy([1], EP_OF, {}, 0.4) == (1, 1)
+
+
+def test_captaincy_note_names_the_threat_being_covered():
+    from gaffer.league_mode import captaincy_note
+
+    note = captaincy_note(-0.3, chosen=1, demoted=2,
+                          rival_captains={11: 1, 12: 3},
+                          weights={11: 0.8, 12: 0.2},
+                          names={11: "Ten Hag Hive", 12: "Tail"})
+    assert note == "covering Ten Hag Hive's armband"
+
+
+def test_captaincy_note_names_the_threat_being_differed_from():
+    from gaffer.league_mode import captaincy_note
+
+    note = captaincy_note(0.4, chosen=2, demoted=1,
+                          rival_captains={11: 1, 12: 1},
+                          weights={11: 0.9, 12: 0.1},
+                          names={11: "Ten Hag Hive", 12: "Tail"})
+    assert note == "differential vs Ten Hag Hive"
+
+
+def test_captaincy_note_is_empty_when_nothing_changed():
+    from gaffer.league_mode import captaincy_note
+
+    assert captaincy_note(0.0, 1, 1, {}, {}, {}) == ""
+    assert captaincy_note(0.4, 1, 1, {11: 1}, {11: 1.0}, {11: "A"}) == ""
+
+
+def test_captaincy_note_degrades_when_no_rival_captains_either_player():
+    from gaffer.league_mode import captaincy_note
+
+    assert captaincy_note(0.4, 2, 1, {}, {}, {}) == "differential vs the field"
+    assert captaincy_note(-0.3, 2, 1, {}, {}, {}) == \
+        "covering the field's armband"

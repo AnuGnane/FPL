@@ -63,8 +63,15 @@ def advise():
     if advice.scenarios and advice.scenarios.get("captain_frequency"):
         cap_pct = (f" [{round(advice.scenarios['captain_frequency'] * 100)}"
                    "% of sims]")
-    typer.echo(f"Captain: {advice.captain['name']} | "
+    # Both conditional: with no league tilt this is byte-for-byte the v4c
+    # line, which tests/test_v4c_degradation.py compares character by
+    # character.
+    note = f" ({advice.captain_note})" if advice.captain_note else ""
+    typer.echo(f"Captain: {advice.captain['name']}{note} | "
                f"Vice: {advice.vice['name']}{cap_pct}")
+    if advice.demoted_captain:
+        typer.echo(f"Raw-EP captain: {advice.demoted_captain['name']} "
+                   f"({advice.demoted_captain['ep']} xPts)")
     if advice.scenarios:
         s = advice.scenarios
         typer.echo(f"Scenarios: {s['completed']}/{s['n']} solved, "

@@ -288,3 +288,48 @@ def explain_lam(strategy: Strategy) -> str:
                 f"ownership and protect the lead.")
     return (f"λ 0.00: the gap to {strategy.rival_name} is inside the noise, "
             f"so there is no tilt at all — this is the plain points-max plan.")
+
+
+def tilted_captaincy(xi: list[int], ep_of: dict[int, float],
+                     cap_cover: dict[int, float],
+                     lam: float) -> tuple[int, int]:
+    """(captain, vice) over the final XI by tilted score.
+
+    ``cap_score_p = ep_p * (1 + lam * (1 - cap_cover_p))``. Behind (lam > 0)
+    an unowned armband scores higher; ahead (lam < 0) the threats' armband
+    does. At lam = 0 this is argmax raw EP, exactly what v4c produced. Ties
+    fall back to raw EP and then to the code, so the answer never depends on
+    the order the MILP happened to list the XI in.
+    """
+    def score(code: int) -> float:
+        covered = min(max(float(cap_cover.get(code, 0.0)), 0.0), 1.0)
+        return float(ep_of.get(code, 0.0)) * (1 + lam * (1 - covered))
+
+    ranked = sorted(xi, key=lambda c: (-score(c), -float(ep_of.get(c, 0.0)),
+                                       int(c)))
+    return ranked[0], (ranked[1] if len(ranked) > 1 else ranked[0])
+
+
+def captaincy_note(lam: float, chosen: int, demoted: int,
+                   rival_captains: dict[int, int], weights: dict[int, float],
+                   names: dict[int, str]) -> str:
+    """The half-sentence the report puts after the captain's name.
+
+    Defending, the armband is covering the heaviest threat who owns it;
+    chasing, it is a differential against the heaviest threat who captains
+    the man we just demoted. Nothing at all when the tilt changed nothing.
+    """
+    if lam == 0.0 or chosen == demoted:
+        return ""
+    target = chosen if lam < 0 else demoted
+    owners = [entry for entry, code in rival_captains.items()
+              if code == target]
+    if lam < 0:
+        if not owners:
+            return "covering the field's armband"
+        who = max(owners, key=lambda e: weights.get(e, 0.0))
+        return f"covering {names.get(who, 'a rival')}'s armband"
+    if not owners:
+        return "differential vs the field"
+    who = max(owners, key=lambda e: weights.get(e, 0.0))
+    return f"differential vs {names.get(who, 'a rival')}"
