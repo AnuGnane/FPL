@@ -356,8 +356,8 @@ def test_run_advise_guards_the_whole_scenario_block_on_the_config():
     from gaffer.advise import run_advise
 
     src = inspect.getsource(run_advise)
-    assert "if cfg.scenarios_n > 0:" in src
-    assert src.index("if cfg.scenarios_n > 0:") < src.index("run_scenarios(")
+    assert "if cfg.scenarios_n > 0" in src
+    assert src.index("if cfg.scenarios_n > 0") < src.index("run_scenarios(")
 
 
 def test_the_scenario_block_never_mentions_pool_ep():
@@ -369,7 +369,7 @@ def test_the_scenario_block_never_mentions_pool_ep():
     from gaffer.advise import run_advise
 
     src = inspect.getsource(run_advise)
-    block = src[src.index("if cfg.scenarios_n > 0:"):src.index("ep_gw1 =")]
+    block = src[src.index("if cfg.scenarios_n > 0"):src.index("ep_gw1 =")]
     assert "pool_ep" not in block
     assert "noised_pool" in block or "run_scenarios(pool" in block
 
@@ -492,3 +492,67 @@ def test_run_advise_records_whether_the_priors_were_on():
     block = src[src.index("opt_kw = dict("):
                 src.index("solve_kw = dict(opt_kw")]
     assert "decision_priors" not in block
+
+
+# --- B5/B6 and the review's nits, pinned in run_advise --------------------
+
+
+def test_the_scenario_gate_is_skipped_without_an_owned_squad():
+    """B5. FixedMoves(no_transfer=True) forces lpSum(tin) == 0, which cannot
+    build a squad from nothing — so a held decision at GW1 printed
+    'coherence re-solve infeasible' under the user's opening picks. Gating
+    fifteen opening picks against an incumbent that does not exist is not a
+    question worth asking in the first place."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    assert "if cfg.scenarios_n > 0 and state.owned_codes:" in src
+
+
+def test_a_sweep_where_every_solve_failed_says_so():
+    """n2. run.completed == 0 fell through the `if` in silence, and the
+    report looked exactly like a run with scenarios switched off."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    assert "if not run.completed:" in src
+    assert "scenario solves failed" in src
+
+
+def test_an_empty_xmins_map_is_warned_about():
+    """n3. No minutes model means noised_pool leaves every cell alone, so all
+    n scenarios are the same board and every frequency is 1.0."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    assert "if not xmins:" in src
+
+
+def test_the_scenario_seed_moves_with_the_gameweek():
+    """n10. A fixed seed replays one noise sequence every week; D1 was
+    measured with the gameweek folded in."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    assert "seed=cfg.scenarios_seed + gw" in src
+
+
+def test_the_reported_captain_frequency_belongs_to_the_actual_captain():
+    """B6. decision.captain_frequency is the plurality winner's, and he is
+    silently dropped when the re-solve cannot field him."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    assert "captain_frequency_of(freqs," in src
+    assert "first.captain)" in src
+    assert "decision.captain_frequency" not in src

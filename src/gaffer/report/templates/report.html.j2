@@ -36,11 +36,11 @@
 {% endif %}
 <ul>
 {% for b in a.buys %}<li>{{ "PICK" if initial else "BUY" }} <strong>{{ b.name }}</strong> ({{ b.ep }} xPts)
-{%- if advice.scenarios %} <span class="freq">{{ (b.frequency * 100) | round | int if b.frequency else '—' }}% of sims</span>{% endif %}
+{%- if advice.scenarios and b.frequency %} <span class="freq">{{ (b.frequency * 100) | round | int }}% of sims</span>{% endif %}
 {%- if b.tag %} <span class="diff">{{ b.tag }}</span>{% endif %}</li>{% endfor %}
 {% if not initial %}
 {% for s in a.sells %}<li>SELL <strong>{{ s.name }}</strong> ({{ s.ep }} xPts)
-{%- if advice.scenarios %} <span class="freq">{{ (s.frequency * 100) | round | int if s.frequency else '—' }}% of sims</span>{% endif %}</li>{% endfor %}
+{%- if advice.scenarios and s.frequency %} <span class="freq">{{ (s.frequency * 100) | round | int }}% of sims</span>{% endif %}</li>{% endfor %}
 {% if not a.buys %}<li>No transfers — bank the free transfer.</li>{% endif %}
 {% if a.hits %}<li class="warn">Taking {{ a.hits }} hit(s): −{{ a.hits * 4 }} pts, maths clears it.</li>{% endif %}
 {% endif %}

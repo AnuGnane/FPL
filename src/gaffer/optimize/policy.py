@@ -147,6 +147,24 @@ def decide(frequencies: pd.DataFrame, raw_plan: Plan,
                     near_misses=near_misses, frequencies=frequencies)
 
 
+def captain_frequency_of(frequencies: pd.DataFrame,
+                         code: int) -> float | None:
+    """How often the sweep captained ``code``, or ``None`` if it never did.
+
+    :func:`coherent_plan` drops the plurality winner when the re-solved squad
+    does not contain him, so ``Decision.captain_frequency`` is the frequency
+    of a player who may not be wearing the armband. Printing it next to the
+    captain who is would be a fabricated number; ``None`` is the honest one.
+    """
+    if frequencies.empty or "kind" not in frequencies.columns:
+        return None
+    rows = frequencies[(frequencies["kind"] == "captain")
+                       & (frequencies["code"] == int(code))]
+    if rows.empty:
+        return None
+    return float(rows["frequency"].iloc[0])
+
+
 def coherent_plan(pool: pd.DataFrame, state: SolveInput, decision: Decision,
                   **solve_cfg) -> Plan:
     """The best legal plan that does what the frequencies decided.

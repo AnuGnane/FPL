@@ -167,9 +167,11 @@ def thresholds_from_priors(chip_surplus: dict[str, dict[int, list[float]]],
     solved twice — once over the GW1-19 window and once over GW20-38 — because
     a chip held in the first half cannot be saved for the second.
 
-    An unknown chip, or one with no samples at all, falls through to
-    :func:`flat_thresholds` rather than to zero: no calibration is a reason to
-    keep the old bar, not a reason to play the chip on any positive surplus.
+    An unknown chip, a chip with no samples at all, *or* a gameweek the table
+    does not cover falls through to :func:`flat_thresholds` rather than to
+    zero: no calibration is a reason to keep the old bar, not a reason to play
+    the chip on any positive surplus. A bar of 0.0 is the most permissive
+    number in the system and is not something a missing key should produce.
     """
     flat = flat_thresholds()
     tables: dict[str, dict[int, float]] = {}
@@ -185,7 +187,7 @@ def thresholds_from_priors(chip_surplus: dict[str, dict[int, list[float]]],
         table = tables.get(chip)
         if not table:
             return flat(chip, gw)
-        return float(table.get(int(gw), 0.0))
+        return float(table.get(int(gw), flat(chip, gw)))
 
     return lookup
 

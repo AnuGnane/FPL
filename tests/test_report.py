@@ -166,3 +166,18 @@ def test_the_report_template_has_a_frequency_column_guarded_by_scenarios():
     assert "% of sims" in src
     assert "advice.scenarios" in src
     assert src.index("advice.scenarios") < src.index("% of sims")
+
+
+def test_a_move_with_no_frequency_gets_no_frequency_span(tmp_path):
+    """n9. An em dash where a percentage should be reads as a broken number.
+    A move the sweep never produced simply has nothing to report."""
+    advice = _advice()
+    advice.scenarios = {"n": 40, "completed": 40, "failures": 0, "seed": 7,
+                        "hold": False, "captain_frequency": None,
+                        "near_misses": []}
+    advice.buys[0]["frequency"] = 0.85
+    # advice.sells[0] deliberately has no frequency key at all.
+    html = render_report(advice, out_dir=tmp_path).read_text()
+    assert "85% of sims" in html
+    assert "—% of sims" not in html
+    assert html.count("% of sims") == 1

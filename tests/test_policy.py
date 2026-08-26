@@ -245,3 +245,40 @@ def test_coherent_plan_passes_the_solver_config_through():
     src = inspect.getsource(coherent_plan)
     assert "**solve_cfg" in src
     assert "fixed_moves=" in src
+
+
+# --- B6: the printed percentage must belong to the printed captain ---------
+
+def test_the_frequency_of_a_captain_the_sweep_never_picked_is_none():
+    from gaffer.optimize.policy import captain_frequency_of
+
+    freqs = _freq([("captain", 9, 5, "Nine", 0.7),
+                   ("captain", 4, 5, "Four", 0.3)])
+    assert captain_frequency_of(freqs, 9) == 0.7
+    assert captain_frequency_of(freqs, 4) == 0.3
+    assert captain_frequency_of(freqs, 11) is None
+
+
+def test_an_empty_frequency_table_has_no_captain_frequency():
+    from gaffer.optimize.policy import captain_frequency_of
+
+    assert captain_frequency_of(pd.DataFrame(), 9) is None
+
+
+def test_a_dropped_plurality_captain_does_not_lend_out_his_percentage():
+    """B6. The plurality winner is silently dropped when he is not in the
+    re-solved squad — but his frequency kept flowing into the report and got
+    printed next to whoever actually took the armband."""
+    from gaffer.optimize.policy import captain_frequency_of
+
+    pool = golden_pool()
+    state = _owned_state(pool)
+    # A code the sweep loved but the squad cannot contain.
+    outsider = int(max(c for c in pool["code"] if c not in state.owned_codes))
+    freqs = _freq([("captain", outsider, 1, "Outsider", 0.9)])
+    d = Decision(captain=outsider, captain_frequency=0.9, hold=True,
+                 frequencies=freqs)
+    plan = coherent_plan(pool, state, d, **GOLDEN_KW)
+    actual = plan.gw_plans[0].captain
+    assert actual != outsider, "fixture no longer drops the wanted captain"
+    assert captain_frequency_of(freqs, actual) is None

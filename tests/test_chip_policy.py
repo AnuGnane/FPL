@@ -196,3 +196,16 @@ def test_the_two_chip_halves_are_solved_independently():
     lookup = thresholds_from_priors(dist)
     assert lookup("bboost", 10) < 5.0
     assert lookup("bboost", 25) > 5.0
+
+
+def test_a_gameweek_the_table_does_not_cover_keeps_the_flat_bar():
+    """n7. A missing gameweek returned 0.0 — the most permissive bar in the
+    system — which would play the chip on any positive surplus at all."""
+    from gaffer.optimize.chip_policy import (flat_thresholds,
+                                             thresholds_from_priors)
+
+    flat = flat_thresholds()
+    lookup = thresholds_from_priors({"bboost": {10: [3.0, 5.0, 7.0]}})
+    assert lookup("bboost", 99) == flat("bboost", 99)
+    assert lookup("bboost", 0) == flat("bboost", 0)
+    assert lookup("bboost", 99) > 0.0

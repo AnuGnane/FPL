@@ -62,7 +62,8 @@ from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
                                          load_chip_scenarios)
 from gaffer.optimize.ft_value import lambda_from_priors
 from gaffer.optimize.milp import SolveInput, build_pool, solve_plan
-from gaffer.optimize.policy import Thresholds, coherent_plan, decide
+from gaffer.optimize.policy import (Thresholds, captain_frequency_of,
+                                    coherent_plan, decide)
 from gaffer.optimize.scenarios import (move_frequencies, run_scenarios,
                                        xmins_by_player_gw)
 from gaffer.prices import price_alerts
@@ -583,11 +584,27 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     move_freqs: list[dict] = []
     raw_agrees: bool | None = None
     scenario_report: dict | None = None
-    if cfg.scenarios_n > 0:
+    # Gating is a weekly question. With no squad yet — the initial-squad
+    # mode — there is no incumbent to hold on to, nothing to compare fifteen
+    # opening picks against, and a held decision's FixedMoves(no_transfer)
+    # pins lpSum(tin) == 0, which cannot fill an empty squad: the solve is
+    # infeasible and the user reads a "coherence re-solve infeasible" line
+    # under his opening XI for no reason at all.
+    if cfg.scenarios_n > 0 and state.owned_codes:
         xmins = xmins_by_player_gw(comp)
+        if not xmins:
+            print("no expected minutes available: every scenario draws the "
+                  "same board, so the move frequencies below are all 100% "
+                  "and mean nothing")
+        # Seeded per gameweek, not per season: a fixed seed would re-use one
+        # noise sequence every week, which is how D1 was measured.
         run = run_scenarios(pool, state, xmins, n=cfg.scenarios_n,
-                            seed=cfg.scenarios_seed, **solve_kw)
-        if run.completed:
+                            seed=cfg.scenarios_seed + gw, **solve_kw)
+        if not run.completed:
+            print(f"all {run.attempted} scenario solves failed "
+                  f"({run.failures} failures); falling back to the raw "
+                  "optimum, ungated")
+        else:
             freqs = move_frequencies(run.plans)
             decision = decide(
                 freqs, plan,
@@ -597,11 +614,18 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
             first = plan.gw_plans[0]
             move_freqs = freqs.to_dict("records")
             raw_agrees = decision.raw_optimum_agrees
+            # The plurality winner is dropped when the re-solved squad does
+            # not contain him. Report the frequency of the captain who
+            # actually took the armband — his own, or None — rather than
+            # lending him the number that belonged to somebody else.
             scenario_report = {
                 "n": run.attempted, "completed": run.completed,
                 "failures": run.failures, "seed": run.seed,
                 "hold": decision.hold,
-                "captain_frequency": decision.captain_frequency,
+                "captain_frequency": captain_frequency_of(freqs,
+                                                          first.captain),
+                "captain_wanted": int(decision.captain),
+                "captain_agrees": int(first.captain) == int(decision.captain),
                 "near_misses": decision.near_misses,
             }
 
