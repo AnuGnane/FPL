@@ -198,5 +198,96 @@ orchestrator-run with throwaway drivers as in v4c/v4d.
 
 ## 12. Outcome
 
-(Filled as the cycle lands: source match rates, N1 stratified table,
-shadow-log first readings, review round record.)
+Shipped 2026-08-26/27. Twelve plan tasks via five Opus implementer groups,
+one FIX-FIRST adversarial round (nine fix commits), a FIX-AGAIN
+re-verification round (two more), a production-smoke parser rewrite, and a
+gate-driven feature withdrawal. Suite 1190 Python + 64 frontend, tsc clean.
+
+### Gate N1 — FAIL on its improvement target; attributed by ablation
+
+Baseline (pre-v5 benchmark, 2024-25 test): zeros 1.073, blanks 1.663,
+tickers 1.621, haulers 5.184, overall 1.966. Full v5 first run: zeros
+**1.084** — a regression where ≥0.05 improvement was required. The
+orchestrator ablation (deterministic pipeline — the control reproduced the
+baseline *exactly*):
+
+| arm | zeros | overall |
+|---|---|---|
+| old heads, old features (control) | 1.073 | 1.966 |
+| ThreeModeModel, old features | **1.069** | 1.966 |
+| old heads, + congestion/mode-rate features | 1.082 | 1.970 |
+| full v5 | 1.084 | 1.970 |
+
+Attribution: the **feature blocks** cause the regression (cup congestion
+data exists only from 2025-26 — one training season — so `matches_last_14d`
+is partly a season indicator, exactly review finding I1; the benchmark's
+2024-25 test period has no cup rows at all). The **model swap is
+neutral-to-positive**. Per the failing-half rule the two blocks were
+withdrawn from `MINUTES_FEATURES` (`a0f314f`); the builders, tests and the
+`gaffer cups` CLI stay, for the tracker and for re-evaluation once cup
+coverage spans the training window (natural re-trigger: 2027-28, when two
+seasons of archive exist). `ThreeModeModel` ships under the plan's own rule
+("ships nowhere if it *loses* to the three heads" — it wins on equal
+features). Shipped-config official benchmark (`a0f314f`): zeros **1.069**,
+blanks 1.665, tickers 1.633, haulers 5.186, overall 1.966 — strictly
+no-worse, mild zeros gain, improvement target honestly missed. The trained
+half cannot buy the zeros gap; v4a's decomposition said the gap is
+team-news, and this cycle measured that claim from the other side.
+
+### Gate N2 — instrumented and live
+
+First production smoke (GW2, 2026-27): premierinjuries **77/83 matched
+(93%), 61 dated returns, 25 percentage statuses**; the advise run banked
+**612 shadow rows with 23 players moved by news** — including unflagged
+players at p_play 0.55–0.68 whom the press has ruled out with dated
+returns (the one-day head start, observed live). `gaffer evaluate
+--news-shadow` correctly reports nothing to score until GW2 completes; the
+verdict accrues across the season and feeds the deferred trained-corrector
+decision (approach B).
+
+The smoke also forced a parser rewrite (`cbfccf4`): the real
+premierinjuries table is label-prefixed per cell (`Player X`, `Reason …`,
+`Potential Return dd/mm/yyyy` / `No Return Date`, `Status Ruled Out` /
+`NN%`) and has **no club column** — the shipped parser is label-driven,
+every row matches through the all-clubs uniqueness rule, and percentage
+statuses join the pessimism rule as an explicit current-week chance.
+Spec §3's table description is superseded by this.
+
+### Review round (FIX-FIRST → fixed → FIX-AGAIN → fixed)
+
+Gating: **B1** the matcher's exact pass could hand a namesake at another
+club an injury (uniqueness rule extended + `CLUB_ALIASES` for press
+spellings); **B2** a stale past return date flipped a fit player to 50%
+and ran an injury curve on him (stale rows now dropped whole). Important:
+I4 DGW hint gated both fixtures (now at most one row per code); I5
+`expected_return_gw` never reached the decay (now a hard zero-floor before
+the return week); I6 shadow MAE averaged DGW minutes (now summed); I7
+curve assets validated as CDFs + h=0 clamped to the official factor; I9
+exception surface broadened to `httpx.HTTPError` + per-source empty
+notices; I8 two unpinned rails pinned. Re-verification caught one NEW
+defect in the nit commit (the shadow scorer's season key joined last
+season's GW-N to this season's minutes — `evaluate_news_shadow` now cuts
+the log to the current season) and the B1 residual (HTML entities never
+unescaped — `html.unescape` added to all scrape paths, which also exposed
+three stdlib-shadowing `html:` parameters).
+
+### Dormant / deferred (recorded, not fixed)
+
+- **Injury return curves are dormant**: no committed asset. The
+  Transfermarkt club-level history page the spec assumed does not exist
+  (probe: `/verletztespieler/` 404s; `/sperrenundverletzungen` is current
+  injuries without durations); real spell histories are per-player pages
+  (~hundreds of requests). The decay chain's terminal fallback (flat 0.7)
+  is the tested, shipped behaviour. Follow-up: rework
+  `calibrate-injuries` to per-player scraping, or drop the typed-curve
+  rung.
+- **Predicted line-ups degrade in production**: the FFS page parses zero
+  rows (real page shape unverified guess). The source degrades exactly as
+  designed — notice printed, advice unaffected. Follow-up: parse the real
+  page or swap providers (one-module change by design).
+- Cup archive coverage: 2025-26 (120 club-match rows) and 2026-27 only —
+  no 2024-25 folders exist upstream, contra the plan's survey.
+- The `matches_last_14d` season-indicator hazard (I1) is the recorded
+  reason the congestion block is out of the model.
+- `SHRINK_K_MODE = 8.0` pinned by convention; the grid run is not
+  archived in-repo (same convention as v4b's SHRINK_K).

@@ -65,15 +65,17 @@ Spec: `specs/2026-08-26-gaffer-v4d-compete-design.md` (§12 = full outcome) · P
 - [x] Final adversarial review: FIX-FIRST, 4 blockers + 4 important fixed (whatif percent/fraction mismatch the sharpest), re-verified
 - Suite: 1034 Python + 64 frontend, tsc clean
 
-## In progress
+### v5 — news (done, minutes/news ingestion)
+Spec: `specs/2026-08-26-gaffer-v5-news-design.md` (§12 = full outcome) · Plan: `plans/2026-08-26-gaffer-v5-news.md`
+- [x] `data/news/` package: premierinjuries (label-driven parse of the real table, 77/83 matched, 61 dated returns live) + FFS lineups (degrading — real page shape pending) + precedence normalizer with percent statuses
+- [x] Availability v2: per-injury-type horizon decay with return-gw zero-floor (curves DORMANT — Transfermarkt club-history page doesn't exist; flat 0.7 is the shipped, tested fallback)
+- [x] ThreeModeModel {DNP, sub, start} replaces the heads (ablation: neutral-to-positive, ships); congestion + shrunken-mode features BUILT but withdrawn from the model per gate N1
+- [x] Gate N1 FAIL on its ≥0.05 target, fully attributed by 3-arm ablation (features regress zeros — one-season cup coverage = season indicator; model swap wins); shipped config zeros 1.069 vs 1.073 baseline, nothing worse
+- [x] Gate N2 instrumented + live smoke: 612 shadow rows, 23 players moved by news (unflagged players zeroed a day ahead of the flag); verdict accrues via `gaffer evaluate --news-shadow`
+- [x] Final adversarial review: 2 blockers + 7 importants fixed; re-verify caught 1 new defect + 1 residual, both fixed
+- Suite: 1190 Python + 64 frontend, tsc clean
 
-### v5 — news (minutes/news ingestion)
-Spec: `specs/2026-08-26-gaffer-v5-news-design.md` (approved 2026-08-26)
-- [ ] `data/news/` package: premierinjuries + FFS lineups fetchers, Transfermarkt → injury_return_curves.json asset, precedence normalizer
-- [ ] Availability v2: per-injury-type horizon decay (3-deep fallback to today's 0.7)
-- [ ] ThreeModeModel {DNP, sub, start} replaces the heads; cup congestion + shrunken-rate features
-- [ ] Gate N1: benchmark zeros RMSE 1.074 → ≤ 1.024, no stratum regresses > 0.02
-- [ ] Gate N2: news shadow log + `gaffer evaluate --news-shadow`
+## In progress
 
 ## Planned
 
