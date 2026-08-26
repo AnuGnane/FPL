@@ -658,3 +658,22 @@ def test_run_backtest_logs_raw_expected_points_under_a_tilt(monkeypatch):
                                                for k, v in ep_by.items()})
     # The stub prices every player at ep 1.0 and starts eleven of them.
     assert [r["expected_pts"] for r in out["log"]] == [11.0, 11.0, 11.0]
+
+
+def test_run_backtest_prices_chips_on_the_raw_pool_under_a_tilt(monkeypatch):
+    """advise scores chips on a raw pool because their gains are compared
+    against fixed point thresholds; a chasing tilt would inflate every gain.
+    The replay has to make the same split or it plays chips the live tool
+    never would."""
+    calls = _install_stubs(monkeypatch, _season_rows([1, 2, 3]))
+    seen: list[float] = []
+
+    def fake(pool, state, chips_available, base=None, **cfg):
+        seen.extend(sorted({v for row in pool["ep"] for v in row.values()}))
+        return pd.DataFrame(columns=["chip", "gw", "gain"])
+
+    monkeypatch.setattr(bt, "evaluate_chips", fake)
+    run_backtest(season="2025-26", start_gw=1, retrain_every=4, chips=True,
+                 tilt=lambda ep_by, gw: {k: v * 2 for k, v in ep_by.items()})
+    assert seen and set(seen) == {1.0}       # raw, not the tilted 2.0
+    assert calls["pool_gws"]                 # the execution solves still ran

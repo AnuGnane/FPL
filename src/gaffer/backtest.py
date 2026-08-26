@@ -391,9 +391,13 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
 
     ``tilt`` is the gate-E1 seam: an optional ``(ep_by, gw) -> ep_by``
     callable applied to the expected-points dict immediately before the pool
-    is built, so a replayed league tilt shapes *which* players are candidates
-    exactly as it does in ``advise``. ``None`` — the default — leaves the
-    replay bit-identical to the pre-v4d one.
+    is built, so a replayed league tilt shapes *which* players are candidates.
+    It splits the same way ``advise`` splits: the transfer and chip-execution
+    solves run on the tilted pool, but chips are *selected* on a raw one,
+    because their gains are objective deltas compared against fixed point
+    thresholds and a chasing tilt would inflate all of them. The logged
+    ``expected_pts`` is raw for the same reason. ``None`` — the default —
+    leaves the replay bit-identical to the pre-v4d one.
 
     Returns {"season", "from_gw", "total", "per_gw", "log", "chips_played",
     "unplayed_chips"} and writes the per-gameweek log to ``data/live/backtest_log.parquet``.
@@ -517,8 +521,17 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
         if chips and squad:
             avail = chips_available_for(played_by_gw, gw)
             if avail:
+                # Chips are *selected* on a raw pool, mirroring advise.py:
+                # evaluate_chips returns objective deltas measured against
+                # fixed point thresholds, and a chasing tilt scales every
+                # gain up. The execution solves below stay on the tilted
+                # pool — they are this week's transfer decision, which is
+                # tilted in production too. With no tilt there is one pool
+                # and this branch is byte-identical to the old one.
+                chip_pool = (build_pool(players, raw_ep_by, picks, gws)
+                             if tilt is not None else pool)
                 chip = _pick_chip(
-                    evaluate_chips(pool, state, avail, **opt_kw), gw,
+                    evaluate_chips(chip_pool, state, avail, **opt_kw), gw,
                     thresholds=chip_thresholds)
         if chip == "wildcard":
             # Unlimited transfers, no hits (the MILP enforces both from
