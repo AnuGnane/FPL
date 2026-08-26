@@ -96,6 +96,25 @@ def test_a_degenerate_single_mode_frame_still_fits_and_predicts():
     assert np.allclose(pred["e_min"], 90.0)
 
 
+def test_a_two_mode_frame_leaves_the_absent_mode_at_zero():
+    """{sub, start} and no DNP: an ever-present squad in a short window. The
+    mode head fits on two classes, and ``classes_`` then holds two — the
+    missing DNP column must stay at zero rather than the other two shifting
+    along it, which would read p_dnp off p_sub."""
+    df = _rolled()
+    both = df[df.code < 10].copy()
+    both["minutes"] = np.where(both["gw"] % 2 == 0, 90.0, 20.0)
+    both["starts"] = (both["minutes"] >= 90).astype(float)
+    m = ThreeModeModel(feature_cols=_COLS).fit(both)
+    assert m.modes_seen == [1, 2]
+    modes = m.predict_modes(both)
+    assert np.allclose(modes["p_dnp"], 0.0)
+    assert np.allclose(modes["p_sub"] + modes["p_start"], 1.0)
+    pred = m.predict(both)
+    assert np.allclose(pred["p_play"], 1.0)
+    assert (pred["e_min"] > 20.0).all() and (pred["e_min"] < 90.0).all()
+
+
 def test_a_frame_with_no_appearances_at_all_predicts_zero():
     df = _rolled()
     none = df[df.code >= 10].copy()

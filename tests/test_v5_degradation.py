@@ -4,7 +4,9 @@ Four things are pinned:
 
 1. With every news source empty, ``availability_frame`` reproduces the
    official flags exactly and ``apply_availability`` on it is identical to
-   the flags-only call — the same numbers, column for column.
+   the flags-only call — the same numbers, column for column. Two further
+   ways of saying nothing are pinned to the same output: news that speaks
+   only about suspended players, and a line-up that names everybody.
 2. ``[news] enabled = false`` makes zero fetch calls. Asserted with a spy at
    the advise call site, not only inside the fetchers.
 3. The asset chain degrades three deep: typed curve -> pooled curve -> the
@@ -62,6 +64,51 @@ def test_an_all_empty_news_frame_carries_no_hints_or_types():
     assert frame["p_start_hint"].isna().all()
     assert frame["injury_type"].isna().all()
     assert frame["expected_return_gw"].isna().all()
+
+
+def test_news_only_about_banned_players_changes_nothing():
+    """A full injuries frame every row of which names an s/u/n player. The
+    official statuses are authoritative, so the whole batch is inert and the
+    output has to be the flags-only one — column for column, not just in the
+    numbers the optimizer happens to read."""
+    injuries = pd.DataFrame([
+        {"code": 4, "injury_type": "hamstring", "news_status": "out",
+         "expected_return_date": pd.Timestamp("2026-09-20").date(),
+         "source": "premierinjuries", "fetched_at": "2026-09-04T09:00:00Z"}])
+    events = pd.DataFrame({"gw": [5, 6, 7, 8],
+                           "deadline_time": ["2026-09-05T10:00Z",
+                                             "2026-09-12T10:00Z",
+                                             "2026-09-19T10:00Z",
+                                             "2026-09-26T10:00Z"]})
+    frame = availability_frame(_official(), injuries, None, gw=5,
+                               events=events)
+    with_news = apply_availability(_pred(), frame, curves=None)
+    flags_only = apply_availability(_pred(), _official(), curves=None)
+    pd.testing.assert_frame_equal(with_news, flags_only)
+
+
+def test_a_line_up_that_names_everyone_is_inert_and_banks_nothing(tmp_path,
+                                                                  monkeypatch):
+    """Every hint at 1.0 — the site published a full XI for every club and
+    contradicted nobody. Hints gate, they never raise, so the numbers must be
+    the flags-only ones, and the shadow log must refuse a run of tied rows
+    rather than diluting the cumulative table with them."""
+    from gaffer.data import store as store_mod
+    from gaffer.news_shadow import write_shadow
+
+    lineups = pd.DataFrame([{"code": c, "p_start_hint": 1.0,
+                             "source": "lineups", "fetched_at": "x"}
+                            for c in [1, 2, 3, 4]])
+    frame = availability_frame(_official(), None, lineups, gw=5, events=None)
+    with_news = apply_availability(_pred(), frame, curves=None)
+    flags_only = apply_availability(_pred(), _official(), curves=None)
+    pd.testing.assert_frame_equal(with_news, flags_only)
+
+    comp = with_news.copy()
+    comp["p_play_flags"] = flags_only["p_play"].to_numpy()
+    comp["e_min_flags"] = flags_only["e_min"].to_numpy()
+    monkeypatch.setattr(store_mod, "DATA_DIR", tmp_path)
+    assert write_shadow(comp, gw=5) is None
 
 
 # --- rail 2: enabled = false makes no calls --------------------------------
