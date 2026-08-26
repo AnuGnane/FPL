@@ -1,14 +1,15 @@
-"""Rank-aware strategy for the mini-league (spec 2026-08-24 §3).
+"""Rank-aware strategy for the mini-league (spec 2026-08-26 §3-§5).
 
-lam = sign * LAMBDA_CAP * clamp(|gap| / (2*SIGMA*sqrt(W)) - 0.5, 0, 1)
-Positive lam chases (favor differentials), negative defends (mirror rivals),
+z is the deficit to the *win condition* in units of remaining-horizon margin
+spread, and lam = LAMBDA_CAP * tanh(|z| / Z_SCALE) * sign(z). Positive lam
+chases (favor players the threats do not own), negative defends (cover them),
 zero leaves the optimizer exactly at v1 points-max.
 """
 from __future__ import annotations
 
 import math
 import statistics
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import pandas as pd
 
@@ -103,22 +104,72 @@ class Strategy:
     weeks_left: int
     stance: str          # "chase" | "defend" | "neutral"
     rival_name: str
+    # --- v4d, appended last and defaulted so positional callers still work --
+    z: float = 0.0
+    sigma_m: float = SIGMA_FALLBACK
+    cover_weights: dict = field(default_factory=dict)
 
 
-def compute_strategy(my_total: int, rivals: pd.DataFrame,
-                     current_gw: int) -> Strategy:
+def _sign(x: float) -> float:
+    return 1.0 if x > 0 else (-1.0 if x < 0 else 0.0)
+
+
+def threat_weights(my_total: int, rivals: pd.DataFrame,
+                   sigmas: dict[int, float], weeks_left: int,
+                   params: LeagueParams | None = None) -> dict[int, float]:
+    """Rival threat weights; Task 5 gives this its softmax body."""
+    return {}
+
+
+def compute_strategy(my_total: int, rivals: pd.DataFrame, current_gw: int,
+                     history=None, my_entry: int | None = None,
+                     params: LeagueParams | None = None) -> Strategy:
+    """The dial: z against the whole league, then lam = cap * tanh(z / scale).
+
+    Behind the leader, z is the normalized deficit to the one entry standing
+    between me and the title. Ahead of everyone, z is minus the *nearest*
+    threat in normalized units — the rival with the largest P(catch me),
+    which is not always the rival with the largest total.
+
+    ``history`` and ``my_entry`` are optional: without them every sigma is
+    the pin, which is exactly the pre-v4d spread.
+    """
+    p = params or LeagueParams()
     weeks = max(1, LAST_GW - current_gw + 1)
     if rivals.empty:
         return Strategy(0.0, 0, weeks, "neutral", "")
+    sigmas = (margin_sigma(history, my_entry, p)
+              if history is not None and my_entry is not None else {})
+    root = math.sqrt(weeks)
+    fallback = _bounded(SIGMA_FALLBACK, p)
+
+    def sigma_of(row) -> float:
+        if "entry" not in row.index:
+            return fallback
+        return sigmas.get(int(row["entry"]), fallback)
+
     top = rivals.sort_values("total", ascending=False).iloc[0]
     if int(top["total"]) > my_total:
-        gap, sign, rival = int(top["total"]) - my_total, +1, str(top["entry_name"])
+        rival_row = top
+        sigma_m = sigma_of(top)
+        z = (int(top["total"]) - my_total) / (sigma_m * root)
+        gap = int(top["total"]) - my_total
     else:
-        gap, sign, rival = my_total - int(top["total"]), -1, str(top["entry_name"])
-    raw = gap / (2 * SIGMA * math.sqrt(weeks)) - 0.5
-    lam = sign * LAMBDA_CAP * min(max(raw, 0.0), 1.0)
+        rival_row, sigma_m, nearest = None, fallback, None
+        for _, row in rivals.iterrows():
+            sigma = sigma_of(row)
+            norm = (my_total - int(row["total"])) / (sigma * root)
+            if nearest is None or norm < nearest:
+                rival_row, sigma_m, nearest = row, sigma, norm
+        z = -nearest
+        gap = my_total - int(rival_row["total"])
+    if z == 0.0:
+        z = 0.0          # a dead-level league gives -0.0, which reads as a typo
+    lam = p.lambda_cap * math.tanh(abs(z) / p.z_scale) * _sign(z)
     stance = "neutral" if lam == 0 else ("chase" if lam > 0 else "defend")
-    return Strategy(lam, gap, weeks, stance, rival)
+    weights = threat_weights(my_total, rivals, sigmas, weeks, p)
+    return Strategy(lam, gap, weeks, stance, str(rival_row["entry_name"]),
+                    z=z, sigma_m=sigma_m, cover_weights=weights)
 
 
 def tilt_ep(ep_by: dict, eo_pct: dict, lam: float) -> dict:

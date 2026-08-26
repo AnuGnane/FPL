@@ -9,17 +9,29 @@ RIVALS = pd.DataFrame({"entry_name": ["Leader", "Mid", "Tail"],
                        "total": [500, 460, 400]})
 
 
-def test_small_gap_is_neutral():
+def test_a_small_gap_is_a_small_chase_not_a_dead_zone():
+    """v4d replaces the clamp ramp: the dial is smooth in z, so five points
+    behind is a small tilt rather than none at all."""
+    import math
+
     s = compute_strategy(my_total=495, rivals=RIVALS, current_gw=10)
-    assert s.stance == "neutral" and s.lam == 0.0
+    z = 5 / (18.0 * math.sqrt(29))
+    assert s.stance == "chase"
+    assert s.lam == pytest.approx(0.5 * math.tanh(z / 1.5))
+    assert 0.0 < s.lam < 0.02
 
 
 def test_big_gap_chases_with_positive_lambda():
+    import math
+
     s = compute_strategy(my_total=380, rivals=RIVALS, current_gw=30)
+    z = 120 / (18.0 * math.sqrt(9))
     assert s.stance == "chase"
-    assert s.lam == pytest.approx(
-        0.5 * min(120 / (2 * 18 * 9 ** 0.5) - 0.5, 1.0))
+    assert s.lam == pytest.approx(0.5 * math.tanh(z / 1.5))
+    assert s.z == pytest.approx(z)
+    assert s.sigma_m == 18.0
     assert s.rival_name == "Leader"
+    assert s.gap == 120
 
 
 def test_leading_big_defends_with_negative_lambda():
@@ -228,3 +240,52 @@ def test_margin_sigma_only_pairs_gameweeks_we_both_played():
                      ignore_index=True)
     out = margin_sigma(hist, my_entry=1)
     assert out[2] == pytest.approx(18.0)    # 2 shared weeks -> the pin
+
+
+# --- v4d: the z-dial -------------------------------------------------------
+
+
+def test_a_runaway_leader_saturates_below_the_cap():
+    """tanh is asymptotic: no gap, however silly, can exceed lambda_cap."""
+    s = compute_strategy(my_total=0, rivals=RIVALS, current_gw=37)
+    assert 0.49 < s.lam < 0.5
+
+
+def test_leading_defends_against_the_nearest_threat_in_sigma_units():
+    """The threat is the rival most likely to catch me, not the one with the
+    largest raw total: a tight rival 30 behind at sigma 8 is further away in
+    normalized units than a volatile one 40 behind at sigma 30."""
+    from gaffer.league_mode import compute_strategy
+
+    rivals = pd.DataFrame({"entry": [11, 12], "entry_name": ["Volatile",
+                                                             "Tight"],
+                           "total": [460, 470]})
+    history = pd.concat([
+        _history({1: [80] * 6, 11: [20, 140, 20, 140, 20, 140],
+                  12: [78, 82, 78, 82, 78, 82]}),
+    ], ignore_index=True)
+    s = compute_strategy(my_total=500, rivals=rivals, current_gw=38,
+                         history=history, my_entry=1)
+    assert s.stance == "defend" and s.lam < 0
+    assert s.rival_name == "Volatile"        # 40 / 30 = 1.33 < 30 / 8 = 3.75
+    assert s.sigma_m == 30.0
+    assert s.gap == 40
+
+
+def test_the_dead_heat_z_is_exactly_zero_and_not_negative_zero():
+    """-0.0 renders as a typo in the report and would flip the stance test."""
+    s = compute_strategy(my_total=500, rivals=RIVALS, current_gw=36)
+    assert s.z == 0.0
+    assert str(s.z) == "0.0"
+    assert s.lam == 0.0 and s.stance == "neutral"
+
+
+def test_strategy_carries_the_new_fields_with_defaults():
+    """Appended last and defaulted: the positional constructions in this file
+    and in the report path keep working."""
+    from gaffer.league_mode import SIGMA_FALLBACK, Strategy
+
+    s = Strategy(0.4, 84, 30, "chase", "Ten Hag Hive")
+    assert s.z == 0.0
+    assert s.sigma_m == SIGMA_FALLBACK
+    assert s.cover_weights == {}
