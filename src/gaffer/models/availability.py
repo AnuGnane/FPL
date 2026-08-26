@@ -61,7 +61,10 @@ def apply_availability(pred: pd.DataFrame, avail: pd.DataFrame,
     If ``pred`` carries a ``gw`` column the factor is applied in full to the
     horizon's first gameweek and relaxes after it: on the injury-type curve
     when the news layer supplied one, otherwise geometrically (see
-    :data:`RECOVERY`). Without a ``gw`` column it is applied uniformly.
+    :data:`RECOVERY`). An ``expected_return_gw`` floors every gameweek before
+    it at zero — he is out until the date — and changes nothing from the
+    return gameweek on. Without a ``gw`` column the factor is applied
+    uniformly and neither rule runs.
 
     ``p_start_hint``, when the frame carries one, gates the **first gameweek
     only**: ``p_play <- min(p_play, hint)``, with ``p60`` and ``e_min`` scaled
@@ -75,7 +78,8 @@ def apply_availability(pred: pd.DataFrame, avail: pd.DataFrame,
     function is byte-identical to v4's.
     """
     curves = curves if curves is not None else load_injury_curves()
-    news_cols = [c for c in ("injury_type", "p_start_hint")
+    news_cols = [c for c in ("injury_type", "expected_return_gw",
+                             "p_start_hint")
                  if c in avail.columns]
     out = pred.merge(
         avail[["code", "status", "chance_of_playing"] + news_cols],
@@ -87,7 +91,8 @@ def apply_availability(pred: pd.DataFrame, avail: pd.DataFrame,
     if "gw" in out.columns and len(out):
         horizon_start = out["gw"].min()
         h = (out["gw"] - horizon_start).astype(float)
-        factor = _relax(factor, h, out.get("injury_type"), curves)
+        factor = _relax(factor, h, out.get("injury_type"), curves,
+                        gw=out["gw"], return_gw=out.get("expected_return_gw"))
     for col in ["p_play", "p60"]:
         out[col] = out[col] * factor
     out["e_min"] = out["e_min"] * factor
@@ -97,18 +102,34 @@ def apply_availability(pred: pd.DataFrame, avail: pd.DataFrame,
 
 
 def _relax(factor: pd.Series, h: pd.Series, injury_type,
-           curves: dict | None) -> pd.Series:
+           curves: dict | None, gw: pd.Series | None = None,
+           return_gw=None) -> pd.Series:
     """``1 - (1 - f) * (1 - P(returned by h))``, per row.
 
     Row-wise because the curve depends on the row's own injury type, and a
     frame in a double gameweek carries several rows per player. Rows the chain
     cannot type fall back to ``(1 - f) * RECOVERY ** h``, which is the whole
     of the pre-v5 rule.
+
+    ``expected_return_gw``, where the news layer supplied one, is a hard zero
+    floor and nothing else: every gameweek strictly before it is a 0.0, and
+    from the return gameweek onward the curve chain answers exactly as it
+    would with no date at all. Deliberately *not* re-anchored — ``h`` stays
+    measured from the start of the horizon — because the date already says
+    everything it knows about when he is back, and re-basing the curve on it
+    would count the same claim twice. Both columns are absolute gameweeks.
     """
     types = (injury_type if injury_type is not None
              else pd.Series(None, index=factor.index))
+    weeks = gw if gw is not None else pd.Series(None, index=factor.index)
+    backs = (return_gw if return_gw is not None
+             else pd.Series(None, index=factor.index))
     relaxed = []
-    for f, steps, itype in zip(factor, h, types):
+    for f, steps, itype, week, back in zip(factor, h, types, weeks, backs):
+        if (week is not None and back is not None and not pd.isna(week)
+                and not pd.isna(back) and int(week) < int(back)):
+            relaxed.append(0.0)
+            continue
         # A missing type is not an unseen one: an unflagged knock or an ending
         # ban has no injury behind it to pool with, so it never reaches the
         # curve chain at all.

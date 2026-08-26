@@ -95,6 +95,25 @@ def test_without_the_asset_every_row_uses_the_flat_geometric():
         assert abs(out.loc[gw, "p_play"] - 0.9 * (1 - RECOVERY ** h)) < 1e-9
 
 
+def test_a_return_date_floors_every_gameweek_before_it_at_zero():
+    """The date the news layer worked to obtain was carried through the frame
+    and never read. A hamstring listed as back for GW7 must be a zero in GW5
+    and GW6 whatever the curve says about two weeks elapsed."""
+    out = apply_availability(_pred([5, 6, 7, 8]),
+                             _avail(injury_type="hamstring",
+                                    expected_return_gw=7),
+                             curves=_CURVES).set_index("gw")
+    assert out.loc[5, "p_play"] == 0.0
+    assert out.loc[6, "p_play"] == 0.0
+    # At and after the return gameweek the existing chain answers unchanged,
+    # with h still measured from the start of the horizon.
+    dated = apply_availability(_pred([5, 6, 7, 8]),
+                               _avail(injury_type="hamstring"),
+                               curves=_CURVES).set_index("gw")
+    assert out.loc[7, "p_play"] == dated.loc[7, "p_play"]
+    assert out.loc[8, "p_play"] == dated.loc[8, "p_play"]
+
+
 def test_a_bench_hint_gates_the_first_gameweek_only():
     out = apply_availability(_pred([5, 6]),
                              _avail(status="a", chance_of_playing=None,
