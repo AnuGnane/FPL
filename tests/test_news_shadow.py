@@ -36,9 +36,14 @@ def test_shadow_rows_carry_both_sides_of_the_comparison():
     assert rows["run_at"].notna().all()
 
 
-def test_shadow_rows_average_a_double_gameweek_rather_than_duplicating():
+def test_shadow_rows_collapse_a_double_gameweek_to_one_row():
     """One row per (gw, code): a double gameweek is two fixtures and one
-    Brier outcome, and two rows would weight that player twice."""
+    Brier outcome, and two rows would weight that player twice.
+
+    ``p_play`` is averaged because "did he play at all" is one event, but
+    ``e_min`` is summed — the scorer's MAE is against the gameweek's total
+    minutes, and averaging two fixtures halved every double-gameweek player's
+    predicted minutes against a truth that counted both."""
     dgw = pd.DataFrame({
         "code": [1, 1], "gw": [5, 5],
         "p_play": [0.4, 0.6], "p_play_flags": [0.9, 0.9],
@@ -46,6 +51,9 @@ def test_shadow_rows_average_a_double_gameweek_rather_than_duplicating():
     rows = shadow_rows(dgw, gw=5)
     assert len(rows) == 1
     assert abs(rows["p_play_news"].iloc[0] - 0.5) < 1e-9
+    assert abs(rows["p_play_flags"].iloc[0] - 0.9) < 1e-9
+    assert abs(rows["e_min_news"].iloc[0] - 80.0) < 1e-9
+    assert abs(rows["e_min_flags"].iloc[0] - 160.0) < 1e-9
 
 
 def test_write_shadow_appends_across_runs(tmp_path, monkeypatch):

@@ -36,15 +36,18 @@ def shadow_rows(comp: pd.DataFrame, gw: int,
 
     Only the first gameweek of the horizon: the scorer joins these against
     actual minutes, and a GW+1 row would be scored against the wrong week.
-    Double gameweeks are averaged rather than duplicated — two fixtures are
-    one "did he play at all" outcome.
+    A double gameweek collapses to one row, but not by one rule: ``p_play`` is
+    the *mean* of the fixtures because "did he turn out at all" is a single
+    outcome, while ``e_min`` is their *sum*, because the scorer's MAE is
+    against the gameweek's total minutes and a doubled-up player really is
+    expected to play both matches.
     """
     rows = comp[comp["gw"] == int(gw)]
     grouped = rows.groupby("code", as_index=False).agg(
         p_play_news=("p_play", "mean"),
         p_play_flags=("p_play_flags", "mean"),
-        e_min_news=("e_min", "mean"),
-        e_min_flags=("e_min_flags", "mean"))
+        e_min_news=("e_min", "sum"),
+        e_min_flags=("e_min_flags", "sum"))
     grouped.insert(0, "gw", int(gw))
     grouped["run_at"] = run_at or datetime.now(timezone.utc).isoformat(
         timespec="seconds")
