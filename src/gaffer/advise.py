@@ -41,6 +41,9 @@ from gaffer.data.entry import fetch_my_team
 from gaffer.data.league import (effective_ownership, fetch_rival_entries,
                                 fetch_rival_history, fetch_rival_picks)
 from gaffer.data.live import refresh_live
+from gaffer.data.news.lineups import fetch_lineups
+from gaffer.data.news.normalize import availability_frame
+from gaffer.data.news.premierinjuries import fetch_injuries
 from gaffer.errors import GafferError
 from gaffer.data.odds import (OddsClient, ags_frame, blend_attacking_odds,
                               next_gw_event_ids, odds_frame)
@@ -69,6 +72,7 @@ from gaffer.optimize.policy import (Thresholds, captain_frequency_of,
                                     coherent_plan, decide)
 from gaffer.optimize.scenarios import (move_frequencies, run_scenarios,
                                        xmins_by_player_gw)
+from gaffer.news_shadow import write_shadow
 from gaffer.prices import price_alerts
 
 REPORTS = Path("reports")
@@ -308,8 +312,49 @@ def merge_team_odds(tg_future: pd.DataFrame,
     ).drop(columns=["team_code"])
 
 
+def news_availability(cfg: Config, players: pd.DataFrame,
+                      teams: pd.DataFrame, events: pd.DataFrame,
+                      gw: int) -> pd.DataFrame:
+    """The availability frame for this run: official flags, sharpened by news.
+
+    Every failure mode lands in the same place. ``[news] enabled = false``
+    skips the fetchers entirely; a dead host, a rewritten page or a match rate
+    below the floor returns an empty frame from the fetcher itself; and
+    :func:`availability_frame` with empty news inputs reproduces the official
+    frame exactly. Advice never blocks on news, and each degraded source
+    prints one line — the same shape the league and tier-EO paths use.
+    """
+    official = players[["code", "status", "chance_of_playing"]]
+    if not cfg.news_enabled:
+        return official
+    injuries = lineups = None
+    if cfg.news_injuries:
+        try:
+            injuries = fetch_injuries(players, teams,
+                                      cache_hours=cfg.news_cache_hours,
+                                      min_coverage=cfg.news_min_coverage)
+        except Exception as e:  # noqa: BLE001 — news must never block advice
+            print(f"news: premierinjuries unavailable — official flags "
+                  f"only ({e})")
+    if cfg.news_lineups:
+        try:
+            lineups = fetch_lineups(players, teams,
+                                    cache_hours=cfg.news_cache_hours,
+                                    min_coverage=cfg.news_min_coverage)
+        except Exception as e:  # noqa: BLE001 — news must never block advice
+            print(f"news: predicted line-ups unavailable — official flags "
+                  f"only ({e})")
+    if (injuries is None or injuries.empty) and (lineups is None
+                                                 or lineups.empty):
+        return official
+    print(f"news: {0 if injuries is None else len(injuries)} injuries, "
+          f"{0 if lineups is None else len(lineups)} line-up hints")
+    return availability_frame(official, injuries, lineups, gw, events)
+
+
 def predict_components(pred_frame: pd.DataFrame, tg_future: pd.DataFrame,
-                       players: pd.DataFrame) -> pd.DataFrame:
+                       players: pd.DataFrame,
+                       avail: pd.DataFrame | None = None) -> pd.DataFrame:
     """Every component prediction on one row per player-fixture.
 
     Assembled positionally (see the module docstring): each ``predict``
@@ -322,8 +367,13 @@ def predict_components(pred_frame: pd.DataFrame, tg_future: pd.DataFrame,
 
     minutes = load_model("minutes")
     mp = minutes.predict(pf)
-    mp = apply_availability(
-        mp, players[["code", "status", "chance_of_playing"]])
+    # Two availability passes over one model run. The news pass is what the
+    # advice is built on; the flags-only pass is gate N2's control, and
+    # running the model twice to get it would be both slower and wrong — the
+    # two sides have to differ by the availability layer alone.
+    flags = players[["code", "status", "chance_of_playing"]]
+    mp_flags = apply_availability(mp, flags)
+    mp = apply_availability(mp, avail if avail is not None else flags)
 
     keys = ["code", "season_idx", "gw", "opp_code"]
     carried = ["position", "team_code", "e_cards", "was_home",
@@ -332,6 +382,11 @@ def predict_components(pred_frame: pd.DataFrame, tg_future: pd.DataFrame,
         .reset_index(drop=True)
     for col in ["p_play", "p60"]:
         comp[col] = mp[col].values
+    # Carried for the shadow log and dropped by components_frame's column
+    # selection, so nothing downstream sees them.
+    comp["e_min"] = mp["e_min"].values
+    comp["p_play_flags"] = mp_flags["p_play"].values
+    comp["e_min_flags"] = mp_flags["e_min"].values
     for name, cols in (("attacking", ["e_goals", "e_assists"]),
                        ("defcon", ["p_defcon"]),
                        ("saves", ["e_saves"]),
@@ -487,7 +542,9 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
             # team model alone.
             print(f"odds unusable, continuing without: {e}")
 
-    comp = predict_components(pred_frame, tg_future, players)
+    avail = news_availability(cfg, players, teams, events, gw)
+    comp = predict_components(pred_frame, tg_future, players, avail)
+    write_shadow(comp, gw)
     # Player props are the most optional signal here: the free tier meters
     # every request, the market may not exist for a fixture, and a quota that
     # ran out mid-month must cost the blend and nothing else. Only the next

@@ -617,3 +617,94 @@ def test_advice_carries_the_demoted_captain_and_the_note():
     a = _bare_advice()
     assert a.captain_note is None
     assert a.demoted_captain is None
+
+
+def test_predict_components_defaults_to_the_official_flags():
+    """The pre-v5 call shape still means the pre-v5 thing: no availability
+    frame passed means the bootstrap's own status columns."""
+    import inspect
+
+    from gaffer.advise import predict_components
+
+    sig = inspect.signature(predict_components)
+    assert list(sig.parameters) == ["pred_frame", "tg_future", "players",
+                                    "avail"]
+    assert sig.parameters["avail"].default is None
+
+
+def test_predict_components_emits_the_flags_only_shadow_columns():
+    """Gate N2 needs both sides of the comparison off one model run, so the
+    flags-only availability pass happens here, beside the news one."""
+    import inspect
+
+    from gaffer.advise import predict_components
+
+    src = inspect.getsource(predict_components)
+    assert 'comp["p_play_flags"] = mp_flags["p_play"].values' in src
+    assert 'comp["e_min_flags"] = mp_flags["e_min"].values' in src
+    # One model call, two availability calls.
+    assert src.count("minutes.predict(pf)") == 1
+    assert src.count("apply_availability(") == 2
+
+
+def test_run_advise_writes_the_shadow_log_before_assembling_ep():
+    """Source-level seam: the shadow row is the news layer's only record, and
+    it has to be taken off the component frame before the odds blend and the
+    calibration rewrite it."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    avail = src.index("avail = news_availability(")
+    comp = src.index("comp = predict_components(")
+    shadow = src.index("write_shadow(comp, gw)")
+    blend = src.index("blend_attacking_odds(")
+    assert avail < comp < shadow < blend
+    # The v4d rail, restated: nothing v5 inserted mentions the tilted pool.
+    assert "pool_ep" not in src[:shadow]
+
+
+def test_news_availability_degrades_to_the_bootstrap_slice():
+    """No config, dead sources, disabled layer — all three land on the same
+    three-column frame apply_availability has always taken."""
+    import pandas as pd
+
+    from gaffer.advise import news_availability
+    from gaffer.config import Config
+
+    players = pd.DataFrame({"code": [1], "status": ["a"],
+                            "chance_of_playing": [None], "team_code": [3],
+                            "name": ["X"], "first_name": ["X"],
+                            "second_name": ["Y"]})
+    teams = pd.DataFrame({"code": [3], "name": ["Arsenal"],
+                          "short_name": ["ARS"]})
+    events = pd.DataFrame({"gw": [5], "deadline_time": ["2026-09-05T10:00Z"]})
+    cfg = Config(entry_id=1, league_id=2, news_enabled=False)
+    out = news_availability(cfg, players, teams, events, gw=5)
+    assert list(out.columns) == ["code", "status", "chance_of_playing"]
+
+
+def test_news_availability_makes_no_fetch_calls_when_disabled(monkeypatch):
+    """The [news] enabled=false rail, asserted at the call site rather than
+    only at the fetcher."""
+    import pandas as pd
+
+    from gaffer import advise as advise_mod
+    from gaffer.config import Config
+
+    calls = []
+    monkeypatch.setattr(advise_mod, "fetch_injuries",
+                        lambda *a, **k: calls.append("i"))
+    monkeypatch.setattr(advise_mod, "fetch_lineups",
+                        lambda *a, **k: calls.append("l"))
+    players = pd.DataFrame({"code": [1], "status": ["a"],
+                            "chance_of_playing": [None], "team_code": [3],
+                            "name": ["X"], "first_name": ["X"],
+                            "second_name": ["Y"]})
+    teams = pd.DataFrame({"code": [3], "name": ["Arsenal"],
+                          "short_name": ["ARS"]})
+    events = pd.DataFrame({"gw": [5], "deadline_time": ["2026-09-05T10:00Z"]})
+    cfg = Config(entry_id=1, league_id=2, news_enabled=False)
+    advise_mod.news_availability(cfg, players, teams, events, gw=5)
+    assert calls == []
