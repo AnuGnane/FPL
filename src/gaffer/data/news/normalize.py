@@ -282,7 +282,9 @@ def availability_frame(official: pd.DataFrame,
        and no hint or injury row is attached to one.
     2. For ``i``/``d`` and unflagged players a listed injury supplies
        ``injury_type`` and ``expected_return_gw`` even when the official flag
-       has not caught up. That head start is the point of the source.
+       has not caught up. That head start is the point of the source. A row
+       whose return date lands *before* ``gw`` is stale — the listing outlived
+       the injury — and is dropped whole: no type, no date, no chance change.
     3. ``p_start_hint`` comes from line-ups alone and is carried, not folded
        in: it applies to the horizon's first gameweek only, and this frame has
        no gameweek axis, so ``apply_availability`` is what applies it.
@@ -308,6 +310,14 @@ def availability_frame(official: pd.DataFrame,
         if not inj.empty:
             inj["expected_return_gw"] = [
                 gw_for_date(events, d) for d in inj["expected_return_date"]]
+            # A return date the calendar places *before* the gameweek being
+            # advised is a listing nobody took down, not news: he is already
+            # back. Dropped whole rather than half-applied — an injury_type
+            # off a stale row would still steer the horizon decay, and the
+            # 50% "back this week" reading would bench a fit starter.
+            inj = inj[~(pd.to_numeric(inj["expected_return_gw"],
+                                      errors="coerce") < int(gw))]
+        if not inj.empty:
             inj["_chance"] = [_news_chance(g, gw)
                               for g in inj["expected_return_gw"]]
             keyed = inj.set_index("code")

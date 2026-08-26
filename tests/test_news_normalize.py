@@ -114,6 +114,31 @@ def test_a_listed_injury_returning_this_week_is_a_doubt_not_a_zero():
     assert out.loc[100, "expected_return_gw"] == 5
 
 
+def test_a_return_date_already_past_is_dropped_whole():
+    """A listing whose return date has come and gone is stale, not news: the
+    player is back. Left in, it read as "expected back this week" and put a
+    fit unflagged starter on 50% for a fortnight."""
+    injuries = pd.DataFrame([
+        _injury(100, "knock", "out", pd.Timestamp("2026-09-10").date())])
+    stale = availability_frame(_official(), injuries, None, gw=7,
+                               events=_events())
+    clean = availability_frame(_official(), None, None, gw=7,
+                               events=_events())
+    pd.testing.assert_frame_equal(stale, clean)
+
+
+def test_a_return_date_in_the_advised_gameweek_is_not_stale():
+    """The boundary: back *this* week is still a coin flip, not a drop."""
+    from gaffer.data.news.normalize import NEWS_RETURNS_THIS_GW
+
+    injuries = pd.DataFrame([
+        _injury(100, "knock", "out", pd.Timestamp("2026-09-14").date())])
+    out = availability_frame(_official(), injuries, None, gw=7,
+                             events=_events()).set_index("code")
+    assert out.loc[100, "expected_return_gw"] == 7
+    assert out.loc[100, "chance_of_playing"] == NEWS_RETURNS_THIS_GW
+
+
 def test_an_injury_with_no_date_records_the_type_without_moving_the_flag():
     """No date is no claim about this gameweek. The type still rides along,
     because the horizon decay wants it even when the current GW does not."""
