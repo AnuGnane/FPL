@@ -99,3 +99,82 @@ def test_fetch_rival_entries_handles_empty_league():
     # downstream: no rivals -> no picks -> no EO, no crash
     assert fetch_rival_picks(_FakePicksClient(), df["entry"].tolist(), gw=3) == {}
     assert effective_ownership({}) == {}
+
+
+# --- v4d: entry history for the sigma estimator ----------------------------
+
+import json
+
+from gaffer.api.client import FPLClient
+from gaffer.data.league import fetch_rival_history
+
+
+def _history_transport(points_by_entry: dict[int, list[int]], calls: list):
+    """entry/{id}/history/ for a handful of entries; no network."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        parts = request.url.path.rstrip("/").split("/")
+        entry = int(parts[-2])
+        calls.append(entry)
+        pts = points_by_entry.get(entry)
+        if pts is None:
+            return httpx.Response(404, json={"detail": "Not found."})
+        current = [{"event": i + 1, "points": p,
+                    "total_points": sum(pts[:i + 1])}
+                   for i, p in enumerate(pts)]
+        return httpx.Response(200, json={"current": current, "past": [],
+                                         "chips": []})
+
+    return httpx.MockTransport(handler)
+
+
+def test_fetch_rival_history_returns_entry_gw_points(tmp_path):
+    calls: list[int] = []
+    client = FPLClient(raw_dir=tmp_path / "raw",
+                       transport=_history_transport({1: [50, 60, 70],
+                                                     7: [40, 80, 55]}, calls))
+    df = fetch_rival_history(client, [1, 7], gw=3,
+                             raw_dir=tmp_path / "league")
+    assert list(df.columns) == ["entry", "gw", "points"]
+    assert len(df) == 6
+    assert set(df["entry"]) == {1, 7}
+    assert int(df[(df["entry"] == 7) & (df["gw"] == 2)]["points"].iloc[0]) == 80
+
+
+def test_fetch_rival_history_stops_at_the_requested_gameweek(tmp_path):
+    """A GW that is underway must not leak a half-scored week into sigma."""
+    calls: list[int] = []
+    client = FPLClient(raw_dir=tmp_path / "raw",
+                       transport=_history_transport({1: [50, 60, 70]}, calls))
+    df = fetch_rival_history(client, [1], gw=2, raw_dir=tmp_path / "league")
+    assert set(df["gw"]) == {1, 2}
+
+
+def test_fetch_rival_history_skips_an_entry_with_no_history(tmp_path):
+    calls: list[int] = []
+    client = FPLClient(raw_dir=tmp_path / "raw", retries=1,
+                       transport=_history_transport({1: [50, 60]}, calls))
+    df = fetch_rival_history(client, [1, 999], gw=2,
+                             raw_dir=tmp_path / "league")
+    assert set(df["entry"]) == {1}
+
+
+def test_fetch_rival_history_caches_per_gameweek(tmp_path):
+    calls: list[int] = []
+    cache = tmp_path / "league"
+    client = FPLClient(raw_dir=tmp_path / "raw",
+                       transport=_history_transport({1: [50, 60]}, calls))
+    first = fetch_rival_history(client, [1], gw=2, raw_dir=cache)
+    assert calls == [1]
+    assert json.loads((cache / "history-gw2.json").read_text())
+    second = fetch_rival_history(client, [1], gw=2, raw_dir=cache)
+    assert calls == [1]                       # served from disk, no re-fetch
+    assert second.equals(first)
+
+
+def test_fetch_rival_history_of_nobody_is_an_empty_frame(tmp_path):
+    calls: list[int] = []
+    client = FPLClient(raw_dir=tmp_path / "raw",
+                       transport=_history_transport({}, calls))
+    df = fetch_rival_history(client, [], gw=1, raw_dir=tmp_path / "league")
+    assert df.empty and list(df.columns) == ["entry", "gw", "points"]
