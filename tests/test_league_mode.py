@@ -66,11 +66,26 @@ def test_tilt_zero_lambda_is_identity():
     assert tilt_ep(ep_by, {1: 0.9}, 0.0) == ep_by
 
 
-def test_tilt_chasing_boosts_differentials():
+def test_tilt_chasing_discounts_the_covered_and_leaves_the_rest_raw():
+    """Chasing is re-anchored on the *uncovered* player: he keeps his real
+    expected points and the template is marked down, rather than the whole
+    board being multiplied up past the point-priced hit_cost / ft_value /
+    itb_value constants the objective is scored against."""
     ep_by = {(1, 5): 4.0, (2, 5): 4.0}
     out = tilt_ep(ep_by, {1: 1.0, 2: 0.0}, 0.4)
-    assert out[(1, 5)] == pytest.approx(4.0)          # fully covered: no boost
-    assert out[(2, 5)] == pytest.approx(4.0 * 1.4)    # uncovered: full boost
+    assert out[(1, 5)] == pytest.approx(4.0 / 1.4)    # fully covered
+    assert out[(2, 5)] == pytest.approx(4.0)          # uncovered: raw ep
+
+
+def test_tilt_never_inflates_the_board_above_raw_ep():
+    """The defect this pins: a chasing lam scaled every value up, so a 4-point
+    hit was quietly worth 4 / (1 + lam) tilted points and the optimizer took
+    transfers it would not have taken at the same real prices."""
+    ep_by = {(1, 5): 4.0, (2, 5): 6.0, (3, 5): 5.0}
+    cover = {1: 1.0, 2: 0.5, 3: 0.0}
+    for lam in (0.1, 0.25, 0.5):
+        out = tilt_ep(ep_by, cover, lam)
+        assert max(out[k] / ep_by[k] for k in ep_by) == pytest.approx(1.0)
 
 
 def test_tilt_defending_penalizes_differentials():
@@ -83,19 +98,23 @@ def test_tilt_cover_above_one_is_clamped():
     """cover_table clamps already; tilt_ep clamps again so a hand-built or
     stale table can never invert the sign of the tilt."""
     out = tilt_ep({(1, 5): 4.0}, {1: 1.8}, 0.4)
-    assert out[(1, 5)] == pytest.approx(4.0)
+    assert out[(1, 5)] == pytest.approx(4.0 / 1.4)
 
 
-def test_tilt_v2_reduces_to_the_old_league_eo_formula():
-    """The generalization is strict: cover_from_eo(EO%) through the new tilt
-    is the number the v1 tilt produced from the same EO."""
+def test_tilt_v2_reduces_to_the_old_league_eo_formula_re_anchored():
+    """The generalization is strict up to the anchor: cover_from_eo(EO%)
+    through the new tilt is the number the v1 tilt produced from the same EO,
+    divided by (1 + lam). The old formula shared the inflation defect — it
+    multiplied the whole board up — so the shapes agree and only the level
+    moves, which is the only part of it the objective's point-priced
+    constants ever cared about."""
     from gaffer.league_mode import cover_from_eo
 
     ep_by = {(1, 5): 4.0, (2, 5): 6.0}
     eo = {1: 90.0, 2: 10.0}
     out = tilt_ep(ep_by, cover_from_eo(eo), 0.4)
-    assert out[(1, 5)] == pytest.approx(4.0 * (1 + 0.4 * (1 - 0.9)))
-    assert out[(2, 5)] == pytest.approx(6.0 * (1 + 0.4 * (1 - 0.1)))
+    assert out[(1, 5)] == pytest.approx(4.0 * (1 + 0.4 * (1 - 0.9)) / 1.4)
+    assert out[(2, 5)] == pytest.approx(6.0 * (1 + 0.4 * (1 - 0.1)) / 1.4)
 
 
 def test_zero_lambda_reproduces_v1_solution():

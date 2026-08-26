@@ -255,14 +255,26 @@ def tilt_ep(ep_by: dict, cover: dict, lam: float) -> dict:
     all own him, or captain him". It is clamped again here so a stale or
     hand-built table can never invert the tilt. lam=0 returns an equal dict —
     the v1 points-max solution is reproduced exactly (regression-tested).
+
+    The result is normalized by the board's largest multiplier, ``1 + max(lam,
+    0)``, so no tilted value ever exceeds the player's raw ep. That matters
+    because the objective is not scale-free: ``hit_cost``, ``ft_value`` and
+    ``itb_value`` are priced in *points*, and a chasing lam that multiplied
+    every candidate up would quietly discount all three — a 4-point hit
+    costing 4 / (1 + lam) tilted points buys transfers nobody sanctioned.
+    Chasing therefore leaves the uncovered player at raw ep and marks the
+    covered ones down by 1 / (1 + lam); defending (lam < 0) is already
+    anchored on the covered player at raw ep, so its scale is 1 and its
+    numbers are unchanged.
     """
     if lam == 0.0:
         return dict(ep_by)
+    scale = 1.0 + max(lam, 0.0)
     out = {}
     for key, ep in ep_by.items():
         code = key[0]
         covered = min(max(float(cover.get(code, 0.0)), 0.0), 1.0)
-        out[key] = ep * (1 + lam * (1 - covered))
+        out[key] = ep * (1 + lam * (1 - covered)) / scale
     return out
 
 
