@@ -55,7 +55,8 @@ from gaffer.models.persistence import load_model, model_exists
 from gaffer.models.team import (ODDS_AGAINST_COL, ODDS_BLEND_WEIGHT,
                                 add_team_rolling, blend_team_odds,
                                 odds_blend_weight)
-from gaffer.models.train import load_training_frame, understat_team_rolled
+from gaffer.models.train import (cup_matches, load_training_frame,
+                                 understat_team_rolled)
 from gaffer.optimize.chips import (chip_baseline, evaluate_chips,
                                    wildcard_now_assessment)
 from gaffer.optimize.differentials import (captain_table, threat_board,
@@ -456,7 +457,8 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
                                   if c in hist.columns])
     pred_frame = build_prediction_frame(hist_raw, future, elo=None,
                                         elo_final=elo_final,
-                                        understat_team=understat_team_rolled())
+                                        understat_team=understat_team_rolled(),
+                                        cups=cup_matches())
     pred_frame = _rate_elo(pred_frame, elo_final, "team_elo")
     # Bookmaker odds are a best-effort extra: a dead key, a renamed club or a
     # rate limit must degrade the advice, never withhold it.

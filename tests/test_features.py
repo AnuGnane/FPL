@@ -784,3 +784,90 @@ def test_build_prediction_frame_without_understat_still_makes_the_columns():
     out = build_prediction_frame(hist, future)
     for col in understat_feature_columns() + TEAM_US_FEATURES:
         assert col in out.columns
+
+
+def _congestion_frame() -> pd.DataFrame:
+    """One club (team_code 3), one player, four league matches over 24 days."""
+    kicks = ["2025-08-16T14:00:00Z", "2025-08-23T14:00:00Z",
+             "2025-08-30T14:00:00Z", "2025-09-09T14:00:00Z"]
+    return pd.DataFrame({
+        "code": [1] * 4, "season_idx": [3] * 4, "gw": [1, 2, 3, 4],
+        "team_code": [3] * 4, "minutes": [90, 90, 90, 90],
+        "kickoff_time": kicks})
+
+
+def test_congestion_measures_the_gaps_either_side_of_a_match():
+    from gaffer.features.engineer import add_congestion
+
+    out = add_congestion(_congestion_frame()).set_index("gw")
+    assert pd.isna(out.loc[1, "days_since_last_match"])   # no earlier match
+    assert out.loc[2, "days_since_last_match"] == 7.0
+    assert out.loc[4, "days_since_last_match"] == 10.0
+    assert out.loc[1, "days_to_next_match"] == 7.0
+    assert out.loc[3, "days_to_next_match"] == 10.0
+    assert pd.isna(out.loc[4, "days_to_next_match"])      # end of the frame
+
+
+def test_congestion_counts_only_strictly_earlier_matches_in_the_window():
+    """A row's own match is not in its own 14-day history — the same
+    shift(1) discipline every other feature in this module keeps."""
+    from gaffer.features.engineer import add_congestion
+
+    out = add_congestion(_congestion_frame()).set_index("gw")
+    assert out.loc[1, "matches_last_14d"] == 0.0
+    assert out.loc[2, "matches_last_14d"] == 1.0
+    assert out.loc[3, "matches_last_14d"] == 2.0
+    # GW4 is 2025-09-09: only 2025-08-30 falls inside 14 days.
+    assert out.loc[4, "matches_last_14d"] == 1.0
+
+
+def test_congestion_counts_cup_matches_the_league_calendar_cannot_see():
+    """The whole point of data/cups.py: a midweek EFL Cup tie is a real
+    congestion event and appears in no FPL fixture list."""
+    from gaffer.features.engineer import add_congestion
+
+    cups = pd.DataFrame({"season": ["2025-26"] * 2, "season_idx": [3] * 2,
+                         "tournament": ["efl-cup"] * 2,
+                         "date": [pd.Timestamp("2025-08-27").date(),
+                                  pd.Timestamp("2025-09-02").date()],
+                         "team_code": [3, 3]})
+    out = add_congestion(_congestion_frame(), cups=cups).set_index("gw")
+    # GW3 (2025-08-30) now also sees the 08-27 tie.
+    assert out.loc[3, "matches_last_14d"] == 3.0
+    # GW4 (2025-09-09) sees 08-30, 09-02 and 08-27 is 13 days back.
+    assert out.loc[4, "matches_last_14d"] == 3.0
+    # The 08-30 league match still counts once, not twice.
+    assert out.loc[2, "matches_last_14d"] == 1.0
+
+
+def test_congestion_with_no_cup_frame_is_league_only_not_nan():
+    """`cups=None` means "no cup data on this machine", which must produce a
+    number, not a hole — the model has to see the same column in training and
+    at serve time."""
+    from gaffer.features.engineer import add_congestion
+
+    out = add_congestion(_congestion_frame(), cups=None)
+    assert out["matches_last_14d"].notna().all()
+
+
+def test_feature_columns_include_the_congestion_block():
+    from gaffer.features.engineer import CONGESTION_FEATURES, feature_columns
+
+    cols = set(feature_columns())
+    assert set(CONGESTION_FEATURES) <= cols
+
+
+def test_prediction_frame_carries_congestion_for_future_fixtures():
+    """A future row's congestion is genuinely knowable at the deadline: the
+    fixture calendar is published weeks ahead. Without it the column would be
+    populated in training and empty at serve time."""
+    from gaffer.features.engineer import build_prediction_frame
+
+    hist = _congestion_frame()
+    future = pd.DataFrame({
+        "code": [1], "season_idx": [3], "gw": [5], "team_code": [3],
+        "opp_code": [43], "was_home": [True], "position": ["MID"],
+        "kickoff_time": ["2025-09-13T14:00:00Z"]})
+    out = build_prediction_frame(hist, future)
+    assert out["days_since_last_match"].iloc[0] == 4.0
+    assert out["matches_last_14d"].iloc[0] == 2.0

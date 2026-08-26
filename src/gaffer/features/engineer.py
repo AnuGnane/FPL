@@ -24,6 +24,17 @@ model should read them all the same way rather than splitting on the length
 of the layoff.
 """
 
+CONGESTION_FEATURES = ["days_since_last_match", "days_to_next_match",
+                       "matches_last_14d"]
+CONGESTION_WINDOW_DAYS = 14
+MAX_CONGESTION_GAP = 30
+"""Days beyond which a gap either side of a match stops meaning anything.
+
+Same reasoning as :data:`MAX_DAYS_SINCE_START` and the existing ``days_rest``
+clip: past a month the gap is an international break, a winter break or an
+injury, and the model should read them all the same way.
+"""
+
 
 def add_player_rolling(df: pd.DataFrame, stats: list[str] = ROLL_STATS,
                        windows: list[int] = WINDOWS) -> pd.DataFrame:
@@ -135,6 +146,114 @@ def add_rotation(df: pd.DataFrame) -> pd.DataFrame:
         "sub_streak": st["streak"].groupby(code).ffill().groupby(code).shift(1),
     }
     return pd.concat([df, pd.DataFrame(feats, index=df.index)], axis=1)
+
+
+def add_congestion(df: pd.DataFrame,
+                   cups: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Fixture-congestion features: the gaps either side, and the recent load.
+
+    ``days_since_last_match``
+        days back to the player's previous match, clipped at
+        :data:`MAX_CONGESTION_GAP`. NaN for a first match.
+    ``days_to_next_match``
+        days forward to his next, same clip. NaN for the last match in the
+        frame. Forward-looking and *not* leakage: the fixture calendar is
+        published weeks before the deadline, so a Saturday prediction knows
+        perfectly well that a Tuesday tie follows. What it must not know is
+        the *result*, and no result is read here.
+    ``matches_last_14d``
+        matches in the :data:`CONGESTION_WINDOW_DAYS` days strictly before
+        this one — the player's own league matches, plus his club's cup and
+        European ties from :func:`gaffer.data.cups.load_cup_matches`. The
+        row's own match is excluded, the same ``shift(1)`` discipline
+        everything else in this module keeps.
+
+    ``cups`` of ``None`` means no cup frame is available on this machine, and
+    the count falls back to league matches alone. That is a number, not a NaN,
+    on purpose: the column has to mean the same thing in training and at serve
+    time, and a machine without the ingest must not see a differently-shaped
+    feature from one with it.
+    """
+    sort_cols = [c for c in ("code", "season_idx", "gw", "kickoff_time")
+                 if c in df.columns]
+    out = df.sort_values(sort_cols).reset_index(drop=True)
+    if "kickoff_time" not in out.columns:
+        for col in CONGESTION_FEATURES:
+            out[col] = float("nan")
+        return out
+    kt = pd.to_datetime(out["kickoff_time"], errors="coerce", utc=True)
+    code = out["code"]
+    prev = kt.groupby(code).shift(1)
+    nxt = kt.groupby(code).shift(-1)
+    out["days_since_last_match"] = ((kt - prev).dt.days
+                                    .clip(0, MAX_CONGESTION_GAP)
+                                    .astype("float64"))
+    out["days_to_next_match"] = ((nxt - kt).dt.days
+                                 .clip(0, MAX_CONGESTION_GAP)
+                                 .astype("float64"))
+    out["matches_last_14d"] = _recent_load(out, kt, cups)
+    return out
+
+
+def _recent_load(df: pd.DataFrame, kt: pd.Series,
+                 cups: pd.DataFrame | None) -> pd.Series:
+    """Matches in the 14 days strictly before each row's kickoff.
+
+    Counted per player for league matches (a benched squad member did travel,
+    which is why appearance is not required) and per *club* for cup ties,
+    because the cup files carry no player rows and a club's midweek tie is a
+    squad-level event either way.
+
+    Written as an explicit per-row scan over the player's own timestamps
+    rather than a rolling window: a double gameweek puts two matches in one
+    ``gw`` and a time-based roll over a duplicated key silently double-counts.
+    """
+    days = pd.Timedelta(days=CONGESTION_WINDOW_DAYS)
+    own = pd.Series(0.0, index=df.index, dtype="float64")
+    for _, idx in df.groupby(df["code"], sort=False).groups.items():
+        stamps = kt.loc[idx].to_numpy()
+        for pos, when in zip(idx, stamps):
+            if pd.isna(when):
+                continue
+            earlier = stamps[(stamps < when) & (stamps >= when - days)]
+            own.loc[pos] = float(len(earlier))
+    if cups is None or cups.empty or "team_code" not in df.columns:
+        return own
+    by_club: dict[int, list] = {}
+    dates = pd.to_datetime(cups["date"], errors="coerce", utc=True)
+    for team, when in zip(pd.to_numeric(cups["team_code"], errors="coerce"),
+                          dates):
+        if pd.notna(team) and pd.notna(when):
+            by_club.setdefault(int(team), []).append(when)
+    extra = pd.Series(0.0, index=df.index, dtype="float64")
+    clubs = pd.to_numeric(df["team_code"], errors="coerce")
+    for pos, (club, when) in enumerate(zip(clubs, kt)):
+        if pd.isna(club) or pd.isna(when):
+            continue
+        ties = by_club.get(int(club), ())
+        idx = df.index[pos]
+        extra.loc[idx] = float(sum(1 for t in ties
+                                   if when - days <= t < when))
+    return own + extra
+
+
+def latest_congestion(hist: pd.DataFrame, future: pd.DataFrame,
+                      cups: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Congestion for future rows, built from history plus the calendar.
+
+    Unlike the form vectors, this is *not* a broadcast of one as-of-today
+    state: every future fixture has its own date, so every future row has its
+    own gaps and its own 14-day load. History and future are therefore
+    concatenated and run through :func:`add_congestion` together, which is the
+    same trick :func:`add_context` already uses for ``days_rest``.
+    """
+    hist = hist.copy()
+    hist["_future"] = False
+    future = future.copy()
+    future["_future"] = True
+    both = add_congestion(pd.concat([hist, future], ignore_index=True), cups)
+    out = both[both["_future"]].drop(columns=["_future"])
+    return out.reset_index(drop=True)
 
 
 def latest_rotation(hist: pd.DataFrame) -> pd.DataFrame:
@@ -270,7 +389,8 @@ def build_prediction_frame(hist: pd.DataFrame, future: pd.DataFrame,
                            windows: list[int] = WINDOWS,
                            elo: pd.DataFrame | None = None,
                            elo_final: dict | None = None,
-                           understat_team: pd.DataFrame | None = None
+                           understat_team: pd.DataFrame | None = None,
+                           cups: pd.DataFrame | None = None
                            ) -> pd.DataFrame:
     """Feature rows for upcoming fixtures, built purely from history.
 
@@ -299,6 +419,11 @@ def build_prediction_frame(hist: pd.DataFrame, future: pd.DataFrame,
     combined = add_context(combined, elo, elo_final)
     out = combined[combined["_future"]].drop(columns=["_future"])
     out = out.reset_index(drop=True)
+    # Congestion is per-fixture, not a broadcast: each future row has its own
+    # date, so it is rebuilt over history+future rather than tailed.
+    cong = latest_congestion(hist, future, cups)[CONGESTION_FEATURES]
+    out = out.drop(columns=CONGESTION_FEATURES, errors="ignore")
+    out = pd.concat([out, cong.reset_index(drop=True)], axis=1)
     latest = latest_player_rolling(hist, stats, windows)
     rot = latest_rotation(hist).reindex(out["code"]).reset_index(drop=True)
     # A state carried over from an earlier season is not this season's start
@@ -332,6 +457,7 @@ def feature_columns(stats: list[str] = ROLL_STATS,
     cols = [f"{s}_r{w}" for s in stats for w in windows]
     return (cols + ["team_elo", "opp_elo", "elo_diff", "home", "days_rest",
                     "pen_taker", "setpiece_taker"] + ROTATION_FEATURES
+            + CONGESTION_FEATURES
             + understat_feature_columns() + TEAM_US_FEATURES
             + SHRUNK_FEATURES)
 

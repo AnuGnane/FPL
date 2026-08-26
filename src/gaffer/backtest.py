@@ -65,7 +65,7 @@ from gaffer.features.engineer import (ROLL_STATS, build_prediction_frame,
                                       feature_columns)
 from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
 from gaffer.models.train import (DEFAULT_E_GC, DEFAULT_P_CS,  # noqa: F401
-                                 load_training_frame,
+                                 cup_matches, load_training_frame,
                                  predict_components_simple, train_all)
 from gaffer.assets import load_decision_priors
 from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
@@ -279,7 +279,8 @@ def understat_team_as_of(ut: pd.DataFrame | None,
 
 def horizon_feature_rows(hist_raw: pd.DataFrame, gw: int, gws: list[int],
                          season_idx: int, elo_at: dict,
-                         understat_team: pd.DataFrame | None = None
+                         understat_team: pd.DataFrame | None = None,
+                         cups: pd.DataFrame | None = None
                          ) -> pd.DataFrame:
     """Feature rows for ``gws[1:]`` as they could be built at the ``gw``
     deadline.
@@ -314,7 +315,8 @@ def horizon_feature_rows(hist_raw: pd.DataFrame, gw: int, gws: list[int],
         "Europe/London").tz_localize(None).normalize()
     out = build_prediction_frame(prior, future, elo=None, elo_final=elo_at,
                                  understat_team=understat_team_as_of(
-                                     understat_team, cut))
+                                     understat_team, cut),
+                                 cups=cups)
     if elo_at and {"team_code", "opp_code"} <= set(out.columns):
         out["team_elo"] = out["team_code"].map(elo_at)
         out["opp_elo"] = out["opp_code"].map(elo_at)
@@ -430,6 +432,9 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
     # the parquet is small and re-reading it 38 times would not be.
     understat_team_raw = (store.load(UNDERSTAT_TEAM_PATH)
                           if store.exists(UNDERSTAT_TEAM_PATH) else None)
+    # No truncation needed: add_congestion counts only ties strictly before
+    # each row's own kickoff, so the whole-season frame cannot leak forward.
+    cups = cup_matches()
 
     models: dict = {}
     squad: list[int] = []
@@ -469,7 +474,8 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
         if len(gws) > 1 and ep_source != "oracle":
             later = horizon_feature_rows(hist_raw, gw, gws, season_idx,
                                          elo_as_of(season_rows, gw),
-                                         understat_team=understat_team_raw)
+                                         understat_team=understat_team_raw,
+                                         cups=cups)
             horizon_rows = (pd.concat([rows, later], ignore_index=True)
                             .reindex(columns=list(rows.columns)))
 

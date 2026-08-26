@@ -18,7 +18,8 @@ from gaffer.data.bootstrap import scoring_table
 from gaffer.data.elo import compute_elo
 from gaffer.features.bps import FIRST_NEW_RULES_SEASON, apply_new_bps
 from gaffer.data.understat import UNDERSTAT_PLAYER_PATH, UNDERSTAT_TEAM_PATH
-from gaffer.features.engineer import (ROTATION_FEATURES, US_STATS, add_context,
+from gaffer.features.engineer import (CONGESTION_FEATURES, ROTATION_FEATURES,
+                                      US_STATS, add_congestion, add_context,
                                       add_player_rolling, add_rotation,
                                       add_setpiece, add_shrunken_rates,
                                       add_understat_rolling,
@@ -155,6 +156,18 @@ def attach_understat(df: pd.DataFrame) -> pd.DataFrame:
     return add_shrunken_rates(df)
 
 
+def cup_matches() -> pd.DataFrame | None:
+    """The stored cup-date frame, shared by training and by ``advise``.
+
+    Same contract as :func:`understat_team_rolled`: both sides of the
+    train/serve boundary read it through one function, so neither can end up
+    with a differently-populated congestion column.
+    """
+    from gaffer.data.cups import load_cup_matches
+
+    return load_cup_matches()
+
+
 def understat_team_rolled() -> pd.DataFrame | None:
     """The rolled Understat team frame, or ``None`` when there is no parquet.
 
@@ -221,6 +234,7 @@ def load_training_frame(max_season_idx: int | None = None,
     df = add_rotation(df)
     df = add_setpiece(df)
     df = add_context(df, elo, elo_final)
+    df = add_congestion(df, cup_matches())
     df = attach_understat(df)
     tg = add_team_rolling(build_team_gw(fixtures))
     own = elo.rename(columns={"elo_pre": "team_elo_own"})
