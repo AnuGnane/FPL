@@ -1,0 +1,7 @@
+gameweek,kickoff_time,home_team,home_score,away_score,away_team,finished,match_id,tournament
+2.0,2025-08-27T18:45:00+00:00,,0.0,2.0,54.0,True,25-26-efl-cup-bristol-city-vs-fulham,efl-cup
+2.0,2025-08-26T18:45:00+00:00,94.0,2.0,0.0,91.0,True,25-26-efl-cup-brentford-vs-afc-bournemouth,efl-cup
+2.0,2025-08-26T19:00:00+00:00,3.0,3.0,1.0,,True,25-26-efl-cup-arsenal-vs-port-vale,efl-cup
+2.0,2025-08-27T19:00:00+00:00,43.0,1.0,0.0,8.0,True,25-26-efl-cup-man-city-vs-chelsea,efl-cup
+2.0,,11.0,,,14.0,False,25-26-efl-cup-everton-vs-liverpool,efl-cup
+2.0,2025-08-28T19:00:00+00:00,,1.0,2.0,,True,25-26-efl-cup-grimsby-vs-walsall,efl-cup
