@@ -32,6 +32,18 @@ class Config:
     decision_priors: bool = True
     ft_use_penalty: float = 0.0
     bench_curve: list[float] | None = None
+    # --- v4d league mode ---------------------------------------------------
+    # The z-dial's constants. Every default is the pinned value from the v4d
+    # design, and league mode itself stays gated by league_id — there is no
+    # new master switch. tier_eo is live-tracker display only and never
+    # reaches the optimizer.
+    z_scale: float = 1.5
+    lambda_cap: float = 0.5
+    sigma_floor: float = 8.0
+    sigma_cap: float = 30.0
+    sigma_min_weeks: int = 6
+    tier_eo: bool = True
+    tier_sample: int = 300
 
 
 def load_config(path: Path | str = "config.toml") -> Config:
@@ -42,6 +54,7 @@ def load_config(path: Path | str = "config.toml") -> Config:
     # than splatted. [optimizer] keeps splatting, so ft_use_penalty and
     # bench_curve need no line here.
     scen = raw.get("scenarios", {})
+    league = raw.get("league", {})
     return Config(
         entry_id=raw["fpl"]["entry_id"],
         league_id=raw["fpl"]["league_id"],
@@ -63,4 +76,11 @@ def load_config(path: Path | str = "config.toml") -> Config:
         irreversible_threshold=float(
             scen.get("irreversible_threshold", 0.75)),
         decision_priors=bool(scen.get("decision_priors", True)),
+        z_scale=float(league.get("z_scale", 1.5)),
+        lambda_cap=float(league.get("lambda_cap", 0.5)),
+        sigma_floor=float(league.get("sigma_floor", 8.0)),
+        sigma_cap=float(league.get("sigma_cap", 30.0)),
+        sigma_min_weeks=int(league.get("sigma_min_weeks", 6)),
+        tier_eo=bool(league.get("tier_eo", True)),
+        tier_sample=int(league.get("tier_sample", 300)),
     )

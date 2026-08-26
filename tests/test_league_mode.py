@@ -111,3 +111,37 @@ def test_explain_lam_puts_the_tilt_in_words():
 
     level = explain_lam(Strategy(0.0, 3, 30, "neutral", "Ten Hag Hive"))
     assert "points-max" in level
+
+
+# --- v4d: the dial's parameters --------------------------------------------
+
+
+def test_league_params_default_to_the_module_constants():
+    from gaffer.league_mode import (LAMBDA_CAP, SIGMA_CAP, SIGMA_FLOOR,
+                                    SIGMA_MIN_WEEKS, Z_SCALE, LeagueParams)
+
+    p = LeagueParams()
+    assert (p.z_scale, p.lambda_cap) == (Z_SCALE, LAMBDA_CAP)
+    assert (p.sigma_floor, p.sigma_cap) == (SIGMA_FLOOR, SIGMA_CAP)
+    assert p.sigma_min_weeks == SIGMA_MIN_WEEKS
+
+
+def test_league_params_read_a_config_without_importing_it():
+    """Duck-typed on the attributes: league_mode must not import config."""
+    from types import SimpleNamespace
+
+    from gaffer.league_mode import LeagueParams
+
+    cfg = SimpleNamespace(z_scale=2.0, lambda_cap=0.25, sigma_floor=5.0,
+                          sigma_cap=40.0, sigma_min_weeks=3)
+    p = LeagueParams.from_config(cfg)
+    assert (p.z_scale, p.lambda_cap, p.sigma_floor) == (2.0, 0.25, 5.0)
+    assert (p.sigma_cap, p.sigma_min_weeks) == (40.0, 3)
+
+
+def test_the_old_sigma_pin_is_still_importable_under_both_names():
+    """SIGMA is asserted by an existing test and imported elsewhere; the
+    renamed SIGMA_FALLBACK is the same number, not a second policy."""
+    from gaffer.league_mode import SIGMA, SIGMA_FALLBACK
+
+    assert SIGMA == SIGMA_FALLBACK == 18.0

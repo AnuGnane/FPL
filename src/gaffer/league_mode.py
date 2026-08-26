@@ -11,9 +11,40 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-SIGMA = 18.0        # per-GW score sigma, pinned; later: estimate from tracking
+SIGMA_FALLBACK = 18.0
+"""Per-GW margin sigma when the league has no history at all (GW1)."""
+
+SIGMA = SIGMA_FALLBACK
+"""Kept name for the pin: existing callers and tests import SIGMA."""
+
 LAMBDA_CAP = 0.5
+Z_SCALE = 1.5
+SIGMA_FLOOR = 8.0
+SIGMA_CAP = 30.0
+SIGMA_MIN_WEEKS = 6
 LAST_GW = 38
+
+
+@dataclass(frozen=True)
+class LeagueParams:
+    """The dial's constants, defaulted to the pins and overridable by
+    ``[league]`` in config.toml. Duck-typed on the config object so that
+    league_mode never imports gaffer.config."""
+
+    z_scale: float = Z_SCALE
+    lambda_cap: float = LAMBDA_CAP
+    sigma_floor: float = SIGMA_FLOOR
+    sigma_cap: float = SIGMA_CAP
+    sigma_min_weeks: int = SIGMA_MIN_WEEKS
+
+    @classmethod
+    def from_config(cls, cfg) -> "LeagueParams":
+        return cls(z_scale=float(getattr(cfg, "z_scale", Z_SCALE)),
+                   lambda_cap=float(getattr(cfg, "lambda_cap", LAMBDA_CAP)),
+                   sigma_floor=float(getattr(cfg, "sigma_floor", SIGMA_FLOOR)),
+                   sigma_cap=float(getattr(cfg, "sigma_cap", SIGMA_CAP)),
+                   sigma_min_weeks=int(getattr(cfg, "sigma_min_weeks",
+                                               SIGMA_MIN_WEEKS)))
 
 
 @dataclass

@@ -122,3 +122,43 @@ bench_curve = [0.21, 0.06, 0.002]
 """))
     assert cfg.ft_use_penalty == 0.2
     assert cfg.bench_curve == [0.21, 0.06, 0.002]
+
+
+# --- v4d league mode -------------------------------------------------------
+
+
+def _league_cfg(tmp_path, body: str = ""):
+    p = tmp_path / "config.toml"
+    p.write_text('[fpl]\nentry_id = 1\nleague_id = 2\n' + body)
+    return p
+
+
+def test_league_section_defaults_to_the_spec_values(tmp_path):
+    """A fresh clone with no [league] section gets the dial's pinned
+    constants, so nobody has to edit config.toml to get v4d behaviour."""
+    cfg = load_config(_league_cfg(tmp_path))
+    assert cfg.z_scale == 1.5
+    assert cfg.lambda_cap == 0.5
+    assert cfg.sigma_floor == 8.0
+    assert cfg.sigma_cap == 30.0
+    assert cfg.sigma_min_weeks == 6
+    assert cfg.tier_eo is True
+    assert cfg.tier_sample == 300
+
+
+def test_league_section_is_read(tmp_path):
+    cfg = load_config(_league_cfg(tmp_path, """
+[league]
+z_scale = 2.0
+lambda_cap = 0.25
+sigma_floor = 5.0
+sigma_cap = 40.0
+sigma_min_weeks = 3
+tier_eo = false
+tier_sample = 50
+"""))
+    assert (cfg.z_scale, cfg.lambda_cap) == (2.0, 0.25)
+    assert (cfg.sigma_floor, cfg.sigma_cap) == (5.0, 40.0)
+    assert cfg.sigma_min_weeks == 3
+    assert cfg.tier_eo is False
+    assert cfg.tier_sample == 50
