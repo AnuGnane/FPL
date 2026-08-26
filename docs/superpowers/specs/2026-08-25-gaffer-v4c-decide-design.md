@@ -360,3 +360,14 @@ samples per week make θ_t noisy; the 60/75 % `hit` and `chip` gate outputs
 are non-binding on the completion (the chip frequency channel is dead until
 scenario plans carry chips); the n=0 byte-identity rail pins the CLI print
 block, not the report JSON (chip rows now always carry θ columns).
+
+Re-verification (MERGE) left four nits, deferred: the web chip card
+(`meta.py`) now prices chip gains with the λ lookup while the report scores
+them in raw points, and passes no `thresholds=` so it lacks θ/`play_now` —
+pick one pricing; `chips.py` carries an unused `SEASON_LAST_GW` import;
+`frontend/types.ts` type drift (`captain_frequency` can be null;
+`captain_wanted`/`captain_agrees` undeclared; nothing renders these yet);
+the calibration replay's asset-blinding rests on `backtest.py`'s module
+global for `load_decision_priors` — a refactor to a direct call would
+silently re-contaminate with tests green (a source-text pin would close
+it).
