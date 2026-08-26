@@ -84,7 +84,8 @@ def margin_sigma(history, my_entry: int,
 
     Fallback chain, in order: the rival's own margin series when it has at
     least ``sigma_min_weeks`` shared gameweeks; the pooled league-wide margin
-    series when it does not; :data:`SIGMA_FALLBACK` when there is no poolable
+    series when it does not, and only if the pool itself spans that many
+    distinct gameweeks; :data:`SIGMA_FALLBACK` when there is no poolable
     history either. The result is bounded last, so no branch can escape
     ``[sigma_floor, sigma_cap]``.
     """
@@ -95,12 +96,21 @@ def margin_sigma(history, my_entry: int,
     my_points = {int(g): float(pts)
                  for g, pts in zip(mine["gw"], mine["points"])}
     margins: dict[int, list[float]] = {}
+    pooled_gws: set[int] = set()
     for entry, group in history[history["entry"] != my_entry].groupby("entry"):
-        margins[int(entry)] = [my_points[int(g)] - float(pts)
-                               for g, pts in zip(group["gw"], group["points"])
-                               if int(g) in my_points]
+        series, gws = [], []
+        for g, pts in zip(group["gw"], group["points"]):
+            if int(g) in my_points:
+                series.append(my_points[int(g)] - float(pts))
+                gws.append(int(g))
+        margins[int(entry)] = series
+        pooled_gws.update(gws)
     pooled = [m for series in margins.values() for m in series]
-    pooled_sigma = (_stdev(pooled) if len(pooled) >= p.sigma_min_weeks
+    # Gated on distinct *gameweeks*, not observations: ten rivals sharing one
+    # week give ten margins and no volatility at all, and pooling them would
+    # pass off the cross-sectional spread of how good the rivals are as the
+    # week-to-week spread the z-dial divides by.
+    pooled_sigma = (_stdev(pooled) if len(pooled_gws) >= p.sigma_min_weeks
                     else None)
     out: dict[int, float] = {}
     for entry, series in margins.items():

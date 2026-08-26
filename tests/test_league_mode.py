@@ -265,6 +265,21 @@ def test_margin_sigma_falls_back_to_the_pooled_league_sigma():
     assert 8.0 <= pooled_borrower <= 30.0
 
 
+def test_margin_sigma_pools_only_when_the_pool_spans_enough_gameweeks():
+    """A ten-rival league one week into the season has ten pooled margins and
+    no weeks. Gating on the count made that a 'pooled sigma' — a purely
+    cross-sectional spread of how good the rivals are, which is not the
+    week-to-week volatility the z-dial divides by."""
+    from gaffer.league_mode import SIGMA_FALLBACK, margin_sigma
+
+    hist = pd.DataFrame(
+        [{"entry": 1, "gw": 1, "points": 60}]
+        + [{"entry": e, "gw": 1, "points": 30 + 5 * e} for e in range(2, 12)])
+    out = margin_sigma(hist, my_entry=1)
+    assert len(out) == 10
+    assert set(out.values()) == {SIGMA_FALLBACK}
+
+
 def test_margin_sigma_falls_back_to_the_pin_with_no_history_at_all():
     from gaffer.league_mode import SIGMA_FALLBACK, margin_sigma
 
