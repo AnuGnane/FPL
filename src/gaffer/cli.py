@@ -292,7 +292,10 @@ def calibrate_injuries(clubs: str = typer.Option(
     payload = run_calibration(json.loads(path.read_text()))
     dest = write_curves(payload, ASSET_PATH)
     typer.echo(f"Fitted {len(payload['curves'])} typed curves from "
-               f"{payload['spells']} spells -> {dest}")
+               f"{payload['spells']} spells across {payload['players']} "
+               f"players at {payload['clubs']} clubs "
+               f"({payload['players_failed']} players and "
+               f"{payload['clubs_failed']} clubs skipped) -> {dest}")
 
 
 @app.command()

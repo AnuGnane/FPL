@@ -35,26 +35,142 @@ def test_parse_injury_spells_on_a_rewritten_page_returns_empty():
     assert parse_injury_spells("<html><body>nope</body></html>").empty
 
 
-def test_fetch_club_spells_caches_and_degrades(tmp_path):
-    from gaffer.data.news.transfermarkt import fetch_club_spells
+def _squad_html() -> str:
+    return (FIXTURES / "transfermarkt_squad.html").read_text()
+
+
+def _tm_transport(calls: list):
+    """Squad page, player injury page, or a 404 for anything else.
+
+    Routing on the path rather than answering everything, because the whole
+    point of the rework is that the two pages are different pages: a mock that
+    served the same body to both would have passed against the v5 club URL
+    that does not exist.
+    """
+    def handle(request: httpx.Request) -> httpx.Response:
+        calls.append(str(request.url))
+        path = request.url.path
+        if "/kader/verein/" in path:
+            return httpx.Response(200, text=_squad_html())
+        if "/verletzungen/spieler/" in path:
+            return httpx.Response(200, text=_spells_html())
+        return httpx.Response(404)
+    return httpx.MockTransport(handle)
+
+
+def test_squad_player_ids_reads_the_profile_links_once_each(tmp_path):
+    from gaffer.data.news.transfermarkt import squad_player_ids
 
     calls: list[str] = []
+    client = httpx.Client(transport=_tm_transport(calls))
+    squad = squad_player_ids("fc-arsenal", 11, 2026, client=client,
+                             cache_dir=tmp_path)
+    assert squad == [("david-raya", 262749), ("bukayo-saka", 433177),
+                     ("declan-rice", 357662)]
+    assert "/fc-arsenal/kader/verein/11/saison_id/2026" in calls[0]
 
-    def handle(request):
-        calls.append(str(request.url))
-        return httpx.Response(200, text=_spells_html())
 
-    client = httpx.Client(transport=httpx.MockTransport(handle))
-    first = fetch_club_spells("arsenal-fc", 11, cache_dir=tmp_path,
-                              client=client)
-    assert len(first) == 5
-    fetch_club_spells("arsenal-fc", 11, cache_dir=tmp_path, client=client)
+def test_squad_player_ids_is_cached_permanently_per_club_season(tmp_path):
+    """A squad list for a season that has already been read is a fact, not a
+    feed. The calibration is re-run whenever it fails half way through, and a
+    resumed run must not pay for the twenty squad pages again."""
+    from gaffer.data.news.transfermarkt import squad_player_ids
+
+    calls: list[str] = []
+    client = httpx.Client(transport=_tm_transport(calls))
+    squad_player_ids("fc-arsenal", 11, 2026, client=client, cache_dir=tmp_path)
+    squad_player_ids("fc-arsenal", 11, 2026, client=client, cache_dir=tmp_path)
     assert len(calls) == 1
+
+
+def test_squad_player_ids_degrades_to_an_empty_list(tmp_path):
+    from gaffer.data.news.transfermarkt import squad_player_ids
 
     dead = httpx.Client(transport=httpx.MockTransport(
         lambda r: httpx.Response(500)))
-    assert fetch_club_spells("chelsea-fc", 631, cache_dir=tmp_path,
-                             client=dead).empty
+    assert squad_player_ids("fc-chelsea", 631, 2026, client=dead,
+                            cache_dir=tmp_path) == []
+
+
+def test_fetch_player_spells_reads_the_player_page_and_caches_it(tmp_path):
+    from gaffer.data.news.transfermarkt import fetch_player_spells
+
+    calls: list[str] = []
+    client = httpx.Client(transport=_tm_transport(calls))
+    first = fetch_player_spells("bukayo-saka", 433177, client=client,
+                                cache_dir=tmp_path)
+    assert len(first) == 5
+    assert "/bukayo-saka/verletzungen/spieler/433177" in calls[0]
+    fetch_player_spells("bukayo-saka", 433177, client=client,
+                        cache_dir=tmp_path)
+    assert len(calls) == 1
+
+
+def test_fetch_player_spells_degrades_to_empty(tmp_path):
+    from gaffer.data.news.transfermarkt import SPELL_COLS, fetch_player_spells
+
+    dead = httpx.Client(transport=httpx.MockTransport(
+        lambda r: httpx.Response(500)))
+    out = fetch_player_spells("nobody", 1, client=dead, cache_dir=tmp_path)
+    assert out.empty
+    assert list(out.columns) == SPELL_COLS
+
+
+def test_the_v5_club_history_page_is_gone():
+    """``/verletztespieler/verein/`` was a guess and it 404s. Keeping a
+    fetcher for it around is how a re-run silently calibrates on nothing."""
+    import gaffer.data.news.transfermarkt as tm
+
+    assert not hasattr(tm, "club_url")
+    assert not hasattr(tm, "fetch_club_spells")
+
+
+def test_run_calibration_walks_clubs_then_squads_then_players(tmp_path,
+                                                              capsys):
+    from gaffer.calibrate_injuries import run_calibration
+
+    calls: list[str] = []
+    client = httpx.Client(transport=_tm_transport(calls))
+    payload = run_calibration({"fc-arsenal": 11}, season_year=2026,
+                              cache_dir=tmp_path, client=client, pause=0.0)
+    # One squad page, then one injury page per player on it.
+    assert len(calls) == 4
+    assert payload["spells"] == 15          # three players, five spells each
+    assert "fc-arsenal" in capsys.readouterr().out
+
+
+def test_run_calibration_counts_a_dead_player_page_and_carries_on(tmp_path,
+                                                                   capsys):
+    """A calibration is not worth abandoning over one dead page, and a run
+    that quietly dropped players would fit curves on a sample nobody can
+    account for. Every failure is skipped *and counted*."""
+    from gaffer.calibrate_injuries import run_calibration
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        if "/kader/verein/" in request.url.path:
+            return httpx.Response(200, text=_squad_html())
+        if "bukayo-saka" in request.url.path:
+            return httpx.Response(503)
+        return httpx.Response(200, text=_spells_html())
+
+    client = httpx.Client(transport=httpx.MockTransport(handle))
+    payload = run_calibration({"fc-arsenal": 11}, season_year=2026,
+                              cache_dir=tmp_path, client=client, pause=0.0)
+    assert payload["spells"] == 10
+    assert payload["players_failed"] == 1
+    assert payload["players"] == 2
+    assert payload["clubs_failed"] == 0
+
+
+def test_run_calibration_counts_a_dead_club(tmp_path):
+    from gaffer.calibrate_injuries import run_calibration
+
+    dead = httpx.Client(transport=httpx.MockTransport(
+        lambda r: httpx.Response(500)))
+    payload = run_calibration({"fc-arsenal": 11}, season_year=2026,
+                              cache_dir=tmp_path, client=dead, pause=0.0)
+    assert payload["clubs_failed"] == 1
+    assert payload["spells"] == 0
 
 
 def _many(days: list[float], itype: str) -> pd.DataFrame:

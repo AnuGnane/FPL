@@ -101,24 +101,81 @@ def fit_curves(spells: pd.DataFrame,
     }
 
 
+SEASON_YEAR = 2026
+"""Transfermarkt's ``saison_id`` for the squads to walk.
+
+The *current* squad, not a historical one: the question is how long these
+players' injuries last, and a 2019 squad list would fetch histories for
+players who have since left the league.
+"""
+
+REQUEST_PAUSE = 0.05
+"""Seconds between requests.
+
+Six hundred pages read once a season. Fifty milliseconds costs the run half a
+minute and keeps it to twenty requests a second, which is a courtesy the
+permanent cache means we only ever have to pay once.
+"""
+
+
 def run_calibration(clubs: dict[str, int],
-                    cache_dir: Path | None = None) -> dict:
-    """Scrape every club's injury history and fit the curves.
+                    season_year: int = SEASON_YEAR,
+                    cache_dir: Path | None = None,
+                    client=None,
+                    pause: float = REQUEST_PAUSE) -> dict:
+    """Walk clubs -> squads -> players and fit the curves.
 
-    ``clubs`` is ``{transfermarkt slug: club id}``. A club that fails
-    contributes nothing and the fit proceeds on the rest — a calibration is
-    not worth abandoning over one dead page.
+    ``clubs`` is ``{transfermarkt slug: club id}``. Two levels of scrape and
+    two levels of failure: a club whose squad page is dead contributes no
+    players, a player whose history page is dead contributes no spells, and
+    both are counted into the payload rather than silently dropped. A
+    calibration is not worth abandoning over one dead page, but a fit on a
+    sample nobody can account for is not worth shipping either.
     """
-    from gaffer.data.news import NEWS_CACHE
-    from gaffer.data.news.transfermarkt import fetch_club_spells
+    import time
 
-    frames = [fetch_club_spells(slug, club_id,
-                                cache_dir=cache_dir or NEWS_CACHE)
-              for slug, club_id in clubs.items()]
-    frames = [f for f in frames if not f.empty]
+    from gaffer.data.news import NEWS_CACHE
+    from gaffer.data.news.transfermarkt import (fetch_player_spells,
+                                                squad_player_ids)
+
+    dest = cache_dir or NEWS_CACHE
+    frames: list[pd.DataFrame] = []
+    seen = clubs_failed = players_failed = 0
+    for slug, club_id in clubs.items():
+        squad = squad_player_ids(slug, club_id, season_year, client=client,
+                                 cache_dir=dest)
+        if not squad:
+            clubs_failed += 1
+            print(f"transfermarkt: {slug} squad unavailable — skipped")
+            continue
+        if pause:
+            time.sleep(pause)
+        club_spells = 0
+        for player_slug, player_id in squad:
+            spells = fetch_player_spells(player_slug, player_id,
+                                         client=client, cache_dir=dest)
+            if spells.empty:
+                # An empty frame is a dead page *or* a player who has never
+                # been injured, and the two are indistinguishable here. Both
+                # are counted, which keeps the reported denominator honest.
+                players_failed += 1
+            else:
+                seen += 1
+                club_spells += len(spells)
+                frames.append(spells)
+            if pause:
+                time.sleep(pause)
+        print(f"transfermarkt: {slug} — {len(squad)} players, "
+              f"{club_spells} spells")
+
     spells = (pd.concat(frames, ignore_index=True) if frames
               else pd.DataFrame(columns=["injury_type", "days_out"]))
-    return fit_curves(spells)
+    payload = fit_curves(spells)
+    payload["clubs"] = len(clubs) - clubs_failed
+    payload["clubs_failed"] = clubs_failed
+    payload["players"] = seen
+    payload["players_failed"] = players_failed
+    return payload
 
 
 def _check_cdf(name: str, curve) -> None:

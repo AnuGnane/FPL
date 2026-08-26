@@ -33,14 +33,69 @@ _TAG = re.compile(r"<[^>]+>")
 _DAYS = re.compile(r"(\d+)\s*days?", re.I)
 
 
-def club_url(club_slug: str, club_id: int) -> str:
-    """The club's injury-history page.
+_PROFILE = re.compile(r'href="/([a-z0-9\-]+)/profil/spieler/(\d+)"', re.I)
+"""The squad page's player links.
 
-    One page per club rather than one per player: the same spells, two orders
-    of magnitude fewer requests, and the curves are fitted pooled anyway.
+Keyed on ``/profil/spieler/`` specifically: every row also links the same
+player's market-value history under ``/marktwertverlauf/spieler/``, and the
+same page links twenty other clubs under ``/startseite/verein/``.
+"""
+
+
+def squad_url(club_slug: str, club_id: int, season_year: int) -> str:
+    """The club's squad list for one season."""
+    return (f"{TM_BASE}/{club_slug}/kader/verein/{int(club_id)}"
+            f"/saison_id/{int(season_year)}")
+
+
+def player_url(player_slug: str, player_id: int) -> str:
+    """One player's injury history — season, injury, from, until, days."""
+    return f"{TM_BASE}/{player_slug}/verletzungen/spieler/{int(player_id)}"
+
+
+def _cached_page(url: str, dest: Path,
+                 client: httpx.Client | None = None) -> str | None:
+    """The page at ``url``, from ``dest`` if it has ever been fetched.
+
+    Permanently rather than per window, unlike the live news sources: this
+    runs once a season from a CLI, over some six hundred pages, and a sweep
+    that dies half way through must resume for free. Delete the cache
+    directory to force a refresh.
     """
-    return (f"{TM_BASE}/{club_slug}/verletztespieler/verein/{int(club_id)}"
-            "/plus/1")
+    if dest.exists():
+        return dest.read_text(encoding="utf-8")
+    http = news_client(client)
+    try:
+        resp = http.get(url)
+        resp.raise_for_status()
+    except httpx.HTTPError as exc:
+        print(f"transfermarkt: {url} unavailable ({exc})")
+        return None
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(resp.text, encoding="utf-8")
+    return resp.text
+
+
+def squad_player_ids(club_slug: str, club_id: int, season_year: int,
+                     client: httpx.Client | None = None,
+                     cache_dir: Path = NEWS_CACHE
+                     ) -> list[tuple[str, int]]:
+    """``[(player slug, player id)]`` for one club's season squad.
+
+    In page order and deduplicated: a row prints its player twice on the
+    responsive layout, and asking for the same injury history twice is two
+    requests we do not have a reason to make.
+    """
+    dest = (Path(cache_dir) / "transfermarkt"
+            / f"squad-{club_slug}-{int(club_id)}-{int(season_year)}.html")
+    markup = _cached_page(squad_url(club_slug, club_id, season_year), dest,
+                          client)
+    if not markup:
+        return []
+    seen: dict[int, tuple[str, int]] = {}
+    for slug, pid in _PROFILE.findall(markup):
+        seen.setdefault(int(pid), (slug, int(pid)))
+    return list(seen.values())
 
 
 def parse_injury_spells(markup: str) -> pd.DataFrame:
@@ -66,25 +121,19 @@ def parse_injury_spells(markup: str) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=SPELL_COLS)
 
 
-def fetch_club_spells(club_slug: str, club_id: int,
-                      cache_dir: Path = NEWS_CACHE,
-                      client: httpx.Client | None = None) -> pd.DataFrame:
-    """One club's injury history, cached permanently by club.
+def fetch_player_spells(player_slug: str, player_id: int,
+                        client: httpx.Client | None = None,
+                        cache_dir: Path = NEWS_CACHE) -> pd.DataFrame:
+    """One player's whole injury history, cached permanently by player.
 
-    Permanently rather than per window: this runs once a season from a CLI,
-    and a re-run inside the same season should cost nothing. Delete the cache
-    directory to force a refresh.
+    Per player rather than per club because the club-level history page the
+    v5 design assumed does not exist: ``/verletztespieler/verein/`` 404s.
+    Six hundred requests instead of twenty, which is why they are cached
+    forever and paced by the caller.
     """
-    dest = Path(cache_dir) / "transfermarkt" / f"{club_slug}-{club_id}.html"
-    if dest.exists():
-        return parse_injury_spells(dest.read_text(encoding="utf-8"))
-    http = news_client(client)
-    try:
-        resp = http.get(club_url(club_slug, club_id))
-        resp.raise_for_status()
-    except httpx.HTTPError as exc:
-        print(f"transfermarkt: {club_slug} unavailable ({exc})")
+    dest = (Path(cache_dir) / "transfermarkt"
+            / f"player-{player_slug}-{int(player_id)}.html")
+    markup = _cached_page(player_url(player_slug, player_id), dest, client)
+    if not markup:
         return pd.DataFrame(columns=SPELL_COLS)
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(resp.text, encoding="utf-8")
-    return parse_injury_spells(resp.text)
+    return parse_injury_spells(markup)
