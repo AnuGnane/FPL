@@ -63,25 +63,39 @@ def test_tied_with_leader_is_neutral():
 
 def test_tilt_zero_lambda_is_identity():
     ep_by = {(1, 5): 4.0, (2, 5): 4.0}
-    assert tilt_ep(ep_by, {1: 90.0}, 0.0) == ep_by
+    assert tilt_ep(ep_by, {1: 0.9}, 0.0) == ep_by
 
 
 def test_tilt_chasing_boosts_differentials():
     ep_by = {(1, 5): 4.0, (2, 5): 4.0}
-    out = tilt_ep(ep_by, {1: 100.0, 2: 0.0}, 0.4)
-    assert out[(1, 5)] == pytest.approx(4.0)          # fully owned: no boost
-    assert out[(2, 5)] == pytest.approx(4.0 * 1.4)    # 0% owned: full boost
+    out = tilt_ep(ep_by, {1: 1.0, 2: 0.0}, 0.4)
+    assert out[(1, 5)] == pytest.approx(4.0)          # fully covered: no boost
+    assert out[(2, 5)] == pytest.approx(4.0 * 1.4)    # uncovered: full boost
 
 
 def test_tilt_defending_penalizes_differentials():
-    out = tilt_ep({(1, 5): 4.0, (2, 5): 4.0}, {1: 100.0, 2: 0.0}, -0.3)
+    out = tilt_ep({(1, 5): 4.0, (2, 5): 4.0}, {1: 1.0, 2: 0.0}, -0.3)
     assert out[(1, 5)] == pytest.approx(4.0)
     assert out[(2, 5)] == pytest.approx(4.0 * 0.7)
 
 
-def test_tilt_eo_above_100_clamped():
-    out = tilt_ep({(1, 5): 4.0}, {1: 180.0}, 0.4)     # captained by all
+def test_tilt_cover_above_one_is_clamped():
+    """cover_table clamps already; tilt_ep clamps again so a hand-built or
+    stale table can never invert the sign of the tilt."""
+    out = tilt_ep({(1, 5): 4.0}, {1: 1.8}, 0.4)
     assert out[(1, 5)] == pytest.approx(4.0)
+
+
+def test_tilt_v2_reduces_to_the_old_league_eo_formula():
+    """The generalization is strict: cover_from_eo(EO%) through the new tilt
+    is the number the v1 tilt produced from the same EO."""
+    from gaffer.league_mode import cover_from_eo
+
+    ep_by = {(1, 5): 4.0, (2, 5): 6.0}
+    eo = {1: 90.0, 2: 10.0}
+    out = tilt_ep(ep_by, cover_from_eo(eo), 0.4)
+    assert out[(1, 5)] == pytest.approx(4.0 * (1 + 0.4 * (1 - 0.9)))
+    assert out[(2, 5)] == pytest.approx(6.0 * (1 + 0.4 * (1 - 0.1)))
 
 
 def test_zero_lambda_reproduces_v1_solution():
@@ -90,8 +104,8 @@ def test_zero_lambda_reproduces_v1_solution():
     gws = [1, 2]
     ep_by = {(int(r["code"]), g): float(r["ep"][g])
              for _, r in pool.iterrows() for g in gws}
-    # nonzero, non-uniform EO: an identity bug would perturb the pool.
-    eo = {int(c): float((i * 37) % 150) for i, c in enumerate(pool["code"])}
+    # nonzero, non-uniform cover: an identity bug would perturb the pool.
+    eo = {int(c): ((i * 37) % 150) / 100.0 for i, c in enumerate(pool["code"])}
 
     tilted = tilt_ep(ep_by, eo, 0.0)
     pool_tilted = pool.copy()

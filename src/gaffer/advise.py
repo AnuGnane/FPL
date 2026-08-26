@@ -39,13 +39,14 @@ from gaffer.data.bootstrap import (build_events, build_players, build_teams,
                                    next_gw, scoring_table)
 from gaffer.data.entry import fetch_my_team
 from gaffer.data.league import (effective_ownership, fetch_rival_entries,
-                                fetch_rival_picks)
+                                fetch_rival_history, fetch_rival_picks)
 from gaffer.data.live import refresh_live
 from gaffer.errors import GafferError
 from gaffer.data.odds import (OddsClient, ags_frame, blend_attacking_odds,
                               next_gw_event_ids, odds_frame)
 from gaffer.features.engineer import build_prediction_frame, feature_columns
-from gaffer.league_mode import compute_strategy, tilt_ep, win_probability
+from gaffer.league_mode import (LeagueParams, captain_cover, compute_strategy,
+                                cover_table, tilt_ep, win_probability)
 from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
 from gaffer.models.components import card_penalty
 from gaffer.models.minutes import apply_availability
@@ -523,6 +524,10 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     # and league_eo empty, lam is then 0.0, and tilt_ep is an exact
     # passthrough — the solve is bit-identical to the v1 points-max one.
     league_eo: dict[int, float] = {}
+    cover: dict[int, float] = {}
+    cap_cover: dict[int, float] = {}
+    rival_captains: dict[int, int] = {}
+    rival_names: dict[int, str] = {}
     strat = None
     win_probs: list[dict] = []
     if cfg.league_id:
@@ -538,7 +543,32 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
                              if el in code_of_element}
                 entry = client.get_entry(cfg.entry_id)
                 my_total = int(entry.get("summary_overall_points") or 0)
-                strat = compute_strategy(my_total, rivals, gw)
+                history = fetch_rival_history(
+                    client, [cfg.entry_id] + rivals["entry"].tolist(), gw - 1)
+                strat = compute_strategy(
+                    my_total, rivals, gw, history=history,
+                    my_entry=cfg.entry_id,
+                    params=LeagueParams.from_config(cfg))
+                # Covering is computed from the squads the threats actually
+                # own, then re-keyed from FPL element ids to player codes,
+                # which is what the pool and every downstream table use.
+                cover = {code_of_element[el]: v
+                         for el, v in cover_table(
+                             rival_picks, strat.cover_weights).items()
+                         if el in code_of_element}
+                cap_cover = {code_of_element[el]: v
+                             for el, v in captain_cover(
+                                 rival_picks, strat.cover_weights).items()
+                             if el in code_of_element}
+                rival_names = {int(r.entry): str(r.entry_name)
+                               for r in rivals.itertuples()}
+                for rival_entry, picks in rival_picks.items():
+                    for pick in picks:
+                        if int(pick.get("multiplier", 0)) >= 2:
+                            element = int(pick["element"])
+                            if element in code_of_element:
+                                rival_captains[int(rival_entry)] = \
+                                    code_of_element[element]
                 win_probs = [
                     {"name": str(r.entry_name), "total": int(r.total),
                      "p_win": round(win_probability(my_total, int(r.total),
@@ -547,8 +577,10 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         except Exception as e:  # noqa: BLE001 — the league must never block advice
             print(f"league unavailable, continuing without: {e}")
             league_eo, strat, win_probs = {}, None, []
+            cover, cap_cover = {}, {}
+            rival_captains, rival_names = {}, {}
 
-    pool_ep = tilt_ep(ep_by, league_eo, strat.lam if strat else 0.0)
+    pool_ep = tilt_ep(ep_by, cover, strat.lam if strat else 0.0)
     if my is None:
         state, my_picks = initial_squad_state(gws)
     else:

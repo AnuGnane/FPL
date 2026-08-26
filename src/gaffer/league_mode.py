@@ -247,20 +247,22 @@ def compute_strategy(my_total: int, rivals: pd.DataFrame, current_gw: int,
                     z=z, sigma_m=sigma_m, cover_weights=weights)
 
 
-def tilt_ep(ep_by: dict, eo_pct: dict, lam: float) -> dict:
+def tilt_ep(ep_by: dict, cover: dict, lam: float) -> dict:
     """Tilted EP for MILP pool construction ONLY. Raw ep is what reports show.
 
-    eo_pct: league effective ownership in percent (captaincy can push >100);
-    clamped to [0, 1] as a fraction. lam=0 returns an equal dict — the v1
-    points-max solution is reproduced exactly (regression-tested).
+    ``cover`` is the observed-squad cover table from :func:`cover_table`: a
+    fraction in [0, 1] per player code, where 1 means "the rivals that matter
+    all own him, or captain him". It is clamped again here so a stale or
+    hand-built table can never invert the tilt. lam=0 returns an equal dict —
+    the v1 points-max solution is reproduced exactly (regression-tested).
     """
     if lam == 0.0:
         return dict(ep_by)
     out = {}
     for key, ep in ep_by.items():
         code = key[0]
-        eo1 = min(eo_pct.get(code, 0.0) / 100.0, 1.0)
-        out[key] = ep * (1 + lam * (1 - eo1))
+        covered = min(max(float(cover.get(code, 0.0)), 0.0), 1.0)
+        out[key] = ep * (1 + lam * (1 - covered))
     return out
 
 

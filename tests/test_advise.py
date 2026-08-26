@@ -556,3 +556,37 @@ def test_the_reported_captain_frequency_belongs_to_the_actual_captain():
     assert "captain_frequency_of(freqs," in src
     assert "first.captain)" in src
     assert "decision.captain_frequency" not in src
+
+
+# --- v4d: the league block feeds cover, not raw EO -------------------------
+
+
+def test_run_advise_builds_the_cover_table_inside_the_league_block():
+    """The dial's inputs are assembled between fetch_rival_entries and
+    tilt_ep, so the protected ordering is untouched and the pool still eats
+    a tilted dict built from observed rival squads."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    league = src.index("fetch_rival_entries(")
+    strategy = src.index("compute_strategy(")
+    tilt = src.index("tilt_ep(")
+    pool = src.index("pool = build_pool(")
+    assert league < src.index("fetch_rival_history(") < strategy
+    assert strategy < src.index("cover_table(") < tilt < pool
+    assert "captain_cover(" in src
+    assert "tilt_ep(ep_by, cover," in src
+
+
+def test_run_advise_still_reports_league_eo_for_the_annotation_tables():
+    """Cover drives the optimizer; the captain table, the alternatives and
+    the threat board still speak in rival EO percent."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    assert "captain_table(ep_gw1, first.xi, league_eo)" in src
+    assert "threat_board(ep_gw1, first.squad, league_eo)" in src
