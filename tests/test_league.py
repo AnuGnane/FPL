@@ -180,6 +180,31 @@ def test_fetch_rival_history_of_nobody_is_an_empty_frame(tmp_path):
     assert df.empty and list(df.columns) == ["entry", "gw", "points"]
 
 
+def test_fetch_rival_history_does_not_cache_an_outage(tmp_path):
+    """Every entry 404ing is a transient failure, not a fact about the
+    gameweek. Writing the empty result would pin 'this league has no history'
+    until the file is deleted by hand, flattening every sigma to the pin."""
+    calls: list[int] = []
+    cache = tmp_path / "league"
+    client = FPLClient(raw_dir=tmp_path / "raw", retries=1,
+                       transport=_history_transport({}, calls))
+    assert fetch_rival_history(client, [1, 7], gw=3, raw_dir=cache).empty
+    assert not (cache / "history-gw3.json").exists()
+
+
+def test_fetch_rival_history_before_gw1_makes_no_calls_at_all(tmp_path):
+    """The GW1 advise run asks for gw - 1 = 0. There is no completed week to
+    have a history of, so there is nothing to fetch and nothing to cache."""
+    calls: list[int] = []
+    cache = tmp_path / "league"
+    client = FPLClient(raw_dir=tmp_path / "raw",
+                       transport=_history_transport({1: [50]}, calls))
+    df = fetch_rival_history(client, [1], gw=0, raw_dir=cache)
+    assert df.empty and list(df.columns) == ["entry", "gw", "points"]
+    assert calls == []
+    assert not cache.exists()
+
+
 # --- v4d: recorded rival picks for gate E1 ---------------------------------
 
 from gaffer.data.league import fetch_rival_picks_history

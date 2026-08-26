@@ -77,7 +77,16 @@ def fetch_rival_history(client: FPLClient, entries: list[int], gw: int,
     would put a half-scored margin into the sigma estimate. An entry whose
     history is not public is skipped, exactly as ``fetch_rival_picks`` skips
     an entry whose picks are not.
+
+    Two cases deliberately do *not* write the cache. ``gw < 1`` is the GW1
+    call, where there is no completed week to have a history of — it also
+    makes no HTTP calls at all. And a fetch that returned nothing is an
+    outage, not a fact: caching an empty frame would pin "this league has no
+    history" for the rest of the gameweek and silently flatten every sigma to
+    the fallback until the file is deleted by hand.
     """
+    if int(gw) < 1:
+        return pd.DataFrame(columns=HISTORY_COLS)
     path = Path(raw_dir) / f"history-gw{int(gw)}.json"
     if path.exists():
         return pd.DataFrame(json.loads(path.read_text()), columns=HISTORY_COLS)
@@ -92,6 +101,8 @@ def fetch_rival_history(client: FPLClient, entries: list[int], gw: int,
                 continue
             rows.append({"entry": int(entry), "gw": int(event["event"]),
                          "points": int(event["points"])})
+    if not rows:
+        return pd.DataFrame(rows, columns=HISTORY_COLS)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(rows))
     return pd.DataFrame(rows, columns=HISTORY_COLS)

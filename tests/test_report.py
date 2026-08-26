@@ -37,6 +37,15 @@ def test_render_report_produces_html_with_key_content(tmp_path):
     assert path.name == "gw3-report.html"
 
 
+def test_report_parenthesizes_the_captain_note_like_the_cli(tmp_path):
+    """The CLI prints "Captain: X (note)"; the report printed it bare, so the
+    same advice read as two different sentences."""
+    advice = _advice()
+    advice.captain_note = "differential vs Ten Hag Hive's last armband"
+    html = render_report(advice, out_dir=tmp_path).read_text()
+    assert ">(differential vs Ten Hag Hive&#39;s last armband)<" in html
+
+
 @pytest.mark.skipif(not REAL_PAYLOAD.exists(),
                     reason="no real advice payload checked out")
 def test_render_report_handles_real_payload(tmp_path):

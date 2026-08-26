@@ -52,6 +52,16 @@ class LeagueParams:
     sigma_min_weeks: int = SIGMA_MIN_WEEKS
     z_deadband: float = Z_DEADBAND
 
+    def __post_init__(self) -> None:
+        # Both are divisors. A zero or negative one does not "turn the dial
+        # off" — it raises ZeroDivisionError deep inside compute_strategy, or
+        # silently inverts every z, so it is caught where it is configured.
+        if self.z_scale <= 0:
+            raise ValueError(f"z_scale must be positive, got {self.z_scale}")
+        if self.sigma_floor <= 0:
+            raise ValueError(
+                f"sigma_floor must be positive, got {self.sigma_floor}")
+
     @classmethod
     def from_config(cls, cfg) -> "LeagueParams":
         return cls(z_scale=float(getattr(cfg, "z_scale", Z_SCALE)),
@@ -197,7 +207,13 @@ def cover_table(rival_picks: dict[int, list[dict]],
 
 def captain_cover(rival_picks: dict[int, list[dict]],
                   weights: dict[int, float]) -> dict[int, float]:
-    """element -> weighted share of the threats who captain him."""
+    """element -> weighted share of the threats who captained him.
+
+    The picks are the *last completed* gameweek's — nobody's armband for the
+    week being planned is public before its deadline. So this is who the
+    threats captained last time, which is a prior on what they will do, not a
+    reading of what they have done. Every string built from it says so.
+    """
     out: dict[int, float] = {}
     for entry, picks in rival_picks.items():
         weight = weights.get(int(entry))
@@ -327,8 +343,8 @@ def explain_lam(strategy: Strategy) -> str:
                 f"of {strategy.rival_name} with {strategy.weeks_left} "
                 f"gameweeks left, so the optimizer leans to mirror rival "
                 f"ownership and protect the lead.")
-    return (f"λ 0.00: the gap to {strategy.rival_name} is inside the noise, "
-            f"so there is no tilt at all — this is the plain points-max plan.")
+    return (f"λ 0.00: you are exactly level with {strategy.rival_name} — "
+            f"no tilt, so this is the plain points-max plan.")
 
 
 def _cap_score(code: int, ep_of: dict[int, float],
@@ -391,8 +407,13 @@ def captaincy_note(lam: float, chosen: int, demoted: int,
     """The half-sentence the report puts after the captain's name.
 
     Defending, the armband is covering the heaviest threat who owns it;
-    chasing, it is a differential against the heaviest threat who captains
+    chasing, it is a differential against the heaviest threat who captained
     the man we just demoted. Nothing at all when the tilt changed nothing.
+
+    "last armband" is not a hedge: ``rival_captains`` comes from the last
+    completed gameweek, because nobody's captain for the week being planned
+    is public before the deadline. Saying "differential vs X" flatly would
+    claim knowledge of a pick that does not exist yet.
     """
     if lam == 0.0 or chosen == demoted:
         return ""
@@ -401,10 +422,10 @@ def captaincy_note(lam: float, chosen: int, demoted: int,
               if code == target]
     if lam < 0:
         if not owners:
-            return "covering the field's armband"
+            return "covering the field's last armband"
         who = max(owners, key=lambda e: weights.get(e, 0.0))
-        return f"covering {names.get(who, 'a rival')}'s armband"
+        return f"covering {names.get(who, 'a rival')}'s last armband"
     if not owners:
         return "differential vs the field"
     who = max(owners, key=lambda e: weights.get(e, 0.0))
-    return f"differential vs {names.get(who, 'a rival')}"
+    return f"differential vs {names.get(who, 'a rival')}'s last armband"

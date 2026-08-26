@@ -244,7 +244,7 @@ def test_advise_prints_the_captain_note_and_the_demoted_pick(tmp_path,
     from tests.test_v4c_degradation import _fixture_advice
 
     advice = _fixture_advice()
-    advice.captain_note = "differential vs Ten Hag Hive"
+    advice.captain_note = "differential vs Ten Hag Hive's last armband"
     advice.demoted_captain = {"code": 9, "name": "Mohamed Salah", "ep": 8.8}
 
     cfg_path = tmp_path / "config.toml"
@@ -259,5 +259,6 @@ def test_advise_prints_the_captain_note_and_the_demoted_pick(tmp_path,
     monkeypatch.setattr(tracking_mod, "latest_health", lambda: None)
 
     out = runner.invoke(app, ["advise"]).output
-    assert "Captain: Erling Haaland (differential vs Ten Hag Hive)" in out
+    assert ("Captain: Erling Haaland (differential vs Ten Hag Hive's "
+            "last armband)") in out
     assert "Raw-EP captain: Mohamed Salah (8.8 xPts)" in out

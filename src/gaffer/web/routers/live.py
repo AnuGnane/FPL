@@ -100,6 +100,11 @@ def live() -> LiveState:
     if getattr(cfg, "tier_eo", True):
         try:
             tier = tier_eo_table(client, gw, sample=cfg.tier_sample)
+            if not tier:
+                # No exception, no data: every sampled entry was private or
+                # the gameweek has no picks yet. Silence would read as "the
+                # top 10k own nobody", so say which it is.
+                notice = ("top-10k EO empty this gameweek — league EO only")
         except Exception as exc:  # noqa: BLE001 — network, JSON, page drift
             notice = f"top-10k EO unavailable ({exc}) — league EO only"
     players = []

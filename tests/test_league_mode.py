@@ -168,7 +168,8 @@ def test_explain_lam_puts_the_tilt_in_words():
     assert "40 points ahead of Ten Hag Hive" in defend
     assert "mirror" in defend
 
-    level = explain_lam(Strategy(0.0, 3, 30, "neutral", "Ten Hag Hive"))
+    level = explain_lam(Strategy(0.0, 0, 30, "neutral", "Ten Hag Hive"))
+    assert "exactly level with Ten Hag Hive" in level
     assert "points-max" in level
 
 
@@ -200,6 +201,24 @@ def test_league_params_read_a_config_without_importing_it():
     assert (p.z_scale, p.lambda_cap, p.sigma_floor) == (2.0, 0.25, 5.0)
     assert (p.sigma_cap, p.sigma_min_weeks) == (40.0, 3)
     assert p.z_deadband == 0.4
+
+
+def test_league_params_reject_a_non_positive_divisor():
+    """Both are divisors. A zero does not read as 'off': it is a
+    ZeroDivisionError inside compute_strategy, and a negative one silently
+    inverts every z. Caught where it is configured."""
+    from types import SimpleNamespace
+
+    from gaffer.league_mode import LeagueParams
+
+    with pytest.raises(ValueError, match="z_scale"):
+        LeagueParams.from_config(SimpleNamespace(z_scale=0.0))
+    with pytest.raises(ValueError, match="z_scale"):
+        LeagueParams.from_config(SimpleNamespace(z_scale=-1.5))
+    with pytest.raises(ValueError, match="sigma_floor"):
+        LeagueParams.from_config(SimpleNamespace(sigma_floor=0.0))
+    with pytest.raises(ValueError, match="sigma_floor"):
+        LeagueParams.from_config(SimpleNamespace(sigma_floor=-8.0))
 
 
 def test_the_old_sigma_pin_is_still_importable_under_both_names():
@@ -575,7 +594,7 @@ def test_captaincy_note_names_the_threat_being_covered():
                           rival_captains={11: 1, 12: 3},
                           weights={11: 0.8, 12: 0.2},
                           names={11: "Ten Hag Hive", 12: "Tail"})
-    assert note == "covering Ten Hag Hive's armband"
+    assert note == "covering Ten Hag Hive's last armband"
 
 
 def test_captaincy_note_names_the_threat_being_differed_from():
@@ -585,7 +604,7 @@ def test_captaincy_note_names_the_threat_being_differed_from():
                           rival_captains={11: 1, 12: 1},
                           weights={11: 0.9, 12: 0.1},
                           names={11: "Ten Hag Hive", 12: "Tail"})
-    assert note == "differential vs Ten Hag Hive"
+    assert note == "differential vs Ten Hag Hive's last armband"
 
 
 def test_captaincy_note_is_empty_when_nothing_changed():
@@ -600,4 +619,4 @@ def test_captaincy_note_degrades_when_no_rival_captains_either_player():
 
     assert captaincy_note(0.4, 2, 1, {}, {}, {}) == "differential vs the field"
     assert captaincy_note(-0.3, 2, 1, {}, {}, {}) == \
-        "covering the field's armband"
+        "covering the field's last armband"

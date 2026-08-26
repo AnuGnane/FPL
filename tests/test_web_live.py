@@ -169,6 +169,25 @@ def test_live_degrades_to_a_notice_when_tier_eo_fails(tmp_path, monkeypatch):
     assert "top-10k EO unavailable" in body["notice"]
 
 
+def test_live_says_so_when_the_tier_sample_came_back_empty(tmp_path,
+                                                           monkeypatch):
+    """No exception, no data — every sampled entry private, or the gameweek
+    has no picks yet. Rendering a blank column silently would read as 'the
+    top 10k own nobody'."""
+    import gaffer.web.routers.live as live_mod
+
+    monkeypatch.chdir(tmp_path)
+    _config(tmp_path)
+    monkeypatch.setattr(live_mod, "fpl_client", lambda: FakeClient())
+    monkeypatch.setattr(live_mod, "tier_eo_table",
+                        lambda client, gw, sample=300: {})
+
+    body = TestClient(create_app()).get("/api/live").json()
+    assert body["active"] is True
+    assert all(p["tier_eo"] is None for p in body["players"])
+    assert body["notice"] == "top-10k EO empty this gameweek — league EO only"
+
+
 def test_live_skips_tier_eo_entirely_when_it_is_switched_off(tmp_path,
                                                              monkeypatch):
     import gaffer.web.routers.live as live_mod
