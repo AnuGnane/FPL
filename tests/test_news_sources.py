@@ -179,3 +179,61 @@ def test_fetch_injuries_degrades_to_empty_when_the_host_is_down(tmp_path,
     assert out.empty
     assert list(out.columns) == INJURY_COLS
     assert "unavailable" in capsys.readouterr().out
+
+
+def _lineups_html() -> str:
+    return (FIXTURES / "ffs_lineups.html").read_text()
+
+
+def test_parse_lineups_assigns_one_slot_per_named_player():
+    from gaffer.data.news.lineups import P_START_HINT, parse_lineups
+
+    rows = parse_lineups(_lineups_html())
+    assert list(rows.columns) == ["name", "club", "slot"]
+    by_name = dict(zip(rows["name"], rows["slot"]))
+    assert by_name["Bukayo Saka"] == "start"
+    assert by_name["Gabriel Magalhaes"] == "bench"
+    assert by_name["Joe Bloggs"] == "out"
+    assert P_START_HINT == {"start": 1.0, "bench": 0.25, "out": 0.0}
+
+
+def test_parse_lineups_covers_every_fixture_block():
+    from gaffer.data.news.lineups import parse_lineups
+
+    rows = parse_lineups(_lineups_html())
+    assert set(rows["club"]) == {"Arsenal", "Chelsea", "Man City"}
+    # Arsenal names four (two starters, a sub, one unavailable), Chelsea and
+    # Man City one apiece.
+    assert len(rows) == 6
+
+
+def test_parse_lineups_on_a_rewritten_page_returns_empty():
+    from gaffer.data.news.lineups import parse_lineups
+
+    assert parse_lineups(
+        "<html><body><p>team news soon</p></body></html>").empty
+
+
+def test_fetch_lineups_maps_slots_to_hints_and_codes(tmp_path):
+    from gaffer.data.news.lineups import fetch_lineups
+
+    calls: list[str] = []
+    client = httpx.Client(transport=_transport(calls, _lineups_html()))
+    out = fetch_lineups(_players(), _teams(), cache_dir=tmp_path,
+                        client=client).set_index("code")
+    assert out.loc[100, "p_start_hint"] == 1.0     # Saka starts
+    assert out.loc[101, "p_start_hint"] == 0.25    # Gabriel benched
+    assert out.loc[102, "p_start_hint"] == 1.0     # Haaland starts
+    assert out.loc[104, "p_start_hint"] == 1.0     # Rice starts
+    assert (out["source"] == "lineups").all()
+    assert len(calls) == 1
+
+
+def test_fetch_lineups_degrades_to_empty_when_the_page_is_down(tmp_path):
+    from gaffer.data.news.lineups import LINEUP_COLS, fetch_lineups
+
+    client = httpx.Client(transport=_transport([], None))
+    out = fetch_lineups(_players(), _teams(), cache_dir=tmp_path,
+                        client=client)
+    assert out.empty
+    assert list(out.columns) == LINEUP_COLS
