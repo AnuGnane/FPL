@@ -476,6 +476,7 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
             ep = ep_matrix(apply_calibration(assemble_ep(comp, scoring),
                                              models.get("calibration")))
         ep_by = {(int(r.code), int(r.gw)): float(r.ep) for r in ep.itertuples()}
+        raw_ep_by = ep_by
         if tilt is not None:
             ep_by = tilt(ep_by, gw)
         players = _players_frame(season_rows, gw)
@@ -589,7 +590,15 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
                     "sells": ", ".join(name_of.get(c, str(c)) for c in sells),
                     "captain": name_of.get(plan.captain, str(plan.captain)),
                     "bank": bank, "free_transfers": free_transfers,
-                    "expected_pts": round(float(plan.expected_pts), 2)})
+                    # The column is read against `points` to measure
+                    # calibration, so it has to be *raw* expected points. A
+                    # tilted plan.expected_pts is an objective value, not a
+                    # forecast, and would show a bias that is pure arithmetic.
+                    "expected_pts": (
+                        round(sum(raw_ep_by.get((c, gw), 0.0)
+                                  for c in plan.xi), 2)
+                        if tilt is not None
+                        else round(float(plan.expected_pts), 2))})
         print(f"gw{gw}: {pts} (total {total})", flush=True)
 
     per_gw = round(total / len(log), 2) if log else 0.0

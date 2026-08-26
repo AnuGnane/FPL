@@ -646,3 +646,15 @@ def test_run_backtest_applies_an_injected_tilt_before_the_pool_is_built(
                        tilt=tilt)
     assert seen == [1, 2, 3]
     assert out["total"] > 0
+
+
+def test_run_backtest_logs_raw_expected_points_under_a_tilt(monkeypatch):
+    """The log's expected_pts column is compared against actual points to
+    measure calibration. A tilted objective value is not expected points at
+    all, so a chasing replay would show a bias that is pure arithmetic."""
+    _install_stubs(monkeypatch, _season_rows([1, 2, 3]))
+    out = run_backtest(season="2025-26", start_gw=1, retrain_every=4,
+                       tilt=lambda ep_by, gw: {k: v * 2
+                                               for k, v in ep_by.items()})
+    # The stub prices every player at ep 1.0 and starts eleven of them.
+    assert [r["expected_pts"] for r in out["log"]] == [11.0, 11.0, 11.0]
