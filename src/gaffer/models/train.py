@@ -19,7 +19,8 @@ from gaffer.data.elo import compute_elo
 from gaffer.features.bps import FIRST_NEW_RULES_SEASON, apply_new_bps
 from gaffer.data.understat import UNDERSTAT_PLAYER_PATH, UNDERSTAT_TEAM_PATH
 from gaffer.features.engineer import (CONGESTION_FEATURES, ROTATION_FEATURES,
-                                      US_STATS, add_congestion, add_context,
+                                      SHRUNK_MODE_FEATURES, US_STATS,
+                                      add_congestion, add_context,
                                       add_player_rolling, add_rotation,
                                       add_setpiece, add_shrunken_modes,
                                       add_shrunken_rates,
@@ -31,7 +32,7 @@ from gaffer.models.attacking import ATTACK_FEATURES, AttackingModel
 from gaffer.models.calibrate import CalibrationModel
 from gaffer.models.components import (BonusModel, DefconModel, SavesModel,
                                       card_penalty)
-from gaffer.models.minutes import MinutesModel
+from gaffer.models.minutes import ThreeModeModel
 from gaffer.data.match_odds import MATCH_ODDS_PATH
 from gaffer.models.persistence import save_model, save_params
 from gaffer.models.dixon_coles import DixonColesModel, walk_forward_cs
@@ -41,8 +42,9 @@ from gaffer.models.team import (BLEND_PARAMS_NAME, TEAM_FEATURES, TeamModel,
 
 MINUTES_FEATURES = ["minutes_r1", "minutes_r3", "minutes_r5", "minutes_r10",
                     "starts_r1", "starts_r3", "starts_r5", "starts_r10",
-                    "days_rest", "home"] + ROTATION_FEATURES
-"""Feature set for :class:`MinutesModel`.
+                    "days_rest", "home"] + ROTATION_FEATURES \
+                   + CONGESTION_FEATURES + SHRUNK_MODE_FEATURES
+"""Feature set for :class:`ThreeModeModel`.
 
 The ``starts_r*`` means answer "is he a starter?" on a season-long timescale
 and react to a change of role far too slowly: they blend across the season
@@ -56,6 +58,15 @@ captain 5.2 -> 5.9, top15 76.0 -> 74.7 (paired t = -0.67 over ten
 gameweeks — noise). ``season_start_share`` lands second in the p_play
 classifier's importances and the ``starts_r*`` means fall away behind it,
 which is the substitution the change was after.
+
+v5 adds two blocks. :data:`~gaffer.features.engineer.CONGESTION_FEATURES`
+answer "how much football has this squad just played, and how soon does it
+play again" — including the cup ties the FPL calendar does not carry, which is
+the half of rotation risk no FPL-only feature set can see.
+:data:`~gaffer.features.engineer.SHRUNK_MODE_FEATURES` answer "is he a
+starter" and "how long does he last" with an estimate that is usable in
+August, where ``starts_r5`` over three matches is not an estimate of anything.
+Both are gated at N1 rather than asserted here.
 """
 
 # Team-level clean sheet / goals conceded held at league-average constants
@@ -380,7 +391,7 @@ def train_all(df: pd.DataFrame, tg: pd.DataFrame, save: bool = True,
     calls back in here to refit the components on its own inner split. It
     doubles the cost of a full refit; that is a weekly job, so it is fine.
     """
-    minutes = MinutesModel(MINUTES_FEATURES).fit(df)
+    minutes = ThreeModeModel(MINUTES_FEATURES).fit(df)
     team = build_team_model().fit(tg.dropna(subset=["elo_diff"]))
     attacking = AttackingModel(ATTACK_FEATURES).fit(df)
     defcon = DefconModel().fit(df)

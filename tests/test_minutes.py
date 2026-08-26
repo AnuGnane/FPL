@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from gaffer.models.minutes import MinutesModel, apply_availability
+from gaffer.models.minutes import ThreeModeModel, apply_availability
 from gaffer.features.engineer import add_player_rolling
 
 
@@ -23,42 +23,115 @@ def _training_frame(n=400, seed=0):
     return pd.DataFrame(rows)
 
 
-def test_minutes_model_separates_starters_from_fringe():
+def _fitted(df, cols):
+    return ThreeModeModel(feature_cols=cols).fit(df[df.gw <= 15])
+
+
+_COLS = ["minutes_r3", "minutes_r5", "starts_r3", "starts_r5", "home"]
+
+
+def _rolled():
     df = add_player_rolling(_training_frame(), stats=["minutes", "starts"],
                             windows=[3, 5])
     df["home"] = 1.0
-    train = df[df.gw <= 15]
-    m = MinutesModel(feature_cols=["minutes_r3", "minutes_r5",
-                                   "starts_r3", "starts_r5", "home"])
-    m.fit(train)
-    pred = m.predict(df[df.gw > 15])
+    return df
+
+
+def test_three_mode_model_separates_starters_from_fringe():
+    df = _rolled()
+    pred = _fitted(df, _COLS).predict(df[df.gw > 15])
     starters = pred[pred.code < 10]
     fringe = pred[pred.code >= 10]
     assert starters["p_play"].mean() > 0.8
     assert fringe["p_play"].mean() < 0.4
-    assert ((pred["p60"] <= pred["p_play"] + 1e-9)).all()
 
 
-def test_availability_override_zeroes_injured():
-    pred = pd.DataFrame({"code": [1, 2], "p_play": [0.9, 0.9],
-                         "p60": [0.8, 0.8], "e_min": [80.0, 80.0]})
-    avail = pd.DataFrame({"code": [1, 2], "status": ["i", "d"],
-                          "chance_of_playing": [None, 50]})
-    out = apply_availability(pred, avail)
-    assert out.loc[out.code == 1, "p_play"].iloc[0] == 0.0
-    assert abs(out.loc[out.code == 2, "p_play"].iloc[0] - 0.45) < 1e-9
+def test_predict_returns_exactly_the_old_columns_in_the_old_order():
+    """Everything downstream stitches positionally off these three columns.
+    predict_components_simple and advise.predict_components both read
+    p_play and p60 by name off a frame keyed by (code, season_idx, gw)."""
+    df = _rolled()
+    pred = _fitted(df, _COLS).predict(df[df.gw > 15])
+    assert list(pred.columns)[:3] == ["code", "season_idx", "gw"]
+    assert {"p_play", "p60", "e_min"} <= set(pred.columns)
+    assert len(pred) == len(df[df.gw > 15])
+
+
+def test_the_three_modes_are_coherent_by_construction():
+    """The whole reason the heads were replaced: p60 <= p_play was patched by
+    a clip before, and is now arithmetic. p_play is the complement of DNP."""
+    df = _rolled()
+    m = _fitted(df, _COLS)
+    hold = df[df.gw > 15]
+    pred = m.predict(hold)
+    modes = m.predict_modes(hold)
+    assert np.allclose(modes[["p_dnp", "p_sub", "p_start"]].sum(axis=1), 1.0)
+    assert np.allclose(pred["p_play"], modes["p_start"] + modes["p_sub"])
+    assert (pred["p60"] <= pred["p_play"] + 1e-9).all()
+    assert (pred["e_min"] >= 0).all() and (pred["e_min"] <= 90).all()
+
+
+def test_e_min_is_the_mode_weighted_average_not_a_free_regression():
+    df = _rolled()
+    m = _fitted(df, _COLS)
+    hold = df[df.gw > 15]
+    pred = m.predict(hold)
+    modes = m.predict_modes(hold)
+    expected = (modes["p_start"] * m.min_start.predict(hold[_COLS])
+                + modes["p_sub"] * m.min_sub.predict(hold[_COLS]))
+    assert np.allclose(pred["e_min"], expected.clip(0, 90))
+
+
+def test_a_degenerate_single_mode_frame_still_fits_and_predicts():
+    """Early in a season, and in every small backtest window, a frame can hold
+    one mode only. LGBM refuses a one-class fit, so the head has to fall back
+    to the observed constant rather than taking the refit down."""
+    df = _rolled()
+    always = df[df.code < 10].copy()
+    always["minutes"] = 90.0
+    always["starts"] = 1.0
+    m = ThreeModeModel(feature_cols=_COLS).fit(always)
+    pred = m.predict(always)
+    assert np.allclose(pred["p_play"], 1.0)
+    assert np.allclose(pred["e_min"], 90.0)
+
+
+def test_a_frame_with_no_appearances_at_all_predicts_zero():
+    df = _rolled()
+    none = df[df.code >= 10].copy()
+    none["minutes"] = 0.0
+    none["starts"] = 0.0
+    m = ThreeModeModel(feature_cols=_COLS).fit(none)
+    pred = m.predict(none)
+    assert np.allclose(pred["p_play"], 0.0)
+    assert np.allclose(pred["p60"], 0.0)
+    assert np.allclose(pred["e_min"], 0.0)
+
+
+def test_mode_labels_read_starts_not_the_60_minute_threshold():
+    """A 75-minute substitute is a sub, and a starter hooked at 40 is a
+    start. The old p60 head could not tell those apart at all."""
+    from gaffer.models.minutes import mode_labels
+
+    df = pd.DataFrame({"minutes": [0.0, 20.0, 75.0, 40.0, 90.0],
+                       "starts": [0.0, 0.0, 0.0, 1.0, 1.0]})
+    assert mode_labels(df).tolist() == [0, 1, 1, 2, 2]
+
+
+def test_mode_labels_infer_a_missing_starts_column_from_minutes():
+    from gaffer.models.minutes import mode_labels
+
+    df = pd.DataFrame({"minutes": [0.0, 20.0, 75.0],
+                       "starts": [float("nan")] * 3})
+    assert mode_labels(df).tolist() == [0, 1, 2]
 
 
 def test_saved_model_round_trips_identical_predictions(tmp_path, monkeypatch):
     from gaffer.models import persistence
 
     monkeypatch.setattr(persistence, "MODELS_DIR", tmp_path)
-    df = add_player_rolling(_training_frame(), stats=["minutes", "starts"],
-                            windows=[3, 5])
-    df["home"] = 1.0
-    m = MinutesModel(feature_cols=["minutes_r3", "minutes_r5",
-                                   "starts_r3", "starts_r5", "home"])
-    m.fit(df[df.gw <= 15])
+    df = _rolled()
+    m = _fitted(df, _COLS)
     before = m.predict(df[df.gw > 15])
 
     persistence.save_model(m, "minutes", meta={"rows": int(len(df))})
@@ -72,6 +145,16 @@ def test_saved_model_round_trips_identical_predictions(tmp_path, monkeypatch):
     meta = json.loads((tmp_path / "minutes.meta.json").read_text())
     assert "saved_at" in meta
     assert meta["rows"] == len(df)
+
+
+def test_availability_override_zeroes_injured():
+    pred = pd.DataFrame({"code": [1, 2], "p_play": [0.9, 0.9],
+                         "p60": [0.8, 0.8], "e_min": [80.0, 80.0]})
+    avail = pd.DataFrame({"code": [1, 2], "status": ["i", "d"],
+                          "chance_of_playing": [None, 50]})
+    out = apply_availability(pred, avail)
+    assert out.loc[out.code == 1, "p_play"].iloc[0] == 0.0
+    assert abs(out.loc[out.code == 2, "p_play"].iloc[0] - 0.45) < 1e-9
 
 
 def test_availability_recovers_over_the_horizon():
