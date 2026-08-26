@@ -21,3 +21,4 @@ frontend/dist/
 frontend/tsconfig.tsbuildinfo
 reports/
 .claude/
+config.toml
