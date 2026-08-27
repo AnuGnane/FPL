@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom'
 const PAGES: Array<[string, string]> = [
   ['/', 'This Week'],
   ['/whatif', 'What-If Lab'],
+  ['/chips', 'Chips'],
   ['/league', 'League Race'],
   ['/live', 'Live'],
   ['/players', 'Players'],

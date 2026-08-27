@@ -406,3 +406,38 @@ export interface QualityData {
   benchmark: BenchmarkEvaluation | null
   decomposition: DecompositionData | null
 }
+
+export interface ChipWorkbenchRow {
+  chip: string
+  gw: number
+  gain: number
+  per_week: number | null
+  /** The θ bar for that chip in that week — the surplus the best remaining
+   *  week is expected to offer. Null on advice written before the chip
+   *  policy landed. */
+  threshold: number | null
+  play_now: boolean
+  note: string | null
+}
+
+export interface ChipSquadPlayer {
+  code: number
+  name: string
+  position: string
+  price: number
+  ep: number
+}
+
+export interface SquadDiff {
+  gain_over_horizon: number
+  recommend: boolean
+  kept: ChipSquadPlayer[]
+  dropped: ChipSquadPlayer[]
+  added: ChipSquadPlayer[]
+}
+
+export interface ChipsWorkbench {
+  gw: number
+  chips: ChipWorkbenchRow[]
+  wildcard: SquadDiff | null
+}

@@ -1,5 +1,6 @@
 import { Route, Routes } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
+import ChipWorkbench from './pages/ChipWorkbench'
 import Health from './pages/Health'
 import History from './pages/History'
 import LeagueRace from './pages/LeagueRace'
@@ -21,6 +22,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<ThisWeek />} />
           <Route path="/whatif" element={<WhatIf />} />
+          <Route path="/chips" element={<ChipWorkbench />} />
           <Route path="/league" element={<LeagueRace />} />
           <Route path="/league/rivals" element={<Rivals />} />
           <Route path="/league/rivals/:entryId" element={<RivalDetail />} />
