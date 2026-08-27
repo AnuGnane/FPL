@@ -77,7 +77,7 @@ from gaffer.optimize.scenarios import (move_frequencies, run_scenarios,
 from gaffer.news_shadow import write_shadow
 from gaffer.prices import price_alerts
 from gaffer.set_pieces import add_pen_ep, attack_multipliers, pen_notices, \
-    pen_priors
+    pen_priors, rescale_pen_after_blend
 
 REPORTS = Path("reports")
 MODEL_NAMES = ["minutes", "team", "attacking", "defcon", "saves", "bonus"]
@@ -598,6 +598,12 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         except Exception as e:  # noqa: BLE001 — props must never block advice
             print(f"player props unusable, continuing without: {e}")
     comp = blend_attacking_odds(comp, ags, weight=cfg.ags_blend_weight)
+    # On a row the market priced, the blend kept only (1 - w) of the model's
+    # e_goals — penalty increment and all. Restate the recorded term as what
+    # was actually delivered, so the components file and gate P1's audit read
+    # the number that is in the expected points rather than the one the
+    # penalty table proposed.
+    comp = rescale_pen_after_blend(comp, cfg.ags_blend_weight)
     # Optional artifact: model directories trained before calibration existed
     # have no such file, and None means the identity map.
     cal = load_model("calibration") if model_exists("calibration") else None

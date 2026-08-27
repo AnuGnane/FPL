@@ -14,7 +14,8 @@ from gaffer.set_pieces import (ATTACK_MULT_CLAMP, EP_CLAMP, GOAL_POINTS,
                                LEAGUE_PENS_PG_FALLBACK, PEN_CONVERSION,
                                PEN_XG, PenPriors, add_pen_ep,
                                attack_multipliers, pen_estimate, pen_notices,
-                               pen_priors, pen_table, set_piece_ep, share_now)
+                               pen_priors, pen_table, rescale_pen_after_blend,
+                               set_piece_ep, share_now)
 
 
 def _players(order_1=1, order_2=2) -> pd.DataFrame:
@@ -72,6 +73,43 @@ def test_pen_estimate_is_none_without_both_columns():
     assert pen_estimate(pd.DataFrame({"us_npxg": [1.0]})) is None
 
 
+def test_pen_estimate_counts_whole_events_not_fractions_of_one():
+    """A gap under half a penalty's xG is two xG models disagreeing about
+    open play; a gap of about one penalty is one penalty. Accumulating the
+    former is what put 733 penalties in three seasons and 14% of them on
+    centre-backs."""
+    frame = pd.DataFrame({
+        "xg": [0.04, 0.31, 0.49, 0.50, 0.79, 1.05, 1.58, 2.40],
+        "us_npxg": [0.0] * 8})
+    out = pen_estimate(frame)
+    assert out.tolist() == [0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 2.0, 2.0]
+
+
+def test_a_shot_heavy_season_of_sub_threshold_noise_contributes_nothing():
+    """The failure mode the threshold exists for: a thousand player-matches
+    of open-play model disagreement must sum to zero penalties, not to
+    forty."""
+    frame = pd.DataFrame({"xg": [0.12] * 1000, "us_npxg": [0.0] * 1000})
+    assert float(pen_estimate(frame).sum()) == 0.0
+
+
+def test_an_every_week_taker_owns_his_clubs_whole_share():
+    rows = []
+    for gw in range(1, 21):
+        rows += [
+            {"season_idx": 0, "gw": gw, "code": 1, "team_code": 3,
+             "opp_code": 8, "xg": 0.4 + PEN_XG, "us_npxg": 0.4},
+            # A team-mate with a whole season of open-play noise, which used
+            # to buy him a share of the club's penalties.
+            {"season_idx": 0, "gw": gw, "code": 2, "team_code": 3,
+             "opp_code": 8, "xg": 0.35, "us_npxg": 0.22},
+        ]
+    priors = pen_priors(pd.DataFrame(rows))
+    assert priors is not None
+    assert priors.share_hist[1] == pytest.approx(1.0)
+    assert priors.share_hist[2] == pytest.approx(0.0)
+
+
 def _hist() -> pd.DataFrame:
     """Two clubs, three seasons. Player 1 took every one of club 3's
     penalties; player 2 took none; club 8 had one, from player 3."""
@@ -106,6 +144,29 @@ def test_pen_priors_falls_back_when_the_league_rate_is_implausible():
     hist["xg"] = hist["xg"] + 3.0 * PEN_XG
     priors = pen_priors(hist)
     assert priors.league_pens_pg == LEAGUE_PENS_PG_FALLBACK
+
+
+def test_a_player_with_no_history_has_no_share_at_all():
+    """Sparse by design: absent reads as zero, which is where the term is
+    biggest, because that is where the model is blindest."""
+    priors = pen_priors(_hist())
+    assert priors is not None
+    assert 999 not in priors.share_hist
+    assert priors.share_hist.get(999, 0.0) == 0.0
+
+
+def test_the_league_rate_divides_only_by_team_games_understat_covered():
+    """A team-game with no Understat row can never contribute a penalty to
+    the numerator, so counting it in the denominator would divide a real
+    count of events by a fictional number of matches."""
+    covered = _hist()
+    uncovered = covered.copy()
+    uncovered["team_code"] = uncovered["team_code"] + 100
+    uncovered["opp_code"] = uncovered["opp_code"] + 100
+    uncovered["us_npxg"] = float("nan")
+    both = pd.concat([covered, uncovered], ignore_index=True)
+    assert pen_priors(both).league_pens_pg == pytest.approx(
+        pen_priors(covered).league_pens_pg)
 
 
 def test_pen_priors_returns_none_without_the_xg_columns():
@@ -225,6 +286,57 @@ def test_a_players_frame_without_the_order_column_is_the_same_rail():
     players = _players().drop(columns=["penalties_order"])
     out = add_pen_ep(comp, players, _priors(), {})
     pd.testing.assert_frame_equal(out.drop(columns=["ep_pen_taker"]), comp)
+
+
+# --- what the AGS blend leaves of the term ----------------------------------
+
+def test_the_recorded_term_matches_what_the_blend_delivered():
+    """blend_attacking_odds keeps (1 - w) of the model's e_goals on a priced
+    row, penalty increment and all. That is correct — the anytime-scorer
+    market already prices penalty duty — but the recorded term has to say so,
+    or the components file reports points nobody's EP contains."""
+    from gaffer.data.odds import blend_attacking_odds
+
+    comp = add_pen_ep(_comp(), _players(), _priors(), {})
+    before = comp["ep_pen_taker"].to_numpy(dtype="float64").copy()
+    assert before[0] > 0.0
+    ags = pd.DataFrame([{"code": 1, "gw": 5, "opp_code": 8,
+                         "lambda_ags": 0.6}])
+    comp["opp_code"] = 8
+    blended = blend_attacking_odds(comp, ags, weight=0.5)
+    out = rescale_pen_after_blend(blended, 0.5)
+    # The priced row keeps half; the two the market never named keep all.
+    assert out["ep_pen_taker"].iloc[0] == pytest.approx(before[0] * 0.5)
+    assert out["ep_pen_taker"].iloc[1] == pytest.approx(before[1])
+    assert out["ep_pen_taker"].iloc[2] == pytest.approx(before[2])
+
+
+def test_the_delivered_goals_increment_and_the_recorded_term_agree():
+    """The number the panel prints has to be the number in the EP: the
+    surviving e_goals increment, priced through goal points and p_play."""
+    from gaffer.data.odds import blend_attacking_odds
+
+    base = _comp()
+    base["opp_code"] = 8
+    comp = add_pen_ep(base, _players(), _priors(), {})
+    no_pen = add_pen_ep(base, _players(), None, {})
+    ags = pd.DataFrame([{"code": 1, "gw": 5, "opp_code": 8,
+                         "lambda_ags": 0.6}])
+    with_pen = rescale_pen_after_blend(
+        blend_attacking_odds(comp, ags, weight=0.5), 0.5)
+    without = blend_attacking_odds(no_pen, ags, weight=0.5)
+    delivered = (with_pen["e_goals"].iloc[0] - without["e_goals"].iloc[0])
+    assert (delivered * GOAL_POINTS["MID"] * base["p_play"].iloc[0]
+            == pytest.approx(with_pen["ep_pen_taker"].iloc[0]))
+
+
+def test_an_unblended_frame_keeps_the_term_exactly_as_it_was():
+    """The no-key rail: no marker column, nothing rescaled, nothing copied."""
+    comp = add_pen_ep(_comp(), _players(), _priors(), {})
+    out = rescale_pen_after_blend(comp, 0.5)
+    assert out is comp
+    comp["e_goals_odds"] = float("nan")
+    pd.testing.assert_frame_equal(rescale_pen_after_blend(comp, 0.5), comp)
 
 
 # --- the audit log (gate P1) ------------------------------------------------

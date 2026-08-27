@@ -24,11 +24,18 @@ player-match parquet carries no goals and no npg — only ``us_npxg``, from
 which :func:`gaffer.data.understat.match_player_rows` explicitly excludes
 penalty shots. But ``models.train.attach_understat`` joins that column onto
 FPL rows that *do* carry ``xg``, and FPL's ``expected_goals`` includes
-penalties. The gap between them is a penalty, priced at :data:`PEN_XG`. Two
-different xG models disagree by a few hundredths on open play, so the raw gap
-is noisy — which is why it is only ever used as a **ratio** of the club's own
-total, where a systematic offset largely cancels, and why a negative gap is
-floored at zero rather than being read as a negative penalty.
+penalties. The gap between them is a penalty, priced at :data:`PEN_XG`.
+
+**Why the gap is counted in events, not accumulated.** Two different xG models
+disagree by a few hundredths on open play, and a floored gap
+(``max(0, xg - us_npxg)``) turns that disagreement into one-sided noise that
+scales with shot volume: summed raw, three seasons of it produced ~730 league
+"penalties" against a real ~394, put 14% of them on defenders, and diluted an
+every-week taker's share to 0.41. So the gap is *thresholded* instead. A
+player-match is credited with ``(gap + 0.29) // 0.79`` penalties: a gap under
+half a penalty's xG counts zero, one plausible spot kick (~0.79) counts one,
+~1.58 counts two. Rounding noise no longer accumulates, because noise below
+half a penalty is not a penalty.
 
 Nothing here does I/O, loads a model or touches the network. Everything is
 handed in.
@@ -68,17 +75,38 @@ A safety bound rather than a modelling choice: taker orders are serve-time
 data of the same class as news, no historical backtest can validate the term,
 and an unbounded term multiplied by a 10-point keeper goal would be the one
 place this could do real damage.
+
+It bounds the **model-side** increment — what this module adds to ``e_goals``
+before anything else touches the frame. On a row the anytime-scorer market
+covers, ``blend_attacking_odds`` then takes a weighted average of the market's
+expectation and the model's, so only ``(1 - w)`` of this increment survives
+into the delivered EP. That is by design: the AGS price already contains the
+taker's penalty duty, and adding the full model increment on top of it would
+count the same spot kick twice. ``run_advise`` rescales the recorded
+``ep_pen_taker`` by the same ``(1 - w)`` so the number in the components file
+is the number that was delivered.
 """
 
 ATTACK_MULT_CLAMP = (0.6, 1.6)
 """Bound on a club's attack strength relative to the league mean."""
 
-LEAGUE_PENS_PG_BOUNDS = (0.05, 0.35)
+PEN_EVENT_MIN_XG = 0.5
+"""Gap below which a player-match is credited with no penalty at all.
+
+Half a penalty's xG. Two xG models disagreeing about open play produce gaps of
+a few hundredths; a spot kick produces ~0.79. Nothing real lives in between,
+so the threshold is set where the two populations do not overlap.
+"""
+
+LEAGUE_PENS_PG_BOUNDS = (0.08, 0.20)
 """Plausible range for league penalties per team-game.
 
 The real number is around 0.13 (roughly 100 penalties across 760 team-games).
-An estimate outside this range means the xG-gap estimator has gone wrong —
-a season with no Understat coverage, say — and the fallback is used instead.
+Tightened in v6: the event-based estimator lands inside a much narrower band
+than the accumulating one did, so a wide bound would let a broken fit through
+rather than catch it. An estimate outside this range means the estimator has
+gone wrong — a season with no Understat coverage, say — and the fallback is
+used instead.
 """
 
 LEAGUE_PENS_PG_FALLBACK = 0.13
@@ -133,7 +161,14 @@ def share_now(order) -> pd.Series:
 
 
 def pen_estimate(frame: pd.DataFrame) -> pd.Series | None:
-    """Per player-match estimate of penalties taken, or ``None``.
+    """Per player-match count of penalty *events* taken, or ``None``.
+
+    A whole number, not a fraction of one. ``(gap + PEN_XG -
+    PEN_EVENT_MIN_XG) // PEN_XG`` credits a gap of half a penalty or more with
+    one penalty, a gap of one-and-a-half with two, and anything smaller with
+    none — so a hundredth of xG-model disagreement contributes nothing at all
+    instead of contributing a hundredth of a penalty several thousand times
+    over.
 
     ``None`` — not an all-zero series — when either column is absent, so the
     caller can tell "no data" from "no penalties" and decline to build priors
@@ -143,9 +178,12 @@ def pen_estimate(frame: pd.DataFrame) -> pd.Series | None:
         return None
     total = pd.to_numeric(frame["xg"], errors="coerce")
     open_play = pd.to_numeric(frame["us_npxg"], errors="coerce")
-    gap = (total - open_play).where(total.notna() & open_play.notna())
-    return (gap / PEN_XG).clip(lower=0.0,
-                               upper=MAX_PENS_PER_MATCH).fillna(0.0)
+    gap = ((total - open_play).where(total.notna() & open_play.notna())
+           .clip(lower=0.0).fillna(0.0))
+    events = np.floor((gap.to_numpy(dtype="float64")
+                       + (PEN_XG - PEN_EVENT_MIN_XG)) / PEN_XG)
+    return pd.Series(np.clip(events, 0.0, MAX_PENS_PER_MATCH),
+                     index=frame.index, dtype="float64")
 
 
 def pen_priors(hist: pd.DataFrame | None) -> PenPriors | None:
@@ -185,8 +223,14 @@ def pen_priors(hist: pd.DataFrame | None) -> PenPriors | None:
         # A player who changed clubs mid-window keeps his best club's share
         # rather than an average diluted by a club he no longer plays for.
         share = joined.groupby("code")["share"].max().clip(0.0, 1.0)
-        games = window[["season_idx", "gw", "team_code",
-                        "opp_code"]].drop_duplicates()
+        # Only team-games Understat actually covered can contribute a penalty
+        # to the numerator, so only they may sit in the denominator. Counting
+        # uncovered team-games too would divide a real count of events by a
+        # fictional number of matches and understate the league rate.
+        covered = window[pd.to_numeric(window["us_npxg"],
+                                       errors="coerce").notna()]
+        games = covered[["season_idx", "gw", "team_code",
+                         "opp_code"]].drop_duplicates()
         per_game = float(pens.sum()) / max(1, len(games))
         if not (LEAGUE_PENS_PG_BOUNDS[0] <= per_game
                 <= LEAGUE_PENS_PG_BOUNDS[1]):
@@ -292,6 +336,48 @@ def add_pen_ep(comp: pd.DataFrame, players: pd.DataFrame,
     moved = table["goals"].to_numpy(dtype="float64")
     if "e_goals" in out.columns and bool((moved != 0.0).any()):
         out["e_goals"] = (out["e_goals"].to_numpy(dtype="float64") + moved)
+    return out
+
+
+BLEND_MARKER = "e_goals_odds"
+"""Column ``blend_attacking_odds`` writes, non-null exactly where it blended.
+
+Read rather than recomputed: "which rows did the market actually price" is a
+question only the blend can answer, and rederiving it here from ``lambda_ags``
+and ``p_play`` would be a second copy of that rule to keep in step.
+"""
+
+
+def rescale_pen_after_blend(comp: pd.DataFrame, weight: float) -> pd.DataFrame:
+    """Restate ``ep_pen_taker`` as what the blend actually delivered.
+
+    :func:`~gaffer.data.odds.blend_attacking_odds` replaces ``e_goals`` with
+    ``w * market + (1 - w) * model`` on the rows it priced. The penalty
+    increment was folded into the model half before that, so only ``(1 - w)``
+    of it survives — deliberately, because the anytime-scorer price already
+    contains the taker's penalty duty and adding the full increment on top
+    would count the same spot kick twice.
+
+    What was wrong was the *record*, not the arithmetic: ``ep_pen_taker`` went
+    on saying it had delivered the whole term while half of it had been
+    blended away, so the components file, the why-panel and gate P1's audit
+    all read a number nobody's expected points contained. This rescales the
+    record to match the delivery.
+
+    An untouched frame — no marker column, no priced rows, no term — comes
+    back unchanged, which is the byte-identical no-odds rail.
+    """
+    if ("ep_pen_taker" not in comp.columns
+            or BLEND_MARKER not in comp.columns):
+        return comp
+    touched = pd.to_numeric(comp[BLEND_MARKER], errors="coerce").notna()
+    if not bool(touched.any()):
+        return comp
+    out = comp.copy()
+    kept = 1.0 - float(weight)
+    values = out["ep_pen_taker"].to_numpy(dtype="float64").copy()
+    values[touched.to_numpy()] *= kept
+    out["ep_pen_taker"] = values
     return out
 
 
