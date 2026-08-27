@@ -324,3 +324,13 @@ def test_evaluate_accepts_the_news_shadow_flag(monkeypatch, tmp_path):
     result = CliRunner().invoke(app, ["evaluate", "--news-shadow"])
     assert result.exit_code == 0
     assert "nothing to score yet" in result.stdout
+
+
+def test_calibrate_noise_is_registered():
+    from typer.testing import CliRunner
+
+    from gaffer.cli import app
+
+    result = CliRunner().invoke(app, ["--help"])
+    assert result.exit_code == 0
+    assert "calibrate-noise" in result.output

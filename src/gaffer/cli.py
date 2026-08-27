@@ -298,6 +298,26 @@ def calibrate_injuries(clubs: str = typer.Option(
                f"{payload['clubs_failed']} clubs skipped) -> {dest}")
 
 
+@app.command("calibrate-noise")
+def calibrate_noise():
+    """Fit src/gaffer/assets/scenario_noise.json from benchmark residuals.
+
+    Slow — one full benchmark fit and a walk of the test season — and
+    refreshed rarely: once a season, or when the components move materially.
+    The asset it writes ships in git; without it the scenario sweep falls back
+    to the (92 - xmins) / 134 heuristic, which is the pre-v6 behaviour.
+    """
+    from gaffer.calibrate_noise import (ASSET_PATH, run_calibration,
+                                        write_noise)
+
+    payload = run_calibration()
+    dest = write_noise(payload, ASSET_PATH)
+    typer.echo(f"Fitted {len(payload['sigma'])} cells and "
+               f"{len(payload['ep_marginal'])} EP marginals from "
+               f"{payload['rows']} residuals on {payload['season']} "
+               f"(global sigma {payload['global']}) -> {dest}")
+
+
 @app.command()
 def evaluate(mode: str = typer.Option(
                  "current", help="current (last-10-slot holdout) or "
