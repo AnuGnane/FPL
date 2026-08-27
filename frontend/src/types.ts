@@ -441,3 +441,50 @@ export interface ChipsWorkbench {
   chips: ChipWorkbenchRow[]
   wildcard: SquadDiff | null
 }
+
+export interface ComponentFixture {
+  gw: number
+  opponent: string
+  home: boolean
+  kickoff_time: string | null
+  components: Component[]
+  minutes: { p_play: number; p60: number }
+  ep: number
+}
+
+export interface ComponentPlayer {
+  code: number
+  name: string
+  position: string
+  team_name: string
+  ep: number
+  fixtures: ComponentFixture[]
+}
+
+export interface ComponentsBreakdown {
+  gw: number
+  players: ComponentPlayer[]
+}
+
+export interface AdvicePlayerRef {
+  code: number
+  name: string
+}
+
+export interface AdviceDiff {
+  gw: number
+  /** False on a first run of the week — the ordinary case, not an error. */
+  available: boolean
+  changed: boolean
+  previous_at: string | null
+  current_at: string | null
+  buys_added: AdvicePlayerRef[]
+  buys_dropped: AdvicePlayerRef[]
+  sells_added: AdvicePlayerRef[]
+  sells_dropped: AdvicePlayerRef[]
+  captain_from: AdvicePlayerRef | null
+  captain_to: AdvicePlayerRef | null
+  chip_from: string | null
+  chip_to: string | null
+  expected_pts_delta: number
+}

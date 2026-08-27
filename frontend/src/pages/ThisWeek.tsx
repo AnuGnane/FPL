@@ -5,6 +5,7 @@ import Countdown from '../components/Countdown'
 import PitchView from '../components/PitchView'
 import PlayerName from '../components/PlayerName'
 import StalenessBanner from '../components/StalenessBanner'
+import WhyPanel from '../components/WhyPanel'
 import type { AdviceLatest, ChipPlanRow } from '../types'
 
 export default function ThisWeek() {
@@ -145,6 +146,11 @@ export default function ThisWeek() {
           <p className="bad">{advice.hits} hit(s): -{advice.hits * 4} pts</p>
         )}
       </div>
+      <WhyPanel
+        gw={data.gw}
+        codes={[...advice.xi, ...advice.bench, ...advice.buys,
+                ...advice.sells].map((p) => p.code)}
+      />
       <div className="card">
         <h2>Chips</h2>
         {chipsError && (

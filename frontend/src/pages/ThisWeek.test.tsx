@@ -12,6 +12,16 @@ vi.mock('../api/client', () => ({
   apiPost: (path: string, body: unknown) => apiPost(path, body),
 }))
 
+// v6: the page mounts panels that fetch on their own. Empty payloads make
+// each of them render nothing, so every assertion below stands unchanged.
+function v6Panels(path: string): unknown | undefined {
+  if (path.startsWith('/api/advice/diff')) {
+    return { gw: 3, available: false, changed: false }
+  }
+  if (path.startsWith('/api/components')) return { gw: 3, players: [] }
+  return undefined
+}
+
 const LATEST = {
   gw: 3,
   mode: 'weekly',
@@ -72,6 +82,8 @@ beforeEach(() => {
                                  play_now_delta: 2.8 }] }
     }
     if (path === '/api/players/100/explain') return EXPLAIN
+    const v6 = v6Panels(path)
+    if (v6 !== undefined) return v6
     throw new Error(`unexpected GET ${path}`)
   })
 })
@@ -126,6 +138,8 @@ describe('This Week', () => {
       if (path === '/api/chips/plan') {
         return new Promise((resolve) => { releaseChips = resolve })
       }
+      const v6 = v6Panels(path)
+      if (v6 !== undefined) return v6
       throw new Error(`unexpected GET ${path}`)
     })
     renderPage()
@@ -140,6 +154,8 @@ describe('This Week', () => {
     apiGet.mockImplementation(async (path: string) => {
       if (path === '/api/advice/latest') return LATEST
       if (path === '/api/chips/plan') throw new Error('solver exploded')
+      const v6 = v6Panels(path)
+      if (v6 !== undefined) return v6
       throw new Error(`unexpected GET ${path}`)
     })
     renderPage()
@@ -155,6 +171,8 @@ describe('This Week', () => {
       if (path.startsWith('/api/jobs/')) {
         return { id: 'j1', status: 'done', result: { gw: 4 }, error: null }
       }
+      const v6 = v6Panels(path)
+      if (v6 !== undefined) return v6
       throw new Error(`unexpected GET ${path}`)
     })
     renderPage()
@@ -178,6 +196,8 @@ describe('This Week', () => {
     apiGet.mockImplementation(async (path: string) => {
       if (path === '/api/advice/latest') return { ...LATEST, advice }
       if (path === '/api/chips/plan') return { gw: 3, chips: [] }
+      const v6 = v6Panels(path)
+      if (v6 !== undefined) return v6
       throw new Error(`unexpected GET ${path}`)
     })
     renderPage()
