@@ -488,3 +488,29 @@ export interface AdviceDiff {
   chip_to: string | null
   expected_pts_delta: number
 }
+
+export interface NewsRow {
+  code: number
+  name: string
+  team_name: string
+  p_play_news: number
+  p_play_flags: number
+  e_min_news: number
+  e_min_flags: number
+  status: string | null
+  chance_of_playing: number | null
+  official_note: string | null
+  injury_type: string | null
+  expected_return_gw: number | null
+  p_start_hint: number | null
+  /** 'xi' | 'doubt' | 'out', or null when no line-up named him. */
+  lineup_hint: string | null
+  source: string | null
+  fetched_at: string | null
+}
+
+export interface NewsPanelData {
+  gw: number
+  moved: number
+  rows: NewsRow[]
+}

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { apiGet } from '../api/client'
 import { useJob } from '../api/useJob'
 import Countdown from '../components/Countdown'
+import NewsPanel from '../components/NewsPanel'
 import PitchView from '../components/PitchView'
 import PlayerName from '../components/PlayerName'
 import StalenessBanner from '../components/StalenessBanner'
@@ -146,6 +147,7 @@ export default function ThisWeek() {
           <p className="bad">{advice.hits} hit(s): -{advice.hits * 4} pts</p>
         )}
       </div>
+      <NewsPanel gw={data.gw} />
       <WhyPanel
         gw={data.gw}
         codes={[...advice.xi, ...advice.bench, ...advice.buys,

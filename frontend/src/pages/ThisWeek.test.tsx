@@ -19,6 +19,7 @@ function v6Panels(path: string): unknown | undefined {
     return { gw: 3, available: false, changed: false }
   }
   if (path.startsWith('/api/components')) return { gw: 3, players: [] }
+  if (path.startsWith('/api/news/')) return { gw: 3, moved: 0, rows: [] }
   return undefined
 }
 
