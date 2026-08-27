@@ -344,6 +344,39 @@ class ChipsWorkbench(BaseModel):
     wildcard: SquadDiff | None = None
 
 
+class ComponentFixture(BaseModel):
+    """One player-fixture's additive terms.
+
+    Deliberately shaped like :class:`FixtureExplain` (the explain modal's
+    per-fixture row) without being it: this one is read from the saved
+    components parquet with no model loading at all, and carries only what a
+    why-panel renders.
+    """
+
+    gw: int
+    opponent: str
+    home: bool
+    kickoff_time: str | None
+    components: list[Component]
+    minutes: MinutesOutput
+    ep: float
+
+
+class ComponentPlayer(BaseModel):
+    code: int
+    name: str
+    position: str
+    team_name: str
+    ep: float
+    """Summed over the player's fixtures in this gameweek."""
+    fixtures: list[ComponentFixture]
+
+
+class ComponentsBreakdown(BaseModel):
+    gw: int
+    players: list[ComponentPlayer]
+
+
 class HistoryRun(BaseModel):
     gw: int
     deadline: str
