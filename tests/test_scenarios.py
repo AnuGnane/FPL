@@ -60,9 +60,11 @@ def test_xmins_of_a_frame_without_the_minutes_columns_is_empty():
 
 def test_noise_on_a_ninety_two_minute_player_is_exactly_zero():
     """The point of the scaling: a certainty has no estimation error left to
-    simulate."""
+    simulate. ``table={}`` pins the heuristic arm explicitly — with the
+    calibrated asset shipped, ``table=None`` would price off the σ table,
+    where a nailed premium's residual σ is real and nonzero."""
     ep = {(1, 5): 6.0}
-    out = noise_ep(ep, {(1, 5): 92.0}, np.random.default_rng(0))
+    out = noise_ep(ep, {(1, 5): 92.0}, np.random.default_rng(0), table={})
     assert out[(1, 5)] == 6.0
 
 
@@ -70,7 +72,7 @@ def test_noise_on_a_zero_minute_player_is_the_full_scale():
     ep = {(1, 5): 6.0}
     rng = np.random.default_rng(3)
     draw = np.random.default_rng(3).standard_normal()
-    out = noise_ep(ep, {(1, 5): 0.0}, rng)
+    out = noise_ep(ep, {(1, 5): 0.0}, rng, table={})
     want = max(0.0, 6.0 + 6.0 * (92.0 - 0.0) / NOISE_DENOM * draw)
     assert abs(out[(1, 5)] - want) < 1e-12
 
@@ -227,18 +229,29 @@ def test_run_scenarios_drops_a_failing_solve_and_counts_it(monkeypatch):
     assert run.failures == 1
 
 
-def test_run_scenarios_zero_noise_reproduces_the_deterministic_optimum():
-    """With every player pinned at 92 xMins the noise is identically zero, so
-    every scenario has to agree with the plain solve. This is the sanity
-    check that the noise is the only thing varying."""
+def test_run_scenarios_zero_noise_reproduces_the_deterministic_optimum(
+        monkeypatch):
+    """With every player pinned at 92 xMins the *heuristic* noise is
+    identically zero, so every scenario has to agree with the plain solve.
+    This is the sanity check that the noise is the only thing varying — the
+    loader is pinned to None because the premise is the heuristic's, not the
+    calibrated table's (whose 92-xMins σ is real and nonzero)."""
+    import gaffer.optimize.scenarios as sc
     from gaffer.optimize.milp import solve_plan
 
-    pool, state = _board()
-    xm = {(int(c), 5): 92.0 for c in pool["code"]}
-    run = run_scenarios(pool, state, xm, n=2, seed=5, **SOLVE_KW)
-    raw = solve_plan(pool, state, **SOLVE_KW)
-    for plan in run.plans:
-        assert plan.gw_plans[0].squad == raw.gw_plans[0].squad
+    monkeypatch.setattr(sc, "load_scenario_noise", lambda: None)
+    sc.scenario_noise.cache_clear()
+    try:
+        pool, state = _board()
+        xm = {(int(c), 5): 92.0 for c in pool["code"]}
+        run = run_scenarios(pool, state, xm, n=2, seed=5, **SOLVE_KW)
+        raw = solve_plan(pool, state, **SOLVE_KW)
+        for plan in run.plans:
+            assert plan.gw_plans[0].squad == raw.gw_plans[0].squad
+    finally:
+        # The cache would otherwise hold the pinned None for the rest of the
+        # process, silently putting every later test on the heuristic.
+        sc.scenario_noise.cache_clear()
 
 
 # --- move_frequencies ------------------------------------------------------
