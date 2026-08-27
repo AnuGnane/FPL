@@ -39,12 +39,15 @@ Five bins: the great mass of bench fodder under 2, then a bin per point up to
 decisions actually are, and where a mis-stated σ costs a captaincy.
 """
 
-XMINS_EDGES = [0.0, 30.0, 60.0, 80.0, 90.1]
+XMINS_EDGES = [0.0, 30.0, 60.0, 85.0]
 """Left edges of the expected-minutes bins.
 
-60 and 80 are the two thresholds the game itself cares about (the appearance
-step, and "nailed"). 90.1 exists so the handful of rows that ``xmins_by_
-player_gw`` clips to just under 92 have somewhere to go.
+60 is the threshold the game itself cares about (the appearance step) and 85
+is where "nailed" starts. Four bins, not five: ``xmins_by_player_gw`` computes
+``90 p_play p60 + 45 p_play (1 - p60)``, which cannot exceed 90, so the 90.1
+edge shipped in v6 was unreachable and left a fifth of the grid permanently
+empty — every nailed-on starter crowded into one bin below it while a whole
+column of the table was fitted on nothing.
 """
 
 MIN_CELL_OBS = 100

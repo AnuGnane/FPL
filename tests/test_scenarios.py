@@ -78,28 +78,31 @@ def test_noise_on_a_zero_minute_player_is_the_full_scale():
 
 
 def test_noise_is_deterministic_under_a_fixed_seed():
+    # table={}: this pins the heuristic arm's scale.
     ep = {(1, 5): 6.0, (2, 5): 3.0, (1, 6): 5.0}
     xm = {(1, 5): 40.0, (2, 5): 10.0, (1, 6): 70.0}
-    a = noise_ep(ep, xm, np.random.default_rng(11))
-    b = noise_ep(ep, xm, np.random.default_rng(11))
+    a = noise_ep(ep, xm, np.random.default_rng(11), table={})
+    b = noise_ep(ep, xm, np.random.default_rng(11), table={})
     assert a == b
 
 
 def test_noise_differs_between_two_draws_from_the_same_generator():
     """One draw per player-GW per scenario, so consecutive scenarios off the
     same generator must not repeat."""
+    # table={}: this pins the heuristic arm's scale.
     ep = {(1, 5): 6.0}
     rng = np.random.default_rng(11)
-    assert noise_ep(ep, {(1, 5): 10.0}, rng) != noise_ep(
-        ep, {(1, 5): 10.0}, rng)
+    assert noise_ep(ep, {(1, 5): 10.0}, rng, table={}) != noise_ep(
+        ep, {(1, 5): 10.0}, rng, table={})
 
 
 def test_noise_never_produces_a_negative_expected_score():
     """A large downward draw on a low-xmins player can cross zero; a negative
     EP would make the MILP want to bench a player it cannot bench."""
+    # table={}: this pins the heuristic arm's scale.
     ep = {(c, 5): 0.2 for c in range(200)}
     xm = {(c, 5): 0.0 for c in range(200)}
-    out = noise_ep(ep, xm, np.random.default_rng(2))
+    out = noise_ep(ep, xm, np.random.default_rng(2), table={})
     assert min(out.values()) >= 0.0
 
 
@@ -114,6 +117,71 @@ def test_noise_does_not_mutate_its_input():
     ep = {(1, 5): 6.0}
     noise_ep(ep, {(1, 5): 0.0}, np.random.default_rng(0))
     assert ep == {(1, 5): 6.0}
+
+
+# --- the calibrated arm is mean-preserving under the clip -------------------
+
+def _flat_table(sigma: float) -> dict:
+    """A σ table with one global value and no populated cells, so every
+    lookup falls through to it."""
+    return {"ep_edges": [0.0], "xmins_edges": [0.0], "sigma": {},
+            "ep_marginal": {}, "global": sigma}
+
+
+@pytest.mark.parametrize("ep_value, sigma", [
+    (0.05, 0.83), (0.3, 0.83), (1.0, 0.83), (4.5, 3.45)])
+def test_the_calibrated_arm_preserves_the_mean_across_the_zero_clip(
+        ep_value, sigma):
+    """max(0, ep + sigma Z) has mean ep*Phi + sigma*phi, which is strictly
+    above ep — worst on the low-EP players who make up most of the pool. If
+    the clip is left to ratchet, forty scenarios are drawn round a board whose
+    expected points are not the forecast's, and the bench fodder is the part
+    it inflates most."""
+    n = 200_000
+    rng = np.random.default_rng(7)
+    ep = {(c, 5): ep_value for c in range(n)}
+    xm = {(c, 5): 45.0 for c in range(n)}
+    out = noise_ep(ep, xm, rng, table=_flat_table(sigma))
+    assert abs(float(np.mean(list(out.values()))) - ep_value) < 0.02
+
+
+def test_the_uncorrected_clip_would_have_been_biased_upward():
+    """The bug, restated as arithmetic: without the recentre a 0.05 EP at
+    sigma 0.83 comes back near 0.34, not 0.05."""
+    rng = np.random.default_rng(7)
+    naive = np.maximum(0.0, 0.05 + 0.83 * rng.standard_normal(200_000))
+    assert float(naive.mean()) > 0.25
+
+
+def test_a_zero_ep_cell_stays_at_zero_on_the_calibrated_arm():
+    """There is no shift that makes a clipped normal average zero, and
+    inventing points for a player the forecast gave none is the one thing the
+    recentre exists to stop."""
+    out = noise_ep({(1, 5): 0.0}, {(1, 5): 20.0}, np.random.default_rng(1),
+                   table=_flat_table(0.83))
+    assert out[(1, 5)] == 0.0
+
+
+def test_the_heuristic_arm_is_untouched_by_the_recentre():
+    """Its scale is multiplicative, so it vanishes as ep -> 0 and never needs
+    recentring; the exact pre-v6 arithmetic has to survive."""
+    draw = np.random.default_rng(3).standard_normal()
+    out = noise_ep({(1, 5): 6.0}, {(1, 5): 0.0}, np.random.default_rng(3),
+                   table={})
+    want = max(0.0, 6.0 + 6.0 * NOISE_FLOOR_XMINS / NOISE_DENOM * draw)
+    assert abs(out[(1, 5)] - want) < 1e-12
+
+
+def test_both_arms_still_consume_exactly_one_draw_per_cell():
+    """The draw is taken before the branch so a seed produces the same
+    sequence either way, and gate S1's two arms differ only in scale."""
+    ep = {(1, 5): 6.0, (2, 5): 0.1, (3, 5): 2.0}
+    xm = {(1, 5): 10.0, (2, 5): 40.0, (3, 5): 80.0}
+    a = np.random.default_rng(5)
+    b = np.random.default_rng(5)
+    noise_ep(ep, xm, a, table={})
+    noise_ep(ep, xm, b, table=_flat_table(0.83))
+    assert a.standard_normal() == b.standard_normal()
 
 
 # --- pool ------------------------------------------------------------------
@@ -426,17 +494,20 @@ def test_sigma_for_refuses_an_implausible_sigma():
 
 def test_the_calibrated_draw_is_absolute_not_relative():
     """The heuristic scales by the EP itself; the fitted table is a residual
-    standard deviation in points, so it does not."""
+    standard deviation in points, so it does not. The mean it is applied
+    around is recentred so the clip does not ratchet, but the scale is the
+    table's 0.90 and not 1.0 * (92 - 10) / 134."""
     import numpy as np
 
-    from gaffer.optimize.scenarios import noise_ep
+    from gaffer.optimize.scenarios import noise_ep, recentred_mean
 
     ep = {(1, 5): 1.0}
     xmins = {(1, 5): 10.0}
     draw = float(np.random.default_rng(7).standard_normal())
     out = noise_ep(ep, xmins, np.random.default_rng(7),
                    table=_sigma_table())
-    assert out[(1, 5)] == pytest.approx(max(0.0, 1.0 + 0.90 * draw))
+    want = max(0.0, recentred_mean(1.0, 0.90) + 0.90 * draw)
+    assert out[(1, 5)] == pytest.approx(want)
 
 
 def test_the_calibrated_draw_still_floors_at_zero():
@@ -478,8 +549,11 @@ def test_noised_pool_uses_the_table_when_one_is_given():
 
     from gaffer.optimize.scenarios import noised_pool
 
+    from gaffer.optimize.scenarios import recentred_mean
+
     pool = pd.DataFrame({"code": [1], "ep": [{5: 1.0}]})
     draw = float(np.random.default_rng(11).standard_normal())
     out = noised_pool(pool, {(1, 5): 10.0}, np.random.default_rng(11),
                       table=_sigma_table())
-    assert out["ep"].iloc[0][5] == pytest.approx(max(0.0, 1.0 + 0.90 * draw))
+    want = max(0.0, recentred_mean(1.0, 0.90) + 0.90 * draw)
+    assert out["ep"].iloc[0][5] == pytest.approx(want)

@@ -24,6 +24,7 @@ the caller owns the seed, and the seed goes in the report.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from functools import lru_cache
 
@@ -127,6 +128,62 @@ def sigma_for(table: dict | None, ep_value: float,
     return value if 0.0 < value < SIGMA_MAX else None
 
 
+_SQRT_2 = math.sqrt(2.0)
+_INV_SQRT_2PI = 1.0 / math.sqrt(2.0 * math.pi)
+
+RECENTRE_TOL = 1e-9
+RECENTRE_MAX_ITER = 40
+"""Newton budget for :func:`recentred_mean`. Eight is typical; forty is the
+refusal point, and it returns its best shift rather than raising — a scenario
+sweep must not die of an arithmetic corner."""
+
+
+def _norm_cdf(z: float) -> float:
+    return 0.5 * (1.0 + math.erf(z / _SQRT_2))
+
+
+def _norm_pdf(z: float) -> float:
+    return _INV_SQRT_2PI * math.exp(-0.5 * z * z)
+
+
+def recentred_mean(ep: float, sigma: float) -> float:
+    """The shifted mean ``mu`` with ``E[max(0, mu + sigma Z)] == ep``.
+
+    The calibrated path adds an *absolute* σ, so on a low-EP player the draw
+    crosses zero often and the clip only ever pushes upward. Left alone that
+    is a systematic upward bias, worst exactly where the table is thickest:
+    at σ = 0.83 an EP of 0.05 comes back with a mean of 0.38, so every bench
+    player in the pool is quietly handed a third of a point the forecast never
+    gave him and the sweep's frequencies are read off a board nobody predicted.
+
+    A censored normal has mean ``mu * Phi(mu/sigma) + sigma * phi(mu/sigma)``,
+    which is increasing and convex in ``mu`` with derivative exactly
+    ``Phi(mu/sigma)``. So Newton from ``mu = ep`` — where the value is always
+    too high, because clipping can only raise a mean — descends monotonically
+    onto the unique root.
+
+    ``ep <= 0`` has no such shift (a clipped normal's mean is strictly
+    positive for any finite ``mu``) and is handled by the caller, which leaves
+    the cell at zero.
+    """
+    if not sigma > 0.0 or not ep > 0.0:
+        return float(ep)
+    mu = float(ep)
+    for _ in range(RECENTRE_MAX_ITER):
+        z = mu / sigma
+        cdf = _norm_cdf(z)
+        gap = mu * cdf + sigma * _norm_pdf(z) - ep
+        if abs(gap) <= RECENTRE_TOL:
+            break
+        if cdf <= 1e-12:
+            # Newton has walked into the flat tail; step back toward the
+            # live region by hand rather than dividing by nearly nothing.
+            mu += sigma
+            continue
+        mu -= gap / cdf
+    return mu
+
+
 def xmins_by_player_gw(comp: pd.DataFrame) -> dict[tuple[int, int], float]:
     """``{(code, gw): expected minutes}`` from the component frame.
 
@@ -163,11 +220,17 @@ def noise_ep(ep: dict[tuple[int, int], float],
     """One noised copy of an EP table.
 
     Two scales, one draw. Where the calibrated table has something to say,
-    ``ep_noised = max(0, ep + σ(ep bin, xMins bin) * N(0, 1))`` — σ is an
+    ``ep_noised = max(0, mu + σ(ep bin, xMins bin) * N(0, 1))`` — σ is an
     empirical residual standard deviation in *points*, so it is absolute and
-    is not multiplied by the EP again. Where it has nothing to say (no asset,
-    an unpopulated cell with no fallback, a σ that fails the sanity bound) the
-    pre-v6 heuristic stands: ``ep + ep * (92 - xmins) / 134 * N(0, 1)``.
+    is not multiplied by the EP again, and ``mu`` is
+    :func:`recentred_mean`'s shift, chosen so the *clipped* draw still
+    averages ``ep``. Without it the clip is a one-way ratchet on every low-EP
+    player and the sweep noises a board whose expected points are not the
+    forecast's. Where the table has nothing to say (no asset, an unpopulated
+    cell with no fallback, a σ that fails the sanity bound) the pre-v6
+    heuristic stands: ``ep + ep * (92 - xmins) / 134 * N(0, 1)``, which needs
+    no recentring because its scale is multiplicative and vanishes with the EP
+    it is applied to.
 
     The draw is taken **before** the branch on purpose. Both paths consume
     exactly one standard normal per cell, so a seed produces the same sequence
@@ -202,8 +265,12 @@ def noise_ep(ep: dict[tuple[int, int], float],
         if sigma is None:
             scale = (NOISE_FLOOR_XMINS - xm) / NOISE_DENOM
             out[key] = max(0.0, value + value * scale * draw)
+        elif value > 0.0:
+            out[key] = max(0.0, recentred_mean(value, sigma) + sigma * draw)
         else:
-            out[key] = max(0.0, value + sigma * draw)
+            # An EP of zero has no mean to preserve: every clipped draw round
+            # it is non-negative, so any noise at all would invent points.
+            out[key] = 0.0
     return out
 
 

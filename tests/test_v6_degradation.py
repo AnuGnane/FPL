@@ -181,6 +181,27 @@ def test_the_fitted_asset_is_present_and_well_shaped():
     assert payload["sigma"]
 
 
+def test_the_shipped_asset_serves_whatever_edge_list_it_carries():
+    """XMINS_EDGES moved after the committed asset was fitted, and the asset
+    is refitted on its own schedule. bin_index reads the edges *out of the
+    payload*, so serving must not care whether the file has four edges or the
+    five it was written with — a read side that assumed today's constant
+    would silently index into the wrong cell of yesterday's table."""
+    import numpy as np
+
+    from gaffer.assets import load_scenario_noise
+    from gaffer.optimize.scenarios import noise_ep, sigma_for
+
+    payload = load_scenario_noise()
+    for xmins in (0.0, 45.0, 70.0, 85.0, 90.0, 92.0):
+        for ep in (0.1, 2.5, 5.0, 9.0):
+            sigma = sigma_for(payload, ep, xmins)
+            assert sigma is None or 0.0 < sigma < 10.0
+    out = noise_ep({(1, 5): 4.0}, {(1, 5): 88.0}, np.random.default_rng(0),
+                   table=payload)
+    assert out[(1, 5)] >= 0.0
+
+
 # --- rail 5: a cold clone serves every new endpoint without artifacts -------
 
 def _client(tmp_path, monkeypatch):
