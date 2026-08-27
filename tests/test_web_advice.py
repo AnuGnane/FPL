@@ -237,3 +237,99 @@ def test_the_advice_endpoint_passes_scenario_fields_through_untouched():
     assert out.advice["raw_optimum_agrees"] is True
     assert out.advice["scenarios"]["completed"] == 39
     assert out.advice["buys"][0]["frequency"] == 0.85
+
+
+# --- v6: the since-last-run diff -------------------------------------------
+
+def _advice_on_disk(root, gw=5):
+    """A solve state and an advice JSON for ``gw``, so ``latest_gw()`` names
+    it. The module fixture already writes GW3's pair; this adds a newer one."""
+    (root / "reports").mkdir(exist_ok=True)
+    pool = pool_rows(
+        pd.DataFrame([{"code": 100, "position": "MID", "team_code": 300,
+                       "cost": 130, "sell": 128}]),
+        pd.DataFrame([{"code": 100, "name": "Salah"}]),
+        owned_codes=[100], ep_by={(100, gw): 6.4}, gws=[gw])
+    save_solve_state(SolveState(
+        gw=gw, gws=[gw], deadline=FUTURE,
+        generated_at="2026-09-04T09:00:00Z", mode="weekly", bank=12,
+        free_transfers=2, owned_codes=[100], lam=0.0, league_eo={},
+        avail_by_gw={gw: []},
+        opt={"decay": 0.85, "bench_weight": 0.1, "vice_weight": 0.1,
+             "ft_value": 1.5, "itb_value": 0.05, "hit_cost": 4, "horizon": 1},
+        pool=pool))
+    (root / "reports" / f"gw{gw}-advice.json").write_text(
+        json.dumps({**ADVICE, "gw": gw, "deadline": FUTURE}))
+
+
+def _history(tmp_path, gw, stamp, **overrides):
+    from gaffer.artifacts import append_advice_history
+
+    payload = {"gw": gw, "expected_pts": 61.5,
+               "captain": {"code": 100, "name": "Salah"},
+               "buys": [], "sells": [], "chip_table": []}
+    payload.update(overrides)
+    return append_advice_history(payload, gw, now=stamp)
+
+
+def test_advice_diff_without_a_previous_run_is_not_an_error(client, tmp_path):
+    from datetime import datetime, timezone
+
+    _advice_on_disk(tmp_path)
+    _history(tmp_path, 5, datetime(2026, 9, 4, 9, 0, tzinfo=timezone.utc))
+    body = client.get("/api/advice/diff").json()
+    assert body["available"] is False
+    assert body["gw"] == 5
+    assert body["changed"] is False
+
+
+def test_advice_diff_with_nothing_on_disk_at_all_is_not_an_error(client):
+    body = client.get("/api/advice/diff").json()
+    assert body["available"] is False
+
+
+def test_advice_diff_compares_the_two_newest_runs_of_the_same_gw(client,
+                                                                 tmp_path):
+    from datetime import datetime, timezone
+
+    _advice_on_disk(tmp_path)
+    _history(tmp_path, 5, datetime(2026, 9, 3, 9, 0, tzinfo=timezone.utc),
+             buys=[{"code": 200, "name": "Isak"}], expected_pts=61.5)
+    _history(tmp_path, 5, datetime(2026, 9, 4, 9, 0, tzinfo=timezone.utc),
+             buys=[{"code": 201, "name": "Wirtz"}], expected_pts=64.0,
+             captain={"code": 101, "name": "Haaland"})
+    body = client.get("/api/advice/diff").json()
+    assert body["available"] is True
+    assert body["changed"] is True
+    assert [b["name"] for b in body["buys_added"]] == ["Wirtz"]
+    assert [b["name"] for b in body["buys_dropped"]] == ["Isak"]
+    assert body["captain_from"]["name"] == "Salah"
+    assert body["captain_to"]["name"] == "Haaland"
+    assert body["expected_pts_delta"] == 2.5
+    assert body["previous_at"] < body["current_at"]
+
+
+def test_advice_diff_ignores_runs_of_a_different_gameweek(client, tmp_path):
+    """Last week's advice is not "the previous run" — the strip says what
+    changed about *this* decision."""
+    from datetime import datetime, timezone
+
+    _advice_on_disk(tmp_path)
+    _history(tmp_path, 4, datetime(2026, 8, 28, 9, 0, tzinfo=timezone.utc),
+             expected_pts=50.0)
+    _history(tmp_path, 5, datetime(2026, 9, 4, 9, 0, tzinfo=timezone.utc))
+    body = client.get("/api/advice/diff").json()
+    assert body["available"] is False
+
+
+def test_advice_diff_can_be_asked_for_an_explicit_gameweek(client, tmp_path):
+    from datetime import datetime, timezone
+
+    _advice_on_disk(tmp_path)
+    _history(tmp_path, 4, datetime(2026, 8, 27, 9, 0, tzinfo=timezone.utc),
+             expected_pts=50.0)
+    _history(tmp_path, 4, datetime(2026, 8, 28, 9, 0, tzinfo=timezone.utc),
+             expected_pts=52.0)
+    body = client.get("/api/advice/diff?gw=4").json()
+    assert body["available"] is True
+    assert body["expected_pts_delta"] == 2.0

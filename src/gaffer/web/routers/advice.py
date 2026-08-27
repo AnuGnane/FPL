@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+import json
+
 import pandas as pd
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from gaffer.artifacts import (data_warning, ingested_through, latest_gw,
+from gaffer.artifacts import (advice_history_files, data_warning,
+                              diff_advice, ingested_through, latest_gw,
                               load_advice, load_solve_state, upcoming_gw)
 from gaffer.errors import GafferError
 from gaffer.web.jobs import ADVISE_TIMEOUT_S, JobQueueFull
-from gaffer.web.schemas import AdviceLatest, JobAccepted, Staleness
+from gaffer.web.schemas import (AdviceDiff, AdviceLatest, JobAccepted,
+                                Staleness)
 
 router = APIRouter(prefix="/api/advice", tags=["advice"])
 
@@ -97,6 +101,38 @@ def latest() -> AdviceLatest:
     return AdviceLatest(
         gw=gw, mode=state.mode, deadline=state.deadline, advice=payload,
         staleness=staleness_for(gw, state.deadline, state.generated_at))
+
+
+@router.get("/diff", response_model=AdviceDiff)
+def diff(gw: int | None = None) -> AdviceDiff:
+    """The "since last run" strip: this run against the one before it.
+
+    Same gameweek only. Re-running on Friday after the press conferences is
+    the case this exists for, and comparing Friday's GW5 plan with last week's
+    GW4 plan would answer a question nobody asked.
+
+    Never an error. A first run of the week, a wiped ``reports/`` directory
+    and a history file that will not parse all land in the same place: the
+    strip is not shown, and the rest of This Week renders exactly as it did.
+    """
+    target = gw if gw is not None else latest_gw()
+    if target is None:
+        return AdviceDiff(gw=0, available=False)
+    files = advice_history_files(int(target))
+    if len(files) < 2:
+        return AdviceDiff(gw=int(target), available=False)
+    previous_path, current_path = files[-2], files[-1]
+    try:
+        previous = json.loads(previous_path.read_text())
+        current = json.loads(current_path.read_text())
+    except ValueError as exc:
+        print(f"advice history unreadable, no diff shown: {exc}")
+        return AdviceDiff(gw=int(target), available=False)
+    out = diff_advice(previous, current)
+    return AdviceDiff(
+        gw=int(target), available=True,
+        previous_at=previous_path.stem.partition("-")[2],
+        current_at=current_path.stem.partition("-")[2], **out)
 
 
 @router.post("/rerun", status_code=202, response_model=JobAccepted)

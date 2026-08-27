@@ -377,6 +377,35 @@ class ComponentsBreakdown(BaseModel):
     players: list[ComponentPlayer]
 
 
+class AdvicePlayer(BaseModel):
+    code: int
+    name: str
+
+
+class AdviceDiff(BaseModel):
+    """What changed between the two newest runs of one gameweek.
+
+    ``available`` is false on a first run of the week — the ordinary case, not
+    an error — and everything else is then empty, so the client renders
+    nothing without having to special-case a status code.
+    """
+
+    gw: int
+    available: bool
+    changed: bool = False
+    previous_at: str | None = None
+    current_at: str | None = None
+    buys_added: list[AdvicePlayer] = Field(default_factory=list)
+    buys_dropped: list[AdvicePlayer] = Field(default_factory=list)
+    sells_added: list[AdvicePlayer] = Field(default_factory=list)
+    sells_dropped: list[AdvicePlayer] = Field(default_factory=list)
+    captain_from: AdvicePlayer | None = None
+    captain_to: AdvicePlayer | None = None
+    chip_from: str | None = None
+    chip_to: str | None = None
+    expected_pts_delta: float = 0.0
+
+
 class HistoryRun(BaseModel):
     gw: int
     deadline: str
