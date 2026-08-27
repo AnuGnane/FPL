@@ -90,3 +90,32 @@ def load_injury_curves() -> dict | None:
     return json.loads(
         files(__package__).joinpath(INJURY_CURVES).read_text(
             encoding="utf-8"))
+
+
+SCENARIO_NOISE = "scenario_noise.json"
+
+
+def scenario_noise_exists() -> bool:
+    """Whether the calibrated scenario-noise table is shipped.
+
+    Optional like :data:`DECISION_PRIORS` and :data:`INJURY_CURVES`, and for
+    the same reason: spec §2's degradation rail says a clone without it falls
+    back to the ``(92 - xmins) / 134`` heuristic, which is the pre-v6
+    behaviour exactly. It is also genuinely absent for part of v6's own life —
+    the code ships before the calibration run does.
+    """
+    return files(__package__).joinpath(SCENARIO_NOISE).is_file()
+
+
+def load_scenario_noise() -> dict | None:
+    """The residual-σ table, or ``None`` when the asset is absent.
+
+    ``None`` rather than an empty dict, so a caller cannot mistake "not
+    calibrated" for "calibrated, and the answer is no noise at all" — the two
+    are opposite instructions to the scenario sweep.
+    """
+    if not scenario_noise_exists():
+        return None
+    return json.loads(
+        files(__package__).joinpath(SCENARIO_NOISE).read_text(
+            encoding="utf-8"))

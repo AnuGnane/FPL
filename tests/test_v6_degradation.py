@@ -118,3 +118,51 @@ def test_predict_components_still_blends_before_merging_onto_players():
     assert "odds_blend_weight()" in src
     for col in ["was_home", "kickoff_time", "pen_taker", "setpiece_taker"]:
         assert f'"{col}"' in src
+
+
+# --- rail 4: no noise asset == the pre-v6 heuristic, value for value -------
+
+def test_no_noise_asset_is_the_pre_v6_heuristic_exactly(monkeypatch):
+    """``table=None`` means "load the shipped asset", so the absent asset is
+    simulated at the loader rather than by the repository happening not to
+    carry one yet — the rail is about a clone without the file, and it has to
+    hold just as firmly once the file is committed."""
+    import numpy as np
+
+    import gaffer.optimize.scenarios as sc
+
+    monkeypatch.setattr(sc, "scenario_noise", lambda: None)
+    ep = {(1, 5): 4.0, (2, 5): 1.0}
+    xmins = {(1, 5): 88.0, (2, 5): 20.0}
+    out = sc.noise_ep(ep, xmins, np.random.default_rng(42))
+
+    rng = np.random.default_rng(42)
+    for key, value in ep.items():
+        scale = (sc.NOISE_FLOOR_XMINS - xmins[key]) / sc.NOISE_DENOM
+        want = max(0.0, value + value * scale * float(rng.standard_normal()))
+        assert out[key] == want
+
+
+def test_an_unreadable_noise_asset_degrades_to_the_heuristic(monkeypatch):
+    import gaffer.optimize.scenarios as sc
+
+    def boom():
+        raise ValueError("not JSON")
+
+    monkeypatch.setattr(sc, "load_scenario_noise", boom)
+    sc.scenario_noise.cache_clear()
+    try:
+        assert sc.scenario_noise() is None
+    finally:
+        sc.scenario_noise.cache_clear()
+
+
+def test_the_shipped_asset_is_optional_by_construction():
+    """A clone with no scenario_noise.json must load, not raise."""
+    from gaffer.assets import load_scenario_noise, scenario_noise_exists
+
+    if not scenario_noise_exists():
+        assert load_scenario_noise() is None
+    else:
+        payload = load_scenario_noise()
+        assert set(payload) >= {"ep_edges", "xmins_edges", "sigma"}

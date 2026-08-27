@@ -25,10 +25,12 @@ the caller owns the seed, and the seed goes in the report.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 
 import numpy as np
 import pandas as pd
 
+from gaffer.assets import load_scenario_noise
 from gaffer.optimize.milp import Plan, SolveInput, solve_plan
 
 NOISE_FLOOR_XMINS = 92.0
@@ -47,6 +49,82 @@ At xmins = 0 the scale is 92/134 = 0.687, i.e. a player with no expected
 minutes has a ~69% relative standard deviation on his EP. At xmins = 90 it is
 0.015. Both are about right against observed weekly FPL residuals.
 """
+
+SIGMA_MAX = 10.0
+"""Refusal bound on a fitted σ.
+
+A residual standard deviation of ten points on a weekly FPL forecast is not a
+volatile player, it is a broken table — and the heuristic is a better answer
+than a broken table. Matches the validator in
+:mod:`gaffer.calibrate_noise`, deliberately: the write side refuses to
+produce one and the read side refuses to use one.
+"""
+
+
+@lru_cache(maxsize=1)
+def scenario_noise() -> dict | None:
+    """The shipped residual-σ table, read once per process.
+
+    Cached because a scenario sweep calls :func:`noise_ep` once per player per
+    gameweek per scenario — tens of thousands of times — and re-reading a JSON
+    file for each of them would cost more than the solves.
+
+    Every failure is the same failure: no asset, unreadable asset, asset that
+    is not JSON. All of them return ``None``, which every caller reads as "use
+    the heuristic".
+    """
+    try:
+        return load_scenario_noise()
+    except Exception as exc:  # noqa: BLE001 — never blocks a sweep
+        print(f"scenario noise asset unreadable, using the heuristic: {exc}")
+        return None
+
+
+def bin_index(value: float, edges: list[float]) -> int:
+    """Which half-open bin ``value`` falls in, given the left edges.
+
+    ``edges`` are left edges only — ``[0, 2, 3, 4, 6]`` is five bins, the last
+    of which runs to infinity. A value below the first edge lands in bin 0
+    rather than at -1: expected points cannot be negative, and a stray -0.0
+    indexing off the front of the table would silently read the *last* cell.
+    """
+    idx = 0
+    for i, edge in enumerate(edges):
+        if float(value) >= float(edge):
+            idx = i
+    return idx
+
+
+def sigma_for(table: dict | None, ep_value: float,
+              xmins: float) -> float | None:
+    """σ for one (EP bin, xMins bin) cell, or ``None`` to use the heuristic.
+
+    Three deep, exactly as the calibration writes it: the cell if it was
+    populated (100+ observations), else the EP bin's marginal, else the global
+    residual σ. ``None`` at the end of that chain — or for a σ that fails the
+    :data:`SIGMA_MAX` sanity bound — hands the caller back to the heuristic
+    rather than inventing a scale.
+    """
+    if not table:
+        return None
+    ep_edges = [float(e) for e in table.get("ep_edges") or []]
+    x_edges = [float(e) for e in table.get("xmins_edges") or []]
+    if not ep_edges or not x_edges:
+        return None
+    i = bin_index(float(ep_value), ep_edges)
+    j = bin_index(float(xmins), x_edges)
+    cell = (table.get("sigma") or {}).get(f"{i}_{j}")
+    if cell is None:
+        cell = (table.get("ep_marginal") or {}).get(str(i))
+    if cell is None:
+        cell = table.get("global")
+    if cell is None:
+        return None
+    try:
+        value = float(cell)
+    except (TypeError, ValueError):
+        return None
+    return value if 0.0 < value < SIGMA_MAX else None
 
 
 def xmins_by_player_gw(comp: pd.DataFrame) -> dict[tuple[int, int], float]:
@@ -80,14 +158,25 @@ def xmins_by_player_gw(comp: pd.DataFrame) -> dict[tuple[int, int], float]:
 
 def noise_ep(ep: dict[tuple[int, int], float],
              xmins: dict[tuple[int, int], float],
-             rng: np.random.Generator) -> dict[tuple[int, int], float]:
+             rng: np.random.Generator,
+             table: dict | None = None) -> dict[tuple[int, int], float]:
     """One noised copy of an EP table.
 
-    ``ep_noised = max(0, ep + ep * (92 - xmins) / 134 * N(0, 1))``, one
-    independent draw per player-gameweek. No cross-gameweek correlation: spec
-    §10 lists it as YAGNI until the simple version proves insufficient, and
-    the honest reading is that a player's *minutes* risk really is close to
-    independent week to week once the fixture is known.
+    Two scales, one draw. Where the calibrated table has something to say,
+    ``ep_noised = max(0, ep + σ(ep bin, xMins bin) * N(0, 1))`` — σ is an
+    empirical residual standard deviation in *points*, so it is absolute and
+    is not multiplied by the EP again. Where it has nothing to say (no asset,
+    an unpopulated cell with no fallback, a σ that fails the sanity bound) the
+    pre-v6 heuristic stands: ``ep + ep * (92 - xmins) / 134 * N(0, 1)``.
+
+    The draw is taken **before** the branch on purpose. Both paths consume
+    exactly one standard normal per cell, so a seed produces the same sequence
+    of draws either way and the two arms of gate S1 differ in the scale
+    applied to them and in nothing else.
+
+    No cross-gameweek correlation: a player's *minutes* risk really is close
+    to independent week to week once the fixture is known, and spec §10 lists
+    correlation as YAGNI until the simple version proves insufficient.
 
     Clipped at zero because a negative EP is not a worse player, it is an
     incoherent one — the MILP would want to leave a squad slot empty, which it
@@ -96,21 +185,31 @@ def noise_ep(ep: dict[tuple[int, int], float],
     Cells with no xMins entry pass through untouched: "we have no minutes
     prediction for this player" is not the same claim as "his minutes are
     certain", and inventing a scale for him would be the worse error.
+
+    ``table`` of ``None`` means "read the shipped asset"; pass one explicitly
+    to price a whole sweep off a single load.
     """
+    if table is None:
+        table = scenario_noise()
     out: dict[tuple[int, int], float] = {}
     for key, value in ep.items():
         xm = xmins.get(key)
         if xm is None:
             out[key] = value
             continue
-        scale = (NOISE_FLOOR_XMINS - xm) / NOISE_DENOM
-        out[key] = max(0.0, value + value * scale
-                       * float(rng.standard_normal()))
+        draw = float(rng.standard_normal())
+        sigma = sigma_for(table, value, xm)
+        if sigma is None:
+            scale = (NOISE_FLOOR_XMINS - xm) / NOISE_DENOM
+            out[key] = max(0.0, value + value * scale * draw)
+        else:
+            out[key] = max(0.0, value + sigma * draw)
     return out
 
 
 def noised_pool(pool: pd.DataFrame, xmins: dict[tuple[int, int], float],
-                rng: np.random.Generator) -> pd.DataFrame:
+                rng: np.random.Generator,
+                table: dict | None = None) -> pd.DataFrame:
     """A copy of the candidate pool with every ``ep`` dict noised.
 
     The *pool* is noised rather than rebuilt from noised EP, and that is a
@@ -120,12 +219,17 @@ def noised_pool(pool: pd.DataFrame, xmins: dict[tuple[int, int], float],
     frequency computed across scenarios with different candidate sets is
     counting incomparable things. Fixing the board and varying only the values
     on it is what makes the frequencies mean something.
+
+    The σ table is resolved once here rather than once per player: the loader
+    is cached, but the lookup through it is not free at pool scale.
     """
+    if table is None:
+        table = scenario_noise()
     out = pool.copy()
     cells = []
     for code, cell in zip(pool["code"], pool["ep"]):
         keyed = {(int(code), int(gw)): float(v) for gw, v in cell.items()}
-        noised = noise_ep(keyed, xmins, rng)
+        noised = noise_ep(keyed, xmins, rng, table=table)
         cells.append({gw: noised[(int(code), int(gw))] for gw in cell})
     out["ep"] = cells
     return out

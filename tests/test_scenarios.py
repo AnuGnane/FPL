@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 
 from gaffer.optimize.scenarios import (NOISE_DENOM, NOISE_FLOOR_XMINS,
                                        noise_ep, noised_pool,
@@ -355,3 +356,117 @@ def test_move_frequencies_is_sorted_by_descending_frequency():
     out = move_frequencies([_plan([1, 2], [3], 9), _plan([1], [3], 9)])
     buys = out[out["kind"] == "buy"]["frequency"].tolist()
     assert buys == sorted(buys, reverse=True)
+
+
+# --- v6 calibrated noise ----------------------------------------------------
+
+def _sigma_table() -> dict:
+    """Five EP bins x five xMins bins, only some cells populated — which is
+    the realistic shape: nobody has 100 observations of a 6+ xPts player who
+    was expected to play 20 minutes."""
+    return {
+        "version": 1,
+        "ep_edges": [0.0, 2.0, 3.0, 4.0, 6.0],
+        "xmins_edges": [0.0, 30.0, 60.0, 80.0, 90.1],
+        "sigma": {"0_0": 0.90, "0_3": 1.40, "4_3": 5.00},
+        "obs": {"0_0": 4000, "0_3": 9000, "4_3": 300},
+        "ep_marginal": {"0": 1.10, "2": 2.60, "4": 4.80},
+        "global": 2.00,
+    }
+
+
+def test_bin_index_places_a_value_in_its_half_open_bin():
+    from gaffer.optimize.scenarios import bin_index
+
+    edges = [0.0, 2.0, 3.0, 4.0, 6.0]
+    assert bin_index(0.0, edges) == 0
+    assert bin_index(1.99, edges) == 0
+    assert bin_index(2.0, edges) == 1
+    assert bin_index(5.9, edges) == 3
+    assert bin_index(9.0, edges) == 4
+    # Below the first edge is still the first bin: an EP cannot be negative,
+    # and a stray -0.0 must not index off the front of the table.
+    assert bin_index(-1.0, edges) == 0
+
+
+def test_sigma_for_reads_the_cell_then_the_marginal_then_the_global():
+    from gaffer.optimize.scenarios import sigma_for
+
+    table = _sigma_table()
+    assert sigma_for(table, 1.0, 10.0) == 0.90        # cell 0_0
+    assert sigma_for(table, 1.0, 85.0) == 1.40        # cell 0_3
+    assert sigma_for(table, 3.5, 85.0) == 2.60        # no cell -> ep bin 2
+    assert sigma_for(table, 5.0, 85.0) == 2.00        # no cell, no marginal
+    assert sigma_for(None, 1.0, 10.0) is None
+    assert sigma_for({}, 1.0, 10.0) is None
+
+
+def test_sigma_for_refuses_an_implausible_sigma():
+    """A table that says a 3-point forecast has a standard deviation of 40
+    is corrupt, and the heuristic is a better answer than that."""
+    from gaffer.optimize.scenarios import SIGMA_MAX, sigma_for
+
+    table = _sigma_table() | {"sigma": {"0_0": SIGMA_MAX + 1.0},
+                              "ep_marginal": {}, "global": None}
+    assert sigma_for(table, 1.0, 10.0) is None
+
+
+def test_the_calibrated_draw_is_absolute_not_relative():
+    """The heuristic scales by the EP itself; the fitted table is a residual
+    standard deviation in points, so it does not."""
+    import numpy as np
+
+    from gaffer.optimize.scenarios import noise_ep
+
+    ep = {(1, 5): 1.0}
+    xmins = {(1, 5): 10.0}
+    draw = float(np.random.default_rng(7).standard_normal())
+    out = noise_ep(ep, xmins, np.random.default_rng(7),
+                   table=_sigma_table())
+    assert out[(1, 5)] == pytest.approx(max(0.0, 1.0 + 0.90 * draw))
+
+
+def test_the_calibrated_draw_still_floors_at_zero():
+    import numpy as np
+
+    from gaffer.optimize.scenarios import noise_ep
+
+    out = noise_ep({(1, 5): 0.1}, {(1, 5): 10.0},
+                   np.random.default_rng(1), table=_sigma_table())
+    assert out[(1, 5)] >= 0.0
+
+
+def test_the_table_keeps_nailed_players_nailed():
+    """The heuristic's nailedness scaling exists so a 90-minute starter does
+    not flip between sims. The empirical table has to keep that property, and
+    it does it through the xMins axis rather than through an assumption."""
+    import numpy as np
+
+    from gaffer.optimize.scenarios import sigma_for
+
+    table = _sigma_table() | {
+        "sigma": {"0_0": 2.50, "0_3": 0.40}, "ep_marginal": {}, "global": None}
+    assert sigma_for(table, 1.0, 85.0) < sigma_for(table, 1.0, 10.0)
+
+
+def test_a_cell_with_no_xmins_entry_still_passes_through_untouched():
+    import numpy as np
+
+    from gaffer.optimize.scenarios import noise_ep
+
+    out = noise_ep({(1, 5): 4.0}, {}, np.random.default_rng(3),
+                   table=_sigma_table())
+    assert out[(1, 5)] == 4.0
+
+
+def test_noised_pool_uses_the_table_when_one_is_given():
+    import numpy as np
+    import pandas as pd
+
+    from gaffer.optimize.scenarios import noised_pool
+
+    pool = pd.DataFrame({"code": [1], "ep": [{5: 1.0}]})
+    draw = float(np.random.default_rng(11).standard_normal())
+    out = noised_pool(pool, {(1, 5): 10.0}, np.random.default_rng(11),
+                      table=_sigma_table())
+    assert out["ep"].iloc[0][5] == pytest.approx(max(0.0, 1.0 + 0.90 * draw))
