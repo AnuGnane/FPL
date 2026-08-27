@@ -11,7 +11,7 @@ import pandas as pd
 import pytest
 
 from gaffer.set_pieces import (ATTACK_MULT_CLAMP, EP_CLAMP, GOAL_POINTS,
-                               LEAGUE_PENS_PG_FALLBACK, PEN_CONVERSION,
+                               LEAGUE_PENS_PG, PEN_CONVERSION,
                                PEN_XG, PenPriors, add_pen_ep,
                                attack_multipliers, pen_estimate, pen_notices,
                                pen_priors, pen_table, rescale_pen_after_blend,
@@ -137,13 +137,25 @@ def test_pen_priors_gives_the_sole_taker_the_whole_share():
     assert priors.share_hist[3] == pytest.approx(1.0)
 
 
-def test_pen_priors_falls_back_when_the_league_rate_is_implausible():
-    """Three penalties per team-game is a broken estimator, not a wild
-    season. The rate is bounded, and the shares are still usable."""
+def test_the_served_league_rate_is_the_constant_whatever_the_events_say():
+    """The event estimator cannot measure the absolute rate faithfully — it
+    loses about a quarter of real penalties to Understat coverage gaps and to
+    the xg-disagreement tail — so the served number is the constant, not a
+    fit. Shares, a ratio, still come from the events."""
     hist = _hist()
+    assert pen_priors(hist).league_pens_pg == LEAGUE_PENS_PG
     hist["xg"] = hist["xg"] + 3.0 * PEN_XG
-    priors = pen_priors(hist)
-    assert priors.league_pens_pg == LEAGUE_PENS_PG_FALLBACK
+    assert pen_priors(hist).league_pens_pg == LEAGUE_PENS_PG
+
+
+def test_the_fitted_rate_is_still_computed_and_printed_as_a_drift_notice(
+        capsys):
+    """The fit is not served, but it is the only instrument that would show a
+    future season's rate moving, so it is printed."""
+    pen_priors(_hist())
+    out = capsys.readouterr().out
+    assert "estimated league pens/game" in out
+    assert f"serving the constant {LEAGUE_PENS_PG}" in out
 
 
 def test_a_player_with_no_history_has_no_share_at_all():
@@ -155,7 +167,16 @@ def test_a_player_with_no_history_has_no_share_at_all():
     assert priors.share_hist.get(999, 0.0) == 0.0
 
 
-def test_the_league_rate_divides_only_by_team_games_understat_covered():
+def _estimated_rate(hist: pd.DataFrame, capsys) -> float:
+    """The drift notice's number — the fitted rate, which is no longer served
+    and so can only be read out of the log."""
+    capsys.readouterr()
+    pen_priors(hist)
+    line = capsys.readouterr().out
+    return float(line.split("estimated league pens/game ")[1].split()[0])
+
+
+def test_the_league_rate_divides_only_by_team_games_understat_covered(capsys):
     """A team-game with no Understat row can never contribute a penalty to
     the numerator, so counting it in the denominator would divide a real
     count of events by a fictional number of matches."""
@@ -165,8 +186,22 @@ def test_the_league_rate_divides_only_by_team_games_understat_covered():
     uncovered["opp_code"] = uncovered["opp_code"] + 100
     uncovered["us_npxg"] = float("nan")
     both = pd.concat([covered, uncovered], ignore_index=True)
-    assert pen_priors(both).league_pens_pg == pytest.approx(
-        pen_priors(covered).league_pens_pg)
+    assert _estimated_rate(both, capsys) == pytest.approx(
+        _estimated_rate(covered, capsys))
+
+
+def test_a_team_game_missing_fpl_xg_is_uncovered_too(capsys):
+    """The numerator needs both columns, so the denominator must require
+    both. A row with an Understat reading but no FPL ``xg`` can no more
+    produce a penalty event than one with neither."""
+    covered = _hist()
+    half = covered.copy()
+    half["team_code"] = half["team_code"] + 100
+    half["opp_code"] = half["opp_code"] + 100
+    half["xg"] = float("nan")
+    both = pd.concat([covered, half], ignore_index=True)
+    assert _estimated_rate(both, capsys) == pytest.approx(
+        _estimated_rate(covered, capsys))
 
 
 def test_pen_priors_returns_none_without_the_xg_columns():

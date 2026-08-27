@@ -39,15 +39,19 @@ Five bins: the great mass of bench fodder under 2, then a bin per point up to
 decisions actually are, and where a mis-stated σ costs a captaincy.
 """
 
-XMINS_EDGES = [0.0, 30.0, 60.0, 85.0]
+XMINS_EDGES = [0.0, 30.0, 60.0, 80.0]
 """Left edges of the expected-minutes bins.
 
-60 is the threshold the game itself cares about (the appearance step) and 85
-is where "nailed" starts. Four bins, not five: ``xmins_by_player_gw`` computes
-``90 p_play p60 + 45 p_play (1 - p60)``, which cannot exceed 90, so the 90.1
-edge shipped in v6 was unreachable and left a fifth of the grid permanently
-empty — every nailed-on starter crowded into one bin below it while a whole
-column of the table was fitted on nothing.
+60 is the threshold the game itself cares about (the appearance step) and 80
+is where "nailed" starts. The top edge is set by what the binned quantity can
+actually reach: :func:`bin_index` returns the largest ``i`` with
+``value >= edges[i]``, and ``xmins_by_player_gw`` computes
+``p_play * (45 + 45 * p60)``, whose live ceiling is about 84.8 — clearing 85
+would need ``p60`` around 0.91 at ``p_play`` of 1. So every edge above ~85 was
+unreachable, and the last bin of the grid was fitted on nothing while every
+nailed-on starter crowded into the bin below it. At 80 the top bin is the
+populated "nailed" one: 12.6% of the live board, 2682 observations of the fit
+frame.
 """
 
 MIN_CELL_OBS = 100

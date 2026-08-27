@@ -98,18 +98,25 @@ a few hundredths; a spot kick produces ~0.79. Nothing real lives in between,
 so the threshold is set where the two populations do not overlap.
 """
 
-LEAGUE_PENS_PG_BOUNDS = (0.08, 0.20)
-"""Plausible range for league penalties per team-game.
+LEAGUE_PENS_PG = 0.13
+"""League penalties per team-game. A constant, and always the served number.
 
-The real number is around 0.13 (roughly 100 penalties across 760 team-games).
-Tightened in v6: the event-based estimator lands inside a much narrower band
-than the accumulating one did, so a wide bound would let a broken fit through
-rather than catch it. An estimate outside this range means the estimator has
-gone wrong — a season with no Understat coverage, say — and the fallback is
-used instead.
+Roughly 100 penalties across 760 team-games, which is what the Premier League
+has run at for years. It is *not* fitted, because the event estimator here
+cannot measure an absolute rate faithfully: on the real three-season window it
+returns 0.097/game against a true ~0.13, losing about a quarter of the
+penalties to Understat coverage gaps and to the ±0.3 tail of xG-model
+disagreement, which pushes genuine spot kicks under
+:data:`PEN_EVENT_MIN_XG`. Lowering that threshold recovers the number without
+recovering the measurement — the sweep runs 0.5 -> 0.097, 0.35 -> 0.123,
+0.30 -> 0.140 — so tuning it would only be fitting the constant back through
+a biased instrument.
+
+The estimator is kept for ``share_hist``, where the same detection loss sits
+in the numerator and the denominator of a within-club ratio and cancels. The
+fitted rate is still computed and printed as a drift notice, so a future
+season moving away from 0.13 would be visible rather than silent.
 """
-
-LEAGUE_PENS_PG_FALLBACK = 0.13
 
 MAX_PENS_PER_MATCH = 2.0
 """Per-match cap on the estimator. Three penalties in a match happens about
@@ -147,7 +154,7 @@ class PenPriors:
     """
 
     share_hist: dict[int, float] = field(default_factory=dict)
-    league_pens_pg: float = LEAGUE_PENS_PG_FALLBACK
+    league_pens_pg: float = LEAGUE_PENS_PG
     team_games: int = 0
 
 
@@ -223,24 +230,24 @@ def pen_priors(hist: pd.DataFrame | None) -> PenPriors | None:
         # A player who changed clubs mid-window keeps his best club's share
         # rather than an average diluted by a club he no longer plays for.
         share = joined.groupby("code")["share"].max().clip(0.0, 1.0)
-        # Only team-games Understat actually covered can contribute a penalty
-        # to the numerator, so only they may sit in the denominator. Counting
-        # uncovered team-games too would divide a real count of events by a
-        # fictional number of matches and understate the league rate.
-        covered = window[pd.to_numeric(window["us_npxg"],
-                                       errors="coerce").notna()]
+        # Only team-games a penalty *could* have been detected in may sit in
+        # the denominator, and detection needs both columns: the event count
+        # is a gap between FPL's xg and Understat's npxg, so a row missing
+        # either one contributes nothing to the numerator and counting it
+        # below would divide a real count of events by a fictional number of
+        # matches. The rate itself is no longer served (see LEAGUE_PENS_PG) —
+        # this only keeps the drift notice honest.
+        covered = window[
+            pd.to_numeric(window["xg"], errors="coerce").notna()
+            & pd.to_numeric(window["us_npxg"], errors="coerce").notna()]
         games = covered[["season_idx", "gw", "team_code",
                          "opp_code"]].drop_duplicates()
         per_game = float(pens.sum()) / max(1, len(games))
-        if not (LEAGUE_PENS_PG_BOUNDS[0] <= per_game
-                <= LEAGUE_PENS_PG_BOUNDS[1]):
-            print(f"set pieces: league penalty rate {per_game:.3f}/game is "
-                  f"outside {LEAGUE_PENS_PG_BOUNDS} — using "
-                  f"{LEAGUE_PENS_PG_FALLBACK}")
-            per_game = LEAGUE_PENS_PG_FALLBACK
+        print(f"set pieces: estimated league pens/game {per_game:.3f} from "
+              f"events; serving the constant {LEAGUE_PENS_PG}")
         return PenPriors(
             share_hist={int(k): float(v) for k, v in share.items()},
-            league_pens_pg=float(per_game), team_games=int(len(games)))
+            league_pens_pg=LEAGUE_PENS_PG, team_games=int(len(games)))
     except Exception as exc:  # noqa: BLE001 — never blocks a prediction
         print(f"set pieces: no penalty history ({exc})")
         return None

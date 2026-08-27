@@ -74,6 +74,17 @@ def test_fit_sigmas_carries_the_edges_it_was_fitted_on():
     assert out["min_cell_obs"] == MIN_CELL_OBS
 
 
+def test_the_top_xmins_bin_is_reachable_by_a_real_xmins_value():
+    """``bin_index`` returns the largest edge a value clears, so an edge above
+    what ``xmins_by_player_gw`` can produce leaves the last bin permanently
+    empty. The live ceiling is ~84.8 — 85 was unreachable, 80 is where the
+    nailed population actually sits."""
+    from gaffer.calibrate_noise import bin_index
+
+    assert XMINS_EDGES[-1] == 80.0
+    assert bin_index(84.8, XMINS_EDGES) == len(XMINS_EDGES) - 1
+
+
 def test_rows_with_no_xmins_are_dropped_rather_than_binned_at_zero():
     """A player with no minutes prediction is not a player expected to play
     zero minutes, and binning him as one would poison the 0-30 cell."""
