@@ -27,7 +27,6 @@ router = APIRouter(prefix="/api", tags=["components"])
 TERMS: list[tuple[str, str]] = [
     ("ep_minutes", "Minutes"),
     ("ep_goals", "Goals"),
-    ("ep_pen_taker", "Penalty duty"),
     ("ep_assists", "Assists"),
     ("ep_cs", "Clean sheet"),
     ("ep_gc", "Goals conceded"),
@@ -40,10 +39,13 @@ TERMS: list[tuple[str, str]] = [
 ]
 """Component column -> the label the panel prints.
 
-``ep_pen_taker`` sits directly under Goals because it *is* part of the goals
-term — it was folded into ``e_goals`` before ``assemble_ep`` ever ran — and
-showing it anywhere else would imply it is a separate line of the scoring
-table, which it is not.
+These are the *additive* terms, and they sum to ``ep``. ``ep_pen_taker`` is
+deliberately not among them: the penalty increment was folded into
+``e_goals`` before ``assemble_ep`` ever ran, so it is already inside the Goals
+line. Listing it here as a thirteenth row double-counted it, and made a panel
+whose whole promise is "these numbers add up to that number" stop adding up
+for exactly the players anyone would check. It travels instead as
+``ComponentFixture.pen_taker``, an annotation the panel prints *under* Goals.
 """
 
 
@@ -53,6 +55,17 @@ def _num(value) -> float:
     except (TypeError, ValueError):
         return 0.0
     return 0.0 if math.isnan(out) else out
+
+
+def _text(value) -> str:
+    """A cell as a string, with a missing one reading as empty.
+
+    ``str(value or "")`` is not this: a float NaN is *truthy*, so a player
+    whose opponent or club failed to join came out of the panel labelled
+    "nan". The row is right to survive the gap — a missing name is not a
+    reason to 500 — but it has to survive it as a blank.
+    """
+    return "" if value is None or pd.isna(value) else str(value)
 
 
 @router.get("/components/{gw}", response_model=ComponentsBreakdown)
@@ -83,12 +96,14 @@ def components(gw: int,
                 getattr(row, col, 0.0)), 2))
                 for col, label in TERMS
                 if round(_num(getattr(row, col, 0.0)), 2) != 0.0]
+            pen = round(_num(getattr(row, "ep_pen_taker", 0.0)), 2)
             fixtures.append(ComponentFixture(
-                gw=int(row.gw), opponent=str(row.opp_name or ""),
+                gw=int(row.gw), opponent=_text(row.opp_name),
                 home=bool(_num(row.was_home)),
                 kickoff_time=(None if pd.isna(row.kickoff_time)
                               else str(row.kickoff_time)),
                 components=terms,
+                pen_taker=(pen if pen != 0.0 else None),
                 minutes=MinutesOutput(p_play=round(_num(row.p_play), 3),
                                       p60=round(_num(row.p60), 3)),
                 ep=round(_num(row.ep), 2)))
@@ -96,7 +111,7 @@ def components(gw: int,
         players.append(ComponentPlayer(
             code=int(code), name=str(head["name"]),
             position=str(head["position"]),
-            team_name=str(head["team_name"] or ""),
+            team_name=_text(head["team_name"]),
             ep=round(float(sum(f.ep for f in fixtures)), 2),
             fixtures=fixtures))
     return ComponentsBreakdown(gw=int(gw), players=players)

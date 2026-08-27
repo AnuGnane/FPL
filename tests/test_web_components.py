@@ -68,19 +68,66 @@ def test_each_fixture_carries_its_additive_terms(client, tmp_path):
     labels = {c["label"]: c["points"] for c in fixture["components"]}
     assert labels["Goals"] == 2.6
     assert labels["Minutes"] == 1.9
-    assert labels["Penalty duty"] == 0.31
     assert fixture["minutes"]["p_play"] == 0.96
     assert fixture["home"] is True
 
 
-def test_a_zero_term_is_left_out_of_the_breakdown(client, tmp_path):
-    """A row of zeroes is noise in a panel whose whole job is showing what
-    moved. Penalty duty is the common case: 700 of 750 players have none."""
+def test_the_listed_terms_sum_to_the_expected_points(client, tmp_path):
+    """The panel's whole promise. Penalty duty was listed as a thirteenth
+    additive row while already sitting inside Goals, so the one player anyone
+    would check was the one whose terms did not add up."""
+    # 1.9 + 2.6 + 1.0 + 0.6 - 0.05, with the 0.31 of penalty duty already
+    # inside the 2.6 of goals.
+    _write(tmp_path, [_row(100, "Salah", pen=0.31, ep=6.05)])
+    fixture = client.get("/api/components/5").json()["players"][0][
+        "fixtures"][0]
+    total = sum(c["points"] for c in fixture["components"])
+    assert total == pytest.approx(fixture["ep"], abs=0.01)
+
+
+def test_penalty_duty_rides_along_as_an_annotation_not_a_term(client,
+                                                              tmp_path):
+    """It is already folded into e_goals, so it is reported beside the terms
+    rather than among them — the panel prints it under Goals."""
+    _write(tmp_path, [_row(100, "Salah", pen=0.31)])
+    fixture = client.get("/api/components/5").json()["players"][0][
+        "fixtures"][0]
+    assert fixture["pen_taker"] == 0.31
+    assert all(c["label"] != "Penalty duty"
+               for c in fixture["components"])
+
+
+def test_a_player_with_no_penalty_duty_carries_no_annotation(client,
+                                                             tmp_path):
+    """None rather than 0.0: 700 of 750 players have no term at all, and the
+    panel has to tell that from a term that rounded away."""
     _write(tmp_path, [_row(100, "Salah", pen=0.0)])
     fixture = client.get("/api/components/5").json()["players"][0][
         "fixtures"][0]
-    assert all(c["label"] != "Penalty duty"
-               for c in fixture["components"])
+    assert fixture["pen_taker"] is None
+
+
+def test_a_zero_term_is_left_out_of_the_breakdown(client, tmp_path):
+    """A row of zeroes is noise in a panel whose whole job is showing what
+    moved."""
+    _write(tmp_path, [_row(100, "Salah")])
+    fixture = client.get("/api/components/5").json()["players"][0][
+        "fixtures"][0]
+    assert all(c["points"] != 0.0 for c in fixture["components"])
+
+
+def test_a_missing_opponent_or_club_reads_as_blank_not_as_nan(client,
+                                                              tmp_path):
+    """A float NaN is truthy, so ``str(value or "")`` printed the word "nan"
+    at the reader. The row is right to survive a failed join; it has to
+    survive it as an empty string."""
+    row = _row(100, "Salah")
+    row["opp_name"] = float("nan")
+    row["team_name"] = float("nan")
+    _write(tmp_path, [row])
+    player = client.get("/api/components/5").json()["players"][0]
+    assert player["team_name"] == ""
+    assert player["fixtures"][0]["opponent"] == ""
 
 
 def test_components_can_be_filtered_to_the_codes_the_page_shows(client,

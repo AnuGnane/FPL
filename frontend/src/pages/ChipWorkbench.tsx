@@ -15,6 +15,17 @@ const LABELS: Record<string, string> = {
   '3xc': 'Triple Captain',
 }
 
+// The chip table speaks the solver's names; the What-If request speaks the
+// API's two-letter codes. A row the mapping does not know is left alone
+// rather than mapped to 'none', which would silently re-solve without a chip
+// and look like the chip was worth nothing.
+const CHIP_CODES: Record<string, WhatIfRequest['chip']> = {
+  wildcard: 'wc',
+  bboost: 'bb',
+  freehit: 'fh',
+  '3xc': 'tc',
+}
+
 // A chip's gain is only ever read against its own threshold, so the bar is
 // scaled to the threshold rather than to the largest gain on the table: a
 // wildcard worth 9 against a bar of 8 and a bench boost worth 3 against a bar
@@ -89,6 +100,7 @@ export default function ChipWorkbench() {
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<'table' | 'wildcard'>('table')
   const [request, setRequest] = useState<WhatIfRequest>(EMPTY)
+  const [chip, setChip] = useState<string>('wildcard')
   const [invalid, setInvalid] = useState<string | null>(null)
   const job = useJob()
 
@@ -100,6 +112,15 @@ export default function ChipWorkbench() {
       else setError(e.message)
     })
   }, [])
+
+  // Picking a chip is the whole point of the page: "Try it" has to re-solve
+  // the chip the reader is looking at, not the wildcard it happened to open
+  // on.
+  const pick = (name: string) => {
+    setChip(name)
+    const code = CHIP_CODES[name]
+    if (code) setRequest((r) => ({ ...r, chip: code }))
+  }
 
   const solve = async () => {
     setInvalid(null)
@@ -139,7 +160,7 @@ export default function ChipWorkbench() {
         <button onClick={() => setTab('table')} disabled={tab === 'table'}>
           Chip table
         </button>
-        <button onClick={() => setTab('wildcard')}
+        <button onClick={() => { setTab('wildcard'); pick('wildcard') }}
                 disabled={tab === 'wildcard'}>
           Wildcard
         </button>
@@ -160,8 +181,14 @@ export default function ChipWorkbench() {
             <tbody>
               {data.chips.map((row) => (
                 <tr key={`${row.chip}-${row.gw}`}
-                    className={row.play_now ? 'changed' : undefined}>
-                  <td>{LABELS[row.chip] ?? row.chip}</td>
+                    className={row.play_now ? 'changed' : undefined}
+                    aria-selected={row.chip === chip}>
+                  <td>
+                    <button className="player-link"
+                            onClick={() => pick(row.chip)}>
+                      {LABELS[row.chip] ?? row.chip}
+                    </button>
+                  </td>
                   <td>GW{row.gw}</td>
                   <td>{row.gain}</td>
                   <td>{row.threshold ?? '—'}</td>
@@ -182,8 +209,9 @@ export default function ChipWorkbench() {
       <div className="card">
         <h2>Try it</h2>
         <p className="muted">
-          A front door onto the What-If Lab with the chip prefilled — the
-          same solver, the same baseline.
+          A front door onto the What-If Lab with{' '}
+          <strong>{LABELS[chip] ?? chip}</strong> prefilled — the same solver,
+          the same baseline. Pick another row above to try that one instead.
         </p>
         <ConstraintsPanel value={request} onChange={setRequest} />
         <button onClick={solve} disabled={busy}>

@@ -26,22 +26,29 @@ router = APIRouter(prefix="/api", tags=["chips"])
 NO_RUN = "no advice on disk yet — run `gaffer advise` first"
 
 
-def _refs(codes, meta: dict[int, dict]) -> list[SquadPlayerRef]:
+def _refs(codes, meta: dict[int, dict],
+          price_key: str = "cost") -> list[SquadPlayerRef]:
     """Codes -> rendered players, in code order.
 
-    A code the saved pool no longer knows is shown by its number rather than
-    dropped or raised on: a solve state and an advice file can disagree after
-    a partial re-run, and a workbench that 500s because one player moved club
-    is worse than one that says "999".
+    ``price_key`` is ``"sell"`` for the players a wildcard drops and ``"cost"``
+    for everyone else, because those are two different numbers and the diff
+    is about money. A player bought at 7.0 and now worth 8.0 sells for 7.5 —
+    FPL takes half the rise — so pricing the Out column at market value
+    overstates what the wildcard actually frees up, and the three columns
+    stop adding to the budget the solve was run against. Kept and In are
+    priced at ``cost`` because that is what they cost to hold or to buy.
     """
     out = []
     for code in sorted(int(c) for c in codes):
         row = meta.get(code)
+        price = 0.0
+        if row is not None:
+            price = round(float(row.get(price_key, row["cost"])) / 10, 1)
         out.append(SquadPlayerRef(
             code=code,
             name=str(row["name"]) if row else str(code),
             position=str(row["position"]) if row else "",
-            price=round(float(row["cost"]) / 10, 1) if row else 0.0,
+            price=price,
             ep=round(float(row["ep"]), 2) if row else 0.0))
     return out
 
@@ -70,6 +77,7 @@ def chips() -> ChipsWorkbench:
         if code not in meta or int(row.gw) == first_gw:
             meta[code] = {"name": row.name, "position": row.position,
                           "cost": row.cost,
+                          "sell": getattr(row, "sell", row.cost),
                           "ep": row.ep_raw if int(row.gw) == first_gw
                           else meta.get(code, {}).get("ep", row.ep_raw)}
 
@@ -96,6 +104,6 @@ def chips() -> ChipsWorkbench:
                                     2),
             recommend=bool(wc.get("recommend", False)),
             kept=_refs(squad & owned, meta),
-            dropped=_refs(owned - squad, meta),
+            dropped=_refs(owned - squad, meta, price_key="sell"),
             added=_refs(squad - owned, meta))
     return ChipsWorkbench(gw=gw, chips=rows, wildcard=wildcard)

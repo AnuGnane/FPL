@@ -2,6 +2,7 @@
 a real advice JSON, a real solve state, and a two-row events table."""
 
 import json
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -307,6 +308,27 @@ def test_advice_diff_compares_the_two_newest_runs_of_the_same_gw(client,
     assert body["captain_to"]["name"] == "Haaland"
     assert body["expected_pts_delta"] == 2.5
     assert body["previous_at"] < body["current_at"]
+
+
+def test_advice_diff_survives_a_history_file_it_cannot_read(client,
+                                                            tmp_path):
+    """The strip promises never to be an error. A file listed a moment ago and
+    unreadable now — a rerun rotating history underneath the read, a lost
+    permission — is exactly as much of a "no diff to show" as malformed JSON,
+    and an OSError escaping here would 500 the whole This Week page."""
+    from datetime import datetime, timezone
+
+    _advice_on_disk(tmp_path)
+    _history(tmp_path, 5, datetime(2026, 9, 3, 9, 0, tzinfo=timezone.utc))
+    written = _history(tmp_path, 5,
+                       datetime(2026, 9, 4, 9, 0, tzinfo=timezone.utc))
+    Path(written).chmod(0o000)
+    try:
+        body = client.get("/api/advice/diff").json()
+    finally:
+        Path(written).chmod(0o644)
+    assert body["available"] is False
+    assert body["gw"] == 5
 
 
 def test_advice_diff_ignores_runs_of_a_different_gameweek(client, tmp_path):

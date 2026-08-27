@@ -449,6 +449,13 @@ export interface ComponentFixture {
   home: boolean
   kickoff_time: string | null
   components: Component[]
+  /**
+   * How much of the Goals term is penalty duty, when any of it is. Not a
+   * component: it was folded into e_goals before the terms were assembled, so
+   * it is already inside Goals and the panel prints it as an annotation under
+   * that row rather than as a line of its own.
+   */
+  pen_taker: number | null
   minutes: { p_play: number; p60: number }
   ep: number
 }

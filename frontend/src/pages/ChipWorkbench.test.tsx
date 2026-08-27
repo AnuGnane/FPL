@@ -83,8 +83,8 @@ describe('ChipWorkbench', () => {
 
   it('lays the wildcard squad out as kept, out and in', async () => {
     render(<MemoryRouter><ChipWorkbench /></MemoryRouter>)
-    await userEvent.click(await screen.findByRole('button',
-      { name: /wildcard/i }))
+    await userEvent.click((await screen.findAllByRole('button',
+      { name: /wildcard/i }))[0])
     expect(screen.getByText('Salah')).toBeInTheDocument()
     expect(screen.getByText('Watkins')).toBeInTheDocument()
     expect(screen.getByText('Wirtz')).toBeInTheDocument()
@@ -101,6 +101,27 @@ describe('ChipWorkbench', () => {
     expect((body as { chip: string }).chip).toBe('wc')
   })
 
+  it('re-solves the chip whose row was picked, not the default', async () => {
+    // The page opened on the wildcard; picking Bench Boost has to reach the
+    // solver, or "Try it" answers a question about a different chip than the
+    // one the reader is looking at.
+    render(<MemoryRouter><ChipWorkbench /></MemoryRouter>)
+    await userEvent.click(await screen.findByRole('button',
+      { name: /bench boost/i }))
+    await userEvent.click(screen.getByRole('button', { name: /re-solve/i }))
+    await waitFor(() => expect(apiPost).toHaveBeenCalled())
+    expect((apiPost.mock.calls[0][1] as { chip: string }).chip).toBe('bb')
+  })
+
+  it('maps every chip the table can name onto its request code', async () => {
+    render(<MemoryRouter><ChipWorkbench /></MemoryRouter>)
+    await userEvent.click(await screen.findByRole('button',
+      { name: /free hit/i }))
+    await userEvent.click(screen.getByRole('button', { name: /re-solve/i }))
+    await waitFor(() => expect(apiPost).toHaveBeenCalled())
+    expect((apiPost.mock.calls[0][1] as { chip: string }).chip).toBe('fh')
+  })
+
   it('shows an empty state when no advice has been run', async () => {
     apiGet.mockRejectedValue(new FakeApiError(
       404, 'no advice on disk yet — run `gaffer advise` first'))
@@ -115,8 +136,8 @@ describe('ChipWorkbench', () => {
         ? Promise.resolve({ ...CHIPS, wildcard: null })
         : Promise.resolve(PLAYERS)))
     render(<MemoryRouter><ChipWorkbench /></MemoryRouter>)
-    await userEvent.click(await screen.findByRole('button',
-      { name: /wildcard/i }))
+    await userEvent.click((await screen.findAllByRole('button',
+      { name: /wildcard/i }))[0])
     expect(screen.getByText(/no wildcard available/i)).toBeInTheDocument()
   })
 })

@@ -35,8 +35,8 @@ const COMPONENTS = {
         components: [
           { label: 'Minutes', points: 1.9 },
           { label: 'Goals', points: 2.6 },
-          { label: 'Penalty duty', points: 0.31 },
         ],
+        pen_taker: 0.31,
         minutes: { p_play: 0.96, p60: 0.9 },
         ep: 6.4,
       }],
@@ -80,8 +80,46 @@ describe('WhyPanel', () => {
       { name: /salah/i }))
     expect(screen.getByText('Goals')).toBeInTheDocument()
     expect(screen.getByText('2.6')).toBeInTheDocument()
-    expect(screen.getByText('Penalty duty')).toBeInTheDocument()
     expect(screen.getByText(/vs ARS/)).toBeInTheDocument()
+  })
+
+  it('annotates Goals with the penalty duty inside it', async () => {
+    // Not a row of its own: the increment was folded into e_goals before the
+    // terms were assembled, so listing it beside them would stop the column
+    // summing to the xPts above it.
+    render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
+    await userEvent.click(await screen.findByRole('button',
+      { name: /salah/i }))
+    expect(screen.getByText(/of which penalty duty \+?0\.31/))
+      .toBeInTheDocument()
+    expect(screen.queryByText('Penalty duty')).not.toBeInTheDocument()
+  })
+
+  it('says nothing at all about a player with no penalty duty', async () => {
+    apiGet.mockImplementation((path: string) => (
+      path.startsWith('/api/components')
+        ? Promise.resolve({
+          ...COMPONENTS,
+          players: [{
+            ...COMPONENTS.players[0],
+            fixtures: [{ ...COMPONENTS.players[0].fixtures[0],
+                         pen_taker: null }],
+          }],
+        })
+        : Promise.resolve(DIFF)))
+    render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
+    await userEvent.click(await screen.findByRole('button',
+      { name: /salah/i }))
+    expect(screen.queryByText(/penalty duty/i)).not.toBeInTheDocument()
+  })
+
+  it('asks for the diff of the gameweek the page is showing', async () => {
+    // Not whatever the server last wrote: This Week can be asked for an
+    // explicit gameweek, and a strip comparing another week's two runs
+    // answers a question nobody asked.
+    render(<MemoryRouter><WhyPanel gw={7} codes={CODES} /></MemoryRouter>)
+    await screen.findByText('Salah')
+    expect(apiGet).toHaveBeenCalledWith('/api/advice/diff?gw=7')
   })
 
   it('shows what changed since the previous run', async () => {

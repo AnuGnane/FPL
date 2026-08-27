@@ -358,6 +358,16 @@ class ComponentFixture(BaseModel):
     home: bool
     kickoff_time: str | None
     components: list[Component]
+    pen_taker: float | None = None
+    """How much of the Goals term is penalty duty, when any of it is.
+
+    Not a component: the increment was folded into ``e_goals`` before
+    ``assemble_ep`` ran, so it is already inside ``components``' Goals row and
+    listing it beside them would stop them summing to ``ep``. It rides along
+    as an annotation the panel prints under Goals, and is ``None`` — not 0.0 —
+    for the great majority of rows that have no penalty duty at all, so the
+    panel can tell "no term" from "a term that rounded to zero".
+    """
     minutes: MinutesOutput
     ep: float
 

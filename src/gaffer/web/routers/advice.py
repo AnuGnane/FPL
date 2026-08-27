@@ -125,7 +125,11 @@ def diff(gw: int | None = None) -> AdviceDiff:
     try:
         previous = json.loads(previous_path.read_text())
         current = json.loads(current_path.read_text())
-    except ValueError as exc:
+    except (OSError, ValueError) as exc:
+        # OSError as well as ValueError: the file was listed a moment ago, so
+        # a rerun rotating history underneath the read, or a permission the
+        # server lost, is exactly as much of a "no diff to show" as malformed
+        # JSON is — and the strip promises never to be an error.
         print(f"advice history unreadable, no diff shown: {exc}")
         return AdviceDiff(gw=int(target), available=False)
     out = diff_advice(previous, current)

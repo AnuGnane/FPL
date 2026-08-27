@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { apiGet } from '../api/client'
 import type { AdviceDiff, ComponentPlayer, ComponentsBreakdown } from '../types'
 
@@ -64,10 +64,26 @@ function PlayerRow({ player }: { player: ComponentPlayer }) {
             <table>
               <tbody>
                 {fixture.components.map((c) => (
-                  <tr key={c.label}>
-                    <td>{c.label}</td>
-                    <td>{c.points}</td>
-                  </tr>
+                  <Fragment key={c.label}>
+                    <tr>
+                      <td>{c.label}</td>
+                      <td>{c.points}</td>
+                    </tr>
+                    {/* Penalty duty is already inside Goals — it was folded
+                        into e_goals before the terms were assembled — so it
+                        annotates that row instead of adding a row, which
+                        would stop the column summing to the xPts above. */}
+                    {c.label === 'Goals' && fixture.pen_taker !== null
+                      && fixture.pen_taker !== undefined && (
+                      <tr>
+                        <td className="muted" colSpan={2}>
+                          of which penalty duty{' '}
+                          {fixture.pen_taker >= 0 ? '+' : ''}
+                          {fixture.pen_taker}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
@@ -96,7 +112,11 @@ export default function WhyPanel({ gw, codes }: { gw: number
     const query = `?codes=${codes.join(',')}`
     apiGet<ComponentsBreakdown>(`/api/components/${gw}${query}`)
       .then(setData).catch(() => setData(null))
-    apiGet<AdviceDiff>('/api/advice/diff').then(setDiff).catch(() => setDiff(null))
+    // The gw the page is showing, not whatever the server last wrote: This
+    // Week can be asked for an explicit gameweek, and a strip comparing a
+    // different week's two runs answers a question nobody asked.
+    apiGet<AdviceDiff>(`/api/advice/diff?gw=${gw}`)
+      .then(setDiff).catch(() => setDiff(null))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gw, codes.join(',')])
 

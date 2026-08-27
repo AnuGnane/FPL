@@ -47,7 +47,7 @@ def client(tmp_path, monkeypatch):
     return TestClient(create_app(), raise_server_exceptions=False)
 
 
-def _write(tmp_path, advice=None, owned=(100, 101)):
+def _write(tmp_path, advice=None, owned=(100, 101), pool=None):
     (tmp_path / "reports").mkdir(exist_ok=True)
     save_solve_state(SolveState(
         gw=5, gws=[5, 6, 7], deadline="2026-09-05T10:00:00Z",
@@ -57,7 +57,7 @@ def _write(tmp_path, advice=None, owned=(100, 101)):
         opt={"decay": 0.9, "bench_weight": 0.1, "vice_weight": 0.1,
              "ft_value": 1.0, "itb_value": 0.1, "hit_cost": 4,
              "horizon": 3},
-        pool=_pool()))
+        pool=_pool() if pool is None else pool))
     (tmp_path / "reports" / "gw5-advice.json").write_text(
         json.dumps(advice if advice is not None else ADVICE))
 
@@ -94,6 +94,22 @@ def test_chips_resolves_the_wildcard_squad_into_a_three_way_diff(client,
     added = wildcard["added"][0]
     assert added["price"] == 8.5 and added["ep"] == 5.2
     assert added["position"] == "MID"
+
+
+def test_the_dropped_column_is_priced_at_what_it_sells_for(client, tmp_path):
+    """FPL takes half of a price rise back on the way out, so a player who
+    cost 9.0 and is now worth 10.0 sells for 9.5. Pricing the Out column at
+    market value overstates what the wildcard actually frees up, and the
+    three columns stop adding to the budget the solve ran against."""
+    pool = _pool()
+    pool.loc[pool["code"] == 101, "cost"] = 100
+    pool.loc[pool["code"] == 101, "sell"] = 95
+    _write(tmp_path, pool=pool)
+    wildcard = client.get("/api/chips").json()["wildcard"]
+    assert wildcard["dropped"][0]["price"] == 9.5
+    # Kept and In are what they cost to hold and to buy, not what they fetch.
+    assert wildcard["kept"][0]["price"] == 13.0
+    assert wildcard["added"][0]["price"] == 8.5
 
 
 def test_chips_without_a_wildcard_assessment_is_a_null_not_an_error(client,
