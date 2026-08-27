@@ -30,9 +30,11 @@ import pandas as pd
 
 from gaffer.api.client import FPLClient
 from gaffer.assets import load_decision_priors
-from gaffer.artifacts import (SolveState, components_frame, data_warning,
-                              ingested_through, pool_rows, save_components,
-                              save_snapshots, save_solve_state)
+from gaffer.artifacts import (SolveState, append_advice_history,
+                              components_frame, data_warning,
+                              ingested_through, pool_rows, save_availability,
+                              save_components, save_snapshots,
+                              save_solve_state)
 from gaffer.config import Config
 from gaffer.data import store
 from gaffer.data.bootstrap import (build_events, build_players, build_teams,
@@ -931,4 +933,10 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         opt={**opt_kw, "horizon": cfg.horizon,
              "decision_priors": bool(cfg.decision_priors)},
         pool=pool_rows(pool, players, owned_now, ep_by, gws)))
+    # Two artifacts nothing in the pipeline reads: the availability frame this
+    # run predicted on, and the payload itself, appended to a pruned log. Both
+    # exist so the UI can answer "why?" and "what changed since Tuesday?"
+    # offline, and both swallow their own failures.
+    save_availability(avail, gw)
+    append_advice_history(asdict(advice), gw)
     return advice

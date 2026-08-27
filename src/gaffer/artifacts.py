@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -372,3 +373,200 @@ def save_snapshots(players: pd.DataFrame, teams: pd.DataFrame,
     store.save(teams, "live/teams.parquet")
     store.save(events, "live/events.parquet")
     store.save(fixtures, "live/fixtures_all.parquet")
+
+
+AVAILABILITY_COLS = ["code", "status", "chance_of_playing", "injury_type",
+                     "expected_return_gw", "p_start_hint", "source",
+                     "fetched_at"]
+"""The availability frame's columns, in the order
+:func:`gaffer.data.news.normalize.availability_frame` produces them.
+
+A flags-only run (news disabled, every source down) produces the first three
+and nothing else, so the missing five are filled with nulls on the way to
+disk: the news endpoint reads one shape whatever the week did.
+"""
+
+
+def availability_path(gw: int) -> Path:
+    return REPORTS / f"availability_gw{gw}.parquet"
+
+
+def save_availability(avail, gw: int) -> Path | None:
+    """Snapshot the availability frame this run predicted on.
+
+    The only record of *why* the news layer moved a player: the shadow log
+    banks what changed, and this banks the evidence that changed it. Nothing
+    else reads the frame after ``predict_components`` consumes it.
+
+    Never raises and returns ``None`` when there is nothing worth keeping —
+    it is instrumentation for a UI panel, and an advise run that died of its
+    own snapshot would be a much worse trade than a hidden panel.
+    """
+    try:
+        if avail is None or len(avail) == 0:
+            return None
+        if "code" not in avail.columns:
+            return None
+        out = avail.copy()
+        for col in AVAILABILITY_COLS:
+            if col not in out.columns:
+                out[col] = None
+        out = out[AVAILABILITY_COLS].copy()
+        # Parquet wants a settled dtype per column and an all-None object
+        # column has none. Strings become nullable strings and the three
+        # numeric columns become floats, so a flags-only week and a
+        # news-heavy one write the same schema.
+        for col in ("status", "injury_type", "source", "fetched_at"):
+            out[col] = out[col].astype("object").where(
+                out[col].notna(), None).astype("string")
+        for col in ("chance_of_playing", "expected_return_gw",
+                    "p_start_hint"):
+            out[col] = pd.to_numeric(out[col], errors="coerce")
+        out["code"] = pd.to_numeric(out["code"], errors="coerce").astype(
+            "int64")
+        REPORTS.mkdir(exist_ok=True)
+        path = availability_path(gw)
+        out.to_parquet(path, index=False)
+        return path
+    except Exception as exc:  # noqa: BLE001 — instrumentation never blocks
+        print(f"availability snapshot not written: {exc}")
+        return None
+
+
+def load_availability(gw: int) -> pd.DataFrame | None:
+    """The snapshot for ``gw``, or ``None``.
+
+    ``None`` rather than a domain error, unlike :func:`load_components`: an
+    absent snapshot means the panel hides, and there is nothing for the user
+    to go and run.
+    """
+    path = availability_path(gw)
+    if not path.exists():
+        return None
+    try:
+        return pd.read_parquet(path)
+    except Exception as exc:  # noqa: BLE001
+        print(f"availability snapshot unreadable: {exc}")
+        return None
+
+
+ADVICE_HISTORY = REPORTS / "advice_history"
+
+ADVICE_HISTORY_KEEP = 20
+"""Runs kept on disk.
+
+Enough to see a week's worth of re-runs and the two or three weeks before it,
+few enough that the directory never becomes an archive nobody prunes. The diff
+only ever reads the newest two of one gameweek.
+"""
+
+
+def _history_stamp(path: Path) -> str:
+    """The ISO timestamp out of ``gw{N}-{stamp}.json``.
+
+    Sorting on this rather than on mtime: two runs a second apart can share an
+    mtime on a coarse filesystem, and a copied ``reports/`` directory has
+    mtimes that say nothing at all. The stamp is written by the writer and
+    sorts lexicographically because ISO-8601 does.
+    """
+    _, _, stamp = path.stem.partition("-")
+    return stamp
+
+
+def advice_history_files(gw: int | None = None) -> list[Path]:
+    """Every banked run, oldest first; ``gw`` filters to one gameweek."""
+    if not ADVICE_HISTORY.is_dir():
+        return []
+    files = [p for p in ADVICE_HISTORY.glob("gw*-*.json") if p.is_file()]
+    if gw is not None:
+        files = [p for p in files if p.name.startswith(f"gw{int(gw)}-")]
+    return sorted(files, key=_history_stamp)
+
+
+def prune_advice_history(keep: int = ADVICE_HISTORY_KEEP) -> int:
+    """Drop everything but the newest ``keep`` runs. Returns how many went."""
+    files = advice_history_files()
+    doomed = files[:-keep] if len(files) > keep else []
+    for path in doomed:
+        path.unlink(missing_ok=True)
+    return len(doomed)
+
+
+def append_advice_history(payload: dict, gw: int,
+                          now: datetime | None = None) -> Path | None:
+    """Bank this run's advice payload and prune the log.
+
+    One file per *run*, not per gameweek: re-running on Friday morning after
+    the Thursday press conferences is the case the "since last run" strip
+    exists for, and overwriting would destroy exactly the comparison the user
+    wants. Pruned on write so nothing has to remember to.
+
+    Never raises, for the same reason :func:`save_availability` does not.
+    """
+    try:
+        ADVICE_HISTORY.mkdir(parents=True, exist_ok=True)
+        stamp = (now or datetime.now(timezone.utc)).isoformat(
+            timespec="seconds")
+        path = ADVICE_HISTORY / f"gw{int(gw)}-{stamp}.json"
+        path.write_text(json.dumps(payload, indent=1, default=str))
+        prune_advice_history()
+        return path
+    except Exception as exc:  # noqa: BLE001 — instrumentation never blocks
+        print(f"advice history not written: {exc}")
+        return None
+
+
+def _players_by_code(payload: dict, key: str) -> dict[int, dict]:
+    rows = payload.get(key) or []
+    return {int(r["code"]): {"code": int(r["code"]),
+                             "name": str(r.get("name", r["code"]))}
+            for r in rows if isinstance(r, dict) and "code" in r}
+
+
+def _recommended_chip(payload: dict) -> str | None:
+    """The chip this run said to play now, or ``None``.
+
+    Reads ``play_now`` — the flag ``run_advise`` sets by comparing each row's
+    gain against its own θ threshold — rather than re-deriving it, so the diff
+    cannot disagree with the report about what was recommended.
+    """
+    for row in payload.get("chip_table") or []:
+        if isinstance(row, dict) and row.get("play_now"):
+            return str(row.get("chip"))
+    return None
+
+
+def diff_advice(previous: dict, current: dict) -> dict:
+    """What changed between two runs of the same gameweek.
+
+    Structural, not textual: the UI renders "Wirtz in place of Isak", and a
+    string diff of two JSON files could never say that. Everything is
+    tolerant of a missing key, because the log outlives the shape of the
+    payload it stores.
+    """
+    out: dict = {}
+    for key in ("buys", "sells"):
+        before = _players_by_code(previous, key)
+        after = _players_by_code(current, key)
+        out[f"{key}_added"] = [after[c] for c in sorted(set(after) - set(before))]
+        out[f"{key}_dropped"] = [before[c]
+                                 for c in sorted(set(before) - set(after))]
+    prev_cap = previous.get("captain") or {}
+    curr_cap = current.get("captain") or {}
+    changed_cap = (prev_cap.get("code") != curr_cap.get("code")
+                   and (prev_cap or curr_cap))
+    out["captain_from"] = dict(prev_cap) if changed_cap and prev_cap else None
+    out["captain_to"] = dict(curr_cap) if changed_cap and curr_cap else None
+    prev_chip = _recommended_chip(previous)
+    curr_chip = _recommended_chip(current)
+    out["chip_from"] = prev_chip if prev_chip != curr_chip else None
+    out["chip_to"] = curr_chip if prev_chip != curr_chip else None
+    out["expected_pts_delta"] = round(
+        float(current.get("expected_pts") or 0.0)
+        - float(previous.get("expected_pts") or 0.0), 2)
+    out["changed"] = bool(out["buys_added"] or out["buys_dropped"]
+                          or out["sells_added"] or out["sells_dropped"]
+                          or out["captain_to"] or out["chip_to"]
+                          or out["chip_from"]
+                          or out["expected_pts_delta"] != 0.0)
+    return out

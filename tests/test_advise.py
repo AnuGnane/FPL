@@ -753,3 +753,19 @@ def test_the_components_file_records_the_penalty_term():
     from gaffer.artifacts import COMPONENT_COLS
 
     assert "ep_pen_taker" in COMPONENT_COLS
+
+
+def test_run_advise_persists_the_availability_and_history_artifacts():
+    """Source-level seam: the news panel and the "since last run" strip both
+    read files nothing else writes, and both are written at the very bottom
+    of the run — below ep_gw1, so neither line may name the pool."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    state = src.index("save_solve_state(")
+    avail = src.index("save_availability(avail, gw)")
+    history = src.index("append_advice_history(asdict(advice), gw)")
+    assert state < avail < history
+    assert "pool_ep" not in src[src.index("ep_gw1 ="):]

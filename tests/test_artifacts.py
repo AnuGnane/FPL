@@ -1,3 +1,6 @@
+import json
+from datetime import datetime, timezone
+
 import pandas as pd
 import pytest
 
@@ -218,3 +221,170 @@ def test_save_params_stamps_the_save_time(tmp_path, monkeypatch):
     monkeypatch.setattr(persistence, "MODELS_DIR", tmp_path)
     persistence.save_params("blend", {"odds_blend_weight": 0.5})
     assert "saved_at" in persistence.load_params("blend")
+
+
+# --- v6: the availability snapshot -----------------------------------------
+
+def _avail() -> pd.DataFrame:
+    return pd.DataFrame([
+        {"code": 1, "status": "d", "chance_of_playing": 75,
+         "injury_type": "hamstring", "expected_return_gw": 6,
+         "p_start_hint": 0.0, "source": "premierinjuries|lineups",
+         "fetched_at": "2026-09-04T09:00:00Z"},
+        {"code": 2, "status": "a", "chance_of_playing": None,
+         "injury_type": None, "expected_return_gw": None,
+         "p_start_hint": None, "source": None, "fetched_at": None},
+    ])
+
+
+def test_save_availability_round_trips_through_parquet(tmp_path, monkeypatch):
+    import gaffer.artifacts as art
+
+    monkeypatch.chdir(tmp_path)
+    path = art.save_availability(_avail(), 5)
+    assert path == art.availability_path(5)
+    back = art.load_availability(5)
+    assert list(back.columns) == art.AVAILABILITY_COLS
+    assert back.loc[back["code"] == 1, "injury_type"].iloc[0] == "hamstring"
+    assert float(back.loc[back["code"] == 1, "expected_return_gw"].iloc[0]) == 6
+
+
+def test_save_availability_fills_columns_a_flags_only_frame_lacks(
+        tmp_path, monkeypatch):
+    """With news off, ``news_availability`` returns the bare official slice.
+    The snapshot still has to be readable by the news endpoint."""
+    import gaffer.artifacts as art
+
+    monkeypatch.chdir(tmp_path)
+    official = pd.DataFrame([{"code": 1, "status": "a",
+                              "chance_of_playing": None}])
+    art.save_availability(official, 5)
+    back = art.load_availability(5)
+    assert list(back.columns) == art.AVAILABILITY_COLS
+    assert back["injury_type"].isna().all()
+
+
+def test_save_availability_never_raises(tmp_path, monkeypatch):
+    """It is a snapshot for a UI panel. An advise run must not die of it."""
+    import gaffer.artifacts as art
+
+    monkeypatch.chdir(tmp_path)
+    assert art.save_availability(None, 5) is None
+    assert art.save_availability(pd.DataFrame(), 5) is None
+    assert art.save_availability(pd.DataFrame({"nope": [1]}), 5) is None
+
+
+def test_load_availability_is_none_when_nothing_was_written(tmp_path,
+                                                            monkeypatch):
+    import gaffer.artifacts as art
+
+    monkeypatch.chdir(tmp_path)
+    assert art.load_availability(5) is None
+
+
+# --- v6: the advice history log --------------------------------------------
+
+def _advice(gw=5, captain=("Salah", 100), buys=(), sells=(), pts=61.5,
+            chip=None) -> dict:
+    return {
+        "gw": gw, "deadline": "2026-09-05T10:00:00Z",
+        "captain": {"code": captain[1], "name": captain[0]},
+        "buys": [{"code": c, "name": n} for n, c in buys],
+        "sells": [{"code": c, "name": n} for n, c in sells],
+        "expected_pts": pts,
+        "chip_table": ([] if chip is None
+                       else [{"chip": chip, "gw": gw, "gain": 9.0,
+                              "threshold": 8.0, "play_now": True}]),
+    }
+
+
+def test_append_advice_history_writes_one_file_per_run(tmp_path, monkeypatch):
+    import gaffer.artifacts as art
+
+    monkeypatch.chdir(tmp_path)
+    first = art.append_advice_history(_advice(), 5,
+                                      now=datetime(2026, 9, 4, 9, 0,
+                                                   tzinfo=timezone.utc))
+    second = art.append_advice_history(_advice(pts=63.0), 5,
+                                       now=datetime(2026, 9, 4, 10, 0,
+                                                    tzinfo=timezone.utc))
+    assert first != second
+    assert first.parent == art.ADVICE_HISTORY
+    assert len(art.advice_history_files(5)) == 2
+    assert json.loads(second.read_text())["expected_pts"] == 63.0
+
+
+def test_advice_history_is_pruned_to_the_newest_twenty(tmp_path, monkeypatch):
+    import gaffer.artifacts as art
+
+    monkeypatch.chdir(tmp_path)
+    for minute in range(25):
+        art.append_advice_history(
+            _advice(pts=float(minute)), 5,
+            now=datetime(2026, 9, 4, 9, minute, tzinfo=timezone.utc))
+    files = art.advice_history_files()
+    assert len(files) == art.ADVICE_HISTORY_KEEP
+    newest = json.loads(files[-1].read_text())
+    assert newest["expected_pts"] == 24.0
+
+
+def test_advice_history_files_filter_by_gameweek(tmp_path, monkeypatch):
+    import gaffer.artifacts as art
+
+    monkeypatch.chdir(tmp_path)
+    art.append_advice_history(_advice(gw=5), 5,
+                              now=datetime(2026, 9, 4, 9, 0,
+                                           tzinfo=timezone.utc))
+    art.append_advice_history(_advice(gw=6), 6,
+                              now=datetime(2026, 9, 11, 9, 0,
+                                           tzinfo=timezone.utc))
+    assert len(art.advice_history_files(5)) == 1
+    assert len(art.advice_history_files(6)) == 1
+    assert len(art.advice_history_files()) == 2
+
+
+def test_append_advice_history_never_raises(tmp_path, monkeypatch):
+    import gaffer.artifacts as art
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(art, "ADVICE_HISTORY",
+                        tmp_path / "nope" / "\0" / "bad")
+    assert art.append_advice_history(_advice(), 5) is None
+
+
+# --- v6: the run-to-run diff ------------------------------------------------
+
+def test_diff_advice_reports_what_changed_between_two_runs():
+    from gaffer.artifacts import diff_advice
+
+    previous = _advice(captain=("Salah", 100), buys=[("Isak", 200)],
+                       sells=[("Watkins", 300)], pts=61.5)
+    current = _advice(captain=("Haaland", 101), buys=[("Wirtz", 201)],
+                      sells=[("Watkins", 300)], pts=64.0, chip="bboost")
+    out = diff_advice(previous, current)
+    assert out["captain_from"]["name"] == "Salah"
+    assert out["captain_to"]["name"] == "Haaland"
+    assert [b["name"] for b in out["buys_added"]] == ["Wirtz"]
+    assert [b["name"] for b in out["buys_dropped"]] == ["Isak"]
+    assert out["sells_added"] == [] and out["sells_dropped"] == []
+    assert out["expected_pts_delta"] == 2.5
+    assert out["chip_from"] is None and out["chip_to"] == "bboost"
+
+
+def test_diff_advice_of_two_identical_runs_is_empty_but_present():
+    from gaffer.artifacts import diff_advice
+
+    out = diff_advice(_advice(), _advice())
+    assert out["buys_added"] == [] and out["buys_dropped"] == []
+    assert out["captain_from"] is None and out["captain_to"] is None
+    assert out["expected_pts_delta"] == 0.0
+    assert out["changed"] is False
+
+
+def test_diff_advice_tolerates_a_payload_missing_every_optional_key():
+    """History written by an older build is still worth diffing."""
+    from gaffer.artifacts import diff_advice
+
+    out = diff_advice({}, {"expected_pts": 3.0})
+    assert out["expected_pts_delta"] == 3.0
+    assert out["changed"] is True
