@@ -3,7 +3,7 @@ import { ApiError, apiGet } from '../api/client'
 import LineChart from '../components/LineChart'
 import type {
   BenchmarkEvaluation, CurrentEvaluation, DecompositionData, HeadMetrics,
-  QualityData, StratifiedTable,
+  NewsShadowData, QualityData, StratifiedTable,
 } from '../types'
 
 // Categories are OpenFPL's, defined on actual points, so the labels have to
@@ -198,6 +198,85 @@ function DecompositionSection(
   )
 }
 
+// Lower is better for both metrics, so "ahead" means a smaller number. Said
+// in a sentence as well as drawn, because a pair of bars two hundredths apart
+// is not a verdict anyone should have to squint at.
+function verdict(shadow: NewsShadowData): string {
+  const o = shadow.overall
+  if (o.brier_news === undefined || o.mae_news === undefined) {
+    return 'Nothing scored yet.'
+  }
+  const brier = (o.brier_flags ?? 0) - o.brier_news
+  const mae = (o.mae_flags ?? 0) - o.mae_news
+  if (brier > 0 && mae > 0) {
+    return `News is ahead on both: Brier ${brier.toFixed(4)} better, `
+      + `minutes MAE ${mae.toFixed(2)} better, over ${shadow.rows} `
+      + 'player-gameweeks.'
+  }
+  if (brier <= 0 && mae <= 0) {
+    return `Flags are ahead on both, over ${shadow.rows} player-gameweeks — `
+      + 'the news layer is not earning its place yet.'
+  }
+  return `Split: Brier ${brier > 0 ? 'news' : 'flags'}, minutes `
+    + `${mae > 0 ? 'news' : 'flags'}, over ${shadow.rows} player-gameweeks.`
+}
+
+// Paired bars, per gameweek, both metrics. Each pair is scaled to its own
+// row's larger value: the two Brier numbers differ in the third decimal and a
+// shared axis across gameweeks would draw every pair as one flat line.
+function PairedBar({ news, flags }: { news: number; flags: number }) {
+  const top = Math.max(news, flags) || 1
+  return (
+    <span style={{ display: 'inline-flex', gap: 4, width: 120 }}>
+      <span className="bar"
+            style={{ width: `${(news / top) * 100}%`,
+                     background: 'var(--pitch-300)' }}
+            aria-label={`news ${news}`} />
+      <span className="bar"
+            style={{ width: `${(flags / top) * 100}%`,
+                     background: 'var(--chalk-dim)' }}
+            aria-label={`flags ${flags}`} />
+    </span>
+  )
+}
+
+function NewsShadowSection({ shadow }: { shadow: NewsShadowData }) {
+  return (
+    <div className="card">
+      <h2>News layer</h2>
+      <p className="muted">{verdict(shadow)}</p>
+      <table>
+        <thead>
+          <tr>
+            <th>GW</th>
+            <th>Brier news</th><th>Brier flags</th><th />
+            <th>Minutes MAE news</th><th>MAE flags</th><th />
+            <th>Rows</th>
+          </tr>
+        </thead>
+        <tbody>
+          {shadow.by_gw.map((row) => (
+            <tr key={row.gw}>
+              <td>GW{row.gw}</td>
+              <td>{row.brier_news}</td>
+              <td>{row.brier_flags}</td>
+              <td>
+                <PairedBar news={row.brier_news} flags={row.brier_flags} />
+              </td>
+              <td>{row.mae_news}</td>
+              <td>{row.mae_flags}</td>
+              <td>
+                <PairedBar news={row.mae_news} flags={row.mae_flags} />
+              </td>
+              <td>{row.rows}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 export default function Quality() {
   const [data, setData] = useState<QualityData | null>(null)
   const [empty, setEmpty] = useState<string | null>(null)
@@ -230,6 +309,8 @@ export default function Quality() {
       {data.benchmark && <BenchmarkSection benchmark={data.benchmark} />}
       {data.decomposition
         && <DecompositionSection decomposition={data.decomposition} />}
+      {data.news_shadow && data.news_shadow.rows > 0
+        && <NewsShadowSection shadow={data.news_shadow} />}
     </>
   )
 }

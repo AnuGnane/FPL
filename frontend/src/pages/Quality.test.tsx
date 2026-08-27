@@ -78,6 +78,19 @@ const payload = {
     },
     forecast_gap_h3: 850, planning_ceiling: 100,
   },
+  news_shadow: {
+    run_at: '2026-09-12T00:00:00+00:00', git_sha: 'abc1234', rows: 1400,
+    overall: { brier_news: 0.091, brier_flags: 0.102, mae_news: 12.4,
+               mae_flags: 14.1, rows: 1400 },
+    by_gw: [
+      { gw: 3, brier_news: 0.095, brier_flags: 0.11, mae_news: 12.9,
+        mae_flags: 14.8, rows: 700, cum_brier_news: 0.095,
+        cum_brier_flags: 0.11, cum_mae_news: 12.9, cum_mae_flags: 14.8 },
+      { gw: 4, brier_news: 0.087, brier_flags: 0.094, mae_news: 11.9,
+        mae_flags: 13.4, rows: 700, cum_brier_news: 0.091,
+        cum_brier_flags: 0.102, cum_mae_news: 12.4, cum_mae_flags: 14.1 },
+    ],
+  },
 }
 
 beforeEach(() => {
@@ -129,5 +142,33 @@ describe('Quality', () => {
     render(<MemoryRouter><Quality /></MemoryRouter>)
     expect(await screen.findByText(/run `gaffer evaluate` first/))
       .toBeInTheDocument()
+  })
+
+  it('scores the news layer against the flags per gameweek', async () => {
+    render(<MemoryRouter><Quality /></MemoryRouter>)
+    expect(await screen.findByRole('heading', { name: /news layer/i }))
+      .toBeInTheDocument()
+    expect(screen.getByText('GW3')).toBeInTheDocument()
+    expect(screen.getByText('GW4')).toBeInTheDocument()
+    expect(screen.getByText('0.095')).toBeInTheDocument()
+    expect(screen.getByText('0.11')).toBeInTheDocument()
+  })
+
+  it('states the verdict in a sentence', async () => {
+    render(<MemoryRouter><Quality /></MemoryRouter>)
+    expect(await screen.findByText(/news is ahead on both/i))
+      .toBeInTheDocument()
+  })
+
+  it('hides the section until a gameweek has been scored', async () => {
+    apiGet.mockResolvedValue({
+      ...payload,
+      news_shadow: { run_at: 'x', git_sha: 'y', rows: 0, overall: {},
+                     by_gw: [] },
+    })
+    render(<MemoryRouter><Quality /></MemoryRouter>)
+    await screen.findByRole('heading', { name: /model quality/i })
+    expect(screen.queryByRole('heading', { name: /news layer/i }))
+      .not.toBeInTheDocument()
   })
 })

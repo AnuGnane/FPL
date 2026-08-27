@@ -405,6 +405,7 @@ export interface QualityData {
   current: CurrentEvaluation | null
   benchmark: BenchmarkEvaluation | null
   decomposition: DecompositionData | null
+  news_shadow: NewsShadowData | null
 }
 
 export interface ChipWorkbenchRow {
@@ -513,4 +514,29 @@ export interface NewsPanelData {
   gw: number
   moved: number
   rows: NewsRow[]
+}
+
+export interface NewsShadowSummary {
+  brier_news: number
+  brier_flags: number
+  mae_news: number
+  mae_flags: number
+  rows: number
+}
+
+export interface NewsShadowGw extends NewsShadowSummary {
+  gw: number
+  cum_brier_news: number
+  cum_brier_flags: number
+  cum_mae_news: number
+  cum_mae_flags: number
+}
+
+export interface NewsShadowData {
+  run_at: string
+  git_sha: string
+  /** Zero until a gameweek the log covers has actually been played. */
+  rows: number
+  overall: Partial<NewsShadowSummary>
+  by_gw: NewsShadowGw[]
 }

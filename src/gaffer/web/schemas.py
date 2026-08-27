@@ -593,9 +593,51 @@ class Decomposition(BaseModel):
     """oracle_h3 - oracle_h1: the ceiling on multi-week planning."""
 
 
+class NewsShadowSummary(BaseModel):
+    """Both sides of gate N2's two metrics over one slice of the log."""
+
+    brier_news: float
+    brier_flags: float
+    mae_news: float
+    mae_flags: float
+    rows: int
+
+
+class NewsShadowGw(BaseModel):
+    gw: int
+    brier_news: float
+    brier_flags: float
+    mae_news: float
+    mae_flags: float
+    rows: int
+    cum_brier_news: float
+    cum_brier_flags: float
+    cum_mae_news: float
+    cum_mae_flags: float
+
+
+class NewsShadow(BaseModel):
+    """Gate N2's standing readout.
+
+    ``rows`` is the field that says whether any of it means anything: the log
+    is written every week and scored only once a gameweek has been played, so
+    a fresh install carries a payload with ``rows: 0``, an empty ``overall``
+    and no gameweeks. That is not an error state — it is "come back Monday".
+    """
+
+    run_at: str
+    git_sha: str
+    rows: int
+    overall: NewsShadowSummary | dict = Field(default_factory=dict)
+    by_gw: list[NewsShadowGw] = Field(default_factory=list)
+
+
 class Quality(BaseModel):
     """Whichever modes have been run. Each is independent and may be absent."""
 
     current: CurrentEvaluation | None = None
     benchmark: BenchmarkEvaluation | None = None
     decomposition: Decomposition | None = None
+    # v6: `gaffer evaluate --news-shadow` has written this key since v5, but
+    # nothing declared it here, so it never reached the page.
+    news_shadow: NewsShadow | None = None

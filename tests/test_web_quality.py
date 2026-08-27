@@ -72,3 +72,49 @@ def test_quality_tolerates_a_partial_artifact(client, tmp_path):
     body = client.get("/api/quality").json()
     assert body["benchmark"] is None and body["decomposition"] is None
     assert body["current"]["git_sha"] == "abc1234"
+
+
+NEWS_SHADOW = {
+    "run_at": "2026-09-12T00:00:00+00:00", "git_sha": "abc1234",
+    "rows": 1400,
+    "overall": {"brier_news": 0.0910, "brier_flags": 0.1020,
+                "mae_news": 12.4, "mae_flags": 14.1, "rows": 1400},
+    "by_gw": [
+        {"gw": 3, "brier_news": 0.0950, "brier_flags": 0.1100,
+         "mae_news": 12.9, "mae_flags": 14.8, "rows": 700,
+         "cum_brier_news": 0.0950, "cum_brier_flags": 0.1100,
+         "cum_mae_news": 12.9, "cum_mae_flags": 14.8},
+        {"gw": 4, "brier_news": 0.0870, "brier_flags": 0.0940,
+         "mae_news": 11.9, "mae_flags": 13.4, "rows": 700,
+         "cum_brier_news": 0.0910, "cum_brier_flags": 0.1020,
+         "cum_mae_news": 12.4, "cum_mae_flags": 14.1},
+    ],
+}
+
+
+def test_quality_serves_the_news_shadow_scoreboard(client, tmp_path):
+    (tmp_path / "reports").mkdir(exist_ok=True)
+    (tmp_path / "reports" / "evaluation.json").write_text(
+        json.dumps({**PAYLOAD, "news_shadow": NEWS_SHADOW}))
+    body = client.get("/api/quality").json()
+    assert body["news_shadow"]["rows"] == 1400
+    assert body["news_shadow"]["overall"]["brier_news"] == 0.0910
+    assert body["news_shadow"]["by_gw"][1]["gw"] == 4
+    assert body["news_shadow"]["by_gw"][1]["cum_mae_news"] == 12.4
+
+
+def test_quality_without_a_news_shadow_run_is_a_null(client, tmp_path):
+    (tmp_path / "reports").mkdir(exist_ok=True)
+    (tmp_path / "reports" / "evaluation.json").write_text(json.dumps(PAYLOAD))
+    assert client.get("/api/quality").json()["news_shadow"] is None
+
+
+def test_a_news_shadow_with_nothing_scored_yet_still_serves(client, tmp_path):
+    """Before the first gameweek completes the scorer writes rows: 0 and two
+    empty containers. The page renders nothing from it, but the endpoint must
+    not 500 on it."""
+    (tmp_path / "reports").mkdir(exist_ok=True)
+    (tmp_path / "reports" / "evaluation.json").write_text(json.dumps(
+        {**PAYLOAD, "news_shadow": {"run_at": "x", "git_sha": "y",
+                                    "rows": 0, "overall": {}, "by_gw": []}}))
+    assert client.get("/api/quality").json()["news_shadow"]["rows"] == 0
