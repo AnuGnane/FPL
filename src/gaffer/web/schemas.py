@@ -406,6 +406,42 @@ class AdviceDiff(BaseModel):
     expected_pts_delta: float = 0.0
 
 
+class NewsRow(BaseModel):
+    """One player the news layer moved, with the evidence that moved him.
+
+    Both sides of every number, because the panel's claim is a *difference*:
+    "we think 5%, the official flag says 75%" is the sentence, and either half
+    on its own is not.
+    """
+
+    code: int
+    name: str
+    team_name: str
+    p_play_news: float
+    p_play_flags: float
+    e_min_news: float
+    e_min_flags: float
+    # Official flag, from the bootstrap snapshot.
+    status: str | None = None
+    chance_of_playing: float | None = None
+    official_note: str | None = None
+    # The availability frame this run predicted on.
+    injury_type: str | None = None
+    expected_return_gw: int | None = None
+    p_start_hint: float | None = None
+    lineup_hint: str | None = None
+    """``xi`` / ``doubt`` / ``out`` — ``p_start_hint`` named, because a
+    probability in a caption reads as a forecast rather than as a listing."""
+    source: str | None = None
+    fetched_at: str | None = None
+
+
+class NewsPanelData(BaseModel):
+    gw: int
+    moved: int
+    rows: list[NewsRow]
+
+
 class HistoryRun(BaseModel):
     gw: int
     deadline: str
