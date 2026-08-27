@@ -627,9 +627,12 @@ def test_predict_components_defaults_to_the_official_flags():
     from gaffer.advise import predict_components
 
     sig = inspect.signature(predict_components)
+    # v6 appended ``pens`` behind ``avail``; both default to None, so the
+    # pre-v5 four-argument call shape still means the pre-v5 thing.
     assert list(sig.parameters) == ["pred_frame", "tg_future", "players",
-                                    "avail"]
+                                    "avail", "pens"]
     assert sig.parameters["avail"].default is None
+    assert sig.parameters["pens"].default is None
 
 
 def test_predict_components_emits_the_flags_only_shadow_columns():
@@ -708,3 +711,45 @@ def test_news_availability_makes_no_fetch_calls_when_disabled(monkeypatch):
     cfg = Config(entry_id=1, league_id=2, news_enabled=False)
     advise_mod.news_availability(cfg, players, teams, events, gw=5)
     assert calls == []
+
+
+# --- v6 set pieces ----------------------------------------------------------
+
+
+def test_predict_components_prices_penalties_after_the_availability_passes():
+    """Source-level seam: the term multiplies by p_play, so it has to land
+    after the news pass has had its say about whether he plays at all — and
+    after the protected team-odds merge, so no pinned index moves."""
+    import inspect
+
+    from gaffer.advise import predict_components
+
+    src = inspect.getsource(predict_components)
+    avail = src.index("mp = apply_availability(mp, avail")
+    merge = src.index("comp.merge(tp")
+    pen = src.index("add_pen_ep(")
+    assert avail < merge < pen
+    assert src.index("blend_team_odds(") < merge
+    assert "pens" in inspect.signature(predict_components).parameters
+
+
+def test_run_advise_builds_the_penalty_priors_before_predicting():
+    """One line, above the news line, and nowhere near the pool."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    priors = src.index("pens = pen_priors(hist)")
+    avail = src.index("avail = news_availability(")
+    comp = src.index("comp = predict_components(")
+    assert priors < avail < comp
+    assert "predict_components(pred_frame, tg_future, players, avail, pens)" \
+        in src
+    assert "pool_ep" not in src[src.index("ep_gw1 ="):]
+
+
+def test_the_components_file_records_the_penalty_term():
+    from gaffer.artifacts import COMPONENT_COLS
+
+    assert "ep_pen_taker" in COMPONENT_COLS

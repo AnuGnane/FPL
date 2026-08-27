@@ -39,6 +39,11 @@ COMPONENT_COLS = [
     "odds_e_goals_against", "odds_weight", "pen_taker", "setpiece_taker",
     "ep_minutes", "ep_goals", "ep_assists", "ep_cs", "ep_gc", "ep_saves",
     "ep_defcon", "ep_bonus", "ep_cards", "ep_pensave",
+    # v6: the penalty-taker increment, already folded into ep_goals above.
+    # Recorded separately because "why is he suddenly worth 0.4 more?" has no
+    # other answer once the term is inside e_goals — and because gate P1's
+    # audit reads it back off the file.
+    "ep_pen_taker",
     "ep_uncalibrated", "cal_delta", "ep",
 ]
 

@@ -74,6 +74,8 @@ from gaffer.optimize.scenarios import (move_frequencies, run_scenarios,
                                        xmins_by_player_gw)
 from gaffer.news_shadow import write_shadow
 from gaffer.prices import price_alerts
+from gaffer.set_pieces import add_pen_ep, attack_multipliers, pen_notices, \
+    pen_priors
 
 REPORTS = Path("reports")
 MODEL_NAMES = ["minutes", "team", "attacking", "defcon", "saves", "bonus"]
@@ -368,13 +370,19 @@ def news_availability(cfg: Config, players: pd.DataFrame,
 
 def predict_components(pred_frame: pd.DataFrame, tg_future: pd.DataFrame,
                        players: pd.DataFrame,
-                       avail: pd.DataFrame | None = None) -> pd.DataFrame:
+                       avail: pd.DataFrame | None = None,
+                       pens=None) -> pd.DataFrame:
     """Every component prediction on one row per player-fixture.
 
     Assembled positionally (see the module docstring): each ``predict``
     returns one row per input row in input order, so ``.values`` lines up
     exactly while a merge on ``(code, season_idx, gw)`` would fan a double
     gameweek out.
+
+    ``pens`` is the :class:`~gaffer.set_pieces.PenPriors` bundle, or ``None``
+    for the pre-v6 behaviour: without it the penalty term is identically zero
+    and this function returns exactly the frame it always did, plus a zero
+    column.
     """
     pf = pred_frame.copy().reset_index(drop=True)
     pf["e_cards"] = pf.apply(card_penalty, axis=1)
@@ -409,7 +417,12 @@ def predict_components(pred_frame: pd.DataFrame, tg_future: pd.DataFrame,
         for col in cols:
             comp[col] = out[col].values
 
-    tp = load_model("team").predict(tg_future)
+    # The fitted model itself, not only its predictions: the penalty term
+    # reads Dixon-Coles' attack strengths off it at the bottom of this
+    # function, and loading it twice would be two deserialisations of the
+    # same file.
+    team_model = load_model("team")
+    tp = team_model.predict(tg_future)
     tp["opp_code"] = tg_future["opp_code"].values
     # Keep the model's own numbers before the market touches them: the
     # explainability page shows both sides of the blend and the weight that
@@ -431,7 +444,15 @@ def predict_components(pred_frame: pd.DataFrame, tg_future: pd.DataFrame,
                       how="left")
     comp["p_cs"] = comp["p_cs"].fillna(DEFAULT_P_CS)
     comp["e_gc"] = comp["e_gc"].fillna(DEFAULT_E_GC)
-    return comp
+    # Set pieces last, and deliberately so. The term multiplies by p_play, so
+    # it has to see the availability passes above; it reads the club's attack
+    # strength, so it has to see the team model; and it folds into e_goals
+    # rather than into ep, so it has to land before assemble_ep ever runs.
+    # With no priors it is identically zero and this is a no-op.
+    for line in pen_notices(comp, players, pens,
+                            attack_multipliers(team_model)):
+        print(line)
+    return add_pen_ep(comp, players, pens, attack_multipliers(team_model))
 
 
 DIFFERENTIAL_EO = 0.3
@@ -556,8 +577,9 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
             # team model alone.
             print(f"odds unusable, continuing without: {e}")
 
+    pens = pen_priors(hist)
     avail = news_availability(cfg, players, teams, events, gw)
-    comp = predict_components(pred_frame, tg_future, players, avail)
+    comp = predict_components(pred_frame, tg_future, players, avail, pens)
     write_shadow(comp, gw)
     # Player props are the most optional signal here: the free tier meters
     # every request, the market may not exist for a fixture, and a quota that
