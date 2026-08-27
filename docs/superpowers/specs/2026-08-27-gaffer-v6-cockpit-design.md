@@ -185,7 +185,58 @@ hidden, advise unaffected. §9 records outcomes.
 
 ## 9. Outcome
 
-(recorded at cycle end)
+Shipped 2026-08-27. Suite 1338 Python + 88 frontend, tsc + Vite build clean.
+14 plan tasks in five implementer groups; adversarial review FIX-FIRST
+(3 blockers, 3 importants, 4 nits — all fixed), re-verify FIX-AGAIN
+(3 findings, fixed), second re-verify closed by gates.
+
+**M2 penalty EP — Gate P1 PASS (live audit).** §1's `share_hist` design did
+not survive contact with the data twice: (a) Understat's parquet has no raw
+goals column, so pens were first estimated from the FPL-xG-vs-npxG gap;
+(b) review proved that accumulation is one-sided noise (733 est. vs ~394
+real pens over 3 seasons; defenders 14% of "pens"; Salah's share 0.41).
+Shipped: per-match penalty EVENTS (gap ≥ 0.5 ⇒ `int((gap+0.29)//0.79)`,
+the threshold sitting in a genuinely bimodal valley) — 172 events, DEF+GK
+1.7%, Salah/Haaland/Palmer ≈ 0.83. The absolute league rate is served as
+the constant 0.13 (the event estimator's ~25% detection loss made the
+fitted 0.097 untrustworthy; it now prints as a drift notice only). AGS-
+covered rows deliver (1−w) of the increment by design (the market already
+prices pen duty) and `ep_pen_taker` records the delivered amount. Live
+audit: 41 nonzero terms, max +0.61 (McBurnie, new taker), established
+takers ≈ +0.1 (Bruno +0.08, Palmer +0.09, Haaland +0.10), lost duty
+negative (João Pedro −0.17); clamp never hit.
+
+**M3 calibrated noise — Gate S1 FAIL; heuristic stays the default.**
+Fitted honestly (26,919 walk-forward residuals; final grid [0,2,3,4,6] ×
+[0,30,60,80] after the review killed one dead edge and the re-verify
+killed its replacement; 13 cells, global σ 1.953; mean-preserving under
+the zero-clip via an exact Newton recentre after the spec's analytic
+formula was proven self-biasing by its own test). S1 (2025-26 gated
+replay, scenario gating injected at the replay's base solve exactly as
+v4c's D1 did, identical seeds): heuristic 1785/15 hits/69 transfers vs
+calibrated **1761/26/77 — a 24-point loss on a 5-point tolerance**.
+Diagnosis: residual σ = forecast error ⊕ football's irreducible variance,
+so it overstates decision-relevant uncertainty — live symptom: captain
+sim-support 92% → 22%, a −20-hit plan. Per §2's pre-registered remedy the
+asset ships, `CALIBRATED_NOISE_DEFAULT = False` serves the heuristic
+(re-pinned value-for-value), and the opt-in path stays tested for a
+future estimation-only σ (ensemble/refit spread, not outcome residuals).
+A first S1 attempt was a null measurement — both arms identical because
+`run_backtest` never touches scenario machinery; the corrected driver
+(s1b) is the record.
+
+**UI cockpit — smoke PASS on live artifacts.** /api/chips 12 rows +
+4 kept/11 out/11 in wildcard diff (sell-priced); /api/components/2 616
+players, 51 pen annotations (annotation, not additive — terms still sum
+to ep); /api/advice/diff live (history seeded from the pre-existing
+advice, Foden-in/Evanilson-out across the two runs); /api/news/2 23 moved
+players with per-source evidence; /api/quality serving news_shadow (the
+schema had silently dropped the key since v5 — one-field fix). Advice
+history pruned to 20; every writer swallows its own failures (rail).
+
+**Deferred:** estimation-only σ refit (the parked asset + opt-in path are
+the hook); pen-term validation against realized 2026-27 pens at season
+end; the [85,∞) xmins bin question is closed (live ceiling ≈ 84.8).
 
 ## 10. Not in this pass
 

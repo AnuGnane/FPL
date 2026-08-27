@@ -75,6 +75,19 @@ Spec: `specs/2026-08-26-gaffer-v5-news-design.md` (§12 = full outcome) · Plan:
 - [x] Final adversarial review: 2 blockers + 7 importants fixed; re-verify caught 1 new defect + 1 residual, both fixed
 - Suite: 1190 Python + 64 frontend, tsc clean
 
+### v5.1 — news completion (done, merged `388da4a` 2026-08-26)
+Spec: `specs/2026-08-26-gaffer-v5.1-news-completion-design.md` (§5 = outcome)
+- [x] FFS predicted-lineups parser on the real page (photo-code join, Scout Picks widget guard; 277 hints live)
+- [x] Transfermarkt per-player calibration: 3381 spells, 504 players, 16 typed curves committed — typed decay live
+
+### v6 — cockpit (done, pen EP + noise gate + decision-cockpit UI)
+Spec: `specs/2026-08-27-gaffer-v6-cockpit-design.md` (§9 = full outcome) · Plan: `plans/2026-08-27-gaffer-v6-cockpit.md`
+- [x] Penalty-taker EP: event-based share_hist (172 events, takers ≈0.83), constant 0.13 league rate + drift notice, (1−w) AGS delivery — Gate P1 audit PASS (max +0.61 new taker, incumbents ≈+0.1)
+- [x] Calibrated scenario noise: fitted asset (13 cells, σ 1.953, Newton mean-preserving clip) — Gate S1 FAIL (heuristic 1785 vs calibrated 1761, −24 on ±5): residual σ conflates forecast error with irreducible variance; heuristic stays default, opt-in path parked for an estimation-only σ
+- [x] Cockpit UI: chip workbench (threshold bars, wildcard diff, What-If re-solve), why-this-plan panel (EP breakdown + pen annotation + run diff), news transparency panel (per-source evidence), N2 scoreboard on Quality
+- [x] Adversarial review FIX-FIRST (3 blockers) + re-verify FIX-AGAIN (3) — all fixed, third pass clean via gates
+- Suite: 1338 Python + 88 frontend, tsc + build clean
+
 ## In progress
 
 ## Planned
