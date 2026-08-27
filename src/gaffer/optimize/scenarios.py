@@ -62,6 +62,35 @@ produce one and the read side refuses to use one.
 """
 
 
+CALIBRATED_NOISE_DEFAULT = False
+"""Whether :func:`scenario_noise` serves the fitted σ table by default.
+
+**Off, because gate S1 failed.** The 2025-26 gated replay, identical seeds,
+scenario gating injected at the replay's base solve, scored heuristic 1785 /
+15 hits / 69 transfers against calibrated 1761 / 26 hits / 77 transfers: a
+24-point loss where the tolerance was 5. Not a wash — a clear regression, and
+in the direction that names its own cause.
+
+The diagnosis is in what σ was fitted on. The calibration regresses realized
+points minus EP, and that residual is *two* things added together: how wrong
+the forecast was, and how much football would have varied even from a perfect
+forecast. Only the first is decision-relevant — a scenario sweep asks "would
+this transfer survive my forecast being wrong", not "would it survive the ball
+going in". Fitting on outcomes conflates them, so every σ in the table is too
+large, and a sweep run at that scale finds nothing robust. The live symptom
+was exactly that: captain sim-support collapsed from 92% to 22% and the gate,
+finding no move that cleared threshold on its own, advised a plan carrying
+-20 in hits.
+
+The asset stays shipped and the mean-preserving serving path stays wired, both
+so this can be re-measured rather than rediscovered. The re-measurement a
+future cycle wants is an *estimation-only* σ — ensemble spread across refits,
+or a bootstrap over the training window — which prices how much the model's
+own estimate moves rather than how much the world does. Flip this constant (or
+pass ``table=`` explicitly) to serve the table again.
+"""
+
+
 @lru_cache(maxsize=1)
 def scenario_noise() -> dict | None:
     """The shipped residual-σ table, read once per process.
@@ -70,10 +99,18 @@ def scenario_noise() -> dict | None:
     gameweek per scenario — tens of thousands of times — and re-reading a JSON
     file for each of them would cost more than the solves.
 
-    Every failure is the same failure: no asset, unreadable asset, asset that
-    is not JSON. All of them return ``None``, which every caller reads as "use
-    the heuristic".
+    With :data:`CALIBRATED_NOISE_DEFAULT` off this returns ``None`` **without
+    touching the asset**: the S1 result is that the fitted table is the wrong
+    scale to plan on, and a switch that still read the file would leave the
+    failure one stale cache away from coming back. Callers that want the table
+    anyway pass it to :func:`noise_ep` explicitly.
+
+    Otherwise every failure is the same failure: no asset, unreadable asset,
+    asset that is not JSON. All of them return ``None``, which every caller
+    reads as "use the heuristic".
     """
+    if not CALIBRATED_NOISE_DEFAULT:
+        return None
     try:
         return load_scenario_noise()
     except Exception as exc:  # noqa: BLE001 — never blocks a sweep
@@ -249,8 +286,10 @@ def noise_ep(ep: dict[tuple[int, int], float],
     prediction for this player" is not the same claim as "his minutes are
     certain", and inventing a scale for him would be the worse error.
 
-    ``table`` of ``None`` means "read the shipped asset"; pass one explicitly
-    to price a whole sweep off a single load.
+    ``table`` of ``None`` defers to :func:`scenario_noise`, which since gate
+    S1 answers ``None`` — so the default really is the heuristic. Pass a table
+    explicitly to price a whole sweep off a single load, or to opt into the
+    calibrated arm.
     """
     if table is None:
         table = scenario_noise()

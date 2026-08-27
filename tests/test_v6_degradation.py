@@ -144,11 +144,15 @@ def test_no_noise_asset_is_the_pre_v6_heuristic_exactly(monkeypatch):
 
 
 def test_an_unreadable_noise_asset_degrades_to_the_heuristic(monkeypatch):
+    """Re-pinned to the opt-in arm after gate S1: with the default off the
+    loader never reads the file, so the read-failure path is only reachable —
+    and only worth pinning — once someone turns the calibrated arm on."""
     import gaffer.optimize.scenarios as sc
 
     def boom():
         raise ValueError("not JSON")
 
+    monkeypatch.setattr(sc, "CALIBRATED_NOISE_DEFAULT", True)
     monkeypatch.setattr(sc, "load_scenario_noise", boom)
     sc.scenario_noise.cache_clear()
     try:
@@ -179,6 +183,64 @@ def test_the_fitted_asset_is_present_and_well_shaped():
     assert isinstance(payload["global"], float)
     assert 0.0 < payload["global"] < 10.0
     assert payload["sigma"]
+
+
+def test_the_shipped_asset_is_not_served_by_default(monkeypatch):
+    """Gate S1 failed, so the default serving path is the heuristic even with
+    the fitted asset sitting on disk. The loader must not so much as read the
+    file: ``scenario_noise()`` answering ``None`` is the whole switch."""
+    from gaffer.assets import scenario_noise_exists
+    import gaffer.optimize.scenarios as sc
+
+    assert scenario_noise_exists(), "the fitted asset is meant to stay shipped"
+
+    def boom():
+        raise AssertionError("the default path must not read the asset")
+
+    monkeypatch.setattr(sc, "load_scenario_noise", boom)
+    sc.scenario_noise.cache_clear()
+    try:
+        assert sc.CALIBRATED_NOISE_DEFAULT is False
+        assert sc.scenario_noise() is None
+    finally:
+        sc.scenario_noise.cache_clear()
+
+
+def test_the_default_path_is_the_pre_v6_heuristic_value_for_value():
+    """No monkeypatching of the loader at all: with the asset present and the
+    default off, ``table=None`` has to reproduce the heuristic draw for draw."""
+    import numpy as np
+
+    import gaffer.optimize.scenarios as sc
+
+    sc.scenario_noise.cache_clear()
+    try:
+        ep = {(1, 5): 4.0, (2, 5): 1.0, (3, 5): 0.2}
+        xmins = {(1, 5): 88.0, (2, 5): 20.0, (3, 5): 0.0}
+        out = sc.noise_ep(ep, xmins, np.random.default_rng(7))
+
+        rng = np.random.default_rng(7)
+        for key, value in ep.items():
+            scale = (sc.NOISE_FLOOR_XMINS - xmins[key]) / sc.NOISE_DENOM
+            want = max(0.0,
+                       value + value * scale * float(rng.standard_normal()))
+            assert out[key] == want
+    finally:
+        sc.scenario_noise.cache_clear()
+
+
+def test_flipping_the_constant_serves_the_shipped_table(monkeypatch):
+    """The opt-in path stays alive for re-measurement: the asset ships, and a
+    future driver that sets the constant gets the fitted table back."""
+    import gaffer.optimize.scenarios as sc
+    from gaffer.assets import load_scenario_noise
+
+    monkeypatch.setattr(sc, "CALIBRATED_NOISE_DEFAULT", True)
+    sc.scenario_noise.cache_clear()
+    try:
+        assert sc.scenario_noise() == load_scenario_noise()
+    finally:
+        sc.scenario_noise.cache_clear()
 
 
 def test_the_shipped_asset_serves_whatever_edge_list_it_carries():
