@@ -301,6 +301,49 @@ class ChipPlan(BaseModel):
     chips: list[ChipPlanRow]
 
 
+class ChipWorkbenchRow(BaseModel):
+    """One (chip, gameweek) cell of the advice run's own chip table.
+
+    ``threshold`` is the θ bar that week — the surplus the best remaining week
+    is expected to offer — so the workbench can draw the gain against the bar
+    rather than against an arbitrary axis. Both it and ``play_now`` are
+    optional because an advice payload written before the chip policy landed
+    carries neither.
+    """
+
+    chip: str
+    gw: int
+    gain: float
+    per_week: float | None = None
+    threshold: float | None = None
+    play_now: bool = False
+    note: str | None = None
+
+
+class SquadPlayerRef(BaseModel):
+    code: int
+    name: str
+    position: str
+    price: float
+    ep: float
+
+
+class SquadDiff(BaseModel):
+    """A candidate squad against the one you own, resolved server-side."""
+
+    gain_over_horizon: float
+    recommend: bool
+    kept: list[SquadPlayerRef]
+    dropped: list[SquadPlayerRef]
+    added: list[SquadPlayerRef]
+
+
+class ChipsWorkbench(BaseModel):
+    gw: int
+    chips: list[ChipWorkbenchRow]
+    wildcard: SquadDiff | None = None
+
+
 class HistoryRun(BaseModel):
     gw: int
     deadline: str
