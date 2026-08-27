@@ -166,3 +166,82 @@ def test_the_shipped_asset_is_optional_by_construction():
     else:
         payload = load_scenario_noise()
         assert set(payload) >= {"ep_edges", "xmins_edges", "sigma"}
+
+
+def test_the_fitted_asset_is_present_and_well_shaped():
+    """The orchestrator fitted and committed the real table mid-cycle. It has
+    to be loadable, globally sane, and non-empty -- the rails above cover the
+    clone that lacks it."""
+    from gaffer.assets import load_scenario_noise
+
+    payload = load_scenario_noise()
+    assert isinstance(payload, dict)
+    assert isinstance(payload["global"], float)
+    assert 0.0 < payload["global"] < 10.0
+    assert payload["sigma"]
+
+
+# --- rail 5: a cold clone serves every new endpoint without artifacts -------
+
+def _client(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from gaffer.data import store
+    from gaffer.web.app import create_app
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")
+    return TestClient(create_app(), raise_server_exceptions=False)
+
+
+def test_every_new_endpoint_answers_on_an_empty_disk(tmp_path, monkeypatch):
+    """No reports/, no data/, no models/. The two artifact-backed endpoints
+    say what to run; the two panel-backed ones say nothing at all. None of
+    them 500s, and none of them is a blank page with a stack trace behind
+    it."""
+    client = _client(tmp_path, monkeypatch)
+
+    chips = client.get("/api/chips")
+    assert chips.status_code == 404
+    assert "gaffer advise" in chips.json()["detail"]
+
+    components = client.get("/api/components/5")
+    assert components.status_code == 404
+    assert "gaffer advise" in components.json()["detail"]
+
+    diff = client.get("/api/advice/diff")
+    assert diff.status_code == 200
+    assert diff.json()["available"] is False
+
+    news = client.get("/api/news/5")
+    assert news.status_code == 200
+    assert news.json() == {"gw": 5, "moved": 0, "rows": []}
+
+
+def test_the_quality_page_still_answers_without_a_news_shadow_run(tmp_path,
+                                                                 monkeypatch):
+    import json
+
+    client = _client(tmp_path, monkeypatch)
+    (tmp_path / "reports").mkdir()
+    (tmp_path / "reports" / "evaluation.json").write_text(json.dumps(
+        {"current": None, "benchmark": None, "decomposition": None}))
+    assert client.get("/api/quality").json()["news_shadow"] is None
+
+
+# --- rail 6: the artifacts are instrumentation, never a blocker ------------
+
+def test_the_v6_writers_all_swallow_their_own_failures(tmp_path,
+                                                       monkeypatch):
+    """Every artifact v6 added is for a UI panel. An advise run that died of
+    one would be a strictly worse trade than a hidden panel."""
+    import gaffer.artifacts as art
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(art, "REPORTS", tmp_path / "nope" / "\0" / "bad")
+    monkeypatch.setattr(art, "ADVICE_HISTORY",
+                        tmp_path / "nope" / "\0" / "bad" / "advice_history")
+    assert art.save_availability(pd.DataFrame([{"code": 1, "status": "a",
+                                                "chance_of_playing": None}]),
+                                 5) is None
+    assert art.append_advice_history({"gw": 5}, 5) is None
