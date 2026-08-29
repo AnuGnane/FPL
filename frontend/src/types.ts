@@ -547,3 +547,26 @@ export interface NewsShadowData {
   overall: Partial<NewsShadowSummary>
   by_gw: NewsShadowGw[]
 }
+
+export const JOB_KINDS = ['advise', 'evaluate', 'refresh-data',
+  'news-shadow'] as const
+
+export type JobKind = typeof JOB_KINDS[number]
+
+export const JOB_KIND_LABEL: Record<JobKind, string> = {
+  advise: 'Run advise',
+  evaluate: 'Evaluate',
+  'refresh-data': 'Refresh data',
+  'news-shadow': 'Score news shadow',
+}
+
+export interface JobRunView {
+  id: string
+  kind: JobKind
+  status: 'queued' | 'running' | 'done' | 'failed'
+  started_at: string
+  finished_at: string | null
+  error: string | null
+  summary: string | null
+  line_count: number
+}
