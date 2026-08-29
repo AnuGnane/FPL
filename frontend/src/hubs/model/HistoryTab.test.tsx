@@ -1,14 +1,32 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import History from './History'
+import HistoryTab from './HistoryTab'
 
 const apiGet = vi.hoisted(() => vi.fn())
-vi.mock('../api/client', () => ({
+vi.mock('../../api/client', () => ({
   ApiError: class extends Error {},
   apiGet: (path: string) => apiGet(path),
   apiPost: vi.fn(),
 }))
+
+vi.mock('recharts', async () => {
+  const actual = await vi.importActual<typeof import('recharts')>('recharts')
+  const { cloneElement, isValidElement } = await import('react')
+  return {
+    ...actual,
+    // The chart itself needs the measured box: cloning it with a fixed one is
+    // what the real container does once it has measured.
+    ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
+      <div style={{ width: 400, height: 200 }}>
+        {isValidElement(children)
+          ? cloneElement(children as React.ReactElement<Record<string, unknown>>,
+                         { width: 400, height: 200 })
+          : children}
+      </div>
+    ),
+  }
+})
 
 beforeEach(() => {
   apiGet.mockReset()
@@ -26,9 +44,9 @@ beforeEach(() => {
   })
 })
 
-describe('History', () => {
+describe('HistoryTab', () => {
   it('pairs expected with actual and charts prices', async () => {
-    render(<MemoryRouter><History /></MemoryRouter>)
+    render(<MemoryRouter><HistoryTab /></MemoryRouter>)
     expect(await screen.findByText('61.5')).toBeInTheDocument()
     expect(screen.getByText('64')).toBeInTheDocument()
     expect(screen.getByText('not resolved yet')).toBeInTheDocument()

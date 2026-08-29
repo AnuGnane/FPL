@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import Quality from './Quality'
+import QualityTab from './QualityTab'
 
 const { FakeApiError, apiGet } = vi.hoisted(() => {
   class FakeApiError extends Error {
@@ -17,11 +17,29 @@ const { FakeApiError, apiGet } = vi.hoisted(() => {
   return { FakeApiError, apiGet: vi.fn() }
 })
 
-vi.mock('../api/client', () => ({
+vi.mock('../../api/client', () => ({
   ApiError: FakeApiError,
   apiGet: (path: string) => apiGet(path),
   apiPost: vi.fn(),
 }))
+
+vi.mock('recharts', async () => {
+  const actual = await vi.importActual<typeof import('recharts')>('recharts')
+  const { cloneElement, isValidElement } = await import('react')
+  return {
+    ...actual,
+    // The chart itself needs the measured box: cloning it with a fixed one is
+    // what the real container does once it has measured.
+    ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
+      <div style={{ width: 400, height: 200 }}>
+        {isValidElement(children)
+          ? cloneElement(children as React.ReactElement<Record<string, unknown>>,
+                         { width: 400, height: 200 })
+          : children}
+      </div>
+    ),
+  }
+})
 
 const table = {
   zeros: { rmse: 0.9, mae: 0.4, n: 900 },
@@ -98,10 +116,10 @@ beforeEach(() => {
   apiGet.mockResolvedValue(payload)
 })
 
-describe('Quality', () => {
+describe('QualityTab', () => {
   it('shows the holdout table beside the baselines', async () => {
-    render(<MemoryRouter><Quality /></MemoryRouter>)
-    expect(await screen.findByRole('heading', { name: /model quality/i }))
+    render(<MemoryRouter><QualityTab /></MemoryRouter>)
+    expect(await screen.findByRole('heading', { name: /holdout/i }))
       .toBeInTheDocument()
     expect(screen.getByText(/last-10-slot holdout/i)).toBeInTheDocument()
     expect(screen.getAllByText('Haulers').length).toBeGreaterThan(0)
@@ -110,7 +128,7 @@ describe('Quality', () => {
   })
 
   it('puts the published numbers next to ours in the benchmark', async () => {
-    render(<MemoryRouter><Quality /></MemoryRouter>)
+    render(<MemoryRouter><QualityTab /></MemoryRouter>)
     expect(await screen.findByText('OpenFPL')).toBeInTheDocument()
     expect(screen.getByText('FPL Review')).toBeInTheDocument()
     expect(screen.getByText('5.142')).toBeInTheDocument()
@@ -118,7 +136,7 @@ describe('Quality', () => {
   })
 
   it('draws a reliability curve per probability head', async () => {
-    render(<MemoryRouter><Quality /></MemoryRouter>)
+    render(<MemoryRouter><QualityTab /></MemoryRouter>)
     expect(await screen.findByLabelText('P(plays) reliability'))
       .toBeInTheDocument()
     expect(screen.getByLabelText('P(60+ minutes) reliability'))
@@ -128,7 +146,7 @@ describe('Quality', () => {
   })
 
   it('spells out the two derived decomposition numbers', async () => {
-    render(<MemoryRouter><Quality /></MemoryRouter>)
+    render(<MemoryRouter><QualityTab /></MemoryRouter>)
     expect(await screen.findByText('850')).toBeInTheDocument()
     expect(screen.getByText('100')).toBeInTheDocument()
     expect(screen.getByText(/better forecasting/i)).toBeInTheDocument()
@@ -139,13 +157,13 @@ describe('Quality', () => {
   it('shows an empty state when nothing has been evaluated yet', async () => {
     apiGet.mockRejectedValue(new FakeApiError(
       422, 'no evaluation on disk — run `gaffer evaluate` first'))
-    render(<MemoryRouter><Quality /></MemoryRouter>)
+    render(<MemoryRouter><QualityTab /></MemoryRouter>)
     expect(await screen.findByText(/run `gaffer evaluate` first/))
       .toBeInTheDocument()
   })
 
   it('scores the news layer against the flags per gameweek', async () => {
-    render(<MemoryRouter><Quality /></MemoryRouter>)
+    render(<MemoryRouter><QualityTab /></MemoryRouter>)
     expect(await screen.findByRole('heading', { name: /news layer/i }))
       .toBeInTheDocument()
     expect(screen.getByText('GW3')).toBeInTheDocument()
@@ -155,7 +173,7 @@ describe('Quality', () => {
   })
 
   it('states the verdict in a sentence', async () => {
-    render(<MemoryRouter><Quality /></MemoryRouter>)
+    render(<MemoryRouter><QualityTab /></MemoryRouter>)
     expect(await screen.findByText(/news is ahead on both/i))
       .toBeInTheDocument()
   })
@@ -166,8 +184,8 @@ describe('Quality', () => {
       news_shadow: { run_at: 'x', git_sha: 'y', rows: 0, overall: {},
                      by_gw: [] },
     })
-    render(<MemoryRouter><Quality /></MemoryRouter>)
-    await screen.findByRole('heading', { name: /model quality/i })
+    render(<MemoryRouter><QualityTab /></MemoryRouter>)
+    await screen.findByRole('heading', { name: /holdout/i })
     expect(screen.queryByRole('heading', { name: /news layer/i }))
       .not.toBeInTheDocument()
   })

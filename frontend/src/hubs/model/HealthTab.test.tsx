@@ -2,11 +2,11 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import Health from './Health'
+import HealthTab from './HealthTab'
 
 const apiGet = vi.hoisted(() => vi.fn())
 const apiPost = vi.hoisted(() => vi.fn())
-vi.mock('../api/client', () => ({
+vi.mock('../../api/client', () => ({
   ApiError: class extends Error {},
   apiGet: (path: string) => apiGet(path),
   apiPost: (path: string, body: unknown) => apiPost(path, body),
@@ -39,7 +39,7 @@ beforeEach(() => {
 
 describe('Runs & Health', () => {
   it('shows freshness, models, launchd and the odds notice', async () => {
-    render(<MemoryRouter><Health /></MemoryRouter>)
+    render(<MemoryRouter><HealthTab /></MemoryRouter>)
     expect(await screen.findByText('player_gw')).toBeInTheDocument()
     expect(screen.getByText('4.5h ago')).toBeInTheDocument()
     expect(screen.getByText('missing')).toBeInTheDocument()
@@ -52,7 +52,7 @@ describe('Runs & Health', () => {
 
   it('fires the refresh and re-run jobs', async () => {
     apiPost.mockResolvedValue({ job_id: 'j1' })
-    render(<MemoryRouter><Health /></MemoryRouter>)
+    render(<MemoryRouter><HealthTab /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('button',
       { name: /refresh data/i }))
     expect(apiPost).toHaveBeenCalledWith('/api/data/refresh', undefined)
@@ -64,7 +64,7 @@ describe('Runs & Health', () => {
   it('reads back a rejected submission instead of crashing', async () => {
     apiPost.mockRejectedValue(
       new Error('2 jobs already queued — wait for one to finish'))
-    render(<MemoryRouter><Health /></MemoryRouter>)
+    render(<MemoryRouter><HealthTab /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('button',
       { name: /re-run advice/i }))
     expect(await screen.findByText(/already queued/i)).toBeInTheDocument()

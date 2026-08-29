@@ -16,7 +16,7 @@ describe('app shell', () => {
   it('lists every page in the sidebar', () => {
     render(<MemoryRouter><App /></MemoryRouter>)
     for (const label of ['This Week', 'Planning', 'League', 'Live',
-      'Players', 'History', 'Model Quality', 'Runs & Health']) {
+      'Players', 'Model']) {
       expect(screen.getByRole('link', { name: label })).toBeInTheDocument()
     }
   })

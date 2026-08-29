@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
-import { ApiError, apiGet } from '../api/client'
-import LineChart from '../components/LineChart'
+import {
+  CartesianGrid, Line, LineChart as RLineChart, ResponsiveContainer, Tooltip,
+  XAxis, YAxis,
+} from 'recharts'
+import { ApiError, apiGet } from '../../api/client'
+import { Card, EmptyState } from '../../kit'
 import type {
   BenchmarkEvaluation, CurrentEvaluation, DecompositionData, HeadMetrics,
   NewsShadowData, QualityData, StratifiedTable,
-} from '../types'
+} from '../../types'
 
 // Categories are OpenFPL's, defined on actual points, so the labels have to
 // stay recognisable next to their published table.
@@ -60,10 +64,10 @@ function StratifiedTableView(
             <td>{label}</td>
             {columns.map(([name, table]) => [
               <td key={`${name}-${key}-rmse`}>
-                {table[key] === undefined ? '—' : table[key].rmse}
+                <span className="num">{table[key] === undefined ? '—' : table[key].rmse}</span>
               </td>,
               <td key={`${name}-${key}-mae`}>
-                {table[key] === undefined ? '—' : table[key].mae}
+                <span className="num">{table[key] === undefined ? '—' : table[key].mae}</span>
               </td>,
             ])}
           </tr>
@@ -74,29 +78,25 @@ function StratifiedTableView(
 }
 
 function Reliability({ label, head }: { label: string; head: HeadMetrics }) {
+  const points = head.reliability
   return (
     <div>
-      <p className="muted">
+      <p className="text-text-muted">
         {label} — log loss {head.log_loss ?? 'n/a'}
       </p>
-      <LineChart
-        label={`${label} reliability`}
-        series={[
-          {
-            name: 'observed',
-            colour: '#4ade80',
-            points: head.reliability.map((bin) => ({
-              x: bin.pred, y: bin.obs,
-            })),
-          },
-          // The diagonal a perfectly calibrated head would sit on.
-          {
-            name: 'perfect',
-            colour: '#60a5fa',
-            points: [{ x: 0, y: 0 }, { x: 1, y: 1 }],
-          },
-        ]}
-      />
+      <div aria-label={`${label} reliability`}>
+        <ResponsiveContainer width="100%" height={220}>
+          <RLineChart data={points}>
+            <CartesianGrid stroke="var(--color-divider)" vertical={false} />
+            <XAxis dataKey="pred" stroke="var(--color-text-muted)" />
+            <YAxis stroke="var(--color-text-muted)" />
+            <Tooltip contentStyle={{ background: 'var(--color-card)',
+                                     border: '1px solid var(--color-border)' }} />
+            <Line type="monotone" dataKey="obs" dot={false}
+                  stroke="var(--color-sage)" strokeWidth={2} />
+          </RLineChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   )
 }
@@ -104,9 +104,8 @@ function Reliability({ label, head }: { label: string; head: HeadMetrics }) {
 function CurrentSection({ current }: { current: CurrentEvaluation }) {
   return (
     <>
-      <div className="card">
-        <h2>Holdout</h2>
-        <p className="muted">
+      <Card title="Holdout" className="mb-4">
+        <p className="text-text-muted">
           Last-10-slot holdout, {current.holdout_slots} gameweeks, sha{' '}
           {current.git_sha}, run {current.run_at}.
         </p>
@@ -118,15 +117,14 @@ function CurrentSection({ current }: { current: CurrentEvaluation }) {
             ['Last-38 mean', current.baselines.last38_ppg ?? {}],
           ]}
         />
-      </div>
-      <div className="card">
-        <h2>Calibration</h2>
+      </Card>
+      <Card title="Calibration" className="mb-4">
         {HEADS.map(([key, label]) => {
           const head = current.heads[key]
           return head === undefined ? null
             : <Reliability key={key} label={label} head={head} />
         })}
-      </div>
+      </Card>
     </>
   )
 }
@@ -141,13 +139,12 @@ function BenchmarkSection({ benchmark }: { benchmark: BenchmarkEvaluation }) {
     ])) as StratifiedTable,
   ])
   return (
-    <div className="card">
-      <h2>Benchmark — {benchmark.test_season}</h2>
+    <Card title={`Benchmark — ${benchmark.test_season}`} className="mb-4">
       <StratifiedTableView
         columns={[['Ours', benchmark.stratified.all ?? {}], ...references]}
       />
-      <p className="muted">{benchmark.caveat}</p>
-    </div>
+      <p className="text-text-muted">{benchmark.caveat}</p>
+    </Card>
   )
 }
 
@@ -155,9 +152,11 @@ function DecompositionSection(
   { decomposition }: { decomposition: DecompositionData },
 ) {
   return (
-    <div className="card">
-      <h2>Decomposition — {decomposition.season} from GW
-        {decomposition.start_gw}</h2>
+    <Card
+      title={`Decomposition — ${decomposition.season} from GW`
+        + ` ${decomposition.start_gw}`}
+      className="mb-4"
+    >
       <table>
         <thead>
           <tr><th>Run</th><th>Total</th><th>Per GW</th><th>Hits</th></tr>
@@ -168,9 +167,9 @@ function DecompositionSection(
             return cell === undefined ? null : (
               <tr key={key}>
                 <td>{label}</td>
-                <td>{cell.total}</td>
-                <td>{cell.per_gw}</td>
-                <td>{cell.hits}</td>
+                <td><span className="num">{cell.total}</span></td>
+                <td><span className="num">{cell.per_gw}</span></td>
+                <td><span className="num">{cell.hits}</span></td>
               </tr>
             )
           })}
@@ -180,21 +179,21 @@ function DecompositionSection(
         <tbody>
           <tr>
             <td>Forecast gap (3-week)</td>
-            <td>{decomposition.forecast_gap_h3}</td>
-            <td className="muted">
+            <td><span className="num">{decomposition.forecast_gap_h3}</span></td>
+            <td className="text-text-muted">
               points better forecasting could still win
             </td>
           </tr>
           <tr>
             <td>Planning ceiling</td>
-            <td>{decomposition.planning_ceiling}</td>
-            <td className="muted">
+            <td><span className="num">{decomposition.planning_ceiling}</span></td>
+            <td className="text-text-muted">
               the most multi-week planning can ever be worth
             </td>
           </tr>
         </tbody>
       </table>
-    </div>
+    </Card>
   )
 }
 
@@ -230,11 +229,11 @@ function PairedBar({ news, flags }: { news: number; flags: number }) {
     <span style={{ display: 'inline-flex', gap: 4, width: 120 }}>
       <span className="bar"
             style={{ width: `${(news / top) * 100}%`,
-                     background: 'var(--pitch-300)' }}
+                     background: 'var(--color-sage)' }}
             aria-label={`news ${news}`} />
       <span className="bar"
             style={{ width: `${(flags / top) * 100}%`,
-                     background: 'var(--chalk-dim)' }}
+                     background: 'var(--color-text-muted)' }}
             aria-label={`flags ${flags}`} />
     </span>
   )
@@ -242,9 +241,8 @@ function PairedBar({ news, flags }: { news: number; flags: number }) {
 
 function NewsShadowSection({ shadow }: { shadow: NewsShadowData }) {
   return (
-    <div className="card">
-      <h2>News layer</h2>
-      <p className="muted">{verdict(shadow)}</p>
+    <Card title="News layer">
+      <p className="text-text-muted">{verdict(shadow)}</p>
       <table>
         <thead>
           <tr>
@@ -258,26 +256,26 @@ function NewsShadowSection({ shadow }: { shadow: NewsShadowData }) {
           {shadow.by_gw.map((row) => (
             <tr key={row.gw}>
               <td>GW{row.gw}</td>
-              <td>{row.brier_news}</td>
-              <td>{row.brier_flags}</td>
+              <td><span className="num">{row.brier_news}</span></td>
+              <td><span className="num">{row.brier_flags}</span></td>
               <td>
                 <PairedBar news={row.brier_news} flags={row.brier_flags} />
               </td>
-              <td>{row.mae_news}</td>
-              <td>{row.mae_flags}</td>
+              <td><span className="num">{row.mae_news}</span></td>
+              <td><span className="num">{row.mae_flags}</span></td>
               <td>
                 <PairedBar news={row.mae_news} flags={row.mae_flags} />
               </td>
-              <td>{row.rows}</td>
+              <td><span className="num">{row.rows}</span></td>
             </tr>
           ))}
         </tbody>
       </table>
-    </div>
+    </Card>
   )
 }
 
-export default function Quality() {
+export default function QualityTab() {
   const [data, setData] = useState<QualityData | null>(null)
   const [empty, setEmpty] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -291,20 +289,20 @@ export default function Quality() {
     })
   }, [])
 
-  if (error) return <p className="bad">{error}</p>
+  if (error) return <p className="text-rust">{error}</p>
   if (empty) {
     return (
-      <>
-        <h2>Model Quality</h2>
-        <div className="card"><p className="muted">{empty}</p></div>
-      </>
+      <EmptyState
+        title="Nothing evaluated yet"
+        detail={empty}
+        action="gaffer evaluate"
+      />
     )
   }
-  if (!data) return <p className="muted">Loading…</p>
+  if (!data) return <p className="text-text-muted">Loading…</p>
 
   return (
     <>
-      <h2>Model Quality</h2>
       {data.current && <CurrentSection current={data.current} />}
       {data.benchmark && <BenchmarkSection benchmark={data.benchmark} />}
       {data.decomposition
