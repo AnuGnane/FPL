@@ -615,3 +615,28 @@ export interface PlanTimeline {
   generated_at: string
   weeks: PlanGw[]
 }
+
+export interface MatrixCell {
+  gw: number
+  opponent: string
+  home: boolean
+  /** Difficulty for attackers, 0 easiest to 1 hardest. */
+  attack: number
+  /** Difficulty of keeping a clean sheet, 0 easiest to 1 hardest. */
+  defence: number
+}
+
+export interface MatrixTeam {
+  code: number
+  name: string
+  short_name: string
+  cells: MatrixCell[]
+  mean_attack: number
+  mean_defence: number
+}
+
+export interface FixtureMatrixData {
+  gws: number[]
+  teams: MatrixTeam[]
+  source: 'dixon_coles' | 'none'
+}
