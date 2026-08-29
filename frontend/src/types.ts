@@ -640,3 +640,27 @@ export interface FixtureMatrixData {
   teams: MatrixTeam[]
   source: 'dixon_coles' | 'none'
 }
+
+export interface JournalRow {
+  gw: number
+  model_pts: number
+  actual_pts: number
+  delta: number
+  model_captain: string | null
+  actual_captain: string | null
+  model_buys: string[]
+  model_sells: string[]
+}
+
+export interface JournalPoint {
+  gw: number
+  model: number
+  actual: number
+  delta: number
+}
+
+export interface JournalData {
+  rows: JournalRow[]
+  cumulative: JournalPoint[]
+  built_at: string | null
+}
