@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+/* The locked design language (spec §2). Dark only this cycle: there is no
+   prefers-color-scheme branch anywhere, deliberately. */
+@theme {
+  --color-base: #101216;
+  --color-card: #16181d;
+  --color-border: #23262d;
+  --color-divider: #1e2127;
+  --color-text: #f2f3f5;
+  --color-text-secondary: #c8cbd2;
+  --color-text-muted: #9ca3af;
+  --color-text-faint: #6b7280;
+  --color-sage: #86b388;
+  --color-rust: #e0876f;
+  --color-info: #7da7c9;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'SF Mono', Menlo, monospace;
+
+  --radius-card: 10px;
+}
+
+html, body, #root { min-height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--color-base);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+}
+
+/* Every numeral in a data context is mono (spec §2); components opt in with
+   the `num` class rather than each one re-declaring the face. */
+.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* 9px letter-spaced uppercase muted — the one label style in the system. */
+.label {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}

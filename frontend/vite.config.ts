@@ -1,11 +1,12 @@
 /// <reference types="vitest" />
+import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
 // The build lands inside the Python package so the wheel can ship it and
 // FastAPI can serve it from importlib.resources (see src/gaffer/web/app.py).
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   build: { outDir: '../src/gaffer/web/static', emptyOutDir: true },
   server: {
     port: 5173,
