@@ -408,5 +408,8 @@ def main():
     try:
         app()
     except GafferError as exc:
-        typer.echo(str(exc))
+        # stderr, like every other failure: a caller redirecting stdout to a
+        # file should still see why the run stopped, and should not find the
+        # message pasted into the output it was collecting.
+        typer.echo(str(exc), err=True)
         raise SystemExit(1) from None

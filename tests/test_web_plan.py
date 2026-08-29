@@ -10,7 +10,8 @@ import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
-from gaffer.artifacts import SolveState, pool_rows, save_solve_state
+from gaffer.artifacts import (SolveState, pool_rows, save_solve_state,
+                             solve_state_paths)
 from gaffer.web.app import create_app
 
 ADVICE = {
@@ -251,3 +252,66 @@ def test_a_plan_entry_with_no_gameweek_is_skipped(tmp_path, monkeypatch):
     resp = client.get("/api/plan/5")
     assert resp.status_code == 200
     assert [w["gw"] for w in resp.json()["weeks"]] == [6]
+
+
+# --- a drifted price pool ---------------------------------------------------
+#
+# The pool parquet is written by the same run that wrote the advice JSON and
+# drifts with it. `int(r.cost)` and a bare `r.sell` took its schema on trust,
+# and a plan whose prices cannot be read is still a plan.
+
+
+def _with_pool(tmp_path, monkeypatch, mutate):
+    """The saved solve state, with its pool rewritten by ``mutate``."""
+    monkeypatch.chdir(tmp_path)
+    _write(tmp_path)
+    parquet, _ = solve_state_paths(5)
+    mutate(pd.read_parquet(parquet)).to_parquet(parquet, index=False)
+    return TestClient(create_app(), raise_server_exceptions=False)
+
+
+def test_a_pool_with_no_sell_column_still_prices_the_buys(tmp_path,
+                                                          monkeypatch):
+    client = _with_pool(tmp_path, monkeypatch,
+                        lambda pool: pool.drop(columns=["sell"]))
+    resp = client.get("/api/plan/5")
+    assert resp.status_code == 200
+    week = resp.json()["weeks"][0]
+    assert week["buys"][0]["price"] == 13.0
+    assert week["sells"][0]["price"] is None
+
+
+def test_a_non_numeric_cost_leaves_that_move_unpriced(tmp_path, monkeypatch):
+    def mutate(pool):
+        pool["cost"] = "cheap"
+        return pool
+
+    client = _with_pool(tmp_path, monkeypatch, mutate)
+    resp = client.get("/api/plan/5")
+    assert resp.status_code == 200
+    assert resp.json()["weeks"][0]["buys"][0]["price"] is None
+
+
+def test_a_nan_sell_value_leaves_that_move_unpriced(tmp_path, monkeypatch):
+    def mutate(pool):
+        pool["sell"] = pool["sell"].astype(float)
+        pool.loc[pool["code"] == 101, "sell"] = float("nan")
+        return pool
+
+    client = _with_pool(tmp_path, monkeypatch, mutate)
+    resp = client.get("/api/plan/5")
+    assert resp.status_code == 200
+    week = resp.json()["weeks"][0]
+    assert week["sells"][0]["price"] is None
+    assert week["buys"][0]["price"] == 13.0
+
+
+def test_a_pool_with_no_code_column_costs_only_the_prices(tmp_path,
+                                                          monkeypatch):
+    client = _with_pool(tmp_path, monkeypatch,
+                        lambda pool: pool.drop(columns=["code"]))
+    resp = client.get("/api/plan/5")
+    assert resp.status_code == 200
+    week = resp.json()["weeks"][0]
+    assert week["buys"][0]["name"] == "Salah"     # the plan still draws
+    assert week["buys"][0]["price"] is None

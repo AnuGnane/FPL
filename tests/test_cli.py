@@ -379,7 +379,11 @@ def test_main_exits_one_on_a_gaffer_error(tmp_path, monkeypatch, capsys):
     with pytest.raises(SystemExit) as excinfo:
         cli_main()
     assert excinfo.value.code == 1
-    assert capsys.readouterr().out.strip() == "no models"
+    # stderr: the message is a failure, and a caller piping stdout somewhere
+    # should get the failure on the stream failures belong on.
+    captured = capsys.readouterr()
+    assert captured.err.strip() == "no models"
+    assert captured.out.strip() == ""
 
 
 def test_main_lets_a_real_bug_through(monkeypatch):

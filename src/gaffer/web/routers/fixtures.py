@@ -47,6 +47,11 @@ def _normalise(values: dict[int, float]) -> dict[int, float]:
     default, puts the 5th percentile of twenty teams between the lowest and the
     second lowest — so a single value far enough out still drags the bound most
     of the way down to itself, which is the whole problem again.
+
+    A NaN parameter — a club the fit could not place — scores 0.5, the same as
+    a league with no spread at all. Left alone it arrives in the JSON body as a
+    bare ``NaN``, which no JSON parser accepts: one unfittable club took the
+    whole matrix down rather than one cell.
     """
     if not values:
         return {}
@@ -59,7 +64,8 @@ def _normalise(values: dict[int, float]) -> dict[int, float]:
         lo, hi = series.min(), series.max()
     if not hi > lo:
         return {code: 0.5 for code in values}
-    return {code: min(max((v - lo) / (hi - lo), 0.0), 1.0)
+    return {code: (0.5 if v != v
+                   else min(max((v - lo) / (hi - lo), 0.0), 1.0))
             for code, v in values.items()}
 
 
@@ -118,9 +124,10 @@ def matrix(from_: int | None = Query(None, alias="from"),
         {int(c): -math.exp(float(v)) for c, v in model.defence_.items()
          if int(c) in live_codes})
     # Named for the cell field each one fills, not for the dict it is read out
-    # of: a cell's *attack* score is how leaky the opponent's defence is, so it
-    # is defence_strength that backs it. They are both 0.5, but a reader who
-    # trusts the names should be able to.
+    # of. Every score runs easy-to-hard, 0 green and 1 rust: a cell's *attack*
+    # score is how mean the opponent's defence is, so a leaky opponent scores
+    # low and it is defence_strength that backs it. They are both 0.5, but a
+    # reader who trusts the names should be able to.
     fallback_attack = 0.5
     fallback_defence = 0.5
 

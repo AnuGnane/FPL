@@ -16,18 +16,11 @@ from gaffer.web.schemas import PlanGw, PlanMove, PlanTimeline
 router = APIRouter(prefix="/api", tags=["plan"])
 
 
-def _prices(state) -> tuple[dict[int, float], dict[int, float]]:
-    """``({code: buy price}, {code: sell value})`` in millions."""
-    one = state.pool.drop_duplicates("code")
-    buy = {int(r.code): round(int(r.cost) / 10, 1) for r in one.itertuples()}
-    sell = {int(r.code): round(int(r.sell) / 10, 1) for r in one.itertuples()}
-    return buy, sell
-
-
 # The advice JSON on disk was written by whatever version of `gaffer advise`
-# last ran, which need not be this one. Every read below therefore degrades the
-# field it could not make sense of and draws the rest of the timeline: a plan
-# missing an armband is still a plan, and a 500 tells the user nothing at all.
+# last ran, which need not be this one — and so was the solve-state pool beside
+# it. Every read below therefore degrades the field it could not make sense of
+# and draws the rest of the timeline: a plan missing an armband is still a
+# plan, and a 500 tells the user nothing at all.
 
 
 def _int(value, default: int = 0) -> int:
@@ -43,6 +36,39 @@ def _float(value, default: float = 0.0) -> float:
     except (TypeError, ValueError):
         return default
     return default if out != out else out          # NaN
+
+
+def _price(value) -> float | None:
+    """Tenths of a million as millions, or ``None`` if it is not a number."""
+    try:
+        out = float(value)
+    except (TypeError, ValueError):
+        return None
+    return None if out != out else round(out / 10, 1)          # NaN
+
+
+def _prices(state) -> tuple[dict[int, float], dict[int, float]]:
+    """``({code: buy price}, {code: sell value})`` in millions.
+
+    A column the pool does not carry, and a value that is not a number, leave
+    that side unpriced. The timeline renders a move with no price; it cannot
+    render a 500.
+    """
+    pool = state.pool
+    if getattr(pool, "columns", None) is None or "code" not in pool.columns:
+        return {}, {}
+    one = pool.drop_duplicates("code")
+    buy: dict[int, float] = {}
+    sell: dict[int, float] = {}
+    for row in one.itertuples():
+        code = _int(getattr(row, "code", None), -1)
+        if code < 0:
+            continue
+        for column, out in (("cost", buy), ("sell", sell)):
+            price = _price(getattr(row, column, None))
+            if price is not None:
+                out[code] = price
+    return buy, sell
 
 
 def _move(entry, prices: dict[int, float]) -> PlanMove | None:

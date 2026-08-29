@@ -194,3 +194,24 @@ def test_a_cold_clone_is_an_empty_matrix_not_a_500(tmp_path, monkeypatch):
     resp = client.get("/api/fixtures/matrix")
     assert resp.status_code == 200
     assert resp.json() == {"gws": [], "teams": [], "source": "none"}
+
+
+def test_a_nan_team_parameter_scores_a_half_not_invalid_json(client,
+                                                             monkeypatch):
+    """One unfittable club used to put a bare NaN in the body, and NaN is not
+    JSON: the whole matrix failed to parse, not one cell."""
+    class NanModel:
+        attack_ = {300: 0.40, 301: 0.00, 302: float("nan")}
+        defence_ = {300: -0.30, 301: 0.00, 302: 0.30}
+
+    monkeypatch.setattr(persistence, "load_model", lambda name: NanModel())
+    resp = client.get("/api/fixtures/matrix?from=5&n=2")
+    assert resp.status_code == 200
+    assert "NaN" not in resp.text
+    body = resp.json()
+    liverpool = next(t for t in body["teams"] if t["code"] == 300)
+    gw5 = next(c for c in liverpool["cells"] if c["gw"] == 5)   # home to EVE
+    # The opponent's attack parameter is what a clean-sheet score reads, and
+    # this one is unreadable: 0.5 is "no information", not a hole in the grid.
+    assert gw5["defence"] == 0.5
+    assert liverpool["mean_defence"] == liverpool["mean_defence"]   # not NaN

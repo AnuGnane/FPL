@@ -42,7 +42,11 @@ def qr_lines(url: str) -> list[str]:
     except ImportError:
         print(MISSING_QRCODE)
         return []
-    if qrcode is None:                   # patched out in tests
+    if qrcode is None:
+        # Belt and braces. A name can import to nothing — a stubbed or
+        # half-initialised sys.modules entry under an import hook — and
+        # `qrcode.QRCode` on None is an AttributeError traceback where the
+        # honest answer is the same one line the ImportError gets.
         print(MISSING_QRCODE)
         return []
     code = qrcode.QRCode(border=1)
