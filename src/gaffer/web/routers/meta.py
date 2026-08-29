@@ -13,8 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
-from fastapi import APIRouter, Query, Request
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Query
 
 from gaffer.artifacts import (REPORTS, ingested_through, latest_gw,
                               load_advice, load_snapshot, load_solve_state,
@@ -25,12 +24,10 @@ from gaffer.data.odds import poisson_win_prob
 from gaffer.errors import GafferError
 from gaffer.optimize.chips import chip_plan, evaluate_chips
 from gaffer.optimize.milp import SolveInput
-from gaffer.web.jobs import ADVISE_TIMEOUT_S, JobQueueFull
 from gaffer.web.schemas import (ArtifactItem, ChipPlan, ChipPlanRow, Health,
-                                History, HistoryRun, JobAccepted,
-                                LaunchdHealth, ModelHealth, PricePoint,
-                                PriceSeries, SourceHealth, Ticker, TickerCell,
-                                TickerTeam)
+                                History, HistoryRun, LaunchdHealth,
+                                ModelHealth, PricePoint, PriceSeries,
+                                SourceHealth, Ticker, TickerCell, TickerTeam)
 
 router = APIRouter(prefix="/api", tags=["meta"])
 
@@ -269,7 +266,14 @@ def ticker(weeks: int = Query(8, ge=1, le=20)) -> Ticker:
 
 
 def run_data_refresh() -> dict:
-    """Pull the live season and re-write the bootstrap snapshots."""
+    """Pull the live season and re-write the bootstrap snapshots.
+
+    The body of the ``refresh-data`` job kind, started through
+    ``POST /api/jobs/refresh-data``. The ``POST /api/data/refresh`` route that
+    used to queue this on the legacy ``JobRegistry`` is gone: it was a second
+    lane past the single-flight runner, and two concurrent refreshes rewrite
+    the same parquet files underneath each other.
+    """
     from gaffer.advise import fixture_frame, save_live_fixtures
     from gaffer.api.client import FPLClient
     from gaffer.artifacts import save_snapshots
@@ -290,13 +294,3 @@ def run_data_refresh() -> dict:
     save_live_fixtures(fixtures, teams, season_idx)
     save_snapshots(build_players(raw), teams, build_events(raw), fixtures)
     return {"rows": int(len(frame))}
-
-
-@router.post("/data/refresh", status_code=202, response_model=JobAccepted)
-def data_refresh(request: Request):
-    try:
-        job_id = request.app.state.jobs.submit(run_data_refresh,
-                                               timeout_s=ADVISE_TIMEOUT_S)
-    except JobQueueFull as exc:
-        return JSONResponse(status_code=429, content={"detail": str(exc)})
-    return JobAccepted(job_id=job_id)

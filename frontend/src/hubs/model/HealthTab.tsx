@@ -1,47 +1,28 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../../api/client'
-import { useJob } from '../../api/useJob'
 import { Card, EmptyState } from '../../kit'
 import type { HealthData } from '../../types'
 
+// No buttons here. This tab used to carry its own "Refresh data" and "Re-run
+// advice" pair, posting to the legacy JobRegistry routes — a second lane past
+// the single-flight runner, from which two full advise runs could write to
+// reports/ at once. The Model hub's JobButtons are the one control, and the
+// routes those buttons posted to are gone.
 export default function HealthTab() {
   const [data, setData] = useState<HealthData | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const job = useJob()
-  // Which button is waiting: the queue happily takes a refresh and a re-run
-  // back to back, so only the button whose job is in flight goes grey.
-  const [pending, setPending] = useState<string | null>(null)
 
   const load = () => {
     apiGet<HealthData>('/api/health').then(setData)
       .catch((e: Error) => setError(e.message))
   }
   useEffect(load, [])
-  useEffect(() => { if (job.status === 'done') load() }, [job.status])
 
   if (error) return <p className="text-rust">{error}</p>
   if (!data) return <p className="text-text-muted">Loading…</p>
 
-  // A rejected submission (429 from a full queue) leaves the hook in `error`
-  // with the server's own sentence, so the buttons re-enable and the page
-  // says why nothing started instead of hanging on a job that never was.
-  const busy = job.status === 'queued' || job.status === 'running'
-  const run = (path: string) => { setPending(path); job.start(path) }
-  const waiting = (path: string) => busy && pending === path
   return (
     <>
-      <Card className="mb-4">
-        <button onClick={() => run('/api/data/refresh')}
-          disabled={waiting('/api/data/refresh')}>
-          Refresh data
-        </button>{' '}
-        <button onClick={() => run('/api/advice/rerun')}
-          disabled={waiting('/api/advice/rerun')}>
-          Re-run advice
-        </button>
-        {busy && <span className="text-text-muted"> job {job.status}…</span>}
-        {job.status === 'error' && <p className="text-rust">{job.error}</p>}
-      </Card>
       <Card title="Data freshness" className="mb-4">
         <table>
           <tbody>

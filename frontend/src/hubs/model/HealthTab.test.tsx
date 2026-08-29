@@ -50,27 +50,14 @@ describe('Runs & Health', () => {
     expect(screen.getByText('reports/gw3-advice.json')).toBeInTheDocument()
   })
 
-  it('fires the refresh and re-run jobs', async () => {
-    apiPost.mockResolvedValue({ job_id: 'j1' })
+  it('starts no job of its own', async () => {
+    // The Model hub's JobButtons are the single control. This tab carrying a
+    // second pair, posting past the single-flight runner to the legacy
+    // registry, is what let two advise runs write reports/ at once.
     render(<MemoryRouter><HealthTab /></MemoryRouter>)
-    await userEvent.click(await screen.findByRole('button',
-      { name: /refresh data/i }))
-    expect(apiPost).toHaveBeenCalledWith('/api/data/refresh', undefined)
-    await userEvent.click(screen.getByRole('button',
-      { name: /re-run advice/i }))
-    expect(apiPost).toHaveBeenCalledWith('/api/advice/rerun', undefined)
-  })
-
-  it('reads back a rejected submission instead of crashing', async () => {
-    apiPost.mockRejectedValue(
-      new Error('2 jobs already queued — wait for one to finish'))
-    render(<MemoryRouter><HealthTab /></MemoryRouter>)
-    await userEvent.click(await screen.findByRole('button',
-      { name: /re-run advice/i }))
-    expect(await screen.findByText(/already queued/i)).toBeInTheDocument()
-    // The page keeps working: the buttons come back rather than staying
-    // disabled behind a job that never started.
-    expect(screen.getByRole('button', { name: /re-run advice/i }))
-      .not.toBeDisabled()
+    await screen.findByText('player_gw')
+    expect(screen.queryByRole('button', { name: /refresh data/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /re-run advice/i })).toBeNull()
+    expect(apiPost).not.toHaveBeenCalled()
   })
 })

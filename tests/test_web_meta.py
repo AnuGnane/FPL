@@ -201,18 +201,19 @@ def test_ticker_grades_every_team_over_the_window(client):
         == 1.0
 
 
-def test_data_refresh_queues_a_job(client, monkeypatch):
-    monkeypatch.setattr("gaffer.web.routers.meta.run_data_refresh",
-                        lambda: {"rows": 7})
-    resp = client.post("/api/data/refresh")
-    assert resp.status_code == 202
-    job_id = resp.json()["job_id"]
-    for _ in range(500):
-        job = client.get(f"/api/jobs/{job_id}").json()
-        if job["status"] in ("done", "error"):
-            break
-    assert job["status"] == "done", job["error"]
-    assert job["result"] == {"rows": 7}
+def test_the_legacy_data_refresh_route_is_gone(client):
+    """Same single-flight argument as advice/rerun: this queued a rewrite of
+    the live parquets on the legacy registry, past the one runner that
+    serialises them. ``POST /api/jobs/refresh-data`` is the way in now."""
+    assert client.post("/api/data/refresh").status_code == 404
+
+
+def test_the_refresh_body_is_still_the_refresh_data_job_kind():
+    """The route went; the callable it queued did not."""
+    from gaffer.web.job_kinds import JOB_KINDS
+    from gaffer.web.routers.meta import run_data_refresh
+
+    assert JOB_KINDS["refresh-data"] is run_data_refresh
 
 
 def test_health_reports_how_far_the_ingested_season_reaches(client):

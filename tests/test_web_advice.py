@@ -103,33 +103,12 @@ def test_latest_without_any_run_explains_what_to_do(tmp_path, monkeypatch):
     assert "gaffer advise" in resp.json()["detail"]
 
 
-def test_rerun_queues_a_job(client, monkeypatch):
-    ran = []
-    monkeypatch.setattr("gaffer.web.routers.advice.run_train_and_advise",
-                        lambda: ran.append(True) or {"gw": 4})
-    resp = client.post("/api/advice/rerun")
-    assert resp.status_code == 202
-    job_id = resp.json()["job_id"]
-    for _ in range(500):
-        job = client.get(f"/api/jobs/{job_id}").json()
-        if job["status"] in ("done", "error"):
-            break
-    assert job["status"] == "done", job["error"]
-    assert job["result"] == {"gw": 4}
-
-
-def test_rerun_beyond_the_queue_cap_is_429(client, monkeypatch):
-    import threading
-
-    gate = threading.Event()
-    monkeypatch.setattr("gaffer.web.routers.advice.run_train_and_advise",
-                        lambda: gate.wait(2))
-    for _ in range(6):                       # 1 running + 5 queued
-        assert client.post("/api/advice/rerun").status_code == 202
-    resp = client.post("/api/advice/rerun")
-    assert resp.status_code == 429
-    assert "queued" in resp.json()["detail"]
-    gate.set()
+def test_the_legacy_rerun_route_is_gone(client):
+    """One lane in. POST /api/advice/rerun queued a full train+advise on the
+    legacy JobRegistry, which knows nothing about the single-flight runner —
+    so a browser could start a second one while the first was mid-solve.
+    ``POST /api/jobs/advise`` is now the only way to start it."""
+    assert client.post("/api/advice/rerun").status_code == 404
 
 
 # --- backfilling artifacts written before positions were saved --------------

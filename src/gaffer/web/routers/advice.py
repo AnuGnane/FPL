@@ -1,20 +1,25 @@
-"""This Week: the saved advice payload, its staleness, and a re-run job."""
+"""This Week: the saved advice payload and its staleness.
+
+``run_train_and_advise`` lives here and is still the body of the ``advise``
+job kind (``job_kinds.JOB_KINDS``). What used to live here as well was a
+``POST /rerun`` that queued that same body on the legacy ``JobRegistry``, a
+second lane past the single-flight ``JobRunner`` — two callers could start two
+full train+advise runs writing to ``reports/`` at once. The route is gone;
+``POST /api/jobs/advise`` is the one way in.
+"""
 
 from __future__ import annotations
 
 import json
 
 import pandas as pd
-from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter
 
 from gaffer.artifacts import (advice_history_files, data_warning,
                               diff_advice, ingested_through, latest_gw,
                               load_advice, load_solve_state, upcoming_gw)
 from gaffer.errors import GafferError
-from gaffer.web.jobs import ADVISE_TIMEOUT_S, JobQueueFull
-from gaffer.web.schemas import (AdviceDiff, AdviceLatest, JobAccepted,
-                                Staleness)
+from gaffer.web.schemas import AdviceDiff, AdviceLatest, Staleness
 
 router = APIRouter(prefix="/api/advice", tags=["advice"])
 
@@ -137,13 +142,3 @@ def diff(gw: int | None = None) -> AdviceDiff:
         gw=int(target), available=True,
         previous_at=previous_path.stem.partition("-")[2],
         current_at=current_path.stem.partition("-")[2], **out)
-
-
-@router.post("/rerun", status_code=202, response_model=JobAccepted)
-def rerun(request: Request):
-    try:
-        job_id = request.app.state.jobs.submit(run_train_and_advise,
-                                               timeout_s=ADVISE_TIMEOUT_S)
-    except JobQueueFull as exc:
-        return JSONResponse(status_code=429, content={"detail": str(exc)})
-    return JobAccepted(job_id=job_id)
