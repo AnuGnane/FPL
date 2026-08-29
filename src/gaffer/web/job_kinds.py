@@ -6,8 +6,10 @@ reused by reference; ``evaluate`` and ``news-shadow`` are thin wrappers around
 ``gaffer.evaluation`` that mirror ``cli.py::evaluate`` line for line. Nothing
 here decides anything, and nothing here re-implements a pipeline.
 
-The printing is deliberate: the runner captures stdout, so every ``print`` in
-these functions (and in everything they call) becomes a streamed progress line.
+The printing is deliberate: the runner captures the job thread's stdout, so a
+``print`` reached from here on that thread becomes a streamed progress line.
+Work these functions hand to another thread is *not* captured — it prints to
+the server's terminal, which is where a background thread's output belongs.
 """
 
 from __future__ import annotations

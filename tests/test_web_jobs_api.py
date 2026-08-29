@@ -1,5 +1,6 @@
 """POST/GET /api/jobs — the v7 runner's HTTP surface."""
 
+import asyncio
 import threading
 import time
 
@@ -8,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from gaffer.web.app import create_app
 from gaffer.web.jobs import JobRunner
+from gaffer.web.routers import jobs as jobs_router
 from gaffer.web.schemas import JobRunView, JobStarted
 
 
@@ -206,3 +208,66 @@ def test_streaming_an_unknown_job_is_a_404(app_and_runner):
     app, _ = app_and_runner
     client = TestClient(app, raise_server_exceptions=False)
     assert client.get("/api/jobs/nope/stream").status_code == 404
+
+
+def _frames(app, job_id, from_=0):
+    """The endpoint's own response iterator, one frame at a time.
+
+    TestClient buffers a streaming response until the generator ends, which is
+    the exact wait a heartbeat exists to avoid.
+    """
+    from starlette.requests import Request
+
+    scope = {"type": "http", "method": "GET", "headers": [],
+             "query_string": b"", "path": f"/api/jobs/{job_id}/stream",
+             "app": app}
+    return jobs_router.stream(job_id, Request(scope), from_=from_).body_iterator
+
+
+def test_a_quiet_stream_still_writes_a_heartbeat(app_and_runner, monkeypatch):
+    """A silent job used to mean no write for up to the idle hour, so a client
+    that had gone away was noticed an hour late and its worker sat pinned."""
+    app, release = app_and_runner
+    monkeypatch.setattr(jobs_router, "HEARTBEAT_S", 0.05)
+    monkeypatch.setattr(jobs_router, "POLL_S", 0.01)
+    client = TestClient(app)
+    job_id = client.post("/api/jobs/advise").json()["job_id"]
+
+    async def pull():
+        frames = _frames(app, job_id)
+        line = await frames.__anext__()     # the one line the job printed
+        beat = await frames.__anext__()     # then quiet, so: a heartbeat
+        await frames.aclose()
+        return line, beat
+
+    line, beat = asyncio.run(pull())
+    release.set()
+    _wait_for(client, job_id)
+
+    assert "event: line" in line
+    # An SSE comment: a real write on the socket, and ignored by EventSource.
+    assert beat.startswith(":")
+    assert beat.endswith("\n\n")
+    assert "event:" not in beat and "data:" not in beat
+
+
+def test_a_heartbeat_does_not_disturb_the_line_numbering(app_and_runner,
+                                                         monkeypatch):
+    app, release = app_and_runner
+    monkeypatch.setattr(jobs_router, "HEARTBEAT_S", 0.05)
+    monkeypatch.setattr(jobs_router, "POLL_S", 0.01)
+    client = TestClient(app)
+    job_id = client.post("/api/jobs/advise").json()["job_id"]
+
+    async def pull():
+        frames = _frames(app, job_id)
+        await frames.__anext__()
+        await frames.__anext__()            # a heartbeat in the middle
+        release.set()
+        return [chunk async for chunk in frames]
+
+    rest = "".join(asyncio.run(pull()))
+    _wait_for(client, job_id)
+
+    assert "id: 1\nevent: line\ndata: finished" in rest
+    assert "event: end" in rest

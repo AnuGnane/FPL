@@ -169,10 +169,12 @@ class JobRun:
 class _LineWriter(io.TextIOBase):
     """A file-like that forwards whole lines to a callback.
 
-    Locked, because the partial line lives in an attribute: ``print`` makes two
-    ``write`` calls (the text, then the newline), and a job body that fans out
-    to a thread pool has several of those racing on the same read-modify-write.
-    Unlocked, the losing thread's fragment vanishes or splices into another's.
+    The partial line lives in an attribute, and ``print`` makes two ``write``
+    calls (the text, then the newline) — an unlocked read-modify-write. Nothing
+    races on it today: ``_ThreadRouter`` sends only the owner thread's writes
+    here, and the closing ``flush`` is on that thread too. The lock stays
+    because the invariant is one shared reference away from being false again
+    and a spliced or vanished fragment fails silently.
     """
 
     def __init__(self, emit: Callable[[str], None]) -> None:
@@ -302,21 +304,25 @@ class JobRunner:
         real_out, real_err = sys.stdout, sys.stderr
         sys.stdout = _ThreadRouter(mine, writer, real_out)
         sys.stderr = _ThreadRouter(mine, writer, real_err)
+        status, error, summary = "failed", None, None
         try:
             result = self._kinds[run.kind]()
-            writer.flush()
-            with self._lock:
-                run.status = "done"
-                run.summary = None if result is None else str(result)
+            status = "done"
+            summary = None if result is None else str(result)
         except BaseException as exc:      # noqa: BLE001 — nothing may escape
-            writer.flush()
-            with self._lock:
-                run.status = "failed"
-                run.error = str(exc) or exc.__class__.__name__
+            error = str(exc) or exc.__class__.__name__
         finally:
-            # Restore before anything else: a job that left a dead router
-            # installed would send the *next* job's output nowhere.
+            writer.flush()
+            # Restore before the terminal flip: the moment the lane is free the
+            # next job may start, and it must not inherit a dead router.
             sys.stdout, sys.stderr = real_out, real_err
             with self._lock:
+                # One locked block for the whole ending. Flipping the status in
+                # one and clearing the lane in a later one left a window where
+                # a browser that had just been told `done` posted its next job
+                # and was answered 409 by a runner with nothing running.
+                run.status = status
+                run.error = error
+                run.summary = summary
                 run.finished_at = _now()
                 self._current = None

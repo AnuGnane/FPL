@@ -71,6 +71,20 @@ POLL_S = 0.25
 IDLE_TIMEOUT_S = 3600.0
 """A generator gives up after an hour rather than pinning a worker forever."""
 
+HEARTBEAT_S = 15.0
+"""Longest the generator may go without writing anything at all.
+
+This is a sync generator running on an anyio worker thread, and a closed client
+is only discovered on a write. A job that prints nothing for minutes — a long
+MILP solve, a slow fetch — used to mean no write at all, so an abandoned stream
+(a reload, and JobButton's mount probe re-attaching) held its worker until the
+idle hour was up. A comment frame every few seconds is a write, and the write
+is what raises.
+"""
+
+HEARTBEAT = ": keep-alive\n\n"
+"""An SSE comment: any line starting with ``:``, which EventSource ignores."""
+
 
 def _sse(name: str, data: str, event_id: int | None = None) -> str:
     prefix = "" if event_id is None else f"id: {event_id}\n"
@@ -88,6 +102,8 @@ def stream(job_id: str, request: Request, from_: int = Query(0, alias="from")):
     ``Last-Event-ID`` header the browser sends by itself — so a tab that
     dropped mid-run redraws exactly what it missed, out of the 500-line ring
     buffer, rather than the whole scrollback or nothing.
+
+    A quiet run still writes: see ``HEARTBEAT_S``.
     """
     runner = request.app.state.job_runner
     if runner.get(job_id) is None:
@@ -100,10 +116,15 @@ def stream(job_id: str, request: Request, from_: int = Query(0, alias="from")):
     def generate() -> Iterator[str]:
         cursor = start
         deadline = time.monotonic() + IDLE_TIMEOUT_S
+        last_write = time.monotonic()
         while True:
+            wrote = False
             for index, line in runner.lines_since(job_id, cursor):
                 cursor = index + 1
+                wrote = True
                 yield _sse("line", line, index)
+            if wrote:
+                last_write = time.monotonic()
             run = runner.get(job_id)
             if run is None:
                 break
@@ -124,6 +145,9 @@ def stream(job_id: str, request: Request, from_: int = Query(0, alias="from")):
                      "error": "stream idle for an hour — reload the page",
                      "summary": None}))
                 break
+            if time.monotonic() - last_write >= HEARTBEAT_S:
+                last_write = time.monotonic()
+                yield HEARTBEAT
             time.sleep(POLL_S)
 
     return StreamingResponse(generate(), media_type="text/event-stream",

@@ -196,3 +196,59 @@ def test_lines_since_replays_from_an_absolute_index():
     assert runner.lines_since(job_id, 0) == [(0, "a"), (1, "b"), (2, "c")]
     assert runner.lines_since(job_id, 2) == [(2, "c")]
     assert runner.lines_since(job_id, 99) == []
+
+
+class _WatchingLock:
+    """The runner's lock, recording the state visible at every release.
+
+    Another thread can only observe the runner between a release and the next
+    acquire, so a snapshot taken at each release covers every window there is.
+    """
+
+    def __init__(self, runner):
+        self._lock = threading.Lock()
+        self._runner = runner
+        self.seen: list[tuple[str | None, dict[str, str]]] = []
+
+    def acquire(self, *args, **kwargs):
+        return self._lock.acquire(*args, **kwargs)
+
+    def release(self):
+        runner = self._runner
+        self.seen.append((runner._current,
+                          {i: r.status for i, r in runner._runs.items()}))
+        self._lock.release()
+
+    def __enter__(self):
+        self.acquire()
+        return self
+
+    def __exit__(self, *exc):
+        self.release()
+
+
+def test_the_lane_is_released_together_with_the_terminal_status():
+    """A tab that saw `done` and posted its next job was occasionally told 409:
+    the status flipped in one locked block and the lane cleared in the next."""
+    runner = JobRunner({"advise": lambda: print("done")})
+    watcher = _WatchingLock(runner)
+    runner._lock = watcher
+    _wait(runner, runner.start("advise"))
+
+    assert runner.current() is None
+    for current, statuses in watcher.seen:
+        assert current is None or statuses[current] not in ("done", "failed")
+
+
+def test_the_lane_is_released_together_with_a_failure_too():
+    def boom():
+        raise RuntimeError("no models on disk")
+
+    runner = JobRunner({"advise": boom})
+    watcher = _WatchingLock(runner)
+    runner._lock = watcher
+    _wait(runner, runner.start("advise"))
+
+    assert runner.current() is None
+    for current, statuses in watcher.seen:
+        assert current is None or statuses[current] not in ("done", "failed")
