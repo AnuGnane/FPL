@@ -14,6 +14,8 @@ artifacts idempotently or writes nothing at all.
 
 from __future__ import annotations
 
+import contextlib
+import io
 import queue
 import threading
 import uuid
@@ -117,3 +119,141 @@ class JobRegistry:
             else:
                 self._set(job_id, status="done", finished_at=_now(),
                           result=box.get("result"))
+
+
+# --- v7 kind-keyed runner ------------------------------------------------
+#
+# Separate from JobRegistry above, deliberately. The registry queues anonymous
+# callables for the what-if lab, where five pending re-solves is a reasonable
+# thing to want. This runner is the opposite shape: four *named* long jobs that
+# all write to reports/, exactly one of which may ever run, whose stdout is the
+# progress bar the browser watches.
+
+JOB_LINE_CAP = 500
+"""Lines held per job (spec §5). Enough for a reconnecting tab to redraw."""
+
+
+class JobAlreadyRunning(RuntimeError):
+    """Raised by :meth:`JobRunner.start` while another job holds the lane."""
+
+    def __init__(self, running_kind: str, job_id: str) -> None:
+        super().__init__(f"{running_kind} is already running")
+        self.running_kind = running_kind
+        self.job_id = job_id
+
+
+@dataclass
+class JobRun:
+    """One run of one kind. In memory only: a restart forgets, artifacts stay."""
+
+    id: str
+    kind: str
+    status: str = "running"          # queued | running | done | failed
+    lines: list[str] = field(default_factory=list)
+    first_line_index: int = 0
+    """Absolute index of ``lines[0]`` once the cap has begun dropping lines."""
+    error: str | None = None
+    summary: str | None = None
+    started_at: str = field(default_factory=_now)
+    finished_at: str | None = None
+
+    def as_dict(self) -> dict:
+        return {"id": self.id, "kind": self.kind, "status": self.status,
+                "error": self.error, "summary": self.summary,
+                "started_at": self.started_at,
+                "finished_at": self.finished_at,
+                "line_count": self.first_line_index + len(self.lines)}
+
+
+class _LineWriter(io.TextIOBase):
+    """A file-like that forwards whole lines to a callback."""
+
+    def __init__(self, emit: Callable[[str], None]) -> None:
+        self._emit = emit
+        self._buffer = ""
+
+    def write(self, text: str) -> int:
+        self._buffer += text
+        while "\n" in self._buffer:
+            line, _, self._buffer = self._buffer.partition("\n")
+            self._emit(line)
+        return len(text)
+
+    def flush(self) -> None:
+        if self._buffer:
+            self._emit(self._buffer)
+            self._buffer = ""
+
+
+class JobRunner:
+    """Single-flight execution of the registered job kinds."""
+
+    def __init__(self, kinds: dict[str, Callable[[], Any]]) -> None:
+        self._kinds = dict(kinds)
+        self._runs: dict[str, JobRun] = {}
+        self._current: str | None = None
+        self._lock = threading.Lock()
+
+    @property
+    def kinds(self) -> tuple[str, ...]:
+        return tuple(self._kinds)
+
+    def start(self, kind: str) -> str:
+        if kind not in self._kinds:
+            raise KeyError(kind)
+        with self._lock:
+            if self._current is not None:
+                running = self._runs[self._current]
+                raise JobAlreadyRunning(running.kind, running.id)
+            run = JobRun(id=uuid.uuid4().hex, kind=kind)
+            self._runs[run.id] = run
+            self._current = run.id
+        threading.Thread(target=self._execute, args=(run,), daemon=True,
+                         name=f"gaffer-job-{kind}").start()
+        return run.id
+
+    def get(self, job_id: str) -> JobRun | None:
+        with self._lock:
+            return self._runs.get(job_id)
+
+    def current(self) -> JobRun | None:
+        with self._lock:
+            return None if self._current is None else self._runs[self._current]
+
+    def lines_since(self, job_id: str, index: int) -> list[tuple[int, str]]:
+        """``[(absolute index, line)]`` from ``index`` on; [] past the end."""
+        with self._lock:
+            run = self._runs.get(job_id)
+            if run is None:
+                return []
+            start = max(index - run.first_line_index, 0)
+            return [(run.first_line_index + i, line)
+                    for i, line in enumerate(run.lines[start:], start=start)]
+
+    def _append(self, run: JobRun, line: str) -> None:
+        with self._lock:
+            run.lines.append(line)
+            if len(run.lines) > JOB_LINE_CAP:
+                dropped = len(run.lines) - JOB_LINE_CAP
+                del run.lines[:dropped]
+                run.first_line_index += dropped
+
+    def _execute(self, run: JobRun) -> None:
+        writer = _LineWriter(lambda line: self._append(run, line))
+        try:
+            with contextlib.redirect_stdout(writer), \
+                    contextlib.redirect_stderr(writer):
+                result = self._kinds[run.kind]()
+            writer.flush()
+            with self._lock:
+                run.status = "done"
+                run.summary = None if result is None else str(result)
+        except BaseException as exc:      # noqa: BLE001 — nothing may escape
+            writer.flush()
+            with self._lock:
+                run.status = "failed"
+                run.error = str(exc) or exc.__class__.__name__
+        finally:
+            with self._lock:
+                run.finished_at = _now()
+                self._current = None
