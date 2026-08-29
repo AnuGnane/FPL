@@ -357,19 +357,37 @@ def evaluate(mode: str = typer.Option(
 def ui(port: int = typer.Option(8927, help="Port to serve on (default 8927)."),
        open_browser: bool = typer.Option(
            True, "--open-browser/--no-open-browser",
-           help="Open the UI in your default browser on start.")):
-    """Serve the local web UI on 127.0.0.1 until Ctrl-C."""
+           help="Open the UI in your default browser on start."),
+       lan: bool = typer.Option(
+           False, "--lan",
+           help="Serve to your whole network so a phone can reach it. "
+                "There is no auth — trusted home network only.")):
+    """Serve the local web UI until Ctrl-C (loopback unless --lan)."""
     import webbrowser
 
     import uvicorn
 
+    from gaffer.web import lan as lan_mod
     from gaffer.web.app import create_app
 
+    host = "0.0.0.0" if lan else "127.0.0.1"
     url = f"http://127.0.0.1:{port}"
     typer.echo(f"gaffer UI on {url} — Ctrl-C to stop")
+    if lan:
+        address = lan_mod.lan_ip()
+        if address is None:
+            typer.echo("Could not work out this machine's LAN address — "
+                       "the loopback URL above still works.")
+        else:
+            lan_url = f"http://{address}:{port}"
+            typer.echo(f"On your network: {lan_url}")
+            for line in lan_mod.qr_lines(lan_url):
+                typer.echo(line)
+        typer.echo("Serving to the whole network with no auth — "
+                   "trusted home network only.")
     if open_browser:
         webbrowser.open(url)
-    uvicorn.run(create_app(), host="127.0.0.1", port=port, log_level="info")
+    uvicorn.run(create_app(), host=host, port=port, log_level="info")
 
 
 def main():

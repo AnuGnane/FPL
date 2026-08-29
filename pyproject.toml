@@ -16,6 +16,7 @@ dependencies = [
     "tomli-w>=1.0",
     "fastapi>=0.115",
     "uvicorn>=0.30",
+    "qrcode>=7.4",
 ]
 
 [project.scripts]
