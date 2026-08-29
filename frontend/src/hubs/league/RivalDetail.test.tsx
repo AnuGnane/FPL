@@ -7,7 +7,7 @@ import RivalDetail from './RivalDetail'
 // hoisted with it.
 const { apiGet } = vi.hoisted(() => ({ apiGet: vi.fn() }))
 
-vi.mock('../api/client', () => ({
+vi.mock('../../api/client', () => ({
   ApiError: class extends Error {},
   apiGet: (path: string) => apiGet(path),
   apiPost: vi.fn(),
@@ -49,9 +49,9 @@ const DETAIL = {
 
 function renderDetail() {
   render(
-    <MemoryRouter initialEntries={['/league/rivals/2']}>
+    <MemoryRouter initialEntries={['/league/rival/2']}>
       <Routes>
-        <Route path="/league/rivals/:entryId" element={<RivalDetail />} />
+        <Route path="/league/rival/:id" element={<RivalDetail />} />
       </Routes>
     </MemoryRouter>,
   )
