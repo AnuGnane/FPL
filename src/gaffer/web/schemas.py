@@ -703,3 +703,35 @@ class PlanTimeline(BaseModel):
     gw: int
     generated_at: str
     weeks: list[PlanGw]
+
+
+class MatrixCell(BaseModel):
+    gw: int
+    opponent: str
+    home: bool
+    attack: float
+    """Difficulty for your attackers, 0 easiest to 1 hardest.
+
+    Driven by the opponent's *defence* strength: a mean defence is a hard
+    fixture to score in.
+    """
+    defence: float
+    """Difficulty of keeping a clean sheet, 0 easiest to 1 hardest.
+
+    Driven by the opponent's *attack* strength.
+    """
+
+
+class MatrixTeam(BaseModel):
+    code: int
+    name: str
+    short_name: str
+    cells: list[MatrixCell]
+    mean_attack: float
+    mean_defence: float
+
+
+class FixtureMatrix(BaseModel):
+    gws: list[int]
+    teams: list[MatrixTeam]
+    source: Literal["dixon_coles", "none"]

@@ -23,8 +23,9 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from gaffer.errors import GafferError
 from gaffer.web.job_kinds import JOB_KINDS
 from gaffer.web.jobs import JobRegistry, JobRunner
-from gaffer.web.routers import (advice, chips, components, jobs, league, live,
-                                meta, news, plan, players, quality, whatif)
+from gaffer.web.routers import (advice, chips, components, fixtures, jobs,
+                                league, live, meta, news, plan, players,
+                                quality, whatif)
 
 log = logging.getLogger("gaffer.web")
 
@@ -65,6 +66,7 @@ def create_app() -> FastAPI:
     app.include_router(advice.router)
     app.include_router(chips.router)
     app.include_router(components.router)
+    app.include_router(fixtures.router)
     app.include_router(jobs.router)
     app.include_router(news.router)
     app.include_router(plan.router)
