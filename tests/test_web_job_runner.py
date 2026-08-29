@@ -1,6 +1,8 @@
 """The v7 kind-keyed runner. The v6 JobRegistry in the same module is
 untouched and has its own suite in tests/test_web_jobs.py."""
 
+import io
+import sys
 import threading
 import time
 
@@ -90,6 +92,97 @@ def test_the_line_buffer_is_capped_and_keeps_the_tail():
     # The absolute index survives truncation so a reconnecting client knows
     # what it missed rather than replaying from a shifted zero.
     assert run.first_line_index == 50
+
+
+# --- stdout capture is per-thread, not per-process --------------------------
+#
+# redirect_stdout swaps a process-global. While a job ran, *every* other thread
+# in the server — a request handler logging a warning, uvicorn's own access
+# line — had its output swallowed into that job's log, and the operator's
+# terminal went silent for the minutes an advise takes.
+
+
+def test_another_threads_print_reaches_the_real_stdout_and_not_the_job_log(
+        monkeypatch):
+    real = io.StringIO()
+    monkeypatch.setattr(sys, "stdout", real)
+
+    job_printed = threading.Event()
+    outsider_done = threading.Event()
+
+    def body():
+        print("job line one")
+        job_printed.set()
+        assert outsider_done.wait(5), "the other thread never printed"
+        print("job line two")
+
+    runner = JobRunner({"advise": body})
+    job_id = runner.start("advise")
+
+    def outsider():
+        assert job_printed.wait(5), "the job never started printing"
+        print("a request handler, mid-job")
+        outsider_done.set()
+
+    thread = threading.Thread(target=outsider)
+    thread.start()
+    thread.join(5)
+    run = _wait(runner, job_id)
+
+    assert run.status == "done", run.error
+    # The job's lines went to the job.
+    assert run.lines == ["job line one", "job line two"]
+    # The other thread's line went to the terminal, and only there.
+    assert "a request handler, mid-job" in real.getvalue()
+    assert "a request handler, mid-job" not in "".join(run.lines)
+    assert "job line one" not in real.getvalue()
+
+
+def test_stdout_and_stderr_are_restored_even_when_the_job_raises(monkeypatch):
+    real = io.StringIO()
+    monkeypatch.setattr(sys, "stdout", real)
+    monkeypatch.setattr(sys, "stderr", real)
+
+    runner = JobRunner({"advise": lambda: 1 / 0})
+    _wait(runner, runner.start("advise"))
+    assert sys.stdout is real
+    assert sys.stderr is real
+
+
+def test_a_jobs_stderr_is_captured_too():
+    def body():
+        print("to stderr", file=sys.stderr)
+
+    runner = JobRunner({"advise": body})
+    run = _wait(runner, runner.start("advise"))
+    assert "to stderr" in run.lines
+
+
+def test_concurrent_writers_do_not_interleave_within_a_line():
+    """_LineWriter buffers a partial line in an attribute. Two threads writing
+    into it without a lock lose fragments to a read-modify-write race."""
+    from gaffer.web.jobs import _LineWriter
+
+    seen = []
+    writer = _LineWriter(seen.append)
+    start = threading.Barrier(9)
+
+    def spam(tag):
+        start.wait()
+        for _ in range(200):
+            writer.write(f"{tag * 20}\n")
+
+    threads = [threading.Thread(target=spam, args=(c,)) for c in "abcdefgh"]
+    for t in threads:
+        t.start()
+    start.wait()
+    for t in threads:
+        t.join(10)
+
+    assert len(seen) == 8 * 200
+    # Every emitted line is one tag repeated, never a splice of two writers.
+    assert all(line == line[0] * 20 for line in seen), \
+        [line for line in seen if line != line[0] * 20][:3]
 
 
 def test_lines_since_replays_from_an_absolute_index():

@@ -17,6 +17,7 @@ from __future__ import annotations
 import contextlib
 import io
 import queue
+import sys
 import threading
 import uuid
 from dataclasses import dataclass, field
@@ -166,23 +167,77 @@ class JobRun:
 
 
 class _LineWriter(io.TextIOBase):
-    """A file-like that forwards whole lines to a callback."""
+    """A file-like that forwards whole lines to a callback.
+
+    Locked, because the partial line lives in an attribute: ``print`` makes two
+    ``write`` calls (the text, then the newline), and a job body that fans out
+    to a thread pool has several of those racing on the same read-modify-write.
+    Unlocked, the losing thread's fragment vanishes or splices into another's.
+    """
 
     def __init__(self, emit: Callable[[str], None]) -> None:
         self._emit = emit
         self._buffer = ""
+        self._lock = threading.Lock()
 
     def write(self, text: str) -> int:
-        self._buffer += text
-        while "\n" in self._buffer:
-            line, _, self._buffer = self._buffer.partition("\n")
+        with self._lock:
+            self._buffer += text
+            lines = []
+            while "\n" in self._buffer:
+                line, _, self._buffer = self._buffer.partition("\n")
+                lines.append(line)
+        # Emitted outside the lock: the callback takes the runner's lock, and
+        # holding two in a fixed order here would invite the reverse elsewhere.
+        for line in lines:
             self._emit(line)
         return len(text)
 
     def flush(self) -> None:
-        if self._buffer:
-            self._emit(self._buffer)
-            self._buffer = ""
+        with self._lock:
+            pending, self._buffer = self._buffer, ""
+        if pending:
+            self._emit(pending)
+
+
+class _ThreadRouter(io.TextIOBase):
+    """Sends one thread's writes to ``captured``; everyone else's to ``passthrough``.
+
+    ``contextlib.redirect_stdout`` swaps a process-global, so for the minutes an
+    advise run takes it captured output from *every* thread in the process — a
+    request handler's warning, uvicorn's access log — into that job's line
+    buffer, and the operator's terminal went dark. Only the job's own thread
+    should be captured; this routes by the ident recorded when the job started.
+    """
+
+    def __init__(self, owner_ident: int, captured: io.TextIOBase,
+                 passthrough) -> None:
+        self._owner = owner_ident
+        self._captured = captured
+        self._passthrough = passthrough
+
+    def _target(self):
+        return (self._captured if threading.get_ident() == self._owner
+                else self._passthrough)
+
+    def write(self, text: str) -> int:
+        return self._target().write(text)
+
+    def flush(self) -> None:
+        target = self._target()
+        # A stream can be closed under us (a redirected terminal at shutdown);
+        # losing a flush must not fail the job that was only logging.
+        with contextlib.suppress(ValueError, OSError):
+            target.flush()
+
+    def isatty(self) -> bool:
+        # Progress bars ask. The job's log is not a terminal, and anything the
+        # passthrough says about itself is its own business.
+        target = self._target()
+        try:
+            return bool(target.isatty())
+        except (AttributeError, ValueError):
+            return False
 
 
 class JobRunner:
@@ -240,10 +295,15 @@ class JobRunner:
 
     def _execute(self, run: JobRun) -> None:
         writer = _LineWriter(lambda line: self._append(run, line))
+        # This thread's ident, captured before the body runs: it is the one
+        # whose writes belong in the job log. Everything else the process
+        # prints while the job holds the lane goes on reaching the terminal.
+        mine = threading.get_ident()
+        real_out, real_err = sys.stdout, sys.stderr
+        sys.stdout = _ThreadRouter(mine, writer, real_out)
+        sys.stderr = _ThreadRouter(mine, writer, real_err)
         try:
-            with contextlib.redirect_stdout(writer), \
-                    contextlib.redirect_stderr(writer):
-                result = self._kinds[run.kind]()
+            result = self._kinds[run.kind]()
             writer.flush()
             with self._lock:
                 run.status = "done"
@@ -254,6 +314,9 @@ class JobRunner:
                 run.status = "failed"
                 run.error = str(exc) or exc.__class__.__name__
         finally:
+            # Restore before anything else: a job that left a dead router
+            # installed would send the *next* job's output nowhere.
+            sys.stdout, sys.stderr = real_out, real_err
             with self._lock:
                 run.finished_at = _now()
                 self._current = None
