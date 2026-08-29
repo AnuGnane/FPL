@@ -4,6 +4,8 @@ import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from gaffer.errors import GafferError
+
 
 @dataclass
 class Config:
@@ -59,7 +61,15 @@ class Config:
 
 
 def load_config(path: Path | str = "config.toml") -> Config:
-    raw = tomllib.loads(Path(path).read_text())
+    file = Path(path)
+    if not file.exists():
+        # A fresh clone has no config.toml: it carries an API key, so it is
+        # gitignored. Say what to do instead of raising FileNotFoundError,
+        # which the web app would have turned into a 500.
+        raise GafferError(
+            f"no {file} — copy config.example.toml to config.toml and set "
+            "fpl.entry_id and fpl.league_id")
+    raw = tomllib.loads(file.read_text())
     odds = raw.get("odds", {})
     # [scenarios] is optional and its TOML keys are deliberately shorter than
     # the field names (n, seed), so it is read key-by-key like [odds] rather

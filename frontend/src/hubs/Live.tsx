@@ -54,18 +54,39 @@ export default function Live() {
     </label>
   )
 
-  if (error) return <p className="text-rust">{error}</p>
-  if (!data) return <p className="text-text-muted">Loading…</p>
-
   const header = (
     <PageHeader
       title="Live"
-      context={data.gw === null
-        ? undefined
-        : `GW${data.gw} · ${data.matches_in_play} matches in play`}
+      context={data && data.gw !== null
+        ? `GW${data.gw} · ${data.matches_in_play} matches in play`
+        : undefined}
       action={pollToggle}
     />
   )
+
+  // A cold clone has no live snapshot at all, which is an ordinary state and
+  // not a crash: say what populates it rather than showing a bare error line
+  // (spec §9).
+  if (error) {
+    return (
+      <>
+        {header}
+        <EmptyState
+          title="No live data yet"
+          detail={error}
+          action="gaffer refresh-data"
+        />
+      </>
+    )
+  }
+  if (!data) {
+    return (
+      <>
+        {header}
+        <p className="text-text-muted">Loading…</p>
+      </>
+    )
+  }
 
   if (!data.active) {
     return (

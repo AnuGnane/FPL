@@ -34,6 +34,23 @@ def test_no_endpoint_500s_on_a_cold_clone(client, path):
     assert client.get(path).status_code < 500, path
 
 
+# The hubs also read endpoints older than this cycle. A clone has no
+# config.toml either (it is gitignored — it carries an API key), and Smoke 3
+# found the Live and League hubs 500ing on exactly that.
+HUB_ENDPOINTS_WITHOUT_A_CONFIG = [
+    "/api/live",
+    "/api/league/race",
+    "/api/league/rivals",
+]
+
+
+@pytest.mark.parametrize("path", HUB_ENDPOINTS_WITHOUT_A_CONFIG)
+def test_a_missing_config_is_a_message_not_a_500(client, path):
+    resp = client.get(path)
+    assert resp.status_code == 422, path
+    assert "config.toml" in resp.json()["detail"]
+
+
 def test_the_matrix_and_the_journal_are_200_empty_not_errors(client):
     assert client.get("/api/fixtures/matrix").status_code == 200
     assert client.get("/api/journal").status_code == 200

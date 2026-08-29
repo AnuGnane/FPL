@@ -11,8 +11,11 @@ export default function EmptyState(
   { title, detail, action, onAction }: EmptyStateProps,
 ) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-card border
-                    border-border bg-card px-6 py-10 text-center">
+    <div
+      data-testid="empty-state"
+      className="flex flex-col items-center gap-2 rounded-card border
+                 border-border bg-card px-6 py-10 text-center"
+    >
       <span aria-hidden className="text-2xl text-text-faint">◍</span>
       <p className="text-base text-text">{title}</p>
       <p className="max-w-md text-text-muted">{detail}</p>
