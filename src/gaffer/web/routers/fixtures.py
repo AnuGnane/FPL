@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import math
 
+import pandas as pd
 from fastapi import APIRouter, Query
 
 from gaffer.data import store
@@ -24,14 +25,42 @@ router = APIRouter(prefix="/api", tags=["fixtures"])
 EMPTY = FixtureMatrix(gws=[], teams=[], source="none")
 
 
+WINSOR_Q = 0.05
+"""Trim fraction at each tail before the min-max. Roughly one club of twenty."""
+
+
 def _normalise(values: dict[int, float]) -> dict[int, float]:
-    """Min-max to [0, 1]; a degenerate spread is 0.5 for everyone."""
+    """Min-max to [0, 1] over the winsorised range; degenerate spread is 0.5.
+
+    The plain min-max this replaced made the grid a monochrome smear. The
+    optimiser floors a team parameter at exp(-3), and one relegation-bound club
+    sitting on that floor owned an end of the scale on its own: every team
+    anyone was actually choosing between crowded into the top half, so the
+    colour said nothing about the difference between a good fixture and a
+    middling one.
+
+    Clamping the ends at the 5th and 95th percentile first spends the range on
+    the middle of the league instead. Outliers do not disappear — they clamp to
+    0 or 1, which is what they mean anyway.
+
+    The percentiles round *inward* to a real observation. Interpolating, the
+    default, puts the 5th percentile of twenty teams between the lowest and the
+    second lowest — so a single value far enough out still drags the bound most
+    of the way down to itself, which is the whole problem again.
+    """
     if not values:
         return {}
-    lo, hi = min(values.values()), max(values.values())
+    series = pd.Series(list(values.values()), dtype=float)
+    lo = series.quantile(WINSOR_Q, interpolation="higher")
+    hi = series.quantile(1 - WINSOR_Q, interpolation="lower")
+    if not hi > lo:
+        # Too few teams, or too tight a cluster, for the percentiles to
+        # separate: fall back to the full range before giving up on it.
+        lo, hi = series.min(), series.max()
     if not hi > lo:
         return {code: 0.5 for code in values}
-    return {code: (v - lo) / (hi - lo) for code, v in values.items()}
+    return {code: min(max((v - lo) / (hi - lo), 0.0), 1.0)
+            for code, v in values.items()}
 
 
 def _team_model():
@@ -76,10 +105,22 @@ def matrix(from_: int | None = Query(None, alias="from"),
     # strengths the model actually multiplies rather than on their logs.
     # A bigger defence parameter means the club concedes more, so its negation
     # is "how mean is this defence" — the axis an attacker's fixture is hard on.
+    #
+    # Restricted to the codes the current teams table lists. A trained model
+    # keeps parameters for clubs that have since been relegated, and a code
+    # nobody in this league can face has no business setting an end of the
+    # scale for the twenty who can.
+    live_codes = {int(c) for c in teams["code"]}
     attack_strength = _normalise(
-        {int(c): math.exp(float(v)) for c, v in model.attack_.items()})
+        {int(c): math.exp(float(v)) for c, v in model.attack_.items()
+         if int(c) in live_codes})
     defence_strength = _normalise(
-        {int(c): -math.exp(float(v)) for c, v in model.defence_.items()})
+        {int(c): -math.exp(float(v)) for c, v in model.defence_.items()
+         if int(c) in live_codes})
+    # Named for the cell field each one fills, not for the dict it is read out
+    # of: a cell's *attack* score is how leaky the opponent's defence is, so it
+    # is defence_strength that backs it. They are both 0.5, but a reader who
+    # trusts the names should be able to.
     fallback_attack = 0.5
     fallback_defence = 0.5
 
@@ -94,8 +135,8 @@ def matrix(from_: int | None = Query(None, alias="from"),
                 continue
             cells[own].append(MatrixCell(
                 gw=int(fx.gw), opponent=short_of.get(opp, ""), home=at_home,
-                attack=round(defence_strength.get(opp, fallback_defence), 3),
-                defence=round(attack_strength.get(opp, fallback_attack), 3)))
+                attack=round(defence_strength.get(opp, fallback_attack), 3),
+                defence=round(attack_strength.get(opp, fallback_defence), 3)))
 
     rows = []
     for team in teams.itertuples():

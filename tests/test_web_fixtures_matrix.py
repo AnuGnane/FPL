@@ -106,6 +106,87 @@ def test_a_head_without_attack_parameters_degrades_to_empty(client,
     assert body == {"gws": [], "teams": [], "source": "none"}
 
 
+# --- what sets the scale ----------------------------------------------------
+#
+# Min-max over every parameter the model happens to hold made the grid a
+# monochrome smear: one relegated club at the optimiser's exp(-3) floor, or one
+# code left over from a previous season, owned an end of the scale and every
+# real team crowded into the other half.
+
+
+def _spread_fixture(monkeypatch, *, dead_code=False):
+    """Nineteen ordinary clubs and one at the floor, in a 20-team league."""
+    import numpy as np
+
+    codes = [300 + i for i in range(20)]
+    outlier = codes[-1]
+    logs = dict(zip(codes[:-1], np.linspace(-0.4, 0.4, 19)))
+
+    class Model:
+        attack_ = {**{c: float(v) for c, v in logs.items()}, outlier: -3.0}
+        defence_ = {**{c: -float(v) for c, v in logs.items()}, outlier: 3.0}
+
+    listed = codes[:-1] if dead_code else codes
+    teams = pd.DataFrame([
+        {"team_id": i + 1, "code": c, "name": f"Team {c}",
+         "short_name": f"T{c}"} for i, c in enumerate(listed)])
+    # Nine games among the ordinary clubs, and the last pair on its own so
+    # every other cell names an ordinary opponent.
+    games = [{"gw": 5, "home_id": 2 * k + 1, "away_id": 2 * k + 2,
+              "finished": False} for k in range(len(listed) // 2)]
+    store.save(teams, "live/teams.parquet")
+    store.save(pd.DataFrame(games), "live/fixtures_all.parquet")
+    monkeypatch.setattr(persistence, "model_exists", lambda name: name == "team")
+    monkeypatch.setattr(persistence, "load_model", lambda name: Model())
+    return f"T{outlier}"
+
+
+def test_one_floor_outlier_does_not_crush_the_scale(client, monkeypatch):
+    outlier = _spread_fixture(monkeypatch)
+    body = client.get("/api/fixtures/matrix?from=5&n=1").json()
+    ordinary = [c for t in body["teams"] for c in t["cells"]
+                if c["opponent"] != outlier]
+    assert ordinary
+    values = [c["defence"] for c in ordinary]
+    # Winsorised at the 5th/95th percentile before the min-max, so the grid
+    # uses its whole range on the teams anyone is choosing between.
+    assert min(values) < 0.15
+    assert max(values) > 0.85
+    assert all(0.0 <= v <= 1.0 for v in values)
+
+
+def test_the_attacking_axis_spreads_too(client, monkeypatch):
+    outlier = _spread_fixture(monkeypatch)
+    body = client.get("/api/fixtures/matrix?from=5&n=1").json()
+    values = [c["attack"] for t in body["teams"] for c in t["cells"]
+              if c["opponent"] != outlier]
+    assert min(values) < 0.15 and max(values) > 0.85
+
+
+def test_a_team_the_table_no_longer_lists_does_not_set_the_scale(client,
+                                                                  monkeypatch):
+    """A code left in the model from a relegated club is not a team anyone can
+    face, and has no business owning an end of the colour scale."""
+    _spread_fixture(monkeypatch, dead_code=True)
+    body = client.get("/api/fixtures/matrix?from=5&n=1").json()
+    codes = {t["code"] for t in body["teams"]}
+    assert 319 not in codes
+    values = [c["defence"] for t in body["teams"] for c in t["cells"]]
+    assert values and min(values) < 0.15 and max(values) > 0.85
+
+
+def test_an_all_equal_model_is_still_a_flat_half(client, monkeypatch):
+    class Flat:
+        attack_ = {300: 0.1, 301: 0.1, 302: 0.1}
+        defence_ = {300: 0.2, 301: 0.2, 302: 0.2}
+
+    monkeypatch.setattr(persistence, "load_model", lambda name: Flat())
+    body = client.get("/api/fixtures/matrix?from=5&n=2").json()
+    cells = [c for t in body["teams"] for c in t["cells"]]
+    assert cells and all(c["attack"] == 0.5 and c["defence"] == 0.5
+                         for c in cells)
+
+
 def test_a_cold_clone_is_an_empty_matrix_not_a_500(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")
