@@ -746,6 +746,9 @@ class JournalRow(BaseModel):
     actual_captain: str | None = None
     model_buys: list[str] = Field(default_factory=list)
     model_sells: list[str] = Field(default_factory=list)
+    post_deadline: bool = False
+    """Every banked run of this gameweek was written after its deadline, so
+    the model's side of the comparison had the team news the user did not."""
 
 
 class JournalPoint(BaseModel):

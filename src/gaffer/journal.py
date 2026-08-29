@@ -16,12 +16,13 @@ API will not answer, all produce rows the UI shows an empty state for.
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
 
-from gaffer.artifacts import advice_history_files
+from gaffer.artifacts import _history_stamp, advice_history_files
 
 JOURNAL_PATH = Path("reports/journal.json")
 
@@ -38,9 +39,34 @@ def xi_points(codes: list[int], captain: int | None,
     return int(total)
 
 
+def _as_utc(value) -> pd.Timestamp | None:
+    """``value`` as a UTC timestamp, or ``None`` if it is not one."""
+    try:
+        stamp = pd.Timestamp(value)
+    except (TypeError, ValueError):
+        return None
+    if stamp is pd.NaT or pd.isna(stamp):
+        return None
+    return (stamp.tz_localize("UTC") if stamp.tzinfo is None
+            else stamp.tz_convert("UTC"))
+
+
 def latest_run_per_gw() -> dict[int, dict]:
-    """``{gw: advice payload}`` for the newest banked run of each gameweek."""
-    out: dict[int, dict] = {}
+    """``{gw: advice payload}`` for the last run of each gameweek *in time*.
+
+    "In time" is the point. The journal asks what the model said going into a
+    gameweek, and a run banked after kickoff has seen the team news — scoring
+    that against what you actually played flatters the model with information
+    you never had. So among a gameweek's artifacts the newest one whose
+    filename stamp predates the payload's deadline wins, not simply the newest.
+
+    When every run is late the newest is used anyway and the payload is marked
+    ``post_deadline``: a flagged comparison is worth more than a missing row,
+    as long as it cannot pass itself off as foresight. Artifacts written before
+    the deadline was saved into the payload, and unparseable ones, fall back to
+    the old newest-wins rule with the flag clear.
+    """
+    candidates: dict[int, list[tuple[pd.Timestamp | None, dict]]] = {}
     for path in advice_history_files():          # oldest first
         try:
             payload = json.loads(path.read_text())
@@ -49,7 +75,26 @@ def latest_run_per_gw() -> dict[int, dict]:
         gw = payload.get("gw")
         if gw is None:
             continue
-        out[int(gw)] = payload                   # later files win
+        candidates.setdefault(int(gw), []).append(
+            (_as_utc(_history_stamp(path)), payload))
+
+    out: dict[int, dict] = {}
+    for gw, runs in candidates.items():
+        # The newest run's deadline: the later a run was written the better it
+        # knew when the deadline actually was.
+        deadline = next(
+            (stamp for stamp in (_as_utc(p.get("deadline"))
+                                 for _, p in reversed(runs))
+             if stamp is not None), None)
+        chosen, post_deadline = runs[-1][1], False
+        if deadline is not None:
+            in_time = [payload for written, payload in runs
+                       if written is not None and written < deadline]
+            if in_time:
+                chosen = in_time[-1]
+            else:
+                post_deadline = True
+        out[gw] = {**chosen, "post_deadline": post_deadline}
     return out
 
 
@@ -131,6 +176,9 @@ def build_journal(client, entry_id: int) -> dict:
                                if actual_captain is not None else None),
             "model_buys": _names(payload.get("buys")),
             "model_sells": _names(payload.get("sells")),
+            # True when every banked run of this gameweek was written after
+            # the deadline, so the UI can say the comparison had hindsight.
+            "post_deadline": bool(payload.get("post_deadline")),
         })
 
     cumulative: list[dict] = []
@@ -164,13 +212,22 @@ def load_journal(client, entry_id: int) -> dict:
         except (OSError, ValueError):
             pass                                 # rebuild rather than fail
     out = build_journal(client, entry_id)
-    if out["rows"]:
-        # An empty journal is not worth a cache file: the next gameweek is the
-        # thing that will make it non-empty, and a stale empty file would just
-        # have to be invalidated.
+    # The empty journal is cached too. It used not to be, on the reasoning that
+    # an empty file is worth nothing — but early in a season empty is the
+    # *common* answer, and building it means an FPL API call per gameweek per
+    # page view. The staleness window governs the rebuild either way, so a
+    # cached empty costs at most CACHE_MAX_AGE_S of lag on the first result.
+    try:
+        JOURNAL_PATH.parent.mkdir(parents=True, exist_ok=True)
+        # Written to a sibling and renamed: os.replace is atomic within a
+        # directory, so a reader either sees the old file or the whole new one,
+        # never the half-written middle it would throw away as malformed.
+        tmp = JOURNAL_PATH.with_name(f"{JOURNAL_PATH.name}.{os.getpid()}.tmp")
         try:
-            JOURNAL_PATH.parent.mkdir(parents=True, exist_ok=True)
-            JOURNAL_PATH.write_text(json.dumps(out, indent=1))
-        except OSError as exc:
-            print(f"journal cache not written: {exc}")
+            tmp.write_text(json.dumps(out, indent=1))
+            os.replace(tmp, JOURNAL_PATH)
+        finally:
+            tmp.unlink(missing_ok=True)
+    except OSError as exc:
+        print(f"journal cache not written: {exc}")
     return out

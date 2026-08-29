@@ -650,6 +650,9 @@ export interface JournalRow {
   actual_captain: string | null
   model_buys: string[]
   model_sells: string[]
+  /** Every banked run of this gameweek was written after its deadline: the
+   *  model's side of this row saw team news the user did not. */
+  post_deadline?: boolean
 }
 
 export interface JournalPoint {
