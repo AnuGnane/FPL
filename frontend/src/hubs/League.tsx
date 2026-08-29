@@ -41,7 +41,14 @@ export default function League() {
       </>
     )
   }
-  if (!race) return <p className="text-text-muted">Loading…</p>
+  if (!race) {
+    return (
+      <>
+        <PageHeader title="League" />
+        <p className="text-text-muted">Loading…</p>
+      </>
+    )
+  }
 
   // Recharts wants one row per gameweek with a column per entry.
   const gws = [...new Set(race.trajectory
