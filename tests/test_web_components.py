@@ -144,3 +144,52 @@ def test_an_unknown_code_in_the_filter_is_simply_absent(client, tmp_path):
     _write(tmp_path, [_row(100, "Salah")])
     body = client.get("/api/components/5?codes=100,999").json()
     assert [p["code"] for p in body["players"]] == [100]
+
+
+# --- expected minutes -------------------------------------------------------
+#
+# The This Week squad table has an xMin column and the payload had nothing to
+# fill it with, so every row printed an em dash. Derived here rather than in
+# the browser: it is a statement about the minutes model, not a display choice.
+
+
+def test_a_fixture_carries_derived_expected_minutes(client, tmp_path):
+    _write(tmp_path, [_row(100, "Salah")])
+    fixture = client.get("/api/components/5").json()["players"][0][
+        "fixtures"][0]
+    # p_play * (45 + 45 * p60): 45 minutes for turning up, 45 more for the
+    # hour he is likely to see out.
+    assert fixture["minutes"]["xmins"] == round(0.96 * (45 + 45 * 0.9), 1)
+
+
+def test_expected_minutes_span_the_bench_and_the_nailed_on(client, tmp_path):
+    rows = [_row(100, "Nailed"), _row(101, "Doubt")]
+    rows[0].update(p_play=1.0, p60=1.0)
+    rows[1].update(p_play=0.0, p60=0.0)
+    _write(tmp_path, rows)
+    by_code = {p["code"]: p for p in client.get("/api/components/5").json()[
+        "players"]}
+    assert by_code[100]["fixtures"][0]["minutes"]["xmins"] == 90.0
+    assert by_code[101]["fixtures"][0]["minutes"]["xmins"] == 0.0
+
+
+def test_a_missing_minutes_probability_is_no_estimate_at_all(client, tmp_path):
+    """An un-modelled player is not a player expected to play zero minutes,
+    and the column should say nothing rather than something false."""
+    row = _row(100, "Salah")
+    row.update(p_play=None, p60=None)
+    _write(tmp_path, [row])
+    minutes = client.get("/api/components/5").json()["players"][0][
+        "fixtures"][0]["minutes"]
+    assert minutes["xmins"] is None
+
+
+def test_a_half_missing_minutes_model_still_declines_to_guess(client, tmp_path):
+    row = _row(100, "Salah")
+    row.update(p60=None)
+    _write(tmp_path, [row])
+    minutes = client.get("/api/components/5").json()["players"][0][
+        "fixtures"][0]["minutes"]
+    assert minutes["xmins"] is None
+    # The probabilities themselves still read as the zeroes they degrade to.
+    assert minutes["p_play"] == 0.96

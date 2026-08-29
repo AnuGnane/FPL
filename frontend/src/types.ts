@@ -472,9 +472,9 @@ export interface ComponentFixture {
    * that row rather than as a line of its own.
    */
   pen_taker: number | null
-  // `xmins` is not on the endpoint's MinutesOutput today; optional so the
-  // hub's xMin column reads it where a richer payload carries it and prints
-  // an em dash otherwise.
+  // `xmins` is p_play * (45 + 45 * p60), derived server-side. Null where the
+  // minutes model has no opinion, which the xMin column prints as an em dash —
+  // an un-modelled player is not a player expected to play no minutes.
   minutes: { p_play: number; p60: number; xmins?: number | null }
   ep: number
 }

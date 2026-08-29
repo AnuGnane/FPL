@@ -391,4 +391,22 @@ def ui(port: int = typer.Option(8927, help="Port to serve on (default 8927)."),
 
 
 def main():
-    app()
+    """The console-script entry point.
+
+    GafferError is the "you, not the code" exception: no config.toml, no
+    trained models, a season with no next gameweek. Individual commands catch
+    it where they can say something more useful, but the ones that do not were
+    letting it reach typer's handler, which prints forty lines of traceback and
+    then the sentence that was the whole message. A stack trace of our own
+    code is noise when the fix is to copy config.example.toml.
+
+    Only GafferError. Anything else is a bug and keeps its traceback, or the
+    next one gets debugged blind.
+    """
+    from gaffer.errors import GafferError
+
+    try:
+        app()
+    except GafferError as exc:
+        typer.echo(str(exc))
+        raise SystemExit(1) from None

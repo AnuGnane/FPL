@@ -1,8 +1,14 @@
+from pathlib import Path
+
 from typer.testing import CliRunner
 
 from gaffer.cli import app
+from gaffer.cli import main as cli_main
 
 runner = CliRunner()
+
+SRC = Path(__file__).resolve().parent.parent / "src"
+"""So a subprocess started in a tmp_path can still import gaffer."""
 
 
 def test_cli_help_lists_commands():
@@ -334,3 +340,54 @@ def test_calibrate_noise_is_registered():
     result = CliRunner().invoke(app, ["--help"])
     assert result.exit_code == 0
     assert "calibrate-noise" in result.output
+
+
+# --- a GafferError is a sentence, not a stack trace -------------------------
+
+
+def test_a_missing_config_is_one_line_not_a_traceback(tmp_path, monkeypatch):
+    """GafferError is the "you, not the code" exception. Every command that
+    loads config raises it from a cold clone, and reaching typer's handler it
+    came out as forty lines of traceback ending in the sentence."""
+    import subprocess
+    import sys
+
+    # The console script, because that is the entry point main() guards; `-m`
+    # would only import the module.
+    gaffer = Path(sys.executable).with_name("gaffer")
+    if not gaffer.exists():
+        import pytest
+        pytest.skip("gaffer console script not installed in this environment")
+    # `refresh` loads config and catches nothing itself, so the only thing
+    # between GafferError and the terminal is main().
+    result = subprocess.run([str(gaffer), "refresh"], cwd=tmp_path,
+                            capture_output=True, text=True)
+    assert result.returncode == 1
+    assert "Traceback" not in result.stderr
+    assert "config.example.toml" in (result.stdout + result.stderr)
+    assert len((result.stdout + result.stderr).strip().splitlines()) == 1
+
+
+def test_main_exits_one_on_a_gaffer_error(tmp_path, monkeypatch, capsys):
+    import pytest
+
+    from gaffer.errors import GafferError
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("gaffer.cli.app",
+                        lambda: (_ for _ in ()).throw(GafferError("no models")))
+    with pytest.raises(SystemExit) as excinfo:
+        cli_main()
+    assert excinfo.value.code == 1
+    assert capsys.readouterr().out.strip() == "no models"
+
+
+def test_main_lets_a_real_bug_through(monkeypatch):
+    """Only GafferError is a message. A KeyError is a bug and keeps its
+    traceback, or the next one is debugged blind."""
+    import pytest
+
+    monkeypatch.setattr("gaffer.cli.app",
+                        lambda: (_ for _ in ()).throw(KeyError("boom")))
+    with pytest.raises(KeyError):
+        cli_main()

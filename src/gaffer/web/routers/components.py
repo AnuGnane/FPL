@@ -57,6 +57,28 @@ def _num(value) -> float:
     return 0.0 if math.isnan(out) else out
 
 
+def _xmins(p_play, p60) -> float | None:
+    """Expected minutes from the two probabilities the minutes model emits.
+
+    ``p_play * (45 + 45 * p60)``: half a match for being on the pitch at all,
+    and the second half weighted by the chance he sees the hour out. A nailed-on
+    starter comes to 90, a player who never gets on comes to 0.
+
+    ``None`` rather than 0.0 when either probability is missing. The squad
+    table's xMin column would otherwise report an un-modelled player as one
+    expected to play no minutes, which is a different and much stronger claim.
+    """
+    if p_play is None or p60 is None:
+        return None
+    try:
+        play, hour = float(p_play), float(p60)
+    except (TypeError, ValueError):
+        return None
+    if math.isnan(play) or math.isnan(hour):
+        return None
+    return round(play * (45 + 45 * hour), 1)
+
+
 def _text(value) -> str:
     """A cell as a string, with a missing one reading as empty.
 
@@ -104,8 +126,13 @@ def components(gw: int,
                               else str(row.kickoff_time)),
                 components=terms,
                 pen_taker=(pen if pen != 0.0 else None),
-                minutes=MinutesOutput(p_play=round(_num(row.p_play), 3),
-                                      p60=round(_num(row.p60), 3)),
+                minutes=MinutesOutput(
+                    p_play=round(_num(row.p_play), 3),
+                    p60=round(_num(row.p60), 3),
+                    # From the raw cells, not the _num'd ones: _num turns a
+                    # missing probability into 0.0, and 0.0 is a real answer.
+                    xmins=_xmins(getattr(row, "p_play", None),
+                                 getattr(row, "p60", None))),
                 ep=round(_num(row.ep), 2)))
         head = rows.iloc[0]
         players.append(ComponentPlayer(

@@ -260,6 +260,10 @@ class Component(BaseModel):
 class MinutesOutput(BaseModel):
     p_play: float
     p60: float
+    xmins: float | None = None
+    """Expected minutes, ``p_play * (45 + 45 * p60)``. ``None`` when either
+    probability is missing: an un-modelled player is not a player expected to
+    play no minutes."""
 
 
 class OddsInfluence(BaseModel):
