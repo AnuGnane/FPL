@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { apiGet } from '../api/client'
-import FixtureTicker from '../components/FixtureTicker'
-import type { HealthData } from '../types'
+import { apiGet } from '../../api/client'
+import FixtureTicker from '../../components/FixtureTicker'
+import { Card } from '../../kit'
+import type { HealthData } from '../../types'
 
-export default function Ticker() {
+export default function TickerTab() {
   const [weeks, setWeeks] = useState(8)
   // Elo difficulty is the fallback, but it is only worth nagging about when
   // there is no odds key to blame — /api/health is the one place that knows.
@@ -17,8 +18,7 @@ export default function Ticker() {
 
   return (
     <>
-      <h2>Fixture Ticker</h2>
-      <div className="card">
+      <Card>
         <label>
           Weeks
           <select value={weeks}
@@ -27,7 +27,7 @@ export default function Ticker() {
               <option key={n} value={n}>{n}</option>)}
           </select>
         </label>
-      </div>
+      </Card>
       <FixtureTicker weeks={weeks} oddsKeyPresent={oddsKey} />
     </>
   )

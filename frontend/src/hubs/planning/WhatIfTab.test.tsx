@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import WhatIf from './WhatIf'
+import WhatIfTab from './WhatIfTab'
 
 // vi.mock's factory is hoisted above the file body, so the fake error class
 // and the spies have to be hoisted with it.
@@ -19,7 +19,7 @@ const { FakeApiError, apiGet, apiPost } = vi.hoisted(() => {
   return { FakeApiError, apiGet: vi.fn(), apiPost: vi.fn() }
 })
 
-vi.mock('../api/client', () => ({
+vi.mock('../../api/client', () => ({
   ApiError: FakeApiError,
   apiGet: (path: string) => apiGet(path),
   apiPost: (path: string, body: unknown) => apiPost(path, body),
@@ -76,10 +76,10 @@ beforeEach(() => {
   })
 })
 
-describe('What-If Lab', () => {
+describe('what-if tab', () => {
   it('sends the constraints and renders the diff and verdict', async () => {
     apiPost.mockResolvedValue({ job_id: 'j1' })
-    render(<MemoryRouter><WhatIf /></MemoryRouter>)
+    render(<MemoryRouter><WhatIfTab /></MemoryRouter>)
 
     await userEvent.type(screen.getByLabelText('Ban'), 'Sal')
     await userEvent.click(await screen.findByRole('button',
@@ -104,7 +104,7 @@ describe('What-If Lab', () => {
 
   it('labels the points rows as captain-inclusive and net of hits', async () => {
     apiPost.mockResolvedValue({ job_id: 'j1' })
-    render(<MemoryRouter><WhatIf /></MemoryRouter>)
+    render(<MemoryRouter><WhatIfTab /></MemoryRouter>)
     await userEvent.click(screen.getByRole('button', { name: /re-solve/i }))
     expect(await screen.findByText(
       /xPts this GW \(incl\. captain, after hits\)/)).toBeInTheDocument()
@@ -113,7 +113,7 @@ describe('What-If Lab', () => {
   })
 
   it('starts with max hits pinned to zero, not empty', async () => {
-    render(<MemoryRouter><WhatIf /></MemoryRouter>)
+    render(<MemoryRouter><WhatIfTab /></MemoryRouter>)
     const select = screen.getByLabelText('Max hits') as HTMLSelectElement
     expect(select.value).toBe('0')
   })
@@ -124,7 +124,7 @@ describe('What-If Lab', () => {
       error: 'player 100 cannot be both locked in and banned',
       players: [100],
     }))
-    render(<MemoryRouter><WhatIf /></MemoryRouter>)
+    render(<MemoryRouter><WhatIfTab /></MemoryRouter>)
     await userEvent.click(screen.getByRole('button', { name: /re-solve/i }))
     expect(await screen.findByText(/cannot be both locked in and banned/))
       .toBeInTheDocument()
@@ -139,7 +139,7 @@ describe('What-If Lab', () => {
       return { id: 'j2', status: 'error', result: null,
                error: 'no legal squad satisfies those constraints' }
     })
-    render(<MemoryRouter><WhatIf /></MemoryRouter>)
+    render(<MemoryRouter><WhatIfTab /></MemoryRouter>)
     await userEvent.click(screen.getByRole('button', { name: /re-solve/i }))
     expect(await screen.findByText(/no legal squad/)).toBeInTheDocument()
   })

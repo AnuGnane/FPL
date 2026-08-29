@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { ApiError, apiPost } from '../api/client'
-import { useJob } from '../api/useJob'
-import ConstraintsPanel from '../components/ConstraintsPanel'
-import FixtureTicker from '../components/FixtureTicker'
-import PlanDiffTable from '../components/PlanDiffTable'
-import type { WhatIfRequest, WhatIfResult } from '../types'
+import { ApiError, apiPost } from '../../api/client'
+import { useJob } from '../../api/useJob'
+import ConstraintsPanel from '../../components/ConstraintsPanel'
+import FixtureTicker from '../../components/FixtureTicker'
+import PlanDiffTable from '../../components/PlanDiffTable'
+import { Card } from '../../kit'
+import type { WhatIfRequest, WhatIfResult } from '../../types'
 
 const EMPTY: WhatIfRequest = {
   lock: [], ban: [], force_in: [], max_hits: 0, chip: 'none', horizon: null,
@@ -16,7 +17,7 @@ interface StructuredError {
   players: number[]
 }
 
-export default function WhatIf() {
+export default function WhatIfTab() {
   const [request, setRequest] = useState<WhatIfRequest>(EMPTY)
   const [invalid, setInvalid] = useState<StructuredError | null>(null)
   const job = useJob()
@@ -46,18 +47,17 @@ export default function WhatIf() {
 
   return (
     <>
-      <h2>What-If Lab</h2>
       <ConstraintsPanel value={request} onChange={setRequest} />
       <button onClick={solve} disabled={busy}>
         {busy ? 'Solving…' : 'Re-solve'}
       </button>
       {invalid && (
-        <div className="card">
-          <p className="bad">{invalid.error}</p>
-          <p className="muted">constraint: {invalid.constraint}</p>
-        </div>
+        <Card>
+          <p className="text-rust">{invalid.error}</p>
+          <p className="text-text-muted">constraint: {invalid.constraint}</p>
+        </Card>
       )}
-      {job.status === 'error' && <p className="bad">{job.error}</p>}
+      {job.status === 'error' && <p className="text-rust">{job.error}</p>}
       {diff && <PlanDiffTable diff={diff} />}
       <FixtureTicker weeks={6} />
     </>

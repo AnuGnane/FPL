@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
-import { ApiError, apiGet, apiPost } from '../api/client'
-import { useJob } from '../api/useJob'
-import ConstraintsPanel from '../components/ConstraintsPanel'
-import PlanDiffTable from '../components/PlanDiffTable'
-import PlayerName from '../components/PlayerName'
+import { ApiError, apiGet, apiPost } from '../../api/client'
+import { useJob } from '../../api/useJob'
+import ConstraintsPanel from '../../components/ConstraintsPanel'
+import PlanDiffTable from '../../components/PlanDiffTable'
+import PlayerName from '../../components/PlayerName'
+import { Card, EmptyState } from '../../kit'
 import type {
   ChipsWorkbench, ChipSquadPlayer, SquadDiff, WhatIfRequest, WhatIfResult,
-} from '../types'
+} from '../../types'
 
 const LABELS: Record<string, string> = {
   wildcard: 'Wildcard',
@@ -54,8 +55,9 @@ function SquadColumn({ title, players }: { title: string
         {players.map((p) => (
           <li key={p.code}>
             <PlayerName code={p.code} name={p.name} />{' '}
-            <span className="muted">
-              {p.position} · £{p.price}m · {p.ep} xPts
+            <span className="text-text-muted">
+              {p.position} · <span className="num">£{p.price}m</span> ·{' '}
+              <span className="num">{p.ep}</span> xPts
             </span>
           </li>
         ))}
@@ -67,18 +69,18 @@ function SquadColumn({ title, players }: { title: string
 function WildcardTab({ wildcard }: { wildcard: SquadDiff | null }) {
   if (wildcard === null) {
     return (
-      <div className="card">
-        <p className="muted">
+      <Card>
+        <p className="text-text-muted">
           No wildcard available in this half of the season.
         </p>
-      </div>
+      </Card>
     )
   }
   return (
-    <div className="card">
-      <h2>Wildcard now</h2>
-      <p className={wildcard.recommend ? 'good' : 'muted'}>
-        Worth {wildcard.gain_over_horizon} expected points over the horizon —
+    <Card title="Wildcard now">
+      <p className={wildcard.recommend ? 'text-sage' : 'text-text-muted'}>
+        Worth <span className="num">{wildcard.gain_over_horizon}</span> expected
+        points over the horizon —
         {wildcard.recommend ? ' worth playing.' : ' not worth it yet.'}
       </p>
       <div className="pitch-row" style={{ alignItems: 'flex-start' }}>
@@ -86,7 +88,7 @@ function WildcardTab({ wildcard }: { wildcard: SquadDiff | null }) {
         <SquadColumn title="Out" players={wildcard.dropped} />
         <SquadColumn title="In" players={wildcard.added} />
       </div>
-    </div>
+    </Card>
   )
 }
 
@@ -94,7 +96,7 @@ const EMPTY: WhatIfRequest = {
   lock: [], ban: [], force_in: [], max_hits: 0, chip: 'wc', horizon: null,
 }
 
-export default function ChipWorkbench() {
+export default function ChipsTab() {
   const [data, setData] = useState<ChipsWorkbench | null>(null)
   const [empty, setEmpty] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -139,23 +141,23 @@ export default function ChipWorkbench() {
     }
   }
 
-  if (error) return <p className="bad">{error}</p>
+  if (error) return <p className="text-rust">{error}</p>
   if (empty) {
     return (
-      <>
-        <h2>Chips</h2>
-        <div className="card"><p className="muted">{empty}</p></div>
-      </>
+      <EmptyState
+        title="No chips to weigh"
+        detail={empty}
+        action="Run advise"
+      />
     )
   }
-  if (!data) return <p className="muted">Loading…</p>
+  if (!data) return <p className="text-text-muted">Loading…</p>
 
   const busy = job.status === 'queued' || job.status === 'running'
   const diff = job.result as WhatIfResult | null
 
   return (
     <>
-      <h2>Chips · GW{data.gw}</h2>
       <div className="chips">
         <button onClick={() => setTab('table')} disabled={tab === 'table'}>
           Chip table
@@ -166,10 +168,14 @@ export default function ChipWorkbench() {
         </button>
       </div>
       {tab === 'table' && (
-        <div className="card">
-          <h2>Gain against the bar</h2>
+        <Card title="Gain against the bar">
           {data.chips.length === 0 && (
-            <p className="muted">No chips available.</p>
+            <EmptyState
+              title="No chips available"
+              detail="Both chips for this half of the season are already
+                      played, so there is nothing left to weigh."
+              action="Run advise"
+            />
           )}
           <table>
             <thead>
@@ -189,26 +195,25 @@ export default function ChipWorkbench() {
                       {LABELS[row.chip] ?? row.chip}
                     </button>
                   </td>
-                  <td>GW{row.gw}</td>
-                  <td>{row.gain}</td>
-                  <td>{row.threshold ?? '—'}</td>
-                  <td>{row.per_week ?? '—'}</td>
+                  <td className="num">GW{row.gw}</td>
+                  <td><span className="num">{row.gain}</span></td>
+                  <td><span className="num">{row.threshold ?? '—'}</span></td>
+                  <td><span className="num">{row.per_week ?? '—'}</span></td>
                   <td>
                     <GainBar gain={row.gain} threshold={row.threshold} />
                     {row.note && (
-                      <span className="muted"> {row.note}</span>
+                      <span className="text-text-muted"> {row.note}</span>
                     )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
       {tab === 'wildcard' && <WildcardTab wildcard={data.wildcard} />}
-      <div className="card">
-        <h2>Try it</h2>
-        <p className="muted">
+      <Card title="Try it">
+        <p className="text-text-muted">
           A front door onto the What-If Lab with{' '}
           <strong>{LABELS[chip] ?? chip}</strong> prefilled — the same solver,
           the same baseline. Pick another row above to try that one instead.
@@ -217,9 +222,9 @@ export default function ChipWorkbench() {
         <button onClick={solve} disabled={busy}>
           {busy ? 'Solving…' : 'Re-solve'}
         </button>
-        {invalid && <p className="bad">{invalid}</p>}
-        {job.status === 'error' && <p className="bad">{job.error}</p>}
-      </div>
+        {invalid && <p className="text-rust">{invalid}</p>}
+        {job.status === 'error' && <p className="text-rust">{job.error}</p>}
+      </Card>
       {diff && <PlanDiffTable diff={diff} />}
     </>
   )
