@@ -65,3 +65,18 @@ def test_qr_lines_render_the_url_as_block_text():
 def test_qr_lines_degrade_to_nothing_without_the_library(monkeypatch):
     monkeypatch.setitem(__import__("sys").modules, "qrcode", None)
     assert qr_lines("http://192.168.1.42:8927") == []
+
+
+def test_a_missing_qrcode_says_so_instead_of_going_quiet(monkeypatch, capsys):
+    """Silence here reads as "this terminal cannot draw QR codes"."""
+    monkeypatch.setitem(__import__("sys").modules, "qrcode", None)
+    assert qr_lines("http://192.168.1.42:8927") == []
+    out = capsys.readouterr().out
+    assert "qrcode not installed" in out
+    assert "uv sync" in out
+
+
+def test_the_missing_library_notice_is_one_line(monkeypatch, capsys):
+    monkeypatch.setitem(__import__("sys").modules, "qrcode", None)
+    qr_lines("http://192.168.1.42:8927")
+    assert len(capsys.readouterr().out.strip().splitlines()) == 1

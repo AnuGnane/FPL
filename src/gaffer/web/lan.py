@@ -26,13 +26,24 @@ def lan_ip() -> str | None:
         sock.close()
 
 
+MISSING_QRCODE = "qrcode not installed — run uv sync"
+"""Said out loud: an absent QR is a missing dependency, not a narrow terminal."""
+
+
 def qr_lines(url: str) -> list[str]:
-    """The URL as terminal-renderable QR rows; ``[]`` if qrcode is missing."""
+    """The URL as terminal-renderable QR rows; ``[]`` if qrcode is missing.
+
+    The degraded path prints why. Returning ``[]`` in silence left the user
+    reading a LAN banner with a QR-shaped hole in it and nothing anywhere
+    saying that one `uv sync` would fill it.
+    """
     try:
         import qrcode
     except ImportError:
+        print(MISSING_QRCODE)
         return []
     if qrcode is None:                   # patched out in tests
+        print(MISSING_QRCODE)
         return []
     code = qrcode.QRCode(border=1)
     code.add_data(url)
