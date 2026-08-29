@@ -43,6 +43,20 @@ export function useJobStream() {
       setError(end.error)
       close()
     })
+    // EventSource reports transient drops and permanent failures through the
+    // same event; only readyState tells them apart. CONNECTING means the
+    // browser is retrying by itself — it re-sends Last-Event-ID and the server
+    // replays out of its ring buffer, so there is nothing to do and nothing to
+    // say. CLOSED means it has given up: a restarted server has forgotten its
+    // in-memory runs and the stream 404s for good. Without this the hook sat
+    // in 'running' for ever and the button never came back.
+    stream.addEventListener('error', () => {
+      if (source.current !== stream) return   // already ended; close() fires this
+      if (stream.readyState !== EventSource.CLOSED) return
+      setStatus('failed')
+      setError('stream lost — the server may have restarted')
+      close()
+    })
     source.current = stream
   }, [close])
 

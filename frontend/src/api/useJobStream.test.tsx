@@ -15,12 +15,16 @@ vi.mock('./client', () => ({
 
 class FakeEventSource {
   static last: FakeEventSource | null = null
-  listeners: Record<string, Array<(e: MessageEvent) => void>> = {}
+  static readonly CONNECTING = 0
+  static readonly OPEN = 1
+  static readonly CLOSED = 2
+  listeners: Record<string, Array<(e: Event) => void>> = {}
   closed = false
+  readyState = 1
 
   constructor(public url: string) { FakeEventSource.last = this }
 
-  addEventListener(name: string, fn: (e: MessageEvent) => void) {
+  addEventListener(name: string, fn: (e: Event) => void) {
     (this.listeners[name] ??= []).push(fn)
   }
 
@@ -30,7 +34,13 @@ class FakeEventSource {
     }
   }
 
-  close() { this.closed = true }
+  /** What the browser does on a dropped connection it intends to retry. */
+  fail(readyState: number) {
+    this.readyState = readyState
+    for (const fn of this.listeners.error ?? []) fn(new Event('error'))
+  }
+
+  close() { this.closed = true; this.readyState = 2 }
 }
 
 beforeEach(() => {
@@ -105,5 +115,55 @@ describe('useJobStream', () => {
     act(() => { result.current.attach('j9') })
     expect(FakeEventSource.last?.url).toBe('/api/jobs/j9/stream')
     await waitFor(() => expect(result.current.status).toBe('running'))
+  })
+
+  // A restarted server forgets its in-memory runs, so the stream 404s and the
+  // EventSource closes for good. Without an onerror the hook sat in 'running'
+  // for ever and the button never came back.
+  it('fails the run when the stream closes for good', async () => {
+    apiPost.mockResolvedValue({ job_id: 'j1', kind: 'advise' })
+    const { result } = renderHook(() => useJobStream())
+    await act(async () => { await result.current.start('advise') })
+    act(() => { FakeEventSource.last!.fail(FakeEventSource.CLOSED) })
+    await waitFor(() => expect(result.current.status).toBe('failed'))
+    expect(result.current.error).toMatch(/server may have restarted/i)
+    expect(FakeEventSource.last!.closed).toBe(true)
+  })
+
+  it('leaves a transient drop to the browser to retry', async () => {
+    apiPost.mockResolvedValue({ job_id: 'j1', kind: 'advise' })
+    const { result } = renderHook(() => useJobStream())
+    await act(async () => { await result.current.start('advise') })
+    act(() => { FakeEventSource.last!.fail(FakeEventSource.CONNECTING) })
+    // Still running, still open: EventSource reconnects with Last-Event-ID and
+    // the server replays out of its ring buffer.
+    expect(result.current.status).toBe('running')
+    expect(result.current.error).toBeNull()
+    expect(FakeEventSource.last!.closed).toBe(false)
+  })
+
+  it('keeps the lines it had when the stream is lost', async () => {
+    apiPost.mockResolvedValue({ job_id: 'j1', kind: 'advise' })
+    const { result } = renderHook(() => useJobStream())
+    await act(async () => { await result.current.start('advise') })
+    act(() => { FakeEventSource.last!.emit('line', 'step one') })
+    act(() => { FakeEventSource.last!.fail(FakeEventSource.CLOSED) })
+    await waitFor(() => expect(result.current.status).toBe('failed'))
+    expect(result.current.lines).toEqual(['step one'])
+  })
+
+  it('does not fail a run that already ended', async () => {
+    apiPost.mockResolvedValue({ job_id: 'j1', kind: 'advise' })
+    const { result } = renderHook(() => useJobStream())
+    await act(async () => { await result.current.start('advise') })
+    act(() => {
+      FakeEventSource.last!.emit('end',
+        JSON.stringify({ status: 'done', error: null, summary: null }))
+    })
+    await waitFor(() => expect(result.current.status).toBe('done'))
+    // Closing the source can itself fire an error; a finished job stays done.
+    act(() => { FakeEventSource.last!.fail(FakeEventSource.CLOSED) })
+    expect(result.current.status).toBe('done')
+    expect(result.current.error).toBeNull()
   })
 })

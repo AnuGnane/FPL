@@ -15,13 +15,23 @@ const { stream } = vi.hoisted(() => ({
   },
 }))
 
+const { apiGet } = vi.hoisted(() => ({ apiGet: vi.fn() }))
+
 vi.mock('../api/useJobStream', () => ({ useJobStream: () => stream }))
+vi.mock('../api/client', () => ({
+  ApiError: class extends Error {},
+  apiGet: (path: string) => apiGet(path),
+  apiPost: vi.fn(),
+}))
 
 beforeEach(() => {
   stream.status = 'idle'
   stream.lines = []
   stream.error = null
   stream.start.mockReset()
+  stream.attach.mockReset()
+  apiGet.mockReset()
+  apiGet.mockResolvedValue(null)
 })
 
 describe('JobButton', () => {
@@ -67,5 +77,60 @@ describe('JobButton', () => {
     rerender(<JobButton kind="advise" onDone={onDone} />)
     await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
     expect(onDone).not.toHaveBeenCalled()
+  })
+
+  // A job outlives the tab that started it. A reload, or a second tab, must
+  // find the run in progress rather than offering to start a second one that
+  // the single-flight runner would only 409.
+  describe('a job already running when the button mounts', () => {
+    it('attaches to a run of its own kind', async () => {
+      apiGet.mockResolvedValue({ id: 'j7', kind: 'advise', status: 'running' })
+      render(<JobButton kind="advise" />)
+      await waitFor(() => expect(stream.attach).toHaveBeenCalledWith('j7'))
+      expect(apiGet).toHaveBeenCalledWith('/api/jobs/current')
+    })
+
+    it('ignores a run of a different kind', async () => {
+      apiGet.mockResolvedValue({ id: 'j7', kind: 'evaluate',
+                                 status: 'running' })
+      render(<JobButton kind="advise" />)
+      await waitFor(() => expect(apiGet).toHaveBeenCalled())
+      expect(stream.attach).not.toHaveBeenCalled()
+    })
+
+    it('ignores a run that has already finished', async () => {
+      apiGet.mockResolvedValue({ id: 'j7', kind: 'advise', status: 'done' })
+      render(<JobButton kind="advise" />)
+      await waitFor(() => expect(apiGet).toHaveBeenCalled())
+      expect(stream.attach).not.toHaveBeenCalled()
+    })
+
+    it('stays quiet when nothing is running', async () => {
+      // 204 on an idle runner; the client hands that back as null.
+      apiGet.mockResolvedValue(null)
+      render(<JobButton kind="advise" />)
+      await waitFor(() => expect(apiGet).toHaveBeenCalled())
+      expect(stream.attach).not.toHaveBeenCalled()
+    })
+
+    it('survives the probe failing', async () => {
+      apiGet.mockRejectedValue(new Error('offline'))
+      render(<JobButton kind="advise" />)
+      await waitFor(() => expect(apiGet).toHaveBeenCalled())
+      expect(stream.attach).not.toHaveBeenCalled()
+      // The button is still the button: a failed probe is not a failed job.
+      expect(screen.getByRole('button', { name: 'Run advise' }))
+        .not.toBeDisabled()
+    })
+
+    it('does not re-attach to a job it is already streaming', async () => {
+      apiGet.mockResolvedValue({ id: 'j7', kind: 'advise', status: 'running' })
+      stream.status = 'running'
+      stream.jobId = 'j7'
+      render(<JobButton kind="advise" />)
+      await waitFor(() => expect(apiGet).toHaveBeenCalled())
+      expect(stream.attach).not.toHaveBeenCalled()
+      stream.jobId = null
+    })
   })
 })
