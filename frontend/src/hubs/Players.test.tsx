@@ -1,0 +1,105 @@
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import Players from './Players'
+
+const { apiGet } = vi.hoisted(() => ({ apiGet: vi.fn() }))
+
+vi.mock('../api/client', () => ({
+  ApiError: class extends Error { status = 0; detail: unknown = null },
+  apiGet: (path: string) => apiGet(path),
+  apiPost: vi.fn(),
+}))
+
+vi.mock('./players/ComparePanel', () => ({
+  default: ({ players }: { players: Array<{ code: number }> }) => (
+    <p>comparing {players.length}</p>
+  ),
+}))
+vi.mock('./players/FixtureMatrix', () => ({ default: () => <p>matrix panel</p> }))
+
+const ROWS = [
+  { code: 1, element: 7, name: 'Salah', position: 'MID', team_code: 300,
+    team_name: 'Liverpool', price: 13.0, ep_next: 6.4, ep_horizon: 12.0,
+    ownership: 42.1, league_eo: 61.5, available: true, status: 'a', news: '',
+    chance_of_playing: null, penalties_order: 1, free_kicks_order: 1,
+    corners_order: null, in_squad: true, last4: [2, 9, 5, 12] },
+  { code: 2, element: 8, name: 'Saka', position: 'MID', team_code: 301,
+    team_name: 'Arsenal', price: 10.0, ep_next: 5.5, ep_horizon: 10.5,
+    ownership: 30.0, league_eo: 22.0, available: true, status: 'a', news: '',
+    chance_of_playing: null, penalties_order: null, free_kicks_order: null,
+    corners_order: 1, in_squad: false, last4: [6, 1, 8, 3] },
+]
+
+beforeEach(() => {
+  apiGet.mockReset()
+  apiGet.mockImplementation((path: string) => (
+    path.startsWith('/api/players') ? Promise.resolve(ROWS)
+      : path === '/api/advice/latest'
+        ? Promise.resolve({ gw: 5, mode: 'weekly',
+                            deadline: '2099-09-18T17:30:00Z', advice: {},
+                            staleness: { advice_gw: 5, current_gw: 5,
+                                         generated_at: '2026-08-29T09:00:00Z',
+                                         deadline: '2099-09-18T17:30:00Z',
+                                         deadline_passed: false, stale: false,
+                                         reason: 'current for GW5',
+                                         data_through_gw: 4,
+                                         data_warning: null } })
+        : Promise.reject(new Error(`unexpected ${path}`))
+  ))
+})
+
+describe('Players hub', () => {
+  it('lists the pool', async () => {
+    render(<MemoryRouter><Players /></MemoryRouter>)
+    expect(await screen.findByText('Salah')).toBeInTheDocument()
+    expect(screen.getByText('Saka')).toBeInTheDocument()
+  })
+
+  it('filters by position through the query string', async () => {
+    render(<MemoryRouter><Players /></MemoryRouter>)
+    await screen.findByText('Salah')
+    await userEvent.selectOptions(screen.getByLabelText('Position'), 'DEF')
+    expect(apiGet).toHaveBeenCalledWith(expect.stringContaining('position=DEF'))
+  })
+
+  it('selects players for comparison and counts them', async () => {
+    render(<MemoryRouter><Players /></MemoryRouter>)
+    await screen.findByText('Salah')
+    await userEvent.click(screen.getByRole('checkbox', { name: /compare Salah/i }))
+    await userEvent.click(screen.getByRole('checkbox', { name: /compare Saka/i }))
+    await userEvent.click(screen.getByRole('tab', { name: 'Compare' }))
+    expect(await screen.findByText('comparing 2')).toBeInTheDocument()
+  })
+
+  it('shows the fixture matrix tab', async () => {
+    render(<MemoryRouter><Players /></MemoryRouter>)
+    await userEvent.click(await screen.findByRole('tab',
+                                                  { name: 'Fixture matrix' }))
+    expect(await screen.findByText('matrix panel')).toBeInTheDocument()
+  })
+
+  it('shows an empty state naming the run when the pool is unavailable',
+    async () => {
+      apiGet.mockImplementation((path: string) => (
+        path.startsWith('/api/players')
+          ? Promise.reject(Object.assign(
+            new Error('no saved solve state — run `gaffer advise` first'),
+            { status: 422 }))
+          : Promise.resolve({ gw: 5, mode: 'weekly',
+                              deadline: '2099-09-18T17:30:00Z', advice: {},
+                              staleness: { advice_gw: 5, current_gw: 5,
+                                           generated_at: '2026-08-29T09:00:00Z',
+                                           deadline: '2099-09-18T17:30:00Z',
+                                           deadline_passed: false,
+                                           stale: false,
+                                           reason: 'current for GW5',
+                                           data_through_gw: 4,
+                                           data_warning: null } })
+      ))
+      render(<MemoryRouter><Players /></MemoryRouter>)
+      expect(await screen.findByText(/no candidate pool/i)).toBeInTheDocument()
+      expect(screen.getByText('Run advise')).toBeInTheDocument()
+    })
+})
