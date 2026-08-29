@@ -51,6 +51,22 @@ export interface Strategy {
   rival_name: string
 }
 
+/** One row of the advice payload's own chip table.
+ *
+ *  `threshold`, `play_now` and `note` are written by `run_advise` alongside
+ *  the raw `evaluate_chips` columns — optional here because a payload banked
+ *  before the chip policy landed (and, for `note`, any non-free-hit row) has
+ *  none of them. */
+export interface AdviceChipRow {
+  chip: string
+  gw: number
+  gain: number
+  per_week?: number | null
+  threshold?: number | null
+  play_now?: boolean
+  note?: string | null
+}
+
 export interface Advice {
   gw: number
   xi: PlayerRef[]
@@ -61,8 +77,7 @@ export interface Advice {
   sells: PlayerRef[]
   hits: number
   expected_pts: number
-  chip_table: Array<{ chip: string; gw: number; gain: number
-                      per_week: number }>
+  chip_table: AdviceChipRow[]
   strategy: Strategy | null
   // v4c: present only when the scenario sweep ran. Optional so an advice
   // payload written before v4c still types.
@@ -457,7 +472,10 @@ export interface ComponentFixture {
    * that row rather than as a line of its own.
    */
   pen_taker: number | null
-  minutes: { p_play: number; p60: number }
+  // `xmins` is not on the endpoint's MinutesOutput today; optional so the
+  // hub's xMin column reads it where a richer payload carries it and prints
+  // an em dash otherwise.
+  minutes: { p_play: number; p60: number; xmins?: number | null }
   ep: number
 }
 
