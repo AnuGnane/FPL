@@ -36,7 +36,11 @@ const IDLE = {
   table: [],
 }
 
-beforeEach(() => { apiGet.mockReset(); vi.useFakeTimers() })
+beforeEach(() => {
+  apiGet.mockReset()
+  apiGet.mockResolvedValue(ACTIVE)
+  vi.useFakeTimers()
+})
 afterEach(() => vi.useRealTimers())
 
 describe('Live', () => {
@@ -95,5 +99,26 @@ describe('Live', () => {
     expect(screen.getByText('Salah')).toBeInTheDocument()
     expect(screen.getAllByText('–').length).toBeGreaterThan(0)
     expect(screen.getByText(/top-10k EO unavailable/)).toBeInTheDocument()
+  })
+
+  // The suite runs on fake timers, under which RTL's `findBy*` never settles,
+  // so these three flush with `act` like every test above them.
+  it('heads the page with the live gameweek', async () => {
+    await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+    expect(screen.getByRole('heading', { level: 1, name: /live/i }))
+      .toBeInTheDocument()
+  })
+
+  it('offers an auto-poll toggle', async () => {
+    await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+    expect(screen.getByRole('checkbox', { name: /auto-refresh/i }))
+      .toBeInTheDocument()
+  })
+
+  it('shows an empty state between gameweeks', async () => {
+    apiGet.mockResolvedValue({ active: false, gw: null, my_points: 0,
+                               matches_in_play: 0, players: [], table: [] })
+    await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+    expect(screen.getByText(/no gameweek in progress/i)).toBeInTheDocument()
   })
 })
