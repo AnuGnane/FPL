@@ -676,3 +676,30 @@ class Quality(BaseModel):
     # v6: `gaffer evaluate --news-shadow` has written this key since v5, but
     # nothing declared it here, so it never reached the page.
     news_shadow: NewsShadow | None = None
+
+
+class PlanMove(BaseModel):
+    code: int
+    name: str
+    position: str
+    ep: float
+    price: float | None = None
+    """Buy price for an in, sell value for an out — in millions."""
+
+
+class PlanGw(BaseModel):
+    gw: int
+    buys: list[PlanMove]
+    sells: list[PlanMove]
+    hits: int
+    hit_cost: int
+    chip: str | None = None
+    captain: PlanMove | None = None
+    vice: PlanMove | None = None
+    expected_pts: float
+
+
+class PlanTimeline(BaseModel):
+    gw: int
+    generated_at: str
+    weeks: list[PlanGw]
