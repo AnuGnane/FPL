@@ -735,3 +735,27 @@ class FixtureMatrix(BaseModel):
     gws: list[int]
     teams: list[MatrixTeam]
     source: Literal["dixon_coles", "none"]
+
+
+class JournalRow(BaseModel):
+    gw: int
+    model_pts: int
+    actual_pts: int
+    delta: int
+    model_captain: str | None = None
+    actual_captain: str | None = None
+    model_buys: list[str] = Field(default_factory=list)
+    model_sells: list[str] = Field(default_factory=list)
+
+
+class JournalPoint(BaseModel):
+    gw: int
+    model: int
+    actual: int
+    delta: int
+
+
+class Journal(BaseModel):
+    rows: list[JournalRow] = Field(default_factory=list)
+    cumulative: list[JournalPoint] = Field(default_factory=list)
+    built_at: str | None = None
