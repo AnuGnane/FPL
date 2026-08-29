@@ -74,7 +74,7 @@ describe('useJob', () => {
   it('surfaces a rejected submission without starting a poll', async () => {
     stubSequence([[429, { detail: '5 jobs already queued' }]])
     const { result } = renderHook(() => useJob())
-    await result.current.start('/api/advice/rerun')
+    await result.current.start('/api/whatif')
     await waitFor(() => expect(result.current.status).toBe('error'))
     expect(result.current.error).toContain('already queued')
   })

@@ -71,6 +71,23 @@ describe('JournalTab', () => {
     expect(container.querySelector('.recharts-wrapper')).not.toBeNull()
   })
 
+  it('flags a gameweek whose only advice run was late', async () => {
+    apiGet.mockResolvedValue({
+      ...JOURNAL,
+      rows: [{ ...JOURNAL.rows[0], post_deadline: true }, JOURNAL.rows[1]],
+    })
+    render(<JournalTab />)
+    const badge = await screen.findByText('late run')
+    expect(badge).toHaveAttribute('title', expect.stringContaining('hindsight'))
+    expect(badge).toHaveClass('text-rust')
+  })
+
+  it('leaves an in-time gameweek unflagged', async () => {
+    render(<JournalTab />)
+    await screen.findByText('62')
+    expect(screen.queryByText('late run')).toBeNull()
+  })
+
   it('shows an empty state until a gameweek has both sides', async () => {
     apiGet.mockResolvedValue({ rows: [], cumulative: [], built_at: null })
     render(<JournalTab />)

@@ -5,12 +5,28 @@ import {
 } from 'recharts'
 import { apiGet } from '../../api/client'
 import {
-  type Column, Card, DataTable, EmptyState, TONE_CLASS, fmtDelta, toneOf,
+  type Column, Badge, Card, DataTable, EmptyState, TONE_CLASS, fmtDelta, toneOf,
 } from '../../kit'
 import type { JournalData, JournalRow } from '../../types'
 
+const LATE_RUN = 'advice ran after the deadline — scored with hindsight'
+
 const COLUMNS: Column<JournalRow>[] = [
-  { key: 'gw', header: 'GW', primary: true, numeric: true, value: (r) => r.gw },
+  {
+    key: 'gw', header: 'GW', primary: true, numeric: true, value: (r) => r.gw,
+    // Every banked run of this gameweek was written after the deadline, so the
+    // model's side of the row saw team news the user could not act on. The
+    // comparison is still worth showing; it must not pass itself off as
+    // foresight.
+    render: (r) => (
+      <span className="inline-flex items-center gap-1.5">
+        {r.gw}
+        {r.post_deadline
+          ? <Badge variant="negative" title={LATE_RUN}>late run</Badge>
+          : null}
+      </span>
+    ),
+  },
   { key: 'model_pts', header: 'Model', primary: true, numeric: true,
     value: (r) => r.model_pts },
   { key: 'actual_pts', header: 'You', primary: true, numeric: true,
