@@ -2,15 +2,13 @@ import { NavLink } from 'react-router-dom'
 
 const PAGES: Array<[string, string]> = [
   ['/', 'This Week'],
-  ['/whatif', 'What-If Lab'],
-  ['/chips', 'Chips'],
+  ['/planning', 'Planning'],
   ['/league', 'League Race'],
   ['/live', 'Live'],
   ['/players', 'Players'],
   ['/history', 'History'],
   ['/quality', 'Model Quality'],
   ['/health', 'Runs & Health'],
-  ['/ticker', 'Fixture Ticker'],
 ]
 
 export default function Sidebar() {

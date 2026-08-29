@@ -15,16 +15,16 @@ vi.mock('./api/client', () => ({
 describe('app shell', () => {
   it('lists every page in the sidebar', () => {
     render(<MemoryRouter><App /></MemoryRouter>)
-    for (const label of ['This Week', 'What-If Lab', 'League Race', 'Live',
+    for (const label of ['This Week', 'Planning', 'League Race', 'Live',
       'Players', 'History', 'Model Quality', 'Runs & Health']) {
       expect(screen.getByRole('link', { name: label })).toBeInTheDocument()
     }
   })
 
-  it('navigates to the What-If Lab', async () => {
+  it('navigates to the Planning hub', async () => {
     render(<MemoryRouter><App /></MemoryRouter>)
-    await userEvent.click(screen.getByRole('link', { name: 'What-If Lab' }))
-    expect(await screen.findByRole('heading', { name: /what-if lab/i }))
+    await userEvent.click(screen.getByRole('link', { name: 'Planning' }))
+    expect(await screen.findByRole('heading', { name: /planning/i }))
       .toBeInTheDocument()
   })
 })
