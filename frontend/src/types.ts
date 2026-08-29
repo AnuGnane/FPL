@@ -589,3 +589,29 @@ export interface JobRunView {
   summary: string | null
   line_count: number
 }
+
+export interface PlanMove {
+  code: number
+  name: string
+  position: string
+  ep: number
+  price: number | null
+}
+
+export interface PlanGw {
+  gw: number
+  buys: PlanMove[]
+  sells: PlanMove[]
+  hits: number
+  hit_cost: number
+  chip: string | null
+  captain: PlanMove | null
+  vice: PlanMove | null
+  expected_pts: number
+}
+
+export interface PlanTimeline {
+  gw: number
+  generated_at: string
+  weeks: PlanGw[]
+}
