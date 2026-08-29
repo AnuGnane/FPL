@@ -243,4 +243,54 @@ Foundation first, then hubs shippable one at a time:
 
 ## 12. Outcome
 
-Recorded after the cycle completes.
+Recorded 2026-08-29, after Group 7 (Tasks 40-43) on `feat/gaffer-v7-ui`.
+
+**Gates.** Backend `.venv/bin/python -m pytest -q`: green. Frontend
+`npm test -- --run`: 46 files / 204 tests green; `npx tsc -b` clean;
+`npm run build` succeeds. `git diff --name-only main...HEAD` touches none of
+`src/gaffer/advise.py`, `src/gaffer/optimize/`, `src/gaffer/models/`,
+`tests/test_advise.py`, `tests/test_odds.py`.
+
+**Smoke 1 — the browser-only week.** Verified at the API level against a real
+`uvicorn` process on the working tree's own artifacts: every endpoint the six
+hubs read answered 200 — `/api/advice/latest`, `/api/advice/diff`,
+`/api/plan/{gw}`, `/api/chips`, `/api/chips/plan`, `/api/players`,
+`/api/components/{gw}`, `/api/fixtures/matrix`, `/api/fixtures/ticker`,
+`/api/journal`, `/api/live`, `/api/quality`, `/api/history`, `/api/health`,
+`/api/league/race`, `/api/league/rivals`, `/api/news/{gw}` — with
+`/api/jobs/current` 204 on an idle server, an unknown kind 404, and an unknown
+job id 404 on both the status and the stream route. The four job kinds were
+**not** started against the live tree: each one writes real artifacts (and
+`advise` takes ~30 minutes), so their start → SSE → done → replay behaviour
+stands on `tests/test_web_jobs_api.py` instead. The click-through in an actual
+browser is the operator's, and is not recorded as passed here.
+
+**Smoke 2 — the phone.** `gaffer ui --lan --no-open-browser` printed the
+loopback URL, `On your network: http://10.3.21.156:8927`, a half-block QR of
+that URL, and the "no auth — trusted home network only" line; uvicorn reported
+`http://0.0.0.0:8927`, so the bind is right. Collapse-mode preconditions were
+checked statically rather than by eye: all five `DataTable` call sites
+(Players, League, Live, `this-week/SquadTable`, `model/JournalTab`) declare
+exactly three `primary` columns, which is what card mode renders, and
+`AppShell` renders `data-mode="tabbar"` with `pb-16` clearance under
+`useIsMobile`. Scanning the QR from a handset and reading all six hubs on
+glass is the operator's, and is not recorded as passed here.
+
+**Smoke 3 — the cold clone.** Run as a `uvicorn` boot in an empty working
+directory (no `reports/`, `data/`, `models/`, no `config.toml`) plus a jsdom
+sweep of all six hubs against a rejecting client
+(`frontend/src/hubs/coldclone.test.tsx`). Two deviations found and fixed:
+
+1. `/api/live`, `/api/league/race` and `/api/league/rivals` returned **500**.
+   `load_config` raised `FileNotFoundError` when `config.toml` was absent, and
+   a clone never has one — it is gitignored because it carries an odds API
+   key. `load_config` now raises `GafferError` naming `config.example.toml`,
+   so those routes answer 422 with a sentence. Pinned by
+   `tests/test_v7_cold_clone.py::test_a_missing_config_is_a_message_not_a_500`.
+2. The Live hub rendered a bare red error line with no header on that path,
+   against §9. It now renders its `PageHeader` plus an `EmptyState` naming
+   `gaffer refresh-data`, and its loading branch keeps the header too (as
+   League's now does).
+
+After both fixes: no 5xx and no traceback on any hub endpoint in an empty
+tree, and all six hubs render an `EmptyState` naming their action.
