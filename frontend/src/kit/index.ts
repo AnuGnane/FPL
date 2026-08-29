@@ -1,3 +1,4 @@
+export { default as AppShell } from './AppShell'
 export { default as Badge } from './Badge'
 export type { BadgeProps, BadgeVariant } from './Badge'
 export { default as Card } from './Card'

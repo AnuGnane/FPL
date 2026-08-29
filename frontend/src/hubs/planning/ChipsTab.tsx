@@ -40,7 +40,8 @@ function GainBar({ gain, threshold }: { gain: number
     <span
       className="bar"
       style={{ display: 'inline-block', width: `${Math.max(2, width)}%`,
-               background: gain >= bar ? 'var(--good)' : 'var(--line)' }}
+               background: gain >= bar
+                 ? 'var(--color-sage)' : 'var(--color-border)' }}
       aria-label={`${gain} against a bar of ${bar}`}
     />
   )

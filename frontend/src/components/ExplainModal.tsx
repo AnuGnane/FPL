@@ -93,7 +93,7 @@ export default function ExplainModal(
                               width: `${Math.min(
                                 Math.abs(component.points) * 12, 100)}%`,
                               background: component.points < 0
-                                ? 'var(--bad)' : 'var(--pitch-500)',
+                                ? 'var(--color-rust)' : 'var(--color-sage)',
                             }}
                           />
                         </td>
