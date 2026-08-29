@@ -73,3 +73,46 @@ describe('DataTable', () => {
       'data-testid', 'row-card-2')
   })
 })
+
+describe('descending sort', () => {
+  // reverse() on the ascending order is not the descending order: it reverses
+  // *everything*, so rows that tied land in the opposite order to the one they
+  // came in, and the nulls the comparator carefully pushed to the bottom come
+  // out on top.
+  interface Row { id: number; name: string; score: number | null }
+
+  const cols: Column<Row>[] = [
+    { key: 'name', header: 'Name', value: (r) => r.name },
+    { key: 'score', header: 'Score', numeric: true, value: (r) => r.score },
+  ]
+
+  const names = () => screen.getAllByRole('row').slice(1)
+    .map((row) => row.querySelectorAll('td')[0].textContent)
+
+  it('keeps nulls last in both directions', async () => {
+    const rows: Row[] = [
+      { id: 1, name: 'A', score: 5 },
+      { id: 2, name: 'B', score: null },
+      { id: 3, name: 'C', score: 9 },
+    ]
+    render(<DataTable columns={cols} rows={rows} rowKey={(r) => r.id}
+                      collapse={false} initialSort="score" />)
+    expect(names()).toEqual(['C', 'A', 'B'])
+    await userEvent.click(screen.getByRole('button', { name: /Score/ }))
+    expect(names()).toEqual(['A', 'C', 'B'])
+  })
+
+  it('is stable across ties', async () => {
+    const rows: Row[] = [
+      { id: 1, name: 'A', score: 5 },
+      { id: 2, name: 'B', score: 5 },
+      { id: 3, name: 'C', score: 5 },
+    ]
+    render(<DataTable columns={cols} rows={rows} rowKey={(r) => r.id}
+                      collapse={false} initialSort="score" />)
+    expect(names()).toEqual(['A', 'B', 'C'])
+    await userEvent.click(screen.getByRole('button', { name: /Score/ }))
+    // Same score, so the input order stands; reversing flipped them to C,B,A.
+    expect(names()).toEqual(['A', 'B', 'C'])
+  })
+})

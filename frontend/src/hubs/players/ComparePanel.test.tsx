@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ComparePanel from './ComparePanel'
 import type { PlayerRow } from '../../types'
@@ -122,5 +122,61 @@ describe('ComparePanel', () => {
     const five = [...PLAYERS, ...PLAYERS, PLAYERS[0]]
     render(<ComparePanel gw={5} players={five} />)
     expect(screen.getByText(/at most four/i)).toBeInTheDocument()
+  })
+})
+
+describe('the fixture strip colours', () => {
+  // A cell's `attack` is how easy the opponent is to score against and
+  // `defence` is how hard a clean sheet is. Colouring every card by `attack`
+  // told a goalkeeper's owner about his chances of scoring.
+  const strip = (code: number) => within(
+    screen.getByTestId(`compare-${code}`)).getAllByTitle(/^GW/)
+
+  // Liverpool's fixture is easy to score in and hard to keep out: the two
+  // axes disagree, which is the only case that can tell them apart.
+  const SPLIT = {
+    ...MATRIX,
+    teams: [{ ...MATRIX.teams[0],
+              cells: [{ gw: 5, opponent: 'EVE', home: true, attack: 0.1,
+                        defence: 0.9 }] },
+            MATRIX.teams[1]],
+  }
+
+  beforeEach(() => {
+    apiGet.mockImplementation((path: string) => (
+      path.startsWith('/api/components/') ? Promise.resolve(COMPONENTS)
+        : path.startsWith('/api/fixtures/matrix') ? Promise.resolve(SPLIT)
+          : Promise.reject(new Error(`unexpected ${path}`))
+    ))
+  })
+
+  it('reads a keeper off the clean-sheet axis', async () => {
+    render(<ComparePanel gw={5} players={[
+      { ...PLAYERS[0], position: 'GKP' }, PLAYERS[1],
+    ]} />)
+    await screen.findByTestId('compare-1')
+    expect(strip(1)[0].className).toContain('rust')      // negative
+  })
+
+  it('reads a defender off the clean-sheet axis too', async () => {
+    render(<ComparePanel gw={5} players={[
+      { ...PLAYERS[0], position: 'DEF' }, PLAYERS[1],
+    ]} />)
+    await screen.findByTestId('compare-1')
+    expect(strip(1)[0].className).toContain('rust')
+  })
+
+  it('reads a midfielder off the attacking axis', async () => {
+    render(<ComparePanel gw={5} players={[PLAYERS[0], PLAYERS[1]]} />)
+    await screen.findByTestId('compare-1')
+    expect(strip(1)[0].className).toContain('sage')      // positive
+  })
+
+  it('reads a forward off the attacking axis', async () => {
+    render(<ComparePanel gw={5} players={[
+      { ...PLAYERS[0], position: 'FWD' }, PLAYERS[1],
+    ]} />)
+    await screen.findByTestId('compare-1')
+    expect(strip(1)[0].className).toContain('sage')
   })
 })

@@ -101,16 +101,27 @@ export default function ComparePanel({ gw, players }: ComparePanelProps) {
                   <Sparkline values={player.last4} />
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1">
-                  {(team?.cells ?? []).map((cell) => (
-                    <Badge
-                      key={cell.gw}
-                      variant={cell.attack < 0.4 ? 'positive'
-                        : cell.attack > 0.6 ? 'negative' : 'neutral'}
-                      title={`GW${cell.gw} · ${cell.home ? 'home' : 'away'}`}
-                    >
-                      {cell.opponent}
-                    </Badge>
-                  ))}
+                  {(team?.cells ?? []).map((cell) => {
+                    // The cell carries two scores because a fixture is two
+                    // different questions. `attack` is how freely the opponent
+                    // concedes; `defence` is how hard they make a clean sheet.
+                    // Colouring every card by `attack` told a goalkeeper's
+                    // owner about his chances of scoring.
+                    const score = player.position === 'GKP'
+                      || player.position === 'DEF'
+                      ? cell.defence
+                      : cell.attack
+                    return (
+                      <Badge
+                        key={cell.gw}
+                        variant={score < 0.4 ? 'positive'
+                          : score > 0.6 ? 'negative' : 'neutral'}
+                        title={`GW${cell.gw} · ${cell.home ? 'home' : 'away'}`}
+                      >
+                        {cell.opponent}
+                      </Badge>
+                    )
+                  })}
                 </div>
               </Card>
             </div>

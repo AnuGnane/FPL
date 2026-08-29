@@ -50,14 +50,19 @@ export default function League() {
     )
   }
 
-  // Recharts wants one row per gameweek with a column per entry.
+  // Recharts wants one row per gameweek with a column per entry. Keyed by the
+  // entry id, not the team name: FPL does not make team names unique, and two
+  // managers who both called their side "The Invincibles" shared a column —
+  // the second overwrote the first, so they were drawn as one line and one
+  // manager's season vanished off the chart.
+  const seriesKey = (entry: number) => `e${entry}`
   const gws = [...new Set(race.trajectory
     .flatMap((t) => t.points.map((p) => p.gw)))].sort((a, b) => a - b)
   const chart = gws.map((gw) => {
     const row: Record<string, number> = { gw }
     for (const entry of race.trajectory) {
       const point = entry.points.find((p) => p.gw === gw)
-      if (point) row[entry.name] = point.total
+      if (point) row[seriesKey(entry.entry)] = point.total
     }
     return row
   })
@@ -112,7 +117,10 @@ export default function League() {
                   <Line
                     key={entry.entry}
                     type="monotone"
-                    dataKey={entry.name}
+                    dataKey={seriesKey(entry.entry)}
+                    // The tooltip would otherwise read "e2"; the standings
+                    // table below is the legend and names every entry.
+                    name={entry.name}
                     dot={false}
                     strokeWidth={isYou(entry.entry) ? 2.5 : 1.5}
                     stroke={SERIES_COLOURS[i % SERIES_COLOURS.length]}

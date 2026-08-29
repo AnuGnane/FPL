@@ -1,6 +1,7 @@
 import * as Tabs from '@radix-ui/react-tabs'
 import { useEffect, useState } from 'react'
 import { apiGet } from '../api/client'
+import { useDebounced } from '../api/useDebounced'
 import {
   type Column, Card, DataTable, EmptyState, PageHeader, Sparkline, fmtNum,
 } from '../kit'
@@ -20,20 +21,28 @@ export default function Players() {
   const [search, setSearch] = useState('')
   const [picked, setPicked] = useState<number[]>([])
   const [gw, setGw] = useState<number | null>(null)
+  // Three states, not two: `gw === null` used to mean both "still loading" and
+  // "there is nothing to load", so a failed /api/advice/latest left the Compare
+  // tab on "Loading…" for ever with nothing saying what to do about it.
+  const [gwFailed, setGwFailed] = useState(false)
+  // Every keystroke drove a GET, and five letters is five requests whose
+  // answers can land out of order — the last one back wins, not the last typed.
+  const settledSearch = useDebounced(search)
 
   useEffect(() => {
-    apiGet<AdviceLatest>('/api/advice/latest').then((b) => setGw(b.gw))
-      .catch(() => setGw(null))
+    apiGet<AdviceLatest>('/api/advice/latest')
+      .then((b) => { setGw(b.gw); setGwFailed(false) })
+      .catch(() => { setGw(null); setGwFailed(true) })
   }, [])
 
   useEffect(() => {
     const params = new URLSearchParams()
     if (position) params.set('position', position)
-    if (search) params.set('search', search)
+    if (settledSearch) params.set('search', settledSearch)
     apiGet<PlayerRow[]>(`/api/players?${params.toString()}`)
       .then((body) => { setRows(body); setMissing(false) })
       .catch(() => setMissing(true))
-  }, [position, search])
+  }, [position, settledSearch])
 
   const toggle = (code: number) => setPicked((prev) => (
     prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
@@ -131,9 +140,19 @@ export default function Players() {
               )}
         </Tabs.Content>
         <Tabs.Content value="compare">
-          {gw === null
-            ? <p className="text-text-muted">Loading…</p>
-            : <ComparePanel gw={gw} players={selected} />}
+          {gwFailed
+            ? (
+              <EmptyState
+                title="Nothing to compare against"
+                detail="Comparing players reads the expected-points
+                        decomposition of a solved gameweek, and no run has
+                        been banked yet."
+                action="Run advise"
+              />
+              )
+            : gw === null
+              ? <p className="text-text-muted">Loading…</p>
+              : <ComparePanel gw={gw} players={selected} />}
         </Tabs.Content>
         <Tabs.Content value="matrix">
           <FixtureMatrix from={gw ?? 1} />

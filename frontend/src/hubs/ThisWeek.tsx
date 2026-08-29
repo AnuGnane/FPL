@@ -41,22 +41,31 @@ export default function ThisWeek() {
 
   useEffect(load, [load])
 
-  if (error || !data) {
+  // The armband is dereferenced unguarded all over the page below —
+  // advice.captain.name in a Stat, advice.vice.code on the pitch. An artifact
+  // written without one made every one of those a TypeError during render,
+  // which React answers by unmounting the tree: a white screen, no message.
+  const armbandMissing = Boolean(data)
+    && (!data!.advice?.captain || !data!.advice?.vice)
+
+  if (error || !data || armbandMissing) {
     return (
       <>
         <PageHeader title="This Week" />
-        {error
+        {error || armbandMissing
           ? (
             // The action is named, not wired: the JobButton underneath is the
             // one control that starts the run, so there is exactly one.
             <EmptyState
               title="Nothing solved yet"
-              detail={error}
+              detail={error ?? 'The saved advice names no captain or vice, so '
+                + 'there is no team to lay out. Re-running the solve rewrites '
+                + 'it.'}
               action="Run advise"
             />
             )
           : <p className="text-text-muted">Loading…</p>}
-        {error && <JobButton kind="advise" onDone={load} />}
+        {(error || armbandMissing) && <JobButton kind="advise" onDone={load} />}
       </>
     )
   }

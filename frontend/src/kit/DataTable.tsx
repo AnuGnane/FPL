@@ -28,11 +28,34 @@ export interface DataTableProps<T> {
   initialSort?: string
 }
 
-function compare(a: string | number | null, b: string | number | null): number {
-  if (a === null || a === undefined) return 1
-  if (b === null || b === undefined) return -1
+type Cell = string | number | null
+
+/** Missing values sort last whichever way the column points. `null` = neither
+ *  is missing, so the real comparison decides. */
+function missingOrder(a: Cell, b: Cell): number | null {
+  const aMissing = a === null || a === undefined
+  const bMissing = b === null || b === undefined
+  if (aMissing && bMissing) return 0
+  if (aMissing) return 1
+  if (bMissing) return -1
+  return null
+}
+
+function compareValues(a: Cell, b: Cell): number {
   if (typeof a === 'number' && typeof b === 'number') return a - b
   return String(a).localeCompare(String(b))
+}
+
+// Descending inverts the comparator rather than reversing the sorted array.
+// reverse() reverses *everything*: rows that tied came out in the opposite
+// order to the one they arrived in, so a re-sort shuffled equal rows for no
+// reason, and the missing values this comparator carefully pushes to the
+// bottom ended up on top. Array.prototype.sort is stable, so inverting keeps
+// ties in input order in both directions.
+function compare(a: Cell, b: Cell, desc: boolean): number {
+  const missing = missingOrder(a, b)
+  if (missing !== null) return missing
+  return desc ? -compareValues(a, b) : compareValues(a, b)
 }
 
 export default function DataTable<T>(
@@ -48,8 +71,8 @@ export default function DataTable<T>(
   const sorted = useMemo(() => {
     const column = columns.find((c) => c.key === sortKey)
     if (!column) return rows
-    const out = [...rows].sort((a, b) => compare(column.value(a), column.value(b)))
-    return desc ? out.reverse() : out
+    return [...rows].sort(
+      (a, b) => compare(column.value(a), column.value(b), desc))
   }, [columns, rows, sortKey, desc])
 
   const toggleSort = (key: string) => {

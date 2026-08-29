@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -102,4 +102,51 @@ describe('Players hub', () => {
       expect(await screen.findByText(/no candidate pool/i)).toBeInTheDocument()
       expect(screen.getByText('Run advise')).toBeInTheDocument()
     })
+
+  // gw === null meant both "still loading" and "there is nothing to load",
+  // so a failed /api/advice/latest left the Compare tab on "Loading…" for ever.
+  it('offers the run instead of loading for ever when advice is missing',
+    async () => {
+      apiGet.mockImplementation((path: string) => (
+        path.startsWith('/api/players') ? Promise.resolve(ROWS)
+          : Promise.reject(new Error('no advice on disk yet'))
+      ))
+      render(<MemoryRouter><Players /></MemoryRouter>)
+      await screen.findByText('Salah')
+      await userEvent.click(screen.getByRole('tab', { name: 'Compare' }))
+      const empty = await screen.findByTestId('empty-state')
+      expect(empty).toHaveTextContent(/advise/i)
+      expect(screen.queryByText('Loading…')).toBeNull()
+    })
+
+  it('still says Loading while the advice request is in flight', async () => {
+    apiGet.mockImplementation((path: string) => (
+      path.startsWith('/api/players') ? Promise.resolve(ROWS)
+        : new Promise(() => {})      // never settles
+    ))
+    render(<MemoryRouter><Players /></MemoryRouter>)
+    await screen.findByText('Salah')
+    await userEvent.click(screen.getByRole('tab', { name: 'Compare' }))
+    expect(await screen.findByText('Loading…')).toBeInTheDocument()
+    expect(screen.queryByTestId('empty-state')).toBeNull()
+  })
+
+  it('debounces the search box into one request', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      render(<MemoryRouter><Players /></MemoryRouter>)
+      await screen.findByText('Salah')
+      apiGet.mockClear()
+      await userEvent.type(screen.getByLabelText('Search'), 'Salah')
+      await act(async () => { vi.advanceTimersByTime(400) })
+      const searches = apiGet.mock.calls
+        .map(([path]) => String(path))
+        .filter((path) => path.includes('search='))
+      // One request for the settled word, not one per keystroke.
+      expect(searches).toHaveLength(1)
+      expect(searches[0]).toContain('search=Salah')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })

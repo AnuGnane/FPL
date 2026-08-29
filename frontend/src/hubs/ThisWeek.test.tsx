@@ -153,3 +153,44 @@ describe('This Week hub', () => {
         .toBeInTheDocument()
     })
 })
+
+describe('an advice payload missing its armband', () => {
+  // advice.captain.name, unguarded, is a TypeError during render — which
+  // React answers by unmounting the whole tree. A hub that cannot name a
+  // captain should say so, not go white.
+  const withoutCaptain = (key: 'captain' | 'vice') => {
+    const advice = { ...ADVICE.advice }
+    delete (advice as Record<string, unknown>)[key]
+    return { ...ADVICE, advice }
+  }
+
+  it('renders an empty state rather than a white screen', async () => {
+    apiGet.mockImplementation((path: string) => (
+      path === '/api/advice/latest'
+        ? Promise.resolve(withoutCaptain('captain'))
+        : route(path)))
+    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    expect(await screen.findByTestId('empty-state')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /this week/i }))
+      .toBeInTheDocument()
+  })
+
+  it('says the same for a missing vice', async () => {
+    apiGet.mockImplementation((path: string) => (
+      path === '/api/advice/latest'
+        ? Promise.resolve(withoutCaptain('vice'))
+        : route(path)))
+    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    expect(await screen.findByTestId('empty-state')).toBeInTheDocument()
+  })
+
+  it('still offers the run that would fix it', async () => {
+    apiGet.mockImplementation((path: string) => (
+      path === '/api/advice/latest'
+        ? Promise.resolve(withoutCaptain('captain'))
+        : route(path)))
+    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    await screen.findByTestId('empty-state')
+    expect(screen.getByRole('button', { name: /advise/i })).toBeInTheDocument()
+  })
+})

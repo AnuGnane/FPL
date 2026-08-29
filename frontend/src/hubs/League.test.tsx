@@ -100,3 +100,38 @@ describe('League hub', () => {
       expect(screen.getByText('config.toml')).toBeInTheDocument()
     })
 })
+
+describe('two rivals with the same team name', () => {
+  // FPL does not make team names unique. Keying the chart rows by name meant
+  // the second writer of a gameweek overwrote the first, so two managers
+  // called "The Invincibles" were drawn as one line and the other vanished.
+  const CLASH = {
+    ...RACE,
+    standings: RACE.standings.map((row) => ({ ...row, name: 'Same Name' })),
+    trajectory: RACE.trajectory.map((t) => ({ ...t, name: 'Same Name' })),
+  }
+
+  beforeEach(() => {
+    apiGet.mockImplementation((path: string) => (
+      path.includes('/race') ? Promise.resolve(CLASH)
+        : Promise.resolve(RIVALS)))
+  })
+
+  it('draws a line per entry, not per name', async () => {
+    const { container } = render(<MemoryRouter><League /></MemoryRouter>)
+    await screen.findByText('Cumulative points')
+    const paths = [...container.querySelectorAll('.recharts-line-curve')]
+      .map((node) => node.getAttribute('d'))
+    expect(paths).toHaveLength(CLASH.trajectory.length)
+    // Keyed by name, both series read the same column, so both lines were
+    // drawn through the same points and one manager's season disappeared.
+    expect(paths[0]).not.toEqual(paths[1])
+  })
+
+  it('keeps both entries distinguishable in the standings', async () => {
+    render(<MemoryRouter><League /></MemoryRouter>)
+    await screen.findByText('Cumulative points')
+    expect(screen.getByTestId('standing-1')).toBeInTheDocument()
+    expect(screen.getByTestId('standing-2')).toBeInTheDocument()
+  })
+})
