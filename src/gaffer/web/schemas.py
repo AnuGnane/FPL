@@ -15,6 +15,25 @@ class JobAccepted(BaseModel):
     job_id: str
 
 
+class JobStarted(BaseModel):
+    """The v7 runner's accept body. ``JobAccepted`` above still serves the v6
+    queue endpoints, whose clients read only ``job_id``."""
+
+    job_id: str
+    kind: str
+
+
+class JobRunView(BaseModel):
+    id: str
+    kind: str
+    status: Literal["queued", "running", "done", "failed"]
+    started_at: str
+    line_count: int
+    finished_at: str | None = None
+    error: str | None = None
+    summary: str | None = None
+
+
 class Staleness(BaseModel):
     advice_gw: int
     current_gw: int | None
