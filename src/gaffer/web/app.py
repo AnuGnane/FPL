@@ -21,9 +21,10 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from gaffer.errors import GafferError
-from gaffer.web.jobs import JobRegistry
-from gaffer.web.routers import (advice, chips, components, league, live, meta,
-                                news, players, quality, whatif)
+from gaffer.web.job_kinds import JOB_KINDS
+from gaffer.web.jobs import JobRegistry, JobRunner
+from gaffer.web.routers import (advice, chips, components, jobs, league, live,
+                                meta, news, players, quality, whatif)
 
 log = logging.getLogger("gaffer.web")
 
@@ -42,6 +43,7 @@ def static_dir() -> Path:
 def create_app() -> FastAPI:
     app = FastAPI(title="gaffer", docs_url=None, redoc_url=None)
     app.state.jobs = JobRegistry()
+    app.state.job_runner = JobRunner(JOB_KINDS)
 
     @app.exception_handler(GafferError)
     async def _domain_error(_: Request, exc: GafferError) -> JSONResponse:
@@ -60,17 +62,10 @@ def create_app() -> FastAPI:
     def ping() -> dict:
         return {"ok": True, "app": "gaffer"}
 
-    @app.get("/api/jobs/{job_id}")
-    def job_status(job_id: str, request: Request):
-        job = request.app.state.jobs.get(job_id)
-        if job is None:
-            return JSONResponse(status_code=404,
-                                content={"detail": f"no such job: {job_id}"})
-        return job
-
     app.include_router(advice.router)
     app.include_router(chips.router)
     app.include_router(components.router)
+    app.include_router(jobs.router)
     app.include_router(news.router)
     app.include_router(league.router)
     app.include_router(live.router)
