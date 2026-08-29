@@ -140,3 +140,69 @@ def test_the_v6_queue_is_still_reachable_through_the_same_path(tmp_path,
         time.sleep(0.01)
     assert body["status"] == "done"
     assert body["result"] == {"ok": True}
+
+
+def _events(text: str) -> list[tuple[str, str]]:
+    """SSE text -> [(event name, data)] in wire order."""
+    out = []
+    for block in text.strip().split("\n\n"):
+        if not block.strip():
+            continue
+        name, data = "message", ""
+        for line in block.splitlines():
+            if line.startswith("event: "):
+                name = line[7:]
+            elif line.startswith("data: "):
+                data = line[6:]
+        out.append((name, data))
+    return out
+
+
+def test_the_stream_replays_every_line_in_order_then_ends(app_and_runner):
+    app, release = app_and_runner
+    client = TestClient(app)
+    job_id = client.post("/api/jobs/advise").json()["job_id"]
+    release.set()
+    _wait_for(client, job_id)
+    events = _events(client.get(f"/api/jobs/{job_id}/stream").text)
+    assert [name for name, _ in events] == ["line", "line", "end"]
+    assert [data for _, data in events[:2]] == ["working", "finished"]
+    assert '"status": "done"' in events[-1][1]
+
+
+def test_a_reconnect_replays_only_what_the_client_missed(app_and_runner):
+    app, release = app_and_runner
+    client = TestClient(app)
+    job_id = client.post("/api/jobs/advise").json()["job_id"]
+    release.set()
+    _wait_for(client, job_id)
+    events = _events(client.get(f"/api/jobs/{job_id}/stream?from=1").text)
+    assert [data for name, data in events if name == "line"] == ["finished"]
+
+
+def test_the_last_event_id_header_is_honoured_like_from(app_and_runner):
+    app, release = app_and_runner
+    client = TestClient(app)
+    job_id = client.post("/api/jobs/advise").json()["job_id"]
+    release.set()
+    _wait_for(client, job_id)
+    events = _events(client.get(f"/api/jobs/{job_id}/stream",
+                                headers={"Last-Event-ID": "0"}).text)
+    assert [data for name, data in events if name == "line"] == ["finished"]
+
+
+def test_a_failed_jobs_stream_ends_with_the_error(app_and_runner):
+    app, _ = app_and_runner
+    client = TestClient(app)
+    job_id = client.post("/api/jobs/evaluate").json()["job_id"]
+    _wait_for(client, job_id)
+    events = _events(client.get(f"/api/jobs/{job_id}/stream").text)
+    assert events[-1][0] == "end"
+    assert '"status": "failed"' in events[-1][1]
+    assert "no models on disk" in events[-1][1]
+
+
+def test_streaming_an_unknown_job_is_a_404(app_and_runner):
+    app, _ = app_and_runner
+    client = TestClient(app, raise_server_exceptions=False)
+    assert client.get("/api/jobs/nope/stream").status_code == 404

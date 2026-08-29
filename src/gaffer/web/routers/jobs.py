@@ -11,8 +11,12 @@ without breaking them.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import JSONResponse, Response
+import json
+import time
+from typing import Iterator
+
+from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from gaffer.web.jobs import JobAlreadyRunning
 from gaffer.web.schemas import JobRunView, JobStarted
@@ -59,3 +63,69 @@ def status(job_id: str, request: Request):
     if legacy is None:
         raise HTTPException(status_code=404, detail=f"no such job: {job_id}")
     return legacy
+
+
+POLL_S = 0.25
+"""How often the generator looks for new lines while a job is still running."""
+
+IDLE_TIMEOUT_S = 3600.0
+"""A generator gives up after an hour rather than pinning a worker forever."""
+
+
+def _sse(name: str, data: str, event_id: int | None = None) -> str:
+    prefix = "" if event_id is None else f"id: {event_id}\n"
+    return f"{prefix}event: {name}\ndata: {data}\n\n"
+
+
+@router.get("/{job_id}/stream")
+def stream(job_id: str, request: Request, from_: int = Query(0, alias="from")):
+    """Every captured line as an event, then a terminal ``end``.
+
+    Hand-rolled rather than a new dependency: this is one generator yielding
+    ``text/event-stream`` frames, and ``sse-starlette`` is not installed.
+
+    Reconnects replay from an absolute line index — ``?from=`` or the
+    ``Last-Event-ID`` header the browser sends by itself — so a tab that
+    dropped mid-run redraws exactly what it missed, out of the 500-line ring
+    buffer, rather than the whole scrollback or nothing.
+    """
+    runner = request.app.state.job_runner
+    if runner.get(job_id) is None:
+        raise HTTPException(status_code=404, detail=f"no such job: {job_id}")
+    header = request.headers.get("last-event-id")
+    start = from_
+    if header is not None and header.strip().isdigit():
+        start = int(header.strip()) + 1
+
+    def generate() -> Iterator[str]:
+        cursor = start
+        deadline = time.monotonic() + IDLE_TIMEOUT_S
+        while True:
+            for index, line in runner.lines_since(job_id, cursor):
+                cursor = index + 1
+                yield _sse("line", line, index)
+            run = runner.get(job_id)
+            if run is None:
+                break
+            if run.status in ("done", "failed"):
+                # One last sweep: a line can land between the read above and
+                # the status flip, and losing the final line of a failed run is
+                # losing the only thing the user needed.
+                for index, line in runner.lines_since(job_id, cursor):
+                    cursor = index + 1
+                    yield _sse("line", line, index)
+                yield _sse("end", json.dumps(
+                    {"status": run.status, "error": run.error,
+                     "summary": run.summary}))
+                break
+            if time.monotonic() > deadline:
+                yield _sse("end", json.dumps(
+                    {"status": "failed",
+                     "error": "stream idle for an hour — reload the page",
+                     "summary": None}))
+                break
+            time.sleep(POLL_S)
+
+    return StreamingResponse(generate(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache",
+                                      "X-Accel-Buffering": "no"})
