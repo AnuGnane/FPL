@@ -53,6 +53,22 @@ def _state():
     return load_solve_state(gw)
 
 
+def _last4() -> dict[int, list[int]]:
+    """``{code: [points]}`` for the last four finished gameweeks."""
+    from gaffer.data import store
+
+    if not store.exists("live/player_gw.parquet"):
+        return {}
+    frame = store.load("live/player_gw.parquet")
+    if frame.empty:
+        return {}
+    frame = frame.sort_values("gw")
+    out: dict[int, list[int]] = {}
+    for code, rows in frame.groupby("code"):
+        out[int(code)] = [int(p) for p in rows["total_points"].tail(4)]
+    return out
+
+
 @router.get("", response_model=list[PlayerRow])
 def players(position: str | None = None, team: int | None = None,
             search: str | None = None,
@@ -68,6 +84,7 @@ def players(position: str | None = None, team: int | None = None,
                if int(r.gw) == first_gw}
     ep_horizon = pool.groupby("code")["ep_raw"].sum().to_dict()
     owned = {int(c) for c in state.owned_codes}
+    last4 = _last4()
 
     rows = []
     for r in snapshot.itertuples():
@@ -91,7 +108,8 @@ def players(position: str | None = None, team: int | None = None,
             free_kicks_order=_opt_int(r.direct_freekicks_order),
             corners_order=_opt_int(
                 r.corners_and_indirect_freekicks_order),
-            in_squad=code in owned))
+            in_squad=code in owned,
+            last4=last4.get(code, [])))
 
     if position:
         rows = [row for row in rows if row.position == position.upper()]

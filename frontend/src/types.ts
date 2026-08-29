@@ -181,6 +181,7 @@ export interface PlayerRow {
   free_kicks_order: number | null
   corners_order: number | null
   in_squad: boolean
+  last4: number[]
 }
 
 export interface StandingRow {

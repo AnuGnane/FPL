@@ -142,3 +142,25 @@ def test_explain_for_a_player_missing_from_the_snapshot_is_a_422(client):
     resp = client.get("/api/players/102/explain")
     assert resp.status_code == 422
     assert "102" in resp.json()["detail"]
+
+
+def test_rows_carry_the_last_four_finished_gameweeks_of_points(client,
+                                                               tmp_path):
+    from gaffer.data import store
+
+    store.save(pd.DataFrame([
+        {"code": 100, "gw": 1, "total_points": 2, "value": 130},
+        {"code": 100, "gw": 2, "total_points": 9, "value": 131},
+        {"code": 100, "gw": 3, "total_points": 5, "value": 131},
+        {"code": 100, "gw": 4, "total_points": 12, "value": 132},
+        {"code": 100, "gw": 5, "total_points": 6, "value": 133},
+    ]), "live/player_gw.parquet")
+    rows = client.get("/api/players").json()
+    mine = next(r for r in rows if r["code"] == 100)
+    # Oldest first, newest last, at most four — a sparkline reads left to right.
+    assert mine["last4"] == [9, 5, 12, 6]
+
+
+def test_rows_carry_an_empty_last4_when_no_player_gw_parquet_exists(client):
+    rows = client.get("/api/players").json()
+    assert all(row["last4"] == [] for row in rows)

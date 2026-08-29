@@ -244,6 +244,12 @@ class PlayerRow(BaseModel):
     free_kicks_order: int | None
     corners_order: int | None
     in_squad: bool
+    last4: list[int] = Field(default_factory=list)
+    """Points from the last four *finished* gameweeks, oldest first.
+
+    Empty when ``data/live/player_gw.parquet`` has not been written — the
+    sparkline then renders an em dash rather than a flat line at zero.
+    """
 
 
 class Component(BaseModel):
