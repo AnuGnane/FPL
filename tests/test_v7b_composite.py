@@ -78,3 +78,21 @@ def test_the_result_passes_the_asset_validator(tmp_path):
     dest = write_noise(composite_table(BASE, 1.0),
                        tmp_path / "composite.json")
     assert dest.exists()
+
+
+def test_the_cli_writes_a_named_asset_per_floor(tmp_path, monkeypatch):
+    import json
+    import sys
+
+    src = tmp_path / "est.json"
+    src.write_text(json.dumps(BASE))
+    sys.path.insert(0, "scripts")
+    import v7b_composite
+
+    monkeypatch.chdir(tmp_path)
+    dest = v7b_composite.main([str(src), "0.6"])
+    assert dest.name == "scenario_noise_composite_0.6.json"
+    written = json.loads(dest.read_text())
+    assert written["composite_floor"] == 0.6
+    assert written["source"] == "estimation"
+    assert written["sigma"]["0_0"] == pytest.approx(math.hypot(0.018, 0.6))
