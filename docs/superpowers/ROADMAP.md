@@ -100,11 +100,14 @@ Spec: `specs/2026-08-29-gaffer-v7-ui-design.md` (§12–13 = smoke + outcome) ·
 
 ## In progress
 
-### v7b — measurement cycle (next)
-- [ ] Bisect the D1 sign reversal (gating on/off replays at v4d, v5, v6 merge points)
-- [ ] 3-seed error bars on the heuristic / estimation / raw comparison
-- [ ] Composite σ sweep: sqrt(σ_est² + floor²) over a few floors — keep / re-noise / remove verdict on gating
-- [ ] N2 first news verdict when GW2 is data_checked
+### v7b — measurement cycle (done, merged `8aeb3d6` 2026-08-30)
+Spec: `specs/2026-08-30-gaffer-v7b-measurement-design.md` (§5–7 = results, corrections, evidence appendix)
+- [x] Q2: D1 sign reversal attributed (single-seed) to the v5 minutes-head swap (+27 legacy vs −61 current, same harness); harness and frame ruled out; the swap itself still justified (+47 ungated)
+- [x] Q1: 3-seed error bars — spread 116 swamps every arm gap; the S1/S2 ±120s were draw luck
+- [x] Q3: composite-σ floors monotonically worse; no re-noised gate beats raw
+- [x] Mechanical verdict: KEEP option (b) — all differences within seed noise; raw anchor 1914 reproduced and logged
+- [ ] N2 first news verdict — still pending GW2 `data_checked`
+- 12 replay runs + 1 probe; suite 1548; no serving changes
 
 ### v7-model — zeros + honest noise (done, merged `1b93b9d` 2026-08-30; user chose option (b))
 Spec: `specs/2026-08-30-gaffer-v7-model-design.md` (§9 = gates + the three-way decision) · Plan: `plans/2026-08-30-gaffer-v7-model.md`
