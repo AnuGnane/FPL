@@ -248,3 +248,73 @@ def write_noise(payload: dict, path: Path | str = ASSET_PATH) -> Path:
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     return dest
+
+
+def fit_estimation_sigmas(rows: pd.DataFrame,
+                          ep_edges: list[float] | None = None,
+                          xmins_edges: list[float] | None = None,
+                          min_obs: int = MIN_CELL_OBS) -> dict:
+    """Ensemble spread -> the same σ table, cell for cell (spec §3).
+
+    The one structural difference from :func:`fit_sigmas`: the per-row
+    quantity here is *already* a standard deviation — the spread of one
+    player-gameweek's EP across the K seeded refits — so a cell's value is the
+    **mean** of its rows, not their standard deviation. Taking a standard
+    deviation of standard deviations would price how much the estimation
+    uncertainty itself varies within a cell, which is not a thing the sweep
+    has any use for.
+
+    Everything else is deliberately identical, because the read side is not
+    changing: the same edges, the same ``MIN_CELL_OBS`` threshold, the same
+    cell -> EP marginal -> global fallback chain that
+    :func:`gaffer.optimize.scenarios.sigma_for` walks.
+
+    A cell whose mean rounds to zero is **dropped** rather than floored at
+    some invented epsilon. ``write_noise`` refuses a non-positive σ, and a
+    cell where five refits agree to four decimal places has genuinely nothing
+    to say; pooling it up to the EP marginal is the honest answer and is the
+    same treatment a thin cell gets. The count is reported so the omission is
+    visible.
+    """
+    ep_edges = EP_EDGES if ep_edges is None else list(ep_edges)
+    xmins_edges = XMINS_EDGES if xmins_edges is None else list(xmins_edges)
+    frame = rows.dropna(subset=["ep", "xmins", "sigma_est"]).copy()
+    frame["ep_bin"] = [bin_index(v, ep_edges) for v in frame["ep"]]
+    frame["x_bin"] = [bin_index(v, xmins_edges) for v in frame["xmins"]]
+
+    dropped = 0
+    marginal: dict[str, float] = {}
+    marginal_obs: dict[str, int] = {}
+    for i, part in frame.groupby("ep_bin"):
+        value = round(float(part["sigma_est"].mean()), 4)
+        marginal_obs[str(int(i))] = int(len(part))
+        if value > 0.0:
+            marginal[str(int(i))] = value
+        else:
+            dropped += 1
+
+    sigma: dict[str, float] = {}
+    obs: dict[str, int] = {}
+    for (i, j), part in frame.groupby(["ep_bin", "x_bin"]):
+        key = f"{int(i)}_{int(j)}"
+        obs[key] = int(len(part))
+        if len(part) < int(min_obs):
+            continue
+        value = round(float(part["sigma_est"].mean()), 4)
+        if value > 0.0:
+            sigma[key] = value
+        else:
+            dropped += 1
+
+    return {
+        "ep_edges": ep_edges,
+        "xmins_edges": xmins_edges,
+        "sigma": sigma,
+        "obs": obs,
+        "ep_marginal": marginal,
+        "ep_marginal_obs": marginal_obs,
+        "global": round(float(frame["sigma_est"].mean()), 4),
+        "rows": int(len(frame)),
+        "min_cell_obs": int(min_obs),
+        "dropped_zero_cells": int(dropped),
+    }
