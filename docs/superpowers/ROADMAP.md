@@ -101,6 +101,19 @@ Spec: `specs/2026-08-29-gaffer-v7-ui-design.md` (§12–13 = smoke + outcome) ·
 
 ## In progress
 
+### v8 queue (approved 2026-08-30, all seven cycles green-lit)
+Proposal: `specs/2026-08-30-gaffer-v8-research-proposal.md`. Order fixed by dependency + data accrual;
+user decisions recorded: LLM presser classifier runs via headless `claude -p` (user's Claude
+subscription — no API key/spend, pluggable + degradable); v8f alerts approved; v8c top-10k
+entry-API scrape approved.
+- [ ] v8a minutes intelligence (rotation priors, short-horizon congestion w/ v5-confound check, ordinal minutes head, lineup-consensus feature, `claude -p` presser classifier)
+- [ ] v8c field intelligence (tier-EO scrape FIRST — append-only field history; mini-league win %, sampled-field sims, what-if)
+- [ ] v8b decision loop (GW review grading, EV-loss ledger, attribution, hindsight XI — graded in pts + Δwin%)
+- [ ] v8d live matchday (live bonus from BPS, EP race chart, auto-sub projection, league safety score)
+- [ ] v8e solver trust (sensitivity re-solves, editable xMins overrides, multi-draft compare, chip-EV rails)
+- [ ] v8g honest uncertainty (calibration dashboard, EP bands/P(haul) chips, confidence tags, radar compare)
+- [ ] v8f daily companion (price-feed ingestion, watchlist alerts, Mon/Fri digests, retrain diff)
+
 ### v7d — cockpit polish (done, 2026-08-30)
 Spec: `specs/2026-08-30-gaffer-v7d-cockpit-polish-design.md` (§9 = outcome + evidence) · Plan: `plans/2026-08-30-gaffer-v7d-cockpit-polish.md`
 - [x] Fast advise: `gaffer advise --fast` + `advise-fast` job kind + This Week button — 78s vs ~6 min swept (rides the pinned `scenarios_n=0` rail; v7b proved the gate is a no-op under option (b))
