@@ -188,7 +188,7 @@ def test_seed_bases_derive_one_arm_per_base():
     """Each base owns its log and its report: two bases sharing either would
     read each other's hits and transfers and the trio would be one draw."""
     configs, bases, tag = v7b_replay.arm_configs(
-        ["--arm", "raw", "--tag", "q", "--seed-bases", "1,2,3"])
+        ["--arm", "heur", "--tag", "q", "--seed-bases", "1,2,3"])
     assert bases == [1, 2, 3]
     assert tag == "q"
     assert [c.tag for c in configs] == ["q-s1", "q-s2", "q-s3"]
@@ -204,7 +204,7 @@ def test_seed_bases_derive_one_arm_per_base():
 
 def test_seed_bases_tolerate_spaces_in_the_list():
     configs, bases, _ = v7b_replay.arm_configs(
-        ["--arm", "raw", "--tag", "q", "--seed-bases", "1, 2 ,3"])
+        ["--arm", "heur", "--tag", "q", "--seed-bases", "1, 2 ,3"])
     assert bases == [1, 2, 3]
     assert [c.tag for c in configs] == ["q-s1", "q-s2", "q-s3"]
 
@@ -222,9 +222,18 @@ def test_a_single_seed_base_still_derives_one_unsuffixed_arm():
     assert configs[0].report_path == "reports/v7b_q.json"
 
 
-def test_the_two_seed_flags_are_mutually_exclusive():
+def test_a_multi_seed_raw_run_is_refused():
+    """The raw arm installs no gate, so the seed never reaches the scenario
+    sweep: three bases would replay one identical draw and cost three times
+    the hours to say so."""
     with pytest.raises(SystemExit):
         v7b_replay.arm_configs(["--arm", "raw", "--tag", "q",
+                                "--seed-bases", "1,2,3"])
+
+
+def test_the_two_seed_flags_are_mutually_exclusive():
+    with pytest.raises(SystemExit):
+        v7b_replay.arm_configs(["--arm", "heur", "--tag", "q",
                                 "--seed-base", "1", "--seed-bases", "1,2"])
 
 
@@ -232,13 +241,13 @@ def test_a_one_element_seed_bases_list_is_refused():
     """K >= 2 or use --seed-base: a "multi-seed" run of one is the single-draw
     verdict convention 1 exists to stop."""
     with pytest.raises(SystemExit):
-        v7b_replay.arm_configs(["--arm", "raw", "--tag", "q",
+        v7b_replay.arm_configs(["--arm", "heur", "--tag", "q",
                                 "--seed-bases", "20260825"])
 
 
 def test_a_non_numeric_seed_base_is_refused():
     with pytest.raises(SystemExit):
-        v7b_replay.arm_configs(["--arm", "raw", "--tag", "q",
+        v7b_replay.arm_configs(["--arm", "heur", "--tag", "q",
                                 "--seed-bases", "20260825,tuesday"])
 
 
@@ -268,7 +277,7 @@ def test_the_multi_seed_run_replays_every_base_and_reports_each(
         tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
     seen = _fake_backtest(monkeypatch, [1800, 1900, 1850])
-    out = v7b_replay.main(["--arm", "raw", "--tag", "t",
+    out = v7b_replay.main(["--arm", "heur", "--tag", "t",
                            "--seed-bases", "1,2,3"])
     assert len(seen) == 3
     printed = capsys.readouterr().out.splitlines()
@@ -314,7 +323,7 @@ def test_the_multi_seed_loop_leaves_the_backtest_module_as_it_found_it(
     _fake_backtest(monkeypatch, [1800, 1900, 1850])
     before = (v7b_replay.bt.store, v7b_replay.bt.solve_plan,
               v7b_replay.bt.predict_components_simple)
-    v7b_replay.main(["--arm", "raw", "--tag", "t", "--seed-bases", "1,2,3"])
+    v7b_replay.main(["--arm", "heur", "--tag", "t", "--seed-bases", "1,2,3"])
     assert (v7b_replay.bt.store, v7b_replay.bt.solve_plan,
             v7b_replay.bt.predict_components_simple) == before
 

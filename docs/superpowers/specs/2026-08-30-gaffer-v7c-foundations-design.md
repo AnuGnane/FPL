@@ -113,7 +113,7 @@ May comparison into a standing report that accrues weekly.
     when Understat current-season data is joinable; **degrades** to the
     `pens_missed`-only signal with an explicit `"instrument": "pens_missed_only"` marker
     when `us_npxg` is unavailable for the season (never raises, never blocks).
-  - Aggregates: per-team predicted-taker hit rate (did the order-1 taker take the pens),
+  - Aggregates: league-wide predicted-taker hit rate (did the order-1 taker take the pens),
     league pens/game observed vs the served `LEAGUE_PENS_PG = 0.13` constant, cumulative
     predicted `ep_pen_taker` vs realized pen points proxy
     (`events × PEN_CONVERSION × goal_points`), all with row counts.

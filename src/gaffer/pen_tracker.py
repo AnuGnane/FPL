@@ -196,6 +196,19 @@ def gw_block(week: pd.DataFrame, gw: int, season: str) -> dict:
     }
 
 
+def safe_gw_block(week: pd.DataFrame, gw: int, season: str) -> dict:
+    """:func:`gw_block`, or ``{"gw": N, "error": ...}`` if that week is broken.
+
+    Per gameweek rather than per report: one truncated week's rows or one
+    half-written component file is that week's problem, and degrading the whole
+    season to a note would throw away every week that read fine.
+    """
+    try:
+        return gw_block(week, gw, season)
+    except Exception as exc:  # noqa: BLE001 — one bad week, not a bad season
+        return {"gw": int(gw), "error": str(exc)}
+
+
 def season_totals(blocks: list[dict]) -> dict:
     """The season line: the cumulative comparison the v6 validation wanted.
 
@@ -253,10 +266,17 @@ def track_pens(season: str | None = None) -> dict:
         if not done:
             report["notes"].append("no finished gameweek in the live season yet")
             return report
-        report["gws"] = [gw_block(rows[rows["gw"] == g], g, report["season"])
-                         for g in done]
-        report["season_totals"] = season_totals(report["gws"])
-        if any(b["instrument"] == "pens_missed_only" for b in report["gws"]):
+        report["gws"] = [
+            safe_gw_block(rows[rows["gw"] == g], g, report["season"])
+            for g in done]
+        good = [b for b in report["gws"] if "error" not in b]
+        broken = [b for b in report["gws"] if "error" in b]
+        report["season_totals"] = season_totals(good)
+        if broken:
+            report["notes"].append(
+                "skipped " + ", ".join(f"gw{b['gw']}" for b in broken)
+                + " — the week would not read; the season line covers the rest")
+        if any(b["instrument"] == "pens_missed_only" for b in good):
             report["notes"].append(
                 "penalties counted from pens_missed only — Understat npxg is "
                 "not on disk for this season, so converted spot kicks are "
@@ -292,6 +312,9 @@ def format_tracker(report: dict) -> str:
              f"{'GW':>3}  {'pred EP':>8}  {'pens':>5}  {'1st':>5}  "
              f"{'hit':>5}  {'per game':>9}  instrument"]
     for b in report.get("gws", []):
+        if "error" in b:
+            lines.append(f"{b['gw']:>3}  unreadable: {b['error']}")
+            continue
         hit = ("    —" if b["taker_hit_rate"] is None
                else f"{b['taker_hit_rate']:>5.2f}")
         per = ("        —" if b["pens_per_team_game"] is None

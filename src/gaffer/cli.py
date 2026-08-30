@@ -210,9 +210,15 @@ def snapshot():
     scheduled command that exits non-zero on a bad afternoon is a command
     that gets uninstalled.
     """
-    from gaffer.snapshot import run_snapshot
+    try:
+        from gaffer.snapshot import run_snapshot
 
-    run_snapshot()
+        run_snapshot()
+    except Exception as exc:  # noqa: BLE001 — a scheduled job never blocks
+        # run_snapshot swallows its own failures; the import cannot, and an
+        # ImportError here would be the one traceback the launchd job still
+        # emits every afternoon.
+        typer.echo(f"availability snapshot not written: {exc}")
 
 
 @app.command()

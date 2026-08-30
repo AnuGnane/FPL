@@ -235,6 +235,39 @@ def test_a_degraded_instrument_is_named_in_the_report(tmp_path, monkeypatch):
     assert any("pens_missed" in note for note in report["notes"])
 
 
+def test_one_bad_gameweek_does_not_cost_the_other_one(tmp_path, monkeypatch):
+    """A truncated week's row set, or a component file half written, is one
+    gameweek's problem. Degrading the whole season's report to a note would
+    throw away every week that read fine."""
+    from gaffer import artifacts
+    from gaffer import pen_tracker
+    from gaffer.data import store as store_mod
+
+    monkeypatch.setattr(store_mod, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(artifacts, "REPORTS", tmp_path / "reports")
+    (tmp_path / "reports").mkdir(exist_ok=True)
+    two = pd.concat([_week(), _week().assign(gw=2)], ignore_index=True)
+    store_mod.save(two, "live/player_gw.parquet")
+    store_mod.save(pd.DataFrame({"gw": [1, 2, 3],
+                                 "finished": [True, True, False]}),
+                   "live/events.parquet")
+    store_mod.save(_understat(), "history/understat_player.parquet")
+    real_block = pen_tracker.gw_block
+
+    def poisoned(week, gw, season):
+        if gw == 2:
+            raise RuntimeError("components_gw2.parquet is truncated")
+        return real_block(week, gw, season)
+
+    monkeypatch.setattr(pen_tracker, "gw_block", poisoned)
+    report = pen_tracker.track_pens(season="2026-27")
+    assert [b["gw"] for b in report["gws"]] == [1, 2]
+    assert report["gws"][0]["pens_taken"] == 1.0
+    assert "truncated" in report["gws"][1]["error"]
+    assert report["season_totals"]["gws"] == 1
+    assert any("gw2" in note for note in report["notes"])
+
+
 def test_no_live_season_on_disk_is_an_empty_report(tmp_path, monkeypatch):
     from gaffer.data import store as store_mod
 

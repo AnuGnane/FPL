@@ -44,7 +44,9 @@ Usage (orchestrator only — Group 1 builds this and does not run it)::
         > logs/v7b_q1b-heur.log 2>&1 &
     grep V7B_ARM_DONE logs/v7b_*.log
 
-``--seed-bases 20260825,20260826,20260827`` runs the same arm once per base —
+``--seed-bases 20260825,20260826,20260827`` runs the same *gated* arm once per
+base (``--arm raw`` is refused: no gate means the seed never reaches the
+scenario sweep and three bases replay one draw) —
 tags ``<tag>-s<base>``, one log and one report each — and finishes with a single
 ``MULTISEED_DONE <tag> {...}`` line carrying the totals, their mean and their
 spread. That is the house standard (``docs/superpowers/CONVENTIONS.md`` §1): the
@@ -164,6 +166,10 @@ def _parsed(argv: list[str]) -> argparse.Namespace:
     if a.seed_bases is None:
         a.bases = None
         return a
+    if a.arm == "raw":
+        p.error("--arm raw installs no gate, so the seed never reaches the "
+                "scenario sweep and every base replays the same draw; a "
+                "multi-seed raw run measures nothing but wall-clock hours")
     a.bases = []
     try:
         a.bases = [int(b.strip()) for b in a.seed_bases.split(",") if b.strip()]
@@ -376,6 +382,10 @@ def main(argv: list[str]) -> dict:
     training frame, the priors and the noise table are all seed-independent,
     and re-installing them per base would only add ways for the third run to
     differ from the first.
+
+    A later base dying costs only that base: every base already finished has
+    written its own report, and ``scripts/seed_stats.py`` aggregates those off
+    disk without re-running anything.
     """
     configs, bases, tag = arm_configs(argv)
     undo = apply_patches(configs[0])

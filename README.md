@@ -259,7 +259,7 @@ the availability log the news corrector will train on). Re-run it after moving
 the project.
 
 Check they are loaded with `launchctl list | grep com.gaffer`. Remove with
-`launchctl unload ~/Library/LaunchAgents/com.gaffer.{advise,prices}.plist`.
+`launchctl unload ~/Library/LaunchAgents/com.gaffer.{advise,prices,snapshot}.plist`.
 
 ## Tests
 
