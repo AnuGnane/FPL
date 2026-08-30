@@ -8,7 +8,13 @@ one is wrong even if its code is right.
 
 Verdicts read mean +/- spread, never one draw. v7b measured a seed spread of
 116 points on the heuristic arm — larger than every arm gap the project has
-ever gated on. One draw measures the seed.
+ever gated on. One draw measures the seed. That 116 is the S2 chips-on
+heuristic run (1785 at seed base 20260827) against `q1b-heur` 1876 and
+`q1c-heur` 1901: three draws of one arm.
+
+An aggregate is valid only across runs whose config echo differs in nothing but
+`seed_base` — mixing a control arm into a seed trio reads its arm gap as a seed
+spread — and `scripts/seed_stats.py` enforces that, refusing with exit 2.
 
 `scripts/v7b_replay.py --seed-bases a,b,c` runs the trio and prints the
 aggregate; `scripts/seed_stats.py` reads the same aggregate off reports already

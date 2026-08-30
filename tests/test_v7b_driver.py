@@ -320,14 +320,15 @@ def test_the_multi_seed_loop_leaves_the_backtest_module_as_it_found_it(
 
 
 def test_the_aggregate_is_the_mean_spread_and_range_of_the_totals():
-    """Convention 1's arithmetic: verdicts read mean +/- spread, and the v7b
-    trio's own spread (115 pts) dwarfs every arm gap ever gated on."""
-    outs = [{"total": 1876}, {"total": 1901}, {"total": 1786}]
+    """Convention 1's arithmetic, on v7b's real heuristic trio: S2's 1785 at
+    20260827 with q1b 1876 and q1c 1901 — one arm, three seeds, spread 116,
+    which dwarfs every arm gap ever gated on."""
+    outs = [{"total": 1785}, {"total": 1876}, {"total": 1901}]
     assert v7b_replay.multiseed_summary(
-        outs, [20260901, 20260915, 20260825]) == {
-            "totals": [1876, 1901, 1786], "mean": 1854.3, "spread": 115,
-            "range": [1786, 1901],
-            "seed_bases": [20260901, 20260915, 20260825]}
+        outs, [20260827, 20260901, 20260915]) == {
+            "totals": [1785, 1876, 1901], "mean": 1854.0, "spread": 116,
+            "range": [1785, 1901],
+            "seed_bases": [20260827, 20260901, 20260915]}
 
 
 def test_the_conventions_doc_is_committed_and_linked_from_the_roadmap():

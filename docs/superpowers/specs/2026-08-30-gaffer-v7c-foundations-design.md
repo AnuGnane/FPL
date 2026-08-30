@@ -143,10 +143,15 @@ Importing from protected modules is allowed; modifying them is not.
   `run_backtest` (pattern of `tests/test_v7b_driver.py`) and asserts per-seed
   `V7B_ARM_DONE` lines, per-seed report paths, and correct `MULTISEED_DONE` math;
   single `--seed-base` path proven byte-identical in output shape. `seed_stats.py`
-  reproduces v7b's Q1 heuristic numbers from the banked reports
-  (`v7b_q2-ctrl-heur` 1786 + `v7b_q1b-heur` 1876 + `v7b_q1c-heur` 1901 → spread **115**;
-  the v7b spec's published 116 substituted the reused v7-model S2 run, 1785 at seed
-  20260827, which has no v7b-format report JSON on disk). No new
+  reads back the one same-arm pair banked on disk: `v7b_q1b-heur` 1876 +
+  `v7b_q1c-heur` 1901 → spread **25** over two seeds. `v7b_q2-ctrl-heur` 1786 is a
+  chips-off/priors-off **control** arm and must not be averaged in — its 1786 is a
+  one-point coincidence with the S2 chips-on heuristic run's 1785, not a redraw of it.
+  v7b's published **116** (S2 1785 at seed 20260827 + 1876 + 1901, all one arm) stands
+  as the reference spread. The config guard added this cycle is what makes the mix
+  impossible in future. Smoke expectations: `seed_stats.py` over q1b + q1c prints
+  `{"totals": [1876, 1901], "mean": 1888.5, "spread": 25, "range": [1876, 1901], ...}`;
+  over the mixed trio it refuses with exit 2 and prints no aggregate. No new
   multi-hour replay runs this cycle.
 - **G3 pens:** `gaffer track-pens` on current data produces `reports/pen_tracker.json`
   covering GW1 (finished) with sane fields; degraded-instrument path unit-tested.
