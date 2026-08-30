@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import json
+
 import pandas as pd
 
-from gaffer.pen_tracker import (attach_npxg, finished_gws, predicted_ep,
-                                realized_pens)
+from gaffer.pen_tracker import (attach_npxg, finished_gws, format_tracker,
+                                gw_block, predicted_ep, realized_pens,
+                                save_tracker, season_totals, track_pens,
+                                tracker_path)
 
 
 def _week() -> pd.DataFrame:
@@ -126,3 +130,124 @@ def test_a_gameweek_with_no_component_file_predicted_nothing(tmp_path,
 
     monkeypatch.setattr(artifacts, "REPORTS", tmp_path)
     assert predicted_ep(1) == {"rows": 0, "ep_pen_taker": 0.0, "takers": 0}
+
+
+def _live(monkeypatch, tmp_path, understat=True):
+    """A whole finished gameweek on disk: live rows, events, components."""
+    from gaffer import artifacts
+    from gaffer.data import store as store_mod
+
+    monkeypatch.setattr(store_mod, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(artifacts, "REPORTS", tmp_path / "reports")
+    (tmp_path / "reports").mkdir(exist_ok=True)
+    store_mod.save(_week(), "live/player_gw.parquet")
+    store_mod.save(_events(), "live/events.parquet")
+    if understat:
+        store_mod.save(_understat(), "history/understat_player.parquet")
+    pd.DataFrame({"code": [10], "gw": [1], "ep_pen_taker": [0.42]}).to_parquet(
+        tmp_path / "reports" / "components_gw1.parquet", index=False)
+
+
+def test_a_gameweek_block_pairs_the_prediction_with_what_happened(
+        tmp_path, monkeypatch):
+    _live(monkeypatch, tmp_path)
+    block = gw_block(_week(), 1, "2026-27")
+    assert block["gw"] == 1
+    assert block["instrument"] == "xg_gap"
+    assert block["predicted_ep_pen_taker"] == 0.42
+    assert block["predicted_takers"] == 1
+    assert block["pens_taken"] == 1.0
+    assert block["pens_by_first_choice"] == 1.0
+    assert block["taker_hit_rate"] == 1.0
+    assert block["team_games"] == 2
+    assert block["pens_per_team_game"] == 0.5
+    # one penalty, MID, 0.78 converted x 5 points a goal
+    assert block["realized_pen_points"] == 3.9
+
+
+def test_a_week_with_no_penalties_has_no_hit_rate(tmp_path, monkeypatch):
+    """Zero over zero is not zero — it is "nothing to say yet", and a 0.0 hit
+    rate would read as the taker model being wrong every time."""
+    _live(monkeypatch, tmp_path)
+    quiet = _week().assign(xg=[0.2, 0.2, 0.3], pens_missed=[0, 0, 0])
+    block = gw_block(quiet, 1, "2026-27")
+    assert block["pens_taken"] == 0.0
+    assert block["taker_hit_rate"] is None
+    assert block["pens_per_team_game"] == 0.0
+
+
+def test_the_season_totals_add_the_blocks_up(tmp_path, monkeypatch):
+    _live(monkeypatch, tmp_path)
+    totals = season_totals([gw_block(_week(), 1, "2026-27")])
+    assert totals["gws"] == 1
+    assert totals["instruments"] == ["xg_gap"]
+    assert totals["pens_taken"] == 1.0
+    assert totals["taker_hit_rate"] == 1.0
+    assert totals["league_pens_pg_served"] == 0.13
+    assert totals["realized_pen_points"] == 3.9
+
+
+def test_the_tracker_covers_every_finished_gameweek(tmp_path, monkeypatch):
+    """Gate G3: GW1 is finished, GW2 and GW3 are not, and only the played
+    week may appear."""
+    _live(monkeypatch, tmp_path)
+    report = track_pens(season="2026-27")
+    assert report["season"] == "2026-27"
+    assert [b["gw"] for b in report["gws"]] == [1]
+    assert report["season_totals"]["pens_taken"] == 1.0
+    assert report["notes"] == []
+
+
+def test_a_degraded_instrument_is_named_in_the_report(tmp_path, monkeypatch):
+    _live(monkeypatch, tmp_path, understat=False)
+    report = track_pens(season="2026-27")
+    assert report["gws"][0]["instrument"] == "pens_missed_only"
+    assert any("pens_missed" in note for note in report["notes"])
+
+
+def test_no_live_season_on_disk_is_an_empty_report(tmp_path, monkeypatch):
+    from gaffer.data import store as store_mod
+
+    monkeypatch.setattr(store_mod, "DATA_DIR", tmp_path)
+    report = track_pens(season="2026-27")
+    assert report["gws"] == []
+    assert report["season_totals"] == {}
+    assert report["notes"]
+
+
+def test_a_broken_artifact_degrades_instead_of_raising(tmp_path, monkeypatch):
+    """A season tracker that dies on one bad file is a tracker nobody runs."""
+    from gaffer import pen_tracker
+    from gaffer.data import store as store_mod
+
+    monkeypatch.setattr(store_mod, "DATA_DIR", tmp_path)
+    store_mod.save(_week(), "live/player_gw.parquet")
+    store_mod.save(_events(), "live/events.parquet")
+
+    def boom(events):
+        raise RuntimeError("events parquet is truncated")
+
+    monkeypatch.setattr(pen_tracker, "finished_gws", boom)
+    report = pen_tracker.track_pens(season="2026-27")
+    assert report["gws"] == []
+    assert any("truncated" in note for note in report["notes"])
+
+
+def test_the_report_is_written_atomically(tmp_path, monkeypatch):
+    from gaffer import artifacts
+
+    monkeypatch.setattr(artifacts, "REPORTS", tmp_path / "reports")
+    path = save_tracker({"season": "2026-27", "gws": [], "season_totals": {},
+                         "notes": []})
+    assert path == tracker_path()
+    assert json.loads(path.read_text())["season"] == "2026-27"
+    assert not list(path.parent.glob("*.tmp"))
+
+
+def test_the_printed_table_names_the_instrument_and_the_season(tmp_path,
+                                                               monkeypatch):
+    _live(monkeypatch, tmp_path)
+    text = format_tracker(track_pens(season="2026-27"))
+    assert "2026-27" in text
+    assert "xg_gap" in text
+    assert "season:" in text
