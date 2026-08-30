@@ -479,3 +479,45 @@ def run_estimation_calibration(max_train_idx: int | None = None,
         "seeds": list(int(s) for s in seeds),
     })
     return payload
+
+
+def composite_table(payload: dict, floor: float) -> dict:
+    """The estimation σ table with a variance floor added in quadrature.
+
+    ``σ'(cell) = sqrt(σ_est(cell)² + floor²)`` on every fitted σ — the cells,
+    the EP marginals and the global — with bins, observation counts and
+    provenance copied through untouched. Gate S2 found the estimation σ so
+    small (cell 0_0 = 0.018 over 62% of the rows) that forty "independent"
+    scenarios come back as forty copies of one board and the gate waves
+    everything through. This is the knob that asks whether a σ *between* the
+    two scales gates usefully, and quadrature is the right addition because
+    the two terms are variances of independent things: how much the model's
+    own estimate moves, plus a floor standing in for everything the ensemble
+    spread cannot see.
+
+    ``source`` deliberately stays ``"estimation"``. :func:`scenario_noise`
+    refuses any other source and hands back ``None``, which would demote a
+    composite arm to the heuristic — the very arm it is being compared
+    against. Provenance goes in ``composite_floor`` and ``derived_from``
+    instead, where nothing reads it as a routing key.
+    """
+    if float(floor) < 0.0:
+        raise ValueError(f"floor must be non-negative, got {floor}")
+    if payload.get("source") != "estimation":
+        raise ValueError(
+            f"composite_table needs an estimation payload, got "
+            f"{payload.get('source')!r}")
+    f2 = float(floor) ** 2
+
+    def lift(value):
+        return round(math.sqrt(float(value) ** 2 + f2), 6)
+
+    out = dict(payload)
+    out["sigma"] = {k: lift(v) for k, v in (payload.get("sigma") or {}).items()}
+    out["ep_marginal"] = {k: lift(v) for k, v
+                          in (payload.get("ep_marginal") or {}).items()}
+    if payload.get("global") is not None:
+        out["global"] = lift(payload["global"])
+    out["composite_floor"] = float(floor)
+    out["derived_from"] = "estimation"
+    return out
