@@ -4,7 +4,7 @@ import {
   YAxis,
 } from 'recharts'
 import { apiGet } from '../../api/client'
-import { Badge, Card, Sparkline, fmtNum } from '../../kit'
+import { Badge, Card, PosBadge, Sparkline, fmtNum } from '../../kit'
 import type {
   ComponentsBreakdown, FixtureMatrixData, PlayerRow,
 } from '../../types'
@@ -77,7 +77,8 @@ export default function ComparePanel({ gw, players }: ComparePanelProps) {
           const team = matrix?.teams.find((t) => t.code === player.team_code)
           return (
             <div key={player.code} data-testid={`compare-${player.code}`}>
-              <Card title={player.name}>
+              <Card title={player.name}
+                    action={<PosBadge pos={player.position} />}>
                 <dl className="grid grid-cols-2 gap-1">
                   <dt className="label">Price</dt>
                   <dd className="num text-right text-text">

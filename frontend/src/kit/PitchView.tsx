@@ -1,4 +1,5 @@
 import { fmtNum } from './format'
+import { posColor } from './PosBadge'
 
 export interface PitchPlayer {
   code: number
@@ -38,8 +39,15 @@ export default function PitchView(
               key={player.code}
               type="button"
               onClick={() => onSelect?.(player.code)}
+              data-position={player.position || undefined}
               className="flex min-w-[86px] flex-col items-center rounded-card
-                         border border-border bg-card px-2 py-1"
+                         border-2 bg-card px-2 py-1"
+              // Identity, not judgement: the ring says which line he is on.
+              // A player the artifact gave no position keeps the plain border.
+              style={{
+                borderColor: posColor(player.position)
+                  ?? 'var(--color-border)',
+              }}
             >
               <span className="flex items-center gap-1 text-text">
                 {player.name}

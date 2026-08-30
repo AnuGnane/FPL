@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { apiGet } from '../api/client'
 import PlayerName from '../components/PlayerName'
 import {
-  type Column, Card, DataTable, EmptyState, PageHeader, Stat, fmtNum,
+  type Column, Card, DataTable, EmptyState, PageHeader, PosBadge, Stat, fmtNum,
 } from '../kit'
 import type { LiveState, LiveTableRow } from '../types'
 
@@ -126,8 +126,11 @@ export default function Live() {
             {data.players.map((player) => (
               <tr key={player.element}>
                 <td>
-                  <PlayerName code={player.code} name={player.name} />
-                  {player.multiplier > 1 && ' (C)'}
+                  <span className="inline-flex items-center gap-1.5">
+                    <PosBadge pos={player.position} variant="dot" />
+                    <PlayerName code={player.code} name={player.name} />
+                    {player.multiplier > 1 && ' (C)'}
+                  </span>
                 </td>
                 <td><span className="num">{player.points}</span></td>
                 <td><span className="num">{player.provisional_bonus > 0

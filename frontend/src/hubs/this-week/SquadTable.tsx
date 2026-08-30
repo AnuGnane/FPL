@@ -1,5 +1,8 @@
-import { Badge, type Column, DataTable, Sparkline, fmtNum, fmtPct }
-  from '../../kit'
+import { useMemo } from 'react'
+import {
+  Badge, type Column, DataTable, PosBadge, Sparkline, fmtNum, fmtPct,
+  useIsMobile,
+} from '../../kit'
 
 export interface SquadRow {
   code: number
@@ -28,7 +31,10 @@ export interface SquadTableProps {
   breakdown: Record<number, SquadBreakdown>
 }
 
-const COLUMNS: Column<SquadRow>[] = [
+// The collapsed card shows only the primary columns, and Pos is not one of
+// them — so on mobile the position rides along with the name as a dot rather
+// than disappearing until the row is expanded.
+function columnsFor(mobile: boolean): Column<SquadRow>[] { return [
   {
     key: 'name',
     header: 'Player',
@@ -36,6 +42,7 @@ const COLUMNS: Column<SquadRow>[] = [
     value: (r) => r.name,
     render: (r) => (
       <span className="flex items-center gap-1.5">
+        {mobile && <PosBadge pos={r.position} variant="dot" />}
         {r.name}
         {r.news && (
           <Badge variant="negative" title={r.news}>
@@ -46,7 +53,8 @@ const COLUMNS: Column<SquadRow>[] = [
       </span>
     ),
   },
-  { key: 'position', header: 'Pos', value: (r) => r.position },
+  { key: 'position', header: 'Pos', value: (r) => r.position,
+    render: (r) => <PosBadge pos={r.position} /> },
   { key: 'ep', header: 'xPts', primary: true, numeric: true,
     value: (r) => r.ep, render: (r) => fmtNum(r.ep) },
   { key: 'xmins', header: 'xMin', numeric: true, value: (r) => r.xmins,
@@ -60,12 +68,15 @@ const COLUMNS: Column<SquadRow>[] = [
   { key: 'last4', header: 'Last 4', numeric: true,
     value: (r) => r.last4.length ? r.last4[r.last4.length - 1] : null,
     render: (r) => <Sparkline values={r.last4} /> },
-]
+] }
 
 export default function SquadTable({ rows, breakdown }: SquadTableProps) {
+  const mobile = useIsMobile()
+  // A fresh array on every render would defeat DataTable's sort memo.
+  const columns = useMemo(() => columnsFor(mobile), [mobile])
   return (
     <DataTable
-      columns={COLUMNS}
+      columns={columns}
       rows={rows}
       rowKey={(r) => r.code}
       rowLabel={(r) => r.name}

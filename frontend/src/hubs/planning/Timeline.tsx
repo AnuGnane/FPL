@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../../api/client'
-import { Badge, Card, EmptyState, fmtNum } from '../../kit'
+import { Badge, Card, EmptyState, PosBadge, fmtNum } from '../../kit'
 import type { PlanMove, PlanTimeline } from '../../types'
 
 function MoveLine({ move, side }: { move: PlanMove; side: 'in' | 'out' }) {
   return (
-    <p className={side === 'in' ? 'text-sage' : 'text-rust'}>
-      {side === 'in' ? '↑' : '↓'} {move.name}
+    <p className={`flex items-center gap-1 ${side === 'in'
+      ? 'text-sage' : 'text-rust'}`}>
+      {/* The arrow carries the verdict; the dot carries the identity. */}
+      <span aria-hidden>{side === 'in' ? '↑' : '↓'}</span>
+      <PosBadge pos={move.position} variant="dot" />
+      {move.name}
       {move.price !== null && (
         <span className="num ml-1 text-text-faint">{fmtNum(move.price)}</span>
       )}

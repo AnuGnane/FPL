@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react'
 import { apiGet } from '../api/client'
 import { useDebounced } from '../api/useDebounced'
 import {
-  type Column, Card, DataTable, EmptyState, PageHeader, Sparkline, fmtNum,
+  type Column, Card, DataTable, EmptyState, PageHeader, PosBadge, Sparkline,
+  fmtNum, posColor,
 } from '../kit'
 import type { AdviceLatest, PlayerRow } from '../types'
 import ComparePanel from './players/ComparePanel'
@@ -62,7 +63,8 @@ export default function Players() {
     },
     { key: 'name', header: 'Player', primary: true, value: (r) => r.name },
     { key: 'team_name', header: 'Team', value: (r) => r.team_name },
-    { key: 'position', header: 'Pos', value: (r) => r.position },
+    { key: 'position', header: 'Pos', value: (r) => r.position,
+      render: (r) => <PosBadge pos={r.position} /> },
     { key: 'price', header: 'Price', primary: true, numeric: true,
       value: (r) => r.price, render: (r) => fmtNum(r.price) },
     { key: 'ep_next', header: 'xPts', primary: true, numeric: true,
@@ -104,22 +106,35 @@ export default function Players() {
               )
             : (
               <Card>
-                <div className="mb-3 flex flex-wrap gap-3">
-                  <label className="flex items-center gap-2 text-text-muted">
-                    Position
-                    <select
-                      value={position}
-                      onChange={(e) => setPosition(e.target.value)}
-                      className="rounded-card border border-border bg-base
-                                 px-2 py-1 text-text"
-                    >
-                      {POSITIONS.map((p) => (
-                        <option key={p || 'all'} value={p}>{p || 'All'}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="flex items-center gap-2 text-text-muted">
-                    Search
+                <div className="mb-3 flex flex-wrap items-center gap-4">
+                  <div role="group" aria-label="Position"
+                       className="flex flex-wrap gap-1">
+                    {POSITIONS.map((p) => {
+                      const active = position === p
+                      const hue = posColor(p)
+                      return (
+                        <button
+                          key={p || 'all'}
+                          type="button"
+                          aria-pressed={active}
+                          onClick={() => setPosition(p)}
+                          className={`num rounded-card border px-2.5 py-1
+                            text-[11px] tracking-[0.08em] ${active
+                              ? 'bg-card' : 'border-border text-text-muted'}`}
+                          // Active takes the position's own hue, so the filter
+                          // and the column agree on what a MID looks like.
+                          style={active
+                            ? { color: hue ?? 'var(--color-text)',
+                                borderColor: hue ?? 'var(--color-text)' }
+                            : undefined}
+                        >
+                          {p || 'ALL'}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <label className="flex items-center gap-2">
+                    <span className="label">Search</span>
                     <input
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}

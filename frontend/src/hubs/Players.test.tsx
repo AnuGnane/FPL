@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -60,8 +60,20 @@ describe('Players hub', () => {
   it('filters by position through the query string', async () => {
     render(<MemoryRouter><Players /></MemoryRouter>)
     await screen.findByText('Salah')
-    await userEvent.selectOptions(screen.getByLabelText('Position'), 'DEF')
+    const filters = screen.getByRole('group', { name: 'Position' })
+    await userEvent.click(within(filters).getByRole('button', { name: 'DEF' }))
     expect(apiGet).toHaveBeenCalledWith(expect.stringContaining('position=DEF'))
+  })
+
+  it('paints the active position filter in that position’s own hue', async () => {
+    render(<MemoryRouter><Players /></MemoryRouter>)
+    await screen.findByText('Salah')
+    const filters = screen.getByRole('group', { name: 'Position' })
+    const def = within(filters).getByRole('button', { name: 'DEF' })
+    expect(def.style.color).toBe('')
+    await userEvent.click(def)
+    expect(def).toHaveAttribute('aria-pressed', 'true')
+    expect(def.style.color).toBe('var(--color-pos-def)')
   })
 
   it('selects players for comparison and counts them', async () => {

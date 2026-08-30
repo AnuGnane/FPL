@@ -4,7 +4,7 @@ import { useJob } from '../../api/useJob'
 import ConstraintsPanel from '../../components/ConstraintsPanel'
 import PlanDiffTable from '../../components/PlanDiffTable'
 import PlayerName from '../../components/PlayerName'
-import { Card, EmptyState } from '../../kit'
+import { Card, EmptyState, PosBadge } from '../../kit'
 import type {
   ChipsWorkbench, ChipSquadPlayer, SquadDiff, WhatIfRequest, WhatIfResult,
 } from '../../types'
@@ -54,11 +54,11 @@ function SquadColumn({ title, players }: { title: string
       <h3>{title} ({players.length})</h3>
       <ul>
         {players.map((p) => (
-          <li key={p.code}>
-            <PlayerName code={p.code} name={p.name} />{' '}
-            <span className="text-text-muted">
-              {p.position} · <span className="num">£{p.price}m</span> ·{' '}
-              <span className="num">{p.ep}</span> xPts
+          <li key={p.code} className="flex items-center gap-1.5">
+            <PosBadge pos={p.position} variant="dot" />
+            <PlayerName code={p.code} name={p.name} />
+            <span className="num ml-auto text-text-muted">
+              £{p.price}m · {p.ep} xPts
             </span>
           </li>
         ))}

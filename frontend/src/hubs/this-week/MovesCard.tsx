@@ -1,9 +1,11 @@
-import { Badge, Card, fmtNum, fmtPct } from '../../kit'
+import { Badge, Card, PosBadge, fmtNum, fmtPct } from '../../kit'
 
 export interface Move {
   code: number
   name: string
   ep: number
+  /** Advice written before v3.1 carries no position; the dot then hides. */
+  position?: string | null
   frequency?: number | null
   tag?: string | null
 }
@@ -40,7 +42,12 @@ export default function MovesCard({ buys, sells, hits }: MovesCardProps) {
                   <td className={`py-1 ${side === 'IN' ? 'text-sage' : 'text-rust'}`}>
                     {side}
                   </td>
-                  <td className="py-1 text-text">{move.name}</td>
+                  <td className="py-1 text-text">
+                    <span className="inline-flex items-center gap-1.5">
+                      <PosBadge pos={move.position} variant="dot" />
+                      {move.name}
+                    </span>
+                  </td>
                   <td className="num py-1 text-right text-text">
                     {fmtNum(move.ep)}
                   </td>

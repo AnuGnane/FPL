@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { apiGet } from '../../api/client'
 import PlayerName from '../../components/PlayerName'
-import { Card } from '../../kit'
+import { Card, PosBadge } from '../../kit'
 import type { RivalDetailData, SquadPlayer } from '../../types'
 
 function SquadList({ title, players }:
@@ -11,10 +11,11 @@ function SquadList({ title, players }:
     <Card title={`${title} (${players.length})`}>
       <ul>
         {players.map((player) => (
-          <li key={player.code}>
-            <PlayerName code={player.code} name={player.name} />{' '}
-            <span className="text-text-muted">
-              {player.position} · £{player.price}m
+          <li key={player.code} className="flex items-center gap-1.5">
+            <PosBadge pos={player.position} variant="dot" />
+            <PlayerName code={player.code} name={player.name} />
+            <span className="num ml-auto text-text-muted">
+              £{player.price}m
             </span>
           </li>
         ))}
