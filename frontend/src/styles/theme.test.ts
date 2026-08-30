@@ -154,6 +154,16 @@ describe('light theme', () => {
     }
   })
 
+  // Faint is a deliberate sub-AA tier — footnotes and em-dash cells, held to
+  // parity with dark's 3.67:1 rather than to 4.5. The floor is here so it
+  // cannot drift any paler than that under a later palette nudge.
+  it('keeps the faint tier at its declared 3.5:1 floor', () => {
+    const light = block('[data-theme="light"] {')
+    expect(contrast(valueOf(light, '--color-text-faint'),
+                    valueOf(light, '--color-card')))
+      .toBeGreaterThanOrEqual(3.5)
+  })
+
   // The attribute has to be on <html> before the first paint, or a user who
   // chose light sees the dark base flash while the bundle loads.
   it('is applied by a boot script before the bundle runs', () => {

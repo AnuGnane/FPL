@@ -97,8 +97,9 @@ Decisions taken on scouted facts:
   `#e7e9ee`, text `#191c22`, secondary `#3d434e`, muted `#6b7280`, faint `#9aa1ab`;
   sage `#3f7a44`, rust `#b0532f`, info `#2f6b96`; pos GKP `#96731f`, DEF `#2867a5`,
   MID `#6f51b8`, FWD `#b04f78`. Implementer may nudge values but every text token
-  must hold ≥ 4.5:1 contrast on `card` (verify with a small contrast check in the
-  theme test). Dark declarations keep their exact spelling (theme.test.ts containment).
+  except `--color-text-faint` (a deliberate sub-AA faint tier for footnotes and
+  em-dash cells, held to parity with dark's 3.67:1) must hold ≥ 4.5:1 contrast on
+  `card` (verify with a small contrast check in the theme test). Dark declarations keep their exact spelling (theme.test.ts containment).
 - Three-state preference: `"system" | "dark" | "light"`. `system` = no `data-theme`
   attribute + a `@media (prefers-color-scheme: light)` mirror of the light block
   guarded `:root:not([data-theme="dark"])`; explicit choices set
