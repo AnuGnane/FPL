@@ -35,6 +35,25 @@ git commit -m "feat: <subject>" \
 
 8. **Verification commands.** Backend: `.venv/bin/python -m pytest <file> -q` from the repo root. Frontend: `npm test -- --run <file>`, `npx tsc -b`, `npm run build`, all from `frontend/`.
 
+### Post-review note — constraint 4 was breached, deliberately
+
+Commit `3acab85` edited `tests/test_v6_degradation.py`, which constraint 4
+above says is not edited and whose red suite constraint 4 says means the
+change is wrong. That happened because the plan contradicted itself: Task 18
+instructs, in as many words, that v6's two pins on the now-overturned default
+"**must be updated in this commit**". The two clauses cannot both be obeyed
+once S2 flips the constant, and Task 18 — the later, more specific
+instruction, written knowing exactly which two tests it overturns — won.
+
+The adversarial review checked the conversion rather than taking it on trust
+and judged it substantively correct: the two pins were rewritten to assert the
+new contract, coverage was preserved and expanded (a new flag-off rail was
+added), and nothing was deleted to make a failure go away. Recorded here so
+the breach is part of the record rather than something a later reader
+discovers in the diff: the constraint's *intent* — a red suite means the
+change is wrong, not that the suite is wrong — still stands for every other
+case in this plan.
+
 ---
 
 ## Facts established by the survey (do not re-derive)
