@@ -319,6 +319,94 @@ def test_the_multi_seed_loop_leaves_the_backtest_module_as_it_found_it(
             v7b_replay.bt.predict_components_simple) == before
 
 
+def _gated_backtest(monkeypatch, totals, dies_on=None):
+    """Drive ``main`` over a stub that actually runs one gated solve per base.
+
+    The loop tests above use ``--arm raw``, which installs no gate at all, so
+    they cannot see a gate stacked on a gate or a counter carried between
+    bases. This one is the heuristic arm — gated — with the sweep, the decision
+    and the coherent plan stubbed out: the mechanics under test are the
+    driver's, not the optimiser's.
+    """
+    pending = list(totals)
+    seen: dict = {"seeds": [], "gates": []}
+    comp = pd.DataFrame({"code": [1], "gw": [5], "p_play": [1.0],
+                         "p60": [1.0]})
+
+    def fake_run_scenarios(pool, state, xm, n, seed, **kw):
+        seen["seeds"].append(seed)
+        return type("R", (), {"completed": True, "plans": ["p"]})()
+
+    real_make_gate = v7b_replay.make_gate
+
+    def make_gate(cfg, stash, real_solve, **kw):
+        gate = real_make_gate(cfg, stash, real_solve,
+                              run_scenarios=fake_run_scenarios)
+        seen["gates"].append(gate)
+        return gate
+
+    def run_backtest(season, start_gw, horizon, chips):
+        v7b_replay.bt.predict_components_simple(None, None)
+        state = type("S", (), {"owned_codes": [1], "wildcard_gw": None,
+                               "free_transfers": 1, "gws": [5]})()
+        v7b_replay.bt.solve_plan(pd.DataFrame({"code": [1]}), state)
+        total = pending.pop(0)
+        if dies_on is not None and len(seen["gates"]) == dies_on:
+            raise RuntimeError("the replay died")
+        return {"total": total, "chips_played": {}}
+
+    monkeypatch.setattr(v7b_replay, "make_gate", make_gate)
+    monkeypatch.setattr(v7b_replay, "move_frequencies", lambda plans: plans)
+    monkeypatch.setattr(v7b_replay, "decide",
+                        lambda freq, plan, th: type("D", (), {"hold": True})())
+    monkeypatch.setattr(v7b_replay, "coherent_plan",
+                        lambda pool, state, decision, **kw: "held")
+    monkeypatch.setattr(v7b_replay.bt, "predict_components_simple",
+                        lambda models, rows: comp)
+    monkeypatch.setattr(v7b_replay.bt, "solve_plan",
+                        lambda pool, state, **kw: "plan")
+    monkeypatch.setattr(v7b_replay.bt, "run_backtest", run_backtest)
+    monkeypatch.setattr(v7b_replay.bt_store, "load", lambda rel: pd.DataFrame(
+        {"chip": ["", "bboost"], "points": [40, 60], "hits": [0, 4],
+         "transfers": [1, 2]}))
+    return seen
+
+
+def test_each_base_gates_on_its_own_seed_and_its_own_counters(
+        tmp_path, monkeypatch):
+    """Three gated bases in one process. A gate whose counters carried over
+    would report the third base as having gated three weeks, and a seed that
+    did not move would make the trio one draw wearing three tags."""
+    monkeypatch.chdir(tmp_path)
+    seen = _gated_backtest(monkeypatch, [1800, 1900, 1850])
+    v7b_replay.main(["--arm", "heur", "--tag", "t", "--seed-bases", "1,2,3"])
+    assert seen["seeds"] == [1 + 5, 2 + 5, 3 + 5]
+    assert [g.gated_weeks for g in seen["gates"]] == [1, 1, 1]
+    assert [g.held_weeks for g in seen["gates"]] == [1, 1, 1]
+    banked = [json.loads(Path(f"reports/v7b_t-s{b}.json").read_text())
+              for b in (1, 2, 3)]
+    assert [b["gated_weeks"] for b in banked] == [1, 1, 1]
+    assert [b["config"]["seed_base"] for b in banked] == [1, 2, 3]
+
+
+def test_a_base_that_dies_still_unwinds_and_leaves_the_banked_reports(
+        tmp_path, monkeypatch):
+    """A three-base run is hours long and the second one can die. What is
+    already banked stays readable — `scripts/seed_stats.py` aggregates it —
+    and the module is handed back as it was found."""
+    monkeypatch.chdir(tmp_path)
+    _gated_backtest(monkeypatch, [1800, 1900, 1850], dies_on=2)
+    before = (v7b_replay.bt.store, v7b_replay.bt.solve_plan,
+              v7b_replay.bt.predict_components_simple)
+    with pytest.raises(RuntimeError):
+        v7b_replay.main(["--arm", "heur", "--tag", "t",
+                         "--seed-bases", "1,2,3"])
+    assert (v7b_replay.bt.store, v7b_replay.bt.solve_plan,
+            v7b_replay.bt.predict_components_simple) == before
+    assert Path("reports/v7b_t-s1.json").exists()
+    assert not Path("reports/v7b_t-s2.json").exists()
+
+
 def test_the_aggregate_is_the_mean_spread_and_range_of_the_totals():
     """Convention 1's arithmetic, on v7b's real heuristic trio: S2's 1785 at
     20260827 with q1b 1876 and q1c 1901 — one arm, three seeds, spread 116,
