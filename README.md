@@ -79,6 +79,14 @@ hit_cost = 4         # points charged per extra transfer
 [odds]
 # api_key = "..."    # optional, from the-odds-api.com
 
+[news]
+enabled = true             # live injury / line-up sources
+lineup_absence = true      # damp a regular the predicted XI left out
+lineup_start_floor = 0.0   # off: never raise a p_play toward a predicted start
+llm_classifier = false     # off: the presser classifier logs, never serves
+llm_shadow = true          # log what it would have done
+llm_command = "claude -p --output-format json"
+
 [data]
 train_seasons = ["2022-23", "2023-24", "2024-25", "2025-26"]
 current_season = "2026-27"
@@ -86,6 +94,11 @@ current_season = "2026-27"
 
 `entry_id` is the number in your FPL team URL. `league_id` likewise from the
 mini-league URL.
+
+The `[news]` block is optional — every key above is its default. `llm_*` drive
+the presser classifier, which runs on your own Claude subscription through
+whatever `llm_command` names and, with `llm_classifier = false`, only ever
+writes `data/live/presser_log.parquet`.
 
 ## Bookmaker odds (optional)
 
@@ -235,6 +248,9 @@ makes the live season collide with the one you just archived.
 ## Where things live
 
 - `data/raw/`, `data/history/`, `data/live/` — downloaded and derived datasets (gitignored)
+- `data/manager_tenures.toml` — EPL head-coach spells; the one file under
+  `data/` that is committed, because it is curated knowledge rather than
+  fetched data (absent, the rotation features fall back to club-season windows)
 - `models/` — trained model files (gitignored)
 - `reports/` — `gw{N}-report.html` and `gw{N}-advice.json` (gitignored)
 - `logs/` — output from the launchd jobs (gitignored)
