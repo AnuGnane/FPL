@@ -81,3 +81,93 @@ def test_apply_does_not_mutate_its_input():
     before = modes.copy()
     DnpCalibrator().fit(p, y).apply(modes)
     pd.testing.assert_frame_equal(modes, before)
+
+
+def _slotted(n_codes=80, n_gws=30, seed=1) -> pd.DataFrame:
+    """A frame whose fringe players stop playing entirely after slot 20.
+
+    The leakage rail's whole point: a calibrator that peeked past the boundary
+    would learn the late-season DNP rate, and the test can see the difference.
+    """
+    rng = np.random.default_rng(seed)
+    rows = []
+    for code in range(n_codes):
+        fringe = code >= 40
+        for gw in range(1, n_gws + 1):
+            if fringe and gw > 20:
+                minutes = 0
+            elif fringe:
+                minutes = int(rng.choice([0, 0, 90]))
+            else:
+                minutes = 90
+            rows.append({"code": code, "season_idx": 0, "gw": gw,
+                         "minutes": minutes, "starts": int(minutes >= 60),
+                         "minutes_r5": float(minutes),
+                         "starts_r5": float(minutes >= 60),
+                         "home": 1.0})
+    return pd.DataFrame(rows)
+
+
+_FIT_COLS = ["minutes_r5", "starts_r5", "home"]
+
+
+def test_the_fitter_holds_out_the_last_slots_and_fits_on_them(monkeypatch):
+    import gaffer.models.dnp_calibrate as dc
+
+    seen = {}
+    real = dc.DnpCalibrator.fit
+
+    def spy(self, p_dnp, is_dnp):
+        seen["rows"] = len(np.asarray(p_dnp))
+        return real(self, p_dnp, is_dnp)
+
+    monkeypatch.setattr(dc.DnpCalibrator, "fit", spy)
+    monkeypatch.setattr(dc, "DNP_MIN_ROWS", 10)
+    dc.fit_dnp_calibrator(_slotted(), _FIT_COLS, holdout_slots=10)
+    # 80 codes x the last 10 of 30 slots.
+    assert seen["rows"] == 800
+
+
+def test_the_inner_model_never_sees_a_held_out_slot(monkeypatch):
+    """Spec §7's walk-forward-leakage rail: the model that produces the
+    predictions the calibrator learns from must be fit strictly before them."""
+    import gaffer.models.dnp_calibrate as dc
+    from gaffer.models.minutes import ThreeModeModel
+
+    seen = {}
+    real = ThreeModeModel.fit
+
+    def spy(self, df):
+        seen["max_gw"] = int(df["gw"].max())
+        return real(self, df)
+
+    monkeypatch.setattr(ThreeModeModel, "fit", spy)
+    monkeypatch.setattr(dc, "DNP_MIN_ROWS", 10)
+    dc.fit_dnp_calibrator(_slotted(), _FIT_COLS, holdout_slots=10)
+    assert seen["max_gw"] == 20        # slots 21-30 are the holdout
+
+
+def test_a_frame_with_too_few_slots_returns_the_identity():
+    from gaffer.models.dnp_calibrate import fit_dnp_calibrator
+
+    thin = _slotted(n_codes=80, n_gws=8)
+    assert fit_dnp_calibrator(thin, _FIT_COLS, holdout_slots=10).iso is None
+
+
+def test_the_fitter_does_not_recurse_into_itself(monkeypatch):
+    """The inner ThreeModeModel must be built with the recursion guard, or
+    fitting one calibrator would fit an unbounded tower of them."""
+    import gaffer.models.dnp_calibrate as dc
+    from gaffer.models.minutes import ThreeModeModel
+
+    built = []
+    real = ThreeModeModel.__init__
+
+    def spy(self, feature_cols, *args, **kw):
+        built.append(kw.get("_fit_dnp", True))
+        return real(self, feature_cols, *args, **kw)
+
+    monkeypatch.setattr(ThreeModeModel, "__init__", spy)
+    monkeypatch.setattr(dc, "DNP_MIN_ROWS", 10)
+    dc.fit_dnp_calibrator(_slotted(), _FIT_COLS, holdout_slots=10)
+    assert built == [False]

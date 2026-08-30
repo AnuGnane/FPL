@@ -78,8 +78,9 @@ class ThreeModeModel:
     train/serve skew of the worst kind.
     """
 
-    def __init__(self, feature_cols: list[str]):
+    def __init__(self, feature_cols: list[str], _fit_dnp: bool = True):
         self.feature_cols = feature_cols
+        self._fit_dnp = _fit_dnp
         self.mode_clf = LGBMClassifier(objective="multiclass", num_class=3,
                                        **LGB_KW)
         self.sixty_clf = LGBMClassifier(**LGB_KW)
