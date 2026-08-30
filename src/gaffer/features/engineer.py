@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import pandas as pd
 
-ROLL_STATS = ["total_points", "minutes", "starts", "goals", "assists", "xg",
+from gaffer.data.managers import spell_keys
+
+ROLL_STATS =["total_points", "minutes", "starts", "goals", "assists", "xg",
               "xa", "xgi", "xgc", "cs", "gc", "saves", "bonus", "bps",
               "defcon", "tackles", "cbi", "recoveries", "yc"]
 WINDOWS = [1, 3, 5, 10, 38]
@@ -23,6 +25,36 @@ Past two months the gap is a summer, an injury or a loan spell, and the
 model should read them all the same way rather than splitting on the length
 of the layoff.
 """
+
+ROTATION_PRIOR_FEATURES = ["tenure_start_share", "manager_tenure_matches",
+                           "xi_churn_r5", "started_last_match"]
+"""v8a's F1 candidates: how *this* manager has used this player.
+
+:data:`ROTATION_FEATURES` read the season; these read the spell. A nailed-on
+starter under the man who was sacked in October is a different bet in
+November, and every feature the model currently has blends the two.
+"""
+
+TENURE_SHRINK_K = 5.0
+"""Prior weight, in matches, for ``tenure_start_share``.
+
+Read as ":data:`SHRINK_K_MODE`, for a shorter denominator". A new manager's
+first month is exactly where the player's own record under him is worthless
+and the club's own mean is all there is, so the prior is worth five matches
+of it — lower than the mode rate's eight because a spell is short by
+construction and a k that dominates the whole tenure measures nothing.
+"""
+
+MAX_TENURE_MATCHES = 76.0
+"""Matches beyond which "settled XI" stops carrying information.
+
+Two seasons. Same reasoning as :data:`MAX_DAYS_SINCE_START`: past that the
+number is a tenure length, not a rotation signal, and the model should read
+every long reign the same way.
+"""
+
+XI_CHURN_WINDOW = 5
+"""Club matches the roulette index averages over."""
 
 CONGESTION_FEATURES = ["days_since_last_match", "days_to_next_match",
                        "matches_last_14d"]
@@ -146,6 +178,133 @@ def add_rotation(df: pd.DataFrame) -> pd.DataFrame:
         "sub_streak": st["streak"].groupby(code).ffill().groupby(code).shift(1),
     }
     return pd.concat([df, pd.DataFrame(feats, index=df.index)], axis=1)
+
+
+def _xi_churn(spell: pd.Series, kt: pd.Series, code: pd.Series,
+              starts: pd.Series) -> pd.Series:
+    """Mean starting-XI changes over the last five club matches before this.
+
+    The roulette index. A club match is ``(spell, kickoff)`` rather than a
+    gameweek: a double gameweek is two team sheets and a slot key would merge
+    them into one impossible XI of twenty-two.
+
+    Strictly past, twice over. A match's value is read *before* its own change
+    is folded in, so match ``t`` sees only changes into matches ``t-1`` and
+    earlier; and a match whose XI is empty — a future probe row, a club-week
+    with no ``starts`` recorded — is scored but never becomes a comparison
+    point, so a hole in the data cannot manufacture eleven changes.
+    """
+    xi: dict[tuple, set] = {}
+    for s, when, c, st in zip(spell, kt, code, starts):
+        if not s or pd.isna(when):
+            continue
+        bucket = xi.setdefault((s, when), set())
+        if st == 1:
+            bucket.add(c)
+    churn: dict[tuple, float] = {}
+    per_spell: dict[str, list] = {}
+    for key in sorted(xi, key=lambda k: (k[0], k[1])):
+        per_spell.setdefault(key[0], []).append(key[1])
+    for s, whens in per_spell.items():
+        recent: list[float] = []
+        prev: set | None = None
+        for when in whens:
+            window = recent[-XI_CHURN_WINDOW:]
+            churn[(s, when)] = (sum(window) / len(window) if window
+                                else float("nan"))
+            now = xi[(s, when)]
+            if not now:
+                continue
+            if prev:
+                recent.append(float(len(now - prev)))
+            prev = now
+    return pd.Series(
+        [churn.get((s, when), float("nan")) if s and pd.notna(when)
+         else float("nan") for s, when in zip(spell, kt)],
+        index=spell.index, dtype="float64")
+
+
+def add_rotation_priors(df: pd.DataFrame,
+                        tenures: pd.DataFrame | None = None) -> pd.DataFrame:
+    """v8a F1: rotation signals scoped to the *manager*, not the season.
+
+    ``tenure_start_share``
+        the player's share of the club's matches under this manager that he
+        started, shrunk toward the club's own mean start share over the same
+        matches with a :data:`TENURE_SHRINK_K` prior. NaN before the spell has
+        any earlier match at all.
+    ``manager_tenure_matches``
+        club matches the manager has taken before this one, capped at
+        :data:`MAX_TENURE_MATCHES`. Zero on his first.
+    ``xi_churn_r5``
+        the club's roulette index — see :func:`_xi_churn`.
+    ``started_last_match``
+        did the player start his own previous match. Read off his own rows
+        rather than the club's calendar, because a player with no row for a
+        match was not in the squad and "the club's previous match" is only
+        ever a proxy for the question the trees want: was he in the XI last
+        time out. Its interaction with the churn index is the point — high
+        churn *and* started-last-match is elevated rest risk.
+
+    Every window is strictly past, by construction rather than by ``shift``:
+    a cumulative sum minus the row's own contribution cannot leak whatever a
+    double gameweek does to the sort order. ``tenures`` of ``None`` scopes
+    every window to the club's season instead (see
+    :func:`gaffer.data.managers.spell_keys`), which is the documented
+    degradation and not an error.
+    """
+    sort_cols = [c for c in ("code", "season_idx", "gw", "kickoff_time")
+                 if c in df.columns]
+    out = df.sort_values(sort_cols, kind="stable").reset_index(drop=True)
+    if not {"code", "team_code", "starts", "season_idx"} <= set(out.columns):
+        for col in ROTATION_PRIOR_FEATURES:
+            out[col] = float("nan")
+        return out
+
+    kt = (pd.to_datetime(out["kickoff_time"], errors="coerce", utc=True)
+          if "kickoff_time" in out.columns
+          else pd.Series(pd.NaT, index=out.index, dtype="datetime64[ns, UTC]"))
+    spell = spell_keys(out["team_code"], kt, out["season_idx"], tenures)
+    starts = pd.to_numeric(out["starts"], errors="coerce")
+    code = out["code"]
+
+    # The player's own record under the spell, this match excluded.
+    seen = starts.notna().astype("float64")
+    own_n = seen.groupby([code, spell]).cumsum() - seen
+    own_starts = (starts.fillna(0.0).groupby([code, spell]).cumsum()
+                  - starts.fillna(0.0))
+
+    # The club's record under the spell, this *match* excluded — accumulated
+    # per (spell, kickoff) rather than per row, because a row's own teammates
+    # play the same match and a row-wise cumsum would read them.
+    match = pd.DataFrame({"spell": spell, "when": kt,
+                          "starts": starts.fillna(0.0), "rows": seen})
+    agg = (match.groupby(["spell", "when"], as_index=False, dropna=False)
+           [["starts", "rows"]].sum().sort_values(["spell", "when"]))
+    g = agg.groupby("spell")
+    before_starts = g["starts"].cumsum() - agg["starts"]
+    before_rows = g["rows"].cumsum() - agg["rows"]
+    club_share = before_starts / before_rows.where(before_rows > 0)
+    played_before = g.cumcount().astype("float64")
+    share_of = dict(zip(zip(agg["spell"], agg["when"]), club_share))
+    count_of = dict(zip(zip(agg["spell"], agg["when"]), played_before))
+    keys = list(zip(spell, kt))
+    prior = pd.Series([share_of.get(k, float("nan")) for k in keys],
+                      index=out.index, dtype="float64")
+    tenure_matches = pd.Series([count_of.get(k, float("nan")) for k in keys],
+                               index=out.index, dtype="float64")
+
+    feats = {
+        "tenure_start_share": ((own_starts + TENURE_SHRINK_K * prior)
+                               / (own_n + TENURE_SHRINK_K)),
+        "manager_tenure_matches": tenure_matches.clip(0.0,
+                                                      MAX_TENURE_MATCHES),
+        "xi_churn_r5": _xi_churn(spell, kt, code, starts),
+        "started_last_match": starts.groupby(code).shift(1),
+    }
+    for col, values in feats.items():
+        out[col] = values.astype("float64")
+    return out
 
 
 def add_congestion(df: pd.DataFrame,
