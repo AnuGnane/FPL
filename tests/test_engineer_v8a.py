@@ -165,3 +165,67 @@ def test_the_prior_features_are_in_the_canonical_strip_list():
     cols = feature_columns()
     for col in ROTATION_PRIOR_FEATURES:
         assert col in cols
+
+
+# --- F2: the two congestion arms ------------------------------------------
+
+from gaffer.features.engineer import (CONGESTION_FEATURES,  # noqa: E402
+                                      LEAGUE_CONGESTION_FEATURES,
+                                      add_congestion)
+
+
+def _cups() -> pd.DataFrame:
+    return pd.DataFrame({"team_code": [3],
+                         "date": [pd.Timestamp("2023-08-09", tz="UTC")]})
+
+
+def test_the_league_arm_has_its_own_column_names():
+    assert LEAGUE_CONGESTION_FEATURES == ["lg_days_since_last_match",
+                                          "lg_days_to_next_match",
+                                          "lg_matches_last_14d"]
+
+
+def test_the_two_arms_coexist_in_one_frame():
+    """Both variants on one frame is what makes them separable arms: the
+    driver picks columns, it does not rebuild the features."""
+    out = add_congestion(_frame(), _cups())
+    out = add_congestion(out, None, prefix="lg_")
+    for col in CONGESTION_FEATURES + LEAGUE_CONGESTION_FEATURES:
+        assert col in out.columns
+
+
+def test_the_cup_tie_lands_only_in_the_cup_inclusive_arm():
+    """The whole of D2: with cup ties in, a club's midweek tie raises the
+    load; league-only, it cannot, so the arm carries no season indicator."""
+    out = add_congestion(_frame(), _cups())
+    out = add_congestion(out, None, prefix="lg_")
+    row = out[(out["code"] == 1) & (out["gw"] == 2)].iloc[0]
+    assert row["matches_last_14d"] > row["lg_matches_last_14d"]
+
+
+def test_the_league_arm_is_the_no_cups_call_renamed():
+    plain = add_congestion(_frame(), None)
+    prefixed = add_congestion(_frame(), None, prefix="lg_")
+    for a, b in zip(CONGESTION_FEATURES, LEAGUE_CONGESTION_FEATURES):
+        pd.testing.assert_series_equal(plain[a], prefixed[b],
+                                       check_names=False)
+
+
+def test_a_frame_without_kickoffs_still_gets_prefixed_columns():
+    out = add_congestion(_frame().drop(columns=["kickoff_time"]), None,
+                         prefix="lg_")
+    for col in LEAGUE_CONGESTION_FEATURES:
+        assert col in out.columns and out[col].isna().all()
+
+
+def test_the_prediction_frame_carries_both_arms():
+    out = build_prediction_frame(_frame(), _future(), cups=_cups(),
+                                 tenures=_tenures())
+    for col in CONGESTION_FEATURES + LEAGUE_CONGESTION_FEATURES:
+        assert col in out.columns
+
+
+def test_both_arms_are_in_the_canonical_strip_list():
+    cols = feature_columns()
+    for col in CONGESTION_FEATURES + LEAGUE_CONGESTION_FEATURES:
+        assert col in cols

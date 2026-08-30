@@ -67,6 +67,20 @@ clip: past a month the gap is an international break, a winter break or an
 injury, and the model should read them all the same way.
 """
 
+LEAGUE_CONGESTION_PREFIX = "lg_"
+LEAGUE_CONGESTION_FEATURES = [LEAGUE_CONGESTION_PREFIX + c
+                              for c in CONGESTION_FEATURES]
+"""v8a F2 arm A: the same three numbers, league fixtures only.
+
+v5's gate N1 withdrew :data:`CONGESTION_FEATURES` because the cup archive
+began in 2025-26 and the feature was therefore partly a season indicator
+(``models/train.py``'s ``MINUTES_FEATURES`` docstring records the numbers).
+League kickoffs are 100% populated from 2022-23 onward, so this variant has no
+confound to be accused of. It carries its own names rather than replacing the
+originals so that both can sit in one frame and the gate can attribute the
+difference to one arm at a time.
+"""
+
 
 def add_player_rolling(df: pd.DataFrame, stats: list[str] = ROLL_STATS,
                        windows: list[int] = WINDOWS) -> pd.DataFrame:
@@ -356,7 +370,8 @@ def latest_rotation_priors(hist: pd.DataFrame,
 
 
 def add_congestion(df: pd.DataFrame,
-                   cups: pd.DataFrame | None = None) -> pd.DataFrame:
+                   cups: pd.DataFrame | None = None,
+                   prefix: str = "") -> pd.DataFrame:
     """Fixture-congestion features: the gaps either side, and the recent load.
 
     ``days_since_last_match``
@@ -380,27 +395,31 @@ def add_congestion(df: pd.DataFrame,
     on purpose: the column has to mean the same thing in training and at serve
     time, and a machine without the ingest must not see a differently-shaped
     feature from one with it.
+
+    ``prefix`` renames all three outputs, which is how v8a's two arms coexist
+    in one frame: ``prefix=""`` with a cup frame is arm B, ``prefix="lg_"``
+    with ``cups=None`` is arm A, and calling it twice adds six columns rather
+    than overwriting three.
     """
     sort_cols = [c for c in ("code", "season_idx", "gw", "kickoff_time")
                  if c in df.columns]
     # Stable, because a double gameweek ties on every sort column and the
     # 14-day scan below reads the rows in the order it is handed them.
     out = df.sort_values(sort_cols, kind="stable").reset_index(drop=True)
+    names = [prefix + c for c in CONGESTION_FEATURES]
     if "kickoff_time" not in out.columns:
-        for col in CONGESTION_FEATURES:
+        for col in names:
             out[col] = float("nan")
         return out
     kt = pd.to_datetime(out["kickoff_time"], errors="coerce", utc=True)
     code = out["code"]
     prev = kt.groupby(code).shift(1)
     nxt = kt.groupby(code).shift(-1)
-    out["days_since_last_match"] = ((kt - prev).dt.days
-                                    .clip(0, MAX_CONGESTION_GAP)
-                                    .astype("float64"))
-    out["days_to_next_match"] = ((nxt - kt).dt.days
-                                 .clip(0, MAX_CONGESTION_GAP)
-                                 .astype("float64"))
-    out["matches_last_14d"] = _recent_load(out, kt, cups)
+    out[names[0]] = ((kt - prev).dt.days
+                     .clip(0, MAX_CONGESTION_GAP).astype("float64"))
+    out[names[1]] = ((nxt - kt).dt.days
+                     .clip(0, MAX_CONGESTION_GAP).astype("float64"))
+    out[names[2]] = _recent_load(out, kt, cups)
     return out
 
 
@@ -447,7 +466,8 @@ def _recent_load(df: pd.DataFrame, kt: pd.Series,
 
 
 def latest_congestion(hist: pd.DataFrame, future: pd.DataFrame,
-                      cups: pd.DataFrame | None = None) -> pd.DataFrame:
+                      cups: pd.DataFrame | None = None,
+                      prefix: str = "") -> pd.DataFrame:
     """Congestion for future rows, built from history plus the calendar.
 
     Unlike the form vectors, this is *not* a broadcast of one as-of-today
@@ -460,7 +480,8 @@ def latest_congestion(hist: pd.DataFrame, future: pd.DataFrame,
     hist["_future"] = False
     future = future.copy()
     future["_future"] = True
-    both = add_congestion(pd.concat([hist, future], ignore_index=True), cups)
+    both = add_congestion(pd.concat([hist, future], ignore_index=True), cups,
+                          prefix)
     out = both[both["_future"]].drop(columns=["_future"])
     return out.reset_index(drop=True)
 
@@ -630,10 +651,16 @@ def build_prediction_frame(hist: pd.DataFrame, future: pd.DataFrame,
     out = combined[combined["_future"]].drop(columns=["_future"])
     out = out.reset_index(drop=True)
     # Congestion is per-fixture, not a broadcast: each future row has its own
-    # date, so it is rebuilt over history+future rather than tailed.
+    # date, so it is rebuilt over history+future rather than tailed. Both v8a
+    # arms are rebuilt, so the two candidate column sets are populated
+    # identically in training and at serve time whichever the model uses.
     cong = latest_congestion(hist, future, cups)[CONGESTION_FEATURES]
-    out = out.drop(columns=CONGESTION_FEATURES, errors="ignore")
-    out = pd.concat([out, cong.reset_index(drop=True)], axis=1)
+    lg = latest_congestion(hist, future, None,
+                           LEAGUE_CONGESTION_PREFIX)[LEAGUE_CONGESTION_FEATURES]
+    out = out.drop(columns=CONGESTION_FEATURES + LEAGUE_CONGESTION_FEATURES,
+                   errors="ignore")
+    out = pd.concat([out, cong.reset_index(drop=True),
+                     lg.reset_index(drop=True)], axis=1)
     latest = latest_player_rolling(hist, stats, windows)
     rot = latest_rotation(hist).reindex(out["code"]).reset_index(drop=True)
     # A state carried over from an earlier season is not this season's start
@@ -701,7 +728,7 @@ def feature_columns(stats: list[str] = ROLL_STATS,
     return (cols + ["team_elo", "opp_elo", "elo_diff", "home", "days_rest",
                     "pen_taker", "setpiece_taker"] + ROTATION_FEATURES
             + ROTATION_PRIOR_FEATURES
-            + CONGESTION_FEATURES
+            + CONGESTION_FEATURES + LEAGUE_CONGESTION_FEATURES
             + understat_feature_columns() + TEAM_US_FEATURES
             + SHRUNK_FEATURES + SHRUNK_MODE_FEATURES)
 

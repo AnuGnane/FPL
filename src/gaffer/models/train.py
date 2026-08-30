@@ -18,7 +18,9 @@ from gaffer.data.bootstrap import scoring_table
 from gaffer.data.elo import compute_elo
 from gaffer.features.bps import FIRST_NEW_RULES_SEASON, apply_new_bps
 from gaffer.data.understat import UNDERSTAT_PLAYER_PATH, UNDERSTAT_TEAM_PATH
-from gaffer.features.engineer import (ROTATION_FEATURES,
+from gaffer.features.engineer import (LEAGUE_CONGESTION_FEATURES,
+                                      LEAGUE_CONGESTION_PREFIX,
+                                      ROTATION_FEATURES,
                                       ROTATION_PRIOR_FEATURES, US_STATS,
                                       add_congestion, add_context,
                                       add_player_rolling, add_rotation,
@@ -259,6 +261,7 @@ def load_training_frame(max_season_idx: int | None = None,
     df = add_setpiece(df)
     df = add_context(df, elo, elo_final)
     df = add_congestion(df, cup_matches())
+    df = add_congestion(df, None, prefix=LEAGUE_CONGESTION_PREFIX)
     df = attach_understat(df)
     tg = add_team_rolling(build_team_gw(fixtures))
     own = elo.rename(columns={"elo_pre": "team_elo_own"})
