@@ -219,7 +219,8 @@ def match_codes(rows: pd.DataFrame, players: pd.DataFrame,
 
 
 AVAIL_COLS = ["code", "status", "chance_of_playing", "injury_type",
-              "expected_return_gw", "p_start_hint", "source", "fetched_at"]
+              "expected_return_gw", "p_start_hint", "absence_damp",
+              "llm_verdict", "llm_confidence", "source", "fetched_at"]
 
 OFFICIAL_AUTHORITATIVE = ("s", "u", "n")
 """Official statuses news may never soften: suspended, unavailable, not in
@@ -301,6 +302,7 @@ def availability_frame(official: pd.DataFrame,
     out = (official[["code", "status", "chance_of_playing"]]
            .drop_duplicates(subset=["code"]).reset_index(drop=True))
     for col in ("injury_type", "expected_return_gw", "p_start_hint",
+                "absence_damp", "llm_verdict", "llm_confidence",
                 "source", "fetched_at"):
         out[col] = None
     open_codes = set(out.loc[~out["status"].isin(OFFICIAL_AUTHORITATIVE),
@@ -336,9 +338,10 @@ def availability_frame(official: pd.DataFrame,
                 inj["_chance"] = both.min(axis=1, skipna=True)
             keyed = inj.set_index("code")
             hit = out["code"].isin(keyed.index)
-            for col in ("injury_type", "expected_return_gw", "source",
-                        "fetched_at"):
-                out.loc[hit, col] = out.loc[hit, "code"].map(keyed[col])
+            for col in ("injury_type", "expected_return_gw", "llm_verdict",
+                        "llm_confidence", "source", "fetched_at"):
+                if col in keyed.columns:
+                    out.loc[hit, col] = out.loc[hit, "code"].map(keyed[col])
             # Rule 4, one-way. 101.0 stands in for "unflagged", so an
             # unflagged player is lowered by any news claim and a flagged one
             # only by a stricter one.
@@ -358,6 +361,12 @@ def availability_frame(official: pd.DataFrame,
             got = out["code"].isin(hints.index)
             out.loc[got, "p_start_hint"] = out.loc[got, "code"].map(
                 hints["p_start_hint"])
+            # v8a F4. Carried, not applied: like the hint, a damp is about
+            # one team sheet for one match, and ``apply_availability`` is the
+            # only place that knows which gameweek that is.
+            if "absence_damp" in hints.columns:
+                out.loc[got, "absence_damp"] = out.loc[got, "code"].map(
+                    hints["absence_damp"])
             no_source = got & out["source"].isna()
             out.loc[no_source, "source"] = "lineups"
             no_stamp = got & out["fetched_at"].isna()
@@ -367,4 +376,7 @@ def availability_frame(official: pd.DataFrame,
     out["expected_return_gw"] = pd.to_numeric(out["expected_return_gw"],
                                               errors="coerce")
     out["p_start_hint"] = pd.to_numeric(out["p_start_hint"], errors="coerce")
+    out["absence_damp"] = pd.to_numeric(out["absence_damp"], errors="coerce")
+    out["llm_confidence"] = pd.to_numeric(out["llm_confidence"],
+                                          errors="coerce")
     return out[AVAIL_COLS]

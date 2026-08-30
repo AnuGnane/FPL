@@ -72,10 +72,12 @@ def snapshot_rows(avail: pd.DataFrame, gw: int, season: str = "",
         if col not in out.columns:
             out[col] = None
     out = out[AVAILABILITY_COLS].copy()
-    for col in ("status", "injury_type", "source", "fetched_at"):
+    for col in ("status", "injury_type", "llm_verdict", "source",
+                "fetched_at"):
         out[col] = out[col].astype("object").where(
             out[col].notna(), None).astype("string")
-    for col in ("chance_of_playing", "expected_return_gw", "p_start_hint"):
+    for col in ("chance_of_playing", "expected_return_gw", "p_start_hint",
+                "absence_damp", "llm_confidence"):
         out[col] = pd.to_numeric(out[col], errors="coerce")
     out["code"] = pd.to_numeric(out["code"], errors="coerce").astype("int64")
     out.insert(0, "snap_date", str(day or snap_date()))

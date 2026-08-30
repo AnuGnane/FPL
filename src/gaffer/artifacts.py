@@ -376,14 +376,21 @@ def save_snapshots(players: pd.DataFrame, teams: pd.DataFrame,
 
 
 AVAILABILITY_COLS = ["code", "status", "chance_of_playing", "injury_type",
-                     "expected_return_gw", "p_start_hint", "source",
-                     "fetched_at"]
+                     "expected_return_gw", "p_start_hint", "absence_damp",
+                     "llm_verdict", "llm_confidence", "source", "fetched_at"]
 """The availability frame's columns, in the order
 :func:`gaffer.data.news.normalize.availability_frame` produces them.
 
 A flags-only run (news disabled, every source down) produces the first three
 and nothing else, so the missing five are filled with nulls on the way to
 disk: the news endpoint reads one shape whatever the week did.
+
+v8a adds three. ``absence_damp`` is the notable-absence factor a predicted
+line-up implies for a player it silently left out; ``llm_verdict`` and
+``llm_confidence`` are the presser classifier's reading of the free text.
+All three are nullable and all three are logged whether or not they are
+served, because the point of banking them is that a future season can train
+on what the news said (spec §4).
 """
 
 
@@ -416,11 +423,12 @@ def save_availability(avail, gw: int) -> Path | None:
         # column has none. Strings become nullable strings and the three
         # numeric columns become floats, so a flags-only week and a
         # news-heavy one write the same schema.
-        for col in ("status", "injury_type", "source", "fetched_at"):
+        for col in ("status", "injury_type", "llm_verdict", "source",
+                    "fetched_at"):
             out[col] = out[col].astype("object").where(
                 out[col].notna(), None).astype("string")
-        for col in ("chance_of_playing", "expected_return_gw",
-                    "p_start_hint"):
+        for col in ("chance_of_playing", "expected_return_gw", "p_start_hint",
+                    "absence_damp", "llm_confidence"):
             out[col] = pd.to_numeric(out[col], errors="coerce")
         out["code"] = pd.to_numeric(out["code"], errors="coerce").astype(
             "int64")
