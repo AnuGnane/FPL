@@ -124,6 +124,41 @@ def test_a_later_day_appends_rather_than_replaces(tmp_path, monkeypatch):
     assert sorted(set(out["snap_date"])) == ["2026-08-30", "2026-08-31"]
 
 
+def test_a_normal_append_leaves_no_temp_file_behind(tmp_path, monkeypatch):
+    from gaffer.data import store as store_mod
+
+    monkeypatch.setattr(store_mod, "DATA_DIR", tmp_path)
+    append_snapshot(snapshot_rows(_avail(), gw=2, season="2026-27",
+                                  day="2026-08-30"))
+    assert not list((tmp_path / "live").glob("*.tmp"))
+
+
+def test_a_write_that_dies_leaves_the_banked_log_untouched(tmp_path,
+                                                           monkeypatch):
+    """Append-by-rewrite means every day's write puts the whole log at risk.
+    A launchd job killed mid-write must not cost the season's history."""
+    from gaffer.data import store as store_mod
+
+    monkeypatch.setattr(store_mod, "DATA_DIR", tmp_path)
+    append_snapshot(snapshot_rows(_avail(), gw=2, season="2026-27",
+                                  day="2026-08-30"))
+    real_save = store_mod.save
+
+    def half_written(df, rel):
+        real_save(df.head(0), rel)
+        raise OSError("the disk filled up")
+
+    monkeypatch.setattr(store_mod, "save", half_written)
+    with pytest.raises(OSError):
+        append_snapshot(snapshot_rows(_avail(), gw=2, season="2026-27",
+                                      day="2026-08-31"))
+    monkeypatch.setattr(store_mod, "save", real_save)
+    out = load_snapshot_log()
+    assert len(out) == 2
+    assert set(out["snap_date"]) == {"2026-08-30"}
+    assert not list((tmp_path / "live").glob("*.tmp"))
+
+
 def _cfg():
     from gaffer.config import Config
 

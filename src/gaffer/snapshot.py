@@ -13,6 +13,7 @@ dies loudly every afternoon.
 
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
 
 import pandas as pd
@@ -91,6 +92,13 @@ def append_snapshot(rows: pd.DataFrame) -> int:
     re-emit. Replacement rather than accumulation, keyed on ``snap_date``, is
     what makes a hand re-run free.
 
+    The rewrite goes through a temp file and ``os.replace``, the same trade as
+    :func:`gaffer.evaluation.save_evaluation`: rewriting in place puts every
+    banked day at risk on every write, and a job killed — or a disk filled —
+    mid-parquet would cost a season of history to save one afternoon.
+    ``store.DATA_DIR`` is read here rather than bound at import so a test that
+    redirects it redirects both paths together.
+
     Returns the number of rows banked for the day.
     """
     existing = (store.load(SNAPSHOT_PATH) if store.exists(SNAPSHOT_PATH)
@@ -103,7 +111,13 @@ def append_snapshot(rows: pd.DataFrame) -> int:
     frames = [f[SNAPSHOT_COLS] for f in (kept, rows) if not f.empty]
     merged = (pd.concat(frames, ignore_index=True) if frames
               else rows[SNAPSHOT_COLS])
-    store.save(merged, SNAPSHOT_PATH)
+    tmp_rel = SNAPSHOT_PATH + ".tmp"
+    tmp = store.DATA_DIR / tmp_rel
+    try:
+        store.save(merged, tmp_rel)
+        os.replace(tmp, store.DATA_DIR / SNAPSHOT_PATH)
+    finally:
+        tmp.unlink(missing_ok=True)
     return int(len(rows))
 
 
