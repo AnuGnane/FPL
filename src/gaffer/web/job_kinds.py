@@ -1,4 +1,4 @@
-"""The five job kinds the browser may start (spec §5, v7c F1).
+"""The job kinds the browser may start (spec §5, v7c F1, v7d F1/F2).
 
 Every entry is the *same* callable the CLI runs. ``advise`` and
 ``refresh-data`` already existed as job bodies for the v6 rerun buttons and are
@@ -58,8 +58,25 @@ def run_snapshot_job() -> dict:
     return {"rows": rows}
 
 
+def run_train_and_advise_fast() -> dict:
+    """``gaffer advise --fast`` — the same run with the scenario sweep off.
+
+    Not a second implementation: it is the advise kind's own body under a
+    config with ``scenarios_n=0``, which is the byte-pinned pre-v4c rail
+    (``tests/test_v4c_degradation.py``). Roughly five minutes cheaper on a
+    Thursday when the sweep's answer is not what is being asked for.
+    """
+    import dataclasses
+
+    from gaffer.config import load_config
+
+    return run_train_and_advise(
+        dataclasses.replace(load_config(), scenarios_n=0))
+
+
 JOB_KINDS: dict[str, Callable[[], Any]] = {
     "advise": run_train_and_advise,
+    "advise-fast": run_train_and_advise_fast,
     "evaluate": run_evaluate,
     "refresh-data": run_data_refresh,
     "news-shadow": run_news_shadow,

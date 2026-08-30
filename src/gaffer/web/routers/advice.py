@@ -11,6 +11,7 @@ full train+advise runs writing to ``reports/`` at once. The route is gone;
 from __future__ import annotations
 
 import json
+from typing import TYPE_CHECKING
 
 import pandas as pd
 from fastapi import APIRouter
@@ -21,11 +22,21 @@ from gaffer.artifacts import (advice_history_files, data_warning,
 from gaffer.errors import GafferError
 from gaffer.web.schemas import AdviceDiff, AdviceLatest, Staleness
 
+if TYPE_CHECKING:  # the runtime import stays lazy inside the function body
+    from gaffer.config import Config
+
 router = APIRouter(prefix="/api/advice", tags=["advice"])
 
 
-def run_train_and_advise() -> dict:
-    """The job body: exactly what the launchd Thursday run does."""
+def run_train_and_advise(cfg: "Config | None" = None) -> dict:
+    """The job body: exactly what the launchd Thursday run does.
+
+    ``cfg`` defaults to ``None`` — that is, to ``load_config()`` — so the
+    zero-argument callers (``JOB_KINDS['advise']``, which the runner calls
+    with no arguments) are untouched. The keyword exists for the one caller
+    that wants the same run under a modified config: ``advise-fast``, which
+    hands it ``scenarios_n=0``.
+    """
     from gaffer.advise import run_advise
     from gaffer.config import load_config
     from gaffer.models.train import load_training_frame, train_all
@@ -34,7 +45,7 @@ def run_train_and_advise() -> dict:
 
     frame, team_frame, _ = load_training_frame()
     train_all(frame, team_frame, save=True)
-    advice = run_advise(load_config())
+    advice = run_advise(cfg if cfg is not None else load_config())
     render_report(advice, model_health=latest_health())
     return {"gw": advice.gw, "expected_pts": advice.expected_pts}
 
