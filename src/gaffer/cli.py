@@ -324,6 +324,11 @@ def calibrate_noise(
         None, "--out",
         help="Where to write the asset. Defaults to the shipped path; point "
              "it at reports/ to fit a candidate without replacing the asset."),
+    force: bool = typer.Option(
+        False, "--force",
+        help="Overwrite a shipped estimation asset with a residual fit. "
+             "Refused without this, because the serving flag is on and the "
+             "residual sigma is the arm gate S1 failed."),
 ):
     """Fit src/gaffer/assets/scenario_noise.json.
 
@@ -336,14 +341,37 @@ def calibrate_noise(
 
     Either asset ships in git; without one the scenario sweep falls back to
     the (92 - xmins) / 134 heuristic, which is the pre-v6 behaviour.
+
+    A residual fit aimed at the shipped path while an *estimation* asset sits
+    there is refused before the fit starts. The two sources are different
+    quantities at different scales, the serving flag is on, and the residual
+    arm is the one gate S1 failed — so replacing one with the other has to be
+    a decision somebody typed (``--force``), not the default of a bare
+    command. ``--out`` says the same thing by aiming somewhere else.
     """
+    import json
+
     from gaffer.calibrate_noise import (ASSET_PATH, run_calibration,
                                         run_estimation_calibration,
                                         write_noise)
 
+    dest = out or ASSET_PATH
+    if not estimation and out is None and not force:
+        try:
+            existing = json.loads(Path(dest).read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001 — no asset, or an unreadable one
+            existing = {}
+        if existing.get("source") == "estimation":
+            typer.echo(
+                f"Refusing to overwrite {dest}: it holds the estimation "
+                f"sigma, which is what the serving flag ships, and this is a "
+                f"residual fit — the arm gate S1 failed. Pass --out to write "
+                f"a candidate elsewhere, or --force if you mean it.")
+            raise typer.Exit(1)
+
     payload = (run_estimation_calibration() if estimation
                else run_calibration())
-    dest = write_noise(payload, out or ASSET_PATH)
+    dest = write_noise(payload, dest)
     typer.echo(f"Fitted {len(payload['sigma'])} cells and "
                f"{len(payload['ep_marginal'])} EP marginals from "
                f"{payload['rows']} rows on {payload['season']} "

@@ -158,6 +158,14 @@ def scenario_noise() -> dict | None:
     bad table one stale cache away from coming back. Callers that want a
     specific table pass it to :func:`noise_ep` explicitly.
 
+    The flag says "serve the **estimation** σ", not "serve whatever JSON sits
+    at the asset path", so a payload whose ``source`` is anything else is
+    refused with a printed reason. v6's residual table is the live hazard: it
+    has the same shape and the same filename, is one ``git checkout`` or one
+    bare ``calibrate-noise`` away, and is an order of magnitude larger — gate
+    S1 measured that arm losing 24 points. Refusing degrades to the heuristic,
+    which is a known quantity; serving it silently reinstates a failed arm.
+
     Otherwise every failure is the same failure: no asset, unreadable asset,
     asset that is not JSON. All of them return ``None``, which every caller
     reads as "use the heuristic".
@@ -165,10 +173,18 @@ def scenario_noise() -> dict | None:
     if not CALIBRATED_NOISE_DEFAULT:
         return None
     try:
-        return load_scenario_noise()
+        payload = load_scenario_noise()
     except Exception as exc:  # noqa: BLE001 — never blocks a sweep
         print(f"scenario noise asset unreadable, using the heuristic: {exc}")
         return None
+    if payload is None:
+        return None
+    source = payload.get("source")
+    if source != "estimation":
+        print(f"scenario noise asset is a {source!r} table but this build "
+              f"serves only the 'estimation' source — using the heuristic")
+        return None
+    return payload
 
 
 def bin_index(value: float, edges: list[float]) -> int:

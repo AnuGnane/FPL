@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -395,3 +396,43 @@ def test_main_lets_a_real_bug_through(monkeypatch):
                         lambda: (_ for _ in ()).throw(KeyError("boom")))
     with pytest.raises(KeyError):
         cli_main()
+
+
+def test_calibrate_noise_refuses_to_clobber_the_estimation_asset(
+        tmp_path, monkeypatch):
+    """A bare `gaffer calibrate-noise` fits the v6 *residual* sigma. Left
+    unguarded it would overwrite the shipped estimation asset with the
+    quantity gate S1 measured losing 24 points — and the serving flag is on.
+    The refusal comes before the (hours-long) fit, names the reason, and is
+    lifted by --out or --force."""
+    import gaffer.calibrate_noise as cn
+
+    asset = tmp_path / "scenario_noise.json"
+    asset.write_text(json.dumps({"source": "estimation", "global": 0.0692}))
+    monkeypatch.setattr(cn, "ASSET_PATH", asset)
+
+    def boom():
+        raise AssertionError("the residual fit must not have started")
+
+    monkeypatch.setattr(cn, "run_calibration", boom)
+    result = CliRunner().invoke(app, ["calibrate-noise"])
+    assert result.exit_code != 0
+    assert "estimation" in result.output
+    assert "--force" in result.output
+    assert json.loads(asset.read_text())["source"] == "estimation"
+
+
+def test_calibrate_noise_force_lifts_the_refusal(tmp_path, monkeypatch):
+    import gaffer.calibrate_noise as cn
+
+    asset = tmp_path / "scenario_noise.json"
+    asset.write_text(json.dumps({"source": "estimation", "global": 0.0692}))
+    monkeypatch.setattr(cn, "ASSET_PATH", asset)
+    payload = {"source": "residual", "sigma": {"0_0": 2.0},
+               "ep_marginal": {"0": 2.0}, "rows": 10, "season": "2025-26",
+               "global": 1.9}
+    monkeypatch.setattr(cn, "run_calibration", lambda: payload)
+    monkeypatch.setattr(cn, "write_noise", lambda p, d: d)
+    result = CliRunner().invoke(app, ["calibrate-noise", "--force"])
+    assert result.exit_code == 0, result.output
+    assert "source residual" in result.output

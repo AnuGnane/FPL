@@ -156,3 +156,44 @@ def test_the_s2_driver_is_committed_and_uses_the_shipping_path():
     assert "S2_ARM_DONE" in src
     assert "20260827 + gw" in src          # the S1 seed, unchanged
     assert "n=40" in src
+
+
+# --- the serving rail: only the estimation table may be served -------------
+
+
+def test_a_residual_table_is_refused_with_the_flag_on(monkeypatch, capsys):
+    """The flag means "serve the estimation sigma", not "serve whatever JSON
+    is at that path". v6's residual table is a differently-scaled quantity
+    (sigma ~2-5 against ~0.02-0.3) and gate S1 measured it losing 24 points,
+    so a stale or hand-restored residual asset must degrade to the heuristic
+    rather than quietly reinstate the failed arm."""
+    import gaffer.optimize.scenarios as sc
+
+    residual = {"source": "residual", "global": 1.953,
+                "ep_edges": [0.0, 2.0], "xmins_edges": [0.0, 30.0],
+                "sigma": {"0_0": 2.1}}
+    monkeypatch.setattr(sc, "CALIBRATED_NOISE_DEFAULT", True)
+    monkeypatch.setattr(sc, "load_scenario_noise", lambda: residual)
+    sc.scenario_noise.cache_clear()
+    try:
+        assert sc.scenario_noise() is None
+        out = capsys.readouterr().out
+        assert "residual" in out and "estimation" in out
+    finally:
+        sc.scenario_noise.cache_clear()
+
+
+def test_the_estimation_table_is_still_served(monkeypatch):
+    """The guard is a source check, not a new off switch."""
+    import gaffer.optimize.scenarios as sc
+
+    payload = {"source": "estimation", "global": 0.0692,
+               "ep_edges": [0.0, 2.0], "xmins_edges": [0.0, 30.0],
+               "sigma": {"0_0": 0.018}}
+    monkeypatch.setattr(sc, "CALIBRATED_NOISE_DEFAULT", True)
+    monkeypatch.setattr(sc, "load_scenario_noise", lambda: payload)
+    sc.scenario_noise.cache_clear()
+    try:
+        assert sc.scenario_noise() is payload
+    finally:
+        sc.scenario_noise.cache_clear()
