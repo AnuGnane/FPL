@@ -14,4 +14,9 @@ describe('kit barrel', () => {
     expect(kit.fmtNum(1.25)).toBe('1.3')
     expect(typeof kit.useIsMobile).toBe('function')
   })
+
+  it('exports the theme controls', () => {
+    expect(typeof kit.ThemeToggle).toBe('function')
+    expect(typeof kit.useTheme).toBe('function')
+  })
 })
