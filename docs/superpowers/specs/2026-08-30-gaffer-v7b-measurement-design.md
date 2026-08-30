@@ -104,4 +104,49 @@ mean by 34.7 and the heuristic mean by 60, both inside the spread. The
 arm ordering flips between seeds (est wins A by 123, heur wins B by 29
 and C by 18).
 
-(Q3/verdict/N2 recorded below as they land.)
+### Q3 — composite-σ floor sweep (Task 10, seed base 20260827)
+
+| floor | global σ | total |
+|---|---|---|
+| 0 (= pure estimation) | 0.069 | 1908 |
+| 0.3 | 0.308 | 1887 |
+| 0.6 | 0.604 | 1869 |
+| 1.0 | 1.002 | 1862 |
+| (heuristic reference) | — | 1785 |
+| (raw reference) | — | 1914 |
+
+Monotone decline: every unit of added noise costs points on this seed;
+no floor approaches raw, let alone beats it by the spread. There is no
+re-noised gate worth shipping.
+
+### Verdict (spec §2's mechanical rule) — KEEP AS-IS (option b)
+
+- No composite floor beats raw's mean by > spread (116): all floors are
+  BELOW raw. Re-noise: ruled out.
+- Raw (1914) beats the best gated arm's mean (estimation, 1879.3) by
+  34.7 < 116. Remove: not justified — the difference is inside seed
+  noise.
+- → Keep as-is. The estimation-σ default shipped in v7-model stands;
+  its ~5-minute scenario cost buys plan-stability information (the sim%
+  labels) and costs ≈35 replay points relative to raw, a difference
+  indistinguishable from draw luck.
+
+Open question this cycle deliberately leaves: whether to expose a
+config switch to skip the sweep entirely (raw mode) for speed — a UX
+choice, not a points choice, on this evidence.
+
+### N2 — still pending at cycle close
+
+GW2 not `data_checked` (checked repeatedly through 2026-08-30; final
+check at close). The watcher pipeline stands: on data_checked →
+`gaffer refresh` → `gaffer evaluate --news-shadow` → record here and
+verify the Model-hub scoreboard.
+
+### Cycle summary
+
+11 replay runs + 1 probe, exactly the plan's mandatory+conditional
+matrix. Q2 answered (v5 minutes-head swap reversed gating's sign; swap
+still justified, +47 ungated), Q1 answered (seed spread 116 swamps every
+arm difference), Q3 answered (no composite floor helps). The v7-model
+three-way decision is now error-barred and the user's option (b) stands
+confirmed as within-noise of the best available configuration.
