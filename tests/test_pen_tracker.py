@@ -25,6 +25,7 @@ def _week() -> pd.DataFrame:
         "name": ["First Choice", "Second Name", "Other Club"],
         "position": ["MID", "FWD", "DEF"],
         "team_code": [3, 3, 7],
+        "opp_code": [7, 7, 3],
         "kickoff_time": ["2026-08-22T14:00:00Z"] * 3,
         "xg": [1.05, 0.20, 0.30],
         "pens_missed": [0, 0, 1],
@@ -163,6 +164,18 @@ def test_a_gameweek_block_pairs_the_prediction_with_what_happened(
     assert block["pens_per_team_game"] == 0.5
     # one penalty, MID, 0.78 converted x 5 points a goal
     assert block["realized_pen_points"] == 3.9
+
+
+def test_team_games_count_fixtures_not_the_stamped_club(tmp_path, monkeypatch):
+    """``team_code`` in the live rows is retro-stamped to the player's *current*
+    club (``data/live.py`` player_meta), so a January transfer makes his August
+    row look like a third fixture that never happened. ``opp_code`` is the real
+    opponent of the match he actually played."""
+    _live(monkeypatch, tmp_path)
+    moved = _week()
+    moved.loc[1, "team_code"] = 99
+    block = gw_block(moved, 1, "2026-27")
+    assert block["team_games"] == 2
 
 
 def test_a_week_with_no_penalties_has_no_hit_rate(tmp_path, monkeypatch):

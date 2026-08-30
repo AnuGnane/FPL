@@ -132,9 +132,15 @@ def predicted_ep(gw: int) -> dict:
 def gw_block(week: pd.DataFrame, gw: int, season: str) -> dict:
     """One finished gameweek: what was predicted against what happened.
 
-    ``team_games`` counts distinct (club, kickoff) pairs rather than clubs, so
-    a double gameweek contributes two team-games and the observed pens-per-game
-    stays comparable with the served :data:`LEAGUE_PENS_PG`.
+    ``team_games`` counts distinct (opponent, kickoff) pairs rather than clubs,
+    so a double gameweek contributes two team-games and the observed
+    pens-per-game stays comparable with the served :data:`LEAGUE_PENS_PG`.
+
+    The key is ``opp_code``, not ``team_code``: the live rows carry the
+    player's *current* club (``data/live.py`` stamps ``player_meta`` over the
+    whole season), so after a January transfer his August row claims a fixture
+    his new club never played and the team-game count drifts up all season.
+    ``opp_code`` is the opponent of the match that was actually played.
 
     A week with no penalties reports ``None`` for the hit rate, not zero: zero
     over zero would read as the taker model having been wrong every time.
@@ -150,8 +156,8 @@ def gw_block(week: pd.DataFrame, gw: int, season: str) -> dict:
     taken = float(events.sum())
     by_first = float(events[share >= 1.0].sum())
     team_games = 0
-    if {"team_code", "kickoff_time"} <= set(week.columns):
-        team_games = int(len(week[["team_code", "kickoff_time"]]
+    if {"opp_code", "kickoff_time"} <= set(week.columns):
+        team_games = int(len(week[["opp_code", "kickoff_time"]]
                              .drop_duplicates()))
     pred = predicted_ep(gw)
     return {
