@@ -129,3 +129,15 @@ def test_predict_components_still_calls_the_minutes_model_once():
     src = inspect.getsource(predict_components)
     assert src.count("minutes.predict(pf)") == 1
     assert src.count("apply_availability(") == 2
+
+
+def test_the_z1_driver_exists_and_names_both_arms():
+    """The gate has to be reproducible after this session ends, so its driver
+    is committed rather than left in a scratchpad."""
+    from pathlib import Path
+
+    src = Path("scripts/z1_arms.py").read_text()
+    assert "DNP_CALIBRATION_DEFAULT" in src
+    assert "Z1_ARM_DONE" in src
+    assert "load_training_frame" in src      # memoised across the two arms
+    assert "1.042" in src and "5.171" in src and "1.996" in src
