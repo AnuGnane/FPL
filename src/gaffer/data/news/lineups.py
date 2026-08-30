@@ -22,6 +22,7 @@ from pathlib import Path
 import httpx
 import pandas as pd
 
+from gaffer.config import serving_config
 from gaffer.data.news import NEWS_CACHE, cache_path, cached_text, fetched_at
 from gaffer.data.news.normalize import (NEWS_MIN_COVERAGE, club_code,
                                         club_code_map, match_codes)
@@ -42,8 +43,20 @@ journalist's guess at eleven names, and reading the other fourteen as benched
 would bench half a squad on nobody's say-so.
 """
 
-LINEUP_COLS = ["code", "p_start_hint", "source", "fetched_at"]
+LINEUP_COLS = ["code", "p_start_hint", "absence_damp", "source", "fetched_at"]
 PARSE_COLS = ["name", "club", "slot", "code"]
+
+ABSENCE_MIN_START_SHARE = 0.6
+"""Share of his club's most-started player's starts, above which a player's
+omission from a predicted XI is *news*.
+
+Read as "he has started at least 60% as often as the club's most reliable
+starter". The bootstrap carries season starts and no fixture count, so the
+club's own maximum is the denominator that needs neither: it is the number of
+matches a nailed-on starter has played. Below the threshold the omission is
+one journalist declining to pick a squad player, which is not evidence about
+anything.
+"""
 
 ABSENCE_SLOTS = {"out": "out", "banned": "out", "suspended": "out",
                  "doubts": "doubt", "doubt": "doubt"}
@@ -136,12 +149,69 @@ def parse_lineups(markup: str) -> pd.DataFrame:
     return out
 
 
+def notable_absences(players: pd.DataFrame, covered: set[int],
+                     claimed: set[int], damp: float,
+                     min_share: float = ABSENCE_MIN_START_SHARE
+                     ) -> pd.DataFrame:
+    """Regulars a parsed XI silently left out, as ``[code, absence_damp]``.
+
+    Three conditions, all necessary (spec §4). His club must have a parsed XI
+    — no team sheet is not the same as a team sheet without him. He must not
+    already be *named* by the page, in the XI or on any absence list, because
+    that row is the sharper claim and damping it twice would double-count one
+    source. And he must be a regular by :data:`ABSENCE_MIN_START_SHARE`, since
+    half of every squad is out of every predicted XI and only a player the
+    manager has been picking says something by being missing.
+
+    The result is a *damp*, not a ceiling: an omission is weaker evidence than
+    a printed "Out", and multiplying is how the model's own view survives it.
+    """
+    cols = ["code", "absence_damp"]
+    if not covered or "starts" not in players.columns:
+        return pd.DataFrame(columns=cols)
+    frame = players[["code", "team_code", "starts"]].copy()
+    frame["code"] = pd.to_numeric(frame["code"], errors="coerce")
+    frame["team_code"] = pd.to_numeric(frame["team_code"], errors="coerce")
+    frame["starts"] = pd.to_numeric(frame["starts"],
+                                    errors="coerce").fillna(0.0)
+    frame = frame[frame["team_code"].isin(covered)]
+    if frame.empty:
+        return pd.DataFrame(columns=cols)
+    # The denominator is the club's most-started player, named or not: taking
+    # it after the named codes are dropped would make the *least* regular
+    # survivor his own benchmark and hand him a share of 1.0.
+    best = frame.groupby("team_code")["starts"].transform("max")
+    frame = frame[~frame["code"].isin(claimed)]
+    best = best.loc[frame.index]
+    if frame.empty:
+        return pd.DataFrame(columns=cols)
+    share = frame["starts"] / best.where(best > 0)
+    out = frame[share >= min_share].copy()
+    if out.empty:
+        return pd.DataFrame(columns=cols)
+    out["absence_damp"] = float(damp)
+    out["code"] = out["code"].astype("int64")
+    return out[cols].sort_values("code").reset_index(drop=True)
+
+
 def fetch_lineups(players: pd.DataFrame, teams: pd.DataFrame,
                   cache_dir: Path = NEWS_CACHE, cache_hours: int = 6,
                   client: httpx.Client | None = None,
                   min_coverage: float = NEWS_MIN_COVERAGE,
-                  now: datetime | None = None) -> pd.DataFrame:
-    """Predicted line-ups as ``[code, p_start_hint, source, fetched_at]``."""
+                  now: datetime | None = None,
+                  absence: bool | None = None,
+                  absence_damp: float | None = None) -> pd.DataFrame:
+    """Predicted line-ups as ``[code, p_start_hint, absence_damp, …]``.
+
+    ``absence``/``absence_damp`` default to the ``[news]`` config, read here
+    rather than passed in: ``advise.py`` is protected and cannot learn to
+    forward them. ``False`` reproduces the pre-v8a frame exactly, one extra
+    all-null column aside.
+    """
+    cfg = serving_config()
+    absence = cfg.news_lineup_absence if absence is None else bool(absence)
+    absence_damp = (cfg.news_lineup_absence_damp if absence_damp is None
+                    else float(absence_damp))
     dest = cache_path(cache_dir, "lineups", cache_hours, now)
     markup = cached_text(FFS_URL, dest, client)
     if not markup:
@@ -204,9 +274,24 @@ def fetch_lineups(players: pd.DataFrame, teams: pd.DataFrame,
     out["p_start_hint"] = out["slot"].map(P_START_HINT).astype("float64")
     out["source"] = "lineups"
     out["fetched_at"] = fetched_at(now)
+    out["absence_damp"] = float("nan")
     # A player named in two blocks (listed as a doubt and on the bench) takes
     # the most pessimistic hint — the same rule availability_frame applies
     # between sources.
     out = (out.sort_values("p_start_hint")
            .groupby("code", as_index=False).head(1))
+    if absence:
+        # The clubs whose *pitch* parsed. An absence list on its own is not a
+        # team sheet, and reading one as though it were would damp everybody
+        # at a club whose XI the page never printed.
+        covered = set(pd.to_numeric(
+            club_codes[parsed["slot"] == "start"], errors="coerce")
+            .dropna().astype(int))
+        extra = notable_absences(players, covered, set(out["code"]),
+                                 absence_damp)
+        if not extra.empty:
+            extra["p_start_hint"] = float("nan")
+            extra["source"] = "lineups"
+            extra["fetched_at"] = fetched_at(now)
+            out = pd.concat([out, extra], ignore_index=True)
     return out[LINEUP_COLS].sort_values("code").reset_index(drop=True)

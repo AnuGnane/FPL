@@ -52,6 +52,11 @@ def build_players(raw: dict) -> pd.DataFrame:
             "status": e.get("status", "a"),
             "news": e.get("news", ""),
             "chance_of_playing": to_int(e.get("chance_of_playing_next_round")),
+            # v8a F4: the absence rule needs to know who the manager has
+            # actually been picking, and this is the only start record that
+            # exists at serve time without loading the history frame.
+            "starts": to_int(e.get("starts")) or 0,
+            "minutes": to_int(e.get("minutes")) or 0,
             "transfers_in_event": e.get("transfers_in_event", 0),
             "transfers_out_event": e.get("transfers_out_event", 0),
             "penalties_order": to_int(e.get("penalties_order")),

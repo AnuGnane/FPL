@@ -15,23 +15,32 @@ FIXTURES = Path(__file__).parent / "data" / "news"
 def _players() -> pd.DataFrame:
     return pd.DataFrame([
         {"code": 100, "name": "Saka", "first_name": "Bukayo",
-         "second_name": "Saka", "team_code": 3},
+         "second_name": "Saka", "team_code": 3, "starts": 10,
+         "minutes": 900},
         {"code": 101, "name": "Gabriel", "first_name": "Gabriel",
-         "second_name": "Magalhaes", "team_code": 3},
+         "second_name": "Magalhaes", "team_code": 3, "starts": 9,
+         "minutes": 810},
         {"code": 102, "name": "Haaland", "first_name": "Erling",
-         "second_name": "Haaland", "team_code": 43},
+         "second_name": "Haaland", "team_code": 43, "starts": 10,
+         "minutes": 900},
         {"code": 103, "name": "Palmer", "first_name": "Cole",
-         "second_name": "Palmer", "team_code": 8},
+         "second_name": "Palmer", "team_code": 8, "starts": 10,
+         "minutes": 880},
         {"code": 104, "name": "Rice", "first_name": "Declan",
-         "second_name": "Rice", "team_code": 3},
+         "second_name": "Rice", "team_code": 3, "starts": 8,
+         "minutes": 700},
         {"code": 105, "name": "O'Riley", "first_name": "Matt",
-         "second_name": "O'Riley", "team_code": 36},
+         "second_name": "O'Riley", "team_code": 36, "starts": 7,
+         "minutes": 600},
         {"code": 106, "name": "Welbeck", "first_name": "Danny",
-         "second_name": "Welbeck", "team_code": 36},
+         "second_name": "Welbeck", "team_code": 36, "starts": 2,
+         "minutes": 200},
         {"code": 107, "name": "Mitoma", "first_name": "Kaoru",
-         "second_name": "Mitoma", "team_code": 36},
+         "second_name": "Mitoma", "team_code": 36, "starts": 9,
+         "minutes": 800},
         {"code": 108, "name": "Verbruggen", "first_name": "Bart",
-         "second_name": "Verbruggen", "team_code": 36},
+         "second_name": "Verbruggen", "team_code": 36, "starts": 10,
+         "minutes": 900},
     ])
 
 
@@ -494,7 +503,7 @@ def test_fetch_lineups_prefers_the_photo_code_over_the_title_name(tmp_path):
               '/photos/players/110x140/100.png?v=2026"></li></ul>')
     client = httpx.Client(transport=_transport([], markup))
     out = fetch_lineups(_players(), _teams(), cache_dir=tmp_path,
-                        client=client)
+                        client=client, absence=False)
     assert out["code"].tolist() == [100]
 
 
@@ -565,7 +574,7 @@ def test_fetch_lineups_keeps_the_code_join_when_the_name_batch_is_discarded(
               + "</ul></li></ul>")
     client = httpx.Client(transport=_transport([], markup))
     out = fetch_lineups(_players(), _teams(), cache_dir=tmp_path,
-                        client=client)
+                        client=client, absence=False)
     assert out["code"].tolist() == [100]
     assert "lineups" in capsys.readouterr().out
 
@@ -578,3 +587,80 @@ def test_fetch_lineups_degrades_to_empty_when_the_page_is_down(tmp_path):
                         client=client)
     assert out.empty
     assert list(out.columns) == LINEUP_COLS
+
+
+# --- v8a F4: notable absences ---------------------------------------------
+
+def _absence_players() -> pd.DataFrame:
+    """One club, four players: a regular in the XI, a regular left out, a
+    fringe player left out, and a listed doubt."""
+    return pd.DataFrame([
+        {"code": 11, "name": "In XI", "first_name": "A", "second_name": "One",
+         "team_code": 3, "starts": 10, "minutes": 900},
+        {"code": 12, "name": "Left Out", "first_name": "B",
+         "second_name": "Two", "team_code": 3, "starts": 9, "minutes": 800},
+        {"code": 13, "name": "Fringe", "first_name": "C",
+         "second_name": "Three", "team_code": 3, "starts": 1, "minutes": 90},
+        {"code": 14, "name": "Doubtful", "first_name": "D",
+         "second_name": "Four", "team_code": 3, "starts": 8, "minutes": 700}])
+
+
+def test_a_regular_left_out_of_a_parsed_xi_is_damped():
+    from gaffer.data.news.lineups import notable_absences
+
+    out = notable_absences(_absence_players(), covered={3},
+                           claimed={11, 14}, damp=0.75, min_share=0.6)
+    assert list(out["code"]) == [12]
+    assert out.iloc[0]["absence_damp"] == 0.75
+
+
+def test_a_fringe_player_left_out_is_not_news():
+    """Half a squad is out of every predicted XI. Only a player the manager
+    has actually been picking says anything by being missing."""
+    from gaffer.data.news.lineups import notable_absences
+
+    out = notable_absences(_absence_players(), covered={3},
+                           claimed={11, 14}, damp=0.75, min_share=0.6)
+    assert 13 not in set(out["code"])
+
+
+def test_a_club_whose_xi_was_not_parsed_damps_nobody():
+    """No team sheet is not the same as a team sheet without him."""
+    from gaffer.data.news.lineups import notable_absences
+
+    out = notable_absences(_absence_players(), covered=set(),
+                           claimed=set(), damp=0.75, min_share=0.6)
+    assert out.empty
+
+
+def test_a_player_already_on_an_absence_list_is_not_damped_twice():
+    from gaffer.data.news.lineups import notable_absences
+
+    out = notable_absences(_absence_players(), covered={3},
+                           claimed={11, 12, 14}, damp=0.75, min_share=0.6)
+    assert out.empty
+
+
+def test_fetch_lineups_emits_absence_rows_beside_the_hints(tmp_path):
+    from gaffer.data.news.lineups import LINEUP_COLS, fetch_lineups
+
+    client = httpx.Client(transport=_transport([], _lineups_html()))
+    out = fetch_lineups(_players(), _teams(), cache_dir=tmp_path,
+                        client=client, absence=True, absence_damp=0.75)
+    assert list(out.columns) == LINEUP_COLS
+    assert out["p_start_hint"].notna().any()
+
+
+def test_the_absence_rule_can_be_switched_off(tmp_path):
+    from gaffer.data.news.lineups import fetch_lineups
+
+    on = fetch_lineups(_players(), _teams(), cache_dir=tmp_path,
+                       client=httpx.Client(
+                           transport=_transport([], _lineups_html())),
+                       absence=True, absence_damp=0.75)
+    off = fetch_lineups(_players(), _teams(), cache_dir=tmp_path,
+                        client=httpx.Client(
+                            transport=_transport([], _lineups_html())),
+                        absence=False)
+    assert off["absence_damp"].isna().all()
+    assert len(off) <= len(on)
