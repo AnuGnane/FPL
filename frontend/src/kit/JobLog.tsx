@@ -24,7 +24,7 @@ export default function JobLog({ status, lines, error }: JobLogProps) {
   return (
     <div className="mt-3">
       {error && (
-        <p role="alert" className="mb-2 rounded-card border border-rust/40
+        <p role="alert" className="mb-2 rounded-card border border-rust-soft
                                    bg-card px-3 py-2 text-rust">
           {error}
         </p>

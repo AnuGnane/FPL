@@ -124,7 +124,7 @@ export default function ThisWeek() {
         )}
       />
       {data.staleness.data_warning && (
-        <p role="alert" className="mb-4 rounded-card border border-rust/40
+        <p role="alert" className="mb-4 rounded-card border border-rust-soft
                                    bg-card px-3 py-2 text-rust">
           {data.staleness.data_warning}
         </p>

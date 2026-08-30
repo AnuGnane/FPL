@@ -28,6 +28,12 @@ describe('theme tokens', () => {
       ['--color-sage', '#86b388'],
       ['--color-rust', '#e0876f'],
       ['--color-info', '#7da7c9'],
+      // The soft tiers exist as tokens rather than as `border-sage/40`
+      // utilities: Tailwind bakes an opacity modifier to a literal hex at
+      // build time, which would freeze the dark colour into the light theme.
+      ['--color-sage-soft', '#86b38866'],
+      ['--color-rust-soft', '#e0876f66'],
+      ['--color-info-soft', '#7da7c966'],
     ]) {
       expect(css).toContain(`${name}: ${value};`)
     }
@@ -62,6 +68,7 @@ const TOKENS = [
   '--color-base', '--color-card', '--color-border', '--color-divider',
   '--color-text', '--color-text-secondary', '--color-text-muted',
   '--color-text-faint', '--color-sage', '--color-rust', '--color-info',
+  '--color-sage-soft', '--color-rust-soft', '--color-info-soft',
   '--color-pos-gkp', '--color-pos-def', '--color-pos-mid', '--color-pos-fwd',
 ]
 
@@ -74,7 +81,9 @@ function block(opener: string): string {
 }
 
 function valueOf(source: string, token: string): string {
-  const found = new RegExp(`${token}:\\s*(#[0-9a-f]{6});`).exec(source)
+  const found = new RegExp(
+    `${token}:\\s*(#[0-9a-f]{6}(?:[0-9a-f]{2})?);`,
+  ).exec(source)
   expect(found, `${token} has no hex value`).not.toBeNull()
   return found![1]
 }

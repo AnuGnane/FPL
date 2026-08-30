@@ -3,9 +3,9 @@ import type { ReactNode } from 'react'
 export type BadgeVariant = 'positive' | 'negative' | 'info' | 'neutral'
 
 const VARIANT: Record<BadgeVariant, string> = {
-  positive: 'text-sage border-sage/40',
-  negative: 'text-rust border-rust/40',
-  info: 'text-info border-info/40',
+  positive: 'text-sage border-sage-soft',
+  negative: 'text-rust border-rust-soft',
+  info: 'text-info border-info-soft',
   neutral: 'text-text-muted border-border',
 }
 

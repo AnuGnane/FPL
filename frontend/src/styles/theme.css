@@ -16,6 +16,15 @@
   --color-rust: #e0876f;
   --color-info: #7da7c9;
 
+  /* The soft outline tier, as tokens rather than as `border-sage/40`.
+     Tailwind v4 resolves an opacity modifier at build time and bakes the
+     dark hex into the compiled CSS, so a `/40` border would keep its dark
+     colour under the light theme. A token is re-declared per theme and the
+     generated `border-sage-soft` utility follows it. */
+  --color-sage-soft: #86b38866;
+  --color-rust-soft: #e0876f66;
+  --color-info-soft: #7da7c966;
+
   /* Position hues are IDENTITY, not judgement. They are deliberately kept
      clear of sage/rust/blue so that a violet MID never reads as a verdict on
      the player the way a sage number does. */
@@ -46,6 +55,9 @@
   --color-sage: #3f7a44;
   --color-rust: #b0532f;
   --color-info: #2f6b96;
+  --color-sage-soft: #3f7a4466;
+  --color-rust-soft: #b0532f66;
+  --color-info-soft: #2f6b9666;
   --color-pos-gkp: #96731f;
   --color-pos-def: #2867a5;
   --color-pos-mid: #6f51b8;
@@ -68,6 +80,9 @@
     --color-sage: #3f7a44;
     --color-rust: #b0532f;
     --color-info: #2f6b96;
+    --color-sage-soft: #3f7a4466;
+    --color-rust-soft: #b0532f66;
+    --color-info-soft: #2f6b9666;
     --color-pos-gkp: #96731f;
     --color-pos-def: #2867a5;
     --color-pos-mid: #6f51b8;
