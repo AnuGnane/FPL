@@ -102,4 +102,29 @@ describe('Model hub', () => {
     await act(async () => { jobs['refresh-data']?.() })
     expect(mounts.quality).toBe(before)
   })
+
+  it('offers the track-pens and snapshot jobs too', () => {
+    render(<MemoryRouter><Model /></MemoryRouter>)
+    expect(screen.getByRole('button', { name: 'Track pens' }))
+      .toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Snapshot news' }))
+      .toBeInTheDocument()
+  })
+
+  it('refetches the quality tab after a track-pens run', async () => {
+    render(<MemoryRouter><Model /></MemoryRouter>)
+    await screen.findByText('quality panel')
+    const before = mounts.quality
+    await act(async () => { jobs['track-pens']?.() })
+    expect(mounts.quality).toBeGreaterThan(before)
+  })
+
+  it('refetches the health tab after a snapshot run', async () => {
+    render(<MemoryRouter><Model /></MemoryRouter>)
+    await userEvent.click(screen.getByRole('tab', { name: 'Health' }))
+    await screen.findByText('health panel')
+    const before = mounts.health
+    await act(async () => { jobs.snapshot?.() })
+    expect(mounts.health).toBeGreaterThan(before)
+  })
 })

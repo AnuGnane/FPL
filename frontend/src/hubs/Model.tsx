@@ -27,10 +27,18 @@ export default function Model() {
         context="How well it forecasts, what it decided, and whether the data
                  under it is fresh."
         action={(
+          // The header is the hub's one control lane: every job that rewrites
+          // something a tab under it renders lives here, and each says which
+          // tab it invalidates. Track pens rewrites the quality artifact's
+          // neighbour; snapshot moves what Health grades.
           <div className="flex flex-wrap gap-2">
             <JobButton kind="evaluate" label="Evaluate"
                        onDone={reloadQuality} />
+            <JobButton kind="track-pens" label="Track pens"
+                       onDone={reloadQuality} />
             <JobButton kind="refresh-data" label="Refresh data"
+                       onDone={reloadHealth} />
+            <JobButton kind="snapshot" label="Snapshot news"
                        onDone={reloadHealth} />
           </div>
         )}
