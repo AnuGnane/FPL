@@ -48,6 +48,7 @@ to `logs/advise.log`.
 | Command | What it does |
 |---|---|
 | `gaffer advise` | Full weekly run: refresh, predict, optimize, report. Requires trained models and `fpl.entry_id` in config. |
+| `gaffer advise --fast` | Skips the ~5-minute scenario sweep and serves the raw optimum, without the risk spread around it. |
 | `gaffer build-history` | Download the `train_seasons` archives into `data/history/`. Run once, before the first `train`. |
 | `gaffer refresh` | Pull the latest FPL data into `data/live/`. |
 | `gaffer train` | (Re)train all models on history + live data; writes to `models/`. |
@@ -165,7 +166,8 @@ against yours), **Live** (in-gameweek points, auto-refreshing), **Players**
 **History** (past runs, expected versus actual, price charts) and **Runs &
 Health** (data freshness, model metrics, the launchd log, re-run buttons).
 A fixture ticker sits alongside them and is embedded read-only in the
-What-If Lab.
+What-If Lab. A three-state theme toggle in the sidebar footer follows your
+system by default, or holds dark or light if you pick one.
 
 The pages read the artifacts `gaffer advise` writes, so the UI works offline
 apart from League Race, Live and the rival pages, which need the FPL API and
