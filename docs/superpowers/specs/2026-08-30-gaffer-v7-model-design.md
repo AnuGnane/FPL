@@ -180,4 +180,23 @@ bps/starts/cs/gc of 0, and no column separates an unused substitute from
 a player never named; `unused_sub_r5` / `squad_share_r5` are underivable
 and spec §2.2 forbids scraping for them.
 
+### Gate Z1 — FAIL (pre-registered rule applied; I1 ships OFF)
+
+Arms on the v4a harness, 2026-08-30 (`logs/z1_arms.log`):
+OFF arm reproduced the 2026-08-29 baseline exactly (zeros 1.063,
+haulers 5.145, all 1.986 — harness validity check). ON arm (isotonic DNP
+recalibration): zeros **1.053** (−0.9%), haulers 5.149 (guard pass,
+≤5.171), all 1.992 (guard pass). The bar was ≤1.042; verdict FAIL.
+
+Exactly what the diagnostic predicted: right sign (the calibrator lifts
+the nailed-starter DNP rate toward the observed 7.9%), insufficient
+magnitude — the regulars-who-sit error is news-shaped, not
+calibration-shaped. `DNP_CALIBRATION_DEFAULT` stays `False`; the
+calibrator, leakage rails, and z1_arms driver stay in the tree.
+
+*User decision available later:* the ON arm is a strict Pareto
+improvement over shipped (better zeros, guards passed) but fails the
+pre-registered bar; per §0 D2/D3 an ambiguous call ships OFF and is left
+to the user. Flipping is one constant.
+
 (Remaining outcome recorded at cycle end.)
