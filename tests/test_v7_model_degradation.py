@@ -141,3 +141,18 @@ def test_the_z1_driver_exists_and_names_both_arms():
     assert "Z1_ARM_DONE" in src
     assert "load_training_frame" in src      # memoised across the two arms
     assert "1.042" in src and "5.171" in src and "1.996" in src
+
+
+def test_the_s2_driver_is_committed_and_uses_the_shipping_path():
+    """The gate must measure what shipping would do: the estimation arm flips
+    CALIBRATED_NOISE_DEFAULT and stubs the loader, which is exactly what Task
+    18 does permanently — not a bespoke table= thread the live path lacks."""
+    from pathlib import Path
+
+    src = Path("scripts/s2_replay.py").read_text()
+    assert "CALIBRATED_NOISE_DEFAULT" in src
+    assert "load_scenario_noise" in src
+    assert "scenario_noise.cache_clear()" in src
+    assert "S2_ARM_DONE" in src
+    assert "20260827 + gw" in src          # the S1 seed, unchanged
+    assert "n=40" in src
