@@ -124,6 +124,42 @@ def dnp_reliability(frame: pd.DataFrame,
     return out
 
 
+def start_reliability(frame: pd.DataFrame,
+                      bins: int = DNP_DECILES) -> list[dict]:
+    """Predicted vs observed start rate per ``p_start`` decile.
+
+    :func:`dnp_reliability`'s twin at the other end of the trichotomy, and the
+    cut v8a's F1/F2 arms are actually about: a rotation feature earns its
+    column by moving *which* players the model expects to start, and a pooled
+    ``p_play`` curve averages that away. Read per stratum, it says whether an
+    arm helped the fringe, the regulars or nobody.
+
+    ``starts`` where the feed has it, ``minutes >= 60`` where it does not —
+    the same inference :func:`gaffer.evaluation.start_truth` makes. Empty
+    deciles are omitted, matching every other reliability curve here.
+    """
+    if "p_start" not in frame.columns or "minutes" not in frame.columns:
+        return []
+    from gaffer.evaluation import start_truth
+
+    p = pd.to_numeric(frame["p_start"], errors="coerce").to_numpy(dtype=float)
+    y = start_truth(frame).to_numpy(dtype=float)
+    ok = np.isfinite(p) & np.isfinite(y)
+    p, y = p[ok], y[ok]
+    edges = np.linspace(0.0, 1.0, bins + 1)
+    idx = np.clip(np.digitize(p, edges[1:-1], right=False), 0, bins - 1)
+    out = []
+    for b in range(bins):
+        sel = idx == b
+        n = int(sel.sum())
+        if n == 0:
+            continue
+        out.append({"decile": b, "n": n,
+                    "pred": round(float(p[sel].mean()), 4),
+                    "obs": round(float(y[sel].mean()), 4)})
+    return out
+
+
 def _error(frame: pd.DataFrame) -> dict:
     """RMSE, MAE, mean EP and row count over the *zeros* rows of ``frame``.
 
@@ -148,14 +184,20 @@ def _error(frame: pd.DataFrame) -> dict:
 
 
 def zeros_report(scored: pd.DataFrame) -> dict:
-    """The whole decomposition: overall, per stratum, plus the DNP curve."""
-    strata = {name: _error(part) for name, part in stratify(scored).items()}
+    """The whole decomposition: overall, per stratum, plus the two curves."""
+    parts = stratify(scored)
+    strata = {name: _error(part) for name, part in parts.items()}
     strata["flagged"] = {"n": 0, "rmse": 0.0, "mae": 0.0, "mean_ep": 0.0,
                          "note": FLAGGED_NOTE}
     return {
         "overall": _error(scored),
         "strata": strata,
         "dnp_reliability": dnp_reliability(scored),
+        # v8a F3: the same six sub-populations, read at the start mode. A
+        # stratum whose zeros RMSE moved and whose start curve did not is an
+        # arm that helped somewhere other than where it claimed to.
+        "start_reliability": {name: start_reliability(part)
+                              for name, part in parts.items()},
         "fringe_share": FRINGE_SHARE,
         "cold_start_gws": COLD_START_GWS,
     }
@@ -189,6 +231,15 @@ def format_diagnostic(payload: dict) -> str:
     for row in payload["dnp_reliability"]:
         lines.append(f"   decile {row['decile']}  pred {row['pred']:.4f}  "
                      f"obs {row['obs']:.4f}  n {row['n']}")
+    lines.append("-- p_start calibration (per stratum, all rows)")
+    for name, curve in payload.get("start_reliability", {}).items():
+        if not curve:
+            continue
+        lines.append(f"   {name}")
+        for row in curve:
+            lines.append(f"     decile {row['decile']}  "
+                         f"pred {row['pred']:.4f}  obs {row['obs']:.4f}  "
+                         f"n {row['n']}")
     return "\n".join(lines)
 
 
@@ -228,10 +279,11 @@ def _holdout(holdout_slots: int = 10) -> pd.DataFrame:
     # player-and-week facts, identical across a double gameweek's two rows.
     modes = models["minutes"].predict_modes(hold)
     carry = hold[["code", "gw"]].copy()
-    for col in ("season_start_share", "minutes_r5"):
+    for col in ("season_start_share", "minutes_r5", "starts"):
         if col in hold.columns:
             carry[col] = pd.to_numeric(hold[col], errors="coerce")
     carry["p_dnp"] = modes["p_dnp"].values
+    carry["p_start"] = modes["p_start"].values
     carry = carry.groupby(["code", "gw"], as_index=False).first()
     return ep.merge(truth, on=["code", "gw"], how="inner").merge(
         carry, on=["code", "gw"], how="left")

@@ -44,3 +44,46 @@ def test_the_head_block_names_p_start(monkeypatch):
     assert 'predict_modes(hold)' in src
     assert '"p_start": head_metrics(' in src
     assert 'start_truth(hold)' in src
+
+
+# --- the zeros diagnostic's mode cut ---------------------------------------
+
+from gaffer.zeros_diagnostic import (start_reliability,  # noqa: E402
+                                     format_diagnostic, zeros_report)
+
+
+def _scored() -> pd.DataFrame:
+    rng = np.random.default_rng(5)
+    n = 200
+    p = rng.uniform(0.0, 1.0, n)
+    return pd.DataFrame({
+        "code": np.arange(n), "gw": 10,
+        "ep": p * 4.0, "total_points": (rng.uniform(size=n) < p) * 5.0,
+        "minutes": (rng.uniform(size=n) < p) * 90.0,
+        "starts": (rng.uniform(size=n) < p).astype(float),
+        "season_start_share": rng.uniform(size=n),
+        "minutes_r5": rng.uniform(size=n) * 90.0,
+        "p_dnp": 1.0 - p, "p_start": p})
+
+
+def test_the_curve_reports_predicted_against_observed_per_bin():
+    out = start_reliability(_scored())
+    assert out and all({"decile", "n", "pred", "obs"} <= set(r) for r in out)
+    assert all(0.0 <= r["pred"] <= 1.0 for r in out)
+
+
+def test_a_frame_without_the_mode_probability_reports_no_curve():
+    assert start_reliability(_scored().drop(columns=["p_start"])) == []
+
+
+def test_every_stratum_carries_its_own_curve():
+    payload = zeros_report(_scored())
+    assert set(payload["start_reliability"]) == set(payload["strata"]) - {
+        "flagged"}
+
+
+def test_the_printed_report_names_the_start_curve():
+    payload = zeros_report(_scored())
+    payload["run_at"], payload["git_sha"] = "now", "abc"
+    text = format_diagnostic(payload)
+    assert "p_start calibration" in text
