@@ -89,4 +89,19 @@ no chips, no priors, seed base 20260825)
 - Free evidence: raw-ctrl 1847 vs v4c's raw 1743 = +104 of genuine model
   improvement on the ungated side since v4c.
 
-(Q1/Q3/verdict/N2 recorded below as they land.)
+### Q1 — error bars (Task 9, full harness, 3 seed bases)
+
+| arm | 20260827 | 20260901 | 20260915 | mean | spread |
+|---|---|---|---|---|---|
+| heuristic | 1785 | 1876 | 1901 | 1854.0 | **116** |
+| estimation | 1908 | 1847 | 1883 | 1879.3 | 61 |
+| raw (deterministic) | 1914 | — | — | 1914 | 0 |
+
+The verdict-rule spread is 116 (the larger arm). Q1's answer: the
+single-seed −129 heuristic-vs-raw gap is NOT distinguishable from seed
+noise — the S1/S2 series was reading one draw. Raw beats the estimation
+mean by 34.7 and the heuristic mean by 60, both inside the spread. The
+arm ordering flips between seeds (est wins A by 123, heur wins B by 29
+and C by 18).
+
+(Q3/verdict/N2 recorded below as they land.)
