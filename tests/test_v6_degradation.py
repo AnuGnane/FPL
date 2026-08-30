@@ -185,34 +185,54 @@ def test_the_fitted_asset_is_present_and_well_shaped():
     assert payload["sigma"]
 
 
-def test_the_shipped_asset_is_not_served_by_default(monkeypatch):
-    """Gate S1 failed, so the default serving path is the heuristic even with
-    the fitted asset sitting on disk. The loader must not so much as read the
-    file: ``scenario_noise()`` answering ``None`` is the whole switch."""
-    from gaffer.assets import scenario_noise_exists
+def test_the_shipped_asset_is_served_by_default():
+    """v7 overturned v6's decision here, deliberately.
+
+    Gate S1 failed on the *residual* σ and this rail used to pin the asset as
+    shipped-but-not-served. Gate S2 passed on the estimation-only σ that
+    replaced it (heuristic 1785 → estimation 1908 over the 2025-26 gated
+    replay), so the shipped table is now the default serving path and this
+    pins that. The off switch keeps its own rail below."""
+    from gaffer.assets import load_scenario_noise, scenario_noise_exists
     import gaffer.optimize.scenarios as sc
 
     assert scenario_noise_exists(), "the fitted asset is meant to stay shipped"
 
-    def boom():
-        raise AssertionError("the default path must not read the asset")
+    sc.scenario_noise.cache_clear()
+    try:
+        assert sc.CALIBRATED_NOISE_DEFAULT is True
+        assert sc.scenario_noise() == load_scenario_noise()
+    finally:
+        sc.scenario_noise.cache_clear()
 
+
+def test_the_flag_off_path_still_refuses_to_read_the_asset(monkeypatch):
+    """The rollback has to be a true rollback: with the constant off the
+    loader must not so much as touch the file, so a bad table can never come
+    back through a stale cache. ``scenario_noise()`` answering ``None`` with
+    the asset sitting right there is the whole switch."""
+    import gaffer.optimize.scenarios as sc
+
+    def boom():
+        raise AssertionError("the flag-off path must not read the asset")
+
+    monkeypatch.setattr(sc, "CALIBRATED_NOISE_DEFAULT", False)
     monkeypatch.setattr(sc, "load_scenario_noise", boom)
     sc.scenario_noise.cache_clear()
     try:
-        assert sc.CALIBRATED_NOISE_DEFAULT is False
         assert sc.scenario_noise() is None
     finally:
         sc.scenario_noise.cache_clear()
 
 
-def test_the_default_path_is_the_pre_v6_heuristic_value_for_value():
+def test_the_flag_off_path_is_the_pre_v6_heuristic_value_for_value(monkeypatch):
     """No monkeypatching of the loader at all: with the asset present and the
-    default off, ``table=None`` has to reproduce the heuristic draw for draw."""
+    constant off, ``noise_ep`` has to reproduce the heuristic draw for draw."""
     import numpy as np
 
     import gaffer.optimize.scenarios as sc
 
+    monkeypatch.setattr(sc, "CALIBRATED_NOISE_DEFAULT", False)
     sc.scenario_noise.cache_clear()
     try:
         ep = {(1, 5): 4.0, (2, 5): 1.0, (3, 5): 0.2}

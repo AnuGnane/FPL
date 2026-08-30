@@ -62,48 +62,67 @@ produce one and the read side refuses to use one.
 """
 
 
-CALIBRATED_NOISE_DEFAULT = False
+CALIBRATED_NOISE_DEFAULT = True
 """Whether :func:`scenario_noise` serves the fitted σ table by default.
 
-**Off, because gate S1 failed.** The 2025-26 gated replay, identical seeds,
+**On, because gate S2 passed** on the estimation-only σ that superseded v6's
+residual table. The history is the point, so both halves are recorded here.
+
+**What S1 measured (v6, failed).** The 2025-26 gated replay, identical seeds,
 scenario gating injected at the replay's base solve, scored heuristic 1785 /
 15 hits / 69 transfers against calibrated 1761 / 26 hits / 77 transfers: a
 24-point loss where the tolerance was 5. Not a wash — a clear regression, and
-in the direction that names its own cause.
+in the direction that named its own cause. Live, captain sim-support collapsed
+from 92% to 22% and the gate, finding no move that cleared threshold on its
+own, advised a plan carrying -20 in hits.
 
-The diagnosis is in what σ was fitted on. The calibration regresses realized
-points minus EP, and that residual is *two* things added together: how wrong
-the forecast was, and how much football would have varied even from a perfect
-forecast. Only the first is decision-relevant — a scenario sweep asks "would
-this transfer survive my forecast being wrong", not "would it survive the ball
-going in". Fitting on outcomes conflates them, so every σ in the table is too
-large, and a sweep run at that scale finds nothing robust. The live symptom
-was exactly that: captain sim-support collapsed from 92% to 22% and the gate,
-finding no move that cleared threshold on its own, advised a plan carrying
--20 in hits.
+**Why the residual σ was the wrong quantity.** That calibration regressed
+realized points minus EP, and the residual is *two* things added together: how
+wrong the forecast was, and how much football would have varied even from a
+perfect forecast. Only the first is decision-relevant — a scenario sweep asks
+"would this transfer survive my forecast being wrong", not "would it survive
+the ball going in". Fitting on outcomes conflates them, so every σ in the v6
+table was too large by roughly the width of the game's own variance, and a
+sweep run at that scale finds nothing robust: with everything uncertain,
+nothing is differentially uncertain, so no move clears the gate.
 
-The asset stays shipped and the mean-preserving serving path stays wired, both
-so this can be re-measured rather than rediscovered. The re-measurement a
-future cycle wants is an *estimation-only* σ — ensemble spread across refits,
-or a bootstrap over the training window — which prices how much the model's
-own estimate moves rather than how much the world does. Flip this constant (or
-pass ``table=`` explicitly) to serve the table again.
+**What S2 measured (v7, passed).** The asset is now an ensemble-spread σ —
+K=5 refits of the minutes and attacking heads at seeds (7, 17, 27, 37, 47),
+walked forward over 2025-26 — which prices how much the model's own estimate
+moves and nothing else. The σ it produces is roughly an order of magnitude
+smaller than v6's (global 1.953 → 0.0692; cell 3_3 3.4525 → 0.2573), which is
+the confirmation that the two fits were measuring different quantities rather
+than the same one at different precision. The same gated replay, same seeds:
+heuristic **1785** / 15 hits / 69 transfers / 8 held weeks against estimation
+**1908** / 11 hits / 64 transfers / 2 held weeks — **+123** where the rule only
+asked for no worse than −5. The mechanism is visible in the margins: fewer
+hits and six fewer held weeks, i.e. the gate now discriminates instead of
+either waving everything through or freezing.
+
+The rule's second condition — captain sim-support at or above 0.60 on the
+current live advice — is a property of the shipped serving path, so it is
+measured with this constant already True: **live-support check follows**, and
+a shortfall there is grounds to flip this back and say so here.
+
+Off is still one line away and still the pre-v6 heuristic value for value —
+:func:`noise_ep` with ``table=None`` is untouched, and the degradation rails
+in ``tests/test_v6_degradation.py`` pin that both directions.
 """
 
 
 @lru_cache(maxsize=1)
 def scenario_noise() -> dict | None:
-    """The shipped residual-σ table, read once per process.
+    """The shipped estimation-σ table, read once per process.
 
     Cached because a scenario sweep calls :func:`noise_ep` once per player per
     gameweek per scenario — tens of thousands of times — and re-reading a JSON
     file for each of them would cost more than the solves.
 
     With :data:`CALIBRATED_NOISE_DEFAULT` off this returns ``None`` **without
-    touching the asset**: the S1 result is that the fitted table is the wrong
-    scale to plan on, and a switch that still read the file would leave the
-    failure one stale cache away from coming back. Callers that want the table
-    anyway pass it to :func:`noise_ep` explicitly.
+    touching the asset**, which is what makes the off switch a true rollback
+    rather than a preference: a switch that still read the file would leave a
+    bad table one stale cache away from coming back. Callers that want a
+    specific table pass it to :func:`noise_ep` explicitly.
 
     Otherwise every failure is the same failure: no asset, unreadable asset,
     asset that is not JSON. All of them return ``None``, which every caller
