@@ -65,8 +65,10 @@ produce one and the read side refuses to use one.
 CALIBRATED_NOISE_DEFAULT = True
 """Whether :func:`scenario_noise` serves the fitted σ table by default.
 
-**On, because gate S2 passed** on the estimation-only σ that superseded v6's
-residual table. The history is the point, so both halves are recorded here.
+**True per the literal pre-registered S2 rule**, on the estimation-only σ that
+superseded v6's residual table — but the mechanism behind that number is not
+the one the rule was written to detect, so read the whole record before
+trusting the flag. The merge decision is escalated to the user.
 
 **What S1 measured (v6, failed).** The 2025-26 gated replay, identical seeds,
 scenario gating injected at the replay's base solve, scored heuristic 1785 /
@@ -86,23 +88,55 @@ table was too large by roughly the width of the game's own variance, and a
 sweep run at that scale finds nothing robust: with everything uncertain,
 nothing is differentially uncertain, so no move clears the gate.
 
-**What S2 measured (v7, passed).** The asset is now an ensemble-spread σ —
-K=5 refits of the minutes and attacking heads at seeds (7, 17, 27, 37, 47),
-walked forward over 2025-26 — which prices how much the model's own estimate
-moves and nothing else. The σ it produces is roughly an order of magnitude
-smaller than v6's (global 1.953 → 0.0692; cell 3_3 3.4525 → 0.2573), which is
-the confirmation that the two fits were measuring different quantities rather
-than the same one at different precision. The same gated replay, same seeds:
-heuristic **1785** / 15 hits / 69 transfers / 8 held weeks against estimation
-**1908** / 11 hits / 64 transfers / 2 held weeks — **+123** where the rule only
-asked for no worse than −5. The mechanism is visible in the margins: fewer
-hits and six fewer held weeks, i.e. the gate now discriminates instead of
-either waving everything through or freezing.
+**What S2 measured (v7).** The asset is now an ensemble-spread σ — K=5 fits
+of the minutes and attacking heads at seeds (7, 17, 27, 37, 47), the ensemble
+trained **once** on the 2022-25 benchmark split and then predicting across
+every 2025-26 test gameweek (not a per-gameweek walk-forward refit) — which
+prices how much the model's own estimate moves and nothing else. The σ it
+produces is roughly an order of magnitude smaller than v6's (global 1.953 →
+0.0692; cell 3_3 3.4525 → 0.2573), which confirms the two fits measure
+different quantities rather than the same one at different precision.
+
+**And that is the finding, not the win.** The estimation σ is small enough
+that it effectively *disables* scenario gating rather than sharpening it. Cell
+0_0 — 62.4% of the fitted rows — carries σ = 0.018, so the great mass of the
+board is perturbed by less than a fiftieth of a point and forty "independent"
+scenarios come back as forty copies of the same board. Every move then clears
+threshold, and the gate waves through what the raw solve already wanted. The
+replay says so directly: the estimation arm is **identical to the ungated raw
+replay in 31 of 34 weeks**, and across the three weeks that differ it is net
+**−6**. So the arm did not beat the heuristic by gating better; it beat the
+heuristic by not gating.
+
+Three-way evidence, single seed, no error bars:
+
+===================  ======  ====  =========  ============
+arm                  total   hits  transfers  held weeks
+===================  ======  ====  =========  ============
+heuristic (gated)    1785    15    69         8
+estimation (gated)   1908    11    64         2
+raw (ungated)        1914    —     —          —
+===================  ======  ====  =========  ============
+
+Read that column downward: the ranking is not "estimation σ > heuristic σ", it
+is "no gating > gating", with the estimation arm sitting six points below the
+ungated baseline it very nearly is. The pre-registered rule asked only whether
+the estimation arm came within 5 of the heuristic arm; it did, by +123, so the
+literal rule passes and this constant is True. Whether that should *merge* is
+a different question — the honest reading is that S2 tested a σ small enough
+to make the gate a no-op — and it is **escalated to the user**, three ways:
+ship gating on with estimation σ, ship gating off outright, or hold for a σ
+between the two scales.
+
+**Open, unbisected:** the same gating machinery measured **+75** at v4c's D1
+and **−129** here (heuristic gated 1785 vs raw 1914). The sign reversed and
+nobody has bisected why. Until that is explained, neither this cycle's
+direction nor v4c's should be treated as settled.
 
 The rule's second condition — captain sim-support at or above 0.60 on the
-current live advice — is a property of the shipped serving path, so it is
-measured with this constant already True: **live-support check follows**, and
-a shortfall there is grounds to flip this back and say so here.
+current live advice — measured 95% with this constant True. It is a weak
+check under a near-zero σ: with all scenarios near-identical, high support is
+what a disabled gate produces, not evidence that the gate discriminates.
 
 Off is still one line away and still the pre-v6 heuristic value for value —
 :func:`noise_ep` with ``table=None`` is untouched, and the degradation rails
@@ -306,9 +340,10 @@ def noise_ep(ep: dict[tuple[int, int], float],
     certain", and inventing a scale for him would be the worse error.
 
     ``table`` of ``None`` defers to :func:`scenario_noise`, which since gate
-    S1 answers ``None`` — so the default really is the heuristic. Pass a table
-    explicitly to price a whole sweep off a single load, or to opt into the
-    calibrated arm.
+    S2 answers the shipped estimation table — see
+    :data:`CALIBRATED_NOISE_DEFAULT` for what that σ actually does to the
+    sweep. Pass a table explicitly to price a whole sweep off a single load,
+    or to pin an arm.
     """
     if table is None:
         table = scenario_noise()
