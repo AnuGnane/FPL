@@ -1,0 +1,717 @@
+# EPL head-coach spells, 2022-07-01 -> present.
+#
+# One [[spell]] per manager per club. Half-open: a spell covers
+# start_date <= match < end_date, so a successor's start_date is his
+# predecessor's end_date and no match is claimed twice. end_date = ""
+# means "still in post". Caretakers of under four league matches are folded
+# into the successor's spell.
+#
+# team_code is the FPL club code (the one player_gw.parquet carries), not
+# the season-scoped team id.
+#
+# Clubs are covered for the seasons they appear in the frame (2022-23 ..
+# 2026-27). A spell that began before 2022-07-01 keeps its real start_date.
+# Second-tier spells are carried only where they run continuously into a
+# Premier League season (Farke at Leeds, Parker at Burnley, McKenna at
+# Ipswich, Le Bris at Sunderland, Lampard at Coventry, Jakirovic at Hull),
+# so that no promoted club's opening fixtures fall outside a spell.
+#
+# Where a manager's departure date is itself a matchday, or a caretaker with
+# fewer than four league matches sat in between, the boundary is set to the
+# successor's start so that every match in the frame is claimed exactly once.
+
+# --- Manchester United (1) -------------------------------------------------
+
+[[spell]]
+club = "Man Utd"
+team_code = 1
+manager = "Erik ten Hag"
+start_date = "2022-05-23"
+end_date = "2024-10-28"
+
+# Ruud van Nistelrooy's caretaker spell (2 league matches) folds into Amorim.
+[[spell]]
+club = "Man Utd"
+team_code = 1
+manager = "Ruben Amorim"
+start_date = "2024-10-28"
+end_date = "2026-01-05"
+
+# Darren Fletcher's caretaker spell (1 league match) folds into Carrick.
+[[spell]]
+club = "Man Utd"
+team_code = 1
+manager = "Michael Carrick"
+start_date = "2026-01-05"
+end_date = ""
+
+# --- Leeds United (2) ------------------------------------------------------
+
+# Michael Skubala's caretaker spell (3 league matches) folds into Gracia.
+[[spell]]
+club = "Leeds"
+team_code = 2
+manager = "Jesse Marsch"
+start_date = "2022-02-28"
+end_date = "2023-02-06"
+
+[[spell]]
+club = "Leeds"
+team_code = 2
+manager = "Javi Gracia"
+start_date = "2023-02-06"
+end_date = "2023-05-03"
+
+# Allardyce took exactly four league matches, so he keeps his own spell.
+[[spell]]
+club = "Leeds"
+team_code = 2
+manager = "Sam Allardyce"
+start_date = "2023-05-03"
+end_date = "2023-07-04"
+
+[[spell]]
+club = "Leeds"
+team_code = 2
+manager = "Daniel Farke"
+start_date = "2023-07-04"
+end_date = ""
+
+# --- Arsenal (3) -----------------------------------------------------------
+
+[[spell]]
+club = "Arsenal"
+team_code = 3
+manager = "Mikel Arteta"
+start_date = "2019-12-20"
+end_date = ""
+
+# --- Newcastle United (4) --------------------------------------------------
+
+[[spell]]
+club = "Newcastle"
+team_code = 4
+manager = "Eddie Howe"
+start_date = "2021-11-08"
+end_date = "2026-08-05"
+
+[[spell]]
+club = "Newcastle"
+team_code = 4
+manager = "Matthias Jaissle"
+start_date = "2026-08-05"
+end_date = ""
+
+# --- Tottenham Hotspur (6) -------------------------------------------------
+
+[[spell]]
+club = "Spurs"
+team_code = 6
+manager = "Antonio Conte"
+start_date = "2021-11-02"
+end_date = "2023-03-26"
+
+[[spell]]
+club = "Spurs"
+team_code = 6
+manager = "Cristian Stellini"
+start_date = "2023-03-26"
+end_date = "2023-04-24"
+
+[[spell]]
+club = "Spurs"
+team_code = 6
+manager = "Ryan Mason"
+start_date = "2023-04-24"
+end_date = "2023-06-06"
+
+[[spell]]
+club = "Spurs"
+team_code = 6
+manager = "Ange Postecoglou"
+start_date = "2023-06-06"
+end_date = "2025-06-12"
+
+[[spell]]
+club = "Spurs"
+team_code = 6
+manager = "Thomas Frank"
+start_date = "2025-06-12"
+end_date = "2026-02-14"
+
+[[spell]]
+club = "Spurs"
+team_code = 6
+manager = "Igor Tudor"
+start_date = "2026-02-14"
+end_date = "2026-03-31"
+
+[[spell]]
+club = "Spurs"
+team_code = 6
+manager = "Roberto De Zerbi"
+start_date = "2026-03-31"
+end_date = ""
+
+# --- Aston Villa (7) -------------------------------------------------------
+
+# Aaron Danks's caretaker spell (2 league matches) folds into Emery.
+[[spell]]
+club = "Aston Villa"
+team_code = 7
+manager = "Steven Gerrard"
+start_date = "2021-11-11"
+end_date = "2022-10-20"
+
+[[spell]]
+club = "Aston Villa"
+team_code = 7
+manager = "Unai Emery"
+start_date = "2022-10-20"
+end_date = ""
+
+# --- Chelsea (8) -----------------------------------------------------------
+
+[[spell]]
+club = "Chelsea"
+team_code = 8
+manager = "Thomas Tuchel"
+start_date = "2021-01-26"
+end_date = "2022-09-08"
+
+# Bruno Saltor's caretaker spell (1 league match) folds into Lampard.
+[[spell]]
+club = "Chelsea"
+team_code = 8
+manager = "Graham Potter"
+start_date = "2022-09-08"
+end_date = "2023-04-02"
+
+[[spell]]
+club = "Chelsea"
+team_code = 8
+manager = "Frank Lampard"
+start_date = "2023-04-02"
+end_date = "2023-07-01"
+
+[[spell]]
+club = "Chelsea"
+team_code = 8
+manager = "Mauricio Pochettino"
+start_date = "2023-07-01"
+end_date = "2024-07-01"
+
+# Calum McFarlane's first caretaker spell (2 league matches) folds into
+# Rosenior; his second (four league matches) keeps its own spell.
+[[spell]]
+club = "Chelsea"
+team_code = 8
+manager = "Enzo Maresca"
+start_date = "2024-07-01"
+end_date = "2026-01-01"
+
+[[spell]]
+club = "Chelsea"
+team_code = 8
+manager = "Liam Rosenior"
+start_date = "2026-01-01"
+end_date = "2026-04-22"
+
+[[spell]]
+club = "Chelsea"
+team_code = 8
+manager = "Calum McFarlane"
+start_date = "2026-04-22"
+end_date = "2026-07-01"
+
+[[spell]]
+club = "Chelsea"
+team_code = 8
+manager = "Xabi Alonso"
+start_date = "2026-07-01"
+end_date = ""
+
+# --- Coventry City (9) -----------------------------------------------------
+
+[[spell]]
+club = "Coventry City"
+team_code = 9
+manager = "Frank Lampard"
+start_date = "2024-11-28"
+end_date = ""
+
+# --- Everton (11) ----------------------------------------------------------
+
+[[spell]]
+club = "Everton"
+team_code = 11
+manager = "Frank Lampard"
+start_date = "2022-01-31"
+end_date = "2023-01-30"
+
+# Leighton Baines's caretaker spell (no league matches) folds into Moyes.
+[[spell]]
+club = "Everton"
+team_code = 11
+manager = "Sean Dyche"
+start_date = "2023-01-30"
+end_date = "2025-01-09"
+
+[[spell]]
+club = "Everton"
+team_code = 11
+manager = "David Moyes"
+start_date = "2025-01-09"
+end_date = ""
+
+# --- Leicester City (13) ---------------------------------------------------
+
+# Sadler/Stowell's caretaker spell (2 league matches) folds into Smith.
+[[spell]]
+club = "Leicester"
+team_code = 13
+manager = "Brendan Rodgers"
+start_date = "2019-02-26"
+end_date = "2023-04-02"
+
+[[spell]]
+club = "Leicester"
+team_code = 13
+manager = "Dean Smith"
+start_date = "2023-04-02"
+end_date = "2023-06-16"
+
+[[spell]]
+club = "Leicester"
+team_code = 13
+manager = "Enzo Maresca"
+start_date = "2023-06-16"
+end_date = "2024-06-20"
+
+# Ben Dawson's caretaker spell (1 league match) folds into van Nistelrooy.
+[[spell]]
+club = "Leicester"
+team_code = 13
+manager = "Steve Cooper"
+start_date = "2024-06-20"
+end_date = "2024-11-24"
+
+[[spell]]
+club = "Leicester"
+team_code = 13
+manager = "Ruud van Nistelrooy"
+start_date = "2024-11-24"
+end_date = "2025-06-27"
+
+# --- Liverpool (14) --------------------------------------------------------
+
+[[spell]]
+club = "Liverpool"
+team_code = 14
+manager = "Jurgen Klopp"
+start_date = "2015-10-08"
+end_date = "2024-06-01"
+
+[[spell]]
+club = "Liverpool"
+team_code = 14
+manager = "Arne Slot"
+start_date = "2024-06-01"
+end_date = "2026-06-04"
+
+[[spell]]
+club = "Liverpool"
+team_code = 14
+manager = "Andoni Iraola"
+start_date = "2026-06-04"
+end_date = ""
+
+# --- Nottingham Forest (17) ------------------------------------------------
+
+[[spell]]
+club = "Nott'm Forest"
+team_code = 17
+manager = "Steve Cooper"
+start_date = "2021-09-21"
+end_date = "2023-12-20"
+
+[[spell]]
+club = "Nott'm Forest"
+team_code = 17
+manager = "Nuno Espirito Santo"
+start_date = "2023-12-20"
+end_date = "2025-09-09"
+
+[[spell]]
+club = "Nott'm Forest"
+team_code = 17
+manager = "Ange Postecoglou"
+start_date = "2025-09-09"
+end_date = "2025-10-21"
+
+[[spell]]
+club = "Nott'm Forest"
+team_code = 17
+manager = "Sean Dyche"
+start_date = "2025-10-21"
+end_date = "2026-02-15"
+
+[[spell]]
+club = "Nott'm Forest"
+team_code = 17
+manager = "Vitor Pereira"
+start_date = "2026-02-15"
+end_date = "2026-07-06"
+
+[[spell]]
+club = "Nott'm Forest"
+team_code = 17
+manager = "Oliver Glasner"
+start_date = "2026-07-06"
+end_date = ""
+
+# --- Southampton (20) ------------------------------------------------------
+
+# Ruben Selles's first (caretaker) spell had no league match; it folds into
+# Jones. Simon Rusk's December 2024 spell (2 league matches) folds into Juric;
+# his April 2025 spell (7 league matches) keeps its own.
+[[spell]]
+club = "Southampton"
+team_code = 20
+manager = "Ralph Hasenhuttl"
+start_date = "2018-12-06"
+end_date = "2022-11-07"
+
+[[spell]]
+club = "Southampton"
+team_code = 20
+manager = "Nathan Jones"
+start_date = "2022-11-07"
+end_date = "2023-02-12"
+
+[[spell]]
+club = "Southampton"
+team_code = 20
+manager = "Ruben Selles"
+start_date = "2023-02-12"
+end_date = "2023-06-21"
+
+[[spell]]
+club = "Southampton"
+team_code = 20
+manager = "Russell Martin"
+start_date = "2023-06-21"
+end_date = "2024-12-15"
+
+[[spell]]
+club = "Southampton"
+team_code = 20
+manager = "Ivan Juric"
+start_date = "2024-12-15"
+end_date = "2025-04-07"
+
+[[spell]]
+club = "Southampton"
+team_code = 20
+manager = "Simon Rusk"
+start_date = "2025-04-07"
+end_date = "2025-05-26"
+
+# --- West Ham United (21) --------------------------------------------------
+
+[[spell]]
+club = "West Ham"
+team_code = 21
+manager = "David Moyes"
+start_date = "2019-12-29"
+end_date = "2024-07-01"
+
+[[spell]]
+club = "West Ham"
+team_code = 21
+manager = "Julen Lopetegui"
+start_date = "2024-07-01"
+end_date = "2025-01-09"
+
+[[spell]]
+club = "West Ham"
+team_code = 21
+manager = "Graham Potter"
+start_date = "2025-01-09"
+end_date = "2025-09-27"
+
+[[spell]]
+club = "West Ham"
+team_code = 21
+manager = "Nuno Espirito Santo"
+start_date = "2025-09-27"
+end_date = ""
+
+# --- Crystal Palace (31) ---------------------------------------------------
+
+# Both of Paddy McCarthy's caretaker spells (one league match each) fold into
+# the successor.
+[[spell]]
+club = "Crystal Palace"
+team_code = 31
+manager = "Patrick Vieira"
+start_date = "2021-07-04"
+end_date = "2023-03-17"
+
+[[spell]]
+club = "Crystal Palace"
+team_code = 31
+manager = "Roy Hodgson"
+start_date = "2023-03-17"
+end_date = "2024-02-19"
+
+[[spell]]
+club = "Crystal Palace"
+team_code = 31
+manager = "Oliver Glasner"
+start_date = "2024-02-19"
+end_date = "2026-06-15"
+
+[[spell]]
+club = "Crystal Palace"
+team_code = 31
+manager = "Pierre Sage"
+start_date = "2026-06-15"
+end_date = ""
+
+# --- Brighton & Hove Albion (36) -------------------------------------------
+
+# Andrew Crofts's caretaker spell covered no fixtures; it folds into De Zerbi.
+[[spell]]
+club = "Brighton"
+team_code = 36
+manager = "Graham Potter"
+start_date = "2019-05-20"
+end_date = "2022-09-08"
+
+[[spell]]
+club = "Brighton"
+team_code = 36
+manager = "Roberto De Zerbi"
+start_date = "2022-09-08"
+end_date = "2024-06-15"
+
+[[spell]]
+club = "Brighton"
+team_code = 36
+manager = "Fabian Hurzeler"
+start_date = "2024-06-15"
+end_date = ""
+
+# --- Wolverhampton Wanderers (39) ------------------------------------------
+
+[[spell]]
+club = "Wolves"
+team_code = 39
+manager = "Bruno Lage"
+start_date = "2021-06-09"
+end_date = "2022-10-02"
+
+[[spell]]
+club = "Wolves"
+team_code = 39
+manager = "Steve Davis"
+start_date = "2022-10-02"
+end_date = "2022-11-14"
+
+[[spell]]
+club = "Wolves"
+team_code = 39
+manager = "Julen Lopetegui"
+start_date = "2022-11-14"
+end_date = "2023-08-09"
+
+[[spell]]
+club = "Wolves"
+team_code = 39
+manager = "Gary O'Neil"
+start_date = "2023-08-09"
+end_date = "2024-12-19"
+
+# James Collins's caretaker spell (1 league match) folds into Edwards.
+[[spell]]
+club = "Wolves"
+team_code = 39
+manager = "Vitor Pereira"
+start_date = "2024-12-19"
+end_date = "2025-11-02"
+
+[[spell]]
+club = "Wolves"
+team_code = 39
+manager = "Rob Edwards"
+start_date = "2025-11-02"
+end_date = "2026-06-15"
+
+# --- Ipswich Town (40) -----------------------------------------------------
+
+[[spell]]
+club = "Ipswich Town"
+team_code = 40
+manager = "Kieran McKenna"
+start_date = "2021-12-16"
+end_date = "2026-06-23"
+
+[[spell]]
+club = "Ipswich Town"
+team_code = 40
+manager = "Gary O'Neil"
+start_date = "2026-06-23"
+end_date = ""
+
+# --- Manchester City (43) --------------------------------------------------
+
+[[spell]]
+club = "Man City"
+team_code = 43
+manager = "Pep Guardiola"
+start_date = "2016-07-01"
+end_date = "2026-06-29"
+
+[[spell]]
+club = "Man City"
+team_code = 43
+manager = "Enzo Maresca"
+start_date = "2026-06-29"
+end_date = ""
+
+# --- Sheffield United (49) -------------------------------------------------
+
+[[spell]]
+club = "Sheffield Utd"
+team_code = 49
+manager = "Paul Heckingbottom"
+start_date = "2021-11-25"
+end_date = "2023-12-05"
+
+[[spell]]
+club = "Sheffield Utd"
+team_code = 49
+manager = "Chris Wilder"
+start_date = "2023-12-05"
+end_date = "2025-06-18"
+
+# --- Fulham (54) -----------------------------------------------------------
+
+[[spell]]
+club = "Fulham"
+team_code = 54
+manager = "Marco Silva"
+start_date = "2021-07-01"
+end_date = "2026-07-07"
+
+[[spell]]
+club = "Fulham"
+team_code = 54
+manager = "Alvaro Arbeloa"
+start_date = "2026-07-07"
+end_date = ""
+
+# --- Sunderland (56) -------------------------------------------------------
+
+[[spell]]
+club = "Sunderland"
+team_code = 56
+manager = "Regis Le Bris"
+start_date = "2024-07-01"
+end_date = ""
+
+# --- Hull City (88) --------------------------------------------------------
+
+[[spell]]
+club = "Hull City"
+team_code = 88
+manager = "Sergej Jakirovic"
+start_date = "2025-06-11"
+end_date = ""
+
+# --- Burnley (90) ----------------------------------------------------------
+
+[[spell]]
+club = "Burnley"
+team_code = 90
+manager = "Vincent Kompany"
+start_date = "2022-06-14"
+end_date = "2024-07-05"
+
+# Mike Jackson took exactly four league matches, so he keeps his own spell.
+[[spell]]
+club = "Burnley"
+team_code = 90
+manager = "Scott Parker"
+start_date = "2024-07-05"
+end_date = "2026-04-30"
+
+[[spell]]
+club = "Burnley"
+team_code = 90
+manager = "Mike Jackson"
+start_date = "2026-04-30"
+end_date = "2026-07-10"
+
+[[spell]]
+club = "Burnley"
+team_code = 90
+manager = "Nicky Hayen"
+start_date = "2026-07-10"
+end_date = ""
+
+# --- Bournemouth (91) ------------------------------------------------------
+
+[[spell]]
+club = "Bournemouth"
+team_code = 91
+manager = "Scott Parker"
+start_date = "2021-06-28"
+end_date = "2022-08-30"
+
+[[spell]]
+club = "Bournemouth"
+team_code = 91
+manager = "Gary O'Neil"
+start_date = "2022-08-30"
+end_date = "2023-06-19"
+
+[[spell]]
+club = "Bournemouth"
+team_code = 91
+manager = "Andoni Iraola"
+start_date = "2023-06-19"
+end_date = "2026-06-01"
+
+[[spell]]
+club = "Bournemouth"
+team_code = 91
+manager = "Marco Rose"
+start_date = "2026-06-01"
+end_date = ""
+
+# --- Brentford (94) --------------------------------------------------------
+
+[[spell]]
+club = "Brentford"
+team_code = 94
+manager = "Thomas Frank"
+start_date = "2018-10-16"
+end_date = "2025-06-27"
+
+[[spell]]
+club = "Brentford"
+team_code = 94
+manager = "Keith Andrews"
+start_date = "2025-06-27"
+end_date = ""
+
+# --- Luton Town (102) ------------------------------------------------------
+
+[[spell]]
+club = "Luton Town"
+team_code = 102
+manager = "Rob Edwards"
+start_date = "2022-11-17"
+end_date = "2025-01-09"
