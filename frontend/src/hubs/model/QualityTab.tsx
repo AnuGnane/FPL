@@ -375,16 +375,26 @@ const PEN_COLUMNS: Column<PenTrackerGw>[] = [
 function PensSection() {
   const [data, setData] = useState<PenTrackerData | null>(null)
   const [empty, setEmpty] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     apiGet<PenTrackerData>('/api/pens').then(setData).catch((e: Error) => {
-      // 422 is the ordinary "nobody has run it yet"; anything else is a
-      // server that cannot answer, and this card is not the place to shout
-      // about it — the page above still has its numbers.
+      // 422 is the ordinary "nobody has run it yet". Anything else is a
+      // server that cannot answer — said in this card and no louder, because
+      // the page above still has its numbers. Silence was worse: a card that
+      // simply disappears reads as "no penalties tracked".
       if (e instanceof ApiError && e.status === 422) setEmpty(e.message)
+      else setError(e.message)
     })
   }, [])
 
+  if (error) {
+    return (
+      <Card title="Penalty term unavailable" className="mt-4">
+        <p className="text-rust">{error}</p>
+      </Card>
+    )
+  }
   if (empty) {
     return (
       <EmptyState

@@ -258,11 +258,24 @@ describe('QualityTab penalty card', () => {
 
   it('names the command when no tracker has been written', async () => {
     apiGet.mockImplementation(routed(
-      new FakeApiError(422, 'no pen tracker report — run gaffer track-pens'),
+      new FakeApiError(422,
+                       'no pen tracker report — run `gaffer track-pens` first'),
       true))
     render(<MemoryRouter><QualityTab /></MemoryRouter>)
     expect(await screen.findByText(/no pen tracker report/))
       .toBeInTheDocument()
     expect(screen.getByText('gaffer track-pens')).toBeInTheDocument()
+  })
+
+  // A server that cannot answer is not the same as one with nothing to say.
+  // The card used to vanish on a 500, which reads as "no penalties tracked"
+  // — so the one thing it must do is stay visible and admit the failure,
+  // without taking the rest of the tab's numbers down with it.
+  it('shows the failure but keeps the rest of the tab on a 500', async () => {
+    apiGet.mockImplementation(routed(
+      new FakeApiError(500, 'pen tracker blew up'), true))
+    render(<MemoryRouter><QualityTab /></MemoryRouter>)
+    expect(await screen.findByText('pen tracker blew up')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Holdout' })).toBeInTheDocument()
   })
 })

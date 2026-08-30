@@ -49,7 +49,28 @@ def client(tmp_path, monkeypatch):
 def test_pens_without_a_report_tells_you_to_run_track_pens(client):
     response = client.get("/api/pens")
     assert response.status_code == 422
-    assert "gaffer track-pens" in response.json()["detail"]
+    assert response.json()["detail"] == (
+        "no pen tracker report — run `gaffer track-pens` first"
+    )
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "{not json at all",  # half-written by an interrupted run
+        json.dumps({"gws": "not a list"}),  # right file, wrong shape
+    ],
+)
+def test_an_unreadable_report_is_a_422_not_a_500(client, tmp_path, body):
+    """A truncated or stale-shaped artifact is an operator problem with a
+    known fix, not a server fault: say what to re-run rather than 500."""
+    (tmp_path / "reports").mkdir()
+    (tmp_path / "reports" / "pen_tracker.json").write_text(body)
+    response = client.get("/api/pens")
+    assert response.status_code == 422
+    assert response.json()["detail"] == (
+        "pen tracker report is unreadable — re-run `gaffer track-pens`"
+    )
 
 
 def test_pens_serves_the_season_and_every_gameweek(client, tmp_path):
