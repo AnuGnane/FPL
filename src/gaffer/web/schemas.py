@@ -766,3 +766,54 @@ class Journal(BaseModel):
     rows: list[JournalRow] = Field(default_factory=list)
     cumulative: list[JournalPoint] = Field(default_factory=list)
     built_at: str | None = None
+
+
+class PenTrackerGw(BaseModel):
+    """One finished gameweek of the penalty tracker.
+
+    Every field but ``gw`` is optional because ``pen_tracker.safe_gw_block``
+    writes one of two shapes: the full block, or ``{"gw": N, "error": ...}``
+    when that week would not read. One optional-field model rather than a
+    union — a union would make the client discriminate before it can render
+    a row that is a row either way.
+    """
+
+    gw: int
+    instrument: str | None = None
+    rows: int | None = None
+    covered_rows: int | None = None
+    team_games: int | None = None
+    component_rows: int | None = None
+    predicted_ep_pen_taker: float | None = None
+    predicted_takers: int | None = None
+    pens_taken: float | None = None
+    pens_by_first_choice: float | None = None
+    taker_hit_rate: float | None = None
+    pens_per_team_game: float | None = None
+    realized_pen_points: float | None = None
+    error: str | None = None
+
+
+class PenTrackerTotals(BaseModel):
+    """The season line. All optional: a report that degraded before it
+    reached a single finished gameweek writes ``{}`` here."""
+
+    gws: int | None = None
+    instruments: list[str] = Field(default_factory=list)
+    team_games: int | None = None
+    predicted_ep_pen_taker: float | None = None
+    pens_taken: float | None = None
+    pens_by_first_choice: float | None = None
+    taker_hit_rate: float | None = None
+    pens_per_team_game: float | None = None
+    league_pens_pg_served: float | None = None
+    realized_pen_points: float | None = None
+
+
+class PenTracker(BaseModel):
+    """``reports/pen_tracker.json``, as written by ``gaffer track-pens``."""
+
+    season: str = ""
+    gws: list[PenTrackerGw] = Field(default_factory=list)
+    season_totals: PenTrackerTotals = Field(default_factory=PenTrackerTotals)
+    notes: list[str] = Field(default_factory=list)
