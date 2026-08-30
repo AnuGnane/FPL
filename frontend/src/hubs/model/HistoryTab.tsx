@@ -4,7 +4,7 @@ import {
   Tooltip, XAxis, YAxis,
 } from 'recharts'
 import { apiGet } from '../../api/client'
-import { Card, EmptyState } from '../../kit'
+import { Card, EmptyState, Loading, fmtNum } from '../../kit'
 import type { HistoryData } from '../../types'
 
 const COLOURS = ['var(--color-sage)', 'var(--color-info)', 'var(--color-rust)',
@@ -32,39 +32,62 @@ export default function HistoryTab() {
       .catch((e: Error) => setError(e.message))
   }, [])
 
-  if (error) return <p className="text-rust">{error}</p>
-  if (!data) return <p className="text-text-muted">Loading…</p>
+  if (error) {
+    return (
+      <Card title="History unavailable">
+        <p className="text-rust">{error}</p>
+      </Card>
+    )
+  }
+  if (!data) return <Loading />
 
   const rows = priceRows(data.prices)
 
   return (
     <>
       <Card title="Past runs" className="mb-4">
-        <table>
-          <thead>
-            <tr>
-              <th>GW</th><th>Captain</th><th>In</th><th>Out</th><th>Hits</th>
-              <th>Expected</th><th>Actual</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.runs.map((run) => (
-              <tr key={run.gw}>
-                <td><span className="num">{run.gw}</span></td>
-                <td>{run.captain}</td>
-                <td>{run.buys.join(', ') || '—'}</td>
-                <td>{run.sells.join(', ') || '—'}</td>
-                <td><span className="num">{run.hits}</span></td>
-                <td><span className="num">{run.expected_pts}</span></td>
-                <td>
-                  {run.actual_pts === null
-                    ? <span className="text-text-muted">not resolved yet</span>
-                    : <span className="num">{run.actual_pts}</span>}
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr>
+                <th className="label pb-1 text-right">GW</th>
+                <th className="label pb-1 text-left">Captain</th>
+                <th className="label pb-1 text-left">In</th>
+                <th className="label pb-1 text-left">Out</th>
+                <th className="label pb-1 text-right">Hits</th>
+                <th className="label pb-1 text-right">Expected</th>
+                <th className="label pb-1 text-right">Actual</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {data.runs.map((run) => (
+                <tr key={run.gw} className="border-t border-divider">
+                  <td className="num py-1.5 text-right text-text-secondary">
+                    {run.gw}
+                  </td>
+                  <td className="py-1.5 text-text">{run.captain}</td>
+                  <td className="py-1.5 text-sage">
+                    {run.buys.join(', ') || '—'}
+                  </td>
+                  <td className="py-1.5 text-rust">
+                    {run.sells.join(', ') || '—'}
+                  </td>
+                  <td className="num py-1.5 text-right text-text-muted">
+                    {run.hits}
+                  </td>
+                  <td className="num py-1.5 text-right text-text-secondary">
+                    {fmtNum(run.expected_pts)}
+                  </td>
+                  <td className="py-1.5 text-right">
+                    {run.actual_pts === null
+                      ? <span className="text-text-faint">not resolved yet</span>
+                      : <span className="num text-text">{run.actual_pts}</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </Card>
       <Card title="Price history" className="mb-4">
         <div aria-label="Price history">
@@ -96,9 +119,14 @@ export default function HistoryTab() {
             />
             )
           : (
-            <ul>
+            <ul className="flex flex-col gap-1">
               {data.backtests.map((row, index) => (
-                <li key={index}>{JSON.stringify(row)}</li>
+                <li key={index}
+                    className="num overflow-x-auto rounded-card border
+                               border-border bg-base px-2 py-1 text-xs
+                               text-text-secondary">
+                  {JSON.stringify(row)}
+                </li>
               ))}
             </ul>
           )}

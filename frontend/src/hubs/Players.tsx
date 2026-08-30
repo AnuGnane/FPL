@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react'
 import { apiGet } from '../api/client'
 import { useDebounced } from '../api/useDebounced'
 import {
-  type Column, Card, DataTable, EmptyState, PageHeader, PosBadge, Sparkline,
-  fmtNum, posColor,
+  type Column, Card, DataTable, EmptyState, Loading, PageHeader, PosBadge,
+  Sparkline, fmtNum, posColor,
 } from '../kit'
 import type { AdviceLatest, PlayerRow } from '../types'
 import ComparePanel from './players/ComparePanel'
@@ -86,7 +86,11 @@ export default function Players() {
     <>
       <PageHeader
         title="Players"
-        context={picked.length > 0 ? `${picked.length} selected` : undefined}
+        // Always says something: an empty context line under a title is the
+        // one thing the header cannot do well.
+        context={picked.length > 0
+          ? `${picked.length} selected for compare`
+          : `${(rows ?? []).length} in the candidate pool`}
       />
       <Tabs.Root defaultValue="explorer">
         <Tabs.List className="mb-4 flex border-b border-divider">
@@ -166,7 +170,7 @@ export default function Players() {
               />
               )
             : gw === null
-              ? <p className="text-text-muted">Loading…</p>
+              ? <Loading />
               : <ComparePanel gw={gw} players={selected} />}
         </Tabs.Content>
         <Tabs.Content value="matrix">

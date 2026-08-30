@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../../api/client'
-import { EmptyState, difficultyBackground } from '../../kit'
+import { Card, EmptyState, Loading, difficultyBackground } from '../../kit'
 import type { FixtureMatrixData, MatrixCell } from '../../types'
 
 type View = 'attack' | 'defence'
@@ -15,7 +15,7 @@ export default function FixtureMatrix({ from }: { from: number }) {
       .catch(() => setData({ gws: [], teams: [], source: 'none' }))
   }, [from])
 
-  if (!data) return <p className="text-text-muted">Loading…</p>
+  if (!data) return <Loading />
   if (data.source === 'none' || data.teams.length === 0) {
     return (
       <EmptyState
@@ -30,7 +30,14 @@ export default function FixtureMatrix({ from }: { from: number }) {
   const score = (cell: MatrixCell) => view === 'attack' ? cell.attack : cell.defence
 
   return (
-    <div>
+    <Card
+      title="Fixture difficulty"
+      action={(
+        <span className="text-text-muted">
+          Home in caps, away in lower case.
+        </span>
+      )}
+    >
       <div className="mb-3 flex gap-2">
         {(['attack', 'defence'] as View[]).map((option) => (
           <button
@@ -88,6 +95,6 @@ export default function FixtureMatrix({ from }: { from: number }) {
           </tbody>
         </table>
       </div>
-    </div>
+    </Card>
   )
 }

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiGet } from '../api/client'
 import {
-  type Column, Card, DataTable, EmptyState, PageHeader, PlayerName, Stat,
-  fmtNum,
+  type Column, Card, DataTable, EmptyState, Loading, PageHeader, PlayerName,
+  Stat, fmtNum,
 } from '../kit'
 import type { LiveState, LiveTableRow } from '../types'
 
@@ -47,7 +47,7 @@ export default function Live() {
   }, [auto, active, load])
 
   const pollToggle = (
-    <label className="flex items-center gap-2 text-text-muted">
+    <label className="flex items-center gap-2 text-text-secondary">
       <input type="checkbox" checked={auto}
              onChange={(e) => setAuto(e.target.checked)} />
       Auto-refresh
@@ -83,7 +83,7 @@ export default function Live() {
     return (
       <>
         {header}
-        <p className="text-text-muted">Loading…</p>
+        <Loading />
       </>
     )
   }
@@ -109,44 +109,70 @@ export default function Live() {
         <Stat label="Your points" value={fmtNum(data.my_points, 0)} />
         <Stat label="Matches in play" value={fmtNum(data.matches_in_play, 0)} />
       </div>
-      <Card title="Your players" className="mb-4">
-        <p className="text-text-muted">
-          Bonus is provisional (reconstructed from BPS) and no autosubs are
-          applied.
-        </p>
-        {data.notice && <p className="text-text-muted">{data.notice}</p>}
-        <table>
-          <thead>
-            <tr>
-              <th>Player</th><th>Pts</th><th>Bonus</th><th>Mins</th>
-              <th>Status</th><th>Top 10k EO</th><th>Owned</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.players.map((player) => (
-              <tr key={player.element}>
-                <td>
-                  <span className="inline-flex items-center gap-1.5">
-                    <PlayerName code={player.code} name={player.name}
-                                pos={player.position} />
-                    {player.multiplier > 1 && ' (C)'}
-                  </span>
-                </td>
-                <td><span className="num">{player.points}</span></td>
-                <td><span className="num">{player.provisional_bonus > 0
-                  ? `+${player.provisional_bonus}` : '–'}</span></td>
-                <td><span className="num">{player.minutes}</span></td>
-                <td className="text-text-muted">{player.status}</td>
-                <td><span className="num">{player.tier_eo == null ? '–'
-                  : `${player.tier_eo}% ±${player.tier_eo_se ?? 0}`}</span></td>
-                <td><span className="num">
-                  {player.selected_by_percent == null ? '–'
-                    : `${player.selected_by_percent}%`}
-                </span></td>
+      <Card
+        title="Your players"
+        className="mb-4"
+        action={(
+          <span className="text-text-muted">
+            Bonus is provisional (reconstructed from BPS); no autosubs applied.
+          </span>
+        )}
+      >
+        {data.notice && (
+          <p className="mb-3 rounded-card border-l-2 border-info bg-base px-3
+                        py-2 text-text-muted">
+            {data.notice}
+          </p>
+        )}
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr>
+                <th className="label pb-1 text-left">Player</th>
+                <th className="label pb-1 text-right">Pts</th>
+                <th className="label pb-1 text-right">Bonus</th>
+                <th className="label pb-1 text-right">Mins</th>
+                <th className="label pb-1 text-left">Status</th>
+                <th className="label pb-1 text-right">Top 10k EO</th>
+                <th className="label pb-1 text-right">Owned</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {data.players.map((player) => (
+                <tr key={player.element} className="border-t border-divider">
+                  <td className="py-1.5">
+                    <span className="inline-flex items-center gap-1.5">
+                      <PlayerName code={player.code} name={player.name}
+                                  pos={player.position} />
+                      {player.multiplier > 1 && ' (C)'}
+                    </span>
+                  </td>
+                  <td className="num py-1.5 text-right text-text">
+                    {player.points}
+                  </td>
+                  <td className={`num py-1.5 text-right ${
+                    player.provisional_bonus > 0
+                      ? 'text-sage' : 'text-text-faint'}`}>
+                    {player.provisional_bonus > 0
+                      ? `+${player.provisional_bonus}` : '–'}
+                  </td>
+                  <td className="num py-1.5 text-right text-text-secondary">
+                    {player.minutes}
+                  </td>
+                  <td className="py-1.5 text-text-muted">{player.status}</td>
+                  <td className="num py-1.5 text-right text-text-secondary">
+                    {player.tier_eo == null ? '–'
+                      : `${player.tier_eo}% ±${player.tier_eo_se ?? 0}`}
+                  </td>
+                  <td className="num py-1.5 text-right text-text-muted">
+                    {player.selected_by_percent == null ? '–'
+                      : `${player.selected_by_percent}%`}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </Card>
       <Card title="League, live">
         <DataTable

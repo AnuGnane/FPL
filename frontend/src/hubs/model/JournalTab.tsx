@@ -5,7 +5,8 @@ import {
 } from 'recharts'
 import { apiGet } from '../../api/client'
 import {
-  type Column, Badge, Card, DataTable, EmptyState, TONE_CLASS, fmtDelta, toneOf,
+  type Column, Badge, Card, DataTable, EmptyState, Loading, TONE_CLASS,
+  fmtDelta, toneOf,
 } from '../../kit'
 import type { JournalData, JournalRow } from '../../types'
 
@@ -53,7 +54,7 @@ export default function JournalTab() {
       .catch(() => setData({ rows: [], cumulative: [], built_at: null }))
   }, [])
 
-  if (!data) return <p className="text-text-muted">Loading…</p>
+  if (!data) return <Loading />
   if (data.rows.length === 0) {
     return (
       <EmptyState

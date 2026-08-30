@@ -71,7 +71,11 @@ describe('Rival detail', () => {
       expect(screen.getByText(/£101.8m/)).toBeInTheDocument()
       expect(screen.getByText(/Captain: Salah/)).toBeInTheDocument()
       expect(screen.getByText('bboost')).toBeInTheDocument()
-      expect(screen.getByText(/74 live points/)).toBeInTheDocument()
+      // The count is its own <span className="num">, so match across children.
+      expect(screen.getByText(
+        (_, el) => el?.tagName === 'P'
+          && /74 live points/.test(el.textContent ?? ''),
+      )).toBeInTheDocument()
       expect(screen.getByText('Shared (1)')).toBeInTheDocument()
       expect(screen.getByText('Their differentials (1)')).toBeInTheDocument()
       expect(screen.getByText('Your differentials (0)')).toBeInTheDocument()

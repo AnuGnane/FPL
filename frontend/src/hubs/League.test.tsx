@@ -73,7 +73,8 @@ beforeEach(() => {
 describe('League hub', () => {
   it('draws the race chart', async () => {
     const { container } = render(<MemoryRouter><League /></MemoryRouter>)
-    await screen.findByText('Ten Hag Hive')
+    // Named twice on this tab now: once in standings, once in win probability.
+    await screen.findAllByText('Ten Hag Hive')
     expect(container.querySelector('.recharts-wrapper')).not.toBeNull()
   })
 

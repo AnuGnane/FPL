@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../../api/client'
-import { Card, EmptyState } from '../../kit'
+import { Card, EmptyState, Loading } from '../../kit'
 import type { HealthData } from '../../types'
 
 // No buttons here. This tab used to carry its own "Refresh data" and "Re-run
@@ -18,21 +18,38 @@ export default function HealthTab() {
   }
   useEffect(load, [])
 
-  if (error) return <p className="text-rust">{error}</p>
-  if (!data) return <p className="text-text-muted">Loading…</p>
+  if (error) {
+    return (
+      <Card title="Health unavailable">
+        <p className="text-rust">{error}</p>
+      </Card>
+    )
+  }
+  if (!data) return <Loading />
 
   return (
     <>
       <Card title="Data freshness" className="mb-4">
-        <table>
+        <table className="w-full">
+          <thead>
+            <tr>
+              <th className="label pb-1 text-left">Source</th>
+              <th className="label pb-1 text-left">Path</th>
+              <th className="label pb-1 text-right">Age</th>
+            </tr>
+          </thead>
           <tbody>
             {data.data.map((source) => (
-              <tr key={source.source}>
-                <td>{source.source}</td>
-                <td className="text-text-muted">{source.path}</td>
-                <td>
+              <tr key={source.source} className="border-t border-divider">
+                <td className="py-1.5 text-text">{source.source}</td>
+                <td className="num py-1.5 text-xs text-text-faint">
+                  {source.path}
+                </td>
+                <td className="py-1.5 text-right">
                   {source.present
-                    ? <span className="num">{`${source.age_hours}h ago`}</span>
+                    ? <span className="num text-text-secondary">
+                        {`${source.age_hours}h ago`}
+                      </span>
                     : <span className="text-rust">missing</span>}
                 </td>
               </tr>
@@ -40,20 +57,29 @@ export default function HealthTab() {
           </tbody>
         </table>
         {!data.odds_key_present && (
-          <p className="text-text-muted">
+          <p className="mt-3 text-text-muted">
             No odds key configured — add an odds key for market-implied
             numbers.
           </p>
         )}
       </Card>
       <Card title="Models" className="mb-4">
-        <table>
+        <table className="w-full">
+          <thead>
+            <tr>
+              <th className="label pb-1 text-left">Model</th>
+              <th className="label pb-1 text-left">Saved</th>
+              <th className="label pb-1 text-left">Metrics</th>
+            </tr>
+          </thead>
           <tbody>
             {data.models.map((model) => (
-              <tr key={model.name}>
-                <td>{model.name}</td>
-                <td>{model.saved_at}</td>
-                <td className="text-text-muted">
+              <tr key={model.name} className="border-t border-divider">
+                <td className="py-1.5 text-text">{model.name}</td>
+                <td className="num py-1.5 text-text-secondary">
+                  {model.saved_at}
+                </td>
+                <td className="num py-1.5 text-xs text-text-faint">
                   {JSON.stringify(model.metrics)}
                 </td>
               </tr>
@@ -61,15 +87,23 @@ export default function HealthTab() {
           </tbody>
         </table>
         {data.model_health && (
-          <p className="text-text-muted">
-            Last scored gameweek: {JSON.stringify(data.model_health)}
+          <p className="mt-3">
+            <span className="label">Last scored gameweek</span>{' '}
+            <span className="num text-xs text-text-faint">
+              {JSON.stringify(data.model_health)}
+            </span>
           </p>
         )}
       </Card>
       <Card title="Automation" className="mb-4">
-        <p className="text-text-muted">{data.launchd.log}</p>
+        <p className="num text-xs text-text-faint">{data.launchd.log}</p>
         {data.launchd.present
-          ? <p>{data.launchd.last_line}</p>
+          ? (
+            <p className="num mt-2 overflow-x-auto rounded-card border
+                          border-border bg-base px-2 py-1 text-text-secondary">
+              {data.launchd.last_line}
+            </p>
+            )
           : (
             <EmptyState
               title="No launchd log yet"
@@ -80,13 +114,19 @@ export default function HealthTab() {
             )}
       </Card>
       <Card title="Artifacts">
-        <table>
+        <table className="w-full">
+          <thead>
+            <tr>
+              <th className="label pb-1 text-left">Artifact</th>
+              <th className="label pb-1 text-right">Bytes</th>
+            </tr>
+          </thead>
           <tbody>
             {data.artifacts.map((item) => (
-              <tr key={item.name}>
-                <td>{item.name}</td>
-                <td className="text-text-muted">
-                  <span className="num">{item.bytes}</span> bytes
+              <tr key={item.name} className="border-t border-divider">
+                <td className="py-1.5 text-text">{item.name}</td>
+                <td className="num py-1.5 text-right text-text-secondary">
+                  {item.bytes}
                 </td>
               </tr>
             ))}

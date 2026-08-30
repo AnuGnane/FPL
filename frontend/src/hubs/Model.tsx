@@ -24,6 +24,8 @@ export default function Model() {
     <>
       <PageHeader
         title="Model"
+        context="How well it forecasts, what it decided, and whether the data
+                 under it is fresh."
         action={(
           <div className="flex flex-wrap gap-2">
             <JobButton kind="evaluate" label="Evaluate"

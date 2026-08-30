@@ -4,7 +4,7 @@ import {
   YAxis,
 } from 'recharts'
 import { apiGet } from '../../api/client'
-import { Badge, Card, PosBadge, Sparkline, fmtNum } from '../../kit'
+import { Badge, Card, EmptyState, PosBadge, Sparkline, fmtNum } from '../../kit'
 import type {
   ComponentsBreakdown, FixtureMatrixData, PlayerRow,
 } from '../../types'
@@ -29,10 +29,24 @@ export default function ComparePanel({ gw, players }: ComparePanelProps) {
   }, [gw])
 
   if (players.length < 2) {
-    return <p className="text-text-muted">Pick at least two players to compare.</p>
+    return (
+      <EmptyState
+        title="Pick at least two players"
+        detail="Compare reads the expected-points decomposition side by side,
+                so it needs two names ticked in the explorer."
+        action="Tick two rows in Explorer"
+      />
+    )
   }
   if (players.length > 4) {
-    return <p className="text-text-muted">Compare at most four players at once.</p>
+    return (
+      <EmptyState
+        title="Compare at most four players"
+        detail="Beyond four the component bars stop being readable. Untick a
+                name to bring the chart back."
+        action="Untick a row in Explorer"
+      />
+    )
   }
 
   // One row per component label, one bar series per player: the shape Recharts

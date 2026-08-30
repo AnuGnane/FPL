@@ -1,24 +1,28 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { apiGet } from '../../api/client'
-import { Card, PlayerName } from '../../kit'
+import { Badge, Card, Loading, PageHeader, PlayerName, fmtNum } from '../../kit'
 import type { RivalDetailData, SquadPlayer } from '../../types'
 
 function SquadList({ title, players }:
   { title: string; players: SquadPlayer[] }) {
   return (
-    <Card title={`${title} (${players.length})`}>
-      <ul>
-        {players.map((player) => (
-          <li key={player.code} className="flex items-center gap-1.5">
-            <PlayerName code={player.code} name={player.name}
-                        pos={player.position} />
-            <span className="num ml-auto text-text-muted">
-              £{player.price}m
-            </span>
-          </li>
-        ))}
-      </ul>
+    <Card title={`${title} (${players.length})`} className="mb-4">
+      {players.length === 0
+        ? <p className="text-text-muted">Nobody.</p>
+        : (
+          <ul className="flex flex-col gap-0.5">
+            {players.map((player) => (
+              <li key={player.code} className="flex items-center gap-1.5">
+                <PlayerName code={player.code} name={player.name}
+                            pos={player.position} />
+                <span className="num ml-auto text-text-muted">
+                  £{player.price}m
+                </span>
+              </li>
+            ))}
+          </ul>
+          )}
     </Card>
   )
 }
@@ -37,27 +41,68 @@ export default function RivalDetail() {
 
   if (error) {
     return (
-      <Card>
-        <p className="text-rust">{error}</p>
-        <button onClick={load}>Retry</button>
-      </Card>
+      <>
+        <PageHeader title="Rival" />
+        <Card title="Could not load this rival">
+          <p className="text-rust">{error}</p>
+          <button
+            type="button"
+            onClick={load}
+            className="mt-3 rounded-card border border-border bg-base px-3 py-2
+                       text-text-secondary hover:text-text"
+          >
+            Retry
+          </button>
+        </Card>
+      </>
     )
   }
-  if (!data) return <p className="text-text-muted">Loading…</p>
+  if (!data) {
+    return (
+      <>
+        <PageHeader title="Rival" />
+        <Loading />
+      </>
+    )
+  }
 
   return (
     <>
-      <h2>{data.name} · {data.player_name} · {data.total} pts</h2>
-      <Card>
-        <p>Team value £{data.team_value}m</p>
-        <p>Captain: {data.captain ? data.captain.name : 'unknown'}</p>
-        <p>
-          Chips used:{' '}
-          {data.chips_used.length === 0 ? 'none' : data.chips_used.map((chip) =>
-            <span className="tag" key={chip}>{chip}</span>)}
-        </p>
+      <PageHeader
+        title={data.name}
+        context={`${data.player_name} · ${fmtNum(data.total, 0)} pts`}
+      />
+      <Card title="Their season" className="mb-4">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3">
+          <div>
+            <dt className="label">Team value</dt>
+            <dd className="num text-text">£{data.team_value}m</dd>
+          </div>
+          <div>
+            <dt className="label">Armband</dt>
+            {/* Kept as one sentence: "Captain: X" is how the page has always
+                named it, and splitting it across elements would only make the
+                label say the same word twice. */}
+            <dd className="text-text">
+              Captain: {data.captain ? data.captain.name : 'unknown'}
+            </dd>
+          </div>
+          <div>
+            <dt className="label">Chips used</dt>
+            <dd className="mt-0.5 flex flex-wrap gap-1">
+              {data.chips_used.length === 0
+                ? <span className="text-text-muted">none</span>
+                : data.chips_used.map((chip) => (
+                  <Badge key={chip} variant="info">{chip}</Badge>
+                ))}
+            </dd>
+          </div>
+        </dl>
         {data.live_points !== null && (
-          <p className="text-sage">{data.live_points} live points this gameweek</p>
+          <p className="mt-3 text-sage">
+            <span className="num">{data.live_points}</span> live points this
+            gameweek
+          </p>
         )}
       </Card>
       {/* Picks are public only for finished gameweeks, so the squad can trail

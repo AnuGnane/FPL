@@ -6,7 +6,8 @@ import {
 } from 'recharts'
 import { apiGet } from '../api/client'
 import {
-  type Column, Card, DataTable, EmptyState, PageHeader, fmtNum, fmtPct,
+  type Column, Card, DataTable, EmptyState, Loading, PageHeader, fmtNum,
+  fmtPct,
 } from '../kit'
 import type { LeagueRaceData, RivalSummary } from '../types'
 
@@ -45,7 +46,7 @@ export default function League() {
     return (
       <>
         <PageHeader title="League" />
-        <p className="text-text-muted">Loading…</p>
+        <Loading />
       </>
     )
   }
@@ -77,6 +78,13 @@ export default function League() {
     return i < 0 ? 'transparent' : SERIES_COLOURS[i % SERIES_COLOURS.length]
   }
 
+  // The one sentence the hub exists to answer: where you are in it.
+  const you = race.standings.find((row) => row.is_you)
+  const leagueContext = you
+    ? `${race.standings.length} managers · you are ${you.rank}`
+      + ` on ${you.total}`
+    : `${race.standings.length} managers`
+
   const rivalColumns: Column<RivalSummary>[] = [
     { key: 'rank', header: '#', primary: true, numeric: true,
       value: (r) => r.rank },
@@ -94,7 +102,7 @@ export default function League() {
 
   return (
     <>
-      <PageHeader title="League" />
+      <PageHeader title="League" context={leagueContext} />
       <Tabs.Root defaultValue="race">
         <Tabs.List className="mb-4 flex border-b border-divider">
           <Tabs.Trigger value="race" className={TAB_CLASS}>Race</Tabs.Trigger>
@@ -131,6 +139,13 @@ export default function League() {
           </Card>
           <Card title="Standings" className="mb-4">
             <table className="w-full">
+              <thead>
+                <tr>
+                  <th className="label pb-1 text-left">#</th>
+                  <th className="label pb-1 text-left">Team</th>
+                  <th className="label pb-1 text-right">Total</th>
+                </tr>
+              </thead>
               <tbody>
                 {race.standings.map((row) => (
                   <tr key={row.entry} data-testid={`standing-${row.entry}`}
@@ -155,16 +170,28 @@ export default function League() {
             </table>
           </Card>
           <Card title="Win probability">
-            <ul>
-              {race.win_probability.map((prob) => (
-                <li key={prob.name} className="text-text-secondary">
-                  {prob.name}{' '}
-                  <span className="num text-text">{fmtPct(prob.p_win)}</span>
-                  {' at '}
-                  <span className="num">{fmtNum(prob.total, 0)}</span>
-                </li>
-              ))}
-            </ul>
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <th className="label pb-1 text-left">Team</th>
+                  <th className="label pb-1 text-right">P(win)</th>
+                  <th className="label pb-1 text-right">Projected</th>
+                </tr>
+              </thead>
+              <tbody>
+                {race.win_probability.map((prob) => (
+                  <tr key={prob.name} className="border-t border-divider">
+                    <td className="py-1 text-text-secondary">{prob.name}</td>
+                    <td className="num py-1 text-right text-text">
+                      {fmtPct(prob.p_win)}
+                    </td>
+                    <td className="num py-1 text-right text-text-muted">
+                      {fmtNum(prob.total, 0)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </Card>
         </Tabs.Content>
         <Tabs.Content value="rivals">

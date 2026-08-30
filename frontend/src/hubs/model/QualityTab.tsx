@@ -4,7 +4,7 @@ import {
   XAxis, YAxis,
 } from 'recharts'
 import { ApiError, apiGet } from '../../api/client'
-import { Card, EmptyState } from '../../kit'
+import { Card, EmptyState, Loading } from '../../kit'
 import type {
   BenchmarkEvaluation, CurrentEvaluation, DecompositionData, HeadMetrics,
   NewsShadowData, QualityData, StratifiedTable,
@@ -42,46 +42,60 @@ function StratifiedTableView(
   { columns }: { columns: Array<[string, StratifiedTable]> },
 ) {
   return (
-    <table>
-      <thead>
-        <tr>
-          <th>Category</th>
-          {columns.map(([name]) => (
-            <th key={name} colSpan={2}>{name}</th>
-          ))}
-        </tr>
-        <tr>
-          <th />
-          {columns.map(([name]) => [
-            <th key={`${name}-rmse`}>RMSE</th>,
-            <th key={`${name}-mae`}>MAE</th>,
-          ])}
-        </tr>
-      </thead>
-      <tbody>
-        {CATEGORIES.map(([key, label]) => (
-          <tr key={key}>
-            <td>{label}</td>
-            {columns.map(([name, table]) => [
-              <td key={`${name}-${key}-rmse`}>
-                <span className="num">{table[key] === undefined ? '—' : table[key].rmse}</span>
-              </td>,
-              <td key={`${name}-${key}-mae`}>
-                <span className="num">{table[key] === undefined ? '—' : table[key].mae}</span>
-              </td>,
+    <div className="overflow-x-auto">
+      <table className="w-full">
+        <thead>
+          <tr>
+            <th className="label pb-1 text-left">Category</th>
+            {columns.map(([name]) => (
+              <th key={name} colSpan={2}
+                  className="label border-l border-divider pb-1 text-center">
+                {name}
+              </th>
+            ))}
+          </tr>
+          <tr>
+            <th />
+            {columns.map(([name]) => [
+              <th key={`${name}-rmse`}
+                  className="label border-l border-divider pb-1 pl-2
+                             text-right">
+                RMSE
+              </th>,
+              <th key={`${name}-mae`} className="label pb-1 text-right">
+                MAE
+              </th>,
             ])}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {CATEGORIES.map(([key, label]) => (
+            <tr key={key} className="border-t border-divider">
+              <td className="py-1.5 text-text">{label}</td>
+              {columns.map(([name, table]) => [
+                <td key={`${name}-${key}-rmse`}
+                    className="num border-l border-divider py-1.5 pl-2
+                               text-right text-text">
+                  {table[key] === undefined ? '—' : table[key].rmse}
+                </td>,
+                <td key={`${name}-${key}-mae`}
+                    className="num py-1.5 text-right text-text-secondary">
+                  {table[key] === undefined ? '—' : table[key].mae}
+                </td>,
+              ])}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
 
 function Reliability({ label, head }: { label: string; head: HeadMetrics }) {
   const points = head.reliability
   return (
-    <div>
-      <p className="text-text-muted">
+    <div className="mb-3">
+      <p className="label">
         {label} — log loss {head.log_loss ?? 'n/a'}
       </p>
       <div aria-label={`${label} reliability`}>
@@ -105,7 +119,7 @@ function CurrentSection({ current }: { current: CurrentEvaluation }) {
   return (
     <>
       <Card title="Holdout" className="mb-4">
-        <p className="text-text-muted">
+        <p className="mb-3 text-text-muted">
           Last-10-slot holdout, {current.holdout_slots} gameweeks, sha{' '}
           {current.git_sha}, run {current.run_at}.
         </p>
@@ -143,7 +157,7 @@ function BenchmarkSection({ benchmark }: { benchmark: BenchmarkEvaluation }) {
       <StratifiedTableView
         columns={[['Ours', benchmark.stratified.all ?? {}], ...references]}
       />
-      <p className="text-text-muted">{benchmark.caveat}</p>
+      <p className="mt-3 text-text-muted">{benchmark.caveat}</p>
     </Card>
   )
 }
@@ -157,40 +171,49 @@ function DecompositionSection(
         + ` ${decomposition.start_gw}`}
       className="mb-4"
     >
-      <table>
+      <table className="w-full">
         <thead>
-          <tr><th>Run</th><th>Total</th><th>Per GW</th><th>Hits</th></tr>
+          <tr>
+            <th className="label pb-1 text-left">Run</th>
+            <th className="label pb-1 text-right">Total</th>
+            <th className="label pb-1 text-right">Per GW</th>
+            <th className="label pb-1 text-right">Hits</th>
+          </tr>
         </thead>
         <tbody>
           {CELLS.map(([key, label]) => {
             const cell = decomposition.cells[key]
             return cell === undefined ? null : (
-              <tr key={key}>
-                <td>{label}</td>
-                <td><span className="num">{cell.total}</span></td>
-                <td><span className="num">{cell.per_gw}</span></td>
-                <td><span className="num">{cell.hits}</span></td>
+              <tr key={key} className="border-t border-divider">
+                <td className="py-1.5 text-text">{label}</td>
+                <td className="num py-1.5 text-right text-text">
+                  {cell.total}
+                </td>
+                <td className="num py-1.5 text-right text-text-secondary">
+                  {cell.per_gw}
+                </td>
+                <td className="num py-1.5 text-right text-text-muted">
+                  {cell.hits}
+                </td>
               </tr>
             )
           })}
         </tbody>
       </table>
-      <table>
+      <table className="mt-4 w-full">
         <tbody>
-          <tr>
-            <td>Forecast gap (3-week)</td>
-            <td><span className="num">{decomposition.forecast_gap_h3}</span></td>
-            <td className="text-text-muted">
-              points better forecasting could still win
-            </td>
-          </tr>
-          <tr>
-            <td>Planning ceiling</td>
-            <td><span className="num">{decomposition.planning_ceiling}</span></td>
-            <td className="text-text-muted">
-              the most multi-week planning can ever be worth
-            </td>
-          </tr>
+          {([
+            ['Forecast gap (3-week)', decomposition.forecast_gap_h3,
+             'points better forecasting could still win'],
+            ['Planning ceiling', decomposition.planning_ceiling,
+             'the most multi-week planning can ever be worth'],
+          ] as const).map(([label, value, note]) => (
+            <tr key={label} className="border-t border-divider">
+              <td className="py-1.5 text-text">{label}</td>
+              <td className="num py-1.5 pl-3 text-right text-text">{value}</td>
+              <td className="py-1.5 pl-3 text-text-muted">{note}</td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </Card>
@@ -226,15 +249,19 @@ function verdict(shadow: NewsShadowData): string {
 function PairedBar({ news, flags }: { news: number; flags: number }) {
   const top = Math.max(news, flags) || 1
   return (
-    <span style={{ display: 'inline-flex', gap: 4, width: 120 }}>
-      <span className="bar"
-            style={{ width: `${(news / top) * 100}%`,
-                     background: 'var(--color-sage)' }}
-            aria-label={`news ${news}`} />
-      <span className="bar"
-            style={{ width: `${(flags / top) * 100}%`,
-                     background: 'var(--color-text-muted)' }}
-            aria-label={`flags ${flags}`} />
+    <span className="inline-flex w-28 flex-col gap-0.5 align-middle">
+      <span className="h-1.5 rounded-full bg-base">
+        <span className="block h-1.5 rounded-full"
+              style={{ width: `${(news / top) * 100}%`,
+                       background: 'var(--color-sage)' }}
+              aria-label={`news ${news}`} />
+      </span>
+      <span className="h-1.5 rounded-full bg-base">
+        <span className="block h-1.5 rounded-full"
+              style={{ width: `${(flags / top) * 100}%`,
+                       background: 'var(--color-text-muted)' }}
+              aria-label={`flags ${flags}`} />
+      </span>
     </span>
   )
 }
@@ -242,35 +269,54 @@ function PairedBar({ news, flags }: { news: number; flags: number }) {
 function NewsShadowSection({ shadow }: { shadow: NewsShadowData }) {
   return (
     <Card title="News layer">
-      <p className="text-text-muted">{verdict(shadow)}</p>
-      <table>
-        <thead>
-          <tr>
-            <th>GW</th>
-            <th>Brier news</th><th>Brier flags</th><th />
-            <th>Minutes MAE news</th><th>MAE flags</th><th />
-            <th>Rows</th>
-          </tr>
-        </thead>
-        <tbody>
-          {shadow.by_gw.map((row) => (
-            <tr key={row.gw}>
-              <td>GW{row.gw}</td>
-              <td><span className="num">{row.brier_news}</span></td>
-              <td><span className="num">{row.brier_flags}</span></td>
-              <td>
-                <PairedBar news={row.brier_news} flags={row.brier_flags} />
-              </td>
-              <td><span className="num">{row.mae_news}</span></td>
-              <td><span className="num">{row.mae_flags}</span></td>
-              <td>
-                <PairedBar news={row.mae_news} flags={row.mae_flags} />
-              </td>
-              <td><span className="num">{row.rows}</span></td>
+      <p className="mb-3 rounded-card border-l-2 border-info bg-base px-3
+                    py-2 text-text-secondary">
+        {verdict(shadow)}
+      </p>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr>
+              <th className="label pb-1 text-left">GW</th>
+              <th className="label pb-1 text-right">Brier news</th>
+              <th className="label pb-1 text-right">Brier flags</th>
+              <th />
+              <th className="label pb-1 text-right">Minutes MAE news</th>
+              <th className="label pb-1 text-right">MAE flags</th>
+              <th />
+              <th className="label pb-1 text-right">Rows</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {shadow.by_gw.map((row) => (
+              <tr key={row.gw} className="border-t border-divider">
+                <td className="num py-1.5 text-text">GW{row.gw}</td>
+                <td className="num py-1.5 text-right text-sage">
+                  {row.brier_news}
+                </td>
+                <td className="num py-1.5 text-right text-text-muted">
+                  {row.brier_flags}
+                </td>
+                <td className="px-2 py-1.5">
+                  <PairedBar news={row.brier_news} flags={row.brier_flags} />
+                </td>
+                <td className="num py-1.5 text-right text-sage">
+                  {row.mae_news}
+                </td>
+                <td className="num py-1.5 text-right text-text-muted">
+                  {row.mae_flags}
+                </td>
+                <td className="px-2 py-1.5">
+                  <PairedBar news={row.mae_news} flags={row.mae_flags} />
+                </td>
+                <td className="num py-1.5 text-right text-text-secondary">
+                  {row.rows}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </Card>
   )
 }
@@ -289,7 +335,13 @@ export default function QualityTab() {
     })
   }, [])
 
-  if (error) return <p className="text-rust">{error}</p>
+  if (error) {
+    return (
+      <Card title="Quality unavailable">
+        <p className="text-rust">{error}</p>
+      </Card>
+    )
+  }
   if (empty) {
     return (
       <EmptyState
@@ -299,7 +351,7 @@ export default function QualityTab() {
       />
     )
   }
-  if (!data) return <p className="text-text-muted">Loading…</p>
+  if (!data) return <Loading />
 
   return (
     <>
