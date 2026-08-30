@@ -161,4 +161,11 @@ describe('Players hub', () => {
       vi.useRealTimers()
     }
   })
+
+  it('makes every explorer name the click-to-explain control', async () => {
+    render(<MemoryRouter><Players /></MemoryRouter>)
+    expect(await screen.findByRole('button', { name: 'Salah' }))
+      .toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Saka' })).toBeInTheDocument()
+  })
 })

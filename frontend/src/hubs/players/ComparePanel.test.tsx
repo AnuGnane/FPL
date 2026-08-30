@@ -138,6 +138,15 @@ describe('ComparePanel', () => {
       .toBeInTheDocument()
     expect(within(card).getByText(PLAYERS[0].position)).toBeInTheDocument()
   })
+
+  it('makes the card heading the click-to-explain name', async () => {
+    render(<ComparePanel gw={5} players={PLAYERS} />)
+    const card = await screen.findByTestId(`compare-${PLAYERS[0].code}`)
+    const heading = within(card).getByRole('heading',
+                                           { name: PLAYERS[0].name })
+    expect(within(heading).getByRole('button', { name: PLAYERS[0].name }))
+      .toBeInTheDocument()
+  })
 })
 
 describe('the fixture strip colours', () => {

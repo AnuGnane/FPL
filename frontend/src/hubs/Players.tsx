@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react'
 import { apiGet } from '../api/client'
 import { useDebounced } from '../api/useDebounced'
 import {
-  type Column, Card, DataTable, EmptyState, Loading, PageHeader, PosBadge,
-  Sparkline, fmtNum, posColor,
+  type Column, Card, DataTable, EmptyState, Loading, PageHeader, PlayerName,
+  PosBadge, Sparkline, fmtNum, posColor,
 } from '../kit'
 import type { AdviceLatest, PlayerRow } from '../types'
 import ComparePanel from './players/ComparePanel'
@@ -61,7 +61,10 @@ export default function Players() {
         />
       ),
     },
-    { key: 'name', header: 'Player', primary: true, value: (r) => r.name },
+    { key: 'name', header: 'Player', primary: true, value: (r) => r.name,
+      // No pos dot: the explorer has its own position column, and two
+      // statements of the same fact in one row is one too many.
+      render: (r) => <PlayerName code={r.code} name={r.name} /> },
     { key: 'team_name', header: 'Team', value: (r) => r.team_name },
     { key: 'position', header: 'Pos', value: (r) => r.position,
       render: (r) => <PosBadge pos={r.position} /> },

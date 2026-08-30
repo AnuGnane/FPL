@@ -4,7 +4,9 @@ import {
   YAxis,
 } from 'recharts'
 import { apiGet } from '../../api/client'
-import { Badge, Card, EmptyState, PosBadge, Sparkline, fmtNum } from '../../kit'
+import {
+  Badge, Card, EmptyState, PlayerName, PosBadge, Sparkline, fmtNum,
+} from '../../kit'
 import type {
   ComponentsBreakdown, FixtureMatrixData, PlayerRow,
 } from '../../types'
@@ -91,8 +93,14 @@ export default function ComparePanel({ gw, players }: ComparePanelProps) {
           const team = matrix?.teams.find((t) => t.code === player.team_code)
           return (
             <div key={player.code} data-testid={`compare-${player.code}`}>
-              <Card title={player.name} titleSize="lg"
-                    action={<PosBadge pos={player.position} />}>
+              {/* The name is the control, not a label of one: the same
+                  click-to-explain affordance every other page gives it.
+                  PosBadge stays in the action slot, so no dot here. */}
+              <Card
+                heading={<PlayerName code={player.code} name={player.name} />}
+                titleSize="lg"
+                action={<PosBadge pos={player.position} />}
+              >
                 <dl className="grid grid-cols-2 gap-1">
                   <dt className="label">Price</dt>
                   <dd className="num text-right text-text">
