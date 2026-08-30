@@ -69,7 +69,7 @@ The user makes the final call either way; nothing ships by default.
 never ran. `V7B_PROBE_XMINS`: current vs legacy mean noise scale 0.4818
 vs 0.4809 (0.2%) — the xMins-*scale* mechanism (plan F2) is wrong.
 
-### Q2 control + ablation — ANSWERED (4 runs, D1-matched harness:
+### Q2 control + ablation — attributed, single-seed (see §6) (4 runs, D1-matched harness:
 no chips, no priors, seed base 20260825)
 
 | minutes head | gated (heur) | raw | gating delta |
@@ -79,15 +79,15 @@ no chips, no priors, seed base 20260825)
 
 - The harness does NOT explain the reversal (delta_ctrl −61 under D1's
   own conditions, where v4c measured +75).
-- **The v5 ThreeModeModel swap is the cause.** Flip the head back and
+- **The v5 ThreeModeModel swap is the leading (and only surviving) candidate** — single-seed, see §6. Flip the head back and
   gating's sign flips back. Note the interaction is via noise
   *placement*, not scale (probe above): sharper p_play/p60 changes which
   players the xMins-derived heuristic σ perturbs, not how much.
 - The swap itself remains justified: current head beats legacy by +47
   ungated (1847 vs 1800). v5 improved the model and silently broke the
   gate — nobody re-ran D1 after the swap until now.
-- Free evidence: raw-ctrl 1847 vs v4c's raw 1743 = +104 of genuine model
-  improvement on the ungated side since v4c.
+- Free evidence: raw-ctrl 1847 vs v4c's raw 1743 = +104, consistent with model
+  improvement (uncontrolled — see §6) on the ungated side since v4c.
 
 ### Q1 — error bars (Task 9, full harness, 3 seed bases)
 
@@ -150,3 +150,71 @@ still justified, +47 ungated), Q1 answered (seed spread 116 swamps every
 arm difference), Q3 answered (no composite floor helps). The v7-model
 three-way decision is now error-barred and the user's option (b) stands
 confirmed as within-noise of the best available configuration.
+
+## 6. Review corrections (pre-merge, 2026-08-30)
+
+The pre-merge review recomputed every §5 figure from the raw logs (all
+correct) but required these corrections to the *claims*:
+
+- **Q2 downgraded from "answered" to "attributed with a named residual".**
+  The two Q2 deltas (−61 and +27) are one seed base each, and Q1 measured
+  the heuristic arm's seed spread at 116 — the 88-point delta-vs-delta
+  swing sits inside it. The minutes-head attribution is *consistent with*
+  the evidence and is the only surviving candidate (frame ruled inert,
+  harness ruled out, scoring unchanged since v4c), but it is not
+  error-barred; treat it as the named residual, not settled fact. The
+  "noise placement" mechanism sentence is a post-hoc story no arm tested —
+  the probe falsified the pre-registered scale mechanism (0.2% apart) and
+  no replacement mechanism was measured.
+- **Scope**: one season (2025-26), one replay harness; three seed bases
+  buy an error bar on the seed, not on the season. The §2 rule compares
+  point differences against a 3-sample range — a deliberately lenient,
+  low-power test; "within noise" is a failure to distinguish, not a
+  demonstration of equality.
+- **Q1 provenance**: the 20260827 column reuses the v7-model S2 runs
+  (scripts/s2_replay.py, pre-_ArmStore — totals sound, hits/transfers
+  from a shared parquet); 20260901/20260915 ran through v7b_replay.py
+  (defaults pinned equal by test). A same-seed raw arm re-run through
+  v7b_replay.py (`verdict-raw`, appendix) anchors the cross-driver and
+  raw-provenance questions empirically.
+- **Verdict sensitivity**: keep-as-is survives raw ∈ [1771, 1995], so the
+  recommendation does not turn on the anchor's exact value.
+- **"+104 model improvement since v4c" softened to "consistent with"** —
+  the v4c raw figure came from a deleted driver on an older data snapshot.
+- **Frame inertness** rests on the static argument (a0f314f withdrew the
+  columns; no feature list names them), with the one-GW probe as
+  corroboration only.
+- Deferred nit: the driver's asset-guard SystemExits (source/floor
+  refusals) are untested; the argparse layer is.
+
+## 7. Evidence appendix — every arm's log line (logs/ is gitignored;
+this is the durable record)
+
+Q2 (chips off, priors off, seed base 20260825):
+```
+V7B_ARM_DONE q2-ctrl-heur   {"total": 1786, "hits": 17, "transfers": 49, "gated_weeks": 33, "held_weeks": 4}
+V7B_ARM_DONE q2-ctrl-raw    {"total": 1847, "hits": 12, "transfers": 45, "gated_weeks": 0,  "held_weeks": 0}
+V7B_ARM_DONE q2-legacy-heur {"total": 1827, "hits": 20, "transfers": 51, "gated_weeks": 33, "held_weeks": 8, "minutes": "legacy"}
+V7B_ARM_DONE q2-legacy-raw  {"total": 1800, "hits": 20, "transfers": 52, "gated_weeks": 0,  "held_weeks": 0, "minutes": "legacy"}
+```
+Q1 (chips on, priors current):
+```
+S2_ARM_DONE  heur     seed 20260827 {"total": 1785, "hits": 15, "transfers": 69, "held_weeks": 8}   (v7-model run, reused)
+S2_ARM_DONE  est      seed 20260827 {"total": 1908, "hits": 11, "transfers": 64, "held_weeks": 2}   (v7-model run, reused)
+V7B_ARM_DONE q1b-heur seed 20260901 {"total": 1876, "hits": 9,  "transfers": 61, "held_weeks": 6}
+V7B_ARM_DONE q1b-est  seed 20260901 {"total": 1847, "hits": 13, "transfers": 66, "held_weeks": 2}
+V7B_ARM_DONE q1c-heur seed 20260915 {"total": 1901, "hits": 9,  "transfers": 63, "held_weeks": 7}
+V7B_ARM_DONE q1c-est  seed 20260915 {"total": 1883, "hits": 9,  "transfers": 62, "held_weeks": 4}
+```
+Q3 (chips on, priors current, seed base 20260827):
+```
+V7B_ARM_DONE q3-f03 {"total": 1887, "hits": 9,  "transfers": 62, "composite_floor": 0.3, "global": 0.307878}
+V7B_ARM_DONE q3-f06 {"total": 1869, "hits": 14, "transfers": 66, "composite_floor": 0.6, "global": 0.603977}
+V7B_ARM_DONE q3-f10 {"total": 1862, "hits": 17, "transfers": 67, "composite_floor": 1.0, "global": 1.002391}
+```
+Raw anchor (v7b_replay.py, chips on, priors current, seed base 20260827):
+```
+V7B_ARM_DONE verdict-raw {"total": 1914, "hits": 11, "transfers": 64, "gated_weeks": 0, "held_weeks": 0, "config": {"arm": "raw", "seed_base": 20260827, "n": 40, "chips": true, "priors": "current", "minutes": "current"}}
+# = the review's previously-unlogged anchor, reproduced exactly through v7b_replay.py:
+# raw provenance, raw determinism, and cross-driver equivalence all confirmed in one run.
+```
