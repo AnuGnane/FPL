@@ -100,7 +100,13 @@ Spec: `specs/2026-08-29-gaffer-v7-ui-design.md` (§12–13 = smoke + outcome) ·
 
 ## In progress
 
-### v7-model — zeros + honest noise (complete on `feat/gaffer-v7-model`; MERGE DECISION WITH USER)
+### v7b — measurement cycle (next)
+- [ ] Bisect the D1 sign reversal (gating on/off replays at v4d, v5, v6 merge points)
+- [ ] 3-seed error bars on the heuristic / estimation / raw comparison
+- [ ] Composite σ sweep: sqrt(σ_est² + floor²) over a few floors — keep / re-noise / remove verdict on gating
+- [ ] N2 first news verdict when GW2 is data_checked
+
+### v7-model — zeros + honest noise (done, merged `1b93b9d` 2026-08-30; user chose option (b))
 Spec: `specs/2026-08-30-gaffer-v7-model-design.md` (§9 = gates + the three-way decision) · Plan: `plans/2026-08-30-gaffer-v7-model.md`
 - [x] Zeros diagnostic: the error is regulars-who-sit (news-shaped), not fringe; I2 fringe features proven underivable from stored data
 - [x] Gate Z1 FAIL — isotonic DNP recalibration ships OFF (zeros 1.063→1.053, bar was 1.042; strict Pareto improvement, user may flip)
