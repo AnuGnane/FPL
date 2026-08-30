@@ -39,10 +39,15 @@ This is off for ``seed=None``, which is every shipped fit and ensemble member
 zero, so the served model is untouched.
 """
 
-DNP_CALIBRATION_DEFAULT = False
+DNP_CALIBRATION_DEFAULT = True
 """Whether :meth:`ThreeModeModel.fit` learns a DNP-mode recalibration.
 
-**Off, because gate Z1 failed.** Spec §2.3 pre-registered the rule: zeros
+**On by user decision 2026-08-30: the strict Pareto improvement across strata
+is accepted despite the arm missing the ambitious pre-registered bar.** The
+Z1 record below stands unamended — it is why the flip is a judgement call
+rather than a gate pass.
+
+**Gate Z1 failed on its own terms.** Spec §2.3 pre-registered the rule: zeros
 RMSE must reach 1.042 or better (a 2% improvement on the 2026-08-29 baseline
 of 1.063, i.e. at least to the naive last-5 baseline the model currently
 loses to) while haulers RMSE stays at or under 5.171 and all-stratum RMSE at
@@ -55,7 +60,8 @@ arm scored zeros **1.053**, haulers **5.149**, all **1.992**. Both guards
 passed with room to spare — an isotonic recalibration of ``p_dnp`` costs the
 other strata essentially nothing — but the zeros improvement was 0.9% where
 2% was required. Right sign, insufficient magnitude, so the pre-registered
-verdict is FAIL and the constant stays False.
+verdict is FAIL; the constant is True only because the user overrode that
+verdict on the Pareto reading above.
 
 The reason is in the M1 diagnostic rather than in the calibrator. The zeros
 error mass is not spread evenly over players the model is merely unsure

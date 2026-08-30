@@ -3,9 +3,10 @@
 Four things are pinned here; Task 7 adds the seed rail and Task 18's flip is
 the only thing allowed to change rail 2:
 
-1. With ``DNP_CALIBRATION_DEFAULT`` off, ``ThreeModeModel`` fits no
+1. With ``DNP_CALIBRATION_DEFAULT`` forced off, ``ThreeModeModel`` fits no
    calibrator, pays for no inner refit, and predicts byte-identically.
-2. The constant really is off — gate Z1 has not been run by an implementer.
+2. The constant is on — flipped by explicit user decision on 2026-08-30,
+   accepting Z1's across-the-board improvement over its missed 2% bar.
 3. A model pickled before the calibrator existed still predicts.
 4. The protected ``run_advise`` source-text pins still hold, because nothing
    in this cycle touched ``advise.py`` at all.
@@ -40,10 +41,10 @@ _COLS = ["minutes_r5", "starts_r5", "home"]
 
 # --- rail 1: the flag off is the pre-v7 model, prediction for prediction ---
 
-def test_the_flag_off_fits_no_calibrator():
+def test_the_flag_off_fits_no_calibrator(monkeypatch):
     import gaffer.models.minutes as mn
 
-    assert mn.DNP_CALIBRATION_DEFAULT is False
+    monkeypatch.setattr(mn, "DNP_CALIBRATION_DEFAULT", False)
     model = ThreeModeModel(_COLS).fit(_frame())
     assert model.dnp_cal is None
 
@@ -65,17 +66,20 @@ def test_the_flag_off_never_pays_for_the_inner_refit(monkeypatch):
     def boom(*args, **kw):
         raise AssertionError("the default path must not fit a calibrator")
 
+    monkeypatch.setattr(mn, "DNP_CALIBRATION_DEFAULT", False)
     monkeypatch.setattr(mn, "fit_dnp_calibrator", boom)
     ThreeModeModel(_COLS).fit(_frame())
 
 
 # --- rail 2: the shipping default has not moved --------------------------
 
-def test_the_dnp_calibration_is_off_by_default():
-    """Gate Z1 is the orchestrator's to run. Until it passes, this is False."""
+def test_the_dnp_calibration_is_on_by_default():
+    """Flipped on by explicit user decision, 2026-08-30: gate Z1 missed its
+    2% zeros bar but improved every stratum, and the user accepted that
+    Pareto reading over the pre-registered verdict."""
     import gaffer.models.minutes as mn
 
-    assert mn.DNP_CALIBRATION_DEFAULT is False
+    assert mn.DNP_CALIBRATION_DEFAULT is True
 
 
 # --- rail 3: an older pickle still predicts ------------------------------
