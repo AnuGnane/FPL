@@ -328,3 +328,14 @@ def test_the_aggregate_is_the_mean_spread_and_range_of_the_totals():
             "totals": [1876, 1901, 1786], "mean": 1854.3, "spread": 115,
             "range": [1786, 1901],
             "seed_bases": [20260901, 20260915, 20260825]}
+
+
+def test_the_conventions_doc_is_committed_and_linked_from_the_roadmap():
+    """A measurement standard that is not findable is not a standard. Eight
+    numbered conventions, and the roadmap header points at them."""
+    doc = Path("docs/superpowers/CONVENTIONS.md")
+    body = doc.read_text(encoding="utf-8")
+    for n in range(1, 9):
+        assert f"## {n}." in body, f"convention {n} is missing"
+    roadmap = Path("docs/superpowers/ROADMAP.md").read_text(encoding="utf-8")
+    assert "CONVENTIONS.md" in roadmap

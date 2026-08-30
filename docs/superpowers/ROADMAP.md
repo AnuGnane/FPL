@@ -3,6 +3,7 @@
 One place to see what's shipped and what's left. Grouping comes from
 `research/2026-08-25-improvement-research.md`. Update this file as cycles
 progress: flip `[ ]` → `[x]`, link the spec/plan when they exist.
+Measurement rules every cycle follows: `CONVENTIONS.md`.
 
 ## Shipped
 
