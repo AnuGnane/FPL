@@ -7,6 +7,8 @@ command pulls in only what it needs when it actually runs.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import typer
 
 app = typer.Typer(help="FPL ML advisor", no_args_is_help=True)
@@ -313,23 +315,40 @@ def diagnose_zeros(holdout_slots: int = typer.Option(
 
 
 @app.command("calibrate-noise")
-def calibrate_noise():
-    """Fit src/gaffer/assets/scenario_noise.json from benchmark residuals.
+def calibrate_noise(
+    estimation: bool = typer.Option(
+        False, "--estimation",
+        help="Fit the estimation-only sigma (K=5 seed-bagged ensemble "
+             "spread) instead of the residual sigma — v7-model spec §3."),
+    out: Path = typer.Option(
+        None, "--out",
+        help="Where to write the asset. Defaults to the shipped path; point "
+             "it at reports/ to fit a candidate without replacing the asset."),
+):
+    """Fit src/gaffer/assets/scenario_noise.json.
 
-    Slow — one full benchmark fit and a walk of the test season — and
-    refreshed rarely: once a season, or when the components move materially.
-    The asset it writes ships in git; without it the scenario sweep falls back
-    to the (92 - xmins) / 134 heuristic, which is the pre-v6 behaviour.
+    Two modes, one asset shape. Without ``--estimation`` this is the v6
+    residual σ, fitted on benchmark residuals: slow, refreshed once a season.
+    With ``--estimation`` it is the v7 spread of a five-seed LightGBM
+    ensemble over the 2025-26 walk-forward — how unsure the *model* is rather
+    than how random football is, which is the follow-up gate S1's failure
+    pre-registered.
+
+    Either asset ships in git; without one the scenario sweep falls back to
+    the (92 - xmins) / 134 heuristic, which is the pre-v6 behaviour.
     """
     from gaffer.calibrate_noise import (ASSET_PATH, run_calibration,
+                                        run_estimation_calibration,
                                         write_noise)
 
-    payload = run_calibration()
-    dest = write_noise(payload, ASSET_PATH)
+    payload = (run_estimation_calibration() if estimation
+               else run_calibration())
+    dest = write_noise(payload, out or ASSET_PATH)
     typer.echo(f"Fitted {len(payload['sigma'])} cells and "
                f"{len(payload['ep_marginal'])} EP marginals from "
-               f"{payload['rows']} residuals on {payload['season']} "
-               f"(global sigma {payload['global']}) -> {dest}")
+               f"{payload['rows']} rows on {payload['season']} "
+               f"(source {payload['source']}, "
+               f"global sigma {payload['global']}) -> {dest}")
 
 
 @app.command()

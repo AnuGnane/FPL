@@ -204,3 +204,47 @@ def test_ensemble_sigma_is_a_population_std_matching_the_v6_convention():
            for v in (1.0, 2.0, 3.0)]
     assert np.isclose(float(ensemble_sigma(eps)["sigma_est"].iloc[0]),
                       float(np.std([1.0, 2.0, 3.0])))
+
+
+def test_the_estimation_payload_is_marked_at_its_source(monkeypatch):
+    import gaffer.calibrate_noise as cn
+
+    monkeypatch.setattr(cn, "ensemble_rows", lambda *a, **k: _rows())
+    payload = cn.run_estimation_calibration()
+    assert payload["source"] == "estimation"
+    assert payload["season"] == cn.ESTIMATION_SEASON
+    assert payload["k"] == len(cn.ESTIMATION_SEEDS)
+    assert payload["seeds"] == list(cn.ESTIMATION_SEEDS)
+    assert payload["version"] == 1
+    assert payload["generated_at"] and payload["git_sha"]
+
+
+def test_the_residual_payload_is_marked_too(monkeypatch):
+    """The two assets have to be distinguishable on disk, or a future cycle
+    cannot tell which σ it is looking at."""
+    import gaffer.calibrate_noise as cn
+
+    monkeypatch.setattr(cn, "residual_rows", lambda *a, **k: pd.DataFrame(
+        {"ep": [1.0] * 120, "xmins": [10.0] * 120, "points": [1.0] * 120}))
+    assert cn.run_calibration()["source"] == "residual"
+
+
+def test_the_estimation_payload_passes_the_shipped_validator(tmp_path,
+                                                             monkeypatch):
+    import gaffer.calibrate_noise as cn
+
+    monkeypatch.setattr(cn, "ensemble_rows", lambda *a, **k: _rows())
+    dest = cn.write_noise(cn.run_estimation_calibration(),
+                          tmp_path / "scenario_noise.json")
+    import json
+
+    assert json.loads(dest.read_text())["source"] == "estimation"
+
+
+def test_the_cli_carries_the_estimation_mode_and_an_out_path():
+    import inspect
+
+    from gaffer.cli import calibrate_noise
+
+    params = inspect.signature(calibrate_noise).parameters
+    assert "estimation" in params and "out" in params

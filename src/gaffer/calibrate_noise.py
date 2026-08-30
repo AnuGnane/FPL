@@ -206,6 +206,7 @@ def run_calibration(max_train_idx: int | None = None,
         "generated_at": run_at(),
         "git_sha": git_sha(),
         "season": BENCHMARK_TEST_SEASON,
+        "source": "residual",
     })
     return payload
 
@@ -449,3 +450,32 @@ def ensemble_rows(max_train_idx: int | None = None,
             "no rows to fit an estimation sigma on — run "
             "`gaffer build-history` and `gaffer train` first")
     return pd.concat(parts, ignore_index=True)
+
+
+def run_estimation_calibration(max_train_idx: int | None = None,
+                               test_idx: int | None = None,
+                               seeds: tuple[int, ...] = ESTIMATION_SEEDS
+                               ) -> dict:
+    """The estimation-only σ asset (spec §3).
+
+    Same payload shape as :func:`run_calibration`, so the serving path reads
+    it without a line of new code — ``"source"`` is the only field that says
+    which question the numbers answer. Gate S1 failed because the residual σ
+    conflated forecast error with football's irreducible variance; this one
+    prices the model's own uncertainty and nothing else, which is what a
+    "would this transfer survive my forecast being wrong" sweep is asking.
+    """
+    from gaffer.evaluation import git_sha, run_at
+
+    rows = ensemble_rows(max_train_idx, test_idx, seeds)
+    payload = fit_estimation_sigmas(rows)
+    payload.update({
+        "version": 1,
+        "generated_at": run_at(),
+        "git_sha": git_sha(),
+        "season": ESTIMATION_SEASON,
+        "source": "estimation",
+        "k": len(seeds),
+        "seeds": list(int(s) for s in seeds),
+    })
+    return payload
