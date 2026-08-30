@@ -114,7 +114,14 @@ export default function ThisWeek() {
         context={data.staleness.stale
           ? data.staleness.reason
           : `deadline ${new Date(data.deadline).toLocaleString()}`}
-        action={<JobButton kind="advise" onDone={load} />}
+        action={(
+          // Two runs, one lane: the full solve and the same solve with the
+          // scenario sweep off (~5 min cheaper). Both reload this page.
+          <div className="flex flex-wrap gap-2">
+            <JobButton kind="advise" onDone={load} />
+            <JobButton kind="advise-fast" onDone={load} />
+          </div>
+        )}
       />
       {data.staleness.data_warning && (
         <p role="alert" className="mb-4 rounded-card border border-rust/40

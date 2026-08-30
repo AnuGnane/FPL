@@ -193,4 +193,12 @@ describe('an advice payload missing its armband', () => {
     await screen.findByTestId('empty-state')
     expect(screen.getByRole('button', { name: /advise/i })).toBeInTheDocument()
   })
+
+  it('offers the fast run beside the full one', async () => {
+    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    expect(await screen.findByRole('button', { name: 'Run advise' }))
+      .toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Fast advise' }))
+      .toBeInTheDocument()
+  })
 })
