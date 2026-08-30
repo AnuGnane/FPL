@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../../api/client'
-import { Badge, Card, EmptyState, PosBadge, fmtNum } from '../../kit'
+import { Badge, Card, EmptyState, Loading, PosBadge, fmtNum } from '../../kit'
 import type { PlanMove, PlanTimeline } from '../../types'
 
 function MoveLine({ move, side }: { move: PlanMove; side: 'in' | 'out' }) {
@@ -38,7 +38,7 @@ export default function Timeline({ gw }: { gw: number }) {
       />
     )
   }
-  if (!data) return <p className="text-text-muted">Loading…</p>
+  if (!data) return <Loading />
   if (data.weeks.length === 0) {
     return (
       <EmptyState
@@ -58,6 +58,7 @@ export default function Timeline({ gw }: { gw: number }) {
             title={`GW${week.gw}`}
             action={week.chip ? <Badge variant="info">{week.chip}</Badge> : null}
           >
+            <p className="label">xPts</p>
             <p className="num text-xl text-text">
               {fmtNum(week.expected_pts)}
             </p>

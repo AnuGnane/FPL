@@ -79,7 +79,9 @@ describe('chips tab', () => {
     render(<MemoryRouter><ChipsTab /></MemoryRouter>)
     await screen.findAllByText(/wildcard/i)
     const rows = screen.getAllByRole('row')
-    const playNow = rows.filter((r) => r.className.includes('changed'))
+    // The dead `.changed` class is gone; the row states it as data instead.
+    const playNow = rows.filter(
+      (r) => r.getAttribute('data-play-now') === 'true')
     expect(playNow).toHaveLength(2)
   })
 

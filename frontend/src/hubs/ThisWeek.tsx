@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiGet } from '../api/client'
 import {
-  Card, EmptyState, JobButton, PageHeader, PitchView, Stat, ThresholdBar,
-  fmtNum, fmtPct,
+  Card, EmptyState, JobButton, Loading, PageHeader, PitchView, Stat,
+  ThresholdBar, fmtNum, fmtPct,
 } from '../kit'
 import type {
   AdviceChipRow, AdviceLatest, ComponentsBreakdown, PlayerRow,
@@ -64,7 +64,7 @@ export default function ThisWeek() {
               action="Run advise"
             />
             )
-          : <p className="text-text-muted">Loading…</p>}
+          : <Loading />}
         {(error || armbandMissing) && <JobButton kind="advise" onDone={load} />}
       </>
     )
@@ -151,13 +151,19 @@ export default function ThisWeek() {
           deltaLabel={strategy ? `λ · ${strategy.stance}` : undefined}
         />
       </div>
-      <p className="mb-4 text-text-muted">
-        Captain {advice.captain.name}
-        {advice.scenarios?.captain_frequency !== undefined
-          && ` · ${fmtPct(advice.scenarios.captain_frequency)} of sims`}
-        {' · vice '}{advice.vice.name}
-      </p>
-      <Card title="Starting XI" className="mb-4">
+      {/* The armband belongs to the pitch, not to a stray line above it. */}
+      <Card
+        title="Starting XI"
+        className="mb-4"
+        action={(
+          <span className="text-text-muted">
+            Captain {advice.captain.name}
+            {advice.scenarios?.captain_frequency !== undefined
+              && ` · ${fmtPct(advice.scenarios.captain_frequency)} of sims`}
+            {' · vice '}{advice.vice.name}
+          </span>
+        )}
+      >
         <PitchView
           xi={advice.xi.map((p) => ({ ...p, position: p.position ?? '' }))}
           captain={advice.captain.code}

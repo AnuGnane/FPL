@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ApiError, apiGet, apiPost } from '../../api/client'
 import { useJob } from '../../api/useJob'
-import { Card, EmptyState, PlayerName } from '../../kit'
+import { Card, EmptyState, Loading, PlayerName, fmtNum } from '../../kit'
 import ConstraintsPanel from './ConstraintsPanel'
 import PlanDiffTable from './PlanDiffTable'
 import type {
@@ -36,13 +36,15 @@ function GainBar({ gain, threshold }: { gain: number
   const bar = threshold ?? gain
   const width = bar > 0 ? Math.min(100, (gain / bar) * 100) : 0
   return (
-    <span
-      className="bar"
-      style={{ display: 'inline-block', width: `${Math.max(2, width)}%`,
-               background: gain >= bar
-                 ? 'var(--color-sage)' : 'var(--color-border)' }}
-      aria-label={`${gain} against a bar of ${bar}`}
-    />
+    <span className="inline-block h-1.5 w-24 rounded-full bg-base align-middle">
+      <span
+        className="block h-1.5 rounded-full"
+        style={{ width: `${Math.max(2, width)}%`,
+                 background: gain >= bar
+                   ? 'var(--color-sage)' : 'var(--color-border)' }}
+        aria-label={`${gain} against a bar of ${bar}`}
+      />
+    </span>
   )
 }
 
@@ -50,13 +52,13 @@ function SquadColumn({ title, players }: { title: string
                                            players: ChipSquadPlayer[] }) {
   return (
     <div>
-      <h3>{title} ({players.length})</h3>
-      <ul>
+      <h3 className="label mb-1">{title} ({players.length})</h3>
+      <ul className="flex flex-col gap-0.5">
         {players.map((p) => (
           <li key={p.code} className="flex items-center gap-1.5">
             <PlayerName code={p.code} name={p.name} pos={p.position} />
             <span className="num ml-auto text-text-muted">
-              £{p.price}m · {p.ep} xPts
+              £{fmtNum(p.price)}m · {fmtNum(p.ep)} xPts
             </span>
           </li>
         ))}
@@ -68,7 +70,7 @@ function SquadColumn({ title, players }: { title: string
 function WildcardTab({ wildcard }: { wildcard: SquadDiff | null }) {
   if (wildcard === null) {
     return (
-      <Card>
+      <Card title="Wildcard now" className="mb-4">
         <p className="text-text-muted">
           No wildcard available in this half of the season.
         </p>
@@ -76,13 +78,13 @@ function WildcardTab({ wildcard }: { wildcard: SquadDiff | null }) {
     )
   }
   return (
-    <Card title="Wildcard now">
+    <Card title="Wildcard now" className="mb-4">
       <p className={wildcard.recommend ? 'text-sage' : 'text-text-muted'}>
         Worth <span className="num">{wildcard.gain_over_horizon}</span> expected
         points over the horizon —
         {wildcard.recommend ? ' worth playing.' : ' not worth it yet.'}
       </p>
-      <div className="pitch-row" style={{ alignItems: 'flex-start' }}>
+      <div className="mt-3 grid items-start gap-4 sm:grid-cols-3">
         <SquadColumn title="Kept" players={wildcard.kept} />
         <SquadColumn title="Out" players={wildcard.dropped} />
         <SquadColumn title="In" players={wildcard.added} />
@@ -140,7 +142,13 @@ export default function ChipsTab() {
     }
   }
 
-  if (error) return <p className="text-rust">{error}</p>
+  if (error) {
+    return (
+      <Card title="Chips unavailable">
+        <p className="text-rust">{error}</p>
+      </Card>
+    )
+  }
   if (empty) {
     return (
       <EmptyState
@@ -150,24 +158,35 @@ export default function ChipsTab() {
       />
     )
   }
-  if (!data) return <p className="text-text-muted">Loading…</p>
+  if (!data) return <Loading />
 
   const busy = job.status === 'queued' || job.status === 'running'
   const diff = job.result as WhatIfResult | null
 
   return (
     <>
-      <div className="chips">
-        <button onClick={() => setTab('table')} disabled={tab === 'table'}>
-          Chip table
-        </button>
-        <button onClick={() => { setTab('wildcard'); pick('wildcard') }}
-                disabled={tab === 'wildcard'}>
-          Wildcard
-        </button>
+      {/* Deliberately not carded: a segmented control belongs above the
+          panel it switches, the way the hub's own tab strip does. */}
+      <div className="mb-4 flex gap-1">
+        {([['table', 'Chip table'], ['wildcard', 'Wildcard']] as const).map(
+          ([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={tab === key}
+              onClick={() => {
+                setTab(key)
+                if (key === 'wildcard') pick('wildcard')
+              }}
+              className={`rounded-card border px-3 py-1.5 ${tab === key
+                ? 'border-text text-text' : 'border-border text-text-muted'}`}
+            >
+              {label}
+            </button>
+          ))}
       </div>
       {tab === 'table' && (
-        <Card title="Gain against the bar">
+        <Card title="Gain against the bar" className="mb-4">
           {data.chips.length === 0 && (
             <EmptyState
               title="No chips available"
@@ -176,32 +195,48 @@ export default function ChipsTab() {
               action="Run advise"
             />
           )}
-          <table>
+          <table className="w-full">
             <thead>
               <tr>
-                <th>Chip</th><th>GW</th><th>Gain</th><th>Bar</th>
-                <th>Per week</th><th />
+                <th className="label pb-1 text-left">Chip</th>
+                <th className="label pb-1 text-right">GW</th>
+                <th className="label pb-1 text-right">Gain</th>
+                <th className="label pb-1 text-right">Bar</th>
+                <th className="label pb-1 text-right">Per week</th>
+                <th className="label pb-1 pl-3 text-left">Against the bar</th>
               </tr>
             </thead>
             <tbody>
               {data.chips.map((row) => (
                 <tr key={`${row.chip}-${row.gw}`}
-                    className={row.play_now ? 'changed' : undefined}
+                    className="border-t border-divider"
+                    data-play-now={String(row.play_now)}
                     aria-selected={row.chip === chip}>
-                  <td>
-                    <button className="player-link"
-                            onClick={() => pick(row.chip)}>
+                  <td className="py-1.5">
+                    <button
+                      type="button"
+                      onClick={() => pick(row.chip)}
+                      className={`hover:underline ${row.play_now
+                        ? 'text-sage' : 'text-text'}`}
+                    >
                       {LABELS[row.chip] ?? row.chip}
                     </button>
                   </td>
-                  <td className="num">GW{row.gw}</td>
-                  <td><span className="num">{row.gain}</span></td>
-                  <td><span className="num">{row.threshold ?? '—'}</span></td>
-                  <td><span className="num">{row.per_week ?? '—'}</span></td>
-                  <td>
+                  <td className="num py-1.5 text-right text-text-secondary">
+                    GW{row.gw}
+                  </td>
+                  <td className={`num py-1.5 text-right ${row.play_now
+                    ? 'text-sage' : 'text-text'}`}>{row.gain}</td>
+                  <td className="num py-1.5 text-right text-text-muted">
+                    {row.threshold ?? '—'}
+                  </td>
+                  <td className="num py-1.5 text-right text-text-muted">
+                    {row.per_week ?? '—'}
+                  </td>
+                  <td className="py-1.5 pl-3">
                     <GainBar gain={row.gain} threshold={row.threshold} />
                     {row.note && (
-                      <span className="text-text-muted"> {row.note}</span>
+                      <span className="ml-2 text-text-muted">{row.note}</span>
                     )}
                   </td>
                 </tr>
@@ -211,18 +246,27 @@ export default function ChipsTab() {
         </Card>
       )}
       {tab === 'wildcard' && <WildcardTab wildcard={data.wildcard} />}
-      <Card title="Try it">
+      <Card title="Try it" className="mb-4">
         <p className="text-text-muted">
           A front door onto the What-If Lab with{' '}
           <strong>{LABELS[chip] ?? chip}</strong> prefilled — the same solver,
           the same baseline. Pick another row above to try that one instead.
         </p>
         <ConstraintsPanel value={request} onChange={setRequest} />
-        <button onClick={solve} disabled={busy}>
+        <button
+          type="button"
+          onClick={solve}
+          disabled={busy}
+          className="rounded-card border border-border bg-base px-3 py-2
+                     text-text-secondary hover:text-text
+                     disabled:text-text-faint"
+        >
           {busy ? 'Solving…' : 'Re-solve'}
         </button>
-        {invalid && <p className="text-rust">{invalid}</p>}
-        {job.status === 'error' && <p className="text-rust">{job.error}</p>}
+        {invalid && <p className="mt-2 text-rust">{invalid}</p>}
+        {job.status === 'error' && (
+          <p className="mt-2 text-rust">{job.error}</p>
+        )}
       </Card>
       {diff && <PlanDiffTable diff={diff} />}
     </>

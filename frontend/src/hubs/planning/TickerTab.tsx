@@ -18,11 +18,15 @@ export default function TickerTab() {
 
   return (
     <>
-      <Card>
-        <label>
-          Weeks
-          <select value={weeks}
-            onChange={(event) => setWeeks(Number(event.target.value))}>
+      <Card className="mb-4">
+        <label className="flex items-center gap-2">
+          <span className="label">Weeks</span>
+          <select
+            value={weeks}
+            onChange={(event) => setWeeks(Number(event.target.value))}
+            className="num rounded-card border border-border bg-base px-2 py-1
+                       text-text"
+          >
             {[4, 6, 8, 10, 12].map((n) =>
               <option key={n} value={n}>{n}</option>)}
           </select>
