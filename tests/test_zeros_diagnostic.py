@@ -74,3 +74,38 @@ def test_zeros_report_scores_each_stratum_on_the_zeros_rows_only():
     assert payload["strata"]["flagged"]["n"] == 0
     assert "no availability snapshot" in payload["strata"]["flagged"]["note"]
     assert payload["overall"]["n"] == 2          # codes 1 and 2
+
+
+def test_run_diagnostic_scores_the_same_holdout_the_harness_does(monkeypatch):
+    """The decomposition has to be of *the* zeros number, not a different one:
+    same boundary helper, same components path, same merge."""
+    import gaffer.zeros_diagnostic as zd
+
+    calls = {}
+
+    def fake_frame():
+        df = pd.DataFrame([
+            {"code": c, "season_idx": 3, "gw": g, "minutes": 0,
+             "total_points": 0, "season_start_share": 0.1, "minutes_r5": 0.0,
+             "position": "MID", "team_code": 3}
+            for c in (1, 2) for g in range(1, 20)])
+        return df, pd.DataFrame({"season_idx": [3], "gw": [1],
+                                 "elo_diff": [0.0]}), {}
+
+    monkeypatch.setattr(zd, "_holdout", lambda slots=10: (
+        fake_frame()[0].assign(ep=1.0, p_dnp=0.9)))
+    monkeypatch.setattr(zd, "save_diagnostic",
+                        lambda payload: calls.setdefault("saved", payload))
+    payload = zd.run_diagnostic()
+    assert payload["holdout_slots"] == 10
+    assert payload["overall"]["n"] == 38
+    assert calls["saved"] is payload
+    assert payload["git_sha"] and payload["run_at"]
+
+
+def test_the_cli_exposes_the_diagnostic():
+    from typer.main import get_command
+
+    from gaffer.cli import app
+
+    assert "diagnose-zeros" in get_command(app).commands

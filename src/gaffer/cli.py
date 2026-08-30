@@ -298,6 +298,20 @@ def calibrate_injuries(clubs: str = typer.Option(
                f"{payload['clubs_failed']} clubs skipped) -> {dest}")
 
 
+@app.command("diagnose-zeros")
+def diagnose_zeros(holdout_slots: int = typer.Option(
+        10, help="Gameweek slots to hold out — the evaluation default.")):
+    """Decompose the zeros-stratum error and write reports/zeros_diagnostic.json.
+
+    Slow: one full component refit on everything before the holdout, the same
+    fit `gaffer evaluate` pays for. A report, not a gate — spec §2.1.
+    """
+    from gaffer.zeros_diagnostic import DIAGNOSTIC_PATH, run_diagnostic
+
+    run_diagnostic(holdout_slots)
+    typer.echo(f"-> {DIAGNOSTIC_PATH}")
+
+
 @app.command("calibrate-noise")
 def calibrate_noise():
     """Fit src/gaffer/assets/scenario_noise.json from benchmark residuals.

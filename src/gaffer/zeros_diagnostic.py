@@ -190,3 +190,61 @@ def format_diagnostic(payload: dict) -> str:
         lines.append(f"   decile {row['decile']}  pred {row['pred']:.4f}  "
                      f"obs {row['obs']:.4f}  n {row['n']}")
     return "\n".join(lines)
+
+
+def _holdout(holdout_slots: int = 10) -> pd.DataFrame:
+    """The evaluation harness's own holdout rows, scored, with the strata
+    features and ``p_dnp`` carried along.
+
+    Deliberately a re-walk of :func:`gaffer.evaluation.evaluate_current`'s
+    steps rather than a call into it: the harness returns metrics, and what is
+    wanted here is the row-level frame those metrics were computed from, with
+    the mode probabilities and the rotation features still attached.
+    """
+    from gaffer.assets import load_bootstrap_sample
+    from gaffer.data.bootstrap import scoring_table
+    from gaffer.evaluation import HOLDOUT_SLOTS, before_mask, holdout_boundary
+    from gaffer.models.assemble import (apply_calibration, assemble_ep,
+                                        ep_matrix)
+    from gaffer.models.train import (load_training_frame,
+                                     predict_components_simple, train_all)
+
+    holdout_slots = holdout_slots or HOLDOUT_SLOTS
+    df, tg, _ = load_training_frame()
+    bs, bg = holdout_boundary(df, holdout_slots)
+    before, tg_before = before_mask(df, bs, bg), before_mask(tg, bs, bg)
+    models = train_all(df[before], tg[tg_before].dropna(subset=["elo_diff"]),
+                       save=False)
+
+    hold = df[~before].reset_index(drop=True)
+    comp = predict_components_simple(models, hold)
+    ep = ep_matrix(apply_calibration(
+        assemble_ep(comp, scoring_table(load_bootstrap_sample())),
+        models.get("calibration")))
+    truth = hold.groupby(["code", "gw"], as_index=False).agg(
+        total_points=("total_points", "sum"), minutes=("minutes", "sum"))
+    # One row per player-fixture becomes one row per player-gameweek, so the
+    # strata features are taken from the first fixture of the week: they are
+    # player-and-week facts, identical across a double gameweek's two rows.
+    modes = models["minutes"].predict_modes(hold)
+    carry = hold[["code", "gw"]].copy()
+    for col in ("season_start_share", "minutes_r5"):
+        if col in hold.columns:
+            carry[col] = pd.to_numeric(hold[col], errors="coerce")
+    carry["p_dnp"] = modes["p_dnp"].values
+    carry = carry.groupby(["code", "gw"], as_index=False).first()
+    return ep.merge(truth, on=["code", "gw"], how="inner").merge(
+        carry, on=["code", "gw"], how="left")
+
+
+def run_diagnostic(holdout_slots: int = 10) -> dict:
+    """Score the holdout, decompose it, print it, save it."""
+    from gaffer.evaluation import git_sha, run_at
+
+    payload = zeros_report(_holdout(holdout_slots))
+    payload["run_at"] = run_at()
+    payload["git_sha"] = git_sha()
+    payload["holdout_slots"] = int(holdout_slots)
+    print(format_diagnostic(payload), flush=True)
+    save_diagnostic(payload)
+    return payload
