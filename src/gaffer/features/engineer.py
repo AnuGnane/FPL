@@ -307,6 +307,54 @@ def add_rotation_priors(df: pd.DataFrame,
     return out
 
 
+def latest_rotation_priors(hist: pd.DataFrame,
+                           tenures: pd.DataFrame | None = None,
+                           when=None) -> pd.DataFrame:
+    """Each player's as-of-today rotation-prior state, indexed by ``code``.
+
+    Built by appending one *probe* row per player to history and running
+    :func:`add_rotation_priors` over the lot, rather than by restating the
+    arithmetic with the exclusions turned off. The probe is a match that has
+    not been played — no ``starts``, a kickoff one day past the end of
+    history — so "strictly before the probe" is exactly "all of history",
+    which is the as-of-end contract every other ``latest_*`` keeps. Sharing
+    the code path is what makes train/serve skew impossible here rather than
+    merely unlikely.
+
+    ``_prior_spell`` rides along so the caller can tell whether the state
+    belongs to the manager who will pick the future team;
+    :func:`build_prediction_frame` blanks what a change of manager invalidates.
+    """
+    cols = ["code"] + ROTATION_PRIOR_FEATURES + ["_prior_spell"]
+    if not {"code", "team_code", "season_idx"} <= set(hist.columns):
+        return pd.DataFrame(columns=cols).set_index("code")
+    sort_cols = [c for c in ("code", "season_idx", "gw", "kickoff_time")
+                 if c in hist.columns]
+    h = hist.sort_values(sort_cols, kind="stable").reset_index(drop=True)
+    kt = (pd.to_datetime(h["kickoff_time"], errors="coerce", utc=True)
+          if "kickoff_time" in h.columns
+          else pd.Series(pd.NaT, index=h.index, dtype="datetime64[ns, UTC]"))
+    stamp = when if when is not None else (
+        kt.max() + pd.Timedelta(days=1) if kt.notna().any() else pd.NaT)
+    tail = h.groupby("code", sort=False).tail(1)
+    probe = pd.DataFrame({
+        "code": tail["code"].to_numpy(),
+        "team_code": tail["team_code"].to_numpy(),
+        "season_idx": tail["season_idx"].to_numpy(),
+        "gw": pd.to_numeric(tail["gw"], errors="coerce").to_numpy(),
+        "kickoff_time": stamp,
+        "starts": float("nan")})
+    both = add_rotation_priors(
+        pd.concat([h.assign(_probe=False), probe.assign(_probe=True)],
+                  ignore_index=True), tenures)
+    out = both[both["_probe"].fillna(False).astype(bool)].copy()
+    out["_prior_spell"] = spell_keys(
+        out["team_code"],
+        pd.Series(stamp, index=out.index),
+        out["season_idx"], tenures).to_numpy()
+    return out[cols].groupby("code", sort=False).tail(1).set_index("code")
+
+
 def add_congestion(df: pd.DataFrame,
                    cups: pd.DataFrame | None = None) -> pd.DataFrame:
     """Fixture-congestion features: the gaps either side, and the recent load.
@@ -551,7 +599,8 @@ def build_prediction_frame(hist: pd.DataFrame, future: pd.DataFrame,
                            elo: pd.DataFrame | None = None,
                            elo_final: dict | None = None,
                            understat_team: pd.DataFrame | None = None,
-                           cups: pd.DataFrame | None = None
+                           cups: pd.DataFrame | None = None,
+                           tenures: pd.DataFrame | None = None
                            ) -> pd.DataFrame:
     """Feature rows for upcoming fixtures, built purely from history.
 
@@ -591,15 +640,45 @@ def build_prediction_frame(hist: pd.DataFrame, future: pd.DataFrame,
     # share — before a player's first match of the new season it is undefined.
     stale = rot["_rot_season_idx"] != out["season_idx"]
     rot.loc[stale, "season_start_share"] = float("nan")
+    # v8a F1. The asset is loaded here rather than passed by every caller:
+    # ``advise`` builds this frame and must not have to know about a file it
+    # is allowed to be missing. ``None`` is the club-season degradation.
+    if tenures is None:
+        from gaffer.data.managers import load_manager_tenures
+        tenures = load_manager_tenures()
+    if "team_code" in out.columns:
+        pri = (latest_rotation_priors(hist, tenures)
+               .reindex(out["code"]).reset_index(drop=True))
+        now_spell = spell_keys(
+            out["team_code"],
+            out["kickoff_time"] if "kickoff_time" in out.columns
+            else pd.Series(pd.NaT, index=out.index),
+            out["season_idx"], tenures)
+        # A state measured under the outgoing manager is not evidence about
+        # the incoming one's team sheet: the share and the roulette index
+        # describe a squad nobody has picked yet, and the counter genuinely
+        # restarts at zero.
+        fresh_boss = pri["_prior_spell"].to_numpy() != now_spell.to_numpy()
+        pri.loc[fresh_boss, "tenure_start_share"] = float("nan")
+        pri.loc[fresh_boss, "xi_churn_r5"] = float("nan")
+        pri.loc[fresh_boss, "manager_tenure_matches"] = 0.0
+        pri = pri.drop(columns=["_prior_spell"])
+    else:
+        # No club on the rows: no spell can be named, and the columns degrade
+        # to all-NaN exactly as they do inside the builder itself.
+        pri = pd.DataFrame({c: float("nan") for c in ROTATION_PRIOR_FEATURES},
+                           index=out.index)
     us = latest_understat_rolling(hist, US_WINDOWS)
     shrunk = latest_shrunken_rates(hist)
     modes = latest_shrunken_modes(hist)
     frame = pd.concat(
         [out.drop(columns=list(latest.columns) + ROTATION_FEATURES
+                  + ROTATION_PRIOR_FEATURES
                   + list(us.columns) + SHRUNK_FEATURES
                   + SHRUNK_MODE_FEATURES, errors="ignore"),
          latest.reindex(out["code"]).reset_index(drop=True),
          rot.drop(columns=["_rot_season_idx"]),
+         pri,
          us.reindex(out["code"]).reset_index(drop=True),
          shrunk.reindex(out["code"]).reset_index(drop=True),
          modes.reindex(out["code"]).reset_index(drop=True)], axis=1)
@@ -621,6 +700,7 @@ def feature_columns(stats: list[str] = ROLL_STATS,
     cols = [f"{s}_r{w}" for s in stats for w in windows]
     return (cols + ["team_elo", "opp_elo", "elo_diff", "home", "days_rest",
                     "pen_taker", "setpiece_taker"] + ROTATION_FEATURES
+            + ROTATION_PRIOR_FEATURES
             + CONGESTION_FEATURES
             + understat_feature_columns() + TEAM_US_FEATURES
             + SHRUNK_FEATURES + SHRUNK_MODE_FEATURES)

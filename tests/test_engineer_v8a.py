@@ -103,3 +103,65 @@ def test_a_frame_without_starts_yields_all_nan_columns():
     out = add_rotation_priors(df, _tenures())
     for col in ROTATION_PRIOR_FEATURES:
         assert out[col].isna().all()
+
+
+# --- serve side ------------------------------------------------------------
+
+from gaffer.features.engineer import (build_prediction_frame,  # noqa: E402
+                                      feature_columns,
+                                      latest_rotation_priors)
+
+
+def _future(gws=(7, 8), team=3) -> pd.DataFrame:
+    rows = []
+    for i, gw in enumerate(gws):
+        when = pd.Timestamp("2023-09-16", tz="UTC") + pd.Timedelta(days=7 * i)
+        for code in (1, 2):
+            rows.append({"code": code, "season_idx": 1, "gw": gw,
+                         "team_code": team, "opp_code": 4, "was_home": True,
+                         "position": "MID",
+                         "kickoff_time": when.isoformat()})
+    return pd.DataFrame(rows)
+
+
+def test_the_serve_state_is_one_row_per_player():
+    out = latest_rotation_priors(_frame(), _tenures())
+    assert sorted(out.index) == [1, 2]
+    for col in ROTATION_PRIOR_FEATURES:
+        assert col in out.columns
+
+
+def test_the_serve_state_counts_the_last_played_match():
+    """As-of-end, like every other ``latest_*``: six matches have been played
+    under the two spells, three of them under the current one."""
+    out = latest_rotation_priors(_frame(), _tenures())
+    assert out.loc[1, "manager_tenure_matches"] == 3.0
+    assert out.loc[1, "started_last_match"] == 1.0
+
+
+def test_the_prediction_frame_carries_every_prior_feature():
+    out = build_prediction_frame(_frame(), _future(), tenures=_tenures())
+    for col in ROTATION_PRIOR_FEATURES:
+        assert col in out.columns
+    assert out["manager_tenure_matches"].notna().all()
+
+
+def test_a_change_of_manager_blanks_the_share_it_no_longer_describes():
+    """The state was measured under the manager in post at the last match.
+    A future fixture past a change describes a squad nobody has picked yet."""
+    later = _tenures().copy()
+    later.loc[len(later)] = {"team_code": 3, "club": "Arsenal",
+                             "manager": "C",
+                             "start_date": pd.Timestamp("2023-09-10",
+                                                        tz="UTC"),
+                             "end_date": pd.NaT}
+    later.loc[1, "end_date"] = pd.Timestamp("2023-09-10", tz="UTC")
+    out = build_prediction_frame(_frame(), _future(), tenures=later)
+    assert out["tenure_start_share"].isna().all()
+    assert (out["manager_tenure_matches"] == 0.0).all()
+
+
+def test_the_prior_features_are_in_the_canonical_strip_list():
+    cols = feature_columns()
+    for col in ROTATION_PRIOR_FEATURES:
+        assert col in cols

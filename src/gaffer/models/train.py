@@ -18,9 +18,11 @@ from gaffer.data.bootstrap import scoring_table
 from gaffer.data.elo import compute_elo
 from gaffer.features.bps import FIRST_NEW_RULES_SEASON, apply_new_bps
 from gaffer.data.understat import UNDERSTAT_PLAYER_PATH, UNDERSTAT_TEAM_PATH
-from gaffer.features.engineer import (ROTATION_FEATURES, US_STATS,
+from gaffer.features.engineer import (ROTATION_FEATURES,
+                                      ROTATION_PRIOR_FEATURES, US_STATS,
                                       add_congestion, add_context,
                                       add_player_rolling, add_rotation,
+                                      add_rotation_priors,
                                       add_setpiece, add_shrunken_modes,
                                       add_shrunken_rates,
                                       add_understat_rolling,
@@ -177,6 +179,18 @@ def cup_matches() -> pd.DataFrame | None:
     return load_cup_matches()
 
 
+def manager_tenures() -> pd.DataFrame | None:
+    """The committed tenure asset, shared by training and by ``advise``.
+
+    Same contract as :func:`cup_matches`: both sides of the train/serve
+    boundary read it through one function, so neither can end up with a
+    differently-scoped rotation window.
+    """
+    from gaffer.data.managers import load_manager_tenures
+
+    return load_manager_tenures()
+
+
 def understat_team_rolled() -> pd.DataFrame | None:
     """The rolled Understat team frame, or ``None`` when there is no parquet.
 
@@ -241,6 +255,7 @@ def load_training_frame(max_season_idx: int | None = None,
     elo_final = elo.attrs["final"]
     df = add_player_rolling(player_gw)
     df = add_rotation(df)
+    df = add_rotation_priors(df, manager_tenures())
     df = add_setpiece(df)
     df = add_context(df, elo, elo_final)
     df = add_congestion(df, cup_matches())
