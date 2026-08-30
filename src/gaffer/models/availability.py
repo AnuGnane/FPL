@@ -13,6 +13,8 @@ from __future__ import annotations
 import pandas as pd
 
 from gaffer.assets import load_injury_curves
+from gaffer.data.news.presser_log import (PRESSER_COLS, would_factor,  # noqa: F401
+                                          write_presser)
 
 RECOVERY = 0.7
 """Per-gameweek decay of an availability flag over the planning horizon.
@@ -52,7 +54,8 @@ def return_prob(curves: dict | None, injury_type, h: int) -> float | None:
 
 def apply_availability(pred: pd.DataFrame, avail: pd.DataFrame,
                        curves: dict | None = None,
-                       start_floor: float | None = None) -> pd.DataFrame:
+                       start_floor: float | None = None,
+                       llm_serving: bool | None = None) -> pd.DataFrame:
     """avail: the normalized availability frame, or the bare bootstrap slice.
 
     ``status`` i/s/u/n (injured/suspended/unavailable/not in squad) -> factor
@@ -116,6 +119,21 @@ def apply_availability(pred: pd.DataFrame, avail: pd.DataFrame,
         out = _floor_first_gw(out, float(start_floor))
     if "absence_damp" in out.columns:
         out = _damp_first_gw(out)
+    if "llm_verdict" in out.columns and out["llm_verdict"].notna().any():
+        # Shadow first, always: the log records what serving *would* do
+        # before anything is done, so the flag's evidence accrues from the
+        # first run whether or not it is ever flipped (spec §5).
+        from gaffer.config import serving_config
+        cfg = serving_config()
+        if "gw" in out.columns and len(out):
+            try:
+                write_presser(out[out["gw"] == out["gw"].min()],
+                              str(cfg.current_season or ""),
+                              int(out["gw"].min()))
+            except Exception as exc:  # noqa: BLE001 — logging never blocks
+                print(f"news: presser log not written ({exc})")
+        if (cfg.news_llm_classifier if llm_serving is None else llm_serving):
+            out = _presser_first_gw(out)
     return out.drop(columns=["status", "chance_of_playing"] + news_cols)
 
 
@@ -227,6 +245,23 @@ def _damp_first_gw(out: pd.DataFrame) -> pd.DataFrame:
         return out
     for col in ["p_play", "p60", "e_min"]:
         out.loc[bites, col] = out.loc[bites, col] * damp[bites]
+    return out
+
+
+def _presser_first_gw(out: pd.DataFrame) -> pd.DataFrame:
+    """Apply the classifier's verdict to the horizon's first gameweek.
+
+    Only reached with ``[news] llm_classifier`` on, which v8a ships **off**:
+    the mapping is measured in the shadow log for a season before it is
+    allowed to move a number, the same ritual Z1 got. Same one-row-per-player
+    rule as every other first-gameweek pass.
+    """
+    factor = out["llm_verdict"].map(would_factor).astype("float64")
+    bites = _first_rows(out) & factor.notna() & (factor < 1.0)
+    if not bites.any():
+        return out
+    for col in ["p_play", "p60", "e_min"]:
+        out.loc[bites, col] = out.loc[bites, col] * factor[bites]
     return out
 
 

@@ -163,3 +163,50 @@ def test_the_new_columns_do_not_survive_into_the_output():
     out = apply_availability(_pred(), _avail(absence_damp=0.75), curves=None)
     for col in ("absence_damp", "llm_verdict", "llm_confidence"):
         assert col not in out.columns
+
+
+# --- F5: the shadow log and the gated serving damp -------------------------
+
+def test_the_shadow_log_is_written_from_the_availability_pass(monkeypatch):
+    banked = {}
+    import gaffer.models.availability as av
+
+    monkeypatch.setattr(av, "write_presser",
+                        lambda frame, season, gw: banked.update(
+                            rows=len(frame), gw=gw) or len(frame))
+    apply_availability(_pred(), _avail(llm_verdict="rotation_risk",
+                                       llm_confidence=0.8), curves=None)
+    assert banked["gw"] == 5
+
+
+def test_the_verdict_changes_no_number_with_the_flag_off(monkeypatch):
+    import gaffer.models.availability as av
+
+    monkeypatch.setattr(av, "write_presser", lambda *a, **k: 0)
+    served = apply_availability(_pred(), _avail(llm_verdict="rotation_risk"),
+                                curves=None)
+    plain = apply_availability(_pred(), _avail(), curves=None)
+    pd.testing.assert_frame_equal(served, plain)
+
+
+def test_the_verdict_damps_the_first_gameweek_when_enabled(monkeypatch):
+    import gaffer.models.availability as av
+
+    monkeypatch.setattr(av, "write_presser", lambda *a, **k: 0)
+    out = apply_availability(_pred(), _avail(llm_verdict="rotation_risk"),
+                             curves=None, llm_serving=True)
+    by_gw = out.set_index("gw")
+    assert by_gw.loc[5, "p_play"] == pytest.approx(0.9 * 0.8)
+    assert by_gw.loc[6, "p_play"] == pytest.approx(0.9)
+
+
+def test_a_log_that_fails_never_reaches_the_caller(monkeypatch):
+    import gaffer.models.availability as av
+
+    def boom(*a, **k):
+        raise RuntimeError("disk full")
+
+    monkeypatch.setattr(av, "write_presser", boom)
+    out = apply_availability(_pred(), _avail(llm_verdict="assess"),
+                             curves=None)
+    assert len(out) == 3
