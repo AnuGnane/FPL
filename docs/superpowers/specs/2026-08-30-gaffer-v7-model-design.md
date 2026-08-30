@@ -223,7 +223,7 @@ scenario-to-scenario variance, so the estimation arm runs the replay with
 near-deterministic scenarios. S2 therefore cleanly asks whether the
 sim-consensus value lives in the noise magnitude or in re-solving per se.
 
-### Gate S2 — PASS (both conditions; estimation σ ships as default)
+### Gate S2 — PASS on the literal rule; merge withheld (decision escalated)
 
 Replay (scripts/s2_replay.py, 2025-26, N=40, seed 20260827+gw):
 heuristic **1785** / 15 hits / 69 transfers / 8 held weeks vs estimation
@@ -233,14 +233,44 @@ tolerance. Live condition: captain sim-support **95%** (bar 60%),
 `3acab85`: estimation asset supersedes the residual table (proven drop-in
 against unedited v6 suites first), `CALIBRATED_NOISE_DEFAULT = True`,
 v6's two overturned pins converted to pin the new contract plus one new
-flag-off rail. Reading: v6's S1 loss and v7's S2 win are the same lesson
-from both sides — the re-solving machinery works when fed *estimation*
-uncertainty (σ ~0.07–0.29) and is actively harmed by residual noise
-(σ ~2–5) that drowns differential signal.
+flag-off rail.
 
-Noted for the adversarial review: +123 is a large swing — the review is
-pointed at the driver's arm symmetry before the merge decision. Also
-noted: the live run's armband (Guéhi, chase-tilt artifact of mid-GW2
-data) is a league-mode question, not a noise question.
+**Reading (corrected by the adversarial review).** The +123 is not the
+gate discriminating better; it is the gate ceasing to operate. The
+estimation σ is small enough to make scenario gating a near no-op — cell
+`0_0`, which holds **62.4%** of the fitted rows, carries σ = **0.018**, so
+most of the board moves by under a fiftieth of a point and the 40
+scenarios come back as 40 copies of one board. Every move then clears
+threshold and the gate passes through whatever the raw solve wanted. The
+replay confirms it: the estimation arm is **identical to the ungated raw
+replay in 31 of 34 weeks**, and net **−6** across the three that differ.
+
+Three-way, single seed, no error bars:
+
+| arm | total | hits | transfers | held weeks |
+| --- | ----- | ---- | --------- | ---------- |
+| heuristic σ, gated | 1785 | 15 | 69 | 8 |
+| estimation σ, gated | 1908 | 11 | 64 | 2 |
+| raw, ungated | 1914 | — | — | — |
+
+The ordering is "no gating > gating", not "estimation σ > heuristic σ":
+the estimation arm sits 6 below the ungated baseline it very nearly is,
+and the heuristic arm sits 129 below it. The live condition (95%) is a
+weak check under this σ — near-identical scenarios produce high captain
+support whether or not the gate discriminates.
+
+The pre-registered rule asked only that the estimation arm land within 5
+of the heuristic arm, and it did. So `CALIBRATED_NOISE_DEFAULT` is
+**True per the literal rule; merge withheld — the three-way decision is
+escalated to the user (§0 D3)**: ship gating on with the estimation σ,
+ship gating off outright, or hold for a σ between the two scales.
+
+**Open finding — D1 sign reversal, unbisected.** The same gating
+machinery measured **+75** at v4c's gate D1 and **−129** here (heuristic
+gated 1785 vs raw ungated 1914). Nobody has bisected the cause; until
+someone does, neither result should be treated as settled.
+
+Also noted: the live run's armband (Guéhi, chase-tilt artifact of
+mid-GW2 data) is a league-mode question, not a noise question.
 
 (Remaining outcome recorded at cycle end.)
