@@ -101,6 +101,14 @@ Spec: `specs/2026-08-29-gaffer-v7-ui-design.md` (§12–13 = smoke + outcome) ·
 
 ## In progress
 
+### v7d — cockpit polish (done, 2026-08-30)
+Spec: `specs/2026-08-30-gaffer-v7d-cockpit-polish-design.md` (§9 = outcome + evidence) · Plan: `plans/2026-08-30-gaffer-v7d-cockpit-polish.md`
+- [x] Fast advise: `gaffer advise --fast` + `advise-fast` job kind + This Week button — 78s vs ~6 min swept (rides the pinned `scenarios_n=0` rail; v7b proved the gate is a no-op under option (b))
+- [x] Pen tracker card in Model hub (`GET /api/pens`, `track-pens` job kind + button); snapshot button; player names are the explain control in Compare + the explorer (`Card` heading slot)
+- [x] Light theme: three-state toggle (system/dark/light), `[data-theme]` token overrides, boot script, WCAG-checked palette; review blocker = Tailwind v4 bakes opacity-modifier utilities to dark hex in the compiled CSS → soft tokens + a mutation-tested built-CSS guard (and: Tailwind's scanner reads comments — naming a class in prose regenerates it)
+- [x] Z1 flip shipped separately (`826ff6b`): `DNP_CALIBRATION_DEFAULT = True` by user decision — takes effect at the next `gaffer train`
+- Suite: 1636 Python + 302 frontend (+1 skip), tsc clean; protected files zero diffs
+
 ### v7c — foundations (done, 2026-08-30)
 Spec: `specs/2026-08-30-gaffer-v7c-foundations-design.md` (§8 = outcome + evidence) · Plan: `plans/2026-08-30-gaffer-v7c-foundations.md`
 - [x] F1 daily availability snapshot: `gaffer snapshot` → append-only `data/live/availability_log.parquet` (idempotent per UTC day, atomic rewrite, never raises); web job kind; launchd plist shipped — **run `scripts/install_automation.sh` to activate the 17:00 daily job**
