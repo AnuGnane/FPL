@@ -28,9 +28,10 @@ describe('theme tokens', () => {
       ['--color-sage', '#86b388'],
       ['--color-rust', '#e0876f'],
       ['--color-info', '#7da7c9'],
-      // The soft tiers exist as tokens rather than as `border-sage/40`
-      // utilities: Tailwind bakes an opacity modifier to a literal hex at
+      // The soft tiers are tokens rather than opacity modifiers on the
+      // border utility: Tailwind bakes a slash modifier to a literal hex at
       // build time, which would freeze the dark colour into the light theme.
+      // (Not spelled out — the scanner would emit the utility from a comment.)
       ['--color-sage-soft', '#86b38866'],
       ['--color-rust-soft', '#e0876f66'],
       ['--color-info-soft', '#7da7c966'],

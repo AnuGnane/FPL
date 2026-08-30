@@ -16,11 +16,13 @@
   --color-rust: #e0876f;
   --color-info: #7da7c9;
 
-  /* The soft outline tier, as tokens rather than as `border-sage/40`.
-     Tailwind v4 resolves an opacity modifier at build time and bakes the
-     dark hex into the compiled CSS, so a `/40` border would keep its dark
-     colour under the light theme. A token is re-declared per theme and the
-     generated `border-sage-soft` utility follows it. */
+  /* The soft outline tier, as tokens rather than as an opacity modifier on
+     the border utility. Tailwind v4 resolves a slash modifier at build time
+     and bakes the dark hex into the compiled CSS, so such a border would
+     keep its dark colour under the light theme. A token is re-declared per
+     theme and the generated `border-sage-soft` utility follows it.
+     (Spelling the modifier out here would make the scanner emit the very
+     utility this replaces, so it is described rather than quoted.) */
   --color-sage-soft: #86b38866;
   --color-rust-soft: #e0876f66;
   --color-info-soft: #7da7c966;
