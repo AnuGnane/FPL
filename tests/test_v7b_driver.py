@@ -240,3 +240,91 @@ def test_a_non_numeric_seed_base_is_refused():
     with pytest.raises(SystemExit):
         v7b_replay.arm_configs(["--arm", "raw", "--tag", "q",
                                 "--seed-bases", "20260825,tuesday"])
+
+
+import json  # noqa: E402
+from pathlib import Path  # noqa: E402
+
+
+def _fake_backtest(monkeypatch, totals):
+    """Drive ``main`` over a stubbed replay: one canned total per call."""
+    seen = []
+    pending = list(totals)
+
+    def run_backtest(season, start_gw, horizon, chips):
+        seen.append((season, start_gw, horizon, chips))
+        return {"total": pending.pop(0), "chips_played": {}}
+
+    def load(rel):
+        return pd.DataFrame({"chip": ["", "bboost"], "points": [40, 60],
+                             "hits": [0, 4], "transfers": [1, 2]})
+
+    monkeypatch.setattr(v7b_replay.bt, "run_backtest", run_backtest)
+    monkeypatch.setattr(v7b_replay.bt_store, "load", load)
+    return seen
+
+
+def test_the_multi_seed_run_replays_every_base_and_reports_each(
+        tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    seen = _fake_backtest(monkeypatch, [1800, 1900, 1850])
+    out = v7b_replay.main(["--arm", "raw", "--tag", "t",
+                           "--seed-bases", "1,2,3"])
+    assert len(seen) == 3
+    printed = capsys.readouterr().out.splitlines()
+    arm_lines = [ln for ln in printed if ln.startswith("V7B_ARM_DONE")]
+    assert [ln.split()[1] for ln in arm_lines] == ["t-s1", "t-s2", "t-s3"]
+    assert [json.loads(ln.split(" ", 2)[2])["total"] for ln in arm_lines] == \
+        [1800, 1900, 1850]
+    for tag in ("t-s1", "t-s2", "t-s3"):
+        banked = json.loads(Path(f"reports/v7b_{tag}.json").read_text())
+        assert banked["hits"] == 4 and banked["transfers"] == 3
+        assert banked["config"]["tag"] == tag
+    done = [ln for ln in printed if ln.startswith("MULTISEED_DONE")]
+    assert len(done) == 1
+    assert done[0].split()[1] == "t"
+    assert json.loads(done[0].split(" ", 2)[2]) == out
+    assert out == {"totals": [1800, 1900, 1850], "mean": 1850.0,
+                   "spread": 100, "range": [1800, 1900],
+                   "seed_bases": [1, 2, 3]}
+
+
+def test_a_single_seed_run_prints_one_line_and_no_aggregate(
+        tmp_path, monkeypatch, capsys):
+    """The pre-v7c behaviour, unchanged: one arm, one report, one line."""
+    monkeypatch.chdir(tmp_path)
+    _fake_backtest(monkeypatch, [1876])
+    out = v7b_replay.main(["--arm", "raw", "--tag", "t",
+                           "--seed-base", "20260901"])
+    printed = capsys.readouterr().out.splitlines()
+    assert [ln.split()[:2] for ln in printed if ln.startswith("V7B_")] == \
+        [["V7B_ARM_DONE", "t"]]
+    assert not [ln for ln in printed if ln.startswith("MULTISEED_DONE")]
+    assert out["total"] == 1876
+    assert out["config"]["seed_base"] == 20260901
+    assert Path("reports/v7b_t.json").exists()
+
+
+def test_the_multi_seed_loop_leaves_the_backtest_module_as_it_found_it(
+        tmp_path, monkeypatch):
+    """Three bases in one process: a gate stacked on a gate, or an arm store
+    left pointing at the previous base's log, would corrupt every run after
+    the first."""
+    monkeypatch.chdir(tmp_path)
+    _fake_backtest(monkeypatch, [1800, 1900, 1850])
+    before = (v7b_replay.bt.store, v7b_replay.bt.solve_plan,
+              v7b_replay.bt.predict_components_simple)
+    v7b_replay.main(["--arm", "raw", "--tag", "t", "--seed-bases", "1,2,3"])
+    assert (v7b_replay.bt.store, v7b_replay.bt.solve_plan,
+            v7b_replay.bt.predict_components_simple) == before
+
+
+def test_the_aggregate_is_the_mean_spread_and_range_of_the_totals():
+    """Convention 1's arithmetic: verdicts read mean +/- spread, and the v7b
+    trio's own spread (115 pts) dwarfs every arm gap ever gated on."""
+    outs = [{"total": 1876}, {"total": 1901}, {"total": 1786}]
+    assert v7b_replay.multiseed_summary(
+        outs, [20260901, 20260915, 20260825]) == {
+            "totals": [1876, 1901, 1786], "mean": 1854.3, "spread": 115,
+            "range": [1786, 1901],
+            "seed_bases": [20260901, 20260915, 20260825]}

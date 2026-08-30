@@ -43,6 +43,14 @@ Usage (orchestrator only — Group 1 builds this and does not run it)::
         --arm heur --tag q1b-heur --seed-base 20260901 \\
         > logs/v7b_q1b-heur.log 2>&1 &
     grep V7B_ARM_DONE logs/v7b_*.log
+
+``--seed-bases 20260825,20260826,20260827`` runs the same arm once per base —
+tags ``<tag>-s<base>``, one log and one report each — and finishes with a single
+``MULTISEED_DONE <tag> {...}`` line carrying the totals, their mean and their
+spread. That is the house standard (``docs/superpowers/CONVENTIONS.md`` §1): the
+seed spread on this harness is larger than every arm gap ever gated on, so a
+one-draw verdict measures the seed. ``scripts/seed_stats.py`` computes the same
+aggregate from reports already on disk.
 """
 
 from __future__ import annotations
@@ -293,15 +301,25 @@ def make_gate(cfg: ArmConfig, stash: dict, real_solve,
     return gate
 
 
-def main(argv: list[str]) -> dict:
-    cfg = arm_config(argv)
-    undo = apply_patches(cfg)
-    payload = getattr(undo, "payload", None)
+def run_one(cfg: ArmConfig, payload: dict | None) -> dict:
+    """One seed base end to end: replay, report file, ``V7B_ARM_DONE`` line.
 
+    The arm store is re-pointed *here* rather than in :func:`apply_patches`
+    because it is the one patch that is not seed-independent — each base owns
+    its own backtest log, and two bases sharing one would read each other's
+    hits and transfers. ``apply_patches`` recorded the real module before the
+    loop, so its undo still restores it.
+
+    The component and solve hooks are restored before returning for the same
+    reason: a second base must not run with the first base's gate stacked on
+    top of its own.
+    """
+    bt.store = _ArmStore(cfg.log_path)
+    real_pcs = bt.predict_components_simple
+    real_solve = bt.solve_plan
     stash: dict = {}
     gate = None
     if gate_wanted(cfg):
-        real_pcs = bt.predict_components_simple
 
         def pcs(models, rows):
             comp = real_pcs(models, rows)
@@ -309,29 +327,68 @@ def main(argv: list[str]) -> dict:
             return comp
 
         bt.predict_components_simple = pcs
-        gate = make_gate(cfg, stash, bt.solve_plan)
+        gate = make_gate(cfg, stash, real_solve)
         bt.solve_plan = gate
-
-    r = bt.run_backtest(season="2025-26", start_gw=5, horizon=3,
-                        chips=cfg.chips)
-    d = bt_store.load(cfg.log_path)
-    chip_pts = d[d["chip"] != ""].groupby("chip")["points"].sum().to_dict()
-    out = {
-        "total": r["total"],
-        "hits": int(d["hits"].sum()),
-        "transfers": int(d["transfers"].sum()),
-        "gated_weeks": gate.gated_weeks if gate else 0,
-        "held_weeks": gate.held_weeks if gate else 0,
-        "chips_played": r["chips_played"],
-        "chip_points": {str(k): int(v) for k, v in chip_pts.items()},
-        "composite_floor": (payload or {}).get("composite_floor"),
-        "config": cfg.echo(),
-    }
+    try:
+        r = bt.run_backtest(season="2025-26", start_gw=5, horizon=3,
+                            chips=cfg.chips)
+        d = bt_store.load(cfg.log_path)
+        chip_pts = d[d["chip"] != ""].groupby("chip")["points"].sum().to_dict()
+        out = {
+            "total": r["total"],
+            "hits": int(d["hits"].sum()),
+            "transfers": int(d["transfers"].sum()),
+            "gated_weeks": gate.gated_weeks if gate else 0,
+            "held_weeks": gate.held_weeks if gate else 0,
+            "chips_played": r["chips_played"],
+            "chip_points": {str(k): int(v) for k, v in chip_pts.items()},
+            "composite_floor": (payload or {}).get("composite_floor"),
+            "config": cfg.echo(),
+        }
+    finally:
+        bt.predict_components_simple = real_pcs
+        bt.solve_plan = real_solve
     report = Path(cfg.report_path)
     report.parent.mkdir(parents=True, exist_ok=True)
     report.write_text(json.dumps(out, indent=2) + "\n", encoding="utf-8")
     print("V7B_ARM_DONE", cfg.tag, json.dumps(out), flush=True)
     return out
+
+
+def multiseed_summary(outs: list[dict], bases: list[int]) -> dict:
+    """The aggregate line's payload: the spread a verdict is read against.
+
+    ``scripts/seed_stats.py`` builds the identical dict from banked reports;
+    ``tests/test_seed_stats.py`` pins the two together.
+    """
+    totals = [int(o["total"]) for o in outs]
+    return {"totals": totals,
+            "mean": round(sum(totals) / len(totals), 1),
+            "spread": max(totals) - min(totals),
+            "range": [min(totals), max(totals)],
+            "seed_bases": [int(b) for b in bases]}
+
+
+def main(argv: list[str]) -> dict:
+    """Every base this invocation asks for, in sequence.
+
+    Patches are installed once around the whole loop: the minutes head, the
+    training frame, the priors and the noise table are all seed-independent,
+    and re-installing them per base would only add ways for the third run to
+    differ from the first.
+    """
+    configs, bases, tag = arm_configs(argv)
+    undo = apply_patches(configs[0])
+    payload = getattr(undo, "payload", None)
+    try:
+        outs = [run_one(cfg, payload) for cfg in configs]
+    finally:
+        undo()
+    if bases is None:
+        return outs[0]
+    summary = multiseed_summary(outs, bases)
+    print("MULTISEED_DONE", tag, json.dumps(summary), flush=True)
+    return summary
 
 
 if __name__ == "__main__":
