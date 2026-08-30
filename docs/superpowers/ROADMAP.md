@@ -101,6 +101,14 @@ Spec: `specs/2026-08-29-gaffer-v7-ui-design.md` (§12–13 = smoke + outcome) ·
 
 ## In progress
 
+### v7c — foundations (done, 2026-08-30)
+Spec: `specs/2026-08-30-gaffer-v7c-foundations-design.md` (§8 = outcome + evidence) · Plan: `plans/2026-08-30-gaffer-v7c-foundations.md`
+- [x] F1 daily availability snapshot: `gaffer snapshot` → append-only `data/live/availability_log.parquet` (idempotent per UTC day, atomic rewrite, never raises); web job kind; launchd plist shipped — **run `scripts/install_automation.sh` to activate the 17:00 daily job**
+- [x] F2 multi-seed standard: `v7b_replay.py --seed-bases a,b,c` + `MULTISEED_DONE` aggregate; `seed_stats.py` with config-mismatch guard (refused the q2-ctrl mix on first use — its 1786 is a chips-off control, not the S2 heur 1785); `CONVENTIONS.md` (8 rules) linked above
+- [x] F3 pen-term tracker: `gaffer track-pens` → `reports/pen_tracker.json`; GW1: 2 pens, both by predicted first-choice takers (hit 1.00), 0.100/team-game vs served 0.13, instrument xg_gap (covered_rows 256)
+- [x] Review: 1 blocker (confounded seed-spread evidence) + 4 importants (team_games retro-stamp bias, per-week Understat coverage, atomic log rewrite, gated-arm loop tests) — all fixed; residuals in spec §8
+- Suite: 1619 Python + 251 frontend; protected files zero diffs; no frontend change
+
 ### v7b — measurement cycle (done, merged `8aeb3d6` 2026-08-30)
 Spec: `specs/2026-08-30-gaffer-v7b-measurement-design.md` (§5–7 = results, corrections, evidence appendix)
 - [x] Q2: D1 sign reversal attributed (single-seed) to the v5 minutes-head swap (+27 legacy vs −61 current, same harness); harness and frame ruled out; the swap itself still justified (+47 ungated)

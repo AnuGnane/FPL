@@ -176,4 +176,62 @@ real-page parse; any change to replay season/start-gw hard-coding.
 
 ## §8 Outcome
 
-(filled at cycle close)
+Cycle closed 2026-08-30. Three implementer groups (Tasks 1–13) + one fix round, all on
+Opus; orchestrator ran every gate. Adversarial review: **1 blocker + 4 importants + 9
+nits**, all fixed except three recorded residuals (below). Suite **1619 Python** green
+(from 1548), protected files zero diffs vs main, no frontend change.
+
+The blocker was in the *evidence*, not the code: this spec's own §5 (as first committed)
+averaged `q2-ctrl-heur` (1786, a chips-off/priors-off control arm) with the q1b/q1c
+heuristic runs as a "seed trio", because its total sits 1 point from the real S2 chips-on
+heuristic 1785. `seed_stats.py` had no config guard and silently aggregated different
+arms on its first ever use — proving the guard's necessity. Fixed: the guard now refuses
+any aggregate whose config echoes differ in more than `seed_base`/`tag`, and §5/G2 plus
+CONVENTIONS §1 carry the provenance (v7b's 116 = S2 1785 + q1b 1876 + q1c 1901, same arm;
+the only same-arm banked v7b-format pair is 1876/1901, spread 25).
+
+Other review fixes: `team_games` re-keyed on `(opp_code, kickoff_time)` (`team_code` is
+retro-stamped to the player's current club — live GW1 gave 27 phantom team-games vs the
+true 20); per-week Understat coverage (`covered_rows` in every gw block, all-NaN join
+falls back to `pens_missed_only` instead of reporting zero pens as `xg_gap`); atomic
+tmp+`os.replace` rewrite for the availability log; multi-seed loop tests moved onto a
+gated arm (per-base seeds observed, mid-loop exception restores all three `bt` hooks);
+`--arm raw --seed-bases` refused (raw never reaches the scenario seed).
+
+### Gate evidence (convention 4)
+
+```
+G1  $ gaffer snapshot                       (run twice)
+    Snapshot: 623 availability rows for gw2 at 2026-08-30.
+    Snapshot: 623 availability rows for gw2 at 2026-08-30.
+    availability_log.parquet: 623 rows, 1 distinct snap_date, gw [2]
+G2  $ python scripts/seed_stats.py reports/v7b_q1b-heur.json reports/v7b_q1c-heur.json
+    {"totals": [1876, 1901], "mean": 1888.5, "spread": 25, "range": [1876, 1901],
+     "seed_bases": [20260901, 20260915]}                          exit 0
+    $ … + reports/v7b_q2-ctrl-heur.json
+    refusing to aggregate: chips, priors differ across … — these are different arms,
+    not different seeds of one arm                                 exit 2
+G3  $ gaffer track-pens
+    GW1: instrument xg_gap, covered_rows 256, team_games 20, pens_taken 2.0,
+    taker_hit_rate 1.00, pens_per_team_game 0.100 vs served 0.13
+    predicted EP 0.00 (component_rows 0 — reports/components_gw1.parquet no longer on
+    disk; documented absent-artifact zeros path). Wrote reports/pen_tracker.json.
+G4  uv run pytest -q -p no:randomly → 1619 passed, 0 failed (138s)
+    git diff main --stat over the protected list → empty
+```
+
+### Residuals (recorded, not fixed)
+
+- A fully degraded `track_pens` run still overwrites a previously good
+  `pen_tracker.json` with an empty noted report (per-GW poisoning is handled; total
+  failure is not preserved-on-disk).
+- `MULTISEED_DONE` is not emitted if the final base dies; banked per-seed reports are
+  the recovery path via `seed_stats.py` (docstring points there).
+- The v7b spec §5/§7 still carries its original "spread 116" table without the
+  same-arm provenance note added here; historical record left untouched.
+
+### Activation note
+
+The launchd job is shipped but **not installed** — installing a standing scheduled job
+is a user action. Run `scripts/install_automation.sh` to activate the daily 17:00
+snapshot (it reinstalls the advise/prices agents too, idempotently).
