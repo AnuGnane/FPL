@@ -427,6 +427,18 @@ def evaluate(mode: str = typer.Option(
     typer.echo(f"Wrote {path}")
 
 
+@app.command("track-pens")
+def track_pens_cmd(season: str = typer.Option(
+        "", help="Season to track (default: fpl.current_season).")):
+    """Predicted penalty EP against the penalties actually taken (v7c F3)."""
+    from gaffer.pen_tracker import format_tracker, save_tracker, track_pens
+
+    report = track_pens(season or None)
+    path = save_tracker(report)
+    typer.echo(format_tracker(report))
+    typer.echo(f"Wrote {path}")
+
+
 @app.command()
 def ui(port: int = typer.Option(8927, help="Port to serve on (default 8927)."),
        open_browser: bool = typer.Option(

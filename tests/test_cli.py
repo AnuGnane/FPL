@@ -466,3 +466,48 @@ def test_snapshot_exits_zero_when_the_day_could_not_be_banked(monkeypatch):
     monkeypatch.setattr(snapshot_mod, "run_snapshot", lambda cfg=None: None)
     result = CliRunner().invoke(app, ["snapshot"])
     assert result.exit_code == 0
+
+
+def test_track_pens_is_registered_and_writes_its_report(monkeypatch, tmp_path):
+    """Gate G3's front door. Not wired into `evaluate`: evaluation.json's
+    schema stays stable and the Model hub is untouched this cycle."""
+    from typer.testing import CliRunner
+
+    from gaffer import pen_tracker
+    from gaffer.cli import app
+
+    seen = {}
+
+    def fake(season):
+        seen["season"] = season
+        return {"season": "2026-27", "gws": [], "season_totals": {},
+                "notes": []}
+
+    monkeypatch.setattr(pen_tracker, "track_pens", fake)
+    monkeypatch.setattr(pen_tracker, "save_tracker",
+                        lambda report: tmp_path / "pen_tracker.json")
+    result = CliRunner().invoke(app, ["track-pens"])
+    assert result.exit_code == 0
+    assert seen["season"] is None
+    assert "Penalty tracker" in result.output
+    assert "pen_tracker.json" in result.output
+
+
+def test_track_pens_passes_the_season_through(monkeypatch, tmp_path):
+    from typer.testing import CliRunner
+
+    from gaffer import pen_tracker
+    from gaffer.cli import app
+
+    seen = {}
+
+    def fake(season):
+        seen["season"] = season
+        return {"season": season, "gws": [], "season_totals": {}, "notes": []}
+
+    monkeypatch.setattr(pen_tracker, "track_pens", fake)
+    monkeypatch.setattr(pen_tracker, "save_tracker",
+                        lambda report: tmp_path / "pen_tracker.json")
+    result = CliRunner().invoke(app, ["track-pens", "--season", "2025-26"])
+    assert result.exit_code == 0
+    assert seen["season"] == "2025-26"
