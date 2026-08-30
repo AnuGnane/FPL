@@ -143,8 +143,10 @@ Importing from protected modules is allowed; modifying them is not.
   `run_backtest` (pattern of `tests/test_v7b_driver.py`) and asserts per-seed
   `V7B_ARM_DONE` lines, per-seed report paths, and correct `MULTISEED_DONE` math;
   single `--seed-base` path proven byte-identical in output shape. `seed_stats.py`
-  reproduces v7b's Q1 numbers from the existing `reports/v7b_q1*.json` trio
-  (mean/spread must match the recorded spread 116 for the heuristic arm). No new
+  reproduces v7b's Q1 heuristic numbers from the banked reports
+  (`v7b_q2-ctrl-heur` 1786 + `v7b_q1b-heur` 1876 + `v7b_q1c-heur` 1901 → spread **115**;
+  the v7b spec's published 116 substituted the reused v7-model S2 run, 1785 at seed
+  20260827, which has no v7b-format report JSON on disk). No new
   multi-hour replay runs this cycle.
 - **G3 pens:** `gaffer track-pens` on current data produces `reports/pen_tracker.json`
   covering GW1 (finished) with sane fields; degraded-instrument path unit-tested.
