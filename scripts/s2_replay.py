@@ -19,7 +19,16 @@ The estimation arm deliberately flips ``CALIBRATED_NOISE_DEFAULT`` and stubs
 ``scenario_noise()``. Flipping the constant is what Task 18 does permanently,
 so the gate measures what shipping would actually do.
 
-Usage::
+Each arm writes its own gameweek log. ``run_backtest`` hard-codes
+``live/backtest_log.parquet``, which two concurrently running arms would
+race on — the second finisher's file would be read by both drivers and the
+hits/transfers columns of one arm would be reported for the other. There is
+no parameter for it, so the driver swaps ``backtest.store`` for a proxy that
+redirects exactly that one relative path to ``live/backtest_log_s2_<arm>``
+and forwards everything else untouched. Nothing else in the replay changes,
+and the shipped store module is not mutated.
+
+Usage (the arms are safe to run at the same time)::
 
     caffeinate -i nohup .venv/bin/python scripts/s2_replay.py heur \\
         > logs/s2_heur.log 2>&1 &
@@ -36,10 +45,9 @@ import json
 import sys
 from pathlib import Path
 
-import pandas as pd
-
 import gaffer.backtest as bt
 import gaffer.optimize.scenarios as sc
+from gaffer.data import store as bt_store
 from gaffer.optimize.policy import Thresholds, coherent_plan, decide
 from gaffer.optimize.scenarios import (move_frequencies, run_scenarios,
                                        xmins_by_player_gw)
@@ -58,6 +66,22 @@ else:
     sc.load_scenario_noise = lambda: payload
     sc.scenario_noise.cache_clear()
     assert sc.scenario_noise() is payload, "asset missing — arm invalid"
+
+SHARED_LOG = "live/backtest_log.parquet"
+ARM_LOG = f"live/backtest_log_s2_{mode}.parquet"
+
+
+class _ArmStore:
+    """``backtest.store`` with the one racy write redirected per arm."""
+
+    def __getattr__(self, name):
+        return getattr(bt_store, name)
+
+    def save(self, df, rel):
+        return bt_store.save(df, ARM_LOG if rel == SHARED_LOG else rel)
+
+
+bt.store = _ArmStore()
 
 _stash: dict = {}
 _real_pcs = bt.predict_components_simple
@@ -98,7 +122,7 @@ def gated(pool, state, **kw):
 bt.solve_plan = gated
 
 r = bt.run_backtest(season="2025-26", start_gw=5, horizon=3, chips=True)
-d = pd.read_parquet("data/live/backtest_log.parquet")
+d = bt_store.load(ARM_LOG)
 chip_pts = d[d["chip"] != ""].groupby("chip")["points"].sum().to_dict()
 print("S2_ARM_DONE", mode, json.dumps({
     "total": r["total"],

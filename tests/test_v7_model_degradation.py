@@ -156,6 +156,10 @@ def test_the_s2_driver_is_committed_and_uses_the_shipping_path():
     assert "S2_ARM_DONE" in src
     assert "20260827 + gw" in src          # the S1 seed, unchanged
     assert "n=40" in src
+    # Per-arm log: two concurrent arms must not race on the one parquet
+    # run_backtest hard-codes, or each would report the other's hits.
+    assert "backtest_log_s2_" in src
+    assert 'pd.read_parquet("data/live/backtest_log.parquet")' not in src
 
 
 # --- the serving rail: only the estimation table may be served -------------
