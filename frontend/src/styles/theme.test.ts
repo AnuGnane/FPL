@@ -139,13 +139,18 @@ describe('light theme', () => {
     }
   })
 
-  it('holds 4.5:1 for every text token on a light card', () => {
+  // Both surfaces, because muted text is not confined to cards: the page
+  // base shows through every gap between them, and a token that only clears
+  // 4.5:1 on white is unreadable in exactly those gaps.
+  it('holds 4.5:1 for every text token on both light surfaces', () => {
     const light = block('[data-theme="light"] {')
-    const card = valueOf(light, '--color-card')
-    for (const token of ['--color-text', '--color-text-secondary',
-      '--color-text-muted']) {
-      expect(contrast(valueOf(light, token), card),
-             `${token} on card`).toBeGreaterThanOrEqual(4.5)
+    for (const surface of ['--color-card', '--color-base']) {
+      const hex = valueOf(light, surface)
+      for (const token of ['--color-text', '--color-text-secondary',
+        '--color-text-muted']) {
+        expect(contrast(valueOf(light, token), hex),
+               `${token} on ${surface}`).toBeGreaterThanOrEqual(4.5)
+      }
     }
   })
 
