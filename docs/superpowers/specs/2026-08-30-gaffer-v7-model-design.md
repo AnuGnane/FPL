@@ -149,4 +149,35 @@ adversarial review → fix rounds → merge per D3.
 
 ## 9. Outcome
 
-Recorded at cycle end.
+### M1 diagnostic (run 2026-08-30, git 1f18b34, 10 holdout slots, n=4929)
+
+The zeros error is NOT a fringe problem — it is a regulars problem:
+
+| stratum | n | rmse | mean_ep |
+|---|---|---|---|
+| fringe (start-share < 0.3) | 3810 | 0.471 | 0.184 |
+| regular | 782 | **2.245** | 1.710 |
+| cold start (first 4 GWs) | 318 | 1.558 | 1.188 |
+| settled | 4611 | 1.021 | 0.446 |
+| recent absence | 3671 | 0.198 | 0.101 |
+| recent presence | 1181 | **2.131** | 1.690 |
+| flagged | 0 | — | (official status is a live bootstrap field, not stored historically — stratum underivable) |
+
+DNP reliability is only mildly miscalibrated; the material cell is
+decile 0 (nailed starters, n=1134): predicted DNP 6.3% vs observed 7.9% —
+regulars DNP more than the model thinks, which is precisely the
+late-team-news population OpenFPL's feeds catch. Mid deciles slightly
+over-predict DNP (+0.01–0.03). Interpretation: I1 recalibration corrects
+the right sign but the magnitude is small; Z1 unlikely to clear its 2%
+bar. Run anyway per the plan — pre-registered, cheap, and a negative
+result is a result. The structural fix for this population is news-driven
+(the N2 corrector once the shadow log has a season), not calibration.
+
+**I2 recorded infeasible** (per plan Interpretations §I-C): every
+registered element has a row every gameweek (2025-26 GW10: 747 rows,
+29–45 per club — full squad lists), all zero-minute rows carry
+bps/starts/cs/gc of 0, and no column separates an unused substitute from
+a player never named; `unused_sub_r5` / `squad_share_r5` are underivable
+and spec §2.2 forbids scraping for them.
+
+(Remaining outcome recorded at cycle end.)
