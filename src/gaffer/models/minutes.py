@@ -42,13 +42,38 @@ zero, so the served model is untouched.
 DNP_CALIBRATION_DEFAULT = False
 """Whether :meth:`ThreeModeModel.fit` learns a DNP-mode recalibration.
 
-**Off, pending gate Z1.** Spec §2.3 pre-registers the rule: zeros RMSE must
-reach 1.042 or better (a 2% improvement on the 2026-08-29 baseline of 1.063,
-i.e. at least to the naive last-5 baseline the model currently loses to)
-while haulers RMSE stays at or under 5.171 and all-stratum RMSE at or under
-1.996 — half a percent of headroom each. The gate is the orchestrator's to
-run, through ``scripts/z1_arms.py``; flipping this constant is a separate,
-deliberate commit that names the numbers.
+**Off, because gate Z1 failed.** Spec §2.3 pre-registered the rule: zeros
+RMSE must reach 1.042 or better (a 2% improvement on the 2026-08-29 baseline
+of 1.063, i.e. at least to the naive last-5 baseline the model currently
+loses to) while haulers RMSE stays at or under 5.171 and all-stratum RMSE at
+or under 1.996 — half a percent of headroom each.
+
+``scripts/z1_arms.py`` ran both arms over one memoised training frame. The
+off arm reproduced the baseline exactly (zeros 1.063, haulers 5.145, all
+1.986), so the harness had not drifted and the comparison is clean. The on
+arm scored zeros **1.053**, haulers **5.149**, all **1.992**. Both guards
+passed with room to spare — an isotonic recalibration of ``p_dnp`` costs the
+other strata essentially nothing — but the zeros improvement was 0.9% where
+2% was required. Right sign, insufficient magnitude, so the pre-registered
+verdict is FAIL and the constant stays False.
+
+The reason is in the M1 diagnostic rather than in the calibrator. The zeros
+error mass is not spread evenly over players the model is merely unsure
+about; it concentrates in regulars-who-sit — a nailed starter whose
+``season_start_share`` and rolling minutes all say "plays 90" and who is then
+withdrawn for a reason that only exists in the news feed. A monotone
+recalibration cannot find those rows: it can only move a whole decile of
+``p_dnp`` at once, and the rows that need moving are sitting in the same
+low-``p_dnp`` deciles as the regulars who really do play. The remaining
+headroom is news-shaped, which is the N-track's problem (spec §4), not a
+calibration problem.
+
+This is the v5 N1 / v6 S1 pattern: the experiment is recorded here rather
+than deleted, because the machinery is cheap, correct and one constant away
+from being re-measured. A future cycle with a live-status feature in the
+minutes frame should re-run ``scripts/z1_arms.py`` before assuming the idea
+is dead — what failed is this intervention against *these* features, not the
+hypothesis that DNP probabilities are miscalibrated.
 
 Off means off all the way down: ``fit`` does not pay for the inner refit and
 ``predict_modes`` does not branch, so a run with this False is the pre-v7
