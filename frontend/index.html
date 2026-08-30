@@ -4,6 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>gaffer</title>
+    <script>
+      // Before the first paint: the bundle applies the same attribute from
+      // kit/useTheme.ts, but it does so a network round trip later, which is
+      // long enough to flash the dark base at someone who chose light.
+      // "system" stores nothing and needs no attribute, so a throw here — a
+      // private window, site data refused — lands on exactly that.
+      try {
+        var stored = localStorage.getItem('gaffer-theme')
+        if (stored === 'dark' || stored === 'light') {
+          document.documentElement.setAttribute('data-theme', stored)
+        }
+      } catch (e) { /* system theme it is */ }
+    </script>
   </head>
   <body>
     <div id="root"></div>

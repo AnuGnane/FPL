@@ -139,4 +139,18 @@ describe('light theme', () => {
              `${token} on card`).toBeGreaterThanOrEqual(4.5)
     }
   })
+
+  // The attribute has to be on <html> before the first paint, or a user who
+  // chose light sees the dark base flash while the bundle loads.
+  it('is applied by a boot script before the bundle runs', () => {
+    const html = readFileSync(new URL('../../index.html', import.meta.url),
+                              'utf8')
+    expect(html).toContain("localStorage.getItem('gaffer-theme')")
+    expect(html).toContain("setAttribute('data-theme'")
+    expect(html).toContain('try {')
+    expect(html).toContain('catch')
+    // Before the module script, or it is not a boot script.
+    expect(html.indexOf("localStorage.getItem('gaffer-theme')"))
+      .toBeLessThan(html.indexOf('/src/main.tsx'))
+  })
 })
