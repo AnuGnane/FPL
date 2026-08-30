@@ -21,16 +21,19 @@ from pathlib import Path
 import httpx
 import pandas as pd
 
+from gaffer.config import serving_config
 from gaffer.data.news import NEWS_CACHE, cache_path, cached_text, fetched_at
+from gaffer.data.news.classifier import NewsText, classify_news
 from gaffer.data.news.normalize import NEWS_MIN_COVERAGE, match_codes
 
 PI_URL = "https://www.premierinjuries.com/injury-table.php"
 
 INJURY_COLS = ["code", "injury_type", "news_status", "expected_return_date",
-               "news_chance_pct", "source", "fetched_at"]
+               "news_chance_pct", "further_detail", "llm_verdict",
+               "llm_confidence", "source", "fetched_at"]
 
 PARSE_COLS = ["name", "club", "injury_type", "status",
-              "expected_return_date", "news_chance_pct"]
+              "expected_return_date", "news_chance_pct", "further_detail"]
 
 CELL_LABELS = ("Player", "Reason", "Further Detail", "Potential Return",
                "Condition", "Status")
@@ -193,19 +196,85 @@ def parse_injury_table(markup: str) -> pd.DataFrame:
             "status": status,
             "expected_return_date": _return_date(
                 fields.get("Potential Return", "")),
-            "news_chance_pct": pct})
+            "news_chance_pct": pct,
+            # Kept raw, and read by nothing but the classifier. The type
+            # still comes off Reason alone — a manager's quote names body
+            # parts belonging to whatever else the sentence is about.
+            "further_detail": fields.get("Further Detail", "").strip()})
     return pd.DataFrame(rows, columns=PARSE_COLS)
+
+
+def news_texts(matched: pd.DataFrame,
+               players: pd.DataFrame) -> list[NewsText]:
+    """Every short free text this run has, one entry per player.
+
+    Two sources, in precedence order: the injury table's "Further Detail"
+    (a quote, and usually the sharper claim) and the bootstrap's ``news``
+    column. A player carrying both contributes the detail only — one verdict
+    per player, and two would need a precedence rule nobody has measured.
+    """
+    out: list[NewsText] = []
+    seen: set[int] = set()
+    if "further_detail" in matched.columns:
+        for code, text in zip(matched["code"], matched["further_detail"]):
+            if pd.notna(code) and str(text or "").strip():
+                out.append(NewsText(int(code), str(text), "premierinjuries"))
+                seen.add(int(code))
+    if "news" in players.columns:
+        for code, text in zip(players["code"], players["news"]):
+            if (pd.notna(code) and int(code) not in seen
+                    and str(text or "").strip()):
+                out.append(NewsText(int(code), str(text), "bootstrap"))
+    return out
+
+
+def attach_verdicts(out: pd.DataFrame,
+                    verdicts: pd.DataFrame) -> pd.DataFrame:
+    """Join the classifier's rows on, adding carrier rows where needed.
+
+    A verdict about a player the injury table never listed — most of the
+    bootstrap's ``news`` column — has no row to ride on, and a verdict nobody
+    logs is a verdict that was never worth running. Such a player gets a row
+    whose every structured field is null, which the precedence table in
+    :func:`~gaffer.data.news.normalize.availability_frame` reads as "no claim
+    about this week" and leaves his official flag exactly where it was.
+    """
+    keyed = verdicts.drop_duplicates(subset=["code"]).set_index("code")
+    out["llm_verdict"] = out["code"].map(keyed["verdict"])
+    out["llm_confidence"] = pd.to_numeric(out["code"].map(keyed["confidence"]),
+                                          errors="coerce")
+    missing = [c for c in keyed.index if c not in set(out["code"])]
+    if missing:
+        extra = pd.DataFrame({"code": missing})
+        for col in INJURY_COLS:
+            if col not in extra.columns:
+                extra[col] = None
+        extra["llm_verdict"] = extra["code"].map(keyed["verdict"])
+        extra["llm_confidence"] = pd.to_numeric(
+            extra["code"].map(keyed["confidence"]), errors="coerce")
+        extra["source"] = "llm"
+        out = pd.concat([out, extra[INJURY_COLS]], ignore_index=True)
+    return out
 
 
 def fetch_injuries(players: pd.DataFrame, teams: pd.DataFrame,
                    cache_dir: Path = NEWS_CACHE, cache_hours: int = 6,
                    client: httpx.Client | None = None,
                    min_coverage: float = NEWS_MIN_COVERAGE,
-                   now: datetime | None = None) -> pd.DataFrame:
+                   now: datetime | None = None,
+                   classifier: bool | None = None,
+                   shadow: bool | None = None) -> pd.DataFrame:
     """The injury table as ``[code, injury_type, news_status, …]``.
 
     Empty on every failure — dead host, rewritten page, match rate below the
     floor — and an empty frame is what makes the whole layer inert.
+
+    ``classifier``/``shadow`` default to the ``[news]`` config, read here
+    because ``advise.py`` is protected and cannot forward them. This is the
+    classifier's only call site: it is the one non-protected function holding
+    both free-text sources — the "Further Detail" cell and the bootstrap's
+    ``news`` column, which arrives on ``players``. With both false the
+    subprocess is never launched and the columns come back all-null.
     """
     dest = cache_path(cache_dir, "premierinjuries", cache_hours, now)
     markup = cached_text(PI_URL, dest, client)
@@ -226,4 +295,20 @@ def fetch_injuries(players: pd.DataFrame, teams: pd.DataFrame,
     # for the same man, and the later return date is the binding one.
     out = (out.sort_values("expected_return_date", na_position="first")
            .groupby("code", as_index=False).tail(1))
+    out["further_detail"] = out.get("further_detail")
+    out["llm_verdict"] = None
+    out["llm_confidence"] = float("nan")
+    cfg = serving_config()
+    classifier = cfg.news_llm_classifier if classifier is None else classifier
+    shadow = cfg.news_llm_shadow if shadow is None else shadow
+    if classifier or shadow:
+        try:
+            texts = news_texts(out, players)
+            if texts:
+                verdicts = classify_news(texts, cmd=cfg.news_llm_command,
+                                         timeout=cfg.news_llm_timeout_s)
+                if verdicts is not None and not verdicts.empty:
+                    out = attach_verdicts(out, verdicts)
+        except Exception as e:  # noqa: BLE001 — the classifier never blocks
+            print(f"news: presser classifier skipped ({e})")
     return out[INJURY_COLS].sort_values("code").reset_index(drop=True)

@@ -41,7 +41,12 @@ def _players() -> pd.DataFrame:
         {"code": 108, "name": "Verbruggen", "first_name": "Bart",
          "second_name": "Verbruggen", "team_code": 36, "starts": 10,
          "minutes": 900},
-    ])
+        # v8a F5: a player the injury table never lists, so a verdict about
+        # him has to travel on a carrier row of its own.
+        {"code": 99, "name": "Nketiah", "first_name": "Eddie",
+         "second_name": "Nketiah", "team_code": 3, "starts": 1,
+         "minutes": 90},
+    ]).assign(news="")
 
 
 def _teams() -> pd.DataFrame:
@@ -247,13 +252,19 @@ def _transport(calls: list, text: str | None = None):
     return httpx.MockTransport(handle)
 
 
+def _client(text: str) -> httpx.Client:
+    """A client that answers every request with ``text``."""
+    return httpx.Client(transport=_transport([], text))
+
+
 def test_parse_injury_table_reads_every_row():
     from gaffer.data.news.premierinjuries import parse_injury_table
 
     rows = parse_injury_table(_injury_html())
     assert len(rows) == 5
     assert list(rows.columns) == ["name", "club", "injury_type", "status",
-                                  "expected_return_date", "news_chance_pct"]
+                                  "expected_return_date", "news_chance_pct",
+                                  "further_detail"]
     saka = rows[rows["name"] == "Bukayo Saka"].iloc[0]
     # The page carries no club column at all, so every row matches on the
     # name alone, through the uniqueness rule.
@@ -331,25 +342,29 @@ def test_fetch_injuries_matches_codes_and_caches_the_page(tmp_path):
     client = httpx.Client(transport=_transport(calls, _injury_html()))
     now = datetime(2026, 9, 4, 9, 0, tzinfo=timezone.utc)
     out = fetch_injuries(_players(), _teams(), cache_dir=tmp_path,
-                         client=client, now=now)
+                         client=client, now=now, classifier=False,
+                         shadow=False)
     # The unrostered player is unmatched (4/5 = 80%, above the floor), and
     # every match is made without a club column to key on.
     assert sorted(out["code"]) == [100, 101, 102, 103]
     assert list(out.columns) == ["code", "injury_type", "news_status",
                                  "expected_return_date", "news_chance_pct",
-                                 "source", "fetched_at"]
+                                 "further_detail", "llm_verdict",
+                                 "llm_confidence", "source", "fetched_at"]
     assert out.set_index("code").loc[102, "news_chance_pct"] == 75.0
     assert (out["source"] == "premierinjuries").all()
     assert len(calls) == 1
 
     # Same cache window: no second request.
     fetch_injuries(_players(), _teams(), cache_dir=tmp_path, client=client,
-                   now=now + timedelta(hours=1))
+                   now=now + timedelta(hours=1), classifier=False,
+                   shadow=False)
     assert len(calls) == 1
 
     # Next window: one more.
     fetch_injuries(_players(), _teams(), cache_dir=tmp_path, client=client,
-                   now=now + timedelta(hours=7))
+                   now=now + timedelta(hours=7), classifier=False,
+                   shadow=False)
     assert len(calls) == 2
 
 
@@ -359,7 +374,7 @@ def test_fetch_injuries_degrades_to_empty_when_the_host_is_down(tmp_path,
 
     client = httpx.Client(transport=_transport([], None))
     out = fetch_injuries(_players(), _teams(), cache_dir=tmp_path,
-                         client=client)
+                         client=client, classifier=False, shadow=False)
     assert out.empty
     assert list(out.columns) == INJURY_COLS
     assert "unavailable" in capsys.readouterr().out
@@ -391,7 +406,7 @@ def test_fetch_injuries_degrades_on_any_httpx_error_not_just_transport(
 
     client = httpx.Client(transport=httpx.MockTransport(loop))
     out = fetch_injuries(_players(), _teams(), cache_dir=tmp_path,
-                         client=client)
+                         client=client, classifier=False, shadow=False)
     assert out.empty
     assert "unavailable" in capsys.readouterr().out
 
@@ -664,3 +679,97 @@ def test_the_absence_rule_can_be_switched_off(tmp_path):
                         absence=False)
     assert off["absence_damp"].isna().all()
     assert len(off) <= len(on)
+
+
+# --- v8a F5: the free text and the verdicts --------------------------------
+
+_DETAIL_HTML = """
+<table><tr>
+<td>Player Bukayo Saka</td><td>Reason Hamstring Injury</td>
+<td>Further Detail Arteta said he is close but Sunday may come too soon</td>
+<td>Potential Return 20/09/2026</td><td>Status Doubtful</td>
+</tr></table>
+"""
+
+
+def test_the_further_detail_cell_is_parsed_and_kept():
+    """Today it is read only to be thrown away. It is the sharpest sentence
+    on the page and the whole input to the classifier."""
+    from gaffer.data.news.premierinjuries import parse_injury_table
+
+    out = parse_injury_table(_DETAIL_HTML)
+    assert "further_detail" in out.columns
+    assert "too soon" in out.iloc[0]["further_detail"]
+
+
+def test_the_detail_never_reaches_the_injury_type():
+    """A quote names body parts belonging to whatever else the sentence is
+    about; the Reason column is still the only source of the type."""
+    from gaffer.data.news.premierinjuries import parse_injury_table
+
+    out = parse_injury_table(_DETAIL_HTML)
+    assert out.iloc[0]["injury_type"] == "hamstring"
+
+
+def test_a_disabled_classifier_makes_no_subprocess_call(tmp_path,
+                                                        monkeypatch):
+    from gaffer.data.news import premierinjuries as pi
+
+    calls = []
+    monkeypatch.setattr(pi, "classify_news",
+                        lambda *a, **k: calls.append(1))
+    out = pi.fetch_injuries(_players(), _teams(), cache_dir=tmp_path,
+                            client=_client(_DETAIL_HTML), classifier=False,
+                            shadow=False)
+    assert calls == []
+    assert "llm_verdict" in out.columns and out["llm_verdict"].isna().all()
+
+
+def test_the_shadow_pass_attaches_verdicts_without_serving_them(tmp_path,
+                                                                monkeypatch):
+    import pandas as pd
+
+    from gaffer.data.news import premierinjuries as pi
+
+    verdicts = pd.DataFrame([{"code": 1, "verdict": "rotation_risk",
+                              "confidence": 0.8, "model": "fake",
+                              "text_hash": "h", "fetched_at": "now"}])
+    monkeypatch.setattr(pi, "classify_news", lambda *a, **k: verdicts)
+    out = pi.fetch_injuries(_players(), _teams(), cache_dir=tmp_path,
+                            client=_client(_DETAIL_HTML), classifier=False,
+                            shadow=True)
+    assert set(out.columns) >= {"llm_verdict", "llm_confidence"}
+
+
+def test_a_verdict_for_a_player_with_no_injury_row_still_travels(tmp_path,
+                                                                 monkeypatch):
+    """The bootstrap ``news`` column speaks about players the injury table
+    never lists, and a verdict with no carrier row would be a verdict nobody
+    ever logs."""
+    import pandas as pd
+
+    from gaffer.data.news import premierinjuries as pi
+
+    verdicts = pd.DataFrame([{"code": 99, "verdict": "rotation_risk",
+                              "confidence": 0.6, "model": "fake",
+                              "text_hash": "h", "fetched_at": "now"}])
+    monkeypatch.setattr(pi, "classify_news", lambda *a, **k: verdicts)
+    out = pi.fetch_injuries(_players(), _teams(), cache_dir=tmp_path,
+                            client=_client(_DETAIL_HTML), classifier=False,
+                            shadow=True)
+    row = out[out["code"] == 99]
+    assert len(row) == 1
+    assert pd.isna(row.iloc[0]["injury_type"])
+
+
+def test_a_classifier_that_dies_leaves_the_frame_alone(tmp_path, monkeypatch):
+    from gaffer.data.news import premierinjuries as pi
+
+    def boom(*a, **k):
+        raise RuntimeError("the CLI is not logged in")
+
+    monkeypatch.setattr(pi, "classify_news", boom)
+    out = pi.fetch_injuries(_players(), _teams(), cache_dir=tmp_path,
+                            client=_client(_DETAIL_HTML), classifier=False,
+                            shadow=True)
+    assert out["llm_verdict"].isna().all()
