@@ -122,7 +122,12 @@ def _parser() -> argparse.ArgumentParser:
                    choices=["raw", "heur", "estimation", "composite"])
     p.add_argument("--tag", required=True,
                    help="per-arm output suffix; two arms may not share one")
-    p.add_argument("--seed-base", type=int, default=20260827)
+    seeds = p.add_mutually_exclusive_group()
+    seeds.add_argument("--seed-base", type=int, default=20260827)
+    seeds.add_argument("--seed-bases", default=None,
+                       help="comma-separated bases, e.g. 20260825,20260826,"
+                            "20260827; runs one arm per base and prints the "
+                            "aggregate MULTISEED_DONE line")
     p.add_argument("--n", type=int, default=40)
     p.add_argument("--chips", action=argparse.BooleanOptionalAction,
                    default=True)
@@ -136,16 +141,58 @@ def _parser() -> argparse.ArgumentParser:
     return p
 
 
-def arm_config(argv: list[str]) -> ArmConfig:
+def _parsed(argv: list[str]) -> argparse.Namespace:
+    """Parse and validate, leaving the bases on ``.bases`` (``None`` if one).
+
+    Split out of :func:`arm_config` so the single-arm and multi-seed entry
+    points share one parser and one set of refusals.
+    """
     p = _parser()
     a = p.parse_args(argv)
     if a.arm in TABLE_ARMS and not a.noise_asset:
         p.error(f"--arm {a.arm} needs a --noise-asset")
     if a.arm not in TABLE_ARMS and a.noise_asset:
         p.error(f"--arm {a.arm} serves no table; --noise-asset is refused")
-    return ArmConfig(arm=a.arm, tag=a.tag, seed_base=a.seed_base, n=a.n,
-                     chips=a.chips, priors=a.priors, minutes=a.minutes,
-                     frame=a.frame, noise_asset=a.noise_asset)
+    if a.seed_bases is None:
+        a.bases = None
+        return a
+    a.bases = []
+    try:
+        a.bases = [int(b.strip()) for b in a.seed_bases.split(",") if b.strip()]
+    except ValueError:
+        p.error("--seed-bases takes a comma-separated list of integers")
+    if len(a.bases) < 2:
+        p.error("--seed-bases takes two or more bases; a single draw is what "
+                "--seed-base is for")
+    return a
+
+
+def _configs(a: argparse.Namespace) -> list[ArmConfig]:
+    def one(tag: str, base: int) -> ArmConfig:
+        return ArmConfig(arm=a.arm, tag=tag, seed_base=base, n=a.n,
+                         chips=a.chips, priors=a.priors, minutes=a.minutes,
+                         frame=a.frame, noise_asset=a.noise_asset)
+
+    if a.bases is None:
+        return [one(a.tag, a.seed_base)]
+    return [one(f"{a.tag}-s{b}", b) for b in a.bases]
+
+
+def arm_config(argv: list[str]) -> ArmConfig:
+    """The single arm ``argv`` asks for — the first, under ``--seed-bases``."""
+    return _configs(_parsed(argv))[0]
+
+
+def arm_configs(argv: list[str]) -> tuple[list[ArmConfig], list[int] | None,
+                                          str]:
+    """Every arm ``argv`` asks for, its bases, and the undecorated tag.
+
+    ``bases`` is ``None`` for a single-seed run, which is what tells
+    :func:`main` not to print an aggregate line: one draw has no spread, and a
+    ``MULTISEED_DONE`` over one number would read as a measurement.
+    """
+    a = _parsed(argv)
+    return _configs(a), a.bases, a.tag
 
 
 def gate_wanted(cfg: ArmConfig) -> bool:

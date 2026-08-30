@@ -182,3 +182,61 @@ def test_the_xmins_summary_reports_the_noise_scale_it_implies():
     # (92 - xmins) / 134, the heuristic scale the gate would apply
     assert out["mean_noise_scale"] == pytest.approx(
         ((92 - 90) / 134 + (92 - 45) / 134) / 2)
+
+
+def test_seed_bases_derive_one_arm_per_base():
+    """Each base owns its log and its report: two bases sharing either would
+    read each other's hits and transfers and the trio would be one draw."""
+    configs, bases, tag = v7b_replay.arm_configs(
+        ["--arm", "raw", "--tag", "q", "--seed-bases", "1,2,3"])
+    assert bases == [1, 2, 3]
+    assert tag == "q"
+    assert [c.tag for c in configs] == ["q-s1", "q-s2", "q-s3"]
+    assert [c.seed_base for c in configs] == [1, 2, 3]
+    assert [c.log_path for c in configs] == [
+        "live/backtest_log_v7b_q-s1.parquet",
+        "live/backtest_log_v7b_q-s2.parquet",
+        "live/backtest_log_v7b_q-s3.parquet"]
+    assert [c.report_path for c in configs] == [
+        "reports/v7b_q-s1.json", "reports/v7b_q-s2.json",
+        "reports/v7b_q-s3.json"]
+
+
+def test_seed_bases_tolerate_spaces_in_the_list():
+    configs, bases, _ = v7b_replay.arm_configs(
+        ["--arm", "raw", "--tag", "q", "--seed-bases", "1, 2 ,3"])
+    assert bases == [1, 2, 3]
+    assert [c.tag for c in configs] == ["q-s1", "q-s2", "q-s3"]
+
+
+def test_a_single_seed_base_still_derives_one_unsuffixed_arm():
+    """The single-seed path must be byte-identical to today's: same tag, same
+    log, same report, no aggregate."""
+    configs, bases, tag = v7b_replay.arm_configs(
+        ["--arm", "raw", "--tag", "q", "--seed-base", "20260825"])
+    assert bases is None
+    assert tag == "q"
+    assert [c.tag for c in configs] == ["q"]
+    assert configs[0].seed_base == 20260825
+    assert configs[0].log_path == "live/backtest_log_v7b_q.parquet"
+    assert configs[0].report_path == "reports/v7b_q.json"
+
+
+def test_the_two_seed_flags_are_mutually_exclusive():
+    with pytest.raises(SystemExit):
+        v7b_replay.arm_configs(["--arm", "raw", "--tag", "q",
+                                "--seed-base", "1", "--seed-bases", "1,2"])
+
+
+def test_a_one_element_seed_bases_list_is_refused():
+    """K >= 2 or use --seed-base: a "multi-seed" run of one is the single-draw
+    verdict convention 1 exists to stop."""
+    with pytest.raises(SystemExit):
+        v7b_replay.arm_configs(["--arm", "raw", "--tag", "q",
+                                "--seed-bases", "20260825"])
+
+
+def test_a_non_numeric_seed_base_is_refused():
+    with pytest.raises(SystemExit):
+        v7b_replay.arm_configs(["--arm", "raw", "--tag", "q",
+                                "--seed-bases", "20260825,tuesday"])
