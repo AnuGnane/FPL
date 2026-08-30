@@ -91,7 +91,7 @@ export default function ComparePanel({ gw, players }: ComparePanelProps) {
           const team = matrix?.teams.find((t) => t.code === player.team_code)
           return (
             <div key={player.code} data-testid={`compare-${player.code}`}>
-              <Card title={player.name}
+              <Card title={player.name} titleSize="lg"
                     action={<PosBadge pos={player.position} />}>
                 <dl className="grid grid-cols-2 gap-1">
                   <dt className="label">Price</dt>

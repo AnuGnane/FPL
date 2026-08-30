@@ -123,6 +123,21 @@ describe('ComparePanel', () => {
     render(<ComparePanel gw={5} players={five} />)
     expect(screen.getByText(/at most four/i)).toBeInTheDocument()
   })
+
+  it('renders each compared player name at primary text size', async () => {
+    render(<ComparePanel gw={5} players={PLAYERS} />)
+    const name = await screen.findByRole('heading', { name: PLAYERS[0].name })
+    expect(name).toHaveClass('text-lg')
+    expect(name).not.toHaveClass('label')
+  })
+
+  it('keeps the position badge beside the name', async () => {
+    render(<ComparePanel gw={5} players={PLAYERS} />)
+    const card = await screen.findByTestId(`compare-${PLAYERS[0].code}`)
+    expect(within(card).getByRole('heading', { name: PLAYERS[0].name }))
+      .toBeInTheDocument()
+    expect(within(card).getByText(PLAYERS[0].position)).toBeInTheDocument()
+  })
 })
 
 describe('the fixture strip colours', () => {
