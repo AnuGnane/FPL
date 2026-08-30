@@ -15,8 +15,26 @@ import numpy as np
 import pandas as pd
 from lightgbm import LGBMClassifier, LGBMRegressor
 
+from gaffer.models.dnp_calibrate import fit_dnp_calibrator
+
 LGB_KW = dict(n_estimators=300, learning_rate=0.05, num_leaves=31,
               verbose=-1, random_state=7)
+
+DNP_CALIBRATION_DEFAULT = False
+"""Whether :meth:`ThreeModeModel.fit` learns a DNP-mode recalibration.
+
+**Off, pending gate Z1.** Spec §2.3 pre-registers the rule: zeros RMSE must
+reach 1.042 or better (a 2% improvement on the 2026-08-29 baseline of 1.063,
+i.e. at least to the naive last-5 baseline the model currently loses to)
+while haulers RMSE stays at or under 5.171 and all-stratum RMSE at or under
+1.996 — half a percent of headroom each. The gate is the orchestrator's to
+run, through ``scripts/z1_arms.py``; flipping this constant is a separate,
+deliberate commit that names the numbers.
+
+Off means off all the way down: ``fit`` does not pay for the inner refit and
+``predict_modes`` does not branch, so a run with this False is the pre-v7
+model prediction for prediction.
+"""
 
 DNP, SUB, START = 0, 1, 2
 MODE_COLS = ["p_dnp", "p_sub", "p_start"]
@@ -87,6 +105,7 @@ class ThreeModeModel:
         self.min_start = LGBMRegressor(**LGB_KW)
         self.min_sub = LGBMRegressor(**LGB_KW)
         self.modes_seen: list[int] = []
+        self.dnp_cal = None
 
     def fit(self, df: pd.DataFrame) -> "ThreeModeModel":
         X = df[self.feature_cols]
@@ -110,6 +129,10 @@ class ThreeModeModel:
         self.min_start = self._regressor(X[started], mins[started],
                                          default=90.0)
         self.min_sub = self._regressor(X[subbed], mins[subbed], default=20.0)
+        # The recursion guard, mirroring ``train_all``'s ``_fit_cal``: the
+        # calibrator's own inner model is built with it False.
+        if self._fit_dnp and DNP_CALIBRATION_DEFAULT:
+            self.dnp_cal = fit_dnp_calibrator(df, self.feature_cols)
         return self
 
     @staticmethod
@@ -146,20 +169,28 @@ class ThreeModeModel:
         returns is a function of these three, and the shadow log and the
         explainability page both want the trichotomy rather than its
         summaries.
+
+        The DNP recalibration is applied here, at the trichotomy, rather than
+        to ``p_play`` downstream — ``p_play`` is a sum of two modes and
+        correcting it would leave the start/cameo split incoherent with it.
+        ``getattr`` rather than ``self.dnp_cal`` so a model pickled before v7
+        still predicts.
         """
         X = df[self.feature_cols]
         out = pd.DataFrame(0.0, index=df.index, columns=MODE_COLS,
                            dtype="float64")
         if isinstance(self.mode_clf, _ConstantHead):
             out[MODE_COLS[int(self.mode_clf.value)]] = 1.0
-            return out
-        proba = self.mode_clf.predict_proba(X)
-        # classes_ holds only the modes the fit actually saw, in LightGBM's
-        # own order; a mode absent from training stays at the 0.0 the frame
-        # was initialised with rather than shifting the other two along.
-        for j, mode in enumerate(self.mode_clf.classes_):
-            out[MODE_COLS[int(mode)]] = proba[:, j]
-        return out
+        else:
+            proba = self.mode_clf.predict_proba(X)
+            # classes_ holds only the modes the fit actually saw, in
+            # LightGBM's own order; a mode absent from training stays at the
+            # 0.0 the frame was initialised with rather than shifting the
+            # other two along.
+            for j, mode in enumerate(self.mode_clf.classes_):
+                out[MODE_COLS[int(mode)]] = proba[:, j]
+        cal = getattr(self, "dnp_cal", None)
+        return out if cal is None else cal.apply(out)
 
     def predict(self, df: pd.DataFrame) -> pd.DataFrame:
         """One row per input row: code, season_idx, gw, p_play, p60, e_min.
