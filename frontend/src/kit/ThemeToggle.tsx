@@ -56,11 +56,10 @@ export default function ThemeToggle({ compact = false }: ThemeToggleProps) {
           type="button"
           aria-pressed={theme === option}
           onClick={() => choose(option)}
-          className={`flex flex-1 items-center justify-center gap-1
+          className={`flex min-w-0 flex-1 items-center justify-center
                       rounded-card px-1.5 py-1 text-[11px] ${theme === option
                         ? 'bg-card text-text' : 'text-text-muted hover:text-text'}`}
         >
-          <span aria-hidden>{ICON[option]}</span>
           {LABEL[option]}
         </button>
       ))}

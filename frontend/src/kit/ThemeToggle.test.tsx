@@ -43,6 +43,15 @@ describe('ThemeToggle', () => {
     expect(document.documentElement.getAttribute('data-theme')).toBeNull()
   })
 
+  // The sidebar gives this control 176px. Three labels fit; three labels
+  // each carrying a glyph do not, and the group overflows its own footer.
+  it('is labels only when segmented', () => {
+    render(<ThemeToggle />)
+    for (const name of ['System', 'Dark', 'Light']) {
+      expect(screen.getByRole('button', { name }).textContent).toBe(name)
+    }
+  })
+
   it('is one icon-only cycling control when compact', () => {
     render(<ThemeToggle compact />)
     expect(screen.getByRole('button', { name: 'Theme: system' }))
