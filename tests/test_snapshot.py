@@ -187,3 +187,29 @@ def test_an_empty_availability_frame_banks_nothing(tmp_path, monkeypatch):
     _wire(monkeypatch, tmp_path, avail=pd.DataFrame())
     assert run_snapshot(cfg=_cfg()) is None
     assert not (tmp_path / SNAPSHOT_PATH).exists()
+
+
+def test_the_snapshot_plist_runs_the_command_daily_at_five(tmp_path):
+    """F1 is a scheduling change as much as a code one: a log nobody writes
+    to banks nothing, and the whole value is one row per day."""
+    import plistlib
+    from pathlib import Path
+
+    raw = Path("scripts/com.gaffer.snapshot.plist").read_text(encoding="utf-8")
+    assert "__PROJECT_DIR__" in raw
+    plist = plistlib.loads(
+        raw.replace("__PROJECT_DIR__", str(tmp_path)).encode("utf-8"))
+    assert plist["Label"] == "com.gaffer.snapshot"
+    assert plist["StartCalendarInterval"] == {"Hour": 17, "Minute": 0}
+    command = plist["ProgramArguments"][-1]
+    assert "uv run gaffer snapshot" in command
+    assert "logs/snapshot.log" in command
+    assert str(tmp_path) in command
+
+
+def test_the_installer_installs_the_snapshot_job():
+    from pathlib import Path
+
+    body = Path("scripts/install_automation.sh").read_text(encoding="utf-8")
+    names = body.split("for name in")[1].split(";")[0]
+    assert "snapshot" in names

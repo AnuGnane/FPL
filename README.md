@@ -252,9 +252,11 @@ is not on UK time, adjust the `Hour`/`Minute` in
 ./scripts/install_automation.sh
 ```
 
-Substitutes the project path into the two plists in `scripts/`, copies them to
-`~/Library/LaunchAgents/`, and loads them: `com.gaffer.advise` (Thursday 18:00)
-and `com.gaffer.prices` (nightly 23:15). Re-run it after moving the project.
+Substitutes the project path into the three plists in `scripts/`, copies them to
+`~/Library/LaunchAgents/`, and loads them: `com.gaffer.advise` (Thursday 18:00),
+`com.gaffer.prices` (nightly 23:15) and `com.gaffer.snapshot` (daily 17:00, banks
+the availability log the news corrector will train on). Re-run it after moving
+the project.
 
 Check they are loaded with `launchctl list | grep com.gaffer`. Remove with
 `launchctl unload ~/Library/LaunchAgents/com.gaffer.{advise,prices}.plist`.
