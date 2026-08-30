@@ -112,3 +112,44 @@ def load_snapshot_log() -> pd.DataFrame:
     if not store.exists(SNAPSHOT_PATH):
         return pd.DataFrame(columns=SNAPSHOT_COLS)
     return store.load(SNAPSHOT_PATH)
+
+
+def run_snapshot(cfg=None) -> int | None:
+    """Bank today's availability state. Rows written, or ``None``.
+
+    Imports are local: the news layer pulls in half the advise pipeline, and a
+    module the CLI touches to print ``--help`` must not pay for that. The
+    config is an argument so a caller that already has one does not read
+    ``config.toml`` twice.
+
+    Prints its own one-line result, success or degradation, so the launchd
+    log, the CLI and the web job all say the same sentence without three
+    copies of it. Every failure lands in the one ``except``: this is
+    instrumentation, and instrumentation never blocks.
+    """
+    try:
+        from gaffer.advise import news_availability
+        from gaffer.api.client import FPLClient
+        from gaffer.config import load_config
+        from gaffer.data.bootstrap import (build_events, build_players,
+                                           build_teams)
+
+        cfg = cfg or load_config()
+        raw = FPLClient().get_bootstrap()
+        events = build_events(raw)
+        gw = next_unfinished_gw(events)
+        avail = news_availability(cfg, build_players(raw), build_teams(raw),
+                                  events, gw)
+        if avail is None or len(avail) == 0:
+            print("availability snapshot not written: the news layer returned "
+                  "no rows")
+            return None
+        day = snap_date()
+        rows = snapshot_rows(avail, gw, season=str(cfg.current_season or ""),
+                             day=day)
+        n = append_snapshot(rows)
+        print(f"Snapshot: {n} availability rows for gw{gw} at {day}.")
+        return n
+    except Exception as exc:  # noqa: BLE001 — a scheduled job never blocks
+        print(f"availability snapshot not written: {exc}")
+        return None

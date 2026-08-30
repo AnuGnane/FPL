@@ -8,8 +8,8 @@ import pytest
 from gaffer.artifacts import AVAILABILITY_COLS
 from gaffer.errors import GafferError
 from gaffer.snapshot import (SNAPSHOT_COLS, SNAPSHOT_PATH, append_snapshot,
-                             load_snapshot_log, next_unfinished_gw, snap_date,
-                             snapshot_rows)
+                             load_snapshot_log, next_unfinished_gw,
+                             run_snapshot, snap_date, snapshot_rows)
 
 
 def _avail() -> pd.DataFrame:
@@ -122,3 +122,68 @@ def test_a_later_day_appends_rather_than_replaces(tmp_path, monkeypatch):
     out = load_snapshot_log()
     assert len(out) == 4
     assert sorted(set(out["snap_date"])) == ["2026-08-30", "2026-08-31"]
+
+
+def _cfg():
+    from gaffer.config import Config
+
+    return Config(entry_id=1, league_id=2, current_season="2026-27")
+
+
+def _wire(monkeypatch, tmp_path, avail=None, boom=False):
+    """Point the run at fakes: no network, no bootstrap, no news fetchers."""
+    from gaffer.data import store as store_mod
+
+    class _Client:
+        def get_bootstrap(self):
+            if boom:
+                raise RuntimeError("the FPL API is down")
+            return {"events": []}
+
+    monkeypatch.setattr(store_mod, "DATA_DIR", tmp_path)
+    monkeypatch.setattr("gaffer.api.client.FPLClient", lambda *a, **k: _Client())
+    monkeypatch.setattr("gaffer.data.bootstrap.build_players",
+                        lambda raw: pd.DataFrame())
+    monkeypatch.setattr("gaffer.data.bootstrap.build_teams",
+                        lambda raw: pd.DataFrame())
+    monkeypatch.setattr("gaffer.data.bootstrap.build_events",
+                        lambda raw: _events())
+    monkeypatch.setattr("gaffer.advise.news_availability",
+                        lambda *a, **kw: _avail() if avail is None else avail)
+    monkeypatch.setattr("gaffer.snapshot.snap_date", lambda *a: "2026-08-30")
+
+
+def test_a_run_banks_todays_rows_and_says_so(tmp_path, monkeypatch, capsys):
+    _wire(monkeypatch, tmp_path)
+    assert run_snapshot(cfg=_cfg()) == 2
+    assert "Snapshot: 2 availability rows for gw2 at 2026-08-30." \
+        in capsys.readouterr().out
+    out = load_snapshot_log()
+    assert list(out.columns) == SNAPSHOT_COLS
+    assert set(out["season"]) == {"2026-27"}
+
+
+def test_two_runs_in_one_day_leave_one_days_rows(tmp_path, monkeypatch):
+    """Gate G1(b): the daily job is safe to trigger by hand."""
+    _wire(monkeypatch, tmp_path)
+    run_snapshot(cfg=_cfg())
+    run_snapshot(cfg=_cfg())
+    assert len(load_snapshot_log()) == 2
+
+
+def test_a_dead_fetch_prints_one_line_and_banks_nothing(tmp_path, monkeypatch,
+                                                        capsys):
+    """Gate G1(c). A launchd job has nowhere to report a traceback, and a
+    scheduled job that dies loudly every afternoon gets uninstalled."""
+    _wire(monkeypatch, tmp_path, boom=True)
+    assert run_snapshot(cfg=_cfg()) is None
+    printed = capsys.readouterr().out.strip().splitlines()
+    assert len(printed) == 1
+    assert printed[0].startswith("availability snapshot not written:")
+    assert not (tmp_path / SNAPSHOT_PATH).exists()
+
+
+def test_an_empty_availability_frame_banks_nothing(tmp_path, monkeypatch):
+    _wire(monkeypatch, tmp_path, avail=pd.DataFrame())
+    assert run_snapshot(cfg=_cfg()) is None
+    assert not (tmp_path / SNAPSHOT_PATH).exists()
