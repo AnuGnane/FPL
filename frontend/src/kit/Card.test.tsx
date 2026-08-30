@@ -25,6 +25,12 @@ describe('Card', () => {
     expect(screen.queryByRole('heading')).toBeNull()
   })
 
+  it('renders the title at heading level 3, below the page h1/h2', () => {
+    render(<Card title="Squad"><p>inside</p></Card>)
+    expect(screen.getByRole('heading', { level: 3, name: 'Squad' }))
+      .toBeInTheDocument()
+  })
+
   it('renders the title as a small uppercase label by default', () => {
     render(<Card title="Squad"><p>inside</p></Card>)
     expect(screen.getByRole('heading', { name: 'Squad' }))

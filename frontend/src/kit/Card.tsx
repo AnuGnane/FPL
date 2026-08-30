@@ -5,6 +5,11 @@ import type { ReactNode } from 'react'
  * section of a page, whose title is chrome and belongs in the 9px uppercase
  * label voice, and a card *about* something — a player, in ComparePanel —
  * whose title is the content and has to read as such.
+ *
+ * The title is an `h3` regardless of `titleSize`: a card always sits under a
+ * page heading, and several cards side by side (ComparePanel renders four)
+ * would otherwise emit a row of sibling `h2`s that a screen reader reads as
+ * four top-level sections of the page rather than four items within one.
  */
 export interface CardProps {
   title?: string
@@ -29,7 +34,7 @@ export default function Card({
       {(title || action) && (
         <header className="flex items-center justify-between gap-3 border-b
                            border-divider px-4 py-3">
-          {title && <h2 className={TITLE_CLASS[titleSize]}>{title}</h2>}
+          {title && <h3 className={TITLE_CLASS[titleSize]}>{title}</h3>}
           {action}
         </header>
       )}
