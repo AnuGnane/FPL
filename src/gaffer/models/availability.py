@@ -51,7 +51,8 @@ def return_prob(curves: dict | None, injury_type, h: int) -> float | None:
 
 
 def apply_availability(pred: pd.DataFrame, avail: pd.DataFrame,
-                       curves: dict | None = None) -> pd.DataFrame:
+                       curves: dict | None = None,
+                       start_floor: float | None = None) -> pd.DataFrame:
     """avail: the normalized availability frame, or the bare bootstrap slice.
 
     ``status`` i/s/u/n (injured/suspended/unavailable/not in squad) -> factor
@@ -76,10 +77,21 @@ def apply_availability(pred: pd.DataFrame, avail: pd.DataFrame,
     ``curves`` defaults to the shipped asset, which may be absent: with no
     asset the horizon decay is exactly the pre-v5 geometric, and the whole
     function is byte-identical to v4's.
+
+    ``absence_damp``, when the frame carries one, multiplies the horizon's
+    first gameweek: a regular the predicted XI left out without naming him
+    (v8a F4). It composes with the hint ceiling and obeys the same
+    one-row-per-player rule.
+
+    ``start_floor`` defaults to the ``[news] lineup_start_floor`` config key,
+    read here because ``advise`` is protected and cannot forward it. At its
+    shipped ``0.0`` the pass is a no-op and this function is arithmetically
+    identical to v7's.
     """
     curves = curves if curves is not None else load_injury_curves()
     news_cols = [c for c in ("injury_type", "expected_return_gw",
-                             "p_start_hint")
+                             "p_start_hint", "absence_damp", "llm_verdict",
+                             "llm_confidence")
                  if c in avail.columns]
     out = pred.merge(
         avail[["code", "status", "chance_of_playing"] + news_cols],
@@ -98,6 +110,12 @@ def apply_availability(pred: pd.DataFrame, avail: pd.DataFrame,
     out["e_min"] = out["e_min"] * factor
     if "p_start_hint" in out.columns:
         out = _gate_first_gw(out)
+        if start_floor is None:
+            from gaffer.config import serving_config
+            start_floor = serving_config().news_lineup_start_floor
+        out = _floor_first_gw(out, float(start_floor))
+    if "absence_damp" in out.columns:
+        out = _damp_first_gw(out)
     return out.drop(columns=["status", "chance_of_playing"] + news_cols)
 
 
@@ -150,6 +168,28 @@ def _relax(factor: pd.Series, h: pd.Series, injury_type,
     return pd.Series(relaxed, index=factor.index, dtype="float64")
 
 
+def _first_rows(out: pd.DataFrame) -> pd.Series:
+    """The horizon's first row per player — a boolean mask.
+
+    At most **one row per player**, even in a double gameweek: a predicted
+    line-up is one team sheet for one match, and applying it to both of a
+    double's fixtures claims the site predicted a tie it never wrote about.
+    The row taken is the first in frame order, which is the earliest fixture
+    (``predict_components`` builds the frame in fixture order), and that is
+    the match the published XI is about.
+
+    Factored out of :func:`_gate_first_gw` because v8a's damp and floor have
+    to bite on exactly the same rows the ceiling does — three copies of this
+    rule would be three chances for them to drift apart.
+    """
+    first = ((out["gw"] == out["gw"].min()) if "gw" in out.columns
+             else pd.Series(True, index=out.index))
+    if "code" in out.columns:
+        extra = out.loc[first, "code"].duplicated()
+        first = first & ~out.index.isin(extra.index[extra])
+    return first
+
+
 def _gate_first_gw(out: pd.DataFrame) -> pd.DataFrame:
     """Apply ``p_start_hint`` as a ceiling on the horizon's first gameweek.
 
@@ -157,25 +197,61 @@ def _gate_first_gw(out: pd.DataFrame) -> pd.DataFrame:
     alone: an untouched ``p60`` beside a halved ``p_play`` is the incoherence
     the three-mode model was built to remove, and ``e_min`` feeds the
     scenario sweep's nailedness score.
-
-    At most **one row per player** is gated, even in a double gameweek: a
-    predicted line-up is one team sheet for one match, and applying it to both
-    of a double's fixtures claims the site predicted a tie it never wrote
-    about. The row taken is the first in frame order, which is the earliest
-    fixture — ``predict_components`` builds the frame in fixture order — and
-    that is the match the published XI is about.
     """
     hint = pd.to_numeric(out["p_start_hint"], errors="coerce")
-    first = (out["gw"] == out["gw"].min()) if "gw" in out.columns \
-        else pd.Series(True, index=out.index)
-    if "code" in out.columns:
-        extra = out.loc[first, "code"].duplicated()
-        first = first & ~out.index.isin(extra.index[extra])
+    first = _first_rows(out)
     bites = first & hint.notna() & (hint < out["p_play"])
     if not bites.any():
         return out
     ratio = (hint[bites] / out.loc[bites, "p_play"]).where(
         out.loc[bites, "p_play"] > 0, 0.0)
+    for col in ["p_play", "p60", "e_min"]:
+        out.loc[bites, col] = out.loc[bites, col] * ratio
+    return out
+
+
+def _damp_first_gw(out: pd.DataFrame) -> pd.DataFrame:
+    """Apply ``absence_damp`` to the horizon's first gameweek (v8a F4).
+
+    A regular the predicted XI silently left out. Weaker evidence than a
+    printed "Out", so it multiplies rather than clipping: the model's own view
+    survives it, scaled. Same one-row-per-player rule and the same
+    three-outputs-together discipline as the ceiling above, and it composes
+    with the ceiling by construction — a player who is both named as a doubt
+    and a notable absentee cannot exist, because the absence rule skips every
+    code the page named.
+    """
+    damp = pd.to_numeric(out["absence_damp"], errors="coerce")
+    bites = _first_rows(out) & damp.notna() & (damp < 1.0)
+    if not bites.any():
+        return out
+    for col in ["p_play", "p60", "e_min"]:
+        out.loc[bites, col] = out.loc[bites, col] * damp[bites]
+    return out
+
+
+def _floor_first_gw(out: pd.DataFrame, floor: float) -> pd.DataFrame:
+    """Raise a *predicted starter* to ``floor`` on the first gameweek.
+
+    Shipped as a capability at ``0.0`` — off — and deliberately so. The hint
+    has only ever been a ceiling, on the argument that a predicted omission is
+    strong evidence and a predicted start is none; a floor reverses that for
+    the one case where the page is unambiguous, and reversing it without
+    evidence is how a fringe player becomes a captain. It is enabled only if
+    the shadow log supports a value (spec §4).
+
+    ``p_play`` of exactly zero is left alone: there is no ratio to carry
+    ``p60`` and ``e_min`` up with, and a model that has ruled a player out
+    entirely is not being contradicted by a website's guess.
+    """
+    if floor <= 0.0:
+        return out
+    hint = pd.to_numeric(out["p_start_hint"], errors="coerce")
+    bites = (_first_rows(out) & (hint >= 1.0) & (out["p_play"] < floor)
+             & (out["p_play"] > 0))
+    if not bites.any():
+        return out
+    ratio = floor / out.loc[bites, "p_play"]
     for col in ["p_play", "p60", "e_min"]:
         out.loc[bites, col] = out.loc[bites, col] * ratio
     return out
