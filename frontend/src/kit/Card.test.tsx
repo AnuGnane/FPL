@@ -24,4 +24,28 @@ describe('Card', () => {
     render(<Card><p>inside</p></Card>)
     expect(screen.queryByRole('heading')).toBeNull()
   })
+
+  it('renders the title as a small uppercase label by default', () => {
+    render(<Card title="Squad"><p>inside</p></Card>)
+    expect(screen.getByRole('heading', { name: 'Squad' }))
+      .toHaveClass('label')
+  })
+
+  it('renders the title at primary text size when asked', () => {
+    render(<Card title="Saka" titleSize="lg"><p>inside</p></Card>)
+    const heading = screen.getByRole('heading', { name: 'Saka' })
+    expect(heading).toHaveClass('text-lg')
+    expect(heading).toHaveClass('text-text')
+    expect(heading).not.toHaveClass('label')
+  })
+
+  it('keeps the action slot beside a large title', () => {
+    render(
+      <Card title="Saka" titleSize="lg" action={<span>MID</span>}>
+        <p>inside</p>
+      </Card>,
+    )
+    expect(screen.getByText('MID')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Saka' })).toBeInTheDocument()
+  })
 })
