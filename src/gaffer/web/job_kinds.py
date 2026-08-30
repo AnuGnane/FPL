@@ -74,6 +74,24 @@ def run_train_and_advise_fast() -> dict:
         dataclasses.replace(load_config(), scenarios_n=0))
 
 
+def run_track_pens() -> dict:
+    """``gaffer track-pens`` — the standing penalty-term report (v7d F2).
+
+    ``track_pens`` never raises: a missing live season comes back as an empty
+    report carrying a note, which is a finished job with zero gameweeks, not
+    a failed one. The printed table is ``format_tracker``'s, character for
+    character the same thing the CLI prints.
+    """
+    from gaffer.pen_tracker import (format_tracker, save_tracker,
+                                    track_pens)
+
+    report = track_pens()
+    path = save_tracker(report)
+    print(format_tracker(report))
+    print(f"Wrote {path}")
+    return {"gws": len(report.get("gws", []))}
+
+
 JOB_KINDS: dict[str, Callable[[], Any]] = {
     "advise": run_train_and_advise,
     "advise-fast": run_train_and_advise_fast,
@@ -81,5 +99,6 @@ JOB_KINDS: dict[str, Callable[[], Any]] = {
     "refresh-data": run_data_refresh,
     "news-shadow": run_news_shadow,
     "snapshot": run_snapshot_job,
+    "track-pens": run_track_pens,
 }
 """The allow-list. A kind not in here is a 404, never an exec of user input."""

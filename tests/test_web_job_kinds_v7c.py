@@ -100,3 +100,49 @@ def test_fast_advise_replaces_the_sweep_count_with_zero(monkeypatch):
     assert seen["cfg"].scenarios_n == 0
     assert seen["cfg"].entry_id == 1
     assert out == {"gw": 5, "expected_pts": 61.0}
+
+
+def test_the_track_pens_kind_is_on_the_allow_list():
+    assert job_kinds.JOB_KINDS["track-pens"] is job_kinds.run_track_pens
+
+
+def test_track_pens_saves_the_report_and_counts_its_gameweeks(monkeypatch,
+                                                              capsys):
+    """The runner captures this thread's stdout, so the printed table is what
+    the browser shows as the job's progress."""
+    report = {"season": "2026-27",
+              "gws": [{"gw": 1, "error": "x"}, {"gw": 2, "error": "y"}],
+              "season_totals": {}, "notes": []}
+    saved = {}
+
+    def _save(payload):
+        saved["report"] = payload
+        return "reports/pen_tracker.json"
+
+    monkeypatch.setattr("gaffer.pen_tracker.track_pens",
+                        lambda season=None: report)
+    monkeypatch.setattr("gaffer.pen_tracker.save_tracker", _save)
+    assert job_kinds.run_track_pens() == {"gws": 2}
+    assert saved["report"] is report
+    out = capsys.readouterr().out
+    assert "Penalty tracker" in out
+    assert "reports/pen_tracker.json" in out
+
+
+def test_a_degraded_pen_report_is_still_a_finished_job(monkeypatch):
+    """track_pens never raises — a season with nothing on disk is an empty
+    report with a note, and the job must bank it as zero gameweeks."""
+    monkeypatch.setattr(
+        "gaffer.pen_tracker.track_pens",
+        lambda season=None: {"season": "", "gws": [], "season_totals": {},
+                             "notes": ["no live season on disk"]})
+    monkeypatch.setattr("gaffer.pen_tracker.save_tracker",
+                        lambda payload: "reports/pen_tracker.json")
+    assert job_kinds.run_track_pens() == {"gws": 0}
+
+
+def test_the_track_pens_wrapper_imports_lazily():
+    import inspect
+
+    source = inspect.getsource(job_kinds)
+    assert "from gaffer.pen_tracker import" not in source.split("def ")[0]
