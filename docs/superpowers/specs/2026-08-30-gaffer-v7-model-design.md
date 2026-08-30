@@ -273,4 +273,35 @@ someone does, neither result should be treated as settled.
 Also noted: the live run's armband (Guéhi, chase-tilt artifact of
 mid-GW2 data) is a league-mode question, not a noise question.
 
-(Remaining outcome recorded at cycle end.)
+### N2 — pending
+
+GW2 was not `data_checked` when the cycle closed (2026-08-30). Run
+`gaffer evaluate --news-shadow` after FPL settles GW2 (usually the day
+after the last match) for the first scored news-layer verdict.
+
+### Cycle close (2026-08-30, autonomous)
+
+Executed end to end while the user was away: spec → plan (98c5ee5) →
+three implementer groups → gates (Z1 FAIL recorded, ship-OFF; S2 PASS on
+the literal rule) → adversarial review (FIX-FIRST: the review ran the
+missing raw control and overturned the S2 *interpretation*) → six-commit
+fix round (honest records, serving guards, driver isolation, nits).
+Suites: 1523 Python + 251 frontend, tsc clean; protected files
+byte-identical to main.
+
+**Merge withheld per §0 D3.** The branch is coherent, green, and safe,
+but the shipping question S2 surfaced is genuinely three-way and the
+user's to make:
+
+- (a) heuristic gating (v6 status quo): replay 1785;
+- (b) estimation σ as now configured on this branch (default True):
+  1908 — but this effectively disables gating while paying its ~5-minute
+  scenario cost every advise;
+- (c) drop scenario gating entirely: 1914, fastest, but un-pre-registered
+  and single-seed.
+
+Open findings for the next cycle regardless of the choice: the v4c D1
+sign reversal (gating +75 → −129 between v4c and v7, cause unbisected —
+candidates: v5 news, v6 pen EP); single-seed/no-error-bars across the
+whole S1/S2 series; whether σ for the scenario sweep needs both
+estimation and aleatoric terms rather than either alone.

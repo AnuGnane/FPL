@@ -100,6 +100,15 @@ Spec: `specs/2026-08-29-gaffer-v7-ui-design.md` (§12–13 = smoke + outcome) ·
 
 ## In progress
 
+### v7-model — zeros + honest noise (complete on `feat/gaffer-v7-model`; MERGE DECISION WITH USER)
+Spec: `specs/2026-08-30-gaffer-v7-model-design.md` (§9 = gates + the three-way decision) · Plan: `plans/2026-08-30-gaffer-v7-model.md`
+- [x] Zeros diagnostic: the error is regulars-who-sit (news-shaped), not fringe; I2 fringe features proven underivable from stored data
+- [x] Gate Z1 FAIL — isotonic DNP recalibration ships OFF (zeros 1.063→1.053, bar was 1.042; strict Pareto improvement, user may flip)
+- [x] Gate S2 PASS on the literal rule — estimation σ (K=5 bagged ensemble, global 0.069) replay 1908 vs heuristic 1785; **review's raw control scored 1914: the σ disables gating rather than sharpening it** → three-way decision (heuristic / estimation / no gating) escalated, merge withheld
+- [x] Open finding: v4c D1 sign reversal — scenario gating was +75 in v4c, −129 on today's model; unbisected
+- [ ] N2 first news verdict — pending GW2 `data_checked` (`gaffer evaluate --news-shadow`)
+- Suite on branch: 1523 Python + 251 frontend, tsc clean; serving guards added (non-estimation asset refused when flag True; calibrate-noise refuses unsafe overwrite)
+
 ## Planned
 
 ## Operational / housekeeping
