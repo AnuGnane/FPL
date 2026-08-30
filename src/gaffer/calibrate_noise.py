@@ -318,3 +318,134 @@ def fit_estimation_sigmas(rows: pd.DataFrame,
         "min_cell_obs": int(min_obs),
         "dropped_zero_cells": int(dropped),
     }
+
+
+ESTIMATION_SEEDS = (7, 17, 27, 37, 47)
+"""The K=5 ensemble's LightGBM seeds.
+
+``ESTIMATION_SEEDS[0]`` is :data:`gaffer.models.minutes.LGB_KW`'s own
+``random_state``, asserted at fit time, so ensemble member zero **is** the
+shipped bundle and is not refit. The other four are arbitrary and fixed: the
+asset has to be reproducible from the committed constant, not from whatever
+the machine's entropy was that afternoon.
+"""
+
+ESTIMATION_TRAIN_MAX_IDX = 2
+ESTIMATION_TEST_IDX = 3
+ESTIMATION_SEASON = "2025-26"
+"""The estimation fit's walk-forward: train on 2022-23 to 2024-25, walk every
+gameweek of 2025-26.
+
+Spec §3 asks for the 2025-26 walk-forward, and this is the codebase's existing
+one — :func:`gaffer.evaluation.benchmark_split` with the indices moved on a
+season. A ten-slot holdout would be the other reading and would leave ~7 700
+rows against this walk's ~29 700, too thin to populate a 13-cell grid at
+:data:`MIN_CELL_OBS`. Scoring stays the **current** table, unrestated:
+2025-26 did award defensive contribution, so ``benchmark_scoring``'s 2024-25
+surgery would be wrong here.
+"""
+
+
+def _seeded_bundle(base: dict, train_df: pd.DataFrame, seed: int,
+                   minutes_cls=None, attack_cls=None) -> dict:
+    """``base`` with only the two LightGBM heads refit under ``seed``.
+
+    Spec §3's ensemble is "the attacking heads + minutes model", and that is
+    exactly what varies. Dixon-Coles is a deterministic maximum-likelihood fit
+    with no seed to move, and the EP calibration, bonus, saves and defcon
+    heads are shared so the measured spread is the estimation uncertainty of
+    the two heads that carry it — not a wash of everything at once. Sharing
+    them also turns five full refits into one plus four pairs.
+
+    The class arguments exist so the unit test can substitute stubs; nothing
+    else passes them.
+    """
+    from gaffer.models.attacking import ATTACK_FEATURES, AttackingModel
+    from gaffer.models.minutes import ThreeModeModel
+    from gaffer.models.train import MINUTES_FEATURES
+
+    minutes_cls = ThreeModeModel if minutes_cls is None else minutes_cls
+    attack_cls = AttackingModel if attack_cls is None else attack_cls
+    out = dict(base)
+    out["minutes"] = minutes_cls(MINUTES_FEATURES, seed=seed).fit(train_df)
+    out["attacking"] = attack_cls(ATTACK_FEATURES, seed=seed).fit(train_df)
+    return out
+
+
+def ensemble_sigma(eps: list[pd.DataFrame]) -> pd.DataFrame:
+    """``[code, gw, sigma_est, k]`` from K per-member EP frames.
+
+    ``ddof=0`` to match :func:`fit_sigmas`: this is the spread of the K
+    readings that were actually taken, not an estimate of a parameter of some
+    population of refits they were drawn from.
+    """
+    stacked = pd.concat([e[["code", "gw", "ep"]] for e in eps],
+                        ignore_index=True)
+    out = stacked.groupby(["code", "gw"], as_index=False).agg(
+        sigma_est=("ep", lambda s: float(s.std(ddof=0))), k=("ep", "size"))
+    return out
+
+
+def ensemble_rows(max_train_idx: int | None = None,
+                  test_idx: int | None = None,
+                  seeds: tuple[int, ...] = ESTIMATION_SEEDS) -> pd.DataFrame:
+    """``[code, gw, ep, xmins, sigma_est]`` over the estimation walk-forward.
+
+    ``ep`` and ``xmins`` are the **served** model's — member zero's — because
+    those are the values the live sweep will bin on. Only ``sigma_est`` comes
+    from the ensemble. Binning the ensemble mean instead would put a player in
+    a cell the serving path would never look him up in.
+    """
+    from gaffer.assets import load_bootstrap_sample
+    from gaffer.data.bootstrap import scoring_table
+    from gaffer.errors import GafferError
+    from gaffer.evaluation import benchmark_split
+    from gaffer.models.assemble import (apply_calibration, assemble_ep,
+                                        ep_matrix)
+    from gaffer.models.minutes import LGB_KW
+    from gaffer.models.train import (load_training_frame,
+                                     predict_components_simple, train_all)
+    from gaffer.optimize.scenarios import xmins_by_player_gw
+
+    if int(seeds[0]) != int(LGB_KW["random_state"]):
+        raise ValueError(
+            f"seeds[0] is {seeds[0]} but the shipped random_state is "
+            f"{LGB_KW['random_state']} — member zero must be the served fit")
+    max_train_idx = (ESTIMATION_TRAIN_MAX_IDX if max_train_idx is None
+                     else max_train_idx)
+    test_idx = ESTIMATION_TEST_IDX if test_idx is None else test_idx
+
+    df, tg, _ = load_training_frame()
+    train_df, test_df = benchmark_split(df, max_train_idx, test_idx)
+    train_tg, _ = benchmark_split(tg, max_train_idx, test_idx)
+    base = train_all(train_df, train_tg.dropna(subset=["elo_diff"]),
+                     save=False)
+    members = [base] + [_seeded_bundle(base, train_df, s) for s in seeds[1:]]
+    print(f"estimation ensemble: {len(members)} members", flush=True)
+    scoring = scoring_table(load_bootstrap_sample())
+
+    parts = []
+    for gw in sorted(int(g) for g in test_df["gw"].dropna().unique()):
+        rows = test_df[test_df["gw"] == gw].reset_index(drop=True)
+        if rows.empty:
+            continue
+        eps, served, xm = [], None, {}
+        for member in members:
+            comp = predict_components_simple(member, rows)
+            ep = ep_matrix(apply_calibration(assemble_ep(comp, scoring),
+                                             member.get("calibration")))
+            if served is None:
+                served, xm = ep, xmins_by_player_gw(comp)
+            eps.append(ep)
+        joined = served.merge(ensemble_sigma(eps), on=["code", "gw"],
+                              how="inner")
+        joined["xmins"] = [float(xm.get((int(c), int(g)), float("nan")))
+                           for c, g in zip(joined["code"], joined["gw"])]
+        parts.append(joined[["code", "gw", "ep", "xmins", "sigma_est"]])
+        print(f"estimation gw{gw}: {len(parts[-1])} rows", flush=True)
+
+    if not parts:
+        raise GafferError(
+            "no rows to fit an estimation sigma on — run "
+            "`gaffer build-history` and `gaffer train` first")
+    return pd.concat(parts, ignore_index=True)

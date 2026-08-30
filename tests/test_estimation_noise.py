@@ -140,3 +140,67 @@ def test_rows_with_no_xmins_are_dropped_rather_than_binned_at_zero():
     rows.loc[rows.index[:10], "xmins"] = np.nan
     out = fit_estimation_sigmas(rows)
     assert out["rows"] == len(rows) - 10
+
+
+def test_the_first_seed_is_the_shipped_fit_so_member_zero_is_not_refit():
+    from gaffer.calibrate_noise import ESTIMATION_SEEDS
+
+    assert len(ESTIMATION_SEEDS) == 5
+    assert ESTIMATION_SEEDS[0] == LGB_KW["random_state"]
+
+
+def test_a_seeded_bundle_only_replaces_the_two_lightgbm_heads():
+    from gaffer.calibrate_noise import _seeded_bundle
+
+    base = {"minutes": object(), "attacking": object(), "team": object(),
+            "defcon": object(), "saves": object(), "bonus": object(),
+            "calibration": object()}
+
+    class _FakeMinutes:
+        def __init__(self, cols, seed=None):
+            self.seed = seed
+
+        def fit(self, df):
+            return self
+
+    class _FakeAttack(_FakeMinutes):
+        pass
+
+    import gaffer.calibrate_noise as cn
+
+    out = cn._seeded_bundle(base, pd.DataFrame({"a": [1]}), 17,
+                            minutes_cls=_FakeMinutes, attack_cls=_FakeAttack)
+    assert out["minutes"].seed == 17 and out["attacking"].seed == 17
+    for shared in ("team", "defcon", "saves", "bonus", "calibration"):
+        assert out[shared] is base[shared]
+    assert base["minutes"] is not out["minutes"]     # base is not mutated
+
+
+def test_ensemble_sigma_of_identical_members_is_zero():
+    from gaffer.calibrate_noise import ensemble_sigma
+
+    eps = [pd.DataFrame({"code": [1, 2], "gw": [5, 5], "ep": [4.0, 1.0]})
+           for _ in range(5)]
+    out = ensemble_sigma(eps)
+    assert list(out["sigma_est"]) == [0.0, 0.0]
+    assert list(out["k"]) == [5, 5]
+
+
+def test_ensemble_sigma_grows_with_member_diversity():
+    from gaffer.calibrate_noise import ensemble_sigma
+
+    tight = [pd.DataFrame({"code": [1], "gw": [5], "ep": [4.0 + 0.01 * i]})
+             for i in range(5)]
+    loose = [pd.DataFrame({"code": [1], "gw": [5], "ep": [4.0 + 0.50 * i]})
+             for i in range(5)]
+    assert (float(ensemble_sigma(tight)["sigma_est"].iloc[0])
+            < float(ensemble_sigma(loose)["sigma_est"].iloc[0]))
+
+
+def test_ensemble_sigma_is_a_population_std_matching_the_v6_convention():
+    from gaffer.calibrate_noise import ensemble_sigma
+
+    eps = [pd.DataFrame({"code": [1], "gw": [5], "ep": [v]})
+           for v in (1.0, 2.0, 3.0)]
+    assert np.isclose(float(ensemble_sigma(eps)["sigma_est"].iloc[0]),
+                      float(np.std([1.0, 2.0, 3.0])))
