@@ -4,7 +4,8 @@ import * as kit from './index'
 describe('kit barrel', () => {
   it('exports every component a hub is allowed to compose', () => {
     for (const name of ['Badge', 'Card', 'DataTable', 'EmptyState',
-      'PageHeader', 'PitchView', 'Sparkline', 'Stat', 'ThresholdBar']) {
+      'PageHeader', 'PitchView', 'PosBadge', 'Sparkline', 'Stat',
+      'ThresholdBar']) {
       expect(typeof (kit as Record<string, unknown>)[name]).toBe('function')
     }
   })

@@ -33,6 +33,25 @@ describe('theme tokens', () => {
     }
   })
 
+  // Identity, not judgement: these four must never collide with the meaning
+  // colours above, or a position badge starts reading as a verdict.
+  it('defines the four position identity hues', () => {
+    for (const [name, value] of [
+      ['--color-pos-gkp', '#d4a95c'],
+      ['--color-pos-def', '#6ea8d8'],
+      ['--color-pos-mid', '#a48fd8'],
+      ['--color-pos-fwd', '#d88fa8'],
+    ]) {
+      expect(css).toContain(`${name}: ${value};`)
+    }
+  })
+
+  it('keeps the position hues distinct from the meaning colours', () => {
+    const meaning = ['#86b388', '#e0876f', '#7da7c9']
+    const position = ['#d4a95c', '#6ea8d8', '#a48fd8', '#d88fa8']
+    for (const hue of position) expect(meaning).not.toContain(hue)
+  })
+
   it('defines the mono numeral face and the 10px card radius', () => {
     expect(css).toContain("--font-mono: 'SF Mono', Menlo, monospace;")
     expect(css).toContain('--radius-card: 10px;')
