@@ -14,6 +14,10 @@ from gaffer.models.components import (BONUS_FEATURES, DEFCON_FEATURES,
 from gaffer.models.team import TEAM_FEATURES
 from gaffer.models.train import MINUTES_FEATURES
 
+# The exact list gate G1 (2024-25 walk-forward, ``scripts/v8a_arms.py``) kept
+# from the v8a candidate arms. All six arms were withdrawn, so: none.
+ADOPTED_V8A_FEATURES: list[str] = []
+
 
 def _frame(rows_by_season: dict[int, int], minutes: int = 90) -> pd.DataFrame:
     """Appearance rows per season_idx."""
@@ -493,3 +497,13 @@ def test_load_training_frame_without_understat_still_has_the_columns(
         assert col in df.columns and df[col].isna().all()
     for col in SHRUNK_FEATURES:
         assert col in df.columns
+
+
+def test_the_minutes_feature_set_is_the_adopted_one():
+    """The gate's verdict, pinned. A feature added to the frame is not a
+    feature the model uses, and the difference is a whole cycle's measurement:
+    this list is the one thing G1 licensed to change."""
+    from gaffer.features.engineer import ROTATION_PRIOR_FEATURES
+
+    adopted = [c for c in ROTATION_PRIOR_FEATURES if c in MINUTES_FEATURES]
+    assert adopted == ADOPTED_V8A_FEATURES

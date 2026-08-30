@@ -68,6 +68,38 @@ regression, likely because cup congestion data exists only from 2025-26, so
 the feature is partly a season indicator. They are therefore NOT fed to the
 minutes model; the builders stay for the tracker and for re-evaluation once
 cup coverage spans the training window. Recorded in the v5 design doc §12.
+
+v8a gate G1 ran a per-arm ablation on the 2024-25 walk-forward benchmark
+(``scripts/v8a_arms.py``): baseline zeros/haulers/all RMSE 1.066 / 5.179 /
+1.968, and per arm
+
+    f1_tenure_start_share      zeros 1.074  haulers 5.183  all 1.972
+    f1_manager_tenure_matches  zeros 1.081  haulers 5.157  all 1.972
+    f1_xi_churn_r5             zeros 1.073  haulers 5.172  all 1.970
+    f1_started_last_match      zeros 1.073  haulers 5.172  all 1.970
+    f2_league                  zeros 1.070  haulers 5.168  all 1.968
+    f2_cups                    zeros 1.070  haulers 5.168  all 1.968
+
+(all seven arms over the same 16279 zeros rows). The rule (spec §6) kept an
+arm only where zeros improved by >= 0.005 with neither haulers nor all-RMSE
+regressing by > 0.005; every arm's zeros *gain* was negative — -0.008,
+-0.015, -0.007, -0.007, -0.004, -0.004 in the order above. Kept: none.
+Withdrawn: f1_tenure_start_share, f1_manager_tenure_matches, f1_xi_churn_r5,
+f1_started_last_match, f2_league, f2_cups.
+
+Two notes for whoever re-measures. ``f2_league`` and ``f2_cups`` are the same
+model on this benchmark rather than a coincidence: ``cup_matches.parquet``
+holds no rows at or before 2024-25, so the league-only and all-competitions
+congestion columns are value-identical over the whole window — the v5 N1
+finding, still true. And the f1 arms really are distinct fits; a
+prediction-level probe separated ``xi_churn_r5`` from ``started_last_match``,
+whose tie above is only 3dp rounding.
+
+The withdrawn arms' builders stay wired into ``load_training_frame`` and
+``build_prediction_frame``, and ``data/manager_tenures.toml`` stays a
+committed asset — the columns cost a fit nothing, F4's serve-time start
+threshold reads the rotation priors anyway, and the next cycle re-measures
+them rather than rebuilding them.
 """
 
 # Team-level clean sheet / goals conceded held at league-average constants
