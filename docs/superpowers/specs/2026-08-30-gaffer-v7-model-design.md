@@ -199,4 +199,16 @@ improvement over shipped (better zeros, guards passed) but fails the
 pre-registered bar; per §0 D2/D3 an ambiguous call ships OFF and is left
 to the user. Flipping is one constant.
 
+### M2 design call (orchestrator, §0 D1 authority)
+
+Seed-only LightGBM refits proved fully deterministic under `LGB_KW`
+(no subsample/colsample; verified empirically by the implementer —
+identical models seed to seed), so seeded ensemble members 1–4 carry
+`ENSEMBLE_KW = {subsample 0.8, subsample_freq 1, colsample_bytree 0.8}`;
+member 0 remains the served fit, byte-identical. σ_est therefore measures
+the spread of resampled refits around the served model — an approximate
+bootstrap — rather than a symmetric seed ensemble. Accepted: it is a
+legitimate (arguably better-founded) estimation-uncertainty measure, the
+serving path is untouched, and gate S2's shipping rule is outcome-based.
+
 (Remaining outcome recorded at cycle end.)
