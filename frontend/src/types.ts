@@ -567,16 +567,19 @@ export interface NewsShadowData {
   by_gw: NewsShadowGw[]
 }
 
-export const JOB_KINDS = ['advise', 'evaluate', 'refresh-data',
-  'news-shadow'] as const
+export const JOB_KINDS = ['advise', 'advise-fast', 'evaluate', 'refresh-data',
+  'news-shadow', 'snapshot', 'track-pens'] as const
 
 export type JobKind = typeof JOB_KINDS[number]
 
 export const JOB_KIND_LABEL: Record<JobKind, string> = {
   advise: 'Run advise',
+  'advise-fast': 'Fast advise',
   evaluate: 'Evaluate',
   'refresh-data': 'Refresh data',
   'news-shadow': 'Score news shadow',
+  snapshot: 'Snapshot news',
+  'track-pens': 'Track pens',
 }
 
 export interface JobRunView {
@@ -666,4 +669,46 @@ export interface JournalData {
   rows: JournalRow[]
   cumulative: JournalPoint[]
   built_at: string | null
+}
+
+/**
+ * One gameweek of `reports/pen_tracker.json`. Everything but `gw` is optional
+ * because a week that would not read is written as `{gw, error}` — the same
+ * one-model-two-shapes contract the server's `PenTrackerGw` carries.
+ */
+export interface PenTrackerGw {
+  gw: number
+  instrument?: string | null
+  rows?: number | null
+  covered_rows?: number | null
+  team_games?: number | null
+  component_rows?: number | null
+  predicted_ep_pen_taker?: number | null
+  predicted_takers?: number | null
+  pens_taken?: number | null
+  pens_by_first_choice?: number | null
+  taker_hit_rate?: number | null
+  pens_per_team_game?: number | null
+  realized_pen_points?: number | null
+  error?: string | null
+}
+
+export interface PenTrackerTotals {
+  gws?: number | null
+  instruments?: string[]
+  team_games?: number | null
+  predicted_ep_pen_taker?: number | null
+  pens_taken?: number | null
+  pens_by_first_choice?: number | null
+  taker_hit_rate?: number | null
+  pens_per_team_game?: number | null
+  league_pens_pg_served?: number | null
+  realized_pen_points?: number | null
+}
+
+export interface PenTrackerData {
+  season: string
+  gws: PenTrackerGw[]
+  season_totals: PenTrackerTotals
+  notes: string[]
 }

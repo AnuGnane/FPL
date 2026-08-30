@@ -1,10 +1,19 @@
 import { describe, expect, it } from 'vitest'
-import { JOB_KINDS, type JobKind, type JobRunView } from './types'
+import {
+  JOB_KINDS, JOB_KIND_LABEL, type JobKind, type JobRunView,
+} from './types'
 
 describe('job types', () => {
-  it('lists exactly the four kinds the backend allows', () => {
+  it('lists exactly the seven kinds the backend allows', () => {
     expect([...JOB_KINDS]).toEqual(
-      ['advise', 'evaluate', 'refresh-data', 'news-shadow'])
+      ['advise', 'advise-fast', 'evaluate', 'refresh-data', 'news-shadow',
+       'snapshot', 'track-pens'])
+  })
+
+  it('labels every kind for a button', () => {
+    for (const kind of JOB_KINDS) {
+      expect(JOB_KIND_LABEL[kind].length).toBeGreaterThan(0)
+    }
   })
 
   it('types a run view the way the router serialises it', () => {
