@@ -62,4 +62,31 @@ The user makes the final call either way; nothing ships by default.
 
 ## 5. Outcome
 
-Recorded at cycle end.
+### Q2 probe (Task 6, 2026-08-30)
+
+`V7B_PROBE_FRAME {"identical": true}` — the v5 frame additions
+(congestion, shrunken modes) are inert to the replay; `--frame v4c` arms
+never ran. `V7B_PROBE_XMINS`: current vs legacy mean noise scale 0.4818
+vs 0.4809 (0.2%) — the xMins-*scale* mechanism (plan F2) is wrong.
+
+### Q2 control + ablation — ANSWERED (4 runs, D1-matched harness:
+no chips, no priors, seed base 20260825)
+
+| minutes head | gated (heur) | raw | gating delta |
+|---|---|---|---|
+| current (ThreeModeModel) | 1786 | 1847 | **−61** |
+| legacy (pre-v5 MinutesModel) | 1827 | 1800 | **+27** |
+
+- The harness does NOT explain the reversal (delta_ctrl −61 under D1's
+  own conditions, where v4c measured +75).
+- **The v5 ThreeModeModel swap is the cause.** Flip the head back and
+  gating's sign flips back. Note the interaction is via noise
+  *placement*, not scale (probe above): sharper p_play/p60 changes which
+  players the xMins-derived heuristic σ perturbs, not how much.
+- The swap itself remains justified: current head beats legacy by +47
+  ungated (1847 vs 1800). v5 improved the model and silently broke the
+  gate — nobody re-ran D1 after the swap until now.
+- Free evidence: raw-ctrl 1847 vs v4c's raw 1743 = +104 of genuine model
+  improvement on the ungated side since v4c.
+
+(Q1/Q3/verdict/N2 recorded below as they land.)
