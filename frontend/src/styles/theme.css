@@ -1,7 +1,8 @@
 @import "tailwindcss";
 
-/* The locked design language (spec §2). Dark only this cycle: there is no
-   prefers-color-scheme branch anywhere, deliberately. */
+/* The locked design language (spec §2). The @theme block is the dark
+   palette and the source of every token name; light is an override of the
+   same names, so no component knows which one is on. */
 @theme {
   --color-base: #101216;
   --color-card: #16181d;
@@ -27,6 +28,51 @@
   --font-mono: 'SF Mono', Menlo, monospace;
 
   --radius-card: 10px;
+}
+
+/* An explicit light choice: `data-theme="light"` on <html>, set by
+   kit/useTheme.ts and by the boot script in index.html. Position hues are
+   darkened rather than re-hued — a MID is violet in both themes, because
+   the hue is identity and identity does not change with the lights. */
+[data-theme="light"] {
+  --color-base: #f4f5f7;
+  --color-card: #ffffff;
+  --color-border: #d9dce2;
+  --color-divider: #e7e9ee;
+  --color-text: #191c22;
+  --color-text-secondary: #3d434e;
+  --color-text-muted: #6b7280;
+  --color-text-faint: #9aa1ab;
+  --color-sage: #3f7a44;
+  --color-rust: #b0532f;
+  --color-info: #2f6b96;
+  --color-pos-gkp: #96731f;
+  --color-pos-def: #2867a5;
+  --color-pos-mid: #6f51b8;
+  --color-pos-fwd: #b04f78;
+}
+
+/* "System" is the absence of the attribute, so the OS preference speaks
+   here. The :not() guard is what keeps an explicit dark choice dark on a
+   light-set machine. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --color-base: #f4f5f7;
+    --color-card: #ffffff;
+    --color-border: #d9dce2;
+    --color-divider: #e7e9ee;
+    --color-text: #191c22;
+    --color-text-secondary: #3d434e;
+    --color-text-muted: #6b7280;
+    --color-text-faint: #9aa1ab;
+    --color-sage: #3f7a44;
+    --color-rust: #b0532f;
+    --color-info: #2f6b96;
+    --color-pos-gkp: #96731f;
+    --color-pos-def: #2867a5;
+    --color-pos-mid: #6f51b8;
+    --color-pos-fwd: #b04f78;
+  }
 }
 
 html, body, #root { min-height: 100%; }
