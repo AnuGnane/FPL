@@ -83,6 +83,30 @@ def snapshot_rows(avail: pd.DataFrame, gw: int, season: str = "",
     return out[SNAPSHOT_COLS]
 
 
+def append_snapshot(rows: pd.DataFrame) -> int:
+    """Rewrite the log with ``rows`` replacing anything from the same day.
+
+    Append-by-rewrite, like :func:`gaffer.news_shadow.write_shadow`: parquet
+    has no append, and at a few hundred rows a day the whole file is cheap to
+    re-emit. Replacement rather than accumulation, keyed on ``snap_date``, is
+    what makes a hand re-run free.
+
+    Returns the number of rows banked for the day.
+    """
+    existing = (store.load(SNAPSHOT_PATH) if store.exists(SNAPSHOT_PATH)
+                else pd.DataFrame(columns=SNAPSHOT_COLS))
+    for col in SNAPSHOT_COLS:
+        if col not in existing.columns:
+            existing[col] = None
+    days = set(rows["snap_date"].astype(str))
+    kept = existing[~existing["snap_date"].astype(str).isin(days)]
+    frames = [f[SNAPSHOT_COLS] for f in (kept, rows) if not f.empty]
+    merged = (pd.concat(frames, ignore_index=True) if frames
+              else rows[SNAPSHOT_COLS])
+    store.save(merged, SNAPSHOT_PATH)
+    return int(len(rows))
+
+
 def load_snapshot_log() -> pd.DataFrame:
     """Every banked day, or an empty frame with the right columns."""
     if not store.exists(SNAPSHOT_PATH):

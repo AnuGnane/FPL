@@ -7,8 +7,9 @@ import pytest
 
 from gaffer.artifacts import AVAILABILITY_COLS
 from gaffer.errors import GafferError
-from gaffer.snapshot import (SNAPSHOT_COLS, load_snapshot_log,
-                             next_unfinished_gw, snap_date, snapshot_rows)
+from gaffer.snapshot import (SNAPSHOT_COLS, SNAPSHOT_PATH, append_snapshot,
+                             load_snapshot_log, next_unfinished_gw, snap_date,
+                             snapshot_rows)
 
 
 def _avail() -> pd.DataFrame:
@@ -78,3 +79,46 @@ def test_an_absent_log_reads_as_an_empty_frame(tmp_path, monkeypatch):
     out = load_snapshot_log()
     assert out.empty
     assert list(out.columns) == SNAPSHOT_COLS
+
+
+def test_the_first_write_creates_the_log(tmp_path, monkeypatch):
+    from gaffer.data import store as store_mod
+
+    monkeypatch.setattr(store_mod, "DATA_DIR", tmp_path)
+    rows = snapshot_rows(_avail(), gw=2, season="2026-27", day="2026-08-30")
+    assert append_snapshot(rows) == 2
+    assert (tmp_path / SNAPSHOT_PATH).exists()
+    assert len(load_snapshot_log()) == 2
+
+
+def test_a_second_run_the_same_day_replaces_that_days_rows(tmp_path,
+                                                           monkeypatch):
+    """The job can be re-run by hand, and a duplicated afternoon would weight
+    that day twice in whatever trains on this log. The later run wins: it is
+    the news that stood at the end of the day."""
+    from gaffer.data import store as store_mod
+
+    monkeypatch.setattr(store_mod, "DATA_DIR", tmp_path)
+    append_snapshot(snapshot_rows(_avail(), gw=2, season="2026-27",
+                                  day="2026-08-30"))
+    later = _avail()
+    later.loc[0, "status"] = "i"
+    append_snapshot(snapshot_rows(later, gw=2, season="2026-27",
+                                  day="2026-08-30"))
+    out = load_snapshot_log()
+    assert len(out) == 2
+    assert set(out["snap_date"]) == {"2026-08-30"}
+    assert out.set_index("code").loc[1, "status"] == "i"
+
+
+def test_a_later_day_appends_rather_than_replaces(tmp_path, monkeypatch):
+    from gaffer.data import store as store_mod
+
+    monkeypatch.setattr(store_mod, "DATA_DIR", tmp_path)
+    append_snapshot(snapshot_rows(_avail(), gw=2, season="2026-27",
+                                  day="2026-08-30"))
+    append_snapshot(snapshot_rows(_avail(), gw=2, season="2026-27",
+                                  day="2026-08-31"))
+    out = load_snapshot_log()
+    assert len(out) == 4
+    assert sorted(set(out["snap_date"])) == ["2026-08-30", "2026-08-31"]
