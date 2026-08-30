@@ -16,7 +16,7 @@ from lightgbm import LGBMRegressor
 
 from gaffer.features.engineer import (SHRUNK_FEATURES,
                                       understat_feature_columns)
-from gaffer.models.minutes import LGB_KW
+from gaffer.models.minutes import ENSEMBLE_KW, LGB_KW
 
 ATTACK_FEATURES = [
     "xg_r1", "xg_r3", "xg_r5", "xg_r10", "xg_r38",
@@ -39,8 +39,16 @@ class AttackingModel:
     """One goals + one assists regressor per position group, trained on
     appearances only (minutes > 0)."""
 
-    def __init__(self, feature_cols: list[str] = ATTACK_FEATURES):
+    def __init__(self, feature_cols: list[str] = ATTACK_FEATURES,
+                 seed: int | None = None):
+        """``seed`` overrides LightGBM's ``random_state``; see
+        :class:`gaffer.models.minutes.ThreeModeModel`, which owns the seam and
+        the reason for it. ``None`` is the shipped fit."""
         self.feature_cols = feature_cols
+        self.seed = seed
+        self.lgb_kw = (dict(LGB_KW) if seed is None
+                       else {**LGB_KW, **ENSEMBLE_KW,
+                             "random_state": int(seed)})
         self.models: dict[tuple[str, str], LGBMRegressor] = {}
 
     def _groups(self, df: pd.DataFrame):
@@ -57,7 +65,7 @@ class AttackingModel:
             if sub.empty:
                 continue
             for target in ("goals", "assists"):
-                model = LGBMRegressor(**LGB_KW)
+                model = LGBMRegressor(**self.lgb_kw)
                 model.fit(sub[self.cols_], sub[target])
                 self.models[(grp, target)] = model
         return self

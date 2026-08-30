@@ -109,8 +109,8 @@ class DnpCalibrator:
 
 
 def fit_dnp_calibrator(df: pd.DataFrame, feature_cols: list[str],
-                       holdout_slots: int = DNP_HOLDOUT_SLOTS
-                       ) -> DnpCalibrator:
+                       holdout_slots: int = DNP_HOLDOUT_SLOTS,
+                       seed: int | None = None) -> DnpCalibrator:
     """Fit the calibrator on out-of-sample DNP predictions.
 
     The same shape as :func:`gaffer.models.train.fit_calibration`, and for the
@@ -143,7 +143,8 @@ def fit_dnp_calibrator(df: pd.DataFrame, feature_cols: list[str],
     inner_df, hold = df[before], df[~before]
     if inner_df.empty or hold.empty:
         return DnpCalibrator()
-    inner = ThreeModeModel(feature_cols, _fit_dnp=False).fit(inner_df)
+    inner = ThreeModeModel(feature_cols, seed=seed,
+                           _fit_dnp=False).fit(inner_df)
     modes = inner.predict_modes(hold)
     return DnpCalibrator().fit(
         modes["p_dnp"], (mode_labels(hold) == DNP).astype("float64"))

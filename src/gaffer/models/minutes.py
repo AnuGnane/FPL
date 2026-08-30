@@ -20,6 +20,25 @@ from gaffer.models.dnp_calibrate import fit_dnp_calibrator
 LGB_KW = dict(n_estimators=300, learning_rate=0.05, num_leaves=31,
               verbose=-1, random_state=7)
 
+ENSEMBLE_KW = dict(subsample=0.8, subsample_freq=1, colsample_bytree=0.8)
+"""What a *seeded* head turns on so that its seed actually bites.
+
+:data:`LGB_KW` samples neither rows nor columns, and its frames are far below
+``subsample_for_bin``, so a LightGBM fit under it is **deterministic**:
+changing ``random_state`` alone reproduces the identical model, prediction for
+prediction (measured, not assumed). A K-seed ensemble built on
+``random_state`` by itself would therefore report a spread of exactly zero and
+say nothing at all about the model's uncertainty.
+
+"Seed-bagged" (spec §3) is taken at its word: a seeded member bags its rows
+and its columns, and the seed chooses which. The spread across members is then
+the real quantity M2 is after — how much this model's estimate moves when the
+evidence it happens to see moves.
+
+This is off for ``seed=None``, which is every shipped fit and ensemble member
+zero, so the served model is untouched.
+"""
+
 DNP_CALIBRATION_DEFAULT = False
 """Whether :meth:`ThreeModeModel.fit` learns a DNP-mode recalibration.
 
@@ -96,14 +115,30 @@ class ThreeModeModel:
     train/serve skew of the worst kind.
     """
 
-    def __init__(self, feature_cols: list[str], _fit_dnp: bool = True):
+    def __init__(self, feature_cols: list[str], seed: int | None = None,
+                 _fit_dnp: bool = True):
+        """``seed`` makes this an ensemble member; ``None`` is the shipped fit.
+
+        The seam exists for the v7 estimation-σ ensemble (spec §3), which
+        prices how much the *model's own estimate* moves by refitting the
+        LightGBM heads under K seeds and reading the spread. ``None`` leaves
+        :data:`LGB_KW` untouched, object for object, so the weekly refit,
+        every backtest and every test are byte-identical to pre-v7.
+
+        A seed sets ``random_state`` **and** turns on :data:`ENSEMBLE_KW`,
+        without which the seed would be inert — see that constant.
+        """
         self.feature_cols = feature_cols
+        self.seed = seed
         self._fit_dnp = _fit_dnp
+        self.lgb_kw = (dict(LGB_KW) if seed is None
+                       else {**LGB_KW, **ENSEMBLE_KW,
+                             "random_state": int(seed)})
         self.mode_clf = LGBMClassifier(objective="multiclass", num_class=3,
-                                       **LGB_KW)
-        self.sixty_clf = LGBMClassifier(**LGB_KW)
-        self.min_start = LGBMRegressor(**LGB_KW)
-        self.min_sub = LGBMRegressor(**LGB_KW)
+                                       **self.lgb_kw)
+        self.sixty_clf = LGBMClassifier(**self.lgb_kw)
+        self.min_start = LGBMRegressor(**self.lgb_kw)
+        self.min_sub = LGBMRegressor(**self.lgb_kw)
         self.modes_seen: list[int] = []
         self.dnp_cal = None
 
@@ -132,26 +167,25 @@ class ThreeModeModel:
         # The recursion guard, mirroring ``train_all``'s ``_fit_cal``: the
         # calibrator's own inner model is built with it False.
         if self._fit_dnp and DNP_CALIBRATION_DEFAULT:
-            self.dnp_cal = fit_dnp_calibrator(df, self.feature_cols)
+            self.dnp_cal = fit_dnp_calibrator(df, self.feature_cols,
+                                              seed=self.seed)
         return self
 
-    @staticmethod
-    def _binary(X, y, default: float):
+    def _binary(self, X, y, default: float):
         if len(X) == 0:
             return _ConstantHead(default)
         if y.nunique() < 2:
             return _ConstantHead(float(y.iloc[0]))
-        clf = LGBMClassifier(**LGB_KW)
+        clf = LGBMClassifier(**self.lgb_kw)
         clf.fit(X, y)
         return clf
 
-    @staticmethod
-    def _regressor(X, y, default: float):
+    def _regressor(self, X, y, default: float):
         if len(X) == 0:
             return _ConstantHead(default)
         if y.nunique() < 2:
             return _ConstantHead(float(y.iloc[0]))
-        reg = LGBMRegressor(**LGB_KW)
+        reg = LGBMRegressor(**self.lgb_kw)
         reg.fit(X, y)
         return reg
 
