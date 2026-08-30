@@ -21,9 +21,9 @@ def _record(calls):
     return save
 
 
-def test_exactly_the_four_kinds_the_spec_allows():
+def test_exactly_the_five_kinds_the_spec_allows():
     assert sorted(JOB_KINDS) == ["advise", "evaluate", "news-shadow",
-                                 "refresh-data"]
+                                 "refresh-data", "snapshot"]
 
 
 def test_advise_and_refresh_reuse_the_existing_router_entry_points():
