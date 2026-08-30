@@ -154,3 +154,31 @@ def test_a_noise_asset_is_required_for_a_table_arm_and_refused_otherwise():
     with pytest.raises(SystemExit):
         v7b_replay.arm_config(["--arm", "heur", "--tag", "t",
                                "--noise-asset", "reports/x.json"])
+
+
+import v7b_probe  # noqa: E402
+
+
+def test_identical_component_frames_compare_equal():
+    a = pd.DataFrame({"code": [1, 2], "p_play": [0.5, 0.9],
+                      "p60": [0.4, 0.8], "gw": [5, 5]})
+    assert v7b_probe.frames_identical(a, a.copy()) is True
+
+
+def test_a_single_changed_cell_is_caught():
+    a = pd.DataFrame({"code": [1, 2], "p_play": [0.5, 0.9],
+                      "p60": [0.4, 0.8], "gw": [5, 5]})
+    b = a.copy()
+    b.loc[1, "p60"] = 0.8 + 1e-12
+    assert v7b_probe.frames_identical(a, b) is False
+
+
+def test_the_xmins_summary_reports_the_noise_scale_it_implies():
+    comp = pd.DataFrame({"code": [1, 2], "gw": [5, 5],
+                         "p_play": [1.0, 1.0], "p60": [1.0, 0.0]})
+    out = v7b_probe.xmins_summary(comp)
+    assert out["n"] == 2
+    assert out["mean_xmins"] == pytest.approx(67.5)
+    # (92 - xmins) / 134, the heuristic scale the gate would apply
+    assert out["mean_noise_scale"] == pytest.approx(
+        ((92 - 90) / 134 + (92 - 45) / 134) / 2)
