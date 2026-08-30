@@ -203,6 +203,19 @@ def prices():
 
 
 @app.command()
+def snapshot():
+    """Bank today's availability state into the daily log (v7c F1).
+
+    The launchd job's body. It prints its own line and never fails: a
+    scheduled command that exits non-zero on a bad afternoon is a command
+    that gets uninstalled.
+    """
+    from gaffer.snapshot import run_snapshot
+
+    run_snapshot()
+
+
+@app.command()
 def league():
     """Mini-league standings and rival ownership."""
     from gaffer.api.client import FPLClient

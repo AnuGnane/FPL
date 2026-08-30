@@ -436,3 +436,33 @@ def test_calibrate_noise_force_lifts_the_refusal(tmp_path, monkeypatch):
     result = CliRunner().invoke(app, ["calibrate-noise", "--force"])
     assert result.exit_code == 0, result.output
     assert "source residual" in result.output
+
+
+def test_snapshot_is_registered_and_reports_what_it_banked(monkeypatch):
+    """The daily job's front door: it must exist, and it must be quiet about
+    its own failures the way the scheduled run needs it to be."""
+    from typer.testing import CliRunner
+
+    from gaffer import snapshot as snapshot_mod
+    from gaffer.cli import app
+
+    def fake_run(cfg=None):
+        print("Snapshot: 3 availability rows for gw2 at 2026-08-30.")
+        return 3
+
+    monkeypatch.setattr(snapshot_mod, "run_snapshot", fake_run)
+    result = CliRunner().invoke(app, ["snapshot"])
+    assert result.exit_code == 0
+    assert "3 availability rows" in result.output
+    assert "snapshot" in CliRunner().invoke(app, ["--help"]).output
+
+
+def test_snapshot_exits_zero_when_the_day_could_not_be_banked(monkeypatch):
+    from typer.testing import CliRunner
+
+    from gaffer import snapshot as snapshot_mod
+    from gaffer.cli import app
+
+    monkeypatch.setattr(snapshot_mod, "run_snapshot", lambda cfg=None: None)
+    result = CliRunner().invoke(app, ["snapshot"])
+    assert result.exit_code == 0
