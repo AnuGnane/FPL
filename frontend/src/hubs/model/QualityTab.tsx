@@ -4,10 +4,13 @@ import {
   XAxis, YAxis,
 } from 'recharts'
 import { ApiError, apiGet } from '../../api/client'
-import { Card, EmptyState, Loading } from '../../kit'
+import {
+  type Column, Badge, Card, DataTable, EmptyState, Loading, Stat, fmtNum,
+  fmtPct,
+} from '../../kit'
 import type {
   BenchmarkEvaluation, CurrentEvaluation, DecompositionData, HeadMetrics,
-  NewsShadowData, QualityData, StratifiedTable,
+  NewsShadowData, PenTrackerData, PenTrackerGw, QualityData, StratifiedTable,
 } from '../../types'
 
 // Categories are OpenFPL's, defined on actual points, so the labels have to
@@ -321,6 +324,113 @@ function NewsShadowSection({ shadow }: { shadow: NewsShadowData }) {
   )
 }
 
+// The instrument is the first thing to read on a pen row: an xg-gap week
+// counts penalties, a pens_missed_only week can only see the ones that were
+// missed, so every number beside it is a floor rather than a count.
+function InstrumentCell({ row }: { row: PenTrackerGw }) {
+  if (row.error) {
+    return (
+      <span className="text-text-muted" title={row.error}>unreadable</span>
+    )
+  }
+  if (row.instrument === 'pens_missed_only') {
+    return (
+      <Badge variant="negative"
+             title="counted from missed penalties only — converted spot kicks
+                    are invisible, so every count on this row is a floor">
+        floor
+      </Badge>
+    )
+  }
+  return <Badge variant="info">{row.instrument ?? '—'}</Badge>
+}
+
+const PEN_COLUMNS: Column<PenTrackerGw>[] = [
+  { key: 'gw', header: 'GW', primary: true, value: (r) => r.gw,
+    render: (r) => (
+      <span className={r.error ? 'num text-text-muted' : 'num text-text'}>
+        GW{r.gw}
+      </span>
+    ) },
+  { key: 'instrument', header: 'Instrument', primary: true,
+    value: (r) => (r.error ? 'unreadable' : r.instrument ?? '—'),
+    render: (r) => <InstrumentCell row={r} /> },
+  { key: 'covered_rows', header: 'Covered', numeric: true,
+    value: (r) => r.covered_rows ?? null,
+    render: (r) => fmtNum(r.covered_rows, 0) },
+  { key: 'pens_taken', header: 'Pens', primary: true, numeric: true,
+    value: (r) => r.pens_taken ?? null,
+    render: (r) => fmtNum(r.pens_taken) },
+  { key: 'taker_hit_rate', header: 'Hit rate', numeric: true,
+    value: (r) => r.taker_hit_rate ?? null,
+    render: (r) => fmtPct(r.taker_hit_rate) },
+]
+
+/**
+ * The v6 penalty term, measured forward. Its own fetch, like every other
+ * section here: the tracker is a separate artifact with its own "not written
+ * yet" state, and folding it into /api/quality would make one missing file
+ * blank the other's page.
+ */
+function PensSection() {
+  const [data, setData] = useState<PenTrackerData | null>(null)
+  const [empty, setEmpty] = useState<string | null>(null)
+
+  useEffect(() => {
+    apiGet<PenTrackerData>('/api/pens').then(setData).catch((e: Error) => {
+      // 422 is the ordinary "nobody has run it yet"; anything else is a
+      // server that cannot answer, and this card is not the place to shout
+      // about it — the page above still has its numbers.
+      if (e instanceof ApiError && e.status === 422) setEmpty(e.message)
+    })
+  }, [])
+
+  if (empty) {
+    return (
+      <EmptyState
+        title="No penalty tracker yet"
+        detail={empty}
+        action="gaffer track-pens"
+      />
+    )
+  }
+  // A payload without a gws array is not a tracker: render nothing rather
+  // than crash the tab on an artifact half-written by an older version.
+  if (!data || !Array.isArray(data.gws)) return null
+
+  const totals = data.season_totals ?? {}
+  return (
+    <Card title={`Penalty term — ${data.season || 'season unknown'}`}
+          className="mt-4">
+      <div className="mb-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Stat label="Pens taken" value={fmtNum(totals.pens_taken)} />
+        <Stat label="Taker hit rate" value={fmtPct(totals.taker_hit_rate)} />
+        <Stat
+          label="Pens / team-game"
+          value={`${fmtNum(totals.pens_per_team_game, 3)} vs `
+            + `${fmtNum(totals.league_pens_pg_served, 2)} served`}
+        />
+        <Stat
+          label="Predicted EP / realized"
+          value={`${fmtNum(totals.predicted_ep_pen_taker)} / `
+            + `${fmtNum(totals.realized_pen_points)}`}
+        />
+      </div>
+      <DataTable
+        columns={PEN_COLUMNS}
+        rows={data.gws}
+        rowKey={(r) => r.gw}
+        rowLabel={(r) => `GW${r.gw}`}
+        initialSort="gw"
+        empty={<p className="text-text-muted">No finished gameweek yet.</p>}
+      />
+      {(data.notes ?? []).map((note) => (
+        <p key={note} className="mt-2 text-text-faint">{note}</p>
+      ))}
+    </Card>
+  )
+}
+
 export default function QualityTab() {
   const [data, setData] = useState<QualityData | null>(null)
   const [empty, setEmpty] = useState<string | null>(null)
@@ -361,6 +471,7 @@ export default function QualityTab() {
         && <DecompositionSection decomposition={data.decomposition} />}
       {data.news_shadow && data.news_shadow.rows > 0
         && <NewsShadowSection shadow={data.news_shadow} />}
+      <PensSection />
     </>
   )
 }
