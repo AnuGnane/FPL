@@ -211,4 +211,16 @@ bootstrap — rather than a symmetric seed ensemble. Accepted: it is a
 legitimate (arguably better-founded) estimation-uncertainty measure, the
 serving path is untouched, and gate S2's shipping rule is outcome-based.
 
+### M2 fit (Task 16, 2026-08-30)
+
+9 cells + 5 EP marginals from 29,338 rows; global σ **0.0692** vs the v6
+residual table's 1.953. Cellwise, estimation σ is 10–30× smaller than
+residual σ everywhere (e.g. cell 0_1: 0.105 vs 2.088; 3_2: 0.293 vs
+3.981); no cell violates the smaller-than-residual precondition, so S2
+proceeds. Reading: subsample refits of the heads agree closely — the
+model's estimation uncertainty is a small fraction of football's
+scenario-to-scenario variance, so the estimation arm runs the replay with
+near-deterministic scenarios. S2 therefore cleanly asks whether the
+sim-consensus value lives in the noise magnitude or in re-solving per se.
+
 (Remaining outcome recorded at cycle end.)
