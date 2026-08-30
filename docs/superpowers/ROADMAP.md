@@ -88,6 +88,16 @@ Spec: `specs/2026-08-27-gaffer-v6-cockpit-design.md` (§9 = full outcome) · Pla
 - [x] Adversarial review FIX-FIRST (3 blockers) + re-verify FIX-AGAIN (3) — all fixed, third pass clean via gates
 - Suite: 1338 Python + 88 frontend, tsc + build clean
 
+### v7-ui — command centre (done, full UI redesign)
+Spec: `specs/2026-08-29-gaffer-v7-ui-design.md` (§12–13 = smoke + outcome) · Plans: `plans/2026-08-29-gaffer-v7-ui.md`, `plans/2026-08-30-gaffer-v7-ui-polish.md`
+- [x] Foundation: Tailwind v4 (locked dark design language as tested `@theme` tokens), Radix primitives, Recharts; 13-component kit incl. position-identity `PosBadge`
+- [x] Job runner: single-flight streaming `JobRunner` (SSE + ring-buffer replay + heartbeat, thread-routed stdout) running advise/evaluate/refresh-data/news-shadow from the browser; legacy rerun endpoints deleted (single lane)
+- [x] Six hubs replace 13 pages: This Week / Planning / Players / League / Live / Model; `frontend/src/pages/` deleted
+- [x] New capabilities: 3-GW plan timeline, player compare, Dixon-Coles fixture matrix (winsorised 0–1 scale), decision journal with deadline guard + `late run` badge
+- [x] Fully responsive (card-mode tables, bottom tab bar) + `gaffer ui --lan` with QR; cold-clone sweep suite (found + fixed config 500s)
+- [x] Adversarial review FIX-FIRST (2 blockers + 11 importants + 9 nits) → re-verify MERGE → 9 residuals closed → editorial polish round from user walkthrough (position colours, 6 legacy components restyled onto the kit, 20-fix sweep)
+- Suite: 1464 Python + 245 frontend, tsc + build + `uv lock --locked` clean; backend model code untouched
+
 ## In progress
 
 ## Planned

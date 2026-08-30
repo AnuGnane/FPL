@@ -294,3 +294,44 @@ sweep of all six hubs against a rejecting client
 
 After both fixes: no 5xx and no traceback on any hub endpoint in an empty
 tree, and all six hubs render an `EmptyState` naming their action.
+
+## 13. Final outcome (recorded 2026-08-30)
+
+Cycle complete and merged. Seven implementer groups (43 plan tasks), then:
+
+- **Adversarial review** (FIX-FIRST): 2 blockers — the v6 rerun/refresh
+  endpoints bypassed the runner's single-flight (endpoints deleted; the
+  Model hub's JobButtons are the sole lane; What-If's JobRegistry kept),
+  and a stale `uv.lock` missing `qrcode` (relocked, verified `--locked`).
+  11 importants fixed, incl. thread-routed stdout capture (`_ThreadRouter`
+  — a concurrent request's prints no longer leak into the job log),
+  EventSource loss recovery + mount attach via `/api/jobs/current`,
+  journal deadline preference with a rendered `late run` badge, winsorised
+  fixture-matrix normalisation over live team codes (full 0–1 spread on
+  real data), empty-journal caching, plain `GafferError` CLI exits, plan
+  drift guards, and derived `xmins` in the components payload. 9 nits fixed.
+- **Re-verification**: MERGE — every fix confirmed by live probes (real
+  evaluate job over SSE, 4-thread stdout hammer, whole-API click-path).
+  9 residuals closed in a cleanup pass (SSE 15s heartbeat frames so
+  abandoned streams release their worker; terminal-status/lane flip made
+  atomic).
+- **Editorial polish round** (user walkthrough feedback, plan
+  `2026-08-30-gaffer-v7-ui-polish.md`): position-identity tokens
+  (GKP amber / DEF sky / MID violet / FWD rose) + `PosBadge` applied
+  app-wide; the nine pre-v7 `components/` files — whose classes died with
+  `tokens.css` and rendered unstyled (the reported "bottom of This Week")
+  — restyled onto the kit and moved under their owning hubs (three dead
+  ones deleted; `ExplainModal` proved live and was kept); a 20-fix
+  page-by-page sweep to the This Week standard (kit `Loading` card at 14
+  sites, carded errors, labelled tables, mono numerals, shared
+  sage↔rust difficulty scale across ticker and matrix; zero raw hex or
+  dead classes remain in `hubs/`+`kit/`).
+
+User smoke walkthrough passed ("looks good"). Final suites: **1464
+Python + 245 frontend (48 files)**, `tsc -b` and `npm run build` clean,
+`uv lock --locked` clean, protected paths byte-identical to pre-cycle main.
+
+Deferred / follow-ups: Compare-card player-name treatment (needs a Card
+title-contract change); light theme (editorial, out of scope by design);
+SSE threadpool behaviour under many long-lived tabs (heartbeat mitigates;
+unproven at scale); journal UI accrues meaning from GW3+.
