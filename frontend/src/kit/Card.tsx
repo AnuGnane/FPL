@@ -13,6 +13,15 @@ import type { ReactNode } from 'react'
  */
 export interface CardProps {
   title?: string
+  /**
+   * Rich heading content. When given it is what the `h3` renders, so a card
+   * *about* something can carry that thing's own control — ComparePanel's
+   * click-to-explain player name — rather than a copy of its name as text.
+   * `title` stays the string form of the same thing and may be passed with
+   * it; `heading` wins visually, and the `h3` (and its `titleSize` class) is
+   * the same element either way.
+   */
+  heading?: ReactNode
   titleSize?: 'sm' | 'lg'
   action?: ReactNode
   children: ReactNode
@@ -25,16 +34,17 @@ const TITLE_CLASS = {
 } as const
 
 export default function Card({
-  title, titleSize = 'sm', action, children, className,
+  title, heading, titleSize = 'sm', action, children, className,
 }: CardProps) {
+  const shown = heading ?? title
   return (
     <section
       className={`rounded-card border border-border bg-card ${className ?? ''}`}
     >
-      {(title || action) && (
+      {(shown || action) && (
         <header className="flex items-center justify-between gap-3 border-b
                            border-divider px-4 py-3">
-          {title && <h3 className={TITLE_CLASS[titleSize]}>{title}</h3>}
+          {shown && <h3 className={TITLE_CLASS[titleSize]}>{shown}</h3>}
           {action}
         </header>
       )}
