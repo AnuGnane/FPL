@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import tomllib
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 
 from gaffer.errors import GafferError
@@ -58,6 +59,20 @@ class Config:
     news_lineups: bool = True
     news_cache_hours: int = 6
     news_min_coverage: float = 0.5
+    # --- v8a news layer ----------------------------------------------------
+    # Two serve-time upgrades and one classifier, all readable by the news
+    # seams themselves because ``advise`` is protected and cannot learn to
+    # pass them. Defaults are the pre-v8a behaviour with one exception: the
+    # notable-absence damp is ON, because it can only ever lower a number and
+    # the case it catches — a regular quietly left out of the predicted XI —
+    # is the one the layer exists for.
+    news_llm_classifier: bool = False
+    news_llm_shadow: bool = True
+    news_llm_command: str = "claude -p --output-format json"
+    news_llm_timeout_s: int = 120
+    news_lineup_absence: bool = True
+    news_lineup_absence_damp: float = 0.75
+    news_lineup_start_floor: float = 0.0
 
 
 def load_config(path: Path | str = "config.toml") -> Config:
@@ -115,4 +130,33 @@ def load_config(path: Path | str = "config.toml") -> Config:
         news_lineups=bool(news.get("lineups", True)),
         news_cache_hours=int(news.get("cache_hours", 6)),
         news_min_coverage=float(news.get("min_coverage", 0.5)),
+        news_llm_classifier=bool(news.get("llm_classifier", False)),
+        news_llm_shadow=bool(news.get("llm_shadow", True)),
+        news_llm_command=str(news.get("llm_command",
+                                      "claude -p --output-format json")),
+        news_llm_timeout_s=int(news.get("llm_timeout_s", 120)),
+        news_lineup_absence=bool(news.get("lineup_absence", True)),
+        news_lineup_absence_damp=float(news.get("lineup_absence_damp", 0.75)),
+        news_lineup_start_floor=float(news.get("lineup_start_floor", 0.0)),
     )
+
+
+@lru_cache(maxsize=1)
+def serving_config() -> Config:
+    """The config as the *serve-time seams* read it — never raising.
+
+    ``advise.py`` is protected, so v8a's fetcher- and availability-level
+    switches cannot arrive as arguments; they are read here instead. Two
+    consequences are deliberate. It is cached, because a fetcher must not
+    re-read a TOML file per call. And it degrades to the dataclass defaults
+    rather than raising, because a clone with no ``config.toml`` still has to
+    predict — the loud "copy config.example.toml" error belongs to the CLI's
+    own :func:`load_config` call, not to a news source.
+
+    Tests that change ``config.toml`` under a running process call
+    ``serving_config.cache_clear()``.
+    """
+    try:
+        return load_config()
+    except Exception:  # noqa: BLE001 — serving never blocks on config
+        return Config(entry_id=0, league_id=0)

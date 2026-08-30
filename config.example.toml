@@ -25,3 +25,28 @@ decision_priors = true
 [data]
 train_seasons = ["2022-23", "2023-24", "2024-25", "2025-26"]
 current_season = "2026-27"
+
+[news]
+# Live availability. Every source degrades to the official FPL flags on its
+# own, so these switch off a *working* source rather than rescue a broken one.
+enabled = true
+injuries = true            # premierinjuries.com injury table
+lineups = true             # Fantasy Football Scout predicted XIs
+cache_hours = 6
+min_coverage = 0.5         # share of a source's rows that must match a player
+
+# v8a: a regular left out of a published predicted XI is evidence against him
+# even though the page never names him. Damps the imminent gameweek only.
+lineup_absence = true
+lineup_absence_damp = 0.75
+# A floor under a predicted starter's p_play. 0.0 is off, and it ships off:
+# floors can only raise a number, and no evidence supports one yet.
+lineup_start_floor = 0.0
+
+# v8a: the presser/quote classifier, run through a headless CLI on your own
+# subscription. Shadow-only by default — it logs what it would have done to
+# data/live/presser_log.parquet and changes no advice.
+llm_classifier = false
+llm_shadow = true
+llm_command = "claude -p --output-format json"
+llm_timeout_s = 120
