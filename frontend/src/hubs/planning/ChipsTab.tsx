@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
 import { ApiError, apiGet, apiPost } from '../../api/client'
 import { useJob } from '../../api/useJob'
-import ConstraintsPanel from '../../components/ConstraintsPanel'
-import PlanDiffTable from '../../components/PlanDiffTable'
-import PlayerName from '../../components/PlayerName'
-import { Card, EmptyState, PosBadge } from '../../kit'
+import { Card, EmptyState, PlayerName } from '../../kit'
+import ConstraintsPanel from './ConstraintsPanel'
+import PlanDiffTable from './PlanDiffTable'
 import type {
   ChipsWorkbench, ChipSquadPlayer, SquadDiff, WhatIfRequest, WhatIfResult,
 } from '../../types'
@@ -55,8 +54,7 @@ function SquadColumn({ title, players }: { title: string
       <ul>
         {players.map((p) => (
           <li key={p.code} className="flex items-center gap-1.5">
-            <PosBadge pos={p.position} variant="dot" />
-            <PlayerName code={p.code} name={p.name} />
+            <PlayerName code={p.code} name={p.name} pos={p.position} />
             <span className="num ml-auto text-text-muted">
               £{p.price}m · {p.ep} xPts
             </span>

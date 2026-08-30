@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { apiGet } from '../../api/client'
-import PlayerName from '../../components/PlayerName'
-import { Card, PosBadge } from '../../kit'
+import { Card, PlayerName } from '../../kit'
 import type { RivalDetailData, SquadPlayer } from '../../types'
 
 function SquadList({ title, players }:
@@ -12,8 +11,8 @@ function SquadList({ title, players }:
       <ul>
         {players.map((player) => (
           <li key={player.code} className="flex items-center gap-1.5">
-            <PosBadge pos={player.position} variant="dot" />
-            <PlayerName code={player.code} name={player.name} />
+            <PlayerName code={player.code} name={player.name}
+                        pos={player.position} />
             <span className="num ml-auto text-text-muted">
               £{player.price}m
             </span>

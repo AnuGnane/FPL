@@ -98,8 +98,9 @@ describe('what-if tab', () => {
     expect(screen.getByText('58.7')).toBeInTheDocument()
     expect(screen.getByText('120.4')).toBeInTheDocument()
     expect(screen.getByText('117.6')).toBeInTheDocument()
+    // The dead `.changed` class is gone; the row states it as data instead.
     expect(screen.getAllByRole('row').some(
-      (row) => row.className.includes('changed'))).toBe(true)
+      (row) => row.getAttribute('data-changed') === 'true')).toBe(true)
   })
 
   it('labels the points rows as captain-inclusive and net of hits', async () => {

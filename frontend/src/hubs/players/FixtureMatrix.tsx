@@ -1,19 +1,9 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../../api/client'
-import { EmptyState } from '../../kit'
+import { EmptyState, difficultyBackground } from '../../kit'
 import type { FixtureMatrixData, MatrixCell } from '../../types'
 
 type View = 'attack' | 'defence'
-
-/** Sage (easy) through the card colour to rust (hard) — the meaning scale. */
-function background(score: number): string {
-  const eased = Math.min(Math.max(score, 0), 1)
-  return eased < 0.5
-    ? `color-mix(in srgb, var(--color-sage) ${
-        Math.round((0.5 - eased) * 160)}%, var(--color-card))`
-    : `color-mix(in srgb, var(--color-rust) ${
-        Math.round((eased - 0.5) * 160)}%, var(--color-card))`
-}
 
 export default function FixtureMatrix({ from }: { from: number }) {
   const [data, setData] = useState<FixtureMatrixData | null>(null)
@@ -83,7 +73,9 @@ export default function FixtureMatrix({ from }: { from: number }) {
                       key={gw}
                       data-testid={`matrix-cell-${team.code}-${gw}`}
                       data-score={String(score(cell))}
-                      style={{ background: background(score(cell)) }}
+                      style={{
+                        background: difficultyBackground(score(cell)),
+                      }}
                       className="px-1 py-1 text-center text-text"
                     >
                       {cell.home ? cell.opponent

@@ -5,7 +5,7 @@ import NewsPanel from './NewsPanel'
 
 const { apiGet } = vi.hoisted(() => ({ apiGet: vi.fn() }))
 
-vi.mock('../api/client', () => ({
+vi.mock('../../api/client', () => ({
   ApiError: class extends Error {},
   apiGet: (path: string) => apiGet(path),
   apiPost: vi.fn(),

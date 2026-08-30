@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { ApiError, apiPost } from '../../api/client'
 import { useJob } from '../../api/useJob'
-import ConstraintsPanel from '../../components/ConstraintsPanel'
-import FixtureTicker from '../../components/FixtureTicker'
-import PlanDiffTable from '../../components/PlanDiffTable'
 import { Card } from '../../kit'
+import ConstraintsPanel from './ConstraintsPanel'
+import FixtureTicker from './FixtureTicker'
+import PlanDiffTable from './PlanDiffTable'
 import type { WhatIfRequest, WhatIfResult } from '../../types'
 
 const EMPTY: WhatIfRequest = {

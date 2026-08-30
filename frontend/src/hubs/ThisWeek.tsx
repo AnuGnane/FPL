@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiGet } from '../api/client'
-import NewsPanel from '../components/NewsPanel'
-import WhyPanel from '../components/WhyPanel'
 import {
   Card, EmptyState, JobButton, PageHeader, PitchView, Stat, ThresholdBar,
   fmtNum, fmtPct,
@@ -10,6 +8,8 @@ import type {
   AdviceChipRow, AdviceLatest, ComponentsBreakdown, PlayerRow,
 } from '../types'
 import MovesCard from './this-week/MovesCard'
+import NewsPanel from './this-week/NewsPanel'
+import WhyPanel from './this-week/WhyPanel'
 import SquadTable, { type SquadBreakdown, type SquadRow }
   from './this-week/SquadTable'
 

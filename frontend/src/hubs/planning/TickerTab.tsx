@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../../api/client'
-import FixtureTicker from '../../components/FixtureTicker'
 import { Card } from '../../kit'
+import FixtureTicker from './FixtureTicker'
 import type { HealthData } from '../../types'
 
 export default function TickerTab() {

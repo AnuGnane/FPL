@@ -1,6 +1,11 @@
 import { Fragment, useEffect, useState } from 'react'
-import { apiGet } from '../api/client'
-import type { AdviceDiff, ComponentPlayer, ComponentsBreakdown } from '../types'
+import { apiGet } from '../../api/client'
+import {
+  Card, PosBadge, TONE_CLASS, fmtDelta, fmtNum, fmtPct, toneOf,
+} from '../../kit'
+import type {
+  AdviceDiff, ComponentPlayer, ComponentsBreakdown,
+} from '../../types'
 
 function DiffStrip({ diff }: { diff: AdviceDiff }) {
   const bits: string[] = []
@@ -26,15 +31,18 @@ function DiffStrip({ diff }: { diff: AdviceDiff }) {
   }
   const delta = diff.expected_pts_delta
   return (
-    <div className="banner">
-      <span>
-        <strong>Since last run</strong>{' '}
-        <span className="muted">({diff.previous_at})</span>:{' '}
-        {bits.length === 0 ? 'the same plan' : bits.join('; ')}.{' '}
-        <span className={delta >= 0 ? 'good' : 'bad'}>
-          {delta >= 0 ? '+' : ''}{delta} xPts
+    <div className="mb-4 rounded-card border border-border border-l-2
+                    border-l-info bg-card px-4 py-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="label">Since last run</p>
+        <p className="num text-text-faint">{diff.previous_at}</p>
+      </div>
+      <p className="mt-1 text-text-secondary">
+        {bits.length === 0 ? 'The same plan.' : `${bits.join('; ')}.`}{' '}
+        <span className={`num ${TONE_CLASS[toneOf(delta)]}`}>
+          {fmtDelta(delta)} xPts
         </span>
-      </span>
+      </p>
     </div>
   )
 }
@@ -43,31 +51,40 @@ function PlayerRow({ player }: { player: ComponentPlayer }) {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <tr>
-        <td>
-          <button className="player-link" onClick={() => setOpen(!open)}>
+      <tr className="border-t border-divider">
+        <td className="py-1.5">
+          <button type="button" onClick={() => setOpen(!open)}
+                  className="inline-flex items-center gap-1.5 text-text
+                             hover:underline">
+            <span aria-hidden className="text-text-muted">
+              {open ? '▾' : '▸'}
+            </span>
             {player.name}
           </button>
         </td>
-        <td>{player.position}</td>
-        <td>{player.team_name}</td>
-        <td>{player.ep}</td>
+        <td className="py-1.5"><PosBadge pos={player.position} /></td>
+        <td className="py-1.5 text-text-secondary">{player.team_name}</td>
+        <td className="num py-1.5 text-right text-text">
+          {fmtNum(player.ep)}
+        </td>
       </tr>
       {open && player.fixtures.map((fixture, i) => (
-        <tr key={`${player.code}-${i}`}>
-          <td colSpan={4}>
-            <p className="muted">
+        <tr key={`${player.code}-${i}`} className="border-t border-divider">
+          <td colSpan={4} className="px-3 py-3">
+            <p className="text-text-muted">
               {fixture.home ? 'vs' : 'at'} {fixture.opponent} — plays{' '}
-              {Math.round(fixture.minutes.p_play * 100)}%, 60+{' '}
-              {Math.round(fixture.minutes.p60 * 100)}% · {fixture.ep} xPts
+              {fmtPct(fixture.minutes.p_play)}, 60+{' '}
+              {fmtPct(fixture.minutes.p60)} · {fmtNum(fixture.ep)} xPts
             </p>
-            <table>
+            <table className="mt-2 w-full">
               <tbody>
                 {fixture.components.map((c) => (
                   <Fragment key={c.label}>
                     <tr>
-                      <td>{c.label}</td>
-                      <td>{c.points}</td>
+                      <td className="py-0.5 text-text-secondary">{c.label}</td>
+                      <td className="num py-0.5 text-right text-text">
+                        {fmtNum(c.points)}
+                      </td>
                     </tr>
                     {/* Penalty duty is already inside Goals — it was folded
                         into e_goals before the terms were assembled — so it
@@ -76,7 +93,7 @@ function PlayerRow({ player }: { player: ComponentPlayer }) {
                     {c.label === 'Goals' && fixture.pen_taker !== null
                       && fixture.pen_taker !== undefined && (
                       <tr>
-                        <td className="muted" colSpan={2}>
+                        <td className="num py-0.5 text-text-faint" colSpan={2}>
                           of which penalty duty{' '}
                           {fixture.pen_taker >= 0 ? '+' : ''}
                           {fixture.pen_taker}
@@ -125,14 +142,18 @@ export default function WhyPanel({ gw, codes }: { gw: number
   return (
     <>
       {diff?.available && diff.changed && <DiffStrip diff={diff} />}
-      <div className="card">
-        <h2>Why this plan</h2>
-        <p className="muted">
+      <Card title="Why this plan" className="mb-4">
+        <p className="mb-2 text-text-muted">
           Click a name for the terms that produced his expected points.
         </p>
-        <table>
+        <table className="w-full">
           <thead>
-            <tr><th>Player</th><th>Pos</th><th>Club</th><th>xPts</th></tr>
+            <tr>
+              <th className="label pb-1 text-left">Player</th>
+              <th className="label pb-1 text-left">Pos</th>
+              <th className="label pb-1 text-left">Club</th>
+              <th className="label pb-1 text-right">xPts</th>
+            </tr>
           </thead>
           <tbody>
             {data.players.map((player) => (
@@ -140,7 +161,7 @@ export default function WhyPanel({ gw, codes }: { gw: number
             ))}
           </tbody>
         </table>
-      </div>
+      </Card>
     </>
   )
 }

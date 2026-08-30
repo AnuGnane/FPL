@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import FixtureTicker from './FixtureTicker'
 
 const apiGet = vi.hoisted(() => vi.fn())
-vi.mock('../api/client', () => ({
+vi.mock('../../api/client', () => ({
   ApiError: class extends Error {},
   apiGet: (path: string) => apiGet(path),
   apiPost: vi.fn(),
@@ -38,11 +38,11 @@ describe('FixtureTicker', () => {
   it('sorts by a gameweek column when its header is clicked', async () => {
     render(<FixtureTicker weeks={2} />)
     await screen.findByText('Liverpool')
-    await userEvent.click(screen.getByRole('button', { name: 'GW3' }))
+    await userEvent.click(screen.getByRole('button', { name: /^GW3/ }))
     const names = screen.getAllByRole('rowheader').map((cell) =>
       cell.textContent)
     expect(names).toEqual(['Liverpool', 'Arsenal'])
-    await userEvent.click(screen.getByRole('button', { name: 'GW3' }))
+    await userEvent.click(screen.getByRole('button', { name: /^GW3/ }))
     const reversed = screen.getAllByRole('rowheader').map((cell) =>
       cell.textContent)
     expect(reversed).toEqual(['Arsenal', 'Liverpool'])

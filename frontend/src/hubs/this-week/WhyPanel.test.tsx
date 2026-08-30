@@ -17,7 +17,7 @@ const { FakeApiError, apiGet } = vi.hoisted(() => {
   return { FakeApiError, apiGet: vi.fn() }
 })
 
-vi.mock('../api/client', () => ({
+vi.mock('../../api/client', () => ({
   ApiError: FakeApiError,
   apiGet: (path: string) => apiGet(path),
   apiPost: vi.fn(),
