@@ -223,4 +223,24 @@ scenario-to-scenario variance, so the estimation arm runs the replay with
 near-deterministic scenarios. S2 therefore cleanly asks whether the
 sim-consensus value lives in the noise magnitude or in re-solving per se.
 
+### Gate S2 — PASS (both conditions; estimation σ ships as default)
+
+Replay (scripts/s2_replay.py, 2025-26, N=40, seed 20260827+gw):
+heuristic **1785** / 15 hits / 69 transfers / 8 held weeks vs estimation
+**1908** / 11 hits / 64 transfers / 2 held weeks — **+123** against a −5
+tolerance. Live condition: captain sim-support **95%** (bar 60%),
+40/40 scenarios solved (advise 2026-08-30, seed 20260828). Flip commit
+`3acab85`: estimation asset supersedes the residual table (proven drop-in
+against unedited v6 suites first), `CALIBRATED_NOISE_DEFAULT = True`,
+v6's two overturned pins converted to pin the new contract plus one new
+flag-off rail. Reading: v6's S1 loss and v7's S2 win are the same lesson
+from both sides — the re-solving machinery works when fed *estimation*
+uncertainty (σ ~0.07–0.29) and is actively harmed by residual noise
+(σ ~2–5) that drowns differential signal.
+
+Noted for the adversarial review: +123 is a large swing — the review is
+pointed at the driver's arm symmetry before the merge decision. Also
+noted: the live run's armband (Guéhi, chase-tilt artifact of mid-GW2
+data) is a league-mode question, not a noise question.
+
 (Remaining outcome recorded at cycle end.)
