@@ -280,6 +280,23 @@ def baseline_metrics(hold: pd.DataFrame, col: str,
     return stratified_metrics(j["ep"], j["total_points"])
 
 
+def start_truth(hold: pd.DataFrame) -> pd.Series:
+    """Did he start, as a 0/1 float, one value per row.
+
+    ``starts`` where the feed recorded it, and ``minutes >= 60`` where it did
+    not — the same inference :func:`gaffer.features.engineer._mode_rate_parts`
+    makes for the shrunken start rate, and for the same reason: the column
+    postdates part of the archive, and a hole would blank the metric for a
+    whole season rather than for the rows that are actually unknown.
+    """
+    mins = pd.to_numeric(hold.get("minutes"), errors="coerce").fillna(0.0)
+    inferred = (mins >= STARTER_MINUTES).astype("float64")
+    if "starts" not in hold.columns:
+        return inferred
+    return (pd.to_numeric(hold["starts"], errors="coerce").fillna(inferred)
+            .astype("float64"))
+
+
 def evaluate_current(holdout_slots: int = HOLDOUT_SLOTS) -> dict:
     """Score the model on the last ``holdout_slots`` gameweek slots.
 
@@ -315,6 +332,10 @@ def evaluate_current(holdout_slots: int = HOLDOUT_SLOTS) -> dict:
     starters = scored[scored["minutes"] >= STARTER_MINUTES]
 
     mp = models["minutes"].predict(hold)
+    # The trichotomy itself, not another function of it: p_play is a sum of
+    # two modes, and an arm that sharpens the start/cameo split while leaving
+    # the sum alone is invisible in p_play's log loss (v8a spec §3).
+    modes = models["minutes"].predict_modes(hold)
     hold_tg = tg[~tg_before].dropna(subset=["elo_diff"]).reset_index(drop=True)
     tp = models["team"].predict(hold_tg)
     return {
@@ -334,6 +355,7 @@ def evaluate_current(holdout_slots: int = HOLDOUT_SLOTS) -> dict:
                                    (hold["minutes"] > 0).astype(float)),
             "p60": head_metrics(
                 mp["p60"], (hold["minutes"] >= STARTER_MINUTES).astype(float)),
+            "p_start": head_metrics(modes["p_start"], start_truth(hold)),
             "cs": head_metrics(tp["p_cs"], hold_tg["cs"].astype(float)),
         },
         "baselines": {
