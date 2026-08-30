@@ -511,3 +511,46 @@ def test_track_pens_passes_the_season_through(monkeypatch, tmp_path):
     result = CliRunner().invoke(app, ["track-pens", "--season", "2025-26"])
     assert result.exit_code == 0
     assert seen["season"] == "2025-26"
+
+
+def _fast_run(tmp_path, monkeypatch, seen, argv):
+    """`gaffer advise` over a config that asks for a 40-scenario sweep.
+
+    `run_advise` is replaced by a recorder: what this pins is the config the
+    CLI hands it, which is the whole of the --fast contract.
+    """
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "config.toml").write_text(
+        '[fpl]\nentry_id = 1\nleague_id = 0\n\n[scenarios]\nn = 40\n')
+
+    def _run(cfg):
+        seen["scenarios_n"] = cfg.scenarios_n
+        return _stub_advice()
+
+    monkeypatch.setattr("gaffer.advise.run_advise", _run)
+    monkeypatch.setattr("gaffer.report.render.render_report",
+                        lambda a, model_health=None: "reports/gw2.md")
+    monkeypatch.setattr("gaffer.tracking.latest_health", lambda: None)
+    return runner.invoke(app, argv)
+
+
+def test_advise_fast_turns_the_scenario_sweep_off(tmp_path, monkeypatch):
+    """--fast is the whole of the fast path: n = 0 is the pre-v4c rail that
+    solves once, deterministically (advise.py:734 guards the sweep on n > 0)."""
+    seen = {}
+    result = _fast_run(tmp_path, monkeypatch, seen, ["advise", "--fast"])
+    assert result.exit_code == 0
+    assert seen["scenarios_n"] == 0
+
+
+def test_advise_without_fast_keeps_the_configured_sweep(tmp_path, monkeypatch):
+    """The flag is opt-in per run and must not touch config.toml's answer."""
+    seen = {}
+    result = _fast_run(tmp_path, monkeypatch, seen, ["advise"])
+    assert result.exit_code == 0
+    assert seen["scenarios_n"] == 40
+
+
+def test_advise_help_names_the_fast_flag():
+    out = runner.invoke(app, ["advise", "--help"]).output
+    assert "--fast" in out

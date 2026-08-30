@@ -15,14 +15,24 @@ app = typer.Typer(help="FPL ML advisor", no_args_is_help=True)
 
 
 @app.command()
-def advise():
+def advise(fast: bool = typer.Option(
+        False, "--fast",
+        help="Skip the scenario sweep (~5 min); serves the raw optimum.")):
     """Full weekly run: refresh -> predict -> optimize -> report."""
+    import dataclasses
+
     from gaffer.advise import run_advise
     from gaffer.config import load_config
     from gaffer.errors import GafferError
     from gaffer.report.render import render_report
 
     cfg = load_config()
+    # n = 0 is the byte-pinned pre-v4c rail: solve once, deterministically.
+    # Every consumer of a scenario field already degrades on its absence
+    # (the `_pct` helper below is the CLI's own half of that), so the flag
+    # needs no second switch anywhere downstream.
+    if fast:
+        cfg = dataclasses.replace(cfg, scenarios_n=0)
     if not cfg.entry_id:
         typer.echo("Set fpl.entry_id in config.toml first.")
         raise typer.Exit(1)
