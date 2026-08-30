@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
+import ThemeToggle from './ThemeToggle'
 import { useIsMobile } from './useMediaQuery'
 
 /** The six hubs, in the order the spec lists them (§4). */
@@ -42,6 +43,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
                      border-border bg-card py-1"
         >
           {links}
+          {/* The seventh slot. Six hubs already fill this row, so the theme
+              control gets an icon and carries its state in the label. */}
+          <ThemeToggle compact />
         </nav>
       </div>
     )
@@ -56,6 +60,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
       >
         <p className="mb-3 px-3 text-lg font-semibold text-text">gaffer</p>
         {links}
+        {/* Footer, under the nav: chrome about the app rather than a place
+            in it, so it sits below every destination and off the tab order
+            of the six. */}
+        <div className="mt-auto pt-3">
+          <ThemeToggle />
+        </div>
       </nav>
       <main className="max-w-[1180px] p-6">{children}</main>
     </div>

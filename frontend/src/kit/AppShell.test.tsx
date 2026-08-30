@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import AppShell from './AppShell'
@@ -49,5 +49,23 @@ describe('AppShell', () => {
     )
     expect(screen.getByRole('link', { name: 'Planning' }))
       .toHaveAttribute('aria-current', 'page')
+  })
+
+  it('puts the theme control in the sidebar footer on desktop', () => {
+    stubMatchMedia(false)
+    render(<MemoryRouter><AppShell><p>page</p></AppShell></MemoryRouter>)
+    const nav = screen.getByTestId('nav')
+    expect(within(nav).getByRole('group', { name: 'Theme' }))
+      .toBeInTheDocument()
+  })
+
+  it('gives the tab bar a seventh, icon-only slot on mobile', () => {
+    stubMatchMedia(true)
+    render(<MemoryRouter><AppShell><p>page</p></AppShell></MemoryRouter>)
+    const nav = screen.getByTestId('nav')
+    expect(within(nav).getByRole('button', { name: /^Theme: / }))
+      .toBeInTheDocument()
+    // Still six hubs: the toggle is a button, never a seventh destination.
+    expect(within(nav).getAllByRole('link')).toHaveLength(6)
   })
 })
