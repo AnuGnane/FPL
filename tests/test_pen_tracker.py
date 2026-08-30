@@ -85,9 +85,23 @@ def test_no_understat_parquet_at_all_is_no_join(tmp_path, monkeypatch):
 def test_the_xg_gap_instrument_counts_the_penalty_that_was_taken(
         tmp_path, monkeypatch):
     _with_understat(monkeypatch, tmp_path)
-    events, instrument = realized_pens(_week(), "2026-27")
+    events, instrument, covered = realized_pens(_week(), "2026-27")
     assert instrument == "xg_gap"
     assert list(events) == [1.0, 0.0, 0.0]
+    assert covered == 3
+
+
+def test_a_week_understat_has_not_reached_yet_falls_back(tmp_path,
+                                                          monkeypatch):
+    """The parquet covers the season but stops before this week — a mid-season
+    backfill lag. The join returns a frame of NaN, and calling that an xg gap
+    would report every taker as having taken nothing."""
+    stale = _understat().assign(date=["2026-08-15"] * 3)
+    _with_understat(monkeypatch, tmp_path, us=stale)
+    events, instrument, covered = realized_pens(_week(), "2026-27")
+    assert instrument == "pens_missed_only"
+    assert covered == 0
+    assert list(events) == [0.0, 0.0, 1.0]
 
 
 def test_without_understat_it_degrades_to_pens_missed(tmp_path, monkeypatch):
@@ -96,8 +110,9 @@ def test_without_understat_it_degrades_to_pens_missed(tmp_path, monkeypatch):
     from gaffer.data import store as store_mod
 
     monkeypatch.setattr(store_mod, "DATA_DIR", tmp_path)
-    events, instrument = realized_pens(_week(), "2026-27")
+    events, instrument, covered = realized_pens(_week(), "2026-27")
     assert instrument == "pens_missed_only"
+    assert covered == 0
     assert list(events) == [0.0, 0.0, 1.0]
 
 
@@ -107,8 +122,9 @@ def test_a_frame_with_neither_signal_reports_no_penalties(tmp_path,
 
     monkeypatch.setattr(store_mod, "DATA_DIR", tmp_path)
     bare = _week().drop(columns=["xg", "pens_missed"])
-    events, instrument = realized_pens(bare, "2026-27")
+    events, instrument, covered = realized_pens(bare, "2026-27")
     assert instrument == "pens_missed_only"
+    assert covered == 0
     assert list(events) == [0.0, 0.0, 0.0]
 
 
@@ -161,6 +177,7 @@ def test_a_gameweek_block_pairs_the_prediction_with_what_happened(
     assert block["pens_by_first_choice"] == 1.0
     assert block["taker_hit_rate"] == 1.0
     assert block["team_games"] == 2
+    assert block["covered_rows"] == 3
     assert block["pens_per_team_game"] == 0.5
     # one penalty, MID, 0.78 converted x 5 points a goal
     assert block["realized_pen_points"] == 3.9

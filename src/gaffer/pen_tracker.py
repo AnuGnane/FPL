@@ -63,7 +63,10 @@ def attach_npxg(rows: pd.DataFrame, season: str) -> pd.DataFrame | None:
 
     ``None`` — not a frame of NaN — when the parquet is missing or has nothing
     for this season, so the caller can tell "no coverage" from "no penalties"
-    and name the instrument it fell back to.
+    and name the instrument it fell back to. A season being present is not the
+    same as this *week* being present, though: a frame does come back all-NaN
+    when the backfill has not reached these fixtures, and
+    :func:`realized_pens` is what checks that.
     """
     if not store.exists(UNDERSTAT_PATH):
         return None
@@ -85,28 +88,42 @@ def attach_npxg(rows: pd.DataFrame, season: str) -> pd.DataFrame | None:
     return out.drop(columns=["_date"])
 
 
-def realized_pens(rows: pd.DataFrame, season: str) -> tuple[pd.Series, str]:
-    """Penalties taken per player-match, and the instrument that saw them.
+def realized_pens(rows: pd.DataFrame,
+                  season: str) -> tuple[pd.Series, str, int]:
+    """Penalties per player-match, the instrument, and the rows it covered.
 
-    The xG-gap estimator when Understat covers the season, and otherwise the
+    The xG-gap estimator when Understat covers *this week*, and otherwise the
     only penalties the FPL feed alone can see: the ones that were *missed*.
     That is a floor rather than a count — every converted spot kick is
     invisible to it — so the fallback is named ``pens_missed_only`` in the
     report and the two are never added together.
 
+    Coverage is checked per week, not per season: :func:`attach_npxg` answers
+    "is this season in the parquet", and a mid-season backfill lag leaves the
+    latest week joined to nothing but NaN. Calling that an xg gap would report
+    every taker as having taken no penalty, which reads as evidence against the
+    taker model rather than as the missing data it is. So a week with no joined
+    ``us_npxg`` at all falls back and says so.
+
+    ``covered_rows`` is how many rows the join actually landed on — zero on
+    both fallback paths, and the number a reader needs to tell a quiet week
+    from an unseen one.
+
     ``rows`` is assumed to carry a fresh range index; the caller resets it.
     """
     joined = attach_npxg(rows, season)
     if joined is not None:
-        events = pen_estimate(joined)
-        if events is not None:
-            return (pd.Series(events.to_numpy(), index=rows.index,
-                              dtype="float64"), "xg_gap")
+        covered = int(joined["us_npxg"].notna().sum())
+        if covered:
+            events = pen_estimate(joined)
+            if events is not None:
+                return (pd.Series(events.to_numpy(), index=rows.index,
+                                  dtype="float64"), "xg_gap", covered)
     if "pens_missed" not in rows.columns:
         return pd.Series(0.0, index=rows.index, dtype="float64"), \
-            "pens_missed_only"
+            "pens_missed_only", 0
     missed = pd.to_numeric(rows["pens_missed"], errors="coerce").fillna(0.0)
-    return missed.astype("float64"), "pens_missed_only"
+    return missed.astype("float64"), "pens_missed_only", 0
 
 
 def predicted_ep(gw: int) -> dict:
@@ -146,7 +163,7 @@ def gw_block(week: pd.DataFrame, gw: int, season: str) -> dict:
     over zero would read as the taker model having been wrong every time.
     """
     week = week.reset_index(drop=True)
-    events, instrument = realized_pens(week, season)
+    events, instrument, covered = realized_pens(week, season)
     order = (week["penalties_order"] if "penalties_order" in week.columns
              else pd.Series(pd.NA, index=week.index))
     share = share_now(order)
@@ -164,6 +181,7 @@ def gw_block(week: pd.DataFrame, gw: int, season: str) -> dict:
         "gw": int(gw),
         "instrument": instrument,
         "rows": int(len(week)),
+        "covered_rows": covered,
         "team_games": team_games,
         "component_rows": pred["rows"],
         "predicted_ep_pen_taker": pred["ep_pen_taker"],
