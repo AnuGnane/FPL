@@ -25,8 +25,8 @@ from gaffer.web.job_kinds import JOB_KINDS
 from gaffer.web.jobs import JobRegistry, JobRunner
 from gaffer.web.routers import (advice, chips, components, confidence, drafts,
                                 fixtures, jobs, journal, league, league_sim,
-                                live, meta, news, overrides, plan, players,
-                                quality, review, sensitivity, whatif)
+                                live, meta, misses, news, overrides, plan,
+                                players, quality, review, sensitivity, whatif)
 
 log = logging.getLogger("gaffer.web")
 
@@ -79,6 +79,7 @@ def create_app() -> FastAPI:
     app.include_router(league_sim.router)
     app.include_router(live.router)
     app.include_router(meta.router)
+    app.include_router(misses.router)
     app.include_router(players.router)
     app.include_router(quality.router)
     app.include_router(review.router)

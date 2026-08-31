@@ -1266,3 +1266,29 @@ class ConfidenceTier(BaseModel):
 
 class Confidence(BaseModel):
     captain: ConfidenceTier = Field(default_factory=ConfidenceTier)
+
+
+class MissRow(BaseModel):
+    """One player-gameweek the forecast got most wrong.
+
+    ``miss`` is ``actual - ep``, so it is signed: a positive one is a player
+    the model under-rated and a negative one is a transfer it may have talked
+    somebody into. Both directions are shown, which is why the card sorts on
+    the absolute value and prints the sign.
+    """
+
+    code: int
+    name: str
+    position: str = ""
+    price: float | None = None
+    ep: float
+    actual: int
+    minutes: int = 0
+    miss: float
+
+
+class Misses(BaseModel):
+    gw: int | None = None
+    """``None`` when no gameweek has both a banked forecast and a banked
+    result. That is an absent card, not a card of zeros (spec D1)."""
+    rows: list[MissRow] = Field(default_factory=list)
