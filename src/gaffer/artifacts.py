@@ -377,7 +377,9 @@ def save_snapshots(players: pd.DataFrame, teams: pd.DataFrame,
 
 AVAILABILITY_COLS = ["code", "status", "chance_of_playing", "injury_type",
                      "expected_return_gw", "p_start_hint", "absence_damp",
-                     "llm_verdict", "llm_confidence", "source", "fetched_at"]
+                     "llm_verdict", "llm_confidence", "source", "fetched_at",
+                     "override", "override_p_play", "override_e_min",
+                     "override_note"]
 """The availability frame's columns, in the order
 :func:`gaffer.data.news.normalize.availability_frame` produces them.
 
@@ -391,7 +393,18 @@ line-up implies for a player it silently left out; ``llm_verdict`` and
 All three are nullable and all three are logged whether or not they are
 served, because the point of banking them is that a future season can train
 on what the news said (spec §4).
+
+v8e adds four. ``override`` marks a player the *user* pinned, and the three
+beside it carry what he pinned and why. They are restated here rather than
+imported from :mod:`gaffer.overrides`, which imports this module;
+``tests/test_v8e_degradation.py`` pins the two lists against each other so the
+duplication cannot drift.
 """
+
+OVERRIDE_COLS = ["override", "override_p_play", "override_e_min",
+                 "override_note"]
+"""The v8e tail of :data:`AVAILABILITY_COLS`, named so callers can ask for
+just that block without slicing a list by index."""
 
 
 def availability_path(gw: int) -> Path:
@@ -415,6 +428,14 @@ def save_availability(avail, gw: int) -> Path | None:
         if "code" not in avail.columns:
             return None
         out = avail.copy()
+        # v8e: the pins this run predicted under, banked with the evidence.
+        # Gated on the same key the availability pass reads, so "no read, no
+        # marker" holds for the artifact too. Idempotent, so a frame that
+        # already carries them is not re-read.
+        from gaffer.config import serving_config
+        from gaffer.overrides import attach_overrides
+        if serving_config().news_overrides:
+            out = attach_overrides(out)
         for col in AVAILABILITY_COLS:
             if col not in out.columns:
                 out[col] = None
@@ -424,12 +445,15 @@ def save_availability(avail, gw: int) -> Path | None:
         # numeric columns become floats, so a flags-only week and a
         # news-heavy one write the same schema.
         for col in ("status", "injury_type", "llm_verdict", "source",
-                    "fetched_at"):
+                    "fetched_at", "override_note"):
             out[col] = out[col].astype("object").where(
                 out[col].notna(), None).astype("string")
         for col in ("chance_of_playing", "expected_return_gw", "p_start_hint",
-                    "absence_damp", "llm_confidence"):
+                    "absence_damp", "llm_confidence", "override_p_play",
+                    "override_e_min"):
             out[col] = pd.to_numeric(out[col], errors="coerce")
+        out["override"] = out["override"].astype("object").where(
+            out["override"].notna(), False).astype(bool)
         out["code"] = pd.to_numeric(out["code"], errors="coerce").astype(
             "int64")
         REPORTS.mkdir(exist_ok=True)

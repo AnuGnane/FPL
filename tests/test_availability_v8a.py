@@ -19,8 +19,16 @@ def _official() -> pd.DataFrame:
 
 def test_the_two_column_lists_are_the_same_list():
     """They are written out twice — the artifact's and the normalizer's — and
-    a drift between them is a silently dropped column."""
-    assert AVAIL_COLS == AVAILABILITY_COLS
+    a drift between them is a silently dropped column.
+
+    v8e's four override columns are the one deliberate difference (plan A4):
+    ``AVAIL_COLS`` is the contract of what the *news feeds* produce and an
+    override is not a feed, so the artifact list is the feed list plus that
+    tail and nothing else.
+    """
+    from gaffer.artifacts import OVERRIDE_COLS
+
+    assert AVAILABILITY_COLS == AVAIL_COLS + OVERRIDE_COLS
 
 
 def test_the_contract_carries_the_three_new_columns():

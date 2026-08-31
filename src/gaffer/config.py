@@ -101,6 +101,10 @@ class Config:
     news_lineup_absence: bool = True
     news_lineup_absence_damp: float = 0.75
     news_lineup_start_floor: float = 0.0
+    # v8e. The user's own pins, applied last in the availability pass. On by
+    # default: an empty store is a no-op, and a switch that has to be found
+    # before a feature works is a feature nobody finds.
+    news_overrides: bool = True
 
 
 def load_config(path: Path | str = "config.toml") -> Config:
@@ -170,6 +174,7 @@ def load_config(path: Path | str = "config.toml") -> Config:
         news_lineup_absence=bool(news.get("lineup_absence", True)),
         news_lineup_absence_damp=float(news.get("lineup_absence_damp", 0.75)),
         news_lineup_start_floor=float(news.get("lineup_start_floor", 0.0)),
+        news_overrides=bool(news.get("overrides", True)),
     )
 
 

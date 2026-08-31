@@ -55,7 +55,8 @@ def return_prob(curves: dict | None, injury_type, h: int) -> float | None:
 def apply_availability(pred: pd.DataFrame, avail: pd.DataFrame,
                        curves: dict | None = None,
                        start_floor: float | None = None,
-                       llm_serving: bool | None = None) -> pd.DataFrame:
+                       llm_serving: bool | None = None,
+                       overrides: bool | None = None) -> pd.DataFrame:
     """avail: the normalized availability frame, or the bare bootstrap slice.
 
     ``status`` i/s/u/n (injured/suspended/unavailable/not in squad) -> factor
@@ -90,11 +91,33 @@ def apply_availability(pred: pd.DataFrame, avail: pd.DataFrame,
     read here because ``advise`` is protected and cannot forward it. At its
     shipped ``0.0`` the pass is a no-op and this function is arithmetically
     identical to v7's.
+
+    ``overrides`` reads ``reports/overrides.json`` — the user's own pins — and
+    applies them **last**, as fact rather than as evidence: a manager who has
+    decided a player is fit outranks every automated source, including the one
+    that just docked him. First gameweek only, one row per player, like every
+    other pass here. It defaults to the ``[news] overrides`` config key, read
+    at the top of the function because ``advise`` is protected and cannot
+    forward it, and with an empty store the whole pass is arithmetically a
+    no-op.
+
+    Note what that means for gate N2 (spec A1): ``predict_components`` calls
+    this function twice, once for the news arm and once for the flags-only
+    control, and nothing inside can tell those calls apart. Pins therefore
+    land on both — which is the honest reading, since a pinned player shows
+    the same number on both sides and so contributes no *news* effect at all.
     """
     curves = curves if curves is not None else load_injury_curves()
+    if overrides is None:
+        from gaffer.config import serving_config
+        overrides = serving_config().news_overrides
+    if overrides:
+        from gaffer.overrides import attach_overrides
+        avail = attach_overrides(avail)
     news_cols = [c for c in ("injury_type", "expected_return_gw",
                              "p_start_hint", "absence_damp", "llm_verdict",
-                             "llm_confidence")
+                             "llm_confidence", "override_p_play",
+                             "override_e_min")
                  if c in avail.columns]
     out = pred.merge(
         avail[["code", "status", "chance_of_playing"] + news_cols],
@@ -134,6 +157,8 @@ def apply_availability(pred: pd.DataFrame, avail: pd.DataFrame,
                 print(f"news: presser log not written ({exc})")
         if (cfg.news_llm_classifier if llm_serving is None else llm_serving):
             out = _presser_first_gw(out)
+    # Last, and after everything: the user outranks every automated source.
+    out = _override_first_gw(out)
     return out.drop(columns=["status", "chance_of_playing"] + news_cols)
 
 
@@ -289,4 +314,56 @@ def _floor_first_gw(out: pd.DataFrame, floor: float) -> pd.DataFrame:
     ratio = floor / out.loc[bites, "p_play"]
     for col in ["p_play", "p60", "e_min"]:
         out.loc[bites, col] = out.loc[bites, col] * ratio
+    return out
+
+
+def _override_first_gw(out: pd.DataFrame) -> pd.DataFrame:
+    """Apply the user's pins to the horizon's first gameweek.
+
+    Not a factor and not a ceiling — an assignment. Every other pass in this
+    module is evidence being weighed; this one is the manager saying he knows,
+    and the whole value of the feature is that it is not then averaged with a
+    website's guess.
+
+    ``p_play`` carries ``p60`` and ``e_min`` with it on its own ratio, the
+    same three-outputs-together discipline the ceiling and the damp obey: a
+    doubled ``p_play`` beside an untouched ``p60`` is the incoherence the
+    three-mode minutes model exists to remove. The exception is a player the
+    model has zeroed, where there is no ratio to scale by; a pin on him is
+    taken literally — he starts and he lasts — because that is what pinning a
+    zeroed player to 1.0 means (plan A2).
+
+    ``e_min`` is applied afterwards and absolutely, overwriting whatever the
+    ``p_play`` ratio just did to it: the two fields are two separate claims
+    and the more specific one wins.
+
+    Written as a loop over the bitten index rather than vectorised. The bitten
+    set is at most :data:`gaffer.overrides.MAX_OVERRIDES` rows out of several
+    thousand, and the branch on ``p_play == 0`` is not a mask.
+    """
+    if "override_p_play" not in out.columns \
+            and "override_e_min" not in out.columns:
+        return out
+    first = _first_rows(out)
+
+    if "override_p_play" in out.columns:
+        pin = pd.to_numeric(out["override_p_play"], errors="coerce").clip(
+            0.0, 1.0)
+        for i in out.index[first & pin.notna()]:
+            value = float(pin.at[i])
+            prior = float(out.at[i, "p_play"])
+            if prior > 0.0:
+                ratio = value / prior
+                out.at[i, "p60"] = float(out.at[i, "p60"]) * ratio
+                out.at[i, "e_min"] = float(out.at[i, "e_min"]) * ratio
+            else:
+                out.at[i, "p60"] = value
+                out.at[i, "e_min"] = 90.0 * value
+            out.at[i, "p_play"] = value
+
+    if "override_e_min" in out.columns:
+        mins = pd.to_numeric(out["override_e_min"], errors="coerce").clip(
+            0.0, 90.0)
+        for i in out.index[first & mins.notna()]:
+            out.at[i, "e_min"] = float(mins.at[i])
     return out

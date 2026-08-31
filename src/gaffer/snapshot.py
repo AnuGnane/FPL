@@ -66,19 +66,29 @@ def snapshot_rows(avail: pd.DataFrame, gw: int, season: str = "",
     parquet wants one dtype per column, and an all-``None`` object column has
     none, so a quiet week and a news-heavy one would otherwise write two
     incompatible schemas into one growing file.
+
+    v8e's ``override`` block rides along: the log's whole purpose is to keep
+    what was known on the day, and what the *user* knew is part of that.
     """
     out = avail.copy()
+    from gaffer.config import serving_config
+    from gaffer.overrides import attach_overrides
+    if serving_config().news_overrides:
+        out = attach_overrides(out)
     for col in AVAILABILITY_COLS:
         if col not in out.columns:
             out[col] = None
     out = out[AVAILABILITY_COLS].copy()
     for col in ("status", "injury_type", "llm_verdict", "source",
-                "fetched_at"):
+                "fetched_at", "override_note"):
         out[col] = out[col].astype("object").where(
             out[col].notna(), None).astype("string")
     for col in ("chance_of_playing", "expected_return_gw", "p_start_hint",
-                "absence_damp", "llm_confidence"):
+                "absence_damp", "llm_confidence", "override_p_play",
+                "override_e_min"):
         out[col] = pd.to_numeric(out[col], errors="coerce")
+    out["override"] = out["override"].astype("object").where(
+        out["override"].notna(), False).astype(bool)
     out["code"] = pd.to_numeric(out["code"], errors="coerce").astype("int64")
     out.insert(0, "snap_date", str(day or snap_date()))
     out.insert(0, "gw", int(gw))
