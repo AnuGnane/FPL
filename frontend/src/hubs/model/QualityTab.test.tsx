@@ -279,3 +279,108 @@ describe('QualityTab penalty card', () => {
     expect(screen.getByRole('heading', { name: 'Holdout' })).toBeInTheDocument()
   })
 })
+
+// The v8g cards each have their own fetch, so the mock has to route by path
+// rather than answer everything with the quality payload: the whole point of
+// the split is that one missing artifact cannot blank another's card.
+const RELIABILITY = [{ n: 100, pred: 0.2, obs: 0.25 },
+                     { n: 200, pred: 0.9, obs: 0.88 }]
+
+function currentWithHeads(keys: string[]) {
+  return {
+    ...payload.current,
+    heads: Object.fromEntries(keys.map(
+      (key) => [key, { log_loss: 0.2732, reliability: RELIABILITY }])),
+  }
+}
+
+let history: unknown = { runs: [] }
+let misses: unknown = { gw: null, rows: [] }
+
+function mockHistory(body: unknown) { history = body }
+function mockMisses(body: unknown) { misses = body }
+
+function renderQuality(over: { current?: unknown }) {
+  apiGet.mockImplementation((path: string) => {
+    if (path === '/api/history') return Promise.resolve(history)
+    if (path === '/api/misses') return Promise.resolve(misses)
+    if (path === '/api/pens') {
+      return Promise.reject(new FakeApiError(422, 'no pen tracker report'))
+    }
+    return Promise.resolve(
+      over.current === undefined ? payload : { ...payload, current: over.current })
+  })
+  render(<MemoryRouter><QualityTab /></MemoryRouter>)
+}
+
+describe('v8g calibration', () => {
+  beforeEach(() => {
+    history = { runs: [] }
+    misses = { gw: null, rows: [] }
+  })
+
+  it('draws a reliability curve for p_start, which nothing rendered before',
+    async () => {
+      renderQuality({ current: currentWithHeads(['p_play', 'p60', 'cs',
+                                                 'p_start']) })
+      expect(await screen.findByLabelText('P(starts) reliability'))
+        .toBeInTheDocument()
+    })
+
+  it('omits a head the evaluation does not carry', async () => {
+    renderQuality({ current: currentWithHeads(['p_play']) })
+    await screen.findByLabelText('P(plays) reliability')
+    expect(screen.queryByLabelText('P(starts) reliability')).toBeNull()
+  })
+
+  it('says how many observations each curve rests on', async () => {
+    renderQuality({ current: currentWithHeads(['p_play']) })
+    // The bins carry n; a curve over forty rows and one over forty thousand
+    // look identical without it.
+    expect(await screen.findByText(/over 300 observations/)).toBeInTheDocument()
+  })
+
+  it('plots forecast against outcome for every finished gameweek', async () => {
+    mockHistory({ runs: [
+      { gw: 1, deadline: '', captain: 'Saka', buys: [], sells: [], hits: 0,
+        expected_pts: 55.2, actual_pts: 61 },
+      { gw: 2, deadline: '', captain: 'Saka', buys: [], sells: [], hits: 0,
+        expected_pts: 58.0, actual_pts: null },
+    ] })
+    renderQuality({})
+    const chart = await screen.findByLabelText('forecast against outcome')
+    expect(chart).toBeInTheDocument()
+    // GW2 has not been played; a point at zero would be a 58-point miss the
+    // model never made.
+    expect(screen.getByText(/1 finished gameweek/)).toBeInTheDocument()
+  })
+
+  it('shows no scatter at all when nothing has been played', async () => {
+    mockHistory({ runs: [
+      { gw: 1, deadline: '', captain: '', buys: [], sells: [], hits: 0,
+        expected_pts: 55.2, actual_pts: null }] })
+    renderQuality({})
+    await screen.findByText(/Nothing evaluated yet|Holdout/)
+    expect(screen.queryByLabelText('forecast against outcome')).toBeNull()
+  })
+
+  it('lists the biggest misses with their sign', async () => {
+    mockMisses({ gw: 5, rows: [
+      { code: 11, name: 'Saka', position: 'MID', price: 10.0, ep: 5.5,
+        actual: 16, minutes: 90, miss: 10.5 },
+      { code: 22, name: 'Sub', position: 'FWD', price: 6.0, ep: 7.0,
+        actual: 1, minutes: 12, miss: -6.0 },
+    ] })
+    renderQuality({})
+    expect(await screen.findByText('Saka')).toBeInTheDocument()
+    expect(screen.getByText('+10.5')).toBeInTheDocument()
+    expect(screen.getByText('-6.0')).toBeInTheDocument()
+  })
+
+  it('renders no misses card when no week has been scored', async () => {
+    mockMisses({ gw: null, rows: [] })
+    renderQuality({})
+    await screen.findByText(/Nothing evaluated yet|Holdout/)
+    expect(screen.queryByText(/Biggest misses/)).toBeNull()
+  })
+})

@@ -1033,3 +1033,38 @@ export interface DraftCompare {
   weeks: number
   rows: DraftCompareRow[]
 }
+
+export interface MissRow {
+  code: number
+  name: string
+  position: string
+  price: number | null
+  ep: number
+  actual: number
+  minutes: number
+  /** actual - ep, signed. Positive is a player the model under-rated;
+   *  negative is one it may have talked somebody into buying. */
+  miss: number
+}
+
+export interface MissesData {
+  /** null when no gameweek has both a banked forecast and a banked result —
+   *  an absent card, not a card of zeros. */
+  gw: number | null
+  rows: MissRow[]
+}
+
+export interface ConfidenceTier {
+  tier: 'early' | 'mixed' | 'backed'
+  reviewed: number
+  graded: number
+  wins: number
+  losses: number
+  aligned: number
+  /** The whole product: a sentence quoting counts. Never a percentage. */
+  text: string
+}
+
+export interface ConfidenceData {
+  captain: ConfidenceTier
+}

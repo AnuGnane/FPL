@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react'
 import {
-  CartesianGrid, Line, LineChart as RLineChart, ResponsiveContainer, Tooltip,
-  XAxis, YAxis,
+  CartesianGrid, Line, LineChart as RLineChart, ReferenceLine,
+  ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis,
 } from 'recharts'
 import { ApiError, apiGet } from '../../api/client'
 import {
-  type Column, Badge, Card, DataTable, EmptyState, Loading, Stat, fmtNum,
-  fmtPct,
+  type Column, Badge, Card, DataTable, EmptyState, Loading, PlayerName,
+  PosBadge, Stat, fmtNum, fmtPct,
 } from '../../kit'
 import type {
   BenchmarkEvaluation, CurrentEvaluation, DecompositionData, HeadMetrics,
-  NewsShadowData, PenTrackerData, PenTrackerGw, QualityData, StratifiedTable,
+  HistoryData, MissRow, MissesData, NewsShadowData, PenTrackerData,
+  PenTrackerGw, QualityData, StratifiedTable,
 } from '../../types'
 
 // Categories are OpenFPL's, defined on actual points, so the labels have to
@@ -26,6 +27,10 @@ const CATEGORIES: Array<[string, string]> = [
 const HEADS: Array<[string, string]> = [
   ['p_play', 'P(plays)'],
   ['p60', 'P(60+ minutes)'],
+  // v8a has emitted this since the trichotomy landed and nothing rendered it.
+  // p_play is a sum of two modes, so a model that sharpens the start/cameo
+  // split while leaving the sum alone is invisible in the two above.
+  ['p_start', 'P(starts)'],
   ['cs', 'P(clean sheet)'],
 ]
 
@@ -94,8 +99,23 @@ function StratifiedTableView(
   )
 }
 
+/**
+ * One head's reliability curve, against the line it is trying to be.
+ *
+ * The diagonal is the whole chart. A calibration plot without y = x on it
+ * asks the reader to imagine the reference and then judge distance from it by
+ * eye, which is exactly the judgement the picture exists to make unnecessary:
+ * above the line the head is under-confident, below it over-confident, and
+ * the size of the gap is the size of the error the optimizer inherits when it
+ * multiplies by these numbers.
+ *
+ * The observation count is printed rather than drawn. A curve fitted on forty
+ * rows and one fitted on forty thousand are the same shape on screen and are
+ * not the same evidence.
+ */
 function Reliability({ label, head }: { label: string; head: HeadMetrics }) {
   const points = head.reliability
+  const n = points.reduce((total, bin) => total + bin.n, 0)
   return (
     <div className="mb-3">
       <p className="label">
@@ -105,15 +125,28 @@ function Reliability({ label, head }: { label: string; head: HeadMetrics }) {
         <ResponsiveContainer width="100%" height={220}>
           <RLineChart data={points}>
             <CartesianGrid stroke="var(--color-divider)" vertical={false} />
-            <XAxis dataKey="pred" stroke="var(--color-text-muted)" />
-            <YAxis stroke="var(--color-text-muted)" />
+            <XAxis dataKey="pred" type="number" domain={[0, 1]}
+                   stroke="var(--color-text-muted)" />
+            <YAxis type="number" domain={[0, 1]}
+                   stroke="var(--color-text-muted)" />
             <Tooltip contentStyle={{ background: 'var(--color-card)',
                                      border: '1px solid var(--color-border)' }} />
+            {/* Perfect calibration. Drawn as a segment rather than a
+                ReferenceLine because a diagonal reference needs two points
+                and recharts' ReferenceLine takes a single axis value. */}
+            <Line data={[{ pred: 0, ideal: 0 }, { pred: 1, ideal: 1 }]}
+                  dataKey="ideal" dot={false} isAnimationActive={false}
+                  stroke="var(--color-text-muted)" strokeDasharray="4 4"
+                  strokeWidth={1} />
             <Line type="monotone" dataKey="obs" dot={false}
                   stroke="var(--color-sage)" strokeWidth={2} />
           </RLineChart>
         </ResponsiveContainer>
       </div>
+      <p className="text-text-faint">
+        {`${points.length} populated bins over ${n} observations. Above the `
+          + 'dashed line the head is under-confident; below it, over-confident.'}
+      </p>
     </div>
   )
 }
@@ -441,6 +474,134 @@ function PensSection() {
   )
 }
 
+/**
+ * Forecast against outcome, one point per finished gameweek.
+ *
+ * Its own fetch, on PensSection's pattern: /api/history is a different
+ * artifact with its own "nothing banked yet" state, and folding it into
+ * /api/quality would let one missing file blank the other's card.
+ *
+ * A gameweek with no official points yet is dropped rather than plotted at
+ * zero — an unplayed week charted at the origin is a fifty-point miss the
+ * model never made, which is the single most misleading thing this card
+ * could do.
+ */
+function ScatterSection() {
+  const [runs, setRuns] = useState<HistoryData['runs'] | null>(null)
+
+  useEffect(() => {
+    apiGet<HistoryData>('/api/history')
+      .then((body) => setRuns(body.runs ?? []))
+      .catch(() => setRuns([]))
+  }, [])
+
+  const points = (runs ?? [])
+    .filter((r) => r.actual_pts !== null)
+    .map((r) => ({ gw: r.gw, expected: r.expected_pts,
+                   actual: r.actual_pts as number }))
+  if (points.length === 0) return null
+
+  const top = Math.ceil(Math.max(
+    ...points.map((p) => Math.max(p.expected, p.actual)), 10) / 10) * 10
+
+  return (
+    <Card title="Forecast against outcome" className="mt-4">
+      <p className="mb-3 text-text-muted">
+        {'Each point is one finished gameweek: what the advice run expected '
+          + 'from the eleven it picked, against what that eleven actually '
+          + `scored. ${points.length} finished gameweek`
+          + `${points.length === 1 ? '' : 's'}. Above the dashed line the `
+          + 'week beat the forecast.'}
+      </p>
+      <div aria-label="forecast against outcome">
+        <ResponsiveContainer width="100%" height={260}>
+          <ScatterChart margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
+            <CartesianGrid stroke="var(--color-divider)" />
+            <XAxis type="number" dataKey="expected" name="expected"
+                   domain={[0, top]} stroke="var(--color-text-muted)" />
+            <YAxis type="number" dataKey="actual" name="actual"
+                   domain={[0, top]} stroke="var(--color-text-muted)" />
+            <ZAxis range={[60, 60]} />
+            <Tooltip
+              cursor={{ strokeDasharray: '3 3' }}
+              contentStyle={{ background: 'var(--color-card)',
+                              border: '1px solid var(--color-border)' }} />
+            <ReferenceLine segment={[{ x: 0, y: 0 }, { x: top, y: top }]}
+                           stroke="var(--color-text-muted)"
+                           strokeDasharray="4 4" />
+            <Scatter data={points} fill="var(--color-sage)" />
+          </ScatterChart>
+        </ResponsiveContainer>
+      </div>
+    </Card>
+  )
+}
+
+const MISS_COLUMNS: Column<MissRow>[] = [
+  { key: 'name', header: 'Player', primary: true, value: (r) => r.name,
+    render: (r) => (
+      <span className="flex items-center gap-1.5">
+        <PlayerName code={r.code} name={r.name} />
+        <PosBadge pos={r.position} variant="dot" />
+      </span>
+    ) },
+  { key: 'price', header: 'Price', numeric: true, value: (r) => r.price,
+    render: (r) => fmtNum(r.price, 1) },
+  { key: 'ep', header: 'Forecast', primary: true, numeric: true,
+    value: (r) => r.ep, render: (r) => fmtNum(r.ep) },
+  { key: 'actual', header: 'Scored', primary: true, numeric: true,
+    value: (r) => r.actual, render: (r) => r.actual },
+  { key: 'minutes', header: 'Mins', numeric: true, value: (r) => r.minutes,
+    render: (r) => r.minutes },
+  { key: 'miss', header: 'Miss', primary: true, numeric: true,
+    value: (r) => Math.abs(r.miss),
+    render: (r) => (
+      <span className={r.miss >= 0 ? 'num text-sage' : 'num text-rust'}>
+        {`${r.miss >= 0 ? '+' : ''}${r.miss.toFixed(1)}`}
+      </span>
+    ) },
+]
+
+/**
+ * Who the model got most wrong last week.
+ *
+ * The aggregates above say the heads are calibrated in the mean, which is a
+ * claim nobody can check against their own memory of the football. This is
+ * the card a manager argues with, so it keeps both signs: an over-forecast is
+ * a transfer the tool may have talked somebody into, an under-forecast is a
+ * captaincy it talked them out of.
+ */
+function MissesSection() {
+  const [data, setData] = useState<MissesData | null>(null)
+
+  useEffect(() => {
+    apiGet<MissesData>('/api/misses').then(setData).catch(() => setData(null))
+  }, [])
+
+  // No scored gameweek is an absent card, not a card of zeros — and a payload
+  // without a rows array is not a misses report at all, so render nothing
+  // rather than crash the tab on an artifact an older version half-wrote.
+  if (!data?.gw || !Array.isArray(data.rows) || data.rows.length === 0) {
+    return null
+  }
+  return (
+    <Card title={`Biggest misses — GW${data.gw}`} className="mt-4">
+      <p className="mb-3 text-text-muted">
+        Forecast against what he actually scored, largest gap first. A positive
+        miss is a player the model under-rated.
+      </p>
+      <DataTable
+        columns={MISS_COLUMNS}
+        rows={data.rows}
+        rowKey={(r) => r.code}
+        rowLabel={(r) => r.name}
+        initialSort="miss"
+        empty={<p className="text-text-muted">Nothing scored yet.</p>}
+      />
+    </Card>
+  )
+}
+
 export default function QualityTab() {
   const [data, setData] = useState<QualityData | null>(null)
   const [empty, setEmpty] = useState<string | null>(null)
@@ -481,6 +642,8 @@ export default function QualityTab() {
         && <DecompositionSection decomposition={data.decomposition} />}
       {data.news_shadow && data.news_shadow.rows > 0
         && <NewsShadowSection shadow={data.news_shadow} />}
+      <ScatterSection />
+      <MissesSection />
       <PensSection />
     </>
   )
