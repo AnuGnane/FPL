@@ -1185,8 +1185,14 @@ class SensitivityReport(BaseModel):
     runner_up: SensitivityPlan | None = None
     margin: float | None = None
     decision_sigma: float | None = None
-    """The scenario sweep's own noise on the players that separate the two
-    plans, in quadrature (plan A6).
+    """The scenario sweep's own *estimation* noise on the players that
+    separate the two plans, in quadrature (plan A6).
+
+    Not the σ behind the EP bands, and the difference is the point. A band
+    answers "what might he score" and is dominated by football's own variance.
+    This answers "how wrong might my forecast be" — the only question a margin
+    between two plans solved off the same board can be threatened by — and so
+    it stays on ``optimize.scenarios``' calibrated table alone.
 
     Computed at serve time from the banked components frame rather than stored
     in the report, so a report swept before this field existed still gets the

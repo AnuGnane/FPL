@@ -150,20 +150,41 @@ def test_three_graded_gameweeks_still_decline_to_grade(app):
 
 # --- rail 4: no σ asset, the pre-v6 heuristic exactly -----------------
 
-def test_no_noise_asset_bands_on_the_pre_v6_heuristic_exactly(monkeypatch):
-    """v6's rail, copied forward to the new consumer. The band module is the
-    second reader of that asset, and a clone without the file has to produce
-    the same scale here as the sweep does there."""
+def test_no_noise_asset_falls_back_on_the_pre_v6_heuristic_exactly(monkeypatch):
+    """v6's rail, copied forward to the new consumer, and **restated** for the
+    B1 fix rather than deleted by it.
+
+    What changed, deliberately: the band's σ is no longer the estimation scale
+    on its own, so pinning ``band.sigma`` against the pre-v6 heuristic now
+    pins the wrong quantity. What the asset-optionality rail is actually about
+    — that a clone without ``scenario_noise.json`` produces the same
+    *estimation* scale here as the sweep does there — is pinned on
+    :func:`estimation_sigma_for`, exactly and to full precision.
+
+    The band is then pinned as the quadrature of that term with the outcome
+    term, so the rail covers strictly more than it did: it now catches a
+    degraded clone that loses the fallback *and* one that loses the outcome
+    variance and silently reverts to hairline bands.
+    """
     import gaffer.uncertainty as unc
+    from gaffer.league_sim import OUTCOME_VAR_PER_EP
 
     monkeypatch.setattr(unc, "scenario_noise", lambda: None)
     ep, xmins = 4.0, 20.0
-    band = unc.band_for(ep, xmins)
     want = ep * (sc.NOISE_FLOOR_XMINS - xmins) / sc.NOISE_DENOM
-    assert band.sigma == pytest.approx(round(want, 3))
-    # And the centre is the EP itself: the heuristic scale is multiplicative
-    # and vanishes with the EP, so ``noise_ep`` does not recentre it.
-    assert band.ep_lo + band.ep_hi == pytest.approx(2 * ep, abs=0.01)
+    assert unc.estimation_sigma_for(ep, xmins) == pytest.approx(want)
+
+    band = unc.band_for(ep, xmins)
+    assert band.sigma == pytest.approx(
+        round((OUTCOME_VAR_PER_EP * ep + want ** 2) ** 0.5, 3))
+    # And the centre is *below* the EP on this arm too, which it was not
+    # before: the outcome term is absolute, so the clip at zero bites and
+    # ``recentred_mean`` shifts the centre down to keep the draw averaging the
+    # forecast. A heuristic band symmetric about the headline would now be the
+    # bug.
+    assert band.ep_lo + band.ep_hi < 2 * ep
+    # Never a certainty, on the degraded arm either.
+    assert 0.0 < band.p_blank < 1.0 and band.p_haul < 1.0
 
 
 def test_an_unreadable_noise_asset_bands_on_the_heuristic(monkeypatch):

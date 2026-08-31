@@ -17,7 +17,8 @@ from fastapi import APIRouter, Query
 
 from gaffer.artifacts import latest_gw, load_components
 from gaffer.sensitivity import load_sensitivity
-from gaffer.uncertainty import band_for, shipped_table, xmins_by_player_gw
+from gaffer.uncertainty import (estimation_sigma_for, shipped_table,
+                                xmins_by_player_gw)
 from gaffer.web.schemas import SensitivityReport
 
 router = APIRouter(prefix="/api", tags=["sensitivity"])
@@ -52,6 +53,17 @@ def decision_sigma(payload: dict, gw: int) -> float | None:
     nothing else. Summed in quadrature because ``noise_ep`` draws one
     independent standard normal per cell and adds no cross-player correlation.
 
+    **Estimation σ, deliberately, and unchanged by v8g's band fix.** The bands
+    on the squad table price *outcome* variance — what a player might score —
+    because that is what a range beside a forecast is read as. This number
+    answers a different question: how wrong might my forecast be. Football's
+    own variance does not belong in it, because the two plans being compared
+    are solved off the same board and an outcome shock that hits one hits the
+    other; folding it in would inflate every margin into a coin flip and the
+    card would stop saying anything. So this reads
+    :func:`gaffer.uncertainty.estimation_sigma_for`, which is the scale
+    ``noise_ep`` actually perturbs the sweep by.
+
     ``None`` for every case where the comparison cannot be made honestly: no
     runner-up, no banked components frame, no minutes model, or two signatures
     whose named players happen to coincide. The card then prints its margin
@@ -80,11 +92,12 @@ def decision_sigma(payload: dict, gw: int) -> float | None:
     total = 0.0
     seen = 0
     for code in codes:
-        band = band_for(ep.get(code, 0.0), xmins.get((int(code), int(gw))),
-                        table=table)
-        if band is None:
+        sigma = estimation_sigma_for(ep.get(code, 0.0),
+                                     xmins.get((int(code), int(gw))),
+                                     table=table)
+        if sigma is None:
             continue
-        total += band.sigma ** 2
+        total += sigma ** 2
         seen += 1
     return round(math.sqrt(total), 3) if seen else None
 
