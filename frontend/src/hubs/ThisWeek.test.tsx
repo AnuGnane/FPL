@@ -223,6 +223,21 @@ describe('the captaincy title-odds chip', () => {
          .toHaveTextContent('+3.0%')
      })
 
+  it('asks only for a cached answer, never for a fresh fetch storm', async () => {
+    apiPost.mockResolvedValue(null)
+    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    await waitFor(() => expect(apiPost).toHaveBeenCalledWith(
+      '/api/league/whatif',
+      expect.objectContaining({ cached_only: true })))
+  })
+
+  it('is simply absent on a cold cache, which answers 204 as null', async () => {
+    apiPost.mockResolvedValue(null)
+    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    expect(await screen.findByText(/Starting XI/)).toBeInTheDocument()
+    expect(screen.queryByTestId('captain-odds-chip')).not.toBeInTheDocument()
+  })
+
   it('is simply absent when the simulation is not available', async () => {
     apiPost.mockRejectedValue(new Error('422'))
     render(<MemoryRouter><ThisWeek /></MemoryRouter>)

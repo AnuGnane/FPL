@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
 
 from gaffer.artifacts import latest_gw, load_snapshot, solve_state_paths
 from gaffer.config import load_config
@@ -88,8 +88,15 @@ def _guard(fn, *args, **kwargs):
             from exc
 
 
-def _run(cfg, gw: int | None = None):
-    """``(sim, inputs)`` for the current gameweek, cached per advice run."""
+def _run(cfg, gw: int | None = None, *, cached_only: bool = False):
+    """``(sim, inputs)`` for the current gameweek, cached per advice run.
+
+    ``cached_only`` answers only from the cache and returns ``None`` on a
+    miss. This Week's captaincy chip asks for it: that page is the one opened
+    on a Thursday evening, its chip is decoration, and building the inputs
+    means fifty entry-picks requests at the FPL API — a fetch storm fired by a
+    page load, at the hour everybody in the country is loading pages.
+    """
     plan_gw = int(gw) if gw is not None else latest_gw()
     if plan_gw is None:
         raise GafferError("no saved advice — run `gaffer advise` first")
@@ -97,6 +104,8 @@ def _run(cfg, gw: int | None = None):
     hit = _CACHE.get(key)
     if hit is not None:
         return hit
+    if cached_only:
+        return None
     inputs = _guard(build_inputs, cfg, fpl_client(), gw=plan_gw)
     sim = simulate_league(inputs, n=int(cfg.sim_n),
                           rival_drift=float(cfg.rival_drift))
@@ -190,7 +199,8 @@ def _entry_probabilities(sim, inputs) -> list[LeagueWhatIfRow]:
     return rows
 
 
-@router.post("/whatif", response_model=LeagueWhatIfResult)
+@router.post("/whatif", response_model=LeagueWhatIfResult,
+             responses={204: {"description": "cold cache, cached_only asked"}})
 def whatif(req: LeagueWhatIfRequest) -> LeagueWhatIfResult:
     """Re-run the league with this week's events pinned.
 
@@ -207,7 +217,12 @@ def whatif(req: LeagueWhatIfRequest) -> LeagueWhatIfResult:
     """
     cfg = load_config()
     gw = latest_gw()
-    baseline, inputs = _run(cfg, gw)
+    hit = _run(cfg, gw, cached_only=bool(req.cached_only))
+    if hit is None:
+        # 204, not an error and not a wait: the caller asked for a cached
+        # answer, there is not one, and the honest reply is nothing at all.
+        return Response(status_code=204)
+    baseline, inputs = hit
     by_code = _elements_by_code()
 
     scores: dict[int, float] = {}

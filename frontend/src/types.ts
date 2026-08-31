@@ -770,6 +770,10 @@ export interface LeagueWhatIfRequest {
   pins: { code: number, event: LeagueWhatIfEvent }[]
   captain_override?: number | null
   rival_captain_blanks?: number | null
+  /** Answer from the server's cache or not at all — a 204 with no body. Set
+   *  by This Week's chip, which is decoration and must never make a cold
+   *  page load fetch fifty rival squads. */
+  cached_only?: boolean
 }
 
 export interface LeagueWhatIfRow {

@@ -386,3 +386,52 @@ def test_banking_a_field_sample_invalidates_the_cache(client, monkeypatch):
     after = client.get("/api/league/sim").json()
     assert calls["n"] == 2                      # re-run, not served stale
     assert after["field_rate"] is not None
+
+
+# --- the cached-only path This Week's chip takes ---------------------------
+
+
+def test_cached_only_answers_204_on_a_cold_cache_and_fetches_nothing(
+        client, monkeypatch):
+    """This Week is the page opened on a Thursday evening, and its chip is
+    decoration. Building the inputs means fifty entry-picks requests at the
+    FPL API, fired by a page load, at the hour everybody is loading pages."""
+    calls = {"n": 0}
+
+    def _counting():
+        calls["n"] += 1
+        return FakeClient()
+
+    monkeypatch.setattr("gaffer.web.routers.league_sim.fpl_client", _counting)
+    monkeypatch.setattr("gaffer.web.routers.league_sim._CACHE", {})
+    res = client.post("/api/league/whatif",
+                      json={"pins": [], "captain_override": 101,
+                            "cached_only": True})
+    assert res.status_code == 204
+    assert res.content == b""
+    assert calls["n"] == 0
+
+
+def test_cached_only_answers_normally_once_the_cache_is_warm(client):
+    client.get("/api/league/sim")
+    res = client.post("/api/league/whatif",
+                      json={"captain_override": 101, "cached_only": True})
+    assert res.status_code == 200
+    assert res.json()["delta_p_win"] < 0.0
+
+
+def test_the_whatif_tab_keeps_the_warm_path(client, monkeypatch):
+    """The League What-if tab does not set the flag: there the simulation is
+    the page, and a 204 would be a blank panel."""
+    calls = {"n": 0}
+
+    def _counting():
+        calls["n"] += 1
+        return FakeClient()
+
+    monkeypatch.setattr("gaffer.web.routers.league_sim.fpl_client", _counting)
+    monkeypatch.setattr("gaffer.web.routers.league_sim._CACHE", {})
+    res = client.post("/api/league/whatif",
+                      json={"pins": [{"code": 100, "event": "blank"}]})
+    assert res.status_code == 200
+    assert calls["n"] == 1

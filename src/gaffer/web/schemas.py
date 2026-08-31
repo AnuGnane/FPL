@@ -202,6 +202,14 @@ class LeagueWhatIfRequest(BaseModel):
     pins: list[LeagueWhatIfPin] = Field(default_factory=list)
     captain_override: int | None = None
     rival_captain_blanks: int | None = None
+    cached_only: bool = False
+    """Answer from the cache or not at all (204).
+
+    This Week's captaincy chip sets it. That page is the one opened on a
+    Thursday evening, the chip is decoration, and a cold cache means fifty
+    entry-picks requests at the FPL API fired by a page load — at the hour
+    every FPL manager in the country is loading pages. The League What-if tab
+    leaves it false: there the simulation *is* the page."""
 
 
 class LeagueWhatIfRow(BaseModel):

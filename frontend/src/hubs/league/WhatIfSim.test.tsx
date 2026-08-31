@@ -50,6 +50,9 @@ describe('WhatIfSim', () => {
       '/api/league/whatif',
       { pins: [{ code: 100, event: 'blank' }], captain_override: null,
         rival_captain_blanks: null }))
+    // The tab never sets ``cached_only``: here the simulation is the page,
+    // and a 204 would be a blank panel.
+    expect(apiPost.mock.calls[0][1]).not.toHaveProperty('cached_only')
     expect(await screen.findByTestId('delta-p-win')).toHaveTextContent('-11')
   })
 

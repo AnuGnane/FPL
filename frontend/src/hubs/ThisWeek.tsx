@@ -52,11 +52,17 @@ export default function ThisWeek() {
   useEffect(() => {
     if (!viceCode) return
     let cancelled = false
-    apiPost<LeagueWhatIfResult>('/api/league/whatif',
-                                { pins: [],
-                                  captain_override: viceCode,
-                                  rival_captain_blanks: null })
-      .then((out) => { if (!cancelled) setCapOdds(-out.delta_p_win) })
+    // ``cached_only``: on a cold cache the server answers 204 and nothing
+    // is fetched. Without it this effect fires fifty entry-picks requests at
+    // the FPL API from a page load, on the evening everybody is loading it.
+    apiPost<LeagueWhatIfResult | null>('/api/league/whatif',
+                                       { pins: [],
+                                         captain_override: viceCode,
+                                         rival_captain_blanks: null,
+                                         cached_only: true })
+      .then((out) => {
+        if (!cancelled) setCapOdds(out ? -out.delta_p_win : null)
+      })
       .catch(() => { if (!cancelled) setCapOdds(null) })
     return () => { cancelled = true }
   }, [viceCode])
