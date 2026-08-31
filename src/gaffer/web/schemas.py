@@ -1403,6 +1403,10 @@ class Digest(BaseModel):
     gw: int | None = None
     headline: str
     sections: list[DigestSection] = Field(default_factory=list)
+    error: str | None = None
+    """Set only on a digest that failed to build. A run that crashes still
+    banks an artifact so the card can say "Friday's briefing did not build"
+    rather than falling back to the never-run empty state."""
 
 
 class DigestPanel(BaseModel):

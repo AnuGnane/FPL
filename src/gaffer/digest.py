@@ -37,7 +37,6 @@ a traceback. :func:`run_digest` has one ``except`` and returns ``None``.
 from __future__ import annotations
 
 import json
-import math
 import os
 import subprocess
 from datetime import datetime, timezone
@@ -112,6 +111,43 @@ def _section(key: str, title: str, bits: list[str | None]) -> dict | None:
     """
     kept = [str(bit) for bit in bits if bit]
     return {"key": key, "title": title, "bits": kept} if kept else None
+
+
+def _text(row, field: str) -> str:
+    """One string cell, or ``""``. Null-safe for every flavour of null.
+
+    ``reports/availability_gw*.parquet`` stores ``status`` and ``llm_verdict``
+    as pandas ``string``, so an unclassified player arrives as ``pd.NA`` — and
+    ``pd.NA or ""`` calls ``NAType.__bool__``, which raises "boolean value of
+    NA is ambiguous" and takes the whole briefing with it. Three nulls reach
+    these frames (``None`` from JSON, ``float('nan')`` from a numpy column,
+    ``pd.NA`` from a nullable one) and ``pd.isna`` is the only test that
+    answers all three without evaluating truthiness.
+    """
+    value = getattr(row, field, None)
+    return "" if value is None or pd.isna(value) else str(value)
+
+
+def _flag(row, field: str) -> bool:
+    """One boolean cell, or ``False``. ``pd.NA`` is not yet ``True``.
+
+    Same hazard as :func:`_text`: ``override`` and ``price_change_calibrating``
+    are nullable booleans, and ``bool(pd.NA)`` raises rather than returning
+    anything. An unrecorded flag is a flag that is not set.
+    """
+    value = getattr(row, field, None)
+    return False if value is None or pd.isna(value) else bool(value)
+
+
+def _number(row, field: str) -> float | None:
+    """One numeric cell, or ``None``. ``pd.NA`` never reaches ``float()``."""
+    value = getattr(row, field, None)
+    if value is None or pd.isna(value):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _names() -> dict[int, str]:
@@ -190,16 +226,14 @@ def _flagged_bits(gw: int | None, watched: dict[int, str],
         for row in rows.itertuples():
             code = int(getattr(row, "code"))
             name = names.get(code, str(code))
-            status = str(getattr(row, "status", "") or "")
-            chance = getattr(row, "chance_of_playing", None)
-            verdict = str(getattr(row, "llm_verdict", "") or "")
+            status = _text(row, "status")
+            chance = _number(row, "chance_of_playing")
+            verdict = _text(row, "llm_verdict")
             pieces = []
             if status and status != "a":
                 pieces.append(f"status {status}")
-            if chance is not None and not (isinstance(chance, float)
-                                           and math.isnan(chance)) \
-                    and float(chance) < 100.0:
-                pieces.append(f"{int(float(chance))}% to play")
+            if chance is not None and chance < 100.0:
+                pieces.append(f"{int(chance)}% to play")
             if verdict in DOUBT_VERDICTS:
                 pieces.append(f"news says {verdict}")
             if pieces:
@@ -226,8 +260,8 @@ def _presser_bits(gw: int, watched: dict[int, str],
                                 errors="coerce").isin(list(watched)))]
     out = []
     for row in rows.itertuples():
-        verdict = str(getattr(row, "verdict", "") or "")
-        if verdict and verdict in DOUBT_VERDICTS:
+        verdict = _text(row, "verdict")
+        if verdict in DOUBT_VERDICTS:
             code = int(getattr(row, "code"))
             out.append(f"{names.get(code, str(code))} — the presser said "
                        f"{verdict}")
@@ -254,11 +288,12 @@ def _movers_bits(watched: dict[int, str],
     for row in alerts.itertuples():
         code = int(getattr(row, "code"))
         caveat = " (FPL still calibrating him)" \
-            if bool(getattr(row, "calibrating", False)) else ""
-        out.append(f"{names.get(code, str(row.name))} may "
-                   f"{row.direction} tonight "
-                   f"({round(float(row.price_change_percent))}%)"
-                   f"{caveat}")
+            if _flag(row, "calibrating") else ""
+        percent = _number(row, "price_change_percent")
+        out.append(f"{names.get(code, _text(row, 'name') or str(code))} may "
+                   f"{_text(row, 'direction') or 'move'} tonight"
+                   + (f" ({round(percent)}%)" if percent is not None else "")
+                   + caveat)
     return out
 
 
@@ -380,10 +415,18 @@ def tuesday_debrief() -> dict:
             if worst else None]))
 
     kept = [s for s in sections if s is not None]
-    headline = (f"GW{gw}: you {row.get('my_points')}, model "
-                f"{row.get('model_points')}." if row is not None
-                else "The season has not been reviewed yet — run "
-                     "`gaffer review`.")
+    if row is None:
+        headline = ("The season has not been reviewed yet — run "
+                    "`gaffer review`.")
+    elif row.get("model_points") is None:
+        # A ``no_advice`` week — GW1 of this season is one. The model did not
+        # score badly, it never spoke, and "model None." reads as the first of
+        # those while being a Python repr in a push notification.
+        headline = (f"GW{gw}: you {row.get('my_points')} — no advice "
+                    f"survived to compare.")
+    else:
+        headline = (f"GW{gw}: you {row.get('my_points')}, model "
+                    f"{row.get('model_points')}.")
     return {"kind": "tuesday", "generated_at": _now(), "gw": gw,
             "headline": headline, "sections": kept}
 
@@ -444,17 +487,22 @@ def _miss_bits() -> list[str | None]:
 
 # --- the notification -------------------------------------------------
 
-def _script(title: str, body: str) -> str:
-    """The AppleScript one-liner, with both halves safely quoted.
+NOTIFY_SCRIPT = ("on run argv",
+                 "display notification (item 1 of argv) "
+                 "with title (item 2 of argv)",
+                 "end run")
+"""The AppleScript, with nothing user-controlled in it.
 
-    ``json.dumps`` rather than an f-string with quotes round it: a player
-    called O'Brien, a watchlist note with a double quote in it, or a backslash
-    anywhere would otherwise either break the script or — worse — change what
-    it does. JSON string escaping and AppleScript string escaping agree on
-    every character that matters here.
-    """
-    return (f"display notification {json.dumps(body)} "
-            f"with title {json.dumps(title)}")
+An earlier version escaped the title and body into the source with
+``json.dumps``, on the theory that JSON and AppleScript string escaping agree
+on every character that matters. They do not agree on one: JSON escapes
+non-ASCII as ``\\uXXXX`` and AppleScript has no such escape, so the em dash in
+:data:`TITLES` compiled to a syntax error and *every* notification this cycle
+exited 1 with ``Expected “"” but found unknown token``. The class of bug is
+the interpolation, not the em dash, so the fix removes the interpolation: an
+``on run`` handler takes both halves as arguments after ``--``, where the
+kernel carries them byte for byte and no quoting exists to get wrong.
+"""
 
 
 def _notify(title: str, body: str) -> bool:
@@ -462,16 +510,20 @@ def _notify(title: str, body: str) -> bool:
 
     Best-effort in the strongest sense: no ``osascript`` at all (a Linux CI
     box), a refused Notification Centre permission, a non-zero exit and a hang
-    are each a printed line and a ``False``. ``shell=False`` throughout — the
-    argv list is the whole defence against everything ``_script`` quotes.
+    are each a printed line and a ``False``. ``shell=False`` throughout, and
+    the two strings are ``argv`` entries rather than source.
     """
+    argv = ["osascript"]
+    for line in NOTIFY_SCRIPT:
+        argv += ["-e", line]
     try:
-        done = subprocess.run(["osascript", "-e", _script(title, body)],
-                              capture_output=True, timeout=NOTIFY_TIMEOUT_S,
-                              check=False)
+        done = subprocess.run(argv + [body, title], capture_output=True,
+                              timeout=NOTIFY_TIMEOUT_S, check=False)
         if done.returncode != 0:
+            detail = (done.stderr or b"").decode("utf-8", "replace").strip()
             print(f"notification not shown: osascript exited "
-                  f"{done.returncode}")
+                  f"{done.returncode}"
+                  + (f" — {detail}" if detail else ""))
             return False
         return True
     except Exception as exc:  # noqa: BLE001 — never a reason to fail a job
@@ -496,6 +548,24 @@ TITLES = {"friday": "Gaffer — Friday briefing",
           "tuesday": "Gaffer — Tuesday debrief"}
 
 
+def _bank_failure(kind: str, exc: BaseException) -> None:
+    """Write the digest that says there is no digest. Never raises.
+
+    The envelope is the ordinary one so the card and the schema need no
+    special case; ``sections`` is empty and ``error`` carries the exception's
+    type and message. No traceback: this artifact is read by a card on a
+    phone, and the traceback is already in the job log.
+    """
+    reason = f"{type(exc).__name__}: {exc}"
+    try:
+        save_digest(kind, {"kind": kind, "generated_at": _now(), "gw": None,
+                           "headline": f"{kind.title()} digest failed to "
+                                       f"build — {reason}",
+                           "sections": [], "error": reason})
+    except Exception as write_exc:  # noqa: BLE001 — two failures, still no raise
+        print(f"digest failure not written: {write_exc}")
+
+
 def run_digest(kind: str, *, notify: bool = True) -> dict | None:
     """Build one digest, bank it, print one line, maybe notify.
 
@@ -518,7 +588,13 @@ def run_digest(kind: str, *, notify: bool = True) -> dict | None:
         payload = (friday_briefing() if kind == "friday"
                    else tuesday_debrief())
     except Exception as exc:  # noqa: BLE001 — a scheduled job never blocks
+        # Never raise was only half of it. A Friday that died used to write
+        # nothing, so the card fell back to its never-run empty state and the
+        # crash lived only in a launchd log nobody opens — which is how gate
+        # G1 found this by hand. The failure is a digest too: an artifact
+        # with no sections and an ``error`` that names what happened.
         print(f"digest not built: {exc}")
+        _bank_failure(kind, exc)
         return None
     try:
         save_digest(kind, payload)

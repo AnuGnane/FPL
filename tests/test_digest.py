@@ -63,6 +63,14 @@ LEDGER = [{"gw": 4, "my_points": 58, "model_points": 63, "accuracy": 71,
                      {"lane": "transfers", "delta_pts": 1,
                       "label": "Brilliant", "aligned": False}]}]
 
+PLAYERS_FOR_PRICES = pd.DataFrame({
+    "code": [11, 22], "name": ["Saka", "Haaland"],
+    "position": ["MID", "FWD"], "team_code": [3, 4],
+    "now_cost": [101, 150], "selected_by_percent": [40.0, 60.0],
+    "price_change_percent": [98.0, 1.0],
+    "price_change_calibrating": [False, False],
+})
+
 SIM_HISTORY = [{"gw": 3, "p_win": 0.14, "p_top3": 0.4, "exp_finish": 3.1,
                 "run_at": "2026-08-20T09:00:00Z", "n": 2000, "seed": 7},
                {"gw": 4, "p_win": 0.19, "p_top3": 0.5, "exp_finish": 2.6,
@@ -147,6 +155,44 @@ def test_a_squad_with_nothing_wrong_with_it_has_no_flagged_section(
     assert "flagged" not in _sections(friday_briefing())
 
 
+def test_a_null_verdict_is_no_verdict_and_not_a_crash(furnished):
+    """The real ``reports/availability_gw*.parquet`` stores ``llm_verdict``
+    and ``status`` as pandas ``string`` and ``override`` as a nullable
+    boolean, so a player nobody has classified arrives as ``pd.NA``. ``NA or
+    ""`` calls ``bool(NA)``, which raises, and the whole Friday briefing dies
+    on a player the section had nothing to say about anyway."""
+    artifacts.save_availability(pd.DataFrame({
+        "code": [11, 22, 33],
+        "status": pd.array(["d", pd.NA, "i"], dtype="string"),
+        "chance_of_playing": [50.0, None, 0.0],
+        "llm_verdict": pd.array([pd.NA, pd.NA, "out"], dtype="string"),
+        "override": pd.array([pd.NA, False, True], dtype="boolean"),
+    }), GW)
+    flagged = _sections(friday_briefing()).get("flagged")
+    # 11 is watched and 50% to play, so he survives; 22 is all-null and is
+    # simply nothing to say.
+    assert flagged is not None
+    bits = " ".join(flagged["bits"])
+    assert "50% to play" in bits
+
+
+def test_a_null_calibrating_flag_does_not_kill_the_price_section(furnished,
+                                                                 monkeypatch):
+    """``bool(pd.NA)`` raises just as loudly in the movers loop."""
+    alerts = pd.DataFrame({
+        "code": [11], "name": ["Saka"], "direction": ["rise"],
+        "price_change_percent": [98.0],
+        "calibrating": pd.array([pd.NA], dtype="boolean"),
+    })
+    monkeypatch.setattr("gaffer.prices.price_alerts",
+                        lambda players, codes: alerts)
+    PLAYERS_FOR_PRICES.to_parquet(furnished / "data/live/players.parquet",
+                                  index=False)
+    movers = _sections(friday_briefing()).get("movers")
+    assert movers is not None
+    assert "may rise tonight" in " ".join(movers["bits"])
+
+
 def test_the_briefing_offers_one_differential(furnished):
     bits = " ".join(_sections(friday_briefing())["differential"]["bits"])
     assert "Semenyo" in bits
@@ -207,6 +253,21 @@ def test_one_simulated_gameweek_is_a_level_not_a_movement(furnished,
         json.dumps({"gws": SIM_HISTORY[:1]}))
     bits = " ".join(_sections(tuesday_debrief())["league"]["bits"])
     assert "14" in bits and "+" not in bits and "-" not in bits
+
+
+def test_a_no_advice_gameweek_says_so_rather_than_reporting_model_none(
+        bare, monkeypatch):
+    """GW1 of the real season is a ``no_advice`` row: the manager played, the
+    model has no surviving plan, and every lane is null. "model None." is the
+    Python repr of that leaking into a push notification — and it reads as a
+    model that scored nothing rather than one that never spoke."""
+    (bare / "reports/decision_ledger.json").write_text(json.dumps({"gws": [
+        {"gw": 1, "no_advice": True, "my_points": 46, "model_points": None,
+         "accuracy": None, "points_on_bench": 2,
+         "hindsight": {"gap": 9}, "lanes": []}]}))
+    headline = tuesday_debrief()["headline"]
+    assert "None" not in headline
+    assert headline == "GW1: you 46 — no advice survived to compare."
 
 
 def test_an_unreviewed_season_is_a_debrief_that_says_so(bare, monkeypatch):
@@ -291,15 +352,34 @@ def test_notify_true_sends_the_headline(furnished, monkeypatch):
     assert isinstance(calls[0], list)
 
 
-def test_a_quote_in_a_players_note_cannot_break_the_applescript(furnished,
-                                                                monkeypatch):
-    """``json.dumps`` on both halves is what makes O'Brien — and whatever the
-    user typed into a watchlist note — safe inside a string literal."""
-    from gaffer.digest import _script
+def test_the_title_and_body_travel_as_arguments_not_as_source(furnished,
+                                                              monkeypatch):
+    """The em dash in ``TITLES`` is the whole bug: escaping the two halves
+    into the AppleScript source with ``json.dumps`` writes ``\\u2014``, which
+    AppleScript does not decode — it is a syntax error, and every real
+    notification this cycle exited 1. So nothing user-controlled is
+    interpolated into the script at all; both halves ride ``argv``."""
+    from gaffer.digest import _notify
 
-    script = _script('He said "go"', "O'Brien \\ out")
-    assert script.count('display notification') == 1
-    assert "\\\"go\\\"" in script
+    calls = []
+
+    def spy(args, **kwargs):
+        calls.append(args)
+        class R:  # noqa: D401 — a stand-in CompletedProcess
+            returncode = 0
+        return R()
+
+    monkeypatch.setattr("gaffer.digest.subprocess.run", spy)
+    body = 'He said "go" — O\'Brien \\ out\nsecond line'
+    assert _notify("Gaffer — Friday briefing", body) is True
+
+    argv = calls[0]
+    assert isinstance(argv, list) and argv[0] == "osascript"
+    script = " ".join(argv[1:-2])
+    # The strings are the last two argv entries, verbatim, never in the source.
+    assert argv[-2:] == [body, "Gaffer — Friday briefing"]
+    assert body not in script and "\\u" not in script
+    assert "item 1 of argv" in script and "item 2 of argv" in script
 
 
 @pytest.mark.parametrize("failure", [
@@ -338,6 +418,23 @@ def test_a_total_failure_is_none_and_not_a_traceback(furnished, monkeypatch):
     monkeypatch.setattr("gaffer.digest.friday_briefing",
                         lambda: (_ for _ in ()).throw(RuntimeError("boom")))
     assert run_digest("friday", notify=False) is None
+
+
+def test_a_total_failure_still_banks_an_artifact_that_names_it(furnished,
+                                                               monkeypatch):
+    """Never-raise was only half the rail. A Friday that died left *nothing*
+    on disk, so the card said "no digest yet" — the same thing it says on a
+    clone that has never run one — and a crash on a schedule was invisible
+    until somebody read a launchd log. The failure is a digest too."""
+    monkeypatch.setattr("gaffer.digest.friday_briefing",
+                        lambda: (_ for _ in ()).throw(RuntimeError("boom")))
+    run_digest("friday", notify=False)
+
+    banked = load_digest("friday")
+    assert banked is not None
+    assert banked["kind"] == "friday" and banked["sections"] == []
+    assert banked["error"] == "RuntimeError: boom"
+    assert "boom" in banked["headline"]
 
 
 # --- A6: the digest is a reader --------------------------------------

@@ -140,6 +140,33 @@ def test_a_tuesday_with_no_ledger_says_the_season_is_unreviewed(app):
     assert "not been reviewed" in payload["headline"]
 
 
+def test_a_section_builder_that_raises_still_leaves_a_digest_on_disk(
+        app, monkeypatch, capsys):
+    """A5's other half. "Never raise" was banked; "never silent" was not — a
+    Friday that threw returned ``None`` and wrote nothing, so the card showed
+    the never-run empty state and the only record of the crash was a line in
+    ``logs/digest-friday.log`` that nobody opens. G1 found the crash by
+    hand for exactly that reason. The artifact rail covers the crash path
+    now: a raising builder banks a digest whose sections are empty and whose
+    ``error`` names what went wrong."""
+    from gaffer import digest as mod
+
+    _, client = app
+    monkeypatch.setattr(mod, "_flagged_bits",
+                        lambda *a: (_ for _ in ()).throw(
+                            ValueError("boolean value of NA is ambiguous")))
+    assert mod.run_digest("friday", notify=False) is None
+    assert "digest not built" in capsys.readouterr().out
+
+    banked = mod.load_digest("friday")
+    assert banked is not None and banked["sections"] == []
+    assert banked["error"] == "ValueError: boolean value of NA is ambiguous"
+    # And the card can say so rather than showing the never-run empty state.
+    panel = client.get("/api/digest").json()
+    assert panel["available"] is True
+    assert panel["digest"]["error"] == banked["error"]
+
+
 def test_notify_false_makes_no_osascript_call(app, monkeypatch):
     """The rail that matters: not a suppressed call — no call."""
     from gaffer import digest as mod
