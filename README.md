@@ -52,7 +52,8 @@ to `logs/advise.log`.
 | `gaffer build-history` | Download the `train_seasons` archives into `data/history/`. Run once, before the first `train`. |
 | `gaffer refresh` | Pull the latest FPL data into `data/live/`. |
 | `gaffer train` | (Re)train all models on history + live data; writes to `models/`. |
-| `gaffer prices` | Likely price changes tonight among the 200 most-owned players. |
+| `gaffer prices` | Likely price changes tonight among the 200 most-owned players; banks every player's reading to `data/live/price_log.parquet`. |
+| `gaffer digest --kind friday\|tuesday` | The Friday briefing or the Tuesday debrief: written to `reports/`, shown as a macOS notification. |
 | `gaffer league` | Mini-league standings and rival ownership for `fpl.league_id`. |
 | `gaffer live` | In-gameweek tracker: your live points and the projected league table while matches are on. |
 | `gaffer field-scrape [--gw N] [--force]` | Bank a gameweek's top-10k sample: the squads (anonymised) and their effective ownership. |
@@ -254,7 +255,9 @@ match, against the pre-gameweek plan — and what you need to take or hold the
 league places either side of you), **Players**
 (the candidate pool, with the "why 6.8?" breakdown behind every name, and a
 **Pin** button on each row for the weeks you know something the model does
-not),
+not, and a ☆ that stars a player onto your watchlist — a bookmark, not a pin:
+it widens the movers card's price-alert watch set and adds him to the Friday
+digest's flagged section, and claims nothing the model has to obey),
 **History** (past runs, expected versus actual, price charts) and **Runs &
 Health** (data freshness, model metrics, the launchd log, re-run buttons).
 A fixture ticker sits alongside them and is embedded read-only in the
@@ -480,6 +483,11 @@ makes the live season collide with the one you just archived.
 - `data/raw/field/{season}/gw{N}.json` — the top-10k squads sampled for that
   gameweek. Permanent, and anonymous: entries are keyed by their index in the
   sample, never by entry id.
+- `data/live/price_log.parquet` — one row per player per UTC day: FPL's own
+  price predictor reading, banked by the nightly `prices` job. Every player,
+  not only the ones near a threshold — the row worth having in February is
+  the one that was not an alert in August. Read by nobody yet; a season of it
+  is what a price-timing term would need.
 - `data/live/field_eo_log.parquet` — one row per (gameweek, scrape day,
   element): effective ownership in the top 10k with its standard error and
   its sample size.
@@ -503,6 +511,15 @@ makes the live season collide with the one you just archived.
 - `reports/overrides.json` — your own pins on a player's probability of
   playing or expected minutes, with what the model had for him when you set
   each one. Read at serve time only; never a training feature.
+- `reports/watchlist.json` — starred players, up to a hundred, each with an
+  optional note. Widens the movers card's watch set and adds a section to the
+  Friday digest, and is read by nothing that solves or trains.
+- `reports/digest_friday.json` / `reports/digest_tuesday.json` — the newest
+  briefing and debrief, replace-on-write. A section whose input is missing is
+  absent rather than empty.
+- `reports/components_gw{N}_prev.parquet` — the previous run's component
+  breakdown, one slot, kept so "since last run" can name the players the
+  retrain moved rather than only saying the plan changed.
 - `reports/drafts.json` — named what-if constraint sets, up to twelve.
 - `reports/sensitivity_gw{N}.json` — one banked robustness sweep per
   gameweek: move frequencies over twenty noised re-solves, the modal plan and
@@ -523,17 +540,43 @@ runs at 23:15 **local** time to catch them before they land, so if your machine
 is not on UK time, adjust the `Hour`/`Minute` in
 `scripts/com.gaffer.prices.plist` and reinstall.
 
+## Digests
+
+Two scheduled summaries, each written to `reports/` and shown as a macOS
+notification.
+
+- **Friday 17:00** — `gaffer digest --kind friday`. The deadline countdown,
+  the advised move and captain, watched players the news layer or a press
+  conference is unhappy about, tonight's likely price changes, one
+  differential from the alternatives table, and the data-staleness warning if
+  there is one.
+- **Tuesday 09:30** — `gaffer digest --kind tuesday`, half an hour after the
+  review job. Last week's score against the model's, the worst lane and its
+  label, the hindsight-XI gap, the league win probability and which way it
+  moved, and the largest forecast miss.
+
+Both appear on This Week as the **Digest** card, newest first, and both have a
+button there. A section with nothing to say does not appear at all: "no data"
+is a sentence about the tool, and its absence is a sentence about the season.
+
+The notification is best-effort — it runs `osascript`, swallows every failure,
+and is macOS-only. Turn it off with:
+
+    [digest]
+    notify = false
+
 ## Automation
 
 ```
 ./scripts/install_automation.sh
 ```
 
-Substitutes the project path into the five plists in `scripts/`, copies them to
+Substitutes the project path into the seven plists in `scripts/`, copies them to
 `~/Library/LaunchAgents/`, and loads them: `com.gaffer.advise` (Thursday 18:00),
 `com.gaffer.prices` (nightly 23:15), `com.gaffer.snapshot` (daily 17:00, banks
-the availability log the news corrector will train on), `com.gaffer.field` and
-`com.gaffer.review`.
+the availability log the news corrector will train on), `com.gaffer.field`,
+`com.gaffer.review`, `com.gaffer.digest-friday` (Friday 17:00) and
+`com.gaffer.digest-tuesday` (Tuesday 09:30).
 Re-run it after moving the project.
 
 - **Saturday and Sunday 12:30** — `gaffer field-scrape`, an hour after the
@@ -547,13 +590,18 @@ Re-run it after moving the project.
   Monday, sometimes late; a midweek gameweek is picked up the following
   Tuesday or by the Model hub's **Review last week** button. Already-reviewed
   weeks are a no-op that prints one line.
+- **Friday 17:00** — `gaffer digest --kind friday`, the briefing. After the
+  pressers are in and before the deadline.
+- **Tuesday 09:30** — `gaffer digest --kind tuesday`, the debrief. Half an
+  hour after the review job, so it reads a ledger that has already been
+  written rather than one still being graded.
 
 Nothing else is scheduled. The rest of the work the UI can start — including
 `sensitivity`, twenty noised re-solves of this week's board in about five
 seconds — runs only when you press its button.
 
 Check they are loaded with `launchctl list | grep com.gaffer`. Remove with
-`launchctl unload ~/Library/LaunchAgents/com.gaffer.{advise,prices,snapshot,field,review}.plist`.
+`launchctl unload ~/Library/LaunchAgents/com.gaffer.{advise,prices,snapshot,field,review,digest-friday,digest-tuesday}.plist`.
 
 ## Tests
 
