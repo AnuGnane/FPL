@@ -28,6 +28,21 @@ CONCURRENT="${CONCURRENT:-0}"
 mkdir -p logs
 HERE="$PWD"
 
+# A fresh worktree carries only what git tracks, and every input this replay
+# reads is untracked: config.toml, the parquet store, the fitted models. Link
+# rather than copy, so both sides read literally the same bytes — that is what
+# makes "the only thing that differs is the code" true rather than hopeful.
+# The links are what a *shared* data/ actually means on disk.
+for shared in config.toml data models; do
+    [ -e "$HERE/$shared" ] || continue
+    if [ -L "$MAIN_WT/$shared" ]; then continue; fi
+    # data/ exists in the worktree because one file under it is tracked, so
+    # the tracked copy is moved aside before the link goes in.
+    [ -e "$MAIN_WT/$shared" ] && rm -rf "$MAIN_WT/$shared.tracked" \
+        && mv "$MAIN_WT/$shared" "$MAIN_WT/$shared.tracked"
+    ln -s "$HERE/$shared" "$MAIN_WT/$shared"
+done
+
 branch_side() {
     # Byte-identical flags on both sides. Only --tag differs, which is what
     # scripts/seed_stats.py checks before it will aggregate.
