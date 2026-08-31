@@ -1151,3 +1151,46 @@ class SensitivityReport(BaseModel):
     runner_up: SensitivityPlan | None = None
     margin: float | None = None
     verdict: str | None = None
+
+
+class DraftRow(BaseModel):
+    name: str
+    created_at: str = ""
+    constraints: WhatIfRequest
+
+
+class DraftList(BaseModel):
+    drafts: list[DraftRow] = Field(default_factory=list)
+
+
+class DraftSaveRequest(BaseModel):
+    name: str
+    constraints: WhatIfRequest = Field(default_factory=WhatIfRequest)
+
+
+class DraftCompareRequest(BaseModel):
+    names: list[str] = Field(default_factory=list)
+
+
+class DraftCompareRow(BaseModel):
+    name: str
+    is_reference: bool = False
+    """The unconstrained optimum, so every other row has a "worse than what"."""
+    solved_at: str = ""
+    horizon_pts: float | None = None
+    expected_pts: float | None = None
+    delta_xpts: float | None = None
+    hits: int | None = None
+    chip: str | None = None
+    buys: list[PlayerRef] = Field(default_factory=list)
+    sells: list[PlayerRef] = Field(default_factory=list)
+    captain: PlayerRef | None = None
+    error: str | None = None
+    """Why this row is empty. An infeasible draft is a row with a reason, not
+    a failed comparison."""
+
+
+class DraftCompare(BaseModel):
+    gw: int
+    weeks: int
+    rows: list[DraftCompareRow] = Field(default_factory=list)
