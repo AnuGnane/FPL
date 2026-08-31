@@ -217,7 +217,14 @@ export default function League() {
               <p className="mb-3 text-text-muted" data-testid="sim-provenance">
                 {`${sim.n.toLocaleString()} simulations, seed ${sim.seed}, `}
                 {`rival drift ${sim.rival_drift}, ${sim.weeks_left} `}
-                {'gameweeks left.'}
+                {'gameweeks left, '}
+                {/* Which model produced the fan below, in three words. With
+                    a field sample banked the managers share a weekly factor
+                    weighted by how much of the template they own; without
+                    one they are drawn independently and the fan is wide. */}
+                {sim.field_rate === null
+                  ? 'independence assumed — fan wide.'
+                  : 'shared-ownership correlated.'}
               </p>
               {sim.notice && (
                 <p className="mb-3 text-text-muted">{sim.notice}</p>

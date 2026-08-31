@@ -182,6 +182,15 @@ P(win), P(top 3), expected finish, per-rival P(beat) and a fan of final
 margins — with its `n` and its seed printed underneath, because a probability
 nobody can reproduce is a decoration.
 
+The managers are **not** simulated as independent. Every week carries one
+shared factor and each entry is exposed to it in proportion to how much of the
+top-10k template its squad owns, measured off the banked field sample. On the
+GW2 sample two managers' weekly scores correlate at 0.68, and simulating them
+apart made every margin about 1.8x too wide — a fan that pushes every
+probability toward 0.5 in both directions. Each entry's own spread is
+unchanged; only the comparisons between them move. With no field sample
+banked the card falls back to independence and says so.
+
 ```
 uv run gaffer league-sim --seeds 1,2,3
 ```

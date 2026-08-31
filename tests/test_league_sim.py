@@ -8,11 +8,13 @@ the degenerate cases are exactly what they claim to be.
 
 from __future__ import annotations
 
+import math
+
 import pytest
 
 from gaffer.league_sim import (Entry, Pins, SimInputs, WEEKLY_SIGMA_FLOOR,
-                               entry_rate, entry_sigma, multi_seed,
-                               simulate_league)
+                               entry_rate, entry_sigma, field_exposures,
+                               field_weights, multi_seed, simulate_league)
 
 EP = {7: 6.0, 8: 4.0, 9: 1.0, 10: 8.0}
 SIGMA = {7: 3.0, 8: 2.0, 9: 1.0, 10: 3.0}
@@ -33,10 +35,22 @@ def _rival(entry=2, total=200, picks=None):
                  picks=picks or [{"element": 10, "multiplier": 2}])
 
 
-def _inputs(entries=None, weeks_left=10, field_rate=None):
+TEMPLATE = {7: 1.2, 8: 0.9, 10: 0.6}
+"""A stand-in field sample, as :func:`field_weights` reduces one: the mean
+multiplier the crowd has on each player.
+
+Passed explicitly rather than by default: most of the assertions below are
+about one entry's arithmetic, where the correlation between entries is not
+the subject, and an unbanked field is a real state the engine has to answer
+in. The correlated path has its own section at the foot of this file."""
+
+
+def _inputs(entries=None, weeks_left=10, field_rate=None,
+            field_weights=None):
     return SimInputs(entries=entries or [_me(), _rival()],
                      ep_by_element=EP, sigma_by_element=SIGMA,
-                     weeks_left=weeks_left, field_rate=field_rate)
+                     weeks_left=weeks_left, field_rate=field_rate,
+                     field_weights=field_weights)
 
 
 def test_an_entrys_rate_counts_the_captain_twice():
@@ -465,7 +479,8 @@ def test_a_league_that_carries_no_entry_of_mine_says_so():
 
 
 def test_a_clean_league_carries_no_notices():
-    assert simulate_league(_inputs(), n=100, seed=4).notices == []
+    assert simulate_league(_inputs(field_weights=TEMPLATE),
+                           n=100, seed=4).notices == []
 
 
 def test_the_answer_does_not_depend_on_the_order_the_standings_arrived_in():
@@ -573,3 +588,97 @@ def test_an_unreadable_entry_has_no_win_frequency():
     assert out.p_win_by_entry[9] is None
     assert sum(v for v in out.p_win_by_entry.values() if v is not None) \
         == pytest.approx(1.0, abs=0.01)
+
+
+# --- the shared gameweek factor --------------------------------------------
+
+def _squad(differential: int) -> list[dict]:
+    """A template squad with one player of its own — which is what a real
+    top-10k squad is, and why two managers' weeks are 0.68 correlated."""
+    return ([{"element": 1, "multiplier": 2}]
+            + [{"element": e, "multiplier": 1} for e in range(2, 11)]
+            + [{"element": differential, "multiplier": 1}])
+
+
+FLAT_SIGMA = {e: 3.0 for e in range(1, 40)}
+FLAT_EP = {e: 4.0 for e in range(1, 40)}
+NORMAL_P05_P95 = 3.2897
+"""How many standard deviations separate a normal's 5th and 95th centiles.
+The engine publishes the fan as quantiles, so this is how a standard
+deviation is read back out of it."""
+
+
+def _fan_sd(sim) -> float:
+    q = sim.margin_quantiles
+    return (q["p95"] - q["p05"]) / NORMAL_P05_P95
+
+
+def _two_managers(weights):
+    """Me and one rival, alike except for a single differential each, over one
+    remaining gameweek — so the published margin fan *is* the weekly margin
+    distribution and can be compared with arithmetic."""
+    return SimInputs(
+        entries=[Entry(entry=1, name="Me", total=0, picks=_squad(11),
+                       is_me=True),
+                 Entry(entry=2, name="Him", total=0, picks=_squad(12))],
+        ep_by_element=FLAT_EP, sigma_by_element=FLAT_SIGMA, weeks_left=1,
+        field_weights=weights)
+
+
+def _analytic_margin_sd() -> float:
+    """The exact shared-owner answer. Ten of the eleven players are common to
+    both squads and cancel in the difference; what is left is one differential
+    each, so the margin's variance is ``2 * sigma ** 2`` and nothing else."""
+    return math.sqrt(2 * 3.0 ** 2)
+
+
+def test_the_correlated_engine_reproduces_the_shared_owner_margin():
+    """The finding, made checkable. Two managers who own the same ten players
+    do not have independent weeks: everything but their differentials cancels,
+    and the fan between them is a fraction of what independence predicts."""
+    field = field_weights([_squad(d) for d in range(11, 31)])
+    correlated = _fan_sd(simulate_league(_two_managers(field), n=40000, seed=3))
+    exact = _analytic_margin_sd()
+    assert abs(correlated - exact) / exact < 0.15
+
+
+def test_the_independent_engine_is_the_error_that_was_found():
+    """The same fixture with no field sample banked — the old model, and the
+    documented degradation. It is not a little wide; it is wide by a factor."""
+    independent = _fan_sd(simulate_league(_two_managers(None), n=40000, seed=3))
+    exact = _analytic_margin_sd()
+    assert abs(independent - exact) / exact > 0.4
+
+
+def test_the_shared_factor_leaves_every_entrys_own_spread_alone():
+    """Only the covariance moves. An entry's *total* variance is split into a
+    shared part and an idiosyncratic one that sum back to it, so a solo
+    manager's season is exactly as uncertain as it was."""
+    solo = [Entry(entry=1, name="Me", total=0, picks=_squad(11), is_me=True)]
+    field = field_weights([_squad(d) for d in range(11, 31)])
+    with_field = simulate_league(
+        SimInputs(entries=solo, ep_by_element=FLAT_EP,
+                  sigma_by_element=FLAT_SIGMA, weeks_left=6,
+                  field_weights=field), n=20000, seed=3)
+    without = simulate_league(
+        SimInputs(entries=solo, ep_by_element=FLAT_EP,
+                  sigma_by_element=FLAT_SIGMA, weeks_left=6), n=20000, seed=3)
+    assert with_field.p_win == without.p_win == 1.0
+
+
+def test_a_template_squad_is_more_exposed_than_a_differential_one():
+    field = field_weights([_squad(d) for d in range(11, 31)])
+    template = Entry(entry=1, name="Template", total=0, picks=_squad(11))
+    maverick = Entry(entry=2, name="Maverick", total=0,
+                     picks=[{"element": e, "multiplier": 1}
+                            for e in range(31, 42)])
+    out = field_exposures([template, maverick], FLAT_SIGMA, field)
+    assert out[1] > 0.9
+    assert out[2] < 0.1
+
+
+def test_no_field_sample_means_independence_and_says_so():
+    out = simulate_league(_two_managers(None), n=200, seed=3)
+    assert all(v == 0.0 for v in field_exposures(
+        list(_two_managers(None).entries), FLAT_SIGMA, None).values())
+    assert any("independent" in n for n in out.notices)

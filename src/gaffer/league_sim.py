@@ -95,11 +95,40 @@ the shape the underlying counts have — goals and assists are near-Poisson and
 carry most of the spread — so this is a one-parameter fit to a form the game
 already has, not a curve chosen to fit.
 
-What it deliberately omits: *correlation*. Two players from the same attack,
-or a captain doubling a haul, move together, so a real squad's week is a
-little wider than the sum of its independent parts. The consequence is a
-simulation that is slightly over-confident, in a module that publishes its n
-and its seed and whose floor is still there."""
+What it deliberately omits: *within-squad* correlation. Two players from the
+same attack move together, so a real squad's week is a little wider than the
+sum of its independent parts.
+
+What it no longer omits is the correlation *between* squads, which was the
+larger error by far and pointed the other way — see
+:func:`field_exposures` and :data:`MEASURED_FIELD_CORRELATION`."""
+
+
+MEASURED_FIELD_CORRELATION = 0.68
+"""Mean pairwise correlation between two managers' weekly scores.
+
+Measured on the 300-squad GW2 field sample under this module's own sigmas:
+0.675 as an exact shared-owner covariance, 0.676 as the rank-one template
+approximation :func:`field_exposures` actually simulates. The reviewer's
+independent reading of the same sample put it at 0.589; both are the same
+finding to a decimal that does not matter, which is that it is not zero and
+is not small.
+
+Managers are not independent draws. They own the same players — a template
+squad in the top 10k overlaps another by nine or ten of fifteen — so a week
+where the popular captain hauls is a good week for almost everybody at once,
+and it moves nobody's *rank*. Simulating them as independent inflated every
+margin: the mean pairwise weekly margin standard deviation on that sample is
+12.0 points, and the independent model produced 22.0 — a fan 1.8x too wide,
+which is 1.58x on the reviewer's numbers. A too-wide fan is not a
+conservative error. It pushes every probability toward 0.5, understates a
+leader's grip and overstates a trailer's chances, and it does so silently.
+
+This constant is documentation, not a parameter: nothing reads it. The
+exposures are computed per entry from the banked field sample, so a league of
+unusually differentiated squads gets a lower correlation than a league of
+template ones, which is the truth about that league rather than about this
+number."""
 
 HAUL_SIGMA = 2.0
 """How many player-sigmas above his mean a "haul" pin puts a player. Two is
@@ -143,6 +172,12 @@ class SimInputs:
     sigma_by_element: dict[int, float]
     weeks_left: int
     field_rate: float | None = None
+    field_weights: dict[int, float] | None = None
+    """``element -> the field's mean multiplier on him``
+    (:func:`field_weights`), the template each entry's exposure to the shared
+    weekly factor is measured against. ``None`` with no banked sample, which
+    is the documented degradation to independence — see
+    :data:`DEFAULT_FIELD_EXPOSURE`."""
     notices: list[str] = field(default_factory=list)
     """Degradations the caller should print rather than swallow — see
     :func:`lookup_notices`. A lookup that misses returns zero points, which is
@@ -375,8 +410,15 @@ def _week_one(entry: Entry, ins: SimInputs, pins: Pins) -> tuple[float, float]:
 
 
 def _mu_sd(entry: Entry, ins: SimInputs, rival_drift: float,
-           pins: Pins) -> tuple[float, float]:
-    """The entry's mean and standard deviation over every remaining week.
+           pins: Pins) -> tuple[float, float, float]:
+    """``(mu, sd_first_week, sd_remaining_weeks)`` over the season left.
+
+    Two standard deviations rather than one because week one is pinnable and
+    the rest are not, and because the shared factor of :func:`simulate_league`
+    has to load on each block separately: a pin removes variance from week one
+    only, and that removal must come out of the shared and idiosyncratic parts
+    together. ``sqrt(sd_1 ** 2 + sd_rest ** 2)`` is the season sigma the
+    engine used to return whole.
 
     Week one is :func:`_week_one` — pinned, and the only week any event can
     reach. Weeks two onward are the entry's plain rate, plus, for a rival with
@@ -390,7 +432,7 @@ def _mu_sd(entry: Entry, ins: SimInputs, rival_drift: float,
     """
     weeks = max(int(ins.weeks_left), 0)
     if weeks == 0:
-        return 0.0, 0.0
+        return 0.0, 0.0, 0.0
     rate = entry_rate(entry, ins.ep_by_element)
     sd_week = entry_sigma(entry, ins.sigma_by_element)
     mean1, var1 = _week_one(entry, ins, pins)
@@ -401,8 +443,7 @@ def _mu_sd(entry: Entry, ins: SimInputs, rival_drift: float,
         # sum over w = 2..W of drift * (field - rate) * w / W
         weight = (weeks * (weeks + 1) / 2.0 - 1.0) / weeks
         mu += rival_drift * (float(ins.field_rate) - rate) * weight
-    var = var1 + rest * sd_week ** 2
-    return mu, math.sqrt(max(var, 0.0))
+    return mu, math.sqrt(max(var1, 0.0)), sd_week * math.sqrt(rest)
 
 
 def simulate_league(inputs: SimInputs, *, n: int = SIM_N, seed: int = SIM_SEED,
@@ -410,11 +451,33 @@ def simulate_league(inputs: SimInputs, *, n: int = SIM_N, seed: int = SIM_SEED,
                     pins: Pins | None = None) -> LeagueSim:
     """``n`` seeded seasons of this league, counted.
 
-    One normal draw per entry per simulation, taken as a single
-    ``(n, entries)`` array so the whole run is a handful of numpy calls.
-    Deterministic per seed by construction — the generator is created here and
-    used once — which is what gate G2 checks and what lets the router cache an
-    answer without it changing under the user.
+    **The managers are not drawn independently.** Every simulated week has one
+    common factor — the field's week, good or bad — and each entry is exposed
+    to it in proportion to how much of the field template it owns
+    (:func:`field_exposures`). Entry ``i``'s deviation in a week is
+
+    ``c_i * sd_i * F + sqrt(1 - c_i ** 2) * sd_i * E_i``
+
+    with ``F`` shared and ``E_i`` its own, so its *total* variance is
+    ``sd_i ** 2`` exactly as before and only the covariance structure changes:
+    ``cov(i, j) = c_i c_j sd_i sd_j``. Nothing about any single entry's spread
+    moves; what moves is every comparison between two of them, which is the
+    only thing this module publishes.
+
+    Two shared draws suffice for a whole season. The sum of ``W - 1``
+    independent standard normals is ``sqrt(W - 1)`` times one, so weeks two
+    onward collapse into a single shared ``G`` beside week one's ``F1`` —
+    which is what keeps a 38-week, 50-entry league four numpy calls wide
+    rather than 38 of them.
+
+    With no banked field sample the exposures are
+    :data:`DEFAULT_FIELD_EXPOSURE` — zero, independence, the old behaviour —
+    and a notice says so.
+
+    Deterministic per seed by construction: one ``SeedSequence`` per entry id
+    plus one for the shared stream, so gate G2's reproducibility holds and the
+    answer does not depend on the order the standings endpoint listed people
+    in.
 
     Ties go to the higher current total, which is FPL's own rule and, when two
     draws land on the same float, the only tie-break available that is not a
@@ -443,12 +506,26 @@ def simulate_league(inputs: SimInputs, *, n: int = SIM_N, seed: int = SIM_SEED,
             "no entry in this league is flagged as your entry — the headline "
             "is the first entry in the standings, not yours")
         me = 0
-    mus, sds, totals = [], [], []
+    exposures = field_exposures(entries, inputs.sigma_by_element,
+                                inputs.field_weights)
+    if not inputs.field_weights:
+        notices.append(
+            "no field sample is banked, so the managers are simulated as "
+            "independent of one another — the real correlation is around "
+            "0.68 and the margins below are roughly 1.8x too wide (run "
+            "`gaffer field-scrape`)")
+    mus, sd1s, sdrs, totals = [], [], [], []
     for entry in entries:
-        mu, sd = _mu_sd(entry, inputs, float(rival_drift), pins)
+        mu, sd1, sd_rest = _mu_sd(entry, inputs, float(rival_drift), pins)
         mus.append(mu)
-        sds.append(sd)
+        sd1s.append(sd1)
+        sdrs.append(sd_rest)
         totals.append(float(entry.total))
+    # The field's own week, drawn once per simulation and shared by everybody:
+    # ``shared[:, 0]`` is the pinnable first week and ``shared[:, 1]`` stands
+    # for the sum of every week after it. Entry ids are 1-based in FPL, so 0
+    # is a free key for a stream that belongs to no entry.
+    shared = np.random.default_rng([int(seed), 0]).standard_normal((int(n), 2))
     # One stream per *entry*, keyed on the entry id rather than on the column
     # it happens to occupy. A single ``(n, entries)`` matrix is one call
     # instead of fifty, but it hands column j whatever the standings endpoint
@@ -461,8 +538,13 @@ def simulate_league(inputs: SimInputs, *, n: int = SIM_N, seed: int = SIM_SEED,
     draws = np.empty((int(n), len(entries)))
     for column, entry in enumerate(entries):
         rng = np.random.default_rng([int(seed), int(entry.entry)])
+        own = rng.standard_normal((int(n), 2))
+        c = float(exposures.get(int(entry.entry), DEFAULT_FIELD_EXPOSURE))
+        idio = math.sqrt(max(1.0 - c * c, 0.0))
+        block = c * shared + idio * own
         draws[:, column] = (totals[column] + mus[column]
-                            + rng.standard_normal(int(n)) * sds[column])
+                            + block[:, 0] * sd1s[column]
+                            + block[:, 1] * sdrs[column])
     # A hair of the current total breaks exact ties in the leader's favour
     # without moving any real comparison: totals are integers, so 1e-6 of one
     # can never outrank a genuine point.
@@ -669,6 +751,92 @@ def element_eps(comp: pd.DataFrame) -> dict[int, float]:
     return {int(r.element): float(r.ep) / weeks for r in grouped.itertuples()}
 
 
+DEFAULT_FIELD_EXPOSURE = 0.0
+"""The exposure every entry gets when no field sample is banked.
+
+Zero: independence, exactly as the engine behaved before the shared factor
+existed. There is a temptation to hard-code something like 0.8 here — the
+sample says that is roughly what a template squad's exposure is — but a
+constant borrowed from a league we have not looked at is a correlation
+asserted rather than measured, and the whole point of the finding is that
+this term is large. So the no-sample path keeps the wide fan and *says so*:
+the notice names the degradation and the card's provenance line reads
+"independence assumed — fan wide". Run ``gaffer field-scrape`` and it goes
+away."""
+
+
+def field_weights(sample: list[list[dict]] | None) -> dict[int, float] | None:
+    """``element -> the field's mean multiplier on him``, or ``None``.
+
+    The template squad, written as a portfolio rather than as a list: a player
+    started by 62% of the sample and captained by 20% of it carries 0.82. It
+    is the same reduction :func:`field_rate_from_sample` takes a scalar out
+    of, kept in vector form because :func:`field_exposures` needs the shape.
+    """
+    if not sample:
+        return None
+    weights: dict[int, float] = {}
+    for squad in sample:
+        for element, mult in effective_picks(squad):
+            weights[element] = weights.get(element, 0.0) + float(mult)
+    n = float(len(sample)) or 1.0
+    return {element: value / n for element, value in weights.items()}
+
+
+def field_exposures(entries: list[Entry], sigma_by: dict[int, float],
+                    weights: dict[int, float] | None) -> dict[int, float]:
+    """``entry id -> its correlation with the field's week``, in ``[0, 1]``.
+
+    The one number the shared-factor model needs. Treat one gameweek as a
+    vector of independent player surprises, each with variance
+    ``sigma_e ** 2``. A squad is a weighted sum of them; so is the field
+    template (:func:`field_weights`). The correlation between the two is then
+    ordinary covariance arithmetic:
+
+    ``c_i = sum_e m_ie f_e sigma_e^2 / (sd_i * sqrt(sum_e f_e^2 sigma_e^2))``
+
+    and that is all this is. No constant is fitted and nothing is tuned: a
+    squad built entirely out of template players comes out near 1, a squad of
+    genuine differentials comes out low, and the mean of ``c_i c_j`` over the
+    GW2 sample is 0.676 against an exact shared-owner correlation of 0.675
+    (:data:`MEASURED_FIELD_CORRELATION`). The rank-one approximation is that
+    good because there really is one dominant direction — the template — and
+    it is why one shared draw per week is enough.
+
+    Why the *template* rather than the exact pairwise covariance: a single
+    common factor keeps the simulation one matrix of normals wide instead of a
+    Cholesky factorisation per run, and it degrades to a stated scalar when
+    there is no sample. The exact matrix would buy the fraction of the
+    correlation that is not template-shaped, which the sample says is under a
+    percentage point.
+
+    ``sd_i`` here is the *unfloored* quadrature, because
+    :data:`WEEKLY_SIGMA_FLOOR` is a guard against a degenerate squad and not a
+    description of one; dividing by it would report a template squad of
+    unknown players as uncorrelated with the template.
+    """
+    if not weights:
+        return {int(e.entry): DEFAULT_FIELD_EXPOSURE for e in entries}
+    var_field = sum(w ** 2 * float(sigma_by.get(element, 0.0)) ** 2
+                    for element, w in weights.items())
+    if var_field <= 0.0:
+        return {int(e.entry): DEFAULT_FIELD_EXPOSURE for e in entries}
+    out: dict[int, float] = {}
+    for entry in entries:
+        picks = effective_picks(entry.picks)
+        var = sum((mult * float(sigma_by.get(element, 0.0))) ** 2
+                  for element, mult in picks)
+        cov = sum(mult * float(weights.get(element, 0.0))
+                  * float(sigma_by.get(element, 0.0)) ** 2
+                  for element, mult in picks)
+        if var <= 0.0:
+            out[int(entry.entry)] = DEFAULT_FIELD_EXPOSURE
+            continue
+        out[int(entry.entry)] = min(
+            1.0, max(0.0, cov / math.sqrt(var * var_field)))
+    return out
+
+
 def field_rate_from_sample(sample: list[list[dict]] | None,
                            ep_by: dict[int, float]) -> float | None:
     """The sampled field's mean weekly rate, or ``None`` with no sample.
@@ -746,6 +914,7 @@ def build_inputs(cfg, client, *, gw: int | None = None) -> SimInputs:
                      sigma_by_element=sigma_by,
                      weeks_left=max(0, SEASON_GWS - int(plan_gw) + 1),
                      field_rate=field_rate_from_sample(sample, ep_by),
+                     field_weights=field_weights(sample),
                      notices=lookup_notices(entries, ep_by))
 
 
