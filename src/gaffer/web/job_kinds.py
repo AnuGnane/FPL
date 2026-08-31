@@ -108,6 +108,22 @@ def run_field_scrape_job() -> dict:
     return {"rows": rows}
 
 
+def run_review_job() -> dict:
+    """``gaffer review`` — grade the finished gameweeks (v8b F2).
+
+    ``run_review`` prints one line per gameweek and answers ``[]`` on every
+    failure, so the only work here is turning that into the count the job
+    record carries. Zero gameweeks is a success: it is what an already-
+    reviewed season looks like, which is what the Tuesday job sees every week
+    the previous run worked.
+    """
+    from gaffer.review import run_review
+
+    gws = list(run_review() or [])
+    print(f"Reviewed {len(gws)} gameweeks into reports/decision_ledger.json.")
+    return {"gws": len(gws)}
+
+
 JOB_KINDS: dict[str, Callable[[], Any]] = {
     "advise": run_train_and_advise,
     "advise-fast": run_train_and_advise_fast,
@@ -116,6 +132,7 @@ JOB_KINDS: dict[str, Callable[[], Any]] = {
     "news-shadow": run_news_shadow,
     "snapshot": run_snapshot_job,
     "field-scrape": run_field_scrape_job,
+    "review": run_review_job,
     "track-pens": run_track_pens,
 }
 """The allow-list. A kind not in here is a 404, never an exec of user input."""
