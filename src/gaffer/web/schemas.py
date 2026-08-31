@@ -209,7 +209,9 @@ class LeagueWhatIfRow(BaseModel):
     name: str
     is_you: bool
     total: int
-    p_win: float
+    p_win: float | None = None
+    """This entry's win frequency in the same run as the headline, or ``None``
+    when its squad could not be read (``league_sim.is_readable``)."""
     exp_finish: float
 
 

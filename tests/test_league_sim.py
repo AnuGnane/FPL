@@ -524,3 +524,52 @@ def test_the_notice_counts_the_unreadable_entries():
         n=100, seed=4)
     assert any(n.startswith("2 entries' squads could not be read")
                for n in out.notices)
+
+
+# --- the per-entry win frequencies -----------------------------------------
+
+
+def _ten():
+    """A ten-horse race with a ladder of totals and one clear favourite.
+
+    Equal squads, so the only thing separating them is the points already on
+    the board — which is the shape a real mini-league in March has, and the
+    shape that makes the folded-``p_beat`` column visibly wrong."""
+    picks = [{"element": 7, "multiplier": 2}, {"element": 8, "multiplier": 1}]
+    return [_me(total=200)] + [
+        Entry(entry=i, name=f"Rival {i}", total=180 + 10 * i,
+              picks=list(picks)) for i in range(2, 11)]
+
+
+def test_the_win_frequencies_are_counted_not_folded():
+    """Every entry's ``p_win`` is a frequency off the run's own matrix, so the
+    column sums to one and my own row *is* the headline."""
+    out = simulate_league(_inputs(entries=_ten()), n=4000, seed=4)
+    values = list(out.p_win_by_entry.values())
+    assert len(values) == 10
+    assert sum(values) == pytest.approx(1.0, abs=0.005)
+    assert out.p_win_by_entry[1] == out.p_win
+
+
+def test_a_rivals_win_frequency_is_not_his_pairwise_share():
+    """The bug the panel shipped: ``1 - p_beat`` renormalised over the losing
+    mass is a pairwise number wearing a league-wide label. On a ten-entry
+    league the two disagree by a wide margin, and the counted one is right."""
+    out = simulate_league(_inputs(entries=_ten()), n=4000, seed=4)
+    beats = {int(r["entry"]): float(r["p_beat"]) for r in out.per_rival}
+    losing = sum(1.0 - b for b in beats.values())
+    leader = max(beats, key=lambda e: 1.0 - beats[e])
+    folded = (1.0 - out.p_win) * (1.0 - beats[leader]) / losing
+    # 0.13 against 0.50 on this fixture — the same shape as the 45%-for-82%
+    # the reviewer measured on the live league.
+    assert abs(folded - out.p_win_by_entry[leader]) > 0.3
+
+
+def test_an_unreadable_entry_has_no_win_frequency():
+    out = simulate_league(
+        _inputs(entries=[_me(), _rival(),
+                         Entry(entry=9, name="Ghost", total=1, picks=[])]),
+        n=200, seed=4)
+    assert out.p_win_by_entry[9] is None
+    assert sum(v for v in out.p_win_by_entry.values() if v is not None) \
+        == pytest.approx(1.0, abs=0.01)

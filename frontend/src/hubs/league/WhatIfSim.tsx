@@ -222,7 +222,7 @@ export default function WhatIfSim({ squad, rivals }: WhatIfSimProps) {
                     {row.total}
                   </td>
                   <td className="num py-1 text-right text-text">
-                    {fmtPct(row.p_win)}
+                    {row.p_win === null ? '—' : fmtPct(row.p_win)}
                   </td>
                 </tr>
               ))}

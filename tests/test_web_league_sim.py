@@ -301,3 +301,64 @@ def test_a_dead_api_is_a_422_here_too(client, monkeypatch):
     monkeypatch.setattr("gaffer.web.routers.league_sim._CACHE", {})
     res = client.post("/api/league/whatif", json={"pins": []})
     assert res.status_code == 422
+
+
+# --- the projected table is the engine's own count -------------------------
+
+
+TEN = {"standings": {"has_next": False, "results": (
+    [{"entry": 1, "entry_name": "You FC", "player_name": "Me", "rank": 9,
+      "last_rank": 9, "total": 200, "event_total": 55}]
+    + [{"entry": i, "entry_name": f"Rival {i}", "player_name": f"R{i}",
+        "rank": 11 - i, "last_rank": 11 - i, "total": 180 + 10 * i,
+        "event_total": 55} for i in range(2, 11)])}}
+
+
+class TenClient(FakeClient):
+    """Ten entries on identical squads and a ladder of totals — the shape a
+    mini-league has in March, and the one that exposed the folded column."""
+
+    def get_league_standings(self, league_id, page=1):
+        return TEN
+
+    def get_entry_picks(self, entry_id, gw):
+        return MY_PICKS
+
+
+def test_the_whatif_table_is_the_engines_own_win_frequencies(client,
+                                                             monkeypatch):
+    """Not a renormalisation of ``p_beat``: every cell is the frequency the
+    same scored matrix counted, so the panel and the headline cannot
+    disagree about who is winning."""
+    monkeypatch.setattr("gaffer.web.routers.league_sim.fpl_client",
+                        lambda: TenClient())
+    monkeypatch.setattr("gaffer.web.routers.league_sim._CACHE", {})
+    body = client.post("/api/league/whatif", json={"pins": []}).json()
+    from gaffer.web.routers.league_sim import _CACHE
+
+    (sim, _inputs), = _CACHE.values()
+    assert {r["entry"]: r["p_win"] for r in body["table"]} \
+        == {int(k): v for k, v in sim.p_win_by_entry.items()}
+    assert sum(r["p_win"] for r in body["table"]) == pytest.approx(1.0,
+                                                                  abs=0.005)
+    mine, = [r for r in body["table"] if r["is_you"]]
+    assert mine["p_win"] == body["p_win"]
+
+
+def test_the_leaders_row_is_not_a_pairwise_share(client, monkeypatch):
+    """The reviewer's measurement, reproduced: the folded number the panel
+    used to print is a long way from the counted one."""
+    monkeypatch.setattr("gaffer.web.routers.league_sim.fpl_client",
+                        lambda: TenClient())
+    monkeypatch.setattr("gaffer.web.routers.league_sim._CACHE", {})
+    body = client.post("/api/league/whatif", json={"pins": []}).json()
+    from gaffer.web.routers.league_sim import _CACHE
+
+    (sim, _inputs), = _CACHE.values()
+    beats = {int(r["entry"]): float(r["p_beat"]) for r in sim.per_rival}
+    losing = sum(1.0 - b for b in beats.values())
+    leader = max(beats, key=lambda e: 1.0 - beats[e])
+    folded = (1.0 - sim.p_win) * (1.0 - beats[leader]) / losing
+    counted, = [r["p_win"] for r in body["table"] if r["entry"] == leader]
+    assert counted > 0.2
+    assert abs(folded - counted) > 0.1

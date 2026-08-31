@@ -155,27 +155,23 @@ def _elements_by_code() -> dict[int, int]:
 def _entry_probabilities(sim, inputs) -> list[LeagueWhatIfRow]:
     """The projected table under one run: every entry, my odds beside theirs.
 
-    ``p_win`` for a rival is ``1 - p_beat`` folded through the same run — not
-    a second simulation, because two simulations of one league produce two
-    tables that do not sum to one and a panel whose column does not add up is
-    a panel nobody believes. My own row carries the run's ``p_win`` and the
-    remainder is split by each rival's share of the losing mass.
+    Every cell is a *win frequency* off the run's own ``scored`` matrix
+    (``LeagueSim.p_win_by_entry``), so the column is the same measurement my
+    headline is and the table sums to one up to rounding.
+
+    It used to be built here, by renormalising each rival's ``1 - p_beat``
+    over the losing mass. ``p_beat`` is pairwise: "do I finish above him",
+    with the other eight managers absent from the question entirely. Folding
+    it produced a number that was not P(win) and did not claim to be measured
+    — on league 1794743 the leader's row read 45% where the same matrix, asked
+    directly, says 82%. Nothing is renormalised now and nothing is inferred.
     """
-    me = next((e for e in inputs.entries if e.is_me), None)
-    beats = {int(r["entry"]): float(r["p_beat"]) for r in sim.per_rival}
-    losing = sum(1.0 - beats.get(int(e.entry), 0.0)
-                 for e in inputs.entries if not e.is_me) or 1.0
     rows = []
     for entry in inputs.entries:
-        if entry.is_me:
-            p_win = sim.p_win
-        else:
-            share = (1.0 - beats.get(int(entry.entry), 0.0)) / losing
-            p_win = (1.0 - sim.p_win) * share
         rows.append(LeagueWhatIfRow(
             entry=int(entry.entry), name=str(entry.name),
             is_you=bool(entry.is_me), total=int(entry.total),
-            p_win=round(p_win, 4),
+            p_win=sim.p_win_by_entry.get(int(entry.entry)),
             exp_finish=(sim.exp_finish if entry.is_me else 0.0)))
     rows.sort(key=lambda r: -r.total)
     return rows

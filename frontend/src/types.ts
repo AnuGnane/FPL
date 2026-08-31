@@ -777,7 +777,9 @@ export interface LeagueWhatIfRow {
   name: string
   is_you: boolean
   total: number
-  p_win: number
+  /** The entry's win frequency in the same run as the headline — not a
+   *  renormalised pairwise number. null when the squad could not be read. */
+  p_win: number | null
   exp_finish: number
 }
 

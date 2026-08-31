@@ -179,6 +179,21 @@ class LeagueSim:
     weeks_left: int
     rival_drift: float
     notices: list[str] = field(default_factory=list)
+    p_win_by_entry: dict[int, float | None] = field(default_factory=dict)
+    """``entry id -> P(this manager wins the league)``, counted off the same
+    ``scored`` matrix as everything else in this object.
+
+    The panel's projected table used to build this itself, by renormalising
+    each rival's ``1 - p_beat`` over the losing mass. That is not a
+    probability of winning and it is not close to one: ``p_beat`` is
+    *pairwise* — it says nothing about the eight other people the rival also
+    has to beat — so a leader whose true win frequency was 0.82 rendered at
+    0.45, and the error is largest exactly where the panel is most read.
+
+    ``None`` for an entry whose squad could not be read (:func:`is_readable`).
+    Otherwise the values are the win frequencies of one shared run and sum to
+    one up to rounding, and :attr:`p_win` is this dict's entry for my own
+    manager *by construction* rather than by coincidence."""
 
 
 XI_SIZE = 11
@@ -478,15 +493,30 @@ def simulate_league(inputs: SimInputs, *, n: int = SIM_N, seed: int = SIM_SEED,
                              if i in set(live) else None)}
                  for i in rivals]
     quantiles = np.quantile(margin, MARGIN_QUANTILES)
+    # Who actually won each simulated season. ``argmax`` is the stated
+    # tie-break convention: the highest-scoring column, and on an exact float
+    # tie the leftmost of them. That the tie never fires in practice is the
+    # 1e-9 total nudge above — two continuous draws landing on the same double
+    # is not a case worth splitting mass over — but the convention is written
+    # down rather than left to whichever count happened to be taken first.
+    # Counting winners here rather than folding ``p_beat`` is what makes the
+    # column sum to one and makes my own row agree with the headline.
+    winners = np.asarray(live)[scored[:, live].argmax(axis=1)]
+    freq = np.bincount(winners, minlength=len(entries)) / float(n)
+    live_set = set(live)
+    p_win_by_entry = {int(e.entry): (round(float(freq[i]), 4)
+                                     if i in live_set else None)
+                      for i, e in enumerate(entries)}
     return LeagueSim(
-        p_win=round(float((rank == 1).mean()), 4),
+        p_win=float(p_win_by_entry[int(entries[me].entry)] or 0.0),
         p_top3=round(float((rank <= 3).mean()), 4),
         exp_finish=round(float(rank.mean()), 3),
         per_rival=per_rival,
         margin_quantiles={k: round(float(v), 1)
                           for k, v in zip(MARGIN_KEYS, quantiles)},
         n=int(n), seed=int(seed), weeks_left=int(inputs.weeks_left),
-        rival_drift=float(rival_drift), notices=notices)
+        rival_drift=float(rival_drift), notices=notices,
+        p_win_by_entry=p_win_by_entry)
 
 
 def multi_seed(inputs: SimInputs, seeds: list[int], *, n: int = SIM_N,
