@@ -21,12 +21,35 @@ const EMPTY_WHATIF: WhatIfRequest = {
 
 export default function Planning() {
   const [gw, setGw] = useState<number | null>(null)
+  // code → team code, from the six player keys v9a's identity.py decorates on
+  // the way out of /api/advice/latest. Built from the response Planning
+  // already makes, so the timeline's fixture chips cost no extra request
+  // (plan A11). A player the advice never named is simply absent, and the
+  // timeline draws no chip for him.
+  const [teamByCode, setTeamByCode] = useState<Map<number, number>>(new Map())
   const [missing, setMissing] = useState(false)
   const [whatif, setWhatif] = useState<WhatIfRequest>(EMPTY_WHATIF)
 
   useEffect(() => {
     apiGet<AdviceLatest>('/api/advice/latest')
-      .then((body) => setGw(body.gw))
+      .then((body) => {
+        setGw(body.gw)
+        const map = new Map<number, number>()
+        const a = body.advice
+        // captain and vice are single refs, not arrays; a payload written
+        // before v9a's enrichment carries `team_code: undefined`, which the
+        // typeof guard covers along with an explicit null.
+        // `?? []` on the lists: the map is a decoration on the timeline, and
+        // an advice payload that is missing one of them must not take the
+        // whole hub to its "nothing planned yet" state.
+        for (const ref of [...(a?.xi ?? []), ...(a?.bench ?? []),
+          ...(a?.buys ?? []), ...(a?.sells ?? []), a?.captain, a?.vice]) {
+          if (ref && typeof ref.team_code === 'number') {
+            map.set(ref.code, ref.team_code)
+          }
+        }
+        setTeamByCode(map)
+      })
       .catch(() => setMissing(true))
   }, [])
 
@@ -57,7 +80,7 @@ export default function Planning() {
           <Tabs.Trigger value="ticker" className={TAB_CLASS}>Ticker</Tabs.Trigger>
         </Tabs.List>
         <Tabs.Content value="timeline">
-          {gw !== null && <Timeline gw={gw} />}
+          {gw !== null && <Timeline gw={gw} teamByCode={teamByCode} />}
         </Tabs.Content>
         <Tabs.Content value="whatif">
           <WhatIfTab value={whatif} onChange={setWhatif} />

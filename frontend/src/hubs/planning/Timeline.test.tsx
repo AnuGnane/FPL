@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Timeline from './Timeline'
+import { difficultyBackground } from '../../kit'
 
 const { apiGet } = vi.hoisted(() => ({ apiGet: vi.fn() }))
 
@@ -75,5 +76,67 @@ describe('Timeline', () => {
     render(<Timeline gw={5} />)
     expect(await screen.findByText(/no plan/i)).toBeInTheDocument()
     expect(screen.getByText('Run advise')).toBeInTheDocument()
+  })
+})
+
+describe('Timeline difficulty chips', () => {
+  const TICKER = {
+    gws: [5], source: 'odds',
+    teams: [{
+      code: 43, name: 'Man City', short_name: 'MCI', mean_difficulty: 0.5,
+      cells: [{ gw: 5, opponent: 'ARS', home: true, difficulty: 0.7 }],
+    }],
+  }
+
+  function mockBoth() {
+    apiGet.mockImplementation((path: string) => {
+      if (path.startsWith('/api/plan/')) return Promise.resolve(TIMELINE)
+      if (path.startsWith('/api/fixtures/ticker')) {
+        return Promise.resolve(TICKER)
+      }
+      return Promise.reject(new Error(`unexpected ${path}`))
+    })
+  }
+
+  it('tints each named team by the ticker\'s own difficulty for that week',
+    async () => {
+      mockBoth()
+      render(<Timeline gw={5} teamByCode={new Map([[3, 43]])} />)
+      const chip = await screen.findByTestId('gw-fixture-43-5')
+      // The same number and the same function as the ticker square: two ramps
+      // for one idea is how two views end up disagreeing about how hard a
+      // fixture is, in the same colour scale, on the same page.
+      expect(chip).toHaveTextContent('ARS (H)')
+      expect(chip.getAttribute('style'))
+        .toContain(difficultyBackground(0.7).slice(0, 20))
+    })
+
+  it('draws no strip for a gameweek the ticker payload does not cover',
+    async () => {
+      // Spec D6: absent, not guessed. A horizon that runs past the ticker's
+      // window is the ordinary case in the last weeks of a season.
+      mockBoth()
+      render(<Timeline gw={5} teamByCode={new Map([[3, 43]])} />)
+      expect(await screen.findByTestId('plan-week-6')).toBeInTheDocument()
+      expect(screen.queryByTestId('gw-strip-6')).not.toBeInTheDocument()
+    })
+
+  it('draws no strip at all when the ticker fetch fails', async () => {
+    // The timeline is the feature; the tint is a decoration on it. A failed
+    // decoration must cost the decoration and nothing else.
+    apiGet.mockImplementation((path: string) => (
+      path.startsWith('/api/plan/')
+        ? Promise.resolve(TIMELINE)
+        : Promise.reject(new Error('ticker down'))))
+    render(<Timeline gw={5} teamByCode={new Map([[3, 43]])} />)
+    expect(await screen.findByTestId('plan-week-5')).toBeInTheDocument()
+    expect(screen.queryByTestId('gw-strip-5')).not.toBeInTheDocument()
+  })
+
+  it('draws nothing for a player the advice payload never named', async () => {
+    mockBoth()
+    render(<Timeline gw={5} teamByCode={new Map()} />)
+    expect(await screen.findByTestId('plan-week-5')).toBeInTheDocument()
+    expect(screen.queryByTestId('gw-strip-5')).not.toBeInTheDocument()
   })
 })
