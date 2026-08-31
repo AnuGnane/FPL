@@ -29,7 +29,7 @@ const REPORT = {
       count: 18, frequency: 0.9 },
     { kind: 'captain', code: 101, gw: 5, label: 'captain', name: 'Haaland',
       count: 12, frequency: 0.6 },
-    // Filtered out: not one of the four move kinds the card lists.
+    // Filtered out: not one of the move kinds the card lists.
     { kind: 'hold', code: 0, gw: 5, label: 'no transfer', name: '',
       count: 4, frequency: 0.2 },
   ],
@@ -55,7 +55,7 @@ describe('SensitivityCard', () => {
       .toBeInTheDocument()
   })
 
-  it('lists only the four move kinds, most frequent first', async () => {
+  it('lists only the move kinds it can price, most frequent first', async () => {
     render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
     await screen.findByText('Salah')
     expect(screen.queryByText('no transfer')).not.toBeInTheDocument()

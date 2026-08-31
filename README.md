@@ -300,11 +300,19 @@ layer being credited with a move you made.
 **Run sensitivity** on the What-If tab re-solves the saved board twenty times
 under seeded noise drawn from the same minutes-driven error scale the advice
 sweep uses, and writes `reports/sensitivity_gw{N}.json`: how often each buy,
-sell, captain and chip survives, the modal plan, and what the best *differing*
-plan would have cost priced on the true board. It takes two to three minutes,
-it never runs inside `gaffer advise`, and it never changes a served number —
-it is a report about the plan, not a revision of it. With the same seed it is
-the same report.
+sell and captain survives, the modal plan, and what the best *differing* plan
+would have cost priced on the true board. That last number is signed — the
+plan the sweep reaches most often is not always the one the true board prices
+highest, and when they disagree the card says which way round it is. Chips
+are not swept: the solver's plan object carries no chip, so there is nothing
+to count.
+
+The seed is the configured `[scenarios] seed` plus a million plus the
+gameweek, which keeps the sweep's draws independent of the advice path's own
+per-gameweek seeds rather than a replay of the draws it already gated its
+moves on. It takes about five seconds, it never runs inside `gaffer advise`,
+and it never changes a served number — it is a report about the plan, not a
+revision of it. With the same seed it is the same report.
 
 A **draft** is a named set of what-if constraints in `reports/drafts.json`,
 not a frozen squad, so it still means something after Thursday's price changes

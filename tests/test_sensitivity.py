@@ -252,3 +252,31 @@ def test_the_sweep_re_solves_the_saved_board_and_nothing_else(board):
 
 def test_the_default_k_is_the_specs_twenty():
     assert SENSITIVITY_K == 20
+
+
+def test_the_report_makes_no_claim_about_chips(board):
+    """``optimize.milp.Plan`` carries no chip, so a chip frequency can never
+    be counted and a modal plan can never name one. Reporting the field would
+    be reporting a column that is empty by construction — and ``optimize`` is
+    not ours to add one to."""
+    import inspect
+
+    from gaffer import sensitivity as module
+    from gaffer.optimize.milp import Plan
+
+    assert "chip" not in getattr(Plan, "__dataclass_fields__", {})
+    source = inspect.getsource(module)
+    assert 'getattr(plan, "chip"' not in source
+    payload = run_sensitivity(k=3, seed=1)
+    assert "chip" not in payload["modal"]
+    assert not [r for r in payload["frequencies"] if r["kind"] == "chip"]
+
+
+def test_the_default_seed_is_the_advice_seed_moved_out_of_its_way(board,
+                                                                  monkeypatch):
+    """I4: the sweep must not re-draw the advice path's own noise sequence."""
+    from gaffer.config import serving_config
+
+    base = int(serving_config().scenarios_seed)
+    payload = run_sensitivity(k=2)
+    assert payload["seed"] == base + 1_000_000 + 5

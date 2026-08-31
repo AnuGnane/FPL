@@ -958,7 +958,6 @@ export interface SensitivityPlan {
   buys: NamedPlayer[]
   sells: NamedPlayer[]
   captain: NamedPlayer | null
-  chip: string | null
   hits: number
   value: number
 }

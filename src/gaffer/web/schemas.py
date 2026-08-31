@@ -1128,7 +1128,6 @@ class SensitivityPlan(BaseModel):
     buys: list[NamedPlayer] = Field(default_factory=list)
     sells: list[NamedPlayer] = Field(default_factory=list)
     captain: NamedPlayer | None = None
-    chip: str | None = None
     hits: int = 0
     value: float = 0.0
     """Horizon expected points on the **true** EP table, so two signatures are

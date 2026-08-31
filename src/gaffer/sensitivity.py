@@ -101,12 +101,17 @@ def plan_signature(plan) -> tuple:
     re-planned from scratch next Tuesday, so counting them would split the
     frequencies on decisions nobody is taking. Sorted tuples rather than sets
     so the signature is hashable *and* serialisable.
+
+    Buys, sells and the armband, and nothing else. A chip belongs in the
+    decision this describes, but ``optimize.milp.Plan`` does not carry one and
+    ``optimize`` is not this module's to change: reading a chip off it would
+    always read the empty string, and a signature field that is constant is a
+    field that quietly claims the sweep considered something it never did.
     """
     first = plan.gw_plans[0]
     return (tuple(sorted(int(c) for c in first.buys)),
             tuple(sorted(int(c) for c in first.sells)),
-            int(first.captain),
-            str(getattr(plan, "chip", "") or ""))
+            int(first.captain))
 
 
 def plan_value(gw_plans, ep_by: dict, weeks: int, hit_cost: int) -> float:
@@ -163,6 +168,11 @@ def run_sensitivity(gw: int | None = None, k: int = SENSITIVITY_K,
     rather than shared: two existing tests pin ``solve_whatif``'s own source
     text and module namespace (plan A7).
 
+    The default seed is the configured ``scenarios_seed`` moved a million
+    clear of the advice path's own per-gameweek seeds, so this sweep's draws
+    are independent of the ones the advice already gated its moves on rather
+    than a replay of them.
+
     Raises :class:`GafferError` when there is no saved state, which is the
     job runner's signal to say "run `gaffer advise` first" rather than 500.
     """
@@ -184,8 +194,13 @@ def run_sensitivity(gw: int | None = None, k: int = SENSITIVITY_K,
     if seed is None:
         from gaffer.config import serving_config
         # Per gameweek, like the advice sweep: one fixed seed reused every
-        # week would re-draw the same noise sequence all season.
-        seed = int(serving_config().scenarios_seed) + int(gw)
+        # week would re-draw the same noise sequence all season. Offset a
+        # million clear of the advice path's own seeds so the two sweeps are
+        # independent draws — `scenarios_seed + gw` is the gating sweep's
+        # number, and a report that re-ran exactly the draws the advice
+        # already gated on would agree with it for that reason and not
+        # because the plan is robust.
+        seed = int(serving_config().scenarios_seed) + 1_000_000 + int(gw)
     xmins, notice = _xmins(gw, ep_by)
 
     solve_state = SolveInput(owned_codes=state.owned_codes, bank=state.bank,
@@ -221,7 +236,6 @@ def run_sensitivity(gw: int | None = None, k: int = SENSITIVITY_K,
                 "buys": _refs(first.buys, meta),
                 "sells": _refs(first.sells, meta),
                 "captain": _refs([first.captain], meta)[0],
-                "chip": (str(getattr(plan, "chip", "")) or None),
                 "hits": int(first.hits),
                 "value": plan_value(plan.gw_plans, ep_by, weeks,
                                     int(opt["hit_cost"])),

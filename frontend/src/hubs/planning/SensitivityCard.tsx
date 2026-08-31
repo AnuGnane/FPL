@@ -3,10 +3,14 @@ import { apiGet } from '../../api/client'
 import { Card, JobButton, fmtNum } from '../../kit'
 import type { SensitivityReport } from '../../types'
 
-/** Moves worth showing: the ones that are neither certain nor negligible are
- *  the whole point, but a 100% row is the reassurance and a 5% row is the
- *  warning, so the cut is on nothing at all. */
-const KINDS = ['buy', 'sell', 'captain', 'chip']
+/** The move kinds this card lists. No frequency cut at all: the ones that are
+ *  neither certain nor negligible are the whole point, but a 100% row is the
+ *  reassurance and a 5% row is the warning, so both stay.
+ *
+ *  No 'chip' row. The sweep's plans carry no chip — `optimize.milp.Plan` has
+ *  no such field — so a chip frequency is a row that can never appear, and an
+ *  empty column reads as "the sweep never played one". */
+const KINDS = ['buy', 'sell', 'captain']
 
 function pct(frequency: number): string {
   return `${Math.round(frequency * 100)}%`
