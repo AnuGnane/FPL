@@ -58,6 +58,14 @@ one journalist declining to pick a squad player, which is not evidence about
 anything.
 """
 
+XI_SIZE = 11
+"""Resolved predicted starters a club needs before its omissions are read.
+
+An XI is eleven names. Fewer than that is a parse that fell short, and the
+players it failed to reach are indistinguishable from the players the
+journalist left out — so nothing at that club is news.
+"""
+
 ABSENCE_SLOTS = {"out": "out", "banned": "out", "suspended": "out",
                  "doubts": "doubt", "doubt": "doubt"}
 """The page's own labels -> our slots. A ban and an injury are both a zero
@@ -300,12 +308,16 @@ def fetch_lineups(players: pd.DataFrame, teams: pd.DataFrame,
     out = (out.sort_values("p_start_hint")
            .groupby("code", as_index=False).head(1))
     if absence:
-        # The clubs whose *pitch* parsed. An absence list on its own is not a
-        # team sheet, and reading one as though it were would damp everybody
-        # at a club whose XI the page never printed.
-        covered = set(pd.to_numeric(
-            club_codes[parsed["slot"] == "start"], errors="coerce")
-            .dropna().astype(int))
+        # The clubs whose *whole* XI came back resolved. An absence list on
+        # its own is not a team sheet, and neither is half a pitch: a
+        # redesign, a truncated fetch or a photo URL we failed to read leaves
+        # a handful of names, and damping everyone missing from those would
+        # dock real starters for a bug on our side. Counted on the resolved
+        # rows rather than the parsed ones, because a name that never reached
+        # a code is exactly the failure this guards.
+        starters = out.loc[out["p_start_hint"] == 1.0, "code"]
+        per_club = (starters.map(team_of).dropna().astype(int).value_counts())
+        covered = set(per_club[per_club >= XI_SIZE].index)
         extra = notable_absences(players, covered, set(out["code"]),
                                  absence_damp)
         if not extra.empty:

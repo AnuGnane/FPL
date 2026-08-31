@@ -695,6 +695,53 @@ def test_a_player_already_on_an_absence_list_is_not_damped_twice():
     assert out.empty
 
 
+def _xi_players(n: int = 12) -> pd.DataFrame:
+    """One club, ``n`` equally-nailed-on regulars, codes 200 upward."""
+    return pd.DataFrame([
+        {"code": 200 + i, "name": f"P{i}", "first_name": "P",
+         "second_name": f"Player{i}", "team_code": 3, "starts": 10,
+         "minutes": 900} for i in range(n)]).assign(news="")
+
+
+def _xi_markup(codes) -> str:
+    """An Arsenal section whose pitch names exactly ``codes``."""
+    items = "".join(
+        f'<li title="Player{c - 200} (P)">'
+        f'<img src="https://resources.premierleague.com/premierleague25'
+        f'/photos/players/110x140/{c}.png"></li>' for c in codes)
+    return f'<h2>Arsenal</h2><ul class="row-1">{items}</ul>'
+
+
+def test_a_partly_parsed_pitch_damps_nobody(tmp_path):
+    """Seven names is a redesign or a truncated fetch, not a team sheet.
+
+    Reading it as one would damp the four regulars the parser simply failed
+    to reach — real starters, docked for a bug on our side. Coverage means a
+    resolved XI, and eleven is what an XI is.
+    """
+    from gaffer.data.news.lineups import fetch_lineups
+
+    players = _xi_players()
+    client = httpx.Client(transport=_transport(
+        [], _xi_markup(range(200, 207))))
+    out = fetch_lineups(players, _teams(), cache_dir=tmp_path, client=client,
+                        absence=True, absence_damp=0.75)
+    assert out["absence_damp"].isna().all()
+    assert len(out) == 7
+
+
+def test_a_whole_parsed_xi_still_damps_the_regular_it_left_out(tmp_path):
+    from gaffer.data.news.lineups import fetch_lineups
+
+    players = _xi_players()
+    client = httpx.Client(transport=_transport(
+        [], _xi_markup(range(200, 211))))
+    out = fetch_lineups(players, _teams(), cache_dir=tmp_path, client=client,
+                        absence=True, absence_damp=0.75)
+    damped = out[out["absence_damp"].notna()]
+    assert list(damped["code"]) == [211]
+
+
 def test_fetch_lineups_emits_absence_rows_beside_the_hints(tmp_path):
     from gaffer.data.news.lineups import LINEUP_COLS, fetch_lineups
 
