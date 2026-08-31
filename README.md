@@ -281,7 +281,9 @@ starts and he lasts".
 
 Three things it deliberately will not do. It applies to the imminent gameweek
 only, like every other team-news adjustment, because a claim about Saturday
-says nothing about the Wednesday after. It cannot override expected *points* —
+says nothing about the gameweek after — though it does cover both fixtures of
+a double gameweek, since "he is fit" is a claim about the player and not
+about one team sheet. It cannot override expected *points* —
 only minutes — so a bad afternoon cannot rewrite the model's whole opinion of
 a player. And it is recorded rather than hidden: the availability artifact and
 the daily snapshot both carry an `override` marker, This Week's why-panel

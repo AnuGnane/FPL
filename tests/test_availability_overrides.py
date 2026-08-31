@@ -120,9 +120,13 @@ def test_a_pin_bites_the_first_gameweek_only(tmp_path, monkeypatch):
     assert mine["p_play"].iloc[1] < 1.0
 
 
-def test_a_double_gameweek_is_pinned_once(tmp_path, monkeypatch):
-    """_first_rows' one-row-per-player rule: a pin is one claim about the
-    player, not one claim per fixture."""
+def test_a_double_gameweek_is_pinned_on_both_fixtures(tmp_path, monkeypatch):
+    """A pin is a claim about the *player*, so it covers both of a double's
+    fixtures — unlike the line-up passes, which take one row per player
+    because a predicted XI is one team sheet for one match. "He is fit" is as
+    true of Wednesday's game as of Saturday's, and pinning only the first
+    would leave the second fixture priced at the 25% the manager just
+    contradicted."""
     monkeypatch.chdir(tmp_path)
     set_override(1, p_play=1.0, known_codes=CODES)
     pred = pd.concat([_pred(), _pred()], ignore_index=True).sort_values(
@@ -130,7 +134,23 @@ def test_a_double_gameweek_is_pinned_once(tmp_path, monkeypatch):
     out = apply_availability(pred, _avail(status="d", chance=25.0),
                              overrides=True)
     pinned = out[(out["code"] == 1)]["p_play"].tolist()
-    assert sum(1 for v in pinned if v == pytest.approx(1.0)) == 1
+    assert pinned == [pytest.approx(1.0), pytest.approx(1.0)]
+    # Nobody else's fixtures moved.
+    assert out[out["code"] == 2]["p_play"].tolist() == [pytest.approx(0.8)] * 2
+
+
+def test_a_double_gameweek_e_min_pin_covers_both_fixtures(tmp_path,
+                                                          monkeypatch):
+    """The absolute half of the same claim: 30 minutes is 30 minutes in each
+    of the two matches, which is what "expected minutes" has always meant per
+    fixture everywhere else in the frame."""
+    monkeypatch.chdir(tmp_path)
+    set_override(1, e_min=30.0, known_codes=CODES)
+    pred = pd.concat([_pred(), _pred()], ignore_index=True).sort_values(
+        ["code", "gw"]).reset_index(drop=True)
+    out = apply_availability(pred, _avail(), overrides=True)
+    assert out[out["code"] == 1]["e_min"].tolist() == [
+        pytest.approx(30.0)] * 2
 
 
 def test_the_override_columns_never_reach_the_component_frame(tmp_path,

@@ -340,11 +340,21 @@ def _override_first_gw(out: pd.DataFrame) -> pd.DataFrame:
     Written as a loop over the bitten index rather than vectorised. The bitten
     set is at most :data:`gaffer.overrides.MAX_OVERRIDES` rows out of several
     thousand, and the branch on ``p_play == 0`` is not a mask.
+
+    **Every** row of the first gameweek, not :func:`_first_rows`' one row per
+    player. That rule exists because a predicted line-up is one team sheet for
+    one match, so applying it to both fixtures of a double would claim the
+    site predicted a game it never wrote about. A pin is not a team sheet: it
+    is the manager saying the player is fit, and a player who is fit on
+    Saturday is fit for Wednesday's game in the same gameweek. Pinning only
+    the first fixture would leave the second priced at exactly the number the
+    manager had just contradicted.
     """
     if "override_p_play" not in out.columns \
             and "override_e_min" not in out.columns:
         return out
-    first = _first_rows(out)
+    first = ((out["gw"] == out["gw"].min()) if "gw" in out.columns
+             else pd.Series(True, index=out.index))
 
     if "override_p_play" in out.columns:
         pin = pd.to_numeric(out["override_p_play"], errors="coerce").clip(
