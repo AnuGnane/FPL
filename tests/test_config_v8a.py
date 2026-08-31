@@ -31,7 +31,7 @@ def test_the_shipped_defaults_are_the_pre_v8a_behaviour():
         'claude -p --output-format json --disallowedTools '
         '"Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task,'
         'NotebookEdit"')
-    assert cfg.news_llm_timeout_s == 120
+    assert cfg.news_llm_timeout_s == 300
     assert cfg.news_lineup_absence is True
     assert cfg.news_lineup_absence_damp == 0.75
     assert cfg.news_lineup_start_floor == 0.0

@@ -13,12 +13,17 @@ logged whatever the flag says; they only reach the numbers when the flag is
 flipped, on evidence, the same ritual Z1 got.
 
 *Cached by text.* Twenty players carrying "Knock — assessed daily" is one
-text and therefore one call, and a re-run in the same week is none.
+text and therefore one call, and a re-run in the same week is none. The key
+carries :data:`PROMPT_VERSION`, because the entries never expire and a
+rewritten question must not be answered out of the old one's cache.
 
 *Total-failure-safe.* A missing binary, a non-zero exit, a timeout, prose
 where JSON was asked for, a row naming a verdict nobody defined: every one of
 them yields an empty frame and one printed line. A dead classifier leaves the
-pipeline byte-identical to a classifier that was never enabled.
+pipeline byte-identical to a classifier that was never enabled. The failure
+is also *bounded*: the slate goes out in batches of :data:`BATCH_SIZE`, each
+retried once, so a bad batch costs its own forty texts rather than all of
+them.
 """
 
 from __future__ import annotations
@@ -27,6 +32,7 @@ import hashlib
 import json
 import shlex
 import subprocess
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -43,7 +49,34 @@ VERDICTS = {"confirmed_starter", "rotation_risk", "knock", "assess",
 an open vocabulary is a mapping table nobody can write, and the mapping is
 the only reason to run this at all."""
 
-DEFAULT_TIMEOUT_S = 120
+DEFAULT_TIMEOUT_S = 300
+"""Seconds one batch of forty may take.
+
+A headless CLI on a consumer subscription is not a fast API: a cold start,
+a queue and forty items of reasoning are minutes, not seconds. The old two
+is what a healthy call looked like on a good day, which made a timeout the
+*expected* outcome under load, and a timeout is indistinguishable here from
+a classifier that is simply off.
+"""
+
+BATCH_SIZE = 40
+"""Texts per subprocess.
+
+The whole squad in one call is one timeout away from no verdicts at all;
+one call per text is a subprocess apiece. Forty splits a full slate into a
+handful of calls, each of which fails on its own.
+"""
+
+RETRY_BACKOFF_S = 2.0
+"""Seconds before a failed chunk's single retry."""
+
+PROMPT_VERSION = 1
+"""Bumped whenever :func:`build_prompt` or :data:`VERDICTS` changes.
+
+It salts the cache key, so a changed question cannot be answered out of a
+cache filled by the old one. Without it a prompt rewrite would keep serving
+last week's verdicts indefinitely, and the entries never expire.
+"""
 
 
 @dataclass(frozen=True)
@@ -56,13 +89,16 @@ class NewsText:
 
 
 def text_hash(text: str) -> str:
-    """The cache key: the text, not the player.
+    """The cache key: the text, and the question we asked about it.
 
     Squad-wide boilerplate collapses to one entry, and a player whose quote
-    has not changed since Tuesday costs nothing on Friday.
+    has not changed since Tuesday costs nothing on Friday. The
+    :data:`PROMPT_VERSION` salt is what keeps that from outliving its own
+    prompt: entries never expire, so an unsalted key would answer a rewritten
+    question out of a cache the old one filled.
     """
-    return hashlib.sha256(str(text or "").strip().encode("utf-8")
-                          ).hexdigest()[:16]
+    salted = f"{PROMPT_VERSION}\x00{str(text or '').strip()}"
+    return hashlib.sha256(salted.encode("utf-8")).hexdigest()[:16]
 
 
 def build_prompt(texts: list[NewsText]) -> str:
@@ -136,6 +172,35 @@ def _store(cache_dir: Path, key: str, row: dict) -> None:
         pass
 
 
+def _run_chunk(cmd: str, chunk: list[NewsText], timeout: int) -> list[dict]:
+    """One batch's rows, or ``[]``. Never raises.
+
+    A timeout, a non-zero exit, prose where JSON was asked for and an empty
+    array are all the same event — the call did not answer — and all get one
+    retry after :data:`RETRY_BACKOFF_S`. Once, not until it works: the
+    failures worth retrying here are a cold start and a busy queue, and a
+    CLI that is not installed will not become installed on the third go.
+    A chunk that fails twice is skipped, and the other chunks still land.
+    """
+    prompt = build_prompt(chunk)
+    for attempt in range(2):
+        try:
+            proc = subprocess.run(shlex.split(cmd), input=prompt,
+                                  capture_output=True, text=True,
+                                  timeout=timeout, check=True)
+            parsed = _extract_rows(proc.stdout)
+            if not parsed:
+                raise ValueError("classifier returned no rows")
+            return parsed
+        except Exception as exc:  # noqa: BLE001 — the classifier never blocks
+            if attempt == 0:
+                time.sleep(RETRY_BACKOFF_S)
+                continue
+            print("news: presser classifier unavailable — "
+                  f"{len(chunk)} texts unclassified ({exc})")
+    return []
+
+
 def classify_news(texts: list[NewsText], *, cmd: str,
                   cache_dir: Path = LLM_CACHE,
                   timeout: int = DEFAULT_TIMEOUT_S,
@@ -161,19 +226,15 @@ def classify_news(texts: list[NewsText], *, cmd: str,
                          "model": hit.get("model", model), "text_hash": key,
                          "fetched_at": stamp})
 
-    if pending:
-        by_code = {int(t.code): t for t in pending}
-        try:
-            proc = subprocess.run(shlex.split(cmd),
-                                  input=build_prompt(pending),
-                                  capture_output=True, text=True,
-                                  timeout=timeout, check=True)
-            parsed = _extract_rows(proc.stdout)
-        except Exception as exc:  # noqa: BLE001 — the classifier never blocks
-            print(f"news: presser classifier unavailable — no verdicts ({exc})")
-            parsed = []
-        dropped = 0
-        for row in parsed:
+    dropped = 0
+    # One subprocess per BATCH_SIZE texts. A full slate is a couple of
+    # hundred, and putting them in one call makes a single timeout the
+    # difference between every verdict and none; chunked, a bad batch costs
+    # its own forty and the rest still land.
+    for start in range(0, len(pending), BATCH_SIZE):
+        chunk = pending[start:start + BATCH_SIZE]
+        by_code = {int(t.code): t for t in chunk}
+        for row in _run_chunk(cmd, chunk, timeout):
             try:
                 code = int(row["code"])
                 verdict = str(row["verdict"])
@@ -186,12 +247,13 @@ def classify_news(texts: list[NewsText], *, cmd: str,
                 continue
             key = text_hash(by_code[code].text)
             _store(cache_dir, key, {"verdict": verdict,
-                                    "confidence": confidence, "model": model})
+                                    "confidence": confidence, "model": model,
+                                    "fetched_at": stamp})
             rows.append({"code": code, "verdict": verdict,
                          "confidence": confidence, "model": model,
                          "text_hash": key, "fetched_at": stamp})
-        if dropped:
-            print(f"news: presser classifier dropped {dropped} malformed rows")
+    if dropped:
+        print(f"news: presser classifier dropped {dropped} malformed rows")
 
     if not rows:
         return pd.DataFrame(columns=CLASSIFIER_COLS)

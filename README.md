@@ -86,6 +86,7 @@ lineup_start_floor = 0.0   # off: never raise a p_play toward a predicted start
 llm_classifier = false     # off: the presser classifier logs, never serves
 llm_shadow = true          # log what it would have done
 llm_command = 'claude -p --output-format json --disallowedTools "Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task,NotebookEdit"'
+llm_timeout_s = 300        # per batch of 40 texts
 
 [data]
 train_seasons = ["2022-23", "2023-24", "2024-25", "2025-26"]

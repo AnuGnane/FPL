@@ -51,4 +51,6 @@ llm_shadow = true
 # No tools: the texts it reads are scraped web content, and a classifier
 # that only ever returns one word from a fixed list needs no hands.
 llm_command = 'claude -p --output-format json --disallowedTools "Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task,NotebookEdit"'
-llm_timeout_s = 120
+# Seconds per batch of 40. A headless CLI on a consumer subscription is
+# minutes, not seconds, and a timeout looks exactly like a dead classifier.
+llm_timeout_s = 300

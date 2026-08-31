@@ -89,7 +89,7 @@ class Config:
     news_llm_classifier: bool = False
     news_llm_shadow: bool = True
     news_llm_command: str = DEFAULT_LLM_COMMAND
-    news_llm_timeout_s: int = 120
+    news_llm_timeout_s: int = 300
     news_lineup_absence: bool = True
     news_lineup_absence_damp: float = 0.75
     news_lineup_start_floor: float = 0.0
@@ -153,7 +153,7 @@ def load_config(path: Path | str = "config.toml") -> Config:
         news_llm_classifier=bool(news.get("llm_classifier", False)),
         news_llm_shadow=bool(news.get("llm_shadow", True)),
         news_llm_command=str(news.get("llm_command", DEFAULT_LLM_COMMAND)),
-        news_llm_timeout_s=int(news.get("llm_timeout_s", 120)),
+        news_llm_timeout_s=int(news.get("llm_timeout_s", 300)),
         news_lineup_absence=bool(news.get("lineup_absence", True)),
         news_lineup_absence_damp=float(news.get("lineup_absence_damp", 0.75)),
         news_lineup_start_floor=float(news.get("lineup_start_floor", 0.0)),
