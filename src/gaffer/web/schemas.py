@@ -149,6 +149,78 @@ class LeagueRace(BaseModel):
     lam_explained: str
 
 
+class RivalBeat(BaseModel):
+    entry: int
+    name: str
+    p_beat: float
+
+
+class SimPoint(BaseModel):
+    """One banked gameweek of the headline, for the card's sparkline."""
+
+    gw: int
+    p_win: float
+    p_top3: float
+    exp_finish: float
+    run_at: str
+
+
+class LeagueSimData(BaseModel):
+    gw: int
+    entries: int
+    weeks_left: int
+    n: int
+    seed: int
+    rival_drift: float
+    p_win: float
+    p_top3: float
+    exp_finish: float
+    per_rival: list[RivalBeat]
+    margin_quantiles: dict[str, float]
+    history: list[SimPoint]
+    field_rate: float | None = None
+    """The sampled field's weekly rate, or ``None`` when nothing is banked —
+    in which case rivals do not drift however ``rival_drift`` is set."""
+    notice: str | None = None
+    legacy_win_probability: list[WinProb] = Field(default_factory=list)
+    """``league_mode.win_probability``'s parametric answer, kept beside the
+    simulated one until the UI has fully switched (spec §3)."""
+
+
+class LeagueWhatIfPin(BaseModel):
+    code: int
+    """A gaffer player *code*, not a season element id — the explorer, the
+    squad table and the compare panel all speak codes, and the router maps to
+    elements against the same snapshot they were rendered from."""
+    event: str = "blank"          # "haul" | "blank" | "score"
+
+
+class LeagueWhatIfRequest(BaseModel):
+    pins: list[LeagueWhatIfPin] = Field(default_factory=list)
+    captain_override: int | None = None
+    rival_captain_blanks: int | None = None
+
+
+class LeagueWhatIfRow(BaseModel):
+    entry: int
+    name: str
+    is_you: bool
+    total: int
+    p_win: float
+    exp_finish: float
+
+
+class LeagueWhatIfResult(BaseModel):
+    baseline_p_win: float
+    p_win: float
+    delta_p_win: float
+    baseline_exp_finish: float
+    exp_finish: float
+    delta_rank: float
+    table: list[LeagueWhatIfRow]
+    unknown_codes: list[int] = Field(default_factory=list)
+
+
 class RivalSummary(BaseModel):
     entry: int
     name: str
