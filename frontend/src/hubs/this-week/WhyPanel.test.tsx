@@ -57,14 +57,33 @@ const DIFF = {
   expected_pts_delta: 2.5,
 }
 
+const PINS = {
+  active: true,
+  rows: [{ code: 100, name: 'Salah', p_play: 1.0, e_min: null,
+           note: 'saw him train', set_at: '2026-09-04T09:00:00+00:00',
+           model_p_play: 0.82, model_e_min: null }],
+}
+
+const NO_PINS = { active: true, rows: [] }
+
 const CODES = [100]
+
+/** The panel now reads three endpoints, so every mock answers by path. */
+function serve(pins: unknown = NO_PINS, diff: unknown = DIFF,
+               components: unknown = COMPONENTS) {
+  apiGet.mockImplementation((path: string) => {
+    if (path.startsWith('/api/components')) {
+      return components instanceof Error
+        ? Promise.reject(components) : Promise.resolve(components)
+    }
+    if (path.startsWith('/api/overrides')) return Promise.resolve(pins)
+    return Promise.resolve(diff)
+  })
+}
 
 beforeEach(() => {
   apiGet.mockReset()
-  apiGet.mockImplementation((path: string) => (
-    path.startsWith('/api/components')
-      ? Promise.resolve(COMPONENTS)
-      : Promise.resolve(DIFF)))
+  serve()
 })
 
 describe('WhyPanel', () => {
@@ -96,17 +115,14 @@ describe('WhyPanel', () => {
   })
 
   it('says nothing at all about a player with no penalty duty', async () => {
-    apiGet.mockImplementation((path: string) => (
-      path.startsWith('/api/components')
-        ? Promise.resolve({
-          ...COMPONENTS,
-          players: [{
-            ...COMPONENTS.players[0],
-            fixtures: [{ ...COMPONENTS.players[0].fixtures[0],
-                         pen_taker: null }],
-          }],
-        })
-        : Promise.resolve(DIFF)))
+    serve(NO_PINS, DIFF, {
+      ...COMPONENTS,
+      players: [{
+        ...COMPONENTS.players[0],
+        fixtures: [{ ...COMPONENTS.players[0].fixtures[0],
+                     pen_taker: null }],
+      }],
+    })
     render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('button',
       { name: /salah/i }))
@@ -132,20 +148,40 @@ describe('WhyPanel', () => {
   })
 
   it('shows no strip at all when there is no previous run', async () => {
-    apiGet.mockImplementation((path: string) => (
-      path.startsWith('/api/components')
-        ? Promise.resolve(COMPONENTS)
-        : Promise.resolve({ gw: 5, available: false, changed: false })))
+    serve(NO_PINS, { gw: 5, available: false, changed: false })
     render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
     await screen.findByText('Salah')
     expect(screen.queryByText(/since last run/i)).not.toBeInTheDocument()
   })
 
+  it('says which parts of the plan the manager wrote himself', async () => {
+    serve(PINS)
+    render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
+    expect(await screen.findByText(/your pins are in this plan/i))
+      .toBeInTheDocument()
+    expect(apiGet).toHaveBeenCalledWith('/api/overrides')
+    expect(screen.getByText(
+      /You pinned Salah p_play 1\.00 — the model had 0\.82 — saw him train/))
+      .toBeInTheDocument()
+  })
+
+  it('says a pin is not being applied when the flag is off', async () => {
+    serve({ ...PINS, active: false })
+    render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
+    expect(await screen.findByText(/not currently applied/))
+      .toBeInTheDocument()
+  })
+
+  it('shows no pin strip when nothing is pinned', async () => {
+    render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
+    await screen.findByText('Salah')
+    expect(screen.queryByText(/your pins are in this plan/i))
+      .not.toBeInTheDocument()
+  })
+
   it('hides itself when no components file exists', async () => {
-    apiGet.mockImplementation((path: string) => (
-      path.startsWith('/api/components')
-        ? Promise.reject(new FakeApiError(404, 'no component breakdown'))
-        : Promise.resolve({ gw: 5, available: false, changed: false })))
+    serve(PINS, { gw: 5, available: false, changed: false },
+          new FakeApiError(404, 'no component breakdown'))
     const { container } = render(
       <MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
     await new Promise((r) => setTimeout(r, 0))

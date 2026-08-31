@@ -4,7 +4,7 @@ import {
   Card, PosBadge, TONE_CLASS, fmtDelta, fmtNum, fmtPct, toneOf,
 } from '../../kit'
 import type {
-  AdviceDiff, ComponentPlayer, ComponentsBreakdown,
+  AdviceDiff, ComponentPlayer, ComponentsBreakdown, OverridesPanel,
 } from '../../types'
 
 function DiffStrip({ diff }: { diff: AdviceDiff }) {
@@ -123,6 +123,7 @@ export default function WhyPanel({ gw, codes }: { gw: number
                                                   codes: number[] }) {
   const [data, setData] = useState<ComponentsBreakdown | null>(null)
   const [diff, setDiff] = useState<AdviceDiff | null>(null)
+  const [pins, setPins] = useState<OverridesPanel | null>(null)
 
   useEffect(() => {
     if (codes.length === 0) return
@@ -134,6 +135,10 @@ export default function WhyPanel({ gw, codes }: { gw: number
     // different week's two runs answers a question nobody asked.
     apiGet<AdviceDiff>(`/api/advice/diff?gw=${gw}`)
       .then(setDiff).catch(() => setDiff(null))
+    // The manager's own team news, so the panel that explains the plan can
+    // say which parts of it he wrote himself.
+    apiGet<OverridesPanel>('/api/overrides').then(setPins).catch(
+      () => setPins(null))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gw, codes.join(',')])
 
@@ -142,6 +147,24 @@ export default function WhyPanel({ gw, codes }: { gw: number
   return (
     <>
       {diff?.available && diff.changed && <DiffStrip diff={diff} />}
+      {pins && (pins.rows ?? []).length > 0 && (
+        <div className="mb-4 rounded-card border-l-2 border-info bg-base px-3
+                        py-2">
+          <p className="label mb-1">Your pins are in this plan</p>
+          {pins.rows.map((row) => (
+            <p key={row.code} className="text-text-secondary">
+              {`You pinned ${row.name} `}
+              {row.p_play !== null && `p_play ${fmtNum(row.p_play, 2)}`}
+              {row.p_play !== null && row.model_p_play !== null
+                && ` — the model had ${fmtNum(row.model_p_play, 2)}`}
+              {row.e_min !== null
+                && ` · ${fmtNum(row.e_min, 0)} minutes`}
+              {row.note && ` — ${row.note}`}
+              {!pins.active && ' (not currently applied)'}
+            </p>
+          ))}
+        </div>
+      )}
       <Card title="Why this plan" className="mb-4">
         <p className="mb-2 text-text-muted">
           Click a name for the terms that produced his expected points.

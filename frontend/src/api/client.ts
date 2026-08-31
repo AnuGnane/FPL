@@ -32,3 +32,7 @@ export function apiPost<T>(path: string, body?: unknown): Promise<T> {
     body: JSON.stringify(body ?? {}),
   })
 }
+
+export function apiDelete<T>(path: string): Promise<T> {
+  return request<T>(path, { method: 'DELETE' })
+}

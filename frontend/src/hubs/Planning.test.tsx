@@ -17,6 +17,7 @@ vi.mock('./planning/Timeline', () => ({
 }))
 vi.mock('./planning/WhatIfTab', () => ({ default: () => <p>whatif panel</p> }))
 vi.mock('./planning/ChipsTab', () => ({ default: () => <p>chips panel</p> }))
+vi.mock('./planning/DraftsTab', () => ({ default: () => <p>drafts panel</p> }))
 vi.mock('./planning/TickerTab', () => ({ default: () => <p>ticker panel</p> }))
 
 beforeEach(() => {
@@ -38,11 +39,17 @@ describe('Planning hub', () => {
     expect(await screen.findByText('timeline panel')).toBeInTheDocument()
   })
 
-  it('lists all four tabs', async () => {
+  it('lists all five tabs', async () => {
     render(<MemoryRouter><Planning /></MemoryRouter>)
-    for (const name of ['Timeline', 'What-If', 'Chips', 'Ticker']) {
+    for (const name of ['Timeline', 'What-If', 'Drafts', 'Chips', 'Ticker']) {
       expect(await screen.findByRole('tab', { name })).toBeInTheDocument()
     }
+  })
+
+  it('switches to the drafts tab on click', async () => {
+    render(<MemoryRouter><Planning /></MemoryRouter>)
+    await userEvent.click(await screen.findByRole('tab', { name: 'Drafts' }))
+    expect(await screen.findByText('drafts panel')).toBeInTheDocument()
   })
 
   it('switches to the what-if tab on click', async () => {

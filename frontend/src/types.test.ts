@@ -5,10 +5,10 @@ import {
 } from './types'
 
 describe('job types', () => {
-  it('lists exactly the nine kinds the backend allows', () => {
+  it('lists exactly the ten kinds the backend allows', () => {
     expect([...JOB_KINDS]).toEqual(
       ['advise', 'advise-fast', 'evaluate', 'refresh-data', 'news-shadow',
-       'snapshot', 'track-pens', 'field-scrape', 'review'])
+       'snapshot', 'track-pens', 'field-scrape', 'review', 'sensitivity'])
   })
 
   it('labels every kind for a button', () => {

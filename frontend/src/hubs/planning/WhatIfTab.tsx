@@ -5,7 +5,9 @@ import { Card } from '../../kit'
 import type { WhatIfRequest, WhatIfResult } from '../../types'
 import ConstraintsPanel from './ConstraintsPanel'
 import FixtureTicker from './FixtureTicker'
+import OverridesCard from './OverridesCard'
 import PlanDiffTable from './PlanDiffTable'
+import SensitivityCard from './SensitivityCard'
 
 const EMPTY: WhatIfRequest = {
   lock: [], ban: [], force_in: [], max_hits: 0, chip: 'none', horizon: null,
@@ -17,8 +19,15 @@ interface StructuredError {
   players: number[]
 }
 
-export default function WhatIfTab() {
-  const [request, setRequest] = useState<WhatIfRequest>(EMPTY)
+export default function WhatIfTab({ value, onChange }: {
+  value?: WhatIfRequest
+  onChange?: (next: WhatIfRequest) => void
+} = {}) {
+  // Controlled when Planning hands the constraints down (so the Drafts tab
+  // can save them), uncontrolled when the tab is rendered on its own.
+  const [own, setOwn] = useState<WhatIfRequest>(EMPTY)
+  const request = value ?? own
+  const setRequest = onChange ?? setOwn
   const [invalid, setInvalid] = useState<StructuredError | null>(null)
   const job = useJob()
 
@@ -75,6 +84,8 @@ export default function WhatIfTab() {
         </Card>
       )}
       {diff && <PlanDiffTable diff={diff} />}
+      <SensitivityCard />
+      <OverridesCard />
       <FixtureTicker weeks={6} />
     </>
   )

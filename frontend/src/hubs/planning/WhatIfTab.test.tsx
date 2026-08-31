@@ -23,7 +23,13 @@ vi.mock('../../api/client', () => ({
   ApiError: FakeApiError,
   apiGet: (path: string) => apiGet(path),
   apiPost: (path: string, body: unknown) => apiPost(path, body),
+  apiDelete: vi.fn(),
 }))
+
+// The tab now mounts the sensitivity and pins cards, which have their own
+// tests. Stub them so this file keeps testing the solve and nothing else.
+vi.mock('./SensitivityCard', () => ({ default: () => <p>sensitivity card</p> }))
+vi.mock('./OverridesCard', () => ({ default: () => <p>pins card</p> }))
 
 const PLAYERS = [
   { code: 100, name: 'Salah', position: 'MID', price: 13.0, ep_next: 6.4 },
@@ -77,6 +83,31 @@ beforeEach(() => {
 })
 
 describe('what-if tab', () => {
+  it('carries the robustness and pins cards beside the solve', async () => {
+    render(<MemoryRouter><WhatIfTab /></MemoryRouter>)
+    expect(await screen.findByText('sensitivity card')).toBeInTheDocument()
+    expect(screen.getByText('pins card')).toBeInTheDocument()
+  })
+
+  it('lets the hub own the constraints so a draft can save them', async () => {
+    // Controlled: Planning holds them above the tab, because Radix unmounts
+    // an unselected tab and the Drafts tab would otherwise save a default.
+    const onChange = vi.fn()
+    render(
+      <MemoryRouter>
+        <WhatIfTab
+          value={{ lock: [], ban: [], force_in: [], max_hits: 2,
+                   chip: 'none', horizon: null }}
+          onChange={onChange}
+        />
+      </MemoryRouter>)
+    const select = await screen.findByLabelText('Max hits') as
+      HTMLSelectElement
+    expect(select.value).toBe('2')
+    await userEvent.selectOptions(select, '1')
+    expect(onChange).toHaveBeenCalled()
+  })
+
   it('sends the constraints and renders the diff and verdict', async () => {
     apiPost.mockResolvedValue({ job_id: 'j1' })
     render(<MemoryRouter><WhatIfTab /></MemoryRouter>)

@@ -9,6 +9,7 @@ import {
 import type { AdviceLatest, PlayerRow } from '../types'
 import ComparePanel from './players/ComparePanel'
 import FixtureMatrix from './players/FixtureMatrix'
+import PinDialog from './players/PinDialog'
 
 const POSITIONS = ['', 'GKP', 'DEF', 'MID', 'FWD']
 
@@ -26,6 +27,8 @@ export default function Players() {
   // "there is nothing to load", so a failed /api/advice/latest left the Compare
   // tab on "Loading…" for ever with nothing saying what to do about it.
   const [gwFailed, setGwFailed] = useState(false)
+  // The row whose availability the manager is overruling, or null.
+  const [pinning, setPinning] = useState<PlayerRow | null>(null)
   // Every keystroke drove a GET, and five letters is five requests whose
   // answers can land out of order — the last one back wins, not the last typed.
   const settledSearch = useDebounced(search)
@@ -94,6 +97,20 @@ export default function Players() {
     { key: 'last4', header: 'Last 4', numeric: true,
       value: (r) => r.last4.length ? r.last4[r.last4.length - 1] : null,
       render: (r) => <Sparkline values={r.last4} /> },
+    {
+      key: 'pin', header: '', value: () => '',
+      render: (r) => (
+        <button
+          type="button"
+          aria-label={`pin ${r.name}`}
+          onClick={() => setPinning(r)}
+          className="rounded-card border border-border px-2 py-0.5
+                     text-text-muted hover:text-text"
+        >
+          Pin
+        </button>
+      ),
+    },
   ]
 
   const selected = (rows ?? []).filter((r) => picked.includes(r.code))
@@ -193,6 +210,10 @@ export default function Players() {
           <FixtureMatrix from={gw ?? 1} />
         </Tabs.Content>
       </Tabs.Root>
+      {pinning && (
+        <PinDialog code={pinning.code} name={pinning.name}
+                   onClose={() => setPinning(null)} />
+      )}
     </>
   )
 }

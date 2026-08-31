@@ -1,15 +1,20 @@
-import { act, render, screen, within } from '@testing-library/react'
+import {
+  act, render, screen, waitFor, within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Players from './Players'
 
-const { apiGet } = vi.hoisted(() => ({ apiGet: vi.fn() }))
+const { apiGet, apiPost } = vi.hoisted(() => ({
+  apiGet: vi.fn(), apiPost: vi.fn(),
+}))
 
 vi.mock('../api/client', () => ({
   ApiError: class extends Error { status = 0; detail: unknown = null },
   apiGet: (path: string) => apiGet(path),
-  apiPost: vi.fn(),
+  apiPost: (path: string, body: unknown) => apiPost(path, body),
+  apiDelete: vi.fn(),
 }))
 
 vi.mock('./players/ComparePanel', () => ({
@@ -36,6 +41,8 @@ const ROWS = [
 
 beforeEach(() => {
   apiGet.mockReset()
+  apiPost.mockReset()
+  apiPost.mockResolvedValue({ active: true, rows: [] })
   apiGet.mockImplementation((path: string) => (
     path.startsWith('/api/players') ? Promise.resolve(ROWS)
       : path === '/api/advice/latest'
@@ -177,5 +184,26 @@ describe('Players hub', () => {
     expect(await screen.findByRole('button', { name: 'Salah' }))
       .toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Saka' })).toBeInTheDocument()
+  })
+
+  it('opens the pin dialog from a row, for that row', async () => {
+    render(<MemoryRouter><Players /></MemoryRouter>)
+    await userEvent.click(await screen.findByRole('button',
+      { name: 'pin Saka' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(dialog).toHaveAttribute('aria-label', 'Pin availability for Saka')
+    expect(within(dialog).getByLabelText('probability of playing'))
+      .toBeInTheDocument()
+  })
+
+  it('pins through the overrides endpoint and closes', async () => {
+    render(<MemoryRouter><Players /></MemoryRouter>)
+    await userEvent.click(await screen.findByRole('button',
+      { name: 'pin Salah' }))
+    await userEvent.type(screen.getByLabelText('probability of playing'), '1')
+    await userEvent.click(screen.getByRole('button', { name: 'Pin' }))
+    expect(apiPost).toHaveBeenCalledWith('/api/overrides',
+      { code: 1, p_play: 1, e_min: null, note: '' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
 })

@@ -602,7 +602,8 @@ export interface NewsShadowData {
 }
 
 export const JOB_KINDS = ['advise', 'advise-fast', 'evaluate', 'refresh-data',
-  'news-shadow', 'snapshot', 'track-pens', 'field-scrape', 'review'] as const
+  'news-shadow', 'snapshot', 'track-pens', 'field-scrape', 'review',
+  'sensitivity'] as const
 
 export type JobKind = typeof JOB_KINDS[number]
 
@@ -616,6 +617,7 @@ export const JOB_KIND_LABEL: Record<JobKind, string> = {
   'track-pens': 'Track pens',
   'field-scrape': 'Field scrape',
   review: 'Review last week',
+  sensitivity: 'Run sensitivity',
 }
 
 export interface JobRunView {
@@ -914,4 +916,96 @@ export interface ReviewSummary {
 export interface ReviewData {
   gws: ReviewGw[]
   summary: ReviewSummary | null
+}
+
+// --- v8e: overrides, sensitivity, drafts -------------------------------
+
+export interface OverrideRow {
+  code: number
+  name: string
+  p_play: number | null
+  e_min: number | null
+  note: string
+  set_at: string
+  /** What the model had for him when the pin was made, not now. */
+  model_p_play: number | null
+  model_e_min: number | null
+}
+
+export interface OverridesPanel {
+  active: boolean
+  rows: OverrideRow[]
+}
+
+export interface NamedPlayer {
+  code: number
+  name: string
+  position?: string
+}
+
+export interface SensitivityMove {
+  kind: string
+  code: number
+  gw: number
+  label: string
+  name?: string
+  count: number
+  frequency: number
+}
+
+export interface SensitivityPlan {
+  count: number
+  buys: NamedPlayer[]
+  sells: NamedPlayer[]
+  captain: NamedPlayer | null
+  chip: string | null
+  hits: number
+  value: number
+}
+
+export interface SensitivityReport {
+  available: boolean
+  gw: number | null
+  k: number
+  completed: number
+  failures: number
+  seed: number | null
+  horizon: number
+  wall_s: number | null
+  generated_at: string | null
+  notice: string | null
+  frequencies: SensitivityMove[]
+  modal: SensitivityPlan | null
+  runner_up: SensitivityPlan | null
+  margin: number | null
+  verdict: string | null
+}
+
+export interface DraftRow {
+  name: string
+  created_at: string
+  constraints: WhatIfRequest
+}
+
+export interface DraftList { drafts: DraftRow[] }
+
+export interface DraftCompareRow {
+  name: string
+  is_reference: boolean
+  solved_at: string
+  horizon_pts: number | null
+  expected_pts: number | null
+  delta_xpts: number | null
+  hits: number | null
+  chip: string | null
+  buys: PlayerRef[]
+  sells: PlayerRef[]
+  captain: PlayerRef | null
+  error: string | null
+}
+
+export interface DraftCompare {
+  gw: number
+  weeks: number
+  rows: DraftCompareRow[]
 }
