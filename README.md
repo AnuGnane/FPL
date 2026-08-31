@@ -321,6 +321,59 @@ not a frozen squad, so it still means something after Thursday's price changes
 and Friday's injury: comparing re-solves each draft against today's board and
 stamps each row with when it was solved.
 
+### Uncertainty and calibration (v8g)
+
+Every expected-points number in the tool now carries the spread the optimizer
+already assumed it had.
+
+**Bands.** The squad table and the player explorer print a `Range` column
+beside `xPts` — the p25 and p75 of the same noise distribution the scenario
+sweep perturbs the board with. It is quartiles, not a plus-or-minus: on the
+calibrated path the noise is absolute and the sweep shifts its centre down so
+a clipped draw still averages the forecast, so the band is not symmetric about
+the headline. A nailed-on starter's range is narrow and a rotation risk's is
+wide, which is the entire point.
+
+A player with no minutes model shows an em dash, not a range of zero width.
+"We have no minutes prediction for him" is a different claim from "his minutes
+are certain", and the second is the one that loses money.
+
+**Haul and blank.** A player with a real chance of ten-plus points, or a real
+chance of two or fewer, gets a chip on his row. Both come off the same
+distribution as the band, which means both are **crude**: they price how wrong
+the *forecast* might be, not how much football itself varies. Read `haul 18%`
+as a floor.
+
+**Captain confidence.** Under the pitch, one sentence about what the graded
+record actually says: *"the model's captain outscored yours in 4 of 5
+comparable gameweeks"*. Below four graded gameweeks it declines to have an
+opinion and says how many it has. There is no percentage anywhere in it,
+because there is nothing to compute one from.
+
+**Sensitivity margin.** When the gap between the sweep's two candidate plans
+is smaller than the noise on the players that separate them, the sensitivity
+card says so instead of printing the gap as though it settled anything.
+
+**Model → Quality** gains four things: a reliability curve for `P(starts)`
+(the model has emitted it since v8a and nothing rendered it), a y = x
+reference on every calibration curve with the observation count under it, a
+scatter of forecast against outcome for every finished gameweek, and a table
+of last week's biggest misses with the sign kept — a positive miss is a player
+the model under-rated, a negative one is a transfer it may have talked you
+into.
+
+Every one of those cards is **absent** rather than empty when its artifact is
+missing. Nothing here needs a new command, a new job or a config key: it all
+reads what `gaffer advise`, `gaffer evaluate` and `gaffer review` have already
+banked.
+
+**Compare radar.** Ticking two to four players in Explorer now draws an
+overlaid radar over attacking share, minutes security, set-piece duty,
+three-week fixtures and form, each axis scaled 0–100 against the players
+currently listed. Comparing a goalkeeper with a forward is allowed and
+captioned: the axes measure different jobs, and the chart is the quickest way
+to see that.
+
 The pages read the artifacts `gaffer advise` writes, so the UI works offline
 apart from League Race, Live and the rival pages, which need the FPL API and
 say so when it is unreachable. Nothing here logs into FPL or submits anything;
@@ -420,6 +473,11 @@ makes the live season collide with the one you just archived.
 - `reports/sensitivity_gw{N}.json` — one banked robustness sweep per
   gameweek: move frequencies over twenty noised re-solves, the modal plan and
   the margin to the best differing one.
+- `src/gaffer/uncertainty.py` — EP bands and haul/blank tails, off the
+  scenario sweep's own σ table
+- `src/gaffer/confidence.py` — ledger-derived confidence tiers: counts, never
+  percentages
+- `src/gaffer/misses.py` — the last scored week's biggest forecast errors
 - `logs/` — output from the launchd jobs (gitignored)
 - `frontend/` — React/Vite source for the web UI; built output lands in
   `src/gaffer/web/static/` (gitignored, shipped in the wheel)
