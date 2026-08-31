@@ -1,0 +1,37 @@
+# gaffer v9b — UI polish
+
+Date: 2026-08-31. Parent: v9a spec §0 D5 (the ranked polish backlog). Lean frontend-only cycle.
+Goal: spread player identity everywhere a player is named, make waiting and acting feel acknowledged, and survive a phone screen — no model, no solver, no new computation server-side.
+
+Sequenced AFTER v9a merges: D1 consumes v9a's `kit/PlayerCard.tsx` and its cached `/api/assets/photo/{code}` endpoint. Do not start this cycle on a tree without them.
+
+## 0. Decisions
+
+- **D1 — PlayerCard identity everywhere a player is named.** v9a's `PlayerCard` (`size: 'chip'`) replaces the bare `PlayerName` at the three surfaces that today name players with no identity: `hubs/Live.tsx:225` (auto-sub and points rows), `hubs/league/RivalDetail.tsx:17` (rival squad list), and `hubs/model/ReviewTab.tsx` (the four lanes, which currently render raw name strings — no `PlayerName` at all, so no explain affordance either; the chip carries it). `PlayerName` itself is not deleted — dense tables (SquadTable, the explorer) keep it; the chip is for card-shaped surfaces. Photos: `kit/ExplainModal.tsx` gains a header portrait from `/api/assets/photo/{code}` with the v9a silhouette fallback — one place, every hub inherits it, and a dead cache changes nothing but the image. No photo on pitch or chip cards (v9a's call stands: FPL's own pitch is shirts).
+- **D2 — Skeletons for job-triggered panels.** Today `hubs/planning/WhatIfTab.tsx:54` computes `busy` and uses it only to disable the button — the answer panel sits blank for the whole solve. New `kit/Skeleton.tsx` (pulse blocks inside the standard `Card` frame, same contract as `kit/Loading.tsx`: occupy the frame the data will fill). Wired where a job fills a panel: `WhatIfTab`, `ChipsTab`, `DraftsTab` (compare), `SensitivityCard` — skeleton while `job.status` is `queued|running`, with the existing `JobLog` line underneath so long solves show liveness. `Loading.tsx` stays the fetch-wait idiom; `Skeleton` is the job-wait idiom.
+- **D3 — Toasts, without repainting deliberate silences.** No toast/aria-live infra exists in the tree. New `kit/Toast.tsx`: single top-level outlet in `kit/AppShell.tsx`, `aria-live="polite"`, auto-dismiss, no queue beyond three. Used for (a) write FAILURES on star (`hubs/Players.tsx:60` — the code comment declaring success-silence deliberate is respected: the optimistic ☆→★ flip is the success ack; a swallowed failed write currently leaves a lying star), (b) success AND failure on pin (`hubs/players/PinDialog.tsx`), override (`hubs/planning/OverridesCard.tsx`) and draft save/delete (`hubs/planning/DraftsTab.tsx`), whose only acknowledgement today is a server-side print. Copy states what happened, not "Success!".
+- **D4 — Mobile pass, This Week and Live first.** The recharts surfaces are already `ResponsiveContainer width="100%"` and the wide tables already sit in `overflow-x-auto` wrappers, so this is a targeted pass, not a rebuild: at 390px, no hub may scroll the body horizontally, the pitch (v9a) must reflow its rows, `DigestCard` sections must not truncate bits, and the segmented controls/tab strips must wrap or scroll within their own bounds. Fix list discovered at G1 against the checklist above; `kit/useMediaQuery.ts` already exists for any breakpoint branching.
+- **D5 — Empty-state copy audit.** `kit/EmptyState.tsx` (title / detail / exact action) is the idiom; the v8 surfaces that grew their own prose get folded in: `DigestCard`'s inline "No digest yet" paragraph (`hubs/this-week/DigestCard.tsx:43`) becomes an `EmptyState` naming the two launchd times and the Digest buttons; ReviewTab's pre-first-review state, the watchlist-empty explorer star column hint, and QualityTab's pre-evaluate cards get the same treatment where they currently free-text. Every `EmptyState.action` must name the real button label or command (the existing contract).
+- **D6 — Timeline difficulty chips, frontend-only.** `hubs/planning/Timeline.tsx` week cards gain a small opponent strip per GW reusing the ticker's own payload (the endpoint `hubs/planning/FixtureTicker.tsx` already fetches) joined client-side by team + GW, painted with `difficultyBackground` from `kit/scale.ts` — the same number and shade the ticker and `FixtureMatrix` already show. No new server field; if the ticker payload lacks the horizon GW, the strip is absent, not guessed.
+
+## 1. Gates (orchestrator-run)
+
+- **G1 (live)** — real season, browser: Live and RivalDetail and ReviewTab show identity chips (shirt + team) where names were bare, and clicking one opens the same explain modal as before; the explain modal shows the portrait, and with the asset cache emptied + upstream dead it shows the silhouette with no broken-image icon; fire a what-if solve and see the skeleton then the answer (no blank panel); pull the network mid-star and see the failure toast and the star revert; save an override and see the ack toast; at 390px (device toolbar) walk all five hubs — no body horizontal scroll, DigestCard readable, pitch reflowed; Timeline week cards show difficulty-tinted opponent chips agreeing with the ticker's shades for the same fixtures.
+- **G2 (rails)** — frontend-only cycle: no `tests/test_v9b_degradation.py` unless a python file changes (none is planned; if one does, the file ships with the usual byte-identity pins). The rails live in vitest: Toast renders `aria-live="polite"` and caps at three; Skeleton appears for `queued|running` and never for `done|error`; ExplainModal falls back to the silhouette on image error; star failure reverts the optimistic flip and raises exactly one toast; Timeline with a ticker payload missing the horizon GW renders no difficulty strip; EmptyState actions name real button labels (source-pin). Job kinds stay 12, config keys stay 48 — zero pin updates.
+- **G3 (suites + audit)** — full python suite untouched-green, `npx tsc --noEmit`, `npx vitest run`, `npm run build` clean; `git diff main` shows zero python diffs (or only the declared exception with its rail); zero protected diffs; security greps clean.
+
+## 2. Constraints
+
+Protected list as prior cycles (`advise.py`, `set_pieces.py`, `optimize/**`, `web/jobs.py`, `routers/jobs.py`, `routers/whatif.py`, the pre-existing test rails, `s2_replay.py`; `journal.py`/`backtest.py` import-only). Never stage `data/`, `reports/`, `models/`, `logs/`, `config.toml`, `web/static/`. Frontend-only: tiny router additions are permitted ONLY for a field that already exists server-side, and none is currently needed — D6 deliberately joins client-side rather than growing the plan payload. No new job kinds, plists, or config keys. Requires v9a merged first (PlayerCard, asset endpoints).
+
+## 3. Out of scope
+
+Chart-token unification and the light-theme audit — inspected 2026-08-31 and already clean: every recharts surface reads `var(--color-*)` tokens, `kit/scale.ts:difficultyBackground` is the single difficulty ramp, and a hex/rgb grep over the v8 cards returns nothing; nothing to build, and a source-pin can ride along in G2 for free if the implementer wants it. Also out: photos on pitch/chip cards (v9a's call), a Live-tab pitch, toast-ifying fetch errors that already have `EmptyState`/error paths, dark-mode-specific artwork, any DGW timeline treatment, and offline/PWA anything.
+
+## 4. Outcome
+
+(Filled at cycle end.)
+
+## 5. Gate checklist (built by the implementer, run by the orchestrator — unfilled)
+
+(Filled by the implementer at the final task, per CONVENTIONS.md §7.)
