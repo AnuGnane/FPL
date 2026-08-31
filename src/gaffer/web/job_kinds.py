@@ -151,6 +151,44 @@ def run_sensitivity_job() -> dict:
             "completed": payload["completed"]}
 
 
+def _notify_enabled() -> bool:
+    """``[digest] notify``, read the way every other serve-time switch is.
+
+    Its own function rather than an inline read so the rail that asserts the
+    switch reaches the module has one thing to patch, and so a clone with no
+    ``config.toml`` — which ``serving_config`` degrades to defaults for — gets
+    its notification rather than an exception.
+    """
+    from gaffer.config import serving_config
+
+    return bool(serving_config().digest_notify)
+
+
+def _digest_job(kind: str) -> dict:
+    """One digest kind's job body. ``run_digest`` does the work and prints.
+
+    ``None`` back from ``run_digest`` is a *finished* job with zero sections,
+    not a failed one — ``run_field_scrape_job``'s trade, for the same reason:
+    a Friday with no advice on disk is a real and ordinary state, and a red
+    job record for it would train the user to ignore red job records.
+    """
+    from gaffer.digest import run_digest
+
+    payload = run_digest(kind, notify=_notify_enabled()) or {}
+    return {"kind": kind, "gw": payload.get("gw"),
+            "sections": len(payload.get("sections") or [])}
+
+
+def run_digest_friday() -> dict:
+    """``gaffer digest --kind friday`` — the pre-deadline briefing (v8f D3)."""
+    return _digest_job("friday")
+
+
+def run_digest_tuesday() -> dict:
+    """``gaffer digest --kind tuesday`` — the post-review debrief (v8f D3)."""
+    return _digest_job("tuesday")
+
+
 JOB_KINDS: dict[str, Callable[[], Any]] = {
     "advise": run_train_and_advise,
     "advise-fast": run_train_and_advise_fast,
@@ -162,5 +200,7 @@ JOB_KINDS: dict[str, Callable[[], Any]] = {
     "review": run_review_job,
     "track-pens": run_track_pens,
     "sensitivity": run_sensitivity_job,
+    "digest-friday": run_digest_friday,
+    "digest-tuesday": run_digest_tuesday,
 }
 """The allow-list. A kind not in here is a 404, never an exec of user input."""

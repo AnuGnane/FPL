@@ -105,6 +105,13 @@ class Config:
     # default: an empty store is a no-op, and a switch that has to be found
     # before a feature works is a feature nobody finds.
     news_overrides: bool = True
+    # v8f. The only switch this cycle adds. On by default, for the reason the
+    # override switch is: a notification nobody has to enable is the whole
+    # feature, and a switch that must be found before the tool works is a
+    # feature nobody finds. Off is for a machine that is not the user's own —
+    # a server, a CI box, a shared laptop — where a launchd job firing
+    # Notification Centre would be somebody else's surprise.
+    digest_notify: bool = True
 
 
 def load_config(path: Path | str = "config.toml") -> Config:
@@ -125,6 +132,7 @@ def load_config(path: Path | str = "config.toml") -> Config:
     scen = raw.get("scenarios", {})
     league = raw.get("league", {})
     news = raw.get("news", {})
+    digest = raw.get("digest", {})
     return Config(
         entry_id=raw["fpl"]["entry_id"],
         league_id=raw["fpl"]["league_id"],
@@ -175,6 +183,7 @@ def load_config(path: Path | str = "config.toml") -> Config:
         news_lineup_absence_damp=float(news.get("lineup_absence_damp", 0.75)),
         news_lineup_start_floor=float(news.get("lineup_start_floor", 0.0)),
         news_overrides=bool(news.get("overrides", True)),
+        digest_notify=bool(digest.get("notify", True)),
     )
 
 

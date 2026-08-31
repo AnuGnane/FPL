@@ -5,10 +5,12 @@ import {
 } from './types'
 
 describe('job types', () => {
-  it('lists exactly the ten kinds the backend allows', () => {
+  it('lists exactly the twelve kinds the backend allows', () => {
+    // v8f added digest-friday and digest-tuesday as the eleventh and twelfth.
     expect([...JOB_KINDS]).toEqual(
       ['advise', 'advise-fast', 'evaluate', 'refresh-data', 'news-shadow',
-       'snapshot', 'track-pens', 'field-scrape', 'review', 'sensitivity'])
+       'snapshot', 'track-pens', 'field-scrape', 'review', 'sensitivity',
+       'digest-friday', 'digest-tuesday'])
   })
 
   it('labels every kind for a button', () => {

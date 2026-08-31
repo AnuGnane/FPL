@@ -85,3 +85,13 @@ llm_timeout_s = 300
 # They are applied last, over every automated source, because you are the one
 # who watched the press conference. An empty store changes nothing.
 overrides = true
+
+[digest]
+# v8f: the Friday briefing and the Tuesday debrief, delivered as a macOS
+# notification when the launchd job writes them. On by default, for the reason
+# the override switch is: a notification nobody has to enable is the whole
+# feature, and a switch that must be found before the tool works is a feature
+# nobody finds. Set it false on a machine that is not your own — a server, a
+# CI box, a shared laptop — where a scheduled job firing Notification Centre
+# would be somebody else's surprise.
+notify = true

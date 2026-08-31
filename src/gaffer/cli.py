@@ -295,6 +295,33 @@ def review(gw: int = typer.Option(0, help="Gameweek to review (default: "
 
 
 @app.command()
+def digest(kind: str = typer.Option(
+        "friday", "--kind",
+        help="friday (pre-deadline briefing) or tuesday (post-review "
+             "debrief).")):
+    """Write the day's digest, and show it as a notification (v8f D3).
+
+    The launchd job's body, held to ``snapshot``'s and ``review``'s contract:
+    it prints one line and never fails. A Friday evening with no network is a
+    Friday with no briefing, not a Friday with a traceback in
+    ``logs/digest-friday.log``.
+
+    ``run_digest`` takes the notification switch as an argument and has no
+    opinion about it; the opinion is ``[digest] notify``, read here.
+    """
+    try:
+        from gaffer.config import serving_config
+        from gaffer.digest import run_digest
+
+        run_digest(kind, notify=bool(serving_config().digest_notify))
+    except Exception as exc:  # noqa: BLE001 — a scheduled job never blocks
+        # run_digest swallows its own failures and raises only on an unknown
+        # kind; the imports cannot, and an ImportError here would be the one
+        # traceback the launchd job still emits every Friday evening.
+        typer.echo(f"digest not written: {exc}")
+
+
+@app.command()
 def league_sim(
         seeds: str = typer.Option("", help="Comma-separated seed bases; "
                                            "default is the shipped seed."),

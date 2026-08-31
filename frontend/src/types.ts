@@ -624,7 +624,7 @@ export interface NewsShadowData {
 
 export const JOB_KINDS = ['advise', 'advise-fast', 'evaluate', 'refresh-data',
   'news-shadow', 'snapshot', 'track-pens', 'field-scrape', 'review',
-  'sensitivity'] as const
+  'sensitivity', 'digest-friday', 'digest-tuesday'] as const
 
 export type JobKind = typeof JOB_KINDS[number]
 
@@ -639,6 +639,8 @@ export const JOB_KIND_LABEL: Record<JobKind, string> = {
   'field-scrape': 'Field scrape',
   review: 'Review last week',
   sensitivity: 'Run sensitivity',
+  'digest-friday': 'Friday briefing',
+  'digest-tuesday': 'Tuesday debrief',
 }
 
 export interface JobRunView {

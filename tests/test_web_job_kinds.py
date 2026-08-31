@@ -22,7 +22,8 @@ def _record(calls):
 
 
 def test_exactly_the_kinds_the_spec_allows():
-    assert sorted(JOB_KINDS) == ["advise", "advise-fast", "evaluate",
+    assert sorted(JOB_KINDS) == ["advise", "advise-fast", "digest-friday",
+                                 "digest-tuesday", "evaluate",
                                  "field-scrape", "news-shadow",
                                  "refresh-data", "review", "sensitivity",
                                  "snapshot", "track-pens"]

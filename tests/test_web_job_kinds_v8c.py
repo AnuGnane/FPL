@@ -20,11 +20,13 @@ def test_the_allow_list_is_the_kinds_the_frontend_knows():
     one of these strings and a kind the router does not know is a 404.
 
     v8b added ``review`` as the ninth; v8e added ``sensitivity`` as the
-    tenth.
+    tenth; v8f added ``digest-friday`` and ``digest-tuesday`` as the eleventh
+    and twelfth.
     """
     assert sorted(job_kinds.JOB_KINDS) == [
-        "advise", "advise-fast", "evaluate", "field-scrape", "news-shadow",
-        "refresh-data", "review", "sensitivity", "snapshot", "track-pens"]
+        "advise", "advise-fast", "digest-friday", "digest-tuesday",
+        "evaluate", "field-scrape", "news-shadow", "refresh-data", "review",
+        "sensitivity", "snapshot", "track-pens"]
 
 
 def test_the_job_reports_the_rows_it_logged(monkeypatch, capsys):

@@ -13,7 +13,8 @@ def test_the_allow_list_count_is_pinned():
     """A kind not in the allow-list is a 404, never an exec of user input.
     The count is pinned on both sides — see frontend/src/types.test.ts."""
     # 9 -> 10: v8e added the `sensitivity` kind on both sides.
-    assert len(job_kinds.JOB_KINDS) == 10
+    # v8f added digest-friday and digest-tuesday as the eleventh and twelfth.
+    assert len(job_kinds.JOB_KINDS) == 12
     assert "review" in job_kinds.JOB_KINDS
 
 
