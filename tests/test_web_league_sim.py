@@ -17,13 +17,14 @@ from gaffer.web.app import create_app
 
 STANDINGS = {"standings": {"has_next": False, "results": [
     {"entry": 1, "entry_name": "You FC", "player_name": "Me", "rank": 2,
-     "last_rank": 2, "total": 106, "event_total": 55},
+     "last_rank": 2, "total": 170, "event_total": 55},
     {"entry": 2, "entry_name": "Ten Hag Hive", "player_name": "Riv",
      "rank": 1, "last_rank": 1, "total": 190, "event_total": 60}]}}
 
 MY_PICKS = {"picks": [{"element": 7, "position": 1, "multiplier": 2},
                       {"element": 8, "position": 2, "multiplier": 1}]}
-RIVAL_PICKS = {"picks": [{"element": 8, "position": 1, "multiplier": 2}]}
+RIVAL_PICKS = {"picks": [{"element": 9, "position": 1, "multiplier": 2},
+                         {"element": 8, "position": 2, "multiplier": 1}]}
 
 
 class FakeClient:
@@ -43,7 +44,7 @@ class FakeClient:
 
 def _comp() -> pd.DataFrame:
     rows = []
-    for code, element, ep in ((100, 7, 6.0), (101, 8, 3.0)):
+    for code, element, ep in ((100, 7, 6.0), (101, 8, 3.0), (102, 9, 6.0)):
         row = {c: float("nan") for c in COMPONENT_COLS}
         row.update({"code": code, "element": element, "gw": 3, "ep": ep,
                     "p_play": 0.9, "p60": 0.8, "name": "x", "position": "MID",
@@ -69,6 +70,13 @@ def _artifacts(tmp_path):
          "team_id": 2, "team_code": 301, "now_cost": 45, "status": "a",
          "news": "", "chance_of_playing": None, "selected_by_percent": 5.0,
          "form": 1.0, "points_per_game": 2.0, "ep_next": 2.0,
+         "price_change_percent": 0.0, "price_change_calibrating": False,
+         "penalties_order": None, "direct_freekicks_order": None,
+         "corners_and_indirect_freekicks_order": None},
+        {"code": 102, "element": 9, "name": "Rival Ace", "position": "MID",
+         "team_id": 3, "team_code": 302, "now_cost": 125, "status": "a",
+         "news": "", "chance_of_playing": None, "selected_by_percent": 40.0,
+         "form": 5.0, "points_per_game": 6.0, "ep_next": 6.0,
          "price_change_percent": 0.0, "price_change_calibrating": False,
          "penalties_order": None, "direct_freekicks_order": None,
          "corners_and_indirect_freekicks_order": None}])
@@ -187,3 +195,109 @@ def test_no_advice_on_disk_is_a_422(tmp_path, monkeypatch):
     res = TestClient(create_app()).get("/api/league/sim")
     assert res.status_code == 422
     assert "advise" in res.json()["detail"]
+
+
+# --- the what-if panel -----------------------------------------------------
+
+
+def test_no_pins_at_all_reproduces_the_sim_endpoint(client):
+    """G3's rail: an empty what-if is the baseline, exactly, or the panel's
+    deltas are measuring the panel rather than the pins."""
+    base = client.get("/api/league/sim").json()
+    body = client.post("/api/league/whatif", json={"pins": []}).json()
+    assert body["p_win"] == base["p_win"]
+    assert body["baseline_p_win"] == base["p_win"]
+    assert body["delta_p_win"] == 0.0
+    assert body["delta_rank"] == 0.0
+
+
+def test_blanking_my_captain_costs_me_title_odds(client):
+    body = client.post("/api/league/whatif",
+                       json={"pins": [{"code": 100, "event": "blank"}]}).json()
+    assert body["delta_p_win"] < 0.0
+    assert body["p_win"] < body["baseline_p_win"]
+
+
+def test_a_haul_by_my_captain_pays(client):
+    body = client.post("/api/league/whatif",
+                       json={"pins": [{"code": 100, "event": "haul"}]}).json()
+    assert body["delta_p_win"] > 0.0
+
+
+def test_scoring_a_player_at_his_forecast_is_close_to_no_event(client):
+    """"score" means "he does what we already expect", so the delta is the
+    variance removed and nothing else — a small number, not a swing."""
+    base = client.get("/api/league/sim").json()
+    body = client.post("/api/league/whatif",
+                       json={"pins": [{"code": 100, "event": "score"}]}).json()
+    assert abs(body["p_win"] - base["p_win"]) < 0.2
+
+
+def test_the_table_names_every_entry_and_marks_me(client):
+    body = client.post("/api/league/whatif", json={"pins": []}).json()
+    assert [r["entry"] for r in body["table"]] == [2, 1]
+    assert [r["is_you"] for r in body["table"]] == [False, True]
+    assert sum(r["p_win"] for r in body["table"]) == pytest.approx(1.0,
+                                                                  abs=0.01)
+
+
+def test_a_captain_override_is_priced(client):
+    body = client.post("/api/league/whatif",
+                       json={"captain_override": 101}).json()
+    assert body["delta_p_win"] < 0.0
+
+
+def test_a_rival_captain_blank_helps(client):
+    body = client.post("/api/league/whatif",
+                       json={"rival_captain_blanks": 2}).json()
+    assert body["delta_p_win"] >= 0.0
+
+
+def test_an_unknown_code_is_reported_rather_than_silently_dropped(client):
+    """A stale tab pinning a transferred-out player must be told, not
+    humoured: a panel that answers a question it did not understand is worse
+    than one that refuses."""
+    body = client.post("/api/league/whatif",
+                       json={"pins": [{"code": 999, "event": "blank"}]}).json()
+    assert body["unknown_codes"] == [999]
+    assert body["delta_p_win"] == 0.0
+
+
+def test_an_unknown_event_name_is_a_422(client):
+    res = client.post("/api/league/whatif",
+                      json={"pins": [{"code": 100, "event": "hattrick"}]})
+    assert res.status_code == 422
+    assert "hattrick" in res.json()["detail"]
+
+
+def test_the_whatif_reuses_the_cached_inputs_and_fetches_nothing(client,
+                                                                 monkeypatch):
+    calls = {"n": 0}
+
+    def _counting():
+        calls["n"] += 1
+        return FakeClient()
+
+    monkeypatch.setattr("gaffer.web.routers.league_sim.fpl_client", _counting)
+    client.get("/api/league/sim")
+    client.post("/api/league/whatif",
+                json={"pins": [{"code": 100, "event": "blank"}]})
+    assert calls["n"] == 1
+
+
+def test_the_whatif_does_not_bank_a_history_row(client):
+    """The sparkline is a record of the league, not of the user's fiddling."""
+    from gaffer.league_sim import load_sim_history
+
+    client.get("/api/league/sim")
+    client.post("/api/league/whatif",
+                json={"pins": [{"code": 100, "event": "blank"}]})
+    assert len(load_sim_history()) == 1
+
+
+def test_a_dead_api_is_a_422_here_too(client, monkeypatch):
+    monkeypatch.setattr("gaffer.web.routers.league_sim.fpl_client",
+                        lambda: FakeClient(dead=True))
+    monkeypatch.setattr("gaffer.web.routers.league_sim._CACHE", {})
+    res = client.post("/api/league/whatif", json={"pins": []})
+    assert res.status_code == 422
