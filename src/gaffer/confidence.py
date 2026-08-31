@@ -25,10 +25,24 @@ MIN_GRADED = 4
 Four rather than three because three weeks of a binary comparison is one draw
 short of being able to say anything at all, and one short of the point where
 the honest sentence stops being "come back later".
+
+Gates on ``wins + losses`` — see :func:`captain_confidence`. It used to gate
+on "lanes carrying a delta", which counted weeks of *agreement*, and four
+agreements were enough to trip the verdict branch and print "it has not
+earned the armband yet" off a record of zero disagreements.
 """
 
 TIERS = ("early", "mixed", "backed")
 """Ascending. ``early`` is a refusal, not a low score."""
+
+NOTHING_SURVIVED = "no banked advice survives"
+"""The prefix ``review.grade_gw`` writes on every lane of a pruned gameweek.
+
+Such a lane is not a review of anything — the advice it would have graded has
+been deleted (spec D2) — so it does not count towards ``reviewed`` either.
+Left in, a season of pruned weeks reads as a season the tool was watched
+through and never once managed to have an opinion in.
+"""
 
 
 def _lane(row, name: str) -> dict | None:
@@ -59,38 +73,51 @@ def captain_confidence(ledger) -> dict:
     compare and counting it as agreement-therefore-success would be scoring
     the tool against itself.
 
-    ``reviewed`` counts gameweeks that carry a captaincy lane at all;
-    ``graded`` counts the ones where it was comparable. The gap between them
-    is the "the model's captain was not in your eleven" weeks, and it is
-    reported rather than hidden — a season of ungraded lanes looks exactly
-    like a season of agreement in any summary that collapses the two.
+    ``graded`` is ``wins + losses``, exactly. An aligned week is **not** in it
+    and is **not** in the denominator of anything: it is quoted on its own,
+    beside the record rather than inside it. The first cut counted aligned
+    weeks as graded, which made four weeks of taking the tool's advice enough
+    to clear :data:`MIN_GRADED` and then print "0 of 4 — it has not earned the
+    armband yet". A verdict against the model assembled out of weeks nobody
+    disagreed with it is not a weak claim, it is a false one.
+
+    ``reviewed`` counts gameweeks that carry a captaincy lane worth the name.
+    A lane whose note says the advice was pruned (:data:`NOTHING_SURVIVED`) is
+    not one: nothing was reviewed there. The gap between ``reviewed`` and
+    ``graded + aligned`` is the "the model's captain was not in your eleven"
+    weeks, reported rather than hidden.
     """
-    reviewed = graded = wins = losses = aligned = 0
+    reviewed = wins = losses = aligned = 0
     for row in ledger or []:
         lane = _lane(row, "captaincy")
         if lane is None:
             continue
+        note = lane.get("note")
+        if isinstance(note, str) and NOTHING_SURVIVED in note:
+            continue
         reviewed += 1
         delta = lane.get("delta_pts")
-        if delta is None:
-            continue
-        graded += 1
         if lane.get("aligned"):
             aligned += 1
+        elif delta is None:
+            continue
         elif float(delta) < 0:
             wins += 1
         elif float(delta) > 0:
             losses += 1
+    graded = wins + losses
 
+    agreed = f" ({aligned} you agreed on)" if aligned else ""
     if graded < MIN_GRADED:
         tier = "early"
-        text = (f"Too early to grade — the model's captain has been "
-                f"comparable to yours in {graded} of {reviewed} reviewed "
-                f"gameweeks.")
+        weeks = f"{reviewed} gameweek{'' if reviewed == 1 else 's'} reviewed"
+        tail = ("none gradeable yet" if graded == 0
+                else f"{graded} gradeable so far")
+        text = f"Too early to grade — {weeks}, {tail}{agreed}."
     else:
         tier = "backed" if wins > losses else "mixed"
         text = (f"The model's captain outscored yours in {wins} of {graded} "
-                f"comparable gameweeks ({aligned} you agreed on)")
+                f"comparable gameweeks{agreed}")
         text += ("." if tier == "backed"
                  else " — it has not earned the armband yet.")
     return {"tier": tier, "reviewed": reviewed, "graded": graded,

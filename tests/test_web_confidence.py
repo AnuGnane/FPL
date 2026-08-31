@@ -94,19 +94,31 @@ def test_a_graded_season_quotes_its_counts(client, tmp_path):
 
 def test_the_report_carries_the_noise_on_the_players_that_separate_the_plans(
         client, tmp_path):
-    """A6: quadrature over the symmetric difference, from the same σ the
-    bands use."""
+    """A6: quadrature over the symmetric difference, on the *estimation* σ.
+
+    Deliberately not the band's σ, and this test is where the two part
+    company. A band prices what a player might score; a margin between two
+    plans solved off the same board can only be threatened by forecast error,
+    so folding football's variance in here would inflate every comparison into
+    a coin flip. The assertion below fails if this line ever quietly starts
+    reading ``band_for``.
+    """
     import math
 
-    from gaffer.uncertainty import band_for, xmins_by_player_gw
+    from gaffer.uncertainty import (band_for, estimation_sigma_for,
+                                    xmins_by_player_gw)
 
     (tmp_path / f"reports/sensitivity_gw{GW}.json").write_text(
         json.dumps(SENSITIVITY))
     body = client.get("/api/sensitivity").json()
     xm = xmins_by_player_gw(COMPONENTS)
-    want = math.sqrt(sum(band_for(ep, xm[(code, GW)]).sigma ** 2
-                         for code, ep in ((11, 5.0), (22, 1.5))))
+    cells = ((11, 5.0), (22, 1.5))
+    want = math.sqrt(sum(estimation_sigma_for(ep, xm[(code, GW)]) ** 2
+                         for code, ep in cells))
     assert body["decision_sigma"] == pytest.approx(round(want, 3))
+    banded = math.sqrt(sum(band_for(ep, xm[(code, GW)]).sigma ** 2
+                           for code, ep in cells))
+    assert body["decision_sigma"] < banded / 2
 
 
 def test_no_runner_up_is_no_comparison(client, tmp_path):

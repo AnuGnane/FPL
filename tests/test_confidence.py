@@ -25,7 +25,7 @@ def test_an_empty_ledger_is_too_early_and_says_zero():
     out = captain_confidence([])
     assert out["tier"] == "early"
     assert out["graded"] == 0 and out["reviewed"] == 0
-    assert "0 of 0" in out["text"]
+    assert "0 gameweeks reviewed" in out["text"]
 
 
 def test_one_reviewed_gameweek_is_still_too_early():
@@ -33,7 +33,7 @@ def test_one_reviewed_gameweek_is_still_too_early():
     out = captain_confidence([_gw(1, -2)])
     assert out["tier"] == "early"
     assert out["graded"] == 1 and out["reviewed"] == 1
-    assert "1 of 1" in out["text"]
+    assert "1 gameweek reviewed" in out["text"]
     assert "too early" in out["text"].lower()
 
 
@@ -71,6 +71,54 @@ def test_an_aligned_week_is_neither_a_win_nor_a_loss():
     assert out["aligned"] == 2
     assert out["wins"] == 2 and out["losses"] == 0
     assert "2 you agreed on" in out["text"]
+
+
+def test_an_aligned_week_is_not_in_the_graded_denominator():
+    """B4. ``graded`` is ``wins + losses`` and nothing else.
+
+    Four weeks of agreement used to clear MIN_GRADED, then divide zero wins by
+    four "comparable" gameweeks and conclude the model *has not earned the
+    armband* — a verdict against the tool built entirely out of weeks the user
+    took its advice.
+    """
+    ledger = [_gw(g, 0, aligned=True) for g in range(1, 5)]
+    out = captain_confidence(ledger)
+    assert out["graded"] == 0
+    assert out["reviewed"] == 4 and out["aligned"] == 4
+    assert out["tier"] == "early"
+    assert "not earned the armband" not in out["text"]
+    assert "none gradeable yet" in out["text"]
+    assert "4 gameweeks reviewed" in out["text"]
+
+
+def test_the_early_sentence_quotes_reviewed_not_a_ratio():
+    """The reviewer's repro at n=1: one lane, one number in the sentence."""
+    out = captain_confidence([_gw(1, -2)])
+    assert out["reviewed"] == 1 and out["graded"] == 1
+    assert "1 gameweek reviewed" in out["text"]
+    assert " of " not in out["text"]
+
+
+def test_four_graded_weeks_survive_extra_aligned_ones():
+    """Aligned weeks are quoted, never counted: four real comparisons still
+    reach a verdict with a dozen agreements sitting beside them."""
+    ledger = ([_gw(g, -2) for g in range(1, 5)]
+              + [_gw(g, 0, aligned=True) for g in range(5, 17)])
+    out = captain_confidence(ledger)
+    assert out["tier"] == "backed" and out["graded"] == 4
+    assert "4 of 4" in out["text"] and "12 you agreed on" in out["text"]
+
+
+def test_a_lane_that_says_nothing_survived_is_not_reviewed():
+    """A pruned gameweek carries a captaincy lane whose note says the advice
+    is gone. Counting it as reviewed inflates the denominator of the refusal
+    sentence with weeks nobody ever looked at."""
+    ledger = [{"gw": 1, "lanes": [{
+        "lane": "captaincy", "delta_pts": None, "aligned": False,
+        "note": "no banked advice survives for this gameweek"}]},
+        _gw(2, -1)]
+    out = captain_confidence(ledger)
+    assert out["reviewed"] == 1 and out["graded"] == 1
 
 
 def test_a_ledger_row_with_no_captaincy_lane_is_skipped_not_crashed():

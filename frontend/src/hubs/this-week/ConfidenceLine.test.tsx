@@ -9,21 +9,22 @@ function mock(body: unknown) {
 
 describe('ConfidenceLine', () => {
   it('prints the sentence the ledger produced', async () => {
-    mock({ captain: { tier: 'backed', reviewed: 6, graded: 5, wins: 4,
-                      losses: 1, aligned: 0,
+    mock({ captain: { tier: 'backed', reviewed: 8, graded: 5, wins: 4,
+                      losses: 1, aligned: 2,
                       text: 'The model’s captain outscored yours in 4 of '
-                        + '5 comparable gameweeks (0 you agreed on).' } })
+                        + '5 comparable gameweeks (2 you agreed on).' } })
     render(<ConfidenceLine />)
     expect(await screen.findByText(/4 of 5 comparable gameweeks/))
       .toBeInTheDocument()
   })
 
   it('renders the too-early branch as prose, not as a warning', async () => {
+    // The sentence `confidence.captain_confidence` actually ships at n=1:
+    // a count of what was looked at, and no ratio to read a verdict out of.
     mock({ captain: { tier: 'early', reviewed: 1, graded: 1, wins: 1,
                       losses: 0, aligned: 0,
-                      text: 'Too early to grade — the model’s '
-                        + 'captain has been comparable to yours in 1 of 1 '
-                        + 'reviewed gameweeks.' } })
+                      text: 'Too early to grade — 1 gameweek reviewed, '
+                        + '1 gradeable so far.' } })
     render(<ConfidenceLine />)
     expect(await screen.findByText(/Too early to grade/)).toBeInTheDocument()
     expect(screen.queryByRole('alert')).toBeNull()
