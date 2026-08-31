@@ -138,12 +138,17 @@ export default function ReviewTab() {
   if (!data) return <Loading />
   if (data.gws.length === 0) {
     return (
+      // `EmptyState` renders an unwired action as a shell command, so the
+      // action is the command — "Review last week" is the label on the
+      // hub's own JobButton, which sits above this tab and is the other way
+      // to run exactly this.
       <EmptyState
         title="Nothing reviewed yet"
         detail="The review grades the decisions you made against the ones the
                 model made before the same deadline, so it needs a gameweek
-                whose results FPL has finalised."
-        action="Review last week"
+                whose results FPL has finalised. The hub's Review last week
+                button runs the same thing."
+        action="gaffer review"
       />
     )
   }

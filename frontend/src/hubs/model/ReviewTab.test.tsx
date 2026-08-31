@@ -58,6 +58,18 @@ describe('ReviewTab', () => {
     expect(await screen.findByText(/Nothing reviewed yet/i)).toBeTruthy()
   })
 
+  it('names a command in the empty state, not a button it cannot press',
+     async () => {
+       // An unwired `action` renders as a <code> block, so it has to read as
+       // something you can type. "Review last week" is the label on the hub's
+       // JobButton and belongs in the prose.
+       mock({ gws: [], summary: null })
+       render(<ReviewTab />)
+       const empty = await screen.findByTestId('empty-state')
+       expect(empty.querySelector('code')?.textContent).toBe('gaffer review')
+       expect(empty.querySelector('button')).toBeNull()
+     })
+
   it('falls back to the empty state when the request fails', async () => {
     mock(new Error('offline'))
     render(<ReviewTab />)
