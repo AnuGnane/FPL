@@ -106,7 +106,7 @@ Proposal: `specs/2026-08-30-gaffer-v8-research-proposal.md`. Order fixed by depe
 user decisions recorded: LLM presser classifier runs via headless `claude -p` (user's Claude
 subscription — no API key/spend, pluggable + degradable); v8f alerts approved; v8c top-10k
 entry-API scrape approved.
-- [ ] v8a minutes intelligence (rotation priors, short-horizon congestion w/ v5-confound check, ordinal minutes head, lineup-consensus feature, `claude -p` presser classifier)
+- [x] v8a minutes intelligence — done 2026-08-31, spec §9 = outcome. G1 withdrew ALL six feature arms (zeros regressed on every one — the gap is news-shaped/serve-time, not historical-features); shipped instead: notable-absence damp (≥11 resolved starters, unflagged players only), `claude -p` presser classifier (no-tools pinned, chunked, shadow-first, serving OFF), P(start) eval metrics, manager-tenure asset (89 spells). Review blocker: mixed-dtype sort made serve-time priors one match stale + G5 taught that replay baselines must be re-banked after serving-default flips (banked 1876 was pre-Z1; branch ≡ main at 1844).
 - [ ] v8c field intelligence (tier-EO scrape FIRST — append-only field history; mini-league win %, sampled-field sims, what-if)
 - [ ] v8b decision loop (GW review grading, EV-loss ledger, attribution, hindsight XI — graded in pts + Δwin%)
 - [ ] v8d live matchday (live bonus from BPS, EP race chart, auto-sub projection, league safety score)

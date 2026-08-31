@@ -65,6 +65,23 @@ All computed from `player_gw.parquet` (starts/minutes 100% populated, 2022-23→
 
 Distribution-into-MC (protected seam — v8g candidate with sanction); AGS/prop odds (paywalled); rebuilding congestion archives; training on live availability (anti-skew rule); flipping `llm_classifier` or `lineup_start_floor` on (evidence-first, later decision).
 
-## 9. Outcome
+## 9. Outcome (2026-08-31)
 
-(Filled at cycle end: gate evidence, kept/withdrawn arms, residuals.)
+**Shipped.** Suite 1636 → 1773 Python (+0 frontend; no UI change this cycle). All 19 plan tasks plus a FIX-FIRST review round (1 blocker, 5 importants, 7 nits — all fixed).
+
+**G1 — ALL SIX ARMS WITHDRAWN.** 2024-25 walk-forward benchmark, keep rule zeros ≥ +0.005 with no >0.005 haulers/all cost (baseline zeros 1.066, haulers 5.179, all 1.968):
+- f1_tenure_start_share −0.008 · f1_manager_tenure_matches −0.015 · f1_xi_churn_r5 −0.007 · f1_started_last_match −0.007 · f2_league −0.004 · f2_cups −0.004 (all zeros *regressions*).
+- Notes: f2_league ≡ f2_cups on this benchmark structurally (no cup rows ≤2024-25; the arms differ only in `matches_last_14d`, ever). A prediction-level probe confirmed the f1 arms are distinct fits; the xi_churn/started_last_match 3dp tie is rounding. Record lives in `train.py`'s MINUTES_FEATURES docstring beside the v5 N1 withdrawal. Builders + `data/manager_tenures.toml` (89 spells, 27 clubs, coverage-validated) stay shipped for future re-tests.
+- The zeros gap is therefore *not* reachable from historical rotation/congestion features at all — reinforcing the v7-model diagnosis that the remaining error is news-shaped and serve-time. v8a's serve-time work (F4/F5) is aimed exactly there; its evidence accrues in the shadow logs.
+
+**G2 — PASS.** Holdout zeros 1.053 (= pre-cycle, feature set unchanged), haulers 5.149; new P(start) head log loss 0.278 now reported alongside p_play 0.302 / p60 0.281.
+
+**G3 — PASS.** 16-rail `tests/test_v8a_degradation.py`; two originally-vacuous rails rewritten against real markup during the fix round.
+
+**G4 — PASS (on retry).** Real `claude -p` batch over live news: 127/131 texts schema-valid (97% ≥ 80% bar), `data/live/presser_log.parquet` written (83 carrier rows; verdicts ruled_out 62 / assess 14 / knock 7; serving deltas zero with the flag off). First attempt returned empty stdout under full-core load — the never-raises degradation path held; hardening followed (chunks of 40, one retry, timeout 300s, PROMPT_VERSION-salted cache, `--disallowedTools` pinned on the default command since scraped news text is untrusted input to an agent CLI).
+
+**G5 — PASS (byte-identical to main).** Replay heur/20260901/n40: branch 1844 = main 1844 (same worktree data). The banked 1876 predates the Z1 flip (`826ff6b`), which deliberately changed minutes predictions — the stale comparison initially read as a 32-pt divergence and cost an investigation that proved the training frame and horizon frames byte-identical to main. Gate lesson recorded: **replay-equality baselines must be re-banked after any serving-default flip.**
+
+**Review round (blocker):** serve-time rotation priors were computed one match stale — `add_rotation_priors` sorted on raw string `kickoff_time` while the serve probe was a Timestamp (mixed-dtype sort put the probe first), and the serve-equivalence rail was accidentally insensitive. Fixed: parse-then-sort, results mapped back in caller row order (`add_rotation_priors(df)[df.columns] == df` now test-pinned), rail rewritten with ISO-string fixtures. Importants: flagged players are no longer double-damped by the absence pass; a club needs ≥11 *resolved* starters before absence damps apply; classifier hardening as above.
+
+**Residuals:** `llm_classifier` serving flag OFF pending shadow evidence (flip ritual = Z1's); `lineup_start_floor` shipped at 0.0 (capability only); presser-log verdict quality unaudited beyond the smoke distribution (first structured audit when a few GWs accrue); `serving_config` is process-cached (config edits need a server restart — commented); zeros_diagnostic DGW starts-vs-minutes incoherence documented, not fixed.
