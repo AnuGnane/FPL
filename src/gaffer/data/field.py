@@ -33,7 +33,10 @@ from pathlib import Path
 import pandas as pd
 
 from gaffer.data import store
-from gaffer.data.tier_eo import RAW_TIER, TIER_SAMPLE, TIER_SEED
+from gaffer.data.tier_eo import (RAW_TIER, TIER_SAMPLE, TIER_SEED,
+                                 eo_from_picks, fetch_sample_picks,
+                                 read_tier_cache, tier_cache_path,
+                                 write_tier_cache)
 from gaffer.snapshot import snap_date
 
 RAW_FIELD = Path("data/raw/field")
