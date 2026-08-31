@@ -155,13 +155,22 @@ def notable_absences(players: pd.DataFrame, covered: set[int],
                      ) -> pd.DataFrame:
     """Regulars a parsed XI silently left out, as ``[code, absence_damp]``.
 
-    Three conditions, all necessary (spec §4). His club must have a parsed XI
+    Four conditions, all necessary (spec §4). His club must have a parsed XI
     — no team sheet is not the same as a team sheet without him. He must not
     already be *named* by the page, in the XI or on any absence list, because
     that row is the sharper claim and damping it twice would double-count one
-    source. And he must be a regular by :data:`ABSENCE_MIN_START_SHARE`, since
-    half of every squad is out of every predicted XI and only a player the
-    manager has been picking says something by being missing.
+    source. He must not already be *flagged* by the official feed, for the
+    same reason and a sharper one: ``apply_availability`` has already docked
+    an ``i`` or a ``d``, and the predicted XI leaves him out *because* of that
+    flag, so a second charge is not a second source. Only ``status = 'a'``
+    with no chance percentage — the fit player nobody has docked — is
+    eligible. And he must be a regular by :data:`ABSENCE_MIN_START_SHARE`,
+    since half of every squad is out of every predicted XI and only a player
+    the manager has been picking says something by being missing.
+
+    A ``players`` frame carrying neither column is the pre-bootstrap caller
+    and every row stays eligible: the flag filter can only ever remove rows,
+    and its absence is the shipped behaviour.
 
     The result is a *damp*, not a ceiling: an omission is weaker evidence than
     a printed "Out", and multiplying is how the model's own view survives it.
@@ -169,7 +178,10 @@ def notable_absences(players: pd.DataFrame, covered: set[int],
     cols = ["code", "absence_damp"]
     if not covered or "starts" not in players.columns:
         return pd.DataFrame(columns=cols)
-    frame = players[["code", "team_code", "starts"]].copy()
+    keep = ["code", "team_code", "starts"]
+    keep += [c for c in ("status", "chance_of_playing")
+             if c in players.columns]
+    frame = players[keep].copy()
     frame["code"] = pd.to_numeric(frame["code"], errors="coerce")
     frame["team_code"] = pd.to_numeric(frame["team_code"], errors="coerce")
     frame["starts"] = pd.to_numeric(frame["starts"],
@@ -181,7 +193,14 @@ def notable_absences(players: pd.DataFrame, covered: set[int],
     # it after the named codes are dropped would make the *least* regular
     # survivor his own benchmark and hand him a share of 1.0.
     best = frame.groupby("team_code")["starts"].transform("max")
-    frame = frame[~frame["code"].isin(claimed)]
+    unflagged = pd.Series(True, index=frame.index)
+    if "status" in frame.columns:
+        status = frame["status"].astype("object")
+        unflagged &= status.isna() | status.astype(str).str.strip().eq("a")
+    if "chance_of_playing" in frame.columns:
+        chance = pd.to_numeric(frame["chance_of_playing"], errors="coerce")
+        unflagged &= chance.isna() | (chance >= 100)
+    frame = frame[~frame["code"].isin(claimed) & unflagged]
     best = best.loc[frame.index]
     if frame.empty:
         return pd.DataFrame(columns=cols)

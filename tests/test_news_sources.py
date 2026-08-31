@@ -648,6 +648,45 @@ def test_a_club_whose_xi_was_not_parsed_damps_nobody():
     assert out.empty
 
 
+def test_a_player_the_official_flags_already_docked_is_not_damped_twice():
+    """The injury feed's ``status`` is the sharper claim and it is applied
+    first. Damping a flagged player again for being out of a predicted XI
+    charges him twice for one absence — and the predicted XI leaves him out
+    *because* of the flag, so the second charge is not even a second source.
+    """
+    from gaffer.data.news.lineups import notable_absences
+
+    players = _absence_players()
+    players.loc[players["code"] == 12, "status"] = "d"
+    players.loc[players["code"] == 12, "chance_of_playing"] = 50.0
+    out = notable_absences(players, covered={3}, claimed={11, 14},
+                           damp=0.75, min_share=0.6)
+    assert out.empty
+
+
+def test_a_doubt_with_a_chance_percentage_is_not_damped_twice():
+    from gaffer.data.news.lineups import notable_absences
+
+    players = _absence_players()
+    players.loc[players["code"] == 12, "chance_of_playing"] = 25.0
+    out = notable_absences(players, covered={3}, claimed={11, 14},
+                           damp=0.75, min_share=0.6)
+    assert out.empty
+
+
+def test_an_unflagged_regular_is_still_damped():
+    """The other half of the rail: ``status = 'a'`` and a full chance is the
+    fit player nobody has docked, and his omission is the whole signal."""
+    from gaffer.data.news.lineups import notable_absences
+
+    players = _absence_players()
+    players["status"] = "a"
+    players["chance_of_playing"] = 100.0
+    out = notable_absences(players, covered={3}, claimed={11, 14},
+                           damp=0.75, min_share=0.6)
+    assert list(out["code"]) == [12]
+
+
 def test_a_player_already_on_an_absence_list_is_not_damped_twice():
     from gaffer.data.news.lineups import notable_absences
 
