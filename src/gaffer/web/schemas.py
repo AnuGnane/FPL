@@ -602,6 +602,16 @@ class AdvicePlayer(BaseModel):
     name: str
 
 
+class EpMover(BaseModel):
+    """One player the newest retrain moved, in the gameweek being decided."""
+
+    code: int
+    name: str
+    ep_prev: float
+    ep_now: float
+    delta: float
+
+
 class AdviceDiff(BaseModel):
     """What changed between the two newest runs of one gameweek.
 
@@ -624,6 +634,15 @@ class AdviceDiff(BaseModel):
     chip_from: str | None = None
     chip_to: str | None = None
     expected_pts_delta: float = 0.0
+    ep_movers: list[EpMover] = Field(default_factory=list)
+    """Players whose expected points moved between the two newest component
+    breakdowns. Independent of ``available``: a first run of the week has no
+    plan to diff and may still have a retrain to report (plan A10)."""
+    ep_movers_count: int | None = None
+    """How many moved, or ``None`` when there is no predecessor breakdown to
+    compare against. ``None`` and ``0`` are different claims — "we have not
+    retrained since you looked" against "the retrain changed nothing" — and
+    the strip renders only the second."""
 
 
 class NewsRow(BaseModel):

@@ -553,6 +553,14 @@ export interface AdvicePlayerRef {
   name: string
 }
 
+export interface EpMover {
+  code: number
+  name: string
+  ep_prev: number
+  ep_now: number
+  delta: number
+}
+
 export interface AdviceDiff {
   gw: number
   /** False on a first run of the week — the ordinary case, not an error. */
@@ -569,6 +577,9 @@ export interface AdviceDiff {
   chip_from: string | null
   chip_to: string | null
   expected_pts_delta: number
+  ep_movers: EpMover[]
+  /** null when there is no predecessor breakdown — not the same as 0. */
+  ep_movers_count: number | null
 }
 
 export interface NewsRow {

@@ -55,6 +55,17 @@ const DIFF = {
   captain_to: { code: 101, name: 'Haaland' },
   chip_from: null, chip_to: 'bboost',
   expected_pts_delta: 2.5,
+  ep_movers: [], ep_movers_count: null,
+}
+
+/** Every list empty and no retrain to report — the shape the endpoint sends
+ *  on a first run of the week. */
+const EMPTY_DIFF = {
+  gw: 5, available: false, changed: false,
+  previous_at: null, current_at: null,
+  buys_added: [], buys_dropped: [], sells_added: [], sells_dropped: [],
+  captain_from: null, captain_to: null, chip_from: null, chip_to: null,
+  expected_pts_delta: 0.0, ep_movers: [], ep_movers_count: null,
 }
 
 const PINS = {
@@ -148,7 +159,7 @@ describe('WhyPanel', () => {
   })
 
   it('shows no strip at all when there is no previous run', async () => {
-    serve(NO_PINS, { gw: 5, available: false, changed: false })
+    serve(NO_PINS, EMPTY_DIFF)
     render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
     await screen.findByText('Salah')
     expect(screen.queryByText(/since last run/i)).not.toBeInTheDocument()
@@ -210,11 +221,69 @@ describe('WhyPanel', () => {
   })
 
   it('hides itself when no components file exists', async () => {
-    serve(PINS, { gw: 5, available: false, changed: false },
+    serve(PINS, EMPTY_DIFF,
           new FakeApiError(404, 'no component breakdown'))
     const { container } = render(
       <MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
     await new Promise((r) => setTimeout(r, 0))
     expect(container.textContent).toBe('')
+  })
+})
+
+describe('the retrain movers line', () => {
+  it('names the count and the top three', async () => {
+    serve(NO_PINS, {
+      ...EMPTY_DIFF, available: true, changed: true, ep_movers_count: 5,
+      ep_movers: [
+        { code: 1, name: 'Saka', ep_prev: 5.0, ep_now: 6.4, delta: 1.4 },
+        { code: 2, name: 'Rice', ep_prev: 4.0, ep_now: 3.1, delta: -0.9 },
+        { code: 3, name: 'Gvardiol', ep_prev: 4.0, ep_now: 4.7, delta: 0.7 },
+        { code: 4, name: 'Wirtz', ep_prev: 4.0, ep_now: 4.6, delta: 0.6 },
+        { code: 5, name: 'Isak', ep_prev: 4.0, ep_now: 4.6, delta: 0.6 },
+      ],
+    })
+    render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
+    const line = await screen.findByText(/5 players moved/)
+    expect(line.textContent).toContain('Saka')
+    expect(line.textContent).toContain('Gvardiol')
+    expect(line.textContent).not.toContain('Isak')
+  })
+
+  it('shows the strip on a first run of the week when only movers exist',
+     async () => {
+    // A10: `available` is false, so the old condition hid a true statement.
+    serve(NO_PINS, {
+      ...EMPTY_DIFF, available: false, ep_movers_count: 1,
+      ep_movers: [
+        { code: 1, name: 'Saka', ep_prev: 5.0, ep_now: 6.4, delta: 1.4 }],
+    })
+    render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
+    expect(await screen.findByText(/1 player moved/)).toBeInTheDocument()
+    // and none of the ornaments that only make sense against a previous run.
+    // Matched on the delta's own shape rather than a bare /xPts$/, which the
+    // breakdown table's own column header answers to.
+    expect(screen.queryByText(/^[+−-]?\d+\.\d+ xPts$/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/2026-09-03/)).not.toBeInTheDocument()
+  })
+
+  it('says nothing about movers when there is no predecessor', async () => {
+    serve(NO_PINS, {
+      ...EMPTY_DIFF, available: true, changed: true,
+      previous_at: '2026-09-03T09:00:00+00:00',
+      ep_movers_count: null, ep_movers: [],
+    })
+    render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
+    expect(await screen.findByText(/Since last run/)).toBeInTheDocument()
+    expect(screen.queryByText(/moved/)).not.toBeInTheDocument()
+  })
+
+  it('says nothing when the retrain moved nobody', async () => {
+    serve(NO_PINS, {
+      ...EMPTY_DIFF, available: true, changed: true,
+      ep_movers_count: 0, ep_movers: [],
+    })
+    render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
+    await screen.findByText('Salah')
+    expect(screen.queryByText(/moved/)).not.toBeInTheDocument()
   })
 })

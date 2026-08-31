@@ -22,6 +22,7 @@ what the tilt reads (a state written before ``cover`` existed falls back to
 from __future__ import annotations
 
 import json
+import shutil
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -103,9 +104,32 @@ def components_frame(comp: pd.DataFrame, scoring: dict, cal,
     return out[COMPONENT_COLS].reset_index(drop=True)
 
 
+def prev_components_path(gw: int) -> Path:
+    """The single retained predecessor of ``gw``'s component breakdown.
+
+    One slot, never rotated. The question it answers is "what did tonight's
+    retrain change", and a third file answers no question anybody asked while
+    costing a directory that grows all season.
+    """
+    return REPORTS / f"components_gw{gw}_prev.parquet"
+
+
 def save_components(frame: pd.DataFrame, gw: int) -> Path:
+    """Bank the component breakdown, keeping the previous one beside it.
+
+    The copy is instrumentation and is treated as such: it is taken before the
+    overwrite, it is wrapped, and its failure is a printed line rather than an
+    exception. Banking the *current* components is this function's actual job
+    — an advise run that died because a diff could not be preserved would be
+    a far worse trade than a Thursday with no diff.
+    """
     REPORTS.mkdir(exist_ok=True)
     path = components_path(gw)
+    if path.exists():
+        try:
+            shutil.copyfile(path, prev_components_path(gw))
+        except Exception as exc:  # noqa: BLE001 — a diff is never worth a run
+            print(f"components: no predecessor kept for GW{gw} ({exc})")
     frame.to_parquet(path, index=False)
     return path
 
@@ -602,3 +626,88 @@ def diff_advice(previous: dict, current: dict) -> dict:
                           or out["chip_from"]
                           or out["expected_pts_delta"] != 0.0)
     return out
+
+
+EP_MOVER_THRESHOLD = 0.5
+"""Points of expected-points change worth naming.
+
+Half a point is roughly the gap between a rotation risk and a nailed-on
+starter in one gameweek, and it is well above the noise a retrain on one extra
+gameweek of data produces for a settled player. A tenth would list the whole
+pool, which is a diff nobody reads.
+"""
+
+EP_MOVERS_KEEP = 20
+"""How many movers the payload carries. The card names three; the rest are
+there so a future panel can list them without a second endpoint."""
+
+
+def _first_gw_ep(frame: pd.DataFrame) -> dict[int, float] | None:
+    """``{code: EP}`` for a frame's own earliest gameweek, or ``None``.
+
+    Its *own* earliest, not a shared one (plan A9): the two frames being
+    compared may have been written either side of a horizon roll, and the week
+    being decided is the comparable thing in both. EP is summed across that
+    week's fixtures, so a double gameweek is one number — the forecast was for
+    the week.
+    """
+    if frame is None or not isinstance(frame, pd.DataFrame) or frame.empty:
+        return None
+    if not {"code", "gw", "ep"}.issubset(frame.columns):
+        return None
+    gws = pd.to_numeric(frame["gw"], errors="coerce")
+    if gws.dropna().empty:
+        return None
+    rows = frame[gws == gws.min()]
+    totals = (pd.DataFrame({
+        "code": pd.to_numeric(rows["code"], errors="coerce").astype("int64"),
+        "ep": pd.to_numeric(rows["ep"], errors="coerce").fillna(0.0)})
+        .groupby("code", as_index=False)["ep"].sum())
+    return {int(r.code): float(r.ep) for r in totals.itertuples()}
+
+
+def ep_movers(gw: int, threshold: float = EP_MOVER_THRESHOLD) -> list | None:
+    """Players whose expected points moved between the two newest breakdowns.
+
+    ``None`` — never ``[]`` — when there is no predecessor, or when either
+    file is unreadable. The distinction is the whole point: "we have not
+    retrained since you last looked" and "the retrain changed nothing" are
+    different sentences, and a payload that could not tell them apart would
+    make the first run after this cycle merges claim a quiet retrain it has no
+    evidence for.
+
+    A player present in only one frame is **not** a mover. He did not move, he
+    appeared (or left the pool), and reporting a new entrant as "+8.0 EP"
+    would be the diff's most eye-catching and least true row.
+    """
+    prev_path = prev_components_path(int(gw))
+    if not prev_path.exists():
+        return None
+    try:
+        before = _first_gw_ep(pd.read_parquet(prev_path))
+        after = _first_gw_ep(load_components(int(gw)))
+    except Exception as exc:  # noqa: BLE001 — a strip is never worth a 500
+        print(f"ep movers: unreadable breakdown for GW{gw} ({exc})")
+        return None
+    if not before or not after:
+        return None
+
+    names: dict[int, str] = {}
+    try:
+        comp = load_components(int(gw))
+        names = {int(r.code): str(r.name) for r in comp.itertuples()
+                 if getattr(r, "name", None) is not None}
+    except Exception:  # noqa: BLE001 — a code is a usable label
+        pass
+
+    rows = []
+    for code in sorted(set(before) & set(after)):
+        delta = after[code] - before[code]
+        if abs(delta) < float(threshold):
+            continue
+        rows.append({"code": code, "name": names.get(code, str(code)),
+                     "ep_prev": round(before[code], 2),
+                     "ep_now": round(after[code], 2),
+                     "delta": round(delta, 2)})
+    rows.sort(key=lambda r: abs(r["delta"]), reverse=True)
+    return rows[:EP_MOVERS_KEEP]

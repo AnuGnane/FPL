@@ -17,8 +17,9 @@ import pandas as pd
 from fastapi import APIRouter
 
 from gaffer.artifacts import (advice_history_files, data_warning,
-                              diff_advice, ingested_through, latest_gw,
-                              load_advice, load_solve_state, upcoming_gw)
+                              diff_advice, ep_movers, ingested_through,
+                              latest_gw, load_advice, load_solve_state,
+                              upcoming_gw)
 from gaffer.errors import GafferError
 from gaffer.web.schemas import AdviceDiff, AdviceLatest, Staleness
 
@@ -130,13 +131,20 @@ def diff(gw: int | None = None) -> AdviceDiff:
     Never an error. A first run of the week, a wiped ``reports/`` directory
     and a history file that will not parse all land in the same place: the
     strip is not shown, and the rest of This Week renders exactly as it did.
+
+    The EP movers are computed before every one of those exits, because they
+    are not about the plan at all — they are about the *model*, and a first
+    run of the week is exactly when a retrain happened (plan A10).
     """
     target = gw if gw is not None else latest_gw()
     if target is None:
         return AdviceDiff(gw=0, available=False)
+    movers = ep_movers(int(target))
+    extra = {"ep_movers": movers or [],
+             "ep_movers_count": None if movers is None else len(movers)}
     files = advice_history_files(int(target))
     if len(files) < 2:
-        return AdviceDiff(gw=int(target), available=False)
+        return AdviceDiff(gw=int(target), available=False, **extra)
     previous_path, current_path = files[-2], files[-1]
     try:
         previous = json.loads(previous_path.read_text())
@@ -147,9 +155,9 @@ def diff(gw: int | None = None) -> AdviceDiff:
         # server lost, is exactly as much of a "no diff to show" as malformed
         # JSON is — and the strip promises never to be an error.
         print(f"advice history unreadable, no diff shown: {exc}")
-        return AdviceDiff(gw=int(target), available=False)
+        return AdviceDiff(gw=int(target), available=False, **extra)
     out = diff_advice(previous, current)
     return AdviceDiff(
         gw=int(target), available=True,
         previous_at=previous_path.stem.partition("-")[2],
-        current_at=current_path.stem.partition("-")[2], **out)
+        current_at=current_path.stem.partition("-")[2], **out, **extra)
