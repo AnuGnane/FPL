@@ -11,6 +11,8 @@ atomic, and a cap exists.
 from __future__ import annotations
 
 import json
+import os
+from pathlib import Path
 
 import pytest
 
@@ -139,3 +141,34 @@ def test_the_watch_target_of_a_bare_clone_is_the_stars_alone():
 
 def test_the_watch_target_is_empty_when_nothing_is_watched_at_all():
     assert watch_targets() == {}
+
+
+def test_a_second_writers_temp_file_survives_this_writers_unlink(monkeypatch):
+    """Two saves racing must not share one temp name.
+
+    The old fixed ``watchlist.json.tmp`` gave both writers the same sibling:
+    whichever renamed first then unlinked the other's half-written file in its
+    ``finally``, and the loser's ``os.replace`` raised ``FileNotFoundError``.
+    Here writer B — another process, another pid — starts its temp file while
+    A is renaming, and must still find it afterwards.
+    """
+    path = artifacts.REPORTS / "watchlist.json"
+    real_replace = os.replace
+    renamed, other = [], {}
+
+    def spy(src, dst):
+        renamed.append(Path(src).name)
+        if len(renamed) == 1:
+            b_tmp = Path(dst).with_name(f"{Path(dst).name}.999999.tmp")
+            b_tmp.write_text(json.dumps(
+                {"watchlist": {"7": {"note": "b", "set_at": ""}}}))
+            other["tmp"] = b_tmp
+        real_replace(src, dst)
+
+    monkeypatch.setattr(os, "replace", spy)
+    save_watchlist({11: {"note": "a", "set_at": ""}})
+
+    assert renamed == [f"watchlist.json.{os.getpid()}.tmp"]
+    assert other["tmp"].exists(), "A's finally unlinked B's temp file"
+    real_replace(other["tmp"], path)
+    assert list(load_watchlist()) == [7]

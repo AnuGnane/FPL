@@ -97,7 +97,9 @@ def save_field_sample(picks: list[list[dict]], gw: int, season: str,
             for i, entry in enumerate(picks)],
     }
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".tmp")
+    # Per-writer temp name: two writers sharing one ".tmp" each unlink the
+    # other's file, and the loser's os.replace raises FileNotFoundError.
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
     try:
         tmp.write_text(json.dumps(payload))
         os.replace(tmp, path)
@@ -178,7 +180,9 @@ def append_field_eo(rows: pd.DataFrame) -> int:
     frames = [f[FIELD_EO_COLS] for f in (kept, rows) if not f.empty]
     merged = (pd.concat(frames, ignore_index=True) if frames
               else rows[FIELD_EO_COLS])
-    tmp_rel = FIELD_EO_PATH + ".tmp"
+    # Per-writer temp name: two writers sharing one ".tmp" each unlink the
+    # other's file, and the loser's os.replace raises FileNotFoundError.
+    tmp_rel = f"{FIELD_EO_PATH}.{os.getpid()}.tmp"
     tmp = store.DATA_DIR / tmp_rel
     try:
         store.save(merged, tmp_rel)

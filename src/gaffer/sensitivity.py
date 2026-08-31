@@ -85,7 +85,9 @@ def save_sensitivity(payload: dict, gw: int) -> Path:
     """Atomic, through a temp file — ``pen_tracker.save_tracker``'s idiom."""
     artifacts.REPORTS.mkdir(exist_ok=True)
     path = sensitivity_path(gw)
-    tmp = path.with_name(path.name + ".tmp")
+    # Per-writer temp name: two writers sharing one ".tmp" each unlink the
+    # other's file, and the loser's os.replace raises FileNotFoundError.
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
     try:
         tmp.write_text(json.dumps(payload, indent=1, allow_nan=False))
         os.replace(tmp, path)

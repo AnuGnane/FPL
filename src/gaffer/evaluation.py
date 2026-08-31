@@ -219,7 +219,10 @@ def save_evaluation(key: str, payload: dict) -> Path:
     # a rejected payload leaves nothing behind at all.
     text = json.dumps(stored, indent=1, allow_nan=False)
     REPORTS.mkdir(exist_ok=True)
-    tmp = EVALUATION_PATH.with_name(EVALUATION_PATH.name + ".tmp")
+    # Per-writer temp name: two writers sharing one ".tmp" each unlink the
+    # other's file, and the loser's os.replace raises FileNotFoundError.
+    tmp = EVALUATION_PATH.with_name(
+        f"{EVALUATION_PATH.name}.{os.getpid()}.tmp")
     try:
         tmp.write_text(text)
         os.replace(tmp, EVALUATION_PATH)

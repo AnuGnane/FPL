@@ -124,7 +124,9 @@ def append_prices(rows: pd.DataFrame) -> int:
     frames = [f[PRICE_LOG_COLS] for f in (kept, rows) if not f.empty]
     merged = (pd.concat(frames, ignore_index=True) if frames
               else rows[PRICE_LOG_COLS])
-    tmp_rel = PRICE_LOG_PATH + ".tmp"
+    # Per-writer temp name: two writers sharing one ".tmp" each unlink the
+    # other's file, and the loser's os.replace raises FileNotFoundError.
+    tmp_rel = f"{PRICE_LOG_PATH}.{os.getpid()}.tmp"
     tmp = store.DATA_DIR / tmp_rel
     try:
         store.save(merged, tmp_rel)

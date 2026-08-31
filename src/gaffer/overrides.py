@@ -110,7 +110,9 @@ def save_overrides(rows: dict[int, dict]) -> Path:
                              for code, row in sorted(rows.items())}}
     artifacts.REPORTS.mkdir(exist_ok=True)
     path = overrides_path()
-    tmp = path.with_name(path.name + ".tmp")
+    # Per-writer temp name: two saves racing from concurrent HTTP handlers
+    # would otherwise share one ".tmp" and each unlink the other's file.
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
     try:
         tmp.write_text(json.dumps(payload, indent=1, allow_nan=False))
         os.replace(tmp, path)

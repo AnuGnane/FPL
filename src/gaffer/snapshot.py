@@ -123,7 +123,9 @@ def append_snapshot(rows: pd.DataFrame) -> int:
     frames = [f[SNAPSHOT_COLS] for f in (kept, rows) if not f.empty]
     merged = (pd.concat(frames, ignore_index=True) if frames
               else rows[SNAPSHOT_COLS])
-    tmp_rel = SNAPSHOT_PATH + ".tmp"
+    # Per-writer temp name: two writers sharing one ".tmp" each unlink the
+    # other's file, and the loser's os.replace raises FileNotFoundError.
+    tmp_rel = f"{SNAPSHOT_PATH}.{os.getpid()}.tmp"
     tmp = store.DATA_DIR / tmp_rel
     try:
         store.save(merged, tmp_rel)

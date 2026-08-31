@@ -32,6 +32,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -641,6 +642,15 @@ def history_path() -> Path:
     return artifacts.REPORTS / SIM_HISTORY
 
 
+_HISTORY_LOCK = threading.Lock()
+"""Serialises :func:`append_sim_history`'s read-modify-write.
+
+Same idiom as :class:`gaffer.review._ledger_lock`, one process wide: the sim
+runs from a web handler as well as from the CLI, and two threads reading the
+whole history, dropping one gameweek and writing it back would lose whichever
+row the loser read before the winner's rename."""
+
+
 def load_sim_history() -> list[dict]:
     """Every gameweek's headline, oldest first. ``[]`` on any failure."""
     path = history_path()
@@ -664,19 +674,25 @@ def append_sim_history(sim: LeagueSim, gw: int, run_at: str) -> Path:
     every time the advice changes, and a sparkline of six runs of GW7 is not a
     season.
     """
-    rows = [r for r in load_sim_history() if int(r["gw"]) != int(gw)]
-    rows.append({"gw": int(gw), "p_win": sim.p_win, "p_top3": sim.p_top3,
-                 "exp_finish": sim.exp_finish, "run_at": str(run_at),
-                 "n": sim.n, "seed": sim.seed})
-    rows.sort(key=lambda r: int(r["gw"]))
     artifacts.REPORTS.mkdir(exist_ok=True)
     path = history_path()
-    tmp = path.with_name(path.name + ".tmp")
-    try:
-        tmp.write_text(json.dumps({"gws": rows}, indent=1, allow_nan=False))
-        os.replace(tmp, path)
-    finally:
-        tmp.unlink(missing_ok=True)
+    # Per-writer temp name: two writers sharing one ".tmp" each unlink the
+    # other's file, and the loser's os.replace raises FileNotFoundError.
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+    # The lock spans the read as well as the write: the race this guards is
+    # the read-modify-write, not the rename, which was already atomic.
+    with _HISTORY_LOCK:
+        rows = [r for r in load_sim_history() if int(r["gw"]) != int(gw)]
+        rows.append({"gw": int(gw), "p_win": sim.p_win, "p_top3": sim.p_top3,
+                     "exp_finish": sim.exp_finish, "run_at": str(run_at),
+                     "n": sim.n, "seed": sim.seed})
+        rows.sort(key=lambda r: int(r["gw"]))
+        try:
+            tmp.write_text(json.dumps({"gws": rows}, indent=1,
+                                      allow_nan=False))
+            os.replace(tmp, path)
+        finally:
+            tmp.unlink(missing_ok=True)
     return path
 
 

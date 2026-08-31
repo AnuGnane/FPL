@@ -84,7 +84,9 @@ def save_drafts(rows: list[dict]) -> Path:
     """Atomic whole-file write — ``pen_tracker.save_tracker``'s idiom."""
     artifacts.REPORTS.mkdir(exist_ok=True)
     path = drafts_path()
-    tmp = path.with_name(path.name + ".tmp")
+    # Per-writer temp name: two saves racing from concurrent HTTP handlers
+    # would otherwise share one ".tmp" and each unlink the other's file.
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
     try:
         tmp.write_text(json.dumps({"drafts": rows}, indent=1,
                                   allow_nan=False))

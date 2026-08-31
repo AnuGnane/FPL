@@ -297,7 +297,9 @@ def save_tracker(report: dict) -> Path:
     text = json.dumps(report, indent=1, allow_nan=False)
     artifacts.REPORTS.mkdir(exist_ok=True)
     path = tracker_path()
-    tmp = path.with_name(path.name + ".tmp")
+    # Per-writer temp name: two writers sharing one ".tmp" each unlink the
+    # other's file, and the loser's os.replace raises FileNotFoundError.
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
     try:
         tmp.write_text(text)
         os.replace(tmp, path)
