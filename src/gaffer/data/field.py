@@ -68,7 +68,8 @@ def field_sample_path(season: str, gw: int,
 
 
 def save_field_sample(picks: list[list[dict]], gw: int, season: str,
-                      raw_dir: Path | str = RAW_FIELD) -> Path:
+                      raw_dir: Path | str = RAW_FIELD, *,
+                      overwrite: bool = False) -> Path:
     """Bank one gameweek's sampled squads. Idempotent, atomic, anonymous.
 
     A file that already exists is left exactly as it was rather than
@@ -76,9 +77,16 @@ def save_field_sample(picks: list[list[dict]], gw: int, season: str,
     standings page, so a second draw a day later is a different 300 people,
     and quietly replacing the banked one would rewrite history to match
     whenever the job last happened to run.
+
+    ``overwrite`` is ``--force``'s path and nothing else's. Without it the
+    flag was half a flag: :func:`run_field_scrape` fetched a fresh sample,
+    paid the ~455 requests for it, then handed it to this function, which
+    silently kept the old file and printed a line saying how many entries had
+    been scraped. The caller has said in so many words that it wants the bank
+    replaced, so it is.
     """
     path = field_sample_path(season, gw, raw_dir)
-    if path.exists():
+    if path.exists() and not overwrite:
         return path
     payload = {
         "season": str(season), "gw": int(gw), "n": len(picks),
@@ -346,12 +354,12 @@ def run_field_scrape(cfg=None, gw: int | None = None, *, force: bool = False,
             print(f"field scrape not written: no sampled entry had readable "
                   f"picks for gw{gw}")
             return None
-        save_field_sample(picks, gw, season, RAW_FIELD)
+        save_field_sample(picks, gw, season, RAW_FIELD, overwrite=force)
         write_tier_cache(table, gw, RAW_TIER)
         day = snap_date()
         rows = append_field_eo(field_eo_rows(table, gw, season, day))
-        print(f"Field scrape: {len(picks)} entries, {rows} EO rows for "
-              f"gw{gw} at {day}.")
+        print(f"Field scrape: {len(picks)} entries{' (re-banked)' if force else ''}"
+              f", {rows} EO rows for gw{gw} at {day}.")
         return rows
     except Exception as exc:  # noqa: BLE001 — a scheduled job never blocks
         print(f"field scrape not written: {exc}")

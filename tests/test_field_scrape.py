@@ -104,10 +104,26 @@ def test_a_second_run_of_the_same_gameweek_fetches_nothing(here, wired,
     assert "already banked" in capsys.readouterr().out
 
 
-def test_force_re_runs_a_banked_gameweek(here, wired):
+def test_force_re_runs_a_banked_gameweek_and_replaces_the_bank(here, wired,
+                                                               monkeypatch,
+                                                               capsys):
+    """The flag used to be half a flag: it re-fetched, paid the ~455
+    requests, and then handed the fresh draw to a save that kept the old file
+    — while printing a line about how many entries had been scraped."""
     run_field_scrape(CFG, gw=2)
+    assert load_field_sample("2026-27", 2) == PICKS
+    fresh = [[{"element": 21, "position": 1, "multiplier": 2}]]
+
+    def _fresh(*a, **kw):
+        wired["fetch"] += 1
+        return fresh
+
+    monkeypatch.setattr("gaffer.data.field.fetch_sample_picks", _fresh)
+    capsys.readouterr()
     run_field_scrape(CFG, gw=2, force=True)
     assert wired["fetch"] == 2
+    assert load_field_sample("2026-27", 2) == fresh
+    assert "re-banked" in capsys.readouterr().out
 
 
 def test_a_fresh_tier_cache_is_reused_rather_than_re_fetched(here, wired,
