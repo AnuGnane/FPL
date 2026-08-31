@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, apiGet, apiPost } from './client'
+import { ApiError, apiGet, apiPost, errorText } from './client'
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -31,6 +31,25 @@ describe('api client', () => {
       constraint: 'lock_and_ban',
       players: [5],
     })
+  })
+
+  it('unwraps the structured detail into a sentence', () => {
+    // The shape every write endpoint refuses in: {constraint, error,
+    // players}. Rendering the whole object is how "[object Object]" gets on
+    // the page.
+    expect(errorText(new ApiError(422, {
+      constraint: 'override_value',
+      error: 'p_play must be between 0 and 1',
+      players: [100],
+    }))).toBe('p_play must be between 0 and 1')
+  })
+
+  it('falls back through a plain-string detail to the message', () => {
+    expect(errorText(new ApiError(422, 'run `gaffer advise` first')))
+      .toBe('run `gaffer advise` first')
+    expect(errorText(new Error('the server is down')))
+      .toBe('the server is down')
+    expect(errorText('nope')).toBe('nope')
   })
 
   it('posts JSON bodies', async () => {

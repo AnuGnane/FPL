@@ -6,7 +6,7 @@ import {
   type Column, Card, DataTable, EmptyState, Loading, PageHeader, PlayerName,
   PosBadge, Sparkline, fmtNum, posColor,
 } from '../kit'
-import type { AdviceLatest, PlayerRow } from '../types'
+import type { AdviceLatest, OverridesPanel, PlayerRow } from '../types'
 import ComparePanel from './players/ComparePanel'
 import FixtureMatrix from './players/FixtureMatrix'
 import PinDialog from './players/PinDialog'
@@ -29,9 +29,19 @@ export default function Players() {
   const [gwFailed, setGwFailed] = useState(false)
   // The row whose availability the manager is overruling, or null.
   const [pinning, setPinning] = useState<PlayerRow | null>(null)
+  // Codes with a pin standing. Read once and then kept current from the
+  // dialog's own answer, so the table says which of these numbers are the
+  // manager's own without a second round trip per save.
+  const [pinned, setPinned] = useState<number[]>([])
   // Every keystroke drove a GET, and five letters is five requests whose
   // answers can land out of order — the last one back wins, not the last typed.
   const settledSearch = useDebounced(search)
+
+  useEffect(() => {
+    apiGet<OverridesPanel>('/api/overrides')
+      .then((panel) => setPinned(panel.rows.map((r) => r.code)))
+      .catch(() => setPinned([]))
+  }, [])
 
   useEffect(() => {
     apiGet<AdviceLatest>('/api/advice/latest')
@@ -107,7 +117,7 @@ export default function Players() {
           className="rounded-card border border-border px-2 py-0.5
                      text-text-muted hover:text-text"
         >
-          Pin
+          {pinned.includes(r.code) ? 'Pinned' : 'Pin'}
         </button>
       ),
     },
@@ -212,7 +222,9 @@ export default function Players() {
       </Tabs.Root>
       {pinning && (
         <PinDialog code={pinning.code} name={pinning.name}
-                   onClose={() => setPinning(null)} />
+                   onClose={() => setPinning(null)}
+                   onSaved={(panel) => setPinned(
+                     panel.rows.map((r) => r.code))} />
       )}
     </>
   )

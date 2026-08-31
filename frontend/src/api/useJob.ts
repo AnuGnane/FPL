@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ApiError, apiGet, apiPost } from './client'
+import { apiGet, apiPost, errorText } from './client'
 
 export type JobStatus = 'idle' | 'queued' | 'running' | 'done' | 'error'
 
@@ -52,7 +52,7 @@ export function useJob() {
       } catch (e) {
         if (watching.current !== jobId) return
         setStatus('error')
-        setError(e instanceof Error ? e.message : String(e))
+        setError(errorText(e))
         stop()
       }
     }, POLL_MS)
@@ -67,9 +67,7 @@ export function useJob() {
       poll(job_id)
     } catch (e) {
       setStatus('error')
-      setError(e instanceof ApiError && typeof e.detail === 'string'
-        ? e.detail
-        : e instanceof Error ? e.message : String(e))
+      setError(errorText(e))
     }
   }, [poll])
 

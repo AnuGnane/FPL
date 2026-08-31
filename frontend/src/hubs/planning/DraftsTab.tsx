@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useState } from 'react'
-import { apiDelete, apiGet, apiPost } from '../../api/client'
+import { apiDelete, apiGet, apiPost, errorText } from '../../api/client'
 import { useJob } from '../../api/useJob'
 import { Card, JobLog, fmtNum } from '../../kit'
-import type { DraftCompare, DraftList, WhatIfRequest } from '../../types'
+import type {
+  DraftCompare, DraftCompareRequest, DraftList, DraftSaveRequest,
+  WhatIfRequest,
+} from '../../types'
 
+/** `drafts.MAX_COMPARE`: the server's solve budget for one comparison. */
 const MAX_COMPARE = 6
+/** `drafts.MAX_DRAFTS`: what the store keeps. Represented here so the cap is
+ *  a disabled button with a reason rather than a 422 after the click. */
+const MAX_DRAFTS = 12
 
 export default function DraftsTab({ current }: { current: WhatIfRequest }) {
   const [drafts, setDrafts] = useState<DraftList>({ drafts: [] })
@@ -18,20 +25,42 @@ export default function DraftsTab({ current }: { current: WhatIfRequest }) {
   }, [])
   useEffect(() => { load() }, [load])
 
+  const full = drafts.drafts.length >= MAX_DRAFTS
+
   const save = async () => {
     setError(null)
     try {
-      setDrafts(await apiPost<DraftList>('/api/drafts',
-                                         { name, constraints: current }))
+      const body: DraftSaveRequest = { name, constraints: current }
+      setDrafts(await apiPost<DraftList>('/api/drafts', body))
       setName('')
     } catch (e) {
-      setError((e as Error).message)
+      setError(errorText(e))
     }
   }
 
-  const toggle = (draft: string) => setPicked((prev) => (
-    prev.includes(draft) ? prev.filter((d) => d !== draft)
-      : [...prev, draft].slice(0, MAX_COMPARE)))
+  // Untick, or tick — but at the cap the new name is refused rather than
+  // sliced off the end, which used to tick a box and compare something else.
+  const toggle = (draft: string) => setPicked((prev) => {
+    if (prev.includes(draft)) return prev.filter((d) => d !== draft)
+    return prev.length >= MAX_COMPARE ? prev : [...prev, draft]
+  })
+
+  const remove = async (draft: string) => {
+    try {
+      setDrafts(await apiDelete<DraftList>(
+        `/api/drafts/${encodeURIComponent(draft)}`))
+    } catch {
+      load()
+    }
+    // A deleted name left ticked is a name the compare endpoint answers 422
+    // unknown_draft for.
+    setPicked((prev) => prev.filter((d) => d !== draft))
+  }
+
+  const compare = () => {
+    const body: DraftCompareRequest = { names: picked }
+    job.start('/api/drafts/compare', body)
+  }
 
   const result = job.result as DraftCompare | null
 
@@ -52,7 +81,8 @@ export default function DraftsTab({ current }: { current: WhatIfRequest }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
-          <button type="button" onClick={save} disabled={!name.trim()}
+          <button type="button" onClick={save}
+                  disabled={!name.trim() || full}
                   className="rounded-card border border-border bg-card px-3
                              py-2 text-text-secondary hover:text-text
                              disabled:text-text-faint">
@@ -61,8 +91,7 @@ export default function DraftsTab({ current }: { current: WhatIfRequest }) {
           <button
             type="button"
             disabled={picked.length === 0 || job.status === 'running'}
-            onClick={() => job.start('/api/drafts/compare',
-                                     { names: picked })}
+            onClick={compare}
             className="rounded-card border border-border bg-card px-3 py-2
                        text-text-secondary hover:text-text
                        disabled:text-text-faint"
@@ -70,6 +99,12 @@ export default function DraftsTab({ current }: { current: WhatIfRequest }) {
             {job.status === 'running' ? 'Comparing…' : 'Compare'}
           </button>
         </div>
+        {full && (
+          <p className="mb-3 text-text-muted">
+            Twelve drafts is the cap the store keeps — delete one to save
+            another.
+          </p>
+        )}
         {error && <p className="mb-3 text-rust">{error}</p>}
         {drafts.drafts.length === 0
           ? <p className="text-text-muted">No drafts yet.</p>
@@ -91,9 +126,7 @@ export default function DraftsTab({ current }: { current: WhatIfRequest }) {
                     </span>
                   </label>
                   <button type="button" aria-label={`delete ${draft.name}`}
-                          onClick={() => apiDelete<DraftList>(
-                            `/api/drafts/${encodeURIComponent(draft.name)}`)
-                            .then(setDrafts).catch(() => load())}
+                          onClick={() => remove(draft.name)}
                           className="rounded-card border border-border px-2
                                      py-1 text-text-muted hover:text-text">
                     Delete

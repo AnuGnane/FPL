@@ -42,10 +42,12 @@ const ROWS = [
 beforeEach(() => {
   apiGet.mockReset()
   apiPost.mockReset()
-  apiPost.mockResolvedValue({ active: true, rows: [] })
+  apiPost.mockResolvedValue({ active: true, rows: [], warning: null })
   apiGet.mockImplementation((path: string) => (
     path.startsWith('/api/players') ? Promise.resolve(ROWS)
-      : path === '/api/advice/latest'
+      : path === '/api/overrides'
+        ? Promise.resolve({ active: true, rows: [], warning: null })
+        : path === '/api/advice/latest'
         ? Promise.resolve({ gw: 5, mode: 'weekly',
                             deadline: '2099-09-18T17:30:00Z', advice: {},
                             staleness: { advice_gw: 5, current_gw: 5,
@@ -205,5 +207,25 @@ describe('Players hub', () => {
     expect(apiPost).toHaveBeenCalledWith('/api/overrides',
       { code: 1, p_play: 1, e_min: null, note: '' })
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  })
+
+  it('marks the row it has just pinned', async () => {
+    // The dialog hands back the whole panel; the table is the one place the
+    // manager can see which of his own numbers are standing.
+    apiPost.mockResolvedValue({
+      active: true, warning: null,
+      rows: [{ code: 1, name: 'Salah', p_play: 1, e_min: null, note: '',
+               set_at: '2026-08-31T09:00:00+00:00', model_p_play: 0.8,
+               model_e_min: 60 }],
+    })
+    render(<MemoryRouter><Players /></MemoryRouter>)
+    await userEvent.click(await screen.findByRole('button',
+      { name: 'pin Salah' }))
+    await userEvent.type(screen.getByLabelText('probability of playing'), '1')
+    await userEvent.click(screen.getByRole('button', { name: 'Pin' }))
+    expect(await screen.findByRole('button', { name: 'pin Salah' }))
+      .toHaveTextContent('Pinned')
+    expect(screen.getByRole('button', { name: 'pin Saka' }))
+      .toHaveTextContent('Pin')
   })
 })

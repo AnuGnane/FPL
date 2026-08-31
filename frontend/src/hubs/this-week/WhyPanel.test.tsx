@@ -172,6 +172,36 @@ describe('WhyPanel', () => {
       .toBeInTheDocument()
   })
 
+  it('names only the pins on players this plan actually contains', async () => {
+    // "Your pins are in this plan" has to be true of every line under it: a
+    // pin on somebody the plan never names is not in this plan.
+    serve({
+      active: true,
+      rows: [
+        ...PINS.rows,
+        { code: 999, name: 'Nobody', p_play: 0.1, e_min: null, note: '',
+          set_at: '2026-09-04T09:00:00+00:00', model_p_play: 0.9,
+          model_e_min: null },
+      ],
+    })
+    render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
+    expect(await screen.findByText(/You pinned Salah/)).toBeInTheDocument()
+    expect(screen.queryByText(/You pinned Nobody/)).not.toBeInTheDocument()
+  })
+
+  it('hides the pin strip when every pin is on somebody else', async () => {
+    serve({
+      active: true,
+      rows: [{ code: 999, name: 'Nobody', p_play: 0.1, e_min: null, note: '',
+               set_at: '2026-09-04T09:00:00+00:00', model_p_play: 0.9,
+               model_e_min: null }],
+    })
+    render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
+    await screen.findByText('Salah')
+    expect(screen.queryByText(/your pins are in this plan/i))
+      .not.toBeInTheDocument()
+  })
+
   it('shows no pin strip when nothing is pinned', async () => {
     render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
     await screen.findByText('Salah')

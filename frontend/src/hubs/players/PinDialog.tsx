@@ -1,8 +1,31 @@
 import { useEffect, useRef, useState } from 'react'
-import { ApiError, apiPost } from '../../api/client'
-import type { OverridesPanel } from '../../types'
+import { apiPost, errorText } from '../../api/client'
+import type { OverrideRequest, OverridesPanel } from '../../types'
 
 const FIELD = 'rounded-card border border-border bg-base px-2 py-1 text-text'
+
+/** `overrides.NOTE_MAX`. The store refuses a longer note rather than
+ *  truncating it — a silently halved note is a sentence the user did not
+ *  write — so the input stops at the same number instead of collecting
+ *  characters that will be thrown back. */
+const NOTE_MAX = 200
+/** Where the counter appears. Early enough to be a warning, late enough not
+ *  to be clutter on a five-word note. */
+const NOTE_HINT = 160
+
+/** One field's value: `null` for blank, a number, or the reason it is
+ *  neither. The same three ranges `overrides.set_override` enforces, checked
+ *  here so a typo is answered by the dialog instead of a round trip. */
+function parse(raw: string, lo: number, hi: number, label: string):
+{ value: number | null } | { error: string } {
+  if (raw.trim() === '') return { value: null }
+  const value = Number(raw)
+  if (!Number.isFinite(value)) return { error: `${label} must be a number` }
+  if (value < lo || value > hi) {
+    return { error: `${label} must be between ${lo} and ${hi}` }
+  }
+  return { value }
+}
 
 export default function PinDialog(
   { code, name, onClose, onSaved }: {
@@ -16,6 +39,9 @@ export default function PinDialog(
   const [eMin, setEMin] = useState('')
   const [note, setNote] = useState('')
   const [error, setError] = useState<string | null>(null)
+  // Accepted and stored, but worth reading before the dialog goes away — so
+  // the pin is saved and the dialog stays up carrying the sentence.
+  const [warning, setWarning] = useState<string | null>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
@@ -29,21 +55,26 @@ export default function PinDialog(
 
   const save = async () => {
     setError(null)
+    setWarning(null)
+    const play = parse(pPlay, 0, 1, 'probability of playing')
+    const mins = parse(eMin, 0, 90, 'expected minutes')
+    if ('error' in play) return setError(play.error)
+    if ('error' in mins) return setError(mins.error)
+    if (play.value === null && mins.value === null) {
+      return setError('an override must pin p_play, e_min or both')
+    }
     try {
-      const panel = await apiPost<OverridesPanel>('/api/overrides', {
-        code,
-        p_play: pPlay === '' ? null : Number(pPlay),
-        e_min: eMin === '' ? null : Number(eMin),
-        note,
-      })
+      const body: OverrideRequest = {
+        code, p_play: play.value, e_min: mins.value, note,
+      }
+      const panel = await apiPost<OverridesPanel>('/api/overrides', body)
       onSaved?.(panel)
-      onClose()
+      // A pin the server took but wants a second look at keeps the dialog up
+      // with its reason; anything else is done.
+      if (panel.warning) setWarning(panel.warning)
+      else onClose()
     } catch (e) {
-      const detail = e instanceof ApiError ? e.detail : null
-      const message = (detail && typeof detail === 'object'
-        && 'error' in detail) ? String((detail as { error: string }).error)
-        : (e as Error).message
-      setError(message)
+      setError(errorText(e))
     }
   }
 
@@ -92,10 +123,19 @@ export default function PinDialog(
           </label>
           <label className="flex items-center justify-between gap-3">
             <span className="label">Why</span>
-            <input className={FIELD} value={note} aria-label="why"
-                   onChange={(e) => setNote(e.target.value)} />
+            <span className="flex items-center gap-2">
+              {note.length > NOTE_HINT && (
+                <span className="num text-text-faint">
+                  {note.length}/{NOTE_MAX}
+                </span>
+              )}
+              <input className={FIELD} value={note} aria-label="why"
+                     maxLength={NOTE_MAX}
+                     onChange={(e) => setNote(e.target.value)} />
+            </span>
           </label>
           {error && <p className="text-rust">{error}</p>}
+          {warning && <p className="text-info">{warning}</p>}
           <button type="button" onClick={save}
                   className="self-end rounded-card border border-border
                              bg-card px-3 py-2 text-text-secondary

@@ -5,15 +5,32 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { WhatIfRequest } from '../../types'
 import DraftsTab from './DraftsTab'
 
-const { apiDelete, apiGet, apiPost } = vi.hoisted(() => ({
-  apiDelete: vi.fn(), apiGet: vi.fn(), apiPost: vi.fn(),
-}))
+const { FakeApiError, apiDelete, apiGet, apiPost } = vi.hoisted(() => {
+  class FakeApiError extends Error {
+    status: number
+    detail: unknown
+    constructor(status: number, detail: unknown) {
+      super(typeof detail === 'string' ? detail : `request failed (${status})`)
+      this.status = status
+      this.detail = detail
+    }
+  }
+  return { FakeApiError, apiDelete: vi.fn(), apiGet: vi.fn(),
+           apiPost: vi.fn() }
+})
 
 vi.mock('../../api/client', () => ({
-  ApiError: class extends Error { status = 0; detail: unknown = null },
+  ApiError: FakeApiError,
   apiGet: (path: string) => apiGet(path),
   apiPost: (path: string, body: unknown) => apiPost(path, body),
   apiDelete: (path: string) => apiDelete(path),
+  errorText: (e: unknown) => {
+    if (e instanceof FakeApiError && e.detail && typeof e.detail === 'object'
+        && 'error' in e.detail) {
+      return String((e.detail as { error: unknown }).error)
+    }
+    return e instanceof Error ? e.message : String(e)
+  },
 }))
 
 const CURRENT: WhatIfRequest = {
@@ -159,6 +176,64 @@ describe('DraftsTab', () => {
     expect(screen.getByLabelText('compare g')).toBeDisabled()
     // The six already ticked stay clickable, so a choice can be swapped.
     expect(screen.getByLabelText('compare a')).not.toBeDisabled()
+  })
+
+  it('shows the sentence inside a structured refusal', async () => {
+    apiPost.mockRejectedValue(new FakeApiError(422, {
+      constraint: 'draft_name', error: 'a draft called third already exists',
+      players: [],
+    }))
+    render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
+    await screen.findByText('keep Salah')
+    await userEvent.type(screen.getByLabelText('draft name'), 'third')
+    await userEvent.click(screen.getByRole('button',
+      { name: /save the current what-if/i }))
+    expect(await screen.findByText('a draft called third already exists'))
+      .toBeInTheDocument()
+  })
+
+  it('refuses to save past the twelve the store keeps', async () => {
+    const full = { drafts: 'abcdefghijkl'.split('').map(draft) }
+    apiGet.mockImplementation((path: string) => (
+      path === '/api/drafts' ? Promise.resolve(full) : Promise.resolve({})))
+    render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
+    await screen.findByText('a')
+    await userEvent.type(screen.getByLabelText('draft name'), 'thirteenth')
+    expect(screen.getByRole('button',
+      { name: /save the current what-if/i })).toBeDisabled()
+    expect(screen.getByText(/twelve drafts is the cap/i)).toBeInTheDocument()
+  })
+
+  it('does not silently drop a seventh tick', async () => {
+    // Slicing the new name off the end ticked a box and then compared
+    // something else. The seventh is refused instead, visibly.
+    const many = { drafts: ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map(draft) }
+    apiGet.mockImplementation((path: string) => (
+      path === '/api/drafts' ? Promise.resolve(many) : Promise.resolve({})))
+    render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
+    await screen.findByText('a')
+    for (const name of ['a', 'b', 'c', 'd', 'e', 'f']) {
+      await userEvent.click(screen.getByLabelText(`compare ${name}`))
+    }
+    expect(screen.getByLabelText('compare a')).toBeChecked()
+    expect(screen.getByLabelText('compare f')).toBeChecked()
+    expect(screen.getByLabelText('compare g')).not.toBeChecked()
+  })
+
+  it('unpicks a draft it has just deleted', async () => {
+    // A name ticked for comparison and then deleted would otherwise be sent
+    // to /compare, which answers 422 unknown_draft.
+    apiDelete.mockResolvedValue({ drafts: [draft('go wildcard')] })
+    render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
+    await userEvent.click(await screen.findByLabelText('compare keep Salah'))
+    await userEvent.click(screen.getByRole('button',
+      { name: 'delete keep Salah' }))
+    await waitFor(() => expect(screen.queryByText('keep Salah'))
+      .not.toBeInTheDocument())
+    await userEvent.click(await screen.findByLabelText('compare go wildcard'))
+    await userEvent.click(screen.getByRole('button', { name: 'Compare' }))
+    await waitFor(() => expect(apiPost).toHaveBeenCalledWith(
+      '/api/drafts/compare', { names: ['go wildcard'] }))
   })
 
   it('deletes a draft through DELETE', async () => {

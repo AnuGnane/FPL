@@ -78,4 +78,14 @@ describe('useJob', () => {
     await waitFor(() => expect(result.current.status).toBe('error'))
     expect(result.current.error).toContain('already queued')
   })
+
+  it('unwraps a structured refusal rather than reporting the status', async () => {
+    stubSequence([[422, { detail: { constraint: 'unknown_draft',
+                                    error: 'no draft called ghost',
+                                    players: [] } }]])
+    const { result } = renderHook(() => useJob())
+    await result.current.start('/api/drafts/compare', { names: ['ghost'] })
+    await waitFor(() => expect(result.current.status).toBe('error'))
+    expect(result.current.error).toBe('no draft called ghost')
+  })
 })

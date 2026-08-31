@@ -144,14 +144,19 @@ export default function WhyPanel({ gw, codes }: { gw: number
 
   if (!data || data.players.length === 0) return null
 
+  // "Your pins are in this plan" has to be true of every line under it. The
+  // store is the manager's whole pin list, including players this week's plan
+  // never names, and those belong on the Players page rather than here.
+  const shown = (pins?.rows ?? []).filter((row) => codes.includes(row.code))
+
   return (
     <>
       {diff?.available && diff.changed && <DiffStrip diff={diff} />}
-      {pins && (pins.rows ?? []).length > 0 && (
+      {pins && shown.length > 0 && (
         <div className="mb-4 rounded-card border-l-2 border-info bg-base px-3
                         py-2">
           <p className="label mb-1">Your pins are in this plan</p>
-          {pins.rows.map((row) => (
+          {shown.map((row) => (
             <p key={row.code} className="text-text-secondary">
               {`You pinned ${row.name} `}
               {row.p_play !== null && `p_play ${fmtNum(row.p_play, 2)}`}

@@ -12,6 +12,26 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * The sentence to show a user for anything a request threw.
+ *
+ * Every write endpoint refuses in the what-if lab's shape —
+ * `{constraint, error, players}` — so the readable half is `detail.error` and
+ * rendering the object itself is how `[object Object]` reaches the page. Kept
+ * here rather than in each caller because three of them were unwrapping it
+ * differently, and the fourth was not unwrapping it at all.
+ */
+export function errorText(e: unknown): string {
+  if (e instanceof ApiError) {
+    const detail = e.detail
+    if (detail && typeof detail === 'object' && 'error' in detail) {
+      return String((detail as { error: unknown }).error)
+    }
+    if (typeof detail === 'string') return detail
+  }
+  return e instanceof Error ? e.message : String(e)
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, init)
   const body = await response.json().catch(() => null)

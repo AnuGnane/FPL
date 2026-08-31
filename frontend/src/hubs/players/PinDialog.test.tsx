@@ -21,9 +21,16 @@ vi.mock('../../api/client', () => ({
   ApiError: FakeApiError,
   apiGet: vi.fn(),
   apiPost: (path: string, body: unknown) => apiPost(path, body),
+  errorText: (e: unknown) => {
+    if (e instanceof FakeApiError && e.detail && typeof e.detail === 'object'
+        && 'error' in e.detail) {
+      return String((e.detail as { error: unknown }).error)
+    }
+    return e instanceof Error ? e.message : String(e)
+  },
 }))
 
-const PANEL = { active: true, rows: [] }
+const PANEL = { active: true, rows: [], warning: null }
 
 function open(onClose = vi.fn(), onSaved?: (panel: unknown) => void) {
   render(
@@ -73,6 +80,7 @@ describe('PinDialog', () => {
       players: [100],
     }))
     open(onClose)
+    await userEvent.type(screen.getByLabelText('probability of playing'), '1')
     await userEvent.click(screen.getByRole('button', { name: 'Pin' }))
     expect(await screen.findByText('p_play must be between 0 and 1'))
       .toBeInTheDocument()
@@ -83,9 +91,72 @@ describe('PinDialog', () => {
     async () => {
       apiPost.mockRejectedValue(new Error('the server is down'))
       open()
+      await userEvent.type(screen.getByLabelText('probability of playing'),
+        '1')
       await userEvent.click(screen.getByRole('button', { name: 'Pin' }))
       expect(await screen.findByText('the server is down')).toBeInTheDocument()
     })
+
+  it('refuses a probability outside 0 to 1 without asking the server',
+    async () => {
+      open()
+      await userEvent.type(screen.getByLabelText('probability of playing'),
+        '85')
+      await userEvent.click(screen.getByRole('button', { name: 'Pin' }))
+      expect(await screen.findByText(/between 0 and 1/)).toBeInTheDocument()
+      expect(apiPost).not.toHaveBeenCalled()
+    })
+
+  it('refuses minutes outside 0 to 90 without asking the server', async () => {
+    open()
+    await userEvent.type(screen.getByLabelText('expected minutes'), '120')
+    await userEvent.click(screen.getByRole('button', { name: 'Pin' }))
+    expect(await screen.findByText(/between 0 and 90/)).toBeInTheDocument()
+    expect(apiPost).not.toHaveBeenCalled()
+  })
+
+  it('refuses something that is not a number', async () => {
+    open()
+    await userEvent.type(screen.getByLabelText('probability of playing'), 'ok')
+    await userEvent.click(screen.getByRole('button', { name: 'Pin' }))
+    expect(await screen.findByText(/must be a number/)).toBeInTheDocument()
+    expect(apiPost).not.toHaveBeenCalled()
+  })
+
+  it('refuses a pin with neither number', async () => {
+    const onClose = vi.fn()
+    open(onClose)
+    await userEvent.type(screen.getByLabelText('why'), 'saw training')
+    await userEvent.click(screen.getByRole('button', { name: 'Pin' }))
+    expect(await screen.findByText(/p_play, e_min or both/))
+      .toBeInTheDocument()
+    expect(apiPost).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('caps the note at the length the store accepts and counts it down',
+    async () => {
+      open()
+      const note = screen.getByLabelText('why')
+      expect(note).toHaveAttribute('maxLength', '200')
+      await userEvent.type(note, 'x'.repeat(159))
+      expect(screen.queryByText(/200/)).not.toBeInTheDocument()
+      await userEvent.type(note, 'xx')
+      expect(screen.getByText('161/200')).toBeInTheDocument()
+    })
+
+  it('stays open on a warning the server accepted the pin with', async () => {
+    const onClose = vi.fn()
+    apiPost.mockResolvedValue({
+      ...PANEL,
+      warning: '80 minutes implies he plays, but p_play is pinned at 0.2',
+    })
+    open(onClose)
+    await userEvent.type(screen.getByLabelText('expected minutes'), '80')
+    await userEvent.click(screen.getByRole('button', { name: 'Pin' }))
+    expect(await screen.findByText(/implies he plays/)).toBeInTheDocument()
+    expect(onClose).not.toHaveBeenCalled()
+  })
 
   it('is a labelled modal dialog that Escape closes', async () => {
     const onClose = open()

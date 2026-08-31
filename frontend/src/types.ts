@@ -935,6 +935,18 @@ export interface OverrideRow {
 export interface OverridesPanel {
   active: boolean
   rows: OverrideRow[]
+  /** Accepted, and worth a second look: an e_min pin that implies a far
+   *  higher probability of playing than the p_play beside it. Null when the
+   *  two readings are coherent. */
+  warning: string | null
+}
+
+/** POST /api/overrides. At least one of the two numbers must be present. */
+export interface OverrideRequest {
+  code: number
+  p_play: number | null
+  e_min: number | null
+  note: string
 }
 
 export interface NamedPlayer {
@@ -987,6 +999,15 @@ export interface DraftRow {
 }
 
 export interface DraftList { drafts: DraftRow[] }
+
+/** POST /api/drafts. */
+export interface DraftSaveRequest {
+  name: string
+  constraints: WhatIfRequest
+}
+
+/** POST /api/drafts/compare — at most `MAX_COMPARE` names. */
+export interface DraftCompareRequest { names: string[] }
 
 export interface DraftCompareRow {
   name: string
