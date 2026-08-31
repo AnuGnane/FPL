@@ -30,13 +30,15 @@ const ROWS = [
     ownership: 42.1, league_eo: 61.5, available: true, status: 'a', news: '',
     chance_of_playing: null, penalties_order: 1, free_kicks_order: 1,
     corners_order: null, in_squad: true, last4: [2, 9, 5, 12],
-    field_eo: 78.0, field_class: 'shield' },
+    field_eo: 78.0, field_class: 'shield', ep_lo: 5.1, ep_hi: 7.6,
+    p_haul: 0.22, p_blank: 0.14 },
   { code: 2, element: 8, name: 'Saka', position: 'MID', team_code: 301,
     team_name: 'Arsenal', price: 10.0, ep_next: 5.5, ep_horizon: 10.5,
     ownership: 30.0, league_eo: 22.0, available: true, status: 'a', news: '',
     chance_of_playing: null, penalties_order: null, free_kicks_order: null,
     corners_order: 1, in_squad: false, last4: [6, 1, 8, 3],
-    field_eo: null, field_class: null },
+    field_eo: null, field_class: null, ep_lo: 4.4, ep_hi: 6.5,
+    p_haul: 0.18, p_blank: 0.16 },
 ]
 
 beforeEach(() => {

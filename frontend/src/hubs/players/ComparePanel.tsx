@@ -17,9 +17,16 @@ const SERIES_COLOURS = ['var(--color-sage)', 'var(--color-info)',
 export interface ComparePanelProps {
   gw: number
   players: PlayerRow[]
+  /** The explorer's currently-filtered rows, so the radar's axes can be
+   *  normalized against a pool rather than against the two to four names the
+   *  reader happens to have ticked. Optional: the panel renders without it
+   *  and the radar's caption says which reference it used. */
+  pool?: PlayerRow[]
 }
 
-export default function ComparePanel({ gw, players }: ComparePanelProps) {
+export default function ComparePanel(
+  { gw, players, pool = [] }: ComparePanelProps,
+) {
   const [components, setComponents] = useState<ComponentsBreakdown | null>(null)
   const [matrix, setMatrix] = useState<FixtureMatrixData | null>(null)
 
@@ -109,6 +116,13 @@ export default function ComparePanel({ gw, players }: ComparePanelProps) {
                   <dt className="label">xPts</dt>
                   <dd className="num text-right text-text">
                     {fmtNum(player.ep_next)}
+                    {player.ep_lo != null && player.ep_hi != null && (
+                      <span className="ml-1 text-text-muted"
+                            title="p25–p75 of the scenario sweep's own noise">
+                        {`${player.ep_lo.toFixed(1)}–`
+                          + `${player.ep_hi.toFixed(1)}`}
+                      </span>
+                    )}
                   </dd>
                   <dt className="label">EO%</dt>
                   <dd className="num text-right text-text">

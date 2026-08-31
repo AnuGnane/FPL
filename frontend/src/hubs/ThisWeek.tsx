@@ -8,6 +8,7 @@ import type {
   AdviceChipRow, AdviceLatest, ComponentsBreakdown, LeagueWhatIfResult,
   PlayerRow,
 } from '../types'
+import ConfidenceLine from './this-week/ConfidenceLine'
 import MovesCard from './this-week/MovesCard'
 import NewsPanel from './this-week/NewsPanel'
 import WhyPanel from './this-week/WhyPanel'
@@ -100,6 +101,7 @@ export default function ThisWeek() {
   const byCode = new Map(players.map((p) => [p.code, p]))
   const squad: SquadRow[] = [...advice.xi, ...advice.bench].map((p) => {
     const row = byCode.get(p.code)
+    const comp = components?.players.find((c) => c.code === p.code)
     const move = [...advice.buys, ...advice.sells]
       .find((m) => m.code === p.code)
     return {
@@ -107,8 +109,14 @@ export default function ThisWeek() {
       name: p.name,
       position: p.position ?? row?.position ?? '',
       ep: p.ep,
-      xmins: components?.players.find((c) => c.code === p.code)
-        ?.fixtures[0]?.minutes.xmins ?? null,
+      // The band comes off the components payload, which keys it (code, gw) —
+      // the sweep's own key. Null flows straight through: no minutes model
+      // means no band, not a band of width zero.
+      epLo: comp?.ep_lo ?? null,
+      epHi: comp?.ep_hi ?? null,
+      pHaul: comp?.p_haul ?? null,
+      pBlank: comp?.p_blank ?? null,
+      xmins: comp?.fixtures[0]?.minutes.xmins ?? null,
       ownership: row?.ownership ?? NaN,
       leagueEo: row?.league_eo ?? NaN,
       simPct: move?.frequency ?? null,
@@ -212,6 +220,7 @@ export default function ThisWeek() {
           captain={advice.captain.code}
           vice={advice.vice.code}
         />
+        <ConfidenceLine />
       </Card>
       <Card title="Squad" className="mb-4">
         <SquadTable rows={squad} breakdown={breakdown} />

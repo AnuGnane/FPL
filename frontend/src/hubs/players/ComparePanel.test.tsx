@@ -37,25 +37,31 @@ const PLAYERS: PlayerRow[] = [
     ownership: 42.1, league_eo: 61.5, available: true, status: 'a', news: '',
     chance_of_playing: null, penalties_order: 1, free_kicks_order: 1,
     corners_order: null, in_squad: true, last4: [2, 9, 5, 12],
-    field_eo: 78.0, field_class: 'shield' },
+    field_eo: 78.0, field_class: 'shield', ep_lo: null, ep_hi: null,
+    p_haul: null, p_blank: null },
   { code: 2, element: 8, name: 'Saka', position: 'MID', team_code: 301,
     team_name: 'Arsenal', price: 10.0, ep_next: 5.5, ep_horizon: 10.5,
     ownership: 30.0, league_eo: 22.0, available: true, status: 'a', news: '',
     chance_of_playing: null, penalties_order: null, free_kicks_order: null,
     corners_order: 1, in_squad: false, last4: [6, 1, 8, 3],
-    field_eo: null, field_class: null },
+    field_eo: null, field_class: null, ep_lo: null, ep_hi: null,
+    p_haul: null, p_blank: null },
 ]
 
 const COMPONENTS = {
   gw: 5,
   players: [
     { code: 1, name: 'Salah', position: 'MID', team_name: 'Liverpool', ep: 6.4,
+      ep_gw: 6.4, sigma: 1.1, ep_lo: 5.6, ep_hi: 7.2, p_haul: 0.2,
+      p_blank: 0.1,
       fixtures: [{ gw: 5, opponent: 'EVE', home: true, kickoff_time: null,
                    components: [{ label: 'Minutes', points: 1.9 },
                                 { label: 'Goals', points: 3.1 }],
                    pen_taker: 0.6,
                    minutes: { p_play: 0.98, p60: 0.9, xmins: 88 }, ep: 6.4 }] },
     { code: 2, name: 'Saka', position: 'MID', team_name: 'Arsenal', ep: 5.5,
+      ep_gw: 5.5, sigma: 1.0, ep_lo: 4.8, ep_hi: 6.2, p_haul: 0.15,
+      p_blank: 0.12,
       fixtures: [{ gw: 5, opponent: 'LIV', home: false, kickoff_time: null,
                    components: [{ label: 'Minutes', points: 1.8 },
                                 { label: 'Goals', points: 2.2 }],
@@ -204,5 +210,24 @@ describe('the fixture strip colours', () => {
     ]} />)
     await screen.findByTestId('compare-1')
     expect(strip(1)[0].className).toContain('sage')
+  })
+})
+
+// One template row so a band test states only the band.
+function playerRow(over: Partial<PlayerRow>): PlayerRow {
+  return { ...PLAYERS[0], ...over }
+}
+
+function renderCompare(players: PlayerRow[]) {
+  render(<ComparePanel gw={5} players={players} />)
+}
+
+describe('the band beside xPts', () => {
+  it('shows the band beside each compared player\u2019s xPts', async () => {
+    renderCompare([playerRow({ code: 11, ep_next: 5.4, ep_lo: 4.1,
+                               ep_hi: 6.8 }),
+                   playerRow({ code: 22, ep_next: 3.0, ep_lo: null,
+                               ep_hi: null })])
+    expect(await screen.findByText('4.1\u20136.8')).toBeInTheDocument()
   })
 })

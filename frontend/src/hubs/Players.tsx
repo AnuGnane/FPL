@@ -85,6 +85,21 @@ export default function Players() {
       value: (r) => r.price, render: (r) => fmtNum(r.price) },
     { key: 'ep_next', header: 'xPts', primary: true, numeric: true,
       value: (r) => r.ep_next, render: (r) => fmtNum(r.ep_next) },
+    { key: 'range', header: 'Range', numeric: true,
+      // `== null` rather than `=== null`: the fields are nullable by design,
+      // and a payload from a server older than v8g carries none of them at
+      // all — an em dash is the right answer to both.
+      value: (r) => (r.ep_hi == null || r.ep_lo == null
+        ? null : r.ep_hi - r.ep_lo),
+      render: (r) => (r.ep_lo == null || r.ep_hi == null
+        ? <span className="num text-text-muted">—</span>
+        : (
+          <span className="num text-text-secondary"
+                title="p25–p75 of the scenario sweep's own noise on this
+                       forecast">
+            {`${r.ep_lo.toFixed(1)}–${r.ep_hi.toFixed(1)}`}
+          </span>
+        )) },
     { key: 'ep_horizon', header: 'Horizon', numeric: true,
       value: (r) => r.ep_horizon, render: (r) => fmtNum(r.ep_horizon) },
     { key: 'ownership', header: 'Own%', numeric: true,
@@ -214,7 +229,8 @@ export default function Players() {
               )
             : gw === null
               ? <Loading />
-              : <ComparePanel gw={gw} players={selected} />}
+              : <ComparePanel gw={gw} players={selected}
+                              pool={rows ?? []} />}
         </Tabs.Content>
         <Tabs.Content value="matrix">
           <FixtureMatrix from={gw ?? 1} />

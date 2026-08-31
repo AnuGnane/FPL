@@ -201,6 +201,16 @@ export interface PlayerRow {
   corners_order: number | null
   in_squad: boolean
   last4: number[]
+  /** p25 of the scenario sweep's own noise on `ep_next`. Null — never
+   *  `ep_next` — when the minutes model has nothing to say about him. Not a
+   *  symmetric interval: the calibrated path recentres, so the pair is
+   *  quartiles and the UI labels it that way. */
+  ep_lo: number | null
+  ep_hi: number | null
+  /** P(10+ points) and P(2 or fewer) under the same distribution. Crude by
+   *  construction: they price forecast error, not football's variance. */
+  p_haul: number | null
+  p_blank: number | null
 }
 
 export interface StandingRow {
@@ -519,6 +529,15 @@ export interface ComponentPlayer {
   position: string
   team_name: string
   ep: number
+  /** The requested gameweek's EP alone. `ep` above is a horizon sum, which is
+   *  not a number the σ table has ever seen — this is the one the band
+   *  brackets. */
+  ep_gw: number | null
+  sigma: number | null
+  ep_lo: number | null
+  ep_hi: number | null
+  p_haul: number | null
+  p_blank: number | null
   fixtures: ComponentFixture[]
 }
 
@@ -990,6 +1009,9 @@ export interface SensitivityReport {
   runner_up: SensitivityPlan | null
   margin: number | null
   verdict: string | null
+  /** The sweep's own noise on the players that separate the modal plan from
+   *  the runner-up, in quadrature. Null when there is no comparison to make. */
+  decision_sigma: number | null
 }
 
 export interface DraftRow {

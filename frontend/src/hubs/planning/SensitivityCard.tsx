@@ -19,15 +19,29 @@ function pct(frequency: number): string {
 /** The margin is signed and the sign is the whole sentence: it is
  *  modal-minus-runner-up, so a negative one means the plan the sweep reached
  *  most often is priced *below* one it reached less often, which is the
- *  opposite recommendation and must not be printed as "behind". */
-function marginLine(margin: number | null): string {
+ *  opposite recommendation and must not be printed as "behind".
+ *
+ *  The noise qualifier is the v8g honesty line. `decision_sigma` is the
+ *  sweep's own σ on the players that actually separate the two plans, in
+ *  quadrature — so a margin inside it is a margin the forecast error could
+ *  have produced on its own, and saying "0.6 ahead" without saying that is
+ *  the false precision this cycle exists to remove. Only ever said when it is
+ *  true: a margin larger than the noise gets the bare sentence. */
+function marginLine(margin: number | null,
+                    sigma: number | null = null): string {
   if (margin === null) return 'Every re-solve reached the same decision.'
+  const inside = sigma !== null && sigma > 0 && Math.abs(margin) < sigma
+  const caveat = inside
+    ? ` — smaller than the ${fmtNum(sigma, 1)}-point noise on the players `
+      + 'that separate the two plans, so the ranking is not solid'
+    : ''
   if (margin < 0) {
     return `The best differing plan is ${fmtNum(-margin, 1)} expected points `
-      + 'ahead — the most frequent plan is not the highest-scoring one.'
+      + `ahead${caveat}${inside ? '' : ' — the most frequent plan is not the '
+        + 'highest-scoring one'}.`
   }
   return `The best differing plan is ${fmtNum(margin, 1)} expected points `
-    + 'behind.'
+    + `behind${caveat}.`
 }
 
 export default function SensitivityCard() {
@@ -107,7 +121,7 @@ export default function SensitivityCard() {
             </p>
           )}
           <p className="mt-3 text-text-muted">
-            {marginLine(data.margin)}
+            {marginLine(data.margin, data.decision_sigma ?? null)}
             {data.wall_s != null && ` Swept in ${fmtNum(data.wall_s, 0)}s, `}
             {data.seed != null && `seed ${data.seed}, `}
             {data.generated_at != null
