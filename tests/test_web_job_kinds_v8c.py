@@ -15,12 +15,15 @@ def test_the_field_scrape_kind_is_on_the_allow_list():
         is job_kinds.run_field_scrape_job
 
 
-def test_the_allow_list_is_the_eight_kinds_the_frontend_knows():
+def test_the_allow_list_is_the_kinds_the_frontend_knows():
     """Lockstep with ``frontend/src/types.ts``'s JOB_KINDS: the browser sends
-    one of these strings and a kind the router does not know is a 404."""
+    one of these strings and a kind the router does not know is a 404.
+
+    v8b added ``review`` as the ninth.
+    """
     assert sorted(job_kinds.JOB_KINDS) == [
         "advise", "advise-fast", "evaluate", "field-scrape", "news-shadow",
-        "refresh-data", "snapshot", "track-pens"]
+        "refresh-data", "review", "snapshot", "track-pens"]
 
 
 def test_the_job_reports_the_rows_it_logged(monkeypatch, capsys):
