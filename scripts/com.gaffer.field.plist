@@ -7,6 +7,11 @@
     <string>/bin/zsh</string><string>-lc</string>
     <string>cd __PROJECT_DIR__ &amp;&amp; uv run gaffer field-scrape &gt;&gt; logs/field.log 2&gt;&amp;1</string>
   </array>
+  <!-- launchd reads StartCalendarInterval in the machine's LOCAL time, not
+       UTC: this is 12:30 on a UK-set machine, which is the clock FPL's
+       deadlines are quoted in. On a machine set to another timezone the job
+       fires at 12:30 there and may land before the deadline, where picks are
+       404 — set the machine to Europe/London or shift the hours to match. -->
   <!-- Saturday and Sunday at 12:30, an hour after the 11:30 deadline: picks
        are public post-deadline and 404 before it. Two slots rather than one
        because a Sunday-only gameweek has no Saturday squad to sample and a

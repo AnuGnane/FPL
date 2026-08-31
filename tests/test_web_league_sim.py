@@ -435,3 +435,38 @@ def test_the_whatif_tab_keeps_the_warm_path(client, monkeypatch):
                       json={"pins": [{"code": 100, "event": "blank"}]})
     assert res.status_code == 200
     assert calls["n"] == 1
+
+
+# --- the small honesties ---------------------------------------------------
+
+
+def test_a_captain_override_on_a_bench_player_is_reported_not_swallowed(
+        client):
+    """The engine honours an override only when it names a starter, so a
+    bench player was accepted, ignored, and reported as a delta of zero — the
+    panel answering a question it had not understood."""
+    body = client.post("/api/league/whatif",
+                       json={"captain_override": 102}).json()
+    assert body["unknown_codes"] == [102]
+    assert body["delta_p_win"] == 0.0
+
+
+def test_a_rival_captain_blank_on_an_entry_not_in_the_league_is_a_422(client):
+    res = client.post("/api/league/whatif",
+                      json={"rival_captain_blanks": 4242})
+    assert res.status_code == 422
+    assert "4242" in res.json()["detail"]
+    assert "reload" in res.json()["detail"]
+
+
+def test_the_history_is_written_once_per_run_not_once_per_refresh(client):
+    """``append_sim_history`` rewrites the whole file. A page refresh served
+    from the cache must not re-write the sparkline's own store with a number
+    that has not changed."""
+    from gaffer.league_sim import history_path
+
+    client.get("/api/league/sim")
+    stamp = history_path().stat().st_mtime_ns
+    client.get("/api/league/sim")
+    client.get("/api/league/sim")
+    assert history_path().stat().st_mtime_ns == stamp

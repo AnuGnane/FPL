@@ -191,3 +191,42 @@ def test_no_gameweek_yet_is_a_printed_line_not_a_failure(here, wired, capsys):
     monkeypatch_now = "2026-08-01T12:30:00Z"
     assert run_field_scrape(CFG, now=monkeypatch_now) is None
     assert "no gameweek deadline" in capsys.readouterr().out
+
+
+def test_an_already_banked_gameweek_costs_no_requests_at_all(here, wired,
+                                                             monkeypatch,
+                                                             capsys):
+    """The Sunday run, every week the Saturday run worked. It used to build
+    a client and fetch the bootstrap purely to learn a gameweek number that
+    the events snapshot on disk already knows."""
+    from gaffer.data import store
+
+    run_field_scrape(CFG, gw=2)
+    store.save(EVENTS, "live/events.parquet")
+
+    def _no_network(*a, **kw):
+        raise AssertionError("the banked path must not touch the API")
+
+    monkeypatch.setattr("gaffer.api.client.FPLClient", _no_network)
+    monkeypatch.setattr("gaffer.data.bootstrap.build_events", _no_network)
+    capsys.readouterr()
+    assert run_field_scrape(CFG, now="2026-08-25T12:30:00Z") == 0
+    assert "already banked" in capsys.readouterr().out
+
+
+def test_with_no_events_snapshot_the_bootstrap_is_still_the_fallback(here,
+                                                                    wired):
+    """No snapshot is not an error: the one request is paid, and the docstring
+    says so."""
+    assert run_field_scrape(CFG, now="2026-08-25T12:30:00Z") == 3
+    assert wired["gw"] == 2
+
+
+def test_an_absurd_field_sample_is_clamped_rather_than_honoured(here, wired):
+    """``[league] field_sample = 100000`` is a typo, not an instruction: it
+    would be a hundred thousand requests at a public API in one burst."""
+    from gaffer.data.field import MAX_FIELD_SAMPLE
+
+    run_field_scrape(Config(entry_id=1, league_id=5, current_season="2026-27",
+                            field_sample=100_000), gw=2)
+    assert wired["sample"] == MAX_FIELD_SAMPLE

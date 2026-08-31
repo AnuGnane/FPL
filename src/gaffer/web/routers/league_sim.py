@@ -26,7 +26,8 @@ from gaffer.data.field import field_sample_path
 from gaffer.errors import GafferError
 from gaffer.league_mode import win_probability
 from gaffer.league_sim import (Pins, append_sim_history, build_inputs,
-                               load_sim_history, simulate_league)
+                               effective_picks, load_sim_history,
+                               simulate_league)
 from gaffer.web.schemas import (LeagueSimData, LeagueWhatIfRequest,
                                 LeagueWhatIfResult, LeagueWhatIfRow, RivalBeat,
                                 SimPoint, WinProb)
@@ -49,6 +50,16 @@ The League hub, the What-if tab and This Week's chip all want the same answer
 inside a second of each other, and the what-if panel wants the *inputs* back
 so a pinned re-run does not re-fetch fifty squads. Keyed on the solve state's
 mtime, so a fresh advise run invalidates it without anybody clearing anything.
+"""
+
+
+_FRESH: set = set()
+"""Keys whose cached entry has not been served yet.
+
+``append_sim_history`` rewrites the whole history file, so running it on
+every ``GET /api/league/sim`` meant a page refresh re-wrote the sparkline's
+own store with a number that had not changed. It is banked once per run, on
+the call that produced it.
 """
 
 
@@ -103,6 +114,7 @@ def _run(cfg, gw: int | None = None, *, cached_only: bool = False):
     key = _cache_key(cfg, plan_gw)
     hit = _CACHE.get(key)
     if hit is not None:
+        _FRESH.discard(key)
         return hit
     if cached_only:
         return None
@@ -111,6 +123,7 @@ def _run(cfg, gw: int | None = None, *, cached_only: bool = False):
                           rival_drift=float(cfg.rival_drift))
     _CACHE.clear()          # one gameweek's answer at a time; this is not an LRU
     _CACHE[key] = (sim, inputs)
+    _FRESH.add(key)
     return sim, inputs
 
 
@@ -118,12 +131,15 @@ def _run(cfg, gw: int | None = None, *, cached_only: bool = False):
 def sim() -> LeagueSimData:
     cfg = load_config()
     gw = latest_gw()
+    key = _cache_key(cfg, int(gw)) if gw is not None else None
     result, inputs = _run(cfg, gw)
     run_at = datetime.now(timezone.utc).isoformat()
-    try:
-        append_sim_history(result, int(gw), run_at)
-    except Exception:  # noqa: BLE001 — the instrument never blocks the page
-        pass
+    if key in _FRESH:
+        _FRESH.discard(key)
+        try:
+            append_sim_history(result, int(gw), run_at)
+        except Exception:  # noqa: BLE001 — never blocks the page
+            pass
     me = next((e for e in inputs.entries if e.is_me), None)
     my_total = int(me.total) if me else 0
     legacy = [WinProb(name=e.name, total=int(e.total),
@@ -242,8 +258,30 @@ def whatif(req: LeagueWhatIfRequest) -> LeagueWhatIfResult:
 
     captain = by_code.get(int(req.captain_override)) \
         if req.captain_override is not None else None
+    # A code the snapshot cannot resolve *and* a code that resolves to
+    # somebody who is not in my starting eleven both mean the same thing to
+    # the user: the armband did not move. The engine only honours an override
+    # that names a starter, so a bench player named as captain was accepted,
+    # ignored and reported as a delta of zero — a panel answering a question
+    # it had not understood.
+    if captain is not None:
+        me = next((e for e in inputs.entries if e.is_me), None)
+        starters = {int(el) for el, _ in effective_picks(me.picks)} if me \
+            else set()
+        if int(captain) not in starters:
+            captain = None
     if req.captain_override is not None and captain is None:
         unknown.append(int(req.captain_override))
+
+    if req.rival_captain_blanks is not None:
+        # Not a 204 and not a silent nothing: naming an entry that is not in
+        # this league is a request that cannot mean anything, and the panel
+        # can only have got there from a stale tab.
+        rivals = {int(e.entry) for e in inputs.entries if not e.is_me}
+        if int(req.rival_captain_blanks) not in rivals:
+            raise GafferError(
+                f"entry {int(req.rival_captain_blanks)} is not a rival in "
+                f"this league — reload the page and pick again")
     pins = Pins(scores=scores, captain_override=captain,
                 rival_captain_blanks=(int(req.rival_captain_blanks)
                                       if req.rival_captain_blanks is not None

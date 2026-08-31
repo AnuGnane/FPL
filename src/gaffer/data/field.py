@@ -277,6 +277,35 @@ def scrape_gw(events: pd.DataFrame, now=None) -> int | None:
     return int(pd.to_numeric(passed["gw"], errors="coerce").max())
 
 
+MAX_FIELD_SAMPLE = 1000
+"""Hard ceiling on the scheduled scrape's sample size.
+
+The sample costs roughly one request per entry plus the standings pages it
+takes to enumerate them: 300 entries is the ~455 requests D7's courtesy
+window is written around, so 1,000 is already about 1,500 requests against a
+public API in one burst. ``[league] field_sample`` above this is a typo, not
+an instruction, and the clamp is here rather than in ``config.py`` because it
+is a property of *this* job's politeness and not of the number."""
+
+
+def banked_scrape_gw(now=None) -> int | None:
+    """:func:`scrape_gw` against the events snapshot already on disk.
+
+    The point is to answer "which gameweek?" with *zero* API requests, so the
+    already-banked no-op path can exit before a client is ever built. Every
+    Sunday run in a week the Saturday one worked takes this path, and
+    ``advise`` refreshes the snapshot far more often than a gameweek turns
+    over. ``None`` when there is no snapshot; the caller then pays for the
+    bootstrap, which is the only case where it is unavoidable.
+    """
+    try:
+        from gaffer.artifacts import load_snapshot
+
+        return scrape_gw(load_snapshot("live/events.parquet"), now=now)
+    except Exception:  # noqa: BLE001 — no snapshot is not an error here
+        return None
+
+
 def _tier_cache_age_s(gw: int, raw_dir: Path | str = RAW_TIER) -> float | None:
     """Seconds since the live tracker last wrote this gameweek's tier cache,
     or ``None`` when it never has."""
@@ -303,7 +332,10 @@ def run_field_scrape(cfg=None, gw: int | None = None, *, force: bool = False,
     * no deadline has passed yet (pre-season, or a scheduled run in an
       international break);
     * the gameweek is already banked — the idempotence line, and the one the
-      Sunday run prints every week the Saturday run worked;
+      Sunday run prints every week the Saturday run worked. It is checked
+      against the gameweek :func:`banked_scrape_gw` reads off the events
+      snapshot, *before* a client exists, so that exit costs no requests at
+      all rather than one bootstrap;
     * D7's courtesy: the live tracker paid for this gameweek's ~455 requests
       inside the last :data:`FIELD_REUSE_HOURS`, so its numbers are logged and
       *nothing is fetched*. No squads are banked on that path, deliberately —
@@ -324,18 +356,35 @@ def run_field_scrape(cfg=None, gw: int | None = None, *, force: bool = False,
             print("field scrape skipped: league.field_scrape is off")
             return None
         season = str(getattr(cfg, "current_season", "") or "")
+
+        def _already_banked(week: int) -> int | None:
+            if force:
+                return None
+            banked = load_field_sample(season, week, RAW_FIELD)
+            if banked is None:
+                return None
+            print(f"field sample for gw{week} already banked "
+                  f"({len(banked)} entries) — nothing fetched.")
+            return 0
+
+        # The gameweek from the events snapshot advise already wrote, so the
+        # already-banked exit costs zero requests rather than one bootstrap.
+        # That is the path every Sunday run takes in a week the Saturday run
+        # worked, which is most of them.
+        offline_gw = int(gw) if gw is not None else banked_scrape_gw(now=now)
+        if offline_gw is not None and _already_banked(offline_gw) == 0:
+            return 0
+
         client = FPLClient()
         if gw is None:
-            gw = scrape_gw(build_events(client.get_bootstrap()), now=now)
+            gw = offline_gw if offline_gw is not None \
+                else scrape_gw(build_events(client.get_bootstrap()), now=now)
         if gw is None:
             print("field scrape skipped: no gameweek deadline has passed yet")
             return None
         gw = int(gw)
 
-        if not force and load_field_sample(season, gw, RAW_FIELD) is not None:
-            banked = load_field_sample(season, gw, RAW_FIELD) or []
-            print(f"field sample for gw{gw} already banked "
-                  f"({len(banked)} entries) — nothing fetched.")
+        if _already_banked(gw) == 0:
             return 0
 
         age = _tier_cache_age_s(gw, RAW_TIER)
@@ -348,7 +397,9 @@ def run_field_scrape(cfg=None, gw: int | None = None, *, force: bool = False,
             return rows
 
         picks, table = fetch_field_sample(
-            client, gw, sample=int(getattr(cfg, "field_sample", TIER_SAMPLE)),
+            client, gw,
+            sample=min(int(getattr(cfg, "field_sample", TIER_SAMPLE)),
+                       MAX_FIELD_SAMPLE),
             season=season, raw_dir=RAW_FIELD, use_bank=not force)
         if not picks:
             print(f"field scrape not written: no sampled entry had readable "

@@ -426,6 +426,13 @@ def test_a_bench_boost_rival_is_not_a_certainty():
 
 # --- internal consistency ---------------------------------------------------
 
+ROUNDING = 1e-4
+"""``LeagueSim`` publishes probabilities rounded to four decimals, so two of
+them that are equal before rounding can differ by one step of it. The
+comparisons below are about the arithmetic and not about the display, so the
+tolerance is the rounding step; ``1e-9`` against rounded numbers passed by
+luck and would have failed on a league where the counts fell differently."""
+
 def test_in_a_two_entry_league_winning_is_beating_him():
     """The G2 contradiction, pinned: ``p_win`` 0.0 beside a ``p_beat`` of
     0.919 against the only rival who mattered. With one rival the two
@@ -433,7 +440,7 @@ def test_in_a_two_entry_league_winning_is_beating_him():
     out = simulate_league(_inputs(entries=[_me(total=140),
                                            _rival(2, total=177)]),
                           n=4000, seed=20260901)
-    assert abs(out.p_win - out.per_rival[0]["p_beat"]) < 1e-9
+    assert abs(out.p_win - out.per_rival[0]["p_beat"]) < ROUNDING
 
 
 def test_winning_is_never_likelier_than_beating_the_easiest_rival():
@@ -444,7 +451,7 @@ def test_winning_is_never_likelier_than_beating_the_easiest_rival():
                                   for i in range(2, 9)]
     out = simulate_league(_inputs(entries=entries, weeks_left=36),
                           n=2000, seed=20260915)
-    assert out.p_win <= min(r["p_beat"] for r in out.per_rival) + 1e-9
+    assert out.p_win <= min(r["p_beat"] for r in out.per_rival) + ROUNDING
 
 
 def test_the_median_margin_sits_inside_the_fan_and_the_weekly_gap():
