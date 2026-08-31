@@ -256,6 +256,27 @@ def field_scrape(
 
 
 @app.command()
+def review(gw: int = typer.Option(0, help="Gameweek to review (default: "
+                                          "every finished one not yet in "
+                                          "the ledger).")):
+    """Grade last week's decisions against the model's (v8b F2).
+
+    The launchd job's body, and held to ``snapshot``'s contract: it prints one
+    line per gameweek and never fails. A Tuesday with no network is a Tuesday
+    with no new grade, not a Tuesday with a traceback.
+    """
+    try:
+        from gaffer.review import run_review
+
+        run_review(gw=gw or None)
+    except Exception as exc:  # noqa: BLE001 — a scheduled job never blocks
+        # run_review swallows its own failures; the import cannot, and an
+        # ImportError here would be the one traceback the launchd job still
+        # emits every Tuesday morning.
+        typer.echo(f"review not written: {exc}")
+
+
+@app.command()
 def league_sim(
         seeds: str = typer.Option("", help="Comma-separated seed bases; "
                                            "default is the shipped seed."),

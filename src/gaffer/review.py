@@ -29,6 +29,10 @@ Nothing here writes to ``advise``. The ledger is measurement.
 
 from __future__ import annotations
 
+import json
+import os
+from datetime import datetime, timezone
+
 import pandas as pd
 
 from gaffer.artifacts import load_components  # noqa: F401 — Task 5's import
@@ -39,13 +43,15 @@ from gaffer.data.my_entry import (bank_my_entry, chip_for_gw, gw_history_row,
                                   load_my_transfers, my_transfers_for_gw)
 from gaffer.journal import _code_of_element, latest_run_per_gw
 
-__all__ = ["ACTUAL_COLS", "CHIP_SCORING", "LANES", "MISS_BAR", "PWIN_LANES",
-           "SQUAD_CHIPS", "actuals_for_gw", "code_of_element", "grade_gw",
-           "grade_gw_from", "hindsight_gap", "hindsight_xi", "label_for",
-           "lane_bench", "lane_captaincy", "lane_chip", "lane_transfers",
-           "model_decisions", "my_decisions", "pair_by_position",
-           "picks_from_squad", "price_lanes", "price_lanes_for_gw",
-           "reviewable_gws", "score_gw", "score_squad", "swap_slots"]
+__all__ = ["ACTUAL_COLS", "CHIP_SCORING", "LANES", "LEDGER", "MISS_BAR",
+           "PWIN_LANES", "SQUAD_CHIPS", "actuals_for_gw", "append_ledger",
+           "code_of_element", "format_review", "grade_gw", "grade_gw_from",
+           "hindsight_gap", "hindsight_xi", "label_for", "lane_bench",
+           "lane_captaincy", "lane_chip", "lane_transfers", "ledger_path",
+           "load_ledger", "model_decisions", "my_decisions",
+           "pair_by_position", "picks_from_squad", "price_lanes",
+           "price_lanes_for_gw", "reviewable_gws", "run_review", "score_gw",
+           "score_squad", "season_summary", "swap_slots"]
 
 ACTUAL_COLS = ["code", "total_points", "minutes", "position"]
 """Exactly the columns :func:`gaffer.backtest.score_gw` reads, in its order."""
@@ -898,3 +904,194 @@ def _cf_squad(lane: str, mine: dict, model: dict) -> dict | None:
     else:
         built = lane_captaincy(mine, model, blank)
     return built.get("cf")
+
+
+LEDGER = "decision_ledger.json"
+"""Under ``artifacts.REPORTS``. Read at call time, never bound at import, so a
+test that redirects the reports directory redirects the ledger with it."""
+
+
+def ledger_path():
+    from gaffer import artifacts
+
+    return artifacts.REPORTS / LEDGER
+
+
+def load_ledger() -> list[dict]:
+    """Every banked grade, oldest gameweek first. ``[]`` on any failure.
+
+    A corrupt ledger reads as an empty one and is rebuilt by the next review
+    (spec G2) — the alternative is a Model hub that shows a stack trace
+    because a laptop lost power during a write six weeks ago.
+    """
+    path = ledger_path()
+    if not path.exists():
+        return []
+    try:
+        payload = json.loads(path.read_text())
+    except Exception:  # noqa: BLE001 — a corrupt ledger is an empty one
+        return []
+    rows = payload.get("gws") if isinstance(payload, dict) else payload
+    return sorted([r for r in (rows or []) if isinstance(r, dict)
+                   and "gw" in r], key=lambda r: int(r["gw"]))
+
+
+def append_ledger(row: dict):
+    """Bank one gameweek's grade, replacing any earlier row for that week.
+
+    ``league_sim.append_sim_history``'s idiom exactly: replace-by-gameweek,
+    written to a sibling and renamed so a reader sees the whole old file or
+    the whole new one, and ``allow_nan=False`` because NaN is not JSON and a
+    file the browser cannot parse is a hub that shows nothing at all.
+    """
+    from gaffer import artifacts
+
+    rows = [r for r in load_ledger() if int(r["gw"]) != int(row["gw"])]
+    rows.append(dict(row))
+    rows.sort(key=lambda r: int(r["gw"]))
+    artifacts.REPORTS.mkdir(parents=True, exist_ok=True)
+    path = ledger_path()
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+    try:
+        tmp.write_text(json.dumps({"gws": rows}, indent=1, allow_nan=False))
+        os.replace(tmp, path)
+    finally:
+        tmp.unlink(missing_ok=True)
+    return path
+
+
+def season_summary(ledger: list[dict]) -> dict | None:
+    """Per-lane season sums in both currencies, plus the season's two stories.
+
+    ``None`` for an empty ledger: a season nobody has reviewed has no summary,
+    and a summary of zeros would read as a season of flawless decisions.
+
+    An ungraded lane contributes nothing to the sum *and* nothing to the
+    count. The ``graded`` field is what stops "chip: 0 points" from being read
+    as chip discipline when it really means the chip weeks were never
+    comparable.
+    """
+    if not ledger:
+        return None
+    lanes = {name: {"pts": 0.0, "pwin": 0.0, "graded": 0} for name in LANES}
+    accuracy, bench, gap = [], 0, 0
+    reconciled = unreconciled = 0
+    best = worst = None
+    for row in ledger:
+        for lane in row.get("lanes") or []:
+            cell = lanes.get(str(lane.get("lane")))
+            if cell is None or lane.get("delta_pts") is None:
+                continue
+            cell["pts"] += float(lane["delta_pts"])
+            cell["pwin"] += float(lane.get("delta_pwin") or 0.0)
+            cell["graded"] += 1
+            marked = {**lane, "gw": int(row["gw"])}
+            if best is None or lane["delta_pts"] > best["delta_pts"]:
+                best = marked
+            if worst is None or lane["delta_pts"] < worst["delta_pts"]:
+                worst = marked
+        if row.get("accuracy") is not None:
+            accuracy.append({"gw": int(row["gw"]),
+                             "accuracy": int(row["accuracy"])})
+        bench += int(row.get("points_on_bench") or 0)
+        gap += int((row.get("hindsight") or {}).get("gap") or 0)
+        if row.get("reconciled") is True:
+            reconciled += 1
+        elif row.get("reconciled") is False:
+            unreconciled += 1
+    for cell in lanes.values():
+        cell["pts"] = round(cell["pts"], 1)
+        cell["pwin"] = round(cell["pwin"], 2)
+    return {"gws": [int(r["gw"]) for r in ledger], "lanes": lanes,
+            "accuracy": accuracy, "points_on_bench": int(bench),
+            "hindsight_gap": int(gap), "reconciled_gws": reconciled,
+            "unreconciled_gws": unreconciled, "best": best, "worst": worst}
+
+
+def format_review(row: dict) -> str:
+    """The one line ``gaffer review`` prints per gameweek.
+
+    A scheduled job's log is the only place most of these rows will ever be
+    read, so the line carries the verdict rather than a row count: the score,
+    the model's, and the single worst lane by name.
+    """
+    parts = [f"GW{int(row['gw'])}: you {row.get('my_points')}"]
+    if row.get("no_advice"):
+        parts.append("no surviving advice — reconciliation and hindsight only")
+    else:
+        parts.append(f"model {row.get('model_points')} "
+                     f"(accuracy {row.get('accuracy')})")
+        graded = [lane for lane in (row.get("lanes") or [])
+                  if lane.get("delta_pts") is not None]
+        if graded:
+            worst = min(graded, key=lambda lane: lane["delta_pts"])
+            parts.append(f"worst lane {worst['lane']} "
+                         f"{worst['delta_pts']:+d} ({worst.get('label')})")
+    if row.get("reconciled") is False:
+        parts.append(f"did not reconcile — FPL says "
+                     f"{row.get('official_points')}")
+    return " | ".join(str(p) for p in parts)
+
+
+def run_review(cfg=None, gw: int | None = None, *, client=None) -> list[int]:
+    """Review every finished gameweek not yet in the ledger. Never raises.
+
+    The launchd body, held to ``run_snapshot``'s contract: one printed line
+    per gameweek and no exception out of the function. A Tuesday morning with
+    no network must cost the *new* week's grade and nothing else — every week
+    already banked stays banked, because grades are banked and never
+    re-derived (spec D2).
+
+    Order of operations: bank first, grade second. Banking is the only step
+    that needs the API, so a gameweek that banks is a gameweek that can be
+    graded offline forever afterwards.
+    """
+    try:
+        from gaffer.config import load_config
+
+        cfg = cfg or load_config()
+        season = str(getattr(cfg, "current_season", "") or "")
+        entry_id = int(getattr(cfg, "entry_id", 0) or 0)
+        if not entry_id:
+            print("review skipped: set fpl.entry_id in config.toml first")
+            return []
+        if client is None:
+            from gaffer.api.client import FPLClient
+
+            client = FPLClient()
+
+        final = reviewable_gws()
+        if gw is not None:
+            if int(gw) not in final:
+                print(f"review skipped: GW{int(gw)} has no final results yet "
+                      f"— FPL has not marked it data_checked")
+                return []
+            wanted = [int(gw)]
+        else:
+            done = {int(r["gw"]) for r in load_ledger()}
+            wanted = [g for g in final if g not in done]
+            if not wanted:
+                print(f"review: all {len(final)} finished gameweeks are "
+                      f"already reviewed — nothing to do.")
+                return []
+
+        reviewed = []
+        for target in wanted:
+            banked = bank_my_entry(client, entry_id, season, target)
+            if banked["picks"] is None:
+                print(f"GW{target} skipped: no banked picks and the API would "
+                      f"not answer — nothing graded, nothing invented.")
+                continue
+            row = grade_gw(target, cfg=cfg, client=client)
+            if row is None:
+                print(f"GW{target} skipped: picks banked but not readable.")
+                continue
+            row["reviewed_at"] = datetime.now(timezone.utc).isoformat(
+                timespec="seconds")
+            append_ledger(row)
+            print(format_review(row))
+            reviewed.append(target)
+        return reviewed
+    except Exception as exc:  # noqa: BLE001 — a scheduled job never blocks
+        print(f"review not written: {exc}")
+        return []
