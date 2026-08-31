@@ -232,6 +232,30 @@ def snapshot():
 
 
 @app.command()
+def field_scrape(
+        gw: int = typer.Option(0, help="Gameweek to scrape (default: the "
+                                       "last one whose deadline has passed)."),
+        force: bool = typer.Option(False, "--force",
+                                   help="Re-scrape a gameweek already "
+                                        "banked.")):
+    """Bank the top-10k field sample and its EO for a gameweek (v8c F1).
+
+    The launchd job's body, and held to ``snapshot``'s contract: it prints its
+    own line and never fails. A scheduled command that exits non-zero on a bad
+    Saturday is a command that gets uninstalled.
+    """
+    try:
+        from gaffer.data.field import run_field_scrape
+
+        run_field_scrape(gw=gw or None, force=force)
+    except Exception as exc:  # noqa: BLE001 — a scheduled job never blocks
+        # run_field_scrape swallows its own failures; the import cannot, and
+        # an ImportError here would be the one traceback the launchd job
+        # still emits every weekend.
+        typer.echo(f"field scrape not written: {exc}")
+
+
+@app.command()
 def league():
     """Mini-league standings and rival ownership."""
     from gaffer.api.client import FPLClient

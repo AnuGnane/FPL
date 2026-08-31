@@ -92,6 +92,22 @@ def run_track_pens() -> dict:
     return {"gws": len(report.get("gws", []))}
 
 
+def run_field_scrape_job() -> dict:
+    """``gaffer field-scrape`` — the top-10k field sample (v8c F1).
+
+    ``run_field_scrape`` prints its own result line and answers ``None`` on
+    every failure, so the only work here is turning that into the row count
+    the job record carries. Zero rows is a success, not a failure: it is what
+    an already-banked gameweek looks like, which is what the Sunday run sees
+    every week the Saturday run worked.
+    """
+    from gaffer.data.field import FIELD_EO_PATH, run_field_scrape
+
+    rows = int(run_field_scrape() or 0)
+    print(f"Logged {rows} field-EO rows to {FIELD_EO_PATH}.")
+    return {"rows": rows}
+
+
 JOB_KINDS: dict[str, Callable[[], Any]] = {
     "advise": run_train_and_advise,
     "advise-fast": run_train_and_advise_fast,
@@ -99,6 +115,7 @@ JOB_KINDS: dict[str, Callable[[], Any]] = {
     "refresh-data": run_data_refresh,
     "news-shadow": run_news_shadow,
     "snapshot": run_snapshot_job,
+    "field-scrape": run_field_scrape_job,
     "track-pens": run_track_pens,
 }
 """The allow-list. A kind not in here is a 404, never an exec of user input."""

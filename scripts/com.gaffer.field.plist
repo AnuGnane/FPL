@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+ "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.gaffer.field</string>
+  <key>ProgramArguments</key><array>
+    <string>/bin/zsh</string><string>-lc</string>
+    <string>cd __PROJECT_DIR__ &amp;&amp; uv run gaffer field-scrape &gt;&gt; logs/field.log 2&gt;&amp;1</string>
+  </array>
+  <!-- Saturday and Sunday at 12:30, an hour after the 11:30 deadline: picks
+       are public post-deadline and 404 before it. Two slots rather than one
+       because a Sunday-only gameweek has no Saturday squad to sample and a
+       Saturday run that failed gets a second chance the next day. Both are
+       no-ops in seconds when the gameweek is already banked. -->
+  <key>StartCalendarInterval</key><array>
+    <dict><key>Weekday</key><integer>6</integer>
+          <key>Hour</key><integer>12</integer>
+          <key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>0</integer>
+          <key>Hour</key><integer>12</integer>
+          <key>Minute</key><integer>30</integer></dict>
+  </array>
+</dict></plist>
