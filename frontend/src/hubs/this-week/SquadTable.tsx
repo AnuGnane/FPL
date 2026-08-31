@@ -3,6 +3,7 @@ import {
   Badge, type Column, DataTable, PosBadge, Sparkline, fmtNum, fmtPct,
   useIsMobile,
 } from '../../kit'
+import type { NextFixture } from '../../types'
 
 export interface SquadRow {
   code: number
@@ -23,6 +24,13 @@ export interface SquadRow {
   news: string
   chanceOfPlaying: number | null
   penalties: boolean
+  /** v9a identity, resolved server-side. The table does not draw any of
+   *  these — they live here because the pitch and the table render from one
+   *  array, and one row type is the whole reason the toggle is a toggle
+   *  rather than two data paths. */
+  teamShort: string | null
+  teamCode: number | null
+  nextFixture: NextFixture | null
 }
 
 export interface SquadBreakdown {

@@ -9,13 +9,14 @@ const ROWS: SquadRow[] = [
     epHi: null, pHaul: null, pBlank: null, xmins: 88,
     ownership: 42.1, leagueEo: 61.5, simPct: 0.82, last4: [2, 9, 5, 12],
     news: 'Knock - 75% chance of playing', chanceOfPlaying: 75,
-    penalties: true,
+    penalties: true, teamShort: null, teamCode: null, nextFixture: null,
   },
   {
     code: 2, name: 'Gabriel', position: 'DEF', ep: 4.6, epLo: null,
     epHi: null, pHaul: null, pBlank: null, xmins: 90,
     ownership: 30.0, leagueEo: 12.0, simPct: null, last4: [],
     news: '', chanceOfPlaying: null, penalties: false,
+    teamShort: null, teamCode: null, nextFixture: null,
   },
 ]
 
@@ -74,7 +75,8 @@ function row(over: Partial<SquadRow>): SquadRow {
     code: 1, name: 'Salah', position: 'MID', ep: 5.4, epLo: null, epHi: null,
     pHaul: null, pBlank: null, xmins: 88, ownership: 20, leagueEo: 20,
     simPct: null, last4: [], news: '', chanceOfPlaying: null,
-    penalties: false, ...over,
+    penalties: false, teamShort: null, teamCode: null, nextFixture: null,
+    ...over,
   }
 }
 
