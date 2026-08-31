@@ -95,8 +95,9 @@ export default function Players() {
         ? <span className="num text-text-muted">—</span>
         : (
           <span className="num text-text-secondary"
-                title="p25–p75 of the scenario sweep's own noise on this
-                       forecast">
+                title={'p25–p75 of what he might score next gameweek: his '
+                  + 'expected points plus football’s own variance, plus how '
+                  + 'far the forecast itself might move'}>
             {`${r.ep_lo.toFixed(1)}–${r.ep_hi.toFixed(1)}`}
           </span>
         )) },

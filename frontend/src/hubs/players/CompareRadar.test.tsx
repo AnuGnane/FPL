@@ -109,6 +109,13 @@ describe('axisValues', () => {
     expect(v.attacking).toBe(0)
     expect(v.fixtures).toBe(0.5)   // no matrix is not a hard fixture
   })
+
+  it('leaves minutes null when nothing has modelled them', () => {
+    // N4. Zero on this axis is the claim "he is expected not to play", which
+    // is the strongest thing the chart can say about a player and exactly
+    // wrong for one the minutes model has never seen.
+    expect(axisValues(player({}), null, null, 5).minutes).toBeNull()
+  })
 })
 
 describe('CompareRadar', () => {
@@ -156,6 +163,31 @@ describe('CompareRadar', () => {
                                    player({ code: 2, position: 'MID' })]}
                          pool={[]} components={COMPONENTS} matrix={MATRIX} />)
     expect(screen.queryByText(/different jobs/i)).toBeNull()
+  })
+
+  it('draws nothing at all until the payloads it reads have landed', () => {
+    // N6. Every axis is normalized against a pool, and a pool of identical
+    // values normalizes to 50 — so the first paint with nothing fetched is a
+    // perfectly regular pentagon at the halfway mark on every axis, which
+    // reads as a finding rather than as a spinner.
+    render(<CompareRadar gw={5}
+                         players={[player({ code: 1 }), player({ code: 2 })]}
+                         pool={[]} components={null} matrix={null} />)
+    expect(screen.queryByLabelText('player comparison radar')).toBeNull()
+    expect(screen.getByText(/still loading/i)).toBeInTheDocument()
+  })
+
+  it('names every axis it draws in the caption', () => {
+    // N4. Three of the five were described and two — minutes and set pieces
+    // — were left for the reader to guess at.
+    render(<CompareRadar gw={5}
+                         players={[player({ code: 1 }), player({ code: 2 })]}
+                         pool={[]} components={COMPONENTS} matrix={MATRIX} />)
+    const caption = screen.getByText(/Each axis is scaled/)
+    for (const word of [/attacking/i, /minutes/i, /set-piece/i, /fixtures/i,
+                        /form/i]) {
+      expect(caption.textContent).toMatch(word)
+    }
   })
 
   it('has exactly the five axes the spec names', () => {

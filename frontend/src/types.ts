@@ -117,7 +117,7 @@ export interface FixtureExplain {
   home: boolean
   kickoff_time: string | null
   components: Component[]
-  minutes: { p_play: number; p60: number }
+  minutes: { p_play: number | null; p60: number }
   calibration_delta: number
   odds: {
     weight: number
@@ -519,7 +519,9 @@ export interface ComponentFixture {
   // `xmins` is p_play * (45 + 45 * p60), derived server-side. Null where the
   // minutes model has no opinion, which the xMin column prints as an em dash —
   // an un-modelled player is not a player expected to play no minutes.
-  minutes: { p_play: number; p60: number; xmins?: number | null }
+  // `p_play` is null, never 0, for a frame with no minutes model: zero there
+  // would say the model expects him not to play.
+  minutes: { p_play: number | null; p60: number; xmins?: number | null }
   ep: number
 }
 

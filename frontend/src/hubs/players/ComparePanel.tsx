@@ -15,6 +15,27 @@ import CompareRadar from './CompareRadar'
 const SERIES_COLOURS = ['var(--color-sage)', 'var(--color-info)',
   'var(--color-rust)', 'var(--color-text-muted)']
 
+/**
+ * What the p25–p75 pair beside a player's xPts is a range *of*.
+ *
+ * `ep_gw` and `sigma` have been on `/api/components/{gw}` since the bands
+ * shipped and nothing rendered either of them, so the schema documented two
+ * fields the UI never showed. They belong here rather than in a column: σ is
+ * the scale of the range the reader is already looking at, and `ep_gw` is the
+ * single gameweek it brackets — which is *not* `ep`, the horizon sum the bar
+ * chart above is drawn from, and the difference is exactly the kind of thing
+ * a range beside the wrong number would hide.
+ */
+function bandTitle(components: ComponentsBreakdown | null,
+                   code: number): string {
+  const base = 'p25–p75 of what he might score: expected points plus '
+    + 'football’s own variance, plus how far the forecast itself might move.'
+  const comp = components?.players.find((p) => p.code === code)
+  if (!comp || comp.sigma == null || comp.ep_gw == null) return base
+  return `${base} GW forecast ${comp.ep_gw.toFixed(2)}, `
+    + `σ ${comp.sigma.toFixed(2)} points.`
+}
+
 export interface ComparePanelProps {
   gw: number
   players: PlayerRow[]
@@ -122,8 +143,16 @@ export default function ComparePanel(
                   <dd className="num text-right text-text">
                     {fmtNum(player.ep_next)}
                     {player.ep_lo != null && player.ep_hi != null && (
+                      // `ep_gw` and `sigma` ride in the tooltip rather than
+                      // in a column of their own: the payload has carried
+                      // them since the bands shipped and nothing rendered
+                      // either, which left the schema making a promise the
+                      // UI did not keep. They are also the two numbers that
+                      // explain the range — σ is its scale, and `ep_gw` is
+                      // the single gameweek it brackets, which is not the
+                      // horizon sum in the bar chart above.
                       <span className="ml-1 text-text-muted"
-                            title="p25–p75 of the scenario sweep's own noise">
+                            title={bandTitle(components, player.code)}>
                         {`${player.ep_lo.toFixed(1)}–`
                           + `${player.ep_hi.toFixed(1)}`}
                       </span>

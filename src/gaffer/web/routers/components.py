@@ -58,6 +58,29 @@ def _num(value) -> float:
     return 0.0 if math.isnan(out) else out
 
 
+def _round(value: float | None) -> float | None:
+    return None if value is None else round(value, 3)
+
+
+def _prob(value) -> float | None:
+    """A probability, or ``None`` for one the frame never carried.
+
+    :func:`_num`'s 0.0 is the right answer for an EP term nobody scored and
+    the wrong one for ``p_play``: zero there reads as "expected not to play",
+    which is the strongest claim this payload can make about a player and is
+    false of every player a frame banked without a minutes model. The compare
+    radar drew it as a zero-length spoke on the minutes axis, so an unknown
+    came out looking like the most damning thing the model could say.
+    """
+    if value is None:
+        return None
+    try:
+        out = float(value)
+    except (TypeError, ValueError):
+        return None
+    return None if math.isnan(out) else out
+
+
 def _xmins(p_play, p60) -> float | None:
     """Expected minutes from the two probabilities the minutes model emits.
 
@@ -138,7 +161,7 @@ def components(gw: int,
                     # already used it: a frame banked with no minutes model
                     # carries no such column at all, and a breakdown is not
                     # worth a 500 over a probability it never had.
-                    p_play=round(_num(getattr(row, "p_play", None)), 3),
+                    p_play=_round(_prob(getattr(row, "p_play", None))),
                     p60=round(_num(getattr(row, "p60", None)), 3),
                     # From the raw cells, not the _num'd ones: _num turns a
                     # missing probability into 0.0, and 0.0 is a real answer.

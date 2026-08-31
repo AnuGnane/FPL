@@ -69,16 +69,18 @@ function columnsFor(mobile: boolean): Column<SquadRow>[] { return [
         {r.penalties && <Badge variant="info">Pens</Badge>}
         {r.pHaul !== null && r.pHaul >= HAUL_CHIP && (
           <Badge variant="positive"
-                 title={`${pct(r.pHaul)} chance of 10+ points under the `
-                   + 'sweep’s noise model — forecast error only, not '
-                   + 'football’s own variance, so read it as a floor'}>
+                 title={`${pct(r.pHaul)} chance of 10+ points — the upper `
+                   + 'tail of his outcome distribution, which is his '
+                   + 'expected points plus the variance a footballer’s week '
+                   + 'carries, not a guess at his ceiling'}>
             {`haul ${pct(r.pHaul)}`}
           </Badge>
         )}
         {r.pBlank !== null && r.pBlank >= BLANK_CHIP && (
           <Badge variant="negative"
-                 title={`${pct(r.pBlank)} chance of 2 points or fewer under `
-                   + 'the sweep’s noise model'}>
+                 title={`${pct(r.pBlank)} chance of 2 points or fewer — the `
+                   + 'lower tail of the same distribution. A blank is an '
+                   + 'appearance and nothing else, not a missed match'}>
             {`blank ${pct(r.pBlank)}`}
           </Badge>
         )}
@@ -96,9 +98,11 @@ function columnsFor(mobile: boolean): Column<SquadRow>[] { return [
       ? <span className="num text-text-muted">—</span>
       : (
         <span className="num text-text-secondary"
-              title="p25–p75 of the scenario sweep's own noise on this
-                     forecast. Not a plus-or-minus: the calibrated path
-                     recentres, so the pair is quartiles.">
+              title={'p25–p75 of what he might score: his expected points '
+                + 'plus football’s own variance, plus how far the forecast '
+                + 'itself might move. Not a plus-or-minus — the centre is '
+                + 'shifted down so the clipped range still averages the '
+                + 'forecast, so the pair is quartiles.'}>
           {`${r.epLo.toFixed(1)}–${r.epHi.toFixed(1)}`}
         </span>
       )) },

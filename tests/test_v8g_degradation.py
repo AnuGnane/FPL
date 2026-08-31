@@ -109,6 +109,12 @@ def test_no_minutes_model_means_no_bands_on_the_breakdown(app):
     assert player["ep"] == pytest.approx(5.0)
     for field in ("ep_lo", "ep_hi", "p_haul", "p_blank", "sigma"):
         assert player[field] is None, field
+    # And the probability itself, not only the things derived from it. A
+    # p_play of 0.0 is "expected not to play" — the strongest claim the
+    # payload can make about a player — and the compare radar drew it as a
+    # zero-length spoke on the minutes axis.
+    assert player["fixtures"][0]["minutes"]["p_play"] is None
+    assert player["fixtures"][0]["minutes"]["xmins"] is None
 
 
 def test_a_band_is_never_a_zero_width_stand_in(app):

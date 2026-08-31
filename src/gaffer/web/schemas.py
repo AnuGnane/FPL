@@ -421,7 +421,11 @@ class Component(BaseModel):
 
 
 class MinutesOutput(BaseModel):
-    p_play: float
+    p_play: float | None = None
+    """``None`` — never 0.0 — for a frame banked without a minutes model. Zero
+    here reads as "expected not to play", which is the strongest claim this
+    payload can make about a player, and the compare radar drew it as a
+    zero-length spoke on the minutes axis."""
     p60: float
     xmins: float | None = None
     """Expected minutes, ``p_play * (45 + 45 * p60)``. ``None`` when either

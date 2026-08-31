@@ -32,7 +32,12 @@ export const AXES: Array<[string, string]> = [
 
 export interface AxisValues {
   attacking: number
-  minutes: number
+  /** Null — never zero — when no fixture in the components payload carries a
+   *  minutes model for him. Zero on this axis is "expected not to play",
+   *  which is the strongest claim the chart can make about a player and the
+   *  wrong one for a player nobody has modelled. Recharts draws a null as a
+   *  gap in the polygon, which is what an unknown looks like. */
+  minutes: number | null
   setPieces: number
   fixtures: number
   form: number
@@ -69,9 +74,11 @@ function duty(order: number | null, weight: number): number {
  * `set_pieces.py`, whose penalty share is a fitted input to the EP term
  * rather than a summary of a player's three set-piece duties.
  *
- * Missing inputs answer 0, except fixtures, which answers 0.5: an unfetched
- * fixture matrix is not a hard run of games, and drawing it as one would put
- * a spike in the chart that nothing in the data put there.
+ * Missing inputs answer 0, with two exceptions. Fixtures answers 0.5: an
+ * unfetched fixture matrix is not a hard run of games, and drawing it as one
+ * would put a spike in the chart that nothing in the data put there. Minutes
+ * answers `null`, which is stronger still — 0 there would say the model
+ * expects him not to play.
  */
 export function axisValues(player: PlayerRow,
                            components: ComponentsBreakdown | null,
@@ -94,7 +101,7 @@ export function axisValues(player: PlayerRow,
 
   return {
     attacking: weekEp > 0 ? attackingPts / weekEp : 0,
-    minutes: week[0]?.minutes.p_play ?? 0,
+    minutes: week[0]?.minutes.p_play ?? null,
     setPieces: Math.min(1, duty(player.penalties_order,
                                 DUTY_WEIGHT.penalties)
       + duty(player.free_kicks_order, DUTY_WEIGHT.freeKicks)
@@ -136,17 +143,36 @@ export interface CompareRadarProps {
 export default function CompareRadar(
   { gw, players, pool, components, matrix }: CompareRadarProps,
 ) {
+  // N6. Every axis is normalized against a pool, and `normalize` answers 50
+  // for a degenerate one — so the paint before either payload lands is a
+  // perfectly regular pentagon at the halfway mark on all five axes. That is
+  // the most confident-looking shape the chart can draw and it is made
+  // entirely of missing data, so it is not drawn at all.
+  if (components === null && matrix === null) {
+    return (
+      <p className="text-text-muted">
+        Still loading the components and fixture payloads this chart is drawn
+        from.
+      </p>
+    )
+  }
+
   const reference = pool.length > 0 ? pool : players
   const raw = new Map(players.map(
     (p) => [p.code, axisValues(p, components, matrix, gw)]))
   const poolValues = reference.map((p) => axisValues(p, components, matrix, gw))
 
   const data = AXES.map(([key, label]) => {
-    const column = poolValues.map((v) => v[key as keyof AxisValues])
-    const row: Record<string, string | number> = { axis: label }
+    // Unknowns are out of the denominator as well as off the polygon: an
+    // un-modelled player must not stretch the scale the modelled ones are
+    // read against.
+    const column = poolValues
+      .map((v) => v[key as keyof AxisValues])
+      .filter((v): v is number => v !== null)
+    const row: Record<string, string | number | null> = { axis: label }
     for (const player of players) {
-      row[player.name] = normalize(
-        raw.get(player.code)![key as keyof AxisValues], column)
+      const value = raw.get(player.code)![key as keyof AxisValues]
+      row[player.name] = value === null ? null : normalize(value, column)
     }
     return row
   })
@@ -176,9 +202,15 @@ export default function CompareRadar(
         {`Each axis is scaled 0–100 against the ${reference.length} players `
           + `${pool.length > 0 ? 'currently listed in Explorer'
             : 'being compared'}. Attacking is the share of this gameweek’s `
-          + 'expected points coming from goals and assists; fixtures is the '
-          + `next ${FIXTURE_WEEKS} weeks, read off defensive difficulty for `
-          + 'keepers and defenders and attacking difficulty for everyone else.'}
+          + 'expected points coming from goals and assists; minutes is the '
+          + 'model’s chance he plays at all; set-piece duty counts penalties, '
+          + 'free kicks and corners, weighted by what each is worth and '
+          + 'halved for a second-choice taker; fixtures is the next '
+          + `${FIXTURE_WEEKS} weeks, read off defensive difficulty for `
+          + 'keepers and defenders and attacking difficulty for everyone '
+          + 'else; form is his mean score over the last four gameweeks. An '
+          + 'axis nothing has modelled is drawn as a gap rather than as a '
+          + 'zero.'}
       </p>
       {positions.size > 1 && (
         <p className="mt-1 text-text-muted">
