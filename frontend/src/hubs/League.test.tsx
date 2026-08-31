@@ -113,9 +113,12 @@ describe('two rivals with the same team name', () => {
   }
 
   beforeEach(() => {
+    // Named paths only: a catch-all here handed the league-sim fetch a rival
+    // list, which is not a sim payload, and the card blew up on it.
     apiGet.mockImplementation((path: string) => (
       path.includes('/race') ? Promise.resolve(CLASH)
-        : Promise.resolve(RIVALS)))
+        : path.includes('/rivals') ? Promise.resolve(RIVALS)
+          : Promise.reject(new Error(`unexpected ${path}`))))
   })
 
   it('draws a line per entry, not per name', async () => {
@@ -134,5 +137,87 @@ describe('two rivals with the same team name', () => {
     await screen.findByText('Cumulative points')
     expect(screen.getByTestId('standing-1')).toBeInTheDocument()
     expect(screen.getByTestId('standing-2')).toBeInTheDocument()
+  })
+})
+
+const SIM = {
+  gw: 7, entries: 2, weeks_left: 31, n: 2000, seed: 20260831,
+  rival_drift: 0.5, p_win: 0.42, p_top3: 1.0, exp_finish: 1.6,
+  per_rival: [{ entry: 2, name: 'Ten Hag Hive', p_beat: 0.58 }],
+  margin_quantiles: { p05: -60, p25: -12, p50: 18, p75: 50, p95: 120 },
+  history: [
+    { gw: 5, p_win: 0.3, p_top3: 1, exp_finish: 1.8,
+      run_at: '2026-09-05T09:00:00+00:00' },
+    { gw: 6, p_win: 0.36, p_top3: 1, exp_finish: 1.7,
+      run_at: '2026-09-12T09:00:00+00:00' },
+  ],
+  field_rate: 54.2, notice: null, legacy_win_probability: [],
+}
+
+describe('the simulated win-probability card', () => {
+  beforeEach(() => {
+    apiGet.mockReset()
+    apiGet.mockImplementation((path: string) => {
+      if (path === '/api/league/race') return Promise.resolve(RACE)
+      if (path === '/api/league/rivals') return Promise.resolve([])
+      if (path === '/api/league/sim') return Promise.resolve(SIM)
+      return Promise.reject(new Error(`unexpected ${path}`))
+    })
+  })
+
+  it('leads with the simulated title odds, not the pairwise ones', async () => {
+    render(<MemoryRouter><League /></MemoryRouter>)
+    expect(await screen.findByTestId('sim-p-win')).toHaveTextContent('42%')
+    expect(screen.getByTestId('sim-p-top3')).toHaveTextContent('100%')
+  })
+
+  it('says how many simulations produced the number', async () => {
+    render(<MemoryRouter><League /></MemoryRouter>)
+    expect(await screen.findByTestId('sim-provenance'))
+      .toHaveTextContent('2,000')
+  })
+
+  it('lists every rival with the odds of beating him', async () => {
+    render(<MemoryRouter><League /></MemoryRouter>)
+    expect(await screen.findByTestId('beat-2')).toHaveTextContent('58%')
+  })
+
+  it('draws the sparkline once two gameweeks are banked', async () => {
+    render(<MemoryRouter><League /></MemoryRouter>)
+    expect(await screen.findByTestId('sim-sparkline')).toBeInTheDocument()
+  })
+
+  it('falls back to the parametric table when the sim will not load',
+     async () => {
+       apiGet.mockImplementation((path: string) => {
+         if (path === '/api/league/race') return Promise.resolve(RACE)
+         if (path === '/api/league/rivals') return Promise.resolve([])
+         return Promise.reject(new Error('422'))
+       })
+       render(<MemoryRouter><League /></MemoryRouter>)
+       expect(await screen.findByTestId('legacy-win-probability'))
+         .toBeInTheDocument()
+       expect(screen.queryByTestId('sim-p-win')).not.toBeInTheDocument()
+     })
+
+  it('shows the notice when no field sample is banked', async () => {
+    apiGet.mockImplementation((path: string) => {
+      if (path === '/api/league/race') return Promise.resolve(RACE)
+      if (path === '/api/league/rivals') return Promise.resolve([])
+      if (path === '/api/league/sim') {
+        return Promise.resolve({ ...SIM, field_rate: null,
+                                 notice: 'no field sample banked' })
+      }
+      return Promise.reject(new Error('x'))
+    })
+    render(<MemoryRouter><League /></MemoryRouter>)
+    expect(await screen.findByText(/no field sample banked/))
+      .toBeInTheDocument()
+  })
+
+  it('offers the What if tab', async () => {
+    render(<MemoryRouter><League /></MemoryRouter>)
+    expect(await screen.findByRole('tab', { name: 'What if' }))
+      .toBeInTheDocument()
   })
 })

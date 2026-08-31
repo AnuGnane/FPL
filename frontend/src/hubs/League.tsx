@@ -6,10 +6,13 @@ import {
 } from 'recharts'
 import { apiGet } from '../api/client'
 import {
-  type Column, Card, DataTable, EmptyState, Loading, PageHeader, fmtNum,
-  fmtPct,
+  type Column, Card, DataTable, EmptyState, Loading, PageHeader, Sparkline,
+  fmtNum, fmtPct,
 } from '../kit'
-import type { LeagueRaceData, RivalSummary } from '../types'
+import type {
+  AdviceLatest, LeagueRaceData, LeagueSimData, RivalSummary,
+} from '../types'
+import WhatIfSim, { type WhatIfSquadPlayer } from './league/WhatIfSim'
 
 const TAB_CLASS = 'px-3 py-2 text-text-muted data-[state=active]:text-text '
   + 'data-[state=active]:border-b data-[state=active]:border-text'
@@ -21,12 +24,25 @@ export default function League() {
   const [race, setRace] = useState<LeagueRaceData | null>(null)
   const [rivals, setRivals] = useState<RivalSummary[]>([])
   const [missing, setMissing] = useState(false)
+  const [sim, setSim] = useState<LeagueSimData | null>(null)
+  const [squad, setSquad] = useState<WhatIfSquadPlayer[]>([])
 
   useEffect(() => {
     apiGet<LeagueRaceData>('/api/league/race')
       .then((body) => { setRace(body); setMissing(false) })
       .catch(() => setMissing(true))
     apiGet<RivalSummary[]>('/api/league/rivals').then(setRivals).catch(() => {})
+    // The simulated card degrades to the parametric one rather than to an
+    // error: /api/league/race already carries those numbers, and a league
+    // page with no win-probability panel at all is a worse answer than an
+    // older one.
+    apiGet<LeagueSimData>('/api/league/sim').then(setSim).catch(() => setSim(null))
+    // An empty squad is a working empty state in the What-if panel, so the
+    // failure path is [] rather than an error.
+    apiGet<AdviceLatest>('/api/advice/latest')
+      .then((body) => setSquad(body.advice.xi.map((p) => (
+        { code: p.code, name: p.name, position: p.position ?? '' }))))
+      .catch(() => setSquad([]))
   }, [])
 
   if (missing) {
@@ -107,6 +123,7 @@ export default function League() {
         <Tabs.List className="mb-4 flex border-b border-divider">
           <Tabs.Trigger value="race" className={TAB_CLASS}>Race</Tabs.Trigger>
           <Tabs.Trigger value="rivals" className={TAB_CLASS}>Rivals</Tabs.Trigger>
+          <Tabs.Trigger value="whatif" className={TAB_CLASS}>What if</Tabs.Trigger>
         </Tabs.List>
         <Tabs.Content value="race">
           <Card title="Cumulative points" className="mb-4">
@@ -169,30 +186,94 @@ export default function League() {
               </tbody>
             </table>
           </Card>
-          <Card title="Win probability">
-            <table className="w-full">
-              <thead>
-                <tr>
-                  <th className="label pb-1 text-left">Team</th>
-                  <th className="label pb-1 text-right">P(win)</th>
-                  <th className="label pb-1 text-right">Projected</th>
-                </tr>
-              </thead>
-              <tbody>
-                {race.win_probability.map((prob) => (
-                  <tr key={prob.name} className="border-t border-divider">
-                    <td className="py-1 text-text-secondary">{prob.name}</td>
-                    <td className="num py-1 text-right text-text">
-                      {fmtPct(prob.p_win)}
-                    </td>
-                    <td className="num py-1 text-right text-text-muted">
-                      {fmtNum(prob.total, 0)}
-                    </td>
+          {sim ? (
+            <Card title="Win probability">
+              <div className="mb-3 flex flex-wrap items-baseline gap-4">
+                <div>
+                  <div className="label">P(win)</div>
+                  <div className="num text-2xl text-text"
+                       data-testid="sim-p-win">{fmtPct(sim.p_win)}</div>
+                </div>
+                <div>
+                  <div className="label">P(top 3)</div>
+                  <div className="num text-2xl text-text"
+                       data-testid="sim-p-top3">{fmtPct(sim.p_top3)}</div>
+                </div>
+                <div>
+                  <div className="label">Expected finish</div>
+                  <div className="num text-2xl text-text">
+                    {fmtNum(sim.exp_finish, 2)}
+                  </div>
+                </div>
+                {sim.history.length > 1 && (
+                  <div data-testid="sim-sparkline">
+                    <div className="label">Trend</div>
+                    <Sparkline values={sim.history.map((h) => h.p_win)} />
+                  </div>
+                )}
+              </div>
+              {/* A probability with no n and no seed beside it is a
+                  decoration: this is the line that makes it a measurement. */}
+              <p className="mb-3 text-text-muted" data-testid="sim-provenance">
+                {`${sim.n.toLocaleString()} simulations, seed ${sim.seed}, `}
+                {`rival drift ${sim.rival_drift}, ${sim.weeks_left} `}
+                {'gameweeks left.'}
+              </p>
+              {sim.notice && (
+                <p className="mb-3 text-text-muted">{sim.notice}</p>
+              )}
+              <table className="w-full">
+                <thead>
+                  <tr>
+                    <th className="label pb-1 text-left">Rival</th>
+                    <th className="label pb-1 text-right">P(I beat him)</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
+                </thead>
+                <tbody>
+                  {sim.per_rival.map((rival) => (
+                    <tr key={rival.entry} data-testid={`beat-${rival.entry}`}
+                        className="border-t border-divider">
+                      <td className="py-1 text-text-secondary">{rival.name}</td>
+                      <td className="num py-1 text-right text-text">
+                        {fmtPct(rival.p_beat)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          ) : (
+            // Card does not forward data-testid, so the fallback marker sits
+            // on a wrapper rather than on the card itself.
+            <div data-testid="legacy-win-probability">
+              <Card title="Win probability">
+                {/* The pre-v8c parametric pairwise numbers, kept as the
+                    fallback until the simulated card is always available. */}
+                <table className="w-full">
+                  <thead>
+                    <tr>
+                      <th className="label pb-1 text-left">Team</th>
+                      <th className="label pb-1 text-right">P(win)</th>
+                      <th className="label pb-1 text-right">Projected</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {race.win_probability.map((prob) => (
+                      <tr key={prob.name} className="border-t border-divider">
+                        <td className="py-1 text-text-secondary">{prob.name}</td>
+                        <td className="num py-1 text-right text-text">
+                          {fmtPct(prob.p_win)}
+                        </td>
+                        <td className="num py-1 text-right text-text-muted">
+                          {fmtNum(prob.total, 0)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Card>
+            </div>
+          )}
         </Tabs.Content>
         <Tabs.Content value="rivals">
           <Card>
@@ -205,6 +286,13 @@ export default function League() {
               empty={<p className="text-text-muted">No rivals yet.</p>}
             />
           </Card>
+        </Tabs.Content>
+        <Tabs.Content value="whatif">
+          <WhatIfSim
+            squad={squad}
+            rivals={race.standings.filter((s) => !s.is_you)
+              .map((s) => ({ entry: s.entry, name: s.name }))}
+          />
         </Tabs.Content>
       </Tabs.Root>
     </>
