@@ -4,8 +4,8 @@ import * as kit from './index'
 describe('kit barrel', () => {
   it('exports every component a hub is allowed to compose', () => {
     for (const name of ['Badge', 'Card', 'DataTable', 'EmptyState',
-      'PageHeader', 'PitchView', 'PlayerCard', 'PosBadge', 'Sparkline',
-      'Stat', 'ThresholdBar']) {
+      'PageHeader', 'PitchView', 'PlayerCard', 'PosBadge', 'Skeleton',
+      'Sparkline', 'Stat', 'ThresholdBar', 'ToastOutlet']) {
       expect(typeof (kit as Record<string, unknown>)[name]).toBe('function')
     }
   })
@@ -13,6 +13,11 @@ describe('kit barrel', () => {
   it('exports the formatters and the breakpoint hook', () => {
     expect(kit.fmtNum(1.25)).toBe('1.3')
     expect(typeof kit.useIsMobile).toBe('function')
+  })
+
+  it('exports the toast raiser, so a hub never imports the module directly', () => {
+    expect(typeof kit.toast).toBe('function')
+    expect(kit.MAX_TOASTS).toBe(3)
   })
 
   it('exports the theme controls', () => {

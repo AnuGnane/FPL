@@ -59,6 +59,19 @@ describe('AppShell', () => {
       .toBeInTheDocument()
   })
 
+  it('mounts one polite toast outlet in both layouts', () => {
+    // Both, because the phone layout is a separate return and a toast that
+    // only exists on a desktop is a write nobody on a phone is told about.
+    for (const mobile of [false, true]) {
+      stubMatchMedia(mobile)
+      const { unmount } = render(
+        <MemoryRouter><AppShell><p>hi</p></AppShell></MemoryRouter>)
+      expect(screen.getByTestId('toast-outlet'))
+        .toHaveAttribute('aria-live', 'polite')
+      unmount()
+    }
+  })
+
   it('gives the tab bar a seventh, icon-only slot on mobile', () => {
     stubMatchMedia(true)
     render(<MemoryRouter><AppShell><p>page</p></AppShell></MemoryRouter>)

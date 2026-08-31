@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import ThemeToggle from './ThemeToggle'
+import ToastOutlet from './Toast'
 import { useIsMobile } from './useMediaQuery'
 
 /** The six hubs, in the order the spec lists them (§4). */
@@ -47,6 +48,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
               control gets an icon and carries its state in the label. */}
           <ThemeToggle compact />
         </nav>
+        {/* One outlet per layout. It is `position: fixed`, so where it sits
+            in the tree does not matter visually — but it must exist in both
+            branches or a phone silently loses every acknowledgement. */}
+        <ToastOutlet />
       </div>
     )
   }
@@ -68,6 +73,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </div>
       </nav>
       <main className="max-w-[1180px] p-6">{children}</main>
+      <ToastOutlet />
     </div>
   )
 }

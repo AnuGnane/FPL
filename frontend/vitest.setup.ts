@@ -17,6 +17,11 @@ import { beforeEach } from 'vitest'
 beforeEach(async () => {
   const { resetJobSlots } = await import('./src/api/useJob')
   resetJobSlots()
+  // Toast is a module store for the same reason and with the same hazard: a
+  // toast raised in one test is still in `live` for the next one's outlet.
+  // Dynamically imported for the same reason as above.
+  const { resetToasts } = await import('./src/kit/Toast')
+  resetToasts()
 })
 
 // Node 22+ defines its own global `localStorage`, inert unless the process
