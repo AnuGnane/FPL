@@ -69,8 +69,9 @@ MY_PROJECTED = 40
 
 
 class FakeClient:
-    def __init__(self, standings=True):
+    def __init__(self, standings=True, fixtures=None):
         self.standings = standings
+        self.fixtures = FIXTURES if fixtures is None else fixtures
 
     def get_event_status(self):
         return {"status": [{"event": 3, "points": "p", "bonus_added": False}],
@@ -80,7 +81,7 @@ class FakeClient:
         return LIVE
 
     def get_fixtures(self):
-        return FIXTURES
+        return self.fixtures
 
     def get_entry_picks(self, entry_id, gw):
         return MY_PICKS          # the rival fields the same fifteen
@@ -148,6 +149,17 @@ def client(tmp_path, monkeypatch):
     return TestClient(create_app())
 
 
+def _client_with(tmp_path, monkeypatch, fixtures):
+    """The same page, with a hand-built fixture list for this gameweek."""
+    monkeypatch.chdir(tmp_path)
+    _setup(tmp_path)
+    monkeypatch.setattr(live_mod, "fpl_client",
+                        lambda: FakeClient(fixtures=fixtures))
+    monkeypatch.setattr(live_mod, "tier_eo_table",
+                        lambda client, gw, sample=300: {})
+    return TestClient(create_app())
+
+
 def test_the_pinned_live_score_is_unchanged_by_the_projection(client):
     """``entry_live_points`` still scores the XI exactly as picked."""
     assert client.get("/api/live").json()["my_points"] == MY_LIVE
@@ -174,7 +186,9 @@ def test_each_player_carries_what_he_still_owes(client):
     assert by_element[9]["remaining_ep"] == 0.0     # team 1 has finished
     assert by_element[11]["remaining_ep"] == 0.0    # team 3 has finished
     assert by_element[13]["remaining_ep"] == 1.0    # 3.0 x (1 - 60/90)
-    assert by_element[14]["remaining_ep"] == 1.0    # 1.0 x (not on yet)
+    # 14 is on the bench and is not projected to come on, so whatever he does
+    # this afternoon he cannot do it for me.
+    assert by_element[14]["remaining_ep"] == 0.0
 
 
 def test_the_race_is_the_projection_plus_what_is_left(client):
@@ -230,6 +244,80 @@ def test_the_table_carries_the_race_beside_the_projection(client):
     # The deliberate contract change: the season projection is built from the
     # auto-sub-aware gameweek, not from the raw live figure.
     assert me["projected"] == me["pre_total"] + MY_PROJECTED
+
+
+# --- the blank gameweek: a team with no fixture at all -----------------
+#
+# Team 3 disappears from the fixture list, so element 11 — a starter — has no
+# match to play in this gameweek at all.
+
+BLANK_MID_GW = [FIXTURES[0], FIXTURES[1]]              # team 2 still playing
+BLANK_GW_OVER = [FIXTURES[0], {**FIXTURES[1], "finished": True}]
+
+
+def test_a_blank_gameweek_starter_is_left_alone_while_matches_remain(
+        tmp_path, monkeypatch):
+    """Mid-afternoon a team with no fixture is indistinguishable from one
+    whose match is still to come, so nothing is claimed about him."""
+    client = _client_with(tmp_path, monkeypatch, BLANK_MID_GW)
+    by_element = {p["element"]: p
+                  for p in client.get("/api/live").json()["players"]}
+    assert by_element[11]["projected_out"] is False
+
+
+def test_a_blank_gameweek_starter_is_subbed_out_once_the_gameweek_is_over(
+        tmp_path, monkeypatch):
+    """Every fixture finished and he never had one: FPL will substitute him."""
+    body = _client_with(tmp_path, monkeypatch, BLANK_GW_OVER) \
+        .get("/api/live").json()
+    by_element = {p["element"]: p for p in body["players"]}
+    assert by_element[11]["projected_out"] is True
+    assert by_element[11]["sub_partner"] == 13
+
+
+# --- the double gameweek ----------------------------------------------
+#
+# Team 2 gets a second fixture that has not kicked off, so element 13 — who
+# has played 60 minutes of the first — still owes the whole of the second.
+
+DGW = FIXTURES + [{"id": 14, "event": 3, "team_h": 2, "team_a": 24,
+                   "started": False, "finished": False}]
+
+
+def test_a_double_gameweek_still_owes_the_fixture_not_yet_played(
+        tmp_path, monkeypatch):
+    """One of two fixtures unplayed plus a third of the other in play:
+    (1 + 1/3) / 2 of 3.0 banked EP, at his projected multiplier of 1."""
+    body = _client_with(tmp_path, monkeypatch, DGW).get("/api/live").json()
+    by_element = {p["element"]: p for p in body["players"]}
+    assert by_element[13]["remaining_ep"] == 2.0
+
+
+# --- what a player still owes is what *my* eleven would score -----------
+
+
+def test_a_bench_player_who_is_not_coming_on_owes_me_nothing(client):
+    """He may well play; he cannot score for me, so the column reads zero."""
+    body = client.get("/api/live").json()
+    by_element = {p["element"]: p for p in body["players"]}
+    assert by_element[14]["remaining_ep"] == 0.0
+
+
+def test_the_captains_remaining_ep_is_doubled(tmp_path, monkeypatch):
+    """Element 9 wears the armband; with his match still on, what he owes me
+    is twice what he owes the game."""
+    unfinished = [{**f, "finished": False} for f in FIXTURES]
+    body = _client_with(tmp_path, monkeypatch, unfinished) \
+        .get("/api/live").json()
+    by_element = {p["element"]: p for p in body["players"]}
+    assert by_element[9]["remaining_ep"] == 0.0     # 6.0 x 2 x (1 - 90/90)
+    assert by_element[11]["remaining_ep"] == 1.0    # 1.0 x 1, yet to play
+    unfinished_early = [{**f, "started": False, "finished": False}
+                        for f in FIXTURES]
+    early = {p["element"]: p for p in _client_with(
+        tmp_path, monkeypatch, unfinished_early).get("/api/live").json()[
+            "players"]}
+    assert early[9]["remaining_ep"] == 12.0         # 6.0 x 2 x 1.0
 
 
 def test_the_rival_is_projected_on_the_same_terms(client):

@@ -32,6 +32,45 @@ def test_stoppage_time_never_owes_a_negative():
     assert remaining_fraction(96, started=True, finished=False) == 0.0
 
 
+def test_a_double_gameweek_still_owes_the_fixture_not_yet_played():
+    """Banked EP is the sum of both fixtures'. One of them played out and the
+    other not kicked off leaves half of it owed, however many minutes the
+    first one took."""
+    assert remaining_fraction(90, started=True, finished=False,
+                              fixtures=2, unplayed=1) == 0.5
+    assert remaining_fraction(0, started=True, finished=False,
+                              fixtures=2, unplayed=1) == 1.0
+
+
+def test_a_double_gameweek_with_one_match_in_play_owes_the_rest_of_it():
+    """A third of the first match left plus the whole of the second, over two
+    fixtures."""
+    assert remaining_fraction(60, started=True, finished=False, fixtures=2,
+                              unplayed=1) == pytest.approx(2 / 3)
+
+
+def test_a_double_gameweek_that_is_over_owes_nothing():
+    assert remaining_fraction(180, started=True, finished=True, fixtures=2,
+                              unplayed=0) == 0.0
+
+
+def test_a_single_gameweek_is_the_arithmetic_it_always_was():
+    """The counts default to one fixture, none unplayed, so every existing
+    caller keeps the fraction it had."""
+    assert remaining_fraction(45, started=True, finished=False,
+                              fixtures=1, unplayed=0) == 0.5
+
+
+def test_remaining_ep_spends_a_double_gameweek_down_fixture_by_fixture():
+    """Element 1 has played the first of two; half his banked EP is still
+    owed. Element 2 has a single fixture and is unaffected."""
+    total = remaining_ep_total({1: 1, 2: 1}, {1: 8.0, 2: 4.0},
+                               {1: 90, 2: 45}, {1: True, 2: True},
+                               {1: False, 2: False},
+                               counts_of={1: (2, 1), 2: (1, 0)})
+    assert total == 4.0 + 2.0
+
+
 def test_remaining_ep_scales_by_multiplier_and_skips_the_bench():
     mult = {1: 2, 2: 1, 3: 0}
     ep = {1: 5.0, 2: 4.0, 3: 9.0}

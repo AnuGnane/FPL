@@ -158,6 +158,12 @@ def projected_subs(picks: list[dict], minutes_of: dict[int, int],
     minutes whose match is still to come is simply not on yet, and is left
     exactly where he is.
 
+    The same rule decides the blank gameweek, one step out from the caller: a
+    player whose team has *no* fixture at all has nothing that can finish, so
+    he is only "finished" once every fixture in the gameweek is over. Until
+    then he is left alone, because mid-afternoon a blank is indistinguishable
+    from a match still to come and the page claims nothing it cannot see.
+
     The bench is walked in order and the first *legal* swap wins, under
     :func:`gaffer.backtest._formation_legal` — the same rule the replay scores
     with, imported rather than copied so the projected XI and the scored XI
@@ -200,6 +206,13 @@ def projected_subs(picks: list[dict], minutes_of: dict[int, int],
                                      for c in trial]):
                 continue
             xi = trial
+            # ``used`` guards against one bench player filling two holes, so
+            # the man coming off leaves it and the man coming on joins it.
+            # The discard mirrors ``backtest``'s replay loop rather than
+            # improving on it: a starter already substituted can never be
+            # revisited (the outer loop moves on), so this only matters if
+            # some later rule wants to reuse the slot, and the two paths stay
+            # line-for-line comparable.
             used.discard(starter)
             used.add(sub)
             subs.append({
@@ -247,6 +260,12 @@ def projected_multipliers(picks: list[dict], subs: list[dict],
                  if p.get("is_vice_captain")), None)
     if captain is None:
         return mult
+    # A captain sitting on the bench cannot reach here: ``armband`` is the
+    # largest multiplier in the payload, so a benched captain would leave it
+    # at 1 and the ``armband < 2`` return above would already have fired. The
+    # ``min`` below is therefore always ``min(2 or 3, 1)``; it is written as a
+    # clamp rather than a bare 1 so a future chip that benches an armband
+    # degrades quietly instead of promoting him.
     if not (bool(finished_of.get(captain, False))
             and int(minutes_of.get(captain, 0) or 0) == 0):
         return mult
@@ -275,28 +294,51 @@ def projected_points(points_of: dict[int, int], bonus: dict[int, int],
 FULL_MATCH_MINUTES = 90
 
 
-def remaining_fraction(minutes: int, started: bool, finished: bool) -> float:
+def remaining_fraction(minutes: int, started: bool, finished: bool,
+                       fixtures: int = 1, unplayed: int = 0) -> float:
     """How much of a player's expectation is still to be earned, in [0, 1].
 
     Before kick-off he owes all of it; at full time none of it; in between,
-    the share of ninety minutes not yet played. Known overstatement: a player
-    who is in the squad but has not come on reads as owing everything right up
-    to the final whistle, because the live payload carries his minutes and not
-    the match clock. That is the same optimism the pre-deadline EP already
-    had, and it corrects itself the moment his fixture is marked finished.
+    the share of ninety minutes not yet played.
+
+    ``fixtures`` and ``unplayed`` carry the double gameweek. The banked EP a
+    caller holds is the *sum* over a player's fixtures, so each fixture is
+    worth ``1 / fixtures`` of it: a fixture not yet kicked off owes all of its
+    share, and the one in play owes the share of its ninety minutes still to
+    come. ``started``/``finished`` stay team-aggregate — any fixture under
+    way, every fixture over — which is what the live payload can actually
+    tell us. The defaults are the single gameweek, so every existing caller
+    keeps exactly the arithmetic it had.
+
+    Two known biases, in opposite directions, both left in the open:
+
+    * **Overstated.** A player in the squad who never comes on reads as owing
+      his fixture's whole share right up to the final whistle, because the
+      live payload carries his minutes and not the match clock. That is the
+      same optimism the pre-deadline EP already had, and it corrects itself
+      the moment his fixture is marked finished.
+    * **Understated.** Minutes are cumulative across a double gameweek's
+      fixtures, so a man who played the first match in full reads as ninety
+      minutes into the second and owes none of it. The unplayed fixtures are
+      counted exactly; only the one in play is read this way, so the error is
+      bounded by a single fixture's share.
     """
     if finished:
         return 0.0
     if not started:
         return 1.0
     played = int(minutes or 0)
-    return max(0.0, 1.0 - played / FULL_MATCH_MINUTES)
+    in_play = max(0.0, 1.0 - played / FULL_MATCH_MINUTES)
+    total = max(1, int(fixtures or 1))
+    return min(1.0, (int(unplayed or 0) + in_play) / total)
 
 
 def remaining_ep_total(multipliers: dict[int, int], ep_of: dict[int, float],
                        minutes_of: dict[int, int],
                        started_of: dict[int, bool],
-                       finished_of: dict[int, bool]) -> float:
+                       finished_of: dict[int, bool],
+                       counts_of: dict[int, tuple[int, int]] | None = None
+                       ) -> float:
     """Expected points still to come from a projected eleven.
 
     ``multipliers`` is :func:`projected_multipliers`' output, so a projected
@@ -304,7 +346,13 @@ def remaining_ep_total(multipliers: dict[int, int], ep_of: dict[int, float],
     contributes none. Players with no banked EP — bought after the advice ran,
     or never in the candidate pool — contribute nothing rather than raising:
     an incomplete race is worth more on a Saturday than no race at all.
+
+    ``counts_of`` is ``element -> (fixtures this gameweek, of them not yet
+    kicked off)``, and is what makes a double gameweek spend down fixture by
+    fixture rather than in one lump. Absent, every element is read as a single
+    fixture, which is the pre-v8d behaviour exactly.
     """
+    counts = counts_of or {}
     total = 0.0
     for element, mult in multipliers.items():
         if int(mult) < 1:
@@ -312,10 +360,12 @@ def remaining_ep_total(multipliers: dict[int, int], ep_of: dict[int, float],
         ep = float(ep_of.get(element, 0.0) or 0.0)
         if not ep:
             continue
+        fixtures, unplayed = counts.get(element, (1, 0))
         total += int(mult) * ep * remaining_fraction(
             int(minutes_of.get(element, 0) or 0),
             bool(started_of.get(element, False)),
-            bool(finished_of.get(element, False)))
+            bool(finished_of.get(element, False)),
+            fixtures=fixtures, unplayed=unplayed)
     return round(total, 2)
 
 
