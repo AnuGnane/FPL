@@ -158,8 +158,13 @@ Spec: `specs/2026-08-31-gaffer-v9a-pitch-view-design.md` (§4 outcome) · Plan: 
 - [x] Review FIX-FIRST → fixed: null-team plain-shirt fallback (was a blank gap), HTML-200 cache-poisoning guard; deferred: identity memoisation, weeks=2 tint window (recorded)
 - Suite: 2746 Python + 498 frontend; protected diffs zero
 
-### v9b — UI polish (backlog in v9a spec §0 D5)
-PlayerCard identity across Live/League/Review · skeleton states for job-triggered panels · mobile pass on the v8 cards · action toasts (star/pin/override) · empty-state copy audit · chart-token unification · light-theme audit of v8 cards · difficulty tinting on Planning's horizon table.
+### v9b — UI polish (done, merged `b8a289e` 2026-08-31)
+Spec: `specs/2026-08-31-gaffer-v9b-ui-polish-design.md` · Plan: `plans/2026-08-31-gaffer-v9b-ui-polish.md`
+- [x] Identity chips (PlayerCard horizontal variant) on Live, rival squads, review misses; portrait in ExplainModal from the v9a photo cache; review lanes stay text (codes discarded server-side — pinned so nobody fabricates the link)
+- [x] kit/Skeleton + kit/Toast (aria-live outlet; star failure-only, pin/override/draft both halves); skeletons on all four job panels via JobButton.onRunning
+- [x] Timeline difficulty chips (client-side join, absent-not-wrong on every missing link); empty-state audit; 390px pass — zero bare tables tree-wide (railed)
+- [x] Review FIX-FIRST → fixed: per-code star revert (whole-array snapshot wiped concurrent stars), toast timer/id hygiene (recycled ids dismissed later toasts), the thirteen unwrapped tables
+- Suite: 2746 Python (zero .py in diff, railed) + 553 frontend; chart-token + light-theme audit closed as already-clean (recorded, not padded)
 
 ### v9c — model debt (from the 2026-08-31 cross-cutting review; evidence-first, each needs its own gate)
 - `rc_r38` is identically zero: `card_penalty`'s red-card term reads a rolling stat `engineer.py` never builds (`ROLL_STATS` has `yc`, not `rc`) — needs the feature added + an arm run, not a hotfix
