@@ -28,3 +28,90 @@ Third-party price predictor feeds (official is banked; revisit only if its accur
 ## 4. Outcome
 
 (Filled at cycle end.)
+
+## 5. Gate checklist (built by the implementer, run by the orchestrator — unfilled)
+
+CONVENTIONS.md §7: the implementer builds this and does not run G1. The G3
+numbers below were measured on the branch at Task 10 and are recorded as
+evidence, not as a claim that the gate has been signed off.
+
+### G3 — suites, types, build, protected audit
+
+```bash
+uv run pytest -q
+cd frontend && npx tsc --noEmit && npx vitest run && npm run build
+```
+
+- [ ] Python suite: **2628 passed** (baseline 2468 on `main`; v8f adds 160).
+- [ ] Frontend: **454 passed, 1 skipped** across 61 files (baseline 441 + 1
+      skipped; v8f adds 13).
+- [ ] `npx tsc --noEmit`: clean. `npm run build`: built, no errors.
+- [ ] Protected diff — must be empty:
+
+```bash
+git diff main --stat -- src/gaffer/advise.py src/gaffer/set_pieces.py \
+  'src/gaffer/optimize/**' src/gaffer/web/jobs.py \
+  src/gaffer/web/routers/jobs.py src/gaffer/web/routers/whatif.py \
+  tests/test_advise.py tests/test_odds.py tests/test_web_jobs.py \
+  scripts/s2_replay.py
+```
+
+      Measured: **empty**.
+
+- [ ] Authorized pin diff — the deliberate updates and nothing else:
+
+```bash
+git diff main -- tests/test_v8b_degradation.py tests/test_v8c_degradation.py \
+  tests/test_v8d_degradation.py tests/test_v8e_degradation.py \
+  tests/test_v8g_degradation.py tests/test_web_job_kinds.py \
+  tests/test_web_job_kinds_v8b.py tests/test_web_job_kinds_v8c.py
+```
+
+      Measured: five `10 -> 12` job-kind assertions (v8b, v8c, v8d, v8e, v8g),
+      one `47 -> 48` config-key assertion (v8g), and the two sorted-list pins
+      gaining `digest-friday` / `digest-tuesday` — each with its authorising
+      comment, and nothing else.
+
+- [ ] Security ritual (CONVENTIONS.md §8): `git diff main` greps clean for
+      keys, tokens and private-key headers; `git show main:config.toml` fails
+      (`path 'config.toml' exists on disk, but not in 'main'`).
+
+### G1 — live runs (real season, not fixtures)
+
+- [ ] `gaffer prices` — the alert list prints as it always did;
+      `data/live/price_log.parquet` gains one row per player. Run it twice and
+      confirm the row count does not double.
+- [ ] `gaffer digest --kind friday` — writes `reports/digest_friday.json`,
+      prints one line, shows (or best-effort-skips) a notification. Open This
+      Week and confirm the Digest card renders it.
+- [ ] `gaffer digest --kind tuesday` — reflects the **real** GW1 ledger row,
+      with its actual lanes and accuracy, not a placeholder.
+- [ ] Star a player through the explorer's ☆ button; confirm he appears in
+      `GET /api/prices/movers` with `source: "watchlist"` (if he is near a
+      threshold) and in the next Friday briefing's flagged section.
+- [ ] `gaffer advise` once: the diff strip says nothing about movers
+      (`ep_movers_count` null). Run it again: the strip names the players that
+      moved.
+- [ ] `./scripts/install_automation.sh`, then `launchctl list | grep
+      com.gaffer` shows seven jobs including the two digests.
+
+### G2 — rails
+
+```bash
+uv run pytest -q tests/test_v8f_degradation.py
+uv run pytest -q tests/test_v6_degradation.py tests/test_v8a_degradation.py \
+  tests/test_v8b_degradation.py tests/test_v8c_degradation.py \
+  tests/test_v8d_degradation.py tests/test_v8e_degradation.py \
+  tests/test_v8g_degradation.py
+```
+
+- [ ] v8f rails: **21 passed**. Pre-existing rails: **121 passed**.
+
+One adaptation is recorded in that file rather than left as a surprise.
+`test_a_corrupt_watchlist_leaves_the_explorer_alone` asserts *invariance*
+instead of a 200: `/api/players` answers a clone that has never solved with
+its own structured 422 ("no candidate pool yet — run `gaffer advise` first")
+whether or not anything is starred, so the rail compares the explorer's answer
+before and after the store is corrupted and additionally pins that it never
+becomes a 500. Pinning the 200 would have pinned somebody else's contract, and
+would have needed a solve state the rail has no business building.
