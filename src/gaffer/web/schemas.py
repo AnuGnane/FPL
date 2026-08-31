@@ -912,3 +912,101 @@ class PenTracker(BaseModel):
     gws: list[PenTrackerGw] = Field(default_factory=list)
     season_totals: PenTrackerTotals = Field(default_factory=PenTrackerTotals)
     notes: list[str] = Field(default_factory=list)
+
+
+class ReviewLane(BaseModel):
+    """One graded decision lane (spec D5).
+
+    ``delta_pts`` and ``label`` are ``None`` — never zero — for a lane that
+    could not be built: the model's captain was not in my eleven, the model
+    sold a player I never owned, either side played a wildcard. "The model had
+    no opinion I could have acted on" and "the model agreed with me" are
+    different facts and the UI colours them differently.
+    """
+
+    lane: Literal["transfers", "captaincy", "bench", "chip"]
+    delta_pts: float | None = None
+    delta_pwin: float | None = None
+    """My choice minus the model's, in percentage points of P(win the
+    league). ``0.0`` on the bench and chip lanes by construction — the
+    simulation normalises every squad to its eleven and one armband."""
+    label: Literal["Brilliant", "Good", "Aligned", "Inaccuracy",
+                   "Blunder"] | None = None
+    aligned: bool = False
+    mine: str | None = None
+    model: str | None = None
+    note: str | None = None
+
+
+class ReviewMiss(BaseModel):
+    """A move the model flagged, I did not make, and that returned anyway."""
+
+    code: int
+    name: str
+    over: str
+    gain: int
+
+
+class ReviewHindsight(BaseModel):
+    points: int = 0
+    xi: list[int] = Field(default_factory=list)
+    captain: int | None = None
+    gap: int = 0
+
+
+class ReviewGw(BaseModel):
+    """One gameweek's banked grade. Every field but ``gw`` has a default, so
+    a ledger written by an older build still renders."""
+
+    gw: int
+    reviewed_at: str | None = None
+    no_advice: bool = False
+    post_deadline: bool = False
+    my_points: int | None = None
+    official_points: int | None = None
+    official_gross: int | None = None
+    hits: int = 0
+    reconciled: bool | None = None
+    chip: str | None = None
+    model_chip: str | None = None
+    points_on_bench: int | None = None
+    our_bench_points: int | None = None
+    model_points: int | None = None
+    accuracy: int | None = None
+    pwin_n: int | None = None
+    pwin_seed: int | None = None
+    pwin_granularity_pp: float | None = None
+    lanes: list[ReviewLane] = Field(default_factory=list)
+    misses: list[ReviewMiss] = Field(default_factory=list)
+    hindsight: ReviewHindsight = Field(default_factory=ReviewHindsight)
+    notices: list[str] = Field(default_factory=list)
+
+
+class ReviewLaneTotal(BaseModel):
+    pts: float = 0.0
+    pwin: float = 0.0
+    graded: int = 0
+    """How many gameweeks this lane was gradeable in. ``pts`` of zero over
+    ``graded`` of zero is "never measured", not "never wrong"."""
+
+
+class ReviewAccuracyPoint(BaseModel):
+    gw: int
+    accuracy: int
+
+
+class ReviewSummary(BaseModel):
+    gws: list[int] = Field(default_factory=list)
+    lanes: dict[str, ReviewLaneTotal] = Field(default_factory=dict)
+    accuracy: list[ReviewAccuracyPoint] = Field(default_factory=list)
+    points_on_bench: int = 0
+    hindsight_gap: int = 0
+    reconciled_gws: int = 0
+    unreconciled_gws: int = 0
+    best: dict[str, Any] | None = None
+    worst: dict[str, Any] | None = None
+
+
+class Review(BaseModel):
+    gws: list[ReviewGw] = Field(default_factory=list)
+    summary: ReviewSummary | None = None
