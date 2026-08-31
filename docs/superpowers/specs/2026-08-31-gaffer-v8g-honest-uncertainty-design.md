@@ -140,3 +140,13 @@ routers this cycle extends; no protected path appears in the stat.
 
 - [ ] The two spot-checked ranges from G1.
 - [ ] The confidence sentence the live ledger produced.
+
+### Orchestrator gate record (2026-08-31, post-fix-round)
+
+**Shipped after a FIX-FIRST review round (4 blockers, 5 importants, 6 nits).** Suite 2325 → 2468 Python, 406 → 441 frontend. The review's central finding — recorded because it is the cycle's lesson: **the original D2 shipped defensible-pipeline/indefensible-number.** The estimation-σ table (median 0.018; model uncertainty, not outcome variance — the same distinction v8c's fix round established) produced a dead haul chip (0.0 on all 1878 pool rows), a `blank 100%` certainty claim on a goalkeeper, bands that were a monotone relabeling of EP (σ flat in xMins at fixed EP; a nailed CB wider-banded than Haaland by bin accident), a README asserting the inverse, a units-mismatched scatter, and a confidence sentence that indicted the model after four weeks of the user *agreeing* with it.
+
+**Fixes:** bands/chips now price OUTCOME variance (quadrature with `league_sim.OUTCOME_VAR_PER_EP = 3.2`, import-only — the League tab and This Week now give one answer to "how uncertain is this week"); estimation σ retained solely for `decision_sigma` with its meaning stated; live sanity — Haaland ep 5.93 → band 2.79–8.68, p_haul 16.4%, p_blank 19.6%; Dubravka → p_blank 96.4% (recentred mean keeps every band below its own headline — the reviewer's targets assumed mu=ep); certainty ban test-pinned (no rounded 1.0 ever); scatter re-sourced from the v8b ledger (model_points vs official net, like units; n=1 renders "one point is an anecdote, not a scatter"); confidence: graded = wins + losses, aligned quoted separately, early tier claims nothing.
+
+**G1 (redesigned per the review — the original spot-check was unfalsifiable):** equal-EP pair Wan-Bissaka (ep 2.46, xmins 51) vs Horníček (ep 2.47, xmins 84): bands 0.19–3.98 vs 0.20–3.99, σ 2.807 vs 2.813 — at equal EP the outcome term dominates and xMins reaches the band through EP; this is the shipped property and the README says exactly that, not the folk claim. **G2** 18 rails green (heuristic pin deliberately re-shaped to the quadrature — strictly stronger). **G3** suites above, zero protected diffs.
+
+**Residuals:** BLANK_CHIP threshold fires on 80% of the full pool (mostly bench fodder; quiet on real squads) — revisit if noisy; per-player calibration and distribution-into-MC remain deferred as specced; ComparePanel radar fillOpacity flagged as a policy call (not a token violation).
