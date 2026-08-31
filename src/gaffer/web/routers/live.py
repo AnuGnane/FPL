@@ -287,15 +287,19 @@ def live() -> LiveState:
         # if he is wearing the armband on it.
         projected_mult = int(my_multipliers.get(element, 0))
         fixtures_total, unplayed = counts_of.get(element, (1, 0))
-        remaining_ep = (
-            round(max(projected_mult, 0)
-                  * float(ep_of.get(element, 0.0))
-                  * remaining_fraction(minutes,
-                                       started_of.get(element, False),
-                                       finished_of.get(element, False),
-                                       fixtures=fixtures_total,
-                                       unplayed=unplayed), 2)
-            if ep_of and projected_mult >= 1 else 0.0 if ep_of else None)
+        remaining_ep: float | None = None
+        if not ep_of:
+            pass                  # no component file: the column is absent
+        elif projected_mult < 1:
+            remaining_ep = 0.0    # on the bench and staying there
+        else:
+            remaining_ep = round(
+                projected_mult * float(ep_of.get(element, 0.0))
+                * remaining_fraction(minutes,
+                                     started_of.get(element, False),
+                                     finished_of.get(element, False),
+                                     fixtures=fixtures_total,
+                                     unplayed=unplayed), 2)
         out_of = sub_out.get(element)
         into = sub_in.get(element)
         players.append(LivePlayer(
