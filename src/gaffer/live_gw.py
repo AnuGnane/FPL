@@ -340,16 +340,71 @@ def league_live_table(rows: list[dict]) -> list[dict]:
     entry names are not unique: two rivals sharing a name would collapse into
     one pre-gameweek rank and both get the same wrong arrow. ``name`` is the
     fallback for callers that have no ids.
+
+    A caller that has projected the auto-subs (``live_gw.projected_points``)
+    may add ``projected_live`` to a row, and the projection is taken from
+    that instead of from ``live``. It is a deliberate improvement to this
+    column: ``live`` applies no auto-subs, so a table built from it
+    understates every entry carrying a finished blank. The key is optional
+    and the fallback is the old arithmetic exactly, so the CLI tracker and
+    every caller that has no projection are unaffected.
     """
     def key(r: dict):
         return r.get("entry", r["name"])
 
     pre_order = sorted(rows, key=lambda r: -r["pre_total"])
     pre_rank = {key(r): i for i, r in enumerate(pre_order)}
-    out = [dict(r, projected=r["pre_total"] + r["live"]) for r in rows]
+    out = [dict(r, projected=int(r["pre_total"])
+                + int(r.get("projected_live", r["live"]))) for r in rows]
     out.sort(key=lambda r: -r["projected"])
     for i, row in enumerate(out):
         row["delta"] = pre_rank[key(row)] - i
+    return out
+
+
+def safety_margins(table: list[dict], entry: int) -> list[dict]:
+    """The three league places worth watching, from a projected table.
+
+    ``table`` is :func:`league_live_table`'s output, already ordered by
+    projected total. Returns at most three rows — the entry immediately
+    above me, the one immediately below, and the leader — each carrying
+    ``margin`` (their projected total minus mine, so positive means they are
+    ahead) and ``need`` (the points I must add beyond my current projection
+    to pass them, and 0 when I already have).
+
+    Deduplicated by entry and ordered above, below, leader: when the leader
+    *is* the man immediately above me he gets one row, labelled with the
+    actionable role rather than the flattering one.
+
+    League-relative only. An overall-rank safety score would need the whole
+    field's live scores, and no public endpoint gives them; the card says so
+    rather than implying this number is one.
+    """
+    order = [int(r.get("entry", -1)) for r in table]
+    try:
+        me = order.index(int(entry))
+    except ValueError:
+        return []
+
+    mine = int(table[me]["projected"])
+    wanted = []
+    if me > 0:
+        wanted.append(("above", me - 1))
+    if me + 1 < len(table):
+        wanted.append(("below", me + 1))
+    if me != 0:
+        wanted.append(("leader", 0))
+
+    out, seen = [], set()
+    for role, index in wanted:
+        row = table[index]
+        rival = int(row.get("entry", -1))
+        if rival in seen:
+            continue
+        seen.add(rival)
+        margin = int(row["projected"]) - mine
+        out.append({"entry": rival, "name": str(row["name"]), "role": role,
+                    "margin": margin, "need": max(margin + 1, 0)})
     return out
 
 
