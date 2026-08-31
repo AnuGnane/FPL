@@ -211,6 +211,16 @@ describe('the simulated win-probability card', () => {
     expect(await screen.findByTestId('beat-2')).toHaveTextContent('—')
   })
 
+  it('renders the margin fan the engine has always published', async () => {
+    render(<MemoryRouter><League /></MemoryRouter>)
+    expect(await screen.findByTestId('sim-margin-fan')).toBeInTheDocument()
+    expect(screen.getByTestId('margin-p05')).toHaveTextContent('-60')
+    expect(screen.getByTestId('margin-p50')).toHaveTextContent('18')
+    expect(screen.getByTestId('margin-p95')).toHaveTextContent('120')
+    // The fan straddles zero here, so the reader is shown where it is.
+    expect(screen.getByTestId('sim-margin-zero')).toBeInTheDocument()
+  })
+
   it('lists every rival with the odds of beating him', async () => {
     render(<MemoryRouter><League /></MemoryRouter>)
     expect(await screen.findByTestId('beat-2')).toHaveTextContent('58%')

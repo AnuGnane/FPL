@@ -20,6 +20,62 @@ const TAB_CLASS = 'px-3 py-2 text-text-muted data-[state=active]:text-text '
 const SERIES_COLOURS = ['var(--color-sage)', 'var(--color-info)',
   'var(--color-rust)', 'var(--color-text-muted)']
 
+const FAN_KEYS = ['p05', 'p25', 'p50', 'p75', 'p95'] as const
+
+/**
+ * The margin fan: how far ahead of — or behind — the best rival the season
+ * ends, at five centiles.
+ *
+ * The engine has published these since v8c and nothing rendered them, so the
+ * card showed three point estimates and no spread at all. Five numbers and
+ * two divs rather than a chart library: the shape here is a range with a
+ * middle, which a bar says as well as an axis would and without a dependency.
+ *
+ * Zero is drawn wherever it falls in the range, because the only question the
+ * strip has to answer at a glance is which side of it the season sits on.
+ */
+function MarginFan({ quantiles }: { quantiles: Record<string, number> }) {
+  const values = FAN_KEYS.map((k) => quantiles[k])
+  if (values.some((v) => typeof v !== 'number' || !Number.isFinite(v))) {
+    return null
+  }
+  const [p05, p25, p50, p75, p95] = values
+  const span = p95 - p05
+  // A degenerate fan — no weeks left, one entry — is a point, not a bar.
+  const at = (v: number) => (span > 0 ? ((v - p05) / span) * 100 : 50)
+  const zero = Math.min(100, Math.max(0, at(0)))
+  return (
+    <div className="mb-3" data-testid="sim-margin-fan">
+      <div className="label mb-1">Final margin over the best rival</div>
+      <div className="relative mb-1 h-2 w-full rounded-sm bg-divider">
+        <div
+          className="absolute h-2 rounded-sm bg-sage"
+          style={{ left: `${at(p25)}%`, width: `${at(p75) - at(p25)}%` }}
+        />
+        <div
+          className="absolute h-2 w-px bg-text"
+          style={{ left: `${at(p50)}%` }}
+        />
+        {span > 0 && p05 <= 0 && p95 >= 0 && (
+          <div
+            className="absolute h-2 w-px bg-text-muted"
+            style={{ left: `${zero}%` }}
+            data-testid="sim-margin-zero"
+          />
+        )}
+      </div>
+      <div className="flex justify-between">
+        {FAN_KEYS.map((key) => (
+          <span key={key} className="num text-xs text-text-muted"
+                data-testid={`margin-${key}`}>
+            {fmtNum(quantiles[key], 0)}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function League() {
   const [race, setRace] = useState<LeagueRaceData | null>(null)
   const [rivals, setRivals] = useState<RivalSummary[]>([])
@@ -239,6 +295,7 @@ export default function League() {
               {sim.notice && (
                 <p className="mb-3 text-text-muted">{sim.notice}</p>
               )}
+              <MarginFan quantiles={sim.margin_quantiles} />
               <table className="w-full">
                 <thead>
                   <tr>
