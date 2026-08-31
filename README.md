@@ -264,6 +264,17 @@ A fixture ticker sits alongside them and is embedded read-only in the
 What-If Lab. A three-state theme toggle in the sidebar footer follows your
 system by default, or holds dark or light if you pick one.
 
+This Week opens on a pitch. The advised XI sits in four formation rows with
+the bench drawn as a bench below it in substitution order, each player wearing
+his club's shirt, and the captain and vice-captain carrying C and V armbands.
+Under every name is a chip naming his next opponent, the side he plays on and
+the kickoff in your own timezone, tinted by the fixture ticker's odds-implied
+difficulty rather than FPL's cruder FDR — so the number on the chip and the
+number in the ticker are the same number. A player whose team has no fixture
+that gameweek reads **Blank**, honestly, rather than showing an empty chip.
+The **Table** toggle beside the captain line returns the data-dense squad
+table, unchanged.
+
 Two things the Live page will not pretend to know. The race trajectory lives
 in the server process and nowhere else — restart `gaffer ui` mid-afternoon and
 it starts again from that moment, which is the price of a page that writes
@@ -483,6 +494,14 @@ makes the live season collide with the one you just archived.
 - `data/raw/field/{season}/gw{N}.json` — the top-10k squads sampled for that
   gameweek. Permanent, and anonymous: entries are keyed by their index in the
   sample, never by entry id.
+- `data/live/assets/` — cached shirt and player images, fetched once from the
+  official Premier League CDN by `/api/assets/` and served from disk
+  afterwards. Untracked like the rest of `data/`, never redistributed, and
+  entirely disposable: delete the directory and the next page load refills
+  it. With no network the endpoint serves a bundled plain shirt and
+  silhouette instead, so the pitch renders identically offline. Player and kit
+  imagery is Premier League property; this is a single-user local copy for
+  personal display, it is never staged, and nothing here redistributes it.
 - `data/live/price_log.parquet` — one row per player per UTC day: FPL's own
   price predictor reading, banked by the nightly `prices` job. Every player,
   not only the ones near a threshold — the row worth having in February is
