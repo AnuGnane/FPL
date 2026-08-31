@@ -184,10 +184,12 @@ nobody can reproduce is a decoration.
 
 The managers are **not** simulated as independent. Every week carries one
 shared factor and each entry is exposed to it in proportion to how much of the
-top-10k template its squad owns, measured off the banked field sample. On the
-GW2 sample two managers' weekly scores correlate at 0.68, and simulating them
-apart made every margin about 1.8x too wide — a fan that pushes every
-probability toward 0.5 in both directions. Each entry's own spread is
+top-10k template its squad owns, measured off the banked field sample. Two
+managers' weekly scores correlate at 0.59 in a real fifty-team mini-league
+and 0.68 in the top-10k sample, and simulating them apart made every margin
+1.6-1.8x too wide — a fan that pushes every probability toward 0.5 in both
+directions. On league 1794743 turning it on moved P(win) from 0.19 to 0.36
+and expected finish from 8.7 to 5.6. Each entry's own spread is
 unchanged; only the comparisons between them move. With no field sample
 banked the card falls back to independence and says so.
 

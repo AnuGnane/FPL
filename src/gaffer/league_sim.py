@@ -107,20 +107,33 @@ larger error by far and pointed the other way — see
 MEASURED_FIELD_CORRELATION = 0.68
 """Mean pairwise correlation between two managers' weekly scores.
 
-Measured on the 300-squad GW2 field sample under this module's own sigmas:
-0.675 as an exact shared-owner covariance, 0.676 as the rank-one template
-approximation :func:`field_exposures` actually simulates. The reviewer's
-independent reading of the same sample put it at 0.589; both are the same
-finding to a decimal that does not matter, which is that it is not zero and
-is not small.
+Measured twice, on two populations, under this module's own sigmas:
+
+===========================  ======  ======  ========
+population                   exact   rank-1  fan too
+                                             wide by
+===========================  ======  ======  ========
+GW2 field sample (300)       0.675   0.676   1.81x
+league 1794743 (50 entries)  0.590   0.533   1.58x
+===========================  ======  ======  ========
+
+"exact" is the full shared-owner covariance; "rank-1" is the template
+projection :func:`field_exposures` actually simulates. On the sample the
+approximation is exact to three decimals, because a top-10k squad *is* the
+template plus a differential. On a real mini-league it runs about a tenth
+low: fifty ordinary managers hold more off-template players than the top 10k
+does, and the part of their agreement that is not template-shaped is the part
+a single factor cannot carry. The engine is therefore a little conservative
+in a real league — it under-corrects rather than over-corrects, which is the
+direction to be wrong in when the alternative was being wrong by 58%.
 
 Managers are not independent draws. They own the same players — a template
 squad in the top 10k overlaps another by nine or ten of fifteen — so a week
 where the popular captain hauls is a good week for almost everybody at once,
 and it moves nobody's *rank*. Simulating them as independent inflated every
-margin: the mean pairwise weekly margin standard deviation on that sample is
-12.0 points, and the independent model produced 22.0 — a fan 1.8x too wide,
-which is 1.58x on the reviewer's numbers. A too-wide fan is not a
+margin: the mean pairwise weekly margin standard deviation is 12.1 points on
+the field sample and 13.3 on the live league, against 22.0 and 21.1 from the
+independent model — the "too wide by" column above. A too-wide fan is not a
 conservative error. It pushes every probability toward 0.5, understates a
 leader's grip and overstates a trailer's chances, and it does so silently.
 
