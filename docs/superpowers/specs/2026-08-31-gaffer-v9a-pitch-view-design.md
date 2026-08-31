@@ -29,6 +29,46 @@ Photos on the pitch cards (FPL's own pitch uses shirts; photos land with v9b's i
 
 (Filled at cycle end.)
 
-## 5. Gate checklist (built by the implementer, run by the orchestrator — unfilled)
+## 5. Gate checklist (built by the implementer, run by the orchestrator)
 
-(Filled by the implementer at the final task, per CONVENTIONS.md §7.)
+**G3 — suites, types, build, audit (measured by the implementer):**
+
+- [x] `uv run pytest -q` — 2740 passed (main baseline 2664 + 76 new: 24
+      `test_web_assets`, 26 `test_web_identity`, 5 `test_web_advice_identity`,
+      21 `test_v9a_degradation`)
+- [x] `npx tsc --noEmit` — clean
+- [x] `npx vitest run` — 496 passed, 1 skipped (main baseline 460 + 36 new: 4
+      `types.test`, 15 `PlayerCard`, 10 `SquadPitch`, 7 `ThisWeek`)
+- [x] `npm run build` — clean
+- [x] Protected diff empty: advise.py, set_pieces.py, optimize/**, jobs.py,
+      routers/jobs.py, routers/whatif.py, test_advise.py, test_odds.py,
+      test_web_jobs.py, every pre-v9a test_*_degradation.py, s2_replay.py
+- [x] Pin diff empty: no job-kind count moved (still 12), no config field
+      added, config.example.toml untouched
+- [x] Security ritual clean; no data/, reports/, models/, logs/ or config.toml
+      in the branch diff
+
+**G1 — live, real season (orchestrator only):**
+
+- [ ] Open This Week: the pitch is the default view, the advised XI is laid
+      out in four formation rows, the bench sits below it in bench order.
+- [ ] C and V badges sit on the two heads the plan names.
+- [ ] Every shirt is real. Network tab: every image request goes to
+      `/api/assets/…` and **none** to premierleague.com or
+      resources.premierleague.com.
+- [ ] The fixture chips name the actual GW opponents with real kickoffs in
+      local time, tinted by difficulty.
+- [ ] A team with a blank gameweek reads "Blank" rather than an empty chip.
+- [ ] Kill the network and reload: plain shirts and silhouettes, **no**
+      broken-image icons, **no** console errors.
+- [ ] `ls data/live/assets/` shows banked files; reload with the network back
+      and the server log shows no refetch for a code already banked.
+- [ ] Toggle to Table — the squad table renders exactly as it did before this
+      cycle — and back to Pitch.
+- [ ] A doubtful player carries his news flag on the pitch card.
+- [ ] `curl -s -o /dev/null -w '%{http_code}' localhost:8927/api/assets/shirt/999`
+      is 404, and the same for a photo code outside the bootstrap.
+
+**G2 — rails:** `uv run pytest -q tests/test_v9a_degradation.py` (21 passed),
+plus every pre-existing `test_*_degradation.py` unmodified
+(`uv run pytest -q tests/ -k degradation` — 217 passed).
