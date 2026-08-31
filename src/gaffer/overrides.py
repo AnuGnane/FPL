@@ -85,8 +85,9 @@ def load_overrides() -> dict[int, dict]:
             if not isinstance(row, dict):
                 continue
             out[int(code)] = {
-                "p_play": _opt_float(row.get("p_play")),
-                "e_min": _opt_float(row.get("e_min")),
+                "p_play": _clipped(row.get("p_play"), 0.0, 1.0, "p_play",
+                                   code),
+                "e_min": _clipped(row.get("e_min"), 0.0, 90.0, "e_min", code),
                 "note": str(row.get("note") or ""),
                 "set_at": str(row.get("set_at") or ""),
                 "model_p_play": _opt_float(row.get("model_p_play")),
@@ -126,6 +127,27 @@ def _opt_float(value) -> float | None:
     except (TypeError, ValueError):
         return None
     return None if math.isnan(out) else out
+
+
+def _clipped(value, lo: float, hi: float, name: str, code) -> float | None:
+    """A stored value, forced into the range the availability pass applies.
+
+    :func:`set_override` refuses anything outside it, but the store is a file:
+    it can be hand-edited, restored from an older schema, or written by a
+    future version. ``_override_first_gw`` clips both fields on the way in, so
+    an unclipped read would show the panel a number the model never applied —
+    "the model had 0.82, you pinned 1.70" beside a squad built on 1.00. The
+    print is what stops the correction being silent.
+    """
+    out = _opt_float(value)
+    if out is None:
+        return None
+    if out < lo or out > hi:
+        clipped = min(max(out, lo), hi)
+        print(f"overrides: player {code}'s {name} is {out:g}, outside "
+              f"{lo:g}-{hi:g} — reading it as {clipped:g}")
+        return clipped
+    return out
 
 
 def _checked(value, lo: float, hi: float, name: str) -> float | None:

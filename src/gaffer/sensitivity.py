@@ -41,10 +41,10 @@ from gaffer.optimize.scenarios import (move_frequencies, run_scenarios,
 SENSITIVITY_K = 20
 """Scenarios per sweep (spec D3).
 
-Twenty is a compromise the spec picked and this module keeps: at ~7s a solve
-it is two to three minutes, which is a job you start and come back to, and it
-resolves a frequency to the nearest 5% — enough to tell 17/20 from 12/20,
-which is the distinction the report exists to draw. The advice path's own
+Twenty is a compromise the spec picked and this module keeps. It resolves a
+frequency to the nearest 5% — enough to tell 17/20 from 12/20, which is the
+distinction the report exists to draw — and it is cheap: the first real sweep
+of a GW3 board took 4.9 seconds for all twenty solves. The advice path's own
 gating sweep runs forty because it is deciding rather than describing.
 """
 

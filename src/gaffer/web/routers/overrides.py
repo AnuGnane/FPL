@@ -42,6 +42,59 @@ def _names() -> dict[int, str]:
         return {}
 
 
+def _was_pinned(gw: int, code: int) -> bool:
+    """Did ``gw``'s banked availability artifact record a pin on ``code``?
+
+    Never raises: no artifact, no column, an unreadable parquet — all "no",
+    because this only ever decides whether a comparison is *shown*.
+    """
+    try:
+        from gaffer.artifacts import load_availability
+
+        banked = load_availability(gw)
+        if banked is None or "override" not in getattr(banked, "columns", []):
+            return False
+        rows = banked[pd.to_numeric(banked["code"],
+                                    errors="coerce") == code]
+        return bool(rows["override"].fillna(False).any())
+    except Exception as exc:  # noqa: BLE001 — a read is never worth a 500
+        print(f"overrides: no availability marker for {code} ({exc})")
+        return False
+
+
+COHERENCE_SLACK = 0.3
+"""How far ``e_min / 90`` may sit above ``p_play`` before the pin is worth a
+second look.
+
+Some slack is real: a nailed starter is 90 minutes at p_play 1.0, but a
+regular substitute can be a genuine 0.5 with thirty minutes in him, and the
+two numbers are separate claims. Three tenths is wide enough that no ordinary
+pin trips it and narrow enough to catch the slip this exists for — minutes
+typed for a player the same form says probably will not play.
+"""
+
+
+def _coherence_warning(p_play: float | None, e_min: float | None,
+                       model_p_play: float | None) -> str | None:
+    """The sentence for a pin whose two numbers disagree, or ``None``.
+
+    Not a refusal. Both values are inside their own ranges and the manager is
+    entitled to mean exactly what he typed; this is the endpoint saying it
+    noticed, which is what the dialog stays open to show.
+    """
+    if e_min is None:
+        return None
+    reference = p_play if p_play is not None else model_p_play
+    if reference is None:
+        return None
+    implied = float(e_min) / 90.0
+    if implied <= float(reference) + COHERENCE_SLACK:
+        return None
+    source = "pinned at" if p_play is not None else "the model's"
+    return (f"{e_min:g} minutes implies he plays, but the probability of "
+            f"playing is {source} {reference:g} — pin both if you meant it")
+
+
 def _model_values(code: int) -> tuple[float | None, float | None]:
     """What the served pipeline currently has for ``code``: ``(p_play, e_min)``.
 
@@ -53,9 +106,21 @@ def _model_values(code: int) -> tuple[float | None, float | None]:
 
     Both are ``None`` when nothing has been run yet, and the panel simply
     omits the comparison. Recorded once, at pin time (plan A3).
+
+    They are also ``None`` when the banked availability artifact says this
+    player was already pinned when it was written. The readings on disk are
+    then the *pinned* numbers — an advise run applies the override and the
+    components it writes carry it — so re-reading them after a delete and a
+    re-pin would put "the model had 1.00" beside a pin of 1.00: the pin
+    looking at itself. The marker is what makes that case detectable, and an
+    undetectable comparison is better omitted than invented.
     """
     gw = latest_gw()
     if gw is None:
+        return None, None
+    if _was_pinned(gw, code):
+        print(f"overrides: GW{gw}'s readings for {code} were taken under a "
+              f"pin — banking no model comparison")
         return None, None
     p_play = e_min = None
     try:
@@ -124,7 +189,9 @@ def pin(req: OverrideRequest) -> OverridesPanel:
                      model_p_play=model_p_play, model_e_min=model_e_min)
     except GafferError as exc:
         raise _fail("override_value", str(exc), [int(req.code)]) from exc
-    return _panel()
+    panel = _panel()
+    panel.warning = _coherence_warning(req.p_play, req.e_min, model_p_play)
+    return panel
 
 
 @router.delete("/overrides/{code}", response_model=OverridesPanel)

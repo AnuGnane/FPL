@@ -56,7 +56,7 @@ def client(tmp_path, monkeypatch):
 
 def test_no_pins_is_an_empty_active_panel(client):
     body = client.get("/api/overrides").json()
-    assert body == {"active": True, "rows": []}
+    assert body == {"active": True, "rows": [], "warning": None}
 
 
 def test_a_pin_comes_back_named_and_dated(client):
@@ -134,3 +134,61 @@ def test_a_missing_player_snapshot_refuses_a_write(client, tmp_path):
     (tmp_path / "data/live/players.parquet").unlink()
     response = client.post("/api/overrides", json={"code": 11, "p_play": 1.0})
     assert response.status_code == 422
+
+
+def test_an_incoherent_pin_is_accepted_with_a_warning(client):
+    """Eighty minutes from a player given a one-in-five chance of playing is
+    not a refusal — both numbers are inside their own ranges and the manager
+    is allowed to mean it — but it is almost always a slip, so the pin is
+    stored and the sentence comes back with it."""
+    body = client.post("/api/overrides",
+                       json={"code": 11, "p_play": 0.2,
+                             "e_min": 80.0}).json()
+    assert body["warning"]
+    assert "0.2" in body["warning"] and "80" in body["warning"]
+    # Stored, not refused.
+    assert body["rows"][0]["e_min"] == 80.0
+
+
+def test_an_e_min_only_pin_is_checked_against_the_model_s_own_p_play(client,
+                                                                     tmp_path):
+    low = pd.DataFrame([{"code": 11, "gw": 5, "p_play": 0.2, "p60": 0.1,
+                         "ep": 1.0}])
+    low.to_parquet(tmp_path / "reports/components_gw5.parquet", index=False)
+    body = client.post("/api/overrides",
+                       json={"code": 11, "e_min": 80.0}).json()
+    assert body["warning"]
+
+
+def test_a_coherent_pin_carries_no_warning(client):
+    body = client.post("/api/overrides",
+                       json={"code": 11, "p_play": 1.0, "e_min": 85.0}).json()
+    assert body["warning"] is None
+    assert client.get("/api/overrides").json()["warning"] is None
+
+
+def test_re_pinning_after_a_delete_does_not_bank_the_pin_as_the_model(
+        client, tmp_path):
+    """The staleness the model-value comparison could otherwise show.
+
+    Pin, run an advise (here: bank an availability artifact carrying the
+    override marker), delete the pin, pin again. The components on disk are
+    now the *pinned* numbers, so re-reading them would put "the model had
+    1.00" beside a pin of 1.00 — the pin looking at itself. The marker in the
+    artifact is what makes that detectable, and an undetectable comparison is
+    better omitted than invented.
+    """
+    from gaffer.artifacts import save_availability
+
+    client.post("/api/overrides", json={"code": 11, "p_play": 1.0})
+    save_availability(pd.DataFrame({"code": [11, 22], "status": ["a", "a"],
+                                    "chance_of_playing": [None, None]}), 5)
+    client.delete("/api/overrides/11")
+    row = client.post("/api/overrides",
+                      json={"code": 11, "p_play": 1.0}).json()["rows"][0]
+    assert row["model_p_play"] is None
+    assert row["model_e_min"] is None
+    # Nobody pinned player 22, so his comparison is unaffected.
+    other = client.post("/api/overrides",
+                        json={"code": 22, "p_play": 0.5}).json()["rows"][1]
+    assert other["model_p_play"] == 0.99

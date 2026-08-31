@@ -457,8 +457,8 @@ Re-run it after moving the project.
   weeks are a no-op that prints one line.
 
 Nothing else is scheduled. The rest of the work the UI can start — including
-`sensitivity`, twenty noised re-solves of this week's board, minutes rather
-than seconds and deliberately manual — runs only when you press its button.
+`sensitivity`, twenty noised re-solves of this week's board in about five
+seconds — runs only when you press its button.
 
 Check they are loaded with `launchctl list | grep com.gaffer`. Remove with
 `launchctl unload ~/Library/LaunchAgents/com.gaffer.{advise,prices,snapshot,field,review}.plist`.

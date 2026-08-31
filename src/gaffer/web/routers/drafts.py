@@ -4,8 +4,7 @@ CRUD is synchronous and cheap. The comparison is not: it is one MILP solve per
 draft plus one for the reference row, so it goes through the same legacy job
 registry the what-if lab uses (202 + ``job_id``, polled by ``useJob``) rather
 than the single-flight v7 runner, which belongs to the named kinds. Six drafts
-is the cap on one request: at ~7s a solve that is inside ``WHATIF_TIMEOUT_S``
-with the reference row paid for (plan A8).
+is the cap on one request, with the reference row paid for (plan A8).
 
 The board is built exactly as ``whatif.solve_whatif`` builds it — the idiom is
 repeated rather than shared, because two existing tests pin that function's own
@@ -34,8 +33,15 @@ from gaffer.web.schemas import (CHIP_CODES, DraftCompare, DraftCompareRequest,
 router = APIRouter(prefix="/api", tags=["drafts"])
 
 MAX_COMPARE = 6
-"""Drafts per comparison. Seven solves at ~7s each, inside the 120s job
-timeout with room for a slow board."""
+"""Drafts per comparison, so seven solves in one job.
+
+A solve of a saved board is fast — the sensitivity sweep measured twenty of
+them in about five seconds — so the cap is not really the ``WHATIF_TIMEOUT_S``
+budget, which seven would fit inside many times over. It stays at six because
+six rows is what a person compares: a table of twenty constraint sets is not a
+decision, and every row is a solve of a board that can be much slower than the
+fixture ones when the pool is full and the horizon long.
+"""
 
 NO_RUN = "no saved solve state — run `gaffer advise` first"
 

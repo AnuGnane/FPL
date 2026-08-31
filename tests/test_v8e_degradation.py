@@ -251,3 +251,30 @@ def test_the_v8d_live_path_is_untouched(tmp_path, monkeypatch):
     import gaffer.live_gw as live_gw
 
     assert "override" not in inspect.getsource(live_gw)
+
+
+# --- a hand-edited store ----------------------------------------------
+
+
+def test_an_out_of_range_value_in_the_store_is_clipped_on_read(tmp_path,
+                                                               monkeypatch,
+                                                               capsys):
+    """``set_override`` refuses these, but the file is a file: it can be hand
+    edited, restored from an older schema, or written by a future version. The
+    availability pass clips both fields anyway, so the store agrees with the
+    artifact rather than banking a number the artifact will never apply — and
+    it says which value it clipped.
+    """
+    import json
+
+    from gaffer.overrides import load_overrides
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "reports").mkdir()
+    (tmp_path / "reports/overrides.json").write_text(json.dumps(
+        {"overrides": {"1": {"p_play": 1.7, "e_min": -30.0, "note": "hand"}}}))
+    row = load_overrides()[1]
+    assert row["p_play"] == 1.0
+    assert row["e_min"] == 0.0
+    printed = capsys.readouterr().out
+    assert "1.7" in printed and "p_play" in printed

@@ -135,9 +135,11 @@ def run_sensitivity_job() -> dict:
     carrying "run `gaffer advise` first", which is the right thing for a
     button to say.
 
-    Minutes, not seconds. Twenty MILP solves is the longest job in the app
-    after ``advise`` itself, which is exactly why it is a job and not a
-    request.
+    Seconds, not minutes: twenty solves of a saved board measured about five
+    on the real GW3 pool. It is still a job rather than a request because the
+    wall time is the *board's*, not the machine's — a full pool with a long
+    horizon is a slower solve than a request should wait on — and because a
+    job streams its progress.
     """
     from gaffer.sensitivity import run_sensitivity
 
@@ -147,6 +149,7 @@ def run_sensitivity_job() -> dict:
           f"{payload['wall_s']}s")
     return {"gw": payload["gw"], "k": payload["k"],
             "completed": payload["completed"]}
+
 
 JOB_KINDS: dict[str, Callable[[], Any]] = {
     "advise": run_train_and_advise,

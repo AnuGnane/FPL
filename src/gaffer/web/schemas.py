@@ -1103,6 +1103,12 @@ class OverridesPanel(BaseModel):
     """``[news] overrides``. False means the pins are stored and *not* being
     applied, which the panel says out loud rather than showing nothing."""
     rows: list[OverrideRow] = Field(default_factory=list)
+    warning: str | None = None
+    """Accepted, and worth a second look. Set on a write whose two numbers
+    disagree with each other — expected minutes implying a player starts,
+    beside a probability of playing that says he probably does not. A refusal
+    would be wrong (the manager is allowed to mean it) and silence would be
+    worse, so the dialog shows this and stays open."""
 
 
 class NamedPlayer(BaseModel):
