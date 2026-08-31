@@ -16,6 +16,7 @@ from gaffer.artifacts import (latest_gw, load_components, load_snapshot,
                               load_solve_state)
 from gaffer.data.field import latest_field_eo
 from gaffer.errors import GafferError
+from gaffer.uncertainty import band_for, shipped_table, xmins_by_player_gw
 from gaffer.web.schemas import (Component, FixtureExplain, MinutesOutput,
                                 NextFixture, OddsInfluence, PlayerExplain,
                                 PlayerRow)
@@ -70,6 +71,27 @@ def _last4() -> dict[int, list[int]]:
     return out
 
 
+def _xmins_first_gw(gw: int) -> dict[int, float]:
+    """``{code: expected minutes}`` for the horizon's first gameweek.
+
+    Pure display, so an absent or unreadable components parquet is an empty
+    map rather than an exception: the explorer must render on a clone that has
+    solved but never banked a breakdown, and a player list with no bands on it
+    is a correct degraded page.
+    """
+    try:
+        comp = load_components(gw)
+    except Exception as exc:  # noqa: BLE001 — a band is never worth a 500
+        print(f"players explorer: no component breakdown for bands ({exc})")
+        return {}
+    try:
+        return {code: xm for (code, g), xm in
+                xmins_by_player_gw(comp).items() if int(g) == int(gw)}
+    except Exception as exc:  # noqa: BLE001
+        print(f"players explorer: component breakdown unusable ({exc})")
+        return {}
+
+
 FIELD_HIGH = 40.0
 FIELD_LOW = 15.0
 """Effective-ownership percent that counts as the field being *on* a player,
@@ -116,6 +138,11 @@ def players(position: str | None = None, team: int | None = None,
     ep_horizon = pool.groupby("code")["ep_raw"].sum().to_dict()
     owned = {int(c) for c in state.owned_codes}
     last4 = _last4()
+    # A4: the band has to bracket the number on the screen, and the number on
+    # the screen is the pool's ep_raw — not the components frame's ep. So the
+    # frame supplies only xMins and the band is computed on ep_next.
+    xmins = _xmins_first_gw(first_gw)
+    noise = shipped_table()
     # Pure display: an unreadable log is a missing column, never a 500. The
     # explorer must render on a clone that has never run a scrape.
     try:
@@ -129,6 +156,8 @@ def players(position: str | None = None, team: int | None = None,
         if code not in ep_horizon:
             continue                       # not a candidate this week
         status = str(r.status)
+        band = band_for(round(ep_next.get(code, 0.0), 2), xmins.get(code),
+                        table=noise)
         rows.append(PlayerRow(
             code=code, element=int(r.element), name=str(r.name),
             position=str(r.position), team_code=int(r.team_code),
@@ -150,7 +179,11 @@ def players(position: str | None = None, team: int | None = None,
             corners_order=_opt_int(
                 r.corners_and_indirect_freekicks_order),
             in_squad=code in owned,
-            last4=last4.get(code, [])))
+            last4=last4.get(code, []),
+            ep_lo=None if band is None else band.ep_lo,
+            ep_hi=None if band is None else band.ep_hi,
+            p_haul=None if band is None else band.p_haul,
+            p_blank=None if band is None else band.p_blank))
 
     if position:
         rows = [row for row in rows if row.position == position.upper()]

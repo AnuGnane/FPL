@@ -19,6 +19,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from gaffer.artifacts import load_components
 from gaffer.errors import GafferError
+from gaffer.uncertainty import bands_by_player_gw
 from gaffer.web.schemas import (Component, ComponentFixture, ComponentPlayer,
                                 ComponentsBreakdown, MinutesOutput)
 
@@ -105,6 +106,12 @@ def components(gw: int,
         wanted = {int(c) for c in codes.split(",") if c.strip().isdigit()}
         frame = frame[frame["code"].astype(int).isin(wanted)]
 
+    # One resolution of the σ asset for the whole payload rather than one per
+    # player: the loader is cached but the lookup through it is not free at
+    # pool scale. Keyed (code, gw) because that is the sweep's own key — a
+    # double gameweek is one answer to "how uncertain is he this week".
+    bands = bands_by_player_gw(frame)
+
     players: list[ComponentPlayer] = []
     for code, rows in frame.groupby("code", sort=True):
         # mergesort because it is stable: a double gameweek's two fixtures
@@ -127,18 +134,32 @@ def components(gw: int,
                 components=terms,
                 pen_taker=(pen if pen != 0.0 else None),
                 minutes=MinutesOutput(
-                    p_play=round(_num(row.p_play), 3),
-                    p60=round(_num(row.p60), 3),
+                    # ``getattr`` for the same reason the ``xmins`` line below
+                    # already used it: a frame banked with no minutes model
+                    # carries no such column at all, and a breakdown is not
+                    # worth a 500 over a probability it never had.
+                    p_play=round(_num(getattr(row, "p_play", None)), 3),
+                    p60=round(_num(getattr(row, "p60", None)), 3),
                     # From the raw cells, not the _num'd ones: _num turns a
                     # missing probability into 0.0, and 0.0 is a real answer.
                     xmins=_xmins(getattr(row, "p_play", None),
                                  getattr(row, "p60", None))),
                 ep=round(_num(row.ep), 2)))
         head = rows.iloc[0]
+        band = bands.get((int(code), int(gw)))
         players.append(ComponentPlayer(
             code=int(code), name=str(head["name"]),
             position=str(head["position"]),
             team_name=_text(head["team_name"]),
             ep=round(float(sum(f.ep for f in fixtures)), 2),
+            # The band brackets the requested gameweek, so the payload has to
+            # carry that gameweek's own EP beside the horizon sum above.
+            ep_gw=round(float(sum(f.ep for f in fixtures
+                                  if f.gw == int(gw))), 2),
+            sigma=None if band is None else band.sigma,
+            ep_lo=None if band is None else band.ep_lo,
+            ep_hi=None if band is None else band.ep_hi,
+            p_haul=None if band is None else band.p_haul,
+            p_blank=None if band is None else band.p_blank,
             fixtures=fixtures))
     return ComponentsBreakdown(gw=int(gw), players=players)

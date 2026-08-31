@@ -398,6 +398,21 @@ class PlayerRow(BaseModel):
     Empty when ``data/live/player_gw.parquet`` has not been written — the
     sparkline then renders an em dash rather than a flat line at zero.
     """
+    ep_lo: float | None = None
+    """p25 of the noise model's distribution for ``ep_next`` — see
+    :mod:`gaffer.uncertainty`. Deliberately **not** ``ep_next`` minus
+    something: the calibrated path recentres, so the pair is quartiles rather
+    than a symmetric interval, and the UI labels it that way.
+
+    ``None`` — never ``ep_next`` — when the components frame carries no
+    minutes model for him, or is absent altogether. A zero-width band on the
+    least-known player in the pool would read as certainty."""
+    ep_hi: float | None = None
+    p_haul: float | None = None
+    """``P(points >= 10)`` under the same distribution. Crude by construction:
+    it prices *forecast* error, not football's own variance."""
+    p_blank: float | None = None
+    """``P(points <= 2)`` under the same distribution."""
 
 
 class Component(BaseModel):
@@ -557,6 +572,20 @@ class ComponentPlayer(BaseModel):
     ep: float
     """Summed over the player's fixtures in this gameweek."""
     fixtures: list[ComponentFixture]
+    ep_gw: float | None = None
+    """Expected points for the *requested* gameweek alone.
+
+    ``ep`` above is a horizon sum — the components parquet carries every
+    gameweek in the solve horizon — so it is not a number the σ table has ever
+    seen. The band brackets this one instead (plan A2)."""
+    sigma: float | None = None
+    """The scenario sweep's own σ for this player-gameweek, in points."""
+    ep_lo: float | None = None
+    """p25 / p75 of the distribution ``noise_ep`` draws from. ``None``, never
+    zero, when the frame carries no minutes model for him."""
+    ep_hi: float | None = None
+    p_haul: float | None = None
+    p_blank: float | None = None
 
 
 class ComponentsBreakdown(BaseModel):
