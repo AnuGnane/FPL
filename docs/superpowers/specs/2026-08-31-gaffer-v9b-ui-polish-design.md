@@ -32,6 +32,103 @@ Chart-token unification and the light-theme audit — inspected 2026-08-31 and a
 
 (Filled at cycle end.)
 
-## 5. Gate checklist (built by the implementer, run by the orchestrator — unfilled)
+## 5. Gate checklist (built by the implementer, run by the orchestrator)
 
-(Filled by the implementer at the final task, per CONVENTIONS.md §7.)
+**G3 — suites, types, build, audit (measured by the implementer):**
+
+- [x] `uv run pytest -q` — **2746 passed**, identical to the merged-main
+      baseline (this cycle changes no Python)
+- [x] `npx tsc --noEmit` — clean
+- [x] `npx vitest run` — **548 passed, 1 skipped** (merged-main baseline 498 +
+      1 skipped; 50 new tests, no test deleted)
+- [x] `npm run build` — clean (only the pre-existing >500kB chunk warning)
+- [x] Zero Python diff: `git diff main --stat -- 'src/**/*.py' 'tests/**/*.py'
+      'scripts/**/*.py' pyproject.toml config.example.toml` is **empty**.
+      `git diff main --name-only` names 51 files, all under `frontend/` except
+      `README.md` — and one docs deletion that is **main moving ahead of this
+      branch**, not a change here: `main` has since gained
+      `docs/superpowers/plans/2026-08-31-gaffer-v9c-model-debt.md` (commit
+      175d805), which this branch, cut at f62080c, does not carry.
+- [x] Protected diff empty: advise.py, set_pieces.py, optimize/**, jobs.py,
+      routers/jobs.py, routers/whatif.py, test_advise.py, test_odds.py,
+      test_web_jobs.py, every test_*_degradation.py **including v9a's**,
+      s2_replay.py
+- [x] Pin diff empty: job kinds still 12, no config field added
+- [x] Security ritual clean; no data/, reports/, models/, logs/,
+      web/static/ or config.toml in the branch diff, no key/token string in
+      it, and no cached asset staged — `data/live/assets/` holds shirts and
+      photos from the dev pages and stays untracked. `git show main:config.toml`
+      fails, as it must.
+
+**G2 — rails (vitest, no Python rail file this cycle):**
+
+- [x] `Toast` renders `aria-live="polite"`, caps at three, drops the oldest,
+      auto-dismisses, and is a silent no-op with no outlet mounted
+      (`kit/Toast.test.tsx`); `AppShell` mounts one outlet in **both** layouts
+- [x] `Skeleton` appears for `queued|running` on all four job panels and never
+      for `done` or `error` (WhatIfTab, ChipsTab, DraftsTab, SensitivityCard)
+- [x] `ExplainModal` requests `/api/assets/photo/{code}` and removes the
+      portrait on an image error rather than showing a broken glyph
+- [x] `PlayerCard` lays `size='chip'` along the row with no fixture chip,
+      prints an em dash for a null `ep`, and still draws the pitch card exactly
+      as v9a did (v9a's own PlayerCard/SquadPitch pins stayed green untouched)
+- [x] A failed star reverts the optimistic flip and raises exactly one toast;
+      a successful star raises none
+- [x] `Timeline` renders no difficulty strip for a gameweek the ticker payload
+      does not cover, for a player the advice never named, or when the ticker
+      fetch fails; and tints a covered one with `difficultyBackground` on the
+      ticker's own number
+- [x] `ReviewTab`'s lane rows carry no button, pinning A6 so a later cycle
+      cannot fabricate lane links out of comma-joined name strings
+- [x] Every `EmptyState` action names a real button label or shell command,
+      including the two audited-and-left-alone states, which are source-pinned
+- [x] Every tab strip scrolls within its own bounds, and the sensitivity, chip
+      and draft-compare tables sit inside an `overflow-x-auto`
+
+**G1 — live, real season (orchestrator only):**
+
+- [ ] Live's player rows, a rival's squad list and the review's
+      flagged-and-skipped list show identity chips where bare names were, and
+      clicking one opens the same explain modal as before.
+- [ ] Those three surfaces show the **bundled plain shirt and no club label**
+      — by design, not by failure: neither `/api/live` nor
+      `/api/league/rivals/{id}` carries a team field and this cycle adds no
+      Python (plan A4). Confirm it looks deliberate rather than broken.
+- [ ] The explain modal shows the player's portrait. Empty
+      `data/live/assets/`, kill the network, reload: the silhouette, with
+      **no** broken-image icon and **no** console error.
+- [ ] Network tab: every image request goes to `/api/assets/…` and none to
+      premierleague.com.
+- [ ] Fire a what-if solve: the answer panel shows a skeleton for the whole
+      solve and the answer replaces it. No blank panel at any point, and a
+      second solve does not pulse over the first one's result.
+- [ ] Run a sensitivity sweep from its own card: skeleton **and** the live
+      job log underneath.
+- [ ] Pull the network mid-star: the star reverts and one failure toast
+      appears saying which player and why.
+- [ ] Star a player successfully: the star fills and **no** toast appears.
+- [ ] Save an override, unpin one, save a draft, delete a draft: each says
+      what happened, and each toast clears itself.
+- [ ] At 390px (device toolbar) walk all six hubs: no body horizontal scroll
+      anywhere, DigestCard readable with no truncated bits, the pitch
+      reflowed, every tab strip reachable.
+- [ ] Planning → Timeline: week cards show difficulty-tinted opponent chips
+      whose shades match the Ticker tab's squares for the same fixtures, and a
+      week past the ticker's window shows no strip rather than a grey one.
+
+**Residuals to record in §4 after G1:**
+
+- Live and rival squad chips carry no club identity (plan A4) — the fix is
+  either a server-side enrichment of those two payloads or a session-cached
+  client join over `/api/players` + the ticker. Neither belongs in a
+  frontend-only cycle.
+- Review lane rows carry no player code (plan A6), so the four lanes have no
+  explain affordance. Widening them is a `review.py` change.
+- D5's "watchlist-empty explorer star column hint" was not built: the
+  watchlist has no list surface anywhere in the frontend, so there is nothing
+  to be empty (plan A12).
+- The 390px desk pass wrapped four wide tables the plan's survey had missed
+  (WhyPanel's per-fixture table, NewsPanel, MovesCard, QualityTab's
+  decomposition). Narrow two-to-four-column tables were left unwrapped
+  deliberately; if G1 finds one of them scrolling the body, it is a one-line
+  wrapper, not a rebuild.
