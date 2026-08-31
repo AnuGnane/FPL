@@ -150,8 +150,13 @@ Spec: `specs/2026-08-30-gaffer-v7-model-design.md` (§9 = gates + the three-way 
 
 ## Planned
 
-### v9a — pitch view (spec written 2026-08-31, awaiting implementation)
-Spec: `specs/2026-08-31-gaffer-v9a-pitch-view-design.md` — FPL-style XI + bench strip as the This Week default: formation rows, C/V armbands, shirt kits + team short-names via cached backend asset endpoints (URL patterns verified live), difficulty-tinted next-fixture chips off the odds-implied ticker. Photos cached this cycle, rendered in v9b.
+### v9a — pitch view (done, merged `02cf26e` 2026-08-31)
+Spec: `specs/2026-08-31-gaffer-v9a-pitch-view-design.md` (§4 outcome) · Plan: `plans/2026-08-31-gaffer-v9a-pitch-view.md`
+- [x] FPL-style pitch as the This Week default: formation rows + bench strip, C/V armbands, shirt kits, difficulty-tinted next-fixture chips (odds-implied ticker), Table one toggle away
+- [x] Asset cache `/api/assets/{shirt,photo}/{code}`: bootstrap allowlist, bundled SVG fallbacks, magic-byte poisoning guard, nosniff, no redirects, 2MB cap; photos banked for v9b
+- [x] Serve-time identity in unprotected `web/identity.py` — banked advice artifacts byte-untouched (railed); every existing advice file gains the fields without a re-solve
+- [x] Review FIX-FIRST → fixed: null-team plain-shirt fallback (was a blank gap), HTML-200 cache-poisoning guard; deferred: identity memoisation, weeks=2 tint window (recorded)
+- Suite: 2746 Python + 498 frontend; protected diffs zero
 
 ### v9b — UI polish (backlog in v9a spec §0 D5)
 PlayerCard identity across Live/League/Review · skeleton states for job-triggered panels · mobile pass on the v8 cards · action toasts (star/pin/override) · empty-state copy audit · chart-token unification · light-theme audit of v8 cards · difficulty tinting on Planning's horizon table.
