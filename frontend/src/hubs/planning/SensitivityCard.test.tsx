@@ -76,6 +76,30 @@ describe('SensitivityCard', () => {
       .toBeInTheDocument()
   })
 
+  it('adds the noise caveat to the negative margin without eating it',
+     async () => {
+    // I1. A margin inside the noise on a *negative* margin is two facts, not
+    // one: the runner-up is ahead, and the ordering is not solid. The caveat
+    // used to be spliced in where the "most frequent plan is not the
+    // highest-scoring one" clause goes, so the noisiest case was the one
+    // where the card stopped saying which plan actually scored more.
+    apiGet.mockResolvedValue({ ...REPORT, margin: -0.4, decision_sigma: 1.2 })
+    render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
+    expect(await screen.findByText(/0\.4 expected points ahead/))
+      .toBeInTheDocument()
+    expect(screen.getByText(/not the highest-scoring one/))
+      .toBeInTheDocument()
+    expect(screen.getByText(/the ranking is not solid/)).toBeInTheDocument()
+  })
+
+  it('says how wrong the forecast might be, not how much football varies',
+     async () => {
+    apiGet.mockResolvedValue({ ...REPORT, margin: 0.4, decision_sigma: 1.2 })
+    render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
+    expect(await screen.findByText(/how wrong the forecast/))
+      .toBeInTheDocument()
+  })
+
   it('says every re-solve agreed when there is no margin', async () => {
     apiGet.mockResolvedValue({ ...REPORT, margin: null })
     render(<MemoryRouter><SensitivityCard /></MemoryRouter>)

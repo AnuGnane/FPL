@@ -21,27 +21,34 @@ function pct(frequency: number): string {
  *  most often is priced *below* one it reached less often, which is the
  *  opposite recommendation and must not be printed as "behind".
  *
- *  The noise qualifier is the v8g honesty line. `decision_sigma` is the
- *  sweep's own σ on the players that actually separate the two plans, in
- *  quadrature — so a margin inside it is a margin the forecast error could
- *  have produced on its own, and saying "0.6 ahead" without saying that is
- *  the false precision this cycle exists to remove. Only ever said when it is
- *  true: a margin larger than the noise gets the bare sentence. */
+ *  The noise qualifier is the v8g honesty line, and it **appends**. A
+ *  negative margin inside the noise is two separate facts — the runner-up is
+ *  ahead, and the ordering is not solid — and the first cut substituted the
+ *  caveat for the "most frequent plan is not the highest-scoring one" clause,
+ *  so the case where the reader most needed both got only one.
+ *
+ *  `decision_sigma` is *estimation* σ: how far gaffer's own forecast of the
+ *  players separating these two plans would move if it were refit, summed in
+ *  quadrature. Deliberately not the outcome σ behind the EP bands — both
+ *  plans are solved off the same board, so football's own variance cannot
+ *  reorder them and folding it in would turn every margin into a coin flip.
+ *  The sentence says which of the two it means. */
 function marginLine(margin: number | null,
                     sigma: number | null = null): string {
   if (margin === null) return 'Every re-solve reached the same decision.'
   const inside = sigma !== null && sigma > 0 && Math.abs(margin) < sigma
   const caveat = inside
-    ? ` — smaller than the ${fmtNum(sigma, 1)}-point noise on the players `
-      + 'that separate the two plans, so the ranking is not solid'
+    ? ` It is smaller than the ${fmtNum(sigma, 1)}-point spread on how wrong `
+      + 'the forecast for the players that separate the two plans might be, '
+      + 'so the ranking is not solid.'
     : ''
   if (margin < 0) {
     return `The best differing plan is ${fmtNum(-margin, 1)} expected points `
-      + `ahead${caveat}${inside ? '' : ' — the most frequent plan is not the '
-        + 'highest-scoring one'}.`
+      + 'ahead — the most frequent plan is not the highest-scoring one.'
+      + caveat
   }
   return `The best differing plan is ${fmtNum(margin, 1)} expected points `
-    + `behind${caveat}.`
+    + `behind.${caveat}`
 }
 
 export default function SensitivityCard() {
