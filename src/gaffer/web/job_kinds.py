@@ -124,6 +124,30 @@ def run_review_job() -> dict:
     return {"gws": len(gws)}
 
 
+def run_sensitivity_job() -> dict:
+    """``sensitivity`` — K noised re-solves of the saved board (v8e F3).
+
+    The zero-argument wrapper pattern ``run_track_pens`` set: the module does
+    the work and prints the human-readable verdict, and the wrapper turns it
+    into the three numbers the job record carries. Unlike the pen tracker this
+    one *can* raise — with no saved solve state there is nothing to sweep —
+    and it should: the runner turns a ``GafferError`` into a failed record
+    carrying "run `gaffer advise` first", which is the right thing for a
+    button to say.
+
+    Minutes, not seconds. Twenty MILP solves is the longest job in the app
+    after ``advise`` itself, which is exactly why it is a job and not a
+    request.
+    """
+    from gaffer.sensitivity import run_sensitivity
+
+    payload = run_sensitivity()
+    print(payload["verdict"])
+    print(f"{payload['completed']}/{payload['k']} scenarios in "
+          f"{payload['wall_s']}s")
+    return {"gw": payload["gw"], "k": payload["k"],
+            "completed": payload["completed"]}
+
 JOB_KINDS: dict[str, Callable[[], Any]] = {
     "advise": run_train_and_advise,
     "advise-fast": run_train_and_advise_fast,
@@ -134,5 +158,6 @@ JOB_KINDS: dict[str, Callable[[], Any]] = {
     "field-scrape": run_field_scrape_job,
     "review": run_review_job,
     "track-pens": run_track_pens,
+    "sensitivity": run_sensitivity_job,
 }
 """The allow-list. A kind not in here is a 404, never an exec of user input."""

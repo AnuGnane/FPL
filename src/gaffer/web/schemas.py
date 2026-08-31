@@ -1103,3 +1103,51 @@ class OverridesPanel(BaseModel):
     """``[news] overrides``. False means the pins are stored and *not* being
     applied, which the panel says out loud rather than showing nothing."""
     rows: list[OverrideRow] = Field(default_factory=list)
+
+
+class NamedPlayer(BaseModel):
+    """A player a report names but does not price."""
+
+    code: int
+    name: str
+    position: str = ""
+
+
+class SensitivityMove(BaseModel):
+    kind: str
+    code: int
+    gw: int
+    label: str
+    name: str = ""
+    count: int
+    frequency: float
+
+
+class SensitivityPlan(BaseModel):
+    count: int
+    buys: list[NamedPlayer] = Field(default_factory=list)
+    sells: list[NamedPlayer] = Field(default_factory=list)
+    captain: NamedPlayer | None = None
+    chip: str | None = None
+    hits: int = 0
+    value: float = 0.0
+    """Horizon expected points on the **true** EP table, so two signatures are
+    compared on the board the manager faces rather than on their own draws."""
+
+
+class SensitivityReport(BaseModel):
+    available: bool = False
+    gw: int | None = None
+    k: int = 0
+    completed: int = 0
+    failures: int = 0
+    seed: int | None = None
+    horizon: int = 0
+    wall_s: float | None = None
+    generated_at: str | None = None
+    notice: str | None = None
+    frequencies: list[SensitivityMove] = Field(default_factory=list)
+    modal: SensitivityPlan | None = None
+    runner_up: SensitivityPlan | None = None
+    margin: float | None = None
+    verdict: str | None = None

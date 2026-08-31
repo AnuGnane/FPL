@@ -12,7 +12,8 @@ from gaffer.web import job_kinds
 def test_the_allow_list_has_exactly_nine_kinds():
     """A kind not in the allow-list is a 404, never an exec of user input.
     The count is pinned on both sides — see frontend/src/types.test.ts."""
-    assert len(job_kinds.JOB_KINDS) == 9
+    # 9 -> 10: v8e added the `sensitivity` kind on both sides.
+    assert len(job_kinds.JOB_KINDS) == 10
     assert "review" in job_kinds.JOB_KINDS
 
 
