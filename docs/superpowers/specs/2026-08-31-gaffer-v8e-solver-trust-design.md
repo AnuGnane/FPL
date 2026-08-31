@@ -30,3 +30,71 @@ Attacking-EP overrides (protected seam); grading overrides in the v8b ledger ("y
 ## 4. Outcome
 
 (Filled at cycle end.)
+
+### Gate results (orchestrator-run)
+
+**G1 — overrides live.** Against the real repo, real config, real advice.
+
+- [ ] `POST /api/overrides` sets a real pin on a real player (record the
+      body, and the `model_p_play` the store banked).
+- [ ] `uv run gaffer advise --fast` — the served advice reflects it: the
+      player's `p_play` in `reports/components_gw{N}.parquet` equals the pin,
+      and `p60` / expected minutes moved with it on the same ratio.
+- [ ] This Week's why-panel names the pin, with "the model had X".
+- [ ] `reports/availability_gw{N}.parquet` and
+      `data/live/availability_log.parquet` both carry `override = true` for
+      that code and null for everyone else.
+- [ ] **The byte pin.** `DELETE /api/overrides/{code}`, re-run
+      `gaffer advise --fast`, and the component file is byte-identical to a
+      no-override baseline taken before the pin was set (`cmp` the two
+      parquets, or compare a stable hash of the sorted frame). A difference
+      here means the pass is not a no-op when the store is empty.
+- [ ] Transcribe the API bodies and the hashes verbatim (CONVENTIONS.md §4).
+
+Output:
+
+```
+(paste here)
+```
+
+**G2 — sensitivity live.** One real sweep on the current solve state.
+
+- [ ] `POST /api/jobs/sensitivity` completes: K=20, `completed == 20`,
+      `failures == 0` (or the failures explained).
+- [ ] Frequencies sum sanely — every `count <= completed`, every `frequency`
+      in (0, 1], and the modal plan's `count` is the largest group.
+- [ ] **Deterministic:** re-run with the same seed (delete the report first,
+      or call `run_sensitivity(seed=...)` directly) and the `frequencies` and
+      `margin` are identical.
+- [ ] Wall clock recorded (expect ~2-3 minutes) along with `wall_s` from the
+      report.
+- [ ] The verdict sentence is true of the frequency table under it — spot
+      check the modal buy's count against its row.
+- [ ] Transcribe the report's head verbatim.
+
+Output:
+
+```
+(paste here)
+```
+
+**G3 — rails.** `uv run pytest -q tests/test_v8e_degradation.py`
+
+- [ ] All passed. Specifically: no override file ⇒ availability identical to
+      v8d; corrupt store ⇒ unchanged plus a printed reason; `overrides=false`
+      ⇒ no read and no marker; unknown-code override rejected; the pass runs
+      last; the two column lists agree; every new endpoint 200s on an empty
+      machine; corrupt stores read as empty; job-kind count pinned at 10; the
+      four board-building sites agree; one config key added.
+
+**G4 — suites, chip rails and audit.**
+
+- [ ] `uv run pytest -q -rs` green; note which `test_chip_sanity.py` tests
+      skipped and why.
+- [ ] `uv run python scripts/chip_baserates.py` run against a real week, its
+      output transcribed here, and any gap from the community bands noted in
+      §4 as an observation rather than a failure.
+- [ ] `npx vitest run`, `npx tsc --noEmit`, `npm run build` green.
+- [ ] Task 11's protected-file, import-only, availability-diff and
+      whatif-untouched checks all as expected, with the three authorised pin
+      lines the only protected change in the branch.
