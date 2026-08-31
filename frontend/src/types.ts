@@ -998,6 +998,10 @@ export interface DraftCompareRow {
   delta_xpts: number | null
   hits: number | null
   chip: string | null
+  /** Gameweeks this row's plan covers, which is not always the comparison's:
+   *  a free hit is a one-week squad and `DraftCompare.weeks` is the shorter
+   *  shared window every row was scored over. */
+  horizon: number | null
   buys: PlayerRef[]
   sells: PlayerRef[]
   captain: PlayerRef | null

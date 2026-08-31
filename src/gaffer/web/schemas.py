@@ -1182,6 +1182,10 @@ class DraftCompareRow(BaseModel):
     delta_xpts: float | None = None
     hits: int | None = None
     chip: str | None = None
+    horizon: int | None = None
+    """Gameweeks this row's plan actually covers, which is not always the
+    comparison's. A free hit is a one-week squad; ``DraftCompare.weeks`` is
+    the shorter shared window every row was then *scored* over."""
     buys: list[PlayerRef] = Field(default_factory=list)
     sells: list[PlayerRef] = Field(default_factory=list)
     captain: PlayerRef | None = None

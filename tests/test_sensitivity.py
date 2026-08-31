@@ -50,12 +50,16 @@ def _pool_frame(star_ep: float = 9.0) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=POOL_COLS)
 
 
-def _save(tmp_path, **kw) -> None:
+def _save(tmp_path, chips=(), **kw) -> None:
+    """``chips`` is what is available in every gameweek of the horizon — the
+    what-if lab and the drafts router both refuse a chip the saved state does
+    not offer, so a test about one has to say so here."""
     state = SolveState(
         gw=5, gws=list(GWS), deadline="2026-09-05T17:30:00Z",
         generated_at="2026-08-31T09:00:00Z", mode="weekly", bank=0,
         free_transfers=1, owned_codes=list(OWNED), lam=0.0, league_eo={},
-        avail_by_gw={5: [], 6: []}, opt=dict(OPT), pool=_pool_frame(**kw))
+        avail_by_gw={gw: list(chips) for gw in GWS}, opt=dict(OPT),
+        pool=_pool_frame(**kw))
     save_solve_state(state)
 
 

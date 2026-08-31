@@ -134,6 +134,8 @@ export default function DraftsTab({ current }: { current: WhatIfRequest }) {
                   <td className="num py-1.5 text-right">{row.hits ?? '–'}</td>
                   <td className="py-1.5 text-text-secondary">
                     {row.chip ?? '–'}
+                    {row.horizon !== null && result.weeks < row.horizon
+                      && ` · ${row.horizon}-week plan`}
                   </td>
                   <td className="py-1.5 text-text-secondary">
                     {row.error
@@ -147,6 +149,10 @@ export default function DraftsTab({ current }: { current: WhatIfRequest }) {
           <p className="mt-3 text-text-muted">
             Solved {result.rows[0]?.solved_at?.slice(0, 16).replace('T', ' ')}
             {' '}against the saved GW{result.gw} board.
+            {result.rows.some((r) => r.horizon !== null
+              && r.horizon > result.weeks)
+              && ' Every row is scored over the shortest plan in the'
+                 + ' comparison — a free hit covers one week.'}
           </p>
         </Card>
       )}

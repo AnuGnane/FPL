@@ -91,10 +91,17 @@ def compare_drafts(names: list[str], gw: int) -> dict:
 
     Every row is priced in **raw** expected points over the weeks all the rows
     share, so a draft that shortened the horizon is not flattered by having
-    fewer weeks of decay to lose. A draft the board cannot satisfy gets a row
-    carrying its reason: the other drafts in the comparison are still worth
-    reading, and a comparison that dies on one bad constraint set is a
-    comparison nobody trusts.
+    fewer weeks of decay to lose. The shared horizon is the shortest *solved
+    plan*, not the shortest horizon anybody asked for —
+    ``whatif.solve_whatif``'s own ``min(len(baseline), len(yours))`` idiom —
+    because a free hit is a one-week squad however many weeks its draft named,
+    and scoring its one week against everybody else's three is a units bug,
+    not a comparison. Which is why every row also carries the horizon it was
+    actually solved over.
+
+    A draft the board cannot satisfy gets a row carrying its reason: the other
+    drafts in the comparison are still worth reading, and a comparison that
+    dies on one bad constraint set is a comparison nobody trusts.
     """
     state = load_solve_state(gw)
     wanted = {r["name"]: r["constraints"] for r in load_drafts()}
@@ -113,11 +120,11 @@ def compare_drafts(names: list[str], gw: int) -> dict:
     opt = solve_kw_from_state(state)
     meta = {int(r.code): {"name": str(r.name), "position": str(r.position)}
             for r in state.pool.drop_duplicates("code").itertuples()}
-    weeks = len(gws)
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
-    def row(name: str, req: WhatIfRequest | None,
-            reference: bool = False) -> DraftCompareRow:
+    def solve(name: str, req: WhatIfRequest | None,
+              reference: bool = False) -> tuple[DraftCompareRow, list | None,
+                                                str | None]:
         chip = CHIP_CODES.get(req.chip) if req else None
         if req is None:
             solve_state = SolveInput(owned_codes=state.owned_codes,
@@ -144,23 +151,35 @@ def compare_drafts(names: list[str], gw: int) -> dict:
         try:
             plans = solve_plan(pool, solve_state, **opt).gw_plans
         except Exception as exc:  # noqa: BLE001 — one bad draft is a row
-            return DraftCompareRow(name=name, is_reference=reference,
-                                   solved_at=now,
-                                   error=f"no legal squad satisfies this "
-                                         f"draft: {exc}")
-        summary = _summary(plans, ep_by, meta, weeks,
-                           hit_cost=opt["hit_cost"],
-                           cap_extra=2.0 if chip == "3xc" else 1.0,
-                           bench_counts=chip == "bboost")
-        return DraftCompareRow(
-            name=name, is_reference=reference, solved_at=now,
-            horizon_pts=summary.horizon_pts,
-            expected_pts=summary.expected_pts, hits=summary.hits,
-            chip=chip, buys=summary.buys, sells=summary.sells,
-            captain=summary.captain)
+            return (DraftCompareRow(name=name, is_reference=reference,
+                                    solved_at=now,
+                                    error=f"no legal squad satisfies this "
+                                          f"draft: {exc}"), None, chip)
+        return (DraftCompareRow(name=name, is_reference=reference,
+                                solved_at=now, chip=chip,
+                                horizon=len(plans)), plans, chip)
 
-    rows = [row("the optimum", None, reference=True)]
-    rows += [row(name, req) for name, req in requests]
+    solved = [solve("the optimum", None, reference=True)]
+    solved += [solve(name, req) for name, req in requests]
+    # The weeks every solved row shares. A free hit answers with one plan
+    # whatever horizon its draft named, and it sets the bar for everybody.
+    lengths = [len(plans) for _, plans, _ in solved if plans]
+    weeks = min(lengths) if lengths else len(gws)
+
+    rows = []
+    for entry, plans, chip in solved:
+        if plans is not None:
+            summary = _summary(plans, ep_by, meta, weeks,
+                               hit_cost=opt["hit_cost"],
+                               cap_extra=2.0 if chip == "3xc" else 1.0,
+                               bench_counts=chip == "bboost")
+            entry.horizon_pts = summary.horizon_pts
+            entry.expected_pts = summary.expected_pts
+            entry.hits = summary.hits
+            entry.buys = summary.buys
+            entry.sells = summary.sells
+            entry.captain = summary.captain
+        rows.append(entry)
     base = rows[0].horizon_pts
     for entry in rows:
         if entry.horizon_pts is not None and base is not None:

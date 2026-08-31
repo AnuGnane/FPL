@@ -122,6 +122,40 @@ def test_an_infeasible_draft_is_a_row_with_a_reason_not_a_failed_job(client):
     assert rows["Salah route"]["horizon_pts"] is not None
 
 
+def test_a_free_hit_draft_is_scored_over_the_week_it_actually_covers(
+        tmp_path, monkeypatch):
+    """A free hit is a one-week squad. Scoring its one week against everybody
+    else's two weeks of decay is not a comparison, it is a units bug: the row
+    would show the chip losing a hundred points to the optimum every time.
+
+    So the shared horizon is the shortest plan in the comparison, not the
+    board's, and every row carries the horizon it was actually solved over.
+    """
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "config.toml").write_text('[fpl]\nentry_id = 1\n'
+                                          'league_id = 5\n')
+    (tmp_path / "reports").mkdir()
+    _save(tmp_path, chips=["freehit"])
+    _components(tmp_path)
+    client = TestClient(create_app())
+    client.post("/api/drafts", json={
+        "name": "free hit", "constraints": {**BODY["constraints"],
+                                            "chip": "fh"}})
+    client.post("/api/drafts", json=BODY)
+    job = _run(client, ["free hit", "Salah route"])
+    assert job["status"] == "done", job["error"]
+    result = job["result"]
+    assert result["weeks"] == 1
+    rows = {r["name"]: r for r in result["rows"]}
+    assert rows["free hit"]["horizon"] == 1
+    assert rows["the optimum"]["horizon"] == 2
+    # One week scored is one week: the horizon total is the week total.
+    for row in rows.values():
+        assert row["horizon_pts"] == pytest.approx(row["expected_pts"])
+    # And the chip is not being made to look catastrophic by the arithmetic.
+    assert rows["free hit"]["delta_xpts"] > -20.0
+
+
 def test_an_unknown_draft_name_is_a_422(client):
     assert client.post("/api/drafts/compare",
                        json={"names": ["ghost"]}).status_code == 422

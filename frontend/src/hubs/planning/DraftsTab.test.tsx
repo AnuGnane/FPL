@@ -38,18 +38,19 @@ const COMPARE = {
   rows: [
     { name: 'the optimum', is_reference: true,
       solved_at: '2026-08-31T09:10:00+00:00', horizon_pts: 210.4,
-      expected_pts: 61.5, delta_xpts: 0, hits: 0, chip: null,
+      expected_pts: 61.5, delta_xpts: 0, hits: 0, chip: null, horizon: 4,
       buys: [{ code: 100, name: 'Salah', ep: 6.4 }],
       sells: [{ code: 101, name: 'Bloke', ep: 2.0 }],
       captain: { code: 100, name: 'Salah', ep: 6.4 }, error: null },
     { name: 'keep Salah', is_reference: false,
       solved_at: '2026-08-31T09:10:00+00:00', horizon_pts: 207.1,
-      expected_pts: 60.0, delta_xpts: -3.3, hits: 1, chip: null,
+      expected_pts: 60.0, delta_xpts: -3.3, hits: 1, chip: null, horizon: 4,
       buys: [], sells: [],
       captain: { code: 100, name: 'Salah', ep: 6.4 }, error: null },
     { name: 'go wildcard', is_reference: false,
       solved_at: '2026-08-31T09:10:00+00:00', horizon_pts: null,
       expected_pts: null, delta_xpts: null, hits: null, chip: null,
+      horizon: null,
       buys: [], sells: [], captain: null,
       error: 'no legal squad satisfies this draft' },
   ],
@@ -119,6 +120,24 @@ describe('DraftsTab', () => {
       expect(screen.getByText(/against the saved GW5 board/))
         .toBeInTheDocument()
     })
+
+  it('says which weeks a shortened comparison was scored over', async () => {
+    // A free hit is a one week plan, so the whole comparison drops to its
+    // week; the rows that are longer than that say so instead of looking
+    // silently worse.
+    apiGet.mockImplementation((path: string) => (
+      path === '/api/drafts' ? Promise.resolve(LIST)
+        : Promise.resolve({
+          id: 'j1', status: 'done', error: null,
+          result: { ...COMPARE, weeks: 1 },
+        })))
+    render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
+    await userEvent.click(await screen.findByLabelText('compare keep Salah'))
+    await userEvent.click(screen.getByRole('button', { name: 'Compare' }))
+    expect(await screen.findByText(/shortest plan in the comparison/))
+      .toBeInTheDocument()
+    expect(screen.getAllByText(/4-week plan/).length).toBe(2)
+  })
 
   it('gives an infeasible draft a row carrying its reason', async () => {
     render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
