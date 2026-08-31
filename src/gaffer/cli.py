@@ -197,12 +197,26 @@ def train():
 
 @app.command()
 def prices():
-    """Tonight's likely price changes among relevant players."""
+    """Tonight's likely price changes, and the day's reading, banked.
+
+    The printed list is unchanged and pinned (spec D1c). The banking runs
+    *after* it and in its own try, so a read-only disk costs the night's row
+    and never the answer the user actually asked for.
+
+    Held to ``snapshot``'s contract on top of that: the launchd job runs this
+    at 23:15 every night and a scheduled command that exits non-zero on a bad
+    evening is a command that gets uninstalled.
+    """
     from gaffer.api.client import FPLClient
     from gaffer.data.bootstrap import build_players
+    from gaffer.price_log import bank_prices
     from gaffer.prices import price_alerts
 
-    players = build_players(FPLClient().get_bootstrap())
+    try:
+        players = build_players(FPLClient().get_bootstrap())
+    except Exception as exc:  # noqa: BLE001 — a scheduled job never blocks
+        typer.echo(f"price check failed: {exc}")
+        return
     watch = players.nlargest(200, "selected_by_percent")["code"].tolist()
     alerts = price_alerts(players, watch)
     if alerts.empty:
@@ -210,6 +224,10 @@ def prices():
     for r in alerts.itertuples():
         cal = " [calibrating]" if r.calibrating else ""
         typer.echo(f"{r.name}: {r.direction} ({r.price_change_percent}%){cal}")
+    # Instrumentation, and it prints its own line either way. Every player is
+    # banked rather than only the alerts above: the row worth having in
+    # February is the one that was not an alert in August.
+    bank_prices(players)
 
 
 @app.command()
