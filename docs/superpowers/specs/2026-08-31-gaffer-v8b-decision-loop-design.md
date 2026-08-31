@@ -57,3 +57,37 @@ Season-in-review page (May artifact — reads this ledger; grab-bag later); mana
 ## 7. Outcome
 
 (Filled at cycle end.)
+
+### Gate results (orchestrator-run)
+
+**G1 — real review.** `uv run gaffer review` over the finished gameweeks.
+
+- [ ] Ledger written to `reports/decision_ledger.json` with all four lanes per
+      gameweek.
+- [ ] **Reconciliation exact on at least one gameweek.** Every
+      `reconciled: false` row investigated and explained here before merge,
+      naming the cause (chip week / double gameweek / the simplified-autosub
+      caveat at `backtest.py:36-38`). An unexplained mismatch blocks the merge.
+- [ ] Idempotent: a second `gaffer review` reviews nothing and prints
+      "already reviewed".
+- [ ] Δwin% present for gameweeks with a banked `reports/components_gw{N}.parquet`
+      (GW2 onward) and **absent with a notice for GW1**, which never had one.
+- [ ] Transcribe the printed output verbatim (CONVENTIONS.md §4).
+
+Output:
+
+```
+(paste `gaffer review` here)
+```
+
+**G2 — rails.** `uv run pytest -q tests/test_v8b_degradation.py`
+
+- [ ] 14 passed.
+
+**G3 — suites and audit.**
+
+- [ ] `uv run pytest -q` — 2105 passed.
+- [ ] `npx vitest run` — 341 passed, 1 skipped.
+- [ ] `npx tsc --noEmit` — clean.
+- [ ] `npm run build` — clean.
+- [ ] Zero protected diffs; zero import-only diffs; no runtime data staged.
