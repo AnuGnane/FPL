@@ -220,3 +220,15 @@ def test_the_protected_ordering_rails_are_carried_forward():
 
     assert LANES == ("transfers", "captaincy", "bench", "chip")
     assert PWIN_LANES == ("transfers", "captaincy")
+
+
+def test_a_pruned_gameweek_says_why_nothing_was_priced_in_title_odds(bare):
+    """G2's shape for an absent number is absent *with a notice*. GW1's
+    advice is gone, so the pricing pass never runs — and a row whose Δwin%
+    column is empty with nothing on the row to explain it is exactly the
+    silent zero the gate exists to catch."""
+    _bank(bare)
+    row = grade_gw(1, cfg=CFG, client=Client())
+    assert row["no_advice"] is True
+    assert all(lane["delta_pwin"] is None for lane in row["lanes"])
+    assert any("title odds" in notice for notice in row["notices"])

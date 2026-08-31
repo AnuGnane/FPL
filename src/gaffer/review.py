@@ -901,10 +901,13 @@ def grade_gw(gw: int, *, cfg, client=None) -> dict | None:
             "pwin_granularity_pp": round(100.0 / max(n, 1), 3)}
     if model is None or client is None:
         row = grade_gw_from(gw, mine, model, frame, pwin_meta=meta)
-        if model is not None:
-            row["notices"] = list(row["notices"]) + [
-                "no FPL client available, so nothing was priced in title "
-                "odds"]
+        # Either way the pricing pass never ran, and an empty Δwin% column
+        # with nothing on the row to explain it is the silent zero spec G2
+        # exists to forbid.
+        row["notices"] = list(row["notices"]) + [
+            "no FPL client available, so nothing was priced in title odds"
+            if model is not None else
+            "no advice survives, so nothing was priced in title odds"]
         return row
 
     my_squad = {k: mine[k] for k in ("xi", "bench", "captain", "vice", "hits",
