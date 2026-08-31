@@ -173,7 +173,9 @@ def test_v8d_adds_no_job_kinds(tmp_path, monkeypatch):
     assert "race" not in JOB_KINDS
     # 9 -> 10: v8e added the `sensitivity` kind on both sides (deliberate
     # pin update per this file's convention, authorised by the v8e orchestrator).
-    assert len(JOB_KINDS) == 10
+    # 10 -> 12: v8f added digest-friday and digest-tuesday (deliberate pin
+    # update per this file's convention, authorised by the v8f orchestrator).
+    assert len(JOB_KINDS) == 12
 
 
 def test_v8d_adds_no_config_keys(tmp_path, monkeypatch):

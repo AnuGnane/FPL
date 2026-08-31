@@ -190,7 +190,9 @@ def test_the_job_kind_count_is_pinned():
     # update per this file's convention, authorised by the v8b orchestrator).
     # 9 -> 10: v8e added the `sensitivity` kind on both sides (deliberate
     # pin update per this file's convention, authorised by the v8e orchestrator).
-    assert len(job_kinds.JOB_KINDS) == 10
+    # 10 -> 12: v8f added digest-friday and digest-tuesday (deliberate pin
+    # update per this file's convention, authorised by the v8f orchestrator).
+    assert len(job_kinds.JOB_KINDS) == 12
     assert "field-scrape" in job_kinds.JOB_KINDS
 
 

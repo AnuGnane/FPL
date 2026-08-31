@@ -185,7 +185,9 @@ def test_the_job_kind_count_is_pinned():
     ``sensitivity`` kind on both sides."""
     from gaffer.web.job_kinds import JOB_KINDS
 
-    assert len(JOB_KINDS) == 10
+    # 10 -> 12: v8f added digest-friday and digest-tuesday (deliberate pin
+    # update per this file's convention, authorised by the v8f orchestrator).
+    assert len(JOB_KINDS) == 12
     assert "sensitivity" in JOB_KINDS
 
 

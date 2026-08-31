@@ -211,7 +211,9 @@ def test_the_job_kind_count_is_pinned_on_this_side_too():
     side and not the other is a button that 404s."""
     # 9 -> 10: v8e added the `sensitivity` kind on both sides (deliberate
     # pin update per this file's convention, authorised by the v8e orchestrator).
-    assert len(job_kinds.JOB_KINDS) == 10
+    # 10 -> 12: v8f added digest-friday and digest-tuesday (deliberate pin
+    # update per this file's convention, authorised by the v8f orchestrator).
+    assert len(job_kinds.JOB_KINDS) == 12
 
 
 def test_the_protected_ordering_rails_are_carried_forward():

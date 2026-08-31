@@ -254,7 +254,9 @@ def test_v8g_adds_no_job_kinds():
     fails in its own suite rather than in somebody else's."""
     from gaffer.web.job_kinds import JOB_KINDS
 
-    assert len(JOB_KINDS) == 10
+    # 10 -> 12: v8f added digest-friday and digest-tuesday (deliberate pin
+    # update per this file's convention, authorised by the v8f orchestrator).
+    assert len(JOB_KINDS) == 12
 
 
 def test_v8g_added_no_config_key():
@@ -277,7 +279,8 @@ def test_v8g_added_no_config_key():
                 or "uncertainty" in n or "confidence" in n]
     # 47 keys as of v8f. v8g adds none, so any change to this number is a
     # config key this cycle had no business adding.
-    assert len(names) == 47
+    # 47 -> 48: v8f added [digest] notify (deliberate, orchestrator-authorised).
+    assert len(names) == 48
 
 
 # --- rail 8: protected ordering, forward -----------------------------
