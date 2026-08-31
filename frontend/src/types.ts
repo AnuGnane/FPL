@@ -281,6 +281,12 @@ export interface LivePlayer {
   tier_eo?: number | null
   tier_eo_se?: number | null
   selected_by_percent?: number | null
+  // v8d
+  projected_out?: boolean
+  projected_in?: boolean
+  sub_partner?: number | null
+  sub_reason?: string | null
+  remaining_ep?: number | null
 }
 
 export interface LiveTableRow {
@@ -290,6 +296,23 @@ export interface LiveTableRow {
   live: number
   projected: number
   delta: number
+  projected_live?: number | null
+  remaining_ep?: number | null
+  race?: number | null
+}
+
+export interface LiveSafety {
+  entry: number
+  name: string
+  role: 'above' | 'below' | 'leader'
+  margin: number
+  need: number
+}
+
+export interface LiveRacePoint {
+  at: string
+  you: number
+  leader?: number | null
 }
 
 export interface LiveState {
@@ -300,6 +323,13 @@ export interface LiveState {
   players: LivePlayer[]
   table: LiveTableRow[]
   notice?: string | null
+  my_projected_points?: number
+  my_race?: number | null
+  race_reference?: number | null
+  race_series?: LiveRacePoint[]
+  safety?: LiveSafety[]
+  leader_name?: string | null
+  race_notice?: string | null
 }
 
 export interface HistoryData {
