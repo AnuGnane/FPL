@@ -1092,3 +1092,14 @@ export interface ConfidenceTier {
 export interface ConfidenceData {
   captain: ConfidenceTier
 }
+
+export interface WatchRow {
+  code: number
+  name: string
+  note: string
+  set_at: string
+}
+
+export interface WatchlistPanel {
+  rows: WatchRow[]
+}

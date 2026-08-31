@@ -6,15 +6,15 @@ import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Players from './Players'
 
-const { apiGet, apiPost } = vi.hoisted(() => ({
-  apiGet: vi.fn(), apiPost: vi.fn(),
+const { apiGet, apiPost, apiDelete } = vi.hoisted(() => ({
+  apiGet: vi.fn(), apiPost: vi.fn(), apiDelete: vi.fn(),
 }))
 
 vi.mock('../api/client', () => ({
   ApiError: class extends Error { status = 0; detail: unknown = null },
   apiGet: (path: string) => apiGet(path),
   apiPost: (path: string, body: unknown) => apiPost(path, body),
-  apiDelete: vi.fn(),
+  apiDelete: (path: string) => apiDelete(path),
 }))
 
 vi.mock('./players/ComparePanel', () => ({
@@ -44,9 +44,13 @@ const ROWS = [
 beforeEach(() => {
   apiGet.mockReset()
   apiPost.mockReset()
+  apiDelete.mockReset()
   apiPost.mockResolvedValue({ active: true, rows: [], warning: null })
   apiGet.mockImplementation((path: string) => (
     path.startsWith('/api/players') ? Promise.resolve(ROWS)
+      : path === '/api/watchlist'
+        ? Promise.resolve({ rows: [{ code: 1, name: 'Salah', note: '',
+                                     set_at: '' }] })
       : path === '/api/overrides'
         ? Promise.resolve({ active: true, rows: [], warning: null })
         : path === '/api/advice/latest'
@@ -230,4 +234,50 @@ describe('Players hub', () => {
     expect(screen.getByRole('button', { name: 'pin Saka' }))
       .toHaveTextContent('Pin')
   })
+})
+
+describe('the watchlist star', () => {
+  it('reads the standing stars once and marks their rows', async () => {
+    // The pinned-codes idiom: one read on mount, then kept current from the
+    // endpoint's own answer, so the table says which rows are starred without
+    // a round trip per row.
+    render(<MemoryRouter><Players /></MemoryRouter>)
+    expect(await screen.findByLabelText('unstar Salah')).toBeInTheDocument()
+    expect(screen.getByLabelText('star Saka')).toBeInTheDocument()
+  })
+
+  it('stars a player and flips the button without refetching the table',
+    async () => {
+      apiPost.mockResolvedValue({
+        rows: [{ code: 1, name: 'Salah', note: '', set_at: '' },
+               { code: 2, name: 'Saka', note: '', set_at: '' }],
+      })
+      render(<MemoryRouter><Players /></MemoryRouter>)
+      await userEvent.click(await screen.findByLabelText('star Saka'))
+      expect(await screen.findByLabelText('unstar Saka')).toBeInTheDocument()
+      expect(apiPost).toHaveBeenCalledWith('/api/watchlist',
+                                           { code: 2, note: '' })
+    })
+
+  it('unstars a starred player', async () => {
+    apiDelete.mockResolvedValue({ rows: [] })
+    render(<MemoryRouter><Players /></MemoryRouter>)
+    await userEvent.click(await screen.findByLabelText('unstar Salah'))
+    expect(await screen.findByLabelText('star Salah')).toBeInTheDocument()
+    expect(apiDelete).toHaveBeenCalledWith('/api/watchlist/1')
+  })
+
+  it('leaves the explorer usable when the watchlist endpoint is down',
+    async () => {
+      // The whole hub must render on a clone whose reports/ directory is empty.
+      apiGet.mockImplementation((path: string) => (
+        path.startsWith('/api/players') ? Promise.resolve(ROWS)
+          : path === '/api/watchlist'
+            ? Promise.reject(new Error('watchlist unavailable'))
+          : Promise.reject(new Error(`unexpected ${path}`))
+      ))
+      render(<MemoryRouter><Players /></MemoryRouter>)
+      expect(await screen.findByText('Salah')).toBeInTheDocument()
+      expect(screen.getByLabelText('star Salah')).toBeInTheDocument()
+    })
 })

@@ -1,12 +1,14 @@
 import * as Tabs from '@radix-ui/react-tabs'
 import { useEffect, useState } from 'react'
-import { apiGet } from '../api/client'
+import { apiDelete, apiGet, apiPost } from '../api/client'
 import { useDebounced } from '../api/useDebounced'
 import {
   type Column, Card, DataTable, EmptyState, Loading, PageHeader, PlayerName,
   PosBadge, Sparkline, fmtNum, posColor,
 } from '../kit'
-import type { AdviceLatest, OverridesPanel, PlayerRow } from '../types'
+import type {
+  AdviceLatest, OverridesPanel, PlayerRow, WatchlistPanel,
+} from '../types'
 import ComparePanel from './players/ComparePanel'
 import FixtureMatrix from './players/FixtureMatrix'
 import PinDialog from './players/PinDialog'
@@ -33,6 +35,10 @@ export default function Players() {
   // dialog's own answer, so the table says which of these numbers are the
   // manager's own without a second round trip per save.
   const [pinned, setPinned] = useState<number[]>([])
+  // Starred codes. Read once on mount and then kept current from each write's
+  // own answer, exactly as `pinned` is: the alternative is a GET per star, on
+  // a table of six hundred rows.
+  const [starred, setStarred] = useState<number[]>([])
   // Every keystroke drove a GET, and five letters is five requests whose
   // answers can land out of order — the last one back wins, not the last typed.
   const settledSearch = useDebounced(search)
@@ -42,6 +48,23 @@ export default function Players() {
       .then((panel) => setPinned(panel.rows.map((r) => r.code)))
       .catch(() => setPinned([]))
   }, [])
+
+  useEffect(() => {
+    apiGet<WatchlistPanel>('/api/watchlist')
+      .then((panel) => setStarred(panel.rows.map((r) => r.code)))
+      .catch(() => setStarred([]))
+  }, [])
+
+  // A star is a bookmark, so a failed write is silence rather than an error
+  // state: the button simply does not flip, and the explorer is untouched.
+  const toggleStar = (code: number) => {
+    const on = starred.includes(code)
+    const request = on
+      ? apiDelete<WatchlistPanel>(`/api/watchlist/${code}`)
+      : apiPost<WatchlistPanel>('/api/watchlist', { code, note: '' })
+    request.then((panel) => setStarred(panel.rows.map((r) => r.code)))
+      .catch(() => {})
+  }
 
   useEffect(() => {
     apiGet<AdviceLatest>('/api/advice/latest')
@@ -123,6 +146,20 @@ export default function Players() {
     { key: 'last4', header: 'Last 4', numeric: true,
       value: (r) => r.last4.length ? r.last4[r.last4.length - 1] : null,
       render: (r) => <Sparkline values={r.last4} /> },
+    {
+      key: 'star', header: '', value: () => '',
+      render: (r) => (
+        <button
+          type="button"
+          aria-label={`${starred.includes(r.code) ? 'unstar' : 'star'} `
+            + `${r.name}`}
+          onClick={() => toggleStar(r.code)}
+          className="px-1 text-text-muted hover:text-text"
+        >
+          {starred.includes(r.code) ? '★' : '☆'}
+        </button>
+      ),
+    },
     {
       key: 'pin', header: '', value: () => '',
       render: (r) => (

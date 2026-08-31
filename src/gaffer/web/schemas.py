@@ -1302,3 +1302,29 @@ class Misses(BaseModel):
     """``None`` when no gameweek has both a banked forecast and a banked
     result. That is an absent card, not a card of zeros (spec D1)."""
     rows: list[MissRow] = Field(default_factory=list)
+
+
+class WatchRequest(BaseModel):
+    """A star, and optionally a sentence about why."""
+
+    code: int
+    note: str = ""
+
+
+class WatchRow(BaseModel):
+    code: int
+    name: str
+    note: str
+    set_at: str
+
+
+class WatchlistPanel(BaseModel):
+    """Every starred player, name-resolved.
+
+    ``rows`` is empty on a fresh clone and on a broken store alike — the
+    distinction is a printed line on the server, not a field here, because a
+    client that rendered "your watchlist may be corrupt" would be showing the
+    user a problem they cannot act on.
+    """
+
+    rows: list[WatchRow] = Field(default_factory=list)
