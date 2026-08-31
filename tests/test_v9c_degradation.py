@@ -331,3 +331,45 @@ def test_the_jobs_routes_are_the_four_plus_the_new_delete(tmp_path,
     monkeypatch.chdir(tmp_path)
     schema = create_app().openapi()["paths"]
     assert set(schema["/api/jobs/current"]) == {"get", "delete"}
+
+
+# =====================================================================
+# Review I1 — the advice artifact is written atomically
+# =====================================================================
+
+def test_the_advice_artifact_is_written_through_a_temp_and_os_replace():
+    """Review I1, source-pinned because ``tests/test_advise.py`` is protected
+    and ``run_advise`` is not callable without the whole pipeline behind it.
+
+    Three docstrings — ``JobRunner._abandon_current``, ``abandon_current`` and
+    ``cancel_current`` — now rest on "every job kind writes its artifacts
+    idempotently", which is the argument that makes abandoning a wedged job
+    safe. A plain ``write_text`` does not clear that bar: it is idempotent
+    across whole runs but *interruptible* within one, and the abandoned thread
+    that keeps running is precisely the caller that can be halfway through it
+    while its replacement reads the file. The house idiom (``digest.py``) is a
+    pid-suffixed temp plus ``os.replace``.
+    """
+    import inspect
+
+    import gaffer.advise as advise_mod
+
+    source = inspect.getsource(advise_mod)
+    start = source.index('f"gw{gw}-advice.json"')
+    window = source[start - 600:start + 600]
+    assert "os.replace" in window
+    assert "os.getpid()" in window
+    assert ".tmp" in window
+    # And the non-atomic form is gone, not merely joined.
+    assert 'f"gw{gw}-advice.json").write_text' not in source
+
+
+def test_the_digest_writer_this_borrowed_from_still_uses_the_same_idiom():
+    """If ``digest.py`` ever stops being the reference, the comment in
+    ``advise.py`` pointing at it becomes a lie. Cheap to notice here."""
+    import inspect
+
+    import gaffer.digest as digest_mod
+
+    source = inspect.getsource(digest_mod)
+    assert "os.replace" in source and "os.getpid()" in source

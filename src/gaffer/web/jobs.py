@@ -362,8 +362,12 @@ class JobRunner:
         # prints while the job holds the lane goes on reaching the terminal.
         mine = threading.get_ident()
         real_out, real_err = sys.stdout, sys.stderr
-        sys.stdout = _ThreadRouter(mine, writer, real_out)
-        sys.stderr = _ThreadRouter(mine, writer, real_err)
+        # v9c orchestrator-authorized protected edit (review B1): the routers
+        # are held so the restore below can check it is undoing its *own*
+        # install and not a later job's.
+        my_out = _ThreadRouter(mine, writer, real_out)
+        my_err = _ThreadRouter(mine, writer, real_err)
+        sys.stdout, sys.stderr = my_out, my_err
         status, error, summary = "failed", None, None
         try:
             result = self._kinds[run.kind]()
@@ -375,7 +379,19 @@ class JobRunner:
             writer.flush()
             # Restore before the terminal flip: the moment the lane is free the
             # next job may start, and it must not inherit a dead router.
-            sys.stdout, sys.stderr = real_out, real_err
+            #
+            # v9c orchestrator-authorized protected edit (review B1): only if
+            # the router still installed is the one *this* thread put there.
+            # An abandoned thread is still alive and reaches this line late —
+            # by then the lane, and sys.stdout, belong to its replacement, and
+            # restoring unconditionally tore that replacement's router out
+            # mid-run. The symptom was a job whose log came back empty for no
+            # reason anyone watching could see. This is the stdout half of the
+            # same hazard the lane guard below fixes.
+            if sys.stdout is my_out:
+                sys.stdout = real_out
+            if sys.stderr is my_err:
+                sys.stderr = real_err
             with self._lock:
                 # One locked block for the whole ending. Flipping the status in
                 # one and clearing the lane in a later one left a window where

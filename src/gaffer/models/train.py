@@ -26,7 +26,8 @@ from gaffer.features.engineer import (LEAGUE_CONGESTION_FEATURES,
                                       add_congestion, add_context,
                                       add_player_rolling, add_rotation,
                                       add_rotation_priors,
-                                      add_setpiece, add_shrunken_modes,
+                                      add_setpiece, add_shrunken_cards,
+                                      add_shrunken_modes,
                                       add_shrunken_rates,
                                       add_understat_rolling,
                                       add_understat_team_rolling,
@@ -198,7 +199,7 @@ def attach_understat(df: pd.DataFrame) -> pd.DataFrame:
         df = df.drop(columns=["_date"])
     df = add_understat_rolling(df)
     df = merge_understat_team(df, understat_team_rolled())
-    return add_shrunken_modes(add_shrunken_rates(df))
+    return add_shrunken_cards(add_shrunken_modes(add_shrunken_rates(df)))
 
 
 def cup_matches() -> pd.DataFrame | None:

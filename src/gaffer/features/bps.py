@@ -117,10 +117,21 @@ def as_of_club_code(df: pd.DataFrame, fixtures: pd.DataFrame) -> pd.Series:
 
     ``data/live.py`` rebuilds player history every run and stamps today's
     ``team_code`` onto every row of it, so a January transfer rewrites the
-    player's August rows under his new club. Three feature builders key on
-    club — the position-by-club prior, manager-spell scoping and the own-side
-    Elo merge — and every one of them reads a squad the player had not joined
-    (spec D2).
+    player's August rows under his new club.
+
+    v9c switched **three** consumers onto this column (spec D2): the
+    position-by-club prior in ``_shrunk_ratio``, manager-spell scoping in
+    ``add_rotation_priors``, and the own side of the Elo merge in
+    ``add_context``. Those are the three the finding named.
+
+    **Two more still read the stamped ``team_code``** and are deliberately
+    left for v9d rather than swept in here: the own-side Understat team merge
+    (``engineer.merge_understat_team``) and the club-congestion lookup
+    (``engineer.add_congestion``). Both key on club and both therefore carry
+    the same staleness; neither was in the reviewed finding, and switching a
+    feature family without measuring it is what this cycle exists to stop
+    doing. Saying so here is cheaper than a reader inferring from "three
+    builders" that the column is now the only club key in the tree.
 
     ``opp_code`` survives a transfer because it is written per row from the
     fixture, and that asymmetry is the derivation: match the row to its

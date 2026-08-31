@@ -143,15 +143,41 @@ class BonusModel:
         return out
 
 
+CARD_RATES = (("shrunk_yc_rate", "yc_r38", -1.0),
+              ("shrunk_rc_rate", "rc_r38", -3.0))
+"""``(shrunk column, raw fallback, points per card)`` for the two cards.
+
+The shrunk column is preferred and the raw rolling mean is the fallback, so a
+frame built before v9c — or any synthetic frame that carries only the rolling
+means — still produces the number it always did.
+"""
+
+
 def card_penalty(row: pd.Series) -> float:
     """Expected points from cards: -1 * yellow rate + -3 * red rate.
 
     Rates are read defensively: a missing key or a NaN (a player with no
     card history in the rolling window) counts as zero, not NaN — note that
     ``NaN or 0.0`` returns NaN, since NaN is truthy.
+
+    **The rates are shrunk, and the red one is why.** ``rc_r38`` is a rolling
+    mean of the rarest event this repo models, taken with ``min_periods=1``:
+    a player sent off on debut carries ``rc_r38 = 1.0`` into his next match,
+    and the ``-3`` coefficient turns one observation into a confident forecast
+    that he will cost his team three points. 196 rows of the current corpus
+    sat below -0.5 on that reading. ``features.engineer.add_shrunken_cards``
+    shrinks both rates toward the position-by-club prior — the empirical-Bayes
+    trade ``shrunk_goals90`` has always made, applied here to the noisiest
+    rate in the model instead of one of the least noisy.
+
+    The raw ``*_r38`` columns remain the fallback so a frame built before v9c,
+    or a synthetic one carrying only rolling means, reads exactly as it did.
     """
-    def _rate(key: str) -> float:
-        val = row.get(key, 0.0)
+    def _rate(shrunk: str, raw: str) -> float:
+        val = row.get(shrunk, None)
+        if val is None or pd.isna(val):
+            val = row.get(raw, 0.0)
         return 0.0 if pd.isna(val) else float(val)
 
-    return -1.0 * _rate("yc_r38") - 3.0 * _rate("rc_r38")
+    return sum(points * _rate(shrunk, raw)
+               for shrunk, raw, points in CARD_RATES)

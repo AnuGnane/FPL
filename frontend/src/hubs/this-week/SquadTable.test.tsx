@@ -35,6 +35,18 @@ describe('SquadTable', () => {
     expect(screen.getByText('Pens')).toBeInTheDocument()
   })
 
+  it('labels the haul chip with the quantity it actually shows', () => {
+    // v9c D3. Two different numbers were called a "haul" in this tool: this
+    // one is the band's P(total points >= 10), and the advice payload carries
+    // a Poisson P(2+ attacking returns) that the HTML report renders as
+    // "P(2+ returns)". The chip used to say a bare "haul", which named
+    // neither. Pinned so a later tidy-up cannot quietly put the ambiguity
+    // back.
+    render(<SquadTable rows={[{ ...ROWS[0], pHaul: 0.42 }]} breakdown={{}} />)
+    expect(screen.getByText('10+ pts 42%')).toBeInTheDocument()
+    expect(screen.queryByText('haul 42%')).not.toBeInTheDocument()
+  })
+
   it('shows an em dash for a missing sim percentage', () => {
     render(<SquadTable rows={ROWS} breakdown={{}} />)
     const row = screen.getByText('Gabriel').closest('tr')!

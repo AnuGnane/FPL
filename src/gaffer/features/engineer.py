@@ -29,11 +29,22 @@ D1). No model's feature list names an ``rc_*`` column — every list in this
 repo is explicit — so the only consumer is the closed-form penalty above.
 
 Measured, v9c G1 (2024-25 walk-forward, transcribed from the
-``V9C_ARM_DONE`` lines): baseline zeros/haulers/all RMSE
-1.066 / 5.179 / 1.968, with ``rc`` 1.065 / 5.181 / 1.968 (zeros_n 16279 both
-arms). Costs -0.001 / +0.002 / 0.000 against the pre-registered
-non-regression tolerance of 0.005: no stratum breaches, decision ``ship``.
-The term is live for the first time. Shipped.
+``V9C_ARM_DONE`` lines): with the red term ablated in ``card_penalty``,
+zeros/haulers/all RMSE 1.064 / 5.207 / 1.969; with it live,
+1.063 / 5.208 / 1.969 (zeros_n 16279 both arms). Costs
+-0.001 / +0.001 / 0.000 against the pre-registered non-regression tolerance
+of 0.005: no stratum breaches, decision ``ship``. The term is live for the
+first time. Shipped.
+
+Two things about that measurement, both of which matter more than the numbers.
+The rate the term reads is the *shrunk* one
+(:func:`add_shrunken_cards`), not the raw ``rc_r38`` an earlier draft used —
+see :data:`SHRINK_K_CARD` for the debut sending-off that forced it. And the
+arm's lever is the term itself rather than this list: after the shrinkage
+landed, removing ``"rc"`` here stopped switching the term off at all, because
+``add_shrunken_cards`` reads the raw ``rc`` column and not the rolled one. The
+rolled block stays because it is ``card_penalty``'s documented fallback for a
+frame built before v9c.
 """
 
 WINDOWS = [1, 3, 5, 10, 38]
@@ -439,6 +450,11 @@ def latest_rotation_priors(hist: pd.DataFrame,
         pd.concat([h.assign(_probe=False), probe.assign(_probe=True)],
                   ignore_index=True), tenures)
     out = both[both["_probe"].fillna(False).astype(bool)].copy()
+    # ``team_code`` and not ``as_of_club`` here, and the two are equivalent
+    # only because the probe frame is built without a ``club_code`` column —
+    # ``as_of_club`` would fall back to exactly this. Said out loud so the
+    # next reader does not take it for an oversight, or "fix" it by adding a
+    # column the probe has no way to derive.
     out["_prior_spell"] = spell_keys(
         out["team_code"],
         pd.Series(stamp, index=out.index),
@@ -659,9 +675,14 @@ def add_context(df: pd.DataFrame, elo: pd.DataFrame | None,
         df["_club"] = as_of_club(df)
         team_elo = elo.rename(columns={"code": "_club",
                                        "elo_pre": "team_elo"})
-        df = df.merge(team_elo, on=["season_idx", "gw", "_club"], how="left")
+        # validate=, like the Understat merges above: one Elo row per club per
+        # gameweek is the invariant, and a duplicated one would fan the frame
+        # out silently rather than fail here.
+        df = df.merge(team_elo, on=["season_idx", "gw", "_club"], how="left",
+                      validate="many_to_one")
         opp_elo = elo.rename(columns={"code": "opp_code", "elo_pre": "opp_elo"})
-        df = df.merge(opp_elo, on=["season_idx", "gw", "opp_code"], how="left")
+        df = df.merge(opp_elo, on=["season_idx", "gw", "opp_code"], how="left",
+                      validate="many_to_one")
         if elo_final:
             df["team_elo"] = df["team_elo"].fillna(df["_club"].map(elo_final))
             df["opp_elo"] = df["opp_elo"].fillna(df["opp_code"].map(elo_final))
@@ -790,17 +811,20 @@ def build_prediction_frame(hist: pd.DataFrame, future: pd.DataFrame,
     us = latest_understat_rolling(hist, US_WINDOWS)
     shrunk = latest_shrunken_rates(hist)
     modes = latest_shrunken_modes(hist)
+    cards = latest_shrunken_cards(hist)
     frame = pd.concat(
         [out.drop(columns=list(latest.columns) + ROTATION_FEATURES
                   + ROTATION_PRIOR_FEATURES
                   + list(us.columns) + SHRUNK_FEATURES
-                  + SHRUNK_MODE_FEATURES, errors="ignore"),
+                  + SHRUNK_MODE_FEATURES + SHRUNK_CARD_FEATURES,
+                  errors="ignore"),
          latest.reindex(out["code"]).reset_index(drop=True),
          rot.drop(columns=["_rot_season_idx"]),
          pri,
          us.reindex(out["code"]).reset_index(drop=True),
          shrunk.reindex(out["code"]).reset_index(drop=True),
-         modes.reindex(out["code"]).reset_index(drop=True)], axis=1)
+         modes.reindex(out["code"]).reset_index(drop=True),
+         cards.reindex(out["code"]).reset_index(drop=True)], axis=1)
     return merge_understat_team(
         frame.drop(columns=TEAM_US_FEATURES, errors="ignore"),
         understat_team,
@@ -822,7 +846,8 @@ def feature_columns(stats: list[str] = ROLL_STATS,
             + ROTATION_PRIOR_FEATURES
             + CONGESTION_FEATURES + LEAGUE_CONGESTION_FEATURES
             + understat_feature_columns() + TEAM_US_FEATURES
-            + SHRUNK_FEATURES + SHRUNK_MODE_FEATURES)
+            + SHRUNK_FEATURES + SHRUNK_MODE_FEATURES
+            + SHRUNK_CARD_FEATURES)
 
 
 US_STATS = ["us_shots", "us_key_passes", "us_npxg", "us_xgchain",
@@ -1003,6 +1028,25 @@ convention v4b used for ``SHRINK_K = 20``.
 
 SHRINK_K_MODE_GRID = [2.0, 4.0, 8.0, 16.0]
 SHRUNK_MODE_FEATURES = ["shrunk_start_rate", "shrunk_min_per_app"]
+
+SHRINK_K_CARD = 20.0
+"""Prior weight, in matches, for the card rates.
+
+The grid's heavy-shrinkage end, chosen for the same reason :data:`SHRINK_K`
+sits there and more so: a red card is the rarest event this repo models, so a
+player's own record is almost pure noise until he has a season of it.
+
+The number this defends against is concrete. ``rc_r38`` is a rolling mean with
+``min_periods=1``, so a player sent off on debut carries ``rc_r38 = 1.0`` into
+his next match, and ``card_penalty``'s ``-3`` coefficient turns that into
+``e_cards = -3.00`` — a claim that a footballer will lose his team three
+points to cards, from one observation. On the current corpus 196 rows sit
+below -0.5 on the unshrunk rate. Shrinking toward the position-by-club prior
+is the same empirical-Bayes trade ``shrunk_goals90`` makes, applied to the
+noisiest rate in the model rather than to one of the least noisy.
+"""
+
+SHRUNK_CARD_FEATURES = ["shrunk_yc_rate", "shrunk_rc_rate"]
 
 
 def _shrunk_ratio(df: pd.DataFrame, val: pd.Series, den: pd.Series,
@@ -1252,6 +1296,75 @@ def latest_shrunken_modes(hist: pd.DataFrame,
     h = hist.sort_values(sort_cols).reset_index(drop=True)
     out = pd.DataFrame({"code": h["code"]})
     for col, val, den in _mode_rate_parts(h):
+        out[col] = (_shrunk_ratio(h, val, den, k, as_of_end=True)
+                    if val is not None else float("nan"))
+    return out.groupby("code", sort=False).tail(1).set_index("code")
+
+
+def _card_rate_parts(df: pd.DataFrame):
+    """``(column, numerator, denominator)`` for each card rate.
+
+    One place defines what the two rates are made of, so
+    :func:`add_shrunken_cards` and :func:`latest_shrunken_cards` cannot drift
+    apart — the same train/serve skew :func:`_mode_rate_parts` exists to
+    prevent, and this module keeps repeating itself about.
+
+    The denominator is *matches*, not nineties, because that is the scale
+    ``card_penalty`` reads: its coefficients are points per booking and per
+    sending-off per appearance, and the rolling ``yc_r38``/``rc_r38`` these
+    replace were per-match means too. Changing the denominator here would
+    silently rescale the penalty.
+    """
+    ones = pd.Series(1.0, index=df.index, dtype="float64")
+    # The prior keys are part of the requirement, not just the numerators —
+    # see _mode_rate_parts. A frame without them yields the all-NaN column
+    # this module gives any feature whose source is absent.
+    needed = {"position", "team_code", "season_idx", "gw"}
+    for stat, col in (("yc", "shrunk_yc_rate"), ("rc", "shrunk_rc_rate")):
+        if stat in df.columns and needed <= set(df.columns):
+            yield col, pd.to_numeric(df[stat], errors="coerce").fillna(0.0), ones
+        else:
+            yield col, None, None
+
+
+def add_shrunken_cards(df: pd.DataFrame,
+                       k: float = SHRINK_K_CARD) -> pd.DataFrame:
+    """``shrunk_yc_rate`` and ``shrunk_rc_rate``, per match.
+
+    The rates :func:`gaffer.models.components.card_penalty` reads. It used to
+    read the raw rolling means, and ``rc_r38`` in particular is a rolling mean
+    of the rarest event in the model with ``min_periods=1`` — one sending-off
+    on debut and the next match's forecast loses three points. Shrinking
+    toward the position-by-club prior is the trade ``shrunk_goals90`` already
+    makes; see :data:`SHRINK_K_CARD` for why the weight is at the heavy end.
+
+    Rows before the prior has any evidence at all come back NaN, and
+    ``card_penalty``'s own NaN guard reads that as zero — which is the right
+    answer for a player nobody has seen yet.
+    """
+    sort_cols = [c for c in ("code", "season_idx", "gw", "kickoff_time")
+                 if c in df.columns]
+    out = df.sort_values(sort_cols).reset_index(drop=True)
+    for col, val, den in _card_rate_parts(out):
+        out[col] = (_shrunk_ratio(out, val, den, k) if val is not None
+                    else float("nan"))
+    return out
+
+
+def latest_shrunken_cards(hist: pd.DataFrame,
+                          k: float = SHRINK_K_CARD) -> pd.DataFrame:
+    """Each player's as-of-today card rates, indexed by ``code``.
+
+    The same as-of-end contract :func:`latest_shrunken_modes` keeps and for
+    the same reason: the stored training column excludes each row's own match
+    by construction, so tailing it would serve a vector one match stale — a
+    Saturday red card reaching the model a week after it mattered.
+    """
+    sort_cols = [c for c in ("code", "season_idx", "gw", "kickoff_time")
+                 if c in hist.columns]
+    h = hist.sort_values(sort_cols).reset_index(drop=True)
+    out = pd.DataFrame({"code": h["code"]})
+    for col, val, den in _card_rate_parts(h):
         out[col] = (_shrunk_ratio(h, val, den, k, as_of_end=True)
                     if val is not None else float("nan"))
     return out.groupby("code", sort=False).tail(1).set_index("code")

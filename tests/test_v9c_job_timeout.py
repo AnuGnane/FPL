@@ -233,3 +233,49 @@ def test_the_delete_route_shares_the_path_with_the_get(client_and_release):
     client, _, _ = client_and_release
     paths = client.app.openapi()["paths"]
     assert set(paths["/api/jobs/current"]) == {"get", "delete"}
+
+
+# --- review B1: the abandoned thread must not blind its replacement --------
+
+def test_an_abandoned_thread_finishing_late_does_not_blind_the_replacement(
+        monkeypatch):
+    """Review B1, and the stdout half of test 4's hazard.
+
+    ``_execute`` installs a ``_ThreadRouter`` over ``sys.stdout`` and used to
+    restore the real stream unconditionally in its ``finally``. An abandoned
+    thread is still alive and reaches that line *late* — by which time
+    ``sys.stdout`` is the replacement job's router, and tearing it out means
+    the replacement's log comes back empty for no reason anyone watching can
+    see. The restore now checks it is undoing its own install.
+    """
+    monkeypatch.setattr(jobs_module, "ADVISE_TIMEOUT_S", 0.05)
+    wedged_may_finish = threading.Event()
+    second_started = threading.Event()
+    second_may_finish = threading.Event()
+
+    def wedged():
+        print("first job line")
+        wedged_may_finish.wait(5.0)
+        print("first job, far too late")
+
+    def replacement():
+        second_started.set()
+        second_may_finish.wait(5.0)
+        # Printed *after* the abandoned thread has run its finally.
+        print("replacement job line")
+
+    runner = JobRunner({"advise": wedged, "evaluate": replacement})
+    first = runner.start("advise")
+    time.sleep(0.1)
+    second = runner.start("evaluate")
+    assert second_started.wait(5.0)
+
+    # Let the abandoned thread run its finally while the replacement is live.
+    wedged_may_finish.set()
+    _wait(runner, first)
+    time.sleep(0.05)
+
+    second_may_finish.set()
+    run = _wait(runner, second)
+    assert "replacement job line" in run.lines, (
+        "the abandoned thread's finally tore out the replacement's router")

@@ -190,3 +190,20 @@ def test_a_move_with_no_frequency_gets_no_frequency_span(tmp_path):
     assert "85% of sims" in html
     assert "—% of sims" not in html
     assert html.count("% of sims") == 1
+
+
+def test_the_haul_columns_say_which_haul_they_are(tmp_path):
+    """v9c D3, pinned where it is rendered. Two different quantities were
+    called "P(haul)" in this tool: the band's P(total points >= 10) and the
+    attacking P(2+ returns) under a Poisson. This template carries the
+    attacking one, so its headers say so — a reader comparing the report
+    against This Week's "10+ pts" chip is looking at two different numbers
+    and the labels have to admit it.
+
+    The *field* is still ``p_haul``: the template reads the on-disk artifact,
+    which v9c deliberately left byte-untouched so digest and the
+    since-last-run diff go on reading what they always read.
+    """
+    html = render_report(_advice(), out_dir=tmp_path).read_text()
+    assert "P(2+ returns)" in html
+    assert "P(haul)" not in html

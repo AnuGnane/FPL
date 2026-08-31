@@ -30,45 +30,52 @@ Killing a wedged job's thread (abandon-only, matching the module's stated design
 
 **Suite baselines**, re-measured on the merged-`main` branch point `99baf50`: **2746 Python passed; 553 frontend passed + 1 skipped** (65 files).
 
-### D1 — the red-card arm (`scripts/v9c_rc_arm.py`, `logs/v9c_rc_arm.log`)
+### D1 — the red-card arm (`scripts/v9c_rc_arm.py`, `logs/v9c_rc_arm_redterm.log`)
 
-Transcribed verbatim from the log:
+**Measured three times. The first two measurements were wrong, and how they were wrong is the useful part of this section.**
+
+*Run 1 (`logs/v9c_rc_arm.log`)* gated the raw `rc_r38` rate: baseline 1.066 / 5.179 / 1.968, `+rc` 1.065 / 5.181 / 1.968, costs −0.001 / +0.002 / 0.000, decision ship. Correct for what it measured — but adversarial review then found what it was measuring. `rc_r38` is a rolling mean of the rarest event in the model taken with `min_periods=1`, so a player sent off on debut carried a rate of **1.0** and `card_penalty`'s −3 turned that into `e_cards = -3.00` from one observation. 196 rows of the corpus sat below −0.5. The arm had passed a term whose worst case was a fabrication (review I3).
+
+*Run 2 (`logs/v9c_rc_arm_shrunk.log`)*, after shrinking the rate through the `_shrunk_ratio` idiom, reported costs of **exactly 0.000 on all three strata** — with a training frame that genuinely differed by five columns (149 vs 154), so the plan's A3 mutable-default guard passed. It was still measuring nothing. Shrinkage made `card_penalty` read `shrunk_rc_rate`, which `add_shrunken_cards` builds from the **raw** `rc` column in `CANONICAL_COLS`; removing `"rc"` from `ROLL_STATS` no longer switched the term off. A gate whose lever had come loose, reporting ship. That is the same shape of defect D1 exists to close, which is why the driver now refuses to report when both arms score identically.
+
+*Run 3, the one that counts,* puts the lever on the term itself — `models.components.CARD_RATES` with the red row removed:
 
 ```
-V9C_ARM_DONE baseline {"zeros": 1.066, "haulers": 5.179, "all": 1.968, "zeros_n": 16279}
-V9C_ARM_DONE rc {"zeros": 1.065, "haulers": 5.181, "all": 1.968, "zeros_n": 16279}
-V9C_VERDICT rc {"zeros_cost": -0.001, "haulers_cost": 0.002, "all_cost": 0.0, "tolerance": 0.005, "decision": "ship"}
+V9C_ARM_WIDTHS {"without_rc": 149, "with_rc": 154}
+V9C_ARM_DONE baseline {"zeros": 1.064, "haulers": 5.207, "all": 1.969, "zeros_n": 16279}
+V9C_ARM_DONE rc {"zeros": 1.063, "haulers": 5.208, "all": 1.969, "zeros_n": 16279}
+V9C_VERDICT rc {"zeros_cost": -0.001, "haulers_cost": 0.001, "all_cost": 0.0, "tolerance": 0.005, "decision": "ship"}
 V9C_DECISION ship
 ```
 
 | Arm | zeros RMSE | haulers RMSE | all RMSE | zeros n |
 | --- | --- | --- | --- | --- |
-| baseline (`ROLL_STATS` without `rc`) | 1.066 | 5.179 | 1.968 | 16279 |
-| `+rc` | 1.065 | 5.181 | 1.968 | 16279 |
-| cost (arm − base) | −0.001 | +0.002 | 0.000 | — |
+| red term ablated | 1.064 | 5.207 | 1.969 | 16279 |
+| red term live (shipped) | 1.063 | 5.208 | 1.969 | 16279 |
+| cost (arm − base) | −0.001 | +0.001 | 0.000 | — |
 
-The pre-registered non-regression rule (plan A4, tolerance 0.005, fixed in the driver's docstring before the run) is satisfied on all three strata — the largest cost is +0.002 on haulers, well inside tolerance, and zeros actually improves by 0.001. **Branch A: shipped.** The `-3 * rc_r38` term is live for the first time since it was written; the numbers are transcribed into `ROLL_STATS`'s docstring, which is the place a reader of the list will look.
+No stratum breaches the pre-registered 0.005 non-regression tolerance. **Branch A: shipped**, on the shrunk rate, with the term live for the first time since it was written.
 
-The effect being this small is the expected shape rather than a disappointment: a red card is rare, a 38-match mean of it is a very small number, and D1 was never an improvement hunt — it was a term the model documented and never applied. The measurement says switching it on costs nothing.
+The effect is small and always was going to be: a red card is rare, and D1 was never an improvement hunt. What the three runs bought is worth more than the delta — the term is now both *live* and *bounded*, where before the review it was live and capable of asserting −3.00 expected points off a single sending-off.
 
 ### D2 — the as-of club (`scripts/v9c_club_eval.py`, `logs/v9c_club_eval.log`)
 
 Not a gate. Spec §0 D2 says the fix ships whether or not eval improves, because a regression here would mean the old number was flattered by leakage. What follows is the measurement contract (plan A11), recorded honestly.
 
-**Coverage and divergence**, transcribed from `V9C_CLUB_COVERAGE`:
+**Coverage and divergence**, transcribed from `V9C_CLUB_COVERAGE` (`logs/v9c_club_eval_v2.log`). The match rate is the **fixture-join rate measured before the fallback is applied** — the first version of this script reported `club_code.notna()`, which is 100 % by construction because the fallback fills every row, and a metric that cannot come out below 100 % measures nothing (review I5):
 
-| season_idx | rows | diverging | diverging fraction |
-| --- | --- | --- | --- |
-| 0 | 26,505 | 307 | 1.158 % |
-| 1 | 29,725 | 175 | 0.589 % |
-| 2 | 27,283 | 256 | 0.938 % |
-| 3 | 29,757 | 322 | 1.082 % |
-| 4 (live) | 610 | 9 | 1.475 % |
-| **total** | **113,880** | **1,069** | **0.939 %** |
+| season_idx | rows | matched | match rate | diverging | diverging % of matched |
+| --- | --- | --- | --- | --- | --- |
+| 0 | 26,505 | 26,505 | 100.0 % | 307 | 1.158 % |
+| 1 | 29,725 | 29,725 | 100.0 % | 175 | 0.589 % |
+| 2 | 27,283 | 27,283 | 100.0 % | 256 | 0.938 % |
+| 3 | 29,757 | 29,757 | 100.0 % | 322 | 1.082 % |
+| 4 (live) | 610 | 610 | 100.0 % | 9 | 1.475 % |
+| **total** | **113,880** | **113,880** | **100.0 %** | **1,069** | **0.939 %** |
 
-`club_code` is populated on all 113,880 rows — the fallback is total, never NaN, which is the G2 clause. The "off" arm (`bps.as_of_club_code` monkeypatched to the stamped `team_code`) reports 0 diverging rows, which is what makes the guard pass and the comparison meaningful.
+The match rate comes out at 100 % on this store, and now that is a finding rather than a tautology: every history row the training frame carries resolved to an archived fixture, so the "seasons with no fixture list" fallback that §3 puts out of scope is currently exercising on zero rows. `club_code` is populated on all 113,880 rows and NaN on none, which is the G2 clause. The "off" arm reports 0 diverging rows, which is what makes the guard pass and the comparison meaningful.
 
-**The leak, measured: 0.94 % of history rows were training under a club the player was not at.** Small, and it was always going to be small — it is exactly the transfer rate of the player pool. It is not zero, and it was concentrated in whole seasons of individual players rather than scattered.
+**The leak, measured: 0.94 % of matched history rows were training under a club the player was not at.** Small, and it was always going to be small — it is exactly the transfer rate of the player pool. It is not zero, and it was concentrated in whole seasons of individual players rather than scattered.
 
 **`V9C_CLUB_DEMO`** — the driver picked its own example (most diverging rows, so it cannot be a flattering choice): **James Ward-Prowse, code 101178, season_idx 3, 45 diverging rows.** His whole season is stamped `team_code = 90`; the derivation reads `club_code = 21` for GW1–23 and `club_code = 90` from GW24 on. GW11's row is the tell — `opp_code = 90`, i.e. he *played against* the club the store says he was at. Before this cycle those 23 rows trained his manager-spell, his position-by-club prior and his own-side Elo under a squad he joined in January.
 
@@ -115,6 +122,12 @@ The driver now symlinks all three from the branch worktree, which is what
 makes "the only thing that differs is the code" a fact rather than an
 assumption.
 
+### Residuals — carried to v9d
+
+- **Two club-keyed consumers still read the stamped `team_code`**: the own side of the Understat team merge (`engineer.merge_understat_team`) and the club-congestion lookup (`engineer.add_congestion`). Both carry exactly the staleness D2 fixed elsewhere. Neither was in the reviewed finding, and switching a feature family without measuring it is the habit this cycle exists to break — so they are named here and in `as_of_club_code`'s docstring rather than swept in. v9d work, behind its own arm.
+- **The SSE stream still pins a threadpool worker per watched run** for up to `IDLE_TIMEOUT_S = 3600` (spec §3, unchanged).
+- **`rc_r38` and its four siblings are now dead weight on the live path** — nothing reads them except `card_penalty`'s pre-v9c fallback. Five columns is cheap and the fallback is real, so they stay; worth revisiting if the frame width ever matters.
+
 ### D3 — the haul split
 
 (Filled after G1.)
@@ -127,16 +140,20 @@ assumption.
 
 **G3 — suites, types, build, audit (measured by the implementer):**
 
-- [x] `uv run pytest -q` — **2817 passed** (merged-main baseline 2746 + 71 new)
+- [x] `uv run pytest -q` — **2825 passed** (merged-main baseline 2746 + 79 new,
+      the review round included)
 - [x] `npx tsc --noEmit` — clean
-- [x] `npx vitest run` — **553 passed, 1 skipped** (baseline 553 + 1; this
-      cycle's frontend change is a two-word label and adds no test)
+- [x] `npx vitest run` — **554 passed, 1 skipped** (baseline 553 + 1: the
+      review's I7 pin on the relabelled haul chip)
 - [x] `npm run build` — clean
-- [x] Protected diff EMPTY except D4's four authorized line groups in
-      `web/jobs.py` and `routers/jobs.py`, each provenance-commented:
-      `_abandon_current`/`abandon_current`, `start`'s reap, `_execute`'s
-      conditional finally, `DELETE /api/jobs/current`. The only *removed*
-      lines in either file are Group 3's five, replaced by the guarded form.
+- [x] Protected diff EMPTY except the **six** authorized line groups, each
+      provenance-commented. D4's four (plan T7): `_abandon_current` /
+      `abandon_current`, `start`'s reap, `_execute`'s conditional finally, and
+      `DELETE /api/jobs/current`. The review round's two: B1's guarded
+      stdout/stderr restore in `_execute` (`web/jobs.py`), and I1's atomic
+      advice-artifact write in `advise.py` — the cycle's only line in that
+      file, and the one that makes the abandonment docstrings' idempotency
+      claim actually true.
 - [x] Pin diff EMPTY: job kinds still 12, config fields still 48,
       `config.example.toml` and `frontend/src/types.ts` job lists untouched;
       no pre-existing degradation rail modified (`git diff main --stat --
@@ -156,14 +173,17 @@ the rule was applied mechanically and the numbers are in §4 above.**
 - [x] `scripts/v9c_rc_arm.py` run; `V9C_ARM_DONE` lines for both arms and the
       `V9C_VERDICT` line transcribed verbatim into §4.
 - [x] The pre-registered non-regression rule (tolerance 0.005) applied as
-      written: costs −0.001 / +0.002 / 0.000, no stratum breaches,
-      `V9C_DECISION ship`. Branch A taken; the numbers are in `ROLL_STATS`'s
-      docstring.
+      written, on the third and only valid run: costs −0.001 / +0.001 / 0.000,
+      no stratum breaches, `V9C_DECISION ship`. Branch A taken; the numbers
+      are in `ROLL_STATS`'s docstring. The first two runs and why they were
+      invalid — an unshrunk rate, then a disconnected lever — are recorded in
+      §4 rather than quietly replaced.
 
 *D2 — the as-of club* — **run in-branch under orchestrator authorization; §4
 carries the tables.**
-- [x] `V9C_CLUB_COVERAGE`: 113,880 rows, `club_code` populated on all of them,
-      1,069 diverging (0.939 %), per-season breakdown in §4.
+- [x] `V9C_CLUB_COVERAGE`: 113,880 rows, fixture-join match rate 100.0 %
+      (measured pre-fallback, review I5), 1,069 diverging = 0.939 % of matched
+      rows; per-season breakdown in §4.
 - [x] `V9C_CLUB_DEMO`: James Ward-Prowse (code 101178, season_idx 3), chosen
       by the driver — 45 rows where `club_code` is 21 while `team_code` says
       90, including a GW11 row whose `opp_code` is 90.
@@ -195,11 +215,16 @@ carries the tables.**
       lane free, log streamed.
 
 *G3's replay evidence (run in-branch under orchestrator authorization)*
-- [x] `bash scripts/v9c_replay.sh`: three seed bases a side, branch and a
-      **re-run** `main` worktree, config echoes identical but for `seed_base`
-      and `--tag`, aggregates read through `scripts/seed_stats.py`. Numbers
-      and verdict in §4.
+- [ ] **In flight; branch side restarting for the review's I3.** `bash
+      scripts/v9c_replay.sh`: three seed bases a side, branch and a **re-run**
+      `main` worktree, config echoes identical but for `seed_base` and
+      `--tag`, aggregates read through `scripts/seed_stats.py`. The box was
+      marked complete against absent evidence in the first pass and is
+      unchecked until the verdict lands. The branch side is being re-run
+      because I3 changed the rate `card_penalty` consumes, so the pre-I3
+      branch draws measure a form that no longer ships; the **main** side is
+      unaffected and its banked seeds stand.
 
-**G2 — rails:** `uv run pytest -q tests/test_v9c_degradation.py` — 20 passed;
+**G2 — rails:** `uv run pytest -q tests/test_v9c_degradation.py` — 22 passed;
 `uv run pytest -q tests/ -k degradation` — 238 passed, every pre-existing
 `test_*_degradation.py` unmodified.

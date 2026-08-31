@@ -6,11 +6,17 @@ leakage, which is a result and not a reason to withdraw. So there is no keep
 rule to pre-register; what this script is, is the **measurement contract**
 (plan A11):
 
-* ``V9C_CLUB_COVERAGE`` — over the whole training frame: how many history
-  rows matched a fixture, and how many of the matched rows carry a club that
-  *differs* from the stamped ``team_code``. That second number is the leak,
-  measured. If it is a handful of rows the eval delta will be noise, and
-  saying so is the finding.
+* ``V9C_CLUB_COVERAGE`` — over the whole training frame: the **fixture-join
+  match rate**, measured before the fallback is applied, and how many of the
+  matched rows carry a club that *differs* from the stamped ``team_code``.
+  That second number is the leak, measured. If it is a handful of rows the
+  eval delta will be noise, and saying so is the finding.
+
+  The match rate is computed by re-running the join and counting the rows it
+  actually resolved. An earlier version of this script reported
+  ``club_code.notna()`` and called it coverage; that is 100 % by construction,
+  because the fallback fills every row before anything downstream sees it.
+  A metric that cannot come out below 100 % is not measuring anything.
 * ``V9C_CLUB_DEMO`` — the concrete demonstration G1 asks for, on the
   transferred player the driver picks *itself* (most diverging rows). Picking
   him automatically is the point: a hardcoded example can be chosen to
@@ -42,6 +48,7 @@ import pandas as pd
 
 import gaffer.evaluation as ev
 from gaffer.features import bps
+from gaffer.features.bps import _fixture_lookup
 from gaffer.models import train as tr
 
 _REAL = bps.as_of_club_code
@@ -62,34 +69,60 @@ def scores(payload: dict) -> dict:
             "zeros_n": table["zeros"]["n"]}
 
 
-def coverage(df: pd.DataFrame) -> dict:
-    """Rows, matched rows, diverging rows — overall and per season.
+def matched_mask(df: pd.DataFrame, fixtures: pd.DataFrame) -> pd.Series:
+    """Which rows the fixture join actually resolved, *before* the fallback.
 
-    "Matched" is not directly observable off the finished frame, so it is read
-    the way the derivation itself reads it: a row is matched when the derived
-    club is one of the two sides of a fixture the join found. In practice the
-    only unmatched rows are those that fell back, and a fallback row is
-    exactly one whose derived club equals the stamped one *and* whose fixture
-    lookup missed — indistinguishable from an unmoved player, which is why
-    this reports the honest pair (fallback-or-unmoved, and diverging) rather
-    than pretending to separate them.
+    This is the honest coverage number and it has to be computed here rather
+    than read off the finished frame. ``as_of_club_code`` fills every
+    unmatched row with the stamped ``team_code`` before it returns, so by the
+    time anything downstream sees ``club_code`` there is nothing left to
+    count: ``club_code.notna()`` is 100 % by construction and says nothing
+    about how much of the history the fixture archive actually covers.
+
+    So the lookup is rebuilt and the row keys are zipped exactly as the
+    derivation zips them. A row is matched when its
+    ``(season_idx, gw, kickoff_time, opp_code)`` names a fixture that is not
+    ``None`` — the poisoned-duplicate case counts as unmatched, which is what
+    it is.
     """
+    lookup = _fixture_lookup(fixtures)
+    rows = zip(pd.to_numeric(df["season_idx"], errors="coerce"),
+               pd.to_numeric(df["gw"], errors="coerce"),
+               df["kickoff_time"].astype("string"),
+               pd.to_numeric(df["opp_code"], errors="coerce"))
+    return pd.Series([lookup.get((s, g, k, o)) is not None
+                      for s, g, k, o in rows], index=df.index)
+
+
+def coverage(df: pd.DataFrame, fixtures: pd.DataFrame) -> dict:
+    """Rows, matched rows, diverging rows — overall and per season."""
     club = pd.to_numeric(df["club_code"], errors="coerce")
     team = pd.to_numeric(df["team_code"], errors="coerce")
+    matched = matched_mask(df, fixtures)
     diverging = (club.notna() & team.notna() & (club != team))
     per_season = {}
     for season, chunk in df.groupby("season_idx"):
         c = pd.to_numeric(chunk["club_code"], errors="coerce")
         t = pd.to_numeric(chunk["team_code"], errors="coerce")
+        m = matched.reindex(chunk.index)
         d = int((c.notna() & t.notna() & (c != t)).sum())
         per_season[int(season)] = {
-            "rows": int(len(chunk)), "diverging": d,
-            "diverging_frac": round(d / max(len(chunk), 1), 6)}
+            "rows": int(len(chunk)),
+            "matched": int(m.sum()),
+            "match_rate": round(int(m.sum()) / max(len(chunk), 1), 6),
+            "diverging": d,
+            # Divergence is a fraction *of the matched rows*: an unmatched row
+            # cannot diverge, so putting it in the denominator would dilute the
+            # leak with rows that never had a chance to show it.
+            "diverging_frac_of_matched": round(d / max(int(m.sum()), 1), 6)}
     return {"rows": int(len(df)),
-            "club_code_present": int(club.notna().sum()),
+            "matched": int(matched.sum()),
+            "match_rate": round(int(matched.sum()) / max(len(df), 1), 6),
             "diverging": int(diverging.sum()),
-            "diverging_frac": round(int(diverging.sum())
-                                    / max(len(df), 1), 6),
+            "diverging_frac_of_matched": round(
+                int(diverging.sum()) / max(int(matched.sum()), 1), 6),
+            "diverging_frac_of_all": round(int(diverging.sum())
+                                           / max(len(df), 1), 6),
             "by_season": per_season}
 
 
@@ -116,6 +149,17 @@ def demo(df: pd.DataFrame) -> dict:
             "table": rows[cols].to_dict("records")}
 
 
+def _fixtures_frame() -> pd.DataFrame:
+    """The same fixture list ``load_training_frame`` joins against."""
+    from gaffer.data import store
+
+    fixtures = store.load("history/fixtures.parquet")
+    if store.exists("live/fixtures.parquet"):
+        fixtures = pd.concat([fixtures, store.load("live/fixtures.parquet")],
+                             ignore_index=True)
+    return fixtures
+
+
 def main() -> None:
     out: dict = {}
 
@@ -129,7 +173,7 @@ def main() -> None:
     tr.as_of_club_code = _stamped
     try:
         off_frame, _, _ = tr.load_training_frame()
-        out["coverage_off"] = coverage(off_frame)
+        out["coverage_off"] = coverage(off_frame, _fixtures_frame())
         print("V9C_CLUB_COVERAGE off", json.dumps(out["coverage_off"]),
               flush=True)
         out["off"] = scores(ev.evaluate_benchmark())
@@ -140,7 +184,7 @@ def main() -> None:
 
     # --- the "on" arm: the derivation as it ships ----------------------
     on_frame, _, _ = tr.load_training_frame()
-    out["coverage"] = coverage(on_frame)
+    out["coverage"] = coverage(on_frame, _fixtures_frame())
     print("V9C_CLUB_COVERAGE on", json.dumps(out["coverage"]), flush=True)
 
     out["demo"] = demo(on_frame)

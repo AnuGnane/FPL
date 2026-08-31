@@ -22,6 +22,7 @@ obvious way:
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -924,8 +925,22 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         demoted_captain=demoted_captain,
     )
     REPORTS.mkdir(exist_ok=True)
-    (REPORTS / f"gw{gw}-advice.json").write_text(
-        json.dumps(asdict(advice), indent=1, default=str))
+    # v9c orchestrator-authorized protected edit (review I1): atomic advice
+    # artifact write. Three docstrings in web/jobs.py and routers/jobs.py now
+    # rest on "every job kind writes its artifacts idempotently", which is what
+    # makes abandoning a wedged job safe — but a plain write_text is not
+    # idempotent under a re-run, it is *interruptible*, and the abandoned
+    # thread that keeps running is exactly the caller that can be halfway
+    # through this line while its replacement reads the file. The house idiom
+    # (digest.py): pid-suffixed temp so two writers cannot share one, and
+    # os.replace to make the swap atomic.
+    advice_path = REPORTS / f"gw{gw}-advice.json"
+    tmp = advice_path.with_name(f"{advice_path.name}.{os.getpid()}.tmp")
+    try:
+        tmp.write_text(json.dumps(asdict(advice), indent=1, default=str))
+        os.replace(tmp, advice_path)
+    finally:
+        tmp.unlink(missing_ok=True)
     save_components(components_frame(comp, scoring, cal, players, teams), gw)
     save_solve_state(SolveState(
         gw=gw, gws=gws, deadline=deadline,

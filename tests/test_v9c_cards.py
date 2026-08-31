@@ -103,3 +103,59 @@ def test_feature_columns_names_the_new_block_so_advise_strips_it():
     from gaffer.features.engineer import feature_columns
 
     assert "rc_r38" in feature_columns()
+
+
+# --- the review's I3: the rate is shrunk before it is multiplied by -3 ------
+
+def test_a_debut_red_card_no_longer_costs_three_whole_points():
+    """The review finding. ``rc_r38`` is a rolling mean of the rarest event in
+    the model taken with ``min_periods=1``, so one sending-off on debut read
+    as a rate of 1.0 and the -3 coefficient turned it into a confident
+    forecast of -3.00 expected points. 196 rows of the corpus sat below -0.5.
+
+    The shrunk rate is what ``card_penalty`` reads now, so the same debut is
+    a small number against a league-average prior rather than a certainty."""
+    from gaffer.features.engineer import SHRINK_K_CARD, add_shrunken_cards
+
+    # A league in which red cards are rare: twenty clubs' midfielders over ten
+    # gameweeks, and exactly one sending-off in the lot.
+    rows = []
+    for code in range(1, 101):
+        for gw in range(1, 11):
+            rows.append({"code": code, "season_idx": 3, "gw": gw,
+                         "position": "MID", "team_code": 10 + code % 20,
+                         "rc": 1.0 if (code == 1 and gw == 1) else 0.0,
+                         "yc": 0.0, "minutes": 90.0})
+    out = add_shrunken_cards(pd.DataFrame(rows))
+    sent_off = out[(out["code"] == 1) & (out["gw"] == 10)].iloc[0]
+
+    # Unshrunk, the rolling mean of his one red card over ten matches would
+    # still read 0.1 and cost -0.30; the raw *debut* reading was 1.0 and -3.00.
+    assert sent_off["rc_r38"] if "rc_r38" in sent_off else True
+    assert card_penalty(sent_off) > -0.5
+    assert card_penalty(sent_off) < 0.0     # still a penalty, just an honest one
+
+    # And the thing that actually broke: one observation can no longer produce
+    # a rate of 1.0, whatever the sample size behind it.
+    assert sent_off["shrunk_rc_rate"] < 0.3
+    assert SHRINK_K_CARD == 20.0
+
+
+def test_the_shrunk_rate_wins_over_the_raw_rolling_mean():
+    both = pd.Series({"yc_r38": 0.0, "rc_r38": 1.0, "shrunk_rc_rate": 0.05,
+                      "shrunk_yc_rate": 0.0})
+    assert card_penalty(both) == pytest.approx(-0.15)
+
+
+def test_a_frame_with_only_the_rolling_means_reads_as_it_always_did():
+    """The fallback. A frame built before v9c, or any synthetic one carrying
+    only the rolling means, must produce the number it always produced."""
+    raw = pd.Series({"yc_r38": 0.1, "rc_r38": 0.2})
+    assert card_penalty(raw) == pytest.approx(-0.1 - 0.6)
+
+
+def test_the_card_rates_ride_to_serve_time_through_feature_columns():
+    from gaffer.features.engineer import SHRUNK_CARD_FEATURES, feature_columns
+
+    for col in SHRUNK_CARD_FEATURES:
+        assert col in feature_columns()
