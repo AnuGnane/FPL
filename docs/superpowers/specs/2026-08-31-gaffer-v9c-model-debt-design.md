@@ -90,6 +90,83 @@ Zeros improve slightly, haulers regress by 0.029, the all-stratum number does no
 
 (Filled after G1.)
 
-## 5. Gate checklist (built by the implementer, run by the orchestrator — unfilled)
+## 5. Gate checklist (built by the implementer, run by the orchestrator)
 
-(Filled by the implementer at the final task, per CONVENTIONS.md §7.)
+**G3 — suites, types, build, audit (measured by the implementer):**
+
+- [x] `uv run pytest -q` — **2817 passed** (merged-main baseline 2746 + 71 new)
+- [x] `npx tsc --noEmit` — clean
+- [x] `npx vitest run` — **553 passed, 1 skipped** (baseline 553 + 1; this
+      cycle's frontend change is a two-word label and adds no test)
+- [x] `npm run build` — clean
+- [x] Protected diff EMPTY except D4's four authorized line groups in
+      `web/jobs.py` and `routers/jobs.py`, each provenance-commented:
+      `_abandon_current`/`abandon_current`, `start`'s reap, `_execute`'s
+      conditional finally, `DELETE /api/jobs/current`. The only *removed*
+      lines in either file are Group 3's five, replaced by the guarded form.
+- [x] Pin diff EMPTY: job kinds still 12, config fields still 48,
+      `config.example.toml` and `frontend/src/types.ts` job lists untouched;
+      no pre-existing degradation rail modified (`git diff main --stat --
+      'tests/test_*_degradation.py'` names `tests/test_v9c_degradation.py`
+      and nothing else)
+- [x] `tests/test_bps.py`, `tests/test_advise.py`, `tests/test_differentials.py`,
+      `tests/test_assemble.py` pass unmodified — the four rails that say the
+      bps extraction, the serving path, and the boundary-only rename each
+      stayed inside their lines
+- [x] Security ritual clean; no data/, reports/, models/, logs/ or config.toml
+      in the branch diff; `git show main:config.toml` fails
+
+**G1 — live, real season (orchestrator only):**
+
+*D1 — the red-card arm* — **run in-branch under orchestrator authorization;
+the rule was applied mechanically and the numbers are in §4 above.**
+- [x] `scripts/v9c_rc_arm.py` run; `V9C_ARM_DONE` lines for both arms and the
+      `V9C_VERDICT` line transcribed verbatim into §4.
+- [x] The pre-registered non-regression rule (tolerance 0.005) applied as
+      written: costs −0.001 / +0.002 / 0.000, no stratum breaches,
+      `V9C_DECISION ship`. Branch A taken; the numbers are in `ROLL_STATS`'s
+      docstring.
+
+*D2 — the as-of club* — **run in-branch under orchestrator authorization; §4
+carries the tables.**
+- [x] `V9C_CLUB_COVERAGE`: 113,880 rows, `club_code` populated on all of them,
+      1,069 diverging (0.939 %), per-season breakdown in §4.
+- [x] `V9C_CLUB_DEMO`: James Ward-Prowse (code 101178, season_idx 3), chosen
+      by the driver — 45 rows where `club_code` is 21 while `team_code` says
+      90, including a GW11 row whose `opp_code` is 90.
+- [x] `V9C_CLUB_DONE`: before/after and the deltas recorded **including the
+      +0.029 haulers regression** (spec D2: the fix ships either way).
+
+*D3 — the haul split*
+- [ ] `GET /api/advice/latest` on the branch: `alternatives[0]` and
+      `captain_options[0]` carry `p_attacking_haul` and no `p_haul`.
+- [ ] `GET /api/players` and `GET /api/components/{gw}`: rows carry `p_haul`
+      and no `p_attacking_haul`.
+- [ ] `reports/gw{N}-advice.json` still says `p_haul`; the digest still
+      renders its "One to consider" section.
+- [ ] This Week's chip reads "10+ pts", and the HTML report's captain and
+      alternatives tables read "P(2+ returns)".
+
+*D4 — timeout and cancel*
+- [ ] Wedge a job deliberately on the dev server (monkeypatch a job kind to a
+      long sleeper), confirm the next `POST /api/jobs/{kind}` is a 409 while
+      it is young.
+- [ ] With `ADVISE_TIMEOUT_S` temporarily lowered, confirm the next start
+      reaps it: the second job gets an id, and the first run reads
+      `failed` / "timed out … abandoned as a daemon".
+- [ ] `DELETE /api/jobs/current` on the wedged job frees the lane immediately
+      and returns the abandoned run; on an idle runner it is a 404.
+- [ ] Let the abandoned thread finish: `GET /api/jobs/current` still names the
+      *newer* job, and the abandoned run's error still names the timeout.
+- [ ] A normal `advise` run start-to-finish is unaffected — `done`, no error,
+      lane free, log streamed.
+
+*G3's replay evidence (run in-branch under orchestrator authorization)*
+- [x] `bash scripts/v9c_replay.sh`: three seed bases a side, branch and a
+      **re-run** `main` worktree, config echoes identical but for `seed_base`
+      and `--tag`, aggregates read through `scripts/seed_stats.py`. Numbers
+      and verdict in §4.
+
+**G2 — rails:** `uv run pytest -q tests/test_v9c_degradation.py` — 20 passed;
+`uv run pytest -q tests/ -k degradation` — 238 passed, every pre-existing
+`test_*_degradation.py` unmodified.
