@@ -322,10 +322,23 @@ makes the live season collide with the one you just archived.
 - `data/live/field_eo_log.parquet` — one row per (gameweek, scrape day,
   element): effective ownership in the top 10k with its standard error and
   its sample size.
+- `data/raw/league/{season}/{entry}-{gw}.json` — one entry's squad for one
+  finished gameweek. Your own entry is banked here too, in the same layout as
+  every rival's, so the review can grade a September decision in December
+  without asking the API again.
+- `data/raw/league/{season}/{entry}-history.json` and `-transfers.json` — your
+  per-gameweek points, rank, bench points and transfer cost, and every
+  transfer you have made. Replaced on write, because both are cumulative.
 - `models/` — trained model files (gitignored)
 - `reports/` — `gw{N}-report.html` and `gw{N}-advice.json` (gitignored)
 - `reports/league_sim_history.json` — one banked headline per gameweek, which
   is what the league card's sparkline draws.
+- `reports/decision_ledger.json` — one banked grade per reviewed gameweek: the
+  four decision lanes in points and in title odds, the reconciliation against
+  FPL's own score, and the best eleven you could have fielded. Written once,
+  when the gameweek's results are final, and never re-derived — the model's
+  pre-deadline advice is pruned after twenty runs, so the grade has to outlive
+  it.
 - `logs/` — output from the launchd jobs (gitignored)
 - `frontend/` — React/Vite source for the web UI; built output lands in
   `src/gaffer/web/static/` (gitignored, shipped in the wheel)
@@ -343,10 +356,11 @@ is not on UK time, adjust the `Hour`/`Minute` in
 ./scripts/install_automation.sh
 ```
 
-Substitutes the project path into the four plists in `scripts/`, copies them to
+Substitutes the project path into the five plists in `scripts/`, copies them to
 `~/Library/LaunchAgents/`, and loads them: `com.gaffer.advise` (Thursday 18:00),
 `com.gaffer.prices` (nightly 23:15), `com.gaffer.snapshot` (daily 17:00, banks
-the availability log the news corrector will train on) and `com.gaffer.field`.
+the availability log the news corrector will train on), `com.gaffer.field` and
+`com.gaffer.review`.
 Re-run it after moving the project.
 
 - **Saturday and Sunday 12:30** — `gaffer field-scrape`, an hour after the
@@ -354,9 +368,15 @@ Re-run it after moving the project.
   their EO. A gameweek already banked is a no-op in milliseconds, and a run
   that finds the live tracker has just done the same fetch reuses it rather
   than asking the API twice in an hour.
+- **Tuesday 09:00** — `gaffer review`, grading every gameweek FPL has
+  finalised since the last run. Tuesday rather than Monday because FPL
+  finalises a weekend gameweek's bonus and its `data_checked` flag on the
+  Monday, sometimes late; a midweek gameweek is picked up the following
+  Tuesday or by the Model hub's **Review last week** button. Already-reviewed
+  weeks are a no-op that prints one line.
 
 Check they are loaded with `launchctl list | grep com.gaffer`. Remove with
-`launchctl unload ~/Library/LaunchAgents/com.gaffer.{advise,prices,snapshot,field}.plist`.
+`launchctl unload ~/Library/LaunchAgents/com.gaffer.{advise,prices,snapshot,field,review}.plist`.
 
 ## Tests
 
