@@ -27,6 +27,13 @@ The entry is one word and the consequence is five columns in the training
 frame, so v9c gated it as an arm rather than shipping it as a hotfix (spec
 D1). No model's feature list names an ``rc_*`` column — every list in this
 repo is explicit — so the only consumer is the closed-form penalty above.
+
+Measured, v9c G1 (2024-25 walk-forward, transcribed from the
+``V9C_ARM_DONE`` lines): baseline zeros/haulers/all RMSE
+1.066 / 5.179 / 1.968, with ``rc`` 1.065 / 5.181 / 1.968 (zeros_n 16279 both
+arms). Costs -0.001 / +0.002 / 0.000 against the pre-registered
+non-regression tolerance of 0.005: no stratum breaches, decision ``ship``.
+The term is live for the first time. Shipped.
 """
 
 WINDOWS = [1, 3, 5, 10, 38]

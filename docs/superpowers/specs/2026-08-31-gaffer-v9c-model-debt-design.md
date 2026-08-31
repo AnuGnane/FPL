@@ -28,6 +28,41 @@ Killing a wedged job's thread (abandon-only, matching the module's stated design
 
 (Filled at cycle end: arm table for D1, eval delta + transferred-player demo for D2, both payload field names for D3, the wedged-job timeline for D4, and the authorized protected diff enumeration.)
 
+**Suite baselines**, re-measured on the merged-`main` branch point `99baf50`: **2746 Python passed; 553 frontend passed + 1 skipped** (65 files).
+
+### D1 — the red-card arm (`scripts/v9c_rc_arm.py`, `logs/v9c_rc_arm.log`)
+
+Transcribed verbatim from the log:
+
+```
+V9C_ARM_DONE baseline {"zeros": 1.066, "haulers": 5.179, "all": 1.968, "zeros_n": 16279}
+V9C_ARM_DONE rc {"zeros": 1.065, "haulers": 5.181, "all": 1.968, "zeros_n": 16279}
+V9C_VERDICT rc {"zeros_cost": -0.001, "haulers_cost": 0.002, "all_cost": 0.0, "tolerance": 0.005, "decision": "ship"}
+V9C_DECISION ship
+```
+
+| Arm | zeros RMSE | haulers RMSE | all RMSE | zeros n |
+| --- | --- | --- | --- | --- |
+| baseline (`ROLL_STATS` without `rc`) | 1.066 | 5.179 | 1.968 | 16279 |
+| `+rc` | 1.065 | 5.181 | 1.968 | 16279 |
+| cost (arm − base) | −0.001 | +0.002 | 0.000 | — |
+
+The pre-registered non-regression rule (plan A4, tolerance 0.005, fixed in the driver's docstring before the run) is satisfied on all three strata — the largest cost is +0.002 on haulers, well inside tolerance, and zeros actually improves by 0.001. **Branch A: shipped.** The `-3 * rc_r38` term is live for the first time since it was written; the numbers are transcribed into `ROLL_STATS`'s docstring, which is the place a reader of the list will look.
+
+The effect being this small is the expected shape rather than a disappointment: a red card is rare, a 38-match mean of it is a very small number, and D1 was never an improvement hunt — it was a term the model documented and never applied. The measurement says switching it on costs nothing.
+
+### D2 — the as-of club
+
+(Filled after Task 5's run.)
+
+### D3 — the haul split
+
+(Filled after G1.)
+
+### D4 — timeout and cancel
+
+(Filled after G1.)
+
 ## 5. Gate checklist (built by the implementer, run by the orchestrator — unfilled)
 
 (Filled by the implementer at the final task, per CONVENTIONS.md §7.)
