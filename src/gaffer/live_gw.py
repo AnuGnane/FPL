@@ -129,6 +129,149 @@ def entry_live_points(picks: list[dict], points_of: dict[int, int],
     return total
 
 
+def _bench_order(picks: list[dict]) -> list[int]:
+    """Bench elements in the order FPL would bring them on.
+
+    ``position`` 12-15 is the substitution order the manager set; sorting by
+    it rather than trusting the payload's order is free insurance against a
+    client that reordered the list.
+    """
+    bench = [p for p in picks if int(p.get("multiplier", 0)) < 1]
+    bench.sort(key=lambda p: int(p.get("position", 0)))
+    return [int(p["element"]) for p in bench]
+
+
+def _starting_xi(picks: list[dict]) -> list[int]:
+    return [int(p["element"]) for p in picks
+            if int(p.get("multiplier", 0)) >= 1]
+
+
+def projected_subs(picks: list[dict], minutes_of: dict[int, int],
+                   finished_of: dict[int, bool],
+                   positions: dict[int, str]) -> list[dict]:
+    """The auto-subs FPL would make if the afternoon ended as it stands.
+
+    ``finished_of`` is per *element*: True when every fixture that player's
+    team has in this gameweek is over. That is the whole ambiguity the module
+    docstring warns about, resolved: a starter on zero minutes whose matches
+    are finished has blanked and will be substituted; a starter on zero
+    minutes whose match is still to come is simply not on yet, and is left
+    exactly where he is.
+
+    The bench is walked in order and the first *legal* swap wins, under
+    :func:`gaffer.backtest._formation_legal` — the same rule the replay scores
+    with, imported rather than copied so the projected XI and the scored XI
+    cannot drift apart. That rule is what keeps the bench keeper for the
+    keeper: two GKPs in an eleven is not a formation, and neither is none.
+
+    A bench player is eligible when he has minutes (he is definitely on) or
+    when his own matches are unfinished (he may still play); the ``reason`` on
+    each returned row says which, because those two are not equally certain
+    and the UI should not pretend they are. A bench player who has finished on
+    zero blanked too, and is skipped.
+
+    Returns ``[{"out_element", "in_element", "reason"}]``, empty when the
+    squad is not the usual eleven-and-four — a Bench Boost week has nobody
+    left to bring on, and a half-read payload should not have a formation
+    invented for it.
+    """
+    from gaffer.backtest import _formation_legal
+
+    xi = _starting_xi(picks)
+    bench = _bench_order(picks)
+    if len(xi) != 11 or not bench:
+        return []
+
+    def blanked(element: int) -> bool:
+        return (bool(finished_of.get(element, False))
+                and int(minutes_of.get(element, 0) or 0) == 0)
+
+    used = set(xi)
+    subs: list[dict] = []
+    for slot, starter in enumerate(list(xi)):
+        if not blanked(starter):
+            continue
+        for sub in bench:
+            if sub in used or blanked(sub):
+                continue
+            trial = list(xi)
+            trial[slot] = sub
+            if not _formation_legal([str(positions.get(c, "MID"))
+                                     for c in trial]):
+                continue
+            xi = trial
+            used.discard(starter)
+            used.add(sub)
+            subs.append({
+                "out_element": starter, "in_element": sub,
+                "reason": ("played" if int(minutes_of.get(sub, 0) or 0) > 0
+                           else "yet to play")})
+            break
+    return subs
+
+
+def projected_multipliers(picks: list[dict], subs: list[dict],
+                          minutes_of: dict[int, int],
+                          finished_of: dict[int, bool]) -> dict[int, int]:
+    """element -> the multiplier the projected eleven would score it at.
+
+    Two edits to the picked multipliers. The substitutions from
+    :func:`projected_subs` take the outgoing player to 0 and bring the
+    incoming one on at 1 — never at the outgoing player's multiplier, because
+    FPL hands a blanked captain's armband to the *vice*, not to whoever
+    replaced him. Then the armband itself moves, if and only if the captain
+    has finished on zero minutes and the vice is on the projected pitch: a
+    vice left on the bench is not doubled in the real game either.
+
+    The armband's size is read from the picks, so a Triple Captain week moves
+    a 3 rather than a 2.
+    """
+    mult = {int(p["element"]): int(p.get("multiplier", 0)) for p in picks}
+    # Read the armband off the picks, before the substitutions: a captain who
+    # blanked is taken off the pitch below, and reading it afterwards would
+    # see a squad with no captain in it and leave the armband where it fell.
+    armband = max(mult.values(), default=0)
+    for sub in subs:
+        mult[int(sub["out_element"])] = 0
+        mult[int(sub["in_element"])] = 1
+
+    if armband < 2:
+        return mult                      # no captaincy in this payload
+
+    captain = next((int(p["element"]) for p in picks if p.get("is_captain")),
+                   None)
+    if captain is None:
+        captain = next((int(p["element"]) for p in picks
+                        if int(p.get("multiplier", 0)) == armband), None)
+    vice = next((int(p["element"]) for p in picks
+                 if p.get("is_vice_captain")), None)
+    if captain is None:
+        return mult
+    if not (bool(finished_of.get(captain, False))
+            and int(minutes_of.get(captain, 0) or 0) == 0):
+        return mult
+
+    # The captain blanked: he scores at most as an ordinary starter from here
+    # (zero either way), and the armband goes to the vice if he is on.
+    mult[captain] = min(mult.get(captain, 0), 1)
+    if vice is not None and mult.get(vice, 0) >= 1:
+        mult[vice] = armband
+    return mult
+
+
+def projected_points(points_of: dict[int, int], bonus: dict[int, int],
+                     multipliers: dict[int, int]) -> int:
+    """The projected eleven's live score, scored by ``entry_live_points``.
+
+    The pinned function is handed a synthetic pick list rather than being
+    changed: its no-autosub contract is exactly what its three callers want,
+    and the projection is a different question asked of the same arithmetic.
+    """
+    return entry_live_points(
+        [{"element": element, "multiplier": mult}
+         for element, mult in multipliers.items()], points_of, bonus)
+
+
 def league_live_table(rows: list[dict]) -> list[dict]:
     """Project the mini-league table forward, with the rank change so far.
 
