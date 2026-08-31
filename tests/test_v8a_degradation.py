@@ -20,6 +20,9 @@ and the pin here is updated deliberately — never quietly.
 
 from __future__ import annotations
 
+from pathlib import Path
+
+import httpx
 import pandas as pd
 import pytest
 
@@ -85,17 +88,53 @@ def _teams() -> pd.DataFrame:
                           "short_name": "ARS"}])
 
 
-def test_the_classifier_is_never_launched_when_both_flags_are_off(tmp_path,
-                                                                  monkeypatch):
+# Real markup, not a stub. A rail that feeds the fetcher an empty page
+# proves only that an empty page returns early — the flag branch it claims
+# to pin sits well past that return, and every one of these tests has to
+# reach it before its assertion means anything.
+FIXTURES = Path(__file__).parent / "data" / "news"
+
+
+def _serving(text: str) -> httpx.Client:
+    def handle(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text=text)
+    return httpx.Client(transport=httpx.MockTransport(handle))
+
+
+def _injury_players() -> pd.DataFrame:
+    """The two names the committed injury fixture lists, both carrying free
+    text — so ``news_texts`` has something to hand the classifier."""
+    return pd.DataFrame([
+        {"code": 100, "name": "Saka", "first_name": "Bukayo",
+         "second_name": "Saka", "team_code": 3, "starts": 10, "minutes": 900,
+         "news": "Knock, assessed daily", "status": "d",
+         "chance_of_playing": 75},
+        {"code": 101, "name": "Gabriel", "first_name": "Gabriel",
+         "second_name": "Magalhaes", "team_code": 3, "starts": 9,
+         "minutes": 810, "news": "Out with a thigh problem", "status": "i",
+         "chance_of_playing": 0}])
+
+
+@pytest.mark.parametrize("flags, launched", [((False, False), False),
+                                             ((True, False), True),
+                                             ((False, True), True)])
+def test_the_classifier_is_only_launched_when_a_flag_asks_for_it(
+        flags, launched, tmp_path, monkeypatch):
+    """Both flags off makes zero calls — and the positive arms are what say
+    the page really did reach the branch rather than returning early."""
     from gaffer.data.news import premierinjuries as pi
 
     calls: list[int] = []
     monkeypatch.setattr(pi, "classify_news",
-                        lambda *a, **k: calls.append(1))
-    monkeypatch.setattr(pi, "cached_text", lambda *a, **k: "")
-    pi.fetch_injuries(_players(), _teams(), cache_dir=tmp_path,
-                      classifier=False, shadow=False)
-    assert calls == []
+                        lambda *a, **k: calls.append(1) or pd.DataFrame())
+    classifier, shadow = flags
+    out = pi.fetch_injuries(
+        _injury_players(), _teams(), cache_dir=tmp_path,
+        client=_serving((FIXTURES / "premierinjuries.html").read_text()),
+        classifier=classifier, shadow=shadow, min_coverage=0.0)
+    assert not out.empty, "the rail must reach the flag branch"
+    assert bool(calls) is launched
+    assert out["llm_verdict"].isna().all()
 
 
 def test_no_test_in_this_repo_shells_out_to_the_real_cli():
@@ -168,15 +207,47 @@ def test_a_verdict_present_but_unserved_is_arithmetically_inert(monkeypatch):
 
 # --- rail 4: lineup_absence off is v7 ---------------------------------------
 
-def test_absence_off_leaves_the_line_up_frame_at_its_pre_v8a_content(tmp_path,
-                                                                     monkeypatch):
+def _xi_squad() -> pd.DataFrame:
+    """Twelve equally-nailed-on Arsenal regulars, eleven of whom will be
+    printed — so the twelfth is exactly the row the absence rule adds."""
+    return pd.DataFrame([
+        {"code": 200 + i, "name": f"P{i}", "first_name": "P",
+         "second_name": f"Player{i}", "team_code": 3, "starts": 10,
+         "minutes": 900, "news": "", "status": "a",
+         "chance_of_playing": None} for i in range(12)])
+
+
+def _xi_page() -> str:
+    items = "".join(
+        f'<li title="Player{i} (P)">'
+        f'<img src="https://resources.premierleague.com/premierleague25'
+        f'/photos/players/110x140/{200 + i}.png"></li>' for i in range(11))
+    return f'<h2>Arsenal</h2><ul class="row-1">{items}</ul>'
+
+
+def test_absence_off_leaves_the_line_up_frame_at_its_pre_v8a_content(tmp_path):
+    """Fed a page the absence rule *would* act on: eleven printed starters
+    and a twelfth regular left out. With the flag off the frame is the
+    eleven hint rows and nothing else, and ``absence_damp`` is all-null —
+    which is only a rail because the flag-on run below differs from it."""
     from gaffer.data.news import lineups as ln
 
-    monkeypatch.setattr(ln, "cached_text", lambda *a, **k: "")
-    out = ln.fetch_lineups(_players(), _teams(), cache_dir=tmp_path,
-                           absence=False)
-    assert out.empty
-    assert list(out.columns) == ln.LINEUP_COLS
+    squad, page = _xi_squad(), _xi_page()
+    off = ln.fetch_lineups(squad, _teams(), cache_dir=tmp_path,
+                           client=_serving(page), absence=False)
+    on = ln.fetch_lineups(squad, _teams(), cache_dir=tmp_path,
+                          client=_serving(page), absence=True,
+                          absence_damp=0.75)
+
+    assert list(off.columns) == ln.LINEUP_COLS
+    assert off["absence_damp"].isna().all()
+    assert list(off["code"]) == list(range(200, 211))
+    # The difference is the whole of F4, and it has to be non-empty or the
+    # "off is pre-v8a" claim above is a claim about nothing.
+    assert list(on["code"]) == list(range(200, 212))
+    assert on.set_index("code").loc[211, "absence_damp"] == 0.75
+    pd.testing.assert_frame_equal(
+        off, on[on["absence_damp"].isna()].reset_index(drop=True))
 
 
 def test_an_availability_frame_with_no_damp_is_the_v7_arithmetic():
