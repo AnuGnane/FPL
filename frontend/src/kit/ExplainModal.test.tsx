@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ExplainModal from './ExplainModal'
@@ -75,5 +75,24 @@ describe('ExplainModal', () => {
     expect(await screen.findByText(/Bloke/)).toBeInTheDocument()
     await new Promise((resolve) => setTimeout(resolve, 80))
     expect(screen.queryByText(/Salah/)).not.toBeInTheDocument()
+  })
+
+  it('asks this backend for the portrait, by the code it was opened with', async () => {
+    render(<ExplainModal code={223094} onClose={() => {}} />)
+    const photo = await screen.findByTestId('explain-photo')
+    // Never premierleague.com: the frontend speaks only to this backend, and
+    // a hotlinked face is the one request on the page that would tell a third
+    // party who is reading it.
+    expect(photo).toHaveAttribute('src', '/api/assets/photo/223094')
+  })
+
+  it('drops the portrait rather than leaving a broken image', async () => {
+    render(<ExplainModal code={223094} onClose={() => {}} />)
+    const photo = await screen.findByTestId('explain-photo')
+    // The server answers a dead CDN with a bundled silhouette, so this path is
+    // only reached when even that fails. A broken-image glyph in the header of
+    // a modal about expected points is worse than no picture at all.
+    fireEvent.error(photo)
+    expect(screen.queryByTestId('explain-photo')).not.toBeInTheDocument()
   })
 })

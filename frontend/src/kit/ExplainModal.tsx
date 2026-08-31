@@ -25,6 +25,10 @@ export default function ExplainModal(
 ) {
   const [data, setData] = useState<PlayerExplain | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Not a src swap to a local placeholder: the backend already answers a dead
+  // upstream with the bundled silhouette (v9a), so reaching this means the
+  // *fallback* failed too, and the honest response is no picture.
+  const [photoFailed, setPhotoFailed] = useState(false)
   const closeRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
@@ -33,6 +37,7 @@ export default function ExplainModal(
     let live = true
     setData(null)
     setError(null)
+    setPhotoFailed(false)
     apiGet<PlayerExplain>(`/api/players/${code}/explain`)
       .then((body) => { if (live) setData(body) })
       .catch((e: Error) => { if (live) setError(e.message) })
@@ -67,20 +72,40 @@ export default function ExplainModal(
       >
         <header className="flex items-start justify-between gap-3 border-b
                            border-divider px-4 py-3">
-          <div>
-            {data
-              ? (
-                <>
-                  <h2 className="flex items-center gap-2 text-base text-text">
-                    <PosBadge pos={data.position} />
-                    {data.name}
-                  </h2>
-                  <p className="label mt-1">
-                    {data.team_name} · {fmtNum(data.ep_next)} xPts
-                  </p>
-                </>
-                )
-              : <h2 className="label">Expected points</h2>}
+          <div className="flex items-start gap-3">
+            {!photoFailed && (
+              <img
+                data-testid="explain-photo"
+                src={`/api/assets/photo/${code}`}
+                // Requested while `data` is still loading, deliberately: the
+                // photo depends only on `code`, so it lands before the
+                // breakdown and the header stops reflowing when it arrives.
+                //
+                // Decorative: the name is beside it in an h2, and a screen
+                // reader reading "photo of Haaland" before the heading that
+                // says Haaland is one statement too many.
+                alt=""
+                width={44}
+                height={56}
+                onError={() => setPhotoFailed(true)}
+                className="rounded-card border border-border bg-base"
+              />
+            )}
+            <div>
+              {data
+                ? (
+                  <>
+                    <h2 className="flex items-center gap-2 text-base text-text">
+                      <PosBadge pos={data.position} />
+                      {data.name}
+                    </h2>
+                    <p className="label mt-1">
+                      {data.team_name} · {fmtNum(data.ep_next)} xPts
+                    </p>
+                  </>
+                  )
+                : <h2 className="label">Expected points</h2>}
+            </div>
           </div>
           <button
             ref={closeRef}
