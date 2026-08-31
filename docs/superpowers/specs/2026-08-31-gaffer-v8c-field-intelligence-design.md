@@ -52,6 +52,18 @@ Protected zero-diff list as v8a (advise.py, set_pieces.py, optimize/**, pre-exis
 
 Feeding MC win-EV into the tilt λ (later cycle, gated); rival transfer *prediction* (v8 proposal's parked item); global live rank/safety (needs field-wide live data); EO-aware pool construction changes (protected seam).
 
-## 8. Outcome
+## 8. Outcome (2026-08-31)
 
-(Filled at cycle end.)
+**Shipped.** Suite 1773 → 1966 Python, 302 → 328 frontend. 17 plan tasks + a live-data G2 fix round (4 root causes) + a FIX-FIRST review round (3 blockers, 5 importants, 7 nits — all fixed).
+
+**G1 PASS** — real scrape banked 300 top-10k squads + 123 EO rows for GW2 (`data/raw/field/2026-27/gw2.json`, `data/live/field_eo_log.parquet`); all entries 15-pick with one captain; anonymized (no entry ids on disk — verified by key-set audit); idempotent re-run; `/api/live` tier-EO byte-compatible. Weekend launchd job installed alongside the existing three (user must re-run `scripts/install_automation.sh` to load it).
+
+**G2 PASS after two fix rounds** — the gate did exactly its job, twice:
+1. *Live-data round*: bench-boost pick snapshots read as permanent ability (a BB rival computed at 71.1 pts/wk vs a real 55.0 — `effective_picks()` now rebuilds multipliers from position); the estimation-σ table (median 0.018) is model uncertainty, not football variance — all 50 entries collapsed to the 6.0 sigma floor; replaced with measured `OUTCOME_VAR_PER_EP = 3.2` (within-player Var/mean flat at 2.7–4.1 over 3 seasons); silent zero EP lookups → loud notices; standings-order-dependent RNG → per-entry-id streams.
+2. *Review round*: unreadable (private/late-joined) rivals were simulated as scoring nothing, silently → left out of the race with a notice; the what-if table's "P(win)" column was a renormalized pairwise artifact (leader shown 45% where the engine's own scored matrix says 82%) → per-entry win frequencies off the same matrix; and **cross-entry independence was the largest unnamed error** — mean pairwise entry correlation is 0.590 in this league (0.675 in the top-10k sample), making the margin fan 1.58× too wide. Now modeled: one shared weekly factor, entries loading at their covariance-arithmetic correlation with the banked field template (reproduces the analytic shared-owner correlation to 3 decimals; per-entry variance unchanged by construction). No-sample path degrades to independence and says so in the card.
+
+Final live instrument (league 1794743, 50 entries, n=2000, 3 seeds): **P(win) 0.360 ± 0.017, P(top-3) 0.585, expected finish 5.6 of 50, margin p50 −28**. The correlation upgrade alone moved P(win) from 0.195 — the independent model materially understated a title race in a high-overlap league. The 3-seed spread is the instrument's honesty label per CONVENTIONS; MC SE at n=2000 ≈ ±0.9pp.
+
+**G3 PASS** — 22 rails in `tests/test_v8c_degradation.py` (two added in fix rounds). **G4 PASS** — suites above, tsc clean, zero protected diffs, `league_mode.py` untouched (v4d λ rails green).
+
+**Residuals:** rival transfer *behaviour* is a drift heuristic (`rival_drift=0.5`), not a model — the parked rival-prediction idea remains the upgrade path; the shared-factor model couples entries to the field template, not pairwise to each other (adequate at measured correlations, revisit if a two-entry league looks off); `field_sample` clamped at 1000; This Week's chip is cached-only by design (cold caches show nothing until the League hub or a scrape warms them); the legacy parametric win-probability list still rides the /race payload for the card's fallback.

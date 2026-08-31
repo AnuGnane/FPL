@@ -107,7 +107,7 @@ user decisions recorded: LLM presser classifier runs via headless `claude -p` (u
 subscription — no API key/spend, pluggable + degradable); v8f alerts approved; v8c top-10k
 entry-API scrape approved.
 - [x] v8a minutes intelligence — done 2026-08-31, spec §9 = outcome. G1 withdrew ALL six feature arms (zeros regressed on every one — the gap is news-shaped/serve-time, not historical-features); shipped instead: notable-absence damp (≥11 resolved starters, unflagged players only), `claude -p` presser classifier (no-tools pinned, chunked, shadow-first, serving OFF), P(start) eval metrics, manager-tenure asset (89 spells). Review blocker: mixed-dtype sort made serve-time priors one match stale + G5 taught that replay baselines must be re-banked after serving-default flips (banked 1876 was pre-Z1; branch ≡ main at 1844).
-- [ ] v8c field intelligence (tier-EO scrape FIRST — append-only field history; mini-league win %, sampled-field sims, what-if)
+- [x] v8c field intelligence — done 2026-08-31, spec §8 = outcome. Field scrape live (300 top-10k squads banked GW2, weekend launchd job), correlated mini-league MC (shared weekly factor, measured corr 0.590/0.675; P(win) 36% ± 1.7, exp finish 5.6/50), what-if router, sword/shield EO. G2 caught 4 live-data defects + review caught 3 probability-layer blockers (BB snapshots, estimation-σ misuse, independence overclaim).
 - [ ] v8b decision loop (GW review grading, EV-loss ledger, attribution, hindsight XI — graded in pts + Δwin%)
 - [ ] v8d live matchday (live bonus from BPS, EP race chart, auto-sub projection, league safety score)
 - [ ] v8e solver trust (sensitivity re-solves, editable xMins overrides, multi-draft compare, chip-EV rails)
