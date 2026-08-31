@@ -1,21 +1,39 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { apiGet } from '../../api/client'
-import { Badge, Card, Loading, PageHeader, PlayerName, fmtNum } from '../../kit'
+import {
+  Badge, Card, ExplainModal, Loading, PageHeader, PlayerCard, fmtNum,
+} from '../../kit'
 import type { RivalDetailData, SquadPlayer } from '../../types'
 
 function SquadList({ title, players }:
   { title: string; players: SquadPlayer[] }) {
+  // One modal per list. The four lists are independent and only one card can
+  // have a chip pressed at a time within a list, so lifting it to the page
+  // would buy nothing but a prop.
+  const [explain, setExplain] = useState<number | null>(null)
   return (
     <Card title={`${title} (${players.length})`} className="mb-4">
       {players.length === 0
         ? <p className="text-text-muted">Nobody.</p>
         : (
-          <ul className="flex flex-col gap-0.5">
+          <ul className="flex flex-col gap-1">
             {players.map((player) => (
               <li key={player.code} className="flex items-center gap-1.5">
-                <PlayerName code={player.code} name={player.name}
-                            pos={player.position} />
+                <PlayerCard
+                  size="chip"
+                  code={player.code}
+                  name={player.name}
+                  position={player.position}
+                  // /api/league/rivals/{id} carries no team field and this
+                  // cycle adds no server code (plan A4).
+                  teamShort={null}
+                  teamCode={null}
+                  // A rival's squad is priced, not projected: the payload has
+                  // his price and no expected points (plan A3).
+                  ep={null}
+                  onSelect={setExplain}
+                />
                 <span className="num ml-auto text-text-muted">
                   £{player.price}m
                 </span>
@@ -23,6 +41,9 @@ function SquadList({ title, players }:
             ))}
           </ul>
           )}
+      {explain !== null && (
+        <ExplainModal code={explain} onClose={() => setExplain(null)} />
+      )}
     </Card>
   )
 }

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ReviewTab from './ReviewTab'
 import type { ReviewData } from '../../types'
@@ -120,7 +120,11 @@ describe('ReviewTab', () => {
     // Not a bare findByText(/Guehi/): the same name is in the transfers
     // lane's "model Blank->Guehi", so the match must be the misses line.
     const flagged = await screen.findByText(/Flagged and skipped/)
-    expect(flagged.textContent).toContain('Guehi (+15 over Blank)')
+    // The name is a chip now, so the sentence's own text no longer carries
+    // it: the miss reads as a card with the gain beside it.
+    expect(flagged.parentElement!.textContent).toContain('Guehi')
+    expect(flagged.parentElement!.textContent).toContain('+15 over Blank')
+    expect(screen.getByRole('button', { name: /Guehi/ })).toBeInTheDocument()
   })
 
   it('badges a gameweek that did not reconcile', async () => {
@@ -180,4 +184,16 @@ describe('ReviewTab', () => {
        const cell = await screen.findByTestId('season-chip')
        expect(cell.textContent).toContain('never graded')
      })
+
+  it('leaves the lane rows as text, because they carry no player code', () => {
+    // Not an oversight: ReviewLane.mine/model are comma-joined name strings
+    // built server-side out of a set of players whose codes are discarded
+    // before the payload is written (plan A6).
+    mock(DATA)
+    render(<ReviewTab />)
+    return waitFor(() => {
+      expect(within(screen.getByTestId('lane-captaincy'))
+        .queryByRole('button')).toBeNull()
+    })
+  })
 })

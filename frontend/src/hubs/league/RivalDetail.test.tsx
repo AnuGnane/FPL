@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RivalDetail from './RivalDetail'
@@ -86,5 +87,20 @@ describe('Rival detail', () => {
   it('labels the squad with the gameweek it was picked in', async () => {
     renderDetail()
     expect(await screen.findByText('Squad · GW2 (2)')).toBeInTheDocument()
+  })
+
+  it('opens the explain modal from a squad chip', async () => {
+    apiGet.mockImplementation((path: string) => (
+      path.includes('/explain')
+        ? Promise.resolve({
+          code: 100, name: 'Salah', position: 'MID', team_name: 'Liverpool',
+          ep_next: 9, fixtures: [], next_fixtures: [],
+          set_pieces: { penalties: null, free_kicks: null, corners: null },
+        })
+        : Promise.resolve(DETAIL)))
+    renderDetail()
+    const chips = await screen.findAllByRole('button', { name: /Salah/ })
+    await userEvent.click(chips[0])
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
   })
 })

@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Live from './Live'
@@ -230,4 +230,22 @@ describe('Live', () => {
         .toBeInTheDocument()
       expect(screen.queryByText('One place above')).not.toBeInTheDocument()
     })
+
+  it('opens the explain modal from a player chip', async () => {
+    // The affordance Live's rows did not have: the name was bare text, so
+    // there was nowhere to ask why the model still expects anything of him.
+    apiGet.mockImplementation((path: string) => (
+      path.includes('/explain')
+        ? Promise.resolve({
+          code: 100, name: 'Salah', position: 'MID', team_name: 'Liverpool',
+          ep_next: 9, fixtures: [], next_fixtures: [],
+          set_pieces: { penalties: null, free_kicks: null, corners: null },
+        })
+        : Promise.resolve(ACTIVE)))
+    await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Salah/ }))
+    })
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
 })

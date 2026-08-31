@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../../api/client'
 import {
-  Badge, Card, EmptyState, Loading, Stat, TONE_CLASS, fmtDelta, fmtNum,
-  toneOf,
+  Badge, Card, EmptyState, ExplainModal, Loading, PlayerCard, Stat,
+  TONE_CLASS, fmtDelta, fmtNum, toneOf,
 } from '../../kit'
 import type {
   ReviewData, ReviewGw, ReviewLabel, ReviewLane, ReviewLaneName,
@@ -40,6 +40,10 @@ function num(value: number | null): string {
   return value === null || value === undefined ? '—' : String(value)
 }
 
+// The lanes stay text. `mine` and `model` are comma-joined name strings built
+// server-side out of a set of players whose codes are discarded before the
+// payload is written, so there is no code to open a modal with and matching a
+// name back to one client-side would be a guess wearing a link (plan A6).
 function LaneRow({ lane }: { lane: ReviewLane }) {
   const graded = lane.delta_pts !== null
   return (
@@ -65,7 +69,8 @@ function LaneRow({ lane }: { lane: ReviewLane }) {
   )
 }
 
-function GwCard({ row }: { row: ReviewGw }) {
+function GwCard({ row, onSelect }:
+  { row: ReviewGw; onSelect: (code: number) => void }) {
   const lanes = LANE_ORDER
     .map((name) => row.lanes.find((lane) => lane.lane === name))
     .filter((lane): lane is ReviewLane => lane !== undefined)
@@ -114,11 +119,28 @@ function GwCard({ row }: { row: ReviewGw }) {
             + `${row.hindsight.gap} on the table.`}
       </p>
       {row.misses.length > 0 && (
-        <p className="mt-1 text-sm text-text-muted">
-          Flagged and skipped:{' '}
-          {row.misses.map((m) => `${m.name} (+${m.gain} over ${m.over})`)
-            .join(', ')}
-        </p>
+        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm
+                        text-text-muted">
+          <span>Flagged and skipped:</span>
+          {row.misses.map((m) => (
+            <span key={m.code} className="flex items-center gap-1">
+              <PlayerCard
+                size="chip"
+                code={m.code}
+                name={m.name}
+                // The review payload names no position for a miss; the card
+                // needs one only to pick the keeper's kit, and the plain shirt
+                // is what a null team code draws anyway.
+                position=""
+                teamShort={null}
+                teamCode={null}
+                ep={null}
+                onSelect={onSelect}
+              />
+              <span className="num">{`+${m.gain} over ${m.over}`}</span>
+            </span>
+          ))}
+        </div>
       )}
       {row.notices.map((notice) => (
         <p key={notice} className="mt-1 text-xs text-text-faint">{notice}</p>
@@ -129,6 +151,8 @@ function GwCard({ row }: { row: ReviewGw }) {
 
 export default function ReviewTab() {
   const [data, setData] = useState<ReviewData | null>(null)
+  // One modal for the whole tab rather than one per gameweek card.
+  const [explain, setExplain] = useState<number | null>(null)
 
   useEffect(() => {
     apiGet<ReviewData>('/api/review').then(setData)
@@ -202,8 +226,11 @@ export default function ReviewTab() {
         </Card>
       )}
       {[...data.gws].reverse().map((row) => (
-        <GwCard key={row.gw} row={row} />
+        <GwCard key={row.gw} row={row} onSelect={setExplain} />
       ))}
+      {explain !== null && (
+        <ExplainModal code={explain} onClose={() => setExplain(null)} />
+      )}
     </div>
   )
 }

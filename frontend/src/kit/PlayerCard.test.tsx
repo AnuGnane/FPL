@@ -149,4 +149,35 @@ describe('PlayerCard', () => {
                        teamCode={null} ep={0} fixture={null} />)
     expect(screen.getByText('Nobody')).toBeInTheDocument()
   })
+
+  it('lays the chip out along the row, not down it', () => {
+    const { container } = render(
+      <PlayerCard size="chip" code={1} name="Raya" position="GKP"
+                  teamShort={null} teamCode={null} ep={4.2} />)
+    const card = container.querySelector('[data-code="1"]')!
+    // A 76px vertical stack is right on grass and wrong in the first cell of
+    // an eight-column table, where it triples the row height (plan A2).
+    expect(card.className).toContain('inline-flex')
+    expect(card.className).not.toContain('flex-col items-center')
+    // The fixture chip is a pitch affordance: a table row has no space for
+    // "MCI (H) Sat 15:00" and the reader is not choosing a captain here.
+    expect(screen.queryByTestId('fixture-chip')).not.toBeInTheDocument()
+  })
+
+  it('prints an em dash, not a zero, for a player with no expected points', () => {
+    // Live has `remaining_ep: null` for a player whose match is over, and
+    // ReviewMiss has no EP at all. A confident 0.0 under a name is a lie
+    // (plan A3).
+    render(<PlayerCard size="chip" code={2} name="Salah" position="MID"
+                       teamShort={null} teamCode={null} ep={null} />)
+    expect(screen.getByText('—')).toBeInTheDocument()
+  })
+
+  it('still draws the pitch card exactly as it did', () => {
+    render(<PlayerCard code={3} name="Haaland" position="FWD"
+                       teamShort="MCI" teamCode={43} ep={7.1} fixture={null} />)
+    // The pitch is v9a's and this cycle does not touch it: the fixture chip
+    // is present and "Blank" is still the word for no fixture.
+    expect(screen.getByTestId('fixture-chip')).toHaveTextContent('Blank')
+  })
 })

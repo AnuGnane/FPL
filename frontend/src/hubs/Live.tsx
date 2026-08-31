@@ -5,8 +5,8 @@ import {
 } from 'recharts'
 import { apiGet } from '../api/client'
 import {
-  type Column, Badge, Card, DataTable, EmptyState, Loading, PageHeader,
-  PlayerName, Stat, fmtNum,
+  type Column, Badge, Card, DataTable, EmptyState, ExplainModal, Loading,
+  PageHeader, PlayerCard, Stat, fmtNum,
 } from '../kit'
 import type { LiveState, LiveTableRow } from '../types'
 
@@ -49,6 +49,10 @@ export default function Live() {
   const [error, setError] = useState<string | null>(null)
   const [active, setActive] = useState(true)
   const [auto, setAuto] = useState(true)
+  // PlayerCard has no modal inside it (that was PlayerName's bargain), so the
+  // host owns one: `onSelect` names a code and the page decides what that
+  // means.
+  const [explain, setExplain] = useState<number | null>(null)
 
   const load = useCallback(() => apiGet<LiveState>('/api/live')
     .then((body) => {
@@ -222,8 +226,21 @@ export default function Live() {
                   <td className="py-1.5">
                     <span className="inline-flex flex-wrap items-center
                                      gap-1.5">
-                      <PlayerName code={player.code} name={player.name}
-                                  pos={player.position} />
+                      <PlayerCard
+                        size="chip"
+                        code={player.code}
+                        name={player.name}
+                        position={player.position}
+                        // /api/live carries no team field and this cycle adds
+                        // no server code (plan A4): the bundled plain shirt is
+                        // the honest answer, not a guessed crest.
+                        teamShort={null}
+                        teamCode={null}
+                        // What the model still expects from him, which is null
+                        // once his matches are over — an em dash, not a zero.
+                        ep={player.remaining_ep ?? null}
+                        onSelect={setExplain}
+                      />
                       {player.multiplier > 1 && ' (C)'}
                       {player.projected_out && (
                         <Badge
@@ -307,6 +324,9 @@ export default function Live() {
           rowLabel={(r) => r.name}
         />
       </Card>
+      {explain !== null && (
+        <ExplainModal code={explain} onClose={() => setExplain(null)} />
+      )}
     </>
   )
 }

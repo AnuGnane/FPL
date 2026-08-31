@@ -35,7 +35,10 @@ export interface PlayerCardProps {
   position: string
   teamShort: string | null
   teamCode: number | null
-  ep: number
+  /** `null` where the surface genuinely has no expected-points number for
+   *  this player — Live once his match is over, a review miss, a rival's
+   *  squad list. `fmtNum` prints an em dash for it (plan A3). */
+  ep: number | null
   fixture?: NextFixture | null
   /** `'C'`, `'V'`, or nothing. The plan's armbands, not a judgement. */
   armband?: 'C' | 'V' | null
@@ -134,65 +137,93 @@ export default function PlayerCard({
   size = 'pitch', onSelect,
 }: PlayerCardProps) {
   const pitch = size === 'pitch'
-  const body = (
-    <>
-      <span className="relative">
-        <img
-          src={shirtSrc(teamCode, position)}
-          alt={teamShort ? `${teamShort} shirt` : 'shirt'}
-          width={pitch ? 44 : 24}
-          height={pitch ? 44 : 24}
-          // A request that fails on the wire falls back to the same plain
-          // shirt a missing team code gets, rather than hiding the element:
-          // a hidden image is a gap in the row, and a gap reads as a bug
-          // where a plain shirt reads as "we do not know his club". The
-          // guard stops the swap retriggering if the data URI itself
-          // somehow fails — an onError that reassigns the source it is
-          // already showing is an infinite loop.
-          onError={(e) => {
-            if (e.currentTarget.getAttribute('src') !== PLAIN_SHIRT) {
-              e.currentTarget.setAttribute('src', PLAIN_SHIRT)
-            }
-          }}
-          className="mx-auto block"
-        />
-        {armband && (
-          <span
-            title={armband === 'C' ? 'Captain' : 'Vice-captain'}
-            className={'absolute -right-1 -top-1 flex h-4 w-4 items-center '
-              + 'justify-center rounded-full border border-border '
-              + 'bg-card text-[9px] font-semibold '
-              + (armband === 'C' ? 'text-sage' : 'text-info')}
-          >
-            {armband}
-          </span>
-        )}
-      </span>
-      <span className="mt-0.5 flex items-center justify-center gap-1
-                       text-xs text-text">
-        <span className="truncate">{name}</span>
-        {news && (
-          <Badge variant="negative" title={news}>
-            {chanceOfPlaying === null ? 'News' : `${chanceOfPlaying}%`}
-          </Badge>
-        )}
-      </span>
-      <span className="flex items-center justify-center gap-1
-                       text-[10px] text-text-muted">
-        {teamShort && <span>{teamShort}</span>}
-        <span className="num">{fmtNum(ep)}</span>
-        {/* Drawn only when the payload already named a chip (D3): no new
-            chip plumbing this cycle. */}
-        {multiplier !== null && multiplier > 1 && (
-          <span className="num text-sage">{`×${multiplier}`}</span>
-        )}
-      </span>
-      {pitch && <FixtureChip fixture={fixture} />}
-    </>
+
+  const shirt = (
+    <span className="relative shrink-0">
+      <img
+        src={shirtSrc(teamCode, position)}
+        alt={teamShort ? `${teamShort} shirt` : 'shirt'}
+        width={pitch ? 44 : 24}
+        height={pitch ? 44 : 24}
+        // A request that fails on the wire falls back to the same plain
+        // shirt a missing team code gets, rather than hiding the element:
+        // a hidden image is a gap in the row, and a gap reads as a bug
+        // where a plain shirt reads as "we do not know his club". The
+        // guard stops the swap retriggering if the data URI itself
+        // somehow fails — an onError that reassigns the source it is
+        // already showing is an infinite loop.
+        onError={(e) => {
+          if (e.currentTarget.getAttribute('src') !== PLAIN_SHIRT) {
+            e.currentTarget.setAttribute('src', PLAIN_SHIRT)
+          }
+        }}
+        className={pitch ? 'mx-auto block' : 'block'}
+      />
+      {armband && (
+        <span
+          title={armband === 'C' ? 'Captain' : 'Vice-captain'}
+          className={'absolute -right-1 -top-1 flex h-4 w-4 items-center '
+            + 'justify-center rounded-full border border-border '
+            + 'bg-card text-[9px] font-semibold '
+            + (armband === 'C' ? 'text-sage' : 'text-info')}
+        >
+          {armband}
+        </span>
+      )}
+    </span>
   )
 
-  const className = 'flex w-[76px] flex-col items-center rounded-card '
-    + 'border border-border bg-card px-1 py-1 text-center'
+  const nameLine = (
+    <span className={'flex items-center gap-1 text-xs text-text '
+      + (pitch ? 'mt-0.5 justify-center' : 'min-w-0')}>
+      <span className="truncate">{name}</span>
+      {news && (
+        <Badge variant="negative" title={news}>
+          {chanceOfPlaying === null ? 'News' : `${chanceOfPlaying}%`}
+        </Badge>
+      )}
+    </span>
+  )
+
+  const metaLine = (
+    <span className={'flex items-center gap-1 text-[10px] text-text-muted '
+      + (pitch ? 'justify-center' : '')}>
+      {teamShort && <span>{teamShort}</span>}
+      <span className="num">{fmtNum(ep)}</span>
+      {/* Drawn only when the payload already named a chip (D3): no new
+          chip plumbing this cycle. */}
+      {multiplier !== null && multiplier > 1 && (
+        <span className="num text-sage">{`×${multiplier}`}</span>
+      )}
+    </span>
+  )
+
+  // The two sizes share every piece except their frame (plan A2): the pitch
+  // keeps v9a's centred stack with its fixture chip, and the chip lies along
+  // a row so it can sit in a table cell without tripling the row height.
+  const body = pitch
+    ? (
+      <>
+        {shirt}
+        {nameLine}
+        {metaLine}
+        <FixtureChip fixture={fixture} />
+      </>
+      )
+    : (
+      <>
+        {shirt}
+        <span className="flex min-w-0 flex-col">{nameLine}{metaLine}</span>
+      </>
+      )
+
+  const className = pitch
+    ? 'flex w-[76px] flex-col items-center rounded-card '
+      + 'border border-border bg-card px-1 py-1 text-center'
+    // No fixed width: a chip sits in a table cell, a list row and a wrapping
+    // strip, and each of those knows its own width better than the card does.
+    : 'inline-flex max-w-full items-center gap-1.5 rounded-card border '
+      + 'border-border bg-card px-1.5 py-1 text-left'
 
   // A div unless something is listening: a button nothing responds to is a
   // focus stop that lies about being interactive.
