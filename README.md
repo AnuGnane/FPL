@@ -237,7 +237,14 @@ whole security model, so do not put it behind a public proxy.
 Seven pages: **This Week** (the recommendation, with a pitch view, the chip
 planner's best week for each unused chip, and a re-run button), **What-If
 Lab** (lock, ban or force in players, cap the hits, and re-solve the real
-MILP against the saved pool — the plan diff shows what changed), **League
+MILP against the saved pool — the plan diff shows what changed; a
+sensitivity card re-solves the same board twenty times with every expected-
+points cell knocked by its own plausible error, so a move that survives
+seventeen of twenty solves can be told apart from one that survives twelve;
+and your own pins are listed and editable beside it, with a **Drafts** tab
+alongside where you name a set of what-if constraints, keep up to twelve of
+them, and compare any six side by side against today's board with the
+unconstrained optimum as the reference row), **League
 Race** (standings, trajectory, win probability and what λ is doing, with
 rival intel a click away: each rival's squad, overlap and differentials
 against yours), **Live** (in-gameweek points, auto-refreshing: the auto-subs
@@ -245,7 +252,9 @@ FPL would apply if the afternoon ended now, a race chart of where your score
 is heading — points banked plus the expectation still owed by every unfinished
 match, against the pre-gameweek plan — and what you need to take or hold the
 league places either side of you), **Players**
-(the candidate pool, with the "why 6.8?" breakdown behind every name),
+(the candidate pool, with the "why 6.8?" breakdown behind every name, and a
+**Pin** button on each row for the weeks you know something the model does
+not),
 **History** (past runs, expected versus actual, price charts) and **Runs &
 Health** (data freshness, model metrics, the launchd log, re-run buttons).
 A fixture ticker sits alongside them and is embedded read-only in the
@@ -258,6 +267,49 @@ it starts again from that moment, which is the price of a page that writes
 nothing. And the safety numbers are league places only: an overall-rank
 cushion would need every one of ten million entries' live scores, and no
 public endpoint gives them.
+
+### Pinning a player (v8e)
+
+`Pin` on any row in the Players page sets your own probability of playing, or
+your own expected minutes, for the coming gameweek. It is applied **last** —
+over the official flag, the injury feed, the predicted line-up, the notable-
+absence damp and the presser classifier — because those are all sources of
+evidence and you are the one who watched the press conference. A pin on
+`p_play` carries `p60` and expected minutes with it so the three stay
+coherent; a pin on a player the model has zeroed is taken literally, as "he
+starts and he lasts".
+
+Three things it deliberately will not do. It applies to the imminent gameweek
+only, like every other team-news adjustment, because a claim about Saturday
+says nothing about the Wednesday after. It cannot override expected *points* —
+only minutes — so a bad afternoon cannot rewrite the model's whole opinion of
+a player. And it is recorded rather than hidden: the availability artifact and
+the daily snapshot both carry an `override` marker, This Week's why-panel
+names every active pin beside what the model had when you set it, and
+`[news] overrides = false` in `config.toml` switches the whole thing off
+without deleting anything.
+
+The pins live in `reports/overrides.json`. Because the two availability passes
+inside an advise run are indistinguishable from the inside, a pin lands on
+both the news arm and the news-shadow control arm — which means a pinned
+player shows no *news* effect in the shadow log at all, rather than the news
+layer being credited with a move you made.
+
+### Sensitivity and drafts (v8e)
+
+**Run sensitivity** on the What-If tab re-solves the saved board twenty times
+under seeded noise drawn from the same minutes-driven error scale the advice
+sweep uses, and writes `reports/sensitivity_gw{N}.json`: how often each buy,
+sell, captain and chip survives, the modal plan, and what the best *differing*
+plan would have cost priced on the true board. It takes two to three minutes,
+it never runs inside `gaffer advise`, and it never changes a served number —
+it is a report about the plan, not a revision of it. With the same seed it is
+the same report.
+
+A **draft** is a named set of what-if constraints in `reports/drafts.json`,
+not a frozen squad, so it still means something after Thursday's price changes
+and Friday's injury: comparing re-solves each draft against today's board and
+stamps each row with when it was solved.
 
 The pages read the artifacts `gaffer advise` writes, so the UI works offline
 apart from League Race, Live and the rival pages, which need the FPL API and
@@ -351,6 +403,13 @@ makes the live season collide with the one you just archived.
   when the gameweek's results are final, and never re-derived — the model's
   pre-deadline advice is pruned after twenty runs, so the grade has to outlive
   it.
+- `reports/overrides.json` — your own pins on a player's probability of
+  playing or expected minutes, with what the model had for him when you set
+  each one. Read at serve time only; never a training feature.
+- `reports/drafts.json` — named what-if constraint sets, up to twelve.
+- `reports/sensitivity_gw{N}.json` — one banked robustness sweep per
+  gameweek: move frequencies over twenty noised re-solves, the modal plan and
+  the margin to the best differing one.
 - `logs/` — output from the launchd jobs (gitignored)
 - `frontend/` — React/Vite source for the web UI; built output lands in
   `src/gaffer/web/static/` (gitignored, shipped in the wheel)
@@ -386,6 +445,10 @@ Re-run it after moving the project.
   Monday, sometimes late; a midweek gameweek is picked up the following
   Tuesday or by the Model hub's **Review last week** button. Already-reviewed
   weeks are a no-op that prints one line.
+
+Nothing else is scheduled. The rest of the work the UI can start — including
+`sensitivity`, twenty noised re-solves of this week's board, minutes rather
+than seconds and deliberately manual — runs only when you press its button.
 
 Check they are loaded with `launchctl list | grep com.gaffer`. Remove with
 `launchctl unload ~/Library/LaunchAgents/com.gaffer.{advise,prices,snapshot,field,review}.plist`.
