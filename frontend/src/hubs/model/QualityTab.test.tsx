@@ -296,13 +296,15 @@ function currentWithHeads(keys: string[]) {
 
 let history: unknown = { runs: [] }
 let misses: unknown = { gw: null, rows: [] }
+let review: unknown = { gws: [] }
 
-function mockHistory(body: unknown) { history = body }
 function mockMisses(body: unknown) { misses = body }
+function mockReview(body: unknown) { review = body }
 
 function renderQuality(over: { current?: unknown }) {
   apiGet.mockImplementation((path: string) => {
     if (path === '/api/history') return Promise.resolve(history)
+    if (path === '/api/review') return Promise.resolve(review)
     if (path === '/api/misses') return Promise.resolve(misses)
     if (path === '/api/pens') {
       return Promise.reject(new FakeApiError(422, 'no pen tracker report'))
@@ -317,6 +319,7 @@ describe('v8g calibration', () => {
   beforeEach(() => {
     history = { runs: [] }
     misses = { gw: null, rows: [] }
+    review = { gws: [] }
   })
 
   it('draws a reliability curve for p_start, which nothing rendered before',
@@ -340,28 +343,51 @@ describe('v8g calibration', () => {
     expect(await screen.findByText(/over 300 observations/)).toBeInTheDocument()
   })
 
-  it('plots forecast against outcome for every finished gameweek', async () => {
-    mockHistory({ runs: [
-      { gw: 1, deadline: '', captain: 'Saka', buys: [], sells: [], hits: 0,
-        expected_pts: 55.2, actual_pts: 61 },
-      { gw: 2, deadline: '', captain: 'Saka', buys: [], sells: [], hits: 0,
-        expected_pts: 58.0, actual_pts: null },
+  it('plots both axes off the ledger, in the same unit', async () => {
+    // B3. Both series are squads hand-scored off the same actuals frame:
+    // mine net of hits, and mine with every comparable lane taken from the
+    // model. The old card put `advise.raw_xi_pts` — an untilted EP sum over
+    // the model's chosen eleven, before captaincy — on one axis and the
+    // entry's official net score on the other, and drew a y = x line through
+    // them.
+    mockReview({ gws: [
+      { gw: 1, my_points: 61, model_points: 58, no_advice: false,
+        lanes: [], misses: [], notices: [] },
+      { gw: 2, my_points: 44, model_points: 52, no_advice: false,
+        lanes: [], misses: [], notices: [] },
+      { gw: 3, my_points: 39, model_points: null, no_advice: true,
+        lanes: [], misses: [], notices: [] },
     ] })
     renderQuality({})
-    const chart = await screen.findByLabelText('forecast against outcome')
+    const chart = await screen.findByLabelText('your points against the '
+                                               + 'model’s')
     expect(chart).toBeInTheDocument()
-    // GW2 has not been played; a point at zero would be a 58-point miss the
-    // model never made.
-    expect(screen.getByText(/1 finished gameweek/)).toBeInTheDocument()
+    // GW3's advice was pruned, so there is no model squad to score it
+    // against — two graded weeks, not three.
+    expect(screen.getByText(/2 graded gameweeks/)).toBeInTheDocument()
   })
 
-  it('shows no scatter at all when nothing has been played', async () => {
-    mockHistory({ runs: [
-      { gw: 1, deadline: '', captain: '', buys: [], sells: [], hits: 0,
-        expected_pts: 55.2, actual_pts: null }] })
+  it('keeps the card and states the reason when nothing is graded yet',
+     async () => {
+    mockReview({ gws: [
+      { gw: 1, my_points: 39, model_points: null, no_advice: true,
+        lanes: [], misses: [], notices: [] }] })
     renderQuality({})
-    await screen.findByText(/Nothing evaluated yet|Holdout/)
-    expect(screen.queryByLabelText('forecast against outcome')).toBeNull()
+    expect(await screen.findByText(/No graded gameweek yet/))
+      .toBeInTheDocument()
+    expect(screen.queryByLabelText('your points against the model’s'))
+      .toBeNull()
+  })
+
+  it('will not draw a trend through a single point', async () => {
+    mockReview({ gws: [
+      { gw: 1, my_points: 61, model_points: 58, no_advice: false,
+        lanes: [], misses: [], notices: [] }] })
+    renderQuality({})
+    expect(await screen.findByText(/1 graded gameweek so far/))
+      .toBeInTheDocument()
+    expect(screen.queryByLabelText('your points against the model’s'))
+      .toBeNull()
   })
 
   it('lists the biggest misses with their sign', async () => {

@@ -10,8 +10,8 @@ import {
 } from '../../kit'
 import type {
   BenchmarkEvaluation, CurrentEvaluation, DecompositionData, HeadMetrics,
-  HistoryData, MissRow, MissesData, NewsShadowData, PenTrackerData,
-  PenTrackerGw, QualityData, StratifiedTable,
+  MissRow, MissesData, NewsShadowData, PenTrackerData,
+  PenTrackerGw, QualityData, ReviewData, StratifiedTable,
 } from '../../types'
 
 // Categories are OpenFPL's, defined on actual points, so the labels have to
@@ -475,51 +475,83 @@ function PensSection() {
 }
 
 /**
- * Forecast against outcome, one point per finished gameweek.
+ * Your points against the model's, one point per graded gameweek.
  *
- * Its own fetch, on PensSection's pattern: /api/history is a different
+ * Both axes come off `reports/decision_ledger.json`, and that is the whole
+ * design. The card used to plot `advise.raw_xi_pts` — an untilted sum of EP
+ * over the eleven the advice run picked, before captaincy and before hits —
+ * against the entry's official net score off `meta.py`. Two different
+ * quantities on two axes with a y = x line drawn through them: every point
+ * sat above the line, and the "gap" the reader took away was a unit mismatch
+ * rather than a miss.
+ *
+ * The ledger's two numbers are commensurable by construction. `review.grade_gw`
+ * hand-scores both squads against the same actuals frame: `my_points` is my
+ * eleven with my armband, net of hits, and `model_points` is that same squad
+ * with every *comparable* lane replaced by the model's. So the diagonal is a
+ * real reference — above it my week beat the model's advice, below it the
+ * advice would have beaten me — and the vertical distance is in points.
+ *
+ * Its own fetch, on PensSection's pattern: /api/review is a different
  * artifact with its own "nothing banked yet" state, and folding it into
  * /api/quality would let one missing file blank the other's card.
  *
- * A gameweek with no official points yet is dropped rather than plotted at
- * zero — an unplayed week charted at the origin is a fifty-point miss the
- * model never made, which is the single most misleading thing this card
- * could do.
+ * A `no_advice` row carries `model_points: null` — the advice for that week
+ * has been pruned, so there is no model squad to score. Those rows are
+ * dropped rather than plotted at zero, and the card says how many weeks it is
+ * actually drawing. Under two of them there is no scatter to draw and the
+ * card says *that* instead of vanishing: an absent card reads as a missing
+ * feature, where the truth is a season that has not been graded yet.
  */
 function ScatterSection() {
-  const [runs, setRuns] = useState<HistoryData['runs'] | null>(null)
+  const [gws, setGws] = useState<ReviewData['gws'] | null>(null)
 
   useEffect(() => {
-    apiGet<HistoryData>('/api/history')
-      .then((body) => setRuns(body.runs ?? []))
-      .catch(() => setRuns([]))
+    apiGet<ReviewData>('/api/review')
+      .then((body) => setGws(body.gws ?? []))
+      .catch(() => setGws([]))
   }, [])
 
-  const points = (runs ?? [])
-    .filter((r) => r.actual_pts !== null)
-    .map((r) => ({ gw: r.gw, expected: r.expected_pts,
-                   actual: r.actual_pts as number }))
-  if (points.length === 0) return null
+  if (gws === null) return null
+  const points = gws
+    .filter((r) => r.model_points !== null && r.my_points !== null)
+    .map((r) => ({ gw: r.gw, model: r.model_points as number,
+                   mine: r.my_points as number }))
+
+  if (points.length < 2) {
+    return (
+      <Card title="Your points against the model’s" className="mt-4">
+        <p className="text-text-muted">
+          {points.length === 0
+            ? 'No graded gameweek yet — review a finished week and this '
+              + 'compares what you scored against what the model’s own '
+              + 'squad would have.'
+            : '1 graded gameweek so far. One point is an anecdote, not a '
+              + 'scatter; the chart appears from the second graded week.'}
+        </p>
+      </Card>
+    )
+  }
 
   const top = Math.ceil(Math.max(
-    ...points.map((p) => Math.max(p.expected, p.actual)), 10) / 10) * 10
+    ...points.map((p) => Math.max(p.model, p.mine)), 10) / 10) * 10
 
   return (
-    <Card title="Forecast against outcome" className="mt-4">
+    <Card title="Your points against the model’s" className="mt-4">
       <p className="mb-3 text-text-muted">
-        {'Each point is one finished gameweek: what the advice run expected '
-          + 'from the eleven it picked, against what that eleven actually '
-          + `scored. ${points.length} finished gameweek`
-          + `${points.length === 1 ? '' : 's'}. Above the dashed line the `
-          + 'week beat the forecast.'}
+        {'Each point is one graded gameweek. Both numbers are whole squads '
+          + 'scored off the same results — yours net of hits, against yours '
+          + 'with every comparable decision taken from the model instead. '
+          + `${points.length} graded gameweeks. Above the dashed line your `
+          + 'week beat the advice; below it the advice would have beaten you.'}
       </p>
-      <div aria-label="forecast against outcome">
+      <div aria-label="your points against the model’s">
         <ResponsiveContainer width="100%" height={260}>
           <ScatterChart margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
             <CartesianGrid stroke="var(--color-divider)" />
-            <XAxis type="number" dataKey="expected" name="expected"
+            <XAxis type="number" dataKey="model" name="model"
                    domain={[0, top]} stroke="var(--color-text-muted)" />
-            <YAxis type="number" dataKey="actual" name="actual"
+            <YAxis type="number" dataKey="mine" name="yours"
                    domain={[0, top]} stroke="var(--color-text-muted)" />
             <ZAxis range={[60, 60]} />
             <Tooltip
