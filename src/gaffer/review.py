@@ -45,6 +45,7 @@ from gaffer.journal import _code_of_element, latest_run_per_gw
 
 __all__ = ["ACTUAL_COLS", "CHIP_SCORING", "LANES", "LEDGER", "MISS_BAR",
            "PWIN_LANES", "SQUAD_CHIPS", "actuals_for_gw", "append_ledger",
+           "build_lanes",
            "code_of_element", "format_review", "grade_gw", "grade_gw_from",
            "hindsight_gap", "hindsight_xi", "label_for", "lane_bench",
            "lane_captaincy", "lane_chip", "lane_transfers", "ledger_path",
@@ -592,9 +593,38 @@ def hindsight_xi(squad15, actuals: pd.DataFrame):
     return best
 
 
+def build_lanes(mine: dict, model: dict, actuals: pd.DataFrame) -> list[dict]:
+    """The four graded lanes for one gameweek, each still carrying its ``cf``.
+
+    One place builds a counterfactual, so the squad a lane is *graded* against
+    and the squad it is *priced* against are the same object rather than two
+    reconstructions that can drift apart. The transfers lane is the one that
+    can: it undoes my own week before applying the model's, so a second
+    builder that did not know my transfers would price a fifteen I never owned
+    at the deadline and the row would report two currencies measured on two
+    different squads.
+
+    ``mine`` is the full decision dict — the squad keys plus ``transfers`` and
+    ``code_of`` — because the transfers lane needs all three.
+    """
+    my_squad = {k: mine[k] for k in ("xi", "bench", "captain", "vice", "hits",
+                                     "chip")}
+    positions = model.get("positions") or {}
+    return [
+        lane_transfers(my_squad, model, actuals,
+                       my_transfers=mine.get("transfers") or [],
+                       positions=positions,
+                       code_of=mine.get("code_of") or {}),
+        lane_captaincy(my_squad, model, actuals),
+        lane_bench(my_squad, model, actuals),
+        lane_chip(my_squad, model, actuals),
+    ]
+
+
 def grade_gw_from(gw: int, mine: dict, model: dict | None,
                   actuals: pd.DataFrame, pwin: dict | None = None,
-                  pwin_meta: dict | None = None) -> dict:
+                  pwin_meta: dict | None = None,
+                  lanes: list[dict] | None = None) -> dict:
     """One ledger row from decisions already read. Pure; no I/O, no network.
 
     Split out from :func:`grade_gw` so the taxonomy can be tested against
@@ -605,6 +635,10 @@ def grade_gw_from(gw: int, mine: dict, model: dict | None,
     D2) — gives a ``no_advice`` row: every lane null, no accuracy, and the
     reconciliation and hindsight still computed, because those do not need
     the model at all and are the half of the row that stays true forever.
+
+    ``lanes`` is the already-built lane list when the caller has one — the
+    pricing pass in :func:`grade_gw` builds it first so the priced squad and
+    the graded squad are the same squad. Absent, the lanes are built here.
     """
     my_points = score_squad(actuals, **{k: mine[k] for k in
                                         ("xi", "bench", "captain", "vice",
@@ -659,16 +693,8 @@ def grade_gw_from(gw: int, mine: dict, model: dict | None,
         row["accuracy"] = None
         return row
 
-    positions = model.get("positions") or {}
-    lanes = [
-        lane_transfers(my_squad, model, actuals,
-                       my_transfers=mine.get("transfers") or [],
-                       positions=positions,
-                       code_of=mine.get("code_of") or {}),
-        lane_captaincy(my_squad, model, actuals),
-        lane_bench(my_squad, model, actuals),
-        lane_chip(my_squad, model, actuals),
-    ]
+    lanes = (list(lanes) if lanes is not None
+             else build_lanes(mine, model, actuals))
 
     # The composite: my squad with every *comparable* lane taken from the
     # model at once. Applied in the registered order because the lanes
@@ -877,33 +903,19 @@ def grade_gw(gw: int, *, cfg, client=None) -> dict | None:
 
     my_squad = {k: mine[k] for k in ("xi", "bench", "captain", "vice", "hits",
                                      "chip")}
-    counterfactuals = {lane: _cf_squad(lane, my_squad, model)
-                       for lane in PWIN_LANES}
+    # Built once. The lanes carry the counterfactual squads they graded, so
+    # the pricing pass prices those and not a second reconstruction of them.
+    lanes = build_lanes(mine, model, frame)
+    counterfactuals = {lane["lane"]: lane.get("cf") for lane in lanes
+                       if lane["lane"] in PWIN_LANES}
     element_of = {c: e for e, c in code_of_element().items()}
     priced, notice = price_lanes_for_gw(cfg, client, gw, my_squad,
                                         counterfactuals, element_of)
-    row = grade_gw_from(gw, mine, model, frame, pwin=priced, pwin_meta=meta)
+    row = grade_gw_from(gw, mine, model, frame, pwin=priced, pwin_meta=meta,
+                        lanes=lanes)
     if notice:
         row["notices"] = list(row["notices"]) + [notice]
     return row
-
-
-def _cf_squad(lane: str, mine: dict, model: dict) -> dict | None:
-    """Rebuild one lane's counterfactual squad for the pricing pass.
-
-    The lane builders drop their ``cf`` before the row is banked — the ledger
-    holds grades, not squads — so the two priceable lanes are rebuilt here
-    from the same two functions rather than from a second implementation.
-    """
-    import pandas as pd
-
-    blank = pd.DataFrame(columns=ACTUAL_COLS)
-    if lane == "transfers":
-        built = lane_transfers(mine, model, blank, my_transfers=[],
-                               positions=model.get("positions") or {})
-    else:
-        built = lane_captaincy(mine, model, blank)
-    return built.get("cf")
 
 
 LEDGER = "decision_ledger.json"

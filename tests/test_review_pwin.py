@@ -172,3 +172,118 @@ def test_a_gameweek_with_no_banked_components_is_absent_with_a_notice(
     out, notice = price_lanes_for_gw(CFG, FakeClient(), 1, MINE, {}, {})
     assert out == {}
     assert "GW1" in notice
+
+
+# --- B1: the priced squad and the graded squad are one squad ---------------
+#
+# The transfers lane grades a counterfactual that *undoes my own week first*
+# (review.py:423). If the pricing pass rebuilds that squad without my
+# transfers, the row reports a Δpts measured on one fifteen and a Δwin%
+# measured on another, and nothing in the row says so.
+
+B1_ROWS = [("GKP", 3), ("GKP", 1), ("DEF", 6), ("DEF", 2), ("DEF", 1),
+           ("DEF", 0), ("DEF", 4), ("MID", 9), ("MID", 2), ("MID", 1),
+           ("MID", 5), ("MID", 0), ("FWD", 7), ("FWD", 1), ("FWD", 2)]
+
+B1_PLAYER_GW = pd.DataFrame(
+    [{"season_idx": 4, "gw": 1, "code": 100 + i, "element": 7 + i,
+      "position": pos, "total_points": pts, "minutes": 90}
+     for i, (pos, pts) in enumerate(B1_ROWS)]
+    # 115 is the defender I sold this week; 116 the one the model wanted.
+    + [{"season_idx": 4, "gw": 1, "code": 115, "element": 22,
+        "position": "DEF", "total_points": 8, "minutes": 90},
+       {"season_idx": 4, "gw": 1, "code": 116, "element": 23,
+        "position": "DEF", "total_points": 14, "minutes": 90}])
+
+B1_PLAYERS = pd.DataFrame(
+    [{"code": 100 + i, "element": 7 + i, "name": f"P{i}"} for i in range(15)]
+    + [{"code": 115, "element": 22, "name": "Sold"},
+       {"code": 116, "element": 23, "name": "Wanted"}])
+
+B1_XI = [0, 2, 3, 4, 6, 7, 8, 9, 10, 12, 13]
+B1_BENCH = [1, 5, 11, 14]
+
+B1_PICKS = (
+    [{"element": 7 + idx, "position": 1 + slot,
+      "multiplier": 2 if idx == 7 else 1,
+      "is_captain": idx == 7, "is_vice_captain": idx == 12}
+     for slot, idx in enumerate(B1_XI)]
+    + [{"element": 7 + idx, "position": 12 + slot, "multiplier": 0,
+        "is_captain": False, "is_vice_captain": False}
+       for slot, idx in enumerate(B1_BENCH)])
+
+B1_HISTORY = {"current": [{"event": 1, "points": 60, "total_points": 60,
+                           "event_transfers": 1, "event_transfers_cost": 4,
+                           "points_on_bench": 3}], "chips": []}
+
+# I brought 105 in for 115. The model wanted 116 for 102 instead.
+B1_TRANSFERS = [{"event": 1, "element_in": 12, "element_out": 22}]
+
+B1_ADVICE = {
+    "gw": 1, "deadline": "2026-08-14T17:30:00Z",
+    "xi": [{"code": 100 + i, "name": f"P{i}",
+            "position": B1_ROWS[i][0]} for i in B1_XI],
+    "bench": [{"code": 100 + i, "name": f"P{i}",
+               "position": B1_ROWS[i][0]} for i in B1_BENCH],
+    "captain": {"code": 112, "name": "P12"},
+    "vice": {"code": 107, "name": "P7"},
+    "buys": [{"code": 116, "name": "Wanted", "position": "DEF"}],
+    "sells": [{"code": 102, "name": "P2", "position": "DEF"}],
+    "hits": 1, "chip_table": []}
+
+B1_CFG = Config(entry_id=42, league_id=5, current_season="2026-27", sim_n=50)
+
+
+@pytest.fixture()
+def b1(tmp_path, monkeypatch):
+    """A clone where I made a transfer and the model wanted a different one."""
+    import json
+
+    from gaffer.artifacts import ADVICE_HISTORY
+    from gaffer.data import store
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")
+    monkeypatch.setattr("gaffer.data.my_entry.RAW_LEAGUE",
+                        tmp_path / "data/raw/league")
+    store.save(B1_PLAYER_GW, "live/player_gw.parquet")
+    store.save(B1_PLAYERS, "live/players.parquet")
+    base = tmp_path / "data/raw/league/2026-27"
+    base.mkdir(parents=True, exist_ok=True)
+    (base / "42-1.json").write_text(json.dumps(B1_PICKS))
+    (base / "42-history.json").write_text(json.dumps(B1_HISTORY))
+    (base / "42-transfers.json").write_text(json.dumps(B1_TRANSFERS))
+    ADVICE_HISTORY.mkdir(parents=True, exist_ok=True)
+    (ADVICE_HISTORY / "gw1-2026-08-14T09:00:00.json").write_text(
+        json.dumps(B1_ADVICE))
+    return tmp_path
+
+
+def test_the_priced_squad_is_exactly_the_squad_the_lane_grades(b1,
+                                                               monkeypatch):
+    """One counterfactual per lane, built once and used for both currencies.
+
+    The identity is arithmetic rather than incidental: ``delta_pts`` is my
+    score less the counterfactual's, so the squad handed to the pricing pass
+    must score exactly ``my_points - delta_pts``. A pricing pass that skipped
+    my own transfer would hand over a fifteen with the player I *bought* in
+    it and the identity would not hold."""
+    from gaffer import review as R
+
+    seen = {}
+
+    def _capture(cfg, client, gw, mine, counterfactuals, element_of):
+        seen.update(counterfactuals)
+        return {}, None
+
+    monkeypatch.setattr(R, "price_lanes_for_gw", _capture)
+    row = R.grade_gw(1, cfg=B1_CFG, client=object())
+    lane = next(ln for ln in row["lanes"] if ln["lane"] == "transfers")
+    assert lane["delta_pts"] is not None
+    cf = seen["transfers"]
+    assert cf is not None
+    # The fifteen I owned at the deadline had 115 in it, not 105.
+    assert 115 in cf["xi"] + cf["bench"]
+    assert 105 not in cf["xi"] + cf["bench"]
+    assert R.score_squad(R.actuals_for_gw(1), **cf) \
+        == row["my_points"] - lane["delta_pts"]
