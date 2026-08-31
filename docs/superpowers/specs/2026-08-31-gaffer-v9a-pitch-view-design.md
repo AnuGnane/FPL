@@ -33,12 +33,12 @@ Photos on the pitch cards (FPL's own pitch uses shirts; photos land with v9b's i
 
 **G3 — suites, types, build, audit (measured by the implementer):**
 
-- [x] `uv run pytest -q` — 2740 passed (main baseline 2664 + 76 new: 24
+- [x] `uv run pytest -q` — 2746 passed (main baseline 2664 + 82 new: 29
       `test_web_assets`, 26 `test_web_identity`, 5 `test_web_advice_identity`,
-      21 `test_v9a_degradation`)
+      22 `test_v9a_degradation`)
 - [x] `npx tsc --noEmit` — clean
-- [x] `npx vitest run` — 496 passed, 1 skipped (main baseline 460 + 36 new: 4
-      `types.test`, 15 `PlayerCard`, 10 `SquadPitch`, 7 `ThisWeek`)
+- [x] `npx vitest run` — 498 passed, 1 skipped (main baseline 460 + 38 new: 4
+      `types.test`, 17 `PlayerCard`, 10 `SquadPitch`, 7 `ThisWeek`)
 - [x] `npm run build` — clean
 - [x] Protected diff empty: advise.py, set_pieces.py, optimize/**, jobs.py,
       routers/jobs.py, routers/whatif.py, test_advise.py, test_odds.py,
@@ -69,6 +69,6 @@ Photos on the pitch cards (FPL's own pitch uses shirts; photos land with v9b's i
 - [ ] `curl -s -o /dev/null -w '%{http_code}' localhost:8927/api/assets/shirt/999`
       is 404, and the same for a photo code outside the bootstrap.
 
-**G2 — rails:** `uv run pytest -q tests/test_v9a_degradation.py` (21 passed),
+**G2 — rails:** `uv run pytest -q tests/test_v9a_degradation.py` (22 passed),
 plus every pre-existing `test_*_degradation.py` unmodified
-(`uv run pytest -q tests/ -k degradation` — 217 passed).
+(`uv run pytest -q tests/ -k degradation` — 218 passed).

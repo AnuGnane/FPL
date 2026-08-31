@@ -193,6 +193,80 @@ def test_the_write_leaves_no_temp_file_behind(wired):
     assert list((tmp_path / "data/live/assets").glob("*.tmp")) == []
 
 
+def test_a_body_that_is_not_an_image_is_a_fallback_and_is_never_banked(
+        wired, monkeypatch):
+    """The captive-portal case, and the reason banking is guarded by the
+    bytes rather than by the status line.
+
+    A hotel wifi splash page is a 200 with an HTML body. Banked, it would be
+    served as ``image/webp`` behind a week-long ``immutable`` header, and the
+    pitch would stay broken until somebody deleted the cache directory by
+    hand — a failure that outlives its cause by six days.
+    """
+    tmp_path, client, _calls = wired
+    monkeypatch.setattr(assets, "_fetch",
+                        lambda url: b"<!DOCTYPE html><html>Sign in</html>")
+    response = client.get("/api/assets/shirt/43")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/svg+xml"
+    assert not (tmp_path / "data/live/assets/shirt_43.webp").exists()
+
+
+def test_a_png_body_does_not_satisfy_a_request_for_a_shirt(wired,
+                                                            monkeypatch):
+    """The magic check is per declared type, not "is this any image"."""
+    tmp_path, client, _calls = wired
+    monkeypatch.setattr(assets, "_fetch", lambda url: PNG)
+    assert b"<svg" in client.get("/api/assets/shirt/43").content
+    assert not (tmp_path / "data/live/assets/shirt_43.webp").exists()
+
+
+def test_a_body_over_the_size_cap_is_a_fallback_and_is_never_banked(
+        wired, monkeypatch):
+    """A 66px shirt is a couple of kilobytes. Two megabytes of anything is
+    not the thing we asked for."""
+    tmp_path, client, _calls = wired
+    monkeypatch.setattr(assets, "_fetch",
+                        lambda url: b"RIFF" + b"\0" * (assets.MAX_BYTES + 1))
+    assert b"<svg" in client.get("/api/assets/shirt/43").content
+    assert not (tmp_path / "data/live/assets/shirt_43.webp").exists()
+
+
+def test_every_response_refuses_content_type_sniffing(wired, monkeypatch):
+    """These bytes came from a third party; the type is ours to declare and
+    not the browser's to guess at. Hit, fresh and fallback alike."""
+    _tmp, client, _calls = wired
+    fresh = client.get("/api/assets/shirt/43")
+    hit = client.get("/api/assets/shirt/43")
+    monkeypatch.setattr(assets, "_fetch", lambda url: (_ for _ in ()).throw(
+        RuntimeError("connection refused")))
+    fallback = client.get("/api/assets/photo/223094")
+    for response in (fresh, hit, fallback):
+        assert response.headers["x-content-type-options"] == "nosniff"
+
+
+def test_the_fetch_does_not_follow_redirects_off_the_cdn(monkeypatch):
+    """``_fetch`` asks for a direct path on a verified host. A 3xx means the
+    answer is coming from somewhere else, which belongs in the fallback path
+    rather than being chased off-host and banked for a week."""
+    seen: dict = {}
+
+    class Reply:
+        content = b"RIFF"
+
+        def raise_for_status(self):
+            return None
+
+    def spy(url, **kwargs):
+        seen.update(kwargs)
+        return Reply()
+
+    monkeypatch.setattr(assets.httpx, "get", spy)
+    assert assets._fetch("https://example.invalid/x.webp") == b"RIFF"
+    assert seen["follow_redirects"] is False
+    assert seen["timeout"] == assets.TIMEOUT
+
+
 # --- the allowlist and the path -------------------------------------
 
 def test_a_team_code_the_bootstrap_does_not_know_is_a_404(wired):

@@ -72,6 +72,32 @@ MISS_CACHE = "public, max-age=60"
 """A minute, and no ``immutable``. The fallback means "we could not reach the
 CDN just now", which is a sentence with a short shelf life."""
 
+NOSNIFF = "nosniff"
+"""``X-Content-Type-Options`` on every response this router serves.
+
+These bytes came from a third party. The declared type is ours, and a browser
+that sniffs its way to a different one — script, say — would be deciding on
+its own that a file we called an image is something else."""
+
+MAX_BYTES = 2 * 1024 * 1024
+"""Two megabytes. A 66px shirt is a couple of kilobytes and a 110x140 photo is
+a few more; anything at this size is not the thing we asked for, and banking
+it would put it on disk for a week."""
+
+MAGIC = {
+    "image/webp": (b"RIFF",),
+    "image/png": (b"\x89PNG\r\n\x1a\n",),
+}
+"""The first bytes a real answer starts with, by declared type.
+
+The guard that matters is not "did the CDN return 200" — a captive portal
+returns 200 all day, with a login page in the body. Banking that HTML would
+serve it as ``image/webp`` with a week-long ``immutable`` header, and the
+pitch would stay broken until somebody found the cache directory and deleted
+it by hand. So the bytes have to look like the picture we asked for before
+they are allowed onto disk.
+"""
+
 FALLBACKS = {"shirt": "shirt_fallback.svg", "photo": "player_fallback.svg"}
 
 
@@ -92,7 +118,11 @@ def _fetch(url: str) -> bytes:
     assertion about how many times this ran, and that is not observable
     through a client constructed inside a handler.
     """
-    response = httpx.get(url, timeout=TIMEOUT, follow_redirects=True)
+    # ``follow_redirects=False`` deliberately: both bases are direct paths on
+    # the official CDNs, verified by curl, so a redirect means the answer is
+    # coming from somewhere other than where we asked. That is a fallback, not
+    # a thing to chase off-host and bank for a week.
+    response = httpx.get(url, timeout=TIMEOUT, follow_redirects=False)
     response.raise_for_status()
     return response.content
 
@@ -106,7 +136,10 @@ def _bank(path: Path, data: bytes) -> None:
     making the fetch fail.
     """
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".tmp")
+    # The pid suffix is the house idiom (``watchlist.py``, ``digest.py``, …):
+    # two processes banking the same shirt at once must not write the same
+    # temp file, or one of them replaces a half-written copy of the other's.
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
     try:
         tmp.write_bytes(data)
         os.replace(tmp, path)
@@ -122,7 +155,8 @@ def _fallback(kind: str) -> Response:
     """
     svg = files("gaffer.assets").joinpath(FALLBACKS[kind]).read_bytes()
     return Response(content=svg, media_type="image/svg+xml",
-                    headers={"Cache-Control": MISS_CACHE})
+                    headers={"Cache-Control": MISS_CACHE,
+                             "X-Content-Type-Options": NOSNIFF})
 
 
 def _allowed_codes(rel: str, column: str) -> set[int]:
@@ -142,13 +176,24 @@ def _allowed_codes(rel: str, column: str) -> set[int]:
         return set()
 
 
+def _looks_like(data: bytes, media_type: str) -> bool:
+    """Do these bytes begin the way ``media_type`` begins?
+
+    Cheap, and enough for the failure this exists to stop: an upstream that
+    answers 200 with an HTML login page, a JSON error or an empty gif starts
+    with none of these prefixes.
+    """
+    return any(data.startswith(m) for m in MAGIC.get(media_type, ()))
+
+
 def _serve(kind: str, cache_name: str, url: str, media_type: str) -> Response:
     """Hit, else fetch-and-bank, else fall back. The whole contract."""
     path = _cache_dir() / cache_name
     try:
         if path.is_file():
             return Response(content=path.read_bytes(), media_type=media_type,
-                            headers={"Cache-Control": HIT_CACHE})
+                            headers={"Cache-Control": HIT_CACHE,
+                                     "X-Content-Type-Options": NOSNIFF})
     except OSError as exc:
         # A banked file we cannot read is a miss, not an error: fall through
         # and try the CDN rather than serving a silhouette for a file that is
@@ -163,6 +208,16 @@ def _serve(kind: str, cache_name: str, url: str, media_type: str) -> Response:
         # A 200 with no body. Banking it would cache the emptiness.
         print(f"asset fetch returned no bytes ({url})")
         return _fallback(kind)
+    if len(data) > MAX_BYTES:
+        print(f"asset fetch returned {len(data)} bytes, over the cap ({url})")
+        return _fallback(kind)
+    if not _looks_like(data, media_type):
+        # A 200 whose body is not the picture. A captive portal's login page
+        # is the case that made this a rail rather than a nicety: banked, it
+        # would be served as image/webp behind a week-long immutable header,
+        # and the pitch would never recover on its own.
+        print(f"asset fetch returned a non-{media_type} body ({url})")
+        return _fallback(kind)
     try:
         _bank(path, data)
     except Exception as exc:  # noqa: BLE001
@@ -170,7 +225,8 @@ def _serve(kind: str, cache_name: str, url: str, media_type: str) -> Response:
         # not the shirt, and the next load simply fetches again.
         print(f"asset not cached ({cache_name}): {exc}")
     return Response(content=data, media_type=media_type,
-                    headers={"Cache-Control": HIT_CACHE})
+                    headers={"Cache-Control": HIT_CACHE,
+                             "X-Content-Type-Options": NOSNIFF})
 
 
 @router.get("/shirt/{team_code}")

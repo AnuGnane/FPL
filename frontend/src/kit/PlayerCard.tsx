@@ -17,9 +17,14 @@ import type { NextFixture } from '../types'
  * Every image comes from `/api/assets/`, never from premierleague.com: the
  * frontend speaks only to this backend (spec D1), and a hotlinked shirt would
  * be the one request on the page that tells a third party who is reading it.
- * A player with no `teamCode` asks for shirt 0, which the backend refuses and
- * answers with the bundled plain shirt — so the fallback is one code path,
- * not two.
+ *
+ * A player with no `teamCode` is not asked about at all. The endpoint's
+ * allowlist is the banked bootstrap, so a request for shirt 0 is a 404 by
+ * design and *has* to stay one — the pitch's answer to "no team" is drawn
+ * here instead, from the same plain shirt the backend serves when the CDN is
+ * down. The two failures the reader can hit — no team code, and a request
+ * that fails on the wire — therefore land on the same picture rather than on
+ * a gap where a shirt should be.
  */
 
 export type PlayerCardSize = 'pitch' | 'chip'
@@ -43,12 +48,34 @@ export interface PlayerCardProps {
   onSelect?: (code: number) => void
 }
 
-/** The keeper's kit is a different file at the same team code. */
+/** The bundled plain shirt, inline.
+ *
+ *  The same drawing `src/gaffer/assets/shirt_fallback.svg` serves, carried as
+ *  a data URI so that it needs no request of its own: the states it stands in
+ *  for are "no team" and "that request failed", and neither is improved by
+ *  depending on another fetch. Mid-grey on a transparent ground, legible on
+ *  the green pitch and on a card in either theme. */
+export const PLAIN_SHIRT
+  = 'data:image/svg+xml;utf8,'
+  + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 66 66" width="66"'
+    + ' height="66" role="img" aria-label="shirt unavailable">'
+    + '<path d="M23 8 L13 13 L8 27 L17 30 L17 58 L49 58 L49 30 L58 27 L53 13'
+    + ' L43 8 L38 14 Q33 18 28 14 Z" fill="#8d939c" stroke="#6b7178"'
+    + ' stroke-width="1.5" stroke-linejoin="round"/></svg>',
+  )
+
+/** Where this player's shirt comes from.
+ *
+ *  A null `teamCode` never reaches the API: the endpoint allowlists the
+ *  banked bootstrap, shirt 0 is a deliberate 404, and asking anyway would
+ *  spend a request to be told what we already know. The keeper's kit is a
+ *  different file at the same team code. */
 function shirtSrc(teamCode: number | null, position: string): string {
-  const code = teamCode ?? 0
+  if (teamCode === null || teamCode === undefined) return PLAIN_SHIRT
   return position === 'GKP'
-    ? `/api/assets/shirt/${code}?keeper=true`
-    : `/api/assets/shirt/${code}`
+    ? `/api/assets/shirt/${teamCode}?keeper=true`
+    : `/api/assets/shirt/${teamCode}`
 }
 
 /** Day and time in the reader's own zone.
@@ -115,9 +142,18 @@ export default function PlayerCard({
           alt={teamShort ? `${teamShort} shirt` : 'shirt'}
           width={pitch ? 44 : 24}
           height={pitch ? 44 : 24}
-          // A shirt that fails on *both* the CDN and the bundled SVG must not
-          // leave a broken-image icon on the pitch (gate G1 checks for none).
-          onError={(e) => { e.currentTarget.style.visibility = 'hidden' }}
+          // A request that fails on the wire falls back to the same plain
+          // shirt a missing team code gets, rather than hiding the element:
+          // a hidden image is a gap in the row, and a gap reads as a bug
+          // where a plain shirt reads as "we do not know his club". The
+          // guard stops the swap retriggering if the data URI itself
+          // somehow fails — an onError that reassigns the source it is
+          // already showing is an infinite loop.
+          onError={(e) => {
+            if (e.currentTarget.getAttribute('src') !== PLAIN_SHIRT) {
+              e.currentTarget.setAttribute('src', PLAIN_SHIRT)
+            }
+          }}
           className="mx-auto block"
         />
         {armband && (

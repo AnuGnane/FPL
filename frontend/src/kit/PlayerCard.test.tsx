@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import type { ComponentProps } from 'react'
 import { describe, expect, it } from 'vitest'
-import PlayerCard from './PlayerCard'
+import PlayerCard, { PLAIN_SHIRT } from './PlayerCard'
 import type { NextFixture } from '../types'
 
 const FIXTURE: NextFixture = {
@@ -34,13 +34,35 @@ describe('PlayerCard', () => {
   })
 
   it('draws a plain shirt for a player with no team code', () => {
-    // A6: nulls, never a sentinel — a team_code of 0 would be a real request
-    // for a shirt that does not exist.
+    // A6: nulls, never a sentinel. Shirt 0 is not a request worth making —
+    // the endpoint allowlists the banked bootstrap, so it is a 404 by design
+    // — and the card draws the bundled plain shirt itself instead.
     card({ teamCode: null, teamShort: null })
-    expect(screen.getByRole('img', { name: /shirt/i }))
-      .toHaveAttribute('src', '/api/assets/shirt/0')
-    expect(screen.queryByRole('img', { name: /shirt/i })
-      ?.getAttribute('src')).not.toContain('undefined')
+    const shirt = screen.getByRole('img', { name: /shirt/i })
+    expect(shirt).toHaveAttribute('src', PLAIN_SHIRT)
+    expect(shirt.getAttribute('src')).not.toContain('/api/assets/')
+    expect(shirt.getAttribute('src')).not.toContain('undefined')
+  })
+
+  it('leaves that plain shirt visible rather than drawing a gap', () => {
+    // The blocker this test exists for: a hidden image is a hole in the
+    // formation row, and a hole reads as a bug where a plain shirt reads as
+    // "we do not know his club".
+    card({ teamCode: null, teamShort: null })
+    const shirt = screen.getByRole('img', { name: /shirt/i })
+    expect(shirt).toBeVisible()
+    expect(shirt.style.visibility).not.toBe('hidden')
+  })
+
+  it('swaps a failed request to the plain shirt instead of hiding it', () => {
+    // A live 404 or a dead network must degrade to the same picture, with no
+    // broken-image icon on the pitch (gate G1 checks for none).
+    card()
+    const shirt = screen.getByRole('img', { name: /ARS/ })
+    fireEvent.error(shirt)
+    expect(shirt).toHaveAttribute('src', PLAIN_SHIRT)
+    expect(shirt).toBeVisible()
+    expect(shirt.style.visibility).not.toBe('hidden')
   })
 
   it('names the player, his club and his expected points', () => {

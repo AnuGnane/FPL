@@ -86,7 +86,12 @@ def wired(tmp_path, monkeypatch):
         free_transfers=1, owned_codes=[11, 22], lam=0.0, league_eo={},
         cover={}, avail_by_gw={}, opt={},
         pool=pd.DataFrame({"code": [11, 22], "position": ["MID", "FWD"]})))
-    monkeypatch.setattr(assets, "_fetch", lambda url: b"fake-image-bytes")
+    # Real magic bytes: the router refuses to bank a body that does not begin
+    # the way the type it asked for begins, so a fixture returning arbitrary
+    # bytes would exercise the fallback path in every test here.
+    monkeypatch.setattr(assets, "_fetch", lambda url: (
+        b"\x89PNG\r\n\x1a\nfake" if "/p" in url.rsplit("/", 1)[-1]
+        else b"RIFFfake"))
     return tmp_path, TestClient(create_app())
 
 
@@ -120,6 +125,24 @@ def test_a_cache_hit_never_refetches(wired, monkeypatch):
     monkeypatch.setattr(assets, "_fetch", lambda url: (_ for _ in ()).throw(
         AssertionError("a cache hit refetched")))
     assert client.get("/api/assets/shirt/3").status_code == 200
+
+
+def test_a_two_hundred_that_is_not_an_image_is_never_banked(wired,
+                                                            monkeypatch):
+    """The captive portal. Hotel wifi answers every request with a 200 and a
+    login page, and a banked login page would be served as ``image/webp``
+    behind a week-long ``immutable`` header — a broken pitch that outlives
+    the bad evening by six days and cannot recover on its own."""
+    tmp_path, client = wired
+    monkeypatch.setattr(assets, "_fetch",
+                        lambda url: b"<!DOCTYPE html><html>Sign in</html>")
+    response = client.get("/api/assets/shirt/3")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/svg+xml"
+    assert b"<svg" in response.content
+    assert "max-age=60" in response.headers["cache-control"]
+    cache = tmp_path / "data/live/assets"
+    assert not cache.exists() or list(cache.iterdir()) == []
 
 
 # --- rail 2: the allowlist and the path ---------------------------
