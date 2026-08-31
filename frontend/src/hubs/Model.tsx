@@ -5,6 +5,7 @@ import HealthTab from './model/HealthTab'
 import HistoryTab from './model/HistoryTab'
 import JournalTab from './model/JournalTab'
 import QualityTab from './model/QualityTab'
+import ReviewTab from './model/ReviewTab'
 
 const TAB_CLASS = 'px-3 py-2 text-text-muted data-[state=active]:text-text '
   + 'data-[state=active]:border-b data-[state=active]:border-text'
@@ -19,6 +20,8 @@ export default function Model() {
   const [healthNonce, setHealthNonce] = useState(0)
   const reloadQuality = useCallback(() => setQualityNonce((n) => n + 1), [])
   const reloadHealth = useCallback(() => setHealthNonce((n) => n + 1), [])
+  const [reviewNonce, setReviewNonce] = useState(0)
+  const reloadReview = useCallback(() => setReviewNonce((n) => n + 1), [])
 
   return (
     <>
@@ -36,6 +39,8 @@ export default function Model() {
                        onDone={reloadQuality} />
             <JobButton kind="track-pens" label="Track pens"
                        onDone={reloadQuality} />
+            <JobButton kind="review" label="Review last week"
+                       onDone={reloadReview} />
             <JobButton kind="refresh-data" label="Refresh data"
                        onDone={reloadHealth} />
             <JobButton kind="snapshot" label="Snapshot news"
@@ -49,6 +54,7 @@ export default function Model() {
         <Tabs.List className="mb-4 flex border-b border-divider">
           <Tabs.Trigger value="quality" className={TAB_CLASS}>Quality</Tabs.Trigger>
           <Tabs.Trigger value="journal" className={TAB_CLASS}>Journal</Tabs.Trigger>
+          <Tabs.Trigger value="review" className={TAB_CLASS}>Review</Tabs.Trigger>
           <Tabs.Trigger value="history" className={TAB_CLASS}>History</Tabs.Trigger>
           <Tabs.Trigger value="health" className={TAB_CLASS}>Health</Tabs.Trigger>
         </Tabs.List>
@@ -56,6 +62,7 @@ export default function Model() {
           <QualityTab key={qualityNonce} />
         </Tabs.Content>
         <Tabs.Content value="journal"><JournalTab /></Tabs.Content>
+        <Tabs.Content value="review"><ReviewTab key={reviewNonce} /></Tabs.Content>
         <Tabs.Content value="history"><HistoryTab /></Tabs.Content>
         <Tabs.Content value="health"><HealthTab key={healthNonce} /></Tabs.Content>
       </Tabs.Root>

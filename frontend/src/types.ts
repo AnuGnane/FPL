@@ -572,7 +572,7 @@ export interface NewsShadowData {
 }
 
 export const JOB_KINDS = ['advise', 'advise-fast', 'evaluate', 'refresh-data',
-  'news-shadow', 'snapshot', 'track-pens', 'field-scrape'] as const
+  'news-shadow', 'snapshot', 'track-pens', 'field-scrape', 'review'] as const
 
 export type JobKind = typeof JOB_KINDS[number]
 
@@ -585,6 +585,7 @@ export const JOB_KIND_LABEL: Record<JobKind, string> = {
   snapshot: 'Snapshot news',
   'track-pens': 'Track pens',
   'field-scrape': 'Field scrape',
+  review: 'Review last week',
 }
 
 export interface JobRunView {
@@ -798,4 +799,84 @@ export interface LeagueWhatIfResult {
   /** Codes the server could not resolve — a stale tab pinning a player who
    *  has left the game. Shown, never swallowed. */
   unknown_codes: number[]
+}
+
+export type ReviewLaneName = 'transfers' | 'captaincy' | 'bench' | 'chip'
+
+export type ReviewLabel =
+  'Brilliant' | 'Good' | 'Aligned' | 'Inaccuracy' | 'Blunder'
+
+export interface ReviewLane {
+  lane: ReviewLaneName
+  /** null — never 0 — for a lane that could not be built. */
+  delta_pts: number | null
+  /** Percentage points of P(win). 0 on bench and chip by construction. */
+  delta_pwin: number | null
+  label: ReviewLabel | null
+  aligned: boolean
+  mine: string | null
+  model: string | null
+  note: string | null
+}
+
+export interface ReviewMiss {
+  code: number
+  name: string
+  over: string
+  gain: number
+}
+
+export interface ReviewHindsight {
+  points: number
+  xi: number[]
+  captain: number | null
+  gap: number
+}
+
+export interface ReviewGw {
+  gw: number
+  reviewed_at: string | null
+  no_advice: boolean
+  post_deadline: boolean
+  my_points: number | null
+  official_points: number | null
+  official_gross: number | null
+  hits: number
+  reconciled: boolean | null
+  chip: string | null
+  model_chip: string | null
+  points_on_bench: number | null
+  our_bench_points: number | null
+  model_points: number | null
+  accuracy: number | null
+  pwin_n: number | null
+  pwin_seed: number | null
+  pwin_granularity_pp: number | null
+  lanes: ReviewLane[]
+  misses: ReviewMiss[]
+  hindsight: ReviewHindsight
+  notices: string[]
+}
+
+export interface ReviewLaneTotal {
+  pts: number
+  pwin: number
+  graded: number
+}
+
+export interface ReviewSummary {
+  gws: number[]
+  lanes: Record<string, ReviewLaneTotal>
+  accuracy: { gw: number, accuracy: number }[]
+  points_on_bench: number
+  hindsight_gap: number
+  reconciled_gws: number
+  unreconciled_gws: number
+  best: (ReviewLane & { gw: number }) | null
+  worst: (ReviewLane & { gw: number }) | null
+}
+
+export interface ReviewData {
+  gws: ReviewGw[]
+  summary: ReviewSummary | null
 }

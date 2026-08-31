@@ -1,0 +1,150 @@
+import { render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import ReviewTab from './ReviewTab'
+import type { ReviewData } from '../../types'
+
+const LANES: ReviewData['gws'][number]['lanes'] = [
+  { lane: 'transfers', delta_pts: -7, delta_pwin: -0.3, label: 'Blunder',
+    aligned: false, mine: 'no move', model: 'Blank->Guehi', note: null },
+  { lane: 'captaincy', delta_pts: 4, delta_pwin: 0.2, label: 'Brilliant',
+    aligned: false, mine: 'Salah', model: 'Haaland', note: null },
+  { lane: 'bench', delta_pts: 0, delta_pwin: 0, label: 'Aligned',
+    aligned: true, mine: 'A, B', model: 'A, B', note: null },
+  { lane: 'chip', delta_pts: null, delta_pwin: null, label: null,
+    aligned: false, mine: 'none', model: 'wildcard',
+    note: 'a wildcard changes the squad' },
+]
+
+const DATA: ReviewData = {
+  gws: [{
+    gw: 2, reviewed_at: '2026-09-01T09:00:00+00:00', no_advice: false,
+    post_deadline: false, my_points: 61, official_points: 61,
+    official_gross: 65, hits: 1, reconciled: true, chip: null,
+    model_chip: 'bboost', points_on_bench: 5, our_bench_points: 5,
+    model_points: 68, accuracy: 89, pwin_n: 2000, pwin_seed: 20260831,
+    pwin_granularity_pp: 0.05, lanes: LANES,
+    misses: [{ code: 16, name: 'Guehi', over: 'Blank', gain: 15 }],
+    hindsight: { points: 74, xi: [1, 2, 3], captain: 3, gap: 13 },
+    notices: [],
+  }],
+  summary: {
+    gws: [2], lanes: {
+      transfers: { pts: -7, pwin: -0.3, graded: 1 },
+      captaincy: { pts: 4, pwin: 0.2, graded: 1 },
+      bench: { pts: 0, pwin: 0, graded: 1 },
+      chip: { pts: 0, pwin: 0, graded: 0 },
+    },
+    accuracy: [{ gw: 2, accuracy: 89 }], points_on_bench: 5,
+    hindsight_gap: 13, reconciled_gws: 1, unreconciled_gws: 0,
+    best: { ...LANES[1], gw: 2 }, worst: { ...LANES[0], gw: 2 },
+  },
+}
+
+function mock(data: ReviewData | Error) {
+  vi.stubGlobal('fetch', vi.fn(() => (data instanceof Error
+    ? Promise.reject(data)
+    : Promise.resolve({ ok: true, json: () => Promise.resolve(data) }))))
+}
+
+describe('ReviewTab', () => {
+  beforeEach(() => vi.unstubAllGlobals())
+
+  it('shows an empty state before anything has been reviewed', async () => {
+    mock({ gws: [], summary: null })
+    render(<ReviewTab />)
+    expect(await screen.findByText(/Nothing reviewed yet/i)).toBeTruthy()
+  })
+
+  it('falls back to the empty state when the request fails', async () => {
+    mock(new Error('offline'))
+    render(<ReviewTab />)
+    expect(await screen.findByText(/Nothing reviewed yet/i)).toBeTruthy()
+  })
+
+  it('renders a card per reviewed gameweek with its accuracy', async () => {
+    mock(DATA)
+    render(<ReviewTab />)
+    expect(await screen.findByText('GW2')).toBeTruthy()
+    expect(screen.getByText('89')).toBeTruthy()
+  })
+
+  it('labels every graded lane', async () => {
+    mock(DATA)
+    render(<ReviewTab />)
+    await waitFor(() => screen.getByText('Blunder'))
+    expect(screen.getByText('Brilliant')).toBeTruthy()
+    expect(screen.getByText('Aligned')).toBeTruthy()
+  })
+
+  it('renders an ungraded lane as an em dash, never as a nought', async () => {
+    mock(DATA)
+    render(<ReviewTab />)
+    const chip = await screen.findByTestId('lane-chip')
+    expect(chip.textContent).toContain('—')
+    expect(chip.textContent).not.toContain('0.0')
+  })
+
+  it('shows the note explaining why a lane was not graded', async () => {
+    mock(DATA)
+    render(<ReviewTab />)
+    const chip = await screen.findByTestId('lane-chip')
+    expect(chip.getAttribute('title')).toContain('wildcard')
+  })
+
+  it('spells out the hindsight gap in plain words', async () => {
+    mock(DATA)
+    render(<ReviewTab />)
+    expect(await screen.findByTestId('hindsight-2')).toBeTruthy()
+    expect(screen.getByTestId('hindsight-2').textContent)
+      .toContain('74')
+  })
+
+  it('lists the moves flagged and skipped', async () => {
+    mock(DATA)
+    render(<ReviewTab />)
+    // Not a bare findByText(/Guehi/): the same name is in the transfers
+    // lane's "model Blank->Guehi", so the match must be the misses line.
+    const flagged = await screen.findByText(/Flagged and skipped/)
+    expect(flagged.textContent).toContain('Guehi (+15 over Blank)')
+  })
+
+  it('badges a gameweek that did not reconcile', async () => {
+    mock({
+      ...DATA,
+      gws: [{ ...DATA.gws[0], reconciled: false, official_points: 63 }],
+    })
+    render(<ReviewTab />)
+    expect(await screen.findByText(/did not reconcile/i)).toBeTruthy()
+  })
+
+  it('badges advice that was banked after the deadline', async () => {
+    mock({ ...DATA, gws: [{ ...DATA.gws[0], post_deadline: true }] })
+    render(<ReviewTab />)
+    expect(await screen.findByText(/late run/i)).toBeTruthy()
+  })
+
+  it('says so when a gameweek has no surviving advice', async () => {
+    mock({
+      ...DATA,
+      gws: [{ ...DATA.gws[0], no_advice: true, accuracy: null,
+              model_points: null }],
+    })
+    render(<ReviewTab />)
+    expect(await screen.findByText(/no surviving advice/i)).toBeTruthy()
+  })
+
+  it('sums each lane over the season', async () => {
+    mock(DATA)
+    render(<ReviewTab />)
+    expect(await screen.findByTestId('season-transfers')).toBeTruthy()
+    expect(screen.getByTestId('season-transfers').textContent).toContain('-7')
+  })
+
+  it('marks a lane that was never gradeable rather than scoring it 0',
+     async () => {
+       mock(DATA)
+       render(<ReviewTab />)
+       const cell = await screen.findByTestId('season-chip')
+       expect(cell.textContent).toContain('never graded')
+     })
+})
