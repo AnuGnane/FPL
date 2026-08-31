@@ -70,11 +70,39 @@ class WhatIfRequest(BaseModel):
     horizon: int | None = None
 
 
+class NextFixture(BaseModel):
+    """One team's next game in the advised gameweek.
+
+    Resolved at serve time from the banked fixture list, never solved for.
+    Two of the four fields are independently optional and mean different
+    things when null: ``kickoff_utc`` is null while FPL still has the date as
+    TBC, and ``difficulty`` is null when the ticker could rate nothing — a
+    chip in a neutral colour rather than a chip that is not drawn.
+
+    A team with *no* game gets ``next_fixture: null`` on the player instead of
+    this model with empty fields, because "he does not play" and "he plays and
+    we know less than usual about it" are different sentences.
+    """
+
+    opponent_short: str | None = None
+    home: bool
+    kickoff_utc: str | None = None
+    difficulty: float | None = None
+
+
 class PlayerRef(BaseModel):
     code: int
     name: str
     position: str
     ep: float
+    # v9a: identity, resolved at serve time by ``gaffer.web.identity`` and
+    # never written into the advice artifact — ``advise.py`` is protected, so
+    # the fields are a decoration on the way out of the route. All three
+    # default to None, so a plan payload built without the enrichment (the
+    # what-if lab, ``/api/plan``) types exactly as it did.
+    team_short: str | None = None
+    team_code: int | None = None
+    next_fixture: NextFixture | None = None
 
 
 class PlanSummary(BaseModel):

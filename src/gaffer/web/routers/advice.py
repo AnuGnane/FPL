@@ -21,6 +21,7 @@ from gaffer.artifacts import (advice_history_files, data_warning,
                               latest_gw, load_advice, load_solve_state,
                               upcoming_gw)
 from gaffer.errors import GafferError
+from gaffer.web.identity import with_identity
 from gaffer.web.schemas import AdviceDiff, AdviceLatest, Staleness
 
 if TYPE_CHECKING:  # the runtime import stays lazy inside the function body
@@ -114,7 +115,14 @@ def latest() -> AdviceLatest:
     if gw is None:
         raise GafferError("no advice on disk yet — run `gaffer advise` first")
     state = load_solve_state(gw)
-    payload = with_positions(load_advice(gw), state.pool)
+    # Two serve-time decorations, composed. ``with_positions`` backfills a
+    # field ``advise`` did not always write; ``with_identity`` adds three it
+    # still does not, because it cannot — ``advise.py`` is protected, so the
+    # pitch's team identity and fixture chip are resolved here from files the
+    # backend already banks (plan A2). Both are additive, both leave every
+    # pre-existing field alone, and both are no-ops on a clone with no
+    # snapshots rather than an error.
+    payload = with_identity(with_positions(load_advice(gw), state.pool), gw)
     return AdviceLatest(
         gw=gw, mode=state.mode, deadline=state.deadline, advice=payload,
         staleness=staleness_for(gw, state.deadline, state.generated_at))
