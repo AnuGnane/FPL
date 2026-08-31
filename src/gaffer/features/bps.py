@@ -92,6 +92,10 @@ def fixture_key(df: pd.DataFrame,
 
     Without ``fixtures`` the key falls back to :func:`fixture_pair`, which is
     what synthetic frames (and callers with no fixture list) still use.
+
+    The lookup itself lives in :func:`_fixture_lookup`, extracted in v9c so
+    :func:`as_of_club_code` reads the same join — and the same
+    corrupt-duplicate poisoning — rather than a second one beside it.
     """
     if fixtures is None:
         return pd.Series(
@@ -99,6 +103,90 @@ def fixture_key(df: pd.DataFrame,
                      df["kickoff_time"].astype("string"), fixture_pair(df))),
             index=df.index, dtype=object)
 
+    lookup = _fixture_lookup(fixtures)
+    rows = zip(pd.to_numeric(df["season_idx"], errors="coerce"),
+               pd.to_numeric(df["gw"], errors="coerce"),
+               df["kickoff_time"].astype("string"),
+               pd.to_numeric(df["opp_code"], errors="coerce"))
+    return pd.Series([lookup.get((s, g, k, o)) for s, g, k, o in rows],
+                     index=df.index, dtype=object)
+
+
+def as_of_club_code(df: pd.DataFrame, fixtures: pd.DataFrame) -> pd.Series:
+    """The club each row's player actually played for, not the one he is at.
+
+    ``data/live.py`` rebuilds player history every run and stamps today's
+    ``team_code`` onto every row of it, so a January transfer rewrites the
+    player's August rows under his new club. Three feature builders key on
+    club — the position-by-club prior, manager-spell scoping and the own-side
+    Elo merge — and every one of them reads a squad the player had not joined
+    (spec D2).
+
+    ``opp_code`` survives a transfer because it is written per row from the
+    fixture, and that asymmetry is the derivation: match the row to its
+    fixture on ``(season_idx, gw, kickoff_time)`` where one side is
+    ``opp_code``, and the player's club is the other side. ``was_home``
+    cross-checks it; a row that disagrees is describing a different match
+    from the fixture it matched, and falls back rather than inventing a club.
+
+    Rows that match no fixture fall back to ``team_code``, and so do whole
+    seasons with no archived fixture list (spec §3 puts backfilling those out
+    of scope). The fallback is never NaN: a NaN club would scatter every
+    downstream ``groupby`` into a silent extra bucket, which is a worse
+    failure than the staleness this function exists to fix.
+    """
+    fallback = pd.to_numeric(df["team_code"], errors="coerce")
+    needed = {"season_idx", "gw", "kickoff_time", "opp_code", "team_code"}
+    if fixtures is None or fixtures.empty or not needed <= set(df.columns):
+        return fallback.fillna(0).astype("int64")
+    if not {"season_idx", "gw", "kickoff_time", "home_code",
+            "away_code"} <= set(fixtures.columns):
+        return fallback.fillna(0).astype("int64")
+
+    lookup = _fixture_lookup(fixtures)
+    home_flags = (df["was_home"] if "was_home" in df.columns
+                  else pd.Series(None, index=df.index, dtype=object))
+
+    out: list[float] = []
+    rows = zip(pd.to_numeric(df["season_idx"], errors="coerce"),
+               pd.to_numeric(df["gw"], errors="coerce"),
+               df["kickoff_time"].astype("string"),
+               pd.to_numeric(df["opp_code"], errors="coerce"),
+               home_flags, fallback)
+    for s, g, k, opp, was_home, stamped in rows:
+        ident = lookup.get((s, g, k, opp))
+        if ident is None:
+            out.append(stamped)
+            continue
+        _, _, _, home, away = ident
+        # The player's club is the side ``opp_code`` is not. A fixture where
+        # both sides read as the opponent is not a fixture we can read.
+        if home == opp and away == opp:
+            out.append(stamped)
+            continue
+        club = away if home == opp else home
+        derived_home = club == home
+        if was_home is not None and not pd.isna(was_home) \
+                and bool(was_home) != bool(derived_home):
+            out.append(stamped)
+            continue
+        out.append(club)
+
+    club_series = pd.Series(out, index=df.index, dtype="float64")
+    return club_series.where(club_series.notna(),
+                             fallback).fillna(0).astype("int64")
+
+
+def _fixture_lookup(fixtures: pd.DataFrame) -> dict:
+    """``{(season_idx, gw, kickoff_time, team_code): ident | None}``.
+
+    Extracted from :func:`fixture_key` in v9c so :func:`as_of_club_code` can
+    build on the same join rather than writing a second one that agrees with
+    it until the day it does not. The body is unchanged, and that includes the
+    clause that matters most: a key claimed by two different fixtures is
+    poisoned to ``None`` rather than resolved last-wins, so corrupt data
+    becomes an unmatched row instead of a confidently wrong one.
+    """
     lookup: dict[tuple, tuple | None] = {}
     for s, g, k, h, a in zip(
             pd.to_numeric(fixtures["season_idx"], errors="coerce"),
@@ -110,13 +198,7 @@ def fixture_key(df: pd.DataFrame,
         for team in (h, a):
             seen = lookup.get((s, g, k, team), ident)
             lookup[(s, g, k, team)] = ident if seen == ident else None
-
-    rows = zip(pd.to_numeric(df["season_idx"], errors="coerce"),
-               pd.to_numeric(df["gw"], errors="coerce"),
-               df["kickoff_time"].astype("string"),
-               pd.to_numeric(df["opp_code"], errors="coerce"))
-    return pd.Series([lookup.get((s, g, k, o)) for s, g, k, o in rows],
-                     index=df.index, dtype=object)
+    return lookup
 
 
 def award_bonus(values: list[float]) -> list[int]:
