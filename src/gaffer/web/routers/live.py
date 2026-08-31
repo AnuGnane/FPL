@@ -40,6 +40,17 @@ gameweeks. Only the active gameweek is kept, and it is capped.
 RACE_SERIES_MAX = 500
 """Eight hours of minute polling, which outlasts any matchday."""
 
+RACE_RIVAL: dict[int, int] = {}
+"""gameweek -> the entry id whose race the trajectory plots.
+
+The first poll of a gameweek picks the highest-placed entry that is not me;
+every poll after it follows that same entry, even once he has been overtaken.
+A line that quietly swapped whose points it was drawing the moment the table
+reordered would not be a chart of the afternoon, it would be a chart of
+whoever happened to be second at each instant. Keyed and pruned exactly like
+:data:`RACE_SERIES`, so a new gameweek picks afresh.
+"""
+
 
 def fpl_client():
     """Seam for tests; the real one is the same read-only client the CLI uses."""
@@ -339,17 +350,27 @@ def live() -> LiveState:
 
     # The trajectory: one point per poll, this process only, this gameweek
     # only. Nothing is written to disk and nothing survives a restart.
-    leader = next((r for r in table_rows
-                   if int(r.get("entry", -1)) != cfg.entry_id), None)
     my_race = race_value(my_projected, my_remaining)
     for stale in [key for key in RACE_SERIES if key != gw]:
         RACE_SERIES.pop(stale, None)
+    for stale in [key for key in RACE_RIVAL if key != gw]:
+        RACE_RIVAL.pop(stale, None)
+    by_entry = {int(r.get("entry", -1)): r for r in table_rows}
+    # The pinned entry wins if he is still in the table; otherwise — he left
+    # the league, or his picks went private — the top rival is pinned afresh
+    # rather than the line being dropped.
+    rival = by_entry.get(RACE_RIVAL.get(gw, -1))
+    if rival is None:
+        rival = next((r for r in table_rows
+                      if int(r.get("entry", -1)) != cfg.entry_id), None)
+        if rival is not None:
+            RACE_RIVAL[gw] = int(rival["entry"])
     series = RACE_SERIES.setdefault(gw, [])
     series.append({
         "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "you": my_race,
-        "leader": (float(leader["race"]) if leader
-                   and leader.get("race") is not None else None)})
+        "rival": (float(rival["race"]) if rival
+                  and rival.get("race") is not None else None)})
     del series[:-RACE_SERIES_MAX]
 
     in_play = sum(1 for f in fixtures
@@ -360,5 +381,5 @@ def live() -> LiveState:
                      my_race=my_race, race_reference=_race_reference(gw),
                      race_series=[LiveRacePoint(**point) for point in series],
                      safety=safety,
-                     leader_name=(str(leader["name"]) if leader else None),
+                     rival_name=(str(rival["name"]) if rival else None),
                      race_notice=race_notice)

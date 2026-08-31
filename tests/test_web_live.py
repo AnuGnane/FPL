@@ -128,7 +128,7 @@ def test_live_between_gameweeks_is_a_quiet_inactive_payload(tmp_path,
                     "matches_in_play": 0, "players": [], "table": [],
                     "notice": None, "my_projected_points": 0,
                     "my_race": None, "race_reference": None,
-                    "race_series": [], "safety": [], "leader_name": None,
+                    "race_series": [], "safety": [], "rival_name": None,
                     "race_notice": None}
 
 

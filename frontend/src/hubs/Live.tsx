@@ -35,8 +35,12 @@ const TABLE_COLUMNS: Column<LiveTableRow>[] = [
     value: (r) => r.live },
   { key: 'projected', header: 'Projected', primary: true, numeric: true,
     value: (r) => r.projected },
+  // Season-consistent with Projected beside it: `race` off the wire is this
+  // gameweek only, so the pre-gameweek total is added back before it is shown.
+  // A column that read 67.5 next to a 172 would be measuring a different
+  // thing under the same heading.
   { key: 'race', header: 'Race', numeric: true,
-    value: (r) => (r.race == null ? '–' : fmtNum(r.race, 1)) },
+    value: (r) => (r.race == null ? '–' : fmtNum(r.pre_total + r.race, 1)) },
   { key: 'delta', header: 'Move', value: (r) => arrow(r.delta) },
 ]
 
@@ -176,8 +180,8 @@ export default function Live() {
               )}
               <Line type="monotone" dataKey="you" name="You" dot={false}
                     strokeWidth={2.5} stroke="var(--color-sage)" />
-              <Line type="monotone" dataKey="leader"
-                    name={data.leader_name ?? 'Top rival'} dot={false}
+              <Line type="monotone" dataKey="rival"
+                    name={data.rival_name ?? 'Top rival'} dot={false}
                     strokeWidth={1.5} stroke="var(--color-info)" />
             </LineChart>
           </ResponsiveContainer>
@@ -222,16 +226,18 @@ export default function Live() {
                                   pos={player.position} />
                       {player.multiplier > 1 && ' (C)'}
                       {player.projected_out && (
-                        <Badge variant="negative"
-                               title="His matches are over and he did not
-                                      play, so FPL will substitute him.">
+                        <Badge
+                          variant="negative"
+                          title={'His matches are over and he did not play, '
+                                 + 'so FPL will substitute him.'}>
                           auto-sub out
                         </Badge>
                       )}
                       {player.projected_in && (
-                        <Badge variant="positive"
-                               title="Projected to come on for a starter whose
-                                      matches are over.">
+                        <Badge
+                          variant="positive"
+                          title={'Projected to come on for a starter whose '
+                                 + 'matches are over.'}>
                           {`auto-sub in · ${player.sub_reason ?? ''}`}
                         </Badge>
                       )}
@@ -280,7 +286,8 @@ export default function Live() {
                 <p className={`num ${place.margin >= 0
                   ? 'text-rust' : 'text-sage'}`}>
                   {place.margin >= 0
-                    ? `${place.margin} ahead · need +${place.need}`
+                    ? `${place.margin} ahead · need +${place.need} beyond `
+                      + 'your current projection'
                     : `${-place.margin} clear`}
                 </p>
               </div>

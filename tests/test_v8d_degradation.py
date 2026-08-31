@@ -22,8 +22,10 @@ from tests.test_web_live_v8d import (COMPONENTS, FakeClient, MY_PICKS,
 @pytest.fixture(autouse=True)
 def _clean_series():
     live_mod.RACE_SERIES.clear()
+    live_mod.RACE_RIVAL.clear()
     yield
     live_mod.RACE_SERIES.clear()
+    live_mod.RACE_RIVAL.clear()
 
 
 def _client(tmp_path, monkeypatch, standings=True, **kwargs):
@@ -99,10 +101,10 @@ def test_without_a_league_the_strip_is_absent_and_the_players_card_is_fine(
                         lambda client, gw, sample=300: {})
     body = TestClient(create_app()).get("/api/live").json()
     assert body["safety"] == []
-    assert body["leader_name"] is None
+    assert body["rival_name"] is None
     assert len(body["table"]) == 1
     assert len(body["players"]) == len(MY_PICKS["picks"])
-    assert body["race_series"][0]["leader"] is None
+    assert body["race_series"][0]["rival"] is None
 
 
 # --- the API is down --------------------------------------------------

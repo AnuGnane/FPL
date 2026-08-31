@@ -135,8 +135,10 @@ def _setup(tmp_path, components=True, advice=True):
 def _clean_series():
     """The race series is per process, so it outlives a test unless cleared."""
     live_mod.RACE_SERIES.clear()
+    live_mod.RACE_RIVAL.clear()
     yield
     live_mod.RACE_SERIES.clear()
+    live_mod.RACE_RIVAL.clear()
 
 
 @pytest.fixture()
@@ -220,7 +222,7 @@ def test_the_series_is_capped(client, monkeypatch):
 
 
 def test_a_new_gameweek_drops_the_previous_ones_trajectory(client):
-    live_mod.RACE_SERIES[2] = [{"at": "old", "you": 1.0, "leader": None}]
+    live_mod.RACE_SERIES[2] = [{"at": "old", "you": 1.0, "rival": None}]
     client.get("/api/live")
     assert list(live_mod.RACE_SERIES) == [3]
 
@@ -232,7 +234,7 @@ def test_the_safety_strip_prices_the_league_place(client):
     assert strip["below"]["name"] == "Ten Hag Hive"
     assert strip["below"]["margin"] == -6   # 100 + 40 against my 106 + 40
     assert strip["below"]["need"] == 0
-    assert body["leader_name"] == "Ten Hag Hive"
+    assert body["rival_name"] == "Ten Hag Hive"
 
 
 def test_the_table_carries_the_race_beside_the_projection(client):
@@ -318,6 +320,64 @@ def test_the_captains_remaining_ep_is_doubled(tmp_path, monkeypatch):
         tmp_path, monkeypatch, unfinished_early).get("/api/live").json()[
             "players"]}
     assert early[9]["remaining_ep"] == 12.0         # 6.0 x 2 x 1.0
+
+
+# --- the tracked rival stays the tracked rival -------------------------
+
+
+class ReorderingClient(FakeClient):
+    """Two rivals whose pre-gameweek totals swap between the two polls, so
+    the league table reorders under a trajectory already being drawn."""
+
+    def __init__(self):
+        super().__init__()
+        self.polls = 0
+
+    def get_league_standings(self, league_id, page=1):
+        self.polls += 1
+        a, b = (120, 110) if self.polls == 1 else (110, 120)
+        return {"standings": {"has_next": False, "results": [
+            {"entry": 1, "entry_name": "You FC", "player_name": "Me",
+             "rank": 3, "last_rank": 3, "total": 106, "event_total": 20},
+            {"entry": 2, "entry_name": "Rival A", "player_name": "A",
+             "rank": 1, "last_rank": 1, "total": a, "event_total": 20},
+            {"entry": 3, "entry_name": "Rival B", "player_name": "B",
+             "rank": 2, "last_rank": 2, "total": b, "event_total": 20}]}}
+
+
+def test_the_tracked_rival_is_pinned_for_the_gameweek(tmp_path, monkeypatch):
+    """The series is one entry's trajectory, so the entry has to hold still:
+    a line that silently changes whose points it plots is a lie about the
+    afternoon, not a chart of it."""
+    monkeypatch.chdir(tmp_path)
+    _setup(tmp_path)
+    fake = ReorderingClient()          # one instance: it counts the polls
+    monkeypatch.setattr(live_mod, "fpl_client", lambda: fake)
+    monkeypatch.setattr(live_mod, "tier_eo_table",
+                        lambda client, gw, sample=300: {})
+    client = TestClient(create_app())
+    first = client.get("/api/live").json()
+    assert first["rival_name"] == "Rival A"
+    second = client.get("/api/live").json()
+    # Rival B now leads the table; the line keeps following Rival A.
+    assert second["table"][0]["name"] == "Rival B"
+    assert second["rival_name"] == "Rival A"
+    assert len(second["race_series"]) == 2
+    assert all(point["rival"] is not None
+               for point in second["race_series"])
+    assert live_mod.RACE_RIVAL == {3: 2}
+
+
+def test_the_pinned_rival_resets_with_the_gameweek(tmp_path, monkeypatch):
+    """Keyed by gameweek like the series it belongs to, and pruned with it."""
+    monkeypatch.chdir(tmp_path)
+    _setup(tmp_path)
+    live_mod.RACE_RIVAL[2] = 99
+    monkeypatch.setattr(live_mod, "fpl_client", lambda: FakeClient())
+    monkeypatch.setattr(live_mod, "tier_eo_table",
+                        lambda client, gw, sample=300: {})
+    TestClient(create_app()).get("/api/live")
+    assert list(live_mod.RACE_RIVAL) == [3]
 
 
 def test_the_rival_is_projected_on_the_same_terms(client):

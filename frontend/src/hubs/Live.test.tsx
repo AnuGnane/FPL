@@ -57,14 +57,14 @@ const ACTIVE = {
   my_race: 71.5,
   race_reference: 61.5,
   race_series: [
-    { at: '2026-08-31T14:00:00+00:00', you: 40, leader: 38 },
-    { at: '2026-08-31T14:01:00+00:00', you: 71.5, leader: 44 },
+    { at: '2026-08-31T14:00:00+00:00', you: 40, rival: 38 },
+    { at: '2026-08-31T14:01:00+00:00', you: 71.5, rival: 44 },
   ],
   safety: [
     { entry: 3, name: 'Above', role: 'above', margin: 10, need: 11 },
     { entry: 2, name: 'Below', role: 'below', margin: -15, need: 0 },
   ],
-  leader_name: 'Above',
+  rival_name: 'Above',
   race_notice: null,
 }
 
@@ -85,7 +85,7 @@ const NO_COMPONENTS = {
 const IDLE = {
   active: false, gw: null, my_points: 0, matches_in_play: 0, players: [],
   table: [], my_projected_points: 0, my_race: null, race_reference: null,
-  race_series: [], safety: [], leader_name: null, race_notice: null,
+  race_series: [], safety: [], rival_name: null, race_notice: null,
 }
 
 beforeEach(() => {
@@ -107,6 +107,14 @@ describe('Live', () => {
     expect(screen.getByText('172')).toBeInTheDocument()
     expect(screen.getByText('▲1')).toBeInTheDocument()
   })
+
+  it('shows the race as a season total, like the projection beside it',
+    async () => {
+      await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+      // 106 banked + 67.5 this gameweek. The bare 67.5 would read as a worse
+      // score than the 172 next to it.
+      expect(screen.getByText('173.5')).toBeInTheDocument()
+    })
 
   it('polls every 60 seconds while a gameweek is live', async () => {
     apiGet.mockResolvedValue(ACTIVE)
@@ -199,7 +207,10 @@ describe('Live', () => {
   it('prices each league place it can reach', async () => {
     await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
     expect(screen.getByText('One place above')).toBeInTheDocument()
-    expect(screen.getByText(/need \+11/)).toBeInTheDocument()
+    // "+11" is what I must add *on top of* the projection already shown, not
+    // a total, and the copy has to say so.
+    expect(screen.getByText(/need \+11 beyond your current projection/))
+      .toBeInTheDocument()
     expect(screen.getByText('One place below')).toBeInTheDocument()
     expect(screen.getByText(/15 clear/)).toBeInTheDocument()
     expect(screen.getByText(/league places only/i)).toBeInTheDocument()

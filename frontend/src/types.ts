@@ -312,7 +312,7 @@ export interface LiveSafety {
 export interface LiveRacePoint {
   at: string
   you: number
-  leader?: number | null
+  rival?: number | null
 }
 
 export interface LiveState {
@@ -328,7 +328,7 @@ export interface LiveState {
   race_reference?: number | null
   race_series?: LiveRacePoint[]
   safety?: LiveSafety[]
-  leader_name?: string | null
+  rival_name?: string | null
   race_notice?: string | null
 }
 

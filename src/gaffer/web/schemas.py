@@ -333,7 +333,10 @@ class LiveRacePoint(BaseModel):
 
     at: str
     you: float
-    leader: float | None = None
+    rival: float | None = None
+    """The tracked rival's race value — the entry pinned in ``rival_name``,
+    which is the top entry in the league that is not me. He is the leader
+    only when I am not; when I am leading he is the man in second."""
 
 
 class LiveState(BaseModel):
@@ -350,7 +353,10 @@ class LiveState(BaseModel):
     """This gameweek's saved ``advice.expected_pts``, when there is one."""
     race_series: list[LiveRacePoint] = Field(default_factory=list)
     safety: list[LiveSafety] = Field(default_factory=list)
-    leader_name: str | None = None
+    rival_name: str | None = None
+    """The entry the trajectory follows: the highest-placed entry that is not
+    me, picked on the gameweek's first poll and then pinned for the rest of it
+    so the line cannot change whose points it is plotting mid-afternoon."""
     race_notice: str | None = None
     """The race's own degradation line. Deliberately not ``notice``, which is
     the tier-EO line and belongs to a different card."""
