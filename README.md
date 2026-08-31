@@ -323,44 +323,78 @@ stamps each row with when it was solved.
 
 ### Uncertainty and calibration (v8g)
 
-Every expected-points number in the tool now carries the spread the optimizer
-already assumed it had.
+Every expected-points number in the tool now carries a range, and the tool is
+explicit about which of two different uncertainties each range is.
 
 **Bands.** The squad table and the player explorer print a `Range` column
-beside `xPts` — the p25 and p75 of the same noise distribution the scenario
-sweep perturbs the board with. It is quartiles, not a plus-or-minus: on the
-calibrated path the noise is absolute and the sweep shifts its centre down so
-a clipped draw still averages the forecast, so the band is not symmetric about
-the headline. A nailed-on starter's range is narrow and a rotation risk's is
-wide, which is the entire point.
+beside `xPts`: the p25 and p75 of *what he might score*. Two variances added,
+because they are variances of independent things — football's own (whether the
+goal goes in, whether the clean sheet holds, who takes the bonus, measured at
+3.2 points of variance per point of expected points over three seasons of
+`player_gw`) and the model's estimation error out of the scenario sweep's
+calibrated σ table. The first is an order of magnitude larger.
+
+**These bands are wide, and that is the finding.** Haaland at 5.93 expected
+points comes back with σ 4.4 and a p25–p75 of about 2.8 to 8.7. Anyone
+selling you a tighter range on a single footballer's single gameweek is
+selling you an estimation error and calling it a forecast.
+
+It is quartiles, not a plus-or-minus. The variance is absolute, so the draw
+clips at zero and the centre is shifted down to keep the range averaging the
+forecast — the band is not symmetric about the headline.
+
+**xMins reaches the band through the EP, not around it.** The calibrated σ
+table is close to flat across xMins bins at a fixed EP, so at *equal* expected
+points a rotation risk and a nailed-on starter get nearly the same absolute
+band. What separates them is that the rotation risk's expected points are
+lower to begin with, which narrows the absolute band and widens the relative
+one.
 
 A player with no minutes model shows an em dash, not a range of zero width.
 "We have no minutes prediction for him" is a different claim from "his minutes
 are certain", and the second is the one that loses money.
 
 **Haul and blank.** A player with a real chance of ten-plus points, or a real
-chance of two or fewer, gets a chip on his row. Both come off the same
-distribution as the band, which means both are **crude**: they price how wrong
-the *forecast* might be, not how much football itself varies. Read `haul 18%`
-as a floor.
+chance of two or fewer, gets a chip on his row. Both are tails of the band
+above — the same distribution, read at 10 points and at 2 — so both price what
+he might score rather than how precisely he was estimated. They are still a
+normal approximation to a lumpy, discrete thing, and the tool says so in the
+tooltip rather than in a disclaimer nobody reads. What it will not do is
+answer 0% or 100%: no player and no gameweek gets a certainty.
 
 **Captain confidence.** Under the pitch, one sentence about what the graded
 record actually says: *"the model's captain outscored yours in 4 of 5
-comparable gameweeks"*. Below four graded gameweeks it declines to have an
-opinion and says how many it has. There is no percentage anywhere in it,
-because there is nothing to compute one from.
+comparable gameweeks (2 you agreed on)"*. A gameweek where you picked the
+model's own captain is quoted beside that record and is in no denominator of
+it — agreeing with the tool is not evidence for or against the tool. Below
+four *disagreements* it declines to have an opinion and says how many
+gameweeks it has looked at. There is no percentage anywhere in it, because
+there is nothing to compute one from.
 
-**Sensitivity margin.** When the gap between the sweep's two candidate plans
-is smaller than the noise on the players that separate them, the sensitivity
-card says so instead of printing the gap as though it settled anything.
+**Sensitivity margin.** The sensitivity card's noise line is the one place
+that quotes **estimation** σ, and it says which one it means: "how wrong the
+forecast for the players that separate the two plans might be". Football's own
+variance is deliberately absent, because both plans are solved off the same
+board — an outcome shock hits them equally and cannot reorder them. When the
+gap between the two plans is inside that number, the card appends the caveat
+to the margin rather than in place of it: which plan is ahead and how solid
+the ordering is are two separate facts.
 
 **Model → Quality** gains four things: a reliability curve for `P(starts)`
 (the model has emitted it since v8a and nothing rendered it), a y = x
 reference on every calibration curve with the observation count under it, a
-scatter of forecast against outcome for every finished gameweek, and a table
-of last week's biggest misses with the sign kept — a positive miss is a player
-the model under-rated, a negative one is a transfer it may have talked you
-into.
+scatter of your points against the model's for every graded gameweek, and a
+table of last week's biggest misses with the sign kept — a positive miss is a
+player the model under-rated, a negative one is a transfer it may have talked
+you into.
+
+Both axes of that scatter come off the decision ledger, where `review` hand-
+scores your squad and the model-composite squad against the same results
+frame, so the diagonal is a real reference and the vertical distance is in
+points. The misses table waits for FPL to mark the gameweek `data_checked`,
+which is usually the morning after the last fixture rather than the final
+whistle — a card that appeared at full time would be naming players off
+provisional bonus.
 
 Every one of those cards is **absent** rather than empty when its artifact is
 missing. Nothing here needs a new command, a new job or a config key: it all
@@ -473,8 +507,8 @@ makes the live season collide with the one you just archived.
 - `reports/sensitivity_gw{N}.json` — one banked robustness sweep per
   gameweek: move frequencies over twenty noised re-solves, the modal plan and
   the margin to the best differing one.
-- `src/gaffer/uncertainty.py` — EP bands and haul/blank tails, off the
-  scenario sweep's own σ table
+- `src/gaffer/uncertainty.py` — EP bands and haul/blank tails: outcome
+  variance plus the scenario sweep's estimation σ, in quadrature
 - `src/gaffer/confidence.py` — ledger-derived confidence tiers: counts, never
   percentages
 - `src/gaffer/misses.py` — the last scored week's biggest forecast errors

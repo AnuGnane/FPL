@@ -11,6 +11,17 @@ happened, and the join is an inner one because a player the results frame does
 not cover has not scored nought — he is unknown, and printing him at zero
 would put the tool's worst-looking miss on a player who was never in the
 data.
+
+That join is also why this card is **late rather than instant**.
+``data.live.refresh_live`` drops every gameweek FPL has not marked
+``data_checked``, and FPL does not set that flag until bonus points and any
+appeals are settled — typically the morning after the last fixture, not the
+final whistle. So a Sunday-evening reader gets no misses card for a gameweek
+that has visibly finished, and that is correct: the results frame it would
+join against does not exist yet, and a card built from provisional bonus
+would name the wrong players. :func:`scoreable_gw` therefore answers the last
+gameweek that is *both* forecast and settled, which can be a week behind the
+one the rest of the tool is planning.
 """
 
 from __future__ import annotations
