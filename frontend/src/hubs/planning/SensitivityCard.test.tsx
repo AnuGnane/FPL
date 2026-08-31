@@ -65,6 +65,17 @@ describe('SensitivityCard', () => {
     expect(names[1]).toContain('Haaland')
   })
 
+  it('says the runner-up is ahead when the margin is negative', async () => {
+    // The counts and the true board disagreeing is the one thing this line
+    // must not state backwards.
+    apiGet.mockResolvedValue({ ...REPORT, margin: -1.24 })
+    render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
+    expect(await screen.findByText(/1\.2 expected points ahead/))
+      .toBeInTheDocument()
+    expect(screen.getByText(/not the highest-scoring one/))
+      .toBeInTheDocument()
+  })
+
   it('says every re-solve agreed when there is no margin', async () => {
     apiGet.mockResolvedValue({ ...REPORT, margin: null })
     render(<MemoryRouter><SensitivityCard /></MemoryRouter>)

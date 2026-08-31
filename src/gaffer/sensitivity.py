@@ -227,13 +227,7 @@ def run_sensitivity(gw: int | None = None, k: int = SENSITIVITY_K,
                                     int(opt["hit_cost"])),
             }
         entry["count"] += 1
-    ranked = sorted(groups.values(),
-                    key=lambda e: (-e["count"], -e["value"]))
-    modal = ranked[0]
-    others = sorted(ranked[1:], key=lambda e: -e["value"])
-    runner_up = others[0] if others else None
-    margin = (None if runner_up is None
-              else round(modal["value"] - runner_up["value"], 2))
+    modal, runner_up, margin = rank_plans(list(groups.values()))
 
     payload = {
         "gw": int(gw), "k": int(k), "completed": int(run.completed),
@@ -250,14 +244,46 @@ def run_sensitivity(gw: int | None = None, k: int = SENSITIVITY_K,
     return payload
 
 
+def rank_plans(groups: list[dict]) -> tuple[dict, dict | None, float | None]:
+    """``(modal, runner_up, margin)`` for one sweep's distinct decisions.
+
+    The modal plan is the most *frequent* signature — most counts, and the
+    higher true value breaks a tie — and the runner-up is the best-valued
+    plan that differs from it. The margin between them is
+    ``modal - runner_up`` and it is **signed**, because the two rankings are
+    not the same ranking: the counts say which plan the noise reaches most
+    often and the value says what each plan is worth on the board the manager
+    actually faces, and a negative margin is the interesting case where those
+    disagree. Callers must branch on the sign rather than assume it.
+    """
+    ranked = sorted(groups, key=lambda e: (-e["count"], -e["value"]))
+    modal = ranked[0]
+    others = sorted(ranked[1:], key=lambda e: -e["value"])
+    runner_up = others[0] if others else None
+    margin = (None if runner_up is None
+              else round(modal["value"] - runner_up["value"], 2))
+    return modal, runner_up, margin
+
+
 def _verdict(modal: dict, runner_up: dict | None, margin: float | None,
              completed: int) -> str:
-    """One sentence a manager can act on, in the spec's own register."""
+    """One sentence a manager can act on, in the spec's own register.
+
+    Two sentences, really, and which one depends on the sign of the margin.
+    The modal plan is the one the sweep reached most often, which is not a
+    claim that it is the one worth most: when the runner-up prices higher on
+    the true board the margin is negative and the sentence has to say so, or
+    the card is telling the manager the opposite of what the numbers found.
+    """
     share = f"{modal['count']}/{completed}"
     if runner_up is None or margin is None:
         return (f"every one of the {completed} re-solves reached the same "
                 f"decision")
     moves = ", ".join(p["name"] for p in modal["buys"]) or "the hold plan"
     alt = ", ".join(p["name"] for p in runner_up["buys"]) or "holding"
-    return (f"{moves} appears in {share} re-solves; {alt} is within "
-            f"{margin} expected points")
+    if margin < 0:
+        return (f"{moves} appears in {share} re-solves; {alt} is "
+                f"{abs(margin)} expected points AHEAD — the most frequent "
+                f"plan is not the highest-scoring one")
+    return (f"{moves} appears in {share} re-solves; {alt} is {margin} "
+            f"expected points behind")

@@ -12,6 +12,20 @@ function pct(frequency: number): string {
   return `${Math.round(frequency * 100)}%`
 }
 
+/** The margin is signed and the sign is the whole sentence: it is
+ *  modal-minus-runner-up, so a negative one means the plan the sweep reached
+ *  most often is priced *below* one it reached less often, which is the
+ *  opposite recommendation and must not be printed as "behind". */
+function marginLine(margin: number | null): string {
+  if (margin === null) return 'Every re-solve reached the same decision.'
+  if (margin < 0) {
+    return `The best differing plan is ${fmtNum(-margin, 1)} expected points `
+      + 'ahead — the most frequent plan is not the highest-scoring one.'
+  }
+  return `The best differing plan is ${fmtNum(margin, 1)} expected points `
+    + 'behind.'
+}
+
 export default function SensitivityCard() {
   const [data, setData] = useState<SensitivityReport | null>(null)
   const load = useCallback(() => {
@@ -74,10 +88,7 @@ export default function SensitivityCard() {
             </tbody>
           </table>
           <p className="mt-3 text-text-muted">
-            {data.margin === null
-              ? 'Every re-solve reached the same decision.'
-              : `The best differing plan is ${fmtNum(data.margin, 1)} expected `
-                + 'points behind.'}
+            {marginLine(data.margin)}
             {data.wall_s !== null && ` Swept in ${fmtNum(data.wall_s, 0)}s, `}
             {data.seed !== null && `seed ${data.seed}.`}
           </p>

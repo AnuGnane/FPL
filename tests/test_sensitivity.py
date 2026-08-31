@@ -20,8 +20,8 @@ import pytest
 
 from gaffer.artifacts import (POOL_COLS, SolveState, save_solve_state,
                               solve_state_paths)
-from gaffer.sensitivity import (SENSITIVITY_K, load_sensitivity,
-                                run_sensitivity, sensitivity_path)
+from gaffer.sensitivity import (SENSITIVITY_K, _verdict, load_sensitivity,
+                                rank_plans, run_sensitivity, sensitivity_path)
 
 SQUAD = [("GKP", 3), ("DEF", 8), ("MID", 8), ("FWD", 5)]
 OWNED = [1, 2, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 20, 21, 22]   # legal 15
@@ -138,8 +138,40 @@ def test_the_modal_plan_is_the_most_common_signature(board):
     modal = payload["modal"]
     assert modal["count"] >= 1
     assert modal["count"] <= payload["completed"]
-    assert modal["value"] == pytest.approx(modal["value"])
     assert isinstance(modal["buys"], list)
+
+
+def _group(count: int, value: float, name: str) -> dict:
+    return {"count": count, "value": value, "hits": 0,
+            "buys": [{"code": 1, "name": name, "position": "MID"}],
+            "sells": [], "captain": {"code": 1, "name": name,
+                                     "position": "MID"}}
+
+
+def test_a_modal_plan_that_is_not_the_best_valued_gets_a_negative_margin():
+    """The case the sign exists for: the counts and the true board disagree.
+
+    Six of ten re-solves reached the cheap plan, but priced on the board the
+    manager actually faces it is worth *less* than the plan four of them
+    reached. The margin is negative and the sentence has to say the runner-up
+    is ahead, not behind.
+    """
+    modal, runner_up, margin = rank_plans(
+        [_group(6, 200.0, "Cheap"), _group(4, 203.5, "Dear")])
+    assert modal["count"] == 6
+    assert runner_up["count"] == 4
+    assert margin == pytest.approx(-3.5)
+    verdict = _verdict(modal, runner_up, margin, 10)
+    assert "3.5 expected points AHEAD" in verdict
+    assert "not the highest-scoring one" in verdict
+
+
+def test_a_modal_plan_that_is_also_the_best_valued_reads_the_other_way():
+    modal, runner_up, margin = rank_plans(
+        [_group(6, 203.5, "Dear"), _group(4, 200.0, "Cheap")])
+    assert margin == pytest.approx(3.5)
+    assert "behind" in _verdict(modal, runner_up, margin, 10)
+    assert "AHEAD" not in _verdict(modal, runner_up, margin, 10)
 
 
 def test_the_margin_prices_the_best_differing_plan(board):
@@ -153,7 +185,12 @@ def test_the_margin_prices_the_best_differing_plan(board):
         assert payload["margin"] == pytest.approx(
             round(payload["modal"]["value"]
                   - payload["runner_up"]["value"], 2))
-        assert payload["margin"] >= 0.0
+        # Signed, and the sentence follows the sign: the modal plan is the
+        # most *frequent* one, which is not a claim that it is the best one.
+        if payload["margin"] < 0:
+            assert "AHEAD" in payload["verdict"]
+        else:
+            assert "behind" in payload["verdict"]
 
 
 def test_no_solve_state_is_a_readable_refusal(tmp_path, monkeypatch):
