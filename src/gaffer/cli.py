@@ -256,6 +256,33 @@ def field_scrape(
 
 
 @app.command()
+def league_sim(
+        seeds: str = typer.Option("", help="Comma-separated seed bases; "
+                                           "default is the shipped seed."),
+        n: int = typer.Option(0, help="Simulations per seed (default: "
+                                      "league.sim_n)."),
+        drift: float = typer.Option(-1.0, help="Rival drift 0-1 (default: "
+                                              "league.rival_drift).")):
+    """Simulate the mini-league to the end of the season (v8c F2).
+
+    With several seeds it prints mean +/- spread, which is the only form a
+    recorded claim about this number may take (CONVENTIONS.md §1).
+    """
+    from gaffer.api.client import FPLClient
+    from gaffer.config import load_config
+    from gaffer.league_sim import (SIM_SEED, build_inputs, format_multi_seed,
+                                   multi_seed)
+
+    cfg = load_config()
+    bases = [int(s) for s in seeds.split(",") if s.strip()] or [SIM_SEED]
+    report = multi_seed(
+        build_inputs(cfg, FPLClient()), seeds=bases,
+        n=int(n or cfg.sim_n),
+        rival_drift=(cfg.rival_drift if drift < 0 else float(drift)))
+    typer.echo(format_multi_seed(report, cfg.league_id))
+
+
+@app.command()
 def league():
     """Mini-league standings and rival ownership."""
     from gaffer.api.client import FPLClient

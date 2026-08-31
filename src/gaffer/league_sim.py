@@ -503,3 +503,21 @@ def build_inputs(cfg, client, *, gw: int | None = None) -> SimInputs:
                      sigma_by_element=sigma_by,
                      weeks_left=max(0, SEASON_GWS - int(plan_gw) + 1),
                      field_rate=field_rate_from_sample(sample, ep_by))
+
+
+def format_multi_seed(report: dict, league_id: int) -> str:
+    """The printed multi-seed table. One line per seed, then the aggregate."""
+    lines = [f"League simulation — league {league_id}, "
+             f"n={report['n']} per seed, drift={report['rival_drift']}",
+             f"{'seed':>10}  {'P(win)':>8}"]
+    for seed, value in zip(report["seeds"], report["p_win"]):
+        lines.append(f"{'seed ' + str(seed):>10}  {value:>8.3f}")
+    lines.append(f"{'mean':>10}  {report['p_win_mean']:>8.3f}   "
+                 f"spread {report['p_win_spread']:.3f}")
+    lines.append(f"{'P(top 3)':>10}  {report['p_top3_mean']:>8.3f}   "
+                 f"expected finish {report['exp_finish_mean']:.2f}")
+    lines.append("")
+    lines.append("The spread is this instrument's honesty label, not a "
+                 "verdict: it says how much of the headline is the seed. "
+                 "There is no pass bar (spec §5, G2).")
+    return "\n".join(lines)

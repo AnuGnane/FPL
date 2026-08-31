@@ -301,3 +301,24 @@ def test_the_multi_seed_report_carries_a_mean_and_a_spread():
 def test_a_single_seed_reports_a_spread_of_zero_rather_than_hiding_it():
     out = multi_seed(_inputs(), seeds=[1], n=100)
     assert out["p_win_spread"] == 0.0
+
+
+# --- the printed report ----------------------------------------------------
+
+from gaffer.league_sim import format_multi_seed  # noqa: E402
+
+
+def test_the_report_names_every_seed_and_the_spread():
+    text = format_multi_seed(multi_seed(_inputs(), seeds=[1, 2, 3], n=200),
+                             league_id=5)
+    assert "league 5" in text
+    assert "seed 1" in text and "seed 3" in text
+    assert "spread" in text
+
+
+def test_the_report_says_out_loud_that_a_spread_is_not_a_verdict():
+    """A number printed without its caveat is a number that ends up in a
+    commit message as a finding. CONVENTIONS.md §5."""
+    text = format_multi_seed(multi_seed(_inputs(), seeds=[1, 2], n=100),
+                             league_id=5)
+    assert "instrument" in text.lower()
