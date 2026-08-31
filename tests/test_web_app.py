@@ -48,6 +48,19 @@ def test_spa_fallback_serves_index_html_for_client_routes(tmp_path,
     assert "gaffer" in resp.text
 
 
+def test_index_is_served_with_no_cache_so_rebuilds_are_picked_up(tmp_path,
+                                                                 monkeypatch):
+    static = tmp_path / "static"
+    static.mkdir()
+    (static / "index.html").write_text("<!doctype html><title>gaffer</title>")
+    monkeypatch.setattr("gaffer.web.app.static_dir", lambda: static)
+    client = TestClient(create_app())
+    for path in ("/", "/whatif"):
+        resp = client.get(path)
+        assert resp.status_code == 200
+        assert resp.headers["cache-control"] == "no-cache"
+
+
 def test_missing_build_says_how_to_build_it(tmp_path, monkeypatch):
     monkeypatch.setattr("gaffer.web.app.static_dir", lambda: tmp_path / "nope")
     client = TestClient(create_app())

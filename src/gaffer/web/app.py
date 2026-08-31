@@ -108,6 +108,10 @@ def create_app() -> FastAPI:
                 status_code=503,
                 content={"detail": "frontend not built — run `npm install && "
                                    "npm run build` in frontend/"})
-        return FileResponse(index)
+        # Must revalidate on every load: without this browsers apply
+        # heuristic freshness and keep serving an index.html that points at
+        # hashed asset filenames a rebuild has already deleted. ETag and
+        # Last-Modified come from FileResponse, so the revalidation is a 304.
+        return FileResponse(index, headers={"Cache-Control": "no-cache"})
 
     return app
