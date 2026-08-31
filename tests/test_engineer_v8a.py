@@ -105,6 +105,29 @@ def test_a_frame_without_starts_yields_all_nan_columns():
         assert out[col].isna().all()
 
 
+def test_the_builder_hands_back_the_rows_it_was_given_in_that_order():
+    """The builder appends columns; it must not reorder the frame.
+
+    ``load_training_frame`` threads one frame through a dozen builders and
+    LightGBM breaks ties on row order, so a builder that returns its own
+    sort silently moves the model. Whatever order it is handed, it returns.
+    """
+    df = _frame().sample(frac=1.0, random_state=7).reset_index(drop=True)
+    out = add_rotation_priors(df, _tenures())
+    pd.testing.assert_frame_equal(out[df.columns], df)
+
+
+def test_the_shuffled_frame_gets_the_same_values_as_the_sorted_one():
+    """Order-preservation is not order-*dependence*: the features are the
+    same numbers, attached to the same rows, whatever order they arrive in."""
+    df = _frame()
+    straight = add_rotation_priors(df, _tenures())
+    shuffled = df.sample(frac=1.0, random_state=11)
+    out = add_rotation_priors(shuffled, _tenures()).loc[straight.index]
+    for col in ROTATION_PRIOR_FEATURES:
+        pd.testing.assert_series_equal(out[col], straight[col])
+
+
 # --- serve side ------------------------------------------------------------
 
 from gaffer.features.engineer import (build_prediction_frame,  # noqa: E402
@@ -137,6 +160,33 @@ def test_the_serve_state_counts_the_last_played_match():
     out = latest_rotation_priors(_frame(), _tenures())
     assert out.loc[1, "manager_tenure_matches"] == 3.0
     assert out.loc[1, "started_last_match"] == 1.0
+
+
+@pytest.mark.parametrize("tenures", [None, "asset"])
+def test_the_serve_state_is_what_training_will_compute_for_the_next_match(
+        tenures):
+    """The train/serve rail, stated over all four columns.
+
+    History through GW5, served today, must equal the GW6 rows a training
+    run over history-through-GW6 produces — that *is* the definition of the
+    probe row, and the fixture spells ``kickoff_time`` as the ISO strings
+    ``player_gw.parquet`` actually stores, because a mixed-dtype sort that
+    ordered the probe ahead of the player's last real match would compute
+    every column one match stale and pass a datetime-only fixture.
+    """
+    ten = _tenures() if tenures == "asset" else None
+    full = _frame()
+    hist = full[full["gw"] <= 5]
+    assert hist["kickoff_time"].map(type).eq(str).all()
+
+    served = latest_rotation_priors(hist, ten)
+    trained = (add_rotation_priors(full, ten)
+               .query("gw == 6").set_index("code"))
+    for col in ROTATION_PRIOR_FEATURES:
+        pd.testing.assert_series_equal(
+            served[col].sort_index().astype("float64"),
+            trained[col].sort_index().astype("float64"),
+            check_names=False)
 
 
 def test_the_prediction_frame_carries_every_prior_feature():

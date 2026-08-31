@@ -266,18 +266,36 @@ def add_rotation_priors(df: pd.DataFrame,
     every window to the club's season instead (see
     :func:`gaffer.data.managers.spell_keys`), which is the documented
     degradation and not an error.
-    """
-    sort_cols = [c for c in ("code", "season_idx", "gw", "kickoff_time")
-                 if c in df.columns]
-    out = df.sort_values(sort_cols, kind="stable").reset_index(drop=True)
-    if not {"code", "team_code", "starts", "season_idx"} <= set(out.columns):
-        for col in ROTATION_PRIOR_FEATURES:
-            out[col] = float("nan")
-        return out
 
-    kt = (pd.to_datetime(out["kickoff_time"], errors="coerce", utc=True)
-          if "kickoff_time" in out.columns
-          else pd.Series(pd.NaT, index=out.index, dtype="datetime64[ns, UTC]"))
+    Two ordering rules, both load-bearing. The chronology is established on
+    ``kickoff_time`` **parsed to a timestamp**, never on the raw column:
+    ``player_gw.parquet`` stores it as an ISO string, a probe row appends it
+    as a ``Timestamp``, and sorting the two together puts the probe wherever
+    the mixed-type comparison happens to land it — which is how a serve-time
+    state ends up one match stale. And the frame comes back in the order it
+    arrived, with four columns added: ``load_training_frame`` threads one
+    frame through a dozen builders and LightGBM breaks ties on row order, so
+    a builder that returned its own sort would move the model without
+    touching a single feature value.
+    """
+    if not {"code", "team_code", "starts", "season_idx"} <= set(df.columns):
+        res = df.copy()
+        for col in ROTATION_PRIOR_FEATURES:
+            res[col] = float("nan")
+        return res
+
+    work = df.reset_index(drop=True)
+    when_all = (pd.to_datetime(work["kickoff_time"], errors="coerce", utc=True)
+                if "kickoff_time" in work.columns
+                else pd.Series(pd.NaT, index=work.index,
+                               dtype="datetime64[ns, UTC]"))
+    keys = {c: work[c] for c in ("code", "season_idx", "gw")
+            if c in work.columns}
+    keys["_kickoff"] = when_all
+    order = (pd.DataFrame(keys)
+             .sort_values(list(keys), kind="stable").index)
+    out = work.loc[order].reset_index(drop=True)
+    kt = when_all.loc[order].reset_index(drop=True)
     spell = spell_keys(out["team_code"], kt, out["season_idx"], tenures)
     starts = pd.to_numeric(out["starts"], errors="coerce")
     code = out["code"]
@@ -316,9 +334,14 @@ def add_rotation_priors(df: pd.DataFrame,
         "xi_churn_r5": _xi_churn(spell, kt, code, starts),
         "started_last_match": starts.groupby(code).shift(1),
     }
+    res = df.copy()
     for col, values in feats.items():
-        out[col] = values.astype("float64")
-    return out
+        # ``order`` labels each sorted row with the position it came from, so
+        # sorting by it undoes the sort and puts the values back on the rows
+        # the caller handed us, in the order it handed them to us.
+        back = pd.Series(values.astype("float64").to_numpy(), index=order)
+        res[col] = back.sort_index().to_numpy()
+    return res
 
 
 def latest_rotation_priors(hist: pd.DataFrame,
@@ -342,12 +365,20 @@ def latest_rotation_priors(hist: pd.DataFrame,
     cols = ["code"] + ROTATION_PRIOR_FEATURES + ["_prior_spell"]
     if not {"code", "team_code", "season_idx"} <= set(hist.columns):
         return pd.DataFrame(columns=cols).set_index("code")
-    sort_cols = [c for c in ("code", "season_idx", "gw", "kickoff_time")
-                 if c in hist.columns]
-    h = hist.sort_values(sort_cols, kind="stable").reset_index(drop=True)
+    h = hist.reset_index(drop=True)
     kt = (pd.to_datetime(h["kickoff_time"], errors="coerce", utc=True)
           if "kickoff_time" in h.columns
           else pd.Series(pd.NaT, index=h.index, dtype="datetime64[ns, UTC]"))
+    # Parsed, not raw: ``tail(1)`` below is "his last match played", and the
+    # ISO strings the store holds sort by hand only as long as nothing else
+    # in the frame is a Timestamp.
+    sort_keys = {c: h[c] for c in ("code", "season_idx", "gw")
+                 if c in h.columns}
+    sort_keys["_kickoff"] = kt
+    order = (pd.DataFrame(sort_keys)
+             .sort_values(list(sort_keys), kind="stable").index)
+    h = h.loc[order].reset_index(drop=True)
+    kt = kt.loc[order].reset_index(drop=True)
     stamp = when if when is not None else (
         kt.max() + pd.Timedelta(days=1) if kt.notna().any() else pd.NaT)
     tail = h.groupby("code", sort=False).tail(1)

@@ -293,6 +293,12 @@ def load_training_frame(max_season_idx: int | None = None,
     df = add_setpiece(df)
     df = add_context(df, elo, elo_final)
     df = add_congestion(df, cup_matches())
+    # Row order matters here: LightGBM breaks ties on it, so a chain that
+    # reorders the frame moves the model with every feature value unchanged.
+    # ``add_rotation_priors`` returns what it was given. ``add_congestion``
+    # sorts, as it did pre-v8a — and the second, league-only call is handed
+    # the first call's output, so its stable sort is the identity and the
+    # v8a arm adds three columns without touching a row's position.
     df = add_congestion(df, None, prefix=LEAGUE_CONGESTION_PREFIX)
     df = attach_understat(df)
     tg = add_team_rolling(build_team_gw(fixtures))
