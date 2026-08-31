@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DigestCard from './DigestCard'
+import { JOB_KIND_LABEL } from '../../types'
 
 // This repo mocks the api client rather than the network (no MSW anywhere in
 // the suite), so the card's own GET and the two JobButtons' `/api/jobs/current`
@@ -106,5 +107,16 @@ describe('DigestCard', () => {
     const { container } = render(<DigestCard />)
     await new Promise((r) => { setTimeout(r, 0) })
     expect(container.textContent).toBe('')
+  })
+
+  it('names the schedule and the buttons when there is no digest', async () => {
+    serve({ available: false, digest: null })
+    render(<DigestCard />)
+    expect(await screen.findByTestId('empty-state')).toBeInTheDocument()
+    expect(screen.getByText(/17:00/)).toBeInTheDocument()
+    expect(screen.getByText(/09:30/)).toBeInTheDocument()
+    // The action names a real button on this very card, not a paraphrase.
+    expect(screen.getAllByText(JOB_KIND_LABEL['digest-friday']).length)
+      .toBeGreaterThan(1)
   })
 })

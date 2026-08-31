@@ -178,4 +178,16 @@ describe('SensitivityCard', () => {
     // The answer it is about to replace is gone, not pulsing underneath.
     expect(screen.queryByText(/nine of ten re-solves/)).not.toBeInTheDocument()
   })
+
+  it('names the button that would sweep when nothing has swept yet',
+    async () => {
+      apiGet.mockResolvedValue({ available: false, notice: null,
+                                 frequencies: [] })
+      render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
+      expect(await screen.findByTestId('empty-state')).toBeInTheDocument()
+      expect(screen.getByText(/No sensitivity report yet/))
+        .toBeInTheDocument()
+      expect(screen.getAllByText(/Run sensitivity/).length)
+        .toBeGreaterThan(0)
+    })
 })

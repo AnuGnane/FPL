@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiDelete, apiGet, apiPost, errorText } from '../../api/client'
 import { useJob } from '../../api/useJob'
-import { Card, JobLog, Skeleton, fmtNum, toast } from '../../kit'
+import {
+  Card, EmptyState, JobLog, Skeleton, fmtNum, toast,
+} from '../../kit'
 import type {
   DraftCompare, DraftCompareRequest, DraftList, DraftSaveRequest,
   WhatIfRequest,
@@ -112,7 +114,17 @@ export default function DraftsTab({ current }: { current: WhatIfRequest }) {
         )}
         {error && <p className="mb-3 text-rust">{error}</p>}
         {drafts.drafts.length === 0
-          ? <p className="text-text-muted">No drafts yet.</p>
+          ? (
+            <EmptyState
+              title="No drafts yet"
+              detail="A draft is a set of What-If constraints under a name, so
+                      it still means something after Thursday's price changes.
+                      Set some constraints on the What-If tab, then name them
+                      here."
+              // The exact label on the button three lines above it.
+              action="Save the current What-If"
+            />
+            )
           : (
             <ul className="flex flex-col gap-2">
               {drafts.drafts.map((draft) => (

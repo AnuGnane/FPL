@@ -196,4 +196,12 @@ describe('ReviewTab', () => {
         .queryByRole('button')).toBeNull()
     })
   })
+
+  it('already names the command for its pre-first-review state', async () => {
+    // Audited 2026-08-31 and left alone (plan A12).
+    mock({ gws: [], summary: null })
+    render(<ReviewTab />)
+    expect(await screen.findByTestId('empty-state')).toBeInTheDocument()
+    expect(screen.getByText('gaffer review')).toBeInTheDocument()
+  })
 })

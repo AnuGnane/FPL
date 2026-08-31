@@ -89,7 +89,11 @@ describe('DraftsTab', () => {
   it('says so when nothing is saved', async () => {
     apiGet.mockResolvedValue({ drafts: [] })
     render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
-    expect(await screen.findByText('No drafts yet.')).toBeInTheDocument()
+    // An EmptyState now, naming the exact button three lines above it.
+    expect(await screen.findByTestId('empty-state')).toBeInTheDocument()
+    expect(screen.getByText('No drafts yet')).toBeInTheDocument()
+    expect(screen.getAllByText(/Save the current What-If/i).length)
+      .toBeGreaterThan(1)
   })
 
   it('saves the constraints the What-If tab is holding', async () => {

@@ -409,4 +409,23 @@ describe('v8g calibration', () => {
     await screen.findByText(/Nothing evaluated yet|Holdout/)
     expect(screen.queryByText(/Biggest misses/)).toBeNull()
   })
+
+  it('names the command that grades a gameweek in the scatter empty state',
+    async () => {
+      mockReview({ gws: [] })
+      renderQuality({})
+      expect(await screen.findByText(/No graded gameweek yet/))
+        .toBeInTheDocument()
+      expect(screen.getAllByText('gaffer review').length).toBeGreaterThan(0)
+    })
+
+  it('keeps the two states that were already right', async () => {
+    // Audited 2026-08-31 and left alone (plan A12): title, detail and an
+    // action that is a real command. Pinned so a later pass does not "fix"
+    // them into prose.
+    mockMisses({ gw: null, rows: [] })
+    renderQuality({})
+    expect((await screen.findAllByTestId('empty-state')).length)
+      .toBeGreaterThan(0)
+  })
 })

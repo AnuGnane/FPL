@@ -518,16 +518,27 @@ function ScatterSection() {
     .map((r) => ({ gw: r.gw, model: r.model_points as number,
                    mine: r.my_points as number }))
 
+  if (points.length === 0) {
+    return (
+      <Card title="Your points against the model’s" className="mt-4">
+        <EmptyState
+          title="No graded gameweek yet"
+          detail="This compares what you scored against what the model's own
+                  squad would have scored, for every gameweek FPL has
+                  finalised. None has been graded yet."
+          action="gaffer review"
+        />
+      </Card>
+    )
+  }
+  // One point is not an empty state, it is an *insufficient* one, and the
+  // sentence is telling the reader something true about statistics.
   if (points.length < 2) {
     return (
       <Card title="Your points against the model’s" className="mt-4">
         <p className="text-text-muted">
-          {points.length === 0
-            ? 'No graded gameweek yet — review a finished week and this '
-              + 'compares what you scored against what the model’s own '
-              + 'squad would have.'
-            : '1 graded gameweek so far. One point is an anecdote, not a '
-              + 'scatter; the chart appears from the second graded week.'}
+          1 graded gameweek so far. One point is an anecdote, not a scatter;
+          the chart appears from the second graded week.
         </p>
       </Card>
     )

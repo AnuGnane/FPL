@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiGet } from '../../api/client'
-import { Card, JobButton } from '../../kit'
-import type { DigestPanel } from '../../types'
+import { Card, EmptyState, JobButton } from '../../kit'
+import { JOB_KIND_LABEL, type DigestPanel } from '../../types'
 
 const KIND_LABEL: Record<string, string> = {
   friday: 'Friday briefing',
@@ -39,10 +39,16 @@ export default function DigestCard() {
   if (!panel.available || panel.digest === null) {
     return (
       <Card title="Digest" className="mb-4" action={buttons}>
-        <p className="text-text-muted">
-          No digest yet — the Friday briefing runs at 17:00 and the Tuesday
-          debrief at 09:30, or build one now.
-        </p>
+        <EmptyState
+          title="No digest yet"
+          detail="The Friday briefing is written at 17:00 and the Tuesday
+                  debrief at 09:30, by the scheduled jobs. Neither has run
+                  since the last artifact was cleared — the two buttons above
+                  build one now, from the files already on disk."
+          // The label on the card's own Friday button, read from the same
+          // table it renders, so a rename cannot make this line stale.
+          action={JOB_KIND_LABEL['digest-friday']}
+        />
       </Card>
     )
   }

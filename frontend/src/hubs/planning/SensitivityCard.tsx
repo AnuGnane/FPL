@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiGet } from '../../api/client'
-import { Card, JobButton, Skeleton, fmtNum } from '../../kit'
-import type { SensitivityReport } from '../../types'
+import { Card, EmptyState, JobButton, Skeleton, fmtNum } from '../../kit'
+import { JOB_KIND_LABEL, type SensitivityReport } from '../../types'
 
 /** The move kinds this card lists. No frequency cut at all: the ones that are
  *  neither certain nor negligible are the whole point, but a 100% row is the
@@ -99,14 +99,25 @@ export default function SensitivityCard() {
                  points…"
         />
       )}
-      {!running && !data?.available && (
-        <p className="text-text-muted">
-          {failed
-            ? 'The sensitivity report could not be read — the server did not '
-              + 'answer.'
-            : data?.notice ?? 'No sensitivity report yet.'}
-        </p>
-      )}
+      {/* The failed branch stays prose: a server that did not answer is not
+          an empty state, and it must not send the reader to press a button
+          that is not the problem. */}
+      {!running && !data?.available && (failed
+        ? (
+          <p className="text-text-muted">
+            The sensitivity report could not be read — the server did not
+            answer.
+          </p>
+          )
+        : (
+          <EmptyState
+            title="No sensitivity report yet"
+            detail={data?.notice ?? 'The sweep re-solves the same board with '
+              + 'every expected-points cell knocked by its own plausible '
+              + 'error, and nothing has swept this board yet.'}
+            action={JOB_KIND_LABEL.sensitivity}
+          />
+          ))}
       {!running && data?.available && (
         <>
           {data.verdict && <p className="mb-3 text-text">{data.verdict}</p>}
