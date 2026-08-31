@@ -67,8 +67,33 @@ else
     main_side
 fi
 
-# The branch worktree writes reports/ locally; the main worktree writes its
-# own. Aggregate each where it landed.
-"$HERE/.venv/bin/python" scripts/seed_stats.py reports/v7b_v9c-branch.json
-"$HERE/.venv/bin/python" scripts/seed_stats.py \
-    "$MAIN_WT/reports/v7b_v9c-main.json"
+# --seed-bases banks ONE report per seed -- v7b_{tag}-s{seed}.json -- and not
+# a single combined v7b_{tag}.json. An earlier version of this script named the
+# combined file, so its aggregate step pointed at something that never exists.
+# seed_stats.py takes the trio, and taking the trio is also the config-echo
+# check: it exits 2 unless the reports differ in nothing but seed_base and tag.
+SEED_LIST=$(echo "$SEEDS" | tr ',' ' ')
+
+branch_reports=""; main_reports=""
+for sb in $SEED_LIST; do
+    branch_reports="$branch_reports reports/v7b_v9c-branch-s${sb}.json"
+    main_reports="$main_reports $MAIN_WT/reports/v7b_v9c-main-s${sb}.json"
+done
+
+# The branch worktree writes reports/ locally; the main worktree writes its own.
+"$HERE/.venv/bin/python" scripts/seed_stats.py $branch_reports
+"$HERE/.venv/bin/python" scripts/seed_stats.py $main_reports
+
+# Teardown. The worktree is disposable: it holds no untracked state of its own
+# (config.toml, data/ and models/ are symlinks into the branch worktree, and
+# its reports/ has been aggregated above). Set KEEP_WT=1 to inspect it instead.
+if [ "${KEEP_WT:-0}" != "1" ]; then
+    for shared in config.toml data models; do
+        [ -L "$MAIN_WT/$shared" ] && rm -f "$MAIN_WT/$shared"
+        # Put the tracked copy back so `git worktree remove` sees a clean tree.
+        [ -e "$MAIN_WT/$shared.tracked" ] \
+            && mv "$MAIN_WT/$shared.tracked" "$MAIN_WT/$shared"
+    done
+    git worktree remove --force "$MAIN_WT"
+    echo "V9C_REPLAY_WORKTREE_REMOVED $MAIN_WT"
+fi

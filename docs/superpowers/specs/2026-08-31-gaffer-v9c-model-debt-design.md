@@ -91,42 +91,38 @@ Zeros improve slightly, haulers regress by 0.029, the all-stratum number does no
 
 ### G3's replay — branch against a re-run `main` (`scripts/v9c_replay.sh`)
 
-**In flight at the time of writing.** Banked so far, from
-`logs/v9c_replay_branch.log`:
+Three seed bases a side, branch against a `main` worktree re-run on the same untracked store, `--arm heur --n 40 --chips`. Read through `scripts/seed_stats.py`, which is also the config-echo check: it refuses (exit 2) unless the reports differ in nothing but `seed_base` and `tag`, and it aggregated both trios without complaint.
 
 ```
-V7B_ARM_DONE v9c-branch-s1876 {"total": 1826, "hits": 17, "transfers": 69, ...}
+MULTISEED_DONE v9c-branch {"totals": [1853, 1847, 1872], "mean": 1857.3, "spread": 25, "range": [1847, 1872], "seed_bases": [1876, 1901, 20260827]}
+MULTISEED_DONE v9c-main   {"totals": [1826, 1933, 1864], "mean": 1874.3, "spread": 107, "range": [1826, 1933], "seed_bases": [1876, 1901, 20260827]}
 ```
 
-**This number must not be read on its own, and especially not against a banked
-figure from an earlier cycle.** Plan A15: v9c changes EP deliberately, so
-branch ≠ main is the *expected* result, which makes this a gap reading and
-puts it under CONVENTIONS §1 — three seed bases a side, verdict as mean ±
-spread. v7b measured a 116-point seed spread on this very arm, larger than any
-gap v9c could plausibly produce, so a single draw measures the seed and
-nothing else. The v8a lesson (spec §9, G5) is the same one: the banked 1876
-that cost an investigation was stale because a serving default had flipped
-underneath it.
+| seed base | branch | main | paired delta |
+| --- | --- | --- | --- |
+| 1876 | 1853 | 1826 | **+27** |
+| 1901 | 1847 | 1933 | **−86** |
+| 20260827 | 1872 | 1864 | **+8** |
+| **mean** | **1857.3** | **1874.3** | **−17.0** |
+| spread | 25 | **107** | — |
 
-Both worktrees run `--arm heur --seed-bases 1876,1901,20260827 --n 40 --chips`,
-identical in every config field but `seed_base` and `tag`, which is what
-`scripts/seed_stats.py` verifies before it will aggregate. Verdict to be
-completed from the two `seed_stats.py` aggregates.
+**Verdict: within seed noise. The replay gate PASSES.**
 
-*Adaptation worth recording:* the main worktree could not run at all as the
-plan's driver was written. A fresh worktree carries only tracked files, and
-every input this replay reads is untracked — `config.toml`, the parquet store,
-the fitted models — so the first main-side run died before its first gameweek.
-The driver now symlinks all three from the branch worktree, which is what
-"`data/` is shared between the worktrees" has to mean on disk, and it is what
-makes "the only thing that differs is the code" a fact rather than an
-assumption.
+The delta has to be read against the spread, and there is no reading on which it survives:
 
-### Residuals — carried to v9d
+- **Main's own spread is 107 points — more than six times the −17 mean delta.** The same code, the same store, three different seed bases, and the season total moves by over a hundred points. v7b measured a 116-point spread on this exact arm, so 107 is the expected magnitude rather than a surprise.
+- **The paired deltas do not agree in sign** (+27, −86, +8). A real effect of −17 would not flip direction twice across three draws. The −86 is entirely accounted for by main's s1901 being the top of its own range (1933); pair the *other* two seeds and the branch is ahead.
+- **The branch range sits inside the main range.** 1847–1872 is wholly contained in 1826–1933. The two samples are not distinguishable.
 
-- **Two club-keyed consumers still read the stamped `team_code`**: the own side of the Understat team merge (`engineer.merge_understat_team`) and the club-congestion lookup (`engineer.add_congestion`). Both carry exactly the staleness D2 fixed elsewhere. Neither was in the reviewed finding, and switching a feature family without measuring it is the habit this cycle exists to break — so they are named here and in `as_of_club_code`'s docstring rather than swept in. v9d work, behind its own arm.
-- **The SSE stream still pins a threadpool worker per watched run** for up to `IDLE_TIMEOUT_S = 3600` (spec §3, unchanged).
-- **`rc_r38` and its four siblings are now dead weight on the live path** — nothing reads them except `card_penalty`'s pre-v9c fallback. Five columns is cheap and the fallback is real, so they stay; worth revisiting if the frame width ever matters.
+So the cycle's model changes — the live shrunk red-card term (D1) and the as-of club on three feature families (D2) — move the replay by nothing that can be told apart from the seed. That is the honest and expected result: D2 corrected 0.94 % of training rows and D1 switched on a term worth a fraction of a point per player-week, and neither was ever going to show up against a hundred-point seed spread.
+
+**What this run is not.** It is not compared against any banked figure. The banked 1876 that cost v8a an investigation (spec §9, G5) was stale because a serving default had flipped underneath it, and reading a branch against it measured the flip rather than the branch. `main` was re-run here from a worktree symlinked to the same untracked `data/`, `models/` and `config.toml`, so the only thing that differed between the two sides was the code.
+
+**One thing not claimed.** The branch's spread of 25 against main's 107 is *not* evidence that v9c stabilised anything. Three draws say almost nothing about variance, and reading a tighter spread off n=3 as an improvement would be exactly the single-draw error this section exists to avoid.
+
+*Adaptations, recorded because both cost time.* The plan's driver assumed a fresh worktree could run the replay; it carries only tracked files, and every input the replay reads is untracked, so the first main-side run died before its first gameweek and the driver now symlinks `config.toml`, `data/` and `models/`. And `v7b_replay.py --seed-bases` banks one report per seed (`v7b_{tag}-s{seed}.json`), not the single combined `v7b_{tag}.json` the plan's driver named — so the driver's own `seed_stats.py` invocation pointed at files that never exist, and the aggregate was run over the three per-seed reports instead.
+
+*Re-run note.* The branch trio above is the **second** branch run. The first (mean of the pre-review form) was discarded when the review's I3 changed the rate `card_penalty` reads: those draws measured a form that no longer ships. The main side was untouched by that change and its runs stand as banked.
 
 ### D3 — the haul split
 
@@ -215,15 +211,16 @@ carries the tables.**
       lane free, log streamed.
 
 *G3's replay evidence (run in-branch under orchestrator authorization)*
-- [ ] **In flight; branch side restarting for the review's I3.** `bash
-      scripts/v9c_replay.sh`: three seed bases a side, branch and a **re-run**
-      `main` worktree, config echoes identical but for `seed_base` and
-      `--tag`, aggregates read through `scripts/seed_stats.py`. The box was
-      marked complete against absent evidence in the first pass and is
-      unchecked until the verdict lands. The branch side is being re-run
-      because I3 changed the rate `card_penalty` consumes, so the pre-I3
-      branch draws measure a form that no longer ships; the **main** side is
-      unaffected and its banked seeds stand.
+- [x] `bash scripts/v9c_replay.sh`: three seed bases a side (1876, 1901,
+      20260827), branch against a **re-run** `main` worktree reading the same
+      untracked store, config echoes identical but for `seed_base` and
+      `--tag` — verified by `scripts/seed_stats.py` accepting both trios,
+      which is exactly the check it exits 2 on. Branch mean **1857.3**
+      (spread 25), main mean **1874.3** (spread 107), delta **−17.0**; paired
+      deltas +27 / −86 / +8. **Within seed noise: the gate passes.** The delta
+      is a sixth of main's own spread, the paired deltas flip sign twice, and
+      the branch range sits inside the main range. Full reading in §4, read
+      against the spread and never against a banked figure (v8a §9 G5).
 
 **G2 — rails:** `uv run pytest -q tests/test_v9c_degradation.py` — 22 passed;
 `uv run pytest -q tests/ -k degradation` — 238 passed, every pre-existing
