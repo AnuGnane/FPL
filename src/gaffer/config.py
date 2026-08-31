@@ -68,6 +68,12 @@ class Config:
     z_deadband: float = 0.25
     tier_eo: bool = True
     tier_sample: int = 300
+    # v8c. field_scrape schedules the tier sample the live tracker already
+    # takes lazily; field_sample defaults to tier_sample rather than to a
+    # number of its own, because one scrape serves both readers and two
+    # sample sizes for one sample is a bug waiting for a Saturday.
+    field_scrape: bool = True
+    field_sample: int = 300
     # --- v5 news layer -----------------------------------------------------
     # Defaults are shipped-behaviour-ON, individually switchable. Every source
     # degrades to the official-flags path by itself (spec §7), so these exist
@@ -142,6 +148,9 @@ def load_config(path: Path | str = "config.toml") -> Config:
         z_deadband=float(league.get("z_deadband", 0.25)),
         tier_eo=bool(league.get("tier_eo", True)),
         tier_sample=int(league.get("tier_sample", 300)),
+        field_scrape=bool(league.get("field_scrape", True)),
+        field_sample=int(league.get("field_sample",
+                                    league.get("tier_sample", 300))),
         # Read key-by-key like [odds] and [league]: the TOML keys are
         # deliberately shorter than the dataclass fields (enabled, injuries)
         # so the section reads as prose in config.toml.

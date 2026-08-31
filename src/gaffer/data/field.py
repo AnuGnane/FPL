@@ -219,3 +219,140 @@ def latest_field_eo(gw: int | None = None) -> dict[int, dict]:
     return {int(r.element): {"eo": float(r.eo), "se": float(r.se),
                              "n": int(r.n), "gw": want}
             for r in frame.itertuples()}
+
+
+def fetch_field_sample(client, gw: int, *, sample: int = TIER_SAMPLE,
+                       seed: int = TIER_SEED, season: str = "",
+                       raw_dir: Path | str = RAW_FIELD, use_bank: bool = True
+                       ) -> tuple[list[list[dict]], dict[int, dict]]:
+    """``(squads, eo_table)`` for one gameweek, from the bank or from the API.
+
+    The bank is consulted first, so calling this twice for one gameweek costs
+    nothing — which is what makes the scrape idempotent and what makes a
+    replay over banked weeks free. The EO table is recomputed from the squads
+    rather than stored beside them: it is a five-line reduction of data we
+    already have, and two copies of a derived number is two copies to get out
+    of step.
+
+    ``use_bank=False`` is ``--force``'s path: the caller has said in so many
+    words that it wants a fresh draw, and consulting the bank there would make
+    the flag a no-op.
+    """
+    banked = load_field_sample(season, gw, raw_dir) if use_bank else None
+    if banked is not None:
+        return banked, eo_from_picks(banked)
+    picks = fetch_sample_picks(client, gw, sample, seed)
+    return picks, eo_from_picks(picks)
+
+
+def scrape_gw(events: pd.DataFrame, now=None) -> int | None:
+    """The gameweek to scrape: the last one whose deadline has passed.
+
+    Post-deadline is the whole point — picks are 404 before it and public
+    after it — so this is deliberately *not*
+    :func:`gaffer.snapshot.next_unfinished_gw`, which answers a question about
+    the news cycle. A Saturday 12:30 run lands on the gameweek being played
+    right now, which is exactly the squad we want a record of.
+
+    ``None`` before the season's first deadline, or for an events frame with
+    no readable deadline at all.
+    """
+    if "deadline_time" not in events.columns or events.empty:
+        return None
+    when = pd.to_datetime(now, errors="coerce", utc=True) if now is not None \
+        else pd.Timestamp.now(tz="UTC")
+    deadlines = pd.to_datetime(events["deadline_time"], errors="coerce",
+                               utc=True)
+    passed = events[deadlines.notna() & (deadlines <= when)]
+    if passed.empty:
+        return None
+    return int(pd.to_numeric(passed["gw"], errors="coerce").max())
+
+
+def _tier_cache_age_s(gw: int, raw_dir: Path | str = RAW_TIER) -> float | None:
+    """Seconds since the live tracker last wrote this gameweek's tier cache,
+    or ``None`` when it never has."""
+    path = tier_cache_path(gw, raw_dir)
+    if not path.exists():
+        return None
+    return max(0.0, time.time() - path.stat().st_mtime)
+
+
+def run_field_scrape(cfg=None, gw: int | None = None, *, force: bool = False,
+                     now=None) -> int | None:
+    """Bank one gameweek's field sample and its EO. Rows logged, or ``None``.
+
+    The launchd body, and therefore held to ``run_snapshot``'s contract: one
+    printed line whatever happens, and no exception ever leaves this function.
+    A missed Saturday is a far cheaper failure than a job that dies loudly at
+    12:30 every weekend until somebody uninstalls it.
+
+    Four early exits, each with its own sentence, because "nothing happened"
+    has four different meanings here and a scheduled job's log is the only
+    place anybody will read them:
+
+    * the switch is off;
+    * no deadline has passed yet (pre-season, or a scheduled run in an
+      international break);
+    * the gameweek is already banked — the idempotence line, and the one the
+      Sunday run prints every week the Saturday run worked;
+    * D7's courtesy: the live tracker paid for this gameweek's ~455 requests
+      inside the last :data:`FIELD_REUSE_HOURS`, so its numbers are logged and
+      *nothing is fetched*. No squads are banked on that path, deliberately —
+      the tier cache holds an aggregate and the sample store holds squads, and
+      inventing the latter from the former is not available. The next run
+      finds no bank and does the real work.
+
+    Imports are local for ``cli.py --help``'s sake, the same reason
+    :func:`gaffer.snapshot.run_snapshot` gives.
+    """
+    try:
+        from gaffer.api.client import FPLClient
+        from gaffer.config import load_config
+        from gaffer.data.bootstrap import build_events
+
+        cfg = cfg or load_config()
+        if not getattr(cfg, "field_scrape", True) and not force:
+            print("field scrape skipped: league.field_scrape is off")
+            return None
+        season = str(getattr(cfg, "current_season", "") or "")
+        client = FPLClient()
+        if gw is None:
+            gw = scrape_gw(build_events(client.get_bootstrap()), now=now)
+        if gw is None:
+            print("field scrape skipped: no gameweek deadline has passed yet")
+            return None
+        gw = int(gw)
+
+        if not force and load_field_sample(season, gw, RAW_FIELD) is not None:
+            banked = load_field_sample(season, gw, RAW_FIELD) or []
+            print(f"field sample for gw{gw} already banked "
+                  f"({len(banked)} entries) — nothing fetched.")
+            return 0
+
+        age = _tier_cache_age_s(gw, RAW_TIER)
+        if not force and age is not None and age < FIELD_REUSE_HOURS * 3600:
+            table = read_tier_cache(gw, RAW_TIER) or {}
+            day = snap_date()
+            rows = append_field_eo(field_eo_rows(table, gw, season, day))
+            print(f"Field scrape: reused the live tracker's tier-EO fetch "
+                  f"for gw{gw} ({rows} EO rows at {day}); no squads sampled.")
+            return rows
+
+        picks, table = fetch_field_sample(
+            client, gw, sample=int(getattr(cfg, "field_sample", TIER_SAMPLE)),
+            season=season, raw_dir=RAW_FIELD, use_bank=not force)
+        if not picks:
+            print(f"field scrape not written: no sampled entry had readable "
+                  f"picks for gw{gw}")
+            return None
+        save_field_sample(picks, gw, season, RAW_FIELD)
+        write_tier_cache(table, gw, RAW_TIER)
+        day = snap_date()
+        rows = append_field_eo(field_eo_rows(table, gw, season, day))
+        print(f"Field scrape: {len(picks)} entries, {rows} EO rows for "
+              f"gw{gw} at {day}.")
+        return rows
+    except Exception as exc:  # noqa: BLE001 — a scheduled job never blocks
+        print(f"field scrape not written: {exc}")
+        return None
