@@ -117,19 +117,52 @@ def test_per_week_is_gain_over_the_weeks_it_is_credited_with():
 # --- the play_now flag ------------------------------------------------
 
 
-def test_play_now_is_exactly_gain_over_threshold():
-    """``run_advise`` sets ``play_now = gain >= theta``. That is an internal
-    consistency claim, and it is the one this file is really for: a flag that
-    drifts from its own threshold is a chip recommendation nobody can audit."""
+def _play_now(table: pd.DataFrame) -> dict[str, bool]:
+    """``run_advise``'s own two lines, mirrored on a fixture table.
+
+    The advice writes, for every row of ``evaluate_chips``' output::
+
+        theta = float(chip_thresholds(str(row["chip"]), int(row["gw"])))
+        row["threshold"] = round(theta, 2)
+        row["play_now"] = bool(float(row["gain"]) >= theta)
+
+    with ``chip_thresholds`` built by ``chip_thresholds_from_asset``. Repeated
+    here rather than imported because ``advise`` builds it inside a several
+    hundred line function; the served half of this file checks the real
+    table's own flag against its own threshold, so the two cannot drift apart
+    unnoticed.
+
+    Answers the best row per chip, which is the row the recommendation is
+    about.
+    """
     thresholds = chip_thresholds_from_asset(None)
-    table = _table(star=9.0)
-    for row in table.to_dict("records"):
+    best: dict[str, bool] = {}
+    for row in table.sort_values("gain").to_dict("records"):
         theta = float(thresholds(str(row["chip"]), int(row["gw"])))
-        assert bool(float(row["gain"]) >= theta) in (True, False)
-        # Restated the way the advice writes it, so a change to either side
-        # of the comparison shows up here.
-        assert (float(row["gain"]) >= theta) == (
-            float(row["gain"]) - theta >= 0.0)
+        best[str(row["chip"])] = bool(float(row["gain"]) >= theta)
+    return best
+
+
+def test_a_chip_worth_more_than_its_bar_is_flagged_and_one_worth_less_is_not():
+    """The flag against a board whose answer is known by arithmetic.
+
+    With the captain on nine expected points the triple captain is worth about
+    nine (the identity two tests up) against a four-point bar with no priors
+    asset, so it plays; on the flat board it is worth three against the same
+    bar, so it waits. A flag that cannot tell those two boards apart is a chip
+    recommendation nobody can audit.
+    """
+    assert _play_now(_table(star=9.0))["3xc"] is True
+    assert _play_now(_table())["3xc"] is False
+
+
+def test_a_chip_worth_nothing_is_never_flagged():
+    """theta is never negative, so a zero gain can never clear it."""
+    table = _table()
+    flags = _play_now(table)
+    for chip, flagged in flags.items():
+        if _gain(table, chip) == pytest.approx(0.0):
+            assert flagged is False
 
 
 # --- the served table, when there is one ------------------------------
