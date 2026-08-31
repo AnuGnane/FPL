@@ -23,7 +23,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from gaffer.errors import GafferError
 from gaffer.web.job_kinds import JOB_KINDS
 from gaffer.web.jobs import JobRegistry, JobRunner
-from gaffer.web.routers import (advice, chips, components, confidence, digest,
+from gaffer.web.routers import (advice, assets, chips, components, confidence,
+                                digest,
                                 drafts, fixtures, jobs, journal, league,
                                 league_sim, live, meta, misses, news,
                                 overrides, plan,
@@ -67,6 +68,7 @@ def create_app() -> FastAPI:
         return {"ok": True, "app": "gaffer"}
 
     app.include_router(advice.router)
+    app.include_router(assets.router)
     app.include_router(chips.router)
     app.include_router(components.router)
     app.include_router(digest.router)
@@ -91,9 +93,14 @@ def create_app() -> FastAPI:
     app.include_router(watchlist.router)
     app.include_router(whatif.router)
 
-    assets = static_dir() / "assets"
-    if assets.is_dir():
-        app.mount("/assets", StaticFiles(directory=assets), name="assets")
+    # Named ``static_assets`` rather than ``assets``: the router module
+    # imported at the top of this file is called ``assets`` too, and a local
+    # binding of that name would make ``include_router(assets.router)`` above
+    # an UnboundLocalError.
+    static_assets = static_dir() / "assets"
+    if static_assets.is_dir():
+        app.mount("/assets", StaticFiles(directory=static_assets),
+                  name="assets")
 
     @app.exception_handler(StarletteHTTPException)
     async def spa(request: Request, exc: StarletteHTTPException):

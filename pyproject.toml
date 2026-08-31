@@ -33,7 +33,8 @@ build-backend = "hatchling.build"
 packages = ["src/gaffer"]
 # Non-Python files the package reads at runtime: the report template and the
 # offline bootstrap payload the backtest scores against.
-artifacts = ["src/gaffer/assets/*.json", "src/gaffer/report/templates/*.j2",
+artifacts = ["src/gaffer/assets/*.json", "src/gaffer/assets/*.svg",
+             "src/gaffer/report/templates/*.j2",
              "src/gaffer/web/static/**/*"]
 
 [tool.hatch.build.targets.sdist]
