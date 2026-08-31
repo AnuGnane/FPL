@@ -186,7 +186,9 @@ def test_an_empty_whatif_equals_the_sim_endpoint(bare):
 def test_the_job_kind_count_is_pinned():
     """Lockstep with ``frontend/src/types.ts``. A kind added on one side only
     is a button that 404s."""
-    assert len(job_kinds.JOB_KINDS) == 8
+    # 8 -> 9: v8b added the `review` kind on both sides (deliberate pin
+    # update per this file's convention, authorised by the v8b orchestrator).
+    assert len(job_kinds.JOB_KINDS) == 9
     assert "field-scrape" in job_kinds.JOB_KINDS
 
 
