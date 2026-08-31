@@ -167,6 +167,35 @@ def test_a_section_builder_that_raises_still_leaves_a_digest_on_disk(
     assert panel["digest"]["error"] == banked["error"]
 
 
+def test_a_null_deadline_costs_the_countdown_and_nothing_else(app, capsys):
+    """G1's third defect. A null ``deadline_time`` parses to NaT rather than
+    raising, so the guarded parse lets it through and everything downstream
+    throws: ``NaT.strftime`` is a ValueError, and so is ``round(nan / 24)``
+    once nan has failed both hour guards. Either escapes ``friday_briefing``
+    into the run's one ``except``, and the user gets the failure artifact
+    instead of a briefing minus one section. The section is what should be
+    absent, not the briefing."""
+    from gaffer.digest import run_digest
+
+    tmp_path, _client = app
+    pd.DataFrame({"gw": [GW], "deadline_time": [None]}).to_parquet(
+        tmp_path / "data/live/events.parquet", index=False)
+    # ``latest_gw`` is what gives the briefing a gameweek to count down to,
+    # and it reads the solve states — without one the section is absent for
+    # the wrong reason and the rail proves nothing.
+    (tmp_path / f"reports/solve_state_gw{GW}.json").write_text("{}")
+    (tmp_path / f"reports/gw{GW}-advice.json").write_text(
+        json.dumps({"gw": GW, "buys": [], "sells": []}))
+
+    from gaffer.digest import _deadline_bits
+    assert _deadline_bits(GW) == []          # the throwing call, guarded
+
+    payload = run_digest("friday", notify=False)
+    assert payload is not None and payload.get("error") is None
+    assert "deadline" not in {s["key"] for s in payload["sections"]}
+    assert "digest not built" not in capsys.readouterr().out
+
+
 def test_notify_false_makes_no_osascript_call(app, monkeypatch):
     """The rail that matters: not a suppressed call — no call."""
     from gaffer import digest as mod

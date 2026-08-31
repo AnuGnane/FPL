@@ -49,7 +49,7 @@ from gaffer.artifacts import (data_warning, ingested_through, latest_gw,
                               load_advice, load_availability, load_snapshot,
                               upcoming_gw)
 from gaffer.errors import GafferError
-from gaffer.watchlist import load_watchlist, watch_targets
+from gaffer.watchlist import watch_targets
 
 DIGEST_KINDS = ("friday", "tuesday")
 
@@ -190,6 +190,14 @@ def _deadline_bits(gw: int | None) -> list[str | None]:
             return []
         when = pd.to_datetime(row["deadline_time"].iloc[0], utc=True,
                               format="mixed")
+        # A null or unparseable stamp parses to NaT rather than raising, so
+        # the guard above lets it through and everything below throws:
+        # ``NaT.strftime`` is a ValueError, and NaT arithmetic is nan, which
+        # fails both hour guards and reaches ``round(nan / 24)``. Either one
+        # escapes the whole briefing. An absent countdown is the section-level
+        # degradation this module promises instead.
+        if pd.isna(when):
+            return []
     except Exception as exc:  # noqa: BLE001
         print(f"digest: no deadline for GW{gw} ({exc})")
         return []
@@ -340,7 +348,7 @@ def friday_briefing() -> dict:
         alts = advice.get("alternatives") or []
         top = alts[0] if alts else None
         sections.append(_section("differential", "One to consider", [
-            f"{top.get('name')} — {top.get('ep')} xPts"
+            f"{top.get('name')} — {round(float(top.get('ep') or 0.0), 2)} xPts"
             + (f", {top.get('league_eo')}% league ownership"
                if top.get("league_eo") is not None else "")
             if top else None]))
@@ -406,7 +414,8 @@ def tuesday_debrief() -> dict:
     if summary is not None:
         worst = summary.get("worst")
         sections.append(_section("season", "Season so far", [
-            f"{len(summary.get('gws') or [])} gameweeks reviewed.",
+            f"{len(summary.get('gws') or [])} gameweek"
+            f"{'s' if len(summary.get('gws') or []) != 1 else ''} reviewed.",
             f"{summary.get('hindsight_gap')} points lost to bench and "
             f"armband across {summary.get('hindsight_gap_gws')} of them."
             if summary.get("hindsight_gap_gws") else None,

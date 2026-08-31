@@ -18,12 +18,17 @@ const DIGEST = {
   digest: {
     kind: 'friday', generated_at: '2026-08-28T17:00:00+00:00', gw: 5,
     headline: 'GW5: captain Haaland, 1 transfer.',
+    // Deliberately mixed: the server's builders disagree about whether a bit
+    // ends in a period, and the card is what has to reconcile them.
     sections: [
       { key: 'move', title: 'The plan',
         bits: ['Haaland in, Rice out', 'Captain Haaland.'] },
+      { key: 'deadline', title: 'Deadline',
+        bits: ['GW5 deadline Fri 29 Aug 18:30 UTC — 2 days away.'] },
       { key: 'movers', title: 'Prices tonight',
         bits: ['Saka may rise tonight (98%)'] },
     ],
+    error: null,
   },
 }
 
@@ -54,6 +59,27 @@ describe('DigestCard', () => {
   it('joins each section\'s bits into one sentence', async () => {
     render(<DigestCard />)
     expect(await screen.findByText(/Haaland in, Rice out.*Captain Haaland/))
+      .toBeInTheDocument()
+  })
+
+  it('never renders a doubled period', async () => {
+    // Half the server's bits end in a period already; the join adds one
+    // regardless, and "away.." is what shipped.
+    const { container } = render(<DigestCard />)
+    await screen.findByText(DIGEST.digest.headline)
+    expect(container.textContent).not.toContain('..')
+  })
+
+  it('says so when the digest failed to build', async () => {
+    serve({
+      available: true,
+      digest: {
+        ...DIGEST.digest, sections: [],
+        error: 'ValueError: boolean value of NA is ambiguous',
+      },
+    })
+    render(<DigestCard />)
+    expect(await screen.findByText(/boolean value of NA is ambiguous/))
       .toBeInTheDocument()
   })
 

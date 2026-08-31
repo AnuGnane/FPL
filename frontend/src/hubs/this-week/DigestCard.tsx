@@ -66,14 +66,23 @@ export default function DigestCard() {
       )}
     >
       <p className="text-text">{digest.headline}</p>
+      {/* A digest that failed to build still banks an artifact, so it must
+          read as a failure rather than as a briefing with nothing in it. */}
+      {digest.error && (
+        <p className="mt-2 text-text-muted">{digest.error}</p>
+      )}
       <dl className="mt-3 space-y-2">
         {digest.sections.map((section) => (
           <div key={section.key}>
             <dt className="label">{section.title}</dt>
             {/* The bits[] prose idiom: the server assembled the clauses and
                 the client joins them, which is why nothing in this feature
-                needs a markdown renderer. */}
-            <dd className="text-text-secondary">{`${section.bits.join('. ')}.`}</dd>
+                needs a markdown renderer. About half the builders end their
+                bit in a period and half do not, so the join strips one before
+                adding its own rather than rendering "away..". */}
+            <dd className="text-text-secondary">
+              {`${section.bits.map((b) => b.replace(/\.$/, '')).join('. ')}.`}
+            </dd>
           </div>
         ))}
       </dl>

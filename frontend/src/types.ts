@@ -1149,6 +1149,8 @@ export interface Digest {
   gw: number | null
   headline: string
   sections: DigestSection[]
+  /** Set only on a digest whose build failed; the card says so. */
+  error: string | null
 }
 
 export interface DigestPanel {
