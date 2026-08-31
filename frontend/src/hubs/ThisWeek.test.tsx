@@ -220,7 +220,7 @@ describe('the captaincy title-odds chip', () => {
        })
        render(<MemoryRouter><ThisWeek /></MemoryRouter>)
        expect(await screen.findByTestId('captain-odds-chip'))
-         .toHaveTextContent('+3.0%')
+         .toHaveTextContent('+3pp')
      })
 
   it('asks only for a cached answer, never for a fresh fetch storm', async () => {

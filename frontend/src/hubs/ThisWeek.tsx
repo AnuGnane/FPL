@@ -195,8 +195,12 @@ export default function ThisWeek() {
               && ` · ${fmtPct(advice.scenarios.captain_frequency)} of sims`}
             {' · vice '}{advice.vice.name}
             {capOdds !== null && (
+              // Whole percentage points. At n = 2,000 the Monte Carlo
+              // standard error on a probability near 0.5 is about 0.9pp, so
+              // a tenth of a point here is a digit the instrument does not
+              // have — and this chip is a glance, not a measurement.
               <span className="ml-2" data-testid="captain-odds-chip">
-                {`· ${capOdds >= 0 ? '+' : ''}${(capOdds * 100).toFixed(1)}% `}
+                {`· ${capOdds >= 0 ? '+' : ''}${Math.round(capOdds * 100)}pp `}
                 {'title odds vs vice'}
               </span>
             )}

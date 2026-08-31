@@ -177,6 +177,40 @@ describe('the simulated win-probability card', () => {
       .toHaveTextContent('2,000')
   })
 
+  it('names the model that produced the fan', async () => {
+    render(<MemoryRouter><League /></MemoryRouter>)
+    expect(await screen.findByTestId('sim-provenance'))
+      .toHaveTextContent('shared-ownership correlated')
+  })
+
+  it('says the fan is wide when no field sample is banked', async () => {
+    apiGet.mockImplementation((path: string) => {
+      if (path === '/api/league/race') return Promise.resolve(RACE)
+      if (path === '/api/league/rivals') return Promise.resolve([])
+      if (path === '/api/league/sim') {
+        return Promise.resolve({ ...SIM, field_rate: null })
+      }
+      return Promise.reject(new Error(`unexpected ${path}`))
+    })
+    render(<MemoryRouter><League /></MemoryRouter>)
+    expect(await screen.findByTestId('sim-provenance'))
+      .toHaveTextContent('independence assumed')
+  })
+
+  it('dashes a rival whose squad could not be read', async () => {
+    apiGet.mockImplementation((path: string) => {
+      if (path === '/api/league/race') return Promise.resolve(RACE)
+      if (path === '/api/league/rivals') return Promise.resolve([])
+      if (path === '/api/league/sim') {
+        return Promise.resolve({ ...SIM, per_rival: [
+          { entry: 2, name: 'Ten Hag Hive', p_beat: null }] })
+      }
+      return Promise.reject(new Error(`unexpected ${path}`))
+    })
+    render(<MemoryRouter><League /></MemoryRouter>)
+    expect(await screen.findByTestId('beat-2')).toHaveTextContent('—')
+  })
+
   it('lists every rival with the odds of beating him', async () => {
     render(<MemoryRouter><League /></MemoryRouter>)
     expect(await screen.findByTestId('beat-2')).toHaveTextContent('58%')

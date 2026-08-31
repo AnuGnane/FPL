@@ -182,15 +182,20 @@ export default function WhatIfSim({ squad, rivals }: WhatIfSimProps) {
       {!empty && result && (
         <Card title="If that happened">
           <div className="mb-3 flex items-baseline gap-3">
+            {/* Whole percentage points, and whole places to one decimal.
+                At n = 2,000 the Monte Carlo standard error on a probability
+                near 0.5 is about 0.9pp; printing a tenth of a point would
+                be printing the seed. ``fmtPct`` below rounds to whole
+                percent for the same reason. */}
             <span className="num text-2xl text-text" data-testid="delta-p-win">
               {`${result.delta_p_win >= 0 ? '+' : ''}${
-                (result.delta_p_win * 100).toFixed(1)} pp`}
+                Math.round(result.delta_p_win * 100)} pp`}
             </span>
             <span className="text-text-muted">
               {`title odds ${fmtPct(result.baseline_p_win)} → `}
               {fmtPct(result.p_win)}
-              {`, expected finish ${result.baseline_exp_finish.toFixed(2)} → `}
-              {result.exp_finish.toFixed(2)}
+              {`, expected finish ${result.baseline_exp_finish.toFixed(1)} → `}
+              {result.exp_finish.toFixed(1)}
             </span>
           </div>
           {result.unknown_codes.length > 0 && (

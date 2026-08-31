@@ -191,6 +191,12 @@ export default function League() {
               <div className="mb-3 flex flex-wrap items-baseline gap-4">
                 <div>
                   <div className="label">P(win)</div>
+                  {/* fmtPct rounds to whole percent, which is the right
+                      resolution here rather than a stylistic one: at
+                      n = 2,000 the Monte Carlo standard error on a
+                      probability near 0.5 is sqrt(0.25 / 2000) ≈ 0.9pp, so
+                      a decimal place would be reporting the seed. Raise
+                      [league] sim_n before adding one. */}
                   <div className="num text-2xl text-text"
                        data-testid="sim-p-win">{fmtPct(sim.p_win)}</div>
                 </div>
@@ -202,7 +208,11 @@ export default function League() {
                 <div>
                   <div className="label">Expected finish</div>
                   <div className="num text-2xl text-text">
-                    {fmtNum(sim.exp_finish, 2)}
+                    {/* One decimal. A second one is finer than the Monte
+                        Carlo resolves: at n = 2,000 the standard error on a
+                        probability near 0.5 is about 0.9pp, and the finish
+                        is the same draws counted a different way. */}
+                    {fmtNum(sim.exp_finish, 1)}
                   </div>
                 </div>
                 {sim.history.length > 1 && (
