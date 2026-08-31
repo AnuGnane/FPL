@@ -41,6 +41,8 @@ git checkout -b feat/gaffer-v9c
 
 **Suite baselines (measured on `main` at `f62080c`, 2026-08-31): 2746 Python tests; 498 frontend tests + 1 skipped.** These predate v9b's merge — **re-measure both on merged `main` and write the numbers into this header before Task 1**, because every task's final run is judged against them.
 
+**RE-MEASURED on merged `main` at `99baf50` (v9c branch point, 2026-08-31): 2746 Python passed; 553 frontend passed + 1 skipped (65 files).** These are the baselines every task below is judged against.
+
 ```bash
 uv run pytest -q                       # record: <N> passed
 cd frontend && npx vitest run          # record: <N> passed, <M> skipped

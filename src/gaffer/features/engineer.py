@@ -13,7 +13,22 @@ from gaffer.data.managers import spell_keys
 
 ROLL_STATS = ["total_points", "minutes", "starts", "goals", "assists", "xg",
               "xa", "xgi", "xgc", "cs", "gc", "saves", "bonus", "bps",
-              "defcon", "tackles", "cbi", "recoveries", "yc"]
+              "defcon", "tackles", "cbi", "recoveries", "yc", "rc"]
+"""Per-match stats rolled into ``{stat}_r{window}`` means.
+
+``rc`` is here because ``models.components.card_penalty`` reads ``rc_r38``
+and always has. Until v9c it was not in this list, so the column did not
+exist, and ``card_penalty``'s ``row.get(key, 0.0)`` — a guard written for
+players with no card history — turned the missing column into 0.0 for every
+player in every gameweek. The -3 red-card term was identically dead from the
+day it was written, silently, and nothing in the suite could see it.
+
+The entry is one word and the consequence is five columns in the training
+frame, so v9c gated it as an arm rather than shipping it as a hotfix (spec
+D1). No model's feature list names an ``rc_*`` column — every list in this
+repo is explicit — so the only consumer is the closed-form penalty above.
+"""
+
 WINDOWS = [1, 3, 5, 10, 38]
 
 ROTATION_FEATURES = ["season_start_share", "days_since_last_start",
