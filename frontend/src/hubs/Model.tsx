@@ -40,6 +40,8 @@ export default function Model() {
                        onDone={reloadHealth} />
             <JobButton kind="snapshot" label="Snapshot news"
                        onDone={reloadHealth} />
+            <JobButton kind="field-scrape" label="Field scrape"
+                       onDone={reloadHealth} />
           </div>
         )}
       />

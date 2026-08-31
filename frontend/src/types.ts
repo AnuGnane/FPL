@@ -219,7 +219,7 @@ export interface LeagueRaceData {
     points: Array<{ gw: number; points: number; total: number }>
   }>
   gap: Array<{ gw: number; gap: number }>
-  win_probability: Array<{ name: string; total: number; p_win: number }>
+  win_probability: WinProb[]
   lam: number
   stance: string
   lam_explained: string
@@ -568,7 +568,7 @@ export interface NewsShadowData {
 }
 
 export const JOB_KINDS = ['advise', 'advise-fast', 'evaluate', 'refresh-data',
-  'news-shadow', 'snapshot', 'track-pens'] as const
+  'news-shadow', 'snapshot', 'track-pens', 'field-scrape'] as const
 
 export type JobKind = typeof JOB_KINDS[number]
 
@@ -580,6 +580,7 @@ export const JOB_KIND_LABEL: Record<JobKind, string> = {
   'news-shadow': 'Score news shadow',
   snapshot: 'Snapshot news',
   'track-pens': 'Track pens',
+  'field-scrape': 'Field scrape',
 }
 
 export interface JobRunView {
@@ -711,4 +712,78 @@ export interface PenTrackerData {
   gws: PenTrackerGw[]
   season_totals: PenTrackerTotals
   notes: string[]
+}
+
+/** One row of the pre-v8c parametric pairwise table — see
+ *  web/schemas.py::WinProb. */
+export interface WinProb {
+  name: string
+  total: number
+  p_win: number
+}
+
+/** GET /api/league/sim — see web/schemas.py::LeagueSimData. */
+export interface RivalBeat {
+  entry: number
+  name: string
+  p_beat: number
+}
+
+export interface SimPoint {
+  gw: number
+  p_win: number
+  p_top3: number
+  exp_finish: number
+  run_at: string
+}
+
+export interface LeagueSimData {
+  gw: number
+  entries: number
+  weeks_left: number
+  /** Simulations per run, and the seed they were drawn under. Rendered next
+   *  to the headline: a probability with no n beside it is a decoration. */
+  n: number
+  seed: number
+  rival_drift: number
+  p_win: number
+  p_top3: number
+  exp_finish: number
+  per_rival: RivalBeat[]
+  margin_quantiles: Record<string, number>
+  history: SimPoint[]
+  /** null when no field sample is banked — rivals then do not drift. */
+  field_rate: number | null
+  notice: string | null
+  legacy_win_probability: WinProb[]
+}
+
+export type LeagueWhatIfEvent = 'haul' | 'blank' | 'score'
+
+export interface LeagueWhatIfRequest {
+  pins: { code: number, event: LeagueWhatIfEvent }[]
+  captain_override?: number | null
+  rival_captain_blanks?: number | null
+}
+
+export interface LeagueWhatIfRow {
+  entry: number
+  name: string
+  is_you: boolean
+  total: number
+  p_win: number
+  exp_finish: number
+}
+
+export interface LeagueWhatIfResult {
+  baseline_p_win: number
+  p_win: number
+  delta_p_win: number
+  baseline_exp_finish: number
+  exp_finish: number
+  delta_rank: number
+  table: LeagueWhatIfRow[]
+  /** Codes the server could not resolve — a stale tab pinning a player who
+   *  has left the game. Shown, never swallowed. */
+  unknown_codes: number[]
 }
