@@ -484,3 +484,43 @@ def test_the_answer_does_not_depend_on_the_order_the_standings_arrived_in():
     assert forward.exp_finish == shuffled.exp_finish
     assert {r["entry"]: r["p_beat"] for r in forward.per_rival} \
         == {r["entry"]: r["p_beat"] for r in shuffled.per_rival}
+
+
+# --- an entry whose squad never came back ----------------------------------
+
+
+def test_an_unreadable_rival_is_named_rather_than_scored_at_zero():
+    """The reviewer's repro. ``build_inputs`` files a private or late-joining
+    entry with ``picks=[]``; read as a squad that is what a squad worth
+    nothing looks like, so a rival 200 points clear lost every simulated
+    season and ``p_win`` came back 1.0 with an empty notice list."""
+    ghost = Entry(entry=9, name="Private FC", total=400, picks=[])
+    out = simulate_league(_inputs(entries=[_me(total=200), ghost]),
+                          n=2000, seed=4)
+    assert any("could not be read" in n for n in out.notices)
+    assert out.p_win == 1.0        # no readable rival is left to lose to
+    assert [r["p_beat"] for r in out.per_rival] == [None]
+
+
+def test_an_unreadable_entry_does_not_flatter_the_rank():
+    """It is left out of the race, not entered at zero: my expected finish
+    against one real rival is the same whether or not a ghost is in the
+    league, and it is not one place better."""
+    real = simulate_league(_inputs(entries=[_me(), _rival()]), n=2000, seed=4)
+    with_ghost = simulate_league(
+        _inputs(entries=[_me(), _rival(),
+                         Entry(entry=9, name="Private FC", total=400,
+                               picks=[])]), n=2000, seed=4)
+    assert with_ghost.p_win == real.p_win
+    assert with_ghost.exp_finish == real.exp_finish
+    assert len(with_ghost.per_rival) == 2     # still listed in the table
+
+
+def test_the_notice_counts_the_unreadable_entries():
+    out = simulate_league(
+        _inputs(entries=[_me(), _rival(),
+                         Entry(entry=8, name="A", total=1, picks=[]),
+                         Entry(entry=9, name="B", total=1, picks=[])]),
+        n=100, seed=4)
+    assert any(n.startswith("2 entries' squads could not be read")
+               for n in out.notices)

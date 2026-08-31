@@ -152,7 +152,10 @@ class LeagueRace(BaseModel):
 class RivalBeat(BaseModel):
     entry: int
     name: str
-    p_beat: float
+    p_beat: float | None = None
+    """``None`` when the entry's squad could not be read at all (private, or
+    joined after the gameweek). Such an entry is listed but not simulated —
+    see ``league_sim.is_readable`` — and the card renders a dash."""
 
 
 class SimPoint(BaseModel):

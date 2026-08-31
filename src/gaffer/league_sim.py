@@ -255,9 +255,30 @@ def entry_sigma(entry: Entry, sigma_by: dict[int, float]) -> float:
     return max(math.sqrt(max(var, 0.0)), WEEKLY_SIGMA_FLOOR)
 
 
+def is_readable(entry: Entry) -> bool:
+    """Did anything at all come back for this manager's squad?
+
+    ``build_inputs`` swallows a 404 on the picks endpoint and files the entry
+    with ``picks=[]`` — a private entry, an entry that joined after the
+    gameweek being read, an entry the API simply would not serve. That is the
+    right degradation for *fetching* and a catastrophic one for *simulating*:
+    an empty squad has a rate of zero, is floored at
+    :data:`WEEKLY_SIGMA_FLOOR`, and therefore loses every simulated season it
+    is entered in. A rival on 400 points would be beaten in 100% of draws and
+    the card would say so with a straight face.
+
+    So an unreadable entry is not simulated at all — see
+    :func:`simulate_league`, which drops it from the rank and reports its
+    ``p_beat`` as ``None`` — and :func:`lookup_notices` names it.
+    """
+    return bool(effective_picks(entry.picks))
+
+
 def lookup_notices(entries: list[Entry],
                    ep_by: dict[int, float]) -> list[str]:
     """What the simulation could not look up, said out loud.
+
+    Two different silences, and both used to be one.
 
     Every EP lookup in this module degrades to zero on a miss, because one
     unmodelled signing must not take the league card down. The failure mode
@@ -265,22 +286,39 @@ def lookup_notices(entries: list[Entry],
     frame keyed by code, say — which zeroes *everything* and still renders a
     confident probability. A miss count is the difference between a
     degradation and a lie.
+
+    The other silence is an entry with *no squad at all*
+    (:func:`is_readable`). It never reached this function before, because a
+    squad of no picks has no picks to miss on: the loop below ran zero times,
+    found nothing absent, and returned ``[]``. Counting them here is the half
+    of the fix that is visible; dropping them from the rank is the half that
+    is arithmetic.
     """
     misses, entries_hit, unknown = 0, 0, set()
+    blind = 0
     for entry in entries:
+        if not is_readable(entry):
+            blind += 1
+            continue
         absent = [element for element, _ in effective_picks(entry.picks)
                   if element not in ep_by]
         if absent:
             entries_hit += 1
             misses += len(absent)
             unknown |= set(absent)
-    if not misses:
-        return []
-    sample = ", ".join(str(e) for e in sorted(unknown)[:5])
-    return [f"{misses} picks across {entries_hit} entries name players this "
-            f"gameweek's component frame does not carry (elements {sample}"
-            f"{'...' if len(unknown) > 5 else ''}) — those picks are "
-            f"simulated as scoring nothing"]
+    out: list[str] = []
+    if blind:
+        out.append(f"{blind} {'entry' if blind == 1 else 'entries'}' squads "
+                   f"could not be read (private or joined late) — they are "
+                   f"left out of the simulated race, not simulated as "
+                   f"scoring nothing")
+    if misses:
+        sample = ", ".join(str(e) for e in sorted(unknown)[:5])
+        out.append(f"{misses} picks across {entries_hit} entries name players "
+                   f"this gameweek's component frame does not carry (elements "
+                   f"{sample}{'...' if len(unknown) > 5 else ''}) — those "
+                   f"picks are simulated as scoring nothing")
+    return out
 
 
 def _week_one(entry: Entry, ins: SimInputs, pins: Pins) -> tuple[float, float]:
@@ -415,19 +453,29 @@ def simulate_league(inputs: SimInputs, *, n: int = SIM_N, seed: int = SIM_SEED,
     # can never outrank a genuine point.
     scored = draws + np.asarray(totals) * 1e-9
     mine = scored[:, me:me + 1]
-    better = (scored > mine).sum(axis=1)
+    # An entry whose squad never came back is not a competitor scoring zero;
+    # it is a competitor nobody can see. Seeding it at zero and counting it
+    # made every rank one place better than it is and every ``p_beat`` exactly
+    # 1.0 — a 400-point leader read as private handed the card ``p_win`` 1.0.
+    # It stays in the table with a null ``p_beat`` and a notice, and stays out
+    # of the arithmetic. My own entry is never dropped: gaffer knows my squad,
+    # and a headline about a race I am not in is not a headline.
+    live = [i for i, e in enumerate(entries) if i == me or is_readable(e)]
+    better = (scored[:, live] > mine).sum(axis=1)
     rank = better + 1
     rivals = [i for i in range(len(entries)) if i != me]
-    if rivals:
+    live_rivals = [i for i in live if i != me]
+    if live_rivals:
         # The same ``scored`` matrix the table and the rival rows are counted
         # off, so the fan cannot disagree with the headline about who is
         # ahead: the median margin is negative exactly when the median rank
         # is worse than first.
-        margin = mine[:, 0] - scored[:, rivals].max(axis=1)
+        margin = mine[:, 0] - scored[:, live_rivals].max(axis=1)
     else:
         margin = np.zeros(int(n))
     per_rival = [{"entry": int(entries[i].entry), "name": str(entries[i].name),
-                  "p_beat": round(float((mine[:, 0] > scored[:, i]).mean()), 4)}
+                  "p_beat": (round(float((mine[:, 0] > scored[:, i]).mean()), 4)
+                             if i in set(live) else None)}
                  for i in rivals]
     quantiles = np.quantile(margin, MARGIN_QUANTILES)
     return LeagueSim(

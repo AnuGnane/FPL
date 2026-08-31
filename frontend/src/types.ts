@@ -730,7 +730,9 @@ export interface WinProb {
 export interface RivalBeat {
   entry: number
   name: string
-  p_beat: number
+  /** null when the entry's squad could not be read (private, or joined after
+   *  the gameweek) — listed, but left out of the simulated race. */
+  p_beat: number | null
 }
 
 export interface SimPoint {

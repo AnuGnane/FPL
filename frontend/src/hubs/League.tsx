@@ -235,7 +235,9 @@ export default function League() {
                         className="border-t border-divider">
                       <td className="py-1 text-text-secondary">{rival.name}</td>
                       <td className="num py-1 text-right text-text">
-                        {fmtPct(rival.p_beat)}
+                        {/* A dash, not a number: an entry whose squad could
+                            not be read is not one I am certain to beat. */}
+                        {rival.p_beat === null ? '—' : fmtPct(rival.p_beat)}
                       </td>
                     </tr>
                   ))}
