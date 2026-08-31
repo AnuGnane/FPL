@@ -310,7 +310,7 @@ TEN = {"standings": {"has_next": False, "results": (
     [{"entry": 1, "entry_name": "You FC", "player_name": "Me", "rank": 9,
       "last_rank": 9, "total": 200, "event_total": 55}]
     + [{"entry": i, "entry_name": f"Rival {i}", "player_name": f"R{i}",
-        "rank": 11 - i, "last_rank": 11 - i, "total": 180 + 10 * i,
+        "rank": 11 - i, "last_rank": 11 - i, "total": 160 + 20 * i,
         "event_total": 55} for i in range(2, 11)])}}
 
 
@@ -362,3 +362,27 @@ def test_the_leaders_row_is_not_a_pairwise_share(client, monkeypatch):
     counted, = [r["p_win"] for r in body["table"] if r["entry"] == leader]
     assert counted > 0.2
     assert abs(folded - counted) > 0.1
+
+
+def test_banking_a_field_sample_invalidates_the_cache(client, monkeypatch):
+    """The sample stopped being a drift input and became an arithmetic one
+    the moment the shared gameweek factor landed. A cache that only watched
+    the solve state served an independent run — and a provenance line that
+    had stopped being true — until the next advise."""
+    from gaffer.data.field import save_field_sample
+
+    calls = {"n": 0}
+
+    def _counting():
+        calls["n"] += 1
+        return FakeClient()
+
+    monkeypatch.setattr("gaffer.web.routers.league_sim.fpl_client", _counting)
+    before = client.get("/api/league/sim").json()
+    assert before["field_rate"] is None
+    save_field_sample([[{"element": 7, "position": 1, "multiplier": 2},
+                        {"element": 8, "position": 2, "multiplier": 1}]],
+                      2, "2026-27")
+    after = client.get("/api/league/sim").json()
+    assert calls["n"] == 2                      # re-run, not served stale
+    assert after["field_rate"] is not None

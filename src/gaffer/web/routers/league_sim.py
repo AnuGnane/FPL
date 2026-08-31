@@ -22,6 +22,7 @@ from fastapi import APIRouter
 
 from gaffer.artifacts import latest_gw, load_snapshot, solve_state_paths
 from gaffer.config import load_config
+from gaffer.data.field import field_sample_path
 from gaffer.errors import GafferError
 from gaffer.league_mode import win_probability
 from gaffer.league_sim import (Pins, append_sim_history, build_inputs,
@@ -59,9 +60,21 @@ def fpl_client():
 
 
 def _cache_key(cfg, gw: int) -> tuple:
+    """Everything the cached answer depends on that can change under it.
+
+    The solve state's mtime, so a fresh advise run invalidates it — and the
+    *field sample's*, because since the shared gameweek factor landed the
+    banked sample is an input to the arithmetic and not merely to the drift.
+    Banking one mid-session used to leave the card serving an independent,
+    fan-wide run until the next advise, with a provenance line that had
+    already stopped being true.
+    """
     _, meta = solve_state_paths(gw)
     stamp = meta.stat().st_mtime if meta.exists() else 0.0
-    return (int(cfg.league_id), int(gw), stamp, int(cfg.sim_n),
+    sample = field_sample_path(str(getattr(cfg, "current_season", "") or ""),
+                               max(1, int(gw) - 1))
+    field_stamp = sample.stat().st_mtime if sample.is_file() else 0.0
+    return (int(cfg.league_id), int(gw), stamp, field_stamp, int(cfg.sim_n),
             float(cfg.rival_drift))
 
 
