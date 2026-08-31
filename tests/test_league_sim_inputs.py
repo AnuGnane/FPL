@@ -15,7 +15,7 @@ from gaffer.artifacts import COMPONENT_COLS
 from gaffer.config import Config
 from gaffer.data import store
 from gaffer.errors import GafferError
-from gaffer.league_sim import (build_inputs, element_eps,
+from gaffer.league_sim import (OUTCOME_VAR_PER_EP, build_inputs, element_eps,
                                field_rate_from_sample)
 
 STANDINGS = {"standings": {"has_next": False, "results": [
@@ -181,3 +181,75 @@ def test_no_league_id_is_a_readable_refusal(here, monkeypatch):
     monkeypatch.setattr("gaffer.artifacts.latest_gw", lambda: 5)
     with pytest.raises(GafferError, match="league_id"):
         build_inputs(Config(entry_id=1, league_id=0), FakeClient())
+
+
+# --- the weekly sigma is football's, not the model's ------------------------
+
+def test_the_weekly_sigma_is_the_outcome_scale_not_the_estimation_scale():
+    """The estimation table prices *our forecast error* — ``calibrate_noise``
+    says so out loud, and its cell 0_0 is 0.018 over 62% of the rows. Fed to
+    the league simulation as a player's week-to-week spread it put all fifty
+    entries of league 1794743 on the 6.0 floor, which is a league whose
+    outcome is arithmetic. A six-point player's own week has a spread of a
+    few points, not a few hundredths."""
+    from gaffer.league_sim import element_sigmas
+
+    out = element_sigmas(_comp())
+    assert out[7] == pytest.approx((OUTCOME_VAR_PER_EP * 6.0) ** 0.5, rel=0.1)
+    assert out[7] > out[8] > 1.0
+
+
+def test_a_player_with_no_minutes_prediction_still_has_a_weekly_spread():
+    """No xMins means no *estimation* cell; it does not mean his score is
+    settled. Skipping him left him at zero variance, which the floor then hid
+    at the entry level."""
+    from gaffer.league_sim import element_sigmas
+
+    comp = _comp().drop(columns=["p_play", "p60"])
+    assert element_sigmas(comp)[7] > 1.0
+
+
+def test_a_real_squad_clears_the_entry_floor():
+    """The floor exists for an unmodellable squad. Every entry sitting on it
+    is the instrument telling you it has no variance model at all."""
+    from gaffer.league_sim import (WEEKLY_SIGMA_FLOOR, Entry, element_sigmas)
+    from gaffer.league_sim import entry_sigma
+
+    sigma_by = element_sigmas(_comp())
+    picks = [{"element": 7 if i % 2 else 8, "position": i, "multiplier":
+              2 if i == 1 else (1 if i <= 11 else 0)}
+             for i in range(1, 16)]
+    entry = Entry(entry=1, name="You FC", total=100, picks=picks)
+    assert entry_sigma(entry, sigma_by) > WEEKLY_SIGMA_FLOOR
+
+
+# --- an id-space mismatch must be loud --------------------------------------
+
+CODE_KEYED_PICKS = {"picks": [{"element": 100, "position": 1, "multiplier": 2},
+                              {"element": 101, "position": 2,
+                               "multiplier": 1}]}
+"""The same two players as ``MY_PICKS``, keyed by player *code* instead of by
+element — the id-space mismatch gate G2 went looking for. Every lookup misses
+and the squad silently scores nothing."""
+
+
+def test_picks_from_the_wrong_id_space_are_counted_rather_than_zeroed(
+        here, monkeypatch):
+    class _Client(FakeClient):
+        def get_entry_picks(self, entry_id, gw):
+            return CODE_KEYED_PICKS
+
+    monkeypatch.setattr("gaffer.artifacts.latest_gw", lambda: 5)
+    monkeypatch.setattr("gaffer.artifacts.load_components",
+                        lambda gw: _comp())
+    ins = build_inputs(Config(entry_id=1, league_id=5), _Client())
+    assert ins.notices
+    assert any("4" in n for n in ins.notices)      # four picks, none known
+
+
+def test_a_league_the_frame_covers_carries_no_notice(here, monkeypatch):
+    monkeypatch.setattr("gaffer.artifacts.latest_gw", lambda: 5)
+    monkeypatch.setattr("gaffer.artifacts.load_components",
+                        lambda gw: _comp())
+    assert build_inputs(Config(entry_id=1, league_id=5),
+                        FakeClient()).notices == []

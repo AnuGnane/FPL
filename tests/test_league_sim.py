@@ -293,7 +293,10 @@ def test_the_multi_seed_report_carries_a_mean_and_a_spread():
     out = multi_seed(_inputs(), seeds=[1, 2, 3], n=400)
     assert out["seeds"] == [1, 2, 3]
     assert len(out["p_win"]) == 3
-    assert out["p_win_mean"] == pytest.approx(sum(out["p_win"]) / 3)
+    # Published to four places, like every other number here, so the mean of
+    # three quarters can be half a ten-thousandth off their average.
+    assert out["p_win_mean"] == pytest.approx(sum(out["p_win"]) / 3,
+                                              abs=5e-5)
     assert out["p_win_spread"] == pytest.approx(max(out["p_win"])
                                                 - min(out["p_win"]))
 
@@ -322,3 +325,162 @@ def test_the_report_says_out_loud_that_a_spread_is_not_a_verdict():
     text = format_multi_seed(multi_seed(_inputs(), seeds=[1, 2], n=100),
                              league_id=5)
     assert "instrument" in text.lower()
+
+
+# --- chip weeks: what a stored snapshot means -------------------------------
+
+def _bb_picks(captain=7):
+    """A bench-boost snapshot: fifteen picks, every one of them scoring.
+
+    This is what the entry API actually returns for the week a rival played
+    the chip — ``multiplier`` is 1 on positions 12-15 rather than 0 — and it
+    is the shape that inflated a rival's *permanent* weekly rate by four
+    players in the G2 run on league 1794743.
+    """
+    picks = []
+    for position in range(1, 16):
+        element = 7 if position == 1 else (8 if position % 2 else 9)
+        picks.append({"element": element, "position": position,
+                      "multiplier": 2 if element == captain and position == 1
+                      else 1,
+                      "is_captain": element == captain and position == 1,
+                      "is_vice_captain": position == 2})
+    return picks
+
+
+def _ordinary_picks():
+    """The same fifteen players in an ordinary week: bench multipliers 0."""
+    return [dict(p, multiplier=0 if p["position"] > 11 else p["multiplier"])
+            for p in _bb_picks()]
+
+
+def test_a_bench_boost_snapshot_is_scored_as_an_ordinary_week():
+    """A chip is one week, not a new ability. Reading the stored multipliers
+    literally makes a rival's whole remaining season four players wider than
+    his squad, which is what put ``p_beat`` at exactly 0.0 for the two
+    bench-boosters in league 1794743."""
+    boosted = _rival(picks=_bb_picks())
+    plain = _rival(picks=_ordinary_picks())
+    assert entry_rate(boosted, EP) == pytest.approx(entry_rate(plain, EP))
+
+
+def test_a_bench_boost_snapshot_does_not_widen_the_sigma_either():
+    assert entry_sigma(_rival(picks=_bb_picks()), SIGMA) == pytest.approx(
+        entry_sigma(_rival(picks=_ordinary_picks()), SIGMA))
+
+
+def test_a_triple_captain_snapshot_is_scored_as_one_armband():
+    """Multiplier 3 is a chip too, and a permanent triple captain is not a
+    manager anybody has ever been."""
+    tripled = _rival(picks=[{"element": 7, "position": 1, "multiplier": 3,
+                             "is_captain": True},
+                            {"element": 8, "position": 2, "multiplier": 1}])
+    assert entry_rate(tripled, EP) == pytest.approx(6.0 * 2 + 4.0)
+
+
+def test_a_positionless_snapshot_still_reads_its_multipliers():
+    """Fixtures and field samples predating the position field must keep
+    working: without positions there is nothing to normalise against, so the
+    stored multipliers are the answer, capped at one armband."""
+    entry = _rival(picks=[{"element": 7, "multiplier": 2},
+                          {"element": 8, "multiplier": 1},
+                          {"element": 9, "multiplier": 0}])
+    assert entry_rate(entry, EP) == pytest.approx(6.0 * 2 + 4.0)
+
+
+def test_a_benched_captain_hands_the_armband_to_the_vice():
+    """FPL's own rule. A snapshot can carry a captain at position 13 — he was
+    benched and the vice played — and doubling a bench player would be
+    inventing points nobody scored."""
+    picks = [{"element": 8, "position": 1, "multiplier": 1,
+              "is_captain": False, "is_vice_captain": True},
+             {"element": 7, "position": 13, "multiplier": 1,
+              "is_captain": True, "is_vice_captain": False}]
+    assert entry_rate(_rival(picks=picks), EP) == pytest.approx(4.0 * 2)
+
+
+def test_a_bench_boost_rival_is_not_a_certainty():
+    """The G2 symptom at the engine: a rival on my own players, whose only
+    difference is that his snapshot came from a chip week, must not beat me
+    in every single simulation."""
+    mine = _me(total=200, picks=_ordinary_picks())
+    boosted = _rival(entry=2, total=200, picks=_bb_picks())
+    out = simulate_league(_inputs(entries=[mine, boosted], weeks_left=36),
+                          n=2000, seed=20260901, rival_drift=0.0)
+    assert 0.05 < out.per_rival[0]["p_beat"] < 0.95
+
+
+# --- internal consistency ---------------------------------------------------
+
+def test_in_a_two_entry_league_winning_is_beating_him():
+    """The G2 contradiction, pinned: ``p_win`` 0.0 beside a ``p_beat`` of
+    0.919 against the only rival who mattered. With one rival the two
+    questions are the same question and the two numbers must agree."""
+    out = simulate_league(_inputs(entries=[_me(total=140),
+                                           _rival(2, total=177)]),
+                          n=4000, seed=20260901)
+    assert abs(out.p_win - out.per_rival[0]["p_beat"]) < 1e-9
+
+
+def test_winning_is_never_likelier_than_beating_the_easiest_rival():
+    """Winning is beating all of them at once, so it is bounded above by
+    every pairwise number in the same run. A table and a rival list computed
+    off different draws would break this and nothing else would notice."""
+    entries = [_me(total=140)] + [_rival(entry=i, total=120 + 8 * i)
+                                  for i in range(2, 9)]
+    out = simulate_league(_inputs(entries=entries, weeks_left=36),
+                          n=2000, seed=20260915)
+    assert out.p_win <= min(r["p_beat"] for r in out.per_rival) + 1e-9
+
+
+def test_the_median_margin_sits_inside_the_fan_and_the_weekly_gap():
+    """A median final margin is a weekly rate gap times the weeks left, give
+    or take the noise. Two identical squads over ten weeks cannot be four
+    hundred points apart, which is what the inflated rates produced."""
+    out = simulate_league(_inputs(entries=[_me(total=200),
+                                           _rival(2, total=200,
+                                                  picks=_me().picks)],
+                                  weeks_left=10), n=2000, seed=20260930)
+    assert abs(out.margin_quantiles["p50"]) < 5.0
+
+
+# --- lookups that miss ------------------------------------------------------
+
+def test_an_element_the_frame_does_not_carry_is_counted_and_announced():
+    """A silent zero is the failure mode that hid an id-space mismatch: a
+    squad keyed in one id space against a frame keyed in another scores
+    nothing and the card still renders a confident number."""
+    stranger = _rival(entry=2, picks=[{"element": 999, "position": 1,
+                                       "multiplier": 1}])
+    out = simulate_league(_inputs(entries=[_me(), stranger]), n=200, seed=4)
+    assert any("999" in n or "unknown" in n.lower() for n in out.notices)
+
+
+def test_a_league_that_carries_no_entry_of_mine_says_so():
+    """``is_me`` missing silently fell back to entry zero, which answers a
+    question about somebody else's season."""
+    out = simulate_league(_inputs(entries=[_rival(2), _rival(3)]), n=100,
+                          seed=4)
+    assert any("your entry" in n.lower() for n in out.notices)
+
+
+def test_a_clean_league_carries_no_notices():
+    assert simulate_league(_inputs(), n=100, seed=4).notices == []
+
+
+def test_the_answer_does_not_depend_on_the_order_the_standings_arrived_in():
+    """The seed is this module's honesty label, and it was only honest while
+    the FPL standings endpoint agreed with itself. It does not: two reads of
+    league 1794743 a minute apart swapped two entries level on points, which
+    moved every entry to a different column of one shared draw matrix and
+    moved ``p_win`` from 0.212 to 0.189 on the same seed."""
+    entries = [_me(total=140)] + [_rival(entry=i, total=150)
+                                  for i in range(2, 7)]
+    forward = simulate_league(_inputs(entries=entries), n=2000, seed=4)
+    shuffled = simulate_league(
+        _inputs(entries=[entries[0]] + list(reversed(entries[1:]))),
+        n=2000, seed=4)
+    assert forward.p_win == shuffled.p_win
+    assert forward.exp_finish == shuffled.exp_finish
+    assert {r["entry"]: r["p_beat"] for r in forward.per_rival} \
+        == {r["entry"]: r["p_beat"] for r in shuffled.per_rival}

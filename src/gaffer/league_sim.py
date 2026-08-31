@@ -60,6 +60,47 @@ otherwise have zero variance and a season that is a certainty. Six points is
 about a third of the ~18 the old parametric model used for a whole squad, so
 it is a floor rather than a second model."""
 
+OUTCOME_VAR_PER_EP = 3.2
+"""Points of *outcome* variance per point of expected points, per player-week.
+
+The number the simulation was missing. ``optimize.scenarios``' table prices
+**estimation** σ — how far gaffer's own forecast moves when the ensemble is
+reseeded — and ``calibrate_noise.composite_table`` says out loud what that
+scale is: "cell 0_0 = 0.018 over 62% of the rows". That is the right quantity
+for "would this transfer survive my forecast being wrong" and the wrong one
+for "how does this manager's season come out", where what varies is football.
+Fed to the league card unaccompanied it put all fifty entries of league
+1794743 on :data:`WEEKLY_SIGMA_FLOOR`, made every entry's spread identical,
+and turned a Monte Carlo into long division: ``p_beat`` came back as exactly
+0.0 and exactly 1.0 and ``p_win`` as exactly 0.0.
+
+Measured, not asserted. Over the last three seasons of
+``data/history/player_gw.parquet``, taking each player-season's own mean as
+his rate and the deviations from it as his week, ``Var / mean`` is flat in
+the rate:
+
+======================  ======  ======
+mean points per GW      Var/μ   n
+======================  ======  ======
+0-1                     2.67    23588
+1-2                     3.23    15962
+2-3                     3.22    10833
+3-4                     3.42     6893
+4-5                     3.42     2177
+5+                      4.07      646
+======================  ======  ======
+
+3.2 is the mass-weighted middle of that. A mean-proportional variance is also
+the shape the underlying counts have — goals and assists are near-Poisson and
+carry most of the spread — so this is a one-parameter fit to a form the game
+already has, not a curve chosen to fit.
+
+What it deliberately omits: *correlation*. Two players from the same attack,
+or a captain doubling a haul, move together, so a real squad's week is a
+little wider than the sum of its independent parts. The consequence is a
+simulation that is slightly over-confident, in a module that publishes its n
+and its seed and whose floor is still there."""
+
 HAUL_SIGMA = 2.0
 """How many player-sigmas above his mean a "haul" pin puts a player. Two is
 the conventional two-sigma event, and it is a *stated* convention rather than
@@ -89,8 +130,9 @@ class SimInputs:
     """Everything the simulation needs, and nothing that fetches anything.
 
     ``ep_by_element`` and ``sigma_by_element`` are *per gameweek* — a player's
-    expected points and estimation sigma for one week, averaged over whatever
-    horizon the component frame covers. ``field_rate`` is the sampled field's
+    expected points and the standard deviation of what he actually scores in
+    one week (:func:`element_sigmas`), averaged over whatever horizon the
+    component frame covers. ``field_rate`` is the sampled field's
     mean weekly rate under the same numbers, or ``None`` when the field store
     has nothing for this gameweek; drift is then off whatever ``rival_drift``
     says, which is the documented degradation.
@@ -101,6 +143,11 @@ class SimInputs:
     sigma_by_element: dict[int, float]
     weeks_left: int
     field_rate: float | None = None
+    notices: list[str] = field(default_factory=list)
+    """Degradations the caller should print rather than swallow — see
+    :func:`lookup_notices`. A lookup that misses returns zero points, which is
+    a perfectly confident answer to the wrong question; the notice is what
+    stops a silent id-space mismatch from rendering as a headline."""
 
 
 @dataclass
@@ -131,21 +178,68 @@ class LeagueSim:
     seed: int
     weeks_left: int
     rival_drift: float
+    notices: list[str] = field(default_factory=list)
+
+
+XI_SIZE = 11
+"""Picks at a higher ``position`` than this are the bench."""
+
+
+def effective_picks(picks: list[dict]) -> list[tuple[int, int]]:
+    """``(element, multiplier)`` as an *ordinary* week would score this squad.
+
+    A stored snapshot is one week of history, and a week in which a chip was
+    played does not describe the manager's ability in any other week. The
+    entry API returns the chip's arithmetic literally: a bench-boost week
+    carries ``multiplier`` 1 on all fifteen picks, a triple-captain week
+    carries 3 on the armband. Read as a *rate*, the first hands a rival four
+    extra players for the whole rest of the season and the second hands him a
+    permanent third captain — which is exactly what happened to the six
+    bench-boosters in league 1794743, whose weekly rates came out 9 to 13
+    points high and whose ``p_beat`` came out at 0.0.
+
+    So the multipliers are rebuilt from the thing that is not a chip: the
+    ``position`` field, which is 1-11 for the eleven who started and 12-15 for
+    the bench in every snapshot, chip or no chip. Starters score once, the
+    bench scores nothing, and one armband doubles. The armband goes to the
+    captain when he started and to the vice when he did not, which is FPL's
+    own rule and stops a benched captain from doubling points nobody scored.
+
+    Snapshots with no ``position`` at all — older fixtures, a hand-built field
+    sample — have nothing to normalise against, so their stored multipliers
+    stand, capped at 2 so a triple captain is still not permanent.
+    """
+    rows = [(int(p["element"]), int(p.get("multiplier", 0) or 0),
+             p.get("position"), bool(p.get("is_captain")),
+             bool(p.get("is_vice_captain")))
+            for p in picks]
+    if any(position is None for _, _, position, _, _ in rows):
+        return [(element, min(mult, 2)) for element, mult, _, _, _ in rows
+                if mult > 0]
+    starters = [r for r in rows if int(r[2]) <= XI_SIZE]
+    armband = next((r for r in starters if r[3]), None)
+    if armband is None:
+        armband = next((r for r in starters if r[4]), None)
+    if armband is None:
+        # No flags in the snapshot: the doubled pick is the armband, and if
+        # none of the eleven is doubled the squad simply has no captain.
+        armband = next((r for r in starters if r[1] >= 2), None)
+    return [(r[0], 2 if r is armband else 1) for r in starters]
 
 
 def entry_rate(entry: Entry, ep_by: dict[int, float]) -> float:
     """One entry's expected points in one gameweek.
 
-    Multiplier-weighted, so the bench (multiplier 0) contributes nothing and
-    the captain contributes twice — which is exactly how FPL scores it, and
-    exactly what ``effective_ownership`` already assumes. A pick whose element
-    the component frame does not carry contributes nothing rather than raising:
-    a rival who bought a player gaffer has never modelled must not take the
-    league card down.
+    Multiplier-weighted through :func:`effective_picks`, so the bench
+    contributes nothing and the captain contributes twice — which is exactly
+    how FPL scores an ordinary week, and exactly what ``effective_ownership``
+    already assumes. A pick whose element the component frame does not carry
+    contributes nothing rather than raising: a rival who bought a player
+    gaffer has never modelled must not take the league card down. That it is
+    silent here is why :func:`lookup_notices` exists.
     """
-    return float(sum(int(p.get("multiplier", 0))
-                     * float(ep_by.get(int(p["element"]), 0.0))
-                     for p in entry.picks))
+    return float(sum(mult * float(ep_by.get(element, 0.0))
+                     for element, mult in effective_picks(entry.picks)))
 
 
 def entry_sigma(entry: Entry, sigma_by: dict[int, float]) -> float:
@@ -156,10 +250,37 @@ def entry_sigma(entry: Entry, sigma_by: dict[int, float]) -> float:
     :data:`WEEKLY_SIGMA_FLOOR` — see its docstring for why zero is not an
     acceptable answer.
     """
-    var = sum((int(p.get("multiplier", 0))
-               * float(sigma_by.get(int(p["element"]), 0.0))) ** 2
-              for p in entry.picks)
+    var = sum((mult * float(sigma_by.get(element, 0.0))) ** 2
+              for element, mult in effective_picks(entry.picks))
     return max(math.sqrt(max(var, 0.0)), WEEKLY_SIGMA_FLOOR)
+
+
+def lookup_notices(entries: list[Entry],
+                   ep_by: dict[int, float]) -> list[str]:
+    """What the simulation could not look up, said out loud.
+
+    Every EP lookup in this module degrades to zero on a miss, because one
+    unmodelled signing must not take the league card down. The failure mode
+    that buys is an id-space mismatch — squads keyed by element against a
+    frame keyed by code, say — which zeroes *everything* and still renders a
+    confident probability. A miss count is the difference between a
+    degradation and a lie.
+    """
+    misses, entries_hit, unknown = 0, 0, set()
+    for entry in entries:
+        absent = [element for element, _ in effective_picks(entry.picks)
+                  if element not in ep_by]
+        if absent:
+            entries_hit += 1
+            misses += len(absent)
+            unknown |= set(absent)
+    if not misses:
+        return []
+    sample = ", ".join(str(e) for e in sorted(unknown)[:5])
+    return [f"{misses} picks across {entries_hit} entries name players this "
+            f"gameweek's component frame does not carry (elements {sample}"
+            f"{'...' if len(unknown) > 5 else ''}) — those picks are "
+            f"simulated as scoring nothing"]
 
 
 def _week_one(entry: Entry, ins: SimInputs, pins: Pins) -> tuple[float, float]:
@@ -171,18 +292,15 @@ def _week_one(entry: Entry, ins: SimInputs, pins: Pins) -> tuple[float, float]:
     than a re-weighting — the scenario is asserted, not sampled.
     """
     captain = pins.captain_override
+    picks = effective_picks(entry.picks)
     swap_captain = (entry.is_me and captain is not None
-                    and any(int(p["element"]) == int(captain)
-                            for p in entry.picks)
-                    and any(int(p.get("multiplier", 0)) >= 2
-                            for p in entry.picks))
+                    and any(element == int(captain) for element, _ in picks)
+                    and any(mult >= 2 for _, mult in picks))
     blank_captain = (not entry.is_me
                      and pins.rival_captain_blanks is not None
                      and int(pins.rival_captain_blanks) == int(entry.entry))
     mean, var = 0.0, 0.0
-    for pick in entry.picks:
-        element = int(pick["element"])
-        mult = int(pick.get("multiplier", 0))
+    for element, mult in picks:
         if swap_captain:
             # One armband, moved: the incumbent drops to a single share and
             # the named player takes the double. A bench player named as
@@ -256,18 +374,42 @@ def simulate_league(inputs: SimInputs, *, n: int = SIM_N, seed: int = SIM_SEED,
                          margin_quantiles={k: 0.0 for k in MARGIN_KEYS},
                          n=int(n), seed=int(seed),
                          weeks_left=int(inputs.weeks_left),
-                         rival_drift=float(rival_drift))
-    me = next((i for i, e in enumerate(entries) if e.is_me), 0)
+                         rival_drift=float(rival_drift),
+                         notices=list(inputs.notices))
+    # ``build_inputs`` already banked these; a hand-built ``SimInputs`` (a
+    # test, the what-if panel's re-run) has not. Deduped rather than
+    # recomputed-or-not so both paths report the same list once.
+    notices = list(dict.fromkeys(
+        list(inputs.notices)
+        + lookup_notices(entries, inputs.ep_by_element)))
+    me = next((i for i, e in enumerate(entries) if e.is_me), None)
+    if me is None:
+        # Falling back to entry zero answers a confident question about
+        # somebody else's season, which is worse than answering none.
+        notices.append(
+            "no entry in this league is flagged as your entry — the headline "
+            "is the first entry in the standings, not yours")
+        me = 0
     mus, sds, totals = [], [], []
     for entry in entries:
         mu, sd = _mu_sd(entry, inputs, float(rival_drift), pins)
         mus.append(mu)
         sds.append(sd)
         totals.append(float(entry.total))
-    rng = np.random.default_rng(int(seed))
-    draws = (np.asarray(totals) + np.asarray(mus)
-             + rng.standard_normal((int(n), len(entries)))
-             * np.asarray(sds))
+    # One stream per *entry*, keyed on the entry id rather than on the column
+    # it happens to occupy. A single ``(n, entries)`` matrix is one call
+    # instead of fifty, but it hands column j whatever the standings endpoint
+    # put in row j — and that endpoint's order is not stable: two reads of
+    # league 1794743 a minute apart swapped two entries on equal totals and
+    # moved p_win from 0.212 to 0.189 on the *same seed*. A seed that only
+    # reproduces when the API agrees with itself is not the honesty label
+    # this module says it is. ``[seed, entry]`` is a SeedSequence, so the
+    # streams are independent by construction rather than by offset.
+    draws = np.empty((int(n), len(entries)))
+    for column, entry in enumerate(entries):
+        rng = np.random.default_rng([int(seed), int(entry.entry)])
+        draws[:, column] = (totals[column] + mus[column]
+                            + rng.standard_normal(int(n)) * sds[column])
     # A hair of the current total breaks exact ties in the leader's favour
     # without moving any real comparison: totals are integers, so 1e-6 of one
     # can never outrank a genuine point.
@@ -277,10 +419,12 @@ def simulate_league(inputs: SimInputs, *, n: int = SIM_N, seed: int = SIM_SEED,
     rank = better + 1
     rivals = [i for i in range(len(entries)) if i != me]
     if rivals:
-        best_rival = scored[:, rivals].max(axis=1)
-        margin = draws[:, me] - draws[:, rivals].max(axis=1)
+        # The same ``scored`` matrix the table and the rival rows are counted
+        # off, so the fan cannot disagree with the headline about who is
+        # ahead: the median margin is negative exactly when the median rank
+        # is worse than first.
+        margin = mine[:, 0] - scored[:, rivals].max(axis=1)
     else:
-        best_rival = mine[:, 0]
         margin = np.zeros(int(n))
     per_rival = [{"entry": int(entries[i].entry), "name": str(entries[i].name),
                   "p_beat": round(float((mine[:, 0] > scored[:, i]).mean()), 4)}
@@ -294,7 +438,7 @@ def simulate_league(inputs: SimInputs, *, n: int = SIM_N, seed: int = SIM_SEED,
         margin_quantiles={k: round(float(v), 1)
                           for k, v in zip(MARGIN_KEYS, quantiles)},
         n=int(n), seed=int(seed), weeks_left=int(inputs.weeks_left),
-        rival_drift=float(rival_drift))
+        rival_drift=float(rival_drift), notices=notices)
 
 
 def multi_seed(inputs: SimInputs, seeds: list[int], *, n: int = SIM_N,
@@ -364,17 +508,32 @@ def append_sim_history(sim: LeagueSim, gw: int, run_at: str) -> Path:
 
 
 def element_sigmas(comp: pd.DataFrame) -> dict[int, float]:
-    """``element -> weekly estimation sigma``, from the component frame.
+    """``element -> the weekly standard deviation of his actual score``.
 
-    The scale is the sweep's own: :func:`gaffer.optimize.scenarios.sigma_for`
-    over the shipped estimation table, falling back — cell by cell, exactly as
-    ``noise_ep`` does — to the pre-v6 multiplicative heuristic
-    ``ep * (92 - xmins) / 134``. Both are imported by name; nothing in
-    ``optimize/**`` is edited or reached into (spec D4).
+    Two variances, added because they are variances of independent things —
+    the same quadrature ``calibrate_noise.composite_table`` argues for, and
+    for the same reason:
 
-    A player with no minutes prediction gets no sigma here, deliberately: "we
-    cannot predict his minutes" is not "his minutes are certain", and
-    :data:`WEEKLY_SIGMA_FLOOR` catches the entry-level consequence.
+    * **Outcome.** :data:`OUTCOME_VAR_PER_EP` times his expected points. This
+      is football: whether the goal goes in, whether the clean sheet holds,
+      who takes the bonus. It is the term that was missing, and it is the one
+      that matters — it is an order of magnitude larger than the other.
+    * **Estimation.** :func:`gaffer.optimize.scenarios.sigma_for` over the
+      shipped table, falling back cell by cell, exactly as ``noise_ep`` does,
+      to the pre-v6 heuristic ``ep * (92 - xmins) / 134``. Both are imported
+      by name; nothing in ``optimize/**`` is edited or reached into (spec D4).
+      This is how far gaffer's own forecast of him moves, which is a real but
+      small part of how far *he* moves.
+
+    A player with no minutes prediction loses only the estimation term. He
+    keeps the outcome term, because "we cannot predict his minutes" has never
+    meant "his score is settled" — dropping him entirely, as this used to,
+    handed him zero variance and left :data:`WEEKLY_SIGMA_FLOOR` to paper over
+    it at the entry level.
+
+    Per *gameweek*, like :func:`element_eps`: variances are summed within a
+    week — a double gameweek really is two fixtures' worth of noise — and
+    averaged over the weeks the frame covers.
     """
     if comp is None or comp.empty or "element" not in comp.columns:
         return {}
@@ -382,7 +541,7 @@ def element_sigmas(comp: pd.DataFrame) -> dict[int, float]:
     xmins = xmins_by_player_gw(comp)
     ep_col = pd.to_numeric(comp["ep"], errors="coerce").fillna(0.0)
     weeks = max(int(pd.to_numeric(comp["gw"], errors="coerce").nunique()), 1)
-    totals: dict[int, float] = {}
+    est_var: dict[int, float] = {}
     for row, ep_value in zip(comp.itertuples(), ep_col):
         element = int(row.element) if not pd.isna(row.element) else None
         if element is None:
@@ -394,8 +553,14 @@ def element_sigmas(comp: pd.DataFrame) -> dict[int, float]:
         if sigma is None:
             sigma = float(ep_value) * (NOISE_FLOOR_XMINS - float(xm)) \
                 / NOISE_DENOM
-        totals[element] = totals.get(element, 0.0) + max(float(sigma), 0.0)
-    return {element: value / weeks for element, value in totals.items()}
+        est_var[element] = (est_var.get(element, 0.0)
+                            + max(float(sigma), 0.0) ** 2)
+    out: dict[int, float] = {}
+    for element, ep_value in element_eps(comp).items():
+        var = (OUTCOME_VAR_PER_EP * max(float(ep_value), 0.0)
+               + est_var.get(element, 0.0) / weeks)
+        out[element] = math.sqrt(max(var, 0.0))
+    return out
 
 
 SEASON_GWS = 38
@@ -442,8 +607,8 @@ def field_rate_from_sample(sample: list[list[dict]] | None,
     """
     if not sample:
         return None
-    rates = [sum(int(p.get("multiplier", 0))
-                 * float(ep_by.get(int(p["element"]), 0.0)) for p in squad)
+    rates = [sum(mult * float(ep_by.get(element, 0.0))
+                 for element, mult in effective_picks(squad))
              for squad in sample]
     return float(sum(rates) / len(rates)) if rates else None
 
@@ -502,7 +667,8 @@ def build_inputs(cfg, client, *, gw: int | None = None) -> SimInputs:
     return SimInputs(entries=entries, ep_by_element=ep_by,
                      sigma_by_element=sigma_by,
                      weeks_left=max(0, SEASON_GWS - int(plan_gw) + 1),
-                     field_rate=field_rate_from_sample(sample, ep_by))
+                     field_rate=field_rate_from_sample(sample, ep_by),
+                     notices=lookup_notices(entries, ep_by))
 
 
 def format_multi_seed(report: dict, league_id: int) -> str:

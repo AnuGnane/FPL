@@ -109,11 +109,16 @@ def sim() -> LeagueSimData:
                                                   max(1, inputs.weeks_left)),
                                   3))
               for e in inputs.entries if not e.is_me]
-    notice = None
+    notices = list(result.notices)
     if inputs.field_rate is None:
-        notice = ("no field sample banked for this gameweek yet — rivals are "
-                  "simulated on their current squads (run `gaffer "
-                  "field-scrape`)")
+        notices.insert(0, "no field sample banked for this gameweek yet — "
+                          "rivals are simulated on their current squads (run "
+                          "`gaffer field-scrape`)")
+    # One string because the card has one line for it. A degradation the
+    # engine counted is worth more than the field-sample note it used to be
+    # the only occupant of, so both are said rather than one shadowing the
+    # other.
+    notice = " · ".join(notices) if notices else None
     return LeagueSimData(
         gw=int(gw), entries=len(inputs.entries),
         weeks_left=int(inputs.weeks_left), n=result.n, seed=result.seed,

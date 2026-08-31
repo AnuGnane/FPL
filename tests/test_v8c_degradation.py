@@ -260,3 +260,43 @@ def test_the_minutes_module_still_re_exports_the_availability_seam():
     from gaffer.models import minutes
 
     assert minutes.apply_availability is apply_availability
+
+
+# --- the simulation's lookups ----------------------------------------------
+
+
+def test_a_squad_the_frame_cannot_resolve_degrades_out_loud(bare,
+                                                            monkeypatch):
+    """The G2 failure mode, railed at the endpoint.
+
+    Every EP lookup in ``league_sim`` degrades to zero on a miss so that one
+    unmodelled signing cannot take the card down. The hazard that buys is an
+    id-space mismatch — squads keyed one way against a frame keyed another —
+    which zeroes every squad and still renders a perfectly confident
+    probability. The rail is that the page still answers *and* says what it
+    could not resolve."""
+    class _Stranger(FakeClient):
+        def get_entry_picks(self, entry_id, gw):
+            return {"picks": [{"element": 90001, "position": 1,
+                               "multiplier": 2, "is_captain": True}]}
+
+    monkeypatch.setattr("gaffer.web.routers.league_sim.fpl_client",
+                        lambda: _Stranger())
+    body = TestClient(create_app()).get("/api/league/sim").json()
+    assert body["notice"] and "90001" in body["notice"]
+
+
+def test_a_chip_week_snapshot_is_not_a_permanent_squad(bare, monkeypatch):
+    """A rival's stored picks come from the week he played, chips included.
+    A bench-boost week carries a multiplier on all fifteen, and read as a
+    rate it hands him four extra players for the rest of the season — which
+    is what pinned two rivals' ``p_beat`` at exactly 0.0 on league 1794743."""
+    from gaffer.league_sim import Entry, entry_rate
+
+    boosted = [{"element": 7, "position": p, "is_captain": p == 1,
+                "multiplier": 2 if p == 1 else 1} for p in range(1, 16)]
+    ordinary = [dict(p, multiplier=0 if p["position"] > 11
+                     else p["multiplier"]) for p in boosted]
+    ep = {7: 5.0}
+    assert entry_rate(Entry(1, "BB", 0, boosted), ep) == pytest.approx(
+        entry_rate(Entry(1, "XI", 0, ordinary), ep))
