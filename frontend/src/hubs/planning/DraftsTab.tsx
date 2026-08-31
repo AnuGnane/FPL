@@ -18,7 +18,7 @@ export default function DraftsTab({ current }: { current: WhatIfRequest }) {
   const [name, setName] = useState('')
   const [picked, setPicked] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
-  const job = useJob()
+  const job = useJob('drafts-compare')
 
   const load = useCallback(() => {
     apiGet<DraftList>('/api/drafts').then(setDrafts).catch(() => {})

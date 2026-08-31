@@ -150,6 +150,19 @@ Spec: `specs/2026-08-30-gaffer-v7-model-design.md` (§9 = gates + the three-way 
 
 ## Planned
 
+### v9a — pitch view (spec written 2026-08-31, awaiting implementation)
+Spec: `specs/2026-08-31-gaffer-v9a-pitch-view-design.md` — FPL-style XI + bench strip as the This Week default: formation rows, C/V armbands, shirt kits + team short-names via cached backend asset endpoints (URL patterns verified live), difficulty-tinted next-fixture chips off the odds-implied ticker. Photos cached this cycle, rendered in v9b.
+
+### v9b — UI polish (backlog in v9a spec §0 D5)
+PlayerCard identity across Live/League/Review · skeleton states for job-triggered panels · mobile pass on the v8 cards · action toasts (star/pin/override) · empty-state copy audit · chart-token unification · light-theme audit of v8 cards · difficulty tinting on Planning's horizon table.
+
+### v9c — model debt (from the 2026-08-31 cross-cutting review; evidence-first, each needs its own gate)
+- `rc_r38` is identically zero: `card_penalty`'s red-card term reads a rolling stat `engineer.py` never builds (`ROLL_STATS` has `yc`, not `rc`) — needs the feature added + an arm run, not a hotfix
+- `team_code` retro-stamp leak: `data/live.py:169` stamps today's club over all history rows; three feature builders key on it (`_shrunk_ratio` club prior, manager-spell scoping, team Elo merge) — January transfers silently rewrite training rows; fix needs an as-of club column + replay evidence
+- Two quantities named `p_haul` (attacking-returns Poisson in `assemble.py` vs total-points band in `uncertainty.py`) served on the same page — rename one end-to-end
+- Job timeout/cancel: `ADVISE_TIMEOUT_S` has zero readers; one wedged job 409s every later job until restart — `web/jobs.py` is protected, so this is a deliberate orchestrator-authorized cycle
+- SSE stream pins a threadpool worker per watched run for up to an hour (`routers/jobs.py:116-153`) — revisit alongside the timeout work
+
 ## Operational / housekeeping
 - [x] Untrack `reports/` artifacts + `.claude/`; gitignore both (`31dc239`)
 - [x] Set odds API key in `config.toml` `[odds]` (done 2026-08-25; G3 live spot-check recorded in v4b spec §13)
