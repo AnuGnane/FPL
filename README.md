@@ -55,6 +55,8 @@ to `logs/advise.log`.
 | `gaffer prices` | Likely price changes tonight among the 200 most-owned players. |
 | `gaffer league` | Mini-league standings and rival ownership for `fpl.league_id`. |
 | `gaffer live` | In-gameweek tracker: your live points and the projected league table while matches are on. |
+| `gaffer field-scrape [--gw N] [--force]` | Bank a gameweek's top-10k sample: the squads (anonymised) and their effective ownership. |
+| `gaffer league-sim [--seeds a,b,c]` | Monte Carlo of your mini-league: P(win), P(top 3), expected finish and the margin fan. |
 | `gaffer backtest [--season 2025-26] [--start-gw 5] [--horizon N] [--chips]` | Replay a past season following the tool's own advice. |
 | `gaffer ui [--port N] [--no-open-browser]` | Serve the local web UI on 127.0.0.1:8927. |
 
@@ -107,6 +109,25 @@ whose whole output is one word from a six-word vocabulary has no use for a
 shell or a file. If you point `llm_command` at a different CLI, keep the
 no-tools posture.
 
+### `[league]`
+
+Also optional, and also all-defaults. League mode itself is gated by
+`fpl.league_id`, not by a switch here.
+
+| Key | Default | What it does |
+| --- | --- | --- |
+| `z_scale` | 1.5 | Points of gap per unit of z before the tilt moves. |
+| `lambda_cap` | 0.5 | The most the tilt may bend the candidate board. |
+| `sigma_floor` / `sigma_cap` | 8 / 30 | Bounds on the weekly-points sigma the gap is measured in. |
+| `sigma_min_weeks` | 6 | Gameweeks of history before sigma is estimated rather than assumed. |
+| `z_deadband` | 0.25 | `\|z\|` under this is noise: no tilt at all. |
+| `tier_eo` | true | The live tracker's top-10k EO column. |
+| `tier_sample` | 300 | Entries sampled from the top 10k. |
+| `field_scrape` | true | v8c: the scheduled version of the same sample, which also keeps the squads. |
+| `field_sample` | = `tier_sample` | Sample size for the scheduled scrape. |
+| `sim_n` | 2000 | Simulations per mini-league Monte Carlo run. |
+| `rival_drift` | 0.5 | How far a rival's squad drifts toward the field template over the rest of the season. 0 freezes every squad. |
+
 ## Bookmaker odds (optional)
 
 `[odds].api_key` takes a free key from [the-odds-api.com](https://the-odds-api.com)
@@ -150,6 +171,32 @@ Alongside it the report carries:
   rival), a normal approximation from the current gap and the weeks remaining.
   Treat it as a rough steer, not a forecast — it assumes independent scores and
   a fixed sigma.
+
+### The simulated league (v8c)
+
+The League hub's win-probability card is a Monte Carlo, not a formula: 2,000
+seeded seasons of your actual mini-league, every rival on the squad he last
+played, per-player noise from the same sigma table the scenario sweep uses,
+and rivals drifting toward the top-10k template at `rival_drift`. It reports
+P(win), P(top 3), expected finish, per-rival P(beat) and a fan of final
+margins — with its `n` and its seed printed underneath, because a probability
+nobody can reproduce is a decoration.
+
+```
+uv run gaffer league-sim --seeds 1,2,3
+```
+
+prints the same headline under three seed bases with the spread, which is the
+only form a *recorded* claim about this number may take
+(`docs/superpowers/CONVENTIONS.md` §1).
+
+The **What if** tab prices a week: pin a haul, a blank or a different armband
+and the league is re-simulated with that event fixed. It is not the squad
+What-If Lab — no MILP is re-solved and no transfer is proposed. The question
+is "what would that week do to my title odds".
+
+None of this feeds the optimizer. The λ tilt remains the only thing that
+shapes advice; the simulation is measurement and display.
 
 ## Live gameweek
 
@@ -258,8 +305,16 @@ makes the live season collide with the one you just archived.
 - `data/manager_tenures.toml` — EPL head-coach spells; the one file under
   `data/` that is committed, because it is curated knowledge rather than
   fetched data (absent, the rotation features fall back to club-season windows)
+- `data/raw/field/{season}/gw{N}.json` — the top-10k squads sampled for that
+  gameweek. Permanent, and anonymous: entries are keyed by their index in the
+  sample, never by entry id.
+- `data/live/field_eo_log.parquet` — one row per (gameweek, scrape day,
+  element): effective ownership in the top 10k with its standard error and
+  its sample size.
 - `models/` — trained model files (gitignored)
 - `reports/` — `gw{N}-report.html` and `gw{N}-advice.json` (gitignored)
+- `reports/league_sim_history.json` — one banked headline per gameweek, which
+  is what the league card's sparkline draws.
 - `logs/` — output from the launchd jobs (gitignored)
 - `frontend/` — React/Vite source for the web UI; built output lands in
   `src/gaffer/web/static/` (gitignored, shipped in the wheel)
@@ -277,14 +332,20 @@ is not on UK time, adjust the `Hour`/`Minute` in
 ./scripts/install_automation.sh
 ```
 
-Substitutes the project path into the three plists in `scripts/`, copies them to
+Substitutes the project path into the four plists in `scripts/`, copies them to
 `~/Library/LaunchAgents/`, and loads them: `com.gaffer.advise` (Thursday 18:00),
-`com.gaffer.prices` (nightly 23:15) and `com.gaffer.snapshot` (daily 17:00, banks
-the availability log the news corrector will train on). Re-run it after moving
-the project.
+`com.gaffer.prices` (nightly 23:15), `com.gaffer.snapshot` (daily 17:00, banks
+the availability log the news corrector will train on) and `com.gaffer.field`.
+Re-run it after moving the project.
+
+- **Saturday and Sunday 12:30** — `gaffer field-scrape`, an hour after the
+  11:30 deadline: samples ~300 top-10k entries, banks their squads and logs
+  their EO. A gameweek already banked is a no-op in milliseconds, and a run
+  that finds the live tracker has just done the same fetch reuses it rather
+  than asking the API twice in an hour.
 
 Check they are loaded with `launchctl list | grep com.gaffer`. Remove with
-`launchctl unload ~/Library/LaunchAgents/com.gaffer.{advise,prices,snapshot}.plist`.
+`launchctl unload ~/Library/LaunchAgents/com.gaffer.{advise,prices,snapshot,field}.plist`.
 
 ## Tests
 
