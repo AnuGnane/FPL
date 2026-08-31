@@ -82,6 +82,39 @@ Not a gate. Spec §0 D2 says the fix ships whether or not eval improves, because
 
 Zeros improve slightly, haulers regress by 0.029, the all-stratum number does not move at all. **Shipped regardless, as spec D2 pre-committed.** With 0.94 % of rows moving, a delta of this size on a single draw is inside what a re-fit's own noise produces, and the haulers stratum is the smallest and noisiest of the three — reading +0.029 as "the fix cost accuracy" would be reading the seed. The honest statement is the one D2 asked for: the leak was under one percent of rows, closing it changed the benchmark by nothing detectable at the all-stratum level, and the correctness argument is what carries the change, not the number.
 
+### G3's replay — branch against a re-run `main` (`scripts/v9c_replay.sh`)
+
+**In flight at the time of writing.** Banked so far, from
+`logs/v9c_replay_branch.log`:
+
+```
+V7B_ARM_DONE v9c-branch-s1876 {"total": 1826, "hits": 17, "transfers": 69, ...}
+```
+
+**This number must not be read on its own, and especially not against a banked
+figure from an earlier cycle.** Plan A15: v9c changes EP deliberately, so
+branch ≠ main is the *expected* result, which makes this a gap reading and
+puts it under CONVENTIONS §1 — three seed bases a side, verdict as mean ±
+spread. v7b measured a 116-point seed spread on this very arm, larger than any
+gap v9c could plausibly produce, so a single draw measures the seed and
+nothing else. The v8a lesson (spec §9, G5) is the same one: the banked 1876
+that cost an investigation was stale because a serving default had flipped
+underneath it.
+
+Both worktrees run `--arm heur --seed-bases 1876,1901,20260827 --n 40 --chips`,
+identical in every config field but `seed_base` and `tag`, which is what
+`scripts/seed_stats.py` verifies before it will aggregate. Verdict to be
+completed from the two `seed_stats.py` aggregates.
+
+*Adaptation worth recording:* the main worktree could not run at all as the
+plan's driver was written. A fresh worktree carries only tracked files, and
+every input this replay reads is untracked — `config.toml`, the parquet store,
+the fitted models — so the first main-side run died before its first gameweek.
+The driver now symlinks all three from the branch worktree, which is what
+"`data/` is shared between the worktrees" has to mean on disk, and it is what
+makes "the only thing that differs is the code" a fact rather than an
+assumption.
+
 ### D3 — the haul split
 
 (Filled after G1.)
