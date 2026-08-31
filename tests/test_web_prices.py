@@ -149,6 +149,75 @@ def test_a_corrupt_players_snapshot_is_unavailable_not_a_500(client,
     assert client.get("/api/prices/movers").json()["available"] is False
 
 
+# --- the freshest of the two price files ------------------------------
+
+SNAPSHOT_MTIME = 1_756_000_000        # 2025-08-24, and its own UTC day
+
+
+def _age_the_snapshot(tmp_path):
+    path = tmp_path / "data/live/players.parquet"
+    os.utime(path, (SNAPSHOT_MTIME, SNAPSHOT_MTIME))
+
+
+def _bank_price_log(tmp_path, day: str, percent: dict[int, float]):
+    codes = sorted(percent)
+    pd.DataFrame({
+        "snap_date": [day] * len(codes),
+        "code": codes,
+        "now_cost": pd.array([66] * len(codes), dtype="Int64"),
+        "price_change_percent": [float(percent[c]) for c in codes],
+        "direction": pd.array(["rise"] * len(codes), dtype="string"),
+        "calibrating": [False] * len(codes),
+    }).to_parquet(tmp_path / "data/live/price_log.parquet", index=False)
+
+
+def test_a_newer_price_log_is_what_the_card_shows(client, tmp_path):
+    """``players.parquet`` is only rewritten by ``advise`` and
+    ``refresh-data``, and the 23:15 job banks the league every night. On a
+    Friday whose last pipeline run was Tuesday, the log is the reading about
+    tonight and the snapshot is three days of nothing."""
+    _age_the_snapshot(tmp_path)
+    _bank_price_log(tmp_path, "2025-08-25", {11: 2.0, 22: -5.0, 33: 99.0})
+    rows = _rows(client)
+    assert set(rows) == {33}
+    assert rows[33]["name"] == "Rice"      # the log banks no name
+    assert rows[33]["now_cost"] == 6.6     # and the cost comes with it
+    assert rows[33]["price_change_percent"] == 99.0
+
+
+def test_the_card_says_which_file_it_is_quoting(client, tmp_path):
+    """``as_of`` is the only field the card has to describe its reading, so a
+    swapped source has to travel in it — an age that silently meant a
+    different file would be a lie in the one place this card cannot afford
+    one."""
+    _age_the_snapshot(tmp_path)
+    body = client.get("/api/prices/movers").json()
+    assert body["as_of"].startswith("2025-08-24")
+    assert "price log" not in body["as_of"]
+
+    _bank_price_log(tmp_path, "2025-08-25", {33: 99.0})
+    as_of = client.get("/api/prices/movers").json()["as_of"]
+    assert "price log" in as_of
+
+
+def test_a_price_log_no_newer_than_the_snapshot_changes_nothing(client,
+                                                                 tmp_path):
+    """The log's key is a UTC day, so a same-day tie goes to the snapshot the
+    pipeline just wrote."""
+    _age_the_snapshot(tmp_path)
+    before = client.get("/api/prices/movers").json()
+    _bank_price_log(tmp_path, "2025-08-24", {33: 99.0})
+    assert client.get("/api/prices/movers").json() == before
+
+
+def test_a_corrupt_price_log_is_the_behaviour_that_existed_before_it(
+        client, tmp_path):
+    _age_the_snapshot(tmp_path)
+    before = client.get("/api/prices/movers").json()
+    (tmp_path / "data/live/price_log.parquet").write_text("garbage")
+    assert client.get("/api/prices/movers").json() == before
+
+
 def test_the_endpoint_never_touches_the_network(client, monkeypatch):
     """A card on a page must not make an API call on a page load — least of
     all on the Thursday evening everybody is loading the page."""

@@ -78,7 +78,11 @@ def save_digest(kind: str, payload: dict) -> Path:
     """
     artifacts.REPORTS.mkdir(parents=True, exist_ok=True)
     path = digest_path(kind)
-    tmp = path.with_name(path.name + ".tmp")
+    # The temp name carries the pid: two digests writing at once (the Friday
+    # job and a hand-run ``gaffer digest``) would otherwise share one temp
+    # file, and the loser's ``finally`` would unlink the winner's write out
+    # from under it. ``os.replace`` is still what makes the swap atomic.
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
     try:
         tmp.write_text(json.dumps(payload, indent=1, allow_nan=False))
         os.replace(tmp, path)
@@ -179,6 +183,31 @@ def _advice(gw: int | None) -> dict | None:
         return None
 
 
+def _behind_bit(gw: int | None, upcoming: int | None) -> str | None:
+    """The one sentence a briefing about last week's plan owes the manager.
+
+    ``latest_gw`` is the newest *solved* gameweek and ``upcoming_gw`` is the
+    next deadline, and the briefing had been reading the first and warning off
+    the second without ever comparing them: a Friday after the GW5 deadline
+    with only a GW5 solve on disk briefed the GW5 plan, counted down to a
+    deadline that had passed, and said nothing about GW6 at all.
+
+    Either helper answering ``None`` is not a claim in either direction — a
+    clone with no solve state and a pre-season with no next event both land
+    there — so the bit is absent rather than guessed.
+    """
+    if gw is None or upcoming is None:
+        return None
+    try:
+        behind = int(upcoming) > int(gw)
+    except (TypeError, ValueError):
+        return None
+    if not behind:
+        return None
+    return (f"This plan is for GW{int(gw)}; GW{int(upcoming)} is the next "
+            f"deadline — run `gaffer advise`.")
+
+
 def _deadline_bits(gw: int | None) -> list[str | None]:
     """How long is left, from the events snapshot rather than the network."""
     if gw is None:
@@ -276,19 +305,126 @@ def _presser_bits(gw: int, watched: dict[int, str],
     return out
 
 
+PLAYERS_PATH = "live/players.parquet"
+
+PRICE_FIELDS = {"now_cost": "now_cost",
+                "price_change_percent": "price_change_percent",
+                "price_change_calibrating": "calibrating"}
+"""``{bootstrap column: price-log column}``. The log's own names are the
+short ones (:data:`gaffer.price_log.PRICE_LOG_COLS`); the bootstrap's are what
+:func:`gaffer.prices.price_alerts` reads, so the join renames as it goes."""
+
+
+def _file_stamp(rel: str) -> str | None:
+    """One data file's mtime as an ISO instant, or ``None``."""
+    from gaffer.data import store
+
+    try:
+        return datetime.fromtimestamp(
+            (store.DATA_DIR / rel).stat().st_mtime,
+            tz=timezone.utc).isoformat(timespec="seconds")
+    except OSError:
+        return None
+
+
+def _price_log_overlay(players: pd.DataFrame,
+                       players_stamp: str | None
+                       ) -> tuple[pd.DataFrame | None, str | None]:
+    """``players`` with the newest banked day's price fields, or ``(None,
+    None)`` when the log has nothing fresher to say.
+
+    ``data/live/players.parquet`` is only rewritten by ``advise`` and
+    ``refresh-data``, but the nightly ``gaffer prices`` job banks the whole
+    league's predictor readings every day. On a Friday whose last advise run
+    was Tuesday the log is three days newer, and a movers card quoting Tuesday
+    on a Friday evening is exactly the thing this cycle promised not to do.
+
+    Names and teams stay on the left: the log deliberately banks no ``name``
+    (a code is a stable key and a web name is not), so only the price columns
+    cross over, and only for players the log actually has a row for.
+    """
+    from gaffer.data import store
+    from gaffer.price_log import PRICE_LOG_PATH, load_price_log
+
+    if not store.exists(PRICE_LOG_PATH):
+        return None, None
+    log = load_price_log()
+    if log is None or log.empty or not {"snap_date", "code"} \
+            .issubset(log.columns):
+        return None, None
+    days = log["snap_date"].astype(str)
+    day = max(days)                      # ISO dates sort lexically
+    # Date against date: the log's key is a UTC day, so "newer" can only be
+    # decided to the day, and same-day ties go to the snapshot.
+    if players_stamp is not None and day <= players_stamp[:10]:
+        return None, None
+    rows = log[days == day].assign(
+        _code=pd.to_numeric(log.loc[days == day, "code"], errors="coerce"))
+    rows = rows.dropna(subset=["_code"]).drop_duplicates("_code")
+    if rows.empty or "price_change_percent" not in rows.columns:
+        return None, None
+
+    out = players.copy()
+    codes = pd.to_numeric(out["code"], errors="coerce")
+    for dst, src in PRICE_FIELDS.items():
+        if src not in rows.columns:
+            continue
+        fresh = codes.map(dict(zip(rows["_code"], rows[src])))
+        have = out[dst] if dst in out.columns else None
+        out[dst] = fresh.where(fresh.notna(), have)
+    return out, (_file_stamp(PRICE_LOG_PATH) or f"{day}T00:00:00+00:00")
+
+
+def freshest_prices() -> tuple[pd.DataFrame | None, str | None, str]:
+    """The newest price reading on disk: ``(frame, as_of, source)``.
+
+    ``source`` is ``"price_log"`` when the nightly bank was newer than the
+    bootstrap snapshot and ``"players"`` otherwise, and the caller is expected
+    to say which one it served — a panel that quietly swapped its source would
+    be making a different claim under the same label.
+
+    Never raises. A missing snapshot is ``(None, None, "players")``, and every
+    way the log can be unusable — absent, corrupt, missing columns, no day
+    newer than the snapshot — lands on the snapshot alone, which is the
+    behaviour that existed before the log did.
+
+    It lives here rather than in the web router because both consumers need
+    it and only one of them is allowed to import FastAPI.
+    """
+    from gaffer.data import store
+
+    if not store.exists(PLAYERS_PATH):
+        return None, None, "players"
+    # The mtime is read before the parquet so a file that exists but will not
+    # parse still reports its age rather than nothing.
+    stamp = _file_stamp(PLAYERS_PATH)
+    try:
+        players = store.load(PLAYERS_PATH)
+    except Exception as exc:  # noqa: BLE001 — a card is never worth a 500
+        print(f"prices: player snapshot unreadable ({exc})")
+        return None, stamp, "players"
+    try:
+        merged, log_stamp = _price_log_overlay(players, stamp)
+    except Exception as exc:  # noqa: BLE001 — a bad log is no log
+        print(f"prices: price log unusable, keeping the snapshot ({exc})")
+        return players, stamp, "players"
+    if merged is None:
+        return players, stamp, "players"
+    return merged, log_stamp, "price_log"
+
+
 def _movers_bits(watched: dict[int, str],
                  names: dict[int, str]) -> list[str | None]:
-    """Tonight's likely changes, off the same banked snapshot the card uses."""
+    """Tonight's likely changes, off the freshest readings on disk."""
     if not watched:
         return []
     try:
-        from gaffer.data import store
         from gaffer.prices import price_alerts
 
-        if not store.exists("live/players.parquet"):
+        players, _as_of, _source = freshest_prices()
+        if players is None or players.empty:
             return []
-        alerts = price_alerts(store.load("live/players.parquet"),
-                              list(watched))
+        alerts = price_alerts(players, list(watched))
     except Exception as exc:  # noqa: BLE001
         print(f"digest: no price readings ({exc})")
         return []
@@ -318,11 +454,24 @@ def friday_briefing() -> dict:
         gw = latest_gw()
     except Exception as exc:  # noqa: BLE001
         print(f"digest: no advice on disk ({exc})")
+    upcoming = None
+    try:
+        upcoming = upcoming_gw()
+    except Exception as exc:  # noqa: BLE001
+        print(f"digest: no upcoming gameweek ({exc})")
     names = _names()
     watched = watch_targets()
     advice = _advice(gw)
 
     sections = []
+    # First, and before the plan it is about. Everything below this line —
+    # the countdown, the move, the flags — is read off the *newest solved*
+    # gameweek, and a Friday on which the deadline has rolled past it would
+    # otherwise brief the manager confidently about last week. This is the
+    # comparison ``web/routers/advice.py`` already makes for the staleness
+    # strip (``behind = current > advice_gw``), said in the digest's voice.
+    sections.append(_section("stale_plan", "This plan is a week behind",
+                             [_behind_bit(gw, upcoming)]))
     sections.append(_section("deadline", "Deadline", _deadline_bits(gw)))
 
     if advice is not None:
@@ -354,7 +503,7 @@ def friday_briefing() -> dict:
             if top else None]))
 
     try:
-        warning = data_warning(upcoming_gw(), ingested_through())
+        warning = data_warning(upcoming, ingested_through())
     except Exception as exc:  # noqa: BLE001
         print(f"digest: no staleness reading ({exc})")
         warning = None

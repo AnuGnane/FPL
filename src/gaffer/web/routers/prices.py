@@ -8,56 +8,49 @@ instead, and the two lists differ by exactly the starred players on purpose.
 
 Two properties are worth stating because both are load-bearing.
 
-It never touches the network. The reading comes off
-``data/live/players.parquet``, the snapshot every ``refresh`` and every
-``advise`` rewrites, because a card that fetched the bootstrap on a page load
-would fetch it once per visitor on the one evening every visitor is looking.
+It never touches the network. The readings come off disk — the bootstrap
+snapshot every ``refresh`` and every ``advise`` rewrites, and the nightly
+price log ``gaffer prices`` banks at 23:15 — because a card that fetched the
+bootstrap on a page load would fetch it once per visitor on the one evening
+every visitor is looking.
 
-It therefore says how old the reading is. ``as_of`` is that file's mtime, the
-card prints it, and a panel that quietly showed Tuesday's predictor readings
-on a Friday evening would be worse than showing nothing — the whole claim the
-card makes is about *tonight*.
+It therefore serves whichever of the two is newer, and says which. The
+snapshot is only rewritten when somebody runs a pipeline, so on a Friday whose
+last advise run was Tuesday the log is three days fresher;
+:func:`gaffer.digest.freshest_prices` picks between them and this router
+reports the answer in ``as_of``. A panel that quietly showed Tuesday's
+predictor readings on a Friday evening would be worse than showing nothing —
+the whole claim the card makes is about *tonight*.
 """
 
 from __future__ import annotations
 
 import math
-from datetime import datetime, timezone
 
 import pandas as pd
 from fastapi import APIRouter
 
-from gaffer.data import store
+from gaffer.digest import freshest_prices
 from gaffer.prices import price_alerts
 from gaffer.watchlist import watch_targets
 from gaffer.web.schemas import MoverRow, MoversPanel
 
 router = APIRouter(prefix="/api/prices", tags=["prices"])
 
-PLAYERS_PATH = "live/players.parquet"
-
 
 def _snapshot() -> tuple[pd.DataFrame | None, str | None]:
-    """The banked bootstrap slice and its age, or ``(None, None)``.
+    """The freshest banked readings and their age, or ``(None, None)``.
 
-    An absent file and an unreadable one are the same answer: the panel is
-    unavailable and the page renders without it. The mtime is read before the
-    parquet so a file that exists but will not parse still cannot 500.
+    An absent snapshot and an unreadable one are the same answer: the panel is
+    unavailable and the page renders without it. When the price log won, the
+    stamp names it — ``as_of`` is the only field the card has to say what it is
+    looking at, and "3 hours ago" that silently meant Tuesday would be a lie in
+    the one place the card cannot afford one.
     """
-    if not store.exists(PLAYERS_PATH):
-        return None, None
-    path = store.DATA_DIR / PLAYERS_PATH
-    try:
-        stamp = datetime.fromtimestamp(path.stat().st_mtime,
-                                       tz=timezone.utc).isoformat(
-                                           timespec="seconds")
-    except OSError:
-        stamp = None
-    try:
-        return store.load(PLAYERS_PATH), stamp
-    except Exception as exc:  # noqa: BLE001 — a card is never worth a 500
-        print(f"movers: player snapshot unreadable ({exc})")
-        return None, stamp
+    players, as_of, source = freshest_prices()
+    if source == "price_log" and as_of:
+        as_of = f"{as_of} (price log)"
+    return players, as_of
 
 
 def _cost(value) -> float:

@@ -16,6 +16,7 @@ module contains no writer at all beyond its own artifact.
 from __future__ import annotations
 
 import json
+import os
 
 import pandas as pd
 import pytest
@@ -71,6 +72,10 @@ PLAYERS_FOR_PRICES = pd.DataFrame({
     "price_change_calibrating": [False, False],
 })
 
+SNAPSHOT_MTIME = 1_756_000_000        # 2025-08-24, and its own UTC day
+SNAPSHOT_DAY = "2025-08-24"
+NIGHT_AFTER = "2025-08-25"
+
 SIM_HISTORY = [{"gw": 3, "p_win": 0.14, "p_top3": 0.4, "exp_finish": 3.1,
                 "run_at": "2026-08-20T09:00:00Z", "n": 2000, "seed": 7},
                {"gw": 4, "p_win": 0.19, "p_top3": 0.5, "exp_finish": 2.6,
@@ -104,6 +109,28 @@ def furnished(bare, monkeypatch):
 
 def _sections(payload) -> dict[str, dict]:
     return {s["key"]: s for s in payload["sections"]}
+
+
+def _bank_players(root, mtime: int = SNAPSHOT_MTIME):
+    """The bootstrap snapshot, aged deliberately: only ``advise`` and
+    ``refresh-data`` rewrite it, so its mtime is the reading's real age."""
+    path = root / "data/live/players.parquet"
+    PLAYERS_FOR_PRICES.to_parquet(path, index=False)
+    os.utime(path, (mtime, mtime))
+    return path
+
+
+def _bank_price_log(root, day: str, percent: dict[int, float]):
+    """One day of the nightly bank, in the log's own six columns."""
+    codes = sorted(percent)
+    pd.DataFrame({
+        "snap_date": [day] * len(codes),
+        "code": codes,
+        "now_cost": pd.array([151] * len(codes), dtype="Int64"),
+        "price_change_percent": [float(percent[c]) for c in codes],
+        "direction": pd.array(["rise"] * len(codes), dtype="string"),
+        "calibrating": [False] * len(codes),
+    }).to_parquet(root / "data/live/price_log.parquet", index=False)
 
 
 # --- the envelope -----------------------------------------------------
@@ -222,6 +249,125 @@ def test_no_staleness_warning_is_no_staleness_section(furnished,
     assert "staleness" not in _sections(friday_briefing())
 
 
+# --- the plan's gameweek against the next deadline --------------------
+
+def test_a_plan_a_week_behind_the_deadline_says_so_first(furnished,
+                                                          monkeypatch):
+    """The briefing reads the newest *solved* gameweek and warns off the
+    *upcoming* one, and used never to compare them: a Friday after the GW5
+    deadline with only a GW5 solve briefed last week's plan confidently. The
+    web staleness strip has always made this comparison; the digest makes it
+    too, and makes it before anything it invalidates."""
+    monkeypatch.setattr("gaffer.digest.upcoming_gw", lambda: GW + 1)
+    payload = friday_briefing()
+    assert payload["sections"][0]["key"] == "stale_plan"
+    bits = " ".join(payload["sections"][0]["bits"])
+    assert f"GW{GW}" in bits and f"GW{GW + 1}" in bits
+    assert "gaffer advise" in bits
+
+
+def test_a_plan_for_the_upcoming_gameweek_has_no_such_section(furnished):
+    """``furnished`` pins both helpers to GW5. Current is not a warning."""
+    assert "stale_plan" not in _sections(friday_briefing())
+
+
+def test_a_missing_gameweek_on_either_side_is_no_claim_at_all(bare,
+                                                              monkeypatch):
+    """A clone with no solve state and a pre-season with no next event are
+    both "nothing is known", and a guess in either direction would be a
+    sentence about a gameweek nobody named."""
+    monkeypatch.setattr("gaffer.digest.watch_targets", dict)
+    for latest, upcoming in ((None, GW + 1), (GW, None), (None, None)):
+        monkeypatch.setattr("gaffer.digest.latest_gw", lambda v=latest: v)
+        monkeypatch.setattr("gaffer.digest.upcoming_gw", lambda v=upcoming: v)
+        assert "stale_plan" not in _sections(friday_briefing())
+
+
+def test_an_upcoming_gameweek_that_raises_costs_no_briefing(furnished,
+                                                            monkeypatch,
+                                                            capsys):
+    """Same contract as every other read here: the section is absent, the
+    briefing is not."""
+    monkeypatch.setattr("gaffer.digest.upcoming_gw",
+                        lambda: (_ for _ in ()).throw(OSError("no events")))
+    payload = friday_briefing()
+    assert "stale_plan" not in _sections(payload)
+    assert payload["headline"]
+    assert "no upcoming gameweek" in capsys.readouterr().out
+
+
+# --- the movers read the freshest price file --------------------------
+
+def test_the_movers_prefer_the_nightly_price_log_when_it_is_newer(furnished):
+    """``data/live/players.parquet`` is only rewritten by ``advise`` and
+    ``refresh-data``; the 23:15 job banks the whole league every night. A
+    Friday briefing quoting Tuesday's predictor is exactly the thing the
+    movers section promises not to be."""
+    _bank_players(furnished)
+    _bank_price_log(furnished, NIGHT_AFTER, {11: 2.0, 22: 99.0})
+    bits = " ".join(_sections(friday_briefing())["movers"]["bits"])
+    # 22 sits at 1% in the snapshot and 99% in last night's bank.
+    assert "Haaland" in bits
+    # And 11, at 98% on Tuesday, has since fallen back to 2%.
+    assert "Saka" not in bits
+
+
+def test_the_name_still_comes_from_the_snapshot(furnished):
+    """The log banks no ``name`` on purpose — a code is a stable key and a web
+    name is not — so the join has to keep the left side's."""
+    _bank_players(furnished)
+    _bank_price_log(furnished, NIGHT_AFTER, {22: 99.0})
+    assert "Haaland" in " ".join(_sections(friday_briefing())["movers"]
+                                 ["bits"])
+
+
+def test_a_price_log_no_newer_than_the_snapshot_is_not_preferred(furnished):
+    """The log's key is a UTC day, so "newer" can only be decided to the day
+    and a same-day tie goes to the snapshot the pipeline just wrote."""
+    _bank_players(furnished)
+    _bank_price_log(furnished, SNAPSHOT_DAY, {11: 1.0, 22: 99.0})
+    bits = " ".join(_sections(friday_briefing())["movers"]["bits"])
+    assert "Saka" in bits and "Haaland" not in bits
+
+
+def test_a_corrupt_price_log_leaves_the_snapshot_alone(furnished, capsys):
+    (furnished / "data/live/price_log.parquet").write_text("garbage")
+    _bank_players(furnished)
+    bits = " ".join(_sections(friday_briefing())["movers"]["bits"])
+    assert "Saka" in bits
+    assert "price log unusable" in capsys.readouterr().out
+
+
+def test_no_price_log_at_all_is_the_behaviour_that_existed_before_it(
+        furnished):
+    _bank_players(furnished)
+    assert "Saka" in " ".join(_sections(friday_briefing())["movers"]["bits"])
+
+
+def test_the_freshest_reading_names_the_file_it_came_from(furnished):
+    """The picker is shared with the web card, which has one field to say what
+    it is showing, so the source is part of the answer rather than a guess the
+    caller makes from the timestamp."""
+    from gaffer.digest import freshest_prices
+
+    _bank_players(furnished)
+    frame, as_of, source = freshest_prices()
+    assert source == "players" and as_of.startswith("2025-08-24")
+
+    _bank_price_log(furnished, NIGHT_AFTER, {11: 3.0, 22: 99.0})
+    frame, as_of, source = freshest_prices()
+    assert source == "price_log"
+    pct = dict(zip(frame["code"], frame["price_change_percent"]))
+    assert pct[22] == 99.0 and pct[11] == 3.0
+    assert list(frame["name"]) == ["Saka", "Haaland"]
+
+
+def test_no_snapshot_at_all_is_no_frame_and_no_source_claim(bare):
+    from gaffer.digest import freshest_prices
+
+    assert freshest_prices() == (None, None, "players")
+
+
 # --- Tuesday ----------------------------------------------------------
 
 def test_the_debrief_reports_the_newest_reviewed_gameweek(furnished):
@@ -313,7 +459,25 @@ def test_writing_replaces_rather_than_appends(furnished):
 
 def test_the_write_leaves_no_temp_behind(furnished):
     save_digest("friday", friday_briefing())
-    assert not (artifacts.REPORTS / "digest_friday.json.tmp").exists()
+    assert not list(artifacts.REPORTS.glob("digest_friday.json*.tmp"))
+
+
+def test_the_temp_file_is_process_scoped(furnished, monkeypatch):
+    """A fixed temp name is one file two writers share, and the Friday job at
+    17:00 and a hand-run ``gaffer digest`` are two writers: the loser's
+    ``finally`` would unlink the winner's write. The pid makes them separate
+    files and ``os.replace`` still makes each swap atomic."""
+    seen = []
+    real = os.replace
+
+    def spy(src, dst):
+        seen.append(str(src))
+        return real(src, dst)
+
+    monkeypatch.setattr("gaffer.digest.os.replace", spy)
+    save_digest("friday", friday_briefing())
+    assert seen and str(os.getpid()) in seen[0]
+    assert load_digest("friday") is not None
 
 
 # --- the runner and the notification ---------------------------------
