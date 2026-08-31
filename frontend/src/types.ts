@@ -1103,3 +1103,22 @@ export interface WatchRow {
 export interface WatchlistPanel {
   rows: WatchRow[]
 }
+
+export interface MoverRow {
+  code: number
+  name: string
+  now_cost: number
+  price_change_percent: number
+  /** 'rise' | 'drop' — never 'flat'; this list is alerts only. */
+  direction: string
+  calibrating: boolean
+  /** 'squad' | 'plan' | 'watchlist' — why this row is on the list. */
+  source: string
+}
+
+export interface MoversPanel {
+  available: boolean
+  /** When the reading was taken, not when it was fetched. */
+  as_of: string | null
+  rows: MoverRow[]
+}

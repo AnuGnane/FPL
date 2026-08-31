@@ -1328,3 +1328,38 @@ class WatchlistPanel(BaseModel):
     """
 
     rows: list[WatchRow] = Field(default_factory=list)
+
+
+class MoverRow(BaseModel):
+    """One watched player FPL's predictor has near a threshold tonight."""
+
+    code: int
+    name: str
+    now_cost: float
+    """In millions, the way the UI shows a price — not the 0.1m integer the
+    bootstrap carries."""
+    price_change_percent: float
+    direction: str
+    """``rise`` or ``drop``. Never ``flat``: this list is only ever rows past
+    the alert threshold, where the price log (which sees everyone) has a third
+    value."""
+    calibrating: bool
+    """FPL is still fitting this player's price model — an early-season caveat
+    the row carries rather than a reason to hide it."""
+    source: str
+    """``squad`` / ``plan`` / ``watchlist``, resolved in that order. The
+    answer to "why is he on this list?", on the row itself."""
+
+
+class MoversPanel(BaseModel):
+    """Tonight's likely price changes among players the manager cares about.
+
+    ``as_of`` is the age of the *reading*, not of the request: this is served
+    off ``data/live/players.parquet`` and never off the network, so a panel
+    that did not say how stale it was would be a panel claiming to know
+    something about tonight when it might be quoting Tuesday.
+    """
+
+    available: bool
+    as_of: str | None = None
+    rows: list[MoverRow] = Field(default_factory=list)
