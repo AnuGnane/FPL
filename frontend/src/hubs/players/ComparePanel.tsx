@@ -10,6 +10,7 @@ import {
 import type {
   ComponentsBreakdown, FixtureMatrixData, PlayerRow,
 } from '../../types'
+import CompareRadar from './CompareRadar'
 
 const SERIES_COLOURS = ['var(--color-sage)', 'var(--color-info)',
   'var(--color-rust)', 'var(--color-text-muted)']
@@ -94,6 +95,10 @@ export default function ComparePanel(
             ))}
           </BarChart>
         </ResponsiveContainer>
+      </Card>
+      <Card title="Profile" className="mb-4">
+        <CompareRadar gw={gw} players={players} pool={pool}
+                      components={components} matrix={matrix} />
       </Card>
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
         {players.map((player) => {
