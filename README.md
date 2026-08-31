@@ -219,8 +219,9 @@ Read-only, for while the matches are on. Prints your live points and a
 projected league table, with two caveats it states itself: bonus points are
 provisional, reconstructed 3/2/1 from the current BPS table until FPL settles
 each match, and no autosubs are applied — the XI is scored as picked, so bench
-points never count. Between gameweeks it prints "no gameweek in progress" and
-exits clean.
+points never count. The web UI's Live page projects the autosubs as well; the
+CLI stays the plain read. Between gameweeks it prints "no gameweek in
+progress" and exits clean.
 
 ## Local web UI
 
@@ -239,13 +240,24 @@ Lab** (lock, ban or force in players, cap the hits, and re-solve the real
 MILP against the saved pool — the plan diff shows what changed), **League
 Race** (standings, trajectory, win probability and what λ is doing, with
 rival intel a click away: each rival's squad, overlap and differentials
-against yours), **Live** (in-gameweek points, auto-refreshing), **Players**
+against yours), **Live** (in-gameweek points, auto-refreshing: the auto-subs
+FPL would apply if the afternoon ended now, a race chart of where your score
+is heading — points banked plus the expectation still owed by every unfinished
+match, against the pre-gameweek plan — and what you need to take or hold the
+league places either side of you), **Players**
 (the candidate pool, with the "why 6.8?" breakdown behind every name),
 **History** (past runs, expected versus actual, price charts) and **Runs &
 Health** (data freshness, model metrics, the launchd log, re-run buttons).
 A fixture ticker sits alongside them and is embedded read-only in the
 What-If Lab. A three-state theme toggle in the sidebar footer follows your
 system by default, or holds dark or light if you pick one.
+
+Two things the Live page will not pretend to know. The race trajectory lives
+in the server process and nowhere else — restart `gaffer ui` mid-afternoon and
+it starts again from that moment, which is the price of a page that writes
+nothing. And the safety numbers are league places only: an overall-rank
+cushion would need every one of ten million entries' live scores, and no
+public endpoint gives them.
 
 The pages read the artifacts `gaffer advise` writes, so the UI works offline
 apart from League Race, Live and the rival pages, which need the FPL API and
