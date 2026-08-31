@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiDelete, apiGet, apiPost, errorText } from '../../api/client'
 import { useJob } from '../../api/useJob'
-import { Card, JobLog, Skeleton, fmtNum } from '../../kit'
+import { Card, JobLog, Skeleton, fmtNum, toast } from '../../kit'
 import type {
   DraftCompare, DraftCompareRequest, DraftList, DraftSaveRequest,
   WhatIfRequest,
@@ -32,9 +32,12 @@ export default function DraftsTab({ current }: { current: WhatIfRequest }) {
     try {
       const body: DraftSaveRequest = { name, constraints: current }
       setDrafts(await apiPost<DraftList>('/api/drafts', body))
+      toast('positive', `Saved "${name}".`)
       setName('')
     } catch (e) {
-      setError(errorText(e))
+      const text = errorText(e)
+      setError(text)
+      toast('negative', `Could not save "${name}" — ${text}`)
     }
   }
 
@@ -49,7 +52,9 @@ export default function DraftsTab({ current }: { current: WhatIfRequest }) {
     try {
       setDrafts(await apiDelete<DraftList>(
         `/api/drafts/${encodeURIComponent(draft)}`))
-    } catch {
+      toast('positive', `Deleted "${draft}".`)
+    } catch (e) {
+      toast('negative', `Could not delete "${draft}" — ${errorText(e)}`)
       load()
     }
     // A deleted name left ticked is a name the compare endpoint answers 422

@@ -1,10 +1,10 @@
 import * as Tabs from '@radix-ui/react-tabs'
 import { useEffect, useState } from 'react'
-import { apiDelete, apiGet, apiPost } from '../api/client'
+import { apiDelete, apiGet, apiPost, errorText } from '../api/client'
 import { useDebounced } from '../api/useDebounced'
 import {
   type Column, Card, DataTable, EmptyState, Loading, PageHeader, PlayerName,
-  PosBadge, Sparkline, fmtNum, posColor,
+  PosBadge, Sparkline, fmtNum, posColor, toast,
 } from '../kit'
 import type {
   AdviceLatest, OverridesPanel, PlayerRow, WatchlistPanel,
@@ -55,15 +55,24 @@ export default function Players() {
       .catch(() => setStarred([]))
   }, [])
 
-  // A star is a bookmark, so a failed write is silence rather than an error
-  // state: the button simply does not flip, and the explorer is untouched.
-  const toggleStar = (code: number) => {
+  // A star is a bookmark and its success is the flip itself — no toast (spec
+  // D3): a toast for every bookmark on a six-hundred-row table is noise. Its
+  // *failure* is a different matter: the write was swallowed, so the star
+  // stayed filled and claimed a player was on a list he was not on.
+  const toggleStar = (code: number, name: string) => {
     const on = starred.includes(code)
+    const before = starred
+    setStarred(on ? starred.filter((c) => c !== code) : [...starred, code])
     const request = on
       ? apiDelete<WatchlistPanel>(`/api/watchlist/${code}`)
       : apiPost<WatchlistPanel>('/api/watchlist', { code, note: '' })
-    request.then((panel) => setStarred(panel.rows.map((r) => r.code)))
-      .catch(() => {})
+    request
+      .then((panel) => setStarred(panel.rows.map((r) => r.code)))
+      .catch((e) => {
+        setStarred(before)
+        toast('negative',
+          `Could not ${on ? 'unstar' : 'star'} ${name} — ${errorText(e)}`)
+      })
   }
 
   useEffect(() => {
@@ -153,7 +162,7 @@ export default function Players() {
           type="button"
           aria-label={`${starred.includes(r.code) ? 'unstar' : 'star'} `
             + `${r.name}`}
-          onClick={() => toggleStar(r.code)}
+          onClick={() => toggleStar(r.code, r.name)}
           className="px-1 text-text-muted hover:text-text"
         >
           {starred.includes(r.code) ? '★' : '☆'}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { apiPost, errorText } from '../../api/client'
+import { toast } from '../../kit'
 import type { OverrideRequest, OverridesPanel } from '../../types'
 
 const FIELD = 'rounded-card border border-border bg-base px-2 py-1 text-text'
@@ -69,12 +70,19 @@ export default function PinDialog(
       }
       const panel = await apiPost<OverridesPanel>('/api/overrides', body)
       onSaved?.(panel)
+      // True on the warning path too: the pin *was* taken, and the dialog
+      // stays up with its sentence.
+      toast('positive', `Pinned ${name}. It applies to this gameweek only.`)
       // A pin the server took but wants a second look at keeps the dialog up
       // with its reason; anything else is done.
       if (panel.warning) setWarning(panel.warning)
       else onClose()
     } catch (e) {
-      setError(errorText(e))
+      const text = errorText(e)
+      setError(text)
+      // Both: the inline line is for the person still looking at the dialog,
+      // the toast is for the one whose eyes went back to the table.
+      toast('negative', `Could not pin ${name} — ${text}`)
     }
   }
 

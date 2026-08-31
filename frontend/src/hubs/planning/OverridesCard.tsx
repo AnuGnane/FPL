@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { apiDelete, apiGet } from '../../api/client'
-import { Card, fmtNum } from '../../kit'
+import { apiDelete, apiGet, errorText } from '../../api/client'
+import { Card, fmtNum, toast } from '../../kit'
 import type { OverridesPanel } from '../../types'
 
 export default function OverridesCard() {
@@ -11,9 +11,16 @@ export default function OverridesCard() {
   }, [])
   useEffect(() => { load() }, [load])
 
-  const drop = async (code: number) => {
-    await apiDelete<OverridesPanel>(`/api/overrides/${code}`).then(setData)
-      .catch(() => load())
+  // A row that simply disappears is indistinguishable from a delete that
+  // failed and a refetch that followed it, so both halves say what happened.
+  const drop = async (code: number, name: string) => {
+    try {
+      setData(await apiDelete<OverridesPanel>(`/api/overrides/${code}`))
+      toast('positive', `Unpinned ${name}. The model's own minutes apply again.`)
+    } catch (e) {
+      toast('negative', `Could not unpin ${name} — ${errorText(e)}`)
+      load()
+    }
   }
 
   if (!data) return null
@@ -59,7 +66,7 @@ export default function OverridesCard() {
                 <button
                   type="button"
                   aria-label={`unpin ${row.name}`}
-                  onClick={() => drop(row.code)}
+                  onClick={() => drop(row.code, row.name)}
                   className="rounded-card border border-border px-2 py-1
                              text-text-muted hover:text-text"
                 >

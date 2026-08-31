@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import OverridesCard from './OverridesCard'
+import { currentToasts } from '../../kit/Toast'
 
 const { apiDelete, apiGet } = vi.hoisted(() => ({
   apiDelete: vi.fn(), apiGet: vi.fn(),
@@ -13,6 +14,7 @@ vi.mock('../../api/client', () => ({
   apiGet: (path: string) => apiGet(path),
   apiPost: vi.fn(),
   apiDelete: (path: string) => apiDelete(path),
+  errorText: (e: unknown) => (e instanceof Error ? e.message : String(e)),
 }))
 
 const PANEL = {
@@ -74,5 +76,25 @@ describe('OverridesCard', () => {
       <MemoryRouter><OverridesCard /></MemoryRouter>)
     await new Promise((r) => setTimeout(r, 0))
     expect(container.textContent).toBe('')
+  })
+
+  it('says what an unpin did, and what it means', async () => {
+    // A row that just disappears is indistinguishable from a failed delete
+    // followed by a refetch.
+    render(<MemoryRouter><OverridesCard /></MemoryRouter>)
+    await userEvent.click(await screen.findByRole('button',
+      { name: /unpin salah/i }))
+    await waitFor(() => expect(currentToasts()).toHaveLength(1))
+    expect(currentToasts()[0].tone).toBe('positive')
+    expect(currentToasts()[0].text).toContain('Salah')
+  })
+
+  it('says so when the unpin failed', async () => {
+    apiDelete.mockRejectedValue(new Error('the server did not answer'))
+    render(<MemoryRouter><OverridesCard /></MemoryRouter>)
+    await userEvent.click(await screen.findByRole('button',
+      { name: /unpin salah/i }))
+    await waitFor(() => expect(currentToasts()).toHaveLength(1))
+    expect(currentToasts()[0].tone).toBe('negative')
   })
 })

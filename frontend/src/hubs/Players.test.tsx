@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Players from './Players'
+import { currentToasts } from '../kit/Toast'
 
 const { apiGet, apiPost, apiDelete } = vi.hoisted(() => ({
   apiGet: vi.fn(), apiPost: vi.fn(), apiDelete: vi.fn(),
@@ -15,6 +16,7 @@ vi.mock('../api/client', () => ({
   apiGet: (path: string) => apiGet(path),
   apiPost: (path: string, body: unknown) => apiPost(path, body),
   apiDelete: (path: string) => apiDelete(path),
+  errorText: (e: unknown) => (e instanceof Error ? e.message : String(e)),
 }))
 
 vi.mock('./players/ComparePanel', () => ({
@@ -265,6 +267,31 @@ describe('the watchlist star', () => {
     await userEvent.click(await screen.findByLabelText('unstar Salah'))
     expect(await screen.findByLabelText('star Salah')).toBeInTheDocument()
     expect(apiDelete).toHaveBeenCalledWith('/api/watchlist/1')
+  })
+
+  it('flips the star optimistically and reverts it with one toast on failure',
+    async () => {
+      apiPost.mockRejectedValue(new Error('the server did not answer'))
+      render(<MemoryRouter><Players /></MemoryRouter>)
+      await userEvent.click(await screen.findByLabelText('star Saka'))
+      // The lie this fixes: a filled star for a write the server refused.
+      expect(await screen.findByLabelText('star Saka')).toBeInTheDocument()
+      expect(currentToasts()).toHaveLength(1)
+      expect(currentToasts()[0].tone).toBe('negative')
+      expect(currentToasts()[0].text).toContain('Saka')
+    })
+
+  it('stays silent when the star write succeeds', async () => {
+    apiPost.mockResolvedValue({
+      rows: [{ code: 1, name: 'Salah', note: '', set_at: '' },
+             { code: 2, name: 'Saka', note: '', set_at: '' }],
+    })
+    render(<MemoryRouter><Players /></MemoryRouter>)
+    await userEvent.click(await screen.findByLabelText('star Saka'))
+    await screen.findByLabelText('unstar Saka')
+    // Deliberate (spec D3): the filled star is the acknowledgement, and a
+    // toast for every bookmark on a six-hundred-row table would be noise.
+    expect(currentToasts()).toHaveLength(0)
   })
 
   it('leaves the explorer usable when the watchlist endpoint is down',

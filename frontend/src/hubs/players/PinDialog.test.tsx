@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import PinDialog from './PinDialog'
+import { currentToasts } from '../../kit/Toast'
 
 const { FakeApiError, apiPost } = vi.hoisted(() => {
   class FakeApiError extends Error {
@@ -173,5 +174,26 @@ describe('PinDialog', () => {
     expect(onClose).not.toHaveBeenCalled()
     await userEvent.click(screen.getByTestId('modal-backdrop'))
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('says what it saved, in a sentence naming the player', async () => {
+    open()
+    await userEvent.type(screen.getByLabelText('expected minutes'), '85')
+    await userEvent.click(screen.getByRole('button', { name: 'Pin' }))
+    await waitFor(() => expect(currentToasts()).toHaveLength(1))
+    expect(currentToasts()[0].tone).toBe('positive')
+    expect(currentToasts()[0].text).toContain('Salah')
+  })
+
+  it('says a failed pin failed, beside the inline line', async () => {
+    // Both: the inline line is for the person still looking at the dialog,
+    // the toast is for the one whose eyes went back to the table.
+    apiPost.mockRejectedValue(new Error('the server did not answer'))
+    open()
+    await userEvent.type(screen.getByLabelText('expected minutes'), '85')
+    await userEvent.click(screen.getByRole('button', { name: 'Pin' }))
+    await waitFor(() => expect(currentToasts()).toHaveLength(1))
+    expect(currentToasts()[0].tone).toBe('negative')
+    expect(await screen.findByText(/did not answer/)).toBeInTheDocument()
   })
 })

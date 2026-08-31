@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { WhatIfRequest } from '../../types'
 import DraftsTab from './DraftsTab'
+import { currentToasts } from '../../kit/Toast'
 
 const { FakeApiError, apiDelete, apiGet, apiPost } = vi.hoisted(() => {
   class FakeApiError extends Error {
@@ -264,5 +265,26 @@ describe('DraftsTab', () => {
     expect(await screen.findByText(/Compared over 4 weeks/))
       .toBeInTheDocument()
     expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument()
+  })
+
+  it('says a draft was saved, and says when one could not be', async () => {
+    apiPost.mockResolvedValue({ drafts: [...LIST.drafts, draft('third')] })
+    render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
+    await screen.findByText('keep Salah')
+    await userEvent.type(screen.getByLabelText('draft name'), 'third')
+    await userEvent.click(screen.getByRole('button',
+      { name: /save the current what-if/i }))
+    await waitFor(() => expect(currentToasts()).toHaveLength(1))
+    expect(currentToasts()[0].tone).toBe('positive')
+    expect(currentToasts()[0].text).toContain('third')
+  })
+
+  it('says a delete happened, naming the draft', async () => {
+    apiDelete.mockResolvedValue({ drafts: [LIST.drafts[1]] })
+    render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
+    await userEvent.click(await screen.findByLabelText('delete keep Salah'))
+    await waitFor(() => expect(currentToasts()).toHaveLength(1))
+    expect(currentToasts()[0].tone).toBe('positive')
+    expect(currentToasts()[0].text).toContain('keep Salah')
   })
 })
