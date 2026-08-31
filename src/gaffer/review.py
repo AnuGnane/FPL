@@ -39,8 +39,12 @@ from gaffer.data.my_entry import (bank_my_entry, chip_for_gw, gw_history_row,
                                   load_my_transfers, my_transfers_for_gw)
 from gaffer.journal import _code_of_element, latest_run_per_gw
 
-__all__ = ["ACTUAL_COLS", "actuals_for_gw", "code_of_element",
-           "model_decisions", "my_decisions", "reviewable_gws", "score_gw"]
+__all__ = ["ACTUAL_COLS", "CHIP_SCORING", "LANES", "MISS_BAR", "SQUAD_CHIPS",
+           "actuals_for_gw", "code_of_element", "grade_gw_from",
+           "hindsight_gap", "hindsight_xi", "label_for", "lane_bench",
+           "lane_captaincy", "lane_chip", "lane_transfers", "model_decisions",
+           "my_decisions", "pair_by_position", "reviewable_gws", "score_gw",
+           "score_squad", "swap_slots"]
 
 ACTUAL_COLS = ["code", "total_points", "minutes", "position"]
 """Exactly the columns :func:`gaffer.backtest.score_gw` reads, in its order."""
@@ -230,3 +234,468 @@ def my_decisions(gw: int, *, season: str, entry_id: int,
             load_my_transfers(season, entry_id, raw_dir), gw),
         "notices": notices,
     }
+
+
+CHIP_SCORING = {"bboost": (2, True), "3xc": (3, False)}
+"""``chip -> (captain multiplier, bench boost)`` for the two chips that change
+how a *fixed* fifteen scores. Everything else scores the ordinary way."""
+
+SQUAD_CHIPS = ("wildcard", "freehit")
+"""Chips that change *which* fifteen you own rather than how it scores. There
+is no same-squad counterfactual for one of these, so the chip lane declines to
+grade a week either side played one (see :func:`lane_chip`)."""
+
+NO_PLAYER = -1
+"""``score_gw`` looks the armband up in a points dict, so an absent captain
+has to be a code that cannot match. A squad with no captain flag at all is
+rare and must not be a crash."""
+
+MISS_BAR = 6
+"""Points a move I skipped must have returned *over its replacement* before
+the review calls it a Miss (spec D5). Six is a goal and change: below it the
+model was right by less than one bounce of the ball."""
+
+LANES = ("transfers", "captaincy", "bench", "chip")
+"""The pre-registered order. Stable, because a season ledger whose columns
+move is a ledger nobody can read across weeks (CONVENTIONS.md §2)."""
+
+
+def score_squad(actuals: pd.DataFrame, *, xi, bench, captain, vice, hits,
+                chip=None) -> int:
+    """One squad's real points: :func:`score_gw` with the chip decoded.
+
+    Adds no arithmetic. The autosubs, the vice fallback and the four points a
+    hit costs are all ``backtest``'s, which is the point — the review grades
+    against the same scorer the season replay is measured with, so a lane
+    delta and a replay delta are the same kind of number.
+    """
+    mult, boost = CHIP_SCORING.get(str(chip or ""), (2, False))
+    return int(score_gw(
+        actuals, list(xi), list(bench),
+        NO_PLAYER if captain is None else int(captain),
+        NO_PLAYER if vice is None else int(vice),
+        int(hits), captain_mult=mult, bench_boost=boost))
+
+
+def swap_slots(xi, bench, pairs) -> tuple[list[int], list[int]] | None:
+    """Replace each ``out`` with its ``in`` *where the out was sitting*.
+
+    Slot-preserving on purpose. A counterfactual that rebuilt the eleven from
+    scratch would be answering a selection question inside a transfer lane,
+    and the incoming player would quietly inherit the best slot available
+    rather than the one his predecessor held.
+
+    ``None`` when an ``out`` is in neither list: that is the model naming a
+    player I never owned, and there is no squad to score.
+    """
+    xi, bench = list(xi), list(bench)
+    for out_code, in_code in pairs:
+        if out_code in xi:
+            xi[xi.index(out_code)] = in_code
+        elif out_code in bench:
+            bench[bench.index(out_code)] = in_code
+        else:
+            return None
+    return xi, bench
+
+
+def pair_by_position(outs, ins, positions) -> list[tuple[int, int]] | None:
+    """Match sells to buys by position, in the order each was listed.
+
+    FPL's own constraint: a transfer swaps like for like, so a two-move week
+    is two independent position-preserving swaps and the pairing is
+    determined. ``None`` when the two sides do not have the same positional
+    shape — a squad that is 4 defenders after the move and 5 before it is not
+    a squad, and grading against one would be grading against a fiction.
+    """
+    outs, ins = list(outs), list(ins)
+    if len(outs) != len(ins):
+        return None
+    pool: dict[str, list[int]] = {}
+    for code in ins:
+        pool.setdefault(str(positions.get(int(code), "")), []).append(int(code))
+    pairs: list[tuple[int, int]] = []
+    for code in outs:
+        bucket = pool.get(str(positions.get(int(code), "")))
+        if not bucket:
+            return None
+        pairs.append((int(code), bucket.pop(0)))
+    return pairs
+
+
+def hindsight_gap(best: int, actual: int) -> int:
+    """Selection EV left on the table: the best legal eleven, less mine."""
+    return int(best) - int(actual)
+
+
+def label_for(delta_pts, delta_pwin, *, aligned: bool) -> str | None:
+    """The pre-registered band for one lane (spec D5).
+
+    ``None`` for an ungraded lane, which is not a band and must never be
+    rendered as one. ``aligned`` short-circuits everything: a lane where I
+    made the model's own choice is Aligned however the week turned out, and
+    calling it a Blunder because the model's own pick blanked would be
+    grading the outcome instead of the decision.
+
+    Brilliant needs *both* currencies. A move that gained four points and cost
+    title odds is a Good week for the points column and a bad week for the
+    thing being played for, so with no Δwin% available the band tops out at
+    Good — the honest answer when half the evidence is missing.
+    """
+    if delta_pts is None:
+        return None
+    if aligned:
+        return "Aligned"
+    value = float(delta_pts)
+    if value >= 4 and (delta_pwin or 0.0) > 0:
+        return "Brilliant"
+    if value >= 1:
+        return "Good"
+    if value <= -4:
+        return "Blunder"
+    if value <= -1:
+        return "Inaccuracy"
+    return "Aligned"
+
+
+def _lane(name: str, cf: dict | None, mine: dict, actuals: pd.DataFrame, *,
+          note: str | None, aligned: bool, mine_label: str,
+          model_label: str) -> dict:
+    """One graded lane. ``cf`` is my squad with exactly one thing changed.
+
+    Both sides are scored with :func:`score_squad`, so the delta is "my
+    choice minus the model's, both on what really happened". ``None`` for
+    ``cf`` means the lane could not be built and the delta is null with the
+    note saying why — spec G2's "null, not zero".
+    """
+    if cf is None:
+        return {"lane": name, "delta_pts": None, "delta_pwin": None,
+                "label": None, "aligned": False, "mine": mine_label,
+                "model": model_label, "note": note}
+    delta = score_squad(actuals, **mine) - score_squad(actuals, **cf)
+    return {"lane": name, "delta_pts": int(delta), "delta_pwin": None,
+            "label": label_for(delta, None, aligned=aligned),
+            "aligned": bool(aligned), "mine": mine_label,
+            "model": model_label, "note": note, "cf": cf}
+
+
+def _name(names: dict, code) -> str:
+    if code is None:
+        return "none"
+    return str((names or {}).get(int(code), code))
+
+
+def lane_transfers(mine: dict, model: dict, actuals: pd.DataFrame, *,
+                   my_transfers: list[dict], positions: dict,
+                   code_of: dict | None = None) -> dict:
+    """My transfer set against the model's, hits included.
+
+    Two swaps, in order. First my own week is *undone* — each player I
+    brought in goes back to the one I sold, in his slot — because the
+    counterfactual starts from the fifteen I owned at the deadline and not
+    from the one I ended the week with. Then the model's moves are applied to
+    that pre-transfer squad.
+
+    The armband follows the squad: if the model's counterfactual sells the
+    player I captained, the armband goes to the model's captain when he is in
+    the resulting eleven and to my vice otherwise, which is FPL's own
+    fallback rather than a rule invented here.
+    """
+    code_of = code_of or {}
+    names, note = model.get("names") or {}, None
+    label_mine = ", ".join(_name(names, c) for c in model.get("sells") or []) \
+        or "no move"
+    undo = []
+    for row in my_transfers or []:
+        try:
+            got = int(code_of.get(int(row["element_in"]), row["element_in"]))
+            gone = int(code_of.get(int(row["element_out"]), row["element_out"]))
+        except (KeyError, TypeError, ValueError):
+            continue
+        undo.append((got, gone))
+    pre = swap_slots(mine["xi"], mine["bench"], undo)
+    label_model = " / ".join(
+        f"{_name(names, out)}->{_name(names, got)}"
+        for out, got in zip(model.get("sells") or [], model.get("buys") or [])
+    ) or "no move"
+    mine_label = " / ".join(
+        f"{_name(names, out)}->{_name(names, got)}" for got, out in undo
+    ) or "no move"
+    if pre is None:
+        return _lane("transfers", None, mine, actuals,
+                     note="a player you transferred in is not in your banked "
+                          "squad, so the pre-deadline fifteen could not be "
+                          "rebuilt",
+                     aligned=False, mine_label=mine_label,
+                     model_label=label_model)
+    pairs = pair_by_position(model.get("sells") or [],
+                             model.get("buys") or [], positions)
+    if pairs is None:
+        return _lane("transfers", None, mine, actuals,
+                     note="the model's moves do not pair up by position, so "
+                          "there is no legal counterfactual squad",
+                     aligned=False, mine_label=mine_label,
+                     model_label=label_model)
+    swapped = swap_slots(pre[0], pre[1], pairs)
+    if swapped is None:
+        return _lane("transfers", None, mine, actuals,
+                     note=f"the model sold {label_mine}, who was not in your "
+                          f"squad — there is no counterfactual to score",
+                     aligned=False, mine_label=mine_label,
+                     model_label=label_model)
+    xi, bench = swapped
+    captain = mine["captain"] if mine["captain"] in xi + bench else None
+    if captain is None:
+        captain = model.get("captain") if model.get("captain") in xi \
+            else mine["vice"]
+    cf = {"xi": xi, "bench": bench, "captain": captain,
+          "vice": mine["vice"] if mine["vice"] in xi + bench else captain,
+          "hits": int(model.get("hits") or 0), "chip": mine["chip"]}
+    aligned = (sorted(xi + bench) == sorted(mine["xi"] + mine["bench"])
+               and int(model.get("hits") or 0) == int(mine["hits"]))
+    return _lane("transfers", cf, mine, actuals, note=None, aligned=aligned,
+                 mine_label=mine_label, model_label=label_model)
+
+
+def lane_captaincy(mine: dict, model: dict, actuals: pd.DataFrame) -> dict:
+    """My armband against the model's, on my own eleven.
+
+    Only comparable when the model's captain is in my eleven. You cannot
+    captain a player you did not field, so a model captain I never owned is
+    not a decision I declined to take — it is a decision that was never
+    available, and grading it would charge me for a squad I could not have
+    had. (That cost belongs to the transfers lane, where it already is.)
+    """
+    names = model.get("names") or {}
+    mine_label, model_label = (_name(names, mine["captain"]),
+                               _name(names, model.get("captain")))
+    if model.get("captain") is None or int(model["captain"]) not in mine["xi"]:
+        return _lane("captaincy", None, mine, actuals,
+                     note="the model's captain was not in your eleven",
+                     aligned=False, mine_label=mine_label,
+                     model_label=model_label)
+    vice = model.get("vice")
+    cf = {**mine, "captain": int(model["captain"]),
+          "vice": int(vice) if vice in mine["xi"] else mine["vice"]}
+    aligned = mine["captain"] == int(model["captain"])
+    return _lane("captaincy", cf, mine, actuals, note=None, aligned=aligned,
+                 mine_label=mine_label, model_label=model_label)
+
+
+def lane_bench(mine: dict, model: dict, actuals: pd.DataFrame) -> dict:
+    """My bench order against the model's, on my own fifteen.
+
+    The model benched its own players, so its ordering is applied as a
+    *ranking* over mine: my bench players it named, in its order, then the
+    rest in mine. A week where nobody blanked scores zero on both sides —
+    which is a real grade and not a missing one, because the ordering was
+    tested by the week and cost nothing.
+    """
+    ranked = [c for c in (model.get("bench") or []) if c in mine["bench"]]
+    order = ranked + [c for c in mine["bench"] if c not in ranked]
+    names = model.get("names") or {}
+    cf = {**mine, "bench": order}
+    return _lane("bench", cf, mine, actuals, note=None,
+                 aligned=order == list(mine["bench"]),
+                 mine_label=", ".join(_name(names, c) for c in mine["bench"]),
+                 model_label=", ".join(_name(names, c) for c in order))
+
+
+def lane_chip(mine: dict, model: dict, actuals: pd.DataFrame) -> dict:
+    """My chip decision against the model's ``play_now``.
+
+    Bench boost and triple captain change how a fixed fifteen scores, so both
+    sides are the same squad under two rulebooks and the delta is exact. A
+    wildcard or a free hit changes *which* fifteen you own; there is no
+    same-squad comparison, and inventing the squad a wildcard would have
+    bought is a whole solve with a different budget — out of scope this cycle
+    (spec §6) and null here rather than guessed.
+    """
+    mine_chip, model_chip = mine["chip"], model.get("chip")
+    labels = (str(mine_chip or "none"), str(model_chip or "none"))
+    if str(mine_chip or "") in SQUAD_CHIPS or str(model_chip or "") \
+            in SQUAD_CHIPS:
+        return _lane("chip", None, mine, actuals,
+                     note="a wildcard or free hit changes the squad, not the "
+                          "way it scores — there is no same-squad "
+                          "counterfactual",
+                     aligned=False, mine_label=labels[0],
+                     model_label=labels[1])
+    cf = {**mine, "chip": model_chip}
+    return _lane("chip", cf, mine, actuals, note=None,
+                 aligned=str(mine_chip or "") == str(model_chip or ""),
+                 mine_label=labels[0], model_label=labels[1])
+
+
+def _misses(mine: dict, model: dict, actuals: pd.DataFrame) -> list[dict]:
+    """Moves the model flagged, I did not make, and that hauled anyway.
+
+    Not a fifth lane: the transfers lane already prices the whole set against
+    the whole set, and this is the human-readable line item inside it — "you
+    were told about Guehi and he returned nine over the man you kept". Paired
+    by position against the model's own sell, so the number is a *difference*
+    and not a scoreline; an unpaired buy is skipped rather than compared
+    against nothing.
+    """
+    owned = set(mine["xi"]) | set(mine["bench"])
+    pairs = pair_by_position(model.get("sells") or [],
+                             model.get("buys") or [],
+                             model.get("positions") or {}) or []
+    points = dict(zip(actuals["code"], actuals["total_points"]))
+    names = model.get("names") or {}
+    out = []
+    for sold, bought in pairs:
+        if bought in owned or sold not in owned:
+            continue
+        gain = int(points.get(bought, 0) or 0) - int(points.get(sold, 0) or 0)
+        if gain >= MISS_BAR:
+            out.append({"code": int(bought), "name": _name(names, bought),
+                        "over": _name(names, sold), "gain": int(gain)})
+    return out
+
+
+def hindsight_xi(squad15, actuals: pd.DataFrame):
+    """The best legal eleven and armband out of a fifteen, by actual points.
+
+    Exhaustive: fifteen choose eleven is 1365 combinations and the formation
+    check is a Counter, so the honest answer is cheaper than any clever one.
+    Bench-boost and hit arithmetic are deliberately excluded — this measures
+    *selection*, and folding a chip into it would price two decisions as one.
+
+    Returns ``(xi, captain, points)``; ``([], None, 0)`` for a squad too small
+    to field a legal eleven, which is what a partially-resolved bank looks
+    like.
+    """
+    from itertools import combinations
+
+    from gaffer.backtest import _formation_legal
+
+    codes = [int(c) for c in squad15]
+    points = dict(zip(actuals["code"], actuals["total_points"]))
+    pos = dict(zip(actuals["code"], actuals["position"]))
+    best: tuple[list[int], int | None, int] = ([], None, 0)
+    for combo in combinations(codes, 11):
+        if not _formation_legal([str(pos.get(c, "MID")) for c in combo]):
+            continue
+        armband = max(combo, key=lambda c: int(points.get(c, 0) or 0))
+        total = sum(int(points.get(c, 0) or 0) for c in combo) \
+            + int(points.get(armband, 0) or 0)
+        if total > best[2]:
+            best = (list(combo), int(armband), int(total))
+    return best
+
+
+def grade_gw_from(gw: int, mine: dict, model: dict | None,
+                  actuals: pd.DataFrame) -> dict:
+    """One ledger row from decisions already read. Pure; no I/O, no network.
+
+    Split out from :func:`grade_gw` so the taxonomy can be tested against
+    hand-scored squads rather than against a filesystem, and so the Δwin%
+    pricing in Task 5 has exactly one place to attach.
+
+    ``model is None`` — the advice for this gameweek has been pruned (spec
+    D2) — gives a ``no_advice`` row: every lane null, no accuracy, and the
+    reconciliation and hindsight still computed, because those do not need
+    the model at all and are the half of the row that stays true forever.
+    """
+    my_points = score_squad(actuals, **{k: mine[k] for k in
+                                        ("xi", "bench", "captain", "vice",
+                                         "hits", "chip")})
+    my_squad = {k: mine[k] for k in ("xi", "bench", "captain", "vice", "hits",
+                                     "chip")}
+    notices = list(mine.get("notices") or [])
+
+    gross, cost = mine.get("official_gross"), int(mine.get("official_cost", 0))
+    if gross is None:
+        official, reconciled = None, None
+        notices.append("no official score for this gameweek — the entry "
+                       "history was not banked, so nothing reconciled")
+    else:
+        official = int(gross) - cost
+        reconciled = official == my_points
+
+    bench_points = sum(
+        int(p) for c, p in zip(actuals["code"], actuals["total_points"])
+        if int(c) in set(mine["bench"]))
+    best_xi, best_captain, best_points = hindsight_xi(
+        list(mine["xi"]) + list(mine["bench"]), actuals)
+
+    row = {
+        "gw": int(gw),
+        "no_advice": model is None,
+        "post_deadline": bool((model or {}).get("post_deadline")),
+        "my_points": int(my_points),
+        "official_points": official,
+        "official_gross": None if gross is None else int(gross),
+        "hits": int(mine["hits"]),
+        "reconciled": reconciled,
+        "chip": mine["chip"],
+        "model_chip": (model or {}).get("chip"),
+        "points_on_bench": mine.get("points_on_bench"),
+        "our_bench_points": int(bench_points),
+        "hindsight": {"points": int(best_points), "xi": best_xi,
+                      "captain": best_captain,
+                      "gap": hindsight_gap(best_points, my_points)},
+        "misses": [],
+        "notices": notices,
+    }
+
+    if model is None:
+        row["lanes"] = [{"lane": name, "delta_pts": None, "delta_pwin": None,
+                         "label": None, "aligned": False, "mine": None,
+                         "model": None,
+                         "note": "no banked advice survives for this "
+                                 "gameweek"} for name in LANES]
+        row["model_points"] = None
+        row["accuracy"] = None
+        return row
+
+    positions = model.get("positions") or {}
+    lanes = [
+        lane_transfers(my_squad, model, actuals,
+                       my_transfers=mine.get("transfers") or [],
+                       positions=positions,
+                       code_of=mine.get("code_of") or {}),
+        lane_captaincy(my_squad, model, actuals),
+        lane_bench(my_squad, model, actuals),
+        lane_chip(my_squad, model, actuals),
+    ]
+
+    # The composite: my squad with every *comparable* lane taken from the
+    # model at once. Applied in the registered order because the lanes
+    # compose — a transfer can move the player the armband is on — and an
+    # incomparable lane leaves its part of the squad at mine rather than
+    # dropping out of the denominator, so accuracy always compares two whole
+    # squads.
+    composite = dict(my_squad)
+    for lane in lanes:
+        cf = lane.get("cf")
+        if cf is None:
+            continue
+        if lane["lane"] == "transfers":
+            composite = {**composite, "xi": cf["xi"], "bench": cf["bench"],
+                         "captain": cf["captain"], "vice": cf["vice"],
+                         "hits": cf["hits"]}
+        elif lane["lane"] == "captaincy" and cf["captain"] in composite["xi"]:
+            composite = {**composite, "captain": cf["captain"],
+                         "vice": cf["vice"]}
+        elif lane["lane"] == "bench":
+            ranked = [c for c in (model.get("bench") or [])
+                      if c in composite["bench"]]
+            composite = {**composite, "bench": ranked + [
+                c for c in composite["bench"] if c not in ranked]}
+        elif lane["lane"] == "chip":
+            composite = {**composite, "chip": cf["chip"]}
+    model_points = score_squad(actuals, **composite)
+
+    row["lanes"] = [{k: v for k, v in lane.items() if k != "cf"}
+                    for lane in lanes]
+    row["model_points"] = int(model_points)
+    # Floored at 1 so a gameweek where the model's own squad scored nothing
+    # cannot divide by zero, and capped at 100 so beating the model reads as
+    # a perfect week — the surplus is the Brilliant lane's story, not the
+    # dial's (spec D5).
+    row["accuracy"] = int(min(100, round(100 * my_points
+                                         / max(model_points, 1))))
+    row["misses"] = _misses(my_squad, model, actuals)
+    return row
