@@ -27,13 +27,70 @@ Third-party price predictor feeds (official is banked; revisit only if its accur
 
 ## 4. Outcome
 
-(Filled at cycle end.)
+Shipped 2026-08-31 on `feat/gaffer-v8f`. All five decisions landed as designed.
 
-## 5. Gate checklist (built by the implementer, run by the orchestrator — unfilled)
+- **D1** — `data/live/price_log.parquet` banks one row per player per UTC day
+  (append-only, atomic, idempotent; the snapshot.py idiom). The nightly
+  `prices` job and any manual run append; the CLI stdout contract is unchanged.
+  `price_alerts` now reaches the web API (schema + types) and the "Tonight's
+  movers" card on This Week, over the watch set squad ∪ plan ∪ watchlist.
+- **D2** — `reports/watchlist.json` (codes + optional note, atomic) with
+  `GET/POST/DELETE /api/watchlist` and a ☆ column in the explorer cloned from
+  the pin column. Watched players join the price-alert watch set and the
+  digest's flagged section. No rules engine: the digest is the delivery.
+- **D3** — `src/gaffer/digest.py` with `friday_briefing(cfg)` and
+  `tuesday_debrief(cfg)`, both pure readers over existing artifacts, both
+  writing structured JSON (`reports/digest_friday.json` /
+  `reports/digest_tuesday.json`, replace-on-write, atomic), printing one line,
+  and never raising. `_notify` shells `osascript` with argv (no string
+  interpolation) behind `[digest] notify`. CLI `gaffer digest --kind
+  friday|tuesday`; job kinds 11 and 12; plists Friday 17:00 and Tuesday 09:30.
+- **D4** — `save_components` retains one predecessor as
+  `components_gw{N}_prev.parquet`; `ep_movers(gw, threshold=0.5)` diffs prev vs
+  current per (code, first-gw) EP; `GET /api/advice/diff` gained `ep_movers`
+  additively and the DiffStrip names the top three. Absent — not
+  empty-claimed — on the first run after merge.
+- **D5** — This Week gained the Digest card (newest artifact wins, DiffStrip
+  `bits[]` prose idiom) with the movers strip inside it; explorer gained the
+  star column; DiffStrip extended. No new hubs or tabs.
+
+**Review: FIX-FIRST, no blockers.** Four IMPORTANTs, all fixed:
+
+- I1 — `_deadline_bits` parsed the deadline with a guard but then did
+  arithmetic on the result unguarded: a NaT deadline produced a NaT countdown
+  rather than an absent section.
+- I2 — the DigestCard join doubled periods on bits that already ended in one.
+- I3 — the differential rendered a raw float instead of the formatted EP.
+- I4 — the frontend `Digest` type omitted the `error` field the failure path
+  actually writes.
+
+**Live evidence (G1).** `gaffer prices` banked 626 rows and re-running the same
+day left the count at 626. Both digests built on real GW1 data, each printing
+its line and delivering a macOS notification. A player starred through the
+explorer appeared in the movers watch set and in the Friday briefing. `gaffer
+advise` reported no movers on the first run (no predecessor) and named five
+real movers on the second.
+
+**Residuals / deferred.** Nits, recorded not fixed: N3 the `.tmp` filename in
+`save_digest`/`save_watchlist` races between concurrent writers (`os.replace`
+keeps each write atomic; pid suffix later); N4 the CLI `prices` path leaves
+`price_alerts` unwrapped and `prices.py:27` indexes `price_change_calibrating`
+unguarded on a bootstrap missing it; N5 the Friday digest can brief a stale GW
+when `latest_gw() != upcoming_gw()` — wants a one-line "run `gaffer advise`"
+bit; N6 `ep_movers` loads components twice. Queue-wide residuals still open:
+the `llm_classifier` and `lineup_start_floor` serving flips remain
+evidence-first decisions for later; the solver price-timing tiebreaker waits on
+a season of banked price log (which starts accruing now); Season-in-Review is a
+May artifact.
+
+**User action required.** Re-run `scripts/install_automation.sh` to load the
+four new plists — `field`, `review`, `digest-friday`, `digest-tuesday`.
+
+## 5. Gate checklist (built by the implementer, run by the orchestrator — filled)
 
 CONVENTIONS.md §7: the implementer builds this and does not run G1. The G3
-numbers below were measured on the branch at Task 10 and are recorded as
-evidence, not as a claim that the gate has been signed off.
+numbers below were first measured on the branch at Task 10 and are restated
+here at the post-review counts (the I1–I4 fix round added tests).
 
 ### G3 — suites, types, build, protected audit
 
@@ -42,11 +99,11 @@ uv run pytest -q
 cd frontend && npx tsc --noEmit && npx vitest run && npm run build
 ```
 
-- [ ] Python suite: **2628 passed** (baseline 2468 on `main`; v8f adds 160).
-- [ ] Frontend: **454 passed, 1 skipped** across 61 files (baseline 441 + 1
-      skipped; v8f adds 13).
-- [ ] `npx tsc --noEmit`: clean. `npm run build`: built, no errors.
-- [ ] Protected diff — must be empty:
+- [x] Python suite: **2634 passed** (baseline 2468 on `main`; v8f adds 166).
+- [x] Frontend: **456 passed, 1 skipped** across 61 files (baseline 441 + 1
+      skipped; v8f adds 15).
+- [x] `npx tsc --noEmit`: clean. `npm run build`: built, no errors.
+- [x] Protected diff — must be empty:
 
 ```bash
 git diff main --stat -- src/gaffer/advise.py src/gaffer/set_pieces.py \
@@ -58,7 +115,7 @@ git diff main --stat -- src/gaffer/advise.py src/gaffer/set_pieces.py \
 
       Measured: **empty**.
 
-- [ ] Authorized pin diff — the deliberate updates and nothing else:
+- [x] Authorized pin diff — the deliberate updates and nothing else:
 
 ```bash
 git diff main -- tests/test_v8b_degradation.py tests/test_v8c_degradation.py \
@@ -74,28 +131,35 @@ git diff main -- tests/test_v8b_degradation.py tests/test_v8c_degradation.py \
       `test_web_job_kinds_v8c.py`) — each with its authorising comment, and
       nothing else.
 
-- [ ] Security ritual (CONVENTIONS.md §8): `git diff main` greps clean for
+- [x] Security ritual (CONVENTIONS.md §8): `git diff main` greps clean for
       keys, tokens and private-key headers; `git show main:config.toml` fails
       (`path 'config.toml' exists on disk, but not in 'main'`).
 
 ### G1 — live runs (real season, not fixtures)
 
-- [ ] `gaffer prices` — the alert list prints as it always did;
+- [x] `gaffer prices` — the alert list prints as it always did;
       `data/live/price_log.parquet` gains one row per player. Run it twice and
-      confirm the row count does not double.
-- [ ] `gaffer digest --kind friday` — writes `reports/digest_friday.json`,
+      confirm the row count does not double. Measured: **626 rows**, still 626
+      after the second same-day run.
+- [x] `gaffer digest --kind friday` — writes `reports/digest_friday.json`,
       prints one line, shows (or best-effort-skips) a notification. Open This
-      Week and confirm the Digest card renders it.
-- [ ] `gaffer digest --kind tuesday` — reflects the **real** GW1 ledger row,
-      with its actual lanes and accuracy, not a placeholder.
-- [ ] Star a player through the explorer's ☆ button; confirm he appears in
+      Week and confirm the Digest card renders it. Built on real GW1 data;
+      the macOS notification was delivered.
+- [x] `gaffer digest --kind tuesday` — reflects the **real** GW1 ledger row,
+      with its actual lanes and accuracy, not a placeholder. Notification
+      delivered.
+- [x] Star a player through the explorer's ☆ button; confirm he appears in
       `GET /api/prices/movers` with `source: "watchlist"` (if he is near a
-      threshold) and in the next Friday briefing's flagged section.
-- [ ] `gaffer advise` once: the diff strip says nothing about movers
+      threshold) and in the next Friday briefing's flagged section. The starred
+      player appeared in the movers watch set and in the briefing.
+- [x] `gaffer advise` once: the diff strip says nothing about movers
       (`ep_movers_count` null). Run it again: the strip names the players that
-      moved.
+      moved. Measured: absent on the first run, **5 real movers** named on the
+      second.
 - [ ] `./scripts/install_automation.sh`, then `launchctl list | grep
-      com.gaffer` shows seven jobs including the two digests.
+      com.gaffer` shows seven jobs including the two digests. **Outstanding
+      user action** — the four new plists (`field`, `review`, `digest-friday`,
+      `digest-tuesday`) load only when the user re-runs the installer.
 
 ### G2 — rails
 
@@ -107,7 +171,7 @@ uv run pytest -q tests/test_v6_degradation.py tests/test_v8a_degradation.py \
   tests/test_v8g_degradation.py
 ```
 
-- [ ] v8f rails: **21 passed**. Pre-existing rails: **121 passed**.
+- [x] v8f rails: **23 passed**. Pre-existing rails: **121 passed**.
 
 One adaptation is recorded in that file rather than left as a surprise.
 `test_a_corrupt_watchlist_leaves_the_explorer_alone` asserts *invariance*
