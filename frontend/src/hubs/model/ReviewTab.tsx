@@ -106,9 +106,12 @@ function GwCard({ row }: { row: ReviewGw }) {
           </div>}
       <p data-testid={`hindsight-${row.gw}`}
          className="mt-3 text-sm text-text-muted">
-        Best eleven you owned: {row.hindsight.points} — you scored{' '}
-        {row.my_points ?? '—'}, so selection left {row.hindsight.gap} on the
-        table.
+        {row.hindsight.points === null
+          ? 'No legal eleven could be rebuilt from the fifteen you owned, so '
+            + 'there is no hindsight comparison for this gameweek.'
+          : `Best eleven you owned: ${row.hindsight.points} — you scored `
+            + `${row.my_points ?? '—'}, so selection left `
+            + `${row.hindsight.gap} on the table.`}
       </p>
       {row.misses.length > 0 && (
         <p className="mt-1 text-sm text-text-muted">
@@ -171,8 +174,13 @@ export default function ReviewTab() {
             })}
           </div>
           <p className="text-sm text-text-muted">
-            Bench points this season: {data.summary.points_on_bench}. Selection
-            left {data.summary.hindsight_gap} on the table.{' '}
+            {/* Both totals name the gameweeks they cover: a season of
+                unbanked histories sums to zero, which is not a season of
+                empty benches. */}
+            Bench points this season: {data.summary.points_on_bench} over{' '}
+            {data.summary.points_on_bench_gws} GW. Selection left{' '}
+            {data.summary.hindsight_gap} on the table over{' '}
+            {data.summary.hindsight_gap_gws} GW.{' '}
             {data.summary.unreconciled_gws > 0
               ? `${data.summary.unreconciled_gws} gameweek(s) did not
                  reconcile against FPL's own score.`

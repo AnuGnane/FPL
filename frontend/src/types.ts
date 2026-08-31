@@ -827,10 +827,11 @@ export interface ReviewMiss {
 }
 
 export interface ReviewHindsight {
-  points: number
+  /** null — never 0 — when no legal eleven could be built from the fifteen. */
+  points: number | null
   xi: number[]
   captain: number | null
-  gap: number
+  gap: number | null
 }
 
 export interface ReviewGw {
@@ -869,7 +870,11 @@ export interface ReviewSummary {
   lanes: Record<string, ReviewLaneTotal>
   accuracy: { gw: number, accuracy: number }[]
   points_on_bench: number
+  /** Gameweeks the bench total covers — zero over zero is not an empty
+   *  bench. Same for the hindsight gap. */
+  points_on_bench_gws: number
   hindsight_gap: number
+  hindsight_gap_gws: number
   reconciled_gws: number
   unreconciled_gws: number
   best: (ReviewLane & { gw: number }) | null

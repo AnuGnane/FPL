@@ -37,7 +37,8 @@ const DATA: ReviewData = {
       chip: { pts: 0, pwin: 0, graded: 0 },
     },
     accuracy: [{ gw: 2, accuracy: 89 }], points_on_bench: 5,
-    hindsight_gap: 13, reconciled_gws: 1, unreconciled_gws: 0,
+    points_on_bench_gws: 1, hindsight_gap: 13, hindsight_gap_gws: 1,
+    reconciled_gws: 1, unreconciled_gws: 0,
     best: { ...LANES[1], gw: 2 }, worst: { ...LANES[0], gw: 2 },
   },
 }
@@ -133,6 +134,24 @@ describe('ReviewTab', () => {
     })
     render(<ReviewTab />)
     expect(await screen.findByText(/no surviving advice/i)).toBeTruthy()
+  })
+
+  it('says so when no legal eleven could be rebuilt', async () => {
+    mock({
+      ...DATA,
+      gws: [{ ...DATA.gws[0],
+              hindsight: { points: null, xi: [], captain: null, gap: null } }],
+    })
+    render(<ReviewTab />)
+    const line = await screen.findByTestId('hindsight-2')
+    expect(line.textContent).toContain('no hindsight comparison')
+  })
+
+  it('names the gameweeks the season totals cover', async () => {
+    mock(DATA)
+    render(<ReviewTab />)
+    expect((await screen.findByText(/Bench points this season/)).textContent)
+      .toContain('over 1 GW')
   })
 
   it('sums each lane over the season', async () => {

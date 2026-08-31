@@ -363,3 +363,52 @@ def test_an_ungraded_lane_carries_no_win_percentage_either():
     # The graded ones still carry their zero, which is a real answer.
     bench = next(lane for lane in row["lanes"] if lane["lane"] == "bench")
     assert bench["delta_pwin"] == 0.0
+
+
+def test_a_chip_neither_side_can_score_is_a_null_lane_not_an_aligned_one():
+    """A chip the scorer does not know — an assistant manager, whatever FPL
+    adds next — is not "no chip". Scoring it the ordinary way would price a
+    week under a rulebook it was not played under and call the delta zero."""
+    lane = lane_chip(squad(chip="manager"), MODEL, actuals())
+    assert lane["delta_pts"] is None
+    assert lane["label"] is None
+    assert "manager" in lane["note"]
+
+    other = lane_chip(squad(), {**MODEL, "chip": "manager"}, actuals())
+    assert other["delta_pts"] is None
+
+
+def test_the_transfers_lane_names_my_own_players_from_the_live_table():
+    """The model only names the players *it* touched, so my own move showed
+    up as raw codes. The fallback is the live players table, which is where
+    every other name in the app comes from."""
+    lane = lane_transfers(
+        squad(), MODEL, actuals(),
+        my_transfers=[{"element_in": 9, "element_out": 5, "event": 2}],
+        positions=MODEL["positions"], code_of={9: 9, 5: 5},
+        names={9: "Bruno", 5: "Gvardiol"})
+    assert lane["mine"] == "Gvardiol->Bruno"
+
+
+def test_a_squad_with_no_legal_eleven_is_a_notice_not_a_gap():
+    """A fifteen the results frame barely covers cannot be re-picked, and
+    ``([], None, 0)`` read as a hindsight total makes the gap *negative* —
+    a row claiming the best eleven I owned scored less than I did."""
+    thin = pd.DataFrame([{"code": 8, "total_points": 12, "minutes": 90,
+                          "position": "MID"}])
+    mine = {**squad(), "official_gross": None, "official_cost": 0,
+            "points_on_bench": 0, "transfers": [], "notices": []}
+    row = grade_gw_from(2, mine, MODEL, thin)
+    assert row["hindsight"]["points"] is None
+    assert row["hindsight"]["gap"] is None
+    assert any("legal eleven" in notice for notice in row["notices"])
+
+
+def test_accuracy_never_goes_below_nothing():
+    """Hits are charged off the top, so a week of them can put my net score
+    under zero. A negative percentage is not a dial reading."""
+    mine = {**squad(hits=20), "official_gross": 0, "official_cost": 80,
+            "points_on_bench": 0, "transfers": [], "notices": []}
+    row = grade_gw_from(2, mine, MODEL, actuals())
+    assert row["my_points"] < 0
+    assert row["accuracy"] == 0

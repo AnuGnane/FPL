@@ -49,7 +49,8 @@ __all__ = ["ACTUAL_COLS", "CHIP_SCORING", "LANES", "LEDGER", "MISS_BAR",
            "code_of_element", "format_review", "grade_gw", "grade_gw_from",
            "hindsight_gap", "hindsight_xi", "label_for", "lane_bench",
            "lane_captaincy", "lane_chip", "lane_transfers", "ledger_path",
-           "load_ledger", "model_decisions", "my_decisions",
+           "load_ledger", "lock_path", "model_decisions", "my_decisions",
+           "names_by_code",
            "pair_by_position", "picks_from_squad", "price_lanes",
            "price_lanes_for_gw", "reviewable_gws", "run_review", "score_gw",
            "score_squad", "season_summary", "swap_slots"]
@@ -71,6 +72,25 @@ def code_of_element() -> dict[int, int]:
     pinned by existing tests, so the sharing goes this way round.
     """
     return _code_of_element()
+
+
+def names_by_code() -> dict[int, str]:
+    """``code -> name`` off the live players table, ``{}`` when there is none.
+
+    The model's payload only names the players *it* touched, so my own moves
+    have no name in it. This is the fallback, and it is the same table the
+    Players hub and the journal read — a name that differs between two views
+    of one player is a bug report waiting to happen.
+    """
+    if not store.exists("live/players.parquet"):
+        return {}
+    try:
+        frame = store.load("live/players.parquet")
+    except Exception:  # noqa: BLE001 — an unreadable table is an absent one
+        return {}
+    if frame.empty or "name" not in frame.columns:
+        return {}
+    return {int(c): str(n) for c, n in zip(frame["code"], frame["name"])}
 
 
 def actuals_for_gw(gw: int) -> pd.DataFrame:
@@ -248,6 +268,12 @@ CHIP_SCORING = {"bboost": (2, True), "3xc": (3, False)}
 """``chip -> (captain multiplier, bench boost)`` for the two chips that change
 how a *fixed* fifteen scores. Everything else scores the ordinary way."""
 
+KNOWN_CHIPS = ("bboost", "3xc", "wildcard", "freehit")
+"""Every chip this review knows how to reason about. FPL adds chips between
+seasons — an assistant manager, whatever is next — and one this module has
+never heard of must not fall through :data:`CHIP_SCORING`'s default and be
+scored as an ordinary week."""
+
 SQUAD_CHIPS = ("wildcard", "freehit")
 """Chips that change *which* fifteen you own rather than how it scores. There
 is no same-squad counterfactual for one of these, so the chip lane declines to
@@ -395,7 +421,8 @@ def _name(names: dict, code) -> str:
 
 def lane_transfers(mine: dict, model: dict, actuals: pd.DataFrame, *,
                    my_transfers: list[dict], positions: dict,
-                   code_of: dict | None = None) -> dict:
+                   code_of: dict | None = None,
+                   names: dict | None = None) -> dict:
     """My transfer set against the model's, hits included.
 
     Two swaps, in order. First my own week is *undone* — each player I
@@ -410,7 +437,10 @@ def lane_transfers(mine: dict, model: dict, actuals: pd.DataFrame, *,
     fallback rather than a rule invented here.
     """
     code_of = code_of or {}
-    names, note = model.get("names") or {}, None
+    # The model's own names win where it has one — that payload is the
+    # gameweek's record — with the live table underneath for the players only
+    # *I* touched, who never appear in it.
+    names = {**(names or {}), **(model.get("names") or {})}
     label_mine = ", ".join(_name(names, c) for c in model.get("sells") or []) \
         or "no move"
     undo = []
@@ -521,6 +551,14 @@ def lane_chip(mine: dict, model: dict, actuals: pd.DataFrame) -> dict:
     """
     mine_chip, model_chip = mine["chip"], model.get("chip")
     labels = (str(mine_chip or "none"), str(model_chip or "none"))
+    unknown = [str(c) for c in (mine_chip, model_chip)
+               if c and str(c) not in KNOWN_CHIPS]
+    if unknown:
+        return _lane("chip", None, mine, actuals,
+                     note=f"{unknown[0]} is not a chip this review knows how "
+                          f"to score, so the week was not re-scored under it",
+                     aligned=False, mine_label=labels[0],
+                     model_label=labels[1])
     if str(mine_chip or "") in SQUAD_CHIPS or str(model_chip or "") \
             in SQUAD_CHIPS:
         return _lane("chip", None, mine, actuals,
@@ -614,7 +652,8 @@ def build_lanes(mine: dict, model: dict, actuals: pd.DataFrame) -> list[dict]:
         lane_transfers(my_squad, model, actuals,
                        my_transfers=mine.get("transfers") or [],
                        positions=positions,
-                       code_of=mine.get("code_of") or {}),
+                       code_of=mine.get("code_of") or {},
+                       names=mine.get("names") or {}),
         lane_captaincy(my_squad, model, actuals),
         lane_bench(my_squad, model, actuals),
         lane_chip(my_squad, model, actuals),
@@ -661,6 +700,20 @@ def grade_gw_from(gw: int, mine: dict, model: dict | None,
         if int(c) in set(mine["bench"]))
     best_xi, best_captain, best_points = hindsight_xi(
         list(mine["xi"]) + list(mine["bench"]), actuals)
+    if best_xi:
+        hindsight = {"points": int(best_points), "xi": best_xi,
+                     "captain": best_captain,
+                     "gap": hindsight_gap(best_points, my_points)}
+    else:
+        # ``([], None, 0)`` is "no legal eleven", not "the best eleven scored
+        # nothing", and subtracting my own score from it would bank a
+        # *negative* gap — a row claiming the best fifteen I owned did worse
+        # than the eleven I picked out of it.
+        hindsight = {"points": None, "xi": [], "captain": None, "gap": None}
+        notices.append(
+            "no legal eleven could be built from your banked fifteen — the "
+            "results frame does not cover it, so there is no hindsight "
+            "comparison")
 
     row = {
         "gw": int(gw),
@@ -675,9 +728,7 @@ def grade_gw_from(gw: int, mine: dict, model: dict | None,
         "model_chip": (model or {}).get("chip"),
         "points_on_bench": mine.get("points_on_bench"),
         "our_bench_points": int(bench_points),
-        "hindsight": {"points": int(best_points), "xi": best_xi,
-                      "captain": best_captain,
-                      "gap": hindsight_gap(best_points, my_points)},
+        "hindsight": hindsight,
         "misses": [],
         "notices": notices,
     }
@@ -746,9 +797,11 @@ def grade_gw_from(gw: int, mine: dict, model: dict | None,
     # Floored at 1 so a gameweek where the model's own squad scored nothing
     # cannot divide by zero, and capped at 100 so beating the model reads as
     # a perfect week — the surplus is the Brilliant lane's story, not the
-    # dial's (spec D5).
-    row["accuracy"] = int(min(100, round(100 * my_points
-                                         / max(model_points, 1))))
+    # dial's (spec D5). Floored at 0 for the same reason at the other end: a
+    # week of hits can put my net score under zero, and a dial does not read
+    # negative.
+    row["accuracy"] = int(max(0, min(100, round(100 * my_points
+                                                / max(model_points, 1)))))
     row["misses"] = _misses(my_squad, model, actuals)
     return row
 
@@ -894,7 +947,8 @@ def grade_gw(gw: int, *, cfg, client=None) -> dict | None:
         return None
     frame = actuals_for_gw(gw)
     model = model_decisions(gw)
-    mine = {**mine, "code_of": {e: c for e, c in code_of_element().items()}}
+    mine = {**mine, "code_of": {e: c for e, c in code_of_element().items()},
+            "names": names_by_code()}
 
     n = int(getattr(cfg, "sim_n", 2000) or 2000)
     meta = {"pwin_n": n, "pwin_seed": SIM_SEED,
@@ -938,6 +992,66 @@ def ledger_path():
     return artifacts.REPORTS / LEDGER
 
 
+def lock_path():
+    return ledger_path().with_name(f"{LEDGER}.lock")
+
+
+LOCK_STALE = 60.0
+"""Seconds after which a lock file is assumed to belong to a dead process.
+The whole write is a JSON dump of a few dozen rows; a lock older than a minute
+is a crash, not a slow neighbour."""
+
+
+class _ledger_lock:
+    """Best-effort exclusive lock around the ledger's read-modify-write.
+
+    :func:`append_ledger` reads the whole file, drops one gameweek's row and
+    writes it back, so two reviews racing — the launchd job and a hand-run
+    ``gaffer review`` — could have the second read before the first replaced
+    and write back a ledger missing the first's row. ``O_EXCL`` on a sibling
+    file makes that interleaving rare rather than routine.
+
+    Deliberately not a hard guarantee. It never raises, never waits long, and
+    breaks a lock older than :data:`LOCK_STALE` — a Tuesday morning review
+    that hung on a lock a crashed process left behind would be a worse
+    failure than the race it was guarding against.
+    """
+
+    def __init__(self, path):
+        self.path = path
+        self.held = False
+
+    def __enter__(self):
+        import time
+
+        deadline = time.monotonic() + 2.0
+        while True:
+            try:
+                fd = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                os.write(fd, str(os.getpid()).encode())
+                os.close(fd)
+                self.held = True
+                return self
+            except FileExistsError:
+                try:
+                    age = time.time() - self.path.stat().st_mtime
+                except OSError:
+                    continue
+                if age > LOCK_STALE or time.monotonic() > deadline:
+                    self.path.unlink(missing_ok=True)
+                    if time.monotonic() > deadline:
+                        return self      # write unguarded rather than hang
+                    continue
+                time.sleep(0.05)
+            except OSError:
+                return self              # unwritable directory: not our job
+
+    def __exit__(self, *exc):
+        if self.held:
+            self.path.unlink(missing_ok=True)
+        return False
+
+
 def load_ledger() -> list[dict]:
     """Every banked grade, oldest gameweek first. ``[]`` on any failure.
 
@@ -967,17 +1081,21 @@ def append_ledger(row: dict):
     """
     from gaffer import artifacts
 
-    rows = [r for r in load_ledger() if int(r["gw"]) != int(row["gw"])]
-    rows.append(dict(row))
-    rows.sort(key=lambda r: int(r["gw"]))
     artifacts.REPORTS.mkdir(parents=True, exist_ok=True)
     path = ledger_path()
     tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
-    try:
-        tmp.write_text(json.dumps({"gws": rows}, indent=1, allow_nan=False))
-        os.replace(tmp, path)
-    finally:
-        tmp.unlink(missing_ok=True)
+    # The lock spans the read as well as the write: the race this guards is
+    # the read-modify-write, not the rename, which was already atomic.
+    with _ledger_lock(lock_path()):
+        rows = [r for r in load_ledger() if int(r["gw"]) != int(row["gw"])]
+        rows.append(dict(row))
+        rows.sort(key=lambda r: int(r["gw"]))
+        try:
+            tmp.write_text(json.dumps({"gws": rows}, indent=1,
+                                      allow_nan=False))
+            os.replace(tmp, path)
+        finally:
+            tmp.unlink(missing_ok=True)
     return path
 
 
@@ -990,12 +1108,15 @@ def season_summary(ledger: list[dict]) -> dict | None:
     An ungraded lane contributes nothing to the sum *and* nothing to the
     count. The ``graded`` field is what stops "chip: 0 points" from being read
     as chip discipline when it really means the chip weeks were never
-    comparable.
+    comparable. The bench and hindsight totals carry their own counts for the
+    same reason: a gameweek with no banked history has no bench total, and
+    that is not a bench total of nought.
     """
     if not ledger:
         return None
     lanes = {name: {"pts": 0.0, "pwin": 0.0, "graded": 0} for name in LANES}
     accuracy, bench, gap = [], 0, 0
+    bench_gws = gap_gws = 0
     reconciled = unreconciled = 0
     best = worst = None
     for row in ledger:
@@ -1006,6 +1127,12 @@ def season_summary(ledger: list[dict]) -> dict | None:
             cell["pts"] += float(lane["delta_pts"])
             cell["pwin"] += float(lane.get("delta_pwin") or 0.0)
             cell["graded"] += 1
+            # Spec D5 asks for the biggest Brilliant and the biggest Blunder,
+            # so an Aligned lane is not a candidate: it is a week I followed
+            # the model, and naming one "worst single decision" would report
+            # a mistake nobody made.
+            if lane.get("label") in (None, "Aligned"):
+                continue
             marked = {**lane, "gw": int(row["gw"])}
             if best is None or lane["delta_pts"] > best["delta_pts"]:
                 best = marked
@@ -1014,8 +1141,16 @@ def season_summary(ledger: list[dict]) -> dict | None:
         if row.get("accuracy") is not None:
             accuracy.append({"gw": int(row["gw"]),
                              "accuracy": int(row["accuracy"])})
-        bench += int(row.get("points_on_bench") or 0)
-        gap += int((row.get("hindsight") or {}).get("gap") or 0)
+        # Null is not zero here either: a gameweek whose history was never
+        # banked has no bench total, and folding it in as nought would report
+        # a season of empty benches to a manager who had no such season.
+        if row.get("points_on_bench") is not None:
+            bench += int(row["points_on_bench"])
+            bench_gws += 1
+        row_gap = (row.get("hindsight") or {}).get("gap")
+        if row_gap is not None:
+            gap += int(row_gap)
+            gap_gws += 1
         if row.get("reconciled") is True:
             reconciled += 1
         elif row.get("reconciled") is False:
@@ -1025,7 +1160,9 @@ def season_summary(ledger: list[dict]) -> dict | None:
         cell["pwin"] = round(cell["pwin"], 2)
     return {"gws": [int(r["gw"]) for r in ledger], "lanes": lanes,
             "accuracy": accuracy, "points_on_bench": int(bench),
-            "hindsight_gap": int(gap), "reconciled_gws": reconciled,
+            "points_on_bench_gws": int(bench_gws),
+            "hindsight_gap": int(gap), "hindsight_gap_gws": int(gap_gws),
+            "reconciled_gws": reconciled,
             "unreconciled_gws": unreconciled, "best": best, "worst": worst}
 
 

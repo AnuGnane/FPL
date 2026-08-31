@@ -948,10 +948,17 @@ class ReviewMiss(BaseModel):
 
 
 class ReviewHindsight(BaseModel):
-    points: int = 0
+    """The best legal eleven out of the fifteen I owned, by actual points.
+
+    ``points`` and ``gap`` are ``None`` — never zero — when no legal eleven
+    could be built at all, which is what a fifteen the results frame does not
+    cover looks like. A zero there would bank a *negative* gap.
+    """
+
+    points: int | None = None
     xi: list[int] = Field(default_factory=list)
     captain: int | None = None
-    gap: int = 0
+    gap: int | None = None
 
 
 class ReviewGw(BaseModel):
@@ -1000,7 +1007,11 @@ class ReviewSummary(BaseModel):
     lanes: dict[str, ReviewLaneTotal] = Field(default_factory=dict)
     accuracy: list[ReviewAccuracyPoint] = Field(default_factory=list)
     points_on_bench: int = 0
+    points_on_bench_gws: int = 0
+    """How many gameweeks that total covers. A season of unbanked histories
+    sums to zero over zero gameweeks, which is not an empty bench."""
     hindsight_gap: int = 0
+    hindsight_gap_gws: int = 0
     reconciled_gws: int = 0
     unreconciled_gws: int = 0
     best: dict[str, Any] | None = None

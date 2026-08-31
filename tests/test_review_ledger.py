@@ -310,3 +310,72 @@ def test_the_printed_line_flags_a_row_that_did_not_reconcile():
            "reconciled": False, "official_points": 63, "no_advice": False,
            "lanes": []}
     assert "did not reconcile" in format_review(row)
+
+
+def test_the_season_totals_count_the_gameweeks_they_could_add_up(here):
+    """A gameweek FPL never gave a bench total for is not a gameweek with a
+    bench total of nought. ``or 0`` folded the two together, so a season of
+    unbanked histories read as a season of empty benches."""
+    ledger = [{"gw": 1, "my_points": 50, "accuracy": None,
+               "points_on_bench": None, "our_bench_points": 0,
+               "hindsight": {"points": None, "gap": None}, "lanes": []},
+              {"gw": 2, "my_points": 61, "accuracy": None,
+               "points_on_bench": 4, "our_bench_points": 4,
+               "hindsight": {"points": 70, "gap": 9}, "lanes": []}]
+    out = season_summary(ledger)
+    assert out["points_on_bench"] == 4
+    assert out["points_on_bench_gws"] == 1
+    assert out["hindsight_gap"] == 9
+    assert out["hindsight_gap_gws"] == 1
+
+
+def test_the_best_and_worst_decision_are_ones_i_actually_made(here):
+    """Spec D5 asks for the biggest Brilliant and the biggest Blunder. A week
+    where I followed the model in every lane has neither, and naming an
+    Aligned lane "worst single decision" reports a mistake that never
+    happened."""
+    ledger = [{"gw": 1, "my_points": 50, "accuracy": 100,
+               "points_on_bench": 0, "our_bench_points": 0,
+               "hindsight": {"gap": 0}, "reconciled": True,
+               "lanes": [{"lane": "captaincy", "delta_pts": 0,
+                          "delta_pwin": 0.0, "label": "Aligned"},
+                         {"lane": "chip", "delta_pts": None,
+                          "delta_pwin": None, "label": None}]}]
+    out = season_summary(ledger)
+    assert out["best"] is None
+    assert out["worst"] is None
+
+
+def test_the_ledger_write_takes_a_lock_and_gives_it_back(here, monkeypatch):
+    """Read-modify-write: two reviews racing on one file would have the
+    second read the ledger before the first replaced it and write back a copy
+    without the first's row."""
+    from gaffer import review as R
+
+    seen = {}
+    real = R.os.replace
+
+    def spy(src, dst):
+        seen["locked"] = R.lock_path().exists()
+        return real(src, dst)
+
+    monkeypatch.setattr(R.os, "replace", spy)
+    append_ledger({"gw": 3, "my_points": 50})
+    assert seen["locked"] is True
+    assert not R.lock_path().exists()
+
+
+def test_a_lock_left_behind_by_a_dead_review_never_blocks_the_next_one(here):
+    """Best effort, and never a hang: a crashed process leaves its lock on
+    disk, and a Tuesday review that waited on it forever would be worse than
+    the race it was guarding."""
+    import os
+    import time
+
+    from gaffer import review as R
+
+    append_ledger({"gw": 3, "my_points": 50})
+    R.lock_path().write_text("dead")
+    os.utime(R.lock_path(), (time.time() - 3600, time.time() - 3600))
+    append_ledger({"gw": 4, "my_points": 60})
+    assert [r["gw"] for r in load_ledger()] == [3, 4]
