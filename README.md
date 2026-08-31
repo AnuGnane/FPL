@@ -291,6 +291,22 @@ deleting one; a star whose write the server refused reverts instead of sitting
 there filled, claiming a player is on a list he is not on. A successful star
 stays silent: the filled star is the acknowledgement.
 
+**Freeing a wedged job (v9c).** The server runs one background job at a time,
+so a job that hangs used to hold the lane and answer every later job with a
+409 until you restarted the process — and the 409 named a run you had no way
+to clear. Two things changed. `JobRunner.start` now reaps a holder older than
+`ADVISE_TIMEOUT_S` (30 minutes) before it refuses, and `DELETE
+/api/jobs/current` frees the lane on demand, returning the abandoned run, or
+404 when nothing is running.
+
+What neither of them does is **stop the work**. The worker is a daemon thread
+and Python has no safe way to kill one, so abandonment releases the lane and
+discards the result while the thread runs on to completion. That is only safe
+because every job kind writes its artifacts idempotently or writes nothing —
+a constraint from v8f that a future job kind must keep. The abandoned run is
+marked `failed` with the reason in `error`, and it cannot take the lane back
+from the job that replaced it.
+
 Two things the Live page will not pretend to know. The race trajectory lives
 in the server process and nowhere else — restart `gaffer ui` mid-afternoon and
 it starts again from that moment, which is the price of a page that writes
@@ -366,6 +382,16 @@ stamps each row with when it was solved.
 
 Every expected-points number in the tool now carries a range, and the tool is
 explicit about which of two different uncertainties each range is.
+
+**Two things called a "haul", and which is which (v9c).** `P(points >= 10)`
+in the tail of a player's whole forecast is the *band* quantity, and it keeps
+the name `p_haul` on `/api/players` and `/api/components`; This Week's chip
+labels it `10+ pts`. `P(2 or more attacking returns)` under a Poisson on
+expected goals plus assists is a different number on a different scale, and it
+is what the advice payload's `alternatives` and `captain_options` carry — it
+is served as `p_attacking_haul`, and the HTML report's columns say
+`P(2+ returns)`. The artifact on disk keeps the internal name, so every advice
+file already banked stays readable.
 
 **Bands.** The squad table and the player explorer print a `Range` column
 beside `xPts`: the p25 and p75 of *what he might score*. Two variances added,
@@ -511,6 +537,24 @@ season to `train_seasons` **and** set `current_season` to the new one, then run
 `gaffer build-history` and `gaffer train`. `season_idx` is derived from
 `len(train_seasons)`, so adding a season without moving `current_season` on
 makes the live season collide with the one you just archived.
+
+**`club_code`, the club a row's player actually played for (v9c).** The store
+rebuilds player history from scratch every run and stamps each player's
+*current* `team_code` onto every row of it, so a January transfer silently
+rewrote his August training rows under his new club — and three features key
+on club: the position-by-club prior, manager-spell scoping, and the own side
+of the team-Elo merge. `club_code` is derived at training time, in
+`load_training_frame`, by joining the archived fixture list on `(season_idx,
+gw, kickoff_time)`: `opp_code` is written per row from the fixture and
+survives a transfer, so the player's club is the *other* side of the match he
+played in, cross-checked against `was_home`. Rows that match no fixture — and
+whole seasons with no archived fixture list — fall back to the stamped
+`team_code`, never to a null. Measured on the current store, 0.94% of history
+rows were keyed on the wrong club before this.
+
+`team_code` is unchanged and is still the serve-time identity: the pitch, the
+shirt images and the bootstrap joins all read it, and for a fixture that has
+not been played the current club *is* the as-of club.
 
 ## Where things live
 
