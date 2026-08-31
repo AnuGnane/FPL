@@ -275,6 +275,22 @@ that gameweek reads **Blank**, honestly, rather than showing an empty chip.
 The **Table** toggle beside the captain line returns the data-dense squad
 table, unchanged.
 
+A player's name is a card wherever the page has room for one: Live's rows, a
+rival's squad list and the review's flagged-and-skipped list each draw the
+shirt beside the name, and clicking it opens the same expected-points
+breakdown those names always opened — now with the player's face, served from
+the local asset cache rather than fetched from anyone else. Live and a rival's
+squad show the plain shirt and no club: neither payload carries a team, and
+nothing here guesses one.
+
+A panel a solve is filling shows the shape of the answer while it solves,
+instead of sitting blank until the job lands — the what-if diff, the chip
+re-solve, the draft comparison and the sensitivity sweep. Saving a pin, an
+override or a draft now says so in a line at the top of the page, as does
+deleting one; a star whose write the server refused reverts instead of sitting
+there filled, claiming a player is on a list he is not on. A successful star
+stays silent: the filled star is the acknowledgement.
+
 Two things the Live page will not pretend to know. The race trajectory lives
 in the server process and nowhere else — restart `gaffer ui` mid-afternoon and
 it starts again from that moment, which is the price of a page that writes
@@ -310,6 +326,15 @@ inside an advise run are indistinguishable from the inside, a pin lands on
 both the news arm and the news-shadow control arm — which means a pinned
 player shows no *news* effect in the shadow log at all, rather than the news
 layer being credited with a move you made.
+
+The Planning hub's **Timeline** tags each week card with the opponents its
+named players face that week — the captain, the vice and any buys and sells,
+one chip per club — shaded by the same odds-implied difficulty and the same
+colour ramp the fixture ticker uses, so a chip and the ticker's square for the
+same fixture are the same colour by construction. It is joined on the page out
+of two payloads the hub already has, so it costs no extra request, and any
+link it cannot make is left out rather than guessed: a player the last advice
+run never named, or a gameweek past the ticker's window, simply has no chip.
 
 ### Sensitivity and drafts (v8e)
 

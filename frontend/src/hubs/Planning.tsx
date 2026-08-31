@@ -9,7 +9,10 @@ import TickerTab from './planning/TickerTab'
 import Timeline from './planning/Timeline'
 import WhatIfTab from './planning/WhatIfTab'
 
-const TAB_CLASS = 'px-3 py-2 text-text-muted data-[state=active]:text-text '
+// `shrink-0 whitespace-nowrap` so a trigger scrolls out of the strip rather
+// than compressing into two lines of one word at 390px.
+const TAB_CLASS = 'shrink-0 whitespace-nowrap px-3 py-2 text-text-muted '
+  + 'data-[state=active]:text-text '
   + 'data-[state=active]:border-b data-[state=active]:border-text'
 
 // Radix keeps an unselected tab unmounted, so the constraints have to live
@@ -72,7 +75,8 @@ export default function Planning() {
       <PageHeader title="Planning"
                   context={gw === null ? undefined : `GW${gw} horizon`} />
       <Tabs.Root defaultValue="timeline">
-        <Tabs.List className="mb-4 flex border-b border-divider">
+        <Tabs.List className="mb-4 flex overflow-x-auto border-b
+                              border-divider">
           <Tabs.Trigger value="timeline" className={TAB_CLASS}>Timeline</Tabs.Trigger>
           <Tabs.Trigger value="whatif" className={TAB_CLASS}>What-If</Tabs.Trigger>
           <Tabs.Trigger value="drafts" className={TAB_CLASS}>Drafts</Tabs.Trigger>

@@ -202,6 +202,7 @@ export default function WhyPanel({ gw, codes }: { gw: number
         <p className="mb-2 text-text-muted">
           Click a name for the terms that produced his expected points.
         </p>
+        <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr>
@@ -217,6 +218,7 @@ export default function WhyPanel({ gw, codes }: { gw: number
             ))}
           </tbody>
         </table>
+        </div>
       </Card>
     </>
   )

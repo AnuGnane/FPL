@@ -53,6 +53,7 @@ export default function NewsPanel({ gw }: { gw: number }) {
         </span>
       )}
     >
+      <div className="overflow-x-auto">
       <table className="w-full">
         <thead>
           <tr>
@@ -89,6 +90,7 @@ export default function NewsPanel({ gw }: { gw: number }) {
           ))}
         </tbody>
       </table>
+      </div>
     </Card>
   )
 }

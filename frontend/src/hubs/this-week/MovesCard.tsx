@@ -26,6 +26,7 @@ export default function MovesCard({ buys, sells, hits }: MovesCardProps) {
       {rows.length === 0
         ? <p className="text-text-muted">No transfers — bank the free transfer.</p>
         : (
+          <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr>
@@ -61,6 +62,7 @@ export default function MovesCard({ buys, sells, hits }: MovesCardProps) {
               ))}
             </tbody>
           </table>
+          </div>
           )}
       {hits > 0 && (
         <p className="mt-3 text-rust">

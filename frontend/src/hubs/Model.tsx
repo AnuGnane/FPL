@@ -7,7 +7,10 @@ import JournalTab from './model/JournalTab'
 import QualityTab from './model/QualityTab'
 import ReviewTab from './model/ReviewTab'
 
-const TAB_CLASS = 'px-3 py-2 text-text-muted data-[state=active]:text-text '
+// `shrink-0 whitespace-nowrap` so a trigger scrolls out of the strip rather
+// than compressing into two lines of one word at 390px.
+const TAB_CLASS = 'shrink-0 whitespace-nowrap px-3 py-2 text-text-muted '
+  + 'data-[state=active]:text-text '
   + 'data-[state=active]:border-b data-[state=active]:border-text'
 
 export default function Model() {
@@ -51,7 +54,8 @@ export default function Model() {
         )}
       />
       <Tabs.Root defaultValue="quality">
-        <Tabs.List className="mb-4 flex border-b border-divider">
+        <Tabs.List className="mb-4 flex overflow-x-auto border-b
+                              border-divider">
           <Tabs.Trigger value="quality" className={TAB_CLASS}>Quality</Tabs.Trigger>
           <Tabs.Trigger value="journal" className={TAB_CLASS}>Journal</Tabs.Trigger>
           <Tabs.Trigger value="review" className={TAB_CLASS}>Review</Tabs.Trigger>

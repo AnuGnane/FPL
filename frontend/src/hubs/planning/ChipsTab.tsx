@@ -197,6 +197,7 @@ export default function ChipsTab() {
               action="Run advise"
             />
           )}
+          <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr>
@@ -245,6 +246,7 @@ export default function ChipsTab() {
               ))}
             </tbody>
           </table>
+          </div>
         </Card>
       )}
       {tab === 'wildcard' && <WildcardTab wildcard={data.wildcard} />}

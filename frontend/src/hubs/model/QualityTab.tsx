@@ -207,6 +207,7 @@ function DecompositionSection(
         + ` ${decomposition.start_gw}`}
       className="mb-4"
     >
+      <div className="overflow-x-auto">
       <table className="w-full">
         <thead>
           <tr>
@@ -236,6 +237,7 @@ function DecompositionSection(
           })}
         </tbody>
       </table>
+      </div>
       <table className="mt-4 w-full">
         <tbody>
           {([

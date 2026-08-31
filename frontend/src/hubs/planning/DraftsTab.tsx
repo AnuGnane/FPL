@@ -164,6 +164,7 @@ export default function DraftsTab({ current }: { current: WhatIfRequest }) {
           table rather than pulsing above a previous run's answer. */}
       {result && job.status !== 'queued' && job.status !== 'running' && (
         <Card title={`Compared over ${result.weeks} weeks`} className="mb-4">
+          <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr>
@@ -202,6 +203,7 @@ export default function DraftsTab({ current }: { current: WhatIfRequest }) {
               ))}
             </tbody>
           </table>
+          </div>
           <p className="mt-3 text-text-muted">
             Solved {result.rows[0]?.solved_at?.slice(0, 16).replace('T', ' ')}
             {' '}against the saved GW{result.gw} board.

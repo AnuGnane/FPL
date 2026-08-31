@@ -127,6 +127,7 @@ export default function SensitivityCard() {
               {data.notice}
             </p>
           )}
+          <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr>
@@ -149,6 +150,7 @@ export default function SensitivityCard() {
               ))}
             </tbody>
           </table>
+          </div>
           {data.failures > 0 && (
             <p className="mt-3 text-rust">
               {`${data.failures} of the ${data.k} re-solves failed; every `}

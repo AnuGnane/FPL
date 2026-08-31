@@ -15,7 +15,10 @@ import PinDialog from './players/PinDialog'
 
 const POSITIONS = ['', 'GKP', 'DEF', 'MID', 'FWD']
 
-const TAB_CLASS = 'px-3 py-2 text-text-muted data-[state=active]:text-text '
+// `shrink-0 whitespace-nowrap` so a trigger scrolls out of the strip rather
+// than compressing into two lines of one word at 390px.
+const TAB_CLASS = 'shrink-0 whitespace-nowrap px-3 py-2 text-text-muted '
+  + 'data-[state=active]:text-text '
   + 'data-[state=active]:border-b data-[state=active]:border-text'
 
 export default function Players() {
@@ -198,7 +201,8 @@ export default function Players() {
           : `${(rows ?? []).length} in the candidate pool`}
       />
       <Tabs.Root defaultValue="explorer">
-        <Tabs.List className="mb-4 flex border-b border-divider">
+        <Tabs.List className="mb-4 flex overflow-x-auto border-b
+                              border-divider">
           <Tabs.Trigger value="explorer" className={TAB_CLASS}>Explorer</Tabs.Trigger>
           <Tabs.Trigger value="compare" className={TAB_CLASS}>Compare</Tabs.Trigger>
           <Tabs.Trigger value="matrix" className={TAB_CLASS}>Fixture matrix</Tabs.Trigger>

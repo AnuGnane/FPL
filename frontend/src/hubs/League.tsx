@@ -14,7 +14,10 @@ import type {
 } from '../types'
 import WhatIfSim, { type WhatIfSquadPlayer } from './league/WhatIfSim'
 
-const TAB_CLASS = 'px-3 py-2 text-text-muted data-[state=active]:text-text '
+// `shrink-0 whitespace-nowrap` so a trigger scrolls out of the strip rather
+// than compressing into two lines of one word at 390px.
+const TAB_CLASS = 'shrink-0 whitespace-nowrap px-3 py-2 text-text-muted '
+  + 'data-[state=active]:text-text '
   + 'data-[state=active]:border-b data-[state=active]:border-text'
 
 const SERIES_COLOURS = ['var(--color-sage)', 'var(--color-info)',
@@ -176,7 +179,8 @@ export default function League() {
     <>
       <PageHeader title="League" context={leagueContext} />
       <Tabs.Root defaultValue="race">
-        <Tabs.List className="mb-4 flex border-b border-divider">
+        <Tabs.List className="mb-4 flex overflow-x-auto border-b
+                              border-divider">
           <Tabs.Trigger value="race" className={TAB_CLASS}>Race</Tabs.Trigger>
           <Tabs.Trigger value="rivals" className={TAB_CLASS}>Rivals</Tabs.Trigger>
           <Tabs.Trigger value="whatif" className={TAB_CLASS}>What if</Tabs.Trigger>
