@@ -3,18 +3,18 @@ import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ThisWeek from './ThisWeek'
 
-const { FakeApiError, apiGet } = vi.hoisted(() => {
+const { FakeApiError, apiGet, apiPost } = vi.hoisted(() => {
   class FakeApiError extends Error {
     status = 0
     detail: unknown = null
   }
-  return { FakeApiError, apiGet: vi.fn() }
+  return { FakeApiError, apiGet: vi.fn(), apiPost: vi.fn() }
 })
 
 vi.mock('../api/client', () => ({
   ApiError: FakeApiError,
   apiGet: (path: string) => apiGet(path),
-  apiPost: vi.fn(),
+  apiPost: (path: string, body: unknown) => apiPost(path, body),
 }))
 
 vi.mock('../api/useJobStream', () => ({
@@ -94,6 +94,11 @@ function route(path: string) {
 beforeEach(() => {
   apiGet.mockReset()
   apiGet.mockImplementation(route)
+  // The league what-if is the captaincy chip's only caller and it is
+  // fire-and-forget: the default here is the "no simulation available" path,
+  // which every test but the chip's own expects to be silent.
+  apiPost.mockReset()
+  apiPost.mockRejectedValue(new Error('no sim'))
 })
 
 describe('This Week hub', () => {
@@ -200,5 +205,34 @@ describe('an advice payload missing its armband', () => {
       .toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Fast advise' }))
       .toBeInTheDocument()
+  })
+})
+
+describe('the captaincy title-odds chip', () => {
+  it('prices the armband against the alternative when the sim answers',
+     async () => {
+       // apiPost is the what-if call; the chip asks for the captain swap the
+       // vice would have been.
+       apiPost.mockResolvedValue({
+         baseline_p_win: 0.42, p_win: 0.39, delta_p_win: -0.03,
+         baseline_exp_finish: 1.6, exp_finish: 1.7, delta_rank: 0.1,
+         table: [], unknown_codes: [],
+       })
+       render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+       expect(await screen.findByTestId('captain-odds-chip'))
+         .toHaveTextContent('+3.0%')
+     })
+
+  it('is simply absent when the simulation is not available', async () => {
+    apiPost.mockRejectedValue(new Error('422'))
+    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    expect(await screen.findByText(/Starting XI/)).toBeInTheDocument()
+    expect(screen.queryByTestId('captain-odds-chip')).not.toBeInTheDocument()
+  })
+
+  it('never blocks the page on it', async () => {
+    apiPost.mockReturnValue(new Promise(() => {}))     // never resolves
+    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    expect(await screen.findByText(/Starting XI/)).toBeInTheDocument()
   })
 })

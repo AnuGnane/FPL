@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
-import { apiGet } from '../api/client'
+import { apiGet, apiPost } from '../api/client'
 import {
   Card, EmptyState, JobButton, Loading, PageHeader, PitchView, Stat,
   ThresholdBar, fmtNum, fmtPct,
 } from '../kit'
 import type {
-  AdviceChipRow, AdviceLatest, ComponentsBreakdown, PlayerRow,
+  AdviceChipRow, AdviceLatest, ComponentsBreakdown, LeagueWhatIfResult,
+  PlayerRow,
 } from '../types'
 import MovesCard from './this-week/MovesCard'
 import NewsPanel from './this-week/NewsPanel'
@@ -40,6 +41,25 @@ export default function ThisWeek() {
   }, [])
 
   useEffect(load, [load])
+
+  // The armband priced in title odds. Deliberately fire-and-forget: This Week
+  // is the page the user opens on a Thursday evening and it must render at
+  // the same speed whether or not a league simulation is available. A failure
+  // — no league configured, no field sample, a cold cache — is silence, not
+  // an error state.
+  const [capOdds, setCapOdds] = useState<number | null>(null)
+  const viceCode = data?.advice?.vice?.code
+  useEffect(() => {
+    if (!viceCode) return
+    let cancelled = false
+    apiPost<LeagueWhatIfResult>('/api/league/whatif',
+                                { pins: [],
+                                  captain_override: viceCode,
+                                  rival_captain_blanks: null })
+      .then((out) => { if (!cancelled) setCapOdds(-out.delta_p_win) })
+      .catch(() => { if (!cancelled) setCapOdds(null) })
+    return () => { cancelled = true }
+  }, [viceCode])
 
   // The armband is dereferenced unguarded all over the page below —
   // advice.captain.name in a Stat, advice.vice.code on the pitch. An artifact
@@ -168,6 +188,12 @@ export default function ThisWeek() {
             {advice.scenarios?.captain_frequency !== undefined
               && ` · ${fmtPct(advice.scenarios.captain_frequency)} of sims`}
             {' · vice '}{advice.vice.name}
+            {capOdds !== null && (
+              <span className="ml-2" data-testid="captain-odds-chip">
+                {`· ${capOdds >= 0 ? '+' : ''}${(capOdds * 100).toFixed(1)}% `}
+                {'title odds vs vice'}
+              </span>
+            )}
           </span>
         )}
       >
