@@ -470,3 +470,71 @@ def test_the_history_is_written_once_per_run_not_once_per_refresh(client):
     client.get("/api/league/sim")
     client.get("/api/league/sim")
     assert history_path().stat().st_mtime_ns == stamp
+
+
+# --- the cache swap --------------------------------------------------------
+
+
+@pytest.fixture()
+def cache(monkeypatch):
+    """The two module containers, empty, for the swap's own tests."""
+    from gaffer.web.routers import league_sim
+
+    monkeypatch.setattr(league_sim, "_CACHE", {})
+    monkeypatch.setattr(league_sim, "_FRESH", set())
+    return league_sim
+
+
+def test_a_second_store_replaces_the_first_and_answers_for_the_newest(cache):
+    """Storing is one step, not a clear and then an assignment.
+
+    It used to be two, and a second request's clear ran between the first's,
+    discarding the answer it had just banked: a what-if asking for
+    ``cached_only`` a second after a sim it had watched succeed got a 204.
+    """
+    cache._cache_store("a", ("sim-a", "in-a"))
+    cache._cache_store("b", ("sim-b", "in-b"))
+
+    assert list(cache._CACHE) == ["b"]        # one gameweek at a time
+    assert cache._cache_get("b") == ("sim-b", "in-b")
+    assert cache._cache_get("a") is None
+    assert cache._FRESH <= set(cache._CACHE)  # never describes a gone entry
+
+
+def test_a_run_is_banked_once_however_often_it_is_read(cache):
+    cache._cache_store("a", ("sim-a", "in-a"))
+    assert cache._take_fresh("a") is True
+    assert cache._take_fresh("a") is False
+    cache._cache_get("a")
+    assert cache._take_fresh("a") is False
+
+
+def test_a_second_request_landing_mid_swap_does_not_lose_its_answer(cache,
+                                                                    monkeypatch):
+    """The interleaving itself, driven rather than raced.
+
+    Uvicorn serves these endpoints on a thread pool, so two page loads a
+    moment apart really do land in the swap together. Here the first store's
+    ``clear()`` hands control to a second one; the second's answer is the one
+    banked last and must be the one the cache holds.
+    """
+    import threading
+
+    second = threading.Thread(
+        target=cache._cache_store, args=("b", ("sim-b", "in-b")))
+    tripped = threading.Event()
+
+    class Interleaving(dict):
+        def clear(self):
+            if not tripped.is_set():
+                tripped.set()
+                second.start()
+                second.join(0.5)  # under the fix this is a timeout, not a wait
+            super().clear()
+
+    monkeypatch.setattr(cache, "_CACHE", Interleaving())
+    cache._cache_store("a", ("sim-a", "in-a"))
+    second.join()
+
+    assert len(cache._CACHE) == 1
+    assert cache._cache_get("b") == ("sim-b", "in-b")

@@ -16,6 +16,7 @@ shows a retry button, never a stack trace.
 
 from __future__ import annotations
 
+import threading
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Response
@@ -61,6 +62,54 @@ every ``GET /api/league/sim`` meant a page refresh re-wrote the sparkline's
 own store with a number that had not changed. It is banked once per run, on
 the call that produced it.
 """
+
+
+_LOCK = threading.Lock()
+"""Guards the two containers above, and nothing else.
+
+Uvicorn runs these endpoints on a thread pool, so two page loads a moment
+apart really do land here at once. Storing an answer used to be ``clear()``
+and then an assignment — two steps, and the second request's clear ran
+between the first's, throwing away the entry it had just stored. What the
+user saw was a what-if panel that had asked for ``cached_only`` a second
+after a sim it had watched succeed, and got a 204 back.
+
+Held across dict and set mutations only: never across ``build_inputs`` or
+``simulate_league``, so concurrent requests still fetch and simulate in
+parallel — the container is serialised, the work is not.
+"""
+
+
+def _cache_get(key):
+    """The cached ``(sim, inputs)`` if there is one, marked as served."""
+    with _LOCK:
+        hit = _CACHE.get(key)
+        if hit is not None:
+            _FRESH.discard(key)
+        return hit
+
+
+def _cache_store(key, value) -> None:
+    """Make ``key`` the one cached answer, in one indivisible step.
+
+    One gameweek's answer at a time; this is not an LRU. ``_FRESH`` is
+    replaced rather than added to, so it never outlives the entry it
+    describes.
+    """
+    with _LOCK:
+        _CACHE.clear()
+        _CACHE[key] = value
+        _FRESH.clear()
+        _FRESH.add(key)
+
+
+def _take_fresh(key) -> bool:
+    """True once per stored run: whether *this* call should bank the history."""
+    with _LOCK:
+        if key in _FRESH:
+            _FRESH.discard(key)
+            return True
+        return False
 
 
 def fpl_client():
@@ -112,18 +161,15 @@ def _run(cfg, gw: int | None = None, *, cached_only: bool = False):
     if plan_gw is None:
         raise GafferError("no saved advice — run `gaffer advise` first")
     key = _cache_key(cfg, plan_gw)
-    hit = _CACHE.get(key)
+    hit = _cache_get(key)
     if hit is not None:
-        _FRESH.discard(key)
         return hit
     if cached_only:
         return None
     inputs = _guard(build_inputs, cfg, fpl_client(), gw=plan_gw)
     sim = simulate_league(inputs, n=int(cfg.sim_n),
                           rival_drift=float(cfg.rival_drift))
-    _CACHE.clear()          # one gameweek's answer at a time; this is not an LRU
-    _CACHE[key] = (sim, inputs)
-    _FRESH.add(key)
+    _cache_store(key, (sim, inputs))
     return sim, inputs
 
 
@@ -134,8 +180,7 @@ def sim() -> LeagueSimData:
     key = _cache_key(cfg, int(gw)) if gw is not None else None
     result, inputs = _run(cfg, gw)
     run_at = datetime.now(timezone.utc).isoformat()
-    if key in _FRESH:
-        _FRESH.discard(key)
+    if _take_fresh(key):
         try:
             append_sim_history(result, int(gw), run_at)
         except Exception:  # noqa: BLE001 — never blocks the page
