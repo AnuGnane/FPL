@@ -54,9 +54,19 @@ Protected zero-diff list as v8a/v8c. `backtest.py` and `journal.py` are import-o
 
 Season-in-review page (May artifact — reads this ledger; grab-bag later); manager-form rolling score (derivative of the ledger, later); drill mode (needs point-in-time snapshots); grading mid-GW (review only touches `data_checked` GWs); feeding grades back into advice.
 
-## 7. Outcome
+## 7. Outcome (2026-08-31)
 
-(Filled at cycle end.)
+**Shipped.** Suite 1966 → 2117 Python, 328 → 344 frontend. 12 plan tasks + a FIX-FIRST review round (1 blocker, 2 importants, 8 nits — all fixed).
+
+**G1 PASS (real data)** — GW1 reviewed and banked: reconciliation EXACT (`score_gw` on my actual squad = official 46, zero-hit week), `points_on_bench` 2 = our own bench computation, hindsight XI 55 (gap 9, captain would have been element 475168), all four lanes honestly null with "no banked advice survives" (GW1's advice predates the 20-run retention — the null-not-zero rule held on the very first real row) + the pricing notice added in the fix round. Idempotent re-run; `--gw 1` replace-by-gameweek verified (`reviewed_at` moved, one row).
+
+**G2 PASS** — 15 rails in `tests/test_v8b_degradation.py` (one strengthened in the fix round). **G3 PASS** — suites above, tsc + build clean, protected + import-only (journal.py, backtest.py) zero diffs; one deliberate authorized pin update in test_v8c_degradation.py (job kinds 8→9).
+
+**Review round (blocker):** the Δwin% pricing rebuilt its own transfers counterfactual instead of reusing the graded lane's — the common case (I transferred, model disagreed) silently dropped the pp, and the surviving case priced a different squad than it graded. Fixed by building lanes once (`build_lanes()`) and pricing each lane's own cf; the rail is arithmetic (priced squad must score exactly `my_points − delta_pts`). Importants: ungraded lanes no longer carry `delta_pwin: 0.0` (null is never zero — the cycle's own rule); the banked GW1 row now says *why* nothing was priced. Nits shipped: unknown-chip null lane, hindsight no-legal-XI notice instead of a zero, accuracy clamped [0,100], season sums carry graded-GW counts, best/worst restricted to labelled decisions, ledger writes under a stale-tolerant lock.
+
+**Known coverage boundary (stated plainly, per the reviewer):** on real data this cycle validated banking, reconciliation, hindsight, idempotence, and the ledger; the four graded lanes + accuracy + miss detector + Δwin% pricing are validated by tests only until GW2's `data_checked` flips — the Tuesday launchd review (or the Model-hub button) writes the first fully-graded row, and it should be eyeballed. Grades are permanent by design (D2), which is why the blocker had to be fixed pre-merge.
+
+**Residuals:** season-in-review page and manager-form score deferred (read this ledger, grab-bag later); assistant-manager chip grades as a null lane with a note (scoring semantics not modeled); simplified-autosub caveats (backtest.py:36-38) now measurable via the `reconciled` flag frequency; `ADVICE_HISTORY_KEEP=20` global is unchanged — the ledger's bank-at-review-time design is the mitigation.
 
 ### Gate results (orchestrator-run)
 
