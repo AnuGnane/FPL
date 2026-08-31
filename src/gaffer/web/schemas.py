@@ -288,6 +288,16 @@ class LivePlayer(BaseModel):
     tier_eo: float | None = None
     tier_eo_se: float | None = None
     selected_by_percent: float | None = None
+    # v8d: the auto-sub projection and what this player still owes. All
+    # defaulted — a payload built without a component file carries the same
+    # row it always did.
+    projected_out: bool = False
+    projected_in: bool = False
+    sub_partner: int | None = None
+    """The other half of a projected substitution, so a chip can name him."""
+    sub_reason: str | None = None
+    """``"played"`` or ``"yet to play"``: how certain the incoming man is."""
+    remaining_ep: float | None = None
 
 
 class LiveTableRow(BaseModel):
@@ -297,6 +307,33 @@ class LiveTableRow(BaseModel):
     live: int
     projected: int
     delta: int
+    # v8d. ``live`` stays the no-autosub figure ``entry_live_points`` returns;
+    # ``projected_live`` is the same gameweek with the projected subs applied,
+    # and is what ``projected`` (the season total) is now built from.
+    projected_live: int | None = None
+    remaining_ep: float | None = None
+    race: float | None = None
+    """``projected_live + remaining_ep``: where this gameweek is heading."""
+
+
+class LiveSafety(BaseModel):
+    """One league place worth watching, priced in points."""
+
+    entry: int
+    name: str
+    role: Literal["above", "below", "leader"]
+    margin: int
+    """Their projected total minus mine. Positive means they are ahead."""
+    need: int
+    """What I must add beyond my projection to pass them; 0 when I lead."""
+
+
+class LiveRacePoint(BaseModel):
+    """One poll's snapshot of the race, held in memory for this session only."""
+
+    at: str
+    you: float
+    leader: float | None = None
 
 
 class LiveState(BaseModel):
@@ -307,6 +344,16 @@ class LiveState(BaseModel):
     players: list[LivePlayer]
     table: list[LiveTableRow]
     notice: str | None = None
+    my_projected_points: int = 0
+    my_race: float | None = None
+    race_reference: float | None = None
+    """This gameweek's saved ``advice.expected_pts``, when there is one."""
+    race_series: list[LiveRacePoint] = Field(default_factory=list)
+    safety: list[LiveSafety] = Field(default_factory=list)
+    leader_name: str | None = None
+    race_notice: str | None = None
+    """The race's own degradation line. Deliberately not ``notice``, which is
+    the tier-EO line and belongs to a different card."""
 
 
 class PlayerRow(BaseModel):

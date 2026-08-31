@@ -121,9 +121,15 @@ def test_live_between_gameweeks_is_a_quiet_inactive_payload(tmp_path,
     monkeypatch.setattr("gaffer.web.routers.live.fpl_client",
                         lambda: FakeClient(active=False))
     body = TestClient(create_app()).get("/api/live").json()
+    # v8d adds six defaulted fields to LiveState. The quiet payload is still
+    # quiet: every one of them is its empty value, because nothing between
+    # gameweeks is projected, raced or ranked.
     assert body == {"active": False, "gw": None, "my_points": 0,
                     "matches_in_play": 0, "players": [], "table": [],
-                    "notice": None}
+                    "notice": None, "my_projected_points": 0,
+                    "my_race": None, "race_reference": None,
+                    "race_series": [], "safety": [], "leader_name": None,
+                    "race_notice": None}
 
 
 # --- v4d: tier-resolved EO -------------------------------------------------
