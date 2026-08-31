@@ -39,6 +39,8 @@ import numpy as np
 import pandas as pd
 
 from gaffer import artifacts
+from gaffer.data.field import load_field_sample
+from gaffer.errors import GafferError
 from gaffer.optimize.scenarios import (NOISE_DENOM, NOISE_FLOOR_XMINS,
                                        scenario_noise, sigma_for,
                                        xmins_by_player_gw)
@@ -394,3 +396,110 @@ def element_sigmas(comp: pd.DataFrame) -> dict[int, float]:
                 / NOISE_DENOM
         totals[element] = totals.get(element, 0.0) + max(float(sigma), 0.0)
     return {element: value / weeks for element, value in totals.items()}
+
+
+SEASON_GWS = 38
+"""Gameweeks in a season. The remaining-weeks count is ``38 - gw + 1``: the
+gameweek being planned is still to be played."""
+
+
+def element_eps(comp: pd.DataFrame) -> dict[int, float]:
+    """``element -> expected points per gameweek`` over the horizon.
+
+    The *mean* over the distinct gameweeks the frame covers, not the sum: a
+    three-week horizon would otherwise read as a squad three times as good,
+    and the simulation multiplies this by the weeks left itself. A double
+    gameweek stays doubled, because two fixtures in one week really are twice
+    the points in that week.
+    """
+    if comp is None or comp.empty or "element" not in comp.columns:
+        return {}
+    frame = pd.DataFrame({
+        "element": pd.to_numeric(comp["element"], errors="coerce"),
+        "gw": pd.to_numeric(comp["gw"], errors="coerce"),
+        "ep": pd.to_numeric(comp["ep"], errors="coerce").fillna(0.0)})
+    frame = frame.dropna(subset=["element", "gw"])
+    if frame.empty:
+        return {}
+    weeks = max(int(frame["gw"].nunique()), 1)
+    grouped = frame.groupby("element", as_index=False)["ep"].sum()
+    return {int(r.element): float(r.ep) / weeks for r in grouped.itertuples()}
+
+
+def field_rate_from_sample(sample: list[list[dict]] | None,
+                           ep_by: dict[int, float]) -> float | None:
+    """The sampled field's mean weekly rate, or ``None`` with no sample.
+
+    The template a drifting rival converges on: what the average top-10k
+    manager's squad is worth per week under gaffer's own expected points. That
+    it is scored with *our* EP and not with theirs is the point — the question
+    is "how much better than the crowd is this squad, by the only yardstick we
+    have".
+
+    ``None`` rather than 0.0 for an absent or empty sample: zero would tell
+    every rival to converge on a squad that scores nothing, which is not a
+    degradation of the model but an inversion of it.
+    """
+    if not sample:
+        return None
+    rates = [sum(int(p.get("multiplier", 0))
+                 * float(ep_by.get(int(p["element"]), 0.0)) for p in squad)
+             for squad in sample]
+    return float(sum(rates) / len(rates)) if rates else None
+
+
+def build_inputs(cfg, client, *, gw: int | None = None) -> SimInputs:
+    """Assemble a :class:`SimInputs` from artifacts on disk plus fresh league
+    data.
+
+    Reads only what ``advise`` already wrote — the component frame for EP and
+    sigma — and fetches only what is not an artifact: standings, and each
+    entry's squad from the last *scored* gameweek (picks are 404 before a
+    deadline, the same rule ``league.py::_last_scored_gw`` follows). Nothing
+    is re-solved and nothing is re-trained: spec D4's whole point is that the
+    MC is a reader.
+
+    The field template comes from the banked sample for that same scored
+    gameweek; when there is none — a fresh clone, a week the scrape missed —
+    it is ``None`` and drift is off however the config is set. That is the
+    documented degradation and one of G3's rails.
+    """
+    if not getattr(cfg, "league_id", 0):
+        raise GafferError(
+            "set fpl.league_id in config.toml to use the league simulation")
+    plan_gw = int(gw) if gw is not None else artifacts.latest_gw()
+    if plan_gw is None:
+        raise GafferError("no saved advice — run `gaffer advise` first")
+    comp = artifacts.load_components(plan_gw)
+    ep_by = element_eps(comp)
+    sigma_by = element_sigmas(comp)
+    squad_gw = max(1, int(plan_gw) - 1)
+
+    rows, page = [], 1
+    while True:
+        data = client.get_league_standings(cfg.league_id, page)
+        rows.extend(data["standings"]["results"])
+        if not data["standings"].get("has_next") or len(rows) >= 50:
+            break
+        page += 1
+    # No re-sort: the standings endpoint already returns the league in its own
+    # order, and re-ranking it here would quietly disagree with the table the
+    # user is looking at whenever the API's tie-break is not "total, desc".
+
+    entries: list[Entry] = []
+    for row in rows:
+        entry_id = int(row["entry"])
+        try:
+            picks = list(client.get_entry_picks(entry_id, squad_gw)["picks"])
+        except Exception:  # noqa: BLE001 — joined late / private / 404
+            picks = []      # still in the league, simply unmodellable
+        entries.append(Entry(entry=entry_id, name=str(row["entry_name"]),
+                             total=int(row["total"]), picks=picks,
+                             is_me=entry_id == int(cfg.entry_id)))
+
+    sample = load_field_sample(str(getattr(cfg, "current_season", "") or ""),
+                               squad_gw)
+    return SimInputs(entries=entries, ep_by_element=ep_by,
+                     sigma_by_element=sigma_by,
+                     weeks_left=max(0, SEASON_GWS - int(plan_gw) + 1),
+                     field_rate=field_rate_from_sample(sample, ep_by))
