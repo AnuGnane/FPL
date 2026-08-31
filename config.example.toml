@@ -79,3 +79,9 @@ llm_command = 'claude -p --output-format json --disallowedTools "Bash,Read,Write
 # Seconds per batch of 40. A headless CLI on a consumer subscription is
 # minutes, not seconds, and a timeout looks exactly like a dead classifier.
 llm_timeout_s = 300
+
+# v8e: your own pins on a player's p_play / expected minutes, set from the
+# Players page or the Planning hub and stored in reports/overrides.json.
+# They are applied last, over every automated source, because you are the one
+# who watched the press conference. An empty store changes nothing.
+overrides = true

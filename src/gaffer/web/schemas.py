@@ -1074,3 +1074,32 @@ class ReviewSummary(BaseModel):
 class Review(BaseModel):
     gws: list[ReviewGw] = Field(default_factory=list)
     summary: ReviewSummary | None = None
+
+
+class OverrideRequest(BaseModel):
+    """One pin. At least one of the two values must be present."""
+
+    code: int
+    p_play: float | None = None
+    e_min: float | None = None
+    note: str = ""
+
+
+class OverrideRow(BaseModel):
+    code: int
+    name: str
+    p_play: float | None = None
+    e_min: float | None = None
+    note: str = ""
+    set_at: str = ""
+    model_p_play: float | None = None
+    """What the served pipeline had for him when the pin was made, so the
+    why-panel can say "the model had 0.82" without re-deriving anything."""
+    model_e_min: float | None = None
+
+
+class OverridesPanel(BaseModel):
+    active: bool = True
+    """``[news] overrides``. False means the pins are stored and *not* being
+    applied, which the panel says out loud rather than showing nothing."""
+    rows: list[OverrideRow] = Field(default_factory=list)
