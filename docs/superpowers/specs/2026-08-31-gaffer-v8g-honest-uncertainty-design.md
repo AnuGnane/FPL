@@ -27,4 +27,116 @@ Distribution-into-MC for the optimizer (still the protected-seam deferral from v
 
 ## 4. Outcome
 
-(Filled at cycle end.)
+Implemented across Tasks 1–9 on `feat/gaffer-v8g`. The G1–G3 checklist below is
+built and left unticked: CONVENTIONS.md §7 puts the gates with the orchestrator,
+not the implementer. The audit commands underneath it are mechanical rather than
+gates, so they were run and their actual output is recorded.
+
+### What shipped
+
+Three serve-side modules, three routers, no trained feature, no store, no job
+kind, no config key.
+
+- `src/gaffer/uncertainty.py` (219 lines) — `band_for`/`bands_by_player_gw`
+  read the scenario sweep's own σ out of `optimize.scenarios` and report
+  p25/p75 plus `P(pts ≥ 10)`/`P(pts ≤ 2)` off the *same* clipped normal
+  `noise_ep` draws from, recentred mean included. `tests/test_uncertainty.py`
+  checks the band against a 20 000-draw Monte Carlo of `noise_ep` itself, which
+  is the only assertion that catches the two drifting apart.
+- `src/gaffer/confidence.py` (97 lines) — `captain_confidence` over the v8b
+  decision ledger: `MIN_GRADED = 4`, three tiers, counts only. No branch in the
+  module can emit a percentage, and a test asserts that over three ledgers.
+- `src/gaffer/misses.py` (155 lines) — the components-vs-`player_gw` join for
+  the largest gameweek that has both (A7), signed so a positive miss is a
+  player the model under-rated.
+- Payload additions, all nullable and all additive: `ep_lo`/`ep_hi`/`p_haul`/
+  `p_blank` on `PlayerRow`; those four plus `ep_gw`/`sigma` on
+  `ComponentPlayer`; `decision_sigma` on `SensitivityReport`. New endpoints
+  `GET /api/confidence` and `GET /api/misses`.
+- Frontend: `Range` column and haul/blank chips on the squad table and the
+  explorer, `ConfidenceLine` under the pitch, the σ honesty line on
+  `SensitivityCard`, and `CompareRadar` — five axes normalized against the
+  listed pool, with the normalization stated in the caption and a "different
+  jobs" line on a cross-position compare. `QualityTab` gained the `p_start`
+  reliability curve, a y = x reference and bin count on every curve, the
+  forecast-vs-outcome scatter, and the biggest-misses table.
+
+### Deviations from the plan, and why
+
+- **`test_v8g_added_no_config_key` (Task 8) was strengthened, not weakened.**
+  The plan's rail screened `Config` field names for the substrings `band`,
+  `uncertainty` and `confidence`; `z_deadband` is a v7 key that has carried the
+  first of those since long before this cycle, so the rail failed on a
+  pre-existing field. The screen now excludes that one name by exact match and
+  is backed by a pin on the total field count (47), which catches a v8g config
+  key whatever it happens to be named — a strictly wider net than the substring
+  screen was.
+- **Task 9's "Where things live" entries are bullets, not table rows.** The
+  plan asked for the file's "existing table style"; that section is a bullet
+  list. Matched the file.
+- **Task 9's Quality paragraph said "three things" and then listed four.**
+  Corrected to four in the README.
+- `routers/components.py` gained a `getattr` guard for minutes-less frames
+  during Task 2 — a pre-existing latent 500 that the new degraded-frame rail
+  surfaced.
+
+### Audit — run, with actual output
+
+```
+git diff --stat main...HEAD -- <the 21 protected paths>   → (no output)
+git diff --stat main...HEAD -- data reports models logs config.toml
+                                                          → (no output)
+git diff main...HEAD | grep -iE "api[_-]?key|secret|token|password|Bearer "
+                                → 1 line, and it is the plan document quoting
+                                  this very grep command. No secret material.
+git show main:config.toml                                 → fails (absent)
+```
+
+Whole-branch diffstat: 35 files changed, 6387 insertions(+), 32 deletions(-).
+The 32 deletions are all replaced lines inside the frontend components and
+routers this cycle extends; no protected path appears in the stat.
+
+### Suites — run, with actual counts
+
+| Command | Baseline | After v8g |
+| --- | --- | --- |
+| `uv run pytest -q` | 2325 (pre-cycle) | **2401 passed** — 2383 after Tasks 1–7, +18 from Task 8's rails |
+| `npx vitest run` | 406 passed, 1 skipped, 58 files | **435 passed, 1 skipped, 60 files** |
+| `npx tsc --noEmit` | clean | clean |
+| `npm run build` | clean | clean (chunk-size advisory only, pre-existing) |
+
+### G1 — live render (orchestrator, on the real server)
+
+- [ ] Bands visible on the This Week squad table, and **plausible**: pick two
+      players at comparable EP — one boom-bust attacker, one goalkeeper — and
+      confirm the attacker's range is the wider of the two. Record both ranges.
+- [ ] A player with no minutes model (or a components file temporarily moved
+      aside) shows an em dash in `Range`, not `0.0–0.0`.
+- [ ] Model → Quality renders every calibration card off the real
+      `reports/evaluation.json`: four reliability curves including `P(starts)`,
+      each with the diagonal and an observation count; the forecast-vs-outcome
+      scatter with one point per finished gameweek; the biggest-misses table
+      naming a real player.
+- [ ] The confidence line under the pitch quotes the **true** ledger count.
+      With one reviewed gameweek that is the "too early to grade — … in 1 of 1
+      reviewed gameweeks" branch. Exercise it for real rather than with a
+      fixture, and record the sentence verbatim.
+- [ ] The radar renders for two comparable midfielders, and captions a
+      GKP-vs-FWD comparison with the "different jobs" line while still drawing.
+- [ ] The sensitivity card's margin line: confirm it either carries the noise
+      qualifier or does not, and that which one it carries matches the served
+      `decision_sigma`.
+
+### G2 — rails
+
+- [ ] `uv run pytest -q tests/test_v8g_degradation.py` green.
+
+### G3 — suites and audit
+
+- [ ] All four suite commands green at the counts recorded above.
+- [ ] Both audit commands print nothing.
+
+### Still to record at gate time
+
+- [ ] The two spot-checked ranges from G1.
+- [ ] The confidence sentence the live ledger produced.
