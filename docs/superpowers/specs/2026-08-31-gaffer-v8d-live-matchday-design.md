@@ -30,3 +30,52 @@ Event markers/goal annotations on the race chart (needs per-event timelines; lat
 ## 4. Outcome
 
 (Filled at cycle end.)
+
+### Gate results (orchestrator-run)
+
+**G1 — live smoke.** `uv run gaffer ui`, Live page open during or straight
+after a real gameweek, against the real API.
+
+- [ ] `/api/live` returns the new fields populated: `my_projected_points`,
+      `my_race`, `race_reference`, `race_series`, `safety`, and per-player
+      `remaining_ep`.
+- [ ] **Projected subs hand-checked.** Every starter in my squad whose team's
+      fixtures are finished on 0 minutes is chipped `auto-sub out`, the man
+      chipped `auto-sub in` is the first legal bench player in bench order,
+      and the resulting eleven is a legal formation. If no starter blanked
+      that week, say so and check a rival's row instead, or re-run after the
+      next gameweek — an unexercised projection is not a passed gate.
+- [ ] **Race arithmetic spot-checked by hand** on one player: his
+      `remaining_ep` equals his `reports/components_gw{N}.parquet` `ep` times
+      the fraction of his fixture unplayed, and `my_race` equals
+      `my_projected_points` plus the multiplier-weighted sum over the XI.
+- [ ] **Safety margins consistent with the table below them:** each strip
+      row's `margin` equals that entry's `projected` minus mine, read straight
+      off the rendered league table.
+- [ ] Trajectory grows one point per minute while the page is open, and the
+      reference line sits at the gameweek's saved `expected_pts`.
+- [ ] Transcribe the `/api/live` body and the hand-check verbatim
+      (CONVENTIONS.md §4).
+
+Output:
+
+```
+(paste the /api/live body and the hand-check here)
+```
+
+**G2 — rails.** `uv run pytest -q tests/test_v8d_degradation.py`
+
+- [ ] All passed. Specifically: components absent ⇒ race equals the projected
+      score with a `race_notice`; no league ⇒ `safety` empty and the players
+      card intact; dead API ⇒ the existing 422 guard, unchanged;
+      `entry_live_points` pin green; no disk writes across three polls; job
+      kinds unchanged; no config keys added.
+
+**G3 — suites and audit.**
+
+- [ ] `uv run pytest -q` green.
+- [ ] `npx vitest run`, `npx tsc --noEmit`, `npm run build` green.
+- [ ] Task 8's protected-file, import-only and `entry_live_points` diffs all
+      empty.
+- [ ] The `league_live_table` `projected` change is the cycle's only contract
+      change, and `tests/test_live_gw.py` is unmodified.
