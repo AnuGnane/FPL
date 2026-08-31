@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiGet, apiPost } from '../api/client'
 import {
-  Card, EmptyState, JobButton, Loading, PageHeader, PitchView, Stat,
+  Card, EmptyState, JobButton, Loading, PageHeader, Stat,
   ThresholdBar, fmtNum, fmtPct,
 } from '../kit'
 import type {
@@ -13,6 +13,7 @@ import DigestCard from './this-week/DigestCard'
 import MovesCard from './this-week/MovesCard'
 import NewsPanel from './this-week/NewsPanel'
 import WhyPanel from './this-week/WhyPanel'
+import SquadPitch from './this-week/SquadPitch'
 import SquadTable, { type SquadBreakdown, type SquadRow }
   from './this-week/SquadTable'
 
@@ -27,6 +28,11 @@ export default function ThisWeek() {
   const [players, setPlayers] = useState<PlayerRow[]>([])
   const [components, setComponents] = useState<ComponentsBreakdown | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Pitch by default (spec D3). Component state, not localStorage: persisting
+  // a view preference is a real feature with real questions behind it
+  // (per hub? per device? across a rebuild?) and inventing an answer inside a
+  // lean UI cycle is how a preference store gets built by accident.
+  const [view, setView] = useState<'pitch' | 'table'>('pitch')
 
   const load = useCallback(() => {
     apiGet<AdviceLatest>('/api/advice/latest')
@@ -125,8 +131,21 @@ export default function ThisWeek() {
       news: row?.news ?? '',
       chanceOfPlaying: row?.chance_of_playing ?? null,
       penalties: (row?.penalties_order ?? 0) === 1,
+      // Resolved server-side and passed straight through. `?? null` rather
+      // than a default: an advice payload served by a backend that could read
+      // no snapshot has these undefined, and the pitch's honest answer to
+      // that is a plain shirt and the word "Blank" — not an invented club.
+      teamShort: p.team_short ?? null,
+      teamCode: p.team_code ?? null,
+      nextFixture: p.next_fixture ?? null,
     }
   })
+
+  // One array, two views. The pitch needs the split; the table wants the
+  // whole squad in one sortable body, exactly as it always has.
+  const xiCodes = new Set(advice.xi.map((p) => p.code))
+  const pitchXi = squad.filter((r) => xiCodes.has(r.code))
+  const pitchBench = squad.filter((r) => !xiCodes.has(r.code))
 
   const breakdown: Record<number, SquadBreakdown> = {}
   for (const player of components?.players ?? []) {
@@ -193,38 +212,65 @@ export default function ThisWeek() {
           deltaLabel={strategy ? `λ · ${strategy.stance}` : undefined}
         />
       </div>
-      {/* The armband belongs to the pitch, not to a stray line above it. */}
+      {/* One card, two views (plan A11). The XI used to be drawn twice — as a
+          bare pitch here and again inside the squad table below — and the new
+          pitch carries the bench too, so a third rendering would be absurd.
+          SquadTable is untouched; it is simply rendered from a different
+          parent. */}
       <Card
-        title="Starting XI"
+        title="Squad"
         className="mb-4"
         action={(
-          <span className="text-text-muted">
-            Captain {advice.captain.name}
-            {advice.scenarios?.captain_frequency !== undefined
-              && ` · ${fmtPct(advice.scenarios.captain_frequency)} of sims`}
-            {' · vice '}{advice.vice.name}
-            {capOdds !== null && (
-              // Whole percentage points. At n = 2,000 the Monte Carlo
-              // standard error on a probability near 0.5 is about 0.9pp, so
-              // a tenth of a point here is a digit the instrument does not
-              // have — and this chip is a glance, not a measurement.
-              <span className="ml-2" data-testid="captain-odds-chip">
-                {`· ${capOdds >= 0 ? '+' : ''}${Math.round(capOdds * 100)}pp `}
-                {'title odds vs vice'}
-              </span>
-            )}
+          <span className="flex flex-wrap items-center gap-3
+                           text-text-muted">
+            <span>
+              Captain {advice.captain.name}
+              {advice.scenarios?.captain_frequency !== undefined
+                && ` · ${fmtPct(advice.scenarios.captain_frequency)} of sims`}
+              {' · vice '}{advice.vice.name}
+              {capOdds !== null && (
+                // Whole percentage points. At n = 2,000 the Monte Carlo
+                // standard error on a probability near 0.5 is about 0.9pp, so
+                // a tenth of a point here is a digit the instrument does not
+                // have — and this chip is a glance, not a measurement.
+                <span className="ml-2" data-testid="captain-odds-chip">
+                  {`· ${capOdds >= 0 ? '+' : ''}`}
+                  {`${Math.round(capOdds * 100)}pp `}
+                  {'title odds vs vice'}
+                </span>
+              )}
+            </span>
+            <span className="flex overflow-hidden rounded-card
+                             border border-border">
+              {(['pitch', 'table'] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={view === option}
+                  onClick={() => setView(option)}
+                  className={'px-2 py-0.5 capitalize '
+                    + (view === option
+                      ? 'bg-card text-text'
+                      : 'text-text-muted hover:text-text')}
+                >
+                  {option === 'pitch' ? 'Pitch' : 'Table'}
+                </button>
+              ))}
+            </span>
           </span>
         )}
       >
-        <PitchView
-          xi={advice.xi.map((p) => ({ ...p, position: p.position ?? '' }))}
-          captain={advice.captain.code}
-          vice={advice.vice.code}
-        />
+        {view === 'pitch'
+          ? (
+            <SquadPitch
+              xi={pitchXi}
+              bench={pitchBench}
+              captain={advice.captain.code}
+              vice={advice.vice.code}
+            />
+            )
+          : <SquadTable rows={squad} breakdown={breakdown} />}
         <ConfidenceLine />
-      </Card>
-      <Card title="Squad" className="mb-4">
-        <SquadTable rows={squad} breakdown={breakdown} />
       </Card>
       <div className="mb-4">
         <MovesCard buys={advice.buys} sells={advice.sells} hits={advice.hits} />

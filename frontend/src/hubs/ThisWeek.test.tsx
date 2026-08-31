@@ -1,4 +1,6 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import {
+  fireEvent, render, screen, waitFor, within,
+} from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ThisWeek from './ThisWeek'
@@ -30,8 +32,13 @@ const ADVICE = {
   deadline: '2099-09-18T17:30:00Z',
   advice: {
     gw: 5, deadline: '2099-09-18T17:30:00Z', expected_pts: 61.5, hits: 1,
-    xi: [{ code: 1, name: 'Salah', position: 'MID', ep: 6.4 }],
-    bench: [{ code: 2, name: 'Gabriel', position: 'DEF', ep: 4.6 }],
+    xi: [{ code: 1, name: 'Salah', position: 'MID', ep: 6.4,
+           team_short: 'LIV', team_code: 14,
+           next_fixture: { opponent_short: 'MUN', home: true,
+                           kickoff_utc: '2026-09-12T14:00:00Z',
+                           difficulty: 0.31 } }],
+    bench: [{ code: 2, name: 'Gabriel', position: 'DEF', ep: 4.6,
+              team_short: 'ARS', team_code: 3, next_fixture: null }],
     captain: { code: 1, name: 'Salah', ep: 6.4 },
     vice: { code: 2, name: 'Gabriel', ep: 4.6 },
     buys: [{ code: 3, name: 'Wirtz', ep: 6.1, frequency: 0.82 }],
@@ -111,7 +118,9 @@ describe('This Week hub', () => {
   it('shows the four stats: XI, captain, chip and league', async () => {
     render(<MemoryRouter><ThisWeek /></MemoryRouter>)
     expect(await screen.findByText('Expected XI')).toBeInTheDocument()
-    expect(screen.getByText('61.5')).toBeInTheDocument()
+    // v9a: the pitch is the default view, so the bare '61.5' that used to
+    // come off the squad table's EO cell is now only the stat tile's value.
+    expect(screen.getByText('61.5 pts')).toBeInTheDocument()
     // The captain's name is on the pitch, in the squad table and in the
     // caption too, so this one is scoped to the stat tile.
     const captainStat = screen.getByText('Captain').closest('div')!
@@ -128,7 +137,10 @@ describe('This Week hub', () => {
   })
 
   it('lists the squad with EO from the players endpoint', async () => {
+    // v9a: one click away rather than on screen at load — the table itself
+    // is unchanged.
     render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    fireEvent.click(await screen.findByRole('button', { name: 'Table' }))
     expect(await screen.findByText('61.5')).toBeInTheDocument()
   })
 
@@ -234,20 +246,108 @@ describe('the captaincy title-odds chip', () => {
   it('is simply absent on a cold cache, which answers 204 as null', async () => {
     apiPost.mockResolvedValue(null)
     render(<MemoryRouter><ThisWeek /></MemoryRouter>)
-    expect(await screen.findByText(/Starting XI/)).toBeInTheDocument()
+    expect(await screen.findByTestId('pitch-row-MID')).toBeInTheDocument()
     expect(screen.queryByTestId('captain-odds-chip')).not.toBeInTheDocument()
   })
 
   it('is simply absent when the simulation is not available', async () => {
     apiPost.mockRejectedValue(new Error('422'))
     render(<MemoryRouter><ThisWeek /></MemoryRouter>)
-    expect(await screen.findByText(/Starting XI/)).toBeInTheDocument()
+    expect(await screen.findByTestId('pitch-row-MID')).toBeInTheDocument()
     expect(screen.queryByTestId('captain-odds-chip')).not.toBeInTheDocument()
   })
 
   it('never blocks the page on it', async () => {
     apiPost.mockReturnValue(new Promise(() => {}))     // never resolves
     render(<MemoryRouter><ThisWeek /></MemoryRouter>)
-    expect(await screen.findByText(/Starting XI/)).toBeInTheDocument()
+    expect(await screen.findByTestId('pitch-row-MID')).toBeInTheDocument()
+  })
+})
+
+
+/** The advice fixture with named identity fields stripped, for the
+ *  cold-backend case. */
+function adviceWithout(fields: string[]) {
+  const strip = (p: Record<string, unknown>) => {
+    const out = { ...p }
+    for (const f of fields) delete out[f]
+    return out
+  }
+  const advice = {
+    ...ADVICE.advice,
+    xi: ADVICE.advice.xi.map(strip),
+    bench: ADVICE.advice.bench.map(strip),
+  }
+  return { ...ADVICE, advice }
+}
+
+/** The one card that hosts both views. MovesCard and DigestCard draw tables
+ *  of their own, so "is the table showing" has to be asked of this section
+ *  and not of the page. */
+async function squadCard(): Promise<HTMLElement> {
+  const toggle = await screen.findByRole('button', { name: 'Pitch' })
+  return toggle.closest('section') as HTMLElement
+}
+
+describe('the pitch and the table', () => {
+  it('shows the pitch by default, with the bench on it', async () => {
+    // D3: the pitch is This Week's default. The table is a click away and
+    // stays the data-dense view.
+    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    expect(await screen.findByTestId('pitch-row-MID')).toBeInTheDocument()
+    expect(screen.getByTestId('bench-strip')).toBeInTheDocument()
+    expect(within(await squadCard()).queryByRole('table'))
+      .not.toBeInTheDocument()
+  })
+
+  it('draws each XI player exactly once', async () => {
+    // The regression A11 exists to prevent: two cards, both drawing the XI.
+    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    await screen.findByTestId('pitch-row-MID')
+    expect(within(screen.getByTestId('pitch-row-MID'))
+      .getAllByText('Salah')).toHaveLength(1)
+  })
+
+  it('switches to the table and back', async () => {
+    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    fireEvent.click(await screen.findByRole('button', { name: 'Table' }))
+    expect(within(await squadCard()).getByRole('table')).toBeInTheDocument()
+    expect(screen.queryByTestId('pitch-row-MID')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Pitch' }))
+    expect(await screen.findByTestId('pitch-row-MID')).toBeInTheDocument()
+  })
+
+  it('says which view is showing', async () => {
+    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    const pitch = await screen.findByRole('button', { name: 'Pitch' })
+    expect(pitch).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Table' }))
+      .toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('carries the fixture chips onto the pitch', async () => {
+    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    expect(await screen.findByText(/MUN \(H\)/)).toBeInTheDocument()
+  })
+
+  it('renders the pitch when the advice carries no identity at all',
+     async () => {
+       // An advice payload served by a backend that could not read a single
+       // snapshot: three undefined fields on every entry. The page is a page.
+       apiGet.mockImplementation((path: string) => (
+         path === '/api/advice/latest'
+           ? Promise.resolve(adviceWithout(['team_short', 'team_code',
+                                            'next_fixture']))
+           : route(path)))
+       render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+       expect(await screen.findByTestId('pitch-row-MID')).toBeInTheDocument()
+       expect(screen.getAllByText('Blank').length).toBeGreaterThan(0)
+     })
+
+  it('keeps the captain line and the odds chip above the pitch', async () => {
+    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    await screen.findByTestId('pitch-row-MID')
+    const header = (await squadCard()).querySelector('header')!
+    expect(header.textContent).toMatch(/Captain Salah/)
   })
 })
