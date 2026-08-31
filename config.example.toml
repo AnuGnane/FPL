@@ -48,5 +48,7 @@ lineup_start_floor = 0.0
 # data/live/presser_log.parquet and changes no advice.
 llm_classifier = false
 llm_shadow = true
-llm_command = "claude -p --output-format json"
+# No tools: the texts it reads are scraped web content, and a classifier
+# that only ever returns one word from a fixed list needs no hands.
+llm_command = 'claude -p --output-format json --disallowedTools "Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task,NotebookEdit"'
 llm_timeout_s = 120

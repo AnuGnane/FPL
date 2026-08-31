@@ -85,7 +85,7 @@ lineup_absence = true      # damp a regular the predicted XI left out
 lineup_start_floor = 0.0   # off: never raise a p_play toward a predicted start
 llm_classifier = false     # off: the presser classifier logs, never serves
 llm_shadow = true          # log what it would have done
-llm_command = "claude -p --output-format json"
+llm_command = 'claude -p --output-format json --disallowedTools "Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task,NotebookEdit"'
 
 [data]
 train_seasons = ["2022-23", "2023-24", "2024-25", "2025-26"]
@@ -99,6 +99,12 @@ The `[news]` block is optional — every key above is its default. `llm_*` drive
 the presser classifier, which runs on your own Claude subscription through
 whatever `llm_command` names and, with `llm_classifier = false`, only ever
 writes `data/live/presser_log.parquet`.
+
+The default `llm_command` hands the model no tools. The texts it classifies
+are scraped from the web, so they are untrusted by construction, and a job
+whose whole output is one word from a six-word vocabulary has no use for a
+shell or a file. If you point `llm_command` at a different CLI, keep the
+no-tools posture.
 
 ## Bookmaker odds (optional)
 

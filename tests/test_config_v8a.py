@@ -27,7 +27,10 @@ def test_the_shipped_defaults_are_the_pre_v8a_behaviour():
     cfg = Config(entry_id=1, league_id=2)
     assert cfg.news_llm_classifier is False
     assert cfg.news_llm_shadow is True
-    assert cfg.news_llm_command == "claude -p --output-format json"
+    assert cfg.news_llm_command == (
+        'claude -p --output-format json --disallowedTools '
+        '"Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task,'
+        'NotebookEdit"')
     assert cfg.news_llm_timeout_s == 120
     assert cfg.news_lineup_absence is True
     assert cfg.news_lineup_absence_damp == 0.75
@@ -57,6 +60,22 @@ def test_a_missing_config_gives_the_serving_defaults_not_a_raise(monkeypatch,
     assert cfg.news_lineup_absence is True
     assert cfg.news_llm_classifier is False
     serving_config.cache_clear()
+
+
+def test_the_shipped_command_hands_the_model_no_tools():
+    """The classifier reads scraped web text, so the injection is not
+    hypothetical. Every tool the CLI ships is named on the deny list, and
+    the example config and the README carry the same string."""
+    from gaffer.config import LLM_NO_TOOLS
+
+    cfg = Config(entry_id=1, league_id=2)
+    default = cfg.news_llm_command
+    assert f'--disallowedTools "{LLM_NO_TOOLS}"' in default
+    for tool in ("Bash", "Read", "Write", "Edit", "Glob", "Grep",
+                 "WebFetch", "WebSearch", "Task", "NotebookEdit"):
+        assert tool in LLM_NO_TOOLS.split(",")
+    for doc in ("config.example.toml", "README.md"):
+        assert LLM_NO_TOOLS in open(doc, encoding="utf-8").read()
 
 
 def test_the_example_config_documents_every_new_key():

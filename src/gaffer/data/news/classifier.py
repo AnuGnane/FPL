@@ -72,6 +72,11 @@ def build_prompt(texts: list[NewsText]) -> str:
     cost here, not the tokens: thirty texts are a few hundred words and thirty
     subprocesses are half a minute.
     """
+    # Every item's text is scraped web content — a quote off premierinjuries,
+    # the bootstrap's own ``news`` string — and therefore untrusted. It is
+    # pasted below instructions it may well try to countermand, which is why
+    # the shipped ``llm_command`` hands the model no tools and why nothing
+    # but a verdict from a closed vocabulary survives _extract_rows.
     lines = [
         "You are classifying short Fantasy Premier League team-news texts.",
         "For EACH numbered item below, decide which one verdict best fits:",

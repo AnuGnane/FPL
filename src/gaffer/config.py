@@ -7,6 +7,26 @@ from pathlib import Path
 
 from gaffer.errors import GafferError
 
+LLM_NO_TOOLS = ("Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,"
+                "Task,NotebookEdit")
+DEFAULT_LLM_COMMAND = ('claude -p --output-format json '
+                       f'--disallowedTools "{LLM_NO_TOOLS}"')
+"""The classifier's default posture: a language model with no hands.
+
+Every text it reads is scraped web content — a quote off premierinjuries,
+the bootstrap's ``news`` string — and prompt injection in a scraped field is
+a solved attack, not a hypothetical. The model's job here is to return one
+word from a fixed vocabulary, so it needs no tool at all, and the cheapest
+way to be sure a sentence beginning "ignore your instructions and" cannot do
+anything is to leave nothing for it to do.
+
+It is a deny list, and a deny list has one honest weakness: a tool the CLI
+ships after this line was written is not on it. The list is therefore a
+floor rather than a proof, and the second half of the defence is that the
+prompt asks for a JSON array and :func:`~gaffer.data.news.classifier
+._extract_rows` drops anything that is not one.
+"""
+
 
 @dataclass
 class Config:
@@ -68,7 +88,7 @@ class Config:
     # is the one the layer exists for.
     news_llm_classifier: bool = False
     news_llm_shadow: bool = True
-    news_llm_command: str = "claude -p --output-format json"
+    news_llm_command: str = DEFAULT_LLM_COMMAND
     news_llm_timeout_s: int = 120
     news_lineup_absence: bool = True
     news_lineup_absence_damp: float = 0.75
@@ -132,8 +152,7 @@ def load_config(path: Path | str = "config.toml") -> Config:
         news_min_coverage=float(news.get("min_coverage", 0.5)),
         news_llm_classifier=bool(news.get("llm_classifier", False)),
         news_llm_shadow=bool(news.get("llm_shadow", True)),
-        news_llm_command=str(news.get("llm_command",
-                                      "claude -p --output-format json")),
+        news_llm_command=str(news.get("llm_command", DEFAULT_LLM_COMMAND)),
         news_llm_timeout_s=int(news.get("llm_timeout_s", 120)),
         news_lineup_absence=bool(news.get("lineup_absence", True)),
         news_lineup_absence_damp=float(news.get("lineup_absence_damp", 0.75)),
