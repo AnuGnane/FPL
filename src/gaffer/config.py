@@ -74,6 +74,8 @@ class Config:
     # sample sizes for one sample is a bug waiting for a Saturday.
     field_scrape: bool = True
     field_sample: int = 300
+    sim_n: int = 2000
+    rival_drift: float = 0.5
     # --- v5 news layer -----------------------------------------------------
     # Defaults are shipped-behaviour-ON, individually switchable. Every source
     # degrades to the official-flags path by itself (spec §7), so these exist
@@ -151,6 +153,8 @@ def load_config(path: Path | str = "config.toml") -> Config:
         field_scrape=bool(league.get("field_scrape", True)),
         field_sample=int(league.get("field_sample",
                                     league.get("tier_sample", 300))),
+        sim_n=int(league.get("sim_n", 2000)),
+        rival_drift=float(league.get("rival_drift", 0.5)),
         # Read key-by-key like [odds] and [league]: the TOML keys are
         # deliberately shorter than the dataclass fields (enabled, injuries)
         # so the section reads as prose in config.toml.

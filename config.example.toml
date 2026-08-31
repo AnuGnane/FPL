@@ -22,6 +22,31 @@ decision_priors = true
 [odds]
 # api_key = "get one free at the-odds-api.com (500 requests/month)"
 
+[league]
+# League mode is gated by fpl.league_id, not by a switch here: set that and
+# the tilt turns on. These are its dials, and every one of them ships at the
+# value below — this section exists to name them, not to change them.
+z_scale = 1.5             # points of gap per unit of z before the tilt moves
+lambda_cap = 0.5          # the most the tilt may ever bend the board
+sigma_floor = 8.0         # weekly points sigma the gap is measured in...
+sigma_cap = 30.0          # ...clamped both ends, because a short season
+sigma_min_weeks = 6       # gameweeks of history before sigma is estimated
+z_deadband = 0.25         # |z| under this is noise: no tilt at all
+
+# The top-10k sample. tier_eo is the live tracker's EO column; field_scrape
+# is v8c's scheduled version of the same fetch, which also keeps the sampled
+# squads (anonymously) so the league Monte Carlo has a field to drift toward.
+tier_eo = true
+tier_sample = 300
+field_scrape = true
+field_sample = 300        # defaults to tier_sample when unset
+
+# The mini-league Monte Carlo behind /api/league/sim.
+sim_n = 2000              # simulations per run; 2000 is ~1s at league size 50
+# How far a rival's squad drifts toward the field template over the run.
+# 0.0 freezes every rival's current squad — the analytic sanity case.
+rival_drift = 0.5
+
 [data]
 train_seasons = ["2022-23", "2023-24", "2024-25", "2025-26"]
 current_season = "2026-27"
