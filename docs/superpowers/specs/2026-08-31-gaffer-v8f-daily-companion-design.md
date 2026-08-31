@@ -67,10 +67,12 @@ git diff main -- tests/test_v8b_degradation.py tests/test_v8c_degradation.py \
   tests/test_web_job_kinds_v8b.py tests/test_web_job_kinds_v8c.py
 ```
 
-      Measured: five `10 -> 12` job-kind assertions (v8b, v8c, v8d, v8e, v8g),
-      one `47 -> 48` config-key assertion (v8g), and the two sorted-list pins
-      gaining `digest-friday` / `digest-tuesday` — each with its authorising
-      comment, and nothing else.
+      Measured: six `10 -> 12` job-kind count assertions (the v8b, v8c, v8d,
+      v8e and v8g degradation rails plus `test_web_job_kinds_v8b.py`), one
+      `47 -> 48` config-key assertion (v8g), and two sorted-list pins gaining
+      `digest-friday` / `digest-tuesday` (`test_web_job_kinds.py` and
+      `test_web_job_kinds_v8c.py`) — each with its authorising comment, and
+      nothing else.
 
 - [ ] Security ritual (CONVENTIONS.md §8): `git diff main` greps clean for
       keys, tokens and private-key headers; `git show main:config.toml` fails
