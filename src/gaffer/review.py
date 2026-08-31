@@ -39,12 +39,13 @@ from gaffer.data.my_entry import (bank_my_entry, chip_for_gw, gw_history_row,
                                   load_my_transfers, my_transfers_for_gw)
 from gaffer.journal import _code_of_element, latest_run_per_gw
 
-__all__ = ["ACTUAL_COLS", "CHIP_SCORING", "LANES", "MISS_BAR", "SQUAD_CHIPS",
-           "actuals_for_gw", "code_of_element", "grade_gw_from",
-           "hindsight_gap", "hindsight_xi", "label_for", "lane_bench",
-           "lane_captaincy", "lane_chip", "lane_transfers", "model_decisions",
-           "my_decisions", "pair_by_position", "reviewable_gws", "score_gw",
-           "score_squad", "swap_slots"]
+__all__ = ["ACTUAL_COLS", "CHIP_SCORING", "LANES", "MISS_BAR", "PWIN_LANES",
+           "SQUAD_CHIPS", "actuals_for_gw", "code_of_element", "grade_gw",
+           "grade_gw_from", "hindsight_gap", "hindsight_xi", "label_for",
+           "lane_bench", "lane_captaincy", "lane_chip", "lane_transfers",
+           "model_decisions", "my_decisions", "pair_by_position",
+           "picks_from_squad", "price_lanes", "price_lanes_for_gw",
+           "reviewable_gws", "score_gw", "score_squad", "swap_slots"]
 
 ACTUAL_COLS = ["code", "total_points", "minutes", "position"]
 """Exactly the columns :func:`gaffer.backtest.score_gw` reads, in its order."""
@@ -586,7 +587,8 @@ def hindsight_xi(squad15, actuals: pd.DataFrame):
 
 
 def grade_gw_from(gw: int, mine: dict, model: dict | None,
-                  actuals: pd.DataFrame) -> dict:
+                  actuals: pd.DataFrame, pwin: dict | None = None,
+                  pwin_meta: dict | None = None) -> dict:
     """One ledger row from decisions already read. Pure; no I/O, no network.
 
     Split out from :func:`grade_gw` so the taxonomy can be tested against
@@ -639,6 +641,7 @@ def grade_gw_from(gw: int, mine: dict, model: dict | None,
         "misses": [],
         "notices": notices,
     }
+    row.update(pwin_meta or {})
 
     if model is None:
         row["lanes"] = [{"lane": name, "delta_pts": None, "delta_pwin": None,
@@ -688,6 +691,17 @@ def grade_gw_from(gw: int, mine: dict, model: dict | None,
             composite = {**composite, "chip": cf["chip"]}
     model_points = score_squad(actuals, **composite)
 
+    pwin = pwin or {}
+    for lane in lanes:
+        if lane["lane"] in PWIN_LANES:
+            lane["delta_pwin"] = pwin.get(lane["lane"])
+        else:
+            lane["delta_pwin"] = 0.0
+            lane["note"] = lane["note"] or (
+                "title odds price the starting eleven and the armband; a "
+                "bench order and a chip do not move them")
+        lane["label"] = label_for(lane["delta_pts"], lane["delta_pwin"],
+                                  aligned=lane["aligned"])
     row["lanes"] = [{k: v for k, v in lane.items() if k != "cf"}
                     for lane in lanes]
     row["model_points"] = int(model_points)
@@ -699,3 +713,188 @@ def grade_gw_from(gw: int, mine: dict, model: dict | None,
                                          / max(model_points, 1))))
     row["misses"] = _misses(my_squad, model, actuals)
     return row
+
+
+PWIN_LANES = ("transfers", "captaincy")
+"""The lanes a win probability can see.
+
+``league_sim.effective_picks`` normalises any squad to its eleven starters and
+one armband — the bench scores nothing and a chip's multipliers are stripped,
+because a bench-boost week read as a *rate* would hand that manager four extra
+players for the whole rest of the season. So a bench reordering and a chip
+decision are invisible to the engine by construction, and simulating them
+would spend two Monte Carlo runs to rediscover a zero. They carry ``0.0`` and
+a note instead, which is the true answer plus the reason.
+"""
+
+PWIN_DP = 1
+"""Decimal places on a Δ in percentage points. At ``n = 2000`` the counting
+granularity is 0.05pp, so one decimal place is already finer than the
+instrument; the row carries ``pwin_granularity_pp`` so nobody has to guess."""
+
+
+def picks_from_squad(squad: dict, element_of: dict[int, int]) -> list[dict]:
+    """A counterfactual squad as the pick dicts ``effective_picks`` reads.
+
+    ``position`` is the load-bearing field: 1-11 for the eleven, 12-15 for the
+    bench, in order. Without it ``effective_picks`` falls through to its
+    stored-multiplier branch and the counterfactual would score its own bench
+    — see ``league_sim.py:251-291``. A code with no element this season is
+    dropped rather than given an invented id, which would price a different
+    player's squad.
+    """
+    out, started, benched = [], 0, XI_SIZE
+    ordered = ([(code, True) for code in squad["xi"]]
+               + [(code, False) for code in squad["bench"]])
+    for code, starts in ordered:
+        element = element_of.get(int(code))
+        if element is None:
+            continue
+        # The bench numbers from 12 whatever the eleven's length: a squad
+        # short of eleven resolved players is still a squad whose bench must
+        # read as a bench to ``effective_picks``, which splits on ``position``
+        # <= XI_SIZE and would otherwise start it.
+        if starts and started < XI_SIZE:
+            started += 1
+            slot = started
+        else:
+            benched += 1
+            slot = benched
+        out.append({"element": int(element), "position": slot,
+                    "multiplier": (0 if slot > XI_SIZE
+                                   else 2 if code == squad.get("captain")
+                                   else 1),
+                    "is_captain": code == squad.get("captain"),
+                    "is_vice_captain": code == squad.get("vice")})
+    return out
+
+
+def price_lanes(cfg, inputs, mine: dict, counterfactuals: dict,
+                element_of: dict[int, int], *, simulate=None
+                ) -> tuple[dict[str, float], str | None]:
+    """``{lane: Δ win% in percentage points}`` for the priceable lanes.
+
+    One baseline run with my real squad, then one run per counterfactual with
+    my ``Entry.picks`` swapped and *everything else identical* — same seed,
+    same ``n``, same drift. That pairing is the whole method: two Monte Carlo
+    runs differing in their seed differ by the seed, and the difference of
+    seeds is not the difference of decisions (CONVENTIONS.md §1).
+
+    The sign matches ``delta_pts``: mine minus the model's, so a negative
+    number is a decision that cost me ground.
+
+    Never raises. Every failure comes back as ``({}, notice)`` and the row is
+    graded in points alone (spec F2).
+    """
+    import dataclasses
+
+    from gaffer.league_sim import SIM_SEED, simulate_league
+
+    simulate = simulate or simulate_league
+    wanted = {lane: cf for lane, cf in counterfactuals.items()
+              if lane in PWIN_LANES and cf is not None}
+    if not wanted:
+        return {}, None
+    if not any(entry.is_me for entry in inputs.entries):
+        return {}, ("your entry is not in the simulated league, so no "
+                    "decision could be priced in title odds")
+    kwargs = {"n": int(getattr(cfg, "sim_n", 2000)), "seed": SIM_SEED,
+              "rival_drift": float(getattr(cfg, "rival_drift", 0.5))}
+
+    def _with(picks):
+        return dataclasses.replace(
+            inputs, entries=[dataclasses.replace(e, picks=picks) if e.is_me
+                             else e for e in inputs.entries])
+
+    try:
+        base = simulate(_with(picks_from_squad(mine, element_of)), **kwargs)
+        out = {}
+        for lane, cf in wanted.items():
+            run = simulate(_with(picks_from_squad(cf, element_of)), **kwargs)
+            out[lane] = round((base.p_win - run.p_win) * 100.0, PWIN_DP)
+        return out, None
+    except Exception as exc:  # noqa: BLE001 — the second currency is optional
+        return {}, f"title odds not priced: {exc}"
+
+
+def price_lanes_for_gw(cfg, client, gw: int, mine: dict,
+                       counterfactuals: dict, element_of: dict[int, int]
+                       ) -> tuple[dict[str, float], str | None]:
+    """:func:`price_lanes` with the gameweek's inputs rebuilt first.
+
+    ``build_inputs(cfg, client, gw=N)`` reads ``components_gw{N}.parquet`` and
+    takes every entry's squad from the gameweek before, so this prices GW N's
+    decision under the expectations that stood at GW N's own deadline.
+
+    A gameweek whose component parquet has been deleted — and **GW1, which
+    never had one**, because the first solve of a season is GW2's — comes back
+    absent with a notice. Spec D4 requires exactly that rather than a silent
+    zero.
+    """
+    try:
+        from gaffer.league_sim import build_inputs
+
+        inputs = build_inputs(cfg, client, gw=int(gw))
+    except Exception as exc:  # noqa: BLE001 — no parquet, no league, no net
+        return {}, (f"title odds not priced for GW{int(gw)}: {exc}")
+    return price_lanes(cfg, inputs, mine, counterfactuals, element_of)
+
+
+def grade_gw(gw: int, *, cfg, client=None) -> dict | None:
+    """One gameweek's full grade, read off disk and priced. ``None`` when my
+    picks for that week were never banked.
+
+    The order matters: everything that can be answered without a network is
+    answered first, so an FPL outage costs the Δwin% column and nothing else.
+    """
+    from gaffer.league_sim import SIM_SEED
+
+    season = str(getattr(cfg, "current_season", "") or "")
+    entry_id = int(getattr(cfg, "entry_id", 0) or 0)
+    mine = my_decisions(gw, season=season, entry_id=entry_id)
+    if mine is None:
+        return None
+    frame = actuals_for_gw(gw)
+    model = model_decisions(gw)
+    mine = {**mine, "code_of": {e: c for e, c in code_of_element().items()}}
+
+    n = int(getattr(cfg, "sim_n", 2000) or 2000)
+    meta = {"pwin_n": n, "pwin_seed": SIM_SEED,
+            "pwin_granularity_pp": round(100.0 / max(n, 1), 3)}
+    if model is None or client is None:
+        row = grade_gw_from(gw, mine, model, frame, pwin_meta=meta)
+        if model is not None:
+            row["notices"] = list(row["notices"]) + [
+                "no FPL client available, so nothing was priced in title "
+                "odds"]
+        return row
+
+    my_squad = {k: mine[k] for k in ("xi", "bench", "captain", "vice", "hits",
+                                     "chip")}
+    counterfactuals = {lane: _cf_squad(lane, my_squad, model)
+                       for lane in PWIN_LANES}
+    element_of = {c: e for e, c in code_of_element().items()}
+    priced, notice = price_lanes_for_gw(cfg, client, gw, my_squad,
+                                        counterfactuals, element_of)
+    row = grade_gw_from(gw, mine, model, frame, pwin=priced, pwin_meta=meta)
+    if notice:
+        row["notices"] = list(row["notices"]) + [notice]
+    return row
+
+
+def _cf_squad(lane: str, mine: dict, model: dict) -> dict | None:
+    """Rebuild one lane's counterfactual squad for the pricing pass.
+
+    The lane builders drop their ``cf`` before the row is banked — the ledger
+    holds grades, not squads — so the two priceable lanes are rebuilt here
+    from the same two functions rather than from a second implementation.
+    """
+    import pandas as pd
+
+    blank = pd.DataFrame(columns=ACTUAL_COLS)
+    if lane == "transfers":
+        built = lane_transfers(mine, model, blank, my_transfers=[],
+                               positions=model.get("positions") or {})
+    else:
+        built = lane_captaincy(mine, model, blank)
+    return built.get("cf")
