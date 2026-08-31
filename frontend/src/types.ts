@@ -1135,3 +1135,23 @@ export interface MoversPanel {
   as_of: string | null
   rows: MoverRow[]
 }
+
+export interface DigestSection {
+  key: string
+  title: string
+  /** Clauses the card joins — no markdown anywhere in this feature. */
+  bits: string[]
+}
+
+export interface Digest {
+  kind: string
+  generated_at: string
+  gw: number | null
+  headline: string
+  sections: DigestSection[]
+}
+
+export interface DigestPanel {
+  available: boolean
+  digest: Digest | null
+}

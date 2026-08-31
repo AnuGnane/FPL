@@ -1382,3 +1382,36 @@ class MoversPanel(BaseModel):
     available: bool
     as_of: str | None = None
     rows: list[MoverRow] = Field(default_factory=list)
+
+
+class DigestSection(BaseModel):
+    """One block of a digest. ``bits`` is prose the client joins.
+
+    The DiffStrip idiom: clauses assembled server-side, rendered by joining
+    them, so there is no markdown dependency anywhere in the client. A section
+    with no bits never reaches here — the builder drops it (plan A5).
+    """
+
+    key: str
+    title: str
+    bits: list[str] = Field(default_factory=list)
+
+
+class Digest(BaseModel):
+    kind: str
+    generated_at: str = ""
+    gw: int | None = None
+    headline: str
+    sections: list[DigestSection] = Field(default_factory=list)
+
+
+class DigestPanel(BaseModel):
+    """The newest digest, or a stated absence.
+
+    ``available`` false covers all three ways there is nothing to show — never
+    run, deleted, unparseable — because the card's empty state says the same
+    sentence for each of them: press the button, or wait for Friday.
+    """
+
+    available: bool
+    digest: Digest | None = None

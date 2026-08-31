@@ -9,6 +9,7 @@ import type {
   PlayerRow,
 } from '../types'
 import ConfidenceLine from './this-week/ConfidenceLine'
+import DigestCard from './this-week/DigestCard'
 import MovesCard from './this-week/MovesCard'
 import NewsPanel from './this-week/NewsPanel'
 import WhyPanel from './this-week/WhyPanel'
@@ -228,6 +229,8 @@ export default function ThisWeek() {
       <div className="mb-4">
         <MovesCard buys={advice.buys} sells={advice.sells} hits={advice.hits} />
       </div>
+      {/* The plan, then the week around the plan. */}
+      <DigestCard />
       <WhyPanel gw={data.gw} codes={squad.map((r) => r.code)} />
       <NewsPanel gw={data.gw} />
     </>

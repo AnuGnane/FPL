@@ -36,10 +36,14 @@ function DiffStrip({ diff }: { diff: AdviceDiff }) {
   if (diff.chip_from && !diff.chip_to) {
     bits.push(`no longer recommending ${diff.chip_from}`)
   }
-  if (diff.ep_movers.length > 0) {
-    const named = diff.ep_movers.slice(0, 3).map((m) => (
+  // Defaulted rather than indexed straight: the strip is decoration on a page
+  // that already has its advice, and a payload banked or served without the
+  // field must cost the movers line, never This Week.
+  const movers = diff.ep_movers ?? []
+  if (movers.length > 0) {
+    const named = movers.slice(0, 3).map((m) => (
       `${m.name} ${m.delta >= 0 ? '+' : ''}${m.delta.toFixed(1)}`)).join(', ')
-    const n = diff.ep_movers_count ?? diff.ep_movers.length
+    const n = diff.ep_movers_count ?? movers.length
     bits.push(`${n} player${n === 1 ? '' : 's'} moved `
       + `${EP_MOVER_THRESHOLD} xPts or more in the retrain — ${named}`)
   }
@@ -173,7 +177,8 @@ export default function WhyPanel({ gw, codes }: { gw: number
     <>
       {/* A10: a first run of the week has no plan to diff and is exactly when
           a retrain happened, so the movers alone are worth the strip. */}
-      {diff && ((diff.available && diff.changed) || diff.ep_movers.length > 0)
+      {diff && ((diff.available && diff.changed)
+                || (diff.ep_movers ?? []).length > 0)
         && <DiffStrip diff={diff} />}
       {pins && shown.length > 0 && (
         <div className="mb-4 rounded-card border-l-2 border-info bg-base px-3
