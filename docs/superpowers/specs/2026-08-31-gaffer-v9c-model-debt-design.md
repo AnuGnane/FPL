@@ -51,9 +51,36 @@ The pre-registered non-regression rule (plan A4, tolerance 0.005, fixed in the d
 
 The effect being this small is the expected shape rather than a disappointment: a red card is rare, a 38-match mean of it is a very small number, and D1 was never an improvement hunt — it was a term the model documented and never applied. The measurement says switching it on costs nothing.
 
-### D2 — the as-of club
+### D2 — the as-of club (`scripts/v9c_club_eval.py`, `logs/v9c_club_eval.log`)
 
-(Filled after Task 5's run.)
+Not a gate. Spec §0 D2 says the fix ships whether or not eval improves, because a regression here would mean the old number was flattered by leakage. What follows is the measurement contract (plan A11), recorded honestly.
+
+**Coverage and divergence**, transcribed from `V9C_CLUB_COVERAGE`:
+
+| season_idx | rows | diverging | diverging fraction |
+| --- | --- | --- | --- |
+| 0 | 26,505 | 307 | 1.158 % |
+| 1 | 29,725 | 175 | 0.589 % |
+| 2 | 27,283 | 256 | 0.938 % |
+| 3 | 29,757 | 322 | 1.082 % |
+| 4 (live) | 610 | 9 | 1.475 % |
+| **total** | **113,880** | **1,069** | **0.939 %** |
+
+`club_code` is populated on all 113,880 rows — the fallback is total, never NaN, which is the G2 clause. The "off" arm (`bps.as_of_club_code` monkeypatched to the stamped `team_code`) reports 0 diverging rows, which is what makes the guard pass and the comparison meaningful.
+
+**The leak, measured: 0.94 % of history rows were training under a club the player was not at.** Small, and it was always going to be small — it is exactly the transfer rate of the player pool. It is not zero, and it was concentrated in whole seasons of individual players rather than scattered.
+
+**`V9C_CLUB_DEMO`** — the driver picked its own example (most diverging rows, so it cannot be a flattering choice): **James Ward-Prowse, code 101178, season_idx 3, 45 diverging rows.** His whole season is stamped `team_code = 90`; the derivation reads `club_code = 21` for GW1–23 and `club_code = 90` from GW24 on. GW11's row is the tell — `opp_code = 90`, i.e. he *played against* the club the store says he was at. Before this cycle those 23 rows trained his manager-spell, his position-by-club prior and his own-side Elo under a squad he joined in January.
+
+**Eval, `V9C_CLUB_DONE`:**
+
+| Arm | zeros RMSE | haulers RMSE | all RMSE | zeros n |
+| --- | --- | --- | --- | --- |
+| off (stamped `team_code`) | 1.065 | 5.181 | 1.968 | 16279 |
+| on (derived `club_code`) | 1.062 | 5.210 | 1.968 | 16279 |
+| delta (on − off) | **−0.003** | **+0.029** | **0.000** |  |
+
+Zeros improve slightly, haulers regress by 0.029, the all-stratum number does not move at all. **Shipped regardless, as spec D2 pre-committed.** With 0.94 % of rows moving, a delta of this size on a single draw is inside what a re-fit's own noise produces, and the haulers stratum is the smallest and noisiest of the three — reading +0.029 as "the fix cost accuracy" would be reading the seed. The honest statement is the one D2 asked for: the leak was under one percent of rows, closing it changed the benchmark by nothing detectable at the all-stratum level, and the correctness argument is what carries the change, not the number.
 
 ### D3 — the haul split
 
