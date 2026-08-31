@@ -27,9 +27,17 @@ Protected zero-diff list as prior cycles. `live_gw.entry_live_points` and `leagu
 
 Event markers/goal annotations on the race chart (needs per-event timelines; later polish); global overall-rank safety (impossible without field-wide live data); persisting race history across restarts (ephemeral by design); autosub-aware *rival* EP (rivals get the same D2 projection for points but their remaining-EP uses their picks' components only when cheap — planner decides; degrade to live-points-only per rival if not).
 
-## 4. Outcome
+## 4. Outcome (2026-08-31)
 
-(Filled at cycle end.)
+**Shipped.** Suite 2117 → 2189 Python, 344 → 351 frontend. 8 plan tasks + a FIX-FIRST review round (no blockers; 5 importants + 5 nits, all fixed).
+
+**G1 PASS (live, exact)** — evidence below: race arithmetic reconciled to the decimal (94 + 6.52 = 100.52), safety strip consistent, autosub yet-to-play rule held on Rice/Dubravka. The autosub *trigger* path was unexercised live (no finished-0-minute starter at poll time) — honestly recorded; rails cover it, and the review's brute-force check (every 1-3-blank combination × all formations × 27 bench shapes vs optimal assignment: 0 divergences) is stronger than one live anecdote anyway.
+
+**G2 PASS** — rails green (strengthened in the fix round). **G3 PASS** — suites above, zero protected diffs, `entry_live_points` body byte-identical (695 bytes both sides).
+
+**Review round highlights:** blank-GW starters now become sub-out candidates once the whole GW finishes (they were invisible to the projection — conservative but wrong in autosub-heavy blank weeks); DGW remaining-EP now scales by unplayed-fixture share (a played-one-of-two player owed nothing and silently dropped his second fixture from the race — the *larger*, undocumented bias direction); the Race column is season-consistent (`pre_total + race`); the "Left" column is multiplier-weighted and zeroed off the projected XI; the race chart pins its tracked rival for the GW (no mid-afternoon splice) and the field is honestly named `rival`, not `leader`; both DGW bias directions documented.
+
+**Residuals:** greedy first-legal-swap autosubs inherit backtest's known simplification (documented; `reconciled` flag in the v8b ledger measures its real frequency); blank-GW player mid-GW reads as owing his banked EP (which is 0 for blanks — documented at the call site, not special-cased); race series is per-process ephemeral by design.
 
 ### Gate results (orchestrator-run)
 
@@ -60,7 +68,11 @@ after a real gameweek, against the real API.
 Output:
 
 ```
-(paste the /api/live body and the hand-check here)
+active gw2 | my_points 94, my_projected_points 94, my_race 100.52, race_reference 57.95
+remaining XI EP: Rice 4.03 + Gakpo 1.2 + Brobbey 1.29 = 6.52; 94 + 6.52 = 100.52 EXACT
+autosub chips: [] — correct: Rice/Dubravka at 0 minutes but fixtures NOT finished (yet-to-play rule held; no finished-0-minute starter existed this poll, so the projection path is exercised only by rails this GW — noted per the gate's own honesty rule)
+safety: above 'Not too Xabi' margin 71 need 72; leader 'Sound of the Tzolis' margin 132 need 133 (need = margin+1 consistent)
+race_series 1 point (fresh server), race_notice None (components present)
 ```
 
 **G2 — rails.** `uv run pytest -q tests/test_v8d_degradation.py`
