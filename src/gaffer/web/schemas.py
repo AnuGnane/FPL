@@ -1184,6 +1184,15 @@ class SensitivityReport(BaseModel):
     modal: SensitivityPlan | None = None
     runner_up: SensitivityPlan | None = None
     margin: float | None = None
+    decision_sigma: float | None = None
+    """The scenario sweep's own noise on the players that separate the two
+    plans, in quadrature (plan A6).
+
+    Computed at serve time from the banked components frame rather than stored
+    in the report, so a report swept before this field existed still gets the
+    line. ``None`` when there is no runner-up, no components frame, or nothing
+    in the symmetric difference — the card then prints its margin unqualified,
+    which is what it did before."""
     verdict: str | None = None
 
 
@@ -1232,3 +1241,28 @@ class DraftCompare(BaseModel):
     gw: int
     weeks: int
     rows: list[DraftCompareRow] = Field(default_factory=list)
+
+
+class ConfidenceTier(BaseModel):
+    """One record-derived claim, with the counts that back it.
+
+    ``text`` is the whole product — a sentence quoting counts. The counts are
+    carried beside it so a caller can style the tier without re-parsing prose,
+    never so it can compute a rate: the absence of a percentage anywhere in
+    this model is the point of it (spec D3).
+    """
+
+    tier: Literal["early", "mixed", "backed"] = "early"
+    reviewed: int = 0
+    graded: int = 0
+    """Reviewed gameweeks where the lane was actually comparable. The gap
+    between this and ``reviewed`` is the weeks the model's captain was not in
+    the eleven, which is not evidence either way."""
+    wins: int = 0
+    losses: int = 0
+    aligned: int = 0
+    text: str = ""
+
+
+class Confidence(BaseModel):
+    captain: ConfidenceTier = Field(default_factory=ConfidenceTier)
