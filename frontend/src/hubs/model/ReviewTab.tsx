@@ -53,7 +53,10 @@ function LaneRow({ lane }: { lane: ReviewLane }) {
         {graded ? `${fmtDelta(lane.delta_pts, 0)} pts` : '—'}
       </span>
       <span className={`num text-xs ${TONE_CLASS[toneOf(lane.delta_pwin)]}`}>
-        {lane.delta_pwin === null ? '—' : `${fmtDelta(lane.delta_pwin)} pp`}
+        {/* An ungraded lane has no answer in either currency, whatever the
+            server sent in this field. */}
+        {!graded || lane.delta_pwin === null
+          ? '—' : `${fmtDelta(lane.delta_pwin)} pp`}
       </span>
       <span className="text-xs text-text-faint">
         you {lane.mine ?? '—'} · model {lane.model ?? '—'}

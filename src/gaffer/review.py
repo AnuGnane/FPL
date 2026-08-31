@@ -725,6 +725,12 @@ def grade_gw_from(gw: int, mine: dict, model: dict | None,
 
     pwin = pwin or {}
     for lane in lanes:
+        # A lane that could not be built has no answer in either currency.
+        # The 0.0 below is a *measurement* — the engine cannot see a bench
+        # order or a chip — and handing it to a lane with no counterfactual
+        # would dress an absence up as a finding (spec G2).
+        if lane["delta_pts"] is None:
+            continue
         if lane["lane"] in PWIN_LANES:
             lane["delta_pwin"] = pwin.get(lane["lane"])
         else:

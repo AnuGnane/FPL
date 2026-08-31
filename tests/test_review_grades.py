@@ -345,3 +345,21 @@ def test_the_hindsight_row_names_the_best_eleven_i_owned():
     assert row["hindsight"]["points"] >= row["my_points"]
     assert row["hindsight"]["gap"] == row["hindsight"]["points"] \
         - row["my_points"]
+
+
+def test_an_ungraded_lane_carries_no_win_percentage_either():
+    """I2: the bench and chip lanes carry ``0.0`` because the simulation
+    genuinely cannot see them — that is a measurement. A lane that could not
+    be *built* has no measurement in either currency, and a row that shipped
+    ``delta_pts: null`` beside ``delta_pwin: 0.0`` would render as "not
+    graded · — pts · +0.0 pp"."""
+    mine = {**squad(chip="wildcard"), "official_gross": 0, "official_cost": 0,
+            "points_on_bench": 0, "transfers": [], "notices": []}
+    row = grade_gw_from(2, mine, MODEL, actuals())
+    chip = next(lane for lane in row["lanes"] if lane["lane"] == "chip")
+    assert chip["delta_pts"] is None
+    assert chip["delta_pwin"] is None
+    assert chip["label"] is None
+    # The graded ones still carry their zero, which is a real answer.
+    bench = next(lane for lane in row["lanes"] if lane["lane"] == "bench")
+    assert bench["delta_pwin"] == 0.0

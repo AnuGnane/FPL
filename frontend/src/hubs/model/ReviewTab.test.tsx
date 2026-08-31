@@ -10,7 +10,9 @@ const LANES: ReviewData['gws'][number]['lanes'] = [
     aligned: false, mine: 'Salah', model: 'Haaland', note: null },
   { lane: 'bench', delta_pts: 0, delta_pwin: 0, label: 'Aligned',
     aligned: true, mine: 'A, B', model: 'A, B', note: null },
-  { lane: 'chip', delta_pts: null, delta_pwin: null, label: null,
+  // delta_pwin 0 rather than null on purpose: an older banked row can carry
+  // it, so the em-dash rail has to hold on the shape the server could emit.
+  { lane: 'chip', delta_pts: null, delta_pwin: 0, label: null,
     aligned: false, mine: 'none', model: 'wildcard',
     note: 'a wildcard changes the squad' },
 ]
