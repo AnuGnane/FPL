@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiDelete, apiGet, apiPost, errorText } from '../../api/client'
 import { useJob } from '../../api/useJob'
-import { Card, JobLog, fmtNum } from '../../kit'
+import { Card, JobLog, Skeleton, fmtNum } from '../../kit'
 import type {
   DraftCompare, DraftCompareRequest, DraftList, DraftSaveRequest,
   WhatIfRequest,
@@ -139,7 +139,13 @@ export default function DraftsTab({ current }: { current: WhatIfRequest }) {
       {job.status === 'error' && (
         <JobLog status="failed" lines={[]} error={job.error ?? 'failed'} />
       )}
-      {result && (
+      {(job.status === 'queued' || job.status === 'running') && (
+        <Skeleton title="Comparing" lines={picked.length || 3}
+                  label="Re-solving each draft against today's board…" />
+      )}
+      {/* Guarded with the same condition so a re-compare clears the old
+          table rather than pulsing above a previous run's answer. */}
+      {result && job.status !== 'queued' && job.status !== 'running' && (
         <Card title={`Compared over ${result.weeks} weeks`} className="mb-4">
           <table className="w-full">
             <thead>

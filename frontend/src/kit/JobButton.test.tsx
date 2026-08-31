@@ -133,4 +133,17 @@ describe('JobButton', () => {
       stream.jobId = null
     })
   })
+
+  it('tells its host when the run starts and when it stops', async () => {
+    // The card that hosts the button owns the panel the job fills, and the
+    // button owns the stream — so the button has to say (plan A10).
+    const seen: boolean[] = []
+    stream.status = 'running'
+    const { rerender } = render(
+      <JobButton kind="sensitivity" onRunning={(r) => seen.push(r)} />)
+    await waitFor(() => expect(seen).toContain(true))
+    stream.status = 'done'
+    rerender(<JobButton kind="sensitivity" onRunning={(r) => seen.push(r)} />)
+    await waitFor(() => expect(seen[seen.length - 1]).toBe(false))
+  })
 })

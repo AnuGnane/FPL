@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SensitivityCard from './SensitivityCard'
@@ -15,8 +15,11 @@ vi.mock('../../api/client', () => ({
 // probe belong to its own test. Stub it down to the one fact this file cares
 // about: which kind it was asked to run.
 vi.mock('../../kit/JobButton', () => ({
-  default: ({ kind }: { kind: string }) => (
-    <button type="button">run {kind}</button>
+  default: ({ kind, onRunning }:
+    { kind: string; onRunning?: (running: boolean) => void }) => (
+    // The real button owns the stream and reports the transition (plan A10);
+    // the stub reports it on a click, which is the only fact this file needs.
+    <button type="button" onClick={() => onRunning?.(true)}>run {kind}</button>
   ),
 }))
 
@@ -162,5 +165,17 @@ describe('SensitivityCard', () => {
     render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
     expect(await screen.findByRole('button', { name: 'run sensitivity' }))
       .toBeInTheDocument()
+  })
+
+  it('pulses the card body while the sweep runs', async () => {
+    // The one panel of the four with a real stream under it (plan A9): the
+    // skeleton and JobButton's own log show together.
+    apiGet.mockResolvedValue(REPORT)
+    render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
+    await screen.findByText(/nine of ten re-solves/)
+    fireEvent.click(screen.getByText(/run sensitivity/))
+    expect(await screen.findByTestId('skeleton')).toBeInTheDocument()
+    // The answer it is about to replace is gone, not pulsing underneath.
+    expect(screen.queryByText(/nine of ten re-solves/)).not.toBeInTheDocument()
   })
 })

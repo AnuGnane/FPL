@@ -148,4 +148,33 @@ describe('chips tab', () => {
       { name: /wildcard/i }))[0])
     expect(screen.getByText(/no wildcard available/i)).toBeInTheDocument()
   })
+
+  it('fills the answer frame while the chip solve runs', async () => {
+    apiGet.mockImplementation((path: string) => {
+      if (path.startsWith('/api/chips')) return Promise.resolve(CHIPS)
+      if (path.startsWith('/api/players')) return Promise.resolve(PLAYERS)
+      return Promise.resolve({ id: 'j1', status: 'running', result: null,
+                               error: null })
+    })
+    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    await userEvent.click(await screen.findByRole('button',
+      { name: /re-solve/i }))
+    expect(await screen.findByTestId('skeleton')).toBeInTheDocument()
+  })
+
+  it('shows no skeleton once the chip solve has failed', async () => {
+    // The failure has its own line under the button; a pulse above it would
+    // say the thing that already failed is still coming.
+    apiGet.mockImplementation((path: string) => {
+      if (path.startsWith('/api/chips')) return Promise.resolve(CHIPS)
+      if (path.startsWith('/api/players')) return Promise.resolve(PLAYERS)
+      return Promise.resolve({ id: 'j1', status: 'error', result: null,
+                               error: 'solver died' })
+    })
+    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    await userEvent.click(await screen.findByRole('button',
+      { name: /re-solve/i }))
+    expect(await screen.findByText('solver died')).toBeInTheDocument()
+    expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument()
+  })
 })

@@ -175,4 +175,50 @@ describe('what-if tab', () => {
     await userEvent.click(screen.getByRole('button', { name: /re-solve/i }))
     expect(await screen.findByText(/no legal squad/)).toBeInTheDocument()
   })
+
+  it('fills the answer frame while the solve runs', async () => {
+    apiPost.mockResolvedValue({ job_id: 'j1' })
+    apiGet.mockImplementation(async (path: string) => {
+      if (path.startsWith('/api/players?')) return PLAYERS
+      if (path.startsWith('/api/fixtures/ticker')) return TICKER
+      if (path.startsWith('/api/jobs/')) {
+        return { id: 'j1', status: 'running', result: null, error: null }
+      }
+      throw new Error(`unexpected GET ${path}`)
+    })
+    render(<MemoryRouter><WhatIfTab /></MemoryRouter>)
+    await userEvent.click(screen.getByRole('button', { name: /re-solve/i }))
+    // The panel sat blank for the whole solve before this: the button said
+    // "Solving…" and the frame the answer lands in said nothing at all.
+    expect(await screen.findByTestId('skeleton')).toBeInTheDocument()
+  })
+
+  it('shows no skeleton once the job is done, and none when it failed',
+    async () => {
+      apiPost.mockResolvedValue({ job_id: 'j1' })
+      render(<MemoryRouter><WhatIfTab /></MemoryRouter>)
+      await userEvent.click(screen.getByRole('button', { name: /re-solve/i }))
+      expect(await screen.findByText('your version costs 2.8 expected points'))
+        .toBeInTheDocument()
+      expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument()
+    })
+
+  it('shows no skeleton over a failed solve, which has its own card',
+    async () => {
+      // A pulsing frame above an error message says the thing that already
+      // failed is still coming.
+      apiPost.mockResolvedValue({ job_id: 'j1' })
+      apiGet.mockImplementation(async (path: string) => {
+        if (path.startsWith('/api/players?')) return PLAYERS
+        if (path.startsWith('/api/fixtures/ticker')) return TICKER
+        if (path.startsWith('/api/jobs/')) {
+          return { id: 'j1', status: 'error', result: null, error: 'no' }
+        }
+        throw new Error(`unexpected GET ${path}`)
+      })
+      render(<MemoryRouter><WhatIfTab /></MemoryRouter>)
+      await userEvent.click(screen.getByRole('button', { name: /re-solve/i }))
+      expect(await screen.findByText('Solver failed')).toBeInTheDocument()
+      expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument()
+    })
 })

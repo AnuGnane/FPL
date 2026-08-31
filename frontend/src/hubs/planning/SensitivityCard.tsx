@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiGet } from '../../api/client'
-import { Card, JobButton, fmtNum } from '../../kit'
+import { Card, JobButton, Skeleton, fmtNum } from '../../kit'
 import type { SensitivityReport } from '../../types'
 
 /** The move kinds this card lists. No frequency cut at all: the ones that are
@@ -58,6 +58,11 @@ export default function SensitivityCard() {
   // server did not answer, and "no report yet" would send the user to press
   // a button that is not the problem.
   const [failed, setFailed] = useState(false)
+  // The button owns the stream, so it is the button that says when the sweep
+  // is running (plan A10). Wrapped so the effect inside it does not refire on
+  // every render of this card.
+  const [running, setRunning] = useState(false)
+  const onRunning = useCallback((r: boolean) => setRunning(r), [])
   const load = useCallback(() => {
     apiGet<SensitivityReport>('/api/sensitivity')
       .then((report) => { setFailed(false); setData(report) })
@@ -74,7 +79,8 @@ export default function SensitivityCard() {
     <Card
       title="How robust is this plan?"
       className="mb-4"
-      action={<JobButton kind="sensitivity" onDone={load} />}
+      action={<JobButton kind="sensitivity" onDone={load}
+                         onRunning={onRunning} />}
     >
       <p className="mb-3 text-text-muted">
         The same board re-solved {data?.k ? `${data.k} times` : 'twenty times'}
@@ -82,7 +88,18 @@ export default function SensitivityCard() {
         error. A move that survives most of them is an edge; one that does not
         is the optimizer reading the noise.
       </p>
-      {!data?.available && (
+      {/* The skeleton replaces this card's *body*, never the card: a Card
+          inside a Card is two borders for one idea. `Skeleton bare` is the
+          same bars with no frame of its own. */}
+      {running && (
+        <Skeleton
+          bare
+          lines={4}
+          label="Re-solving the board twenty times with knocked expected
+                 points…"
+        />
+      )}
+      {!running && !data?.available && (
         <p className="text-text-muted">
           {failed
             ? 'The sensitivity report could not be read — the server did not '
@@ -90,7 +107,7 @@ export default function SensitivityCard() {
             : data?.notice ?? 'No sensitivity report yet.'}
         </p>
       )}
-      {data?.available && (
+      {!running && data?.available && (
         <>
           {data.verdict && <p className="mb-3 text-text">{data.verdict}</p>}
           {data.notice && (

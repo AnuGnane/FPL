@@ -245,4 +245,24 @@ describe('DraftsTab', () => {
     await waitFor(() => expect(screen.queryByText('keep Salah'))
       .not.toBeInTheDocument())
   })
+
+  it('fills the compare frame while the comparison runs', async () => {
+    apiGet.mockImplementation((path: string) => (
+      path === '/api/drafts' ? Promise.resolve(LIST)
+        : Promise.resolve({ id: 'j1', status: 'running', result: null,
+                            error: null })))
+    render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
+    await userEvent.click(await screen.findByLabelText('compare keep Salah'))
+    await userEvent.click(screen.getByRole('button', { name: /^compare/i }))
+    expect(await screen.findByTestId('skeleton')).toBeInTheDocument()
+  })
+
+  it('shows no skeleton once the comparison is done', async () => {
+    render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
+    await userEvent.click(await screen.findByLabelText('compare keep Salah'))
+    await userEvent.click(screen.getByRole('button', { name: /^compare/i }))
+    expect(await screen.findByText(/Compared over 4 weeks/))
+      .toBeInTheDocument()
+    expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument()
+  })
 })

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { ApiError, apiGet, apiPost } from '../../api/client'
 import { useJob } from '../../api/useJob'
-import { Card, EmptyState, Loading, PlayerName, fmtNum } from '../../kit'
+import {
+  Card, EmptyState, Loading, PlayerName, Skeleton, fmtNum,
+} from '../../kit'
 import ConstraintsPanel from './ConstraintsPanel'
 import PlanDiffTable from './PlanDiffTable'
 import type {
@@ -268,7 +270,11 @@ export default function ChipsTab() {
           <p className="mt-2 text-rust">{job.error}</p>
         )}
       </Card>
-      {diff && <PlanDiffTable diff={diff} />}
+      {busy && (
+        <Skeleton title="Re-solving" lines={5}
+                  label="Solving with the chip prefilled…" />
+      )}
+      {diff && !busy && <PlanDiffTable diff={diff} />}
     </>
   )
 }

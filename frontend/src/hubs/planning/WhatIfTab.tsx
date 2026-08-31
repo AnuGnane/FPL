@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ApiError, apiPost } from '../../api/client'
 import { useJob } from '../../api/useJob'
-import { Card } from '../../kit'
+import { Card, Skeleton } from '../../kit'
 import type { WhatIfRequest, WhatIfResult } from '../../types'
 import ConstraintsPanel from './ConstraintsPanel'
 import FixtureTicker from './FixtureTicker'
@@ -83,7 +83,14 @@ export default function WhatIfTab({ value, onChange }: {
           <p className="text-rust">{job.error}</p>
         </Card>
       )}
-      {diff && <PlanDiffTable diff={diff} />}
+      {busy && (
+        <Skeleton title="Re-solving" lines={5}
+                  label="Re-solving the board with your constraints…" />
+      )}
+      {/* `!busy` on the diff so a *second* solve blanks the stale answer
+          rather than pulsing beneath a result from the previous run — which
+          is the specific lie this pair exists to remove. */}
+      {diff && !busy && <PlanDiffTable diff={diff} />}
       <SensitivityCard />
       <OverridesCard />
       <FixtureTicker weeks={6} />

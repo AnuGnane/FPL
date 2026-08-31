@@ -9,6 +9,11 @@ export interface JobButtonProps {
   label?: string
   /** Fired once, on success, so the page can re-fetch its artifacts. */
   onDone?: () => void
+  /** Fired on every transition into and out of `running`, so the card that
+   *  hosts the button can show a skeleton in the panel the job will fill.
+   *  Optional: the button owns the stream, and lifting `useJobStream` into
+   *  every caller to answer one question would be a refactor. */
+  onRunning?: (running: boolean) => void
 }
 
 /** The shape of GET /api/jobs/current; 204 (nothing running) arrives as null. */
@@ -18,7 +23,9 @@ interface CurrentRun {
   status: string
 }
 
-export default function JobButton({ kind, label, onDone }: JobButtonProps) {
+export default function JobButton(
+  { kind, label, onDone, onRunning }: JobButtonProps,
+) {
   const job = useJobStream()
   const fired = useRef(false)
   const { attach, jobId } = job
@@ -52,6 +59,12 @@ export default function JobButton({ kind, label, onDone }: JobButtonProps) {
     }
     if (job.status === 'running') fired.current = false
   }, [job.status, onDone])
+
+  // A caller passing an inline arrow re-fires this on every render, which is
+  // harmless: the callback is idempotent and sets a boolean.
+  useEffect(() => {
+    onRunning?.(job.status === 'running')
+  }, [job.status, onRunning])
 
   const busy = job.status === 'running'
   return (
