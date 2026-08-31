@@ -109,20 +109,72 @@ def with_positions(payload: dict, pool: pd.DataFrame) -> dict:
     return out
 
 
+HAUL_KEYS = ("alternatives", "captain_options")
+"""The two payload keys carrying ``assemble.p_haul``.
+
+Both are written by ``advise.py`` as ``.to_dict("records")`` off frames whose
+column list lives in ``optimize/differentials.py`` — two protected files, and
+the reason this rename happens here (spec D3).
+"""
+
+
+def with_attacking_haul(payload: dict) -> dict:
+    """Rename the *attacking* ``p_haul`` to ``p_attacking_haul`` on the way out.
+
+    Two different quantities are called ``p_haul`` in this codebase.
+    ``models.assemble.p_haul`` is P(2+ attacking returns) under a Poisson on
+    expected goals plus assists, and it is what the alternatives and captain
+    tables carry. ``uncertainty.Band.p_haul`` is P(total points >= 10) in the
+    tail of a normal on the whole forecast, and it is what ``/api/players``
+    and ``/api/components`` carry. They are not the same number, they are not
+    on the same scale, and until v9c they were served under one name on one
+    page.
+
+    Renaming the internal column would mean diffs inside ``advise.py`` and
+    ``optimize/**``, which are protected — not worth an authorization for a
+    label. So the split is resolved here, at the boundary, and this is the
+    single site at which it happens. The artifact on disk is untouched:
+    ``digest.py`` reads it, the since-last-run diff compares against it, and
+    every advice file already banked stays readable.
+
+    Additive and defensive, like its two siblings: a payload with no
+    alternatives, a row with no ``p_haul``, a key that is not a list — each
+    comes back as it arrived.
+    """
+    def renamed(row: dict) -> dict:
+        # Rebuilt in place rather than popped-and-appended, so the field keeps
+        # its column position for anything reading the payload in order.
+        return {("p_attacking_haul" if k == "p_haul" else k): v
+                for k, v in row.items()}
+
+    out = dict(payload)
+    for key in HAUL_KEYS:
+        value = out.get(key)
+        if not isinstance(value, list):
+            continue
+        out[key] = [renamed(e) if isinstance(e, dict) and "p_haul" in e else e
+                    for e in value]
+    return out
+
+
 @router.get("/latest", response_model=AdviceLatest)
 def latest() -> AdviceLatest:
     gw = latest_gw()
     if gw is None:
         raise GafferError("no advice on disk yet — run `gaffer advise` first")
     state = load_solve_state(gw)
-    # Two serve-time decorations, composed. ``with_positions`` backfills a
+    # Three serve-time decorations, composed. ``with_positions`` backfills a
     # field ``advise`` did not always write; ``with_identity`` adds three it
     # still does not, because it cannot — ``advise.py`` is protected, so the
     # pitch's team identity and fixture chip are resolved here from files the
-    # backend already banks (plan A2). Both are additive, both leave every
-    # pre-existing field alone, and both are no-ops on a clone with no
-    # snapshots rather than an error.
-    payload = with_identity(with_positions(load_advice(gw), state.pool), gw)
+    # backend already banks (plan A2). ``with_attacking_haul`` is v9c's D3:
+    # two different quantities were served as ``p_haul`` on one page, and the
+    # attacking one is renamed here because renaming the column would mean
+    # editing the protected pipeline for a label. All three are additive, all
+    # three leave every pre-existing field alone, and all three are no-ops on
+    # a clone with no snapshots rather than an error.
+    payload = with_attacking_haul(
+        with_identity(with_positions(load_advice(gw), state.pool), gw))
     return AdviceLatest(
         gw=gw, mode=state.mode, deadline=state.deadline, advice=payload,
         staleness=staleness_for(gw, state.deadline, state.generated_at))

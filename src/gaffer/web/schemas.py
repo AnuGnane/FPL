@@ -438,7 +438,12 @@ class PlayerRow(BaseModel):
     ep_hi: float | None = None
     p_haul: float | None = None
     """``P(points >= 10)`` under the same distribution. Crude by construction:
-    it prices *forecast* error, not football's own variance."""
+    it prices *forecast* error, not football's own variance.
+
+    This is ``uncertainty.Band.p_haul``, the whole-forecast tail — *not*
+    ``models.assemble.p_haul``, which is P(2+ attacking returns) under a
+    Poisson and is served on the advice payload as ``p_attacking_haul``. Two
+    quantities, one page, one name until v9c (spec D3)."""
     p_blank: float | None = None
     """``P(points <= 2)`` under the same distribution."""
 
@@ -617,6 +622,10 @@ class ComponentPlayer(BaseModel):
     zero, when the frame carries no minutes model for him."""
     ep_hi: float | None = None
     p_haul: float | None = None
+    """``uncertainty.Band.p_haul``: P(total points >= 10) in the tail of the
+    whole forecast. The advice payload's attacking quantity is a different
+    number on a different scale and is served as ``p_attacking_haul``
+    (spec D3)."""
     p_blank: float | None = None
 
 

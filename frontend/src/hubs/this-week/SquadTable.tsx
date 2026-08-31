@@ -46,7 +46,12 @@ export interface SquadTableProps {
 }
 
 /** Below this, "he might haul" is not news: it is the ordinary tail every
- *  forward carries, and a chip on every row is a chip on no row. */
+ *  forward carries, and a chip on every row is a chip on no row.
+ *
+ *  The quantity is the *band* one — P(total points >= 10) in the tail of the
+ *  whole forecast (`uncertainty.Band.p_haul`), not the attacking P(2+ returns)
+ *  the advice payload carries as `p_attacking_haul`. The chip says "10+ pts"
+ *  rather than "haul" for exactly that reason (v9c D3). */
 const HAUL_CHIP = 0.15
 /** Above this, the likeliest single outcome is a blank, which is worth saying
  *  out loud beside a starting place. */
@@ -81,7 +86,7 @@ function columnsFor(mobile: boolean): Column<SquadRow>[] { return [
                    + 'tail of his outcome distribution, which is his '
                    + 'expected points plus the variance a footballer’s week '
                    + 'carries, not a guess at his ceiling'}>
-            {`haul ${pct(r.pHaul)}`}
+            {`10+ pts ${pct(r.pHaul)}`}
           </Badge>
         )}
         {r.pBlank !== null && r.pBlank >= BLANK_CHIP && (

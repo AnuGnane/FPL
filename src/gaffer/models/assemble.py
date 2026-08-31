@@ -37,7 +37,20 @@ def _num(value) -> float:
 
 
 def p_haul(e_goals: float, e_assists: float) -> float:
-    """P(2+ attacking returns) under Poisson(e_goals + e_assists)."""
+    """P(2+ attacking returns) under Poisson(e_goals + e_assists).
+
+    Not to be confused with :attr:`gaffer.uncertainty.Band.p_haul`, which is a
+    different quantity on a different scale: P(total points >= 10) in the tail
+    of a normal on the whole forecast, cards and minutes and clean sheets
+    included. This one is attacking returns only, and it does not know what a
+    defender's week looks like.
+
+    Both were served as ``p_haul`` on one page until v9c. This one now leaves
+    the process as ``p_attacking_haul`` — renamed at the web boundary by
+    ``web.routers.advice.with_attacking_haul``, because the column itself
+    lives inside the protected pipeline (spec D3). The name here, and in the
+    artifact on disk, is unchanged.
+    """
     lam = max(0.0, _num(e_goals) + _num(e_assists))
     return 1.0 - math.exp(-lam) * (1.0 + lam)
 

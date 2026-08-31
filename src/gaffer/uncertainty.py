@@ -124,6 +124,14 @@ class Band:
     module docstring. ``sigma`` travels with them so a caller can say how wide
     the uncertainty is without re-deriving it, and so gate G1 can spot-check
     that a boom-bust attacker carries a larger one than a keeper at equal EP.
+
+    ``p_haul`` here is P(total points >= ``HAUL_POINTS``) in the tail of a
+    normal on the *whole* forecast — cards, minutes, clean sheets and all. It
+    is not :func:`gaffer.models.assemble.p_haul`, which is P(2+ attacking
+    returns) under a Poisson on expected goals plus assists and knows nothing
+    about a defender's week. Both were served under the name ``p_haul`` on one
+    page until v9c; this one keeps it (``/api/players``, ``/api/components``)
+    and the attacking one leaves the process as ``p_attacking_haul`` (spec D3).
     """
 
     sigma: float

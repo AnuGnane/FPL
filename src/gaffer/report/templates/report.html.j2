@@ -87,7 +87,7 @@ against a template player).</small></p>
 <p>Bench (in order): {% for p in a.bench %}{{ p.name }} ({{ p.ep }}){{ ", " if not loop.last }}{% endfor %}</p>
 
 <h2>Captain options</h2>
-<table><tr><th>Player</th><th>Pos</th><th>xPts</th><th>P(haul)</th><th>League EO%</th><th></th></tr>
+<table><tr><th>Player</th><th>Pos</th><th>xPts</th><th>P(2+ returns)</th><th>League EO%</th><th></th></tr>
 {% for c in a.captain_options %}
 <tr><td>{{ c.name }}</td><td>{{ c.position }}</td><td>{{ "%.2f"|format(c.ep) }}</td>
     <td>{{ "%.0f%%"|format(c.p_haul * 100) }}</td><td>{{ c.league_eo }}</td>
@@ -109,7 +109,7 @@ horizon left to count.</small></p>
 {% endif %}
 
 {% if a.alternatives %}<h2>Differential alternatives</h2>
-<table><tr><th>Player</th><th>xPts</th><th>P(haul)</th><th>League EO%</th></tr>
+<table><tr><th>Player</th><th>xPts</th><th>P(2+ returns)</th><th>League EO%</th></tr>
 {% for x in a.alternatives %}<tr><td>{{ x.name }}</td><td>{{ "%.2f"|format(x.ep) }}</td>
 <td>{{ "%.0f%%"|format(x.p_haul * 100) }}</td><td>{{ x.league_eo }}</td></tr>{% endfor %}
 </table>{% endif %}
