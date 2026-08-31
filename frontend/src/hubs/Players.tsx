@@ -78,6 +78,19 @@ export default function Players() {
       value: (r) => r.ownership, render: (r) => fmtNum(r.ownership) },
     { key: 'league_eo', header: 'EO%', numeric: true,
       value: (r) => r.league_eo, render: (r) => fmtNum(r.league_eo) },
+    // The label is the reason the column is here: a number is ownership, a
+    // word is a position. `Column` has no `sub` member, so the word rides
+    // inside the rendered cell; `value` stays the sortable number.
+    { key: 'field_eo', header: 'Field%', numeric: true,
+      value: (r) => r.field_eo,
+      render: (r) => (r.field_eo === null ? '—' : (
+        <>
+          {fmtNum(r.field_eo, 1)}
+          {r.field_class && (
+            <span className="ml-1 text-text-muted">{r.field_class}</span>
+          )}
+        </>
+      )) },
     { key: 'last4', header: 'Last 4', numeric: true,
       value: (r) => r.last4.length ? r.last4[r.last4.length - 1] : null,
       render: (r) => <Sparkline values={r.last4} /> },

@@ -14,6 +14,7 @@ from fastapi import APIRouter, Query
 
 from gaffer.artifacts import (latest_gw, load_components, load_snapshot,
                               load_solve_state)
+from gaffer.data.field import latest_field_eo
 from gaffer.errors import GafferError
 from gaffer.web.schemas import (Component, FixtureExplain, MinutesOutput,
                                 NextFixture, OddsInfluence, PlayerExplain,
@@ -69,6 +70,36 @@ def _last4() -> dict[int, list[int]]:
     return out
 
 
+FIELD_HIGH = 40.0
+FIELD_LOW = 15.0
+"""Effective-ownership percent that counts as the field being *on* a player,
+and the level below which it is not.
+
+Two thresholds rather than one so the middle of the distribution — the third
+of the game that is neither a template pick nor a punt — carries no label at
+all. Labelling everything is how a classification stops meaning anything."""
+
+
+def field_class(owned: bool, eo: float | None) -> str | None:
+    """Where this player puts you against the field.
+
+    * ``shield`` — you own him and so does the field: he cannot cost you rank.
+    * ``sword`` — you own him and the field does not: every point is a gain.
+    * ``threat`` — the field owns him and you do not: his good week is your
+      bad one.
+
+    The fourth quadrant (nobody owns him) is not a position, it is the rest of
+    the game, and it gets no label.
+    """
+    if eo is None:
+        return None
+    if owned:
+        if eo >= FIELD_HIGH:
+            return "shield"
+        return "sword" if eo <= FIELD_LOW else None
+    return "threat" if eo >= FIELD_HIGH else None
+
+
 @router.get("", response_model=list[PlayerRow])
 def players(position: str | None = None, team: int | None = None,
             search: str | None = None,
@@ -85,6 +116,12 @@ def players(position: str | None = None, team: int | None = None,
     ep_horizon = pool.groupby("code")["ep_raw"].sum().to_dict()
     owned = {int(c) for c in state.owned_codes}
     last4 = _last4()
+    # Pure display: an unreadable log is a missing column, never a 500. The
+    # explorer must render on a clone that has never run a scrape.
+    try:
+        field_eo = latest_field_eo()
+    except Exception:  # noqa: BLE001
+        field_eo = {}
 
     rows = []
     for r in snapshot.itertuples():
@@ -101,6 +138,10 @@ def players(position: str | None = None, team: int | None = None,
             ep_horizon=round(float(ep_horizon[code]), 2),
             ownership=float(r.selected_by_percent or 0.0),
             league_eo=float(state.league_eo.get(code, 0.0)),
+            field_eo=(field_eo.get(int(r.element)) or {}).get("eo"),
+            field_class=field_class(
+                code in owned,
+                (field_eo.get(int(r.element)) or {}).get("eo")),
             available=status not in UNAVAILABLE_STATUS,
             status=status, news=str(r.news or ""),
             chance_of_playing=_opt_float(r.chance_of_playing),

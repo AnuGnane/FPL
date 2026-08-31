@@ -308,6 +308,16 @@ class PlayerRow(BaseModel):
     ep_horizon: float
     ownership: float
     league_eo: float
+    field_eo: float | None = None
+    """Top-10k effective ownership from the latest banked scrape.
+
+    ``None`` means *unknown*, and it means it in two different situations
+    that the UI renders identically and correctly: no field log at all, or a
+    log that does not carry this player because no sampled entry started him.
+    Neither is 0.0, which the reader would take as a measured differential."""
+    field_class: str | None = None
+    """``shield`` | ``sword`` | ``threat``, or ``None`` for the quadrant with
+    nothing to say."""
     available: bool
     status: str
     news: str

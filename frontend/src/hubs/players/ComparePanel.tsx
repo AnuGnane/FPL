@@ -114,6 +114,16 @@ export default function ComparePanel({ gw, players }: ComparePanelProps) {
                   <dd className="num text-right text-text">
                     {fmtNum(player.league_eo)}
                   </dd>
+                  <dt className="label">Field EO</dt>
+                  <dd className="num text-right text-text">
+                    {player.field_eo === null
+                      ? '—' : `${fmtNum(player.field_eo, 1)}%`}
+                    {player.field_class && (
+                      <span className="ml-1 text-text-muted">
+                        {player.field_class}
+                      </span>
+                    )}
+                  </dd>
                   <dt className="label">Own%</dt>
                   <dd className="num text-right text-text">
                     {fmtNum(player.ownership)}

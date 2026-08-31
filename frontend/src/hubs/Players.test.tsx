@@ -24,12 +24,14 @@ const ROWS = [
     team_name: 'Liverpool', price: 13.0, ep_next: 6.4, ep_horizon: 12.0,
     ownership: 42.1, league_eo: 61.5, available: true, status: 'a', news: '',
     chance_of_playing: null, penalties_order: 1, free_kicks_order: 1,
-    corners_order: null, in_squad: true, last4: [2, 9, 5, 12] },
+    corners_order: null, in_squad: true, last4: [2, 9, 5, 12],
+    field_eo: 78.0, field_class: 'shield' },
   { code: 2, element: 8, name: 'Saka', position: 'MID', team_code: 301,
     team_name: 'Arsenal', price: 10.0, ep_next: 5.5, ep_horizon: 10.5,
     ownership: 30.0, league_eo: 22.0, available: true, status: 'a', news: '',
     chance_of_playing: null, penalties_order: null, free_kicks_order: null,
-    corners_order: 1, in_squad: false, last4: [6, 1, 8, 3] },
+    corners_order: 1, in_squad: false, last4: [6, 1, 8, 3],
+    field_eo: null, field_class: null },
 ]
 
 beforeEach(() => {
@@ -161,6 +163,14 @@ describe('Players hub', () => {
       vi.useRealTimers()
     }
   })
+
+  it('shows an em dash rather than a nought when the field is unknown',
+     async () => {
+       // A 0 here would read as "the top 10k have written him off", which is
+       // a claim, and we have not measured it.
+       render(<MemoryRouter><Players /></MemoryRouter>)
+       expect(await screen.findByText('—')).toBeInTheDocument()
+     })
 
   it('makes every explorer name the click-to-explain control', async () => {
     render(<MemoryRouter><Players /></MemoryRouter>)

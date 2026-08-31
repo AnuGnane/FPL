@@ -188,6 +188,10 @@ export interface PlayerRow {
   ep_horizon: number
   ownership: number
   league_eo: number
+  /** Top-10k EO from the latest field scrape; null = never scraped, or no
+   *  sampled entry started him. Never 0 for "unknown". */
+  field_eo: number | null
+  field_class: 'shield' | 'sword' | 'threat' | null
   available: boolean
   status: string
   news: string
