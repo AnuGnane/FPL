@@ -171,7 +171,9 @@ def test_v8d_adds_no_job_kinds(tmp_path, monkeypatch):
 
     assert "live" not in JOB_KINDS
     assert "race" not in JOB_KINDS
-    assert len(JOB_KINDS) == 9
+    # 9 -> 10: v8e added the `sensitivity` kind on both sides (deliberate
+    # pin update per this file's convention, authorised by the v8e orchestrator).
+    assert len(JOB_KINDS) == 10
 
 
 def test_v8d_adds_no_config_keys(tmp_path, monkeypatch):

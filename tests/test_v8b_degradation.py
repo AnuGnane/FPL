@@ -209,7 +209,9 @@ def test_the_review_job_kind_survives_a_review_that_grades_nothing(bare):
 def test_the_job_kind_count_is_pinned_on_this_side_too():
     """The frontend pins nine in ``src/types.test.ts``; a kind added on one
     side and not the other is a button that 404s."""
-    assert len(job_kinds.JOB_KINDS) == 9
+    # 9 -> 10: v8e added the `sensitivity` kind on both sides (deliberate
+    # pin update per this file's convention, authorised by the v8e orchestrator).
+    assert len(job_kinds.JOB_KINDS) == 10
 
 
 def test_the_protected_ordering_rails_are_carried_forward():

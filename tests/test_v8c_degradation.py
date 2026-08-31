@@ -188,7 +188,9 @@ def test_the_job_kind_count_is_pinned():
     is a button that 404s."""
     # 8 -> 9: v8b added the `review` kind on both sides (deliberate pin
     # update per this file's convention, authorised by the v8b orchestrator).
-    assert len(job_kinds.JOB_KINDS) == 9
+    # 9 -> 10: v8e added the `sensitivity` kind on both sides (deliberate
+    # pin update per this file's convention, authorised by the v8e orchestrator).
+    assert len(job_kinds.JOB_KINDS) == 10
     assert "field-scrape" in job_kinds.JOB_KINDS
 
 
