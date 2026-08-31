@@ -173,7 +173,11 @@ def serving_config() -> Config:
     own :func:`load_config` call, not to a news source.
 
     Tests that change ``config.toml`` under a running process call
-    ``serving_config.cache_clear()``.
+    ``serving_config.cache_clear()``. So must anything else: the cache lives
+    for the life of the process, so editing ``[news]`` while the web app is
+    up changes nothing until it is restarted. That is the intended trade —
+    a per-call TOML read on a serving path is worse — but it is a trap for
+    anyone toggling a flag and watching for an effect.
     """
     try:
         return load_config()

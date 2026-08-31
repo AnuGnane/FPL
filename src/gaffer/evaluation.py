@@ -289,7 +289,13 @@ def start_truth(hold: pd.DataFrame) -> pd.Series:
     postdates part of the archive, and a hole would blank the metric for a
     whole season rather than for the rows that are actually unknown.
     """
-    mins = pd.to_numeric(hold.get("minutes"), errors="coerce").fillna(0.0)
+    # ``get`` with a default rather than a bare one: a holdout frame without
+    # ``minutes`` would hand ``to_numeric`` a None and raise, and a metric is
+    # not worth an exception. The default carries ``hold``'s index so the
+    # fallback stays row-aligned rather than collapsing to nothing.
+    blank = pd.Series(float("nan"), index=hold.index, dtype="float64")
+    mins = pd.to_numeric(hold.get("minutes", blank),
+                         errors="coerce").fillna(0.0)
     inferred = (mins >= STARTER_MINUTES).astype("float64")
     if "starts" not in hold.columns:
         return inferred

@@ -277,6 +277,15 @@ def _holdout(holdout_slots: int = 10) -> pd.DataFrame:
     # One row per player-fixture becomes one row per player-gameweek, so the
     # strata features are taken from the first fixture of the week: they are
     # player-and-week facts, identical across a double gameweek's two rows.
+    #
+    # Known and left alone this cycle: the two collapses disagree on a double
+    # gameweek. ``truth`` *sums* minutes across both fixtures while ``carry``
+    # takes the *first* fixture's ``starts``, so a player benched on Saturday
+    # and starting on Tuesday reads as a non-starter with 90-plus minutes.
+    # DGWs are a few percent of rows and the effect is a stratum boundary
+    # rather than a metric, so nothing here is wrong by more than a rounding
+    # — but a later cycle that tightens the start strata should reconcile the
+    # two before trusting the split.
     modes = models["minutes"].predict_modes(hold)
     carry = hold[["code", "gw"]].copy()
     for col in ("season_start_share", "minutes_r5", "starts"):

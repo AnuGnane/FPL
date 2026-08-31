@@ -11,7 +11,7 @@ import pandas as pd
 
 from gaffer.data.managers import spell_keys
 
-ROLL_STATS =["total_points", "minutes", "starts", "goals", "assists", "xg",
+ROLL_STATS = ["total_points", "minutes", "starts", "goals", "assists", "xg",
               "xa", "xgi", "xgc", "cs", "gc", "saves", "bonus", "bps",
               "defcon", "tackles", "cbi", "recoveries", "yc"]
 WINDOWS = [1, 3, 5, 10, 38]
@@ -430,7 +430,10 @@ def add_congestion(df: pd.DataFrame,
     ``prefix`` renames all three outputs, which is how v8a's two arms coexist
     in one frame: ``prefix=""`` with a cup frame is arm B, ``prefix="lg_"``
     with ``cups=None`` is arm A, and calling it twice adds six columns rather
-    than overwriting three.
+    than overwriting three. Only ``matches_last_14d`` actually differs between
+    them — ``days_since_last_match`` and ``days_to_next_match`` are read off
+    the player's own league rows and are cup-independent under either call, so
+    the two arms carry four identical columns and two that separate.
     """
     sort_cols = [c for c in ("code", "season_idx", "gw", "kickoff_time")
                  if c in df.columns]

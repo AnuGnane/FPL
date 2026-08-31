@@ -97,9 +97,8 @@ whose tie above is only 3dp rounding.
 
 The withdrawn arms' builders stay wired into ``load_training_frame`` and
 ``build_prediction_frame``, and ``data/manager_tenures.toml`` stays a
-committed asset — the columns cost a fit nothing, F4's serve-time start
-threshold reads the rotation priors anyway, and the next cycle re-measures
-them rather than rebuilding them.
+committed asset — the columns cost a fit nothing, and the next cycle
+re-measures them rather than rebuilding them.
 """
 
 # Team-level clean sheet / goals conceded held at league-average constants
