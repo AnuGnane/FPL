@@ -38,6 +38,26 @@ The term is live for the first time. Shipped.
 
 WINDOWS = [1, 3, 5, 10, 38]
 
+
+def as_of_club(df: pd.DataFrame) -> pd.Series:
+    """The club to key club-scoped features on, per row.
+
+    ``club_code`` is what the player's club actually was that week
+    (:func:`gaffer.features.bps.as_of_club_code`); ``team_code`` is what the
+    store stamped on him this morning. Historical rows carry the first,
+    future rows cannot — and for a future row the current club *is* the as-of
+    club, so falling back is not a degradation there, it is the right answer.
+
+    The fallback is deliberately **per row** rather than per frame.
+    ``build_prediction_frame`` concatenates history with future rows, so a
+    ``"club_code" in df.columns`` check would see the column present and read
+    NaN for every serving row — the Elo merge would miss on all of them and
+    the model would predict against a null opponent strength. Per row, always.
+    """
+    if "club_code" not in df.columns:
+        return df["team_code"]
+    return df["club_code"].where(df["club_code"].notna(), df["team_code"])
+
 ROTATION_FEATURES = ["season_start_share", "days_since_last_start",
                      "sub_streak"]
 MAX_DAYS_SINCE_START = 60
@@ -318,7 +338,11 @@ def add_rotation_priors(df: pd.DataFrame,
              .sort_values(list(keys), kind="stable").index)
     out = work.loc[order].reset_index(drop=True)
     kt = when_all.loc[order].reset_index(drop=True)
-    spell = spell_keys(out["team_code"], kt, out["season_idx"], tenures)
+    # Spec D2: spells are club *tenures*, so the as-of club is the only key
+    # that names the right manager. A transferred player's August rows are
+    # stamped with his January club, and keying them on that put them under a
+    # manager he had never played for.
+    spell = spell_keys(as_of_club(out), kt, out["season_idx"], tenures)
     starts = pd.to_numeric(out["starts"], errors="coerce")
     code = out["code"]
 
@@ -626,15 +650,23 @@ def add_context(df: pd.DataFrame, elo: pd.DataFrame | None,
     (``elo_final``). Columns whose source is absent are simply skipped.
     """
     if elo is not None and "team_code" in df.columns:
-        team_elo = elo.rename(columns={"code": "team_code",
+        # Spec D2: the own side merges on the club the player actually played
+        # for. ``opp_code`` is written per row from the fixture at ingest and
+        # already survives a transfer (bps.py:79-80), so the opponent side is
+        # deliberately untouched — switching it would be a change with no
+        # finding behind it. ``_club`` is temporary and dropped below.
+        df = df.copy()
+        df["_club"] = as_of_club(df)
+        team_elo = elo.rename(columns={"code": "_club",
                                        "elo_pre": "team_elo"})
-        df = df.merge(team_elo, on=["season_idx", "gw", "team_code"], how="left")
+        df = df.merge(team_elo, on=["season_idx", "gw", "_club"], how="left")
         opp_elo = elo.rename(columns={"code": "opp_code", "elo_pre": "opp_elo"})
         df = df.merge(opp_elo, on=["season_idx", "gw", "opp_code"], how="left")
         if elo_final:
-            df["team_elo"] = df["team_elo"].fillna(df["team_code"].map(elo_final))
+            df["team_elo"] = df["team_elo"].fillna(df["_club"].map(elo_final))
             df["opp_elo"] = df["opp_elo"].fillna(df["opp_code"].map(elo_final))
         df["elo_diff"] = df["team_elo"] - df["opp_elo"]
+        df = df.drop(columns=["_club"])
     if "was_home" in df.columns:
         df["home"] = df["was_home"].astype("float")
     if "kickoff_time" in df.columns:
@@ -732,8 +764,12 @@ def build_prediction_frame(hist: pd.DataFrame, future: pd.DataFrame,
     if "team_code" in out.columns:
         pri = (latest_rotation_priors(hist, tenures)
                .reindex(out["code"]).reset_index(drop=True))
+        # Spec D2, for consistency with add_rotation_priors: on a
+        # future-rows-only frame ``as_of_club`` returns ``team_code`` and the
+        # answer is identical, but leaving one call site reading the raw column
+        # is how the next reader concludes the switch was partial on purpose.
         now_spell = spell_keys(
-            out["team_code"],
+            as_of_club(out),
             out["kickoff_time"] if "kickoff_time" in out.columns
             else pd.Series(pd.NaT, index=out.index),
             out["season_idx"], tenures)
@@ -1009,7 +1045,9 @@ def _shrunk_ratio(df: pd.DataFrame, val: pd.Series, den: pd.Series,
 
     slots = pd.DataFrame({
         "pos": df["position"].to_numpy(),
-        "team": df["team_code"].to_numpy(),
+        # Spec D2: a position-by-club prior about a club the player was not at
+        # is a prior about the wrong squad.
+        "team": as_of_club(df).to_numpy(),
         # gw <= 38, so *100 keeps (season, gw) ordered in one integer key.
         "slot": (pd.to_numeric(df["season_idx"]).astype(int) * 100
                  + pd.to_numeric(df["gw"]).astype(int)).to_numpy(),

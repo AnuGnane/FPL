@@ -16,7 +16,8 @@ from gaffer.assets import load_bootstrap_sample
 from gaffer.data import store
 from gaffer.data.bootstrap import scoring_table
 from gaffer.data.elo import compute_elo
-from gaffer.features.bps import FIRST_NEW_RULES_SEASON, apply_new_bps
+from gaffer.features.bps import (FIRST_NEW_RULES_SEASON, apply_new_bps,
+                                 as_of_club_code)
 from gaffer.data.understat import UNDERSTAT_PLAYER_PATH, UNDERSTAT_TEAM_PATH
 from gaffer.features.engineer import (LEAGUE_CONGESTION_FEATURES,
                                       LEAGUE_CONGESTION_PREFIX,
@@ -275,6 +276,15 @@ def load_training_frame(max_season_idx: int | None = None,
     # gameweeks, so the two orders agree anyway.
     player_gw = apply_new_bps(player_gw, current_idx=rules_idx,
                               fixtures=fixtures)
+    # The as-of club, derived once here because this is the only place that
+    # holds both the player rows and the fixture list (spec D2). Downstream,
+    # ``club_code`` is read through ``engineer.as_of_club``, which falls back
+    # to ``team_code`` per row — so every consumer of this frame that has not
+    # been switched behaves exactly as it did, and the serving path's future
+    # rows, which cannot have a club_code, are correct by that fallback
+    # rather than by an exception.
+    player_gw = player_gw.assign(
+        club_code=as_of_club_code(player_gw, fixtures))
     if max_season_idx is not None:
         keep = (player_gw["season_idx"] < max_season_idx) | (
             (player_gw["season_idx"] == max_season_idx)
