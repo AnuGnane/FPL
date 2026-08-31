@@ -255,10 +255,70 @@ class JobRunner:
     def kinds(self) -> tuple[str, ...]:
         return tuple(self._kinds)
 
+    def _abandon_current(self, older_than: float) -> JobRun | None:
+        """Free the lane if the job holding it has been running too long.
+
+        Called with the lock held. Returns the run it abandoned, or ``None``
+        if the lane was empty or its holder is younger than ``older_than``.
+
+        v9c orchestrator-authorized protected edit (plan T7): the
+        ``_abandon_current`` helper. v9c D4
+        (specs/2026-08-31-gaffer-v9c-model-debt-design.md).
+        ``ADVISE_TIMEOUT_S`` has had no reader since it was written: this
+        runner, unlike the ``JobRegistry`` above it, never enforced a
+        deadline, so a job that wedged held the single lane until the process
+        restarted and every later job got a 409 naming a run nobody could
+        clear.
+
+        The worker thread is **not** killed. It is a daemon, Python has no
+        safe way to stop one, and the module has said so since v6 (see the
+        docstring at the top of this file). Abandonment frees the lane and
+        discards the result; the thread runs on and its writes are harmless
+        because every job kind writes its artifacts idempotently or writes
+        nothing at all.
+
+        The status is ``"failed"`` rather than a new ``"abandoned"`` value.
+        ``JobRun.status``'s vocabulary is fixed, and more to the point the SSE
+        generator in ``routers/jobs.py`` ends a stream only on ``done`` or
+        ``failed`` — a new value would leave every watching browser polling
+        for the full idle hour. The explanation goes in ``error``, where the
+        UI already shows it.
+        """
+        if self._current is None:
+            return None
+        run = self._runs[self._current]
+        age = (datetime.now(timezone.utc)
+               - datetime.fromisoformat(run.started_at)).total_seconds()
+        if age < older_than:
+            return None
+        run.status = "failed"
+        run.error = (f"timed out after {older_than:.0f}s — abandoned as a "
+                     f"daemon, its thread still running")
+        run.finished_at = _now()
+        self._current = None
+        return run
+
+    def abandon_current(self) -> JobRun | None:
+        """Free the lane now, however old its holder is. ``None`` when idle.
+
+        v9c orchestrator-authorized protected edit (plan T7): the public
+        wrapper on ``_abandon_current``, for ``DELETE /api/jobs/current``.
+        One locked block for the whole state change, for the reason
+        ``_execute``'s ``finally`` gives below.
+        """
+        with self._lock:
+            return self._abandon_current(0.0)
+
     def start(self, kind: str) -> str:
         if kind not in self._kinds:
             raise KeyError(kind)
         with self._lock:
+            # v9c orchestrator-authorized protected edit (plan T7): reap a
+            # wedged holder before refusing the new job. Until v9c the 409
+            # below was permanent — the lane was cleared only by _execute's
+            # finally, so a job that never returned blocked every later job
+            # until the process restarted. v9c D4.
+            self._abandon_current(ADVISE_TIMEOUT_S)
             if self._current is not None:
                 running = self._runs[self._current]
                 raise JobAlreadyRunning(running.kind, running.id)
@@ -321,8 +381,19 @@ class JobRunner:
                 # one and clearing the lane in a later one left a window where
                 # a browser that had just been told `done` posted its next job
                 # and was answered 409 by a runner with nothing running.
-                run.status = status
-                run.error = error
-                run.summary = summary
-                run.finished_at = _now()
-                self._current = None
+                #
+                # v9c orchestrator-authorized protected edit (plan T7): the
+                # _execute finally guard, so an abandoned thread can neither
+                # steal the lane nor erase the abandon record. Both halves are
+                # conditional, because this thread may have been abandoned
+                # while it ran. Overwriting the status would erase the record
+                # of why the lane was freed, and — far worse — clearing
+                # _current unconditionally would clear a lane that by now
+                # belongs to a *different*, newer job. v9c D4.
+                if run.status == "running":
+                    run.status = status
+                    run.error = error
+                    run.summary = summary
+                    run.finished_at = _now()
+                if self._current == run.id:
+                    self._current = None

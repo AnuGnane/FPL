@@ -54,6 +54,34 @@ def current(request: Request):
     return _view(run).model_dump()
 
 
+@router.delete("/current")
+def cancel_current(request: Request):
+    """Free the lane held by the job running now. 404 when nothing holds it.
+
+    v9c orchestrator-authorized protected edit (plan T7): DELETE
+    /api/jobs/current. v9c D4
+    (specs/2026-08-31-gaffer-v9c-model-debt-design.md). The runner takes one
+    job at a time, so a job that wedges 409s every later job; until v9c the
+    only way out was restarting the process, and the 409's own payload named a
+    run the caller had no way to clear.
+
+    This does **not** stop the work. The worker is a daemon thread and cannot
+    be safely killed — the runner has said so since v6. What it does is
+    release the lane and mark the run failed with a reason, so the next job
+    can start. Every job kind is idempotent by design (a v8f constraint), so
+    the re-run that follows is safe even while the abandoned thread is still
+    writing.
+
+    Declared before ``GET /{job_id}`` for the reason this module's docstring
+    gives about ``GET /current``: the literal must be matched before the path
+    parameter can swallow it.
+    """
+    run = request.app.state.job_runner.abandon_current()
+    if run is None:
+        raise HTTPException(status_code=404, detail="no job is running")
+    return _view(run).model_dump()
+
+
 @router.get("/{job_id}")
 def status(job_id: str, request: Request):
     run = request.app.state.job_runner.get(job_id)
