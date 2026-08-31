@@ -97,11 +97,41 @@ describe('SensitivityCard', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })
 
-  it('falls back to its own empty line when the fetch fails', async () => {
-    apiGet.mockRejectedValue(new Error('nope'))
+  it('says the fetch failed rather than that nothing has been swept',
+    async () => {
+      apiGet.mockRejectedValue(new Error('nope'))
+      render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
+      expect(await screen.findByText(/could not be read/))
+        .toBeInTheDocument()
+      expect(screen.queryByText(/No sensitivity report yet/))
+        .not.toBeInTheDocument()
+    })
+
+  it('stamps the report with when it was swept', async () => {
     render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
-    expect(await screen.findByText('No sensitivity report yet.'))
+    expect(await screen.findByText(/2026-08-31 09:00/)).toBeInTheDocument()
+  })
+
+  it('says how many solves the sweep lost', async () => {
+    // A report of twelve completed solves out of twenty is a different
+    // report from one of twenty, and the shares below are out of twelve.
+    apiGet.mockResolvedValue({ ...REPORT, completed: 18, failures: 2 })
+    render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
+    expect(await screen.findByText(/2 of the 20 re-solves failed/))
       .toBeInTheDocument()
+  })
+
+  it('counts the re-solves the report says it ran', async () => {
+    apiGet.mockResolvedValue({ ...REPORT, k: 40, completed: 40 })
+    render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
+    expect(await screen.findByText(/re-solved 40 times/)).toBeInTheDocument()
+  })
+
+  it('leaves out a timing it was not given', async () => {
+    apiGet.mockResolvedValue({ ...REPORT, wall_s: null, seed: null })
+    render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
+    await screen.findByText(/nine of ten re-solves/)
+    expect(screen.queryByText(/Swept in/)).not.toBeInTheDocument()
   })
 
   it('offers the sensitivity job as its action', async () => {

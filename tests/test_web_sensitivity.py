@@ -82,6 +82,21 @@ def test_a_corrupt_report_is_an_empty_card(client, tmp_path):
     assert client.get("/api/sensitivity").json()["available"] is False
 
 
+def test_an_older_report_asked_for_by_number_is_still_marked_stale(client,
+                                                                   tmp_path):
+    """The docstring's claim, made true for the one route that could reach a
+    stale report: last week's robustness is about last week's board, and the
+    card must not paint it as this week's however it was asked for."""
+    (tmp_path / "reports/solve_state_gw6.json").write_text("{}")
+    (tmp_path / "reports/solve_state_gw6.parquet").write_bytes(b"")
+    (tmp_path / "reports/sensitivity_gw5.json").write_text(json.dumps(REPORT))
+    body = client.get("/api/sensitivity?gw=5").json()
+    assert body["available"] is False
+    assert "GW5" in body["notice"] and "GW6" in body["notice"]
+    # The numbers are still served, so the card can say what it is refusing.
+    assert body["gw"] == 5 and body["completed"] == 20
+
+
 def test_an_explicit_gameweek_can_be_asked_for(client, tmp_path):
     (tmp_path / "reports/sensitivity_gw5.json").write_text(json.dumps(REPORT))
     body = client.get("/api/sensitivity?gw=5").json()

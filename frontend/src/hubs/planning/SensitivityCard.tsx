@@ -32,10 +32,15 @@ function marginLine(margin: number | null): string {
 
 export default function SensitivityCard() {
   const [data, setData] = useState<SensitivityReport | null>(null)
+  // A GET that failed is not a week nobody has swept. The endpoint is a 200
+  // for every empty state it knows about, so a rejection here means the
+  // server did not answer, and "no report yet" would send the user to press
+  // a button that is not the problem.
+  const [failed, setFailed] = useState(false)
   const load = useCallback(() => {
     apiGet<SensitivityReport>('/api/sensitivity')
-      .then(setData)
-      .catch(() => setData(null))
+      .then((report) => { setFailed(false); setData(report) })
+      .catch(() => { setFailed(true); setData(null) })
   }, [])
   useEffect(() => { load() }, [load])
 
@@ -51,13 +56,17 @@ export default function SensitivityCard() {
       action={<JobButton kind="sensitivity" onDone={load} />}
     >
       <p className="mb-3 text-text-muted">
-        The same board re-solved twenty times with every expected-points cell
-        knocked by its own plausible error. A move that survives most of them
-        is an edge; one that does not is the optimizer reading the noise.
+        The same board re-solved {data?.k ? `${data.k} times` : 'twenty times'}
+        {' '}with every expected-points cell knocked by its own plausible
+        error. A move that survives most of them is an edge; one that does not
+        is the optimizer reading the noise.
       </p>
       {!data?.available && (
         <p className="text-text-muted">
-          {data?.notice ?? 'No sensitivity report yet.'}
+          {failed
+            ? 'The sensitivity report could not be read — the server did not '
+              + 'answer.'
+            : data?.notice ?? 'No sensitivity report yet.'}
         </p>
       )}
       {data?.available && (
@@ -91,10 +100,18 @@ export default function SensitivityCard() {
               ))}
             </tbody>
           </table>
+          {data.failures > 0 && (
+            <p className="mt-3 text-rust">
+              {`${data.failures} of the ${data.k} re-solves failed; every `}
+              share above is out of the {data.completed} that finished.
+            </p>
+          )}
           <p className="mt-3 text-text-muted">
             {marginLine(data.margin)}
-            {data.wall_s !== null && ` Swept in ${fmtNum(data.wall_s, 0)}s, `}
-            {data.seed !== null && `seed ${data.seed}.`}
+            {data.wall_s != null && ` Swept in ${fmtNum(data.wall_s, 0)}s, `}
+            {data.seed != null && `seed ${data.seed}, `}
+            {data.generated_at != null
+              && `run ${data.generated_at.slice(0, 16).replace('T', ' ')}.`}
           </p>
         </>
       )}
