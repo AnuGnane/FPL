@@ -238,6 +238,7 @@ function DecompositionSection(
         </tbody>
       </table>
       </div>
+      <div className="overflow-x-auto">
       <table className="mt-4 w-full">
         <tbody>
           {([
@@ -254,6 +255,7 @@ function DecompositionSection(
           ))}
         </tbody>
       </table>
+      </div>
     </Card>
   )
 }

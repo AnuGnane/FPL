@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import League from './League'
@@ -106,13 +107,49 @@ describe('a phone screen scrolls nothing sideways', () => {
              horizon: 4, buys: [], sells: [], captain: null, error: null }],
   }
 
-  function wrapped() {
-    for (const table of document.querySelectorAll('table')) {
+  // The invariant, plus proof that it bit: a `for` over an empty NodeList
+  // passes every assertion inside it, so a hub rendered against a rejecting
+  // fetch would "satisfy" this without ever drawing a table. Every caller
+  // states how many tables it expects to have checked.
+  function wrapped(atLeast = 1) {
+    const tables = [...document.querySelectorAll('table')]
+    expect(tables.length).toBeGreaterThanOrEqual(atLeast)
+    for (const table of tables) {
       // Each table owns its overflow. A page-level scrollbar means one of
       // them is pushing the body, and the reader loses the nav to find out
       // which.
       expect(table.closest('.overflow-x-auto')).not.toBeNull()
     }
+  }
+
+  const RACE = {
+    league_id: 1, entry_id: 1,
+    standings: [{ entry: 1, name: 'Mine', player_name: 'Me', rank: 1,
+                  total: 300, event_total: 60, is_you: true },
+                { entry: 2, name: 'Ten Hag Hive', player_name: 'Them',
+                  rank: 2, total: 290, event_total: 55, is_you: false }],
+    trajectory: [{ entry: 1, name: 'Mine',
+                   points: [{ gw: 5, points: 60, total: 300 }] }],
+    gap: [{ gw: 5, gap: 10 }],
+    win_probability: [{ name: 'Mine', total: 300, p_win: 0.5 }],
+    lam: 1, stance: 'balanced', lam_explained: 'leading',
+  }
+
+  const RIVALS = [{ entry: 2, name: 'Ten Hag Hive', player_name: 'Them',
+                    rank: 2, total: 290, event_total: 55, overlap: 11,
+                    differentials: 4 }]
+
+  const HEALTH = {
+    data: [{ source: 'bootstrap', path: 'data/live/bootstrap.json',
+             present: true, modified_at: '2026-08-31T09:00:00+00:00',
+             age_hours: 2.0 }],
+    models: [{ name: 'minutes', saved_at: '2026-08-30T09:00:00+00:00',
+               metrics: { rmse: 1.2 } }],
+    launchd: { log: 'logs/gaffer.log', present: true,
+               modified_at: '2026-08-31T09:00:00+00:00',
+               last_line: 'advise ok' },
+    odds_key_present: true, model_health: null,
+    artifacts: [{ name: 'advice_gw5.json', bytes: 4096 }],
   }
 
   for (const [name, Hub] of [['Model', Model], ['Players', Players]] as
@@ -142,27 +179,41 @@ describe('a phone screen scrolls nothing sideways', () => {
     expect(strip.className).toMatch(/overflow-x-auto|flex-wrap/)
   })
 
-  it("lets League's tab strip scroll within its own bounds", async () => {
+  function serveLeague() {
     apiGet.mockImplementation((path: string) => {
-      if (path === '/api/league/race') {
-        return Promise.resolve({
-          league_id: 1, entry_id: 1,
-          standings: [{ entry: 1, name: 'Mine', player_name: 'Me', rank: 1,
-                        total: 300, event_total: 60, is_you: true }],
-          trajectory: [{ entry: 1, name: 'Mine',
-                         points: [{ gw: 5, points: 60, total: 300 }] }],
-          gap: [{ gw: 5, gap: 10 }],
-          win_probability: [{ name: 'Mine', total: 300, p_win: 0.5 }],
-          lam: 1, stance: 'balanced', lam_explained: 'leading',
-        })
-      }
-      if (path === '/api/league/rivals') return Promise.resolve([])
+      if (path === '/api/league/race') return Promise.resolve(RACE)
+      if (path === '/api/league/rivals') return Promise.resolve(RIVALS)
       // The other two degrade to their own empty states by design.
       return Promise.reject(new Error('not on this clone'))
     })
+  }
+
+  it("lets League's tab strip scroll within its own bounds", async () => {
+    serveLeague()
     render(<MemoryRouter><League /></MemoryRouter>)
     const strip = await screen.findByRole('tablist')
     expect(strip.className).toMatch(/overflow-x-auto|flex-wrap/)
+  })
+
+  it('wraps every table League draws with a real payload', async () => {
+    // A populated fixture, deliberately: League against a rejecting fetch
+    // renders an EmptyState and no table at all, so the invariant below only
+    // means something once the standings and the win-probability table are
+    // actually on the page.
+    serveLeague()
+    render(<MemoryRouter><League /></MemoryRouter>)
+    await screen.findAllByText('Ten Hag Hive')
+    wrapped(2)
+  })
+
+  it('wraps every table the Health tab draws', async () => {
+    // The likeliest real body scroll on a phone: the data-freshness tables
+    // carry filesystem paths, which do not wrap.
+    apiGet.mockResolvedValue(HEALTH)
+    render(<MemoryRouter><Model /></MemoryRouter>)
+    await userEvent.click(await screen.findByRole('tab', { name: 'Health' }))
+    await screen.findAllByText(/bootstrap/)
+    wrapped(2)
   })
 
   it('wraps the sensitivity table in its own scroller', async () => {
@@ -186,7 +237,9 @@ describe('a phone screen scrolls nothing sideways', () => {
         : Promise.resolve({ id: 'j1', status: 'done', result: COMPARE,
                             error: null })))
     render(<MemoryRouter><DraftsTab current={EMPTY_WHATIF} /></MemoryRouter>)
+    // No compare has run, so there is no table yet; the assertion here is
+    // that the empty state itself draws none.
     await screen.findByTestId('empty-state')
-    wrapped()
+    wrapped(0)
   })
 })

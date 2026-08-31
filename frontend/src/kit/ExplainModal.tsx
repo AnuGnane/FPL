@@ -148,6 +148,7 @@ export default function ExplainModal(
                     GW{fixture.gw} {fixture.home ? 'vs' : 'at'}{' '}
                     {fixture.opponent} — {fmtNum(fixture.ep)} xPts
                   </h3>
+                  <div className="overflow-x-auto">
                   <table className="w-full">
                     <tbody>
                       {fixture.components.map((component) => (
@@ -166,6 +167,7 @@ export default function ExplainModal(
                       ))}
                     </tbody>
                   </table>
+                  </div>
                   <p className="mt-2 text-text-muted">
                     Minutes: P(play) {fmtPct(fixture.minutes.p_play)},
                     P(60+) {fmtPct(fixture.minutes.p60)} · calibration{' '}

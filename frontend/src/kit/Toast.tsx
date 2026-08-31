@@ -16,6 +16,9 @@ export const DISMISS_MS = 6000
 let nextId = 1
 let live: Toast[] = []
 const listeners = new Set<(toasts: Toast[]) => void>()
+/** Pending auto-dismissals, by toast id, so one can be cancelled with the
+ *  toast it belongs to rather than firing into whatever comes later. */
+const timers = new Map<number, number>()
 
 function emit(): void {
   for (const listener of listeners) listener(live)
@@ -39,18 +42,32 @@ export function toast(tone: ToastTone, text: string): number {
   const id = nextId++
   // slice(-MAX) keeps the newest: a burst of failures leaves the three most
   // recent on screen rather than the three the user has already read.
-  live = [...live, { id, tone, text }].slice(-MAX_TOASTS)
+  const dropped = [...live, { id, tone, text }].slice(-MAX_TOASTS)
+  // A toast pushed off the end by the cap is gone, so its timer is too —
+  // otherwise it fires minutes later against an id nothing is showing.
+  for (const t of live) if (!dropped.includes(t)) clearTimer(t.id)
+  live = dropped
   emit()
   // Scheduled here rather than in an effect inside the outlet, so a toast
   // raised while nothing is mounted still expires instead of accumulating in
-  // module state until the tab is closed.
+  // module state until the tab is closed. The handle is kept so the timer can
+  // be cancelled with the toast: an untracked timer outlives what it was
+  // scheduled for and dismisses whatever holds that id next.
   if (typeof window !== 'undefined') {
-    window.setTimeout(() => dismissToast(id), DISMISS_MS)
+    timers.set(id, window.setTimeout(() => dismissToast(id), DISMISS_MS))
   }
   return id
 }
 
+function clearTimer(id: number): void {
+  const handle = timers.get(id)
+  if (handle === undefined) return
+  timers.delete(id)
+  if (typeof window !== 'undefined') window.clearTimeout(handle)
+}
+
 export function dismissToast(id: number): void {
+  clearTimer(id)
   const next = live.filter((t) => t.id !== id)
   if (next.length === live.length) return
   live = next
@@ -58,10 +75,20 @@ export function dismissToast(id: number): void {
 }
 
 /** For tests. Module state outlives a test case exactly as `useJob`'s
- *  remembered map does, so `vitest.setup.ts` clears both. */
+ *  remembered map does, so `vitest.setup.ts` clears both.
+ *
+ *  `nextId` is deliberately **not** reset. Ids are the handle a pending
+ *  dismissal holds, and recycling them from 1 in every test made a timer
+ *  scheduled in one case dismiss the toast that happened to take its id in
+ *  the next — a flake that only shows up after a slow test case. Monotonic
+ *  ids cost nothing and cannot collide; the timers are cleared here as well,
+ *  so both halves of the hazard are closed. */
 export function resetToasts(): void {
+  for (const t of live) clearTimer(t.id)
+  // Any timer still tracked belongs to a toast already dismissed by the cap
+  // or by hand; clear those too rather than leaving them to fire.
+  for (const id of [...timers.keys()]) clearTimer(id)
   live = []
-  nextId = 1
   emit()
 }
 

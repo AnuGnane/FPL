@@ -41,7 +41,19 @@ export default function Timeline(
       .catch(() => setMissing(true))
   }, [gw])
 
-  // Exactly the window the plan covers, asked for after the plan lands.
+  // Exactly the window the plan covers, asked for after the plan lands — one
+  // request, and the only one this decoration costs.
+  //
+  // `weeks=N` asks the ticker for N gameweeks *from the current one*, which
+  // is the window the plan covers whenever the plan starts at the current
+  // gameweek — the ordinary case, since the timeline draws the horizon the
+  // last advice run solved. If the two ever fall out of step (a plan banked
+  // for a gameweek that has since passed, say), the far end of the horizon
+  // falls outside the ticker's window, its cells are missing, and those weeks
+  // draw no chips. That is the designed degradation and not a bug to code
+  // around: absent, never guessed (spec D6). Widening the request to cover an
+  // offset plan would need a start-gameweek parameter the endpoint does not
+  // take, which is a server change and not this cycle's.
   useEffect(() => {
     if (data === null || data.weeks.length === 0) return
     let live = true

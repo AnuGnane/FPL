@@ -215,6 +215,7 @@ export default function League() {
             </ResponsiveContainer>
           </Card>
           <Card title="Standings" className="mb-4">
+            <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr>
@@ -245,6 +246,7 @@ export default function League() {
                 ))}
               </tbody>
             </table>
+            </div>
           </Card>
           {sim ? (
             <Card title="Win probability">
@@ -300,6 +302,7 @@ export default function League() {
                 <p className="mb-3 text-text-muted">{sim.notice}</p>
               )}
               <MarginFan quantiles={sim.margin_quantiles} />
+              <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr>
@@ -321,6 +324,7 @@ export default function League() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </Card>
           ) : (
             // Card does not forward data-testid, so the fallback marker sits
@@ -329,6 +333,7 @@ export default function League() {
               <Card title="Win probability">
                 {/* The pre-v8c parametric pairwise numbers, kept as the
                     fallback until the simulated card is always available. */}
+                <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr>
@@ -351,6 +356,7 @@ export default function League() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               </Card>
             </div>
           )}

@@ -30,6 +30,7 @@ export default function HealthTab() {
   return (
     <>
       <Card title="Data freshness" className="mb-4">
+        <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr>
@@ -56,6 +57,7 @@ export default function HealthTab() {
             ))}
           </tbody>
         </table>
+        </div>
         {!data.odds_key_present && (
           <p className="mt-3 text-text-muted">
             No odds key configured — add an odds key for market-implied
@@ -64,6 +66,7 @@ export default function HealthTab() {
         )}
       </Card>
       <Card title="Models" className="mb-4">
+        <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr>
@@ -86,6 +89,7 @@ export default function HealthTab() {
             ))}
           </tbody>
         </table>
+        </div>
         {data.model_health && (
           <p className="mt-3">
             <span className="label">Last scored gameweek</span>{' '}
@@ -114,6 +118,7 @@ export default function HealthTab() {
             )}
       </Card>
       <Card title="Artifacts">
+        <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr>
@@ -132,6 +137,7 @@ export default function HealthTab() {
             ))}
           </tbody>
         </table>
+        </div>
       </Card>
     </>
   )

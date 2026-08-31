@@ -149,6 +149,7 @@ export default function SquadTable({ rows, breakdown }: SquadTableProps) {
         }
         return (
           <div>
+            <div className="overflow-x-auto">
             <table className="w-full">
               <tbody>
                 {detail.components.map((c) => (
@@ -167,6 +168,7 @@ export default function SquadTable({ rows, breakdown }: SquadTableProps) {
                 </tr>
               </tbody>
             </table>
+            </div>
             {detail.penTaker !== null && (
               <p className="mt-2 text-text-muted">
                 {fmtNum(detail.penTaker, 1)} of Goals is penalty duty.

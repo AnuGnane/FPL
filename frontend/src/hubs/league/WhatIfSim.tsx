@@ -85,6 +85,7 @@ export default function WhatIfSim({ squad, rivals }: WhatIfSimProps) {
   return (
     <>
       <Card title="Pin an event" className="mb-4">
+        <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr>
@@ -132,6 +133,7 @@ export default function WhatIfSim({ squad, rivals }: WhatIfSimProps) {
             ))}
           </tbody>
         </table>
+        </div>
         {rivals.length > 0 && (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <span className="label">Rival captain blanks</span>
@@ -204,6 +206,7 @@ export default function WhatIfSim({ squad, rivals }: WhatIfSimProps) {
                 result.unknown_codes.join(', ')}.`}
             </p>
           )}
+          <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr>
@@ -233,6 +236,7 @@ export default function WhatIfSim({ squad, rivals }: WhatIfSimProps) {
               ))}
             </tbody>
           </table>
+          </div>
         </Card>
       )}
     </>

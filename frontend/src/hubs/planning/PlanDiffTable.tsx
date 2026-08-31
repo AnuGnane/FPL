@@ -43,6 +43,7 @@ export default function PlanDiffTable({ diff }: { diff: WhatIfResult }) {
 
   return (
     <Card title="Original vs yours" className="mb-4">
+      <div className="overflow-x-auto">
       <table className="w-full">
         <thead>
           <tr>
@@ -79,6 +80,7 @@ export default function PlanDiffTable({ diff }: { diff: WhatIfResult }) {
           ))}
         </tbody>
       </table>
+      </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         {([['In', diff.xi_in], ['Out', diff.xi_out]] as const).map(
           ([side, players]) => (

@@ -39,8 +39,10 @@ Chart-token unification and the light-theme audit — inspected 2026-08-31 and a
 - [x] `uv run pytest -q` — **2746 passed**, identical to the merged-main
       baseline (this cycle changes no Python)
 - [x] `npx tsc --noEmit` — clean
-- [x] `npx vitest run` — **548 passed, 1 skipped** (merged-main baseline 498 +
-      1 skipped; 50 new tests, no test deleted)
+- [x] `npx vitest run` — **553 passed, 1 skipped** (merged-main baseline 498 +
+      1 skipped; 55 new tests, no test deleted). Includes the fix round's five:
+      the per-code star revert, two toast-timer regressions, and two
+      table-wrapping rails that render real payloads.
 - [x] `npm run build` — clean (only the pre-existing >500kB chunk warning)
 - [x] Zero Python diff: `git diff main --stat -- 'src/**/*.py' 'tests/**/*.py'
       'scripts/**/*.py' pyproject.toml config.example.toml` is **empty**.
@@ -82,8 +84,19 @@ Chart-token unification and the light-theme audit — inspected 2026-08-31 and a
       cannot fabricate lane links out of comma-joined name strings
 - [x] Every `EmptyState` action names a real button label or shell command,
       including the two audited-and-left-alone states, which are source-pinned
-- [x] Every tab strip scrolls within its own bounds, and the sensitivity, chip
-      and draft-compare tables sit inside an `overflow-x-auto`
+- [x] Every tab strip scrolls within its own bounds, and **every** `<table>`
+      in the frontend sits inside an `overflow-x-auto` — verified by a scan of
+      the whole tree, not by a sample. `responsive.test.tsx`'s `wrapped()`
+      helper now asserts a minimum table count as well, so a hub rendered
+      against a rejecting fetch cannot satisfy the invariant by drawing no
+      table at all; League and the Health tab are exercised with populated
+      fixtures.
+- [x] A star that fails reverts only its own code, leaving a star that
+      succeeded while it was in flight alone; two stars raised in one frame
+      both land (functional updates, no click-time array snapshot)
+- [x] Toast ids are monotonic and every auto-dismissal is tracked and
+      cancelled with its toast, so a timer from an earlier test cannot dismiss
+      a later toast that recycled its id
 
 **G1 — live, real season (orchestrator only):**
 
@@ -127,8 +140,8 @@ Chart-token unification and the light-theme audit — inspected 2026-08-31 and a
 - D5's "watchlist-empty explorer star column hint" was not built: the
   watchlist has no list surface anywhere in the frontend, so there is nothing
   to be empty (plan A12).
-- The 390px desk pass wrapped four wide tables the plan's survey had missed
-  (WhyPanel's per-fixture table, NewsPanel, MovesCard, QualityTab's
-  decomposition). Narrow two-to-four-column tables were left unwrapped
-  deliberately; if G1 finds one of them scrolling the body, it is a one-line
-  wrapper, not a rebuild.
+- The 390px pass now wraps every table in the frontend (twenty in all: the
+  three the plan's survey named, four the desk pass found, and the thirteen
+  the review round's tree-wide scan turned up — HealthTab's three
+  path-bearing tables the likeliest real body scroll among them). No table is
+  left to judgement, so the invariant is checkable rather than surveyed.

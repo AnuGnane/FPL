@@ -294,6 +294,40 @@ describe('the watchlist star', () => {
     expect(currentToasts()).toHaveLength(0)
   })
 
+  it('reverts only the star that failed, not one that landed meanwhile',
+    async () => {
+      // The reviewer's scenario. A whole-array snapshot taken at click time
+      // would restore the watchlist as it was *before* Saka, wiping from the
+      // page a star the server has.
+      let rejectUnstar: (e: Error) => void = () => {}
+      apiDelete.mockReturnValue(new Promise((_, reject) => {
+        rejectUnstar = reject
+      }))
+      // The server still has Salah — his delete is the one that failed — so
+      // the successful POST answers with both.
+      apiPost.mockResolvedValue({
+        rows: [{ code: 1, name: 'Salah', note: '', set_at: '' },
+               { code: 2, name: 'Saka', note: '', set_at: '' }],
+      })
+
+      render(<MemoryRouter><Players /></MemoryRouter>)
+      await userEvent.click(await screen.findByLabelText('unstar Salah'))
+      await userEvent.click(await screen.findByLabelText('star Saka'))
+      await screen.findByLabelText('unstar Saka')
+
+      await act(async () => {
+        rejectUnstar(new Error('the server did not answer'))
+        await Promise.resolve()
+      })
+
+      // Salah comes back, because his unstar failed…
+      expect(await screen.findByLabelText('unstar Salah')).toBeInTheDocument()
+      // …and Saka stays, because his star did not.
+      expect(screen.getByLabelText('unstar Saka')).toBeInTheDocument()
+      expect(currentToasts()).toHaveLength(1)
+      expect(currentToasts()[0].text).toContain('Salah')
+    })
+
   it('leaves the explorer usable when the watchlist endpoint is down',
     async () => {
       // The whole hub must render on a clone whose reports/ directory is empty.

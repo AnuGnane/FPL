@@ -100,6 +100,7 @@ function PlayerRow({ player }: { player: ComponentPlayer }) {
               {fmtPct(fixture.minutes.p_play)}, 60+{' '}
               {fmtPct(fixture.minutes.p60)} · {fmtNum(fixture.ep)} xPts
             </p>
+            <div className="overflow-x-auto">
             <table className="mt-2 w-full">
               <tbody>
                 {fixture.components.map((c) => (
@@ -128,6 +129,7 @@ function PlayerRow({ player }: { player: ComponentPlayer }) {
                 ))}
               </tbody>
             </table>
+            </div>
           </td>
         </tr>
       ))}

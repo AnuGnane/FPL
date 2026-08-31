@@ -331,10 +331,12 @@ The Planning hub's **Timeline** tags each week card with the opponents its
 named players face that week — the captain, the vice and any buys and sells,
 one chip per club — shaded by the same odds-implied difficulty and the same
 colour ramp the fixture ticker uses, so a chip and the ticker's square for the
-same fixture are the same colour by construction. It is joined on the page out
-of two payloads the hub already has, so it costs no extra request, and any
-link it cannot make is left out rather than guessed: a player the last advice
-run never named, or a gameweek past the ticker's window, simply has no chip.
+same fixture are the same colour by construction. The player-to-club half of
+the join is free — it rides on the advice payload the hub already fetches —
+and the fixtures themselves are one request to the same ticker endpoint the
+Ticker tab reads. Any link it cannot make is left out rather than guessed: a
+player the last advice run never named, or a gameweek past the ticker's
+window, simply has no chip.
 
 ### Sensitivity and drafts (v8e)
 

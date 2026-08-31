@@ -43,4 +43,33 @@ describe('Toast', () => {
     expect(() => toast('negative', 'nobody is listening')).not.toThrow()
     expect(currentToasts()).toHaveLength(1)
   })
+
+  it('does not let an old timer dismiss a later toast with a recycled id',
+    () => {
+      // The reviewer's flake, reproduced. Raise a toast, let the suite reset
+      // between cases *without* the timer firing, then raise another: if ids
+      // restarted at 1 and the first timer were still pending, it would land
+      // on the second toast and clear a message nobody had read.
+      render(<ToastOutlet />)
+      act(() => { toast('positive', 'from the earlier test') })
+      act(() => { vi.advanceTimersByTime(DISMISS_MS / 2) })
+      act(() => { resetToasts() })
+
+      act(() => { toast('negative', 'from the later test') })
+      // Past the moment the first toast's timer would have fired.
+      act(() => { vi.advanceTimersByTime(DISMISS_MS / 2 + 100) })
+      expect(screen.getByText('from the later test')).toBeInTheDocument()
+      // And it still expires on its own schedule.
+      act(() => { vi.advanceTimersByTime(DISMISS_MS) })
+      expect(screen.queryByTestId('toast')).not.toBeInTheDocument()
+    })
+
+  it('cancels the timer of a toast the cap pushed off the end', () => {
+    render(<ToastOutlet />)
+    act(() => { for (const n of [1, 2, 3, 4]) toast('negative', `f${n}`) })
+    // f1 was dropped by the cap; its pending dismissal must not survive to
+    // fire against an id that is live by then.
+    act(() => { vi.advanceTimersByTime(DISMISS_MS + 1) })
+    expect(currentToasts()).toHaveLength(0)
+  })
 })

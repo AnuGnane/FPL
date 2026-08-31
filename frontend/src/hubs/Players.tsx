@@ -64,15 +64,26 @@ export default function Players() {
   // stayed filled and claimed a player was on a list he was not on.
   const toggleStar = (code: number, name: string) => {
     const on = starred.includes(code)
-    const before = starred
-    setStarred(on ? starred.filter((c) => c !== code) : [...starred, code])
+    // Functional throughout, and per-code on the way back. A whole-array
+    // snapshot taken at click time is wrong twice over: two stars in one
+    // frame both read the same stale `starred` and the second drops the
+    // first, and a revert that restores the snapshot un-stars a *different*
+    // player whose write succeeded while this one was in flight — wiping
+    // from the UI a row the server has.
+    setStarred((prev) => (on
+      ? prev.filter((c) => c !== code)
+      : [...prev, code]))
     const request = on
       ? apiDelete<WatchlistPanel>(`/api/watchlist/${code}`)
       : apiPost<WatchlistPanel>('/api/watchlist', { code, note: '' })
     request
       .then((panel) => setStarred(panel.rows.map((r) => r.code)))
       .catch((e) => {
-        setStarred(before)
+        // The inverse of the change that was attempted, touching this code
+        // and nothing else.
+        setStarred((prev) => (on
+          ? [...prev, code]
+          : prev.filter((c) => c !== code)))
         toast('negative',
           `Could not ${on ? 'unstar' : 'star'} ${name} — ${errorText(e)}`)
       })
