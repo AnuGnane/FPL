@@ -79,6 +79,97 @@ describe('useJob', () => {
     expect(result.current.error).toContain('already queued')
   })
 
+  it('re-attaches to a running job when the tab remounts', async () => {
+    // Radix unmounts an unselected tab mid-solve; the run carries on server
+    // side, and mounting again has to find it rather than show an idle form.
+    let done = false
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      const body = url.includes('/api/whatif')
+        ? { job_id: 'j9' }
+        : { id: 'j9', status: done ? 'done' : 'running',
+            result: done ? { delta_xpts: 1.4 } : null, error: null }
+      return new Response(JSON.stringify(body), {
+        status: url.includes('/api/whatif') ? 202 : 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }))
+
+    const first = renderHook(() => useJob('whatif'))
+    await first.result.current.start('/api/whatif', {})
+    await waitFor(() => expect(first.result.current.status).toBe('running'),
+      { timeout: 4000 })
+    first.unmount()
+
+    const second = renderHook(() => useJob('whatif'))
+    await waitFor(() => expect(second.result.current.status).toBe('running'))
+    done = true
+    await waitFor(() => expect(second.result.current.status).toBe('done'),
+      { timeout: 4000 })
+    expect(second.result.current.result).toEqual({ delta_xpts: 1.4 })
+    act(() => second.result.current.reset())
+  }, 15000)
+
+  it('paints a job that finished while the tab was unmounted', async () => {
+    stubSequence([
+      [202, { job_id: 'j10' }],
+      [200, { id: 'j10', status: 'running', result: null, error: null }],
+      [200, { id: 'j10', status: 'done', result: { delta_xpts: -0.5 },
+              error: null }],
+    ])
+    const first = renderHook(() => useJob('finished-slot'))
+    await first.result.current.start('/api/whatif', {})
+    await waitFor(() => expect(first.result.current.status).toBe('running'),
+      { timeout: 4000 })
+    first.unmount()
+
+    const second = renderHook(() => useJob('finished-slot'))
+    await waitFor(() => expect(second.result.current.status).toBe('done'))
+    expect(second.result.current.result).toEqual({ delta_xpts: -0.5 })
+    act(() => second.result.current.reset())
+  }, 15000)
+
+  it('forgets a job the restarted server no longer knows about', async () => {
+    stubSequence([
+      [202, { job_id: 'j11' }],
+      [200, { id: 'j11', status: 'running', result: null, error: null }],
+      [404, { detail: 'no such job: j11' }],
+    ])
+    const first = renderHook(() => useJob('gone-slot'))
+    await first.result.current.start('/api/whatif', {})
+    await waitFor(() => expect(first.result.current.status).toBe('running'),
+      { timeout: 4000 })
+    first.unmount()
+
+    const second = renderHook(() => useJob('gone-slot'))
+    await new Promise((r) => setTimeout(r, 200))
+    expect(second.result.current.status).toBe('idle')
+    second.unmount()
+    // The id is dropped, so a third mount does not probe for it again.
+    const calls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls
+      .length
+    renderHook(() => useJob('gone-slot'))
+    await new Promise((r) => setTimeout(r, 200))
+    expect((globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.length)
+      .toBe(calls)
+  }, 15000)
+
+  it('recovers nothing when no slot is named', async () => {
+    stubSequence([
+      [202, { job_id: 'j12' }],
+      [200, { id: 'j12', status: 'running', result: null, error: null }],
+    ])
+    const first = renderHook(() => useJob())
+    await first.result.current.start('/api/whatif', {})
+    await waitFor(() => expect(first.result.current.status).toBe('running'),
+      { timeout: 4000 })
+    first.unmount()
+
+    const second = renderHook(() => useJob())
+    await new Promise((r) => setTimeout(r, 200))
+    expect(second.result.current.status).toBe('idle')
+    second.unmount()
+  }, 15000)
+
   it('unwraps a structured refusal rather than reporting the status', async () => {
     stubSequence([[422, { detail: { constraint: 'unknown_draft',
                                     error: 'no draft called ghost',

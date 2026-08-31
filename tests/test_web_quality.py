@@ -118,3 +118,27 @@ def test_a_news_shadow_with_nothing_scored_yet_still_serves(client, tmp_path):
         {**PAYLOAD, "news_shadow": {"run_at": "x", "git_sha": "y",
                                     "rows": 0, "overall": {}, "by_gw": []}}))
     assert client.get("/api/quality").json()["news_shadow"]["rows"] == 0
+
+
+def test_quality_on_an_older_artifact_asks_for_a_re_run(client, tmp_path):
+    """Well-formed JSON, but a mode whose sub-model has since gained a
+    required field. That is "re-run the CLI", not a 500 — the page has a fix
+    to print and prints this sentence verbatim."""
+    stale = {"current": {k: v for k, v in PAYLOAD["current"].items()
+                         if k != "stratified"}}
+    (tmp_path / "reports").mkdir(exist_ok=True)
+    (tmp_path / "reports" / "evaluation.json").write_text(json.dumps(stale))
+    response = client.get("/api/quality")
+    assert response.status_code == 422
+    assert "gaffer evaluate" in response.json()["detail"]
+
+
+def test_quality_on_an_artifact_that_is_not_an_object(client, tmp_path):
+    """``Quality(**...)`` needs a mapping; a list is a TypeError, not a
+    ValidationError, and was the other way this 500'd."""
+    (tmp_path / "reports").mkdir(exist_ok=True)
+    (tmp_path / "reports" / "evaluation.json").write_text(json.dumps(
+        {"current": ["not", "a", "mapping"]}))
+    response = client.get("/api/quality")
+    assert response.status_code == 422
+    assert "gaffer evaluate" in response.json()["detail"]

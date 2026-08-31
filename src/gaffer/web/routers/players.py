@@ -197,6 +197,31 @@ def players(position: str | None = None, team: int | None = None,
     return rows
 
 
+def _cell(row, col: str):
+    """One component cell as a float, or ``None`` when it is not really there.
+
+    Two ways a column goes missing, and both end here. A frame banked before
+    the column existed carries no attribute at all — ``itertuples`` simply has
+    no such field. A frame put through ``save_components`` after the column was
+    added carries it as all-NaN. Neither is a number, and neither is worth a
+    500 over: ``routers/components.py`` already defaults its way past exactly
+    this, and an explain panel is no more entitled to a crash than a breakdown.
+    """
+    value = getattr(row, col, None)
+    if value is None:
+        return None
+    try:
+        out = float(value)
+    except (TypeError, ValueError):
+        return None
+    return None if math.isnan(out) else out
+
+
+def _cell_or(row, col: str, default: float) -> float:
+    value = _cell(row, col)
+    return default if value is None else value
+
+
 COMPONENT_LABELS = [
     ("Minutes", ["ep_minutes"]),
     ("Attacking", ["ep_goals", "ep_assists"]),
@@ -222,26 +247,51 @@ def explain(code: int) -> PlayerExplain:
 
     fixtures = []
     for row in mine.sort_values("gw").itertuples():
+        # A term whose every column is absent is dropped rather than printed
+        # as 0.00: "Saves: 0.00" is a claim about a goalkeeper the frame never
+        # made. A term with *some* columns present keeps the ones it has and
+        # treats the rest as the zero they contributed to ``ep``.
+        components = []
+        for label, cols in COMPONENT_LABELS:
+            cells = [_cell(row, c) for c in cols]
+            if all(cell is None for cell in cells):
+                continue
+            components.append(Component(
+                label=label,
+                points=round(sum(c for c in cells if c is not None), 2)))
+
+        p_play = _cell(row, "p_play")
         fixtures.append(FixtureExplain(
             gw=int(row.gw), opponent=str(row.opp_name),
             home=bool(row.was_home),
             kickoff_time=None if pd.isna(row.kickoff_time)
             else str(row.kickoff_time),
-            components=[Component(label=label,
-                                  points=round(sum(float(getattr(row, c))
-                                                   for c in cols), 2))
-                        for label, cols in COMPONENT_LABELS],
-            minutes=MinutesOutput(p_play=round(float(row.p_play), 3),
-                                  p60=round(float(row.p60), 3)),
-            calibration_delta=round(float(row.cal_delta), 2),
+            components=components,
+            # p_play stays None when it is missing: the schema asks for that
+            # explicitly, because 0.0 there reads as "expected not to play".
+            # p60 has nowhere to say "unknown", so it falls back to 0.0 the
+            # same way routers/components.py does.
+            minutes=MinutesOutput(
+                p_play=None if p_play is None else round(p_play, 3),
+                p60=round(_cell_or(row, "p60", 0.0), 3)),
+            # A frame with no calibration column was not calibrated, and 0.0
+            # is precisely what "no adjustment" means here.
+            calibration_delta=round(_cell_or(row, "cal_delta", 0.0), 2),
             odds=OddsInfluence(
-                weight=round(float(row.odds_weight), 2),
-                e_goals_against=_opt_float(row.odds_e_goals_against),
-                p_cs_model=round(float(row.p_cs_model), 3),
-                p_cs_blended=round(float(row.p_cs), 3),
-                e_gc_model=round(float(row.e_gc_model), 3),
-                e_gc_blended=round(float(row.e_gc), 3)),
-            ep=round(float(row.ep), 2)))
+                # Likewise a weight of 0: a frame banked before the odds blend
+                # existed gave the odds no weight. The blended figures then
+                # fall back to the model's own, which is what a zero-weight
+                # blend evaluates to anyway.
+                weight=round(_cell_or(row, "odds_weight", 0.0), 2),
+                e_goals_against=_opt_float(
+                    getattr(row, "odds_e_goals_against", None)),
+                p_cs_model=round(_cell_or(row, "p_cs_model", 0.0), 3),
+                p_cs_blended=round(
+                    _cell_or(row, "p_cs", _cell_or(row, "p_cs_model", 0.0)), 3),
+                e_gc_model=round(_cell_or(row, "e_gc_model", 0.0), 3),
+                e_gc_blended=round(
+                    _cell_or(row, "e_gc", _cell_or(row, "e_gc_model", 0.0)), 3)),
+            ep=round(_cell_or(row, "ep", 0.0), 2)))
 
     snapshot = load_snapshot("live/players.parquet")
     rows = snapshot[snapshot["code"] == code]

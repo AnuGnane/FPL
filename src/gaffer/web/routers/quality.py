@@ -25,7 +25,18 @@ def quality() -> Quality:
     # load_evaluation raises GafferError when the artifact is missing, which
     # the app-wide handler turns into a 422 carrying the "run gaffer
     # evaluate" sentence the empty state prints verbatim.
-    return Quality(**load_evaluation())
+    stored = load_evaluation()
+    try:
+        return Quality(**stored)
+    except (ValidationError, TypeError) as exc:
+        # Same reasoning as pens() below: a well-formed artifact from an older
+        # schema — a mode whose sub-model has since gained a required field —
+        # is "re-run the CLI", not a 500. The page has a fix to print, and the
+        # empty state prints this sentence verbatim, so hand it the sentence
+        # rather than a stack trace.
+        raise GafferError(
+            "evaluation report is from an older schema — re-run "
+            "`gaffer evaluate`") from exc
 
 
 @router.get("/pens", response_model=PenTracker)

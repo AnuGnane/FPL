@@ -164,3 +164,52 @@ def test_rows_carry_the_last_four_finished_gameweeks_of_points(client,
 def test_rows_carry_an_empty_last4_when_no_player_gw_parquet_exists(client):
     rows = client.get("/api/players").json()
     assert all(row["last4"] == [] for row in rows)
+
+
+OLD_COLS = [c for c in COMPONENT_COLS
+            if c not in {"ep_defcon", "ep_pensave", "p_play", "cal_delta",
+                         "odds_weight", "odds_e_goals_against", "p_cs_model",
+                         "e_gc_model"}]
+
+
+def test_explain_survives_a_frame_banked_before_a_column_existed(client,
+                                                                 tmp_path):
+    """An older components parquet has no such column at all — ``itertuples``
+    simply has no field — and used to be an AttributeError, i.e. a 500."""
+    from gaffer.artifacts import components_path
+
+    _components()[OLD_COLS].to_parquet(components_path(3), index=False)
+    resp = client.get("/api/players/100/explain")
+    assert resp.status_code == 200
+    fixture = resp.json()["fixtures"][0]
+    labels = {c["label"] for c in fixture["components"]}
+    # Wholly absent terms are omitted rather than printed as a 0.00 the frame
+    # never claimed.
+    assert "Defensive contribution" not in labels
+    assert "Penalty saves" not in labels
+    assert "Attacking" in labels and "Minutes" in labels
+    # p_play has a way to say "unknown" and takes it; the rest fall back to
+    # the zero that "this was never blended in" means.
+    assert fixture["minutes"]["p_play"] is None
+    assert fixture["minutes"]["p60"] == 0.88
+    assert fixture["calibration_delta"] == 0.0
+    assert fixture["odds"]["weight"] == 0.0
+    assert fixture["odds"]["e_goals_against"] is None
+    # A zero-weight blend evaluates to the model's own figure, and with no
+    # model column either both ends read the same.
+    assert fixture["odds"]["p_cs_model"] == 0.0
+    assert fixture["odds"]["p_cs_blended"] == 0.31
+
+
+def test_explain_survives_a_column_present_but_never_filled(client):
+    """``save_components`` back-fills a missing column as all-NaN, so the same
+    older artifact reaches the router the other way round."""
+    frame = _components()[OLD_COLS]
+    save_components(frame, 3)
+    resp = client.get("/api/players/100/explain")
+    assert resp.status_code == 200
+    fixture = resp.json()["fixtures"][0]
+    assert fixture["minutes"]["p_play"] is None
+    assert fixture["calibration_delta"] == 0.0
+    assert {c["label"] for c in fixture["components"]} \
+        .isdisjoint({"Defensive contribution", "Penalty saves"})

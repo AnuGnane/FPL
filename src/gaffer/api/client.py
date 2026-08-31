@@ -8,6 +8,14 @@ from pathlib import Path
 import httpx
 
 BASE = "https://fantasy.premierleague.com/api"
+KEEP_DUMPS = 20
+"""Timestamped dumps retained per kind in ``raw_dir``.
+
+Every snapshotting fetch used to leave a file and nothing ever removed one:
+471 files and 120MB accumulated in eight days of ordinary use. Twenty is a
+few days of history per kind — enough to diff a suspicious bootstrap against
+its predecessors, far short of a directory nobody can open.
+"""
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
       "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36")
 
@@ -30,9 +38,7 @@ class FPLClient:
                 resp.raise_for_status()
                 data = resp.json()
                 if snapshot:
-                    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
-                    (self.raw_dir / f"{snapshot}-{ts}.json").write_text(
-                        json.dumps(data))
+                    self._dump(snapshot, data)
                 return data
             except (httpx.HTTPStatusError, httpx.TransportError) as exc:
                 # Client errors (except rate limiting) will not fix themselves:
@@ -45,6 +51,38 @@ class FPLClient:
                 if attempt < self.retries - 1:
                     time.sleep(self.backoff ** attempt if self.backoff else 0)
         raise last_exc
+
+    def _dumps(self, kind: str) -> list[Path]:
+        """Existing dumps of ``kind``, oldest first.
+
+        Sorted by name, which for a ``%Y%m%dT%H%M%S`` stamp is chronological
+        and does not need the filesystem's mtime to have survived a copy.
+        """
+        return sorted(self.raw_dir.glob(f"{kind}-*.json"))
+
+    def _dump(self, kind: str, data) -> None:
+        """Write one timestamped snapshot, then prune the kind's history.
+
+        Best effort throughout: a snapshot is a debugging convenience, and a
+        full disk or a racing sibling process must not turn a successful fetch
+        into a failed one. The caller already has its data.
+        """
+        try:
+            body = json.dumps(data)
+            existing = self._dumps(kind)
+            # An unchanged payload is not worth a file. Most of the 471 were
+            # exactly this: a fixtures list polled through a quiet afternoon,
+            # byte for byte what the last poll wrote.
+            if existing and existing[-1].read_text() == body:
+                return
+            ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+            (self.raw_dir / f"{kind}-{ts}.json").write_text(body)
+            for stale in self._dumps(kind)[:-KEEP_DUMPS]:
+                # missing_ok: another process pruning the same directory is a
+                # race that has already done this one's work.
+                stale.unlink(missing_ok=True)
+        except OSError as exc:
+            print(f"raw snapshot for {kind} skipped: {exc}")
 
     def get_bootstrap(self):
         return self._get("bootstrap-static/", snapshot="bootstrap")
