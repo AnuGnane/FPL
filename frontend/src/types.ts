@@ -1,3 +1,17 @@
+/** One team's next game in the advised gameweek.
+ *
+ *  Resolved server-side from the banked fixture list — never computed here.
+ *  The two optional fields are independently null and mean different things:
+ *  `kickoff_utc` is null while FPL still has the date as TBC, and
+ *  `difficulty` is null when the ticker could rate nothing, which draws the
+ *  chip in a neutral colour rather than not drawing it. */
+export interface NextFixture {
+  opponent_short: string | null
+  home: boolean
+  kickoff_utc: string | null
+  difficulty: number | null
+}
+
 export interface PlayerRef {
   code: number
   name: string
@@ -7,6 +21,13 @@ export interface PlayerRef {
   /** Share of noised scenarios that contained this move. Absent when the
    *  scenario sweep did not run ([scenarios] n = 0). */
   frequency?: number
+  /** v9a. Added by `/api/advice/latest` on the way out, not written into the
+   *  advice artifact — so `/api/plan` and the what-if lab send PlayerRefs
+   *  without them and all three are optional here. `next_fixture: null` is a
+   *  blank gameweek; `undefined` is a payload that was never enriched. */
+  team_short?: string | null
+  team_code?: number | null
+  next_fixture?: NextFixture | null
 }
 
 export interface MoveFrequency {
