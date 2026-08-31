@@ -166,12 +166,18 @@ Spec: `specs/2026-08-31-gaffer-v9b-ui-polish-design.md` · Plan: `plans/2026-08-
 - [x] Review FIX-FIRST → fixed: per-code star revert (whole-array snapshot wiped concurrent stars), toast timer/id hygiene (recycled ids dismissed later toasts), the thirteen unwrapped tables
 - Suite: 2746 Python (zero .py in diff, railed) + 553 frontend; chart-token + light-theme audit closed as already-clean (recorded, not padded)
 
-### v9c — model debt (from the 2026-08-31 cross-cutting review; evidence-first, each needs its own gate)
-- `rc_r38` is identically zero: `card_penalty`'s red-card term reads a rolling stat `engineer.py` never builds (`ROLL_STATS` has `yc`, not `rc`) — needs the feature added + an arm run, not a hotfix
-- `team_code` retro-stamp leak: `data/live.py:169` stamps today's club over all history rows; three feature builders key on it (`_shrunk_ratio` club prior, manager-spell scoping, team Elo merge) — January transfers silently rewrite training rows; fix needs an as-of club column + replay evidence
-- Two quantities named `p_haul` (attacking-returns Poisson in `assemble.py` vs total-points band in `uncertainty.py`) served on the same page — rename one end-to-end
-- Job timeout/cancel: `ADVISE_TIMEOUT_S` has zero readers; one wedged job 409s every later job until restart — `web/jobs.py` is protected, so this is a deliberate orchestrator-authorized cycle
-- SSE stream pins a threadpool worker per watched run for up to an hour (`routers/jobs.py:116-153`) — revisit alongside the timeout work
+### v9c — model debt (done, merged `41980e4` 2026-09-01)
+Spec: `specs/2026-08-31-gaffer-v9c-model-debt-design.md` (§4 = arm numbers, club-leak measurement, replay verdict) · Plan: `plans/2026-08-31-gaffer-v9c-model-debt.md`
+- [x] Red cards priced for the first time: `rc` in ROLL_STATS + shrunk rate (`SHRINK_K_CARD=20`) — arm run three times (two invalid runs recorded, not overwritten; the disconnected-lever lesson) → ship at −0.001/+0.001/0.000 vs 0.005
+- [x] `team_code` retro-stamp leak closed for three consumers via as-of `club_code` (fixture join, 100% match rate, 0.94% of rows diverged — Ward-Prowse demo); understat own-side + congestion deliberately unswitched → **v9d residual**
+- [x] `p_attacking_haul` split from the band's `p_haul` at the serving boundary (third decoration); labels railed
+- [x] Job timeout/cancel via SIX orchestrator-authorized protected edits (jobs.py + routers/jobs.py + advise.py atomic write + B1 stdout guard) — live-verified: mid-run cancel 200, lane freed, replacement's log intact
+- [x] Replay gate PASSES: branch 1857.3 (spread 25) vs re-run main 1874.3 (spread 107), paired deltas +27/−86/+8 — within seed noise
+- Residuals: v9d two unswitched club consumers; SSE worker-pinning; cancel message reuses timeout wording; job-timeout name covers all 12 kinds
+- Suite: 2825 Python + 554 frontend; the v9 queue closes
+
+## Operational / housekeeping
+- [x] Untrack `reports/` artifacts + `.claude/`; gitignore both (`31dc239`)
 
 ## Operational / housekeeping
 - [x] Untrack `reports/` artifacts + `.claude/`; gitignore both (`31dc239`)
