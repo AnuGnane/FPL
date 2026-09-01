@@ -654,6 +654,37 @@ export interface NewsShadowData {
   by_gw: NewsShadowGw[]
 }
 
+/** One probability head's calibration, or its refusal (v9d §4). */
+export interface CalibrationHead {
+  /** 'scored' or 'insufficient' — a field rather than a missing key, so the
+   *  card renders "not enough data" without branching on absence. */
+  status: string
+  n: number
+  brier: number | null
+  log_loss: number | null
+  reliability: ReliabilityBin[]
+}
+
+export interface CalibrationGw {
+  gw: number
+  n: number
+  heads: Record<string, CalibrationHead>
+}
+
+export interface CalibrationData {
+  available: boolean
+  run_at: string | null
+  git_sha: string | null
+  season: string | null
+  gameweeks: CalibrationGw[]
+  cumulative: Record<string, CalibrationHead>
+  /** Head -> why it is not graded. p_start is never banked. */
+  omitted: Record<string, string>
+  excluded: Array<{ gw: number; reason: string }>
+  missing: number[]
+  note: string | null
+}
+
 export const JOB_KINDS = ['advise', 'advise-fast', 'evaluate', 'refresh-data',
   'news-shadow', 'snapshot', 'track-pens', 'field-scrape', 'review',
   'sensitivity', 'digest-friday', 'digest-tuesday'] as const

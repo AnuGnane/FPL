@@ -429,3 +429,115 @@ describe('v8g calibration', () => {
       .toBeGreaterThan(0)
   })
 })
+
+// The v9d card. Its own fetch, its own empty state, and a footer that is as
+// much the point as the table: a calibration report whose omissions and
+// exclusions are hidden is a plausible-looking grade of hindsight.
+const CAL_HEAD = {
+  status: 'scored', n: 400, brier: 0.1234, log_loss: 0.4,
+  reliability: [{ n: 200, pred: 0.2, obs: 0.25 },
+                { n: 200, pred: 0.9, obs: 0.88 }],
+}
+const CAL_INSUFFICIENT = {
+  status: 'insufficient', n: 12, brier: null, log_loss: null, reliability: [],
+}
+
+function calibrationPayload(over: Record<string, unknown> = {}) {
+  return {
+    available: true, run_at: '2026-09-01T00:00:00Z', git_sha: 'abc1234',
+    season: '2025-26',
+    gameweeks: [{ gw: 1, n: 400,
+                  heads: { p_play: CAL_HEAD, p60: CAL_HEAD, p_cs: CAL_HEAD,
+                           p_haul: CAL_INSUFFICIENT } }],
+    cumulative: { p_play: CAL_HEAD, p60: CAL_HEAD, p_cs: CAL_HEAD,
+                  p_haul: CAL_INSUFFICIENT },
+    omitted: { p_start: 'not banked' },
+    excluded: [{ gw: 2, reason: 'written after kickoff' }],
+    missing: [3],
+    note: null,
+    ...over,
+  }
+}
+
+function renderWithCalibration(calibration: unknown, reject = false) {
+  apiGet.mockImplementation((path: string) => {
+    if (path === '/api/model/calibration') {
+      return reject ? Promise.reject(calibration as Error)
+        : Promise.resolve(calibration)
+    }
+    if (path === '/api/history') return Promise.resolve({ runs: [] })
+    if (path === '/api/review') return Promise.resolve({ gws: [] })
+    if (path === '/api/misses') return Promise.resolve({ gw: null, rows: [] })
+    if (path === '/api/pens') {
+      return Promise.reject(new FakeApiError(422, 'no pen tracker report'))
+    }
+    return Promise.resolve(payload)
+  })
+  render(<MemoryRouter><QualityTab /></MemoryRouter>)
+}
+
+describe('v9d calibration by gameweek', () => {
+  it('prints the server’s own sentence when nothing has been graded',
+    async () => {
+      renderWithCalibration({
+        available: false, run_at: null, git_sha: null, season: null,
+        gameweeks: [], cumulative: {}, omitted: {}, excluded: [], missing: [],
+        note: 'Run `gaffer evaluate --calibration` after a graded gameweek.',
+      })
+      expect(await screen.findByText(/after a graded gameweek/))
+        .toBeInTheDocument()
+      // CLI-only: JOB_KINDS maps a kind to a zero-argument callable, so there
+      // is no flag a button could pass.
+      expect(screen.getByText('gaffer evaluate --calibration'))
+        .toBeInTheDocument()
+    })
+
+  it('renders one row per graded gameweek with each head’s Brier',
+    async () => {
+      renderWithCalibration(calibrationPayload())
+      expect(await screen.findByRole('heading',
+                                     { name: 'Calibration by gameweek' }))
+        .toBeInTheDocument()
+      expect(screen.getByRole('rowheader', { name: 'GW1' })).toBeInTheDocument()
+      expect(screen.getAllByText('0.1234').length).toBeGreaterThan(0)
+    })
+
+  it('says "not enough data" rather than leaving a blank cell', async () => {
+    // A blank reads as "perfect" at a glance, which is the worst possible
+    // default for a calibration table.
+    renderWithCalibration(calibrationPayload())
+    expect((await screen.findAllByText(/not enough data \(12\)/)).length)
+      .toBeGreaterThan(0)
+  })
+
+  it('names the omitted head and why it is omitted', async () => {
+    renderWithCalibration(calibrationPayload())
+    expect(await screen.findByText(/Omitted: p_start — not banked/))
+      .toBeInTheDocument()
+  })
+
+  it('shows an excluded gameweek with its reason', async () => {
+    renderWithCalibration(calibrationPayload())
+    expect(await screen.findByText(/Excluded: GW2 — written after kickoff/))
+      .toBeInTheDocument()
+    expect(screen.getByText(/No banked components: GW3/)).toBeInTheDocument()
+  })
+
+  it('does not take the tab down when its own fetch fails', async () => {
+    renderWithCalibration(new FakeApiError(500, 'calibration blew up'), true)
+    expect(await screen.findByText('calibration blew up')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Holdout' })).toBeInTheDocument()
+  })
+
+  it('keeps the two calibration cards distinctly titled', async () => {
+    // The tab already had a card titled "Calibration" — the holdout curves.
+    // Two cards with one name showing different things is worse than either.
+    renderWithCalibration(calibrationPayload())
+    expect(await screen.findByRole('heading', { name: 'Calibration' }))
+      .toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { name: 'Calibration' })).toHaveLength(1)
+    expect(screen.getAllByRole('heading',
+                               { name: 'Calibration by gameweek' }))
+      .toHaveLength(1)
+  })
+})

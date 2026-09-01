@@ -9,7 +9,8 @@ import {
   PosBadge, Stat, fmtNum, fmtPct,
 } from '../../kit'
 import type {
-  BenchmarkEvaluation, CurrentEvaluation, DecompositionData, HeadMetrics,
+  BenchmarkEvaluation, CalibrationData, CalibrationHead, CurrentEvaluation,
+  DecompositionData, HeadMetrics,
   MissRow, MissesData, NewsShadowData, PenTrackerData,
   PenTrackerGw, QualityData, ReviewData, StratifiedTable,
 } from '../../types'
@@ -151,6 +152,148 @@ function Reliability({ label, head }: { label: string; head: HeadMetrics }) {
   )
 }
 
+// The four heads the banked components carry, in payload order. p_start is
+// deliberately not here: the minutes trichotomy is never written to
+// components_gw{N}.parquet, so the report omits it *with its reason* and the
+// footer prints that reason. A reader who could not see the omission would
+// conclude the trichotomy is calibrated.
+const CALIBRATION_HEADS: Array<[string, string]> = [
+  ['p_play', 'P(plays)'],
+  ['p60', 'P(60+)'],
+  ['p_cs', 'P(clean sheet)'],
+  ['p_haul', 'P(2+ returns)'],
+]
+
+function brierCell(head: CalibrationHead | undefined) {
+  // A blank cell reads as "perfect" at a glance, which is the worst possible
+  // default for a calibration table, so an ungraded head says so in words.
+  if (!head) return <span className="text-text-faint">—</span>
+  if (head.status !== 'scored' || head.brier === null) {
+    return (
+      <span className="text-text-faint">not enough data ({head.n})</span>
+    )
+  }
+  return <>{head.brier.toFixed(4)} <span className="text-text-faint">
+    ({head.n})</span></>
+}
+
+/**
+ * Per-gameweek Brier for the probabilities the weekly run actually served.
+ *
+ * Its own fetch, like every other section here: the report is a separate key
+ * in the evaluation artifact with its own "nobody has run it" state, and a
+ * failed fetch must not take the tab's other numbers down.
+ *
+ * Titled "Calibration by gameweek" because this tab already has a card titled
+ * "Calibration" — the last-10-slot holdout curves — and two cards with one
+ * name showing different things is worse than either alone.
+ */
+function CalibrationSection() {
+  const [data, setData] = useState<CalibrationData | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    apiGet<CalibrationData>('/api/model/calibration')
+      .then(setData)
+      .catch((e: Error) => setError(e.message))
+  }, [])
+
+  if (error) {
+    return (
+      <Card title="Calibration by gameweek" className="mt-4">
+        <p className="text-rust">{error}</p>
+      </Card>
+    )
+  }
+  if (!data) return null
+
+  if (!data.available || data.gameweeks.length === 0) {
+    return (
+      <Card title="Calibration by gameweek" className="mt-4">
+        <EmptyState
+          // Distinct from the scatter card's "No graded gameweek yet" below:
+          // two empty states with one sentence on one tab tell a reader
+          // nothing about which artifact is missing.
+          title="No calibration report yet"
+          // The server's own sentence, verbatim: the report is CLI-only,
+          // because JOB_KINDS maps a kind to a zero-argument callable and
+          // there is no flag a button could pass.
+          detail={data.note ?? 'Nothing graded yet.'}
+          action="gaffer evaluate --calibration"
+        />
+      </Card>
+    )
+  }
+
+  return (
+    <Card title="Calibration by gameweek" className="mt-4">
+      <p className="mb-3 text-text-muted">
+        Brier score per head for the probabilities the weekly run actually
+        served — read back off the banked components, never refitted. Lower is
+        better.
+      </p>
+      <table className="w-full">
+        <thead>
+          <tr>
+            <th className="text-left">GW</th>
+            {CALIBRATION_HEADS.map(([key, label]) => (
+              <th key={key} className="text-right">{label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {data.gameweeks.map((row) => (
+            <tr key={row.gw}>
+              <th scope="row" className="text-left">{`GW${row.gw}`}</th>
+              {CALIBRATION_HEADS.map(([key]) => (
+                <td key={key} className="text-right">
+                  {brierCell(row.heads[key])}
+                </td>
+              ))}
+            </tr>
+          ))}
+          {/* The cumulative row is what a model cycle is chosen on, so it is
+              separated rather than sorted in among the weeks. */}
+          <tr className="border-t border-divider">
+            <th scope="row" className="text-left">All</th>
+            {CALIBRATION_HEADS.map(([key]) => (
+              <td key={key} className="text-right">
+                {brierCell(data.cumulative[key])}
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+      {CALIBRATION_HEADS.map(([key, label]) => {
+        const head = data.cumulative[key]
+        return head && head.status === 'scored'
+          ? (
+            <Reliability
+              key={key}
+              label={label}
+              head={{ log_loss: head.log_loss, reliability: head.reliability }}
+            />
+            )
+          : null
+      })}
+      <div className="mt-3 text-text-faint">
+        {Object.entries(data.omitted).map(([head, why]) => (
+          <p key={head}>{`Omitted: ${head} — ${why}.`}</p>
+        ))}
+        {data.excluded.map((row) => (
+          <p key={row.gw}>{`Excluded: GW${row.gw} — ${row.reason}.`}</p>
+        ))}
+        {data.missing.length > 0 && (
+          <p>
+            {`No banked components: ${data.missing
+              .map((gw) => `GW${gw}`).join(', ')}.`}
+          </p>
+        )}
+      </div>
+    </Card>
+  )
+}
+
 function CurrentSection({ current }: { current: CurrentEvaluation }) {
   return (
     <>
@@ -169,6 +312,12 @@ function CurrentSection({ current }: { current: CurrentEvaluation }) {
         />
       </Card>
       <Card title="Calibration" className="mb-4">
+        {/* Named apart from "Calibration by gameweek" below, which grades the
+            probabilities the weekly run actually served. This one is the
+            holdout. */}
+        <p className="mb-3 text-text-muted">
+          From the holdout run above, not the weeks actually served.
+        </p>
         {HEADS.map(([key, label]) => {
           const head = current.heads[key]
           return head === undefined ? null
@@ -689,6 +838,7 @@ export default function QualityTab() {
         && <DecompositionSection decomposition={data.decomposition} />}
       {data.news_shadow && data.news_shadow.rows > 0
         && <NewsShadowSection shadow={data.news_shadow} />}
+      <CalibrationSection />
       <ScatterSection />
       <MissesSection />
       <PensSection />
