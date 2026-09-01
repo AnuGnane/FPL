@@ -1,6 +1,7 @@
 import pandas as pd
 import pytest
-from gaffer.optimize.milp import solve_plan, SolveInput, build_pool
+from gaffer.optimize.milp import (solve_plan, _solve_once, SolveInput,
+                                  build_pool)
 
 OWNED = [1, 2,               # GKP x2
          3, 4, 5, 6, 7,      # DEF x5 (of 6 in pool)
@@ -361,7 +362,9 @@ def test_a_lambda_table_replaces_the_flat_terminal_term():
     objective — pricing an FT twice is worse than pricing it wrong."""
     import inspect
 
-    src = inspect.getsource(solve_plan)
+    # v10 §F1a split solve_plan into a two-pass wrapper and the model
+    # itself; the text these assertions are about is _solve_once's.
+    src = inspect.getsource(_solve_once)
     assert "ft_lambda is None or ft_lambda.empty" in src
     assert "obj.append(ft_value * ftv[T[-1]])" in src
 
@@ -406,7 +409,9 @@ def test_lambda_is_looked_up_at_the_weeks_remaining_in_the_season():
     a GW36 horizon is nearly worthless to bank into and a GW6 one is not."""
     import inspect
 
-    src = inspect.getsource(solve_plan)
+    # v10 §F1a split solve_plan into a two-pass wrapper and the model
+    # itself; the text these assertions are about is _solve_once's.
+    src = inspect.getsource(_solve_once)
     assert "SEASON_LAST_GW - T[-1]" in src
 
 
@@ -494,7 +499,9 @@ def test_bench_boost_overrides_the_curve_entirely():
     survived would understate the chip by more than the chip is worth."""
     import inspect
 
-    src = inspect.getsource(solve_plan)
+    # v10 §F1a split solve_plan into a two-pass wrapper and the model
+    # itself; the text these assertions are about is _solve_once's.
+    src = inspect.getsource(_solve_once)
     assert "state.bench_boost_gw == t" in src
     pool = golden_pool()
     state = _owned_state(pool)
@@ -540,6 +547,8 @@ def test_the_churn_penalty_is_waived_on_a_wildcard_week():
     """Fifteen transfers on a wildcard are the chip working, not churn."""
     import inspect
 
-    src = inspect.getsource(solve_plan)
+    # v10 §F1a split solve_plan into a two-pass wrapper and the model
+    # itself; the text these assertions are about is _solve_once's.
+    src = inspect.getsource(_solve_once)
     penalty = src.index("ft_use_penalty *")
     assert "if not wc:" in src[max(0, penalty - 200):penalty + 200]

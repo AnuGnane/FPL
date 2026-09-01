@@ -55,6 +55,59 @@ BENCH_SLOTS = 3
 """Outfield bench slots. The fourth bench player is the reserve keeper, who is
 priced by the first curve weight rather than by a slot of his own."""
 
+# v10 §F1a (specs/2026-09-01-gaffer-v10-minutes-design.md): the three
+# constants the autosub weighting is expressed in.
+POPULATION_DNP = 0.0617
+"""Mean ``1 - p_play`` over a typical starting XI, on the 2024-25 benchmark.
+
+§F1a's denominator, and the reason its weighting is a *modulation* of
+:data:`DEFAULT_BENCH_CURVE` rather than a replacement for it: an XI as fragile
+as the league's average produces a frailty of exactly 1.0 and therefore today's
+curve, unchanged. The curve stays the calibrated population base; ``p_play``
+only says how far this week's XI sits from the population it was fitted on.
+
+Measured by ``scripts/v10_dnp.py`` (plan A3): per gameweek of the benchmark
+test season, the positionally-legal eleven with the highest EP out of the
+:data:`DEFAULT_TOP_N` pool, ``mean(1 - p_play)`` over those slots, averaged
+over 38 gameweeks. Keeper-only rate over the same run: 0.0486. Per-gameweek
+range: 0.0389-0.2045, the maximum being GW1, where the model has no
+current-season form to read and is uncertain about everyone. One constant
+serves both the outfield slots and the reserve keeper; the two rates differ by
+about a fifth of a point of probability, which is well inside what one season
+of benchmark measures, and if a later measurement separates them splitting the
+constant is a one-line change here and nothing else.
+"""
+
+FRAILTY_CLAMP = (0.25, 2.0)
+"""Bounds on every ``/ POPULATION_DNP`` ratio in §F1 (plan A4).
+
+The floor defends against a nailed-on XI. Eleven players at 0.98 give a
+frailty near zero, and a bench worth nothing is a bench the solver fills with
+the cheapest legal bodies to free money for the XI — a real strategy, and not
+the one §F1a is asking for. 0.25 keeps the curve's shape alive while still
+saying this XI barely needs cover.
+
+The ceiling defends against the opposite: a doubt-riddled XI at frailty 4
+would price the bench like a permanent bench boost. 2.0 — twice as fragile as
+the league — is already an aggressive claim.
+
+On the measured data neither bound binds in an ordinary week: the benchmark's
+per-gameweek range gives frailties of 0.63 to 3.31, so only GW1's cold start
+reaches the ceiling. A clamp that bound every week would be a clamp doing the
+deciding, and this one is not.
+"""
+
+P_PLAY_MIN_SPREAD = 1e-9
+"""Below this spread, ``p_play`` carries no information and §F1 does not run.
+
+The whole of §F1 is *relative*: which of two benched players comes on first,
+how this XI compares to the population, how likely the captain is to leave the
+armband unused. A column with no variance in it answers none of those and, fed
+through the arithmetic anyway, would shift the bench block against the XI block
+by a constant nobody chose. So an absent ``p_play`` and a uniform ``p_play``
+take the same path — the pre-v10 one, byte for byte (plan A2).
+"""
+
 DEFAULT_TOP_N = {"GKP": 8, "DEF": 22, "MID": 26, "FWD": 14}
 
 
@@ -124,13 +177,166 @@ class FixedMoves:
     no_transfer: bool = False
 
 
+# v10 §F1a (specs/2026-09-01-gaffer-v10-minutes-design.md): the arithmetic the
+# two-pass solve is built out of. All three are private and none is reachable
+# from a caller that passes no p_play.
+def _frailty(dnp_rate: float) -> float:
+    """A did-not-play rate -> a clamped multiplier on a population weight."""
+    lo, hi = FRAILTY_CLAMP
+    return min(max(dnp_rate / POPULATION_DNP, lo), hi)
+
+
+def _p_play_lookup(pool: pd.DataFrame, state: SolveInput,
+                   p_play: dict | None) -> dict[int, dict[int, float]] | None:
+    """The §F1 gate: a usable ``{code: {gw: p}}``, or ``None`` for "don't".
+
+    ``None`` — and therefore the pre-v10 solve, exactly — in three cases, and
+    plan A2 is why each of them is a case:
+
+    * nothing was passed, which is every caller in the tree today;
+    * **coverage is incomplete** — some ``(code, gw)`` of the filtered pool
+      times the horizon is missing, or is not a finite number in ``[0, 1]``.
+      All-or-nothing on purpose: a pool where half the players have a
+      probability and the other half are silently treated as nailed-on is the
+      one failure that actively misleads, so a partially-wired caller fails
+      closed;
+    * the values have **no spread**. Uniform is not information, and taking
+      the fast exit here is what makes "identical ``p_play`` across the pool is
+      decision-identical to main" true at *any* value rather than at one.
+    """
+    if not p_play:
+        return None
+    codes = [int(c) for c in
+             pool.loc[~pool["code"].isin(state.locked_out), "code"]]
+    out: dict[int, dict[int, float]] = {}
+    lo = hi = None
+    for c in codes:
+        per_gw = p_play.get(c)
+        if per_gw is None:
+            return None
+        row: dict[int, float] = {}
+        for g in state.gws:
+            v = per_gw.get(g)
+            # A number, and not a bool, and not a string that happens to
+            # parse. A caller that built this dict out of strings built it
+            # wrong, and coercing would hide that rather than fail closed.
+            if isinstance(v, bool) or not isinstance(v, (int, float)):
+                return None
+            v = float(v)
+            # NaN fails this comparison too, which is the point.
+            if not 0.0 <= v <= 1.0:
+                return None
+            row[g] = v
+            lo = v if lo is None else min(lo, v)
+            hi = v if hi is None else max(hi, v)
+        out[c] = row
+    if lo is None or hi - lo < P_PLAY_MIN_SPREAD:
+        return None
+    return out
+
+
+def _decision_scales(plan: "Plan", pool: pd.DataFrame,
+                     pp: dict[int, dict[int, float]]) -> dict:
+    """Pass one's answer -> pass two's weights and pins (plan A1).
+
+    Three ratios per gameweek, all over the same denominator and through the
+    same clamp: the XI's mean frailty for the outfield bench slots, the *XI
+    keeper's own* for the reserve keeper — he plays exactly when that one man
+    does not, which is why the outfield mean would be the wrong number — and
+    the captain's for the vice hedge.
+
+    The XI and the captain are pinned. The vice scale is the captain's
+    frailty, so leaving the armband free in pass two would let the solver
+    re-elect a captain under a weight computed from a different one; §F1
+    changes no captaincy term, so pinning costs nothing it wanted.
+    """
+    pos = dict(zip(pool["code"], pool["position"]))
+    bench_scale: dict[int, tuple[float, float]] = {}
+    vice_scale: dict[int, float] = {}
+    fixed_xi: dict[int, list[int]] = {}
+    fixed_captain: dict[int, int] = {}
+    for gp in plan.gw_plans:
+        t, xi = gp.gw, list(gp.xi)
+        dnp = [1.0 - pp[c][t] for c in xi if c in pp and t in pp[c]]
+        if not dnp:
+            continue
+        out_f = _frailty(sum(dnp) / len(dnp))
+        keeper = next((c for c in xi if pos.get(c) == "GKP"), None)
+        gk_f = (_frailty(1.0 - pp[keeper][t])
+                if keeper is not None and keeper in pp else out_f)
+        cap = gp.captain
+        bench_scale[t] = (out_f, gk_f)
+        vice_scale[t] = (_frailty(1.0 - pp[cap][t]) if cap in pp else 1.0)
+        fixed_xi[t] = xi
+        fixed_captain[t] = int(cap)
+    return {"bench_scale": bench_scale, "vice_scale": vice_scale,
+            "fixed_xi": fixed_xi, "fixed_captain": fixed_captain}
+
+
 def solve_plan(pool: pd.DataFrame, state: SolveInput, *, decay: float,
                bench_weight: float, vice_weight: float, ft_value: float,
                itb_value: float, hit_cost: int,
                fixed_moves: FixedMoves | None = None,
                ft_lambda: "LambdaLookup | None" = None,
                ft_use_penalty: float = 0.0,
-               bench_curve: list[float] | None = None) -> Plan:
+               bench_curve: list[float] | None = None,
+               p_play: dict[int, dict[int, float]] | None = None) -> Plan:
+    """Solve the multi-period plan; see :func:`_solve_once` for the model.
+
+    ``p_play`` is ``{code: {gw: probability of appearing}}`` and is the only
+    thing this wrapper adds. Omitted — every caller in the tree at the time of
+    writing — this function is a single call to ``_solve_once`` with today's
+    arguments and today's answer, character for character.
+
+    Supplied and *informative* (plan A2: full coverage, some spread), the solve
+    becomes two passes, v10 §F1a:
+
+    1. today's solve, which decides the XI and the captain;
+    2. the same problem with the bench weights and the vice term rescaled by
+       how fragile *that* XI is, the XI and captain pinned, and the four
+       non-XI squad places free to be re-chosen for the cover they give.
+
+    The MILP stays linear because the frailty is a number by the time it is
+    used, not an expression over the XI variables — which is the whole reason
+    for two passes rather than one quadratic objective.
+
+    Pass two is a refinement and never a gate: if it is infeasible, fails, or
+    the solver dies, pass one's answer is what is returned.
+    """
+    kw = dict(decay=decay, bench_weight=bench_weight,
+              vice_weight=vice_weight, ft_value=ft_value,
+              itb_value=itb_value, hit_cost=hit_cost,
+              fixed_moves=fixed_moves, ft_lambda=ft_lambda,
+              ft_use_penalty=ft_use_penalty, bench_curve=bench_curve)
+    pp = _p_play_lookup(pool, state, p_play)
+    first = _solve_once(pool, state, **kw, p_play=pp)
+    if pp is None:
+        return first
+    try:
+        return _solve_once(pool, state, **kw, p_play=pp,
+                           **_decision_scales(first, pool, pp))
+    except Exception as exc:  # noqa: BLE001 — pass two never gates advice
+        # v10 §F1a: an infeasible re-weighted solve means the pinned XI cannot
+        # be built under the transfer constraints this horizon carries. That
+        # is a refinement failing, not a plan failing, and pass one is a legal
+        # optimum that was already computed.
+        print(f"optimize: autosub-weighted second pass failed ({exc}); "
+              f"serving the unweighted plan")
+        return first
+
+
+def _solve_once(pool: pd.DataFrame, state: SolveInput, *, decay: float,
+                bench_weight: float, vice_weight: float, ft_value: float,
+                itb_value: float, hit_cost: int,
+                fixed_moves: FixedMoves | None = None,
+                ft_lambda: "LambdaLookup | None" = None,
+                ft_use_penalty: float = 0.0,
+                bench_curve: list[float] | None = None,
+                p_play: dict[int, dict[int, float]] | None = None,
+                bench_scale: dict[int, tuple[float, float]] | None = None,
+                vice_scale: dict[int, float] | None = None,
+                fixed_xi: dict[int, list[int]] | None = None,
+                fixed_captain: dict[int, int] | None = None) -> Plan:
     """Solve the multi-period plan.
 
     pool: [code, position, team_code, cost, sell, ep] where ep is a dict
@@ -203,6 +409,21 @@ def solve_plan(pool: pd.DataFrame, state: SolveInput, *, decay: float,
                 if pos[c] == "GKP":
                     for s in range(BENCH_SLOTS):
                         prob += slot[c][t][s] == 0
+        # v10 §F1a (specs/2026-09-01-gaffer-v10-minutes-design.md): pass two's
+        # pins. The bench slots are being priced by how fragile *this* XI is,
+        # so the XI has to still be this XI when the solver is done; and the
+        # vice term is being priced by *this* captain's frailty, so the armband
+        # has to stay on him. What is left free is exactly what §F1a is about:
+        # the four non-XI places and which of them comes on first.
+        #
+        # Never entered on pass one, and never entered by any call that passes
+        # no p_play — which is the pre-v10 problem, unchanged.
+        if fixed_xi is not None and t in fixed_xi:
+            keep = set(fixed_xi[t])
+            for c in codes:
+                prob += xi[c][t] == (1 if c in keep else 0)
+            if fixed_captain is not None and t in fixed_captain:
+                prob += cap[fixed_captain[t]][t] == 1
         # composition
         for p, n in SQUAD_COMPOSITION.items():
             prob += pulp.lpSum(sq[c][t] for c in codes if pos[c] == p) == n
@@ -274,22 +495,33 @@ def solve_plan(pool: pd.DataFrame, state: SolveInput, *, decay: float,
         nt = pulp.lpSum(tin[c][t] for c in codes)
         cap_mult = 2.0 if state.triple_captain_gw == t else 1.0
         bw = 1.0 if state.bench_boost_gw == t else bench_weight
+        # v10 §F1a/§F1c (specs/2026-09-01-gaffer-v10-minutes-design.md): the
+        # two population weights this gameweek is priced with. Both default to
+        # 1.0 — no p_play, or a p_play with no spread in it — and at 1.0 every
+        # expression below is arithmetically today's.
+        out_f, gk_f = (bench_scale or {}).get(t, (1.0, 1.0))
+        vw = vice_weight * (vice_scale or {}).get(t, 1.0)
         for c in codes:
             e = ep[c][t]
             obj.append(d * e * (xi[c][t] + cap_mult * cap[c][t]
-                                + vice_weight * vice[c][t]))
+                                + vw * vice[c][t]))
             if bench_curve is None or state.bench_boost_gw == t:
                 # No curve, or a bench boost — under a boost every bench
                 # player scores in full, so slot weights would understate the
-                # chip.
+                # chip. A boosted bench is not an autosub either, which is why
+                # §F1a deliberately leaves this branch alone.
                 obj.append(d * e * bw * (sq[c][t] - xi[c][t]))
             elif pos[c] == "GKP":
                 # The reserve keeper is priced by the first curve weight: he
-                # plays exactly when the starter does not.
-                obj.append(d * e * bench_curve[0] * (sq[c][t] - xi[c][t]))
+                # plays exactly when the starter does not — which is also why
+                # his weight reads the XI keeper's own frailty and not the
+                # outfield mean (v10 §F1a).
+                obj.append(d * e * bench_curve[0] * gk_f
+                           * (sq[c][t] - xi[c][t]))
             else:
                 for s in range(BENCH_SLOTS):
-                    obj.append(d * e * bench_curve[s] * slot[c][t][s])
+                    obj.append(d * e * bench_curve[s] * out_f
+                               * slot[c][t][s])
         obj.append(-hit_cost * d * hits[t])
         # A tiny friction per transfer made. EP-neutral churn is what the
         # scenario noise flips week to week, and a fraction of a point of
@@ -334,9 +566,20 @@ def solve_plan(pool: pd.DataFrame, state: SolveInput, *, decay: float,
     for t in T:
         squad = [c for c in codes if val(sq[c][t])]
         xi_l = [c for c in codes if val(xi[c][t])]
-        # bench order: outfielders by EP desc, GK last (bench-GK convention)
-        bench = sorted((c for c in squad if c not in xi_l),
-                       key=lambda c: (pos[c] == "GKP", -ep[c][t]))
+        # v10 §F1b (specs/2026-09-01-gaffer-v10-minutes-design.md): bench order
+        # is autosub *value*, not raw EP. The first sub is the one most likely
+        # to actually come on and score, and a 6.0-EP starter at p_play 0.5 is
+        # worth less on the bench than a 5.0-EP starter at 0.9 — the ordering
+        # this replaces could not see the difference. GK still last, which is
+        # the bench-GK convention and not a value judgement. ``-ep[c][t]`` is
+        # kept as the final tiebreak so a tie in autosub value resolves exactly
+        # as it did before v10, and so an absent p_play is the pre-v10 key.
+        bench = sorted(
+            (c for c in squad if c not in xi_l),
+            key=lambda c: (pos[c] == "GKP",
+                           -(ep[c][t] * (1.0 if p_play is None
+                                         else p_play.get(c, {}).get(t, 1.0))),
+                           -ep[c][t]))
         gw_plans.append(GwPlan(
             gw=t, squad=squad, xi=xi_l,
             xi_rows=[{"code": c, "position": pos[c], "ep": ep[c][t]}
