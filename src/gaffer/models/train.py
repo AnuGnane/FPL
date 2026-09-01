@@ -101,6 +101,14 @@ The withdrawn arms' builders stay wired into ``load_training_frame`` and
 ``build_prediction_frame``, and ``data/manager_tenures.toml`` stays a
 committed asset — the columns cost a fit nothing, and the next cycle
 re-measures them rather than rebuilding them.
+
+v10 gate G1 re-tests ``SHRUNK_MODE_FEATURES`` (``shrunk_start_rate``,
+``shrunk_min_per_app``) on their own. v5's N1 measured them bundled with
+congestion and blamed the congestion half, whose cup archive holds no rows at
+or before 2024-25 on this window; the two were never separated. Driver:
+``scripts/v10_shrunk_arm.py``. Bar (v10 spec §F3a): keep only if the
+starters-slice ``p_start`` log-loss improves by >= 1% relative with zeros RMSE
+no worse than +0.005. Result: _pending G1_.
 """
 
 # Team-level clean sheet / goals conceded held at league-average constants
