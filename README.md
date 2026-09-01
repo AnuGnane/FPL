@@ -301,6 +301,50 @@ deleting one; a star whose write the server refused reverts instead of sitting
 there filled, claiming a player is on a list he is not on. A successful star
 stays silent: the filled star is the acknowledgement.
 
+### Where your captain stands, and the season ahead (v10b)
+
+The squad now shows what share of the **top 10k** owns each player beside what
+share of your own league does — `Field%` next to `EO%`, the same two numbers
+the Players explorer has carried since v8c, joined onto the rows you already
+have rather than computed a second time. A player the field scrape has never
+seen reads as an em dash, never as a zero: nobody owning him and nobody having
+counted are different facts.
+
+Above the pitch, a sentence says where your captain stands against that field
+and whether the pick is cover or attack — heavily owned and he cannot cost you
+rank, rare and every point he scores is a gain. It carries the standard error,
+because it has to: the figure comes from a 300-entry sample of the top 10k, so
+it is good to a couple of percentage points and the page says so rather than
+implying a precision the sample does not have. Between the two thresholds the
+sentence gives the number and makes no claim at all — a third of the game is
+neither template nor punt, and labelling it anyway is how a classification
+stops meaning anything. In the weeks the tier scrape cannot cover, the line
+falls back to FPL's own most-captained player *for that gameweek*, named as
+such, with no percentage attached.
+
+The **EO lens** on the pitch tints each card by the same classification. It is
+off by default and it is presentation only — nothing about it reaches the
+solve.
+
+On Planning, the Chips tab gains a **Season outlook** segment: each unused
+chip's best week and the bar (θ) it is measured against, week by week, plus
+the GW19 expiry for a first-half chip; and below it the doubles and blanks in
+the fixture list as published. It is planning rather than advice, and says so
+above the numbers — what to play *this* week is This Week's answer. On today's
+list it has nothing to report: ten fixtures in every one of thirty-eight
+gameweeks, no team doubled, no team blank. That is the honest empty state and
+it is what you will see until the cup rounds start moving games.
+
+Three things this cycle left open, deliberately. The Players explorer still
+reads the field log without filtering by season — harmless while the log holds
+one season, and wrong the first August it holds two, because element ids are
+re-issued and the same integer is then a different footballer (This Week's own
+read is filtered). `advise.py` still writes a `captain_note` about the
+league-tilt armband override that no page renders. And there are now two
+code→element maps in the tree, one private to the league simulator and one
+memoised in `web/field_frame.py`; merging them would mean opening a router this
+cycle otherwise never touches.
+
 **Freeing a wedged job (v9c).** The server runs one background job at a time,
 so a job that hangs used to hold the lane and answer every later job with a
 409 until you restarted the process — and the 409 named a run you had no way
@@ -682,6 +726,12 @@ not been played the current club *is* the as-of club.
   not only the ones near a threshold — the row worth having in February is
   the one that was not an alert in August. Read by nobody yet; a season of it
   is what a price-timing term would need.
+- `data/chip_scenarios.toml` — one entry per **scheduled** double gameweek, at
+  probability 1.0, derived from the published fixture list by the
+  `refresh-data` job. Absent until there is one, which on today's list means
+  absent everywhere; never committed, and safe to delete — the next refresh
+  rewrites it, and the chip layer reads an absent file and an empty one
+  identically. It does not project unannounced rearrangements and never has.
 - `data/live/field_eo_log.parquet` — one row per (gameweek, scrape day,
   element): effective ownership in the top 10k with its standard error and
   its sample size.
