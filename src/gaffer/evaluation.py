@@ -126,6 +126,49 @@ def reliability(pred, actual, bins: int = RELIABILITY_BINS) -> list[dict]:
     return out
 
 
+def brier(pred, actual) -> float:
+    """Mean squared error on a probability. NaN on empty, never an exception.
+
+    Log loss and Brier disagree about what a confident mistake is worth — log
+    loss is unbounded, Brier is not — and the optimizer multiplies by these
+    probabilities rather than by their logs. Both are reported so a head that
+    is sharp and a head that is calibrated can be told apart.
+    """
+    p, y = _paired(pred, actual)
+    if p.size == 0:
+        return float("nan")
+    return float(((p - y) ** 2).mean())
+
+
+MIN_CALIBRATION_SAMPLES = 30
+"""Below this a head reports ``insufficient`` instead of a curve.
+
+Ten reliability bins over twenty rows is a picture of the sampling noise, and
+a trend line drawn through pictures of noise is worse than no trend line: it
+is a number people act on. Thirty is the smallest count at which the bins say
+anything at all, and the payload says which side of it each head fell.
+"""
+
+
+def calibration_head(pred, actual) -> dict:
+    """One head's calibration, in a shape that is the same either way.
+
+    ``status`` carries the "not enough data" case rather than a missing key,
+    so nothing downstream — pydantic, the card, a later script — has to branch
+    on whether ``brier`` exists.
+    """
+    p, y = _paired(pred, actual)
+    n = int(p.size)
+    if n < MIN_CALIBRATION_SAMPLES:
+        return {"status": "insufficient", "n": n, "brier": None,
+                "log_loss": None, "reliability": []}
+    b, ll = brier(p, y), log_loss(p, y)
+    return {"status": "scored", "n": n,
+            "brier": None if np.isnan(b) else round(b, 4),
+            "log_loss": None if np.isnan(ll) else round(ll, 4),
+            "reliability": reliability(p, y)}
+
+
 def head_metrics(pred, actual) -> dict:
     """One probability head's scoreline: log loss plus its reliability curve.
 
@@ -476,6 +519,192 @@ def evaluate_news_shadow() -> dict:
     return score_news_shadow(shadow, actuals)
 
 
+CALIBRATION_NOTE = ("Run `gaffer evaluate --calibration` after a graded "
+                    "gameweek.")
+"""What an empty report says instead of nothing. The report is CLI-only —
+``JOB_KINDS`` maps a kind to a zero-argument callable, so there is no flag to
+pass through a job (plan A14) — which makes the sentence part of the payload."""
+
+CALIBRATION_HEADS = ("p_play", "p60", "p_cs", "p_haul")
+"""The four banked probabilities this report grades, in payload order."""
+
+
+def _calibration_empty(note: str, season: str | None = None) -> dict:
+    """A well-formed payload with nothing in it. August is a real state."""
+    return {"run_at": run_at(), "git_sha": git_sha(), "season": season,
+            "gameweeks": [], "cumulative": {
+                h: calibration_head([], []) for h in CALIBRATION_HEADS},
+            "omitted": {"p_start": "not banked"}, "excluded": [],
+            "missing": [], "note": note}
+
+
+def _column(frame: pd.DataFrame, name: str) -> pd.Series:
+    """``frame[name]`` as floats, or an all-NaN column of the same length.
+
+    A banked artifact from an older ``COMPONENT_COLS`` is missing a head, not
+    broken: ``_paired`` drops the non-finite rows and the head reports
+    ``insufficient`` rather than taking the whole report down.
+    """
+    if name not in frame.columns:
+        return pd.Series(float("nan"), index=frame.index, dtype="float64")
+    return pd.to_numeric(frame[name], errors="coerce")
+
+
+def _last_kickoff_ns(gw: int) -> int | None:
+    """Nanoseconds of the gameweek's last kickoff, or ``None`` if unknown.
+
+    ``None`` is an exclusion, not a pass: see :func:`evaluate_calibration`'s
+    post-hoc guard, which fails closed.
+    """
+    from gaffer.data import store
+
+    try:
+        if not store.exists("live/fixtures_all.parquet"):
+            return None
+        fixtures = store.load("live/fixtures_all.parquet")
+        week = fixtures[fixtures["gw"].astype("Int64") == int(gw)]
+        stamps = pd.to_datetime(week["kickoff_time"], errors="coerce",
+                                utc=True).dropna()
+        if stamps.empty:
+            return None
+        return int(stamps.max().value)
+    except Exception as exc:  # noqa: BLE001 — unknown is an exclusion
+        print(f"calibration: no kickoff information for GW{gw} ({exc})")
+        return None
+
+
+def evaluate_calibration(season: str | None = None) -> dict:
+    """Per-gameweek reliability for the probabilities the optimizer used.
+
+    **The predictions are banked, not refitted, and that is the whole design.**
+    ``advise.py`` writes ``reports/components_gw{N}.parquet`` on the weekly run,
+    before the gameweek is played, and it carries ``p_play``, ``p60``, ``p_cs``
+    and the ``e_goals``/``e_assists`` that ``models.assemble.p_haul`` turns into
+    the attacking-haul probability (``p_attacking_haul`` at the web boundary
+    since v9c). Those are the numbers the solver actually multiplied by that
+    week — the only version of "is the model calibrated" that anyone can act on.
+    Refitting strictly-before would grade a *different* model from the one that
+    served, and ``evaluate_current`` already exists for that protocol; putting
+    both on one Brier trend would make the slope partly an artefact of which
+    protocol each week used.
+
+    ``p_start`` is absent from ``COMPONENT_COLS`` — the minutes trichotomy is
+    never banked — so it is omitted and the payload says why, rather than being
+    silently missing.
+
+    **A gameweek whose artifact was written after the whistle is not graded.**
+    ``save_components`` writes ``gw{N}`` whatever today's date is, so re-running
+    ``advise`` against a finished gameweek replaces an as-of prediction with a
+    hindsight one and nothing in the file records that it happened. The only
+    signal is the file's mtime against the gameweek's last kickoff, so that is
+    the guard, and it fails closed: no kickoff information is also an exclusion.
+    A false exclusion loses a row; a false inclusion invents a result.
+
+    Completed gameweeks are those present in ``live/player_gw.parquet``, which
+    is the data_checked gate the rest of the pipeline already uses.
+
+    **``p60`` is graded unconditionally** (plan A13). Spec §4 writes its
+    outcome as "minutes >= 60 *given played*", but the parenthetical does not
+    match the quantity: ``MinutesModel.predict`` computes
+    ``p60 = p_start * P(60+ | start)``, an unconditional probability, which is
+    how the assemble path uses it and how :func:`evaluate_current` already
+    scores it. Filtering the outcome rows to ``minutes > 0`` while leaving the
+    prediction unconditional would make the head look badly under-confident for
+    a reason entirely the scorer's.
+    """
+    from gaffer.artifacts import components_path, load_components
+    from gaffer.data import store
+    from gaffer.models.assemble import p_haul
+
+    if not store.exists("live/player_gw.parquet"):
+        return _calibration_empty(
+            "No graded gameweeks yet — `live/player_gw.parquet` is absent. "
+            + CALIBRATION_NOTE, season)
+    truth_all = store.load("live/player_gw.parquet")
+    if season is not None and "season" in truth_all.columns:
+        truth_all = truth_all[truth_all["season"].astype(str) == str(season)]
+    if truth_all.empty:
+        return _calibration_empty(
+            "No graded gameweeks yet. " + CALIBRATION_NOTE, season)
+
+    rows: list[dict] = []
+    excluded: list[dict] = []
+    missing: list[int] = []
+    pooled: dict[str, list[tuple[np.ndarray, np.ndarray]]] = {
+        h: [] for h in CALIBRATION_HEADS}
+
+    for gw in sorted(int(g) for g in truth_all["gw"].dropna().unique()):
+        path = components_path(gw)
+        if not path.exists():
+            missing.append(gw)
+            continue
+        last_kickoff = _last_kickoff_ns(gw)
+        if last_kickoff is None:
+            excluded.append({"gw": gw, "reason": "kickoff unknown"})
+            continue
+        if path.stat().st_mtime_ns > last_kickoff:
+            excluded.append({"gw": gw, "reason": "written after kickoff"})
+            continue
+        try:
+            comp = load_components(gw)
+        except Exception as exc:  # noqa: BLE001 — one unreadable week only
+            excluded.append({"gw": gw, "reason": f"unreadable ({exc})"})
+            continue
+
+        truth = truth_all[truth_all["gw"].astype("Int64") == gw]
+        truth = truth.groupby("code", as_index=False).agg(
+            minutes=("minutes", "sum"), goals=("goals", "sum"),
+            assists=("assists", "sum"), cs=("cs", "max"),
+            team_code=("team_code", "first"))
+        joined = comp.merge(truth, on="code", how="inner",
+                            suffixes=("", "_truth"))
+        if joined.empty:
+            missing.append(gw)
+            continue
+
+        # One clean sheet is one event and eleven player rows: graded at
+        # team-gameweek grain, or a well-covered club counts eleven times.
+        by_club = joined.drop_duplicates(subset=["team_code"])
+        # Recomputed through the same function assemble_ep called at solve
+        # time, not approximated: the banked components carry the inputs.
+        haul_pred = pd.Series(
+            [p_haul(g, a) for g, a in zip(_column(joined, "e_goals"),
+                                          _column(joined, "e_assists"))],
+            index=joined.index, dtype="float64")
+        pairs = {
+            "p_play": (_column(joined, "p_play"), joined["minutes"] > 0),
+            "p60": (_column(joined, "p60"),
+                    joined["minutes"] >= STARTER_MINUTES),
+            "p_cs": (_column(by_club, "p_cs"),
+                     by_club["cs"].astype("float64") > 0),
+            "p_haul": (haul_pred,
+                       (joined["goals"] + joined["assists"]) >= 2),
+        }
+        heads = {name: calibration_head(*pair) for name, pair in pairs.items()}
+        for name, pair in pairs.items():
+            pooled[name].append(_paired(*pair))
+
+        rows.append({"gw": gw, "n": int(len(joined)), "heads": heads})
+
+    cumulative = {}
+    for name in CALIBRATION_HEADS:
+        pairs = pooled[name]
+        pred = np.concatenate([p for p, _ in pairs]) if pairs else np.array([])
+        actual = np.concatenate([y for _, y in pairs]) if pairs else np.array([])
+        cumulative[name] = calibration_head(pred, actual)
+
+    note = None
+    if not rows:
+        note = ("Nothing graded yet — no banked components matched a completed "
+                "gameweek. " + CALIBRATION_NOTE)
+    return {"run_at": run_at(), "git_sha": git_sha(), "season": season,
+            "gameweeks": rows, "cumulative": cumulative,
+            # Named with its reason rather than silently absent: a reader who
+            # cannot see p_start would otherwise conclude it is calibrated.
+            "omitted": {"p_start": "not banked"},
+            "excluded": excluded, "missing": missing, "note": note}
+
+
 BENCHMARK_TRAIN_MAX_IDX = 1
 """Newest season the benchmark may train on: season_idx 1 = 2023-24."""
 
@@ -670,6 +899,41 @@ def _format_news_shadow(payload: dict) -> str:
     return "\n".join(lines)
 
 
+def _format_calibration(payload: dict) -> str:
+    """The v9d §4 table: per-gameweek Brier per head, then the refusals.
+
+    The exclusions are printed rather than summarised. A run that graded
+    nothing has to say so on the terminal, or a reader takes an empty table
+    for a clean one.
+    """
+    def cell(head: dict | None) -> str:
+        if not head or head.get("status") != "scored":
+            n = (head or {}).get("n", 0)
+            return f"  n/a({n:>4})"
+        return f"{head['brier']:8.4f}({head['n']:>4})"
+
+    lines = [f"=== calibration (run_at {payload.get('run_at')}, "
+             f"sha {payload.get('git_sha')}) ===",
+             "  gw   " + "".join(f"{h:>14}" for h in CALIBRATION_HEADS)]
+    for row in payload.get("gameweeks", []):
+        heads = row.get("heads", {})
+        lines.append(f"  GW{row['gw']:<3} "
+                     + "".join(cell(heads.get(h)) for h in CALIBRATION_HEADS))
+    cum = payload.get("cumulative", {})
+    lines.append("  all   "
+                 + "".join(cell(cum.get(h)) for h in CALIBRATION_HEADS))
+    for head, why in (payload.get("omitted") or {}).items():
+        lines.append(f"  omitted: {head} — {why}")
+    for row in payload.get("excluded") or []:
+        lines.append(f"  excluded: GW{row.get('gw')} — {row.get('reason')}")
+    if payload.get("missing"):
+        lines.append("  no banked components: "
+                     + ", ".join(f"GW{g}" for g in payload["missing"]))
+    if payload.get("note"):
+        lines.append("  " + payload["note"])
+    return "\n".join(lines)
+
+
 def format_report(key: str, payload: dict) -> str:
     """The artifact as a table a human can read in a terminal.
 
@@ -682,6 +946,8 @@ def format_report(key: str, payload: dict) -> str:
     # answered before the generic header is built rather than after.
     if key == "news_shadow":
         return _format_news_shadow(payload)
+    if key == "calibration":
+        return _format_calibration(payload)
     lines = [f"=== {key} (run_at {payload.get('run_at')}, "
              f"sha {payload.get('git_sha')}) ==="]
     if payload.get("odds_blend_weight") is not None:

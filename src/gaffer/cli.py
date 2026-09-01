@@ -537,13 +537,21 @@ def evaluate(mode: str = typer.Option(
                  False, "--news-shadow",
                  help="Score the banked news shadow log against completed "
                       "gameweeks instead (gate N2)."),
+             calibration: bool = typer.Option(
+                 False, "--calibration",
+                 help="Per-gameweek reliability for the probabilities the "
+                      "weekly run actually served (v9d §4). Reads banked "
+                      "components, refits nothing, takes seconds."),
              season: str = "2025-26", start_gw: int = 5):
     """Score the model and write reports/evaluation.json."""
-    from gaffer.evaluation import (evaluate_benchmark, evaluate_current,
-                                   evaluate_news_shadow, format_report,
-                                   run_decomposition, save_evaluation)
+    from gaffer.evaluation import (evaluate_benchmark, evaluate_calibration,
+                                   evaluate_current, evaluate_news_shadow,
+                                   format_report, run_decomposition,
+                                   save_evaluation)
 
-    if news_shadow:
+    if calibration:
+        key, payload = "calibration", evaluate_calibration(season=season)
+    elif news_shadow:
         key, payload = "news_shadow", evaluate_news_shadow()
     elif decompose:
         key, payload = "decomposition", run_decomposition(season=season,
