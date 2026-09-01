@@ -606,6 +606,23 @@ def ui(port: int = typer.Option(8927, help="Port to serve on (default 8927)."),
                    "trusted home network only.")
     if open_browser:
         webbrowser.open(url)
+    # v9d §2 (specs/2026-09-01-gaffer-v9d-design.md): this serves a single
+    # process, and that is a contract rather than a default.
+    #
+    # ``create_app()`` builds a ``JobRunner`` onto ``app.state`` (web/app.py:51)
+    # and every job invariant is per-instance: one lane at a time, the run
+    # records in a dict, the streamed log lines in per-run buffers an SSE
+    # response tails. A second worker gets a second runner, and then a browser
+    # that started a job on worker A polls worker B, which has never heard of
+    # it — no crash, no error, just a job that never finishes on screen.
+    #
+    # Passing the app *instance* rather than an import string is what makes
+    # ``workers=`` impossible: uvicorn can only fork from something it can
+    # re-import. So the shape of this call is load-bearing, and
+    # tests/test_v9d_degradation.py asserts it rather than trusting a comment.
+    # Making the runner multi-process is a real piece of work (shared state,
+    # a broker for the streams) and deliberately out of scope here.
+    # A single process is the contract this line keeps.
     uvicorn.run(create_app(), host=host, port=port, log_level="info")
 
 

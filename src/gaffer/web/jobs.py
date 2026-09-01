@@ -243,7 +243,17 @@ class _ThreadRouter(io.TextIOBase):
 
 
 class JobRunner:
-    """Single-flight execution of the registered job kinds."""
+    """Single-flight execution of the registered job kinds.
+
+    **One runner per process, and the server enforces it by construction.**
+    Everything here is instance state — the single lane, ``_runs``, the
+    per-run line buffers the SSE endpoint tails — so two workers mean two
+    runners and a browser polling the one that is not running its job.
+    ``cli.ui`` passes an app *instance* to ``uvicorn.run`` — a single process
+    by construction, and that construction is what makes
+    ``workers=`` impossible rather than merely unset; the comment there has the
+    reasoning and ``tests/test_v9d_degradation.py`` has the rail. v9d §2.
+    """
 
     def __init__(self, kinds: dict[str, Callable[[], Any]]) -> None:
         self._kinds = dict(kinds)
