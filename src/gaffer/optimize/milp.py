@@ -352,12 +352,25 @@ def solve_plan(pool: pd.DataFrame, state: SolveInput, *, decay: float,
        how fragile *that* XI is, the XI and captain pinned, and the four
        non-XI squad places free to be re-chosen for the cover they give.
 
+    The pin is on **every** gameweek of the horizon, not just the first: pass
+    one's XI and captain for week t are fixed in week t. So the only transfers
+    pass two can make are bench-for-bench — it may not sell a starter, because
+    the starter is pinned into the XI that owns him. That is the intended
+    scope. §F1a re-prices *cover*, and letting the second pass re-pick the
+    eleven under weights derived from the first pass's eleven would be a
+    different and circular thing to be doing.
+
     The MILP stays linear because the frailty is a number by the time it is
     used, not an expression over the XI variables — which is the whole reason
     for two passes rather than one quadratic objective.
 
     Pass two is a refinement and never a gate: if it is infeasible, fails, or
-    the solver dies, pass one's answer is what is returned.
+    the solver dies, pass one's answer is what is returned. That fallback is
+    believed unreachable — pass two is pass one plus pins taken from pass
+    one's own answer, so pass one's solution is feasible for pass two, and the
+    objective differs only in coefficients. It is kept because "believed" is
+    the operative word and a solver dying under a deadline must not cost the
+    week its advice.
     """
     kw = dict(decay=decay, bench_weight=bench_weight,
               vice_weight=vice_weight, ft_value=ft_value,
@@ -630,6 +643,15 @@ def _solve_once(pool: pd.DataFrame, state: SolveInput, *, decay: float,
         # the bench-GK convention and not a value judgement. ``-ep[c][t]`` is
         # kept as the final tiebreak so a tie in autosub value resolves exactly
         # as it did before v10, and so an absent p_play is the pre-v10 key.
+        #
+        # In a double gameweek the two factors are built on different rules and
+        # the product is deliberate rather than dimensional: ``ep[c][t]`` is the
+        # week's *summed* EP over both fixtures, while ``p_play`` is the *mean*
+        # over them, because "did he turn out at all" is one outcome (the rule
+        # news_shadow.shadow_rows applies, for its reason). The key is a
+        # comparable ranking number and not an expectation: a doubled-up player
+        # keeps the whole of his two fixtures' EP, discounted by how likely he
+        # is to appear at all, which is the ordering question the bench asks.
         bench = sorted(
             (c for c in squad if c not in xi_l),
             key=lambda c: (pos[c] == "GKP",
