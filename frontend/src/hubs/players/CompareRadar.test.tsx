@@ -27,7 +27,7 @@ function player(over: Partial<PlayerRow>): PlayerRow {
   return {
     code: 1, element: 1, name: 'A', position: 'MID', team_code: 3,
     team_name: 'Arsenal', price: 10, ep_next: 5, ep_horizon: 10,
-    ownership: 10, league_eo: 10, field_eo: null, field_class: null,
+    ownership: 10, league_eo: 10, field_eo: null, field_se: null, field_n: null, field_class: null,
     available: true, status: 'a', news: '', chance_of_playing: null,
     penalties_order: null, free_kicks_order: null, corners_order: null,
     in_squad: false, last4: [], ep_lo: null, ep_hi: null, p_haul: null,

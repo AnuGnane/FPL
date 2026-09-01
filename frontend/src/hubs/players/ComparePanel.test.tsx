@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ComparePanel from './ComparePanel'
+import { difficultyBackground } from '../../kit'
 import type { PlayerRow } from '../../types'
 
 const { apiGet } = vi.hoisted(() => ({ apiGet: vi.fn() }))
@@ -37,14 +38,16 @@ const PLAYERS: PlayerRow[] = [
     ownership: 42.1, league_eo: 61.5, available: true, status: 'a', news: '',
     chance_of_playing: null, penalties_order: 1, free_kicks_order: 1,
     corners_order: null, in_squad: true, last4: [2, 9, 5, 12],
-    field_eo: 78.0, field_class: 'shield', ep_lo: null, ep_hi: null,
+    field_eo: 78.0, field_se: 2.8, field_n: 300, field_class: 'shield',
+    ep_lo: null, ep_hi: null,
     p_haul: null, p_blank: null },
   { code: 2, element: 8, name: 'Saka', position: 'MID', team_code: 301,
     team_name: 'Arsenal', price: 10.0, ep_next: 5.5, ep_horizon: 10.5,
     ownership: 30.0, league_eo: 22.0, available: true, status: 'a', news: '',
     chance_of_playing: null, penalties_order: null, free_kicks_order: null,
     corners_order: 1, in_squad: false, last4: [6, 1, 8, 3],
-    field_eo: null, field_class: null, ep_lo: null, ep_hi: null,
+    field_eo: null, field_se: null, field_n: null, field_class: null,
+    ep_lo: null, ep_hi: null,
     p_haul: null, p_blank: null },
 ]
 
@@ -287,12 +290,17 @@ describe('the fixture strip colours', () => {
     ))
   })
 
+  // The chips carry the tint the rest of the app uses for a difficulty, so
+  // the assertion is against `difficultyBackground` itself rather than against
+  // a colour name: one function for one idea.
+  const tint = (score: number) => difficultyBackground(score).slice(0, 20)
+
   it('reads a keeper off the clean-sheet axis', async () => {
     render(<ComparePanel gw={5} players={[
       { ...PLAYERS[0], position: 'GKP' }, PLAYERS[1],
     ]} />)
     await screen.findByTestId('compare-1')
-    expect(strip(1)[0].className).toContain('rust')      // negative
+    expect(strip(1)[0].getAttribute('style')).toContain(tint(0.9))
   })
 
   it('reads a defender off the clean-sheet axis too', async () => {
@@ -300,13 +308,13 @@ describe('the fixture strip colours', () => {
       { ...PLAYERS[0], position: 'DEF' }, PLAYERS[1],
     ]} />)
     await screen.findByTestId('compare-1')
-    expect(strip(1)[0].className).toContain('rust')
+    expect(strip(1)[0].getAttribute('style')).toContain(tint(0.9))
   })
 
   it('reads a midfielder off the attacking axis', async () => {
     render(<ComparePanel gw={5} players={[PLAYERS[0], PLAYERS[1]]} />)
     await screen.findByTestId('compare-1')
-    expect(strip(1)[0].className).toContain('sage')      // positive
+    expect(strip(1)[0].getAttribute('style')).toContain(tint(0.1))
   })
 
   it('reads a forward off the attacking axis', async () => {
@@ -314,8 +322,55 @@ describe('the fixture strip colours', () => {
       { ...PLAYERS[0], position: 'FWD' }, PLAYERS[1],
     ]} />)
     await screen.findByTestId('compare-1')
-    expect(strip(1)[0].className).toContain('sage')
+    expect(strip(1)[0].getAttribute('style')).toContain(tint(0.1))
   })
+
+  it('draws nothing for a team the matrix has no cells for', async () => {
+    apiGet.mockImplementation((path: string) => (
+      path.startsWith('/api/components/') ? Promise.resolve(COMPONENTS)
+        : path.startsWith('/api/fixtures/matrix')
+          ? Promise.resolve({ ...MATRIX, teams: [] })
+          : Promise.reject(new Error(`unexpected ${path}`))
+    ))
+    render(<ComparePanel gw={5} players={PLAYERS} />)
+    const card = await screen.findByTestId('compare-1')
+    expect(within(card).queryAllByTitle(/^GW/)).toHaveLength(0)
+  })
+})
+
+describe('the ownership trio', () => {
+  it('carries the error bar and the sample size beside the field EO',
+    async () => {
+      render(<ComparePanel gw={5} players={PLAYERS} />)
+      const cell = within(await screen.findByTestId('compare-1'))
+        .getByTestId('field-eo-1')
+      expect(cell).toHaveTextContent('78.0%')
+      expect(cell).toHaveTextContent('± 2.8')
+      expect(within(cell).getByTitle(/300 sampled entries/))
+        .toBeInTheDocument()
+    })
+
+  it('draws an em dash and no error bar when the log does not carry him',
+    async () => {
+      render(<ComparePanel gw={5} players={PLAYERS} />)
+      await screen.findByTestId('compare-1')
+      const cell = screen.getByTestId('field-eo-2')
+      expect(cell).toHaveTextContent('—')
+      expect(cell).not.toHaveTextContent('±')
+    })
+
+  it('draws an em dash for the error when only the error is missing',
+    async () => {
+      // An older field log: an EO measured, no error recorded. 0.0 there would
+      // be a claim of perfect precision.
+      render(<ComparePanel gw={5} players={[
+        { ...PLAYERS[0], field_se: null, field_n: null }, PLAYERS[1]]} />)
+      const cell = within(await screen.findByTestId('compare-1'))
+        .getByTestId('field-eo-1')
+      expect(cell).toHaveTextContent('78.0%')
+      expect(cell).toHaveTextContent('± —')
+      expect(cell).not.toHaveTextContent('± 0.0')
+    })
 })
 
 // One template row so a band test states only the band.

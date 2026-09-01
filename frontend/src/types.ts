@@ -275,6 +275,13 @@ export interface PlayerRow {
   /** Top-10k EO from the latest field scrape; null = never scraped, or no
    *  sampled entry started him. Never 0 for "unknown". */
   field_eo: number | null
+  /** The standard error on `field_eo`, in percentage points. Null wherever
+   *  `field_eo` is null, and — the part worth stating — never 0: zero would be
+   *  a claim of perfect precision from a sample of a few hundred entries. */
+  field_se: number | null
+  /** How many sampled entries the figure was measured over. ±2.8 from three
+   *  hundred and ±2.8 from thirty are different claims. */
+  field_n: number | null
   field_class: 'shield' | 'sword' | 'threat' | null
   available: boolean
   status: string

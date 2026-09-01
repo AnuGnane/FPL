@@ -5,7 +5,8 @@ import {
 } from 'recharts'
 import { apiGet } from '../../api/client'
 import {
-  Badge, Card, EmptyState, PlayerName, PosBadge, Sparkline, fmtDelta, fmtNum,
+  Card, EmptyState, PlayerName, PosBadge, Sparkline, difficultyBackground,
+  fmtDelta, fmtNum,
 } from '../../kit'
 import type {
   ComponentsBreakdown, FixtureMatrixData, PlayerRow,
@@ -237,9 +238,25 @@ export default function ComparePanel(
                     {fmtNum(player.league_eo)}
                   </dd>
                   <dt className="label">Field EO</dt>
-                  <dd className="num text-right text-text">
+                  <dd className="num text-right text-text"
+                      data-testid={`field-eo-${player.code}`}>
                     {player.field_eo === null
                       ? '—' : `${fmtNum(player.field_eo, 1)}%`}
+                    {/* The error travels with the figure, and it is absent
+                        rather than zero in every position: an older log
+                        carries an EO with no error, and 0.0 there would be a
+                        claim of perfect precision from a few hundred
+                        entries. */}
+                    {player.field_eo !== null && (
+                      <span
+                        className="ml-1 text-text-muted"
+                        title={player.field_n === null
+                          ? 'The sample size behind this figure is not recorded.'
+                          : `Measured over ${player.field_n} sampled entries.`}
+                      >
+                        {`± ${fmtNum(player.field_se, 1)}`}
+                      </span>
+                    )}
                     {player.field_class && (
                       <span className="ml-1 text-text-muted">
                         {player.field_class}
@@ -342,15 +359,17 @@ export default function ComparePanel(
                       || player.position === 'DEF'
                       ? cell.defence
                       : cell.attack
+                    // Timeline's idiom (plan A4): the tint is the number
+                    // itself rather than a three-way band over it.
                     return (
-                      <Badge
+                      <span
                         key={cell.gw}
-                        variant={score < 0.4 ? 'positive'
-                          : score > 0.6 ? 'negative' : 'neutral'}
+                        className="rounded px-1 text-[10px] text-text"
+                        style={{ background: difficultyBackground(score) }}
                         title={`GW${cell.gw} · ${cell.home ? 'home' : 'away'}`}
                       >
-                        {cell.opponent}
-                      </Badge>
+                        {`${cell.opponent} (${cell.home ? 'H' : 'A'})`}
+                      </span>
                     )
                   })}
                 </div>
