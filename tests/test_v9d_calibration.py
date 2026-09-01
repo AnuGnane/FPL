@@ -343,6 +343,25 @@ def test_a_gameweek_with_no_kickoff_information_is_also_excluded(banked):
     assert out["gameweeks"] == []
 
 
+def test_an_artifact_that_joins_no_truth_rows_is_excluded_not_missing(banked):
+    """"Missing" means one thing: nobody banked a file for that gameweek.
+
+    A file that exists and joins nothing is a different fact with a different
+    fix — codes that do not match the graded week, not an advise run that
+    never happened — and folding it into the same list makes the report say
+    "run advise" about a file advise already wrote.
+    """
+    comp = _components(1)
+    comp["code"] = comp["code"] + 10_000
+    save_components(comp, 1)
+    _before_kickoff(1)
+
+    out = evaluate_calibration(season="2025-26")
+    assert out["missing"] == []
+    assert out["excluded"] == [
+        {"gw": 1, "reason": "banked components joined no graded rows"}]
+
+
 def test_a_gameweek_with_no_banked_components_is_listed_as_missing(banked):
     store.save(pd.concat([_truth(1), _truth(2)], ignore_index=True),
                "live/player_gw.parquet")

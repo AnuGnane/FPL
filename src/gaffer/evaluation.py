@@ -719,6 +719,9 @@ def evaluate_calibration(season: str | None = None) -> dict:
 
     rows: list[dict] = []
     excluded: list[dict] = []
+    # ``missing`` is one fact only: no banked artifact for that gameweek.
+    # Everything else a gameweek can fail on is an excluded entry carrying
+    # its own reason.
     missing: list[int] = []
     pooled: dict[str, list[tuple[np.ndarray, np.ndarray]]] = {
         h: [] for h in CALIBRATION_HEADS}
@@ -748,7 +751,12 @@ def evaluate_calibration(season: str | None = None) -> dict:
         joined = _key(comp).merge(_key(truth), on=list(FIXTURE_KEYS),
                                   how="inner", suffixes=("", "_truth"))
         if joined.empty:
-            excluded.append({"gw": gw, "reason": "no truth rows joined"})
+            # Not "missing": the artifact is there. The two facts have
+            # different causes and different fixes — one is an advise run
+            # that never happened, the other a file whose codes do not
+            # match the graded week — so they are reported apart.
+            excluded.append(
+                {"gw": gw, "reason": "banked components joined no graded rows"})
             continue
 
         # One clean sheet is one event and eleven player rows: graded at
