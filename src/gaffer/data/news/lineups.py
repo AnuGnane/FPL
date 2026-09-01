@@ -531,8 +531,30 @@ def _merge(frames: list[pd.DataFrame]) -> pd.DataFrame:
     """Per-provider frames -> one ``LINEUP_COLS`` frame (v10 §F2a).
 
     With one frame this is the identity, which is what makes the pre-v10
-    behaviour provable rather than argued. Task 5 gives it the agreement
-    rules.
+    behaviour provable rather than argued.
     """
-    return (pd.concat(frames, ignore_index=True)[LINEUP_COLS]
-            .sort_values("code").reset_index(drop=True))
+    # v10 §F2a (specs/2026-09-01-gaffer-v10-minutes-design.md): two sources,
+    # merged by pessimism. Concatenating and re-applying the module's own
+    # existing rule — lowest hint per code — *is* the agreement logic the spec
+    # asks for: agreement leaves the value alone, disagreement resolves down,
+    # and a silent provider contributes no rows and therefore no opinion.
+    # A damp is dropped for any code some provider named a starter, which is
+    # the ``claimed`` rule inside one provider, said across two: an omission
+    # from one XI is not news when another team sheet has him in it.
+    all_rows = pd.concat(frames, ignore_index=True)
+    # NaN sorts last under pandas' default, so a real hint beats a damp-only
+    # row for the same code — the behaviour the single-provider path already
+    # relies on.
+    out = (all_rows.sort_values("p_start_hint")
+           .groupby("code", as_index=False).head(1).copy())
+    damps = all_rows.groupby("code")["absence_damp"].min()
+    out["absence_damp"] = out["code"].map(damps)
+    started = set(all_rows.loc[all_rows["p_start_hint"] == 1.0, "code"])
+    out.loc[out["code"].isin(started), "absence_damp"] = float("nan")
+    merged = out[LINEUP_COLS].sort_values("code").reset_index(drop=True)
+    if len(frames) > 1:
+        hints = int(merged["p_start_hint"].notna().sum())
+        kept = int(merged["absence_damp"].notna().sum())
+        print(f"news: lineups merged {len(frames)} providers -> "
+              f"{hints} hints, {kept} damps")
+    return merged
