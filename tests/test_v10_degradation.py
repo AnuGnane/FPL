@@ -230,6 +230,60 @@ def test_incomplete_coverage_fails_closed(monkeypatch):
     assert lp == base_lp
 
 
+def _lookup_reason(capsys, p_play) -> list[str]:
+    """The lines ``_p_play_lookup`` printed for this input."""
+    capsys.readouterr()
+    milp._p_play_lookup(_pool(), _state(), p_play)
+    return [ln for ln in capsys.readouterr().out.splitlines() if ln.strip()]
+
+
+def test_a_supplied_p_play_that_is_rejected_says_why_exactly_once(capsys):
+    """Failing closed is right and failing closed *silently* is not: the
+    caller believes it wired the feature, the solve is the pre-v10 solve, and
+    nothing in the advice says so. One line, and the reason in it."""
+    pool = _pool()
+    codes = [int(c) for c in pool["code"]]
+    varied = {c: {g: 0.5 + (c % 5) * 0.1 for g in GWS} for c in codes}
+
+    half = {c: v for c, v in list(varied.items())[:15]}
+    lines = _lookup_reason(capsys, half)
+    assert len(lines) == 1
+    assert "p_play" in lines[0] and "coverage" in lines[0]
+    # The count, so a caller can tell one missing player from twenty.
+    assert str((len(codes) - 15) * len(GWS)) in lines[0]
+
+    nans = dict(varied)
+    nans[codes[0]] = {g: float("nan") for g in GWS}
+    lines = _lookup_reason(capsys, nans)
+    assert len(lines) == 1 and str(len(GWS)) in lines[0]
+
+    flat = {c: {g: 0.7 for g in GWS} for c in codes}
+    lines = _lookup_reason(capsys, flat)
+    assert len(lines) == 1 and "spread" in lines[0]
+
+
+def test_an_accepted_or_absent_p_play_says_nothing(capsys):
+    codes = [int(c) for c in _pool()["code"]]
+    assert _lookup_reason(capsys, None) == []
+    assert _lookup_reason(capsys, {}) == []
+    assert _lookup_reason(
+        capsys, {c: {g: 0.5 + (c % 5) * 0.1 for g in GWS}
+                 for c in codes}) == []
+
+
+def test_a_p_play_constant_within_every_gameweek_is_not_a_spread(capsys):
+    """0.9 in GW1 and 0.4 in GW2 for everybody is two constants, not
+    information: inside any one week every player is identical, so nothing
+    §F1 asks — which sub comes on first, how this XI compares to the
+    population — has an answer. A pooled min/max would have called it spread
+    and re-priced the bench off a fixture-difficulty artefact."""
+    codes = [int(c) for c in _pool()["code"]]
+    by_gw = {c: {GWS[0]: 0.9, GWS[1]: 0.4} for c in codes}
+    lines = _lookup_reason(capsys, by_gw)
+    assert milp._p_play_lookup(_pool(), _state(), by_gw) is None
+    assert len(lines) == 1 and "spread" in lines[0]
+
+
 def test_the_frailty_is_clamped_at_both_ends_and_is_one_at_the_population():
     lo, hi = FRAILTY_CLAMP
     assert _frailty(POPULATION_DNP) == pytest.approx(1.0)

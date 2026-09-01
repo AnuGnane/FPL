@@ -115,7 +115,11 @@ deciding, and this one is not.
 """
 
 P_PLAY_MIN_SPREAD = 1e-9
-"""Below this spread, ``p_play`` carries no information and §F1 does not run.
+"""Below this spread *within a gameweek*, §F1 does not run.
+
+Per gameweek, and not pooled over the horizon: see ``_p_play_lookup``. One
+constant per week is still one constant, and pooling would read the gap
+between two of them as information.
 
 The whole of §F1 is *relative*: which of two benched players comes on first,
 how this XI compares to the population, how likely the captain is to leave the
@@ -223,20 +227,32 @@ def _p_play_lookup(pool: pd.DataFrame, state: SolveInput,
       probability and the other half are silently treated as nailed-on is the
       one failure that actively misleads, so a partially-wired caller fails
       closed;
-    * the values have **no spread**. Uniform is not information, and taking
-      the fast exit here is what makes "identical ``p_play`` across the pool is
-      decision-identical to main" true at *any* value rather than at one.
+    * the values have **no spread** *within any one gameweek*. Uniform is not
+      information, and taking the fast exit here is what makes "identical
+      ``p_play`` across the pool is decision-identical to main" true at *any*
+      value rather than at one.
+
+    The spread is measured per gameweek and the gate passes if one gameweek
+    has any, because everything §F1 asks is asked inside a week: which of
+    *this* week's benched players comes on first, how fragile *this* week's XI
+    is, how likely *this* week's captain is to leave the armband unused. A
+    pooled min/max over the whole horizon calls 0.9-for-everyone in GW1 and
+    0.4-for-everyone in GW2 a spread of 0.5, and then re-prices both benches
+    off what is really one fixture-difficulty constant per week.
+
+    A rejection prints one line naming the reason. Failing closed is right;
+    failing closed *silently* is how a caller that believes it wired the
+    feature gets the pre-v10 solve with nothing in the advice to say so.
     """
     if not p_play:
         return None
     codes = [int(c) for c in
              pool.loc[~pool["code"].isin(state.locked_out), "code"]]
     out: dict[int, dict[int, float]] = {}
-    lo = hi = None
+    span: dict[int, tuple[float, float]] = {}   # per gameweek: (min, max)
+    absent = unusable = 0
     for c in codes:
-        per_gw = p_play.get(c)
-        if per_gw is None:
-            return None
+        per_gw = p_play.get(c) or {}
         row: dict[int, float] = {}
         for g in state.gws:
             v = per_gw.get(g)
@@ -244,16 +260,28 @@ def _p_play_lookup(pool: pd.DataFrame, state: SolveInput,
             # parse. A caller that built this dict out of strings built it
             # wrong, and coercing would hide that rather than fail closed.
             if isinstance(v, bool) or not isinstance(v, (int, float)):
-                return None
+                absent += 1
+                continue
             v = float(v)
             # NaN fails this comparison too, which is the point.
             if not 0.0 <= v <= 1.0:
-                return None
+                unusable += 1
+                continue
             row[g] = v
-            lo = v if lo is None else min(lo, v)
-            hi = v if hi is None else max(hi, v)
+            lo, hi = span.get(g, (v, v))
+            span[g] = (min(lo, v), max(hi, v))
         out[c] = row
-    if lo is None or hi - lo < P_PLAY_MIN_SPREAD:
+    if absent or unusable:
+        # Counted rather than short-circuited: the whole scan is a dict lookup
+        # per pair and the difference between one missing player and half the
+        # pool is the difference between a wiring typo and a wiring decision.
+        print(f"optimize: p_play ignored, incomplete coverage — {absent} of "
+              f"{len(codes) * len(state.gws)} (code, gw) pairs absent, "
+              f"{unusable} not a probability in [0, 1]; solving unweighted")
+        return None
+    if not any(hi - lo >= P_PLAY_MIN_SPREAD for lo, hi in span.values()):
+        print("optimize: p_play ignored, no spread within any gameweek of the "
+              "horizon; solving unweighted")
         return None
     return out
 
