@@ -8,6 +8,20 @@ HTML report. `gaffer ui` serves the same advice as a local web app.
 It never logs into FPL and never makes transfers. It reads public FPL endpoints
 only; you apply its advice yourself in the official app.
 
+New to the project, or coming back to it? **[docs/GUIDE.md](docs/GUIDE.md)**
+is the orientation manual: how everything works end to end, every feature and
+how to use it, the version history, and how the project measures itself. This
+README is the setup and reference document.
+
+**Contents:** [First-time setup](#first-time-setup) ·
+[Weekly ritual](#weekly-ritual) · [Commands](#commands) ·
+[Configuration](#configuration) · [Bookmaker odds](#bookmaker-odds-optional) ·
+[League strategy](#league-strategy) · [Live gameweek](#live-gameweek) ·
+[Local web UI](#local-web-ui) · [Backtesting](#backtesting) ·
+[Retraining](#retraining) · [Where things live](#where-things-live) ·
+[Price changes](#price-changes) · [Digests](#digests) ·
+[Automation](#automation) · [Tests](#tests) · [Docs](#docs)
+
 ## First-time setup
 
 A fresh clone has no data and no models. Set `fpl.entry_id` in `config.toml`,
@@ -60,7 +74,14 @@ to `logs/advise.log`.
 | `gaffer league-sim [--seeds a,b,c]` | Monte Carlo of your mini-league: P(win), P(top 3), expected finish and the margin fan. |
 | `gaffer backtest [--season 2025-26] [--start-gw 5] [--horizon N] [--chips]` | Replay a past season following the tool's own advice. |
 | `gaffer evaluate --calibration` | Per-gameweek reliability for the probabilities the weekly run actually served. Reads banked components, refits nothing, takes seconds. |
-| `gaffer ui [--port N] [--no-open-browser]` | Serve the local web UI on 127.0.0.1:8927. Always a single process — see below. |
+| `gaffer ui [--port N] [--no-open-browser] [--lan]` | Serve the local web UI on 127.0.0.1:8927. Always a single process — see below. |
+| `gaffer snapshot` | Bank today's availability state into the daily log (idempotent per UTC day). |
+| `gaffer review` | Grade every gameweek FPL has finalised since the last run into the decision ledger. |
+| `gaffer track-pens` | Predicted penalty EP against the penalties actually taken. |
+| `gaffer understat` / `gaffer cups` | Auxiliary history ingestion (Understat player-match data; cup and European match dates). Long first runs, resumable, rarely needed again. |
+| `gaffer evaluate [--news-shadow] [--calibration]` | The model scorecard; the news layer's would-be effect; served-probability reliability. |
+| `gaffer diagnose-zeros` | Decompose the error on players who blanked, into `reports/zeros_diagnostic.json`. |
+| `gaffer calibrate-decisions` / `calibrate-injuries` / `calibrate-noise` | Rebuild the committed calibration assets from replays and scrapes. Occasional, not weekly. |
 
 ## Configuration
 
@@ -245,34 +266,33 @@ impossible rather than merely unset, so please do not add `--workers` to be
 helpful. `tests/test_v9d_degradation.py` asserts the shape of that call. It binds the loopback interface only and has no login — that is the
 whole security model, so do not put it behind a public proxy.
 
-Seven pages: **This Week** (the recommendation, with a pitch view, the chip
-planner's best week for each unused chip, and a re-run button), **What-If
-Lab** (lock, ban or force in players, cap the hits, and re-solve the real
-MILP against the saved pool — the plan diff shows what changed; a
-sensitivity card re-solves the same board twenty times with every expected-
-points cell knocked by its own plausible error, so a move that survives
-seventeen of twenty solves can be told apart from one that survives twelve;
-and your own pins are listed and editable beside it, with a **Drafts** tab
-alongside where you name a set of what-if constraints, keep up to twelve of
-them, and compare any six side by side against today's board with the
-unconstrained optimum as the reference row), **League
-Race** (standings, trajectory, win probability and what λ is doing, with
-rival intel a click away: each rival's squad, overlap and differentials
-against yours), **Live** (in-gameweek points, auto-refreshing: the auto-subs
-FPL would apply if the afternoon ended now, a race chart of where your score
-is heading — points banked plus the expectation still owed by every unfinished
-match, against the pre-gameweek plan — and what you need to take or hold the
-league places either side of you), **Players**
-(the candidate pool, with the "why 6.8?" breakdown behind every name, and a
-**Pin** button on each row for the weeks you know something the model does
-not, and a ☆ that stars a player onto your watchlist — a bookmark, not a pin:
-it widens the movers card's price-alert watch set and adds him to the Friday
-digest's flagged section, and claims nothing the model has to obey),
-**History** (past runs, expected versus actual, price charts) and **Runs &
-Health** (data freshness, model metrics, the launchd log, re-run buttons).
-A fixture ticker sits alongside them and is embedded read-only in the
-What-If Lab. A three-state theme toggle in the sidebar footer follows your
-system by default, or holds dark or light if you pick one.
+Six hubs: **This Week** (the recommendation, with a pitch view, the captain
+field-EO sentence, the chip planner's best week for each unused chip, the
+digest cards and a re-run button), **Planning** (the What-If lab — lock, ban
+or force in players, cap the hits, and re-solve the real MILP against the
+saved pool, with the plan diff, the twenty-solve sensitivity card and your
+editable pins beside it; a **Drafts** tab where you name a set of what-if
+constraints, keep up to twelve and compare any six against today's board;
+the plan **Timeline**; the **Chips** workbench with its season Outlook; the
+v11 **Board** laying the solved horizon out week by week with the bank
+trajectory; and the fixture **Ticker**), **Players** (the candidate pool,
+with the "why 6.8?" breakdown behind every name, a **Pin** button on each
+row for the weeks you know something the model does not, a ☆ that stars a
+player onto your watchlist — a bookmark, not a pin: it widens the movers
+card's price-alert watch set and adds him to the Friday digest's flagged
+section, and claims nothing the model has to obey; plus **Compare** and the
+Dixon-Coles fixture **Matrix**), **League** (standings, trajectory, win
+probability and what λ is doing, with rival intel a click away: each rival's
+squad, overlap and differentials against yours, and a league what-if),
+**Live** (in-gameweek points, auto-refreshing: the auto-subs FPL would apply
+if the afternoon ended now, a race chart of where your score is heading —
+points banked plus the expectation still owed by every unfinished match,
+against the pre-gameweek plan — and what you need to take or hold the league
+places either side of you) and **Model** (quality and calibration, the
+graded decision **Review**, the v11 **Season** dashboard, data freshness and
+re-run buttons under **Health**, the decision **Journal**, and past runs
+under **History**). A three-state theme toggle in the sidebar footer follows
+your system by default, or holds dark or light if you pick one.
 
 This Week opens on a pitch. The advised XI sits in four formation rows with
 the bench drawn as a bench below it in substitution order, each player wearing
@@ -922,7 +942,12 @@ uv run pytest -q
 
 ## Docs
 
-- Design spec: `docs/superpowers/specs/2026-08-23-fpl-ml-advisor-design.md`
-- Implementation plan: `docs/superpowers/plans/2026-08-23-fpl-ml-advisor.md`
-- v3 design spec: `docs/superpowers/specs/2026-08-24-gaffer-v3-ui-design.md`
-- v3 implementation plan: `docs/superpowers/plans/2026-08-24-gaffer-v3-ui.md`
+- **`docs/GUIDE.md`** — the orientation manual: how everything works, every
+  feature and how to use it, the version history v1–v11, what is pending.
+- `docs/superpowers/ROADMAP.md` — every development cycle with its measured
+  results, what was withdrawn and why, and what was explicitly rejected.
+- `docs/superpowers/specs/` — one design spec per cycle, each ending in the
+  gate numbers and outcomes that justified (or refused) the merge.
+- `docs/superpowers/plans/` — the implementation plans behind the specs.
+- `docs/superpowers/CONVENTIONS.md` — the measurement rules every cycle
+  follows (multi-seed replays, spread quoting, gate discipline).
