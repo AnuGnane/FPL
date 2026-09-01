@@ -62,8 +62,8 @@ def _frame() -> tuple[pd.DataFrame, pd.DataFrame | None, pd.DataFrame | None]:
     df, _tg, _ = load_training_frame()
     rolled = (engineer.add_understat_team_rolling(store.load("history/understat_team.parquet"))
               if store.exists("history/understat_team.parquet") else None)
-    cups = (store.load("history/cups.parquet")
-            if store.exists("history/cups.parquet") else None)
+    cups = (store.load("history/cup_matches.parquet")
+            if store.exists("history/cup_matches.parquet") else None)
     return df, rolled, cups
 
 
@@ -82,6 +82,11 @@ def _differs(left: pd.Series, right: pd.Series) -> pd.Series:
 
 
 def understat_block(df: pd.DataFrame, rolled: pd.DataFrame | None) -> dict:
+    # The training frame already carries every Understat column from its own
+    # feature chain; re-merging over them would suffix the new ones _x/_y and
+    # the matcher below would find nothing (the crash the first G1 run hit).
+    df = df.drop(columns=[c for c in engineer.TEAM_US_FEATURES
+                          if c in df.columns])
     on = engineer.merge_understat_team(df, rolled)
     engineer.as_of_club = _stamped
     try:
