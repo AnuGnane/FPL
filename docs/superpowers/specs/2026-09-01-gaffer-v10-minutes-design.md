@@ -125,22 +125,36 @@ and every other structure the solver sees is assembled inside `advise.py`.
 enumerated in the plan under "Task 10A". A `{code: {gw: p_play}}` dict is
 built from `comp` after `build_pool` (grouped mean per `(code, gw)` — the
 `shadow_rows` rule, because "did he turn out at all" is one outcome across a
-double gameweek) and added to `solve_kw`, so the raw optimum and
-`policy.coherent_plan` are both weighted.
+double gameweek) and passed to `policy.coherent_plan` — **and to nothing
+else**.
 
-Two consequences, recorded because they change what the gates mean:
+**Amended at G5 (fix-round, I2).** The group as first written put `p_play` on
+`solve_kw`, which the raw optimum and the scenario sweep share, and then
+stripped it again at the sweep's call. The result was a two-pass raw optimum
+compared against a single-pass sweep. `decide()` reports that comparison to
+the user as `raw_optimum_agrees`, so the two objectives disagreeing about a
+bench would have surfaced as a stability warning about something that is not
+instability. The wiring is now: raw optimum single-pass, sweep single-pass,
+**`coherent_plan` weighted** — the plan that is actually recommended. Every
+user-facing comparison is then between like and like.
+
+Three consequences, recorded because they change what the gates and the
+feature mean:
 
 - **`backtest.py` is untouched.** It is import-only this cycle and passes no
   `p_play`, so **G2 cannot see §F1 at all** and is a no-regression check on
   the seed spread rather than a measurement of the feature. **G3 is the gate
   that judges §F1** — its driver calls `solve_plan(..., p_play=...)`
   directly and is independent of this decision.
-- **Scenarios stay single-pass.** Plan A1 asserted this followed automatically
-  because `run_scenarios` could not learn the keyword; the tree says otherwise
-  — `advise.py` hands it `**solve_kw`. `p_play` is therefore stripped
-  explicitly at that call. Scenarios are N noised re-solves measuring how
-  stable a move is; doubling the slowest part of an advise run to price a
-  bench the sweep never reads would be a cost with no reader.
+- **Scenarios stay single-pass**, now by construction rather than by a strip:
+  they are handed `solve_kw`, which no longer contains the keyword. Scenarios
+  are N noised re-solves measuring how stable a move is; doubling the slowest
+  part of an advise run to price a bench the sweep never reads would be a cost
+  with no reader.
+- **§F1 does not reach the transfer side.** The moves are chosen by a sweep
+  that cannot see `p_play`; only the squad built around them is weighted by
+  it. This is the documented cost of the amendment and is carried in
+  §Residuals rather than worked around.
 
 ### G1 results — **run, withdraw**
 
@@ -201,3 +215,34 @@ Rule: the mean delta over weeks where an autosub actually fired must not
 regress. A large positive delta on a handful of weeks is not a win either —
 the week count prints beside the mean so it is read as the small sample it is.
 Expect one benchmark fit plus ~114 solves (the branch arm's are two-pass).
+
+## §Residuals
+
+Known and deliberately not fixed this cycle. Each is a thing a later reader
+would otherwise have to rediscover from the code.
+
+- **§F1's transfer-side reach waits for a sweep that can see `p_play`** (I2,
+  above). The fix is not a two-pass raw optimum — that trades a real
+  inconsistency for a fake instability warning — it is `run_scenarios`
+  learning the keyword, at N times the second pass's cost, which needs its own
+  measurement before it is worth paying.
+- **What-if baselines are single-pass by omission.** The web re-solves rebuild
+  their solver bundle from `SolveState.opt`, which is serialized JSON and
+  cannot carry a per-player dict, so a what-if board is priced without §F1
+  while the advice it is compared against is priced with it. *v11: p_play into
+  SolveState so what-if matches advice.*
+- **`policy.coherent_plan` appends a promoted captain to the bench.** When the
+  plurality captain is not in the re-solved XI he is swapped into it and the
+  man he displaced is appended to `bench` — at the end, after §F1b has ordered
+  it by autosub value. Pre-existing (v4c), in a protected file, and the
+  appended man is the lowest-EP XI player of his position, so last is usually
+  where he belongs anyway.
+- **`captaincy_override` discards the frailty-weighted vice under league
+  tilt.** §F1c prices the vice by how likely the captain is to leave the
+  armband unused; when the league-mode tilt then overrides the captain, the
+  vice that came back from the solve was chosen against a different captain's
+  frailty. Pre-existing interaction between v8c's tilt and v10's weight,
+  reachable only in league mode with the tilt active.
+
+The keeper's own denominator (`KEEPER_DNP`) was a residual of the same kind
+and is not one any more: it was fixed at G5. See B2.
