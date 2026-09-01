@@ -21,7 +21,8 @@ import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
-from gaffer.artifacts import SolveState, load_solve_state, save_solve_state
+from gaffer.artifacts import (COMPONENT_COLS, SolveState, load_solve_state,
+                              save_components, save_solve_state)
 from gaffer.data import store
 from gaffer.data.field import FIELD_EO_COLS, append_field_eo, field_eo_rows
 from gaffer.review import season_summary
@@ -157,6 +158,57 @@ def test_the_field_eo_columns_are_the_ones_the_log_carries():
     row is what dropped them."""
     assert FIELD_EO_COLS == ["season", "gw", "snap_date", "element", "eo",
                              "se", "n"]
+
+
+# --- Block 2b: §F2's other absent-not-zero — the minutes pair -------------
+#
+# ``p_play``'s convention, applied to the probability beside it. A frame
+# banked without a minutes model carries a NaN in ``p60`` (``COMPONENT_COLS``
+# is fixed, so the column is written and left empty rather than dropped), and
+# 0.0 there reads as "he will not see the hour out" — a claim about a player
+# the frame never made.
+
+
+def _component_row(**over) -> dict:
+    row = {c: 0.0 for c in COMPONENT_COLS}
+    row.update({"code": 100, "element": 100, "name": "Salah",
+                "position": "MID", "team_code": 14, "team_name": "Liverpool",
+                "gw": 5, "opp_code": 3, "opp_name": "ARS", "was_home": 1.0,
+                "kickoff_time": "2026-09-05T14:00:00Z",
+                "p_play": 0.96, "p60": 0.9, "ep_minutes": 1.9, "ep": 6.4})
+    row.update(over)
+    return row
+
+
+@pytest.fixture()
+def components(tmp_path, monkeypatch):
+    client = TestClient(create_app())
+
+    def install(rows):
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "reports").mkdir(exist_ok=True)
+        save_components(pd.DataFrame(rows)[COMPONENT_COLS], 5)
+        body = client.get("/api/components/5")
+        assert body.status_code == 200
+        return body.json()["players"][0]["fixtures"]
+    return install
+
+
+def test_a_nan_p60_serves_null_and_never_zero(components):
+    """The rail ``p_play`` already had. 0.0 on this field is "expected off
+    before the hour", which is a real forecast and not the absence of one."""
+    fixture = components([_component_row(p_play=float("nan"),
+                                         p60=float("nan"))])[0]
+    assert fixture["minutes"]["p60"] is None
+    assert fixture["minutes"]["p_play"] is None
+    assert fixture["minutes"]["xmins"] is None
+
+
+def test_a_modelled_p60_is_still_a_number(components):
+    """The degradation must not swallow the ordinary case."""
+    fixture = components([_component_row()])[0]
+    assert fixture["minutes"]["p60"] == 0.9
+    assert fixture["minutes"]["p_play"] == 0.96
 
 
 # --- Block 3: §F3's honesty, on today's actual ledger shape ---------------

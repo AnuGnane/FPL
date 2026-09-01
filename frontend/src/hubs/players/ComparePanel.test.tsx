@@ -193,24 +193,30 @@ describe('the model’s own working', () => {
     expect(rows.querySelector('.bg-sage')).not.toBeNull()
   })
 
-  it('prints an em dash for an unknown p_play, never a zero', async () => {
-    apiGet.mockImplementation((path: string) => (
-      path.startsWith('/api/components/')
-        ? Promise.resolve({ ...COMPONENTS, players: [
-            { ...COMPONENTS.players[0],
-              fixtures: [{ ...COMPONENTS.players[0].fixtures[0],
-                           minutes: { p_play: null, p60: 0.9,
-                                      xmins: null } }] },
-            COMPONENTS.players[1]] })
-        : path.startsWith('/api/fixtures/matrix') ? Promise.resolve(MATRIX)
-          : Promise.reject(new Error(`unexpected ${path}`))
-    ))
-    render(<ComparePanel gw={5} players={PLAYERS} />)
-    const line = within(await screen.findByTestId('compare-1'))
-      .getByTestId('minutes-1-EVE')
-    expect(line).toHaveTextContent('p —')
-    expect(line).not.toHaveTextContent('p 0.00')
-  })
+  it('prints an em dash for an unknown minutes pair, never a zero',
+    async () => {
+      // A frame banked with no minutes model has neither probability, and
+      // 0.0 on *either* is a forecast it never made: p_play 0 says he will
+      // not play, p60 0 says he will not see the hour out.
+      apiGet.mockImplementation((path: string) => (
+        path.startsWith('/api/components/')
+          ? Promise.resolve({ ...COMPONENTS, players: [
+              { ...COMPONENTS.players[0],
+                fixtures: [{ ...COMPONENTS.players[0].fixtures[0],
+                             minutes: { p_play: null, p60: null,
+                                        xmins: null } }] },
+              COMPONENTS.players[1]] })
+          : path.startsWith('/api/fixtures/matrix') ? Promise.resolve(MATRIX)
+            : Promise.reject(new Error(`unexpected ${path}`))
+      ))
+      render(<ComparePanel gw={5} players={PLAYERS} />)
+      const line = within(await screen.findByTestId('compare-1'))
+        .getByTestId('minutes-1-EVE')
+      expect(line).toHaveTextContent('p —')
+      expect(line).toHaveTextContent('p60 —')
+      expect(line).not.toHaveTextContent('p 0.00')
+      expect(line).not.toHaveTextContent('p60 0.00')
+    })
 
   it('shows both fixtures of a double gameweek and one xMins total',
     async () => {
@@ -234,6 +240,31 @@ describe('the model’s own working', () => {
       // 88 + 70 — xMins is the one of the three that adds.
       expect(within(card).getByTestId('minutes-total-1'))
         .toHaveTextContent('158')
+    })
+
+  it('blanks the double’s xMins total when one fixture has none',
+    async () => {
+      // plan.py's bank convention, on the one quantity here that sums: a
+      // total missing one of its terms is not a smaller total, and 88′
+      // beside two fixtures reads as the pair.
+      apiGet.mockImplementation((path: string) => (
+        path.startsWith('/api/components/')
+          ? Promise.resolve({ ...COMPONENTS, players: [
+              { ...COMPONENTS.players[0],
+                fixtures: [COMPONENTS.players[0].fixtures[0],
+                           { ...COMPONENTS.players[0].fixtures[0],
+                             opponent: 'BUR', home: false,
+                             minutes: { p_play: null, p60: null,
+                                        xmins: null } }] },
+              COMPONENTS.players[1]] })
+          : path.startsWith('/api/fixtures/matrix') ? Promise.resolve(MATRIX)
+            : Promise.reject(new Error(`unexpected ${path}`))
+      ))
+      render(<ComparePanel gw={5} players={PLAYERS} />)
+      const card = await screen.findByTestId('compare-1')
+      const total = within(card).getByTestId('minutes-total-1')
+      expect(total).toHaveTextContent('—')
+      expect(total).not.toHaveTextContent('88')
     })
 
   it('flags a set-piece order and says nothing when there is none',

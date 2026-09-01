@@ -278,8 +278,11 @@ def explain(code: int) -> PlayerExplain:
             components=components,
             # p_play stays None when it is missing: the schema asks for that
             # explicitly, because 0.0 there reads as "expected not to play".
-            # p60 has nowhere to say "unknown", so it falls back to 0.0 the
-            # same way routers/components.py does.
+            # p60 can now say "unknown" too — v11's fix-round widened it on
+            # `MinutesOutput` — but this payload's fallback is left where it
+            # was: the explain modal's `_cell_or` reads every one of its
+            # numbers this way, and moving one of them alone is a change to a
+            # shipped view that no rail in this cycle asked for. Recorded.
             minutes=MinutesOutput(
                 p_play=None if p_play is None else round(p_play, 3),
                 p60=round(_cell_or(row, "p60", 0.0), 3)),

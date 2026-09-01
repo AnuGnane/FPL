@@ -473,7 +473,12 @@ class MinutesOutput(BaseModel):
     here reads as "expected not to play", which is the strongest claim this
     payload can make about a player, and the compare radar drew it as a
     zero-length spoke on the minutes axis."""
-    p60: float
+    p60: float | None = None
+    """The same convention, on the probability beside it. 0.0 here is
+    "expected off before the hour", which is a forecast a frame banked
+    without a minutes model never made — and it is the number ``xmins``
+    weights the second half by, so a zero propagates into a claim about
+    minutes as well."""
     xmins: float | None = None
     """Expected minutes, ``p_play * (45 + 45 * p60)``. ``None`` when either
     probability is missing: an un-modelled player is not a player expected to

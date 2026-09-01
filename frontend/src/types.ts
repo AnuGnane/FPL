@@ -611,8 +611,10 @@ export interface ComponentFixture {
   // minutes model has no opinion, which the xMin column prints as an em dash —
   // an un-modelled player is not a player expected to play no minutes.
   // `p_play` is null, never 0, for a frame with no minutes model: zero there
-  // would say the model expects him not to play.
-  minutes: { p_play: number | null; p60: number; xmins?: number | null }
+  // would say the model expects him not to play. `p60` carries the same
+  // convention — zero there says he will not see the hour out.
+  minutes: { p_play: number | null; p60: number | null
+             xmins?: number | null }
   ep: number
 }
 

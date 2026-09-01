@@ -162,7 +162,10 @@ def components(gw: int,
                     # carries no such column at all, and a breakdown is not
                     # worth a 500 over a probability it never had.
                     p_play=_round(_prob(getattr(row, "p_play", None))),
-                    p60=round(_num(getattr(row, "p60", None)), 3),
+                    # ``_prob`` and not ``_num`` for the same reason as
+                    # ``p_play`` above: 0.0 here is "expected off before the
+                    # hour", a forecast, and not the absence of one.
+                    p60=_round(_prob(getattr(row, "p60", None))),
                     # From the raw cells, not the _num'd ones: _num turns a
                     # missing probability into 0.0, and 0.0 is a real answer.
                     xmins=_xmins(getattr(row, "p_play", None),

@@ -196,9 +196,14 @@ export default function ComparePanel(
           // mean: p_play averaged over two fixtures is a probability of
           // nothing, and p60 does not add. xMins is the one of the three that
           // does, so a total is shown beside the pair (plan A5).
+          // A total missing one of its terms is not a smaller total: 88′
+          // printed beside two fixtures reads as the pair, and it would be
+          // one of them. `plan.py`'s bank convention, on the one quantity
+          // here that adds — any null fixture blanks the total.
           const here = (comp?.fixtures ?? []).filter((f) => f.gw === gw)
-          const xmSum = here.reduce(
-            (sum, f) => sum + (f.minutes.xmins ?? 0), 0)
+          const xmSum = here.some((f) => f.minutes.xmins == null)
+            ? null
+            : here.reduce((sum, f) => sum + (f.minutes.xmins ?? 0), 0)
           return (
             <div key={player.code} data-testid={`compare-${player.code}`}>
               {/* The name is the control, not a label of one: the same
@@ -326,8 +331,13 @@ export default function ComparePanel(
                          className="flex items-baseline justify-between
                                     border-t border-divider pt-1">
                         <span className="label">xMins across both</span>
-                        <span className="num text-text">
-                          {`${fmtNum(xmSum, 0)}′`}
+                        <span className="num text-text"
+                              title={xmSum === null
+                                ? 'One of these fixtures has no expected '
+                                  + 'minutes, so the pair has no total. It is '
+                                  + 'not the other fixture’s figure.'
+                                : 'Expected minutes across both fixtures.'}>
+                          {xmSum === null ? '—' : `${fmtNum(xmSum, 0)}′`}
                         </span>
                       </p>
                     )}
