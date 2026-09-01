@@ -17,6 +17,18 @@ const SERIES_COLOURS = ['var(--color-sage)', 'var(--color-info)',
   'var(--color-rust)', 'var(--color-text-muted)']
 
 /**
+ * The additive terms `web/routers/components.py`'s `TERMS` writes for one
+ * fixture — the full breakdown, not the rows this card happens to print.
+ * A term that rounds to zero is dropped before the payload leaves the server,
+ * so `rows.length` is a floor on the number of roundings behind a card's
+ * total and never a count of them.
+ */
+const BREAKDOWN_LABELS = ['Minutes', 'Goals', 'Assists', 'Clean sheet',
+  'Goals conceded', 'Saves', 'Defensive contribution', 'Bonus',
+  'Penalty saves', 'Cards', 'Calibration'] as const
+const TERM_COUNT_PER_FIXTURE = BREAKDOWN_LABELS.length
+
+/**
  * What the p25–p75 pair beside a player's xPts is a range *of*.
  *
  * `ep_gw` and `sigma` have been on `/api/components/{gw}` since the bands
@@ -311,18 +323,22 @@ export default function ComparePanel(
                       <span className="num text-text">{fmtNum(total, 2)}</span>
                     </p>
                     <p className="text-xs text-text-faint">
-                      {/* Against `ep` and not `ep_gw`: `total` is the terms
-                          summed over every fixture the payload holds, which
-                          is what `ep` is, and comparing a horizon sum against
-                          a single gameweek made the caption fire on players
-                          whose two numbers were the same. The tolerance is
-                          per-term rounding, not a constant: each term arrives
-                          at 2dp and so does `ep`, so a card with eleven rows
-                          can drift by eleven half-hundredths plus one before
-                          anything is actually inconsistent. The epsilon is
-                          float noise on that exact boundary. */}
-                      {comp && Math.abs(comp.ep - total)
-                        > 0.005 * (rows.length + 1) + 1e-9
+                      {/* `total` is the terms summed over every fixture the
+                          payload holds — the same number `ep` is — and the
+                          caption's job is to say when the xPts printed above
+                          is *not* that: `ep_gw` is the requested gameweek
+                          alone. So the comparison is against `ep_gw`, and a
+                          payload that carries no `ep_gw` is compared against
+                          itself and stays silent. The tolerance is per-term
+                          rounding, not a constant: every term arrives at 2dp
+                          and so does `ep_gw`, so a two-fixture card carries
+                          twice the full breakdown's worth of half-hundredths,
+                          plus one for the total itself, before anything is
+                          actually inconsistent. The epsilon is float noise on
+                          that exact boundary. */}
+                      {comp && Math.abs((comp.ep_gw ?? total) - total)
+                        > 0.005 * (TERM_COUNT_PER_FIXTURE
+                                   * comp.fixtures.length + 1) + 1e-9
                         ? `The terms sum to the horizon (${fmtNum(total, 2)}); `
                           + `the xPts above is GW${gw} alone `
                           + `(${fmtNum(comp.ep_gw, 2)}).`

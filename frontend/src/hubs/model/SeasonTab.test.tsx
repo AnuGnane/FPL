@@ -268,6 +268,9 @@ describe('SeasonTab, filled', () => {
       render(<SeasonTab />)
       expect(await screen.findByTestId('bench-empty'))
         .toHaveTextContent('No gameweek carries a bench total.')
+      // The caption describes the line: with no line, a gameweek count read
+      // out under the empty state is a claim about a chart that is not there.
+      expect(screen.queryByText(/Cumulative, over the/)).toBeNull()
     })
 
   it('draws the bench series when even one gameweek carries a total',

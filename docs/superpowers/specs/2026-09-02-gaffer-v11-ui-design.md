@@ -155,6 +155,15 @@ which is v10's G2 and v10b's G2 for the third time.
 - [ ] `GET /api/plan/5`, `/api/players`, `/api/review` all still answer on a
       cold clone the way they did before.
 
+### Residuals (left standing)
+
+- Compare's expected-minutes total is captioned "Expected minutes across both
+  fixtures". A double is the only multi-fixture week the fixture list has shown
+  so far, but a triple gameweek makes "both" wrong — three fixtures, one
+  total — and the wording would have to count the fixtures it is summing. The
+  arithmetic is already general (it sums `here`, whatever its length, and
+  blanks on any null); only the sentence assumes two.
+
 ### Outcomes
 
 _TBD by the cycle._

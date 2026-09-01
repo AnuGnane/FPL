@@ -457,30 +457,19 @@ describe('the terms, the total and the two expected-points numbers', () => {
       expect(within(card).queryByText(/sum to the horizon/)).toBeNull()
     })
 
-  it('still speaks up when the rows do not account for the banked points',
-    async () => {
-      // A second fixture whose expected points are banked but whose terms
-      // the frame never wrote: the rows come to 0.49 and the payload's own
-      // total is 0.99, which is a gap eleven roundings cannot explain.
-      apiGet.mockImplementation((path: string) => (
-        path.startsWith('/api/components/')
-          ? Promise.resolve({ ...COMPONENTS, players: [
-              { ...COMPONENTS.players[0], ep: 0.99, ep_gw: 0.49,
-                fixtures: [
-                  { ...COMPONENTS.players[0].fixtures[0], gw: 5, ep: 0.49,
-                    components: SMALL.map((p, n) => ({ label: `t${n}`,
-                                                       points: p })) },
-                  { ...COMPONENTS.players[0].fixtures[0], gw: 6, ep: 0.5,
-                    opponent: 'BUR', components: [] }] },
-              COMPONENTS.players[1]] })
-          : path.startsWith('/api/fixtures/matrix') ? Promise.resolve(MATRIX)
-            : Promise.reject(new Error(`unexpected ${path}`))
-      ))
-      render(<ComparePanel gw={5} players={PLAYERS} />)
-      const card = await screen.findByTestId('compare-1')
-      expect(within(card).getByTestId('breakdown-1'))
-        .toHaveTextContent(/sum to the horizon/)
-    })
+  it('says which number is which when the total is a horizon and the xPts '
+     + 'is one gameweek', async () => {
+    // A two-fixture payload: the rows sum to 0.99 over GW5 and GW6, while the
+    // xPts printed above them is GW5's 0.49. Twenty-two roundings cannot
+    // explain half a point, and the caption has to name both numbers —
+    // otherwise it is a sentence about one number differing from itself.
+    serve(SMALL, 0.99, 0.49, [5, 6])
+    render(<ComparePanel gw={5} players={PLAYERS} />)
+    const card = await screen.findByTestId('compare-1')
+    expect(within(card).getByTestId('breakdown-1')).toHaveTextContent(
+      'The terms sum to the horizon (0.99); the xPts above is GW5 alone '
+      + '(0.49).')
+  })
 
   it('renders at 390px with no console error', async () => {
     // §Gates' 390px claim for this view: the Players hub's cold-clone rail

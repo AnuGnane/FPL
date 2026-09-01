@@ -201,7 +201,7 @@ export interface FixtureExplain {
   home: boolean
   kickoff_time: string | null
   components: Component[]
-  minutes: { p_play: number | null; p60: number }
+  minutes: { p_play: number | null; p60: number | null }
   calibration_delta: number
   odds: {
     weight: number

@@ -646,7 +646,9 @@ class ComponentPlayer(BaseModel):
     position: str
     team_name: str
     ep: float
-    """Summed over the player's fixtures in this gameweek."""
+    """Summed over every fixture in this payload — a horizon total, not a
+    gameweek's, because the components parquet carries the whole solve
+    horizon."""
     fixtures: list[ComponentFixture]
     ep_gw: float | None = None
     """Expected points for the *requested* gameweek alone.

@@ -229,13 +229,16 @@ export default function SeasonTab() {
                       strokeWidth={2} stroke="var(--color-rust)" />
               </LineChart>
             </ResponsiveContainer>
+            {/* The caption describes the line above it — under the empty
+                state it would be reading out a gameweek count for a chart
+                that is not there. */}
+            <p className="mt-1 text-xs text-text-faint">
+              {`Cumulative, over the ${summary!.points_on_bench_gws} `
+               + 'gameweek(s) whose history was banked. A gameweek with none '
+               + 'is a gap, not a zero.'}
+            </p>
           </div>
         )}
-        <p className="mt-1 text-xs text-text-faint">
-          {`Cumulative, over the ${summary!.points_on_bench_gws} gameweek(s) `
-           + 'whose history was banked. A gameweek with none is a gap, not a '
-           + 'zero.'}
-        </p>
       </Card>
 
       <Card title="Accuracy" className="mb-4">
