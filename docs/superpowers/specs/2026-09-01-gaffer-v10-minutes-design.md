@@ -225,7 +225,23 @@ would otherwise have to rediscover from the code.
   above). The fix is not a two-pass raw optimum — that trades a real
   inconsistency for a fake instability warning — it is `run_scenarios`
   learning the keyword, at N times the second pass's cost, which needs its own
-  measurement before it is worth paying.
+  measurement before it is worth paying. This holds only for the weeks that
+  *have* a sweep: with `[scenarios] n = 0`, or an opening squad with no
+  incumbent to gate against, the raw solve is the advice and it carries the
+  weights (fix-round I2b).
+- **A run whose scenario solves all failed serves an unweighted plan.** The
+  raw optimum has already been solved single-pass by the time
+  `run.completed == 0` is known, and the fallback keeps it rather than
+  re-solving under `p_play`. A failure path that quietly changes what is being
+  optimised mid-run is the worse of the two costs: the console already says
+  the week was served ungated, and "ungated" now also means "unweighted".
+- **The `coherent_plan` fallback prints the §F1 gate's line twice.** An
+  infeasible forced set makes `policy.coherent_plan` call `solve_plan` a
+  second time, unconstrained, and each call runs `_p_play_lookup` — so a
+  rejected `p_play` (or a failed second pass) says so once per call, under one
+  "coherence re-solve infeasible" line. `policy.py` is zero-diff this cycle by
+  construction (§Gates), and the duplicate is console noise rather than a
+  wrong number anywhere.
 - **What-if baselines are single-pass by omission.** The web re-solves rebuild
   their solver bundle from `SolveState.opt`, which is serialized JSON and
   cannot carry a per-player dict, so a what-if board is priced without §F1
