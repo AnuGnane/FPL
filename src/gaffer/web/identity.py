@@ -59,8 +59,21 @@ The data directory is a module-level ``Path`` and the test suite changes the
 process CWD constantly; a key on the relative string alone would serve one
 tmpdir's teams file out of another's, and in production would survive a
 ``--data-dir`` change. One slot per path, so the cache holds three entries and
-a changed file evicts its own.
+a changed file evicts its own — except the fixture map, whose slot carries the
+gameweek too (a map built for GW9 is not GW10's), which is why the dict is
+bounded rather than fixed at three: see :data:`_CACHE_MAX`.
 """
+
+_CACHE_MAX = 8
+"""Slots kept before the oldest is dropped, insertion-ordered.
+
+Three fixed paths plus one fixture slot per gameweek in flight. Traffic
+alternating between two gameweeks — a live matchday page beside a planning one
+— is the case this exists for: one slot per path would have each request evict
+the other's map and re-read the parquet every time, which is the cost the memo
+was added to remove. Eight is enough for the three plus any plausible number of
+gameweeks being looked at at once, and small enough that the cache cannot grow
+into a leak on a long-running process."""
 
 
 def _file_key(rel: str) -> tuple | None:
@@ -99,6 +112,12 @@ def _memo(slot: str, key: tuple | None, build: Callable[[], Any]) -> Any:
     value = build()
     if value is not _FAILED:
         _CACHE[slot] = (key, value)
+        while len(_CACHE) > _CACHE_MAX:
+            # Insertion order, so the slot dropped is the one least recently
+            # *stored*. Nothing here is expensive enough to justify tracking
+            # reads, and the fixed three are re-read for the price of one
+            # parquet if they ever do fall out.
+            _CACHE.pop(next(iter(_CACHE)))
     return value
 
 
@@ -211,10 +230,12 @@ def _fixture_by_team(gw: int, code_of: dict[int, int],
     key = _file_key(rel)
     if key is not None:
         # The output embeds short names off teams.parquet, so that file's
-        # identity — and the gameweek — belong in the key. A fixture map built
-        # for GW9 is not GW10's, and a renamed club is not the same map.
-        key = key + (_file_key("live/teams.parquet"), int(gw))
-    value = _memo(rel, key, build)
+        # identity belongs in the key. A renamed club is not the same map.
+        key = key + (_file_key("live/teams.parquet"),)
+    # The gameweek is in the *slot*, not only the key: a map built for GW9 is
+    # not GW10's, and with one shared slot two gameweeks' traffic would take
+    # turns evicting each other and re-reading the parquet every request.
+    value = _memo(f"{rel}:{int(gw)}", key, build)
     return {} if value is _FAILED else value
 
 

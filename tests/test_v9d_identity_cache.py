@@ -116,6 +116,28 @@ def test_a_different_gameweek_is_not_served_the_first_ones_fixtures(wired):
     assert out["xi"][0]["next_fixture"] is None
 
 
+def test_alternating_gameweeks_do_not_evict_each_other(wired):
+    """Two gameweeks in flight is ordinary traffic — a live matchday page
+    beside a planning one — and with one shared fixture slot each request
+    would evict the other's map and re-read the parquet, which is the cost
+    the memo exists to remove."""
+    _tmp, reads = wired
+    identity.with_identity(_payload(), 9)
+    identity.with_identity(_payload(), 10)
+    reads.clear()
+    identity.with_identity(_payload(), 9)
+    identity.with_identity(_payload(), 10)
+    assert not (set(reads) & IDENTITY_PATHS)
+
+
+def test_the_cache_stays_bounded(wired):
+    """Per-gameweek slots are unbounded input. A memo that grows with the
+    traffic is a leak with better latency."""
+    for gw in range(1, 40):
+        identity.with_identity(_payload(), gw)
+    assert len(identity._CACHE) <= identity._CACHE_MAX
+
+
 def test_the_caller_cannot_mutate_the_cached_maps(wired):
     """``with_identity`` copies the fixture dict before adding difficulty
     (``identity.py:187``). If that copy is ever dropped, the second request
