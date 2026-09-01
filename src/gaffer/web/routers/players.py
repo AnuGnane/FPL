@@ -156,6 +156,9 @@ def players(position: str | None = None, team: int | None = None,
         if code not in ep_horizon:
             continue                       # not a candidate this week
         status = str(r.status)
+        # Resolved once per row rather than three times, now that three fields
+        # read out of it.
+        me = field_eo.get(int(r.element)) or {}
         band = band_for(round(ep_next.get(code, 0.0), 2), xmins.get(code),
                         table=noise)
         rows.append(PlayerRow(
@@ -167,10 +170,16 @@ def players(position: str | None = None, team: int | None = None,
             ep_horizon=round(float(ep_horizon[code]), 2),
             ownership=float(r.selected_by_percent or 0.0),
             league_eo=float(state.league_eo.get(code, 0.0)),
-            field_eo=(field_eo.get(int(r.element)) or {}).get("eo"),
-            field_class=field_class(
-                code in owned,
-                (field_eo.get(int(r.element)) or {}).get("eo")),
+            field_eo=_opt_float(me.get("eo")),
+            # v11 §F2 (plan A2). ``latest_field_eo`` has always returned the
+            # error and the sample size beside the figure and this row has
+            # always dropped them. ``.get``, never ``.get(k, 0.0)``: a standard
+            # error of zero is a claim of perfect precision from a sample of a
+            # few hundred entries.
+            field_se=_opt_float(me.get("se")),
+            field_n=_opt_int(me.get("n")),
+            field_class=field_class(code in owned,
+                                    _opt_float(me.get("eo"))),
             available=status not in UNAVAILABLE_STATUS,
             status=status, news=str(r.news or ""),
             chance_of_playing=_opt_float(r.chance_of_playing),

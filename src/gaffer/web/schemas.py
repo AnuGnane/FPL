@@ -409,6 +409,20 @@ class PlayerRow(BaseModel):
     that the UI renders identically and correctly: no field log at all, or a
     log that does not carry this player because no sampled entry started him.
     Neither is 0.0, which the reader would take as a measured differential."""
+    field_se: float | None = None
+    """The standard error on ``field_eo``, in percentage points.
+
+    ``None`` for exactly the situations ``field_eo`` is ``None`` for, and — the
+    part worth stating — **never 0.0**. Zero here would be a claim of perfect
+    precision drawn from a sample of a few hundred entries, which is a stronger
+    statement than any number on this row is entitled to make.
+    """
+    field_n: int | None = None
+    """How many sampled entries the figure was measured over.
+
+    ±2.8 from three hundred entries and ±2.8 from thirty are different claims
+    and the page is entitled to say which one it is showing.
+    """
     field_class: str | None = None
     """``shield`` | ``sword`` | ``threat``, or ``None`` for the quadrant with
     nothing to say."""
