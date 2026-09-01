@@ -108,7 +108,31 @@ congestion and blamed the congestion half, whose cup archive holds no rows at
 or before 2024-25 on this window; the two were never separated. Driver:
 ``scripts/v10_shrunk_arm.py``. Bar (v10 spec §F3a): keep only if the
 starters-slice ``p_start`` log-loss improves by >= 1% relative with zeros RMSE
-no worse than +0.005. Result: _pending G1_.
+no worse than +0.005. On the 2024-25 benchmark, one fit per arm, 16279 zeros
+rows and 7820 starter rows:
+
+    baseline      zeros 1.063  all 1.969  p_start LL 0.45976 (all 0.28130)
+    shrunk_modes  zeros 1.070  all 1.971  p_start LL 0.45474 (all 0.28082)
+
+— a relative log-loss gain of +1.09%, which clears the first half of the bar,
+against a zeros cost of +0.007, which fails the second. **Withdrawn:
+shrunk_start_rate, shrunk_min_per_app.**
+
+This is exactly the trade the guard exists to refuse, and reading the two
+numbers together is the whole point of the bar. On the starters slice truth is
+almost always 1.0, so the log-loss is close to ``-mean(log p_start)`` — a
+confidence score. An arm can improve it by calling more players starters, and
+the players it is wrong about land in the zeros stratum. A 1.1% gain in
+confidence bought with 0.007 of zeros RMSE is that mechanism, not a better
+model.
+
+What this settles, and it is worth the cycle: v5's N1 measured these columns
+bundled with congestion and blamed the congestion half. Measured alone, on a
+window the cup archive is empty on, the mode rates are **also** a small
+regression on the metric that matters. So the modes were never the problem and
+were never the answer either, and the next cycle can stop wondering. The
+builders stay wired — they cost a fit nothing — and ``feature_columns()`` still
+lists them for the tracker.
 """
 
 # Team-level clean sheet / goals conceded held at league-average constants
