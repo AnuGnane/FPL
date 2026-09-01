@@ -919,6 +919,48 @@ class Quality(BaseModel):
     news_shadow: NewsShadow | None = None
 
 
+class CalibrationHead(BaseModel):
+    """One probability head's calibration for one gameweek, or a refusal.
+
+    ``status`` rather than a missing key: a head under
+    ``evaluation.MIN_CALIBRATION_SAMPLES`` has the same shape as a scored one
+    with nulls in it, so the card renders "not enough data" from a field
+    instead of branching on absence.
+    """
+
+    status: str
+    n: int
+    brier: float | None = None
+    log_loss: float | None = None
+    reliability: list[ReliabilityBin] = []
+
+
+class CalibrationGw(BaseModel):
+    gw: int
+    n: int
+    heads: dict[str, CalibrationHead] = {}
+
+
+class CalibrationReport(BaseModel):
+    """The banked report, or the honest empty one.
+
+    ``available`` is what the card branches on. The route answers 200 either
+    way (spec §4) because this card sits beside populated ones and a 422 there
+    is indistinguishable from a broken endpoint.
+    """
+
+    available: bool = False
+    run_at: str | None = None
+    git_sha: str | None = None
+    season: str | None = None
+    gameweeks: list[CalibrationGw] = []
+    cumulative: dict[str, CalibrationHead] = {}
+    omitted: dict[str, str] = {}
+    excluded: list[dict[str, Any]] = []
+    missing: list[int] = []
+    note: str | None = None
+
+
 class PlanMove(BaseModel):
     code: int
     name: str
