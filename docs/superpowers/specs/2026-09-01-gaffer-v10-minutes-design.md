@@ -185,9 +185,14 @@ empty, the mode rates are a small regression too — so they were never the
 problem and were never the answer, and the next cycle can stop wondering.
 Recorded in `MINUTES_FEATURES`' docstring. The builders stay wired.
 
-### G2 results
+### G2 results (measured 2026-09-02, scripts/replay_pair.sh v10)
 
-**Not run — the orchestrator runs this.** Driver: `scripts/replay_pair.sh v10`.
+Branch [1853, 1847, 1872] vs re-run main [1853, 1847, 1872] — identical per
+seed, mean 1857.3 both sides. Exactly what the T10-A consequences paragraph
+predicted: `backtest.py` passes no `p_play` (G2 cannot see §F1), F3a was
+withdrawn (`MINUTES_FEATURES` unchanged), and the news providers do not run
+in a replay. **PASSES as the no-regression check it was demoted to**; §F1's
+evidence is G3's +0.381.
 
 Preflight, both answered, because both change what the result means:
 
