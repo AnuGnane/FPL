@@ -135,11 +135,15 @@ export default function ComparePanel(
       for (const component of fixture.components) labels.add(component.label)
     }
   }
+  // Keyed by code, not by name: two players can share a surname, and a series
+  // keyed by one of them would silently overwrite the other's bars. The name
+  // rides on the series as its label, which is what the legend and the
+  // tooltip print.
   const chart = [...labels].map((label) => {
     const row: Record<string, string | number> = { label }
     for (const player of players) {
       const found = components?.players.find((p) => p.code === player.code)
-      row[player.name] = found?.fixtures.reduce((total, fixture) => (
+      row[String(player.code)] = found?.fixtures.reduce((total, fixture) => (
         total + (fixture.components.find((c) => c.label === label)?.points ?? 0)
       ), 0) ?? 0
     }
@@ -158,7 +162,8 @@ export default function ComparePanel(
                                      border: '1px solid var(--color-border)' }} />
             <Legend />
             {players.map((player, i) => (
-              <Bar key={player.code} dataKey={player.name}
+              <Bar key={player.code} dataKey={String(player.code)}
+                   name={player.name}
                    fill={SERIES_COLOURS[i % SERIES_COLOURS.length]} />
             ))}
           </BarChart>
@@ -245,14 +250,23 @@ export default function ComparePanel(
                   <dt className="label">Field EO</dt>
                   <dd className="num text-right text-text"
                       data-testid={`field-eo-${player.code}`}>
-                    {player.field_eo === null
-                      ? '—' : `${fmtNum(player.field_eo, 1)}%`}
-                    {/* The error travels with the figure, and it is absent
-                        rather than zero in every position: an older log
-                        carries an EO with no error, and 0.0 there would be a
-                        claim of perfect precision from a few hundred
-                        entries. */}
-                    {player.field_eo !== null && (
+                    {/* A "± —" is a plus-or-minus of nothing: the glyph
+                        promises an interval the log did not record. An older
+                        log carries an EO with no error at all, so the symbol
+                        goes with the number it qualifies and the absence
+                        moves into the title of the figure itself — 0.0 there
+                        would still be the worse lie, a claim of perfect
+                        precision from a few hundred entries. */}
+                    <span title={player.field_eo === null
+                      ? 'No field EO was measured for this player.'
+                      : player.field_se === null
+                        ? 'No error was recorded for this figure, so it '
+                          + 'carries no interval.'
+                        : 'Field EO, measured off sampled entries.'}>
+                      {player.field_eo === null
+                        ? '—' : `${fmtNum(player.field_eo, 1)}%`}
+                    </span>
+                    {player.field_eo !== null && player.field_se !== null && (
                       <span
                         className="ml-1 text-text-muted"
                         title={player.field_n === null
@@ -297,7 +311,18 @@ export default function ComparePanel(
                       <span className="num text-text">{fmtNum(total, 2)}</span>
                     </p>
                     <p className="text-xs text-text-faint">
-                      {comp && Math.abs((comp.ep_gw ?? total) - total) > 0.005
+                      {/* Against `ep` and not `ep_gw`: `total` is the terms
+                          summed over every fixture the payload holds, which
+                          is what `ep` is, and comparing a horizon sum against
+                          a single gameweek made the caption fire on players
+                          whose two numbers were the same. The tolerance is
+                          per-term rounding, not a constant: each term arrives
+                          at 2dp and so does `ep`, so a card with eleven rows
+                          can drift by eleven half-hundredths plus one before
+                          anything is actually inconsistent. The epsilon is
+                          float noise on that exact boundary. */}
+                      {comp && Math.abs(comp.ep - total)
+                        > 0.005 * (rows.length + 1) + 1e-9
                         ? `The terms sum to the horizon (${fmtNum(total, 2)}); `
                           + `the xPts above is GW${gw} alone `
                           + `(${fmtNum(comp.ep_gw, 2)}).`

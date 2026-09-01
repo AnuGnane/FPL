@@ -67,9 +67,16 @@ export default function PlannerBoard(
   const [movers, setMovers] = useState<Map<number, MoverRow> | null>(null)
 
   useEffect(() => {
+    // The same `live` guard the movers fetch has, for the same reason: a
+    // gameweek switched while this one is in flight would otherwise let the
+    // stale response land on top of the new one, and the board would draw
+    // last week's plan under this week's heading.
+    let live = true
     setMissing(false)
-    apiGet<PlanTimeline>(`/api/plan/${gw}`).then(setData)
-      .catch(() => setMissing(true))
+    apiGet<PlanTimeline>(`/api/plan/${gw}`)
+      .then((body) => { if (live) setData(body) })
+      .catch(() => { if (live) setMissing(true) })
+    return () => { live = false }
   }, [gw])
 
   useEffect(() => {
@@ -95,6 +102,20 @@ export default function PlannerBoard(
   // and there is no bank constraint at all; both are printed under the button
   // rather than smoothed over, because a limit discovered by hovering is a
   // limit discovered after the solve.
+  //
+  // The lab always solves from *now*. A week further down the board is
+  // therefore only inside the solve if the horizon reaches it, so the handoff
+  // spans it rather than leaving the constraints to be applied to a horizon
+  // that stops short — a solve told to buy a GW8 target over a one-week plan
+  // buys him this week instead, which is a different plan wearing the board's
+  // numbers. Clamped into ConstraintsPanel's own 1-6 range: past six weeks
+  // the lab cannot span it and the sentence under the button says so.
+  const HORIZON_MAX = 6
+
+  function horizonFor(week: PlanGw): number {
+    return Math.max(1, Math.min(HORIZON_MAX, week.gw - gw + 1))
+  }
+
   function request(week: PlanGw): WhatIfRequest {
     return {
       lock: [],
@@ -102,7 +123,7 @@ export default function PlannerBoard(
       force_in: week.buys.map((m) => m.code),
       max_hits: Math.max(0, Math.min(3, week.hits)),
       chip: (week.chip && CHIP_CODES[week.chip]) || 'none',
-      horizon: null,
+      horizon: horizonFor(week),
     }
   }
 
@@ -177,9 +198,9 @@ export default function PlannerBoard(
                 data-testid={`board-bank-${week.gw}`}
                 className="num text-text"
                 title={week.bank === null
-                  ? 'A move in this week or an earlier one has no price, so '
-                    + 'the running bank is unknown from here on. It is not '
-                    + 'zero.'
+                  ? 'A move in this week or an earlier one has no price, or '
+                    + 'could not be read at all, so the running bank is '
+                    + 'unknown from here on. It is not zero.'
                   : 'What is left after this week\'s moves, in millions.'}
               >
                 {fmtNum(week.bank)}
@@ -199,11 +220,24 @@ export default function PlannerBoard(
                   >
                     Try these changes
                   </button>
-                  <p className="mt-1 text-text-faint">
+                  <p data-testid={`board-try-note-${week.gw}`}
+                     className="mt-1 text-text-faint">
                     {'This prefills the lab; it does not solve. A planned sell '
                      + 'is carried across as "don\'t own him", which also '
                      + 'rules out buying him back, and the bank is not a '
                      + 'constraint the lab accepts.'}
+                    {/* The horizon spans the week, but the solve still starts
+                        this week — every limit of that is said here rather
+                        than left to be discovered in the result. */}
+                    {` The constraints are applied to a solve that starts now `
+                     + `at GW${gw}, over ${horizonFor(week)} week(s)`
+                     + `${week.gw - gw + 1 > HORIZON_MAX
+                       ? `, which is as far as the lab reaches and stops short `
+                         + `of GW${week.gw}` : ''} — a future week's buys may `
+                     + `need earlier sells first, and a prefilled chip is `
+                     + `played in the solve's first week, not scheduled.`}
+                    {week.hits > 3
+                      && ' Hits capped at 3 (the lab’s limit).'}
                   </p>
                 </div>
               )}

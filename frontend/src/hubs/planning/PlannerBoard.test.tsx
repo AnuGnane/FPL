@@ -155,8 +155,34 @@ describe('PlannerBoard', () => {
       expect(onTry).toHaveBeenCalledWith({
         lock: [], ban: [2], force_in: [1],
         // clamped into ConstraintsPanel's 0-3 range
-        max_hits: 3, chip: 'bb', horizon: null,
+        max_hits: 3, chip: 'bb',
+        // the target week is the current one, so one week spans it
+        horizon: 1,
       })
+    })
+
+  it('prefills a horizon that reaches the week whose moves it carries',
+    async () => {
+      // GW8's buys over a one-week solve are GW5's buys: the lab starts now,
+      // so the constraints have to be applied to a horizon that gets there.
+      const onTry = vi.fn()
+      wire(plan([WEEK, { ...WEEK, gw: 8 }]))
+      render(<PlannerBoard gw={5} onTry={onTry} />)
+      await userEvent.click(await screen.findByTestId('board-try-8'))
+      expect(onTry.mock.calls[0][0].horizon).toBe(4)
+    })
+
+  it('clamps the prefilled horizon to the range the lab accepts',
+    async () => {
+      const onTry = vi.fn()
+      wire(plan([{ ...WEEK, gw: 20 }]))
+      render(<PlannerBoard gw={5} onTry={onTry} />)
+      await userEvent.click(await screen.findByTestId('board-try-20'))
+      expect(onTry.mock.calls[0][0].horizon).toBe(6)
+      // …and the sentence says the solve stops short rather than leaving the
+      // reader to infer it from a result.
+      expect(screen.getByTestId('board-try-note-20'))
+        .toHaveTextContent(/stops short of GW20/)
     })
 
   it('says what a carried-over sell actually means, without a hover',
@@ -166,6 +192,48 @@ describe('PlannerBoard', () => {
       expect(screen.getByText(/rules out buying him back/))
         .toBeInTheDocument()
     })
+
+  it('says the solve starts now, and what that costs a future week',
+    async () => {
+      wire(plan([WEEK, { ...WEEK, gw: 7 }]))
+      render(<PlannerBoard gw={5} onTry={vi.fn()} />)
+      const note = await screen.findByTestId('board-try-note-7')
+      expect(note).toHaveTextContent(/starts now at GW5/)
+      expect(note).toHaveTextContent(/earlier sells first/)
+      expect(note).toHaveTextContent(/first week, not scheduled/)
+    })
+
+  it('names the hit cap only when the week was actually clamped',
+    async () => {
+      wire(plan([{ ...WEEK, gw: 5, hits: 5 }, { ...WEEK, gw: 6, hits: 2 }]))
+      render(<PlannerBoard gw={5} onTry={vi.fn()} />)
+      expect(await screen.findByTestId('board-try-note-5'))
+        .toHaveTextContent(/capped at 3/)
+      expect(screen.getByTestId('board-try-note-6'))
+        .not.toHaveTextContent(/capped at 3/)
+    })
+
+  it('renders at 390px with no console error', async () => {
+    // §Gates' 390px claim for this view: Planning's cold-clone rail renders
+    // only its default tab, which is not the board.
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.stubGlobal('innerWidth', 390)
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: true, media: query, onchange: null,
+      addEventListener: () => {}, removeEventListener: () => {},
+      addListener: () => {}, removeListener: () => {},
+      dispatchEvent: () => false,
+    }))
+    const { container } = render(<PlannerBoard gw={5} onTry={vi.fn()} />)
+    await screen.findByTestId('board-week-5')
+    // The board draws no table; the column strip owns its own scroller, so
+    // the page does not widen behind it.
+    expect(container.querySelectorAll('table')).toHaveLength(0)
+    expect(container.querySelector('.overflow-x-auto')).not.toBeNull()
+    expect(spy).not.toHaveBeenCalled()
+    spy.mockRestore()
+    vi.unstubAllGlobals()
+  })
 
   // Plan A18: the hub-level cold-clone rail renders only Planning's default
   // tab, so the board's own cold-clone case is asserted here.

@@ -169,6 +169,11 @@ export default function SeasonTab() {
       running += row.points_on_bench
       return { gw: row.gw, bench: running }
     })
+  // The same count `ranked` keeps, for the same reason: a series of nothing
+  // but gaps is a chart with no line in it, and `bench.length` counts the
+  // gameweeks rather than the totals. A season of unbanked histories would
+  // otherwise draw an empty axis where the sentence belongs.
+  const benched = bench.filter((row) => row.bench !== null).length
 
   return (
     <div>
@@ -207,8 +212,10 @@ export default function SeasonTab() {
       </Card>
 
       <Card title="Points left on the bench" className="mb-4">
-        {bench.length === 0 ? (
-          <p className="text-text-muted">No gameweek carries a bench total.</p>
+        {benched === 0 ? (
+          <p data-testid="bench-empty" className="text-text-muted">
+            No gameweek carries a bench total.
+          </p>
         ) : (
           <div aria-label="Cumulative bench points">
             <ResponsiveContainer width="100%" height={200}>

@@ -193,10 +193,17 @@ describe('SeasonTab, filled', () => {
     expect(screen.getByText(/2 of 3 graded gameweek/)).toBeInTheDocument()
   })
 
+  // `season-lane-transfers` is the *review* fetch landing; the trend is a
+  // second fetch in a child component, so waiting on the first says nothing
+  // about the second. Every assertion below waits on the caption the trend
+  // itself renders — the one thing on the page that cannot exist until that
+  // fetch has resolved.
+  const trendDrawn = () => screen.findByText(/Brier score per head/)
+
   it('draws one calibration line per head with a per-gameweek column',
     async () => {
       const { container } = render(<SeasonTab />)
-      await screen.findByTestId('season-lane-transfers')
+      await trendDrawn()
       const chart = container.querySelector(
         '[aria-label="Calibration trend by gameweek"]')
       expect(chart).not.toBeNull()
@@ -209,7 +216,7 @@ describe('SeasonTab, filled', () => {
   it('names the omitted head in the caption rather than drawing it at zero',
     async () => {
       render(<SeasonTab />)
-      await screen.findByTestId('season-lane-transfers')
+      await trendDrawn()
       expect(screen.getByText(/No per-gameweek column for p_cs/))
         .toBeInTheDocument()
       expect(screen.getByText(/under the sample floor/)).toBeInTheDocument()
@@ -217,7 +224,7 @@ describe('SeasonTab, filled', () => {
 
   it('draws a null Brier as a gap, same rule as the rank', async () => {
     const { container } = render(<SeasonTab />)
-    await screen.findByTestId('season-lane-transfers')
+    await trendDrawn()
     const chart = container.querySelector(
       '[aria-label="Calibration trend by gameweek"]')
     const segments = [...chart!.querySelectorAll('.recharts-line-curve')]
@@ -249,6 +256,48 @@ describe('SeasonTab, filled', () => {
       expect(spy).not.toHaveBeenCalled()
       spy.mockRestore()
     })
+
+  it('says no gameweek carries a bench total when every history is unbanked',
+    async () => {
+      // A graded season whose histories were never banked: four rows, four
+      // null bench totals. `bench.length` is 4 and the series is four gaps,
+      // so the chart drew an empty axis where the sentence belongs.
+      wire({ ...GRADED,
+             gws: GRADED.gws.map((row) => ({ ...row,
+                                             points_on_bench: null })) })
+      render(<SeasonTab />)
+      expect(await screen.findByTestId('bench-empty'))
+        .toHaveTextContent('No gameweek carries a bench total.')
+    })
+
+  it('draws the bench series when even one gameweek carries a total',
+    async () => {
+      render(<SeasonTab />)
+      await screen.findByTestId('season-lane-transfers')
+      expect(screen.queryByTestId('bench-empty')).toBeNull()
+    })
+
+  it('renders at 390px with no console error', async () => {
+    // v11 §Gates' 390px claim, asserted for this view rather than inherited
+    // from the hub sweep: Model's cold-clone rail renders only its default
+    // tab, which is not this one.
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.stubGlobal('innerWidth', 390)
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: true, media: query, onchange: null,
+      addEventListener: () => {}, removeEventListener: () => {},
+      addListener: () => {}, removeListener: () => {},
+      dispatchEvent: () => false,
+    }))
+    const { container } = render(<SeasonTab />)
+    await screen.findByTestId('season-lane-transfers')
+    // The dashboard draws no table, so the no-bare-tables sweep has nothing
+    // to say about it; what it must not do is put a fixed width on the page.
+    expect(container.querySelectorAll('table')).toHaveLength(0)
+    expect(spy).not.toHaveBeenCalled()
+    spy.mockRestore()
+    vi.unstubAllGlobals()
+  })
 
   it('prints the bench total with the gameweeks it covers', async () => {
     render(<SeasonTab />)

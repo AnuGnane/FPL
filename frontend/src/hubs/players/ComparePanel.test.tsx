@@ -289,6 +289,21 @@ describe('the model’s own working', () => {
     expect(rows).not.toHaveTextContent(/^Penalties/m)
   })
 
+  it('draws one series per player even when two share a name', async () => {
+    // Keyed by name, one of the two Silvas overwrote the other's row and the
+    // chart drew a single series for two ticked players.
+    const { container } = render(<ComparePanel gw={5} players={[
+      { ...PLAYERS[0], name: 'Silva' },
+      { ...PLAYERS[1], name: 'Silva' }]} />)
+    await screen.findByTestId('compare-1')
+    // jsdom gives recharts' bar rectangles no geometry, so the claim is made
+    // where it can be: two ticked players are two series and two cards, and
+    // the legend prints the shared name twice rather than the chart drawing
+    // one man twice.
+    expect(container.querySelectorAll('.recharts-bar')).toHaveLength(2)
+    expect(screen.getAllByText('Silva').length).toBeGreaterThanOrEqual(2)
+  })
+
   it('keeps the grouped component chart', async () => {
     const { container } = render(<ComparePanel gw={5} players={PLAYERS} />)
     await screen.findByTestId('compare-1')
@@ -390,18 +405,103 @@ describe('the ownership trio', () => {
       expect(cell).not.toHaveTextContent('±')
     })
 
-  it('draws an em dash for the error when only the error is missing',
+  it('drops the ± entirely when only the error is missing', async () => {
+    // An older field log: an EO measured, no error recorded. 0.0 there would
+    // be a claim of perfect precision — and "± —" is a plus-or-minus of
+    // nothing, a symbol promising an interval the log never carried. The
+    // absence says so in the figure's own title instead.
+    render(<ComparePanel gw={5} players={[
+      { ...PLAYERS[0], field_se: null, field_n: null }, PLAYERS[1]]} />)
+    const cell = within(await screen.findByTestId('compare-1'))
+      .getByTestId('field-eo-1')
+    expect(cell).toHaveTextContent('78.0%')
+    expect(cell).not.toHaveTextContent('±')
+    expect(cell).not.toHaveTextContent('0.0')
+    expect(within(cell).getByTitle(/No error was recorded/))
+      .toBeInTheDocument()
+  })
+})
+
+describe('the terms, the total and the two expected-points numbers', () => {
+  // The reviewer's real-shape case, off the banked components: eleven terms
+  // each rounded to 2dp, summing to 0.49, against an `ep` of 0.55. Every one
+  // of those six hundredths is per-term rounding, and a caption saying the
+  // total is a horizon figure would be inventing a discrepancy.
+  const SMALL = [0.09, 0.08, 0.07, 0.06, 0.05, 0.04, 0.03, 0.03, 0.02, 0.01,
+                 0.01]
+
+  function serve(points: number[], ep: number, epGw = ep, gws = [5]) {
+    apiGet.mockImplementation((path: string) => (
+      path.startsWith('/api/components/')
+        ? Promise.resolve({ ...COMPONENTS, players: [
+            { ...COMPONENTS.players[0], ep, ep_gw: epGw,
+              fixtures: gws.map((g, i) => ({
+                ...COMPONENTS.players[0].fixtures[0], gw: g,
+                opponent: i === 0 ? 'EVE' : 'BUR',
+                components: i === 0
+                  ? points.map((p, n) => ({ label: `t${n}`, points: p }))
+                  : [{ label: 't0', points: 0.5 }] })) },
+            COMPONENTS.players[1]] })
+        : path.startsWith('/api/fixtures/matrix') ? Promise.resolve(MATRIX)
+          : Promise.reject(new Error(`unexpected ${path}`))
+    ))
+  }
+
+  it('says nothing about a horizon when the gap is only term rounding',
     async () => {
-      // An older field log: an EO measured, no error recorded. 0.0 there would
-      // be a claim of perfect precision.
-      render(<ComparePanel gw={5} players={[
-        { ...PLAYERS[0], field_se: null, field_n: null }, PLAYERS[1]]} />)
-      const cell = within(await screen.findByTestId('compare-1'))
-        .getByTestId('field-eo-1')
-      expect(cell).toHaveTextContent('78.0%')
-      expect(cell).toHaveTextContent('± —')
-      expect(cell).not.toHaveTextContent('± 0.0')
+      serve(SMALL, 0.55)
+      render(<ComparePanel gw={5} players={PLAYERS} />)
+      const card = await screen.findByTestId('compare-1')
+      expect(within(card).getByTestId('breakdown-1'))
+        .toHaveTextContent('These terms add up to the xPts above.')
+      expect(within(card).queryByText(/sum to the horizon/)).toBeNull()
     })
+
+  it('still speaks up when the rows do not account for the banked points',
+    async () => {
+      // A second fixture whose expected points are banked but whose terms
+      // the frame never wrote: the rows come to 0.49 and the payload's own
+      // total is 0.99, which is a gap eleven roundings cannot explain.
+      apiGet.mockImplementation((path: string) => (
+        path.startsWith('/api/components/')
+          ? Promise.resolve({ ...COMPONENTS, players: [
+              { ...COMPONENTS.players[0], ep: 0.99, ep_gw: 0.49,
+                fixtures: [
+                  { ...COMPONENTS.players[0].fixtures[0], gw: 5, ep: 0.49,
+                    components: SMALL.map((p, n) => ({ label: `t${n}`,
+                                                       points: p })) },
+                  { ...COMPONENTS.players[0].fixtures[0], gw: 6, ep: 0.5,
+                    opponent: 'BUR', components: [] }] },
+              COMPONENTS.players[1]] })
+          : path.startsWith('/api/fixtures/matrix') ? Promise.resolve(MATRIX)
+            : Promise.reject(new Error(`unexpected ${path}`))
+      ))
+      render(<ComparePanel gw={5} players={PLAYERS} />)
+      const card = await screen.findByTestId('compare-1')
+      expect(within(card).getByTestId('breakdown-1'))
+        .toHaveTextContent(/sum to the horizon/)
+    })
+
+  it('renders at 390px with no console error', async () => {
+    // §Gates' 390px claim for this view: the Players hub's cold-clone rail
+    // renders only its default tab, and Compare needs two ticked rows.
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.stubGlobal('innerWidth', 390)
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: true, media: query, onchange: null,
+      addEventListener: () => {}, removeEventListener: () => {},
+      addListener: () => {}, removeListener: () => {},
+      dispatchEvent: () => false,
+    }))
+    const { container } = render(<ComparePanel gw={5} players={PLAYERS} />)
+    await screen.findByTestId('compare-1')
+    // Each card is a full-width column at this width and the panel draws no
+    // table, so nothing here can push the body sideways.
+    expect(container.querySelectorAll('table')).toHaveLength(0)
+    expect(spy).not.toHaveBeenCalled()
+    spy.mockRestore()
+    vi.unstubAllGlobals()
+  })
 })
 
 // One template row so a band test states only the band.
