@@ -138,6 +138,14 @@ export default function ThisWeek() {
       teamShort: p.team_short ?? null,
       teamCode: p.team_code ?? null,
       nextFixture: p.next_fixture ?? null,
+      // v10b §F1a. Off /api/players, which already computes both against
+      // state.owned_codes — the same owned set these rows describe — so the
+      // page has one answer to "where does he put me against the field"
+      // rather than two. `?? null`, not `?? NaN`: the field EO contract is
+      // explicitly "never 0 for unknown", and a NaN reaching a tint
+      // comparison is a silent false.
+      fieldEo: row?.field_eo ?? null,
+      fieldClass: row?.field_class ?? null,
     }
   })
 
@@ -240,6 +248,16 @@ export default function ThisWeek() {
                 </span>
               )}
             </span>
+            {/* v10b §F1a: the server's own sentence, rendered verbatim. The
+                claim about what the number means is made once, where the
+                data is; a second wording here would be the same number in
+                two voices. */}
+            {advice.captain_field && (
+              <span className="text-text-muted"
+                    data-testid="captain-field-note">
+                {advice.captain_field.note}
+              </span>
+            )}
             <span className="flex overflow-hidden rounded-card
                              border border-border">
               {(['pitch', 'table'] as const).map((option) => (

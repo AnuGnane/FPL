@@ -105,6 +105,26 @@ export interface Advice {
   move_frequencies?: MoveFrequency[]
   raw_optimum_agrees?: boolean | null
   scenarios?: ScenarioReport | null
+  captain_field?: CaptainField
+}
+
+/** Where the captain stands against the top 10k (v10b §F1a).
+ *
+ * Absent — not null — when the backend had nothing to say: no field log, no
+ * events row, or an element it could not resolve to a player. `eo` is null
+ * when only the bootstrap's modal captain was available. `note` is the
+ * server's own sentence and is rendered verbatim; formatting it here would be
+ * a second voice saying the same number a slightly different way.
+ */
+export interface CaptainField {
+  code: number
+  eo: number | null
+  se: number | null
+  n: number | null
+  gw: number
+  field_class: 'shield' | 'sword' | null
+  most_captained?: { code: number; name: string | null; gw: number } | null
+  note: string
 }
 
 export interface AdviceLatest {

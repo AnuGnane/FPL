@@ -120,3 +120,33 @@ describe('v8g bands', () => {
       .toBeInTheDocument()
   })
 })
+
+describe('SquadTable: the field column (v10b §F1a)', () => {
+  const WITH_FIELD: SquadRow[] = [
+    { ...ROWS[0], fieldEo: 55.2, fieldClass: 'shield' },
+    { ...ROWS[1], fieldEo: null, fieldClass: null },
+  ]
+
+  it('renders the top-10k share to one decimal', () => {
+    render(<SquadTable rows={WITH_FIELD} breakdown={{}} />)
+    expect(screen.getByText('Field%')).toBeInTheDocument()
+    const salah = screen.getByText('Salah').closest('tr')!
+    expect(within(salah).getByText('55.2')).toBeInTheDocument()
+  })
+
+  it('renders an em dash where the field has never been scraped', () => {
+    // Never a zero. `types.ts:212` — "never 0 for unknown" — because a 0 is a
+    // measured differential and this is the absence of a measurement.
+    render(<SquadTable rows={WITH_FIELD} breakdown={{}} />)
+    const gabriel = screen.getByText('Gabriel').closest('tr')!
+    expect(within(gabriel).getAllByText('—').length).toBeGreaterThan(0)
+  })
+
+  it('renders a row built without the new fields at all', () => {
+    // The whole reason they are optional (plan A6): three factories in two
+    // files build rows with every field, and a required addition would break
+    // all three for no assertion's benefit.
+    render(<SquadTable rows={ROWS} breakdown={{}} />)
+    expect(screen.getByText('Salah')).toBeInTheDocument()
+  })
+})

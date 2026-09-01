@@ -62,13 +62,14 @@ const PLAYERS = [
     league_eo: 61.5, available: true, status: 'a',
     news: 'Knock - 75% chance of playing', chance_of_playing: 75,
     penalties_order: 1, free_kicks_order: 1, corners_order: null,
-    in_squad: true, last4: [2, 9, 5, 12], element: 7 },
+    in_squad: true, last4: [2, 9, 5, 12], element: 7,
+    field_eo: 55.2, field_class: 'shield' },
   { code: 2, name: 'Gabriel', position: 'DEF', team_code: 301,
     team_name: 'ARS', price: 6.0, ep_next: 4.6, ep_horizon: 9.0,
     ownership: 30.0, league_eo: 12.0, available: true, status: 'a',
     news: '', chance_of_playing: null, penalties_order: null,
     free_kicks_order: null, corners_order: null, in_squad: true,
-    last4: [], element: 8 },
+    last4: [], element: 8, field_eo: null, field_class: null },
 ]
 
 const COMPONENTS = {
@@ -350,4 +351,94 @@ describe('the pitch and the table', () => {
     const header = (await squadCard()).querySelector('header')!
     expect(header.textContent).toMatch(/Captain Salah/)
   })
+})
+
+describe('the captain against the field (v10b §F1a)', () => {
+  const NOTE = 'The top 10k have 62.4% ± 2.8 of Salah — he is cover, '
+    + 'not attack.'
+
+  function withCaptainField(field: unknown) {
+    return {
+      ...ADVICE,
+      advice: { ...ADVICE.advice, captain_field: field },
+    }
+  }
+
+  it('prints the server’s sentence verbatim', async () => {
+    // Verbatim is the assertion. The number is a claim about the data's
+    // meaning and it is made once, where the data is; restating it here would
+    // be a second voice saying the same thing a slightly different way.
+    apiGet.mockImplementation((path: string) => (
+      path === '/api/advice/latest'
+        ? Promise.resolve(withCaptainField({
+          code: 1, eo: 62.4, se: 2.8, n: 300, gw: 5,
+          field_class: 'shield', note: NOTE,
+        }))
+        : route(path)))
+    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    expect(await screen.findByTestId('captain-field-note'))
+      .toHaveTextContent(NOTE)
+  })
+
+  it('renders no sentence and an intact header without captain_field',
+     async () => {
+       // The cold-clone case, which is most weeks for most users.
+       render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+       await screen.findByTestId('pitch-row-MID')
+       expect(screen.queryByTestId('captain-field-note')).toBeNull()
+       const header = (await squadCard()).querySelector('header')!
+       expect(header.textContent).toMatch(/Captain Salah/)
+       expect(header.textContent).toMatch(/of sims/)
+       expect(header.textContent).toMatch(/vice Gabriel/)
+       expect(screen.getByRole('button', { name: 'Pitch' }))
+         .toBeInTheDocument()
+     })
+
+  it('prints the modal captain and no percentage when the EO is null',
+     async () => {
+       const modalNote = 'The top 10k are captaining Haaland in GW5.'
+       apiGet.mockImplementation((path: string) => (
+         path === '/api/advice/latest'
+           ? Promise.resolve(withCaptainField({
+             code: 1, eo: null, se: null, n: null, gw: 5,
+             field_class: null, note: modalNote,
+             most_captained: { code: 9, name: 'Haaland', gw: 5 },
+           }))
+           : route(path)))
+       render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+       const note = await screen.findByTestId('captain-field-note')
+       expect(note).toHaveTextContent(modalNote)
+       expect(note.textContent).not.toMatch(/%/)
+     })
+
+  it('survives /api/players failing, because the sentence is not from there',
+     async () => {
+       apiGet.mockImplementation((path: string) => {
+         if (path === '/api/advice/latest') {
+           return Promise.resolve(withCaptainField({
+             code: 1, eo: 62.4, se: 2.8, n: 300, gw: 5,
+             field_class: 'shield', note: NOTE,
+           }))
+         }
+         if (path.startsWith('/api/players')) {
+           return Promise.reject(new Error('explorer is down'))
+         }
+         return route(path)
+       })
+       render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+       expect(await screen.findByTestId('captain-field-note'))
+         .toHaveTextContent(NOTE)
+     })
+
+  it('joins Field% onto the squad rows, and an em dash where it is unknown',
+     async () => {
+       render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+       fireEvent.click(await screen.findByRole('button', { name: 'Table' }))
+       const table = within(await squadCard()).getByRole('table')
+       const salah = within(table).getByText('Salah').closest('tr')!
+       expect(within(salah).getByText('55.2')).toBeInTheDocument()
+       const gabriel = within(table).getByText('Gabriel').closest('tr')!
+       // Never a 0: field EO's own contract is "never 0 for unknown".
+       expect(within(gabriel).getAllByText('—').length).toBeGreaterThan(0)
+     })
 })

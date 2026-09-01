@@ -31,6 +31,12 @@ export interface SquadRow {
   teamShort: string | null
   teamCode: number | null
   nextFixture: NextFixture | null
+  /** v10b §F1a: the top-10k share and its classification, joined client-side
+   *  off `/api/players` — which already computes both against the same owned
+   *  set these rows describe. Optional, because the server's own contract is
+   *  "may be absent" and because three row factories predate them. */
+  fieldEo?: number | null
+  fieldClass?: 'shield' | 'sword' | 'threat' | null
 }
 
 export interface SquadBreakdown {
@@ -123,6 +129,13 @@ function columnsFor(mobile: boolean): Column<SquadRow>[] { return [
     render: (r) => fmtNum(r.xmins, 0) },
   { key: 'leagueEo', header: 'EO%', primary: true, numeric: true,
     value: (r) => r.leagueEo, render: (r) => fmtNum(r.leagueEo) },
+  // v10b §F1a. Deliberately not `primary`: EO% already holds the primary slot
+  // for ownership on the 390px collapsed card, and two ownership columns
+  // there is how the card stops being readable. The sort value falls back to
+  // -1 so unknowns sort below a genuine 0.0 rather than beside it.
+  { key: 'fieldEo', header: 'Field%', numeric: true,
+    value: (r) => r.fieldEo ?? -1,
+    render: (r) => (r.fieldEo == null ? '—' : fmtNum(r.fieldEo, 1)) },
   { key: 'ownership', header: 'Own%', numeric: true,
     value: (r) => r.ownership, render: (r) => fmtNum(r.ownership) },
   { key: 'simPct', header: 'sim%', numeric: true, value: (r) => r.simPct,
