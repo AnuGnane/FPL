@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -227,6 +227,43 @@ describe('a phone screen scrolls nothing sideways', () => {
     apiGet.mockResolvedValue(CHIPS)
     render(<MemoryRouter><ChipsTab /></MemoryRouter>)
     await screen.findAllByText(/wildcard/i)
+    wrapped()
+  })
+
+  it("lets the Chips tab's three-segment strip narrow rather than push",
+     async () => {
+       // v9b left this control alone at two buttons — "already fits; leave
+       // it". v10b §F2c makes it three, which reopens that decision, so the
+       // strip states how it narrows instead of being taken on trust.
+       apiGet.mockResolvedValue(CHIPS)
+       render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+       const strip = (await screen.findByRole('button',
+         { name: 'Chip table' })).parentElement!
+       expect(within(strip).getAllByRole('button')).toHaveLength(3)
+       expect(strip.className).toMatch(/overflow-x-auto|flex-wrap/)
+     })
+
+  it("wraps the Outlook's own table in its own scroller", async () => {
+    apiGet.mockImplementation((path: string) => {
+      if (path.startsWith('/api/chips/plan')) {
+        return Promise.resolve({ gw: 5, chips: [] })
+      }
+      if (path.startsWith('/api/fixtures/outlook')) {
+        return Promise.resolve({
+          from_gw: 5,
+          weeks: [{ gw: 6, fixtures: 11,
+                    doubles: [{ code: 14, short_name: 'LIV' }],
+                    blanks: [] }],
+          has_doubles: true, has_blanks: false, teams_known: true,
+          note: null,
+        })
+      }
+      return Promise.resolve(CHIPS)
+    })
+    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    await userEvent.click(await screen.findByRole('button',
+      { name: 'Season outlook' }))
+    await screen.findByTestId('outlook-week-6')
     wrapped()
   })
 

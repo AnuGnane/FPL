@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -176,5 +176,154 @@ describe('chips tab', () => {
       { name: /re-solve/i }))
     expect(await screen.findByText('solver died')).toBeInTheDocument()
     expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument()
+  })
+})
+
+const PLAN = {
+  gw: 5,
+  chips: [
+    { chip: 'bboost', weeks: [{ gw: 5, gain: 2.0, per_week: 2.0 },
+                              { gw: 6, gain: 3.5, per_week: 3.5 }],
+      best_gw: 6, best_gain: 3.5, best_gain_per_week: 3.5, weeks_scored: 2,
+      now_gain: 2.0, play_now_delta: -1.5, threshold_now: 4.0,
+      play_now: false, thetas: [4.0, 3.2], window: [5, 19] },
+    { chip: 'freehit', weeks: [{ gw: 5, gain: 6.0, per_week: 6.0 }],
+      best_gw: 5, best_gain: 6.0, best_gain_per_week: 6.0, weeks_scored: 1,
+      now_gain: 6.0, play_now_delta: 0.0, threshold_now: 4.0,
+      play_now: true, thetas: [4.0], window: [5, 19] },
+  ],
+}
+
+const OUTLOOK_EMPTY = {
+  from_gw: 5, weeks: [{ gw: 5, fixtures: 10, doubles: [], blanks: [] }],
+  has_doubles: false, has_blanks: false, teams_known: true,
+  note: 'No doubles or blanks are scheduled yet — rearrangements usually '
+    + 'start appearing around the cup rounds.',
+}
+
+const OUTLOOK_FULL = {
+  from_gw: 5,
+  weeks: [
+    { gw: 5, fixtures: 10, doubles: [], blanks: [] },
+    { gw: 6, fixtures: 11,
+      doubles: [{ code: 14, short_name: 'LIV' }],
+      blanks: [{ code: 8, short_name: 'CHE' }] },
+  ],
+  has_doubles: true, has_blanks: true, teams_known: true, note: null,
+}
+
+function serveOutlook(outlook: unknown = OUTLOOK_EMPTY, plan: unknown = PLAN) {
+  apiGet.mockImplementation((path: string) => {
+    if (path.startsWith('/api/chips/plan')) return Promise.resolve(plan)
+    if (path.startsWith('/api/fixtures/outlook')) return Promise.resolve(
+      outlook)
+    if (path.startsWith('/api/chips')) return Promise.resolve(CHIPS)
+    if (path.startsWith('/api/players')) return Promise.resolve(PLAYERS)
+    return Promise.resolve({})
+  })
+}
+
+async function openOutlook() {
+  render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+  await userEvent.click(await screen.findByRole('button',
+    { name: 'Season outlook' }))
+}
+
+describe('the season outlook segment (v10b §F2c)', () => {
+  it('is a third segment that opens its own panel', async () => {
+    serveOutlook()
+    await openOutlook()
+    expect(screen.getByRole('button', { name: 'Season outlook' }))
+      .toHaveAttribute('aria-pressed', 'true')
+    expect(await screen.findByTestId('chip-outlook')).toBeInTheDocument()
+  })
+
+  it('says plainly that nothing is scheduled yet', async () => {
+    // Asserted as a string, because this sentence *is* the feature for the
+    // next four months: today's list is ten fixtures in every one of
+    // thirty-eight gameweeks.
+    serveOutlook()
+    await openOutlook()
+    expect(await screen.findByText(/No doubles or blanks are scheduled yet/))
+      .toBeInTheDocument()
+  })
+
+  it('lists the doubles and blanks per gameweek when there are any',
+     async () => {
+       serveOutlook(OUTLOOK_FULL)
+       await openOutlook()
+       const week = await screen.findByTestId('outlook-week-6')
+       expect(within(week).getByText(/LIV/)).toBeInTheDocument()
+       expect(within(week).getByText(/CHE/)).toBeInTheDocument()
+       expect(screen.queryByText(/No doubles or blanks are scheduled/))
+         .toBeNull()
+     })
+
+  it('shows each chip’s gain against its bar and its θ per week', async () => {
+    serveOutlook()
+    await openOutlook()
+    const row = await screen.findByTestId('outlook-chip-bboost')
+    expect(within(row).getByText(/θ 4.0/)).toBeInTheDocument()
+    expect(within(row).getByText(/best GW6 · 3.5/))
+      .toBeInTheDocument()
+    expect(within(row).getByTestId('theta-track')).toBeInTheDocument()
+  })
+
+  it('names the GW19 expiry for a first-half chip only', async () => {
+    serveOutlook()
+    await openOutlook()
+    // Both chips in the fixture sit in the first-half window.
+    expect((await screen.findAllByText(/expires after GW19/))).toHaveLength(2)
+  })
+
+  it('does not name a GW19 expiry in the second half of the season',
+     async () => {
+       // `window` drives it. A hardcoded 19 would be wrong from GW20 onward,
+       // when the second set of chips runs to GW38.
+       serveOutlook(OUTLOOK_EMPTY, {
+         ...PLAN,
+         chips: PLAN.chips.map((c) => ({ ...c, window: [25, 38] })),
+       })
+       await openOutlook()
+       await screen.findByTestId('chip-outlook')
+       expect(screen.queryByText(/expires after GW19/)).toBeNull()
+     })
+
+  it('is labelled planning rather than advice', async () => {
+    // The whole risk of this panel is that a θ trajectory reads like an
+    // instruction. It says which it is, above the numbers.
+    serveOutlook()
+    await openOutlook()
+    expect(await screen.findByTestId('outlook-caveat'))
+      .toHaveTextContent(/planning/i)
+  })
+
+  it('keeps one source working when the other fails', async () => {
+    apiGet.mockImplementation((path: string) => {
+      if (path.startsWith('/api/chips/plan')) {
+        return Promise.reject(new Error('plan is down'))
+      }
+      if (path.startsWith('/api/fixtures/outlook')) {
+        return Promise.resolve(OUTLOOK_FULL)
+      }
+      if (path.startsWith('/api/chips')) return Promise.resolve(CHIPS)
+      return Promise.resolve(PLAYERS)
+    })
+    await openOutlook()
+    expect(await screen.findByTestId('outlook-week-6')).toBeInTheDocument()
+  })
+
+  it('leaves the chip table and the wildcard panel as they were', async () => {
+    serveOutlook()
+    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    expect(await screen.findByRole('heading',
+      { name: /gain against the bar/i })).toBeInTheDocument()
+    // Scoped to the segment strip: the chip table's own rows carry a
+    // "Wildcard" button too, and always have.
+    const strip = screen.getByRole('button', { name: 'Chip table' })
+      .parentElement!
+    await userEvent.click(within(strip).getByRole('button',
+                                                  { name: 'Wildcard' }))
+    expect(await screen.findByText('Wirtz')).toBeInTheDocument()
   })
 })

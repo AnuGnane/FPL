@@ -7,7 +7,8 @@ import {
 import ConstraintsPanel from './ConstraintsPanel'
 import PlanDiffTable from './PlanDiffTable'
 import type {
-  ChipsWorkbench, ChipSquadPlayer, SquadDiff, WhatIfRequest, WhatIfResult,
+  ChipPlan, ChipsWorkbench, ChipSquadPlayer, FixtureOutlook, SquadDiff,
+  WhatIfRequest, WhatIfResult,
 } from '../../types'
 
 const LABELS: Record<string, string> = {
@@ -103,7 +104,7 @@ export default function ChipsTab() {
   const [data, setData] = useState<ChipsWorkbench | null>(null)
   const [empty, setEmpty] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [tab, setTab] = useState<'table' | 'wildcard'>('table')
+  const [tab, setTab] = useState<'table' | 'wildcard' | 'outlook'>('table')
   const [request, setRequest] = useState<WhatIfRequest>(EMPTY)
   const [chip, setChip] = useState<string>('wildcard')
   const [invalid, setInvalid] = useState<string | null>(null)
@@ -169,8 +170,13 @@ export default function ChipsTab() {
     <>
       {/* Deliberately not carded: a segmented control belongs above the
           panel it switches, the way the hub's own tab strip does. */}
-      <div className="mb-4 flex gap-1">
-        {([['table', 'Chip table'], ['wildcard', 'Wildcard']] as const).map(
+      {/* `flex-wrap` rather than a scroller: v9b left this control at two
+          buttons because two already fit, and a third reopens that. Wrapping
+          is the cheapest answer and the one responsive.test.tsx's existing
+          rail already recognises — no third way of making a strip narrow. */}
+      <div className="mb-4 flex flex-wrap gap-1">
+        {([['table', 'Chip table'], ['wildcard', 'Wildcard'],
+           ['outlook', 'Season outlook']] as const).map(
           ([key, label]) => (
             <button
               key={key}
@@ -187,6 +193,7 @@ export default function ChipsTab() {
             </button>
           ))}
       </div>
+      {tab === 'outlook' && <ChipOutlook />}
       {tab === 'table' && (
         <Card title="Gain against the bar" className="mb-4">
           {data.chips.length === 0 && (
@@ -278,5 +285,154 @@ export default function ChipsTab() {
       )}
       {diff && !busy && <PlanDiffTable diff={diff} />}
     </>
+  )
+}
+
+
+/** The season ahead: what each chip's bar does over the coming weeks, and
+ *  which weeks are doubles or blanks (v10b §F2c).
+ *
+ *  Two independent fetches, on purpose. `/api/chips/plan` re-solves a handful
+ *  of small MILPs and `/api/fixtures/outlook` reads a parquet; they fail for
+ *  unrelated reasons, and a tab that blanks both because one is down is worse
+ *  than a tab that shows the half it has.
+ *
+ *  It reports and does not instruct. θ is the bar the advise run itself
+ *  solved against — the same expression, from the same asset — so this panel
+ *  says where the season stands, not what to do about it.
+ */
+function ChipOutlook() {
+  const [plan, setPlan] = useState<ChipPlan | null>(null)
+  const [outlook, setOutlook] = useState<FixtureOutlook | null>(null)
+  const [planError, setPlanError] = useState<string | null>(null)
+  const [outlookError, setOutlookError] = useState<string | null>(null)
+
+  useEffect(() => {
+    apiGet<ChipPlan>('/api/chips/plan').then(setPlan)
+      .catch((e: Error) => setPlanError(e.message))
+    apiGet<FixtureOutlook>('/api/fixtures/outlook').then(setOutlook)
+      .catch((e: Error) => setOutlookError(e.message))
+  }, [])
+
+  if (!plan && !outlook && !planError && !outlookError) return <Loading />
+
+  const weeks = outlook?.weeks ?? []
+  const interesting = weeks.filter(
+    (w) => w.doubles.length > 0 || w.blanks.length > 0)
+
+  return (
+    <div data-testid="chip-outlook">
+      <Card title="The season ahead" className="mb-4">
+        <p className="mb-3 text-text-muted" data-testid="outlook-caveat">
+          Planning, not advice: this is where each chip&rsquo;s bar sits over
+          the coming weeks and which weeks are unusual. What to play this week
+          is This Week&rsquo;s answer.
+        </p>
+        {planError && <p className="text-rust">{planError}</p>}
+        {plan?.chips.map((row) => {
+          const expiry = row.window?.[1]
+          return (
+            <div key={row.chip} data-testid={`outlook-chip-${row.chip}`}
+                 className="mb-3 border-t border-divider pt-2">
+              <div className="flex flex-wrap items-baseline gap-x-3">
+                <span className="text-text">{LABELS[row.chip] ?? row.chip}</span>
+                <span className="num text-text-secondary">
+                  {`best GW${row.best_gw} · ${fmtNum(row.best_gain, 1)} pts`}
+                </span>
+                <span className="num text-text-muted">
+                  {`θ ${fmtNum(row.threshold_now ?? null, 1)}`}
+                </span>
+                {expiry === 19 && (
+                  <span className="text-text-muted">expires after GW19</span>
+                )}
+              </div>
+              <ThetaTrack weeks={row.weeks} thetas={row.thetas ?? []} />
+            </div>
+          )
+        })}
+      </Card>
+      <Card title="Doubles and blanks">
+        {outlookError && <p className="text-rust">{outlookError}</p>}
+        {outlook && interesting.length === 0 && (
+          <EmptyState
+            title="Nothing unusual scheduled"
+            detail={outlook.note
+              ?? 'No doubles or blanks are scheduled yet — rearrangements '
+                + 'usually start appearing around the cup rounds.'}
+            action="Refresh data"
+          />
+        )}
+        {interesting.length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <th className="label pb-1 text-left">GW</th>
+                  <th className="label pb-1 text-right">Fixtures</th>
+                  <th className="label pb-1 pl-3 text-left">Doubles</th>
+                  <th className="label pb-1 pl-3 text-left">Blanks</th>
+                </tr>
+              </thead>
+              <tbody>
+                {interesting.map((w) => (
+                  <tr key={w.gw} className="border-t border-divider"
+                      data-testid={`outlook-week-${w.gw}`}>
+                    <td className="num py-1.5">GW{w.gw}</td>
+                    <td className="num py-1.5 text-right text-text-secondary">
+                      {w.fixtures}
+                    </td>
+                    <td className="py-1.5 pl-3 text-sage">
+                      {w.doubles.map(teamLabel).join(', ') || '—'}
+                    </td>
+                    <td className="py-1.5 pl-3 text-rust">
+                      {w.blanks.map(teamLabel).join(', ') || '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+    </div>
+  )
+}
+
+/** A club, named if the teams snapshot could be read and numbered if not.
+ *  The raw id is shown rather than hidden: a count with an unnameable club in
+ *  it is still a true count, and pretending the row is not there is worse. */
+function teamLabel(team: { code: number; short_name: string | null }): string {
+  return team.short_name ?? `#${team.code}`
+}
+
+/** θ per week beside the gain that week offers, aligned by index.
+ *
+ *  A compact strip rather than a chart: the question is "does any week ahead
+ *  clear its bar", which is a row of comparisons, and the weeks are few. */
+function ThetaTrack(
+  { weeks, thetas }: {
+    weeks: Array<{ gw: number; gain: number }>
+    thetas: number[]
+  },
+) {
+  if (weeks.length === 0) return null
+  return (
+    <div className="mt-1 flex flex-wrap gap-2" data-testid="theta-track">
+      {weeks.map((w, i) => {
+        const theta = thetas[i]
+        const over = theta !== undefined && w.gain >= theta
+        return (
+          <span key={w.gw}
+                className={`num rounded-card border px-1.5 py-0.5 ${over
+                  ? 'border-sage text-sage' : 'border-border text-text-muted'}`}
+                title={theta === undefined
+                  ? `GW${w.gw}: gain ${w.gain.toFixed(1)}`
+                  : `GW${w.gw}: gain ${w.gain.toFixed(1)} against a bar of `
+                    + theta.toFixed(1)}>
+            {`GW${w.gw} ${w.gain.toFixed(1)}`}
+          </span>
+        )
+      })}
+    </div>
   )
 }

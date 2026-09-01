@@ -148,6 +148,49 @@ export interface ChipPlanRow {
   weeks_scored: number
   now_gain: number | null
   play_now_delta: number | null
+  /** θ for this chip in the current gameweek: the surplus the best remaining
+   *  week is expected to offer. Computed since v4c and declared only in
+   *  v10b — until then the server computed it and pydantic dropped it. */
+  threshold_now?: number | null
+  play_now?: boolean | null
+  /** θ per week, aligned by index with `weeks`. */
+  thetas?: number[]
+  /** `[from_gw, last_gw]`. The first element is the gameweek asked about, not
+   *  the window's opening — so this reads "expires after GW19", never
+   *  "window starts at". */
+  window?: number[]
+}
+
+export interface ChipPlan {
+  gw: number
+  chips: ChipPlanRow[]
+}
+
+/** v10b §F2a. Mirrors the pydantic models field for field. */
+export interface OutlookTeam {
+  code: number
+  /** Null when the teams snapshot was unreadable: the counts still hold and
+   *  only the label is missing. */
+  short_name: string | null
+}
+
+export interface OutlookWeek {
+  gw: number
+  fixtures: number
+  doubles: OutlookTeam[]
+  blanks: OutlookTeam[]
+}
+
+export interface FixtureOutlook {
+  from_gw: number | null
+  weeks: OutlookWeek[]
+  /** Declared by the server rather than derived here: the empty state is the
+   *  common case for months, and a client branching on the emptiness of two
+   *  arrays is a client that will one day branch on `weeks.length`. */
+  has_doubles: boolean
+  has_blanks: boolean
+  teams_known: boolean
+  note: string | null
 }
 
 export interface Component { label: string; points: number }
