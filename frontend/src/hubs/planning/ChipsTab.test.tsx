@@ -289,6 +289,58 @@ describe('the season outlook segment (v10b §F2c)', () => {
        expect(screen.queryByText(/expires after GW19/)).toBeNull()
      })
 
+  it('names the window’s own expiry in the second half of the season',
+     async () => {
+       // The row carries its window; the component reads the end of it. The
+       // literal it replaced could only ever say GW19, so the second set of
+       // chips — which runs to GW38 — had no expiry at all.
+       serveOutlook(OUTLOOK_EMPTY, {
+         ...PLAN,
+         chips: PLAN.chips.map((c) => ({ ...c, window: [25, 38] })),
+       })
+       await openOutlook()
+       expect((await screen.findAllByText(/expires after GW38/)))
+         .toHaveLength(2)
+     })
+
+  it('trusts the served flags over the slice it happens to be rendering',
+     async () => {
+       // `has_doubles` is the server's answer about the season; the filtered
+       // rows are only what this slice shows. A client that re-derives the
+       // empty state from the rows tells the user nothing is scheduled on
+       // exactly the payload that says something is.
+       serveOutlook({
+         ...OUTLOOK_EMPTY, has_doubles: true, note: null,
+       })
+       await openOutlook()
+       await screen.findByTestId('chip-outlook')
+       expect(screen.queryByText(/Nothing unusual scheduled/)).toBeNull()
+       expect(screen.queryByText(/No doubles or blanks are scheduled/))
+         .toBeNull()
+     })
+
+  it('says when the clubs could not be named and the counts still hold',
+     async () => {
+       // `teams_known: false` is the teams-snapshot degradation: the counts
+       // are the published list's own and only the short names are missing.
+       // The table shows `#14` either way; this line says why.
+       serveOutlook({
+         ...OUTLOOK_FULL, teams_known: false,
+         weeks: [{ gw: 6, fixtures: 11,
+                   doubles: [{ code: 14, short_name: null }], blanks: [] }],
+       })
+       await openOutlook()
+       expect(await screen.findByTestId('outlook-teams-unknown'))
+         .toHaveTextContent(/club names unavailable/i)
+     })
+
+  it('does not say the clubs are unnamed when they are', async () => {
+    serveOutlook(OUTLOOK_FULL)
+    await openOutlook()
+    await screen.findByTestId('outlook-week-6')
+    expect(screen.queryByTestId('outlook-teams-unknown')).toBeNull()
+  })
+
   it('is labelled planning rather than advice', async () => {
     // The whole risk of this panel is that a θ trajectory reads like an
     // instruction. It says which it is, above the numbers.

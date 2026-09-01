@@ -317,8 +317,15 @@ function ChipOutlook() {
   if (!plan && !outlook && !planError && !outlookError) return <Loading />
 
   const weeks = outlook?.weeks ?? []
+  // The filter is for *display* — which rows are worth a line in the table.
+  // Whether there is anything scheduled at all is the server's answer, and
+  // the empty-state copy reads it off the served flags rather than
+  // re-deriving it here: `has_doubles` is a claim about the season, and the
+  // rows are only what this slice happens to carry. v9d's `available`, same
+  // reasoning.
   const interesting = weeks.filter(
     (w) => w.doubles.length > 0 || w.blanks.length > 0)
+  const nothingScheduled = !outlook?.has_doubles && !outlook?.has_blanks
 
   return (
     <div data-testid="chip-outlook">
@@ -342,8 +349,10 @@ function ChipOutlook() {
                 <span className="num text-text-muted">
                   {`θ ${fmtNum(row.threshold_now ?? null, 1)}`}
                 </span>
-                {expiry === 19 && (
-                  <span className="text-text-muted">expires after GW19</span>
+                {expiry != null && (
+                  <span className="text-text-muted">
+                    {`expires after GW${expiry}`}
+                  </span>
                 )}
               </div>
               <ThetaTrack weeks={row.weeks} thetas={row.thetas ?? []} />
@@ -353,7 +362,13 @@ function ChipOutlook() {
       </Card>
       <Card title="Doubles and blanks">
         {outlookError && <p className="text-rust">{outlookError}</p>}
-        {outlook && interesting.length === 0 && (
+        {outlook?.teams_known === false && (
+          <p className="mb-2 text-text-muted"
+             data-testid="outlook-teams-unknown">
+            Club names unavailable — counts still hold.
+          </p>
+        )}
+        {outlook && nothingScheduled && (
           <EmptyState
             title="Nothing unusual scheduled"
             detail={outlook.note
