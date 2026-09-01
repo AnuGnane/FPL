@@ -109,7 +109,8 @@ def season_outlook(fixtures: pd.DataFrame,
     published = {}
     if parsed is not None:
         gw_column = parsed[0]["gw"].astype(int)
-        published = {int(g): int(n) for g, n in gw_column.value_counts().items()}
+        published = {int(g): int(n)
+                     for g, n in gw_column.value_counts().items()}
     weeks = []
     for gw in sorted(counts):
         if from_gw is not None and gw < int(from_gw):
