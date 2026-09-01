@@ -142,14 +142,62 @@ Two consequences, recorded because they change what the gates mean:
   stable a move is; doubling the slowest part of an advise run to price a
   bench the sweep never reads would be a cost with no reader.
 
-### G1 results
+### G1 results — **run, withdraw**
 
-_TBD by the cycle._
+`scripts/v10_shrunk_arm.py`, 2024-25 walk-forward benchmark, one fit per arm,
+16279 zeros rows and 7820 starter rows. `V10_ARM_LEVER ok` printed first.
+
+| arm | zeros RMSE | all RMSE | p_start LL (starters) | p_start LL (all) |
+| --- | --- | --- | --- | --- |
+| baseline | 1.063 | 1.969 | 0.45976 | 0.28130 |
+| shrunk_modes | 1.070 | 1.971 | 0.45474 | 0.28082 |
+
+Relative log-loss gain **+1.09%** (bar: >= 1%, passes). Zeros cost **+0.007**
+(guard: <= 0.005, fails). **Decision: withdraw** — `shrunk_start_rate`,
+`shrunk_min_per_app`.
+
+Read the two together, which is what the bar is for. On the starters slice
+truth is almost always 1.0, so the log-loss is close to `-mean(log p_start)` —
+a confidence score an arm can improve by calling more players starters, with
+the ones it is wrong about landing in the zeros stratum. A 1.1% confidence
+gain bought with 0.007 of zeros RMSE is that mechanism, not a better model.
+
+The control's 1.063 sits beside v8a's banked 1.066 as a sanity check only,
+never as the comparison (CONVENTIONS §1).
+
+**What it settles.** v5's N1 measured these columns bundled with congestion and
+blamed the congestion half. Measured alone, on a window whose cup archive is
+empty, the mode rates are a small regression too — so they were never the
+problem and were never the answer, and the next cycle can stop wondering.
+Recorded in `MINUTES_FEATURES`' docstring. The builders stay wired.
 
 ### G2 results
 
-_TBD by the cycle._
+**Not run — the orchestrator runs this.** Driver: `scripts/replay_pair.sh v10`.
+
+Preflight, both answered, because both change what the result means:
+
+- **`bench_curve` is configured** — `config.toml:13` gives
+  `[0.21, 0.06, 0.002]`, so §F1a's bench slots exist in the replay and a null
+  delta would not be a null effect for that reason (plan A9).
+- **`backtest.py` passes no `p_play`** — `grep -c p_play src/gaffer/backtest.py`
+  is 0; `src/gaffer/advise.py` is 12. Task 10 authorized option A, which wires
+  the *advise* path only. **G2 therefore cannot see §F1 and is a
+  no-regression check on the seed spread, not a measurement of the feature.**
+  G3 is the gate that judges §F1.
+
+Rule: three seed bases a side, read as mean ± spread; pass is the branch mean
+not worse than the main mean minus half the seed spread. Record wall-clock per
+side beside the totals.
 
 ### G3 results
 
-_TBD by the cycle._
+**Not run — the orchestrator runs this.** Driver: `scripts/v10_autosub_cf.py`,
+built and smoke-tested (parses; `review.score_squad`'s `xi/bench/captain/vice/
+hits` signature confirmed; `_p_play_lookup` reachable; a `bench_curve` is in
+`OPT_KW` so §F1a is live in the measurement).
+
+Rule: the mean delta over weeks where an autosub actually fired must not
+regress. A large positive delta on a handful of weeks is not a win either —
+the week count prints beside the mean so it is read as the small sample it is.
+Expect one benchmark fit plus ~114 solves (the branch arm's are two-pass).

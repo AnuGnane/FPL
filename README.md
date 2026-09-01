@@ -357,6 +357,41 @@ names every active pin beside what the model had when you set it, and
 `[news] overrides = false` in `config.toml` switches the whole thing off
 without deleting anything.
 
+### Two sources for the predicted XI, and the minutes model in the weights (v10)
+
+Predicted line-ups now come from **two** sources — Fantasy Football Scout and
+RotoWire — and they are merged by pessimism: where they disagree, the more
+conservative hint wins, and a player some source names a starter carries no
+absence damp from the other. A source that goes silent, parses into nonsense
+or falls below the name-matching coverage floor leaves the other exactly where
+it was, which is the single-source behaviour by construction.
+
+`[news] lineup_providers = ["ffs"]` in `config.toml` switches one off. That is
+a different switch from `[news] lineups = false`, which turns the whole layer
+off: the coarse one covers a source going *silent*, and a silent source needs
+no switch. The fine one covers a source going *wrong* — parsing cleanly,
+resolving above the floor, and being false — which the pessimistic merge turns
+into benched starters. An empty list behaves exactly like `lineups = false`.
+RotoWire supplies hints only and is deliberately not allowed to drive the
+notable-absence rule: it carries no FPL codes, so its XI resolves by name, and
+one wrong match would both fabricate a starter and dock the one he displaced.
+
+The presser classifier's would-be effect is now **banked** every week beside
+what the news layer actually did, and scored as a third side by
+`gaffer evaluate --news-shadow` once verdicts accrue. The classifier itself
+stays off; this is the evidence that would let it be turned on.
+
+And the bench, the bench *order* and the vice hedge are now weighted by each
+player's chance of appearing rather than by three population averages. The
+bench curve is modulated by how fragile this week's XI actually is — an XI as
+fragile as the league's average reproduces the calibrated curve exactly — the
+first substitute is the one most likely to come on *and* score rather than
+simply the highest-EP body, and the vice is priced by how likely the captain
+is to leave the armband unused. When minutes probabilities are unavailable, or
+are the same number for everybody, all three degrade to exactly the previous
+behaviour: the solve that runs is the pre-v10 solve, constraint for
+constraint.
+
 The pins live in `reports/overrides.json`. Because the two availability passes
 inside an advise run are indistinguishable from the inside, a pin lands on
 both the news arm and the news-shadow control arm — which means a pinned
