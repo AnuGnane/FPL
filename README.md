@@ -59,7 +59,8 @@ to `logs/advise.log`.
 | `gaffer field-scrape [--gw N] [--force]` | Bank a gameweek's top-10k sample: the squads (anonymised) and their effective ownership. |
 | `gaffer league-sim [--seeds a,b,c]` | Monte Carlo of your mini-league: P(win), P(top 3), expected finish and the margin fan. |
 | `gaffer backtest [--season 2025-26] [--start-gw 5] [--horizon N] [--chips]` | Replay a past season following the tool's own advice. |
-| `gaffer ui [--port N] [--no-open-browser]` | Serve the local web UI on 127.0.0.1:8927. |
+| `gaffer evaluate --calibration` | Per-gameweek reliability for the probabilities the weekly run actually served. Reads banked components, refits nothing, takes seconds. |
+| `gaffer ui [--port N] [--no-open-browser]` | Serve the local web UI on 127.0.0.1:8927. Always a single process — see below. |
 
 ## Configuration
 
@@ -232,7 +233,16 @@ uv run gaffer ui
 
 Serves the whole tool as a local web app on <http://127.0.0.1:8927> and opens
 your browser. `--port N` moves it; `--no-open-browser` leaves the browser
-alone. It binds the loopback interface only and has no login — that is the
+alone.
+
+**One process, and that is a contract (v9d).** Every job-runner invariant is
+per-instance: the single lane, the run records, the log lines an SSE response
+tails. A second worker gets a second runner, and a browser that started a job
+on worker A then polls worker B, which has never heard of it — no crash, just
+a job that never finishes on screen. `cli.ui` passes uvicorn the app
+*instance* rather than an import string, which is what makes `workers=`
+impossible rather than merely unset, so please do not add `--workers` to be
+helpful. `tests/test_v9d_degradation.py` asserts the shape of that call. It binds the loopback interface only and has no login — that is the
 whole security model, so do not put it behind a public proxy.
 
 Seven pages: **This Week** (the recommendation, with a pitch view, the chip
@@ -298,6 +308,16 @@ to clear. Two things changed. `JobRunner.start` now reaps a holder older than
 `ADVISE_TIMEOUT_S` (30 minutes) before it refuses, and `DELETE
 /api/jobs/current` frees the lane on demand, returning the abandoned run, or
 404 when nothing is running.
+
+**Per-kind deadlines, and a cancel that says cancelled (v9d).** One number for
+all twelve kinds was chosen for the most expensive of them, so a wedged
+four-second snapshot blocked every later job for half an hour. The fast four —
+`advise-fast`, `snapshot`, `track-pens`, `sensitivity` — are reaped after 120
+seconds instead (`ABANDON_TIMEOUT_S` in `web/job_kinds.py`); everything else
+keeps the 30 minutes, which is also the default for a kind nobody listed. And
+the cancel path no longer reports "timed out after 0s" about a button you just
+pressed: it says `cancelled`. Both wordings keep the half that is true either
+way — *abandoned as a daemon, its thread still running*.
 
 What neither of them does is **stop the work**. The worker is a daemon thread
 and Python has no safe way to kill one, so abandonment releases the lane and
@@ -446,6 +466,33 @@ board — an outcome shock hits them equally and cannot reorder them. When the
 gap between the two plans is inside that number, the card appends the caveat
 to the margin rather than in place of it: which plan is ahead and how solid
 the ordering is are two separate facts.
+
+**Calibration by gameweek (v9d).** `gaffer evaluate --calibration` grades the
+probabilities the weekly run *actually served*, week by week, and writes them
+to `reports/evaluation.json` under `calibration`; `GET /api/model/calibration`
+serves them and the Model hub's Quality tab draws them in a card titled
+**Calibration by gameweek** (the card titled **Calibration** beside it is the
+holdout, which is a different protocol on different rows).
+
+The predictions come off `reports/components_gw{N}.parquet`, written before
+the gameweek was played, so this is the model that served rather than a model
+refitted afterwards — nothing is retrained and the whole report takes seconds.
+Four heads are graded: `p_play`, `p60`, `p_cs` (at team-gameweek grain: a
+clean sheet is one event, not eleven) and the attacking `p_haul`, recomputed
+through the same function the solver called.
+
+Its refusals matter as much as its numbers, and the card prints all of them:
+
+- **`p_start` is omitted**, and the payload says why — the minutes trichotomy
+  is never banked, so there is nothing to grade. An omission without its
+  reason would read as a head that is fine.
+- **A gameweek whose components file post-dates its own last kickoff is not
+  graded**, and appears in `excluded` with the reason. Re-running `gaffer
+  advise` on a finished gameweek silently overwrites an as-of prediction with
+  a hindsight one, and mtime against kickoff is the only signal there is. The
+  guard fails closed: no kickoff information is also an exclusion.
+- **A head under 30 rows says "not enough data"** rather than drawing a curve
+  through sampling noise.
 
 **Model → Quality** gains four things: a reliability curve for `P(starts)`
 (the model has emitted it since v8a and nothing rendered it), a y = x
