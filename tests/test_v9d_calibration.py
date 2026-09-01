@@ -23,7 +23,8 @@ import pytest
 
 from gaffer.artifacts import components_path, save_components
 from gaffer.data import store
-from gaffer.evaluation import (MIN_CALIBRATION_SAMPLES, brier,
+from gaffer.evaluation import (FIXTURE_KEYS, MIN_CALIBRATION_SAMPLES,
+                               _club_clean_sheets, _key, brier,
                                calibration_head, evaluate_calibration,
                                format_report, load_evaluation,
                                save_evaluation)
@@ -68,6 +69,7 @@ def _components(gw: int, n: int = 40) -> pd.DataFrame:
     return pd.DataFrame({
         "code": list(range(n)),
         "gw": [gw] * n,
+        "kickoff_time": [KICKOFF] * n,
         "team_code": [1 if i % 2 else 3 for i in range(n)],
         "opp_code": [3 if i % 2 else 1 for i in range(n)],
         "p_play": [0.8] * n,
@@ -82,6 +84,7 @@ def _truth(gw: int, n: int = 40) -> pd.DataFrame:
     return pd.DataFrame({
         "season": ["2025-26"] * n,
         "gw": [gw] * n,
+        "kickoff_time": [KICKOFF] * n,
         "code": list(range(n)),
         "team_code": [1 if i % 2 else 3 for i in range(n)],
         "opp_code": [3 if i % 2 else 1 for i in range(n)],
@@ -176,10 +179,12 @@ def _clubs(n: int = 30) -> tuple[pd.DataFrame, pd.DataFrame]:
         for j, minutes in enumerate((0, 90, 90)):
             code = i * 10 + j
             comp.append({"code": code, "gw": 1, "team_code": team,
+                         "kickoff_time": KICKOFF,
                          "opp_code": opp, "p_play": 0.8, "p60": 0.6,
                          "p_cs": 1.0 if kept else 0.0,
                          "e_goals": 0.4, "e_assists": 0.2})
             truth.append({"season": "2025-26", "gw": 1, "code": code,
+                          "kickoff_time": KICKOFF,
                           "team_code": team, "opp_code": opp,
                           "minutes": minutes, "starts": int(minutes > 0),
                           "goals": 0, "assists": 0,
@@ -223,6 +228,7 @@ def _dgw(n: int = 40) -> tuple[pd.DataFrame, pd.DataFrame]:
     comp = pd.DataFrame({
         "code": codes * 2, "gw": [1] * (2 * n), "team_code": [1] * (2 * n),
         "opp_code": [2] * n + [4] * n,
+        "kickoff_time": [KICKOFF] * n + [LATER] * n,
         "p_play": [0.8] * (2 * n), "p60": [0.6] * (2 * n),
         "p_cs": [0.3] * (2 * n),
         "e_goals": [0.4] * (2 * n), "e_assists": [0.2] * (2 * n)})
@@ -230,6 +236,7 @@ def _dgw(n: int = 40) -> tuple[pd.DataFrame, pd.DataFrame]:
         "season": ["2025-26"] * (2 * n), "gw": [1] * (2 * n),
         "code": codes * 2, "team_code": [1] * (2 * n),
         "opp_code": [2] * n + [4] * n,
+        "kickoff_time": [KICKOFF] * n + [LATER] * n,
         "minutes": [45] * (2 * n), "starts": [1] * (2 * n),
         "goals": [1] * (2 * n), "assists": [0] * (2 * n),
         "cs": [0] * (2 * n), "gc": [1] * (2 * n)})
@@ -258,6 +265,183 @@ def test_a_double_gameweek_is_graded_per_fixture_not_per_gameweek(banked):
     assert heads["p60"]["brier"] == round((0.6 - 0.0) ** 2, 4)
     # One return per leg is not a haul in either leg.
     assert heads["p_haul"]["brier"] == round(p_haul(0.4, 0.2) ** 2, 4)
+
+
+def _same_opponent_twice(n: int = 40) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """One club meeting one opponent **twice** in a gameweek, two kickoffs.
+
+    A rearranged league fixture landing beside the scheduled one is the
+    ordinary way a double gameweek comes about, and it is the case
+    ``(code, opp_code)`` cannot key: every player has two rows carrying the
+    same player code and the same opponent code.
+
+    The two legs are made to disagree about everything a collapse would have
+    to average away — the club keeps a clean sheet in the first and concedes
+    twice in the second, and ``p_cs`` is banked as a perfect predictor of each
+    (1.0, then 0.0). Every player plays the full ninety in both.
+    """
+    codes = list(range(n))
+    both = 2 * n
+    comp = pd.DataFrame({
+        "code": codes * 2, "gw": [1] * both, "team_code": [1] * both,
+        "opp_code": [2] * both,
+        "kickoff_time": [KICKOFF] * n + [LATER] * n,
+        "p_play": [0.8] * both, "p60": [0.6] * both,
+        "p_cs": [1.0] * n + [0.0] * n,
+        "e_goals": [0.4] * both, "e_assists": [0.2] * both})
+    truth = pd.DataFrame({
+        "season": ["2025-26"] * both, "gw": [1] * both,
+        "code": codes * 2, "team_code": [1] * both,
+        "opp_code": [2] * both,
+        "kickoff_time": [KICKOFF] * n + [LATER] * n,
+        "minutes": [90] * both, "starts": [1] * both,
+        "goals": [0] * both, "assists": [0] * both,
+        "cs": [1] * n + [0] * n, "gc": [0] * n + [2] * n})
+    return comp, truth
+
+
+def test_the_same_opponent_twice_in_one_gameweek_stays_two_fixtures(banked):
+    """``(code, opp_code)`` is not a key, and a repeated opponent proves it.
+
+    Without the kickoff in the join the inner merge is multiplicative: each
+    prediction row matches *both* of that player's outcome rows, ``n`` doubles
+    to four times the players, and every forecast is graded once against a
+    match it was not a forecast of. The clean-sheet head fails a second way in
+    the same step — ``_club_clean_sheets`` groups the two legs into one
+    club-fixture whose conceded is the worse of the two, so one event is
+    reported where two were played and the club that kept a clean sheet is
+    recorded as having conceded.
+
+    With the kickoff, both stay two.
+    """
+    comp, truth = _same_opponent_twice()
+    save_components(comp, 1)
+    _before_kickoff(1)
+    store.save(truth, "live/player_gw.parquet")
+
+    out = evaluate_calibration(season="2025-26")
+    row = out["gameweeks"][0]
+    assert row["n"] == 80                       # 40 players x 2 legs, not 160
+    assert row["heads"]["p60"]["n"] == 80
+    cs = out["cumulative"]["p_cs"]
+    assert cs["n"] == 2                         # two club-fixtures, not one
+    # Two events is under the sample floor, as every real week's p_cs is; the
+    # count is the thing being pinned here. What was *in* those two events is
+    # pinned directly below, where the floor cannot hide it.
+    assert cs["status"] == "insufficient"
+    by_club = _club_clean_sheets(
+        _key(comp).merge(_key(truth), on=list(FIXTURE_KEYS), how="inner",
+                         suffixes=("", "_truth")))
+    assert len(by_club) == 2
+    # One leg kept, one conceded, and p_cs was banked right about each of
+    # them separately. A collapse would report a single row whose conceded is
+    # the worse of the two and whose p_cs is the better.
+    assert sorted(by_club["clean_sheet"]) == [0.0, 1.0]
+    assert sorted(by_club["p_cs"]) == [0.0, 1.0]
+
+
+def test_duplicate_player_fixture_rows_exclude_the_gameweek(banked):
+    """A non-unique key on either side is checked before the merge, not after.
+
+    An inner join on a duplicated key multiplies silently, and the product is
+    indistinguishable from a genuinely larger week once it exists — so the
+    uniqueness is asserted per side while the sides are still separable. The
+    week is excluded with its reason rather than raising: every other
+    gameweek in the pass still grades.
+    """
+    comp, truth = _same_opponent_twice()
+    # The same fixture banked twice — same player, same opponent, same instant.
+    comp = pd.concat([comp, comp.iloc[[0]]], ignore_index=True)
+    save_components(comp, 1)
+    _before_kickoff(1)
+    store.save(truth, "live/player_gw.parquet")
+
+    out = evaluate_calibration(season="2025-26")
+    assert out["gameweeks"] == []
+    reasons = [row["reason"] for row in out["excluded"] if row["gw"] == 1]
+    assert reasons and "duplicate rows per player-fixture" in reasons[0]
+    assert "components" in reasons[0]
+
+
+def test_an_unparseable_kickoff_drops_its_row_rather_than_crossing_it(banked):
+    """``NaT`` does not drop itself out of a merge — pandas matches null keys.
+
+    Which is the guarded-parse lesson read the harder way: ``errors="coerce"``
+    makes the *parse* safe and leaves the arithmetic downstream unguarded. A
+    handful of unparseable kickoffs on each side would inner-join into exactly
+    the cartesian the kickoff was added to prevent, so :func:`_key` drops them
+    and the week is graded on the rows that have a real instant.
+    """
+    comp, truth = _same_opponent_twice()
+    comp.loc[[0, 1], "kickoff_time"] = "not a timestamp"
+    truth.loc[[0, 1], "kickoff_time"] = "not a timestamp"
+    save_components(comp, 1)
+    _before_kickoff(1)
+    store.save(truth, "live/player_gw.parquet")
+
+    out = evaluate_calibration(season="2025-26")
+    # 78, not 80 and emphatically not 82: the two unparseable rows are gone
+    # from each side rather than matched against each other.
+    assert out["gameweeks"][0]["n"] == 78
+
+
+def test_components_with_no_club_exclude_the_gameweek(banked):
+    """``team_code`` is asked of the components, not of the joined frame.
+
+    The merge keeps the left name and suffixes the collision as ``_truth``, so
+    a components file with no ``team_code`` leaves ``joined["team_code"]``
+    holding the *truth* side's stamped club. p_cs is a banked club-level
+    prediction; grading it against clubs the prediction never named is a
+    number with nothing behind it, so the week is excluded and says so.
+    """
+    comp, truth = _same_opponent_twice()
+    comp = comp.drop(columns=["team_code"])
+    save_components(comp, 1)
+    _before_kickoff(1)
+    store.save(truth, "live/player_gw.parquet")
+
+    out = evaluate_calibration(season="2025-26")
+    assert out["gameweeks"] == []
+    assert [row["reason"] for row in out["excluded"] if row["gw"] == 1] == [
+        "components carry no club"]
+
+
+def test_a_short_appearance_still_counts_towards_the_clubs_goals_conceded(
+        banked):
+    """The 60-minute rule gates whether a club-fixture is real, not its value.
+
+    FPL counts ``gc`` only while a player is on the pitch, so every row is a
+    lower bound on the club's total and none can exceed it: widening the
+    maximum to every row can only move it towards the truth. Here the only
+    60-minute row is a substitute who came on after both goals — the case the
+    old 60-minutes-only maximum got wrong, awarding the club a clean sheet it
+    did not keep — while the starter who was withdrawn at 45 saw them both.
+    """
+    rows_comp, rows_truth = [], []
+    for i in range(2):
+        for j, (minutes, gc) in enumerate(((45, 2), (60, 0), (90, 2))):
+            code = i * 10 + j
+            rows_comp.append({"code": code, "gw": 1, "team_code": i + 1,
+                              "opp_code": 90 + i, "kickoff_time": KICKOFF,
+                              "p_play": 0.8, "p60": 0.6, "p_cs": 0.0,
+                              "e_goals": 0.4, "e_assists": 0.2})
+            rows_truth.append({"season": "2025-26", "gw": 1, "code": code,
+                               "team_code": i + 1, "opp_code": 90 + i,
+                               "kickoff_time": KICKOFF, "minutes": minutes,
+                               "starts": int(minutes > 0), "goals": 0,
+                               "assists": 0, "cs": int(minutes >= 60),
+                               "gc": gc})
+    save_components(pd.DataFrame(rows_comp), 1)
+    _before_kickoff(1)
+    store.save(pd.DataFrame(rows_truth), "live/player_gw.parquet")
+
+    by_club = _club_clean_sheets(
+        _key(pd.DataFrame(rows_comp)).merge(
+            _key(pd.DataFrame(rows_truth)), on=list(FIXTURE_KEYS),
+            how="inner", suffixes=("", "_truth")))
+    assert len(by_club) == 2
+    assert list(by_club["conceded"]) == [2.0, 2.0]
+    assert list(by_club["clean_sheet"]) == [0.0, 0.0]
 
 
 def test_p_haul_refuses_rows_whose_inputs_are_missing(banked):

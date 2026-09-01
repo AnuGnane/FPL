@@ -572,7 +572,7 @@ def _column(frame: pd.DataFrame, name: str) -> pd.Series:
     return pd.to_numeric(frame[name], errors="coerce")
 
 
-FIXTURE_KEYS = ("code", "opp_code")
+FIXTURE_KEYS = ("code", "opp_code", "kickoff_time")
 """The grain both sides of the calibration join are read at.
 
 The banked components are one row *per player-fixture* — ``advise`` builds
@@ -583,6 +583,27 @@ prediction rows against the pair's totals, which invents outcomes: 90 minutes
 across two 45-minute legs reads as a 60-minute appearance that happened in
 neither, and a return in each leg reads as a haul in both. ``advise`` already
 joins predictions to fixtures on this key; so does this.
+
+``kickoff_time`` is here because ``(code, opp_code)`` **is not a key**. A
+double gameweek in which a club draws the same opponent twice — a rearranged
+league fixture landing beside the scheduled one, which is the ordinary way a
+DGW comes about — gives that club's players two rows per side with identical
+codes. The inner merge then pairs each prediction with both outcomes: ``n``
+doubles, every one of that player's rows is graded twice, once against a match
+it was not a forecast of, and :func:`_club_clean_sheets` collapses two
+club-fixtures into one club-fixture whose conceded is the max of both. The
+kickoff separates them, and it is the only column that can: nothing else on
+either frame distinguishes the two legs.
+
+Both sides carry it — components off the fixture frame, ``player_gw`` as the
+API's ISO string — so :func:`_key` normalises rather than assuming a dtype.
+"""
+
+FIXTURE_CODE_KEYS = ("code", "opp_code")
+"""The subset of :data:`FIXTURE_KEYS` that is a club/player code, not a stamp.
+
+Named so :func:`_key` can coerce the two families correctly instead of running
+``to_numeric`` over a timestamp column and turning every kickoff into NaN.
 """
 
 
@@ -591,12 +612,50 @@ def _key(frame: pd.DataFrame) -> pd.DataFrame:
 
     The two sides are read off different parquets written by different code
     paths, and an ``int64`` column merged against an ``Int64`` one silently
-    matches nothing.
+    matches nothing. ``kickoff_time`` is the same hazard in a second dialect:
+    ``player_gw`` banks the API's ``"2026-08-21T19:00:00Z"`` string and the
+    components carry whatever dtype the fixture frame held, so both go through
+    ``to_datetime(..., utc=True)`` and are compared as instants.
+
+    **Rows whose kickoff will not parse are dropped**, alongside the rows with
+    no code, and that is a deliberate reading of the guarded-parse lesson
+    rather than the obvious one. ``errors="coerce"`` leaves them ``NaT``, and
+    the tempting assumption is that ``NaT`` simply fails to match and drops
+    itself. It does not: pandas merges treat null keys as equal to each other
+    (verified on 3.0.5), so a handful of unparseable rows on each side would
+    inner-join into exactly the cartesian this key was added to remove. Fail
+    closed and drop them; :func:`_join_is_per_fixture` then checks what is
+    left, so a week losing rows this way cannot pass as a clean join.
     """
     out = frame.copy()
-    for col in FIXTURE_KEYS:
+    for col in FIXTURE_CODE_KEYS:
         out[col] = pd.to_numeric(out[col], errors="coerce").astype("Int64")
+    # ``format="mixed"`` because the two sides genuinely are: one column is
+    # the API's ISO strings, the other whatever dtype the fixture frame held.
+    # It also keeps pandas from printing its infer-the-format warning on every
+    # week that contains one unparseable stamp — a warning that would train a
+    # reader to ignore the log where the coerce is the interesting part.
+    out["kickoff_time"] = pd.to_datetime(out["kickoff_time"], format="mixed",
+                                         errors="coerce", utc=True)
     return out.dropna(subset=list(FIXTURE_KEYS))
+
+
+def _join_is_per_fixture(frame: pd.DataFrame) -> bool:
+    """Is ``frame`` at most one row per :data:`FIXTURE_KEYS` tuple?
+
+    Asked of each side *before* the merge, because an inner join on a
+    non-unique key is silently multiplicative and there is no reading of the
+    result that recovers what happened. The kickoff makes duplicates a real
+    defect rather than a schedule quirk: two rows with the same player, the
+    same opponent and the same instant are two records of one fixture, and
+    grading against both counts one outcome twice.
+
+    A ``False`` here excludes the gameweek with its reason rather than raising.
+    The report grades every other week in the same pass, and one malformed
+    parquet taking the whole calibration page down would be a worse trade than
+    a row in ``excluded`` saying exactly which week and why.
+    """
+    return not frame.duplicated(subset=list(FIXTURE_KEYS)).any()
 
 
 def _club_clean_sheets(joined: pd.DataFrame) -> pd.DataFrame:
@@ -612,26 +671,57 @@ def _club_clean_sheets(joined: pd.DataFrame) -> pd.DataFrame:
     ``max(cs)`` is not the fix either, and the same GW1 data says so: a
     substitute who came on after the goal has 60+ minutes and none conceded
     *while on the pitch*, so he is awarded a clean sheet his club did not keep
-    — two of that week's twenty clubs. What holds is goals conceded, maximised
-    over the rows that were on the pitch for 60 minutes or more: a player who
-    saw most of the match saw every goal, and the keeper's 90 minutes make that
-    exact. Zero conceded is ``ga == 0``, which is the definition
+    — two of that week's twenty clubs. What holds is goals conceded: FPL counts
+    a player's ``gc`` only while he is on the pitch, so every row's value is a
+    lower bound on the club's total and can never exceed it. The club's figure
+    is the maximum over its rows, and ``ga == 0`` is then the definition
     ``models/team.py`` fits against.
 
-    A club-fixture with no 60-minute row is dropped rather than guessed: it is
-    a stray row (a transferred player's stale club), not a club's match.
+    **Two decisions inside that, stated rather than implied.**
+
+    *Which rows the maximum runs over: all of them.* An earlier version
+    maximised over the 60-minute rows only, on the argument that a player who
+    saw most of the match saw every goal. That argument is a near-certainty and
+    not a guarantee — a 60-minute player missed up to thirty minutes and any
+    goal inside them, and the keeper's 90 is what usually rescues it, not
+    anything the filter enforces. Since no row can over-count, adding the
+    shorter appearances can only move the maximum *towards* the club's true
+    total and never past it, so the wider maximum is the strictly closer
+    estimate. The residual exposure is a mislabelled row — a stale
+    ``team_code`` filing an opponent's player under this club — which
+    over-counts; that hazard existed under the 60-minute rule too for any
+    stray who played an hour, and the fixture-grain key (opponent *and*
+    kickoff) is what keeps it rare.
+
+    *What the 60-minute rule still does: it gates existence, not the value.* A
+    club-fixture with no 60-minute row anywhere is dropped rather than guessed
+    — that is a stray row, not a club's match — but once the club-fixture is
+    real, every one of its rows is allowed to speak to the conceded count.
+
+    Grouped at :data:`FIXTURE_KEYS`' club grain, kickoff included: a club that
+    meets the same opponent twice in one gameweek played two matches, and
+    ``(team_code, opp_code)`` alone would fold them into one club-fixture whose
+    conceded is the worse of the two and whose clean sheet belongs to neither.
     """
-    needed = {"team_code", "opp_code"}
+    needed = {"team_code", "opp_code", "kickoff_time"}
     if not needed <= set(joined.columns):
         return pd.DataFrame({"p_cs": [], "clean_sheet": []}, dtype="float64")
     work = pd.DataFrame({
         "team_code": joined["team_code"], "opp_code": joined["opp_code"],
+        "kickoff_time": joined["kickoff_time"],
         "minutes": _column(joined, "minutes"), "gc": _column(joined, "gc"),
         "p_cs": _column(joined, "p_cs")})
-    work = work[work["minutes"] >= STARTER_MINUTES]
-    if work.empty:
+    club_keys = ["team_code", "opp_code", "kickoff_time"]
+    # The 60-minute rule as an existence gate: a club-fixture qualifies if any
+    # of its rows saw an hour, and then keeps *all* of its rows for the
+    # maximum. See this function's docstring for why the value is read wider
+    # than the gate.
+    played = work[work["minutes"] >= STARTER_MINUTES]
+    if played.empty:
         return pd.DataFrame({"p_cs": [], "clean_sheet": []}, dtype="float64")
-    by_club = work.groupby(["team_code", "opp_code"], as_index=False).agg(
+    real = set(map(tuple, played[club_keys].to_numpy()))
+    work = work[[tuple(row) in real for row in work[club_keys].to_numpy()]]
+    by_club = work.groupby(club_keys, as_index=False).agg(
         # p_cs is a club-level column repeated on every player row; max rather
         # than first only so a stray NaN row cannot decide it.
         p_cs=("p_cs", "max"), conceded=("gc", "max"))
@@ -772,7 +862,28 @@ def evaluate_calibration(season: str | None = None) -> dict:
         if not set(FIXTURE_KEYS) <= set(comp.columns) & set(truth.columns):
             excluded.append({"gw": gw, "reason": "no per-fixture key"})
             continue
-        joined = _key(comp).merge(_key(truth), on=list(FIXTURE_KEYS),
+        if "team_code" not in comp.columns:
+            # Asked of the *components*, not of the joined frame. The merge
+            # suffixes collisions as ``_truth`` and keeps the left name, so a
+            # components file with no team_code hands _club_clean_sheets the
+            # truth side's stamped club instead — which grades p_cs, a banked
+            # club-level prediction, against clubs the prediction never named.
+            # A week that cannot say whose prediction it is is excluded.
+            excluded.append({"gw": gw, "reason": "components carry no club"})
+            continue
+        keyed_comp, keyed_truth = _key(comp), _key(truth)
+        # Both sides checked *before* the merge, because an inner join on a
+        # non-unique key multiplies rather than errors and the result cannot
+        # be told apart from a genuinely larger week.
+        unique = {"components": _join_is_per_fixture(keyed_comp),
+                  "graded rows": _join_is_per_fixture(keyed_truth)}
+        if not all(unique.values()):
+            side = ", ".join(name for name, ok in unique.items() if not ok)
+            excluded.append(
+                {"gw": gw,
+                 "reason": f"duplicate rows per player-fixture ({side})"})
+            continue
+        joined = keyed_comp.merge(keyed_truth, on=list(FIXTURE_KEYS),
                                   how="inner", suffixes=("", "_truth"))
         if joined.empty:
             # Not "missing": the artifact is there. The two facts have
@@ -817,6 +928,14 @@ def evaluate_calibration(season: str | None = None) -> dict:
         for name, pair in pairs.items():
             pooled[name].append(_paired(*pair))
 
+        # ``n`` is the week's joined player-fixture rows and nothing more —
+        # how much data the gameweek had, not how much any head graded. The
+        # two diverge and are meant to: p_cs is scored at club-fixture grain
+        # (about twenty rows against several hundred) and p_haul drops every
+        # row whose artifact predates ``e_goals``. Each head therefore carries
+        # its **own** n out of ``calibration_head``, and that is the number the
+        # card prints beside each cell. Reading this one as a per-head count
+        # would overstate every head in the row.
         rows.append({"gw": gw, "n": int(len(joined)), "heads": heads})
 
     cumulative = {}
