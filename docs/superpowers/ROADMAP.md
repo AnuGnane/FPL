@@ -176,8 +176,15 @@ Spec: `specs/2026-08-31-gaffer-v9c-model-debt-design.md` (§4 = arm numbers, clu
 - Residuals: v9d two unswitched club consumers; SSE worker-pinning; cancel message reuses timeout wording; job-timeout name covers all 12 kinds
 - Suite: 2825 Python + 554 frontend; the v9 queue closes
 
-## Operational / housekeeping
-- [x] Untrack `reports/` artifacts + `.claude/`; gitignore both (`31dc239`)
+### v9d — debt close + calibration monitoring (done, merged `728236d` 2026-09-01)
+Spec: `specs/2026-09-01-gaffer-v9d-design.md` (§5 = G1/G2 numbers) · Plan: `plans/2026-09-01-gaffer-v9d.md`
+- [x] Club leak fully closed: Understat own-side + congestion cup lookup on `as_of_club` — G1: 0.92% rows changed with match rate **up** 98.79%→99.28%, congestion 0.10%; G2 replay identical arms, explained (no head claims the switched columns — hygiene ahead of any future claim)
+- [x] Calibration monitoring: `gaffer evaluate --calibration` → per-GW + cumulative Brier/reliability for p_play/p60/p_cs/p_haul at fixture grain, as-of guarded by *first* kickoff; `GET /api/model/calibration` + Model-hub card; p_cs cumulative-only (20 clubs < 30 floor)
+- [x] Per-kind abandon timeouts (fast kinds 120s) + a cancel that says "cancelled" — two authorized `web/jobs.py` line-groups; single-process contract documented + railed
+- [x] Identity memo (mtime-keyed, locked, bounded) — four parquet loads/request → cached
+- [x] Review FIX-FIRST (3 blockers: arbitrary-player clean sheets, DGW fan-out, permissive as-of) → re-verify caught 2 more (racy eviction — reproduced; join key one column short) → all fixed; G1 instrument itself needed two fixes before first valid run
+- Residuals: SSE worker-pinning documented-not-rearchitected; per-head n divergence documented; N-1 cancel-sentinel channel (declined — protected)
+- Suite: 2912 Python + 562 frontend
 
 ## Operational / housekeeping
 - [x] Untrack `reports/` artifacts + `.claude/`; gitignore both (`31dc239`)
