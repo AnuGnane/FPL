@@ -9,6 +9,13 @@ from gaffer.errors import GafferError
 
 LLM_NO_TOOLS = ("Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,"
                 "Task,NotebookEdit")
+DEFAULT_LINEUP_PROVIDERS = ("ffs", "rotowire")
+"""Predicted-XI sources, in the order they are fetched (v10 §F2a).
+
+Order is cosmetic — the merge is by pessimism and not by precedence — but a
+stable order keeps the printed coverage lines readable week to week.
+"""
+
 DEFAULT_LLM_COMMAND = ('claude -p --output-format json '
                        f'--disallowedTools "{LLM_NO_TOOLS}"')
 """The classifier's default posture: a language model with no hands.
@@ -185,6 +192,60 @@ def load_config(path: Path | str = "config.toml") -> Config:
         news_overrides=bool(news.get("overrides", True)),
         digest_notify=bool(digest.get("notify", True)),
     )
+
+
+def _providers(raw) -> list[str]:
+    """A ``[news] lineup_providers`` value -> a clean list of known names.
+
+    A typo in a TOML file must not take advice down, so an unknown name is
+    dropped with a line rather than raised on, and a value that is not a list
+    at all falls back to the default. An explicit empty list is honoured —
+    that is the kill switch, not a mistake.
+    """
+    if raw is None:
+        return list(DEFAULT_LINEUP_PROVIDERS)
+    if not isinstance(raw, (list, tuple)):
+        print(f"config: [news] lineup_providers is not a list ({raw!r}) — "
+              f"using {list(DEFAULT_LINEUP_PROVIDERS)}")
+        return list(DEFAULT_LINEUP_PROVIDERS)
+    out = []
+    for name in raw:
+        key = str(name).strip().casefold()
+        if key in DEFAULT_LINEUP_PROVIDERS:
+            out.append(key)
+        elif key:
+            print(f"config: unknown predicted-XI provider {key!r} — ignored")
+    return out
+
+
+def lineup_providers(path: Path | str = "config.toml") -> list[str]:
+    """Which predicted-XI providers may speak (v10 §F2a, plan A6).
+
+    A per-source kill, which ``[news] lineups`` cannot be: that switch covers
+    a source going silent, and a silent source needs no switch. This one
+    covers a source going *wrong* — parsing, resolving, and lying — which the
+    pessimistic merge in ``fetch_lineups`` turns into benched starters. ``[]``
+    behaves exactly like ``lineups = false``; ``lineups = false``
+    short-circuits in ``advise.py`` before this is read, so the two compose in
+    the only order that makes sense.
+
+    A module-level reader rather than a :class:`Config` field, which is a
+    deviation from plan A6 with a reason the tree supplies: a 49th field would
+    break ``len(dataclasses.fields(Config)) == 48`` in
+    ``tests/test_v9c_degradation.py`` and ``tests/test_v9d_degradation.py``,
+    both of which are protected this cycle. Every behaviour A6 argued for
+    survives the move; only the storage does not. It is read at serve time by
+    ``fetch_lineups``, the same seam ``serving_config`` exists for, because
+    ``advise.py`` is protected and cannot forward it.
+
+    Never raises. A missing file, a missing section and a corrupt TOML all
+    give the shipped default, for the reason :func:`serving_config` gives.
+    """
+    try:
+        raw = tomllib.loads(Path(path).read_text())
+    except Exception:  # noqa: BLE001 — a serve-time reader never raises
+        return list(DEFAULT_LINEUP_PROVIDERS)
+    return _providers(raw.get("news", {}).get("lineup_providers"))
 
 
 @lru_cache(maxsize=1)
