@@ -5,6 +5,7 @@ import { EmptyState, PageHeader } from '../kit'
 import type { AdviceLatest, WhatIfRequest } from '../types'
 import ChipsTab from './planning/ChipsTab'
 import DraftsTab from './planning/DraftsTab'
+import PlannerBoard from './planning/PlannerBoard'
 import TickerTab from './planning/TickerTab'
 import Timeline from './planning/Timeline'
 import WhatIfTab from './planning/WhatIfTab'
@@ -78,6 +79,7 @@ export default function Planning() {
         <Tabs.List className="mb-4 flex overflow-x-auto border-b
                               border-divider">
           <Tabs.Trigger value="timeline" className={TAB_CLASS}>Timeline</Tabs.Trigger>
+          <Tabs.Trigger value="board" className={TAB_CLASS}>Board</Tabs.Trigger>
           <Tabs.Trigger value="whatif" className={TAB_CLASS}>What-If</Tabs.Trigger>
           <Tabs.Trigger value="drafts" className={TAB_CLASS}>Drafts</Tabs.Trigger>
           <Tabs.Trigger value="chips" className={TAB_CLASS}>Chips</Tabs.Trigger>
@@ -85,6 +87,9 @@ export default function Planning() {
         </Tabs.List>
         <Tabs.Content value="timeline">
           {gw !== null && <Timeline gw={gw} teamByCode={teamByCode} />}
+        </Tabs.Content>
+        <Tabs.Content value="board">
+          {gw !== null && <PlannerBoard gw={gw} />}
         </Tabs.Content>
         <Tabs.Content value="whatif">
           <WhatIfTab value={whatif} onChange={setWhatif} />

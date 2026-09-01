@@ -812,12 +812,21 @@ export interface PlanGw {
   captain: PlanMove | null
   vice: PlanMove | null
   expected_pts: number
+  /** What is left in the bank after this week's moves, in millions.
+   *
+   *  Null is *unknown*, never 0.0 — that is "fully invested", a real and
+   *  different state. Once a move with no price breaks the running total it
+   *  stays broken: this week and every later one are null. */
+  bank: number | null
 }
 
 export interface PlanTimeline {
   gw: number
   generated_at: string
   weeks: PlanGw[]
+  /** The bank before the horizon's first move, in millions. Null is unknown
+   *  and never 0.0, exactly as on each week. */
+  bank: number | null
 }
 
 export interface MatrixCell {
