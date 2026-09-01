@@ -85,6 +85,67 @@ way season_summary already does — reuse it, never re-derive).
 - **G2** — adversarial review, fix-first, re-verify; merge ritual.
 - **No replay** — nothing on the training/decision path. Recorded here.
 
+### G1 — suites, rails, pins (measured by the implementer)
+
+- [x] `uv run pytest -q` — 3185 passed (branch baseline 3135 + 50 new)
+- [x] `npx tsc --noEmit` — clean
+- [x] `npx vitest run` — 642 passed, 1 skipped, 68 files (baseline 596 + 46
+      new)
+- [x] `npm run build` — clean
+- [x] Protected source diff EMPTY. The cycle's one protected edit is the route-
+      pin restructure in three degradation files, authorized separately (Task
+      11); no other protected file moved
+- [x] Pins: job kinds still 12, config fields still 48, **OpenAPI paths 45 →
+      45** — every serve-side change is an additive field on an existing model
+- [x] Rails: an unpriced move blanks the bank for that week and every later
+      one; no field log → `field_eo`/`field_se`/`field_n` all null and never
+      0.0; today's one-row ledger → four lanes reading "never graded", zero
+      wins and zero losses; a ledger row with no `overall_rank` still
+      validates; `GET /api/review` still 200s on a clone with no ledger
+- [x] Empty states on a cold clone for all three new views, each tested where
+      the hub-level cold-clone rail cannot reach it (it renders only the
+      default tab)
+- [x] 390px and no-bare-tables hold tree-wide, including the two six-tab
+      strips. None of the three new views draws a `<table>`, so the
+      `wrapped()` sweep gained no caller
+- [x] Exactly one file in the suite pins an absolute route count, asserted by
+      a test rather than by hand
+
+### G2 — review and merge (orchestrator only)
+
+- [ ] Adversarial review, fix-first, re-verify.
+- [ ] Merge ritual: ff-only, push, `git show main:config.toml` fails, key-grep
+      empty.
+
+### No replay — recorded reasoning
+
+Nothing on the training or decision path changes, and this time the claim is
+almost trivially checkable: the cycle's entire server-side diff is seven
+additive fields on five existing pydantic models plus the arithmetic that fills
+them. No feature builder, no model, no head, no solver call — spec §Non-goals
+forbids one from any view and none was added. `season_summary` and
+`grade_gw_from` are on the *review* path, which grades decisions after the fact
+and feeds nothing back into one. A replay would compare two identical arms,
+which is v10's G2 and v10b's G2 for the third time.
+
+### Live spot-checks (orchestrator, on the dev server)
+
+- [ ] Planning → Board draws one column per horizon week, no padding, and the
+      bank reads across them; a plan with an unpriced move shows an em dash
+      from that week onward rather than a confident number.
+- [ ] "Try these changes" lands on What-If with the week's buys in `force_in`
+      and its sells in `ban`, **without** starting a solve, and the sentence
+      about what a sell means is visible without hovering.
+- [ ] The five pre-existing Planning tabs still switch by click (the controlled
+      `Tabs.Root` regression).
+- [ ] Players → Compare shows a signed breakdown whose rows sum to the xPts
+      above them, a minutes line, set-piece flags, tinted next-six chips that
+      are still position-correct for a goalkeeper, and Field EO with its ±SE.
+- [ ] Model → Season shows the gate sentence naming GW2 `data_checked` on
+      today's ledger, and every lane reads "never graded" rather than 0%.
+- [ ] `GET /api/plan/5`, `/api/players`, `/api/review` all still answer on a
+      cold clone the way they did before.
+
 ### Outcomes
 
 _TBD by the cycle._
