@@ -213,6 +213,24 @@ def _frailty(dnp_rate: float, population: float = POPULATION_DNP) -> float:
     return min(max(dnp_rate / population, lo), hi)
 
 
+def _is_blank(ep: object, gw: int) -> bool:
+    """Does this player's ``ep`` mapping price him in this gameweek at all?
+
+    Two spellings of the same fact, because there are two: ``ep_matrix``
+    leaves a blank gameweek out of the mapping, and :func:`build_pool` then
+    materialises the hole as ``0.0`` when it fills the horizon. A pair worth
+    nothing carries no weight into either pass of §F1a — the bench key is
+    ``ep × p_play`` and the frailty is an average over the XI — so both
+    spellings are treated as "no fixture" and neither is coverage.
+    """
+    if not isinstance(ep, dict):
+        return False        # an unrecognised pool: judge nothing a blank
+    v = ep.get(gw)
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        return True
+    return not float(v) > 0.0
+
+
 def _p_play_lookup(pool: pd.DataFrame, state: SolveInput,
                    p_play: dict | None) -> dict[int, dict[int, float]] | None:
     """The §F1 gate: a usable ``{code: {gw: p}}``, or ``None`` for "don't".
@@ -221,8 +239,8 @@ def _p_play_lookup(pool: pd.DataFrame, state: SolveInput,
     plan A2 is why each of them is a case:
 
     * nothing was passed, which is every caller in the tree today;
-    * **coverage is incomplete** — some ``(code, gw)`` of the filtered pool
-      times the horizon is missing, or is not a finite number in ``[0, 1]``.
+    * **coverage is incomplete** — some ``(code, gw)`` the pool *prices* is
+      missing from ``p_play``, or is not a finite number in ``[0, 1]``.
       All-or-nothing on purpose: a pool where half the players have a
       probability and the other half are silently treated as nailed-on is the
       one failure that actively misleads, so a partially-wired caller fails
@@ -240,22 +258,37 @@ def _p_play_lookup(pool: pd.DataFrame, state: SolveInput,
     0.4-for-everyone in GW2 a spread of 0.5, and then re-prices both benches
     off what is really one fixture-difficulty constant per week.
 
+    The denominator is the pairs the pool prices, not ``codes × horizon``: a
+    **blank gameweek** is a week a club has no fixture in, ``ep_matrix`` drops
+    it from the mapping entirely (``models/assemble.py``), and the same source
+    that had no expected points for it has no appearance probability for it
+    either. Counting that pair as absent would fail the gate closed on every
+    real blank in the horizon — a correctly wired caller degraded to the
+    pre-v10 solve by the fixture list. So a pair the pool does not price and
+    ``p_play`` does not carry is skipped by both; a pair the pool *does* price
+    and ``p_play`` does not is the partially-wired caller, and still absence.
+
     A rejection prints one line naming the reason. Failing closed is right;
     failing closed *silently* is how a caller that believes it wired the
     feature gets the pre-v10 solve with nothing in the advice to say so.
     """
     if not p_play:
         return None
-    codes = [int(c) for c in
-             pool.loc[~pool["code"].isin(state.locked_out), "code"]]
+    live = pool.loc[~pool["code"].isin(state.locked_out), ["code", "ep"]]
+    ep_by_code = {int(c): e for c, e in zip(live["code"], live["ep"])}
+    codes = list(ep_by_code)
     out: dict[int, dict[int, float]] = {}
     span: dict[int, tuple[float, float]] = {}   # per gameweek: (min, max)
-    absent = unusable = 0
+    absent = unusable = priced = 0
     for c in codes:
         per_gw = p_play.get(c) or {}
         row: dict[int, float] = {}
         for g in state.gws:
             v = per_gw.get(g)
+            if v is None and _is_blank(ep_by_code[c], g):
+                # Neither side has this week. Not a hole — a blank.
+                continue
+            priced += 1
             # A number, and not a bool, and not a string that happens to
             # parse. A caller that built this dict out of strings built it
             # wrong, and coercing would hide that rather than fail closed.
@@ -276,8 +309,11 @@ def _p_play_lookup(pool: pd.DataFrame, state: SolveInput,
         # per pair and the difference between one missing player and half the
         # pool is the difference between a wiring typo and a wiring decision.
         print(f"optimize: p_play ignored, incomplete coverage — {absent} of "
-              f"{len(codes) * len(state.gws)} (code, gw) pairs absent, "
-              f"{unusable} not a probability in [0, 1]; solving unweighted")
+              f"{priced} priced (code, gw) pairs absent, {unusable} not a "
+              "probability in [0, 1]; the likeliest cause is a blanked "
+              "gameweek in the horizon that the pool still prices and the "
+              "minutes source does not, and the next is a partially-wired "
+              "caller; solving unweighted")
         return None
     if not any(hi - lo >= P_PLAY_MIN_SPREAD for lo, hi in span.values()):
         print("optimize: p_play ignored, no spread within any gameweek of the "
@@ -322,7 +358,8 @@ def _decision_scales(plan: "Plan", pool: pd.DataFrame,
                 if keeper is not None and keeper in pp else out_f)
         cap = gp.captain
         bench_scale[t] = (out_f, gk_f)
-        vice_scale[t] = (_frailty(1.0 - pp[cap][t]) if cap in pp else 1.0)
+        vice_scale[t] = (_frailty(1.0 - pp[cap][t])
+                         if cap in pp and t in pp[cap] else 1.0)
         fixed_xi[t] = xi
         fixed_captain[t] = int(cap)
     return {"bench_scale": bench_scale, "vice_scale": vice_scale,

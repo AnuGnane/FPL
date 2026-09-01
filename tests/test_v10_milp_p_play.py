@@ -166,6 +166,60 @@ def test_an_empty_dict_is_absence(monkeypatch):
     assert spy.lp() == base_spy.lp()
 
 
+def _blank_pool(blank_team: int, blank_gw: int, gws) -> pd.DataFrame:
+    """The 30-man pool over ``gws``, with one club's fixture missing in one
+    week — the ``ep_matrix`` convention: a blank gameweek has no fixture rows
+    and so is simply absent from the mapping."""
+    rows, code = [], 1
+    for pos, n in [("GKP", 4), ("DEF", 9), ("MID", 10), ("FWD", 7)]:
+        for i in range(n):
+            team = code % 10
+            ep = {g: 2.0 + i * 0.1 for g in gws
+                  if not (team == blank_team and g == blank_gw)}
+            rows.append({"code": code, "position": pos, "team_code": team,
+                         "cost": 50, "sell": 50, "ep": ep})
+            code += 1
+    return pd.DataFrame(rows)
+
+
+def test_a_blanked_gameweek_is_not_absence(monkeypatch, capsys):
+    """A club with no fixture in GW2 of a three-week horizon has no ``ep``
+    entry for that week and no ``p_play`` for it either. That pair is not a
+    hole in the wiring, it is a week the player cannot play, and counting it
+    in the coverage denominator would turn every real blank into a silent
+    degrade to the pre-v10 solve."""
+    gws = [1, 2, 3]
+    pool = _blank_pool(blank_team=3, blank_gw=2, gws=gws)
+    blanked = {int(c) for c, t in zip(pool["code"], pool["team_code"])
+               if t == 3}
+    pp = {int(c): {g: 0.5 + (int(c) % 5) * 0.08 for g in gws
+                   if not (int(c) in blanked and g == 2)}
+          for c in pool["code"]}
+    spy, _ = _solve(monkeypatch, pool, _state(gws=gws), p_play=pp)
+    assert spy.calls == 2                    # accepted: §F1 ran
+    assert "incomplete coverage" not in capsys.readouterr().out
+
+
+def test_a_priced_week_without_p_play_is_still_absence(monkeypatch, capsys):
+    """The other half of the same rule: the pool prices this (code, gw) and
+    ``p_play`` has nothing for it, which is the partially-wired caller the
+    gate exists for. Blanks are named first because they are the likelier
+    cause, and the line still has to be printed."""
+    gws = [1, 2, 3]
+    pool = _blank_pool(blank_team=3, blank_gw=2, gws=gws)
+    pp = {int(c): {g: 0.5 + (int(c) % 5) * 0.08 for g in gws}
+          for c in pool["code"]}
+    victim = next(int(c) for c, t in zip(pool["code"], pool["team_code"])
+                  if t != 3)
+    pp[victim].pop(2)
+    spy, _ = _solve(monkeypatch, pool, _state(gws=gws), p_play=pp)
+    assert spy.calls == 1                    # rejected: unweighted solve
+    out = capsys.readouterr().out
+    assert "incomplete coverage" in out
+    assert "1 of " in out                    # exactly one pair, not a club's
+    assert out.index("blanked gameweek") < out.index("partially-wired")
+
+
 # --- Block 2: the two-pass (plan A1, §F1a) --------------------------------
 
 def _varied(pool, xi_value=0.6, rest=0.95) -> dict:
