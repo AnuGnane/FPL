@@ -52,7 +52,7 @@ Spec: `specs/2026-08-25-gaffer-v4c-decide-design.md` (§12 = full outcome) · Pl
 - [x] Chip optimal-stopping thresholds θ_t — D3 pass, the cycle's big win: +73 total, chip points 555 vs 432, nothing stranded
 - [x] Objective craft: itb 0.08, convex bench curve, ft_use_penalty 0.2 (measured inside D2)
 - [x] Replay-calibrated decision_priors.json asset + `gaffer calibrate-decisions`
-- [ ] DGW/BGW `chip_scenarios.toml` population — hook shipped; data lands ~Jan (Crellin)
+- [x] DGW/BGW `chip_scenarios.toml` population — hook shipped here, populated in v10b from the *published* fixture list (scheduled doubles at p=1.0); the Crellin-style projections for *unannounced* rearrangements are still not a thing this tool does
 - [x] Final adversarial review: 8 blockers fixed (incl. wildcard FT-bank double-charge = the λ×θ anomaly mechanism, confirmed; calibrator decontaminated), re-measured: D2 +43, both-on 1865 (+55) — MERGE
 - Suite: 944 Python + 62 frontend; advise wall-clock 62.8 s with the full stack on
 
@@ -185,6 +185,27 @@ Spec: `specs/2026-09-01-gaffer-v9d-design.md` (§5 = G1/G2 numbers) · Plan: `pl
 - [x] Review FIX-FIRST (3 blockers: arbitrary-player clean sheets, DGW fan-out, permissive as-of) → re-verify caught 2 more (racy eviction — reproduced; join key one column short) → all fixed; G1 instrument itself needed two fixes before first valid run
 - Residuals: SSE worker-pinning documented-not-rearchitected; per-head n divergence documented; N-1 cancel-sentinel channel (declined — protected)
 - Suite: 2912 Python + 562 frontend
+
+### v10 — minutes intelligence II (done, merged `b0cdc4e` 2026-09-02)
+Spec: `specs/2026-09-01-gaffer-v10-minutes-design.md` (§Gates = G1/G2/G3 numbers, §Residuals) · Plan: `plans/2026-09-01-gaffer-v10.md`
+- [x] The minutes model reaches the optimizer's own weights for the first time: bench slots, the reserve keeper and the vice priced by frailty in a two-pass solve, XI and captain pinned between passes so the hedge is priced against the man actually wearing the armband — **G3 +0.381 pts/week over the 21 autosub weeks**, and the reshaping is bench-only, which is the intended shape
+- [x] `KEEPER_DNP` — the keeper's own denominator, fixed at G5 rather than left as a residual
+- [x] Predicted-XI provider seam: the Fantasy Football Scout fetch becomes provider `ffs` with no behaviour change, RotoWire joins as `rotowire`, merged on the pessimism rule the module already applied within one source
+- [x] F3a arm **withdrawn** on its pre-registered bar (+1.09% LL, −0.007 zeros) — measured, recorded, not shipped
+- [x] `p_play` truth-table wiring documented and railed; the guard is a single short-circuit, so an absent *or uniform* `p_play` reproduces today's solve to the byte
+- [x] G2 replay: identical arms, and predicted to be — `backtest.py` passes no `p_play`, so the replay cannot see §F1 at all and was demoted to a no-regression check before it ran; G3 is the gate that judged the feature
+- Residuals: §F1's transfer-side reach waits for a sweep that can see `p_play`; a run whose scenario solves all fail serves an unweighted plan; what-if baselines are single-pass because `SolveState` is JSON and cannot carry a per-player dict (*v11*); `coherent_plan` appends a promoted captain to the bench after §F1b has ordered it; `captaincy_override` discards the frailty-weighted vice under league tilt
+- Suite: 3047 Python + 562 frontend
+
+### v10b — EO framing + season chip planner (in progress, branch `feat/gaffer-v10b`)
+Spec: `specs/2026-09-01-gaffer-v10b-eo-chips-design.md` (§Gates = G1/G2) · Plan: `plans/2026-09-02-gaffer-v10b.md`
+- [x] §F1 EO framing: top-10k EO beside league EO on the squad rows, a served captain sentence carrying the ±SE and the cover/attack reading, `most_captained` ingested as the fallback for the weeks the tier sample cannot cover, and an EO lens on the pitch (off by default)
+- [x] §F2 season chip planner: the DGW/BGW detector this tree has never had, `GET /api/fixtures/outlook`, `data/chip_scenarios.toml` derived from the *published* fixture list inside `refresh-data`, and a Chips-tab Outlook segment carrying θ per week and the GW19 first-set expiry
+- [x] `/api/chips/plan` carries θ at all for the first time: the router passed no thresholds and `ChipPlanRow` declared none, so it was computed and dropped — v9d's `odds_blend_weight` failure, repeated
+- [x] No replay — nothing on the training or decision path moves, and on today's fixture list the scenario writer writes nothing, so both arms would be the same arm (recorded, not skipped)
+- Pins: job kinds 12, config fields 48, routes 44 → 45 (two protected route-count pins moved under orchestrator authorization — the toll an absolute pin charges, recorded as a residual for v11)
+- [ ] G2: adversarial review, fix-first, merge ritual
+- Suite: 3130 Python + 591 frontend (G1)
 
 ## Operational / housekeeping
 - [x] Untrack `reports/` artifacts + `.claude/`; gitignore both (`31dc239`)
