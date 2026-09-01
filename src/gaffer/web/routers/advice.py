@@ -21,6 +21,7 @@ from gaffer.artifacts import (advice_history_files, data_warning,
                               latest_gw, load_advice, load_solve_state,
                               upcoming_gw)
 from gaffer.errors import GafferError
+from gaffer.web.field_frame import with_field_frame
 from gaffer.web.identity import with_identity
 from gaffer.web.schemas import AdviceDiff, AdviceLatest, Staleness
 
@@ -163,18 +164,25 @@ def latest() -> AdviceLatest:
     if gw is None:
         raise GafferError("no advice on disk yet — run `gaffer advise` first")
     state = load_solve_state(gw)
-    # Three serve-time decorations, composed. ``with_positions`` backfills a
+    # Four serve-time decorations, composed. ``with_positions`` backfills a
     # field ``advise`` did not always write; ``with_identity`` adds three it
     # still does not, because it cannot — ``advise.py`` is protected, so the
     # pitch's team identity and fixture chip are resolved here from files the
     # backend already banks (plan A2). ``with_attacking_haul`` is v9c's D3:
     # two different quantities were served as ``p_haul`` on one page, and the
     # attacking one is renamed here because renaming the column would mean
-    # editing the protected pipeline for a label. All three are additive, all
-    # three leave every pre-existing field alone, and all three are no-ops on
-    # a clone with no snapshots rather than an error.
-    payload = with_attacking_haul(
-        with_identity(with_positions(load_advice(gw), state.pool), gw))
+    # editing the protected pipeline for a label. ``with_field_frame`` is
+    # v10b §F1a: the captain's standing against the top 10k, with its standard
+    # error, which is a number ``/api/players`` computes for every player and
+    # serves for none. It runs **outermost** because it reads the captain after
+    # ``with_positions`` has filled him in, and because the sentence names the
+    # club ``with_identity`` has just resolved. All four are additive, all four
+    # leave every pre-existing field alone, and all four are no-ops on a clone
+    # with no snapshots rather than an error.
+    payload = with_field_frame(
+        with_attacking_haul(
+            with_identity(with_positions(load_advice(gw), state.pool), gw)),
+        gw)
     return AdviceLatest(
         gw=gw, mode=state.mode, deadline=state.deadline, advice=payload,
         staleness=staleness_for(gw, state.deadline, state.generated_at))
