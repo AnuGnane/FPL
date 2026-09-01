@@ -113,6 +113,35 @@ per-player probabilities the model already computes.
   unchanged).
 - **G5** — adversarial review, fix-first, re-verify; merge ritual.
 
+### The `p_play` seam — decision
+
+Plan Task 10's STOP. §F1 assumed an existing seam by which `p_play` would
+reach `solve_plan`; plan A8's search found none — `build_pool`'s `players` is
+the bootstrap frame and the FPL API carries no such column, `pool_ep` is a
+`dict[(code, gw), float]` whose values `_solve_once` coerces with `float()`,
+and every other structure the solver sees is assembled inside `advise.py`.
+
+**Decided: option A.** One authorized line-group in `src/gaffer/advise.py`,
+enumerated in the plan under "Task 10A". A `{code: {gw: p_play}}` dict is
+built from `comp` after `build_pool` (grouped mean per `(code, gw)` — the
+`shadow_rows` rule, because "did he turn out at all" is one outcome across a
+double gameweek) and added to `solve_kw`, so the raw optimum and
+`policy.coherent_plan` are both weighted.
+
+Two consequences, recorded because they change what the gates mean:
+
+- **`backtest.py` is untouched.** It is import-only this cycle and passes no
+  `p_play`, so **G2 cannot see §F1 at all** and is a no-regression check on
+  the seed spread rather than a measurement of the feature. **G3 is the gate
+  that judges §F1** — its driver calls `solve_plan(..., p_play=...)`
+  directly and is independent of this decision.
+- **Scenarios stay single-pass.** Plan A1 asserted this followed automatically
+  because `run_scenarios` could not learn the keyword; the tree says otherwise
+  — `advise.py` hands it `**solve_kw`. `p_play` is therefore stripped
+  explicitly at that call. Scenarios are N noised re-solves measuring how
+  stable a move is; doubling the slowest part of an advise run to price a
+  bench the sweep never reads would be a cost with no reader.
+
 ### G1 results
 
 _TBD by the cycle._

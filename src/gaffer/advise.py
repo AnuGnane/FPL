@@ -698,6 +698,22 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         state = SolveInput(owned_codes=my.picks["code"].tolist(), bank=my.bank,
                            free_transfers=my.free_transfers, gws=gws)
     pool = build_pool(players, pool_ep, my_picks, gws)
+    # v10 §F1/T10-A (specs/2026-09-01-gaffer-v10-minutes-design.md): the one
+    # caller that hands the optimizer its minutes probabilities. There is no
+    # existing seam — `players` is the bootstrap frame and the FPL API carries
+    # no p_play, `pool_ep` is a dict of floats that solve_plan coerces with
+    # float(), and every other structure is assembled here — so this is the
+    # seam, deliberately and narrowly. Grouped mean per (code, gw) because
+    # "did he turn out at all" is one outcome across a double gameweek, which
+    # is news_shadow.shadow_rows' rule for its reason. Coverage is
+    # all-or-nothing inside solve_plan, so a gap here degrades to the pre-v10
+    # solve rather than pricing the silent half as nailed on.
+    p_play_by_code: dict[int, dict[int, float]] = {}
+    if "p_play" in comp.columns:
+        for row in (comp.groupby(["code", "gw"], as_index=False)
+                    .agg(p_play=("p_play", "mean")).itertuples()):
+            p_play_by_code.setdefault(int(row.code), {})[int(row.gw)] = float(
+                row.p_play)
     # Calibrated decision tables, or the flat pre-v4c values when the asset
     # is absent or switched off. Resolved before the first solve so the raw
     # optimum and every scenario are priced identically.
@@ -713,7 +729,7 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     # opt_kw is serialized into SolveState.opt at the end of this function, so
     # it stays plain JSON — floats and a list of three floats. solve_kw is the
     # same bundle plus anything that is only meaningful in-process.
-    solve_kw = dict(opt_kw, ft_lambda=ft_lambda)
+    solve_kw = dict(opt_kw, ft_lambda=ft_lambda, p_play=p_play_by_code)
     plan = solve_plan(pool, state, **solve_kw)
     first = plan.gw_plans[0]
 
@@ -740,8 +756,14 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
                   "and mean nothing")
         # Seeded per gameweek, not per season: a fixed seed would re-use one
         # noise sequence every week, which is how D1 was measured.
+        # v10 §F1/T10-A: p_play is dropped for the scenario sweep. Scenarios
+        # are N noised re-solves whose job is to measure how stable a move is,
+        # and §F1a's second pass would double the slowest part of an advise
+        # run to price a bench the sweep never reads. The raw optimum and
+        # coherent_plan — the two solves that decide — keep it.
+        scenario_kw = {k: v for k, v in solve_kw.items() if k != "p_play"}
         run = run_scenarios(pool, state, xmins, n=cfg.scenarios_n,
-                            seed=cfg.scenarios_seed + gw, **solve_kw)
+                            seed=cfg.scenarios_seed + gw, **scenario_kw)
         if not run.completed:
             print(f"all {run.attempted} scenario solves failed "
                   f"({run.failures} failures); falling back to the raw "
