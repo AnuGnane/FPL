@@ -477,20 +477,32 @@ holdout, which is a different protocol on different rows).
 The predictions come off `reports/components_gw{N}.parquet`, written before
 the gameweek was played, so this is the model that served rather than a model
 refitted afterwards — nothing is retrained and the whole report takes seconds.
-Four heads are graded: `p_play`, `p60`, `p_cs` (at team-gameweek grain: a
-clean sheet is one event, not eleven) and the attacking `p_haul`, recomputed
-through the same function the solver called.
+Four heads are graded: `p_play`, `p60`, `p_cs` and the attacking `p_haul`,
+recomputed through the same function the solver called. Both sides are read at
+player-fixture grain — a double gameweek is two forecasts, and grading either
+against the pair's totals invents outcomes that happened in no fixture.
+
+`p_cs` is graded per club-fixture (a clean sheet is one event, not eleven) and
+therefore only in the cumulative row: about twenty club-fixtures a gameweek is
+under the 30-row floor, so a per-gameweek column of it could never read
+anything but "not enough data". The club's result is goals conceded among its
+60-minute rows, not FPL's per-player `clean_sheets`, which is an award — 0 for
+anyone under 60 minutes however the club played.
 
 Its refusals matter as much as its numbers, and the card prints all of them:
 
 - **`p_start` is omitted**, and the payload says why — the minutes trichotomy
   is never banked, so there is nothing to grade. An omission without its
   reason would read as a head that is fine.
-- **A gameweek whose components file post-dates its own last kickoff is not
+- **A gameweek whose components file post-dates its own first kickoff is not
   graded**, and appears in `excluded` with the reason. Re-running `gaffer
   advise` on a finished gameweek silently overwrites an as-of prediction with
   a hindsight one, and mtime against kickoff is the only signal there is. The
-  guard fails closed: no kickoff information is also an exclusion.
+  boundary is the *first* kickoff because the file is written whole: a Sunday
+  morning re-run banks Saturday's played fixtures beside Sunday's unplayed
+  ones. The guard fails closed: no kickoff information is also an exclusion.
+- **A banked file that joins no graded rows is excluded too**, with its own
+  reason. `missing` means one thing only: nobody banked a file for that week.
 - **A head under 30 rows says "not enough data"** rather than drawing a curve
   through sampling noise.
 
