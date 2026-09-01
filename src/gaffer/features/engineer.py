@@ -550,7 +550,11 @@ def _recent_load(df: pd.DataFrame, kt: pd.Series,
         if pd.notna(team) and pd.notna(when):
             by_club.setdefault(int(team), []).append(when)
     extra = pd.Series(0.0, index=df.index, dtype="float64")
-    clubs = pd.to_numeric(df["team_code"], errors="coerce")
+    # v9d §1b (specs/2026-09-01-gaffer-v9d-design.md): per-club, so the club
+    # has to be the one he played for. The guard above still tests for
+    # ``team_code`` and deliberately so — ``as_of_club`` falls back to that
+    # column and cannot run without it.
+    clubs = pd.to_numeric(as_of_club(df), errors="coerce")
     for pos, (club, when) in enumerate(zip(clubs, kt)):
         if pd.isna(club) or pd.isna(when):
             continue
