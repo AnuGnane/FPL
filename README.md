@@ -345,6 +345,73 @@ code→element maps in the tree, one private to the league simulator and one
 memoised in `web/field_frame.py`; merging them would mean opening a router this
 cycle otherwise never touches.
 
+### The board, the working, and the season so far (v11)
+
+**Planning** gains a **Board**: the horizon the last advice run solved, laid
+out week by week — the buys and sells with their prices, the hits and what they
+cost, the chip if the solver placed one inside the horizon, and what is left in
+the bank after each week. A shorter horizon is a shorter board; nothing is
+padded to six columns. Names whose price is moving carry a warning read off the
+price log — the direction and how far through the threshold they are, never a
+predicted price, because the log does not hold one — and a log still calibrating
+draws no warning at all rather than an untrustworthy one. **The board never
+re-solves.** It draws the plan the advice run wrote.
+
+"Try these changes" hands the week to the What-If lab prefilled, and stops
+there: you press Re-solve yourself. Two limits are printed under the button
+rather than hidden in a tooltip, because a limit you discover by hovering is a
+limit you discover after the solve. A planned sell reaches the lab as *don't
+own him*, which also rules out buying him back — the constraint vocabulary has
+no "sell exactly this". And the bank is not a constraint the lab accepts at
+all.
+
+The bank itself goes blank from the first move the pool cannot price, and stays
+blank for every week after it. Skipping such a move would report a number wrong
+by exactly that player's price, confidently, with nothing on the page to say
+so, and there is no later week at which the running total comes right again. A
+blank is not a zero: zero is *fully invested*, which is a real thing to be.
+
+**Players → Compare** now shows the model's own working. Where each player's
+expected points come from, term by term and signed, with the rows adding up to
+the number printed above them so the claim is checkable rather than asserted;
+his chance of playing, his chance of sixty minutes and his expected minutes for
+the gameweek, both fixtures on a double because an average of two probabilities
+is a probability of nothing; his set-piece order, said loudly at one and barely
+at three, and not said at all where the bootstrap does not say — which is not
+the same as "not a taker". The next six carry the same difficulty tint the rest
+of the app uses, still read off the clean-sheet axis for a goalkeeper or
+defender and the attacking axis for everyone else.
+
+All three ownership figures sit together, and the top-10k one now carries its
+error bar. It has to: the figure is measured from a sample of a few hundred
+entries, so it is good to a couple of percentage points, and a page that
+printed it bare would imply a precision the sample does not have. An older
+scrape that recorded no error shows the figure and an em dash — never a zero,
+which would be a claim of perfect precision.
+
+**Model** gains a **Season** tab beside Review: the decision record per lane —
+what each cost or gained and how often it went your way — cumulative points
+left on the bench, the accuracy and overall-rank trajectories, and the
+calibration trend. A lane's record is counted over the weeks it was *graded*,
+and a week where your decision made no difference is neither a win nor a loss:
+counting agreement as judgment is how a lane that never disagreed comes to look
+like a lane that was never wrong. A lane nothing has measured says **never
+graded**, not 0%. The rank axis runs downward, because a line that rises when
+the season goes badly is a chart lying with its shape, and a missing rank is a
+gap in the line rather than a point at zero — zero is the best rank in the
+game.
+
+It is built empty on purpose and it is empty today. The first grades land when
+FPL marks GW2 `data_checked`; the Tuesday review job banks them by itself.
+
+Two things this cycle left open, deliberately, on top of the three v10b left.
+The bank trajectory is arithmetic the solver already did internally, re-done at
+`web/routers/plan.py`, because the alternative is widening the advice
+artifact's `plan_by_gw` — which means editing `advise.py`, and this cycle did
+not. And `overall_rank` populates only for gameweeks graded *after* v11: grades
+are banked and never re-derived, so every row already in the ledger has no rank
+and will never acquire one. The trajectory starts where this cycle did.
+
 **Freeing a wedged job (v9c).** The server runs one background job at a time,
 so a job that hangs used to hold the lane and answer every later job with a
 409 until you restarted the process — and the 409 named a run you had no way
