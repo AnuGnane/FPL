@@ -145,6 +145,12 @@ in either file changed.
 - [ ] Merge ritual: ff-only, push, `git show main:config.toml` fails, key-grep
       empty.
 
+The live spot-checks for §F1 need a GW3 field scrape and a `refresh-data` run
+before there is an EO row to show, so they are deferred to the orchestrator's
+post-merge sequence rather than blocking the fix round; the degradation half —
+the key absent rather than 0.0 — was verified on the real payload in their
+place.
+
 ### No replay — recorded reasoning
 
 Nothing on the training or decision path changes. §F1 is serve-time decoration
@@ -186,6 +192,23 @@ chip in every gameweek.
 - Two code→element maps now exist: `league_sim._elements_by_code` and
   `web/field_frame`'s memoised one. Merging them would open a router this
   cycle otherwise never touches (plan A3).
+- **`ThetaTrack` compares a wildcard's gain to θ on the wrong scale.** Each
+  week's chip goes green when `gain >= theta`, which is exactly the comparison
+  `optimize/chips.py:278` makes for `play_now` — so the strip is consistent
+  with the number beside it and inconsistent with the wildcard's own
+  arithmetic. A wildcard's `gain` is credited with *every horizon week from
+  the week it is played onwards* (`chips.py:244-248`), so an early week is
+  scored over more weeks and clears any flat bar almost regardless of the
+  fixtures, while `per_week` is the rate the same file says to rank wildcards
+  on. Inherited, not introduced: fixing it means deciding what a wildcard's
+  bar means, which is a chip-policy question and not a rendering one.
+- **`captain_field.most_captained` is served and rendered nowhere.** §F1b
+  attaches the bootstrap's modal captain whenever it disagrees with — or
+  stands in for — the tier sample, and `modal_note` words it, but the sentence
+  only reaches the page through `note` on the EO-absent branch. When both are
+  present the object rides along unread. Either This Week shows it beside the
+  measured share or the key comes off the payload; leaving a served key with
+  no reader is how a schema grows things nobody can delete.
 - **The absolute route-count pin collides on every future route addition.**
   Three files now carry `len(paths) == 45` and two of them are protected, so
   every cycle that adds an endpoint pays the same authorization toll this one
