@@ -204,3 +204,58 @@ JOB_KINDS: dict[str, Callable[[], Any]] = {
     "digest-tuesday": run_digest_tuesday,
 }
 """The allow-list. A kind not in here is a 404, never an exec of user input."""
+
+FAST_ABANDON_S = 120.0
+"""What a kind that has no business taking minutes gets instead.
+
+The number is ``WHATIF_TIMEOUT_S``'s (``web/jobs.py:28``), reused rather than
+re-derived: a what-if re-solve is the reference "this is a pure computation
+that should take seconds", and every kind listed against it below is the same
+kind of work — a scrape, a snapshot, a re-solve of an already-built model.
+"""
+
+ABANDON_TIMEOUT_S: dict[str, float] = {
+    "advise-fast": FAST_ABANDON_S,
+    "snapshot": FAST_ABANDON_S,
+    "track-pens": FAST_ABANDON_S,
+    "sensitivity": FAST_ABANDON_S,
+}
+"""How long a kind may hold the single lane before ``JobRunner.start`` reaps
+it, where that is *not* the standing ``jobs.ADVISE_TIMEOUT_S`` (v9d §3c).
+
+``ADVISE_TIMEOUT_S`` covered all twelve kinds with one number, chosen for the
+most expensive of them, so a wedged four-second snapshot blocked every later
+job for half an hour. This is the same reaper with a per-kind deadline; the
+constant survives as the lookup's default, which is what keeps a kind added
+without a line here safe rather than immortal.
+
+**Overrides only, and that is load-bearing rather than terse.** The eight slow
+kinds are deliberately absent instead of carrying a literal ``1800.0``, for
+two reasons that point the same way. The constant stays the single place the
+slow deadline is written, so the two cannot drift apart; and
+``jobs.ADVISE_TIMEOUT_S`` is read at call time, which is how v9c's reaper
+rails drive the reaper at all — ``tests/test_v9c_job_timeout.py`` and
+``tests/test_v9c_degradation.py:260`` both monkeypatch that constant and start
+an ``advise`` job. A literal here would silently shadow the lever those rails
+pull and leave them asserting on a thirty-minute deadline they thought they
+had shortened. :data:`SLOW_ABANDON_KINDS` records the other eight by name so
+the completeness pin below still holds.
+
+It is deliberately a plain dict beside ``JOB_KINDS`` and **not** a config key:
+these are engineering deadlines on a local single-lane runner, not something a
+user tunes. ``tests/test_v9d_degradation.py`` pins that the overrides and
+:data:`SLOW_ABANDON_KINDS` together cover exactly ``JOB_KINDS``, so a
+thirteenth kind cannot be added without deciding its deadline.
+"""
+
+SLOW_ABANDON_KINDS: frozenset[str] = frozenset({
+    "advise", "evaluate", "refresh-data", "news-shadow", "field-scrape",
+    "review", "digest-friday", "digest-tuesday",
+})
+"""The kinds that keep ``jobs.ADVISE_TIMEOUT_S``, named rather than implied.
+
+Absence from :data:`ABANDON_TIMEOUT_S` is what gives them the default, and an
+unnamed absence is indistinguishable from an oversight. Listed here, a kind
+added to ``JOB_KINDS`` without a deadline decision fails the pin in
+``tests/test_v9d_degradation.py`` instead of quietly inheriting half an hour.
+"""

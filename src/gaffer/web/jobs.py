@@ -24,6 +24,11 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Callable
 
+# v9d §3c (specs/2026-09-01-gaffer-v9d-design.md): the per-kind deadlines
+# ``JobRunner.start`` reaps a wedged holder on. Module scope, because the
+# circular-import check the plan requires comes back clean in both orders.
+from gaffer.web.job_kinds import ABANDON_TIMEOUT_S
+
 WHATIF_TIMEOUT_S = 120.0
 """Spec §2.1: a what-if re-solve is a pure MILP run and should take seconds."""
 
@@ -301,8 +306,18 @@ class JobRunner:
                - datetime.fromisoformat(run.started_at)).total_seconds()
         if age < older_than:
             return None
+        # v9d §3b (specs/2026-09-01-gaffer-v9d-design.md): a cancel is not a
+        # timeout. ``abandon_current`` passes 0.0 — "however old it is" — and
+        # until v9d that path reported "timed out after 0s", which is both
+        # false and the single most confusing thing the job panel could say
+        # about a button the user had just pressed. The daemon half of the
+        # sentence is kept in both branches, because it is the part that is
+        # still true and still surprising: the lane is free, the work is not
+        # stopped.
         run.status = "failed"
-        run.error = (f"timed out after {older_than:.0f}s — abandoned as a "
+        run.error = ("cancelled — abandoned as a daemon, its thread still "
+                     "running" if older_than == 0.0 else
+                     f"timed out after {older_than:.0f}s — abandoned as a "
                      f"daemon, its thread still running")
         run.finished_at = _now()
         self._current = None
@@ -328,7 +343,18 @@ class JobRunner:
             # below was permanent — the lane was cleared only by _execute's
             # finally, so a job that never returned blocked every later job
             # until the process restarted. v9c D4.
-            self._abandon_current(ADVISE_TIMEOUT_S)
+            # v9d §3c (specs/2026-09-01-gaffer-v9d-design.md): the deadline is
+            # the *holder's*, not one number for all twelve kinds. A snapshot
+            # that wedges held the lane for the same half hour as a cold
+            # train-and-advise, because ADVISE_TIMEOUT_S was the only
+            # constant there was. The holder's kind is readable here — the
+            # lock is held and self._current is set — so the lookup is a dict
+            # read with the old constant as its default. The import is at
+            # module scope because the check the plan asks for says it does
+            # not cycle.
+            holder = self._runs.get(self._current or "")
+            self._abandon_current(ABANDON_TIMEOUT_S.get(
+                holder.kind if holder is not None else "", ADVISE_TIMEOUT_S))
             if self._current is not None:
                 running = self._runs[self._current]
                 raise JobAlreadyRunning(running.kind, running.id)
