@@ -162,6 +162,18 @@ First G1 run crashed (suffix collision + a cups path that never existed —
 the off-arm would have measured a disconnected lever); instrument fixed at
 c65f65a before any number was recorded. The lever guard did its job.
 
-### G2 results
+### G2 results (measured 2026-09-01/02, scripts/replay_pair.sh v9d)
 
-_TBD by the cycle._
+Branch [1853, 1847, 1872] vs re-run main [1853, 1847, 1872] — **identical per
+seed**, mean 1857.3 both sides. Investigated before accepting: the totals are
+not a disconnected lever. Models consume only the opponent-side Understat
+columns (`opp_us_xga_r*`, `opp_ppda_r*` — attacking.py:34, components.py:85),
+which v9d deliberately left alone; the switched own-side `team_*` columns and
+`matches_last_14d` are claimed by no head (withdrawn v5 N1 / v8a G1). G1
+proved the lever moves the columns; G2 proves the columns move no current
+decision. The leak-close is hygiene ahead of any future head that claims
+them — exactly what §1 intended. **PASSES.**
+
+Note: the replay ran the pre-fix-round branch inode (started 02:43); the fix
+rounds touched only the calibration report, identity memo, and instruments —
+none of which are on the replay path — so the verdict stands for HEAD.
