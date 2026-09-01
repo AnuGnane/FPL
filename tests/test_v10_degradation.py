@@ -20,6 +20,7 @@ from __future__ import annotations
 import dataclasses
 import importlib.util
 import inspect
+import json
 from pathlib import Path
 
 import httpx
@@ -30,10 +31,11 @@ import gaffer.optimize.milp as milp
 from gaffer.config import DEFAULT_LINEUP_PROVIDERS, Config, lineup_providers
 from gaffer.data.news.lineups import (LINEUP_COLS, PROVIDERS, Provider,
                                       ROTOWIRE_URL, fetch_lineups)
+from gaffer.evaluation import score_news_shadow
 from gaffer.news_shadow import SHADOW_COLS
 from gaffer.optimize.milp import (BENCH_SLOTS, DEFAULT_BENCH_CURVE,
-                                  FRAILTY_CLAMP, POPULATION_DNP, SolveInput,
-                                  _frailty, solve_plan)
+                                  FRAILTY_CLAMP, KEEPER_DNP, POPULATION_DNP,
+                                  SolveInput, _frailty, solve_plan)
 from gaffer.web.app import create_app
 from gaffer.web.job_kinds import JOB_KINDS
 
@@ -236,6 +238,60 @@ def test_the_frailty_is_clamped_at_both_ends_and_is_one_at_the_population():
     assert lo == 0.25 and hi == 2.0
 
 
+def _coef(objective: str, var: str) -> float:
+    """The coefficient on one variable in a pulp objective's printed form."""
+    for term in objective.replace(" - ", " + -").split(" + "):
+        head, _, name = term.partition("*")
+        if name.strip() == var:
+            return float(head)
+    raise AssertionError(f"{var} is not in the objective")
+
+
+def test_a_population_typical_keeper_reproduces_the_curve_exactly():
+    """The reserve keeper's weight is ``bench_curve[0] * gk_f``, and ``gk_f``
+    is the XI keeper's frailty. A keeper at the *keepers'* measured rate is by
+    definition population-typical, so his cover must be priced at exactly the
+    calibrated first weight — the same statement ``POPULATION_DNP`` makes for
+    the outfield slots, over the divisor that belongs to keepers.
+
+    Divided by the outfield rate instead, the same typical keeper priced his
+    cover at 0.79 of the curve: a fifth off, every week, in one direction.
+    """
+    pool = _pool()
+    keepers = [int(c) for c, p in zip(pool["code"], pool["position"])
+               if p == "GKP"]
+    pp = {int(c): {g: 0.5 + (int(c) % 5) * 0.1 for g in GWS}
+          for c in pool["code"]}
+    for k in keepers:
+        pp[k] = {g: 1.0 - KEEPER_DNP for g in GWS}
+
+    seen: list[str] = []
+    real = milp._solve
+
+    def spy(prob):
+        real(prob)
+        seen.append(str(prob.objective))
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(milp, "_solve", spy)
+        plan = solve_plan(_pool(), _state(), **KW, p_play=pp)
+    assert len(seen) == 2                      # informative: two passes ran
+    bench_gk = next(c for c in plan.gw_plans[0].squad
+                    if c in keepers and c not in plan.gw_plans[0].xi)
+    var = f"sq_{bench_gk}_1"
+    assert _coef(seen[1], var) == pytest.approx(_coef(seen[0], var))
+
+
+def test_the_two_dnp_rates_are_separate_constants():
+    assert _frailty(KEEPER_DNP, KEEPER_DNP) == pytest.approx(1.0)
+    assert _frailty(POPULATION_DNP) == pytest.approx(1.0)
+    # Not the same number, and not accidentally the same number: the gap is
+    # what the fix is about.
+    assert KEEPER_DNP != POPULATION_DNP
+    # What the old single divisor did to a typical keeper: 21% low.
+    assert KEEPER_DNP / POPULATION_DNP == pytest.approx(0.79, abs=0.01)
+
+
 def test_population_dnp_is_a_measured_number_and_not_a_placeholder():
     """A constant nobody measured is the one way §F1 could ship looking
     finished and be arithmetically arbitrary, and there is nothing in a
@@ -329,6 +385,77 @@ def test_shadow_cols_is_the_exact_nine():
     assert SHADOW_COLS == ["season", "gw", "code", "p_play_news",
                            "p_play_flags", "e_min_news", "e_min_flags",
                            "p_play_presser", "run_at"]
+
+
+def test_a_mixed_vintage_shadow_parquet_still_serialises(tmp_path,
+                                                         monkeypatch):
+    """The state every real machine reaches the week v10 lands: a parquet
+    whose old rows were back-filled with NaN when ``p_play_presser`` was added
+    and whose new rows carry a verdict.
+
+    Scored naively, the third side's Brier is NaN over the whole log, and
+    ``save_evaluation`` serialises with ``allow_nan=False`` — so the failure is
+    not a wrong number in the N2 readout, it is no readout at all, and the
+    pending verdict is what it takes down with it.
+    """
+    monkeypatch.chdir(tmp_path)
+    shadow = pd.DataFrame({
+        "season": ["2025-26"] * 4, "gw": [4, 4, 5, 5], "code": [1, 2, 1, 2],
+        "p_play_news": [0.9, 0.5, 0.9, 0.5],
+        "p_play_flags": [0.8, 0.4, 0.8, 0.4],
+        "e_min_news": [80.0, 40.0, 80.0, 40.0],
+        "e_min_flags": [70.0, 30.0, 70.0, 30.0],
+        # GW4 predates the column; GW5 is the first week the classifier ran.
+        "p_play_presser": [float("nan"), float("nan"), 0.72, 0.25],
+        "run_at": ["t"] * 4})
+    actuals = pd.DataFrame({"gw": [4, 4, 5, 5], "code": [1, 2, 1, 2],
+                            "minutes": [90.0, 0.0, 90.0, 0.0]})
+    payload = score_news_shadow(shadow, actuals)
+    text = json.dumps(payload, allow_nan=False)     # the actual failure mode
+    assert "NaN" not in text
+    assert payload["overall"]["rows"] == 4
+    assert payload["overall"]["rows_presser"] == 2
+    gw4 = next(r for r in payload["by_gw"] if r["gw"] == 4)
+    assert "brier_presser" not in gw4 and "rows_presser" not in gw4
+    gw5 = next(r for r in payload["by_gw"] if r["gw"] == 5)
+    assert gw5["rows_presser"] == 2 and gw5["rows"] == 2
+
+
+def test_a_bench_boost_week_is_lp_identical_with_and_without_p_play():
+    """§F1a deliberately leaves the boosted branch alone: under a bench boost
+    every bench player scores in full, so ``bw = 1.0`` and the slot weights do
+    not apply. An informative p_play must not move that week's objective."""
+    pool, gws = _pool(), list(GWS)
+    informative = {int(c): {g: 0.5 + (int(c) % 5) * 0.1 for g in gws}
+                   for c in pool["code"]}
+
+    def capture(**kw):
+        seen = []
+        real = milp._solve
+
+        def spy(prob):
+            real(prob)
+            seen.append(str(prob.objective))
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(milp, "_solve", spy)
+            state = SolveInput(owned_codes=list(OWNED), bank=0,
+                               free_transfers=2, gws=gws, bench_boost_gw=gws[0])
+            solve_plan(pool, state, **KW, **kw)
+        return seen
+
+    base = capture()
+    weighted = capture(p_play=informative)
+    assert len(base) == 1 and len(weighted) == 2
+    # The boosted week's terms are the same terms; only the unboosted second
+    # week may be re-priced by the frailty.
+    assert _boost_week_terms(base[0]) == _boost_week_terms(weighted[0])
+
+
+def _boost_week_terms(objective: str) -> set[str]:
+    """The objective's terms naming a boosted-week variable (``_1`` suffix)."""
+    return {t for t in objective.replace("- ", "+ -").split(" + ")
+            if t.rstrip().endswith("_1")}
 
 
 def test_lineup_cols_is_unchanged_from_mains_five():

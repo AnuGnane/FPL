@@ -9,7 +9,7 @@ Measured on the same footing as every other model number here — the 2024-25
 walk-forward benchmark, one fit, then a gameweek at a time:
 
     for each gameweek of the test season:
-        take the DEFAULT_TOP_N pool by horizon EP
+        take the DEFAULT_TOP_N pool by that gameweek's EP
         take the positionally-legal eleven with the highest EP
             (one GK, then greedy by EP inside XI_BOUNDS)
         record mean(1 - p_play) over those eleven, and the keeper's alone
@@ -22,8 +22,9 @@ EP-ranked pool by EP, under constraints — budget, three-per-club — that are
 close to orthogonal to availability.
 
 Three numbers come out and all three matter. ``POPULATION_DNP`` is the
-constant. ``gk_dnp`` is the keeper-only rate, printed so the next cycle can
-split the constant if the two have diverged; v10 ships one number. And the
+constant. ``gk_dnp`` is the keeper-only rate, and it is banked too, as
+``KEEPER_DNP``: the reserve keeper covers one man rather than the eleven, so
+his weight is only 1.0 at a typical *keeper*. And the
 per-gameweek min/max says whether ``FRAILTY_CLAMP``'s (0.25, 2.0) would ever
 have bound on real data — if it binds every week the clamp is doing the
 deciding and the constant is wrong.

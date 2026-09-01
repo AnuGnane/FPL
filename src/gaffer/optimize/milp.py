@@ -69,13 +69,30 @@ only says how far this week's XI sits from the population it was fitted on.
 Measured by ``scripts/v10_dnp.py`` (plan A3): per gameweek of the benchmark
 test season, the positionally-legal eleven with the highest EP out of the
 :data:`DEFAULT_TOP_N` pool, ``mean(1 - p_play)`` over those slots, averaged
-over 38 gameweeks. Keeper-only rate over the same run: 0.0486. Per-gameweek
-range: 0.0389-0.2045, the maximum being GW1, where the model has no
-current-season form to read and is uncertain about everyone. One constant
-serves both the outfield slots and the reserve keeper; the two rates differ by
-about a fifth of a point of probability, which is well inside what one season
-of benchmark measures, and if a later measurement separates them splitting the
-constant is a one-line change here and nothing else.
+over 38 gameweeks. Per-gameweek range: 0.0389-0.2045, the maximum being GW1,
+where the model has no current-season form to read and is uncertain about
+everyone.
+
+The same run measured the keeper-only rate: :data:`KEEPER_DNP`, 0.0486. It is
+its own constant rather than a rounding of this one. The two differ by 1.3
+points of probability, which sounds small and is not: they are *divisors*. A
+population-typical keeper divided by this constant instead of his own gives
+0.0486 / 0.0617 = 0.79 — the bench keeper's whole weight, 21% low, every week,
+in one direction. "A fifth of a point of probability" was the wrong reading of
+the same two numbers and is what this paragraph replaces.
+"""
+
+KEEPER_DNP = 0.0486
+"""Mean ``1 - p_play`` for the *starting keeper*, on the same benchmark run.
+
+:data:`POPULATION_DNP`'s divisor is the XI's mean, and the reserve keeper does
+not cover the XI: he plays exactly when one man does not. His weight therefore
+reads that one man's frailty (``_decision_scales``), and a frailty is only 1.0
+at the population it was measured on — so the population here is keepers.
+
+Keepers are the most nailed-on position on the pitch, which is why the rate is
+lower than the eleven's. Over the same 38 gameweeks and the same
+``scripts/v10_dnp.py`` run: 0.0486.
 """
 
 FRAILTY_CLAMP = (0.25, 2.0)
@@ -180,10 +197,16 @@ class FixedMoves:
 # v10 §F1a (specs/2026-09-01-gaffer-v10-minutes-design.md): the arithmetic the
 # two-pass solve is built out of. All three are private and none is reachable
 # from a caller that passes no p_play.
-def _frailty(dnp_rate: float) -> float:
-    """A did-not-play rate -> a clamped multiplier on a population weight."""
+def _frailty(dnp_rate: float, population: float = POPULATION_DNP) -> float:
+    """A did-not-play rate -> a clamped multiplier on a population weight.
+
+    ``population`` is the rate the multiplier is 1.0 at. It is the XI's for
+    every slot the XI covers and :data:`KEEPER_DNP` for the reserve keeper,
+    who covers one man and must be typical against the population that man
+    belongs to.
+    """
     lo, hi = FRAILTY_CLAMP
-    return min(max(dnp_rate / POPULATION_DNP, lo), hi)
+    return min(max(dnp_rate / population, lo), hi)
 
 
 def _p_play_lookup(pool: pd.DataFrame, state: SolveInput,
@@ -239,11 +262,16 @@ def _decision_scales(plan: "Plan", pool: pd.DataFrame,
                      pp: dict[int, dict[int, float]]) -> dict:
     """Pass one's answer -> pass two's weights and pins (plan A1).
 
-    Three ratios per gameweek, all over the same denominator and through the
-    same clamp: the XI's mean frailty for the outfield bench slots, the *XI
-    keeper's own* for the reserve keeper — he plays exactly when that one man
-    does not, which is why the outfield mean would be the wrong number — and
-    the captain's for the vice hedge.
+    Three ratios per gameweek, all through the same clamp: the XI's mean
+    frailty for the outfield bench slots, the *XI keeper's own* for the reserve
+    keeper — he plays exactly when that one man does not, which is why the
+    outfield mean would be the wrong number — and the captain's for the vice
+    hedge.
+
+    The keeper's ratio is also over its own denominator, :data:`KEEPER_DNP`:
+    a frailty is 1.0 only at the population it was measured on, and a
+    population-typical keeper has to reproduce ``bench_curve[0]`` exactly or
+    the "modulation of a calibrated curve" story is not true for that slot.
 
     The XI and the captain are pinned. The vice scale is the captain's
     frailty, so leaving the armband free in pass two would let the solver
@@ -262,7 +290,7 @@ def _decision_scales(plan: "Plan", pool: pd.DataFrame,
             continue
         out_f = _frailty(sum(dnp) / len(dnp))
         keeper = next((c for c in xi if pos.get(c) == "GKP"), None)
-        gk_f = (_frailty(1.0 - pp[keeper][t])
+        gk_f = (_frailty(1.0 - pp[keeper][t], KEEPER_DNP)
                 if keeper is not None and keeper in pp else out_f)
         cap = gp.captain
         bench_scale[t] = (out_f, gk_f)
