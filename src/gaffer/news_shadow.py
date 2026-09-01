@@ -25,7 +25,11 @@ from gaffer.data import store
 SHADOW_PATH = "live/news_shadow.parquet"
 
 SHADOW_COLS = ["season", "gw", "code", "p_play_news", "p_play_flags",
-               "e_min_news", "e_min_flags", "run_at"]
+               "e_min_news", "e_min_flags", "p_play_presser", "run_at"]
+"""v10 §F2b adds ``p_play_presser`` beside the other prediction columns and
+before ``run_at``, which stays last: the stamp is metadata and every reader of
+this parquet — the scorer, the digest, a human with ``parquet-tools`` —
+expects it there."""
 
 REQUIRED_INPUT = ("code", "gw", "p_play", "p_play_flags", "e_min",
                   "e_min_flags")
@@ -54,9 +58,56 @@ def shadow_rows(comp: pd.DataFrame, gw: int,
     # The log outlives a season rollover and gameweek 5 comes round again;
     # without this the scorer's key collides across years.
     grouped.insert(0, "season", str(season or ""))
+    # v10 §F2b (specs/2026-09-01-gaffer-v10-minutes-design.md): what the
+    # presser classifier *would* have done, beside what the news layer did.
+    # Joined from the presser log rather than carried on ``comp``, because
+    # ``apply_availability`` drops ``llm_verdict`` before ``predict_components``
+    # ever sees it and ``advise.py`` — which names the carried columns — is
+    # protected. The log is already on disk by this point: ``write_presser``
+    # runs inside ``apply_availability``, one line before ``write_shadow``
+    # is called (advise.py:585-586).
+    grouped["p_play_presser"] = grouped["p_play_news"] * _presser_factors(
+        grouped["code"], season, gw)
     grouped["run_at"] = run_at or datetime.now(timezone.utc).isoformat(
         timespec="seconds")
     return grouped[SHADOW_COLS]
+
+
+def _presser_factors(codes: pd.Series, season: str, gw: int) -> pd.Series:
+    """``would_factor`` per code for this ``(season, gw)``, ``1.0`` elsewhere.
+
+    ``1.0`` and never null: a player the classifier never saw has no opinion
+    recorded against him, and "no opinion" is arithmetically "no change". A
+    null would lose him from the scorer's join instead, which is the one
+    outcome that would make the third side unreadable.
+
+    Its own ``try``, returning all-``1.0`` on anything at all. The presser log
+    is instrumentation and ``would_factor`` never raises, but a corrupt
+    parquet still can — and instrumentation does not block *other*
+    instrumentation.
+    """
+    ones = pd.Series(1.0, index=codes.index, dtype="float64")
+    try:
+        from gaffer.data.news.presser_log import load_presser_log, would_factor
+
+        log = load_presser_log()
+        if log is None or log.empty:
+            return ones
+        part = log[(log["season"].astype(str) == str(season or ""))
+                   & (pd.to_numeric(log["gw"], errors="coerce") == int(gw))]
+        if part.empty:
+            return ones
+        factor = (part.assign(
+            _code=pd.to_numeric(part["code"], errors="coerce"),
+            _f=part["verdict"].map(would_factor).astype("float64"))
+            .dropna(subset=["_code"])
+            .drop_duplicates(subset=["_code"], keep="last")
+            .set_index("_code")["_f"])
+        return (pd.to_numeric(codes, errors="coerce").map(factor)
+                .astype("float64").fillna(1.0))
+    except Exception as exc:  # noqa: BLE001 — instrumentation never blocks
+        print(f"news shadow: presser factors not joined ({exc})")
+        return ones
 
 
 def _current_season() -> str:
@@ -93,8 +144,14 @@ def write_shadow(comp, gw: int):
             return None
         existing = (store.load(SHADOW_PATH) if store.exists(SHADOW_PATH)
                     else pd.DataFrame(columns=SHADOW_COLS))
-        if "season" not in existing.columns:
-            existing = existing.assign(season="")
+        # A parquet banked before a column existed reads back: the reindex
+        # that v8-era code did for ``season`` alone generalises to the whole
+        # of SHADOW_COLS, so v10's p_play_presser needs no second special
+        # case and neither will the next one.
+        for col in SHADOW_COLS:
+            if col not in existing.columns:
+                existing = existing.assign(
+                    **{col: "" if col == "season" else float("nan")})
         merged = pd.concat([existing, rows], ignore_index=True)
         return store.save(merged[SHADOW_COLS], SHADOW_PATH)
     except Exception as exc:  # noqa: BLE001 — instrumentation never blocks

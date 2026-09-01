@@ -449,7 +449,18 @@ def score_news_shadow(shadow: pd.DataFrame,
     # two-part key rather than being dropped.
     key = (["season", "gw", "code"] if "season" in shadow.columns
            else ["gw", "code"])
+    # v10 §F2b: the third side exists only when the classifier has spoken. A
+    # column that is a copy of ``p_play_news`` means every verdict was
+    # informational, and a third Brier identical to the first would read as a
+    # result rather than as silence. A pre-v10 log has no column at all and
+    # takes exactly the path it always did.
+    sides = ["news", "flags"]
+    if ("p_play_presser" in shadow.columns
+            and not shadow["p_play_presser"].equals(shadow["p_play_news"])):
+        sides.append("presser")
     cols = key + ["p_play_news", "p_play_flags", "e_min_news", "e_min_flags"]
+    if "presser" in sides:
+        cols = cols + ["p_play_presser"]
     truth = (actuals.groupby(["gw", "code"], as_index=False)
              .agg(minutes=("minutes", "sum")))
     joined = (shadow[cols].groupby(key, as_index=False).last()
@@ -458,19 +469,22 @@ def score_news_shadow(shadow: pd.DataFrame,
         return {"run_at": run_at(), "git_sha": git_sha(), "rows": 0,
                 "overall": {}, "by_gw": []}
     played = (joined["minutes"] > SHADOW_PLAYED_MINUTES).astype(float)
-    for side in ("news", "flags"):
+    for side in sides:
         joined[f"_brier_{side}"] = (joined[f"p_play_{side}"] - played) ** 2
-        joined[f"_ae_{side}"] = (joined[f"e_min_{side}"]
-                                 - joined["minutes"]).abs()
+        # The presser side is a p_play factor and has no minutes counterpart:
+        # would_factor damps the probability of appearing, not an expected
+        # minutes total, so there is no e_min_presser to score.
+        if f"e_min_{side}" in joined.columns:
+            joined[f"_ae_{side}"] = (joined[f"e_min_{side}"]
+                                     - joined["minutes"]).abs()
 
     def _summary(frame: pd.DataFrame) -> dict:
-        return {
-            "brier_news": round(float(frame["_brier_news"].mean()), 4),
-            "brier_flags": round(float(frame["_brier_flags"].mean()), 4),
-            "mae_news": round(float(frame["_ae_news"].mean()), 3),
-            "mae_flags": round(float(frame["_ae_flags"].mean()), 3),
-            "rows": int(len(frame)),
-        }
+        out = {f"brier_{s}": round(float(frame[f"_brier_{s}"].mean()), 4)
+               for s in sides}
+        out.update({f"mae_{s}": round(float(frame[f"_ae_{s}"].mean()), 3)
+                    for s in sides if f"_ae_{s}" in frame.columns})
+        out["rows"] = int(len(frame))
+        return out
 
     by_gw = []
     for gw in sorted(int(g) for g in joined["gw"].unique()):
@@ -482,6 +496,8 @@ def score_news_shadow(shadow: pd.DataFrame,
         row["cum_brier_flags"] = cum["brier_flags"]
         row["cum_mae_news"] = cum["mae_news"]
         row["cum_mae_flags"] = cum["mae_flags"]
+        if "presser" in sides:
+            row["cum_brier_presser"] = cum["brier_presser"]
         by_gw.append(row)
 
     return {"run_at": run_at(), "git_sha": git_sha(),
