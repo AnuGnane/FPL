@@ -100,6 +100,13 @@ def build_events(raw: dict) -> pd.DataFrame:
                 "is_next": ev.get("is_next", False),
                 "finished": ev.get("finished", False),
                 "data_checked": ev.get("data_checked", False),
+                # v10b §F1b: FPL's own captaincy and selection modes for the
+                # gameweek. Elements, not codes — the reader joins (plan A5) —
+                # and ``None`` rather than a default for every gameweek FPL has
+                # not opened yet. A ``0`` default would name element 0, which
+                # maps to nobody and would read exactly like a working column.
+                "most_captained": ev.get("most_captained"),
+                "most_selected": ev.get("most_selected"),
             }
             for ev in raw["events"]
         ]

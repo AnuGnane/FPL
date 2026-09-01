@@ -58,6 +58,9 @@ relative path, so reusing that string here would have the two maps evict and
 answer for each other. Same file, same key, different slot — which is the
 shape ``identity`` already uses for its per-gameweek fixture map."""
 
+_BY_ELEMENT_SLOT = "live/players.parquet:element_player"
+_EVENTS_SLOT = "live/events.parquet:most_captained"
+
 
 def clear_cache() -> None:
     """Drop every memoised map, including identity's.
@@ -91,6 +94,71 @@ def _elements_by_code() -> dict[int, int]:
     value = identity._memo(_ELEMENTS_SLOT,
                            identity._file_key("live/players.parquet"), build)
     return {} if value is identity._FAILED else value
+
+
+def _players_by_element() -> dict[int, dict]:
+    """``{element: {"code", "name"}}``, or an empty map.
+
+    The other direction of the same one-row join, for §F1b: the bootstrap says
+    which *element* the field is captaining and the page needs a code and a
+    name. Same row, same guards, and a missing ``name`` column is a ``None``
+    rather than a ``KeyError``.
+    """
+    def build() -> Any:
+        try:
+            players = store.load("live/players.parquet")
+            if "element" not in players.columns:
+                raise KeyError("players snapshot has no element column")
+            named = "name" in players.columns
+            pairs = players[["code", "element"]].dropna()
+            names = players["name"] if named else None
+            out: dict[int, dict] = {}
+            for i, (c, e) in enumerate(zip(pairs["code"], pairs["element"])):
+                out[int(e)] = {"code": int(c),
+                               "name": (str(names.iloc[i]) if named else None)}
+            return out
+        except Exception as exc:  # noqa: BLE001 — a decoration is never fatal
+            print(f"field_frame: player snapshot unreadable ({exc})")
+            return identity._FAILED
+
+    value = identity._memo(_BY_ELEMENT_SLOT,
+                           identity._file_key("live/players.parquet"), build)
+    return {} if value is identity._FAILED else value
+
+
+def _modal_captain(gw: int) -> dict | None:
+    """``{"code", "name", "gw"}`` for the gameweek's most-captained player.
+
+    Plan A5: FPL publishes this **live** for the gameweek that is open and
+    ``null`` for every gameweek after it, so it is joined on the advice
+    gameweek and a miss is an absence. Last week's modal captain is not this
+    week's, and printing it as if it were is the failure this join avoids.
+
+    The column guard comes before the row access (``pen_tracker.py:42-52``): a
+    parquet banked before this cycle has no such column and must read as
+    absent rather than raise.
+    """
+    def build() -> Any:
+        try:
+            events = store.load("live/events.parquet")
+            if "most_captained" not in events.columns:
+                return {}
+            pairs = events[["gw", "most_captained"]].dropna()
+            return {int(g): int(e)
+                    for g, e in zip(pairs["gw"], pairs["most_captained"])}
+        except Exception as exc:  # noqa: BLE001
+            print(f"field_frame: events snapshot unreadable ({exc})")
+            return identity._FAILED
+
+    value = identity._memo(_EVENTS_SLOT,
+                           identity._file_key("live/events.parquet"), build)
+    element = ({} if value is identity._FAILED else value).get(int(gw))
+    if element is None:
+        return None
+    who = _players_by_element().get(int(element))
+    if who is None:
+        return None
+    return {"code": who["code"], "name": who["name"], "gw": int(gw)}
 
 
 def _field_table(gw: int) -> dict[int, dict]:
@@ -144,6 +212,18 @@ def captain_note(name: str, eo: float, se: float | None,
     return f"{head} — neither cover nor attack, particularly."
 
 
+def modal_note(modal: dict) -> str:
+    """The §F1b sentence, for the weeks the tier sample cannot cover.
+
+    Names the gameweek, because the claim is about *that* week and a sentence
+    that did not name it would be read as standing. Carries no percentage: the
+    bootstrap says who, not how many, and inventing a share here is the one
+    thing this fallback must not do.
+    """
+    who = modal.get("name") or f"element {modal['code']}"
+    return f"The top 10k are captaining {who} in GW{modal['gw']}."
+
+
 def with_field_frame(payload: dict, gw: int) -> dict:
     """``payload`` plus ``captain_field``, or ``payload`` exactly as it came.
 
@@ -163,16 +243,32 @@ def with_field_frame(payload: dict, gw: int) -> dict:
         if element is None:
             return payload
         row = _field_table(gw).get(element)
-        if row is None:
+        modal = _modal_captain(gw)
+        if row is None and modal is None:
             return payload
-        eo = float(row["eo"])
-        klass = field_class(True, eo)
-        se = float(row["se"]) if row.get("se") is not None else None
-        frame = {"code": int(code), "eo": eo, "se": se,
-                 "n": int(row["n"]) if row.get("n") is not None else None,
-                 "gw": int(row.get("gw", gw)), "field_class": klass,
-                 "note": captain_note(str(captain.get("name", "your captain")),
-                                      eo, se, klass)}
+        # The key is emitted with a null ``eo`` when only the bootstrap had
+        # something to say. That is not an exception to Task 2's absent-not-
+        # null rule: the rule is that the key is absent when there is *nothing*
+        # to say, and "the field is captaining Salah this week" is something.
+        if row is None:
+            frame: dict[str, Any] = {
+                "code": int(code), "eo": None, "se": None, "n": None,
+                "gw": int(gw), "field_class": None, "note": modal_note(modal)}
+        else:
+            eo = float(row["eo"])
+            klass = field_class(True, eo)
+            se = float(row["se"]) if row.get("se") is not None else None
+            frame = {
+                "code": int(code), "eo": eo, "se": se,
+                "n": int(row["n"]) if row.get("n") is not None else None,
+                "gw": int(row.get("gw", gw)), "field_class": klass,
+                "note": captain_note(str(captain.get("name", "your captain")),
+                                     eo, se, klass)}
+        # Only in the note when the EO is absent: when both are present the
+        # measured share is the stronger statement and a second clause beside
+        # it is noise.
+        if modal is not None:
+            frame["most_captained"] = modal
         return {**payload, "captain_field": frame}
     except Exception as exc:  # noqa: BLE001 — a decoration never 500s a page
         print(f"field_frame: framing skipped ({exc})")
