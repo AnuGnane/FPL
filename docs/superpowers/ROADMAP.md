@@ -215,9 +215,10 @@ Spec: `specs/2026-09-02-gaffer-v11-ui-design.md` (§Gates = G1/G2) · Plan: `pla
 - [x] Route-pin restructure (spec §0): four files pinned the absolute path count, three of them protected; each becomes the by-name claim its own cycle is entitled to make, and the total lives in `test_v11_degradation.py` alone. Done in a cycle that adds no route, so every assertion keeps its verdict across the diff
 - [x] No replay — the server-side diff is seven additive fields and the arithmetic that fills them; no solver call from any view
 - Pins: job kinds 12, config fields 48, routes 45 → **45**
-- Residuals: the bank trajectory re-does arithmetic the solver already did, because widening `plan_by_gw` means editing `advise.py`; `overall_rank` stays null on every already-banked row, because grades are banked and never re-derived
+- Residuals: the bank trajectory re-does arithmetic the solver already did, because widening `plan_by_gw` means editing `advise.py`; `overall_rank` stays null on every already-banked row, because grades are banked and never re-derived; the explain payload (`routers/players.py`) still floors `p60` at 0.0 where the components payload now serves null — `_cell_or` reads every number on that model the same way and moving one alone is a change to a shipped view no rail asked for; recharts draws a one-point series as nothing at all, so the season charts are blank rather than a dot for a season one gameweek old (the honest empty states carry the meaning, and `dot` is a per-series decision the next cycle can revisit)
+- [x] G2 fix round: `p60` inherits `p_play`'s absent-not-zero convention; a double's xMins total blanks on any null leg; the What-If handoff prefills a horizon that reaches the week it carries and says the solve still starts now; the calibration-trend assertions wait on the trend's own fetch; the bench empty state counts totals rather than gameweeks; the terms-vs-`ep` caption compares like with like at a per-term tolerance; the chart series are keyed by code, not by name; a move too broken to parse blanks the bank the way an unpriced one does; each new view carries its own 390px test
 - [ ] G2: adversarial review, fix-first, merge ritual
-- Suite: 3185 Python + 642 frontend (G1)
+- Suite: 3193 Python + 655 frontend (G1, after the fix round)
 
 ## Operational / housekeeping
 - [x] Untrack `reports/` artifacts + `.claude/`; gitignore both (`31dc239`)

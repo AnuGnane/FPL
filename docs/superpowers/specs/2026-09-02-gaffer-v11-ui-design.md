@@ -87,19 +87,22 @@ way season_summary already does — reuse it, never re-derive).
 
 ### G1 — suites, rails, pins (measured by the implementer)
 
-- [x] `uv run pytest -q` — 3185 passed (branch baseline 3135 + 50 new)
+- [x] `uv run pytest -q` — 3193 passed (branch baseline 3135 + 50 new + 8 from
+      the G2 fix round)
 - [x] `npx tsc --noEmit` — clean
-- [x] `npx vitest run` — 642 passed, 1 skipped, 68 files (baseline 596 + 46
-      new)
+- [x] `npx vitest run` — 655 passed, 1 skipped, 68 files (baseline 596 + 46
+      new + 13 from the G2 fix round; run twice, both green)
 - [x] `npm run build` — clean
 - [x] Protected source diff EMPTY. The cycle's one protected edit is the route-
       pin restructure in three degradation files, authorized separately (Task
       11); no other protected file moved
 - [x] Pins: job kinds still 12, config fields still 48, **OpenAPI paths 45 →
       45** — every serve-side change is an additive field on an existing model
-- [x] Rails: an unpriced move blanks the bank for that week and every later
-      one; no field log → `field_eo`/`field_se`/`field_n` all null and never
-      0.0; today's one-row ledger → four lanes reading "never graded", zero
+- [x] Rails: an unpriced move — or one too broken to parse at all — blanks the
+      bank for that week and every later one; a NaN `p60` serves null on both
+      probabilities and on `xmins`; no field log →
+      `field_eo`/`field_se`/`field_n` all null and never 0.0; today's one-row
+      ledger → four lanes reading "never graded", zero
       wins and zero losses; a ledger row with no `overall_rank` still
       validates; `GET /api/review` still 200s on a clone with no ledger
 - [x] Empty states on a cold clone for all three new views, each tested where
@@ -107,7 +110,13 @@ way season_summary already does — reuse it, never re-derive).
       default tab)
 - [x] 390px and no-bare-tables hold tree-wide, including the two six-tab
       strips. None of the three new views draws a `<table>`, so the
-      `wrapped()` sweep gained no caller
+      `wrapped()` sweep gained no caller — but the sweep is not the whole
+      claim, and until the G2 fix round nothing asserted these three views
+      at 390px at all: the hub-level rail renders only each hub's default
+      tab, and none of the three is one. Each now carries its own 390px
+      render test in its own file (`PlannerBoard`, `SeasonTab`,
+      `ComparePanel`): no `<table>`, no console error, and for the board,
+      the week strip owning its own `overflow-x-auto`
 - [x] Exactly one file in the suite pins an absolute route count, asserted by
       a test rather than by hand
 
