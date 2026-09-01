@@ -667,6 +667,11 @@ export interface CalibrationHead {
 
 export interface CalibrationGw {
   gw: number
+  /** Joined player-fixture rows for the week — how much data the gameweek
+   *  had, not how much any head graded. Per-head counts diverge from it and
+   *  from each other (p_cs is club-fixture grain, p_haul drops rows with no
+   *  banked e_goals), so each head carries its own `n` and the card prints
+   *  that one beside the cell. */
   n: number
   heads: Record<string, CalibrationHead>
 }
@@ -682,7 +687,12 @@ export interface CalibrationData {
   omitted: Record<string, string>
   /** Head -> why it has no per-gameweek column, though it is graded in the
    *  cumulative row. p_cs is one clean sheet per club-fixture, about twenty
-   *  a gameweek, under the report's sample floor. */
+   *  a gameweek, under the report's sample floor.
+   *
+   *  Required, not optional: `CalibrationReport.per_gw_omitted` is a pydantic
+   *  field defaulting to `{}` (`web/schemas.py:962`), so it is on the wire
+   *  even when empty. The card reads it unguarded, and this is the line that
+   *  says why no `?? {}` is needed. */
   per_gw_omitted: Record<string, string>
   excluded: Array<{ gw: number; reason: string }>
   missing: number[]

@@ -250,7 +250,7 @@ function CalibrationSection() {
                   {/* A head with no per-gameweek column says so once, in the
                       footer, rather than printing a week's worth of "not
                       enough data" that reads as a fault in the model. */}
-                  {key in (data.per_gw_omitted ?? {})
+                  {key in data.per_gw_omitted
                     ? <span className="text-text-faint" title={
                         data.per_gw_omitted[key]}>cumulative only</span>
                     : brierCell(row.heads[key])}
@@ -286,7 +286,7 @@ function CalibrationSection() {
         {Object.entries(data.omitted).map(([head, why]) => (
           <p key={head}>{`Omitted: ${head} — ${why}.`}</p>
         ))}
-        {Object.entries(data.per_gw_omitted ?? {}).map(([head, why]) => (
+        {Object.entries(data.per_gw_omitted).map(([head, why]) => (
           <p key={head}>{`Per gameweek: ${head} — ${why}.`}</p>
         ))}
         {data.excluded.map((row) => (
