@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react'
 import {
-  CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
+  CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis,
+  YAxis,
 } from 'recharts'
 import { apiGet } from '../../api/client'
 import {
   Card, EmptyState, Loading, TONE_CLASS, fmtDelta, toneOf,
 } from '../../kit'
-import type { ReviewData, ReviewLaneName } from '../../types'
+import type {
+  CalibrationData, ReviewData, ReviewLaneName,
+} from '../../types'
+import { CALIBRATION_HEADS } from './QualityTab'
 
 /**
  * v11 §F3 — the season, as it fills.
@@ -38,6 +42,84 @@ const NEVER_GRADED = 'never graded'
 
 const GATE = 'The first grades land when FPL marks GW2 data_checked — the '
   + 'Tuesday review job banks them automatically.'
+
+const HEAD_COLOURS = ['var(--color-sage)', 'var(--color-info)',
+  'var(--color-rust)', 'var(--color-text-muted)']
+
+/**
+ * The calibration trend, beside the decision record because the spec's claim
+ * is that the two are read together.
+ *
+ * `QualityTab`'s table stays exactly as it is: two views of one artifact is
+ * fine. The head list is imported from there rather than re-declared, because
+ * two fetch-and-format implementations of one artifact is what would rot.
+ */
+function CalibrationTrend() {
+  const [data, setData] = useState<CalibrationData | null>(null)
+
+  useEffect(() => {
+    apiGet<CalibrationData>('/api/model/calibration').then(setData)
+      .catch(() => setData(null))
+  }, [])
+
+  if (!data) return null
+  if (!data.available || data.gameweeks.length === 0) {
+    return (
+      <Card title="Calibration trend">
+        {/* The server writes this sentence; the client does not compose a
+            second one. */}
+        <p data-testid="calibration-note" className="text-text-muted">
+          {data.note ?? 'Nothing graded yet.'}
+        </p>
+      </Card>
+    )
+  }
+
+  // A head with no per-gameweek column has no line at all. Drawing it at zero
+  // would read as perfect calibration, which is the opposite of "not measured
+  // at this grain" — QualityTab prints "cumulative only" in its cells and the
+  // chart's version of that is the caption below.
+  const drawn = CALIBRATION_HEADS.filter(([key]) => !(key in data.per_gw_omitted))
+  const rows = data.gameweeks.map((week) => {
+    const row: Record<string, number | null> = { gw: week.gw }
+    for (const [key] of drawn) {
+      const head = week.heads[key]
+      // A null Brier is a gap, same rule as the rank trajectory.
+      row[key] = head && head.status === 'scored' ? head.brier : null
+    }
+    return row
+  })
+  const omitted = Object.keys(data.per_gw_omitted)
+
+  return (
+    <Card title="Calibration trend">
+      <div aria-label="Calibration trend by gameweek">
+        <ResponsiveContainer width="100%" height={200}>
+          <LineChart data={rows}>
+            <CartesianGrid stroke="var(--color-divider)" vertical={false} />
+            <XAxis dataKey="gw" stroke="var(--color-text-muted)" />
+            <YAxis stroke="var(--color-text-muted)" />
+            <Tooltip contentStyle={{ background: 'var(--color-card)',
+                                     border: '1px solid var(--color-border)' }} />
+            <Legend />
+            {drawn.map(([key, label], i) => (
+              <Line key={key} type="monotone" dataKey={key} name={label}
+                    dot={false} strokeWidth={2}
+                    stroke={HEAD_COLOURS[i % HEAD_COLOURS.length]} />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      <p className="mt-1 text-xs text-text-faint">
+        {'Brier score per head, read back off the banked components. Lower is '
+         + 'better.'}
+        {omitted.length > 0
+          && ` No per-gameweek column for ${omitted.join(', ')}, so no line: `
+             + `${omitted.map((h) => data.per_gw_omitted[h]).join('; ')}.`}
+      </p>
+    </Card>
+  )
+}
 
 export default function SeasonTab() {
   const [data, setData] = useState<ReviewData | null>(null)
@@ -204,6 +286,7 @@ export default function SeasonTab() {
            + 'Lower is better, so the axis runs downward.'}
         </p>
       </Card>
+      <CalibrationTrend />
     </div>
   )
 }

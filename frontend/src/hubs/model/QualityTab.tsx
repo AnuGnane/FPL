@@ -157,7 +157,10 @@ function Reliability({ label, head }: { label: string; head: HeadMetrics }) {
 // components_gw{N}.parquet, so the report omits it *with its reason* and the
 // footer prints that reason. A reader who could not see the omission would
 // conclude the trichotomy is calibrated.
-const CALIBRATION_HEADS: Array<[string, string]> = [
+// Exported since v11: the season dashboard draws the trend of the same four
+// heads and must handle the same omissions. Two fetch-and-format
+// implementations of one artifact is what would rot.
+export const CALIBRATION_HEADS: Array<[string, string]> = [
   ['p_play', 'P(plays)'],
   ['p60', 'P(60+)'],
   ['p_cs', 'P(clean sheet)'],

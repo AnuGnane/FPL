@@ -63,9 +63,40 @@ function gw(over: Record<string, unknown> = {}) {
   }
 }
 
+function head(brier: number | null, status = 'scored') {
+  return { status, brier, n: 400, bins: [] }
+}
+
+const CALIBRATION = {
+  available: true, run_at: '2026-09-01T09:00:00Z', git_sha: 'abc',
+  season: '2026-27',
+  gameweeks: [
+    { gw: 1, n: 400, heads: { p_play: head(0.11), p60: head(0.19),
+                              p_haul: head(0.08) } },
+    { gw: 2, n: 400, heads: { p_play: head(0.10), p60: head(null, 'thin'),
+                              p_haul: head(0.07) } },
+    { gw: 3, n: 400, heads: { p_play: head(0.09), p60: head(0.17),
+                              p_haul: head(0.06) } },
+  ],
+  cumulative: {},
+  omitted: {},
+  per_gw_omitted: { p_cs: 'about twenty clean sheets a gameweek, under the '
+    + 'sample floor' },
+  excluded: [], missing: [], note: null,
+}
+
+/** `/api/review` and `/api/model/calibration` are two fetches now; every test
+ *  states both, so a failure names which artifact it meant. */
+function wire(review: unknown, calibration: unknown = CALIBRATION) {
+  apiGet.mockImplementation((path: string) => (
+    path.startsWith('/api/model/calibration')
+      ? Promise.resolve(calibration)
+      : Promise.resolve(review)))
+}
+
 beforeEach(() => {
   apiGet.mockReset()
-  apiGet.mockResolvedValue({ gws: [], summary: null })
+  wire({ gws: [], summary: null })
 })
 
 describe('SeasonTab, empty — which is the state it is in today', () => {
@@ -81,7 +112,7 @@ describe('SeasonTab, empty — which is the state it is in today', () => {
     async () => {
       // Plan A14, measured off reports/decision_ledger.json: one row, four
       // null lanes, no accuracy, two points on the bench.
-      apiGet.mockResolvedValue({ gws: [gw()], summary: summary() })
+      wire({ gws: [gw()], summary: summary() })
       render(<SeasonTab />)
       expect(await screen.findByTestId('empty-state')).toBeInTheDocument()
     })
@@ -114,7 +145,7 @@ describe('SeasonTab, filled', () => {
     }),
   }
 
-  beforeEach(() => { apiGet.mockResolvedValue(GRADED) })
+  beforeEach(() => { wire(GRADED) })
 
   it('renders a lane record over graded, never over wins plus losses',
     async () => {
@@ -161,6 +192,63 @@ describe('SeasonTab, filled', () => {
     await screen.findByTestId('season-lane-transfers')
     expect(screen.getByText(/2 of 3 graded gameweek/)).toBeInTheDocument()
   })
+
+  it('draws one calibration line per head with a per-gameweek column',
+    async () => {
+      const { container } = render(<SeasonTab />)
+      await screen.findByTestId('season-lane-transfers')
+      const chart = container.querySelector(
+        '[aria-label="Calibration trend by gameweek"]')
+      expect(chart).not.toBeNull()
+      // p_play, p60 and p_haul are drawn; p_cs has no per-gameweek column, so
+      // it has no line — drawing it at zero would read as perfect
+      // calibration.
+      expect(chart!.querySelectorAll('.recharts-line')).toHaveLength(3)
+    })
+
+  it('names the omitted head in the caption rather than drawing it at zero',
+    async () => {
+      render(<SeasonTab />)
+      await screen.findByTestId('season-lane-transfers')
+      expect(screen.getByText(/No per-gameweek column for p_cs/))
+        .toBeInTheDocument()
+      expect(screen.getByText(/under the sample floor/)).toBeInTheDocument()
+    })
+
+  it('draws a null Brier as a gap, same rule as the rank', async () => {
+    const { container } = render(<SeasonTab />)
+    await screen.findByTestId('season-lane-transfers')
+    const chart = container.querySelector(
+      '[aria-label="Calibration trend by gameweek"]')
+    const segments = [...chart!.querySelectorAll('.recharts-line-curve')]
+      .map((path) => (path.getAttribute('d') ?? '').split('M').length - 1)
+    // p60 is null in GW2, so exactly one of the three lines is split.
+    expect(segments.filter((n) => n === 2)).toHaveLength(1)
+  })
+
+  it('prints the server’s own note when there is no report', async () => {
+    wire(GRADED, { ...CALIBRATION, available: false, gameweeks: [],
+      note: 'Run `gaffer evaluate --calibration` after a graded gameweek' })
+    render(<SeasonTab />)
+    expect(await screen.findByTestId('calibration-note'))
+      .toHaveTextContent('Run `gaffer evaluate --calibration` after a '
+        + 'graded gameweek')
+  })
+
+  it('leaves the rest of the dashboard drawn when calibration fails',
+    async () => {
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      apiGet.mockImplementation((path: string) => (
+        path.startsWith('/api/model/calibration')
+          ? Promise.reject(new ApiError('no evaluation artifact'))
+          : Promise.resolve(GRADED)))
+      render(<SeasonTab />)
+      expect(await screen.findByTestId('season-lane-transfers'))
+        .toBeInTheDocument()
+      expect(screen.queryByTestId('calibration-note')).toBeNull()
+      expect(spy).not.toHaveBeenCalled()
+      spy.mockRestore()
+    })
 
   it('prints the bench total with the gameweeks it covers', async () => {
     render(<SeasonTab />)
