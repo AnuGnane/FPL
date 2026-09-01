@@ -1276,6 +1276,15 @@ class ReviewLaneTotal(BaseModel):
     graded: int = 0
     """How many gameweeks this lane was gradeable in. ``pts`` of zero over
     ``graded`` of zero is "never measured", not "never wrong"."""
+    wins: int = 0
+    losses: int = 0
+    """Graded weeks this lane gained / lost points, counted strictly.
+
+    A zero delta is neither, so ``wins + losses <= graded`` with slack — the
+    difference is the weeks I did exactly what the model did. A UI that
+    rendered ``wins / (wins + losses)`` would silently drop those weeks; the
+    denominator is ``graded``.
+    """
 
 
 class ReviewAccuracyPoint(BaseModel):

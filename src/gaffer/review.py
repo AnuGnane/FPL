@@ -1111,10 +1111,17 @@ def season_summary(ledger: list[dict]) -> dict | None:
     comparable. The bench and hindsight totals carry their own counts for the
     same reason: a gameweek with no banked history has no bench total, and
     that is not a bench total of nought.
+
+    A lane's *record* is counted here for the same reason: ``wins`` and
+    ``losses`` are strict, so a zero delta is neither — it is a week I did
+    exactly what the model did, and folding agreement into either side would
+    let a lane that never disagreed read as a lane that was never wrong.
+    ``wins + losses <= graded``, with the slack being those weeks.
     """
     if not ledger:
         return None
-    lanes = {name: {"pts": 0.0, "pwin": 0.0, "graded": 0} for name in LANES}
+    lanes = {name: {"pts": 0.0, "pwin": 0.0, "graded": 0,
+                    "wins": 0, "losses": 0} for name in LANES}
     accuracy, bench, gap = [], 0, 0
     bench_gws = gap_gws = 0
     reconciled = unreconciled = 0
@@ -1127,6 +1134,14 @@ def season_summary(ledger: list[dict]) -> dict | None:
             cell["pts"] += float(lane["delta_pts"])
             cell["pwin"] += float(lane.get("delta_pwin") or 0.0)
             cell["graded"] += 1
+            # v11 §F3 (plan A12). Strictly greater and strictly less, so a
+            # zero delta is neither: it is a week I did what the model did,
+            # and counting agreement as judgment is how a lane that never
+            # disagreed comes to look like a lane that was never wrong.
+            if float(lane["delta_pts"]) > 0:
+                cell["wins"] += 1
+            elif float(lane["delta_pts"]) < 0:
+                cell["losses"] += 1
             # Spec D5 asks for the biggest Brilliant and the biggest Blunder,
             # so an Aligned lane is not a candidate: it is a week I followed
             # the model, and naming one "worst single decision" would report
