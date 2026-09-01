@@ -145,9 +145,22 @@ on evidence. **No new job kind, no new config key.**
 - **G4** — adversarial review, fix-first, then merge ritual (ff-only, push,
   `git show main:config.toml` fails, key-grep empty).
 
-### G1 results (filled after measurement)
+### G1 results (measured 2026-09-01, scripts/v9d_club_eval.py @ c65f65a)
 
-_TBD by the cycle._
+Lever connected: 1069/113880 rows (0.939%) where `as_of_club` ≠ stamped
+`team_code` — matching v9c's measurement.
+
+- **Understat own side**: 1043 rows changed (0.916%); match rate **improved**
+  0.987943 → 0.992843 — the as-of key resolves more rows, not fewer, because
+  a transferred player's team-form columns now join at the club he played
+  for. Sanity check passes (no regression).
+- **Congestion cup lookup**: 117 rows changed (0.103%); mean |Δ| on changed
+  rows 1.21 matches (mean level 1.540 vs 1.540 overall — the switch is
+  surgical, not a distribution shift).
+
+First G1 run crashed (suffix collision + a cups path that never existed —
+the off-arm would have measured a disconnected lever); instrument fixed at
+c65f65a before any number was recorded. The lever guard did its job.
 
 ### G2 results
 
