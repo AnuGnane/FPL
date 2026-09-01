@@ -77,6 +77,37 @@ def test_one_unpriced_move_blanks_that_week_and_every_later_one(planned):
     assert [w.bank for w in out.weeks] == [1.5, None, None]
 
 
+@pytest.mark.parametrize("broken", [
+    "not a dict at all",
+    {"code": None, "name": "Nameless"},
+    {"code": "not a number", "name": "Bad code"},
+    {"name": "No code key"},
+])
+def test_a_move_too_broken_to_parse_blanks_the_bank_the_same_way(
+        planned, broken):
+    """The dropped move and the unpriced one do identical damage: the week's
+    total comes out short by exactly that player's price, confidently. Only
+    the unpriced case said so."""
+    planned([_week(5), {"gw": 6, "hits": 0, "expected_pts": 60.0,
+                        "buys": [broken], "sells": []},
+             _week(7)])
+    assert [w.bank for w in plan_router.plan(5).weeks] == [1.5, None, None]
+
+
+def test_a_buys_key_that_is_not_a_list_blanks_it_too(planned):
+    """The plan said something here and it could not be read — which is not
+    the same as a week that named no moves."""
+    planned([{"gw": 5, "hits": 0, "expected_pts": 60.0,
+              "buys": {"code": 100}, "sells": []}])
+    assert plan_router.plan(5).weeks[0].bank is None
+
+
+def test_a_week_that_simply_has_no_moves_keeps_its_bank(planned):
+    """The other side of the rail: absence is not breakage."""
+    planned([{"gw": 5, "hits": 0, "expected_pts": 60.0}])
+    assert plan_router.plan(5).weeks[0].bank == 1.5
+
+
 def test_a_solve_state_with_no_usable_bank_is_never_zero(planned):
     """0.0 is "fully invested", which is a real state a manager can be in and
     a different one from "we do not know"."""
@@ -360,8 +391,17 @@ def test_only_one_file_pins_the_absolute_route_count():
     """The residual v10b recorded, closed and then defended. Four files used
     to pin this number; a fifth would have cost the next cycle another
     orchestrator authorization for a route it was entitled to add."""
-    hits = [p.name for p in pathlib.Path("tests").glob("test_*.py")
-            if re.search(r"len\((?:paths|create_app\(\)\.openapi\(\)"
-                         r"\[[\"']paths[\"']\])\)\s*==\s*\d+",
-                         p.read_text())]
+    # Anchored to this file's own directory, not to the working directory: a
+    # `pytest` run from anywhere but the repo root globbed nothing, and a
+    # sweep over an empty list passes by saying nothing at all — which is the
+    # failure mode this test exists to prevent in the first place.
+    here = pathlib.Path(__file__).parent
+    files = sorted(here.glob("test_*.py"))
+    assert len(files) > 1
+    # `len(set(paths))` and `len({...})` count the same routes through one
+    # more call, and a pin written that way would have slipped the sweep.
+    pin = re.compile(r"len\(\s*(?:set\()?\s*(?:paths"
+                     r"|create_app\(\)\.openapi\(\)\[[\"']paths[\"']\])"
+                     r"\)?\s*\)\s*==\s*\d+")
+    hits = [p.name for p in files if pin.search(p.read_text())]
     assert hits == ["test_v11_degradation.py"]

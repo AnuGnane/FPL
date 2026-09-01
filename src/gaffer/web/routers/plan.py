@@ -84,10 +84,26 @@ def _move(entry, prices: dict[int, float]) -> PlanMove | None:
                     price=prices.get(code))
 
 
-def _moves(entries, prices: dict[int, float]) -> list[PlanMove]:
-    moves = (_move(e, prices) for e in entries or []) \
-        if isinstance(entries, list) else ()
-    return [m for m in moves if m is not None]
+def _moves(entries, prices: dict[int, float]) -> tuple[list[PlanMove], bool]:
+    """``(moves, whole)``, where ``whole`` is False if anything was dropped.
+
+    A move that cannot be parsed — not a dict, no code, a code that is not a
+    number — is exactly as damaging to the running bank as one that could not
+    be priced, and for the same reason: the week's total is then short by that
+    player's price with nothing on the page to say so. The caller blanks the
+    bank on either, so the two failures leave the same mark.
+
+    A missing ``buys`` key is not a failure: a week with no moves is a week
+    with no moves. A ``buys`` that is not a list at all is one — the plan said
+    something here and it could not be read.
+    """
+    if entries is None:
+        return [], True
+    if not isinstance(entries, list):
+        return [], False
+    parsed = [_move(e, prices) for e in entries]
+    return ([m for m in parsed if m is not None],
+            all(m is not None for m in parsed))
 
 
 def _weeks_of(advice: dict) -> list[dict]:
@@ -146,7 +162,9 @@ def plan(gw: int) -> PlanTimeline:
     #
     # An unpriced move breaks the total permanently. Skipping it would report
     # a bank wrong by exactly that player's price, with nothing on the page to
-    # say so, and there is no later week at which the sum re-synchronises.
+    # say so, and there is no later week at which the sum re-synchronises. A
+    # move too broken to parse is dropped by ``_moves`` and does the same
+    # damage, so it blanks the bank by the same mechanism.
     start = _price(getattr(state, "bank", None))
     running = start
 
@@ -155,9 +173,9 @@ def plan(gw: int) -> PlanTimeline:
         week_gw = _int(entry.get("gw"), 0)
         is_head = week_gw == head
         hits = _int(entry.get("hits"))
-        buys = _moves(entry.get("buys"), buy_price)
-        sells = _moves(entry.get("sells"), sell_price)
-        if running is not None and all(
+        buys, buys_whole = _moves(entry.get("buys"), buy_price)
+        sells, sells_whole = _moves(entry.get("sells"), sell_price)
+        if running is not None and buys_whole and sells_whole and all(
                 m.price is not None for m in buys + sells):
             # round(..., 1) because every price here is already one decimal;
             # letting float drift accumulate over a six-week horizon puts
