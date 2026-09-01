@@ -16,13 +16,15 @@ from __future__ import annotations
 
 import html
 import re
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
 import httpx
 import pandas as pd
 
-from gaffer.config import serving_config
+from gaffer.config import lineup_providers, serving_config
 from gaffer.data.news import NEWS_CACHE, cache_path, cached_text, fetched_at
 from gaffer.data.news.normalize import (NEWS_MIN_COVERAGE, club_code,
                                         club_code_map, match_codes)
@@ -221,29 +223,46 @@ def notable_absences(players: pd.DataFrame, covered: set[int],
     return out[cols].sort_values("code").reset_index(drop=True)
 
 
-def fetch_lineups(players: pd.DataFrame, teams: pd.DataFrame,
-                  cache_dir: Path = NEWS_CACHE, cache_hours: int = 6,
-                  client: httpx.Client | None = None,
-                  min_coverage: float = NEWS_MIN_COVERAGE,
-                  now: datetime | None = None,
-                  absence: bool | None = None,
-                  absence_damp: float | None = None) -> pd.DataFrame:
-    """Predicted line-ups as ``[code, p_start_hint, absence_damp, …]``.
+@dataclass(frozen=True)
+class Provider:
+    """One predicted-XI source: where it lives, how it parses, what it may do.
 
-    ``absence``/``absence_damp`` default to the ``[news]`` config, read here
-    rather than passed in: ``advise.py`` is protected and cannot learn to
-    forward them. ``False`` reproduces the pre-v8a frame exactly, one extra
-    all-null column aside.
+    ``absence_capable`` is not a capability flag in the usual sense — every
+    parser could in principle feed :func:`notable_absences`. It is a statement
+    about *identification*. The absence rule's whole safety comes from
+    :data:`XI_SIZE`: it only fires for a club whose eleven all came back
+    resolved, because "the parser could not reach him" and "the journalist
+    left him out" are otherwise the same observation. FFS resolves its XI from
+    photo URLs, so a resolved eleven really is eleven identified players.
+    RotoWire has no codes and resolves by name, where one miss drops a club
+    below the threshold and one *wrong* match damps the starter it displaced.
+    So RotoWire supplies hints and nothing else in v10 (plan A7).
     """
-    cfg = serving_config()
-    absence = cfg.news_lineup_absence if absence is None else bool(absence)
-    absence_damp = (cfg.news_lineup_absence_damp if absence_damp is None
-                    else float(absence_damp))
-    dest = cache_path(cache_dir, "lineups", cache_hours, now)
-    markup = cached_text(FFS_URL, dest, client)
-    if not markup:
-        return pd.DataFrame(columns=LINEUP_COLS)
-    parsed = parse_lineups(markup)
+    name: str
+    url: str
+    parse: Callable[[str], pd.DataFrame]
+    absence_capable: bool
+
+
+PROVIDERS: dict[str, Provider] = {
+    "ffs": Provider("ffs", FFS_URL, parse_lineups, absence_capable=True),
+}
+"""Name -> provider. Keys are ``config.DEFAULT_LINEUP_PROVIDERS``' names, which
+is what makes ``[news] lineup_providers`` able to name one (v10 §F2a)."""
+
+
+def _resolve(provider: Provider, markup: str, players: pd.DataFrame,
+             teams: pd.DataFrame, min_coverage: float,
+             now: datetime | None, absence: bool,
+             absence_damp: float) -> pd.DataFrame:
+    """One provider's markup -> its own ``LINEUP_COLS`` frame.
+
+    Lifted verbatim out of ``fetch_lineups`` (v10 §F2a) so that a second
+    provider is an addition rather than a rewrite. With one provider named,
+    the merge above this is the identity and the frame is byte-for-byte the
+    pre-v10 one.
+    """
+    parsed = provider.parse(markup)
     if parsed.empty:
         print("news: predicted line-ups parsed no rows — official flags only")
         return pd.DataFrame(columns=LINEUP_COLS)
@@ -307,7 +326,11 @@ def fetch_lineups(players: pd.DataFrame, teams: pd.DataFrame,
     # between sources.
     out = (out.sort_values("p_start_hint")
            .groupby("code", as_index=False).head(1))
-    if absence:
+    # v10 §F2a (specs/2026-09-01-gaffer-v10-minutes-design.md): the absence
+    # rule is per provider and only for providers that can identify their XI
+    # outright. See :class:`Provider` and plan A7 — a name-matched eleven is
+    # not a resolved eleven, and the rule cannot tell the two apart.
+    if absence and provider.absence_capable:
         # The clubs whose *whole* XI came back resolved. An absence list on
         # its own is not a team sheet, and neither is half a pitch: a
         # redesign, a truncated fetch or a photo URL we failed to read leaves
@@ -326,3 +349,77 @@ def fetch_lineups(players: pd.DataFrame, teams: pd.DataFrame,
             extra["fetched_at"] = fetched_at(now)
             out = pd.concat([out, extra], ignore_index=True)
     return out[LINEUP_COLS].sort_values("code").reset_index(drop=True)
+
+
+def fetch_lineups(players: pd.DataFrame, teams: pd.DataFrame,
+                  cache_dir: Path = NEWS_CACHE, cache_hours: int = 6,
+                  client: httpx.Client | None = None,
+                  min_coverage: float = NEWS_MIN_COVERAGE,
+                  now: datetime | None = None,
+                  absence: bool | None = None,
+                  absence_damp: float | None = None,
+                  providers: list[str] | None = None) -> pd.DataFrame:
+    """Predicted line-ups as ``[code, p_start_hint, absence_damp, …]``.
+
+    ``absence``/``absence_damp`` default to the ``[news]`` config, read here
+    rather than passed in: ``advise.py`` is protected and cannot learn to
+    forward them. ``False`` reproduces the pre-v8a frame exactly, one extra
+    all-null column aside.
+
+    ``providers`` defaults to the ``[news] lineup_providers`` config, read here
+    for the same reason. Each provider degrades on its own — ``None`` markup,
+    an empty parse, a coverage miss, a parser that raises — and a provider that
+    says nothing leaves the others exactly where they were, which is today's
+    single-source behaviour by construction. ``[]`` fetches nothing at all.
+    """
+    cfg = serving_config()
+    absence = cfg.news_lineup_absence if absence is None else bool(absence)
+    absence_damp = (cfg.news_lineup_absence_damp if absence_damp is None
+                    else float(absence_damp))
+    names = lineup_providers() if providers is None else [
+        str(n).strip().casefold() for n in providers]
+
+    # v10 §F2a (specs/2026-09-01-gaffer-v10-minutes-design.md): one source was
+    # one point of failure. Each provider fetches into its own cache file —
+    # sharing one would serve one site's markup to the other's parser — and
+    # contributes an independent frame; the merge below is the only place they
+    # meet.
+    frames: list[pd.DataFrame] = []
+    for name in names:
+        provider = PROVIDERS.get(name)
+        if provider is None:
+            print(f"news: unknown predicted-XI provider {name!r} — ignored")
+            continue
+        try:
+            dest = cache_path(cache_dir, f"lineups-{provider.name}",
+                              cache_hours, now)
+            markup = cached_text(provider.url, dest, client)
+            if not markup:
+                continue
+            frame = _resolve(provider, markup, players, teams, min_coverage,
+                             now, absence, absence_damp)
+        except Exception as exc:  # noqa: BLE001 — one source is not the layer
+            print(f"news: lineups/{provider.name} failed ({exc}) — "
+                  f"the other providers stand")
+            continue
+        if frame.empty:
+            continue
+        hints = int(frame["p_start_hint"].notna().sum())
+        damps = int(frame["absence_damp"].notna().sum())
+        print(f"news: lineups/{provider.name}: {hints} hints, {damps} damps")
+        frames.append(frame)
+
+    if not frames:
+        return pd.DataFrame(columns=LINEUP_COLS)
+    return _merge(frames)
+
+
+def _merge(frames: list[pd.DataFrame]) -> pd.DataFrame:
+    """Per-provider frames -> one ``LINEUP_COLS`` frame (v10 §F2a).
+
+    With one frame this is the identity, which is what makes the pre-v10
+    behaviour provable rather than argued. Task 5 gives it the agreement
+    rules.
+    """
+    return (pd.concat(frames, ignore_index=True)[LINEUP_COLS]
+            .sort_values("code").reset_index(drop=True))
