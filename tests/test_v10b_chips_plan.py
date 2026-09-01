@@ -105,11 +105,15 @@ def test_the_route_loops_the_callable_rather_than_widening_chip_plan():
 
 def test_this_task_added_fields_and_not_routes(tmp_path, monkeypatch):
     """θ reaches the page through the schema, not through a second endpoint.
-    The live total is 45 and the one route this cycle added is the outlook,
-    which is asserted by name in tests/test_v10b_degradation.py."""
+
+    This file also pinned the absolute total once, and was easy to miss: it is
+    not a degradation file, so a sweep over ``tests/test_*_degradation.py``
+    does not see it, and it would have failed identically on the next route
+    addition. The count now lives in ``tests/test_v11_degradation.py`` alone;
+    the one route this cycle added is the outlook, asserted by name in
+    tests/test_v10b_degradation.py."""
     from gaffer.web.app import create_app
 
     monkeypatch.chdir(tmp_path)
     paths = set(create_app().openapi()["paths"])
-    assert len(paths) == 45
     assert "/api/chips/plan" in paths

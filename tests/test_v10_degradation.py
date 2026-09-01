@@ -425,15 +425,23 @@ def test_the_config_dataclass_did_not_grow(tmp_path, monkeypatch):
 
 
 def test_the_route_count_did_not_move(tmp_path, monkeypatch):
-    """The name is v10's claim and it stands: v10 added no route. The number
-    is the live total, and it has since moved to 45 under v10b's orchestrator
-    authorization — one path, `/api/fixtures/outlook`, named in the comment
-    below and asserted by name in tests/test_v10b_degradation.py."""
+    """The name is v10's claim and it stands: v10 added no route.
+
+    The absolute total used to be asserted here, and is now pinned in
+    ``tests/test_v11_degradation.py`` and nowhere else — v11's restructure,
+    made in a cycle that added no route, so every assertion kept its verdict
+    across the diff.
+
+    "The routes that cycle added" is the empty set for v10, so there is no
+    existence assert to write and an existence assert over nothing would
+    assert nothing. The claim that survives is the one v10 actually made: the
+    minutes work — the provider seam, ``p_play``, the two-pass solve — reached
+    the app through no HTTP surface at all."""
     monkeypatch.chdir(tmp_path)
-    # v10b §F2 (specs/2026-09-01-gaffer-v10b-eo-chips-design.md):
-    # /api/fixtures/outlook — the deliberate move this pin exists to force
-    # through authorization.
-    assert len(create_app().openapi()["paths"]) == 45
+    paths = set(create_app().openapi()["paths"])
+    assert not [p for p in paths
+                if p.startswith(("/api/lineups", "/api/minutes",
+                                 "/api/providers"))]
 
 
 def test_the_bench_curve_was_rescaled_and_not_resized():

@@ -267,21 +267,19 @@ def test_the_config_gained_no_field():
 
 
 def test_the_route_count_moved_by_exactly_one(tmp_path, monkeypatch):
-    """44 at the branch point (9499dd3), 45 now, and the one is the outlook.
+    """44 at the branch point (9499dd3), 45 after v10b, and the one is the
+    outlook.
 
-    Pinned as a total *and* by name, in one test, so the number and the reason
-    travel together: a count alone would let a route be added and another
-    removed in one cycle, and a name alone would not notice a third arriving
-    beside it.
-
-    The two historical files that also pin this total —
-    ``test_v10_degradation.py`` and ``test_v9d_degradation.py`` — were moved
-    from 44 to 45 under orchestrator authorization, which is what those pins
-    exist to force.
+    The total is no longer pinned here. Moving it from 44 to 45 cost this
+    cycle an orchestrator authorization across three protected files, which
+    was recorded as a residual and paid in v11: the absolute count now lives
+    in ``tests/test_v11_degradation.py`` alone, and every historical file
+    keeps only the by-name claim its own cycle is entitled to make. That claim
+    is the assertion below, untouched — a name alone would not notice a third
+    route arriving beside the outlook, and this one would.
     """
     monkeypatch.chdir(tmp_path)
     paths = set(create_app().openapi()["paths"])
-    assert len(paths) == 45
     assert {p for p in paths if p.startswith("/api/fixtures")} == {
         "/api/fixtures/matrix", "/api/fixtures/ticker",
         "/api/fixtures/outlook"}
