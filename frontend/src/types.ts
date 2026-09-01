@@ -1058,6 +1058,15 @@ export interface ReviewGw {
   chip: string | null
   model_chip: string | null
   points_on_bench: number | null
+  /** My overall FPL rank at the end of this gameweek.
+   *
+   *  Null for a gameweek whose entry history was never banked, and — for every
+   *  row already in this season's ledger — for a gameweek graded before the
+   *  field existed. Grades are banked and never re-derived, so the trajectory
+   *  begins empty and fills forward. A chart must draw a null as a gap: never
+   *  a zero, and never a line through it, because zero is the best rank in the
+   *  game. */
+  overall_rank: number | null
   our_bench_points: number | null
   model_points: number | null
   accuracy: number | null
@@ -1074,6 +1083,12 @@ export interface ReviewLaneTotal {
   pts: number
   pwin: number
   graded: number
+  /** Graded weeks this lane gained / lost points, counted strictly: a zero
+   *  delta is neither, so `wins + losses <= graded` with slack. The
+   *  denominator to render against is `graded`, never `wins + losses` —
+   *  that would silently drop the weeks I did what the model did. */
+  wins: number
+  losses: number
 }
 
 export interface ReviewSummary {

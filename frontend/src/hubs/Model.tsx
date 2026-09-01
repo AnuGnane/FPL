@@ -6,6 +6,7 @@ import HistoryTab from './model/HistoryTab'
 import JournalTab from './model/JournalTab'
 import QualityTab from './model/QualityTab'
 import ReviewTab from './model/ReviewTab'
+import SeasonTab from './model/SeasonTab'
 
 // `shrink-0 whitespace-nowrap` so a trigger scrolls out of the strip rather
 // than compressing into two lines of one word at 390px.
@@ -59,6 +60,7 @@ export default function Model() {
           <Tabs.Trigger value="quality" className={TAB_CLASS}>Quality</Tabs.Trigger>
           <Tabs.Trigger value="journal" className={TAB_CLASS}>Journal</Tabs.Trigger>
           <Tabs.Trigger value="review" className={TAB_CLASS}>Review</Tabs.Trigger>
+          <Tabs.Trigger value="season" className={TAB_CLASS}>Season</Tabs.Trigger>
           <Tabs.Trigger value="history" className={TAB_CLASS}>History</Tabs.Trigger>
           <Tabs.Trigger value="health" className={TAB_CLASS}>Health</Tabs.Trigger>
         </Tabs.List>
@@ -67,6 +69,9 @@ export default function Model() {
         </Tabs.Content>
         <Tabs.Content value="journal"><JournalTab /></Tabs.Content>
         <Tabs.Content value="review"><ReviewTab key={reviewNonce} /></Tabs.Content>
+        {/* Keyed off the same nonce as Review: a fresh grade must
+            refresh both views, not one of them. */}
+        <Tabs.Content value="season"><SeasonTab key={reviewNonce} /></Tabs.Content>
         <Tabs.Content value="history"><HistoryTab /></Tabs.Content>
         <Tabs.Content value="health"><HealthTab key={healthNonce} /></Tabs.Content>
       </Tabs.Root>
