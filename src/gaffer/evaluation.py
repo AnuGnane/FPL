@@ -550,6 +550,76 @@ def _column(frame: pd.DataFrame, name: str) -> pd.Series:
     return pd.to_numeric(frame[name], errors="coerce")
 
 
+FIXTURE_KEYS = ("code", "opp_code")
+"""The grain both sides of the calibration join are read at.
+
+The banked components are one row *per player-fixture* — ``advise`` builds
+them positionally off the fixture frame precisely so a double gameweek is two
+rows — and ``live/player_gw.parquet`` is the same grain before anything
+aggregates it. Merging on ``code`` alone grades each of a DGW player's two
+prediction rows against the pair's totals, which invents outcomes: 90 minutes
+across two 45-minute legs reads as a 60-minute appearance that happened in
+neither, and a return in each leg reads as a haul in both. ``advise`` already
+joins predictions to fixtures on this key; so does this.
+"""
+
+
+def _key(frame: pd.DataFrame) -> pd.DataFrame:
+    """``frame`` with :data:`FIXTURE_KEYS` coerced to one comparable dtype.
+
+    The two sides are read off different parquets written by different code
+    paths, and an ``int64`` column merged against an ``Int64`` one silently
+    matches nothing.
+    """
+    out = frame.copy()
+    for col in FIXTURE_KEYS:
+        out[col] = pd.to_numeric(out[col], errors="coerce").astype("Int64")
+    return out.dropna(subset=list(FIXTURE_KEYS))
+
+
+def _club_clean_sheets(joined: pd.DataFrame) -> pd.DataFrame:
+    """One row per club-fixture: the banked ``p_cs`` and what actually happened.
+
+    The outcome is the *team's*, derived to match ``models.team``'s canonical
+    ``cs = (ga == 0)``. It cannot be read off a player row, because FPL's
+    per-player ``clean_sheets`` is an award, not a result: it is 0 for everyone
+    under 60 minutes even when the club conceded nothing. Taking one arbitrary
+    row's value therefore turns row order into the answer — on real GW1 data
+    ``first(cs)`` and ``max(cs)`` disagree for 14% of club-fixtures.
+
+    ``max(cs)`` is not the fix either, and the same GW1 data says so: a
+    substitute who came on after the goal has 60+ minutes and none conceded
+    *while on the pitch*, so he is awarded a clean sheet his club did not keep
+    — two of that week's twenty clubs. What holds is goals conceded, maximised
+    over the rows that were on the pitch for 60 minutes or more: a player who
+    saw most of the match saw every goal, and the keeper's 90 minutes make that
+    exact. Zero conceded is ``ga == 0``, which is the definition
+    ``models/team.py`` fits against.
+
+    A club-fixture with no 60-minute row is dropped rather than guessed: it is
+    a stray row (a transferred player's stale club), not a club's match.
+    """
+    needed = {"team_code", "opp_code"}
+    if not needed <= set(joined.columns):
+        return pd.DataFrame({"p_cs": [], "clean_sheet": []}, dtype="float64")
+    work = pd.DataFrame({
+        "team_code": joined["team_code"], "opp_code": joined["opp_code"],
+        "minutes": _column(joined, "minutes"), "gc": _column(joined, "gc"),
+        "p_cs": _column(joined, "p_cs")})
+    work = work[work["minutes"] >= STARTER_MINUTES]
+    if work.empty:
+        return pd.DataFrame({"p_cs": [], "clean_sheet": []}, dtype="float64")
+    by_club = work.groupby(["team_code", "opp_code"], as_index=False).agg(
+        # p_cs is a club-level column repeated on every player row; max rather
+        # than first only so a stray NaN row cannot decide it.
+        p_cs=("p_cs", "max"), conceded=("gc", "max"))
+    by_club["clean_sheet"] = (by_club["conceded"] == 0).astype("float64")
+    # A club whose goals-conceded column is missing entirely has no outcome —
+    # NaN, which _paired drops — rather than a free clean sheet.
+    by_club.loc[by_club["conceded"].isna(), "clean_sheet"] = float("nan")
+    return by_club
+
+
 POST_HOC_REASON = "artifact written after the gameweek's first kickoff"
 """Why a banked file is refused, named where both the report and its tests
 can read it. The wording is the boundary: *first*, not last."""
@@ -617,7 +687,11 @@ def evaluate_calibration(season: str | None = None) -> dict:
     A false exclusion loses a row; a false inclusion invents a result.
 
     Completed gameweeks are those present in ``live/player_gw.parquet``, which
-    is the data_checked gate the rest of the pipeline already uses.
+    is the data_checked gate the rest of the pipeline already uses. Both sides
+    are read at **player-fixture grain** (:data:`FIXTURE_KEYS`), never at
+    gameweek grain: a double gameweek's two prediction rows are two separate
+    forecasts and grading either against the pair's totals invents outcomes
+    that happened in no fixture.
 
     **``p60`` is graded unconditionally** (plan A13). Spec §4 writes its
     outcome as "minutes >= 60 *given played*", but the parenthetical does not
@@ -668,19 +742,18 @@ def evaluate_calibration(season: str | None = None) -> dict:
             continue
 
         truth = truth_all[truth_all["gw"].astype("Int64") == gw]
-        truth = truth.groupby("code", as_index=False).agg(
-            minutes=("minutes", "sum"), goals=("goals", "sum"),
-            assists=("assists", "sum"), cs=("cs", "max"),
-            team_code=("team_code", "first"))
-        joined = comp.merge(truth, on="code", how="inner",
-                            suffixes=("", "_truth"))
+        if not set(FIXTURE_KEYS) <= set(comp.columns) & set(truth.columns):
+            excluded.append({"gw": gw, "reason": "no per-fixture key"})
+            continue
+        joined = _key(comp).merge(_key(truth), on=list(FIXTURE_KEYS),
+                                  how="inner", suffixes=("", "_truth"))
         if joined.empty:
-            missing.append(gw)
+            excluded.append({"gw": gw, "reason": "no truth rows joined"})
             continue
 
         # One clean sheet is one event and eleven player rows: graded at
-        # team-gameweek grain, or a well-covered club counts eleven times.
-        by_club = joined.drop_duplicates(subset=["team_code"])
+        # club-fixture grain, or a well-covered club counts eleven times.
+        by_club = _club_clean_sheets(joined)
         # Recomputed through the same function assemble_ep called at solve
         # time, not approximated: the banked components carry the inputs.
         haul_pred = pd.Series(
@@ -691,8 +764,7 @@ def evaluate_calibration(season: str | None = None) -> dict:
             "p_play": (_column(joined, "p_play"), joined["minutes"] > 0),
             "p60": (_column(joined, "p60"),
                     joined["minutes"] >= STARTER_MINUTES),
-            "p_cs": (_column(by_club, "p_cs"),
-                     by_club["cs"].astype("float64") > 0),
+            "p_cs": (by_club["p_cs"], by_club["clean_sheet"]),
             "p_haul": (haul_pred,
                        (joined["goals"] + joined["assists"]) >= 2),
         }

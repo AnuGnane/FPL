@@ -8,7 +8,7 @@ one that served, and ``evaluate_current`` already exists for that protocol.
 
 The value of the thing is in its refusals, which is why most of this file is
 about them: the omitted head that is never banked, the gameweek whose artifact
-post-dates its own last kickoff, the head with too few rows to say anything.
+post-dates its own first kickoff, the head with too few rows to say anything.
 Take those away and what is left is a plausible-looking grade of hindsight.
 """
 
@@ -69,6 +69,7 @@ def _components(gw: int, n: int = 40) -> pd.DataFrame:
         "code": list(range(n)),
         "gw": [gw] * n,
         "team_code": [1 if i % 2 else 3 for i in range(n)],
+        "opp_code": [3 if i % 2 else 1 for i in range(n)],
         "p_play": [0.8] * n,
         "p60": [0.6] * n,
         "p_cs": [0.3] * n,
@@ -83,11 +84,15 @@ def _truth(gw: int, n: int = 40) -> pd.DataFrame:
         "gw": [gw] * n,
         "code": list(range(n)),
         "team_code": [1 if i % 2 else 3 for i in range(n)],
+        "opp_code": [3 if i % 2 else 1 for i in range(n)],
         "minutes": [90 if i % 3 else 0 for i in range(n)],
         "starts": [1 if i % 3 else 0 for i in range(n)],
         "goals": [1 if i % 5 == 0 else 0 for i in range(n)],
         "assists": [1 if i % 5 == 0 else 0 for i in range(n)],
+        # Club 1 (odd rows) kept a clean sheet; club 3 conceded one. ``cs`` is
+        # the per-player award, ``gc`` the club's result seen from the pitch.
         "cs": [1 if i % 2 else 0 for i in range(n)],
+        "gc": [0 if i % 2 else 1 for i in range(n)],
     })
 
 
@@ -146,6 +151,106 @@ def test_p_cs_is_graded_at_team_gameweek_grain(banked):
     head = out["gameweeks"][0]["heads"]["p_cs"]
     assert head["n"] == 2                    # two clubs, not forty players
     assert head["status"] == "insufficient"  # and honest about it
+
+
+def _clubs(n: int = 30) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """``n`` club-fixtures, half of them clean sheets, three players each.
+
+    Every club's first row is a player who did not get on the pitch, so his
+    ``cs`` is 0 whatever the club did. ``p_cs`` is a perfect predictor of the
+    club's actual result — 1.0 where the club kept one, 0.0 where it did not —
+    so a correct scorer reports a Brier of exactly zero and any scorer that
+    reads the outcome off one player's row does not.
+    """
+    comp, truth = [], []
+    for i in range(n):
+        kept = i % 2 == 0
+        team, opp = i + 1, 100 + i
+        for j, minutes in enumerate((0, 90, 90)):
+            code = i * 10 + j
+            comp.append({"code": code, "gw": 1, "team_code": team,
+                         "opp_code": opp, "p_play": 0.8, "p60": 0.6,
+                         "p_cs": 1.0 if kept else 0.0,
+                         "e_goals": 0.4, "e_assists": 0.2})
+            truth.append({"season": "2025-26", "gw": 1, "code": code,
+                          "team_code": team, "opp_code": opp,
+                          "minutes": minutes, "starts": int(minutes > 0),
+                          "goals": 0, "assists": 0,
+                          # The FPL award: 60+ minutes and none conceded.
+                          "cs": int(kept and minutes >= 60),
+                          "gc": 0 if kept else 2})
+    return pd.DataFrame(comp), pd.DataFrame(truth)
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+def test_p_cs_reads_the_clubs_result_not_one_players_row(banked, reverse):
+    """FPL's per-player ``clean_sheets`` is an award, not a team result.
+
+    It is 0 for everyone under 60 minutes even when the club conceded nothing,
+    so taking one arbitrary row's value makes row order the answer — which is
+    why this runs the identical data twice, once reversed. The club's result
+    is goals conceded among its 60-minute rows, which is ``models.team``'s
+    ``ga == 0`` seen from the pitch.
+    """
+    comp, truth = _clubs()
+    if reverse:
+        comp = comp.iloc[::-1].reset_index(drop=True)
+        truth = truth.iloc[::-1].reset_index(drop=True)
+    save_components(comp, 1)
+    _before_kickoff(1)
+    store.save(truth, "live/player_gw.parquet")
+
+    head = evaluate_calibration(season="2025-26")["cumulative"]["p_cs"]
+    assert head["n"] == 30            # one row per club-fixture
+    assert head["brier"] == 0.0       # p_cs was right about every one of them
+
+
+def _dgw(n: int = 40) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """One club, ``n`` players, two legs each — and nothing crosses on a leg.
+
+    Every player plays 45 minutes in each leg and scores once in each leg. No
+    single fixture is a 60-minute appearance and no single fixture is a haul;
+    the gameweek totals (90 minutes, two returns) are both.
+    """
+    codes = list(range(n))
+    comp = pd.DataFrame({
+        "code": codes * 2, "gw": [1] * (2 * n), "team_code": [1] * (2 * n),
+        "opp_code": [2] * n + [4] * n,
+        "p_play": [0.8] * (2 * n), "p60": [0.6] * (2 * n),
+        "p_cs": [0.3] * (2 * n),
+        "e_goals": [0.4] * (2 * n), "e_assists": [0.2] * (2 * n)})
+    truth = pd.DataFrame({
+        "season": ["2025-26"] * (2 * n), "gw": [1] * (2 * n),
+        "code": codes * 2, "team_code": [1] * (2 * n),
+        "opp_code": [2] * n + [4] * n,
+        "minutes": [45] * (2 * n), "starts": [1] * (2 * n),
+        "goals": [1] * (2 * n), "assists": [0] * (2 * n),
+        "cs": [0] * (2 * n), "gc": [1] * (2 * n)})
+    return comp, truth
+
+
+def test_a_double_gameweek_is_graded_per_fixture_not_per_gameweek(banked):
+    """Predictions are per-fixture; the truth has to be read the same way.
+
+    Aggregating the week and merging on ``code`` alone grades each of the two
+    prediction rows against the pair's totals — so a player who never reached
+    60 minutes in either leg scores ``p60`` against an observed 1.0, and one
+    who returned once in each leg scores ``p_haul`` against an event that
+    happened in no fixture at all. Both heads then look badly under-confident
+    for a reason entirely the scorer's.
+    """
+    comp, truth = _dgw()
+    save_components(comp, 1)
+    _before_kickoff(1)
+    store.save(truth, "live/player_gw.parquet")
+
+    out = evaluate_calibration(season="2025-26")
+    heads = out["gameweeks"][0]["heads"]
+    assert heads["p60"]["n"] == 80          # one row per player-fixture
+    # 45 minutes in each leg is not a 60-minute appearance in either.
+    assert heads["p60"]["brier"] == round((0.6 - 0.0) ** 2, 4)
+    # One return per leg is not a haul in either leg.
+    assert heads["p_haul"]["brier"] == round(p_haul(0.4, 0.2) ** 2, 4)
 
 
 def test_p_start_is_omitted_with_its_reason(banked):
