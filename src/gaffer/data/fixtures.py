@@ -95,8 +95,21 @@ def season_outlook(fixtures: pd.DataFrame,
     Sorted by gameweek, and each team list sorted too. An endpoint whose
     ordering depends on a dict's insertion order is an endpoint whose output
     changes when pandas changes.
+
+    ``fixtures`` counts the published **matches** in the week, off the frame's
+    own rows rather than by halving the per-team total. Halving assumes every
+    fixture contributes two sides to ``counts``, and ``code_of`` breaks that
+    assumption by design: an id it does not know is dropped, so a week with one
+    unmappable club reported one fewer match than it has. The doubles and
+    blanks stay keyed on what could be mapped — those are claims about named
+    clubs — but the match count is a fact about the fixture list.
     """
     counts = fixtures_per_team_per_gw(fixtures, code_of)
+    parsed = _teams_and_gws(fixtures)
+    published = {}
+    if parsed is not None:
+        gw_column = parsed[0]["gw"].astype(int)
+        published = {int(g): int(n) for g, n in gw_column.value_counts().items()}
     weeks = []
     for gw in sorted(counts):
         if from_gw is not None and gw < int(from_gw):
@@ -104,7 +117,7 @@ def season_outlook(fixtures: pd.DataFrame,
         week = counts[gw]
         weeks.append({
             "gw": gw,
-            "fixtures": sum(week.values()) // 2,
+            "fixtures": published.get(gw, sum(week.values()) // 2),
             "doubles": sorted(t for t, n in week.items() if n >= DOUBLE),
             "blanks": sorted(t for t, n in week.items() if n == 0),
             "counts": dict(sorted(week.items())),

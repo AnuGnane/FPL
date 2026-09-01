@@ -213,12 +213,35 @@ def outlook(from_: int | None = Query(None, alias="from")) -> FixtureOutlook:
         for w in weeks]
     has_doubles = any(r.doubles for r in rows)
     has_blanks = any(r.blanks for r in rows)
+    # An empty ``weeks`` has two causes and the card can only render one
+    # sentence for it. "Nothing unusual is scheduled" is a claim about the
+    # season; a ``from`` past the last published gameweek is a claim about the
+    # request, and letting it fall through to the first is how a typo reads as
+    # a fact about the fixture list.
+    if note is None and not rows and start is not None:
+        last = _last_published(fixtures)
+        if last is not None and int(start) > last:
+            note = (f"GW{int(start)} is beyond the published season — the "
+                    f"fixture list ends at GW{last}.")
     if note is None and rows and not (has_doubles or has_blanks):
         note = ("No doubles or blanks are scheduled yet — rearrangements "
                 "usually start appearing around the cup rounds.")
     return FixtureOutlook(from_gw=start, weeks=rows, has_doubles=has_doubles,
                           has_blanks=has_blanks,
                           teams_known=code_of is not None, note=note)
+
+
+def _last_published(fixtures: pd.DataFrame) -> int | None:
+    """The highest gameweek the fixture list describes, or None.
+
+    Only ever used to explain an empty slice, so a frame that cannot say
+    produces no explanation rather than a guessed 38.
+    """
+    try:
+        gws = pd.to_numeric(fixtures["gw"], errors="coerce").dropna()
+        return int(gws.max()) if not gws.empty else None
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def _first_unfinished(fixtures: pd.DataFrame) -> int | None:
@@ -228,11 +251,21 @@ def _first_unfinished(fixtures: pd.DataFrame) -> int | None:
     the honest answer to "which gameweek does the season ahead start in" on a
     frame that cannot say is "we do not know", and ``season_outlook`` reads it
     as "no slice".
+
+    **The gameweek being played counts as ahead.** A week is "unfinished"
+    while any one of its matches is, so a Saturday-evening request still
+    starts the outlook at the live gameweek rather than at next week's — which
+    is right for a planner, whose chip is still spendable until the deadline
+    of the week after.
+
+    ``fillna(False)`` before the negation because ``bool(nan)`` is ``True``:
+    an unset flag would otherwise read as a *finished* match and push the
+    start past a week nobody has played.
     """
     try:
         if "finished" not in fixtures.columns:
             return None
-        left = fixtures[~fixtures["finished"].astype(bool)]
+        left = fixtures[~fixtures["finished"].fillna(False).astype(bool)]
         gws = pd.to_numeric(left["gw"], errors="coerce").dropna()
         return int(gws.min()) if not gws.empty else None
     except Exception:  # noqa: BLE001

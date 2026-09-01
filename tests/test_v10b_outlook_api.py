@@ -133,6 +133,31 @@ def test_todays_real_shape_answers_honestly(client, monkeypatch, tmp_path):
     assert body["has_doubles"] is False and body["has_blanks"] is False
 
 
+def test_a_from_beyond_the_season_says_so_rather_than_going_quiet(client):
+    """An empty ``weeks`` has two causes and the client can only render one
+    sentence for it. "Nothing unusual is scheduled" is a claim about the
+    season; asking for GW60 of a 38-week season is a claim about the request,
+    and falling through to the first is how a typo reads as a fact."""
+    _bank(fixtures=_fixtures(), teams=_teams())
+    body = client.get("/api/fixtures/outlook?from=20").json()
+    assert body["weeks"] == []
+    assert "beyond" in body["note"]
+    assert body["has_doubles"] is False and body["has_blanks"] is False
+
+
+def test_a_null_finished_flag_does_not_read_as_played():
+    """``bool(nan)`` is ``True``, so ``~frame["finished"].astype(bool)``
+    dropped the row: an unset flag read as a *finished* match and the season
+    ahead began after it. A fixture whose result is not recorded has not been
+    played — asserted on the frame directly, because a parquet round trip
+    normalises the null and would hide the arithmetic under test."""
+    from gaffer.web.routers.fixtures import _first_unfinished
+
+    frame = pd.DataFrame({"gw": [1, 2], "home_id": [1, 3], "away_id": [2, 4],
+                          "finished": [float("nan"), 0.0]})
+    assert _first_unfinished(frame) == 1
+
+
 def test_the_matrix_and_the_ticker_are_unaffected(client):
     _bank(fixtures=_fixtures(), teams=_teams())
     assert client.get("/api/fixtures/matrix").status_code == 200

@@ -79,6 +79,20 @@ def test_from_gw_slices_the_remaining_season():
     assert {w["gw"] for w in season_outlook(_fixtures(), from_gw=2)} == {2}
 
 
+def test_a_half_mapped_week_still_reports_the_fixtures_it_published():
+    """The count is of *matches*, and a match one of whose clubs the teams
+    snapshot could not name is still a match.
+
+    Halving the per-team total assumes every fixture contributes two sides.
+    Drop one side — a promoted club missing from a stale teams table — and
+    GW1's two fixtures were reported as one, silently, on the row a planner
+    reads to decide whether a week is worth a chip.
+    """
+    out = season_outlook(_fixtures(), {1: 14, 3: 3, 4: 8})
+    week = next(w for w in out if w["gw"] == 1)
+    assert week["fixtures"] == 2
+
+
 def test_an_empty_frame_is_an_empty_outlook_not_an_error():
     assert season_outlook(pd.DataFrame(columns=["gw", "home_id", "away_id"])) \
         == []
