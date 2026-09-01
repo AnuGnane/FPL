@@ -157,8 +157,9 @@ describe('a phone screen scrolls nothing sideways', () => {
     it(`lets ${name}'s tab strip scroll within its own bounds`, async () => {
       render(<MemoryRouter><Hub /></MemoryRouter>)
       const strip = await screen.findByRole('tablist')
-      // Five tabs do not fit in 390px. The strip may scroll or wrap; what it
-      // may not do is make the page wider than the phone.
+      // Five tabs do not fit in 390px, and Model has carried six since v11
+      // added Season. The strip may scroll or wrap; what it may not do is
+      // make the page wider than the phone.
       expect(strip.className).toMatch(/overflow-x-auto|flex-wrap/)
     })
   }
