@@ -279,6 +279,7 @@ def run_data_refresh() -> dict:
     from gaffer.artifacts import save_snapshots
     from gaffer.config import load_config
     from gaffer.data.bootstrap import build_events, build_players, build_teams
+    from gaffer.data.chip_scenarios import write_chip_scenarios
     from gaffer.data.live import refresh_live
 
     cfg = load_config()
@@ -293,4 +294,10 @@ def run_data_refresh() -> dict:
     # refresh that skipped it would leave both stale for ever.
     save_live_fixtures(fixtures, teams, season_idx)
     save_snapshots(build_players(raw), teams, build_events(raw), fixtures)
+    # v10b §F2b: the DGW hook v4c shipped has been waiting for data since
+    # August. Derived here rather than in a new job kind because the fixture
+    # list was just fetched and is in hand — a second kind would re-fetch it
+    # to learn the same thing. Never raises; see the writer's docstring.
+    write_chip_scenarios(fixtures,
+                         dict(zip(teams["team_id"], teams["code"])))
     return {"rows": int(len(frame))}

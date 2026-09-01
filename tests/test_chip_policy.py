@@ -114,17 +114,22 @@ def test_flat_thresholds_ignore_the_gameweek_entirely():
 
 # --- the DGW scenario hook -------------------------------------------------
 
-from gaffer.optimize.chip_policy import (CHIP_SCENARIOS_PATH,
-                                         DGW_SURPLUS_MULTIPLIER,
+from gaffer.optimize.chip_policy import (DGW_SURPLUS_MULTIPLIER,
                                          apply_dgw_scenarios,
                                          load_chip_scenarios,
                                          thresholds_from_priors)
 
-
-def test_the_scenario_file_is_absent_this_cycle():
-    """Spec §10: the hook ships, the data does not. If this starts failing
-    because someone populated it, delete this test — but do it knowingly."""
-    assert not CHIP_SCENARIOS_PATH.exists()
+# ``test_the_scenario_file_is_absent_this_cycle`` lived here and is gone,
+# knowingly, on its own authority: *"If this starts failing because someone
+# populated it, delete this test — but do it knowingly."* v10b §F2b populates
+# it — from the published fixture list, inside refresh-data — so on the first
+# machine that sees a scheduled double this would have failed on a Tuesday, in
+# a file nobody was editing, for a reason nobody would connect to the job that
+# ran. What it was really protecting is now pinned as the writer's own
+# contract in tests/test_v10b_chip_scenarios.py: a fixture list with no
+# doubles writes no file. That assertion does not depend on the state of the
+# developer's data directory, which is the other thing wrong with the test it
+# replaces.
 
 
 def test_loading_an_absent_scenario_file_is_an_empty_dict_not_an_error():
