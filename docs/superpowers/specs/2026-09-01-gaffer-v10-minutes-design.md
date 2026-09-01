@@ -204,16 +204,23 @@ Rule: three seed bases a side, read as mean ± spread; pass is the branch mean
 not worse than the main mean minus half the seed spread. Record wall-clock per
 side beside the totals.
 
-### G3 results
-
-**Not run — the orchestrator runs this.** Driver: `scripts/v10_autosub_cf.py`,
-built and smoke-tested (parses; `review.score_squad`'s `xi/bench/captain/vice/
-hits` signature confirmed; `_p_play_lookup` reachable; a `bench_curve` is in
-`OPT_KW` so §F1a is live in the measurement).
+### G3 results (measured 2026-09-02, scripts/v10_autosub_cf.py @ c02a0f0)
 
 Rule: the mean delta over weeks where an autosub actually fired must not
-regress. A large positive delta on a handful of weeks is not a win either —
-the week count prints beside the mean so it is read as the small sample it is.
+regress. Result — **PASSES, positive**:
+
+- Autosub weeks (the gate): **21 of 38**, mean delta **+0.381** pts/week.
+- All weeks: mean delta +0.211.
+- `different_xi_weeks: 0`, `different_bench_weeks: 10` — the feature
+  reshaped the bench and never the XI, which is §F1's intended shape
+  (F1a/F1b acting, F1a's transfer reach deferred per §Residuals).
+
+Read as the small sample it is: 21 weeks, one season, fresh squads weekly —
+a per-week tendency, not a season total. First run crashed on the instrument
+(actuals slice missing `position`, per-fixture rows unaggregated — fixed at
+c02a0f0 before any number was recorded); the recorded run used the
+post-KEEPER_DNP solver, and the later coverage-gate fixes don't touch the
+driver's full-coverage path. Banked: `reports/v10_autosub_cf.json`.
 Expect one benchmark fit plus ~114 solves (the branch arm's are two-pass).
 
 ## §Residuals
