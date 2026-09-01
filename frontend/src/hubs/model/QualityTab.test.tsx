@@ -547,9 +547,15 @@ describe('v9d calibration by gameweek', () => {
     // The tab already had a card titled "Calibration" — the holdout curves.
     // Two cards with one name showing different things is worse than either.
     renderWithCalibration(calibrationPayload())
-    expect(await screen.findByRole('heading', { name: 'Calibration' }))
+    // Awaited on the *new* card's heading. "Calibration" resolves off the
+    // /api/quality payload, which is already in hand when this test starts:
+    // awaiting it would let both counts run before /api/model/calibration
+    // had resolved, and the pass would say nothing about the second card.
+    expect(await screen.findByRole('heading',
+                                   { name: 'Calibration by gameweek' }))
       .toBeInTheDocument()
-    expect(screen.getAllByRole('heading', { name: 'Calibration' })).toHaveLength(1)
+    expect(screen.getAllByRole('heading', { name: 'Calibration' }))
+      .toHaveLength(1)
     expect(screen.getAllByRole('heading',
                                { name: 'Calibration by gameweek' }))
       .toHaveLength(1)
