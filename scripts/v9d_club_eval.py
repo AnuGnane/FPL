@@ -34,6 +34,13 @@ from ``team_code`` on a non-zero number of rows. If the training frame carries
 no ``club_code`` the two arms are the same arm and every number below is a
 decorated zero, which reads exactly like a clean negative result. v9c learned
 this twice (its run-2 zeros); the script exits rather than printing one.
+
+The congestion arm needs a *second* lever checked, because it reads a second
+input: ``add_congestion`` counts cup matches for the as-of club, so without
+``history/cup_matches.parquet`` both arms count nothing and the block is
+all-zeros whatever ``as_of_club`` returns. ``main`` refuses that too. The
+recorded G1 run had the cup frame present — 117 changed rows — so the banked
+numbers stand; this only hardens the instrument against the next run.
 """
 
 from __future__ import annotations
@@ -138,6 +145,17 @@ def main() -> None:
             "row of the training frame, so both arms below would be the same "
             "arm and every number a decorated zero. Check that "
             "load_training_frame still derives club_code (v9c A7).")
+    if cups is None or cups.empty:
+        # The congestion arm has a second lever, and it is a separate one:
+        # add_congestion counts *cup* matches for the as-of club, so with no
+        # cup frame both arms count nothing and the block reports all-zeros —
+        # which reads exactly like a clean negative result. Same failure mode
+        # as the club_code one above, same answer: exit rather than print it.
+        raise SystemExit(
+            "the congestion lever is disconnected: history/cup_matches.parquet "
+            "is absent or empty, so add_congestion has nothing to count on "
+            "either arm and its block below would be zeros that read as a "
+            "clean negative. Fetch the cup history first (v9d §1).")
 
     out = {
         "diverging_rows": diverging,
