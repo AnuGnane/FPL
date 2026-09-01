@@ -66,6 +66,12 @@ def _wire(tmp_path, monkeypatch, *, events=None, field_log=True):
     monkeypatch.chdir(tmp_path)
     field_frame.clear_cache()
     (tmp_path / "data" / "live").mkdir(parents=True)
+    # A configured clone: the framing reads the season off ``load_config`` and
+    # frames nothing without one, so the two keys ``load_config`` requires are
+    # what makes this tmpdir a clone rather than a cold checkout. The season
+    # itself is the dataclass default, which is what the log rows below use.
+    (tmp_path / "config.toml").write_text(
+        "[fpl]\nentry_id = 1\nleague_id = 1\n")
     store.save(pd.DataFrame({"code": [500, 501], "element": [411, 165],
                              "name": ["Salah", "Haaland"]}),
                "live/players.parquet")

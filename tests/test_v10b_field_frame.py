@@ -35,6 +35,19 @@ def _payload() -> dict:
             "bench": [], "buys": [], "sells": []}
 
 
+def _write_config(root) -> None:
+    """The two required keys and nothing else.
+
+    ``load_config`` needs ``fpl.entry_id`` and ``fpl.league_id`` and defaults
+    everything else, so this is the smallest file that makes a tmpdir a
+    configured clone. The season the framing reads comes off
+    ``Config.current_season``'s default, which is what the log rows here are
+    written under.
+    """
+    (root / "config.toml").write_text(
+        "[fpl]\nentry_id = 1\nleague_id = 1\n")
+
+
 @pytest.fixture()
 def wired(tmp_path, monkeypatch):
     """A snapshot that knows both id spaces, and a log that speaks elements."""
@@ -42,6 +55,7 @@ def wired(tmp_path, monkeypatch):
     identity.clear_cache()
     field_frame.clear_cache()
     (tmp_path / "data" / "live").mkdir(parents=True)
+    _write_config(tmp_path)
     store.save(pd.DataFrame({"code": [500, 501], "element": [411, 165],
                              "team_code": [14, 43]}),
                "live/players.parquet")
@@ -157,6 +171,53 @@ def test_an_unreadable_snapshot_is_silence(wired, monkeypatch):
     field_frame.clear_cache()
     payload = _payload()
     assert field_frame.with_field_frame(payload, 2) == payload
+
+
+def test_a_dropped_row_does_not_shift_every_later_name(wired):
+    """The positional read, reproduced.
+
+    ``_players_by_element`` used to project ``code``/``element``, drop the
+    null rows out of *that* frame, and then index the **un-dropped** ``name``
+    column by the projection's position. One null element mid-frame and every
+    element after it wore its neighbour's name — element 20 came back as
+    "Alpha", the name of the row before the hole. Names are read off the same
+    projected row as the ids or they are not read at all.
+    """
+    store.save(pd.DataFrame({
+        "code": [1, 2, 3, 4],
+        "element": [10, None, 20, 30],
+        "name": ["Alpha", "Bravo", "Charlie", "Delta"],
+    }), "live/players.parquet")
+    field_frame.clear_cache()
+    by_element = field_frame._players_by_element()
+    assert by_element[10] == {"code": 1, "name": "Alpha"}
+    assert by_element[20] == {"code": 3, "name": "Charlie"}
+    assert by_element[30] == {"code": 4, "name": "Delta"}
+    assert None not in by_element
+
+
+def test_an_unconfigured_clone_frames_nothing(tmp_path, monkeypatch):
+    """The module's own documented degradation, not a guessed season.
+
+    ``load_config`` raises on a clone with no ``config.toml``, and the season
+    is the third id-space guard: framing GW2 against a season the user did not
+    choose is the failure that guard exists to prevent. So the answer is the
+    payload as it arrived.
+    """
+    monkeypatch.chdir(tmp_path)
+    identity.clear_cache()
+    field_frame.clear_cache()
+    (tmp_path / "data" / "live").mkdir(parents=True)
+    store.save(pd.DataFrame({"code": [500], "element": [411],
+                             "team_code": [14]}), "live/players.parquet")
+    store.save(pd.DataFrame([
+        {"season": "2026-27", "gw": 2, "snap_date": "2026-08-31",
+         "element": 411, "eo": 62.4, "se": 2.8, "n": 300},
+    ]), "live/field_eo_log.parquet")
+    payload = _payload()
+    out = field_frame.with_field_frame(payload, 2)
+    assert "captain_field" not in out
+    assert out == payload
 
 
 def test_the_route_serves_the_key(wired):

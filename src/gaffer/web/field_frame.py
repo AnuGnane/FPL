@@ -103,6 +103,13 @@ def _players_by_element() -> dict[int, dict]:
     which *element* the field is captaining and the page needs a code and a
     name. Same row, same guards, and a missing ``name`` column is a ``None``
     rather than a ``KeyError``.
+
+    **The name travels in the projection**, and the ``dropna`` names only the
+    two id columns. Reading it off the un-dropped frame by the projection's
+    position was guard 1's own failure in the other direction: one null
+    element mid-frame and every element after the hole wore the previous
+    row's name. A player with no name recorded is still a ``None`` here, which
+    is why the drop is subset-scoped rather than whole-row.
     """
     def build() -> Any:
         try:
@@ -110,12 +117,15 @@ def _players_by_element() -> dict[int, dict]:
             if "element" not in players.columns:
                 raise KeyError("players snapshot has no element column")
             named = "name" in players.columns
-            pairs = players[["code", "element"]].dropna()
-            names = players["name"] if named else None
+            cols = ["code", "element"] + (["name"] if named else [])
+            pairs = players[cols].dropna(subset=["code", "element"])
             out: dict[int, dict] = {}
-            for i, (c, e) in enumerate(zip(pairs["code"], pairs["element"])):
-                out[int(e)] = {"code": int(c),
-                               "name": (str(names.iloc[i]) if named else None)}
+            for row in pairs.itertuples(index=False):
+                name = getattr(row, "name", None) if named else None
+                out[int(row.element)] = {
+                    "code": int(row.code),
+                    "name": (None if name is None or name != name
+                             else str(name))}
             return out
         except Exception as exc:  # noqa: BLE001 — a decoration is never fatal
             print(f"field_frame: player snapshot unreadable ({exc})")
@@ -164,26 +174,21 @@ def _modal_captain(gw: int) -> dict | None:
 def _field_table(gw: int) -> dict[int, dict]:
     """``{element: {"eo", "se", "n", "gw"}}`` for this season, or an empty map.
 
-    The config read is *inside* the guard, and its failure falls back to the
-    packaged default rather than to no season at all. ``load_config`` raises on
-    a clone with no ``config.toml``, and dropping the ``season`` keyword there
-    would quietly re-open guard 3 on exactly the machines least likely to
-    notice. ``Config().current_season`` is a named season with the same
-    meaning; what it cannot do is follow a user who set a different one.
+    The config read is *inside* the guard, and its failure is an empty map —
+    this module's documented degradation, not a guessed season. ``load_config``
+    raises on a clone with no ``config.toml``, and the season is guard 3: a
+    literal default here would frame against a season the user never chose on
+    exactly the machines least likely to notice. No configured season, no
+    framing.
 
-    The default is read off the dataclass field rather than by constructing a
-    ``Config``, which cannot be built without ``entry_id`` and ``league_id``.
-    Deliberately *not* "the newest season in the log": that would frame from
-    last season's rows on a clone whose log has not rolled over, which is the
-    failure guard 3 exists to prevent.
+    Deliberately *not* "the newest season in the log" either: that would frame
+    from last season's rows on a clone whose log has not rolled over, which is
+    the same failure from the other side.
     """
     try:
-        from gaffer.config import Config, load_config
+        from gaffer.config import load_config
 
-        try:
-            season = load_config().current_season
-        except Exception:  # noqa: BLE001 — an unconfigured clone still frames
-            season = Config.__dataclass_fields__["current_season"].default
+        season = load_config().current_season
         return latest_field_eo(gw, season=season)
     except Exception as exc:  # noqa: BLE001
         print(f"field_frame: field EO log unreadable ({exc})")
