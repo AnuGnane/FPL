@@ -956,6 +956,10 @@ class CalibrationReport(BaseModel):
     gameweeks: list[CalibrationGw] = []
     cumulative: dict[str, CalibrationHead] = {}
     omitted: dict[str, str] = {}
+    #: Heads that *are* graded but not per gameweek — p_cs, whose club-fixture
+    #: grain supplies about twenty rows a week against a thirty-row floor. The
+    #: card prints the reason under the table rather than a column of refusals.
+    per_gw_omitted: dict[str, str] = {}
     excluded: list[dict[str, Any]] = []
     missing: list[int] = []
     note: str | None = None

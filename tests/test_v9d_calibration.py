@@ -145,12 +145,19 @@ def test_p_haul_is_recomputed_from_the_banked_components(banked):
         float(((expected - truth.astype(float)) ** 2).mean()), 4)
 
 
-def test_p_cs_is_graded_at_team_gameweek_grain(banked):
-    """A clean sheet is one event and eleven player rows."""
+def test_p_cs_is_graded_per_club_fixture_and_only_cumulatively(banked):
+    """A clean sheet is one event and eleven player rows — and about twenty
+    events a gameweek, which is under the sample floor by arithmetic rather
+    than by luck. A per-gameweek column of it could only ever read "not
+    enough data", so it is not offered at that grain; the rows pool into the
+    cumulative row instead, and the payload says so where the card can print
+    it.
+    """
     out = evaluate_calibration(season="2025-26")
-    head = out["gameweeks"][0]["heads"]["p_cs"]
-    assert head["n"] == 2                    # two clubs, not forty players
-    assert head["status"] == "insufficient"  # and honest about it
+    assert "p_cs" not in out["gameweeks"][0]["heads"]
+    assert "p_cs" in out["cumulative"]
+    assert out["cumulative"]["p_cs"]["n"] == 2   # two clubs, not forty players
+    assert "cumulative row" in out["per_gw_omitted"]["p_cs"]
 
 
 def _clubs(n: int = 30) -> tuple[pd.DataFrame, pd.DataFrame]:

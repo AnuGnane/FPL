@@ -247,7 +247,13 @@ function CalibrationSection() {
               <th scope="row" className="text-left">{`GW${row.gw}`}</th>
               {CALIBRATION_HEADS.map(([key]) => (
                 <td key={key} className="text-right">
-                  {brierCell(row.heads[key])}
+                  {/* A head with no per-gameweek column says so once, in the
+                      footer, rather than printing a week's worth of "not
+                      enough data" that reads as a fault in the model. */}
+                  {key in (data.per_gw_omitted ?? {})
+                    ? <span className="text-text-faint" title={
+                        data.per_gw_omitted[key]}>cumulative only</span>
+                    : brierCell(row.heads[key])}
                 </td>
               ))}
             </tr>
@@ -279,6 +285,9 @@ function CalibrationSection() {
       <div className="mt-3 text-text-faint">
         {Object.entries(data.omitted).map(([head, why]) => (
           <p key={head}>{`Omitted: ${head} — ${why}.`}</p>
+        ))}
+        {Object.entries(data.per_gw_omitted ?? {}).map(([head, why]) => (
+          <p key={head}>{`Per gameweek: ${head} — ${why}.`}</p>
         ))}
         {data.excluded.map((row) => (
           <p key={row.gw}>{`Excluded: GW${row.gw} — ${row.reason}.`}</p>

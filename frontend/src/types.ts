@@ -680,6 +680,10 @@ export interface CalibrationData {
   cumulative: Record<string, CalibrationHead>
   /** Head -> why it is not graded. p_start is never banked. */
   omitted: Record<string, string>
+  /** Head -> why it has no per-gameweek column, though it is graded in the
+   *  cumulative row. p_cs is one clean sheet per club-fixture, about twenty
+   *  a gameweek, under the report's sample floor. */
+  per_gw_omitted: Record<string, string>
   excluded: Array<{ gw: number; reason: string }>
   missing: number[]
   note: string | null

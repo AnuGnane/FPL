@@ -528,13 +528,35 @@ pass through a job (plan A14) — which makes the sentence part of the payload."
 CALIBRATION_HEADS = ("p_play", "p60", "p_cs", "p_haul")
 """The four banked probabilities this report grades, in payload order."""
 
+PER_GW_HEADS = ("p_play", "p60", "p_haul")
+"""The three that a single gameweek has the rows to say anything about."""
+
+PER_GW_OMITTED = {
+    "p_cs": ("graded per club-fixture — about 20 a gameweek, below the "
+             f"{MIN_CALIBRATION_SAMPLES}-sample floor — so it is scored in "
+             "the cumulative row only"),
+}
+"""Why the per-gameweek table has three columns and the cumulative row four.
+
+A clean sheet is one event per club per fixture, so a gameweek supplies about
+twenty rows against :data:`MIN_CALIBRATION_SAMPLES`'s thirty. A per-gameweek
+``p_cs`` column could therefore never read anything but "not enough data" —
+a column of refusals that looks like a defect in the model rather than an
+arithmetic certainty about the grain. Lowering the floor for this one head was
+the alternative and is worse: thirty is already the point at which ten
+reliability bins start to mean anything, and a team-grain exception would put
+the loosest evidence in the report under the most confident-looking heading.
+The rows are not thrown away — they pool into the cumulative row, which is
+where a clean-sheet trend was always going to become readable."""
+
 
 def _calibration_empty(note: str, season: str | None = None) -> dict:
     """A well-formed payload with nothing in it. August is a real state."""
     return {"run_at": run_at(), "git_sha": git_sha(), "season": season,
             "gameweeks": [], "cumulative": {
                 h: calibration_head([], []) for h in CALIBRATION_HEADS},
-            "omitted": {"p_start": "not banked"}, "excluded": [],
+            "omitted": {"p_start": "not banked"},
+            "per_gw_omitted": dict(PER_GW_OMITTED), "excluded": [],
             "missing": [], "note": note}
 
 
@@ -672,7 +694,9 @@ def evaluate_calibration(season: str | None = None) -> dict:
 
     ``p_start`` is absent from ``COMPONENT_COLS`` — the minutes trichotomy is
     never banked — so it is omitted and the payload says why, rather than being
-    silently missing.
+    silently missing. ``p_cs`` is graded, but only cumulatively: see
+    :data:`PER_GW_OMITTED` for why a per-gameweek column of it could never say
+    anything.
 
     **A gameweek whose artifact was written after the whistle is not graded.**
     ``save_components`` writes ``gw{N}`` whatever today's date is, so re-running
@@ -789,7 +813,7 @@ def evaluate_calibration(season: str | None = None) -> dict:
             "p_haul": (haul_pred,
                        (joined["goals"] + joined["assists"]) >= 2),
         }
-        heads = {name: calibration_head(*pair) for name, pair in pairs.items()}
+        heads = {name: calibration_head(*pairs[name]) for name in PER_GW_HEADS}
         for name, pair in pairs.items():
             pooled[name].append(_paired(*pair))
 
@@ -811,6 +835,9 @@ def evaluate_calibration(season: str | None = None) -> dict:
             # Named with its reason rather than silently absent: a reader who
             # cannot see p_start would otherwise conclude it is calibrated.
             "omitted": {"p_start": "not banked"},
+            # Not the same refusal as ``omitted``: p_cs *is* graded, just not
+            # at a grain one gameweek has the rows for.
+            "per_gw_omitted": dict(PER_GW_OMITTED),
             "excluded": excluded, "missing": missing, "note": note}
 
 
@@ -1026,13 +1053,18 @@ def _format_calibration(payload: dict) -> str:
              "  gw   " + "".join(f"{h:>14}" for h in CALIBRATION_HEADS)]
     for row in payload.get("gameweeks", []):
         heads = row.get("heads", {})
-        lines.append(f"  GW{row['gw']:<3} "
-                     + "".join(cell(heads.get(h)) for h in CALIBRATION_HEADS))
+        # A head with no per-gameweek column prints a dash, not a zero count:
+        # it was not scored at this grain rather than scored and empty.
+        lines.append(f"  GW{row['gw']:<3} " + "".join(
+            f"{'-':>14}" if h not in heads else cell(heads.get(h))
+            for h in CALIBRATION_HEADS))
     cum = payload.get("cumulative", {})
     lines.append("  all   "
                  + "".join(cell(cum.get(h)) for h in CALIBRATION_HEADS))
     for head, why in (payload.get("omitted") or {}).items():
         lines.append(f"  omitted: {head} — {why}")
+    for head, why in (payload.get("per_gw_omitted") or {}).items():
+        lines.append(f"  per gameweek: {head} — {why}")
     for row in payload.get("excluded") or []:
         lines.append(f"  excluded: GW{row.get('gw')} — {row.get('reason')}")
     if payload.get("missing"):

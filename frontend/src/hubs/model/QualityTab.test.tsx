@@ -446,12 +446,16 @@ function calibrationPayload(over: Record<string, unknown> = {}) {
   return {
     available: true, run_at: '2026-09-01T00:00:00Z', git_sha: 'abc1234',
     season: '2025-26',
+    // p_cs has no per-gameweek entry: one clean sheet per club-fixture is
+    // about twenty rows a week, under the report's sample floor.
     gameweeks: [{ gw: 1, n: 400,
-                  heads: { p_play: CAL_HEAD, p60: CAL_HEAD, p_cs: CAL_HEAD,
+                  heads: { p_play: CAL_HEAD, p60: CAL_HEAD,
                            p_haul: CAL_INSUFFICIENT } }],
     cumulative: { p_play: CAL_HEAD, p60: CAL_HEAD, p_cs: CAL_HEAD,
                   p_haul: CAL_INSUFFICIENT },
     omitted: { p_start: 'not banked' },
+    per_gw_omitted: { p_cs: 'graded per club-fixture — scored in the '
+                            + 'cumulative row only' },
     excluded: [{ gw: 2, reason: 'written after kickoff' }],
     missing: [3],
     note: null,
@@ -481,7 +485,8 @@ describe('v9d calibration by gameweek', () => {
     async () => {
       renderWithCalibration({
         available: false, run_at: null, git_sha: null, season: null,
-        gameweeks: [], cumulative: {}, omitted: {}, excluded: [], missing: [],
+        gameweeks: [], cumulative: {}, omitted: {}, per_gw_omitted: {},
+        excluded: [], missing: [],
         note: 'Run `gaffer evaluate --calibration` after a graded gameweek.',
       })
       expect(await screen.findByText(/after a graded gameweek/))
@@ -508,6 +513,15 @@ describe('v9d calibration by gameweek', () => {
     renderWithCalibration(calibrationPayload())
     expect((await screen.findAllByText(/not enough data \(12\)/)).length)
       .toBeGreaterThan(0)
+  })
+
+  it('shows p_cs cumulatively rather than a column of refusals', async () => {
+    // Twenty club-fixtures a gameweek against a thirty-row floor: a per-week
+    // p_cs column could only ever read "not enough data", which looks like a
+    // fault in the model rather than arithmetic about the grain.
+    renderWithCalibration(calibrationPayload())
+    expect(await screen.findByText('cumulative only')).toBeInTheDocument()
+    expect(screen.getByText(/Per gameweek: p_cs/)).toBeInTheDocument()
   })
 
   it('names the omitted head and why it is omitted', async () => {
