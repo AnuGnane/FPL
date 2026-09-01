@@ -254,6 +254,10 @@ def test_every_job_kind_has_a_deadline_and_none_of_them_is_zero():
                                       SLOW_ABANDON_KINDS)
 
     assert set(ABANDON_TIMEOUT_S) | SLOW_ABANDON_KINDS == set(JOB_KINDS)
+    # Disjoint as well as complete. A kind in both would read as having a
+    # deadline while taking the slow default, so the union above would keep
+    # passing while the table said one thing and the lookup did another.
+    assert not (set(ABANDON_TIMEOUT_S) & SLOW_ABANDON_KINDS)
     assert all(v > 0 for v in ABANDON_TIMEOUT_S.values())
 
 
@@ -371,12 +375,14 @@ def test_a_components_file_written_after_the_whistle_is_not_graded(
     n = 40
     save_components(pd.DataFrame({
         "code": list(range(n)), "gw": [1] * n, "team_code": [1] * n,
+        "opp_code": [2] * n,
         "p_play": [0.8] * n, "p60": [0.6] * n, "p_cs": [0.3] * n,
         "e_goals": [0.4] * n, "e_assists": [0.2] * n}), 1)
     store.save(pd.DataFrame({
         "season": ["2025-26"] * n, "gw": [1] * n, "code": list(range(n)),
-        "team_code": [1] * n, "minutes": [90] * n, "goals": [0] * n,
-        "assists": [0] * n, "cs": [1] * n}), "live/player_gw.parquet")
+        "team_code": [1] * n, "opp_code": [2] * n, "minutes": [90] * n,
+        "goals": [0] * n, "assists": [0] * n, "cs": [1] * n,
+        "gc": [0] * n}), "live/player_gw.parquet")
     store.save(pd.DataFrame({"gw": [1], "finished": [True], "home_id": [1],
                              "away_id": [2],
                              "kickoff_time": ["2025-08-16T14:00:00Z"]}),
@@ -386,7 +392,9 @@ def test_a_components_file_written_after_the_whistle_is_not_graded(
 
     out = evaluate_calibration(season="2025-26")
     assert out["gameweeks"] == []
-    assert {"gw": 1, "reason": "written after kickoff"} in out["excluded"]
+    assert {"gw": 1,
+            "reason": "artifact written after the gameweek's first kickoff"
+            } in out["excluded"]
 
 
 # =====================================================================
