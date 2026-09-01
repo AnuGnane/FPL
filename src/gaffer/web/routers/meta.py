@@ -22,6 +22,10 @@ from gaffer.data import store
 from gaffer.data.elo import compute_elo, expected_score
 from gaffer.data.odds import poisson_win_prob
 from gaffer.errors import GafferError
+from gaffer.assets import load_decision_priors
+from gaffer.config import load_config
+from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
+                                         chip_windows, load_chip_scenarios)
 from gaffer.optimize.chips import chip_plan, evaluate_chips
 from gaffer.optimize.milp import SolveInput
 from gaffer.web.schemas import (ArtifactItem, ChipPlan, ChipPlanRow, Health,
@@ -66,7 +70,25 @@ def chips_plan() -> ChipPlan:
         raise GafferError(
             "chip evaluation failed for this saved state — re-run "
             f"`gaffer advise` ({exc})") from exc
-    rows = [] if table.empty else chip_plan(table, now_gw=state.gws[0])
+    # v10b §F2c. `chip_thresholds_from_asset(priors, load_chip_scenarios())`
+    # is advise.py:735-736's expression character for character, deliberately:
+    # the bar the Outlook draws has to be the bar the advise run actually
+    # solved against, not a second opinion computed a different way on the
+    # same page.
+    priors = load_decision_priors() if load_config().decision_priors else None
+    thresholds = chip_thresholds_from_asset(priors, load_chip_scenarios())
+    rows = [] if table.empty else chip_plan(table, now_gw=state.gws[0],
+                                            thresholds=thresholds)
+    for row in rows:
+        # The trajectory, looped here rather than emitted from chip_plan's
+        # week rows: `thresholds` is a plain (chip, gw) -> float callable, and
+        # widening those rows would be an optimize/** edit for a display
+        # field (plan A9). Aligned by index with `weeks`.
+        row["thetas"] = [round(float(thresholds(row["chip"], w["gw"])), 2)
+                         for w in row["weeks"]]
+        # (from_gw, last_gw) — the first element is the gameweek asked about,
+        # not the window's opening.
+        row["window"] = list(chip_windows(state.gws[0]))
     return ChipPlan(gw=state.gw, chips=[ChipPlanRow(**row) for row in rows])
 
 

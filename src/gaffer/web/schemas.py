@@ -524,6 +524,26 @@ class ChipPlanRow(BaseModel):
     now_gain: float | None
     play_now_delta: float | None
 
+    threshold_now: float | None = None
+    """θ for this chip in the current gameweek: the surplus the best remaining
+    week is expected to offer. ``chip_plan`` has always computed it and this
+    model has never declared it, so until v10b it was computed and dropped —
+    the ``odds_blend_weight`` failure, repeated. An undeclared field never
+    reaches the page and nothing fails while it doesn't."""
+
+    play_now: bool | None = None
+
+    thetas: list[float] = []
+    """θ per week, aligned by index with ``weeks``. Built at the router by
+    looping the same ``(chip, gw) -> float`` callable, because putting it in
+    ``chip_plan``'s week rows would be an ``optimize/**`` edit for a display
+    field (plan A9)."""
+
+    window: list[int] = []
+    """``[from_gw, last_gw]`` from ``chip_policy.chip_windows``. Note the first
+    element is the gameweek asked about, not the window's opening — the UI says
+    "expires after GW19" and never "window starts at"."""
+
 
 class ChipPlan(BaseModel):
     gw: int
