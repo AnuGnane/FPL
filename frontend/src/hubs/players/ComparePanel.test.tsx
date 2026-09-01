@@ -157,6 +157,111 @@ describe('ComparePanel', () => {
   })
 })
 
+describe('the model’s own working', () => {
+  it('sums the breakdown rows to the total it prints', async () => {
+    render(<ComparePanel gw={5} players={PLAYERS} />)
+    const card = await screen.findByTestId('compare-1')
+    const rows = within(card).getByTestId('breakdown-1')
+    expect(rows).toHaveTextContent('Minutes')
+    expect(rows).toHaveTextContent('Goals')
+    // 1.9 + 3.1
+    expect(within(card).getByTestId('breakdown-total-1'))
+      .toHaveTextContent('5.00')
+  })
+
+  it('renders a negative term with its sign', async () => {
+    apiGet.mockImplementation((path: string) => (
+      path.startsWith('/api/components/')
+        ? Promise.resolve({ ...COMPONENTS, players: [
+            { ...COMPONENTS.players[0],
+              fixtures: [{ ...COMPONENTS.players[0].fixtures[0],
+                           components: [{ label: 'Goals', points: 3.1 },
+                                        { label: 'Cards', points: -0.4 }] }] },
+            COMPONENTS.players[1]] })
+        : path.startsWith('/api/fixtures/matrix') ? Promise.resolve(MATRIX)
+          : Promise.reject(new Error(`unexpected ${path}`))
+    ))
+    render(<ComparePanel gw={5} players={PLAYERS} />)
+    const rows = within(await screen.findByTestId('compare-1'))
+      .getByTestId('breakdown-1')
+    expect(rows).toHaveTextContent('-0.40')
+    // The bar for a negative term sits on the other side of the centre line.
+    expect(rows.querySelector('.bg-rust')).not.toBeNull()
+    expect(rows.querySelector('.bg-sage')).not.toBeNull()
+  })
+
+  it('prints an em dash for an unknown p_play, never a zero', async () => {
+    apiGet.mockImplementation((path: string) => (
+      path.startsWith('/api/components/')
+        ? Promise.resolve({ ...COMPONENTS, players: [
+            { ...COMPONENTS.players[0],
+              fixtures: [{ ...COMPONENTS.players[0].fixtures[0],
+                           minutes: { p_play: null, p60: 0.9,
+                                      xmins: null } }] },
+            COMPONENTS.players[1]] })
+        : path.startsWith('/api/fixtures/matrix') ? Promise.resolve(MATRIX)
+          : Promise.reject(new Error(`unexpected ${path}`))
+    ))
+    render(<ComparePanel gw={5} players={PLAYERS} />)
+    const line = within(await screen.findByTestId('compare-1'))
+      .getByTestId('minutes-1-EVE')
+    expect(line).toHaveTextContent('p —')
+    expect(line).not.toHaveTextContent('p 0.00')
+  })
+
+  it('shows both fixtures of a double gameweek and one xMins total',
+    async () => {
+      apiGet.mockImplementation((path: string) => (
+        path.startsWith('/api/components/')
+          ? Promise.resolve({ ...COMPONENTS, players: [
+              { ...COMPONENTS.players[0],
+                fixtures: [COMPONENTS.players[0].fixtures[0],
+                           { ...COMPONENTS.players[0].fixtures[0],
+                             opponent: 'BUR', home: false,
+                             minutes: { p_play: 0.9, p60: 0.8,
+                                        xmins: 70 } }] },
+              COMPONENTS.players[1]] })
+          : path.startsWith('/api/fixtures/matrix') ? Promise.resolve(MATRIX)
+            : Promise.reject(new Error(`unexpected ${path}`))
+      ))
+      render(<ComparePanel gw={5} players={PLAYERS} />)
+      const card = await screen.findByTestId('compare-1')
+      expect(within(card).getByTestId('minutes-1-EVE')).toBeInTheDocument()
+      expect(within(card).getByTestId('minutes-1-BUR')).toBeInTheDocument()
+      // 88 + 70 — xMins is the one of the three that adds.
+      expect(within(card).getByTestId('minutes-total-1'))
+        .toHaveTextContent('158')
+    })
+
+  it('flags a set-piece order and says nothing when there is none',
+    async () => {
+      render(<ComparePanel gw={5} players={PLAYERS} />)
+      const salah = await screen.findByTestId('compare-1')
+      expect(within(salah).getByTestId('setpieces-1'))
+        .toHaveTextContent('Pens 1')
+      // Saka takes corners and nothing else; null is "the bootstrap does not
+      // say", which draws nothing rather than a crossed-out badge.
+      const saka = screen.getByTestId('compare-2')
+      const flags = within(saka).getByTestId('setpieces-2')
+      expect(flags).toHaveTextContent('Corners 1')
+      expect(flags).not.toHaveTextContent('Pens')
+    })
+
+  it('annotates penalty duty under Goals rather than as a term', async () => {
+    render(<ComparePanel gw={5} players={PLAYERS} />)
+    const rows = within(await screen.findByTestId('compare-1'))
+      .getByTestId('breakdown-1')
+    expect(rows).toHaveTextContent(/penalty duty 0\.60/)
+    expect(rows).not.toHaveTextContent(/^Penalties/m)
+  })
+
+  it('keeps the grouped component chart', async () => {
+    const { container } = render(<ComparePanel gw={5} players={PLAYERS} />)
+    await screen.findByTestId('compare-1')
+    expect(container.querySelector('.recharts-wrapper')).not.toBeNull()
+  })
+})
+
 describe('the fixture strip colours', () => {
   // A cell's `attack` is how easy the opponent is to score against and
   // `defence` is how hard a clean sheet is. Colouring every card by `attack`

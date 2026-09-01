@@ -5,7 +5,7 @@ import {
 } from 'recharts'
 import { apiGet } from '../../api/client'
 import {
-  Badge, Card, EmptyState, PlayerName, PosBadge, Sparkline, fmtNum,
+  Badge, Card, EmptyState, PlayerName, PosBadge, Sparkline, fmtDelta, fmtNum,
 } from '../../kit'
 import type {
   ComponentsBreakdown, FixtureMatrixData, PlayerRow,
@@ -34,6 +34,52 @@ function bandTitle(components: ComponentsBreakdown | null,
   if (!comp || comp.sigma == null || comp.ep_gw == null) return base
   return `${base} GW forecast ${comp.ep_gw.toFixed(2)}, `
     + `σ ${comp.sigma.toFixed(2)} points.`
+}
+
+/**
+ * One term of a player's expected points, signed.
+ *
+ * Not a stacked recharts bar (plan A3): eleven series need eleven
+ * distinguishable colours and `SERIES_COLOURS` has four; a negative segment in
+ * a recharts stack renders below the axis and stops reading as part of a
+ * whole; and at 390px each card is a full-width column, where rows read and an
+ * eleven-series stack does not.
+ */
+function SignedBar({ label, points, scale }: { label: string; points: number
+                                               scale: number }) {
+  const width = Math.min(50, (Math.abs(points) / scale) * 50)
+  return (
+    <div className="flex items-center gap-2">
+      <span className="label flex-1 truncate">{label}</span>
+      <span className="relative h-2 w-20 rounded bg-base">
+        <span className="absolute left-1/2 top-0 h-2 w-px bg-text-faint" />
+        <span
+          className={`absolute top-0 h-2 ${points < 0
+            ? 'rounded-l bg-rust' : 'rounded-r bg-sage'}`}
+          style={points < 0
+            ? { right: '50%', width: `${width}%` }
+            : { left: '50%', width: `${width}%` }}
+        />
+      </span>
+      <span className="num w-12 text-right text-text">
+        {fmtDelta(points, 2)}
+      </span>
+    </div>
+  )
+}
+
+/** How loudly a set-piece order is worth saying. `null` is "the bootstrap does
+ *  not say", which is not "not a taker" — so it renders as nothing at all
+ *  rather than as a crossed-out badge. */
+function SetPieceFlag({ kind, order }: { kind: string; order: number | null }) {
+  if (order === null) return null
+  const tone = order === 1 ? 'text-text'
+    : order === 2 ? 'text-text-muted' : 'text-text-faint'
+  return (
+    <span className={tone} title={`${kind}, order ${order}`}>
+      {`${kind} ${order}`}
+    </span>
+  )
 }
 
 export interface ComparePanelProps {
@@ -124,6 +170,34 @@ export default function ComparePanel(
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
         {players.map((player) => {
           const team = matrix?.teams.find((t) => t.code === player.team_code)
+          const comp = components?.players.find((p) => p.code === player.code)
+          // One row per label, summed over the horizon the payload holds —
+          // the same reduction the grouped chart above performs, transposed.
+          // Zeros stay dropped: that is `components.py`'s own honesty rule
+          // ("a panel whose job is showing what moved should not print nine
+          // zeroes to get to the one number that did") and not this cycle's
+          // to overturn. The rows still sum to the total printed under them.
+          const terms = new Map<string, number>()
+          for (const fixture of comp?.fixtures ?? []) {
+            for (const c of fixture.components) {
+              terms.set(c.label, (terms.get(c.label) ?? 0) + c.points)
+            }
+          }
+          const rows = [...terms].sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+          const total = rows.reduce((sum, [, points]) => sum + points, 0)
+          const scale = Math.max(...rows.map(([, p]) => Math.abs(p)), 0.01)
+          // Every term is already inside Goals — it was folded into e_goals
+          // before the terms were assembled — so it is an annotation under
+          // that row and never a twelfth component.
+          const pen = (comp?.fixtures ?? [])
+            .reduce((sum, f) => sum + (f.pen_taker ?? 0), 0)
+          // The requested gameweek's fixtures, both of them on a double. Not a
+          // mean: p_play averaged over two fixtures is a probability of
+          // nothing, and p60 does not add. xMins is the one of the three that
+          // does, so a total is shown beside the pair (plan A5).
+          const here = (comp?.fixtures ?? []).filter((f) => f.gw === gw)
+          const xmSum = here.reduce(
+            (sum, f) => sum + (f.minutes.xmins ?? 0), 0)
           return (
             <div key={player.code} data-testid={`compare-${player.code}`}>
               {/* The name is the control, not a label of one: the same
@@ -177,6 +251,82 @@ export default function ComparePanel(
                     {fmtNum(player.ownership)}
                   </dd>
                 </dl>
+                {rows.length > 0 && (
+                  <div className="mt-3" data-testid={`breakdown-${player.code}`}>
+                    <p className="label">Where the points come from</p>
+                    <div className="mt-1 flex flex-col gap-1">
+                      {rows.map(([label, points]) => (
+                        <div key={label}>
+                          <SignedBar label={label} points={points}
+                                     scale={scale} />
+                          {label === 'Goals' && pen > 0 && (
+                            <p className="pl-1 text-xs text-text-faint">
+                              {`of which penalty duty ${fmtNum(pen, 2)} — `
+                               + 'already inside Goals, not a term of its own'}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <p data-testid={`breakdown-total-${player.code}`}
+                       className="mt-1 flex items-baseline justify-between
+                                  border-t border-divider pt-1">
+                      <span className="label">Total</span>
+                      <span className="num text-text">{fmtNum(total, 2)}</span>
+                    </p>
+                    <p className="text-xs text-text-faint">
+                      {comp && Math.abs((comp.ep_gw ?? total) - total) > 0.005
+                        ? `The terms sum to the horizon (${fmtNum(total, 2)}); `
+                          + `the xPts above is GW${gw} alone `
+                          + `(${fmtNum(comp.ep_gw, 2)}).`
+                        : 'These terms add up to the xPts above.'}
+                    </p>
+                  </div>
+                )}
+                {here.length > 0 && (
+                  <div className="mt-3" data-testid={`minutes-${player.code}`}>
+                    <p className="label">{`GW${gw} minutes`}</p>
+                    {here.map((fixture) => (
+                      <p key={`${fixture.gw}-${fixture.opponent}`}
+                         data-testid={`minutes-${player.code}-`
+                           + `${fixture.opponent}`}
+                         className="flex items-baseline justify-between">
+                        <span className="text-text-muted">
+                          {`${fixture.home ? 'vs' : 'at'} ${fixture.opponent}`}
+                        </span>
+                        <span className="num text-text">
+                          {/* An em dash, never 0.00: zero here reads as
+                              "expected not to play", which is the strongest
+                              claim this payload can make. */}
+                          {`p ${fmtNum(fixture.minutes.p_play, 2)} · `
+                           + `p60 ${fmtNum(fixture.minutes.p60, 2)} · `
+                           + `${fmtNum(fixture.minutes.xmins, 0)}′`}
+                        </span>
+                      </p>
+                    ))}
+                    {here.length > 1 && (
+                      <p data-testid={`minutes-total-${player.code}`}
+                         className="flex items-baseline justify-between
+                                    border-t border-divider pt-1">
+                        <span className="label">xMins across both</span>
+                        <span className="num text-text">
+                          {`${fmtNum(xmSum, 0)}′`}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                )}
+                {(player.penalties_order !== null
+                  || player.free_kicks_order !== null
+                  || player.corners_order !== null) && (
+                  <p data-testid={`setpieces-${player.code}`}
+                     className="mt-2 flex flex-wrap gap-2">
+                    <SetPieceFlag kind="Pens" order={player.penalties_order} />
+                    <SetPieceFlag kind="FK" order={player.free_kicks_order} />
+                    <SetPieceFlag kind="Corners"
+                                  order={player.corners_order} />
+                  </p>
+                )}
                 <div className="mt-2">
                   <p className="label">Last 4</p>
                   <Sparkline values={player.last4} />
