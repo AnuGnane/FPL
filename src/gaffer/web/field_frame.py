@@ -189,6 +189,10 @@ def _field_table(gw: int) -> dict[int, dict]:
         from gaffer.config import load_config
 
         season = load_config().current_season
+    except Exception as exc:  # noqa: BLE001 — a clone with no config.toml
+        print(f"field_frame: no configured season, no field framing ({exc})")
+        return {}
+    try:
         return latest_field_eo(gw, season=season)
     except Exception as exc:  # noqa: BLE001
         print(f"field_frame: field EO log unreadable ({exc})")

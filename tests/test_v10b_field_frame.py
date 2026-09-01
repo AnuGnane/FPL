@@ -196,7 +196,7 @@ def test_a_dropped_row_does_not_shift_every_later_name(wired):
     assert None not in by_element
 
 
-def test_an_unconfigured_clone_frames_nothing(tmp_path, monkeypatch):
+def test_an_unconfigured_clone_frames_no_field_eo(tmp_path, monkeypatch):
     """The module's own documented degradation, not a guessed season.
 
     ``load_config`` raises on a clone with no ``config.toml``, and the season

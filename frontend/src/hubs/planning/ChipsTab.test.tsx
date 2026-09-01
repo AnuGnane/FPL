@@ -334,6 +334,21 @@ describe('the season outlook segment (v10b §F2c)', () => {
          .toHaveTextContent(/club names unavailable/i)
      })
 
+  it('does not complain about club names when there are no rows', async () => {
+    // The fresh-clone shape: no fixtures file, so no weeks and no teams
+    // snapshot either. "Club names unavailable — counts still hold" over an
+    // empty table is a complaint about names nothing was going to print, and
+    // it is the *first* line a new user reads.
+    serveOutlook({
+      from_gw: null, weeks: [], has_doubles: false, has_blanks: false,
+      teams_known: false, note: 'No fixture list yet — run refresh-data.',
+    })
+    await openOutlook()
+    expect(await screen.findByText(/No fixture list yet/)).toBeInTheDocument()
+    expect(screen.queryByTestId('outlook-teams-unknown')).toBeNull()
+    expect(screen.queryByText(/Club names unavailable/i)).toBeNull()
+  })
+
   it('does not say the clubs are unnamed when they are', async () => {
     serveOutlook(OUTLOOK_FULL)
     await openOutlook()

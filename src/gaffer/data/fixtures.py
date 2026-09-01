@@ -66,6 +66,18 @@ def fixtures_per_team_per_gw(fixtures: pd.DataFrame,
     parsed = _teams_and_gws(fixtures)
     if parsed is None:
         return {}
+    return _counts(parsed, code_of)
+
+
+def _counts(parsed: tuple[pd.DataFrame, set[int]],
+            code_of: dict[int, int] | None) -> dict[int, dict[int, int]]:
+    """The counting itself, off an already-parsed frame.
+
+    Split out so :func:`season_outlook` can parse once and use the same frame
+    for both the per-team counts and the published-match count. Two parses of
+    the same file cannot disagree today, but they are two chances to diverge
+    and the second one costs a full re-coerce of the column.
+    """
     frame, team_ids = parsed
 
     def key(team_id: int) -> int | None:
@@ -103,14 +115,18 @@ def season_outlook(fixtures: pd.DataFrame,
     unmappable club reported one fewer match than it has. The doubles and
     blanks stay keyed on what could be mapped — those are claims about named
     clubs — but the match count is a fact about the fixture list.
+
+    The frame is parsed **once** and threaded into both halves: the per-team
+    counts and the match tally are two readings of one list, and parsing twice
+    is two chances for them to answer about different rows.
     """
-    counts = fixtures_per_team_per_gw(fixtures, code_of)
     parsed = _teams_and_gws(fixtures)
-    published = {}
-    if parsed is not None:
-        gw_column = parsed[0]["gw"].astype(int)
-        published = {int(g): int(n)
-                     for g, n in gw_column.value_counts().items()}
+    if parsed is None:
+        return []
+    counts = _counts(parsed, code_of)
+    gw_column = parsed[0]["gw"].astype(int)
+    published = {int(g): int(n)
+                 for g, n in gw_column.value_counts().items()}
     weeks = []
     for gw in sorted(counts):
         if from_gw is not None and gw < int(from_gw):
@@ -118,7 +134,10 @@ def season_outlook(fixtures: pd.DataFrame,
         week = counts[gw]
         weeks.append({
             "gw": gw,
-            "fixtures": published.get(gw, sum(week.values()) // 2),
+            # Direct, not ``.get`` with a halving fallback: the counts and the
+            # published tally now come off the *same* parsed frame, so every
+            # gameweek in one is a gameweek in the other.
+            "fixtures": published[gw],
             "doubles": sorted(t for t, n in week.items() if n >= DOUBLE),
             "blanks": sorted(t for t, n in week.items() if n == 0),
             "counts": dict(sorted(week.items())),

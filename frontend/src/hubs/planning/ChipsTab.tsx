@@ -320,9 +320,15 @@ function ChipOutlook() {
   // The filter is for *display* — which rows are worth a line in the table.
   // Whether there is anything scheduled at all is the server's answer, and
   // the empty-state copy reads it off the served flags rather than
-  // re-deriving it here: `has_doubles` is a claim about the season, and the
-  // rows are only what this slice happens to carry. v9d's `available`, same
-  // reasoning.
+  // re-deriving it here: `has_doubles` is a claim about the served slice, and
+  // the rows are only what this slice happens to carry. v9d's `available`,
+  // same reasoning.
+  //
+  // So `has_doubles && interesting.length === 0` renders neither the empty
+  // state nor the table. That gap is unreachable in this client: the flags are
+  // computed over the same slice the rows come from, and this component sends
+  // no `from`, so the slice is the whole published list. If a caller ever does
+  // narrow it, the honest render is nothing rather than a contradiction.
   const interesting = weeks.filter(
     (w) => w.doubles.length > 0 || w.blanks.length > 0)
   const nothingScheduled = !outlook?.has_doubles && !outlook?.has_blanks
@@ -362,7 +368,11 @@ function ChipOutlook() {
       </Card>
       <Card title="Doubles and blanks">
         {outlookError && <p className="text-rust">{outlookError}</p>}
-        {outlook?.teams_known === false && (
+        {/* Only alongside rows: on a fresh clone the server serves no weeks
+            at all, and "club names unavailable" over an empty table is a
+            complaint about names nothing was going to print. */}
+        {outlook != null && outlook.weeks.length > 0
+          && outlook.teams_known === false && (
           <p className="mb-2 text-text-muted"
              data-testid="outlook-teams-unknown">
             Club names unavailable — counts still hold.

@@ -59,10 +59,11 @@ The key resolves ``store.DATA_DIR`` **on every call** rather than at import.
 The data directory is a module-level ``Path`` and the test suite changes the
 process CWD constantly; a key on the relative string alone would serve one
 tmpdir's teams file out of another's, and in production would survive a
-``--data-dir`` change. One slot per path, so the cache holds three entries and
-a changed file evicts its own — except the fixture map, whose slot carries the
-gameweek too (a map built for GW9 is not GW10's), which is why the dict is
-bounded rather than fixed at three: see :data:`_CACHE_MAX`.
+``--data-dir`` change. One slot per path — this module's three, plus the three
+``field_frame`` memoises through the same store — and a changed file evicts its
+own, except the fixture map, whose slot carries the gameweek too (a map built
+for GW9 is not GW10's), which is why the dict is bounded rather than fixed at
+the number of paths: see :data:`_CACHE_MAX`.
 """
 
 _CACHE_LOCK = threading.Lock()
@@ -154,7 +155,7 @@ def _memo(slot: str, key: tuple | None, build: Callable[[], Any]) -> Any:
             while len(_CACHE) > _CACHE_MAX:
                 # Insertion order, so the slot dropped is the one least
                 # recently *stored*. Nothing here is expensive enough to
-                # justify tracking reads, and the fixed three are re-read for
+                # justify tracking reads, and the fixed five are re-read for
                 # the price of one parquet if they ever do fall out.
                 #
                 # ``next(iter(...))`` walks a dict no other thread can be

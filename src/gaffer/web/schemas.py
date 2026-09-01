@@ -1072,7 +1072,11 @@ class FixtureOutlook(BaseModel):
     weeks: list[OutlookWeek] = Field(default_factory=list)
     has_doubles: bool = False
     has_blanks: bool = False
-    """Declared rather than derived on the client, for the reason v9d's
+    """A claim about the **served slice**, not the season: both flags are
+    computed over the same ``weeks`` this response carries, so a ``from_gw``
+    narrows them together with the rows.
+
+    Declared rather than derived on the client, for the reason v9d's
     ``available`` exists: the empty state is the common case for months, and a
     client branching on ``weeks.every(w => !w.doubles.length)`` is a client
     that will one day branch on ``weeks.length`` by mistake."""
