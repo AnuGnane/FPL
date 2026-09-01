@@ -1258,6 +1258,17 @@ class ReviewGw(BaseModel):
     chip: str | None = None
     model_chip: str | None = None
     points_on_bench: int | None = None
+    overall_rank: int | None = None
+    """My overall FPL rank at the end of this gameweek.
+
+    ``None`` for two situations the reader must not see merged: a gameweek
+    whose entry history was never banked, and — for the whole of this season's
+    existing ledger — **a gameweek graded before the field existed.** Grades
+    are banked and never re-derived (spec D2), so the trajectory begins empty
+    and fills forward from the next graded week. A chart drawing this must
+    show a gap, never a zero and never a line through it: zero is the best
+    rank in the game.
+    """
     our_bench_points: int | None = None
     model_points: int | None = None
     accuracy: int | None = None

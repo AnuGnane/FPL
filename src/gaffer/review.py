@@ -258,6 +258,11 @@ def my_decisions(gw: int, *, season: str, entry_id: int,
         "points_on_bench": (int(row["points_on_bench"])
                             if row.get("points_on_bench") is not None
                             else None),
+        # v11 §F3 (plan A13). The one rank worth banking: ``rank`` is the
+        # gameweek's own position, a much noisier series, and the other three
+        # rank-ish keys on the row are things nothing would render.
+        "overall_rank": (int(row["overall_rank"])
+                         if row.get("overall_rank") is not None else None),
         "transfers": my_transfers_for_gw(
             load_my_transfers(season, entry_id, raw_dir), gw),
         "notices": notices,
@@ -727,6 +732,10 @@ def grade_gw_from(gw: int, mine: dict, model: dict | None,
         "chip": mine["chip"],
         "model_chip": (model or {}).get("chip"),
         "points_on_bench": mine.get("points_on_bench"),
+        # ``mine.get``, never ``mine[...]``: this function is called with dicts
+        # assembled several ways, and a hard index turns a new field into a
+        # KeyError on every existing caller.
+        "overall_rank": mine.get("overall_rank"),
         "our_bench_points": int(bench_points),
         "hindsight": hindsight,
         "misses": [],
