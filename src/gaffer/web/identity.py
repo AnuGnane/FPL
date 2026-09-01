@@ -88,16 +88,24 @@ Building outside the lock would need a per-slot in-flight marker to keep that,
 and a marker is more moving parts than the parallelism buys back here.
 """
 
-_CACHE_MAX = 8
+_CACHE_MAX = 16
 """Slots kept before the oldest is dropped, insertion-ordered.
 
-Three fixed paths plus one fixture slot per gameweek in flight. Traffic
+The fixed slots plus one fixture slot per gameweek in flight. Traffic
 alternating between two gameweeks — a live matchday page beside a planning one
 — is the case this exists for: one slot per path would have each request evict
 the other's map and re-read the parquet every time, which is the cost the memo
-was added to remove. Eight is enough for the three plus any plausible number of
-gameweeks being looked at at once, and small enough that the cache cannot grow
-into a leak on a long-running process."""
+was added to remove.
+
+Count the fixed slots, because the headroom is what is left over after them.
+This module holds two (``live/teams.parquet``, ``live/players.parquet``) and
+``web/field_frame`` shares the same cache for three more — code→element,
+element→player and the most-captained events map — so five before a single
+gameweek is looked at. At eight that left three gameweek slots, and v10b spent
+the headroom the bound was chosen for: two pages on two gameweeks already
+touch four. Sixteen leaves eleven, which restores the "any plausible number of
+gameweeks at once" the original number stood for, and is still small enough
+that the cache cannot grow into a leak on a long-running process."""
 
 
 def _file_key(rel: str) -> tuple | None:
