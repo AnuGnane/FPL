@@ -972,8 +972,17 @@ def merge_understat_team(df: pd.DataFrame, rolled: pd.DataFrame | None,
     # and a string-vs-date merge matches nothing while looking fine.
     keyed["date"] = pd.to_datetime(keyed["date"], errors="coerce").dt.date
     keyed = keyed.drop_duplicates(subset=["team_code", "date"])
-    own = keyed.rename(columns={"date": "_date"})
-    out = out.merge(own, on=["team_code", "_date"], how="left",
+    # v9d §1a (specs/2026-09-01-gaffer-v9d-design.md): the own side keys on
+    # the club the player actually played for, not the one the store stamped
+    # on him this morning. Same shape as ``add_context``'s Elo merge, which
+    # v9c switched for the same reason — including the ``fillna`` below, so
+    # both halves of this merge read one club key rather than two.
+    #
+    # ``opp_code`` is deliberately untouched: it is written per row from the
+    # fixture at ingest and already survives a transfer (``bps.py:79-80``).
+    out["_club"] = as_of_club(out)
+    own = keyed.rename(columns={"date": "_date", "team_code": "_club"})
+    out = out.merge(own, on=["_club", "_date"], how="left",
                     validate="many_to_one")
     # Frames off the simple component path carry no ``opp_code``; the own
     # side still joins, and the opponent's columns stay NaN rather than
@@ -992,11 +1001,11 @@ def merge_understat_team(df: pd.DataFrame, rolled: pd.DataFrame | None,
         for col in [f"team_{s}_r{w}" for s in TEAM_US_STATS
                     for w in TEAM_US_WINDOWS]:
             opp_col = col.replace("team_", "opp_", 1)
-            out[col] = out[col].fillna(out["team_code"].map(latest[col]))
+            out[col] = out[col].fillna(out["_club"].map(latest[col]))
             if has_opp:
                 out[opp_col] = out[opp_col].fillna(
                     out["opp_code"].map(latest[col]))
-    return out.drop(columns=["_date"])
+    return out.drop(columns=["_date", "_club"])
 
 
 SHRINK_K = 20.0
