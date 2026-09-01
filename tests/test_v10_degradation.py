@@ -475,6 +475,27 @@ def test_a_mixed_vintage_shadow_parquet_still_serialises(tmp_path,
     assert gw5["rows_presser"] == 2 and gw5["rows"] == 2
 
 
+def test_the_p_play_seam_reaches_the_coherent_plan_and_nothing_else():
+    """The T10-A rewiring, as a rail.
+
+    ``decide()`` compares the raw optimum against the sweep's plurality, and
+    the sweep cannot see ``p_play``. Weighting the raw solve would make that
+    comparison a comparison of two different objectives — reported to the user
+    as ``raw_optimum_agrees=False``, for a reason that is not instability.
+    """
+    src = inspect.getsource(__import__("gaffer.advise",
+                                       fromlist=["run_advise"]).run_advise)
+    assert "solve_kw = dict(opt_kw, ft_lambda=ft_lambda)" in src
+    assert "plan = solve_plan(pool, state, **solve_kw)" in src
+    assert "p_play=p_play_by_code" in src
+    # Exactly one consumer, and it is the coherent plan.
+    assert src.count("p_play=p_play_by_code") == 1
+    coherent = src.index("coherent_plan(pool, state, decision")
+    assert "p_play=p_play_by_code" in src[coherent:coherent + 200]
+    # Nothing left to strip: the sweep never had it.
+    assert "scenario_kw" not in src
+
+
 def test_a_bench_boost_week_is_lp_identical_with_and_without_p_play():
     """§F1a deliberately leaves the boosted branch alone: under a bench boost
     every bench player scores in full, so ``bw = 1.0`` and the slot weights do

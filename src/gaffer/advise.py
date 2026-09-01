@@ -708,6 +708,20 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     # is news_shadow.shadow_rows' rule for its reason. Coverage is
     # all-or-nothing inside solve_plan, so a gap here degrades to the pre-v10
     # solve rather than pricing the silent half as nailed on.
+    #
+    # It reaches exactly one solve: `coherent_plan`, below. Not `solve_kw`,
+    # which the raw optimum and the scenario sweep share. The sweep cannot see
+    # the feature — run_scenarios is N noised re-solves and doubling the
+    # slowest part of an advise run to price a bench it never reads is a cost
+    # with no reader — and the decision gate below compares the raw optimum
+    # against what that sweep voted for. Weighting the raw solve would make that
+    # comparison a comparison of two different objectives, and the
+    # disagreement would reach the user as `raw_optimum_agrees=False`: a
+    # stability warning about something that is not instability. So the final
+    # plan is the one that carries the weights, and every user-facing
+    # comparison stays internally consistent. The cost is recorded rather than
+    # hidden: §F1's transfer-side reach waits for a sweep that can see p_play
+    # (spec §Residuals).
     p_play_by_code: dict[int, dict[int, float]] = {}
     if "p_play" in comp.columns:
         for row in (comp.groupby(["code", "gw"], as_index=False)
@@ -729,7 +743,7 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     # opt_kw is serialized into SolveState.opt at the end of this function, so
     # it stays plain JSON — floats and a list of three floats. solve_kw is the
     # same bundle plus anything that is only meaningful in-process.
-    solve_kw = dict(opt_kw, ft_lambda=ft_lambda, p_play=p_play_by_code)
+    solve_kw = dict(opt_kw, ft_lambda=ft_lambda)
     plan = solve_plan(pool, state, **solve_kw)
     first = plan.gw_plans[0]
 
@@ -756,14 +770,8 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
                   "and mean nothing")
         # Seeded per gameweek, not per season: a fixed seed would re-use one
         # noise sequence every week, which is how D1 was measured.
-        # v10 §F1/T10-A: p_play is dropped for the scenario sweep. Scenarios
-        # are N noised re-solves whose job is to measure how stable a move is,
-        # and §F1a's second pass would double the slowest part of an advise
-        # run to price a bench the sweep never reads. The raw optimum and
-        # coherent_plan — the two solves that decide — keep it.
-        scenario_kw = {k: v for k, v in solve_kw.items() if k != "p_play"}
         run = run_scenarios(pool, state, xmins, n=cfg.scenarios_n,
-                            seed=cfg.scenarios_seed + gw, **scenario_kw)
+                            seed=cfg.scenarios_seed + gw, **solve_kw)
         if not run.completed:
             print(f"all {run.attempted} scenario solves failed "
                   f"({run.failures} failures); falling back to the raw "
@@ -774,7 +782,10 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
                 freqs, plan,
                 Thresholds(transfer=cfg.transfer_threshold,
                            irreversible=cfg.irreversible_threshold))
-            plan = coherent_plan(pool, state, decision, **solve_kw)
+            # v10 §F1/T10-A: the one solve that sees p_play — the plan that is
+            # actually recommended, after the sweep has decided the moves.
+            plan = coherent_plan(pool, state, decision, **solve_kw,
+                                 p_play=p_play_by_code)
             first = plan.gw_plans[0]
             move_freqs = freqs.to_dict("records")
             raw_agrees = decision.raw_optimum_agrees
