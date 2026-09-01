@@ -550,8 +550,20 @@ def _column(frame: pd.DataFrame, name: str) -> pd.Series:
     return pd.to_numeric(frame[name], errors="coerce")
 
 
-def _last_kickoff_ns(gw: int) -> int | None:
-    """Nanoseconds of the gameweek's last kickoff, or ``None`` if unknown.
+POST_HOC_REASON = "artifact written after the gameweek's first kickoff"
+"""Why a banked file is refused, named where both the report and its tests
+can read it. The wording is the boundary: *first*, not last."""
+
+
+def _first_kickoff_ns(gw: int) -> int | None:
+    """Nanoseconds of the gameweek's **first** kickoff, or ``None`` if unknown.
+
+    The first, because that is the moment after which any part of the file
+    could be hindsight. A gameweek is played over three days and
+    ``save_components`` rewrites every player's row at once, so a Sunday
+    morning advise run — ordinary behaviour — banks Saturday's finished
+    fixtures alongside Sunday's unplayed ones. A guard on the last kickoff
+    passes that file; a guard on the first does not.
 
     ``None`` is an exclusion, not a pass: see :func:`evaluate_calibration`'s
     post-hoc guard, which fails closed.
@@ -567,7 +579,7 @@ def _last_kickoff_ns(gw: int) -> int | None:
                                 utc=True).dropna()
         if stamps.empty:
             return None
-        return int(stamps.max().value)
+        return int(stamps.min().value)
     except Exception as exc:  # noqa: BLE001 — unknown is an exclusion
         print(f"calibration: no kickoff information for GW{gw} ({exc})")
         return None
@@ -596,8 +608,12 @@ def evaluate_calibration(season: str | None = None) -> dict:
     ``save_components`` writes ``gw{N}`` whatever today's date is, so re-running
     ``advise`` against a finished gameweek replaces an as-of prediction with a
     hindsight one and nothing in the file records that it happened. The only
-    signal is the file's mtime against the gameweek's last kickoff, so that is
-    the guard, and it fails closed: no kickoff information is also an exclusion.
+    signal is the file's mtime against the gameweek's *first* kickoff, so that
+    is the guard, and it fails closed: no kickoff information is also an
+    exclusion. The first kickoff and not the last, because the file is written
+    whole: a Sunday-morning re-run banks Saturday's played fixtures in the same
+    frame as Sunday's unplayed ones, and every stamp between the two whistles
+    would pass a last-kickoff guard.
     A false exclusion loses a row; a false inclusion invents a result.
 
     Completed gameweeks are those present in ``live/player_gw.parquet``, which
@@ -638,12 +654,12 @@ def evaluate_calibration(season: str | None = None) -> dict:
         if not path.exists():
             missing.append(gw)
             continue
-        last_kickoff = _last_kickoff_ns(gw)
-        if last_kickoff is None:
+        first_kickoff = _first_kickoff_ns(gw)
+        if first_kickoff is None:
             excluded.append({"gw": gw, "reason": "kickoff unknown"})
             continue
-        if path.stat().st_mtime_ns > last_kickoff:
-            excluded.append({"gw": gw, "reason": "written after kickoff"})
+        if path.stat().st_mtime_ns > first_kickoff:
+            excluded.append({"gw": gw, "reason": POST_HOC_REASON})
             continue
         try:
             comp = load_components(gw)

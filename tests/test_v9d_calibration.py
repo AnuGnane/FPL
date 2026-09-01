@@ -171,9 +171,35 @@ def test_a_gameweek_written_after_the_whistle_is_excluded(banked):
     os.utime(components_path(2), (late, late))
 
     out = evaluate_calibration(season="2025-26")
-    assert {"gw": 2, "reason": "written after kickoff"} in out["excluded"]
+    assert {"gw": 2,
+            "reason": "artifact written after the gameweek's first kickoff"
+            } in out["excluded"]
     assert [row["gw"] for row in out["gameweeks"]] == [1]
     assert out["cumulative"]["p_play"]["n"] == 40   # GW1's rows only
+
+
+def test_a_rerun_between_the_first_and_last_kickoff_is_excluded(banked):
+    """The boundary is the gameweek's *first* kickoff, not its last.
+
+    A gameweek is played over three days. An advise run on Sunday morning —
+    ordinary behaviour, nothing exotic — has Saturday's results in the store
+    and rewrites ``components_gw{N}.parquet`` for the whole week, including
+    the players who already played. Guarding on the last kickoff lets that
+    file through: every stamp between the two whistles passes. Only the first
+    kickoff is the moment after which any part of the file could be hindsight.
+    """
+    store.save(pd.DataFrame({
+        "gw": [1, 1], "finished": [True, True], "home_id": [1, 3],
+        "away_id": [2, 4], "kickoff_time": [KICKOFF, LATER]}),
+        "live/fixtures_all.parquet")
+    between = pd.Timestamp(LATER).timestamp() - 3600
+    os.utime(components_path(1), (between, between))
+
+    out = evaluate_calibration(season="2025-26")
+    assert out["gameweeks"] == []
+    assert out["excluded"] == [
+        {"gw": 1,
+         "reason": "artifact written after the gameweek's first kickoff"}]
 
 
 def test_a_gameweek_with_no_kickoff_information_is_also_excluded(banked):
