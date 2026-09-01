@@ -197,15 +197,27 @@ Spec: `specs/2026-09-01-gaffer-v10-minutes-design.md` (§Gates = G1/G2/G3 number
 - Residuals: §F1's transfer-side reach waits for a sweep that can see `p_play`; a run whose scenario solves all fail serves an unweighted plan; what-if baselines are single-pass because `SolveState` is JSON and cannot carry a per-player dict (*v11*); `coherent_plan` appends a promoted captain to the bench after §F1b has ordered it; `captaincy_override` discards the frailty-weighted vice under league tilt
 - Suite: 3047 Python + 562 frontend
 
-### v10b — EO framing + season chip planner (in progress, branch `feat/gaffer-v10b`)
+### v10b — EO framing + season chip planner (done, merged `be87be9` 2026-09-02)
 Spec: `specs/2026-09-01-gaffer-v10b-eo-chips-design.md` (§Gates = G1/G2) · Plan: `plans/2026-09-02-gaffer-v10b.md`
 - [x] §F1 EO framing: top-10k EO beside league EO on the squad rows, a served captain sentence carrying the ±SE and the cover/attack reading, `most_captained` ingested as the fallback for the weeks the tier sample cannot cover, and an EO lens on the pitch (off by default)
 - [x] §F2 season chip planner: the DGW/BGW detector this tree has never had, `GET /api/fixtures/outlook`, `data/chip_scenarios.toml` derived from the *published* fixture list inside `refresh-data`, and a Chips-tab Outlook segment carrying θ per week and the GW19 first-set expiry
 - [x] `/api/chips/plan` carries θ at all for the first time: the router passed no thresholds and `ChipPlanRow` declared none, so it was computed and dropped — v9d's `odds_blend_weight` failure, repeated
 - [x] No replay — nothing on the training or decision path moves, and on today's fixture list the scenario writer writes nothing, so both arms would be the same arm (recorded, not skipped)
-- Pins: job kinds 12, config fields 48, routes 44 → 45 (two protected route-count pins moved under orchestrator authorization — the toll an absolute pin charges, recorded as a residual for v11)
-- [ ] G2: adversarial review, fix-first, merge ritual
+- Pins: job kinds 12, config fields 48, routes 44 → 45 (two protected route-count pins moved under orchestrator authorization — the toll an absolute pin charges; **paid in v11**, which retired every absolute pin but one)
+- [x] G2: adversarial review, fix-first, merge ritual
 - Suite: 3130 Python + 591 frontend (G1)
+
+### v11 — the UI trio (in progress, branch `feat/gaffer-v11`)
+Spec: `specs/2026-09-02-gaffer-v11-ui-design.md` (§Gates = G1/G2) · Plan: `plans/2026-09-02-gaffer-v11.md`
+- [x] §F1 planner board: the solved horizon week by week — buys and sells with prices, hits and their cost, chip, and a bank trajectory the artifact never carried, derived at the router and blanked permanently by the first unpriced move; price warnings from `/api/prices/movers`, a finished endpoint the frontend had never once fetched; a prefill-and-switch handoff into the What-If lab that costs Planning's tabs their `defaultValue`
+- [x] §F2 comparison deepen: most of it was already on the wire — `ComparePanel` already fetched the components and the fixture matrix — so the cycle's whole server-side contribution here is the field EO's **standard error**, which `routers/players.py` has looked up and dropped for two cycles
+- [x] §F3 season dashboard: `season_summary` was already served, so no new endpoint; per-lane **win rates** added where the graded-counter rule lives rather than in the client, and `overall_rank` banked for the first time — a number that appeared nowhere in the tree
+- [x] Route-pin restructure (spec §0): four files pinned the absolute path count, three of them protected; each becomes the by-name claim its own cycle is entitled to make, and the total lives in `test_v11_degradation.py` alone. Done in a cycle that adds no route, so every assertion keeps its verdict across the diff
+- [x] No replay — the server-side diff is seven additive fields and the arithmetic that fills them; no solver call from any view
+- Pins: job kinds 12, config fields 48, routes 45 → **45**
+- Residuals: the bank trajectory re-does arithmetic the solver already did, because widening `plan_by_gw` means editing `advise.py`; `overall_rank` stays null on every already-banked row, because grades are banked and never re-derived
+- [ ] G2: adversarial review, fix-first, merge ritual
+- Suite: 3185 Python + 642 frontend (G1)
 
 ## Operational / housekeeping
 - [x] Untrack `reports/` artifacts + `.claude/`; gitignore both (`31dc239`)
