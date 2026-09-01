@@ -103,9 +103,13 @@ def test_the_route_loops_the_callable_rather_than_widening_chip_plan():
     assert "chip_windows" in source
 
 
-def test_the_route_count_did_not_move(tmp_path, monkeypatch):
-    """This task adds fields, not routes."""
+def test_this_task_added_fields_and_not_routes(tmp_path, monkeypatch):
+    """θ reaches the page through the schema, not through a second endpoint.
+    The live total is 45 and the one route this cycle added is the outlook,
+    which is asserted by name in tests/test_v10b_degradation.py."""
     from gaffer.web.app import create_app
 
     monkeypatch.chdir(tmp_path)
-    assert len(create_app().openapi()["paths"]) == 44
+    paths = set(create_app().openapi()["paths"])
+    assert len(paths) == 45
+    assert "/api/chips/plan" in paths

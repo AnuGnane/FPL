@@ -18,7 +18,9 @@ from fastapi import APIRouter, Query
 
 from gaffer.data import store
 from gaffer.models import persistence
-from gaffer.web.schemas import FixtureMatrix, MatrixCell, MatrixTeam
+from gaffer.data.fixtures import season_outlook
+from gaffer.web.schemas import (FixtureMatrix, FixtureOutlook, MatrixCell,
+                                MatrixTeam, OutlookTeam, OutlookWeek)
 
 router = APIRouter(prefix="/api", tags=["fixtures"])
 
@@ -157,3 +159,81 @@ def matrix(from_: int | None = Query(None, alias="from"),
                 sum(c.defence for c in mine) / len(mine), 3) if mine else 0.0))
     rows.sort(key=lambda t: t.mean_attack)
     return FixtureMatrix(gws=gws, teams=rows, source="dixon_coles")
+
+
+@router.get("/fixtures/outlook", response_model=FixtureOutlook)
+def outlook(from_: int | None = Query(None, alias="from")) -> FixtureOutlook:
+    """Doubles and blanks in the season ahead (v10b §F2a).
+
+    Read-only over the published fixture list — this reports what FPL has
+    scheduled and projects nothing. Today that means thirty-eight ordinary
+    gameweeks and an honest empty state, which is the case this endpoint is
+    written for rather than the case it tolerates.
+
+    The two files degrade **independently**: without the fixture list there is
+    nothing to say and the payload says so; without the teams snapshot the
+    counts are still true and only the short names are missing, so the answer
+    is kept and ``teams_known`` records what happened. Every failure is a 200
+    with a ``note``.
+    """
+    if not store.exists("live/fixtures_all.parquet"):
+        return FixtureOutlook(
+            note="No fixture list on disk yet — run the refresh-data job.")
+    try:
+        fixtures = store.load("live/fixtures_all.parquet")
+    except Exception as exc:  # noqa: BLE001 — a planning card never 500s
+        return FixtureOutlook(note=f"Fixture list unreadable ({exc}).")
+
+    code_of: dict[int, int] | None = None
+    short_of: dict[int, str] = {}
+    note: str | None = None
+    try:
+        teams = store.load("live/teams.parquet")
+        code_of = {int(t): int(c)
+                   for t, c in zip(teams["team_id"], teams["code"])}
+        short_of = {int(c): str(s)
+                    for c, s in zip(teams["code"], teams["short_name"])}
+    except Exception:  # noqa: BLE001
+        note = ("No teams snapshot — the counts are the published fixture "
+                "list's own, but the clubs are named by team id.")
+
+    # Default: the season *ahead*. A chip cannot be spent on a gameweek that
+    # has been played, so the planner's question starts at the first
+    # unfinished week. An explicit ``from`` overrides it.
+    start = int(from_) if from_ is not None else _first_unfinished(fixtures)
+    weeks = season_outlook(fixtures, code_of, start)
+
+    rows = [
+        OutlookWeek(
+            gw=w["gw"], fixtures=w["fixtures"],
+            doubles=[OutlookTeam(code=c, short_name=short_of.get(c))
+                     for c in w["doubles"]],
+            blanks=[OutlookTeam(code=c, short_name=short_of.get(c))
+                    for c in w["blanks"]])
+        for w in weeks]
+    has_doubles = any(r.doubles for r in rows)
+    has_blanks = any(r.blanks for r in rows)
+    if note is None and rows and not (has_doubles or has_blanks):
+        note = ("No doubles or blanks are scheduled yet — rearrangements "
+                "usually start appearing around the cup rounds.")
+    return FixtureOutlook(from_gw=start, weeks=rows, has_doubles=has_doubles,
+                          has_blanks=has_blanks,
+                          teams_known=code_of is not None, note=note)
+
+
+def _first_unfinished(fixtures: pd.DataFrame) -> int | None:
+    """The earliest gameweek with an unplayed fixture, or None.
+
+    ``None`` rather than 1 when the column is missing or every match is done:
+    the honest answer to "which gameweek does the season ahead start in" on a
+    frame that cannot say is "we do not know", and ``season_outlook`` reads it
+    as "no slice".
+    """
+    try:
+        if "finished" not in fixtures.columns:
+            return None
+        left = fixtures[~fixtures["finished"].astype(bool)]
+        gws = pd.to_numeric(left["gw"], errors="coerce").dropna()
+        return int(gws.min()) if not gws.empty else None
+    except Exception:  # noqa: BLE001
+        return None

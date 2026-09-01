@@ -1044,6 +1044,46 @@ class FixtureMatrix(BaseModel):
     source: Literal["dixon_coles", "none"]
 
 
+class OutlookTeam(BaseModel):
+    """A club in the outlook. ``short_name`` is null when the teams snapshot
+    could not be read — the counts are still true, only the label is missing,
+    and losing the whole answer over a cosmetic join is the wrong trade."""
+
+    code: int
+    short_name: str | None = None
+
+
+class OutlookWeek(BaseModel):
+    gw: int
+    fixtures: int
+    doubles: list[OutlookTeam] = Field(default_factory=list)
+    blanks: list[OutlookTeam] = Field(default_factory=list)
+
+
+class FixtureOutlook(BaseModel):
+    """Doubles and blanks in the season ahead (v10b §F2a).
+
+    Every failure is a 200 with a ``note`` rather than an error: this renders
+    as one card beside populated cards, and a 422 there is indistinguishable
+    from a broken endpoint.
+    """
+
+    from_gw: int | None = None
+    weeks: list[OutlookWeek] = Field(default_factory=list)
+    has_doubles: bool = False
+    has_blanks: bool = False
+    """Declared rather than derived on the client, for the reason v9d's
+    ``available`` exists: the empty state is the common case for months, and a
+    client branching on ``weeks.every(w => !w.doubles.length)`` is a client
+    that will one day branch on ``weeks.length`` by mistake."""
+
+    teams_known: bool = False
+    """False when the teams snapshot was unreadable and the codes above are
+    raw team ids. The counts hold; the names do not."""
+
+    note: str | None = None
+
+
 class JournalRow(BaseModel):
     gw: int
     model_pts: int

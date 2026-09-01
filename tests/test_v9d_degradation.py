@@ -422,12 +422,19 @@ def test_the_config_gained_no_field():
 
 
 def test_the_route_count_moved_by_exactly_one(tmp_path, monkeypatch):
-    """43 at the branch point (2802165), 44 now, and the one is the
+    """43 at the branch point (2802165), 44 after v9d, and the one was the
     calibration GET. Pinned as a total *and* by name: a count alone would let
     a route be added and another removed in the same cycle, and a name alone
-    would not notice a third arriving beside it."""
+    would not notice a third arriving beside it.
+
+    The total has since moved again, to 45, under v10b's orchestrator
+    authorization; v9d's own claim — that its cycle added exactly the
+    calibration GET — is the subset assertion below, and it is untouched."""
     monkeypatch.chdir(tmp_path)
     paths = set(create_app().openapi()["paths"])
-    assert len(paths) == 44
+    # v10b §F2 (specs/2026-09-01-gaffer-v10b-eo-chips-design.md):
+    # /api/fixtures/outlook — the deliberate move this pin exists to force
+    # through authorization.
+    assert len(paths) == 45
     assert {p for p in paths if p.startswith("/api/model")} == {
         "/api/model/calibration"}
