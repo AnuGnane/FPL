@@ -139,15 +139,38 @@ def plan(gw: int) -> PlanTimeline:
     hit_cost = _int(opt.get("hit_cost", 4), 4)
     head = _int(advice.get("gw", gw), gw)
 
+    # v11 §F1 (specs/2026-09-02-gaffer-v11-ui-design.md, plan A8). The bank is
+    # not in ``plan_by_gw`` — ``advise.py`` writes no money into it — so it is
+    # run forward here from ``SolveState.bank`` and the same two price columns
+    # the moves above are already priced from.
+    #
+    # An unpriced move breaks the total permanently. Skipping it would report
+    # a bank wrong by exactly that player's price, with nothing on the page to
+    # say so, and there is no later week at which the sum re-synchronises.
+    start = _price(getattr(state, "bank", None))
+    running = start
+
     weeks = []
     for entry in _weeks_of(advice):
         week_gw = _int(entry.get("gw"), 0)
         is_head = week_gw == head
         hits = _int(entry.get("hits"))
+        buys = _moves(entry.get("buys"), buy_price)
+        sells = _moves(entry.get("sells"), sell_price)
+        if running is not None and all(
+                m.price is not None for m in buys + sells):
+            # round(..., 1) because every price here is already one decimal;
+            # letting float drift accumulate over a six-week horizon puts
+            # 0.8999999999999995 on the page.
+            running = round(running
+                            + sum(m.price for m in sells)
+                            - sum(m.price for m in buys), 1)
+        else:
+            running = None
         weeks.append(PlanGw(
             gw=week_gw,
-            buys=_moves(entry.get("buys"), buy_price),
-            sells=_moves(entry.get("sells"), sell_price),
+            buys=buys,
+            sells=sells,
             hits=hits,
             hit_cost=hits * hit_cost,
             chip=chips.get(week_gw),
@@ -156,6 +179,8 @@ def plan(gw: int) -> PlanTimeline:
             captain=(_move(advice.get("captain"), buy_price)
                      if is_head else None),
             vice=(_move(advice.get("vice"), buy_price) if is_head else None),
-            expected_pts=round(_float(entry.get("expected_pts")), 2)))
+            expected_pts=round(_float(entry.get("expected_pts")), 2),
+            bank=running))
 
-    return PlanTimeline(gw=head, generated_at=state.generated_at, weeks=weeks)
+    return PlanTimeline(gw=head, generated_at=state.generated_at, weeks=weeks,
+                        bank=start)

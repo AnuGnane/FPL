@@ -1004,12 +1004,27 @@ class PlanGw(BaseModel):
     captain: PlanMove | None = None
     vice: PlanMove | None = None
     expected_pts: float
+    bank: float | None = None
+    """What is left in the bank after this week's moves, in millions.
+
+    ``None`` means *unknown*, and it means it for one reason: some move in
+    this week or an earlier one had no price, so the running total is broken
+    and stays broken. Never 0.0 — that is "fully invested", which is a real
+    and different state a manager can be in.
+    """
 
 
 class PlanTimeline(BaseModel):
     gw: int
     generated_at: str
     weeks: list[PlanGw]
+    bank: float | None = None
+    """What is in the bank before the horizon's first move, in millions.
+
+    ``SolveState.bank`` in tenths, through the same conversion every price on
+    this payload takes. ``None`` means the solve state carried no usable
+    figure — never 0.0, which is "fully invested".
+    """
 
 
 class MatrixCell(BaseModel):
