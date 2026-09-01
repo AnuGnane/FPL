@@ -95,9 +95,20 @@ done
 "$HERE/.venv/bin/python" scripts/seed_stats.py $branch_reports
 "$HERE/.venv/bin/python" scripts/seed_stats.py $main_reports
 
+# The main side's per-seed reports live inside the disposable worktree, so
+# they are copied out before it goes. They are the evidence behind the delta
+# printed above: an aggregate nobody can re-derive the inputs of is a number
+# on trust. reports/ is gitignored on both sides, so this stages nothing --
+# it only keeps the JSONs where the branch side's own trio already sits.
+mkdir -p "$HERE/reports"
+for sb in $SEED_LIST; do
+    src="$MAIN_WT/reports/v7b_${TAG}-main-s${sb}.json"
+    [ -e "$src" ] && cp -f "$src" "$HERE/reports/"
+done
+
 # Teardown. The worktree is disposable: it holds no untracked state of its own
 # (config.toml, data/ and models/ are symlinks into the branch worktree, and
-# its reports/ has been aggregated above). Set KEEP_WT=1 to inspect it instead.
+# its reports/ has been aggregated and copied out above). Set KEEP_WT=1 to inspect it instead.
 if [ "${KEEP_WT:-0}" != "1" ]; then
     for shared in config.toml data models; do
         [ -L "$MAIN_WT/$shared" ] && rm -f "$MAIN_WT/$shared"
