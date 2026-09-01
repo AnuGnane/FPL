@@ -449,15 +449,27 @@ def score_news_shadow(shadow: pd.DataFrame,
     # two-part key rather than being dropped.
     key = (["season", "gw", "code"] if "season" in shadow.columns
            else ["gw", "code"])
-    # v10 §F2b: the third side exists only when the classifier has spoken. A
-    # column that is a copy of ``p_play_news`` means every verdict was
-    # informational, and a third Brier identical to the first would read as a
-    # result rather than as silence. A pre-v10 log has no column at all and
-    # takes exactly the path it always did.
+    # v10 §F2b: the third side exists only when the classifier has spoken, and
+    # "has spoken" is decided on the rows where it *could* have. A column that
+    # is a copy of ``p_play_news`` means every verdict was informational, and a
+    # third Brier identical to the first would read as a result rather than as
+    # silence. A pre-v10 log has no column at all and takes exactly the path it
+    # always did.
+    #
+    # The null rows are the case a log spanning the upgrade actually presents:
+    # ``write_shadow`` back-fills every column SHADOW_COLS gained, so weeks
+    # banked before v10 read back as NaN. Those rows are not equal to
+    # ``p_play_news`` either — NaN is equal to nothing — so gating on
+    # inequality alone would admit a side whose Brier is NaN over the whole
+    # log, and ``save_evaluation`` serialises with ``allow_nan=False``. The
+    # cost of getting this wrong is not a wrong number in the N2 readout; it is
+    # no readout at all.
     sides = ["news", "flags"]
-    if ("p_play_presser" in shadow.columns
-            and not shadow["p_play_presser"].equals(shadow["p_play_news"])):
-        sides.append("presser")
+    if "p_play_presser" in shadow.columns:
+        told = shadow[shadow["p_play_presser"].notna()]
+        if not told.empty and not told["p_play_presser"].equals(
+                told["p_play_news"]):
+            sides.append("presser")
     cols = key + ["p_play_news", "p_play_flags", "e_min_news", "e_min_flags"]
     if "presser" in sides:
         cols = cols + ["p_play_presser"]
@@ -480,10 +492,22 @@ def score_news_shadow(shadow: pd.DataFrame,
 
     def _summary(frame: pd.DataFrame) -> dict:
         out = {f"brier_{s}": round(float(frame[f"_brier_{s}"].mean()), 4)
-               for s in sides}
+               for s in sides if s != "presser"}
         out.update({f"mae_{s}": round(float(frame[f"_ae_{s}"].mean()), 3)
                     for s in sides if f"_ae_{s}" in frame.columns})
         out["rows"] = int(len(frame))
+        # The presser side scores its own rows and reports its own count. The
+        # two numbers are read together or not at all: a Brier over one row and
+        # a Brier over two hundred are not the same evidence, and the shared
+        # ``rows`` above belongs to the other two sides, which score every row.
+        # A stretch with no verdicts in it carries no key rather than a null
+        # one — the same silence a pre-v10 log gets.
+        if "presser" in sides:
+            scored = frame[frame["p_play_presser"].notna()]
+            if not scored.empty:
+                out["brier_presser"] = round(
+                    float(scored["_brier_presser"].mean()), 4)
+                out["rows_presser"] = int(len(scored))
         return out
 
     by_gw = []
@@ -496,7 +520,7 @@ def score_news_shadow(shadow: pd.DataFrame,
         row["cum_brier_flags"] = cum["brier_flags"]
         row["cum_mae_news"] = cum["mae_news"]
         row["cum_mae_flags"] = cum["mae_flags"]
-        if "presser" in sides:
+        if "brier_presser" in cum:
             row["cum_brier_presser"] = cum["brier_presser"]
         by_gw.append(row)
 

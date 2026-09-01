@@ -178,3 +178,57 @@ def test_an_all_one_factor_is_not_scored():
     and a third line identical to the first is worse than no line."""
     out = score_news_shadow(_shadow([0.9, 0.5]), _actuals())
     assert "brier_presser" not in out["overall"]
+
+
+def test_an_all_null_column_is_not_a_side_at_all():
+    """A parquet whose column exists only because ``write_shadow`` back-filled
+    it. It is not equal to ``p_play_news`` — it is not equal to anything — and
+    gating on inequality alone would score a column of NaN."""
+    out = score_news_shadow(_shadow([float("nan")] * 2), _actuals())
+    assert all("presser" not in k for k in out["overall"])
+    assert all("presser" not in k for row in out["by_gw"] for k in row)
+
+
+def _mixed_vintage() -> pd.DataFrame:
+    """One pre-v10 row (back-filled NaN) and one post-v10 row, same gameweek."""
+    frame = _shadow()
+    frame["p_play_presser"] = [float("nan"), 0.25]
+    return frame
+
+
+def test_the_presser_side_is_scored_on_its_own_rows_only():
+    out = score_news_shadow(_mixed_vintage(), _actuals())
+    # Code 2 is the row that has a verdict: p_play_presser 0.25, minutes 0.
+    assert out["overall"]["brier_presser"] == pytest.approx(0.25 ** 2,
+                                                            abs=1e-4)
+    assert out["overall"]["rows_presser"] == 1
+    # The other two sides still score both rows, and say so.
+    assert out["overall"]["rows"] == 2
+
+
+def test_the_presser_row_count_is_labelled_to_the_presser_side():
+    """The N2 verdict is read off these two numbers together: a Brier over
+    one row and a Brier over two hundred are not the same evidence."""
+    out = score_news_shadow(_mixed_vintage(), _actuals())
+    assert out["by_gw"][0]["rows_presser"] == 1
+    assert out["by_gw"][0]["rows"] == 2
+    assert out["by_gw"][0]["cum_brier_presser"] == pytest.approx(
+        out["overall"]["brier_presser"], abs=1e-9)
+
+
+def test_a_gameweek_with_no_verdicts_carries_no_presser_keys():
+    """The column exists and has values — in another week. This week's entry
+    must be absent, never NaN: ``save_evaluation`` serialises with
+    ``allow_nan=False`` and a NaN here would take the whole artifact down."""
+    frame = pd.concat([_mixed_vintage(),
+                       _shadow().assign(gw=6, p_play_presser=float("nan"))],
+                      ignore_index=True)
+    actuals = pd.concat([_actuals(), _actuals().assign(gw=6)],
+                        ignore_index=True)
+    out = score_news_shadow(frame, actuals)
+    gw6 = next(r for r in out["by_gw"] if r["gw"] == 6)
+    assert "brier_presser" not in gw6
+    assert "rows_presser" not in gw6
+    # The cumulative line still carries GW5's verdict, which is the point of a
+    # cumulative line.
+    assert gw6["cum_brier_presser"] == pytest.approx(0.25 ** 2, abs=1e-4)
