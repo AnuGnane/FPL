@@ -56,7 +56,12 @@ current_season = "2026-27"
 # own, so these switch off a *working* source rather than rescue a broken one.
 enabled = true
 injuries = true            # premierinjuries.com injury table
-lineups = true             # Fantasy Football Scout predicted XIs
+lineups = true             # predicted XIs, merged pessimistically
+# v10: which predicted-XI sources to read, in this order. Omitted, both run.
+# An empty list is the same as `lineups = false`. Use it to switch off a
+# source that is parsing cleanly and saying something false — the coarse
+# switch above already covers a source that has simply gone quiet.
+# lineup_providers = ["ffs", "rotowire"]
 cache_hours = 6
 min_coverage = 0.5         # share of a source's rows that must match a player
 

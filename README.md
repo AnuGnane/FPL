@@ -357,6 +357,23 @@ names every active pin beside what the model had when you set it, and
 `[news] overrides = false` in `config.toml` switches the whole thing off
 without deleting anything.
 
+The pins live in `reports/overrides.json`. Because the two availability passes
+inside an advise run are indistinguishable from the inside, a pin lands on
+both the news arm and the news-shadow control arm — which means a pinned
+player shows no *news* effect in the shadow log at all, rather than the news
+layer being credited with a move you made.
+
+The Planning hub's **Timeline** tags each week card with the opponents its
+named players face that week — the captain, the vice and any buys and sells,
+one chip per club — shaded by the same odds-implied difficulty and the same
+colour ramp the fixture ticker uses, so a chip and the ticker's square for the
+same fixture are the same colour by construction. The player-to-club half of
+the join is free — it rides on the advice payload the hub already fetches —
+and the fixtures themselves are one request to the same ticker endpoint the
+Ticker tab reads. Any link it cannot make is left out rather than guessed: a
+player the last advice run never named, or a gameweek past the ticker's
+window, simply has no chip.
+
 ### Two sources for the predicted XI, and the minutes model in the weights (v10)
 
 Predicted line-ups now come from **two** sources — Fantasy Football Scout and
@@ -388,26 +405,16 @@ fragile as the league's average reproduces the calibrated curve exactly — the
 first substitute is the one most likely to come on *and* score rather than
 simply the highest-EP body, and the vice is priced by how likely the captain
 is to leave the armband unused. When minutes probabilities are unavailable, or
-are the same number for everybody, all three degrade to exactly the previous
-behaviour: the solve that runs is the pre-v10 solve, constraint for
-constraint.
+are the same number for everybody in a week, all three degrade to exactly the
+previous behaviour: the solve that runs is the pre-v10 solve, constraint for
+constraint, and it says on the console which of the two reasons it was.
 
-The pins live in `reports/overrides.json`. Because the two availability passes
-inside an advise run are indistinguishable from the inside, a pin lands on
-both the news arm and the news-shadow control arm — which means a pinned
-player shows no *news* effect in the shadow log at all, rather than the news
-layer being credited with a move you made.
-
-The Planning hub's **Timeline** tags each week card with the opponents its
-named players face that week — the captain, the vice and any buys and sells,
-one chip per club — shaded by the same odds-implied difficulty and the same
-colour ramp the fixture ticker uses, so a chip and the ticker's square for the
-same fixture are the same colour by construction. The player-to-club half of
-the join is free — it rides on the advice payload the hub already fetches —
-and the fixtures themselves are one request to the same ticker endpoint the
-Ticker tab reads. Any link it cannot make is left out rather than guessed: a
-player the last advice run never named, or a gameweek past the ticker's
-window, simply has no chip.
+The weighting prices the plan you are actually shown, and not the scenario
+sweep that gates it — the sweep's job is to measure how stable a *move* is
+under noise, and it is priced exactly as it was before v10 so that the raw
+optimum it is compared against stays the same problem. Which means the
+transfers themselves are still chosen without this, and only the squad built
+around them is weighted by it.
 
 ### Sensitivity and drafts (v8e)
 
