@@ -141,8 +141,13 @@ in either file changed.
 
 ### G2 — review and merge (orchestrator only)
 
-- [ ] Adversarial review, fix-first, re-verify.
-- [ ] Merge ritual: ff-only, push, `git show main:config.toml` fails, key-grep
+- [x] Adversarial review (1 blocker — positional name misalignment in
+      `_players_by_element`, reproduced; 5 importants incl. the hand-maintained
+      season literal and a cache bound that quietly stopped being big enough)
+      → fix round → re-verify (verified every fix red-first on the pre-fix
+      blobs; found 1 more important — the teams-unknown line firing with no
+      rows — plus nits) → micro-round `93234a0`. 3135 py + 596 fe.
+- [x] Merge ritual: ff-only, push, `git show main:config.toml` fails, key-grep
       empty.
 
 The live spot-checks for §F1 need a GW3 field scrape and a `refresh-data` run
