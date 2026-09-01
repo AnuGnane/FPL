@@ -709,19 +709,18 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     # all-or-nothing inside solve_plan, so a gap here degrades to the pre-v10
     # solve rather than pricing the silent half as nailed on.
     #
-    # It reaches exactly one solve: `coherent_plan`, below. Not `solve_kw`,
-    # which the raw optimum and the scenario sweep share. The sweep cannot see
-    # the feature — run_scenarios is N noised re-solves and doubling the
-    # slowest part of an advise run to price a bench it never reads is a cost
-    # with no reader — and the decision gate below compares the raw optimum
-    # against what that sweep voted for. Weighting the raw solve would make that
-    # comparison a comparison of two different objectives, and the
-    # disagreement would reach the user as `raw_optimum_agrees=False`: a
-    # stability warning about something that is not instability. So the final
-    # plan is the one that carries the weights, and every user-facing
-    # comparison stays internally consistent. The cost is recorded rather than
-    # hidden: §F1's transfer-side reach waits for a sweep that can see p_play
-    # (spec §Residuals).
+    # It reaches whichever solve is the plan the user is actually shown, and
+    # only that one. With a sweep that is `coherent_plan`, below; without one
+    # — [scenarios] n = 0, or an opening squad — it is the raw solve, which in
+    # those modes is the advice itself. It never reaches `solve_kw`, which the
+    # raw optimum and the sweep share, because the sweep cannot see the
+    # feature: run_scenarios is N noised re-solves and doubling the slowest
+    # part of an advise run to price a bench it never reads is a cost with no
+    # reader. The branch below says why that matters — the decision gate
+    # compares the raw optimum against what the sweep voted for, so the raw
+    # optimum has to stay the sweep's problem for as long as there is a sweep.
+    # The cost is recorded rather than hidden: §F1's transfer-side reach waits
+    # for a sweep that can see p_play (spec §Residuals).
     p_play_by_code: dict[int, dict[int, float]] = {}
     if "p_play" in comp.columns:
         for row in (comp.groupby(["code", "gw"], as_index=False)
@@ -744,7 +743,30 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     # it stays plain JSON — floats and a list of three floats. solve_kw is the
     # same bundle plus anything that is only meaningful in-process.
     solve_kw = dict(opt_kw, ft_lambda=ft_lambda)
-    plan = solve_plan(pool, state, **solve_kw)
+    # Whether the sweep below runs at all is asked here, once, because it is
+    # what decides who sees p_play. Gating is a weekly question: with no squad
+    # yet — the initial-squad mode — there is no incumbent to hold on to,
+    # nothing to compare fifteen opening picks against, and a held decision's
+    # FixedMoves(no_transfer) pins lpSum(tin) == 0, which cannot fill an empty
+    # squad: the solve is infeasible and the user reads a "coherence re-solve
+    # infeasible" line under his opening XI for no reason at all.
+    sweep_runs = False
+    if cfg.scenarios_n > 0 and state.owned_codes:
+        sweep_runs = True
+    # v10 §F1/T10-A: the raw optimum carries the minutes weights exactly when
+    # it is the plan the user is shown, and not when it is an argument in a
+    # comparison. With a sweep, the decision gate measures this solve against
+    # the sweep's plurality; the sweep cannot see p_play, so weighting this one
+    # would compare two different objectives and report the difference as
+    # `raw_optimum_agrees=False` — a stability warning about something that is
+    # not instability. Without a sweep — [scenarios] n = 0, or an opening
+    # squad — there is no comparison to keep honest and this solve *is* the
+    # advice, so withholding the weights here would cost fast advice and every
+    # initial-squad week the whole of §F1 to protect a gate they never reach.
+    if sweep_runs:
+        plan = solve_plan(pool, state, **solve_kw)
+    else:
+        plan = solve_plan(pool, state, **solve_kw, p_play=p_play_by_code)
     first = plan.gw_plans[0]
 
     # --- scenario re-solving and the decision policy ----------------------
@@ -756,13 +778,7 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     move_freqs: list[dict] = []
     raw_agrees: bool | None = None
     scenario_report: dict | None = None
-    # Gating is a weekly question. With no squad yet — the initial-squad
-    # mode — there is no incumbent to hold on to, nothing to compare fifteen
-    # opening picks against, and a held decision's FixedMoves(no_transfer)
-    # pins lpSum(tin) == 0, which cannot fill an empty squad: the solve is
-    # infeasible and the user reads a "coherence re-solve infeasible" line
-    # under his opening XI for no reason at all.
-    if cfg.scenarios_n > 0 and state.owned_codes:
+    if sweep_runs:
         xmins = xmins_by_player_gw(comp)
         if not xmins:
             print("no expected minutes available: every scenario draws the "
@@ -773,6 +789,12 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         run = run_scenarios(pool, state, xmins, n=cfg.scenarios_n,
                             seed=cfg.scenarios_seed + gw, **solve_kw)
         if not run.completed:
+            # The raw optimum served here is the unweighted one: this branch
+            # is reached after the solve above has already run, and re-solving
+            # under a different objective because the sweep died would mean a
+            # failure fallback quietly changing what is being optimised
+            # mid-run. A degraded objective is the smaller of the two costs,
+            # and it is recorded (spec §Residuals) rather than papered over.
             print(f"all {run.attempted} scenario solves failed "
                   f"({run.failures} failures); falling back to the raw "
                   "optimum, ungated")

@@ -17,10 +17,12 @@ would be a squad, every week, slightly wrong for a reason no rail could name.
 
 from __future__ import annotations
 
+import ast
 import dataclasses
 import importlib.util
 import inspect
 import json
+import textwrap
 from pathlib import Path
 
 import httpx
@@ -475,25 +477,73 @@ def test_a_mixed_vintage_shadow_parquet_still_serialises(tmp_path,
     assert gw5["rows_presser"] == 2 and gw5["rows"] == 2
 
 
-def test_the_p_play_seam_reaches_the_coherent_plan_and_nothing_else():
-    """The T10-A rewiring, as a rail.
+def _advise_src() -> str:
+    return inspect.getsource(__import__("gaffer.advise",
+                                        fromlist=["run_advise"]).run_advise)
+
+
+def _raw_solve_branches() -> tuple[ast.Call, ast.Call]:
+    """The two ``solve_plan`` calls of the raw-optimum ``if``, as AST nodes:
+    ``(sweep_runs, sweep_does_not_run)``."""
+    tree = ast.parse(textwrap.dedent(_advise_src()))
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.If):
+            continue
+        calls = [c for branch in (node.body, node.orelse)
+                 for stmt in branch for c in ast.walk(stmt)
+                 if isinstance(c, ast.Call)
+                 and getattr(c.func, "id", None) == "solve_plan"]
+        if len(calls) == 2 and node.orelse:
+            return calls[0], calls[1]
+    raise AssertionError("the raw optimum is no longer a two-branch if")
+
+
+def test_the_p_play_seam_follows_the_sweep_and_not_the_solve():
+    """The T10-A rewiring, as a rail — and the hole the first cut left.
 
     ``decide()`` compares the raw optimum against the sweep's plurality, and
-    the sweep cannot see ``p_play``. Weighting the raw solve would make that
-    comparison a comparison of two different objectives — reported to the user
-    as ``raw_optimum_agrees=False``, for a reason that is not instability.
+    the sweep cannot see ``p_play``. Weighting the raw solve *while the sweep
+    runs* would make that comparison a comparison of two different objectives
+    — reported to the user as ``raw_optimum_agrees=False``, for a reason that
+    is not instability.
+
+    But when the sweep does not run there is no such comparison, and the raw
+    solve *is* the advice: fast advice (``scenarios_n = 0``) and the
+    initial-squad weeks silently lost the whole of §F1 to a guard that was
+    protecting a gate they never reach.
     """
-    src = inspect.getsource(__import__("gaffer.advise",
-                                       fromlist=["run_advise"]).run_advise)
+    src = _advise_src()
     assert "solve_kw = dict(opt_kw, ft_lambda=ft_lambda)" in src
-    assert "plan = solve_plan(pool, state, **solve_kw)" in src
-    assert "p_play=p_play_by_code" in src
-    # Exactly one consumer, and it is the coherent plan.
-    assert src.count("p_play=p_play_by_code") == 1
+    # The sweep's own bundle is still untouched: it never had p_play.
+    assert "scenario_kw" not in src
+    sweep_call = src.index("run_scenarios(")
+    assert "p_play" not in src[src.index("run_scenarios("):sweep_call + 300]
+
+    gated, ungated = _raw_solve_branches()
+    assert not [k for k in gated.keywords if k.arg == "p_play"]
+    assert [k.value.id for k in ungated.keywords if k.arg == "p_play"] == [
+        "p_play_by_code"]
+
+
+def test_the_coherent_plan_carries_the_weights_when_the_sweep_ran():
+    """The other consumer, and the only one inside the gated branch."""
+    src = _advise_src()
     coherent = src.index("coherent_plan(pool, state, decision")
     assert "p_play=p_play_by_code" in src[coherent:coherent + 200]
-    # Nothing left to strip: the sweep never had it.
-    assert "scenario_kw" not in src
+    # Two consumers now, and both are plans that are actually recommended:
+    # the coherent plan, and the raw solve of the modes that have no sweep.
+    assert src.count("p_play=p_play_by_code") == 2
+
+
+def test_the_sweep_condition_is_asked_once_and_named():
+    """Fast advice and the initial squad are the *same* condition as the
+    scenario block's, and a copy of it that drifts is how the raw solve ends
+    up weighted in a mode whose gate is live."""
+    src = _advise_src()
+    assert src.count("if cfg.scenarios_n > 0 and state.owned_codes:") == 1
+    assert src.index("if cfg.scenarios_n > 0 and state.owned_codes:") < \
+        src.index("plan = solve_plan(pool, state, **solve_kw)")
+    assert "if sweep_runs:" in src
 
 
 def test_a_bench_boost_week_is_lp_identical_with_and_without_p_play():

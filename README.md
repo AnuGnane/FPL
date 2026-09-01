@@ -412,9 +412,12 @@ constraint, and it says on the console which of the two reasons it was.
 The weighting prices the plan you are actually shown, and not the scenario
 sweep that gates it — the sweep's job is to measure how stable a *move* is
 under noise, and it is priced exactly as it was before v10 so that the raw
-optimum it is compared against stays the same problem. Which means the
-transfers themselves are still chosen without this, and only the squad built
-around them is weighted by it.
+optimum it is compared against stays the same problem. So in a normal week
+the transfers themselves are still chosen without this, and only the squad
+built around them is weighted by it. In the weeks with no sweep to keep
+honest — `[scenarios] n = 0`, and the opening-squad week, where there is no
+incumbent to gate against — the one solve that runs is the plan you are
+shown, and it carries the weights outright.
 
 ### Sensitivity and drafts (v8e)
 
