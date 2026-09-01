@@ -199,13 +199,17 @@ def load_field_eo() -> pd.DataFrame:
     return store.load(FIELD_EO_PATH)
 
 
-def latest_field_eo(gw: int | None = None) -> dict[int, dict]:
+def latest_field_eo(gw: int | None = None, *,
+                    season: str | None = None) -> dict[int, dict]:
     """``element -> {"eo", "se", "n", "gw"}`` for the newest scrape.
 
     One row per element, from the latest ``snap_date`` of the latest gameweek
     (or of ``gw`` when one is named). The sword/shield column reads this, and
     a column that showed a Saturday number beside a Sunday one would be a
     column nobody could reason about.
+
+    ``season`` narrows the log to one season before any of that happens. See
+    the guard below for why it exists and why it is optional.
 
     Empty dict on any failure at all — no log, an unreadable log, a log with
     no rows. F4 is display, and a missing display column is the documented
@@ -218,6 +222,22 @@ def latest_field_eo(gw: int | None = None) -> dict[int, dict]:
     if log.empty:
         return {}
     frame = log.copy()
+    # v10b §F1a (specs/2026-09-01-gaffer-v10b-eo-chips-design.md, plan A3).
+    # ``element`` is season-scoped — FIELD_EO_COLS says so — so a log holding
+    # two seasons has two different footballers under one element id, and
+    # ``max(gw)`` below picks the *larger gameweek number*, which after a
+    # rollover is last season's. A named season is filtered first; an unnamed
+    # one keeps today's behaviour byte for byte, because ``routers/players.py``
+    # calls it that way and this cycle does not change that page.
+    #
+    # No fallback when the named season has no rows: "whatever is newest"
+    # would restore exactly the failure this keyword exists to prevent.
+    if season is not None:
+        if "season" not in frame.columns:
+            return {}
+        frame = frame[frame["season"].astype(str) == str(season)]
+        if frame.empty:
+            return {}
     frame["gw"] = pd.to_numeric(frame["gw"], errors="coerce")
     frame = frame.dropna(subset=["gw"])
     if frame.empty:
