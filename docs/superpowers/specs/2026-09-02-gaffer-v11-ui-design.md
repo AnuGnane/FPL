@@ -122,8 +122,15 @@ way season_summary already does — reuse it, never re-derive).
 
 ### G2 — review and merge (orchestrator only)
 
-- [ ] Adversarial review, fix-first, re-verify.
-- [ ] Merge ritual: ff-only, push, `git show main:config.toml` fails, key-grep
+- [x] Adversarial review (2 blockers — p60 served 0.00 for an unmodelled
+      player in the absent-never-zero view; DGW xmins total counted a missing
+      fixture as zero — plus 6 importants incl. the deep-link solving the
+      current week under a future week's constraints, unannounced) → fix
+      round → re-verify (fixes confirmed red-first; caught the I5 fix
+      over-correcting: the caption's operands swapped to two
+      equal-by-construction quantities) → micro-round `5c68f20`.
+      3193 py + 655 fe, tsc clean.
+- [x] Merge ritual: ff-only, push, `git show main:config.toml` fails, key-grep
       empty.
 
 ### No replay — recorded reasoning
