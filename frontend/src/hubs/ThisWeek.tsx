@@ -33,6 +33,11 @@ export default function ThisWeek() {
   // (per hub? per device? across a rebuild?) and inventing an answer inside a
   // lean UI cycle is how a preference store gets built by accident.
   const [view, setView] = useState<'pitch' | 'table'>('pitch')
+  // v10b §F1c: off by default, and state for the same reason the view above
+  // is state. The table already has a Field% column, which is its version of
+  // the same information, so the lens is offered only on the pitch — a
+  // control that does nothing is worse than no control.
+  const [lens, setLens] = useState(false)
 
   const load = useCallback(() => {
     apiGet<AdviceLatest>('/api/advice/latest')
@@ -258,6 +263,17 @@ export default function ThisWeek() {
                 {advice.captain_field.note}
               </span>
             )}
+            {view === 'pitch' && (
+              <button
+                type="button"
+                aria-pressed={lens}
+                onClick={() => setLens((on) => !on)}
+                className={'rounded-card border border-border px-2 py-0.5 '
+                  + (lens ? 'bg-card text-text' : 'hover:text-text')}
+              >
+                EO lens
+              </button>
+            )}
             <span className="flex overflow-hidden rounded-card
                              border border-border">
               {(['pitch', 'table'] as const).map((option) => (
@@ -285,6 +301,7 @@ export default function ThisWeek() {
               bench={pitchBench}
               captain={advice.captain.code}
               vice={advice.vice.code}
+              lens={lens}
             />
             )
           : <SquadTable rows={squad} breakdown={breakdown} />}

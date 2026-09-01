@@ -181,3 +181,29 @@ describe('PlayerCard', () => {
     expect(screen.getByTestId('fixture-chip')).toHaveTextContent('Blank')
   })
 })
+
+describe('PlayerCard: the field tint (v10b §F1c)', () => {
+  const frame = () => document.querySelector('[data-code="11"]') as HTMLElement
+
+  it('draws no inline border colour without a fieldClass', () => {
+    // The assertion that keeps the prop genuinely optional: every existing
+    // caller renders the default frame, unchanged.
+    card()
+    expect(frame().style.borderColor).toBe('')
+  })
+
+  it('tints a shield and a sword differently', () => {
+    card({ fieldClass: 'shield' })
+    const shield = frame().style.borderColor
+    expect(shield).not.toBe('')
+    card({ fieldClass: 'sword' })
+    const sword = document.querySelectorAll('[data-code="11"]')[1] as
+      HTMLElement
+    expect(sword.style.borderColor).not.toBe(shield)
+  })
+
+  it('treats an explicit null exactly as absent', () => {
+    card({ fieldClass: null })
+    expect(frame().style.borderColor).toBe('')
+  })
+})

@@ -128,3 +128,36 @@ describe('SquadPitch', () => {
     expect(screen.getAllByText('Blank').length).toBeGreaterThan(0)
   })
 })
+
+describe('SquadPitch: the EO lens (v10b §F1c)', () => {
+  const tinted = () => Array.from(document.querySelectorAll('[data-code]'))
+    .filter((el) => (el as HTMLElement).style.borderColor !== '')
+
+  const lensXi = XI.map((p, i) => (
+    i === 0 ? { ...p, fieldClass: 'shield' as const } : p))
+  const lensBench = BENCH.map((p, i) => (
+    i === 0 ? { ...p, fieldClass: 'sword' as const } : p))
+
+  it('tints through the one card() funnel when the lens is on', () => {
+    render(<SquadPitch xi={lensXi} bench={BENCH} captain={1} vice={2} lens />)
+    expect(tinted()).toHaveLength(1)
+  })
+
+  it('tints a bench card on the same rule as an XI card', () => {
+    render(<SquadPitch xi={XI} bench={lensBench} captain={1} vice={2} lens />)
+    expect(tinted()).toHaveLength(1)
+  })
+
+  it('tints nothing when the lens is off', () => {
+    render(<SquadPitch xi={lensXi} bench={lensBench} captain={1} vice={2} />)
+    expect(tinted()).toHaveLength(0)
+  })
+
+  it('renders rows built by the existing factory, without the new fields',
+     () => {
+       // Plan A6's "optional", asserted: three factories in two files predate
+       // fieldEo/fieldClass and none of them should have to change.
+       render(<SquadPitch xi={XI} bench={BENCH} captain={1} vice={2} lens />)
+       expect(screen.getByTestId('pitch-row-MID')).toBeInTheDocument()
+     })
+})

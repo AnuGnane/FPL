@@ -28,6 +28,11 @@ export interface SquadPitchProps {
   bench: SquadRow[]
   captain: number
   vice: number
+  /** v10b §F1c: the EO lens. The *pitch* decides whether the lens is on, not
+   *  the card — the card only knows how to draw a class it is handed. Off by
+   *  default, and no new prop for the rows themselves: the pitch and the
+   *  table render from the same SquadRow objects. */
+  lens?: boolean
   onSelect?: (code: number) => void
 }
 
@@ -39,7 +44,7 @@ function armbandFor(code: number, captain: number,
 }
 
 export default function SquadPitch(
-  { xi, bench, captain, vice, onSelect }: SquadPitchProps,
+  { xi, bench, captain, vice, lens = false, onSelect }: SquadPitchProps,
 ) {
   const loose = xi.filter((p) => !LINES.includes(p.position as never))
   const rows: Array<[string, SquadRow[]]> = [
@@ -61,6 +66,7 @@ export default function SquadPitch(
       armband={armbandFor(player.code, captain, vice)}
       news={player.news}
       chanceOfPlaying={player.chanceOfPlaying}
+      fieldClass={lens ? player.fieldClass ?? null : null}
       onSelect={onSelect}
     />
   )

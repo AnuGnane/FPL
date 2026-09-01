@@ -48,7 +48,28 @@ export interface PlayerCardProps {
   news?: string
   chanceOfPlaying?: number | null
   size?: PlayerCardSize
+  /** Where this player puts you against the field, or null.
+   *
+   * `shield` (owned and heavily owned), `sword` (owned and rare), `threat`
+   * (the field owns him and you do not) — `routers/players.py:105`'s
+   * vocabulary, which is imported rather than restated on both sides of the
+   * wire. Null and absent are the same thing and both mean "no claim", which
+   * is the third of the game the classifier deliberately says nothing about.
+   */
+  fieldClass?: 'shield' | 'sword' | 'threat' | null
   onSelect?: (code: number) => void
+}
+
+/** The lens palette. Tokens, not hex: a literal would be right in one theme.
+ *
+ * Inline `style` rather than a Tailwind class, because the value is
+ * data-driven and this file already has that idiom (`FixtureChip`). It moves
+ * `borderColor` only, so the pitch and chip sizes both inherit the tint
+ * without a second class table. */
+export const FIELD_TINT: Record<'shield' | 'sword' | 'threat', string> = {
+  shield: 'var(--color-sage)',
+  sword: 'var(--color-info)',
+  threat: 'var(--color-rust)',
 }
 
 /** The bundled plain shirt, inline.
@@ -134,7 +155,7 @@ function FixtureChip({ fixture }: { fixture: NextFixture | null }) {
 export default function PlayerCard({
   code, name, position, teamShort, teamCode, ep, fixture = null,
   armband = null, multiplier = null, news = '', chanceOfPlaying = null,
-  size = 'pitch', onSelect,
+  size = 'pitch', fieldClass = null, onSelect,
 }: PlayerCardProps) {
   const pitch = size === 'pitch'
 
@@ -227,12 +248,18 @@ export default function PlayerCard({
 
   // A div unless something is listening: a button nothing responds to is a
   // focus stop that lies about being interactive.
+  // The tint, when the caller asked for one. `undefined` rather than an
+  // empty object so an untinted card carries no inline style at all.
+  const style = fieldClass
+    ? { borderColor: FIELD_TINT[fieldClass] }
+    : undefined
+
   return onSelect
     ? (
       <button type="button" data-code={code} className={className}
-              onClick={() => onSelect(code)}>
+              style={style} onClick={() => onSelect(code)}>
         {body}
       </button>
       )
-    : <div data-code={code} className={className}>{body}</div>
+    : <div data-code={code} className={className} style={style}>{body}</div>
 }

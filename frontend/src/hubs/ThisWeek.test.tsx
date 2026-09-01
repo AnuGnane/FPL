@@ -442,3 +442,36 @@ describe('the captain against the field (v10b §F1a)', () => {
        expect(within(gabriel).getAllByText('—').length).toBeGreaterThan(0)
      })
 })
+
+describe('the EO lens (v10b §F1c)', () => {
+  const tinted = () => Array.from(document.querySelectorAll('[data-code]'))
+    .filter((el) => (el as HTMLElement).style.borderColor !== '')
+
+  it('is off on first render', async () => {
+    // A14: off by default, and state rather than localStorage — persisting a
+    // view preference is a real feature with real questions behind it.
+    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    await screen.findByTestId('pitch-row-MID')
+    expect(screen.getByRole('button', { name: /EO lens/ }))
+      .toHaveAttribute('aria-pressed', 'false')
+    expect(tinted()).toHaveLength(0)
+  })
+
+  it('tints the pitch when switched on and untints when switched off',
+     async () => {
+       render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+       await screen.findByTestId('pitch-row-MID')
+       const lens = screen.getByRole('button', { name: /EO lens/ })
+       fireEvent.click(lens)
+       await waitFor(() => expect(tinted().length).toBeGreaterThan(0))
+       fireEvent.click(lens)
+       await waitFor(() => expect(tinted()).toHaveLength(0))
+     })
+
+  it('is not offered in the table view, where there is nothing to tint',
+     async () => {
+       render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+       fireEvent.click(await screen.findByRole('button', { name: 'Table' }))
+       expect(screen.queryByRole('button', { name: /EO lens/ })).toBeNull()
+     })
+})
