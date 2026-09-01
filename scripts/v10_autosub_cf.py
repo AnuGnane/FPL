@@ -146,7 +146,14 @@ def main() -> None:
             print(f"gw{gw}: solve failed ({exc}) — skipped", flush=True)
             continue
 
-        actuals = week[["code", "minutes", "total_points"]].copy()
+        # score_gw's contract (backtest.py:110): [code, total_points, minutes,
+        # position], ONE row per player, double gameweeks already aggregated.
+        # ``week`` is per-fixture, so aggregate here — sums for the scores,
+        # first for the position, which does not change mid-week.
+        actuals = (week.groupby("code", as_index=False)
+                   .agg(minutes=("minutes", "sum"),
+                        total_points=("total_points", "sum"),
+                        position=("position", "first")))
         b_gw, a_gw = base.gw_plans[0], arm.gw_plans[0]
         b_pts = score_squad(actuals, xi=b_gw.xi, bench=b_gw.bench,
                             captain=b_gw.captain, vice=b_gw.vice, hits=0)
