@@ -25,6 +25,7 @@ worst case is the payload handed back exactly as it arrived.
 
 from __future__ import annotations
 
+import threading
 from typing import Any, Callable
 
 import pandas as pd
@@ -62,6 +63,29 @@ tmpdir's teams file out of another's, and in production would survive a
 a changed file evicts its own — except the fixture map, whose slot carries the
 gameweek too (a map built for GW9 is not GW10's), which is why the dict is
 bounded rather than fixed at three: see :data:`_CACHE_MAX`.
+"""
+
+_CACHE_LOCK = threading.Lock()
+"""Held across the whole of :func:`_memo` — lookup, build, store *and* evict.
+
+The eviction loop reads ``next(iter(_CACHE))`` while another thread may be
+storing into the same dict, and under a threadpool that is not a theoretical
+race: it raises ``RuntimeError('dictionary changed size during iteration')``,
+or ``KeyError`` when two threads pop the same oldest slot. Neither exception is
+caught in ``_memo``; both escape into ``with_identity``'s blanket ``except``,
+which returns the payload *undecorated*. A page silently losing every shirt
+because two requests arrived together is exactly the failure this module's
+"nothing here raises" contract exists to prevent.
+
+**The build runs inside the lock**, so two threads missing the same slot at
+once do the read twice in series rather than in parallel. That is deliberate.
+The builds are three small parquet reads projected into dicts — the very cost
+the memo exists to amortise, paid once per file rewrite — and holding the lock
+across them also gives the cache a second property worth more than the
+concurrency: a slot is built and stored atomically, so no thread ever observes
+a half-populated map or evicts a slot another thread is about to store into.
+Building outside the lock would need a per-slot in-flight marker to keep that,
+and a marker is more moving parts than the parallelism buys back here.
 """
 
 _CACHE_MAX = 8
@@ -103,27 +127,42 @@ def _memo(slot: str, key: tuple | None, build: Callable[[], Any]) -> Any:
 
     A build that returns :data:`_FAILED` is passed straight through and not
     stored.
+
+    The whole path is under :data:`_CACHE_LOCK`, including ``build()``; see
+    that docstring for why the read is serialised rather than the store alone.
+    An unkeyed call (``key is None``, an unstattable file) builds outside the
+    lock: it touches the cache neither to read nor to write, so it has nothing
+    to serialise against.
     """
     if key is None:
         return build()
-    hit = _CACHE.get(slot)
-    if hit is not None and hit[0] == key:
-        return hit[1]
-    value = build()
-    if value is not _FAILED:
-        _CACHE[slot] = (key, value)
-        while len(_CACHE) > _CACHE_MAX:
-            # Insertion order, so the slot dropped is the one least recently
-            # *stored*. Nothing here is expensive enough to justify tracking
-            # reads, and the fixed three are re-read for the price of one
-            # parquet if they ever do fall out.
-            _CACHE.pop(next(iter(_CACHE)))
-    return value
+    with _CACHE_LOCK:
+        hit = _CACHE.get(slot)
+        if hit is not None and hit[0] == key:
+            return hit[1]
+        value = build()
+        if value is not _FAILED:
+            _CACHE[slot] = (key, value)
+            while len(_CACHE) > _CACHE_MAX:
+                # Insertion order, so the slot dropped is the one least
+                # recently *stored*. Nothing here is expensive enough to
+                # justify tracking reads, and the fixed three are re-read for
+                # the price of one parquet if they ever do fall out.
+                #
+                # ``next(iter(...))`` walks a dict no other thread can be
+                # mutating, because every writer holds this same lock.
+                _CACHE.pop(next(iter(_CACHE)))
+        return value
 
 
 def clear_cache() -> None:
-    """Drop every memoised map. For tests, and for a reader who wants one."""
-    _CACHE.clear()
+    """Drop every memoised map. For tests, and for a reader who wants one.
+
+    Under the same lock as :func:`_memo`: clearing mid-eviction is the other
+    way to make that loop's ``next(iter(...))`` chase a slot that is gone.
+    """
+    with _CACHE_LOCK:
+        _CACHE.clear()
 
 
 def _teams() -> tuple[dict[int, str], dict[int, int]]:

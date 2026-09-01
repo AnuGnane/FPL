@@ -159,3 +159,79 @@ def test_clear_cache_is_available_to_tests_and_empties_it(wired):
     reads.clear()
     identity.with_identity(_payload(), 9)
     assert set(reads) & IDENTITY_PATHS
+
+
+
+def test_memo_survives_concurrent_eviction(monkeypatch):
+    """The eviction loop under threadpool load.
+
+    Reproduced before the lock landed, and reproduced again by this test with
+    the lock neutralised: two threads race to drop the same oldest slot and
+    the second ``pop`` raises ``KeyError``, or ``next(iter(_CACHE))`` walks a
+    dict a third is storing into and raises ``RuntimeError: dictionary changed
+    size during iteration``. Neither is caught in ``_memo``. Both escape into
+    ``with_identity``'s blanket ``except``, which abandons the whole
+    decoration and returns the payload with no shirts, no clubs and no
+    fixtures on it — silently, because that ``except`` exists to keep a
+    decoration from 500ing a page. So the assertion is "nothing ever left
+    ``_memo``", and the identity fields are what that buys.
+
+    Deterministic enough by construction rather than by luck. Three levers,
+    all of them widening the window rather than hoping to land in it:
+    a barrier so every thread enters the loop together, a lowered
+    ``_CACHE_MAX`` so nearly every store evicts, and a one-nanosecond GIL
+    switch interval so the interpreter preempts *inside* the two-statement
+    eviction rather than between calls. Without the interval the unlocked
+    version passes — ``pop(next(iter(...)))`` is short enough to look atomic
+    at the default 5ms — which is exactly the false pass this comment exists
+    to stop a later reader from restoring.
+    """
+    import sys
+    import threading
+
+    identity.clear_cache()
+    monkeypatch.setattr(identity, "_CACHE_MAX", 4)
+    previous_interval = sys.getswitchinterval()
+    sys.setswitchinterval(1e-9)
+    threads_n, iterations = 8, 3000
+    barrier = threading.Barrier(threads_n)
+    errors: list[BaseException] = []
+    sizes: list[int] = []
+
+    def hammer(worker: int) -> None:
+        barrier.wait()
+        try:
+            for i in range(iterations):
+                # A distinct key every iteration, over more slots than the
+                # cache holds, so hits are rare and nearly every call reaches
+                # the store-and-evict path.
+                slot = f"slot:{(worker * iterations + i) % 32}"
+                got = identity._memo(slot, (slot, i), lambda: (slot, i))
+                assert got is not identity._FAILED
+                # Sampled *under the lock*, because that is where the bound
+                # is actually claimed. Between the store and the eviction the
+                # dict is legitimately one over, and an unlocked ``len`` can
+                # catch another thread mid-``_memo`` in exactly that state —
+                # a reading that says nothing about whether the cache is
+                # bounded.
+                with identity._CACHE_LOCK:
+                    sizes.append(len(identity._CACHE))
+        except BaseException as exc:  # noqa: BLE001 — the point of the test
+            errors.append(exc)
+
+    workers = [threading.Thread(target=hammer, args=(w,))
+               for w in range(threads_n)]
+    try:
+        for thread in workers:
+            thread.start()
+        for thread in workers:
+            thread.join()
+    finally:
+        sys.setswitchinterval(previous_interval)
+        identity.clear_cache()
+
+    assert not errors, f"_memo raised under concurrency: {errors[:3]!r}"
+    # Every size was read under the lock by a thread that had just finished a
+    # store. A lock around the store alone, or one dropped from the eviction,
+    # lets this drift above the bound even when nothing raises.
+    assert sizes and max(sizes) <= 4
