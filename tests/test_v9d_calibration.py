@@ -253,6 +253,34 @@ def test_a_double_gameweek_is_graded_per_fixture_not_per_gameweek(banked):
     assert heads["p_haul"]["brier"] == round(p_haul(0.4, 0.2) ** 2, 4)
 
 
+def test_p_haul_refuses_rows_whose_inputs_are_missing(banked):
+    """``assemble.p_haul`` maps a missing input to ``lam = 0`` and returns 0.0.
+
+    That is right at solve time — a player with no attacking estimate is worth
+    nothing to the optimizer — and wrong here, where it turns an artifact with
+    a missing column into a head that is confidently certain nothing will
+    happen and then graded against weeks where it did. A prediction that was
+    never made is not a prediction of zero.
+    """
+    n = 80
+    comp = _components(1, n)
+    comp.loc[comp.index >= 40, "e_goals"] = float("nan")
+    save_components(comp, 1)
+    _before_kickoff(1)
+    truth = _truth(1, n)
+    # The rows with no inputs are exactly the ones that hauled, so grading
+    # them as zeros is not a small error.
+    truth.loc[truth.index >= 40, ["goals", "assists"]] = 2
+    store.save(truth, "live/player_gw.parquet")
+
+    head = evaluate_calibration(season="2025-26")["gameweeks"][0]["heads"]
+    assert head["p_haul"]["n"] == 40           # the rows that had inputs
+    assert head["p_play"]["n"] == 80           # and no other head loses rows
+    graded = ((truth["goals"] + truth["assists"]) >= 2).iloc[:40]
+    assert head["p_haul"]["brier"] == round(
+        float(((p_haul(0.4, 0.2) - graded.astype(float)) ** 2).mean()), 4)
+
+
 def test_p_start_is_omitted_with_its_reason(banked):
     """The trichotomy is never banked (plan A11). Asserted on the string so a
     cycle that starts banking it has to delete the entry rather than leave a

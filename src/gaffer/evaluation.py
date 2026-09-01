@@ -756,10 +756,23 @@ def evaluate_calibration(season: str | None = None) -> dict:
         by_club = _club_clean_sheets(joined)
         # Recomputed through the same function assemble_ep called at solve
         # time, not approximated: the banked components carry the inputs.
-        haul_pred = pd.Series(
-            [p_haul(g, a) for g, a in zip(_column(joined, "e_goals"),
-                                          _column(joined, "e_assists"))],
-            index=joined.index, dtype="float64")
+        #
+        # Only for the rows that have them. p_haul maps a missing input to
+        # lam = 0 and returns 0.0, which is the right answer at solve time —
+        # a player with no attacking estimate is worth nothing to the
+        # optimizer — and a fabricated one here: an artifact banked before
+        # e_goals existed would grade as a head that was confidently certain
+        # nothing would happen, against weeks in which it did. A prediction
+        # that was never made is NaN, and _paired drops it.
+        e_goals, e_assists = _column(joined, "e_goals"), _column(
+            joined, "e_assists")
+        has_inputs = e_goals.notna() & e_assists.notna()
+        haul_pred = pd.Series(float("nan"), index=joined.index,
+                              dtype="float64")
+        if has_inputs.any():
+            haul_pred.loc[has_inputs] = [
+                p_haul(g, a) for g, a in zip(e_goals[has_inputs],
+                                             e_assists[has_inputs])]
         pairs = {
             "p_play": (_column(joined, "p_play"), joined["minutes"] > 0),
             "p60": (_column(joined, "p60"),
