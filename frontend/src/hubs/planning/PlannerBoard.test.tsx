@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import PlannerBoard from './PlannerBoard'
 
@@ -28,14 +29,22 @@ function plan(weeks: unknown[], bank: number | null = 1.5) {
   return { gw: 5, generated_at: '2026-09-01T09:00:00Z', weeks, bank }
 }
 
+function wire(body: unknown, movers: unknown = { available: true,
+  as_of: null, rows: [] }) {
+  apiGet.mockImplementation((path: string) => (
+    path.startsWith('/api/prices/movers')
+      ? Promise.resolve(movers)
+      : Promise.resolve(body)))
+}
+
 beforeEach(() => {
   apiGet.mockReset()
-  apiGet.mockResolvedValue(plan([WEEK]))
+  wire(plan([WEEK]))
 })
 
 describe('PlannerBoard', () => {
   it('draws one column per week the plan names', async () => {
-    apiGet.mockResolvedValue(plan([
+    wire(plan([
       WEEK, { ...WEEK, gw: 6 }, { ...WEEK, gw: 7 }]))
     render(<PlannerBoard gw={5} />)
     expect(await screen.findByTestId('board-week-5')).toBeInTheDocument()
@@ -51,7 +60,7 @@ describe('PlannerBoard', () => {
     })
 
   it('shows the hit cost only when the week takes hits', async () => {
-    apiGet.mockResolvedValue(plan([WEEK, { ...WEEK, gw: 6, hits: 2,
+    wire(plan([WEEK, { ...WEEK, gw: 6, hits: 2,
       hit_cost: 8 }]))
     render(<PlannerBoard gw={5} />)
     expect(await screen.findByTestId('board-week-5')).toBeInTheDocument()
@@ -68,7 +77,7 @@ describe('PlannerBoard', () => {
 
   it('draws a chip when the plan names one and nothing when it does not',
     async () => {
-      apiGet.mockResolvedValue(plan([WEEK, { ...WEEK, gw: 6, chip: 'bboost' }]))
+      wire(plan([WEEK, { ...WEEK, gw: 6, chip: 'bboost' }]))
       render(<PlannerBoard gw={5} />)
       const six = await screen.findByTestId('board-week-6')
       expect(within(six).getByText('bboost')).toBeInTheDocument()
@@ -77,7 +86,7 @@ describe('PlannerBoard', () => {
     })
 
   it('draws an em dash for a broken bank, never a zero', async () => {
-    apiGet.mockResolvedValue(plan([WEEK, { ...WEEK, gw: 6, bank: null }]))
+    wire(plan([WEEK, { ...WEEK, gw: 6, bank: null }]))
     render(<PlannerBoard gw={5} />)
     expect(await screen.findByTestId('board-bank-5')).toHaveTextContent('2.1')
     const blank = screen.getByTestId('board-bank-6')
@@ -93,9 +102,68 @@ describe('PlannerBoard', () => {
         .toBeInTheDocument()
       unmount()
 
-      apiGet.mockResolvedValue(plan([]))
+      wire(plan([]))
       render(<PlannerBoard gw={5} />)
       expect(await screen.findByText('This run solved no horizon'))
+        .toBeInTheDocument()
+    })
+
+  it('warns with a direction and a percentage, and never a price', async () => {
+    wire(plan([WEEK]), { available: true, as_of: '2026-09-01T02:00:00Z',
+      rows: [{ code: 1, name: 'Wirtz', now_cost: 85,
+               price_change_percent: 94.2, direction: 'rise',
+               calibrating: false, source: 'plan' }] })
+    render(<PlannerBoard gw={5} />)
+    const warn = await screen.findByTestId('board-mover-1')
+    expect(warn).toHaveTextContent('94%')
+    // MoverRow carries no predicted price; a board printing one invents it.
+    expect(warn).not.toHaveTextContent('8.6')
+    expect(warn).not.toHaveTextContent('85')
+  })
+
+  it('draws nothing for a mover the price log is still calibrating',
+    async () => {
+      wire(plan([WEEK]), { available: true, as_of: null,
+        rows: [{ code: 1, name: 'Wirtz', now_cost: 85,
+                 price_change_percent: 94.2, direction: 'rise',
+                 calibrating: true, source: 'plan' }] })
+      render(<PlannerBoard gw={5} />)
+      expect(await screen.findByTestId('board-week-5')).toBeInTheDocument()
+      expect(screen.queryByTestId('board-mover-1')).toBeNull()
+    })
+
+  it('draws the whole board when the movers fetch fails', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    apiGet.mockImplementation((path: string) => (
+      path.startsWith('/api/prices/movers')
+        ? Promise.reject(new ApiError('no price log'))
+        : Promise.resolve(plan([WEEK]))))
+    render(<PlannerBoard gw={5} />)
+    expect(await screen.findByTestId('board-week-5')).toBeInTheDocument()
+    expect(screen.getByTestId('board-in-1')).toBeInTheDocument()
+    expect(screen.queryByTestId('board-mover-1')).toBeNull()
+    expect(spy).not.toHaveBeenCalled()
+    spy.mockRestore()
+  })
+
+  it('hands the week to the lab as force_in, ban and a mapped chip',
+    async () => {
+      const onTry = vi.fn()
+      wire(plan([{ ...WEEK, hits: 5, chip: 'bboost' }]))
+      render(<PlannerBoard gw={5} onTry={onTry} />)
+      await userEvent.click(await screen.findByTestId('board-try-5'))
+      expect(onTry).toHaveBeenCalledWith({
+        lock: [], ban: [2], force_in: [1],
+        // clamped into ConstraintsPanel's 0-3 range
+        max_hits: 3, chip: 'bb', horizon: null,
+      })
+    })
+
+  it('says what a carried-over sell actually means, without a hover',
+    async () => {
+      render(<PlannerBoard gw={5} onTry={vi.fn()} />)
+      expect(await screen.findByText(/does not solve/)).toBeInTheDocument()
+      expect(screen.getByText(/rules out buying him back/))
         .toBeInTheDocument()
     })
 

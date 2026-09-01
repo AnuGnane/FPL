@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../../api/client'
 import { Badge, Card, EmptyState, Loading, PosBadge, fmtNum } from '../../kit'
-import type { PlanMove, PlanTimeline } from '../../types'
+import type {
+  MoverRow, MoversPanel, PlanGw, PlanMove, PlanTimeline, WhatIfRequest,
+} from '../../types'
+import { CHIP_CODES } from './ChipsTab'
 
 /**
  * v11 §F1 — the solved horizon, week by week.
@@ -16,11 +19,14 @@ import type { PlanMove, PlanTimeline } from '../../types'
  * **The board never solves.** It draws the plan the advice run wrote.
  */
 
-function MoveRow({ move, side }: { move: PlanMove; side: 'in' | 'out' }) {
+function MoveRow(
+  { move, side, mover }: { move: PlanMove; side: 'in' | 'out'
+                           mover?: MoverRow },
+) {
   return (
     <p
       data-testid={`board-${side}-${move.code}`}
-      className={`flex items-center gap-1 ${side === 'in'
+      className={`flex flex-wrap items-center gap-1 ${side === 'in'
         ? 'text-sage' : 'text-rust'}`}
     >
       <span aria-hidden>{side === 'in' ? '↑' : '↓'}</span>
@@ -29,19 +35,76 @@ function MoveRow({ move, side }: { move: PlanMove; side: 'in' | 'out' }) {
       {move.price !== null && (
         <span className="num ml-1 text-text-faint">{fmtNum(move.price)}</span>
       )}
+      {/* The direction and how far through the threshold he is, and nothing
+          else: MoverRow carries no predicted price, and a board printing
+          "→ £8.6m" would be inventing the number (plan A9). */}
+      {mover && (
+        <span
+          data-testid={`board-mover-${move.code}`}
+          className="text-text-faint"
+          title={`${move.name} is ${Math.round(
+            Math.abs(mover.price_change_percent))}% of the way to a price `
+            + `${mover.direction}`}
+        >
+          {`${mover.direction === 'rise' ? '▲' : '▼'} `
+           + `${Math.round(Math.abs(mover.price_change_percent))}%`}
+        </span>
+      )}
     </p>
   )
 }
 
-export default function PlannerBoard({ gw }: { gw: number }) {
+export default function PlannerBoard(
+  { gw, onTry }: { gw: number
+                   /** Prefill the What-If lab and switch to it. Absent, the
+                    *  board draws no handoff — it never solves either way. */
+                   onTry?: (request: WhatIfRequest) => void },
+) {
   const [data, setData] = useState<PlanTimeline | null>(null)
   const [missing, setMissing] = useState(false)
+  // Null while it loads and after any failure. A price decoration must never
+  // be the reason a plan does not render — Timeline's ticker rule, verbatim.
+  const [movers, setMovers] = useState<Map<number, MoverRow> | null>(null)
 
   useEffect(() => {
     setMissing(false)
     apiGet<PlanTimeline>(`/api/plan/${gw}`).then(setData)
       .catch(() => setMissing(true))
   }, [gw])
+
+  useEffect(() => {
+    let live = true
+    apiGet<MoversPanel>('/api/prices/movers')
+      .then((body) => {
+        if (!live) return
+        const map = new Map<number, MoverRow>()
+        // `calibrating` says the price log is not yet trustworthy, and a
+        // warning drawn from an untrustworthy log is worse than no warning —
+        // so those rows never enter the map at all.
+        for (const row of body.rows ?? []) {
+          if (!row.calibrating) map.set(row.code, row)
+        }
+        setMovers(map)
+      })
+      .catch(() => { if (live) setMovers(null) })
+    return () => { live = false }
+  }, [])
+
+  // A planned week as the constraint vocabulary can express it (plan A7).
+  // `ban` is not an exact fit for a sell — it also forbids buying him back —
+  // and there is no bank constraint at all; both are printed under the button
+  // rather than smoothed over, because a limit discovered by hovering is a
+  // limit discovered after the solve.
+  function request(week: PlanGw): WhatIfRequest {
+    return {
+      lock: [],
+      ban: week.sells.map((m) => m.code),
+      force_in: week.buys.map((m) => m.code),
+      max_hits: Math.max(0, Math.min(3, week.hits)),
+      chip: (week.chip && CHIP_CODES[week.chip]) || 'none',
+      horizon: null,
+    }
+  }
 
   // The two empty states are different facts and get different words: nothing
   // was ever advised, versus a run that solved no horizon. Collapsing them
@@ -90,10 +153,12 @@ export default function PlannerBoard({ gw }: { gw: number }) {
             >
               <div className="flex flex-col gap-0.5">
                 {week.buys.map((m) => (
-                  <MoveRow key={`in-${m.code}`} move={m} side="in" />
+                  <MoveRow key={`in-${m.code}`} move={m} side="in"
+                           mover={movers?.get(m.code)} />
                 ))}
                 {week.sells.map((m) => (
-                  <MoveRow key={`out-${m.code}`} move={m} side="out" />
+                  <MoveRow key={`out-${m.code}`} move={m} side="out"
+                           mover={movers?.get(m.code)} />
                 ))}
                 {week.buys.length === 0 && week.sells.length === 0 && (
                   <p className="text-text-muted">No moves.</p>
@@ -123,6 +188,25 @@ export default function PlannerBoard({ gw }: { gw: number }) {
               <p className="num text-xl text-text">
                 {fmtNum(week.expected_pts)}
               </p>
+              {onTry && (week.buys.length > 0 || week.sells.length > 0) && (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    data-testid={`board-try-${week.gw}`}
+                    onClick={() => onTry(request(week))}
+                    className="rounded-card border border-border bg-base px-2
+                               py-1 text-text-secondary hover:text-text"
+                  >
+                    Try these changes
+                  </button>
+                  <p className="mt-1 text-text-faint">
+                    {'This prefills the lab; it does not solve. A planned sell '
+                     + 'is carried across as "don\'t own him", which also '
+                     + 'rules out buying him back, and the bank is not a '
+                     + 'constraint the lab accepts.'}
+                  </p>
+                </div>
+              )}
             </Card>
           </div>
         ))}

@@ -19,6 +19,12 @@ const TAB_CLASS = 'shrink-0 whitespace-nowrap px-3 py-2 text-text-muted '
 // Radix keeps an unselected tab unmounted, so the constraints have to live
 // above both tabs or a draft saved from the Drafts tab would save whatever
 // the last remount defaulted to.
+//
+// Since v11 the *selection* lives up here too, for the same reason turned
+// round: the board's "Try these changes" writes the constraints and then has
+// to move the reader to the tab that reads them, which an uncontrolled
+// `Tabs.Root` gives no way to do. Not persisted — a view preference is a real
+// feature with real questions behind it (`ThisWeek.tsx:31-34`).
 const EMPTY_WHATIF: WhatIfRequest = {
   lock: [], ban: [], force_in: [], max_hits: 0, chip: 'none', horizon: null,
 }
@@ -33,6 +39,7 @@ export default function Planning() {
   const [teamByCode, setTeamByCode] = useState<Map<number, number>>(new Map())
   const [missing, setMissing] = useState(false)
   const [whatif, setWhatif] = useState<WhatIfRequest>(EMPTY_WHATIF)
+  const [tab, setTab] = useState('timeline')
 
   useEffect(() => {
     apiGet<AdviceLatest>('/api/advice/latest')
@@ -75,7 +82,7 @@ export default function Planning() {
     <>
       <PageHeader title="Planning"
                   context={gw === null ? undefined : `GW${gw} horizon`} />
-      <Tabs.Root defaultValue="timeline">
+      <Tabs.Root value={tab} onValueChange={setTab}>
         <Tabs.List className="mb-4 flex overflow-x-auto border-b
                               border-divider">
           <Tabs.Trigger value="timeline" className={TAB_CLASS}>Timeline</Tabs.Trigger>
@@ -89,7 +96,12 @@ export default function Planning() {
           {gw !== null && <Timeline gw={gw} teamByCode={teamByCode} />}
         </Tabs.Content>
         <Tabs.Content value="board">
-          {gw !== null && <PlannerBoard gw={gw} />}
+          {gw !== null && (
+            <PlannerBoard
+              gw={gw}
+              onTry={(request) => { setWhatif(request); setTab('whatif') }}
+            />
+          )}
         </Tabs.Content>
         <Tabs.Content value="whatif">
           <WhatIfTab value={whatif} onChange={setWhatif} />

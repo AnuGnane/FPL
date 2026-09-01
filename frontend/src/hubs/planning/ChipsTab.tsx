@@ -22,7 +22,9 @@ const LABELS: Record<string, string> = {
 // API's two-letter codes. A row the mapping does not know is left alone
 // rather than mapped to 'none', which would silently re-solve without a chip
 // and look like the chip was worth nothing.
-const CHIP_CODES: Record<string, WhatIfRequest['chip']> = {
+// Exported since v11: the planner board maps the same chip names onto the same
+// codes when it prefills the lab, and two copies of this table would drift.
+export const CHIP_CODES: Record<string, WhatIfRequest['chip']> = {
   wildcard: 'wc',
   bboost: 'bb',
   freehit: 'fh',

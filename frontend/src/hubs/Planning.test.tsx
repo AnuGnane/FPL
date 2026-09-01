@@ -20,10 +20,30 @@ vi.mock('./planning/Timeline', () => ({
     </>
   ),
 }))
-vi.mock('./planning/WhatIfTab', () => ({ default: () => <p>whatif panel</p> }))
+vi.mock('./planning/WhatIfTab', () => ({
+  default: ({ value }: { value: { force_in: number[]; ban: number[] } }) => (
+    <>
+      <p>whatif panel</p>
+      <p>{`force_in:${value.force_in.join(',')} ban:${value.ban.join(',')}`}</p>
+    </>
+  ),
+}))
 vi.mock('./planning/ChipsTab', () => ({ default: () => <p>chips panel</p> }))
 vi.mock('./planning/DraftsTab', () => ({ default: () => <p>drafts panel</p> }))
 vi.mock('./planning/TickerTab', () => ({ default: () => <p>ticker panel</p> }))
+vi.mock('./planning/PlannerBoard', () => ({
+  default: ({ onTry }: { onTry?: (r: unknown) => void }) => (
+    <>
+      <p>board panel</p>
+      <button type="button" onClick={() => onTry?.({
+        lock: [], ban: [2], force_in: [1], max_hits: 1, chip: 'none',
+        horizon: null,
+      })}>
+        try week
+      </button>
+    </>
+  ),
+}))
 
 beforeEach(() => {
   apiGet.mockReset()
@@ -53,12 +73,38 @@ describe('Planning hub', () => {
     expect(await screen.findByText('timeline panel')).toBeInTheDocument()
   })
 
-  it('lists all five tabs', async () => {
+  it('lists all six tabs', async () => {
     render(<MemoryRouter><Planning /></MemoryRouter>)
-    for (const name of ['Timeline', 'What-If', 'Drafts', 'Chips', 'Ticker']) {
+    for (const name of ['Timeline', 'Board', 'What-If', 'Drafts', 'Chips',
+      'Ticker']) {
       expect(await screen.findByRole('tab', { name })).toBeInTheDocument()
     }
   })
+
+  // The regression v11 owes the tree: `Tabs.Root` became controlled so the
+  // board could switch to What-If, and a controlled Radix root that forgets
+  // `onValueChange` renders a tab strip nothing can move.
+  it.each([
+    ['Timeline', 'timeline panel'],
+    ['Board', 'board panel'],
+    ['What-If', 'whatif panel'],
+    ['Drafts', 'drafts panel'],
+    ['Chips', 'chips panel'],
+    ['Ticker', 'ticker panel'],
+  ])('still switches to %s by click', async (name, panel) => {
+    render(<MemoryRouter><Planning /></MemoryRouter>)
+    await userEvent.click(await screen.findByRole('tab', { name }))
+    expect(await screen.findByText(panel)).toBeInTheDocument()
+  })
+
+  it('lands the board\'s week on What-If with the constraints prefilled',
+    async () => {
+      render(<MemoryRouter><Planning /></MemoryRouter>)
+      await userEvent.click(await screen.findByRole('tab', { name: 'Board' }))
+      await userEvent.click(await screen.findByText('try week'))
+      expect(await screen.findByText('whatif panel')).toBeInTheDocument()
+      expect(screen.getByText('force_in:1 ban:2')).toBeInTheDocument()
+    })
 
   it('switches to the drafts tab on click', async () => {
     render(<MemoryRouter><Planning /></MemoryRouter>)
