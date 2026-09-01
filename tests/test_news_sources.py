@@ -491,7 +491,11 @@ def test_fetch_lineups_maps_slots_to_hints_and_codes(tmp_path):
     assert out.loc[108, "p_start_hint"] == 0.0     # Verbruggen is banned
     assert len(out) == 7
     assert (out["source"] == "lineups").all()
-    assert len(calls) == 1
+    # v10 §F2a: two providers, two fetches. The mock answers both URLs with
+    # FFS markup, so RotoWire's parser reaches zero rows and contributes
+    # nothing — which is the per-provider degradation contract, visible here
+    # as a hint frame that did not move when a second source arrived.
+    assert len(calls) == 2
 
 
 def test_fetch_lineups_leaves_a_player_on_no_list_unhinted(tmp_path):

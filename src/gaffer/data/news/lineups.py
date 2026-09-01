@@ -223,6 +223,112 @@ def notable_absences(players: pd.DataFrame, covered: set[int],
     return out[cols].sort_values("code").reset_index(drop=True)
 
 
+ROTOWIRE_URL = "https://www.rotowire.com/soccer/lineups.php"
+
+# One fixture per <div class="lineup__box">; each carries two <ul
+# class="lineup__list is-home|is-visit"> team sheets and, above them, two
+# <div class="lineup__mteam …"> club names in the same order. Verified against
+# a live fetch on 2026-09-01 (plan A5): 200, 462KB, ten fixtures, the classes
+# below on every one of them.
+_RW_BOX = re.compile(
+    r'<div class="lineup__box".*?(?=<div class="lineup__box"|\Z)', re.S | re.I)
+_RW_MTEAM = re.compile(
+    r'<div class="lineup__mteam is-(home|visit)"[^>]*>(.*?)<', re.S | re.I)
+_RW_LIST = re.compile(
+    r'<ul class="lineup__list is-(home|visit)"[^>]*>(.*?)</ul>', re.S | re.I)
+_RW_TITLE = re.compile(
+    r'<li class="lineup__title[^"]*">\s*Injuries\s*</li>', re.I)
+_RW_PLAYER = re.compile(r'<li class="lineup__player">(.*?)</li>', re.S | re.I)
+_RW_INJ = re.compile(r'<span class="lineup__inj">\s*([A-Za-z]+)\s*</span>',
+                     re.I)
+
+ROTOWIRE_TAGS = {"out": "out", "sus": "out", "ques": "doubt"}
+"""RotoWire's own availability tags -> our slots.
+
+Deliberately a second table rather than a reuse of :data:`ABSENCE_SLOTS`:
+that one maps the *words* Fantasy Football Scout prints ("Doubts", "Banned")
+and this one maps three uppercase codes. One table serving two vocabularies is
+how a site rename becomes a silent mis-slot.
+"""
+
+
+def parse_rotowire(markup: str) -> pd.DataFrame:
+    """RotoWire's line-ups page -> ``[name, club, slot, code]`` (v10 §F2a).
+
+    Schema-identical to :func:`parse_lineups`, ``code`` an all-``NA`` ``Int64``
+    column: this source carries no FPL photo codes, so every row goes through
+    :func:`~gaffer.data.news.normalize.match_codes` and is subject to
+    ``NEWS_MIN_COVERAGE``. That is the correct posture for a source that cannot
+    self-identify, and it is why :class:`Provider` marks it not absence-capable
+    (plan A7).
+
+    Two structural facts do all the work. A fixture's two club headings and its
+    two team sheets are each labelled ``is-home``/``is-visit``, so they pair by
+    label rather than by order — a page that printed the visitors first would
+    otherwise swap two squads. And a team sheet runs XI-first until an
+    ``Injuries`` title, after which the same ``lineup__player`` markup means
+    the opposite thing; a parser that read the whole ``<ul>`` as an XI would
+    put an injured player in the team.
+
+    Names come from the ``title`` attribute, which is the full name, rather
+    than the anchor's abbreviated body text. ``_pitch_name`` is deliberately
+    *not* applied — RotoWire prints forename-first already, and reversing a
+    name that is already in reading order is how "Danny Welbeck" becomes
+    "Welbeck Danny" and misses the matcher entirely.
+
+    Same failure mode as every parser here: a redesign yields zero rows, which
+    is the official-flags path.
+    """
+    rows = []
+    for box in _RW_BOX.findall(markup or ""):
+        clubs = {side: _text(name) for side, name in _RW_MTEAM.findall(box)}
+        for side, body in _RW_LIST.findall(box):
+            club = clubs.get(side)
+            if not club:
+                continue
+            halves = _RW_TITLE.split(body, maxsplit=1)
+            xi_part = halves[0]
+            hurt_part = halves[1] if len(halves) > 1 else ""
+            for item in _RW_PLAYER.findall(xi_part):
+                name = _rw_name(item)
+                if name:
+                    rows.append({"name": name, "club": club,
+                                 "slot": "start", "code": None})
+            for item in _RW_PLAYER.findall(hurt_part):
+                tag = _RW_INJ.search(item)
+                slot = (ROTOWIRE_TAGS.get(tag.group(1).strip().casefold())
+                        if tag else None)
+                name = _rw_name(item)
+                if slot and name:
+                    rows.append({"name": name, "club": club, "slot": slot,
+                                 "code": None})
+    out = pd.DataFrame(rows, columns=PARSE_COLS)
+    # A player can appear twice — on the pitch carrying a QUES tag, and again
+    # under Injuries — and the pessimistic row is the one that matters. It is
+    # resolved *here*, while the name is still the key, and not left to
+    # ``fetch_lineups``' dedupe: ``match_codes`` claims a code once and drops
+    # every later row that answers to it, so by then the XI row (emitted
+    # first) would have won and the doubt would be gone. FFS never meets this
+    # because its XI resolves by photo code on a separate path.
+    if not out.empty:
+        out = (out.assign(_rank=out["slot"].map(P_START_HINT))
+               .sort_values("_rank", kind="stable")
+               .groupby(["club", "name"], as_index=False, sort=False).head(1)
+               .drop(columns="_rank")
+               .sort_index()
+               .reset_index(drop=True))
+    out["code"] = pd.to_numeric(out["code"], errors="coerce").astype("Int64")
+    return out[PARSE_COLS]
+
+
+def _rw_name(item: str) -> str:
+    """The player's full name out of one ``lineup__player`` element."""
+    title = _TITLE.search(item)
+    if title:
+        return html.unescape(title.group(1)).strip()
+    return _text(item)
+
+
 @dataclass(frozen=True)
 class Provider:
     """One predicted-XI source: where it lives, how it parses, what it may do.
@@ -246,6 +352,12 @@ class Provider:
 
 PROVIDERS: dict[str, Provider] = {
     "ffs": Provider("ffs", FFS_URL, parse_lineups, absence_capable=True),
+    # v10 §F2a (specs/2026-09-01-gaffer-v10-minutes-design.md). Not
+    # absence-capable: RotoWire prints no FPL codes, so its XI resolves by
+    # name, and one wrong match would both put a player in a team sheet he is
+    # not in and damp the starter he displaced (plan A7).
+    "rotowire": Provider("rotowire", ROTOWIRE_URL, parse_rotowire,
+                         absence_capable=False),
 }
 """Name -> provider. Keys are ``config.DEFAULT_LINEUP_PROVIDERS``' names, which
 is what makes ``[news] lineup_providers`` able to name one (v10 §F2a)."""
@@ -264,7 +376,8 @@ def _resolve(provider: Provider, markup: str, players: pd.DataFrame,
     """
     parsed = provider.parse(markup)
     if parsed.empty:
-        print("news: predicted line-ups parsed no rows — official flags only")
+        print(f"news: predicted line-ups ({provider.name}) parsed no rows — "
+              f"official flags only")
         return pd.DataFrame(columns=LINEUP_COLS)
 
     # Two joins, and only the second one can be wrong. The photo URL carries
