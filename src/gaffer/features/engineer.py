@@ -1656,3 +1656,126 @@ def add_role_wb_share(df: pd.DataFrame,
     out["role_wb_share"] = share
     out["role_wb_missing"] = share.isna().astype("float64")
     return out
+
+
+DENSITY_FEATURES = ["density_pub_7d", "density_pub_missing"]
+"""v12 W4 §5.2 arm 2. **A new arm, and deliberately not the withdrawn one.**
+
+``density_pub_7d`` counts the club's *published* fixtures — league, EFL Cup,
+Champions/Europa/Conference League, everything the archive's
+``By Gameweek/GW<n>/fixtures.csv`` carries — with a kickoff in the seven days
+before this fixture's own kickoff, excluding this fixture.
+
+The difference from :data:`CONGESTION_FEATURES` and from v8a's withdrawn
+``f2_cups`` is the table, not the arithmetic. Those counted *played* matches
+out of ``history/cup_matches.parquet``, whose rows begin in 2025-26, so on the
+2024-25 benchmark they were partly a season indicator and were withdrawn. This
+counts fixtures the publisher lists **before they are played** (the archive
+publishes kickoff times for gameweeks nobody has reached), which is what makes
+it a prediction-time feature at all: the question "does this club play on
+Wednesday" is answerable on Thursday only from a forward list.
+
+It has its own coverage limit — the archive's earliest season is 2024-25 — and
+``scripts/v12_w4_arms.py``'s preflight measures that rather than assuming it
+away.
+
+``density_pub_missing`` is 1 on a machine with no collection and on a row with
+no kickoff time. Zero would be a claim that the club plays nothing that week,
+which is a different and much stronger statement than "we do not know".
+"""
+
+DENSITY_WINDOW_DAYS = 7
+
+
+def add_density_pub(df: pd.DataFrame,
+                    fixtures: pd.DataFrame | None) -> pd.DataFrame:
+    """``df`` with :data:`DENSITY_FEATURES` appended. Never reorders rows.
+
+    ``fixtures`` is the fixtures half of :func:`core_insights_frames`, or
+    ``None`` on a machine that has not run the collector.
+
+    ``df`` must carry ``season_idx``, ``team_code`` and a timezone-aware
+    ``kickoff_time``; a row missing any of them is missing rather than zero.
+    Counting is over distinct ``match_id``, because the fixture table emits one
+    row per club per match and a re-collection can leave two.
+    """
+    out = df.copy()
+    count = pd.Series(float("nan"), index=out.index, dtype="float64")
+    need_df = {"season_idx", "team_code", "kickoff_time"}
+    need_fx = {"season_idx", "team_code", "kickoff", "match_id"}
+    if (fixtures is not None and not fixtures.empty
+            and need_fx.issubset(fixtures.columns)
+            and need_df.issubset(out.columns)):
+        fx = pd.DataFrame({
+            "season_idx": pd.to_numeric(fixtures["season_idx"],
+                                        errors="coerce"),
+            "team_code": pd.to_numeric(fixtures["team_code"],
+                                       errors="coerce"),
+            "kickoff": pd.to_datetime(fixtures["kickoff"], errors="coerce",
+                                      utc=True),
+            "match_id": fixtures["match_id"].astype("string")})
+        fx = fx.dropna(subset=["season_idx", "team_code", "kickoff"])
+        fx = fx.drop_duplicates(subset=["season_idx", "team_code",
+                                        "match_id"])
+        by_club: dict[tuple[int, int], list] = {}
+        for r in fx.itertuples():
+            by_club.setdefault((int(r.season_idx), int(r.team_code)),
+                               []).append(r.kickoff)
+        window = pd.Timedelta(days=DENSITY_WINDOW_DAYS)
+        idx = pd.to_numeric(out["season_idx"], errors="coerce")
+        teams = pd.to_numeric(out["team_code"], errors="coerce")
+        kicks = pd.to_datetime(out["kickoff_time"], errors="coerce", utc=True)
+        values = []
+        for si, team, when in zip(idx, teams, kicks):
+            if pd.isna(si) or pd.isna(team) or pd.isna(when):
+                values.append(float("nan"))
+                continue
+            stamps = by_club.get((int(si), int(team)), [])
+            values.append(float(sum(1 for t in stamps
+                                    if when - window <= t < when)))
+        count = pd.Series(values, index=out.index, dtype="float64")
+    out["density_pub_7d"] = count
+    out["density_pub_missing"] = count.isna().astype("float64")
+    return out
+
+
+def core_insights_frames() -> tuple[pd.DataFrame | None, pd.DataFrame | None]:
+    """``(player-match stats, fixtures)`` over every collected season.
+
+    ``None`` rather than an empty frame when *nothing at all* is collected, so
+    :func:`add_role_wb_share` and :func:`add_density_pub` can tell "this
+    machine has no collection" from "this club played nothing" — the same
+    distinction :func:`gaffer.data.cups.load_cup_matches` draws and for the
+    same reason. Read here rather than passed by every caller, exactly as
+    ``build_prediction_frame`` reads the manager-tenure asset.
+
+    **Zero-arg, and that is the whole design** (W4 errata, orchestrator ruling
+    2026-09-03). The seasons in play are whatever the collector wrote, read off
+    ``data/core_insights/`` the way ``train.cup_matches`` and
+    ``train.manager_tenures`` read their assets. A signature taking a season
+    list had nowhere to get one on either seam: ``load_training_frame`` never
+    reads the config and holds only ``player_gw["season"]``, and
+    ``build_prediction_frame``'s future rows carry ``season_idx`` and no
+    ``season`` at all — so the list would have been full in training and empty
+    at serve time, which is v12 W2 §3.5's defect exactly. The season *guard*
+    is not lost by dropping the argument: ``load_core_insights`` filters each
+    file to its own season, and both builders key on ``season_idx``.
+
+    Every collected season is loaded rather than the window's: a frame the
+    caller does not use costs a filter, and a season the caller does use and
+    this function did not know about is an all-null column nobody can see.
+    """
+    from gaffer.data import store
+    from gaffer.data.core_insights import load_core_insights
+
+    root = store.DATA_DIR / "core_insights"
+    seasons = (sorted(p.name for p in root.iterdir() if p.is_dir())
+               if root.is_dir() else [])
+    stats, fixtures = [], []
+    for season in seasons:
+        stats.append(load_core_insights(season, "players"))
+        fixtures.append(load_core_insights(season, "fixtures"))
+    stats = [f for f in stats if not f.empty]
+    fixtures = [f for f in fixtures if not f.empty]
+    return (pd.concat(stats, ignore_index=True) if stats else None,
+            pd.concat(fixtures, ignore_index=True) if fixtures else None)

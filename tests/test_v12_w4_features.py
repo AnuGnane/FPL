@@ -120,3 +120,150 @@ def test_the_builder_adds_exactly_two_columns_and_reorders_nothing():
     out = add_role_wb_share(players, _pms([{"gw": 1}]))
     assert list(out.columns) == list(players.columns) + ROLE_FEATURES
     assert list(out["code"]) == [1, 2, 3]
+
+
+# --- Task 8: density_pub_7d ---------------------------------------------
+
+from gaffer.data import store  # noqa: E402
+from gaffer.data.core_insights import ci_path  # noqa: E402
+from gaffer.features.engineer import (DENSITY_FEATURES,  # noqa: E402
+                                      DENSITY_WINDOW_DAYS, add_density_pub,
+                                      core_insights_frames)
+
+
+def _fx(rows: list[dict]) -> pd.DataFrame:
+    # Each fixture gets its own match_id unless the case overrides it. The
+    # builder counts *distinct matches*, so one shared default would collapse
+    # two real ties into one and let a test pass for the wrong reason —
+    # test_a_duplicated_fixture_row_counts_once is where the sharing is the
+    # point, and it says so by naming the id itself.
+    base = {"season": "2026-27", "season_idx": 4, "gw": 6,
+            "tournament": "prem", "team_code": 8,
+            "opponent_code": 91, "is_home": True, "finished": False}
+    out = pd.DataFrame([{**base, "match_id": f"m{i}", **r}
+                        for i, r in enumerate(rows)])
+    out["kickoff"] = pd.to_datetime(out["kickoff"], utc=True)
+    return out
+
+
+def _rows(rows: list[dict]) -> pd.DataFrame:
+    base = {"season_idx": 4, "gw": 6, "code": 1, "team_code": 8,
+            "kickoff_time": "2026-10-10T14:00:00Z"}
+    out = pd.DataFrame([{**base, **r} for r in rows])
+    out["kickoff_time"] = pd.to_datetime(out["kickoff_time"], utc=True)
+    return out
+
+
+def test_the_density_feature_names_are_two_and_stable():
+    assert DENSITY_FEATURES == ["density_pub_7d", "density_pub_missing"]
+    assert DENSITY_WINDOW_DAYS == 7
+
+
+def test_a_club_with_a_midweek_tie_reads_one():
+    fixtures = _fx([{"kickoff": "2026-10-07T19:00:00Z",
+                     "tournament": "efl-cup"},
+                    {"kickoff": "2026-10-10T14:00:00Z"}])
+    out = add_density_pub(_rows([{}]), fixtures)
+    assert out["density_pub_7d"].iloc[0] == 1.0
+    assert out["density_pub_missing"].iloc[0] == 0.0
+
+
+def test_the_fixture_being_predicted_is_not_counted_against_itself():
+    fixtures = _fx([{"kickoff": "2026-10-10T14:00:00Z"}])
+    assert add_density_pub(_rows([{}]), fixtures)["density_pub_7d"].iloc[0] \
+        == 0.0
+
+
+def test_a_match_eight_days_earlier_is_outside_the_window():
+    fixtures = _fx([{"kickoff": "2026-10-02T14:00:00Z"},
+                    {"kickoff": "2026-10-10T14:00:00Z"}])
+    assert add_density_pub(_rows([{}]), fixtures)["density_pub_7d"].iloc[0] \
+        == 0.0
+
+
+def test_european_and_league_ties_both_count():
+    fixtures = _fx([{"kickoff": "2026-10-06T19:00:00Z",
+                     "tournament": "champions-league"},
+                    {"kickoff": "2026-10-08T19:00:00Z",
+                     "tournament": "prem"},
+                    {"kickoff": "2026-10-10T14:00:00Z"}])
+    assert add_density_pub(_rows([{}]), fixtures)["density_pub_7d"].iloc[0] \
+        == 2.0
+
+
+def test_an_unplayed_future_tie_counts_which_is_the_whole_point():
+    fixtures = _fx([{"kickoff": "2026-10-07T19:00:00Z", "finished": False,
+                     "tournament": "efl-cup"},
+                    {"kickoff": "2026-10-10T14:00:00Z", "finished": False}])
+    assert add_density_pub(_rows([{}]), fixtures)["density_pub_7d"].iloc[0] \
+        == 1.0
+
+
+def test_another_clubs_ties_never_count():
+    fixtures = _fx([{"kickoff": "2026-10-07T19:00:00Z", "team_code": 3},
+                    {"kickoff": "2026-10-10T14:00:00Z"}])
+    assert add_density_pub(_rows([{}]), fixtures)["density_pub_7d"].iloc[0] \
+        == 0.0
+
+
+def test_another_seasons_ties_never_count():
+    fixtures = pd.concat([
+        _fx([{"kickoff": "2026-10-07T19:00:00Z"}]).assign(season_idx=3),
+        _fx([{"kickoff": "2026-10-10T14:00:00Z"}])])
+    assert add_density_pub(_rows([{}]), fixtures)["density_pub_7d"].iloc[0] \
+        == 0.0
+
+
+def test_a_duplicated_fixture_row_counts_once():
+    """The table emits one row per club per match, and a club can appear in
+    both a By Gameweek file and a re-collection; the count is over matches."""
+    fixtures = _fx([{"kickoff": "2026-10-07T19:00:00Z", "match_id": "cup1"},
+                    {"kickoff": "2026-10-07T19:00:00Z", "match_id": "cup1"},
+                    {"kickoff": "2026-10-10T14:00:00Z", "match_id": "lg"}])
+    assert add_density_pub(_rows([{}]), fixtures)["density_pub_7d"].iloc[0] \
+        == 1.0
+
+
+def test_no_collection_is_missing_everywhere_not_zero_everywhere():
+    out = add_density_pub(_rows([{}]), None)
+    assert np.isnan(out["density_pub_7d"].iloc[0])
+    assert out["density_pub_missing"].iloc[0] == 1.0
+
+
+def test_a_row_with_no_kickoff_time_is_missing_not_zero():
+    out = add_density_pub(_rows([{"kickoff_time": None}]),
+                          _fx([{"kickoff": "2026-10-07T19:00:00Z"}]))
+    assert np.isnan(out["density_pub_7d"].iloc[0])
+
+
+def test_the_density_builder_adds_two_columns_and_reorders_nothing():
+    rows = _rows([{"code": 1}, {"code": 2}])
+    out = add_density_pub(rows, _fx([{"kickoff": "2026-10-07T19:00:00Z"}]))
+    assert list(out.columns) == list(rows.columns) + DENSITY_FEATURES
+    assert list(out["code"]) == [1, 2]
+
+
+def test_nothing_collected_is_two_nones_and_not_two_empty_frames():
+    """The distinction both builders are written around: ``None`` is "this
+    machine has never run the collector", an empty frame would be "the club
+    played nothing"."""
+    assert core_insights_frames() == (None, None)
+
+
+def test_the_frames_are_enumerated_from_disk_and_not_from_a_season_list(
+        monkeypatch, tmp_path):
+    """Zero-arg by ruling: the seasons in play are whatever was collected.
+
+    ``load_training_frame`` has no season list in scope and
+    ``build_prediction_frame``'s frame has no ``season`` column, so a
+    signature taking one would have been populated at training time and empty
+    at serve time — v12 W2 §3.5's shape exactly.
+    """
+    monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")
+    store.save(_pms([{"gw": 1}]).assign(player_id=1, match_id="m"),
+               ci_path("2025-26", "players"))
+    store.save(_fx([{"kickoff": "2026-10-07T19:00:00Z"}]),
+               ci_path("2026-27", "fixtures"))
+    stats, fixtures = core_insights_frames()
+    assert stats is not None and list(stats["season"]) == ["2025-26"]
+    assert fixtures is not None and list(fixtures["season"]) == ["2026-27"]
