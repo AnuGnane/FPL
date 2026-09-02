@@ -210,12 +210,17 @@ def test_flat_chips_available_path_is_unchanged():
 
 def test_evaluate_chips_returns_an_empty_table_when_nothing_is_available():
     """A squad that has spent every chip is a normal late-season state, not an
-    error — the caller gets an empty [chip, gw, gain] frame to fold."""
+    error — the caller gets an empty [chip, gw, gain] frame to fold.
+
+    v12 W3 §4.5 added ``gw2`` — the second week of a chip *pair* — so the
+    empty frame carries it too. A column that appears and disappears with the
+    row count is worse than one that is always there and always None.
+    """
     state = SolveInput(owned_codes=list(OWNED), bank=0,
                        free_transfers=1, gws=[1, 2])
     table = evaluate_chips(_pool(), state, chips_available=[], **CFG)
     assert table.empty
-    assert list(table.columns) == ["chip", "gw", "gain", "per_week"]
+    assert list(table.columns) == ["chip", "gw", "gw2", "gain", "per_week"]
 
 
 def test_chip_plan_highlights_the_best_week_and_the_cost_of_playing_now():

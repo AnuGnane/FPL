@@ -78,6 +78,28 @@ small: it comes from the *baseline* now being an undecayed plan (on the
 recorded GW2 state, bench boost 4.65 -> 4.98, triple captain unchanged).
 """
 
+# v12 W3 §4.5 (specs/2026-09-01-gaffer-v12-program-design.md)
+PAIR_CHIP = "wildcard+bboost"
+"""The one chip *pair* this module evaluates: a wildcard in one week and a
+bench boost in a later one, scored as a single option.
+
+Named rather than composed, because everything downstream keys on the chip
+string: the workbench row, the UI's label table, the ledger. A name with a
+``+`` in it is deliberately not a two-letter code — there is no What-If code
+for a pair, and ``ChipsTab``'s mapping already leaves an unknown row alone
+rather than re-solving it as no chip at all.
+"""
+
+PAIR_DGW_MIN_PROB = 0.5
+"""How likely a double gameweek must be before a pair is evaluated for it.
+
+``data/chip_scenarios.toml`` carries probabilities, and today's writer only
+ever writes ``1.0`` — a double in the published fixture list, not a guess. The
+bar exists for the day the file carries projections: a bench boost planned
+around a 30%-likely double is a plan around a rumour, and the extra solves it
+costs are spent on every wildcard week in the horizon.
+"""
+
 
 def chip_baseline(pool: pd.DataFrame, state: SolveInput, **cfg) -> Plan:
     """The no-chip plan every chip is scored against, solved undecayed.
@@ -103,8 +125,13 @@ def _weeks_covered(chip: str, gw: int, gws: list[int]) -> int:
     one. Comparing those totals is how "play it now" won by default; dividing
     by this makes the weeks comparable. The other three chips are one-week
     chips and score one week wherever they land.
+
+    v12 W3 §4.5: a pair carrying a wildcard is credited the wildcard's weeks —
+    the bench boost inside it is still a one-week chip, but the squad rebuild
+    that dominates the option's value runs to the end of the window exactly as
+    a lone wildcard's does.
     """
-    if chip != "wildcard":
+    if not chip.startswith("wildcard"):
         return 1
     return sum(1 for g in gws if g >= gw)
 
@@ -113,10 +140,11 @@ def evaluate_chips(pool: pd.DataFrame, state: SolveInput,
                    chips_available: list[str] | None = None,
                    base: Plan | None = None,
                    avail_by_gw: dict[int, list[str]] | None = None,
+                   dgw_gws: set[int] | None = None,
                    **cfg) -> pd.DataFrame:
     """Objective delta of playing each available chip in each horizon GW vs the
     no-chip plan. Chips: wildcard, bboost, 3xc (freehit separately below).
-    Returns [chip, gw, gain, per_week] sorted by gain desc.
+    Returns [chip, gw, gw2, gain, per_week] sorted by gain desc.
 
     Every solve here is undecayed (see the module note), so ``gain`` is
     expected points over the horizon rather than a discounted objective.
@@ -136,6 +164,16 @@ def evaluate_chips(pool: pd.DataFrame, state: SolveInput,
     boundary and the two halves differ -- as ``avail_by_gw``, a gameweek ->
     chips mapping. ``avail_by_gw`` wins when both are given; a gameweek missing
     from it has no chips available.
+
+    ``dgw_gws`` (v12 W3 §4.5) are the horizon gameweeks believed to be doubles.
+    Given a non-empty set, the table also carries the wildcard-plus-bench-boost
+    *pair*: a wildcard in ``g`` and a bench boost in a later ``g2`` that is one
+    of them, scored as one option against the same no-chip baseline, with
+    ``gw`` the wildcard's week and ``gw2`` the boost's. Omitted — which is
+    every caller but ``advise`` — the table is exactly the table it was, and
+    that is not a convenience: ``backtest``'s chip executor has no branch for a
+    pair, so a pair row reaching it would be recorded as played and applied to
+    nothing.
     """
     cfg = _eval_cfg(cfg)
     if base is None:
@@ -148,9 +186,9 @@ def evaluate_chips(pool: pd.DataFrame, state: SolveInput,
 
     rows = []
 
-    def add(chip: str, gw: int, gain: float) -> None:
+    def add(chip: str, gw: int, gain: float, gw2: int | None = None) -> None:
         weeks = _weeks_covered(chip, gw, state.gws)
-        rows.append({"chip": chip, "gw": gw, "gain": gain,
+        rows.append({"chip": chip, "gw": gw, "gw2": gw2, "gain": gain,
                      "per_week": gain / weeks})
 
     for gw in state.gws:
@@ -168,11 +206,34 @@ def evaluate_chips(pool: pd.DataFrame, state: SolveInput,
         if "freehit" in available(gw):
             add("freehit", gw,
                 free_hit_gain(pool, state, gw, base=base, **cfg))
+    # v12 W3 §4.5 (specs/2026-09-01-gaffer-v12-program-design.md): the pair.
+    # Only into a believed double, and only forward — a bench boost in the
+    # wildcard's own week is not playable (one chip per gameweek), and a boost
+    # before the rebuild is just a bench boost. Bounded by the doubles in the
+    # horizon rather than by the horizon squared.
+    for g in state.gws:
+        if not dgw_gws or "wildcard" not in available(g):
+            continue
+        for g2 in state.gws:
+            if g2 <= g or int(g2) not in dgw_gws:
+                continue
+            if "bboost" not in available(g2):
+                continue
+            p = solve_plan(pool, replace(state, wildcard_gw=g,
+                                         bench_boost_gw=g2), **cfg)
+            add(PAIR_CHIP, g, p.objective - base.objective, gw2=g2)
     if not rows:
         # Every chip spent is a normal late-season state; hand back the empty
         # frame rather than letting the column-less DataFrame blow up below.
-        return pd.DataFrame(columns=["chip", "gw", "gain", "per_week"])
-    return (pd.DataFrame(rows)
+        return pd.DataFrame(columns=["chip", "gw", "gw2", "gain", "per_week"])
+    frame = pd.DataFrame(rows)
+    # ``gw2`` is None on every ordinary row, and pandas turns a column of
+    # None-and-int into float64 with NaN — which pydantic's ``int | None`` then
+    # refuses, and which json.dumps writes as a bare NaN. Held as an object
+    # column so a None stays a None.
+    frame["gw2"] = frame["gw2"].astype("object").where(frame["gw2"].notna(),
+                                                       None)
+    return (frame
             .assign(gain=lambda d: d["gain"].round(2),
                     per_week=lambda d: d["per_week"].round(2))
             .sort_values("gain", ascending=False).reset_index(drop=True))

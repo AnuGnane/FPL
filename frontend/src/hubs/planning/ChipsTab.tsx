@@ -16,6 +16,8 @@ const LABELS: Record<string, string> = {
   bboost: 'Bench Boost',
   freehit: 'Free Hit',
   '3xc': 'Triple Captain',
+  // v12 W3 §4.5: the one chip *pair*, named rather than composed.
+  'wildcard+bboost': 'Wildcard + Bench Boost',
 }
 
 // The chip table speaks the solver's names; the What-If request speaks the
@@ -260,7 +262,8 @@ export default function ChipsTab() {
                     </button>
                   </td>
                   <td className="num py-1.5 text-right text-text-secondary">
-                    GW{row.gw}
+                    {row.gw2 == null ? `GW${row.gw}`
+                      : `GW${row.gw} + GW${row.gw2}`}
                   </td>
                   <td className={`num py-1.5 text-right ${row.play_now
                     ? 'text-sage' : 'text-text'}`}>{row.gain}</td>

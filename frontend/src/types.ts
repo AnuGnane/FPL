@@ -603,6 +603,9 @@ export interface QualityData {
 export interface ChipWorkbenchRow {
   chip: string
   gw: number
+  /** The second week of a chip *pair* — the bench boost's, where `gw` is the
+   *  wildcard's. Null or absent on every single-chip row (v12 W3 §4.5). */
+  gw2?: number | null
   gain: number
   per_week: number | null
   /** The θ bar for that chip in that week — the surplus the best remaining

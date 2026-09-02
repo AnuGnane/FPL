@@ -83,6 +83,10 @@ def chips() -> ChipsWorkbench:
 
     rows = [ChipWorkbenchRow(chip=str(r.get("chip", "")),
                              gw=int(r.get("gw", first_gw)),
+                             # v12 W3 §4.5
+                             # (specs/2026-09-01-gaffer-v12-program-design.md)
+                             gw2=(None if r.get("gw2") is None
+                                  else int(r["gw2"])),
                              gain=float(r.get("gain", 0.0)),
                              per_week=(None if r.get("per_week") is None
                                        else float(r["per_week"])),

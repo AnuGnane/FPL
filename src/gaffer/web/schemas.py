@@ -611,6 +611,12 @@ class ChipWorkbenchRow(BaseModel):
 
     chip: str
     gw: int
+    gw2: int | None = None
+    """The second week of a chip *pair* — the bench boost's, where ``gw`` is
+    the wildcard's. ``None`` on every single-chip row, which is every row on
+    every payload written before v12 and every row until the fixture list
+    carries a double."""
+
     gain: float
     per_week: float | None = None
     threshold: float | None = None

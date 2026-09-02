@@ -63,8 +63,8 @@ from gaffer.models.team import (ODDS_AGAINST_COL, ODDS_BLEND_WEIGHT,
                                 odds_blend_weight)
 from gaffer.models.train import (cup_matches, load_training_frame,
                                  understat_team_rolled)
-from gaffer.optimize.chips import (chip_baseline, evaluate_chips,
-                                   wildcard_now_assessment)
+from gaffer.optimize.chips import (PAIR_DGW_MIN_PROB, chip_baseline,
+                                   evaluate_chips, wildcard_now_assessment)
 # v12 W1 §2.2 (specs/2026-09-01-gaffer-v12-program-design.md): the two
 # thresholds transfer_tag reads used to be defined here, in fractions, while
 # optimize/differentials.py carried a DIFFERENTIAL_EO of its own in percent.
@@ -738,8 +738,11 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     # optimum and every scenario are priced identically.
     priors = load_decision_priors() if cfg.decision_priors else None
     ft_lambda = lambda_from_priors(priors)
-    chip_thresholds = chip_thresholds_from_asset(
-        priors, load_chip_scenarios())
+    # v12 W3 §4.5: kept rather than passed straight through — the same
+    # probabilities decide θ's tail and which weeks a chip pair is worth
+    # solving for, and reading the file twice is two chances to disagree.
+    dgw_probs = load_chip_scenarios()
+    chip_thresholds = chip_thresholds_from_asset(priors, dgw_probs)
     opt_kw = dict(decay=cfg.decay, bench_weight=cfg.bench_weight,
                   vice_weight=cfg.vice_weight, ft_value=cfg.ft_value,
                   itb_value=cfg.itb_value, hit_cost=cfg.hit_cost,
@@ -899,7 +902,15 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         # rather than inside each helper, which would repeat the same MILP.
         chip_base = chip_baseline(chip_pool, state, **opt_kw)
         chip_table = evaluate_chips(chip_pool, state, base=chip_base,
-                                    avail_by_gw=avail_by_gw, **opt_kw)
+                                    avail_by_gw=avail_by_gw,
+                                    # v12 W3 §4.5: the weeks a pair is worth
+                                    # solving for. Empty until the fixture
+                                    # list carries a real double, which is
+                                    # every week of the season as published.
+                                    dgw_gws={int(g) for g, p
+                                             in dgw_probs.items()
+                                             if p >= PAIR_DGW_MIN_PROB},
+                                    **opt_kw)
         chip_rows = chip_table.to_dict("records")
         for row in chip_rows:
             if row["chip"] == "freehit":

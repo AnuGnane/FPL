@@ -98,6 +98,27 @@ describe('chips tab', () => {
     expect(sources.map((n) => n.textContent)).toEqual(['θ', 'flat'])
   })
 
+  it('names both weeks of a chip pair', async () => {
+    // v12 W3 §4.5. A pair is one option, so it is one row — the wildcard's
+    // week and the boost's, under one label. Dead on today's data (no
+    // chip_scenarios.toml), which is why the served shape is pinned here.
+    apiGet.mockImplementation((path: string) => {
+      if (path.startsWith('/api/chips')) return Promise.resolve({
+        ...CHIPS,
+        chips: [
+          { chip: 'wildcard+bboost', gw: 4, gw2: 7, gain: 12.5,
+            per_week: 3.1, threshold: 8.0, play_now: true, note: null },
+        ],
+      })
+      if (path.startsWith('/api/players')) return Promise.resolve(PLAYERS)
+      return Promise.resolve({})
+    })
+    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    expect(await screen.findByText('Wildcard + Bench Boost'))
+      .toBeInTheDocument()
+    expect(screen.getByText('GW4 + GW7')).toBeInTheDocument()
+  })
+
   it('marks the weeks worth playing now', async () => {
     render(<MemoryRouter><ChipsTab /></MemoryRouter>)
     await screen.findAllByText(/wildcard/i)
