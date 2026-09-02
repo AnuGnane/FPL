@@ -113,9 +113,9 @@ record of calls made rather than anything the tool reads.
 is never pruned** — a retention rule reaching across it would be this tool
 deleting files on a machine it does not own, over a protocol with no undo. A
 failed copy is not fatal: the local archive exists, and saying nothing was
-backed up would be false. The archive is written to a dotted `.part` sibling
-and renamed into place, so a full disk leaves no truncated file for the next
-run's prune to count as a backup.
+backed up would be false. The archive is written through the tree's atomic-write
+helper — a temp sibling, renamed into place — so a full disk or a Ctrl-C leaves
+no truncated file for the next run's prune to count as a backup.
 
 ### `gaffer tidy`
 
@@ -135,8 +135,10 @@ which pairs with no report by design; the availability, field EO, price and
 presser logs, which are the corpus rather than output; and `logs/advise.log`,
 which is `/api/health`'s launchd line and which the 30-day cutoff would have
 swallowed within a week. It refuses a negative `--older-than`, and refuses to
-run at all outside the project root — "nothing to tidy" from the wrong
-directory is indistinguishable from a clean tree.
+run at all when `logs/` is absent — that is the check, not a project-root
+detection, and it stands in for one because the usual way to have no `logs/`
+is to be in the wrong directory, where "nothing to tidy" is indistinguishable
+from a clean tree.
 
 ### `gaffer mcp`
 
@@ -601,10 +603,9 @@ left the temp behind for ever in a cache directory that is permanent by design.
 **Five things this cycle left open, deliberately.**
 
 1. `journal.py` keeps its own copy of the atomic-write idiom: it is import-only
-   for this cycle. A census rail names the surviving copies — `io.py`,
-   `journal.py` and `backup.py`, which renames a streamed tarball rather than
-   handing bytes to the helper — as an equality rather than a `<=`, so a
-   twenty-first copy cannot appear quietly.
+   for this cycle. A census rail names the surviving copies — `io.py` and
+   `journal.py` — as an equality rather than a `<=`, so a twenty-first copy
+   cannot appear quietly.
 2. The spec asked for a `[solver]` section; there is none. `top_n` lives in the
    existing `[optimizer]` beside every other solver knob, by ruling — which
    means the price-timing and settings-whitelist work in later workstreams

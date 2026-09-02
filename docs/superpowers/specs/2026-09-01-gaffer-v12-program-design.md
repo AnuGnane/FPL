@@ -148,7 +148,7 @@ produces an archive that restores (test extracts and diffs a fixture tree);
 
 ### G1 — suites, rails, pins (measured by the implementer)
 
-- [x] `.venv/bin/pytest -q` — **3354 passed** (branch baseline 3193 + 161 new)
+- [x] `.venv/bin/pytest -q` — **3356 passed** (branch baseline 3193 + 163 new)
 - [x] `npx tsc --noEmit` — clean
 - [x] `npx vitest run` — **680 passed, 1 skipped** (baseline 655 + 25 new)
 - [x] `npm run build` — clean
@@ -167,10 +167,11 @@ produces an archive that restores (test extracts and diffs a fixture tree);
 - [x] Exactly one file in the suite pins each absolute count: routes in
       `test_v11_degradation.py`, config fields in `test_v12_w1_degradation.py`
 - [x] `os.replace` census: nineteen of twenty copies migrated; the survivors
-      are `gaffer/io.py`, `gaffer/journal.py` (import-only) and
-      `gaffer/backup.py`, which renames a streamed tarball from a `.part`
-      sibling rather than handing bytes to the helper — asserted by name as an
-      equality so a twenty-first cannot appear quietly
+      are `gaffer/io.py` and `gaffer/journal.py` (import-only) — asserted by
+      name as an equality so a twenty-first cannot appear quietly. `backup.py`
+      streams a tarball rather than handing over bytes and so looked like a
+      case the helper could not serve; `atomic_path` yields the temp path and
+      serves it exactly
 - [x] Rails: a failed write leaves the previous file intact in all three
       families; a bare `latest_field_eo()` is a `TypeError`; `season_ok` is
       `None` and not `False` on a clone with no events; `track-pens` refuses
@@ -193,12 +194,14 @@ produces an archive that restores (test extracts and diffs a fixture tree);
       `pytest -k restore` selects nothing — the test is named
       `test_the_archive_extracts_to_a_tree_that_matches`; `-k "restore or
       extracts"` is the working selector.)
-- [ ] `gaffer refresh` against the live API passes the rollover guard.
-      **Not run by the implementer**: `refresh` writes into `data/`, which
-      this cycle's staging rule forbids touching, and a network round trip is
-      not something a build step should decide to make. The guard's disk-side
-      behaviour is covered by `tests/test_v12_season_rollover.py`; this box is
-      the orchestrator's, on the dev machine. A refusal there means either the
+- [x] `gaffer refresh` against the live API passes the rollover guard. **Run
+      by the orchestrator, 2026-09-02, on the dev tree** — not by the
+      implementer: `refresh` writes into `data/`, which this cycle's staging
+      rule forbids touching, and a network round trip is not something a build
+      step should decide to make. The matching season refreshed **1236 rows**;
+      a deliberately mismatched `current_season` was refused with exit 1 and
+      the two-key remedy message. The guard's disk-side behaviour is covered
+      by `tests/test_v12_season_rollover.py`. A refusal here means either the
       guard is wrong or `config.toml` genuinely names the wrong season —
       check which before "fixing" anything.
 

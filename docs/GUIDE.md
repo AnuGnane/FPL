@@ -477,8 +477,8 @@ ones):
   *and* bump `current_season` together, then `gaffer build-history` and
   `gaffer train`. The README's Retraining section explains why both. Since
   v12, `gaffer refresh` **refuses** to ingest a season `current_season` does
-  not name, printing both values and both keys. Editing `[season]` —
-  `current_season` in the `[data]` block — is the remedy, and it is the only
+  not name, printing both values and both keys. Editing `current_season` in
+  the `[data]` block of `config.toml` is the remedy, and it is the only
   one: there is no escape flag, deliberately, because the failure it prevents
   (August rows written under last season's index, then trained on) is silent,
   and a `--force` would be reached for on exactly the morning it matters.
