@@ -14,6 +14,7 @@ from fastapi import APIRouter, Query
 
 from gaffer.artifacts import (latest_gw, load_components, load_snapshot,
                               load_solve_state)
+from gaffer.config import load_config
 from gaffer.data.field import latest_field_eo
 from gaffer.errors import GafferError
 from gaffer.uncertainty import band_for, shipped_table, xmins_by_player_gw
@@ -145,8 +146,15 @@ def players(position: str | None = None, team: int | None = None,
     noise = shipped_table()
     # Pure display: an unreadable log is a missing column, never a 500. The
     # explorer must render on a clone that has never run a scrape.
+    #
+    # v12 W1 §2.3: seasoned. This call was bare for two cycles and v10b
+    # recorded it as a residual — `element` is season-scoped, so after a
+    # rollover the largest gameweek in the log is last season's and every row
+    # on this page would have carried a different footballer's ownership.
+    # `load_config` can raise on a clone with no config.toml, which is why it
+    # is inside the try with the read.
     try:
-        field_eo = latest_field_eo()
+        field_eo = latest_field_eo(season=load_config().current_season)
     except Exception:  # noqa: BLE001
         field_eo = {}
 

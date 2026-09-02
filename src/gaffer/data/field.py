@@ -177,15 +177,32 @@ def append_field_eo(rows: pd.DataFrame) -> int:
     return int(len(rows))
 
 
-def load_field_eo() -> pd.DataFrame:
-    """Every banked row, or an empty frame with the right columns."""
+def load_field_eo(*, season: str | None = None) -> pd.DataFrame:
+    """Every banked row, or an empty frame with the right columns.
+
+    v12 W1 §2.3: ``season`` narrows the log before anything reads it.
+    Optional here and *required* on :func:`latest_field_eo`, deliberately —
+    this one is the raw reader the scrape's own tests use to count what was
+    banked, where "everything" is a legitimate question. The derived reader
+    answers a question about *a* season, where it is not.
+
+    A log with no ``season`` column is a log written before the column
+    existed; a named season over such a log is empty, not "everything", for
+    the same reason ``latest_field_eo`` has no fallback — "whatever is there"
+    is exactly the answer the season keyword exists to prevent.
+    """
     if not store.exists(FIELD_EO_PATH):
         return pd.DataFrame(columns=FIELD_EO_COLS)
-    return store.load(FIELD_EO_PATH)
+    log = store.load(FIELD_EO_PATH)
+    if season is None:
+        return log
+    if "season" not in log.columns:
+        return log.iloc[0:0]
+    return log[log["season"].astype(str) == str(season)]
 
 
 def latest_field_eo(gw: int | None = None, *,
-                    season: str | None = None) -> dict[int, dict]:
+                    season: str) -> dict[int, dict]:
     """``element -> {"eo", "se", "n", "gw"}`` for the newest scrape.
 
     One row per element, from the latest ``snap_date`` of the latest gameweek
@@ -193,36 +210,31 @@ def latest_field_eo(gw: int | None = None, *,
     a column that showed a Saturday number beside a Sunday one would be a
     column nobody could reason about.
 
-    ``season`` narrows the log to one season before any of that happens. See
-    the guard below for why it exists and why it is optional.
+    ``season`` narrows the log to one season before any of that happens, and
+    v12 W1 §2.3 made it **required**. See the comment below for why.
 
     Empty dict on any failure at all — no log, an unreadable log, a log with
     no rows. F4 is display, and a missing display column is the documented
     degradation (spec §4).
     """
-    try:
-        log = load_field_eo()
-    except Exception:  # noqa: BLE001 — a display read never blocks a page
-        return {}
-    if log.empty:
-        return {}
-    frame = log.copy()
-    # v10b §F1a (specs/2026-09-01-gaffer-v10b-eo-chips-design.md, plan A3).
+    # v10b §F1a (specs/2026-09-01-gaffer-v10b-eo-chips-design.md, plan A3),
+    # completed by v12 W1 §2.3 (specs/2026-09-01-gaffer-v12-program-design.md).
     # ``element`` is season-scoped — FIELD_EO_COLS says so — so a log holding
     # two seasons has two different footballers under one element id, and
     # ``max(gw)`` below picks the *larger gameweek number*, which after a
-    # rollover is last season's. A named season is filtered first; an unnamed
-    # one keeps today's behaviour byte for byte, because ``routers/players.py``
-    # calls it that way and this cycle does not change that page.
+    # rollover is last season's. The keyword is required rather than optional
+    # now, because an optional one is a keyword a caller can forget — and
+    # ``routers/players.py`` forgot it for two cycles, recorded as a residual
+    # twice, because the bug cannot fire until August.
     #
     # No fallback when the named season has no rows: "whatever is newest"
     # would restore exactly the failure this keyword exists to prevent.
-    if season is not None:
-        if "season" not in frame.columns:
-            return {}
-        frame = frame[frame["season"].astype(str) == str(season)]
-        if frame.empty:
-            return {}
+    try:
+        frame = load_field_eo(season=season).copy()
+    except Exception:  # noqa: BLE001 — a display read never blocks a page
+        return {}
+    if frame.empty:
+        return {}
     frame["gw"] = pd.to_numeric(frame["gw"], errors="coerce")
     frame = frame.dropna(subset=["gw"])
     if frame.empty:

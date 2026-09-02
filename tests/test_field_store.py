@@ -123,14 +123,14 @@ def test_the_latest_read_answers_the_newest_gameweek(here):
     append_field_eo(field_eo_rows(TABLE, 3, "2026-27", day="2026-09-12"))
     append_field_eo(field_eo_rows({7: {"eo": 10.0, "se": 1.0, "n": 2}},
                                   4, "2026-27", day="2026-09-19"))
-    latest = latest_field_eo()
+    latest = latest_field_eo(season="2026-27")
     assert set(latest) == {7}
     assert latest[7]["eo"] == 10.0
     assert latest[7]["gw"] == 4
 
 
 def test_the_latest_read_of_an_absent_log_is_an_empty_dict(here):
-    assert latest_field_eo() == {}
+    assert latest_field_eo(season="2026-27") == {}
 
 
 def test_two_scrapes_of_one_gameweek_keep_only_the_later_day(here):
@@ -141,4 +141,4 @@ def test_two_scrapes_of_one_gameweek_keep_only_the_later_day(here):
     append_field_eo(field_eo_rows({7: {"eo": 99.0, "se": 1.0, "n": 2}},
                                   3, "2026-27", day="2026-09-13"))
     assert len(load_field_eo()) == 3
-    assert latest_field_eo()[7]["eo"] == 99.0
+    assert latest_field_eo(season="2026-27")[7]["eo"] == 99.0

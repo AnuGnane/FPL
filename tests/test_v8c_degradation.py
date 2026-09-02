@@ -69,7 +69,9 @@ def test_the_explorer_column_is_absent_rather_than_zero(bare):
 
 
 def test_the_latest_read_of_a_missing_log_is_empty(bare):
-    assert latest_field_eo() == {}
+    # v12 W1 §2.3: `season` is a required keyword now. The claim is unchanged;
+    # a bare tree has no rows for any season.
+    assert latest_field_eo(season="2026-27") == {}
     assert not store.exists(FIELD_EO_PATH)
 
 

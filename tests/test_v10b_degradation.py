@@ -119,18 +119,33 @@ def test_a_payload_with_no_captain_comes_back_identical(clone):
     assert field_frame.with_field_frame(payload, 2) == payload
 
 
-def test_the_explorers_own_call_is_unchanged(clone):
-    """Task 1's degradation direction, asserted here too because it is the
-    thing a later cleanup would "simplify" away: ``routers/players.py`` calls
-    ``latest_field_eo()`` with no arguments and must keep getting the largest
-    gameweek in the file, season or no season."""
+def test_the_explorer_reads_this_season_and_not_the_larger_gameweek(clone):
+    """v12 W1 §2.3 (specs/2026-09-01-gaffer-v12-program-design.md).
+
+    This was ``test_the_explorers_own_call_is_unchanged``, and it asserted the
+    opposite: that ``routers/players.py`` called ``latest_field_eo()`` bare and
+    kept getting the largest gameweek in the file, season or no season. v10b
+    wrote it that way because the change was out of that cycle's scope and the
+    bug could not fire until a rollover; v11's plan A2 looked at it again and
+    left it for the same reason. v12 §2.3 closes it.
+
+    The fixture is v10b's, unchanged, and it is the rollover in miniature: two
+    seasons, one element id, two different footballers. Last season's row has
+    the larger gameweek number, so "newest" and "this season's" disagree — and
+    the explorer must now pick the second.
+    """
     store.save(pd.DataFrame([
         {"season": "2025-26", "gw": 38, "snap_date": "2026-05-24",
          "element": 411, "eo": 90.0, "se": 1.0, "n": 300},
         {"season": "2026-27", "gw": 2, "snap_date": "2026-08-31",
          "element": 411, "eo": 10.0, "se": 1.0, "n": 300},
     ]), "live/field_eo_log.parquet")
-    assert latest_field_eo()[411]["eo"] == 90.0
+    assert latest_field_eo(season="2026-27")[411]["eo"] == 10.0
+    assert latest_field_eo(season="2025-26")[411]["eo"] == 90.0
+    # And the keyword cannot be forgotten any more, which is the half of §2.3
+    # that needed the signature to change rather than the call.
+    with pytest.raises(TypeError):
+        latest_field_eo()
 
 
 # --- Block 2: §F2's byte-identity, and the replay this replaces ----------

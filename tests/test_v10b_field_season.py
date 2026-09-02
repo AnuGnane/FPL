@@ -44,12 +44,15 @@ def two_seasons(tmp_path, monkeypatch):
     return tmp_path
 
 
-def test_without_a_season_it_reads_the_largest_gameweek_as_it_always_has(
+def test_naming_last_season_still_reads_last_seasons_largest_gameweek(
         two_seasons):
-    """The degradation direction, pinned first. ``routers/players.py`` calls
-    this with no arguments and must get exactly what it got yesterday —
-    including, for now, the wrong answer across a season boundary."""
-    assert latest_field_eo()[411]["eo"] == 71.0
+    """v12 W1 §2.3: this was ``test_without_a_season_it_reads_the_largest_
+    gameweek_as_it_always_has``, and it pinned the degradation direction — a
+    bare call kept getting the largest gameweek in the file, wrong answer
+    across a season boundary included. The keyword is required now, so the
+    bare call is a TypeError and the claim that survives is the other half of
+    it: naming the older season still reaches its rows."""
+    assert latest_field_eo(season="2026-27")[411]["eo"] == 71.0
 
 
 def test_naming_the_season_reads_that_seasons_newest_scrape(two_seasons):
@@ -71,16 +74,17 @@ def test_a_season_with_no_rows_is_an_empty_dict_not_a_fallback(two_seasons):
     assert latest_field_eo(season="2028-29") == {}
 
 
-def test_a_log_with_no_season_column_still_answers_the_unseasoned_call(
+def test_a_log_with_no_season_column_is_empty_for_any_named_season(
         tmp_path, monkeypatch):
-    """A log banked before the column existed. ``None`` must still work; a
-    named season over such a log is an empty dict, not a KeyError."""
+    """A log banked before the column existed. v12 W1 §2.3: the unseasoned
+    call this test also made is gone with the optional keyword, and what is
+    left is the claim that mattered — a named season over such a log is an
+    empty dict, not a KeyError and not "everything"."""
     monkeypatch.chdir(tmp_path)
     (tmp_path / "data" / "live").mkdir(parents=True)
     store.save(pd.DataFrame([{"gw": 2, "snap_date": "2026-08-31",
                               "element": 7, "eo": 40.0, "se": 1.0, "n": 300}]),
                "live/field_eo_log.parquet")
-    assert latest_field_eo()[7]["eo"] == 40.0
     assert latest_field_eo(season="2026-27") == {}
 
 
