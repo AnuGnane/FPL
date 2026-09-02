@@ -65,7 +65,12 @@ from gaffer.models.train import (cup_matches, load_training_frame,
                                  understat_team_rolled)
 from gaffer.optimize.chips import (chip_baseline, evaluate_chips,
                                    wildcard_now_assessment)
-from gaffer.optimize.differentials import (captain_table, threat_board,
+# v12 W1 §2.2 (specs/2026-09-01-gaffer-v12-program-design.md): the two
+# thresholds transfer_tag reads used to be defined here, in fractions, while
+# optimize/differentials.py carried a DIFFERENTIAL_EO of its own in percent.
+# One set now, in one unit, in the module that owns EO thresholds.
+from gaffer.optimize.differentials import (DIFFERENTIAL_EO, TEMPLATE_EO,
+                                           captain_table, threat_board,
                                            transfer_alternatives)
 from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
                                          load_chip_scenarios)
@@ -456,13 +461,6 @@ def predict_components(pred_frame: pd.DataFrame, tg_future: pd.DataFrame,
                             attack_multipliers(team_model)):
         print(line)
     return add_pen_ep(comp, players, pens, attack_multipliers(team_model))
-
-
-DIFFERENTIAL_EO = 0.3
-"""Below this league-EO fraction a buy is an attacking punt on the field."""
-
-TEMPLATE_EO = 0.7
-"""At or above it, buying is covering a player the league already owns."""
 
 
 def transfer_tag(eo_pct: float | None, has_strategy: bool) -> str:

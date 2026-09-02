@@ -19,11 +19,32 @@ from __future__ import annotations
 
 import pandas as pd
 
-DIFFERENTIAL_EO = 30.0
+# v12 W1 §2.2 (specs/2026-09-01-gaffer-v12-program-design.md). Three
+# thresholds on effective ownership, in one place and in one unit. They were
+# in two places and two units: advise.py carried DIFFERENTIAL_EO = 0.3 and
+# TEMPLATE_EO = 0.7 as fractions, this module carried DIFFERENTIAL_EO = 30.0
+# and ALTERNATIVE_EO = 20.0 as percentages, and the two DIFFERENTIAL_EOs were
+# the same threshold on the same quantity — which is a coincidence waiting to
+# stop being one.
+#
+# Fractions, because that is the unit a probability-shaped quantity should be
+# in and because a reader who sees 0.30 cannot mistake it for a count. The two
+# comparisons in this module read `league_eo`, which is a *percentage* on the
+# frame, so they multiply at the point of comparison rather than dividing the
+# column: `league_eo` is returned to callers and rescaling it would change a
+# served number.
+DIFFERENTIAL_EO = 0.30
 """Rival EO below which a captain pick is a genuine rank differential."""
 
-ALTERNATIVE_EO = 20.0
+ALTERNATIVE_EO = 0.20
 """Rival EO below which a same-position swap counts as 'being brave'."""
+
+TEMPLATE_EO = 0.70
+"""At or above it, buying a player is covering one the league already owns.
+
+Moved here from ``advise.py`` rather than found here: this module is the
+canonical home for EO thresholds and was missing the third.
+"""
 
 _ALT_COLS = ["code", "name", "ep", "p_haul", "league_eo"]
 
@@ -47,7 +68,10 @@ def captain_table(ep: pd.DataFrame, xi_codes: list[int],
     df = _with_eo(ep[ep["code"].isin(xi_codes)], league_eo)
     df = df.nlargest(top, "ep").reset_index(drop=True)
     median_haul = df["p_haul"].median()
-    df["differential"] = ((df["league_eo"] < DIFFERENTIAL_EO)
+    # league_eo is a percentage on this frame (captaincy can push it past 100);
+    # the constant is a fraction. Convert here rather than rescaling the
+    # column, which is returned to the caller.
+    df["differential"] = ((df["league_eo"] < DIFFERENTIAL_EO * 100)
                           & (df["p_haul"] >= median_haul))
     return df[["code", "name", "position", "ep", "p_haul", "league_eo",
                "differential"]]
@@ -70,7 +94,8 @@ def transfer_alternatives(ep: pd.DataFrame, buy_code: int,
     rec = match.iloc[0]
     alts = df[(df["position"] == rec["position"]) & (df["code"] != buy_code)
               & (df["ep"] >= rec["ep"] - margin)
-              & (df["league_eo"] < ALTERNATIVE_EO)]
+              # fraction constant, percent column — see captain_table.
+              & (df["league_eo"] < ALTERNATIVE_EO * 100)]
     return alts.sort_values("ep", ascending=False)[
         _ALT_COLS].reset_index(drop=True)
 
