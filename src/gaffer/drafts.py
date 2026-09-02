@@ -30,8 +30,9 @@ filing cabinet nobody opens."""
 NAME_MAX = 60
 
 CONSTRAINT_DEFAULTS: dict = {"lock": [], "ban": [], "force_in": [],
-                             "max_hits": 0, "chip": "none", "horizon": None}
-"""The six keys a draft may carry — ``WhatIfRequest``'s fields exactly.
+                             "force_out": [], "max_hits": 0, "chip": "none",
+                             "horizon": None}
+"""The seven keys a draft may carry — ``WhatIfRequest``'s fields exactly.
 
 Anything else in the payload is dropped rather than stored: the store is fed
 from an HTTP body, and a key the solver does not understand is a key that will
@@ -44,12 +45,15 @@ def drafts_path() -> Path:
 
 
 def normalize(constraints: dict | None) -> dict:
-    """The six keys, defaulted and typed. Never raises."""
+    """The seven keys, defaulted and typed. Never raises."""
     raw = dict(constraints or {})
     return {
         "lock": [int(c) for c in raw.get("lock") or []],
         "ban": [int(c) for c in raw.get("ban") or []],
         "force_in": [int(c) for c in raw.get("force_in") or []],
+        # v12 W3 §4.1: a draft written before the field carries no key, and
+        # ``or []`` reads that as "no forced sales" rather than as a KeyError.
+        "force_out": [int(c) for c in raw.get("force_out") or []],
         "max_hits": int(raw.get("max_hits") or 0),
         "chip": str(raw.get("chip") or "none"),
         "horizon": (None if raw.get("horizon") in (None, "")

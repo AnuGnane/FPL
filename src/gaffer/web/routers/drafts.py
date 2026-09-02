@@ -153,7 +153,11 @@ def compare_drafts(names: list[str], gw: int) -> dict:
                 bench_boost_gw=gws[0] if chip == "bboost" else None,
                 triple_captain_gw=gws[0] if chip == "3xc" else None,
                 locked_out=list(req.ban), locked_in=list(req.lock),
-                force_in_gw=list(req.force_in), max_hits=req.max_hits)
+                force_in_gw=list(req.force_in),
+                # v12 W3 §4.1: a draft is what you asked for, so the re-solve
+                # has to be able to ask for it. The free-hit branch above does
+                # not, for the reason ``whatif._validate`` refuses it.
+                force_out=list(req.force_out), max_hits=req.max_hits)
         try:
             plans = solve_plan(pool, solve_state, **opt).gw_plans
         except Exception as exc:  # noqa: BLE001 — one bad draft is a row

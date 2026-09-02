@@ -65,6 +65,16 @@ class WhatIfRequest(BaseModel):
     lock: list[int] = Field(default_factory=list)
     ban: list[int] = Field(default_factory=list)
     force_in: list[int] = Field(default_factory=list)
+    # v12 W3 §4.1 (specs/2026-09-01-gaffer-v12-program-design.md)
+    force_out: list[int] = Field(default_factory=list)
+    """Owned players the solve must sell in the first horizon gameweek.
+
+    Not ``ban``: banning an owned player removes him from the candidate pool
+    entirely, which also forbids buying him back and — because he leaves the
+    pool rather than the squad — never credits the bank with his sale. This
+    says "sell him", which is the instruction the planner board's handoff has
+    been approximating with ``ban`` since v11.
+    """
     max_hits: int = 0
     chip: Literal["none", "wc", "bb", "fh", "tc"] = "none"
     horizon: int | None = None

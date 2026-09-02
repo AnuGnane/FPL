@@ -44,7 +44,12 @@ def _validate(req: WhatIfRequest, state) -> None:
                     f"player {both[0]} cannot be both locked in and banned",
                     both)
     known = {int(c) for c in state.pool["code"]}
-    unknown = sorted({*req.lock, *req.ban, *req.force_in} - known)
+    # v12 W3 §4.1 (specs/2026-09-01-gaffer-v12-program-design.md): force_out is
+    # checked against the same pool as the other three — ``_solve_once``
+    # refuses an unknown code with a GafferError, which would reach the user as
+    # a failed job rather than as a 422 beside the input he typed.
+    unknown = sorted({*req.lock, *req.ban, *req.force_in,
+                      *req.force_out} - known)
     if unknown:
         raise _fail("unknown_player",
                     f"player {unknown[0]} is not in this week's candidate "
@@ -59,6 +64,31 @@ def _validate(req: WhatIfRequest, state) -> None:
         raise _fail("force_in_and_ban",
                     f"player {forced_and_banned[0]} cannot be forced in and "
                     f"banned", forced_and_banned)
+    # v12 W3 §4.1 (specs/2026-09-01-gaffer-v12-program-design.md). Four
+    # combinations that cannot mean anything, each named where the user typed
+    # it rather than left to produce a constraint that silently does nothing.
+    not_owned = sorted(set(req.force_out) - set(state.owned_codes))
+    if not_owned:
+        raise _fail("force_out_not_owned",
+                    f"you do not own player {not_owned[0]} — use ban to keep "
+                    f"him out of the squad", not_owned)
+    out_and_lock = sorted(set(req.force_out) & set(req.lock))
+    if out_and_lock:
+        raise _fail("force_out_and_lock",
+                    f"player {out_and_lock[0]} cannot be both kept and sold",
+                    out_and_lock)
+    out_and_ban = sorted(set(req.force_out) & set(req.ban))
+    if out_and_ban:
+        raise _fail("force_out_and_ban",
+                    f"banning player {out_and_ban[0]} removes him without "
+                    f"sale proceeds; force_out sells him — pick one",
+                    out_and_ban)
+    if req.force_out and req.chip == "fh":
+        # A free hit squad is conjured from nothing (``owned_codes=[]``), so
+        # there is nobody to sell and the constraint would apply to no one.
+        raise _fail("force_out_on_free_hit",
+                    "a free hit squad is built from scratch, so there is "
+                    "nothing to force out of it", list(req.force_out))
     if req.chip != "none":
         chip = CHIP_CODES[req.chip]
         available = state.avail_by_gw.get(state.gws[0], [])
@@ -137,7 +167,9 @@ def solve_whatif(req: WhatIfRequest, gw: int) -> dict:
         bench_boost_gw=gws[0] if chip == "bboost" else None,
         triple_captain_gw=gws[0] if chip == "3xc" else None,
         locked_out=list(req.ban), locked_in=list(req.lock),
-        force_in_gw=list(req.force_in), max_hits=req.max_hits)
+        force_in_gw=list(req.force_in),
+        # v12 W3 §4.1 (specs/2026-09-01-gaffer-v12-program-design.md)
+        force_out=list(req.force_out), max_hits=req.max_hits)
     if chip == "freehit":
         # Free hit conjures a one-week squad on the sell value of the current
         # one and reverts after, exactly as ``chips.free_hit_gain`` scores it.
@@ -153,7 +185,9 @@ def solve_whatif(req: WhatIfRequest, gw: int) -> dict:
         raise GafferError(
             f"no legal squad satisfies those constraints "
             f"(lock={req.lock}, ban={req.ban}, force_in={req.force_in}, "
-            f"max_hits={req.max_hits}): {exc}") from exc
+            # v12 W3 §4.1 (specs/2026-09-01-gaffer-v12-program-design.md)
+            f"force_out={req.force_out}, max_hits={req.max_hits}): "
+            f"{exc}") from exc
 
     weeks = min(len(baseline), len(yours))
     base = _summary(baseline, ep_by, meta, weeks, hit_cost=opt["hit_cost"])
