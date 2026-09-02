@@ -13,9 +13,11 @@ season does not produce a missing number — it produces a **confident number
 about the wrong player**, which is the exact failure v10b §Gates asks to be
 guarded against.
 
-The keyword defaults to ``None`` and ``None`` is today's behaviour to the
-byte, so ``routers/players.py`` is not touched by this cycle and does not need
-re-testing. The explorer's own switch is a residual, recorded in the README.
+v10b added the keyword defaulting to ``None`` and left the explorer's own call
+bare, recording it as a residual. v12 W1 §2.3 closed that residual: the keyword
+is **required**, and ``routers/players.py`` passes ``current_season``. The
+cases below therefore all name a season, and the "no season named" behaviour
+this file used to pin is gone rather than merely untested.
 """
 
 from __future__ import annotations

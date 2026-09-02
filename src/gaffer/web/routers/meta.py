@@ -201,7 +201,12 @@ def health() -> Health:
     # snapshot is what the last refresh banked, so the comparison answers "is
     # the data on disk the data the config describes" — which is the state
     # that matters — without a network call on a page-load path.
-    season_config = season_ingested = None
+    #
+    # `load_config` here rather than `serving_config`, on purpose: this is the
+    # page a user opens *after* editing `current_season`, and the cached
+    # reader would keep showing the red banner until the process restarted.
+    # One TOML read per health poll is cheap; a banner that will not clear is
+    # not.
     season_ok = None
     try:
         season_config = load_config().current_season

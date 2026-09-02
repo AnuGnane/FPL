@@ -115,7 +115,8 @@ def refresh():
     #
     # `None` is "cannot tell" and never blocks: a bootstrap FPL has not opened
     # for the new season is a normal July state.
-    ingested = season_from_events(build_events(client.get_bootstrap()))
+    bootstrap = client.get_bootstrap()
+    ingested = season_from_events(build_events(bootstrap))
     if ingested is not None and ingested != cfg.current_season:
         typer.echo(
             f"Refusing to refresh: the API is serving {ingested} and "
@@ -124,7 +125,11 @@ def refresh():
             f"current_season = \"{ingested}\" and append "
             f"\"{cfg.current_season}\" to train_seasons.")
         raise typer.Exit(1)
-    df = refresh_live(client, cfg.current_season, len(cfg.train_seasons))
+    # The same payload, handed on: the guard above already paid for it, and a
+    # second fetch would be a second `data/raw/bootstrap-*.json` snapshot of
+    # the same file seconds later.
+    df = refresh_live(client, cfg.current_season, len(cfg.train_seasons),
+                      bootstrap=bootstrap)
     typer.echo(f"Refreshed {len(df)} player-GW rows.")
 
 
@@ -591,42 +596,17 @@ def evaluate(mode: str = typer.Option(
 def track_pens_cmd(season: str = typer.Option(
         "", help="Season to track (default: fpl.current_season).")):
     """Predicted penalty EP against the penalties actually taken (v7c F3)."""
-    import json
-
-    from gaffer.pen_tracker import (format_tracker, save_tracker,
-                                    track_pens, tracker_path)
+    from gaffer.pen_tracker import (format_tracker, save_tracker_guarded,
+                                    track_pens)
 
     report = track_pens(season or None)
-    # v12 W1 §2.5 (specs/2026-09-01-gaffer-v12-program-design.md), mirroring
-    # calibrate_noise's refusal above. track_pens never raises — a standing
-    # report that dies on one bad file is a report nobody runs — so a failure
-    # arrives as a *shape*, and writing that shape over a good artifact loses
-    # a season of tracking to one unreadable parquet.
-    #
-    # Two shapes, two messages. And the refusal only fires when there is
-    # something to protect: a first run on a cold clone must write its empty
-    # report or the file never comes into existence. An unreadable banked file
-    # is not something to protect either — refusing there would wedge the
-    # command with no remedy but deleting the file by hand.
-    blocks = report.get("gws") or []
-    degraded = [b for b in blocks if "error" in b]
-    banked = False
-    try:
-        banked = bool(json.loads(tracker_path().read_text()))
-    except Exception:  # noqa: BLE001 — absent or corrupt: nothing to protect
-        banked = False
-    if banked:
-        path = tracker_path()
-        if blocks and len(degraded) == len(blocks):
-            typer.echo(f"track_pens: refused to overwrite {path}: all "
-                       f"{len(blocks)} rows degraded")
-            raise typer.Exit(1)
-        if not blocks:
-            note = (report.get("notes") or ["no gameweeks"])[0]
-            typer.echo(f"track_pens: refused to overwrite {path}: the report "
-                       f"is empty ({note})")
-            raise typer.Exit(1)
-    path = save_tracker(report)
+    # v12 W1 §2.5 (specs/2026-09-01-gaffer-v12-program-design.md). The guard
+    # itself lives in pen_tracker so that the web job lane obeys it too; here
+    # a refusal is a non-zero exit, mirroring calibrate_noise's above.
+    path, refusal = save_tracker_guarded(report)
+    if refusal is not None:
+        typer.echo(refusal)
+        raise typer.Exit(1)
     typer.echo(format_tracker(report))
     typer.echo(f"Wrote {path}")
 

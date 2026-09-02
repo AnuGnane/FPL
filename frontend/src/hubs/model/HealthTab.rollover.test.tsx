@@ -72,3 +72,27 @@ describe('the season-rollover banner', () => {
     expect(screen.queryByTestId('season-mismatch')).toBeNull()
   })
 })
+
+describe('the solver pool', () => {
+  // v12 W1 §2.6. The four numbers that decide who the solver may consider at
+  // all, on the one page a user reads to find out what this install is doing.
+  it('prints one position per served entry', async () => {
+    serve({ solver_top_n: { GKP: 8, DEF: 22, MID: 26, FWD: 14 } })
+    render(<MemoryRouter><HealthTab /></MemoryRouter>)
+    const pool = await screen.findByTestId('solver-pool')
+    expect(pool).toHaveTextContent('GKP 8')
+    expect(pool).toHaveTextContent('DEF 22')
+    expect(pool).toHaveTextContent('MID 26')
+    expect(pool).toHaveTextContent('FWD 14')
+  })
+
+  it('is absent rather than empty when the server sends nothing', async () => {
+    // The router answers `null` when the read fails, and an older server
+    // sends no such key at all. Either way there is no number to show, and a
+    // "Solver pool" heading over a blank line would read as "zero".
+    serve({})
+    render(<MemoryRouter><HealthTab /></MemoryRouter>)
+    expect(await screen.findByText('player_gw')).toBeInTheDocument()
+    expect(screen.queryByTestId('solver-pool')).toBeNull()
+  })
+})

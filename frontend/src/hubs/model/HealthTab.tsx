@@ -39,12 +39,12 @@ export default function HealthTab() {
         >
           <p className="font-semibold">Season mismatch</p>
           <p className="mt-1 text-text-secondary">
-            {`The last refresh banked ${data.season_ingested}; config.toml says
-              ${data.season_config}. Set [data] current_season to
-              ${data.season_ingested} and append ${data.season_config} to
-              train_seasons — both, together. Until then every row ingested
-              carries the wrong season label and every model trained on them
-              trains on the mixture.`}
+            The last refresh banked {data.season_ingested}; config.toml says{' '}
+            {data.season_config}. Set <span className="num">[data]
+            current_season</span> to {data.season_ingested} and append{' '}
+            {data.season_config} to <span className="num">train_seasons</span>{' '}
+            — both, together. Until then every row ingested carries the wrong
+            season label and every model trained on them trains on the mixture.
           </p>
         </div>
       )}
@@ -77,10 +77,20 @@ export default function HealthTab() {
           </tbody>
         </table>
         </div>
-        {data.solver_top_n && (
-          <div className="mt-4" data-testid="solver-pool">
-            <p className="label">Solver pool</p>
-            <p className="mt-1 text-text-secondary">
+        {!data.odds_key_present && (
+          <p className="mt-3 text-text-muted">
+            No odds key configured — add an odds key for market-implied
+            numbers.
+          </p>
+        )}
+      </Card>
+      {/* Its own card: these are config, not freshness. Nothing here has an
+          mtime, and sitting it under a table of file ages invited the reading
+          that the pool sizes were stale. */}
+      {data.solver_top_n && (
+        <Card title="Solver pool" className="mb-4">
+          <div data-testid="solver-pool">
+            <p className="text-text-secondary">
               players per position the solver may consider, on top of the ones
               you own
             </p>
@@ -89,14 +99,8 @@ export default function HealthTab() {
                 .map(([pos, n]) => `${pos} ${n}`).join('  ·  ')}
             </p>
           </div>
-        )}
-        {!data.odds_key_present && (
-          <p className="mt-3 text-text-muted">
-            No odds key configured — add an odds key for market-implied
-            numbers.
-          </p>
-        )}
-      </Card>
+        </Card>
+      )}
       <Card title="Models" className="mb-4">
         <div className="overflow-x-auto">
         <table className="w-full">

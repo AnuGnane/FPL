@@ -124,6 +124,47 @@ def test_a_first_run_whose_every_week_is_broken_also_writes(clone,
     assert (clone / "reports" / "pen_tracker.json").exists()
 
 
+def test_an_empty_report_over_an_empty_banked_one_writes(clone, monkeypatch):
+    """Preseason is a normal state, not a loss.
+
+    "Banked" has to mean *there is tracking to lose* — at least one gameweek
+    block that read cleanly. A banked report of zero gameweeks holds nothing,
+    so the second empty run must succeed; refusing would make `gaffer
+    track-pens` exit 1 every day between the file's first write and GW1.
+    """
+    path = clone / "reports" / "pen_tracker.json"
+    path.write_text(json.dumps({"season": "2026-27", "gws": [],
+                                "season_totals": {},
+                                "notes": ["no finished gameweek yet"]}))
+    _report(monkeypatch, {"season": "2026-27", "gws": [],
+                          "season_totals": {},
+                          "notes": ["still no finished gameweek"]})
+    cli.track_pens_cmd(season="2026-27")
+    assert json.loads(path.read_text())["notes"] == \
+        ["still no finished gameweek"]
+
+
+def test_the_web_job_lane_declines_too(clone, monkeypatch, capsys):
+    """The guard lives in `pen_tracker`, not in the CLI, because the CLI is not
+    the only writer: `/api/jobs` runs `run_track_pens` on a schedule, which is
+    the likelier of the two to meet a broken tree unattended. A declined write
+    is not a failed job — the record says it declined and why, and the banked
+    report is still there."""
+    from gaffer.web import job_kinds
+
+    path = _banked(clone)
+    monkeypatch.setattr("gaffer.pen_tracker.track_pens",
+                        lambda: {"season": "2026-27", "notes": [],
+                                 "season_totals": {},
+                                 "gws": [{"gw": 1, "error": "bad parquet"}]})
+    record = job_kinds.run_track_pens()
+    assert record["written"] is False
+    assert "refused to overwrite" in record["refused"]
+    assert "refused to overwrite" in capsys.readouterr().out
+    assert json.loads(path.read_text())["season_totals"]["note"] == \
+        "the good one"
+
+
 def test_an_unreadable_banked_report_does_not_block_the_write(clone,
                                                               monkeypatch):
     """A corrupt file is not something worth protecting, and a refusal here

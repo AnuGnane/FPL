@@ -198,7 +198,9 @@ def load_field_eo(*, season: str | None = None) -> pd.DataFrame:
         return log
     if "season" not in log.columns:
         return log.iloc[0:0]
-    return log[log["season"].astype(str) == str(season)]
+    # .copy(): a boolean mask over a loaded frame is a view, and a caller that
+    # assigns a column into it earns a SettingWithCopyWarning it did not cause.
+    return log[log["season"].astype(str) == str(season)].copy()
 
 
 def latest_field_eo(gw: int | None = None, *,

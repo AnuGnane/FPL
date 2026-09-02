@@ -81,15 +81,24 @@ def run_track_pens() -> dict:
     report carrying a note, which is a finished job with zero gameweeks, not
     a failed one. The printed table is ``format_tracker``'s, character for
     character the same thing the CLI prints.
+
+    The overwrite guard (v12 W1 §2.5) applies here exactly as it does in the
+    CLI — a scheduled lane is the likelier of the two to run against a broken
+    tree — but a declined write is not a job failure: the record says it
+    declined and why, and the banked report is still there.
     """
-    from gaffer.pen_tracker import (format_tracker, save_tracker,
+    from gaffer.pen_tracker import (format_tracker, save_tracker_guarded,
                                     track_pens)
 
     report = track_pens()
-    path = save_tracker(report)
+    path, refusal = save_tracker_guarded(report)
     print(format_tracker(report))
+    if refusal is not None:
+        print(refusal)
+        return {"gws": len(report.get("gws", [])), "written": False,
+                "refused": refusal}
     print(f"Wrote {path}")
-    return {"gws": len(report.get("gws", []))}
+    return {"gws": len(report.get("gws", [])), "written": True}
 
 
 def run_field_scrape_job() -> dict:

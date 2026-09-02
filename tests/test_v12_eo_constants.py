@@ -44,9 +44,12 @@ def test_no_other_module_defines_an_EO_threshold():
     module constant, and it is named here so a later reader knows it was seen.
     """
     pattern = re.compile(r"^[A-Z_]*_EO\s*=\s*-?\d", re.MULTILINE)
-    hits = {p.as_posix() for p in pathlib.Path("src").rglob("*.py")
+    # Rooted at the repo rather than at the cwd: several suites chdir into a
+    # tmp_path, and a grep over a directory that is not there passes vacuously.
+    src = pathlib.Path(__file__).parents[1] / "src"
+    hits = {p.relative_to(src).as_posix() for p in src.rglob("*.py")
             if pattern.search(p.read_text())}
-    assert hits == {"src/gaffer/optimize/differentials.py"}
+    assert hits == {"gaffer/optimize/differentials.py"}
 
 
 def _ep(league_eo_pct):

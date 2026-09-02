@@ -301,6 +301,59 @@ def save_tracker(report: dict) -> Path:
     return path
 
 
+def tracker_refusal(report: dict) -> str | None:
+    """Why ``report`` must not overwrite the banked tracker, or ``None``.
+
+    v12 W1 §2.5, mirroring ``calibrate_noise``'s refusal. ``track_pens`` never
+    raises — a standing report that dies on one bad file is a report nobody
+    runs — so a failure arrives as a *shape*, and writing that shape over a
+    good artifact loses a season of tracking to one unreadable parquet.
+
+    Two shapes, two messages. And the refusal only fires when there is
+    something to protect: a banked report holding at least one gameweek block
+    that read cleanly. A first run on a cold clone must write its empty report
+    or the file never comes into existence; an empty report over an empty
+    banked one is preseason, which is a normal state and not a loss. A banked
+    file that is absent, corrupt, or itself entirely degraded is not something
+    to protect either — refusing there would wedge the command with no remedy
+    but deleting the file by hand.
+
+    Lives here rather than in the CLI so that every writer goes through it:
+    the CLI command and the web job lane both call
+    :func:`save_tracker_guarded`, and a third caller cannot forget.
+    """
+    path = tracker_path()
+    try:
+        banked_blocks = json.loads(path.read_text()).get("gws") or []
+    except Exception:  # noqa: BLE001 — absent or corrupt: nothing to protect
+        return None
+    if not any("error" not in b for b in banked_blocks):
+        return None
+    blocks = report.get("gws") or []
+    degraded = [b for b in blocks if "error" in b]
+    if blocks and len(degraded) == len(blocks):
+        return (f"track_pens: refused to overwrite {path}: all "
+                f"{len(blocks)} rows degraded")
+    if not blocks:
+        note = (report.get("notes") or ["no gameweeks"])[0]
+        return (f"track_pens: refused to overwrite {path}: the report "
+                f"is empty ({note})")
+    return None
+
+
+def save_tracker_guarded(report: dict) -> tuple[Path | None, str | None]:
+    """``save_tracker``, unless :func:`tracker_refusal` says otherwise.
+
+    Returns ``(path, None)`` on a write and ``(None, reason)`` on a refusal.
+    The reason is a printable line; what a caller does with it — exit 1, or
+    a job record saying it declined — is the caller's business.
+    """
+    reason = tracker_refusal(report)
+    if reason is not None:
+        return None, reason
+    return save_tracker(report), None
+
+
 def format_tracker(report: dict) -> str:
     """The printed table: one line per gameweek, then the season line."""
     lines = [f"Penalty tracker — season {report.get('season') or 'unknown'}",

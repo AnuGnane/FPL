@@ -284,6 +284,13 @@ def serving_config() -> Config:
 def optimizer_top_n(path: Path | str = "config.toml") -> dict[str, int]:
     """``[optimizer] top_n`` merged over the shipped default.
 
+    Cached, for the reason :func:`serving_config` is: ``build_pool`` calls this
+    on every solve and a per-solve TOML read on the serving path is the cost
+    this reader was added to avoid. Same trap, same remedy — a test (or
+    anything else) that edits ``config.toml`` under a running process calls
+    ``optimizer_top_n.cache_clear()``. The returned dict is a fresh copy each
+    call so a caller that mutates its pool sizes cannot poison the cache.
+
     v12 W1 §2.6. Never raises: a missing file, a missing section, a corrupt
     TOML, a typo'd position and a non-numeric value all degrade to the shipped
     value for that position. A config error that silently shrank the solver's
@@ -300,6 +307,16 @@ def optimizer_top_n(path: Path | str = "config.toml") -> dict[str, int]:
     no ``Config`` in hand and cannot be given one without an ``optimize/**``
     signature change, which is the other half of why this reader exists.
     """
+    # Keyed on the absolute path, so the default relative "config.toml" is a
+    # different cache entry per working directory rather than one entry that
+    # follows a chdir into somebody else's tree.
+    return dict(_optimizer_top_n(str(Path(path).resolve())))
+
+
+@lru_cache(maxsize=8)
+def _optimizer_top_n(path: str) -> dict[str, int]:
+    """:func:`optimizer_top_n`'s cache. Never call this one directly — it hands
+    back the cached dict itself, and a mutation of it would be permanent."""
     from gaffer.optimize.milp import DEFAULT_TOP_N
 
     out = dict(DEFAULT_TOP_N)
@@ -317,3 +334,10 @@ def optimizer_top_n(path: Path | str = "config.toml") -> dict[str, int]:
         if value > 0:
             out[pos] = int(value)
     return out
+
+
+# The cache lives on the private reader, but callers should not have to know
+# that: `optimizer_top_n.cache_clear()` is what a test reaches for, by analogy
+# with `serving_config.cache_clear()`, so it is what it gets.
+optimizer_top_n.cache_clear = _optimizer_top_n.cache_clear
+optimizer_top_n.cache_info = _optimizer_top_n.cache_info

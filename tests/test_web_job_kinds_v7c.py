@@ -107,9 +107,16 @@ def test_the_track_pens_kind_is_on_the_allow_list():
 
 
 def test_track_pens_saves_the_report_and_counts_its_gameweeks(monkeypatch,
+                                                              tmp_path,
                                                               capsys):
     """The runner captures this thread's stdout, so the printed table is what
-    the browser shows as the job's progress."""
+    the browser shows as the job's progress.
+
+    `chdir` into an empty tree so `tracker_path()` resolves there: v12 W1
+    §2.5's overwrite guard reads the banked report, and without the chdir this
+    test read the developer's own reports/pen_tracker.json and declined.
+    """
+    monkeypatch.chdir(tmp_path)
     report = {"season": "2026-27",
               "gws": [{"gw": 1, "error": "x"}, {"gw": 2, "error": "y"}],
               "season_totals": {}, "notes": []}
@@ -122,23 +129,24 @@ def test_track_pens_saves_the_report_and_counts_its_gameweeks(monkeypatch,
     monkeypatch.setattr("gaffer.pen_tracker.track_pens",
                         lambda season=None: report)
     monkeypatch.setattr("gaffer.pen_tracker.save_tracker", _save)
-    assert job_kinds.run_track_pens() == {"gws": 2}
+    assert job_kinds.run_track_pens() == {"gws": 2, "written": True}
     assert saved["report"] is report
     out = capsys.readouterr().out
     assert "Penalty tracker" in out
     assert "reports/pen_tracker.json" in out
 
 
-def test_a_degraded_pen_report_is_still_a_finished_job(monkeypatch):
+def test_a_degraded_pen_report_is_still_a_finished_job(monkeypatch, tmp_path):
     """track_pens never raises — a season with nothing on disk is an empty
     report with a note, and the job must bank it as zero gameweeks."""
+    monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(
         "gaffer.pen_tracker.track_pens",
         lambda season=None: {"season": "", "gws": [], "season_totals": {},
                              "notes": ["no live season on disk"]})
     monkeypatch.setattr("gaffer.pen_tracker.save_tracker",
                         lambda payload: "reports/pen_tracker.json")
-    assert job_kinds.run_track_pens() == {"gws": 0}
+    assert job_kinds.run_track_pens() == {"gws": 0, "written": True}
 
 
 def test_the_track_pens_wrapper_imports_lazily():

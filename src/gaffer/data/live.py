@@ -147,14 +147,22 @@ def refresh_live(
     season: str,
     season_idx: int,
     sleep_s: float = 0.05,
+    bootstrap: dict | None = None,
 ) -> pd.DataFrame:
     """Fetch element-summary for every current player -> data/live/player_gw.parquet.
 
     Spec: provisional data never enters training — rows for any GW that is
     not yet data_checked (bonus can still change until ~09:00 the morning
     after the last match) are dropped before saving.
+
+    ``bootstrap`` is an already-fetched payload. The CLI's ``refresh`` holds
+    one — v12 W1 §2.4's rollover guard reads the events out of it before this
+    call — and passing it through means one bootstrap fetch per refresh
+    rather than two, which is also one snapshot dump under ``data/raw/``
+    rather than two of the same 1.7 MB file seconds apart. Left optional so
+    every other caller is unchanged.
     """
-    raw = client.get_bootstrap()
+    raw = client.get_bootstrap() if bootstrap is None else bootstrap
     unchecked = {ev["id"] for ev in raw["events"] if not ev.get("data_checked", False)}
     players = build_players(raw)
     teams = build_teams(raw)

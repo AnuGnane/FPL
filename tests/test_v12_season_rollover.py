@@ -116,6 +116,50 @@ def test_refresh_proceeds_when_they_agree(tmp_path, monkeypatch):
     assert calls == [1]
 
 
+def test_refresh_fetches_the_bootstrap_once_and_hands_it_on(tmp_path,
+                                                            monkeypatch):
+    """The guard reads the events out of a bootstrap `refresh_live` was about
+    to fetch again. Two fetches of a 1.7 MB payload seconds apart is also two
+    `data/raw/bootstrap-*.json` snapshots of the same thing, so the payload is
+    passed through and `refresh_live` uses it instead of calling out."""
+    from gaffer import cli
+    from gaffer.data import live
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "config.toml").write_text(
+        "[fpl]\nentry_id = 1\nleague_id = 2\n"
+        '[data]\ntrain_seasons = []\ncurrent_season = "2026-27"\n')
+
+    payload = {"events": [{"id": 1, "deadline_time": "2026-08-14T17:30:00Z"}]}
+    fetches = []
+
+    class Client:
+        def get_bootstrap(self):
+            fetches.append(1)
+            return payload
+
+    seen = {}
+    monkeypatch.setattr("gaffer.api.client.FPLClient", lambda *a, **k: Client())
+
+    def fake_refresh_live(client, season, season_idx, sleep_s=0.05,
+                          bootstrap=None):
+        seen["bootstrap"] = bootstrap
+        # what the real body does with it, so the assertion below is about the
+        # argument actually being used rather than merely accepted
+        raw = client.get_bootstrap() if bootstrap is None else bootstrap
+        assert raw is payload
+        return pd.DataFrame({"code": [1]})
+
+    monkeypatch.setattr("gaffer.data.live.refresh_live", fake_refresh_live)
+    cli.refresh()
+    assert seen["bootstrap"] is payload
+    assert fetches == [1]
+
+    # and the real signature takes it — a fake alone would not prove that
+    import inspect
+    assert "bootstrap" in inspect.signature(live.refresh_live).parameters
+
+
 def test_refresh_proceeds_when_the_season_cannot_be_derived(tmp_path,
                                                             monkeypatch):
     """"Cannot tell" never blocks a refresh. A bootstrap FPL has not opened
