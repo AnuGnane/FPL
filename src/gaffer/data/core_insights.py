@@ -40,6 +40,7 @@ from pathlib import Path
 import httpx
 import pandas as pd
 
+from gaffer.data import store
 from gaffer.data.cups import (CUPS_RAW_BASE, CUPS_TREE_URL, _cached_get,
                               _http, repo_season)
 
@@ -49,7 +50,8 @@ CI_CACHE = Path("data/raw/core_insights")
 """Where fetched CSVs are cached. Same contract as ``cups.CUPS_CACHE``: a file
 on disk is never re-fetched, so a killed run costs only what it had not
 reached. A *finished* gameweek's files never change; an unfinished one's do,
-which is why :func:`download_core_insights` takes ``refresh_gws``."""
+and re-collecting those means deleting their cache entry — the cache is
+deliberately dumber than a staleness rule it would have to get right."""
 
 SEASON_TABLES = ("players", "teams", "fixtures", "playermatchstats")
 """The keys every bundle answers, present or absent. ``players`` and ``teams``
@@ -375,3 +377,146 @@ def elo_rows(fixtures_csv: str, season: str, season_idx: int,
         return empty
     out["team_code"] = out["team_code"].astype("int64")
     return out[CI_ELO_COLS].reset_index(drop=True)
+
+
+# --- the collector and its readers ---------------------------------------
+
+CI_TABLES = {"players": CI_PLAYER_COLS, "fixtures": CI_FIXTURE_COLS,
+             "elo": CI_ELO_COLS}
+"""``table -> its column contract``. The three names spec §5.1 asks for."""
+
+
+def ci_path(season: str, table: str) -> str:
+    """``store``-relative path of one season's one table.
+
+    Season-partitioned rather than one growing file, and that partition *is*
+    the season guard: an element id means nothing without a season, and a
+    reader that has to remember to filter is a reader that eventually forgets.
+    ``load_core_insights`` takes the season as its first positional argument
+    for the same reason.
+    """
+    return f"core_insights/{season}/{table}.parquet"
+
+
+def load_core_insights(season: str, table: str) -> pd.DataFrame:
+    """One season's one table, or an empty frame with the right columns.
+
+    Never raises and never falls back to another season. "This machine has not
+    collected 2024-25" and "2024-25 had no rows" are both an empty frame here,
+    and the difference is recoverable from :func:`season_table_stats`, which
+    is what the health line reads.
+    """
+    cols = CI_TABLES.get(table)
+    if cols is None:
+        raise ValueError(f"unknown core-insights table {table!r}")
+    empty = pd.DataFrame(columns=cols)
+    rel = ci_path(season, table)
+    if not store.exists(rel):
+        return empty
+    try:
+        frame = store.load(rel)
+    except Exception as exc:  # noqa: BLE001 — a torn parquet is a missing one
+        print(f"core-insights: {rel} unreadable ({exc})")
+        return empty
+    if "season" not in frame.columns:
+        return empty
+    # Belt and braces on top of the directory partition: a hand-copied file
+    # from another machine must not smuggle another season's element ids in.
+    return frame[frame["season"].astype(str) == str(season)]
+
+
+def season_table_stats(season: str) -> dict[str, dict]:
+    """``{table: {"rows": n, "latest": "YYYY-MM-DD" | None}}`` for the health
+    line.
+
+    ``rows`` of 0 with ``latest`` of ``None`` is what a machine that has never
+    run the collector shows, and it is also what a season the archive publishes
+    empty shows. The health line renders "never collected" for the first only
+    because it can see the file is absent; both are honest, neither is a zero
+    dressed as a measurement.
+    """
+    out: dict[str, dict] = {}
+    for table in CI_TABLES:
+        frame = load_core_insights(season, table)
+        latest = None
+        if not frame.empty:
+            if "kickoff" in frame.columns:
+                stamps = pd.to_datetime(frame["kickoff"], errors="coerce",
+                                        utc=True).dropna()
+                if not stamps.empty:
+                    latest = str(stamps.max().date())
+            elif "gw" in frame.columns:
+                latest = f"GW{int(pd.to_numeric(frame['gw']).max())}"
+        out[table] = {"rows": int(len(frame)), "latest": latest}
+    return out
+
+
+def download_core_insights(seasons: list[str],
+                           season_indexes: dict[str, int],
+                           *, tree: dict | None = None,
+                           client: httpx.Client | None = None,
+                           cache_dir: Path | str = CI_CACHE
+                           ) -> dict[str, dict[str, int]]:
+    """Collect every requested season -> ``data/core_insights/<season>/``.
+
+    One tree listing, then one cached GET per file. Returns
+    ``{season: {table: rows written}}``, which is what the CLI prints.
+
+    A season the archive does not publish writes three empty tables rather
+    than nothing at all: "we looked and there was nothing" and "we never
+    looked" are different states, the health line distinguishes them by the
+    file's existence, and only the first is a state a re-run will not change.
+
+    An unreachable archive writes *nothing* — no empty tables, no truncation
+    of what a previous run collected. A network blip must not delete a
+    season's data, which is why the write is skipped entirely when the tree
+    came back empty.
+    """
+    http = _http(client)
+    tree = fetch_tree(http) if tree is None else tree
+    bundles = ci_paths_from_tree(tree, seasons)
+    out: dict[str, dict[str, int]] = {}
+    for season in seasons:
+        bundle = bundles[season]
+        idx = int(season_indexes.get(season, 0))
+        reachable = bool(bundle["players"] or bundle["teams"]
+                         or bundle["fixtures"] or bundle["playermatchstats"])
+        if not reachable:
+            print(f"core-insights: {season} — the archive published nothing "
+                  f"reachable; leaving any previous collection alone")
+            out[season] = {t: 0 for t in CI_TABLES}
+            continue
+        codes: dict[int, int] = {}
+        if bundle["players"]:
+            text = fetch_csv(bundle["players"], http, cache_dir)
+            codes = player_code_map(text or "")
+        if not codes:
+            print(f"core-insights: {season} has no element map — player rows "
+                  f"cannot be joined to a code and are skipped")
+        players, fixtures, elos = [], [], []
+        for gw in sorted(bundle["playermatchstats"]):
+            if not codes:
+                break
+            text = fetch_csv(bundle["playermatchstats"][gw], http, cache_dir)
+            if not text:
+                continue
+            players.append(player_match_rows(text, season, idx, gw, codes))
+        for gw in sorted(bundle["fixtures"]):
+            text = fetch_csv(bundle["fixtures"][gw], http, cache_dir)
+            if not text:
+                continue
+            fixtures.append(fixture_rows(text, season, idx, gw))
+            elos.append(elo_rows(text, season, idx, gw))
+        written: dict[str, int] = {}
+        for table, frames in (("players", players), ("fixtures", fixtures),
+                              ("elo", elos)):
+            cols = CI_TABLES[table]
+            kept = [f for f in frames if not f.empty]
+            frame = (pd.concat(kept, ignore_index=True)[cols] if kept
+                     else pd.DataFrame(columns=cols))
+            store.save(frame, ci_path(season, table))
+            written[table] = int(len(frame))
+        print(f"core-insights: {season} — "
+              + ", ".join(f"{n} {t}" for t, n in written.items()))
+        out[season] = written
+    return out

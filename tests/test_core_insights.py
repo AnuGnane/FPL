@@ -273,3 +273,146 @@ def test_a_season_whose_elo_is_blank_yields_no_elo_rows():
     out = elo_rows(blank, "2026-27", 3, 2)
     assert out.empty
     assert list(out.columns) == CI_ELO_COLS
+
+
+# --- Task 3: the collector and its readers -------------------------------
+
+import pytest
+
+from gaffer.data import store
+from gaffer.data.core_insights import (ci_path, download_core_insights,
+                                       load_core_insights, season_table_stats)
+
+
+class _FakeHTTP:
+    """An httpx.Client stand-in that serves a path -> text dict.
+
+    Anything it is not given 404s the way the real archive does, which is what
+    ``_cached_get`` turns into a printed skip.
+    """
+
+    def __init__(self, files: dict[str, str]):
+        self.files = dict(files)
+        self.asked: list[str] = []
+
+    def get(self, url, **_kw):
+        self.asked.append(url)
+        path = url.split("/main/", 1)[-1]
+        if path not in self.files:
+            raise httpx.HTTPError(f"404 {path}")
+        return _Resp(self.files[path])
+
+
+class _Resp:
+    def __init__(self, text: str):
+        self.text = text
+
+    def raise_for_status(self):
+        return None
+
+    def json(self):
+        import json as _json
+        return _json.loads(self.text)
+
+
+import httpx  # noqa: E402 — imported after _FakeHTTP for readability
+
+
+ARCHIVE = {
+    "data/2026-2027/players.csv": PLAYERS_CSV,
+    "data/2026-2027/teams.csv": "code,id,name,elo\n2,1,Leeds,\n",
+    "data/2026-2027/By Gameweek/GW2/fixtures.csv": FIXTURES_CSV,
+    "data/2026-2027/By Gameweek/GW2/playermatchstats.csv": PMS_CSV,
+}
+
+ARCHIVE_TREE = _tree(sorted(ARCHIVE))
+
+
+@pytest.fixture()
+def clone(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    return tmp_path
+
+
+def test_the_collector_writes_three_parquets_per_season(clone):
+    http = _FakeHTTP(ARCHIVE)
+    out = download_core_insights(["2026-27"], {"2026-27": 3},
+                                 tree=ARCHIVE_TREE, client=http)
+    assert out["2026-27"] == {"players": 2, "fixtures": 5, "elo": 2}
+    for table in ("players", "fixtures", "elo"):
+        assert store.exists(ci_path("2026-27", table))
+
+
+def test_the_written_players_table_is_season_guarded_by_construction(clone):
+    http = _FakeHTTP(ARCHIVE)
+    download_core_insights(["2026-27"], {"2026-27": 3}, tree=ARCHIVE_TREE,
+                           client=http)
+    frame = load_core_insights("2026-27", "players")
+    assert set(frame["season"]) == {"2026-27"}
+    assert ci_path("2026-27", "players") == \
+        "core_insights/2026-27/players.parquet"
+
+
+def test_a_reader_for_a_season_never_collected_is_an_empty_typed_frame(clone):
+    frame = load_core_insights("2019-20", "players")
+    assert frame.empty
+    assert list(frame.columns) == CI_PLAYER_COLS
+
+
+def test_an_unreachable_archive_writes_nothing_and_does_not_raise(clone):
+    out = download_core_insights(["2026-27"], {"2026-27": 3}, tree={},
+                                 client=_FakeHTTP({}))
+    assert out["2026-27"] == {"players": 0, "fixtures": 0, "elo": 0}
+    assert not store.exists(ci_path("2026-27", "players"))
+
+
+def test_a_season_the_archive_publishes_empty_writes_empty_tables(clone):
+    tree = _tree(["data/2026-2027/players.csv", "data/2026-2027/teams.csv"])
+    out = download_core_insights(
+        ["2026-27"], {"2026-27": 3}, tree=tree,
+        client=_FakeHTTP({"data/2026-2027/players.csv": PLAYERS_CSV,
+                          "data/2026-2027/teams.csv": "code,id\n2,1\n"}))
+    assert out["2026-27"] == {"players": 0, "fixtures": 0, "elo": 0}
+    # Written, not skipped: "we looked and there was nothing" is a fact worth
+    # banking, and the health line renders 0 rows rather than "never run".
+    assert store.exists(ci_path("2026-27", "players"))
+    assert load_core_insights("2026-27", "players").empty
+
+
+def test_a_season_with_no_element_map_collects_no_player_rows(clone):
+    """Without players.csv nothing can be joined to a code, so the player
+    table is empty while fixtures and elo are unaffected."""
+    files = {k: v for k, v in ARCHIVE.items()
+             if k != "data/2026-2027/players.csv"}
+    tree = _tree(sorted(files))
+    out = download_core_insights(["2026-27"], {"2026-27": 3}, tree=tree,
+                                 client=_FakeHTTP(files))
+    assert out["2026-27"]["players"] == 0
+    assert out["2026-27"]["fixtures"] == 5
+
+
+def test_one_bad_gameweek_costs_one_gameweek(clone):
+    files = dict(ARCHIVE)
+    files["data/2026-2027/By Gameweek/GW3/playermatchstats.csv"] = "gibberish"
+    tree = _tree(sorted(files))
+    out = download_core_insights(["2026-27"], {"2026-27": 3}, tree=tree,
+                                 client=_FakeHTTP(files))
+    assert out["2026-27"]["players"] == 2
+
+
+def test_season_table_stats_is_what_the_health_line_renders(clone):
+    http = _FakeHTTP(ARCHIVE)
+    download_core_insights(["2026-27"], {"2026-27": 3}, tree=ARCHIVE_TREE,
+                           client=http)
+    stats = season_table_stats("2026-27")
+    assert stats["players"]["rows"] == 2
+    assert stats["fixtures"]["rows"] == 5
+    assert stats["fixtures"]["latest"] == "2026-10-10"
+    assert stats["elo"]["rows"] == 2
+
+
+def test_season_table_stats_on_a_cold_clone_says_never(clone):
+    stats = season_table_stats("2026-27")
+    assert stats == {"players": {"rows": 0, "latest": None},
+                     "fixtures": {"rows": 0, "latest": None},
+                     "elo": {"rows": 0, "latest": None}}
