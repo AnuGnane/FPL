@@ -161,6 +161,18 @@ export default function Players() {
       render: (r) => (r.field_eo === null ? '—' : (
         <>
           {fmtNum(r.field_eo, 1)}
+          {r.field_eo_delta !== null && r.field_eo_delta !== undefined && (
+            // The arrow is the sign and the title is the number. A delta drawn
+            // as a second figure in the cell would read as a second ownership.
+            <span className="ml-1 text-text-muted"
+                  title={`${r.field_eo_delta > 0 ? '+' : ''}`
+                    + `${fmtNum(r.field_eo_delta, 1)} since the last sampled `
+                    + `gameweek; projected ${fmtNum(r.field_eo_deadline, 1)}%`}
+                  data-testid={`eo-trend-${r.code}`}>
+              {r.field_eo_delta > 0 ? '↑'
+                : (r.field_eo_delta < 0 ? '↓' : '→')}
+            </span>
+          )}
           {r.field_class && (
             <span className="ml-1 text-text-muted">{r.field_class}</span>
           )}

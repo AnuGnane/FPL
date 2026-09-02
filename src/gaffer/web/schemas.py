@@ -423,6 +423,18 @@ class PlayerRow(BaseModel):
     ±2.8 from three hundred entries and ±2.8 from thirty are different claims
     and the page is entitled to say which one it is showing.
     """
+    # v12 W2 §3.3 (specs/2026-09-01-gaffer-v12-program-design.md, plan A4/A5).
+    field_eo_deadline: float | None = None
+    """Field EO projected forward one gameweek, in percent.
+
+    ``None`` means *no trend*, which is what one gameweek of samples buys —
+    and never 0.0, which is the different and stronger claim that nobody in
+    the top 10k starts him. Same contract as ``field_eo`` above.
+    """
+    field_eo_delta: float | None = None
+    """The observed move between the last two sampled gameweeks, in points of
+    EO. ``None`` when there is no earlier sample; ``0.0`` is a measurement —
+    the field held steady."""
     field_class: str | None = None
     """``shield`` | ``sword`` | ``threat``, or ``None`` for the quadrant with
     nothing to say."""

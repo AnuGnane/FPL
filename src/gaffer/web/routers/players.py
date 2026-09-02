@@ -15,7 +15,7 @@ from fastapi import APIRouter, Query
 from gaffer.artifacts import (latest_gw, load_components, load_snapshot,
                               load_solve_state)
 from gaffer.config import serving_config
-from gaffer.data.field import latest_field_eo
+from gaffer.data.field import field_eo_trend, latest_field_eo
 from gaffer.errors import GafferError
 from gaffer.uncertainty import band_for, shipped_table, xmins_by_player_gw
 from gaffer.web.schemas import (Component, FixtureExplain, MinutesOutput,
@@ -123,6 +123,29 @@ def field_class(owned: bool, eo: float | None) -> str | None:
     return "threat" if eo >= FIELD_HIGH else None
 
 
+def _trend_table(gw: int | None, season: str) -> dict[int, dict]:
+    """v12 §3.3's trend, or an empty map. Display, so it never raises."""
+    try:
+        return field_eo_trend(season, gw)
+    except Exception as exc:  # noqa: BLE001 — a column is not worth a 500
+        print(f"players: field EO trend unreadable ({exc})")
+        return {}
+
+
+def _trend_fields(trend: dict[int, dict], element: int) -> dict:
+    """The two additive fields for one element.
+
+    ``None`` on both whenever there is no trend, rather than falling back to
+    ``eo_last``: the row already carries ``field_eo``, and repeating it under
+    a name that says "deadline" would make a projection out of a measurement.
+    """
+    cell = trend.get(int(element)) or {}
+    if not cell.get("trend_available"):
+        return {"field_eo_deadline": None, "field_eo_delta": None}
+    return {"field_eo_deadline": cell["deadline_eo"],
+            "field_eo_delta": cell["delta"]}
+
+
 @router.get("", response_model=list[PlayerRow])
 def players(position: str | None = None, team: int | None = None,
             search: str | None = None,
@@ -157,10 +180,21 @@ def players(position: str | None = None, team: int | None = None,
     # a clone with no config.toml still renders. The cost is that a
     # `current_season` edit needs a restart to reach this page, which is the
     # documented trade and is what `/api/health`'s uncached read is for.
+    #
+    # v12 W2 §3.3: the season is a local rather than an inline read, because
+    # two calls now need it and two inline reads are two answers that can
+    # disagree. An unreadable config leaves it empty, which no banked row
+    # matches — the same empty map the bare `except` below produced.
     try:
-        field_eo = latest_field_eo(season=serving_config().current_season)
+        season = str(serving_config().current_season)
+    except Exception:  # noqa: BLE001
+        season = ""
+    try:
+        field_eo = latest_field_eo(season=season)
     except Exception:  # noqa: BLE001
         field_eo = {}
+    # v12 W2 §3.3 (specs/2026-09-01-gaffer-v12-program-design.md, plan A5).
+    trend = _trend_table(first_gw, season)
 
     rows = []
     for r in snapshot.itertuples():
@@ -190,6 +224,7 @@ def players(position: str | None = None, team: int | None = None,
             # few hundred entries.
             field_se=_opt_float(me.get("se")),
             field_n=_opt_int(me.get("n")),
+            **_trend_fields(trend, int(r.element)),
             field_class=field_class(code in owned,
                                     _opt_float(me.get("eo"))),
             available=status not in UNAVAILABLE_STATUS,

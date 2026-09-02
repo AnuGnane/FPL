@@ -122,6 +122,10 @@ export interface CaptainField {
   se: number | null
   n: number | null
   gw: number
+  /** The same projection the explorer's row carries. Null means no trend,
+   *  and never 0. */
+  deadline_eo?: number | null
+  eo_delta?: number | null
   field_class: 'shield' | 'sword' | null
   most_captained?: { code: number; name: string | null; gw: number } | null
   note: string
@@ -282,6 +286,10 @@ export interface PlayerRow {
   /** How many sampled entries the figure was measured over. ±2.8 from three
    *  hundred and ±2.8 from thirty are different claims. */
   field_n: number | null
+  /** Field EO projected one gameweek forward, in percent. Null means no
+   *  trend — one gameweek of samples — and never 0. */
+  field_eo_deadline: number | null
+  field_eo_delta: number | null
   field_class: 'shield' | 'sword' | 'threat' | null
   available: boolean
   status: string

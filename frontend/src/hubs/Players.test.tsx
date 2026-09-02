@@ -189,6 +189,24 @@ describe('Players hub', () => {
        expect(await screen.findByText('—')).toBeInTheDocument()
      })
 
+  it('draws an EO arrow only where a trend exists', async () => {
+    // One gameweek of samples is the ordinary state for most of a season's
+    // first month, and an arrow there would be drawn from nothing.
+    apiGet.mockImplementation((path: string) => (
+      path.startsWith('/api/players')
+        ? Promise.resolve([
+          { ...ROWS[0], code: 1, field_eo: 46, field_eo_delta: 6,
+            field_eo_deadline: 52 },
+          { ...ROWS[1], code: 2, field_eo: 12, field_eo_delta: null,
+            field_eo_deadline: null },
+        ])
+        : Promise.resolve({ active: true, rows: [], warning: null })
+    ))
+    render(<MemoryRouter><Players /></MemoryRouter>)
+    expect(await screen.findByTestId('eo-trend-1')).toHaveTextContent('↑')
+    expect(screen.queryByTestId('eo-trend-2')).toBeNull()
+  })
+
   it('makes every explorer name the click-to-explain control', async () => {
     render(<MemoryRouter><Players /></MemoryRouter>)
     expect(await screen.findByRole('button', { name: 'Salah' }))

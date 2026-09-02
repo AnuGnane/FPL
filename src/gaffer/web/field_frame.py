@@ -199,6 +199,29 @@ def _field_table(gw: int) -> dict[int, dict]:
         return {}
 
 
+def _trend_table(gw: int) -> dict[int, dict]:
+    """v12 §3.3's trend for this season, or an empty map.
+
+    Guard 3 again, and the same failure it always was: element ids are
+    re-issued every August, so an unseasoned read frames the captain against
+    a footballer who has since left the game.
+    """
+    try:
+        from gaffer.config import load_config
+
+        season = load_config().current_season
+    except Exception as exc:  # noqa: BLE001 — a clone with no config.toml
+        print(f"field_frame: no configured season, no EO trend ({exc})")
+        return {}
+    try:
+        from gaffer.data.field import field_eo_trend
+
+        return field_eo_trend(season, gw)
+    except Exception as exc:  # noqa: BLE001
+        print(f"field_frame: EO trend unreadable ({exc})")
+        return {}
+
+
 def captain_note(name: str, eo: float, se: float | None,
                  klass: str | None) -> str:
     """The sentence, worded in exactly one place.
@@ -273,6 +296,16 @@ def with_field_frame(payload: dict, gw: int) -> dict:
                 "gw": int(row.get("gw", gw)), "field_class": klass,
                 "note": captain_note(str(captain.get("name", "your captain")),
                                      eo, se, klass)}
+            # v12 W2 §3.3 (specs/2026-09-01-gaffer-v12-program-design.md).
+            # Absent-not-null does not apply *inside* the key: the key already
+            # exists because there is an EO to report, and a null projection
+            # beside a real EO is the honest reading of one gameweek of
+            # samples.
+            cell = _trend_table(gw).get(element) or {}
+            frame["deadline_eo"] = (cell.get("deadline_eo")
+                                    if cell.get("trend_available") else None)
+            frame["eo_delta"] = (cell.get("delta")
+                                 if cell.get("trend_available") else None)
         # Only in the note when the EO is absent: when both are present the
         # measured share is the stronger statement and a second clause beside
         # it is noise.
