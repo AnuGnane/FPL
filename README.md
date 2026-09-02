@@ -176,16 +176,13 @@ bench_weight = 0.10  # weight on bench points
 ft_value = 1.5       # points value of holding a free transfer
 itb_value = 0.05     # points per 1.0m in the bank at horizon end
 hit_cost = 4         # points charged per extra transfer
-<<<<<<< HEAD
 price_timing = true  # charge a deferred sale its expected overnight price
                      # drop. On since the v12 W2 gate; `false` drops the term.
-=======
 alt_plan_max_gap = 2.0
                      # v12: how far behind the recommended plan an alternative
                      # may sit and still be offered as Plan B or Plan C, in the
                      # solver's own objective points. 0 turns the search off;
                      # each alternative costs one more MILP solve.
->>>>>>> ff2fa0e (docs: what W3 changed, and the two things it left open)
 # top_n = {GKP = 8, DEF = 22, MID = 26, FWD = 14}
 #                    # how many players per position reach the solver at all.
 #                    # Merged over these defaults, so tuning one position does
