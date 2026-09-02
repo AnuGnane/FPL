@@ -18,7 +18,8 @@ import numpy as np
 import pandas as pd
 
 from gaffer.features.engineer import (US_WINDOWS, XG_PER_SHOT_FEATURES,
-                                      add_xg_per_shot, feature_columns)
+                                      add_xg_per_shot,
+                                      build_prediction_frame, feature_columns)
 
 
 def _frame(npxg, shots):
@@ -64,6 +65,58 @@ def test_the_columns_are_in_feature_columns_so_a_re_derive_strips_them():
     before re-deriving; a column left behind would be a stale one."""
     cols = set(feature_columns())
     assert set(XG_PER_SHOT_FEATURES) <= cols
+
+
+def _pred_hist() -> pd.DataFrame:
+    """Two played matches for one forward, with Understat stats on them —
+    ``tests/test_features.py::_us_rows`` plus the columns the prediction frame
+    needs, which is the fixture the other build_prediction_frame tests use."""
+    rows = pd.DataFrame([
+        {"code": 1, "season_idx": 0, "gw": gw,
+         "kickoff_time": f"2024-08-{10 + gw:02d}T14:00:00Z",
+         "us_minutes": 90, "us_shots": shots, "us_key_passes": 1.0,
+         "us_npxg": 0.6, "us_xgchain": 0.2, "us_xgbuildup": 0.1}
+        for gw, shots in ((1, 4), (2, 2))])
+    rows["position"] = "FWD"
+    rows["team_code"] = 3
+    rows["opp_code"] = 4
+    rows["was_home"] = True
+    rows["minutes"] = 90
+    rows["goals"] = 1
+    rows["assists"] = 0
+    rows["starts"] = 1
+    return rows
+
+
+def _pred_future() -> pd.DataFrame:
+    return pd.DataFrame([{"code": 1, "season_idx": 0, "gw": 3,
+                          "position": "FWD", "team_code": 3, "opp_code": 4,
+                          "was_home": True,
+                          "kickoff_time": "2024-08-24T14:00:00Z"}])
+
+
+def test_the_prediction_frame_builds_the_columns_too():
+    """``attach_understat`` is the training path only. ``advise`` strips
+    ``feature_columns()`` off the frame and re-derives through
+    ``build_prediction_frame``, so a column built on one side and not the
+    other is a serve-time KeyError."""
+    out = build_prediction_frame(_pred_hist(), _pred_future())
+    assert set(XG_PER_SHOT_FEATURES) <= set(out.columns)
+
+
+def test_every_attacking_feature_exists_on_the_prediction_frame(monkeypatch):
+    """With the arm on, ``AttackingModel.predict`` indexes the served frame by
+    ``attacking_features()``; a name it cannot find raises before a single
+    tree is walked. Scoped to the arm's own columns: this fixture passes no
+    Elo frame, so ``team_elo`` and friends are legitimately absent from it and
+    are the caller's job, not this feature's."""
+    from gaffer.models import train as tr
+
+    monkeypatch.setattr(tr, "xg_per_shot", lambda: True)
+    out = build_prediction_frame(_pred_hist(), _pred_future())
+    told = [c for c in tr.attacking_features() if c in XG_PER_SHOT_FEATURES]
+    assert told == list(XG_PER_SHOT_FEATURES)
+    assert [c for c in told if c not in out.columns] == []
 
 
 def test_the_attacking_model_is_told_only_when_the_flag_is_on(monkeypatch,

@@ -830,6 +830,14 @@ def build_prediction_frame(hist: pd.DataFrame, future: pd.DataFrame,
          shrunk.reindex(out["code"]).reset_index(drop=True),
          modes.reindex(out["code"]).reset_index(drop=True),
          cards.reindex(out["code"]).reset_index(drop=True)], axis=1)
+    # v12 W2 §3.5. Built here and not only in ``attach_understat``: that seam
+    # is the training path's, and ``advise`` strips ``feature_columns()`` off
+    # the frame and re-derives through this function, so a column built on one
+    # side only is a serve-time KeyError rather than a worse model. It goes
+    # after the ``us``/``shrunk`` concat because it reads the broadcast
+    # ``us_npxg90_r{w}``/``us_shots90_r{w}`` those lines just put on the frame.
+    frame = add_xg_per_shot(frame.drop(columns=list(XG_PER_SHOT_FEATURES),
+                                       errors="ignore"))
     return merge_understat_team(
         frame.drop(columns=TEAM_US_FEATURES, errors="ignore"),
         understat_team,

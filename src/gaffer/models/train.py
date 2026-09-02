@@ -236,6 +236,12 @@ def attach_understat(df: pd.DataFrame) -> pd.DataFrame:
     # unconditionally, like the withdrawn v8a arms' builders: the columns cost
     # a fit nothing and the next cycle re-measures rather than rebuilds. Only
     # whether the attacking model is *told* about them is gated.
+    #
+    # This is not the only site. ``attach_understat`` is the *training* path;
+    # ``advise`` strips ``feature_columns()`` and re-derives through
+    # ``features.engineer.build_prediction_frame``, which builds the same
+    # eight columns for itself. Both calls have to stay, or the arm is a
+    # KeyError at serve time instead of a model change.
     df = add_xg_per_shot(df)
     df = merge_understat_team(df, understat_team_rolled())
     return add_shrunken_cards(add_shrunken_modes(add_shrunken_rates(df)))
