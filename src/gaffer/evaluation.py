@@ -1207,6 +1207,48 @@ def _format_news_shadow(payload: dict) -> str:
     return "\n".join(lines)
 
 
+def _format_flag_latency(payload: dict) -> str:
+    """Spec §3.1's table: lead time by outcome, then the worst late flags."""
+    if not payload.get("available"):
+        return f"flag latency: {payload.get('note') or 'nothing to score.'}"
+    lines = [f"flag latency ({payload['rows']} status changes over "
+             f"{payload['snap_dates']} snapshot days)",
+             "  lead        started  missed"]
+    for row in payload["histogram"]:
+        lines.append(f"  {row['bucket']:<10} {row['started']:>7}  "
+                     f"{row['missed']:>6}")
+    if payload["late_flags"]:
+        lines.append("  worst late flags (final status disagreed with the "
+                     "start)")
+        for row in payload["late_flags"]:
+            lines.append(
+                f"    GW{row['gw']:<3} code {row['code']:<7} "
+                f"{row['lead_days']:5.2f}d  {row['from_status']}->"
+                f"{row['final_status']}  "
+                f"{'started' if row['started'] else 'did not start'}")
+    return "\n".join(lines)
+
+
+def _format_presser_grades(payload: dict) -> str:
+    """Spec §3.2's table: precision of absence per verdict class."""
+    if not payload.get("available"):
+        return f"presser grades: {payload.get('note') or 'nothing to score.'}"
+    lines = [f"presser grades ({payload['rows']} graded verdicts, "
+             f"{payload['absent_rows']} absences)",
+             "  verdict           n   started  absent  precision  recall"]
+    conf = {row["verdict"]: row for row in payload["confusion"]}
+    for row in payload["per_class"]:
+        c = conf.get(row["verdict"], {})
+        lines.append(
+            f"  {row['verdict']:<16} {row['n']:>3}   {c.get('started', 0):>7}"
+            f"  {c.get('not_started', 0):>6}  {row['precision']:>9.2f}"
+            f"  {row['recall']:>6.2f}")
+    lines.append(f"  recall is over {payload['recall_population']}")
+    lines.append("  " + ", ".join(f"{s['source'] or 'unknown'} {s['rows']}"
+                                  for s in payload["by_source"]))
+    return "\n".join(lines)
+
+
 def _format_calibration(payload: dict) -> str:
     """The v9d §4 table: per-gameweek Brier per head, then the refusals.
 
@@ -1261,6 +1303,10 @@ def format_report(key: str, payload: dict) -> str:
         return _format_news_shadow(payload)
     if key == "calibration":
         return _format_calibration(payload)
+    if key == "flag_latency":
+        return _format_flag_latency(payload)
+    if key == "presser_grades":
+        return _format_presser_grades(payload)
     lines = [f"=== {key} (run_at {payload.get('run_at')}, "
              f"sha {payload.get('git_sha')}) ==="]
     if payload.get("odds_blend_weight") is not None:

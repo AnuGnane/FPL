@@ -26,7 +26,9 @@ from __future__ import annotations
 
 import pandas as pd
 
+from gaffer.config import load_config
 from gaffer.evaluation import git_sha, news_actuals, run_at
+from gaffer.snapshot import load_snapshot_log
 
 MIN_SNAP_DATES = 14
 """Spec §3.1's first gate. Fourteen days is two full news cycles, which is the
@@ -350,3 +352,45 @@ def score_presser_grades(log: pd.DataFrame, actuals: pd.DataFrame,
             "confusion": confusion, "per_class": per_class,
             "by_source": by_source,
             "recall_population": "verdict-carrying rows"}
+
+
+def load_events() -> pd.DataFrame:
+    """The banked events snapshot, or an empty frame with the two columns.
+
+    A module-level function rather than an inline ``store.load`` so a test can
+    replace it, and so the two evaluators below cannot end up reading the
+    deadline from two different places.
+    """
+    from gaffer.data import store
+
+    if not store.exists("live/events.parquet"):
+        return pd.DataFrame(columns=["gw", "deadline_time"])
+    return store.load("live/events.parquet")
+
+
+def _season() -> str:
+    """``cfg.current_season``, or ``""``.
+
+    Its own try, for ``news_shadow._current_season``'s reason: a report is
+    better than no report, and a clone with no ``config.toml`` still has a log
+    worth reading. An empty season matches the log's own empty-string season
+    and therefore scores the pre-season rows and nothing else, which is the
+    honest degradation rather than a silent whole-log score.
+    """
+    try:
+        return str(load_config().current_season or "")
+    except Exception as exc:  # noqa: BLE001 — a report never blocks on config
+        print(f"availability report: no configured season ({exc})")
+        return ""
+
+
+def evaluate_flag_latency() -> dict:
+    """:func:`score_flag_latency` over the banked log and the live results."""
+    return score_flag_latency(load_snapshot_log(), news_actuals(),
+                              load_events(), season=_season())
+
+
+def evaluate_presser_grades() -> dict:
+    """:func:`score_presser_grades` over the banked log and the results."""
+    return score_presser_grades(load_snapshot_log(), news_actuals(),
+                                load_events(), season=_season())

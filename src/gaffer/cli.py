@@ -561,6 +561,16 @@ def evaluate(mode: str = typer.Option(
                  False, "--news-shadow",
                  help="Score the banked news shadow log against completed "
                       "gameweeks instead (gate N2)."),
+             flag_latency: bool = typer.Option(
+                 False, "--flag-latency",
+                 help="How much warning a status change gave before the "
+                      "deadline, and whether the player then started "
+                      "(v12 §3.1). Reads the banked snapshot log, refits "
+                      "nothing, takes seconds."),
+             presser_grades: bool = typer.Option(
+                 False, "--presser-grades",
+                 help="The presser classifier's verdicts against who actually "
+                      "started (v12 §3.2)."),
              calibration: bool = typer.Option(
                  False, "--calibration",
                  help="Per-gameweek reliability for the probabilities the "
@@ -573,7 +583,15 @@ def evaluate(mode: str = typer.Option(
                                    format_report, run_decomposition,
                                    save_evaluation)
 
-    if calibration:
+    if flag_latency:
+        from gaffer.availability_eval import evaluate_flag_latency
+
+        key, payload = "flag_latency", evaluate_flag_latency()
+    elif presser_grades:
+        from gaffer.availability_eval import evaluate_presser_grades
+
+        key, payload = "presser_grades", evaluate_presser_grades()
+    elif calibration:
         key, payload = "calibration", evaluate_calibration(season=season)
     elif news_shadow:
         key, payload = "news_shadow", evaluate_news_shadow()
