@@ -246,3 +246,107 @@ def score_flag_latency(log: pd.DataFrame, actuals: pd.DataFrame,
             "histogram": histogram,
             "late_flags": late[:WORST_LATE_FLAGS],
             "changes": changes, **gate}
+
+
+def score_presser_grades(log: pd.DataFrame, actuals: pd.DataFrame,
+                         events: pd.DataFrame, *, season: str) -> dict:
+    """Spec §3.2, over the banked snapshot log. Never raises.
+
+    **The population is ``llm_verdict.notna()``**, not ``source == "llm"``.
+    The spec says both and they are different sets: measured on the live log,
+    160 of 169 verdict rows carry ``source = premierinjuries`` and 9 carry
+    ``llm``, because ``source`` names *which news source produced the row* and
+    the classifier's verdict rides along on whatever row it was asked about.
+    ``source`` travels into the payload as a breakdown instead.
+
+    The event scored is **absence**. Every class claims it to some degree, so
+    precision — absence given the verdict — is comparable across them, and the
+    readout worth having is whether it falls in the order the classes are
+    named in. Recall is over the verdict-carrying rows only and the payload
+    says so: recall against every absent player in the gameweek would count
+    everyone the classifier was never shown.
+
+    The verdict graded is the **last one recorded before the deadline**, which
+    is ``score_news_shadow``'s ``.last()`` rule for the same reason — it is the
+    one that stood when the manager acted.
+    """
+    empty = _empty("presser_grades",
+                   "No presser verdicts have been banked yet.",
+                   verdicts_banked=0, confusion=[], per_class=[],
+                   by_source=[], recall_population="verdict-carrying rows")
+    if log is None or log.empty or "llm_verdict" not in log.columns:
+        return empty
+    frame = log.copy()
+    if "season" in frame.columns:
+        frame = frame[frame["season"].astype(str) == str(season)]
+    frame = frame[frame["llm_verdict"].notna()]
+    if frame.empty:
+        return empty
+    banked = int(len(frame))
+
+    window = pre_deadline(frame, deadlines(events))
+    if window.empty:
+        return {**empty, "verdicts_banked": banked, "note": (
+            f"{banked} verdict(s) banked, none of them recorded before a "
+            f"deadline. The snapshot job began after GW2's deadline; the "
+            f"first gradeable verdicts are the ones banked in a gameweek's "
+            f"own week.")}
+    graded = sorted({int(g) for g in window["gw"].unique()}
+                    & checked_gws(actuals))
+    if not graded:
+        return {**empty, "verdicts_banked": banked, "note": (
+            f"{banked} verdict(s) banked and {len(set(window['gw']))} "
+            f"gameweek(s) covered before their deadline, none of them yet "
+            f"marked data_checked. The grades land with the results.")}
+
+    window = window[window["gw"].isin(graded)]
+    last = (window.sort_values(["gw", "code", "snap_date"])
+            .groupby(["gw", "code"], as_index=False).last())
+    started = _outcomes(actuals)
+    rows = []
+    for r in last.itertuples():
+        outcome = started.get((int(r.gw), int(r.code)))
+        if outcome is None:
+            continue
+        rows.append({"verdict": str(r.llm_verdict),
+                     "source": ("" if pd.isna(getattr(r, "source", None))
+                                else str(r.source)),
+                     "started": bool(outcome)})
+    if not rows:
+        return {**empty, "verdicts_banked": banked, "note": (
+            "Every pre-deadline verdict belongs to a player with no result "
+            "row in the graded gameweeks.")}
+
+    absent_total = sum(1 for row in rows if not row["started"])
+    confusion, per_class = [], []
+    for verdict in sorted({row["verdict"] for row in rows}):
+        part = [row for row in rows if row["verdict"] == verdict]
+        missed = sum(1 for row in part if not row["started"])
+        confusion.append({"verdict": verdict, "n": len(part),
+                          "started": len(part) - missed,
+                          "not_started": missed})
+        per_class.append({
+            "verdict": verdict, "n": len(part),
+            # Six places, not three: the rounding is only there to keep
+            # 0.30000000000000004 out of the artifact, and a third of a
+            # small class is a repeating decimal that three places would
+            # visibly move.
+            "precision": round(missed / len(part), 6),
+            # Zero rather than null when nobody was absent at all: the class
+            # then found none of nothing, which is 0/0 only if you ask the
+            # question the wrong way round. ``absent_total`` is on the payload
+            # so a reader can see the denominator.
+            "recall": (round(missed / absent_total, 6) if absent_total
+                       else 0.0),
+        })
+    by_source = [{"source": s,
+                  "rows": sum(1 for row in rows if row["source"] == s)}
+                 for s in sorted({row["source"] for row in rows})]
+
+    return {"run_at": run_at(), "git_sha": git_sha(),
+            "kind": "presser_grades", "available": True, "rows": len(rows),
+            "note": None, "verdicts_banked": banked,
+            "graded_gws": graded, "absent_rows": absent_total,
+            "confusion": confusion, "per_class": per_class,
+            "by_source": by_source,
+            "recall_population": "verdict-carrying rows"}
