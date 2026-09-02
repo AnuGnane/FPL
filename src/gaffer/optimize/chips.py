@@ -7,7 +7,9 @@ baseline is the plan you would otherwise play, transfers and hits included.
 
 Free hit is the exception: it does not change the plan for later gameweeks
 (the squad reverts), so it is scored as a single-gameweek swap rather than by
-re-solving the horizon. See :func:`free_hit_gain`.
+re-solving the horizon. Since v12 that swap is priced from the *baseline's*
+position in the week the chip is played — its squad, its bank, its saved hits
+— rather than from today's. See :func:`free_hit_gain`.
 
 Those deltas are taken in an *undecayed* frame (``CHIP_EVAL_DECAY``), unlike
 the plan the advice actually recommends. The MILP objective discounts
@@ -241,36 +243,56 @@ def evaluate_chips(pool: pd.DataFrame, state: SolveInput,
 
 def free_hit_gain(pool: pd.DataFrame, state: SolveInput, gw: int,
                   base: Plan | None = None, **cfg) -> float:
-    """FH ≈ (best unrestricted single-GW squad, budget = sell value of current
-    squad + bank) minus the baseline plan's EP in that GW. Squad reverts after,
-    so other GWs are unchanged — a documented approximation.
+    """The best unrestricted one-week squad in ``gw``, against the plan you
+    would otherwise have played that week.
 
     ``base`` is the already-solved no-chip plan and must come from
     :func:`chip_baseline`; pass it to skip re-solving. Both solves are
     undecayed (see the module note) — the free hit is a one-week swap, so the
     discount only ever shrank a later week's chip against an earlier one.
 
-    Two things this deliberately ignores, both of which make the number a
-    *lower* bound on the chip's real value:
+    **v12 W3 §4.5 (specs/2026-09-01-gaffer-v12-program-design.md).** Two of the
+    three understatements this function used to carry are gone:
 
-    * the hits the baseline paid to reach that gameweek's XI (``expected_pts``
-      is gross of hit cost), so if the baseline bought its way to a good week,
-      free hit looks worth nothing when it actually saved you the hits;
-    * the fact that free hit leaves your transfers and bank untouched for the
-      rest of the horizon.
+    * the budget is the baseline's squad and bank *in that week*, not today's.
+      Pricing a GW+3 free hit off a squad the plan has already sold out of was
+      answering a question about a different team;
+    * the baseline's hits in that week are credited back. A free hit suspends
+      the week's transfers, so the points those transfers would have cost are
+      saved by playing the chip — and ``expected_pts`` is gross of hit cost,
+      so leaving them in made the chip look worth nothing exactly when it had
+      just saved a -8.
+
+    The third stays, and stays documented: a free hit also leaves your
+    transfers and bank untouched for the rest of the horizon, which this
+    number does not price. Doing so needs a two-branch horizon solve, and the
+    spec asks for a true re-solve of the free hit *week*.
+
+    A baseline whose week carries no readable bank — an older ``Plan``, a
+    solver that returned no value — falls back to today's squad and bank,
+    which is exactly the pre-v12 number, and says so on stdout rather than
+    silently pricing a chip off a position nobody chose.
     """
     cfg = _eval_cfg(cfg)
     if base is None:
         base = solve_plan(pool, state, **cfg)
-    base_gw_ep = next(g.expected_pts for g in base.gw_plans if g.gw == gw)
-    budget = state.bank + int(
-        pool[pool["code"].isin(state.owned_codes)]["sell"].sum())
+    base_week = next(g for g in base.gw_plans if g.gw == gw)
+    hit_cost = int(cfg.get("hit_cost", 4))
+    squad, bank = list(base_week.squad), base_week.bank
+    if bank is None:
+        print(f"free_hit_gain: the baseline plan carries no bank for GW{gw}; "
+              f"pricing the chip off today's squad instead")
+        squad, bank = list(state.owned_codes), float(state.bank)
+    sell = dict(zip(pool["code"], pool["sell"]))
+    budget = int(round(float(bank)
+                       + sum(float(sell.get(c, 0.0)) for c in squad)))
     # free_transfers=15 just means "no transfer counts as a hit" when building
     # the squad from scratch; the FH squad is not bought, it is conjured.
     fh_state = SolveInput(owned_codes=[], bank=budget, free_transfers=15,
                           gws=[gw], locked_out=list(state.locked_out))
     fh = solve_plan(pool, fh_state, **cfg)
-    return fh.gw_plans[0].expected_pts - base_gw_ep
+    baseline_week_net = base_week.expected_pts - hit_cost * base_week.hits
+    return fh.gw_plans[0].expected_pts - baseline_week_net
 
 
 def wildcard_now_assessment(pool: pd.DataFrame, state: SolveInput,

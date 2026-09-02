@@ -914,7 +914,11 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         chip_rows = chip_table.to_dict("records")
         for row in chip_rows:
             if row["chip"] == "freehit":
-                row["note"] = "conservative lower bound"
+                # v12 W3 §4.5: no longer a lower bound on two counts — the
+                # week's own squad and bank price it, and the hits it saves
+                # are credited. What is still excluded is the horizon: a free
+                # hit also leaves your transfers and bank untouched afterwards.
+                row["note"] = "excludes horizon effects"
             # The theta_t bar for that chip in that week: the surplus the best
             # remaining week is expected to offer. Playing is only right when
             # the week on the row beats waiting, which a flat constant cannot

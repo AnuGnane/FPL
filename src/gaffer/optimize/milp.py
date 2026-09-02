@@ -186,6 +186,16 @@ class GwPlan:
     sells: list[int]
     hits: int
     expected_pts: float
+    # v12 W3 §4.5 (specs/2026-09-01-gaffer-v12-program-design.md)
+    bank: float | None = None
+    """Money left after this gameweek's transfers, in 0.1m units.
+
+    The MILP has always solved for it and always thrown it away, which is why
+    a chip priced three weeks out had to be priced off *today's* bank. ``None``
+    when the solver returned no value for the variable — a state believed
+    unreachable on an optimal solve, kept because a caller that reads 0.0 as
+    "no money" would price a free hit off nothing at all.
+    """
 
 
 @dataclass
@@ -906,6 +916,12 @@ def _solve_once(pool: pd.DataFrame, state: SolveInput, *, decay: float,
             hits=int(round(hits[t].varValue or 0)),
             expected_pts=sum(ep[c][t] for c in xi_l)
                          + max((ep[c][t] for c in xi_l), default=0.0),
+            # v12 W3 §4.5: not ``or None`` — a bank of exactly zero is a real
+            # and common state (fully invested), and reading it as unknown
+            # would send ``free_hit_gain`` back to today's figures on the very
+            # weeks the plan spends everything.
+            bank=(None if bank[t].varValue is None
+                  else round(float(bank[t].varValue), 4)),
         ))
     return Plan(objective=pulp.value(prob.objective), gw_plans=gw_plans)
 
