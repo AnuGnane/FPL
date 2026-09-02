@@ -277,8 +277,18 @@ def test_the_job_kinds_are_still_twelve():
 def test_the_config_gained_no_field():
     """Spec §0: nothing here is a knob. The season the field log is read for
     comes from the existing ``current_season``; the scenario path is a module
-    constant in chip_policy."""
-    assert len(dataclasses.fields(Config)) == 48
+    constant in chip_policy.
+
+    v12 W1 §2.6/§2.8 (specs/2026-09-01-gaffer-v12-program-design.md): this
+    asserted an absolute count of 48, in one of seven protected files that
+    did. v10b is the cycle that hit this exact shape with *routes* and v11
+    retired that one; the config pin is the same restructure a cycle later.
+    The claim below is what this cycle is entitled to say, and the total lives
+    in ``tests/test_v12_w1_degradation.py`` alone.
+    """
+    names = {f.name for f in dataclasses.fields(Config)}
+    assert "current_season" in names
+    assert not [n for n in names if "scenario_path" in n or "chip" in n]
 
 
 def test_the_route_count_moved_by_exactly_one(tmp_path, monkeypatch):

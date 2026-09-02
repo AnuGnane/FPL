@@ -315,12 +315,26 @@ def test_the_job_kinds_are_still_twelve():
 
 def test_the_config_gained_no_field():
     """Spec §2: no new config keys. ``ADVISE_TIMEOUT_S`` is a module constant
-    that finally acquired a reader, not a knob."""
+    that finally acquired a reader, not a knob.
+
+    v12 W1 §2.6/§2.8 (specs/2026-09-01-gaffer-v12-program-design.md): this
+    asserted an absolute count of 48, in one of seven protected files that
+    did. That shape had already cost one cycle a designed feature — see
+    ``tests/test_v10_config_providers.py``'s docstring — so it becomes the
+    claim this cycle is actually entitled to make, and the total lives in
+    ``tests/test_v12_w1_degradation.py`` alone.
+    """
     import dataclasses
 
     from gaffer.config import Config
 
-    assert len(dataclasses.fields(Config)) == 48
+    names = {f.name for f in dataclasses.fields(Config)}
+    # `advise_timeout` / `abandon` rather than a bare "timeout": the tree
+    # already has `news_llm_timeout_s`, which is an HTTP deadline on one news
+    # source (v8a) and not this claim's subject. Naming the two constants
+    # keeps the exception visible instead of quietly widening the pattern.
+    assert not [n for n in names
+                if "advise_timeout" in n or "abandon" in n]
 
 
 def test_the_jobs_routes_are_the_four_plus_the_new_delete(tmp_path,

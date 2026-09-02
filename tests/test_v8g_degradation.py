@@ -277,10 +277,13 @@ def test_v8g_added_no_config_key():
     assert not [n for n in names
                 if ("band" in n and n != "z_deadband")
                 or "uncertainty" in n or "confidence" in n]
-    # 47 keys as of v8f. v8g adds none, so any change to this number is a
-    # config key this cycle had no business adding.
-    # 47 -> 48: v8f added [digest] notify (deliberate, orchestrator-authorised).
-    assert len(names) == 48
+    # v12 W1 §2.6/§2.8 (specs/2026-09-01-gaffer-v12-program-design.md): an
+    # absolute `len(names) == 48` stood here — 47 as of v8f, 48 once v8f added
+    # [digest] notify — in one of seven protected files that pinned the total.
+    # That shape made a config key cost seven authorizations, and it had
+    # already cost v10 a designed field outright. The total moved to
+    # tests/test_v12_w1_degradation.py; the absence claim above is what v8g is
+    # entitled to assert, and it was already written before the number.
 
 
 # --- rail 8: protected ordering, forward -----------------------------

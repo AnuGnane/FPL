@@ -749,20 +749,12 @@ def ui(port: int = typer.Option(8927, help="Port to serve on (default 8927)."),
     # a broker for the streams) and deliberately out of scope here.
     # A single process is the contract this line keeps.
     #
-    # v12 W1 §2.8 added the LAN token, and it is spelled as two branches
-    # rather than one keyword call on purpose: that rail greps this call site
-    # for the literal `create_app()`, and it lives in a protected file this
-    # cycle is not authorized to edit. The tokenless branch is written first
-    # because the rail reads the earliest such call in this module. Both
-    # branches hand over an app instance and neither asks for a worker count,
-    # which is the whole of what the rail defends — but the spelling is a
-    # workaround, and the honest fix is to relax that assertion to match the
-    # call prefix the next time that file is open under authorization.
-    if token is None:
-        uvicorn.run(create_app(), host=host, port=port, log_level="info")
-    else:
-        uvicorn.run(create_app(token=token), host=host, port=port,
-                    log_level="info")
+    # v12 W1 §2.8 (specs/2026-09-01-gaffer-v12-program-design.md) added the
+    # token. `token` is None on loopback, and `create_app` installs no
+    # middleware at all in that case — so this one call is still, byte for
+    # byte, the app that has always shipped by default.
+    uvicorn.run(create_app(token=token), host=host, port=port,
+                log_level="info")
 
 
 def main():

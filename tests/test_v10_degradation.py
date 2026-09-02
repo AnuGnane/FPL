@@ -418,8 +418,21 @@ def test_the_config_dataclass_did_not_grow(tmp_path, monkeypatch):
     ``config.lineup_providers()`` instead — a module-level reader of the same
     ``[news] lineup_providers`` key, read at serve time the way
     ``serving_config()`` is read and for the same reason. Every behaviour A6
-    argued for survives; only the storage does not."""
-    assert len(dataclasses.fields(Config)) == 48
+    argued for survives; only the storage does not.
+
+    v12 W1 §2.6/§2.8 (specs/2026-09-01-gaffer-v12-program-design.md): **that
+    refusal's cause has been retired.** The absolute count this test used to
+    assert is gone from all seven protected files and lives in
+    ``tests/test_v12_w1_degradation.py`` alone, so a cycle that wants A6's
+    49th field now moves one number in one unprotected place. The design
+    question A6 lost on a technicality is open again, and losing it a second
+    time would have to be on the merits.
+
+    What v10 is entitled to claim is below, unchanged: the switch is a reader,
+    and the field it would have been is absent.
+    """
+    assert not any(f.name == "news_lineup_providers"
+                   for f in dataclasses.fields(Config))
     monkeypatch.chdir(tmp_path)
     assert lineup_providers() == list(DEFAULT_LINEUP_PROVIDERS)
 

@@ -3,8 +3,11 @@
 Every rail here is a state a real machine reaches: a server started with a
 worker count, a parquet refreshed under a warm cache, a job cancelled rather
 than timed out, a gameweek graded from an artifact written after the whistle.
-The pins at the end are the counts that did *not* move — twelve job kinds,
-forty-eight config fields — and the one that moved by exactly one.
+The pins at the end are the counts that did *not* move — twelve job kinds, and
+no config key for ``ABANDON_TIMEOUT_S`` — and the one that moved by exactly
+one. (The absolute config-field total used to be asserted here too; v12 W1
+moved it to ``tests/test_v12_w1_degradation.py``, where it is the only one in
+the suite.)
 
 The most valuable assertion in the file is
 ``test_the_ui_serves_an_app_instance_and_never_a_worker_count``. Everything
@@ -51,7 +54,15 @@ def test_the_ui_serves_an_app_instance_and_never_a_worker_count():
     single lane and the SSE buffers on ``app.state.job_runner`` work at all
     today. Both halves are asserted, because either alone can be defeated."""
     call = _uvicorn_call()
-    assert "create_app()" in call
+    # v12 W1 §2.8 (specs/2026-09-01-gaffer-v12-program-design.md): the literal
+    # `create_app()`. §2.8 gave `create_app` a keyword-only `token`, and the
+    # LAN branch passes it — so the literal forced `cli.ui` to spell one call
+    # as two branches, one per argument list, purely to keep this grep
+    # matching. That is a source pin changing shipped code to suit itself.
+    # The prefix is what the claim was ever about: an app *instance*, built
+    # here, rather than an import string uvicorn could fork workers from. The
+    # two asserts below are the substance and neither is weakened.
+    assert "create_app(" in call
     assert '"' not in call.split(",")[0], (
         "the first argument became an import string — uvicorn can fork "
         "workers off one of those, and every job-runner invariant assumes "
@@ -413,12 +424,25 @@ def test_the_job_kinds_are_still_twelve():
 
 def test_the_config_gained_no_field():
     """Spec §0: no new config keys. ABANDON_TIMEOUT_S is an engineering
-    deadline on a local single-lane runner, not something a user tunes."""
+    deadline on a local single-lane runner, not something a user tunes.
+
+    v12 W1 §2.6/§2.8 (specs/2026-09-01-gaffer-v12-program-design.md): this
+    asserted an absolute count of 48, in one of seven protected files that
+    did — the same shape v10b hit with routes and v11 retired. It becomes the
+    claim this cycle is entitled to make about its own constant, and the total
+    lives in ``tests/test_v12_w1_degradation.py`` alone.
+    """
     import dataclasses
 
     from gaffer.config import Config
 
-    assert len(dataclasses.fields(Config)) == 48
+    names = {f.name for f in dataclasses.fields(Config)}
+    # `advise_timeout` / `abandon` rather than a bare "timeout": the tree
+    # already has `news_llm_timeout_s`, which is an HTTP deadline on one news
+    # source (v8a) and not this claim's subject. Naming the two constants
+    # keeps the exception visible instead of quietly widening the pattern.
+    assert not [n for n in names
+                if "advise_timeout" in n or "abandon" in n]
 
 
 def test_this_cycle_added_exactly_the_calibration_get(tmp_path, monkeypatch):

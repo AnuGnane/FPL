@@ -296,9 +296,14 @@ def test_v8f_added_exactly_one_config_key():
     assert not [n for n in names
                 if ("watch" in n or "digest" in n or "price_log" in n)
                 and n != "digest_notify"]
-    # 48 keys as of v8f. Any change to this number is a config key a later
-    # cycle had no business adding without moving the pin deliberately.
-    assert len(names) == 48
+    # v12 W1 §2.6/§2.8 (specs/2026-09-01-gaffer-v12-program-design.md): an
+    # absolute `len(names) == 48` stood here, in one of seven protected files
+    # that asserted it — so every cycle entitled to add a config key first had
+    # to buy seven authorizations, and one cycle did not: see
+    # tests/test_v10_config_providers.py's docstring for the field v10
+    # abandoned. The count is now pinned in tests/test_v12_w1_degradation.py
+    # alone. The claim above is the one v8f is actually entitled to make, and
+    # it was already written on the line above the number.
 
 
 # --- rail 7: protected ordering, forward ----------------------------

@@ -322,31 +322,45 @@ def test_the_job_kinds_are_still_twelve():
 
 
 def test_the_config_gained_no_field():
-    """Spec §0: nothing in a UI cycle is a knob."""
+    """Spec §0: nothing in a UI cycle is a knob.
+
+    v12 W1 §2.6/§2.8 (specs/2026-09-01-gaffer-v12-program-design.md): this
+    asserted an absolute count of 48, in one of seven protected files that
+    did. This cycle is the one that retired the *route* pin's identical shape;
+    the config pin gets the same treatment here, and the total lives in
+    ``tests/test_v12_w1_degradation.py`` alone.
+    """
     import dataclasses
 
     from gaffer.config import Config
 
-    assert len(dataclasses.fields(Config)) == 48
+    names = {f.name for f in dataclasses.fields(Config)}
+    assert not [n for n in names
+                if "bank" in n or "rank" in n or "wins" in n or "board" in n]
 
 
 def test_the_route_total_did_not_move_and_this_is_where_it_is_pinned(
         tmp_path, monkeypatch):
-    """45 at the branch point (3404fc3) and 45 now: every serve-side change
-    this cycle made is an additive field on a model that already existed.
+    """45 at the branch point (3404fc3) and 45 at the end of v11: every
+    serve-side change *that* cycle made was an additive field on a model that
+    already existed.
 
-    **This is the only absolute route pin in the suite.** Task 11 replaced the
-    four that used to exist — three of them in protected files — with the
-    by-name claim each cycle is entitled to make about its own routes. A
-    future cycle that adds a route moves this number, here, and nowhere else.
-
-    Pinned as a total *and* by absence: a count alone would let a route be
-    added and another removed in one cycle, and this cycle's claim is
-    precisely that it added none.
+    **This is the only absolute route pin in the suite**, which is what v11's
+    restructure bought — Task 11 replaced the four that used to exist, three
+    of them in protected files, with the by-name claim each cycle is entitled
+    to make about its own routes — and v12 W1 is the first cycle to spend it.
+    45 → 46, and the one is ``GET /api/meta/freshness`` (v12 W1 §2.9,
+    specs/2026-09-01-gaffer-v12-program-design.md), the endpoint behind the
+    "as of" strip that every hub draws. Pinned by name below as well as by
+    count, because a count alone would let a route be added and another
+    removed in one cycle.
     """
     monkeypatch.chdir(tmp_path)
     paths = set(create_app().openapi()["paths"])
-    assert len(paths) == 45
+    assert len(paths) == 46
+    assert "/api/meta/freshness" in paths
+    # v11's own claim, untouched: /api/meta/freshness collides with none of
+    # these three prefixes.
     assert not [p for p in paths
                 if p.startswith(("/api/board", "/api/season",
                                  "/api/compare"))]

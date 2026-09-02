@@ -81,9 +81,16 @@ def test_a_corrupt_toml_gives_the_default_rather_than_raising(tmp_path):
 
 
 def test_the_config_dataclass_did_not_grow(tmp_path):
-    """The deviation, pinned. v9c and v9d both assert 48 and both are
-    protected; the switch is a reader, so the count is untouched."""
-    assert len(dataclasses.fields(Config)) == 48
+    """The deviation, pinned. v9c and v9d both asserted 48 and both were
+    protected; the switch is a reader, so the count was untouched.
+
+    v12 W1 §2.6/§2.8 (specs/2026-09-01-gaffer-v12-program-design.md): the
+    seven protected counts are gone and the total lives in
+    ``tests/test_v12_w1_degradation.py`` alone — this file's own docstring is
+    the evidence that cited shape cost a real design, and it is the reason the
+    restructure happened. The absence claim below is the substance; the count
+    never was.
+    """
     assert not any(f.name == "news_lineup_providers"
                    for f in dataclasses.fields(Config))
 
