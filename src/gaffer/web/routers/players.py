@@ -194,7 +194,14 @@ def players(position: str | None = None, team: int | None = None,
     except Exception:  # noqa: BLE001
         field_eo = {}
     # v12 W2 §3.3 (specs/2026-09-01-gaffer-v12-program-design.md, plan A5).
-    trend = _trend_table(first_gw, season)
+    #
+    # `None` rather than `first_gw`: the upcoming gameweek is the one whose
+    # picks are not public yet, so it is routinely *absent* from the EO log
+    # and keying to it would blank the column on precisely the days the page
+    # is read most. `None` means "the newest gameweek the log actually has",
+    # and `deadline_eo` projects that newest sample one gameweek forward by
+    # construction (A4) — which is this page's upcoming week.
+    trend = _trend_table(None, season)
 
     rows = []
     for r in snapshot.itertuples():

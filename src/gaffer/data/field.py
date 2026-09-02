@@ -328,6 +328,11 @@ def field_eo_trend(season: str, gw: int | None) -> dict[int, dict]:
     :func:`latest_field_eo`'s contract and for its reason — this is display.
     """
     try:
+        # Bare, unlike `latest_field_eo`'s seasoned read: this loader takes no
+        # season and returns the whole log. The season guard is the filter two
+        # lines below, applied here rather than pushed into the loader because
+        # the trend needs *two* gameweeks out of one season and the loader has
+        # no gameweek-pair notion to hang that on.
         log = load_field_eo()
     except Exception:  # noqa: BLE001 — a display read never blocks a page
         return {}

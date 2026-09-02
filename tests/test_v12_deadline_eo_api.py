@@ -44,6 +44,33 @@ def test_an_unreadable_trend_costs_the_columns_and_not_the_page(monkeypatch):
     assert players_router._trend_table(3, "2026-27") == {}
 
 
+def test_the_upcoming_gameweek_being_absent_from_the_log_still_draws_arrows(
+        monkeypatch):
+    """The explorer keys its trend to `None`, not to the upcoming gameweek.
+
+    Picks for the gameweek the page is about are not public until its
+    deadline, so that gameweek is routinely missing from the log — and keying
+    to it would blank the column on exactly the days the page is read most.
+    `None` means "the newest gameweek the log has", whose `deadline_eo` is
+    already that sample projected one gameweek forward.
+    """
+    import pandas as pd
+
+    from gaffer.data import field
+
+    log = pd.DataFrame(
+        [{"season": "2026-27", "gw": g, "snap_date": d, "element": 100,
+          "eo": v, "se": 2.0, "n": 300}
+         for g, d, v in [(2, "2026-08-31", 40.0), (3, "2026-09-07", 46.0)]])
+    monkeypatch.setattr(field, "load_field_eo", lambda: log)
+
+    # GW4 is what the page is about, and the log has never heard of it.
+    assert players_router._trend_table(4, "2026-27") == {}
+    keyed_to_none = players_router._trend_table(None, "2026-27")
+    assert players_router._trend_fields(keyed_to_none, 100) == {
+        "field_eo_deadline": 52.0, "field_eo_delta": 6.0}
+
+
 def test_the_captain_frame_carries_the_projection(monkeypatch):
     monkeypatch.setattr(field_frame, "_field_table",
                         lambda gw: {100: {"eo": 46.0, "se": 2.0, "n": 300,

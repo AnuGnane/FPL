@@ -9,16 +9,34 @@ is half a point, and says so, because a test that depended on HiGHS resolving
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+
 import pandas as pd
 import pytest
 
 from gaffer import price_timing
 from gaffer.optimize import milp
+from gaffer.snapshot import snap_date
+
+# The reader drops a log whose newest day is not today, so the fixtures are
+# stamped relative to the clock rather than with a literal date that would
+# quietly turn every one of these into a stale-log test tomorrow.
+TODAY = snap_date()
+YESTERDAY = snap_date(datetime.now(timezone.utc) - timedelta(days=1))
+
+
+@pytest.fixture(autouse=True)
+def _clear_price_fall_cache():
+    """``owned_price_falls`` caches on the squad, and two tests below hand it
+    the same squad under different monkeypatches."""
+    price_timing.owned_price_falls.cache_clear()
+    yield
+    price_timing.owned_price_falls.cache_clear()
 
 
 def test_a_falling_owned_player_gets_his_predictor_reading_as_a_probability():
     log = pd.DataFrame({
-        "snap_date": ["2026-09-01"] * 3,
+        "snap_date": [TODAY] * 3,
         "code": [1, 2, 3],
         "now_cost": [80, 75, 60],
         "price_change_percent": [-95.0, -40.0, 88.0],
@@ -34,7 +52,7 @@ def test_a_calibrating_reading_is_not_a_probability():
     """``calibrating`` exists to say the log is not yet trustworthy, and a
     charge levied off an untrustworthy reading is worse than none —
     ``routers/prices.py``'s own rule for the movers panel."""
-    log = pd.DataFrame({"snap_date": ["2026-09-01"], "code": [1],
+    log = pd.DataFrame({"snap_date": [TODAY], "code": [1],
                         "now_cost": [80], "price_change_percent": [-95.0],
                         "direction": ["drop"], "calibrating": [True]})
     assert price_timing.price_falls(log, [1]) == {}
@@ -42,22 +60,32 @@ def test_a_calibrating_reading_is_not_a_probability():
 
 def test_only_the_newest_day_is_read():
     log = pd.DataFrame({
-        "snap_date": ["2026-08-31", "2026-09-01"],
+        "snap_date": [YESTERDAY, TODAY],
         "code": [1, 1], "now_cost": [80, 80],
         "price_change_percent": [-95.0, -10.0],
         "direction": ["drop", "drop"], "calibrating": [False, False]})
     assert price_timing.price_falls(log, [1]) == {1: 0.1}
 
 
+def test_a_day_old_log_is_no_log_at_all():
+    """A stale log describes a change that has already resolved overnight.
+    Charging a sale for a fall the player has already taken charges it twice,
+    so the whole frame goes — the same empty table a missing log yields."""
+    log = pd.DataFrame({"snap_date": [YESTERDAY], "code": [1],
+                        "now_cost": [80], "price_change_percent": [-95.0],
+                        "direction": ["drop"], "calibrating": [False]})
+    assert price_timing.price_falls(log, [1]) == {}
+
+
 def test_a_reading_past_the_threshold_is_clamped_to_one():
-    log = pd.DataFrame({"snap_date": ["2026-09-01"], "code": [1],
+    log = pd.DataFrame({"snap_date": [TODAY], "code": [1],
                         "now_cost": [80], "price_change_percent": [-129.9],
                         "direction": ["drop"], "calibrating": [False]})
     assert price_timing.price_falls(log, [1]) == {1: 1.0}
 
 
 def test_an_unowned_player_is_not_in_the_table():
-    log = pd.DataFrame({"snap_date": ["2026-09-01"], "code": [9],
+    log = pd.DataFrame({"snap_date": [TODAY], "code": [9],
                         "now_cost": [80], "price_change_percent": [-95.0],
                         "direction": ["drop"], "calibrating": [False]})
     assert price_timing.price_falls(log, [1, 2]) == {}
@@ -136,7 +164,7 @@ def test_the_switch_off_is_an_empty_table(monkeypatch):
     monkeypatch.setattr(price_timing, "price_timing_enabled", lambda: False)
     monkeypatch.setattr(price_timing, "load_price_log",
                         lambda: pd.DataFrame({
-                            "snap_date": ["2026-09-01"], "code": [1],
+                            "snap_date": [TODAY], "code": [1],
                             "now_cost": [80], "price_change_percent": [-95.0],
                             "direction": ["drop"], "calibrating": [False]}))
     assert price_timing.owned_price_falls([1]) == {}
@@ -149,6 +177,30 @@ def test_a_missing_price_log_costs_the_term_and_not_the_solve(monkeypatch):
     monkeypatch.setattr(price_timing, "price_timing_enabled", lambda: True)
     monkeypatch.setattr(price_timing, "load_price_log", boom)
     assert price_timing.owned_price_falls([1]) == {}
+
+
+def test_the_table_is_read_once_per_squad_and_handed_out_as_a_copy(monkeypatch):
+    """`solve_plan` calls this twice per solve, once per pass, so the parquet
+    read is cached on `tuple(sorted(owned))` — and a caller that mutates its
+    copy must not poison the next pass."""
+    reads = []
+
+    def counted():
+        reads.append(1)
+        return pd.DataFrame({
+            "snap_date": [TODAY], "code": [1], "now_cost": [80],
+            "price_change_percent": [-50.0], "direction": ["drop"],
+            "calibrating": [False]})
+
+    monkeypatch.setattr(price_timing, "price_timing_enabled", lambda: True)
+    monkeypatch.setattr(price_timing, "load_price_log", counted)
+    first = price_timing.owned_price_falls([2, 1])
+    assert first == {1: 0.5}
+    first[1] = 99.0
+    assert price_timing.owned_price_falls([1, 2]) == {1: 0.5}   # order-free
+    assert len(reads) == 1
+    price_timing.owned_price_falls([1, 2, 3])
+    assert len(reads) == 2                                      # a new squad
 
 
 # --- the objective ------------------------------------------------------
@@ -214,10 +266,6 @@ def test_with_the_charge_large_enough_to_beat_the_gap_the_sale_moves_forward(
     the lookup *inside* ``solve_plan`` from the config and the price log, so
     that wrapper takes no ``price_fall`` and a test that handed it one would
     be testing a keyword the tree does not have. The term lives in
-    ``_solve_once`` rather than ``solve_plan``: the enumerated change builds
-    the lookup *inside* ``solve_plan`` from the config and the price log, so
-    that wrapper takes no ``price_fall`` and a test that handed it one would
-    be testing a keyword the tree does not have. The term lives in
     ``_solve_once`` and pass two inherits it through ``**kw``.
 
     The control is half the test and not a courtesy: without the charge this
@@ -225,7 +273,11 @@ def test_with_the_charge_large_enough_to_beat_the_gap_the_sale_moves_forward(
     through the first week is worth 0.2 points and the half million his sale
     frees is worth the same whenever it is banked. The assertion below is only
     a statement about the term because the line above says the solver would
-    otherwise have done the opposite."""
+    otherwise have done the opposite.
+
+    The charged assertion names the *first* week's sell list rather than the
+    second week's squad, because a sold player is already out of ``squad`` in
+    either arm and an absence there would be satisfied by the control too."""
     pool = _pool()
     state = _state(pool)
     kw = dict(decay=1.0, bench_weight=0.1, vice_weight=0.1, ft_value=0.0,
@@ -234,7 +286,7 @@ def test_with_the_charge_large_enough_to_beat_the_gap_the_sale_moves_forward(
     assert 1 in control.gw_plans[1].sells
 
     plan = milp._solve_once(pool, state, **kw, price_fall={1: 1.0})
-    assert 1 not in plan.gw_plans[1].squad or 1 in plan.gw_plans[0].sells
+    assert 1 in plan.gw_plans[0].sells
 
 
 def test_no_price_fall_leaves_the_problem_byte_identical(monkeypatch):
@@ -255,3 +307,6 @@ def test_no_price_fall_leaves_the_problem_byte_identical(monkeypatch):
                              vice_weight=0.1, ft_value=1.5, itb_value=0.08,
                              hit_cost=4, price_fall=fall)
     assert captured[0] == captured[1]
+    # And not merely equal to each other: no `out_` variable is priced at all,
+    # so the equality above cannot be two copies of a charged objective.
+    assert "out_" not in captured[0]

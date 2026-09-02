@@ -19,6 +19,16 @@ yet trustworthy, and ``routers/prices.py`` already suppresses its warnings on
 it; a charge levied off an untrustworthy reading is worse than no charge,
 because the solver cannot see the caveat.
 
+The sign of ``price_change_percent`` is the whole test, and the log's
+``direction`` column is redundant with it: ``direction == "drop"`` is exactly
+``pct < 0`` on every row the banker writes. This module reads the number
+rather than the label, so a log written before the label existed still scores.
+
+**A stale log is no log.** If the newest banked day is not *today*, the whole
+frame is dropped and the table is empty. Last night's reading is about a
+change that has already happened, and charging a sale for a fall the player
+has already taken is charging it twice.
+
 Nothing here raises. It is read on the solve path and a missing log, a corrupt
 log or a machine that has never run ``gaffer prices`` must cost the term and
 nothing else.
@@ -26,10 +36,13 @@ nothing else.
 
 from __future__ import annotations
 
+from functools import lru_cache
+
 import pandas as pd
 
 from gaffer.config import price_timing as price_timing_enabled
 from gaffer.price_log import load_price_log
+from gaffer.snapshot import snap_date
 
 
 def price_falls(log: pd.DataFrame,
@@ -39,11 +52,18 @@ def price_falls(log: pd.DataFrame,
     The newest day only: a reading from Tuesday is not evidence about
     Thursday night, and the log keeps every day precisely so that "the newest"
     is a choice somebody made rather than the only row there is.
+
+    And the newest day has to be *today* (``snapshot.snap_date()``, UTC). A
+    log whose freshest row is yesterday's is describing a price change that
+    has already resolved; charging it again is charging a fall twice. So a
+    stale log yields ``{}``, exactly as a missing one does.
     """
     if log is None or log.empty or not owned:
         return {}
     frame = log.copy()
     day = max(str(d) for d in frame["snap_date"])
+    if day != snap_date():
+        return {}
     frame = frame[frame["snap_date"].astype(str) == day]
     frame = frame[frame["code"].isin([int(c) for c in owned])]
     if "calibrating" in frame.columns:
@@ -64,14 +84,44 @@ def owned_price_falls(owned: list[int] | None) -> dict[int, float]:
     """:func:`price_falls` over the banked log, behind the switch.
 
     Empty dict on the switch being off, on no log, on a corrupt log and on a
-    log with nothing near a threshold — and an empty dict makes the objective
-    term arithmetically absent, which is what keeps a machine with no price
-    log solving exactly what it always did.
+    stale one — and an empty dict makes the objective term arithmetically
+    absent, which is what keeps a machine with no price log solving exactly
+    what it always did.
+
+    Cached, and for the reason :func:`gaffer.config.optimizer_top_n` is:
+    ``solve_plan`` calls it on every solve — twice, once per pass, through the
+    shared ``kw`` — and a parquet read per pass on the serving path is the
+    cost this reader exists to avoid. The key is ``tuple(sorted(owned))``, so
+    two solves of the same squad share one read and a different squad does
+    not. Anything that rewrites the price log (or ``config.toml``) under a
+    running process calls ``owned_price_falls.cache_clear()``; the health poll
+    already does, beside ``optimizer_top_n``'s. The returned dict is a fresh
+    copy per call so a caller that mutates it cannot poison the cache.
+
+    Note the switch itself is *not* cached: :func:`gaffer.config.price_timing`
+    re-reads ``config.toml`` on every call, so a flipped flag takes effect on
+    the next solve. It is this table — the parquet read — that the cache is
+    for.
     """
+    key = tuple(sorted(int(c) for c in owned)) if owned else ()
+    return dict(_owned_price_falls(key))
+
+
+@lru_cache(maxsize=8)
+def _owned_price_falls(owned: tuple[int, ...]) -> dict[int, float]:
+    """:func:`owned_price_falls`'s cache. Never call this one directly — it
+    hands back the cached dict itself, and a mutation of it would be
+    permanent."""
     try:
         if not price_timing_enabled():
             return {}
-        return price_falls(load_price_log(), owned)
+        return price_falls(load_price_log(), list(owned))
     except Exception as exc:  # noqa: BLE001 — never blocks a solve
         print(f"price timing: no charge applied ({exc})")
         return {}
+
+
+# The cache lives on the private reader, but callers should not have to know
+# that — `optimizer_top_n`'s precedent, verbatim.
+owned_price_falls.cache_clear = _owned_price_falls.cache_clear
+owned_price_falls.cache_info = _owned_price_falls.cache_info

@@ -412,8 +412,8 @@ def solve_plan(pool: pd.DataFrame, state: SolveInput, *, decay: float,
     # v12 W2 §3.4 (specs/2026-09-01-gaffer-v12-program-design.md). Read here
     # rather than carried on SolveInput: seven call sites construct one and
     # two of them are protected files. Empty dict when the switch is off, the
-    # log is missing, or nothing is near a threshold — and an empty dict makes
-    # every expression below arithmetically today's.
+    # log is missing, corrupt, or stale — and an empty dict makes every
+    # expression below arithmetically today's.
     from gaffer.price_timing import owned_price_falls
 
     kw = dict(decay=decay, bench_weight=bench_weight,

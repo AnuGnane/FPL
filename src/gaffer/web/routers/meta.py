@@ -25,6 +25,7 @@ from gaffer.data.odds import poisson_win_prob
 from gaffer.errors import GafferError
 from gaffer.assets import load_decision_priors
 from gaffer.config import load_config, optimizer_top_n
+from gaffer.price_timing import owned_price_falls
 from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
                                          chip_windows, load_chip_scenarios)
 from gaffer.optimize.chips import chip_plan, evaluate_chips
@@ -304,6 +305,11 @@ def health() -> Health:
         # user who just edited it expects.
         optimizer_top_n.cache_clear()
         solver_top_n = optimizer_top_n()
+        # v12 W2 §3.4. The price-timing table is cached on the same terms and
+        # goes stale on the same events — an edited `[optimizer]` switch, and
+        # a nightly `gaffer prices` run that banked a fresher day under a
+        # long-lived server. One clear per health poll, same trade.
+        owned_price_falls.cache_clear()
     except Exception:  # noqa: BLE001 — a health page never 500s
         solver_top_n = None
 

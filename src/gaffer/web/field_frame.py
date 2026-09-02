@@ -171,26 +171,36 @@ def _modal_captain(gw: int) -> dict | None:
     return {"code": who["code"], "name": who["name"], "gw": int(gw)}
 
 
-def _field_table(gw: int) -> dict[int, dict]:
-    """``{element: {"eo", "se", "n", "gw"}}`` for this season, or an empty map.
+def _season(what: str) -> str | None:
+    """The configured season, or ``None`` and a line saying which reader lost.
 
-    The config read is *inside* the guard, and its failure is an empty map —
-    this module's documented degradation, not a guessed season. ``load_config``
-    raises on a clone with no ``config.toml``, and the season is guard 3: a
-    literal default here would frame against a season the user never chose on
-    exactly the machines least likely to notice. No configured season, no
-    framing.
-
-    Deliberately *not* "the newest season in the log" either: that would frame
-    from last season's rows on a clone whose log has not rolled over, which is
-    the same failure from the other side.
+    Guard 3 of this module's three, in one place because both tables below
+    need it and two copies are two answers that can drift apart. ``None`` is
+    "no configured season", and every caller's answer to that is an empty map:
+    a literal default would frame against a season the user never chose, on
+    exactly the machines — a fresh clone with no ``config.toml`` — least
+    likely to notice. Deliberately *not* "the newest season in the log"
+    either: that frames from last season's rows on a clone whose log has not
+    rolled over, which is the same failure from the other side.
     """
     try:
         from gaffer.config import load_config
 
-        season = load_config().current_season
+        return load_config().current_season
     except Exception as exc:  # noqa: BLE001 — a clone with no config.toml
-        print(f"field_frame: no configured season, no field framing ({exc})")
+        print(f"field_frame: no configured season, no {what} ({exc})")
+        return None
+
+
+def _field_table(gw: int) -> dict[int, dict]:
+    """``{element: {"eo", "se", "n", "gw"}}`` for this season, or an empty map.
+
+    The config read is *inside* the guard (:func:`_season`), and its failure
+    is an empty map — this module's documented degradation, not a guessed
+    season. No configured season, no framing.
+    """
+    season = _season("field framing")
+    if season is None:
         return {}
     try:
         return latest_field_eo(gw, season=season)
@@ -206,12 +216,8 @@ def _trend_table(gw: int) -> dict[int, dict]:
     re-issued every August, so an unseasoned read frames the captain against
     a footballer who has since left the game.
     """
-    try:
-        from gaffer.config import load_config
-
-        season = load_config().current_season
-    except Exception as exc:  # noqa: BLE001 — a clone with no config.toml
-        print(f"field_frame: no configured season, no EO trend ({exc})")
+    season = _season("EO trend")
+    if season is None:
         return {}
     try:
         from gaffer.data.field import field_eo_trend
