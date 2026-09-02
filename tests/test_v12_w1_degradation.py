@@ -1,20 +1,25 @@
-"""v12 W1's degradation rails, and the two absolute pins the suite has left.
+"""v12 W1's degradation rails, and the rails on the suite's two absolute pins.
 
 Every rail here is a state a real machine reaches, and several are the state
 this machine is in today: a write interrupted, a season log carrying two
 seasons, a report that would overwrite a good one with a degraded one, a tree
 with no backups at all, a phone on the LAN with no token.
 
-The file also holds **the only absolute config-field count in the suite**.
-Seven protected degradation files used to assert it, which meant every cycle
-entitled to add a config key first had to buy seven authorizations — and one
-cycle did not: ``tests/test_v10_config_providers.py``'s docstring records v10
-abandoning a designed dataclass field for a module-level reader because two of
-them pinned the number. v12 W1 applied v11's route-pin restructure to the
-config pin. The route total stays where v11 left it, in
-``tests/test_v11_degradation.py``; the asymmetry is deliberate, because what
-matters is that each total lives in exactly one file and moving the route pin
-here would be a protected edit that bought nothing.
+The file also holds the rails that keep each of the suite's two absolute
+counts in exactly one place. Seven protected degradation files used to assert
+the config-field total, which meant every cycle entitled to add a key first had
+to buy seven authorizations — and one cycle did not:
+``tests/test_v10_config_providers.py``'s docstring records v10 abandoning a
+designed dataclass field for a module-level reader because two of them pinned
+the number. v12 W1 applied v11's route-pin restructure to the config pin.
+
+**The config total itself is no longer here** (orchestrator ruling,
+2026-09-02). One number that every key-adding cycle has to move belongs in the
+newest cycle's file, which is now ``tests/test_v12_w3_degradation.py``; what
+W1 keeps is the claim it is actually entitled to make — *which five keys* it
+added. The route total stays where v11 left it, in
+``tests/test_v11_degradation.py``, because W3 adds no route and moving it
+would be a protected edit that bought nothing.
 """
 
 from __future__ import annotations
@@ -25,26 +30,30 @@ from __future__ import annotations
 # =====================================================================
 
 def test_the_config_gained_exactly_five_fields():
-    """48 at 27f7933 and 53 now, and **this is the only absolute config-field
-    pin in the suite.**
+    """48 at 27f7933 and 53 at the end of W1 — and the **five** is the claim,
+    not the 53.
 
     Seven protected files used to assert 48. That is not a hypothetical cost:
     ``tests/test_v10_config_providers.py``'s docstring records v10 abandoning
     a designed dataclass field because two of them did, and settling for a
     module-level reader instead. v12 W1 replaced each with the by-name claim
     its own cycle is entitled to make — v11's route-pin restructure, applied
-    to the other pin — and a future cycle that adds a key moves this number,
-    here, and nowhere else.
+    to the other pin.
 
-    Pinned as a total *and* by name: a count alone would let a key be added
-    and another removed in one cycle, and W1's claim is precisely which five.
+    v12 W3 (orchestrator ruling 2026-09-02): the absolute total left this file
+    with the same reasoning one step further on. A number every key-adding
+    cycle must move is a number that belongs in the newest cycle's file, or
+    each workstream re-opens the file before it for arithmetic that has
+    nothing to do with W1's five keys. It now lives in
+    ``tests/test_v12_w3_degradation.py`` and the rail below points there.
+    What stays here is the subset claim, which is W1's own and stays true
+    however many keys later cycles add.
     """
     import dataclasses
 
     from gaffer.config import Config
 
     names = {f.name for f in dataclasses.fields(Config)}
-    assert len(names) == 53
     assert {"backup_dir", "backup_rsync_target", "backup_keep",
             "top_n", "web_token"} <= names
 
@@ -64,7 +73,14 @@ def _suite_files():
 def test_only_one_file_pins_the_absolute_config_field_count():
     """A rail on the rails, exactly as v11 wrote for routes. Without it the
     eighth pin grows back the next time somebody adds a key and reaches for
-    the nearest example."""
+    the nearest example.
+
+    v12 W3 (orchestrator ruling 2026-09-02): the single home moved from this
+    file to ``test_v12_w3_degradation.py``, so this rail names the newest
+    cycle's file rather than its own. "Exactly one, and it is the newest
+    cycle's" is the claim; the rail moves with the pin, which is one line and
+    is the whole maintenance cost of keeping the count in one place.
+    """
     import re
 
     # Anchored to `assert` at the start of a line, because seven files now
@@ -86,7 +102,7 @@ def test_only_one_file_pins_the_absolute_config_field_count():
                      r"\s*==\s*\d+", re.M)
     hits = [p.name for p in _suite_files()
             if "fields(Config)" in (text := p.read_text()) and pin.search(text)]
-    assert hits == ["test_v12_w1_degradation.py"]
+    assert hits == ["test_v12_w3_degradation.py"]
 
 
 def test_only_one_file_pins_the_absolute_route_count():
