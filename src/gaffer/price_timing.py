@@ -89,11 +89,16 @@ def owned_price_falls(owned: list[int] | None) -> dict[int, float]:
     what it always did.
 
     Cached, and for the reason :func:`gaffer.config.optimizer_top_n` is:
-    ``solve_plan`` calls it on every solve — twice, once per pass, through the
-    shared ``kw`` — and a parquet read per pass on the serving path is the
-    cost this reader exists to avoid. The key is ``tuple(sorted(owned))``, so
-    two solves of the same squad share one read and a different squad does
-    not. Anything that rewrites the price log (or ``config.toml``) under a
+    ``solve_plan`` builds its ``kw`` once per solve and both passes read the
+    same table from it, but a long-lived process solves many times and a
+    parquet read on each is the cost this reader exists to avoid. The key is
+    ``(snap_date(), tuple(sorted(owned)))`` — the squad, so a different squad
+    does not share a read, and *the day*, because the freshness rule
+    (":func:`price_falls`'s newest banked day has to be today") is what a
+    cache keyed on the squad alone would quietly outlive: a table computed at
+    23:50 would still be served at 00:10, charging a fall that had by then
+    already resolved. Anything that rewrites the price log (or ``config.toml``)
+    under a
     running process calls ``owned_price_falls.cache_clear()``; the health poll
     already does, beside ``optimizer_top_n``'s. The returned dict is a fresh
     copy per call so a caller that mutates it cannot poison the cache.
@@ -104,14 +109,31 @@ def owned_price_falls(owned: list[int] | None) -> dict[int, float]:
     for.
     """
     key = tuple(sorted(int(c) for c in owned)) if owned else ()
-    return dict(_owned_price_falls(key))
+    return dict(_owned_price_falls(_today(), key))
+
+
+def _today() -> str:
+    """``snap_date()`` behind a guard, because it is read on the solve path.
+
+    A clock that will not answer must cost the term and nothing else, like
+    every other failure in this module; the empty string is a key no banked
+    day equals, so the table comes back empty rather than stale."""
+    try:
+        return str(snap_date())
+    except Exception:  # noqa: BLE001 — never blocks a solve
+        return ""
 
 
 @lru_cache(maxsize=8)
-def _owned_price_falls(owned: tuple[int, ...]) -> dict[int, float]:
+def _owned_price_falls(day: str,
+                       owned: tuple[int, ...]) -> dict[int, float]:
     """:func:`owned_price_falls`'s cache. Never call this one directly — it
     hands back the cached dict itself, and a mutation of it would be
-    permanent."""
+    permanent.
+
+    ``day`` is not read in the body: it is in the signature so that the
+    freshness rule inside :func:`price_falls` cannot be outlived by the cache
+    that wraps it. Midnight is a new key."""
     try:
         if not price_timing_enabled():
             return {}

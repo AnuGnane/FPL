@@ -180,9 +180,11 @@ def test_a_missing_price_log_costs_the_term_and_not_the_solve(monkeypatch):
 
 
 def test_the_table_is_read_once_per_squad_and_handed_out_as_a_copy(monkeypatch):
-    """`solve_plan` calls this twice per solve, once per pass, so the parquet
-    read is cached on `tuple(sorted(owned))` — and a caller that mutates its
-    copy must not poison the next pass."""
+    """`solve_plan` calls this once per solve — the `kw` it builds is shared
+    by both passes (milp.py:420-424) — but a long-lived process solves the
+    same squad many times, so the parquet read is cached on the day and
+    `tuple(sorted(owned))`, and a caller that mutates its copy must not poison
+    the next solve."""
     reads = []
 
     def counted():
@@ -201,6 +203,26 @@ def test_the_table_is_read_once_per_squad_and_handed_out_as_a_copy(monkeypatch):
     assert len(reads) == 1
     price_timing.owned_price_falls([1, 2, 3])
     assert len(reads) == 2                                      # a new squad
+
+
+def test_the_cache_does_not_serve_yesterdays_table_after_midnight(monkeypatch):
+    """The staleness check is 'is the newest banked day today', and it used to
+    run *inside* the cached function. A table computed at 23:50 was therefore
+    still handed out at 00:10 — for a price change that had by then already
+    resolved, which is the double charge the freshness rule exists to stop.
+    The day is part of the key."""
+    day = {"now": TODAY}
+    monkeypatch.setattr(price_timing, "price_timing_enabled", lambda: True)
+    monkeypatch.setattr(price_timing, "snap_date",
+                        lambda *a, **k: day["now"])
+    monkeypatch.setattr(price_timing, "load_price_log",
+                        lambda: pd.DataFrame({
+                            "snap_date": [TODAY], "code": [1],
+                            "now_cost": [80], "price_change_percent": [-50.0],
+                            "direction": ["drop"], "calibrating": [False]}))
+    assert price_timing.owned_price_falls([1]) == {1: 0.5}
+    day["now"] = snap_date(datetime.now(timezone.utc) + timedelta(days=1))
+    assert price_timing.owned_price_falls([1]) == {}
 
 
 # --- the objective ------------------------------------------------------
