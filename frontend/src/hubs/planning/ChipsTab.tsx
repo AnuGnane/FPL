@@ -99,7 +99,8 @@ function WildcardTab({ wildcard }: { wildcard: SquadDiff | null }) {
 }
 
 const EMPTY: WhatIfRequest = {
-  lock: [], ban: [], force_in: [], max_hits: 0, chip: 'wc', horizon: null,
+  lock: [], ban: [], force_in: [], force_out: [], max_hits: 0,
+  chip: 'wc', horizon: null,
 }
 
 export default function ChipsTab() {

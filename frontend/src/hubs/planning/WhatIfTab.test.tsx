@@ -96,8 +96,8 @@ describe('what-if tab', () => {
     render(
       <MemoryRouter>
         <WhatIfTab
-          value={{ lock: [], ban: [], force_in: [], max_hits: 2,
-                   chip: 'none', horizon: null }}
+          value={{ lock: [], ban: [], force_in: [], force_out: [],
+                   max_hits: 2, chip: 'none', horizon: null }}
           onChange={onChange}
         />
       </MemoryRouter>)
@@ -120,8 +120,8 @@ describe('what-if tab', () => {
     await userEvent.click(screen.getByRole('button', { name: /re-solve/i }))
 
     await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/api/whatif', {
-      lock: [], ban: [100], force_in: [], max_hits: 1, chip: 'bb',
-      horizon: null,
+      lock: [], ban: [100], force_in: [], force_out: [], max_hits: 1,
+      chip: 'bb', horizon: null,
     }))
     expect(await screen.findByText('your version costs 2.8 expected points'))
       .toBeInTheDocument()

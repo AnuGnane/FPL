@@ -4,10 +4,10 @@ import { useDebounced } from '../../api/useDebounced'
 import { Card, PosBadge, fmtNum } from '../../kit'
 import type { PlayerRow, WhatIfRequest } from '../../types'
 
-type ListKey = 'lock' | 'ban' | 'force_in'
+type ListKey = 'lock' | 'ban' | 'force_in' | 'force_out'
 
 const LABELS: Record<ListKey, string> = {
-  lock: 'Lock', ban: 'Ban', force_in: 'Force in',
+  lock: 'Lock', ban: 'Ban', force_in: 'Force in', force_out: 'Must sell',
 }
 
 const FIELD = 'rounded-card border border-border bg-base px-2 py-1 text-text'
@@ -110,7 +110,7 @@ export default function ConstraintsPanel(
 
   return (
     <Card title="Constraints" className="mb-4">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {(Object.keys(LABELS) as ListKey[]).map((key) => (
           <PlayerPicker
             key={key}
@@ -122,6 +122,13 @@ export default function ConstraintsPanel(
           />
         ))}
       </div>
+      {/* Ban and Must sell look alike and do different things to the money.
+          Said once, here, rather than discovered in a result. */}
+      <p className="mt-1.5 text-text-faint" data-testid="force-out-note">
+        Must sell removes an owned player in the first week and sells him, so
+        the bank gets his selling price and he may be bought back later. Ban
+        takes him out of the candidate pool entirely.
+      </p>
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <div>
           <label className="flex flex-col gap-1">

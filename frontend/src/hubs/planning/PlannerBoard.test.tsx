@@ -146,14 +146,17 @@ describe('PlannerBoard', () => {
     spy.mockRestore()
   })
 
-  it('hands the week to the lab as force_in, ban and a mapped chip',
+  it('carries a planned sell as a must-sell rather than as a ban',
     async () => {
+      // v11 mapped the sell onto `ban`, which also forbade buying him back
+      // and never credited the bank. §4.1 gave the solver the constraint that
+      // says "sell him", so the handoff says it and `ban` is left empty.
       const onTry = vi.fn()
       wire(plan([{ ...WEEK, hits: 5, chip: 'bboost' }]))
       render(<PlannerBoard gw={5} onTry={onTry} />)
       await userEvent.click(await screen.findByTestId('board-try-5'))
       expect(onTry).toHaveBeenCalledWith({
-        lock: [], ban: [2], force_in: [1],
+        lock: [], ban: [], force_out: [2], force_in: [1],
         // clamped into ConstraintsPanel's 0-3 range
         max_hits: 3, chip: 'bb',
         // the target week is the current one, so one week spans it
@@ -189,8 +192,10 @@ describe('PlannerBoard', () => {
     async () => {
       render(<PlannerBoard gw={5} onTry={vi.fn()} />)
       expect(await screen.findByText(/does not solve/)).toBeInTheDocument()
-      expect(screen.getByText(/rules out buying him back/))
-        .toBeInTheDocument()
+      const note = screen.getByTestId('board-try-note-5')
+      // The apology for the missing constraint goes with the constraint.
+      expect(note.textContent).not.toMatch(/rules out buying him back/i)
+      expect(note.textContent).toMatch(/sold in the solve's first week/i)
     })
 
   it('says the solve starts now, and what that costs a future week',

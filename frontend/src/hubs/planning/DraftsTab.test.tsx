@@ -35,12 +35,13 @@ vi.mock('../../api/client', () => ({
 }))
 
 const CURRENT: WhatIfRequest = {
-  lock: [100], ban: [], force_in: [], max_hits: 1, chip: 'none',
-  horizon: null,
+  lock: [100], ban: [], force_in: [], force_out: [], max_hits: 1,
+  chip: 'none', horizon: null,
 }
 
 const EMPTY_CONSTRAINTS: WhatIfRequest = {
-  lock: [], ban: [], force_in: [], max_hits: 0, chip: 'none', horizon: null,
+  lock: [], ban: [], force_in: [], force_out: [], max_hits: 0,
+  chip: 'none', horizon: null,
 }
 
 function draft(name: string) {

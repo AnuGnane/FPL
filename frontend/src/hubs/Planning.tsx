@@ -26,7 +26,8 @@ const TAB_CLASS = 'shrink-0 whitespace-nowrap px-3 py-2 text-text-muted '
 // `Tabs.Root` gives no way to do. Not persisted — a view preference is a real
 // feature with real questions behind it (`ThisWeek.tsx:31-34`).
 const EMPTY_WHATIF: WhatIfRequest = {
-  lock: [], ban: [], force_in: [], max_hits: 0, chip: 'none', horizon: null,
+  lock: [], ban: [], force_in: [], force_out: [], max_hits: 0,
+  chip: 'none', horizon: null,
 }
 
 export default function Planning() {

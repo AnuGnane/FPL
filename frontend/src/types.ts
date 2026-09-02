@@ -259,6 +259,10 @@ export interface WhatIfRequest {
   lock: number[]
   ban: number[]
   force_in: number[]
+  /** Owned players the solve must sell in its first week. Not `ban`: banning
+   *  removes him from the candidate pool, which also forbids buying him back
+   *  and never credits the bank with the sale. */
+  force_out: number[]
   max_hits: number
   chip: 'none' | 'wc' | 'bb' | 'fh' | 'tc'
   horizon: number | null

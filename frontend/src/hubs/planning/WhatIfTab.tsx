@@ -10,7 +10,8 @@ import PlanDiffTable from './PlanDiffTable'
 import SensitivityCard from './SensitivityCard'
 
 const EMPTY: WhatIfRequest = {
-  lock: [], ban: [], force_in: [], max_hits: 0, chip: 'none', horizon: null,
+  lock: [], ban: [], force_in: [], force_out: [], max_hits: 0,
+  chip: 'none', horizon: null,
 }
 
 interface StructuredError {

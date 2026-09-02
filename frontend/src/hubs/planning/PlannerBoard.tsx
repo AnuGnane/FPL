@@ -119,7 +119,11 @@ export default function PlannerBoard(
   function request(week: PlanGw): WhatIfRequest {
     return {
       lock: [],
-      ban: week.sells.map((m) => m.code),
+      ban: [],
+      // v11 carried a planned sell across as `ban`, which also forbade buying
+      // him back — the imprecision plan A7 printed under the button. §4.1 gave
+      // the solver the constraint that actually says "sell him".
+      force_out: week.sells.map((m) => m.code),
       force_in: week.buys.map((m) => m.code),
       max_hits: Math.max(0, Math.min(3, week.hits)),
       chip: (week.chip && CHIP_CODES[week.chip]) || 'none',
@@ -223,9 +227,10 @@ export default function PlannerBoard(
                   <p data-testid={`board-try-note-${week.gw}`}
                      className="mt-1 text-text-faint">
                     {'This prefills the lab; it does not solve. A planned sell '
-                     + 'is carried across as "don\'t own him", which also '
-                     + 'rules out buying him back, and the bank is not a '
-                     + 'constraint the lab accepts.'}
+                     + 'is carried across as "must sell": he is sold in the '
+                     + 'solve\'s first week and the bank receives his selling '
+                     + 'price. The bank itself is still not a constraint the '
+                     + 'lab accepts.'}
                     {/* The horizon spans the week, but the solve still starts
                         this week — every limit of that is said here rather
                         than left to be discovered in the result. */}
