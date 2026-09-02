@@ -753,13 +753,25 @@ player turned out at all* — a Bernoulli on the minutes model's `p_play`, per
 scenario, from its own generator — before the EP noise is applied to whoever
 survived. "Did he play" is the largest single source of forecast error, and a
 sweep that only widened the EP band was asking a softer question than the one
-the week actually asks. It ships **off**, behind `[scenarios]
-draw_availability`, until the captain-support gate has measured it (CONVENTIONS
-§6): off is the pre-v12 sweep to the byte, because the normal is drawn for
+the week actually asks. It ships **on**, behind `[scenarios]
+draw_availability`; set that key to `false` and you sweep on expected minutes
+alone, which is the pre-v12 sweep to the byte, because the normal is drawn for
 every cell either way and the two arms differ in the zeroing alone.
 
-**Residual — `raw_optimum_agrees` will read `False` more often** once the draw
-is switched on. The line on the report compares the raw optimum against the
+It merged off, and the gate turned it on. The pre-registered rule (CONVENTIONS
+§6) was that the draw could not cost more than 10 points of *captain support*
+— the sweep's agreement on who to captain, which is what a hedging draw would
+be likeliest to shred. On the GW3 board (2026-09-02, seed 20260828, n = 40,
+219 of 219 players priced and covered) support fell from **60.0 off to 52.5
+on: a drop of 7.5**, with all 40 scenarios completing in both arms. Two
+honesties about that number. It is **one board, one gameweek, one seed**, not
+a season. And the **season replay cannot see this lever at all** — the replay
+harness never passes `p_play`, so the draw is inert there and the live weekly
+board is the only place its effect shows. What the gate establishes is that
+the draw does not shred the captain call, not that it scores more points.
+
+**Residual — `raw_optimum_agrees` will read `False` more often** now that the
+draw is on. The line on the report compares the raw optimum against the
 sweep's plurality, and with the draw on the sweep models a risk the raw solve
 does not, so the two will part company more often than they used to. That
 disagreement is *information* rather than instability: it is the sweep doing

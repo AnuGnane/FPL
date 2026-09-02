@@ -261,25 +261,29 @@ def test_a_plan_still_constructs_with_two_arguments():
 
 
 # =====================================================================
-# Block 4 — §4.4: the arm ships off, and off is off to the byte
+# Block 4 — §4.4: the arm ships on, and off is still off to the byte
 # =====================================================================
 
 
-def test_the_shipped_default_is_off_and_the_advice_run_passes_no_p_play():
-    """The state W3 merges in, until the captain-support gate says otherwise
+def test_the_shipped_default_is_on_and_the_advice_run_wires_the_flag():
+    """The state W3 merges in, now that the captain-support gate has spoken
     (CONVENTIONS §6, orchestrator ruling 2026-09-02).
+
+    The gate ran on the GW3 board (2026-09-02, seed 20260828, n = 40, captain
+    209036, 219/219 priced and covered): captain support fell 60.0 → 52.5 with
+    the draw on, a drop of 7.5 against the pre-registered ceiling of 10, with
+    40/40 scenarios completing in both arms. The rule was written before the
+    number, so the number flips the default rather than the rule.
 
     Asserted three ways because the default is the whole safety argument: the
     dataclass, a config file that does not mention the key, and the one call
-    site — a run with the flag off hands the sweep ``p_play=None``, so the
-    sweep is byte-for-byte v11's rather than v11's with a draw that zeroes
-    nothing.
+    site — the flag is what decides whether the sweep is handed ``p_play`` at
+    all, so a later edit cannot rewire that arm to a different switch.
 
     T8-T11 final review, Important 2: the third of those is **kept** as a rail
     on the call shape. It is not standing in for behaviour — the test directly
-    below re-runs the sweep on a fixed seed and proves the two arms are
-    identical — it pins that the *gate* on that arm is the shipped config key
-    and not something a later edit could wire to a different flag.
+    below re-runs the sweep on a fixed seed and proves ``draw_availability =
+    False`` is still v11's sweep to the byte.
     """
     import inspect
     import tempfile
@@ -288,10 +292,10 @@ def test_the_shipped_default_is_off_and_the_advice_run_passes_no_p_play():
     from gaffer.advise import run_advise
     from gaffer.config import Config, load_config
 
-    assert Config(entry_id=1, league_id=2).draw_availability is False
+    assert Config(entry_id=1, league_id=2).draw_availability is True
     path = Path(tempfile.mkdtemp()) / "config.toml"
     path.write_text("[fpl]\nentry_id = 1\nleague_id = 2\n")
-    assert load_config(path).draw_availability is False
+    assert load_config(path).draw_availability is True
 
     src = inspect.getsource(run_advise)
     assert "p_play=(p_play_by_code if cfg.draw_availability" in src

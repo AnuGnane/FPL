@@ -40,10 +40,11 @@ decision_priors = true
 # Per scenario, draw whether each player turned out at all (Bernoulli on the
 # minutes model's p_play) before the EP noise is applied. "Did he play" is
 # most of FPL's forecast error, and a sweep that only widened the EP band was
-# asking a softer question. Off — the shipped default — is the pre-v12 sweep
-# exactly, and it stays off until the captain-support gate has measured it
-# (v12 W3 §4.4; the number to beat is a support drop of 10 points).
-draw_availability = false
+# asking a softer question. Off is the pre-v12 sweep exactly.
+# On since the 2026-09-02 §4.4 support gate: captain support on the GW3 board
+# fell 60.0 -> 52.5 with the draw on (drop 7.5, ceiling 10; 40/40 scenarios in
+# both arms). Set false to sweep on expected minutes only.
+draw_availability = true
 
 [odds]
 # api_key = "get one free at the-odds-api.com (500 requests/month)"

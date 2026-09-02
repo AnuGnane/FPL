@@ -147,30 +147,38 @@ def test_the_sweep_is_reproducible_with_the_draw_on():
     assert _signature(a) == _signature(b)
 
 
-def test_the_config_key_defaults_off_and_reads_from_the_scenarios_section(
+def test_the_config_key_defaults_on_and_reads_from_the_scenarios_section(
         tmp_path, monkeypatch):
-    """OFF until its gate passes (CONVENTIONS §6, orchestrator ruling
-    2026-09-02). An unmeasured arm that ships on by default is an arm the
-    gate is asked to un-ship, which is not how a pre-registered rule works.
-    A passing captain-support check flips this one line and this one test."""
+    """ON since the captain-support gate passed (CONVENTIONS §6, orchestrator
+    ruling 2026-09-02). The arm shipped off until it had been measured; the
+    2026-09-02 run on the GW3 board (seed 20260828, n = 40) put captain
+    support at 60.0 off and 52.5 on — a drop of 7.5 against a pre-registered
+    ceiling of 10 — so the rule, written first, flips the default.
+
+    Both readings are pinned: an absent ``[scenarios]`` section and a section
+    that names the key. They have to agree, because the dataclass default and
+    the ``scen.get`` default are two separate literals."""
     from gaffer.config import load_config
 
     path = tmp_path / "config.toml"
     path.write_text("[fpl]\nentry_id = 1\nleague_id = 2\n")
+    assert load_config(path).draw_availability is True
+    path.write_text("[fpl]\nentry_id = 1\nleague_id = 2\n"
+                    "[scenarios]\ndraw_availability = false\n")
     assert load_config(path).draw_availability is False
     path.write_text("[fpl]\nentry_id = 1\nleague_id = 2\n"
                     "[scenarios]\ndraw_availability = true\n")
     assert load_config(path).draw_availability is True
 
 
-def test_the_shipped_default_leaves_the_advice_path_on_the_pre_v12_sweep():
+def test_the_shipped_default_puts_the_advice_path_on_the_availability_sweep():
     """The consequence of the default, asserted where a reader will look for
-    it: out of the box, ``advise`` passes ``p_play=None`` and the sweep is the
-    one v11 shipped. Nothing about this cycle reaches a user's advice until
-    the gate says it may."""
+    it: out of the box, ``advise`` hands the sweep the minutes model's
+    ``p_play`` and the draw is live. Setting the key to ``false`` is how a
+    user sweeps on expected minutes alone."""
     from gaffer.config import Config
 
-    assert Config(entry_id=1, league_id=2).draw_availability is False
+    assert Config(entry_id=1, league_id=2).draw_availability is True
 
 
 def test_the_support_driver_guards_its_lever_before_it_measures():
