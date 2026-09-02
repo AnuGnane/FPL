@@ -638,6 +638,20 @@ def backup(to: Path = typer.Option(
 
 
 @app.command()
+def tidy(apply: bool = typer.Option(
+             False, "--apply",
+             help="Actually delete. Without it this only prints."),
+         older_than: int = typer.Option(
+             30, "--older-than",
+             help="Age in days for logs/. Backtest logs are judged by whether "
+                  "their report exists, not by age.")):
+    """List (or delete) replay logs nothing references and stale run logs."""
+    from gaffer.tidy import run_tidy
+
+    run_tidy(apply=apply, older_than=older_than)
+
+
+@app.command()
 def ui(port: int = typer.Option(8927, help="Port to serve on (default 8927)."),
        open_browser: bool = typer.Option(
            True, "--open-browser/--no-open-browser",
