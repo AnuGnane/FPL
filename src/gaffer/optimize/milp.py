@@ -14,6 +14,10 @@ Two modelling caveats callers should know about:
 * ``locked_out`` removes players from the pool outright, so it is meant for
   players you do *not* own. Locking out an owned player makes them vanish
   from the squad without generating sale proceeds.
+* ``force_out`` is the other half of that: the player stays in the pool, so
+  squad continuity turns his ownership into a sale in the first horizon
+  gameweek and the bank receives his sell price. "I am selling him" and "he
+  may not be bought" are different instructions and this module now has both.
 """
 
 from __future__ import annotations
@@ -152,6 +156,20 @@ class SolveInput:
     """Upper bound on hits per gameweek. ``None`` leaves it to the objective.
 
     Never applied to a wildcard week, where hits are free by the rules.
+    """
+    # v12 W3 §4.1 (specs/2026-09-01-gaffer-v12-program-design.md)
+    force_out: list[int] = field(default_factory=list)
+    """Codes that must not be in the squad in any gameweek of the horizon.
+
+    Distinct from :attr:`locked_out`, which deletes the player from the pool
+    and so makes an owned player disappear without sale proceeds (module
+    note). A forced-out player stays in the pool, so the continuity
+    constraint spends his ownership as a transfer out in the first gameweek
+    and the budget row receives his ``sell`` price.
+
+    Appended last, and defaulted, so every positional construction of this
+    dataclass in the tree still builds — and so an empty list adds not one
+    constraint to the model. ``tests/data/v12_w3_milp_golden.lp`` pins that.
     """
 
 
@@ -462,12 +480,24 @@ def _solve_once(pool: pd.DataFrame, state: SolveInput, *, decay: float,
     codes = pool["code"].tolist()
     known = set(codes)
     for label, wanted in (("lock", state.locked_in),
-                          ("force_in", state.force_in_gw)):
+                          ("force_in", state.force_in_gw),
+                          # v12 W3 §4.1 (specs/2026-09-01-gaffer-v12-program-design.md):
+                          # a code that is not in the pool cannot be
+                          # constrained, and silently not selling a player the
+                          # caller said to sell is the failure worth refusing.
+                          ("force_out", state.force_out)):
         missing = [c for c in wanted if c not in known]
         if missing:
             raise GafferError(
                 f"{label}: player code {missing[0]} is not in the candidate "
                 f"pool (it may also be banned)")
+    # v12 W3 §4.1: caught here rather than left to the solver, which would
+    # report "MILP not optimal: Infeasible" and name nothing.
+    contradiction = sorted(set(state.locked_in) & set(state.force_out))
+    if contradiction:
+        raise GafferError(
+            f"force_out: player code {contradiction[0]} is also locked in — "
+            f"a squad cannot both keep and sell him")
     if bench_curve is not None and len(bench_curve) != BENCH_SLOTS:
         raise GafferError(
             f"bench_curve needs exactly three weights (1st/2nd/3rd outfield "
@@ -572,6 +602,12 @@ def _solve_once(pool: pd.DataFrame, state: SolveInput, *, decay: float,
         prob += ftv[t] <= MAX_FREE_TRANSFERS
         for c in state.locked_in:
             prob += sq[c][t] == 1
+        # v12 W3 §4.1 (specs/2026-09-01-gaffer-v12-program-design.md): squad
+        # membership 0 from the first horizon gameweek onward. Continuity
+        # (``sq == prev + tin - tout``) turns an owned player's zero into a
+        # ``tout`` in the first week, which is what pays the bank.
+        for c in state.force_out:
+            prob += sq[c][t] == 0
         if state.max_hits is not None and not wc:
             prob += hits[t] <= state.max_hits
     for c in state.force_in_gw:
