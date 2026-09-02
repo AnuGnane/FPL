@@ -60,13 +60,24 @@ def deadlines(events: pd.DataFrame | None) -> dict[int, pd.Timestamp]:
 
 def pre_deadline(log: pd.DataFrame,
                  by_gw: dict[int, pd.Timestamp]) -> pd.DataFrame:
-    """``log`` cut to snapshots taken at or before their gameweek's deadline,
-    with ``lead_days`` attached.
+    """``log`` cut to snapshots dated strictly before their gameweek's
+    deadline day, with ``lead_days`` attached as whole days.
 
-    ``snap_date`` is a date string with no clock in it (``snapshot.py:36-42``),
-    so the snapshot is taken at 00:00 UTC of that day. The deadline keeps its
-    own time — 17:30 on most Fridays — because dropping it would make a
-    Thursday flag and a Friday one the same number.
+    ``snap_date`` is a date string with no clock in it
+    (``snapshot.py:36-42``), and that missing clock decides both halves of
+    this function. A row dated the deadline day might have been taken at 09:00
+    or at 21:00; the log cannot say which, and a snapshot taken after the
+    deadline gave nobody any warning at all. So the deadline day goes whole,
+    which is the conservative reading: it can only throw away real warning,
+    never invent it. Parsing the date at 00:00 UTC and keeping it when that
+    midnight lands before a 17:30 deadline is the opposite mistake, and
+    credits every deadline-day flag with up to a day it may not have given.
+
+    For the same reason ``lead_days`` counts whole days between the snapshot
+    date and the deadline *date* rather than seconds between two timestamps:
+    only one end of that subtraction had a real clock on it, and 2.73 spends
+    two decimals on a precision the snapshot never had. The day before the
+    deadline is 1.
     """
     if log is None or log.empty:
         return log if log is not None else pd.DataFrame()
@@ -85,13 +96,16 @@ def pre_deadline(log: pd.DataFrame,
                                       utc=True)
     out["_taken"] = pd.to_datetime(out["snap_date"], errors="coerce", utc=True)
     out = out[out["_deadline"].notna() & out["_taken"].notna()]
-    out = out[out["_taken"] <= out["_deadline"]]
+    # ``normalize()`` is the deadline's own UTC date at 00:00; the comparison
+    # is therefore date-against-date, and strict, so the deadline day itself
+    # is out.
+    out["_due"] = out["_deadline"].dt.normalize()
+    out = out[out["_taken"] < out["_due"]]
     if out.empty:
-        return out.drop(columns=["_deadline", "_taken"])
-    out["lead_days"] = ((out["_deadline"] - out["_taken"])
-                        .dt.total_seconds() / 86400.0).round(2)
+        return out.drop(columns=["_deadline", "_taken", "_due"])
+    out["lead_days"] = (out["_due"] - out["_taken"]).dt.days.astype("int64")
     out["gw"] = out["gw"].astype("int64")
-    return out.drop(columns=["_deadline", "_taken"])
+    return out.drop(columns=["_deadline", "_taken", "_due"])
 
 
 def checked_gws(actuals: pd.DataFrame | None) -> set[int]:

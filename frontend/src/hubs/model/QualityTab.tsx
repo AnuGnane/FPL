@@ -617,7 +617,7 @@ function FlagLatencySection({ data }: { data: FlagLatencyData }) {
                     {`code ${f.code}`}
                   </td>
                   <td className="num py-1.5 text-right">
-                    {`${fmtNum(f.lead_days, 2)}d`}
+                    {`${fmtNum(f.lead_days, 0)}d`}
                   </td>
                   <td className="py-1.5 text-text-muted">
                     {`${f.from_status} → ${f.final_status}`}

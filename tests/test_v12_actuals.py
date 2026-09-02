@@ -49,7 +49,13 @@ def test_deadlines_of_a_frame_without_the_column_is_empty(events):
     assert ae.deadlines(pd.DataFrame()) == {}
 
 
-def test_pre_deadline_keeps_only_snapshots_at_or_before_the_deadline(events):
+def test_pre_deadline_keeps_only_snapshots_dated_before_the_deadline_day(
+        events):
+    """Strictly earlier, and the deadline day itself goes. ``snap_date`` has
+    no clock in it, so a row dated 2026-08-28 might have been taken at 09:00
+    (pre-deadline) or at 21:00 (post): the log cannot say which, and keeping
+    it credits the flag with up to a day of warning it may never have given.
+    """
     log = pd.DataFrame({
         "season": ["2026-27"] * 4,
         "gw": [2, 2, 2, 3],
@@ -57,19 +63,18 @@ def test_pre_deadline_keeps_only_snapshots_at_or_before_the_deadline(events):
         "code": [1, 1, 1, 1],
     })
     kept = ae.pre_deadline(log, ae.deadlines(events))
-    assert list(kept["snap_date"]) == ["2026-08-26", "2026-08-28",
-                                       "2026-09-01"]
+    assert list(kept["snap_date"]) == ["2026-08-26", "2026-09-01"]
 
 
-def test_pre_deadline_computes_lead_days_from_midnight_utc(events):
-    """``snap_date`` is a date with no clock in it, so the day is taken at
-    00:00 UTC and the figure is the calendar distance to the deadline. Two
-    decimals, because the deadline's own 17:30 is real and dropping it would
-    make a Friday flag and a Thursday one the same number."""
-    log = pd.DataFrame({"season": ["2026-27"], "gw": [2],
-                        "snap_date": ["2026-08-26"], "code": [1]})
+def test_pre_deadline_counts_whole_days_between_the_two_dates(events):
+    """The deadline's own 17:30 is real but the snapshot's clock is not, so
+    the only figure both ends can support is the number of whole days between
+    the two *dates*. The day before the deadline is 1."""
+    log = pd.DataFrame({"season": ["2026-27"] * 2, "gw": [2, 2],
+                        "snap_date": ["2026-08-26", "2026-08-27"],
+                        "code": [1, 2]})
     kept = ae.pre_deadline(log, ae.deadlines(events))
-    assert kept["lead_days"].iloc[0] == pytest.approx(2.73, abs=0.01)
+    assert list(kept["lead_days"]) == [2, 1]
 
 
 def test_pre_deadline_drops_a_gameweek_with_no_deadline_at_all(events):

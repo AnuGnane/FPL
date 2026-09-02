@@ -73,7 +73,8 @@ def test_the_lead_time_is_measured_from_the_first_change():
     assert out["rows"] == 1
     row = out["changes"][0]
     assert row["first_change"] == "2026-09-01"
-    assert row["lead_days"] == pytest.approx(3.73, abs=0.01)
+    # GW3's deadline is 2026-09-04: three whole days after the first change.
+    assert row["lead_days"] == pytest.approx(3.0, abs=0.01)
     assert row["final_status"] == "i"
     assert row["started"] is False
 
@@ -115,9 +116,9 @@ def test_the_season_guard_drops_another_seasons_rows():
 def test_the_histogram_splits_lead_days_by_outcome():
     log = _log(PAD + [
         (3, "2026-08-30", 1, "a", 100.0),
-        (3, "2026-09-03", 1, "i", 0.0),      # 1.73 days -> "1-2d"
+        (3, "2026-09-03", 1, "i", 0.0),      # 1 whole day -> "1-2d"
         (3, "2026-08-30", 2, "a", 100.0),
-        (3, "2026-08-31", 2, "d", 50.0)])    # 4.73 days -> "3-5d"
+        (3, "2026-08-31", 2, "d", 50.0)])    # 4 whole days -> "3-5d"
     out = ae.score_flag_latency(log, _actuals([(3, 1, 0, 0), (3, 2, 90, 1)]),
                                 EVENTS, season="2026-27")
     buckets = {b["bucket"]: b for b in out["histogram"]}

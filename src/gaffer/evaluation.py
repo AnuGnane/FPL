@@ -1208,7 +1208,11 @@ def _format_news_shadow(payload: dict) -> str:
 
 
 def _format_flag_latency(payload: dict) -> str:
-    """Spec §3.1's table: lead time by outcome, then the worst late flags."""
+    """Spec §3.1's table: lead time by outcome, then the worst late flags.
+
+    ``lead_days`` is whole days between the snapshot date and the deadline
+    date — ``snap_date`` carries no clock, so a decimal there would be a
+    precision the log never had (``availability_eval.pre_deadline``)."""
     if not payload.get("available"):
         return f"flag latency: {payload.get('note') or 'nothing to score.'}"
     lines = [f"flag latency ({payload['rows']} status changes over "
@@ -1223,7 +1227,7 @@ def _format_flag_latency(payload: dict) -> str:
         for row in payload["late_flags"]:
             lines.append(
                 f"    GW{row['gw']:<3} code {row['code']:<7} "
-                f"{row['lead_days']:5.2f}d  {row['from_status']}->"
+                f"{row['lead_days']:3.0f}d  {row['from_status']}->"
                 f"{row['final_status']}  "
                 f"{'started' if row['started'] else 'did not start'}")
     return "\n".join(lines)

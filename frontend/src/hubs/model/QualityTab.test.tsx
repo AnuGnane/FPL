@@ -199,10 +199,10 @@ describe('QualityTab', () => {
     // Both directions of disagreement, because both are late flags: the log
     // said 'i' and he started, and the log said 'a' and he did not.
     late_flags: [{ gw: 3, code: 7, first_change: '2026-09-03',
-                   lead_days: 1.73, from_status: 'a', final_status: 'i',
+                   lead_days: 1, from_status: 'a', final_status: 'i',
                    chance_of_playing: 0, started: true },
                  { gw: 3, code: 9, first_change: '2026-09-02',
-                   lead_days: 2.73, from_status: 'i', final_status: 'a',
+                   lead_days: 2, from_status: 'i', final_status: 'a',
                    chance_of_playing: 100, started: false }],
   }
 

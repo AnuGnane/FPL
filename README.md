@@ -636,6 +636,13 @@ state that says what it is waiting for is the whole point of the instrument
 this early. The captain frame and the Players explorer both gained a projected
 deadline EO beside the sampled one.
 
+A flag's **lead time is whole days between the snapshot date and the deadline
+date**, and a snapshot dated the deadline day is not counted at all. The
+snapshot log stamps a date with no clock on it, so a row dated deadline day
+could have been taken in the morning or in the evening; dropping it can only
+throw away real warning, while keeping it would credit every deadline-day flag
+with up to a day of warning it may never have given.
+
 **Four places this cycle does not match its own spec, recorded rather than
 quietly fixed.**
 
