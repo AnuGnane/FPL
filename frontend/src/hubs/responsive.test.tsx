@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import AppShell from '../kit/AppShell'
 import League from './League'
 import Model from './Model'
 import Planning from './Planning'
@@ -77,6 +78,32 @@ describe('hubs on a phone', () => {
       spy.mockRestore()
     })
   }
+})
+
+describe('the freshness strip on a phone', () => {
+  // v12 W1 §2.9. The strip is new chrome above every hub, mounted once in
+  // AppShell — so if it were the one thing in the tree that did not wrap, it
+  // would scroll the body sideways on all six hubs at once.
+  it('wraps instead of scrolling the body, and leaves the hub heading in place',
+    async () => {
+      apiGet.mockResolvedValue({ rows: [
+        { source: 'refresh', age_hours: 2, modified_at: null, path: null },
+        { source: 'odds', age_hours: 30, modified_at: null, path: null },
+        { source: 'field', age_hours: 100, modified_at: null, path: null },
+        { source: 'advise', age_hours: null, modified_at: null, path: null },
+        { source: 'backup', age_hours: null, modified_at: null, path: null },
+      ] })
+      render(
+        <MemoryRouter>
+          <AppShell><h1>This Week</h1></AppShell>
+        </MemoryRouter>)
+      const strip = await screen.findByTestId('freshness-strip')
+      expect(strip.className).toMatch(/flex-wrap/)
+      expect(strip.className).not.toMatch(/whitespace-nowrap|overflow-x/)
+      // The heading is still rendered as the page body: the strip sits above
+      // `{children}` and does not replace or displace it.
+      expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
+    })
 })
 
 describe('a phone screen scrolls nothing sideways', () => {
