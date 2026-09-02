@@ -30,8 +30,13 @@ Run it, watch it, read the verdict::
     grep -e V12_ARM_DONE -e V12_VERDICT -e V12_ARM_LEVER logs/v12_xgps_arm.log
 
 For scale: v8a's baseline on this benchmark was zeros 1.066 / haulers 5.179 /
-all 1.968. That is a sanity range for the control arm, not a comparison for
-the arm — CONVENTIONS §1.
+all 1.968. That is the loosest of sanity ranges and not a comparison for
+either arm — CONVENTIONS §1 — and it is not expected to *reproduce*. Both arms
+here are seeded, and ``AttackingModel(seed=)`` merges ``ENSEMBLE_KW`` into its
+hyperparameters (attacking.py:49-52, minutes.py:23): a seeded fit bags its
+rows and its columns, which the v8a figure's unseeded fit did not. The two arms
+are comparable to each other because they differ in features alone; neither is
+comparable to a number banked under different hyperparameters.
 """
 
 from __future__ import annotations

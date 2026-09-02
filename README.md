@@ -636,6 +636,14 @@ state that says what it is waiting for is the whole point of the instrument
 this early. The captain frame and the Players explorer both gained a projected
 deadline EO beside the sampled one.
 
+The two are keyed differently on purpose, and it shows. The Players explorer
+asks the trend for **the newest gameweek the log actually holds**, while the
+captain card asks it for **the gameweek being served** — so on the upcoming
+gameweek, whose picks are not public yet and therefore not in the log, the
+captain card falls back to its most-captained note while the explorer's rows
+still carry their arrows. Keying the explorer to the served gameweek instead
+would blank a whole column on precisely the days the page is read most.
+
 A flag's **lead time is whole days between the snapshot date and the deadline
 date**, and a snapshot dated the deadline day is not counted at all. The
 snapshot log stamps a date with no clock on it, so a row dated deadline day
