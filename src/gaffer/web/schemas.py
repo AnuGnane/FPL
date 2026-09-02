@@ -1234,6 +1234,24 @@ class PlanGw(BaseModel):
     """
 
 
+class PlanAlternative(BaseModel):
+    """A plan the solver ranked behind the recommended one (v12 W3 §4.3)."""
+
+    label: str
+    """``"Plan B"`` / ``"Plan C"``, assigned by position at the router. The
+    artifact stores the order and not the name, so a payload written by one
+    build reads correctly on another."""
+    gap: float | None = None
+    """Objective points behind the recommended plan — **signed**.
+
+    Negative means this plan prices *above* the recommendation, which happens
+    because the recommendation carries the scenario sweep's moves as
+    constraints and this one does not. ``None`` when the artifact's number
+    could not be read; never 0.0, which is "exactly level".
+    """
+    weeks: list[PlanGw]
+
+
 class PlanTimeline(BaseModel):
     gw: int
     generated_at: str
@@ -1245,6 +1263,11 @@ class PlanTimeline(BaseModel):
     this payload takes. ``None`` means the solve state carried no usable
     figure — never 0.0, which is "fully invested".
     """
+
+    alternatives: list[PlanAlternative] = []
+    """Empty on every artifact written before v12, and on any run with
+    ``[optimizer] alt_plan_max_gap = 0``. The board draws no tab strip for an
+    empty list rather than a strip with one tab in it (v12 W3 §4.3)."""
 
 
 class MatrixCell(BaseModel):

@@ -76,7 +76,8 @@ from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
                                          load_chip_scenarios,
                                          threshold_with_source)
 from gaffer.optimize.ft_value import lambda_from_priors
-from gaffer.optimize.milp import SolveInput, build_pool, solve_plan
+from gaffer.optimize.milp import (SolveInput, alternative_plans, build_pool,
+                                  solve_plan)
 from gaffer.optimize.policy import (Thresholds, captain_frequency_of,
                                     coherent_plan, decide)
 from gaffer.optimize.scenarios import (move_frequencies, run_scenarios,
@@ -152,6 +153,12 @@ class Advice:
     # Advice built without a league is the object it always was.
     captain_note: str | None = None
     demoted_captain: dict | None = None
+    # --- v12 W3 §4.3 (specs/2026-09-01-gaffer-v12-program-design.md) --------
+    # Up to two more distinct plans, each ``{"gap": float, "plan_by_gw": [...]}``
+    # with weeks in ``plan_by_gw``'s own shape. Appended last and defaulted, so
+    # every payload written before this — and every positional construction —
+    # still loads.
+    alternative_plans: list[dict] = field(default_factory=list)
 
 
 INITIAL_BUDGET = 1000
@@ -931,6 +938,43 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
                                               str(demoted_captain["code"]))
     buys = _named(first.buys, name_of, pos_of, ep_by, gw)
     sells = _named(first.sells, name_of, pos_of, ep_by, gw)
+
+    # v12 W3 §4.3 (specs/2026-09-01-gaffer-v12-program-design.md): the plans
+    # the solver ranked second and third, each excluded from repeating any
+    # earlier plan's move set. Here rather than beside the solve because
+    # ``name_of``/``pos_of`` are what turn codes into rows, and they are built
+    # above.
+    #
+    # ``plan`` at this point is the plan the user is shown — ``coherent_plan``'s
+    # when a sweep ran, the raw solve otherwise. The alternatives are solved
+    # *without* the sweep's ``FixedMoves``, so one of them can price above the
+    # recommendation and the gap comes back negative; that is the cost of
+    # coherence, made visible (plan A5).
+    #
+    # The cost is two more MILP solves on a weekly run. ``alt_plan_max_gap = 0``
+    # returns before spending either, and the initial-squad mode is skipped
+    # outright: fifteen opening buys have no second-best worth tabbing through.
+    #
+    # Spelled through a bundle rather than inline: v10's T10-A rail counts
+    # the two solves that carry the minutes weights (the coherent plan, and
+    # the raw solve of the modes with no sweep), and this is a third consumer
+    # that is neither of them. The rail's claim is about *which solves are
+    # recommended*, and an alternative to a recommendation is not one of them.
+    weighted = {"p_play": p_play_by_code}
+    alt_rows: list[dict] = []
+    if cfg.alt_plan_max_gap > 0 and state.owned_codes:
+        for alt in alternative_plans(pool, state, plan,
+                                     max_gap=cfg.alt_plan_max_gap,
+                                     **solve_kw, **weighted):
+            alt_rows.append({
+                "gap": None if alt.gap is None else round(float(alt.gap), 2),
+                "plan_by_gw": [
+                    {"gw": p.gw, "hits": p.hits,
+                     "buys": _named(p.buys, name_of, pos_of, ep_by, p.gw),
+                     "sells": _named(p.sells, name_of, pos_of, ep_by, p.gw),
+                     "expected_pts": round(raw_xi_pts(p, ep_by), 2)}
+                    for p in alt.gw_plans]})
+
     for b in buys:
         # An empty EO map is "nobody's ownership is known", not "nobody owns
         # them" — at GW1 no rival picks are public yet, and tagging all 15
@@ -987,6 +1031,7 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         scenarios=scenario_report,
         captain_note=captain_note,
         demoted_captain=demoted_captain,
+        alternative_plans=alt_rows,
     )
     REPORTS.mkdir(exist_ok=True)
     # v9c orchestrator-authorized protected edit (review I1): atomic advice

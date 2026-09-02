@@ -11,7 +11,8 @@ from fastapi import APIRouter, HTTPException
 
 from gaffer.artifacts import load_advice, load_solve_state
 from gaffer.errors import GafferError
-from gaffer.web.schemas import PlanGw, PlanMove, PlanTimeline
+from gaffer.web.schemas import (PlanAlternative, PlanGw, PlanMove,
+                                PlanTimeline)
 
 router = APIRouter(prefix="/api", tags=["plan"])
 
@@ -139,6 +140,58 @@ def _chip_by_gw(advice: dict) -> dict[int, str]:
     return out
 
 
+LABELS = ("Plan B", "Plan C", "Plan D", "Plan E")
+"""Names for the alternatives, by position. Longer than ``ALT_PLAN_MAX``
+needs, so an artifact written by a build with a larger set does not fall off
+the end of the list and lose its last tab."""
+
+
+def _gap(value) -> float | None:
+    """The signed objective gap, or ``None`` if it is not a number.
+
+    Never 0.0 for unreadable: zero is "exactly level with the recommendation",
+    which is a real and different claim — and, on a signed quantity, the
+    boundary between "behind" and "ahead".
+    """
+    try:
+        out = float(value)
+    except (TypeError, ValueError):
+        return None
+    return None if out != out else round(out, 2)       # NaN
+
+
+def _alternatives(advice: dict, build) -> list[PlanAlternative]:
+    """``alternative_plans`` off the artifact, however it was written.
+
+    Absent on every payload before v12 and on any run with the search off, so
+    the empty list is the main case rather than the degraded one. An entry
+    that is not a dict, or whose weeks are not a list, is dropped and the rest
+    are drawn: a malformed alternative costs the reader a tab, not the board.
+
+    v12 W3 §4.3 (specs/2026-09-01-gaffer-v12-program-design.md).
+    """
+    raw = advice.get("alternative_plans")
+    if not isinstance(raw, list):
+        return []
+    out: list[PlanAlternative] = []
+    for entry in raw:
+        if not isinstance(entry, dict):
+            continue
+        weeks = entry.get("plan_by_gw")
+        if isinstance(weeks, dict):
+            weeks = list(weeks.values())
+        if not isinstance(weeks, list):
+            continue
+        entries = [w for w in weeks
+                   if isinstance(w, dict) and w.get("gw") is not None]
+        if len(out) >= len(LABELS):
+            break
+        out.append(PlanAlternative(label=LABELS[len(out)],
+                                   gap=_gap(entry.get("gap")),
+                                   weeks=build(entries, head_refs=False)))
+    return out
+
+
 @router.get("/plan/{gw}", response_model=PlanTimeline)
 def plan(gw: int) -> PlanTimeline:
     try:
@@ -166,39 +219,53 @@ def plan(gw: int) -> PlanTimeline:
     # move too broken to parse is dropped by ``_moves`` and does the same
     # damage, so it blanks the bank by the same mechanism.
     start = _price(getattr(state, "bank", None))
-    running = start
 
-    weeks = []
-    for entry in _weeks_of(advice):
-        week_gw = _int(entry.get("gw"), 0)
-        is_head = week_gw == head
-        hits = _int(entry.get("hits"))
-        buys, buys_whole = _moves(entry.get("buys"), buy_price)
-        sells, sells_whole = _moves(entry.get("sells"), sell_price)
-        if running is not None and buys_whole and sells_whole and all(
-                m.price is not None for m in buys + sells):
-            # round(..., 1) because every price here is already one decimal;
-            # letting float drift accumulate over a six-week horizon puts
-            # 0.8999999999999995 on the page.
-            running = round(running
-                            + sum(m.price for m in sells)
-                            - sum(m.price for m in buys), 1)
-        else:
-            running = None
-        weeks.append(PlanGw(
-            gw=week_gw,
-            buys=buys,
-            sells=sells,
-            hits=hits,
-            hit_cost=hits * hit_cost,
-            chip=chips.get(week_gw),
-            # A captain the artifact cannot name is a missing armband, not a
-            # missing timeline.
-            captain=(_move(advice.get("captain"), buy_price)
-                     if is_head else None),
-            vice=(_move(advice.get("vice"), buy_price) if is_head else None),
-            expected_pts=round(_float(entry.get("expected_pts")), 2),
-            bank=running))
+    def build(entries: list[dict], *, head_refs: bool) -> list[PlanGw]:
+        """``plan_by_gw`` entries -> priced weeks with a running bank.
 
+        v12 W3 §4.3 (specs/2026-09-01-gaffer-v12-program-design.md): shared by
+        the recommended plan and by every alternative, because the board prints
+        their banks side by side and two implementations of one running total
+        disagree within a week. ``head_refs`` is False for an alternative: the
+        armband belongs to the plan that was recommended, and lending it to a
+        plan that never chose it is the most confident thing this payload could
+        get wrong.
+        """
+        running = start
+        out: list[PlanGw] = []
+        for entry in entries:
+            week_gw = _int(entry.get("gw"), 0)
+            is_head = head_refs and week_gw == head
+            hits = _int(entry.get("hits"))
+            buys, buys_whole = _moves(entry.get("buys"), buy_price)
+            sells, sells_whole = _moves(entry.get("sells"), sell_price)
+            if running is not None and buys_whole and sells_whole and all(
+                    m.price is not None for m in buys + sells):
+                # round(..., 1) because every price here is already one decimal;
+                # letting float drift accumulate over a six-week horizon puts
+                # 0.8999999999999995 on the page.
+                running = round(running
+                                + sum(m.price for m in sells)
+                                - sum(m.price for m in buys), 1)
+            else:
+                running = None
+            out.append(PlanGw(
+                gw=week_gw,
+                buys=buys,
+                sells=sells,
+                hits=hits,
+                hit_cost=hits * hit_cost,
+                chip=chips.get(week_gw),
+                # A captain the artifact cannot name is a missing armband, not
+                # a missing timeline.
+                captain=(_move(advice.get("captain"), buy_price)
+                         if is_head else None),
+                vice=(_move(advice.get("vice"), buy_price)
+                      if is_head else None),
+                expected_pts=round(_float(entry.get("expected_pts")), 2),
+                bank=running))
+        return out
+
+    weeks = build(_weeks_of(advice), head_refs=True)
     return PlanTimeline(gw=head, generated_at=state.generated_at, weeks=weeks,
-                        bank=start)
+                        bank=start, alternatives=_alternatives(advice, build))
