@@ -334,6 +334,45 @@ that could move a plan, and the rail that a missing section reproduces
 §3.5 pre-registered outcome recorded either way; empty states verified
 by test with an empty log.
 
+**W2 gate — results (filled by the orchestrator).**
+
+| # | Gate | Command | Result |
+| --- | --- | --- | --- |
+| G1a | Suite green | `.venv/bin/pytest -q` | |
+| G1b | Frontend green + types | `cd frontend && npx vitest run && npx tsc --noEmit` | |
+| G1c | Zero unauthorized protected diffs | `.venv/bin/pytest -q tests/test_v12_w2_degradation.py -k protected` and `git diff --stat <base> HEAD -- src/gaffer/optimize/` | |
+| G1d | §3.4 replay, tolerance 5 vs `main` at the base commit, K=3 seed bases (CONVENTIONS §1), run with `price_timing = true` in the local `config.toml` — the shipped default is off and a replay of the off arm would be a replay of `main` | `scripts/v7b_replay.py --seed-bases 20260901,20260902,20260903` on each side, then `scripts/seed_stats.py` | |
+| G1e | Empty states verified against an empty log | `.venv/bin/pytest -q tests/test_v12_w2_degradation.py` | |
+| G1f | Pins unmoved | the three-line measurement in the plan header | |
+| G2a | §3.5 outcome recorded either way (CONVENTIONS §6: a failing arm ships OFF with its numbers) | `caffeinate -i .venv/bin/python scripts/v12_xgps_arm.py`, then transcribe every `V12_ARM_DONE` and the `V12_VERDICT` line into spec §3.5 verbatim (CONVENTIONS §4) | |
+| G2b | Adversarial review → fix round → re-verify | | |
+| G3 | Post-merge ritual | `git show main:config.toml` fails; `git log -S<odds key> --all` is empty | |
+
+**G1d is expected to show no diff at all**, and that is the pre-registered
+prediction rather than a pass by luck: the price-timing charge is 0.008 points
+at the shipped `itb_value` and the solver's default relative gap on a full
+horizon is larger (plan A6). A replay that *does* move by more than the seed
+spread is the surprising outcome and should be investigated before it is
+accepted.
+
+**The §3.4 flip rule, pre-registered here before the arm runs (CONVENTIONS
+§2), per the coordinator's 2026-09-02 ruling.** `price_timing` ships `false`;
+the default is changed to `true` in `config.example.toml` **iff** the
+`price_timing = true` replay clears both halves:
+
+> **FLIP iff** the on-arm's mean total is within the control's seed spread of
+> the off-arm's mean (no regression: the term must not cost points), **and**
+> hits are not up by more than 3 over the three bases.
+>
+> A *gain* is not required and must not be read as one. The term is 0.008
+> points; any total difference in either direction is seed noise by
+> construction, and the flip is a judgement that a correctly-signed cost with
+> no measurable downside belongs on, not a claim that it won anything.
+
+If the on-arm regresses beyond the spread, the flag stays `false` **and the
+numbers are transcribed into spec §3.4 anyway** — CONVENTIONS §6: deleting a
+failed arm loses the measurement that cost the hours.
+
 ## 4. W3 — decide
 
 All of W3 is in `optimize/**` and `advise.py` (protected); each item is an

@@ -219,3 +219,33 @@ def test_w2_adds_no_route(monkeypatch, tmp_path):
     assert "/api/quality" in paths
     assert not [p for p in paths
                 if "latency" in p or "presser" in p or "trend" in p]
+
+
+def test_the_only_protected_file_w2_touched_is_milp():
+    """The audit, as a test rather than as a step somebody remembers.
+
+    Spec §3.4 authorizes one term in optimize/milp.py and nothing else in W2
+    touches a protected path. Run against the workstream's base commit.
+    """
+    import subprocess
+
+    base = subprocess.run(
+        ["git", "merge-base", "HEAD", "main"], capture_output=True,
+        text=True, check=False).stdout.strip()
+    if not base:
+        import pytest as _pytest
+        _pytest.skip("no merge base — running outside a git checkout")
+    changed = subprocess.run(
+        ["git", "diff", "--name-only", base, "HEAD"], capture_output=True,
+        text=True, check=False).stdout.split()
+    protected = [
+        p for p in changed
+        if p in {"src/gaffer/advise.py", "src/gaffer/set_pieces.py",
+                 "src/gaffer/web/jobs.py",
+                 "src/gaffer/web/routers/whatif.py",
+                 "tests/test_advise.py", "tests/test_odds.py",
+                 "tests/test_web_jobs.py", "scripts/s2_replay.py"}
+        or p.startswith("src/gaffer/optimize/")
+        or (p.startswith("tests/test_") and p.endswith("_degradation.py")
+            and p != "tests/test_v12_w2_degradation.py")]
+    assert protected == ["src/gaffer/optimize/milp.py"]
