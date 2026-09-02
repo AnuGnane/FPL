@@ -1001,6 +1001,105 @@ class NewsShadow(BaseModel):
     by_gw: list[NewsShadowGw] = Field(default_factory=list)
 
 
+class LeadBucket(BaseModel):
+    """One band of the lead-time histogram, split by what happened."""
+
+    bucket: str
+    started: int
+    missed: int
+
+
+class FlagChange(BaseModel):
+    """One (gameweek, player) whose status moved before the deadline."""
+
+    gw: int
+    code: int
+    first_change: str
+    """The snapshot day the status first differed from what it had been —
+    the first day a manager could have acted, not the last."""
+    lead_days: float
+    from_status: str
+    final_status: str
+    """The last status recorded **before** the deadline. A snapshot taken
+    afterwards told nobody anything and is not in this window."""
+    chance_of_playing: float | None = None
+    started: bool
+
+
+class FlagLatency(BaseModel):
+    """v12 §3.1's readout, or its refusal.
+
+    ``available`` is what the card branches on, and ``note`` is the sentence
+    it prints when the answer is no. Both are on the payload rather than in
+    the page because the CLI prints the same sentence, and two copies of an
+    empty state drift.
+
+    The scorer's ``changes`` — every status move it found, one row each — is
+    **deliberately not declared here**, so pydantic drops it on the way out.
+    It is the evidence behind the histogram and it stays in the artifact for
+    anyone who wants their own bands over it, but nothing on the page reads
+    it and it is the only field on this payload that grows without bound: one
+    row per player per move per gameweek, all season. ``rows`` carries the
+    count that the page does show.
+    """
+
+    run_at: str
+    git_sha: str
+    available: bool = False
+    rows: int = 0
+    note: str | None = None
+    snap_dates: int = 0
+    min_snap_dates: int = 14
+    covered_gws: list[int] = []
+    checked_covered_gws: list[int] = []
+    histogram: list[LeadBucket] = []
+    late_flags: list[FlagChange] = []
+
+
+class VerdictRow(BaseModel):
+    verdict: str
+    n: int
+    started: int
+    not_started: int
+
+
+class VerdictScore(BaseModel):
+    verdict: str
+    n: int
+    precision: float
+    """P(did not start | this verdict). Absence is the event every class
+    claims, which is what makes the four numbers comparable."""
+    recall: float
+
+
+class SourceRows(BaseModel):
+    source: str
+    rows: int
+
+
+class PresserGrades(BaseModel):
+    """v12 §3.2's readout, or its refusal.
+
+    ``recall_population`` is a field rather than a footnote: recall here is
+    over the rows that carried a verdict, and the same word over every absent
+    player in the gameweek would be a much harsher number about a much larger
+    population.
+    """
+
+    run_at: str
+    git_sha: str
+    available: bool = False
+    rows: int = 0
+    note: str | None = None
+    verdicts_banked: int = 0
+    graded_gws: list[int] = []
+    absent_rows: int = 0
+    confusion: list[VerdictRow] = []
+    per_class: list[VerdictScore] = []
+    by_source: list[SourceRows] = []
+    recall_population: str = "verdict-carrying rows"
+
+
 class Quality(BaseModel):
     """Whichever modes have been run. Each is independent and may be absent."""
 
@@ -1010,6 +1109,11 @@ class Quality(BaseModel):
     # v6: `gaffer evaluate --news-shadow` has written this key since v5, but
     # nothing declared it here, so it never reached the page.
     news_shadow: NewsShadow | None = None
+    # v12 W2 §3.1/§3.2 (specs/2026-09-01-gaffer-v12-program-design.md). Same
+    # trap news_shadow fell into for a cycle: the CLI writes the key, and an
+    # undeclared field is dropped here without a word.
+    flag_latency: FlagLatency | None = None
+    presser_grades: PresserGrades | None = None
 
 
 class CalibrationHead(BaseModel):
