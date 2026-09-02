@@ -52,6 +52,11 @@ beforeEach(() => {
   wire(plan([WEEK]))
 })
 
+// v12 W3 T4-T7 review, Minor 11: the strip is a tablist, so its controls
+// answer to role="tab" rather than to the implicit button role.
+const pickPlan = async (label: string) =>
+  userEvent.click(await screen.findByRole('tab', { name: label }))
+
 describe('PlannerBoard', () => {
   it('draws one column per week the plan names', async () => {
     wire(plan([
@@ -265,8 +270,7 @@ describe('PlannerBoard', () => {
         buys: [{ code: 300, name: 'Other', position: 'MID', ep: 5.1,
                  price: 6.0 }] })] }]))
     render(<PlannerBoard gw={5} />)
-    await userEvent.click(await screen.findByRole('button',
-                                                  { name: /Plan B/ }))
+    await pickPlan('Plan B')
     expect(await screen.findByTestId('board-in-300')).toBeInTheDocument()
   })
 
@@ -274,8 +278,7 @@ describe('PlannerBoard', () => {
     async () => {
       wire(plan([WEEK], 1.5, [{ label: 'Plan B', gap: 0.4, weeks: [] }]))
       render(<PlannerBoard gw={5} />)
-      await userEvent.click(await screen.findByRole('button',
-                                                    { name: /Plan B/ }))
+      await pickPlan('Plan B')
       const note = await screen.findByTestId('plan-gap')
       expect(note.textContent).toMatch(/0\.4 objective points behind/)
       // The frame, so nobody reads it against the xPts on the same card.
@@ -286,10 +289,14 @@ describe('PlannerBoard', () => {
     async () => {
       wire(plan([WEEK], 1.5, [{ label: 'Plan B', gap: -1.2, weeks: [] }]))
       render(<PlannerBoard gw={5} />)
-      await userEvent.click(await screen.findByRole('button',
-                                                    { name: /Plan B/ }))
-      expect((await screen.findByTestId('plan-gap')).textContent)
-        .toMatch(/1\.2 objective points AHEAD/)
+      await pickPlan('Plan B')
+      const note = (await screen.findByTestId('plan-gap')).textContent
+      expect(note).toMatch(/1\.2 objective points AHEAD/)
+      // T4-T7 review, Important 3: there are two reasons an alternative can
+      // price above the recommendation, and the caption used to name only
+      // the sweep's constraint. §F1's second pass takes each plan's bench and
+      // vice scales from its own XI, so a small gap either way can be that.
+      expect(note).toMatch(/bench weightings differ/)
     })
 
   it('highlights the moves that differ from Plan A', async () => {
@@ -300,8 +307,7 @@ describe('PlannerBoard', () => {
         sells: [{ code: 2, name: 'Isak', position: 'FWD', ep: 3.2,
                   price: 9.1 }] })] }]))
     render(<PlannerBoard gw={5} />)
-    await userEvent.click(await screen.findByRole('button',
-                                                  { name: /Plan B/ }))
+    await pickPlan('Plan B')
     // 300 is not in Plan A's week; 2 is (the fixture's sell).
     expect(screen.getByTestId('board-in-300').dataset.differs).toBe('true')
     expect(screen.getByTestId('board-out-2').dataset.differs).toBe('false')
@@ -313,22 +319,54 @@ describe('PlannerBoard', () => {
         buys: [{ code: 300, name: 'Other', position: 'MID', ep: 5.1,
                  price: 6.0 }] })] }]))
     render(<PlannerBoard gw={5} onTry={vi.fn()} />)
-    await userEvent.click(await screen.findByRole('button',
-                                                  { name: /Plan B/ }))
+    await pickPlan('Plan B')
     expect(screen.queryByTestId('board-try-5')).toBeNull()
   })
 
-  it('wraps the tab strip at 390px rather than adding a second scroller',
+  it('wraps the tab strip rather than adding a second scroller', async () => {
+    // ChipsTab's established answer for the same control: a strip that wraps
+    // inside the column scroller, not a scroller of its own.
+    //
+    // T4-T7 review, Minor 12: this used to stub innerWidth to 390 and then
+    // assert a static className, which is true at every width — a test that
+    // claimed a viewport it never exercised. jsdom applies no CSS, so the
+    // honest claim is the one below: wrapping is unconditional, and no
+    // breakpoint prefix hides it at a narrow width.
+    wire(plan([WEEK], 1.5, [{ label: 'Plan B', gap: 0.4, weeks: [] }]))
+    render(<PlannerBoard gw={5} />)
+    const strip = await screen.findByTestId('plan-tabs')
+    expect(strip.className).toMatch(/(^|\s)flex-wrap(\s|$)/)
+    expect(strip.className).not.toMatch(/overflow-x-auto/)
+  })
+
+  it('is a tablist whose selected tab names the board it controls', async () => {
+    // T4-T7 review, Minor 11. aria-pressed said "this control is on"; these
+    // controls swap the panel below, which is what a tab does.
+    wire(plan([WEEK], 1.5, [{ label: 'Plan B', gap: 0.4, weeks: [altWeek()] }]))
+    render(<PlannerBoard gw={5} />)
+    const strip = await screen.findByTestId('plan-tabs')
+    expect(strip).toHaveAttribute('role', 'tablist')
+    const tabs = within(strip).getAllByRole('tab')
+    expect(tabs.map((t) => t.getAttribute('aria-selected')))
+      .toEqual(['true', 'false'])
+    const board = document.getElementById('plan-board')
+    expect(board).toHaveAttribute('role', 'tabpanel')
+    expect(tabs.every((t) => t.getAttribute('aria-controls') === 'plan-board'))
+      .toBe(true)
+    await pickPlan('Plan B')
+    expect(tabs.map((t) => t.getAttribute('aria-selected')))
+      .toEqual(['false', 'true'])
+    expect(board).toHaveAttribute('aria-labelledby', tabs[1].id)
+  })
+
+  it('leaves the board unlabelled when there is no strip to control',
     async () => {
-      // ChipsTab's established answer for the same control: a strip that wraps
-      // inside the column scroller, not a scroller of its own.
-      wire(plan([WEEK], 1.5, [{ label: 'Plan B', gap: 0.4, weeks: [] }]))
-      vi.stubGlobal('innerWidth', 390)
+      // No tablist, no tabpanel: a panel that answers to a control nobody
+      // drew is a role with nothing on the other end of it.
       render(<PlannerBoard gw={5} />)
-      const strip = await screen.findByTestId('plan-tabs')
-      expect(strip.className).toMatch(/flex-wrap/)
-      expect(strip.className).not.toMatch(/overflow-x-auto/)
-      vi.unstubAllGlobals()
+      await screen.findByTestId('board-week-5')
+      expect(document.getElementById('plan-board'))
+        .not.toHaveAttribute('role')
     })
 
   // Plan A18: the hub-level cold-clone rail renders only Planning's default

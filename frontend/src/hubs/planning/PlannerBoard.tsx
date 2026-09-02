@@ -206,13 +206,19 @@ export default function PlannerBoard(
           in it is a control that does nothing. It wraps rather than scrolling,
           which is ChipsTab's established answer for the same control. */}
       {alternatives.length > 0 && (
-        <div className="mb-3 flex flex-wrap gap-1" data-testid="plan-tabs">
+        // A tablist, not a row of toggles: each control swaps the panel below
+        // rather than turning something on, and aria-pressed said the latter.
+        <div className="mb-3 flex flex-wrap gap-1" data-testid="plan-tabs"
+             role="tablist" aria-label="Plan A and its alternatives">
           {['Plan A', ...alternatives.map((a) => a.label)].map(
             (label, i) => (
               <button
                 key={label}
                 type="button"
-                aria-pressed={pick === i}
+                role="tab"
+                id={`plan-tab-${i}`}
+                aria-selected={pick === i}
+                aria-controls="plan-board"
                 onClick={() => setPick(i)}
                 className={`rounded-card border px-3 py-1.5 ${pick === i
                   ? 'border-text text-text' : 'border-border text-text-muted'}`}
@@ -228,9 +234,15 @@ export default function PlannerBoard(
             ? 'This plan’s distance from Plan A could not be read.'
             : shown.gap >= 0
               ? `${fmtNum(shown.gap)} objective points behind Plan A.`
+              // Two causes, and naming only the first would be a claim the
+              // solver cannot support: the recommendation is held to the
+              // sweep's moves and this plan is not, *and* the two plans'
+              // bench and vice weightings are derived from their own XIs, so
+              // a small gap either way can be that instead.
               : `${fmtNum(Math.abs(shown.gap))} objective points AHEAD of `
-                + 'Plan A — the recommendation is held to the moves the '
-                + 'scenario sweep voted for, and this plan is not.'}
+                + 'Plan A on its own objective — the recommendation was held '
+                + 'to the moves the scenario sweep voted for, or the two '
+                + 'plans’ bench weightings differ.'}
           {' Objective points are the solver’s own frame: later weeks are '
            + 'discounted and banked transfers are priced, so this is not a '
            + 'raw xPts gap.'}
@@ -238,7 +250,10 @@ export default function PlannerBoard(
       )}
       {/* One column per week the plan names, and never a padded sixth: a
           shorter horizon is a shorter board. */}
-      <div className="flex gap-3 overflow-x-auto pb-2">
+      <div className="flex gap-3 overflow-x-auto pb-2" id="plan-board"
+           role={alternatives.length > 0 ? 'tabpanel' : undefined}
+           aria-labelledby={alternatives.length > 0
+             ? `plan-tab-${pick}` : undefined}>
         {weeks.map((week) => (
           <div key={week.gw} data-testid={`board-week-${week.gw}`}
                className="min-w-[220px] flex-1">

@@ -36,6 +36,10 @@ const CHIPS = {
   wildcard: {
     gain_over_horizon: 9.4,
     recommend: true,
+    // The bar and its source, so the wildcard-bar caption is on screen for
+    // every test in this file rather than in none of them.
+    threshold: 8.0,
+    threshold_source: 'theta',
     kept: [{ code: 100, name: 'Salah', position: 'MID', price: 13,
              ep: 6.4 }],
     dropped: [{ code: 101, name: 'Watkins', position: 'FWD', price: 9,
@@ -181,6 +185,41 @@ describe('chips tab', () => {
     expect(await screen.findByText(/run `gaffer advise` first/))
       .toBeInTheDocument()
   })
+
+  it('names the wildcard’s own bar and where it came from', async () => {
+    // Minor 9: the fixture had no threshold, so this caption never rendered
+    // in any test and its wording was unasserted.
+    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    await userEvent.click((await screen.findAllByRole('button',
+      { name: /wildcard/i }))[0])
+    expect(await screen.findByTestId('wildcard-bar')).toHaveTextContent(
+      'Against a bar of 8 (θ — the best remaining week’s expected surplus)')
+  })
+
+  it('renders a flat reason once, and an unexplained bar not at all',
+    async () => {
+      // Minor 8: the reason is written server-side and already begins
+      // "flat: …", so wrapping it printed "flat fallback — flat: …"; the
+      // "unknown" sentinel was printed as though it were a reason.
+      const bar = async (source: string | null) => {
+        apiGet.mockImplementation((path: string) => (
+          path.startsWith('/api/chips')
+            ? Promise.resolve({ ...CHIPS,
+                                wildcard: { ...CHIPS.wildcard,
+                                            threshold_source: source } })
+            : Promise.resolve(PLAYERS)))
+        const view = render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+        await userEvent.click((await screen.findAllByRole('button',
+          { name: /wildcard/i }))[0])
+        const text = (await screen.findByTestId('wildcard-bar')).textContent
+        view.unmount()
+        return text
+      }
+      expect(await bar('flat: no calibrated priors asset')).toBe(
+        'Against a bar of 8 (flat: no calibrated priors asset)')
+      expect(await bar('unknown')).toBe('Against a bar of 8')
+      expect(await bar(null)).toBe('Against a bar of 8')
+    })
 
   it('says so when there is no wildcard left to assess', async () => {
     apiGet.mockImplementation((path: string) => (

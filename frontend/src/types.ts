@@ -971,8 +971,12 @@ export interface PlanTimeline {
    *  and never 0.0, exactly as on each week. */
   bank: number | null
   /** Empty on every artifact written before v12 and on any run with
-   *  `alt_plan_max_gap = 0`. The board draws no strip for an empty list. */
-  alternatives: PlanAlternative[]
+   *  `alt_plan_max_gap = 0`. The board draws no strip for an empty list.
+   *
+   *  Optional, because the board reads it as `?? []` and a payload from a
+   *  server older than the field is a real case — typing it as always
+   *  present made that guard read as dead defence. */
+  alternatives?: PlanAlternative[]
 }
 
 export interface MatrixCell {

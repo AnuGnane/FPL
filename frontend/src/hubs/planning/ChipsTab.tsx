@@ -109,10 +109,18 @@ function WildcardTab({ wildcard }: { wildcard: SquadDiff | null }) {
       </p>
       {wildcard.threshold !== null && wildcard.threshold !== undefined && (
         <p className="mt-1 text-text-faint" data-testid="wildcard-bar">
-          {`Against a bar of ${wildcard.threshold} `}
+          {`Against a bar of ${wildcard.threshold}`}
+          {/* The reason is written server-side and rendered verbatim. It
+              already begins "flat: …", so the old wrapper printed "flat
+              fallback — flat: …", and it printed the sentinel "unknown" as
+              though that were a reason. A lookup too old to explain itself
+              now says nothing here, exactly as BarSource does. */}
           {wildcard.threshold_source === 'theta'
-            ? '(θ — the best remaining week’s expected surplus)'
-            : `(flat fallback — ${wildcard.threshold_source ?? 'unknown'})`}
+            ? ' (θ — the best remaining week’s expected surplus)'
+            : (!wildcard.threshold_source
+               || wildcard.threshold_source === 'unknown')
+                ? ''
+                : ` (${wildcard.threshold_source})`}
         </p>
       )}
       <div className="mt-3 grid items-start gap-4 sm:grid-cols-3">
