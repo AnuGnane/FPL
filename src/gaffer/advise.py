@@ -22,7 +22,6 @@ obvious way:
 from __future__ import annotations
 
 import json
-import os
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -51,6 +50,7 @@ from gaffer.errors import GafferError
 from gaffer.data.odds import (OddsClient, ags_frame, blend_attacking_odds,
                               next_gw_event_ids, odds_frame)
 from gaffer.features.engineer import build_prediction_frame, feature_columns
+from gaffer.io import atomic_write
 from gaffer.league_mode import (LeagueParams, captain_cover, captaincy_note,
                                 captaincy_override, compute_strategy,
                                 cover_table, tilt_ep, win_probability)
@@ -986,16 +986,15 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     # makes abandoning a wedged job safe — but a plain write_text is not
     # idempotent under a re-run, it is *interruptible*, and the abandoned
     # thread that keeps running is exactly the caller that can be halfway
-    # through this line while its replacement reads the file. The house idiom
-    # (digest.py): pid-suffixed temp so two writers cannot share one, and
-    # os.replace to make the swap atomic.
+    # through this line while its replacement reads the file.
+    #
+    # v12 W1 §2.11 (specs/2026-09-01-gaffer-v12-program-design.md): the idiom
+    # this borrowed from digest.py is now gaffer.io.atomic_write, and the
+    # guarantee is unchanged — a pid-suffixed sibling temp so two writers
+    # cannot share one, and os.replace to make the swap atomic.
     advice_path = REPORTS / f"gw{gw}-advice.json"
-    tmp = advice_path.with_name(f"{advice_path.name}.{os.getpid()}.tmp")
-    try:
-        tmp.write_text(json.dumps(asdict(advice), indent=1, default=str))
-        os.replace(tmp, advice_path)
-    finally:
-        tmp.unlink(missing_ok=True)
+    atomic_write(advice_path, json.dumps(asdict(advice), indent=1,
+                                         default=str))
     save_components(components_frame(comp, scoring, cal, players, teams), gw)
     save_solve_state(SolveState(
         gw=gw, gws=gws, deadline=deadline,

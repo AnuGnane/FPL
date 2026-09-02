@@ -353,23 +353,37 @@ def test_the_advice_artifact_is_written_through_a_temp_and_os_replace():
     import inspect
 
     import gaffer.advise as advise_mod
+    import gaffer.io as io_mod
 
     source = inspect.getsource(advise_mod)
     start = source.index('f"gw{gw}-advice.json"')
     window = source[start - 600:start + 600]
-    assert "os.replace" in window
-    assert "os.getpid()" in window
-    assert ".tmp" in window
+    # v12 W1 §2.11 (specs/2026-09-01-gaffer-v12-program-design.md). The idiom
+    # moved into gaffer.io, so the grep follows it. `atomic_write` in the
+    # window is a *stronger* assertion than `os.replace` was: a comment
+    # mentioning os.replace would have satisfied the old one, and a comment
+    # cannot satisfy this one, because the name has to be called.
+    assert "atomic_write(" in window
     # And the non-atomic form is gone, not merely joined.
     assert 'f"gw{gw}-advice.json").write_text' not in source
+    # The guarantee itself, checked where it now lives.
+    helper = inspect.getsource(io_mod)
+    assert "os.replace" in helper and "os.getpid()" in helper
 
 
-def test_the_digest_writer_this_borrowed_from_still_uses_the_same_idiom():
-    """If ``digest.py`` ever stops being the reference, the comment in
-    ``advise.py`` pointing at it becomes a lie. Cheap to notice here."""
+def test_the_helper_this_borrowed_from_still_uses_the_same_idiom():
+    """If ``gaffer.io`` ever stops being the reference, the comment in
+    ``advise.py`` pointing at it becomes a lie. Cheap to notice here.
+
+    v12 W1 §2.11: this used to name ``digest.py``, which was the house
+    reference until twenty copies of its four lines were replaced by one
+    helper. ``digest.py`` is now a caller like every other.
+    """
     import inspect
 
     import gaffer.digest as digest_mod
+    import gaffer.io as io_mod
 
-    source = inspect.getsource(digest_mod)
-    assert "os.replace" in source and "os.getpid()" in source
+    assert "os.replace" in inspect.getsource(io_mod)
+    assert "os.getpid()" in inspect.getsource(io_mod)
+    assert "atomic_write(" in inspect.getsource(digest_mod)
