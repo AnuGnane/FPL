@@ -176,6 +176,33 @@ def test_a_seeded_bundle_only_replaces_the_two_lightgbm_heads():
     assert base["minutes"] is not out["minutes"]     # base is not mutated
 
 
+def test_a_seeded_member_is_fit_on_member_zeros_feature_list(monkeypatch):
+    """Member zero is ``train_all``'s bundle, and ``train_all`` fits the
+    attacking head on :func:`attacking_features`. A member fit on the bare
+    ``ATTACK_FEATURES`` while the v12 §3.5 arm is on differs from member zero
+    in its *inputs*, not its seed, and the measured spread stops being
+    estimation noise."""
+    from gaffer.features.engineer import XG_PER_SHOT_FEATURES
+    from gaffer.models import train as tr
+
+    base = {"minutes": object(), "attacking": object()}
+
+    class _Fake:
+        def __init__(self, cols, seed=None):
+            self.cols, self.seed = list(cols), seed
+
+        def fit(self, df):
+            return self
+
+    import gaffer.calibrate_noise as cn
+
+    monkeypatch.setattr(tr, "xg_per_shot", lambda: True)
+    out = cn._seeded_bundle(base, pd.DataFrame({"a": [1]}), 17,
+                            minutes_cls=_Fake, attack_cls=_Fake)
+    assert out["attacking"].cols == tr.attacking_features()
+    assert set(XG_PER_SHOT_FEATURES) <= set(out["attacking"].cols)
+
+
 def test_ensemble_sigma_of_identical_members_is_zero():
     from gaffer.calibrate_noise import ensemble_sigma
 

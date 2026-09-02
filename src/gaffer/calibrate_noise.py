@@ -361,15 +361,20 @@ def _seeded_bundle(base: dict, train_df: pd.DataFrame, seed: int,
     The class arguments exist so the unit test can substitute stubs; nothing
     else passes them.
     """
-    from gaffer.models.attacking import ATTACK_FEATURES, AttackingModel
+    from gaffer.models.attacking import AttackingModel
     from gaffer.models.minutes import ThreeModeModel
-    from gaffer.models.train import MINUTES_FEATURES
+    from gaffer.models.train import MINUTES_FEATURES, attacking_features
 
     minutes_cls = ThreeModeModel if minutes_cls is None else minutes_cls
     attack_cls = AttackingModel if attack_cls is None else attack_cls
     out = dict(base)
     out["minutes"] = minutes_cls(MINUTES_FEATURES, seed=seed).fit(train_df)
-    out["attacking"] = attack_cls(ATTACK_FEATURES, seed=seed).fit(train_df)
+    # ``attacking_features()`` and not the bare ``ATTACK_FEATURES``: member
+    # zero is ``train_all``'s bundle, which fits the head on whatever the v12
+    # §3.5 flag says. A member fit on a different feature list differs from
+    # member zero in its *inputs*, and the spread stops being estimation noise.
+    out["attacking"] = attack_cls(attacking_features(), seed=seed).fit(
+        train_df)
     return out
 
 
@@ -422,6 +427,15 @@ def ensemble_rows(max_train_idx: int | None = None,
     base = train_all(train_df, train_tg.dropna(subset=["elo_diff"]),
                      save=False)
     members = [base] + [_seeded_bundle(base, train_df, s) for s in seeds[1:]]
+    zero = list(getattr(members[0]["attacking"], "feature_cols", []))
+    for i, m in enumerate(members[1:], start=1):
+        cols = list(getattr(m["attacking"], "feature_cols", []))
+        if cols != zero:
+            raise ValueError(
+                f"ensemble member {i} was fit on a different attacking "
+                f"feature list than member zero — the spread would be a "
+                f"feature-set difference, not estimation noise "
+                f"({sorted(set(zero) ^ set(cols))})")
     print(f"estimation ensemble: {len(members)} members", flush=True)
     scoring = scoring_table(load_bootstrap_sample())
 
