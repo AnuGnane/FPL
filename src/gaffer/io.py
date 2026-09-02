@@ -21,6 +21,21 @@ sites this replaces:
 
 ``os.replace`` is atomic within a directory on POSIX, which is why the temp is
 always a *sibling* of the destination and never in ``/tmp``.
+
+Two things the copies this replaces did not all do, stated once here:
+
+* **missing parent directories are created.** Twelve of the migrated call
+  sites did their own ``mkdir(parents=True, exist_ok=True)`` first and the
+  rest did not; the helper does it, so they all behave alike now. That is the
+  one behavioural change against the old copies — a write into a directory
+  that does not exist used to raise in some places and now succeeds
+  everywhere. ``tests/test_v10b_chip_scenarios.py`` records where that showed;
+* **"whole" means crash-atomic, not power-loss durable.** A reader never sees
+  a half-written file, and a process that dies mid-write leaves the old
+  destination intact. There is no ``fsync`` of the temp or of the directory,
+  so a machine that loses power right after the rename may come back with
+  either version. Every caller here writes derived data that a refresh can
+  regenerate, which is the trade being made.
 """
 
 from __future__ import annotations
@@ -41,6 +56,11 @@ def atomic_path(path: Path | str) -> Iterator[Path]:
     parquet writer, anything that takes a filename. On a clean exit the temp
     replaces the destination in one step; on any exception the destination is
     left exactly as it was and the temp is removed.
+
+    ``path``'s parent directories are created if they are missing. The rename
+    is crash-atomic and not power-loss durable: nothing is ``fsync``ed, so a
+    reader never sees a partial file but a machine that loses power just after
+    the rename may come back with either version.
     """
     dest = Path(path)
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -70,16 +90,14 @@ def atomic_save(frame: pd.DataFrame, rel: str) -> Path:
     that redirects the data directory redirects the temp and the destination
     together — the trade four of the migrated call sites state in their own
     docstrings.
+
+    The pid-in-the-name and the ``finally`` live in ``atomic_path``; this
+    function only has to hand ``store.save`` the temp's *store-relative* name,
+    which is what makes it a wrapper rather than a second copy of the idiom.
     """
     from gaffer.data import store
 
     dest = store.DATA_DIR / rel
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    tmp_rel = f"{rel}.{os.getpid()}.tmp"
-    tmp = store.DATA_DIR / tmp_rel
-    try:
-        store.save(frame, tmp_rel)
-        os.replace(tmp, dest)
-    finally:
-        tmp.unlink(missing_ok=True)
+    with atomic_path(dest) as tmp:
+        store.save(frame, str(tmp.relative_to(store.DATA_DIR)))
     return dest

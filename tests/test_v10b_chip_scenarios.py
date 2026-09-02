@@ -19,7 +19,10 @@ The write *rule* is the part that needs care, and it is three rules:
 
 from __future__ import annotations
 
+import os
+
 import pandas as pd
+import pytest
 
 from gaffer.data.chip_scenarios import write_chip_scenarios
 from gaffer.optimize.chip_policy import load_chip_scenarios
@@ -140,6 +143,7 @@ def test_an_unreadable_frame_is_a_zero_not_an_exception(tmp_path):
     assert not path.exists()
 
 
+@pytest.mark.skipif(os.geteuid() == 0, reason="root ignores mode bits")
 def test_an_unwritable_directory_is_a_zero(tmp_path):
     """The same claim as the test above, on the write rather than the frame:
     a destination this process cannot write to is a zero, not an exception
