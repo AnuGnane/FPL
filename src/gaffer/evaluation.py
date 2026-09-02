@@ -521,6 +521,30 @@ def score_news_shadow(shadow: pd.DataFrame,
             "by_gw": by_gw}
 
 
+ACTUALS_PATH = "live/player_gw.parquet"
+"""This season's played rows. Carries no ``season`` column, which is why
+:func:`evaluate_news_shadow` cuts the *log* to one season before joining."""
+
+ACTUALS_COLS = ["gw", "code", "minutes"]
+
+
+def news_actuals() -> pd.DataFrame:
+    """The results frame every availability report is graded against.
+
+    Lifted out of :func:`evaluate_news_shadow` so v12 §3.1 and §3.2 grade
+    against the same rows this gate has always used, rather than against a
+    second reader that agrees with it until the day it does not.
+
+    An empty frame carries the join keys, so a caller may merge on them
+    without checking first.
+    """
+    from gaffer.data import store
+
+    if not store.exists(ACTUALS_PATH):
+        return pd.DataFrame(columns=ACTUALS_COLS)
+    return store.load(ACTUALS_PATH)
+
+
 def evaluate_news_shadow() -> dict:
     """:func:`score_news_shadow` over the banked log and the live results.
 
@@ -535,12 +559,9 @@ def evaluate_news_shadow() -> dict:
     existed, leaves the log whole: the filter sharpens the readout, it is not
     a gate on producing one.
     """
-    from gaffer.data import store
     from gaffer.news_shadow import load_shadow
 
-    actuals = (store.load("live/player_gw.parquet")
-               if store.exists("live/player_gw.parquet")
-               else pd.DataFrame(columns=["gw", "code", "minutes"]))
+    actuals = news_actuals()
     shadow = load_shadow()
     try:
         season = str(load_config().current_season)
