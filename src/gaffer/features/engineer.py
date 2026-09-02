@@ -921,6 +921,12 @@ def add_xg_per_shot(df: pd.DataFrame) -> pd.DataFrame:
             if f"us_shots90_r{w}" in df.columns \
             else pd.Series(float("nan"), index=df.index, dtype="float64")
         ratio = npxg / shots.where(shots > 0.0)
+        # Down to numpy float before ``isfinite``: on a nullable ``Float64``
+        # input the ratio stays masked, and ``~np.isfinite`` over a mask
+        # propagates the NA into the *indicator* — an indicator that is itself
+        # missing says nothing about whether the 0.0 beside it was measured,
+        # which is the one thing the pair exists to say.
+        ratio = pd.to_numeric(ratio, errors="coerce").astype("float64")
         missing = (~np.isfinite(ratio)).astype("float64")
         feats[f"us_npxg_per_shot_r{w}"] = ratio.where(
             np.isfinite(ratio), 0.0).astype("float64")

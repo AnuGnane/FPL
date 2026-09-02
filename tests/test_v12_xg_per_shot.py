@@ -51,6 +51,19 @@ def test_a_null_window_is_missing_and_not_a_division_by_nothing():
     assert out["us_npxg_per_shot_missing_r5"].iloc[0] == 1.0
 
 
+def test_a_nullable_column_still_gets_a_readable_indicator():
+    """``Float64`` with ``pd.NA`` in it: ``np.isfinite`` over a masked array
+    propagates the NA into the indicator, and an indicator that is itself
+    missing tells LightGBM nothing about whether the 0.0 beside it was
+    measured. Coerce to numpy float first."""
+    frame = _frame([0.6], [4.0]).astype("Float64")
+    frame.loc[0, "us_shots90_r5"] = pd.NA
+    out = add_xg_per_shot(frame)
+    assert out["us_npxg_per_shot_missing_r5"].iloc[0] == 1.0
+    assert out["us_npxg_per_shot_r5"].iloc[0] == 0.0
+    assert out["us_npxg_per_shot_missing_r3"].iloc[0] == 0.0
+
+
 def test_a_frame_with_no_understat_columns_still_gets_every_column():
     """The model's feature schema must not depend on whether the scrape ran —
     add_understat_rolling's own contract, inherited."""
