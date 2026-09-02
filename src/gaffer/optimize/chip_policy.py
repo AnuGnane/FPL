@@ -158,6 +158,33 @@ reports the first for the second sends its reader to the wrong one.
 """
 
 
+def chips_spent(chip: str) -> list[str]:
+    """The chips a table row actually spends, in order.
+
+    One for every ordinary row, and two for the one *pair*
+    :data:`gaffer.optimize.chips.PAIR_CHIP` — a wildcard in one week and a
+    bench boost in a later one, scored as a single option.
+
+    v12 W3 T8-T11 review, Important 2. Every bar in this module was chosen by
+    ``chip == "wildcard"``, so ``"wildcard+bboost"`` fell to the one-week
+    ``CHIP_PLAY_THRESHOLD`` of 4.0 — *below* the lone wildcard's 8.0 — while
+    the pair's gain is at least the lone wildcard's by construction, because a
+    wildcard with an unused boost week is inside the pair's own feasible set.
+    The pair therefore played on every board where the wildcard did, plus a
+    band of boards where the wildcard was told to wait.
+
+    A pair spends two chips, so its bar is both chips' bars added: it has to
+    beat what waiting is worth for the wildcard *and* what waiting is worth
+    for the boost, because playing it forgoes both options at once.
+
+    Imported rather than restrung, so the pair's name lives in exactly one
+    place; deferred, because ``chips`` imports this module.
+    """
+    from gaffer.optimize.chips import PAIR_CHIP
+
+    return chip.split("+") if chip == PAIR_CHIP else [chip]
+
+
 def flat_thresholds(reason: str = FLAT_SOURCE):
     """The pre-v4c bars, as a ``(chip, gw) -> float`` callable.
 
@@ -173,14 +200,23 @@ def flat_thresholds(reason: str = FLAT_SOURCE):
     from gaffer.optimize.chips import (CHIP_PLAY_THRESHOLD,
                                        WILDCARD_RECOMMEND_THRESHOLD)
 
-    def lookup(chip: str, gw: int) -> float:
+    def one(chip: str) -> float:
         return (WILDCARD_RECOMMEND_THRESHOLD if chip == "wildcard"
                 else CHIP_PLAY_THRESHOLD)
+
+    def lookup(chip: str, gw: int) -> float:
+        # v12 W3 T8-T11 review, Important 2: a pair's bar is both its chips'
+        # bars, because playing it spends both. See :func:`chips_spent`.
+        return sum(one(part) for part in chips_spent(chip))
 
     # v12 W3 §4.2 (specs/2026-09-01-gaffer-v12-program-design.md): a caption
     # cannot say "θ" or "flat fallback" unless the lookup can be asked. An
     # attribute rather than a wrapper type, so every existing caller — which
     # calls this thing — keeps calling it.
+    #
+    # ``reason`` is per-lookup and not per-chip (v12 W3 §4.2, T4-T7 review
+    # Minor 7): the whole callable is flat for one reason, so a pair's two
+    # halves report that reason once rather than twice.
     lookup.explain = lambda chip, gw: (lookup(chip, gw), reason)
     return lookup
 
@@ -216,7 +252,7 @@ def thresholds_from_priors(chip_surplus: dict[str, dict[int, list[float]]],
     # distinct fallbacks live in this function and every one of them was
     # silent. Named here so the caption can say *why* a bar is flat, which is
     # the half of the spec's sentence a boolean could not carry.
-    def explain(chip: str, gw: int) -> tuple[float, str]:
+    def one(chip: str, gw: int) -> tuple[float, str]:
         table = tables.get(chip)
         if not table:
             return (flat(chip, gw),
@@ -226,6 +262,25 @@ def thresholds_from_priors(chip_surplus: dict[str, dict[int, list[float]]],
             return (flat(chip, gw),
                     "flat: gameweek outside the calibrated window")
         return (float(value), "theta")
+
+    # v12 W3 T8-T11 review, Important 2: a pair spends two chips, so its bar
+    # is both chips' bars added — see :func:`chips_spent`. The source names
+    # both, because one number that is really two additions is not something a
+    # reader can take apart from the number alone. A pair whose halves are not
+    # all θ keeps every half's own reason, in order, so "flat" still says
+    # which half was flat and why.
+    def explain(chip: str, gw: int) -> tuple[float, str]:
+        parts = chips_spent(chip)
+        if len(parts) == 1:
+            return one(chip, gw)
+        priced = [(p, *one(p, gw)) for p in parts]
+        total = sum(bar for _, bar, _ in priced)
+        head = ("theta" if all(src == "theta" for _, _, src in priced)
+                else "flat")
+        detail = " + ".join(f"{p} {bar:.2f}" for p, bar, _ in priced)
+        reasons = sorted({src for _, _, src in priced if src != "theta"})
+        tail = "" if not reasons else " (" + "; ".join(reasons) + ")"
+        return (total, f"{head}: {detail}{tail}")
 
     lookup.explain = explain
     return lookup

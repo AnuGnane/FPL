@@ -81,9 +81,48 @@ def test_the_gain_credits_the_hits_the_baseline_would_have_paid():
     assert b - a == pytest.approx(2 * CFG["hit_cost"], abs=1e-6)
 
 
-def test_the_budget_comes_from_the_baselines_week_and_not_from_today():
-    """A baseline whose week holds a cheaper squad and more bank must price a
-    different free hit from one that holds an expensive squad."""
+def _squad_value(pool, squad, bank) -> float:
+    sell = dict(zip(pool["code"], pool["sell"]))
+    return float(bank) + sum(float(sell.get(c, 0.0)) for c in squad)
+
+
+def test_the_own_week_budget_is_the_conserved_total_squad_value():
+    """v12 W3 T8-T11 review, Important 4. "The budget comes from the
+    baseline's own week rather than today" is *bookkeeping* honesty, not a
+    number that moves: ``milp_pool`` prices an unowned player's ``sell`` at
+    ``now_cost``, and the budget recursion conserves bank-plus-squad-value, so
+    every week of the horizon has the same total to spend and it is today's.
+    The behaviour change §4.5 actually makes is the hits credit, which the
+    test above pins.
+
+    So this rail asserts the *identity* rather than a difference, and it can
+    go red: change the sell rule so a transfer leaks or mints value — a
+    profit-taking rule, a sell price that is not the buy price for an unowned
+    player — and conservation breaks, at which point the own-week budget
+    genuinely is a different number and this file has to be re-read rather
+    than quietly still passing.
+    """
+    pool, state = _pool(), _state()
+    base = chip_baseline(pool, state, **CFG)
+    today = _squad_value(pool, state.owned_codes, state.bank)
+    for week in base.gw_plans:
+        assert week.bank is not None
+        assert _squad_value(pool, week.squad, week.bank) == \
+            pytest.approx(today, abs=1e-6)
+
+    # And the number free_hit_gain actually spends is that constant. Read off
+    # the same expression the function uses, so a change to *its* budget line
+    # that stopped agreeing with conservation would show up here.
+    for gw in GWS:
+        week = next(g for g in base.gw_plans if g.gw == gw)
+        assert int(round(_squad_value(pool, week.squad, week.bank))) == \
+            int(round(today))
+
+
+def test_a_richer_week_prices_a_richer_free_hit():
+    """The mechanism itself, on a hand-built week rather than a solved one:
+    conservation is a property of the solver's recursion, and the budget line
+    must still read the week it is handed."""
     import dataclasses
 
     pool, state = _pool(), _state()

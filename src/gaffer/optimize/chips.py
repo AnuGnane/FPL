@@ -102,6 +102,23 @@ around a 30%-likely double is a plan around a rumour, and the extra solves it
 costs are spent on every wildcard week in the horizon.
 """
 
+PAIR_EVAL_MAX = 6
+"""How many wildcard-plus-boost pairs one ``evaluate_chips`` call will solve.
+
+v12 W3 T8-T11 review, Minor 6. Each pair is a *full-horizon MILP*, not a table
+lookup, and the candidate set is quadratic in the horizon: a season-long
+horizon in which the fixture file believes most weeks are doubles would put
+hundreds of solves inside one advise run, and an advise run is not the place
+to discover that.
+
+Six because the horizon this ships against is six weeks, so today's file — and
+any plausible one for a live gameweek — is under the cap and this constant
+changes no served number. Candidates are ordered by how soon the boost lands
+after the rebuild, so what a cap ever drops is the far end: a wildcard in GW1
+and a boost in GW8 is a plan the next advice run will price again anyway, with
+five more weeks of fixture information than this one has.
+"""
+
 
 def chip_baseline(pool: pd.DataFrame, state: SolveInput, **cfg) -> Plan:
     """The no-chip plan every chip is scored against, solved undecayed.
@@ -171,7 +188,9 @@ def evaluate_chips(pool: pd.DataFrame, state: SolveInput,
     Given a non-empty set, the table also carries the wildcard-plus-bench-boost
     *pair*: a wildcard in ``g`` and a bench boost in a later ``g2`` that is one
     of them, scored as one option against the same no-chip baseline, with
-    ``gw`` the wildcard's week and ``gw2`` the boost's. Omitted — which is
+    ``gw`` the wildcard's week and ``gw2`` the boost's. At most
+    :data:`PAIR_EVAL_MAX` of them, closest first, because each one is a full
+    horizon solve. Omitted — which is
     every caller but ``advise`` — the table is exactly the table it was, and
     that is not a convenience: ``backtest``'s chip executor has no branch for a
     pair, so a pair row reaching it would be recorded as played and applied to
@@ -213,17 +232,21 @@ def evaluate_chips(pool: pd.DataFrame, state: SolveInput,
     # wildcard's own week is not playable (one chip per gameweek), and a boost
     # before the rebuild is just a bench boost. Bounded by the doubles in the
     # horizon rather than by the horizon squared.
-    for g in state.gws:
-        if not dgw_gws or "wildcard" not in available(g):
-            continue
-        for g2 in state.gws:
-            if g2 <= g or int(g2) not in dgw_gws:
-                continue
-            if "bboost" not in available(g2):
-                continue
-            p = solve_plan(pool, replace(state, wildcard_gw=g,
-                                         bench_boost_gw=g2), **cfg)
-            add(PAIR_CHIP, g, p.objective - base.objective, gw2=g2)
+    #
+    # v12 W3 T8-T11 review, Minor 6: enumerated, ordered and capped before
+    # anything is solved. Closest first — the smallest gap between the rebuild
+    # and the boost, then the earliest rebuild — so a cap that ever bites drops
+    # the far end of the horizon, which the next advice run reprices with more
+    # fixture information than this one has. See :data:`PAIR_EVAL_MAX`.
+    candidates = [(g, g2) for g in state.gws for g2 in state.gws
+                  if dgw_gws and "wildcard" in available(g)
+                  and g2 > g and int(g2) in dgw_gws
+                  and "bboost" in available(g2)]
+    candidates.sort(key=lambda pair: (pair[1] - pair[0], pair[0]))
+    for g, g2 in candidates[:PAIR_EVAL_MAX]:
+        p = solve_plan(pool, replace(state, wildcard_gw=g,
+                                     bench_boost_gw=g2), **cfg)
+        add(PAIR_CHIP, g, p.objective - base.objective, gw2=g2)
     if not rows:
         # Every chip spent is a normal late-season state; hand back the empty
         # frame rather than letting the column-less DataFrame blow up below.
@@ -256,8 +279,20 @@ def free_hit_gain(pool: pd.DataFrame, state: SolveInput, gw: int,
 
     * the budget is the baseline's squad and bank *in that week*, not today's.
       Pricing a GW+3 free hit off a squad the plan has already sold out of was
-      answering a question about a different team;
-    * the baseline's hits in that week are credited back. A free hit suspends
+      answering a question about a different team. **This half is bookkeeping
+      honesty and not a number that moves** (v12 W3 T8-T11 review, Important
+      4): ``build_pool`` prices an unowned player's ``sell`` at his
+      ``now_cost``, and the budget recursion conserves bank plus total squad
+      value, so every week of the horizon has the same amount to spend and it
+      is today's amount — measured at 763 in every week of a real horizon. The
+      line is kept because it is the correct question to ask of a week's
+      position, and because it stops being a no-op the moment the sell rule
+      does (a profit-taking rule, a sell price that is not the buy price for
+      an unowned player). ``tests/test_v12_w3_free_hit.py`` pins the
+      conservation identity, so that day is a red test rather than a silent
+      re-interpretation;
+    * the baseline's hits in that week are credited back — **this is the half
+      that changes the number**. A free hit suspends
       the week's transfers, so the points those transfers would have cost are
       saved by playing the chip — and ``expected_pts`` is gross of hit cost,
       so leaving them in made the chip look worth nothing exactly when it had

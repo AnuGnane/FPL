@@ -105,6 +105,109 @@ def test_a_week_with_no_bench_boost_available_produces_no_pair():
     assert PAIR_CHIP not in set(table["chip"])
 
 
+# --- the loop's cap (T8-T11 review, Minor 6) ------------------------------
+
+LONG_GWS = list(range(1, 9))
+
+
+def _long_pool() -> pd.DataFrame:
+    rows, code = [], 1
+    for pos, n in [("GKP", 4), ("DEF", 9), ("MID", 10), ("FWD", 7)]:
+        for i in range(n):
+            rows.append({"code": code, "position": pos,
+                         "team_code": (code % 6) + 1, "cost": 40, "sell": 40,
+                         "ep": {g: 1.0 + (code % 7) * 0.3 + g * 0.1
+                                for g in LONG_GWS}})
+            code += 1
+    return pd.DataFrame(rows)
+
+
+def test_the_pair_loop_is_capped_and_takes_the_closest_doubles_first():
+    """Every pair is a full-horizon MILP. A horizon whose every week is a
+    believed double is quadratic in the horizon, and an advise run is not the
+    place to discover that."""
+    from gaffer.optimize.chips import PAIR_EVAL_MAX
+
+    assert PAIR_EVAL_MAX == 6
+    state = SolveInput(owned_codes=list(range(1, 16)), bank=200,
+                       free_transfers=1, gws=list(LONG_GWS))
+    table = evaluate_chips(_long_pool(), state,
+                           chips_available=["wildcard", "bboost"],
+                           dgw_gws=set(LONG_GWS), **CFG)
+    pairs = table[table["chip"] == PAIR_CHIP]
+    assert len(pairs) == PAIR_EVAL_MAX
+    # Closest first: every kept pair puts the boost in the week straight after
+    # the rebuild. There are seven such pairs here and room for six, so the
+    # tie breaks on the earlier wildcard week.
+    assert {(int(r.gw), int(r.gw2)) for r in pairs.itertuples()} == \
+        {(g, g + 1) for g in LONG_GWS[:PAIR_EVAL_MAX]}
+
+
+# --- the pair's bar (T8-T11 review, Important 2) --------------------------
+
+def _priors_covering_everything() -> dict:
+    """A sample in every week of both chip windows, for both halves of the
+    pair, so no lookup has an excuse to fall through to flat."""
+    return {"chip_surplus": {
+        "wildcard": {str(gw): [3.0, 5.0, 9.0] for gw in range(1, 39)},
+        "bboost": {str(gw): [1.0, 2.0, 4.0] for gw in range(1, 39)}}}
+
+
+def test_the_pairs_flat_bar_is_the_sum_of_the_two_chips_it_spends():
+    """The pair fell through ``chip == "wildcard"`` to the 4.0 one-week bar —
+    *below* the lone wildcard's 8.0 — while its gain is at least the
+    wildcard's by construction, because a wildcard-and-no-boost squad is one
+    of the things the pair's own solve may choose. So the pair read "play
+    now" everywhere the wildcard did, and on a whole band of boards where it
+    did not."""
+    from gaffer.optimize.chip_policy import flat_thresholds
+
+    flat = flat_thresholds()
+    assert flat(PAIR_CHIP, 7) == flat("wildcard", 7) + flat("bboost", 7)
+    assert flat(PAIR_CHIP, 7) > flat("wildcard", 7)
+
+
+def test_the_pairs_theta_bar_is_the_sum_of_the_two_thetas():
+    from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
+                                             threshold_with_source)
+
+    lookup = chip_thresholds_from_asset(_priors_covering_everything())
+    for gw in (1, 12, 19, 20, 33, 38):
+        pair, _ = threshold_with_source(lookup, PAIR_CHIP, gw)
+        wc, _ = threshold_with_source(lookup, "wildcard", gw)
+        bb, _ = threshold_with_source(lookup, "bboost", gw)
+        assert pair == pytest.approx(wc + bb)
+
+
+def test_the_pairs_source_names_both_bars():
+    """A reader who sees one number has to be able to see where it came from,
+    and the pair's number is two numbers added."""
+    from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
+                                             threshold_with_source)
+
+    lookup = chip_thresholds_from_asset(_priors_covering_everything())
+    _, source = threshold_with_source(lookup, PAIR_CHIP, 7)
+    assert source.startswith("theta")
+    assert "wildcard" in source and "bboost" in source
+
+
+def test_the_pair_cannot_play_now_where_the_lone_wildcard_waits():
+    """The bug, stated as the behaviour it produced."""
+    from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
+                                             flat_thresholds,
+                                             threshold_with_source)
+
+    for lookup in (flat_thresholds(),
+                   chip_thresholds_from_asset(_priors_covering_everything())):
+        wc = threshold_with_source(lookup, "wildcard", 7)[0]
+        bb = threshold_with_source(lookup, "bboost", 7)[0]
+        pair = threshold_with_source(lookup, PAIR_CHIP, 7)[0]
+        for gain in (wc - 0.01, wc, wc + bb - 0.01, wc + bb):
+            assert not ((gain >= pair) and not (gain >= wc)), \
+                "a pair played on a board where the wildcard alone waits"
+        assert (wc + bb - 0.01) < pair <= (wc + bb)
+
+
 def test_no_caller_but_advise_asks_for_pairs():
     """The rail this file exists for. backtest's chip executor has no branch
     for a pair name, so a pair row reaching _pick_chip would be recorded as
