@@ -7,6 +7,7 @@ before *t*. ``shift(1)`` before the rolling window enforces that.
 
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 
 from gaffer.data.managers import spell_keys
@@ -851,7 +852,7 @@ def feature_columns(stats: list[str] = ROLL_STATS,
             + CONGESTION_FEATURES + LEAGUE_CONGESTION_FEATURES
             + understat_feature_columns() + TEAM_US_FEATURES
             + SHRUNK_FEATURES + SHRUNK_MODE_FEATURES
-            + SHRUNK_CARD_FEATURES)
+            + SHRUNK_CARD_FEATURES + XG_PER_SHOT_FEATURES)
 
 
 US_STATS = ["us_shots", "us_key_passes", "us_npxg", "us_xgchain",
@@ -877,6 +878,46 @@ def understat_feature_columns(windows: list[int] = US_WINDOWS) -> list[str]:
     """Every player-level Understat feature name, in a stable order."""
     return [f"{name}_r{w}" for name in US_FEATURE_NAMES.values()
             for w in windows]
+
+
+XG_PER_SHOT_FEATURES = (
+    [f"us_npxg_per_shot_r{w}" for w in US_WINDOWS]
+    + [f"us_npxg_per_shot_missing_r{w}" for w in US_WINDOWS])
+"""v12 §3.5's arm: shot *quality*, beside the shot volume already fed in.
+
+Eight columns and not one. The spec writes the feature as ``us_npxg90 /
+us_shots90``; both are windowed, and a ratio of two per-90 rates over the same
+window is xG per shot at that window, so there is one per window — with a
+missing indicator each, because a player with no shots has an undefined rate
+rather than a bad one."""
+
+
+def add_xg_per_shot(df: pd.DataFrame) -> pd.DataFrame:
+    """Non-penalty xG per shot per Understat window, with missing indicators.
+
+    ``0.0`` where the ratio is undefined — no shots, or a window with no
+    minutes in it — with the indicator raised, which is the pairing that makes
+    the zero readable: LightGBM splits on the indicator and never has to guess
+    whether a 0.00 was measured or filled.
+
+    Every column is created even on a frame with no Understat columns at all,
+    so the model's feature schema does not depend on whether the scrape ran —
+    :func:`add_understat_rolling`'s contract, inherited.
+    """
+    feats: dict[str, pd.Series] = {}
+    for w in US_WINDOWS:
+        npxg = pd.to_numeric(df.get(f"us_npxg90_r{w}"), errors="coerce") \
+            if f"us_npxg90_r{w}" in df.columns \
+            else pd.Series(float("nan"), index=df.index, dtype="float64")
+        shots = pd.to_numeric(df.get(f"us_shots90_r{w}"), errors="coerce") \
+            if f"us_shots90_r{w}" in df.columns \
+            else pd.Series(float("nan"), index=df.index, dtype="float64")
+        ratio = npxg / shots.where(shots > 0.0)
+        missing = (~np.isfinite(ratio)).astype("float64")
+        feats[f"us_npxg_per_shot_r{w}"] = ratio.where(
+            np.isfinite(ratio), 0.0).astype("float64")
+        feats[f"us_npxg_per_shot_missing_r{w}"] = missing
+    return pd.concat([df, pd.DataFrame(feats, index=df.index)], axis=1)
 
 
 def add_understat_rolling(df: pd.DataFrame,

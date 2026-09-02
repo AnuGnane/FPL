@@ -28,6 +28,13 @@ hit_cost = 4
 # quietly shrink the pool.
 top_n = { GKP = 8, DEF = 22, MID = 26, FWD = 14 }
 
+[model]
+# Non-penalty xG per shot, per Understat window, on the attacking model
+# (v12 §3.5). Off until scripts/v12_xgps_arm.py clears its pre-registered bar:
+# haulers RMSE improves and no other bucket worsens by more than its own
+# seed-spread, over three seed bases.
+xg_per_shot = false
+
 [scenarios]
 # n = 0 disables the sweep and solves once, deterministically. `gaffer advise
 # --fast` and the UI's Fast advise button do that per-run without editing this.

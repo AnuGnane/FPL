@@ -13,6 +13,7 @@ from __future__ import annotations
 import pandas as pd
 
 from gaffer.assets import load_bootstrap_sample
+from gaffer.config import xg_per_shot
 from gaffer.data import store
 from gaffer.data.bootstrap import scoring_table
 from gaffer.data.elo import compute_elo
@@ -23,6 +24,7 @@ from gaffer.features.engineer import (LEAGUE_CONGESTION_FEATURES,
                                       LEAGUE_CONGESTION_PREFIX,
                                       ROTATION_FEATURES,
                                       ROTATION_PRIOR_FEATURES, US_STATS,
+                                      XG_PER_SHOT_FEATURES,
                                       add_congestion, add_context,
                                       add_player_rolling, add_rotation,
                                       add_rotation_priors,
@@ -31,7 +33,7 @@ from gaffer.features.engineer import (LEAGUE_CONGESTION_FEATURES,
                                       add_shrunken_rates,
                                       add_understat_rolling,
                                       add_understat_team_rolling,
-                                      merge_understat_team)
+                                      add_xg_per_shot, merge_understat_team)
 from gaffer.models.assemble import assemble_ep
 from gaffer.models.attacking import ATTACK_FEATURES, AttackingModel
 from gaffer.models.calibrate import CalibrationModel
@@ -230,6 +232,11 @@ def attach_understat(df: pd.DataFrame) -> pd.DataFrame:
                       on=["code", "_date"], how="left", validate="many_to_one")
         df = df.drop(columns=["_date"])
     df = add_understat_rolling(df)
+    # v12 W2 §3.5 (specs/2026-09-01-gaffer-v12-program-design.md). Built
+    # unconditionally, like the withdrawn v8a arms' builders: the columns cost
+    # a fit nothing and the next cycle re-measures rather than rebuilds. Only
+    # whether the attacking model is *told* about them is gated.
+    df = add_xg_per_shot(df)
     df = merge_understat_team(df, understat_team_rolled())
     return add_shrunken_cards(add_shrunken_modes(add_shrunken_rates(df)))
 
@@ -472,6 +479,18 @@ def build_team_model():
     return TeamModel(TEAM_FEATURES)
 
 
+def attacking_features() -> list[str]:
+    """The attacking model's feature list for this run.
+
+    A function rather than a module constant, because the v12 §3.5 arm is a
+    config flag and a constant evaluated at import time would bind whatever
+    ``config.toml`` said when the process started — which is v9c's
+    disconnected-lever lesson from the other direction.
+    """
+    return list(ATTACK_FEATURES) + (list(XG_PER_SHOT_FEATURES)
+                                    if xg_per_shot() else [])
+
+
 def train_all(df: pd.DataFrame, tg: pd.DataFrame, save: bool = True,
               _fit_cal: bool = True) -> dict:
     """Fit every component on the given frames.
@@ -488,7 +507,7 @@ def train_all(df: pd.DataFrame, tg: pd.DataFrame, save: bool = True,
     """
     minutes = ThreeModeModel(MINUTES_FEATURES).fit(df)
     team = build_team_model().fit(tg.dropna(subset=["elo_diff"]))
-    attacking = AttackingModel(ATTACK_FEATURES).fit(df)
+    attacking = AttackingModel(attacking_features()).fit(df)
     defcon = DefconModel().fit(df)
     saves = SavesModel().fit(df)
     bonus = BonusModel(min_season_idx=bonus_season_floor(df)).fit(df)

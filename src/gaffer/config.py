@@ -360,6 +360,25 @@ def price_timing(path: Path | str = "config.toml") -> bool:
     return bool(raw.get("optimizer", {}).get("price_timing", False))
 
 
+def xg_per_shot(path: Path | str = "config.toml") -> bool:
+    """``[model] xg_per_shot`` (v12 §3.5). Default **off**, until the arm
+    clears its pre-registered bar.
+
+    A module-level reader for :func:`price_timing`'s reason. Never raises: a
+    training run must not die of a config file, and the default is the
+    shipped behaviour.
+
+    ``[model]`` rather than ``[optimizer]``, and that section is *not*
+    splatted into :class:`Config`, so this key needs no entry in
+    :data:`NON_FIELD_OPTIMIZER_KEYS`.
+    """
+    try:
+        raw = tomllib.loads(Path(path).read_text())
+    except Exception:  # noqa: BLE001 — a training reader never raises
+        return False
+    return bool(raw.get("model", {}).get("xg_per_shot", False))
+
+
 def optimizer_top_n(path: Path | str = "config.toml") -> dict[str, int]:
     """``[optimizer] top_n`` merged over the shipped default.
 
