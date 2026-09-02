@@ -92,7 +92,15 @@ def captain_table(ep: pd.DataFrame, xi_codes: list[int],
     if haul:
         mapped = df["code"].map(lambda c: haul.get(int(c)))
         if mapped.notna().any():
-            df["p_haul_total"] = mapped
+            # v12 W3 T8-T11 review, Important 1: held as an object column so a
+            # missing band stays ``None``. A partially-covered map makes pandas
+            # infer float64, whose blank is NaN — and NaN is a float, so the
+            # report's ``is not none`` guard passes it through to ``nan%`` and
+            # ``advise``'s ``json.dumps`` writes the bare token ``NaN``, which
+            # no strict JSON reader accepts. Same idiom, and the same reason,
+            # as ``evaluate_chips``' ``gw2``.
+            df["p_haul_total"] = mapped.astype("object").where(mapped.notna(),
+                                                               None)
             df = df.drop(columns=["p_haul"])
             ceiling_col = "p_haul_total"
         else:

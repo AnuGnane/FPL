@@ -55,10 +55,6 @@ from gaffer.league_mode import (LeagueParams, captain_cover, captaincy_note,
                                 captaincy_override, compute_strategy,
                                 cover_table, tilt_ep, win_probability)
 from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
-# v12 W3 §4.6 (specs/2026-09-01-gaffer-v12-program-design.md): the captain
-# table's ceiling is the gameweek's own point distribution, which this module
-# has keyed on (code, gw) since v8g.
-from gaffer.uncertainty import bands_by_player_gw
 from gaffer.models.components import card_penalty
 from gaffer.models.minutes import apply_availability
 from gaffer.models.persistence import load_model, model_exists
@@ -87,6 +83,12 @@ from gaffer.optimize.policy import (Thresholds, captain_frequency_of,
 from gaffer.optimize.scenarios import (move_frequencies, run_scenarios,
                                        xmins_by_player_gw)
 from gaffer.news_shadow import write_shadow
+# v12 W3 §4.6 (specs/2026-09-01-gaffer-v12-program-design.md): the captain
+# table's ceiling is the gameweek's own point distribution, which this module
+# has keyed on (code, gw) since v8g. Sited here rather than mid-``models.*``
+# (T8-T11 review, Minor 7): it is not a model module, and the block it split
+# is alphabetical.
+from gaffer.uncertainty import bands_by_player_gw
 from gaffer.prices import price_alerts
 from gaffer.set_pieces import add_pen_ep, attack_multipliers, pen_notices, \
     pen_priors, rescale_pen_after_blend

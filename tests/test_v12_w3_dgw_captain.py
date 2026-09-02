@@ -83,6 +83,48 @@ def test_a_partially_covered_shortlist_keeps_the_new_column_with_nulls():
     assert pd.isna(out.loc[5, "p_haul_total"])
 
 
+def test_an_uncovered_captains_blank_is_a_none_and_not_a_nan():
+    """v12 W3 T8-T11 review, Important 1. A float64 column's blank is NaN, and
+    NaN is a float — so it passes Jinja's ``is not none`` and formats as
+    ``nan%``, and ``json.dumps`` writes it as a bare ``NaN``, which is not
+    JSON. ``None`` is the only blank both surfaces already handle."""
+    out = captain_table(_ep(), XI, EO, haul={1: 0.3, 2: 0.2}).set_index("code")
+    assert out.loc[5, "p_haul_total"] is None
+
+
+def test_the_partially_covered_table_renders_a_dash_not_nan_percent(tmp_path):
+    """The frame the report actually gets, not a hand-built list of dicts: the
+    NaN is created by the assignment, so a literal ``None`` in a fixture is a
+    rail that cannot see this bug."""
+    from gaffer.report.render import render_report
+
+    from tests.test_report import _advice
+
+    advice = _advice()
+    advice.captain_options = captain_table(
+        _ep(), XI, EO, haul={1: 0.3, 2: 0.2}).to_dict("records")
+    html = render_report(advice, out_dir=tmp_path).read_text()
+    assert "nan%" not in html.lower()
+    assert "&mdash;" in html
+
+
+def test_the_advice_artifact_round_trips_through_strict_json():
+    """``advise`` writes the payload with ``json.dumps(..., default=str)``,
+    which leaves a NaN as the bare token ``NaN`` — accepted by Python's own
+    lenient reader and rejected by every other JSON parser, including the one
+    the web app's fetch uses."""
+    import json
+
+    records = captain_table(_ep(), XI, EO,
+                            haul={1: 0.3, 2: 0.2}).to_dict("records")
+    text = json.dumps({"captain_options": records}, default=str)
+    assert json.loads(text, parse_constant=_no_constants)
+
+
+def _no_constants(token: str):
+    raise AssertionError(f"non-JSON constant in the artifact: {token}")
+
+
 def test_a_double_gameweek_captain_is_ranked_on_both_fixtures():
     """The whole point. Two 0.25 fixtures are a much better bet than one, and
     ``max`` could not say so."""
