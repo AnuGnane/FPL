@@ -266,7 +266,30 @@ Spec: `specs/2026-09-01-gaffer-v12-program-design.md` §4 (§W3 gate = G1/G2/G3)
 - Pins: job kinds 12 → 12, routes 46 → 46, config fields **+2** (`alt_plan_max_gap`, `draw_availability`) — 53 → 55
 - Data-gated: `wildcard+bboost` needs `data/chip_scenarios.toml` to carry a `[dgw]` entry — the writer refuses to create one while every published gameweek has ten fixtures, so this unblocks at the first real rearrangement
 - Residuals: the alternatives are not re-scored under the incumbent's own `_decision_scales`, so a small `gap` of either sign can be two coefficient sets rather than two plans (named on `Plan.gap` and in the board's caption, fixed in neither); `raw_optimum_agrees` reads False more often with the availability draw on, because the sweep now models a risk the raw solve does not — information rather than instability, and the README says so; the free hit still excludes horizon effects (pricing them needs a two-branch horizon solve); alternatives cost one MILP solve each on every weekly advise run, up to four when `p_play` is informative
-- Suite: 3604 Python + 706 frontend at the merge (G1 was 3588 + 703 at `ff2fa0e`)
+- Suite: 3614 Python (the worktree measured 3604 + 10 built-asset skips) + 706 frontend at the merge (G1 was 3588 + 703 at `ff2fa0e`)
+
+### v12 W4 — field (planned, not started)
+Spec: `specs/2026-09-01-gaffer-v12-program-design.md` §5 · Plan: `plans/2026-09-01-gaffer-v12-w4-field.md` (21 tasks; one STOP, T17 `set_pieces.py`)
+- [ ] §5.1 FPL-Core-Insights collector (`gaffer core-insights`, ninth plist, health line)
+- [ ] §5.2 two gated minutes arms (`role_wb_share`, `density_pub_7d`) behind flags, arm driver + autosub counterfactual — **arm rule must name both halves** (bucket metric AND replay), per W2's lesson; both `[model]` flags are live levers in any replay
+- [ ] §5.3 rank-distribution simulation from `deadline_eo`; expected overall-rank change with its empty state; Field panel on the League hub
+- [ ] §5.4 set-piece overrides (TOML), the one protected edit, the "manual" badge
+- Before starting: re-run the plan's preflight against `main` at `296dc2f` and write an errata file the way W3's was — pins are now routes 46 / job kinds 12 / config fields **55**; `price_timing` ships on, `xg_per_shot` off, `draw_availability` on; the audit rail base is W3's merge commit; the W3 free-hit change means the replay plays the free hit twice a season, so the control must be re-run (CONVENTIONS §1), never borrowed
+- Gate to pre-register: replay tolerance 5 vs a re-run `main`, hits ≤ +3; the two arms' bucket + replay rules; `config.toml` identical both sides with the values stated
+
+### v12 W5 — interface (planned, not started)
+Spec: §6 · Plan: `plans/2026-09-01-gaffer-v12-w5-interface.md` (16 tasks incl. Task 0 preflight; one STOP, T3 `tests/test_v11_degradation.py`; `[solver]` grep is a stop condition — there is no such section)
+- [ ] §6.1 tab state in the URL · §6.2 Settings tab (the registry's `draw_availability` default is **True** now, not the plan's `False`; `price_timing` true; `xg_per_shot` false; `alt_plan_max_gap` 2.0) · §6.3 watchlist list view + `captain_note` on This Week · §6.4 frozen projections · §6.5 "why this move" trace · §6.6 `types.ts` generation
+- Carry-in from W2/W3: the web advise button does not bank a same-day price reading (the plist does) — a Settings/Health surface could say so; the chip pair's Try-it card has no What-If arm; `threshold_source` is served but rendered nowhere
+
+### v12 program — standing lessons banked this program (for the next spec)
+- Replay levers live in `config.toml`: the backtest refits through `train_all → attacking_features()`, so `[model]` flags and `[optimizer] price_timing` decide what a replay measures — pin both sides, state the values
+- An arm rule needs both halves pre-registered (bucket metric and replay); the outcome measure decides. §3.5's keep was overturned by a −28 replay the same day
+- A "no diff" is evidence only when the lever was verified live (the first §3.4 replay was vacuous: stale price log → empty table)
+- Freshness keyed to the UTC date + a 23:15 bank = a term live ~22:15–00:00 UTC; the scheduled job that consumes it must bank first
+- Rails scoped "since main" break on the next workstream — pin audit rails to their own range; one absolute pin per counted thing, moved by each cycle that moves the count
+- Source-spelling tests (`"…" in src`) pin the bug when the spelling is the bug; every one needs a behavioural sibling or a stated call-shape reason (§4.6 shipped undelivered behind one)
+- A plan written before the previous workstream merged carries stale line numbers and stale code blocks — audit it against the tree first (W3's errata caught a `kw` dict that would have deleted W2's term, a D1 block that reverted W1's EO fix, and a golden LP that read the live price log)
 
 
 ## Operational / housekeeping
