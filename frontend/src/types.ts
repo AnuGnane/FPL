@@ -452,6 +452,20 @@ export interface HistoryData {
   backtests: Array<Record<string, unknown>>
 }
 
+export interface FreshnessRow {
+  source: 'refresh' | 'odds' | 'field' | 'advise' | 'backup'
+  // What was stat'd, so a surprising age is diagnosable.
+  path: string | null
+  modified_at: string | null
+  // Hours, computed server-side so the colouring rule is one implementation
+  // rather than two. null is "never" — never 0, which means "just now".
+  age_hours: number | null
+}
+
+export interface Freshness {
+  rows: FreshnessRow[]
+}
+
 export interface HealthData {
   data: Array<{
     source: string

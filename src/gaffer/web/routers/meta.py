@@ -30,10 +30,10 @@ from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
 from gaffer.optimize.chips import chip_plan, evaluate_chips
 from gaffer.optimize.milp import SolveInput
 from gaffer.web.schemas import (ArtifactItem, BackupHealth, ChipPlan,
-                                ChipPlanRow, Health, History, HistoryRun,
-                                LaunchdHealth, ModelHealth, PricePoint,
-                                PriceSeries, SourceHealth, Ticker, TickerCell,
-                                TickerTeam)
+                                ChipPlanRow, Freshness, FreshnessRow, Health,
+                                History, HistoryRun, LaunchdHealth,
+                                ModelHealth, PricePoint, PriceSeries,
+                                SourceHealth, Ticker, TickerCell, TickerTeam)
 
 router = APIRouter(prefix="/api", tags=["meta"])
 
@@ -158,6 +158,52 @@ def _stat(path: Path) -> tuple[bool, str | None, float | None]:
     modified = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
     age = (datetime.now(timezone.utc) - modified).total_seconds() / 3600
     return True, modified.isoformat(), round(age, 2)
+
+
+@router.get("/meta/freshness", response_model=Freshness)
+def freshness() -> Freshness:
+    """When each of the five standing jobs last wrote something.
+
+    v12 W1 §2.9 (specs/2026-09-01-gaffer-v12-program-design.md). Drawn at the
+    top of every hub, so it must never error and never block: five stats and,
+    at worst, one config read that is allowed to fail on its own.
+
+    All five are mtimes. Each of these artifacts is rewritten whole by the job
+    that writes it, so the mtime *is* the run stamp — where a timestamp parsed
+    out of a file's contents can be stale inside a file that was just
+    rewritten, which is the harder lie to notice.
+    """
+    def _row(source: str, path: Path | None) -> FreshnessRow:
+        if path is None:
+            return FreshnessRow(source=source)
+        present, modified, age = _stat(path)
+        return FreshnessRow(source=source,
+                            path=str(path) if present else None,
+                            modified_at=modified, age_hours=age)
+
+    def _newest(directory: Path, pattern: str) -> Path | None:
+        if not directory.is_dir():
+            return None
+        found = sorted(directory.glob(pattern),
+                       key=lambda p: p.stat().st_mtime)
+        return found[-1] if found else None
+
+    backup_newest = None
+    try:
+        from gaffer.backup import NAME_GLOB, backup_dir
+
+        backup_newest = _newest(backup_dir(load_config().backup_dir),
+                                NAME_GLOB)
+    except Exception:  # noqa: BLE001 — one grey row, never a broken strip
+        backup_newest = None
+
+    return Freshness(rows=[
+        _row("refresh", store.DATA_DIR / "live" / "player_gw.parquet"),
+        _row("odds", _newest(store.DATA_DIR / "live" / "odds", "gw*.parquet")),
+        _row("field", store.DATA_DIR / "live" / "field_eo_log.parquet"),
+        _row("advise", _newest(REPORTS, "gw*-advice.json")),
+        _row("backup", backup_newest),
+    ])
 
 
 @router.get("/health", response_model=Health)

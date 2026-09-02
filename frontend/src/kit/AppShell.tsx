@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
+import FreshnessStrip from './FreshnessStrip'
 import ThemeToggle from './ThemeToggle'
 import ToastOutlet from './Toast'
 import { useIsMobile } from './useMediaQuery'
@@ -36,7 +37,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
   if (mobile) {
     return (
       <div className="min-h-screen bg-base pb-16">
-        <main className="p-4">{children}</main>
+        {/* Mounted here rather than in each hub or in PageHeader (A12):
+            AppShell wraps <Routes> and stays mounted across every navigation,
+            so this is one mount and one fetch, and it covers /league/rival/:id
+            which has no hub wrapper at all. */}
+        <main className="p-4"><FreshnessStrip />{children}</main>
         <nav
           data-testid="nav"
           data-mode="tabbar"
@@ -72,7 +77,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           <ThemeToggle />
         </div>
       </nav>
-      <main className="max-w-[1180px] p-6">{children}</main>
+      <main className="max-w-[1180px] p-6"><FreshnessStrip />{children}</main>
       <ToastOutlet />
     </div>
   )

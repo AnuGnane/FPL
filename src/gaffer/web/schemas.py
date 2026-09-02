@@ -813,6 +813,24 @@ class ArtifactItem(BaseModel):
     bytes: int
 
 
+class FreshnessRow(BaseModel):
+    source: Literal["refresh", "odds", "field", "advise", "backup"]
+    path: str | None = None
+    """What was actually stat'd, so a surprising age is diagnosable."""
+    modified_at: str | None = None
+    age_hours: float | None = None
+    """Hours since the file was written, or ``None`` for "never".
+
+    Never 0.0 for an absent file. Zero is "just now", which is the strongest
+    claim this row can make and the exact opposite of what an absent file
+    means. The client colours on ``None`` first and on the number second.
+    """
+
+
+class Freshness(BaseModel):
+    rows: list[FreshnessRow] = Field(default_factory=list)
+
+
 class BackupHealth(BaseModel):
     path: str
     modified_at: str

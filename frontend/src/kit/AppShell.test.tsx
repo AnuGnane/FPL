@@ -3,6 +3,16 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import AppShell from './AppShell'
 
+// v12 W1 §2.9. AppShell now mounts FreshnessStrip, which fetches on mount; this
+// suite renders the shell directly and would otherwise issue a real fetch into
+// jsdom. A forever-pending promise, following App.test.tsx's own choice: the
+// strip renders null and every assertion below is about the shell alone.
+vi.mock('../api/client', () => ({
+  ApiError: class extends Error { status = 0; detail: unknown = null },
+  apiGet: vi.fn(() => new Promise(() => {})),
+  apiPost: vi.fn(),
+}))
+
 function stubMatchMedia(matches: boolean) {
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches, media: query, onchange: null,
