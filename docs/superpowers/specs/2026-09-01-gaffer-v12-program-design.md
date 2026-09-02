@@ -409,7 +409,7 @@ by test with an empty log.
 | G1f | Pins unmoved | the three-line measurement in the plan header | ✅ routes 46 / JOB_KINDS 12 / Config fields 53 |
 | G2a | §3.5 outcome recorded either way (CONVENTIONS §6: a failing arm ships OFF with its numbers) | `caffeinate -i .venv/bin/python scripts/v12_xgps_arm.py`, then transcribe every `V12_ARM_DONE` and the `V12_VERDICT` line into spec §3.5 verbatim (CONVENTIONS §4) | ✅ transcribed; arm said keep, the replay overturned it — ships **off** with its numbers (§3.5) |
 | G2b | Adversarial review → fix round → re-verify | | ✅ three rounds; the last found the serving-frame defect (bf21ce2), the ensemble head mix (e77a5b0), the deadline-day snapshot leak (9d54c7b), the midnight cache (b9092ed); re-verify approved, four minors tidied (baede07) |
-| G3 | Post-merge ritual | `git show main:config.toml` fails; `git log -S<odds key> --all` is empty | |
+| G3 | Post-merge ritual | `git show main:config.toml` fails; `git log -S<odds key> --all` is empty | ✅ merged `865f8dc` (2026-09-02); both checks clean |
 
 **G1d is expected to show no diff at all**, and that is the pre-registered
 prediction rather than a pass by luck: the price-timing charge is 0.008 points
@@ -726,8 +726,11 @@ W2's diff under W3's name. The audit rail in
       that would have deleted W2's term, D1 reverting W1's EO fix, `nan%` in
       the captain table, the pair judged against the single-chip bar, the
       gap computed across two objective frames when the sweep fails.
-- [ ] Merge ritual: ff-only, push, `git show main:config.toml` fails, key-grep
-      empty.
+- [x] Merge ritual: ff-only into `main` at `3f4dfd2` (2026-09-02), pushed;
+      `git show main:config.toml` fails; the key-grep over all history is
+      empty; the protected audit re-run on the merge passes. Suite at the
+      merge: **3614 Python / 706 frontend**, tsc clean; pins routes 46 /
+      JOB_KINDS 12 / Config fields 55.
 
 ### W3 live spot-checks (orchestrator, on the dev server)
 
