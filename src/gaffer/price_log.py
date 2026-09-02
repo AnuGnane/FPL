@@ -11,7 +11,7 @@ them are answerable from a file that only kept the alerts, so this log keeps
 
 It is the availability log's twin and shares its every mechanic on purpose:
 one row per player per UTC day, ``snap_date`` as the idempotency key,
-append-by-rewrite because parquet has no append, and an ``os.replace`` at the
+append-by-rewrite because parquet has no append, and an atomic rename at the
 end so a job killed mid-write costs the day rather than the season. Even the
 clock is shared — :func:`gaffer.snapshot.snap_date` is imported rather than
 restated, because two definitions of "today" in one project is a bug waiting
@@ -28,11 +28,10 @@ asked for by the time this runs.
 
 from __future__ import annotations
 
-import os
-
 import pandas as pd
 
 from gaffer.data import store
+from gaffer.io import atomic_save
 from gaffer.snapshot import snap_date
 
 PRICE_LOG_PATH = "live/price_log.parquet"
@@ -108,11 +107,11 @@ def append_prices(rows: pd.DataFrame) -> int:
     :func:`gaffer.snapshot.append_snapshot`'s body, for the same reasons in
     the same order: parquet has no append and a few hundred rows a day is
     cheap to re-emit; replacement keyed on ``snap_date`` is what makes a hand
-    re-run free; and the temp-file-plus-``os.replace`` is what stops a job
-    killed mid-parquet from costing every day already banked.
+    re-run free; and :func:`gaffer.io.atomic_save` is what stops a job killed
+    mid-parquet from costing every day already banked.
 
-    ``store.DATA_DIR`` is read here rather than bound at import so a test that
-    redirects it redirects both paths together.
+    The helper reads ``store.DATA_DIR`` at call time rather than binding it at
+    import, so a test that redirects it redirects both paths together.
     """
     existing = (store.load(PRICE_LOG_PATH) if store.exists(PRICE_LOG_PATH)
                 else pd.DataFrame(columns=PRICE_LOG_COLS))
@@ -124,15 +123,7 @@ def append_prices(rows: pd.DataFrame) -> int:
     frames = [f[PRICE_LOG_COLS] for f in (kept, rows) if not f.empty]
     merged = (pd.concat(frames, ignore_index=True) if frames
               else rows[PRICE_LOG_COLS])
-    # Per-writer temp name: two writers sharing one ".tmp" each unlink the
-    # other's file, and the loser's os.replace raises FileNotFoundError.
-    tmp_rel = f"{PRICE_LOG_PATH}.{os.getpid()}.tmp"
-    tmp = store.DATA_DIR / tmp_rel
-    try:
-        store.save(merged, tmp_rel)
-        os.replace(tmp, store.DATA_DIR / PRICE_LOG_PATH)
-    finally:
-        tmp.unlink(missing_ok=True)
+    atomic_save(merged, PRICE_LOG_PATH)
     return int(len(rows))
 
 

@@ -10,12 +10,12 @@ Never raises: instrumentation does not block advice.
 
 from __future__ import annotations
 
-import os
 from datetime import datetime, timezone
 
 import pandas as pd
 
 from gaffer.data import store
+from gaffer.io import atomic_save
 
 PRESSER_PATH = "live/presser_log.parquet"
 
@@ -71,10 +71,14 @@ def presser_rows(frame: pd.DataFrame, season: str, gw: int,
 def append_presser(rows: pd.DataFrame) -> int:
     """Append ``rows``, atomically, deduplicated on the run's own key.
 
-    Append-by-rewrite through a temp file and ``os.replace``, the same trade
+    Append-by-rewrite through :func:`gaffer.io.atomic_save`, the same trade
     :func:`gaffer.snapshot.append_snapshot` makes: a job killed mid-parquet
     must not cost a season of history to save one afternoon. Two writes of one
     run bank once, so a hand re-run is free.
+
+    v12 W1 §2.11: the temp name carries this process's pid now, where it used
+    to be a single shared ``.tmp``. The scheduled snapshot job and a hand-run
+    ``gaffer snapshot`` are exactly the two writers that shared it.
     """
     if rows is None or rows.empty:
         return 0
@@ -86,13 +90,7 @@ def append_presser(rows: pd.DataFrame) -> int:
     frames = [f[PRESSER_COLS] for f in (existing, rows) if not f.empty]
     merged = pd.concat(frames, ignore_index=True).drop_duplicates(
         subset=["season", "gw", "code", "run_at"], keep="last")
-    tmp_rel = PRESSER_PATH + ".tmp"
-    tmp = store.DATA_DIR / tmp_rel
-    try:
-        store.save(merged, tmp_rel)
-        os.replace(tmp, store.DATA_DIR / PRESSER_PATH)
-    finally:
-        tmp.unlink(missing_ok=True)
+    atomic_save(merged, PRESSER_PATH)
     return int(len(rows))
 
 

@@ -26,7 +26,6 @@ is the launchd body and swallows everything, exactly as
 from __future__ import annotations
 
 import json
-import os
 import time
 from pathlib import Path
 
@@ -37,7 +36,7 @@ from gaffer.data.tier_eo import (RAW_TIER, TIER_SAMPLE, TIER_SEED,
                                  eo_from_picks, fetch_sample_picks,
                                  read_tier_cache, tier_cache_path,
                                  write_tier_cache)
-from gaffer.io import atomic_write
+from gaffer.io import atomic_save, atomic_write
 from gaffer.snapshot import snap_date
 
 RAW_FIELD = Path("data/raw/field")
@@ -156,8 +155,9 @@ def append_field_eo(rows: pd.DataFrame) -> int:
     Saturday and a Sunday pass over one gameweek are two rows for one fact and
     only the later one should stand.
 
-    ``store.DATA_DIR`` is read here, not bound at import, so a test that
-    redirects the data directory redirects both paths together.
+    :func:`gaffer.io.atomic_save` reads ``store.DATA_DIR`` at call time rather
+    than binding it at import, so a test that redirects the data directory
+    redirects both paths together.
     """
     if rows.empty:
         return 0
@@ -173,15 +173,7 @@ def append_field_eo(rows: pd.DataFrame) -> int:
     frames = [f[FIELD_EO_COLS] for f in (kept, rows) if not f.empty]
     merged = (pd.concat(frames, ignore_index=True) if frames
               else rows[FIELD_EO_COLS])
-    # Per-writer temp name: two writers sharing one ".tmp" each unlink the
-    # other's file, and the loser's os.replace raises FileNotFoundError.
-    tmp_rel = f"{FIELD_EO_PATH}.{os.getpid()}.tmp"
-    tmp = store.DATA_DIR / tmp_rel
-    try:
-        store.save(merged, tmp_rel)
-        os.replace(tmp, store.DATA_DIR / FIELD_EO_PATH)
-    finally:
-        tmp.unlink(missing_ok=True)
+    atomic_save(merged, FIELD_EO_PATH)
     return int(len(rows))
 
 
