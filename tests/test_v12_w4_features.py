@@ -544,3 +544,49 @@ def test_the_arm_composes_from_the_shipped_list_and_not_from_its_predecessor():
     src = inspect.getsource(d.main)
     assert "tr.MINUTES_FEATURES = list(shipped) + list(ARMS[name])" in src
     assert "tr.MINUTES_FEATURES = shipped\n" not in src.split("finally:")[0]
+
+
+# --- Task 11: the autosub counterfactual driver --------------------------
+
+
+def _cf_driver():
+    spec = _ilu.spec_from_file_location("v12_w4_autosub_cf",
+                                        _P("scripts/v12_w4_autosub_cf.py"))
+    mod = _ilu.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_the_counterfactual_shares_the_arms_and_the_window_it_does_not_copy():
+    """Two files disagreeing about which columns an arm is, is how a cycle
+    reports one arm's numbers under another arm's name."""
+    cf = _cf_driver()
+    assert sorted(cf.arms_mod.ARMS) == ["baseline", "density", "role"]
+    assert (cf.arms_mod.TRAIN_MAX_IDX, cf.arms_mod.TEST_IDX) == (2, 3)
+
+
+def test_the_solve_every_arm_shares_carries_a_bench_curve():
+    """Without a curve there are no bench-slot indicators and a better p_play
+    has nothing to move — the gate would measure a lever that is not there."""
+    cf = _cf_driver()
+    assert sorted(cf.OPT_KW) == ["bench_curve", "bench_weight", "decay",
+                                 "ft_use_penalty", "ft_value", "hit_cost",
+                                 "itb_value", "vice_weight"]
+    assert cf.OPT_KW["bench_curve"]
+
+
+def test_both_drivers_state_both_halves_of_the_arm_rule():
+    """Neither half ships an arm on its own, so neither file is allowed to
+    read as though it were the whole gate."""
+    d, cf = _driver(), _cf_driver()
+    for text in (d.__doc__, cf.__doc__, d.ARM_RULE):
+        assert "autosub" in text
+        assert "log-loss" in text or "log_loss" in text
+    assert "not measurable" in d.ARM_RULE.lower()
+
+
+def test_each_arm_fits_from_the_shipped_list_and_not_from_its_predecessor():
+    import inspect
+    src = inspect.getsource(_cf_driver()._fit)
+    assert ("tr.MINUTES_FEATURES = list(shipped) "
+            "+ list(arms_mod.ARMS[arm])") in src
