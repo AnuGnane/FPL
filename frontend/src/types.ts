@@ -479,6 +479,7 @@ export interface HealthData {
   season_ok?: boolean | null
   season_config?: string | null
   season_ingested?: string | null
+  solver_top_n?: Record<string, number> | null
 }
 
 export interface TickerData {

@@ -77,6 +77,19 @@ export default function HealthTab() {
           </tbody>
         </table>
         </div>
+        {data.solver_top_n && (
+          <div className="mt-4" data-testid="solver-pool">
+            <p className="label">Solver pool</p>
+            <p className="mt-1 text-text-secondary">
+              players per position the solver may consider, on top of the ones
+              you own
+            </p>
+            <p className="num mt-1 text-text">
+              {Object.entries(data.solver_top_n)
+                .map(([pos, n]) => `${pos} ${n}`).join('  ·  ')}
+            </p>
+          </div>
+        )}
         {!data.odds_key_present && (
           <p className="mt-3 text-text-muted">
             No odds key configured — add an odds key for market-implied

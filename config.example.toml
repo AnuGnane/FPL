@@ -12,6 +12,14 @@ itb_value = 0.08          # O'Brien: £1m ~ +21.8 pts over half a season; gate D
 ft_use_penalty = 0.2
 bench_curve = [0.21, 0.06, 0.002]
 hit_cost = 4
+# v12: how many players per position the MILP may consider, on top of the ones
+# you already own. These four numbers have decided the candidate pool since the
+# first solve and lived only in the source until now; they are here so that "he
+# was never in the pool" and "he was considered and rejected" are
+# distinguishable. Smaller is faster and blinder. A missing position keeps the
+# value below and anything unreadable falls back to it too — a typo must not
+# quietly shrink the pool.
+top_n = { GKP = 8, DEF = 22, MID = 26, FWD = 14 }
 
 [scenarios]
 # n = 0 disables the sweep and solves once, deterministically. `gaffer advise

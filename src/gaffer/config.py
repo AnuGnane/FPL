@@ -62,6 +62,14 @@ class Config:
     decision_priors: bool = True
     ft_use_penalty: float = 0.0
     bench_curve: list[float] | None = None
+    # v12 W1 §2.6. Named for its TOML key rather than its subject, because
+    # [optimizer] is splatted and the key *is* the keyword argument. The
+    # default_factory is load-bearing rather than tidy: without it every
+    # existing config.toml in the world, none of which has this key, stops
+    # loading. What the solver actually gets is `optimizer_top_n()`, which
+    # merges over the shipped default; this carries what the file said.
+    top_n: dict[str, int] = field(
+        default_factory=lambda: {"GKP": 8, "DEF": 22, "MID": 26, "FWD": 14})
     # --- v4d league mode ---------------------------------------------------
     # The z-dial's constants. Every default is the pinned value from the v4d
     # design, and league mode itself stays gated by league_id — there is no
@@ -271,3 +279,41 @@ def serving_config() -> Config:
         return load_config()
     except Exception:  # noqa: BLE001 — serving never blocks on config
         return Config(entry_id=0, league_id=0)
+
+
+def optimizer_top_n(path: Path | str = "config.toml") -> dict[str, int]:
+    """``[optimizer] top_n`` merged over the shipped default.
+
+    v12 W1 §2.6. Never raises: a missing file, a missing section, a corrupt
+    TOML, a typo'd position and a non-numeric value all degrade to the shipped
+    value for that position. A config error that silently shrank the solver's
+    candidate pool would change the advice without saying so, and the symptom
+    — a plan that never mentions a player — looks nothing like its cause.
+
+    Merged rather than replaced so a user tuning one position does not have to
+    restate the other three, and unknown keys are dropped so a typo cannot
+    contribute an empty position to a pool that then reads as intentional.
+
+    Separate from ``Config.top_n``, which comes through ``[optimizer]``'s
+    splat and carries exactly what the file said. That one is what the
+    Settings tab edits; this one is what the solver gets. ``build_pool`` has
+    no ``Config`` in hand and cannot be given one without an ``optimize/**``
+    signature change, which is the other half of why this reader exists.
+    """
+    from gaffer.optimize.milp import DEFAULT_TOP_N
+
+    out = dict(DEFAULT_TOP_N)
+    try:
+        raw = tomllib.loads(Path(path).read_text())
+        table = raw.get("optimizer", {}).get("top_n", {})
+    except Exception:  # noqa: BLE001 — serve-time readers never raise
+        return out
+    if not isinstance(table, dict):
+        return out
+    for pos in out:
+        value = table.get(pos)
+        if isinstance(value, bool) or not isinstance(value, int):
+            continue
+        if value > 0:
+            out[pos] = int(value)
+    return out

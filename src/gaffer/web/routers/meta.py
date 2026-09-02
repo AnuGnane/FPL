@@ -24,7 +24,7 @@ from gaffer.data.elo import compute_elo, expected_score
 from gaffer.data.odds import poisson_win_prob
 from gaffer.errors import GafferError
 from gaffer.assets import load_decision_priors
-from gaffer.config import load_config
+from gaffer.config import load_config, optimizer_top_n
 from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
                                          chip_windows, load_chip_scenarios)
 from gaffer.optimize.chips import chip_plan, evaluate_chips
@@ -215,6 +215,15 @@ def health() -> Health:
     if season_config and season_ingested:
         season_ok = season_config == season_ingested
 
+    # v12 W1 §2.6. The four numbers that decide which players a solve is
+    # allowed to consider at all, on the one page a user reads to find out
+    # what this install is doing. `optimizer_top_n` never raises, so the try
+    # is belt and braces for an unforeseeable read.
+    try:
+        solver_top_n = optimizer_top_n()
+    except Exception:  # noqa: BLE001 — a health page never 500s
+        solver_top_n = None
+
     model_health = None
     health_file = REPORTS / "health.json"
     if health_file.exists():
@@ -234,7 +243,8 @@ def health() -> Health:
                   odds_key_present=odds_key, model_health=model_health,
                   artifacts=artifacts, season_ok=season_ok,
                   season_config=season_config,
-                  season_ingested=season_ingested)
+                  season_ingested=season_ingested,
+                  solver_top_n=solver_top_n)
 
 
 def _odds_lookup() -> dict[tuple[int, int, int], tuple[float, float]]:

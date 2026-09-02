@@ -733,7 +733,17 @@ def build_pool(players: pd.DataFrame, ep_by_code_gw: dict,
     Keeps the MILP small (fast) without losing realistic candidates.
     """
     if top_n is None:
-        top_n = DEFAULT_TOP_N
+        # v12 W1 §2.6 (specs/2026-09-01-gaffer-v12-program-design.md). These
+        # four numbers decide which players the solver is allowed to consider
+        # at all, and until now they existed only here — so a plan that never
+        # mentioned an owned player could not be distinguished from a plan
+        # that had considered and rejected him. `[optimizer] top_n` in config
+        # is the same four numbers where a user can see them, and
+        # `optimizer_top_n()` falls back to DEFAULT_TOP_N on anything
+        # unreadable: a typo in a TOML file must not silently shrink the pool.
+        from gaffer.config import optimizer_top_n
+
+        top_n = optimizer_top_n()
     players = players.copy()
     players["ep"] = players["code"].map(
         lambda c: {g: ep_by_code_gw.get((c, g), 0.0) for g in gws})
