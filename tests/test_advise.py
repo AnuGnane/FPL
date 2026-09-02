@@ -588,7 +588,9 @@ def test_run_advise_still_reports_league_eo_for_the_annotation_tables():
     from gaffer.advise import run_advise
 
     src = inspect.getsource(run_advise)
-    assert "captain_table(ep_gw1, first.xi, league_eo)" in src
+    # v12 W3 §4.6 (specs/2026-09-01-gaffer-v12-program-design.md): the call
+    # gained a keyword; the claim (rival EO percent) is unchanged
+    assert "captain_table(ep_gw1, first.xi, league_eo" in src
     assert "threat_board(ep_gw1, first.squad, league_eo)" in src
 
 
