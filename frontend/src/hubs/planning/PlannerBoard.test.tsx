@@ -25,8 +25,18 @@ const WEEK = {
   expected_pts: 61.5, bank: 2.1,
 }
 
-function plan(weeks: unknown[], bank: number | null = 1.5) {
-  return { gw: 5, generated_at: '2026-09-01T09:00:00Z', weeks, bank }
+function plan(weeks: unknown[], bank: number | null = 1.5,
+              alternatives: unknown[] = []) {
+  // `alternatives` defaults to the empty list every artifact written before
+  // v12 serves, so the board's one-plan behaviour is what the whole file
+  // exercises unless a test says otherwise (v12 W3 §4.3).
+  return { gw: 5, generated_at: '2026-09-01T09:00:00Z', weeks, bank,
+           alternatives }
+}
+
+function altWeek(over: Record<string, unknown> = {}) {
+  return { gw: 5, buys: [], sells: [], hits: 0, hit_cost: 0, chip: null,
+           captain: null, vice: null, expected_pts: 58.2, bank: 0.5, ...over }
 }
 
 function wire(body: unknown, movers: unknown = { available: true,
@@ -239,6 +249,87 @@ describe('PlannerBoard', () => {
     spy.mockRestore()
     vi.unstubAllGlobals()
   })
+
+  // --- v12 W3 §4.3: Plan A / B / C ----------------------------------------
+
+  it('draws no tab strip when the run banked no alternatives', async () => {
+    render(<PlannerBoard gw={5} />)
+    await screen.findByTestId('board-week-5')
+    // A strip with one tab in it is a control that does nothing.
+    expect(screen.queryByTestId('plan-tabs')).toBeNull()
+  })
+
+  it('switches to Plan B and draws its weeks', async () => {
+    wire(plan([WEEK], 1.5, [
+      { label: 'Plan B', gap: 0.4, weeks: [altWeek({
+        buys: [{ code: 300, name: 'Other', position: 'MID', ep: 5.1,
+                 price: 6.0 }] })] }]))
+    render(<PlannerBoard gw={5} />)
+    await userEvent.click(await screen.findByRole('button',
+                                                  { name: /Plan B/ }))
+    expect(await screen.findByTestId('board-in-300')).toBeInTheDocument()
+  })
+
+  it('says an alternative is behind, and by how much, in the right frame',
+    async () => {
+      wire(plan([WEEK], 1.5, [{ label: 'Plan B', gap: 0.4, weeks: [] }]))
+      render(<PlannerBoard gw={5} />)
+      await userEvent.click(await screen.findByRole('button',
+                                                    { name: /Plan B/ }))
+      const note = await screen.findByTestId('plan-gap')
+      expect(note.textContent).toMatch(/0\.4 objective points behind/)
+      // The frame, so nobody reads it against the xPts on the same card.
+      expect(note.textContent).toMatch(/not a raw xPts gap/)
+    })
+
+  it('says AHEAD when the gap is negative, rather than showing a minus sign',
+    async () => {
+      wire(plan([WEEK], 1.5, [{ label: 'Plan B', gap: -1.2, weeks: [] }]))
+      render(<PlannerBoard gw={5} />)
+      await userEvent.click(await screen.findByRole('button',
+                                                    { name: /Plan B/ }))
+      expect((await screen.findByTestId('plan-gap')).textContent)
+        .toMatch(/1\.2 objective points AHEAD/)
+    })
+
+  it('highlights the moves that differ from Plan A', async () => {
+    wire(plan([WEEK], 1.5, [
+      { label: 'Plan B', gap: 0.4, weeks: [altWeek({
+        buys: [{ code: 300, name: 'Other', position: 'MID', ep: 5.1,
+                 price: 6.0 }],
+        sells: [{ code: 2, name: 'Isak', position: 'FWD', ep: 3.2,
+                  price: 9.1 }] })] }]))
+    render(<PlannerBoard gw={5} />)
+    await userEvent.click(await screen.findByRole('button',
+                                                  { name: /Plan B/ }))
+    // 300 is not in Plan A's week; 2 is (the fixture's sell).
+    expect(screen.getByTestId('board-in-300').dataset.differs).toBe('true')
+    expect(screen.getByTestId('board-out-2').dataset.differs).toBe('false')
+  })
+
+  it('offers no handoff from an alternative', async () => {
+    wire(plan([WEEK], 1.5, [
+      { label: 'Plan B', gap: 0.4, weeks: [altWeek({
+        buys: [{ code: 300, name: 'Other', position: 'MID', ep: 5.1,
+                 price: 6.0 }] })] }]))
+    render(<PlannerBoard gw={5} onTry={vi.fn()} />)
+    await userEvent.click(await screen.findByRole('button',
+                                                  { name: /Plan B/ }))
+    expect(screen.queryByTestId('board-try-5')).toBeNull()
+  })
+
+  it('wraps the tab strip at 390px rather than adding a second scroller',
+    async () => {
+      // ChipsTab's established answer for the same control: a strip that wraps
+      // inside the column scroller, not a scroller of its own.
+      wire(plan([WEEK], 1.5, [{ label: 'Plan B', gap: 0.4, weeks: [] }]))
+      vi.stubGlobal('innerWidth', 390)
+      render(<PlannerBoard gw={5} />)
+      const strip = await screen.findByTestId('plan-tabs')
+      expect(strip.className).toMatch(/flex-wrap/)
+      expect(strip.className).not.toMatch(/overflow-x-auto/)
+      vi.unstubAllGlobals()
+    })
 
   // Plan A18: the hub-level cold-clone rail renders only Planning's default
   // tab, so the board's own cold-clone case is asserted here.

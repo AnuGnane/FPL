@@ -946,6 +946,19 @@ export interface PlanGw {
   bank: number | null
 }
 
+/** A plan the solver ranked behind the recommended one (v12 W3 §4.3). */
+export interface PlanAlternative {
+  /** `"Plan B"` / `"Plan C"`, assigned by position at the router. */
+  label: string
+  /** Objective points behind the recommendation — **signed**. Negative means
+   *  this plan prices *above* it, which happens because the recommendation is
+   *  held to the scenario sweep's moves and this one is not. Null when the
+   *  artifact's number could not be read; never 0.0, which is "exactly
+   *  level". */
+  gap: number | null
+  weeks: PlanGw[]
+}
+
 export interface PlanTimeline {
   gw: number
   generated_at: string
@@ -953,6 +966,9 @@ export interface PlanTimeline {
   /** The bank before the horizon's first move, in millions. Null is unknown
    *  and never 0.0, exactly as on each week. */
   bank: number | null
+  /** Empty on every artifact written before v12 and on any run with
+   *  `alt_plan_max_gap = 0`. The board draws no strip for an empty list. */
+  alternatives: PlanAlternative[]
 }
 
 export interface MatrixCell {

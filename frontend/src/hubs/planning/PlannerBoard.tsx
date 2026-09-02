@@ -20,14 +20,21 @@ import { CHIP_CODES } from './ChipsTab'
  */
 
 function MoveRow(
-  { move, side, mover }: { move: PlanMove; side: 'in' | 'out'
-                           mover?: MoverRow },
+  { move, side, mover, differs = false }: { move: PlanMove
+                                            side: 'in' | 'out'
+                                            mover?: MoverRow
+                                            /** This plan makes this move and
+                                             *  Plan A does not (v12 W3 §4.3).
+                                             *  Always false on Plan A. */
+                                            differs?: boolean },
 ) {
   return (
     <p
       data-testid={`board-${side}-${move.code}`}
+      data-differs={String(differs)}
       className={`flex flex-wrap items-center gap-1 ${side === 'in'
-        ? 'text-sage' : 'text-rust'}`}
+        ? 'text-sage' : 'text-rust'} ${differs
+        ? 'border-l-2 border-current pl-1.5' : ''}`}
     >
       <span aria-hidden>{side === 'in' ? '↑' : '↓'}</span>
       <PosBadge pos={move.position} variant="dot" />
@@ -62,6 +69,12 @@ export default function PlannerBoard(
 ) {
   const [data, setData] = useState<PlanTimeline | null>(null)
   const [missing, setMissing] = useState(false)
+  // Which plan the strip is on. Plan A is the recommendation and is index 0;
+  // an alternative is 1-based into `data.alternatives`. Not persisted, for
+  // ThisWeek.tsx:31-34's standing reason: a view preference is a real feature
+  // with real questions behind it, and inventing an answer inside a lean cycle
+  // is how a preference store gets built by accident.
+  const [pick, setPick] = useState(0)
   // Null while it loads and after any failure. A price decoration must never
   // be the reason a plan does not render — Timeline's ticker rule, verbatim.
   const [movers, setMovers] = useState<Map<number, MoverRow> | null>(null)
@@ -73,6 +86,9 @@ export default function PlannerBoard(
     // last week's plan under this week's heading.
     let live = true
     setMissing(false)
+    // A new gameweek's plan set is a different set; holding index 2 across the
+    // switch would open on whichever plan happened to land there.
+    setPick(0)
     apiGet<PlanTimeline>(`/api/plan/${gw}`)
       .then((body) => { if (live) setData(body) })
       .catch(() => { if (live) setMissing(true) })
@@ -156,6 +172,28 @@ export default function PlannerBoard(
     )
   }
 
+  // v12 W3 §4.3 (specs/2026-09-01-gaffer-v12-program-design.md). An artifact
+  // written before v12 carries no key at all, so the empty list is the normal
+  // case rather than the degraded one.
+  const alternatives = data.alternatives ?? []
+  // Null on Plan A. Also null if `pick` outran the list — a payload that
+  // shrank under a re-fetch must fall back to the recommendation, never blank.
+  const shown = pick > 0 ? alternatives[pick - 1] ?? null : null
+  const weeks = shown ? shown.weeks : data.weeks
+
+  // Which of this plan's moves Plan A does not make, per week — the "differing
+  // moves highlighted" of spec §4.3. Computed against Plan A's own week rather
+  // than against its whole horizon: a buy Plan A makes in GW7 is still a
+  // different decision when this plan makes it in GW5.
+  const planAMoves = new Map<number, Set<number>>(
+    data.weeks.map((w) => [w.gw, new Set([...w.buys, ...w.sells]
+      .map((m) => m.code))]))
+
+  function differs(week: PlanGw, move: PlanMove): boolean {
+    return shown !== null
+      && !(planAMoves.get(week.gw)?.has(move.code) ?? false)
+  }
+
   return (
     <div>
       <p className="mb-2 text-text-muted">
@@ -164,10 +202,44 @@ export default function PlannerBoard(
         {' — the horizon the last advice run solved. The board draws that '
          + 'plan; it never re-solves.'}
       </p>
+      {/* Drawn only when there is something to switch to: a strip with one tab
+          in it is a control that does nothing. It wraps rather than scrolling,
+          which is ChipsTab's established answer for the same control. */}
+      {alternatives.length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-1" data-testid="plan-tabs">
+          {['Plan A', ...alternatives.map((a) => a.label)].map(
+            (label, i) => (
+              <button
+                key={label}
+                type="button"
+                aria-pressed={pick === i}
+                onClick={() => setPick(i)}
+                className={`rounded-card border px-3 py-1.5 ${pick === i
+                  ? 'border-text text-text' : 'border-border text-text-muted'}`}
+              >
+                {label}
+              </button>
+            ))}
+        </div>
+      )}
+      {shown !== null && (
+        <p className="mb-2 text-text-muted" data-testid="plan-gap">
+          {shown.gap === null
+            ? 'This plan’s distance from Plan A could not be read.'
+            : shown.gap >= 0
+              ? `${fmtNum(shown.gap)} objective points behind Plan A.`
+              : `${fmtNum(Math.abs(shown.gap))} objective points AHEAD of `
+                + 'Plan A — the recommendation is held to the moves the '
+                + 'scenario sweep voted for, and this plan is not.'}
+          {' Objective points are the solver’s own frame: later weeks are '
+           + 'discounted and banked transfers are priced, so this is not a '
+           + 'raw xPts gap.'}
+        </p>
+      )}
       {/* One column per week the plan names, and never a padded sixth: a
           shorter horizon is a shorter board. */}
       <div className="flex gap-3 overflow-x-auto pb-2">
-        {data.weeks.map((week) => (
+        {weeks.map((week) => (
           <div key={week.gw} data-testid={`board-week-${week.gw}`}
                className="min-w-[220px] flex-1">
             <Card
@@ -179,11 +251,13 @@ export default function PlannerBoard(
               <div className="flex flex-col gap-0.5">
                 {week.buys.map((m) => (
                   <MoveRow key={`in-${m.code}`} move={m} side="in"
-                           mover={movers?.get(m.code)} />
+                           mover={movers?.get(m.code)}
+                           differs={differs(week, m)} />
                 ))}
                 {week.sells.map((m) => (
                   <MoveRow key={`out-${m.code}`} move={m} side="out"
-                           mover={movers?.get(m.code)} />
+                           mover={movers?.get(m.code)}
+                           differs={differs(week, m)} />
                 ))}
                 {week.buys.length === 0 && week.sells.length === 0 && (
                   <p className="text-text-muted">No moves.</p>
@@ -213,7 +287,12 @@ export default function PlannerBoard(
               <p className="num text-xl text-text">
                 {fmtNum(week.expected_pts)}
               </p>
-              {onTry && (week.buys.length > 0 || week.sells.length > 0) && (
+              {/* No handoff from an alternative: it was solved without the
+                  sweep's coherence constraints, and prefilling its moves into
+                  a lab that solves from now would silently re-impose them
+                  (v12 W3 §4.3). */}
+              {onTry && shown === null
+                && (week.buys.length > 0 || week.sells.length > 0) && (
                 <div className="mt-3">
                   <button
                     type="button"
