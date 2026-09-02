@@ -362,9 +362,11 @@ def price_timing(path: Path | str = "config.toml") -> bool:
 def xg_per_shot(path: Path | str = "config.toml") -> bool:
     """``[model] xg_per_shot`` (v12 §3.5).
 
-    Default **on** since the 2026-09-02 §3.5 arm (keep: no bucket regressed
-    beyond its seed spread; hauler delta inside the spread — not a measured
-    gain); set ``[model] xg_per_shot = false`` to fit the pre-v12 head.
+    Default **off**. The 2026-09-02 §3.5 RMSE-bucket arm said keep (hauler
+    5.207 → 5.203, inside the 0.019 spread) but the season replay with the head
+    on scored [1874, 1834, 1799] against main's [1854, 1875, 1862] — −28 on the
+    mean, beyond the control spread, with the seed spread tripled (75 vs 21).
+    The outcome measure wins; set ``true`` to fit the head anyway.
 
     A module-level reader for :func:`price_timing`'s reason. Never raises: a
     training run must not die of a config file, and the default is the
@@ -377,8 +379,8 @@ def xg_per_shot(path: Path | str = "config.toml") -> bool:
     try:
         raw = tomllib.loads(Path(path).read_text())
     except Exception:  # noqa: BLE001 — a training reader never raises
-        return True
-    return bool(raw.get("model", {}).get("xg_per_shot", True))
+        return False
+    return bool(raw.get("model", {}).get("xg_per_shot", False))
 
 
 def optimizer_top_n(path: Path | str = "config.toml") -> dict[str, int]:

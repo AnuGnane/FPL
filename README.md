@@ -187,9 +187,10 @@ price_timing = true  # charge a deferred sale its expected overnight price
 #                    # Model → Health prints what is actually in force.
 
 [model]
-xg_per_shot = true   # non-penalty xG per shot, per Understat window, on the
-                     # attacking model. On since the v12 §3.5 arm; `false`
-                     # fits the pre-v12 head.
+xg_per_shot = false  # non-penalty xG per shot, per Understat window, on the
+                     # attacking model. Off: the v12 §3.5 arm said keep on the
+                     # RMSE buckets, the season replay said no. `true` fits
+                     # the head anyway.
 
 [odds]
 # api_key = "..."    # optional, from the-odds-api.com
@@ -651,15 +652,21 @@ captain card falls back to its most-captained note while the explorer's rows
 still carry their arrows. Keying the explorer to the served gameweek instead
 would blank a whole column on precisely the days the page is read most.
 
-**`[model] xg_per_shot` ships on.** The attacking model reads non-penalty xG
-per shot at each Understat window — shot quality beside the shot volume it
-already had. The 2026-09-02 arm returned `keep` on its pre-registered bar: no
-bucket regressed beyond its own seed spread, and the hauler delta was *inside*
-that spread, so this is a free column kept rather than a measured gain banked.
-It takes effect on the next `gaffer train`; a model fitted before the flip
-keeps predicting exactly as it did, because its own `cols_` do not name the
-new columns and the extra columns on the frame are simply not read. Set
-`xg_per_shot = false` to fit the pre-v12 head.
+**`[model] xg_per_shot` ships off.** The column exists — non-penalty xG per
+shot at each Understat window, shot quality beside the shot volume the
+attacking model already had — but the head is not told about it. The
+2026-09-02 §3.5 arm returned `keep` on its pre-registered bar (no bucket
+regressed beyond its own seed spread; haulers 5.207 → 5.203, inside the 0.019
+spread), and then the season replay with the head on scored [1874, 1834, 1799]
+against main's [1854, 1875, 1862] — 28 points off the mean, past the control
+spread, with the seed spread tripled to 75 from 21. **The RMSE-bucket rule
+lacked a replay half**: it could say the fit did not get worse and could not
+say the season got better, and a fit measure that never meets an outcome
+measure cannot be the last word on what ships. The outcome measure wins, so
+the §3.5 keep is withdrawn. It takes effect on the next `gaffer train`; a
+model fitted while the flag was on keeps predicting exactly as it did, because
+its own `cols_` name the columns it was given. Set `xg_per_shot = true` to fit
+the head anyway.
 
 A flag's **lead time is whole days between the snapshot date and the deadline
 date**, and a snapshot dated the deadline day is not counted at all. The

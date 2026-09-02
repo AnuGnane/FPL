@@ -150,14 +150,20 @@ def test_the_attacking_model_is_told_only_when_the_flag_is_on(monkeypatch,
     assert set(XG_PER_SHOT_FEATURES) <= set(tr.attacking_features())
 
 
-def test_the_flag_defaults_on_and_survives_a_missing_file(tmp_path):
-    """Flipped by the 2026-09-02 §3.5 arm, which returned ``keep``. The
-    default is the shipped behaviour and an unreadable file must fall back to
-    it rather than to a head nobody chose — the same rule as before the flip,
-    read the other way round."""
+def test_the_flag_defaults_off_and_survives_a_missing_file(tmp_path):
+    """Back off on 2026-09-02: the §3.5 RMSE-bucket arm said ``keep``, but the
+    season replay with the head on scored [1874, 1834, 1799] against main's
+    [1854, 1875, 1862] — 28 points off the mean, past the control spread. The
+    outcome measure wins over the fit measure. The default is the shipped
+    behaviour and an unreadable file must fall back to it rather than to a head
+    nobody chose — the same rule as before the flip, read the other way
+    round."""
     from gaffer.config import xg_per_shot
 
-    assert xg_per_shot(tmp_path / "nothing.toml") is True
+    assert xg_per_shot(tmp_path / "nothing.toml") is False
     broken = tmp_path / "broken.toml"
-    broken.write_text("[model\nxg_per_shot = false")
-    assert xg_per_shot(broken) is True
+    broken.write_text("[model\nxg_per_shot = true")
+    assert xg_per_shot(broken) is False
+    unset = tmp_path / "unset.toml"
+    unset.write_text("[model]\nsomething_else = 1\n")
+    assert xg_per_shot(unset) is False

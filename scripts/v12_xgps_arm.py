@@ -1,5 +1,10 @@
 """Gate G1, v12 §3.5: the xG-per-shot arm on the 2024-25 benchmark.
 
+**This arm's `keep` was overturned on 2026-09-02 by the W2 season replay**,
+which scored [1874, 1834, 1799] with the head on against main's [1854, 1875,
+1862] — 28 points off the mean, past the control spread — so the flag went
+back off; the bar below measures fit and the replay measures outcome.
+
 ``us_npxg_per_shot_r{w}`` is shot *quality* beside the shot volume the
 attacking model already reads. The claim is narrow and worth stating before
 the numbers arrive: two players with the same npxG per 90 are different
