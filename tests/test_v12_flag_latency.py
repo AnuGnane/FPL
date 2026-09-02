@@ -212,15 +212,26 @@ def test_a_null_status_is_a_value_and_never_a_raise():
 def test_a_doubtful_final_status_is_never_a_late_flag():
     """A hedge is not a claim either way. Code 1 was left 'd' and then missed;
     code 2 was left 'd' and started. Neither disagreed with anything, so the
-    late-flag table is empty while both stay in ``changes``."""
+    late-flag table is empty while both stay in ``changes``.
+
+    Codes 3 and 4 make the same point for the *unrecorded* status: a row whose
+    final pre-deadline status is ``""`` said nothing, and by omission from
+    :data:`UNAVAILABLE_FLAG_STATUS` it would otherwise be read as a claim of
+    availability and score code 3 (silence, then missed) as a late flag."""
     log = _log(PAD + [(3, "2026-08-30", 1, "a", 100.0),
                       (3, "2026-09-03", 1, "d", 25.0),
                       (3, "2026-08-30", 2, "a", 100.0),
-                      (3, "2026-09-03", 2, "d", 75.0)])
+                      (3, "2026-09-03", 2, "d", 75.0),
+                      (3, "2026-08-30", 3, "i", 0.0),
+                      (3, "2026-09-03", 3, None, None),
+                      (3, "2026-08-30", 4, "i", 0.0),
+                      (3, "2026-09-03", 4, None, None)])
     out = ae.score_flag_latency(
-        log, _actuals([(3, 1, 0, 0), (3, 2, 90, 1)]), EVENTS,
+        log, _actuals([(3, 1, 0, 0), (3, 2, 90, 1),
+                       (3, 3, 0, 0), (3, 4, 90, 1)]), EVENTS,
         season="2026-27")
-    assert out["rows"] == 2
+    assert out["rows"] == 4
+    assert [c["final_status"] for c in out["changes"] if c["code"] == 3] == [""]
     assert out["late_flags"] == []
 
 

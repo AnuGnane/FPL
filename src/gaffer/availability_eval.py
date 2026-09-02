@@ -144,7 +144,14 @@ claim of absence it scores every doubtful player who started as a late flag,
 and read as a claim of availability it scores every doubtful player who missed
 as one. The only honest reading of "we do not know" is that there is nothing
 to disagree with. Those rows stay in ``changes`` and in the histogram, where
-what is measured is lead time rather than correctness."""
+what is measured is lead time rather than correctness.
+
+The empty string is excluded on the same grounds and for a different reason:
+``""`` is FPL's *unrecorded* status, not a statement about the player. Reading
+it as "available" — which membership in this tuple would, by omission — turns
+every row the feed simply never stamped into a claim, and scores the manager
+against words nobody said. An absent status is not a hedge, but it is equally
+nothing to disagree with."""
 
 
 def _bucket(days: float) -> str:
@@ -274,7 +281,7 @@ def score_flag_latency(log: pd.DataFrame, actuals: pd.DataFrame,
     # neither, and is dropped rather than resolved — see
     # :data:`UNAVAILABLE_FLAG_STATUS`.
     late = [c for c in changes
-            if c["final_status"] != "d"
+            if c["final_status"] not in ("d", "")
             and (c["final_status"] in UNAVAILABLE_FLAG_STATUS)
             == c["started"]]
     late.sort(key=lambda c: (c["lead_days"], c["gw"], c["code"]))

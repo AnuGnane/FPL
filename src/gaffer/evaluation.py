@@ -1241,7 +1241,7 @@ def _format_presser_grades(payload: dict) -> str:
     # payload stores 0.0 (a number the JSON needs) but the column prints a
     # dash: "0.00" beside a class that found none of nothing reads as a class
     # that missed everything.
-    absent = payload.get("absent_rows", 0)
+    absent = payload["absent_rows"]
     for row in payload["per_class"]:
         c = conf.get(row["verdict"], {})
         recall = f"{row['recall']:>6.2f}" if absent else f"{'—':>6}"
