@@ -75,6 +75,30 @@ def test_a_missing_asset_is_flat_and_says_which_kind_of_flat():
     assert source == "flat: no calibrated priors asset"
 
 
+def test_an_asset_with_no_usable_surplus_is_not_a_missing_asset():
+    """T4-T7 review, Minor 7. Reaching the flat bars because there is no asset
+    and reaching them because the asset is here and says nothing usable are
+    different problems with different fixes — install it, or find out why
+    calibration wrote nothing into it — and one caption sent both readers off
+    to look for a file one of them already has.
+
+    Both shapes of useless are covered: no ``chip_surplus`` key at all, and one
+    whose every chip maps to nothing.
+    """
+    for priors in ({"ft_lambda": 1.0}, {"chip_surplus": {"bboost": {}}}):
+        _, source = threshold_with_source(
+            chip_thresholds_from_asset(priors), "bboost", 7)
+        assert source == "flat: priors asset has no usable chip_surplus"
+
+
+def test_the_default_flat_reason_is_still_the_absent_asset_one():
+    """Every existing caller passes no reason and must keep the string it has
+    always reported — including ``chip_policy.flat_thresholds()`` itself, the
+    degradation rail the spec preserves."""
+    _, source = threshold_with_source(flat_thresholds(), "wildcard", 3)
+    assert source == "flat: no calibrated priors asset"
+
+
 def test_a_chip_absent_from_the_asset_names_that_rather_than_the_asset():
     lookup = thresholds_from_priors({"bboost": {10: [4.0]}})
     _, source = threshold_with_source(lookup, "3xc", 10)

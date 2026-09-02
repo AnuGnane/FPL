@@ -147,12 +147,28 @@ FLAT_SOURCE = "flat: no calibrated priors asset"
 fallback cannot drift apart."""
 
 
-def flat_thresholds():
+EMPTY_SURPLUS_SOURCE = "flat: priors asset has no usable chip_surplus"
+"""Why a bar is flat when the asset *exists* and says nothing usable.
+
+Deliberately not :data:`FLAT_SOURCE` (v12 W3 T4-T7 review, Minor 7): "there is
+no calibrated priors asset" and "the asset is here and its ``chip_surplus`` is
+empty or unparseable" are different problems with different fixes — install the
+asset, or find out why calibration wrote nothing into it — and a caption that
+reports the first for the second sends its reader to the wrong one.
+"""
+
+
+def flat_thresholds(reason: str = FLAT_SOURCE):
     """The pre-v4c bars, as a ``(chip, gw) -> float`` callable.
 
     This is the degradation rail for the whole workstream: with no priors
     asset, every caller gets exactly the constants it used before, including
     their indifference to the calendar.
+
+    ``reason`` is what ``explain`` reports as the source, defaulted so every
+    existing caller is unchanged. The one caller that overrides it is
+    :func:`chip_thresholds_from_asset`, which reaches this function by a route
+    :data:`FLAT_SOURCE` would misdescribe.
     """
     from gaffer.optimize.chips import (CHIP_PLAY_THRESHOLD,
                                        WILDCARD_RECOMMEND_THRESHOLD)
@@ -165,7 +181,7 @@ def flat_thresholds():
     # cannot say "θ" or "flat fallback" unless the lookup can be asked. An
     # attribute rather than a wrapper type, so every existing caller — which
     # calls this thing — keeps calling it.
-    lookup.explain = lambda chip, gw: (lookup(chip, gw), FLAT_SOURCE)
+    lookup.explain = lambda chip, gw: (lookup(chip, gw), reason)
     return lookup
 
 
@@ -222,6 +238,11 @@ def chip_thresholds_from_asset(priors: dict | None,
     The asset stores gameweeks as JSON object keys, which are strings; this is
     where they become integers. ``None`` or an empty ``chip_surplus`` gives
     :func:`flat_thresholds`, which is the pre-v4c behaviour exactly.
+
+    The two routes there report *different* sources (v12 W3 T4-T7 review,
+    Minor 7): no asset is :data:`FLAT_SOURCE`, an asset whose ``chip_surplus``
+    is empty or unparseable is :data:`EMPTY_SURPLUS_SOURCE`. The bars are the
+    same and the fixes are not.
     """
     if not priors:
         return flat_thresholds()
@@ -230,7 +251,7 @@ def chip_thresholds_from_asset(priors: dict | None,
                      for gw, samples in by_gw.items()}
               for chip, by_gw in raw.items() if by_gw}
     if not parsed:
-        return flat_thresholds()
+        return flat_thresholds(EMPTY_SURPLUS_SOURCE)
     return thresholds_from_priors(parsed, dgw_probs)
 
 
