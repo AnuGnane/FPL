@@ -80,6 +80,8 @@ to `logs/advise.log`.
 | `gaffer track-pens` | Predicted penalty EP against the penalties actually taken. |
 | `gaffer understat` / `gaffer cups` | Auxiliary history ingestion (Understat player-match data; cup and European match dates). Long first runs, resumable, rarely needed again. |
 | `gaffer evaluate [--news-shadow] [--calibration]` | The model scorecard; the news layer's would-be effect; served-probability reliability. |
+| `gaffer evaluate --flag-latency` | How much warning a status change gave before the deadline, and whether the player then started. Reads the banked availability snapshots; fills once fourteen snapshot days exist and a covered gameweek is `data_checked`. |
+| `gaffer evaluate --presser-grades` | The presser classifier's verdicts against who actually started: precision of absence per class, over the verdicts recorded *before* their gameweek's deadline. |
 | `gaffer diagnose-zeros` | Decompose the error on players who blanked, into `reports/zeros_diagnostic.json`. |
 | `gaffer calibrate-decisions` / `calibrate-injuries` / `calibrate-noise` | Rebuild the committed calibration assets from replays and scrapes. Occasional, not weekly. |
 | `gaffer backup [--to DIR] [--rsync TARGET]` | Tar the data no command can rebuild into `~/gaffer-backups` (or `[backup] dir`), keep the last fourteen. |
@@ -624,6 +626,39 @@ left the temp behind for ever in a cache directory that is permanent by design.
    has not yet fetched.
 5. The MCP server exposes no write tools and no resources or prompts. `whatif`
    is the one tool that computes, and it computes locally and banks nothing.
+
+### Mining the logs we already had (v12 W2)
+
+`gaffer evaluate --flag-latency` and `--presser-grades` both write into
+`reports/evaluation.json` and appear on Model → Quality, in one
+**Availability signal** card that renders even when it is empty — an empty
+state that says what it is waiting for is the whole point of the instrument
+this early. The captain frame and the Players explorer both gained a projected
+deadline EO beside the sampled one.
+
+**Four places this cycle does not match its own spec, recorded rather than
+quietly fixed.**
+
+1. v12 §3.1 names `reports/evaluate/flag_latency.json`; both reports go into
+   `reports/evaluation.json` instead, because that is the artifact
+   `/api/quality` reads and `save_evaluation` is where the atomic-write and
+   `allow_nan=False` discipline already lives.
+2. The EO trend is measured **gameweek to gameweek**, not day to day: the
+   field scrape's already-banked exit means one sample per gameweek, and picks
+   are frozen after the deadline anyway, so a same-gameweek delta would be
+   sampling noise. Field EO is in **percent** and captaincy doubles it, so the
+   ceiling is 200 rather than the spec's 1.0.
+3. The price-timing term is worth 0.008 points at the shipped `itb_value` and
+   the solver's default relative gap on a real horizon is larger. It breaks
+   exactly-equal sell timings and is not expected to move a replay, so
+   `[optimizer] price_timing` ships **false** (CONVENTIONS §6) with the flip
+   rule in the W2 gate.
+4. There is no `[solver]` section: solver knobs live in `[optimizer]`, which
+   `load_config` splats into `Config`. A knob there is therefore either a real
+   `Config` field (`top_n`) or listed in `config.NON_FIELD_OPTIMIZER_KEYS` and
+   popped before the splat (`price_timing`) — never both, and never neither. A
+   typo under `[optimizer]` still raises, which is why that tuple is named
+   rather than derived from the field list.
 
 ### Pinning a player (v8e)
 

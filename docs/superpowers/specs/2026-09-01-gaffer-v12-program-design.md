@@ -96,10 +96,20 @@ is limited to gated ablations that ride on training runs already happening.
   the `calibrate_noise` refusal pattern.
 
 ### 2.6 `DEFAULT_TOP_N` becomes visible
-- `[solver] top_n = {GKP=8, DEF=22, MID=26, FWD=14}` in config; `milp.py`
+- `[optimizer] top_n = {GKP=8, DEF=22, MID=26, FWD=14}` in config; `milp.py`
   reads it (authorized edit, one line-group). Health shows the pool sizes.
   The solver trace (W5 §6.5) names any owned player who fell outside the
   pool.
+- **Program-wide consequence of the 2026-09-02 ruling, and not a W2
+  detail.** There is no `[solver]` section; every solver knob lives in
+  `[optimizer]`, and `load_config` splats that section wholesale into
+  `Config`. So a knob there is either **a real `Config` field** — which is
+  what W1 makes `top_n` — or **listed in `config.NON_FIELD_OPTIMIZER_KEYS`
+  and popped before the splat**, which is what W2's `price_timing` is. The
+  two are mutually exclusive; the invariant is asserted in W2's tests (no
+  name in that tuple is also a field). The tuple is named rather than
+  derived from the field list so that a typo under `[optimizer]` — `horizen
+  = 6` — still raises loudly instead of being swallowed.
 
 ### 2.7 `gaffer tidy`
 - `gaffer tidy [--apply] [--older-than DAYS]` (default dry-run, 30 days).
@@ -259,25 +269,40 @@ that could move a plan, and the rail that a missing section reproduces
 - Surface: Model → Quality, new "Availability signal" section. Empty state
   until `snap_date.nunique() >= 14` **and** at least one covered GW is
   `data_checked`; the state says both numbers.
-- CLI: `gaffer evaluate --flag-latency` writes the same payload to
-  `reports/evaluate/flag_latency.json`.
+- CLI: `gaffer evaluate --flag-latency`. Snapshots taken after the
+  gameweek's deadline are excluded — the log stamps a snapshot with
+  `next_unfinished_gw`, so a Saturday row carries a gameweek whose deadline
+  has passed. The payload lands in `reports/evaluation.json` under
+  `flag_latency` rather than in a file of its own.
 
 ### 3.2 Presser-verdict grading
-- Same section. For each row with a non-null `llm_verdict` (`source` is
-  `llm`; verdict classes today: `ruled_out`, `assess`, `knock`,
-  `rotation_risk`), grade against the checked GW's start.
+- Same section. For each row with a non-null `llm_verdict` (`source` names
+  the news source, not the classifier — 160 of the live log's 169 verdict
+  rows say `premierinjuries`; verdict classes today: `ruled_out`, `assess`,
+  `knock`, `rotation_risk`), grade against the checked GW's start.
   Output: confusion matrix and precision/recall per verdict class. Shares
-  `evaluate_news_shadow`'s actuals loader. Empty state until GW2 is
-  `data_checked`.
+  `evaluate_news_shadow`'s actuals loader. Empty state until a
+  `data_checked` gameweek carries a verdict banked before its deadline; GW2
+  is checked and carries none.
 - ROADMAP checkboxes: news-shadow (existing), flag-latency (14 dates),
-  presser grading (GW2 checked).
+  presser grading (a checked gameweek with a pre-deadline verdict — GW3 is
+  the first candidate).
 
 ### 3.3 EO trend
-- The field scrape already runs Sat and Sun; the log keeps every sample.
-  New reader `field_eo_trend(season, gw)` returns per-code `eo_first`,
-  `eo_last`, `delta`, `hours_between`. `deadline_eo` = `eo_last + delta ×
-  (hours_to_deadline / hours_between)`, clamped to [0, 1], only when two
-  samples exist; otherwise `eo_last` and a `trend_available=False` flag.
+- The trend is measured **gameweek to gameweek**, not day to day (plan A4,
+  three measured reasons: `run_field_scrape`'s already-banked exit means one
+  sample per gameweek; picks are frozen after the deadline, so a
+  same-gameweek delta would be sampling noise; and EO is banked in percent
+  with captaincy doubled, so the live maximum is 214.7). New reader
+  `field_eo_trend(season, gw)` compares the latest sample of `gw` against
+  the latest sample of the newest *earlier* gameweek and returns per-code
+  `eo_first`, `eo_last`, `delta`, `gws_between` and `trend_available`.
+  `deadline_eo = clip(eo_last + delta / gws_between, 0.0, 200.0)` — one
+  gameweek forward, in **percent**, clamped at the ceiling the sampler can
+  produce, not the spec's original [0, 1]. `hours_between` is not kept:
+  `snap_date` carries no clock, so an hours figure would be fabricated.
+  With fewer than two gameweeks in the log, `trend_available=False` and
+  `deadline_eo == eo_last`.
 - The EO lens on This Week and the captain table use `deadline_eo`; the
   UI shows an arrow (↑/↓/→) with the delta on hover. Rank tilt (λ) is
   unchanged.
@@ -287,8 +312,14 @@ that could move a plan, and the rail that a missing section reproduces
   owned player, `p_fall_tonight`. In the objective, a transfer-out of a
   player scheduled for a *later* GW in the horizon is charged
   `p_fall_tonight × 0.1 × itb_value` (authorized edit in `milp.py`,
-  one term). No term for rises (rejected: price chasing). Config
-  `[solver] price_timing = true`.
+  one term). No term for rises (rejected: price chasing). The term is worth
+  `p × 0.1 × itb_value` — 0.008 points at the shipped `itb_value` — which is
+  below the solver's default relative gap on a full horizon. It is a
+  tie-breaker for equal sell timings and the replay is expected to show no
+  diff. Config **`[optimizer] price_timing = false`**: the section by the
+  program ruling of 2026-09-02 (there is no `[solver]`; solver knobs live in
+  `[optimizer]`), the default by CONVENTIONS §6, with the flip rule
+  pre-registered in the W2 gate.
 - Test: with `p_fall_tonight = 1` and two otherwise-equal sell timings,
   the solver sells this week.
 
@@ -328,7 +359,7 @@ enumerated authorized edit.
 ### 4.3 Top-3 distinct plans
 - After the first solve, add a no-good cut on the set of transfer
   (in, out, gw) triples of the incumbent and re-solve; repeat to 3 plans
-  or until the EP gap exceeds `[solver] alt_plan_max_gap` (default 2.0 pts
+  or until the EP gap exceeds `[optimizer] alt_plan_max_gap` (default 2.0 pts
   over the horizon). Returned as `Plan.alternatives: list[Plan]` with
   `gap`. Board shows them as tabs "Plan A / B / C" with the gap and the
   differing moves highlighted. Sweep frequency tables are computed on plan

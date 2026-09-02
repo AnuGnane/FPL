@@ -136,7 +136,7 @@ Spec: `specs/2026-08-30-gaffer-v7b-measurement-design.md` (§5–7 = results, co
 - [x] Q1: 3-seed error bars — spread 116 swamps every arm gap; the S1/S2 ±120s were draw luck
 - [x] Q3: composite-σ floors monotonically worse; no re-noised gate beats raw
 - [x] Mechanical verdict: KEEP option (b) — all differences within seed noise; raw anchor 1914 reproduced and logged
-- [ ] N2 first news verdict — still pending GW2 `data_checked`
+- [x] N2 first news verdict — **banked 2026-09-02 under v12 W2**: GW2, n=620, Brier news 0.1276 vs flags 0.1191, MAE 13.29 vs 13.02, flags ahead on both. One gameweek, so a residual and not a verdict (CONVENTIONS §5)
 - 12 replay runs + 1 probe; suite 1548; no serving changes
 
 ### v7-model — zeros + honest noise (done, merged `1b93b9d` 2026-08-30; user chose option (b))
@@ -145,7 +145,7 @@ Spec: `specs/2026-08-30-gaffer-v7-model-design.md` (§9 = gates + the three-way 
 - [x] Gate Z1 FAIL — isotonic DNP recalibration ships OFF (zeros 1.063→1.053, bar was 1.042; strict Pareto improvement, user may flip)
 - [x] Gate S2 PASS on the literal rule — estimation σ (K=5 bagged ensemble, global 0.069) replay 1908 vs heuristic 1785; **review's raw control scored 1914: the σ disables gating rather than sharpening it** → three-way decision (heuristic / estimation / no gating) escalated, merge withheld
 - [x] Open finding: v4c D1 sign reversal — scenario gating was +75 in v4c, −129 on today's model; unbisected
-- [ ] N2 first news verdict — pending GW2 `data_checked` (`gaffer evaluate --news-shadow`)
+- [x] N2 first news verdict — **banked 2026-09-02 under v12 W2** (`gaffer evaluate --news-shadow`): GW2, n=620, Brier news 0.1276 vs flags 0.1191, MAE 13.29 vs 13.02, flags ahead on both; one gameweek, so a residual and not a verdict (CONVENTIONS §5)
 - Suite on branch: 1523 Python + 251 frontend, tsc clean; serving guards added (non-estimation asset refused when flag True; calibrate-noise refuses unsafe overwrite)
 
 ## Planned
@@ -238,6 +238,16 @@ Spec: `specs/2026-09-01-gaffer-v12-program-design.md` (§1, §2 = the W1 gate) �
 - Pins: job kinds 12, config fields 48 → **53**, routes 45 → **46**
 - Residuals: `journal.py` keeps its own `os.replace` (import-only this cycle, the one name the census rail carries beside `io.py`); the spec's `[solver]` section does not exist — `top_n` went in `[optimizer]` by ruling, and W2/W5 must read it there; ~34 MB of timestamped API snapshots under `data/raw/` accumulate unswept and are outside §2.7; the served rollover check reads disk rather than the API, so it cannot see a season FPL has published and this machine has not fetched; the gate's live-`refresh` box was the orchestrator's to run, because `refresh` writes into `data/` (run 2026-09-02: 1236 rows on a match, exit 1 with the two-key message on a mismatch)
 - Suite: 3356 Python + 680 frontend (G1, implementer-measured)
+
+### v12 W2 — mine what we have (in progress)
+Spec: `specs/2026-09-01-gaffer-v12-program-design.md` §3 · Plan: `plans/2026-09-01-gaffer-v12-w2-mine.md`
+- [x] §3.1 flag latency + §3.2 presser grading: `gaffer evaluate --flag-latency` / `--presser-grades`, both into `reports/evaluation.json`, both on Model → Quality with the empty state naming both numbers. Both filter to snapshots taken **before** their gameweek's deadline — the log stamps a snapshot with `next_unfinished_gw`, so a Saturday row carries a gameweek whose deadline is already gone
+- [x] §3.3 EO trend at the gameweek grain, with `deadline_eo` on the explorer row and the captain frame; the day grain is not available and the plan's A4 says why in three measured parts
+- [x] §3.4 price-timing term (three authorized line-groups in `milp.py`), and §3.5's xG-per-shot arm built with its three-seed driver
+- [x] **N2's first news verdict, after four cycles of "pending GW2 `data_checked`"** (`gaffer evaluate --news-shadow`, run by the orchestrator 2026-09-02): GW2, n=620 — Brier news **0.1276** vs flags **0.1191**, minutes MAE **13.29** vs **13.02**. **Flags are ahead on both.** One gameweek and one draw, so by CONVENTIONS §5 this is a residual and not a verdict on the news layer; it is banked here so the second gameweek has something to be compared against, and the direction is the one worth watching — the layer is not yet earning its place. The stale "pending GW2" lines at `:139` and `:148` are flipped to point here.
+- [ ] **Data-gated:** flag latency — needs 14 snapshot days (3 banked on 2026-09-01) and one graded covered gameweek
+- [ ] **Data-gated:** presser grading — needs a `data_checked` gameweek with verdicts banked **before** its deadline. GW2 is checked and has none; GW3 is the first candidate
+- [ ] **Data-gated:** EO trend — needs a second gameweek in `field_eo_log.parquet` (one gameweek, one snapshot day on 2026-09-01)
 
 
 ## Operational / housekeeping
