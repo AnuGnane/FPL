@@ -13,12 +13,16 @@ const LABELS: Record<ListKey, string> = {
 const FIELD = 'rounded-card border border-border bg-base px-2 py-1 text-text'
 
 function PlayerPicker(
-  { label, codes, names, onAdd, onRemove }: {
+  { label, codes, names, onAdd, onRemove, describedBy }: {
     label: string
     codes: number[]
     names: Record<number, string>
     onAdd: (player: PlayerRow) => void
     onRemove: (code: number) => void
+    /** Id of a note explaining this input. Screen readers reach the "Must
+     *  sell is not Ban" sentence from the field it is about, rather than
+     *  meeting it as loose text after four pickers. */
+    describedBy?: string
   },
 ) {
   const [query, setQuery] = useState('')
@@ -42,6 +46,7 @@ function PlayerPicker(
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="search a player"
+          aria-describedby={describedBy}
           className={FIELD}
         />
       </label>
@@ -119,15 +124,18 @@ export default function ConstraintsPanel(
             names={names}
             onAdd={add(key)}
             onRemove={remove(key)}
+            describedBy={key === 'force_out' ? 'force-out-note' : undefined}
           />
         ))}
       </div>
       {/* Ban and Must sell look alike and do different things to the money.
           Said once, here, rather than discovered in a result. */}
-      <p className="mt-1.5 text-text-faint" data-testid="force-out-note">
-        Must sell removes an owned player in the first week and sells him, so
-        the bank gets his selling price and he may be bought back later. Ban
-        takes him out of the candidate pool entirely.
+      <p className="mt-1.5 text-text-faint" id="force-out-note"
+         data-testid="force-out-note">
+        Must sell takes an owned player out of the squad for the whole solve
+        horizon and credits the bank with his selling price. Ban removes him
+        from the candidate pool, so he never enters the squad and the sale
+        money never arrives.
       </p>
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <div>

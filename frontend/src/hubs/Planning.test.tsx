@@ -21,10 +21,12 @@ vi.mock('./planning/Timeline', () => ({
   ),
 }))
 vi.mock('./planning/WhatIfTab', () => ({
-  default: ({ value }: { value: { force_in: number[]; ban: number[] } }) => (
+  default: ({ value }: { value: { force_in: number[]; ban: number[]
+                                  force_out: number[] } }) => (
     <>
       <p>whatif panel</p>
-      <p>{`force_in:${value.force_in.join(',')} ban:${value.ban.join(',')}`}</p>
+      <p>{`force_in:${value.force_in.join(',')} ban:${value.ban.join(',')}`
+         + ` force_out:${value.force_out.join(',')}`}</p>
     </>
   ),
 }))
@@ -36,8 +38,10 @@ vi.mock('./planning/PlannerBoard', () => ({
     <>
       <p>board panel</p>
       <button type="button" onClick={() => onTry?.({
-        lock: [], ban: [2], force_in: [1], max_hits: 1, chip: 'none',
-        horizon: null,
+        // The shape the board now produces: a planned sell is carried as
+        // force_out, and ban is left empty (v12 W3 §4.1).
+        lock: [], ban: [], force_in: [1], force_out: [2], max_hits: 1,
+        chip: 'none', horizon: null,
       })}>
         try week
       </button>
@@ -103,7 +107,8 @@ describe('Planning hub', () => {
       await userEvent.click(await screen.findByRole('tab', { name: 'Board' }))
       await userEvent.click(await screen.findByText('try week'))
       expect(await screen.findByText('whatif panel')).toBeInTheDocument()
-      expect(screen.getByText('force_in:1 ban:2')).toBeInTheDocument()
+      expect(screen.getByText('force_in:1 ban: force_out:2'))
+        .toBeInTheDocument()
     })
 
   it('switches to the drafts tab on click', async () => {

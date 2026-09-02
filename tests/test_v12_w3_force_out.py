@@ -176,8 +176,11 @@ def test_the_bank_receives_the_sale_which_is_what_locked_out_never_did():
         solve_plan(_pool(), _state(locked_out=[5]), **KW)
     # 40 is player 5's `sell`. Given it as bank, the ban reaches the same
     # squad — which is the proof that the money is the only thing that differs.
+    #
+    # Set equality, not list: the claim is "the same players", and the order
+    # within a week's ``buys`` is whatever the solver's tie-break produced.
     funded = solve_plan(_pool(), _state(locked_out=[5], bank=40), **KW)
-    assert funded.gw_plans[0].buys == sold.gw_plans[0].buys
+    assert set(funded.gw_plans[0].buys) == set(sold.gw_plans[0].buys)
 
 
 def test_forcing_out_a_player_you_do_not_own_is_not_an_error():
@@ -211,7 +214,7 @@ def test_forcing_out_more_than_the_budget_can_replace_stays_infeasible():
         solve_plan(_pool(), poor, **KW)
 
 
-def test_force_out_survives_a_second_pass(tmp_path):
+def test_force_out_survives_a_second_pass():
     """§F1a's re-weighted pass re-solves the same problem with pins taken from
     pass one. A constraint that lived only in pass one would be silently
     dropped by every p_play-carrying caller."""

@@ -72,12 +72,25 @@ def save(req: DraftSaveRequest) -> DraftList:
     Early rather than at compare time on purpose: a draft naming a player who
     is not in the candidate pool can never be solved, and finding that out
     three days later, in a comparison, is finding it out at the wrong moment.
+
+    Most of that validation needs a solve state, so on a cold clone — no
+    gameweek on disk yet — it cannot run. The contradictions that are pure
+    shape still can, and one of them matters: a free hit conjures its squad
+    from nothing, so a stored ``fh`` + ``force_out`` draft would have its
+    ``force_out`` silently dropped at compare time (v12 W3 §4.1).
     """
     gw = latest_gw()
     if gw is not None:
         # Reuses the what-if lab's own validator, so a draft and a what-if
         # are refused for the same reasons in the same words.
         _validate(req.constraints, load_solve_state(gw))
+    elif req.constraints.force_out and req.constraints.chip == "fh":
+        # whatif._validate's ``force_out_on_free_hit``, in its words, for the
+        # one case that does not need a pool to be wrong.
+        raise _fail("force_out_on_free_hit",
+                    "a free hit squad is built from scratch, so there is "
+                    "nothing to force out of it",
+                    list(req.constraints.force_out))
     try:
         add_draft(req.name, req.constraints.model_dump())
     except GafferError as exc:

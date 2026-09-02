@@ -69,11 +69,15 @@ class WhatIfRequest(BaseModel):
     force_out: list[int] = Field(default_factory=list)
     """Owned players the solve must sell in the first horizon gameweek.
 
+    He is then out of the squad **for the whole horizon**: ``milp`` pins squad
+    membership to 0 in every week, not only the first, so this is not a sale
+    the solver may reverse later. The bank is credited with his selling price.
+
     Not ``ban``: banning an owned player removes him from the candidate pool
-    entirely, which also forbids buying him back and — because he leaves the
-    pool rather than the squad — never credits the bank with his sale. This
-    says "sell him", which is the instruction the planner board's handoff has
-    been approximating with ``ban`` since v11.
+    entirely, so he never enters the squad and — because he leaves the pool
+    rather than the squad — the sale money never arrives. This says "sell
+    him", which is the instruction the planner board's handoff has been
+    approximating with ``ban`` since v11.
     """
     max_hits: int = 0
     chip: Literal["none", "wc", "bb", "fh", "tc"] = "none"

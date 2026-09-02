@@ -54,6 +54,18 @@ def _validate(req: WhatIfRequest, state) -> None:
         raise _fail("unknown_player",
                     f"player {unknown[0]} is not in this week's candidate "
                     f"pool", unknown)
+    # v12 W3 §4.1 (specs/2026-09-01-gaffer-v12-program-design.md): buy him and
+    # sell him is not a plan. Ahead of the two checks below rather than beside
+    # the other force_out refusals, because it would be unreachable there: a
+    # code in both lists is either owned — and caught as ``force_in_owned``,
+    # which answers "use lock to keep him" to a user who asked to sell him —
+    # or unowned, and caught as ``force_out_not_owned``. Both are true and
+    # neither is the contradiction the user typed.
+    in_and_out = sorted(set(req.force_in) & set(req.force_out))
+    if in_and_out:
+        raise _fail("force_in_and_force_out",
+                    f"player {in_and_out[0]} cannot be both bought and sold "
+                    f"in the same solve", in_and_out)
     forced_and_owned = sorted(set(req.force_in) & set(state.owned_codes))
     if forced_and_owned:
         raise _fail("force_in_owned",
@@ -64,7 +76,7 @@ def _validate(req: WhatIfRequest, state) -> None:
         raise _fail("force_in_and_ban",
                     f"player {forced_and_banned[0]} cannot be forced in and "
                     f"banned", forced_and_banned)
-    # v12 W3 §4.1 (specs/2026-09-01-gaffer-v12-program-design.md). Four
+    # v12 W3 §4.1 (specs/2026-09-01-gaffer-v12-program-design.md). Five
     # combinations that cannot mean anything, each named where the user typed
     # it rather than left to produce a constraint that silently does nothing.
     not_owned = sorted(set(req.force_out) - set(state.owned_codes))
