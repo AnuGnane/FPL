@@ -29,22 +29,24 @@ megabytes rather than two gigabytes.
 
 from __future__ import annotations
 
-import os
 import subprocess
 import tarfile
 from datetime import datetime, timezone
 from pathlib import Path
 
+from gaffer import io
 from gaffer.data import store
 
 ROOTS = ["live", "raw/field", "raw/tier_eo"]
 """Archived under ``store.DATA_DIR``, in this order, plus :data:`TREE_ROOTS`.
 
-Resolved through ``store.DATA_DIR`` rather than as ``data/live`` relative to
-the process's cwd: ``store`` is the module that knows where the data tree is,
-and a backup that silently archived nothing because it was run from the wrong
-directory is the failure mode this whole module exists to prevent. A root that
-does not exist is skipped; a tree with *no* root at all raises."""
+Read through ``store.DATA_DIR`` rather than as a literal ``data/live``:
+``store.DATA_DIR`` is itself relative to the process's cwd (``Path("data")``),
+so the indirection does not make this cwd-independent — what it buys is that a
+test can point the whole module at a fixture tree by redirecting the one
+attribute, and that this module reads the data tree from the module that owns
+it rather than guessing a second time. A root that does not exist is skipped;
+a tree with *no* root at all writes nothing."""
 
 TREE_ROOTS = ["reports", "models"]
 """The two archived roots that are not under the data tree. Project-relative,
@@ -69,17 +71,27 @@ def archive_name(now: datetime | None = None) -> str:
         (now or datetime.now(timezone.utc)).strftime("%Y%m%d-%H%M%S"))
 
 
-def archived_roots() -> list[Path]:
-    """The roots that exist, in :data:`ROOTS` then :data:`TREE_ROOTS` order."""
-    every = [store.DATA_DIR / r for r in ROOTS] + \
-        [Path(r) for r in TREE_ROOTS]
-    return [p for p in every if p.exists()]
+def archived_roots() -> list[tuple[Path, str]]:
+    """The roots that exist as ``(path on disk, name inside the tar)``.
+
+    In :data:`ROOTS` then :data:`TREE_ROOTS` order. The arcname is written out
+    explicitly — ``data/<r>`` and ``<r>`` — rather than derived from the path,
+    so that the layout inside the archive is the project's layout whatever
+    ``store.DATA_DIR`` happens to be. Derived from the path, a redirected
+    ``DATA_DIR`` (a test fixture, or a tree moved onto another volume) would
+    put an absolute or foreign prefix in the tar, and the restore instructions
+    in the README — extract at the project root — would silently be wrong.
+    """
+    every = [(store.DATA_DIR / r, f"data/{r}") for r in ROOTS] + \
+        [(Path(r), r) for r in TREE_ROOTS]
+    return [(p, arc) for p, arc in every if p.exists()]
 
 
 def run_backup(*, to: Path | str, rsync: str | None = None,
                keep: int = 14, now: datetime | None = None) -> Path | None:
     """Write one archive, optionally copy it, prune the local directory.
 
+    Never raises on a write that fails: it returns ``None`` with a message.
     ``None`` when there was nothing to archive at all — an empty tar looks
     exactly like a successful backup and restores to nothing, which is the
     worst of the available outcomes — and ``None`` again when the write itself
@@ -97,25 +109,29 @@ def run_backup(*, to: Path | str, rsync: str | None = None,
     # in-place publish it is meant to be.
     name = archive_name(now)
     path = dest / name
-    # Written to a `.part` sibling and renamed, rather than straight to the
-    # final name: a tar interrupted by a full disk or a Ctrl-C leaves a
-    # truncated .tar.gz that matches NAME_GLOB, which makes it the newest
-    # "archive" the Health line reports and the newest one `prune` keeps. The
-    # part name starts with a dot and ends in `.part`, so it matches neither
-    # NAME_GLOB nor anything `latest_backup` looks at, and `os.replace` is
-    # atomic within a directory.
-    part = dest / f".{name}.part"
+    # Written to a temp sibling and renamed, rather than straight to the final
+    # name: a tar interrupted by a full disk or a Ctrl-C leaves a truncated
+    # .tar.gz that matches NAME_GLOB, which makes it the newest "archive" the
+    # Health line reports and the newest one `prune` keeps. `io.atomic_path`
+    # is the tree's one copy of that idiom; its temp is
+    # `gaffer-….tar.gz.<pid>.tmp`, which matches neither NAME_GLOB nor
+    # anything `latest_backup` looks at, and its `finally` removes the temp on
+    # any exit — including the KeyboardInterrupt that a hand-run `gaffer
+    # backup` is most likely to die of.
     try:
-        # dereference=True: `models/` and `reports/` are ordinary directories
-        # here, but a user who has symlinked one onto another volume — which
-        # is exactly what somebody short of disk does — would otherwise get an
-        # archive of dangling links that restores to nothing.
-        with tarfile.open(part, "w:gz", dereference=True) as tar:
-            for root in roots:
-                tar.add(root, arcname=str(root))
-        os.replace(part, path)
+        with io.atomic_path(path) as part:
+            # dereference=True: `models/` and `reports/` are ordinary
+            # directories here, but a user who has symlinked one onto another
+            # volume — which is exactly what somebody short of disk does —
+            # would otherwise get an archive of dangling links that restores
+            # to nothing. It is not free: a symlink cycle inside an archived
+            # root recurses until tarfile runs out of stack or disk, and a
+            # large tree symlinked in is archived by value rather than as the
+            # one-line link it is on disk.
+            with tarfile.open(part, "w:gz", dereference=True) as tar:
+                for root, arcname in roots:
+                    tar.add(root, arcname=arcname)
     except OSError as exc:
-        part.unlink(missing_ok=True)
         print(f"backup: failed to write {path} ({exc}) — no archive was "
               f"written, and the previous ones are untouched")
         return None

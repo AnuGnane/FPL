@@ -90,23 +90,24 @@ def test_the_name_carries_the_second(tree):
     assert len(stamp) == 15 and stamp[8] == "-"       # YYYYMMDD-HHMMSS
 
 
-def test_a_part_file_is_neither_pruned_nor_reported_as_a_backup(tree):
-    """The archive is written to a dotted `.part` sibling and renamed. That
-    name must fall outside NAME_GLOB in both directions: `prune` must not
-    count it towards `keep`, and `latest_backup` must not report a
-    half-written file as the newest backup."""
+def test_a_temp_file_is_neither_pruned_nor_reported_as_a_backup(tree):
+    """The archive is written to `io.atomic_path`'s temp sibling and renamed.
+    That name — `gaffer-….tar.gz.<pid>.tmp` — must fall outside NAME_GLOB in
+    both directions: `prune` must not count it towards `keep`, and
+    `latest_backup` must not report a half-written file as the newest
+    backup."""
     dest = tree / "backups"
     dest.mkdir()
-    (dest / f".{backup.archive_name()}.part").write_text("half a tar")
+    (dest / f"{backup.archive_name()}.4242.tmp").write_text("half a tar")
     assert backup.latest_backup(dest) is None
     (dest / "gaffer-20260901-120000.tar.gz").write_text("x")
     backup.prune(dest, keep=1)
-    assert len(list(dest.glob(".*.part"))) == 1
+    assert len(list(dest.glob("*.tmp"))) == 1
     assert backup.latest_backup(dest)["path"].endswith(
         "gaffer-20260901-120000.tar.gz")
 
 
-def test_a_torn_write_leaves_no_archive_and_no_part(tree, monkeypatch):
+def test_a_torn_write_leaves_no_archive_and_no_temp(tree, monkeypatch):
     """A full disk mid-tar used to leave a truncated .tar.gz that matched
     NAME_GLOB — which made it the newest "backup" the Health line reported and
     the one `prune` kept. Now the failure is visible: no file, and None."""
@@ -126,7 +127,7 @@ def test_a_torn_write_leaves_no_archive_and_no_part(tree, monkeypatch):
     dest = tree / "backups"
     assert backup.run_backup(to=dest) is None
     assert not list(dest.glob("*.tar.gz"))
-    assert not list(dest.glob(".*.part"))
+    assert not list(dest.glob("*.tmp"))
 
 
 def test_a_missing_root_is_skipped_rather_than_fatal(tmp_path, monkeypatch):

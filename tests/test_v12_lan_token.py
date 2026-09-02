@@ -110,6 +110,35 @@ def test_a_same_length_wrong_token_is_refused(clone):
                        ).status_code == 403
 
 
+def test_the_comparison_really_is_compare_digest(clone, monkeypatch):
+    """The other half of the test above, which can only show that an equal-
+    length wrong token is refused — `==` would refuse it too, in variable
+    time. So this one watches the call: `compare_digest` is patched with a spy
+    that defers to the real one, and a write that reaches the middleware has
+    to have gone through it.
+
+    Patched on the `secrets` module itself rather than on a name in
+    `web/app.py`: the middleware imports `secrets` inside the request handler,
+    so there is no module-level name to replace and the attribute on the
+    module is what the call resolves through either way.
+    """
+    import secrets
+
+    real = secrets.compare_digest
+    calls = []
+
+    def spy(a, b):
+        calls.append((a, b))
+        return real(a, b)
+
+    monkeypatch.setattr(secrets, "compare_digest", spy)
+    client = TestClient(create_app(token="s3cret"))
+    assert client.post("/api/watchlist", json={},
+                       headers={"X-Gaffer-Token": "s3crft"}
+                       ).status_code == 403
+    assert calls == [(b"s3crft", b"s3cret")]
+
+
 def test_a_generated_token_is_not_predictable():
     from gaffer.web.app import generate_token
 

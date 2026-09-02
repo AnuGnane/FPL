@@ -153,9 +153,22 @@ def history() -> History:
 
 
 def _stat(path: Path) -> tuple[bool, str | None, float | None]:
+    """``(present, modified_at, age_hours)``, or three absences.
+
+    The ``stat`` is guarded here rather than at each call site, because the
+    race is in this function: ``exists()`` and ``stat()`` are two syscalls, and
+    a refresh job that rewrites its output in between deletes the file
+    underneath the second one. Both readers below — the freshness strip, drawn
+    on every page in the app, and ``/api/health`` — must cost one row for that
+    rather than a 500.
+    """
     if not path.exists():
         return False, None, None
-    modified = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
+    try:
+        stamp = path.stat().st_mtime
+    except OSError:
+        return False, None, None
+    modified = datetime.fromtimestamp(stamp, tz=timezone.utc)
     age = (datetime.now(timezone.utc) - modified).total_seconds() / 3600
     return True, modified.isoformat(), round(age, 2)
 
@@ -176,16 +189,9 @@ def freshness() -> Freshness:
     def _row(source: str, path: Path | None) -> FreshnessRow:
         if path is None:
             return FreshnessRow(source=source)
-        try:
-            present, modified, age = _stat(path)
-        except OSError:
-            # A grey row for this source rather than a 500 for the whole
-            # strip. The window is real and small: `_newest` globs a
-            # directory and then stats what it found, and a refresh job that
-            # rewrites its output in between deletes the file underneath. The
-            # strip is drawn on every page in the app, so one vanished file
-            # must cost one row and not every page.
-            return FreshnessRow(source=source)
+        # A file that vanishes between the glob and the stat is a grey row, not
+        # a 500 — `_stat` swallows that, for both readers at once.
+        present, modified, age = _stat(path)
         return FreshnessRow(source=source,
                             path=str(path) if present else None,
                             modified_at=modified, age_hours=age)
@@ -290,6 +296,12 @@ def health() -> Health:
         # keep showing the old pool sizes until the process restarted. One
         # TOML read per health poll is cheap; a card that will not update is
         # a card that teaches the user their edit did nothing.
+        #
+        # The clear is process-wide, not this call's: `build_pool` reads the
+        # same cached `optimizer_top_n`, so the first solve after any health
+        # poll pays one TOML read too. That is the whole cost, and it is the
+        # right way round — a solve that picks up the edited value is what a
+        # user who just edited it expects.
         optimizer_top_n.cache_clear()
         solver_top_n = optimizer_top_n()
     except Exception:  # noqa: BLE001 — a health page never 500s

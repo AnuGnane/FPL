@@ -73,6 +73,14 @@ def test_only_one_file_pins_the_absolute_config_field_count():
     # `fields(Config)` somewhere in the file, because `len(names) == N` is a
     # shape other suites use about other sets (`test_v12_io.py` counts temp
     # files that way).
+    #
+    # What it cannot see, stated so the next reader does not mistake a pass
+    # for proof: the pin bound to any other name (`assert len(keys) == 53`),
+    # written the other way round (`assert 53 == len(names)`), inequal
+    # (`>= 53`), split across lines, or reached through a variable
+    # (`count = len(names)` and an assert below). This rail catches the copy
+    # somebody makes from the example above it, which is how the eighth pin
+    # actually appears — not an adversary.
     pin = re.compile(r"^\s*assert\s+len\(\s*(?:names"
                      r"|(?:dataclasses\.)?fields\(\s*Config\s*\))\s*\)"
                      r"\s*==\s*\d+", re.M)
@@ -85,7 +93,13 @@ def test_only_one_file_pins_the_absolute_route_count():
     """The other half of the same rail, and the reason this file does not hold
     that number: v11 built the single home for it and W1 spent it there. Two
     files pinning one total is the shape both restructures existed to end, so
-    "exactly one, and it is v11's" is the claim rather than "not here"."""
+    "exactly one, and it is v11's" is the claim rather than "not here".
+
+    Blind in the same places as the config rail, plus one of its own: the
+    route total counted through any name but ``paths`` — inline as
+    ``len(create_app().openapi()["paths"])``, or bound as ``routes`` — passes
+    unseen. The rail is a guard against the copied example, not a proof.
+    """
     import re
 
     pin = re.compile(r"^\s*assert\s+len\(\s*(?:set\()?\s*paths\)?\s*\)"
@@ -192,11 +206,11 @@ def test_the_rename_lives_in_one_place_and_the_exceptions_are_named():
     — a recorded residual rather than tolerated drift, which is why this is an
     equality and not a ``<=``. A twenty-first copy fails here.
 
-    ``backup.py`` is the one addition the migration did not make and this
-    cycle did: the archive is renamed from a ``.part`` sibling into place, for
-    the reason ``atomic_write`` exists, but a tarball is streamed by
-    ``tarfile`` rather than handed over as bytes, so it uses ``os.replace``
-    directly instead of the helper.
+    ``backup.py`` is not among them, and the near miss is worth recording: a
+    streamed tarball is not handed to ``atomic_write`` as bytes, so it looked
+    like a case the helper could not serve. ``atomic_path`` yields the temp
+    *path* and serves it exactly — which also buys the archive the helper's
+    ``finally``, so a Ctrl-C mid-tar leaves no temp behind.
     """
     import pathlib
     import re
@@ -206,7 +220,7 @@ def test_the_rename_lives_in_one_place_and_the_exceptions_are_named():
     hits = sorted(p.relative_to(root).as_posix()
                   for p in root.rglob("*.py")
                   if pattern.search(p.read_text()))
-    assert hits == ["gaffer/backup.py", "gaffer/io.py", "gaffer/journal.py"]
+    assert hits == ["gaffer/io.py", "gaffer/journal.py"]
 
 
 # =====================================================================

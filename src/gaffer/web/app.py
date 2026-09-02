@@ -158,6 +158,15 @@ def create_app(*, token: str | None = None) -> FastAPI:
             # write into a 500 instead of a 403 — the header is attacker-
             # controlled, so the encode is `latin-1`/`replace` rather than
             # a decode that could itself raise.
+            #
+            # The two encodings differ on purpose and the mismatch is the
+            # contract: Starlette decodes header bytes as `latin-1`, so
+            # re-encoding that way recovers the bytes exactly as they came off
+            # the wire, while the configured token is a Python `str` this
+            # process owns and `utf-8` is what a byte-for-byte-equal client
+            # must have sent. So the wire encoding is *assumed* UTF-8: a
+            # non-ASCII token typed into a client that sends it as anything
+            # else is a refusal, not a match.
             sent = request.headers.get("X-Gaffer-Token", "") \
                 .encode("latin-1", "replace")
             if not secrets.compare_digest(sent, token.encode("utf-8")):

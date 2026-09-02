@@ -138,12 +138,18 @@ def whatif(transfers_in: list[int], transfers_out: list[int],
         except HTTPException as exc:
             # The 422 detail is `{"constraint", "error", "players"}`, shaped
             # for a form field the UI can outline in red. A model has no form,
-            # so it is flattened into the sentence `_safe` would have
-            # produced from any other failure.
+            # so it is flattened into the sentence `_safe` would have made of
+            # any other failure — returned here rather than re-raised into
+            # `_safe`, because this is an ordinary user error and `_safe`
+            # would print a traceback to stderr for it, which is the signal
+            # that means "a bug in this server".
             detail = exc.detail if isinstance(exc.detail, dict) else {}
-            raise ValueError(
-                f"{detail.get('constraint', 'invalid')}: "
-                f"{detail.get('error', exc.detail)}") from exc
+            return {"error": f"{detail.get('constraint', 'invalid')}: "
+                             f"{detail.get('error', exc.detail)}"}
+        # `solve_whatif` loads the solve state again from disk: it takes
+        # `(req, gw)` and lives in a protected module, so the state cannot be
+        # passed through without editing it. One extra read of one JSON file
+        # per call.
         return router.solve_whatif(req, gw)
     return _safe(call)
 
