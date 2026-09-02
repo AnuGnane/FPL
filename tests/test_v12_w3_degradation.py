@@ -578,6 +578,14 @@ def test_the_route_total_did_not_move(tmp_path, monkeypatch):
 # the branch point.
 W2_TIP = "865f8dc"
 
+# v12 W4 (orchestrator ruling 2026-09-03): the W3 rail audits W3's range, not
+# everyone's. ``W2_TIP..HEAD`` is open-ended, so the moment W3 merged and W4
+# was cut from that merge, the rail began reporting W4's protected diff under
+# W3's name — the same failure as Minor 3 above, arriving from the other end of
+# the range. W3's merge tip on main closes it, and W4's own rail (T21) pins its
+# end the same way at its gate commit.
+W3_TIP = "f903959"
+
 W3_AUTHORIZED = {
     # The STOP enumerations, task by task.
     "src/gaffer/optimize/milp.py",              # T1, T5, T10 — §4.1/§4.3/§4.5
@@ -616,19 +624,24 @@ def test_every_protected_file_w3_touched_was_authorized():
     ``scripts/s2_replay.py`` are in the protected list and in no enumeration,
     so a hit on any of them fails here.
 
-    The range is W3's own — ``W2_TIP..HEAD``, this branch's point of departure
-    to its head — and not ``merge-base(HEAD, main)..HEAD``: once W3 merges,
-    that base moves and this rail would start auditing whatever came next. The
-    pin is re-checked after every rebase for the same reason (see ``W2_TIP``).
-    If it is unreachable — a shallow clone, an export, a tree with no git at
-    all — the audit is skipped rather than answered from a range that does not
-    exist.
+    The range is W3's own — ``W2_TIP..W3_TIP``, this branch's point of
+    departure to its merge tip — and not ``merge-base(HEAD, main)..HEAD``:
+    once W3 merges, that base moves and this rail would start auditing
+    whatever came next. Both ends are pinned for that reason. The end was
+    ``HEAD`` until W4 was cut from W3's merge and the rail began answering for
+    W4's diff (see ``W3_TIP``); a rail with a floating end is a rail that
+    eventually audits somebody else. Either pin unreachable — a shallow clone,
+    an export, a tree with no git at all — and the audit is skipped rather
+    than answered from a range that does not exist.
     """
     probe = subprocess.run(["git", "cat-file", "-e", f"{W2_TIP}^{{commit}}"],
                            capture_output=True, check=False)
-    if probe.returncode:
-        pytest.skip(f"{W2_TIP} unreachable — W3's range is not in this tree")
-    changed = subprocess.run(["git", "diff", "--name-only", W2_TIP, "HEAD"],
+    end = subprocess.run(["git", "cat-file", "-e", f"{W3_TIP}^{{commit}}"],
+                         capture_output=True, check=False)
+    if probe.returncode or end.returncode:
+        pytest.skip(f"{W2_TIP}..{W3_TIP} unreachable — W3's range is not in "
+                    f"this tree")
+    changed = subprocess.run(["git", "diff", "--name-only", W2_TIP, W3_TIP],
                              capture_output=True, text=True,
                              check=False).stdout.split()
     touched = {p for p in changed if _protected(p)}
