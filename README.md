@@ -184,6 +184,11 @@ hit_cost = 4         # points charged per extra transfer
 #                    # falls back to the shipped value for that position, and
 #                    # Model → Health prints what is actually in force.
 
+[model]
+xg_per_shot = true   # non-penalty xG per shot, per Understat window, on the
+                     # attacking model. On since the v12 §3.5 arm; `false`
+                     # fits the pre-v12 head.
+
 [odds]
 # api_key = "..."    # optional, from the-odds-api.com
 
@@ -643,6 +648,16 @@ gameweek, whose picks are not public yet and therefore not in the log, the
 captain card falls back to its most-captained note while the explorer's rows
 still carry their arrows. Keying the explorer to the served gameweek instead
 would blank a whole column on precisely the days the page is read most.
+
+**`[model] xg_per_shot` ships on.** The attacking model reads non-penalty xG
+per shot at each Understat window — shot quality beside the shot volume it
+already had. The 2026-09-02 arm returned `keep` on its pre-registered bar: no
+bucket regressed beyond its own seed spread, and the hauler delta was *inside*
+that spread, so this is a free column kept rather than a measured gain banked.
+It takes effect on the next `gaffer train`; a model fitted before the flip
+keeps predicting exactly as it did, because its own `cols_` do not name the
+new columns and the extra columns on the frame are simply not read. Set
+`xg_per_shot = false` to fit the pre-v12 head.
 
 A flag's **lead time is whole days between the snapshot date and the deadline
 date**, and a snapshot dated the deadline day is not counted at all. The

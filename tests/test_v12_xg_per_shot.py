@@ -150,10 +150,14 @@ def test_the_attacking_model_is_told_only_when_the_flag_is_on(monkeypatch,
     assert set(XG_PER_SHOT_FEATURES) <= set(tr.attacking_features())
 
 
-def test_the_flag_defaults_off_and_survives_a_missing_file(tmp_path):
+def test_the_flag_defaults_on_and_survives_a_missing_file(tmp_path):
+    """Flipped by the 2026-09-02 §3.5 arm, which returned ``keep``. The
+    default is the shipped behaviour and an unreadable file must fall back to
+    it rather than to a head nobody chose — the same rule as before the flip,
+    read the other way round."""
     from gaffer.config import xg_per_shot
 
-    assert xg_per_shot(tmp_path / "nothing.toml") is False
+    assert xg_per_shot(tmp_path / "nothing.toml") is True
     broken = tmp_path / "broken.toml"
-    broken.write_text("[model\nxg_per_shot = true")
-    assert xg_per_shot(broken) is False
+    broken.write_text("[model\nxg_per_shot = false")
+    assert xg_per_shot(broken) is True

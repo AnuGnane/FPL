@@ -30,10 +30,10 @@ top_n = { GKP = 8, DEF = 22, MID = 26, FWD = 14 }
 
 [model]
 # Non-penalty xG per shot, per Understat window, on the attacking model
-# (v12 §3.5). Off until scripts/v12_xgps_arm.py clears its pre-registered bar:
-# haulers RMSE improves and no other bucket worsens by more than its own
-# seed-spread, over three seed bases.
-xg_per_shot = false
+# (v12 §3.5). On since the 2026-09-02 arm returned keep: no bucket regressed
+# beyond its seed spread, and the hauler delta was inside the spread — kept as
+# a free column, not banked as a measured gain. `false` fits the pre-v12 head.
+xg_per_shot = true
 
 [scenarios]
 # n = 0 disables the sweep and solves once, deterministically. `gaffer advise
