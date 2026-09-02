@@ -170,6 +170,114 @@ def test_the_gap_can_be_negative_when_the_incumbent_was_constrained():
     assert any(alt.gap < 0 for alt in alts)
 
 
+# --- W3 T4-T7 review: the gap has to be a distance, not two frames ---------
+
+def _p_play(pool) -> dict[int, dict[int, float]]:
+    """An informative minutes table: §F1's weights only do anything when the
+    probabilities actually differ between players."""
+    return {int(c): {1: 0.4 + (int(c) % 5) * 0.1,
+                     2: 0.4 + (int(c) % 3) * 0.15} for c in pool["code"]}
+
+
+def test_weighting_only_the_alternatives_turns_the_gap_into_its_opposite():
+    """Why the incumbent's own weighting has to be mirrored.
+
+    ``gap`` is ``incumbent.objective - alternative.objective``, which is a
+    distance only while both were solved under one objective. Solve the
+    incumbent unweighted — which is exactly what ``run_advise`` is left holding
+    when the sweep runs and then *fails* — and the alternatives under §F1's
+    frailty weights, and the gaps here do not merely move: both flip sign. The
+    board would print "AHEAD of Plan A" for two plans that are behind it.
+    """
+    pool, state = _pool(), _state()
+    plan = solve_plan(pool, state, **KW)
+    same_frame = [a.gap for a in
+                  alternative_plans(pool, state, plan, max_gap=1e6, **KW)]
+    mixed = [a.gap for a in
+             alternative_plans(pool, state, plan, max_gap=1e6, **KW,
+                               p_play=_p_play(pool))]
+    assert all(g > 0 for g in same_frame)
+    assert all(g < 0 for g in mixed)
+
+
+def test_the_alternatives_are_solved_exactly_as_the_incumbent_was():
+    """``run_advise``'s half of the same claim, as a structural rail.
+
+    There is no fixture that runs ``run_advise`` — it is the whole weekly
+    pipeline — so this is asserted the way v10's T10-A rails assert the p_play
+    seam: on the tree. The bundle handed to ``alternative_plans`` must be
+    conditional on whether the incumbent itself was weighted, and that flag
+    must be corrected precisely where ``coherent_plan`` replaces the plan.
+    """
+    import ast
+    import inspect
+    import textwrap
+
+    from gaffer.advise import run_advise
+
+    tree = ast.parse(textwrap.dedent(inspect.getsource(run_advise)))
+    assigns = [n for n in ast.walk(tree) if isinstance(n, ast.Assign)]
+
+    def targets(node):
+        return [t.id for t in node.targets if isinstance(t, ast.Name)]
+
+    bundle = [n for n in assigns if "weighted" in targets(n)]
+    assert len(bundle) == 1
+    value = bundle[0].value
+    # Conditional, not a bare dict: a bare dict is the bug.
+    assert isinstance(value, ast.IfExp)
+    assert isinstance(value.test, ast.Name)
+    assert value.test.id == "incumbent_weighted"
+    assert isinstance(value.orelse, ast.Dict) and not value.orelse.keys
+
+    flag = [n for n in assigns if "incumbent_weighted" in targets(n)]
+    # Two writes and no more: the initial answer, and the one correction.
+    assert len(flag) == 2
+    assert isinstance(flag[0].value, ast.UnaryOp)          # not sweep_runs
+    assert isinstance(flag[1].value, ast.Constant)
+    assert flag[1].value.value is True
+
+    # And the correction sits with the coherent plan, not with the sweep's
+    # own `if`: a sweep that ran and died must leave the flag False.
+    src = inspect.getsource(run_advise)
+    coherent = src.index("plan = coherent_plan(")
+    assert coherent < src.index("incumbent_weighted = True") < src.index(
+        "weighted = {\"p_play\": p_play_by_code}")
+
+
+def test_fixed_moves_is_refused_rather_than_silently_honoured():
+    """The docstring said "must not"; now the function checks. An alternative
+    pinned to the incumbent's moves is the incumbent with a cut over it."""
+    pool, state = _pool(), _state()
+    plan = solve_plan(pool, state, **KW)
+    with pytest.raises(GafferError, match="is not an alternative"):
+        alternative_plans(pool, state, plan, max_gap=1e6, **KW,
+                          fixed_moves=FixedMoves(buys=[4], sells=[1]))
+
+
+def test_a_failing_alternative_solve_ends_the_search_and_keeps_what_it_found(
+        monkeypatch, capsys):
+    """Two plans are a better answer than none, and the caller is an advice
+    run under a deadline — but the failure is said out loud."""
+    import gaffer.optimize.milp as milp_mod
+
+    pool, state = _pool(), _state()
+    plan = solve_plan(pool, state, **KW)
+    real, calls = milp_mod.solve_plan, {"n": 0}
+
+    def flaky(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 2:
+            raise RuntimeError("the solver fell over")
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(milp_mod, "solve_plan", flaky)
+    alts = alternative_plans(pool, state, plan, max_gap=1e6, **KW)
+    assert len(alts) == 1
+    assert alts[0].gap is not None
+    assert "no further distinct plan" in capsys.readouterr().out
+
+
 def test_the_lp_golden_still_matches_with_no_cuts(tmp_path):
     """Task 1's guard, re-run: ``no_good=None`` must add nothing to the
     model."""

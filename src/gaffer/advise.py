@@ -776,6 +776,12 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     # squad — there is no comparison to keep honest and this solve *is* the
     # advice, so withholding the weights here would cost fast advice and every
     # initial-squad week the whole of §F1 to protect a gate they never reach.
+    # v12 W3 §4.3 (specs/2026-09-01-gaffer-v12-program-design.md): whether the
+    # plan the user ends up being shown carries the minutes weights. It starts
+    # as the answer for the raw solve below and is corrected once, where the
+    # coherent plan replaces it. §4.3's alternatives are solved through this
+    # flag so that `gap` is a distance and not a difference of two frames.
+    incumbent_weighted = not sweep_runs
     if sweep_runs:
         plan = solve_plan(pool, state, **solve_kw)
     else:
@@ -831,6 +837,10 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
             # actually recommended, after the sweep has decided the moves.
             plan = coherent_plan(pool, state, decision, **solve_kw,
                                  p_play=p_play_by_code)
+            # v12 W3 §4.3: the incumbent is now the weighted one. The sweep
+            # dying leaves this False, which is the branch that made `gap` a
+            # comparison of two objectives.
+            incumbent_weighted = True
             first = plan.gw_plans[0]
             move_freqs = freqs.to_dict("records")
             raw_agrees = decision.raw_optimum_agrees
@@ -993,8 +1003,11 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     # recommendation and the gap comes back negative; that is the cost of
     # coherence, made visible (plan A5).
     #
-    # The cost is two more MILP solves on a weekly run. ``alt_plan_max_gap = 0``
-    # returns before spending either, and the initial-squad mode is skipped
+    # The cost is up to *four* more MILP solves on a weekly run, not two: each
+    # alternative is one `solve_plan`, and a `solve_plan` carrying an
+    # informative `p_play` is two passes (§F1's re-weighted second pass), plus
+    # a `_decision_scales` pass per plan on top. ``alt_plan_max_gap = 0``
+    # returns before spending any of it, and the initial-squad mode is skipped
     # outright: fifteen opening buys have no second-best worth tabbing through.
     #
     # Spelled through a bundle rather than inline: v10's T10-A rail counts
@@ -1002,7 +1015,14 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     # the raw solve of the modes with no sweep), and this is a third consumer
     # that is neither of them. The rail's claim is about *which solves are
     # recommended*, and an alternative to a recommendation is not one of them.
-    weighted = {"p_play": p_play_by_code}
+    #
+    # Conditional, and that is the whole point of the flag: `gap` is
+    # `incumbent.objective - alternative.objective`, which is a distance only
+    # while both were solved under the same objective. When the sweep runs and
+    # then *fails*, the incumbent stays the unweighted raw solve — so weighting
+    # the alternatives there would subtract two different frames and print the
+    # difference as points behind Plan A.
+    weighted = {"p_play": p_play_by_code} if incumbent_weighted else {}
     alt_rows: list[dict] = []
     if cfg.alt_plan_max_gap > 0 and state.owned_codes:
         for alt in alternative_plans(pool, state, plan,

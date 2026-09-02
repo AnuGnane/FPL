@@ -215,6 +215,17 @@ class Plan:
     coherence constraint, and it is the number a reader deciding whether to
     override the sweep wants to see.
 
+    **A second cause of a negative gap, and it is not the sweep.** ``§F1``'s
+    second pass re-scales the bench and vice coefficients from the *plan it
+    just solved* (``_decision_scales``), so the incumbent and each alternative
+    are scored under coefficient sets derived from different XIs. Two plans
+    compared across two coefficient sets are not compared on one objective,
+    and a small gap of either sign can be that rather than a real difference.
+    Re-scoring every alternative under the incumbent's own scales is the fix
+    and is **not** done here — it is recorded as a residual for the §4.3 gate
+    write-up. Until it is, no surface may attribute a negative gap to the
+    coherence constraint alone.
+
     An **objective** gap, not an EP one: ``objective`` is decayed by week,
     carries the bench curve and the vice hedge, and prices banked transfers
     and the bank itself. Re-scoring the alternatives in raw EP would compare
@@ -557,6 +568,14 @@ def alternative_plans(pool: pd.DataFrame, state: SolveInput,
     """
     if max_gap <= 0 or max_plans <= 1:
         return []
+    # v12 W3 §4.3: the docstring's "must not" is checked rather than trusted.
+    # An alternative pinned to the incumbent's own moves is the incumbent with
+    # a cut over it — infeasible, or the same decision back under a different
+    # name — and either way the gap it reported would be about nothing.
+    if solve_cfg.get("fixed_moves") is not None:
+        raise GafferError(
+            "alternative_plans was handed fixed_moves: an alternative "
+            "constrained to make the incumbent's moves is not an alternative")
     cuts = [move_set(incumbent)]
     out: list[Plan] = []
     while len(out) < max_plans - 1:
