@@ -164,10 +164,18 @@ def load_config(path: Path | str = "config.toml") -> Config:
     digest = raw.get("digest", {})
     backup = raw.get("backup", {})
     web = raw.get("web", {})
+    # v12 W2 §3.4 (specs/2026-09-01-gaffer-v12-program-design.md). The
+    # program's solver knobs live in [optimizer] and this section is splatted
+    # wholesale, so a knob read by a module-level reader has to be lifted out
+    # first or it arrives at Config.__init__ as an unexpected keyword. Popped
+    # by name, so a *typo* under [optimizer] still raises loudly — and so that
+    # W1's top_n, which is a real field, keeps travelling through the splat.
+    optimizer = {k: v for k, v in raw.get("optimizer", {}).items()
+                 if k not in NON_FIELD_OPTIMIZER_KEYS}
     return Config(
         entry_id=raw["fpl"]["entry_id"],
         league_id=raw["fpl"]["league_id"],
-        **raw.get("optimizer", {}),
+        **optimizer,
         **raw.get("data", {}),
         # Read explicitly rather than splatted: [odds] is optional and its
         # TOML keys do not all match the dataclass field names. Both new
@@ -299,6 +307,57 @@ def serving_config() -> Config:
         return load_config()
     except Exception:  # noqa: BLE001 — serving never blocks on config
         return Config(entry_id=0, league_id=0)
+
+
+NON_FIELD_OPTIMIZER_KEYS = ("price_timing",)
+"""``[optimizer]`` keys that are **not** :class:`Config` fields.
+
+``load_config`` splats ``[optimizer]`` wholesale, so a key here that nobody
+pops is a ``TypeError`` out of ``Config.__init__`` on the next advise run.
+``price_timing`` is read by a module-level reader instead — see
+:func:`price_timing` for why a field was not available to it.
+
+**One entry, and ``top_n`` is deliberately not the second.** W1 §2.6 ships
+``top_n`` as a real ``Config`` field with a ``default_factory``, splatted from
+this same section and read through ``optimizer_top_n()``; popping it here
+would strip a configured pool size out of the constructor and hand every user
+the dataclass default, silently. A key belongs in this tuple only when
+``Config`` has no field of that name.
+
+A **named** tuple and not a ``fields(Config)`` filter: a filter would also
+swallow ``horizen = 6``, and a silently ignored typo in the horizon is a
+season of quietly wrong advice.
+"""
+
+
+def price_timing(path: Path | str = "config.toml") -> bool:
+    """``[optimizer] price_timing`` (v12 §3.4). Default **off**.
+
+    Off, against spec §3.4's ``true``, by the coordinator's 2026-09-02 ruling:
+    CONVENTIONS §6 says an arm that cannot demonstrate an effect ships behind
+    its flag, and this term is 0.008 points against a solver gap of about 0.02
+    (plan A6). The flip rule is pre-registered in the W2 gate rather than left
+    to taste.
+
+    A module-level reader rather than a :class:`Config` field, for
+    :func:`lineup_providers`' reason: another field moves
+    ``len(dataclasses.fields(Config))``, which several **protected**
+    degradation files pin, and W1 §2.6 has already paid that toll once for
+    ``top_n``. Paying it twice in one program for a flag nobody sets is not a
+    trade this workstream is entitled to make. See
+    :data:`NON_FIELD_OPTIMIZER_KEYS`, which is what stops this key reaching
+    ``Config.__init__`` through the ``[optimizer]`` splat — and note that
+    ``top_n``, which *is* a field, must not be listed there.
+
+    Never raises. A missing file, a missing section and corrupt TOML all give
+    the shipped default: this is read on the solve path, and a solve must not
+    die of a config file.
+    """
+    try:
+        raw = tomllib.loads(Path(path).read_text())
+    except Exception:  # noqa: BLE001 — a solve-path reader never raises
+        return False
+    return bool(raw.get("optimizer", {}).get("price_timing", False))
 
 
 def optimizer_top_n(path: Path | str = "config.toml") -> dict[str, int]:

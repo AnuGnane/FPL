@@ -409,11 +409,19 @@ def solve_plan(pool: pd.DataFrame, state: SolveInput, *, decay: float,
     the operative word and a solver dying under a deadline must not cost the
     week its advice.
     """
+    # v12 W2 §3.4 (specs/2026-09-01-gaffer-v12-program-design.md). Read here
+    # rather than carried on SolveInput: seven call sites construct one and
+    # two of them are protected files. Empty dict when the switch is off, the
+    # log is missing, or nothing is near a threshold — and an empty dict makes
+    # every expression below arithmetically today's.
+    from gaffer.price_timing import owned_price_falls
+
     kw = dict(decay=decay, bench_weight=bench_weight,
               vice_weight=vice_weight, ft_value=ft_value,
               itb_value=itb_value, hit_cost=hit_cost,
               fixed_moves=fixed_moves, ft_lambda=ft_lambda,
-              ft_use_penalty=ft_use_penalty, bench_curve=bench_curve)
+              ft_use_penalty=ft_use_penalty, bench_curve=bench_curve,
+              price_fall=owned_price_falls(state.owned_codes))
     pp = _p_play_lookup(pool, state, p_play)
     first = _solve_once(pool, state, **kw, p_play=pp)
     if pp is None:
@@ -439,6 +447,7 @@ def _solve_once(pool: pd.DataFrame, state: SolveInput, *, decay: float,
                 ft_use_penalty: float = 0.0,
                 bench_curve: list[float] | None = None,
                 p_play: dict[int, dict[int, float]] | None = None,
+                price_fall: dict[int, float] | None = None,
                 bench_scale: dict[int, tuple[float, float]] | None = None,
                 vice_scale: dict[int, float] | None = None,
                 fixed_xi: dict[int, list[int]] | None = None,
@@ -629,6 +638,28 @@ def _solve_once(pool: pd.DataFrame, state: SolveInput, *, decay: float,
                     obj.append(d * e * bench_curve[s] * out_f
                                * slot[c][t][s])
         obj.append(-hit_cost * d * hits[t])
+        # v12 W2 §3.4 (specs/2026-09-01-gaffer-v12-program-design.md). Selling
+        # a falling player next week instead of this week loses 0.1m of his
+        # sale, which the objective already prices at itb_value per million
+        # (see the bank term below). So a deferred sale is charged exactly
+        # that, weighted by tonight's fall probability. No term for a rise:
+        # spec §8 and the ROADMAP both name price chasing as rejected.
+        #
+        # Undecayed, deliberately, like the bank term it is denominated
+        # against: the money is lost at the moment of the sale and the
+        # horizon's decay is about the value of *points* later, not of pounds.
+        #
+        # It is a tie-breaker and not a driver, and the magnitude says so:
+        # 0.008 points at the shipped itb_value of 0.08, against a solver
+        # whose default relative gap on a real horizon is around 0.02. It
+        # decides exactly-equal sell timings, which is where the question
+        # actually arises, and it will not move a plan that has any real EP
+        # difference in it (plan A6).
+        if price_fall and t != T[0]:
+            for c in codes:
+                p = price_fall.get(c)
+                if p:
+                    obj.append(-p * 0.1 * itb_value * tout[c][t])
         # A tiny friction per transfer made. EP-neutral churn is what the
         # scenario noise flips week to week, and a fraction of a point of
         # resistance settles it without ever outweighing a real gain. Waived
