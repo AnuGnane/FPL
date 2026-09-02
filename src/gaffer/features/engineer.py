@@ -1536,3 +1536,123 @@ def best_mode_shrinkage_k(df: pd.DataFrame,
         if score > best_score:
             best_score, best_k = score, float(k)
     return best_k
+
+
+# --- v12 W4 §5.2: role and published-fixture density ---------------------
+
+ROLE_FEATURES = ["role_wb_share", "role_wb_missing"]
+"""v12 W4 §5.2 arm 1. **A new arm, not the withdrawn congestion one.**
+
+``role_wb_share`` is the share of a defender's last five starts in which the
+per-match profile reads as a wing-back rather than a centre-back. It is built
+from FPL-Core-Insights' ``playermatchstats`` and answers a question the FPL
+feed cannot: two 5.0m defenders at the same club have very different minutes
+risk when one of them is the width in a back three.
+
+**The classification is a stated convention, not a fitted classifier.** A
+start is wing-back when the player recorded at least :data:`WB_CROSSES`
+accurate crosses **or** at least :data:`WB_BOX_TOUCHES` touches in the
+opposition box. Those two columns were chosen because they are the only
+positional signal published in *every* season the archive covers — the
+2024-2025 layout has no ``defensive_contributions`` at all (W4 plan A3) — and
+because a rule that used a column present in two seasons of three would be a
+season indicator wearing a role's name, which is exactly what withdrew v5's
+:data:`CONGESTION_FEATURES`.
+
+``role_wb_missing`` is 1 for a non-defender, for a defender with fewer than
+:data:`WB_MIN_STARTS` prior starts, and on a machine with no collection. Three
+different silences, one indicator: LightGBM handles the NaN natively and the
+indicator is what lets it separate "we do not know" from "we know it is zero".
+"""
+
+WB_CROSSES = 1
+WB_BOX_TOUCHES = 3
+WB_MIN_STARTS = 5
+WB_STARTER_MINUTES = 60
+"""Thresholds of the wing-back rule. Conventions, written down here so a later
+reader changes them deliberately rather than discovering them in a comprehension."""
+
+
+def _starts_frame(stats: pd.DataFrame) -> pd.DataFrame:
+    """``playermatchstats`` -> one row per *start*, with the wb indicator.
+
+    A start is ``start_min <= 1`` — the archive writes the minute a player came
+    on, so 0 is the whistle — or, where that column is null,
+    ``minutes_played >= WB_STARTER_MINUTES``, the house ``STARTER_MINUTES``
+    definition. A substitute who crossed three times in twenty minutes is not
+    evidence about his role in the XI, and counting him would make every
+    attacking sub read as a wing-back.
+
+    The indicator column is ``wb`` and not ``_wb``: ``itertuples`` renames any
+    field whose name starts with an underscore to a positional ``_1``, so the
+    reader below would raise ``AttributeError`` on a name it had just written.
+    """
+    need = {"season_idx", "gw", "code"}
+    if stats is None or stats.empty or not need.issubset(stats.columns):
+        return pd.DataFrame(columns=["season_idx", "gw", "code", "wb"])
+    work = pd.DataFrame({
+        "season_idx": pd.to_numeric(stats["season_idx"], errors="coerce"),
+        "gw": pd.to_numeric(stats["gw"], errors="coerce"),
+        "code": pd.to_numeric(stats["code"], errors="coerce")})
+    for col in ("minutes_played", "start_min", "accurate_crosses",
+                "touches_opposition_box"):
+        work[col] = (pd.to_numeric(stats[col], errors="coerce")
+                     if col in stats.columns else float("nan"))
+    started = np.where(work["start_min"].notna(),
+                       work["start_min"] <= 1.0,
+                       work["minutes_played"] >= WB_STARTER_MINUTES)
+    work = work[pd.Series(started, index=work.index).fillna(False)
+                & work["season_idx"].notna() & work["gw"].notna()
+                & work["code"].notna()]
+    if work.empty:
+        return pd.DataFrame(columns=["season_idx", "gw", "code", "wb"])
+    wb = ((work["accurate_crosses"].fillna(0.0) >= WB_CROSSES)
+          | (work["touches_opposition_box"].fillna(0.0) >= WB_BOX_TOUCHES))
+    work["wb"] = wb.astype("float64")
+    # A double gameweek is two starts, and both of them are evidence; the
+    # aggregation below therefore counts matches, not gameweeks.
+    return work[["season_idx", "gw", "code", "wb"]]
+
+
+def add_role_wb_share(df: pd.DataFrame,
+                      stats: pd.DataFrame | None) -> pd.DataFrame:
+    """``df`` with :data:`ROLE_FEATURES` appended. Never reorders rows.
+
+    ``stats`` is the concatenation of ``load_core_insights(season, "players")``
+    over the collected seasons, or ``None`` on a machine that has not run the
+    collector — in which case every row is missing, which is the documented
+    degradation and is what the arm's lever guard checks for before it
+    measures anything.
+
+    Strictly backward-looking: only starts at a *lower* gameweek in the *same*
+    season count. ``<`` rather than ``<=`` because the fixture being predicted
+    has not been played, and a season boundary is a hard stop because a role
+    under last season's manager is not this season's role.
+    """
+    out = df.copy()
+    starts = _starts_frame(stats if stats is not None else pd.DataFrame())
+    share = pd.Series(float("nan"), index=out.index, dtype="float64")
+    if not starts.empty and {"season_idx", "gw", "code",
+                             "position"}.issubset(out.columns):
+        starts = starts.sort_values(["code", "season_idx", "gw"])
+        by_key: dict[tuple[int, int], list[tuple[int, float]]] = {}
+        for r in starts.itertuples():
+            by_key.setdefault((int(r.season_idx), int(r.code)), []).append(
+                (int(r.gw), float(r.wb)))
+        idx = pd.to_numeric(out["season_idx"], errors="coerce")
+        gws = pd.to_numeric(out["gw"], errors="coerce")
+        codes = pd.to_numeric(out["code"], errors="coerce")
+        values = []
+        for si, gw, code, pos in zip(idx, gws, codes, out["position"]):
+            if str(pos) != "DEF" or pd.isna(si) or pd.isna(gw) \
+                    or pd.isna(code):
+                values.append(float("nan"))
+                continue
+            prior = [v for g, v in by_key.get((int(si), int(code)), [])
+                     if g < int(gw)]
+            values.append(float(np.mean(prior[-WB_MIN_STARTS:]))
+                          if len(prior) >= WB_MIN_STARTS else float("nan"))
+        share = pd.Series(values, index=out.index, dtype="float64")
+    out["role_wb_share"] = share
+    out["role_wb_missing"] = share.isna().astype("float64")
+    return out
