@@ -176,8 +176,16 @@ bench_weight = 0.10  # weight on bench points
 ft_value = 1.5       # points value of holding a free transfer
 itb_value = 0.05     # points per 1.0m in the bank at horizon end
 hit_cost = 4         # points charged per extra transfer
+<<<<<<< HEAD
 price_timing = true  # charge a deferred sale its expected overnight price
                      # drop. On since the v12 W2 gate; `false` drops the term.
+=======
+alt_plan_max_gap = 2.0
+                     # v12: how far behind the recommended plan an alternative
+                     # may sit and still be offered as Plan B or Plan C, in the
+                     # solver's own objective points. 0 turns the search off;
+                     # each alternative costs one more MILP solve.
+>>>>>>> ff2fa0e (docs: what W3 changed, and the two things it left open)
 # top_n = {GKP = 8, DEF = 22, MID = 26, FWD = 14}
 #                    # how many players per position reach the solver at all.
 #                    # Merged over these defaults, so tuning one position does
@@ -712,6 +720,77 @@ quietly fixed.**
    popped before the splat (`price_timing`) — never both, and never neither. A
    typo under `[optimizer]` still raises, which is why that tuple is named
    rather than derived from the field list.
+
+### What the solver is allowed to say (v12 W3)
+
+**Must sell.** The What-If lab has a fourth constraint beside lock, ban and
+force in: *sell this player*, honoured in the first week of the horizon, with
+the sale credited to the bank. That is the whole difference from `ban`, which
+takes a player out of every week and never pays you for him — and until this
+cycle `ban` was what the Board's "Try these changes" button handed over for a
+planned sale, so a sell also forbade buying him back three weeks later and
+priced the replacement out of money you did not have. The board now hands over
+a **Must sell**. It is a picker rather than a free-text field, and the names in
+it are validated as *owned* at solve time (`force_out_not_owned`), so an
+unowned name is refused at the input instead of quietly doing nothing. Four
+more combinations are refused the same way: locking and selling the same
+player, banning and selling him, buying and selling him, and a must-sell on a
+free hit — which conjures a squad from nothing and so has nobody to sell.
+
+**Plan A / B / C.** The Board's strip carries the two next-best *distinct*
+plans, found by re-solving with a no-good cut over the recommended plan's move
+set. Each one's card names its gap from Plan A **in the solver's own objective
+points** — decayed by week, carrying the bench curve and the vice hedge,
+pricing banked transfers and the bank itself — and not in raw expected points,
+because re-scoring in xPts would compare two plans on a quantity neither of
+them was chosen by. **The gap is signed and a negative one means the
+alternative is ahead**: the recommended plan carries the scenario sweep's
+moves as a constraint and an alternative does not, so the coherence constraint
+has a price and this is the first surface that shows it. Each alternative
+costs one more MILP solve on the weekly advise run; `[optimizer]
+alt_plan_max_gap = 0` turns the search off entirely, and the shipped 2.0 also
+stops it early when nothing else is close.
+
+**The availability draw.** The scenario sweep can now draw *whether each
+player turned out at all* — a Bernoulli on the minutes model's `p_play`, per
+scenario, from its own generator — before the EP noise is applied to whoever
+survived. "Did he play" is the largest single source of forecast error, and a
+sweep that only widened the EP band was asking a softer question than the one
+the week actually asks. It ships **off**, behind `[scenarios]
+draw_availability`, until the captain-support gate has measured it (CONVENTIONS
+§6): off is the pre-v12 sweep to the byte, because the normal is drawn for
+every cell either way and the two arms differ in the zeroing alone.
+
+**Residual — `raw_optimum_agrees` will read `False` more often** once the draw
+is switched on. The line on the report compares the raw optimum against the
+sweep's plurality, and with the draw on the sweep models a risk the raw solve
+does not, so the two will part company more often than they used to. That
+disagreement is *information* rather than instability: it is the sweep doing
+the job the flag was added for. Read a `False` there as "the raw optimum
+ignores availability and the sweep does not", not as "the plan is fragile".
+
+**Residual — the chip pair is data-gated.** `wildcard+bboost` is priced as one
+decision, a wildcard in one week and a bench boost in a double gameweek later
+in the horizon, and **no machine can show it today**: the row needs a `[dgw]`
+entry in `data/chip_scenarios.toml`, the writer refuses to create that file
+while every gameweek of the published fixture list has ten fixtures, and every
+one of the 2026-27 gameweeks does. An empty chip table with five columns and no
+pair row is the correct state, not a bug. It unblocks at the first real
+rearrangement.
+
+Two smaller things worth knowing before you go looking for them. Every chip row
+and the wildcard verdict now carry a `threshold_source` saying *why* the bar is
+what it is — `theta`, or one of three different flat fallbacks — but no surface
+prints the sentence in full: it is rendered as a one-character `θ`/`flat`
+marker with the sentence as its title text. The source is evaluated at the
+**first gameweek of the horizon**, so a row for a later week reports the source
+of the bar that week's lookup gave, not of a bar computed for the week you are
+reading about. And of those fallbacks, `flat: gameweek outside the calibrated
+window` is effectively unreachable: `stopping_thresholds` fills every week of
+both halves of the season, so a gap in the calibration is missing information
+rather than a missing key, and the window fallback fires only on a gameweek the
+season does not have — GW39 — which is what an off-by-one in a caller's horizon
+looks like. It is not dead code; it is a rail on somebody else's arithmetic.
 
 ### Pinning a player (v8e)
 

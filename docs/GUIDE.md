@@ -168,11 +168,19 @@ An **EO lens** toggle tints the pitch by how owned each player is; a
 - *Board* (v11): the solved horizon laid out week by week — buys, sells,
   prices, hits, chip, and the bank after each week. Price-change warnings
   ride each name. "Try these changes" hands a week to the What-If lab
-  prefilled; the board itself never re-solves.
-- *What-If*: lock, ban or force players, cap the hits, and re-solve the
-  real MILP. The diff shows what changed; a sensitivity card re-solves the
-  board twenty times under noise so you can tell a robust move from a
-  coin-flip.
+  prefilled; the board itself never re-solves. A **Plan A / B / C** strip
+  (v12 W3) switches between the recommended plan and the two next-best
+  *distinct* ones when the run banked any, each labelled with its gap from
+  Plan A in the solver's own objective points — signed, so an alternative
+  that is ahead of the recommendation says so.
+- *What-If*: lock, ban, force in or **must-sell** players, cap the hits, and
+  re-solve the real MILP. Must sell (v12 W3) is the constraint `ban` was
+  standing in for: the player goes in the first week of the horizon and the
+  bank receives the sale. It is refused inline, before the solve, on someone
+  you do not own (use ban), on someone you also locked, banned or forced in,
+  and on a free hit, which conjures a squad and so has nobody to sell. The
+  diff shows what changed; a sensitivity card re-solves the board twenty
+  times under noise so you can tell a robust move from a coin-flip.
 - *Drafts*: name a set of what-if constraints, keep up to twelve, compare
   six side by side against today's board.
 - *Timeline*: the plan's weeks with difficulty-tinted opponent chips for
