@@ -376,6 +376,23 @@ found (the prediction frame did not build the columns; a flag flipped on
 before that fix would have crashed `advise`) and takes effect on the next
 `gaffer train`.
 
+**Overturned by the replay, same day.** The G1d replay was re-run once the
+first branch run turned out to be vacuous (§3.4 freshness bullet), and its
+totals moved: the branch scored `[1874, 1834, 1799]` (mean 1835.7, spread 75)
+against `main`'s `[1854, 1875, 1862]` (mean 1863.7, spread 21) — −28 on the
+mean, outside the control spread, with the seed spread tripled. Two isolation
+runs attributed it: with only the price term live the branch was byte-identical
+to `main` (`[1854, 1875, 1862]`, hits `[18, 12, 18]` both sides); with only the
+xG-per-shot head on it reproduced the −28 exactly (`[1874, 1834, 1799]`, hits
+`[12, 17, 17]`). The backtest refits through `train_all → attacking_features()`,
+so the head was a lever in the replay that the §3.5 rule never asked about.
+**Verdict: the keep is withdrawn; `[model] xg_per_shot` ships `false`** with
+these numbers (CONVENTIONS §6). Lesson for the ledger, alongside "estimation-σ
+≠ outcome variance": a bucket-RMSE rule with no replay half is under-specified —
+the outcome measure decides, and the next arm rule names both halves before it
+runs. `raw`/`arm` logs: `logs/v12_xgps_arm.log`, `logs/v7b_v12w2-{main,price,xgps,both}.log`,
+reports `reports/v7b_v12w2-*-s2026090{1,2,3}.json`.
+
 **W2 gate:** suite green; §3.4 replay tolerance 5 vs main (the S1 rule);
 §3.5 pre-registered outcome recorded either way; empty states verified
 by test with an empty log.
@@ -384,14 +401,14 @@ by test with an empty log.
 
 | # | Gate | Command | Result |
 | --- | --- | --- | --- |
-| G1a | Suite green | `.venv/bin/pytest -q` | |
-| G1b | Frontend green + types | `cd frontend && npx vitest run && npx tsc --noEmit` | |
-| G1c | Zero unauthorized protected diffs | `.venv/bin/pytest -q tests/test_v12_w2_degradation.py -k protected` and `git diff --stat <base> HEAD -- src/gaffer/optimize/` | |
-| G1d | §3.4 replay, tolerance 5 vs `main` at the base commit, K=3 seed bases (CONVENTIONS §1), run with `price_timing = true` in the local `config.toml` — the shipped default is off and a replay of the off arm would be a replay of `main` | `scripts/v7b_replay.py --seed-bases 20260901,20260902,20260903` on each side, then `scripts/seed_stats.py` | |
-| G1e | Empty states verified against an empty log | `.venv/bin/pytest -q tests/test_v12_w2_degradation.py` | |
-| G1f | Pins unmoved | the three-line measurement in the plan header | |
-| G2a | §3.5 outcome recorded either way (CONVENTIONS §6: a failing arm ships OFF with its numbers) | `caffeinate -i .venv/bin/python scripts/v12_xgps_arm.py`, then transcribe every `V12_ARM_DONE` and the `V12_VERDICT` line into spec §3.5 verbatim (CONVENTIONS §4) | |
-| G2b | Adversarial review → fix round → re-verify | | |
+| G1a | Suite green | `.venv/bin/pytest -q` | ✅ 3467 passed (2026-09-02, at 754e1d1) |
+| G1b | Frontend green + types | `cd frontend && npx vitest run && npx tsc --noEmit` | ✅ 686 passed, 1 skipped; tsc clean |
+| G1c | Zero unauthorized protected diffs | `.venv/bin/pytest -q tests/test_v12_w2_degradation.py -k protected` and `git diff --stat <base> HEAD -- src/gaffer/optimize/` | ✅ only `milp.py` (+32/−1, the three authorized hunks) over ef8c5f3..754e1d1 |
+| G1d | §3.4 replay, tolerance 5 vs `main` at the base commit, K=3 seed bases (CONVENTIONS §1), run with `price_timing = true` in the local `config.toml` — the shipped default is off and a replay of the off arm would be a replay of `main` | `scripts/v7b_replay.py --seed-bases 20260901,20260902,20260903` on each side, then `scripts/seed_stats.py` | ✅ **no diff**: `main` `[1854, 1875, 1862]` mean 1863.7 spread 21, hits `[18, 12, 18]`; branch with the term live (`price_timing = true`, `xg_per_shot = false`, same-day price log, 34 of the replay's transferred players carrying `p_fall > 0`) `[1854, 1875, 1862]`, hits identical. The first branch run was vacuous (stale log → empty table) and is recorded in §3.4's freshness bullet; the run with the xG head on is recorded in §3.5 |
+| G1e | Empty states verified against an empty log | `.venv/bin/pytest -q tests/test_v12_w2_degradation.py` | ✅ 15 passed |
+| G1f | Pins unmoved | the three-line measurement in the plan header | ✅ routes 46 / JOB_KINDS 12 / Config fields 53 |
+| G2a | §3.5 outcome recorded either way (CONVENTIONS §6: a failing arm ships OFF with its numbers) | `caffeinate -i .venv/bin/python scripts/v12_xgps_arm.py`, then transcribe every `V12_ARM_DONE` and the `V12_VERDICT` line into spec §3.5 verbatim (CONVENTIONS §4) | ✅ transcribed; arm said keep, the replay overturned it — ships **off** with its numbers (§3.5) |
+| G2b | Adversarial review → fix round → re-verify | | ✅ three rounds; the last found the serving-frame defect (bf21ce2), the ensemble head mix (e77a5b0), the deadline-day snapshot leak (9d54c7b), the midnight cache (b9092ed); re-verify approved, four minors tidied (baede07) |
 | G3 | Post-merge ritual | `git show main:config.toml` fails; `git log -S<odds key> --all` is empty | |
 
 **G1d is expected to show no diff at all**, and that is the pre-registered
@@ -418,6 +435,12 @@ the default is changed to `true` in `config.example.toml` **iff** the
 If the on-arm regresses beyond the spread, the flag stays `false` **and the
 numbers are transcribed into spec §3.4 anyway** — CONVENTIONS §6: deleting a
 failed arm loses the measurement that cost the hours.
+
+**Applied 2026-09-02:** both halves cleared — the on-arm equalled the off-arm
+total for total and hits for hits across all three bases — so `price_timing`
+**flips to `true`** in `config.example.toml` and in the reader's default. It
+is what the rule said it would be: a correctly-signed tie-breaker with no
+measurable downside, not a gain.
 
 ## 4. W3 — decide
 
