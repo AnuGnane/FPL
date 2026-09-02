@@ -43,11 +43,21 @@ def _actuals(rows):
          for g, c, m, st in rows])
 
 
+PAD = [(3, f"2026-08-{d:02d}", 900, "a", 100.0) for d in range(18, 32)]
+"""Fourteen snapshot days for a player who never changed, to open the gate.
+
+The gate is not cosmetic — under it the payload's tables are empty by
+contract — so any test about what is *in* a table has to pay for the fourteen
+days first. Code 900 is inert twice over: its status never moves, so it is
+never a change row, and it has no result row, so it could not be scored if it
+were."""
+
+
 def test_a_player_whose_status_never_changed_is_not_a_row():
     """The report is about changes. A player who was 'a' all week told the
     manager nothing new and has no lead time to measure."""
-    log = _log([(3, "2026-09-01", 1, "a", 100.0),
-                (3, "2026-09-02", 1, "a", 100.0)])
+    log = _log(PAD + [(3, "2026-09-01", 1, "a", 100.0),
+                      (3, "2026-09-02", 1, "a", 100.0)])
     out = ae.score_flag_latency(log, _actuals([(3, 1, 90, 1)]), EVENTS,
                                 season="2026-27")
     assert out["rows"] == 0
@@ -55,9 +65,9 @@ def test_a_player_whose_status_never_changed_is_not_a_row():
 
 def test_the_lead_time_is_measured_from_the_first_change():
     """Two changes; the first is the one a manager could have acted on."""
-    log = _log([(3, "2026-08-30", 1, "a", 100.0),
-                (3, "2026-09-01", 1, "d", 50.0),
-                (3, "2026-09-03", 1, "i", 0.0)])
+    log = _log(PAD + [(3, "2026-08-30", 1, "a", 100.0),
+                      (3, "2026-09-01", 1, "d", 50.0),
+                      (3, "2026-09-03", 1, "i", 0.0)])
     out = ae.score_flag_latency(log, _actuals([(3, 1, 0, 0)]), EVENTS,
                                 season="2026-27")
     assert out["rows"] == 1
@@ -93,8 +103,8 @@ def test_the_season_guard_drops_another_seasons_rows():
     """Element ids are re-issued every August and so is gameweek 3. The log
     outlives a rollover; the results file does not carry a season at all."""
     log = pd.concat([
-        _log([(3, "2026-09-01", 1, "a", 100.0),
-              (3, "2026-09-02", 1, "i", 0.0)]),
+        _log(PAD + [(3, "2026-09-01", 1, "a", 100.0),
+                    (3, "2026-09-02", 1, "i", 0.0)]),
         _log([(3, "2025-09-01", 1, "a", 100.0),
               (3, "2025-09-02", 1, "i", 0.0)]).assign(season="2025-26")])
     out = ae.score_flag_latency(log, _actuals([(3, 1, 0, 0)]), EVENTS,
@@ -103,10 +113,11 @@ def test_the_season_guard_drops_another_seasons_rows():
 
 
 def test_the_histogram_splits_lead_days_by_outcome():
-    log = _log([(3, "2026-08-30", 1, "a", 100.0),
-                (3, "2026-09-03", 1, "i", 0.0),      # 1.73 days -> "1-2d"
-                (3, "2026-08-30", 2, "a", 100.0),
-                (3, "2026-08-31", 2, "d", 50.0)])    # 4.73 days -> "3-5d"
+    log = _log(PAD + [
+        (3, "2026-08-30", 1, "a", 100.0),
+        (3, "2026-09-03", 1, "i", 0.0),      # 1.73 days -> "1-2d"
+        (3, "2026-08-30", 2, "a", 100.0),
+        (3, "2026-08-31", 2, "d", 50.0)])    # 4.73 days -> "3-5d"
     out = ae.score_flag_latency(log, _actuals([(3, 1, 0, 0), (3, 2, 90, 1)]),
                                 EVENTS, season="2026-27")
     buckets = {b["bucket"]: b for b in out["histogram"]}
@@ -118,10 +129,10 @@ def test_the_histogram_splits_lead_days_by_outcome():
 def test_a_late_flag_is_a_disagreement_between_the_final_status_and_the_start():
     """Both directions. The log said 'i' and he started; the log said 'a' and
     he did not. Either way the manager was told the wrong thing."""
-    log = _log([(3, "2026-08-30", 1, "a", 100.0),
-                (3, "2026-09-03", 1, "i", 0.0),
-                (3, "2026-08-30", 2, "i", 0.0),
-                (3, "2026-09-03", 2, "a", 100.0)])
+    log = _log(PAD + [(3, "2026-08-30", 1, "a", 100.0),
+                      (3, "2026-09-03", 1, "i", 0.0),
+                      (3, "2026-08-30", 2, "i", 0.0),
+                      (3, "2026-09-03", 2, "a", 100.0)])
     out = ae.score_flag_latency(
         log, _actuals([(3, 1, 90, 1), (3, 2, 0, 0)]), EVENTS,
         season="2026-27")
@@ -132,7 +143,7 @@ def test_a_late_flag_is_a_disagreement_between_the_final_status_and_the_start():
 
 def test_late_flags_are_ordered_by_lead_days_and_capped_at_twenty():
     """Spec §3.1 asks for the twenty worst. The worst is the latest."""
-    rows = []
+    rows = list(PAD)
     for i in range(25):
         rows += [(3, "2026-08-30", i, "a", 100.0),
                  (3, f"2026-09-{i % 3 + 1:02d}", i, "i", 0.0)]
@@ -156,6 +167,13 @@ def test_the_gate_reports_both_numbers_even_when_it_refuses():
     assert out["min_snap_dates"] == 14
     assert out["checked_covered_gws"] == [3]
     assert "2 of 14" in out["note"]
+    # And it refuses by not computing. A shut gate serves no distribution at
+    # all, so there is nothing for a caller that forgets to read
+    # ``available`` to draw.
+    assert out["rows"] == 0
+    assert out["histogram"] == []
+    assert out["late_flags"] == []
+    assert out["changes"] == []
 
 
 def test_the_gate_opens_on_fourteen_dates_and_one_graded_gameweek():
@@ -175,3 +193,102 @@ def test_an_empty_log_is_a_refusal_and_never_a_crash():
     assert out["rows"] == 0
     assert out["histogram"] == []
     assert out["late_flags"] == []
+
+
+def test_a_null_status_is_a_value_and_never_a_raise():
+    """A row banked with no status at all. ``astype("string")`` turns that
+    into ``pd.NA``, whose ``!=`` returns ``pd.NA`` rather than a bool, and
+    asking that for a truth value raises. The change is real — the log went
+    from saying nothing to saying 'i' — so it is scored, not skipped."""
+    log = _log(PAD + [(3, "2026-08-30", 1, None, None),
+                      (3, "2026-09-03", 1, "i", 0.0)])
+    out = ae.score_flag_latency(log, _actuals([(3, 1, 0, 0)]), EVENTS,
+                                season="2026-27")
+    assert out["rows"] == 1
+    assert out["changes"][0]["from_status"] == ""
+    assert out["changes"][0]["final_status"] == "i"
+
+
+def test_a_doubtful_final_status_is_never_a_late_flag():
+    """A hedge is not a claim either way. Code 1 was left 'd' and then missed;
+    code 2 was left 'd' and started. Neither disagreed with anything, so the
+    late-flag table is empty while both stay in ``changes``."""
+    log = _log(PAD + [(3, "2026-08-30", 1, "a", 100.0),
+                      (3, "2026-09-03", 1, "d", 25.0),
+                      (3, "2026-08-30", 2, "a", 100.0),
+                      (3, "2026-09-03", 2, "d", 75.0)])
+    out = ae.score_flag_latency(
+        log, _actuals([(3, 1, 0, 0), (3, 2, 90, 1)]), EVENTS,
+        season="2026-27")
+    assert out["rows"] == 2
+    assert out["late_flags"] == []
+
+
+def test_a_log_missing_a_structural_column_is_a_refusal_and_not_a_keyerror():
+    """``status`` was the only column ever guarded; ``gw`` and ``snap_date``
+    are just as structural, and a frame handed in without one of them used to
+    reach ``pre_deadline`` and raise inside a page render."""
+    full = _log(PAD + [(3, "2026-09-01", 1, "i", 0.0)])
+    for col in ("gw", "snap_date", "status"):
+        out = ae.score_flag_latency(full.drop(columns=[col]),
+                                    _actuals([(3, 1, 0, 0)]), EVENTS,
+                                    season="2026-27")
+        assert out["available"] is False, col
+        assert out["rows"] == 0, col
+
+
+def test_an_events_frame_with_no_gw_column_yields_no_deadlines():
+    """``deadline_time`` was guarded and ``gw`` was not. Both are needed to
+    key the map, and a frame missing either has no readable deadline."""
+    assert ae.deadlines(EVENTS.drop(columns=["gw"])) == {}
+    assert ae.deadlines(EVENTS.drop(columns=["deadline_time"])) == {}
+    assert set(ae.deadlines(EVENTS)) == {2, 3}
+
+
+SNAPSHOT_LOG_COLS = [
+    "season", "gw", "snap_date", "code", "status", "chance_of_playing",
+    "injury_type", "expected_return_gw", "p_start_hint", "absence_damp",
+    "llm_verdict", "llm_confidence", "source", "fetched_at", "override",
+    "override_p_play", "override_e_min", "override_note"]
+"""``snapshot.SNAPSHOT_COLS`` as the live parquet actually holds it.
+
+Restated here rather than imported so that a column disappearing from the
+contract fails this test loudly instead of silently narrowing the fixture the
+two scorers are exercised against."""
+
+
+def _full_row(**over):
+    row = {c: None for c in SNAPSHOT_LOG_COLS}
+    row.update({"season": "2026-27", "gw": 3, "code": 1, "override": False})
+    row.update(over)
+    return row
+
+
+def test_both_scorers_survive_a_row_shaped_like_the_real_log():
+    """The whole banked schema, including the two nulls the live log really
+    carries: a status that was never recorded and a source that was not.
+    Neither scorer may raise, and the presser grade must come from the row
+    that stood at the deadline rather than from a column-wise merge of two."""
+    rows = [_full_row(snap_date=f"2026-08-{d:02d}", code=900, status="a")
+            for d in range(18, 32)]
+    rows += [
+        _full_row(snap_date="2026-08-30", status=None, llm_verdict="knock",
+                  llm_confidence=0.7, source="premierinjuries"),
+        _full_row(snap_date="2026-09-03", status="i", llm_verdict="ruled_out",
+                  llm_confidence=0.9, source=None),
+    ]
+    log = pd.DataFrame(rows, columns=SNAPSHOT_LOG_COLS)
+    actuals = _actuals([(3, 1, 0, 0)])
+
+    latency = ae.score_flag_latency(log, actuals, EVENTS, season="2026-27")
+    assert latency["available"] is True
+    assert latency["rows"] == 1
+    assert latency["changes"][0]["from_status"] == ""
+
+    grades = ae.score_presser_grades(log, actuals, EVENTS, season="2026-27")
+    assert grades["available"] is True
+    assert [r["verdict"] for r in grades["per_class"]] == ["ruled_out"]
+    # The last row's source is null, so the breakdown says unknown. ``.last()``
+    # would have reported "premierinjuries" here — the earlier row's source
+    # against the later row's verdict.
+    assert grades["by_source"] == [{"source": "", "rows": 1}]

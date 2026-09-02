@@ -133,3 +133,22 @@ def test_the_presser_table_prints_precision_per_class():
         "run_at": "now", "git_sha": "abc1234"})
     assert "ruled_out" in text
     assert "0.75" in text
+
+
+def test_recall_prints_a_dash_when_nobody_in_the_gameweek_was_absent():
+    """The payload stores 0.0 because the artifact needs a number, but a
+    column of 0.00 reads as a class that missed every absence rather than one
+    that was asked about a gameweek with none."""
+    from gaffer.evaluation import format_report
+
+    text = format_report("presser_grades", {
+        "kind": "presser_grades", "available": True, "rows": 1,
+        "absent_rows": 0, "recall_population": "verdict-carrying rows",
+        "per_class": [{"verdict": "rotation_risk", "n": 1, "precision": 0.0,
+                       "recall": 0.0}],
+        "confusion": [{"verdict": "rotation_risk", "n": 1, "started": 1,
+                       "not_started": 0}],
+        "by_source": [{"source": "premierinjuries", "rows": 1}],
+        "run_at": "now", "git_sha": "abc1234"})
+    assert "—" in text
+    assert "0.00" in text          # precision still prints as a number

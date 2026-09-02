@@ -1237,12 +1237,18 @@ def _format_presser_grades(payload: dict) -> str:
              f"{payload['absent_rows']} absences)",
              "  verdict           n   started  absent  precision  recall"]
     conf = {row["verdict"]: row for row in payload["confusion"]}
+    # Recall's denominator is the gameweek's absences. With none of them, the
+    # payload stores 0.0 (a number the JSON needs) but the column prints a
+    # dash: "0.00" beside a class that found none of nothing reads as a class
+    # that missed everything.
+    absent = payload.get("absent_rows", 0)
     for row in payload["per_class"]:
         c = conf.get(row["verdict"], {})
+        recall = f"{row['recall']:>6.2f}" if absent else f"{'—':>6}"
         lines.append(
             f"  {row['verdict']:<16} {row['n']:>3}   {c.get('started', 0):>7}"
             f"  {c.get('not_started', 0):>6}  {row['precision']:>9.2f}"
-            f"  {row['recall']:>6.2f}")
+            f"  {recall}")
     lines.append(f"  recall is over {payload['recall_population']}")
     lines.append("  " + ", ".join(f"{s['source'] or 'unknown'} {s['rows']}"
                                   for s in payload["by_source"]))

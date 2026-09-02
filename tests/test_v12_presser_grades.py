@@ -169,3 +169,28 @@ def test_a_log_with_no_verdict_column_at_all_is_a_refusal():
                                   season="2026-27")
     assert out["available"] is False
     assert out["rows"] == 0
+
+
+def test_the_graded_row_is_one_row_and_not_a_merge_of_several():
+    """``GroupBy.last`` takes the last *non-null* value per column, so a final
+    row with no source would report an earlier row's source beside the final
+    row's verdict — a pairing that was never banked. The row that stood at the
+    deadline is a row."""
+    log = _log([(3, "2026-09-01", 1, "knock", "premierinjuries"),
+                (3, "2026-09-03", 1, "ruled_out", None)])
+    out = ae.score_presser_grades(log, _actuals([(3, 1, 0, 0)]), EVENTS,
+                                  season="2026-27")
+    assert [r["verdict"] for r in out["per_class"]] == ["ruled_out"]
+    assert out["by_source"] == [{"source": "", "rows": 1}]
+
+
+def test_a_log_missing_a_structural_column_is_a_refusal_and_not_a_keyerror():
+    """``llm_verdict`` was guarded; ``gw`` and ``snap_date`` are just as
+    structural and used to raise inside ``pre_deadline``."""
+    full = _log([(3, "2026-09-01", 1, "ruled_out", "premierinjuries")])
+    for col in ("gw", "snap_date", "llm_verdict"):
+        out = ae.score_presser_grades(full.drop(columns=[col]),
+                                      _actuals([(3, 1, 0, 0)]), EVENTS,
+                                      season="2026-27")
+        assert out["available"] is False, col
+        assert out["rows"] == 0, col

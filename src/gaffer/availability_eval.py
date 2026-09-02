@@ -42,9 +42,15 @@ def deadlines(events: pd.DataFrame | None) -> dict[int, pd.Timestamp]:
     A gameweek whose deadline will not parse is **absent**, not defaulted. The
     only use of this map is to decide whether a snapshot came in time, and a
     guessed deadline answers that question by inventing the answer.
+
+    A frame missing either column it needs is **empty**, not an exception: the
+    only caller is a report, and a frame banked before ``deadline_time``
+    existed (or handed in with no ``gw`` at all) must degrade to "no gameweek
+    has a readable deadline" rather than a ``KeyError`` from a page render.
     """
     if events is None or not isinstance(events, pd.DataFrame) \
-            or events.empty or "deadline_time" not in events.columns:
+            or events.empty \
+            or not {"gw", "deadline_time"} <= set(events.columns):
         return {}
     gws = pd.to_numeric(events["gw"], errors="coerce")
     when = pd.to_datetime(events["deadline_time"], errors="coerce", utc=True)
@@ -64,9 +70,19 @@ def pre_deadline(log: pd.DataFrame,
     """
     if log is None or log.empty:
         return log if log is not None else pd.DataFrame()
+    if not {"gw", "snap_date"} <= set(log.columns):
+        # Same rule as :func:`deadlines`: a frame that cannot say when a row
+        # was taken contributes nothing, and says so by being empty.
+        return log.iloc[0:0]
     out = log.copy()
-    out["gw"] = pd.to_numeric(out["gw"], errors="coerce")
-    out["_deadline"] = out["gw"].map(by_gw)
+    # ``Int64`` and not float: ``map`` over a float index would look up 3.0
+    # against a dict keyed by ``int``, which happens to work and would stop
+    # working the day a gameweek arrived as a string. And the mapped column is
+    # re-parsed rather than trusted — an empty ``by_gw`` maps every row to
+    # ``NaN`` in an *object* column, whose subtraction has no ``.dt``.
+    out["gw"] = pd.to_numeric(out["gw"], errors="coerce").astype("Int64")
+    out["_deadline"] = pd.to_datetime(out["gw"].map(by_gw), errors="coerce",
+                                      utc=True)
     out["_taken"] = pd.to_datetime(out["snap_date"], errors="coerce", utc=True)
     out = out[out["_deadline"].notna() & out["_taken"].notna()]
     out = out[out["_taken"] <= out["_deadline"]]
@@ -119,9 +135,16 @@ WORST_LATE_FLAGS = 20
 """Spec §3.1's table size."""
 
 UNAVAILABLE_FLAG_STATUS = ("i", "s", "u", "n")
-"""Statuses that assert the player will not feature. ``d`` (doubtful) is
-deliberately not one: it is the layer *hedging*, and grading a hedge as a
-prediction of absence would score the honest answer as a miss."""
+"""Statuses that assert the player will not feature.
+
+``d`` (doubtful) is not merely absent from this tuple — a row whose final
+pre-deadline status is ``d`` is **excluded from the late-flag population
+entirely**, in both directions. A hedge is not a claim either way: read as a
+claim of absence it scores every doubtful player who started as a late flag,
+and read as a claim of availability it scores every doubtful player who missed
+as one. The only honest reading of "we do not know" is that there is nothing
+to disagree with. Those rows stay in ``changes`` and in the histogram, where
+what is measured is lead time rather than correctness."""
 
 
 def _bucket(days: float) -> str:
@@ -174,7 +197,8 @@ def score_flag_latency(log: pd.DataFrame, actuals: pd.DataFrame,
                    snap_dates=0, min_snap_dates=MIN_SNAP_DATES,
                    covered_gws=[], checked_covered_gws=[], histogram=[],
                    late_flags=[], changes=[])
-    if log is None or log.empty or "status" not in log.columns:
+    if log is None or log.empty \
+            or not {"gw", "snap_date", "status"} <= set(log.columns):
         return empty
     frame = log.copy()
     if "season" in frame.columns:
@@ -189,22 +213,30 @@ def score_flag_latency(log: pd.DataFrame, actuals: pd.DataFrame,
     graded = sorted(set(covered) & checked_gws(actuals))
     gate = dict(snap_dates=snap_dates, min_snap_dates=MIN_SNAP_DATES,
                 covered_gws=covered, checked_covered_gws=graded)
-    # The gate decides whether the report is *readable*, not whether it is
-    # computed. The tables are built either way so a half-filled log can be
-    # inspected while it fills; ``available`` is what a caller checks before
-    # drawing a distribution over four days of evidence.
     open_gate = snap_dates >= MIN_SNAP_DATES and bool(graded)
-    note = None if open_gate else (
-        f"{snap_dates} of {MIN_SNAP_DATES} snapshot days banked, and "
-        f"{len(graded)} covered gameweek(s) graded. The report fills as "
-        f"`gaffer snapshot` runs and gameweeks are marked data_checked.")
+    if not open_gate:
+        # The gate decides whether the report exists, not merely whether it is
+        # labelled. A shut gate serves the empty payload — ``rows: 0`` and
+        # three empty tables — carrying the two numbers that say how far off it
+        # is. Computing the tables anyway and hiding them behind ``available``
+        # would put a distribution over four days of evidence on the wire, one
+        # missed `if` away from being drawn.
+        return {**empty, **gate, "note": (
+            f"{snap_dates} of {MIN_SNAP_DATES} snapshot days banked, and "
+            f"{len(graded)} covered gameweek(s) graded. The report fills as "
+            f"`gaffer snapshot` runs and gameweeks are marked data_checked.")}
 
     started = _outcomes(actuals)
     window = window[window["gw"].isin(graded)]
     window = window.sort_values(["gw", "code", "snap_date"])
     changes = []
     for (gw, code), part in window.groupby(["gw", "code"], sort=True):
-        statuses = part["status"].astype("string").tolist()
+        # ``fillna("")`` before the comparison: a null status read back out of
+        # ``string`` dtype is ``pd.NA``, and ``pd.NA != first`` is ``pd.NA``,
+        # which raises the moment a list comprehension asks it for a truth
+        # value. An unrecorded status is its own value — "the log said
+        # nothing" — and a move to or from it is a change like any other.
+        statuses = part["status"].astype("string").fillna("").tolist()
         first = statuses[0]
         moved = [i for i, s in enumerate(statuses) if s != first]
         if not moved:
@@ -238,13 +270,17 @@ def score_flag_latency(log: pd.DataFrame, actuals: pd.DataFrame,
 
     # The disagreement, both ways round. "The log said unavailable and he
     # started" is as much a late flag as its opposite: in each case the last
-    # thing the manager was told before the deadline was wrong.
+    # thing the manager was told before the deadline was wrong. ``d`` is
+    # neither, and is dropped rather than resolved — see
+    # :data:`UNAVAILABLE_FLAG_STATUS`.
     late = [c for c in changes
-            if (c["final_status"] in UNAVAILABLE_FLAG_STATUS) == c["started"]]
+            if c["final_status"] != "d"
+            and (c["final_status"] in UNAVAILABLE_FLAG_STATUS)
+            == c["started"]]
     late.sort(key=lambda c: (c["lead_days"], c["gw"], c["code"]))
 
     return {"run_at": run_at(), "git_sha": git_sha(), "kind": "flag_latency",
-            "available": open_gate, "rows": len(changes), "note": note,
+            "available": True, "rows": len(changes), "note": None,
             "histogram": histogram,
             "late_flags": late[:WORST_LATE_FLAGS],
             "changes": changes, **gate}
@@ -276,7 +312,8 @@ def score_presser_grades(log: pd.DataFrame, actuals: pd.DataFrame,
                    "No presser verdicts have been banked yet.",
                    verdicts_banked=0, confusion=[], per_class=[],
                    by_source=[], recall_population="verdict-carrying rows")
-    if log is None or log.empty or "llm_verdict" not in log.columns:
+    if log is None or log.empty \
+            or not {"gw", "snap_date", "llm_verdict"} <= set(log.columns):
         return empty
     frame = log.copy()
     if "season" in frame.columns:
@@ -302,8 +339,13 @@ def score_presser_grades(log: pd.DataFrame, actuals: pd.DataFrame,
             f"marked data_checked. The grades land with the results.")}
 
     window = window[window["gw"].isin(graded)]
+    # ``tail(1)`` and not ``.last()``. ``GroupBy.last`` is per *column*: it
+    # takes the last **non-null** value of each one independently, so a group
+    # whose final row has a null ``source`` reports the source of some earlier
+    # row alongside the final row's verdict — a pair that was never banked
+    # together. The row that stood at the deadline is one row.
     last = (window.sort_values(["gw", "code", "snap_date"])
-            .groupby(["gw", "code"], as_index=False).last())
+            .groupby(["gw", "code"], sort=True).tail(1))
     started = _outcomes(actuals)
     rows = []
     for r in last.itertuples():
@@ -373,9 +415,21 @@ def _season() -> str:
 
     Its own try, for ``news_shadow._current_season``'s reason: a report is
     better than no report, and a clone with no ``config.toml`` still has a log
-    worth reading. An empty season matches the log's own empty-string season
-    and therefore scores the pre-season rows and nothing else, which is the
-    honest degradation rather than a silent whole-log score.
+    worth reading.
+
+    **This degrades the opposite way to ``evaluate_news_shadow``, deliberately.**
+    There, an unreadable config skips the season filter and scores *every*
+    season, printing "scoring every season" as it does. Here the unreadable
+    config returns ``""``, which the scorers then compare against the log's own
+    season column — so it filters *everything* out and the report comes back
+    empty with its gate note in front of it. The two reports can afford
+    opposite failures because their populations differ: the shadow log's rows
+    are keyed by a player id whose collision across a rollover merely widens a
+    Brier score, while these two join a season-less results file on ``code``
+    per gameweek, where last August's GW3 row and this August's are a different
+    fixture for a different club. An over-wide score there is not a blurrier
+    number, it is a wrong one; an empty report is recoverable by fixing the
+    config, and this function says so on stdout when it happens.
     """
     try:
         return str(load_config().current_season or "")
