@@ -192,6 +192,55 @@ class GwPlan:
 class Plan:
     objective: float
     gw_plans: list[GwPlan]
+    # v12 W3 §4.3 (specs/2026-09-01-gaffer-v12-program-design.md). Both
+    # defaulted, so every construction in the tree — and every ``Plan`` a
+    # scenario sweep builds — is the object it was.
+    gap: float | None = None
+    """Objective points this plan sits behind the one it is an alternative to.
+
+    **Signed, and the sign matters.** The recommended plan is
+    ``policy.coherent_plan``'s, which carries the sweep's moves as
+    ``FixedMoves``; an alternative is solved without them and can therefore
+    score *above* it, giving a negative gap. That is the price of the
+    coherence constraint, and it is the number a reader deciding whether to
+    override the sweep wants to see.
+
+    An **objective** gap, not an EP one: ``objective`` is decayed by week,
+    carries the bench curve and the vice hedge, and prices banked transfers
+    and the bank itself. Re-scoring the alternatives in raw EP would compare
+    two plans on a quantity neither was chosen by. ``None`` on any plan that
+    is not somebody's alternative.
+    """
+    alternatives: list["Plan"] = field(default_factory=list)
+    """Distinct plans behind this one, best first. Each carries its own
+    ``gap``; this list is always empty on them (one level, not a tree)."""
+
+
+ALT_PLAN_MAX = 3
+"""Plans in the set, counting the incumbent (spec §4.3's "top-3").
+
+A constant rather than a config key because the cost is a solve each and the
+knob the spec exposes is the gap, which is the one that answers "is this
+alternative worth reading". Three is also as many tabs as a board column can
+carry without becoming a menu.
+"""
+
+
+def move_set(plan: "Plan") -> list[tuple[str, int, int]]:
+    """The transfers a plan makes, as ``(direction, code, gameweek)``.
+
+    Sorted, so a cut built from it is stable across runs and two identical
+    plans produce identical cuts. Buys and sells are listed separately rather
+    than paired: the MILP never pairs them — a week's ``buys`` and ``sells``
+    are two lists whose only relationship is the budget row — so pairing them
+    here would be inventing a structure to exclude.
+
+    v12 W3 §4.3 (specs/2026-09-01-gaffer-v12-program-design.md).
+    """
+    return sorted(
+        [("in", int(c), int(gp.gw)) for gp in plan.gw_plans for c in gp.buys]
+        + [("out", int(c), int(gp.gw)) for gp in plan.gw_plans
+           for c in gp.sells])
 
 
 @dataclass
@@ -391,7 +440,9 @@ def solve_plan(pool: pd.DataFrame, state: SolveInput, *, decay: float,
                ft_lambda: "LambdaLookup | None" = None,
                ft_use_penalty: float = 0.0,
                bench_curve: list[float] | None = None,
-               p_play: dict[int, dict[int, float]] | None = None) -> Plan:
+               p_play: dict[int, dict[int, float]] | None = None,
+               no_good: list[list[tuple[str, int, int]]] | None = None
+               ) -> Plan:
     """Solve the multi-period plan; see :func:`_solve_once` for the model.
 
     ``p_play`` is ``{code: {gw: probability of appearing}}`` and is the only
@@ -439,7 +490,12 @@ def solve_plan(pool: pd.DataFrame, state: SolveInput, *, decay: float,
               itb_value=itb_value, hit_cost=hit_cost,
               fixed_moves=fixed_moves, ft_lambda=ft_lambda,
               ft_use_penalty=ft_use_penalty, bench_curve=bench_curve,
-              price_fall=owned_price_falls(state.owned_codes))
+              price_fall=owned_price_falls(state.owned_codes),
+              # v12 W3 §4.3: in ``kw`` and not passed separately, so the
+              # re-weighted second pass excludes the same plans the first did.
+              # A cut that lived only in pass one would let pass two hand back
+              # the incumbent as its own alternative.
+              no_good=no_good)
     pp = _p_play_lookup(pool, state, p_play)
     first = _solve_once(pool, state, **kw, p_play=pp)
     if pp is None:
@@ -457,6 +513,56 @@ def solve_plan(pool: pd.DataFrame, state: SolveInput, *, decay: float,
         return first
 
 
+def alternative_plans(pool: pd.DataFrame, state: SolveInput,
+                      incumbent: Plan, *, max_gap: float,
+                      max_plans: int = ALT_PLAN_MAX,
+                      **solve_cfg) -> list[Plan]:
+    """Up to ``max_plans - 1`` distinct plans behind ``incumbent``, best first.
+
+    Each is the best plan that does not make some move of every plan already
+    found — one no-good cut per plan, accumulated — and each carries its
+    ``gap`` against the incumbent's objective. The search stops at
+    ``max_plans``, at a gap wider than ``max_gap``, or when the cuts leave
+    nothing legal to find.
+
+    ``max_gap <= 0`` returns immediately **without solving**, which is the off
+    switch: a knob that still spent two MILPs to discard their answers would
+    be a preference rather than a switch.
+
+    ``solve_cfg`` is the caller's ordinary ``solve_plan`` bundle and must
+    **not** carry ``fixed_moves``. An alternative constrained to make the
+    incumbent's moves is not an alternative — which is also why a gap can come
+    back negative when the incumbent itself was solved under a coherence
+    constraint (plan A5).
+
+    Each call re-enters ``solve_plan``, which re-reads
+    ``price_timing.owned_price_falls`` — cached on ``(snap_date, owned)``, so
+    the incumbent and every alternative are priced off one price table and
+    ``gap`` is apples-to-apples.
+
+    A failed solve ends the search rather than raising: two plans are a
+    better answer than none, and the caller is an advice run under a deadline.
+
+    v12 W3 §4.3 (specs/2026-09-01-gaffer-v12-program-design.md).
+    """
+    if max_gap <= 0 or max_plans <= 1:
+        return []
+    cuts = [move_set(incumbent)]
+    out: list[Plan] = []
+    while len(out) < max_plans - 1:
+        try:
+            alt = solve_plan(pool, state, **solve_cfg, no_good=list(cuts))
+        except Exception as exc:  # noqa: BLE001 — see docstring
+            print(f"optimize: no further distinct plan ({exc})")
+            break
+        alt.gap = round(incumbent.objective - alt.objective, 3)
+        if alt.gap > max_gap:
+            break
+        out.append(alt)
+        cuts.append(move_set(alt))
+    return out
+
+
 def _solve_once(pool: pd.DataFrame, state: SolveInput, *, decay: float,
                 bench_weight: float, vice_weight: float, ft_value: float,
                 itb_value: float, hit_cost: int,
@@ -466,6 +572,7 @@ def _solve_once(pool: pd.DataFrame, state: SolveInput, *, decay: float,
                 bench_curve: list[float] | None = None,
                 p_play: dict[int, dict[int, float]] | None = None,
                 price_fall: dict[int, float] | None = None,
+                no_good: list[list[tuple[str, int, int]]] | None = None,
                 bench_scale: dict[int, tuple[float, float]] | None = None,
                 vice_scale: dict[int, float] | None = None,
                 fixed_xi: dict[int, list[int]] | None = None,
@@ -638,6 +745,31 @@ def _solve_once(pool: pd.DataFrame, state: SolveInput, *, decay: float,
             prob += tout[c][fm_gw] == 1
         if fixed_moves.no_transfer:
             prob += pulp.lpSum(tin[c][fm_gw] for c in codes) == 0
+
+    # --- no-good cuts (v12 W3 §4.3) --------------------------------------
+    # (specs/2026-09-01-gaffer-v12-program-design.md). Each cut is a plan's
+    # complete move set; the constraint forbids making *all* of them at once,
+    # which is the standard no-good cut over binaries that are all 1 in the
+    # solution being excluded. A plan making those moves and one more is
+    # excluded too, deliberately: it is not a distinct decision, it is the
+    # same one with a passenger.
+    #
+    # The empty cut is the hold plan, and it is a real case rather than a
+    # corner: ``sum(nothing) <= -1`` is infeasible, so "differ from a plan
+    # that made no transfers" has to be spelled as "make at least one".
+    for cut in (no_good or []):
+        terms = []
+        for kind, c, t in cut:
+            if c not in known or t not in T:
+                raise GafferError(
+                    f"no_good: ({kind}, {c}, gw{t}) is not expressible on "
+                    f"this board — the cut was built from a different pool "
+                    f"or a different horizon")
+            terms.append(tin[c][t] if kind == "in" else tout[c][t])
+        if terms:
+            prob += pulp.lpSum(terms) <= len(terms) - 1
+        else:
+            prob += pulp.lpSum(tin[c][t] for c in codes for t in T) >= 1
 
     obj = []
     for t_i, t in enumerate(T):

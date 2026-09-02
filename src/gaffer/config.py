@@ -46,6 +46,15 @@ class Config:
     ft_value: float = 1.5
     itb_value: float = 0.05
     hit_cost: int = 4
+    # v12 W3 §4.3 (specs/2026-09-01-gaffer-v12-program-design.md). How far
+    # behind the recommended plan an alternative may sit and still be worth
+    # showing, in *objective* points — the frame the plans were solved in, not
+    # raw EP. 0 turns the search off without spending a solve.
+    #
+    # An [optimizer] key, not a [solver] one: the spec names a section this
+    # tree does not have, and the program-wide ruling is that solver knobs live
+    # in [optimizer] under their own names.
+    alt_plan_max_gap: float = 2.0
     train_seasons: list[str] = field(default_factory=list)
     current_season: str = "2026-27"
     odds_api_key: str = ""
