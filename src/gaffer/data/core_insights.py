@@ -154,3 +154,224 @@ def fetch_csv(path: str, http: httpx.Client,
     three seasons and a hundred gameweeks must not die on one missing folder.
     """
     return _cached_get(http, f"{CUPS_RAW_BASE}/{path}", Path(cache_dir) / path)
+
+
+# --- parsers -------------------------------------------------------------
+
+PMS_KEY_COLS = ("player_id", "match_id")
+"""Without both of these a player-match row cannot be placed. A file missing
+either is dropped whole, because the alternative is inventing a key."""
+
+PMS_STAT_COLS = ("minutes_played", "accurate_crosses",
+                 "touches_opposition_box", "final_third_passes",
+                 "tackles_won", "interceptions", "blocks", "clearances",
+                 "recoveries", "start_min", "finish_min",
+                 "defensive_contributions")
+"""The columns kept out of the 54-to-64 the archive publishes.
+
+Deliberately a short list. Everything here is either an input to §5.2's
+wing-back rule (crosses, box touches, final-third passes, the two minute
+bounds) or a component of the CBIT/defcon family (tackles, interceptions,
+blocks, clearances, recoveries, and the published ``defensive_contributions``
+where the season has it). Shot maps, sprint distances and duel percentages are
+left on the floor for the same reason ``cups.py`` leaves cup goals there: they
+are not what this collector exists to answer, and a column nobody reads is a
+schema nobody can change.
+
+``defensive_contributions`` is absent from the 2024-2025 layout (A3) and is
+carried as an all-NaN column there, so one parquet schema serves every season
+and a model sees a missing value rather than a missing column."""
+
+CI_PLAYER_COLS = ["season", "season_idx", "gw", "code", "player_id",
+                  "match_id"] + list(PMS_STAT_COLS)
+
+CI_FIXTURE_COLS = ["season", "season_idx", "gw", "tournament", "match_id",
+                   "kickoff", "team_code", "opponent_code", "is_home",
+                   "finished"]
+
+CI_ELO_COLS = ["season", "season_idx", "gw", "kickoff", "team_code", "elo"]
+
+
+def _read_csv(text: str) -> pd.DataFrame:
+    """One CSV blob -> a frame, or an empty one. Never raises.
+
+    A truncated or non-CSV body is a fetch that went wrong, and one bad file
+    must cost one file.
+    """
+    import io
+
+    try:
+        return pd.read_csv(io.StringIO(text or ""))
+    except Exception as exc:  # noqa: BLE001 — one bad file is not the run
+        print(f"core-insights: unreadable CSV ({exc})")
+        return pd.DataFrame()
+
+
+def player_code_map(players_csv: str) -> dict[int, int]:
+    """``{season element id: stable FPL code}`` from the archive's own file.
+
+    The archive ships the map we would otherwise have to rebuild by name:
+    ``players.csv`` is ``player_code,player_id,…`` and ``player_code`` is
+    exactly gaffer's ``code``. That is why nothing in this module does name
+    matching, and why the element-id season guard is free — the map is read
+    per season folder and never spans two.
+    """
+    df = _read_csv(players_csv)
+    if df.empty or not {"player_id", "player_code"}.issubset(df.columns):
+        return {}
+    ids = pd.to_numeric(df["player_id"], errors="coerce")
+    codes = pd.to_numeric(df["player_code"], errors="coerce")
+    return {int(i): int(c) for i, c in zip(ids, codes)
+            if pd.notna(i) and pd.notna(c)}
+
+
+def player_match_rows(pms_csv: str, season: str, season_idx: int, gw: int,
+                      codes: dict[int, int]) -> pd.DataFrame:
+    """One ``playermatchstats.csv`` -> ``CI_PLAYER_COLS``.
+
+    Three drift behaviours, one per kind of drift, and they are different on
+    purpose:
+
+    * an **unknown column** is ignored — the archive adds metrics, and a
+      collector that fell over on a new one would break every time the
+      publisher improved it;
+    * a **missing optional column** becomes all-NaN with a printed line, so
+      the parquet schema is constant across seasons and a model sees a missing
+      value instead of a missing column (A3's ``defensive_contributions``);
+    * a **missing key column** drops the file with a printed line, because a
+      row that cannot be keyed cannot be joined and a guessed key is worse
+      than no row.
+
+    An element the season's map does not know drops rather than carrying a
+    null ``code``: pandas merges null keys as equal, and one NaN-keyed row is
+    how a whole club's stats end up on one player.
+    """
+    empty = pd.DataFrame(columns=CI_PLAYER_COLS)
+    df = _read_csv(pms_csv)
+    if df.empty:
+        return empty
+    missing_keys = [c for c in PMS_KEY_COLS if c not in df.columns]
+    if missing_keys:
+        print(f"core-insights: {season} gw{gw} playermatchstats has no "
+              f"{', '.join(missing_keys)} — file dropped")
+        return empty
+    out = pd.DataFrame({
+        "season": str(season), "season_idx": int(season_idx), "gw": int(gw),
+        "player_id": pd.to_numeric(df["player_id"], errors="coerce"),
+        "match_id": df["match_id"].astype("string")})
+    absent = []
+    for col in PMS_STAT_COLS:
+        if col in df.columns:
+            out[col] = pd.to_numeric(df[col], errors="coerce")
+        else:
+            out[col] = float("nan")
+            absent.append(col)
+    if absent:
+        print(f"core-insights: {season} gw{gw} playermatchstats does not "
+              f"publish {', '.join(absent)} — carried as null")
+    out["code"] = out["player_id"].map(
+        lambda v: codes.get(int(v)) if pd.notna(v) else None)
+    out = out[out["code"].notna() & out["player_id"].notna()]
+    if out.empty:
+        return empty
+    out["code"] = out["code"].astype("int64")
+    out["player_id"] = out["player_id"].astype("int64")
+    return out[CI_PLAYER_COLS].reset_index(drop=True)
+
+
+def _fixture_frame(fixtures_csv: str) -> pd.DataFrame | None:
+    """Shared preamble of :func:`fixture_rows` and :func:`elo_rows`.
+
+    ``None`` when the file cannot be read as a fixture list at all, which both
+    callers turn into their own empty frame.
+    """
+    df = _read_csv(fixtures_csv)
+    if df.empty or "kickoff_time" not in df.columns:
+        return None
+    if "home_team" not in df.columns or "away_team" not in df.columns:
+        return None
+    return df
+
+
+def fixture_rows(fixtures_csv: str, season: str, season_idx: int,
+                 gw: int) -> pd.DataFrame:
+    """One ``fixtures.csv`` -> one row per *league* club per match.
+
+    Both sides are emitted independently, ``cups.py::cup_match_rows``' rule
+    and for its reason: a tie between a Premier League club and an EFL one is
+    a fixture for exactly one of them, and the file writes a blank code for
+    the other.
+
+    **Unplayed matches are kept.** That is the whole difference between this
+    table and the withdrawn cup-archive congestion arm: the archive publishes
+    a fixture's kickoff time weeks before it is played (A2d), so a count of
+    fixtures in the seven days before a deadline is available *at prediction
+    time*. A row with no kickoff time has not been scheduled and carries
+    nothing to count, so it drops.
+    """
+    empty = pd.DataFrame(columns=CI_FIXTURE_COLS)
+    df = _fixture_frame(fixtures_csv)
+    if df is None:
+        print(f"core-insights: {season} gw{gw} fixtures has no kickoff_time "
+              f"or no team columns — file dropped")
+        return empty
+    kickoff = pd.to_datetime(df["kickoff_time"], errors="coerce", utc=True)
+    tournament = (df["tournament"].astype("string")
+                  if "tournament" in df.columns
+                  else pd.Series("", index=df.index, dtype="string"))
+    match_id = (df["match_id"].astype("string") if "match_id" in df.columns
+                else pd.Series("", index=df.index, dtype="string"))
+    finished = (df["finished"].astype("string").str.lower().eq("true")
+                if "finished" in df.columns
+                else pd.Series(False, index=df.index))
+    home = pd.to_numeric(df["home_team"], errors="coerce")
+    away = pd.to_numeric(df["away_team"], errors="coerce")
+    parts = []
+    for side, other, is_home in ((home, away, True), (away, home, False)):
+        parts.append(pd.DataFrame({
+            "season": str(season), "season_idx": int(season_idx),
+            "gw": int(gw), "tournament": tournament.values,
+            "match_id": match_id.values, "kickoff": kickoff.values,
+            "team_code": side.values, "opponent_code": other.values,
+            "is_home": bool(is_home), "finished": finished.values}))
+    out = pd.concat(parts, ignore_index=True)
+    out = out[out["team_code"].notna() & out["kickoff"].notna()]
+    if out.empty:
+        return empty
+    out["team_code"] = out["team_code"].astype("int64")
+    return out[CI_FIXTURE_COLS].reset_index(drop=True)
+
+
+def elo_rows(fixtures_csv: str, season: str, season_idx: int,
+             gw: int) -> pd.DataFrame:
+    """One ``fixtures.csv`` -> one Elo reading per club per match.
+
+    The archive has no ClubElo file (see the module docstring): the readings
+    live on the fixture rows as ``home_team_elo`` / ``away_team_elo``. A row
+    whose Elo is blank yields nothing, which is why 2026-27 comes back empty
+    today — the publisher has not filled the column in for the new season.
+    Empty is the honest answer, and the health line says so rather than
+    borrowing last season's number.
+    """
+    empty = pd.DataFrame(columns=CI_ELO_COLS)
+    df = _fixture_frame(fixtures_csv)
+    if df is None:
+        return empty
+    if not {"home_team_elo", "away_team_elo"}.issubset(df.columns):
+        return empty
+    kickoff = pd.to_datetime(df["kickoff_time"], errors="coerce", utc=True)
+    parts = []
+    for team_col, elo_col in (("home_team", "home_team_elo"),
+                              ("away_team", "away_team_elo")):
+        parts.append(pd.DataFrame({
+            "season": str(season), "season_idx": int(season_idx),
+            "gw": int(gw), "kickoff": kickoff.values,
+            "team_code": pd.to_numeric(df[team_col], errors="coerce").values,
+            "elo": pd.to_numeric(df[elo_col], errors="coerce").values}))
+    out = pd.concat(parts, ignore_index=True)
+    out = out[out["team_code"].notna() & out["elo"].notna()
+              & out["kickoff"].notna()]
+    if out.empty:
+        return empty
+    out["team_code"] = out["team_code"].astype("int64")
+    return out[CI_ELO_COLS].reset_index(drop=True)
