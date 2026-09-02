@@ -501,6 +501,199 @@ enumerated authorized edit.
 workstream's base commit: total points within tolerance 5, hits not up by
 more than 3. §4.4's support check. Zero unauthorized diffs.
 
+### W3 G1 — suites, rails, pins (measured by the implementer)
+
+Measured on `feat/gaffer-v12-w3` at `ff2fa0e`. The comparison base is
+`754e1d1` — W2's tip, which is where this branch was cut — and **not**
+`merge-base(HEAD, main)`: W2 has not merged yet, so "since main" would score
+W2's diff under W3's name. The audit rail in
+`tests/test_v12_w3_degradation.py` pins the same base for the same reason.
+
+- [x] `PYTHONPATH=src .venv/bin/pytest -q` — **3588 passed, 10 skipped**
+      (3598 collected; branch baseline 3468 collected at `754e1d1`, + 130 new)
+- [x] `npx tsc --noEmit` — clean
+- [x] `npx vitest run` — **703 passed, 1 skipped** across 72 files
+      (baseline 686 + 1 skipped across 71 files, + 17 new)
+- [x] `npm run build` — clean (965 modules, 846.52 kB / 238.42 kB gzipped)
+- [x] Protected diff is exactly the seven authorized source files
+      (`advise.py`, `optimize/milp.py`, `optimize/chips.py`,
+      `optimize/chip_policy.py`, `optimize/scenarios.py`,
+      `optimize/differentials.py`, `web/routers/whatif.py`) plus **four**
+      authorized test files, not one: `tests/test_v10_degradation.py` (Task 8,
+      the narrowed T10-A rail), and three orchestrator rulings of 2026-09-02 —
+      `tests/test_advise.py` (the EO rail pinned a call's *spelling* rather
+      than its claim; the closing paren was dropped),
+      `tests/test_v12_w2_degradation.py` (W2's audit rail was scoped "since
+      main" and fails on any later cycle's first protected commit; re-pinned
+      to `ef8c5f3..754e1d1` at 7e1645f), and
+      `tests/test_v12_w1_degradation.py` (the config pin's move, below).
+      `set_pieces.py`, `web/jobs.py`, `test_odds.py`, `test_web_jobs.py` and
+      `s2_replay.py` show **no diff at all**, and every authorized hunk
+      carries `# v12 W3 §…` — 46 provenance lines across the six enumerated
+      source files and the v10 rail
+- [x] Pins: job kinds 12 → 12 (`job_kinds.py` shows no diff at all), routes
+      **46 → 46** (45 at the program's spec commit; W1 §2.9 spent the one on
+      `GET /api/meta/freshness`), config fields **53 → 55**
+      (`alt_plan_max_gap`, `draw_availability`; 48 at `27f7933`, 53 after W1
+      and W2). `git diff 754e1d1 -- src/gaffer/config.py config.example.toml`
+      is exactly the two fields and their two documented keys
+- [x] **The suite's absolute config-field pin moved to
+      `tests/test_v12_w3_degradation.py`** (orchestrator ruling, 2026-09-02).
+      A single number that every key-adding cycle must move belongs in the
+      newest cycle's file; W1 keeps the by-name claim about its own five keys,
+      and its rail-on-the-rail now names W3's file. The *route* total did not
+      move with it — it stays in `tests/test_v11_degradation.py`, because W3
+      adds no route and moving it would be a protected edit that bought
+      nothing
+- [x] LP golden: an empty `force_out`, an absent `no_good` and a bank read off
+      a solved variable each build the pre-change model byte for byte
+      (`tests/data/v12_w3_milp_golden.lp`, captured before the first edit to
+      `milp.py`; re-run from Tasks 1, 5, 10 and 12)
+- [x] Rails: no priors asset → every bar flat and every source says which kind
+      of flat; no `chip_scenarios.toml` → no pair row and a five-column table;
+      the availability draw off → the pre-v12 sweep on a fixed seed; no
+      components frame → the captain ceiling stays `p_haul` and says why, and
+      a captain with no band is an em dash rather than `0%`; an artifact with
+      no `alternative_plans` → an empty tab strip and a full timeline
+- [x] Security ritual (CONVENTIONS §8): `git diff 754e1d1 HEAD` names no
+      `data/`, `reports/`, `models/`, `logs/`, `config.toml` or
+      `web/static/` path (asserted by a rail, not only by eye);
+      `git show main:config.toml` fails; the only `api_key` in the diff is
+      `config.example.toml`'s commented placeholder
+
+### W3 G2 — the gates (orchestrator only)
+
+**Pre-registered rules, written before any arm ran.**
+
+- [ ] **The replay.** Three seed bases a side, branch against a re-run `main`
+      (CONVENTIONS §1 — a banked number from an earlier cycle is not a valid
+      comparison), run in the main tree after W2 has merged:
+
+      ```bash
+      mkdir -p logs
+      caffeinate -i nohup bash scripts/replay_pair.sh v12w3 \
+        > logs/v12w3_replay.log 2>&1 &
+      grep -e V7B_ARM_DONE -e MULTISEED_DONE logs/v12w3_replay.log
+      ```
+
+      `SEEDS` defaults to `1876,1901,20260827`; both sides run
+      `scripts/v7b_replay.py --arm heur --n 40 --chips`, differing only in
+      `--tag`, which `scripts/seed_stats.py` verifies before it will
+      aggregate. **One seed convention per write-up** — either the driver's
+      default above or W2's `20260901,20260902,20260903`, named in the
+      result, never a mixture.
+
+      **Both sides at the shipped defaults, and `config.toml` identical
+      between them.** The backtest refits through `train_all` →
+      `attacking_features()`, so `[model] xg_per_shot` is a live lever on this
+      replay; the price term is `{}` with `price_timing = false`, which is the
+      fair comparison for §4.5. So: remove any `price_timing` or `[model]
+      xg_per_shot` override from `config.toml` **before either side runs**,
+      keep the file byte-identical across the two runs, and **state the values
+      actually in force in the write-up**. A pair of arms run under two
+      configs measures the config.
+
+      **Verdict:** the branch mean total is within **5** of the main mean, and
+      the branch mean hits are not more than the main mean **+ 3** (spec §4).
+      Read against the seed spread, which v7b measured at 116 points on one
+      arm — a delta inside the spread is a seed, not a change.
+
+      **What this gate can see, pre-registered so the result is not
+      re-interpreted afterwards:** `backtest.py` reaches exactly one W3
+      change, `free_hit_gain` (via `evaluate_chips`). `force_out` is never
+      set, θ was already wired into `_pick_chip`, the alternatives are
+      computed in `advise`, the availability draw needs a `p_play` the
+      replay's gate does not pass, and the chip pair needs a `dgw_gws` no
+      caller but `advise` supplies. **So this is a measurement of §4.5 and a
+      no-regression check on the other five** — v10's G2, demoted the same way
+      and for the same kind of reason.
+
+- [ ] **The captain-support check (§4.4).** On the live board, after an
+      `advise` run:
+
+      ```bash
+      mkdir -p logs && caffeinate -i nohup .venv/bin/python \
+        scripts/v12_w3_support.py > logs/v12_w3_support.log 2>&1 &
+      grep -e W3_SUPPORT_LEVER -e W3_SUPPORT_DONE logs/v12_w3_support.log
+      ```
+
+      **Verdict:** `drop_pts <= 10`. The number is S1's failure signature —
+      captain support 92% → 22%, after which the gate found no move clearing
+      threshold and advised a plan carrying −20 in hits — watched for by name.
+      A `W3_SUPPORT_LEVER` line must appear first; without it the run measured
+      two identical arms and is void.
+
+      **The arm ships OFF and this gate is what turns it on** (CONVENTIONS §6,
+      orchestrator ruling 2026-09-02). W3 merges with
+      `[scenarios] draw_availability = false` and `Config.draw_availability =
+      False`, so no user's advice has drawn availability at the moment this
+      runs.
+
+      **If it passes:** flip four things in one commit — the `Config` default,
+      the `load_config` default, `config.example.toml`, and the two
+      expectations in
+      `tests/test_v12_w3_availability.py::test_the_config_key_defaults_off_and_reads_from_the_scenarios_section`
+      / `::test_the_shipped_default_leaves_the_advice_path_on_the_pre_v12_sweep`
+      — and record the measured `support_off` / `support_on` / `drop_pts` in
+      this spec beside the rule.
+      `tests/test_v12_w3_degradation.py::test_the_shipped_default_is_off_and_the_advice_run_passes_no_p_play`
+      moves with them.
+
+      **If it fails:** it stays off, and the negative result is recorded here
+      anyway. Deleting the arm loses the measurement that cost the hours; the
+      feature stays in the tree, stays tested, and stays off.
+
+- [ ] Zero unauthorized protected diffs (G1's audit, re-run on the merge —
+      `pytest -q tests/test_v12_w3_degradation.py -k protected`, whose base
+      pin `754e1d1` is still the right one after the merge).
+
+**Residuals for the G2 write-up, recorded before it runs.**
+
+1. **Re-score the alternatives under the incumbent's own `_decision_scales`.**
+   §F1's second pass takes each plan's bench and vice coefficients from the
+   plan it has just solved, so the incumbent and each alternative are scored
+   under coefficient sets derived from different XIs. A small `Plan.gap` of
+   either sign can be that rather than a real difference between the plans.
+   `Plan.gap`'s docstring and the board's caption both name it and neither
+   attributes a negative gap to the coherence constraint alone; the fix is not
+   in W3.
+2. **`raw_optimum_agrees` reads `False` more often** once §4.4 is switched on,
+   because the sweep models a risk the raw solve does not. Information rather
+   than instability (plan A6) — and a reason to re-read that line's wording on
+   the report if the arm passes.
+3. **The free hit still excludes horizon effects.** Pricing them needs a
+   two-branch horizon solve; §4.5 asked for a true re-solve of the FH *week*,
+   which is what shipped, and the docstring keeps the third approximation.
+4. **The alternatives cost one MILP solve each on every weekly advise run** —
+   up to four when `p_play` is informative, because §F1 solves twice — with
+   `[optimizer] alt_plan_max_gap = 0` as the free off switch.
+
+### W3 G3 — review and merge (orchestrator only)
+
+- [ ] Adversarial review, fix-first, re-verify.
+- [ ] Merge ritual: ff-only, push, `git show main:config.toml` fails, key-grep
+      empty.
+
+### W3 live spot-checks (orchestrator, on the dev server)
+
+- [ ] Planning → Board: "Try these changes" lands on What-If with the week's
+      sells in **Must sell** and its buys in Force in, `ban` empty, and the
+      sentence under the button no longer says a sell rules out buying him
+      back.
+- [ ] What-If: a Must sell on a player you do not own is refused inline with
+      "use ban"; on a free hit it is refused as "nothing to force out".
+- [ ] Planning → Board: with alternatives banked, Plan A / B / C switch, the
+      gap sentence names objective points, and the moves that differ from Plan
+      A are marked. With none banked, no strip is drawn at all.
+- [ ] Planning → Chips: every bar carries θ or `flat`, and "Wildcard now"
+      names the bar its verdict was decided against — the two must agree about
+      the wildcard, which before this cycle they did not.
+- [ ] The chip table shows **no** `Wildcard + Bench Boost` row on today's
+      fixture list, which is the correct empty state and not a bug.
+- [ ] The HTML report's captain table reads `P(10+ pts)`, a candidate with no
+      band reads as an em dash rather than 0%, and the alternatives table below
+      still reads `P(2+ returns)`.
+
 ## 5. W4 — field
 
 ### 5.1 FPL-Core-Insights collector
