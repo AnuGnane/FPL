@@ -43,10 +43,10 @@ applies: one printed line whatever happens.
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 from gaffer.data.league import RAW_LEAGUE
+from gaffer.io import atomic_write
 
 __all__ = ["RAW_LEAGUE", "bank_my_entry", "bank_my_gw", "bank_my_history",
            "bank_my_transfers", "chip_for_gw", "gw_history_row", "load_my_gw",
@@ -74,21 +74,14 @@ def my_transfers_path(season: str, entry_id: int,
 
 
 def _write_atomic(path: Path, payload) -> Path:
-    """Write JSON through a sibling temp file and rename.
+    """Write JSON atomically.
 
-    ``os.replace`` is atomic within a directory, so a reader sees the whole
-    old file or the whole new one — never the half-written middle it would
-    throw away as corrupt. The same trade ``artifacts.append_advice_history``
-    and ``league_sim.append_sim_history`` make.
+    A reader sees the whole old file or the whole new one — never the
+    half-written middle it would throw away as corrupt. The same trade
+    ``artifacts.append_advice_history`` and ``league_sim.append_sim_history``
+    make.
     """
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
-    try:
-        tmp.write_text(json.dumps(payload))
-        os.replace(tmp, path)
-    finally:
-        tmp.unlink(missing_ok=True)
-    return path
+    return atomic_write(path, json.dumps(payload))
 
 
 def _read_json(path: Path):

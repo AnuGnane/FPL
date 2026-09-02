@@ -391,11 +391,16 @@ def test_a_torn_cache_file_is_refetched_rather_than_raising(tmp_path):
 
 def test_the_match_cache_is_written_atomically(tmp_path):
     """os.replace, not a direct write: a scrape killed mid-write must leave
-    either the old file or the new one, never a truncated one."""
+    either the old file or the new one, never a truncated one.
+
+    v12 W1 §2.11: the guarantee now comes from ``gaffer.io.atomic_write``, and
+    the grep follows it. Stronger than the one it replaces: a comment
+    mentioning ``os.replace`` would have satisfied the old assertion, and a
+    comment cannot satisfy this one, because the name has to be called."""
     import inspect
 
     src = inspect.getsource(UnderstatClient.match_players)
-    assert "os.replace" in src
+    assert "atomic_write(" in src
 
 
 def test_team_history_reads_the_league_page_once_per_season(tmp_path):

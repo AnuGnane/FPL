@@ -37,7 +37,6 @@ a traceback. :func:`run_digest` has one ``except`` and returns ``None``.
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -49,6 +48,7 @@ from gaffer.artifacts import (data_warning, ingested_through, latest_gw,
                               load_advice, load_availability, load_snapshot,
                               upcoming_gw)
 from gaffer.errors import GafferError
+from gaffer.io import atomic_write
 from gaffer.watchlist import watch_targets
 
 DIGEST_KINDS = ("friday", "tuesday")
@@ -70,24 +70,19 @@ def digest_path(kind: str) -> Path:
 
 
 def save_digest(kind: str, payload: dict) -> Path:
-    """Write one digest through a temp file and ``os.replace``.
+    """Write one digest atomically.
 
     Replace rather than append. A digest is about *now*, the ledger already
     keeps the season's history properly, and a log of forty Fridays is a file
     nobody reads that costs a schema decision.
+
+    Two digests can write at once — the Friday job and a hand-run ``gaffer
+    digest`` — which is why the write goes through ``gaffer.io.atomic_write``
+    rather than straight to the destination.
     """
     artifacts.REPORTS.mkdir(parents=True, exist_ok=True)
     path = digest_path(kind)
-    # The temp name carries the pid: two digests writing at once (the Friday
-    # job and a hand-run ``gaffer digest``) would otherwise share one temp
-    # file, and the loser's ``finally`` would unlink the winner's write out
-    # from under it. ``os.replace`` is still what makes the swap atomic.
-    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
-    try:
-        tmp.write_text(json.dumps(payload, indent=1, allow_nan=False))
-        os.replace(tmp, path)
-    finally:
-        tmp.unlink(missing_ok=True)
+    atomic_write(path, json.dumps(payload, indent=1, allow_nan=False))
     return path
 
 

@@ -22,7 +22,6 @@ re-run with the same seed is the same report.
 from __future__ import annotations
 
 import json
-import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -33,6 +32,7 @@ from gaffer import artifacts
 from gaffer.artifacts import (latest_gw, load_components, load_solve_state,
                               milp_pool, raw_ep_by, solve_kw_from_state)
 from gaffer.errors import GafferError
+from gaffer.io import atomic_write
 from gaffer.league_mode import cover_from_eo, tilt_ep
 from gaffer.optimize.milp import SolveInput
 from gaffer.optimize.scenarios import (move_frequencies, run_scenarios,
@@ -82,17 +82,10 @@ def load_sensitivity(gw: int) -> dict | None:
 
 
 def save_sensitivity(payload: dict, gw: int) -> Path:
-    """Atomic, through a temp file — ``pen_tracker.save_tracker``'s idiom."""
+    """Atomic — ``pen_tracker.save_tracker``'s idiom."""
     artifacts.REPORTS.mkdir(exist_ok=True)
     path = sensitivity_path(gw)
-    # Per-writer temp name: two writers sharing one ".tmp" each unlink the
-    # other's file, and the loser's os.replace raises FileNotFoundError.
-    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
-    try:
-        tmp.write_text(json.dumps(payload, indent=1, allow_nan=False))
-        os.replace(tmp, path)
-    finally:
-        tmp.unlink(missing_ok=True)
+    atomic_write(path, json.dumps(payload, indent=1, allow_nan=False))
     return path
 
 

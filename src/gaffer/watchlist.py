@@ -22,12 +22,12 @@ here is ever a feature. A star is a bookmark.
 from __future__ import annotations
 
 import json
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 
 from gaffer import artifacts
 from gaffer.errors import GafferError
+from gaffer.io import atomic_write
 
 MAX_WATCHED = 100
 """Stars beyond which this stopped being a shortlist.
@@ -82,25 +82,19 @@ def load_watchlist() -> dict[int, dict]:
 
 
 def save_watchlist(rows: dict[int, dict]) -> Path:
-    """Write the whole store through a temp file and ``os.replace``.
+    """Write the whole store atomically.
 
     ``overrides.save_overrides``'s idiom. An empty store is written as an
     empty object rather than deleted: a reader cannot tell an absent file from
     a half-written one, and unstarring the last player should not put the
-    store into the state a crash would.
+    store into the state a crash would. Two saves can race in from concurrent
+    HTTP handlers, which is what the atomic write is for.
     """
     payload = {"watchlist": {str(code): dict(row)
                              for code, row in sorted(rows.items())}}
     artifacts.REPORTS.mkdir(parents=True, exist_ok=True)
     path = watchlist_path()
-    # Per-writer temp name: two saves racing from concurrent HTTP handlers
-    # would otherwise share one ".tmp" and each unlink the other's file.
-    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
-    try:
-        tmp.write_text(json.dumps(payload, indent=1, allow_nan=False))
-        os.replace(tmp, path)
-    finally:
-        tmp.unlink(missing_ok=True)
+    atomic_write(path, json.dumps(payload, indent=1, allow_nan=False))
     return path
 
 

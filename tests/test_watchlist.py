@@ -151,7 +151,12 @@ def test_a_second_writers_temp_file_survives_this_writers_unlink(monkeypatch):
     ``finally``, and the loser's ``os.replace`` raised ``FileNotFoundError``.
     Here writer B — another process, another pid — starts its temp file while
     A is renaming, and must still find it afterwards.
+
+    v12 W1 §2.11: the rename moved into ``gaffer.io``, so the spy follows it.
+    The claim is unchanged.
     """
+    from gaffer import io as gio
+
     path = artifacts.REPORTS / "watchlist.json"
     real_replace = os.replace
     renamed, other = [], {}
@@ -165,7 +170,7 @@ def test_a_second_writers_temp_file_survives_this_writers_unlink(monkeypatch):
             other["tmp"] = b_tmp
         real_replace(src, dst)
 
-    monkeypatch.setattr(os, "replace", spy)
+    monkeypatch.setattr(gio.os, "replace", spy)
     save_watchlist({11: {"note": "a", "set_at": ""}})
 
     assert renamed == [f"watchlist.json.{os.getpid()}.tmp"]

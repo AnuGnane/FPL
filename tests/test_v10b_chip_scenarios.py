@@ -98,12 +98,16 @@ def test_the_file_says_where_it_came_from(tmp_path):
 
 
 def test_the_write_is_atomic_and_per_pid(tmp_path, monkeypatch):
-    """``field.py:100-107``'s reasoning: two writers sharing one ``.tmp`` each
-    unlink the other's file and the loser's ``os.replace`` raises. A nightly
-    job and a manual refresh are exactly two writers."""
+    """Two writers sharing one ``.tmp`` each unlink the other's file and the
+    loser's ``os.replace`` raises. A nightly job and a manual refresh are
+    exactly two writers.
+
+    v12 W1 §2.11: the module's private ``_atomic_write`` is gone and the write
+    goes through ``gaffer.io``, so the spy follows it. The claim — this
+    writer's temp carries this process's pid — is unchanged."""
     import os
 
-    from gaffer.data import chip_scenarios as mod
+    from gaffer import io as gio
 
     seen: list[str] = []
     real_replace = os.replace
@@ -112,7 +116,7 @@ def test_the_write_is_atomic_and_per_pid(tmp_path, monkeypatch):
         seen.append(str(src))
         return real_replace(src, dst)
 
-    monkeypatch.setattr(mod.os, "replace", spy)
+    monkeypatch.setattr(gio.os, "replace", spy)
     path = tmp_path / "chip_scenarios.toml"
     write_chip_scenarios(_with_a_double(), path=path)
     assert seen and str(os.getpid()) in seen[0]
@@ -137,8 +141,25 @@ def test_an_unreadable_frame_is_a_zero_not_an_exception(tmp_path):
 
 
 def test_an_unwritable_directory_is_a_zero(tmp_path):
-    assert write_chip_scenarios(
-        _with_a_double(), path=tmp_path / "nope" / "deeper" / "x.toml") == 0
+    """The same claim as the test above, on the write rather than the frame:
+    a destination this process cannot write to is a zero, not an exception
+    that fails the weekly data refresh.
+
+    v12 W1 §2.11: this used to point at a *missing* directory, because the
+    module's private ``_atomic_write`` did not create parents and a missing
+    one raised. ``gaffer.io.atomic_write`` does create them — deliberately,
+    for the twelve other call sites that were doing the mkdir themselves — so
+    the unwritable case is made unwritable rather than absent. The claim is
+    the one the test was written for either way.
+    """
+    denied = tmp_path / "denied"
+    denied.mkdir()
+    denied.chmod(0o500)
+    try:
+        assert write_chip_scenarios(
+            _with_a_double(), path=denied / "deeper" / "x.toml") == 0
+    finally:
+        denied.chmod(0o700)
 
 
 def test_run_data_refresh_calls_the_writer():

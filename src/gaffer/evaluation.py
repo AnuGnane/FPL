@@ -17,7 +17,6 @@ LightGBM to do it.
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -28,6 +27,7 @@ import pandas as pd
 from gaffer.artifacts import REPORTS
 from gaffer.config import load_config
 from gaffer.errors import GafferError
+from gaffer.io import atomic_write
 
 RETURN_CATEGORIES = ["zeros", "blanks", "tickers", "haulers", "all"]
 """OpenFPL's return buckets, defined on *actual* points, plus the pooled cut.
@@ -246,10 +246,10 @@ def load_evaluation() -> dict:
 def save_evaluation(key: str, payload: dict) -> Path:
     """Merge ``payload`` in under ``key``, leaving the other keys alone.
 
-    Written through a sibling temp file and ``os.replace``, which is atomic on
-    POSIX: a reader either sees the whole previous artifact or the whole new
-    one, never the half-written middle. Evaluation runs take hours and the web
-    layer reads this file on every request, so the two do overlap.
+    Written atomically: a reader either sees the whole previous artifact or
+    the whole new one, never the half-written middle. Evaluation runs take
+    hours and the web layer reads this file on every request, so the two do
+    overlap.
     """
     stored: dict = {}
     if EVALUATION_PATH.exists():
@@ -262,15 +262,7 @@ def save_evaluation(key: str, payload: dict) -> Path:
     # a rejected payload leaves nothing behind at all.
     text = json.dumps(stored, indent=1, allow_nan=False)
     REPORTS.mkdir(exist_ok=True)
-    # Per-writer temp name: two writers sharing one ".tmp" each unlink the
-    # other's file, and the loser's os.replace raises FileNotFoundError.
-    tmp = EVALUATION_PATH.with_name(
-        f"{EVALUATION_PATH.name}.{os.getpid()}.tmp")
-    try:
-        tmp.write_text(text)
-        os.replace(tmp, EVALUATION_PATH)
-    finally:
-        tmp.unlink(missing_ok=True)
+    atomic_write(EVALUATION_PATH, text)
     return EVALUATION_PATH
 
 

@@ -16,12 +16,12 @@ report store uses.
 from __future__ import annotations
 
 import json
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 
 from gaffer import artifacts
 from gaffer.errors import GafferError
+from gaffer.io import atomic_write
 
 MAX_DRAFTS = 12
 """Spec D4's cap. Twelve named plans is a planning session; a hundred is a
@@ -81,18 +81,15 @@ def load_drafts() -> list[dict]:
 
 
 def save_drafts(rows: list[dict]) -> Path:
-    """Atomic whole-file write — ``pen_tracker.save_tracker``'s idiom."""
+    """Atomic whole-file write — ``pen_tracker.save_tracker``'s idiom.
+
+    Two saves can race in from concurrent HTTP handlers, which is why this
+    goes through the shared helper rather than straight to the destination.
+    """
     artifacts.REPORTS.mkdir(exist_ok=True)
     path = drafts_path()
-    # Per-writer temp name: two saves racing from concurrent HTTP handlers
-    # would otherwise share one ".tmp" and each unlink the other's file.
-    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
-    try:
-        tmp.write_text(json.dumps({"drafts": rows}, indent=1,
+    atomic_write(path, json.dumps({"drafts": rows}, indent=1,
                                   allow_nan=False))
-        os.replace(tmp, path)
-    finally:
-        tmp.unlink(missing_ok=True)
     return path
 
 

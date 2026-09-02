@@ -41,6 +41,7 @@ from gaffer.data import store
 from gaffer.data.my_entry import (bank_my_entry, chip_for_gw, gw_history_row,
                                   load_my_gw, load_my_history,
                                   load_my_transfers, my_transfers_for_gw)
+from gaffer.io import atomic_write
 from gaffer.journal import _code_of_element, latest_run_per_gw
 
 __all__ = ["ACTUAL_COLS", "CHIP_SCORING", "LANES", "LEDGER", "MISS_BAR",
@@ -1092,19 +1093,14 @@ def append_ledger(row: dict):
 
     artifacts.REPORTS.mkdir(parents=True, exist_ok=True)
     path = ledger_path()
-    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
     # The lock spans the read as well as the write: the race this guards is
     # the read-modify-write, not the rename, which was already atomic.
     with _ledger_lock(lock_path()):
         rows = [r for r in load_ledger() if int(r["gw"]) != int(row["gw"])]
         rows.append(dict(row))
         rows.sort(key=lambda r: int(r["gw"]))
-        try:
-            tmp.write_text(json.dumps({"gws": rows}, indent=1,
+        atomic_write(path, json.dumps({"gws": rows}, indent=1,
                                       allow_nan=False))
-            os.replace(tmp, path)
-        finally:
-            tmp.unlink(missing_ok=True)
     return path
 
 

@@ -31,7 +31,6 @@ from __future__ import annotations
 
 import json
 import math
-import os
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -42,6 +41,7 @@ import pandas as pd
 from gaffer import artifacts
 from gaffer.data.field import load_field_sample
 from gaffer.errors import GafferError
+from gaffer.io import atomic_write
 from gaffer.optimize.scenarios import (NOISE_DENOM, NOISE_FLOOR_XMINS,
                                        scenario_noise, sigma_for,
                                        xmins_by_player_gw)
@@ -676,9 +676,6 @@ def append_sim_history(sim: LeagueSim, gw: int, run_at: str) -> Path:
     """
     artifacts.REPORTS.mkdir(exist_ok=True)
     path = history_path()
-    # Per-writer temp name: two writers sharing one ".tmp" each unlink the
-    # other's file, and the loser's os.replace raises FileNotFoundError.
-    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
     # The lock spans the read as well as the write: the race this guards is
     # the read-modify-write, not the rename, which was already atomic.
     with _HISTORY_LOCK:
@@ -687,12 +684,8 @@ def append_sim_history(sim: LeagueSim, gw: int, run_at: str) -> Path:
                      "exp_finish": sim.exp_finish, "run_at": str(run_at),
                      "n": sim.n, "seed": sim.seed})
         rows.sort(key=lambda r: int(r["gw"]))
-        try:
-            tmp.write_text(json.dumps({"gws": rows}, indent=1,
+        atomic_write(path, json.dumps({"gws": rows}, indent=1,
                                       allow_nan=False))
-            os.replace(tmp, path)
-        finally:
-            tmp.unlink(missing_ok=True)
     return path
 
 

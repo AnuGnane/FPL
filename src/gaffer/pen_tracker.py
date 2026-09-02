@@ -14,13 +14,13 @@ version of it anybody will actually read.
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 import pandas as pd
 
 from gaffer import artifacts
 from gaffer.data import store
+from gaffer.io import atomic_write
 from gaffer.set_pieces import (GOAL_POINTS, LEAGUE_PENS_PG, PEN_CONVERSION,
                                pen_estimate, share_now)
 
@@ -288,7 +288,7 @@ def track_pens(season: str | None = None) -> dict:
 
 
 def save_tracker(report: dict) -> Path:
-    """``reports/pen_tracker.json``, through a temp file and ``os.replace``.
+    """``reports/pen_tracker.json``, written atomically.
 
     The same atomic write as :func:`gaffer.evaluation.save_evaluation`, and for
     the same reason: a reader either sees the whole previous report or the
@@ -297,14 +297,7 @@ def save_tracker(report: dict) -> Path:
     text = json.dumps(report, indent=1, allow_nan=False)
     artifacts.REPORTS.mkdir(exist_ok=True)
     path = tracker_path()
-    # Per-writer temp name: two writers sharing one ".tmp" each unlink the
-    # other's file, and the loser's os.replace raises FileNotFoundError.
-    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
-    try:
-        tmp.write_text(text)
-        os.replace(tmp, path)
-    finally:
-        tmp.unlink(missing_ok=True)
+    atomic_write(path, text)
     return path
 
 

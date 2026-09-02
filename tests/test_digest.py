@@ -466,7 +466,11 @@ def test_the_temp_file_is_process_scoped(furnished, monkeypatch):
     """A fixed temp name is one file two writers share, and the Friday job at
     17:00 and a hand-run ``gaffer digest`` are two writers: the loser's
     ``finally`` would unlink the winner's write. The pid makes them separate
-    files and ``os.replace`` still makes each swap atomic."""
+    files and ``os.replace`` still makes each swap atomic.
+
+    v12 W1 §2.11: the idiom moved into ``gaffer.io``, so the spy follows it.
+    The claim is unchanged — the temp this digest writes carries this
+    process's pid."""
     seen = []
     real = os.replace
 
@@ -474,7 +478,7 @@ def test_the_temp_file_is_process_scoped(furnished, monkeypatch):
         seen.append(str(src))
         return real(src, dst)
 
-    monkeypatch.setattr("gaffer.digest.os.replace", spy)
+    monkeypatch.setattr("gaffer.io.os.replace", spy)
     save_digest("friday", friday_briefing())
     assert seen and str(os.getpid()) in seen[0]
     assert load_digest("friday") is not None

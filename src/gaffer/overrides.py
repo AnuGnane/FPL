@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import json
 import math
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -30,6 +29,7 @@ import pandas as pd
 
 from gaffer import artifacts
 from gaffer.errors import GafferError
+from gaffer.io import atomic_write
 
 OVERRIDE_COLS = ["override", "override_p_play", "override_e_min",
                  "override_note"]
@@ -100,24 +100,18 @@ def load_overrides() -> dict[int, dict]:
 
 
 def save_overrides(rows: dict[int, dict]) -> Path:
-    """Write the whole store through a temp file and ``os.replace``.
+    """Write the whole store atomically.
 
     ``pen_tracker.save_tracker``'s idiom exactly: a reader sees the whole
     previous store or the whole new one, never the half-written middle. The
-    availability pass is a reader, and it runs on a schedule.
+    availability pass is a reader, and it runs on a schedule — and two saves
+    can race in from concurrent HTTP handlers.
     """
     payload = {"overrides": {str(code): dict(row)
                              for code, row in sorted(rows.items())}}
     artifacts.REPORTS.mkdir(exist_ok=True)
     path = overrides_path()
-    # Per-writer temp name: two saves racing from concurrent HTTP handlers
-    # would otherwise share one ".tmp" and each unlink the other's file.
-    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
-    try:
-        tmp.write_text(json.dumps(payload, indent=1, allow_nan=False))
-        os.replace(tmp, path)
-    finally:
-        tmp.unlink(missing_ok=True)
+    atomic_write(path, json.dumps(payload, indent=1, allow_nan=False))
     return path
 
 

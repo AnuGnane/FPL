@@ -37,6 +37,7 @@ from gaffer.data.tier_eo import (RAW_TIER, TIER_SAMPLE, TIER_SEED,
                                  eo_from_picks, fetch_sample_picks,
                                  read_tier_cache, tier_cache_path,
                                  write_tier_cache)
+from gaffer.io import atomic_write
 from gaffer.snapshot import snap_date
 
 RAW_FIELD = Path("data/raw/field")
@@ -96,15 +97,7 @@ def save_field_sample(picks: list[list[dict]], gw: int, season: str,
                        for p in entry]}
             for i, entry in enumerate(picks)],
     }
-    path.parent.mkdir(parents=True, exist_ok=True)
-    # Per-writer temp name: two writers sharing one ".tmp" each unlink the
-    # other's file, and the loser's os.replace raises FileNotFoundError.
-    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
-    try:
-        tmp.write_text(json.dumps(payload))
-        os.replace(tmp, path)
-    finally:
-        tmp.unlink(missing_ok=True)
+    atomic_write(path, json.dumps(payload))
     return path
 
 

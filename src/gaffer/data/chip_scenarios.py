@@ -8,13 +8,13 @@ this cycle.
 
 from __future__ import annotations
 
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
 
 from gaffer.data.fixtures import season_outlook
+from gaffer.io import atomic_write
 from gaffer.optimize.chip_policy import CHIP_SCENARIOS_PATH
 
 
@@ -68,21 +68,8 @@ def write_chip_scenarios(fixtures: pd.DataFrame | None,
             "[dgw]",
         ]
         lines += [f"{gw} = 1.0" for gw in sorted(doubles)]
-        _atomic_write(target, "\n".join(lines) + "\n")
+        atomic_write(target, "\n".join(lines) + "\n")
         return len(doubles)
     except Exception as exc:  # noqa: BLE001 — never fails the data refresh
         print(f"chip_scenarios: not written ({exc})")
         return 0
-
-
-def _atomic_write(target: Path, text: str) -> None:
-    """Write whole, replace in one step, and never share a temp name.
-
-    ``field.py:100-107``'s reasoning: two writers sharing one ``.tmp`` each
-    unlink the other's file and the loser's ``os.replace`` raises
-    ``FileNotFoundError``. A nightly job and a manual refresh are exactly two
-    writers.
-    """
-    tmp = target.with_suffix(f".{os.getpid()}.tmp")
-    tmp.write_text(text)
-    os.replace(tmp, target)

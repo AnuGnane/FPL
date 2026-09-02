@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import html
 import json
-import os
 import time
 from pathlib import Path
 
@@ -27,6 +26,7 @@ import pandas as pd
 
 from gaffer.data.names import normalize_name
 from gaffer.errors import GafferError
+from gaffer.io import atomic_write
 
 UNDERSTAT_BASE = "https://understat.com"
 
@@ -255,7 +255,7 @@ class UnderstatClient:
         every way of writing the wrong thing into it unrecoverable without
         hand-deleting files. So: an empty roster (understat has not processed
         the match yet) is returned but never written, the write goes through
-        a temp file and :func:`os.replace` so a killed scrape leaves either
+        :func:`gaffer.io.atomic_write` so a killed scrape leaves either
         the old file or the new one, and a file that will not parse is
         treated as absent and re-fetched rather than raising through the
         whole backfill.
@@ -287,9 +287,8 @@ class UnderstatClient:
         path.parent.mkdir(parents=True, exist_ok=True)
         # The date is re-applied on read rather than stored: it is a date
         # object, JSON has no such type, and the caller always knows it.
-        tmp = path.with_suffix(f".{os.getpid()}.tmp")
-        tmp.write_text(rows.drop(columns=["date"]).to_json(orient="records"))
-        os.replace(tmp, path)
+        atomic_write(path, rows.drop(columns=["date"]).to_json(
+            orient="records"))
         return rows
 
 

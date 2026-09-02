@@ -350,16 +350,18 @@ def test_the_ledger_write_takes_a_lock_and_gives_it_back(here, monkeypatch):
     """Read-modify-write: two reviews racing on one file would have the
     second read the ledger before the first replaced it and write back a copy
     without the first's row."""
+    from gaffer import io as gio
     from gaffer import review as R
 
     seen = {}
-    real = R.os.replace
+    # v12 W1 §2.11: the rename lives in gaffer.io now, so the spy sits there.
+    real = gio.os.replace
 
     def spy(src, dst):
         seen["locked"] = R.lock_path().exists()
         return real(src, dst)
 
-    monkeypatch.setattr(R.os, "replace", spy)
+    monkeypatch.setattr(gio.os, "replace", spy)
     append_ledger({"gw": 3, "my_points": 50})
     assert seen["locked"] is True
     assert not R.lock_path().exists()

@@ -35,7 +35,6 @@ here redistributes anything.
 
 from __future__ import annotations
 
-import os
 from importlib.resources import files
 from pathlib import Path
 
@@ -43,6 +42,7 @@ import httpx
 from fastapi import APIRouter, HTTPException, Query, Response
 
 from gaffer.data import store
+from gaffer.io import atomic_write
 
 router = APIRouter(prefix="/api/assets", tags=["assets"])
 
@@ -128,23 +128,15 @@ def _fetch(url: str) -> bytes:
 
 
 def _bank(path: Path, data: bytes) -> None:
-    """Write ``data`` to ``path`` through a temp file and ``os.replace``.
+    """Write ``data`` to ``path`` atomically.
 
     The store's idiom, for the store's reason: a process killed mid-write
     would otherwise leave a truncated image that every later request serves as
-    a valid hit. Separately named so a test can make the write fail without
-    making the fetch fail.
+    a valid hit, and two processes banking the same shirt at once must not
+    tread on each other. Separately named so a test can make the write fail
+    without making the fetch fail.
     """
-    path.parent.mkdir(parents=True, exist_ok=True)
-    # The pid suffix is the house idiom (``watchlist.py``, ``digest.py``, …):
-    # two processes banking the same shirt at once must not write the same
-    # temp file, or one of them replaces a half-written copy of the other's.
-    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
-    try:
-        tmp.write_bytes(data)
-        os.replace(tmp, path)
-    finally:
-        tmp.unlink(missing_ok=True)
+    atomic_write(path, data)
 
 
 def _fallback(kind: str) -> Response:
