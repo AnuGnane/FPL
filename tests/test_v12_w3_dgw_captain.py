@@ -137,12 +137,99 @@ def test_a_double_gameweek_captain_is_ranked_on_both_fixtures():
     assert int(top_ceiling.iloc[0]["code"]) == 3
 
 
-def test_advise_builds_the_map_for_the_advised_gameweek_only():
+def _components(gws=(3, 4)) -> pd.DataFrame:
+    """A component *breakdown* frame, shaped like the one ``advise`` banks.
+
+    One row per player-fixture, and — the whole point of this fixture —
+    carrying ``ep``. ``comp``, the frame the model predicts into, does not:
+    ``ep`` is what ``artifacts.components_frame`` computes *from* it via
+    ``assemble_ep``. A banding step handed the wrong one of those two returns
+    ``{}`` for every player in the pool.
+    """
+    rows = []
+    for gw in gws:
+        for code, ep in [(1, 9.0), (2, 8.0), (3, 7.0)]:
+            rows.append({"code": code, "gw": gw, "ep": ep,
+                         "p_play": 0.95, "p60": 0.9})
+    # C plays twice in the first week: a double, so his two rows sum to one
+    # band.
+    rows.append({"code": 3, "gw": gws[0], "ep": 7.0,
+                 "p_play": 0.95, "p60": 0.9})
+    return pd.DataFrame(rows)
+
+
+def test_the_advise_banding_step_bands_the_frame_it_is_given():
+    """The step, driven rather than spelled.
+
+    v12 W3 T8-T11 final review, Critical: the predecessor of this test
+    asserted the *source text* ``bands_by_player_gw(comp)``, and ``comp`` is
+    exactly the frame that has no ``ep`` column — so the rail passed by
+    pinning the bug in place. Drive the step instead: given the frame that
+    carries expected points, the map is non-empty and keyed on player code.
+    """
+    from gaffer.advise import captain_haul_by_code
+
+    haul = captain_haul_by_code(_components(), 3)
+    assert haul, "a frame with ep, p_play and p60 must produce bands"
+    assert set(haul) == {1, 2, 3}
+    assert all(0.0 <= v <= 1.0 for v in haul.values())
+
+
+def test_the_step_keeps_the_advised_gameweek_and_drops_the_rest():
+    """The horizon's other weeks are in the same frame and are not this
+    week's ceiling."""
+    from gaffer.advise import captain_haul_by_code
+
+    frame = _components(gws=(3, 4))
+    # GW4's rows alone, asked for GW3: the filter is a filter, and not an
+    # accident of the frame only ever holding one week.
+    assert captain_haul_by_code(frame[frame["gw"] == 4], 3) == {}
+    assert set(captain_haul_by_code(frame, 4)) == {1, 2, 3}
+
+
+def test_the_doubled_up_player_is_banded_on_both_fixtures():
+    """C's two GW3 rows are 7.0 each; his band is the one over 14.0, not the
+    one over 7.0 — which is the whole reason §4.6 exists."""
+    from gaffer.advise import captain_haul_by_code
+
+    both = captain_haul_by_code(_components(gws=(3,)), 3)
+    single = captain_haul_by_code(
+        _components(gws=(3,)).drop_duplicates(["code", "gw"]), 3)
+    assert both[3] > single[3]
+    assert both[1] == single[1]      # A plays once either way
+
+
+def test_a_frame_with_no_expected_points_degrades_and_says_so(capsys):
+    """The negative, and the half that was silent. A frame with no ``ep`` —
+    ``comp`` itself, or a components file written before the column existed —
+    yields no bands, and the table falls back to the attacking ceiling. The
+    fallback is fine; doing it without a word is what let a wiring bug live
+    through a whole cycle of green tests."""
+    from gaffer.advise import captain_haul_by_code
+
+    haul = captain_haul_by_code(_components().drop(columns=["ep"]), 3)
+    assert haul == {}
+    assert "no captain points bands for GW3" in capsys.readouterr().out
+
+    out = captain_table(_ep(), XI, EO, haul=haul or None)
+    assert "p_haul" in out.columns and "p_haul_total" not in out.columns
+
+
+def test_advise_bands_the_components_frame_and_banks_the_same_one():
+    """A rail on the call *shape*, kept alongside the behavioural tests above
+    rather than instead of them: the step is only correct if it is handed the
+    frame that carries ``ep``, and the one frame in ``run_advise`` that does
+    is ``components_frame``'s. Built once and reused by ``save_components``,
+    so the banded frame and the banked frame cannot drift apart."""
     import inspect
 
     from gaffer.advise import run_advise
 
     src = inspect.getsource(run_advise)
-    assert "bands_by_player_gw(comp)" in src
-    assert "if band_gw == gw" in src
+    built = "components = components_frame(comp, scoring, cal, players, teams)"
+    assert built in src
+    assert src.count("components_frame(") == 1
+    assert src.index("components = components_frame(") < \
+        src.index("captain_haul_by_code(components, gw)")
+    assert "save_components(components, gw)" in src
     assert "haul=haul_by_code or None" in src

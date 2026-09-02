@@ -519,6 +519,41 @@ def _named(codes: list[int], name_of: dict, pos_of: dict, ep_by: dict,
              "ep": round(float(ep_by.get((c, gw), 0.0)), 2)} for c in codes]
 
 
+# v12 W3 §4.6 (specs/2026-09-01-gaffer-v12-program-design.md)
+def captain_haul_by_code(components: pd.DataFrame,
+                         gw: int) -> dict[int, float]:
+    """``{code: P(gameweek total >= 10)}`` for ``gw``, the captain's ceiling.
+
+    ``components`` is the **breakdown** frame — ``artifacts.components_frame``'s
+    output, one row per player-fixture with ``ep`` on it — and not ``comp``,
+    the frame the models predict into. The two are one function apart and look
+    alike; only the first carries expected points, and
+    ``uncertainty.bands_by_player_gw`` answers ``{}`` for a frame without them.
+    Naming the step is how the distinction stops being a comment somebody has
+    to notice at the call site (T8-T11 final review, Critical: it was not
+    noticed, and the served table quietly kept the attacking ``p_haul`` all
+    cycle).
+
+    A double gameweek's fixtures are already summed by ``bands_by_player_gw``
+    — one answer per (code, gw) — which is the whole point of ranking captains
+    on this rather than on ``ep_matrix``'s best-single-fixture ``p_haul``.
+
+    ``{}`` for a frame with no bands, and a printed line saying so. The empty
+    map is a legitimate degraded answer — a components frame with no minutes
+    model produces none, and a captain table is not worth failing over a
+    ceiling — but an unannounced one is indistinguishable from the wiring bug
+    above, which is precisely how that bug survived.
+    """
+    haul = {code: band.p_haul
+            for (code, band_gw), band in bands_by_player_gw(components).items()
+            if band_gw == gw}
+    if not haul:
+        print(f"captain_haul: no captain points bands for GW{gw} in the "
+              "component breakdown, so the ceiling stays P(2+ attacking "
+              "returns)")
+    return haul
+
+
 def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     """The whole weekly pipeline, from live refresh to ``reports/``."""
     missing = [n for n in MODEL_NAMES if not model_exists(n)]
@@ -965,12 +1000,17 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     # ``ep_matrix``'s best-single-fixture ``p_haul``, which in a double is the
     # better of two numbers printed as though it were the week's.
     #
-    # ``bands_by_player_gw`` returns ``{}`` for a frame with no minutes model,
-    # and ``captain_table`` then keeps today's column. Same frame the sweep
-    # noises and the components panel bands: one answer per (code, gw).
-    haul_by_code = {code: band.p_haul
-                    for (code, band_gw), band in bands_by_player_gw(comp).items()
-                    if band_gw == gw}
+    # The banded frame is the **breakdown**, built here rather than at the
+    # save below and reused there (T8-T11 final review, Critical: banding
+    # ``comp`` instead banded a frame with no ``ep`` column, so the map was
+    # empty on every run and the served table silently kept the attacking
+    # ``p_haul``). ``comp`` has not moved since ``rescale_pen_after_blend``,
+    # so building it here and banking it there are the same frame — and
+    # ``components_frame`` copies before it touches anything, so the served
+    # EP path is untouched. Same numbers the components panel bands: one
+    # answer per (code, gw).
+    components = components_frame(comp, scoring, cal, players, teams)
+    haul_by_code = captain_haul_by_code(components, gw)
     cap_tab = captain_table(ep_gw1, first.xi, league_eo,
                             haul=haul_by_code or None)
     if first.buys:
@@ -1113,7 +1153,9 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     advice_path = REPORTS / f"gw{gw}-advice.json"
     atomic_write(advice_path, json.dumps(asdict(advice), indent=1,
                                          default=str))
-    save_components(components_frame(comp, scoring, cal, players, teams), gw)
+    # The same frame §4.6 banded above, not a second build of it: one frame
+    # means the ceiling on the page and the breakdown on disk cannot disagree.
+    save_components(components, gw)
     save_solve_state(SolveState(
         gw=gw, gws=gws, deadline=deadline,
         generated_at=datetime.now(timezone.utc).isoformat(),
