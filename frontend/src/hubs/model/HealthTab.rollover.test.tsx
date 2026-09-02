@@ -73,6 +73,29 @@ describe('the season-rollover banner', () => {
   })
 })
 
+describe('the last-backup line', () => {
+  // v12 W1 §2.1. A backup nobody can see is a backup nobody notices has
+  // stopped running, so this line is always drawn — with the command that
+  // fixes it when there is nothing to report.
+  it('names the stamp and the size', async () => {
+    serve({ last_backup: { path: '/h/gaffer-backups/gaffer-20260901-2345.tar.gz',
+                           modified_at: '2026-09-01T23:45:00+00:00',
+                           bytes: 16_400_000 } })
+    render(<MemoryRouter><HealthTab /></MemoryRouter>)
+    const line = await screen.findByTestId('last-backup')
+    expect(line).toHaveTextContent('2026-09-01 23:45')
+    expect(line).toHaveTextContent('16.4 MB')
+  })
+
+  it('says never, and says what to run, when there is none', async () => {
+    serve({})
+    render(<MemoryRouter><HealthTab /></MemoryRouter>)
+    const line = await screen.findByTestId('last-backup')
+    expect(line).toHaveTextContent('never')
+    expect(line).toHaveTextContent('gaffer backup')
+  })
+})
+
 describe('the solver pool', () => {
   // v12 W1 §2.6. The four numbers that decide who the solver may consider at
   // all, on the one page a user reads to find out what this install is doing.

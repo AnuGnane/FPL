@@ -480,6 +480,9 @@ export interface HealthData {
   season_config?: string | null
   season_ingested?: string | null
   solver_top_n?: Record<string, number> | null
+  // null is "never". Rendered as "never — run `gaffer backup`" rather than as
+  // a blank cell: a backup nobody can see is one nobody notices has stopped.
+  last_backup?: { path: string; modified_at: string; bytes: number } | null
 }
 
 export interface TickerData {

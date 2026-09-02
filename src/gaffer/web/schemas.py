@@ -813,6 +813,12 @@ class ArtifactItem(BaseModel):
     bytes: int
 
 
+class BackupHealth(BaseModel):
+    path: str
+    modified_at: str
+    bytes: int
+
+
 class Health(BaseModel):
     data: list[SourceHealth]
     # File mtimes say when the ingest ran; this says what it got.
@@ -841,6 +847,14 @@ class Health(BaseModel):
     Named for what it is on the wire — a solver pool — since a schema field
     carries no TOML section with it. The value is ``optimizer_top_n()``'s, so
     it is what an actual solve would get rather than what the file says.
+    """
+    last_backup: BackupHealth | None = None
+    """The newest ``gaffer-*.tar.gz`` in the configured backup directory.
+
+    ``None`` means *never*, and the tab renders it as "never — run `gaffer
+    backup`" rather than as a blank cell. A zero-byte dict would have been the
+    other option and it is worse: it renders as a backup that happened and was
+    empty, which is the one outcome this feature exists to prevent.
     """
 
 

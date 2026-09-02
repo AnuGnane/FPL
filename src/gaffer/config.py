@@ -127,6 +127,15 @@ class Config:
     # a server, a CI box, a shared laptop — where a launchd job firing
     # Notification Centre would be somebody else's surprise.
     digest_notify: bool = True
+    # --- v12 W1 §2.1 backup ------------------------------------------------
+    # Read key-by-key like [odds] and [league], not splatted: the TOML keys
+    # are shorter than the field names (dir, rsync_target, keep) so the
+    # section reads as prose. An empty `backup_dir` means ~/gaffer-backups —
+    # `backup.backup_dir` resolves it, so the default lives in one place
+    # rather than being spelled here and there.
+    backup_dir: str = ""
+    backup_rsync_target: str = ""
+    backup_keep: int = 14
 
 
 def load_config(path: Path | str = "config.toml") -> Config:
@@ -148,6 +157,7 @@ def load_config(path: Path | str = "config.toml") -> Config:
     league = raw.get("league", {})
     news = raw.get("news", {})
     digest = raw.get("digest", {})
+    backup = raw.get("backup", {})
     return Config(
         entry_id=raw["fpl"]["entry_id"],
         league_id=raw["fpl"]["league_id"],
@@ -199,6 +209,9 @@ def load_config(path: Path | str = "config.toml") -> Config:
         news_lineup_start_floor=float(news.get("lineup_start_floor", 0.0)),
         news_overrides=bool(news.get("overrides", True)),
         digest_notify=bool(digest.get("notify", True)),
+        backup_dir=str(backup.get("dir", "")),
+        backup_rsync_target=str(backup.get("rsync_target", "")),
+        backup_keep=int(backup.get("keep", 14)),
     )
 
 

@@ -612,6 +612,32 @@ def track_pens_cmd(season: str = typer.Option(
 
 
 @app.command()
+def backup(to: Path = typer.Option(
+               None, "--to",
+               help="Where to write the archive. Defaults to [backup] dir, "
+                    "then ~/gaffer-backups."),
+           rsync: str = typer.Option(
+               None, "--rsync",
+               help="Also copy the archive here with `rsync -a`. Defaults to "
+                    "[backup] rsync_target. Never pruned.")):
+    """Tar the data no command can rebuild, and keep the last few."""
+    from gaffer.backup import backup_dir, run_backup
+    from gaffer.config import load_config
+
+    try:
+        cfg = load_config()
+        configured, target, keep = (cfg.backup_dir, cfg.backup_rsync_target,
+                                    cfg.backup_keep)
+    except Exception:  # noqa: BLE001 — a clone with no config can still back up
+        configured, target, keep = "", "", 14
+    dest = Path(to) if to is not None else backup_dir(configured)
+    path = run_backup(to=dest, rsync=rsync or target or None, keep=keep)
+    if path is None:
+        raise typer.Exit(1)
+    typer.echo(f"Wrote {path} ({path.stat().st_size / 1e6:.1f} MB)")
+
+
+@app.command()
 def ui(port: int = typer.Option(8927, help="Port to serve on (default 8927)."),
        open_browser: bool = typer.Option(
            True, "--open-browser/--no-open-browser",

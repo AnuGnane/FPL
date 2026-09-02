@@ -29,10 +29,11 @@ from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
                                          chip_windows, load_chip_scenarios)
 from gaffer.optimize.chips import chip_plan, evaluate_chips
 from gaffer.optimize.milp import SolveInput
-from gaffer.web.schemas import (ArtifactItem, ChipPlan, ChipPlanRow, Health,
-                                History, HistoryRun, LaunchdHealth,
-                                ModelHealth, PricePoint, PriceSeries,
-                                SourceHealth, Ticker, TickerCell, TickerTeam)
+from gaffer.web.schemas import (ArtifactItem, BackupHealth, ChipPlan,
+                                ChipPlanRow, Health, History, HistoryRun,
+                                LaunchdHealth, ModelHealth, PricePoint,
+                                PriceSeries, SourceHealth, Ticker, TickerCell,
+                                TickerTeam)
 
 router = APIRouter(prefix="/api", tags=["meta"])
 
@@ -229,6 +230,18 @@ def health() -> Health:
     except Exception:  # noqa: BLE001 — a health page never 500s
         solver_top_n = None
 
+    # v12 W1 §2.1. Disk only, like everything else here: the newest archive in
+    # the configured directory, or None for "never". A backup nobody can see
+    # is a backup nobody notices has stopped running.
+    last_backup = None
+    try:
+        from gaffer.backup import backup_dir, latest_backup
+
+        found = latest_backup(backup_dir(load_config().backup_dir))
+        last_backup = BackupHealth(**found) if found else None
+    except Exception:  # noqa: BLE001 — no config, no directory: never is fine
+        last_backup = None
+
     model_health = None
     health_file = REPORTS / "health.json"
     if health_file.exists():
@@ -249,7 +262,8 @@ def health() -> Health:
                   artifacts=artifacts, season_ok=season_ok,
                   season_config=season_config,
                   season_ingested=season_ingested,
-                  solver_top_n=solver_top_n)
+                  solver_top_n=solver_top_n,
+                  last_backup=last_backup)
 
 
 def _odds_lookup() -> dict[tuple[int, int, int], tuple[float, float]]:

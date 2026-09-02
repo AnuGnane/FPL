@@ -77,6 +77,21 @@ export default function HealthTab() {
           </tbody>
         </table>
         </div>
+        {/* v12 W1 §2.1. In this card rather than its own, because a backup is
+            a freshness fact — it has an mtime and it goes stale. `never` is
+            spelled out with the command that fixes it: a blank cell reads as
+            "not applicable" and this always applies. */}
+        <p className="mt-3 text-text-secondary" data-testid="last-backup">
+          <span className="label">last backup: </span>
+          {data.last_backup
+            ? <span className="num">
+                {data.last_backup.modified_at.slice(0, 16).replace('T', ' ')}
+                {' '}({(data.last_backup.bytes / 1e6).toFixed(1)} MB)
+              </span>
+            : <span className="text-text-muted">
+                never — run <span className="num">gaffer backup</span>
+              </span>}
+        </p>
         {!data.odds_key_present && (
           <p className="mt-3 text-text-muted">
             No odds key configured — add an odds key for market-implied

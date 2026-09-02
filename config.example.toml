@@ -108,3 +108,14 @@ overrides = true
 # CI box, a shared laptop — where a scheduled job firing Notification Centre
 # would be somebody else's surprise.
 notify = true
+
+[backup]
+# `gaffer backup` tars data/live/, data/raw/field/, data/raw/tier_eo/,
+# reports/ and models/ — roughly 16 MB, so `keep = 14` is a few hundred
+# megabytes of archives rather than a few gigabytes. data/history/,
+# data/raw/understat/, data/raw/vaastav/ and data/raw/news/ are left out
+# because a command rebuilds each of them; the sampled top-10k squads under
+# data/raw/field/ are in, because nothing can.
+# dir = "~/gaffer-backups"        # the default
+# rsync_target = "nas:/volume1/backups/gaffer"
+keep = 14
