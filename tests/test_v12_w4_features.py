@@ -411,3 +411,136 @@ def test_the_training_frame_populates_both_arms_from_the_archive(
     late = df[df["gw"] == 8]
     assert float(late["role_wb_share"].iloc[0]) == 1.0
     assert float(late["density_pub_7d"].iloc[0]) == 2.0
+
+
+# --- Task 10: the arm driver's pure parts --------------------------------
+
+import importlib.util as _ilu  # noqa: E402
+from pathlib import Path as _P  # noqa: E402
+
+
+def _driver():
+    spec = _ilu.spec_from_file_location("v12_w4_arms",
+                                        _P("scripts/v12_w4_arms.py"))
+    mod = _ilu.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_the_window_is_the_shifted_one_and_is_stated():
+    d = _driver()
+    assert (d.TRAIN_MAX_IDX, d.TEST_IDX) == (2, 3)
+
+
+def test_the_bar_is_v10s_verbatim():
+    d = _driver()
+    assert d.LOGLOSS_MIN_RELATIVE_GAIN == 0.01
+    assert d.GUARD_TOLERANCE == 0.005
+
+
+def test_there_are_two_arms_and_one_control():
+    d = _driver()
+    assert set(d.ARMS) == {"baseline", "role", "density"}
+    assert d.ARMS["baseline"] == []
+
+
+def test_the_verdict_keeps_only_on_both_halves():
+    d = _driver()
+    base = {"p_start_ll_starters": 0.5, "zeros": 1.0}
+    assert d.verdict(base, {"p_start_ll_starters": 0.49,
+                            "zeros": 1.002})["decision"] == "keep"
+    # gain big enough, zeros cost too big
+    assert d.verdict(base, {"p_start_ll_starters": 0.40,
+                            "zeros": 1.010})["decision"] == "withdraw"
+    # zeros fine, gain too small
+    assert d.verdict(base, {"p_start_ll_starters": 0.4975,
+                            "zeros": 1.000})["decision"] == "withdraw"
+
+
+def test_the_verdict_says_it_is_only_half_the_rule():
+    """The pre-registered rule has two halves and this driver measures one.
+    A ``decision`` of ``keep`` here with no autosub-week number beside it is
+    an arm shipped on half a gate, so the half is named in the payload the
+    gate reads and not only in a docstring nobody diffs."""
+    d = _driver()
+    out = d.verdict({"p_start_ll_starters": 0.5, "zeros": 1.0},
+                    {"p_start_ll_starters": 0.49, "zeros": 1.002})
+    assert out["half"] == "a"
+    assert "v12_w4_autosub_cf" in out["keep_also_requires"]
+
+
+def test_coverage_refuses_a_window_with_no_training_rows():
+    """The archive's real shape: populated in the test season and nowhere
+    else, which is a season indicator and not a feature."""
+    d = _driver()
+    frame = pd.DataFrame({"season_idx": [3, 3],
+                          "role_wb_share": [0.5, 0.25],
+                          "role_wb_missing": [0.0, 0.0],
+                          "density_pub_7d": [1.0, 2.0],
+                          "density_pub_missing": [0.0, 0.0]})
+    report = d.coverage(frame, ["role_wb_share", "density_pub_7d"])
+    assert report["train_covered"] == 0
+    with pytest.raises(SystemExit):
+        d.check_coverage(report)
+
+
+def test_coverage_accepts_a_window_with_training_rows():
+    d = _driver()
+    frame = pd.DataFrame({"season_idx": [2, 2, 3],
+                          "role_wb_share": [0.5, float("nan"), 0.25],
+                          "role_wb_missing": [0.0, 1.0, 0.0],
+                          "density_pub_7d": [1.0, 2.0, 1.0],
+                          "density_pub_missing": [0.0, 0.0, 0.0]})
+    report = d.coverage(frame, ["role_wb_share", "density_pub_7d"])
+    assert report["train_covered"] > 0
+    d.check_coverage(report)   # does not raise
+
+
+def test_coverage_refuses_a_window_with_no_test_rows():
+    d = _driver()
+    frame = pd.DataFrame({"season_idx": [2, 2],
+                          "role_wb_share": [0.5, 0.25],
+                          "density_pub_7d": [1.0, 2.0]})
+    report = d.coverage(frame, ["role_wb_share", "density_pub_7d"])
+    assert report["test_covered"] == 0
+    with pytest.raises(SystemExit):
+        d.check_coverage(report)
+
+
+def test_coverage_survives_a_column_the_frame_never_grew():
+    """A missing column is zero coverage, not an AttributeError: the guard
+    has to be able to *report* the state it exists to refuse."""
+    d = _driver()
+    report = d.coverage(pd.DataFrame({"season_idx": [2, 3]}),
+                        ["role_wb_share", "density_pub_7d"])
+    assert report["train_covered"] == 0
+    assert report["per_season"]["2"]["role_wb_share"] == 0.0
+
+
+def test_the_lever_guard_refuses_an_arm_equal_to_the_control(monkeypatch):
+    d = _driver()
+    monkeypatch.setitem(d.ARMS, "role", [])
+    with pytest.raises(SystemExit):
+        d.check_lever(pd.DataFrame({"density_pub_7d": [0.0, 1.0]}))
+
+
+def test_the_lever_guard_refuses_a_constant_column():
+    d = _driver()
+    frame = pd.DataFrame({"role_wb_share": [0.5, 0.5],
+                          "role_wb_missing": [0.0, 0.0],
+                          "density_pub_7d": [0.0, 1.0],
+                          "density_pub_missing": [0.0, 0.0]})
+    with pytest.raises(SystemExit):
+        d.check_lever(frame)
+
+
+def test_the_arm_composes_from_the_shipped_list_and_not_from_its_predecessor():
+    """The loop's own lever guard. ``arm_features`` reads the module global,
+    so a driver that assigns ``MINUTES_FEATURES`` twice — shipped, then
+    composed — leaves arm n+1 composing on top of arm n and reports the union
+    of two arms under the second one's name."""
+    d = _driver()
+    import inspect
+    src = inspect.getsource(d.main)
+    assert "tr.MINUTES_FEATURES = list(shipped) + list(ARMS[name])" in src
+    assert "tr.MINUTES_FEATURES = shipped\n" not in src.split("finally:")[0]
