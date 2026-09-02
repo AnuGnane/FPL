@@ -124,12 +124,51 @@ def test_a_cold_clone_still_stores_an_ordinary_draft(monkeypatch, tmp_path):
     assert [d.name for d in out.drafts] == ["plain"]
 
 
+def test_forcing_a_player_out_actually_sells_him_on_the_wire(tmp_path,
+                                                             monkeypatch):
+    """The behavioural half (T8-T11 final review, Important 2). A real, tiny
+    MILP through the real endpoint: the player named is in the baseline squad
+    and out of yours. The source rail below cannot see a constraint that is
+    built and then dropped on the way to the solver; this can."""
+    from fastapi.testclient import TestClient
+
+    from gaffer.web.app import create_app
+
+    from tests.test_web_whatif import _run, _save_state
+
+    monkeypatch.chdir(tmp_path)
+    _save_state()
+    client = TestClient(create_app())
+
+    baseline = _run(client, {})
+    assert baseline["status"] == "done", baseline["error"]
+    kept = ([p["code"] for p in baseline["result"]["yours"]["xi"]]
+            + [p["code"] for p in baseline["result"]["yours"]["bench"]])
+    # A defender: the fixture's pool holds six and the squad owns five, so
+    # there is a legal replacement. (Its two keepers are both owned, and
+    # selling one of those is infeasible rather than instructive.)
+    assert 3 in kept, "the fixture must own him for the constraint to bite"
+
+    job = _run(client, {"force_out": [3]})
+    assert job["status"] == "done", job["error"]
+    squad = ([p["code"] for p in job["result"]["yours"]["xi"]]
+             + [p["code"] for p in job["result"]["yours"]["bench"]])
+    assert 3 not in squad
+
+
 def test_the_router_passes_force_out_and_prints_it_when_infeasible():
     """Two claims in one: the constrained ``SolveInput`` is built with the
     codes, and the sentence a user reads on an infeasible board says which
     lists produced it. Read off the source rather than by stubbing the solver,
     which is how ``tests/test_v8e_degradation.py`` already pins this module's
-    board-building idiom."""
+    board-building idiom.
+
+    T8-T11 final review, Important 2: **kept** as a rail on the call shape,
+    now that the test above drives the same wiring end to end. Two things it
+    pins that behaviour cannot reach cheaply — the free-hit branch *not*
+    carrying the constraint (a board that never reaches a solver because
+    ``_validate`` refuses it first), and the infeasibility sentence naming
+    every list the user set."""
     import inspect
 
     src = inspect.getsource(wf.solve_whatif)
@@ -154,6 +193,12 @@ def test_a_draft_records_the_constraint_it_was_asked_for():
 
 
 def test_the_drafts_re_solve_passes_it_and_the_free_hit_branch_does_not():
+    """T8-T11 final review, Important 2: **kept** as a rail on branch shape.
+    The claim is a *negative* one — the free-hit arm does not carry the
+    constraint — and a negative about a branch that ``_validate`` refuses to
+    let anyone reach is not a thing behaviour can demonstrate: there is no
+    request that gets there. The positive half is covered on the wire by
+    ``test_forcing_a_player_out_actually_sells_him_on_the_wire`` above."""
     import inspect
 
     from gaffer.web.routers import drafts as dr

@@ -220,7 +220,38 @@ def test_no_caller_but_advise_asks_for_pairs():
         assert "dgw_gws" not in source
 
 
+def test_the_scenario_file_reaches_the_pair_arm_as_gameweeks(tmp_path):
+    """The behavioural sibling to the source rail below (T8-T11 final review,
+    Important 2). Every link ``advise`` wires between the file on disk and the
+    pair row, driven for real: the loader, the probability bar, and
+    ``evaluate_chips``' ``dgw_gws``.
+
+    A spelling check cannot see a *shape* mismatch between two links — the
+    §4.6 wiring bug this review found was exactly that, a frame handed to a
+    function that answers ``{}`` for it — so the chain is exercised rather
+    than read. TOML keys are strings; ``dgw_gws`` is a set of ints; a pair
+    row's ``gw2`` is one of them.
+    """
+    from gaffer.optimize.chip_policy import load_chip_scenarios
+
+    path = tmp_path / "chip_scenarios.toml"
+    path.write_text("[dgw]\n3 = 0.9\n2 = 0.3\n")
+    probs = load_chip_scenarios(path)
+    dgw_gws = {int(g) for g, p in probs.items() if p >= PAIR_DGW_MIN_PROB}
+    assert dgw_gws == {3}, "the rumoured double is under the bar"
+
+    rows = [r for r in _table(dgw_gws=dgw_gws).to_dict("records")
+            if r["chip"] == PAIR_CHIP]
+    assert rows and all(r["gw2"] == 3 for r in rows)
+
+
 def test_advise_derives_the_doubles_from_the_probabilities_it_already_read():
+    """**Kept** as a rail on the call shape (T8-T11 final review, Important 2)
+    beside the behavioural chain above. ``run_advise`` has no cheap end-to-end
+    harness, and the claim here is not about the arithmetic — the test above
+    covers that — but about *where* the derivation happens: one read of the
+    scenario asset per run, feeding both the surplus mixture and the pair arm,
+    so the two cannot be told different things about the same week."""
     from gaffer.advise import run_advise
 
     src = inspect.getsource(run_advise)

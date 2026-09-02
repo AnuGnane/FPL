@@ -274,6 +274,12 @@ def test_the_shipped_default_is_off_and_the_advice_run_passes_no_p_play():
     site — a run with the flag off hands the sweep ``p_play=None``, so the
     sweep is byte-for-byte v11's rather than v11's with a draw that zeroes
     nothing.
+
+    T8-T11 final review, Important 2: the third of those is **kept** as a rail
+    on the call shape. It is not standing in for behaviour — the test directly
+    below re-runs the sweep on a fixed seed and proves the two arms are
+    identical — it pins that the *gate* on that arm is the shipped config key
+    and not something a later edit could wire to a different flag.
     """
     import inspect
     import tempfile
@@ -557,7 +563,16 @@ def test_the_route_total_did_not_move(tmp_path, monkeypatch):
 # on the first authorized protected commit of the *next* cycle, which is a
 # rail reporting somebody else's diff under W3's name — the W2 rail was
 # re-pinned the same way at 7e1645f.
-W2_TIP = "754e1d1"
+#
+# T8-T11 final review, Minor 3: re-pinned from 754e1d1 after this branch was
+# rebased onto 865f8dc. 754e1d1 is still an ancestor, so the rail still
+# *passed* — but 754e1d1..HEAD had become a superset carrying main's own W2
+# gate commits, and a rail that audits three commits nobody on W3 wrote is
+# reporting somebody else's diff under W3's name, which is the exact failure
+# the pin exists to prevent. (None of those commits touched a protected file,
+# so the verdict was unchanged; the range was wrong regardless.) 865f8dc is
+# the branch point.
+W2_TIP = "865f8dc"
 
 W3_AUTHORIZED = {
     # The STOP enumerations, task by task.
@@ -597,11 +612,13 @@ def test_every_protected_file_w3_touched_was_authorized():
     ``scripts/s2_replay.py`` are in the protected list and in no enumeration,
     so a hit on any of them fails here.
 
-    The range is W3's own — ``754e1d1..HEAD``, W2's tip to this branch's head
-    — and not ``merge-base(HEAD, main)..HEAD``: once W3 merges, that base moves
-    and this rail would start auditing whatever came next. If ``754e1d1`` is
-    unreachable — a shallow clone, an export, a tree with no git at all — the
-    audit is skipped rather than answered from a range that does not exist.
+    The range is W3's own — ``W2_TIP..HEAD``, this branch's point of departure
+    to its head — and not ``merge-base(HEAD, main)..HEAD``: once W3 merges,
+    that base moves and this rail would start auditing whatever came next. The
+    pin is re-checked after every rebase for the same reason (see ``W2_TIP``).
+    If it is unreachable — a shallow clone, an export, a tree with no git at
+    all — the audit is skipped rather than answered from a range that does not
+    exist.
     """
     probe = subprocess.run(["git", "cat-file", "-e", f"{W2_TIP}^{{commit}}"],
                            capture_output=True, check=False)
@@ -622,7 +639,15 @@ def test_the_branch_banks_no_data_and_no_config():
     """CONVENTIONS §8's half that a grep for keys cannot see: a staged
     ``config.toml`` or a parquet under ``data/`` is a private tree in a public
     branch, and every one of them got there by an ``add -A`` somebody was in a
-    hurry to type."""
+    hurry to type.
+
+    T8-T11 final review, Minor 4: the prefix was ``data/live/``, which is the
+    directory the docstring's own sentence does *not* say. ``data/`` is where
+    the entry's picks, the league's rivals and every scraped season sit —
+    ``data/live/`` is one subdirectory of it, and a banked
+    ``data/chip_scenarios.toml`` or ``data/player_gw.parquet`` walked straight
+    past the rail that exists to stop it. The one carve-out is the tracked
+    ``data/`` fixtures under ``tests/``, which this prefix never matched."""
     probe = subprocess.run(["git", "cat-file", "-e", f"{W2_TIP}^{{commit}}"],
                            capture_output=True, check=False)
     if probe.returncode:
@@ -632,5 +657,5 @@ def test_the_branch_banks_no_data_and_no_config():
                              check=False).stdout.split()
     assert not [p for p in changed
                 if p == "config.toml"
-                or p.startswith(("data/live/", "reports/", "models/", "logs/",
+                or p.startswith(("data/", "reports/", "models/", "logs/",
                                  "src/gaffer/web/static/"))]

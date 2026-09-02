@@ -773,7 +773,13 @@ entry in `data/chip_scenarios.toml`, the writer refuses to create that file
 while every gameweek of the published fixture list has ten fixtures, and every
 one of the 2026-27 gameweeks does. An empty chip table with five columns and no
 pair row is the correct state, not a bug. It unblocks at the first real
-rearrangement.
+rearrangement. Two consequences of the pair being a decision about two named
+weeks, so neither reads as an omission: the Outlook's season fold
+(`web/routers/meta.py::chips_plan`) deliberately does **not** pass `dgw_gws`,
+because it emits one row per chip across the whole season and there is no pair
+arm in that shape; and the pair's row has **no "Try it" arm** in the What-If
+lab, because a What-If job solves one chip and a pair is two — pick the single
+wildcard or the single bench boost above it to re-solve either half.
 
 Two smaller things worth knowing before you go looking for them. Every chip row
 and the wildcard verdict now carry a `threshold_source` saying *why* the bar is

@@ -176,7 +176,19 @@ def test_the_shipped_default_leaves_the_advice_path_on_the_pre_v12_sweep():
 def test_the_support_driver_guards_its_lever_before_it_measures():
     """v10's lesson as a rail on the instrument itself: a driver that prints a
     delta without checking that the two arms differ is a driver that reports
-    zeros as evidence."""
+    zeros as evidence.
+
+    T8-T11 final review, Important 2: **kept** as source assertions, and
+    deliberately so on both counts. ``scripts/v12_w3_support.py`` is a gate
+    driver that runs against a real banked board and cannot be executed from
+    a test at all, so its *shape* is the only thing a suite can hold — one
+    ``run_scenarios`` call (the v10 count rail, verbatim), the guard before
+    the measurement, the solve keywords taken from the state rather than
+    re-invented. The two quantities its guard branches on are covered
+    behaviourally above: ``availability_draw`` blanks nobody on an empty
+    ``p_play`` and somebody on a doubtful one, which is exactly the
+    "disconnected lever" the sentence names.
+    """
     from pathlib import Path
 
     src = Path("scripts/v12_w3_support.py").read_text()
