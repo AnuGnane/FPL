@@ -136,6 +136,11 @@ class Config:
     backup_dir: str = ""
     backup_rsync_target: str = ""
     backup_keep: int = 14
+    # --- v12 W1 §2.8 LAN write protection -----------------------------------
+    # Only ever consulted by `gaffer ui --lan`. Empty means "generate one at
+    # startup and print it once" — never written back, because a tool that
+    # edits the file holding your API key is a surprise nobody asked for.
+    web_token: str = ""
 
 
 def load_config(path: Path | str = "config.toml") -> Config:
@@ -158,6 +163,7 @@ def load_config(path: Path | str = "config.toml") -> Config:
     news = raw.get("news", {})
     digest = raw.get("digest", {})
     backup = raw.get("backup", {})
+    web = raw.get("web", {})
     return Config(
         entry_id=raw["fpl"]["entry_id"],
         league_id=raw["fpl"]["league_id"],
@@ -212,6 +218,7 @@ def load_config(path: Path | str = "config.toml") -> Config:
         backup_dir=str(backup.get("dir", "")),
         backup_rsync_target=str(backup.get("rsync_target", "")),
         backup_keep=int(backup.get("keep", 14)),
+        web_token=str(web.get("token", "")),
     )
 
 

@@ -32,8 +32,43 @@ export function errorText(e: unknown): string {
   return e instanceof Error ? e.message : String(e)
 }
 
+export const TOKEN_KEY = 'gaffer-token'
+
+/**
+ * The LAN write token, from `?token=` on first load or from storage after.
+ *
+ * `useTheme`'s idiom, try/catch included: a browser refusing site data must
+ * degrade to "this tab works, the next one will not" rather than throwing on
+ * every request. The parameter is consumed into storage and left in the URL —
+ * stripping it would mean touching history from a module that has no business
+ * doing so, and the URL is one the user typed off a QR code on their own phone.
+ */
+export function readToken(): string {
+  try {
+    const fromUrl = new URLSearchParams(window.location.search).get('token')
+    if (fromUrl) {
+      localStorage.setItem(TOKEN_KEY, fromUrl)
+      return fromUrl
+    }
+    return localStorage.getItem(TOKEN_KEY) ?? ''
+  } catch {
+    try {
+      return new URLSearchParams(window.location.search).get('token') ?? ''
+    } catch {
+      return ''
+    }
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, init)
+  // On every request, GETs included. Simpler than branching on the method,
+  // harmless on loopback where nothing reads it, and a read route that
+  // becomes protected later needs no change here.
+  const token = readToken()
+  const headers = token
+    ? { ...(init?.headers ?? {}), 'X-Gaffer-Token': token }
+    : init?.headers
+  const response = await fetch(path, { ...init, headers })
   const body = await response.json().catch(() => null)
   if (!response.ok) {
     throw new ApiError(response.status, body?.detail ?? body)

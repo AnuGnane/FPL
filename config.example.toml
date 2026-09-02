@@ -119,3 +119,11 @@ notify = true
 # dir = "~/gaffer-backups"        # the default
 # rsync_target = "nas:/volume1/backups/gaffer"
 keep = 14
+
+[web]
+# Only consulted by `gaffer ui --lan`. On loopback there is no token and no
+# check — the interface is the security model. On the network, every non-GET
+# request needs `X-Gaffer-Token: <this>`; leave it unset and one is generated
+# and printed each time you start, which is fine for a phone you are about to
+# scan a QR code with and awkward for a bookmark.
+# token = "something long and private"

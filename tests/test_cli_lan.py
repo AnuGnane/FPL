@@ -45,11 +45,35 @@ def test_lan_prints_a_qr_code(no_server, monkeypatch):
     assert "█" in result.stdout
 
 
-def test_lan_says_plainly_that_there_is_no_auth(no_server, monkeypatch):
+def test_lan_says_plainly_what_is_open_and_what_is_not(no_server, monkeypatch):
+    """This used to assert "no auth — trusted home network only", which was an
+    honest description until v12 W1 §2.8. It is now false: reads are open and
+    writes need a token, and a banner that undersells its own protection
+    teaches the user to route around it."""
     monkeypatch.setattr("gaffer.web.lan.lan_ip", lambda: "192.168.1.42")
     result = runner.invoke(cli.app, ["ui", "--lan", "--no-open-browser"])
-    assert "no auth" in result.stdout.lower()
-    assert "trusted home network" in result.stdout.lower()
+    out = result.stdout.lower()
+    assert "no auth" not in out
+    assert "reads are open" in out
+    assert "writes need" in out
+
+
+def test_lan_prints_a_generated_token_and_how_to_use_it(no_server,
+                                                        monkeypatch):
+    """With no `[web] token` in config there is one per run, printed once and
+    stored nowhere — writing it into config.toml would be the app editing the
+    file that holds the user's API key."""
+    monkeypatch.setattr("gaffer.web.lan.lan_ip", lambda: "192.168.1.42")
+    monkeypatch.setattr("gaffer.web.app.generate_token", lambda: "TOK123")
+    result = runner.invoke(cli.app, ["ui", "--lan", "--no-open-browser"])
+    assert "TOK123" in result.stdout
+    assert "?token=TOK123" in result.stdout
+
+
+def test_loopback_prints_no_token_at_all(no_server):
+    """The default. No token, no middleware, and nothing new on screen."""
+    result = runner.invoke(cli.app, ["ui", "--no-open-browser"])
+    assert "token" not in result.stdout.lower()
 
 
 def test_lan_ip_is_a_dotted_quad_or_none():

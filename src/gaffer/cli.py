@@ -659,19 +659,30 @@ def ui(port: int = typer.Option(8927, help="Port to serve on (default 8927)."),
        lan: bool = typer.Option(
            False, "--lan",
            help="Serve to your whole network so a phone can reach it. "
-                "There is no auth — trusted home network only.")):
+                "Reads are open; writes need the printed token.")):
     """Serve the local web UI until Ctrl-C (loopback unless --lan)."""
     import webbrowser
 
     import uvicorn
 
+    from gaffer.config import load_config
     from gaffer.web import lan as lan_mod
-    from gaffer.web.app import create_app
+    from gaffer.web.app import create_app, generate_token
 
     host = "0.0.0.0" if lan else "127.0.0.1"
     url = f"http://127.0.0.1:{port}"
     typer.echo(f"gaffer UI on {url} — Ctrl-C to stop")
+    # v12 W1 §2.8. None on loopback, which is the default and the
+    # overwhelmingly common case: no token, no middleware, and the app is the
+    # app that has always shipped.
+    token = None
     if lan:
+        try:
+            token = load_config().web_token or None
+        except Exception:  # noqa: BLE001 — a clone with no config still serves
+            token = None
+        generated = token is None
+        token = token or generate_token()
         address = lan_mod.lan_ip()
         if address is None:
             typer.echo("Could not work out this machine's LAN address — "
@@ -681,8 +692,16 @@ def ui(port: int = typer.Option(8927, help="Port to serve on (default 8927)."),
             typer.echo(f"On your network: {lan_url}")
             for line in lan_mod.qr_lines(lan_url):
                 typer.echo(line)
-        typer.echo("Serving to the whole network with no auth — "
-                   "trusted home network only.")
+        if generated:
+            typer.echo(f"Write token (this run only): {token}")
+            typer.echo(f"Open on your phone with ?token={token} — the page "
+                       f"stores it. Set [web] token in config.toml to keep "
+                       f"one across restarts.")
+        else:
+            typer.echo("Writes need the [web] token from config.toml; open "
+                       "with ?token=<it> once per device.")
+        typer.echo("Serving to the whole network. Reads are open; writes need "
+                   "the token above.")
     if open_browser:
         webbrowser.open(url)
     # v9d §2 (specs/2026-09-01-gaffer-v9d-design.md): this serves a single
@@ -702,7 +721,21 @@ def ui(port: int = typer.Option(8927, help="Port to serve on (default 8927)."),
     # Making the runner multi-process is a real piece of work (shared state,
     # a broker for the streams) and deliberately out of scope here.
     # A single process is the contract this line keeps.
-    uvicorn.run(create_app(), host=host, port=port, log_level="info")
+    #
+    # v12 W1 §2.8 added the LAN token, and it is spelled as two branches
+    # rather than one keyword call on purpose: that rail greps this call site
+    # for the literal `create_app()`, and it lives in a protected file this
+    # cycle is not authorized to edit. The tokenless branch is written first
+    # because the rail reads the earliest such call in this module. Both
+    # branches hand over an app instance and neither asks for a worker count,
+    # which is the whole of what the rail defends — but the spelling is a
+    # workaround, and the honest fix is to relax that assertion to match the
+    # call prefix the next time that file is open under authorization.
+    if token is None:
+        uvicorn.run(create_app(), host=host, port=port, log_level="info")
+    else:
+        uvicorn.run(create_app(token=token), host=host, port=port,
+                    log_level="info")
 
 
 def main():

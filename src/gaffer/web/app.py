@@ -45,7 +45,19 @@ def static_dir() -> Path:
     return Path(str(files("gaffer.web").joinpath("static")))
 
 
-def create_app() -> FastAPI:
+def generate_token() -> str:
+    """A LAN token when the config has none. Printed once, stored nowhere.
+
+    v12 W1 §2.8. Not written into config.toml: spec §8 forbids the app
+    editing that file, and a token persisted by a tool the user did not ask to
+    persist it is a surprise in a file that also holds an API key.
+    """
+    import secrets
+
+    return secrets.token_urlsafe(16)
+
+
+def create_app(*, token: str | None = None) -> FastAPI:
     app = FastAPI(title="gaffer", docs_url=None, redoc_url=None)
     app.state.jobs = JobRegistry()
     app.state.job_runner = JobRunner(JOB_KINDS)
@@ -120,5 +132,34 @@ def create_app() -> FastAPI:
         # hashed asset filenames a rebuild has already deleted. ETag and
         # Last-Modified come from FileResponse, so the revalidation is a 304.
         return FileResponse(index, headers={"Cache-Control": "no-cache"})
+
+    # v12 W1 §2.8 (specs/2026-09-01-gaffer-v12-program-design.md). `token`
+    # is None for every loopback caller and every test, and the middleware is
+    # not installed at all in that case — so the default app is byte-for-byte
+    # the app that shipped.
+    #
+    # A middleware rather than a dependency on each write route: there are
+    # ten-odd non-GET routes across nine routers, one of them in the protected
+    # whatif module, so per-route would be a wide diff and an unauthorized one.
+    #
+    # 403 and not 401: a 401 invites the browser's own credential prompt for a
+    # scheme this app does not implement, leaving the user a dialog with
+    # nowhere to type the thing it is asking for.
+    if token:
+        @app.middleware("http")
+        async def _require_token(request: Request, call_next):
+            if request.method in ("GET", "HEAD", "OPTIONS"):
+                return await call_next(request)
+            import secrets
+
+            sent = request.headers.get("X-Gaffer-Token", "")
+            if not secrets.compare_digest(sent, token):
+                return JSONResponse(
+                    status_code=403,
+                    content={"detail": "this gaffer is served to the network; "
+                                       "writes need the X-Gaffer-Token header "
+                                       "printed when `gaffer ui --lan` "
+                                       "started"})
+            return await call_next(request)
 
     return app
