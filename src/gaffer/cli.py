@@ -175,6 +175,33 @@ def cups():
                "seasons -> data/history/cup_matches.parquet.")
 
 
+@app.command("core-insights")
+def core_insights_cmd():
+    """Ingest FPL-Core-Insights per-match, fixture and Elo tables.
+
+    The launchd job's body, and held to ``snapshot``'s contract: it prints its
+    own line and never fails. A twice-daily job that exits non-zero the
+    morning GitHub is slow is a job that gets uninstalled.
+    """
+    try:
+        from gaffer.config import load_config
+        from gaffer.data.core_insights import download_core_insights
+
+        cfg = load_config()
+        # The current season as well as the training ones. The fixture table
+        # is a prediction-time input (density_pub_7d reads next week's
+        # published ties), so the season being played is the one that matters
+        # most, and the training seasons are what makes an arm measurable.
+        seasons = list(cfg.train_seasons) + [cfg.current_season]
+        written = download_core_insights(
+            seasons, {s: i for i, s in enumerate(seasons)})
+        total = sum(sum(v.values()) for v in written.values())
+        typer.echo(f"Core insights: {total} rows across {len(seasons)} "
+                   "seasons -> data/core_insights/.")
+    except Exception as exc:  # noqa: BLE001 — a scheduled job never blocks
+        typer.echo(f"core insights not collected: {exc}")
+
+
 @app.command()
 def understat():
     """Scrape Understat into data/history/ (long first run; resumable)."""

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+ "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.gaffer.core-insights</string>
+  <key>ProgramArguments</key><array>
+    <string>/bin/zsh</string><string>-lc</string>
+    <string>cd __PROJECT_DIR__ &amp;&amp; uv run gaffer core-insights &gt;&gt; logs/core-insights.log 2&gt;&amp;1</string>
+  </array>
+  <!-- launchd reads StartCalendarInterval in the machine's LOCAL time, not
+       UTC. The archive itself updates twice daily at 07:30 and 17:30 UTC, so
+       06:30 and 18:30 local on a UK-set machine sit either side of the later
+       push and comfortably after the earlier one. Neither slot is
+       deadline-sensitive: nothing here is fetched at serve time, and a missed
+       run costs freshness rather than an answer. -->
+  <!-- Every fetched file is cached forever (data/raw/core_insights), so the
+       second run of a day re-downloads only the gameweeks whose files the
+       publisher replaced — usually none. -->
+  <key>StartCalendarInterval</key><array>
+    <dict><key>Hour</key><integer>6</integer>
+          <key>Minute</key><integer>30</integer></dict>
+    <dict><key>Hour</key><integer>18</integer>
+          <key>Minute</key><integer>30</integer></dict>
+  </array>
+</dict></plist>

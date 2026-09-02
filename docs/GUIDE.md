@@ -262,7 +262,7 @@ evidence.
 
 ## 7. The automation
 
-`./scripts/install_automation.sh` installs eight launchd jobs (re-run it if
+`./scripts/install_automation.sh` installs nine launchd jobs (re-run it if
 the project folder moves — the plists embed the path):
 
 | When | Job | What it does |
@@ -275,6 +275,7 @@ the project folder moves — the plists embed the path):
 | Fri 17:00 | `com.gaffer.digest-friday` | The briefing. |
 | Tue 09:30 | `com.gaffer.digest-tuesday` | The debrief (after the review has banked). |
 | Nightly 23:45 | `com.gaffer.backup` | Tars the ~16 MB no command can rebuild into `~/gaffer-backups`; keeps fourteen. |
+| 06:30 & 18:30 | `com.gaffer.core-insights` | `gaffer core-insights` — FPL-Core-Insights per-match stats, published cup/European fixtures and club Elo into `data/core_insights/`. |
 
 Check with `launchctl list | grep com.gaffer`. Everything else — sensitivity
 sweeps, news-shadow evaluation, snapshots on demand — runs from UI buttons.

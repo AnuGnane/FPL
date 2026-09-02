@@ -1255,7 +1255,7 @@ and is macOS-only. Turn it off with:
 ./scripts/install_automation.sh
 ```
 
-Substitutes the project path into the eight plists in `scripts/`, copies them to
+Substitutes the project path into the nine plists in `scripts/`, copies them to
 `~/Library/LaunchAgents/`, and loads them: `com.gaffer.advise` (Thursday 18:00,
 which banks a price reading of its own first so the optimizer's timing term
 has a same-day log to read), `com.gaffer.prices` (nightly 23:15 — the reading
@@ -1263,8 +1263,8 @@ the price predictor is really about, and the one that replaces the Thursday
 afternoon one), `com.gaffer.snapshot` (daily 17:00, banks
 the availability log the news corrector will train on), `com.gaffer.field`,
 `com.gaffer.review`, `com.gaffer.digest-friday` (Friday 17:00),
-`com.gaffer.digest-tuesday` (Tuesday 09:30) and `com.gaffer.backup`
-(nightly 23:45).
+`com.gaffer.digest-tuesday` (Tuesday 09:30), `com.gaffer.backup`
+(nightly 23:45) and `com.gaffer.core-insights` (06:30 and 18:30 daily).
 Re-run it after moving the project.
 
 - **Saturday and Sunday 12:30** — `gaffer field-scrape`, an hour after the
@@ -1291,13 +1291,20 @@ Re-run it after moving the project.
   `data/raw/news/` are left out because a command rebuilds each of them; the
   sampled top-10k squads under `data/raw/field/` are in, because nothing
   can.
+- **06:30 and 18:30 daily** — `gaffer core-insights`, pulling
+  FPL-Core-Insights' per-match player detail, its published cup and European
+  fixtures and its club Elo into `data/core_insights/`. The archive pushes at
+  07:30 and 17:30 UTC, so the two slots sit either side of the later one.
+  Every fetched file is cached forever, so the second run of a day usually
+  downloads nothing, and the command prints its line rather than exiting
+  non-zero when GitHub is slow.
 
 Nothing else is scheduled. The rest of the work the UI can start — including
 `sensitivity`, twenty noised re-solves of this week's board in about five
 seconds — runs only when you press its button.
 
 Check they are loaded with `launchctl list | grep com.gaffer`. Remove with
-`launchctl unload ~/Library/LaunchAgents/com.gaffer.{advise,prices,snapshot,field,review,digest-friday,digest-tuesday,backup}.plist`.
+`launchctl unload ~/Library/LaunchAgents/com.gaffer.{advise,prices,snapshot,field,review,digest-friday,digest-tuesday,backup,core-insights}.plist`.
 
 ## Tests
 

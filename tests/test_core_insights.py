@@ -416,3 +416,44 @@ def test_season_table_stats_on_a_cold_clone_says_never(clone):
     assert stats == {"players": {"rows": 0, "latest": None},
                      "fixtures": {"rows": 0, "latest": None},
                      "elo": {"rows": 0, "latest": None}}
+
+
+# --- Task 4: the command and its plist -----------------------------------
+
+from pathlib import Path as _Path
+
+
+def test_the_cli_exposes_core_insights():
+    from typer.main import get_command
+
+    from gaffer.cli import app
+
+    assert "core-insights" in get_command(app).commands
+
+
+def test_the_plist_runs_the_command_twice_a_day():
+    text = _Path("scripts/com.gaffer.core-insights.plist").read_text()
+    assert "com.gaffer.core-insights" in text
+    assert "uv run gaffer core-insights" in text
+    assert text.count("<key>Hour</key><integer>6</integer>") == 1
+    assert text.count("<key>Hour</key><integer>18</integer>") == 1
+    assert text.count("<key>Minute</key><integer>30</integer>") == 2
+
+
+def test_the_installer_installs_it():
+    text = _Path("scripts/install_automation.sh").read_text()
+    assert "core-insights" in text
+
+
+def test_the_installer_loop_names_every_plist_and_no_others():
+    """The loop is a hand-maintained list beside a directory of files, which
+    is exactly the pair that drifts: a plist nobody installs is a job that
+    silently never runs, and a name with no plist makes the installer exit
+    non-zero half way through and leave the rest unloaded."""
+    line = next(ln for ln in
+                _Path("scripts/install_automation.sh").read_text().splitlines()
+                if ln.startswith("for name in "))
+    installed = set(line.removeprefix("for name in ").split(";")[0].split())
+    shipped = {p.stem.removeprefix("com.gaffer.")
+               for p in _Path("scripts").glob("com.gaffer.*.plist")}
+    assert installed == shipped
