@@ -9,13 +9,8 @@ vice_weight = 0.1
 bench_weight = 0.10
 ft_value = 1.5
 itb_value = 0.08          # O'Brien: £1m ~ +21.8 pts over half a season; gate D2
-# Charge a deferred sale the price it is expected to lose overnight (v12 §3.4).
-# Worth p(fall) x 0.1m x itb_value, so about 0.008 points at the itb_value
-# above — below the solver's own optimality gap on a full horizon. It breaks
-# exactly-equal sell timings and moves nothing else, which is why it ships off
-# (CONVENTIONS §6) with a pre-registered flip rule in the W2 gate. No term for
-# rises: price chasing is rejected (ROADMAP).
-price_timing = false
+# v12 §3.4: charge a deferred sale its expected overnight drop — a 0.008-point tie-breaker, on since the 2026-09-02 gate replayed byte-identical to main.
+price_timing = true
 ft_use_penalty = 0.2
 bench_curve = [0.21, 0.06, 0.002]
 hit_cost = 4

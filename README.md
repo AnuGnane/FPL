@@ -176,6 +176,8 @@ bench_weight = 0.10  # weight on bench points
 ft_value = 1.5       # points value of holding a free transfer
 itb_value = 0.05     # points per 1.0m in the bank at horizon end
 hit_cost = 4         # points charged per extra transfer
+price_timing = true  # charge a deferred sale its expected overnight price
+                     # drop. On since the v12 W2 gate; `false` drops the term.
 # top_n = {GKP = 8, DEF = 22, MID = 26, FWD = 14}
 #                    # how many players per position reach the solver at all.
 #                    # Merged over these defaults, so tuning one position does
@@ -679,10 +681,14 @@ quietly fixed.**
    sampling noise. Field EO is in **percent** and captaincy doubles it, so the
    ceiling is 200 rather than the spec's 1.0.
 3. The price-timing term is worth 0.008 points at the shipped `itb_value` and
-   the solver's default relative gap on a real horizon is larger. It breaks
-   exactly-equal sell timings and is not expected to move a replay, so
-   `[optimizer] price_timing` ships **false** (CONVENTIONS §6) with the flip
-   rule in the W2 gate. It also has a **live window**, found at that gate: a
+   the solver's default relative gap on a real horizon is larger, so it breaks
+   exactly-equal sell timings and was not expected to move a replay. It did
+   not: over three seed bases the 40-scenario replay with the term live scored
+   [1854, 1875, 1862] against main's identical [1854, 1875, 1862], hits
+   unchanged at [18, 12, 18], with 34 of the transferred players carrying a
+   non-zero `p_fall` — which is the pre-registered §3.4 flip rule met, so
+   `[optimizer] price_timing` ships **true** rather than the `false` W2 first
+   shipped it behind. It has a **live window**, found at that gate: a
    reading banked on UTC day D predicts the night D→D+1 and is stale from the
    next UTC midnight, so a solve only sees the term if the day's prices have
    already been banked. The Thursday `advise` job therefore now runs `gaffer

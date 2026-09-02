@@ -331,13 +331,12 @@ season of quietly wrong advice.
 
 
 def price_timing(path: Path | str = "config.toml") -> bool:
-    """``[optimizer] price_timing`` (v12 §3.4). Default **off**.
+    """``[optimizer] price_timing`` (v12 §3.4).
 
-    Off, against spec §3.4's ``true``, by the coordinator's 2026-09-02 ruling:
-    CONVENTIONS §6 says an arm that cannot demonstrate an effect ships behind
-    its flag, and this term is 0.008 points against a solver gap of about 0.02
-    (plan A6). The flip rule is pre-registered in the W2 gate rather than left
-    to taste.
+    Default **on** since the 2026-09-02 W2 gate: the term is a 0.008-point
+    tie-breaker and the replay with it live was byte-identical to main
+    (pre-registered outcome); set ``false`` to drop it. Live only when the
+    price log carries today's reading — the scheduled advise banks one first.
 
     A module-level reader rather than a :class:`Config` field, for
     :func:`lineup_providers`' reason: another field moves
@@ -356,8 +355,8 @@ def price_timing(path: Path | str = "config.toml") -> bool:
     try:
         raw = tomllib.loads(Path(path).read_text())
     except Exception:  # noqa: BLE001 — a solve-path reader never raises
-        return False
-    return bool(raw.get("optimizer", {}).get("price_timing", False))
+        return True
+    return bool(raw.get("optimizer", {}).get("price_timing", True))
 
 
 def xg_per_shot(path: Path | str = "config.toml") -> bool:

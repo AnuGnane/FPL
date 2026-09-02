@@ -91,22 +91,33 @@ def test_an_unowned_player_is_not_in_the_table():
     assert price_timing.price_falls(log, [1, 2]) == {}
 
 
-def test_the_switch_is_off_by_default_and_lives_under_optimizer(tmp_path):
-    """Off, against spec §3.4's `true`: CONVENTIONS §6, and the flip rule is
-    in the gate. Under [optimizer] and not [solver]: program ruling."""
+def test_the_switch_is_on_by_default_and_lives_under_optimizer(tmp_path):
+    """On since the 2026-09-02 W2 gate met the pre-registered §3.4 flip rule:
+    the replay with the term live was byte-identical to main and the hit count
+    did not rise. Under [optimizer] and not [solver]: program ruling.
+
+    The unreadable-file fallback is the shipped default for the reason it was
+    when the default was off — a solve must not die of a config file, and it
+    must not silently serve behaviour nobody chose either."""
     from gaffer.config import price_timing as read_flag
 
     on = tmp_path / "on.toml"
     on.write_text("[optimizer]\nprice_timing = true\n")
     off = tmp_path / "off.toml"
-    off.write_text("[optimizer]\nhorizon = 3\n")
+    off.write_text("[optimizer]\nprice_timing = false\n")
+    unset = tmp_path / "unset.toml"
+    unset.write_text("[optimizer]\nhorizon = 3\n")
     assert read_flag(on) is True
     assert read_flag(off) is False
-    assert read_flag(tmp_path / "nothing.toml") is False
+    assert read_flag(unset) is True
+    assert read_flag(tmp_path / "nothing.toml") is True
+    broken = tmp_path / "broken.toml"
+    broken.write_text("[optimizer\nprice_timing = false")
+    assert read_flag(broken) is True
     stale = tmp_path / "stale.toml"
-    stale.write_text("[solver]\nprice_timing = true\n")
+    stale.write_text("[solver]\nprice_timing = false\n")
     # A key in a section this project does not have is not a switch.
-    assert read_flag(stale) is False
+    assert read_flag(stale) is True
 
 
 def test_the_flag_does_not_reach_the_config_constructor(tmp_path):
