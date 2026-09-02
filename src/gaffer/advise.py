@@ -792,8 +792,18 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
                   "and mean nothing")
         # Seeded per gameweek, not per season: a fixed seed would re-use one
         # noise sequence every week, which is how D1 was measured.
+        # v12 W3 §4.4 (specs/2026-09-01-gaffer-v12-program-design.md): the
+        # sweep draws availability from the same probabilities the solver's
+        # bench weighting reads — as an *outcome* per scenario, never as an
+        # objective weight. ``solve_kw`` is unchanged and carries no p_play, so
+        # no scenario is solved under §F1's frailty and the raw optimum this
+        # gate compares against is still the unweighted one (v10 T10-A).
         run = run_scenarios(pool, state, xmins, n=cfg.scenarios_n,
-                            seed=cfg.scenarios_seed + gw, **solve_kw)
+                            seed=cfg.scenarios_seed + gw,
+                            p_play=(p_play_by_code if cfg.draw_availability
+                                    else None),
+                            draw_availability=cfg.draw_availability,
+                            **solve_kw)
         if not run.completed:
             # The raw optimum served here is the unweighted one: this branch
             # is reached after the solve above has already run, and re-solving

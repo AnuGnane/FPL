@@ -69,6 +69,16 @@ class Config:
     transfer_threshold: float = 0.60
     irreversible_threshold: float = 0.75
     decision_priors: bool = True
+    # v12 W3 §4.4 (specs/2026-09-01-gaffer-v12-program-design.md). Per
+    # scenario, per player-gameweek, a Bernoulli on p_play: the sweep asks
+    # "did he turn out" as an outcome rather than only as a variance.
+    #
+    # Defaults OFF. Spec §4.4 writes the key as ``true``; CONVENTIONS §6 and
+    # the orchestrator's ruling (2026-09-02) say an arm ships behind its flag
+    # until its gate passes, and this arm's gate — the captain-support check,
+    # Task 14 — is run after the merge. A passing gate flips this line, its
+    # two config tests and the example file, and records the number.
+    draw_availability: bool = False
     ft_use_penalty: float = 0.0
     bench_curve: list[float] | None = None
     # v12 W1 §2.6. Named for its TOML key rather than its subject, because
@@ -202,6 +212,10 @@ def load_config(path: Path | str = "config.toml") -> Config:
         irreversible_threshold=float(
             scen.get("irreversible_threshold", 0.75)),
         decision_priors=bool(scen.get("decision_priors", True)),
+        # v12 W3 §4.4: [scenarios] is read key-by-key rather than splatted, so
+        # this line is required, and its default must match the dataclass's or
+        # the two disagree about a fresh clone.
+        draw_availability=bool(scen.get("draw_availability", False)),
         z_scale=float(league.get("z_scale", 1.5)),
         lambda_cap=float(league.get("lambda_cap", 0.5)),
         sigma_floor=float(league.get("sigma_floor", 8.0)),

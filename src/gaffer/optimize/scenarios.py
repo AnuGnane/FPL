@@ -18,6 +18,19 @@ the right one: almost all of FPL's forecast error is *did he play*, not *how
 well did he play*. A nailed-on 90-minute starter has very little error left in
 his EP; a 60/40 rotation risk has an enormous amount.
 
+Since v12 the sweep can also draw *availability*: per scenario, per
+(code, gameweek), a Bernoulli on ``p_play``, and a player who does not turn out
+scores nothing that week. It is the same claim the noise scale is built on —
+almost all of FPL's forecast error is "did he play" — asked as an outcome
+rather than as a variance, and it is what makes a rotation risk sometimes
+worth zero instead of always worth 60% of something.
+
+The two draws come from **separate generators** (``seed`` and ``seed + 1``),
+and the normal is drawn for every cell whether or not the cell survives. That
+is deliberate: with the switch off not one draw changes, and with it on the two
+arms differ *only* in which cells were zeroed, which is exactly the comparison
+the §4.4 gate makes.
+
 Nothing here does I/O and nothing here is random unless a generator says so —
 the caller owns the seed, and the seed goes in the report.
 """
@@ -319,6 +332,34 @@ def xmins_by_player_gw(comp: pd.DataFrame) -> dict[tuple[int, int], float]:
             for r in grouped.itertuples()}
 
 
+# v12 W3 §4.4 (specs/2026-09-01-gaffer-v12-program-design.md)
+def availability_draw(pool: pd.DataFrame,
+                      p_play: dict[int, dict[int, float]],
+                      rng: np.random.Generator) -> frozenset:
+    """One scenario's ``{(code, gw)}`` that did not happen.
+
+    ``available ~ Bernoulli(p_play)`` per priced cell. A cell the minutes model
+    says nothing about is **always available**: "we have no appearance
+    probability for him" is not the claim "he will not play", and inventing one
+    would be the same error :func:`noise_ep` refuses to make about his
+    variance.
+
+    Iterated over the pool's own ``ep`` cells so a blank gameweek — absent from
+    the mapping — is never drawn for. He is not unavailable that week; he has
+    no fixture, and the board already prices him at zero.
+    """
+    out = set()
+    for code, cell in zip(pool["code"], pool["ep"]):
+        per_gw = p_play.get(int(code)) or {}
+        for gw in cell:
+            p = per_gw.get(int(gw))
+            if p is None:
+                continue
+            if float(rng.random()) >= float(p):
+                out.add((int(code), int(gw)))
+    return frozenset(out)
+
+
 def noise_ep(ep: dict[tuple[int, int], float],
              xmins: dict[tuple[int, int], float],
              rng: np.random.Generator,
@@ -385,7 +426,8 @@ def noise_ep(ep: dict[tuple[int, int], float],
 
 def noised_pool(pool: pd.DataFrame, xmins: dict[tuple[int, int], float],
                 rng: np.random.Generator,
-                table: dict | None = None) -> pd.DataFrame:
+                table: dict | None = None,
+                unavailable: frozenset | None = None) -> pd.DataFrame:
     """A copy of the candidate pool with every ``ep`` dict noised.
 
     The *pool* is noised rather than rebuilt from noised EP, and that is a
@@ -398,15 +440,29 @@ def noised_pool(pool: pd.DataFrame, xmins: dict[tuple[int, int], float],
 
     The σ table is resolved once here rather than once per player: the loader
     is cached, but the lookup through it is not free at pool scale.
+
+    ``unavailable`` (v12 W3 §4.4) is one scenario's set of ``(code, gw)`` cells
+    the availability draw says did not happen; each is overwritten with zero
+    after its noise has been drawn.
     """
     if table is None:
         table = scenario_noise()
     out = pool.copy()
     cells = []
+    # v12 W3 §4.4 (specs/2026-09-01-gaffer-v12-program-design.md): the noise is
+    # drawn for every cell either way — the draw happens above, in
+    # ``noise_ep``, before this line — and a cell this scenario says did not
+    # happen is then overwritten with zero. Drawing and discarding rather than
+    # skipping is what keeps the noise stream identical between an arm with the
+    # availability draw on and one with it off, so the two differ in the
+    # zeroing and in nothing else.
+    blank = unavailable or frozenset()
     for code, cell in zip(pool["code"], pool["ep"]):
         keyed = {(int(code), int(gw)): float(v) for gw, v in cell.items()}
         noised = noise_ep(keyed, xmins, rng, table=table)
-        cells.append({gw: noised[(int(code), int(gw))] for gw in cell})
+        cells.append({gw: (0.0 if (int(code), int(gw)) in blank
+                           else noised[(int(code), int(gw))])
+                      for gw in cell})
     out["ep"] = cells
     return out
 
@@ -429,13 +485,20 @@ class ScenarioRun:
 
 def run_scenarios(pool: pd.DataFrame, state: SolveInput,
                   xmins: dict[tuple[int, int], float], *, n: int, seed: int,
+                  p_play: dict[int, dict[int, float]] | None = None,
+                  draw_availability: bool = False,
                   **solve_cfg) -> ScenarioRun:
     """``n`` solves of the same board under ``n`` independent EP draws.
 
     ``solve_cfg`` is the ordinary :func:`~gaffer.optimize.milp.solve_plan`
     keyword bundle — the same ``opt_kw`` the deterministic solve uses, so a
     scenario differs from the raw optimum in the EP values and in nothing
-    else.
+    else. ``p_play`` is **not** part of it: it feeds
+    :func:`availability_draw`, an outcome per scenario, and never the solver's
+    objective.
+
+    ``draw_availability`` (v12 W3 §4.4) turns that draw on. Off — the shipped
+    default — not one number moves.
 
     Sequential on purpose. At ~7s a solve, 40 scenarios is under five minutes,
     which spec §3 budgets for; a process pool would buy maybe 4x for the cost
@@ -449,10 +512,27 @@ def run_scenarios(pool: pd.DataFrame, state: SolveInput,
         return ScenarioRun(plans=[], attempted=0, completed=0, failures=0,
                            seed=seed)
     rng = np.random.default_rng(seed)
+    # v12 W3 §4.4 (specs/2026-09-01-gaffer-v12-program-design.md): its own
+    # stream, a million miles from being interleaved with the noise. Sharing
+    # ``rng`` would shift every normal draw by one and make the on/off arms
+    # differ in their *noise* as well as in their availability, which is the
+    # one thing the gate must not have to disentangle.
+    avail_rng = None
+    if draw_availability:
+        if p_play:
+            avail_rng = np.random.default_rng(seed + 1)
+        else:
+            # The lever guard, in-process. Silence here is how a sweep that
+            # believes it models availability ships without modelling any.
+            print("scenarios: draw_availability is on but no p_play reached "
+                  "the sweep — availability was not drawn, and these "
+                  "frequencies are the pre-v12 ones")
     plans: list[Plan] = []
     failures = 0
     for _ in range(n):
-        board = noised_pool(pool, xmins, rng)
+        unavailable = (availability_draw(pool, p_play, avail_rng)
+                       if avail_rng is not None else None)
+        board = noised_pool(pool, xmins, rng, unavailable=unavailable)
         try:
             plans.append(solve_plan(board, state, **solve_cfg))
         except Exception as exc:  # noqa: BLE001 — one bad draw is not fatal

@@ -530,22 +530,40 @@ def test_the_p_play_seam_follows_the_sweep_and_not_the_solve():
     """The T10-A rewiring, as a rail — and the hole the first cut left.
 
     ``decide()`` compares the raw optimum against the sweep's plurality, and
-    the sweep cannot see ``p_play``. Weighting the raw solve *while the sweep
-    runs* would make that comparison a comparison of two different objectives
-    — reported to the user as ``raw_optimum_agrees=False``, for a reason that
-    is not instability.
+    the sweep does not *solve* under ``p_play``. Weighting the raw solve
+    *while the sweep runs* would make that comparison a comparison of two
+    different objectives — reported to the user as ``raw_optimum_agrees=False``,
+    for a reason that is not instability.
 
     But when the sweep does not run there is no such comparison, and the raw
     solve *is* the advice: fast advice (``scenarios_n = 0``) and the
     initial-squad weeks silently lost the whole of §F1 to a guard that was
     protecting a gate they never reach.
+
+    **v12 W3 §4.4 (specs/2026-09-01-gaffer-v12-program-design.md) narrowed
+    this.** The rail used to assert that the string ``p_play`` did not appear
+    near the sweep call at all, which was a proxy for the claim above and not
+    the claim itself. §4.4 hands the sweep ``p_play`` for a Bernoulli
+    availability draw — an outcome per scenario, not a coefficient — so the
+    proxy now forbids the feature. What survives is T10-A's actual claim: the
+    sweep's *solve bundle* is still ``solve_kw``, so no scenario is solved
+    under §F1's frailty weights and the raw optimum remains the unweighted one.
+    The consequence §4.4 accepts, recorded rather than papered over: the sweep
+    now models availability risk the raw solve does not, so
+    ``raw_optimum_agrees`` reads ``False`` more often — and unlike the
+    objective mismatch this rail was written about, that disagreement is
+    information.
     """
     src = _advise_src()
     assert "solve_kw = dict(opt_kw, ft_lambda=ft_lambda)" in src
     # The sweep's own bundle is still untouched: it never had p_play.
     assert "scenario_kw" not in src
-    sweep_call = src.index("run_scenarios(")
-    assert "p_play" not in src[src.index("run_scenarios("):sweep_call + 300]
+    sweep = src[src.index("run_scenarios("):src.index("run_scenarios(") + 400]
+    # The solve bundle the sweep passes through is still the unweighted one.
+    assert "**solve_kw" in sweep
+    # p_play reaches the sweep as a draw and only behind its own switch.
+    assert "draw_availability=cfg.draw_availability" in sweep
+    assert "p_play=(p_play_by_code if cfg.draw_availability" in sweep
 
     gated, ungated = _raw_solve_branches()
     assert not [k for k in gated.keywords if k.arg == "p_play"]
