@@ -146,6 +146,103 @@ is limited to gated ablations that ride on training runs already happening.
 produces an archive that restores (test extracts and diffs a fixture tree);
 `refresh` against the live API passes the rollover guard.
 
+### G1 — suites, rails, pins (measured by the implementer)
+
+- [x] `.venv/bin/pytest -q` — **3354 passed** (branch baseline 3193 + 161 new)
+- [x] `npx tsc --noEmit` — clean
+- [x] `npx vitest run` — **680 passed, 1 skipped** (baseline 655 + 25 new)
+- [x] `npm run build` — clean
+- [x] Protected diff is exactly the authorized STOPs and nothing else:
+      `advise.py` (§2.11 write, §2.2 constants), `optimize/differentials.py`
+      (§2.2), `optimize/milp.py` (§2.6), and the ten protected test files of
+      §2.3 and the pin restructure. Every line-group carries its `# v12 W1 §`
+      provenance comment (four in the three source files). `set_pieces.py`,
+      `web/jobs.py`, `routers/whatif.py`, `test_advise.py`, `test_odds.py`,
+      `test_web_jobs.py` and `s2_replay.py` show zero diff — `whatif.py` is
+      imported by the MCP server and not edited
+- [x] Pins: job kinds still 12, **OpenAPI paths 45 → 46**
+      (`/api/meta/freshness`, the cycle's only route), **config fields
+      48 → 53** (`backup_dir`, `backup_rsync_target`, `backup_keep`, `top_n`,
+      `web_token`)
+- [x] Exactly one file in the suite pins each absolute count: routes in
+      `test_v11_degradation.py`, config fields in `test_v12_w1_degradation.py`
+- [x] `os.replace` census: nineteen of twenty copies migrated; the survivors
+      are `gaffer/io.py`, `gaffer/journal.py` (import-only) and
+      `gaffer/backup.py`, which renames a streamed tarball from a `.part`
+      sibling rather than handing bytes to the helper — asserted by name as an
+      equality so a twenty-first cannot appear quietly
+- [x] Rails: a failed write leaves the previous file intact in all three
+      families; a bare `latest_field_eo()` is a `TypeError`; `season_ok` is
+      `None` and not `False` on a clone with no events; `track-pens` refuses
+      to overwrite a good report with an all-degraded or empty one, and writes
+      freely when nothing is banked; `tidy` never names the shared backtest
+      log, an S2 arm log, a corpus log or `advise.log`; `backup` writes no
+      file rather than an empty archive; a LAN write without the header is a
+      403 and a GET is not; `/api/meta/freshness` is five rows of "never" on a
+      cold clone and never 0.0; every MCP tool answers `{"error": …}` rather
+      than raising
+- [x] Empty states: the freshness strip renders five grey rows on a rejecting
+      fetch rather than disappearing; the Health season banner draws on
+      `false` alone and not on `null`
+- [x] 390px holds tree-wide with the new strip on every hub
+
+### G1 — the gate's own two (spec §2)
+
+- [x] `gaffer backup` produces an archive that restores: extracted into an
+      empty tree and diffed against `reports/`, clean. (The plan's
+      `pytest -k restore` selects nothing — the test is named
+      `test_the_archive_extracts_to_a_tree_that_matches`; `-k "restore or
+      extracts"` is the working selector.)
+- [ ] `gaffer refresh` against the live API passes the rollover guard.
+      **Not run by the implementer**: `refresh` writes into `data/`, which
+      this cycle's staging rule forbids touching, and a network round trip is
+      not something a build step should decide to make. The guard's disk-side
+      behaviour is covered by `tests/test_v12_season_rollover.py`; this box is
+      the orchestrator's, on the dev machine. A refusal there means either the
+      guard is wrong or `config.toml` genuinely names the wrong season —
+      check which before "fixing" anything.
+
+### G2 — review and merge (orchestrator only)
+
+- [ ] Adversarial review, fix-first, re-verify.
+- [ ] Merge ritual: ff-only, push, `git show main:config.toml` fails, key-grep
+      empty — including the generated LAN token.
+
+### No replay — recorded reasoning
+
+W1 changes no feature, no model, no head and no objective term. The two items
+that touch the decision path are `optimize/milp.py`'s `build_pool` default —
+which reads the same four numbers from config instead of from the module, and
+falls back to the module on anything unreadable, so a tree with no `[optimizer]
+top_n` key solves byte-identically — and §2.2's EO constants, whose only readers
+are annotation tables (`captain_table`, `transfer_alternatives`, `threat_board`)
+and `transfer_tag`, none of which the optimizer consults. `differentials.py`'s
+own docstring is the argument: *"This module annotates, it never decides."*
+
+A replay would therefore compare two identical arms, which is v10's G2, v10b's
+G2 and v11's G2 for the fourth time. **If the orchestrator wants one anyway, the
+place to spend it is §2.6**: an `[optimizer] top_n` typo is the one change in W1
+that could move a plan, and the rail that a missing section reproduces
+`DEFAULT_TOP_N` exactly is the cheaper version of the same check.
+
+### Live spot-checks (orchestrator, on the dev server)
+
+- [ ] Every hub draws the "as of" strip, once, with five sources; a source with
+      no file reads "never" in grey rather than "0h".
+- [ ] `gaffer ui --lan` prints a token; a phone opened by scanning the QR (which
+      now carries `?token=`) can star a watchlist player, and the same phone
+      opened from the bare printed URL gets the 403 sentence rather than a
+      silent failure.
+- [ ] Model → Health shows the solver pool sizes with their caption, the last
+      backup with its size and its UTC stamp, and — on a machine whose
+      `config.toml` names the right season — no red banner. Editing
+      `[optimizer] top_n` and reloading shows the new numbers without a
+      restart.
+- [ ] `claude mcp add gaffer -- gaffer mcp`, then ask Claude Code for the top
+      five midfielders and for `health` on a tree with no advice: the first
+      answers, the second answers, and neither kills the subprocess.
+- [ ] `gaffer tidy` names five files and 54 KB. `gaffer backup` writes ~16 MB.
+
 ## 3. W2 — mine what we have
 
 ### 3.1 Flag-latency report
