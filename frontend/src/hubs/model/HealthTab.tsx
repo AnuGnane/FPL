@@ -105,6 +105,42 @@ export default function HealthTab() {
           </p>
         )}
       </Card>
+      {/* v12 W4 §5.1. The collector is opt-in, so a clone that has never run
+          it says what it is waiting for. Three zeros would read as a
+          measurement of an archive that had nothing in it. */}
+      <Card title="Core insights" className="mb-4">
+        {data.core_insights == null || !data.core_insights.collected ? (
+          <p className="text-text-muted">
+            Not collected yet ({data.core_insights?.season ?? '—'}). Waiting
+            for {data.core_insights?.waiting_for ?? 'a collector run'}.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <th className="label pb-1 text-left">Table</th>
+                  <th className="label pb-1 text-right">Rows</th>
+                  <th className="label pb-1 text-right">Latest</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.core_insights.tables.map((t) => (
+                  <tr key={t.table}>
+                    <td className="text-text">{t.table}</td>
+                    <td className="num text-right">{t.rows}</td>
+                    <td className="num text-right text-text-muted">
+                      {t.rows === 0
+                        ? 'the archive publishes none yet'
+                        : (t.latest ?? '—')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
       {/* Its own card: these are config, not freshness. Nothing here has an
           mtime, and sitting it under a table of file ages invited the reading
           that the pool sizes were stale. */}

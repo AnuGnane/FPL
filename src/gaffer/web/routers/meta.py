@@ -24,7 +24,7 @@ from gaffer.data.elo import compute_elo, expected_score
 from gaffer.data.odds import poisson_win_prob
 from gaffer.errors import GafferError
 from gaffer.assets import load_decision_priors
-from gaffer.config import load_config, optimizer_top_n
+from gaffer.config import Config, load_config, optimizer_top_n
 from gaffer.price_timing import owned_price_falls
 from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
                                          chip_windows, load_chip_scenarios,
@@ -32,8 +32,9 @@ from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
 from gaffer.optimize.chips import chip_plan, evaluate_chips
 from gaffer.optimize.milp import SolveInput
 from gaffer.web.schemas import (ArtifactItem, BackupHealth, ChipPlan,
-                                ChipPlanRow, Freshness, FreshnessRow, Health,
-                                History, HistoryRun, LaunchdHealth,
+                                ChipPlanRow, CoreInsightsHealth,
+                                CoreInsightsTable, Freshness, FreshnessRow,
+                                Health, History, HistoryRun, LaunchdHealth,
                                 ModelHealth, PricePoint, PriceSeries,
                                 SourceHealth, Ticker, TickerCell, TickerTeam)
 
@@ -340,6 +341,31 @@ def health() -> Health:
         if path.is_file():
             artifacts.append(ArtifactItem(name=f"reports/{path.name}",
                                           bytes=path.stat().st_size))
+    # v12 W4 §5.1. Rows and latest date per table, or an honest "never":
+    # the collector is opt-in (a CLI run or its plist), so a clone that has
+    # not run it must say what it is waiting for rather than render three
+    # zeros that look like a measurement.
+    from gaffer.data.core_insights import ci_path, season_table_stats
+    try:
+        season = str(load_config().current_season)
+    except Exception:  # noqa: BLE001 — no config.toml is a valid state here
+        # A clone with no config.toml still knows which season the collector
+        # would fetch, because Config's own default says so. Naming it beats
+        # a blank: "not collected yet (—)" tells the reader nothing.
+        season = str(getattr(Config, "current_season", ""))
+    stats = season_table_stats(season) if season else {}
+    collected = bool(season) and any(
+        store.exists(ci_path(season, table)) for table in stats)
+    core_insights = CoreInsightsHealth(
+        season=season,
+        collected=collected,
+        tables=[CoreInsightsTable(table=name, rows=int(v["rows"]),
+                                  latest=v["latest"])
+                for name, v in sorted(stats.items())] if collected else [],
+        waiting_for=None if collected else
+        "a collector run — `gaffer core-insights`, or install "
+        "scripts/com.gaffer.core-insights.plist for 06:30 and 18:30 daily")
+
     return Health(data=sources, data_through_gw=ingested_through(),
                   models=models,
                   launchd=LaunchdHealth(log=str(ADVISE_LOG),
@@ -351,7 +377,8 @@ def health() -> Health:
                   season_config=season_config,
                   season_ingested=season_ingested,
                   solver_top_n=solver_top_n,
-                  last_backup=last_backup)
+                  last_backup=last_backup,
+                  core_insights=core_insights)
 
 
 def _odds_lookup() -> dict[tuple[int, int, int], tuple[float, float]]:

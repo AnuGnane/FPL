@@ -890,6 +890,26 @@ class BackupHealth(BaseModel):
     bytes: int
 
 
+class CoreInsightsTable(BaseModel):
+    table: str
+    rows: int
+    latest: str | None = None
+    """Newest kickoff date in the table, ``YYYY-MM-DD``, or ``None`` when the
+    table has no dated rows. A table with rows and no date is possible — the
+    player table is keyed on gameweek, not on a timestamp — and reads as its
+    highest gameweek instead."""
+
+
+class CoreInsightsHealth(BaseModel):
+    season: str
+    collected: bool
+    tables: list[CoreInsightsTable]
+    waiting_for: str | None = None
+    """What has to happen before these numbers mean anything, or ``None`` when
+    they already do. Spec §1: a view whose data does not exist yet says what
+    it is waiting for and never renders zeros as if they were measurements."""
+
+
 class Health(BaseModel):
     data: list[SourceHealth]
     # File mtimes say when the ingest ran; this says what it got.
@@ -927,6 +947,7 @@ class Health(BaseModel):
     other option and it is worse: it renders as a backup that happened and was
     empty, which is the one outcome this feature exists to prevent.
     """
+    core_insights: CoreInsightsHealth | None = None
 
 
 class TickerCell(BaseModel):

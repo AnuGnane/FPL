@@ -513,6 +513,22 @@ export interface HealthData {
   // null is "never". Rendered as "never — run `gaffer backup`" rather than as
   // a blank cell: a backup nobody can see is one nobody notices has stopped.
   last_backup?: { path: string; modified_at: string; bytes: number } | null
+  // null is a server that does not carry the block at all; collected false is
+  // a machine that has never run the collector. Neither renders as zero rows.
+  core_insights?: CoreInsightsHealth | null
+}
+
+export interface CoreInsightsTable {
+  table: string
+  rows: number
+  latest: string | null
+}
+
+export interface CoreInsightsHealth {
+  season: string
+  collected: boolean
+  tables: CoreInsightsTable[]
+  waiting_for: string | null
 }
 
 export interface TickerData {
