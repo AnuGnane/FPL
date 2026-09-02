@@ -24,11 +24,11 @@ FLAG_LATENCY = {
     "checked_covered_gws": [3],
     "histogram": [{"bucket": "1-2d", "started": 1, "missed": 1}],
     "late_flags": [{"gw": 3, "code": 7, "first_change": "2026-09-03",
-                    "lead_days": 1.73, "from_status": "a",
+                    "lead_days": 1, "from_status": "a",
                     "final_status": "i", "chance_of_playing": 0.0,
                     "started": True}],
     "changes": [{"gw": 3, "code": 7, "first_change": "2026-09-03",
-                 "lead_days": 1.73, "from_status": "a", "final_status": "i",
+                 "lead_days": 1, "from_status": "a", "final_status": "i",
                  "chance_of_playing": 0.0, "started": True}],
 }
 

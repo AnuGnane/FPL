@@ -97,9 +97,9 @@ def owned_price_falls(owned: list[int] | None) -> dict[int, float]:
     (":func:`price_falls`'s newest banked day has to be today") is what a
     cache keyed on the squad alone would quietly outlive: a table computed at
     23:50 would still be served at 00:10, charging a fall that had by then
-    already resolved. Anything that rewrites the price log (or ``config.toml``)
-    under a
-    running process calls ``owned_price_falls.cache_clear()``; the health poll
+    already resolved. Anything that rewrites the price log (or
+    ``config.toml``) under a running process calls
+    ``owned_price_falls.cache_clear()``; the health poll
     already does, beside ``optimizer_top_n``'s. The returned dict is a fresh
     copy per call so a caller that mutates it cannot poison the cache.
 
@@ -116,8 +116,12 @@ def _today() -> str:
     """``snap_date()`` behind a guard, because it is read on the solve path.
 
     A clock that will not answer must cost the term and nothing else, like
-    every other failure in this module; the empty string is a key no banked
-    day equals, so the table comes back empty rather than stale."""
+    every other failure in this module. The empty string it returns is only a
+    cache key, and is never compared against a banked day: it is
+    :func:`price_falls` that decides freshness, and it calls ``snap_date()``
+    again for itself, so the same broken clock raises there and
+    :func:`_owned_price_falls`'s own ``except`` turns it into an empty
+    table."""
     try:
         return str(snap_date())
     except Exception:  # noqa: BLE001 — never blocks a solve

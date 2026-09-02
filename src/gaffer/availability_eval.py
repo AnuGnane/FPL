@@ -139,11 +139,18 @@ LEAD_BUCKETS = ((0.0, 1.0, "<1d"), (1.0, 2.0, "1-2d"), (2.0, 3.0, "2-3d"),
                 (7.0, float("inf"), "7d+"))
 """Half-open ``[lo, hi)`` bands, in the units a manager thinks in.
 
-Under a day is "I found out on the way to the deadline"; over a week is "this
-was never news". The boundaries are not fitted to anything and are not
-supposed to be — they are a reading aid over a distribution the project has
-never seen, and the raw ``changes`` rows are on the payload for anyone who
-wants their own."""
+Over a week is "this was never news". The boundaries are not fitted to
+anything and are not supposed to be — they are a reading aid over a
+distribution the project has never seen, and the raw ``changes`` rows are on
+the payload for anyone who wants their own.
+
+``<1d`` is empty by construction and kept anyway. :func:`pre_deadline` drops
+every row dated the deadline day, because ``snap_date`` carries no clock and
+such a row cannot be shown to predate the deadline at all — so the smallest
+lead time that reaches these bands is a whole day, and every band holds whole
+days. The band stays in the tuple because a zero on the page is the honest
+answer to "how many flags landed on the morning of the deadline": none that
+this log can prove, rather than none that happened."""
 
 WORST_LATE_FLAGS = 20
 """Spec §3.1's table size."""

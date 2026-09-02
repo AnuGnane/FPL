@@ -348,7 +348,8 @@ surgery would be wrong here.
 
 
 def _seeded_bundle(base: dict, train_df: pd.DataFrame, seed: int,
-                   minutes_cls=None, attack_cls=None) -> dict:
+                   minutes_cls=None, attack_cls=None,
+                   feature_cols: list[str] | None = None) -> dict:
     """``base`` with only the two LightGBM heads refit under ``seed``.
 
     Spec §3's ensemble is "the attacking heads + minutes model", and that is
@@ -357,6 +358,14 @@ def _seeded_bundle(base: dict, train_df: pd.DataFrame, seed: int,
     heads are shared so the measured spread is the estimation uncertainty of
     the two heads that carry it — not a wash of everything at once. Sharing
     them also turns five full refits into one plus four pairs.
+
+    ``feature_cols`` is member zero's own list, read off its fitted head once
+    by the caller and handed down. Calling :func:`attacking_features` again
+    per member would re-read ``config.toml`` four times during a run that
+    takes minutes, so a ``[model] xg_per_shot`` edit landing mid-run would
+    hand two members different inputs — the skew this argument exists to make
+    impossible. ``None`` falls back to the flag, for the unit test and
+    for any caller with no fitted member zero to read.
 
     The class arguments exist so the unit test can substitute stubs; nothing
     else passes them.
@@ -369,12 +378,12 @@ def _seeded_bundle(base: dict, train_df: pd.DataFrame, seed: int,
     attack_cls = AttackingModel if attack_cls is None else attack_cls
     out = dict(base)
     out["minutes"] = minutes_cls(MINUTES_FEATURES, seed=seed).fit(train_df)
-    # ``attacking_features()`` and not the bare ``ATTACK_FEATURES``: member
-    # zero is ``train_all``'s bundle, which fits the head on whatever the v12
-    # §3.5 flag says. A member fit on a different feature list differs from
+    # Member zero's list, not the bare ``ATTACK_FEATURES``: member zero is
+    # ``train_all``'s bundle, which fits the head on whatever the v12 §3.5
+    # flag said when it ran. A member fit on a different feature list differs from
     # member zero in its *inputs*, and the spread stops being estimation noise.
-    out["attacking"] = attack_cls(attacking_features(), seed=seed).fit(
-        train_df)
+    cols = attacking_features() if feature_cols is None else list(feature_cols)
+    out["attacking"] = attack_cls(cols, seed=seed).fit(train_df)
     return out
 
 
@@ -426,8 +435,14 @@ def ensemble_rows(max_train_idx: int | None = None,
     train_tg, _ = benchmark_split(tg, max_train_idx, test_idx)
     base = train_all(train_df, train_tg.dropna(subset=["elo_diff"]),
                      save=False)
-    members = [base] + [_seeded_bundle(base, train_df, s) for s in seeds[1:]]
-    zero = list(getattr(members[0]["attacking"], "feature_cols", []))
+    # Read off the fitted head once, then handed to every member: the flag
+    # cannot be re-read four times over a run that takes minutes, so an edit
+    # to ``config.toml`` mid-run cannot split the ensemble. The check below is
+    # then a check on the *fits*, not on the config file.
+    zero = list(getattr(base["attacking"], "feature_cols",
+                        attacking_features()))
+    members = [base] + [_seeded_bundle(base, train_df, s, feature_cols=zero)
+                        for s in seeds[1:]]
     for i, m in enumerate(members[1:], start=1):
         cols = list(getattr(m["attacking"], "feature_cols", []))
         if cols != zero:

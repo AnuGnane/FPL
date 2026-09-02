@@ -96,7 +96,7 @@ def test_the_terminal_table_prints_the_buckets_and_the_worst_flags():
     payload = {"kind": "flag_latency", "available": True, "rows": 2,
                "snap_dates": 15, "min_snap_dates": 14,
                "histogram": [{"bucket": "1-2d", "started": 1, "missed": 1}],
-               "late_flags": [{"gw": 3, "code": 7, "lead_days": 1.5,
+               "late_flags": [{"gw": 3, "code": 7, "lead_days": 1,
                                "final_status": "i", "started": True,
                                "first_change": "2026-09-03",
                                "from_status": "a",
