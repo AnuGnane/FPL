@@ -330,6 +330,33 @@ that could move a plan, and the rail that a missing section reproduces
   hauler bucket RMSE improves and no other bucket worsens by more than its
   seed-spread. Recorded in the model quality table like prior arms.
 
+**§3.5 outcome (run 2026-09-02 on `feat/gaffer-v12`, `scripts/v12_xgps_arm.py`,
+K=3 seed bases; both arms fit under the ensemble hyperparameters, so the v8a
+sanity figure is not expected to reproduce). Verbatim driver lines:**
+
+```
+V12_ARM_LEVER ok
+V12_ARM_DONE baseline 20260901 {"zeros": 1.064, "blanks": 1.677, "tickers": 1.654, "haulers": 5.198, "all": 1.971, "rows": 26919, "haulers_n": 2324, "zeros_n": 16279}
+V12_ARM_DONE xg_per_shot 20260901 {"zeros": 1.059, "blanks": 1.667, "tickers": 1.613, "haulers": 5.219, "all": 1.97, "rows": 26919, "haulers_n": 2324, "zeros_n": 16279}
+V12_ARM_DONE baseline 20260902 {"zeros": 1.06, "blanks": 1.672, "tickers": 1.63, "haulers": 5.217, "all": 1.972, "rows": 26919, "haulers_n": 2324, "zeros_n": 16279}
+V12_ARM_DONE xg_per_shot 20260902 {"zeros": 1.067, "blanks": 1.67, "tickers": 1.641, "haulers": 5.198, "all": 1.97, "rows": 26919, "haulers_n": 2324, "zeros_n": 16279}
+V12_ARM_DONE baseline 20260903 {"zeros": 1.065, "blanks": 1.671, "tickers": 1.65, "haulers": 5.206, "all": 1.971, "rows": 26919, "haulers_n": 2324, "zeros_n": 16279}
+V12_ARM_DONE xg_per_shot 20260903 {"zeros": 1.064, "blanks": 1.676, "tickers": 1.676, "haulers": 5.191, "all": 1.97, "rows": 26919, "haulers_n": 2324, "zeros_n": 16279}
+V12_VERDICT xg_per_shot {"seed_bases": [20260901, 20260902, 20260903], "base_mean": {"zeros": 1.063, "blanks": 1.67333, "tickers": 1.64467, "haulers": 5.207, "all": 1.97133}, "arm_mean": {"zeros": 1.06333, "blanks": 1.671, "tickers": 1.64333, "haulers": 5.20267, "all": 1.97}, "control_spread": {"zeros": 0.005, "blanks": 0.006, "tickers": 0.024, "haulers": 0.019, "all": 0.001}, "delta": {"zeros": 0.00033, "blanks": -0.00233, "tickers": -0.00133, "haulers": -0.00433, "all": -0.00133}, "regressions": {}, "decision": "keep"}
+```
+
+Reading, against the pre-registered rule above: the hauler bucket improved
+(5.207 → 5.20267, Δ −0.00433) and no bucket worsened by more than its control
+spread (`regressions: {}`), so the rule says **keep → `[model] xg_per_shot`
+default on**. The honest caveat, recorded so nobody reads it as a win later:
+the hauler delta is 0.23× the control spread (0.019) and every bucket's delta
+is inside its spread — the arm is *indistinguishable from the baseline*, and
+the flip is the rule's verdict on "no regression", not a measured gain. The
+flip lands only with the fix for the serving-frame defect the W2 final review
+found (the prediction frame did not build the columns; a flag flipped on
+before that fix would have crashed `advise`) and takes effect on the next
+`gaffer train`.
+
 **W2 gate:** suite green; §3.4 replay tolerance 5 vs main (the S1 rule);
 §3.5 pre-registered outcome recorded either way; empty states verified
 by test with an empty log.
