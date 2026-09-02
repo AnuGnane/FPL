@@ -158,3 +158,35 @@ def test_the_config_field_count_moved_deliberately():
     five that move the pin from 48 to 53, and each one should be findable from
     its own test."""
     assert any(f.name == "top_n" for f in dataclasses.fields(Config))
+
+
+def test_the_health_card_reflects_a_config_edit_because_it_clears_the_cache(
+        tmp_path, monkeypatch):
+    """`optimizer_top_n` is `lru_cache`d, which is what keeps a per-solve TOML
+    read off the serving path — and which means a user who edits
+    `[optimizer] top_n` and reloads Health would otherwise keep reading the
+    value the process started with, for ever.
+
+    Both halves are asserted, because the stale value is the trade the cache
+    exists to make and the reader should be able to see it: before
+    `cache_clear` the old number is still there, after it the file's number
+    is. The route calls `cache_clear` first, so the card is honest.
+    """
+    from fastapi.testclient import TestClient
+
+    from gaffer.web.app import create_app
+    from gaffer.web.routers import meta
+
+    monkeypatch.chdir(tmp_path)
+    optimizer_top_n.cache_clear()
+    _cfg(tmp_path, "[optimizer]\ntop_n = {MID = 12}\n")
+    assert optimizer_top_n()["MID"] == 12
+
+    # Rewritten at the same path — the case a cache keyed on the path cannot
+    # notice by itself.
+    _cfg(tmp_path, "[optimizer]\ntop_n = {MID = 33}\n")
+    assert optimizer_top_n()["MID"] == 12          # the trade, documented
+
+    assert meta.health().solver_top_n["MID"] == 33
+    client = TestClient(create_app())
+    assert client.get("/api/health").json()["solver_top_n"]["MID"] == 33

@@ -45,6 +45,25 @@ def test_lan_prints_a_qr_code(no_server, monkeypatch):
     assert "█" in result.stdout
 
 
+def test_the_qr_carries_the_token_and_the_printed_url_does_not(no_server,
+                                                               monkeypatch):
+    """Scanning the code is the whole point of it being there. A QR that
+    encoded the bare URL landed the phone on a page where every star and every
+    pin failed with a 403, fixable only by retyping a 22-character token by
+    hand — which is the failure the code exists to avoid.
+
+    The printed line stays bare: it is for the second device, the one being
+    typed into, and it is the line a user pastes into a chat window."""
+    encoded = {}
+    monkeypatch.setattr("gaffer.web.lan.lan_ip", lambda: "192.168.1.42")
+    monkeypatch.setattr("gaffer.web.app.generate_token", lambda: "TOK123")
+    monkeypatch.setattr("gaffer.web.lan.qr_lines",
+                        lambda url: encoded.setdefault("url", url) and [])
+    result = runner.invoke(cli.app, ["ui", "--lan", "--no-open-browser"])
+    assert encoded["url"] == "http://192.168.1.42:8927/?token=TOK123"
+    assert "On your network: http://192.168.1.42:8927\n" in result.stdout
+
+
 def test_lan_says_plainly_what_is_open_and_what_is_not(no_server, monkeypatch):
     """This used to assert "no auth — trusted home network only", which was an
     honest description until v12 W1 §2.8. It is now false: reads are open and

@@ -152,8 +152,15 @@ def create_app(*, token: str | None = None) -> FastAPI:
                 return await call_next(request)
             import secrets
 
-            sent = request.headers.get("X-Gaffer-Token", "")
-            if not secrets.compare_digest(sent, token):
+            # Compared as bytes. `compare_digest` on two `str` raises
+            # TypeError unless both are ASCII-only, and a configured
+            # `[web] token` with an accented character would turn every
+            # write into a 500 instead of a 403 — the header is attacker-
+            # controlled, so the encode is `latin-1`/`replace` rather than
+            # a decode that could itself raise.
+            sent = request.headers.get("X-Gaffer-Token", "") \
+                .encode("latin-1", "replace")
+            if not secrets.compare_digest(sent, token.encode("utf-8")):
                 return JSONResponse(
                     status_code=403,
                     content={"detail": "this gaffer is served to the network; "

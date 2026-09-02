@@ -29,14 +29,26 @@ megabytes rather than two gigabytes.
 
 from __future__ import annotations
 
+import os
 import subprocess
 import tarfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-ROOTS = ["data/live", "data/raw/field", "data/raw/tier_eo", "reports",
-         "models"]
-"""Archived, in this order. A root that does not exist is skipped."""
+from gaffer.data import store
+
+ROOTS = ["live", "raw/field", "raw/tier_eo"]
+"""Archived under ``store.DATA_DIR``, in this order, plus :data:`TREE_ROOTS`.
+
+Resolved through ``store.DATA_DIR`` rather than as ``data/live`` relative to
+the process's cwd: ``store`` is the module that knows where the data tree is,
+and a backup that silently archived nothing because it was run from the wrong
+directory is the failure mode this whole module exists to prevent. A root that
+does not exist is skipped; a tree with *no* root at all raises."""
+
+TREE_ROOTS = ["reports", "models"]
+"""The two archived roots that are not under the data tree. Project-relative,
+because that is where ``artifacts.REPORTS`` and the trainer write them."""
 
 NAME_GLOB = "gaffer-*.tar.gz"
 """What :func:`prune` is allowed to consider. Never ``*``: the destination may
@@ -45,8 +57,23 @@ that deletes by "everything here" is a data loss with a schedule."""
 
 
 def archive_name(now: datetime | None = None) -> str:
-    stamp = (now or datetime.now()).strftime("%Y%m%d-%H%M")
-    return f"gaffer-{stamp}.tar.gz"
+    """``gaffer-<YYYYmmdd-HHMMSS>.tar.gz``, in UTC.
+
+    Seconds, not minutes: two runs inside one minute — a scheduled 23:45 job
+    and a hand ``gaffer backup`` while checking on it — would otherwise pick
+    the same name, and the second would overwrite the first. UTC, so the name
+    does not go backwards over a DST fold and the sort order is the write
+    order.
+    """
+    return "gaffer-{}.tar.gz".format(
+        (now or datetime.now(timezone.utc)).strftime("%Y%m%d-%H%M%S"))
+
+
+def archived_roots() -> list[Path]:
+    """The roots that exist, in :data:`ROOTS` then :data:`TREE_ROOTS` order."""
+    every = [store.DATA_DIR / r for r in ROOTS] + \
+        [Path(r) for r in TREE_ROOTS]
+    return [p for p in every if p.exists()]
 
 
 def run_backup(*, to: Path | str, rsync: str | None = None,
@@ -55,24 +82,47 @@ def run_backup(*, to: Path | str, rsync: str | None = None,
 
     ``None`` when there was nothing to archive at all — an empty tar looks
     exactly like a successful backup and restores to nothing, which is the
-    worst of the available outcomes.
+    worst of the available outcomes — and ``None`` again when the write itself
+    failed, with the half-written file removed rather than left where the next
+    run's ``prune`` would count it as an archive.
     """
-    roots = [Path(r) for r in ROOTS if Path(r).exists()]
+    roots = archived_roots()
     if not roots:
         print("backup: nothing to archive — no data/, reports/ or models/")
         return None
     dest = Path(to)
     dest.mkdir(parents=True, exist_ok=True)
-    path = dest / archive_name(now)
-    # Written to its final name rather than through gaffer.io.atomic_write:
-    # the archive is a new file every minute, so there is no previous version
-    # for a torn write to destroy, and streaming a tarball through a temp
-    # would double the peak disk for no gain.
-    with tarfile.open(path, "w:gz") as tar:
-        for root in roots:
-            tar.add(root, arcname=str(root))
+    # Stamped once. Two calls a second apart would name the part file and the
+    # archive differently, and the rename would then be a move rather than the
+    # in-place publish it is meant to be.
+    name = archive_name(now)
+    path = dest / name
+    # Written to a `.part` sibling and renamed, rather than straight to the
+    # final name: a tar interrupted by a full disk or a Ctrl-C leaves a
+    # truncated .tar.gz that matches NAME_GLOB, which makes it the newest
+    # "archive" the Health line reports and the newest one `prune` keeps. The
+    # part name starts with a dot and ends in `.part`, so it matches neither
+    # NAME_GLOB nor anything `latest_backup` looks at, and `os.replace` is
+    # atomic within a directory.
+    part = dest / f".{name}.part"
+    try:
+        # dereference=True: `models/` and `reports/` are ordinary directories
+        # here, but a user who has symlinked one onto another volume — which
+        # is exactly what somebody short of disk does — would otherwise get an
+        # archive of dangling links that restores to nothing.
+        with tarfile.open(part, "w:gz", dereference=True) as tar:
+            for root in roots:
+                tar.add(root, arcname=str(root))
+        os.replace(part, path)
+    except OSError as exc:
+        part.unlink(missing_ok=True)
+        print(f"backup: failed to write {path} ({exc}) — no archive was "
+              f"written, and the previous ones are untouched")
+        return None
     if rsync:
-        result = subprocess.run(["rsync", "-a", str(path), rsync],
+        # `--` before the paths: an rsync target is a user-supplied string and
+        # one beginning with a dash would otherwise be read as an option.
+        result = subprocess.run(["rsync", "-a", "--", str(path), rsync],
                                 capture_output=True, text=True)
         if result.returncode != 0:
             # Never fatal. The local archive exists and is the thing that
@@ -98,7 +148,15 @@ def prune(dest: Path | str, *, keep: int = 14) -> list[Path]:
     """
     if keep <= 0:
         return []
-    found = sorted(Path(dest).glob(NAME_GLOB), key=lambda p: p.name)
+    # By mtime, like `latest_backup`: the two must agree about which archive
+    # is newest, or the one the Health line shows is the one the prune deletes.
+    # The name usually orders the same way, and does not when the clock is set
+    # back or a file is copied in from elsewhere.
+    # The name breaks a tie, because two archives can share an mtime on a
+    # filesystem with a coarse clock and `glob` order is the directory's, not
+    # anything a reader could predict.
+    found = sorted(Path(dest).glob(NAME_GLOB),
+                   key=lambda p: (p.stat().st_mtime, p.name))
     doomed = found[:-keep] if len(found) > keep else []
     for path in doomed:
         path.unlink(missing_ok=True)
@@ -111,7 +169,8 @@ def latest_backup(dest: Path | str) -> dict | None:
     ``None`` is the Health line's "never". Never a zero-byte dict: a size of
     zero would render as a backup that happened and was empty.
     """
-    found = sorted(Path(dest).glob(NAME_GLOB), key=lambda p: p.stat().st_mtime)
+    found = sorted(Path(dest).glob(NAME_GLOB),
+                   key=lambda p: (p.stat().st_mtime, p.name))
     if not found:
         return None
     newest = found[-1]

@@ -87,6 +87,18 @@ describe('the last-backup line', () => {
     expect(line).toHaveTextContent('16.4 MB')
   })
 
+  it('says which zone the stamp is in', async () => {
+    // The stamp is served as UTC and sliced rather than parsed, so a bare
+    // "23:45" reads as local time to every reader west of Greenwich and the
+    // nightly backup looks hours older or newer than it is.
+    serve({ last_backup: { path: '/h/gaffer-backups/gaffer-20260901-2345.tar.gz',
+                           modified_at: '2026-09-01T23:45:00+00:00',
+                           bytes: 16_400_000 } })
+    render(<MemoryRouter><HealthTab /></MemoryRouter>)
+    expect(await screen.findByTestId('last-backup'))
+      .toHaveTextContent('2026-09-01 23:45 UTC')
+  })
+
   it('says never, and says what to run, when there is none', async () => {
     serve({})
     render(<MemoryRouter><HealthTab /></MemoryRouter>)

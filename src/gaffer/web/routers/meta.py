@@ -176,16 +176,28 @@ def freshness() -> Freshness:
     def _row(source: str, path: Path | None) -> FreshnessRow:
         if path is None:
             return FreshnessRow(source=source)
-        present, modified, age = _stat(path)
+        try:
+            present, modified, age = _stat(path)
+        except OSError:
+            # A grey row for this source rather than a 500 for the whole
+            # strip. The window is real and small: `_newest` globs a
+            # directory and then stats what it found, and a refresh job that
+            # rewrites its output in between deletes the file underneath. The
+            # strip is drawn on every page in the app, so one vanished file
+            # must cost one row and not every page.
+            return FreshnessRow(source=source)
         return FreshnessRow(source=source,
                             path=str(path) if present else None,
                             modified_at=modified, age_hours=age)
 
     def _newest(directory: Path, pattern: str) -> Path | None:
-        if not directory.is_dir():
+        try:
+            if not directory.is_dir():
+                return None
+            found = sorted(directory.glob(pattern),
+                           key=lambda p: p.stat().st_mtime)
+        except OSError:
             return None
-        found = sorted(directory.glob(pattern),
-                       key=lambda p: p.stat().st_mtime)
         return found[-1] if found else None
 
     backup_newest = None
@@ -272,6 +284,13 @@ def health() -> Health:
     # what this install is doing. `optimizer_top_n` never raises, so the try
     # is belt and braces for an unforeseeable read.
     try:
+        # `cache_clear` first, for the reason the season banner reads
+        # `load_config` rather than `serving_config`: this is the page a user
+        # opens *after* editing `[optimizer] top_n`, and a cached reader would
+        # keep showing the old pool sizes until the process restarted. One
+        # TOML read per health poll is cheap; a card that will not update is
+        # a card that teaches the user their edit did nothing.
+        optimizer_top_n.cache_clear()
         solver_top_n = optimizer_top_n()
     except Exception:  # noqa: BLE001 — a health page never 500s
         solver_top_n = None

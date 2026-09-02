@@ -79,12 +79,54 @@ def test_the_replaceable_bulk_is_not(tree):
     assert not [n for n in names if n.startswith("data/raw/news")]
 
 
-def test_the_name_carries_the_minute(tree):
+def test_the_name_carries_the_second(tree):
+    """Seconds and not minutes: the 23:45 plist and a hand run started while
+    watching it would otherwise pick the same name and the second would
+    overwrite the first."""
     archive = backup.run_backup(to=tree / "backups")
     assert archive.name.startswith("gaffer-")
     assert archive.name.endswith(".tar.gz")
     stamp = archive.stem.removeprefix("gaffer-").removesuffix(".tar")
-    assert len(stamp) == 13 and stamp[8] == "-"       # YYYYMMDD-HHMM
+    assert len(stamp) == 15 and stamp[8] == "-"       # YYYYMMDD-HHMMSS
+
+
+def test_a_part_file_is_neither_pruned_nor_reported_as_a_backup(tree):
+    """The archive is written to a dotted `.part` sibling and renamed. That
+    name must fall outside NAME_GLOB in both directions: `prune` must not
+    count it towards `keep`, and `latest_backup` must not report a
+    half-written file as the newest backup."""
+    dest = tree / "backups"
+    dest.mkdir()
+    (dest / f".{backup.archive_name()}.part").write_text("half a tar")
+    assert backup.latest_backup(dest) is None
+    (dest / "gaffer-20260901-120000.tar.gz").write_text("x")
+    backup.prune(dest, keep=1)
+    assert len(list(dest.glob(".*.part"))) == 1
+    assert backup.latest_backup(dest)["path"].endswith(
+        "gaffer-20260901-120000.tar.gz")
+
+
+def test_a_torn_write_leaves_no_archive_and_no_part(tree, monkeypatch):
+    """A full disk mid-tar used to leave a truncated .tar.gz that matched
+    NAME_GLOB — which made it the newest "backup" the Health line reported and
+    the one `prune` kept. Now the failure is visible: no file, and None."""
+    real_open = backup.tarfile.open
+
+    def explode(path, mode="r", **kw):
+        tar = real_open(path, mode, **kw)
+        original = tar.add
+
+        def add(*args, **kwargs):
+            original(*args, **kwargs)
+            raise OSError(28, "No space left on device")
+        tar.add = add
+        return tar
+
+    monkeypatch.setattr(backup.tarfile, "open", explode)
+    dest = tree / "backups"
+    assert backup.run_backup(to=dest) is None
+    assert not list(dest.glob("*.tar.gz"))
+    assert not list(dest.glob(".*.part"))
 
 
 def test_a_missing_root_is_skipped_rather_than_fatal(tmp_path, monkeypatch):

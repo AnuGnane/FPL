@@ -42,6 +42,11 @@ export const TOKEN_KEY = 'gaffer-token'
  * every request. The parameter is consumed into storage and left in the URL —
  * stripping it would mean touching history from a module that has no business
  * doing so, and the URL is one the user typed off a QR code on their own phone.
+ *
+ * One consequence, accepted rather than overlooked: the `?token=` arrives in
+ * the query string, so uvicorn's access log records it once, on the first
+ * request of the first load. That log is a terminal on the user's own machine
+ * — the same terminal that just printed the token in the LAN banner.
  */
 export function readToken(): string {
   try {

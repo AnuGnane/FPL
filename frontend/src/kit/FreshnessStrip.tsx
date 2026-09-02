@@ -45,6 +45,13 @@ export default function FreshnessStrip() {
   return (
     <div
       data-testid="freshness-strip"
+      // `role="status"` rather than `alert`: this is ambient state on every
+      // page, and an assertive live region would interrupt a screen reader on
+      // every navigation. The per-cell label carries the age in words because
+      // the colour is the only other thing saying it, and colour is not a
+      // thing every reader has.
+      role="status"
+      aria-label="data freshness"
       className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs
                  text-text-muted"
     >
@@ -61,6 +68,7 @@ export default function FreshnessStrip() {
             <span
               className={tone(age)}
               title={row?.modified_at ?? 'never run'}
+              aria-label={`${label} last updated ${ageText(age)}`}
               data-testid={`freshness-${source}`}
             >
               {ageText(age)}

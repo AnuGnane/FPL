@@ -103,3 +103,33 @@ def test_the_endpoint_never_errors(clone):
 def test_this_cycle_added_exactly_this_route(clone):
     paths = set(create_app().openapi()["paths"])
     assert "/api/meta/freshness" in paths
+
+
+def test_a_file_that_vanishes_between_the_glob_and_the_stat_greys_one_row(
+        clone, monkeypatch):
+    """The window is real: `_newest` lists a directory and then stats what it
+    found, and the job that owns that directory rewrites its output on a
+    timer. A file deleted in between used to be an unhandled `OSError` — that
+    is, a 500 on the one endpoint every page in the app calls."""
+    from pathlib import Path
+
+    (clone / "reports").mkdir()
+    (clone / "reports" / "gw3-advice.json").write_text("{}")
+    (store.DATA_DIR / "live").mkdir(parents=True)
+    (store.DATA_DIR / "live" / "player_gw.parquet").write_text("x")
+
+    real_stat = Path.stat
+
+    def stat(self, *args, **kwargs):
+        # By name: `resolve()` here would re-enter `Path.stat` and recurse.
+        if self.name == "gw3-advice.json":
+            raise FileNotFoundError(2, "No such file or directory")
+        return real_stat(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "stat", stat)
+    payload = TestClient(create_app()).get("/api/meta/freshness")
+    assert payload.status_code == 200
+    rows = {r["source"]: r for r in payload.json()["rows"]}
+    assert rows["advise"]["age_hours"] is None       # grey, not a crash
+    assert rows["advise"]["path"] is None
+    assert rows["refresh"]["age_hours"] is not None  # the others are intact

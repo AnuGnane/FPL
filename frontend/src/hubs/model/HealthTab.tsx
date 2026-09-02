@@ -85,7 +85,13 @@ export default function HealthTab() {
           <span className="label">last backup: </span>
           {data.last_backup
             ? <span className="num">
+                {/* The stamp is served as UTC ISO-8601 and sliced rather
+                    than parsed, so the zone has to be said out loud: a
+                    23:45 nightly job rendered as a bare "23:45" reads as
+                    local time to everyone west of Greenwich, and the
+                    backup looks eight hours older or newer than it is. */}
                 {data.last_backup.modified_at.slice(0, 16).replace('T', ' ')}
+                {' UTC'}
                 {' '}({(data.last_backup.bytes / 1e6).toFixed(1)} MB)
               </span>
             : <span className="text-text-muted">

@@ -48,7 +48,27 @@ def candidates(older_than: int = 30) -> dict[str, list[Path]]:
     ``older_than`` applies to ``logs/`` alone. An orphaned backtest log is
     orphaned whatever its age: the report it would have been paired with is
     never going to appear.
+
+    Raises when ``logs/`` is absent, rather than reporting nothing to tidy. A
+    glob over a directory that does not exist returns an empty list, which
+    reads identically to "swept and clean" — and the way to be missing
+    ``logs/`` is to run this from the wrong directory, which is exactly when a
+    false all-clear is worst. ``data/live/`` is not checked the same way: a
+    clone that has never run a replay legitimately has no such directory,
+    while ``logs/`` is created by the first command that writes one.
+
+    A negative ``older_than`` raises too: a cutoff in the future makes every
+    log a candidate, including the ones being appended to right now.
     """
+    if older_than < 0:
+        raise ValueError(
+            f"--older-than must not be negative (got {older_than}): a cutoff "
+            f"in the future selects every log, including today's")
+    if not LOGS.is_dir():
+        raise FileNotFoundError(
+            f"{LOGS}/ does not exist — run `gaffer tidy` from the project "
+            f"root. Reporting nothing to tidy from the wrong directory would "
+            f"look exactly like a tree that is already clean")
     backtests = [p for p in sorted(LIVE.glob(BACKTEST_GLOB))
                  if not _report_for(p).exists()]
     cutoff = time.time() - older_than * 86400

@@ -147,3 +147,42 @@ def test_the_cutoff_is_configurable_and_applies_only_to_logs(tree):
     assert len(tidy.candidates(older_than=30)["backtests"]) == 1
     assert tidy.candidates(older_than=30)["logs"] == []
     assert len(tidy.candidates(older_than=5)["logs"]) == 1
+
+
+def test_a_negative_cutoff_is_refused(tree):
+    """`--older-than -1` puts the cutoff in the future, which makes every log
+    a candidate — including the one launchd is appending to right now. A
+    delete command must not accept an argument whose only effect is to widen
+    what it deletes past everything."""
+    with pytest.raises(ValueError, match="negative"):
+        tidy.candidates(older_than=-1)
+
+
+def test_a_missing_logs_root_raises_rather_than_reporting_a_clean_tree(
+        tmp_path, monkeypatch):
+    """A glob over a directory that does not exist returns `[]`, and `[]`
+    prints "nothing to tidy" — which is the same sentence a genuinely clean
+    tree prints. The way to have no `logs/` is to run this from the wrong
+    directory, so the false all-clear arrives exactly when it is least
+    deserved."""
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(FileNotFoundError, match="project root"):
+        tidy.candidates()
+
+
+def test_the_cli_exits_non_zero_on_both_refusals(tmp_path, monkeypatch):
+    from typer.testing import CliRunner
+
+    import gaffer.cli as cli
+
+    runner = CliRunner()
+    monkeypatch.chdir(tmp_path)
+    wrong_dir = runner.invoke(cli.app, ["tidy"])
+    assert wrong_dir.exit_code == 1
+    assert "project root" in wrong_dir.stdout
+
+    (tmp_path / "logs").mkdir()
+    (tmp_path / "data" / "live").mkdir(parents=True)
+    negative = runner.invoke(cli.app, ["tidy", "--older-than", "-1"])
+    assert negative.exit_code == 1
+    assert "negative" in negative.stdout

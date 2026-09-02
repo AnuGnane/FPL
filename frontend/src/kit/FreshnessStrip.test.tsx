@@ -104,3 +104,20 @@ describe('the age text', () => {
     expect(ageText(50)).toBe('2d')
   })
 })
+
+describe('the screen reader', () => {
+  it('announces the strip without interrupting, and each age in words', async () => {
+    // `status` and not `alert`: this is ambient state on every page, and an
+    // assertive live region would interrupt on every navigation. The age is
+    // in the label because the only other thing carrying it is the colour.
+    serve([row('refresh', 2), row('backup', null)])
+    render(<FreshnessStrip />)
+    const strip = await screen.findByTestId('freshness-strip')
+    expect(strip).toHaveAttribute('role', 'status')
+    expect(strip).toHaveAttribute('aria-label', 'data freshness')
+    expect(screen.getByTestId('freshness-refresh'))
+      .toHaveAttribute('aria-label', 'data last updated 2h')
+    expect(screen.getByTestId('freshness-backup'))
+      .toHaveAttribute('aria-label', 'backup last updated never')
+  })
+})

@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import inspect
 
+import pytest
+
 from gaffer import mcp_server
 
 
@@ -87,7 +89,25 @@ def test_top_truncates_and_is_not_passed_to_the_router(monkeypatch):
     assert len(mcp_server.TOOLS["projections"](top=3)) == 3
 
 
-def test_whatif_calls_the_solver_body_and_not_the_job_route(monkeypatch):
+@pytest.fixture()
+def accepts_anything(monkeypatch):
+    """A saved state that exists and a validator that passes it.
+
+    `whatif` now runs `_validate` before the solve, exactly as the route does,
+    so a test about what reaches `solve_whatif` has to get past both. Both are
+    stubbed rather than fixtured: the thing under test is the plumbing, and the
+    validator has its own tests next door in the whatif suite.
+    """
+    from gaffer import artifacts
+    from gaffer.web.routers import whatif as whatif_router
+
+    monkeypatch.setattr(artifacts, "load_solve_state", lambda gw: object())
+    monkeypatch.setattr(whatif_router, "_validate", lambda req, state: None)
+    monkeypatch.setattr(mcp_server, "_latest_gw", lambda: 5)
+
+
+def test_whatif_calls_the_solver_body_and_not_the_job_route(
+        monkeypatch, accepts_anything):
     from gaffer.web.routers import whatif as whatif_router
 
     seen = {}
@@ -97,22 +117,50 @@ def test_whatif_calls_the_solver_body_and_not_the_job_route(monkeypatch):
         return {"diff": []}
 
     monkeypatch.setattr(whatif_router, "solve_whatif", fake)
-    monkeypatch.setattr(mcp_server, "_latest_gw", lambda: 5)
     out = mcp_server.TOOLS["whatif"](transfers_in=[1], transfers_out=[2])
     assert out == {"diff": []}
     assert seen["gw"] == 5
     assert seen["req"].force_in == [1] and seen["req"].ban == [2]
 
 
-def test_whatif_maps_the_chip_code(monkeypatch):
+def test_whatif_maps_the_chip_code(monkeypatch, accepts_anything):
     from gaffer.web.routers import whatif as whatif_router
 
     seen = {}
     monkeypatch.setattr(whatif_router, "solve_whatif",
                         lambda req, gw: seen.update(chip=req.chip) or {})
-    monkeypatch.setattr(mcp_server, "_latest_gw", lambda: 5)
     mcp_server.TOOLS["whatif"](transfers_in=[], transfers_out=[], chip="wc")
     assert seen["chip"] == "wc"
+
+
+def test_whatif_validates_before_solving_and_flattens_the_422(monkeypatch):
+    """`solve_whatif` is the job *body*: the route runs `_validate` before
+    queueing it, so a tool that called the body directly handed the solver a
+    request nobody had checked. "You already own him" would come back as a
+    MILP infeasibility, which is the least useful true sentence available.
+
+    The 422 detail is a dict shaped for a form field the UI outlines in red.
+    A model has no form, so it is flattened to `constraint: error`.
+    """
+    from gaffer import artifacts
+    from gaffer.web.routers import whatif as whatif_router
+
+    solved = []
+    monkeypatch.setattr(artifacts, "load_solve_state", lambda gw: object())
+    monkeypatch.setattr(mcp_server, "_latest_gw", lambda: 5)
+    monkeypatch.setattr(whatif_router, "solve_whatif",
+                        lambda req, gw: solved.append(1) or {})
+
+    def refuse(req, state):
+        raise whatif_router._fail("force_in_owned",
+                                  "you already own player 7 — use lock to "
+                                  "keep him", [7])
+
+    monkeypatch.setattr(whatif_router, "_validate", refuse)
+    out = mcp_server.TOOLS["whatif"](transfers_in=[7], transfers_out=[])
+    assert out == {"error": "force_in_owned: you already own player 7 — use "
+                            "lock to keep him"}
+    assert not solved
 
 
 def test_a_tool_on_a_cold_clone_returns_a_sentence_rather_than_a_traceback(
@@ -143,8 +191,45 @@ def test_the_server_builds_without_starting(tmp_path, monkeypatch):
 
 
 def test_the_dependency_is_pinned_in_the_project_metadata():
+    """A lower bound, not the substring "mcp" — which also appears in
+    `mcp_server`, in a comment, and in any path containing those letters. The
+    class this module imports (`mcp.server.mcpserver.MCPServer`) does not
+    exist before 2.x, so an unpinned dependency resolving to a 1.x release is
+    an ImportError in a subprocess with nowhere to print it."""
     import pathlib
+    import re
 
     text = pathlib.Path(__file__).parents[1].joinpath("pyproject.toml") \
         .read_text()
-    assert "mcp" in text
+    assert re.search(r"^\s*[\"']mcp\s*>=\s*\d", text, re.M)
+
+
+def test_a_failing_tool_writes_the_traceback_to_stderr(tmp_path, monkeypatch,
+                                                       capsys):
+    """The dict a model receives is one sentence. The person debugging why
+    that sentence says "KeyError" needs the frame, and stderr is the one
+    stream a stdio MCP client does not parse — mcp's `stdio_server` dups the
+    real fd 1 for the protocol and points sys.stdout at fd 2, which is also
+    why a router that prints on a degraded path cannot corrupt the stream."""
+    def boom():
+        raise KeyError("code")
+
+    out = mcp_server._safe(boom)
+    assert out == {"error": "'code'"}
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "KeyError" in captured.err and "Traceback" in captured.err
+
+
+def test_the_command_prints_nothing_before_the_server_starts():
+    """Stdout *is* the protocol channel. A banner, a version line or a "no
+    config found" warning from `gaffer mcp` is a parse error at the other
+    end, and the only window that mcp's own fd juggling does not cover is
+    before `run()`."""
+    import inspect
+
+    from gaffer import cli
+
+    body = "\n".join(line for line in inspect.getsource(cli.mcp).splitlines()
+                     if not line.lstrip().startswith("#"))
+    assert "typer.echo" not in body and "print(" not in body

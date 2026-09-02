@@ -83,15 +83,31 @@ def test_options_and_head_pass_with_get(clone):
     assert client.head("/api/ping").status_code != 403
 
 
-def test_the_comparison_is_constant_time():
-    """Not because a home network is a threat model, but because
-    `secrets.compare_digest` costs one import and the alternative is a habit
-    that travels to code where it matters."""
-    import inspect
+def test_a_non_ascii_token_refuses_rather_than_erroring(clone):
+    """`secrets.compare_digest` on two `str` raises TypeError the moment
+    either side is not ASCII, so a configured `[web] token` with an accent in
+    it used to turn every write into a 500 — an internal error where the
+    honest answer is a refusal. Compared as bytes, so the encoding happens
+    once on each side and neither can raise."""
+    client = TestClient(create_app(token="pässwörd"))
+    assert client.post("/api/watchlist", json={},
+                       headers={"X-Gaffer-Token": "nope"}).status_code == 403
+    # Sent as bytes because an HTTP header *is* bytes: a real phone puts the
+    # UTF-8 of what the banner printed on the wire, and starlette hands it
+    # back decoded latin-1, which is the round trip the middleware undoes.
+    assert client.post("/api/watchlist", json={},
+                       headers={b"X-Gaffer-Token": "pässwörd".encode()}
+                       ).status_code != 403
 
-    from gaffer.web import app as app_mod
 
-    assert "compare_digest" in inspect.getsource(app_mod)
+def test_a_same_length_wrong_token_is_refused(clone):
+    """The comparison is `compare_digest`, not `==`, so equal-length inputs
+    take the same path a correct one does. Behavioural rather than a source
+    grep: a grep passes on a comment."""
+    client = TestClient(create_app(token="s3cret"))
+    assert client.post("/api/watchlist", json={},
+                       headers={"X-Gaffer-Token": "s3crft"}
+                       ).status_code == 403
 
 
 def test_a_generated_token_is_not_predictable():

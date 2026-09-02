@@ -22,19 +22,40 @@ changes something.
 Every tool returns ``{"error": "..."}`` rather than raising. An exception out of
 a stdio server is a dead subprocess and a model with no idea why, where the
 domain message ("run `gaffer advise` first") is exactly the thing that would
-have told it what to do.
+have told it what to do. The traceback still goes to stderr: swallowing it
+would make a genuine bug here indistinguishable from a cold clone, and stderr
+is the one stream an MCP client does not parse.
+
+**Stdout safety is borrowed, not enforced here.** Several of the router
+functions these tools call print on their degraded paths — the freshness and
+health readers do not, but the advice and review readers can — and a stray
+``print`` on fd 1 is a parse error at the other end of the pipe. What keeps
+that safe is mcp's ``stdio_server``, which dups the real fd 1 for the protocol
+and points ``sys.stdout`` at fd 2 for the duration of the run. So `gaffer mcp`
+must never write to stdout *before* the server starts (``cli.py``'s command has
+no ``typer.echo`` for exactly that reason), and a future refactor that hand-
+rolls the transport inherits this requirement rather than the guarantee.
 """
 
 from __future__ import annotations
 
+import sys
+import traceback
 from typing import Any, Callable
 
 
 def _safe(fn: Callable[[], Any]) -> Any:
-    """Run ``fn``; return ``{"error": <message>}`` instead of raising."""
+    """Run ``fn``; return ``{"error": <message>}`` instead of raising.
+
+    The traceback goes to stderr first. The dict a model receives says what
+    went wrong in a sentence; the person debugging why an MCP tool answers
+    "KeyError" needs the frame it came from, and stderr is where a stdio
+    server can put it without corrupting the protocol.
+    """
     try:
         return fn()
     except Exception as exc:  # noqa: BLE001 — see the module docstring
+        traceback.print_exc(file=sys.stderr)
         return {"error": str(exc) or exc.__class__.__name__}
 
 
@@ -59,7 +80,12 @@ def projections(position: str | None = None, team: int | None = None,
     def call():
         from gaffer.web.routers import players as router
 
-        rows = router.players(position=position, team=team)
+        # `sort` passed explicitly rather than left to the parameter default:
+        # the docstring above promises "highest ep_next first", and `top`
+        # slices the head of whatever order comes back — so a future change to
+        # the endpoint's default sort would silently make `top=5` return five
+        # arbitrary players instead of the five best.
+        rows = router.players(position=position, team=team, sort="ep_next")
         # `top` is this tool's own, not the endpoint's: `players()` takes
         # position, team, search and sort and returns every candidate. A model
         # reading seven hundred rows to answer "the best five midfielders" is
@@ -92,12 +118,33 @@ def whatif(transfers_in: list[int], transfers_out: list[int],
     quietly approximated.
     """
     def call():
+        from fastapi import HTTPException
+
+        from gaffer.artifacts import load_solve_state
         from gaffer.web.routers import whatif as router
         from gaffer.web.schemas import WhatIfRequest
 
         req = WhatIfRequest(force_in=list(transfers_in),
                             ban=list(transfers_out), chip=chip)
-        return router.solve_whatif(req, _latest_gw())
+        gw = _latest_gw()
+        # `_validate` first, exactly as the route does before queueing the
+        # job. `solve_whatif` is the job *body*: it assumes a request that has
+        # already been checked, so a model asking to force in a player it
+        # already owns would otherwise reach the solver and come back as an
+        # infeasibility — a MILP message where the honest answer is one
+        # sentence naming the player and the constraint.
+        try:
+            router._validate(req, load_solve_state(gw))
+        except HTTPException as exc:
+            # The 422 detail is `{"constraint", "error", "players"}`, shaped
+            # for a form field the UI can outline in red. A model has no form,
+            # so it is flattened into the sentence `_safe` would have
+            # produced from any other failure.
+            detail = exc.detail if isinstance(exc.detail, dict) else {}
+            raise ValueError(
+                f"{detail.get('constraint', 'invalid')}: "
+                f"{detail.get('error', exc.detail)}") from exc
+        return router.solve_whatif(req, gw)
     return _safe(call)
 
 

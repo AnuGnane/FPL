@@ -648,7 +648,14 @@ def tidy(apply: bool = typer.Option(
     """List (or delete) replay logs nothing references and stale run logs."""
     from gaffer.tidy import run_tidy
 
-    run_tidy(apply=apply, older_than=older_than)
+    # A refusal, not a warning: both of these end with the command printing
+    # "nothing to tidy", which is indistinguishable from a clean tree. One is
+    # a cutoff in the future, the other is the wrong working directory.
+    try:
+        run_tidy(apply=apply, older_than=older_than)
+    except (ValueError, FileNotFoundError) as exc:
+        typer.echo(f"tidy: {exc}")
+        raise typer.Exit(1) from exc
 
 
 @app.command()
@@ -703,7 +710,14 @@ def ui(port: int = typer.Option(8927, help="Port to serve on (default 8927)."),
         else:
             lan_url = f"http://{address}:{port}"
             typer.echo(f"On your network: {lan_url}")
-            for line in lan_mod.qr_lines(lan_url):
+            # The QR carries the token; the printed line does not. Scanning
+            # the code is the whole point of it being there, and a phone that
+            # lands on a tokenless page gets a UI where every star and every
+            # pin fails with a 403 it cannot fix without retyping a
+            # 22-character string by hand. The bare URL stays printed for the
+            # second device, the one typing it in.
+            for line in lan_mod.qr_lines(f"{lan_url}/?token={token}"
+                                         if token else lan_url):
                 typer.echo(line)
         if generated:
             typer.echo(f"Write token (this run only): {token}")

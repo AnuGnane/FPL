@@ -1,7 +1,10 @@
 """Serving the UI to a phone on the same network (spec §7).
 
-No auth and none planned: the trust boundary is the home network, exactly as
-it is the loopback interface by default. The CLI says so out loud.
+Reads are open and writes need a token, since v12 W1 §2.8: the trust boundary
+used to be the home network the way it is the loopback interface by default,
+and that stopped being adequate the moment the network had a guest on it. The
+CLI says which is which out loud, and the QR carries the token so the phone
+that scans it can write.
 """
 
 from __future__ import annotations
