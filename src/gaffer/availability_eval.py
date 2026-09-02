@@ -100,3 +100,149 @@ def _empty(kind: str, note: str, **extra) -> dict:
     """
     return {"run_at": run_at(), "git_sha": git_sha(), "kind": kind,
             "available": False, "rows": 0, "note": note, **extra}
+
+
+LEAD_BUCKETS = ((0.0, 1.0, "<1d"), (1.0, 2.0, "1-2d"), (2.0, 3.0, "2-3d"),
+                (3.0, 5.0, "3-5d"), (5.0, 7.0, "5-7d"),
+                (7.0, float("inf"), "7d+"))
+"""Half-open ``[lo, hi)`` bands, in the units a manager thinks in.
+
+Under a day is "I found out on the way to the deadline"; over a week is "this
+was never news". The boundaries are not fitted to anything and are not
+supposed to be — they are a reading aid over a distribution the project has
+never seen, and the raw ``changes`` rows are on the payload for anyone who
+wants their own."""
+
+WORST_LATE_FLAGS = 20
+"""Spec §3.1's table size."""
+
+UNAVAILABLE_FLAG_STATUS = ("i", "s", "u", "n")
+"""Statuses that assert the player will not feature. ``d`` (doubtful) is
+deliberately not one: it is the layer *hedging*, and grading a hedge as a
+prediction of absence would score the honest answer as a miss."""
+
+
+def _bucket(days: float) -> str:
+    for lo, hi, label in LEAD_BUCKETS:
+        if lo <= days < hi:
+            return label
+    return LEAD_BUCKETS[-1][2]
+
+
+def _outcomes(actuals: pd.DataFrame) -> dict[tuple[int, int], bool]:
+    """``{(gw, code): started}`` over the graded gameweeks.
+
+    ``start_truth`` rather than a bare ``minutes > 0``: the question §3.1 asks
+    is whether he *started*, and the ``starts`` column postdates part of the
+    archive, so the shipped inference is the one that must be used here too.
+    Summed per (gw, code) first, because a double gameweek is two rows and
+    "did he start" over a double is "did he start either".
+    """
+    from gaffer.evaluation import start_truth
+
+    if actuals is None or actuals.empty:
+        return {}
+    frame = actuals.copy()
+    # The column is named without a leading underscore because
+    # ``itertuples`` renames those to positional ``_1``-style attributes.
+    frame["started_any"] = start_truth(frame)
+    grouped = frame.groupby(["gw", "code"], as_index=False).agg(
+        started_any=("started_any", "max"))
+    return {(int(r.gw), int(r.code)): bool(r.started_any > 0.0)
+            for r in grouped.itertuples()}
+
+
+def score_flag_latency(log: pd.DataFrame, actuals: pd.DataFrame,
+                       events: pd.DataFrame, *, season: str) -> dict:
+    """Spec §3.1, over the banked snapshot log. Never raises.
+
+    One row per (gw, code) whose ``status`` changed at least once inside the
+    pre-deadline window of a graded gameweek. ``lead_days`` is measured from
+    the **first** change, which is the first moment a manager could have
+    acted; the final status is the last one recorded before the deadline.
+
+    The payload carries its own gate. ``available`` is false until the log
+    holds :data:`MIN_SNAP_DATES` distinct days **and** at least one covered
+    gameweek is graded, and the note names both numbers — because "nothing to
+    show" and "nothing happened" are different sentences and only one of them
+    is true in August.
+    """
+    empty = _empty("flag_latency",
+                   "No availability snapshots have been banked yet.",
+                   snap_dates=0, min_snap_dates=MIN_SNAP_DATES,
+                   covered_gws=[], checked_covered_gws=[], histogram=[],
+                   late_flags=[], changes=[])
+    if log is None or log.empty or "status" not in log.columns:
+        return empty
+    frame = log.copy()
+    if "season" in frame.columns:
+        frame = frame[frame["season"].astype(str) == str(season)]
+    if frame.empty:
+        return empty
+
+    snap_dates = int(frame["snap_date"].astype(str).nunique())
+    window = pre_deadline(frame, deadlines(events))
+    covered = sorted({int(g) for g in window["gw"].unique()}) \
+        if not window.empty else []
+    graded = sorted(set(covered) & checked_gws(actuals))
+    gate = dict(snap_dates=snap_dates, min_snap_dates=MIN_SNAP_DATES,
+                covered_gws=covered, checked_covered_gws=graded)
+    # The gate decides whether the report is *readable*, not whether it is
+    # computed. The tables are built either way so a half-filled log can be
+    # inspected while it fills; ``available`` is what a caller checks before
+    # drawing a distribution over four days of evidence.
+    open_gate = snap_dates >= MIN_SNAP_DATES and bool(graded)
+    note = None if open_gate else (
+        f"{snap_dates} of {MIN_SNAP_DATES} snapshot days banked, and "
+        f"{len(graded)} covered gameweek(s) graded. The report fills as "
+        f"`gaffer snapshot` runs and gameweeks are marked data_checked.")
+
+    started = _outcomes(actuals)
+    window = window[window["gw"].isin(graded)]
+    window = window.sort_values(["gw", "code", "snap_date"])
+    changes = []
+    for (gw, code), part in window.groupby(["gw", "code"], sort=True):
+        statuses = part["status"].astype("string").tolist()
+        first = statuses[0]
+        moved = [i for i, s in enumerate(statuses) if s != first]
+        if not moved:
+            continue
+        outcome = started.get((int(gw), int(code)))
+        if outcome is None:
+            continue
+        row = part.iloc[moved[0]]
+        final = statuses[-1]
+        changes.append({
+            "gw": int(gw), "code": int(code),
+            "first_change": str(row["snap_date"]),
+            "lead_days": float(row["lead_days"]),
+            "from_status": str(first), "final_status": str(final),
+            "chance_of_playing": (
+                None if pd.isna(part.iloc[-1].get("chance_of_playing"))
+                else float(part.iloc[-1]["chance_of_playing"])),
+            "started": bool(outcome),
+        })
+
+    histogram = []
+    for _lo, _hi, label in LEAD_BUCKETS:
+        rows = [c for c in changes if _bucket(c["lead_days"]) == label]
+        if not rows:
+            continue
+        histogram.append({
+            "bucket": label,
+            "started": sum(1 for c in rows if c["started"]),
+            "missed": sum(1 for c in rows if not c["started"]),
+        })
+
+    # The disagreement, both ways round. "The log said unavailable and he
+    # started" is as much a late flag as its opposite: in each case the last
+    # thing the manager was told before the deadline was wrong.
+    late = [c for c in changes
+            if (c["final_status"] in UNAVAILABLE_FLAG_STATUS) == c["started"]]
+    late.sort(key=lambda c: (c["lead_days"], c["gw"], c["code"]))
+
+    return {"run_at": run_at(), "git_sha": git_sha(), "kind": "flag_latency",
+            "available": open_gate, "rows": len(changes), "note": note,
+            "histogram": histogram,
+            "late_flags": late[:WORST_LATE_FLAGS],
+            "changes": changes, **gate}
