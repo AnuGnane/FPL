@@ -252,6 +252,119 @@ def latest_field_eo(gw: int | None = None, *,
             for r in frame.itertuples()}
 
 
+EO_CEILING = 200.0
+"""The most an EO extrapolation may claim, in the log's own percent units.
+
+``eo_from_picks`` counts a captain twice (``tier_eo.py:154-179``), so a player
+every sampled entry starts and captains reads 200. Triple captain can push a
+single sample past it — the live log's maximum is 214.7 — but a *projection*
+that assumed a chip week would be inventing one, so the clamp sits at the
+ceiling the ordinary week can produce. v12 §3.3's "clamped to [0, 1]" is a
+fraction-unit clamp on a percent quantity and would floor the whole instrument
+at 1.0 (plan A4).
+"""
+
+
+def _samples_by_gw(frame: pd.DataFrame) -> dict[int, dict[int, float]]:
+    """``{gw: {element: eo}}`` from each gameweek's latest snapshot day.
+
+    The latest day per gameweek, for :func:`latest_field_eo`'s reason: a
+    Saturday number beside a Sunday one is a pair nobody can reason about.
+    """
+    out: dict[int, dict[int, float]] = {}
+    for gw, part in frame.groupby("gw"):
+        day = max(str(d) for d in part["snap_date"])
+        rows = part[part["snap_date"].astype(str) == day]
+        out[int(gw)] = {int(r.element): float(r.eo) for r in rows.itertuples()}
+    return out
+
+
+def _pair_samples(by_gw: dict[int, dict[int, float]], want: int | None
+                  ) -> tuple[int, int | None]:
+    """``(gw, earlier_gw)`` — the two gameweeks whose samples are compared.
+
+    **The grain decision, isolated to one function** (plan A4). The spec asks
+    for two snapshot days of one gameweek; the log cannot hold them and the
+    difference would not mean drift if it did, because picks are frozen after
+    the deadline. Gameweek to gameweek is the only interval over which field
+    ownership moves — and the only one anybody can observe, since next week's
+    picks are not public until next week's deadline has passed.
+
+    ``None`` for the earlier gameweek when there is no earlier sample, which
+    is the whole of the "no trend" path.
+    """
+    if not by_gw:
+        raise KeyError("no samples")
+    gw = int(want) if want is not None else max(by_gw)
+    if gw not in by_gw:
+        raise KeyError(gw)
+    earlier = [g for g in by_gw if g < gw]
+    return gw, (max(earlier) if earlier else None)
+
+
+def field_eo_trend(season: str, gw: int | None) -> dict[int, dict]:
+    """``element -> {"eo_first", "eo_last", "delta", "gws_between",
+    "deadline_eo", "trend_available"}`` for one season.
+
+    v12 §3.3, at the gameweek grain the log actually has (plan A4).
+    ``deadline_eo`` is ``eo_last`` plus one gameweek of the observed drift,
+    clamped to ``[0, EO_CEILING]``. With no earlier sample there is no drift
+    to project: ``trend_available`` is ``False``, ``delta`` is ``None`` — not
+    ``0.0``, which is the different and stronger claim that the field did not
+    move — and ``deadline_eo`` is ``eo_last`` unchanged.
+
+    An element the earlier gameweek never sampled also gets no trend.
+    ``eo_from_picks`` omits anyone no sampled entry started, so his absence
+    means "nobody had him", and differencing against an implied zero would
+    read every promoted bench player as a forty-point riser.
+
+    ``season`` is required and positional: element ids are re-issued every
+    August, and the same integer is a different footballer on the other side
+    of a rollover. ``gw`` carries **no default** for the same guard's sake —
+    with one, ``field_eo_trend(3)`` is a legal call in which ``3`` silently
+    becomes the *season* and the answer is an empty map rather than an error.
+    ``None`` still means "the newest gameweek in the season", but a caller has
+    to say so. Empty dict on any failure at all, which is
+    :func:`latest_field_eo`'s contract and for its reason — this is display.
+    """
+    try:
+        log = load_field_eo()
+    except Exception:  # noqa: BLE001 — a display read never blocks a page
+        return {}
+    if log is None or log.empty or "season" not in log.columns:
+        return {}
+    frame = log[log["season"].astype(str) == str(season)].copy()
+    if frame.empty:
+        return {}
+    frame["gw"] = pd.to_numeric(frame["gw"], errors="coerce")
+    frame = frame.dropna(subset=["gw"])
+    if frame.empty:
+        return {}
+    by_gw = _samples_by_gw(frame)
+    try:
+        want, earlier = _pair_samples(by_gw, gw)
+    except KeyError:
+        return {}
+
+    latest = by_gw[want]
+    before = by_gw.get(earlier) if earlier is not None else None
+    span = (want - earlier) if earlier is not None else 0
+    out: dict[int, dict] = {}
+    for element, eo_last in latest.items():
+        eo_first = before.get(element) if before else None
+        if eo_first is None or span <= 0:
+            out[element] = {"eo_first": None, "eo_last": eo_last,
+                            "delta": None, "gws_between": None,
+                            "deadline_eo": eo_last, "trend_available": False}
+            continue
+        delta = round(eo_last - eo_first, 1)
+        projected = round(min(EO_CEILING, max(0.0, eo_last + delta / span)), 1)
+        out[element] = {"eo_first": eo_first, "eo_last": eo_last,
+                        "delta": delta, "gws_between": int(span),
+                        "deadline_eo": projected, "trend_available": True}
+    return out
+
+
 def fetch_field_sample(client, gw: int, *, sample: int = TIER_SAMPLE,
                        seed: int = TIER_SEED, season: str = "",
                        raw_dir: Path | str = RAW_FIELD, use_bank: bool = True
