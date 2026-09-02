@@ -142,6 +142,11 @@ def apply_dgw_scenarios(surplus_by_gw: dict[int, list[float]],
     return out
 
 
+FLAT_SOURCE = "flat: no calibrated priors asset"
+"""Why a bar is the pre-v4c constant. One string, so the caption and the
+fallback cannot drift apart."""
+
+
 def flat_thresholds():
     """The pre-v4c bars, as a ``(chip, gw) -> float`` callable.
 
@@ -156,6 +161,11 @@ def flat_thresholds():
         return (WILDCARD_RECOMMEND_THRESHOLD if chip == "wildcard"
                 else CHIP_PLAY_THRESHOLD)
 
+    # v12 W3 §4.2 (specs/2026-09-01-gaffer-v12-program-design.md): a caption
+    # cannot say "θ" or "flat fallback" unless the lookup can be asked. An
+    # attribute rather than a wrapper type, so every existing caller — which
+    # calls this thing — keeps calling it.
+    lookup.explain = lambda chip, gw: (lookup(chip, gw), FLAT_SOURCE)
     return lookup
 
 
@@ -184,11 +194,24 @@ def thresholds_from_priors(chip_surplus: dict[str, dict[int, list[float]]],
         tables[chip] = {**first, **second}
 
     def lookup(chip: str, gw: int) -> float:
+        return explain(chip, gw)[0]
+
+    # v12 W3 §4.2 (specs/2026-09-01-gaffer-v12-program-design.md): three
+    # distinct fallbacks live in this function and every one of them was
+    # silent. Named here so the caption can say *why* a bar is flat, which is
+    # the half of the spec's sentence a boolean could not carry.
+    def explain(chip: str, gw: int) -> tuple[float, str]:
         table = tables.get(chip)
         if not table:
-            return flat(chip, gw)
-        return float(table.get(int(gw), flat(chip, gw)))
+            return (flat(chip, gw),
+                    "flat: no calibrated surplus for this chip")
+        value = table.get(int(gw))
+        if value is None:
+            return (flat(chip, gw),
+                    "flat: gameweek outside the calibrated window")
+        return (float(value), "theta")
 
+    lookup.explain = explain
     return lookup
 
 
@@ -209,3 +232,28 @@ def chip_thresholds_from_asset(priors: dict | None,
     if not parsed:
         return flat_thresholds()
     return thresholds_from_priors(parsed, dgw_probs)
+
+
+UNKNOWN_SOURCE = "unknown"
+"""A lookup that predates :func:`threshold_with_source`. Callers print the
+bar and say nothing about where it came from, which is honest; inventing
+"theta" for it would not be."""
+
+
+def threshold_with_source(thresholds, chip: str,
+                          gw: int) -> tuple[float, str]:
+    """``(bar, source)`` for any ``(chip, gw) -> float`` callable.
+
+    ``source`` is ``"theta"`` when the calibrated stopping rule answered, and
+    a ``"flat: <reason>"`` string when it did not. A callable with no
+    ``explain`` — a test's lambda, a lookup built before v12 — answers
+    :data:`UNKNOWN_SOURCE` rather than raising: this is display metadata and
+    must never be the reason a chip table fails to render.
+
+    v12 W3 §4.2 (specs/2026-09-01-gaffer-v12-program-design.md).
+    """
+    explain = getattr(thresholds, "explain", None)
+    if explain is None:
+        return (float(thresholds(chip, int(gw))), UNKNOWN_SOURCE)
+    bar, source = explain(chip, int(gw))
+    return (float(bar), str(source))

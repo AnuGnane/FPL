@@ -53,6 +53,22 @@ function GainBar({ gain, threshold }: { gain: number
   )
 }
 
+// θ or the pre-v4c constant, in the words the server sent. A bar with no
+// source is a payload written before v12 and says nothing rather than
+// guessing (v12 W3 §4.2).
+function BarSource({ source }: { source?: string | null }) {
+  if (!source || source === 'unknown') return null
+  return (
+    <span className="ml-1 text-text-faint" data-testid="bar-source"
+          title={source === 'theta'
+            ? 'θ: the surplus the best remaining week is expected to offer '
+              + '(v4c stopping rule)'
+            : source}>
+      {source === 'theta' ? 'θ' : 'flat'}
+    </span>
+  )
+}
+
 function SquadColumn({ title, players }: { title: string
                                            players: ChipSquadPlayer[] }) {
   return (
@@ -89,6 +105,14 @@ function WildcardTab({ wildcard }: { wildcard: SquadDiff | null }) {
         points over the horizon —
         {wildcard.recommend ? ' worth playing.' : ' not worth it yet.'}
       </p>
+      {wildcard.threshold !== null && wildcard.threshold !== undefined && (
+        <p className="mt-1 text-text-faint" data-testid="wildcard-bar">
+          {`Against a bar of ${wildcard.threshold} `}
+          {wildcard.threshold_source === 'theta'
+            ? '(θ — the best remaining week’s expected surplus)'
+            : `(flat fallback — ${wildcard.threshold_source ?? 'unknown'})`}
+        </p>
+      )}
       <div className="mt-3 grid items-start gap-4 sm:grid-cols-3">
         <SquadColumn title="Kept" players={wildcard.kept} />
         <SquadColumn title="Out" players={wildcard.dropped} />
@@ -242,6 +266,7 @@ export default function ChipsTab() {
                     ? 'text-sage' : 'text-text'}`}>{row.gain}</td>
                   <td className="num py-1.5 text-right text-text-muted">
                     {row.threshold ?? '—'}
+                    <BarSource source={row.threshold_source} />
                   </td>
                   <td className="num py-1.5 text-right text-text-muted">
                     {row.per_week ?? '—'}

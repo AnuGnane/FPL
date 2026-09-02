@@ -157,6 +157,9 @@ export interface ChipPlanRow {
    *  v10b — until then the server computed it and pydantic dropped it. */
   threshold_now?: number | null
   play_now?: boolean | null
+  /** Where the bar came from: `"theta"`, or `"flat: <reason>"`. Undefined on a
+   *  payload written before v12 (v12 W3 §4.2). */
+  threshold_source?: string | null
   /** θ per week, aligned by index with `weeks`. */
   thetas?: number[]
   /** `[from_gw, last_gw]`. The first element is the gameweek asked about, not
@@ -605,6 +608,10 @@ export interface ChipWorkbenchRow {
    *  week is expected to offer. Null on advice written before the chip
    *  policy landed. */
   threshold: number | null
+  /** Where `threshold` came from: `"theta"`, or `"flat: <reason>"`. Three
+   *  distinct fallbacks produce a flat bar and they are not the same news, so
+   *  the reason travels with the number (v12 W3 §4.2). */
+  threshold_source?: string | null
   play_now: boolean
   note: string | null
 }
@@ -620,6 +627,10 @@ export interface ChipSquadPlayer {
 export interface SquadDiff {
   gain_over_horizon: number
   recommend: boolean
+  /** The bar `recommend` was decided against, and where it came from. Until
+   *  v12 the verdict was shown with none of the rule behind it (v12 W3 §4.2). */
+  threshold?: number | null
+  threshold_source?: string | null
   kept: ChipSquadPlayer[]
   dropped: ChipSquadPlayer[]
   added: ChipSquadPlayer[]

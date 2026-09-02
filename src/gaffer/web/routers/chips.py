@@ -88,6 +88,11 @@ def chips() -> ChipsWorkbench:
                                        else float(r["per_week"])),
                              threshold=(None if r.get("threshold") is None
                                         else float(r["threshold"])),
+                             # v12 W3 §4.2
+                             # (specs/2026-09-01-gaffer-v12-program-design.md)
+                             threshold_source=(
+                                 None if r.get("threshold_source") is None
+                                 else str(r["threshold_source"])),
                              play_now=bool(r.get("play_now", False)),
                              note=(None if r.get("note") is None
                                    else str(r["note"])))
@@ -103,6 +108,12 @@ def chips() -> ChipsWorkbench:
             gain_over_horizon=round(float(wc.get("gain_over_horizon", 0.0)),
                                     2),
             recommend=bool(wc.get("recommend", False)),
+            # v12 W3 §4.2 (specs/2026-09-01-gaffer-v12-program-design.md): the
+            # card showed a verdict and none of the rule behind it.
+            threshold=(None if wc.get("threshold") is None
+                       else round(float(wc["threshold"]), 2)),
+            threshold_source=(None if wc.get("threshold_source") is None
+                              else str(wc["threshold_source"])),
             kept=_refs(squad & owned, meta),
             dropped=_refs(owned - squad, meta, price_key="sell"),
             added=_refs(squad - owned, meta))

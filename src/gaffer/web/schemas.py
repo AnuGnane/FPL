@@ -574,6 +574,10 @@ class ChipPlanRow(BaseModel):
 
     play_now: bool | None = None
 
+    threshold_source: str | None = None
+    """See ``ChipWorkbenchRow.threshold_source``. Filled at the router from the
+    same lookup ``thetas`` is built from (v12 W3 §4.2)."""
+
     thetas: list[float] = []
     """θ per week, aligned by index with ``weeks``. Built at the router by
     looping the same ``(chip, gw) -> float`` callable, because putting it in
@@ -606,6 +610,15 @@ class ChipWorkbenchRow(BaseModel):
     gain: float
     per_week: float | None = None
     threshold: float | None = None
+    threshold_source: str | None = None
+    """Where ``threshold`` came from: ``"theta"``, or ``"flat: <reason>"``.
+
+    Three distinct fallbacks produce a flat bar and they are not the same
+    news — no asset, no surplus for this chip, a gameweek outside the
+    calibrated window — so the reason travels with the number rather than
+    being guessed at from it. ``None`` on a payload written before v12
+    (v12 W3 §4.2)."""
+
     play_now: bool = False
     note: str | None = None
 
@@ -623,6 +636,14 @@ class SquadDiff(BaseModel):
 
     gain_over_horizon: float
     recommend: bool
+    threshold: float | None = None
+    """The bar ``recommend`` was decided against. Until v12 this was always
+    the flat 8.0 and was never served, so the card asserted a verdict and
+    showed nothing of the rule behind it (v12 W3 §4.2)."""
+
+    threshold_source: str | None = None
+    """See ``ChipWorkbenchRow.threshold_source``."""
+
     kept: list[SquadPlayerRef]
     dropped: list[SquadPlayerRef]
     added: list[SquadPlayerRef]

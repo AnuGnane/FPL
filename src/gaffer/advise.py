@@ -73,7 +73,8 @@ from gaffer.optimize.differentials import (DIFFERENTIAL_EO, TEMPLATE_EO,
                                            captain_table, threat_board,
                                            transfer_alternatives)
 from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
-                                         load_chip_scenarios)
+                                         load_chip_scenarios,
+                                         threshold_with_source)
 from gaffer.optimize.ft_value import lambda_from_priors
 from gaffer.optimize.milp import SolveInput, build_pool, solve_plan
 from gaffer.optimize.policy import (Thresholds, captain_frequency_of,
@@ -890,12 +891,22 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
             # remaining week is expected to offer. Playing is only right when
             # the week on the row beats waiting, which a flat constant cannot
             # say. With no priors asset this is the old flat bar exactly.
-            theta = float(chip_thresholds(str(row["chip"]), int(row["gw"])))
+            #
+            # v12 W3 §4.2 (specs/2026-09-01-gaffer-v12-program-design.md): and
+            # the row now says which of the two it got, so the caption can
+            # stop implying θ on a week θ never covered.
+            theta, source = threshold_with_source(
+                chip_thresholds, str(row["chip"]), int(row["gw"]))
             row["threshold"] = round(theta, 2)
+            row["threshold_source"] = source
             row["play_now"] = bool(float(row["gain"]) >= theta)
         # "Should I wildcard right now?" is only a question if the wildcard is
         # still available in this half of the season.
+        #
+        # v12 W3 §4.2: against θ, not against the flat 8.0 this call used
+        # while the very same lookup priced the wildcard row above it.
         wc_now = (wildcard_now_assessment(chip_pool, state, base=chip_base,
+                                          thresholds=chip_thresholds,
                                           **opt_kw)
                   if "wildcard" in chip_names else None)
 

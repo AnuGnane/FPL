@@ -32,8 +32,14 @@ from dataclasses import replace
 
 import pandas as pd
 
+from gaffer.optimize.chip_policy import threshold_with_source
 from gaffer.optimize.milp import (SEASON_LAST_GW, Plan, SolveInput,
                                   solve_plan)
+
+NO_THRESHOLDS = "flat: the caller passed no threshold lookup"
+"""Why a bar is flat when the *caller* is the reason. Distinct from
+``chip_policy.FLAT_SOURCE``, which is "there is no asset": a caller that never
+offered θ and an asset that does not exist are different bugs."""
 
 CHIP_EVAL_DECAY = 1.0
 """Time discount used when *scoring* chips: none.
@@ -207,7 +213,8 @@ def free_hit_gain(pool: pd.DataFrame, state: SolveInput, gw: int,
 
 
 def wildcard_now_assessment(pool: pd.DataFrame, state: SolveInput,
-                            base: Plan | None = None, **cfg) -> dict:
+                            base: Plan | None = None,
+                            thresholds=None, **cfg) -> dict:
     """The user's 'should I wildcard after bad GW1?' number.
 
     Undecayed like the rest of this module (see the module note), so
@@ -215,6 +222,18 @@ def wildcard_now_assessment(pool: pd.DataFrame, state: SolveInput,
 
     ``base`` is the already-solved no-chip plan and must come from
     :func:`chip_baseline`; pass it to skip re-solving.
+
+    ``thresholds`` is the ``(chip, gw) -> theta`` lookup the caller already
+    built (v12 W3 §4.2, specs/2026-09-01-gaffer-v12-program-design.md).
+    Without it the bar is :data:`WILDCARD_RECOMMEND_THRESHOLD`, which is what
+    this function used unconditionally until v12 — in the same advise run that
+    computed θ for the wildcard and printed it on the chip row three lines
+    earlier. Two answers to one question, on one page, from one run.
+
+    The comparison is ``>=`` on the θ path and ``>`` on the flat one, and the
+    asymmetry is deliberate: ``>=`` is the rule ``chip_plan`` and ``advise``
+    already apply to every other chip against θ, and ``>`` is the shipped
+    verdict of the flat path, which this cycle has no measurement to move.
     """
     cfg = _eval_cfg(cfg)
     if base is None:
@@ -227,9 +246,19 @@ def wildcard_now_assessment(pool: pd.DataFrame, state: SolveInput,
     # charged the manager twice for transfers he keeps, and left the two
     # halves of the codebase disagreeing about what a wildcard costs.
     gain = wc.objective - base.objective
+    # v12 W3 §4.2 (specs/2026-09-01-gaffer-v12-program-design.md).
+    if thresholds is None:
+        bar, source = float(WILDCARD_RECOMMEND_THRESHOLD), NO_THRESHOLDS
+        recommend = gain > bar
+    else:
+        bar, source = threshold_with_source(thresholds, "wildcard",
+                                            int(state.gws[0]))
+        recommend = gain >= bar
     return {"gain_over_horizon": round(gain, 2),
             "wc_squad": wc.gw_plans[0].squad,
-            "recommend": gain > WILDCARD_RECOMMEND_THRESHOLD}
+            "recommend": recommend,
+            "threshold": round(bar, 2),
+            "threshold_source": source}
 
 
 def chip_plan(table: pd.DataFrame, now_gw: int, thresholds=None) -> list[dict]:

@@ -27,7 +27,8 @@ from gaffer.assets import load_decision_priors
 from gaffer.config import load_config, optimizer_top_n
 from gaffer.price_timing import owned_price_falls
 from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
-                                         chip_windows, load_chip_scenarios)
+                                         chip_windows, load_chip_scenarios,
+                                         threshold_with_source)
 from gaffer.optimize.chips import chip_plan, evaluate_chips
 from gaffer.optimize.milp import SolveInput
 from gaffer.web.schemas import (ArtifactItem, BackupHealth, ChipPlan,
@@ -89,6 +90,10 @@ def chips_plan() -> ChipPlan:
         # field (plan A9). Aligned by index with `weeks`.
         row["thetas"] = [round(float(thresholds(row["chip"], w["gw"])), 2)
                          for w in row["weeks"]]
+        # v12 W3 §4.2 (specs/2026-09-01-gaffer-v12-program-design.md): the same
+        # lookup, asked why rather than only how much.
+        row["threshold_source"] = threshold_with_source(
+            thresholds, row["chip"], state.gws[0])[1]
         # (from_gw, last_gw) — the first element is the gameweek asked about,
         # not the window's opening.
         row["window"] = list(chip_windows(state.gws[0]))

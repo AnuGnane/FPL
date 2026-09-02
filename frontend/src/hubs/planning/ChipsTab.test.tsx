@@ -75,6 +75,29 @@ describe('chips tab', () => {
       .toBeGreaterThan(0)
   })
 
+  it('marks a θ bar as θ and a flat bar as flat', async () => {
+    // v12 W3 §4.2. Three distinct fallbacks produce a flat bar and the row
+    // says which one it got, so the caption stops implying θ on a week θ
+    // never covered.
+    apiGet.mockImplementation((path: string) => {
+      if (path.startsWith('/api/chips')) return Promise.resolve({
+        ...CHIPS,
+        chips: [
+          { chip: 'bboost', gw: 4, gain: 5, per_week: 5, threshold: 4.2,
+            threshold_source: 'theta', play_now: true, note: null },
+          { chip: '3xc', gw: 4, gain: 1, per_week: 1, threshold: 4,
+            threshold_source: 'flat: no calibrated priors asset',
+            play_now: false, note: null },
+        ],
+      })
+      if (path.startsWith('/api/players')) return Promise.resolve(PLAYERS)
+      return Promise.resolve({})
+    })
+    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    const sources = await screen.findAllByTestId('bar-source')
+    expect(sources.map((n) => n.textContent)).toEqual(['θ', 'flat'])
+  })
+
   it('marks the weeks worth playing now', async () => {
     render(<MemoryRouter><ChipsTab /></MemoryRouter>)
     await screen.findAllByText(/wildcard/i)
