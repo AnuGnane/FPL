@@ -838,11 +838,26 @@ def build_prediction_frame(hist: pd.DataFrame, future: pd.DataFrame,
     # ``us_npxg90_r{w}``/``us_shots90_r{w}`` those lines just put on the frame.
     frame = add_xg_per_shot(frame.drop(columns=list(XG_PER_SHOT_FEATURES),
                                        errors="ignore"))
-    return merge_understat_team(
+    frame = merge_understat_team(
         frame.drop(columns=TEAM_US_FEATURES, errors="ignore"),
         understat_team,
         latest_understat_team(understat_team)
         if understat_team is not None and not understat_team.empty else None)
+    # v12 W4 §5.2. Serve-time halves of the two arms, and the seam v12 W2 §3.5
+    # lost: ``advise`` strips ``feature_columns()`` off the frame and
+    # re-derives through this function, so a column built on the training side
+    # only is an all-null column at serve time that nothing can see. Rebuilt
+    # rather than tailed, for the reason congestion is: each future row has
+    # its own kickoff and ``density_pub_7d`` is a function of that kickoff.
+    # The archive is read here — zero-arg — rather than passed by every
+    # caller, exactly as the manager-tenure asset above is: these rows carry
+    # ``season_idx`` and no ``season`` column, so there is no season list on
+    # this side to hand it.
+    ci_stats, ci_fixtures = core_insights_frames()
+    frame = add_role_wb_share(
+        frame.drop(columns=ROLE_FEATURES, errors="ignore"), ci_stats)
+    return add_density_pub(
+        frame.drop(columns=DENSITY_FEATURES, errors="ignore"), ci_fixtures)
 
 
 def feature_columns(stats: list[str] = ROLL_STATS,
@@ -860,7 +875,11 @@ def feature_columns(stats: list[str] = ROLL_STATS,
             + CONGESTION_FEATURES + LEAGUE_CONGESTION_FEATURES
             + understat_feature_columns() + TEAM_US_FEATURES
             + SHRUNK_FEATURES + SHRUNK_MODE_FEATURES
-            + SHRUNK_CARD_FEATURES + XG_PER_SHOT_FEATURES)
+            + SHRUNK_CARD_FEATURES + XG_PER_SHOT_FEATURES
+            # v12 W4 §5.2. Listed here because ``feature_columns`` is what a
+            # caller strips before re-deriving; the columns are *built* on
+            # every frame and fed to no head until an arm passes.
+            + ROLE_FEATURES + DENSITY_FEATURES)
 
 
 US_STATS = ["us_shots", "us_key_passes", "us_npxg", "us_xgchain",

@@ -26,14 +26,16 @@ from gaffer.features.engineer import (LEAGUE_CONGESTION_FEATURES,
                                       ROTATION_PRIOR_FEATURES, US_STATS,
                                       XG_PER_SHOT_FEATURES,
                                       add_congestion, add_context,
-                                      add_player_rolling, add_rotation,
+                                      add_density_pub, add_player_rolling,
+                                      add_role_wb_share, add_rotation,
                                       add_rotation_priors,
                                       add_setpiece, add_shrunken_cards,
                                       add_shrunken_modes,
                                       add_shrunken_rates,
                                       add_understat_rolling,
                                       add_understat_team_rolling,
-                                      add_xg_per_shot, merge_understat_team)
+                                      add_xg_per_shot, core_insights_frames,
+                                      merge_understat_team)
 from gaffer.models.assemble import assemble_ep
 from gaffer.models.attacking import ATTACK_FEATURES, AttackingModel
 from gaffer.models.calibrate import CalibrationModel
@@ -355,6 +357,18 @@ def load_training_frame(max_season_idx: int | None = None,
     # the first call's output, so its stable sort is the identity and the
     # v8a arm adds three columns without touching a row's position.
     df = add_congestion(df, None, prefix=LEAGUE_CONGESTION_PREFIX)
+    # v12 W4 §5.2. Both builders return the frame they were given with two
+    # columns appended and no row moved — row order matters here, see the
+    # comment above — and both degrade to all-missing when the collector has
+    # never run, which is every machine until `gaffer core-insights` does.
+    # ``core_insights_frames`` is zero-arg and enumerates what was collected,
+    # like ``cup_matches`` above it: this function never reads the config and
+    # has no season list to hand it, and the serving seam has no ``season``
+    # column at all, so a list built here would be a second source of truth
+    # that only one of the two sides could populate.
+    ci_stats, ci_fixtures = core_insights_frames()
+    df = add_role_wb_share(df, ci_stats)
+    df = add_density_pub(df, ci_fixtures)
     df = attach_understat(df)
     tg = add_team_rolling(build_team_gw(fixtures))
     own = elo.rename(columns={"elo_pre": "team_elo_own"})

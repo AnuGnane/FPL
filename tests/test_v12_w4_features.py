@@ -267,3 +267,147 @@ def test_the_frames_are_enumerated_from_disk_and_not_from_a_season_list(
     stats, fixtures = core_insights_frames()
     assert stats is not None and list(stats["season"]) == ["2025-26"]
     assert fixtures is not None and list(fixtures["season"]) == ["2026-27"]
+
+
+# --- Task 9: wiring ------------------------------------------------------
+
+from gaffer.data.core_insights import (CI_FIXTURE_COLS,  # noqa: E402
+                                       CI_PLAYER_COLS)
+from gaffer.features.engineer import (build_prediction_frame,  # noqa: E402
+                                      feature_columns)
+from gaffer.models import train as tr  # noqa: E402
+
+
+def test_the_new_columns_are_canonical_inputs():
+    cols = feature_columns()
+    for name in ROLE_FEATURES + DENSITY_FEATURES:
+        assert name in cols
+
+
+def test_neither_arm_ships_inside_the_minutes_model():
+    """CONVENTIONS §2: the gate is pre-registered and the arm is off until it
+    passes. A feature that arrives already in the model is a feature nobody
+    measured."""
+    for name in ROLE_FEATURES + DENSITY_FEATURES:
+        assert name not in tr.MINUTES_FEATURES
+
+
+def test_the_builders_are_wired_into_the_training_frame():
+    import inspect
+    src = inspect.getsource(tr.load_training_frame)
+    assert "add_role_wb_share" in src and "add_density_pub" in src
+
+
+def test_the_builders_are_wired_into_the_prediction_frame():
+    import inspect
+    src = inspect.getsource(build_prediction_frame)
+    assert "add_role_wb_share" in src and "add_density_pub" in src
+
+
+# The two seams, measured rather than grepped. v12 W2 §3.5 shipped a builder
+# wired into training and not into serving; a source-text assertion cannot
+# tell the difference between "called" and "called with something it can use",
+# and the serving frame is exactly where the season list ran out.
+
+def _archive(tmp_path, monkeypatch, *, season="2025-26", season_idx=3,
+             team=8, code=100, first_gw=1, starts=6):
+    """Bank one season of core-insights parquets under a throwaway DATA_DIR.
+
+    Six starts, every one of them a wing-back's (two crosses), and a midweek
+    cup tie three days before each league kickoff. A correctly wired frame
+    therefore reads ``role_wb_share == 1.0`` and ``density_pub_7d == 2.0`` —
+    the previous week's league match, exactly seven days back and inside the
+    closed lower bound, plus the cup tie three days back, which is the pair
+    that shows both tournaments count — and an unwired one reads NaN.
+    """
+    monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")
+    kick = lambda gw: (pd.Timestamp("2025-08-09", tz="UTC")   # noqa: E731
+                       + pd.Timedelta(days=7 * (gw - 1)))
+    players = pd.DataFrame([
+        {"season": season, "season_idx": season_idx, "gw": gw, "code": code,
+         "player_id": 1, "match_id": f"lg{gw}", "minutes_played": 90.0,
+         "accurate_crosses": 2.0, "touches_opposition_box": 4.0,
+         "final_third_passes": 5.0, "tackles_won": 1.0, "interceptions": 1.0,
+         "blocks": 0.0, "clearances": 2.0, "recoveries": 3.0,
+         "start_min": 0.0, "finish_min": 90.0,
+         "defensive_contributions": float("nan")}
+        for gw in range(first_gw, first_gw + starts)])[CI_PLAYER_COLS]
+    fixtures = pd.concat([
+        pd.DataFrame([
+            {"season": season, "season_idx": season_idx, "gw": gw,
+             "tournament": "prem", "match_id": f"lg{gw}",
+             "kickoff": kick(gw), "team_code": team, "opponent_code": 2,
+             "is_home": True, "finished": True}
+            for gw in range(first_gw, first_gw + starts + 4)]),
+        pd.DataFrame([
+            {"season": season, "season_idx": season_idx, "gw": gw,
+             "tournament": "efl-cup", "match_id": f"cup{gw}",
+             "kickoff": kick(gw) - pd.Timedelta(days=3), "team_code": team,
+             "opponent_code": 9, "is_home": False, "finished": True}
+            for gw in range(first_gw, first_gw + starts + 4)])],
+        ignore_index=True)[CI_FIXTURE_COLS]
+    store.save(players, ci_path(season, "players"))
+    store.save(fixtures, ci_path(season, "fixtures"))
+    return kick
+
+
+def test_the_prediction_frame_populates_both_arms_from_the_archive(
+        monkeypatch, tmp_path):
+    """The serving seam, which is the one W2 §3.5 lost.
+
+    ``build_prediction_frame``'s rows carry ``season_idx`` and no ``season``
+    column at all, so a ``core_insights_frames(seasons)`` keyed on the latter
+    would leave both columns null here while training stayed populated — a
+    train/serve skew no assertion on the training frame can see.
+    """
+    kick = _archive(tmp_path, monkeypatch)
+    hist = pd.DataFrame([
+        {"code": 100, "team_code": 8, "season_idx": 3, "gw": gw,
+         "kickoff_time": kick(gw).isoformat(), "starts": 1.0, "minutes": 90.0}
+        for gw in range(1, 7)])
+    future = pd.DataFrame([
+        {"code": 100, "season_idx": 3, "gw": 7, "team_code": 8, "opp_code": 2,
+         "was_home": True, "position": "DEF",
+         "kickoff_time": kick(7).isoformat()}])
+    out = build_prediction_frame(hist, future)
+    assert out["role_wb_share"].iloc[0] == 1.0
+    assert out["role_wb_missing"].iloc[0] == 0.0
+    assert out["density_pub_7d"].iloc[0] == 2.0
+    assert out["density_pub_missing"].iloc[0] == 0.0
+
+
+def test_the_prediction_frame_degrades_to_missing_with_no_collection(
+        monkeypatch, tmp_path):
+    monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")
+    future = pd.DataFrame([
+        {"code": 100, "season_idx": 3, "gw": 7, "team_code": 8, "opp_code": 2,
+         "was_home": True, "position": "DEF",
+         "kickoff_time": "2025-09-20T14:00:00Z"}])
+    out = build_prediction_frame(pd.DataFrame(columns=list(future.columns)),
+                                 future)
+    assert np.isnan(out["role_wb_share"].iloc[0])
+    assert out["role_wb_missing"].iloc[0] == 1.0
+    assert np.isnan(out["density_pub_7d"].iloc[0])
+    assert out["density_pub_missing"].iloc[0] == 1.0
+
+
+def test_the_training_frame_populates_both_arms_from_the_archive(
+        monkeypatch, tmp_path):
+    """The training seam, measured on the real ``load_training_frame``."""
+    kick = _archive(tmp_path, monkeypatch)
+    hist = pd.DataFrame([
+        {"code": 100, "season_idx": 3, "gw": gw, "team_code": 8,
+         "opp_code": 2, "position": "DEF", "was_home": True,
+         "kickoff_time": kick(gw).isoformat(), "starts": 1.0, "minutes": 90.0,
+         "total_points": 5.0, "value": 50, "bps": 20.0, "bonus": 0.0}
+        for gw in range(1, 9)])
+    fixtures = pd.DataFrame([
+        {"season_idx": 3, "gw": gw, "kickoff_time": kick(gw).isoformat(),
+         "home_code": 8, "away_code": 2, "home_goals": 1, "away_goals": 0}
+        for gw in range(1, 9)])
+    store.save(hist, "history/player_gw.parquet")
+    store.save(fixtures, "history/fixtures.parquet")
+    df, _tg, _elo = tr.load_training_frame()
+    late = df[df["gw"] == 8]
+    assert float(late["role_wb_share"].iloc[0]) == 1.0
+    assert float(late["density_pub_7d"].iloc[0]) == 2.0
