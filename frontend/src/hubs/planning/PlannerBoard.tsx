@@ -209,7 +209,24 @@ export default function PlannerBoard(
         // A tablist, not a row of toggles: each control swaps the panel below
         // rather than turning something on, and aria-pressed said the latter.
         <div className="mb-3 flex flex-wrap gap-1" data-testid="plan-tabs"
-             role="tablist" aria-label="Plan A and its alternatives">
+             role="tablist" aria-label="Plan A and its alternatives"
+             // T8-T11 review, Minor 9: the roles arrived without the keyboard
+             // half of the pattern. A tablist is one tab stop — the roving
+             // tabindex below — and the arrows move within it, wrapping,
+             // because a strip is a ring rather than a list with two ends.
+             // Selection follows focus, which is the right variant here: the
+             // panel is already-solved data, so moving to a tab costs nothing.
+             onKeyDown={(e) => {
+               const n = alternatives.length + 1
+               const to = e.key === 'ArrowRight' ? (pick + 1) % n
+                 : e.key === 'ArrowLeft' ? (pick - 1 + n) % n
+                   : e.key === 'Home' ? 0
+                     : e.key === 'End' ? n - 1 : null
+               if (to === null) return
+               e.preventDefault()
+               setPick(to)
+               document.getElementById(`plan-tab-${to}`)?.focus()
+             }}>
           {['Plan A', ...alternatives.map((a) => a.label)].map(
             (label, i) => (
               <button
@@ -219,6 +236,7 @@ export default function PlannerBoard(
                 id={`plan-tab-${i}`}
                 aria-selected={pick === i}
                 aria-controls="plan-board"
+                tabIndex={pick === i ? 0 : -1}
                 onClick={() => setPick(i)}
                 className={`rounded-card border px-3 py-1.5 ${pick === i
                   ? 'border-text text-text' : 'border-border text-text-muted'}`}

@@ -123,6 +123,66 @@ describe('chips tab', () => {
     expect(screen.getByText('GW4 + GW7')).toBeInTheDocument()
   })
 
+  it('offers no What-If arm for a chip pair, and says why', async () => {
+    // T8-T11 review, Important 3. `pick()` left `request.chip` at whatever it
+    // was for a chip with no CHIP_CODES entry, so "Try it" on the pair row
+    // re-solved a plain wildcard under the pair's name — the label said one
+    // thing and the solver did another.
+    apiGet.mockImplementation((path: string) => {
+      if (path.startsWith('/api/chips')) return Promise.resolve({
+        ...CHIPS,
+        chips: [
+          { chip: 'wildcard', gw: 5, gain: 9.4, per_week: 3.1,
+            threshold: 8.0, play_now: true, note: null },
+          { chip: 'wildcard+bboost', gw: 4, gw2: 7, gain: 12.5,
+            per_week: 3.1, threshold: 12.0, play_now: true, note: null },
+        ],
+      })
+      if (path.startsWith('/api/players')) return Promise.resolve(PLAYERS)
+      return Promise.resolve({})
+    })
+    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    await userEvent.click(await screen.findByRole('button',
+      { name: 'Wildcard + Bench Boost' }))
+    expect(screen.getByRole('button', { name: /re-solve/i })).toBeDisabled()
+    expect(screen.getByText(/A chip pair has no What-If arm/))
+      .toBeInTheDocument()
+    // And picking a mapped chip afterwards restores the arm. Two buttons say
+    // "Wildcard" — the panel strip and the chip row — and it is the row's
+    // pick that has to reach the request.
+    await userEvent.click(
+      screen.getAllByRole('button', { name: 'Wildcard' })[1])
+    const resolve = screen.getByRole('button', { name: /re-solve/i })
+    expect(resolve).not.toBeDisabled()
+    await userEvent.click(resolve)
+    await waitFor(() => expect(apiPost).toHaveBeenCalled())
+    expect((apiPost.mock.calls[0][1] as { chip: string }).chip).toBe('wc')
+  })
+
+  it('marks a pair’s summed θ bar as θ', async () => {
+    // T8-T11 review, Important 2: the pair's bar is two bars added, so its
+    // source names both — and the marker must still read θ rather than
+    // falling to "flat" on a string it does not recognise.
+    apiGet.mockImplementation((path: string) => {
+      if (path.startsWith('/api/chips')) return Promise.resolve({
+        ...CHIPS,
+        chips: [
+          { chip: 'wildcard+bboost', gw: 4, gw2: 7, gain: 12.5,
+            per_week: 3.1, threshold: 12.0,
+            threshold_source: 'theta: wildcard 8.00 + bboost 4.00',
+            play_now: true, note: null },
+        ],
+      })
+      if (path.startsWith('/api/players')) return Promise.resolve(PLAYERS)
+      return Promise.resolve({})
+    })
+    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    const sources = await screen.findAllByTestId('bar-source')
+    expect(sources.map((n) => n.textContent)).toEqual(['θ'])
+    expect(sources[0]).toHaveAttribute(
+      'title', 'theta: wildcard 8.00 + bboost 4.00')
+  })
+
   it('marks the weeks worth playing now', async () => {
     render(<MemoryRouter><ChipsTab /></MemoryRouter>)
     await screen.findAllByText(/wildcard/i)

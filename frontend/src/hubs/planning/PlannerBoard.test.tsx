@@ -359,6 +359,38 @@ describe('PlannerBoard', () => {
     expect(board).toHaveAttribute('aria-labelledby', tabs[1].id)
   })
 
+  it('gives the tab strip a roving tabindex and arrow keys', async () => {
+    // T8-T11 review, Minor 9. A tablist is one tab stop, not one per tab, and
+    // the arrows move between them — which is the half of the ARIA pattern
+    // Minor 11 added the roles without.
+    wire(plan([WEEK], 1.5, [
+      { label: 'Plan B', gap: 0.4, weeks: [altWeek()] },
+      { label: 'Plan C', gap: 0.9, weeks: [altWeek({ expected_pts: 57.1 })] },
+    ]))
+    render(<PlannerBoard gw={5} />)
+    const strip = await screen.findByTestId('plan-tabs')
+    const tabs = within(strip).getAllByRole('tab')
+    const roving = () => tabs.map((t) => t.getAttribute('tabindex'))
+    expect(roving()).toEqual(['0', '-1', '-1'])
+
+    tabs[0].focus()
+    await userEvent.keyboard('{ArrowRight}')
+    expect(document.activeElement).toBe(tabs[1])
+    expect(tabs[1]).toHaveAttribute('aria-selected', 'true')
+    expect(roving()).toEqual(['-1', '0', '-1'])
+
+    await userEvent.keyboard('{End}')
+    expect(document.activeElement).toBe(tabs[2])
+    // Wraps, so the last tab's Right is the first: a strip is a ring.
+    await userEvent.keyboard('{ArrowRight}')
+    expect(document.activeElement).toBe(tabs[0])
+    await userEvent.keyboard('{ArrowLeft}')
+    expect(document.activeElement).toBe(tabs[2])
+    await userEvent.keyboard('{Home}')
+    expect(document.activeElement).toBe(tabs[0])
+    expect(tabs[0]).toHaveAttribute('aria-selected', 'true')
+  })
+
   it('leaves the board unlabelled when there is no strip to control',
     async () => {
       // No tablist, no tabpanel: a panel that answers to a control nobody

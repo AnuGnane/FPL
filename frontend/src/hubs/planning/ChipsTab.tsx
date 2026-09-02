@@ -60,13 +60,18 @@ function GainBar({ gain, threshold }: { gain: number
 // guessing (v12 W3 §4.2).
 function BarSource({ source }: { source?: string | null }) {
   if (!source || source === 'unknown') return null
+  // T8-T11 review, Important 2: a chip *pair*'s bar is its two chips' bars
+  // added, and its source spells the sum out — "theta: wildcard 8.00 + bboost
+  // 4.00" — so the marker matches on the leading token rather than on the
+  // whole string, which would have read a θ bar as flat.
+  const theta = source === 'theta' || source.startsWith('theta:')
   return (
     <span className="ml-1 text-text-faint" data-testid="bar-source"
           title={source === 'theta'
             ? 'θ: the surplus the best remaining week is expected to offer '
               + '(v4c stopping rule)'
             : source}>
-      {source === 'theta' ? 'θ' : 'flat'}
+      {theta ? 'θ' : 'flat'}
     </span>
   )
 }
@@ -164,6 +169,16 @@ export default function ChipsTab() {
     const code = CHIP_CODES[name]
     if (code) setRequest((r) => ({ ...r, chip: code }))
   }
+
+  // T8-T11 review, Important 3. `pick` leaves `request.chip` alone for a chip
+  // the mapping does not know — which is right, since 'none' would re-solve
+  // without a chip — but the arm below then submitted whatever the *previous*
+  // pick had set. Picking the wildcard-plus-bench-boost row and pressing
+  // "Try it" re-solved a plain wildcard under the pair's label: the strongest
+  // way to be wrong about a chip, because the page names one and the solver
+  // runs another. The lab has no arm for a pair (there is no two-chip What-If
+  // request), so the honest answer is to withhold the button and say so.
+  const armed = CHIP_CODES[chip] !== undefined
 
   const solve = async () => {
     setInvalid(null)
@@ -298,15 +313,23 @@ export default function ChipsTab() {
       {tab === 'wildcard' && <WildcardTab wildcard={data.wildcard} />}
       <Card title="Try it" className="mb-4">
         <p className="text-text-muted">
-          A front door onto the What-If Lab with{' '}
-          <strong>{LABELS[chip] ?? chip}</strong> prefilled — the same solver,
-          the same baseline. Pick another row above to try that one instead.
+          {armed ? (
+            <>
+              A front door onto the What-If Lab with{' '}
+              <strong>{LABELS[chip] ?? chip}</strong> prefilled — the same
+              solver, the same baseline. Pick another row above to try that
+              one instead.
+            </>
+          ) : (
+            'A chip pair has no What-If arm — the single wildcard and bench '
+            + 'boost do. Pick either of those rows above to re-solve it.'
+          )}
         </p>
         <ConstraintsPanel value={request} onChange={setRequest} />
         <button
           type="button"
           onClick={solve}
-          disabled={busy}
+          disabled={busy || !armed}
           className="rounded-card border border-border bg-base px-3 py-2
                      text-text-secondary hover:text-text
                      disabled:text-text-faint"
