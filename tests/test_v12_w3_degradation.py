@@ -435,8 +435,36 @@ def test_no_components_frame_leaves_the_captain_ceiling_where_it_was(capsys,
     assert "no shortlisted captain carries a points band" in \
         capsys.readouterr().out
 
+    # And the header degrades with the column (T8-T11 final review,
+    # Important 1). ``_advice``'s captain option carries ``p_haul`` and no
+    # ``p_haul_total`` — the degraded artifact — so the report must name the
+    # attacking quantity it is actually printing. A fixed "P(10+ pts)" over
+    # this table is the v9c failure the split was meant to end: a label
+    # claiming a number the row does not hold.
     html = render_report(_advice(), out_dir=tmp_path).read_text()
+    assert "P(2+ returns)" in html
+    assert "P(10+ pts)" not in html
+    assert "both fixtures" not in html      # the note goes with the header
+
+
+def test_the_banded_captain_table_gets_the_banded_header(tmp_path):
+    """The positive half of the pair above: with ``p_haul_total`` on the
+    options the header and its note are the gameweek-total ones."""
+    from gaffer.report.render import render_report
+
+    from tests.test_report import _advice
+
+    advice = _advice()
+    advice.captain_options = [{"code": 1, "name": "P1", "position": "MID",
+                               "ep": 8.0, "p_haul_total": 0.4,
+                               "league_eo": 80.0, "differential": False}]
+    html = render_report(advice, out_dir=tmp_path).read_text()
     assert "P(10+ pts)" in html
+    assert "both fixtures" in html
+    # The differential alternatives table keeps the attacking header, so
+    # "P(2+ returns)" is still in the page — this rail is about the captain
+    # column, and the two must not be conflated.
+    assert html.count("P(10+ pts)") == 2   # the header and its note
 
 
 def test_a_captain_with_no_band_is_an_em_dash_and_never_a_zero(tmp_path):

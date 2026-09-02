@@ -204,15 +204,25 @@ def test_the_haul_columns_say_which_haul_they_are(tmp_path):
     which v9c deliberately left byte-untouched so digest and the
     since-last-run diff go on reading what they always read.
 
-    v12 W3 §4.6 split the two tables. The captain column is now the
-    gameweek's whole point distribution — ``p_haul_total``, both fixtures of a
-    double summed — and says ``P(10+ pts)``. The differential alternatives
-    table still carries ``assemble``'s attacking number and still says
+    v12 W3 §4.6 split the two tables. The captain column is the gameweek's
+    whole point distribution — ``p_haul_total``, both fixtures of a double
+    summed — and says ``P(10+ pts)``. The differential alternatives table
+    still carries ``assemble``'s attacking number and still says
     ``P(2+ returns)``, because relabelling that one would claim a change
     nobody made. The point of this rail is unchanged: every ceiling column
     names the quantity it holds.
+
+    T8-T11 final review, Important 1: which is why the captain header follows
+    the *row*. The value already fell back to ``p_haul`` when no band reached
+    the table; a header hard-coded to ``P(10+ pts)`` then named a quantity
+    the column did not hold, in the one file whose entire job is to stop
+    exactly that. So the fixture here carries ``p_haul_total`` — the banded
+    artifact — and ``tests/test_v12_w3_degradation.py`` owns the degraded one.
     """
     advice = _advice()
+    advice.captain_options = [{"code": 1, "name": "P1", "position": "MID",
+                               "ep": 8.0, "p_haul_total": 0.4,
+                               "league_eo": 80.0, "differential": False}]
     advice.alternatives = [{"code": 30, "name": "Brave", "ep": 6.0,
                             "p_haul": 0.3, "league_eo": 4.0}]
     html = render_report(advice, out_dir=tmp_path).read_text()

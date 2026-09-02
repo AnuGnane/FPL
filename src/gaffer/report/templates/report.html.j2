@@ -87,18 +87,29 @@ against a template player).</small></p>
 <p>Bench (in order): {% for p in a.bench %}{{ p.name }} ({{ p.ep }}){{ ", " if not loop.last }}{% endfor %}</p>
 
 <h2>Captain options</h2>
-<table><tr><th>Player</th><th>Pos</th><th>xPts</th><th>P(10+ pts)</th><th>League EO%</th><th></th></tr>
+{# v12 W3 §4.6, T8-T11 final review Important 1: the header follows the row.
+   The cell below already falls back to the attacking `p_haul` when no band
+   reached the table — an artifact from before §4.6, or a run whose component
+   frame carried no minutes model — and a header fixed at "P(10+ pts)" over
+   that fallback is a label naming a quantity the column does not hold, which
+   is the v9c failure this whole split exists to end. #}
+{% set has_total = a.captain_options
+   and 'p_haul_total' in a.captain_options[0] %}
+<table><tr><th>Player</th><th>Pos</th><th>xPts</th><th>{{ "P(10+ pts)" if has_total else "P(2+ returns)" }}</th><th>League EO%</th><th></th></tr>
 {% for c in a.captain_options %}
 {% set ceiling = c.get('p_haul_total', c.get('p_haul')) %}
 <tr><td>{{ c.name }}</td><td>{{ c.position }}</td><td>{{ "%.2f"|format(c.ep) }}</td>
     <td>{{ "%.0f%%"|format(ceiling * 100) if ceiling is not none else "&mdash;"|safe }}</td>
     <td>{{ c.league_eo }}</td>
     <td>{% if c.differential %}<span class="diff">differential</span>{% endif %}</td></tr>
-{% endfor %}</table>
+{% endfor %}
+</table>
+{% if has_total %}
 <p><small>P(10+ pts) is the whole gameweek's point distribution — both fixtures
 of a double, summed, at the model's own spread. An older report shows P(2+
 attacking returns) here instead, which in a double gameweek was the better
 single fixture's.</small></p>
+{% endif %}
 
 {% if not initial %}
 <h2>Chips</h2>
