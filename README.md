@@ -82,6 +82,78 @@ to `logs/advise.log`.
 | `gaffer evaluate [--news-shadow] [--calibration]` | The model scorecard; the news layer's would-be effect; served-probability reliability. |
 | `gaffer diagnose-zeros` | Decompose the error on players who blanked, into `reports/zeros_diagnostic.json`. |
 | `gaffer calibrate-decisions` / `calibrate-injuries` / `calibrate-noise` | Rebuild the committed calibration assets from replays and scrapes. Occasional, not weekly. |
+| `gaffer backup [--to DIR] [--rsync TARGET]` | Tar the data no command can rebuild into `~/gaffer-backups` (or `[backup] dir`), keep the last fourteen. |
+| `gaffer tidy [--apply] [--older-than DAYS]` | List — and only with `--apply`, delete — replay logs nothing references and stale run logs. |
+| `gaffer mcp` | Serve this tree to an MCP client over stdio. Six read tools, no writes. |
+
+### `gaffer backup`
+
+Writes `~/gaffer-backups/gaffer-<YYYYmmdd-HHMMSS>.tar.gz` — about 16 MB — and
+prunes to the newest fourteen. `[backup] dir`, `[backup] keep` and
+`[backup] rsync_target` set the defaults; `--to` and `--rsync` override them
+for one run.
+
+In the archive: `data/live/`, `data/raw/field/`, `data/raw/tier_eo/`,
+`reports/` and `models/`. **`data/raw/field/` is in it and the spec did not put
+it there.** The field EO *log* lives under `data/live/`; the sampled top-10k
+*squads* do not — `gaffer field-scrape` writes them to
+`data/raw/field/<season>/gw<N>.json`, and a past gameweek's picks cannot be
+fetched again from anywhere. With `data/raw/tier_eo/`, they are the only bytes
+in this tree no command can rebuild.
+
+Deliberately out, and what rebuilds each: `data/history/` (`gaffer
+build-history`), `data/raw/understat/` (`gaffer understat`, slowly),
+`data/raw/vaastav/` (a download), `data/raw/news/` (a scrape cache — 67 MB,
+four times the rest of the archive combined; the *derived* corpus that matters,
+`data/live/availability_log.parquet` and `live/presser_log.parquet`, is inside
+the set), and the timestamped API snapshots under `data/raw/`, which are a
+record of calls made rather than anything the tool reads.
+
+`--rsync TARGET` copies the finished archive with `rsync -a`. **The remote copy
+is never pruned** — a retention rule reaching across it would be this tool
+deleting files on a machine it does not own, over a protocol with no undo. A
+failed copy is not fatal: the local archive exists, and saying nothing was
+backed up would be false. The archive is written to a dotted `.part` sibling
+and renamed into place, so a full disk leaves no truncated file for the next
+run's prune to count as a backup.
+
+### `gaffer tidy`
+
+Dry run by default; `--apply` deletes. It targets two sets: replay logs
+`data/live/backtest_log_v7b_*.parquet` whose companion `reports/v7b_<tag>.json`
+never appeared, and `logs/*.log` past `--older-than` (30 days).
+
+**How little it reclaims: 54 KB on this tree today**, five orphaned replay logs
+out of thirty-three. It is a correctness tool, not a disk-space one — see the
+residuals below for where the megabytes actually are.
+
+Four things it will never touch, each with a named reader: the shared
+`data/live/backtest_log.parquet` that `/api/history` reads (the glob does not
+match it, which is luck rather than design, so a rail asserts it);
+`backtest_log_s2_*.parquet`, whose S2 arm evidence lives only in `logs/` and
+which pairs with no report by design; the availability, field EO, price and
+presser logs, which are the corpus rather than output; and `logs/advise.log`,
+which is `/api/health`'s launchd line and which the 30-day cutoff would have
+swallowed within a week. It refuses a negative `--older-than`, and refuses to
+run at all outside the project root — "nothing to tidy" from the wrong
+directory is indistinguishable from a clean tree.
+
+### `gaffer mcp`
+
+A stdio MCP server, so Claude Code can read this tree without a browser:
+
+```
+claude mcp add gaffer -- gaffer mcp
+```
+
+Six tools, all reads: `projections`, `explain`, `whatif`, `ledger`,
+`freshness` and `health`. Each is the router function that already serves the
+same payload to the web UI, so nothing here is a second implementation that
+could drift from the page showing it. `whatif` is the exception and the reason
+is worth knowing: `POST /api/whatif` returns a job id, so the tool wraps the
+synchronous solve instead — it **re-solves locally and starts no job**, and a
+transfer out reaches the solver as "don't own him", which also rules out buying
+him back. There are no write tools.
 
 ## Configuration
 
@@ -100,6 +172,13 @@ bench_weight = 0.10  # weight on bench points
 ft_value = 1.5       # points value of holding a free transfer
 itb_value = 0.05     # points per 1.0m in the bank at horizon end
 hit_cost = 4         # points charged per extra transfer
+# top_n = {GKP = 8, DEF = 22, MID = 26, FWD = 14}
+#                    # how many players per position reach the solver at all.
+#                    # Merged over these defaults, so tuning one position does
+#                    # not mean restating the other three; anything
+#                    # unreadable — a typo'd position, a zero, a corrupt file —
+#                    # falls back to the shipped value for that position, and
+#                    # Model → Health prints what is actually in force.
 
 [odds]
 # api_key = "..."    # optional, from the-odds-api.com
@@ -263,8 +342,31 @@ on worker A then polls worker B, which has never heard of it — no crash, just
 a job that never finishes on screen. `cli.ui` passes uvicorn the app
 *instance* rather than an import string, which is what makes `workers=`
 impossible rather than merely unset, so please do not add `--workers` to be
-helpful. `tests/test_v9d_degradation.py` asserts the shape of that call. It binds the loopback interface only and has no login — that is the
-whole security model, so do not put it behind a public proxy.
+helpful. `tests/test_v9d_degradation.py` asserts the shape of that call. By default it
+binds the loopback interface only — that is the whole security model, so do not
+put it behind a public proxy.
+
+**`--lan`, and what it does and does not protect (v12).** `gaffer ui --lan`
+binds every interface so a phone on the sofa can reach it, and prints the LAN
+URL with a QR code. **Reads are open; writes need a token.** Every non-GET
+route — pinned p_play overrides, watchlist stars, saved drafts, queued jobs —
+needs an `X-Gaffer-Token` header or answers 403 (not 401: a 401 invites the
+browser's own credential prompt for a scheme this app does not implement, and
+leaves the user a dialog with nowhere to type). `OPTIONS` and `HEAD` pass with
+`GET`, because a preflight that failed closed would make every write look like
+a network error rather than a refusal.
+
+The token is `[web] token` from your config, or — with no key there — one
+generated at startup and printed **once**, in the LAN banner. It is not written
+into `config.toml`: a tool that edits the file holding your API key is a
+surprise nobody asked for. The QR code carries `?token=…`, so a phone that
+scans it is authorised on its first load and stores the token under
+`gaffer-token`; the printed URL stays bare, for the device you type into. That
+query parameter reaches uvicorn's access log once, in the terminal that just
+printed the token anyway.
+
+None of this applies on loopback: with no token, no middleware is installed at
+all and the app is byte for byte the one that has always shipped.
 
 Six hubs: **This Week** (the recommendation, with a pitch view, the captain
 field-EO sentence, the chip planner's best week for each unused chip, the
@@ -355,11 +457,11 @@ list it has nothing to report: ten fixtures in every one of thirty-eight
 gameweeks, no team doubled, no team blank. That is the honest empty state and
 it is what you will see until the cup rounds start moving games.
 
-Three things this cycle left open, deliberately. The Players explorer still
-reads the field log without filtering by season — harmless while the log holds
-one season, and wrong the first August it holds two, because element ids are
-re-issued and the same integer is then a different footballer (This Week's own
-read is filtered). `advise.py` still writes a `captain_note` about the
+Two things this cycle left open, deliberately. (A third — the Players
+explorer reading the field log without filtering by season — was closed in v12
+W1: the keyword is now required, so the omission is a stack trace rather than
+last season's ownership for a re-issued element id.) `advise.py` still writes a
+`captain_note` about the
 league-tilt armband override that no page renders. And there are now two
 code→element maps in the tree, one private to the league simulator and one
 memoised in `web/field_frame.py`; merging them would mean opening a router this
@@ -464,6 +566,63 @@ it starts again from that moment, which is the price of a page that writes
 nothing. And the safety numbers are league places only: an overall-rank
 cushion would need every one of ten million entries' live scores, and no
 public endpoint gives them.
+
+### Hygiene: freshness, refusals and a backup (v12 W1)
+
+Every hub draws an **"as of" strip** at the top: how old the refresh, the odds,
+the field EO log, the last advice run and the last backup are. Green under a
+day, amber under three, red beyond, grey for never — and "never" is spelled
+out, never rendered as `0h`, because a zero age means "just now", which is the
+exact opposite. It is mounted once, in the app shell, so it survives every
+navigation and covers the rival-detail route that has no hub of its own; a
+failed fetch renders five grey rows rather than disappearing, because a strip
+that vanishes teaches you its absence means nothing is stale.
+
+Model → **Health** gains three lines: the season check described under
+Retraining, the solver's per-position pool sizes (`[optimizer] top_n`, and it
+re-reads the file so an edit shows on the next reload), and the last backup with
+its size, or `never — run gaffer backup`.
+
+Two more refusals besides `refresh`'s. `gaffer track-pens` will not overwrite a
+good `reports/pen_tracker.json` with a degraded run — neither one where every
+gameweek block failed to read, nor an empty one caused by a missing
+`data/live/player_gw.parquet` — and says which case it is. It writes freely when
+there is nothing banked to protect, or the file would never come into existence
+on a cold clone. The web job lane obeys the same guard, because it lives in the
+writer rather than in the CLI. And the LAN write token above is the third.
+
+Underneath, the temp-then-rename idiom that twenty modules had each written for
+themselves is one helper, `gaffer/io.py`. Two latent bugs went with it:
+`presser_log.py` shared a single `.tmp` between the nightly snapshot job and a
+hand `gaffer snapshot` — two writers, each unlinking the other's file — and
+`understat.py` and `chip_scenarios.py` had no `finally`, so a write that raised
+left the temp behind for ever in a cache directory that is permanent by design.
+
+**Five things this cycle left open, deliberately.**
+
+1. `journal.py` keeps its own copy of the atomic-write idiom: it is import-only
+   for this cycle. A census rail names the surviving copies — `io.py`,
+   `journal.py` and `backup.py`, which renames a streamed tarball rather than
+   handing bytes to the helper — as an equality rather than a `<=`, so a
+   twenty-first copy cannot appear quietly.
+2. The spec asked for a `[solver]` section; there is none. `top_n` lives in the
+   existing `[optimizer]` beside every other solver knob, by ruling — which
+   means the price-timing and settings-whitelist work in later workstreams
+   reads `[optimizer]` too, and the spec's `[solver]` wording is stale wherever
+   it appears.
+3. `gaffer tidy` reclaims 54 KB. The real accumulation is **~34 MB of
+   timestamped API snapshots** under `data/raw/` (`bootstrap-*.json` at 1.7 MB
+   apiece, plus `fixtures-*`, `odds-*`, `ags-*`, `entry-*`) that nothing prunes,
+   and 67 MB of `data/raw/news/`. Both are outside the spec's scope and stayed
+   there: silently widening a delete command past what was asked for is the
+   most expensive kind of helpfulness available.
+4. The rollover guard's served half reads the **banked** events snapshot rather
+   than the API, because `/api/health` is disk-only by contract. So it answers
+   "is the data on disk the data the config describes", which is the state that
+   matters, and says nothing about a season FPL has published and this machine
+   has not yet fetched.
+5. The MCP server exposes no write tools and no resources or prompts. `whatif`
+   is the one tool that computes, and it computes locally and banks nothing.
 
 ### Pinning a player (v8e)
 
@@ -773,6 +932,17 @@ season to `train_seasons` **and** set `current_season` to the new one, then run
 `len(train_seasons)`, so adding a season without moving `current_season` on
 makes the live season collide with the one you just archived.
 
+Since v12, `gaffer refresh` **refuses** rather than ingesting a season the
+config does not name: it compares the API bootstrap's own deadlines with
+`current_season` and stops, naming both values and both keys. The remedy is the
+config edit above — there is no `--force`, deliberately. The failure this
+prevents is silent (August data written under last season's index, and a model
+trained on it), and a flag to skip the check would be reached for on exactly
+the morning it matters. Model → Health says the same thing from disk: "the last
+refresh ingested X, your config says Y". It reads the banked events snapshot
+rather than the API, because that page is disk-only by contract, so it can say
+nothing about a season FPL has published and this machine has not yet fetched.
+
 **`club_code`, the club a row's player actually played for (v9c).** The store
 rebuilds player history from scratch every run and stamps each player's
 *current* `team_code` onto every row of it, so a January transfer silently
@@ -902,12 +1072,13 @@ and is macOS-only. Turn it off with:
 ./scripts/install_automation.sh
 ```
 
-Substitutes the project path into the seven plists in `scripts/`, copies them to
+Substitutes the project path into the eight plists in `scripts/`, copies them to
 `~/Library/LaunchAgents/`, and loads them: `com.gaffer.advise` (Thursday 18:00),
 `com.gaffer.prices` (nightly 23:15), `com.gaffer.snapshot` (daily 17:00, banks
 the availability log the news corrector will train on), `com.gaffer.field`,
-`com.gaffer.review`, `com.gaffer.digest-friday` (Friday 17:00) and
-`com.gaffer.digest-tuesday` (Tuesday 09:30).
+`com.gaffer.review`, `com.gaffer.digest-friday` (Friday 17:00),
+`com.gaffer.digest-tuesday` (Tuesday 09:30) and `com.gaffer.backup`
+(nightly 23:45).
 Re-run it after moving the project.
 
 - **Saturday and Sunday 12:30** — `gaffer field-scrape`, an hour after the
@@ -926,13 +1097,21 @@ Re-run it after moving the project.
 - **Tuesday 09:30** — `gaffer digest --kind tuesday`, the debrief. Half an
   hour after the review job, so it reads a ledger that has already been
   written rather than one still being graded.
+- **Nightly 23:45** — `gaffer backup`, half an hour after the price check, so
+  the archive contains the night's reading rather than racing it. Tars
+  `data/live/`, `data/raw/field/`, `data/raw/tier_eo/`, `reports/` and
+  `models/` — about 16 MB — into `~/gaffer-backups` and keeps the last
+  fourteen. `data/history/`, `data/raw/understat/`, `data/raw/vaastav/` and
+  `data/raw/news/` are left out because a command rebuilds each of them; the
+  sampled top-10k squads under `data/raw/field/` are in, because nothing
+  can.
 
 Nothing else is scheduled. The rest of the work the UI can start — including
 `sensitivity`, twenty noised re-solves of this week's board in about five
 seconds — runs only when you press its button.
 
 Check they are loaded with `launchctl list | grep com.gaffer`. Remove with
-`launchctl unload ~/Library/LaunchAgents/com.gaffer.{advise,prices,snapshot,field,review,digest-friday,digest-tuesday}.plist`.
+`launchctl unload ~/Library/LaunchAgents/com.gaffer.{advise,prices,snapshot,field,review,digest-friday,digest-tuesday,backup}.plist`.
 
 ## Tests
 

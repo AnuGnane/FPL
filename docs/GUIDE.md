@@ -217,7 +217,10 @@ below you with what they need.
   cumulative points left on the bench, accuracy and overall-rank
   trajectories, the calibration trend. Built to fill as the season grades;
   a lane never measured says "never graded", not 0%.
-- *Health*: data freshness, model ages, the launchd log, re-run buttons.
+- *Health*: data freshness, model ages, the launchd log, re-run buttons —
+  plus (v12) a red banner when the season on disk is not the season your
+  config names, the solver's per-position pool sizes, and the last backup
+  with its size (or `never — run gaffer backup`).
 - *Journal*: the decision journal with its deadline guard.
 - *History*: past runs, expected versus actual, price charts.
 
@@ -251,7 +254,7 @@ evidence.
 
 ## 7. The automation
 
-`./scripts/install_automation.sh` installs seven launchd jobs (re-run it if
+`./scripts/install_automation.sh` installs eight launchd jobs (re-run it if
 the project folder moves — the plists embed the path):
 
 | When | Job | What it does |
@@ -263,6 +266,7 @@ the project folder moves — the plists embed the path):
 | Tue 09:00 | `com.gaffer.review` | Grades every gameweek FPL has finalised into the decision ledger. |
 | Fri 17:00 | `com.gaffer.digest-friday` | The briefing. |
 | Tue 09:30 | `com.gaffer.digest-tuesday` | The debrief (after the review has banked). |
+| Nightly 23:45 | `com.gaffer.backup` | Tars the ~16 MB no command can rebuild into `~/gaffer-backups`; keeps fourteen. |
 
 Check with `launchctl list | grep com.gaffer`. Everything else — sensitivity
 sweeps, news-shadow evaluation, snapshots on demand — runs from UI buttons.
@@ -274,7 +278,12 @@ The weekly core:
 - `gaffer advise` (and `--fast` to skip the five-minute scenario sweep)
 - `gaffer refresh` — pull latest FPL data
 - `gaffer train` — retrain all models
-- `gaffer ui` (`--lan` adds a QR code for your phone)
+- `gaffer ui` — `--lan` serves to your whole network and prints a QR code
+  for your phone. Reads are open; **writes need a token** (v12), from
+  `[web] token` in your config or generated and printed once per run. The QR
+  carries it, so a phone that scans the code can write; a device you type the
+  bare URL into needs `?token=<it>` once. On loopback there is no token and
+  nothing changes.
 
 Standing intelligence:
 
@@ -294,6 +303,18 @@ Evaluation and research:
   following the tool's own advice
 - `gaffer track-pens` — predicted penalty EP against penalties actually taken
 - `gaffer diagnose-zeros` — decompose the error on players who blanked
+
+Housekeeping (v12):
+
+- `gaffer backup [--to DIR] [--rsync TARGET]` — one tar of `data/live/`,
+  `data/raw/field/`, `data/raw/tier_eo/`, `reports/` and `models/`; keeps the
+  newest fourteen locally and never prunes across `--rsync`
+- `gaffer tidy [--apply] [--older-than DAYS]` — dry run by default; lists
+  replay logs whose report never appeared and stale `logs/*.log`. It reclaims
+  54 KB on this tree, and it never touches the shared backtest log, the S2 arm
+  logs, the corpus logs or `logs/advise.log`
+- `gaffer mcp` — a stdio MCP server for Claude Code:
+  `claude mcp add gaffer -- gaffer mcp`. Six read tools, no writes
 
 One-time / rollover setup:
 
@@ -454,7 +475,17 @@ ones):
   the live FPL API; everything else reads local artifacts.
 - **Season rollover** — append the finished season to `train_seasons`
   *and* bump `current_season` together, then `gaffer build-history` and
-  `gaffer train`. The README's Retraining section explains why both.
+  `gaffer train`. The README's Retraining section explains why both. Since
+  v12, `gaffer refresh` **refuses** to ingest a season `current_season` does
+  not name, printing both values and both keys. Editing `[season]` —
+  `current_season` in the `[data]` block — is the remedy, and it is the only
+  one: there is no escape flag, deliberately, because the failure it prevents
+  (August rows written under last season's index, then trained on) is silent,
+  and a `--force` would be reached for on exactly the morning it matters.
+- **Writes fail from your phone on `--lan`** — the page needs the write
+  token. Scan the QR code rather than typing the URL, or open it once with
+  `?token=<the token in the banner>`; the page stores it. A refusal is a 403
+  with a sentence naming the header, not a silent failure.
 - **Moved the project folder** — re-run `scripts/install_automation.sh`
   (plists embed the path).
 - **Price job fires at the wrong time** — it is scheduled in *local* time
