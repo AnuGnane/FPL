@@ -205,6 +205,31 @@ def test_the_table_is_read_once_per_squad_and_handed_out_as_a_copy(monkeypatch):
     assert len(reads) == 2                                      # a new squad
 
 
+def test_the_advise_job_banks_a_price_reading_before_it_solves(tmp_path):
+    """G1d's finding. ``price_falls`` drops a log whose newest banked day is
+    not today, and the nightly bank runs at 23:15 local — so the Thursday
+    18:00 advise job read a log dated *yesterday* every single week and the
+    timing term was silently ``{}``. The job now banks first.
+
+    ``;`` and not ``&&``: a price fetch that fails must never cost the week
+    its advice, and ``bank_prices`` is keyed on ``snap_date`` so the 23:15 run
+    replaces this reading rather than doubling it."""
+    import plistlib
+    from pathlib import Path
+
+    raw = Path("scripts/com.gaffer.advise.plist").read_text(encoding="utf-8")
+    assert "__PROJECT_DIR__" in raw
+    plist = plistlib.loads(
+        raw.replace("__PROJECT_DIR__", str(tmp_path)).encode("utf-8"))
+    assert plist["Label"] == "com.gaffer.advise"
+    command = plist["ProgramArguments"][-1]
+    prices = command.index("uv run gaffer prices")
+    assert prices < command.index("uv run gaffer train")
+    assert prices < command.index("uv run gaffer advise")
+    # The advice does not hang off the price fetch's exit status.
+    assert "gaffer prices >> logs/prices.log 2>&1;" in command
+
+
 def test_the_cache_does_not_serve_yesterdays_table_after_midnight(monkeypatch):
     """The staleness check is 'is the newest banked day today', and it used to
     run *inside* the cached function. A table computed at 23:50 was therefore

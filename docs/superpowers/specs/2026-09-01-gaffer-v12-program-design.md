@@ -322,6 +322,25 @@ that could move a plan, and the rail that a missing section reproduces
   pre-registered in the W2 gate.
 - Test: with `p_fall_tonight = 1` and two otherwise-equal sell timings,
   the solver sells this week.
+- Freshness (found at the W2 gate, 2026-09-02): `price_falls` drops the whole
+  log when its newest banked day is not today, so the term has a **live
+  window** — a reading banked on UTC day D predicts the change in the night
+  D→D+1 and is stale from the next UTC midnight, at which point the table is
+  empty by design. With the bank running once nightly at 23:15 local, that
+  window was roughly 22:15 UTC to midnight UTC, and the scheduled Thursday
+  `advise` at 18:00 local always read the previous day's log — the term was
+  `{}` on every scheduled solve. **The first G1d replay was vacuous for this
+  reason**: it came back byte-identical to `main` not because the term makes
+  no difference but because the term never existed in it, and it was re-run
+  after `gaffer prices` banked the day's reading. Fixed forward in
+  `scripts/com.gaffer.advise.plist`, which now runs `gaffer prices` before
+  `train` (`;` and not `&&`, so a failed fetch never costs the week its
+  advice; `bank_prices` is keyed on `snap_date`, so the 23:15 run replaces
+  the afternoon reading rather than doubling it). **Residual:** the web UI's
+  advise button does not bank first, so a browser-started solve during the
+  day still gets an empty table and an untimed sale — the pre-v12 behaviour,
+  recorded rather than fixed, since a fetch on the advise path is a new job
+  kind and W2 adds none.
 
 ### 3.5 xG-per-shot ablation
 - Feature `us_npxg_per_shot = us_npxg90 / us_shots90` (0 when shots = 0,

@@ -5,7 +5,7 @@
   <key>Label</key><string>com.gaffer.advise</string>
   <key>ProgramArguments</key><array>
     <string>/bin/zsh</string><string>-lc</string>
-    <string>cd __PROJECT_DIR__ &amp;&amp; { uv run gaffer train &amp;&amp; uv run gaffer advise; } &gt;&gt; logs/advise.log 2&gt;&amp;1</string>
+    <string>cd __PROJECT_DIR__ &amp;&amp; { uv run gaffer prices &gt;&gt; logs/prices.log 2&gt;&amp;1; { uv run gaffer train &amp;&amp; uv run gaffer advise; } &gt;&gt; logs/advise.log 2&gt;&amp;1; }</string>
   </array>
   <key>StartCalendarInterval</key>
   <dict><key>Weekday</key><integer>4</integer>

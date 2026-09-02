@@ -259,7 +259,7 @@ the project folder moves — the plists embed the path):
 
 | When | Job | What it does |
 |---|---|---|
-| Thu 18:00 | `com.gaffer.advise` | `train` then `advise`; logs to `logs/advise.log`. |
+| Thu 18:00 | `com.gaffer.advise` | `prices`, then `train` then `advise`; logs to `logs/prices.log` and `logs/advise.log`. The price bank comes first so the optimizer's timing term has a same-day log; a failed fetch does not stop the advice. |
 | Nightly 23:15 | `com.gaffer.prices` | Banks every player's price reading; flags likely changes. |
 | Daily 17:00 | `com.gaffer.snapshot` | Banks the day's availability state (the corpus a future news model trains on). |
 | Sat & Sun 12:30 | `com.gaffer.field` | Samples ~300 top-10k squads; banks their EO with standard errors. |

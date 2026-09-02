@@ -682,7 +682,17 @@ quietly fixed.**
    the solver's default relative gap on a real horizon is larger. It breaks
    exactly-equal sell timings and is not expected to move a replay, so
    `[optimizer] price_timing` ships **false** (CONVENTIONS §6) with the flip
-   rule in the W2 gate.
+   rule in the W2 gate. It also has a **live window**, found at that gate: a
+   reading banked on UTC day D predicts the night D→D+1 and is stale from the
+   next UTC midnight, so a solve only sees the term if the day's prices have
+   already been banked. The Thursday `advise` job therefore now runs `gaffer
+   prices` before it trains — with `;`, not `&&`, so a failed price fetch
+   never costs the week its advice — because at 18:00 local it had been
+   reading the previous day's log every week and solving with the term at
+   zero. The web UI's **advise** button still does not bank first, so a solve
+   started from the browser during the day gets an untimed sale: the pre-v12
+   behaviour, recorded rather than fixed, because fetching prices as a side
+   effect of asking for advice is a new job kind and W2 adds none.
 4. There is no `[solver]` section: solver knobs live in `[optimizer]`, which
    `load_config` splats into `Config`. A knob there is therefore either a real
    `Config` field (`top_n`) or listed in `config.NON_FIELD_OPTIMIZER_KEYS` and
@@ -1139,8 +1149,11 @@ and is macOS-only. Turn it off with:
 ```
 
 Substitutes the project path into the eight plists in `scripts/`, copies them to
-`~/Library/LaunchAgents/`, and loads them: `com.gaffer.advise` (Thursday 18:00),
-`com.gaffer.prices` (nightly 23:15), `com.gaffer.snapshot` (daily 17:00, banks
+`~/Library/LaunchAgents/`, and loads them: `com.gaffer.advise` (Thursday 18:00,
+which banks a price reading of its own first so the optimizer's timing term
+has a same-day log to read), `com.gaffer.prices` (nightly 23:15 — the reading
+the price predictor is really about, and the one that replaces the Thursday
+afternoon one), `com.gaffer.snapshot` (daily 17:00, banks
 the availability log the news corrector will train on), `com.gaffer.field`,
 `com.gaffer.review`, `com.gaffer.digest-friday` (Friday 17:00),
 `com.gaffer.digest-tuesday` (Tuesday 09:30) and `com.gaffer.backup`

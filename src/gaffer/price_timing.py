@@ -29,6 +29,27 @@ frame is dropped and the table is empty. Last night's reading is about a
 change that has already happened, and charging a sale for a fall the player
 has already taken is charging it twice.
 
+**Which gives the term a live window, and it is narrow.** A reading banked on
+UTC day D is a prediction about the change in the night D→D+1; from the next
+UTC midnight it describes a change that has resolved, so it is stale and this
+table is empty *by design*. A solve that wants the term therefore needs a
+same-day bank — not merely a price log on disk.
+
+Found at the W2 gate (2026-09-02): with the bank running once a night at 23:15
+local, the term was live only between roughly 22:15 UTC and midnight UTC, and
+the scheduled Thursday ``advise`` at 18:00 local always read a log dated the
+day before. The first G1d replay was byte-identical to main for exactly that
+reason — the term was ``{}`` on every solve, so the branch and main were
+solving the same problem. ``scripts/com.gaffer.advise.plist`` now runs
+``gaffer prices`` before it trains, so the scheduled advice sees the day's
+reading.
+
+**Residual: the web UI's advise button does not bank first.** A solve started
+from the browser during the day gets an empty table and an untimed sale, which
+is the pre-v12 behaviour and never wrong — only silent. Recorded rather than
+fixed: a job kind that fetches prices as a side effect of asking for advice is
+a scope change, and W2 adds no job kinds.
+
 Nothing here raises. It is read on the solve path and a missing log, a corrupt
 log or a machine that has never run ``gaffer prices`` must cost the term and
 nothing else.
@@ -57,6 +78,11 @@ def price_falls(log: pd.DataFrame,
     log whose freshest row is yesterday's is describing a price change that
     has already resolved; charging it again is charging a fall twice. So a
     stale log yields ``{}``, exactly as a missing one does.
+
+    This is the rule that makes the term's live window narrow: a reading
+    banked on UTC day D predicts the night D→D+1 and is stale from the next
+    UTC midnight, so a caller who wants a non-empty table has to have banked
+    *today*. See the module docstring for what that cost at the W2 gate.
     """
     if log is None or log.empty or not owned:
         return {}
