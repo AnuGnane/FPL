@@ -591,9 +591,41 @@ def evaluate(mode: str = typer.Option(
 def track_pens_cmd(season: str = typer.Option(
         "", help="Season to track (default: fpl.current_season).")):
     """Predicted penalty EP against the penalties actually taken (v7c F3)."""
-    from gaffer.pen_tracker import format_tracker, save_tracker, track_pens
+    import json
+
+    from gaffer.pen_tracker import (format_tracker, save_tracker,
+                                    track_pens, tracker_path)
 
     report = track_pens(season or None)
+    # v12 W1 §2.5 (specs/2026-09-01-gaffer-v12-program-design.md), mirroring
+    # calibrate_noise's refusal above. track_pens never raises — a standing
+    # report that dies on one bad file is a report nobody runs — so a failure
+    # arrives as a *shape*, and writing that shape over a good artifact loses
+    # a season of tracking to one unreadable parquet.
+    #
+    # Two shapes, two messages. And the refusal only fires when there is
+    # something to protect: a first run on a cold clone must write its empty
+    # report or the file never comes into existence. An unreadable banked file
+    # is not something to protect either — refusing there would wedge the
+    # command with no remedy but deleting the file by hand.
+    blocks = report.get("gws") or []
+    degraded = [b for b in blocks if "error" in b]
+    banked = False
+    try:
+        banked = bool(json.loads(tracker_path().read_text()))
+    except Exception:  # noqa: BLE001 — absent or corrupt: nothing to protect
+        banked = False
+    if banked:
+        path = tracker_path()
+        if blocks and len(degraded) == len(blocks):
+            typer.echo(f"track_pens: refused to overwrite {path}: all "
+                       f"{len(blocks)} rows degraded")
+            raise typer.Exit(1)
+        if not blocks:
+            note = (report.get("notes") or ["no gameweeks"])[0]
+            typer.echo(f"track_pens: refused to overwrite {path}: the report "
+                       f"is empty ({note})")
+            raise typer.Exit(1)
     path = save_tracker(report)
     typer.echo(format_tracker(report))
     typer.echo(f"Wrote {path}")

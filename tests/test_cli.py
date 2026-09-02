@@ -470,12 +470,20 @@ def test_snapshot_exits_zero_when_the_day_could_not_be_banked(monkeypatch):
 
 def test_track_pens_is_registered_and_writes_its_report(monkeypatch, tmp_path):
     """Gate G3's front door. Not wired into `evaluate`: evaluation.json's
-    schema stays stable and the Model hub is untouched this cycle."""
+    schema stays stable and the Model hub is untouched this cycle.
+
+    v12 W1 §2.5: chdir'd into a clean tree. The command now refuses to write
+    an empty report over an existing one, and this test ran in the repo — so
+    without the chdir it read the developer's own reports/pen_tracker.json and
+    was refused. The claim it makes is about the command being registered and
+    printing, which the clean tree leaves untouched.
+    """
     from typer.testing import CliRunner
 
     from gaffer import pen_tracker
     from gaffer.cli import app
 
+    monkeypatch.chdir(tmp_path)
     seen = {}
 
     def fake(season):
@@ -494,11 +502,13 @@ def test_track_pens_is_registered_and_writes_its_report(monkeypatch, tmp_path):
 
 
 def test_track_pens_passes_the_season_through(monkeypatch, tmp_path):
+    # v12 W1 §2.5: chdir'd for the reason the test above is.
     from typer.testing import CliRunner
 
     from gaffer import pen_tracker
     from gaffer.cli import app
 
+    monkeypatch.chdir(tmp_path)
     seen = {}
 
     def fake(season):
