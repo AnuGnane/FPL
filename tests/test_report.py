@@ -203,7 +203,19 @@ def test_the_haul_columns_say_which_haul_they_are(tmp_path):
     The *field* is still ``p_haul``: the template reads the on-disk artifact,
     which v9c deliberately left byte-untouched so digest and the
     since-last-run diff go on reading what they always read.
+
+    v12 W3 §4.6 split the two tables. The captain column is now the
+    gameweek's whole point distribution — ``p_haul_total``, both fixtures of a
+    double summed — and says ``P(10+ pts)``. The differential alternatives
+    table still carries ``assemble``'s attacking number and still says
+    ``P(2+ returns)``, because relabelling that one would claim a change
+    nobody made. The point of this rail is unchanged: every ceiling column
+    names the quantity it holds.
     """
-    html = render_report(_advice(), out_dir=tmp_path).read_text()
+    advice = _advice()
+    advice.alternatives = [{"code": 30, "name": "Brave", "ep": 6.0,
+                            "p_haul": 0.3, "league_eo": 4.0}]
+    html = render_report(advice, out_dir=tmp_path).read_text()
+    assert "P(10+ pts)" in html
     assert "P(2+ returns)" in html
     assert "P(haul)" not in html

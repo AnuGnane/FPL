@@ -116,6 +116,12 @@ HAUL_KEYS = ("alternatives", "captain_options")
 Both are written by ``advise.py`` as ``.to_dict("records")`` off frames whose
 column list lives in ``optimize/differentials.py`` — two protected files, and
 the reason this rename happens here (spec D3).
+
+v12 W3 §4.6: ``captain_options`` no longer carries ``p_haul`` at all — its
+ceiling is ``p_haul_total``, ``uncertainty.Band.p_haul``, which needs no
+rename because it was never the attacking one. The key stays in the tuple: a
+banked payload written before v12 still has the old column, and renaming it on
+the way out is exactly what this function is for.
 """
 
 

@@ -55,6 +55,10 @@ from gaffer.league_mode import (LeagueParams, captain_cover, captaincy_note,
                                 captaincy_override, compute_strategy,
                                 cover_table, tilt_ep, win_probability)
 from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
+# v12 W3 §4.6 (specs/2026-09-01-gaffer-v12-program-design.md): the captain
+# table's ceiling is the gameweek's own point distribution, which this module
+# has keyed on (code, gw) since v8g.
+from gaffer.uncertainty import bands_by_player_gw
 from gaffer.models.components import card_penalty
 from gaffer.models.minutes import apply_availability
 from gaffer.models.persistence import load_model, model_exists
@@ -943,7 +947,20 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
                   if "wildcard" in chip_names else None)
 
     ep_gw1 = ep_named[ep_named["gw"] == gw]
-    cap_tab = captain_table(ep_gw1, first.xi, league_eo)
+    # v12 W3 §4.6 (specs/2026-09-01-gaffer-v12-program-design.md): the ceiling
+    # the captain table ranks on is the gameweek's own point distribution —
+    # a double's two fixtures summed, under the sweep's sigma — and not
+    # ``ep_matrix``'s best-single-fixture ``p_haul``, which in a double is the
+    # better of two numbers printed as though it were the week's.
+    #
+    # ``bands_by_player_gw`` returns ``{}`` for a frame with no minutes model,
+    # and ``captain_table`` then keeps today's column. Same frame the sweep
+    # noises and the components panel bands: one answer per (code, gw).
+    haul_by_code = {code: band.p_haul
+                    for (code, band_gw), band in bands_by_player_gw(comp).items()
+                    if band_gw == gw}
+    cap_tab = captain_table(ep_gw1, first.xi, league_eo,
+                            haul=haul_by_code or None)
     if first.buys:
         alts = transfer_alternatives(ep_gw1, first.buys[0], league_eo)
         alts = alts[~alts["code"].isin(first.squad)]

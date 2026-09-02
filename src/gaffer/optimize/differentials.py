@@ -56,7 +56,8 @@ def _with_eo(ep: pd.DataFrame, league_eo: dict[int, float]) -> pd.DataFrame:
 
 
 def captain_table(ep: pd.DataFrame, xi_codes: list[int],
-                  league_eo: dict[int, float], top: int = 5) -> pd.DataFrame:
+                  league_eo: dict[int, float], top: int = 5,
+                  haul: dict[int, float] | None = None) -> pd.DataFrame:
     """Top captain candidates from the recommended XI with EV, ceiling and
     rival ownership.
 
@@ -64,16 +65,46 @@ def captain_table(ep: pd.DataFrame, xi_codes: list[int],
     above-median ceiling among the shortlisted candidates. Both halves matter:
     a low-owned player with no ceiling is not a differential, it is just a bad
     captain.
+
+    **The ceiling (v12 W3 §4.6,
+    specs/2026-09-01-gaffer-v12-program-design.md).** ``haul`` is
+    ``{code: P(total points >= 10)}`` from ``uncertainty.bands_by_player_gw``
+    — the gameweek's whole point distribution, EP summed across a double
+    gameweek's fixtures with the sweep's own sigma. Given one, the table
+    carries it as ``p_haul_total`` and drops ``p_haul``.
+
+    Dropping it is the point rather than a tidy-up. ``ep_matrix`` collapses a
+    double gameweek with ``p_haul=("p_haul", "max")`` — *"takes the best single
+    fixture rather than summing, since it is a probability"* — so on the exact
+    week a captain matters most, the ceiling column was the better of two
+    fixtures printed under the header ``P(2+ returns)``: a ranking number
+    wearing a probability's label, and the number a doubled-up captain is
+    chosen *for* was the one it could not show.
+
+    Without a ``haul`` — or with one that covers none of the shortlist — the
+    frame is exactly today's, ``p_haul`` and all, and a line says so. That is
+    the rail: a component frame with no minutes model produces no bands, and a
+    captain table is not worth failing over a ceiling.
     """
     df = _with_eo(ep[ep["code"].isin(xi_codes)], league_eo)
     df = df.nlargest(top, "ep").reset_index(drop=True)
-    median_haul = df["p_haul"].median()
+    ceiling_col = "p_haul"
+    if haul:
+        mapped = df["code"].map(lambda c: haul.get(int(c)))
+        if mapped.notna().any():
+            df["p_haul_total"] = mapped
+            df = df.drop(columns=["p_haul"])
+            ceiling_col = "p_haul_total"
+        else:
+            print("captain_table: no shortlisted captain carries a points "
+                  "band, so the ceiling stays P(2+ attacking returns)")
+    ceiling = pd.to_numeric(df[ceiling_col], errors="coerce")
     # league_eo is a percentage on this frame (captaincy can push it past 100);
     # the constant is a fraction. Convert here rather than rescaling the
     # column, which is returned to the caller.
     df["differential"] = ((df["league_eo"] < DIFFERENTIAL_EO * 100)
-                          & (df["p_haul"] >= median_haul))
-    return df[["code", "name", "position", "ep", "p_haul", "league_eo",
+                          & (ceiling >= ceiling.median()))
+    return df[["code", "name", "position", "ep", ceiling_col, "league_eo",
                "differential"]]
 
 
