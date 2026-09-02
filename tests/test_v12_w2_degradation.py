@@ -221,22 +221,35 @@ def test_w2_adds_no_route(monkeypatch, tmp_path):
                 if "latency" in p or "presser" in p or "trend" in p]
 
 
+# v12 W3 (orchestrator ruling 2026-09-02): the W2 rail audits W2's range, not
+# "since main"
+W1_MERGE = "ef8c5f3"
+W2_TIP = "754e1d1"
+
+
 def test_the_only_protected_file_w2_touched_is_milp():
     """The audit, as a test rather than as a step somebody remembers.
 
     Spec §3.4 authorizes one term in optimize/milp.py and nothing else in W2
-    touches a protected path. Run against the workstream's base commit.
+    touches a protected path.
+
+    The range is W2's own — ``ef8c5f3..754e1d1``, W1's merge to the last
+    commit of W2 — and not ``merge-base(HEAD, main)..HEAD``. The claim is
+    about what W2 did; scoped to "everything since main" the rail would fail
+    on the first authorized protected commit of every later workstream, which
+    is a rail reporting somebody else's diff under W2's name. If either commit
+    is unreachable — a shallow clone, an export — the audit is skipped rather
+    than answered from a range that does not exist.
     """
     import subprocess
 
-    base = subprocess.run(
-        ["git", "merge-base", "HEAD", "main"], capture_output=True,
-        text=True, check=False).stdout.strip()
-    if not base:
-        import pytest as _pytest
-        _pytest.skip("no merge base — running outside a git checkout")
+    for sha in (W1_MERGE, W2_TIP):
+        if subprocess.run(["git", "cat-file", "-e", f"{sha}^{{commit}}"],
+                          capture_output=True, check=False).returncode:
+            import pytest as _pytest
+            _pytest.skip(f"{sha} unreachable — W2's range is not in this tree")
     changed = subprocess.run(
-        ["git", "diff", "--name-only", base, "HEAD"], capture_output=True,
+        ["git", "diff", "--name-only", W1_MERGE, W2_TIP], capture_output=True,
         text=True, check=False).stdout.split()
     protected = [
         p for p in changed
