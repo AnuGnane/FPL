@@ -652,6 +652,19 @@ def tidy(apply: bool = typer.Option(
 
 
 @app.command()
+def mcp():
+    """Serve this tree to an MCP client (Claude Code) over stdio.
+
+    Add it with:  claude mcp add gaffer -- gaffer mcp
+    """
+    # No typer.echo anywhere in this command: stdout *is* the protocol
+    # channel, and a banner is a parse error at the other end.
+    from gaffer.mcp_server import run
+
+    run()
+
+
+@app.command()
 def ui(port: int = typer.Option(8927, help="Port to serve on (default 8927)."),
        open_browser: bool = typer.Option(
            True, "--open-browser/--no-open-browser",
