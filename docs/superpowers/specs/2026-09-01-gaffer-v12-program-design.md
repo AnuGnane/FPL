@@ -565,7 +565,7 @@ W2's diff under W3's name. The audit rail in
 
 **Pre-registered rules, written before any arm ran.**
 
-- [ ] **The replay.** Three seed bases a side, branch against a re-run `main`
+- [x] **The replay.** Three seed bases a side, branch against a re-run `main`
       (CONVENTIONS §1 — a banked number from an earlier cycle is not a valid
       comparison), run in the main tree after W2 has merged:
 
@@ -608,7 +608,32 @@ W2's diff under W3's name. The audit rail in
       no-regression check on the other five** — v10's G2, demoted the same way
       and for the same kind of reason.
 
-- [ ] **The captain-support check (§4.4).** On the live board, after an
+      **Result (run 2026-09-02, seeds `20260901,20260902,20260903`, both sides
+      in the main tree with `config.toml` byte-identical: `price_timing = false`
+      pinned explicitly, `xg_per_shot = false` and `draw_availability = false`
+      at their then-shipped defaults; `scripts/replay_pair.sh` was not used —
+      its main side imports the branch's `src` through the editable install —
+      so each side ran from its own checkout, `main` at `865f8dc`, the branch
+      detached at `63dc9fb`):**
+
+      ```
+      MULTISEED_DONE v12w3-main   {"totals": [1854, 1875, 1862], "mean": 1863.7, "spread": 21,  "seed_bases": [20260901, 20260902, 20260903]}
+      MULTISEED_DONE v12w3-branch {"totals": [1798, 1917, 1872], "mean": 1862.3, "spread": 119, "seed_bases": [20260901, 20260902, 20260903]}
+      ```
+
+      Hits `main` `[18, 12, 18]` (mean 16.0), branch `[15, 12, 13]` (mean
+      13.3). **Both halves clear: −1.3 on the mean (tolerance 5), hits down,
+      not up.** The lever did exactly what was pre-registered and nothing else:
+      `main` plays the free hit once (GW33 on every seed); the branch plays it
+      in both halves (GW18+25, GW13+29, GW18+31), because the hits credit lifts
+      its gain over `_pick_chip`'s floor on weeks the baseline paid for
+      transfers. The honest caveat is the spread: 21 → 119. A chip-timing
+      change is the highest-variance thing this harness measures, and K=3
+      cannot say whether an earlier free hit is worth anything — only that the
+      mean did not move. **Ships as built.** If anyone wants the sign, the next
+      measurement is a K=10 run of §4.5 alone; it is not in this program.
+
+- [x] **The captain-support check (§4.4).** On the live board, after an
       `advise` run:
 
       ```bash
@@ -623,11 +648,12 @@ W2's diff under W3's name. The audit rail in
       A `W3_SUPPORT_LEVER` line must appear first; without it the run measured
       two identical arms and is void.
 
-      **The arm ships OFF and this gate is what turns it on** (CONVENTIONS §6,
-      orchestrator ruling 2026-09-02). W3 merges with
+      **The arm was built OFF and this gate is what turns it on** (CONVENTIONS
+      §6, orchestrator ruling 2026-09-02). The gate ran before the merge with
       `[scenarios] draw_availability = false` and `Config.draw_availability =
-      False`, so no user's advice has drawn availability at the moment this
-      runs.
+      False` in the tree, so no user's advice had drawn availability at the
+      moment it ran; the flip landed on the branch afterwards and merges with
+      it.
 
       **If it passes:** flip four things in one commit — the `Config` default,
       the `load_config` default, `config.example.toml`, and the two
@@ -643,9 +669,26 @@ W2's diff under W3's name. The audit rail in
       anyway. Deleting the arm loses the measurement that cost the hours; the
       feature stays in the tree, stays tested, and stays off.
 
-- [ ] Zero unauthorized protected diffs (G1's audit, re-run on the merge —
-      `pytest -q tests/test_v12_w3_degradation.py -k protected`, whose base
-      pin `754e1d1` is still the right one after the merge).
+      **Result (run 2026-09-02 on the GW3 board, seed 20260828, n=40):**
+
+      ```
+      W3_SUPPORT_LEVER {"priced": 219, "covered": 219, "blanked_one_draw": 15}
+      W3_SUPPORT_DONE {"gw": 3, "captain": 209036, "seed": 20260828, "n": 40, "support_off": 60.0, "completed_off": 40, "support_on": 52.5, "completed_on": 40, "drop_pts": 7.5, "passes": true}
+      ```
+
+      Lever verified first (219 of 219 priced players carry a `p_play`, 15
+      blanked on one draw), then captain support 60.0 → 52.5 with every
+      scenario completing on both arms: drop 7.5 against the ceiling of 10.
+      **Passed → flipped** (`cd78254`): `Config.draw_availability = True`, the
+      `load_config` default, `config.example.toml`, and the three tests named
+      above. What the number is not: one board, one gameweek, one seed — and
+      the replay is blind to this lever, so the live board is where it shows.
+      `raw_optimum_agrees` will now read `False` more often (residual 2).
+
+- [x] Zero unauthorized protected diffs (G1's audit, re-run on the merge —
+      `pytest -q tests/test_v12_w3_degradation.py -k protected`; the base pin
+      moved to `865f8dc` with the rebase, which is the merge-base, and the rail
+      skips rather than lies if the SHA is unreachable).
 
 **Residuals for the G2 write-up, recorded before it runs.**
 
@@ -670,7 +713,19 @@ W2's diff under W3's name. The audit rail in
 
 ### W3 G3 — review and merge (orchestrator only)
 
-- [ ] Adversarial review, fix-first, re-verify.
+- [x] Adversarial review, fix-first, re-verify — six review rounds across the
+      workstream (T1–3, T4–7, T8–11, whole-W3, two re-verifies). The whole-W3
+      pass found §4.6 undelivered in production: the banding call was handed
+      the components frame, which has no `ep`, so the captain ceiling silently
+      stayed `p_haul` under a stronger label, and a source-spelling test had
+      pinned the bug. Fixed by banding the frame `save_components` already
+      builds (`b8764f1`), the report header made conditional (`597e1a0`), and
+      every W3 `in src` rail given a behavioural sibling or a stated reason
+      (`63dc9fb`). Earlier rounds: the `renderBoard` fixture that did not
+      exist, the golden LP that read the live price log, the plan's `kw` dict
+      that would have deleted W2's term, D1 reverting W1's EO fix, `nan%` in
+      the captain table, the pair judged against the single-chip bar, the
+      gap computed across two objective frames when the sweep fails.
 - [ ] Merge ritual: ff-only, push, `git show main:config.toml` fails, key-grep
       empty.
 

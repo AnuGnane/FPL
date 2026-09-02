@@ -471,9 +471,9 @@ def test_the_banded_captain_table_gets_the_banded_header(tmp_path):
     html = render_report(advice, out_dir=tmp_path).read_text()
     assert "P(10+ pts)" in html
     assert "both fixtures" in html
-    # The differential alternatives table keeps the attacking header, so
-    # "P(2+ returns)" is still in the page — this rail is about the captain
-    # column, and the two must not be conflated.
+    # This fixture carries no alternatives, so the attacking header is not on
+    # the page at all; the count rail is about the captain column alone (the
+    # header and its note), and tests/test_report.py holds the two-table case.
     assert html.count("P(10+ pts)") == 2   # the header and its note
 
 
