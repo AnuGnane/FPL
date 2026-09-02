@@ -102,10 +102,29 @@ def refresh():
     """Pull latest FPL data into data/live/."""
     from gaffer.api.client import FPLClient
     from gaffer.config import load_config
+    from gaffer.data.bootstrap import build_events, season_from_events
     from gaffer.data.live import refresh_live
 
     cfg = load_config()
-    df = refresh_live(FPLClient(), cfg.current_season, len(cfg.train_seasons))
+    client = FPLClient()
+    # v12 W1 §2.4. Every downstream failure of a rollover is silent:
+    # `current_season` is stamped onto every row banked here and every model
+    # trained afterwards, so a stale value does not raise — it labels this
+    # season's rows as last season's and trains on the mixture. The first
+    # symptom is a model that has quietly got worse.
+    #
+    # `None` is "cannot tell" and never blocks: a bootstrap FPL has not opened
+    # for the new season is a normal July state.
+    ingested = season_from_events(build_events(client.get_bootstrap()))
+    if ingested is not None and ingested != cfg.current_season:
+        typer.echo(
+            f"Refusing to refresh: the API is serving {ingested} and "
+            f"config.toml says {cfg.current_season}.\n"
+            f"A rollover needs two keys changed together in [data]: set "
+            f"current_season = \"{ingested}\" and append "
+            f"\"{cfg.current_season}\" to train_seasons.")
+        raise typer.Exit(1)
+    df = refresh_live(client, cfg.current_season, len(cfg.train_seasons))
     typer.echo(f"Refreshed {len(df)} player-GW rows.")
 
 

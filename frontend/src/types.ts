@@ -474,6 +474,11 @@ export interface HealthData {
   odds_key_present: boolean
   model_health: Record<string, unknown> | null
   artifacts: Array<{ name: string; bytes: number }>
+  // Three states, not two: null is "cannot tell" (no events snapshot yet),
+  // and the mismatch banner draws on false alone.
+  season_ok?: boolean | null
+  season_config?: string | null
+  season_ingested?: string | null
 }
 
 export interface TickerData {

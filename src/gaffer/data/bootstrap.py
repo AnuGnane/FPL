@@ -113,6 +113,32 @@ def build_events(raw: dict) -> pd.DataFrame:
     )
 
 
+def season_from_events(events: pd.DataFrame) -> str | None:
+    """``"2026-27"`` from the events' deadlines, or ``None`` if unknowable.
+
+    v12 W1 §2.4 (specs/2026-09-01-gaffer-v12-program-design.md). FPL's
+    bootstrap carries no season string; what it carries is deadlines, and the
+    earliest of them is in August of the season's first year.
+
+    The **minimum** parseable year, not the first row's: a partially published
+    season can be missing rows, and ``min`` degrades to the earliest week there
+    is without needing to know that.
+
+    ``None`` for an empty frame, a missing column, or deadlines that will not
+    parse — and ``None`` means *unknown*, never *mismatched*. A guard that
+    treated the two the same would refuse to ingest every July, which is the
+    outage it exists to prevent.
+    """
+    if "deadline_time" not in getattr(events, "columns", ()):
+        return None
+    stamps = pd.to_datetime(events["deadline_time"], errors="coerce",
+                            utc=True, format="mixed").dropna()
+    if stamps.empty:
+        return None
+    year = int(stamps.min().year)
+    return f"{year}-{(year + 1) % 100:02d}"
+
+
 def next_gw(raw: dict) -> int:
     for ev in raw["events"]:
         if ev.get("is_next"):

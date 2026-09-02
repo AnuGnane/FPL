@@ -19,6 +19,7 @@ from gaffer.artifacts import (REPORTS, ingested_through, latest_gw,
                               load_advice, load_snapshot, load_solve_state,
                               milp_pool, raw_ep_by, solve_kw_from_state)
 from gaffer.data import store
+from gaffer.data.bootstrap import season_from_events
 from gaffer.data.elo import compute_elo, expected_score
 from gaffer.data.odds import poisson_win_prob
 from gaffer.errors import GafferError
@@ -196,6 +197,24 @@ def health() -> Health:
     except Exception:  # noqa: BLE001 — no config.toml is a valid state here
         odds_key = False
 
+    # v12 W1 §2.4. Disk only, by this module's own contract: the events
+    # snapshot is what the last refresh banked, so the comparison answers "is
+    # the data on disk the data the config describes" — which is the state
+    # that matters — without a network call on a page-load path.
+    season_config = season_ingested = None
+    season_ok = None
+    try:
+        season_config = load_config().current_season
+    except Exception:  # noqa: BLE001 — no config.toml is a valid state here
+        season_config = None
+    try:
+        season_ingested = season_from_events(
+            store.load("live/events.parquet"))
+    except Exception:  # noqa: BLE001 — no snapshot yet is a valid state too
+        season_ingested = None
+    if season_config and season_ingested:
+        season_ok = season_config == season_ingested
+
     model_health = None
     health_file = REPORTS / "health.json"
     if health_file.exists():
@@ -213,7 +232,9 @@ def health() -> Health:
                                         modified_at=log_modified,
                                         last_line=last_line),
                   odds_key_present=odds_key, model_health=model_health,
-                  artifacts=artifacts)
+                  artifacts=artifacts, season_ok=season_ok,
+                  season_config=season_config,
+                  season_ingested=season_ingested)
 
 
 def _odds_lookup() -> dict[tuple[int, int, int], tuple[float, float]]:

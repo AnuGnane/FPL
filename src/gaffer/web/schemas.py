@@ -822,6 +822,19 @@ class Health(BaseModel):
     odds_key_present: bool
     model_health: dict[str, Any] | None
     artifacts: list[ArtifactItem]
+    season_ok: bool | None = None
+    """Does the banked data's season match ``config.current_season``?
+
+    Three states, not two. ``None`` is *cannot tell* — no events snapshot, or
+    deadlines that will not parse — and it is not an alarm: a cold clone has
+    no data to disagree with. The banner draws on ``False`` alone.
+    """
+    season_config: str | None = None
+    """What ``config.toml`` says this season is."""
+    season_ingested: str | None = None
+    """What the last refresh actually banked, derived from the events' own
+    deadlines. Read off disk, never off the API: this endpoint is polled by a
+    tab and must not depend on FPL being up."""
 
 
 class TickerCell(BaseModel):

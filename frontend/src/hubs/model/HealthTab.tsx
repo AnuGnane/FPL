@@ -29,6 +29,25 @@ export default function HealthTab() {
 
   return (
     <>
+      {/* `=== false`, never `!data.season_ok`: null is "cannot tell" and a
+          falsy check would paint this on every cold clone. */}
+      {data.season_ok === false && (
+        <div
+          data-testid="season-mismatch"
+          className="mb-4 rounded-card border border-rust bg-card px-4 py-3
+                     text-rust"
+        >
+          <p className="font-semibold">Season mismatch</p>
+          <p className="mt-1 text-text-secondary">
+            {`The last refresh banked ${data.season_ingested}; config.toml says
+              ${data.season_config}. Set [data] current_season to
+              ${data.season_ingested} and append ${data.season_config} to
+              train_seasons — both, together. Until then every row ingested
+              carries the wrong season label and every model trained on them
+              trains on the mixture.`}
+          </p>
+        </div>
+      )}
       <Card title="Data freshness" className="mb-4">
         <div className="overflow-x-auto">
         <table className="w-full">
