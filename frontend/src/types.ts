@@ -580,6 +580,8 @@ export interface QualityData {
   benchmark: BenchmarkEvaluation | null
   decomposition: DecompositionData | null
   news_shadow: NewsShadowData | null
+  flag_latency: FlagLatencyData | null
+  presser_grades: PresserGradesData | null
 }
 
 export interface ChipWorkbenchRow {
@@ -747,6 +749,75 @@ export interface NewsShadowData {
   rows: number
   overall: Partial<NewsShadowSummary>
   by_gw: NewsShadowGw[]
+}
+
+export interface LeadBucket {
+  bucket: string
+  started: number
+  missed: number
+}
+
+export interface FlagChange {
+  gw: number
+  code: number
+  /** The snapshot day the status first differed — the first day a manager
+   *  could have acted, not the last. */
+  first_change: string
+  lead_days: number
+  from_status: string
+  final_status: string
+  chance_of_playing: number | null
+  started: boolean
+}
+
+export interface FlagLatencyData {
+  run_at: string
+  git_sha: string
+  /** False until fourteen snapshot days and one graded covered gameweek. The
+   *  card still renders — it prints `note`. */
+  available: boolean
+  rows: number
+  note: string | null
+  snap_dates: number
+  min_snap_dates: number
+  covered_gws: number[]
+  checked_covered_gws: number[]
+  histogram: LeadBucket[]
+  late_flags: FlagChange[]
+  /* The scorer's raw `changes` rows are banked in reports/evaluation.json and
+   * deliberately not on the wire (schemas.py, FlagLatency): nothing here reads
+   * them and they are the one field that grows all season. */
+}
+
+export interface VerdictRow {
+  verdict: string
+  n: number
+  started: number
+  not_started: number
+}
+
+export interface VerdictScore {
+  verdict: string
+  n: number
+  /** P(did not start | this verdict). */
+  precision: number
+  recall: number
+}
+
+export interface PresserGradesData {
+  run_at: string
+  git_sha: string
+  available: boolean
+  rows: number
+  note: string | null
+  verdicts_banked: number
+  graded_gws: number[]
+  absent_rows: number
+  confusion: VerdictRow[]
+  per_class: VerdictScore[]
+  by_source: Array<{ source: string; rows: number }>
+  /** Which population `recall` is over. Printed, not assumed. */
+  recall_population: string
 }
 
 /** One probability head's calibration, or its refusal (v9d §4). */

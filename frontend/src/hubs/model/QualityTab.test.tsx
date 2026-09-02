@@ -189,6 +189,108 @@ describe('QualityTab', () => {
     expect(screen.queryByRole('heading', { name: /news layer/i }))
       .not.toBeInTheDocument()
   })
+
+  const FLAG_LATENCY = {
+    run_at: 'now', git_sha: 'abc1234', available: true, rows: 2, note: null,
+    snap_dates: 15, min_snap_dates: 14, covered_gws: [3],
+    checked_covered_gws: [3],
+    histogram: [{ bucket: '1-2d', started: 1, missed: 1 },
+                { bucket: '3-5d', started: 3, missed: 0 }],
+    // Both directions of disagreement, because both are late flags: the log
+    // said 'i' and he started, and the log said 'a' and he did not.
+    late_flags: [{ gw: 3, code: 7, first_change: '2026-09-03',
+                   lead_days: 1.73, from_status: 'a', final_status: 'i',
+                   chance_of_playing: 0, started: true },
+                 { gw: 3, code: 9, first_change: '2026-09-02',
+                   lead_days: 2.73, from_status: 'i', final_status: 'a',
+                   chance_of_playing: 100, started: false }],
+  }
+
+  const PRESSER = {
+    run_at: 'now', git_sha: 'abc1234', available: true, rows: 4, note: null,
+    verdicts_banked: 9, graded_gws: [3], absent_rows: 3,
+    confusion: [{ verdict: 'ruled_out', n: 4, started: 1, not_started: 3 }],
+    per_class: [{ verdict: 'ruled_out', n: 4, precision: 0.75, recall: 1 }],
+    by_source: [{ source: 'premierinjuries', rows: 4 }],
+    recall_population: 'verdict-carrying rows',
+  }
+
+  it('draws the lead-time histogram and the worst late flags', async () => {
+    apiGet.mockImplementation((path: string) => (
+      path === '/api/quality'
+        ? Promise.resolve({ flag_latency: FLAG_LATENCY })
+        : Promise.reject(new FakeApiError(422, 'nothing'))))
+    render(<MemoryRouter><QualityTab /></MemoryRouter>)
+    expect(await screen.findByText('Availability signal')).toBeInTheDocument()
+    expect(screen.getByTestId('lead-bucket-1-2d')).toHaveTextContent('1')
+    expect(screen.getByTestId('late-flag-3-7')).toHaveTextContent('started')
+    expect(screen.getByTestId('late-flag-3-9'))
+      .toHaveTextContent('did not start')
+  })
+
+  it('says what it is waiting for instead of drawing zeros', async () => {
+    // Spec §1. The bar chart of an empty histogram is a row of zeroes that
+    // reads as "nothing ever changed", which is a measurement nobody made.
+    apiGet.mockImplementation((path: string) => (
+      path === '/api/quality'
+        ? Promise.resolve({
+          flag_latency: {
+            ...FLAG_LATENCY, available: false, rows: 0, snap_dates: 3,
+            checked_covered_gws: [], histogram: [], late_flags: [],
+            note: '3 of 14 snapshot days banked, and 0 covered gameweek(s) '
+              + 'graded.',
+          },
+        })
+        : Promise.reject(new FakeApiError(422, 'nothing'))))
+    render(<MemoryRouter><QualityTab /></MemoryRouter>)
+    expect(await screen.findByTestId('flag-latency-empty'))
+      .toHaveTextContent('3 of 14 snapshot days')
+    expect(screen.queryByTestId('lead-bucket-1-2d')).toBeNull()
+  })
+
+  it('withholds the tables on an open gate with nothing in them', async () => {
+    // available && rows === 0 is a real state — fourteen days banked, a
+    // gameweek graded, and not one status moved in it. Three empty tables
+    // under a headline of "0 status changes" is the same row of zeroes as
+    // above, so the sentence stands in for them here too.
+    apiGet.mockImplementation((path: string) => (
+      path === '/api/quality'
+        ? Promise.resolve({
+          flag_latency: {
+            ...FLAG_LATENCY, rows: 0, histogram: [], late_flags: [],
+          },
+        })
+        : Promise.reject(new FakeApiError(422, 'nothing'))))
+    render(<MemoryRouter><QualityTab /></MemoryRouter>)
+    expect(await screen.findByText('Availability signal')).toBeInTheDocument()
+    expect(screen.getByTestId('flag-latency-empty'))
+      .toHaveTextContent(/no status change/i)
+    expect(screen.queryByTestId('lead-bucket-1-2d')).toBeNull()
+  })
+
+  it('prints precision per verdict class with its denominator', async () => {
+    apiGet.mockImplementation((path: string) => (
+      path === '/api/quality'
+        ? Promise.resolve({ presser_grades: PRESSER })
+        : Promise.reject(new FakeApiError(422, 'nothing'))))
+    render(<MemoryRouter><QualityTab /></MemoryRouter>)
+    const row = await screen.findByTestId('verdict-ruled_out')
+    expect(row).toHaveTextContent('0.75')
+    expect(row).toHaveTextContent('4')
+    expect(screen.getByTestId('presser-recall-note'))
+      .toHaveTextContent('verdict-carrying rows')
+  })
+
+  it('draws no availability card at all on an artifact without the keys',
+     async () => {
+       // The default fixture is every other quality key and neither of these
+       // two, which is what every artifact banked before this cycle looks
+       // like. Awaited on a heading that fixture definitely renders, so the
+       // absence below is checked after the payload has landed.
+       render(<MemoryRouter><QualityTab /></MemoryRouter>)
+       await screen.findByRole('heading', { name: /holdout/i })
+       expect(screen.queryByText('Availability signal')).toBeNull()
+     })
 })
 
 // Gameweeks 11-13, deliberately clear of the news-shadow fixture's GW3/GW4:

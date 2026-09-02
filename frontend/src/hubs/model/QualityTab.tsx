@@ -10,9 +10,9 @@ import {
 } from '../../kit'
 import type {
   BenchmarkEvaluation, CalibrationData, CalibrationHead, CurrentEvaluation,
-  DecompositionData, HeadMetrics,
+  DecompositionData, FlagLatencyData, HeadMetrics,
   MissRow, MissesData, NewsShadowData, PenTrackerData,
-  PenTrackerGw, QualityData, ReviewData, StratifiedTable,
+  PenTrackerGw, PresserGradesData, QualityData, ReviewData, StratifiedTable,
 } from '../../types'
 
 // Categories are OpenFPL's, defined on actual points, so the labels have to
@@ -522,6 +522,192 @@ function NewsShadowSection({ shadow }: { shadow: NewsShadowData }) {
   )
 }
 
+// The bar is scaled to the largest bucket in *this* histogram, the way
+// PairedBar scales to its own row: lead times are counts and a shared axis
+// across a fortnight of snapshots would draw every early bucket as nothing.
+function LeadBar({ started, missed, top }:
+                 { started: number; missed: number; top: number }) {
+  return (
+    <span className="inline-flex w-32 flex-col gap-0.5 align-middle">
+      <span className="h-1.5 rounded-full bg-base">
+        <span className="block h-1.5 rounded-full"
+              style={{ width: `${(started / top) * 100}%`,
+                       background: 'var(--color-sage)' }}
+              aria-label={`started ${started}`} />
+      </span>
+      <span className="h-1.5 rounded-full bg-base">
+        <span className="block h-1.5 rounded-full"
+              style={{ width: `${(missed / top) * 100}%`,
+                       background: 'var(--color-rust)' }}
+              aria-label={`did not start ${missed}`} />
+      </span>
+    </span>
+  )
+}
+
+function FlagLatencySection({ data }: { data: FlagLatencyData }) {
+  // Two gates, one empty state. `available` is the server's fourteen-day
+  // rule; `rows === 0` is an open gate over a fortnight in which nothing
+  // moved. Either way the tables would be a row of zeroes that reads as a
+  // measurement, and spec §1 wants a sentence instead — the server's own
+  // where there is one, so the CLI and the page cannot drift apart on it.
+  if (!data.available || data.rows === 0) {
+    return (
+      <p data-testid="flag-latency-empty" className="text-text-muted">
+        {data.note
+          ?? `No status changed before a deadline in ${data.snap_dates} `
+             + 'snapshot days of graded gameweeks.'}
+      </p>
+    )
+  }
+  const top = Math.max(
+    1, ...data.histogram.map((b) => Math.max(b.started, b.missed)))
+  return (
+    <>
+      <p className="mb-2 text-text-secondary">
+        {data.rows}
+        {' status changes over '}
+        {data.snap_dates}
+        {' snapshot days, in gameweeks '}
+        {data.checked_covered_gws.join(', ')}
+        {'.'}
+      </p>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr>
+              <th className="label pb-1 text-left">Warning</th>
+              <th className="label pb-1 text-right">Started</th>
+              <th className="label pb-1 text-right">Did not</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {data.histogram.map((b) => (
+              <tr key={b.bucket} data-testid={`lead-bucket-${b.bucket}`}
+                  className="border-t border-divider">
+                <td className="num py-1.5 text-text">{b.bucket}</td>
+                <td className="num py-1.5 text-right text-sage">
+                  {b.started}
+                </td>
+                <td className="num py-1.5 text-right text-rust">
+                  {b.missed}
+                </td>
+                <td className="px-2 py-1.5">
+                  <LeadBar started={b.started} missed={b.missed} top={top} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {data.late_flags.length > 0 && (
+        <div className="mt-3 overflow-x-auto">
+          <p className="label mb-1">
+            Latest flags whose final status disagreed with the start
+          </p>
+          <table className="w-full">
+            <tbody>
+              {data.late_flags.map((f) => (
+                <tr key={`${f.gw}-${f.code}`}
+                    data-testid={`late-flag-${f.gw}-${f.code}`}
+                    className="border-t border-divider">
+                  <td className="num py-1.5 text-text">{`GW${f.gw}`}</td>
+                  <td className="num py-1.5 text-text-secondary">
+                    {`code ${f.code}`}
+                  </td>
+                  <td className="num py-1.5 text-right">
+                    {`${fmtNum(f.lead_days, 2)}d`}
+                  </td>
+                  <td className="py-1.5 text-text-muted">
+                    {`${f.from_status} → ${f.final_status}`}
+                  </td>
+                  <td className="py-1.5 text-right">
+                    {f.started ? 'started' : 'did not start'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  )
+}
+
+function PresserGradesSection({ data }: { data: PresserGradesData }) {
+  if (!data.available || data.rows === 0) {
+    return (
+      <p data-testid="presser-grades-empty" className="mt-3 text-text-muted">
+        {data.note ?? 'No verdict has been graded yet.'}
+      </p>
+    )
+  }
+  const conf = new Map(data.confusion.map((c) => [c.verdict, c]))
+  return (
+    <div className="mt-4">
+      <p className="label mb-1">Presser verdicts</p>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr>
+              <th className="label pb-1 text-left">Verdict</th>
+              <th className="label pb-1 text-right">Graded</th>
+              <th className="label pb-1 text-right">Started</th>
+              <th className="label pb-1 text-right">Absent</th>
+              <th className="label pb-1 text-right">Precision</th>
+              <th className="label pb-1 text-right">Recall</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.per_class.map((row) => (
+              <tr key={row.verdict} data-testid={`verdict-${row.verdict}`}
+                  className="border-t border-divider">
+                <td className="py-1.5 text-text">{row.verdict}</td>
+                <td className="num py-1.5 text-right">{row.n}</td>
+                <td className="num py-1.5 text-right text-text-muted">
+                  {conf.get(row.verdict)?.started ?? 0}
+                </td>
+                <td className="num py-1.5 text-right text-text-muted">
+                  {conf.get(row.verdict)?.not_started ?? 0}
+                </td>
+                <td className="num py-1.5 text-right text-sage">
+                  {fmtNum(row.precision, 2)}
+                </td>
+                <td className="num py-1.5 text-right text-text-secondary">
+                  {/* The denominator is the gameweek's absences. With none,
+                      the payload stores 0 and this prints a dash: 0.00 beside
+                      a class that found none of nothing reads as a class that
+                      missed everything. */}
+                  {data.absent_rows > 0 ? fmtNum(row.recall, 2) : '—'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p data-testid="presser-recall-note"
+         className="mt-1 text-xs text-text-faint">
+        {'Precision is P(did not start | verdict). Recall is over '}
+        {data.recall_population}
+        {` — ${data.absent_rows} absences among ${data.rows} graded `}
+        {'verdicts, not every absence in the gameweek.'}
+      </p>
+    </div>
+  )
+}
+
+function AvailabilitySection({ flag, presser }:
+                             { flag: FlagLatencyData | null
+                               presser: PresserGradesData | null }) {
+  return (
+    <Card title="Availability signal" className="mt-4">
+      {flag && <FlagLatencySection data={flag} />}
+      {presser && <PresserGradesSection data={presser} />}
+    </Card>
+  )
+}
+
 // The instrument is the first thing to read on a pen row: an xg-gap week
 // counts penalties, a pens_missed_only week can only see the ones that were
 // missed, so every number beside it is a floor rather than a count.
@@ -850,6 +1036,13 @@ export default function QualityTab() {
         && <DecompositionSection decomposition={data.decomposition} />}
       {data.news_shadow && data.news_shadow.rows > 0
         && <NewsShadowSection shadow={data.news_shadow} />}
+      {/* A9: deliberately not the news-shadow rule above. The card renders
+          whenever either key is present, empty report included, because spec
+          §1 wants the page to say what it is waiting for. `rows > 0` gates
+          the tables inside it, not the card. */}
+      {(data.flag_latency || data.presser_grades)
+        && <AvailabilitySection flag={data.flag_latency ?? null}
+                                presser={data.presser_grades ?? null} />}
       <CalibrationSection />
       <ScatterSection />
       <MissesSection />
