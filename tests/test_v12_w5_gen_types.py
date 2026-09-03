@@ -129,6 +129,24 @@ def test_no_ref_still_points_at_a_pre_rename_name():
         assert f'"#/definitions/{old}"' not in text, old
 
 
+def test_the_sentence_under_a_field_in_schemas_py_reaches_the_schema():
+    """The split deletes a hundred hand-written interfaces and the comments on
+    them. What survives has to be the sentence schemas.py already writes —
+    pydantic drops attribute docstrings unless every model opts in, so the
+    generator reads them itself.
+    """
+    props = build_schema()["definitions"]["SettingsPanel"]["properties"]
+    assert props["unavailable"]["description"].startswith(
+        "Whitelisted settings this build's ``Config`` does not have.")
+
+
+def test_a_field_with_no_sentence_gets_no_description():
+    """Not every field is documented, and inventing a description for one that
+    is not would put the generator's voice in the browser."""
+    props = build_schema()["definitions"]["SettingsPanel"]["properties"]
+    assert "description" not in props["rows"]
+
+
 def test_the_root_uses_definitions_and_not_defs():
     """json-schema-to-typescript reads `definitions`. A 2020-12 `$defs`
     document compiles to a single empty interface and nothing says why."""

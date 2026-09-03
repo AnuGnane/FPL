@@ -117,6 +117,55 @@ def schema_path() -> str:
     return "frontend/src/schemas.json"
 
 
+def _strip_titles(node) -> None:
+    """Drop pydantic's auto-generated ``title`` from everywhere but the model.
+
+    Pydantic titles every property (``"title": "Opponent Short"``), and
+    ``json-schema-to-typescript`` reads a title as "this shape deserves a name
+    of its own": left in, they emit eight hundred standalone aliases —
+    ``export type Name = string``, then ``Name1``, ``Code2``, ``Bytes1`` —
+    which is a name collision waiting to happen and an export surface nobody
+    asked for.
+    """
+    if isinstance(node, dict):
+        node.pop("title", None)
+        for value in node.values():
+            _strip_titles(value)
+    elif isinstance(node, list):
+        for value in node:
+            _strip_titles(value)
+
+
+def _field_sentences() -> dict:
+    """``(model, field) -> the sentence written under it in schemas.py``.
+
+    Pydantic carries an attribute docstring into a JSON Schema only when the
+    model sets ``use_attribute_docstrings``, which here would be a hundred and
+    forty-seven identical config lines. Reading them costs one ``ast`` walk and
+    keeps schemas.py the single place the sentence is written — which matters
+    more than usual, because the split deletes the hand-written interfaces
+    those sentences were duplicated on.
+    """
+    import ast
+    import inspect
+
+    from gaffer.web import schemas
+
+    out = {}
+    for cls in ast.parse(inspect.getsource(schemas)).body:
+        if not isinstance(cls, ast.ClassDef):
+            continue
+        for stmt, following in zip(cls.body, cls.body[1:]):
+            if (isinstance(stmt, ast.AnnAssign)
+                    and isinstance(stmt.target, ast.Name)
+                    and isinstance(following, ast.Expr)
+                    and isinstance(following.value, ast.Constant)
+                    and isinstance(following.value.value, str)):
+                out[(cls.name, stmt.target.id)] = inspect.cleandoc(
+                    following.value.value)
+    return out
+
+
 def _models():
     from pydantic import BaseModel
 
@@ -153,7 +202,21 @@ def build_schema() -> dict:
         [(model, "serialization") for _, model in models],
         ref_template="#/definitions/{model}", title="Gaffer API")
     defs = top.get("$defs", {})
-    renamed = {RENAME.get(name, name): defs[name] for name in sorted(defs)}
+    sentences = _field_sentences()
+    renamed = {}
+    for name in sorted(defs):
+        body = defs[name]
+        _strip_titles(body)
+        for field, prop in sorted(body.get("properties", {}).items()):
+            sentence = sentences.get((name, field))
+            if sentence and "description" not in prop:
+                prop["description"] = sentence
+        # Put the title back, as the *renamed* name: it is what
+        # json-schema-to-typescript names the interface, so a definition that
+        # kept pydantic's title would emit `AdviceLatest` out of a definition
+        # called `WireAdviceLatest` and the rename would be a no-op.
+        body["title"] = RENAME.get(name, name)
+        renamed[body["title"]] = body
     text = json.dumps({"definitions": renamed}, sort_keys=True)
     for old, new in RENAME.items():
         text = text.replace(f'"#/definitions/{old}"',

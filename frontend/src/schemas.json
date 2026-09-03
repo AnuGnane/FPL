@@ -4,21 +4,18 @@
    "description": "What changed between the two newest runs of one gameweek.\n\n``available`` is false on a first run of the week \u2014 the ordinary case, not\nan error \u2014 and everything else is then empty, so the client renders\nnothing without having to special-case a status code.",
    "properties": {
     "available": {
-     "title": "Available",
      "type": "boolean"
     },
     "buys_added": {
      "items": {
       "$ref": "#/definitions/AdvicePlayer"
      },
-     "title": "Buys Added",
      "type": "array"
     },
     "buys_dropped": {
      "items": {
       "$ref": "#/definitions/AdvicePlayer"
      },
-     "title": "Buys Dropped",
      "type": "array"
     },
     "captain_from": {
@@ -45,7 +42,6 @@
     },
     "changed": {
      "default": false,
-     "title": "Changed",
      "type": "boolean"
     },
     "chip_from": {
@@ -57,8 +53,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Chip From"
+     "default": null
     },
     "chip_to": {
      "anyOf": [
@@ -69,8 +64,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Chip To"
+     "default": null
     },
     "current_at": {
      "anyOf": [
@@ -81,14 +75,13 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Current At"
+     "default": null
     },
     "ep_movers": {
+     "description": "Players whose expected points moved between the two newest component\nbreakdowns. Independent of ``available``: a first run of the week has no\nplan to diff and may still have a retrain to report (plan A10).",
      "items": {
       "$ref": "#/definitions/EpMover"
      },
-     "title": "Ep Movers",
      "type": "array"
     },
     "ep_movers_count": {
@@ -101,15 +94,13 @@
       }
      ],
      "default": null,
-     "title": "Ep Movers Count"
+     "description": "How many moved, or ``None`` when there is no predecessor breakdown to\ncompare against. ``None`` and ``0`` are different claims \u2014 \"we have not\nretrained since you looked\" against \"the retrain changed nothing\" \u2014 and\nthe strip renders only the second."
     },
     "expected_pts_delta": {
      "default": 0.0,
-     "title": "Expected Pts Delta",
      "type": "number"
     },
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "previous_at": {
@@ -121,21 +112,18 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Previous At"
+     "default": null
     },
     "sells_added": {
      "items": {
       "$ref": "#/definitions/AdvicePlayer"
      },
-     "title": "Sells Added",
      "type": "array"
     },
     "sells_dropped": {
      "items": {
       "$ref": "#/definitions/AdvicePlayer"
      },
-     "title": "Sells Dropped",
      "type": "array"
     }
    },
@@ -149,11 +137,9 @@
   "AdvicePlayer": {
    "properties": {
     "code": {
-     "title": "Code",
      "type": "integer"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     }
    },
@@ -167,11 +153,9 @@
   "ArtifactItem": {
    "properties": {
     "bytes": {
-     "title": "Bytes",
      "type": "integer"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     }
    },
@@ -185,15 +169,12 @@
   "BackupHealth": {
    "properties": {
     "bytes": {
-     "title": "Bytes",
      "type": "integer"
     },
     "modified_at": {
-     "title": "Modified At",
      "type": "string"
     },
     "path": {
-     "title": "Path",
      "type": "string"
     }
    },
@@ -208,11 +189,9 @@
   "BenchmarkEvaluation": {
    "properties": {
     "caveat": {
-     "title": "Caveat",
      "type": "string"
     },
     "git_sha": {
-     "title": "Git Sha",
      "type": "string"
     },
     "references": {
@@ -222,11 +201,9 @@
       },
       "type": "object"
      },
-     "title": "References",
      "type": "object"
     },
     "run_at": {
-     "title": "Run At",
      "type": "string"
     },
     "stratified": {
@@ -236,11 +213,9 @@
       },
       "type": "object"
      },
-     "title": "Stratified",
      "type": "object"
     },
     "test_season": {
-     "title": "Test Season",
      "type": "string"
     }
    },
@@ -258,7 +233,6 @@
   "CalibrationGw": {
    "properties": {
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "heads": {
@@ -266,11 +240,9 @@
       "$ref": "#/definitions/CalibrationHead"
      },
      "default": {},
-     "title": "Heads",
      "type": "object"
     },
     "n": {
-     "title": "N",
      "type": "integer"
     }
    },
@@ -293,8 +265,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Brier"
+     "default": null
     },
     "log_loss": {
      "anyOf": [
@@ -305,11 +276,9 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Log Loss"
+     "default": null
     },
     "n": {
-     "title": "N",
      "type": "integer"
     },
     "reliability": {
@@ -317,11 +286,9 @@
      "items": {
       "$ref": "#/definitions/ReliabilityBin"
      },
-     "title": "Reliability",
      "type": "array"
     },
     "status": {
-     "title": "Status",
      "type": "string"
     }
    },
@@ -335,15 +302,12 @@
   "CategoryMetrics": {
    "properties": {
     "mae": {
-     "title": "Mae",
      "type": "number"
     },
     "n": {
-     "title": "N",
      "type": "integer"
     },
     "rmse": {
-     "title": "Rmse",
      "type": "number"
     }
    },
@@ -361,11 +325,9 @@
      "items": {
       "$ref": "#/definitions/ChipPlanRow"
      },
-     "title": "Chips",
      "type": "array"
     },
     "gw": {
-     "title": "Gw",
      "type": "integer"
     }
    },
@@ -379,19 +341,15 @@
   "ChipPlanRow": {
    "properties": {
     "best_gain": {
-     "title": "Best Gain",
      "type": "number"
     },
     "best_gain_per_week": {
-     "title": "Best Gain Per Week",
      "type": "number"
     },
     "best_gw": {
-     "title": "Best Gw",
      "type": "integer"
     },
     "chip": {
-     "title": "Chip",
      "type": "string"
     },
     "now_gain": {
@@ -402,8 +360,7 @@
       {
        "type": "null"
       }
-     ],
-     "title": "Now Gain"
+     ]
     },
     "play_now": {
      "anyOf": [
@@ -414,8 +371,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Play Now"
+     "default": null
     },
     "play_now_delta": {
      "anyOf": [
@@ -425,15 +381,14 @@
       {
        "type": "null"
       }
-     ],
-     "title": "Play Now Delta"
+     ]
     },
     "thetas": {
      "default": [],
+     "description": "\u03b8 per week, aligned by index with ``weeks``. Built at the router by\nlooping the same ``(chip, gw) -> float`` callable, because putting it in\n``chip_plan``'s week rows would be an ``optimize/**`` edit for a display\nfield (plan A9).",
      "items": {
       "type": "number"
      },
-     "title": "Thetas",
      "type": "array"
     },
     "threshold_now": {
@@ -446,7 +401,7 @@
       }
      ],
      "default": null,
-     "title": "Threshold Now"
+     "description": "\u03b8 for this chip in the current gameweek: the surplus the best remaining\nweek is expected to offer. ``chip_plan`` has always computed it and this\nmodel has never declared it, so until v10b it was computed and dropped \u2014\nthe ``odds_blend_weight`` failure, repeated. An undeclared field never\nreaches the page and nothing fails while it doesn't."
     },
     "threshold_source": {
      "anyOf": [
@@ -458,25 +413,24 @@
       }
      ],
      "default": null,
-     "title": "Threshold Source"
+     "description": "See ``ChipWorkbenchRow.threshold_source``. Filled at the router from the\nsame lookup ``thetas`` is built from (v12 W3 \u00a74.2)."
     },
     "weeks": {
      "items": {
       "$ref": "#/definitions/ChipWeek"
      },
-     "title": "Weeks",
      "type": "array"
     },
     "weeks_scored": {
-     "title": "Weeks Scored",
+     "description": "How many gameweeks were looked at, so the UI can say how far ahead\n\"best\" reaches rather than implying the whole season.",
      "type": "integer"
     },
     "window": {
      "default": [],
+     "description": "``[from_gw, last_gw]`` from ``chip_policy.chip_windows``. Note the first\nelement is the gameweek asked about, not the window's opening \u2014 the UI says\n\"expires after GW19\" and never \"window starts at\".",
      "items": {
       "type": "integer"
      },
-     "title": "Window",
      "type": "array"
     }
    },
@@ -496,15 +450,13 @@
   "ChipWeek": {
    "properties": {
     "gain": {
-     "title": "Gain",
      "type": "number"
     },
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "per_week": {
-     "title": "Per Week",
+     "description": "``gain`` divided by the horizon weeks the chip is credited with \u2014 the\nweeks from ``gw`` onwards for a wildcard, one for every other chip.",
      "type": "number"
     }
    },
@@ -520,15 +472,12 @@
    "description": "One (chip, gameweek) cell of the advice run's own chip table.\n\n``threshold`` is the \u03b8 bar that week \u2014 the surplus the best remaining week\nis expected to offer \u2014 so the workbench can draw the gain against the bar\nrather than against an arbitrary axis. Both it and ``play_now`` are\noptional because an advice payload written before the chip policy landed\ncarries neither.",
    "properties": {
     "chip": {
-     "title": "Chip",
      "type": "string"
     },
     "gain": {
-     "title": "Gain",
      "type": "number"
     },
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "gw2": {
@@ -541,7 +490,7 @@
       }
      ],
      "default": null,
-     "title": "Gw2"
+     "description": "The second week of a chip *pair* \u2014 the bench boost's, where ``gw`` is\nthe wildcard's. ``None`` on every single-chip row, which is every row on\nevery payload written before v12 and every row until the fixture list\ncarries a double."
     },
     "note": {
      "anyOf": [
@@ -552,8 +501,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Note"
+     "default": null
     },
     "per_week": {
      "anyOf": [
@@ -564,12 +512,10 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Per Week"
+     "default": null
     },
     "play_now": {
      "default": false,
-     "title": "Play Now",
      "type": "boolean"
     },
     "threshold": {
@@ -581,8 +527,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Threshold"
+     "default": null
     },
     "threshold_source": {
      "anyOf": [
@@ -594,7 +539,7 @@
       }
      ],
      "default": null,
-     "title": "Threshold Source"
+     "description": "Where ``threshold`` came from: ``\"theta\"``, or ``\"flat: <reason>\"``.\n\nThree distinct fallbacks produce a flat bar and they are not the same\nnews \u2014 no asset, no surplus for this chip, a gameweek outside the\ncalibrated window \u2014 so the reason travels with the number rather than\nbeing guessed at from it. ``None`` on a payload written before v12\n(v12 W3 \u00a74.2)."
     }
    },
    "required": [
@@ -611,11 +556,9 @@
      "items": {
       "$ref": "#/definitions/ChipWorkbenchRow"
      },
-     "title": "Chips",
      "type": "array"
     },
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "wildcard": {
@@ -640,11 +583,9 @@
   "Component": {
    "properties": {
     "label": {
-     "title": "Label",
      "type": "string"
     },
     "points": {
-     "title": "Points",
      "type": "number"
     }
    },
@@ -662,19 +603,15 @@
      "items": {
       "$ref": "#/definitions/Component"
      },
-     "title": "Components",
      "type": "array"
     },
     "ep": {
-     "title": "Ep",
      "type": "number"
     },
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "home": {
-     "title": "Home",
      "type": "boolean"
     },
     "kickoff_time": {
@@ -685,14 +622,12 @@
       {
        "type": "null"
       }
-     ],
-     "title": "Kickoff Time"
+     ]
     },
     "minutes": {
      "$ref": "#/definitions/MinutesOutput"
     },
     "opponent": {
-     "title": "Opponent",
      "type": "string"
     },
     "pen_taker": {
@@ -705,7 +640,7 @@
       }
      ],
      "default": null,
-     "title": "Pen Taker"
+     "description": "How much of the Goals term is penalty duty, when any of it is.\n\nNot a component: the increment was folded into ``e_goals`` before\n``assemble_ep`` ran, so it is already inside ``components``' Goals row and\nlisting it beside them would stop them summing to ``ep``. It rides along\nas an annotation the panel prints under Goals, and is ``None`` \u2014 not 0.0 \u2014\nfor the great majority of rows that have no penalty duty at all, so the\npanel can tell \"no term\" from \"a term that rounded to zero\"."
     }
    },
    "required": [
@@ -723,11 +658,10 @@
   "ComponentPlayer": {
    "properties": {
     "code": {
-     "title": "Code",
      "type": "integer"
     },
     "ep": {
-     "title": "Ep",
+     "description": "Summed over every fixture in this payload \u2014 a horizon total, not a\ngameweek's, because the components parquet carries the whole solve\nhorizon.",
      "type": "number"
     },
     "ep_gw": {
@@ -740,7 +674,7 @@
       }
      ],
      "default": null,
-     "title": "Ep Gw"
+     "description": "Expected points for the *requested* gameweek alone.\n\n``ep`` above is a horizon sum \u2014 the components parquet carries every\ngameweek in the solve horizon \u2014 so it is not a number the \u03c3 table has ever\nseen. The band brackets this one instead (plan A2)."
     },
     "ep_hi": {
      "anyOf": [
@@ -751,8 +685,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Ep Hi"
+     "default": null
     },
     "ep_lo": {
      "anyOf": [
@@ -764,17 +697,15 @@
       }
      ],
      "default": null,
-     "title": "Ep Lo"
+     "description": "p25 / p75 of the distribution ``noise_ep`` draws from. ``None``, never\nzero, when the frame carries no minutes model for him."
     },
     "fixtures": {
      "items": {
       "$ref": "#/definitions/ComponentFixture"
      },
-     "title": "Fixtures",
      "type": "array"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "p_blank": {
@@ -786,8 +717,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "P Blank"
+     "default": null
     },
     "p_haul": {
      "anyOf": [
@@ -799,10 +729,9 @@
       }
      ],
      "default": null,
-     "title": "P Haul"
+     "description": "``uncertainty.Band.p_haul``: P(total points >= 10) in the tail of the\nwhole forecast. The advice payload's attacking quantity is a different\nnumber on a different scale and is served as ``p_attacking_haul``\n(spec D3)."
     },
     "position": {
-     "title": "Position",
      "type": "string"
     },
     "sigma": {
@@ -815,10 +744,9 @@
       }
      ],
      "default": null,
-     "title": "Sigma"
+     "description": "The scenario sweep's own \u03c3 for this player-gameweek, in points."
     },
     "team_name": {
-     "title": "Team Name",
      "type": "string"
     }
    },
@@ -836,14 +764,12 @@
   "ComponentsBreakdown": {
    "properties": {
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "players": {
      "items": {
       "$ref": "#/definitions/ComponentPlayer"
      },
-     "title": "Players",
      "type": "array"
     }
    },
@@ -860,7 +786,7 @@
      "$ref": "#/definitions/ConfidenceTier"
     }
    },
-   "title": "Confidence",
+   "title": "ConfidenceData",
    "type": "object"
   },
   "ConfidenceTier": {
@@ -868,27 +794,23 @@
    "properties": {
     "aligned": {
      "default": 0,
-     "title": "Aligned",
      "type": "integer"
     },
     "graded": {
      "default": 0,
-     "title": "Graded",
+     "description": "Reviewed gameweeks where the lane was actually comparable. The gap\nbetween this and ``reviewed`` is the weeks the model's captain was not in\nthe eleven, which is not evidence either way.",
      "type": "integer"
     },
     "losses": {
      "default": 0,
-     "title": "Losses",
      "type": "integer"
     },
     "reviewed": {
      "default": 0,
-     "title": "Reviewed",
      "type": "integer"
     },
     "text": {
      "default": "",
-     "title": "Text",
      "type": "string"
     },
     "tier": {
@@ -898,12 +820,10 @@
       "mixed",
       "backed"
      ],
-     "title": "Tier",
      "type": "string"
     },
     "wins": {
      "default": 0,
-     "title": "Wins",
      "type": "integer"
     }
    },
@@ -913,18 +833,15 @@
   "CoreInsightsHealth": {
    "properties": {
     "collected": {
-     "title": "Collected",
      "type": "boolean"
     },
     "season": {
-     "title": "Season",
      "type": "string"
     },
     "tables": {
      "items": {
       "$ref": "#/definitions/CoreInsightsTable"
      },
-     "title": "Tables",
      "type": "array"
     },
     "waiting_for": {
@@ -937,7 +854,7 @@
       }
      ],
      "default": null,
-     "title": "Waiting For"
+     "description": "What has to happen before these numbers mean anything, or ``None`` when\nthey already do. Spec \u00a71: a view whose data does not exist yet says what\nit is waiting for and never renders zeros as if they were measurements."
     }
    },
    "required": [
@@ -960,14 +877,12 @@
       }
      ],
      "default": null,
-     "title": "Latest"
+     "description": "Newest kickoff date in the table, ``YYYY-MM-DD``, or ``None`` when the\ntable has no dated rows. A table with rows and no date is possible \u2014 the\nplayer table is keyed on gameweek, not on a timestamp \u2014 and reads as its\nhighest gameweek instead."
     },
     "rows": {
-     "title": "Rows",
      "type": "integer"
     },
     "table": {
-     "title": "Table",
      "type": "string"
     }
    },
@@ -987,26 +902,21 @@
       },
       "type": "object"
      },
-     "title": "Baselines",
      "type": "object"
     },
     "git_sha": {
-     "title": "Git Sha",
      "type": "string"
     },
     "heads": {
      "additionalProperties": {
       "$ref": "#/definitions/HeadMetrics"
      },
-     "title": "Heads",
      "type": "object"
     },
     "holdout_slots": {
-     "title": "Holdout Slots",
      "type": "integer"
     },
     "run_at": {
-     "title": "Run At",
      "type": "string"
     },
     "stratified": {
@@ -1016,7 +926,7 @@
       },
       "type": "object"
      },
-     "title": "Stratified",
+     "description": "cut (\"all\" / \"starters\") -> return category -> metrics.",
      "type": "object"
     }
    },
@@ -1034,15 +944,12 @@
   "DecompositionCell": {
    "properties": {
     "hits": {
-     "title": "Hits",
      "type": "integer"
     },
     "per_gw": {
-     "title": "Per Gw",
      "type": "number"
     },
     "total": {
-     "title": "Total",
      "type": "integer"
     }
    },
@@ -1060,31 +967,27 @@
      "additionalProperties": {
       "$ref": "#/definitions/DecompositionCell"
      },
-     "title": "Cells",
+     "description": "``{model,oracle}_h{1,3}`` -> that replay's outcome.",
      "type": "object"
     },
     "forecast_gap_h3": {
-     "title": "Forecast Gap H3",
+     "description": "oracle_h3 - model_h3: what better forecasting could still win.",
      "type": "number"
     },
     "git_sha": {
-     "title": "Git Sha",
      "type": "string"
     },
     "planning_ceiling": {
-     "title": "Planning Ceiling",
+     "description": "oracle_h3 - oracle_h1: the ceiling on multi-week planning.",
      "type": "number"
     },
     "run_at": {
-     "title": "Run At",
      "type": "string"
     },
     "season": {
-     "title": "Season",
      "type": "string"
     },
     "start_gw": {
-     "title": "Start Gw",
      "type": "integer"
     }
    },
@@ -1097,7 +1000,7 @@
     "forecast_gap_h3",
     "planning_ceiling"
    ],
-   "title": "Decomposition",
+   "title": "DecompositionData",
    "type": "object"
   },
   "Digest": {
@@ -1112,11 +1015,10 @@
       }
      ],
      "default": null,
-     "title": "Error"
+     "description": "Set only on a digest that failed to build. A run that crashes still\nbanks an artifact so the card can say \"Friday's briefing did not build\"\nrather than falling back to the never-run empty state."
     },
     "generated_at": {
      "default": "",
-     "title": "Generated At",
      "type": "string"
     },
     "gw": {
@@ -1128,22 +1030,18 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Gw"
+     "default": null
     },
     "headline": {
-     "title": "Headline",
      "type": "string"
     },
     "kind": {
-     "title": "Kind",
      "type": "string"
     },
     "sections": {
      "items": {
       "$ref": "#/definitions/DigestSection"
      },
-     "title": "Sections",
      "type": "array"
     }
    },
@@ -1158,7 +1056,6 @@
    "description": "The newest digest, or a stated absence.\n\n``available`` false covers all three ways there is nothing to show \u2014 never\nrun, deleted, unparseable \u2014 because the card's empty state says the same\nsentence for each of them: press the button, or wait for Friday.",
    "properties": {
     "available": {
-     "title": "Available",
      "type": "boolean"
     },
     "digest": {
@@ -1186,15 +1083,9 @@
      "items": {
       "type": "string"
      },
-     "title": "Bits",
      "type": "array"
     },
     "key": {
-     "title": "Key",
-     "type": "string"
-    },
-    "title": {
-     "title": "Title",
      "type": "string"
     }
    },
@@ -1208,18 +1099,15 @@
   "DraftCompare": {
    "properties": {
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "rows": {
      "items": {
       "$ref": "#/definitions/DraftCompareRow"
      },
-     "title": "Rows",
      "type": "array"
     },
     "weeks": {
-     "title": "Weeks",
      "type": "integer"
     }
    },
@@ -1236,7 +1124,6 @@
      "items": {
       "type": "string"
      },
-     "title": "Names",
      "type": "array"
     }
    },
@@ -1249,7 +1136,6 @@
      "items": {
       "$ref": "#/definitions/PlayerRef"
      },
-     "title": "Buys",
      "type": "array"
     },
     "captain": {
@@ -1272,8 +1158,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Chip"
+     "default": null
     },
     "delta_xpts": {
      "anyOf": [
@@ -1284,8 +1169,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Delta Xpts"
+     "default": null
     },
     "error": {
      "anyOf": [
@@ -1297,7 +1181,7 @@
       }
      ],
      "default": null,
-     "title": "Error"
+     "description": "Why this row is empty. An infeasible draft is a row with a reason, not\na failed comparison."
     },
     "expected_pts": {
      "anyOf": [
@@ -1308,8 +1192,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Expected Pts"
+     "default": null
     },
     "hits": {
      "anyOf": [
@@ -1320,8 +1203,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Hits"
+     "default": null
     },
     "horizon": {
      "anyOf": [
@@ -1333,7 +1215,7 @@
       }
      ],
      "default": null,
-     "title": "Horizon"
+     "description": "Gameweeks this row's plan actually covers, which is not always the\ncomparison's. A free hit is a one-week squad; ``DraftCompare.weeks`` is\nthe shorter shared window every row was then *scored* over."
     },
     "horizon_pts": {
      "anyOf": [
@@ -1344,28 +1226,24 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Horizon Pts"
+     "default": null
     },
     "is_reference": {
      "default": false,
-     "title": "Is Reference",
+     "description": "The unconstrained optimum, so every other row has a \"worse than what\".",
      "type": "boolean"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "sells": {
      "items": {
       "$ref": "#/definitions/PlayerRef"
      },
-     "title": "Sells",
      "type": "array"
     },
     "solved_at": {
      "default": "",
-     "title": "Solved At",
      "type": "string"
     }
    },
@@ -1381,7 +1259,6 @@
      "items": {
       "$ref": "#/definitions/DraftRow"
      },
-     "title": "Drafts",
      "type": "array"
     }
    },
@@ -1395,11 +1272,9 @@
     },
     "created_at": {
      "default": "",
-     "title": "Created At",
      "type": "string"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     }
    },
@@ -1416,7 +1291,6 @@
      "$ref": "#/definitions/WhatIfRequest"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     }
    },
@@ -1430,23 +1304,18 @@
    "description": "One player the newest retrain moved, in the gameweek being decided.",
    "properties": {
     "code": {
-     "title": "Code",
      "type": "integer"
     },
     "delta": {
-     "title": "Delta",
      "type": "number"
     },
     "ep_now": {
-     "title": "Ep Now",
      "type": "number"
     },
     "ep_prev": {
-     "title": "Ep Prev",
      "type": "number"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     }
    },
@@ -1473,15 +1342,15 @@
       }
      ],
      "default": null,
-     "title": "Eo Gw"
+     "description": "Which gameweek's sample the EO came from, or ``None`` when none did.\n\nNot :attr:`gw`. The field sample for plan gameweek N is banked under\nN-1 \u2014 picks 404 before a deadline, so the scrape reads the last scored\nweek \u2014 and \u00a73.3's ``deadline_eo`` extrapolates it one gameweek forward.\nTwo different gameweek numbers in one payload is exactly the kind of\nthing a reader has to be told rather than left to infer."
     },
     "eo_source": {
-     "title": "Eo Source",
+     "description": "``\"deadline-trend\"`` (\u00a73.3's extrapolation), ``\"last-sample\"`` (the\nnewest scrape), or ``\"none\"``. A trend EO and a last-sample EO are\ndifferent numbers and the panel says which it used.",
      "type": "string"
     },
     "field_draws": {
      "default": 1,
-     "title": "Field Draws",
+     "description": "Independent field populations the headline was averaged over\n(:data:`gaffer.league_sim.FIELD_DRAWS`). Provenance, like ``n`` and\n``seed``: which three hundred managers were drawn is a source of noise in\nits own right.",
      "type": "integer"
     },
     "field_median_ep": {
@@ -1493,15 +1362,12 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Field Median Ep"
+     "default": null
     },
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "managers": {
-     "title": "Managers",
      "type": "integer"
     },
     "my_ep": {
@@ -1513,11 +1379,9 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "My Ep"
+     "default": null
     },
     "n": {
-     "title": "N",
      "type": "integer"
     },
     "p_green": {
@@ -1529,8 +1393,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "P Green"
+     "default": null
     },
     "p_top10k": {
      "anyOf": [
@@ -1541,8 +1404,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "P Top10K"
+     "default": null
     },
     "rank_slope": {
      "anyOf": [
@@ -1554,11 +1416,10 @@
       }
      ],
      "default": null,
-     "title": "Rank Slope"
+     "description": "Overall-rank places per point, from the graded ledger. Negative: more\npoints is a better (smaller) rank."
     },
     "rank_slope_rows": {
      "default": 0,
-     "title": "Rank Slope Rows",
      "type": "integer"
     },
     "rank_waiting_for": {
@@ -1570,11 +1431,9 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Rank Waiting For"
+     "default": null
     },
     "seed": {
-     "title": "Seed",
      "type": "integer"
     },
     "top10k_waiting_for": {
@@ -1586,12 +1445,11 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Top10K Waiting For"
+     "default": null
     },
     "unsampled_picks": {
      "default": 0,
-     "title": "Unsampled Picks",
+     "description": "Players in my squad the field sample never saw.\n\n``eo_from_picks`` omits anyone no sampled entry started, so a genuine\ndifferential is routinely absent from the EO table. He is simulated at\nownership 0.0 \u2014 nobody in the field has him \u2014 and counted here so the\npanel can say how much of my week the sample cannot speak to.",
      "type": "integer"
     },
     "waiting_for": {
@@ -1603,8 +1461,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Waiting For"
+     "default": null
     }
    },
    "required": [
@@ -1620,26 +1477,21 @@
   "FixtureExplain": {
    "properties": {
     "calibration_delta": {
-     "title": "Calibration Delta",
      "type": "number"
     },
     "components": {
      "items": {
       "$ref": "#/definitions/Component"
      },
-     "title": "Components",
      "type": "array"
     },
     "ep": {
-     "title": "Ep",
      "type": "number"
     },
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "home": {
-     "title": "Home",
      "type": "boolean"
     },
     "kickoff_time": {
@@ -1650,8 +1502,7 @@
       {
        "type": "null"
       }
-     ],
-     "title": "Kickoff Time"
+     ]
     },
     "minutes": {
      "$ref": "#/definitions/MinutesOutput"
@@ -1660,7 +1511,6 @@
      "$ref": "#/definitions/OddsInfluence"
     },
     "opponent": {
-     "title": "Opponent",
      "type": "string"
     }
    },
@@ -1684,7 +1534,6 @@
      "items": {
       "type": "integer"
      },
-     "title": "Gws",
      "type": "array"
     },
     "source": {
@@ -1692,14 +1541,12 @@
       "dixon_coles",
       "none"
      ],
-     "title": "Source",
      "type": "string"
     },
     "teams": {
      "items": {
       "$ref": "#/definitions/MatrixTeam"
      },
-     "title": "Teams",
      "type": "array"
     }
    },
@@ -1708,7 +1555,7 @@
     "teams",
     "source"
    ],
-   "title": "FixtureMatrix",
+   "title": "FixtureMatrixData",
    "type": "object"
   },
   "FixtureOutlook": {
@@ -1723,17 +1570,15 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "From Gw"
+     "default": null
     },
     "has_blanks": {
      "default": false,
-     "title": "Has Blanks",
+     "description": "A claim about the **served slice**, not the season: both flags are\ncomputed over the same ``weeks`` this response carries, so a ``from_gw``\nnarrows them together with the rows.\n\nDeclared rather than derived on the client, for the reason v9d's\n``available`` exists: the empty state is the common case for months, and a\nclient branching on ``weeks.every(w => !w.doubles.length)`` is a client\nthat will one day branch on ``weeks.length`` by mistake.",
      "type": "boolean"
     },
     "has_doubles": {
      "default": false,
-     "title": "Has Doubles",
      "type": "boolean"
     },
     "note": {
@@ -1745,19 +1590,17 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Note"
+     "default": null
     },
     "teams_known": {
      "default": false,
-     "title": "Teams Known",
+     "description": "False when the teams snapshot was unreadable and the codes above are\nraw team ids. The counts hold; the names do not.",
      "type": "boolean"
     },
     "weeks": {
      "items": {
       "$ref": "#/definitions/OutlookWeek"
      },
-     "title": "Weeks",
      "type": "array"
     }
    },
@@ -1776,35 +1619,29 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Chance Of Playing"
+     "default": null
     },
     "code": {
-     "title": "Code",
      "type": "integer"
     },
     "final_status": {
-     "title": "Final Status",
+     "description": "The last status recorded **before** the deadline. A snapshot taken\nafterwards told nobody anything and is not in this window.",
      "type": "string"
     },
     "first_change": {
-     "title": "First Change",
+     "description": "The snapshot day the status first differed from what it had been \u2014\nthe first day a manager could have acted, not the last.",
      "type": "string"
     },
     "from_status": {
-     "title": "From Status",
      "type": "string"
     },
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "lead_days": {
-     "title": "Lead Days",
      "type": "number"
     },
     "started": {
-     "title": "Started",
      "type": "boolean"
     }
    },
@@ -1825,7 +1662,6 @@
    "properties": {
     "available": {
      "default": false,
-     "title": "Available",
      "type": "boolean"
     },
     "checked_covered_gws": {
@@ -1833,7 +1669,6 @@
      "items": {
       "type": "integer"
      },
-     "title": "Checked Covered Gws",
      "type": "array"
     },
     "covered_gws": {
@@ -1841,11 +1676,9 @@
      "items": {
       "type": "integer"
      },
-     "title": "Covered Gws",
      "type": "array"
     },
     "git_sha": {
-     "title": "Git Sha",
      "type": "string"
     },
     "histogram": {
@@ -1853,7 +1686,6 @@
      "items": {
       "$ref": "#/definitions/LeadBucket"
      },
-     "title": "Histogram",
      "type": "array"
     },
     "late_flags": {
@@ -1861,12 +1693,10 @@
      "items": {
       "$ref": "#/definitions/FlagChange"
      },
-     "title": "Late Flags",
      "type": "array"
     },
     "min_snap_dates": {
      "default": 14,
-     "title": "Min Snap Dates",
      "type": "integer"
     },
     "note": {
@@ -1878,21 +1708,17 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Note"
+     "default": null
     },
     "rows": {
      "default": 0,
-     "title": "Rows",
      "type": "integer"
     },
     "run_at": {
-     "title": "Run At",
      "type": "string"
     },
     "snap_dates": {
      "default": 0,
-     "title": "Snap Dates",
      "type": "integer"
     }
    },
@@ -1900,7 +1726,7 @@
     "run_at",
     "git_sha"
    ],
-   "title": "FlagLatency",
+   "title": "FlagLatencyData",
    "type": "object"
   },
   "Freshness": {
@@ -1909,7 +1735,6 @@
      "items": {
       "$ref": "#/definitions/FreshnessRow"
      },
-     "title": "Rows",
      "type": "array"
     }
    },
@@ -1928,7 +1753,7 @@
       }
      ],
      "default": null,
-     "title": "Age Hours"
+     "description": "Hours since the file was written, or ``None`` for \"never\".\n\nNever 0.0 for an absent file. Zero is \"just now\", which is the strongest\nclaim this row can make and the exact opposite of what an absent file\nmeans. The client colours on ``None`` first and on the number second."
     },
     "modified_at": {
      "anyOf": [
@@ -1939,8 +1764,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Modified At"
+     "default": null
     },
     "path": {
      "anyOf": [
@@ -1952,7 +1776,7 @@
       }
      ],
      "default": null,
-     "title": "Path"
+     "description": "What was actually stat'd, so a surprising age is diagnosable."
     },
     "source": {
      "enum": [
@@ -1962,7 +1786,6 @@
       "advise",
       "backup"
      ],
-     "title": "Source",
      "type": "string"
     }
    },
@@ -1975,11 +1798,10 @@
   "GapPoint": {
    "properties": {
     "gap": {
-     "title": "Gap",
+     "description": "Your total minus the leader's, negative when you are behind.",
      "type": "integer"
     },
     "gw": {
-     "title": "Gw",
      "type": "integer"
     }
    },
@@ -1993,15 +1815,12 @@
   "GwPoint": {
    "properties": {
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "points": {
-     "title": "Points",
      "type": "integer"
     },
     "total": {
-     "title": "Total",
      "type": "integer"
     }
    },
@@ -2024,13 +1843,12 @@
        "type": "null"
       }
      ],
-     "title": "Log Loss"
+     "description": "``None`` for a head with nothing to score \u2014 see\n:func:`gaffer.evaluation.head_metrics`. Nullable rather than NaN because\nNaN is not JSON."
     },
     "reliability": {
      "items": {
       "$ref": "#/definitions/ReliabilityBin"
      },
-     "title": "Reliability",
      "type": "array"
     }
    },
@@ -2051,41 +1869,33 @@
       {
        "type": "null"
       }
-     ],
-     "title": "Actual Pts"
+     ]
     },
     "buys": {
      "items": {
       "type": "string"
      },
-     "title": "Buys",
      "type": "array"
     },
     "captain": {
-     "title": "Captain",
      "type": "string"
     },
     "deadline": {
-     "title": "Deadline",
      "type": "string"
     },
     "expected_pts": {
-     "title": "Expected Pts",
      "type": "number"
     },
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "hits": {
-     "title": "Hits",
      "type": "integer"
     },
     "sells": {
      "items": {
       "type": "string"
      },
-     "title": "Sells",
      "type": "array"
     }
    },
@@ -2105,7 +1915,6 @@
   "JobAccepted": {
    "properties": {
     "job_id": {
-     "title": "Job Id",
      "type": "string"
     }
    },
@@ -2126,8 +1935,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Error"
+     "default": null
     },
     "finished_at": {
      "anyOf": [
@@ -2138,23 +1946,18 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Finished At"
+     "default": null
     },
     "id": {
-     "title": "Id",
      "type": "string"
     },
     "kind": {
-     "title": "Kind",
      "type": "string"
     },
     "line_count": {
-     "title": "Line Count",
      "type": "integer"
     },
     "started_at": {
-     "title": "Started At",
      "type": "string"
     },
     "status": {
@@ -2164,7 +1967,6 @@
       "done",
       "failed"
      ],
-     "title": "Status",
      "type": "string"
     },
     "summary": {
@@ -2176,8 +1978,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Summary"
+     "default": null
     }
    },
    "required": [
@@ -2194,11 +1995,9 @@
    "description": "The v7 runner's accept body. ``JobAccepted`` above still serves the v6\nqueue endpoints, whose clients read only ``job_id``.",
    "properties": {
     "job_id": {
-     "title": "Job Id",
      "type": "string"
     },
     "kind": {
-     "title": "Kind",
      "type": "string"
     }
    },
@@ -2220,43 +2019,36 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Built At"
+     "default": null
     },
     "cumulative": {
      "items": {
       "$ref": "#/definitions/JournalPoint"
      },
-     "title": "Cumulative",
      "type": "array"
     },
     "rows": {
      "items": {
       "$ref": "#/definitions/JournalRow"
      },
-     "title": "Rows",
      "type": "array"
     }
    },
-   "title": "Journal",
+   "title": "JournalData",
    "type": "object"
   },
   "JournalPoint": {
    "properties": {
     "actual": {
-     "title": "Actual",
      "type": "integer"
     },
     "delta": {
-     "title": "Delta",
      "type": "integer"
     },
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "model": {
-     "title": "Model",
      "type": "integer"
     }
    },
@@ -2280,26 +2072,21 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Actual Captain"
+     "default": null
     },
     "actual_pts": {
-     "title": "Actual Pts",
      "type": "integer"
     },
     "delta": {
-     "title": "Delta",
      "type": "integer"
     },
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "model_buys": {
      "items": {
       "type": "string"
      },
-     "title": "Model Buys",
      "type": "array"
     },
     "model_captain": {
@@ -2311,23 +2098,20 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Model Captain"
+     "default": null
     },
     "model_pts": {
-     "title": "Model Pts",
      "type": "integer"
     },
     "model_sells": {
      "items": {
       "type": "string"
      },
-     "title": "Model Sells",
      "type": "array"
     },
     "post_deadline": {
      "default": false,
-     "title": "Post Deadline",
+     "description": "Every banked run of this gameweek was written after its deadline, so\nthe model's side of the comparison had the team news the user did not.",
      "type": "boolean"
     }
    },
@@ -2350,11 +2134,9 @@
       {
        "type": "null"
       }
-     ],
-     "title": "Last Line"
+     ]
     },
     "log": {
-     "title": "Log",
      "type": "string"
     },
     "modified_at": {
@@ -2365,11 +2147,9 @@
       {
        "type": "null"
       }
-     ],
-     "title": "Modified At"
+     ]
     },
     "present": {
-     "title": "Present",
      "type": "boolean"
     }
    },
@@ -2386,15 +2166,12 @@
    "description": "One band of the lead-time histogram, split by what happened.",
    "properties": {
     "bucket": {
-     "title": "Bucket",
      "type": "string"
     },
     "missed": {
-     "title": "Missed",
      "type": "integer"
     },
     "started": {
-     "title": "Started",
      "type": "integer"
     }
    },
@@ -2409,51 +2186,42 @@
   "LeagueRaceData": {
    "properties": {
     "entry_id": {
-     "title": "Entry Id",
      "type": "integer"
     },
     "gap": {
      "items": {
       "$ref": "#/definitions/GapPoint"
      },
-     "title": "Gap",
      "type": "array"
     },
     "lam": {
-     "title": "Lam",
      "type": "number"
     },
     "lam_explained": {
-     "title": "Lam Explained",
      "type": "string"
     },
     "league_id": {
-     "title": "League Id",
      "type": "integer"
     },
     "stance": {
-     "title": "Stance",
      "type": "string"
     },
     "standings": {
      "items": {
       "$ref": "#/definitions/StandingRow"
      },
-     "title": "Standings",
      "type": "array"
     },
     "trajectory": {
      "items": {
       "$ref": "#/definitions/Trajectory"
      },
-     "title": "Trajectory",
      "type": "array"
     },
     "win_probability": {
      "items": {
       "$ref": "#/definitions/WinProb"
      },
-     "title": "Win Probability",
      "type": "array"
     }
    },
@@ -2468,17 +2236,15 @@
     "stance",
     "lam_explained"
    ],
-   "title": "LeagueRace",
+   "title": "LeagueRaceData",
    "type": "object"
   },
   "LeagueSimData": {
    "properties": {
     "entries": {
-     "title": "Entries",
      "type": "integer"
     },
     "exp_finish": {
-     "title": "Exp Finish",
      "type": "number"
     },
     "field": {
@@ -2490,7 +2256,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "v12 W4 \u00a75.3's panel. ``None`` only when the simulation itself could not\nbe built; an unanswerable question is a ``FieldRank`` full of nulls with\ntheir reasons, not an absent object."
     },
     "field_rate": {
      "anyOf": [
@@ -2502,35 +2269,31 @@
       }
      ],
      "default": null,
-     "title": "Field Rate"
+     "description": "The sampled field's weekly rate, or ``None`` when nothing is banked \u2014\nin which case rivals do not drift however ``rival_drift`` is set."
     },
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "history": {
      "items": {
       "$ref": "#/definitions/SimPoint"
      },
-     "title": "History",
      "type": "array"
     },
     "legacy_win_probability": {
+     "description": "``league_mode.win_probability``'s parametric answer, kept beside the\nsimulated one until the UI has fully switched (spec \u00a73).",
      "items": {
       "$ref": "#/definitions/WinProb"
      },
-     "title": "Legacy Win Probability",
      "type": "array"
     },
     "margin_quantiles": {
      "additionalProperties": {
       "type": "number"
      },
-     "title": "Margin Quantiles",
      "type": "object"
     },
     "n": {
-     "title": "N",
      "type": "integer"
     },
     "notice": {
@@ -2542,34 +2305,27 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Notice"
+     "default": null
     },
     "p_top3": {
-     "title": "P Top3",
      "type": "number"
     },
     "p_win": {
-     "title": "P Win",
      "type": "number"
     },
     "per_rival": {
      "items": {
       "$ref": "#/definitions/RivalBeat"
      },
-     "title": "Per Rival",
      "type": "array"
     },
     "rival_drift": {
-     "title": "Rival Drift",
      "type": "number"
     },
     "seed": {
-     "title": "Seed",
      "type": "integer"
     },
     "weeks_left": {
-     "title": "Weeks Left",
      "type": "integer"
     }
    },
@@ -2593,12 +2349,11 @@
   "LeagueWhatIfPin": {
    "properties": {
     "code": {
-     "title": "Code",
+     "description": "A gaffer player *code*, not a season element id \u2014 the explorer, the\nsquad table and the compare panel all speak codes, and the router maps to\nelements against the same snapshot they were rendered from.",
      "type": "integer"
     },
     "event": {
      "default": "blank",
-     "title": "Event",
      "type": "string"
     }
    },
@@ -2612,7 +2367,7 @@
    "properties": {
     "cached_only": {
      "default": false,
-     "title": "Cached Only",
+     "description": "Answer from the cache or not at all (204).\n\nThis Week's captaincy chip sets it. That page is the one opened on a\nThursday evening, the chip is decoration, and a cold cache means fifty\nentry-picks requests at the FPL API fired by a page load \u2014 at the hour\nevery FPL manager in the country is loading pages. The League What-if tab\nleaves it false: there the simulation *is* the page.",
      "type": "boolean"
     },
     "captain_override": {
@@ -2624,14 +2379,12 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Captain Override"
+     "default": null
     },
     "pins": {
      "items": {
       "$ref": "#/definitions/LeagueWhatIfPin"
      },
-     "title": "Pins",
      "type": "array"
     },
     "rival_captain_blanks": {
@@ -2643,8 +2396,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Rival Captain Blanks"
+     "default": null
     }
    },
    "title": "LeagueWhatIfRequest",
@@ -2653,41 +2405,33 @@
   "LeagueWhatIfResult": {
    "properties": {
     "baseline_exp_finish": {
-     "title": "Baseline Exp Finish",
      "type": "number"
     },
     "baseline_p_win": {
-     "title": "Baseline P Win",
      "type": "number"
     },
     "delta_p_win": {
-     "title": "Delta P Win",
      "type": "number"
     },
     "delta_rank": {
-     "title": "Delta Rank",
      "type": "number"
     },
     "exp_finish": {
-     "title": "Exp Finish",
      "type": "number"
     },
     "p_win": {
-     "title": "P Win",
      "type": "number"
     },
     "table": {
      "items": {
       "$ref": "#/definitions/LeagueWhatIfRow"
      },
-     "title": "Table",
      "type": "array"
     },
     "unknown_codes": {
      "items": {
       "type": "integer"
      },
-     "title": "Unknown Codes",
      "type": "array"
     }
    },
@@ -2706,19 +2450,15 @@
   "LeagueWhatIfRow": {
    "properties": {
     "entry": {
-     "title": "Entry",
      "type": "integer"
     },
     "exp_finish": {
-     "title": "Exp Finish",
      "type": "number"
     },
     "is_you": {
-     "title": "Is You",
      "type": "boolean"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "p_win": {
@@ -2731,10 +2471,9 @@
       }
      ],
      "default": null,
-     "title": "P Win"
+     "description": "This entry's win frequency in the same run as the headline, or ``None``\nwhen its squad could not be read (``league_sim.is_readable``)."
     },
     "total": {
-     "title": "Total",
      "type": "integer"
     }
    },
@@ -2751,45 +2490,35 @@
   "LivePlayer": {
    "properties": {
     "code": {
-     "title": "Code",
      "type": "integer"
     },
     "element": {
-     "title": "Element",
      "type": "integer"
     },
     "minutes": {
-     "title": "Minutes",
      "type": "integer"
     },
     "multiplier": {
-     "title": "Multiplier",
      "type": "integer"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "points": {
-     "title": "Points",
      "type": "integer"
     },
     "position": {
-     "title": "Position",
      "type": "string"
     },
     "projected_in": {
      "default": false,
-     "title": "Projected In",
      "type": "boolean"
     },
     "projected_out": {
      "default": false,
-     "title": "Projected Out",
      "type": "boolean"
     },
     "provisional_bonus": {
-     "title": "Provisional Bonus",
      "type": "integer"
     },
     "remaining_ep": {
@@ -2801,8 +2530,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Remaining Ep"
+     "default": null
     },
     "selected_by_percent": {
      "anyOf": [
@@ -2813,8 +2541,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Selected By Percent"
+     "default": null
     },
     "status": {
      "enum": [
@@ -2822,7 +2549,6 @@
       "playing",
       "yet to play"
      ],
-     "title": "Status",
      "type": "string"
     },
     "sub_partner": {
@@ -2835,7 +2561,7 @@
       }
      ],
      "default": null,
-     "title": "Sub Partner"
+     "description": "The other half of a projected substitution, so a chip can name him."
     },
     "sub_reason": {
      "anyOf": [
@@ -2847,7 +2573,7 @@
       }
      ],
      "default": null,
-     "title": "Sub Reason"
+     "description": "``\"played\"`` or ``\"yet to play\"``: how certain the incoming man is."
     },
     "tier_eo": {
      "anyOf": [
@@ -2858,8 +2584,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Tier Eo"
+     "default": null
     },
     "tier_eo_se": {
      "anyOf": [
@@ -2870,8 +2595,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Tier Eo Se"
+     "default": null
     }
    },
    "required": [
@@ -2892,7 +2616,6 @@
    "description": "One poll's snapshot of the race, held in memory for this session only.",
    "properties": {
     "at": {
-     "title": "At",
      "type": "string"
     },
     "rival": {
@@ -2905,10 +2628,9 @@
       }
      ],
      "default": null,
-     "title": "Rival"
+     "description": "The tracked rival's race value \u2014 the entry pinned in ``rival_name``,\nwhich is the top entry in the league that is not me. He is the leader\nonly when I am not; when I am leading he is the man in second."
     },
     "you": {
-     "title": "You",
      "type": "number"
     }
    },
@@ -2923,19 +2645,17 @@
    "description": "One league place worth watching, priced in points.",
    "properties": {
     "entry": {
-     "title": "Entry",
      "type": "integer"
     },
     "margin": {
-     "title": "Margin",
+     "description": "Their projected total minus mine. Positive means they are ahead.",
      "type": "integer"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "need": {
-     "title": "Need",
+     "description": "What I must add beyond my projection to pass them; 0 when I lead.",
      "type": "integer"
     },
     "role": {
@@ -2944,7 +2664,6 @@
       "below",
       "leader"
      ],
-     "title": "Role",
      "type": "string"
     }
    },
@@ -2961,7 +2680,6 @@
   "LiveState": {
    "properties": {
     "active": {
-     "title": "Active",
      "type": "boolean"
     },
     "gw": {
@@ -2972,20 +2690,16 @@
       {
        "type": "null"
       }
-     ],
-     "title": "Gw"
+     ]
     },
     "matches_in_play": {
-     "title": "Matches In Play",
      "type": "integer"
     },
     "my_points": {
-     "title": "My Points",
      "type": "integer"
     },
     "my_projected_points": {
      "default": 0,
-     "title": "My Projected Points",
      "type": "integer"
     },
     "my_race": {
@@ -2997,8 +2711,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "My Race"
+     "default": null
     },
     "notice": {
      "anyOf": [
@@ -3009,14 +2722,12 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Notice"
+     "default": null
     },
     "players": {
      "items": {
       "$ref": "#/definitions/LivePlayer"
      },
-     "title": "Players",
      "type": "array"
     },
     "race_notice": {
@@ -3029,7 +2740,7 @@
       }
      ],
      "default": null,
-     "title": "Race Notice"
+     "description": "The race's own degradation line. Deliberately not ``notice``, which is\nthe tier-EO line and belongs to a different card."
     },
     "race_reference": {
      "anyOf": [
@@ -3041,13 +2752,12 @@
       }
      ],
      "default": null,
-     "title": "Race Reference"
+     "description": "This gameweek's saved ``advice.expected_pts``, when there is one."
     },
     "race_series": {
      "items": {
       "$ref": "#/definitions/LiveRacePoint"
      },
-     "title": "Race Series",
      "type": "array"
     },
     "rival_name": {
@@ -3060,20 +2770,18 @@
       }
      ],
      "default": null,
-     "title": "Rival Name"
+     "description": "The entry the trajectory follows: the highest-placed entry that is not\nme, picked on the gameweek's first poll and then pinned for the rest of it\nso the line cannot change whose points it is plotting mid-afternoon."
     },
     "safety": {
      "items": {
       "$ref": "#/definitions/LiveSafety"
      },
-     "title": "Safety",
      "type": "array"
     },
     "table": {
      "items": {
       "$ref": "#/definitions/LiveTableRow"
      },
-     "title": "Table",
      "type": "array"
     }
    },
@@ -3091,27 +2799,21 @@
   "LiveTableRow": {
    "properties": {
     "delta": {
-     "title": "Delta",
      "type": "integer"
     },
     "entry": {
-     "title": "Entry",
      "type": "integer"
     },
     "live": {
-     "title": "Live",
      "type": "integer"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "pre_total": {
-     "title": "Pre Total",
      "type": "integer"
     },
     "projected": {
-     "title": "Projected",
      "type": "integer"
     },
     "projected_live": {
@@ -3123,8 +2825,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Projected Live"
+     "default": null
     },
     "race": {
      "anyOf": [
@@ -3136,7 +2837,7 @@
       }
      ],
      "default": null,
-     "title": "Race"
+     "description": "``projected_live + remaining_ep``: where this gameweek is heading."
     },
     "remaining_ep": {
      "anyOf": [
@@ -3147,8 +2848,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Remaining Ep"
+     "default": null
     }
    },
    "required": [
@@ -3165,23 +2865,20 @@
   "MatrixCell": {
    "properties": {
     "attack": {
-     "title": "Attack",
+     "description": "Difficulty for your attackers, 0 easiest to 1 hardest.\n\nDriven by the opponent's *defence* strength: a mean defence is a hard\nfixture to score in.",
      "type": "number"
     },
     "defence": {
-     "title": "Defence",
+     "description": "Difficulty of keeping a clean sheet, 0 easiest to 1 hardest.\n\nDriven by the opponent's *attack* strength.",
      "type": "number"
     },
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "home": {
-     "title": "Home",
      "type": "boolean"
     },
     "opponent": {
-     "title": "Opponent",
      "type": "string"
     }
    },
@@ -3201,27 +2898,21 @@
      "items": {
       "$ref": "#/definitions/MatrixCell"
      },
-     "title": "Cells",
      "type": "array"
     },
     "code": {
-     "title": "Code",
      "type": "integer"
     },
     "mean_attack": {
-     "title": "Mean Attack",
      "type": "number"
     },
     "mean_defence": {
-     "title": "Mean Defence",
      "type": "number"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "short_name": {
-     "title": "Short Name",
      "type": "string"
     }
    },
@@ -3248,7 +2939,7 @@
       }
      ],
      "default": null,
-     "title": "P60"
+     "description": "The same convention, on the probability beside it. 0.0 here is\n\"expected off before the hour\", which is a forecast a frame banked\nwithout a minutes model never made \u2014 and it is the number ``xmins``\nweights the second half by, so a zero propagates into a claim about\nminutes as well."
     },
     "p_play": {
      "anyOf": [
@@ -3260,7 +2951,7 @@
       }
      ],
      "default": null,
-     "title": "P Play"
+     "description": "``None`` \u2014 never 0.0 \u2014 for a frame banked without a minutes model. Zero\nhere reads as \"expected not to play\", which is the strongest claim this\npayload can make about a player, and the compare radar drew it as a\nzero-length spoke on the minutes axis."
     },
     "xmins": {
      "anyOf": [
@@ -3272,7 +2963,7 @@
       }
      ],
      "default": null,
-     "title": "Xmins"
+     "description": "Expected minutes, ``p_play * (45 + 45 * p60)``. ``None`` when either\nprobability is missing: an un-modelled player is not a player expected to\nplay no minutes."
     }
    },
    "title": "MinutesOutput",
@@ -3282,33 +2973,26 @@
    "description": "One player-gameweek the forecast got most wrong.\n\n``miss`` is ``actual - ep``, so it is signed: a positive one is a player\nthe model under-rated and a negative one is a transfer it may have talked\nsomebody into. Both directions are shown, which is why the card sorts on\nthe absolute value and prints the sign.",
    "properties": {
     "actual": {
-     "title": "Actual",
      "type": "integer"
     },
     "code": {
-     "title": "Code",
      "type": "integer"
     },
     "ep": {
-     "title": "Ep",
      "type": "number"
     },
     "minutes": {
      "default": 0,
-     "title": "Minutes",
      "type": "integer"
     },
     "miss": {
-     "title": "Miss",
      "type": "number"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "position": {
      "default": "",
-     "title": "Position",
      "type": "string"
     },
     "price": {
@@ -3320,8 +3004,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Price"
+     "default": null
     }
    },
    "required": [
@@ -3346,48 +3029,44 @@
       }
      ],
      "default": null,
-     "title": "Gw"
+     "description": "``None`` when no gameweek has both a banked forecast and a banked\nresult. That is an absent card, not a card of zeros (spec D1)."
     },
     "rows": {
      "items": {
       "$ref": "#/definitions/MissRow"
      },
-     "title": "Rows",
      "type": "array"
     }
    },
-   "title": "Misses",
+   "title": "MissesData",
    "type": "object"
   },
   "MoverRow": {
    "description": "One watched player FPL's predictor has near a threshold tonight.",
    "properties": {
     "calibrating": {
-     "title": "Calibrating",
+     "description": "FPL is still fitting this player's price model \u2014 an early-season caveat\nthe row carries rather than a reason to hide it.",
      "type": "boolean"
     },
     "code": {
-     "title": "Code",
      "type": "integer"
     },
     "direction": {
-     "title": "Direction",
+     "description": "``rise`` or ``drop``. Never ``flat``: this list is only ever rows past\nthe alert threshold, where the price log (which sees everyone) has a third\nvalue.",
      "type": "string"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "now_cost": {
-     "title": "Now Cost",
+     "description": "In millions, the way the UI shows a price \u2014 not the 0.1m integer the\nbootstrap carries.",
      "type": "number"
     },
     "price_change_percent": {
-     "title": "Price Change Percent",
      "type": "number"
     },
     "source": {
-     "title": "Source",
+     "description": "``squad`` / ``plan`` / ``watchlist``, resolved in that order. The\nanswer to \"why is he on this list?\", on the row itself.",
      "type": "string"
     }
    },
@@ -3415,18 +3094,15 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "As Of"
+     "default": null
     },
     "available": {
-     "title": "Available",
      "type": "boolean"
     },
     "rows": {
      "items": {
       "$ref": "#/definitions/MoverRow"
      },
-     "title": "Rows",
      "type": "array"
     }
    },
@@ -3440,16 +3116,13 @@
    "description": "A player a report names but does not price.",
    "properties": {
     "code": {
-     "title": "Code",
      "type": "integer"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "position": {
      "default": "",
-     "title": "Position",
      "type": "string"
     }
    },
@@ -3463,18 +3136,15 @@
   "NewsPanelData": {
    "properties": {
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "moved": {
-     "title": "Moved",
      "type": "integer"
     },
     "rows": {
      "items": {
       "$ref": "#/definitions/NewsRow"
      },
-     "title": "Rows",
      "type": "array"
     }
    },
@@ -3498,19 +3168,15 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Chance Of Playing"
+     "default": null
     },
     "code": {
-     "title": "Code",
      "type": "integer"
     },
     "e_min_flags": {
-     "title": "E Min Flags",
      "type": "number"
     },
     "e_min_news": {
-     "title": "E Min News",
      "type": "number"
     },
     "expected_return_gw": {
@@ -3522,8 +3188,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Expected Return Gw"
+     "default": null
     },
     "fetched_at": {
      "anyOf": [
@@ -3534,8 +3199,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Fetched At"
+     "default": null
     },
     "injury_type": {
      "anyOf": [
@@ -3546,8 +3210,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Injury Type"
+     "default": null
     },
     "lineup_hint": {
      "anyOf": [
@@ -3559,10 +3222,9 @@
       }
      ],
      "default": null,
-     "title": "Lineup Hint"
+     "description": "``xi`` / ``doubt`` / ``out`` \u2014 ``p_start_hint`` named, because a\nprobability in a caption reads as a forecast rather than as a listing."
     },
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "official_note": {
@@ -3574,15 +3236,12 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Official Note"
+     "default": null
     },
     "p_play_flags": {
-     "title": "P Play Flags",
      "type": "number"
     },
     "p_play_news": {
-     "title": "P Play News",
      "type": "number"
     },
     "p_start_hint": {
@@ -3594,8 +3253,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "P Start Hint"
+     "default": null
     },
     "source": {
      "anyOf": [
@@ -3606,8 +3264,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Source"
+     "default": null
     },
     "status": {
      "anyOf": [
@@ -3618,11 +3275,9 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Status"
+     "default": null
     },
     "team_name": {
-     "title": "Team Name",
      "type": "string"
     }
    },
@@ -3645,11 +3300,9 @@
      "items": {
       "$ref": "#/definitions/NewsShadowGw"
      },
-     "title": "By Gw",
      "type": "array"
     },
     "git_sha": {
-     "title": "Git Sha",
      "type": "string"
     },
     "overall": {
@@ -3661,15 +3314,12 @@
        "additionalProperties": true,
        "type": "object"
       }
-     ],
-     "title": "Overall"
+     ]
     },
     "rows": {
-     "title": "Rows",
      "type": "integer"
     },
     "run_at": {
-     "title": "Run At",
      "type": "string"
     }
    },
@@ -3678,49 +3328,39 @@
     "git_sha",
     "rows"
    ],
-   "title": "NewsShadow",
+   "title": "NewsShadowData",
    "type": "object"
   },
   "NewsShadowGw": {
    "properties": {
     "brier_flags": {
-     "title": "Brier Flags",
      "type": "number"
     },
     "brier_news": {
-     "title": "Brier News",
      "type": "number"
     },
     "cum_brier_flags": {
-     "title": "Cum Brier Flags",
      "type": "number"
     },
     "cum_brier_news": {
-     "title": "Cum Brier News",
      "type": "number"
     },
     "cum_mae_flags": {
-     "title": "Cum Mae Flags",
      "type": "number"
     },
     "cum_mae_news": {
-     "title": "Cum Mae News",
      "type": "number"
     },
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "mae_flags": {
-     "title": "Mae Flags",
      "type": "number"
     },
     "mae_news": {
-     "title": "Mae News",
      "type": "number"
     },
     "rows": {
-     "title": "Rows",
      "type": "integer"
     }
    },
@@ -3743,23 +3383,18 @@
    "description": "Both sides of gate N2's two metrics over one slice of the log.",
    "properties": {
     "brier_flags": {
-     "title": "Brier Flags",
      "type": "number"
     },
     "brier_news": {
-     "title": "Brier News",
      "type": "number"
     },
     "mae_flags": {
-     "title": "Mae Flags",
      "type": "number"
     },
     "mae_news": {
-     "title": "Mae News",
      "type": "number"
     },
     "rows": {
-     "title": "Rows",
      "type": "integer"
     }
    },
@@ -3785,11 +3420,9 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Difficulty"
+     "default": null
     },
     "home": {
-     "title": "Home",
      "type": "boolean"
     },
     "kickoff_utc": {
@@ -3801,8 +3434,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Kickoff Utc"
+     "default": null
     },
     "opponent_short": {
      "anyOf": [
@@ -3813,8 +3445,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Opponent Short"
+     "default": null
     }
    },
    "required": [
@@ -3826,11 +3457,9 @@
   "OddsInfluence": {
    "properties": {
     "e_gc_blended": {
-     "title": "E Gc Blended",
      "type": "number"
     },
     "e_gc_model": {
-     "title": "E Gc Model",
      "type": "number"
     },
     "e_goals_against": {
@@ -3841,19 +3470,15 @@
       {
        "type": "null"
       }
-     ],
-     "title": "E Goals Against"
+     ]
     },
     "p_cs_blended": {
-     "title": "P Cs Blended",
      "type": "number"
     },
     "p_cs_model": {
-     "title": "P Cs Model",
      "type": "number"
     },
     "weight": {
-     "title": "Weight",
      "type": "number"
     }
    },
@@ -3872,7 +3497,6 @@
    "description": "A club in the outlook. ``short_name`` is null when the teams snapshot\ncould not be read \u2014 the counts are still true, only the label is missing,\nand losing the whole answer over a cosmetic join is the wrong trade.",
    "properties": {
     "code": {
-     "title": "Code",
      "type": "integer"
     },
     "short_name": {
@@ -3884,8 +3508,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Short Name"
+     "default": null
     }
    },
    "required": [
@@ -3900,22 +3523,18 @@
      "items": {
       "$ref": "#/definitions/OutlookTeam"
      },
-     "title": "Blanks",
      "type": "array"
     },
     "doubles": {
      "items": {
       "$ref": "#/definitions/OutlookTeam"
      },
-     "title": "Doubles",
      "type": "array"
     },
     "fixtures": {
-     "title": "Fixtures",
      "type": "integer"
     },
     "gw": {
-     "title": "Gw",
      "type": "integer"
     }
    },
@@ -3930,7 +3549,6 @@
    "description": "One pin. At least one of the two values must be present.",
    "properties": {
     "code": {
-     "title": "Code",
      "type": "integer"
     },
     "e_min": {
@@ -3942,12 +3560,10 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "E Min"
+     "default": null
     },
     "note": {
      "default": "",
-     "title": "Note",
      "type": "string"
     },
     "p_play": {
@@ -3959,8 +3575,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "P Play"
+     "default": null
     }
    },
    "required": [
@@ -3972,7 +3587,6 @@
   "OverrideRow": {
    "properties": {
     "code": {
-     "title": "Code",
      "type": "integer"
     },
     "e_min": {
@@ -3984,8 +3598,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "E Min"
+     "default": null
     },
     "model_e_min": {
      "anyOf": [
@@ -3996,8 +3609,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Model E Min"
+     "default": null
     },
     "model_p_play": {
      "anyOf": [
@@ -4009,15 +3621,13 @@
       }
      ],
      "default": null,
-     "title": "Model P Play"
+     "description": "What the served pipeline had for him when the pin was made, so the\nwhy-panel can say \"the model had 0.82\" without re-deriving anything."
     },
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "note": {
      "default": "",
-     "title": "Note",
      "type": "string"
     },
     "p_play": {
@@ -4029,12 +3639,10 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "P Play"
+     "default": null
     },
     "set_at": {
      "default": "",
-     "title": "Set At",
      "type": "string"
     }
    },
@@ -4049,14 +3657,13 @@
    "properties": {
     "active": {
      "default": true,
-     "title": "Active",
+     "description": "``[news] overrides``. False means the pins are stored and *not* being\napplied, which the panel says out loud rather than showing nothing.",
      "type": "boolean"
     },
     "rows": {
      "items": {
       "$ref": "#/definitions/OverrideRow"
      },
-     "title": "Rows",
      "type": "array"
     },
     "warning": {
@@ -4069,7 +3676,7 @@
       }
      ],
      "default": null,
-     "title": "Warning"
+     "description": "Accepted, and worth a second look. Set on a write whose two numbers\ndisagree with each other \u2014 expected minutes implying a player starts,\nbeside a probability of playing that says he probably does not. A refusal\nwould be wrong (the manager is allowed to mean it) and silence would be\nworse, so the dialog shows this and stays open."
     }
    },
    "title": "OverridesPanel",
@@ -4082,26 +3689,23 @@
      "items": {
       "$ref": "#/definitions/PenTrackerGw"
      },
-     "title": "Gws",
      "type": "array"
     },
     "notes": {
      "items": {
       "type": "string"
      },
-     "title": "Notes",
      "type": "array"
     },
     "season": {
      "default": "",
-     "title": "Season",
      "type": "string"
     },
     "season_totals": {
      "$ref": "#/definitions/PenTrackerTotals"
     }
    },
-   "title": "PenTracker",
+   "title": "PenTrackerData",
    "type": "object"
   },
   "PenTrackerGw": {
@@ -4116,8 +3720,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Component Rows"
+     "default": null
     },
     "covered_rows": {
      "anyOf": [
@@ -4128,8 +3731,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Covered Rows"
+     "default": null
     },
     "error": {
      "anyOf": [
@@ -4140,11 +3742,9 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Error"
+     "default": null
     },
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "instrument": {
@@ -4156,8 +3756,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Instrument"
+     "default": null
     },
     "pens_by_first_choice": {
      "anyOf": [
@@ -4168,8 +3767,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Pens By First Choice"
+     "default": null
     },
     "pens_per_team_game": {
      "anyOf": [
@@ -4180,8 +3778,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Pens Per Team Game"
+     "default": null
     },
     "pens_taken": {
      "anyOf": [
@@ -4192,8 +3789,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Pens Taken"
+     "default": null
     },
     "predicted_ep_pen_taker": {
      "anyOf": [
@@ -4204,8 +3800,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Predicted Ep Pen Taker"
+     "default": null
     },
     "predicted_takers": {
      "anyOf": [
@@ -4216,8 +3811,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Predicted Takers"
+     "default": null
     },
     "realized_pen_points": {
      "anyOf": [
@@ -4228,8 +3822,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Realized Pen Points"
+     "default": null
     },
     "rows": {
      "anyOf": [
@@ -4240,8 +3833,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Rows"
+     "default": null
     },
     "taker_hit_rate": {
      "anyOf": [
@@ -4252,8 +3844,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Taker Hit Rate"
+     "default": null
     },
     "team_games": {
      "anyOf": [
@@ -4264,8 +3855,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Team Games"
+     "default": null
     }
    },
    "required": [
@@ -4286,14 +3876,12 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Gws"
+     "default": null
     },
     "instruments": {
      "items": {
       "type": "string"
      },
-     "title": "Instruments",
      "type": "array"
     },
     "league_pens_pg_served": {
@@ -4305,8 +3893,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "League Pens Pg Served"
+     "default": null
     },
     "pens_by_first_choice": {
      "anyOf": [
@@ -4317,8 +3904,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Pens By First Choice"
+     "default": null
     },
     "pens_per_team_game": {
      "anyOf": [
@@ -4329,8 +3915,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Pens Per Team Game"
+     "default": null
     },
     "pens_taken": {
      "anyOf": [
@@ -4341,8 +3926,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Pens Taken"
+     "default": null
     },
     "predicted_ep_pen_taker": {
      "anyOf": [
@@ -4353,8 +3937,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Predicted Ep Pen Taker"
+     "default": null
     },
     "realized_pen_points": {
      "anyOf": [
@@ -4365,8 +3948,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Realized Pen Points"
+     "default": null
     },
     "taker_hit_rate": {
      "anyOf": [
@@ -4377,8 +3959,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Taker Hit Rate"
+     "default": null
     },
     "team_games": {
      "anyOf": [
@@ -4389,8 +3970,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Team Games"
+     "default": null
     }
    },
    "title": "PenTrackerTotals",
@@ -4409,17 +3989,16 @@
       }
      ],
      "default": null,
-     "title": "Gap"
+     "description": "Objective points behind the recommended plan \u2014 **signed**.\n\nNegative means this plan prices *above* the recommendation, which happens\nbecause the recommendation carries the scenario sweep's moves as\nconstraints and this one does not. ``None`` when the artifact's number\ncould not be read; never 0.0, which is \"exactly level\"."
     },
     "label": {
-     "title": "Label",
+     "description": "``\"Plan B\"`` / ``\"Plan C\"``, assigned by position at the router. The\nartifact stores the order and not the name, so a payload written by one\nbuild reads correctly on another.",
      "type": "string"
     },
     "weeks": {
      "items": {
       "$ref": "#/definitions/PlanGw"
      },
-     "title": "Weeks",
      "type": "array"
     }
    },
@@ -4442,13 +4021,12 @@
       }
      ],
      "default": null,
-     "title": "Bank"
+     "description": "What is left in the bank after this week's moves, in millions.\n\n``None`` means *unknown*, and it means it for one reason: some move in\nthis week or an earlier one had no price, so the running total is broken\nand stays broken. Never 0.0 \u2014 that is \"fully invested\", which is a real\nand different state a manager can be in."
     },
     "buys": {
      "items": {
       "$ref": "#/definitions/PlanMove"
      },
-     "title": "Buys",
      "type": "array"
     },
     "captain": {
@@ -4471,30 +4049,24 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Chip"
+     "default": null
     },
     "expected_pts": {
-     "title": "Expected Pts",
      "type": "number"
     },
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "hit_cost": {
-     "title": "Hit Cost",
      "type": "integer"
     },
     "hits": {
-     "title": "Hits",
      "type": "integer"
     },
     "sells": {
      "items": {
       "$ref": "#/definitions/PlanMove"
      },
-     "title": "Sells",
      "type": "array"
     },
     "trace": {
@@ -4506,7 +4078,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Why this week's moves, in the objective's own terms (v12 W5 \u00a76.5).\n\n``None`` only when the trace could not be computed at all \u2014 a week that\ndoes nothing carries a trace with no moves, because \"this week does\nnothing\" and \"the trace is broken\" must not look alike on the board.\n\nAlways ``None`` on an alternative plan: the trace is the objective's terms\nat the plan the solver *returned*, and Plan B was returned by a different\nsolve. The board says so under the strip."
     },
     "vice": {
      "anyOf": [
@@ -4534,19 +4107,15 @@
   "PlanMove": {
    "properties": {
     "code": {
-     "title": "Code",
      "type": "integer"
     },
     "ep": {
-     "title": "Ep",
      "type": "number"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "position": {
-     "title": "Position",
      "type": "string"
     },
     "price": {
@@ -4559,7 +4128,7 @@
       }
      ],
      "default": null,
-     "title": "Price"
+     "description": "Buy price for an in, sell value for an out \u2014 in millions."
     }
    },
    "required": [
@@ -4583,12 +4152,10 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Buy Code"
+     "default": null
     },
     "buy_name": {
      "default": "",
-     "title": "Buy Name",
      "type": "string"
     },
     "ep_gain": {
@@ -4600,8 +4167,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Ep Gain"
+     "default": null
     },
     "lambda_tilt": {
      "anyOf": [
@@ -4612,12 +4178,10 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Lambda Tilt"
+     "default": null
     },
     "note": {
      "default": "",
-     "title": "Note",
      "type": "string"
     },
     "sell_code": {
@@ -4629,12 +4193,10 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Sell Code"
+     "default": null
     },
     "sell_name": {
      "default": "",
-     "title": "Sell Name",
      "type": "string"
     }
    },
@@ -4647,40 +4209,35 @@
      "items": {
       "$ref": "#/definitions/PlayerRef"
      },
-     "title": "Bench",
      "type": "array"
     },
     "buys": {
      "items": {
       "$ref": "#/definitions/PlayerRef"
      },
-     "title": "Buys",
      "type": "array"
     },
     "captain": {
      "$ref": "#/definitions/PlayerRef"
     },
     "expected_pts": {
-     "title": "Expected Pts",
+     "description": "Raw expected points for ``gw`` alone, net of hits.",
      "type": "number"
     },
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "hits": {
-     "title": "Hits",
      "type": "integer"
     },
     "horizon_pts": {
-     "title": "Horizon Pts",
+     "description": "The same measure summed over the gameweeks the two plans share.",
      "type": "number"
     },
     "sells": {
      "items": {
       "$ref": "#/definitions/PlayerRef"
      },
-     "title": "Sells",
      "type": "array"
     },
     "vice": {
@@ -4690,7 +4247,6 @@
      "items": {
       "$ref": "#/definitions/PlayerRef"
      },
-     "title": "Xi",
      "type": "array"
     }
    },
@@ -4722,7 +4278,7 @@
       }
      ],
      "default": null,
-     "title": "Bank Value"
+     "description": "``itb_value * bank`` on the horizon's **last** week, which is the only\nweek the objective prices the bank at (``milp.py:889``). ``None``\nelsewhere, and ``None`` when the running bank is unknown."
     },
     "ep_gain": {
      "anyOf": [
@@ -4733,12 +4289,10 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Ep Gain"
+     "default": null
     },
     "ft_after": {
      "default": 0,
-     "title": "Ft After",
      "type": "integer"
     },
     "ft_basis": {
@@ -4747,7 +4301,6 @@
       "flat",
       "lambda"
      ],
-     "title": "Ft Basis",
      "type": "string"
     },
     "ft_shadow": {
@@ -4760,37 +4313,32 @@
       }
      ],
      "default": null,
-     "title": "Ft Shadow"
+     "description": "What one banked free transfer is worth, priced at the horizon's end:\nflat ``ft_value``, or \u03bb at **this week's** banked count and the weeks left\nafter the horizon's last gameweek. The count is the week's and only the\nbasis is terminal, because the end of the horizon is the only place the\nobjective prices a free transfer at all (``milp.py:878-888``)."
     },
     "ft_use_penalty": {
      "default": 0.0,
-     "title": "Ft Use Penalty",
+     "description": "The per-transfer friction this week, decayed exactly as the objective\ndecays it (``milp.py:867``).\n\nCharged even in a week the chip table recommends a wildcard for: the plan\non this payload is the base solve, which the solver returned with the\ntransfers charged and the free-transfer recurrence running. The week's\n``note`` says so.",
      "type": "number"
     },
     "ft_used": {
      "default": 0,
-     "title": "Ft Used",
      "type": "integer"
     },
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "hit_cost": {
      "default": 0.0,
-     "title": "Hit Cost",
      "type": "number"
     },
     "moves": {
      "items": {
       "$ref": "#/definitions/PlanMoveTrace"
      },
-     "title": "Moves",
      "type": "array"
     },
     "note": {
      "default": "",
-     "title": "Note",
      "type": "string"
     },
     "price_charge": {
@@ -4802,8 +4350,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Price Charge"
+     "default": null
     },
     "theta": {
      "anyOf": [
@@ -4814,8 +4361,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Theta"
+     "default": null
     }
    },
    "required": [
@@ -4827,15 +4373,12 @@
   "PlayerRef": {
    "properties": {
     "code": {
-     "title": "Code",
      "type": "integer"
     },
     "ep": {
-     "title": "Ep",
      "type": "number"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "next_fixture": {
@@ -4850,7 +4393,6 @@
      "default": null
     },
     "position": {
-     "title": "Position",
      "type": "string"
     },
     "team_code": {
@@ -4862,8 +4404,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Team Code"
+     "default": null
     },
     "team_short": {
      "anyOf": [
@@ -4874,8 +4415,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Team Short"
+     "default": null
     }
    },
    "required": [
@@ -4892,12 +4432,10 @@
    "properties": {
     "absent_rows": {
      "default": 0,
-     "title": "Absent Rows",
      "type": "integer"
     },
     "available": {
      "default": false,
-     "title": "Available",
      "type": "boolean"
     },
     "by_source": {
@@ -4905,7 +4443,6 @@
      "items": {
       "$ref": "#/definitions/SourceRows"
      },
-     "title": "By Source",
      "type": "array"
     },
     "confusion": {
@@ -4913,11 +4450,9 @@
      "items": {
       "$ref": "#/definitions/VerdictRow"
      },
-     "title": "Confusion",
      "type": "array"
     },
     "git_sha": {
-     "title": "Git Sha",
      "type": "string"
     },
     "graded_gws": {
@@ -4925,7 +4460,6 @@
      "items": {
       "type": "integer"
      },
-     "title": "Graded Gws",
      "type": "array"
     },
     "note": {
@@ -4937,34 +4471,28 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Note"
+     "default": null
     },
     "per_class": {
      "default": [],
      "items": {
       "$ref": "#/definitions/VerdictScore"
      },
-     "title": "Per Class",
      "type": "array"
     },
     "recall_population": {
      "default": "verdict-carrying rows",
-     "title": "Recall Population",
      "type": "string"
     },
     "rows": {
      "default": 0,
-     "title": "Rows",
      "type": "integer"
     },
     "run_at": {
-     "title": "Run At",
      "type": "string"
     },
     "verdicts_banked": {
      "default": 0,
-     "title": "Verdicts Banked",
      "type": "integer"
     }
    },
@@ -4972,17 +4500,15 @@
     "run_at",
     "git_sha"
    ],
-   "title": "PresserGrades",
+   "title": "PresserGradesData",
    "type": "object"
   },
   "PricePoint": {
    "properties": {
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "price": {
-     "title": "Price",
      "type": "number"
     }
    },
@@ -4996,18 +4522,15 @@
   "PriceSeries": {
    "properties": {
     "code": {
-     "title": "Code",
      "type": "integer"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "points": {
      "items": {
       "$ref": "#/definitions/PricePoint"
      },
-     "title": "Points",
      "type": "array"
     }
    },
@@ -5089,18 +4612,16 @@
      "default": null
     }
    },
-   "title": "Quality",
+   "title": "QualityData",
    "type": "object"
   },
   "ReferenceMetrics": {
    "description": "A published number: no row count, because we did not measure it.",
    "properties": {
     "mae": {
-     "title": "Mae",
      "type": "number"
     },
     "rmse": {
-     "title": "Rmse",
      "type": "number"
     }
    },
@@ -5114,15 +4635,12 @@
   "ReliabilityBin": {
    "properties": {
     "n": {
-     "title": "N",
      "type": "integer"
     },
     "obs": {
-     "title": "Obs",
      "type": "number"
     },
     "pred": {
-     "title": "Pred",
      "type": "number"
     }
    },
@@ -5137,11 +4655,9 @@
   "ReviewAccuracyPoint": {
    "properties": {
     "accuracy": {
-     "title": "Accuracy",
      "type": "integer"
     },
     "gw": {
-     "title": "Gw",
      "type": "integer"
     }
    },
@@ -5158,7 +4674,6 @@
      "items": {
       "$ref": "#/definitions/ReviewGw"
      },
-     "title": "Gws",
      "type": "array"
     },
     "summary": {
@@ -5173,7 +4688,7 @@
      "default": null
     }
    },
-   "title": "Review",
+   "title": "ReviewData",
    "type": "object"
   },
   "ReviewGw": {
@@ -5188,8 +4703,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Accuracy"
+     "default": null
     },
     "chip": {
      "anyOf": [
@@ -5200,11 +4714,9 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Chip"
+     "default": null
     },
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "hindsight": {
@@ -5212,21 +4724,18 @@
     },
     "hits": {
      "default": 0,
-     "title": "Hits",
      "type": "integer"
     },
     "lanes": {
      "items": {
       "$ref": "#/definitions/ReviewLane"
      },
-     "title": "Lanes",
      "type": "array"
     },
     "misses": {
      "items": {
       "$ref": "#/definitions/ReviewMiss"
      },
-     "title": "Misses",
      "type": "array"
     },
     "model_chip": {
@@ -5238,8 +4747,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Model Chip"
+     "default": null
     },
     "model_points": {
      "anyOf": [
@@ -5250,8 +4758,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Model Points"
+     "default": null
     },
     "my_points": {
      "anyOf": [
@@ -5262,19 +4769,16 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "My Points"
+     "default": null
     },
     "no_advice": {
      "default": false,
-     "title": "No Advice",
      "type": "boolean"
     },
     "notices": {
      "items": {
       "type": "string"
      },
-     "title": "Notices",
      "type": "array"
     },
     "official_gross": {
@@ -5286,8 +4790,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Official Gross"
+     "default": null
     },
     "official_points": {
      "anyOf": [
@@ -5298,8 +4801,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Official Points"
+     "default": null
     },
     "our_bench_points": {
      "anyOf": [
@@ -5310,8 +4812,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Our Bench Points"
+     "default": null
     },
     "overall_rank": {
      "anyOf": [
@@ -5323,7 +4824,7 @@
       }
      ],
      "default": null,
-     "title": "Overall Rank"
+     "description": "My overall FPL rank at the end of this gameweek.\n\n``None`` for two situations the reader must not see merged: a gameweek\nwhose entry history was never banked, and \u2014 for the whole of this season's\nexisting ledger \u2014 **a gameweek graded before the field existed.** Grades\nare banked and never re-derived (spec D2), so the trajectory begins empty\nand fills forward from the next graded week. A chart drawing this must\nshow a gap, never a zero and never a line through it: zero is the best\nrank in the game."
     },
     "points_on_bench": {
      "anyOf": [
@@ -5334,17 +4835,15 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Points On Bench"
+     "default": null
     },
     "post_deadline": {
      "default": false,
-     "title": "Post Deadline",
      "type": "boolean"
     },
     "projection_post_deadline": {
      "default": false,
-     "title": "Projection Post Deadline",
+     "description": "The snapshot named above cannot be trusted to predate the deadline.\n\n**Two causes, and the reader must not be told only the first.** Either\nevery snapshot for the gameweek was written after the deadline, or the\nrun did not record when the deadline was \u2014 which is the ordinary state of\na gameweek graded late, after ``ADVICE_HISTORY_KEEP`` pruned the payload\nthe deadline was carried on. In that second case an in-time snapshot may\nwell exist on disk; there is simply nothing left to compare its stamp\nagainst, and guessing would be worse than saying so.\n\nEither way the claim is the same and it is the weaker one: this table may\nhave seen team news nobody could act on. Related to ``post_deadline``\nabove \u2014 which is about the advice payload rather than the EP table \u2014 and\nthe two can disagree.",
      "type": "boolean"
     },
     "projection_snapshot": {
@@ -5357,7 +4856,7 @@
       }
      ],
      "default": null,
-     "title": "Projection Snapshot"
+     "description": "The UTC stamp of the frozen EP table this grade was read against.\n\n``None`` for a gameweek graded before v12 W5 existed, and for one where no\nsnapshot was ever written. Grades are banked and never re-derived (spec\nD2), so every row already in the ledger keeps ``None`` for ever and the\ncolumn fills forward from the next graded week \u2014 drawn as absent, never as\na zero or a blank that reads like one."
     },
     "pwin_granularity_pp": {
      "anyOf": [
@@ -5368,8 +4867,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Pwin Granularity Pp"
+     "default": null
     },
     "pwin_n": {
      "anyOf": [
@@ -5380,8 +4878,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Pwin N"
+     "default": null
     },
     "pwin_seed": {
      "anyOf": [
@@ -5392,8 +4889,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Pwin Seed"
+     "default": null
     },
     "reconciled": {
      "anyOf": [
@@ -5404,8 +4900,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Reconciled"
+     "default": null
     },
     "reviewed_at": {
      "anyOf": [
@@ -5416,8 +4911,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Reviewed At"
+     "default": null
     }
    },
    "required": [
@@ -5438,8 +4932,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Captain"
+     "default": null
     },
     "gap": {
      "anyOf": [
@@ -5450,8 +4943,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Gap"
+     "default": null
     },
     "points": {
      "anyOf": [
@@ -5462,14 +4954,12 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Points"
+     "default": null
     },
     "xi": {
      "items": {
       "type": "integer"
      },
-     "title": "Xi",
      "type": "array"
     }
    },
@@ -5481,7 +4971,6 @@
    "properties": {
     "aligned": {
      "default": false,
-     "title": "Aligned",
      "type": "boolean"
     },
     "delta_pts": {
@@ -5493,8 +4982,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Delta Pts"
+     "default": null
     },
     "delta_pwin": {
      "anyOf": [
@@ -5506,7 +4994,7 @@
       }
      ],
      "default": null,
-     "title": "Delta Pwin"
+     "description": "My choice minus the model's, in percentage points of P(win the\nleague). ``0.0`` on the bench and chip lanes by construction \u2014 the\nsimulation normalises every squad to its eleven and one armband."
     },
     "label": {
      "anyOf": [
@@ -5524,8 +5012,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Label"
+     "default": null
     },
     "lane": {
      "enum": [
@@ -5534,7 +5021,6 @@
       "bench",
       "chip"
      ],
-     "title": "Lane",
      "type": "string"
     },
     "mine": {
@@ -5546,8 +5032,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Mine"
+     "default": null
     },
     "model": {
      "anyOf": [
@@ -5558,8 +5043,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Model"
+     "default": null
     },
     "note": {
      "anyOf": [
@@ -5570,8 +5054,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Note"
+     "default": null
     }
    },
    "required": [
@@ -5584,27 +5067,24 @@
    "properties": {
     "graded": {
      "default": 0,
-     "title": "Graded",
+     "description": "How many gameweeks this lane was gradeable in. ``pts`` of zero over\n``graded`` of zero is \"never measured\", not \"never wrong\".",
      "type": "integer"
     },
     "losses": {
      "default": 0,
-     "title": "Losses",
+     "description": "Graded weeks this lane gained / lost points, counted strictly.\n\nA zero delta is neither, so ``wins + losses <= graded`` with slack \u2014 the\ndifference is the weeks I did exactly what the model did. A UI that\nrendered ``wins / (wins + losses)`` would silently drop those weeks; the\ndenominator is ``graded``.",
      "type": "integer"
     },
     "pts": {
      "default": 0.0,
-     "title": "Pts",
      "type": "number"
     },
     "pwin": {
      "default": 0.0,
-     "title": "Pwin",
      "type": "number"
     },
     "wins": {
      "default": 0,
-     "title": "Wins",
      "type": "integer"
     }
    },
@@ -5615,19 +5095,15 @@
    "description": "A move the model flagged, I did not make, and that returned anyway.",
    "properties": {
     "code": {
-     "title": "Code",
      "type": "integer"
     },
     "gain": {
-     "title": "Gain",
      "type": "integer"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "over": {
-     "title": "Over",
      "type": "string"
     }
    },
@@ -5643,11 +5119,9 @@
   "RivalBeat": {
    "properties": {
     "entry": {
-     "title": "Entry",
      "type": "integer"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "p_beat": {
@@ -5660,7 +5134,7 @@
       }
      ],
      "default": null,
-     "title": "P Beat"
+     "description": "``None`` when the entry's squad could not be read at all (private, or\njoined after the gameweek). Such an entry is listed but not simulated \u2014\nsee ``league_sim.is_readable`` \u2014 and the card renders a dash."
     }
    },
    "required": [
@@ -5686,11 +5160,9 @@
      "items": {
       "type": "string"
      },
-     "title": "Chips Used",
      "type": "array"
     },
     "entry": {
-     "title": "Entry",
      "type": "integer"
     },
     "live_points": {
@@ -5701,55 +5173,45 @@
       {
        "type": "null"
       }
-     ],
-     "title": "Live Points"
+     ]
     },
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "player_name": {
-     "title": "Player Name",
      "type": "string"
     },
     "shared": {
      "items": {
       "$ref": "#/definitions/SquadPlayer"
      },
-     "title": "Shared",
      "type": "array"
     },
     "squad": {
      "items": {
       "$ref": "#/definitions/SquadPlayer"
      },
-     "title": "Squad",
      "type": "array"
     },
     "squad_gw": {
-     "title": "Squad Gw",
      "type": "integer"
     },
     "team_value": {
-     "title": "Team Value",
      "type": "number"
     },
     "their_differentials": {
      "items": {
       "$ref": "#/definitions/SquadPlayer"
      },
-     "title": "Their Differentials",
      "type": "array"
     },
     "total": {
-     "title": "Total",
      "type": "integer"
     },
     "your_differentials": {
      "items": {
       "$ref": "#/definitions/SquadPlayer"
      },
-     "title": "Your Differentials",
      "type": "array"
     }
    },
@@ -5768,41 +5230,33 @@
     "your_differentials",
     "live_points"
    ],
-   "title": "RivalDetail",
+   "title": "RivalDetailData",
    "type": "object"
   },
   "RivalSummary": {
    "properties": {
     "differentials": {
-     "title": "Differentials",
      "type": "integer"
     },
     "entry": {
-     "title": "Entry",
      "type": "integer"
     },
     "event_total": {
-     "title": "Event Total",
      "type": "integer"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "overlap": {
-     "title": "Overlap",
      "type": "integer"
     },
     "player_name": {
-     "title": "Player Name",
      "type": "string"
     },
     "rank": {
-     "title": "Rank",
      "type": "integer"
     },
     "total": {
-     "title": "Total",
      "type": "integer"
     }
    },
@@ -5822,32 +5276,25 @@
   "SensitivityMove": {
    "properties": {
     "code": {
-     "title": "Code",
      "type": "integer"
     },
     "count": {
-     "title": "Count",
      "type": "integer"
     },
     "frequency": {
-     "title": "Frequency",
      "type": "number"
     },
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "kind": {
-     "title": "Kind",
      "type": "string"
     },
     "label": {
-     "title": "Label",
      "type": "string"
     },
     "name": {
      "default": "",
-     "title": "Name",
      "type": "string"
     }
    },
@@ -5868,7 +5315,6 @@
      "items": {
       "$ref": "#/definitions/NamedPlayer"
      },
-     "title": "Buys",
      "type": "array"
     },
     "captain": {
@@ -5883,24 +5329,21 @@
      "default": null
     },
     "count": {
-     "title": "Count",
      "type": "integer"
     },
     "hits": {
      "default": 0,
-     "title": "Hits",
      "type": "integer"
     },
     "sells": {
      "items": {
       "$ref": "#/definitions/NamedPlayer"
      },
-     "title": "Sells",
      "type": "array"
     },
     "value": {
      "default": 0.0,
-     "title": "Value",
+     "description": "Horizon expected points on the **true** EP table, so two signatures are\ncompared on the board the manager faces rather than on their own draws.",
      "type": "number"
     }
    },
@@ -5914,12 +5357,10 @@
    "properties": {
     "available": {
      "default": false,
-     "title": "Available",
      "type": "boolean"
     },
     "completed": {
      "default": 0,
-     "title": "Completed",
      "type": "integer"
     },
     "decision_sigma": {
@@ -5932,18 +5373,16 @@
       }
      ],
      "default": null,
-     "title": "Decision Sigma"
+     "description": "The scenario sweep's own *estimation* noise on the players that\nseparate the two plans, in quadrature (plan A6).\n\nNot the \u03c3 behind the EP bands, and the difference is the point. A band\nanswers \"what might he score\" and is dominated by football's own variance.\nThis answers \"how wrong might my forecast be\" \u2014 the only question a margin\nbetween two plans solved off the same board can be threatened by \u2014 and so\nit stays on ``optimize.scenarios``' calibrated table alone.\n\nComputed at serve time from the banked components frame rather than stored\nin the report, so a report swept before this field existed still gets the\nline. ``None`` when there is no runner-up, no components frame, or nothing\nin the symmetric difference \u2014 the card then prints its margin unqualified,\nwhich is what it did before."
     },
     "failures": {
      "default": 0,
-     "title": "Failures",
      "type": "integer"
     },
     "frequencies": {
      "items": {
       "$ref": "#/definitions/SensitivityMove"
      },
-     "title": "Frequencies",
      "type": "array"
     },
     "generated_at": {
@@ -5955,8 +5394,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Generated At"
+     "default": null
     },
     "gw": {
      "anyOf": [
@@ -5967,17 +5405,14 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Gw"
+     "default": null
     },
     "horizon": {
      "default": 0,
-     "title": "Horizon",
      "type": "integer"
     },
     "k": {
      "default": 0,
-     "title": "K",
      "type": "integer"
     },
     "margin": {
@@ -5989,8 +5424,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Margin"
+     "default": null
     },
     "modal": {
      "anyOf": [
@@ -6012,8 +5446,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Notice"
+     "default": null
     },
     "runner_up": {
      "anyOf": [
@@ -6035,8 +5468,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Seed"
+     "default": null
     },
     "verdict": {
      "anyOf": [
@@ -6047,8 +5479,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Verdict"
+     "default": null
     },
     "wall_s": {
      "anyOf": [
@@ -6059,8 +5490,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Wall S"
+     "default": null
     }
    },
    "title": "SensitivityReport",
@@ -6070,7 +5500,6 @@
    "description": "One editable setting, as the Settings tab receives it (v12 W5 \u00a76.2).",
    "properties": {
     "help": {
-     "title": "Help",
      "type": "string"
     },
     "hi": {
@@ -6082,11 +5511,9 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Hi"
+     "default": null
     },
     "key": {
-     "title": "Key",
      "type": "string"
     },
     "kind": {
@@ -6097,11 +5524,9 @@
       "floats3",
       "pool"
      ],
-     "title": "Kind",
      "type": "string"
     },
     "label": {
-     "title": "Label",
      "type": "string"
     },
     "lo": {
@@ -6113,24 +5538,22 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Lo"
+     "default": null
     },
     "section": {
-     "title": "Section",
      "type": "string"
     },
     "source": {
+     "description": "Which file this value came from. ``local`` is ``config.local.toml``,\n``base`` is ``config.toml``, ``default`` is the dataclass \u2014 and the three\nare different facts: only a ``local`` value can be reset.",
      "enum": [
       "local",
       "base",
       "default"
      ],
-     "title": "Source",
      "type": "string"
     },
     "value": {
-     "title": "Value"
+     "description": "Whatever the merged config holds. ``None`` only for ``bench_curve``,\nwhere it means \"no curve \u2014 one flat bench weight\", which is a real\nsetting and not an absent one."
     }
    },
    "required": [
@@ -6148,12 +5571,11 @@
   "SettingWrite": {
    "properties": {
     "key": {
-     "title": "Key",
      "type": "string"
     },
     "value": {
      "default": null,
-     "title": "Value"
+     "description": "``None`` removes the key from the overlay, so the value falls back to\n``config.toml`` or the dataclass default."
     }
    },
    "required": [
@@ -6165,7 +5587,6 @@
   "SettingsPanel": {
    "properties": {
     "apply_note": {
-     "title": "Apply Note",
      "type": "string"
     },
     "overlay_error": {
@@ -6178,20 +5599,19 @@
       }
      ],
      "default": null,
-     "title": "Overlay Error"
+     "description": "Why ``config.local.toml`` is being ignored, or ``None``. Also carries\nthe \"no config.toml at all\" case, which is the state a cold clone is in."
     },
     "rows": {
      "items": {
       "$ref": "#/definitions/SettingRow"
      },
-     "title": "Rows",
      "type": "array"
     },
     "unavailable": {
+     "description": "Whitelisted settings this build's ``Config`` does not have. Named\nrather than dropped: a form that is quietly shorter is a setting nobody\ncan find and nobody knows is missing.",
      "items": {
       "type": "string"
      },
-     "title": "Unavailable",
      "type": "array"
     }
    },
@@ -6205,23 +5625,18 @@
    "description": "One banked gameweek of the headline, for the card's sparkline.",
    "properties": {
     "exp_finish": {
-     "title": "Exp Finish",
      "type": "number"
     },
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "p_top3": {
-     "title": "P Top3",
      "type": "number"
     },
     "p_win": {
-     "title": "P Win",
      "type": "number"
     },
     "run_at": {
-     "title": "Run At",
      "type": "string"
     }
    },
@@ -6245,8 +5660,7 @@
       {
        "type": "null"
       }
-     ],
-     "title": "Age Hours"
+     ]
     },
     "modified_at": {
      "anyOf": [
@@ -6256,19 +5670,15 @@
       {
        "type": "null"
       }
-     ],
-     "title": "Modified At"
+     ]
     },
     "path": {
-     "title": "Path",
      "type": "string"
     },
     "present": {
-     "title": "Present",
      "type": "boolean"
     },
     "source": {
-     "title": "Source",
      "type": "string"
     }
    },
@@ -6285,11 +5695,9 @@
   "SourceRows": {
    "properties": {
     "rows": {
-     "title": "Rows",
      "type": "integer"
     },
     "source": {
-     "title": "Source",
      "type": "string"
     }
    },
@@ -6307,29 +5715,24 @@
      "items": {
       "$ref": "#/definitions/SquadPlayerRef"
      },
-     "title": "Added",
      "type": "array"
     },
     "dropped": {
      "items": {
       "$ref": "#/definitions/SquadPlayerRef"
      },
-     "title": "Dropped",
      "type": "array"
     },
     "gain_over_horizon": {
-     "title": "Gain Over Horizon",
      "type": "number"
     },
     "kept": {
      "items": {
       "$ref": "#/definitions/SquadPlayerRef"
      },
-     "title": "Kept",
      "type": "array"
     },
     "recommend": {
-     "title": "Recommend",
      "type": "boolean"
     },
     "threshold": {
@@ -6342,7 +5745,7 @@
       }
      ],
      "default": null,
-     "title": "Threshold"
+     "description": "The bar ``recommend`` was decided against. Until v12 this was always\nthe flat 8.0 and was never served, so the card asserted a verdict and\nshowed nothing of the rule behind it (v12 W3 \u00a74.2)."
     },
     "threshold_source": {
      "anyOf": [
@@ -6354,7 +5757,7 @@
       }
      ],
      "default": null,
-     "title": "Threshold Source"
+     "description": "See ``ChipWorkbenchRow.threshold_source``."
     }
    },
    "required": [
@@ -6370,31 +5773,24 @@
   "SquadPlayer": {
    "properties": {
     "code": {
-     "title": "Code",
      "type": "integer"
     },
     "element": {
-     "title": "Element",
      "type": "integer"
     },
     "is_captain": {
-     "title": "Is Captain",
      "type": "boolean"
     },
     "multiplier": {
-     "title": "Multiplier",
      "type": "integer"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "position": {
-     "title": "Position",
      "type": "string"
     },
     "price": {
-     "title": "Price",
      "type": "number"
     }
    },
@@ -6413,23 +5809,18 @@
   "SquadPlayerRef": {
    "properties": {
     "code": {
-     "title": "Code",
      "type": "integer"
     },
     "ep": {
-     "title": "Ep",
      "type": "number"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "position": {
-     "title": "Position",
      "type": "string"
     },
     "price": {
-     "title": "Price",
      "type": "number"
     }
    },
@@ -6446,7 +5837,6 @@
   "Staleness": {
    "properties": {
     "advice_gw": {
-     "title": "Advice Gw",
      "type": "integer"
     },
     "current_gw": {
@@ -6457,8 +5847,7 @@
       {
        "type": "null"
       }
-     ],
-     "title": "Current Gw"
+     ]
     },
     "data_through_gw": {
      "anyOf": [
@@ -6469,8 +5858,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Data Through Gw"
+     "default": null
     },
     "data_warning": {
      "anyOf": [
@@ -6481,27 +5869,21 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Data Warning"
+     "default": null
     },
     "deadline": {
-     "title": "Deadline",
      "type": "string"
     },
     "deadline_passed": {
-     "title": "Deadline Passed",
      "type": "boolean"
     },
     "generated_at": {
-     "title": "Generated At",
      "type": "string"
     },
     "reason": {
-     "title": "Reason",
      "type": "string"
     },
     "stale": {
-     "title": "Stale",
      "type": "boolean"
     }
    },
@@ -6520,31 +5902,24 @@
   "StandingRow": {
    "properties": {
     "entry": {
-     "title": "Entry",
      "type": "integer"
     },
     "event_total": {
-     "title": "Event Total",
      "type": "integer"
     },
     "is_you": {
-     "title": "Is You",
      "type": "boolean"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "player_name": {
-     "title": "Player Name",
      "type": "string"
     },
     "rank": {
-     "title": "Rank",
      "type": "integer"
     },
     "total": {
-     "title": "Total",
      "type": "integer"
     }
    },
@@ -6563,19 +5938,15 @@
   "TickerCell": {
    "properties": {
     "difficulty": {
-     "title": "Difficulty",
      "type": "number"
     },
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "home": {
-     "title": "Home",
      "type": "boolean"
     },
     "opponent": {
-     "title": "Opponent",
      "type": "string"
     }
    },
@@ -6594,7 +5965,6 @@
      "items": {
       "type": "integer"
      },
-     "title": "Gws",
      "type": "array"
     },
     "source": {
@@ -6602,14 +5972,12 @@
       "odds",
       "elo"
      ],
-     "title": "Source",
      "type": "string"
     },
     "teams": {
      "items": {
       "$ref": "#/definitions/TickerTeam"
      },
-     "title": "Teams",
      "type": "array"
     }
    },
@@ -6618,7 +5986,7 @@
     "source",
     "teams"
    ],
-   "title": "Ticker",
+   "title": "TickerData",
    "type": "object"
   },
   "TickerTeam": {
@@ -6627,23 +5995,18 @@
      "items": {
       "$ref": "#/definitions/TickerCell"
      },
-     "title": "Cells",
      "type": "array"
     },
     "code": {
-     "title": "Code",
      "type": "integer"
     },
     "mean_difficulty": {
-     "title": "Mean Difficulty",
      "type": "number"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "short_name": {
-     "title": "Short Name",
      "type": "string"
     }
    },
@@ -6660,18 +6023,15 @@
   "Trajectory": {
    "properties": {
     "entry": {
-     "title": "Entry",
      "type": "integer"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "points": {
      "items": {
       "$ref": "#/definitions/GwPoint"
      },
-     "title": "Points",
      "type": "array"
     }
    },
@@ -6687,15 +6047,12 @@
    "description": "One of the next three league games, as the explain panel lists them.\n\nDeliberately *not* ``NextFixture`` (``:87``), whose name it shadowed until\nv12 W5: that one is the advised gameweek's single game, with an opponent\nshort name, a kickoff and a difficulty; this one is a gameweek number and\nan opponent's full name. Two response models under one name gave the\nschema generator two definitions it could only tell apart by mangling\nboth, and gave every ``from .schemas import NextFixture`` in the tree the\nsecond class rather than the first.",
    "properties": {
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "home": {
-     "title": "Home",
      "type": "boolean"
     },
     "opponent": {
-     "title": "Opponent",
      "type": "string"
     }
    },
@@ -6710,19 +6067,15 @@
   "VerdictRow": {
    "properties": {
     "n": {
-     "title": "N",
      "type": "integer"
     },
     "not_started": {
-     "title": "Not Started",
      "type": "integer"
     },
     "started": {
-     "title": "Started",
      "type": "integer"
     },
     "verdict": {
-     "title": "Verdict",
      "type": "string"
     }
    },
@@ -6738,19 +6091,16 @@
   "VerdictScore": {
    "properties": {
     "n": {
-     "title": "N",
      "type": "integer"
     },
     "precision": {
-     "title": "Precision",
+     "description": "P(did not start | this verdict). Absence is the event every class\nclaims, which is what makes the four numbers comparable.",
      "type": "number"
     },
     "recall": {
-     "title": "Recall",
      "type": "number"
     },
     "verdict": {
-     "title": "Verdict",
      "type": "string"
     }
    },
@@ -6767,12 +6117,10 @@
    "description": "A star, and optionally a sentence about why.",
    "properties": {
     "code": {
-     "title": "Code",
      "type": "integer"
     },
     "note": {
      "default": "",
-     "title": "Note",
      "type": "string"
     }
    },
@@ -6785,19 +6133,15 @@
   "WatchRow": {
    "properties": {
     "code": {
-     "title": "Code",
      "type": "integer"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "note": {
-     "title": "Note",
      "type": "string"
     },
     "set_at": {
-     "title": "Set At",
      "type": "string"
     }
    },
@@ -6817,7 +6161,6 @@
      "items": {
       "$ref": "#/definitions/WatchRow"
      },
-     "title": "Rows",
      "type": "array"
     }
    },
@@ -6830,7 +6173,6 @@
      "items": {
       "type": "integer"
      },
-     "title": "Ban",
      "type": "array"
     },
     "chip": {
@@ -6842,21 +6184,19 @@
       "fh",
       "tc"
      ],
-     "title": "Chip",
      "type": "string"
     },
     "force_in": {
      "items": {
       "type": "integer"
      },
-     "title": "Force In",
      "type": "array"
     },
     "force_out": {
+     "description": "Owned players the solve must sell in the first horizon gameweek.\n\nHe is then out of the squad **for the whole horizon**: ``milp`` pins squad\nmembership to 0 in every week, not only the first, so this is not a sale\nthe solver may reverse later. The bank is credited with his selling price.\n\nNot ``ban``: banning an owned player removes him from the candidate pool\nentirely, so he never enters the squad and \u2014 because he leaves the pool\nrather than the squad \u2014 the sale money never arrives. This says \"sell\nhim\", which is the instruction the planner board's handoff has been\napproximating with ``ban`` since v11.",
      "items": {
       "type": "integer"
      },
-     "title": "Force Out",
      "type": "array"
     },
     "horizon": {
@@ -6868,19 +6208,16 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Horizon"
+     "default": null
     },
     "lock": {
      "items": {
       "type": "integer"
      },
-     "title": "Lock",
      "type": "array"
     },
     "max_hits": {
      "default": 0,
-     "title": "Max Hits",
      "type": "integer"
     }
    },
@@ -6893,33 +6230,27 @@
      "$ref": "#/definitions/PlanSummary"
     },
     "captain_changed": {
-     "title": "Captain Changed",
      "type": "boolean"
     },
     "delta_xpts": {
-     "title": "Delta Xpts",
      "type": "number"
     },
     "transfers_changed": {
-     "title": "Transfers Changed",
      "type": "boolean"
     },
     "verdict": {
-     "title": "Verdict",
      "type": "string"
     },
     "xi_in": {
      "items": {
       "$ref": "#/definitions/PlayerRef"
      },
-     "title": "Xi In",
      "type": "array"
     },
     "xi_out": {
      "items": {
       "$ref": "#/definitions/PlayerRef"
      },
-     "title": "Xi Out",
      "type": "array"
     },
     "yours": {
@@ -6942,15 +6273,12 @@
   "WinProb": {
    "properties": {
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "p_win": {
-     "title": "P Win",
      "type": "number"
     },
     "total": {
-     "title": "Total",
      "type": "integer"
     }
    },
@@ -6966,19 +6294,15 @@
    "properties": {
     "advice": {
      "additionalProperties": true,
-     "title": "Advice",
      "type": "object"
     },
     "deadline": {
-     "title": "Deadline",
      "type": "string"
     },
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "mode": {
-     "title": "Mode",
      "type": "string"
     },
     "staleness": {
@@ -6992,7 +6316,7 @@
     "advice",
     "staleness"
    ],
-   "title": "AdviceLatest",
+   "title": "WireAdviceLatest",
    "type": "object"
   },
   "WireCalibrationReport": {
@@ -7000,7 +6324,6 @@
    "properties": {
     "available": {
      "default": false,
-     "title": "Available",
      "type": "boolean"
     },
     "cumulative": {
@@ -7008,7 +6331,6 @@
       "$ref": "#/definitions/CalibrationHead"
      },
      "default": {},
-     "title": "Cumulative",
      "type": "object"
     },
     "excluded": {
@@ -7017,7 +6339,6 @@
       "additionalProperties": true,
       "type": "object"
      },
-     "title": "Excluded",
      "type": "array"
     },
     "gameweeks": {
@@ -7025,7 +6346,6 @@
      "items": {
       "$ref": "#/definitions/CalibrationGw"
      },
-     "title": "Gameweeks",
      "type": "array"
     },
     "git_sha": {
@@ -7037,15 +6357,13 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Git Sha"
+     "default": null
     },
     "missing": {
      "default": [],
      "items": {
       "type": "integer"
      },
-     "title": "Missing",
      "type": "array"
     },
     "note": {
@@ -7057,15 +6375,13 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Note"
+     "default": null
     },
     "omitted": {
      "additionalProperties": {
       "type": "string"
      },
      "default": {},
-     "title": "Omitted",
      "type": "object"
     },
     "per_gw_omitted": {
@@ -7073,7 +6389,6 @@
       "type": "string"
      },
      "default": {},
-     "title": "Per Gw Omitted",
      "type": "object"
     },
     "run_at": {
@@ -7085,8 +6400,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Run At"
+     "default": null
     },
     "season": {
      "anyOf": [
@@ -7097,11 +6411,10 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Season"
+     "default": null
     }
    },
-   "title": "CalibrationReport",
+   "title": "WireCalibrationReport",
    "type": "object"
   },
   "WireHealth": {
@@ -7110,7 +6423,6 @@
      "items": {
       "$ref": "#/definitions/ArtifactItem"
      },
-     "title": "Artifacts",
      "type": "array"
     },
     "core_insights": {
@@ -7128,7 +6440,6 @@
      "items": {
       "$ref": "#/definitions/SourceHealth"
      },
-     "title": "Data",
      "type": "array"
     },
     "data_through_gw": {
@@ -7140,8 +6451,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Data Through Gw"
+     "default": null
     },
     "last_backup": {
      "anyOf": [
@@ -7152,7 +6462,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The newest ``gaffer-*.tar.gz`` in the configured backup directory.\n\n``None`` means *never*, and the tab renders it as \"never \u2014 run `gaffer\nbackup`\" rather than as a blank cell. A zero-byte dict would have been the\nother option and it is worse: it renders as a backup that happened and was\nempty, which is the one outcome this feature exists to prevent."
     },
     "launchd": {
      "$ref": "#/definitions/LaunchdHealth"
@@ -7166,18 +6477,15 @@
       {
        "type": "null"
       }
-     ],
-     "title": "Model Health"
+     ]
     },
     "models": {
      "items": {
       "$ref": "#/definitions/WireModelHealth"
      },
-     "title": "Models",
      "type": "array"
     },
     "odds_key_present": {
-     "title": "Odds Key Present",
      "type": "boolean"
     },
     "season_config": {
@@ -7190,7 +6498,7 @@
       }
      ],
      "default": null,
-     "title": "Season Config"
+     "description": "What ``config.toml`` says this season is."
     },
     "season_ingested": {
      "anyOf": [
@@ -7202,7 +6510,7 @@
       }
      ],
      "default": null,
-     "title": "Season Ingested"
+     "description": "What the last refresh actually banked, derived from the events' own\ndeadlines. Read off disk, never off the API: this endpoint is polled by a\ntab and must not depend on FPL being up."
     },
     "season_ok": {
      "anyOf": [
@@ -7214,7 +6522,7 @@
       }
      ],
      "default": null,
-     "title": "Season Ok"
+     "description": "Does the banked data's season match ``config.current_season``?\n\nThree states, not two. ``None`` is *cannot tell* \u2014 no events snapshot, or\ndeadlines that will not parse \u2014 and it is not an alarm: a cold clone has\nno data to disagree with. The banner draws on ``False`` alone."
     },
     "solver_top_n": {
      "anyOf": [
@@ -7229,7 +6537,7 @@
       }
      ],
      "default": null,
-     "title": "Solver Top N"
+     "description": "Players per position the solver may consider, on top of the ones you own.\n\nNamed for what it is on the wire \u2014 a solver pool \u2014 since a schema field\ncarries no TOML section with it. The value is ``optimizer_top_n()``'s, so\nit is what an actual solve would get rather than what the file says."
     }
    },
    "required": [
@@ -7240,7 +6548,7 @@
     "model_health",
     "artifacts"
    ],
-   "title": "Health",
+   "title": "WireHealth",
    "type": "object"
   },
   "WireHistory": {
@@ -7250,21 +6558,18 @@
       "additionalProperties": true,
       "type": "object"
      },
-     "title": "Backtests",
      "type": "array"
     },
     "prices": {
      "items": {
       "$ref": "#/definitions/PriceSeries"
      },
-     "title": "Prices",
      "type": "array"
     },
     "runs": {
      "items": {
       "$ref": "#/definitions/HistoryRun"
      },
-     "title": "Runs",
      "type": "array"
     }
    },
@@ -7273,18 +6578,16 @@
     "prices",
     "backtests"
    ],
-   "title": "History",
+   "title": "WireHistory",
    "type": "object"
   },
   "WireModelHealth": {
    "properties": {
     "metrics": {
      "additionalProperties": true,
-     "title": "Metrics",
      "type": "object"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "saved_at": {
@@ -7295,8 +6598,7 @@
       {
        "type": "null"
       }
-     ],
-     "title": "Saved At"
+     ]
     }
    },
    "required": [
@@ -7304,17 +6606,17 @@
     "saved_at",
     "metrics"
    ],
-   "title": "ModelHealth",
+   "title": "WireModelHealth",
    "type": "object"
   },
   "WirePlanTimeline": {
    "properties": {
     "alternatives": {
      "default": [],
+     "description": "Empty on every artifact written before v12, and on any run with\n``[optimizer] alt_plan_max_gap = 0``. The board draws no tab strip for an\nempty list rather than a strip with one tab in it (v12 W3 \u00a74.3).",
      "items": {
       "$ref": "#/definitions/PlanAlternative"
      },
-     "title": "Alternatives",
      "type": "array"
     },
     "bank": {
@@ -7327,21 +6629,18 @@
       }
      ],
      "default": null,
-     "title": "Bank"
+     "description": "What is in the bank before the horizon's first move, in millions.\n\n``SolveState.bank`` in tenths, through the same conversion every price on\nthis payload takes. ``None`` means the solve state carried no usable\nfigure \u2014 never 0.0, which is \"fully invested\"."
     },
     "generated_at": {
-     "title": "Generated At",
      "type": "string"
     },
     "gw": {
-     "title": "Gw",
      "type": "integer"
     },
     "weeks": {
      "items": {
       "$ref": "#/definitions/PlanGw"
      },
-     "title": "Weeks",
      "type": "array"
     }
    },
@@ -7350,39 +6649,33 @@
     "generated_at",
     "weeks"
    ],
-   "title": "PlanTimeline",
+   "title": "WirePlanTimeline",
    "type": "object"
   },
   "WirePlayerExplain": {
    "properties": {
     "code": {
-     "title": "Code",
      "type": "integer"
     },
     "ep_next": {
-     "title": "Ep Next",
      "type": "number"
     },
     "fixtures": {
      "items": {
       "$ref": "#/definitions/FixtureExplain"
      },
-     "title": "Fixtures",
      "type": "array"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "next_fixtures": {
      "items": {
       "$ref": "#/definitions/UpcomingFixture"
      },
-     "title": "Next Fixtures",
      "type": "array"
     },
     "position": {
-     "title": "Position",
      "type": "string"
     },
     "set_pieces": {
@@ -7396,18 +6689,17 @@
        }
       ]
      },
-     "title": "Set Pieces",
+     "description": "``penalties`` / ``free_kicks`` / ``corners``, each the user's override\nfile's word where it has one and FPL's otherwise \u2014 the same numbers\n:class:`PlayerRow` serves, from the same loader.",
      "type": "object"
     },
     "set_pieces_manual": {
+     "description": "Which of ``set_pieces``' three orders came from the user's override\nfile, a cleared one included. Additive and default-empty, so a client that\ndoes not read it is unaffected.",
      "items": {
       "type": "string"
      },
-     "title": "Set Pieces Manual",
      "type": "array"
     },
     "team_name": {
-     "title": "Team Name",
      "type": "string"
     }
    },
@@ -7421,13 +6713,12 @@
     "next_fixtures",
     "set_pieces"
    ],
-   "title": "PlayerExplain",
+   "title": "WirePlayerExplain",
    "type": "object"
   },
   "WirePlayerRow": {
    "properties": {
     "available": {
-     "title": "Available",
      "type": "boolean"
     },
     "chance_of_playing": {
@@ -7438,11 +6729,9 @@
       {
        "type": "null"
       }
-     ],
-     "title": "Chance Of Playing"
+     ]
     },
     "code": {
-     "title": "Code",
      "type": "integer"
     },
     "corners_order": {
@@ -7453,11 +6742,9 @@
       {
        "type": "null"
       }
-     ],
-     "title": "Corners Order"
+     ]
     },
     "element": {
-     "title": "Element",
      "type": "integer"
     },
     "ep_hi": {
@@ -7469,11 +6756,9 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Ep Hi"
+     "default": null
     },
     "ep_horizon": {
-     "title": "Ep Horizon",
      "type": "number"
     },
     "ep_lo": {
@@ -7486,10 +6771,9 @@
       }
      ],
      "default": null,
-     "title": "Ep Lo"
+     "description": "p25 of the noise model's distribution for ``ep_next`` \u2014 see\n:mod:`gaffer.uncertainty`. Deliberately **not** ``ep_next`` minus\nsomething: the calibrated path recentres, so the pair is quartiles rather\nthan a symmetric interval, and the UI labels it that way.\n\n``None`` \u2014 never ``ep_next`` \u2014 when the components frame carries no\nminutes model for him, or is absent altogether. A zero-width band on the\nleast-known player in the pool would read as certainty."
     },
     "ep_next": {
-     "title": "Ep Next",
      "type": "number"
     },
     "field_class": {
@@ -7502,7 +6786,7 @@
       }
      ],
      "default": null,
-     "title": "Field Class"
+     "description": "``shield`` | ``sword`` | ``threat``, or ``None`` for the quadrant with\nnothing to say."
     },
     "field_eo": {
      "anyOf": [
@@ -7514,7 +6798,7 @@
       }
      ],
      "default": null,
-     "title": "Field Eo"
+     "description": "Top-10k effective ownership from the latest banked scrape.\n\n``None`` means *unknown*, and it means it in two different situations\nthat the UI renders identically and correctly: no field log at all, or a\nlog that does not carry this player because no sampled entry started him.\nNeither is 0.0, which the reader would take as a measured differential."
     },
     "field_eo_deadline": {
      "anyOf": [
@@ -7526,7 +6810,7 @@
       }
      ],
      "default": null,
-     "title": "Field Eo Deadline"
+     "description": "Field EO projected forward one gameweek, in percent.\n\n``None`` means *no trend*, which is what one gameweek of samples buys \u2014\nand never 0.0, which is the different and stronger claim that nobody in\nthe top 10k starts him. Same contract as ``field_eo`` above."
     },
     "field_eo_delta": {
      "anyOf": [
@@ -7538,7 +6822,7 @@
       }
      ],
      "default": null,
-     "title": "Field Eo Delta"
+     "description": "The observed move between the last two sampled gameweeks, in points of\nEO. ``None`` when there is no earlier sample; ``0.0`` is a measurement \u2014\nthe field held steady."
     },
     "field_n": {
      "anyOf": [
@@ -7550,7 +6834,7 @@
       }
      ],
      "default": null,
-     "title": "Field N"
+     "description": "How many sampled entries the figure was measured over.\n\n\u00b12.8 from three hundred entries and \u00b12.8 from thirty are different claims\nand the page is entitled to say which one it is showing."
     },
     "field_se": {
      "anyOf": [
@@ -7562,7 +6846,7 @@
       }
      ],
      "default": null,
-     "title": "Field Se"
+     "description": "The standard error on ``field_eo``, in percentage points.\n\n``None`` for exactly the situations ``field_eo`` is ``None`` for, and \u2014 the\npart worth stating \u2014 **never 0.0**. Zero here would be a claim of perfect\nprecision drawn from a sample of a few hundred entries, which is a stronger\nstatement than any number on this row is entitled to make."
     },
     "free_kicks_order": {
      "anyOf": [
@@ -7572,34 +6856,28 @@
       {
        "type": "null"
       }
-     ],
-     "title": "Free Kicks Order"
+     ]
     },
     "in_squad": {
-     "title": "In Squad",
      "type": "boolean"
     },
     "last4": {
+     "description": "Points from the last four *finished* gameweeks, oldest first.\n\nEmpty when ``data/live/player_gw.parquet`` has not been written \u2014 the\nsparkline then renders an em dash rather than a flat line at zero.",
      "items": {
       "type": "integer"
      },
-     "title": "Last4",
      "type": "array"
     },
     "league_eo": {
-     "title": "League Eo",
      "type": "number"
     },
     "name": {
-     "title": "Name",
      "type": "string"
     },
     "news": {
-     "title": "News",
      "type": "string"
     },
     "ownership": {
-     "title": "Ownership",
      "type": "number"
     },
     "p_blank": {
@@ -7612,7 +6890,7 @@
       }
      ],
      "default": null,
-     "title": "P Blank"
+     "description": "``P(points <= 2)`` under the same distribution."
     },
     "p_haul": {
      "anyOf": [
@@ -7624,7 +6902,7 @@
       }
      ],
      "default": null,
-     "title": "P Haul"
+     "description": "``P(points >= 10)`` under the same distribution. Crude by construction:\nit prices *forecast* error, not football's own variance.\n\nThis is ``uncertainty.Band.p_haul``, the whole-forecast tail \u2014 *not*\n``models.assemble.p_haul``, which is P(2+ attacking returns) under a\nPoisson and is served on the advice payload as ``p_attacking_haul``. Two\nquantities, one page, one name until v9c (spec D3)."
     },
     "penalties_order": {
      "anyOf": [
@@ -7634,34 +6912,28 @@
       {
        "type": "null"
       }
-     ],
-     "title": "Penalties Order"
+     ]
     },
     "position": {
-     "title": "Position",
      "type": "string"
     },
     "price": {
-     "title": "Price",
      "type": "number"
     },
     "set_piece_manual": {
+     "description": "Kinds of set piece whose order above came from ``data/set_pieces.toml``\nrather than from FPL. Empty on every machine with no override file.\n\nIncludes a *cleared* order: a file that lists his club's queue and leaves\nhim out serves him ``None``, and that blank is the file's word as much as\na rank is. Only ``penalties`` reaches expected points; the other two move\nthe numbers on this row and nothing else.",
      "items": {
       "type": "string"
      },
-     "title": "Set Piece Manual",
      "type": "array"
     },
     "status": {
-     "title": "Status",
      "type": "string"
     },
     "team_code": {
-     "title": "Team Code",
      "type": "integer"
     },
     "team_name": {
-     "title": "Team Name",
      "type": "string"
     }
    },
@@ -7686,7 +6958,7 @@
     "corners_order",
     "in_squad"
    ],
-   "title": "PlayerRow",
+   "title": "WirePlayerRow",
    "type": "object"
   },
   "WireReviewSummary": {
@@ -7695,7 +6967,6 @@
      "items": {
       "$ref": "#/definitions/ReviewAccuracyPoint"
      },
-     "title": "Accuracy",
      "type": "array"
     },
     "best": {
@@ -7708,51 +6979,43 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Best"
+     "default": null
     },
     "gws": {
      "items": {
       "type": "integer"
      },
-     "title": "Gws",
      "type": "array"
     },
     "hindsight_gap": {
      "default": 0,
-     "title": "Hindsight Gap",
      "type": "integer"
     },
     "hindsight_gap_gws": {
      "default": 0,
-     "title": "Hindsight Gap Gws",
      "type": "integer"
     },
     "lanes": {
      "additionalProperties": {
       "$ref": "#/definitions/ReviewLaneTotal"
      },
-     "title": "Lanes",
      "type": "object"
     },
     "points_on_bench": {
      "default": 0,
-     "title": "Points On Bench",
      "type": "integer"
     },
     "points_on_bench_gws": {
      "default": 0,
-     "title": "Points On Bench Gws",
+     "description": "How many gameweeks that total covers. A season of unbanked histories\nsums to zero over zero gameweeks, which is not an empty bench.",
      "type": "integer"
     },
     "reconciled_gws": {
      "default": 0,
-     "title": "Reconciled Gws",
      "type": "integer"
     },
     "unreconciled_gws": {
      "default": 0,
-     "title": "Unreconciled Gws",
      "type": "integer"
     },
     "worst": {
@@ -7765,11 +7028,10 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "title": "Worst"
+     "default": null
     }
    },
-   "title": "ReviewSummary",
+   "title": "WireReviewSummary",
    "type": "object"
   }
  }
