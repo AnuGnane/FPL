@@ -1130,6 +1130,294 @@ result below is unfilled on purpose.
 **W5 gate:** suite green; §6.5 byte-identity test; a manual pass through
 all six hubs with the "as of" strip and URL state.
 
+### W5 G1 — suites, rails, pins (measured by the implementer)
+
+Measured in the W5 worktree at `7be99b1`, the rename-count reconciliation that
+precedes this block. Nothing is carried forward from W5's base `5bb7d0e`
+(3854 Python / 723 passed + 4 skipped frontend over 73 files; pins `46 12 55`)
+— every number below was re-run at that SHA. The orchestrator re-runs all of
+it on the merge commit; these are the numbers it is checking against, not a
+substitute for that run.
+
+- [x] **Python suite:** `PYTHONPATH=src .venv/bin/pytest tests/ -q` —
+      **4016 passed, 13 skipped** at `7be99b1`. The skips are the
+      built-asset tests, which skip in a worktree with no `web/static/` build;
+      the main tree collects them.
+- [x] **Frontend:** `cd frontend && npx vitest run` — **792 passed, 4 skipped**
+      over 79 files (78 passed, 1 skipped); `npx tsc --noEmit` clean.
+- [x] **Pins:** `47 12 55` — routes / `JOB_KINDS` / `fields(Config)`. Routes
+      **46 → 47**: one new path key, `/api/settings`, with GET and POST on the
+      one key. `JOB_KINDS` and `fields(Config)` do not move — W5 adds no job
+      kind, and `config.local.toml` is a loader change rather than a field. The
+      nine whitelisted settings all already exist, as `Config` fields or as the
+      module-level readers `web/settings_keys.py` names.
+
+      ```bash
+      .venv/bin/python -c "
+      import os, tempfile, dataclasses
+      os.chdir(tempfile.mkdtemp())
+      from gaffer.web.app import create_app
+      from gaffer.web.job_kinds import JOB_KINDS
+      from gaffer.config import Config
+      print(len(create_app().openapi()['paths']), len(JOB_KINDS),
+            len(dataclasses.fields(Config)))"
+      # 47 12 55
+      ```
+
+      The **single absolute route pin** is still in one file, which is what
+      v11's restructure bought and what W5's STOP spent:
+
+      ```bash
+      grep -rnE '^\s*assert\s+len\(\s*(set\()?\s*paths\)?\s*\)\s*==\s*[0-9]+' tests/
+      # tests/test_v11_degradation.py:368:    assert len(paths) == 47
+      ```
+
+      The **absolute `Config` field pin** stays where W3 put it:
+      `tests/test_v12_w3_degradation.py:536`, `assert len(names) == 55`. W5
+      pins neither total of its own — `tests/test_v12_w5_degradation.py` asserts
+      `/api/settings` by name and `JOB_KINDS`/`fields(Config)` against the
+      values Task 0 measured at `5bb7d0e`, and it carries v11's meta-test
+      (`test_this_file_does_not_pin_the_absolute_route_count`) checked from
+      inside the file it constrains.
+- [x] **The W5 rails** (`tests/test_v12_w5_degradation.py`), five blocks:
+      - *The cold clone reaches every new surface* — `/api/settings` on a tree
+        with nothing in it is a 200 naming the file to copy, a settings **write**
+        on that tree refuses rather than writing one, and the plan, review-ledger
+        and watchlist surfaces still degrade exactly as they did.
+      - *W5's routes, by name* — `/api/settings` present, GET and POST on the
+        one path key, no `/api/trace`, `/api/projections` or `/api/config`
+        invented beside it, and this file pins no absolute route count.
+      - *The counts W5 did not move* — `len(JOB_KINDS) == 12` and
+        `len(fields(Config)) == 55`, against Task 0's measurement rather than
+        against W1's 45/12/48.
+      - *The honesty rules, checked rather than asserted in prose* — both
+        snapshot readers take `season` positionally with no default (a default
+        makes the cross-season read the easy call); the trace returns `None`
+        rather than a measured zero for an EP it cannot price, and `None`
+        rather than `0.0` for the price charge when `price_timing` is off; the
+        settings whitelist cannot reach `odds_api_key`, `web_token`,
+        `entry_id`, `league_id`, `train_seasons` or `news_llm_command`; and no
+        file this workstream wrote declares a `[solver]` table — checked as a
+        TOML table header, and again behaviourally, since the whitelist's three
+        sections are `optimizer`, `league` and `scenarios` and a save writes
+        only into those.
+      - *The protected-diff audit* — Block 5, below.
+
+      The overlay's own guarantee lives beside these rather than in them:
+      `tests/test_v12_w5_settings.py`'s
+      `test_a_write_lands_in_the_overlay_and_never_in_config_toml`, and
+      `tests/test_v12_w5_config_overlay.py`'s
+      `test_it_reaches_a_section_config_toml_never_declared`.
+- [x] **Audit rails.** W4's rail was left open at `HEAD` and would have started
+      measuring W5's diff under W4's name; W5's first authorized edit closed it
+      at `W4_TIP = "5bb7d0e"` — commit `e586180`, and
+      `git log --oneline 5bb7d0e..HEAD -- tests/test_v12_w4_degradation.py`
+      shows that one commit and no other. W5's own rail
+      (`tests/test_v12_w5_degradation.py`, `W4_TIP = "5bb7d0e"`) reads
+      `5bb7d0e..HEAD` while the cycle runs, excludes W5's own three degradation
+      files by prefix rather than by name, and is non-vacuous: an empty range
+      fails on the missing `tests/test_v11_degradation.py` rather than passing
+      as clean. **W5 is the last workstream of v12, so the program close pins
+      `W5_TIP`** — there is no next workstream to do it, and the lesson three
+      cycles have now banked is that a rail with a floating end audits the next
+      cycle's work under this one's name.
+
+### W5 G2 — the gates (orchestrator only)
+
+Implementers build the drivers and never run them (CONVENTIONS §7). Every
+result below is unfilled on purpose.
+
+- [ ] **No replay, and why.** W5 is interface-only. `src/gaffer/optimize/**`
+      and `src/gaffer/advise.py` are untouched — the G2 diff below proves it,
+      not a claim in prose — no `[optimizer]` key and no `[model]` flag was
+      added, and the trace is accounting computed *after* the solve from the
+      two artifacts the plan router already loads. There is therefore nothing
+      a season replay could move, and **W5 pre-registers no replay**
+      (CONVENTIONS §1: pre-registered before the fact, including the decision
+      not to run one). The substitutes are §6.5's byte-identity test and the
+      import-isolation test, which is the stronger of the two: byte-identity
+      makes a decision change *detectable*, isolation makes it *impossible*.
+
+      ```bash
+      PYTHONPATH=src .venv/bin/pytest -q \
+        tests/test_v12_w5_plan_trace.py::test_the_payload_is_byte_identical_with_the_trace_off \
+        tests/test_v12_w5_trace.py::test_the_trace_module_is_imported_by_no_solver
+      #   the payload with the trace on, with `trace` stripped from
+      #   `weeks[*]` *and* from `alternatives[*].weeks[*]`, is byte-identical
+      #   to the payload with TRACE off; and `gaffer.trace` is imported by
+      #   nothing that solves — not advise.py, not backtest.py, and by no
+      #   module under optimize/
+      PYTHONPATH=src .venv/bin/pytest -q tests/test_v12_w5_gen_types.py \
+        -k "the_one_the_models_produce or byte_for_byte or deterministically"
+      #   the regenerate-no-diff half: schemas.json equals what the models
+      #   produce, byte for byte, and the writer is deterministic
+      ```
+
+      - Result: _(unfilled)_
+
+- [ ] **Zero unauthorized protected diffs.** Base is **`5bb7d0e`**, W4's merge
+      tip on `main`, not `main` itself — a rail scoped to somebody else's range
+      audits somebody else's work.
+
+      ```bash
+      git diff --stat 5bb7d0e..HEAD -- \
+        src/gaffer/advise.py src/gaffer/set_pieces.py src/gaffer/optimize/ \
+        src/gaffer/web/jobs.py src/gaffer/web/routers/whatif.py \
+        tests/test_advise.py tests/test_odds.py tests/test_web_jobs.py \
+        scripts/s2_replay.py | cat
+      # expected: empty — no src protected file may differ
+
+      git diff --stat 5bb7d0e..HEAD -- \
+        $(git ls-files 'tests/test_*_degradation.py' | grep -v v12_w5) | cat
+      # expected: exactly TWO files, and no third:
+      #   tests/test_v11_degradation.py     — Task 3's STOP: the docstring's
+      #     46 -> 47, `assert len(paths) == 47`, `assert "/api/settings" in
+      #     paths`, under the provenance comment
+      #     `# v12 W5 §6.2 (specs/2026-09-01-gaffer-v12-program-design.md)`
+      #   tests/test_v12_w4_degradation.py  — the `W4_TIP = "5bb7d0e"` pin and
+      #     the two range reads that now end there, under the provenance
+      #     comment `# v12 W5 (orchestrator ruling 2026-09-03): the W4 rail
+      #     audits W4's range, not everyone's`
+      # (W5's own three degradation files are excluded by the same prefix rule
+      #  the rail uses; the plan's un-narrowed command lists five and is wrong)
+      ```
+
+      W5's authorized protected set is **exactly those two test files**.
+
+      - Result: _(unfilled)_
+
+- [ ] **The manual six-hub pass** (spec §6 gate: "a manual pass through all six
+      hubs with the 'as of' strip and URL state"). W1 owns the strip; W5 owns
+      the URL state. With `uv run gaffer ui`:
+
+      | Hub | `?tab=` round-trips | strip renders | notes |
+      | --- | --- | --- | --- |
+      | This Week | n/a (no tabs) | ____ | ____ |
+      | Planning | ____ | ____ | ____ |
+      | Players | ____ | ____ | ____ |
+      | League | ____ | ____ | ____ |
+      | Live | n/a (no tabs) | ____ | ____ |
+      | Model | ____ | ____ | ____ |
+
+      Plus, on the Model hub: change one setting, confirm it lands in
+      `config.local.toml`, confirm `config.toml` is byte-identical afterwards —
+      both files are gitignored, so `git status` cannot be the check and
+      `md5 config.toml` before and after is — and reset it.
+
+      - Result: _(unfilled)_
+
+- [ ] **Pins on the merge commit.** Expected: **`47 12 55`** (G1's command).
+
+      - Result: _(unfilled)_
+
+- [ ] **Post-merge ritual (§7).**
+
+      ```bash
+      git show main:config.toml            # expected: fatal — no such path
+      git show main:config.local.toml      # expected: fatal — no such path
+      git log -S"$(grep -o 'odds_api_key.*' config.toml | head -1)" --all | cat
+      # expected: empty
+
+      git log -p 5bb7d0e..HEAD | grep -nEi "api[_-]?key|secret|token|bearer" | cat
+      # expected: NOT empty, and reviewed rather than waved through. The
+      # settings whitelist names `web_token` and `odds_api_key` as keys the
+      # endpoint must never reach, so hits inside tests/ and
+      # src/gaffer/web/settings_keys.py are the guard being written down, not a
+      # leak. Any hit outside those two places is a finding.
+
+      git log --stat 5bb7d0e..HEAD \
+        | grep -E "^ (data|reports|models|logs|config\.toml|config\.local\.toml)" | cat
+      # expected: empty. `config.local.toml` is new to this list and has the
+      # new way of getting there: the Settings tab writes it on every save, so
+      # a developer testing the tab has an untracked file in the tree at the
+      # moment he commits the tab.
+      ```
+
+      - Result: _(unfilled)_
+
+### W5 G3 — review and merge (orchestrator only)
+
+- [ ] Adversarial review, fix-first, re-verify.
+
+      - Result: _(unfilled)_
+- [ ] Merge ritual: ff-only into `main` at ___ , pushed;
+      `git show main:config.toml` fails; the key-grep over all history is
+      empty; the protected audit re-run on the merge passes. Suite at the
+      merge: ___ Python / ___ frontend, tsc clean; pins routes ___ /
+      `JOB_KINDS` ___ / `Config` fields ___ .
+
+      - Result: _(unfilled)_
+
+### W5 live spot-checks (orchestrator, on the dev server)
+
+- [ ] §6.1 A `?tab=` link into each of Planning, Players, League and Model
+      lands on that tab rather than on the hub's default, and the back and
+      forward buttons walk the tabs rather than leaving the hub — the two are
+      one check, because `replace: true` is what decides which of them holds.
+- [ ] §6.2 A Settings save writes `config.local.toml` and leaves `config.toml`
+      byte-identical, and the "as of" strip reflects the reload rather than the
+      values the page fetched before the save.
+- [ ] §6.3 A watchlist note written in the list view survives a star click in
+      the explorer — the note, not the date: `watchlist.watch` replaces both,
+      so the row should come back with its text and a reset "noted" stamp.
+- [ ] §6.3 `captain_note` renders beside the captain on This Week when the tilt
+      moved it, and nothing renders at all when the run wrote `""`.
+- [ ] §6.4 The first Review row graded after the merge names its projection
+      snapshot, and reads `(late)` only for one of the two causes the tooltip
+      lists (**data-gated:** the first gameweek graded after the merge).
+- [ ] §6.5 The planner's "why this move" disclosure shows the head plan's terms
+      and the caption names the three it does not attribute; the price line
+      prints its reason rather than a zero while the nightly price log is still
+      short (**data-gated:** `[optimizer] price_timing` on *and* enough log for
+      `owned_price_falls` to return a row per owned player).
+- [ ] §6.6 `.venv/bin/python scripts/gen_types.py` after an edit to
+      `web/schemas.py` produces a diff in `frontend/src/schemas.json` and
+      `frontend/src/types.generated.ts` — and, left uncommitted, the two tests
+      that catch it fail.
+
+**Residuals, recorded before the gate runs.**
+
+1. **The trace's price-timing charge is read from tonight's price log, not
+   from the solve.** `owned_price_falls` is the same reader the objective uses,
+   but a board drawn on Saturday against a Thursday plan multiplies a
+   probability the solve never saw. Freezing it would mean writing it into the
+   solve state from `advise.py`, which is protected, for a decoration.
+2. **The trace does not attribute the squad-side terms.** The XI, captain and
+   vice weightings and the three bench seats price the whole fifteen and a
+   per-week autosub scale, not a swap, so a share of them assigned to one
+   transfer would be invented. The week's lines therefore do not sum to its
+   xPts, and the caption says so rather than leaving it to be discovered.
+3. **The trace covers the head plan only.** Plans B and C came out of
+   different solves, priced against different XIs and with their own
+   free-transfer counts, so the strip says the numbers are Plan A's rather than
+   showing terms that would silently be the wrong plan's.
+4. **`projection_snapshot` fills forward only.** Grades are banked and never
+   re-derived, so every ledger row banked before W5 keeps `null` for ever.
+5. **`reports/projections/` is never pruned.** ~6–12 MB a season, gitignored.
+   A future `gaffer tidy` target, deliberately not invented here.
+6. **The watchlist's `set_at` is reset by every save**, because
+   `watchlist.watch` replaces the note and the timestamp together. The column
+   is labelled "noted" rather than "watching since" for that reason; fixing it
+   means a second store field.
+7. **The decision ledger has no season key.** After a rollover, a GW-N row
+   could name last season's GW-N snapshot: the snapshot *reader* is
+   season-guarded, the ledger is not. Nothing reads across a rollover today,
+   and the fix is a ledger migration rather than a W5 line.
+8. **`types.ts` is a split, not a rewrite, and the split carried away the
+   client's field comments.** Thirty hand-written exports have no pydantic
+   source and eleven models are narrowed by hand, so the generated half can
+   never be the whole file. The split deleted 113 hand-written interfaces; 119
+   of the 891 field sentences were recovered by reading `schemas.py`'s
+   attribute docstrings, and the rest of the client-side commentary on those
+   interfaces is gone. The follow-up is to move the sentences worth keeping
+   into `schemas.py` field docstrings, where the generator can carry them,
+   rather than back into a file it overwrites.
+9. **W5's own audit rail is open-ended until it is pinned.** It reads
+   `5bb7d0e..HEAD` during the cycle, which is correct while W5 is the tip. W5
+   is v12's last workstream, so there is no next cycle to close it: the
+   **program close** pins `W5_TIP`. This is the fourth cycle to bank the
+   lesson and the third to have had to fix a predecessor's rail because of it.
+
 ## 7. Testing and gates, summarized
 
 | Workstream | Gate beyond "suite green + zero unauthorized diffs" |
