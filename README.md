@@ -1133,8 +1133,9 @@ a library — no network and no subprocess) and diffs the result against the
 committed `frontend/src/types.generated.ts`; a pytest regenerates the schema
 and diffs it against the committed JSON. **Run the script after any change to
 `web/schemas.py`** or both tests fail. `types.ts` itself is *not* generated and
-cannot be: thirty of its exports have no pydantic source, fourteen more are
-renames, and eleven models are narrowed by hand — `AdviceLatest.advice` above
+cannot be: thirty of its exports have no pydantic source, twenty-four more are
+renames — thirteen of them the `Data` suffixes that predate this cycle — and
+eleven models are narrowed by hand, `AdviceLatest.advice` above
 all, which is `dict[str, Any]` on the server and an `Advice` interface in every
 consumer. So the file splits: `types.ts` keeps the hand-written half, narrows
 the eleven `Wire*` models and re-exports the generated one, and no import
