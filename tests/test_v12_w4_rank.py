@@ -28,10 +28,20 @@ def test_an_eo_of_zero_is_owned_by_nobody():
     assert masks.sum() == 0
 
 
-def test_an_eo_above_one_is_clamped_rather_than_raising():
-    """Effective ownership exceeds 1 for a heavily captained player."""
-    masks = field_population(_eo(range(5), 1.7), n_managers=10, seed=1)
-    assert masks.sum() == 50
+def test_an_eo_above_one_is_an_armband_rather_than_a_clamp():
+    """Effective ownership exceeds 1 for a heavily captained player, and
+    clamping it to 1 threw the armband away: the synthetic field captained
+    nobody. The draw is two Bernoullis so the mean is preserved."""
+    masks = field_population(_eo(range(5), 1.8), n_managers=4000, seed=1)
+    assert set(np.unique(masks)) <= {0.0, 1.0, 2.0}
+    assert abs(float(masks.mean()) - 1.8) < 0.03
+
+
+def test_an_eo_above_two_is_clamped_at_two_shares():
+    """A triple-captain week can push a single sample past 200% (the live log's
+    maximum is 214.7). Two shares is what an ordinary week can produce."""
+    masks = field_population(_eo(range(5), 2.6), n_managers=100, seed=1)
+    assert masks.sum() == 1000
 
 
 def test_the_population_is_deterministic_per_seed():
@@ -85,12 +95,35 @@ def test_a_squad_exchangeable_with_the_field_is_a_coin_flip():
     Fifteen, not eleven: at eo 0.5 over thirty elements a synthetic manager's
     expected holding is exactly fifteen, and an eleven-man XI against him is a
     smaller portfolio rather than an exchangeable one — it loses nearly every
-    week for a reason that has nothing to do with the model being wrong. The
-    band 0.45-0.55 is pre-registered here rather than fitted after the run.
+    week for a reason that has nothing to do with the model being wrong.
+
+    The band is 0.46-0.54, and it is set from what the estimator supports
+    rather than from what the model intends. One population draw per call put
+    ``p_green`` over 0.454-0.576 across twenty seeds and 0.427-0.585 across
+    sixty — 12 of those 60 outside a 0.45-0.55 band — so the old test passed
+    on the seed it was written under and would have failed on one seed in
+    five. Averaging over :data:`FIELD_DRAWS` populations gives 0.475-0.530
+    over the same twenty seeds and 0.471-0.538 over sixty, so 0.46-0.54 is a
+    band the instrument earns.
     """
     out = simulate_field_rank(_inputs(range(15)), _eo(range(30)),
                               n=4000, seed=20260902, gw=6)
-    assert 0.45 <= out["p_green"] <= 0.55
+    assert 0.46 <= out["p_green"] <= 0.54
+
+
+def test_the_headline_averages_over_several_field_populations():
+    """Which three hundred managers were drawn is noise in its own right, and
+    it was the larger term (:data:`FIELD_DRAWS`)."""
+    from gaffer.league_sim import FIELD_DRAWS
+
+    assert FIELD_DRAWS == 8
+    out = simulate_field_rank(_inputs(range(11)), _eo(range(30)), n=500,
+                              seed=1, gw=6)
+    assert out["draws"] == FIELD_DRAWS
+    one = simulate_field_rank(_inputs(range(11)), _eo(range(30)), n=500,
+                              seed=1, gw=6, draws=1)
+    assert one["draws"] == 1
+    assert one["p_green"] != out["p_green"]
 
 
 def test_owning_only_players_nobody_else_owns_still_answers():
@@ -125,10 +158,50 @@ def test_no_eo_table_is_an_empty_state_and_not_a_probability():
 
 
 def test_a_squad_of_players_the_frame_does_not_carry_is_an_empty_state():
+    """Only an *empty* intersection is an empty state — see
+    :func:`test_a_pick_the_sample_never_saw_is_still_my_player`."""
     out = simulate_field_rank(_inputs([900, 901]), _eo(range(30)), n=500,
                               seed=1, gw=6)
     assert out["p_green"] is None
     assert "no player in your squad" in out["waiting_for"]
+
+
+def test_a_pick_the_sample_never_saw_is_still_my_player():
+    """The element axis is the union of the EO table and my squad.
+
+    ``eo_from_picks`` omits anyone no sampled entry started, so a genuine
+    differential is simply absent from the table — and filtering my picks to
+    ``element in deadline_eo`` deleted him from *my* week while the field kept
+    its whole one. On this fixture the deleted player is a 12-EP differential:
+    the intersection-only reading scored my week without him and answered
+    0.333 where the union answers 0.914.
+    """
+    elements = list(range(30)) + [900]
+
+    def run(eo):
+        ins = _inputs(list(range(14)) + [900], elements=elements)
+        ins.ep_by_element[900] = 16.0
+        return simulate_field_rank(ins, eo, n=2000, seed=4, gw=6)
+
+    absent = run(_eo(range(30)))
+    present = run({**_eo(range(30)), 900: 0.0})
+    assert absent["p_green"] == present["p_green"]
+    assert absent["p_green"] > 0.6
+    assert absent["unsampled_picks"] == 1
+    assert present["unsampled_picks"] == 0
+
+
+def test_a_template_captain_lifts_the_fields_week():
+    """The clamp cost the field its armband. On the live GW2 log the clamped
+    ownership mass was 12.34 against a measured 13.48 — 8.5% of the field's
+    week, all of it captaincy, handed to me for free."""
+    flat = simulate_field_rank(_inputs(range(15)),
+                               {**_eo(range(30)), 0: 1.0},
+                               n=2000, seed=5, gw=6)
+    armband = simulate_field_rank(_inputs(range(15)),
+                                  {**_eo(range(30)), 0: 1.8},
+                                  n=2000, seed=5, gw=6)
+    assert armband["field_median_ep"] > flat["field_median_ep"] + 1.0
 
 
 def test_no_entry_flagged_as_mine_is_an_empty_state():

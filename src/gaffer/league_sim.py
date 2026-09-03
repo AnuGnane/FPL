@@ -893,8 +893,8 @@ against."""
 
 def field_population(deadline_eo: dict[int, float], *,
                      n_managers: int = FIELD_POP_N,
-                     seed: int = SIM_SEED):
-    """``(n_managers, n_elements)`` of 0/1 ownership drawn from EO.
+                     seed: int = SIM_SEED, draw: int = 0):
+    """``(n_managers, n_elements)`` of 0/1/2 ownership drawn from EO.
 
     Each synthetic manager owns element ``e`` with probability ``eo_e``,
     independently. This is a **portfolio, not a squad**: no budget, no
@@ -903,29 +903,45 @@ def field_population(deadline_eo: dict[int, float], *,
 
     That is deliberate, and it is what the EO table actually describes. Field
     EO is *effective* ownership — the captain's doubling is already inside it
-    — so over a real sample ``sum(eo)`` comes out near 16, which is eleven
-    starters plus an armband. Drawing legal squads instead would need a
-    solver per manager per gameweek and would buy a second-order correction to
-    a first-order quantity.
+    — so over a real sample ``sum(eo)`` comes out somewhat above 12, which is
+    eleven starters plus one armband: the live GW2 log measures 13.48, the
+    extra unit and a half being bench players a few sampled entries started
+    and the spread of captaincy across more than one player. Drawing legal
+    squads instead would need a solver per manager per gameweek and would buy
+    a second-order correction to a first-order quantity.
 
     The cost, stated: a Bernoulli portfolio's week is a little wider than a
     real manager's, which pushes every probability counted off it a shade
     toward 0.5. That is the direction :data:`MEASURED_FIELD_CORRELATION`'s
     docstring already argues is the right one to be wrong in.
 
-    An EO above 1 — a heavily captained player really does exceed 100%
-    effective ownership — is clamped rather than rejected: he is owned by
-    everybody, which is what an EO of 1.4 means once the doubling is stripped
-    back out.
+    **An EO above 1 is an armband, not a clamp.** A heavily captained player
+    really does exceed 100% effective ownership, and clamping him to 1 —
+    which this did — threw the doubling away: the synthetic field captained
+    nobody. On the live GW2 log that lost 1.15 of 13.48 ownership units, 8.5%
+    of the field's whole week, all of it the crowd's captain, and it handed
+    every one of those units to me for free. The draw is therefore two
+    Bernoullis, ``min(eo, 1)`` and ``eo - 1``, whose sum has mean ``eo``
+    exactly: a manager holds him once, twice, or not at all. Two shares is
+    the ceiling, for :data:`gaffer.data.field.EO_CEILING`'s reason — a triple
+    captain can push one sample past 200% (the log's maximum is 214.7) but a
+    field that assumed a chip week would be inventing one.
+
+    ``draw`` indexes independent populations off one seed
+    (:data:`FIELD_DRAWS`), so a caller can average over several without
+    reseeding: the stream is ``[seed, 1, draw]``, a SeedSequence, so the
+    populations are independent by construction rather than by offset.
     """
     elements = sorted(int(e) for e in deadline_eo)
     if not elements:
         return np.zeros((int(n_managers), 0))
-    probs = np.array([min(max(float(deadline_eo[e]), 0.0), 1.0)
-                      for e in elements])
-    rng = np.random.default_rng([int(seed), 1])
-    draws = rng.random((int(n_managers), len(elements)))
-    return (draws < probs).astype("float64")
+    eos = np.array([max(float(deadline_eo[e]), 0.0) for e in elements])
+    first = np.minimum(eos, 1.0)
+    second = np.clip(eos - 1.0, 0.0, 1.0)
+    rng = np.random.default_rng([int(seed), 1, int(draw)])
+    draws = rng.random((int(n_managers), len(elements), 2))
+    return ((draws[:, :, 0] < first).astype("float64")
+            + (draws[:, :, 1] < second).astype("float64"))
 
 
 TOP10K_WAITING = (
@@ -944,9 +960,32 @@ is a null with this sentence beside it (spec §1: never render zeros as if they
 were measurements)."""
 
 
+FIELD_DRAWS = 8
+"""Independent field populations averaged into one ``p_green``.
+
+The population is drawn, not enumerated, so ``p_green`` carries the noise of
+*which three hundred managers happened to be drawn* on top of the noise of
+``n`` simulated weeks — and the first term dominated. With one population per
+call, spec §5.3's exchangeability check (a squad that must answer a half)
+ranged over **0.454-0.576** across twenty seeds at ``n=2000``, a standard
+deviation of 0.030, and 4 of those 20 seeds fell outside the pre-registered
+0.45-0.55 band; over sixty seeds, 0.427-0.585 and 12 outside. That was a
+seed-fragile test rather than a wrong model — the estimator simply was not
+precise enough to be asked the question, and raising ``n`` would not have
+helped, because ``n`` is the *other* term.
+
+Eight populations, averaged, cut the population term by ``sqrt(8)`` for eight
+times the matrix multiply — the cheap half of the run, since the ``(n,
+elements)`` player weeks are drawn once and shared by all of them. Over the
+same twenty seeds the check now ranges **0.475-0.530** (sd 0.016); over sixty,
+0.471-0.538, none outside 0.45-0.55. The test's band is set from that
+measurement rather than from the model's intent."""
+
+
 def simulate_field_rank(inputs: SimInputs, deadline_eo: dict[int, float], *,
                         n: int = SIM_N, seed: int = SIM_SEED,
-                        gw: int, n_managers: int = FIELD_POP_N) -> dict:
+                        gw: int, n_managers: int = FIELD_POP_N,
+                        draws: int = FIELD_DRAWS) -> dict:
     """One gameweek against a synthetic field: ``P(green arrow)`` and friends.
 
     **Green arrow is defined against the population's own median week**, not
@@ -963,17 +1002,37 @@ def simulate_field_rank(inputs: SimInputs, deadline_eo: dict[int, float], *,
     week, which is this module's standing assumption
     (:data:`OUTCOME_VAR_PER_EP`'s docstring says what it omits).
 
+    **The population is drawn ``draws`` times and the answers averaged**
+    (:data:`FIELD_DRAWS`), because which managers were drawn is a source of
+    noise in its own right and it was the larger one.
+
+    **The element axis is the union of the EO table and my own squad.** It
+    used to be the EO table alone, with my picks filtered to ``element in
+    deadline_eo`` — and ``eo_from_picks`` omits anyone no sampled entry
+    started, so a genuine differential is *routinely* absent from the table
+    (the live GW2 log carries 123 elements). Filtering deleted him from my
+    week while the field kept its whole one, and it pointed against exactly
+    the squad the panel exists to reward: on
+    ``test_a_pick_the_sample_never_saw_is_still_my_player``'s fixture — one
+    12-EP differential in a fifteen-holding squad — the filtered reading
+    answers ``p_green`` 0.333 where the union answers 0.914. An unsampled pick
+    enters at
+    probability 0.0 — nobody in the field owns him, which is what his absence
+    from the table means — and ``unsampled_picks`` counts them so the panel
+    can say so. The empty state survives only for an empty *intersection*:
+    a squad sharing nothing with the sample is a different season's element
+    ids, not a differential.
+
     Returns a dict rather than a dataclass because two of its three headline
     numbers are ``None`` today and a dataclass would invite a caller to treat
     the nulls as zeros. Every null carries a ``waiting_for`` sentence.
     """
-    elements = sorted(int(e) for e in deadline_eo)
     me = next((e for e in inputs.entries if e.is_me), None)
     base = {"gw": int(gw), "n": int(n), "seed": int(seed),
-            "managers": int(n_managers), "p_green": None,
+            "managers": int(n_managers), "draws": int(draws), "p_green": None,
             "p_top10k": None, "top10k_waiting_for": TOP10K_WAITING,
-            "waiting_for": None}
-    if not elements:
+            "waiting_for": None, "unsampled_picks": 0}
+    if not deadline_eo:
         return {**base, "waiting_for":
                 "a banked field EO sample for this gameweek — run "
                 "`gaffer field-scrape`"}
@@ -981,31 +1040,42 @@ def simulate_field_rank(inputs: SimInputs, deadline_eo: dict[int, float], *,
         return {**base, "waiting_for":
                 "an entry flagged as yours in this league — set fpl.entry_id "
                 "in config.toml"}
-    picks = [(element, mult) for element, mult in effective_picks(me.picks)
-             if element in deadline_eo]
-    if not picks:
+    picks = effective_picks(me.picks)
+    if not any(element in deadline_eo for element, _ in picks):
         return {**base, "waiting_for":
                 "no player in your squad appears in the banked field sample, "
                 "so there is nothing to compare against — the sample is from "
                 "a different gameweek, or a different season's element ids"}
+    unsampled = sorted({element for element, _ in picks
+                        if element not in deadline_eo})
+    axis = {**{int(e): float(v) for e, v in deadline_eo.items()},
+            **{int(e): 0.0 for e in unsampled}}
+    elements = sorted(axis)
     index = {element: i for i, element in enumerate(elements)}
     eps = np.array([float(inputs.ep_by_element.get(e, 0.0)) for e in elements])
     sds = np.array([float(inputs.sigma_by_element.get(e, 0.0))
                     for e in elements])
     rng = np.random.default_rng([int(seed), 2])
     # One week of football, drawn n times: the same draws serve me and every
-    # synthetic manager, which is what makes the correlation real.
+    # synthetic manager, which is what makes the correlation real. Drawn once
+    # and shared by every population, so the ``draws`` loop below prices only
+    # the population and not the football.
     weeks = eps + sds * rng.standard_normal((int(n), len(elements)))
-    masks = field_population(deadline_eo, n_managers=n_managers, seed=seed)
-    field = weeks @ masks.T                       # (n, managers)
     mine = np.zeros(int(n))
     for element, mult in picks:
         mine += float(mult) * weeks[:, index[element]]
-    median = np.median(field, axis=1)
+    greens, medians = [], []
+    for r in range(max(int(draws), 1)):
+        masks = field_population(axis, n_managers=n_managers, seed=seed,
+                                 draw=r)
+        median = np.median(weeks @ masks.T, axis=1)   # (n,) over managers
+        greens.append(float((mine > median).mean()))
+        medians.append(float(median.mean()))
     return {**base,
-            "p_green": round(float((mine > median).mean()), 4),
-            "field_median_ep": round(float(median.mean()), 2),
-            "my_ep": round(float(mine.mean()), 2)}
+            "p_green": round(float(np.mean(greens)), 4),
+            "field_median_ep": round(float(np.mean(medians)), 2),
+            "my_ep": round(float(mine.mean()), 2),
+            "unsampled_picks": len(unsampled)}
 
 
 RANK_SLOPE_MIN_ROWS = 5
@@ -1028,6 +1098,20 @@ def rank_slope(ledger_rows: list[dict]) -> dict:
     least-squares slope through those pairs is a **local** response — good
     enough to say "roughly this many places per point, on the weeks we have
     seen", and honest about being nothing more.
+
+    **What confounds it, named.** ``my_points`` is one week's score;
+    ``overall_rank`` is a *cumulative* season standing. Overall rank drifts on
+    its own as the season runs — the field spreads out, a good start decays, a
+    bad one is dug out of — and that drift is correlated with the gameweek
+    index, not with the week's score. Regressing a cumulative quantity on a
+    weekly one therefore charges the passage of the season to the points: on a
+    manager climbing steadily the slope reads steeper than the true local
+    response, and on one sliding it reads shallower or even the wrong sign.
+    The honest reading is "over the weeks we have seen, a point went with
+    roughly this much rank" — an association, not the response to a marginal
+    point. Differencing rank week to week would remove the drift and is the
+    obvious next version; it needs a ledger with consecutive graded weeks,
+    which this project does not yet have.
 
     ``None`` with a sentence in three cases, all of which a real machine is in
     today: too few graded gameweeks, rows missing either half, and a ledger
