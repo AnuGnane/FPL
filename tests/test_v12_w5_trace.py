@@ -69,6 +69,15 @@ def test_an_unpaired_buy_gets_no_gain_and_says_why():
     assert "pair" in move.note
 
 
+def test_an_unpaired_side_is_named_with_a_dash_and_not_the_word_None():
+    """``names.get(None, str(None))`` prints the string "None" on the board,
+    where it reads as a player. The missing half of a swap is an em dash, the
+    same as every other unknown this UI prints."""
+    out = run([week(5, buys=[100])])
+    assert out[0].moves[0].sell_name == "—"
+    assert out[0].moves[0].buy_name == "In"
+
+
 def test_a_code_with_no_ep_in_the_pool_is_None_and_not_zero():
     out = run([week(5, buys=[999], sells=[200])], positions={**POS, 999: "MID"},
               names={**NAMES, 999: "Ghost"})
@@ -280,7 +289,12 @@ def test_the_trace_module_is_imported_by_no_solver():
     import re
 
     root = pathlib.Path(__file__).resolve().parents[1] / "src" / "gaffer"
-    watched = [root / "advise.py", *sorted((root / "optimize").glob("*.py"))]
+    # ``backtest.py`` joins the list because it re-solves history: a trace read
+    # there would price a decision the same way the objective does, which is
+    # the one place a "read-only" accounting layer could quietly become an
+    # input to a measurement of the model.
+    watched = [root / "advise.py", root / "backtest.py",
+               *sorted((root / "optimize").glob("*.py"))]
     pattern = re.compile(r"\b(from\s+gaffer\.trace|import\s+gaffer\.trace"
                          r"|from\s+\.\.?trace|from\s+gaffer\s+import\s+trace)")
     guilty = [p.name for p in watched if pattern.search(p.read_text())]

@@ -509,6 +509,9 @@ describe('PlannerBoard', () => {
         ]))
         render(<PlannerBoard gw={5} />)
         await open()
+        // Not on Plan A, which *has* the trace: a caveat left standing on the
+        // page it does not apply to teaches the reader to ignore it.
+        expect(screen.queryByTestId('plan-no-trace')).toBeNull()
         await pickPlan('Plan B')
         expect(screen.queryByTestId('board-why-5')).toBeNull()
         expect(screen.getByTestId('plan-no-trace'))

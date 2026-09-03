@@ -226,13 +226,24 @@ def _trace_inputs(state) -> tuple[dict, dict, dict]:
         positions.setdefault(code, str(getattr(row, "position", "")))
         player_names.setdefault(code, str(getattr(row, "name", code)))
         if has_ep:
-            ep_by[(code, _int(getattr(row, "gw", None), -1))] = _float(
-                getattr(row, "ep_raw", None))
+            # A NaN is not a 0.0. ``_float`` defaults one to zero, and a zero
+            # here would price a swap against this player as a measured tie
+            # rather than as a reading the pool does not have. Leaving the key
+            # out is what makes the trace say "not in the pool".
+            ep = _float(getattr(row, "ep_raw", None), float("nan"))
+            if ep == ep:
+                ep_by[(code, _int(getattr(row, "gw", None), -1))] = ep
     return ep_by, positions, player_names
 
 
 def _thresholds(advice: dict) -> dict[int, float]:
-    """``{gw: θ}`` for the chips this run recommends playing."""
+    """``{gw: θ}`` for the chips this run recommends playing.
+
+    A threshold that is not a number is dropped rather than defaulted. 0.0 is
+    a real θ — "play it in any week that is not actively worse" — so a string
+    where a number belongs must not be served as the most permissive threshold
+    the model can have.
+    """
     out: dict[int, float] = {}
     rows = advice.get("chip_table")
     if not isinstance(rows, list):
@@ -242,8 +253,11 @@ def _thresholds(advice: dict) -> dict[int, float]:
             continue
         if row.get("gw") is None or row.get("threshold") is None:
             continue
-        out[_int(row["gw"], -1)] = _float(row["threshold"])
-    out.pop(-1, None)
+        gw_key = _int(row["gw"], -1)
+        theta = _float(row["threshold"], float("nan"))
+        if gw_key < 0 or theta != theta:
+            continue
+        out[gw_key] = theta
     return out
 
 
@@ -391,13 +405,29 @@ def plan(gw: int) -> PlanTimeline:
     if TRACE and weeks:
         try:
             price_timing, price_fall = _price_falls(state)
+            # The moves' own names, under the pool's: the pool is the solver's
+            # candidate list and a move can name a player who is not on it —
+            # and a bare code on the board is a database key shown to a human.
+            move_names = {m.code: m.name
+                          for w in weeks for m in (*w.buys, *w.sells)}
+            # `chip: None`, deliberately, and not `w.chip`. `w.chip` is what
+            # the *chip table* recommends; `plan_by_gw` is the base solve, and
+            # `advise` never sets `wildcard_gw` on it. So the objective did
+            # charge this week's transfers and did run the free-transfer
+            # recurrence normally, and telling the trace a wildcard was played
+            # would report a charge that was made as zero — and then run every
+            # later week's FT count forward from the wrong number. The note
+            # below says which plan these terms belong to; θ still comes from
+            # the chip table, because the recommendation is real and it is
+            # only the pricing that predates it.
             traced = trace_plan(
                 [{"gw": w.gw, "hits": w.hits,
                   "buys": [m.code for m in w.buys],
-                  "sells": [m.code for m in w.sells], "chip": w.chip}
+                  "sells": [m.code for m in w.sells], "chip": None}
                  for w in weeks],
                 gws=[int(g) for g in getattr(state, "gws", [])],
-                ep_by=ep_by, positions=positions, names=player_names,
+                ep_by=ep_by, positions=positions,
+                names={**move_names, **player_names},
                 decay=_float(opt.get("decay", 1.0), 1.0), hit_cost=hit_cost,
                 ft_value=_float(opt.get("ft_value", 0.0)),
                 itb_value=_float(opt.get("itb_value", 0.0)),
@@ -410,7 +440,14 @@ def plan(gw: int) -> PlanTimeline:
                 banks={w.gw: w.bank for w in weeks},
                 price_timing=price_timing, price_fall=price_fall)
             for week, one in zip(weeks, traced):
-                week.trace = PlanWeekTrace(**asdict(one))
+                payload = asdict(one)
+                if week.chip:
+                    said = (f"a {week.chip} is recommended this week; these "
+                            f"terms are the base plan's, which the solver "
+                            f"returned without it")
+                    payload["note"] = "; ".join(
+                        part for part in (payload["note"], said) if part)
+                week.trace = PlanWeekTrace(**payload)
         except Exception as exc:  # noqa: BLE001
             # A decoration must never be the reason a plan does not render —
             # the board's own rule for the price movers.

@@ -1354,9 +1354,19 @@ class PlanWeekTrace(BaseModel):
     ft_used: int = 0
     ft_after: int = 0
     ft_use_penalty: float = 0.0
-    """The per-transfer friction this week, decayed and waived on a wildcard
-    exactly as the objective waives it (``milp.py:867``)."""
+    """The per-transfer friction this week, decayed exactly as the objective
+    decays it (``milp.py:867``).
+
+    Charged even in a week the chip table recommends a wildcard for: the plan
+    on this payload is the base solve, which the solver returned with the
+    transfers charged and the free-transfer recurrence running. The week's
+    ``note`` says so."""
     ft_shadow: float | None = None
+    """What one banked free transfer is worth, priced at the horizon's end:
+    flat ``ft_value``, or λ at **this week's** banked count and the weeks left
+    after the horizon's last gameweek. The count is the week's and only the
+    basis is terminal, because the end of the horizon is the only place the
+    objective prices a free transfer at all (``milp.py:878-888``)."""
     ft_basis: Literal["flat", "lambda"] = "flat"
     bank_value: float | None = None
     """``itb_value * bank`` on the horizon's **last** week, which is the only

@@ -999,8 +999,14 @@ export interface PlanWeekTrace {
   hit_cost: number
   ft_used: number
   ft_after: number
-  /** The per-transfer friction, decayed and waived on a wildcard. */
+  /** The per-transfer friction this week, decayed as the objective decays it
+   *  — charged even in a week the chip table recommends a wildcard for,
+   *  because the plan drawn here is the base solve. The note says so. */
   ft_use_penalty: number
+  /** What one banked free transfer is worth, priced at the horizon's end:
+   *  flat `ft_value`, or λ at *this week's* banked count and the weeks left
+   *  after the horizon's last gameweek. The count is the week's; only the
+   *  basis is terminal. */
   ft_shadow: number | null
   ft_basis: 'flat' | 'lambda'
   /** `itb_value * bank` on the horizon's last week — the only week the

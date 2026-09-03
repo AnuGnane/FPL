@@ -116,6 +116,57 @@ def test_theta_reaches_the_trace_from_the_chip_table(wired):
     assert plan_router.plan(5).weeks[0].trace.theta == pytest.approx(12.5)
 
 
+def test_a_chip_week_is_still_charged_what_the_base_plan_paid(wired):
+    """``plan_by_gw`` is the base solve. ``advise`` never sets
+    ``wildcard_gw``, so a week the chip table *recommends* a wildcard for was
+    still solved with its transfers charged and the free-transfer recurrence
+    running normally. Waiving the friction on the chip label would report a
+    charge the objective did make as zero, and then run every later week's FT
+    count forward from the wrong number.
+    """
+    wired([_week(5, buys=[P], sells=[S])],
+          chips=[{"chip": "wildcard", "gw": 5, "play_now": True,
+                  "threshold": 12.5}],
+          opt={"ft_use_penalty": 0.2})
+    week = plan_router.plan(5).weeks[0]
+    assert week.trace.ft_use_penalty == pytest.approx(0.2)
+    assert week.trace.ft_used == 1
+    assert week.trace.ft_after == 1
+    # And the reader is told which plan these terms belong to.
+    assert "base plan" in week.trace.note
+    # θ still comes from the chip table: the recommendation is real, it is
+    # only the *pricing* that predates it.
+    assert week.trace.theta == pytest.approx(12.5)
+
+
+def test_a_threshold_that_is_not_a_number_is_no_threshold(wired):
+    """0.0 is a real θ — "play it whenever it is not actively worse" — so a
+    threshold the artifact wrote as a string must not become one."""
+    wired([_week(5)], chips=[{"chip": "wildcard", "gw": 5, "play_now": True,
+                              "threshold": "n/a"}])
+    assert plan_router.plan(5).weeks[0].trace.theta is None
+
+
+def test_a_player_the_pool_cannot_name_is_named_from_the_advice(wired):
+    """The pool is the solver's candidate list and a move can name a player
+    who is not on it. "300" on the board is a database key shown to a human.
+    """
+    gone = {"code": 300, "name": "Gone", "position": "FWD", "ep": 1.0}
+    wired([_week(5, buys=[P], sells=[gone])])
+    moves = plan_router.plan(5).weeks[0].trace.moves
+    assert {m.sell_name for m in moves} == {"—", "Gone"}
+
+
+def test_a_nan_expected_points_is_not_a_zero(wired):
+    """``_float`` defaults a NaN to 0.0, which would price this swap as a
+    measured tie against a player the pool has no reading for."""
+    state = wired([_week(5, buys=[P], sells=[S])])
+    state.pool.loc[state.pool["code"] == 100, "ep_raw"] = float("nan")
+    move = plan_router.plan(5).weeks[0].trace.moves[0]
+    assert move.ep_gain is None
+    assert "not in the pool" in move.note
+
+
 def test_the_lambda_tilt_reaches_the_trace(wired):
     wired([_week(5, buys=[P], sells=[S])], lam=0.5,
           cover={100: 1.0, 200: 0.0})

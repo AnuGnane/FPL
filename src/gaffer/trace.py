@@ -113,10 +113,17 @@ class WeekTrace:
     coefficient is 0.0, which is a measured "there is no such friction" rather
     than an unknown."""
     ft_shadow: float | None = None
-    """What one banked free transfer is worth at the *end* of the horizon —
-    flat ``ft_value``, or ``λ(terminal count, weeks left)``. It is not the
-    intra-horizon price of spending one, because the model does not price that
-    either: free transfers enter the objective only as a terminal term."""
+    """What one banked free transfer is worth, priced at the horizon's end.
+
+    Flat ``ft_value``, or ``λ(this week's banked count, the weeks left after
+    the horizon's last gameweek)``. The count is **this week's** and only the
+    basis is terminal: λ is concave in the count, so the same table answers
+    differently for a week holding one and a week holding four, and
+    ``weeks_left`` is the horizon's because the end of the horizon is the only
+    place the objective prices a free transfer at all (``milp.py:878-888``).
+
+    It is not the intra-horizon price of spending one — the model does not
+    price that either."""
     ft_basis: str = "flat"
     bank_value: float | None = None
     """``itb_value * bank`` — the objective's terminal bank term
@@ -130,6 +137,18 @@ class WeekTrace:
     theta: float | None = None
     price_charge: float | None = None
     note: str = ""
+
+
+def _name(code: int | None, names: dict) -> str:
+    """A player's name, or an em dash for a side of the swap that is not there.
+
+    ``names.get(None, str(None))`` puts the word "None" on the board, where it
+    reads as a player. The em dash is what every other unknown in this UI
+    prints.
+    """
+    if code is None:
+        return "—"
+    return str(names.get(code, code))
 
 
 def _pair(sells: list[int], buys: list[int],
@@ -208,8 +227,8 @@ def trace_plan(weeks, *, gws: list[int], ep_by: dict, positions: dict,
             gain, tilt, note = _swap(buy, sell, i, gws, order, ep_by, tilted,
                                      decay)
             moves.append(MoveTrace(
-                gw=gw, buy_code=buy, buy_name=names.get(buy, str(buy)),
-                sell_code=sell, sell_name=names.get(sell, str(sell)),
+                gw=gw, buy_code=buy, buy_name=_name(buy, names),
+                sell_code=sell, sell_name=_name(sell, names),
                 ep_gain=gain, lambda_tilt=tilt, note=note))
 
         gains = [m.ep_gain for m in moves]
