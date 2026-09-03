@@ -1227,7 +1227,7 @@ substitute for that run.
 Implementers build the drivers and never run them (CONVENTIONS §7). Every
 result below is unfilled on purpose.
 
-- [ ] **No replay, and why.** W5 is interface-only. `src/gaffer/optimize/**`
+- [x] **No replay, and why.** W5 is interface-only. `src/gaffer/optimize/**`
       and `src/gaffer/advise.py` are untouched — the G2 diff below proves it,
       not a claim in prose — no `[optimizer]` key and no `[model]` flag was
       added, and the trace is accounting computed *after* the solve from the
@@ -1253,9 +1253,11 @@ result below is unfilled on purpose.
       #   produce, byte for byte, and the writer is deterministic
       ```
 
-      - Result: _(unfilled)_
+      - Result: ✅ run 2026-09-03 at `0ffa6cf`: the two trace tests `2 passed`
+        (49 deselected); `tests/test_v12_w5_gen_types.py` `20 passed` in full.
+        No replay was run, as pre-registered.
 
-- [ ] **Zero unauthorized protected diffs.** Base is **`5bb7d0e`**, W4's merge
+- [x] **Zero unauthorized protected diffs.** Base is **`5bb7d0e`**, W4's merge
       tip on `main`, not `main` itself — a rail scoped to somebody else's range
       audits somebody else's work.
 
@@ -1284,7 +1286,14 @@ result below is unfilled on purpose.
 
       W5's authorized protected set is **exactly those two test files**.
 
-      - Result: _(unfilled)_
+      - Result: ✅ at `0ffa6cf` (`5bb7d0e..HEAD`, `journal.py` and
+        `backtest.py` added to the first command): the src set is **empty**;
+        the narrowed degradation sweep is exactly `tests/test_v11_degradation.py
+        | 25 +++++++++++++++++--------` and `tests/test_v12_w4_degradation.py |
+        33 +++++++++++++++++++++------------`. Both diffs read in full by the
+        whole-W5 reviewer and by the orchestrator — every hunk is one of the
+        enumerated line-groups; the W4 rail's two range-end switches
+        `HEAD → W4_TIP` were enumerated in the ruling of 2026-09-03.
 
 - [ ] **The manual six-hub pass** (spec §6 gate: "a manual pass through all six
       hubs with the 'as of' strip and URL state"). W1 owns the strip; W5 owns
@@ -1304,11 +1313,25 @@ result below is unfilled on purpose.
       both files are gitignored, so `git status` cannot be the check and
       `md5 config.toml` before and after is — and reset it.
 
-      - Result: _(unfilled)_
+      - Result: **deferred to the live spot-checks below, not passed here.**
+        The gate ran on 2026-09-03 with no dev server up; the six-hub pass and
+        the Settings round-trip are the first two rows of the spot-check list
+        and are the user's to walk. What stands in for them at the gate is the
+        URL-state and Settings coverage that exists as tests: every hub's
+        `?tab=` round-trip and `replace: true` by mutation
+        (`frontend/src/hubs/taburl.test.tsx`), and the overlay write, the
+        base-file byte-identity, every refused payload and the torn-overlay
+        boot (`tests/test_v12_w5_settings.py`,
+        `tests/test_v12_w5_config_overlay.py`).
 
-- [ ] **Pins on the merge commit.** Expected: **`47 12 55`** (G1's command).
+- [x] **Pins on the merge commit.** Expected: **`47 12 55`** (G1's command).
 
-      - Result: _(unfilled)_
+      - Result: ✅ `47 12 55` at `0ffa6cf`; exactly one absolute route pin
+        (`tests/test_v11_degradation.py:368`) and one absolute `Config` pin
+        (`tests/test_v12_w3_degradation.py:536`) — the second `Config` pin the
+        whole-W5 review found in W5's own file (reached through a constant, the
+        blind spot W1's rail names) was removed in `2adf213`. Re-measured on
+        the merge commit below.
 
 - [ ] **Post-merge ritual (§7).**
 
@@ -1333,13 +1356,40 @@ result below is unfilled on purpose.
       # moment he commits the tab.
       ```
 
-      - Result: _(unfilled)_
+      - Result: branch-side half ✅ at `0ffa6cf`: the key-grep over all
+        history is empty; the range's `api_key|secret|token|bearer` hits are
+        key *names* in `settings_keys.py`, its tests and the whitelist prose —
+        no key-shaped value anywhere in the range; the staging audit (with
+        `src/gaffer/web/static` added) is empty; all 35 commits carry both
+        trailers. The `main`-side half is recorded under G3's merge row.
 
 ### W5 G3 — review and merge (orchestrator only)
 
-- [ ] Adversarial review, fix-first, re-verify.
+- [x] Adversarial review, fix-first, re-verify.
 
-      - Result: _(unfilled)_
+      - Result: per-task reviews on T0–T12 (six rounds); whole-W5 review at
+        `d00d887` — **FIX-FIRST, no Critical**, four Important, seven Minor:
+        a second absolute `Config` pin behind a constant (I1), the trace's
+        price-timing note claiming the solve's flag from today's read (I2 —
+        freezing it needs `advise.py`, so the sentences went present-tense and
+        the flag-flip half joined residual 1), `lambda_tilt` measured as `0.0`
+        on a pre-W5 solve state with `cover=None` (I3), the watchlist note
+        wipe documented rather than prevented (I4 — now a tri-state:
+        `note=None` leaves the row alone, `""` clears, text sets; the
+        explorer's star sends no note and is disabled when the list did not
+        load). Minors: "every click" in four places, an unreachable `""`
+        captain-note branch cited as the truthiness reason, "three readers"
+        for four, five dead `?? []` guards on required fields, two hit numbers
+        on one card unexplained, a scalar over a table collapsing
+        `serving_config()` to `Config(entry_id=0, league_id=0)`, the staging
+        rail missing `web/static`; plus a pre-existing flaky `ComparePanel`
+        test. Fixed in `2adf213..aa23424` (ten commits). Re-verify found one
+        regression the fix round introduced — a third blanket mock answering
+        `/api/review` with the quality payload, an unhandled rejection that
+        did not fail the suite — and the overlay guard still passing a scalar
+        over a section the base omits; closed in `8849b46` and `0ffa6cf`.
+        Gate at `0ffa6cf`: **4029 Python / 792 frontend** (two identical
+        vitest runs, zero unhandled errors), tsc clean.
 - [ ] Merge ritual: ff-only into `main` at ___ , pushed;
       `git show main:config.toml` fails; the key-grep over all history is
       empty; the protected audit re-run on the merge passes. Suite at the
@@ -1358,10 +1408,11 @@ result below is unfilled on purpose.
       byte-identical, and the "as of" strip reflects the reload rather than the
       values the page fetched before the save.
 - [ ] §6.3 A watchlist note written in the list view survives a star click in
-      the explorer — the note, not the date: `watchlist.watch` replaces both,
-      so the row should come back with its text and a reset "noted" stamp.
+      the explorer — text *and* "noted" stamp: a bare star sends no note and
+      `watchlist.watch` leaves an existing row alone when none is sent.
 - [ ] §6.3 `captain_note` renders beside the captain on This Week when the tilt
-      moved it, and nothing renders at all when the run wrote `""`.
+      moved it, and nothing renders at all when the armband did not move (the
+      field is then `None`, never `""`).
 - [ ] §6.4 The first Review row graded after the merge names its projection
       snapshot, and reads `(late)` only for one of the two causes the tooltip
       lists (**data-gated:** the first gameweek graded after the merge).
