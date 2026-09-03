@@ -942,7 +942,9 @@ this project reads — `build-history` writes player and fixture tables,
 `gameweek_summaries.csv` has an average and a highest and no tier threshold —
 so it is not computed rather than guessed. The overall-rank response is an
 ordinary least-squares slope through the ledger's `(my_points, overall_rank)`
-pairs and needs five graded gameweeks; two exist today. When it does fill,
+pairs and needs five graded gameweeks. Two are graded today, and one of them
+carries both today — GW1 banked a score with no overall rank — so the panel
+reads `1 of 5 graded gameweeks`, not 2. When it does fill,
 read it as an association: `my_points` is one week and `overall_rank` is a
 **cumulative** standing that drifts with the season on its own, so the slope
 charges some of the season's passage to the points. Differencing rank week to

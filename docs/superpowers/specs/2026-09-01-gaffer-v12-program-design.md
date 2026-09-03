@@ -785,7 +785,9 @@ W2's diff under W3's name. The audit rail in
 - Test: a squad identical to the field's modal team has P(green) ≈ 0.5.
 
 ### 5.4 Set-piece overrides
-- `data/set_pieces.yaml` (untracked, example file tracked): per team,
+- `data/set_pieces.yaml` (shipped as `data/set_pieces.toml` — TOML by the
+  plan's Appendix B §3, since the tree has `tomllib` and no yaml)
+  (untracked, example file tracked): per team,
   ordered takers for penalties, direct FKs, corners. `set_pieces.py` reads
   it before inference (authorized edit: one read hook); the UI shows a
   "manual" badge where the override applied.
@@ -800,11 +802,12 @@ that closes the cycle. The orchestrator re-runs all of it on the merge commit;
 these are the numbers it is checking against, not a substitute for that run.
 
 - [x] **Python suite:** `PYTHONPATH=src .venv/bin/pytest tests/ -q` —
-      **3829 passed, 13 skipped** at `6a9601c`, **3831 / 13** after the fix
-      round adds two rails (a `pen_table` and a `/api/players` frame value
-      that is not an int until it is one). The skips are the built-asset
-      tests, which skip in a worktree with no `web/static/` build; the main
-      tree collects them.
+      **3829 passed, 13 skipped** at `6a9601c`, **3831 / 13** at `287dff1`
+      after the fix round adds two rails (a `pen_table` and a `/api/players`
+      frame value that is not an int until it is one), and **3836 / 13** at
+      `e3121f2` after the §5.2 arm flip (all three measured, not carried
+      forward). The skips are the built-asset tests, which skip in a worktree
+      with no `web/static/` build; the main tree collects them.
 - [x] **Frontend:** `cd frontend && npx vitest run` — **722 passed, 4 skipped**
       over 73 files; `npx tsc --noEmit` clean.
 - [x] **Pins:** `46 12 55` — routes / `JOB_KINDS` / `fields(Config)`,
@@ -856,7 +859,15 @@ result below is unfilled on purpose.
       replay and the run would not be reproducible; `xg_per_shot = false`;
       `draw_availability = true` (inert here — the backtest passes no
       `p_play`); **no `data/set_pieces.toml` on either side**; `config.toml`
-      byte-identical; seeds `20260901,20260902,20260903`.
+      byte-identical; seeds `20260901,20260902,20260903`; and the **archive
+      state**: `data/core_insights/` **present, 3 seasons (2024-25, 2025-26,
+      2026-27), collected 2026-09-03 morning** on both sides. That last one
+      is new to the pinned set and is now CONVENTIONS §1's: with `role` in
+      `MINUTES_FEATURES` the backtest's minutes refit reads that archive, and
+      the archive is untracked, machine-local and rewritten twice a day, so
+      it is a config input that no `config.toml` diff can catch. Present with
+      three seasons and absent are different runs; so are the same three
+      seasons collected on different mornings.
 
       **Control, re-run at `f903959` rather than borrowed** (W3 moved chip
       timing, so the older `[1854, 1875, 1862]` is stale):
@@ -873,6 +884,25 @@ result below is unfilled on purpose.
       strip-and-re-derive, or a stray `data/set_pieces.toml`.
 
       - Branch totals / hits: _(unfilled)_
+
+- [ ] **Post-hoc: role-on replay.** Not a gate row — the gate above is the
+      arms-off no-regression replay and stays that way. Pre-registered by the
+      orchestrator on 2026-09-03, *before* the run, and copied here verbatim:
+
+      > Not part of the plan's gate. Branch at e3121f2 (role in
+      > MINUTES_FEATURES) vs control [1798, 1917, 1872] (f903959), same pinned
+      > config + the same archive state (data/core_insights/ as collected
+      > 2026-09-03 morning, 3 seasons). READ: the arm shipped under the
+      > two-half rule and this replay cannot re-run that rule; it is a
+      > season-scale sanity check. The flip is sent back for an explicit
+      > re-decision (withdraw role, ship off with numbers) iff BOTH: every
+      > seed is worse than its paired control seed, AND the mean is worse by
+      > more than 5 (the tolerance). Otherwise the flip stands and the numbers
+      > are recorded beside — never inside — the pre-registered arms-off gate.
+      > Reason: K=3 with a 119 seed spread can only support a paired sign
+      > test; a one- or two-seed loss is noise by construction.
+
+      - Branch totals / mean, and the verdict under that read: _(unfilled)_
 
 - [ ] **§5.2 arm outcomes, recorded either way (CONVENTIONS §6).**
       **Precondition: a `gaffer core-insights` collection.** Without one both

@@ -20,6 +20,17 @@ spread — and `scripts/seed_stats.py` enforces that, refusing with exit 2.
 aggregate; `scripts/seed_stats.py` reads the same aggregate off reports already
 banked.
 
+**The pinned set is wider than `config.toml`.** A replay write-up states every
+input both sides were held to, and the config echo is only the part a diff can
+see. Since v12 W4 that set also names **the state of `data/core_insights/`** —
+present or absent, which seasons, and the date they were collected — because
+`role` is in `MINUTES_FEATURES`, the backtest refits the minutes head, and that
+archive is untracked, machine-local and rewritten twice a day. Two runs of
+identical code and byte-identical config over a different archive are two
+different runs, and nothing in the repository records which one you had.
+The same rule reaches any untracked input a replay reads: name it, or the
+verdict is not reproducible even by its author.
+
 ## 2. Gates are pre-registered
 
 The spec states the gate and its mechanical verdict rule before any arm runs.
