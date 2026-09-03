@@ -376,10 +376,17 @@ def test_the_badge_is_empty_without_a_file(clone):
 # audit rail measures that workstream's own range and nobody else's. The base
 # is pinned rather than computed from ``merge-base(HEAD, main)``, which moves
 # the moment W4 merges and would start auditing whatever is cut next; the end
-# is ``HEAD`` while the cycle runs and the gate commit pins ``W4_TIP`` at
-# close, exactly as W3's rail was closed at f903959 once W4 was cut from it.
+# was ``HEAD`` while the cycle ran and is now pinned at ``W4_TIP``, exactly as
+# W3's rail was closed at f903959 once W4 was cut from it.
 W3_TIP = "f903959"
 """W3's merge tip on main — W4's point of departure."""
+
+# v12 W5 (orchestrator ruling 2026-09-03): the W4 rail audits W4's range, not
+# everyone's. Left open at ``HEAD`` it would have started measuring W5's diff
+# under W4's name the moment W5 was cut from it — the same open-ended range the
+# 2026-09-03 ruling closed on W3's rail, one cycle later.
+W4_TIP = "5bb7d0e"
+"""W4's merge tip on main — W5's point of departure, and this rail's end."""
 
 W4_AUTHORIZED = {
     # The one STOP this workstream enumerates (plan header; spec §5.4).
@@ -415,11 +422,12 @@ def test_every_protected_file_w4_touched_was_authorized():
     all — and the audit is skipped rather than answered from a range that does
     not exist.
     """
-    probe = subprocess.run(["git", "cat-file", "-e", f"{W3_TIP}^{{commit}}"],
-                           capture_output=True, check=False)
-    if probe.returncode:
-        pytest.skip(f"{W3_TIP} unreachable — W4's range is not in this tree")
-    changed = subprocess.run(["git", "diff", "--name-only", W3_TIP, "HEAD"],
+    for end in (W3_TIP, W4_TIP):
+        probe = subprocess.run(["git", "cat-file", "-e", f"{end}^{{commit}}"],
+                               capture_output=True, check=False)
+        if probe.returncode:
+            pytest.skip(f"{end} unreachable — W4's range is not in this tree")
+    changed = subprocess.run(["git", "diff", "--name-only", W3_TIP, W4_TIP],
                              capture_output=True, text=True,
                              check=False).stdout.split()
     touched = {p for p in changed if _protected(p)}
@@ -436,11 +444,12 @@ def test_the_branch_banks_no_data_and_no_config():
     an ``add -A`` somebody was in a hurry to type. W4 collects an archive into
     ``data/core_insights/`` and reads a hand-edited ``data/set_pieces.toml``,
     so this cycle has two more ways than usual to commit one by accident."""
-    probe = subprocess.run(["git", "cat-file", "-e", f"{W3_TIP}^{{commit}}"],
-                           capture_output=True, check=False)
-    if probe.returncode:
-        pytest.skip(f"{W3_TIP} unreachable — W4's range is not in this tree")
-    changed = subprocess.run(["git", "diff", "--name-only", W3_TIP, "HEAD"],
+    for end in (W3_TIP, W4_TIP):
+        probe = subprocess.run(["git", "cat-file", "-e", f"{end}^{{commit}}"],
+                               capture_output=True, check=False)
+        if probe.returncode:
+            pytest.skip(f"{end} unreachable — W4's range is not in this tree")
+    changed = subprocess.run(["git", "diff", "--name-only", W3_TIP, W4_TIP],
                              capture_output=True, text=True,
                              check=False).stdout.split()
     assert not [p for p in changed
