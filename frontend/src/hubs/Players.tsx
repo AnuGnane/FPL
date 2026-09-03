@@ -12,6 +12,7 @@ import type {
 import ComparePanel from './players/ComparePanel'
 import FixtureMatrix from './players/FixtureMatrix'
 import PinDialog from './players/PinDialog'
+import WatchlistTab from './players/WatchlistTab'
 
 const POSITIONS = ['', 'GKP', 'DEF', 'MID', 'FWD']
 
@@ -23,7 +24,7 @@ const TAB_CLASS = 'shrink-0 whitespace-nowrap px-3 py-2 text-text-muted '
 
 // The strip's values, in strip order. Named so `useTabParam` can reject a
 // `?tab=` this hub does not have rather than rendering an empty panel.
-const TABS = ['explorer', 'compare', 'matrix'] as const
+const TABS = ['explorer', 'compare', 'matrix', 'watchlist'] as const
 
 export default function Players() {
   const [tab, setTab] = useTabParam(TABS, 'explorer')
@@ -234,6 +235,7 @@ export default function Players() {
           <Tabs.Trigger value="explorer" className={TAB_CLASS}>Explorer</Tabs.Trigger>
           <Tabs.Trigger value="compare" className={TAB_CLASS}>Compare</Tabs.Trigger>
           <Tabs.Trigger value="matrix" className={TAB_CLASS}>Fixture matrix</Tabs.Trigger>
+          <Tabs.Trigger value="watchlist" className={TAB_CLASS}>Watchlist</Tabs.Trigger>
         </Tabs.List>
         <Tabs.Content value="explorer">
           {missing
@@ -313,6 +315,12 @@ export default function Players() {
         </Tabs.Content>
         <Tabs.Content value="matrix">
           <FixtureMatrix from={gw ?? 1} />
+        </Tabs.Content>
+        <Tabs.Content value="watchlist">
+          {/* The hub already owns `starred` for the explorer's star column
+              (`:49`), and every write here returns the whole panel — so the
+              two surfaces are re-seeded from one answer instead of drifting. */}
+          <WatchlistTab onChange={setStarred} />
         </Tabs.Content>
       </Tabs.Root>
       {pinning && (
