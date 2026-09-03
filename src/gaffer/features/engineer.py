@@ -1682,8 +1682,10 @@ DENSITY_FEATURES = ["density_pub_7d", "density_pub_missing"]
 
 ``density_pub_7d`` counts the club's *published* fixtures — league, EFL Cup,
 Champions/Europa/Conference League, everything the archive's
-``By Gameweek/GW<n>/fixtures.csv`` carries — with a kickoff in the seven days
-before this fixture's own kickoff, excluding this fixture.
+``By Gameweek/GW<n>/fixtures.csv`` carries — kicking off on one of the seven
+calendar days (UTC) before this fixture's own kickoff date, which excludes
+this fixture. :func:`add_density_pub` says why the window is counted in days
+rather than in hours.
 
 The difference from :data:`CONGESTION_FEATURES` and from v8a's withdrawn
 ``f2_cups`` is the table, not the arithmetic. Those counted *played* matches
@@ -1698,12 +1700,16 @@ It has its own coverage limit — the archive's earliest season is 2024-25 — a
 ``scripts/v12_w4_arms.py``'s preflight measures that rather than assuming it
 away.
 
-``density_pub_missing`` is 1 on a machine with no collection and on a row with
-no kickoff time. Zero would be a claim that the club plays nothing that week,
-which is a different and much stronger statement than "we do not know".
+``density_pub_missing`` is 1 on a machine with no collection, on a row in a
+season the collection does not cover, and on a row with no kickoff time. Zero
+would be a claim that the club plays nothing that week, which is a different
+and much stronger statement than "we do not know".
 """
 
 DENSITY_WINDOW_DAYS = 7
+"""Seven *calendar* days, not 168 hours. See :func:`add_density_pub`: the
+hour-counted window's lower bound put the ordinary week-earlier fixture in or
+out depending on which side of it the later kickoff slot fell."""
 
 
 def add_density_pub(df: pd.DataFrame,
@@ -1717,6 +1723,34 @@ def add_density_pub(df: pd.DataFrame,
     ``kickoff_time``; a row missing any of them is missing rather than zero.
     Counting is over distinct ``match_id``, because the fixture table emits one
     row per club per match and a re-collection can leave two.
+
+    **A season the archive does not cover is missing, not zero.** ``fixtures``
+    carries only the collected seasons — the archive's earliest is 2024-25 —
+    and a club lookup that fell back to an empty list answered ``0.0`` for
+    2021-22, which is a *non-null* claim that the club played nothing. That
+    made ``density_pub_missing`` read 0 and the driver's notna coverage read
+    100% on seasons with no data at all, so the arm passed its lever guard as
+    a pure season indicator (W4 G2 review). Coverage is therefore decided by
+    the set of ``season_idx`` values present in ``fixtures``; inside a covered
+    season an unknown club really did play nothing that week, and zero is the
+    honest answer.
+
+    **The window is seven calendar days, measured in UTC**, not seven times
+    twenty-four hours: a fixture counts when its kickoff *date* falls in the
+    seven dates before this fixture's own kickoff date. Both boundaries are
+    the reason.
+
+    * The lower one: a Saturday 15:00 kickoff after the previous Saturday's
+      12:30 is 7d 2.5h back and fell out of a ``when - 7d <= t`` window, while
+      the same pair in the opposite slot order stayed in — so the baseline
+      oscillated with the broadcaster's slot rather than with the schedule.
+      Calendar days do not know about kickoff times.
+    * The upper one: the fixture being predicted was excluded by exact
+      timestamp equality between FPL's ``kickoff_time`` and the archive's
+      ``kickoff``, so one second of divergence between the two publishers —
+      a reschedule they rounded differently, a timezone re-render — added +1
+      to every row in the frame. Its own calendar day is outside the window
+      whatever the clocks say, and no club plays twice in a day.
     """
     out = df.copy()
     count = pd.Series(float("nan"), index=out.index, dtype="float64")
@@ -1736,22 +1770,24 @@ def add_density_pub(df: pd.DataFrame,
         fx = fx.dropna(subset=["season_idx", "team_code", "kickoff"])
         fx = fx.drop_duplicates(subset=["season_idx", "team_code",
                                         "match_id"])
-        by_club: dict[tuple[int, int], list] = {}
+        by_club: dict[tuple[int, int], list[int]] = {}
         for r in fx.itertuples():
             by_club.setdefault((int(r.season_idx), int(r.team_code)),
-                               []).append(r.kickoff)
-        window = pd.Timedelta(days=DENSITY_WINDOW_DAYS)
+                               []).append(int(r.kickoff.toordinal()))
+        covered = {int(s) for s in fx["season_idx"]}
         idx = pd.to_numeric(out["season_idx"], errors="coerce")
         teams = pd.to_numeric(out["team_code"], errors="coerce")
         kicks = pd.to_datetime(out["kickoff_time"], errors="coerce", utc=True)
         values = []
         for si, team, when in zip(idx, teams, kicks):
-            if pd.isna(si) or pd.isna(team) or pd.isna(when):
+            if pd.isna(si) or pd.isna(team) or pd.isna(when) \
+                    or int(si) not in covered:
                 values.append(float("nan"))
                 continue
-            stamps = by_club.get((int(si), int(team)), [])
-            values.append(float(sum(1 for t in stamps
-                                    if when - window <= t < when)))
+            day = int(when.toordinal())
+            days = by_club.get((int(si), int(team)), [])
+            values.append(float(sum(
+                1 for d in days if day - DENSITY_WINDOW_DAYS <= d < day)))
         count = pd.Series(values, index=out.index, dtype="float64")
     out["density_pub_7d"] = count
     out["density_pub_missing"] = count.isna().astype("float64")

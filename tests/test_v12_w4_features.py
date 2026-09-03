@@ -245,6 +245,92 @@ def test_no_collection_is_missing_everywhere_not_zero_everywhere():
     assert out["density_pub_missing"].iloc[0] == 1.0
 
 
+def test_a_season_the_archive_does_not_cover_is_missing_not_zero():
+    """The defect that made the arm a season indicator (W4 G2 review).
+
+    The archive's earliest season is 2024-25. A 2021-22 row asking "how many
+    fixtures did this club have that week" gets no list at all, and a lookup
+    defaulting to the empty list answered ``0.0`` — a non-null number, so the
+    missing indicator read 0, the driver's notna coverage read 100%, and the
+    lever guard passed on a column whose only real content was "this row is in
+    a covered season". A season the archive does not cover is *unknown*.
+    """
+    fixtures = _fx([{"kickoff": "2026-10-07T19:00:00Z"},
+                    {"kickoff": "2026-10-10T14:00:00Z"}])   # season_idx 4 only
+    out = add_density_pub(
+        _rows([{"season_idx": s} for s in (0, 1, 2, 4)]), fixtures)
+    assert list(np.isnan(out["density_pub_7d"])) == [True, True, True, False]
+    assert list(out["density_pub_missing"]) == [1.0, 1.0, 1.0, 0.0]
+    assert out["density_pub_7d"].iloc[3] == 1.0
+
+
+def test_a_covered_season_a_club_did_not_play_in_is_still_zero():
+    """The distinction the fix must keep: a promoted club with no fixtures in
+    a season the archive *does* cover played nothing that week, and zero is
+    the true answer. Only an uncovered season is unknown."""
+    fixtures = _fx([{"kickoff": "2026-10-07T19:00:00Z", "team_code": 3},
+                    {"kickoff": "2026-10-10T14:00:00Z", "team_code": 3}])
+    out = add_density_pub(_rows([{"team_code": 99}]), fixtures)
+    assert out["density_pub_7d"].iloc[0] == 0.0
+    assert out["density_pub_missing"].iloc[0] == 0.0
+
+
+def test_a_fixture_seven_days_and_a_bit_earlier_still_counts():
+    """The lower boundary, on the slot the fixture list actually uses.
+
+    A Saturday 15:00 kickoff after the previous Saturday's 12:30 is 7d 2.5h
+    back and dropped out of a half-open ``when - 7d <= t`` window, while the
+    same pair in the other slot order counted — so the baseline oscillated
+    with the broadcaster's kickoff slot rather than with the schedule. The
+    window is measured in calendar days for exactly this reason.
+    """
+    out = add_density_pub(
+        _rows([{"kickoff_time": "2026-10-10T15:00:00Z"}]),
+        _fx([{"kickoff": "2026-10-03T12:30:00Z"},
+             {"kickoff": "2026-10-10T15:00:00Z"}]))
+    assert out["density_pub_7d"].iloc[0] == 1.0
+
+
+def test_the_week_earlier_fixture_counts_whichever_way_the_slots_fall():
+    late_after_early = add_density_pub(
+        _rows([{"kickoff_time": "2026-10-10T15:00:00Z"}]),
+        _fx([{"kickoff": "2026-10-03T12:30:00Z"},
+             {"kickoff": "2026-10-10T15:00:00Z"}]))
+    early_after_late = add_density_pub(
+        _rows([{"kickoff_time": "2026-10-10T12:30:00Z"}]),
+        _fx([{"kickoff": "2026-10-03T15:00:00Z"},
+             {"kickoff": "2026-10-10T12:30:00Z"}]))
+    assert (late_after_early["density_pub_7d"].iloc[0]
+            == early_after_late["density_pub_7d"].iloc[0] == 1.0)
+
+
+def test_the_own_fixture_is_excluded_even_when_the_two_clocks_disagree():
+    """The upper boundary. The own fixture was excluded by exact timestamp
+    equality between FPL's ``kickoff_time`` and the archive's ``kickoff``; one
+    second of divergence — a rescheduling the two publishers rounded
+    differently, a timezone re-render — added +1 to every row in the frame."""
+    for shift in ("-00:00:01", "+00:00:01"):
+        sign, hh, mm, ss = shift[0], *shift[1:].split(":")
+        delta = pd.Timedelta(hours=int(hh), minutes=int(mm), seconds=int(ss))
+        own = pd.Timestamp("2026-10-10T14:00:00Z")
+        archive = own - delta if sign == "-" else own + delta
+        out = add_density_pub(
+            _rows([{"kickoff_time": own}]),
+            _fx([{"kickoff": archive.isoformat()}]))
+        assert out["density_pub_7d"].iloc[0] == 0.0, shift
+
+
+def test_a_match_eight_days_earlier_is_outside_the_window_by_the_day():
+    """Eight calendar days back is out whatever the clock says: a Friday
+    19:00 tie nine days before a Sunday 16:00 kickoff is not this week's
+    congestion, and neither is one 7d 23h back."""
+    out = add_density_pub(
+        _rows([{"kickoff_time": "2026-10-10T15:00:00Z"}]),
+        _fx([{"kickoff": "2026-10-02T16:00:00Z"},
+             {"kickoff": "2026-10-10T15:00:00Z"}]))
+    assert out["density_pub_7d"].iloc[0] == 0.0
+
+
 def test_a_row_with_no_kickoff_time_is_missing_not_zero():
     out = add_density_pub(_rows([{"kickoff_time": None}]),
                           _fx([{"kickoff": "2026-10-07T19:00:00Z"}]))
@@ -258,10 +344,19 @@ def test_the_density_builder_adds_two_columns_and_reorders_nothing():
     assert list(out["code"]) == [1, 2]
 
 
-def test_nothing_collected_is_two_nones_and_not_two_empty_frames():
+def test_nothing_collected_is_two_nones_and_not_two_empty_frames(
+        monkeypatch, tmp_path):
     """The distinction both builders are written around: ``None`` is "this
     machine has never run the collector", an empty frame would be "the club
-    played nothing"."""
+    played nothing".
+
+    ``store.DATA_DIR`` is monkeypatched because it is *relative* (``Path(
+    "data")``, store.py:7) and :func:`core_insights_frames` reads it: without
+    the isolation this asserts "no season is banked in the checkout the suite
+    happens to be run from", which is false on every machine that has run
+    ``gaffer core-insights`` and is not the property under test.
+    """
+    monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")
     assert core_insights_frames() == (None, None)
 
 
@@ -550,7 +645,51 @@ def test_coverage_survives_a_column_the_frame_never_grew():
     report = d.coverage(pd.DataFrame({"season_idx": [2, 3]}),
                         ["role_wb_share", "density_pub_7d"])
     assert report["train_covered"] == 0
-    assert report["per_season"]["2"]["role_wb_share"] == 0.0
+    assert report["per_season"]["2"]["role_wb_share"]["nonnull"] == 0.0
+
+
+def test_coverage_reports_a_value_histogram_beside_the_nonnull_share():
+    """A non-null share alone cannot see a systematic ``+1`` or an all-zero
+    season, and both are how this archive has already faked coverage once.
+    The printed report carries min / median / max / share-zero per season so
+    the shape is visible *before* anything is scored."""
+    d = _driver()
+    frame = pd.DataFrame({"season_idx": [2, 2, 2, 3],
+                          "density_pub_7d": [0.0, 0.0, 2.0, float("nan")]})
+    hist = d.coverage(frame, ["density_pub_7d"])["per_season"]["2"]
+    assert hist["density_pub_7d"]["nonnull"] == 1.0
+    assert hist["density_pub_7d"]["min"] == 0.0
+    assert hist["density_pub_7d"]["median"] == 0.0
+    assert hist["density_pub_7d"]["max"] == 2.0
+    assert hist["density_pub_7d"]["share_zero"] == round(2 / 3, 4)
+
+
+def test_an_all_null_season_histogram_is_nulls_and_not_zeros():
+    """The number the histogram exists to distinguish: a season with no
+    values is not a season whose every value is zero."""
+    d = _driver()
+    frame = pd.DataFrame({"season_idx": [1, 3],
+                          "density_pub_7d": [float("nan"), 1.0]})
+    hist = d.coverage(frame, ["density_pub_7d"])["per_season"]["1"]
+    assert hist["density_pub_7d"]["nonnull"] == 0.0
+    assert hist["density_pub_7d"]["min"] is None
+    assert hist["density_pub_7d"]["share_zero"] is None
+
+
+def test_the_coverage_report_sees_an_uncovered_season_as_uncovered():
+    """End to end, on a frame the builder itself produced: the seasons the
+    archive does not carry must report < 100% non-null, which is what makes
+    guard 4 able to refuse a season indicator."""
+    d = _driver()
+    fixtures = _fx([{"kickoff": "2026-10-07T19:00:00Z"},
+                    {"kickoff": "2026-10-10T14:00:00Z"}])   # season_idx 4 only
+    frame = add_density_pub(
+        _rows([{"season_idx": s} for s in (0, 1, 2, 4)]), fixtures)
+    report = d.coverage(frame, ["density_pub_7d"])
+    for season in ("0", "1", "2"):
+        assert report["per_season"][season]["density_pub_7d"]["nonnull"] < 1.0
+    assert report["per_season"]["4"]["density_pub_7d"]["nonnull"] == 1.0
+    assert report["train_covered"] == 0
 
 
 def test_the_lever_guard_refuses_an_arm_equal_to_the_control(monkeypatch):

@@ -133,20 +133,49 @@ def arm_features(name: str) -> list[str]:
     return list(tr.MINUTES_FEATURES) + list(ARMS[name])
 
 
-def coverage(df: pd.DataFrame, cols: list[str]) -> dict:
-    """Non-null share of each arm column, per season, split train vs test.
+def _histogram(values: pd.Series, nonnull: float) -> dict:
+    """One season's one column: the non-null share **and** the value shape.
 
-    The number this archive makes necessary. ``train_covered`` counts rows at
+    A non-null share on its own cannot see the two ways this archive has
+    already faked coverage. A season the collection does not reach used to
+    read ``0.0`` on every row — 100% non-null, and a pure season indicator
+    (W4 G2) — and a systematic off-by-one in the window shows up as a
+    distribution shifted by exactly 1, not as a missing value. ``min`` /
+    ``median`` / ``max`` / ``share_zero`` make both visible before scoring.
+
+    All four are ``None`` on a season with no values at all, because a season
+    that says nothing is not a season whose every answer is zero.
+    """
+    live = values.dropna()
+    if live.empty:
+        return {"nonnull": nonnull, "min": None, "median": None,
+                "max": None, "share_zero": None}
+    return {"nonnull": nonnull,
+            "min": round(float(live.min()), 4),
+            "median": round(float(live.median()), 4),
+            "max": round(float(live.max()), 4),
+            "share_zero": round(float((live == 0).sum()) / len(live), 4)}
+
+
+def coverage(df: pd.DataFrame, cols: list[str]) -> dict:
+    """Non-null share and value histogram of each arm column, per season.
+
+    The numbers this archive makes necessary. ``train_covered`` counts rows at
     ``season_idx <= TRAIN_MAX_IDX`` where at least one arm column is
     populated; zero of them means every arm is a season indicator and no
     verdict below would mean anything.
+
+    ``per_season[idx][col]`` is a dict — ``nonnull`` beside :func:`_histogram`'s
+    ``min``/``median``/``max``/``share_zero`` — and the whole of it is printed
+    on the ``W4_COVERAGE`` line, so a season that is uniformly zero or shifted
+    by one is legible in the log rather than only in the verdict it poisons.
 
     A column the frame never grew reports zero coverage rather than raising:
     the guard has to be able to *describe* the state it exists to refuse.
     """
     idx = pd.to_numeric(df.get("season_idx"), errors="coerce")
     present = None
-    per_season: dict[str, dict[str, float]] = {}
+    per_season: dict[str, dict[str, dict]] = {}
     for col in cols:
         raw = df.get(col)
         series = (pd.to_numeric(raw, errors="coerce") if raw is not None
@@ -156,8 +185,9 @@ def coverage(df: pd.DataFrame, cols: list[str]) -> dict:
         for s in sorted(idx.dropna().unique()):
             rows = idx == s
             n = int(rows.sum())
-            per_season.setdefault(str(int(s)), {})[col] = (
-                round(float((ok & rows).sum()) / n, 4) if n else 0.0)
+            share = round(float((ok & rows).sum()) / n, 4) if n else 0.0
+            per_season.setdefault(str(int(s)), {})[col] = _histogram(
+                series[rows], share)
     if present is None:
         present = pd.Series(False, index=df.index)
     train = idx <= TRAIN_MAX_IDX
