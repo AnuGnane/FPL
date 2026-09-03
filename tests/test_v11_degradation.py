@@ -341,24 +341,33 @@ def test_the_config_gained_no_field():
 
 def test_the_route_total_did_not_move_and_this_is_where_it_is_pinned(
         tmp_path, monkeypatch):
-    """45 at the branch point (3404fc3) and 45 at the end of v11: every
-    serve-side change *that* cycle made was an additive field on a model that
-    already existed.
+    """47 routes. 45 at the branch point (3404fc3) and 45 at the end of v11:
+    every serve-side change *that* cycle made was an additive field on a model
+    that already existed. v12 added the two.
 
     **This is the only absolute route pin in the suite**, which is what v11's
     restructure bought — Task 11 replaced the four that used to exist, three
     of them in protected files, with the by-name claim each cycle is entitled
-    to make about its own routes — and v12 W1 is the first cycle to spend it.
+    to make about its own routes — and v12 W1 was the first cycle to spend it.
     45 → 46, and the one is ``GET /api/meta/freshness`` (v12 W1 §2.9,
     specs/2026-09-01-gaffer-v12-program-design.md), the endpoint behind the
-    "as of" strip that every hub draws. Pinned by name below as well as by
-    count, because a count alone would let a route be added and another
-    removed in one cycle.
+    "as of" strip that every hub draws.
+
+    # v12 W5 §6.2 (specs/2026-09-01-gaffer-v12-program-design.md)
+    46 → 47, and the one is ``/api/settings`` — GET and POST share one path
+    key — the endpoint behind the Settings tab, which writes
+    ``config.local.toml`` and never ``config.toml``. This is the one place in
+    the suite that number may be written down, so W5 moves it here and pins no
+    route total of its own.
+
+    Both are pinned by name below as well as by count, because a count alone
+    would let a route be added and another removed in one cycle.
     """
     monkeypatch.chdir(tmp_path)
     paths = set(create_app().openapi()["paths"])
-    assert len(paths) == 46
+    assert len(paths) == 47
     assert "/api/meta/freshness" in paths
+    assert "/api/settings" in paths
     # v11's own claim, untouched: /api/meta/freshness collides with none of
     # these three prefixes.
     assert not [p for p in paths

@@ -29,7 +29,7 @@ from gaffer.web.routers import (advice, assets, chips, components, confidence,
                                 league_sim, live, meta, misses, news,
                                 overrides, plan,
                                 players, prices, quality, review, sensitivity,
-                                watchlist, whatif)
+                                settings, watchlist, whatif)
 
 log = logging.getLogger("gaffer.web")
 
@@ -102,6 +102,7 @@ def create_app(*, token: str | None = None) -> FastAPI:
     app.include_router(quality.router)
     app.include_router(review.router)
     app.include_router(sensitivity.router)
+    app.include_router(settings.router)
     app.include_router(watchlist.router)
     app.include_router(whatif.router)
 

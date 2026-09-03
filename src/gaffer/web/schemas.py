@@ -1961,3 +1961,42 @@ class DigestPanel(BaseModel):
 
     available: bool
     digest: Digest | None = None
+
+
+class SettingRow(BaseModel):
+    """One editable setting, as the Settings tab receives it (v12 W5 §6.2)."""
+
+    key: str
+    label: str
+    kind: Literal["int", "float", "bool", "floats3", "pool"]
+    value: Any
+    """Whatever the merged config holds. ``None`` only for ``bench_curve``,
+    where it means "no curve — one flat bench weight", which is a real
+    setting and not an absent one."""
+    lo: float | None = None
+    hi: float | None = None
+    section: str
+    help: str
+    source: Literal["local", "base", "default"]
+    """Which file this value came from. ``local`` is ``config.local.toml``,
+    ``base`` is ``config.toml``, ``default`` is the dataclass — and the three
+    are different facts: only a ``local`` value can be reset."""
+
+
+class SettingsPanel(BaseModel):
+    rows: list[SettingRow] = Field(default_factory=list)
+    unavailable: list[str] = Field(default_factory=list)
+    """Whitelisted settings this build's ``Config`` does not have. Named
+    rather than dropped: a form that is quietly shorter is a setting nobody
+    can find and nobody knows is missing."""
+    overlay_error: str | None = None
+    """Why ``config.local.toml`` is being ignored, or ``None``. Also carries
+    the "no config.toml at all" case, which is the state a cold clone is in."""
+    apply_note: str
+
+
+class SettingWrite(BaseModel):
+    key: str
+    value: Any = None
+    """``None`` removes the key from the overlay, so the value falls back to
+    ``config.toml`` or the dataclass default."""
