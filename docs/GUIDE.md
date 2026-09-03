@@ -207,7 +207,15 @@ differentials against you); *What if* (pin a haul or a blank and re-simulate
 the league — pricing a week, not proposing transfers). The win-probability
 card is a real Monte Carlo: 2,000 seeded seasons with rivals correlated
 through a shared weekly factor, because simulating managers independently
-provably overstates every margin.
+provably overstates every margin. The **Field** panel (v12) prices your week
+against 300 synthetic managers drawn from the banked top-10k EO — a green
+arrow is beating the field's median week — and states its limits beside the
+number: the field is an ownership portfolio rather than a set of legal squads,
+and the EO comes from the *previous* gameweek's sample, which is the only one
+a scrape can have banked before a deadline. Its other two rows are empty
+states with their conditions named: `P(top-10k)` needs a weekly score
+threshold that exists in no source this project reads, and the overall-rank
+response needs five graded gameweeks.
 
 **Live** — matchday. Your live points with FPL's autosub rules projected,
 provisional bonus reconstructed from BPS, a race chart of where your score
@@ -259,6 +267,62 @@ gameweeks (are the probabilities honest?); the Season tab once grades
 accrue; `gaffer league-sim --seeds 1,2,3` when you want the title odds with
 error bars; a backtest when you change something and want season-scale
 evidence.
+
+### Correcting a set-piece taker (v12)
+
+A **pin** is your judgment about minutes. `data/set_pieces.toml` is your
+judgment about who takes the set pieces, for the weeks FPL's feed is behind
+the press conference. Copy the template and edit it:
+
+```bash
+cp src/gaffer/assets/set_pieces.example.toml data/set_pieces.toml
+```
+
+One table per club; takers listed **in order**, by **code**:
+
+```toml
+["Arsenal"]
+penalties = [232413]        # Eze takes them now; Saka does not
+corners   = [232413, 204480]
+```
+
+Six things to know, and the template repeats all of them:
+
+- **Codes, not element ids.** Element ids are remapped every summer; codes are
+  not. A player's code is printed in the header of his **explain panel**
+  (`code 223340`, beside his club and xPts) — click any player row, anywhere
+  in the app. That is the only place a code is shown.
+- **Quote a header with a space or an apostrophe** — `["Man City"]`,
+  `["Nott'm Forest"]`. Bare TOML keys allow neither, and one bad header
+  discards the *whole* file, every club in it. The loader prints the line and
+  column when that happens, and quoting every header is the safe habit.
+- **The header is decorative.** Nothing matches it against a club name; each
+  man's club is read off the frame being priced. A code filed under the club
+  he left last summer still applies, and two clubs' codes under one header are
+  two queues.
+- **Listing a club's queue demotes the teammates it leaves out.** For the club
+  a listed code plays for, your list *is* the queue — a man you do not name is
+  not a taker, whatever FPL published. That is what makes the one line you
+  actually want to type mean what you meant by it. An **empty list demotes
+  nobody**: it names no code, so it identifies no club, so there is nothing
+  for it to be the queue of — it records that you checked and found nobody.
+- **Only `penalties` reaches expected points.** `direct_free_kicks` and
+  `corners` change the order the player page and the explain panel *serve*,
+  and nothing else: there is no free-kick or corner term in the model to move.
+- **The "manual" badge is how you check the correction took** — on the player
+  row and in the explain panel, beside the three orders, including on a man
+  the file demoted (a blank with no badge would read as "FPL has nothing to
+  say", which is the opposite of what happened).
+
+Two things the file deliberately does **not** touch. `gaffer track-pens`
+records what FPL published and keeps doing so, because a tracker of the feed
+that quietly agreed with you would stop being evidence. And the `pen_taker`
+training column is built from match history, not from this file — your opinion
+prices the coming week, it does not rewrite the past the model learned from.
+
+A missing file, an unparsable one, or one half-edited at 11pm on a Friday are
+all "no override": the penalty term is byte-identical to what it was before
+the file existed, and the loader says why on stdout rather than failing a run.
 
 ## 7. The automation
 
@@ -475,6 +539,16 @@ ones):
   grades are never rewritten.
 - A season of price-log data must accrue before a price-timing term is
   worth building.
+- The two v12 minutes arms built on FPL-Core-Insights (`role_wb_share`,
+  `density_pub_7d`) are **built and fed to no head**: both columns exist on
+  the training frame and the serving frame, neither is in `MINUTES_FEATURES`,
+  and the pre-registered two-half rule — a starters-slice log-loss gain *and*
+  an autosub-week points delta — is measured by two drivers the orchestrator
+  runs after a `gaffer core-insights` collection. Until then the honest
+  reading is "not yet measured", not "no effect".
+- The Field panel's `P(top-10k)` has no source: no top-10k weekly score
+  threshold series exists in anything gaffer reads, so it is a named empty
+  state rather than a guess.
 
 ## 13. Troubleshooting
 

@@ -46,7 +46,13 @@ which is protected, and because writing manual values into
 FPL said. The read is lazy, is behind
 :func:`gaffer.data.set_piece_overrides.penalty_order_overrides`' own
 never-raises contract, and returns ``{}`` on every machine that has not
-written the file — which is byte-identical to the pre-v12 behaviour.
+written the file — which is byte-identical to the pre-v12 behaviour. What it
+does when the file *is* written is club-aware: listing a club's queue demotes
+that club's unlisted teammates, so one line naming a new taker hands the job
+over rather than pricing two number ones.
+
+# v12 W4 §5.4 (specs/2026-09-01-gaffer-v12-program-design.md), club rule by
+# the orchestrator ruling of 2026-09-03
 """
 
 from __future__ import annotations

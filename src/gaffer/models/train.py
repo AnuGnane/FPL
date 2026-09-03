@@ -137,6 +137,42 @@ regression on the metric that matters. So the modes were never the problem and
 were never the answer either, and the next cycle can stop wondering. The
 builders stay wired — they cost a fit nothing — and ``feature_columns()`` still
 lists them for the tracker.
+
+v12 W4 §5.2 adds two arms, **new and distinct from the withdrawn congestion
+arm**. ``role_wb_share`` is a positional reading of a defender's last five
+starts from FPL-Core-Insights' per-match stats, which nothing in this project
+has ever had. ``density_pub_7d`` counts *published* fixtures in the seven
+calendar days before kickoff — a forward list — where v5's
+``CONGESTION_FEATURES`` and v8a's ``f2_cups`` counted *played* matches out of a
+cup archive that begins in 2025-26. Different tables, different quantities.
+
+Both are measured on a **shifted window**, ``train_max_idx = 2`` /
+``test_idx = 3``, because the archive's earliest season (2024-25) is the
+shipped benchmark's *test* season and on the shipped window both columns are
+null through the whole of training — the exact confound that withdrew v5's
+congestion features. The numbers are therefore not comparable to any banked
+benchmark figure above.
+
+The bar is **two halves and an arm needs both** (spec §5.2's "the v10 rule",
+v10 §F3a, and the orchestrator's 2026-09-03 restatement — W2's §3.5 lesson,
+where a bucket rule with no outcome half kept a head a replay overturned the
+same day):
+
+  (a) ``scripts/v12_w4_arms.py`` — the starters-slice ``p_start`` log-loss
+      improves by >= 1% relative against *that run's own control*, with zeros
+      RMSE no worse by more than 0.005; **and**
+  (b) ``scripts/v12_w4_autosub_cf.py`` — the mean points delta over the weeks
+      in which an autosub actually fired is >= 0.
+
+Either half failing is a withdrawal, and ``train_covered == 0`` is neither: the
+drivers exit, and the honest record is "not measurable on any window the
+archive covers".
+
+Both columns are built on the training frame *and* the serving frame and
+**neither is listed above**, so the shipped minutes model is not told about
+them and this docstring records the registration rather than a result.
+Numbers, ship-or-withdraw, and the coverage report go here when the
+orchestrator has run them.
 """
 
 # Team-level clean sheet / goals conceded held at league-average constants

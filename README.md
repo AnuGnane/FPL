@@ -807,6 +807,177 @@ rather than a missing key, and the window fallback fires only on a gameweek the
 season does not have — GW39 — which is what an off-by-one in a caller's horizon
 looks like. It is not dead code; it is a rail on somebody else's arithmetic.
 
+### The field, and who really takes them (v12 W4)
+
+**A second archive.** `gaffer core-insights` collects
+`github.com/olbauday/FPL-Core-Insights` into `data/core_insights/`: per-player
+per-match detail (crosses, box touches, tackles, the minute a man came on and
+the minute he went off), the whole **published** fixture list including cup and
+European ties nobody has played yet, and the club Elo the archive carries. It
+is not built from a path template. The archive publishes **two layouts** —
+2025-2026 and 2026-2027 under `By Gameweek/GW<n>/`, 2024-2025 under
+`<table>/GW<n>/` with its `teams.csv` a folder deeper — so every path is
+enumerated from the one recursive git-tree call `data/cups.py` already makes,
+keyed on basename and season folder, which survives the next reorganisation
+without an edit. `By Gameweek` already carries every tournament in one file per
+week, so `By Tournament` is never walked and no cup tie is counted twice.
+
+Two honesties about it. There is **no ClubElo file**: Elo is a column on
+`teams.csv` and a pair of columns on each fixture row, `elo.parquet` is derived
+from both, and for 2026-27 the publisher has not filled it in — so that table
+is legitimately empty today. Model → Health carries a **Core insights** card
+naming the season and each table's rows and latest date, where a zero reads
+"the archive publishes none yet" and a clone that has never collected says
+what it is waiting for, because three zeros would look like a measurement of
+an archive that had nothing in it. And the cache under
+`data/raw/core_insights/` is not "cached forever": a gameweek whose every
+fixture is finished is fetched once, while a gameweek with an unfinished
+fixture — or with no cached fixture list to judge by — is **re-fetched on every
+run**, which is what makes the 06:30/18:30 pair worth having against an archive
+that pushes at 07:30 and 17:30 UTC. `gaffer core-insights --refresh N` forces
+the last N gameweeks of each season whatever the cache says; that is for the
+file the publisher corrects *after* it went final, not for the week being
+played, which refreshes itself. A failed re-fetch leaves the previous copy in
+place, because freshness is worth a request and never a deletion.
+
+**Two minutes arms, built on both seams and fed to no head.**
+`role_wb_share` reads the share of a defender's last five starts whose
+per-match profile is a wing-back's rather than a centre-back's — a stated
+convention (a start with at least one accurate cross or three touches in the
+opposition box), not a fitted classifier, and built from the two positional
+columns that exist in **every** season the archive covers, because a rule using
+`defensive_contributions` would be a season indicator wearing a role's name.
+`density_pub_7d` counts the club's published fixtures on the seven calendar
+days (UTC) before this fixture's own kickoff date. Both are appended to the
+training frame *and* to the serving frame by the same functions, so the two
+seams cannot disagree; both degrade to all-missing with their own `_missing`
+indicator on a machine that has never collected, and a season the archive does
+not cover is **missing rather than zero** — a zero there is a claim the club
+played nothing, and it read as 100% coverage to the arm driver until a review
+caught it.
+
+Neither is in `MINUTES_FEATURES`. **They ship off, built and unmeasured**, and
+the arm rule was pre-registered before either driver ran: an arm is kept only
+if `scripts/v12_w4_arms.py` shows the starters-slice `p_start` log-loss improve
+by at least 1% relative against *that run's own control* with zeros RMSE no
+worse by more than 0.005, **and** `scripts/v12_w4_autosub_cf.py` shows the mean
+points delta over the weeks an autosub actually fired not regress. Either half
+failing is a withdrawal — W2's lesson, where a bucket rule with no outcome half
+kept a head that a replay overturned the same day. Both run on a **shifted
+window** (train 2022-23…2024-25, test 2025-26) because the archive's earliest
+season is the shipped benchmark's *test* season, so on the shipped window both
+columns are null through the whole of training and the only thing a fit could
+learn is "populated implies test season" — the exact confound that withdrew
+v5's congestion features. If training coverage comes back zero the drivers
+**exit**: "not measurable on any window the archive covers" and "no effect" are
+different findings, and only one of them would be true.
+
+One qualification stated rather than glossed: the fixture table is *today's*
+published schedule, not a snapshot of what was published at the time — the
+archive keeps no vintages. A tie rearranged in November sits on a historical
+row at its February date. That hindsight is real, one-directional
+(rearrangement moves a fixture later, so a training row's count is if anything
+understated) and **identical on both seams**, so it cannot produce a train/serve
+skew; it would matter for a claim about what a manager knew in November, and
+does not for a feature both sides compute the same way.
+
+**The Field panel** on the League hub answers one question with a number and
+two with their reasons. `P(green arrow)` is your week against a synthetic
+field: 300 managers drawn from the banked EO table, everybody scored off the
+**same** matrix of drawn player weeks — so the correlation between you and the
+field is the shared-ownership correlation and is not a parameter — and a green
+arrow defined as beating the population's own median week, which is what makes
+"a squad exchangeable with the field is a coin flip" exactly true rather than
+approximately. The field is an **ownership portfolio, not a legal squad**: no
+budget, no position limits, no three-per-club, which is what the EO table
+actually describes, and the panel's caption says so rather than letting a
+reader over-read it.
+
+Four things about that number worth knowing before you go looking for them.
+The EO comes from **the previous gameweek's sample** (`eo_gw = plan gw − 1`,
+and the panel names it), because entry picks 404 before a deadline so the
+scrape can only ever have banked the last scored week — reading the plan
+gameweek's own sample would be reading the field's frozen picks and would make
+the answer depend on what time of week you opened the page. An **EO above 100%
+is an armband, not a clamp**: the draw is two Bernoullis, `min(eo, 1)` and
+`eo − 1`, so a manager holds the crowd's captain twice, once, or not at all, and
+clamping (which this did) threw away 1.15 of the live GW2 log's 13.48 ownership
+units and handed every one of them to you for free. The element axis is the
+**union of the EO table and your own squad**, because field EO only counts
+players a sampled entry started and a genuine differential is routinely absent
+from it — filtering deleted him from your week while the field kept its whole
+one, which pointed against exactly the squad the panel exists to reward. An
+unsampled pick enters owned by nobody, which is what his absence means, and the
+panel says how many of your players the sample cannot speak to. And the
+population is drawn **eight times and averaged**, because *which* three hundred
+managers were drawn was the larger noise term: one population put the
+exchangeability check at 0.427–0.585 over sixty seeds, eight put it at
+0.471–0.538.
+
+The other two rows are empty states with their conditions named. `P(top-10k)`
+needs a top-10k weekly score threshold and **no such series exists** anywhere
+this project reads — `build-history` writes player and fixture tables,
+`data/live/events.parquet` carries no score at all, and the archive's
+`gameweek_summaries.csv` has an average and a highest and no tier threshold —
+so it is not computed rather than guessed. The overall-rank response is an
+ordinary least-squares slope through the ledger's `(my_points, overall_rank)`
+pairs and needs five graded gameweeks; two exist today. When it does fill,
+read it as an association: `my_points` is one week and `overall_rank` is a
+**cumulative** standing that drifts with the season on its own, so the slope
+charges some of the season's passage to the points. Differencing rank week to
+week is the obvious next version and needs consecutive graded weeks this
+project does not yet have. The sign carries the meaning — rank counts down, so
+a negative slope is points buying places — and the panel renders it that way
+rather than as a bare magnitude.
+
+**Set-piece overrides.** `data/set_pieces.toml` is the one place you can tell
+the tool that the manager said something FPL's feed has not caught up with.
+Copy the template out of `src/gaffer/assets/set_pieces.example.toml` (a package
+asset, because `data/` is never staged), one table per club, takers listed in
+order by **code**:
+
+```toml
+["Arsenal"]
+penalties = [232413]        # Eze takes them now; Saka does not
+```
+
+Codes, not element ids, because element ids are remapped every summer and codes
+are not — and a player's code is printed in the header of his explain panel
+(`code 223340`, beside his club and xPts), which is the only place in the app
+it is shown and the reason that line exists. **Quote any club header with a
+space or an apostrophe** (`["Man City"]`, `["Nott'm Forest"]`): bare TOML keys
+allow neither and one bad header discards the *whole* file, every club in it,
+so the loader prints the line and column when that happens. The header itself
+is decorative — nothing matches it against a club name, each man's club is read
+off the frame being priced, so a code filed under the club he left last summer
+still applies and two clubs' codes under one header are two queues.
+
+**Listing a club's queue demotes the teammates it leaves out.** For the club a
+listed code plays for, the file's list *is* the queue: a man it does not name
+is not a taker, whatever FPL published. Without that rule the one line a user
+actually types — the new man takes them now — would leave the incumbent at
+FPL's order 1 and price both of them for every penalty the club wins. **An
+empty list demotes nobody**: it names no code, so it identifies no club, so
+there is nothing for it to be the queue of — it records that you checked and
+found nobody.
+
+The file reaches exactly two read paths and **only penalties reach expected
+points**. `set_pieces.pen_table` applies the penalty queue to the EP term (the
+one protected edit this workstream took, with the module's "nothing here does
+I/O" docstring amended in the same edit rather than left saying something the
+code had stopped obeying); `web/routers/players.py` serves the corrected
+`penalties_order` / `free_kicks_order` / `corners_order` on `/api/players` and
+on the explain panel, with a **manual** badge beside them — including on the
+demoted, because a blank with no badge reads as "FPL has nothing to say", which
+is the opposite of what happened. Corners and free kicks move the served order
+and nothing else: there is no free-kick or corner term in the model to move.
+Two things the file deliberately does **not** override: `gaffer track-pens`
+(`pen_tracker.save_tracker_guarded`), which records what FPL published and must
+keep doing so, and the `pen_taker` training column in `features/engineer.py`,
+which is built from history and not from your opinion of it. A missing file, a
+malformed file, a half-edited one at 11pm on a Friday are all "no override",
+byte-identical to pre-v12.
+
 ### Pinning a player (v8e)
 
 `Pin` on any row in the Players page sets your own probability of playing, or
