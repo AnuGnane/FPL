@@ -265,9 +265,15 @@ def _price_falls(state) -> tuple[bool, dict[int, float]]:
     """``(price_timing is on, {code: p_fall_tonight})`` for the owned squad.
 
     The same reader the objective's price-timing term uses (W2 §3.4), called
-    the same way — so the charge the board prints is the charge the solver
-    applied, and not a second estimate of it computed from the same log by
-    slightly different arithmetic. Doubly gated, deliberately:
+    the same way — so the charge the board prints is not a second estimate
+    computed from the same log by slightly different arithmetic.
+
+    It is a *present-tense* read, and the week note says so. Both the switch
+    and the probabilities are read here, when the board is drawn, off tonight's
+    price log and today's ``[optimizer] price_timing``; nothing on
+    ``SolveState`` records what the solve saw, so this cannot claim to be the
+    charge the solver applied. Freezing it would need the writer, and the
+    writer is ``advise.py``. Doubly gated, deliberately:
     ``owned_price_falls`` already returns ``{}`` when the switch is off
     (``price_timing.py:168``), and the switch is read here as well because the
     trace has to tell "off" from "on and empty" — the first is a term the

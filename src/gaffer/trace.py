@@ -31,8 +31,13 @@ Pure. No I/O, no network, no pandas. Everything it needs is already on disk in
 ``SolveState`` and the advice payload, and the caller — ``routers/plan.py`` —
 loads both anyway. That includes the price-fall probabilities: the router calls
 W2's own ``owned_price_falls`` and hands the answer in, so this module reads no
-log of its own and the charge it prints is computed from the same numbers the
-objective's term was.
+log of its own.
+
+One term is not a re-reading of the solve, and the week note says so rather
+than leaving the reader to find out. The price-timing switch and the price-fall
+probabilities are read when the board is drawn — nothing on ``SolveState``
+records what the solve saw — so the charge is priced against tonight's log and
+today's switch, which is the same arithmetic on numbers that may have moved.
 """
 
 from __future__ import annotations
@@ -250,16 +255,27 @@ def trace_plan(weeks, *, gws: list[int], ep_by: dict, positions: dict,
         # reporting a number would price a charge the solver never paid — and
         # a zero would say "we checked and it was free", which is a different
         # claim from "we did not charge for this".
+        #
+        # Both switch and probabilities are read *when the board is drawn*, not
+        # when the plan was solved, and nothing on ``SolveState`` records what
+        # the solve saw. So both notes are present tense: "off now" is a fact
+        # about this request, and a charge is priced against tonight's log.
+        # Saying either one about the solve would be a claim this module has no
+        # way to check.
         if not price_timing:
             charge = None
             if sells and i not in (None, 0):
-                notes.append("price_timing is off, so the plan was solved "
-                             "without a price-timing term")
+                notes.append("`[optimizer] price_timing` is off now, so no "
+                             "charge is shown; this says nothing about the "
+                             "solve that produced this plan")
         elif i is None or i == 0 or not sells:
             charge = 0.0
         elif all(c in price_fall for c in sells):
             charge = round(sum(price_fall[c] * PRICE_TIMING_COEFF * itb_value
                                for c in sells), 6)
+            notes.append("the price-timing charge is priced against tonight's "
+                         "price log and today's `[optimizer] price_timing`, "
+                         "not the solve's")
         else:
             charge = None
             notes.append("the chance of a price fall was not recorded for "

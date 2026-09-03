@@ -228,12 +228,27 @@ def test_theta_is_reported_only_for_a_week_that_plays_a_chip():
 
 def test_the_price_charge_is_off_when_the_setting_is_off():
     """Orchestrator ruling 1: the charge is computed only when [optimizer]
-    price_timing is on. Off, the objective carries no such term, so reporting
-    one would price a charge the solver never paid."""
+    price_timing is on. Off, no number is shown, because a zero would say "we
+    checked and it was free".
+
+    The note is present tense on purpose. The switch is read when the board is
+    drawn and nothing on the solve state records what the solve saw, so "off
+    now" is all this knows — a manager who turned it off after the plan was
+    written must not be told the plan was solved without the term.
+    """
     out = run([week(5), week(6, buys=[100], sells=[200])],
               price_timing=False, price_fall={200: 0.8})
     assert out[1].price_charge is None
-    assert "price_timing is off" in out[1].note
+    assert "price_timing` is off now" in out[1].note
+    assert "says nothing about the solve" in out[1].note
+
+
+def test_the_charge_says_which_days_numbers_it_is_priced_against():
+    """The other half of the same honesty: on, the number is real arithmetic
+    over *tonight's* log and today's switch, not a replay of the solve's."""
+    out = run([week(5), week(6, buys=[100], sells=[200])],
+              price_timing=True, price_fall={200: 0.8})
+    assert "tonight's price log" in out[1].note
 
 
 def test_the_price_charge_is_absent_when_the_reader_has_no_row():

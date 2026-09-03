@@ -620,8 +620,12 @@ Left open by v12 W5, each recorded rather than fixed:
 - **The trace's price-timing charge is read from tonight's price log, not
   from the solve.** `owned_price_falls` is the same reader the objective
   uses, but a board drawn on Saturday against a Thursday plan multiplies a
-  probability the solve never saw. Freezing it would mean writing it into the
-  solve state from `advise.py`, which is protected, for a decoration.
+  probability the solve never saw. The switch is read the same way, so
+  flipping `[optimizer] price_timing` in Settings changes what the board says
+  about a plan already on disk — which is why both week notes are present
+  tense and neither claims anything about the solve. Freezing either would
+  mean writing it into the solve state from `advise.py`, which is protected,
+  for a decoration.
 - **The trace does not attribute the squad-side terms.** The XI, captain and
   vice weightings and the three bench seats price the whole fifteen and a
   per-week autosub scale, not a swap, so a share of them assigned to one

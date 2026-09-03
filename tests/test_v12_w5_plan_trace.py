@@ -175,23 +175,35 @@ def test_the_lambda_tilt_reaches_the_trace(wired):
 
 def test_the_price_charge_reaches_the_trace_through_w2s_own_reader(wired,
                                                                    monkeypatch):
-    """Orchestrator ruling 1. The same reader the objective's term uses, so
-    the board prints the charge the solver applied rather than a second
-    estimate of it."""
+    """Orchestrator ruling 1. The same reader the objective's term uses and
+    the same arithmetic, so the number is not a second estimate of the charge
+    computed from the same log a different way.
+
+    It is still a *present-tense* read: the reader is called when the board is
+    drawn, off tonight's log and today's switch, and nothing on ``SolveState``
+    records what the solve saw. The note beside the number says so.
+    """
     wired([_week(5), _week(6, buys=[P], sells=[S])])
     monkeypatch.setattr(plan_router, "_price_falls",
                         lambda state: (True, {200: 0.8}))
     trace = plan_router.plan(5).weeks[1].trace
     assert trace.price_charge == pytest.approx(0.8 * 0.1 * 0.05)
+    assert "tonight's price log" in trace.note
 
 
 def test_price_timing_off_reports_no_charge_and_says_why(wired, monkeypatch):
+    """And says only what it knows. The switch is read now, not at solve time,
+    so "off" is a fact about this request and not about the solve — a manager
+    who turned it off after the plan was written must not be told the plan was
+    solved without the term."""
     wired([_week(5), _week(6, buys=[P], sells=[S])])
     monkeypatch.setattr(plan_router, "_price_falls",
                         lambda state: (False, {}))
     trace = plan_router.plan(5).weeks[1].trace
     assert trace.price_charge is None
-    assert "price_timing is off" in trace.note
+    assert "price_timing` is off now" in trace.note
+    assert "says nothing about the solve" in trace.note
+    assert "was solved without" not in trace.note
 
 
 def test_a_missing_price_reader_costs_the_charge_and_not_the_plan(wired,
