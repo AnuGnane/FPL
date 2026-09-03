@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ComparePanel from './ComparePanel'
 import { difficultyBackground } from '../../kit'
@@ -128,9 +128,13 @@ describe('ComparePanel', () => {
   })
 
   it('shows a next-six fixture strip coloured by the matrix', async () => {
+    // Awaited, not assumed. The strip arrives from a *second* fetch — the
+    // fixture matrix — and `compare-1` is on the page as soon as the first
+    // one lands, so asserting synchronously on it raced the second and went
+    // red under full-suite parallelism.
     render(<ComparePanel gw={5} players={PLAYERS} />)
     const salah = await screen.findByTestId('compare-1')
-    expect(salah).toHaveTextContent('EVE')
+    await waitFor(() => expect(salah).toHaveTextContent('EVE'))
   })
 
   it('refuses more than four', () => {
