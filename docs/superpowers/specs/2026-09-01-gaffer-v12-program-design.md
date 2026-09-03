@@ -217,9 +217,13 @@ produces an archive that restores (test extracts and diffs a fixture tree);
 
 ### G2 — review and merge (orchestrator only)
 
-- [ ] Adversarial review, fix-first, re-verify.
-- [ ] Merge ritual: ff-only, push, `git show main:config.toml` fails, key-grep
-      empty — including the generated LAN token.
+- [x] Adversarial review, fix-first, re-verify — five fix commits across the
+      review rounds (`a79b589`, `29cb7d5`, `e304e50`, `4dbc4ef`, `b47d7cf`:
+      the field-EO read told its season, the pen-tracker guard covering the
+      web job, the bytes token compare, the backup on the one atomic write).
+      Filled at the program close from the log; W1's tip is `ef8c5f3`.
+- [x] Merge ritual: W1 reached `main` inside W2's ff-merge at `865f8dc`
+      (2026-09-02); the ritual ran there and was clean, LAN token included.
 
 ### No replay — recorded reasoning
 
@@ -1390,13 +1394,20 @@ result below is unfilled on purpose.
         over a section the base omits; closed in `8849b46` and `0ffa6cf`.
         Gate at `0ffa6cf`: **4029 Python / 792 frontend** (two identical
         vitest runs, zero unhandled errors), tsc clean.
-- [ ] Merge ritual: ff-only into `main` at ___ , pushed;
-      `git show main:config.toml` fails; the key-grep over all history is
-      empty; the protected audit re-run on the merge passes. Suite at the
-      merge: ___ Python / ___ frontend, tsc clean; pins routes ___ /
-      `JOB_KINDS` ___ / `Config` fields ___ .
+- [x] Merge ritual: ff-only into `main` at `470234e` (2026-09-03), pushed
+      with `feat/gaffer-v12` and `feat/gaffer-v12-w5`; `git show
+      main:config.toml` and `git show main:config.local.toml` both fail; the
+      key-grep over all history is empty; the staging audit over
+      `5bb7d0e..main` is empty; the protected audit re-run on the merge is
+      exactly the two authorized files; W5's three rail files re-run on
+      `main` (73 passed). Suite at the merge, main tree with built assets:
+      **4042 Python (0 skipped) / 795 frontend + 1 skipped**, zero unhandled
+      errors, tsc clean — after `npm install` for the pinned
+      `json-schema-to-typescript`, which left the lockfile unchanged; pins
+      routes 47 / `JOB_KINDS` 12 / `Config` fields 55.
 
-      - Result: _(unfilled)_
+      - Result: ✅ as written; the W5 worktree removed and its branch deleted
+        locally (the pushed copy stays, as W3's and W4's do).
 
 ### W5 live spot-checks (orchestrator, on the dev server)
 
@@ -1473,6 +1484,7 @@ result below is unfilled on purpose.
    is v12's last workstream, so there is no next cycle to close it: the
    **program close** pins `W5_TIP`. This is the fourth cycle to bank the
    lesson and the third to have had to fix a predecessor's rail because of it.
+   Pinned at the program close: `W5_TIP = "470234e"`.
 
 ## 7. Testing and gates, summarized
 
@@ -1486,6 +1498,48 @@ result below is unfilled on purpose.
 
 Post-merge ritual after every workstream: `git show main:config.toml` fails;
 `git log -S<odds key> --all` is empty.
+
+### Program outcome (closed 2026-09-03)
+
+- **W1 hygiene** — tip `ef8c5f3`, on `main` with W2 (2026-09-02). No replay,
+  by recorded reasoning. Pins routes 45 → 46, `Config` fields 48 → 53; the
+  absolute `Config` pin moved from eight files to one.
+- **W2 mine** — merged `865f8dc` (2026-09-02). §3.4 `price_timing` flipped
+  **on** after the first branch replay proved vacuous on a stale price log and
+  the re-run showed the term live; §3.5 xG-per-shot **withdrawn** — a head
+  metric gain that cost −28 replay points, isolated to the head.
+- **W3 decide** — merged `f903959` (2026-09-02). Replay `[1798, 1917, 1872]`
+  vs control `[1854, 1875, 1862]`, inside tolerance with the free hit firing
+  twice widening the spread 21 → 119; captain support 60 → 52.5;
+  `draw_availability` on; §4.6 found undelivered behind a source-spelling test
+  and delivered.
+- **W4 field** — merged `e0bdf79`, closed `5bb7d0e` (2026-09-03). Arms-off
+  replay exactly zero on every seed; `role` kept on both pre-registered
+  halves, `density` withdrawn; the post-hoc role-on replay `[1813, 1847,
+  1846]` (mean −27) recorded beside the read, under which the flip stands.
+- **W5 interface** — merged `470234e` (2026-09-03). No replay, by
+  pre-registration; byte-identity, import isolation and regenerate-no-diff
+  stood in. Pins 47 / 12 / 55.
+
+**What is still open.**
+
+- Data-gated, as recorded in the ROADMAP blocks: W2's flag latency (14
+  snapshot days), presser grading (a `data_checked` gameweek with verdicts
+  banked before its deadline), EO trend (a second gameweek in the field EO
+  log); W4's `P(top-10k)` (no threshold series exists), expected
+  overall-rank change (5 graded gameweeks carrying both halves), Elo for
+  2026-27 (the publisher's column is blank); W5's price-timing charge showing
+  a number (`price_timing` on *and* a long enough log), and a Review row
+  naming its projection snapshot (the first gameweek graded after the merge).
+- The live spot-check lists under **W3**, **W4** (in the ROADMAP's W4 block)
+  and **W5** — the user's, on the dev server; W5's first two rows are the
+  manual six-hub pass the gate deferred.
+- One experiment: a **K ≥ 5 role-on-vs-off replay** (ten if time allows) to
+  settle W4's −27 post-hoc read, the second time a head-metric gain has not
+  shown as replay points.
+
+Suite at close: **4042 Python / 795 + 1 frontend**, tsc clean; pins routes
+47 / `JOB_KINDS` 12 / `Config` fields 55.
 
 ## 8. Out of scope (do not add during execution)
 
