@@ -21,10 +21,10 @@ from fastapi.testclient import TestClient
 from gaffer.config import serving_config
 from gaffer.web.app import create_app
 
-# Filled in from Task 0's measurement, not assumed. JOB_KINDS and Config are
-# what W1-W4 left; W5 adds none of either.
+# Filled in from Task 0's measurement, not assumed. JOB_KINDS is what W1-W4
+# left; W5 adds none. There is no companion constant for the `Config` field
+# count on purpose — see `test_w5_added_no_config_field` below.
 JOB_KINDS_AT_BASE = 12      # <- Task 0, measured at 5bb7d0e
-CONFIG_FIELDS_AT_BASE = 55  # <- Task 0, measured at 5bb7d0e
 
 
 @pytest.fixture()
@@ -127,13 +127,31 @@ def test_w5_added_no_job_kind():
 
 
 def test_w5_added_no_config_field():
-    """config.local.toml is a loader change. A settings *file* is not a
-    settings *field*."""
+    """By absence, not by a total — W4's shape, and for W4's reason.
+
+    ``config.local.toml`` is a loader change: a settings *file* is not a
+    settings *field*, and ``price_timing`` — the one whitelist entry that is
+    not a dataclass field and is not meant to become one — is named here
+    because that is the field this workstream would have grown if it had grown
+    any.
+
+    There is deliberately no number. The suite's single absolute
+    ``fields(Config)`` pin lives in ``tests/test_v12_w3_degradation.py`` and
+    ``tests/test_v12_w1_degradation.py``'s
+    ``test_only_one_file_pins_the_absolute_config_field_count`` asserts it
+    lives nowhere else; a second copy here — even one reached through a
+    constant, which is the blind spot that rail's own docstring names — is a
+    number that would have to be edited twice from now on. What W5 owes the
+    suite is the claim.
+    """
     import dataclasses
 
     from gaffer.config import Config
 
-    assert len(dataclasses.fields(Config)) == CONFIG_FIELDS_AT_BASE
+    names = {f.name for f in dataclasses.fields(Config)}
+    assert not [n for n in names
+                if "price_timing" in n or "overlay" in n or "settings" in n
+                or "local" in n or "trace" in n or "snapshot" in n]
 
 
 # --- Block 4: the honesty rules, checked rather than asserted in prose ----
