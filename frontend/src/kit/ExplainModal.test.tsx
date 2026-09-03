@@ -86,6 +86,37 @@ describe('ExplainModal', () => {
     expect(photo).toHaveAttribute('src', '/api/assets/photo/223094')
   })
 
+  it('prints the code, which is what the override file is keyed by',
+    async () => {
+      // data/set_pieces.toml wants codes, not element ids, and this header is
+      // the only place in the app one is printed. A user told to "list takers
+      // by code" has to be able to find one.
+      render(<ExplainModal code={100} onClose={() => {}} />)
+      expect(await screen.findByText('code 100')).toBeInTheDocument()
+    })
+
+  it('badges the set-piece orders the override file decided', async () => {
+    apiGet.mockReset()
+    apiGet.mockResolvedValue({
+      code: 100, name: 'Salah', position: 'MID', team_name: 'Liverpool',
+      ep_next: 9.0, fixtures: [fixture(3, 9.0)], next_fixtures: [],
+      set_pieces: { penalties: 1, free_kicks: null, corners: 2 },
+      set_pieces_manual: ['corners', 'penalties'],
+    })
+    render(<ExplainModal code={100} onClose={() => {}} />)
+    const badge = await screen.findByText('manual')
+    expect(badge).toHaveAttribute('title', 'Your override: corners, penalties')
+  })
+
+  it('shows no badge when the payload predates the field', async () => {
+    // The beforeEach fixture omits set_pieces_manual entirely, which is what
+    // an older server sends: read through `?? []`, that is "nothing
+    // overridden" and not a crash.
+    render(<ExplainModal code={100} onClose={() => {}} />)
+    await screen.findByText(/Set pieces/)
+    expect(screen.queryByText('manual')).not.toBeInTheDocument()
+  })
+
   it('drops the portrait rather than leaving a broken image', async () => {
     render(<ExplainModal code={223094} onClose={() => {}} />)
     const photo = await screen.findByTestId('explain-photo')

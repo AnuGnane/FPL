@@ -101,7 +101,14 @@ export default function ExplainModal(
                       {data.name}
                     </h2>
                     <p className="label mt-1">
-                      {data.team_name} · {fmtNum(data.ep_next)} xPts
+                      {data.team_name} · {fmtNum(data.ep_next)} xPts ·{' '}
+                      {/* v12 W4 §5.4. The one place a player's *code* is
+                          printed. data/set_pieces.toml is keyed by code —
+                          element ids are remapped every summer and codes are
+                          not — and until this line there was nowhere in the
+                          app to read one off, which made the override file
+                          unwritable without a detour through the API. */}
+                      <span className="text-text-muted">code {data.code}</span>
                     </p>
                   </>
                   )

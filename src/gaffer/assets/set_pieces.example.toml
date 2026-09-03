@@ -1,23 +1,40 @@
 # Who really takes them. Copy to data/set_pieces.toml and edit.
 #
-# One table per club, named exactly as FPL's bootstrap names it ("Arsenal",
-# "Man City", "Nott'm Forest", "Spurs"). Inside it, list takers in order by
-# their gaffer *code* — the number in the URL of a player's explain panel, not
-# his season element id, because element ids are remapped every summer and
-# codes are not.
+# One table per club. Inside it, list takers in order by their gaffer *code* —
+# not their season element id, which is remapped every summer. A player's code
+# is printed in the header of his explain panel ("code 223340"), beside his
+# name, on any page you can click him from.
 #
-# Only `penalties` reaches expected points; `direct_free_kicks` and `corners`
-# are context in the UI and are shown with a "manual" badge where you have
-# overridden them.
+# QUOTE THE HEADER if the club's name has a space or an apostrophe — that is,
+#   ["Man City"], ["Nott'm Forest"], ["Aston Villa"]. Bare TOML keys allow
+#   neither, and one bad header discards the WHOLE file, every club in it,
+#   not just the table it is on. Quoting all of them is the safe habit.
 #
-# An empty list is a statement, not an absence: it says "the published taker
-# has left and nobody has replaced him", and the model will price nobody.
+# The header is for you, not for the program: nothing matches it against a
+# club name. Each man's club is read off his code, so a code filed under the
+# club he left last summer still applies.
+#
+# LISTING A QUEUE DEMOTES THE MEN IT LEAVES OUT. For the club a listed code
+# plays for, this list *is* the queue — a teammate you do not name is not a
+# taker, whatever FPL published. So one line is enough to hand the job over:
+#
+#     ["Arsenal"]
+#     penalties = [232413]        # Eze takes them now; Saka does not
+#
+# AN EMPTY LIST DEMOTES NOBODY. It names no code, so it identifies no club,
+# so there is nothing for it to be the queue of. It records that you checked
+# and found nobody. To demote a taker, list the club's replacement queue.
+#
+# Only `penalties` reaches expected points. `direct_free_kicks` and `corners`
+# change the order shown on the player page — with a "manual" badge where you
+# overrode it — and nothing else: there is no free-kick or corner term in the
+# model to move.
 
-# [Arsenal]
-# penalties = [118748, 232413]         # Saka, then Eze
+# ["Arsenal"]
+# penalties = [223340, 232413]         # Saka, then Eze
 # direct_free_kicks = [232413]
-# corners = [232413, 118748]
+# corners = [232413, 204480]           # Eze, then Rice
 
-# [Liverpool]
-# penalties = [118748]
-# corners = []
+# ["Liverpool"]
+# penalties = [219168, 424876]         # Isak ahead of Szoboszlai
+# corners = []                         # checked; nobody settled on yet
