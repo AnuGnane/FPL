@@ -513,11 +513,17 @@ describe("the captain's own note (v12 W5 §6.3)", () => {
       .toHaveTextContent("covering Dave's last armband")
   })
 
-  it('draws nothing for the empty note the tilt writes when it changed nothing',
-     async () => {
-       // `league_mode.captaincy_note` returns "" — not null — when lam is 0 or
-       // the armband did not move (`league_mode.py:425`). An empty chip is
-       // worse than no chip.
+  it('draws nothing for an empty note', async () => {
+       // Belt and braces, not a case the server produces. On the wire the
+       // field is absent or a real sentence: `league_mode.captaincy_note`'s
+       // `""` branch is only reached from `advise.py:918`, inside
+       // `if override is not None`, and `captaincy_override` returns `None` at
+       // λ 0 and when the armband did not move — so the two conditions that
+       // would return `""` are the two that never call it.
+       //
+       // The predicate is truthiness rather than `!= null` regardless, which
+       // is what makes an empty string free to test. An empty chip is worse
+       // than no chip.
        serve(withCaptainNote(''))
        render(<MemoryRouter><ThisWeek /></MemoryRouter>)
        await screen.findByTestId('pitch-row-MID')

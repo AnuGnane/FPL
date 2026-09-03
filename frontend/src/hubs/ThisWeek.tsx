@@ -267,8 +267,15 @@ export default function ThisWeek() {
                 armband moved, rendered verbatim beside the field note for the
                 same reason that one is: the claim is made where the data is,
                 and a second wording here would be one number in two voices.
-                Truthy, not `!= null`: the tilt writes "" when it changed
-                nothing. */}
+
+                Truthy, not `!= null`, because the field is *absent* on every
+                run banked before this read existed and `null` on every run
+                where the armband did not move: `advise.py:907` keeps its
+                `None` unless `captaincy_override` returned a pair, and it
+                returns `None` at λ 0 and when the captain did not change. So
+                `league_mode.captaincy_note`'s own `""` branch is unreachable
+                on the wire — one predicate covers all three anyway, and an
+                empty chip is worse than no chip. */}
             {advice.captain_note && (
               <span className="text-text-muted" data-testid="captain-note">
                 {advice.captain_note}
