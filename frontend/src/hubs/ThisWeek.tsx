@@ -263,6 +263,17 @@ export default function ThisWeek() {
                 {advice.captain_field.note}
               </span>
             )}
+            {/* v12 W5 §6.3 — the run's own half-sentence about why the
+                armband moved, rendered verbatim beside the field note for the
+                same reason that one is: the claim is made where the data is,
+                and a second wording here would be one number in two voices.
+                Truthy, not `!= null`: the tilt writes "" when it changed
+                nothing. */}
+            {advice.captain_note && (
+              <span className="text-text-muted" data-testid="captain-note">
+                {advice.captain_note}
+              </span>
+            )}
             {view === 'pitch' && (
               <button
                 type="button"

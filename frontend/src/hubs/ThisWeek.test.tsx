@@ -475,3 +475,51 @@ describe('the EO lens (v10b §F1c)', () => {
        expect(screen.queryByRole('button', { name: /EO lens/ })).toBeNull()
      })
 })
+
+describe("the captain's own note (v12 W5 §6.3)", () => {
+  // `captain_note` is written by `advise.py:160` and served *inside*
+  // `AdviceLatest.advice`, which the server declares as `dict[str, Any]` — so
+  // it has been on the wire since v4d and rendered only by the CLI and the
+  // HTML report. The fixture puts it where the server does, on the envelope's
+  // `advice`, exactly as `withCaptainField` does one describe above.
+  function withCaptainNote(note: unknown) {
+    return {
+      ...ADVICE,
+      advice: { ...ADVICE.advice, captain_note: note },
+    }
+  }
+
+  function serve(body: unknown) {
+    apiGet.mockImplementation((path: string) => (
+      path === '/api/advice/latest' ? Promise.resolve(body) : route(path)))
+  }
+
+  it('renders the captain note the advice run wrote', async () => {
+    serve(withCaptainNote("covering Dave's last armband"))
+    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    expect(await screen.findByTestId('captain-note'))
+      .toHaveTextContent("covering Dave's last armband")
+  })
+
+  it('draws nothing for the empty note the tilt writes when it changed nothing',
+     async () => {
+       // `league_mode.captaincy_note` returns "" — not null — when lam is 0 or
+       // the armband did not move (`league_mode.py:425`). An empty chip is
+       // worse than no chip.
+       serve(withCaptainNote(''))
+       render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+       await screen.findByTestId('pitch-row-MID')
+       expect(screen.queryByTestId('captain-note')).toBeNull()
+       const header = (await squadCard()).querySelector('header')!
+       expect(header.textContent).toMatch(/Captain Salah/)
+     })
+
+  it('draws nothing for a payload written before the field existed',
+     async () => {
+       render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+       await screen.findByTestId('pitch-row-MID')
+       expect(screen.queryByTestId('captain-note')).toBeNull()
+       const header = (await squadCard()).querySelector('header')!
+       expect(header.textContent).toMatch(/Captain Salah/)
+     })
+})

@@ -106,6 +106,15 @@ export interface Advice {
   raw_optimum_agrees?: boolean | null
   scenarios?: ScenarioReport | null
   captain_field?: CaptainField
+  /** The half-sentence the league tilt puts after the captain's name
+   *  ("covering Dave's last armband"). Written by `advise.py:160` and served
+   *  inside `AdviceLatest.advice`, which the server declares as
+   *  `dict[str, Any]` — so it needs no schema field and has none.
+   *
+   *  Empty string, not null, when the tilt changed nothing
+   *  (`league_mode.py:425`). Test it for truthiness, exactly as
+   *  `cli.py:81` does. */
+  captain_note?: string | null
 }
 
 /** Where the captain stands against the top 10k (v10b §F1a).
