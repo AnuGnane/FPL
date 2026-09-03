@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { apiGet } from '../api/client'
 import type { PlayerExplain } from '../types'
+import Badge from './Badge'
 import PosBadge from './PosBadge'
 import { fmtNum, fmtPct } from './format'
 
@@ -210,6 +211,23 @@ export default function ExplainModal(
                 </span>, corners <span className="num">
                   {data.set_pieces.corners ?? '–'}
                 </span>
+                {/* v12 W4 §5.4. The three numbers above are FPL's unless the
+                    user's data/set_pieces.toml named him, and a reader who
+                    corrected a taker is entitled to see that his correction
+                    reached the panel. Read through `?? []` because the field
+                    is default-empty on the server: a payload that predates it
+                    means "nothing overridden", and a missing badge is a
+                    better answer than a modal that throws. */}
+                {(data.set_pieces_manual ?? []).length > 0 && (
+                  <>
+                    {' '}
+                    <Badge variant="info"
+                           title={'Your override: '
+                                  + (data.set_pieces_manual ?? []).join(', ')}>
+                      manual
+                    </Badge>
+                  </>
+                )}
               </p>
             </>
           )}

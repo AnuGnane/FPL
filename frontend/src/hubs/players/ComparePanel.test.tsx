@@ -37,7 +37,8 @@ const PLAYERS: PlayerRow[] = [
     team_name: 'Liverpool', price: 13.0, ep_next: 6.4, ep_horizon: 12.0,
     ownership: 42.1, league_eo: 61.5, available: true, status: 'a', news: '',
     chance_of_playing: null, penalties_order: 1, free_kicks_order: 1,
-    corners_order: null, in_squad: true, last4: [2, 9, 5, 12],
+    corners_order: null, set_piece_manual: [], in_squad: true,
+    last4: [2, 9, 5, 12],
     field_eo: 78.0, field_se: 2.8, field_n: 300,
     field_eo_deadline: null, field_eo_delta: null, field_class: 'shield',
     ep_lo: null, ep_hi: null,
@@ -46,7 +47,8 @@ const PLAYERS: PlayerRow[] = [
     team_name: 'Arsenal', price: 10.0, ep_next: 5.5, ep_horizon: 10.5,
     ownership: 30.0, league_eo: 22.0, available: true, status: 'a', news: '',
     chance_of_playing: null, penalties_order: null, free_kicks_order: null,
-    corners_order: 1, in_squad: false, last4: [6, 1, 8, 3],
+    corners_order: 1, set_piece_manual: ['corners'], in_squad: false,
+    last4: [6, 1, 8, 3],
     field_eo: null, field_se: null, field_n: null,
     field_eo_deadline: null, field_eo_delta: null, field_class: null,
     ep_lo: null, ep_hi: null,
@@ -281,6 +283,21 @@ describe('the model’s own working', () => {
       const flags = within(saka).getByTestId('setpieces-2')
       expect(flags).toHaveTextContent('Corners 1')
       expect(flags).not.toHaveTextContent('Pens')
+    })
+
+  it('badges the row the override file named, and only that row',
+    async () => {
+      // Saka's corners came from data/set_pieces.toml; Salah's pens are FPL's
+      // own. The badge is the difference, and it is the only place a user who
+      // corrected a taker can see that the correction reached the page.
+      render(<ComparePanel gw={5} players={PLAYERS} />)
+      const saka = await screen.findByTestId('compare-2')
+      const flags = within(saka).getByTestId('setpieces-2')
+      expect(flags).toHaveTextContent('manual')
+      expect(within(flags).getByTitle('Your override: corners'))
+        .toBeInTheDocument()
+      expect(within(screen.getByTestId('compare-1'))
+        .getByTestId('setpieces-1')).not.toHaveTextContent('manual')
     })
 
   it('annotates penalty duty under Goals rather than as a term', async () => {

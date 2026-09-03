@@ -31,6 +31,7 @@ function player(over: Partial<PlayerRow>): PlayerRow {
     field_eo_deadline: null, field_eo_delta: null, field_class: null,
     available: true, status: 'a', news: '', chance_of_playing: null,
     penalties_order: null, free_kicks_order: null, corners_order: null,
+    set_piece_manual: [],
     in_squad: false, last4: [], ep_lo: null, ep_hi: null, p_haul: null,
     p_blank: null, ...over,
   }

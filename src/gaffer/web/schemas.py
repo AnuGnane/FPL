@@ -495,6 +495,9 @@ class PlayerRow(BaseModel):
     penalties_order: int | None
     free_kicks_order: int | None
     corners_order: int | None
+    set_piece_manual: list[str] = Field(default_factory=list)
+    """Kinds of set piece this player's order came from ``data/set_pieces.toml``
+    rather than from FPL. Empty on every machine with no override file."""
     in_squad: bool
     last4: list[int] = Field(default_factory=list)
     """Points from the last four *finished* gameweeks, oldest first.
@@ -583,6 +586,10 @@ class PlayerExplain(BaseModel):
     fixtures: list[FixtureExplain]
     next_fixtures: list[NextFixture]
     set_pieces: dict[str, int | None]
+    set_pieces_manual: list[str] = Field(default_factory=list)
+    """Which of ``set_pieces``' three orders came from the user's override
+    file. Additive and default-empty, so a client that does not read it is
+    unaffected."""
 
 
 class ChipWeek(BaseModel):

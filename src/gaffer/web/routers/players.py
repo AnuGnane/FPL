@@ -146,6 +146,28 @@ def _trend_fields(trend: dict[int, dict], element: int) -> dict:
             "field_eo_delta": cell["delta"]}
 
 
+def set_piece_manual() -> dict[int, list[str]]:
+    """``{code: [kinds the user overrode]}`` — the badge, and nothing else.
+
+    A display fact. It never enters an expected point: only ``penalties``
+    reaches EP at all (through ``set_pieces.pen_table``'s hook), and this map
+    exists so a user who corrected a corner taker can see that his correction
+    took. Kinds are sorted so the badge does not reshuffle between reloads.
+
+    An empty list in the file names nobody and therefore marks nobody — which
+    is right: the badge says "this row is your correction", and a row nobody
+    was named for is not.
+    """
+    from gaffer.data.set_piece_overrides import load_set_piece_overrides
+
+    out: dict[int, set[str]] = {}
+    for tables in load_set_piece_overrides().values():
+        for kind, order in tables.items():
+            for code in order:
+                out.setdefault(int(code), set()).add(str(kind))
+    return {code: sorted(kinds) for code, kinds in sorted(out.items())}
+
+
 @router.get("", response_model=list[PlayerRow])
 def players(position: str | None = None, team: int | None = None,
             search: str | None = None,
@@ -202,6 +224,9 @@ def players(position: str | None = None, team: int | None = None,
     # and `deadline_eo` projects that newest sample one gameweek forward by
     # construction (A4) — which is this page's upcoming week.
     trend = _trend_table(None, season)
+    # v12 W4 §5.4. Once per request, not once per row: the file is small but
+    # it is a disk read, and a hundred players is a hundred reads.
+    manual = set_piece_manual()
 
     rows = []
     for r in snapshot.itertuples():
@@ -241,6 +266,7 @@ def players(position: str | None = None, team: int | None = None,
             free_kicks_order=_opt_int(r.direct_freekicks_order),
             corners_order=_opt_int(
                 r.corners_and_indirect_freekicks_order),
+            set_piece_manual=manual.get(code, []),
             in_squad=code in owned,
             last4=last4.get(code, []),
             ep_lo=None if band is None else band.ep_lo,
@@ -394,4 +420,5 @@ def explain(code: int) -> PlayerExplain:
         set_pieces={"penalties": _opt_int(me["penalties_order"]),
                     "free_kicks": _opt_int(me["direct_freekicks_order"]),
                     "corners": _opt_int(
-                        me["corners_and_indirect_freekicks_order"])})
+                        me["corners_and_indirect_freekicks_order"])},
+        set_pieces_manual=set_piece_manual().get(code, []))

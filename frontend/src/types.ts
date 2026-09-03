@@ -230,6 +230,10 @@ export interface PlayerExplain {
   fixtures: FixtureExplain[]
   next_fixtures: Array<{ gw: number; opponent: string; home: boolean }>
   set_pieces: Record<string, number | null>
+  /** Which of `set_pieces`' three orders the user's override file named.
+   *  Additive and default-empty on the server, so an old payload reads as
+   *  "nothing overridden" rather than as a missing field. */
+  set_pieces_manual: string[]
 }
 
 export interface PlanSummary {
@@ -306,6 +310,10 @@ export interface PlayerRow {
   penalties_order: number | null
   free_kicks_order: number | null
   corners_order: number | null
+  /** Kinds of set piece whose order came from the user's
+   *  `data/set_pieces.toml` rather than from FPL. Empty on every machine
+   *  with no override file. */
+  set_piece_manual: string[]
   in_squad: boolean
   last4: number[]
   /** p25 of the scenario sweep's own noise on `ep_next`. Null — never

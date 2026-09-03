@@ -5,8 +5,8 @@ import {
 } from 'recharts'
 import { apiGet } from '../../api/client'
 import {
-  Card, EmptyState, PlayerName, PosBadge, Sparkline, difficultyBackground,
-  fmtDelta, fmtNum,
+  Badge, Card, EmptyState, PlayerName, PosBadge, Sparkline,
+  difficultyBackground, fmtDelta, fmtNum,
 } from '../../kit'
 import type {
   ComponentsBreakdown, FixtureMatrixData, PlayerRow,
@@ -386,13 +386,29 @@ export default function ComparePanel(
                 )}
                 {(player.penalties_order !== null
                   || player.free_kicks_order !== null
-                  || player.corners_order !== null) && (
+                  || player.corners_order !== null
+                  || (player.set_piece_manual ?? []).length > 0) && (
                   <p data-testid={`setpieces-${player.code}`}
-                     className="mt-2 flex flex-wrap gap-2">
+                     className="mt-2 flex flex-wrap items-center gap-2">
                     <SetPieceFlag kind="Pens" order={player.penalties_order} />
                     <SetPieceFlag kind="FK" order={player.free_kicks_order} />
                     <SetPieceFlag kind="Corners"
                                   order={player.corners_order} />
+                    {/* v12 W4 §5.4: the row is your correction, not FPL's
+                        publication. The list is in the title because which
+                        kinds were overridden is the thing a reader checking
+                        his own edit wants, and it does not fit on a chip.
+                        `?? []` because the field is default-empty on the
+                        server: a payload that predates it means "nothing
+                        overridden", not a column that throws. */}
+                    {(player.set_piece_manual ?? []).length > 0 && (
+                      <Badge variant="info"
+                             title={'Your override: '
+                                    + (player.set_piece_manual
+                                       ?? []).join(', ')}>
+                        manual
+                      </Badge>
+                    )}
                   </p>
                 )}
                 <div className="mt-2">
