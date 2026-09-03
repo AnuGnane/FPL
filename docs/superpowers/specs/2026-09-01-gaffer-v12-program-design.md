@@ -1007,7 +1007,7 @@ result below is unfilled on purpose.
         W4_CF_DONE {"window": {"train_max_idx": 2, "test_idx": 3}, "rule": "KEEP an arm iff BOTH halves hold: (a) starters-slice p_start log-loss improves by >= 1% relative to THIS run's control AND zeros RMSE is not worse by more than 0.005 (this driver); AND (b) the mean points delta over the weeks in which an autosub actually fired is >= 0 (scripts/v12_w4_autosub_cf.py). Either half failing is a withdr…
         ```
 
-- [ ] **Zero unauthorized protected diffs.** Base is **`f903959`**, W3's merge
+- [x] **Zero unauthorized protected diffs.** Base is **`f903959`**, W3's merge
       tip, not `main` — a rail scoped to somebody else's range audits somebody
       else's work.
 
@@ -1029,13 +1029,13 @@ result below is unfilled on purpose.
 
       W4's authorized protected set is **`src/gaffer/set_pieces.py` only**.
 
-      - Result: _(unfilled)_
+      - Result: ✅ only `tests/test_v12_w3_degradation.py` over the protected set; `set_pieces.py` = the two Task-17 groups + the Task-20 sentence + the club-aware/NaN-guard amendments inside the `order_of` group, all with provenance; W4's audit rail 2 passed on the merge.
 
-- [ ] **Pins on the merge commit.** Expected: **`46 12 55`** (G1's command).
+- [x] **Pins on the merge commit.** Expected: **`46 12 55`** (G1's command).
 
-      - Result: _(unfilled)_
+      - Result: ✅ `46 12 55` at `e0bdf79`.
 
-- [ ] **Post-merge ritual (§7).**
+- [x] **Post-merge ritual (§7).** ff-only into `main` at `e0bdf79` (2026-09-03), pushed; `git show main:config.toml` fails; key-grep over all history empty; no `data/`/`reports/`/`logs/`/`models/` path in the tip. Suite at the merge: **3854 Python / 726 frontend**, tsc clean. W4's audit rail reads `f903959..HEAD`; W5's first authorized edit pins `W4_TIP = "e0bdf79"`, the way W4 pinned W3's.
 
       ```bash
       git show main:config.toml     # expected: fatal — path does not exist
