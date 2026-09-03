@@ -1008,6 +1008,51 @@ def simulate_field_rank(inputs: SimInputs, deadline_eo: dict[int, float], *,
             "my_ep": round(float(mine.mean()), 2)}
 
 
+RANK_SLOPE_MIN_ROWS = 5
+"""Graded gameweeks needed before a points-to-rank slope is worth quoting.
+
+Five, and the number is a judgement rather than a fit: fewer and one
+double-gameweek week dominates the line; more and the panel stays empty until
+half the season is gone. It is stated here so a later reader moves it
+deliberately."""
+
+
+def rank_slope(ledger_rows: list[dict]) -> dict:
+    """Overall-rank places per point, from the graded ledger, or an empty state.
+
+    Spec §5.3 asks for an expected overall-rank change. Turning a simulated
+    score into one needs a points-to-rank response over the whole eleven
+    million entries, which this project has never had and does not acquire
+    here. What the ledger does have is ``my_points`` beside ``overall_rank``
+    for every graded gameweek (``review.py:728,739``), and the ordinary
+    least-squares slope through those pairs is a **local** response — good
+    enough to say "roughly this many places per point, on the weeks we have
+    seen", and honest about being nothing more.
+
+    ``None`` with a sentence in three cases, all of which a real machine is in
+    today: too few graded gameweeks, rows missing either half, and a ledger
+    whose points never vary (a slope through a vertical line is not a slope).
+    """
+    pairs = [(float(r["my_points"]), float(r["overall_rank"]))
+             for r in ledger_rows or []
+             if r.get("my_points") is not None
+             and r.get("overall_rank") is not None]
+    rows = len(pairs)
+    if rows < RANK_SLOPE_MIN_ROWS:
+        return {"slope": None, "rows": rows,
+                "waiting_for": f"{rows} of {RANK_SLOPE_MIN_ROWS} graded "
+                               f"gameweeks with both a score and an overall "
+                               f"rank — run `gaffer review` as weeks finish"}
+    points = np.array([p for p, _ in pairs])
+    ranks = np.array([r for _, r in pairs])
+    if float(points.std()) <= 0.0:
+        return {"slope": None, "rows": rows,
+                "waiting_for": "no variation in the graded scores yet, so "
+                               "there is no slope to read through them"}
+    slope = float(np.polyfit(points, ranks, 1)[0])
+    return {"slope": round(slope, 1), "rows": rows, "waiting_for": None}
+
+
 def build_inputs(cfg, client, *, gw: int | None = None) -> SimInputs:
     """Assemble a :class:`SimInputs` from artifacts on disk plus fresh league
     data.

@@ -152,3 +152,51 @@ def test_the_payload_carries_its_provenance():
                               seed=1, gw=6)
     assert out["n"] == 500 and out["seed"] == 1 and out["gw"] == 6
     assert out["managers"] == FIELD_POP_N
+
+
+# --- Task 13: the rank slope --------------------------------------------
+
+from gaffer.league_sim import RANK_SLOPE_MIN_ROWS, rank_slope  # noqa: E402
+
+
+def test_five_rows_are_the_bar():
+    assert RANK_SLOPE_MIN_ROWS == 5
+
+
+def test_too_few_graded_gameweeks_is_a_named_empty_state():
+    out = rank_slope([{"gw": 1, "my_points": 60, "overall_rank": 900000},
+                      {"gw": 2, "my_points": 70, "overall_rank": 700000}])
+    assert out["slope"] is None
+    assert out["rows"] == 2
+    assert "2 of 5 graded gameweeks" in out["waiting_for"]
+
+
+def test_an_empty_ledger_is_a_named_empty_state():
+    out = rank_slope([])
+    assert out["slope"] is None
+    assert "0 of 5 graded gameweeks" in out["waiting_for"]
+
+
+def test_rows_missing_either_half_do_not_count():
+    rows = [{"gw": g, "my_points": 60, "overall_rank": None}
+            for g in range(1, 9)]
+    assert rank_slope(rows)["rows"] == 0
+
+
+def test_enough_rows_give_a_negative_slope_because_scoring_more_ranks_you_better():
+    rows = [{"gw": g, "my_points": 40 + 10 * g,
+             "overall_rank": 1_000_000 - 50_000 * g} for g in range(1, 7)]
+    out = rank_slope(rows)
+    assert out["slope"] is not None
+    assert out["slope"] < 0
+    assert out["waiting_for"] is None
+    assert out["rows"] == 6
+
+
+def test_a_ledger_with_no_variation_in_points_is_an_empty_state():
+    """A slope through a vertical line is not a slope."""
+    rows = [{"gw": g, "my_points": 60, "overall_rank": 900000 - g}
+            for g in range(1, 8)]
+    out = rank_slope(rows)
+    assert out["slope"] is None
+    assert "no variation" in out["waiting_for"]
