@@ -23,13 +23,14 @@ from fastapi import APIRouter, Response
 
 from gaffer.artifacts import latest_gw, load_snapshot, solve_state_paths
 from gaffer.config import load_config
-from gaffer.data.field import field_sample_path
+from gaffer.data.field import field_sample_path, latest_field_eo
 from gaffer.errors import GafferError
 from gaffer.league_mode import win_probability
-from gaffer.league_sim import (Pins, append_sim_history, build_inputs,
-                               effective_picks, load_sim_history,
+from gaffer.league_sim import (SIM_SEED, Pins, append_sim_history,
+                               build_inputs, effective_picks, load_sim_history,
+                               rank_slope, simulate_field_rank,
                                simulate_league)
-from gaffer.web.schemas import (LeagueSimData, LeagueWhatIfRequest,
+from gaffer.web.schemas import (FieldRank, LeagueSimData, LeagueWhatIfRequest,
                                 LeagueWhatIfResult, LeagueWhatIfRow, RivalBeat,
                                 SimPoint, WinProb)
 
@@ -173,6 +174,96 @@ def _run(cfg, gw: int | None = None, *, cached_only: bool = False):
     return sim, inputs
 
 
+EO_PERCENT = 100.0
+"""The log's units over the simulation's.
+
+``field_eo_log.parquet`` stores effective ownership in *percent* — the same
+units the sword/shield column and the compare panel render, and the units
+:data:`gaffer.data.field.EO_CEILING` (200.0) is expressed in. ``league_sim``'s
+synthetic field wants a Bernoulli probability and clamps to ``[0, 1]``, so a
+percent handed straight over would make every sampled player owned by
+everybody and every probability 0.5. The division happens here, at the one
+boundary where the log is read, rather than inside the engine, which never
+touches the store.
+"""
+
+
+def _trend_eo(season: str, gw: int) -> tuple[dict[int, float], str]:
+    """W2 §3.3's deadline-extrapolated EO, or ``({}, "")`` when it is absent.
+
+    Absent is a *routine* state, not a broken one: §3.3 only extrapolates when
+    two gameweeks have been sampled, so every machine that has scraped exactly
+    once lands here and falls back to the last sample. The import is inside
+    the function and the except is broad because this is a display read on a
+    page that already answers three other questions — a panel that 500s over a
+    sibling module is a panel nobody can review.
+
+    ``field_eo_trend`` returns ``element -> dict``, not a frame, and every
+    element it knows about carries a ``deadline_eo`` — including the ones it
+    could not extrapolate, where ``deadline_eo`` is just ``eo_last`` and
+    ``trend_available`` is ``False``. Reading those as a trend would put a
+    last-sample number under a ``deadline-trend`` label, so the gate is
+    ``trend_available``, exactly as ``web/field_frame.py`` gates it.
+    """
+    try:
+        from gaffer.data.field import field_eo_trend
+    except ImportError:
+        return {}, ""
+    try:
+        table = field_eo_trend(str(season), int(gw))
+    except Exception:  # noqa: BLE001 — a display read never blocks a page
+        return {}, ""
+    out = {int(element): float(cell["deadline_eo"]) / EO_PERCENT
+           for element, cell in (table or {}).items()
+           if cell.get("trend_available")
+           and cell.get("deadline_eo") is not None}
+    return (out, "deadline-trend") if out else ({}, "")
+
+
+def deadline_eo_table(season: str, gw: int) -> tuple[dict[int, float], str]:
+    """``(element -> EO, source)`` for the field simulation.
+
+    Prefers §3.3's deadline extrapolation and falls back to the newest banked
+    sample. ``"none"`` on a machine that has never run ``field-scrape``, which
+    :func:`gaffer.league_sim.simulate_field_rank` turns into its own named
+    empty state rather than a probability. EO comes back as a fraction from
+    either source — see :data:`EO_PERCENT`.
+    """
+    table, source = _trend_eo(season, gw)
+    if table:
+        return table, source
+    latest = latest_field_eo(int(gw), season=str(season))
+    if latest:
+        return ({int(e): float(cell.get("eo", 0.0)) / EO_PERCENT
+                 for e, cell in latest.items()}, "last-sample")
+    return {}, "none"
+
+
+def _field_rank(cfg, inputs, gw: int) -> FieldRank:
+    """v12 W4 §5.3's panel payload. Never raises — a display read on a page
+    that already answers three other questions."""
+    from gaffer.review import load_ledger
+
+    season = str(getattr(cfg, "current_season", "") or "")
+    table, source = deadline_eo_table(season, int(gw))
+    out = simulate_field_rank(inputs, table, n=int(cfg.sim_n),
+                              seed=SIM_SEED, gw=int(gw))
+    try:
+        slope = rank_slope(load_ledger())
+    except Exception:  # noqa: BLE001 — an unreadable ledger is an empty one
+        slope = {"slope": None, "rows": 0,
+                 "waiting_for": "the decision ledger could not be read"}
+    return FieldRank(
+        gw=int(out["gw"]), n=int(out["n"]), seed=int(out["seed"]),
+        managers=int(out["managers"]), eo_source=source,
+        p_green=out["p_green"], waiting_for=out["waiting_for"],
+        p_top10k=out["p_top10k"],
+        top10k_waiting_for=out["top10k_waiting_for"],
+        rank_slope=slope["slope"], rank_slope_rows=int(slope["rows"]),
+        rank_waiting_for=slope["waiting_for"],
+        my_ep=out.get("my_ep"), field_median_ep=out.get("field_median_ep"))
+
+
 @router.get("/sim", response_model=LeagueSimData)
 def sim() -> LeagueSimData:
     cfg = load_config()
@@ -212,7 +303,8 @@ def sim() -> LeagueSimData:
         history=[SimPoint(**h) for h in load_sim_history()
                  if {"gw", "p_win", "p_top3", "exp_finish", "run_at"} <= set(h)],
         field_rate=inputs.field_rate, notice=notice,
-        legacy_win_probability=legacy)
+        legacy_win_probability=legacy,
+        field=_field_rank(cfg, inputs, int(gw)))
 
 
 EVENT_POINTS = {"blank": BLANK_POINTS, "haul": HAUL_POINTS}

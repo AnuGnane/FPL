@@ -200,3 +200,115 @@ def test_a_ledger_with_no_variation_in_points_is_an_empty_state():
     out = rank_slope(rows)
     assert out["slope"] is None
     assert "no variation" in out["waiting_for"]
+
+
+# --- Task 14: the payload ------------------------------------------------
+
+import pytest  # noqa: E402
+
+from gaffer.data import store  # noqa: E402
+from gaffer.data.field import append_field_eo, field_eo_rows  # noqa: E402
+from gaffer.web.schemas import FieldRank, LeagueSimData  # noqa: E402
+
+
+def test_the_schema_carries_nullable_headlines_and_their_reasons():
+    fields = FieldRank.model_fields
+    for name in ("p_green", "p_top10k", "rank_slope"):
+        assert fields[name].is_required() is False
+    payload = FieldRank(gw=6, n=2000, seed=1, managers=300,
+                        eo_source="last-sample")
+    assert payload.p_green is None
+    assert payload.p_top10k is None
+
+
+def test_league_sim_data_gained_one_optional_field():
+    assert "field" in LeagueSimData.model_fields
+    assert LeagueSimData.model_fields["field"].is_required() is False
+
+
+def test_the_field_panel_added_no_route(tmp_path, monkeypatch):
+    """By absence, not by total. v11 owns the one absolute route count and
+    v12 W1's rail asserts it stays the only one; what W4 has to say is that it
+    served its panel on the endpoint that already existed."""
+    from gaffer.web.app import create_app
+
+    monkeypatch.chdir(tmp_path)
+    paths = create_app().openapi()["paths"]
+    assert "/api/league/sim" in paths
+    assert not [p for p in paths if p.startswith("/api/field")]
+
+
+def test_the_router_helper_prefers_the_trend_and_says_so(monkeypatch):
+    from gaffer.web.routers import league_sim as router
+
+    monkeypatch.setattr(router, "_trend_eo",
+                        lambda *_a, **_k: ({7: 0.6}, "deadline-trend"))
+    table, source = router.deadline_eo_table("2026-27", 6)
+    assert table == {7: 0.6} and source == "deadline-trend"
+
+
+def test_the_router_helper_falls_back_to_the_last_sample(monkeypatch):
+    """The log speaks percent and the simulation speaks fractions, so the
+    fallback divides: ``eo`` 40.0 in the log is four managers in ten."""
+    from gaffer.web.routers import league_sim as router
+
+    monkeypatch.setattr(router, "_trend_eo", lambda *_a, **_k: ({}, ""))
+    monkeypatch.setattr(router, "latest_field_eo",
+                        lambda gw=None, *, season=None: {
+                            9: {"eo": 40.0, "se": 0.0, "n": 300, "gw": 6}})
+    table, source = router.deadline_eo_table("2026-27", 6)
+    assert table == {9: 0.4} and source == "last-sample"
+
+
+def test_the_router_helper_on_a_cold_clone_is_empty_and_named(monkeypatch):
+    from gaffer.web.routers import league_sim as router
+
+    monkeypatch.setattr(router, "_trend_eo", lambda *_a, **_k: ({}, ""))
+    monkeypatch.setattr(router, "latest_field_eo",
+                        lambda gw=None, *, season=None: {})
+    assert router.deadline_eo_table("2026-27", 6) == ({}, "none")
+
+
+# --- and the same three sources over a real banked log, unmonkeypatched ---
+
+@pytest.fixture()
+def eo_store(tmp_path, monkeypatch):
+    """A field EO log in a temporary store, and nothing else."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")
+    return tmp_path
+
+
+def test_two_banked_gameweeks_read_as_the_deadline_trend(eo_store):
+    """Not monkeypatched: the trend reader really runs, over a log with two
+    gameweeks in it, which is the only state in which §3.3 extrapolates."""
+    from gaffer.web.routers import league_sim as router
+
+    append_field_eo(field_eo_rows({7: {"eo": 40.0, "se": 2.0, "n": 300}},
+                                  5, "2026-27", day="2026-09-12"))
+    append_field_eo(field_eo_rows({7: {"eo": 50.0, "se": 2.0, "n": 300}},
+                                  6, "2026-27", day="2026-09-19"))
+    table, source = router.deadline_eo_table("2026-27", 6)
+    assert source == "deadline-trend"
+    # 50 last, +10 over one gameweek, so 60 projected — and the router hands
+    # the simulation a fraction, never the log's percent.
+    assert table == {7: 0.6}
+
+
+def test_one_banked_gameweek_reads_as_the_last_sample(eo_store):
+    """The Saturday state: one sample banked, no drift to project, so §3.3
+    reports ``trend_available=False`` and the router says ``last-sample``
+    rather than passing an unextrapolated number off as a trend."""
+    from gaffer.web.routers import league_sim as router
+
+    append_field_eo(field_eo_rows({7: {"eo": 50.0, "se": 2.0, "n": 300}},
+                                  6, "2026-27", day="2026-09-19"))
+    table, source = router.deadline_eo_table("2026-27", 6)
+    assert source == "last-sample"
+    assert table == {7: 0.5}
+
+
+def test_a_log_that_was_never_written_reads_as_none(eo_store):
+    from gaffer.web.routers import league_sim as router
+
+    assert router.deadline_eo_table("2026-27", 6) == ({}, "none")

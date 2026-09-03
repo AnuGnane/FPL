@@ -210,6 +210,38 @@ class SimPoint(BaseModel):
     run_at: str
 
 
+class FieldRank(BaseModel):
+    """v12 W4 §5.3. One gameweek against a synthetic field drawn from EO.
+
+    Three headline numbers and two of them are ``None`` today. Each null has
+    its own sentence rather than a shared one, because they are waiting for
+    different things: ``p_green`` for a banked field sample, ``p_top10k`` for
+    a score series that does not exist anywhere, ``rank_slope`` for graded
+    gameweeks. Spec §1: a view whose data does not exist says what it is
+    waiting for and never renders a zero as a measurement.
+    """
+
+    gw: int
+    n: int
+    seed: int
+    managers: int
+    eo_source: str
+    """``"deadline-trend"`` (§3.3's extrapolation), ``"last-sample"`` (the
+    newest scrape), or ``"none"``. A trend EO and a last-sample EO are
+    different numbers and the panel says which it used."""
+    p_green: float | None = None
+    waiting_for: str | None = None
+    p_top10k: float | None = None
+    top10k_waiting_for: str | None = None
+    rank_slope: float | None = None
+    """Overall-rank places per point, from the graded ledger. Negative: more
+    points is a better (smaller) rank."""
+    rank_slope_rows: int = 0
+    rank_waiting_for: str | None = None
+    my_ep: float | None = None
+    field_median_ep: float | None = None
+
+
 class LeagueSimData(BaseModel):
     gw: int
     entries: int
@@ -230,6 +262,10 @@ class LeagueSimData(BaseModel):
     legacy_win_probability: list[WinProb] = Field(default_factory=list)
     """``league_mode.win_probability``'s parametric answer, kept beside the
     simulated one until the UI has fully switched (spec §3)."""
+    field: FieldRank | None = None
+    """v12 W4 §5.3's panel. ``None`` only when the simulation itself could not
+    be built; an unanswerable question is a ``FieldRank`` full of nulls with
+    their reasons, not an absent object."""
 
 
 class LeagueWhatIfPin(BaseModel):
