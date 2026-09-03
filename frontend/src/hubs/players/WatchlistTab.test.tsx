@@ -61,6 +61,45 @@ describe('WatchlistTab', () => {
     })
   })
 
+  it('saves on Enter, so a note is not a click away from a typed field',
+    async () => {
+      render(<WatchlistTab onChange={vi.fn()} />)
+      const field = await screen.findByLabelText('note for Haaland')
+      await userEvent.type(field, 'DGW target{Enter}')
+      await waitFor(() => {
+        expect(apiPost).toHaveBeenCalledWith('/api/watchlist',
+          { code: 200, note: 'DGW target' })
+      })
+    })
+
+  it('leaves focus alone when the manager moved it during the write',
+    async () => {
+      // The save button is disabled while the write is in flight, which in a
+      // real browser drops focus to `<body>`, so it is restored when the
+      // button comes back. That restore must not fire when focus is
+      // somewhere the manager put it himself — taking it back mid-keystroke
+      // is worse than the lost tab stop it repairs.
+      //
+      // The lost-focus branch itself is not testable here: jsdom does not
+      // blur on `disabled`, and refuses both `blur()` and `body.focus()`
+      // while the element is disabled, so focus cannot be moved off the
+      // button at all. This case pins the half the suite can reach.
+      let settle: (panel: WatchlistPanel) => void = () => {}
+      apiPost.mockReturnValueOnce(
+        new Promise<WatchlistPanel>((resolve) => { settle = resolve }))
+      render(<WatchlistTab onChange={vi.fn()} />)
+      const field = await screen.findByLabelText('note for Haaland')
+      await userEvent.type(field, 'x')
+      const save = screen.getByRole('button', { name: 'Save note for Haaland' })
+      await userEvent.click(save)
+      expect(save).toBeDisabled()
+      const elsewhere = screen.getByRole('button', { name: 'Unstar Salah' })
+      elsewhere.focus()
+      settle(PANEL)
+      await waitFor(() => expect(save).toBeEnabled())
+      expect(elsewhere).toHaveFocus()
+    })
+
   it('unstars through DELETE and tells the hub', async () => {
     const onChange = vi.fn()
     render(<WatchlistTab onChange={onChange} />)

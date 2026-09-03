@@ -113,6 +113,9 @@ describe('the tab in the URL', () => {
     ['Players', <Players key="p" />, '/players', 'Fixture matrix', 'matrix'],
     ['League', <League key="l" />, '/league', 'Rivals', 'rivals'],
     ['Planning', <Planning key="n" />, '/planning', 'Chips', 'chips'],
+    // v12 W5 §6.3: the watchlist joined the strip after the hook did, so this
+    // row is here to hold `TABS` and the hook's whitelist together.
+    ['Players', <Players key="pw" />, '/players', 'Watchlist', 'watchlist'],
   ])('%s opens the tab the link names', async (name, node, at, label, value) => {
     serve(name)
     show(node, `${at}?tab=${value}`)

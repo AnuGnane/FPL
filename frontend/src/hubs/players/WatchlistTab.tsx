@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { apiDelete, apiGet, apiPost, errorText } from '../../api/client'
 import { Card, EmptyState, Loading, PlayerName } from '../../kit'
 import type { WatchRow, WatchlistPanel } from '../../types'
@@ -8,15 +8,23 @@ import type { WatchRow, WatchlistPanel } from '../../types'
  *
  * The endpoint has carried `note` and `set_at` since v8e and nothing has ever
  * rendered either, because the explorer's star posts `{ code, note: '' }` for
- * every click (`Players.tsx:83`). This is the only surface from which a note
+ * every click (`Players.tsx:84`). This is the only surface from which a note
  * can be written or read.
  *
- * `set_at` is labelled "noted" and not "watching since", and the caveat under
- * the table says why: `watchlist.watch` replaces *both* the note and the
+ * `set_at` is labelled "Noted" and not "watching since", and the caveat below
+ * the rows says why: `watchlist.watch` replaces *both* the note and the
  * timestamp on every star (`watchlist.py:107`), so re-starring from the
  * explorer wipes a note and resets the date. That is the store's behaviour,
- * not this view's to change — but a column headed "watching since" would be a
+ * not this view's to change — but a label reading "watching since" would be a
  * claim the data does not support.
+ *
+ * Each row seeds its field from the panel it was mounted with and keeps the
+ * manager's typing thereafter, so a note changed by another surface while
+ * this tab is open shows up on the next mount rather than under the cursor.
+ * Radix unmounts inactive tab content, so that is the next visit to the tab.
+ * Remounting rows on every write would be the alternative, and it would throw
+ * away a half-typed note to display a value nobody in front of the screen
+ * changed.
  */
 
 function stamp(iso: string): string {
@@ -34,6 +42,40 @@ function Row(
   const [draft, setDraft] = useState(row.note)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const saveRef = useRef<HTMLButtonElement>(null)
+  const restore = useRef(false)
+
+  // `disabled` on the control that has focus drops focus to `<body>`, and a
+  // keyboard user's next Tab then starts again from the top of the page.
+  // Focus is returned once the button is enabled again — in an effect and not
+  // in the promise's `.finally`, because at that moment React has not
+  // re-rendered and `focus()` on a still-disabled button does nothing.
+  //
+  // Only when focus is nowhere: if the manager moved on during the write —
+  // to the next row's field, say — taking it back would be this view typing
+  // over him, which is worse than the lost tab stop it fixes.
+  //
+  // The `nowhere` branch has no test, and cannot have one: jsdom does not
+  // blur on `disabled` and refuses `blur()` and `body.focus()` while the
+  // element is disabled, so the browser behaviour this repairs is
+  // unreachable from the suite. The branch that *is* tested is the other
+  // one — that focus the manager moved himself is left alone.
+  useEffect(() => {
+    if (busy || !restore.current) return
+    restore.current = false
+    const active = document.activeElement
+    if (!active || active === document.body) saveRef.current?.focus()
+  }, [busy])
+
+  function save() {
+    setBusy(true)
+    setError(null)
+    restore.current = true
+    apiPost<WatchlistPanel>('/api/watchlist', { code: row.code, note: draft })
+      .then(onSaved)
+      .catch((e) => setError(errorText(e)))
+      .finally(() => setBusy(false))
+  }
 
   return (
     <div className="flex flex-col gap-1 border-b border-divider py-2">
@@ -55,7 +97,13 @@ function Row(
           {`Unstar ${row.name}`}
         </button>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
+      {/* A form, so Enter in the field saves the note the manager just
+          typed. A note is one short line and reaching for the mouse to
+          commit it is the wrong shape for the input. */}
+      <form
+        className="flex flex-wrap items-center gap-2"
+        onSubmit={(e) => { e.preventDefault(); save() }}
+      >
         <input
           aria-label={`note for ${row.name}`}
           className="min-w-0 flex-1 rounded-card border border-border bg-base
@@ -65,23 +113,15 @@ function Row(
           onChange={(e) => setDraft(e.target.value)}
         />
         <button
-          type="button"
+          ref={saveRef}
+          type="submit"
           className="rounded-card border border-border bg-base px-2 py-1
                      text-text-secondary hover:text-text"
           disabled={busy}
-          onClick={() => {
-            setBusy(true)
-            setError(null)
-            apiPost<WatchlistPanel>('/api/watchlist',
-              { code: row.code, note: draft })
-              .then(onSaved)
-              .catch((e) => setError(errorText(e)))
-              .finally(() => setBusy(false))
-          }}
         >
           {`Save note for ${row.name}`}
         </button>
-      </div>
+      </form>
       {error && (
         <p data-testid={`watchlist-error-${row.code}`} className="text-rust">
           {error}
@@ -134,11 +174,9 @@ export default function WatchlistTab(
 
   return (
     <Card title="Watchlist">
-      <div className="overflow-x-auto">
-        {panel.rows.map((row) => (
-          <Row key={row.code} row={row} onSaved={adopt} onRemoved={adopt} />
-        ))}
-      </div>
+      {panel.rows.map((row) => (
+        <Row key={row.code} row={row} onSaved={adopt} onRemoved={adopt} />
+      ))}
       <p data-testid="watchlist-caveat" className="mt-2 text-text-faint">
         {'Starring a player again from the Explorer replaces the note and the '
          + 'date, so edit notes here rather than re-starring.'}
