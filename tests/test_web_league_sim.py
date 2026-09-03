@@ -388,6 +388,32 @@ def test_banking_a_field_sample_invalidates_the_cache(client, monkeypatch):
     assert after["field_rate"] is not None
 
 
+def test_the_field_panel_reads_the_eo_banked_under_the_week_before(client):
+    """End to end: plan gameweek 3, EO banked under gameweek 2, and the panel
+    answers rather than rendering its cold-clone empty state."""
+    from gaffer.data.field import append_field_eo, field_eo_rows
+
+    append_field_eo(field_eo_rows({7: {"eo": 62.5, "se": 2.0, "n": 300}},
+                                  2, "2026-27", day="2026-09-05"))
+    field = client.get("/api/league/sim").json()["field"]
+    assert field["gw"] == 3
+    assert field["eo_gw"] == 2
+    assert field["eo_source"] == "last-sample"
+    assert field["p_green"] is not None
+    assert field["field_draws"] == 8
+    # Element 8 is in my XI and in nobody's sampled squad. He is simulated at
+    # ownership zero, not deleted from my week.
+    assert field["unsampled_picks"] == 1
+
+
+def test_the_field_panel_is_a_named_empty_state_on_a_cold_clone(client):
+    field = client.get("/api/league/sim").json()["field"]
+    assert field["p_green"] is None
+    assert field["eo_gw"] is None
+    assert field["eo_source"] == "none"
+    assert "field-scrape" in field["waiting_for"]
+
+
 # --- the cached-only path This Week's chip takes ---------------------------
 
 

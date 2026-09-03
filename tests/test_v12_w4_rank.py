@@ -385,3 +385,129 @@ def test_a_log_that_was_never_written_reads_as_none(eo_store):
     from gaffer.web.routers import league_sim as router
 
     assert router.deadline_eo_table("2026-27", 6) == ({}, "none")
+
+
+# --- the router's panel assembly ----------------------------------------
+
+from types import SimpleNamespace  # noqa: E402
+
+
+def _cfg(season="2026-27", sim_n=200):
+    return SimpleNamespace(current_season=season, sim_n=sim_n)
+
+
+def test_the_panel_reads_the_sample_banked_under_the_gameweek_before(eo_store):
+    """The field sample for plan gameweek N is banked under N-1.
+
+    ``build_inputs`` reads squads from ``max(1, plan_gw - 1)`` — picks 404
+    before a deadline — and ``_cache_key`` keys the cached run on that same
+    file. The panel asked for the plan gameweek's EO instead and got nothing:
+    on the live log, plan gw 3 answered source ``none`` and 0 elements while
+    gw 2 answered ``last-sample`` and 123. §3.3's ``deadline_eo`` is already
+    the one-ahead projection, so N-1's sample *is* the number for N.
+    """
+    from gaffer.web.routers import league_sim as router
+
+    append_field_eo(field_eo_rows({7: {"eo": 50.0, "se": 2.0, "n": 300}},
+                                  2, "2026-27", day="2026-09-05"))
+    out = router._field_rank(_cfg(), _inputs([7], elements=[7]), 3)
+    assert out.eo_gw == 2
+    assert out.eo_source == "last-sample"
+    assert out.p_green is not None
+
+
+def test_the_panel_sees_the_deadline_trend_from_the_two_weeks_before(eo_store):
+    from gaffer.web.routers import league_sim as router
+
+    append_field_eo(field_eo_rows({7: {"eo": 40.0, "se": 2.0, "n": 300}},
+                                  1, "2026-27", day="2026-08-29"))
+    append_field_eo(field_eo_rows({7: {"eo": 50.0, "se": 2.0, "n": 300}},
+                                  2, "2026-27", day="2026-09-05"))
+    out = router._field_rank(_cfg(), _inputs([7], elements=[7]), 3)
+    assert out.eo_gw == 2 and out.eo_source == "deadline-trend"
+
+
+def test_a_sample_banked_under_the_plan_gameweek_itself_is_not_read(eo_store):
+    """Deliberately not a fallback. Trying the plan gameweek first would make
+    the panel's answer depend on whether a scrape had happened *since* the
+    deadline, and would silently read a post-deadline sample as a
+    pre-deadline projection."""
+    from gaffer.web.routers import league_sim as router
+
+    append_field_eo(field_eo_rows({7: {"eo": 50.0, "se": 2.0, "n": 300}},
+                                  3, "2026-27", day="2026-09-12"))
+    out = router._field_rank(_cfg(), _inputs([7], elements=[7]), 3)
+    assert out.eo_source == "none"
+    assert out.eo_gw is None
+    assert out.p_green is None
+    assert "field-scrape" in out.waiting_for
+
+
+def test_gameweek_one_reads_gameweek_one(eo_store):
+    """``max(1, gw - 1)``: there is no gameweek zero to look in."""
+    from gaffer.web.routers import league_sim as router
+
+    append_field_eo(field_eo_rows({7: {"eo": 50.0, "se": 2.0, "n": 300}},
+                                  1, "2026-27", day="2026-08-29"))
+    out = router._field_rank(_cfg(), _inputs([7], elements=[7]), 1)
+    assert out.eo_gw == 1 and out.p_green is not None
+
+
+def test_the_panel_counts_picks_the_sample_never_saw(eo_store):
+    from gaffer.web.routers import league_sim as router
+
+    append_field_eo(field_eo_rows({7: {"eo": 50.0, "se": 2.0, "n": 300}},
+                                  2, "2026-27", day="2026-09-05"))
+    out = router._field_rank(_cfg(), _inputs([7, 8, 9], elements=[7, 8, 9]), 3)
+    assert out.unsampled_picks == 2
+    assert out.field_draws == 8
+
+
+def test_the_rank_slope_ignores_ledger_rows_after_the_plan_gameweek(
+        eo_store, monkeypatch):
+    """A ledger row carries no season, so after a rollover last season's
+    gameweek 30 sits in the same file as this season's gameweek 3 and reads
+    as the future. Filtering to ``gw <= plan gw`` is correct within a season
+    and self-limiting at the rollover."""
+    from gaffer.web.routers import league_sim as router
+
+    this_season = [{"gw": g, "my_points": 40 + 10 * g,
+                    "overall_rank": 1_000_000 - 50_000 * g}
+                   for g in range(1, 8)]
+    last_season = [{"gw": g, "my_points": 100 - g,
+                    "overall_rank": 200_000 + 1_000 * g}
+                   for g in range(20, 39)]
+    monkeypatch.setattr("gaffer.review.load_ledger",
+                        lambda *a, **k: last_season + this_season)
+    out = router._field_rank(_cfg(), _inputs([7], elements=[7]), 8)
+    assert out.rank_slope_rows == 7
+    assert out.rank_slope == rank_slope(this_season)["slope"]
+    assert out.rank_slope != rank_slope(last_season + this_season)["slope"]
+
+
+def test_a_ledger_row_with_no_gameweek_is_dropped_rather_than_crashing(
+        eo_store, monkeypatch):
+    from gaffer.web.routers import league_sim as router
+
+    rows = ([{"my_points": 50, "overall_rank": 500_000}]
+            + [{"gw": g, "my_points": 40 + 10 * g,
+                "overall_rank": 1_000_000 - 50_000 * g} for g in range(1, 8)])
+    monkeypatch.setattr("gaffer.review.load_ledger", lambda *a, **k: rows)
+    assert router._field_rank(_cfg(), _inputs([7], elements=[7]),
+                              8).rank_slope_rows == 7
+
+
+def test_the_panel_never_takes_the_page_down(eo_store, monkeypatch):
+    """"Never raises" was a docstring, not a guard: the panel is one of four
+    answers on a page and a display read must not 500 the other three."""
+    from gaffer.web.routers import league_sim as router
+
+    def boom(*_a, **_k):
+        raise RuntimeError("the EO log is a directory")
+
+    monkeypatch.setattr(router, "deadline_eo_table", boom)
+    out = router._field_rank(_cfg(), _inputs([7], elements=[7]), 3)
+    assert out.p_green is None
+    assert out.eo_source == "none" and out.eo_gw is None
+    assert "the EO log is a directory" in out.waiting_for
+    assert out.rank_slope is None and out.rank_waiting_for

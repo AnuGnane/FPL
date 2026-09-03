@@ -26,10 +26,10 @@ from gaffer.config import load_config
 from gaffer.data.field import field_sample_path, latest_field_eo
 from gaffer.errors import GafferError
 from gaffer.league_mode import win_probability
-from gaffer.league_sim import (SIM_SEED, Pins, append_sim_history,
-                               build_inputs, effective_picks, load_sim_history,
-                               rank_slope, simulate_field_rank,
-                               simulate_league)
+from gaffer.league_sim import (SIM_SEED, TOP10K_WAITING, Pins,
+                               append_sim_history, build_inputs,
+                               effective_picks, load_sim_history, rank_slope,
+                               simulate_field_rank, simulate_league)
 from gaffer.web.schemas import (FieldRank, LeagueSimData, LeagueWhatIfRequest,
                                 LeagueWhatIfResult, LeagueWhatIfRow, RivalBeat,
                                 SimPoint, WinProb)
@@ -133,7 +133,7 @@ def _cache_key(cfg, gw: int) -> tuple:
     _, meta = solve_state_paths(gw)
     stamp = meta.stat().st_mtime if meta.exists() else 0.0
     sample = field_sample_path(str(getattr(cfg, "current_season", "") or ""),
-                               max(1, int(gw) - 1))
+                               eo_gw_for(gw))
     field_stamp = sample.stat().st_mtime if sample.is_file() else 0.0
     return (int(cfg.league_id), int(gw), stamp, field_stamp, int(cfg.sim_n),
             float(cfg.rival_drift))
@@ -239,23 +239,101 @@ def deadline_eo_table(season: str, gw: int) -> tuple[dict[int, float], str]:
     return {}, "none"
 
 
+def eo_gw_for(gw: int) -> int:
+    """Which gameweek's EO sample answers for plan gameweek ``gw``.
+
+    ``gw - 1``, floored at 1, and it is the same arithmetic
+    :func:`_cache_key` and :func:`gaffer.league_sim.build_inputs` already use:
+    entry picks 404 before a deadline, so the field scrape can only ever have
+    banked the **last scored** gameweek. Asking the log for the plan gameweek
+    is asking for a sample that cannot exist until the week it is meant to
+    inform has already started — on the live log, plan gw 3 answered source
+    ``none`` over 0 elements while gw 2 answered ``last-sample`` over 123, and
+    the panel rendered its cold-clone empty state on a machine that had
+    scraped that morning.
+
+    It is a single read rather than "try ``gw``, fall back to ``gw - 1``".
+    A sample banked under the plan gameweek itself is a *post-deadline*
+    sample — the field's picks, now frozen and visible — and reading it as if
+    it were the pre-deadline projection would make the panel's answer depend
+    on what time of week the page was opened. §3.3's ``deadline_eo`` is
+    already the one-gameweek-ahead extrapolation of the sample it is given,
+    so ``gw - 1``'s sample *is* the number for ``gw``.
+    """
+    return max(1, int(gw) - 1)
+
+
+def _ledger_upto(rows, gw: int) -> list[dict]:
+    """Graded rows no later than the plan gameweek.
+
+    A ledger row records a gameweek but not a *season*
+    (``review.py``'s ledger columns), so after an August rollover last
+    season's gameweek 30 sits in the same file as this season's gameweek 3 and
+    reads as the future. Regressing rank on points over both is regressing
+    over two different element spaces, two different fields and a rank that
+    reset in between.
+
+    ``gw <= plan gw`` is the cheap guard, and its limits are stated rather
+    than papered over: it is *correct* within a season, and at a rollover it
+    is merely self-limiting — early in the new season it keeps only the new
+    season's weeks (nothing from last season is that low), and by the time the
+    plan gameweek climbs past last season's rows they start being admitted
+    again. The real fix is a season column on the ledger, which is a change to
+    a protected file this cycle.
+    """
+    out = []
+    for row in rows or []:
+        try:
+            if row.get("gw") is not None and int(row["gw"]) <= int(gw):
+                out.append(row)
+        except (TypeError, ValueError):
+            continue          # a gameweek that is not a number is not a week
+    return out
+
+
 def _field_rank(cfg, inputs, gw: int) -> FieldRank:
-    """v12 W4 §5.3's panel payload. Never raises — a display read on a page
-    that already answers three other questions."""
+    """v12 W4 §5.3's panel payload. Never raises.
+
+    Never raises *by construction* now, rather than by inspection. This is a
+    display read on a page that already answers three other questions, and
+    the sentence used to be a docstring guarding nothing: an unreadable EO
+    log, a schema drift in the sample, a numpy error on a degenerate axis
+    would each have taken ``GET /api/league/sim`` down whole. The failure
+    renders as the panel's own empty state, naming the exception, which is
+    the one place a reader can act on it.
+    """
+    try:
+        return _field_panel(cfg, inputs, int(gw))
+    except Exception as exc:  # noqa: BLE001 — a display read never 500s a page
+        return FieldRank(
+            gw=int(gw), n=0, seed=SIM_SEED, managers=0, eo_source="none",
+            eo_gw=None, field_draws=0,
+            waiting_for=f"the field panel could not be computed ({exc}) — "
+                        f"the rest of this page is unaffected",
+            top10k_waiting_for=TOP10K_WAITING,
+            rank_waiting_for="the field panel could not be computed")
+
+
+def _field_panel(cfg, inputs, gw: int) -> FieldRank:
+    """The panel, assembled. Wrapped by :func:`_field_rank`."""
     from gaffer.review import load_ledger
 
     season = str(getattr(cfg, "current_season", "") or "")
-    table, source = deadline_eo_table(season, int(gw))
+    eo_gw = eo_gw_for(gw)
+    table, source = deadline_eo_table(season, eo_gw)
     out = simulate_field_rank(inputs, table, n=int(cfg.sim_n),
                               seed=SIM_SEED, gw=int(gw))
     try:
-        slope = rank_slope(load_ledger())
+        slope = rank_slope(_ledger_upto(load_ledger(), gw))
     except Exception:  # noqa: BLE001 — an unreadable ledger is an empty one
         slope = {"slope": None, "rows": 0,
                  "waiting_for": "the decision ledger could not be read"}
     return FieldRank(
         gw=int(out["gw"]), n=int(out["n"]), seed=int(out["seed"]),
         managers=int(out["managers"]), eo_source=source,
+        eo_gw=(eo_gw if table else None),
+        field_draws=int(out["draws"]),
+        unsampled_picks=int(out["unsampled_picks"]),
         p_green=out["p_green"], waiting_for=out["waiting_for"],
         p_top10k=out["p_top10k"],
         top10k_waiting_for=out["top10k_waiting_for"],

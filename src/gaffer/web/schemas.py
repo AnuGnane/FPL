@@ -229,6 +229,26 @@ class FieldRank(BaseModel):
     """``"deadline-trend"`` (§3.3's extrapolation), ``"last-sample"`` (the
     newest scrape), or ``"none"``. A trend EO and a last-sample EO are
     different numbers and the panel says which it used."""
+    eo_gw: int | None = None
+    """Which gameweek's sample the EO came from, or ``None`` when none did.
+
+    Not :attr:`gw`. The field sample for plan gameweek N is banked under
+    N-1 — picks 404 before a deadline, so the scrape reads the last scored
+    week — and §3.3's ``deadline_eo`` extrapolates it one gameweek forward.
+    Two different gameweek numbers in one payload is exactly the kind of
+    thing a reader has to be told rather than left to infer."""
+    field_draws: int = 1
+    """Independent field populations the headline was averaged over
+    (:data:`gaffer.league_sim.FIELD_DRAWS`). Provenance, like ``n`` and
+    ``seed``: which three hundred managers were drawn is a source of noise in
+    its own right."""
+    unsampled_picks: int = 0
+    """Players in my squad the field sample never saw.
+
+    ``eo_from_picks`` omits anyone no sampled entry started, so a genuine
+    differential is routinely absent from the EO table. He is simulated at
+    ownership 0.0 — nobody in the field has him — and counted here so the
+    panel can say how much of my week the sample cannot speak to."""
     p_green: float | None = None
     waiting_for: str | None = None
     p_top10k: float | None = None
