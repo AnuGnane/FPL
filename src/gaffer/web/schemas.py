@@ -516,8 +516,13 @@ class PlayerRow(BaseModel):
     free_kicks_order: int | None
     corners_order: int | None
     set_piece_manual: list[str] = Field(default_factory=list)
-    """Kinds of set piece this player's order came from ``data/set_pieces.toml``
-    rather than from FPL. Empty on every machine with no override file."""
+    """Kinds of set piece whose order above came from ``data/set_pieces.toml``
+    rather than from FPL. Empty on every machine with no override file.
+
+    Includes a *cleared* order: a file that lists his club's queue and leaves
+    him out serves him ``None``, and that blank is the file's word as much as
+    a rank is. Only ``penalties`` reaches expected points; the other two move
+    the numbers on this row and nothing else."""
     in_squad: bool
     last4: list[int] = Field(default_factory=list)
     """Points from the last four *finished* gameweeks, oldest first.
@@ -606,10 +611,13 @@ class PlayerExplain(BaseModel):
     fixtures: list[FixtureExplain]
     next_fixtures: list[NextFixture]
     set_pieces: dict[str, int | None]
+    """``penalties`` / ``free_kicks`` / ``corners``, each the user's override
+    file's word where it has one and FPL's otherwise — the same numbers
+    :class:`PlayerRow` serves, from the same loader."""
     set_pieces_manual: list[str] = Field(default_factory=list)
     """Which of ``set_pieces``' three orders came from the user's override
-    file. Additive and default-empty, so a client that does not read it is
-    unaffected."""
+    file, a cleared one included. Additive and default-empty, so a client that
+    does not read it is unaffected."""
 
 
 class ChipWeek(BaseModel):

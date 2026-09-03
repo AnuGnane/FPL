@@ -8,6 +8,7 @@ bootstrap snapshots. No model is loaded and no request is made.
 from __future__ import annotations
 
 import math
+from collections.abc import Mapping
 
 import pandas as pd
 from fastapi import APIRouter, Query
@@ -146,26 +147,95 @@ def _trend_fields(trend: dict[int, dict], element: int) -> dict:
             "field_eo_delta": cell["delta"]}
 
 
-def set_piece_manual() -> dict[int, list[str]]:
+def set_piece_orders(team_of: Mapping[int, int] | None = None
+                     ) -> dict[str, dict[int, int | None]]:
+    """``{kind: {code: served order}}`` — every order the file decides.
+
+    v12 W4 §5.4, club-aware by the 2026-09-03 ruling, and the same rule the
+    EP hook applies in ``set_pieces.pen_table``: a club's queue is exactly
+    what the file lists for that club, so a listed code takes the file's rank
+    and an *unlisted teammate* is served ``None`` — no kind of taker — however
+    FPL has him ordered. Without that, one line naming a new taker leaves the
+    incumbent at FPL's order 1 and the panel shows two number ones.
+
+    ``team_of`` is ``{code: team_code}``, read from the snapshot the caller is
+    already serving; the club never comes from the table header, which is a
+    comment for the reader. Pass nothing and no club is identified, so only
+    the codes the file names appear — which is what a caller with no snapshot
+    in hand (the degradation rail) should see.
+
+    **Only ``penalties`` reaches expected points.** The other two kinds change
+    the number this endpoint serves and nothing else: there is no free-kick or
+    corner term in the model, and this function does not invent one.
+    """
+    from gaffer.data.set_piece_overrides import (SET_PIECE_KINDS,
+                                                 load_set_piece_overrides)
+
+    out: dict[str, dict[int, int | None]] = {k: {} for k in SET_PIECE_KINDS}
+    for tables in load_set_piece_overrides().values():
+        for kind, order in tables.items():
+            for code, rank in order.items():
+                # Keep-first on a code two clubs both name, matching
+                # ``penalty_order_overrides`` so the badge and the EP term
+                # cannot disagree about a mid-window transfer typed twice.
+                out[kind].setdefault(int(code), int(rank))
+    if team_of:
+        for served in out.values():
+            clubs = {int(team_of[c]) for c in served if c in team_of}
+            for code, team in team_of.items():
+                if int(team) in clubs and int(code) not in served:
+                    served[int(code)] = None
+    return out
+
+
+def _manual_from_orders(orders: dict[str, dict[int, int | None]]
+                        ) -> dict[int, list[str]]:
+    """``{code: [kinds whose served order came from the file]}``.
+
+    Includes the demoted: a teammate served ``None`` because the file left him
+    out has an order that came from the file just as much as the man it
+    named, and a blank with no badge reads as "FPL has nothing to say", which
+    is the opposite of what happened. Kinds are sorted so the badge does not
+    reshuffle between reloads.
+    """
+    out: dict[int, list[str]] = {}
+    for kind, served in orders.items():
+        for code in served:
+            out.setdefault(int(code), []).append(str(kind))
+    return {code: sorted(kinds) for code, kinds in sorted(out.items())}
+
+
+def _served_set_pieces(orders: dict[str, dict[int, int | None]], code: int,
+                       me) -> dict[str, int | None]:
+    """The explain panel's three orders: the file's where it has a word.
+
+    Keyed by the panel's own names (``free_kicks``) rather than FPL's column
+    names, and reading the same ``orders`` map the table row reads, so the
+    modal and the row that opened it cannot disagree.
+    """
+    pairs = (("penalties", "penalties", "penalties_order"),
+             ("free_kicks", "direct_free_kicks", "direct_freekicks_order"),
+             ("corners", "corners", "corners_and_indirect_freekicks_order"))
+    return {shown: (orders[kind][code] if code in orders[kind]
+                    else _opt_int(me[column]))
+            for shown, kind, column in pairs}
+
+
+def set_piece_manual(team_of: Mapping[int, int] | None = None
+                     ) -> dict[int, list[str]]:
     """``{code: [kinds the user overrode]}`` — the badge, and nothing else.
 
     A display fact. It never enters an expected point: only ``penalties``
     reaches EP at all (through ``set_pieces.pen_table``'s hook), and this map
     exists so a user who corrected a corner taker can see that his correction
-    took. Kinds are sorted so the badge does not reshuffle between reloads.
+    took.
 
-    An empty list in the file names nobody and therefore marks nobody — which
-    is right: the badge says "this row is your correction", and a row nobody
-    was named for is not.
+    An empty list in the file names nobody and therefore marks nobody — it
+    identifies no club either, so it demotes nobody: it records that you
+    checked and found nobody, and the badge says "this row is your
+    correction", which a row nobody was named for is not.
     """
-    from gaffer.data.set_piece_overrides import load_set_piece_overrides
-
-    out: dict[int, set[str]] = {}
-    for tables in load_set_piece_overrides().values():
-        for kind, order in tables.items():
-            for code in order:
-                out.setdefault(int(code), set()).add(str(kind))
-    return {code: sorted(kinds) for code, kinds in sorted(out.items())}
+    return _manual_from_orders(set_piece_orders(team_of))
 
 
 @router.get("", response_model=list[PlayerRow])
@@ -225,8 +295,19 @@ def players(position: str | None = None, team: int | None = None,
     # construction (A4) — which is this page's upcoming week.
     trend = _trend_table(None, season)
     # v12 W4 §5.4. Once per request, not once per row: the file is small but
-    # it is a disk read, and a hundred players is a hundred reads.
-    manual = set_piece_manual()
+    # it is a disk read, and a hundred players is a hundred reads. The rows
+    # then take a dict lookup each.
+    #
+    # Club-aware by the 2026-09-03 ruling, which needs `{code: team_code}` —
+    # so the snapshot the endpoint is already serving supplies the clubs, and
+    # the badge is derived from the same orders it marks rather than computed
+    # a second way. That is the whole point: the badge marks a served order
+    # that came from the file, so the two cannot drift apart.
+    orders = set_piece_orders(dict(zip(snapshot["code"],
+                                       snapshot["team_code"])))
+    manual = _manual_from_orders(orders)
+    pens, kicks, corners = (orders["penalties"], orders["direct_free_kicks"],
+                            orders["corners"])
 
     rows = []
     for r in snapshot.itertuples():
@@ -262,10 +343,17 @@ def players(position: str | None = None, team: int | None = None,
             available=status not in UNAVAILABLE_STATUS,
             status=status, news=str(r.news or ""),
             chance_of_playing=_opt_float(r.chance_of_playing),
-            penalties_order=_opt_int(r.penalties_order),
-            free_kicks_order=_opt_int(r.direct_freekicks_order),
-            corners_order=_opt_int(
-                r.corners_and_indirect_freekicks_order),
+            # The file's word where it has one, FPL's otherwise. `in` rather
+            # than `.get(code)`: a demoted teammate is served `None`, and
+            # `None` here means "the file cleared him", not "the file is
+            # silent" — which is exactly the distinction a default would eat.
+            penalties_order=(pens[code] if code in pens
+                             else _opt_int(r.penalties_order)),
+            free_kicks_order=(kicks[code] if code in kicks
+                              else _opt_int(r.direct_freekicks_order)),
+            corners_order=(corners[code] if code in corners
+                           else _opt_int(
+                               r.corners_and_indirect_freekicks_order)),
             set_piece_manual=manual.get(code, []),
             in_squad=code in owned,
             last4=last4.get(code, []),
@@ -391,6 +479,10 @@ def explain(code: int) -> PlayerExplain:
         raise GafferError(f"player {code} not in the saved snapshot — run "
                           "`gaffer advise`")
     me = rows.iloc[0]
+    # The whole snapshot, not just his row: the club rule needs his teammates
+    # to know whether the file spoke about his club at all.
+    orders = set_piece_orders(dict(zip(snapshot["code"],
+                                       snapshot["team_code"])))
     teams = load_snapshot("live/teams.parquet")
     team_name = dict(zip(teams["code"], teams["name"]))
     id_to_code = dict(zip(teams["team_id"], teams["code"]))
@@ -417,8 +509,8 @@ def explain(code: int) -> PlayerExplain:
         team_name=str(team_name.get(int(me["team_code"]), "")),
         ep_next=round(ep_next, 2), fixtures=fixtures,
         next_fixtures=next_three[:3],
-        set_pieces={"penalties": _opt_int(me["penalties_order"]),
-                    "free_kicks": _opt_int(me["direct_freekicks_order"]),
-                    "corners": _opt_int(
-                        me["corners_and_indirect_freekicks_order"])},
-        set_pieces_manual=set_piece_manual().get(code, []))
+        # v12 W4 §5.4. The same orders the table serves, from the same
+        # loader: a modal that disagreed with the row that opened it would be
+        # a worse bug than the one the override fixes.
+        set_pieces=_served_set_pieces(orders, code, me),
+        set_pieces_manual=_manual_from_orders(orders).get(code, []))
