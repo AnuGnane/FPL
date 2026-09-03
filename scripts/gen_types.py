@@ -7,7 +7,7 @@ Run it and commit both outputs:
 
 `types.ts` is **not** generated and cannot be. Thirty of its exports have no
 pydantic source — thirteen of them type the *inside* of payloads the server
-declares as `dict[str, Any]` — and nine models are narrowed by hand in the
+declares as `dict[str, Any]` — and eleven models are narrowed by hand in the
 browser. A generator that overwrote `types.ts` would delete a third of the file
 and stop every `advice.captain.name` in the tree from compiling (plan A9).
 
@@ -33,14 +33,26 @@ WIRE_ONLY = (
 """Models the client narrows by hand, emitted as ``Wire<Name>``.
 
 Literally "what the server sends" — so the hand-written narrowing keeps the
-plain name its consumers already import and nothing collides. Two reasons a
+plain name its consumers already import and nothing collides. Four reasons a
 model is on this list, and :data:`NARROWING_REASON` says which applies:
 
-* six carry ``Any``, which the generator can only describe as an open record;
-* three carry a list field the browser reads through ``?? []`` and whose
-  hand-written comment says *why* the guard is there — a sentence the JSON
-  Schema has no room for, since pydantic puts attribute docstrings nowhere the
-  schema can see them.
+* **six carry ``Any``**, which the generator can only describe as an open
+  record: ``AdviceLatest``, ``History``, ``ModelHealth``, ``Health``,
+  ``CalibrationReport``, ``ReviewSummary``.
+* **three carry a list an older payload can omit** — ``PlayerRow``,
+  ``PlayerExplain``, ``PlanTimeline``. The generated half types every field
+  required, which is what *this* server sends; the browser reads these three
+  through ``?? []`` because a banked artifact or an older server has no such
+  key, and the hand-written comment is where that reason lives.
+* **one is a referrer**: ``Review.summary`` is a ``$ref``, and a ``$ref``
+  resolves to the *generated* twin — so narrowing ``ReviewSummary`` alone left
+  ``data.summary.worst.lane`` an open record. A narrowed model that something
+  else references needs its referrer narrowed too, and this is the only one.
+* **one is looser inside the artifact than in the model**: ``PlayerRef``.
+  ``Advice`` types the raw advice artifact, which the server hands over inside
+  a ``dict[str, Any]`` and never validates, so nothing fills a default on the
+  way out — the identity fields may be absent and the artifact's own ``tag``
+  and ``frequency`` are present.
 """
 
 NARROWING_REASON = {
@@ -104,7 +116,7 @@ softening every request type in the tree.
 
 RENAME = {
     # The client suffixes a page-level payload with `Data` so the name does not
-    # collide with a component or a lane name. Fourteen of these predate this
+    # collide with a component or a lane name. Thirteen of these predate this
     # script and every one of them has consumers.
     "Confidence": "ConfidenceData",
     "Decomposition": "DecompositionData",
@@ -119,7 +131,7 @@ RENAME = {
     "Quality": "QualityData",
     "RivalDetail": "RivalDetailData",
     "Ticker": "TickerData",
-    # The nine the browser narrows.
+    # The eleven the browser narrows.
     "AdviceLatest": "WireAdviceLatest",
     "CalibrationReport": "WireCalibrationReport",
     "Health": "WireHealth",

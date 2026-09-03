@@ -7,10 +7,12 @@
  * with json-schema-to-typescript (pinned 16.0.0) and asserts this file is the
  * result. Edit the pydantic model, re-run both, commit all three.
  *
- * The hand-written half of the client's types — and the narrowings of the nine
- * `Wire*` models, six of which carry a `dict[str, Any]` the browser reads by
- * hand and three of which carry a list an older payload can omit — lives in
- * `types.ts`, which re-exports this file.
+ * The hand-written half of the client's types — and the narrowings of the
+ * eleven `Wire*` models, six of which carry a `dict[str, Any]` the browser
+ * reads by hand, three of which carry a list an older payload can omit, one of
+ * which only references a narrowed model, and one of which is looser inside
+ * the unvalidated advice artifact than in the model — lives in `types.ts`,
+ * which re-exports this file.
  */
 export interface GafferApi {
   [k: string]: unknown

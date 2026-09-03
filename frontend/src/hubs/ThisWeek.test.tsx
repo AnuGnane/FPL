@@ -3,6 +3,7 @@ import {
 } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { AdviceDiff } from '../types'
 import ThisWeek from './ThisWeek'
 
 const { FakeApiError, apiGet, apiPost } = vi.hoisted(() => {
@@ -94,7 +95,18 @@ function route(path: string) {
     return Promise.resolve({ gw: 5, moved: 0, rows: [] })
   }
   if (path.startsWith('/api/advice/diff')) {
-    return Promise.resolve({ gw: 5, available: false })
+    // The whole model, not the two fields the strip happens to read first:
+    // `/api/advice/diff` declares `response_model=AdviceDiff`, so a first run
+    // of the week arrives with every key present and the lists empty. A mock
+    // that omitted them was the only thing in the tree producing the payload
+    // the movers guard used to defend against.
+    return Promise.resolve<AdviceDiff>({
+      gw: 5, available: false, changed: false,
+      current_at: null, previous_at: null,
+      buys_added: [], buys_dropped: [], sells_added: [], sells_dropped: [],
+      captain_from: null, captain_to: null, chip_from: null, chip_to: null,
+      expected_pts_delta: 0, ep_movers: [], ep_movers_count: null,
+    })
   }
   return Promise.reject(new Error(`unexpected path ${path}`))
 }

@@ -9,8 +9,9 @@
  *
  * This file keeps what a generator cannot produce: the interfaces that type
  * the *inside* of payloads the server declares as `dict[str, Any]`, and the
- * nine narrowings of the `Wire*` models — each one an `Omit` of its generated
- * twin, so the shared fields are described in exactly one place.
+ * eleven narrowings of the `Wire*` models — each one an `Omit` (or, for
+ * `PlayerRef`, a `Partial`) of its generated twin, so the shared fields are
+ * described in exactly one place.
  */
 
 // The generated half: every pydantic response model, compiled from
