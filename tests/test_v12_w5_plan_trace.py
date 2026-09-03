@@ -173,6 +173,21 @@ def test_the_lambda_tilt_reaches_the_trace(wired):
     assert plan_router.plan(5).weeks[0].trace.moves[0].lambda_tilt < 0
 
 
+def test_a_state_with_no_cover_tilts_on_the_eo_rather_than_on_nothing(wired):
+    """``SolveState.cover`` is ``None`` on every state written before the
+    field existed, and the documented fallback is ``cover_from_eo(league_eo)``
+    — what ``whatif.py``, ``drafts.py`` and ``sensitivity.py`` all do.
+
+    Defaulting it to ``{}`` instead tilts against an empty cover, and the tilt
+    of a swap between two players nobody is recorded as owning is exactly
+    0.0 — a *measured* zero for a term the objective did apply, which is the
+    one thing this module's own rule forbids.
+    """
+    state = wired([_week(5, buys=[P], sells=[S])], lam=0.5, cover=None)
+    state.league_eo = {100: 90.0, 200: 0.0}
+    assert plan_router.plan(5).weeks[0].trace.moves[0].lambda_tilt < 0
+
+
 def test_the_price_charge_reaches_the_trace_through_w2s_own_reader(wired,
                                                                    monkeypatch):
     """Orchestrator ruling 1. The same reader the objective's term uses and

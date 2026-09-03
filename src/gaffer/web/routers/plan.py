@@ -13,6 +13,7 @@ from fastapi import APIRouter, HTTPException
 
 from gaffer.artifacts import load_advice, load_solve_state
 from gaffer.errors import GafferError
+from gaffer.league_mode import cover_from_eo
 from gaffer.trace import trace_plan
 from gaffer.web.schemas import (PlanAlternative, PlanGw, PlanMove,
                                 PlanTimeline, PlanWeekTrace)
@@ -441,7 +442,16 @@ def plan(gw: int) -> PlanTimeline:
                 ft_lambda=ft_lambda,
                 ft_use_penalty=_float(opt.get("ft_use_penalty", 0.0)),
                 lam=_float(getattr(state, "lam", 0.0)),
-                cover=getattr(state, "cover", None) or {},
+                # `is not None`, not `or {}`. A state written before the field
+                # existed carries `cover=None`, and the documented fallback is
+                # `cover_from_eo(league_eo)` — what whatif.py, drafts.py and
+                # sensitivity.py all do. An empty cover tilts nothing, so
+                # `or {}` would report 0.0 for a term the objective applied,
+                # which is the one thing this trace must never print.
+                cover=(state.cover
+                       if getattr(state, "cover", None) is not None
+                       else cover_from_eo(getattr(state, "league_eo", {})
+                                          or {})),
                 thresholds=thresholds,
                 banks={w.gw: w.bank for w in weeks},
                 price_timing=price_timing, price_fall=price_fall)
