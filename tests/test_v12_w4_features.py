@@ -709,6 +709,31 @@ def test_the_lever_guard_refuses_a_constant_column():
         d.check_lever(frame)
 
 
+def test_a_guard_exit_does_not_leak_the_memoised_loader(monkeypatch):
+    """The guards run before the arm loop and exit by ``SystemExit``, so a
+    rebinding made outside the ``try`` is never undone: the shipped
+    ``load_training_frame`` stays replaced by this driver's memoised one for
+    the rest of the interpreter, which in a test session is the frame every
+    later test reads. ``MINUTES_FEATURES`` was already inside the ``try``;
+    this is its other half."""
+    d = _driver()
+    frame = pd.DataFrame({"season_idx": [3, 3],
+                          "role_wb_share": [0.5, 0.25],
+                          "role_wb_missing": [0.0, 0.0],
+                          "density_pub_7d": [1.0, 2.0],
+                          "density_pub_missing": [0.0, 0.0]})
+    monkeypatch.setattr(d, "_cached", (frame, pd.DataFrame(), None))
+    before_load, before_feats = tr.load_training_frame, tr.MINUTES_FEATURES
+    try:
+        with pytest.raises(SystemExit):
+            d.main()
+        assert tr.load_training_frame is before_load
+        assert tr.MINUTES_FEATURES is before_feats
+    finally:
+        tr.load_training_frame = before_load
+        tr.MINUTES_FEATURES = before_feats
+
+
 def test_the_arm_composes_from_the_shipped_list_and_not_from_its_predecessor():
     """The loop's own lever guard. ``arm_features`` reads the module global,
     so a driver that assigns ``MINUTES_FEATURES`` twice — shipped, then
@@ -754,6 +779,14 @@ def test_both_drivers_state_both_halves_of_the_arm_rule():
         assert "autosub" in text
         assert "log-loss" in text or "log_loss" in text
     assert "not measurable" in d.ARM_RULE.lower()
+
+
+def test_both_drivers_say_what_a_run_costs():
+    """A driver whose runtime is unstated is a driver nobody dares start on a
+    Friday. Both are long enough to want ``caffeinate`` and the docstrings
+    already tell you to use it; they should say why."""
+    for text in (_driver().__doc__, _cf_driver().__doc__):
+        assert "Runtime" in text
 
 
 def test_each_arm_fits_from_the_shipped_list_and_not_from_its_predecessor():

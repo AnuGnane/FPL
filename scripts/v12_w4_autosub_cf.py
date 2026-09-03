@@ -37,6 +37,11 @@ quiet weeks there were. Both numbers are printed; only the first is the gate.
 two arms' ``p_play`` dicts actually differ on the first gameweek. If they do
 not, both arms are the same arm and every delta is a decorated zero.
 
+**Runtime**: the longer of the two by a distance — three ``train_all`` fits,
+as in :mod:`v12_w4_arms`, *plus* a MILP solve per arm per test gameweek, so
+roughly 38 x 3 solves on a full season on top of the fits. Hours, not minutes;
+run it under ``caffeinate`` and read the ``W4_CF_GW`` lines as they land.
+
 Run it, watch it, read the lines::
 
     mkdir -p logs && caffeinate -i nohup .venv/bin/python \\

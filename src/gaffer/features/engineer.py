@@ -1647,6 +1647,12 @@ def add_role_wb_share(df: pd.DataFrame,
     season count. ``<`` rather than ``<=`` because the fixture being predicted
     has not been played, and a season boundary is a hard stop because a role
     under last season's manager is not this season's role.
+
+    The window is keyed on ``code`` and not on ``team_code``, so it follows a
+    player through a mid-season transfer: five starts spanning January are
+    three at the old club and two at the new one, which is the reading we
+    want — the question is whether *this defender* plays as a wing-back, and a
+    reset at the transfer would report "not enough of him" for a month.
     """
     out = df.copy()
     starts = _starts_frame(stats if stats is not None else pd.DataFrame())
@@ -1695,6 +1701,18 @@ counts fixtures the publisher lists **before they are played** (the archive
 publishes kickoff times for gameweeks nobody has reached), which is what makes
 it a prediction-time feature at all: the question "does this club play on
 Wednesday" is answerable on Thursday only from a forward list.
+
+**With one qualification, stated rather than glossed.** The archive is
+*today's* published schedule, not a snapshot of what was published in the past
+— there are no vintages to read. A tie postponed in November and replayed in
+February appears on a historical row at its February date, so a training row
+carries a date nobody could have known at the time. The hindsight is real,
+one-directional (rearrangement only ever moves a fixture later, so a training
+row's count is if anything understated) and *identical on both seams*: the
+training frame and the serving frame read the same file through the same
+function, so it cannot produce a train/serve skew. It would matter for a claim
+about what a manager knew in November; it does not for a feature both sides
+compute the same way.
 
 It has its own coverage limit — the archive's earliest season is 2024-25 — and
 ``scripts/v12_w4_arms.py``'s preflight measures that rather than assuming it

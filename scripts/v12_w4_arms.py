@@ -52,6 +52,12 @@ lists with identical values on the window:
 4. **training coverage is non-zero**, printed per season — the guard this
    archive specifically needs.
 
+**Runtime**: three full ``train_all`` fits — control, ``role``, ``density`` —
+on a four-season training frame (season_idx 0..2 train, 3 test), plus one
+prediction pass per test gameweek. The frame is loaded once and memoised, so
+the fits are the whole cost; budget on the order of an hour and run it under
+``caffeinate``.
+
 Run it, watch it, read the verdicts::
 
     mkdir -p logs && caffeinate -i nohup .venv/bin/python \\
@@ -165,10 +171,11 @@ def coverage(df: pd.DataFrame, cols: list[str]) -> dict:
     populated; zero of them means every arm is a season indicator and no
     verdict below would mean anything.
 
-    ``per_season[idx][col]`` is a dict — ``nonnull`` beside :func:`_histogram`'s
-    ``min``/``median``/``max``/``share_zero`` — and the whole of it is printed
-    on the ``W4_COVERAGE`` line, so a season that is uniformly zero or shifted
-    by one is legible in the log rather than only in the verdict it poisons.
+    ``per_season[idx][col]`` is a dict — ``nonnull`` beside
+    :func:`_histogram`'s ``min``/``median``/``max``/``share_zero`` — and it is
+    printed whole on the ``W4_COVERAGE`` line, so a season that is uniformly
+    zero or shifted by one is legible in the log rather than only in the
+    verdict it poisons.
 
     A column the frame never grew reports zero coverage rather than raising:
     the guard has to be able to *describe* the state it exists to refuse.
@@ -339,13 +346,18 @@ def verdict(base: dict, arm: dict) -> dict:
 
 def main() -> None:
     print("W4_ARM_RULE", ARM_RULE, flush=True)
-    tr.load_training_frame = _memoised
     shipped = list(tr.MINUTES_FEATURES)
     df, _tg, _elo = _memoised()
     check_coverage(coverage(df, ARM_COLS))
     check_lever(df)
     results: dict[str, dict] = {}
     try:
+        # Inside the ``try``, with ``MINUTES_FEATURES``: the guards above exit
+        # by ``SystemExit``, and a rebinding made before them is never undone.
+        # The shipped loader would stay replaced by the memoised one for the
+        # rest of the interpreter — which in a test session is the frame every
+        # later test reads.
+        tr.load_training_frame = _memoised
         for name in ARMS:
             # One statement, and that is the point: ``arm_features`` reads the
             # module global, so assigning the shipped list and then composing
