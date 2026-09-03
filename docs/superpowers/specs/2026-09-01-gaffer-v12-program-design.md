@@ -852,7 +852,7 @@ these are the numbers it is checking against, not a substitute for that run.
 Implementers build the drivers and never run them (CONVENTIONS §7). Every
 result below is unfilled on purpose.
 
-- [ ] **The no-regression season replay, and the config both sides are pinned
+- [x] **The no-regression season replay, and the config both sides are pinned
       to** (pre-registered 2026-09-03, CONVENTIONS §1). Both sides:
       `price_timing = false` **pinned** — with the shipped default now true, a
       fresh nightly price log would inject *today's* falls into a 2025-26
@@ -883,9 +883,13 @@ result below is unfilled on purpose.
       reordering rows, `feature_columns()`'s new tail leaking into
       strip-and-re-derive, or a stray `data/set_pieces.toml`.
 
-      - Branch totals / hits: _(unfilled)_
+      - Branch totals / hits (run 2026-09-03 at `7f1bf89`, the last code commit
+        before the arm flip, arms off): `MULTISEED_DONE v12w4-branch {"totals":
+        [1798, 1917, 1872], "mean": 1862.3, "spread": 119}` — hits `[15, 12,
+        13]` both sides. **Exactly zero on every seed, totals and hits**, as
+        pre-registered. ✅
 
-- [ ] **Post-hoc: role-on replay.** Not a gate row — the gate above is the
+- [x] **Post-hoc: role-on replay.** Not a gate row — the gate above is the
       arms-off no-regression replay and stays that way. Pre-registered by the
       orchestrator on 2026-09-03, *before* the run, and copied here verbatim:
 
@@ -902,9 +906,30 @@ result below is unfilled on purpose.
       > Reason: K=3 with a 119 seed spread can only support a paired sign
       > test; a one- or two-seed loss is noise by construction.
 
-      - Branch totals / mean, and the verdict under that read: _(unfilled)_
+      - Run 2026-09-03 at `035c8f0` (the branch tip: role in
+        `MINUTES_FEATURES`, same pinned config, same archive):
 
-- [ ] **§5.2 arm outcomes, recorded either way (CONVENTIONS §6).**
+        ```
+        MULTISEED_DONE v12w4-roleon {"totals": [1813, 1847, 1846], "mean": 1835.3, "spread": 34, "seed_bases": [20260901, 20260902, 20260903]}
+        ```
+
+        Hits `[14, 15, 13]` vs control `[15, 12, 13]`. Paired deltas against
+        the control's `[1798, 1917, 1872]`: **+15, −70, −26**; mean **−27.0**.
+        **Verdict under the pre-registered read: the flip stands.** One
+        condition holds (the mean is worse by more than 5) and the other does
+        not (seed 20260901 is better, so it is not "every seed worse"), and
+        the read required both. Recorded without softening: two of three seeds
+        are worse, the mean is worse by 27, and the role arm's own seed spread
+        is 34 against the control's 119 — the head with `role` in it plays a
+        narrower season. This is the second time in the program that a
+        minutes/attacking-head metric gain (here −1.9% starters log-loss and a
+        +0.133 autosub-week delta) has not shown up as season points; §3.5 was
+        the first. Residual, not a verdict: **a K=10 role-on-vs-off replay is
+        the next measurement**, and if it lands negative beyond its own seed
+        spread the arm is withdrawn with these numbers beside it. The user may
+        re-decide on this record at any time.
+
+- [x] **§5.2 arm outcomes, recorded either way (CONVENTIONS §6).**
       **Precondition: a `gaffer core-insights` collection.** Without one both
       arm columns are all-missing and the drivers measure nothing. The arm
       replays run on the **shifted window** and are **not** comparable to the
@@ -928,12 +953,36 @@ result below is unfilled on purpose.
       measurable on any window the archive covers" — which is neither a keep
       nor a withdrawal.
 
-      - Coverage (`W4_COVERAGE`): _(unfilled)_
-      - `role`: _(unfilled)_
-      - `density`: _(unfilled)_
-      - Decision, per arm: _(unfilled)_
+      - Coverage (`W4_COVERAGE`, run 2026-09-03 on the main tree after a
+        collection of 2024-25/2025-26/2026-27): season_idx 0 and 1 (2022-23,
+        2023-24) read all-NaN for both arms — the archive does not cover them
+        and the Critical fix makes that missing rather than zero; season_idx 2
+        (2024-25, the one covered training season) `role_wb_share` non-null
+        0.134 (median 0.2, share-zero 0.33), `density_pub_7d` non-null 1.0
+        (median 1.0); season_idx 3 (2025-26, the test season) role 0.167,
+        density 1.0; `train_rows` 83513, `train_covered` 27283, `test_rows`
+        29757, `test_covered` 29757. `W4_ARM_LEVER ok`.
+      - Verbatim:
 
-- [ ] **§5.2 decision half.** Same precondition, same window.
+        ```
+        W4_ARM_DONE baseline {"train_max_idx": 2, "test_idx": 3, "zeros": 0.917, "zeros_n": 18555, "haulers": 5.508, "all": 1.946, "p_start_ll_starters": 0.43723, "p_start_ll_all": 0.25265, "starters_n": 7815, "rows": 29757}
+        W4_ARM_DONE role {"train_max_idx": 2, "test_idx": 3, "zeros": 0.919, "zeros_n": 18555, "haulers": 5.517, "all": 1.949, "p_start_ll_starters": 0.42889, "p_start_ll_all": 0.25168, "starters_n": 7815, "rows": 29757}
+        W4_ARM_DONE density {"train_max_idx": 2, "test_idx": 3, "zeros": 0.923, "zeros_n": 18555, "haulers": 5.488, "all": 1.946, "p_start_ll_starters": 0.43584, "p_start_ll_all": 0.25358, "starters_n": 7815, "rows": 29757}
+        W4_VERDICT role {"logloss_relative_gain": 0.01907, "zeros_cost": 0.002, "decision": "keep", "half": "a", "keep_also_requires": "half (b): scripts/v12_w4_autosub_cf.py, mean points delta over autosub w…
+        W4_VERDICT density {"logloss_relative_gain": 0.00318, "zeros_cost": 0.006, "decision": "withdraw", "half": "a", "keep_also_requires": "half (b): scripts/v12_w4_autosub_cf.py, mean points delta over au…
+        ```
+
+      - `role`: starters log-loss 0.43723 → 0.42889 (−1.907% relative, clears
+        the 1% bar); zeros 0.917 → 0.919 (+0.002, within 0.005). **Half (a):
+        keep.**
+      - `density`: 0.43723 → 0.43584 (−0.318%, below the bar); zeros 0.917 →
+        0.923 (+0.006, over the bar). **Half (a): withdraw.**
+      - Decision, per arm (after half (b) below): **`role` ships on**
+        (`e3121f2`, `ROLE_FEATURES` appended to `MINUTES_FEATURES`, effective
+        on the next `gaffer train`); **`density` withdrawn**, built on both
+        seams and fed to no head, numbers kept.
+
+- [x] **§5.2 decision half.** Same precondition, same window.
 
       ```bash
       mkdir -p logs && caffeinate -i nohup .venv/bin/python \
@@ -946,7 +995,17 @@ result below is unfilled on purpose.
       appear first; without it the run measured two identical arms and is
       void.
 
-      - Autosub weeks / mean delta per arm: _(unfilled)_
+      - Run 2026-09-03: `W4_CF_LEVER ok`; 15 autosub weeks of 38. `role`
+        autosub_mean_delta **+0.133** (pass), `density` **+0.333** (pass —
+        moot, it fails half (a)). Recorded beside the rule, not inside it:
+        over **all** 38 weeks the deltas are role **−0.211**, density
+        **−0.895** (role: 23 weeks with a different XI, 29 with a different
+        bench). That all-weeks number is why the post-hoc role-on replay
+        above was run before the merge.
+
+        ```
+        W4_CF_DONE {"window": {"train_max_idx": 2, "test_idx": 3}, "rule": "KEEP an arm iff BOTH halves hold: (a) starters-slice p_start log-loss improves by >= 1% relative to THIS run's control AND zeros RMSE is not worse by more than 0.005 (this driver); AND (b) the mean points delta over the weeks in which an autosub actually fired is >= 0 (scripts/v12_w4_autosub_cf.py). Either half failing is a withdr…
+        ```
 
 - [ ] **Zero unauthorized protected diffs.** Base is **`f903959`**, W3's merge
       tip, not `main` — a rail scoped to somebody else's range audits somebody
