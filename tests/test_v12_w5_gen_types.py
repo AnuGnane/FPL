@@ -147,6 +147,63 @@ def test_a_field_with_no_sentence_gets_no_description():
     assert "description" not in props["rows"]
 
 
+def test_a_defaulted_field_is_still_required():
+    """What the wire *carries*, not what pydantic would accept.
+
+    A response model is serialized on the way out with its defaults filled in,
+    so every key is present. Pydantic's own schema leaves a defaulted field out
+    of ``required``, which typed a hundred and seventy-nine unguarded reads in
+    the client as possibly-undefined — each of which would have been answered
+    with a `?? {}` guard against a case that cannot happen.
+    """
+    panel = build_schema()["definitions"]["SettingsPanel"]
+    assert set(panel["required"]) == set(panel["properties"])
+    assert "rows" in panel["required"]
+
+
+def test_the_one_field_the_client_omits_is_optional_and_says_why():
+    from scripts.gen_types import OPTIONAL_ON_THE_WIRE
+
+    req = build_schema()["definitions"]["LeagueWhatIfRequest"]
+    assert "cached_only" in req["properties"]
+    assert "cached_only" not in req["required"]
+    for (model, field), why in OPTIONAL_ON_THE_WIRE.items():
+        assert field in _live()[model].model_fields, (model, field)
+        assert len(why) > 20, (model, field)
+
+
+def test_nothing_else_is_optional():
+    """One exception, and it is the listed one. A second that crept in unlisted
+    would soften a type in the browser with nothing saying why."""
+    from scripts.gen_types import OPTIONAL_ON_THE_WIRE
+
+    loose = {(name, field)
+             for name, body in build_schema()["definitions"].items()
+             for field in body.get("properties", {})
+             if field not in body.get("required", [])}
+    assert loose == {(RENAME.get(model, model), field)
+                     for model, field in OPTIONAL_ON_THE_WIRE}
+
+
+def test_a_field_actually_called_title_survives_the_title_strip():
+    """Pydantic's auto-generated ``title`` is dropped everywhere but the model.
+    ``DigestSection.title`` is a *field* with that name, and a strip that walked
+    into the ``properties`` map deleted it — leaving a schema the digest card
+    could not compile against and nothing saying which side was wrong."""
+    section = build_schema()["definitions"]["DigestSection"]
+    assert "title" in section["properties"]
+    assert section["properties"]["title"] == {"type": "string"}
+
+
+def test_a_bare_any_field_compiles_to_unknown_and_not_to_a_record():
+    """``value: Any`` is one setting's value, of five different shapes —
+    ``unknown``, which ``kind`` narrows. Left as an empty schema it compiled to
+    ``{[k: string]: unknown}``, an object, and the tab's `value === true` stopped
+    type-checking."""
+    value = build_schema()["definitions"]["SettingRow"]["properties"]["value"]
+    assert value["tsType"] == "unknown"
+
+
 def test_the_root_uses_definitions_and_not_defs():
     """json-schema-to-typescript reads `definitions`. A 2020-12 `$defs`
     document compiles to a single empty interface and nothing says why."""

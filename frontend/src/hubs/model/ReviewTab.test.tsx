@@ -23,6 +23,9 @@ const DATA: ReviewData = {
     post_deadline: false, my_points: 61, official_points: 61,
     official_gross: 65, hits: 1, reconciled: true, chip: null,
     model_chip: 'bboost', points_on_bench: 5, overall_rank: 412233,
+    // The row is graded against no snapshot: the generated type says the two
+    // fields are on the wire, and null is "the reader found none".
+    projection_snapshot: null, projection_post_deadline: false,
     our_bench_points: 5,
     model_points: 68, accuracy: 89, pwin_n: 2000, pwin_seed: 20260831,
     pwin_granularity_pp: 0.05, lanes: LANES,

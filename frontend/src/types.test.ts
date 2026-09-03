@@ -1,9 +1,57 @@
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
   JOB_KINDS, JOB_KIND_LABEL, type JobKind, type JobRunView,
   type LeagueSimData, type LeagueWhatIfResult, type NextFixture,
   type PlayerRef,
 } from './types'
+
+const HERE = dirname(fileURLToPath(import.meta.url))
+
+/** Every name `types.ts` exported before v12 W5 split the file, transcribed
+ *  from `git show <the split's parent>:frontend/src/types.ts`. A short list
+ *  would be a test that passes by not looking. */
+const BEFORE_THE_SPLIT = [
+  'Advice', 'AdviceChipRow', 'AdviceDiff', 'AdviceLatest',
+  'AdvicePlayerRef', 'BenchmarkEvaluation', 'CalibrationData',
+  'CalibrationGw', 'CalibrationHead', 'CaptainField',
+  'CategoryMetrics', 'ChipPlan', 'ChipPlanRow', 'ChipSquadPlayer',
+  'ChipsWorkbench', 'ChipWorkbenchRow', 'Component',
+  'ComponentFixture', 'ComponentPlayer', 'ComponentsBreakdown',
+  'ConfidenceData', 'ConfidenceTier', 'CoreInsightsHealth',
+  'CoreInsightsTable', 'CurrentEvaluation', 'DecompositionCell',
+  'DecompositionData', 'Digest', 'DigestPanel', 'DigestSection',
+  'DraftCompare', 'DraftCompareRequest', 'DraftCompareRow',
+  'DraftList', 'DraftRow', 'DraftSaveRequest', 'EpMover', 'FieldRank',
+  'FixtureExplain', 'FixtureMatrixData', 'FixtureOutlook',
+  'FlagChange', 'FlagLatencyData', 'Freshness', 'FreshnessRow',
+  'HeadMetrics', 'HealthData', 'HistoryData', 'JobKind', 'JobRunView',
+  'JournalData', 'JournalPoint', 'JournalRow', 'LeadBucket',
+  'LeagueRaceData', 'LeagueSimData', 'LeagueWhatIfEvent',
+  'LeagueWhatIfRequest', 'LeagueWhatIfResult', 'LeagueWhatIfRow',
+  'LivePlayer', 'LiveRacePoint', 'LiveSafety', 'LiveState',
+  'LiveTableRow', 'MatrixCell', 'MatrixTeam', 'MissesData', 'MissRow',
+  'MoveFrequency', 'MoverRow', 'MoversPanel', 'NamedPlayer',
+  'NewsPanelData', 'NewsRow', 'NewsShadowData', 'NewsShadowGw',
+  'NewsShadowSummary', 'NextFixture', 'OutlookTeam', 'OutlookWeek',
+  'OverrideRequest', 'OverrideRow', 'OverridesPanel',
+  'PenTrackerData', 'PenTrackerGw', 'PenTrackerTotals',
+  'PlanAlternative', 'PlanGw', 'PlanMove', 'PlanMoveTrace',
+  'PlanSummary', 'PlanTimeline', 'PlanWeekTrace', 'PlayerExplain',
+  'PlayerRef', 'PlayerRow', 'PresserGradesData', 'QualityData',
+  'ReferenceMetrics', 'ReliabilityBin', 'ReviewData', 'ReviewGw',
+  'ReviewHindsight', 'ReviewLabel', 'ReviewLane', 'ReviewLaneName',
+  'ReviewLaneTotal', 'ReviewMiss', 'ReviewSummary', 'RivalBeat',
+  'RivalDetailData', 'RivalSummary', 'ScenarioReport',
+  'SensitivityMove', 'SensitivityPlan', 'SensitivityReport',
+  'SettingRow', 'SettingsPanel', 'SimPoint', 'SquadDiff',
+  'SquadPlayer', 'Staleness', 'StandingRow', 'Strategy',
+  'StratifiedTable', 'TickerData', 'VerdictRow', 'VerdictScore',
+  'WatchlistPanel', 'WatchRow', 'WhatIfRequest', 'WhatIfResult',
+  'WinProb',
+]
 
 describe('job types', () => {
   it('lists exactly the twelve kinds the backend allows', () => {
@@ -26,7 +74,12 @@ describe('job types', () => {
       started_at: '2026-08-29T09:00:00+00:00', finished_at: null,
       error: null, summary: null, line_count: 3,
     }
-    const kind: JobKind = run.kind
+    // The wire says `kind: str` — `job_kinds.py` owns the list and the schema
+    // does not enumerate it — so the client narrows at its own boundary. The
+    // membership check is the part that would catch a kind the server grew
+    // and `JOB_KINDS` did not.
+    expect([...JOB_KINDS]).toContain(run.kind)
+    const kind = run.kind as JobKind
     expect(kind).toBe('advise')
   })
 })
@@ -116,5 +169,65 @@ describe('the v9a identity fields', () => {
     // /api/plan and the what-if lab build PlayerRefs without the enrichment.
     const bare: PlayerRef = { code: 33, name: 'Rice', ep: 4.0 }
     expect(bare.team_short).toBeUndefined()
+  })
+})
+
+/** v12 W5 §6.6 — the split between the hand-written and generated halves.
+ *
+ *  These read the files rather than the types, because what they check is a
+ *  property of the *surface*: which name is declared where. A rename that
+ *  dropped a type would otherwise be a green suite and a red build. */
+describe('the types.ts / types.generated.ts split', () => {
+  function exportsOf(file: string): Set<string> {
+    const text = readFileSync(join(HERE, file), 'utf8')
+    return new Set([...text.matchAll(
+      /^export (?:interface|type|declare interface) ([A-Za-z0-9_]+)/gm,
+    )].map((m) => m[1]))
+  }
+
+  it('does not declare a name the generated file also declares', () => {
+    const hand = exportsOf('types.ts')
+    const gen = exportsOf('types.generated.ts')
+    expect([...hand].filter((n) => gen.has(n))).toEqual([])
+  })
+
+  it('still exports every name the tree imported before the split', () => {
+    // v11's export surface, transcribed from the file this split rewrote.
+    const all = new Set([...exportsOf('types.ts'),
+      ...exportsOf('types.generated.ts')])
+    const missing = BEFORE_THE_SPLIT.filter((n) => !all.has(n))
+    expect(missing).toEqual([])
+  })
+
+  it('narrows every Wire model exactly once', () => {
+    // The narrowing does not always keep the pydantic name: four of the eleven
+    // are also `*Data` renames on the client, and the Wire prefix won in the
+    // generator so the hand-written narrowing could keep the name its
+    // consumers already import. The pairs are therefore listed, not derived.
+    const NARROWING: Record<string, string> = {
+      WireAdviceLatest: 'AdviceLatest',
+      WireCalibrationReport: 'CalibrationData',
+      WireHealth: 'HealthData',
+      WireHistory: 'HistoryData',
+      WireModelHealth: 'ModelHealth',
+      WirePlanTimeline: 'PlanTimeline',
+      WirePlayerExplain: 'PlayerExplain',
+      WirePlayerRef: 'PlayerRef',
+      WirePlayerRow: 'PlayerRow',
+      WireReview: 'ReviewData',
+      WireReviewSummary: 'ReviewSummary',
+    }
+    const gen = exportsOf('types.generated.ts')
+    const hand = exportsOf('types.ts')
+    const wires = [...gen].filter((n) => n.startsWith('Wire')).sort()
+    expect(wires).toEqual(Object.keys(NARROWING).sort())
+    for (const wire of wires) expect(hand.has(NARROWING[wire])).toBe(true)
+  })
+
+  it('never hand-writes a type the generator could have produced', () => {
+    // The hand-written half is the narrowings plus the interfaces that type
+    // the inside of a `dict[str, Any]`. If it grows past that, the two halves
+    // have started drifting again.
+    expect(exportsOf('types.ts').size).toBeLessThanOrEqual(40)
   })
 })

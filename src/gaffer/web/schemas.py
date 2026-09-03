@@ -505,9 +505,15 @@ class PlayerRow(BaseModel):
     """The observed move between the last two sampled gameweeks, in points of
     EO. ``None`` when there is no earlier sample; ``0.0`` is a measurement —
     the field held steady."""
-    field_class: str | None = None
+    field_class: Literal["shield", "sword", "threat"] | None = None
     """``shield`` | ``sword`` | ``threat``, or ``None`` for the quadrant with
-    nothing to say."""
+    nothing to say.
+
+    A ``Literal`` and not a ``str``, since v12 W5: ``routers.players
+    .field_class`` returns exactly these three and ``None``, the client has
+    always typed it as those three, and only the schema was saying ``str`` —
+    which the generated types then repeated, and the pitch's shirt colours
+    stopped compiling against."""
     available: bool
     status: str
     news: str

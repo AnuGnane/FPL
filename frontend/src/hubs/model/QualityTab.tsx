@@ -11,7 +11,7 @@ import {
 import type {
   BenchmarkEvaluation, CalibrationData, CalibrationHead, CurrentEvaluation,
   DecompositionData, FlagLatencyData, HeadMetrics,
-  MissRow, MissesData, NewsShadowData, PenTrackerData,
+  MissRow, MissesData, NewsShadowData, NewsShadowSummary, PenTrackerData,
   PenTrackerGw, PresserGradesData, QualityData, ReviewData, StratifiedTable,
 } from '../../types'
 
@@ -425,8 +425,12 @@ function DecompositionSection(
 // in a sentence as well as drawn, because a pair of bars two hundredths apart
 // is not a verdict anyone should have to squint at.
 function verdict(shadow: NewsShadowData): string {
-  const o = shadow.overall
-  if (o.brier_news === undefined || o.mae_news === undefined) {
+  // `overall` is `NewsShadowSummary | dict` on the server (`schemas.py:1156`):
+  // an empty object until a gameweek has been scored, a full summary after.
+  // Read the two numbers by type rather than by presence — the empty case is
+  // `{}`, so `=== undefined` and `?? 0` both walk straight into it.
+  const o = shadow.overall as Partial<NewsShadowSummary>
+  if (typeof o.brier_news !== 'number' || typeof o.mae_news !== 'number') {
     return 'Nothing scored yet.'
   }
   const brier = (o.brier_flags ?? 0) - o.brier_news

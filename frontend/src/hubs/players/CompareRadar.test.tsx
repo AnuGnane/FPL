@@ -46,7 +46,8 @@ const COMPONENTS: ComponentsBreakdown = {
                  components: [{ label: 'Goals', points: 2 },
                               { label: 'Assists', points: 1 },
                               { label: 'Minutes', points: 2 }],
-                 pen_taker: null, minutes: { p_play: 0.9, p60: 0.8 },
+                 pen_taker: null,
+                 minutes: { p_play: 0.9, p60: 0.8, xmins: null },
                  ep: 5 }],
   }],
 }

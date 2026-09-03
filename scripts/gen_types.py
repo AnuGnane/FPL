@@ -27,8 +27,8 @@ import sys
 
 WIRE_ONLY = (
     "AdviceLatest", "History", "ModelHealth", "Health", "CalibrationReport",
-    "ReviewSummary",
-    "PlayerRow", "PlayerExplain", "PlanTimeline",
+    "ReviewSummary", "Review",
+    "PlayerRow", "PlayerExplain", "PlanTimeline", "PlayerRef",
 )
 """Models the client narrows by hand, emitted as ``Wire<Name>``.
 
@@ -57,6 +57,13 @@ NARROWING_REASON = {
         "excluded: a list of open records, one per dropped fixture",
     "ReviewSummary":
         "best: an open record; `worst` is the same shape and rides along",
+    "Review":
+        "summary: a `$ref` at the wire type, and the client's narrowed "
+        "`ReviewSummary` is what the tab reads `worst.lane` off",
+    "PlayerRef":
+        "position: `Advice` types the raw artifact, which the server hands "
+        "over as `dict[str, Any]` and never validates — so the artifact's own "
+        "`tag` and `frequency` are there and the enrichment may not be",
     "PlayerRow":
         "set_piece_manual: absent on a payload banked before the field "
         "existed, which is what the read sites' `?? []` is for",
@@ -74,6 +81,27 @@ was renamed or deleted fails loudly instead of standing as a hand-written type
 nobody dares touch.
 """
 
+OPTIONAL_ON_THE_WIRE = {
+    ("LeagueWhatIfRequest", "cached_only"):
+        "This Week sets it and both league views omit it; "
+        "WhatIfSim.test.tsx:55 pins that the body carries no such key.",
+}
+"""``(model, field) -> why this one field may be absent.``
+
+Every other field is emitted ``required``, which is what the wire actually
+carries: a response model is serialized on the way out with its defaults filled
+in, so every key is present. Pydantic's own schema leaves a defaulted field out
+of ``required``, and taking its word typed a hundred and seventy-nine unguarded
+reads in the client as possibly-undefined — each of which would have been
+answered with a `?? {}` guard against a case that cannot happen.
+
+Request bodies are the direction where a default *can* be left out, and the
+client builds all of them complete except this one. Listing the exception by
+field rather than exempting every request model keeps the guard where the
+omission is: a new partial body fails at its own call site, loudly, instead of
+softening every request type in the tree.
+"""
+
 RENAME = {
     # The client suffixes a page-level payload with `Data` so the name does not
     # collide with a component or a lane name. Fourteen of these predate this
@@ -89,7 +117,6 @@ RENAME = {
     "PenTracker": "PenTrackerData",
     "PresserGrades": "PresserGradesData",
     "Quality": "QualityData",
-    "Review": "ReviewData",
     "RivalDetail": "RivalDetailData",
     "Ticker": "TickerData",
     # The nine the browser narrows.
@@ -100,7 +127,9 @@ RENAME = {
     "ModelHealth": "WireModelHealth",
     "PlanTimeline": "WirePlanTimeline",
     "PlayerExplain": "WirePlayerExplain",
+    "PlayerRef": "WirePlayerRef",
     "PlayerRow": "WirePlayerRow",
+    "Review": "WireReview",
     "ReviewSummary": "WireReviewSummary",
 }
 """Pydantic name -> TypeScript name.
@@ -117,6 +146,13 @@ def schema_path() -> str:
     return "frontend/src/schemas.json"
 
 
+_NAME_TO_SCHEMA = ("properties", "patternProperties", "$defs", "definitions",
+                   "dependentSchemas")
+"""JSON Schema keywords whose value maps a *name* to a schema, not a keyword to
+a value. Walking into one as if it were a schema treats every field name as a
+keyword."""
+
+
 def _strip_titles(node) -> None:
     """Drop pydantic's auto-generated ``title`` from everywhere but the model.
 
@@ -129,8 +165,15 @@ def _strip_titles(node) -> None:
     """
     if isinstance(node, dict):
         node.pop("title", None)
-        for value in node.values():
-            _strip_titles(value)
+        for key, value in node.items():
+            if key in _NAME_TO_SCHEMA and isinstance(value, dict):
+                # A map from *field name* to schema. Its keys are field names,
+                # not keywords: `DigestSection.title` is a field called title,
+                # and stripping it here deleted the field.
+                for sub in value.values():
+                    _strip_titles(sub)
+            else:
+                _strip_titles(value)
     elif isinstance(node, list):
         for value in node:
             _strip_titles(value)
@@ -187,10 +230,9 @@ def build_schema() -> dict:
     former, and a 2020-12 document compiles to one empty interface with
     nothing saying why.
 
-    ``"serialization"`` mode and not ``"validation"``: this document types what
-    the server *sends*, so a field pydantic would coerce on the way in is
-    irrelevant and a field with a default is still emitted (and so is still
-    optional here — which is what keeps the browser's ``?? []`` guards honest).
+    ``"serialization"`` mode: this document types what the wire carries, not
+    what pydantic would coerce on the way in. ``required`` is then every field
+    but the ones :data:`OPTIONAL_ON_THE_WIRE` names.
 
     Sorted throughout and emitted through :func:`serialize`, because the whole
     point is a diff that is stable across machines and interpreter runs.
@@ -211,6 +253,16 @@ def build_schema() -> dict:
             sentence = sentences.get((name, field))
             if sentence and "description" not in prop:
                 prop["description"] = sentence
+            if not set(prop) - {"description", "default"}:
+                # ``value: Any``. An empty schema compiles to an *object* —
+                # `{[k: string]: unknown}` — so `row.value === true` stops
+                # type-checking. `tsType` is json-schema-to-typescript's own
+                # escape hatch and says the one true thing: unknown.
+                prop["tsType"] = "unknown"
+        if "properties" in body:
+            body["required"] = [
+                field for field in sorted(body["properties"])
+                if (name, field) not in OPTIONAL_ON_THE_WIRE]
         # Put the title back, as the *renamed* name: it is what
         # json-schema-to-typescript names the interface, so a definition that
         # kept pydantic's title would emit `AdviceLatest` out of a definition

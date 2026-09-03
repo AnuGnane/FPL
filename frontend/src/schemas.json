@@ -128,8 +128,22 @@
     }
    },
    "required": [
+    "available",
+    "buys_added",
+    "buys_dropped",
+    "captain_from",
+    "captain_to",
+    "changed",
+    "chip_from",
+    "chip_to",
+    "current_at",
+    "ep_movers",
+    "ep_movers_count",
+    "expected_pts_delta",
     "gw",
-    "available"
+    "previous_at",
+    "sells_added",
+    "sells_dropped"
    ],
    "title": "AdviceDiff",
    "type": "object"
@@ -160,8 +174,8 @@
     }
    },
    "required": [
-    "name",
-    "bytes"
+    "bytes",
+    "name"
    ],
    "title": "ArtifactItem",
    "type": "object"
@@ -179,9 +193,9 @@
     }
    },
    "required": [
-    "path",
+    "bytes",
     "modified_at",
-    "bytes"
+    "path"
    ],
    "title": "BackupHealth",
    "type": "object"
@@ -220,12 +234,12 @@
     }
    },
    "required": [
-    "run_at",
+    "caveat",
     "git_sha",
-    "test_season",
-    "stratified",
     "references",
-    "caveat"
+    "run_at",
+    "stratified",
+    "test_season"
    ],
    "title": "BenchmarkEvaluation",
    "type": "object"
@@ -248,6 +262,7 @@
    },
    "required": [
     "gw",
+    "heads",
     "n"
    ],
    "title": "CalibrationGw",
@@ -293,8 +308,11 @@
     }
    },
    "required": [
-    "status",
-    "n"
+    "brier",
+    "log_loss",
+    "n",
+    "reliability",
+    "status"
    ],
    "title": "CalibrationHead",
    "type": "object"
@@ -312,9 +330,9 @@
     }
    },
    "required": [
-    "rmse",
     "mae",
-    "n"
+    "n",
+    "rmse"
    ],
    "title": "CategoryMetrics",
    "type": "object"
@@ -332,8 +350,8 @@
     }
    },
    "required": [
-    "gw",
-    "chips"
+    "chips",
+    "gw"
    ],
    "title": "ChipPlan",
    "type": "object"
@@ -435,14 +453,19 @@
     }
    },
    "required": [
-    "chip",
-    "weeks",
-    "best_gw",
     "best_gain",
     "best_gain_per_week",
-    "weeks_scored",
+    "best_gw",
+    "chip",
     "now_gain",
-    "play_now_delta"
+    "play_now",
+    "play_now_delta",
+    "thetas",
+    "threshold_now",
+    "threshold_source",
+    "weeks",
+    "weeks_scored",
+    "window"
    ],
    "title": "ChipPlanRow",
    "type": "object"
@@ -461,8 +484,8 @@
     }
    },
    "required": [
-    "gw",
     "gain",
+    "gw",
     "per_week"
    ],
    "title": "ChipWeek",
@@ -544,8 +567,14 @@
    },
    "required": [
     "chip",
+    "gain",
     "gw",
-    "gain"
+    "gw2",
+    "note",
+    "per_week",
+    "play_now",
+    "threshold",
+    "threshold_source"
    ],
    "title": "ChipWorkbenchRow",
    "type": "object"
@@ -574,8 +603,9 @@
     }
    },
    "required": [
+    "chips",
     "gw",
-    "chips"
+    "wildcard"
    ],
    "title": "ChipsWorkbench",
    "type": "object"
@@ -644,13 +674,14 @@
     }
    },
    "required": [
+    "components",
+    "ep",
     "gw",
-    "opponent",
     "home",
     "kickoff_time",
-    "components",
     "minutes",
-    "ep"
+    "opponent",
+    "pen_taker"
    ],
    "title": "ComponentFixture",
    "type": "object"
@@ -752,11 +783,17 @@
    },
    "required": [
     "code",
-    "name",
-    "position",
-    "team_name",
     "ep",
-    "fixtures"
+    "ep_gw",
+    "ep_hi",
+    "ep_lo",
+    "fixtures",
+    "name",
+    "p_blank",
+    "p_haul",
+    "position",
+    "sigma",
+    "team_name"
    ],
    "title": "ComponentPlayer",
    "type": "object"
@@ -786,6 +823,9 @@
      "$ref": "#/definitions/ConfidenceTier"
     }
    },
+   "required": [
+    "captain"
+   ],
    "title": "ConfidenceData",
    "type": "object"
   },
@@ -827,6 +867,15 @@
      "type": "integer"
     }
    },
+   "required": [
+    "aligned",
+    "graded",
+    "losses",
+    "reviewed",
+    "text",
+    "tier",
+    "wins"
+   ],
    "title": "ConfidenceTier",
    "type": "object"
   },
@@ -858,9 +907,10 @@
     }
    },
    "required": [
-    "season",
     "collected",
-    "tables"
+    "season",
+    "tables",
+    "waiting_for"
    ],
    "title": "CoreInsightsHealth",
    "type": "object"
@@ -887,8 +937,9 @@
     }
    },
    "required": [
-    "table",
-    "rows"
+    "latest",
+    "rows",
+    "table"
    ],
    "title": "CoreInsightsTable",
    "type": "object"
@@ -931,12 +982,12 @@
     }
    },
    "required": [
-    "run_at",
+    "baselines",
     "git_sha",
-    "holdout_slots",
-    "stratified",
     "heads",
-    "baselines"
+    "holdout_slots",
+    "run_at",
+    "stratified"
    ],
    "title": "CurrentEvaluation",
    "type": "object"
@@ -954,9 +1005,9 @@
     }
    },
    "required": [
-    "total",
+    "hits",
     "per_gw",
-    "hits"
+    "total"
    ],
    "title": "DecompositionCell",
    "type": "object"
@@ -992,13 +1043,13 @@
     }
    },
    "required": [
-    "run_at",
-    "git_sha",
-    "season",
-    "start_gw",
     "cells",
     "forecast_gap_h3",
-    "planning_ceiling"
+    "git_sha",
+    "planning_ceiling",
+    "run_at",
+    "season",
+    "start_gw"
    ],
    "title": "DecompositionData",
    "type": "object"
@@ -1046,8 +1097,12 @@
     }
    },
    "required": [
+    "error",
+    "generated_at",
+    "gw",
+    "headline",
     "kind",
-    "headline"
+    "sections"
    ],
    "title": "Digest",
    "type": "object"
@@ -1071,7 +1126,8 @@
     }
    },
    "required": [
-    "available"
+    "available",
+    "digest"
    ],
    "title": "DigestPanel",
    "type": "object"
@@ -1087,9 +1143,13 @@
     },
     "key": {
      "type": "string"
+    },
+    "title": {
+     "type": "string"
     }
    },
    "required": [
+    "bits",
     "key",
     "title"
    ],
@@ -1113,6 +1173,7 @@
    },
    "required": [
     "gw",
+    "rows",
     "weeks"
    ],
    "title": "DraftCompare",
@@ -1127,6 +1188,9 @@
      "type": "array"
     }
    },
+   "required": [
+    "names"
+   ],
    "title": "DraftCompareRequest",
    "type": "object"
   },
@@ -1134,14 +1198,14 @@
    "properties": {
     "buys": {
      "items": {
-      "$ref": "#/definitions/PlayerRef"
+      "$ref": "#/definitions/WirePlayerRef"
      },
      "type": "array"
     },
     "captain": {
      "anyOf": [
       {
-       "$ref": "#/definitions/PlayerRef"
+       "$ref": "#/definitions/WirePlayerRef"
       },
       {
        "type": "null"
@@ -1238,7 +1302,7 @@
     },
     "sells": {
      "items": {
-      "$ref": "#/definitions/PlayerRef"
+      "$ref": "#/definitions/WirePlayerRef"
      },
      "type": "array"
     },
@@ -1248,7 +1312,19 @@
     }
    },
    "required": [
-    "name"
+    "buys",
+    "captain",
+    "chip",
+    "delta_xpts",
+    "error",
+    "expected_pts",
+    "hits",
+    "horizon",
+    "horizon_pts",
+    "is_reference",
+    "name",
+    "sells",
+    "solved_at"
    ],
    "title": "DraftCompareRow",
    "type": "object"
@@ -1262,6 +1338,9 @@
      "type": "array"
     }
    },
+   "required": [
+    "drafts"
+   ],
    "title": "DraftList",
    "type": "object"
   },
@@ -1279,8 +1358,9 @@
     }
    },
    "required": [
-    "name",
-    "constraints"
+    "constraints",
+    "created_at",
+    "name"
    ],
    "title": "DraftRow",
    "type": "object"
@@ -1295,6 +1375,7 @@
     }
    },
    "required": [
+    "constraints",
     "name"
    ],
    "title": "DraftSaveRequest",
@@ -1321,10 +1402,10 @@
    },
    "required": [
     "code",
-    "name",
-    "ep_prev",
+    "delta",
     "ep_now",
-    "delta"
+    "ep_prev",
+    "name"
    ],
    "title": "EpMover",
    "type": "object"
@@ -1465,11 +1546,23 @@
     }
    },
    "required": [
+    "eo_gw",
+    "eo_source",
+    "field_draws",
+    "field_median_ep",
     "gw",
-    "n",
-    "seed",
     "managers",
-    "eo_source"
+    "my_ep",
+    "n",
+    "p_green",
+    "p_top10k",
+    "rank_slope",
+    "rank_slope_rows",
+    "rank_waiting_for",
+    "seed",
+    "top10k_waiting_for",
+    "unsampled_picks",
+    "waiting_for"
    ],
    "title": "FieldRank",
    "type": "object"
@@ -1515,15 +1608,15 @@
     }
    },
    "required": [
+    "calibration_delta",
+    "components",
+    "ep",
     "gw",
-    "opponent",
     "home",
     "kickoff_time",
-    "components",
     "minutes",
-    "calibration_delta",
     "odds",
-    "ep"
+    "opponent"
    ],
    "title": "FixtureExplain",
    "type": "object"
@@ -1552,8 +1645,8 @@
    },
    "required": [
     "gws",
-    "teams",
-    "source"
+    "source",
+    "teams"
    ],
    "title": "FixtureMatrixData",
    "type": "object"
@@ -1604,6 +1697,14 @@
      "type": "array"
     }
    },
+   "required": [
+    "from_gw",
+    "has_blanks",
+    "has_doubles",
+    "note",
+    "teams_known",
+    "weeks"
+   ],
    "title": "FixtureOutlook",
    "type": "object"
   },
@@ -1646,12 +1747,13 @@
     }
    },
    "required": [
-    "gw",
+    "chance_of_playing",
     "code",
-    "first_change",
-    "lead_days",
-    "from_status",
     "final_status",
+    "first_change",
+    "from_status",
+    "gw",
+    "lead_days",
     "started"
    ],
    "title": "FlagChange",
@@ -1723,8 +1825,17 @@
     }
    },
    "required": [
+    "available",
+    "checked_covered_gws",
+    "covered_gws",
+    "git_sha",
+    "histogram",
+    "late_flags",
+    "min_snap_dates",
+    "note",
+    "rows",
     "run_at",
-    "git_sha"
+    "snap_dates"
    ],
    "title": "FlagLatencyData",
    "type": "object"
@@ -1738,6 +1849,9 @@
      "type": "array"
     }
    },
+   "required": [
+    "rows"
+   ],
    "title": "Freshness",
    "type": "object"
   },
@@ -1790,6 +1904,9 @@
     }
    },
    "required": [
+    "age_hours",
+    "modified_at",
+    "path",
     "source"
    ],
    "title": "FreshnessRow",
@@ -1806,8 +1923,8 @@
     }
    },
    "required": [
-    "gw",
-    "gap"
+    "gap",
+    "gw"
    ],
    "title": "GapPoint",
    "type": "object"
@@ -1900,14 +2017,14 @@
     }
    },
    "required": [
-    "gw",
-    "deadline",
-    "captain",
+    "actual_pts",
     "buys",
-    "sells",
-    "hits",
+    "captain",
+    "deadline",
     "expected_pts",
-    "actual_pts"
+    "gw",
+    "hits",
+    "sells"
    ],
    "title": "HistoryRun",
    "type": "object"
@@ -1982,11 +2099,14 @@
     }
    },
    "required": [
+    "error",
+    "finished_at",
     "id",
     "kind",
-    "status",
+    "line_count",
     "started_at",
-    "line_count"
+    "status",
+    "summary"
    ],
    "title": "JobRunView",
    "type": "object"
@@ -2034,6 +2154,11 @@
      "type": "array"
     }
    },
+   "required": [
+    "built_at",
+    "cumulative",
+    "rows"
+   ],
    "title": "JournalData",
    "type": "object"
   },
@@ -2053,10 +2178,10 @@
     }
    },
    "required": [
-    "gw",
-    "model",
     "actual",
-    "delta"
+    "delta",
+    "gw",
+    "model"
    ],
    "title": "JournalPoint",
    "type": "object"
@@ -2116,10 +2241,15 @@
     }
    },
    "required": [
-    "gw",
-    "model_pts",
+    "actual_captain",
     "actual_pts",
-    "delta"
+    "delta",
+    "gw",
+    "model_buys",
+    "model_captain",
+    "model_pts",
+    "model_sells",
+    "post_deadline"
    ],
    "title": "JournalRow",
    "type": "object"
@@ -2154,10 +2284,10 @@
     }
    },
    "required": [
+    "last_line",
     "log",
-    "present",
     "modified_at",
-    "last_line"
+    "present"
    ],
    "title": "LaunchdHealth",
    "type": "object"
@@ -2177,8 +2307,8 @@
    },
    "required": [
     "bucket",
-    "started",
-    "missed"
+    "missed",
+    "started"
    ],
    "title": "LeadBucket",
    "type": "object"
@@ -2226,15 +2356,15 @@
     }
    },
    "required": [
-    "league_id",
     "entry_id",
+    "gap",
+    "lam",
+    "lam_explained",
+    "league_id",
+    "stance",
     "standings",
     "trajectory",
-    "gap",
-    "win_probability",
-    "lam",
-    "stance",
-    "lam_explained"
+    "win_probability"
    ],
    "title": "LeagueRaceData",
    "type": "object"
@@ -2330,18 +2460,22 @@
     }
    },
    "required": [
-    "gw",
     "entries",
-    "weeks_left",
-    "n",
-    "seed",
-    "rival_drift",
-    "p_win",
-    "p_top3",
     "exp_finish",
-    "per_rival",
+    "field",
+    "field_rate",
+    "gw",
+    "history",
+    "legacy_win_probability",
     "margin_quantiles",
-    "history"
+    "n",
+    "notice",
+    "p_top3",
+    "p_win",
+    "per_rival",
+    "rival_drift",
+    "seed",
+    "weeks_left"
    ],
    "title": "LeagueSimData",
    "type": "object"
@@ -2358,7 +2492,8 @@
     }
    },
    "required": [
-    "code"
+    "code",
+    "event"
    ],
    "title": "LeagueWhatIfPin",
    "type": "object"
@@ -2399,6 +2534,11 @@
      "default": null
     }
    },
+   "required": [
+    "captain_override",
+    "pins",
+    "rival_captain_blanks"
+   ],
    "title": "LeagueWhatIfRequest",
    "type": "object"
   },
@@ -2436,13 +2576,14 @@
     }
    },
    "required": [
-    "baseline_p_win",
-    "p_win",
-    "delta_p_win",
     "baseline_exp_finish",
-    "exp_finish",
+    "baseline_p_win",
+    "delta_p_win",
     "delta_rank",
-    "table"
+    "exp_finish",
+    "p_win",
+    "table",
+    "unknown_codes"
    ],
    "title": "LeagueWhatIfResult",
    "type": "object"
@@ -2479,10 +2620,11 @@
    },
    "required": [
     "entry",
-    "name",
+    "exp_finish",
     "is_you",
-    "total",
-    "exp_finish"
+    "name",
+    "p_win",
+    "total"
    ],
    "title": "LeagueWhatIfRow",
    "type": "object"
@@ -2599,15 +2741,23 @@
     }
    },
    "required": [
-    "element",
     "code",
-    "name",
-    "position",
-    "multiplier",
-    "points",
-    "provisional_bonus",
+    "element",
     "minutes",
-    "status"
+    "multiplier",
+    "name",
+    "points",
+    "position",
+    "projected_in",
+    "projected_out",
+    "provisional_bonus",
+    "remaining_ep",
+    "selected_by_percent",
+    "status",
+    "sub_partner",
+    "sub_reason",
+    "tier_eo",
+    "tier_eo_se"
    ],
    "title": "LivePlayer",
    "type": "object"
@@ -2636,6 +2786,7 @@
    },
    "required": [
     "at",
+    "rival",
     "you"
    ],
    "title": "LiveRacePoint",
@@ -2669,10 +2820,10 @@
    },
    "required": [
     "entry",
-    "name",
-    "role",
     "margin",
-    "need"
+    "name",
+    "need",
+    "role"
    ],
    "title": "LiveSafety",
    "type": "object"
@@ -2788,9 +2939,17 @@
    "required": [
     "active",
     "gw",
-    "my_points",
     "matches_in_play",
+    "my_points",
+    "my_projected_points",
+    "my_race",
+    "notice",
     "players",
+    "race_notice",
+    "race_reference",
+    "race_series",
+    "rival_name",
+    "safety",
     "table"
    ],
    "title": "LiveState",
@@ -2852,12 +3011,15 @@
     }
    },
    "required": [
+    "delta",
     "entry",
+    "live",
     "name",
     "pre_total",
-    "live",
     "projected",
-    "delta"
+    "projected_live",
+    "race",
+    "remaining_ep"
    ],
    "title": "LiveTableRow",
    "type": "object"
@@ -2883,11 +3045,11 @@
     }
    },
    "required": [
-    "gw",
-    "opponent",
-    "home",
     "attack",
-    "defence"
+    "defence",
+    "gw",
+    "home",
+    "opponent"
    ],
    "title": "MatrixCell",
    "type": "object"
@@ -2917,12 +3079,12 @@
     }
    },
    "required": [
-    "code",
-    "name",
-    "short_name",
     "cells",
+    "code",
     "mean_attack",
-    "mean_defence"
+    "mean_defence",
+    "name",
+    "short_name"
    ],
    "title": "MatrixTeam",
    "type": "object"
@@ -2966,6 +3128,11 @@
      "description": "Expected minutes, ``p_play * (45 + 45 * p60)``. ``None`` when either\nprobability is missing: an un-modelled player is not a player expected to\nplay no minutes."
     }
    },
+   "required": [
+    "p60",
+    "p_play",
+    "xmins"
+   ],
    "title": "MinutesOutput",
    "type": "object"
   },
@@ -3008,11 +3175,14 @@
     }
    },
    "required": [
-    "code",
-    "name",
-    "ep",
     "actual",
-    "miss"
+    "code",
+    "ep",
+    "minutes",
+    "miss",
+    "name",
+    "position",
+    "price"
    ],
    "title": "MissRow",
    "type": "object"
@@ -3038,6 +3208,10 @@
      "type": "array"
     }
    },
+   "required": [
+    "gw",
+    "rows"
+   ],
    "title": "MissesData",
    "type": "object"
   },
@@ -3071,12 +3245,12 @@
     }
    },
    "required": [
+    "calibrating",
     "code",
+    "direction",
     "name",
     "now_cost",
     "price_change_percent",
-    "direction",
-    "calibrating",
     "source"
    ],
    "title": "MoverRow",
@@ -3107,7 +3281,9 @@
     }
    },
    "required": [
-    "available"
+    "as_of",
+    "available",
+    "rows"
    ],
    "title": "MoversPanel",
    "type": "object"
@@ -3128,7 +3304,8 @@
    },
    "required": [
     "code",
-    "name"
+    "name",
+    "position"
    ],
    "title": "NamedPlayer",
    "type": "object"
@@ -3282,13 +3459,22 @@
     }
    },
    "required": [
+    "chance_of_playing",
     "code",
-    "name",
-    "team_name",
-    "p_play_news",
-    "p_play_flags",
+    "e_min_flags",
     "e_min_news",
-    "e_min_flags"
+    "expected_return_gw",
+    "fetched_at",
+    "injury_type",
+    "lineup_hint",
+    "name",
+    "official_note",
+    "p_play_flags",
+    "p_play_news",
+    "p_start_hint",
+    "source",
+    "status",
+    "team_name"
    ],
    "title": "NewsRow",
    "type": "object"
@@ -3324,9 +3510,11 @@
     }
    },
    "required": [
-    "run_at",
+    "by_gw",
     "git_sha",
-    "rows"
+    "overall",
+    "rows",
+    "run_at"
    ],
    "title": "NewsShadowData",
    "type": "object"
@@ -3365,16 +3553,16 @@
     }
    },
    "required": [
-    "gw",
-    "brier_news",
     "brier_flags",
-    "mae_news",
-    "mae_flags",
-    "rows",
-    "cum_brier_news",
+    "brier_news",
     "cum_brier_flags",
+    "cum_brier_news",
+    "cum_mae_flags",
     "cum_mae_news",
-    "cum_mae_flags"
+    "gw",
+    "mae_flags",
+    "mae_news",
+    "rows"
    ],
    "title": "NewsShadowGw",
    "type": "object"
@@ -3399,10 +3587,10 @@
     }
    },
    "required": [
-    "brier_news",
     "brier_flags",
-    "mae_news",
+    "brier_news",
     "mae_flags",
+    "mae_news",
     "rows"
    ],
    "title": "NewsShadowSummary",
@@ -3449,7 +3637,10 @@
     }
    },
    "required": [
-    "home"
+    "difficulty",
+    "home",
+    "kickoff_utc",
+    "opponent_short"
    ],
    "title": "NextFixture",
    "type": "object"
@@ -3483,12 +3674,12 @@
     }
    },
    "required": [
-    "weight",
-    "e_goals_against",
-    "p_cs_model",
-    "p_cs_blended",
+    "e_gc_blended",
     "e_gc_model",
-    "e_gc_blended"
+    "e_goals_against",
+    "p_cs_blended",
+    "p_cs_model",
+    "weight"
    ],
    "title": "OddsInfluence",
    "type": "object"
@@ -3512,7 +3703,8 @@
     }
    },
    "required": [
-    "code"
+    "code",
+    "short_name"
    ],
    "title": "OutlookTeam",
    "type": "object"
@@ -3539,8 +3731,10 @@
     }
    },
    "required": [
-    "gw",
-    "fixtures"
+    "blanks",
+    "doubles",
+    "fixtures",
+    "gw"
    ],
    "title": "OutlookWeek",
    "type": "object"
@@ -3579,7 +3773,10 @@
     }
    },
    "required": [
-    "code"
+    "code",
+    "e_min",
+    "note",
+    "p_play"
    ],
    "title": "OverrideRequest",
    "type": "object"
@@ -3648,7 +3845,13 @@
    },
    "required": [
     "code",
-    "name"
+    "e_min",
+    "model_e_min",
+    "model_p_play",
+    "name",
+    "note",
+    "p_play",
+    "set_at"
    ],
    "title": "OverrideRow",
    "type": "object"
@@ -3679,6 +3882,11 @@
      "description": "Accepted, and worth a second look. Set on a write whose two numbers\ndisagree with each other \u2014 expected minutes implying a player starts,\nbeside a probability of playing that says he probably does not. A refusal\nwould be wrong (the manager is allowed to mean it) and silence would be\nworse, so the dialog shows this and stays open."
     }
    },
+   "required": [
+    "active",
+    "rows",
+    "warning"
+   ],
    "title": "OverridesPanel",
    "type": "object"
   },
@@ -3705,6 +3913,12 @@
      "$ref": "#/definitions/PenTrackerTotals"
     }
    },
+   "required": [
+    "gws",
+    "notes",
+    "season",
+    "season_totals"
+   ],
    "title": "PenTrackerData",
    "type": "object"
   },
@@ -3859,7 +4073,20 @@
     }
    },
    "required": [
-    "gw"
+    "component_rows",
+    "covered_rows",
+    "error",
+    "gw",
+    "instrument",
+    "pens_by_first_choice",
+    "pens_per_team_game",
+    "pens_taken",
+    "predicted_ep_pen_taker",
+    "predicted_takers",
+    "realized_pen_points",
+    "rows",
+    "taker_hit_rate",
+    "team_games"
    ],
    "title": "PenTrackerGw",
    "type": "object"
@@ -3973,6 +4200,18 @@
      "default": null
     }
    },
+   "required": [
+    "gws",
+    "instruments",
+    "league_pens_pg_served",
+    "pens_by_first_choice",
+    "pens_per_team_game",
+    "pens_taken",
+    "predicted_ep_pen_taker",
+    "realized_pen_points",
+    "taker_hit_rate",
+    "team_games"
+   ],
    "title": "PenTrackerTotals",
    "type": "object"
   },
@@ -4003,6 +4242,7 @@
     }
    },
    "required": [
+    "gap",
     "label",
     "weeks"
    ],
@@ -4094,12 +4334,17 @@
     }
    },
    "required": [
-    "gw",
+    "bank",
     "buys",
-    "sells",
-    "hits",
+    "captain",
+    "chip",
+    "expected_pts",
+    "gw",
     "hit_cost",
-    "expected_pts"
+    "hits",
+    "sells",
+    "trace",
+    "vice"
    ],
    "title": "PlanGw",
    "type": "object"
@@ -4133,9 +4378,10 @@
    },
    "required": [
     "code",
+    "ep",
     "name",
     "position",
-    "ep"
+    "price"
    ],
    "title": "PlanMove",
    "type": "object"
@@ -4200,6 +4446,15 @@
      "type": "string"
     }
    },
+   "required": [
+    "buy_code",
+    "buy_name",
+    "ep_gain",
+    "lambda_tilt",
+    "note",
+    "sell_code",
+    "sell_name"
+   ],
    "title": "PlanMoveTrace",
    "type": "object"
   },
@@ -4207,18 +4462,18 @@
    "properties": {
     "bench": {
      "items": {
-      "$ref": "#/definitions/PlayerRef"
+      "$ref": "#/definitions/WirePlayerRef"
      },
      "type": "array"
     },
     "buys": {
      "items": {
-      "$ref": "#/definitions/PlayerRef"
+      "$ref": "#/definitions/WirePlayerRef"
      },
      "type": "array"
     },
     "captain": {
-     "$ref": "#/definitions/PlayerRef"
+     "$ref": "#/definitions/WirePlayerRef"
     },
     "expected_pts": {
      "description": "Raw expected points for ``gw`` alone, net of hits.",
@@ -4236,31 +4491,31 @@
     },
     "sells": {
      "items": {
-      "$ref": "#/definitions/PlayerRef"
+      "$ref": "#/definitions/WirePlayerRef"
      },
      "type": "array"
     },
     "vice": {
-     "$ref": "#/definitions/PlayerRef"
+     "$ref": "#/definitions/WirePlayerRef"
     },
     "xi": {
      "items": {
-      "$ref": "#/definitions/PlayerRef"
+      "$ref": "#/definitions/WirePlayerRef"
      },
      "type": "array"
     }
    },
    "required": [
-    "gw",
-    "xi",
     "bench",
-    "captain",
-    "vice",
     "buys",
-    "sells",
-    "hits",
+    "captain",
     "expected_pts",
-    "horizon_pts"
+    "gw",
+    "hits",
+    "horizon_pts",
+    "sells",
+    "vice",
+    "xi"
    ],
    "title": "PlanSummary",
    "type": "object"
@@ -4365,66 +4620,21 @@
     }
    },
    "required": [
-    "gw"
+    "bank_value",
+    "ep_gain",
+    "ft_after",
+    "ft_basis",
+    "ft_shadow",
+    "ft_use_penalty",
+    "ft_used",
+    "gw",
+    "hit_cost",
+    "moves",
+    "note",
+    "price_charge",
+    "theta"
    ],
    "title": "PlanWeekTrace",
-   "type": "object"
-  },
-  "PlayerRef": {
-   "properties": {
-    "code": {
-     "type": "integer"
-    },
-    "ep": {
-     "type": "number"
-    },
-    "name": {
-     "type": "string"
-    },
-    "next_fixture": {
-     "anyOf": [
-      {
-       "$ref": "#/definitions/NextFixture"
-      },
-      {
-       "type": "null"
-      }
-     ],
-     "default": null
-    },
-    "position": {
-     "type": "string"
-    },
-    "team_code": {
-     "anyOf": [
-      {
-       "type": "integer"
-      },
-      {
-       "type": "null"
-      }
-     ],
-     "default": null
-    },
-    "team_short": {
-     "anyOf": [
-      {
-       "type": "string"
-      },
-      {
-       "type": "null"
-      }
-     ],
-     "default": null
-    }
-   },
-   "required": [
-    "code",
-    "name",
-    "position",
-    "ep"
-   ],
-   "title": "PlayerRef",
    "type": "object"
   },
   "PresserGradesData": {
@@ -4497,8 +4707,18 @@
     }
    },
    "required": [
+    "absent_rows",
+    "available",
+    "by_source",
+    "confusion",
+    "git_sha",
+    "graded_gws",
+    "note",
+    "per_class",
+    "recall_population",
+    "rows",
     "run_at",
-    "git_sha"
+    "verdicts_banked"
    ],
    "title": "PresserGradesData",
    "type": "object"
@@ -4612,6 +4832,14 @@
      "default": null
     }
    },
+   "required": [
+    "benchmark",
+    "current",
+    "decomposition",
+    "flag_latency",
+    "news_shadow",
+    "presser_grades"
+   ],
    "title": "QualityData",
    "type": "object"
   },
@@ -4626,8 +4854,8 @@
     }
    },
    "required": [
-    "rmse",
-    "mae"
+    "mae",
+    "rmse"
    ],
    "title": "ReferenceMetrics",
    "type": "object"
@@ -4646,8 +4874,8 @@
    },
    "required": [
     "n",
-    "pred",
-    "obs"
+    "obs",
+    "pred"
    ],
    "title": "ReliabilityBin",
    "type": "object"
@@ -4662,33 +4890,10 @@
     }
    },
    "required": [
-    "gw",
-    "accuracy"
+    "accuracy",
+    "gw"
    ],
    "title": "ReviewAccuracyPoint",
-   "type": "object"
-  },
-  "ReviewData": {
-   "properties": {
-    "gws": {
-     "items": {
-      "$ref": "#/definitions/ReviewGw"
-     },
-     "type": "array"
-    },
-    "summary": {
-     "anyOf": [
-      {
-       "$ref": "#/definitions/WireReviewSummary"
-      },
-      {
-       "type": "null"
-      }
-     ],
-     "default": null
-    }
-   },
-   "title": "ReviewData",
    "type": "object"
   },
   "ReviewGw": {
@@ -4915,7 +5120,31 @@
     }
    },
    "required": [
-    "gw"
+    "accuracy",
+    "chip",
+    "gw",
+    "hindsight",
+    "hits",
+    "lanes",
+    "misses",
+    "model_chip",
+    "model_points",
+    "my_points",
+    "no_advice",
+    "notices",
+    "official_gross",
+    "official_points",
+    "our_bench_points",
+    "overall_rank",
+    "points_on_bench",
+    "post_deadline",
+    "projection_post_deadline",
+    "projection_snapshot",
+    "pwin_granularity_pp",
+    "pwin_n",
+    "pwin_seed",
+    "reconciled",
+    "reviewed_at"
    ],
    "title": "ReviewGw",
    "type": "object"
@@ -4963,6 +5192,12 @@
      "type": "array"
     }
    },
+   "required": [
+    "captain",
+    "gap",
+    "points",
+    "xi"
+   ],
    "title": "ReviewHindsight",
    "type": "object"
   },
@@ -5058,7 +5293,14 @@
     }
    },
    "required": [
-    "lane"
+    "aligned",
+    "delta_pts",
+    "delta_pwin",
+    "label",
+    "lane",
+    "mine",
+    "model",
+    "note"
    ],
    "title": "ReviewLane",
    "type": "object"
@@ -5088,6 +5330,13 @@
      "type": "integer"
     }
    },
+   "required": [
+    "graded",
+    "losses",
+    "pts",
+    "pwin",
+    "wins"
+   ],
    "title": "ReviewLaneTotal",
    "type": "object"
   },
@@ -5109,9 +5358,9 @@
    },
    "required": [
     "code",
+    "gain",
     "name",
-    "over",
-    "gain"
+    "over"
    ],
    "title": "ReviewMiss",
    "type": "object"
@@ -5139,7 +5388,8 @@
    },
    "required": [
     "entry",
-    "name"
+    "name",
+    "p_beat"
    ],
    "title": "RivalBeat",
    "type": "object"
@@ -5216,19 +5466,19 @@
     }
    },
    "required": [
+    "captain",
+    "chips_used",
     "entry",
+    "live_points",
     "name",
     "player_name",
-    "total",
-    "team_value",
-    "chips_used",
-    "captain",
-    "squad_gw",
-    "squad",
     "shared",
+    "squad",
+    "squad_gw",
+    "team_value",
     "their_differentials",
-    "your_differentials",
-    "live_points"
+    "total",
+    "your_differentials"
    ],
    "title": "RivalDetailData",
    "type": "object"
@@ -5261,14 +5511,14 @@
     }
    },
    "required": [
+    "differentials",
     "entry",
+    "event_total",
     "name",
+    "overlap",
     "player_name",
     "rank",
-    "total",
-    "event_total",
-    "overlap",
-    "differentials"
+    "total"
    ],
    "title": "RivalSummary",
    "type": "object"
@@ -5299,12 +5549,13 @@
     }
    },
    "required": [
-    "kind",
     "code",
-    "gw",
-    "label",
     "count",
-    "frequency"
+    "frequency",
+    "gw",
+    "kind",
+    "label",
+    "name"
    ],
    "title": "SensitivityMove",
    "type": "object"
@@ -5348,7 +5599,12 @@
     }
    },
    "required": [
-    "count"
+    "buys",
+    "captain",
+    "count",
+    "hits",
+    "sells",
+    "value"
    ],
    "title": "SensitivityPlan",
    "type": "object"
@@ -5493,6 +5749,24 @@
      "default": null
     }
    },
+   "required": [
+    "available",
+    "completed",
+    "decision_sigma",
+    "failures",
+    "frequencies",
+    "generated_at",
+    "gw",
+    "horizon",
+    "k",
+    "margin",
+    "modal",
+    "notice",
+    "runner_up",
+    "seed",
+    "verdict",
+    "wall_s"
+   ],
    "title": "SensitivityReport",
    "type": "object"
   },
@@ -5553,17 +5827,20 @@
      "type": "string"
     },
     "value": {
-     "description": "Whatever the merged config holds. ``None`` only for ``bench_curve``,\nwhere it means \"no curve \u2014 one flat bench weight\", which is a real\nsetting and not an absent one."
+     "description": "Whatever the merged config holds. ``None`` only for ``bench_curve``,\nwhere it means \"no curve \u2014 one flat bench weight\", which is a real\nsetting and not an absent one.",
+     "tsType": "unknown"
     }
    },
    "required": [
-    "key",
-    "label",
-    "kind",
-    "value",
-    "section",
     "help",
-    "source"
+    "hi",
+    "key",
+    "kind",
+    "label",
+    "lo",
+    "section",
+    "source",
+    "value"
    ],
    "title": "SettingRow",
    "type": "object"
@@ -5575,11 +5852,13 @@
     },
     "value": {
      "default": null,
-     "description": "``None`` removes the key from the overlay, so the value falls back to\n``config.toml`` or the dataclass default."
+     "description": "``None`` removes the key from the overlay, so the value falls back to\n``config.toml`` or the dataclass default.",
+     "tsType": "unknown"
     }
    },
    "required": [
-    "key"
+    "key",
+    "value"
    ],
    "title": "SettingWrite",
    "type": "object"
@@ -5616,7 +5895,10 @@
     }
    },
    "required": [
-    "apply_note"
+    "apply_note",
+    "overlay_error",
+    "rows",
+    "unavailable"
    ],
    "title": "SettingsPanel",
    "type": "object"
@@ -5641,10 +5923,10 @@
     }
    },
    "required": [
-    "gw",
-    "p_win",
-    "p_top3",
     "exp_finish",
+    "gw",
+    "p_top3",
+    "p_win",
     "run_at"
    ],
    "title": "SimPoint",
@@ -5683,11 +5965,11 @@
     }
    },
    "required": [
-    "source",
+    "age_hours",
+    "modified_at",
     "path",
     "present",
-    "modified_at",
-    "age_hours"
+    "source"
    ],
    "title": "SourceHealth",
    "type": "object"
@@ -5702,8 +5984,8 @@
     }
    },
    "required": [
-    "source",
-    "rows"
+    "rows",
+    "source"
    ],
    "title": "SourceRows",
    "type": "object"
@@ -5761,11 +6043,13 @@
     }
    },
    "required": [
-    "gain_over_horizon",
-    "recommend",
-    "kept",
+    "added",
     "dropped",
-    "added"
+    "gain_over_horizon",
+    "kept",
+    "recommend",
+    "threshold",
+    "threshold_source"
    ],
    "title": "SquadDiff",
    "type": "object"
@@ -5797,11 +6081,11 @@
    "required": [
     "code",
     "element",
+    "is_captain",
+    "multiplier",
     "name",
     "position",
-    "price",
-    "is_captain",
-    "multiplier"
+    "price"
    ],
    "title": "SquadPlayer",
    "type": "object"
@@ -5826,10 +6110,10 @@
    },
    "required": [
     "code",
+    "ep",
     "name",
     "position",
-    "price",
-    "ep"
+    "price"
    ],
    "title": "SquadPlayerRef",
    "type": "object"
@@ -5890,11 +6174,13 @@
    "required": [
     "advice_gw",
     "current_gw",
-    "generated_at",
+    "data_through_gw",
+    "data_warning",
     "deadline",
     "deadline_passed",
-    "stale",
-    "reason"
+    "generated_at",
+    "reason",
+    "stale"
    ],
    "title": "Staleness",
    "type": "object"
@@ -5925,12 +6211,12 @@
    },
    "required": [
     "entry",
+    "event_total",
+    "is_you",
     "name",
     "player_name",
     "rank",
-    "total",
-    "event_total",
-    "is_you"
+    "total"
    ],
    "title": "StandingRow",
    "type": "object"
@@ -5951,10 +6237,10 @@
     }
    },
    "required": [
+    "difficulty",
     "gw",
-    "opponent",
     "home",
-    "difficulty"
+    "opponent"
    ],
    "title": "TickerCell",
    "type": "object"
@@ -6011,11 +6297,11 @@
     }
    },
    "required": [
-    "code",
-    "name",
-    "short_name",
     "cells",
-    "mean_difficulty"
+    "code",
+    "mean_difficulty",
+    "name",
+    "short_name"
    ],
    "title": "TickerTeam",
    "type": "object"
@@ -6058,8 +6344,8 @@
    },
    "required": [
     "gw",
-    "opponent",
-    "home"
+    "home",
+    "opponent"
    ],
    "title": "UpcomingFixture",
    "type": "object"
@@ -6080,10 +6366,10 @@
     }
    },
    "required": [
-    "verdict",
     "n",
+    "not_started",
     "started",
-    "not_started"
+    "verdict"
    ],
    "title": "VerdictRow",
    "type": "object"
@@ -6105,10 +6391,10 @@
     }
    },
    "required": [
-    "verdict",
     "n",
     "precision",
-    "recall"
+    "recall",
+    "verdict"
    ],
    "title": "VerdictScore",
    "type": "object"
@@ -6125,7 +6411,8 @@
     }
    },
    "required": [
-    "code"
+    "code",
+    "note"
    ],
    "title": "WatchRequest",
    "type": "object"
@@ -6164,6 +6451,9 @@
      "type": "array"
     }
    },
+   "required": [
+    "rows"
+   ],
    "title": "WatchlistPanel",
    "type": "object"
   },
@@ -6221,6 +6511,15 @@
      "type": "integer"
     }
    },
+   "required": [
+    "ban",
+    "chip",
+    "force_in",
+    "force_out",
+    "horizon",
+    "lock",
+    "max_hits"
+   ],
    "title": "WhatIfRequest",
    "type": "object"
   },
@@ -6243,13 +6542,13 @@
     },
     "xi_in": {
      "items": {
-      "$ref": "#/definitions/PlayerRef"
+      "$ref": "#/definitions/WirePlayerRef"
      },
      "type": "array"
     },
     "xi_out": {
      "items": {
-      "$ref": "#/definitions/PlayerRef"
+      "$ref": "#/definitions/WirePlayerRef"
      },
      "type": "array"
     },
@@ -6259,13 +6558,13 @@
    },
    "required": [
     "baseline",
-    "yours",
+    "captain_changed",
     "delta_xpts",
+    "transfers_changed",
+    "verdict",
     "xi_in",
     "xi_out",
-    "transfers_changed",
-    "captain_changed",
-    "verdict"
+    "yours"
    ],
    "title": "WhatIfResult",
    "type": "object"
@@ -6284,8 +6583,8 @@
    },
    "required": [
     "name",
-    "total",
-    "p_win"
+    "p_win",
+    "total"
    ],
    "title": "WinProb",
    "type": "object"
@@ -6310,10 +6609,10 @@
     }
    },
    "required": [
+    "advice",
+    "deadline",
     "gw",
     "mode",
-    "deadline",
-    "advice",
     "staleness"
    ],
    "title": "WireAdviceLatest",
@@ -6414,6 +6713,19 @@
      "default": null
     }
    },
+   "required": [
+    "available",
+    "cumulative",
+    "excluded",
+    "gameweeks",
+    "git_sha",
+    "missing",
+    "note",
+    "omitted",
+    "per_gw_omitted",
+    "run_at",
+    "season"
+   ],
    "title": "WireCalibrationReport",
    "type": "object"
   },
@@ -6541,12 +6853,19 @@
     }
    },
    "required": [
+    "artifacts",
+    "core_insights",
     "data",
-    "models",
+    "data_through_gw",
+    "last_backup",
     "launchd",
-    "odds_key_present",
     "model_health",
-    "artifacts"
+    "models",
+    "odds_key_present",
+    "season_config",
+    "season_ingested",
+    "season_ok",
+    "solver_top_n"
    ],
    "title": "WireHealth",
    "type": "object"
@@ -6574,9 +6893,9 @@
     }
    },
    "required": [
-    "runs",
+    "backtests",
     "prices",
-    "backtests"
+    "runs"
    ],
    "title": "WireHistory",
    "type": "object"
@@ -6602,9 +6921,9 @@
     }
    },
    "required": [
+    "metrics",
     "name",
-    "saved_at",
-    "metrics"
+    "saved_at"
    ],
    "title": "WireModelHealth",
    "type": "object"
@@ -6645,8 +6964,10 @@
     }
    },
    "required": [
-    "gw",
+    "alternatives",
+    "bank",
     "generated_at",
+    "gw",
     "weeks"
    ],
    "title": "WirePlanTimeline",
@@ -6705,15 +7026,76 @@
    },
    "required": [
     "code",
-    "name",
-    "position",
-    "team_name",
     "ep_next",
     "fixtures",
+    "name",
     "next_fixtures",
-    "set_pieces"
+    "position",
+    "set_pieces",
+    "set_pieces_manual",
+    "team_name"
    ],
    "title": "WirePlayerExplain",
+   "type": "object"
+  },
+  "WirePlayerRef": {
+   "properties": {
+    "code": {
+     "type": "integer"
+    },
+    "ep": {
+     "type": "number"
+    },
+    "name": {
+     "type": "string"
+    },
+    "next_fixture": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/NextFixture"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "position": {
+     "type": "string"
+    },
+    "team_code": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "team_short": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "required": [
+    "code",
+    "ep",
+    "name",
+    "next_fixture",
+    "position",
+    "team_code",
+    "team_short"
+   ],
+   "title": "WirePlayerRef",
    "type": "object"
   },
   "WirePlayerRow": {
@@ -6779,6 +7161,11 @@
     "field_class": {
      "anyOf": [
       {
+       "enum": [
+        "shield",
+        "sword",
+        "threat"
+       ],
        "type": "string"
       },
       {
@@ -6786,7 +7173,7 @@
       }
      ],
      "default": null,
-     "description": "``shield`` | ``sword`` | ``threat``, or ``None`` for the quadrant with\nnothing to say."
+     "description": "``shield`` | ``sword`` | ``threat``, or ``None`` for the quadrant with\nnothing to say.\n\nA ``Literal`` and not a ``str``, since v12 W5: ``routers.players\n.field_class`` returns exactly these three and ``None``, the client has\nalways typed it as those three, and only the schema was saying ``str`` \u2014\nwhich the generated types then repeated, and the pitch's shirt colours\nstopped compiling against."
     },
     "field_eo": {
      "anyOf": [
@@ -6938,27 +7325,66 @@
     }
    },
    "required": [
-    "code",
-    "element",
-    "name",
-    "position",
-    "team_code",
-    "team_name",
-    "price",
-    "ep_next",
-    "ep_horizon",
-    "ownership",
-    "league_eo",
     "available",
-    "status",
-    "news",
     "chance_of_playing",
-    "penalties_order",
-    "free_kicks_order",
+    "code",
     "corners_order",
-    "in_squad"
+    "element",
+    "ep_hi",
+    "ep_horizon",
+    "ep_lo",
+    "ep_next",
+    "field_class",
+    "field_eo",
+    "field_eo_deadline",
+    "field_eo_delta",
+    "field_n",
+    "field_se",
+    "free_kicks_order",
+    "in_squad",
+    "last4",
+    "league_eo",
+    "name",
+    "news",
+    "ownership",
+    "p_blank",
+    "p_haul",
+    "penalties_order",
+    "position",
+    "price",
+    "set_piece_manual",
+    "status",
+    "team_code",
+    "team_name"
    ],
    "title": "WirePlayerRow",
+   "type": "object"
+  },
+  "WireReview": {
+   "properties": {
+    "gws": {
+     "items": {
+      "$ref": "#/definitions/ReviewGw"
+     },
+     "type": "array"
+    },
+    "summary": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/WireReviewSummary"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "required": [
+    "gws",
+    "summary"
+   ],
+   "title": "WireReview",
    "type": "object"
   },
   "WireReviewSummary": {
@@ -7031,6 +7457,19 @@
      "default": null
     }
    },
+   "required": [
+    "accuracy",
+    "best",
+    "gws",
+    "hindsight_gap",
+    "hindsight_gap_gws",
+    "lanes",
+    "points_on_bench",
+    "points_on_bench_gws",
+    "reconciled_gws",
+    "unreconciled_gws",
+    "worst"
+   ],
    "title": "WireReviewSummary",
    "type": "object"
   }
