@@ -154,13 +154,27 @@ def fetch_tree(client: httpx.Client | None = None) -> dict:
     One request answers what would otherwise be a listing per season per
     table. ``{}`` is the documented degradation and every caller treats it as
     "the archive published nothing", never as an error.
+
+    Two ways to get nothing, and they are told apart here. A dead connection
+    raises. A **refusal** does not: GitHub answers a rate limit, a moved
+    repository or a bad token with JSON carrying ``message`` and no ``tree``,
+    which parses perfectly well — so the caller found no paths in it and
+    printed "the archive published nothing reachable", blaming the publisher
+    for our own throttling. The refusal gets its own line before the empty
+    tree goes back, because one of those is waited out and the other is
+    reported.
     """
     http = _http(client)
     try:
-        return http.get(CUPS_TREE_URL).json()
+        payload = http.get(CUPS_TREE_URL).json()
     except (httpx.HTTPError, ValueError) as exc:
         print(f"core-insights: tree listing unavailable ({exc})")
         return {}
+    if isinstance(payload, dict) and "message" in payload:
+        print(f"core-insights: tree listing refused by the host "
+              f"({payload['message']}) — this is not the archive being empty")
+        return {}
+    return payload
 
 
 def fetch_csv(path: str, http: httpx.Client,

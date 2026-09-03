@@ -202,7 +202,12 @@ def core_insights_cmd(
         # is a prediction-time input (density_pub_7d reads next week's
         # published ties), so the season being played is the one that matters
         # most, and the training seasons are what makes an arm measurable.
-        seasons = list(cfg.train_seasons) + [cfg.current_season]
+        # Deduplicated, order kept: `train_seasons` routinely already names
+        # the season being played (the shipped config.example.toml does), and
+        # a list naming it twice fetched and wrote that season twice and
+        # printed a season count one too high.
+        seasons = list(dict.fromkeys(
+            list(cfg.train_seasons) + [cfg.current_season]))
         # The index comes from history, not from this list's position. The
         # arm builders join on season_idx and the training frame's season_idx
         # is history's own, so a config whose train_seasons are reordered or

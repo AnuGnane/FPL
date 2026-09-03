@@ -704,3 +704,112 @@ def test_the_season_index_falls_back_to_position_before_any_history(clone):
 
 def test_the_cache_lives_where_the_docstring_says_it_does():
     assert str(CI_CACHE) == "data/raw/core_insights"
+
+
+# --- W4 review round: the season list and the refused tree ----------------
+
+
+def test_the_current_season_named_twice_is_collected_once(monkeypatch):
+    """`train_seasons` routinely already names the season being played — the
+    shipped `config.example.toml` does — and appending `current_season` to it
+    unconditionally asked the archive for that season twice: every file
+    fetched again, every parquet written twice, and the printed line claiming
+    one more season than exists."""
+    from typer.testing import CliRunner
+
+    from gaffer.cli import app
+    from gaffer.config import Config
+    from gaffer.data import core_insights as ci_mod
+
+    seen = {}
+
+    def fake(seasons, indexes, *a, **k):
+        seen["seasons"] = list(seasons)
+        seen["indexes"] = dict(indexes)
+        return {s: {"players": 1, "fixtures": 1, "elo": 1} for s in seasons}
+
+    monkeypatch.setattr(ci_mod, "download_core_insights", fake)
+    monkeypatch.setattr(ci_mod, "season_index_map",
+                        lambda seasons, cur: {s: i
+                                              for i, s in enumerate(seasons)})
+    monkeypatch.setattr("gaffer.config.load_config", lambda *a, **k: Config(
+        entry_id=1, league_id=2,
+        train_seasons=["2024-25", "2025-26", "2026-27"],
+        current_season="2026-27"))
+
+    result = CliRunner().invoke(app, ["core-insights"])
+    assert result.exit_code == 0, result.output
+    assert seen["seasons"] == ["2024-25", "2025-26", "2026-27"]
+    assert "across 3 seasons" in result.output
+
+
+def test_a_current_season_missing_from_train_seasons_is_still_collected(
+        monkeypatch):
+    """Dedup must not become a filter: the season being played is the one the
+    fixture table is a prediction-time input for, so it is collected whether
+    or not the training list happens to name it."""
+    from typer.testing import CliRunner
+
+    from gaffer.cli import app
+    from gaffer.config import Config
+    from gaffer.data import core_insights as ci_mod
+
+    seen = {}
+    monkeypatch.setattr(ci_mod, "download_core_insights",
+                        lambda seasons, indexes, *a, **k:
+                        (seen.update(seasons=list(seasons)),
+                         {s: {"players": 1} for s in seasons})[1])
+    monkeypatch.setattr(ci_mod, "season_index_map",
+                        lambda seasons, cur: {s: i
+                                              for i, s in enumerate(seasons)})
+    monkeypatch.setattr("gaffer.config.load_config", lambda *a, **k: Config(
+        entry_id=1, league_id=2, train_seasons=["2024-25", "2025-26"],
+        current_season="2026-27"))
+
+    result = CliRunner().invoke(app, ["core-insights"])
+    assert result.exit_code == 0, result.output
+    assert seen["seasons"] == ["2024-25", "2025-26", "2026-27"]
+
+
+def test_a_tree_listing_refused_by_github_is_named_not_blamed_on_the_archive(
+        clone):
+    """GitHub answers a rate limit or a moved repository with a 403 and a JSON
+    body carrying `message` and no `tree`. That parses, so `fetch_tree`
+    returned it happily, `ci_paths_from_tree` found no paths in it, and the
+    caller printed "the archive published nothing reachable" — blaming the
+    publisher for our own throttling. The distinction is the whole diagnosis:
+    one is waited out, the other is reported."""
+    from gaffer.data.core_insights import fetch_tree
+
+    class _Refused:
+        def get(self, url, **_kw):
+            return _Resp('{"message": "API rate limit exceeded for 1.2.3.4.",'
+                         ' "documentation_url": "https://docs.github.com/"}')
+
+    out = fetch_tree(client=_Refused())
+    assert out == {}
+
+
+def test_a_refused_tree_prints_the_message_github_gave(clone, capsys):
+    from gaffer.data.core_insights import fetch_tree
+
+    class _Refused:
+        def get(self, url, **_kw):
+            return _Resp('{"message": "API rate limit exceeded for 1.2.3.4."}')
+
+    fetch_tree(client=_Refused())
+    printed = capsys.readouterr().out
+    assert "rate limit exceeded" in printed
+    assert "core-insights" in printed
+
+
+def test_a_real_tree_is_not_mistaken_for_a_refusal(clone):
+    """The guard reads `message` on the *listing* object; a tree whose paths
+    happen to include the word must still come through."""
+    from gaffer.data.core_insights import fetch_tree
+
+    class _Ok:
+        def get(self, url, **_kw):
+            return _Resp('{"tree": [{"path": "data/2026-2027/players.csv"}]}')
+
+    assert fetch_tree(client=_Ok())["tree"][0]["path"].endswith("players.csv")

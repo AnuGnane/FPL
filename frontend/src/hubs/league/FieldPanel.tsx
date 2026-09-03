@@ -70,18 +70,32 @@ export default function FieldPanel({ field }: { field: FieldRank | null }) {
                   {field.rank_waiting_for ?? 'graded gameweeks'}
                 </span>
               )
-              : (
-                // The sign carries the whole meaning — overall rank counts
-                // down, so a negative slope is points buying places — and
-                // rendering the magnitude alone read a squad that was sliding
-                // as one that was climbing.
-                <span className="num text-text">
-                  {Math.abs(Math.round(field.rank_slope)).toLocaleString()}{' '}
-                  places per point{' '}
-                  {field.rank_slope < 0 ? 'better' : 'worse'}, over{' '}
-                  {field.rank_slope_rows} graded gameweeks
-                </span>
-              )}
+              : Math.round(field.rank_slope) === 0
+                ? (
+                  // A fit that lands on zero is a *measurement* — over the
+                  // weeks seen, rank did not move with points — and the
+                  // sign test below has no answer for it: `< 0 ? better :
+                  // worse` fell through to "worse" and printed a finding the
+                  // fit never made. Keyed on the rounded number because that
+                  // is the one on screen: a slope of −0.4 would otherwise
+                  // read "0 places per point better".
+                  <span className="num text-text">
+                    no measurable move, over {field.rank_slope_rows}{' '}
+                    graded gameweeks
+                  </span>
+                )
+                : (
+                  // The sign carries the whole meaning — overall rank counts
+                  // down, so a negative slope is points buying places — and
+                  // rendering the magnitude alone read a squad that was
+                  // sliding as one that was climbing.
+                  <span className="num text-text">
+                    {Math.abs(Math.round(field.rank_slope)).toLocaleString()}
+                    {' '}places per point{' '}
+                    {field.rank_slope < 0 ? 'better' : 'worse'}, over{' '}
+                    {field.rank_slope_rows} graded gameweeks
+                  </span>
+                )}
           </dd>
         </div>
       </dl>

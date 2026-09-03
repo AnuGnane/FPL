@@ -59,6 +59,18 @@ describe('FieldPanel', () => {
     expect(screen.getByText(/18,400 places per point worse/)).toBeInTheDocument()
   })
 
+  it('reads a slope of exactly zero as neither better nor worse', () => {
+    // A least-squares slope of 0 through a real ledger is a measurement —
+    // rank did not move with points over the weeks seen — and `< 0 ? better
+    // : worse` fell through to "worse", which reads as a finding the fit did
+    // not make.
+    render(<FieldPanel field={{ ...base, p_green: 0.5, rank_slope: 0,
+                                rank_slope_rows: 6 }} />)
+    expect(screen.getByText(/no measurable move/)).toBeInTheDocument()
+    expect(screen.queryByText(/worse/)).toBeNull()
+    expect(screen.queryByText(/better/)).toBeNull()
+  })
+
   it('names the gameweek the EO was drawn from, which is not this one', () => {
     render(<FieldPanel field={{ ...base, gw: 6, eo_gw: 5, p_green: 0.5 }} />)
     expect(screen.getByText(/EO drawn from GW 5/)).toBeInTheDocument()

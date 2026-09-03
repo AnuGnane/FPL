@@ -167,6 +167,11 @@ def set_piece_orders(team_of: Mapping[int, int] | None = None
     **Only ``penalties`` reaches expected points.** The other two kinds change
     the number this endpoint serves and nothing else: there is no free-kick or
     corner term in the model, and this function does not invent one.
+
+    The file is re-read on every request **on purpose**, not for want of a
+    cache: it is a handful of lines a human edits when a manager says
+    something at a press conference, and an override that only takes effect
+    after a restart is one that gets typed twice and doubted.
     """
     from gaffer.data.set_piece_overrides import (SET_PIECE_KINDS,
                                                  load_set_piece_overrides)
