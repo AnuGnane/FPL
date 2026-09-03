@@ -26,6 +26,9 @@ frontend/tsconfig.tsbuildinfo
 reports/
 .claude/
 config.toml
+# v12 W5 §6.2: the overlay the Settings tab writes. Untracked for the same
+# reason config.toml is — it is one machine's own answers, not the project's.
+config.local.toml
 # v12 W4 §5.4: the hand-edited set-piece override. One user's knowledge about
 # one season, so it is untracked; the template ships as a package asset
 # (src/gaffer/assets/set_pieces.example.toml) so a fresh clone still has one.

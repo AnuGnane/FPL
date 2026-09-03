@@ -146,3 +146,19 @@ keep = 14
 # and printed each time you start, which is fine for a phone you are about to
 # scan a QR code with and awkward for a bookmark.
 # token = "something long and private"
+
+# ---------------------------------------------------------------------------
+# config.local.toml (v12 W5 §6.2)
+#
+# An optional file beside this one. Every table in it is merged over the same
+# table here, key by key, after this file is read — so it can override one
+# setting without restating the section, and it can add a section this file
+# never declared.
+#
+# The Settings tab in the web UI writes it. It never reads or writes
+# config.toml, which holds the odds API key.
+#
+# A key in [optimizer] or [data] that is not a config field is ignored with a
+# printed line rather than crashing the run; the same is true of a file that
+# will not parse.
+# ---------------------------------------------------------------------------

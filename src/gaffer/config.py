@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import tomllib
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -162,6 +163,93 @@ class Config:
     web_token: str = ""
 
 
+LOCAL_OVERLAY = "config.local.toml"
+"""The overlay the Settings tab owns (v12 W5 §6.2).
+
+Read *after* ``config.toml`` and merged over it key by key. It exists so the
+UI has a file it may write without ever touching ``config.toml``, which
+carries the odds API key and is gitignored for that reason. Spec §8 forbids a
+UI that edits ``config.toml``; this is the file it edits instead.
+"""
+
+SPLATTED_SECTIONS = ("optimizer", "data")
+"""Sections :func:`load_config` splats straight into ``Config(...)``.
+
+A key here that is not a dataclass field is a ``TypeError``, and
+:func:`serving_config` catches that by falling all the way back to
+``Config(entry_id=0, league_id=0)`` — discarding the user's real config
+without a word. So the overlay drops unknown keys in these sections rather
+than letting one typo silently re-point the news layer at entry 0. Every other
+section is read key-by-key and ignores what it does not recognise already.
+
+One exemption, and it is the reason this is a named tuple rather than a
+``fields(Config)`` filter on the whole file: ``load_config`` pops
+:data:`NON_FIELD_OPTIMIZER_KEYS` out of ``[optimizer]`` *before* the splat, so
+those keys never reach ``Config.__init__`` and dropping them here would leave
+the Settings tab writing ``price_timing`` into a file nothing reads back.
+"""
+
+
+def _overlay(raw: dict, base: Path) -> dict:
+    """``config.toml``'s tables with ``config.local.toml``'s merged over them.
+
+    A sibling of ``base``, never of the working directory: every test in this
+    tree passes a ``tmp_path`` config, and a relative path would read the
+    developer's own overlay into the fixture.
+
+    Never raises. A missing overlay is the normal case; an unparseable one is
+    ignored with a printed line, because one bad write from the Settings tab
+    must not stop every job on the machine. The line is the only signal there
+    is, so it names the file and says the word "ignored" — the settings
+    endpoint greps for exactly that when it reports the overlay's health.
+    """
+    local = Path(base).parent / LOCAL_OVERLAY
+    if not local.exists():
+        return raw
+    try:
+        extra = tomllib.loads(local.read_text())
+    except Exception as exc:  # noqa: BLE001 — a bad overlay is not a crash
+        print(f"config: {local} is not readable TOML ({exc}) — ignored, "
+              f"using {base} alone")
+        return raw
+    allowed = ({f.name for f in dataclasses.fields(Config)}
+               | set(NON_FIELD_OPTIMIZER_KEYS))
+    out = dict(raw)
+    for section, values in extra.items():
+        if not isinstance(values, dict) or not isinstance(out.get(section),
+                                                          (dict, type(None))):
+            out[section] = values
+            continue
+        merged = dict(out.get(section) or {})
+        for key, value in values.items():
+            if section in SPLATTED_SECTIONS and key not in allowed:
+                print(f"config: {local} sets [{section}] {key}, which is not "
+                      f"a config field — ignored")
+                continue
+            merged[key] = value
+        out[section] = merged
+    return out
+
+
+def _raw_with_overlay(path: Path | str) -> dict:
+    """``config.toml`` parsed, with ``config.local.toml`` merged over it.
+
+    The one place the merge happens. ``load_config`` is not the only reader of
+    ``config.toml``: :func:`price_timing`, :func:`xg_per_shot` and
+    :func:`optimizer_top_n` open the file themselves, because the keys they
+    serve are either not ``Config`` fields or are needed where no ``Config`` is
+    in hand. Two of the nine keys the Settings tab writes are served by two of
+    those readers, so an overlay only the loader honoured would be a switch
+    that saves and changes nothing.
+
+    Raises whatever reading or parsing ``path`` raises — every caller already
+    has an answer for that, and inventing a second one here would hide the
+    missing-``config.toml`` error :func:`load_config` is careful to phrase.
+    """
+    file = Path(path)
+    return _overlay(tomllib.loads(file.read_text()), file)
+
+
 def load_config(path: Path | str = "config.toml") -> Config:
     file = Path(path)
     if not file.exists():
@@ -171,7 +259,7 @@ def load_config(path: Path | str = "config.toml") -> Config:
         raise GafferError(
             f"no {file} — copy config.example.toml to config.toml and set "
             "fpl.entry_id and fpl.league_id")
-    raw = tomllib.loads(file.read_text())
+    raw = _raw_with_overlay(file)
     odds = raw.get("odds", {})
     # [scenarios] is optional and its TOML keys are deliberately shorter than
     # the field names (n, seed), so it is read key-by-key like [odds] rather
@@ -377,7 +465,7 @@ def price_timing(path: Path | str = "config.toml") -> bool:
     die of a config file.
     """
     try:
-        raw = tomllib.loads(Path(path).read_text())
+        raw = _raw_with_overlay(path)
     except Exception:  # noqa: BLE001 — a solve-path reader never raises
         return True
     return bool(raw.get("optimizer", {}).get("price_timing", True))
@@ -401,7 +489,7 @@ def xg_per_shot(path: Path | str = "config.toml") -> bool:
     :data:`NON_FIELD_OPTIMIZER_KEYS`.
     """
     try:
-        raw = tomllib.loads(Path(path).read_text())
+        raw = _raw_with_overlay(path)
     except Exception:  # noqa: BLE001 — a training reader never raises
         return False
     return bool(raw.get("model", {}).get("xg_per_shot", False))
@@ -447,7 +535,7 @@ def _optimizer_top_n(path: str) -> dict[str, int]:
 
     out = dict(DEFAULT_TOP_N)
     try:
-        raw = tomllib.loads(Path(path).read_text())
+        raw = _raw_with_overlay(path)
         table = raw.get("optimizer", {}).get("top_n", {})
     except Exception:  # noqa: BLE001 — serve-time readers never raise
         return out
