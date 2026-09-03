@@ -793,6 +793,219 @@ W2's diff under W3's name. The audit rail in
 **W4 gate:** collector degradation tests; §5.2 outcomes recorded; §5.3
 sanity test; suite green.
 
+### W4 G1 — suites, rails, pins (measured by the implementer)
+
+Measured in the W4 worktree at `6a9601c`, the last implementer commit of the
+cycle. The orchestrator re-runs all of it on the merge commit; these are the
+numbers it is checking against, not a substitute for that run.
+
+- [x] **Python suite:** `PYTHONPATH=src .venv/bin/pytest tests/ -q` —
+      **3829 passed, 13 skipped**. The skips are the built-asset tests, which
+      skip in a worktree with no `web/static/` build; the main tree collects
+      them.
+- [x] **Frontend:** `cd frontend && npx vitest run` — **722 passed, 4 skipped**
+      over 73 files; `npx tsc --noEmit` clean.
+- [x] **Pins:** `46 12 55` — routes / `JOB_KINDS` / `fields(Config)`,
+      **unchanged from W3's tip**. W4 adds no `Config` field, no route and no
+      job kind: the collector is a CLI command and a plist, and the health
+      card and the Field panel are additive fields on `Health` and
+      `LeagueSimData`.
+
+      ```bash
+      .venv/bin/python -c "
+      import os, tempfile, dataclasses
+      os.chdir(tempfile.mkdtemp())
+      from gaffer.web.app import create_app
+      from gaffer.web.job_kinds import JOB_KINDS
+      from gaffer.config import Config
+      print(len(create_app().openapi()['paths']), len(JOB_KINDS),
+            len(dataclasses.fields(Config)))"
+      # 46 12 55
+      ```
+
+- [x] **Collector degradation rails** (`tests/test_v12_w4_degradation.py`,
+      `tests/test_core_insights.py`): repo unreachable and a previous
+      collection *not* truncated, unknown column added, expected column
+      removed, key column removed, empty season, blank Elo column,
+      cross-season read, torn parquet, cold-clone health line, and the
+      season-root `players.csv` winning over the per-gameweek copy the tree
+      lists first.
+- [x] **§5.3 sanity** (`tests/test_v12_w4_rank.py`):
+      `test_a_squad_exchangeable_with_the_field_is_a_coin_flip` — §5.3's "a
+      squad identical to the field's modal team has P(green) ≈ 0.5", built as
+      an exchangeability test at n=4000 with the band set from the measured
+      seed spread of the eight-draw estimator (0.471–0.538 over sixty seeds),
+      not from the model's intent.
+- [x] **Audit rails.** W3's rail was open-ended (`W2_TIP..HEAD`) and had begun
+      auditing W4 under W3's name; by orchestrator ruling (2026-09-03) it is
+      closed at `W3_TIP = f903959`, W3's own merge tip. W4's rail reads
+      `f903959..HEAD` while the cycle runs and its `W4_TIP` is pinned by the
+      gate commit at close — the standing lesson from W3, banked again.
+
+### W4 G2 — the gates (orchestrator only)
+
+Implementers build the drivers and never run them (CONVENTIONS §7). Every
+result below is unfilled on purpose.
+
+- [ ] **The no-regression season replay, and the config both sides are pinned
+      to** (pre-registered 2026-09-03, CONVENTIONS §1). Both sides:
+      `price_timing = false` **pinned** — with the shipped default now true, a
+      fresh nightly price log would inject *today's* falls into a 2025-26
+      replay and the run would not be reproducible; `xg_per_shot = false`;
+      `draw_availability = true` (inert here — the backtest passes no
+      `p_play`); **no `data/set_pieces.toml` on either side**; `config.toml`
+      byte-identical; seeds `20260901,20260902,20260903`.
+
+      **Control, re-run at `f903959` rather than borrowed** (W3 moved chip
+      timing, so the older `[1854, 1875, 1862]` is stale):
+
+      ```
+      MULTISEED_DONE v12w4-main {"totals": [1798, 1917, 1872], "mean": 1862.3, "spread": 119, "seed_bases": [20260901, 20260902, 20260903]}
+      ```
+
+      **Expected branch delta: exactly zero on every seed**, totals and hits.
+      W4 adds no `[model]` flag and no `[optimizer]` key; the two feature
+      builders run on every replay frame and cost time only. A non-zero delta
+      is therefore a defect and points at one of three things: a builder
+      reordering rows, `feature_columns()`'s new tail leaking into
+      strip-and-re-derive, or a stray `data/set_pieces.toml`.
+
+      - Branch totals / hits: _(unfilled)_
+
+- [ ] **§5.2 arm outcomes, recorded either way (CONVENTIONS §6).**
+      **Precondition: a `gaffer core-insights` collection.** Without one both
+      arm columns are all-missing and the drivers measure nothing. The arm
+      replays run on the **shifted window** and are **not** comparable to the
+      no-regression replay above.
+
+      ```bash
+      mkdir -p logs && caffeinate -i nohup .venv/bin/python \
+          scripts/v12_w4_arms.py > logs/v12_w4_arms.log 2>&1 &
+      grep -e W4_COVERAGE -e W4_ARM_LEVER -e W4_ARM_DONE -e W4_VERDICT \
+          logs/v12_w4_arms.log
+      ```
+
+      **The rule, both halves, pre-registered** (v10 §F3a, the orchestrator's
+      2026-09-03 restatement). Keep an arm iff **(a)** the starters-slice
+      `p_start` log-loss improves by ≥ 1% relative against *this run's own
+      control* **and** zeros RMSE is no worse by more than 0.005, **and**
+      **(b)** the mean points delta over the weeks an autosub actually fired
+      is ≥ 0. **Either half failing is a withdrawal; neither half alone ships
+      an arm.** **The coverage line is part of the result:** if
+      `train_covered` is 0 the driver exits and the honest record is "not
+      measurable on any window the archive covers" — which is neither a keep
+      nor a withdrawal.
+
+      - Coverage (`W4_COVERAGE`): _(unfilled)_
+      - `role`: _(unfilled)_
+      - `density`: _(unfilled)_
+      - Decision, per arm: _(unfilled)_
+
+- [ ] **§5.2 decision half.** Same precondition, same window.
+
+      ```bash
+      mkdir -p logs && caffeinate -i nohup .venv/bin/python \
+          scripts/v12_w4_autosub_cf.py > logs/v12_w4_autosub_cf.log 2>&1 &
+      grep -e W4_CF_LEVER -e W4_CF_DONE logs/v12_w4_autosub_cf.log
+      ```
+
+      Read as the small sample it is — one season, fresh squads weekly, a
+      per-week tendency and not a season total. A `W4_CF_LEVER` line must
+      appear first; without it the run measured two identical arms and is
+      void.
+
+      - Autosub weeks / mean delta per arm: _(unfilled)_
+
+- [ ] **Zero unauthorized protected diffs.** Base is **`f903959`**, W3's merge
+      tip, not `main` — a rail scoped to somebody else's range audits somebody
+      else's work.
+
+      ```bash
+      git diff --stat f903959..HEAD -- \
+        src/gaffer/advise.py src/gaffer/optimize src/gaffer/web/jobs.py \
+        src/gaffer/web/routers/whatif.py tests/test_advise.py tests/test_odds.py \
+        tests/test_web_jobs.py scripts/s2_replay.py \
+        $(git ls-files 'tests/test_*_degradation.py' | grep -v v12_w4)
+      # expected: only tests/test_v12_w3_degradation.py, whose W3-rail closure
+      #   is the authorized edit of 2026-09-03; nothing else
+
+      git diff -U0 f903959..HEAD -- src/gaffer/set_pieces.py \
+        | grep '^[-+]' | grep -v '^[-+][-+]'
+      # expected: exactly Task 17's two line-groups plus Task 20's one
+      #   docstring sentence naming the club rule, and the provenance comment
+      #   # v12 W4 §5.4 (specs/2026-09-01-gaffer-v12-program-design.md)
+      ```
+
+      W4's authorized protected set is **`src/gaffer/set_pieces.py` only**.
+
+      - Result: _(unfilled)_
+
+- [ ] **Pins on the merge commit.** Expected: **`46 12 55`** (G1's command).
+
+      - Result: _(unfilled)_
+
+- [ ] **Post-merge ritual (§7).**
+
+      ```bash
+      git show main:config.toml     # expected: fatal — path does not exist
+      git log -S"$(grep -o 'odds_api_key.*' config.toml | head -1)" --all
+      # expected: empty
+      ```
+
+      - Result: _(unfilled)_
+
+**Residuals, recorded before the gate runs.**
+
+1. **`density_pub_7d`'s window is seven calendar days, UTC**, not 168 hours.
+   The hour-counted version put the ordinary week-earlier fixture in or out
+   depending on which side of the boundary the later kickoff slot fell, so the
+   count oscillated with the broadcaster rather than with the schedule. The
+   fixture being predicted is excluded by its own calendar day rather than by
+   timestamp equality, because one second of divergence between two publishers
+   added +1 to every row in the frame.
+2. **Both arms read today's published schedule, not a vintage of it.** The
+   archive keeps no history of what was published when, so a tie rearranged in
+   November sits on a historical row at its February date. The hindsight is
+   one-directional (a rearrangement only moves a fixture later, so a training
+   row's count is if anything understated) and **identical on both seams** —
+   training and serving read the same file through the same function — so it
+   cannot produce a train/serve skew. It would matter for a claim about what a
+   manager knew in November; it does not for a feature both sides compute the
+   same way.
+3. **The synthetic field's captaincy is a second Bernoulli, `eo − 1`**, not a
+   modelled armband: a manager holds the crowd's captain twice, once or not at
+   all, and the pair's mean is `eo` exactly. The field is an ownership
+   portfolio and not a set of legal squads — no budget, no position limits, no
+   three-per-club — which widens a synthetic manager's week slightly and
+   pushes every probability counted off it a shade toward 0.5. Drawing legal
+   squads would need a solver per manager per gameweek for a second-order
+   correction to a first-order quantity.
+4. **`rank_slope` regresses a cumulative quantity on a weekly one.**
+   `my_points` is one week; `overall_rank` is a season standing that drifts on
+   its own, and the drift correlates with the gameweek index rather than with
+   the week's score. The panel's number is therefore an association over the
+   weeks graded so far, not the response to a marginal point. Differencing
+   rank week to week removes the drift and is the obvious next version; it
+   needs consecutive graded weeks the ledger does not yet have. The ledger also
+   carries no season column, so the panel restricts to `gw <= plan gw` — right
+   within a season, self-limiting at a rollover, and the real fix is a
+   protected-file change.
+5. **Corner and free-kick overrides change the served order and nothing
+   else.** There is no free-kick or corner term in the model, so §5.4's file
+   reaches expected points through `penalties` alone. The badge is a display
+   fact by construction — it is derived from the orders actually served, so it
+   cannot claim an override the row did not get.
+6. **`pen_tracker.save_tracker_guarded` and `features/engineer.py`'s
+   `pen_taker` are deliberately not overridden.** `gaffer track-pens` records
+   what FPL published and must keep doing so; `pen_taker` is a training column
+   built from match history. A user's opinion prices the coming week and does
+   not rewrite the evidence.
+7. **W4's own audit rail is open-ended until the gate closes it.** It reads
+   `f903959..HEAD` during the cycle, which is correct while W4 is the tip and
+   wrong the moment W5 starts; the gate commit pins `W4_TIP`. This is the
+   third cycle to bank that lesson and the second to have to fix a predecessor's
+   rail because of it.
+
 ## 6. W5 — interface
 
 ### 6.1 Tab state in the URL
