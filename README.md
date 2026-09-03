@@ -1652,15 +1652,34 @@ Check they are loaded with `launchctl list | grep com.gaffer`. Remove with
 ## Tests
 
 ```
-uv run pytest -q
+uv run pytest -q                       # 4042 Python tests at the v12 close
+cd frontend && npx vitest run          # 795 frontend tests (+1 skipped)
+cd frontend && npx tsc --noEmit        # types
 ```
+
+Read vitest's `Errors  N error` line as a failure — an unhandled rejection
+does not change its exit code. Some 470 of the Python tests are
+*degradation rails* (`tests/test_v*_degradation.py`, one file per cycle,
+twenty-five of them), which pin the honesty rules and the counts that a
+later change must not move
+silently: routes (47), job kinds (12), `Config` fields (55), the files a
+cycle was not authorized to edit, and the staging rules that keep
+`config.toml` out of git. A rail failing after an edit is telling you which
+rule the edit crossed, and the message names the file that owns the rule.
 
 ## Docs
 
 - **`docs/GUIDE.md`** — the orientation manual: how everything works, every
-  feature and how to use it, the version history v1–v11, what is pending.
-- `docs/superpowers/ROADMAP.md` — every development cycle with its measured
-  results, what was withdrawn and why, and what was explicitly rejected.
+  feature and how to use it, how a development cycle runs, the version
+  history v1–v12, and — in §12 — what is pending, what was left open, and
+  what the next cycle could pick from.
+- `docs/superpowers/ROADMAP.md` — the tracker: **Open** (live checks, data-gated
+  rows, the one queued experiment, carried residuals), candidates for the next
+  spec, then every cycle in order with its measured results, what was
+  withdrawn and why, and what was explicitly rejected.
+- `docs/superpowers/research/` — the two ranked surveys (2026-08-25, which
+  produced v4–v11; 2026-09-01, which produced v12) that each program was
+  picked from.
 - `docs/superpowers/specs/` — one design spec per cycle, each ending in the
   gate numbers and outcomes that justified (or refused) the merge.
 - `docs/superpowers/plans/` — the implementation plans behind the specs.

@@ -1,8 +1,9 @@
 # Gaffer measurement conventions
 
-The discipline learned the hard way between v4c and v7b. These are house rules
-for every cycle that gates a model change on a number, and a plan that breaks
-one is wrong even if its code is right.
+The discipline learned the hard way between v4c and v7b (rules 1–8, written
+in v7c) and again in v12 (rules 9–10, and the additions to rule 1). These are
+house rules for every cycle that gates a model change on a number, and a plan
+that breaks one is wrong even if its code is right.
 
 ## 1. Every replay gate runs K >= 3 seed bases
 
@@ -30,6 +31,12 @@ identical code and byte-identical config over a different archive are two
 different runs, and nothing in the repository records which one you had.
 The same rule reaches any untracked input a replay reads: name it, or the
 verdict is not reproducible even by its author.
+
+**And the replay's levers live in `config.toml`.** The backtest refits through
+`train_all → attacking_features()`, so `[model]` flags and `[optimizer]
+price_timing` decide what a replay measures. Both sides run with the file
+byte-identical and the write-up states the values (v12 W2/W3: `price_timing =
+false` pinned, `xg_per_shot = false`, `draw_availability = true`).
 
 ## 2. Gates are pre-registered
 
@@ -66,3 +73,22 @@ arm ends up measured against its own author's expectation.
 
 Grep the diff for keys, and confirm `git show main:config.toml` fails. Every
 time, not only when the cycle touched config.
+
+## 9. An arm rule pre-registers both halves, and the outcome measure decides
+
+A head metric (bucket RMSE, log-loss on a slice) and a season replay, both
+written down before the run, with the replay half at K >= 5 where the arm
+touches a head the backtest refits. Twice in v12 a head-metric gain lost
+replay points: W2's xG-per-shot head (haulers 5.207 → 5.203, then −28 on the
+season the same day) and W4's `role` arm (−1.9% starters log-loss, then −27
+post-hoc at K=3). A bucket rule with no replay half is under-specified; a
+replay half at K=3 can only support a paired sign test.
+
+## 10. A "no diff" is evidence only when the lever was verified live
+
+A replay that finds the branch byte-identical to `main` has proved nothing
+unless the run demonstrably exercised the change. W2's first price-timing
+replay was vacuous — a stale price log made the term's table empty on both
+sides — and read as a pass. Before banking an identical-arms result, show the
+lever was on: a row count, a log line, a value that differs between the sides
+somewhere upstream of the total.

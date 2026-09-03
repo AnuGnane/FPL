@@ -1531,9 +1531,11 @@ Post-merge ritual after every workstream: `git show main:config.toml` fails;
   2026-27 (the publisher's column is blank); W5's price-timing charge showing
   a number (`price_timing` on *and* a long enough log), and a Review row
   naming its projection snapshot (the first gameweek graded after the merge).
-- The live spot-check lists under **W3**, **W4** (in the ROADMAP's W4 block)
-  and **W5** — the user's, on the dev server; W5's first two rows are the
-  manual six-hub pass the gate deferred.
+- The live spot-check lists under **W1**, **W3** and **W5** in this spec —
+  the user's, on the dev server; W5's first two rows are the manual six-hub
+  pass the gate deferred. W4 never had a list of its own (this line used to
+  say it was in the ROADMAP's W4 block, and it was not); the ROADMAP's
+  **Open** section now carries one row per workstream, W4's included.
 - One experiment: a **K ≥ 5 role-on-vs-off replay** (ten if time allows) to
   settle W4's −27 post-hoc read, the second time a head-metric gain has not
   shown as replay points.

@@ -1,8 +1,9 @@
 # The gaffer guide
 
 *A tour of everything this project does, how it got here, and how to use it.
-Last updated 2026-09-01 (after the v11 merge). The README covers setup and
-reference; this document is for understanding.*
+Last updated 2026-09-03, after the v12 program closed (`main` `9274f33`). The
+README covers setup and reference; this document is for understanding. If you
+only read one section, read §12: it is the current to-do list.*
 
 ---
 
@@ -474,8 +475,11 @@ and it is worth knowing because you can read the evidence yourself:
 - **Every feature faced a gate before shipping.** A pre-registered bar,
   measured on held-out data or a season replay. Features that failed were
   **withdrawn and recorded**, not shipped hopefully — the v5 congestion
-  features, the v7 estimation-σ gating, the v10 shrunk-modes arm all died
-  this way, and the ROADMAP says so.
+  features, the v7 estimation-σ gating, the v10 shrunk-modes arm, v12's
+  xG-per-shot head and its `density` minutes arm all died this way, and the
+  ROADMAP says so. Twice in v12 a feature that improved its own head's metric
+  *lost* season points on the replay, which is why the rule now demands both
+  halves up front (CONVENTIONS §9).
 - **Season replays with seed spreads.** Claims about season-scale points
   are made under three seed bases with the spread quoted
   (`docs/superpowers/CONVENTIONS.md`), because a single replay's ±120
@@ -500,7 +504,32 @@ each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 ## 11. The version history, v1 to v12
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
-reviewed. What each era added:
+reviewed. Every cycle ran the same way, and knowing the shape tells you where
+to look for the evidence behind any feature:
+
+1. **Research** (`docs/superpowers/research/`) — a survey of what is wrong,
+   unmined or missing, ranked. Two so far: 2026-08-25 (which produced v4–v11)
+   and 2026-09-01 (which produced v12).
+2. **Spec** (`docs/superpowers/specs/`) — the design, with the gate and its
+   pass/fail rule written *before* anything runs. The spec is also where the
+   results land afterwards: every spec ends in a §Gates or §Outcome section
+   with the measured numbers, what was withdrawn, and what was left open.
+3. **Plan** (`docs/superpowers/plans/`) — the task list an implementer
+   follows, file by file.
+4. **Implement, review, gate, merge** — subagents implement; each chunk gets a
+   spec-compliance review and a code-quality review; the whole branch gets an
+   adversarial fix-first review and a re-verification; the orchestrator runs
+   the gate (never the implementer) and merges fast-forward only.
+5. **Record** — the ROADMAP block for the cycle, with pins (route, job and
+   config-field counts), the suite size, residuals and data-gated items.
+
+Your part in it has been the decisions: which research items to take, the
+rulings a plan asks for when it meets a protected file, the arm to flip when
+a gate's verdict is close, and the live spot-checks on the running UI that no
+test can do. Those rulings are recorded in the spec and ROADMAP blocks by
+date.
+
+What each era added:
 
 **v1–v3 — the core (Aug 23–24).** Component models, the MILP with a
 receding horizon, `advise`/`backtest`, probability calibration, the odds
@@ -552,104 +581,205 @@ detector.
 shows the model's working, and the season review dashboard — built empty on
 purpose, filling as the season grades.
 
-**v12 — five workstreams in one program (Sep 2–3).** W1, hygiene: the "as of"
-freshness strip, `gaffer backup` and `gaffer tidy`, a write token for `--lan`,
-one atomic-write helper to replace six copies of the idiom, and `top_n` in
-config. W2, the logs we already had: the nightly price log turned into a
-price-timing charge on a deferred sale, and the xG-per-shot arm — measured,
-and withdrawn on the season replay after the bucket metric liked it. W3, what
-the solver is allowed to say: Plan B and Plan C, the *must-sell* constraint the
-`ban` switch had been standing in for, and the availability draw in the
-scenario sweep. W4, the field: the FPL-Core-Insights collector, `P(green
-arrow)` against 300 synthetic managers drawn from the banked top-10k sample,
-set-piece overrides in TOML, and two minutes arms of which one shipped and one
-was withdrawn. W5, the interface: the open tab in the URL, the Settings tab and
-the overlay file it owns, the watchlist's notes, frozen projection snapshots
-behind every graded row, "why this move" on the board, and half of `types.ts`
-generated from `schemas.py`.
+**v12 — five workstreams in one program (Sep 2–3; closed at `9274f33`).**
+One spec, five sequential workstreams, each gated and merged on its own.
+W1, hygiene: the "as of" freshness strip, `gaffer backup` and `gaffer tidy`,
+a write token for `--lan`, one atomic-write helper to replace what turned out
+to be twenty copies of the idiom, `top_n` in config, a season-rollover
+refusal, and `gaffer mcp`. W2, the logs we already had: flag-latency and
+presser-grading reports off the availability and presser logs, the EO trend,
+the nightly price log turned into a price-timing charge on a deferred sale
+(ships **on** — the replay was byte-identical with the term live), and the
+xG-per-shot arm — measured, and **withdrawn** on the season replay (−28 points)
+after the bucket metric liked it. W3, what the solver is allowed to say: Plan
+B and Plan C by no-good cuts, the *must-sell* constraint the `ban` switch had
+been standing in for, θ as the only chip decision, the availability draw in
+the scenario sweep (ships on; captain support 60 → 52.5 on the live board), a
+real free-hit re-solve and a wildcard+bench-boost pair. W4, the field: the
+FPL-Core-Insights collector, `P(green arrow)` against 300 synthetic managers
+drawn from the banked top-10k sample, set-piece overrides in TOML, and two
+minutes arms — **`role` shipped, `density` withdrawn** on a pre-registered
+two-half rule. W5, the interface: the open tab in the URL, the Settings tab
+and the `config.local.toml` overlay it owns, the watchlist's notes, frozen
+projection snapshots behind every graded row, "why this move" on the board,
+and half of `types.ts` generated from `schemas.py`.
 
-The suite grew from nothing to **4,029 Python + 792 frontend tests** along
+Also in v12: the first news-shadow verdict, four cycles after it was
+instrumented — on GW2 the plain FPL flag beat the news layer (Brier 0.1191
+vs 0.1276), one gameweek and therefore a residual, but the direction to watch.
+
+The suite grew from nothing to **4,042 Python + 795 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above
 so a future change cannot quietly break one.
 
 ## 12. What is pending and what was left open
 
-Waiting on data, not code (as of 2026-09-01):
+As of 2026-09-03. Nothing is in flight: every v12 workstream is merged and the
+program is closed. What remains falls into six groups, in the order you
+would act on them.
 
-- **GW2 `data_checked`** (expected imminently): the first fully-graded
-  Review row, the first Season-tab content, and the first news-shadow
-  verdict (`gaffer evaluate --news-shadow`).
-- **The weekend's GW3 field scrape**: lights up the captain field sentence
-  and Field% column live checks.
+### 12.0 First: install the two new launchd jobs
 
-Deliberately open (recorded per cycle in the ROADMAP/specs, the notable
-ones):
+`launchctl list | grep com.gaffer` shows **seven** jobs loaded on this
+machine (checked 2026-09-03). v12 added two — `com.gaffer.backup` (23:45
+nightly) and `com.gaffer.core-insights` (06:30 and 18:30) — and the plists
+exist but were never installed, so no backup has run and the Core-Insights
+archive is only as fresh as the last manual `gaffer core-insights`. One
+command:
 
-- The presser classifier still only *logs*; turning it on awaits its
-  accrued verdict.
-- The scenario sweep cannot yet see per-player `p_play`, so the minutes
-  weighting prices the squad around the transfers rather than the transfer
-  choice itself.
-- `overall_rank` in the ledger populates only from v11 onward — banked
-  grades are never rewritten.
-- A season of price-log data must accrue before a price-timing term is
-  worth building.
-- **Closed rather than pending, and left here because the previous entry
-  said otherwise:** the two v12 minutes arms built on FPL-Core-Insights were
-  measured on 2026-09-03 and the pre-registered two-half rule split them.
-  **`role_wb_share` ships on**: starters-slice `p_start` log-loss 0.43723 →
-  0.42889 (−1.907% relative) for +0.002 of zeros RMSE, and +0.133 mean points
-  over the 15 weeks of 38 an autosub fired. It is in `MINUTES_FEATURES` and
-  takes effect on the next `gaffer train`; a model pickled before the flip
-  pins its columns at fit time and keeps predicting.
-- **`density_pub_7d` is withdrawn**: 0.43584 (−0.318%, under the 1% bar) for
-  +0.006 of zeros RMSE (over the 0.005 guard), so half (a) fails and its
-  half (b) pass (+0.333) does not rescue it. It stays built on both seams and
-  fed to no head, for a later cycle to re-measure.
-- Recorded outside the rule, because it is worth knowing: over **all** 38
-  weeks the mean points delta is −0.211 for role and −0.895 for density.
-  Half (b) was pre-registered on the autosub weeks and read as written; the
-  W4 no-regression replay was run with both arms off, as pre-registered, so
-  the flip's decision-path evidence is the counterfactual and not the replay.
-- The Field panel's `P(top-10k)` has no source: no top-10k weekly score
-  threshold series exists in anything gaffer reads, so it is a named empty
-  state rather than a guess.
+```bash
+./scripts/install_automation.sh
+```
 
-Left open by v12 W5, each recorded rather than fixed:
+Then `launchctl list | grep com.gaffer` should show nine. This is the
+single most useful thing on the list: everything in §9 that cannot be
+rebuilt is unprotected until the backup job runs.
 
-- **The trace's price-timing charge is read from tonight's price log, not
-  from the solve.** `owned_price_falls` is the same reader the objective
-  uses, but a board drawn on Saturday against a Thursday plan multiplies a
-  probability the solve never saw. The switch is read the same way, so
-  flipping `[optimizer] price_timing` in Settings changes what the board says
-  about a plan already on disk — which is why both week notes are present
-  tense and neither claims anything about the solve. Freezing either would
-  mean writing it into the solve state from `advise.py`, which is protected,
-  for a decoration.
-- **The trace does not attribute the squad-side terms.** The XI, captain and
-  vice weightings and the three bench seats price the whole fifteen and a
-  per-week autosub scale, not a swap, so a share of them assigned to one
-  transfer would be invented. The week's lines therefore do not sum to its
-  xPts, and the caption says so rather than leaving it to be discovered.
-- **`projection_snapshot` fills forward only.** Grades are banked and never
-  re-derived, so every ledger row banked before W5 keeps `null` for ever.
-- **`reports/projections/` is never pruned.** ~6–12 MB a season, gitignored.
-  A future `gaffer tidy` target, deliberately not invented here.
-- **The watchlist's `set_at` is reset by every note save**, because
-  `watchlist.watch` writes the note and the timestamp together. A bare star
-  no longer touches either — that is the note tri-state — but there is still
-  no field holding when the star went on, so the column is labelled "noted"
-  rather than "watching since"; fixing it means a second store field.
-- **The decision ledger has no season key.** After a rollover, a GW-N row
-  could name last season's GW-N snapshot: the snapshot *reader* is
-  season-guarded, the ledger is not. Nothing reads across a rollover today,
-  and the fix is a ledger migration rather than a W5 line.
-- **The generated half carried away the client's field comments.** The split
-  deleted 113 hand-written interfaces; 119 of the 891 field sentences were
-  recovered by reading `schemas.py`'s attribute docstrings, and the rest of
-  the client-side commentary on those interfaces is gone. The follow-up is to
-  move the sentences worth keeping into `schemas.py` field docstrings, where
-  the generator can carry them, rather than back into a file it overwrites.
+### 12.1 Things only you can check — the live spot-checks
+
+Every cycle's spec ends with a list of checks on the running UI that no test
+can do, and v12's were deferred rather than passed (the W5 gate says so in
+writing). Run `uv run gaffer ui`, then walk these. The full row-by-row lists
+are in `docs/superpowers/ROADMAP.md` under **Open**, and in the spec's
+"live spot-checks" sections (`specs/2026-09-01-gaffer-v12-program-design.md`
+lines for W1, W3 and W5).
+
+- **The six-hub pass (W5).** Open each hub with a `?tab=` link
+  (`/planning?tab=board`, `/players?tab=watchlist`, `/league?tab=rivals`,
+  `/model?tab=settings`); each lands on that tab, and Back leaves the hub
+  rather than walking the strip.
+- **A Settings save round-trip (W5).** `md5 config.toml` before; change one
+  value in Model → Settings; `md5 config.toml` after is identical and
+  `config.local.toml` now exists with that one key.
+- **The watchlist note survives a star (W5).** Write a note in Players →
+  Watchlist, then star/unstar the same player in the Explorer: the note and
+  its "noted" stamp are untouched.
+- **The board (W3).** Plan A / B / C switch when alternatives were banked and
+  no strip appears when none were; "Try these changes" lands on What-If with
+  sells under *Must sell*; every chip bar reads θ or `flat` and the "Wildcard
+  now" verdict names the same bar; the chip table has **no** WC+BB row on
+  today's fixture list (correct, not a bug).
+- **The field (W4).** League → Field names the EO gameweek as the *previous*
+  one and shows `P(green arrow)` with its caveats, and two named empty states
+  below it; Model → Health shows a row per Core-Insights table; a
+  `data/set_pieces.toml` entry produces the "manual" badge on the player row.
+- **Hygiene (W1).** Every hub draws the "as of" strip once; `gaffer ui --lan`
+  prints a token and a phone from the bare URL gets a 403 sentence on a
+  write; `gaffer tidy` names its files and `gaffer backup` writes ~16 MB;
+  `claude mcp add gaffer -- gaffer mcp` answers "top five midfielders".
+
+### 12.2 Waiting on data, not code
+
+Each of these is built, tested and rendered as a named empty state today.
+Nine rows, with the condition that fills each and the rough date:
+
+| Surface | Needs | Expected |
+|---|---|---|
+| Model → Quality: **flag latency** (W2) | 14 daily availability snapshots plus one graded gameweek they cover | ~2026-09-13 (four days banked, 08-30 → 09-02, one a day at 17:00) |
+| Model → Quality: **presser grading** (W2) | a `data_checked` gameweek with classifier verdicts banked *before* its deadline; GW2 had none | GW3, once graded |
+| Players / captain frame: **EO trend** (W2) | a second gameweek in `field_eo_log.parquet` | the GW3 weekend scrape |
+| Planning → Chips: **WC + BB pair row** (W3) | a `[dgw]` entry in `data/chip_scenarios.toml`, which the writer only creates from a real double in the published list | the first rearrangement FPL announces |
+| League → Field: **`P(top-10k)`** (W4) | a top-10k weekly score-threshold series; no source gaffer reads has one | needs a new scrape — a candidate for the next spec |
+| League → Field: **expected overall-rank change** (W4) | 5 graded gameweeks carrying both `my_points` and `overall_rank`; GW1's rank is null, so 1 of 5 today | ~GW6 |
+| Model → Health: **Elo for 2026-27** (W4) | the archive publisher to fill the `elo` column for this season | out of our hands |
+| Planning → Board: **the price-timing line shows a number** (W5) | `[optimizer] price_timing` on (it is, by default) *and* a nightly price log long enough to return a row per owned player | a couple of weeks of the 23:15 job |
+| Model → Review: **a row names its projection snapshot** (W5) | the first gameweek graded after the W5 merge; earlier rows keep `null` for ever | GW3's Tuesday review |
+
+Two verdicts also accrue by gameweek rather than by code: `gaffer evaluate
+--news-shadow` gets its second reading when GW3 is `data_checked` (GW2's
+said the plain flag was ahead), and the presser classifier's serving
+decision waits on the presser-grading row above.
+
+### 12.3 One experiment queued
+
+**A K ≥ 5 role-on-vs-off replay** (ten seeds if time allows). W4 shipped the
+`role_wb_share` minutes feature on its pre-registered rule, but a post-hoc
+three-seed replay with the feature on scored −27 on the mean (`[1813, 1847,
+1846]` vs `[1798, 1917, 1872]`), inside the spread. The read it was
+pre-registered under lets the flip stand; the honest next step is a replay
+with enough seeds to say whether −27 is real. Negative beyond its own spread
+withdraws the arm. It is the second time in the program a head-metric gain
+did not show up as season points (xG-per-shot was the first), which is why
+CONVENTIONS §9 now requires both halves up front.
+
+How to run it: `scripts/replay_pair.sh <tag>` from a branch worktree runs
+both sides through `scripts/v7b_replay.py --seed-bases …`; the "off" side is
+a branch with `ROLE_FEATURES` removed from `MINUTES_FEATURES`
+(`src/gaffer/models/train.py:53`), the "on" side is `main`. Both sides need
+`config.toml` byte-identical and `data/core_insights/` present, with its
+seasons and collection date named in the write-up (CONVENTIONS §1). The W4
+runs took about an hour per three seeds a side on this machine, so K=10 is an
+overnight job — `caffeinate -i` it, as `replay_pair.sh`'s header shows.
+
+### 12.4 Deliberately open — recorded, not fixed
+
+These are known, bounded, and each has a reason it was left. None blocks
+weekly use.
+
+- **The presser classifier only logs.** Serving stays off until the grading
+  report (12.2) has a few gameweeks in it.
+- **The trace's price line is present tense.** "Why this move" reads
+  tonight's price log and today's `price_timing` switch, not the ones the
+  solve used, because freezing them into the solve state means editing
+  `advise.py` (protected) for a decoration. The caption says so.
+- **The trace does not attribute the squad-side terms**, so its lines do not
+  sum to the week's xPts; the caption says that too.
+- **Plans B and C are not re-scored under Plan A's own coefficients**, so a
+  small gap of either sign can be two coefficient sets rather than two plans.
+- **The free hit re-solve excludes horizon effects** (pricing them needs a
+  two-branch horizon solve).
+- **`overall_rank` and `projection_snapshot` fill forward only** — grades are
+  banked and never rewritten, so rows from before v11/W5 keep `null`.
+- **The decision ledger has no season key**; nothing reads across a rollover
+  today, and the fix is a ledger migration.
+- **The watchlist has no "starred at"** — `set_at` is the note's stamp, hence
+  the column reads "noted".
+- **`reports/projections/` is never pruned** (~6–12 MB a season); a future
+  `gaffer tidy` target. So are ~34 MB of timestamped API snapshots under
+  `data/raw/`, outside `tidy`'s scope.
+- **The web "re-run" button does not bank a same-day price reading** the way
+  the Thursday plist does, so a run from the button can solve with the
+  price-timing term seeing an empty table. Run `gaffer prices` first, or use
+  the plist.
+- **`threshold_source` is served but rendered nowhere**, and the chip pair's
+  "Try it" card has no What-If arm.
+- **The generated `types.ts` half lost the client's field comments.** 119 of
+  891 sentences were recovered from `schemas.py` docstrings; the rest belong
+  in `schemas.py` field docstrings, where the generator can carry them.
+- **`density_pub_7d` is built on both seams and fed to no head**, kept for a
+  later re-measure with a replay half of its own.
+
+### 12.5 Not planned — what the research proposed and v12 did not take
+
+Nothing below is spec'd or committed. It is the candidate list a next
+brainstorm would start from, in the order the 2026-09-01 research ranked it
+(`docs/superpowers/research/2026-09-01-polish-and-improvement-research.md`):
+
+1. **News-layer ablation against the plain FPL flag (C1).** The research
+   called this the most important experiment in the document, and the GW2
+   news-shadow reading points the same way. It could retire the v5/v6 news
+   subsystem or justify it; either answer is worth having. Gate on the
+   blanks and zeros buckets *and* a K ≥ 5 replay.
+2. **The K ≥ 5 role replay** (12.3) — small, and it should go first because
+   it changes what the minutes model ships with.
+3. **A top-10k score-threshold scrape**, which is the only thing between the
+   Field panel and `P(top-10k)`.
+4. **`p_play` top-bin recalibration (C2)** — 0.936 predicted vs 0.912
+   observed on n=1519; an isotonic step, tiny and measurable.
+5. **Home/away rolling splits (C3)** — cheap, never in any arm.
+6. **A "days since status last changed" `p_play` feature** off the
+   availability log (B1's second half), once the flag-latency report has
+   shown the log carries the signal.
+7. **Housekeeping follow-ups** from 12.4: `tidy` for projections and API
+   snapshots, the ledger season key, `starred_at`, the `schemas.py`
+   docstrings, rendering `threshold_source`, the chip pair's What-If arm, the
+   web button banking prices.
+8. **FotMob as an xG fallback (B8)** — only if Understat goes down.
+
+Still rejected, and the research confirmed it: referee and weather, price
+chasing, per-player finishing multipliers, a longer horizon, transformer news
+sentiment, the withdrawn minutes arms as they were, write tools on the MCP
+server, a UI that edits `config.toml`.
 
 ## 13. Troubleshooting
 

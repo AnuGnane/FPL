@@ -1,9 +1,94 @@
 # Gaffer roadmap & task tracker
 
-One place to see what's shipped and what's left. Grouping comes from
-`research/2026-08-25-improvement-research.md`. Update this file as cycles
-progress: flip `[ ]` → `[x]`, link the spec/plan when they exist.
-Measurement rules every cycle follows: `CONVENTIONS.md`.
+One place to see what's shipped and what's left. **Open** is the index of
+everything not yet done; **Shipped** is one block per cycle, in order, each
+carrying its measured results, pins, residuals and data-gated boxes. The
+checkboxes live in the cycle blocks — flip one there when its condition
+fills, and the index below points at them. Measurement rules every cycle
+follows: `CONVENTIONS.md`. For the same material written for a reader rather
+than an auditor, `docs/GUIDE.md` §11–12.
+
+## Where things stand (2026-09-03)
+
+v12 — the five-workstream polish program — is **closed**: W1–W5 all merged,
+`main` at `9274f33`, suite 4042 Python + 795 frontend, pins routes 47 /
+job kinds 12 / `Config` fields 55, security ritual clean. **Nothing is in
+flight and nothing is spec'd.** The research that produced v12
+(`research/2026-09-01-polish-and-improvement-research.md`) has leftovers
+listed under *Candidates* below; the next step, when there is one, is a
+brainstorm that picks from that list.
+
+## Open
+
+### Install the two v12 launchd jobs
+
+- [ ] `./scripts/install_automation.sh` — `launchctl list | grep com.gaffer` showed **7 of 9** loaded on 2026-09-03: `com.gaffer.backup` and `com.gaffer.core-insights` were shipped by W1/W4 and never installed, so no nightly backup has run
+
+### Live spot-checks — the user's, on the dev server
+
+The checks no test can do. None of v12's have been ticked; W5's gate
+deferred its manual six-hub pass here and says so. Row-by-row lists:
+W1 spec §2 "Live spot-checks", W3 spec "W3 live spot-checks", W5 spec "W5
+live spot-checks" (`specs/2026-09-01-gaffer-v12-program-design.md`); W4 had
+no list in its spec, so its rows are here.
+
+- [ ] **W5** the `?tab=` walk through Planning, Players, League and Model (lands on the tab; Back leaves the hub); a Settings save with `md5 config.toml` before and after (identical; `config.local.toml` gains one key); a watchlist note surviving an explorer star; `captain_note` rendered only when the tilt moved the armband; `gen_types.py` producing a diff the two tests catch
+- [ ] **W4** League → Field names `eo_gw` as the previous gameweek and shows `P(green arrow)` with its two caveats and two named empty states beneath; Model → Health carries one row per Core-Insights table with its season and stamp; a `data/set_pieces.toml` entry shows the "manual" badge on the row and in the explain panel, including on a demoted teammate
+- [ ] **W3** "Try these changes" lands sells under *Must sell*; a must-sell on an unowned player is refused inline; Plan A/B/C strip present only with alternatives banked; every chip bar reads θ or `flat` and "Wildcard now" names the same bar; **no** WC+BB row on today's list; the report's captain table reads `P(10+ pts)` with em dashes for unbanded candidates
+- [ ] **W1** the "as of" strip once per hub with "never" in grey for a missing source; `--lan` token: QR phone can write, bare-URL phone gets the 403 sentence; Health shows pool sizes, last backup, no red banner, and a `top_n` edit shows without restart; `gaffer mcp` answers two questions under Claude Code; `gaffer tidy` names its files, `gaffer backup` writes ~16 MB
+
+### Data-gated — built, tested, rendered as a named empty state
+
+Nine rows. The box for each lives in its cycle block (W2, W3, W4, W5 below).
+
+| Row | Unblocks when | Expected |
+|---|---|---|
+| W2 §3.1 flag latency | 14 snapshot days + one graded covered GW (4 banked, 08-30 → 09-02) | ~2026-09-13 |
+| W2 §3.2 presser grading | a `data_checked` GW with verdicts banked before its deadline (GW2 had none) | GW3 graded |
+| W2 §3.3 EO trend | a second GW in `field_eo_log.parquet` | GW3 weekend scrape |
+| W3 §4.5 WC+BB pair row | a `[dgw]` entry in `data/chip_scenarios.toml` — only written from a real double | first announced rearrangement |
+| W4 §5.3 `P(top-10k)` | a top-10k weekly threshold series — **no source exists**; needs a new scrape | next spec candidate |
+| W4 §5.3 overall-rank change | 5 graded GWs with both `my_points` and `overall_rank` (1 of 5 today: GW1's rank is null) | ~GW6 |
+| W4 §5.1 Elo 2026-27 | the publisher fills the `elo` column | out of our hands |
+| W5 §6.5 price-timing line shows a number | `price_timing` on (default) **and** a price log long enough for a row per owned player | ~2 weeks of the 23:15 job |
+| W5 §6.4 Review row names its snapshot | the first GW graded after the W5 merge; earlier rows stay `null` | GW3's Tuesday review |
+
+Accruing verdicts, not boxes: `gaffer evaluate --news-shadow` after each
+`data_checked` GW (GW2: flags ahead — one draw, CONVENTIONS §5); the presser
+classifier's serving decision, after the presser-grading row has a few
+gameweeks.
+
+### One experiment
+
+- [ ] **K ≥ 5 role-on-vs-off replay** (ten if time). W4's post-hoc K=3 with `role` on read `[1813, 1847, 1846]` vs `[1798, 1917, 1872]`, mean −27, inside the spread; the flip stands under its pre-registered read. Negative beyond its own spread withdraws the arm. `scripts/replay_pair.sh`, off-side = a branch with `ROLE_FEATURES` out of `MINUTES_FEATURES` (`models/train.py`), `data/core_insights/` state named (CONVENTIONS §1). ~1 h per three seeds a side
+
+### Residuals carried out of v12 (recorded, not fixed)
+
+The full list with reasons is `docs/GUIDE.md` §12.4; the per-cycle blocks
+below hold the originals. Headlines: the trace's price line and switch are
+read in the present tense (freezing them needs `advise.py`); the trace does
+not attribute squad-side terms; Plan B/C not re-scored under Plan A's
+coefficients; the free hit excludes horizon effects; `overall_rank` and
+`projection_snapshot` fill forward only; the ledger has no season key; no
+`starred_at` on the watchlist; `reports/projections/` and ~34 MB of API
+snapshots unpruned; the web re-run button does not bank a price reading
+first; `threshold_source` served but unrendered; the chip pair's Try-it
+card has no What-If arm; the generated `types.ts` half lost the client's
+field comments; `density_pub_7d` built on both seams and fed to no head.
+
+## Candidates for the next spec (not planned, not committed)
+
+From the 2026-09-01 research, items v12 did not take, in its ranking.
+Detail in `docs/GUIDE.md` §12.5.
+
+1. **C1 news-layer ablation vs the plain FPL flag** — the research's most important experiment; GW2's news-shadow reading points the same way. Both halves pre-registered (buckets + K ≥ 5 replay)
+2. The K ≥ 5 role replay above — first, because it decides what the minutes model ships with
+3. A top-10k weekly score-threshold scrape (unblocks `P(top-10k)`)
+4. C2 `p_play` top-bin recalibration (0.936 predicted vs 0.912 observed, n=1519)
+5. C3 home/away rolling splits
+6. B1's second half — a "days since status last changed" `p_play` feature off the availability log, after the flag-latency report has shown the signal
+7. Housekeeping from the residuals: `tidy` for projections and API snapshots, ledger season key, `starred_at`, `schemas.py` field docstrings, render `threshold_source`, chip-pair What-If arm, web button banking prices
+8. B8 FotMob xG fallback — only if Understat goes down
 
 ## Shipped
 
@@ -99,7 +184,39 @@ Spec: `specs/2026-08-29-gaffer-v7-ui-design.md` (§12–13 = smoke + outcome) ·
 - [x] Adversarial review FIX-FIRST (2 blockers + 11 importants + 9 nits) → re-verify MERGE → 9 residuals closed → editorial polish round from user walkthrough (position colours, 6 legacy components restyled onto the kit, 20-fix sweep)
 - Suite: 1464 Python + 245 frontend, tsc + build + `uv lock --locked` clean; backend model code untouched
 
-## In progress
+### v7-model — zeros + honest noise (done, merged `1b93b9d` 2026-08-30; user chose option (b))
+Spec: `specs/2026-08-30-gaffer-v7-model-design.md` (§9 = gates + the three-way decision) · Plan: `plans/2026-08-30-gaffer-v7-model.md`
+- [x] Zeros diagnostic: the error is regulars-who-sit (news-shaped), not fringe; I2 fringe features proven underivable from stored data
+- [x] Gate Z1 FAIL — isotonic DNP recalibration ships OFF (zeros 1.063→1.053, bar was 1.042; strict Pareto improvement, user may flip)
+- [x] Gate S2 PASS on the literal rule — estimation σ (K=5 bagged ensemble, global 0.069) replay 1908 vs heuristic 1785; **review's raw control scored 1914: the σ disables gating rather than sharpening it** → three-way decision (heuristic / estimation / no gating) escalated, merge withheld
+- [x] Open finding: v4c D1 sign reversal — scenario gating was +75 in v4c, −129 on today's model; unbisected
+- [x] N2 first news verdict — **banked 2026-09-02 under v12 W2** (`gaffer evaluate --news-shadow`): GW2, n=620, Brier news 0.1276 vs flags 0.1191, MAE 13.29 vs 13.02, flags ahead on both; one gameweek, so a residual and not a verdict (CONVENTIONS §5)
+- Suite on branch: 1523 Python + 251 frontend, tsc clean; serving guards added (non-estimation asset refused when flag True; calibrate-noise refuses unsafe overwrite)
+
+### v7b — measurement cycle (done, merged `8aeb3d6` 2026-08-30)
+Spec: `specs/2026-08-30-gaffer-v7b-measurement-design.md` (§5–7 = results, corrections, evidence appendix)
+- [x] Q2: D1 sign reversal attributed (single-seed) to the v5 minutes-head swap (+27 legacy vs −61 current, same harness); harness and frame ruled out; the swap itself still justified (+47 ungated)
+- [x] Q1: 3-seed error bars — spread 116 swamps every arm gap; the S1/S2 ±120s were draw luck
+- [x] Q3: composite-σ floors monotonically worse; no re-noised gate beats raw
+- [x] Mechanical verdict: KEEP option (b) — all differences within seed noise; raw anchor 1914 reproduced and logged
+- [x] N2 first news verdict — **banked 2026-09-02 under v12 W2**: GW2, n=620, Brier news 0.1276 vs flags 0.1191, MAE 13.29 vs 13.02, flags ahead on both. One gameweek, so a residual and not a verdict (CONVENTIONS §5)
+- 12 replay runs + 1 probe; suite 1548; no serving changes
+
+### v7c — foundations (done, 2026-08-30)
+Spec: `specs/2026-08-30-gaffer-v7c-foundations-design.md` (§8 = outcome + evidence) · Plan: `plans/2026-08-30-gaffer-v7c-foundations.md`
+- [x] F1 daily availability snapshot: `gaffer snapshot` → append-only `data/live/availability_log.parquet` (idempotent per UTC day, atomic rewrite, never raises); web job kind; launchd plist shipped — **run `scripts/install_automation.sh` to activate the 17:00 daily job**
+- [x] F2 multi-seed standard: `v7b_replay.py --seed-bases a,b,c` + `MULTISEED_DONE` aggregate; `seed_stats.py` with config-mismatch guard (refused the q2-ctrl mix on first use — its 1786 is a chips-off control, not the S2 heur 1785); `CONVENTIONS.md` (8 rules) linked above
+- [x] F3 pen-term tracker: `gaffer track-pens` → `reports/pen_tracker.json`; GW1: 2 pens, both by predicted first-choice takers (hit 1.00), 0.100/team-game vs served 0.13, instrument xg_gap (covered_rows 256)
+- [x] Review: 1 blocker (confounded seed-spread evidence) + 4 importants (team_games retro-stamp bias, per-week Understat coverage, atomic log rewrite, gated-arm loop tests) — all fixed; residuals in spec §8
+- Suite: 1619 Python + 251 frontend; protected files zero diffs; no frontend change
+
+### v7d — cockpit polish (done, 2026-08-30)
+Spec: `specs/2026-08-30-gaffer-v7d-cockpit-polish-design.md` (§9 = outcome + evidence) · Plan: `plans/2026-08-30-gaffer-v7d-cockpit-polish.md`
+- [x] Fast advise: `gaffer advise --fast` + `advise-fast` job kind + This Week button — 78s vs ~6 min swept (rides the pinned `scenarios_n=0` rail; v7b proved the gate is a no-op under option (b))
+- [x] Pen tracker card in Model hub (`GET /api/pens`, `track-pens` job kind + button); snapshot button; player names are the explain control in Compare + the explorer (`Card` heading slot)
+- [x] Light theme: three-state toggle (system/dark/light), `[data-theme]` token overrides, boot script, WCAG-checked palette; review blocker = Tailwind v4 bakes opacity-modifier utilities to dark hex in the compiled CSS → soft tokens + a mutation-tested built-CSS guard (and: Tailwind's scanner reads comments — naming a class in prose regenerates it)
+- [x] Z1 flip shipped separately (`826ff6b`): `DNP_CALIBRATION_DEFAULT = True` by user decision — takes effect at the next `gaffer train`
+- Suite: 1636 Python + 302 frontend (+1 skip), tsc clean; protected files zero diffs
 
 ### v8 queue (approved 2026-08-30, all seven cycles green-lit)
 Proposal: `specs/2026-08-30-gaffer-v8-research-proposal.md`. Order fixed by dependency + data accrual;
@@ -113,42 +230,6 @@ entry-API scrape approved.
 - [x] v8e solver trust — done 2026-08-31, spec §4 = outcome. Editable availability pins (authoritative last pass, DGW-whole-first-GW, model reading banked), 20-solve sensitivity sweep (signed margin, seed-independent of the advice draws; first live result: modal plan 5/20 — coin-flip board), drafts CRUD+compare (min-horizon scoring), chip sanity rails. Review: both blockers were wrong sentences to the manager (backwards negative margin; FH draft mis-scoring); chip-frequency claim dropped as structurally impossible rather than faked.
 - [x] v8g honest uncertainty — done 2026-08-31, spec §4 = outcome. Calibration cards (reliability curves incl. P(start), ledger-sourced scatter, biggest misses), outcome-variance EP bands + haul/blank chips (review caught the estimation-σ trap AGAIN — dead 0% chips/blank-100% certainty; now quadrature with OUTCOME_VAR_PER_EP, one uncertainty answer across tabs), counts-not-percentages confidence, compare radar. The cycle named for honesty needed its review most.
 - [x] v8f daily companion — done 2026-08-31, spec §4 = outcome. Price log banked daily (626 rows, idempotent per UTC day), starred watchlist cloning the pin pattern, Friday briefing + Tuesday debrief as pure-reader artifacts with an osascript notification (both built on real GW1 data), real EP movers in the retrain diff (absent on the first run, 5 named on the second). Review FIX-FIRST with no blockers; the sharpest of the four was a NaT deadline parsed under a guard and then multiplied outside it. The queue closes — user must re-run `scripts/install_automation.sh` for the four new plists.
-
-### v7d — cockpit polish (done, 2026-08-30)
-Spec: `specs/2026-08-30-gaffer-v7d-cockpit-polish-design.md` (§9 = outcome + evidence) · Plan: `plans/2026-08-30-gaffer-v7d-cockpit-polish.md`
-- [x] Fast advise: `gaffer advise --fast` + `advise-fast` job kind + This Week button — 78s vs ~6 min swept (rides the pinned `scenarios_n=0` rail; v7b proved the gate is a no-op under option (b))
-- [x] Pen tracker card in Model hub (`GET /api/pens`, `track-pens` job kind + button); snapshot button; player names are the explain control in Compare + the explorer (`Card` heading slot)
-- [x] Light theme: three-state toggle (system/dark/light), `[data-theme]` token overrides, boot script, WCAG-checked palette; review blocker = Tailwind v4 bakes opacity-modifier utilities to dark hex in the compiled CSS → soft tokens + a mutation-tested built-CSS guard (and: Tailwind's scanner reads comments — naming a class in prose regenerates it)
-- [x] Z1 flip shipped separately (`826ff6b`): `DNP_CALIBRATION_DEFAULT = True` by user decision — takes effect at the next `gaffer train`
-- Suite: 1636 Python + 302 frontend (+1 skip), tsc clean; protected files zero diffs
-
-### v7c — foundations (done, 2026-08-30)
-Spec: `specs/2026-08-30-gaffer-v7c-foundations-design.md` (§8 = outcome + evidence) · Plan: `plans/2026-08-30-gaffer-v7c-foundations.md`
-- [x] F1 daily availability snapshot: `gaffer snapshot` → append-only `data/live/availability_log.parquet` (idempotent per UTC day, atomic rewrite, never raises); web job kind; launchd plist shipped — **run `scripts/install_automation.sh` to activate the 17:00 daily job**
-- [x] F2 multi-seed standard: `v7b_replay.py --seed-bases a,b,c` + `MULTISEED_DONE` aggregate; `seed_stats.py` with config-mismatch guard (refused the q2-ctrl mix on first use — its 1786 is a chips-off control, not the S2 heur 1785); `CONVENTIONS.md` (8 rules) linked above
-- [x] F3 pen-term tracker: `gaffer track-pens` → `reports/pen_tracker.json`; GW1: 2 pens, both by predicted first-choice takers (hit 1.00), 0.100/team-game vs served 0.13, instrument xg_gap (covered_rows 256)
-- [x] Review: 1 blocker (confounded seed-spread evidence) + 4 importants (team_games retro-stamp bias, per-week Understat coverage, atomic log rewrite, gated-arm loop tests) — all fixed; residuals in spec §8
-- Suite: 1619 Python + 251 frontend; protected files zero diffs; no frontend change
-
-### v7b — measurement cycle (done, merged `8aeb3d6` 2026-08-30)
-Spec: `specs/2026-08-30-gaffer-v7b-measurement-design.md` (§5–7 = results, corrections, evidence appendix)
-- [x] Q2: D1 sign reversal attributed (single-seed) to the v5 minutes-head swap (+27 legacy vs −61 current, same harness); harness and frame ruled out; the swap itself still justified (+47 ungated)
-- [x] Q1: 3-seed error bars — spread 116 swamps every arm gap; the S1/S2 ±120s were draw luck
-- [x] Q3: composite-σ floors monotonically worse; no re-noised gate beats raw
-- [x] Mechanical verdict: KEEP option (b) — all differences within seed noise; raw anchor 1914 reproduced and logged
-- [x] N2 first news verdict — **banked 2026-09-02 under v12 W2**: GW2, n=620, Brier news 0.1276 vs flags 0.1191, MAE 13.29 vs 13.02, flags ahead on both. One gameweek, so a residual and not a verdict (CONVENTIONS §5)
-- 12 replay runs + 1 probe; suite 1548; no serving changes
-
-### v7-model — zeros + honest noise (done, merged `1b93b9d` 2026-08-30; user chose option (b))
-Spec: `specs/2026-08-30-gaffer-v7-model-design.md` (§9 = gates + the three-way decision) · Plan: `plans/2026-08-30-gaffer-v7-model.md`
-- [x] Zeros diagnostic: the error is regulars-who-sit (news-shaped), not fringe; I2 fringe features proven underivable from stored data
-- [x] Gate Z1 FAIL — isotonic DNP recalibration ships OFF (zeros 1.063→1.053, bar was 1.042; strict Pareto improvement, user may flip)
-- [x] Gate S2 PASS on the literal rule — estimation σ (K=5 bagged ensemble, global 0.069) replay 1908 vs heuristic 1785; **review's raw control scored 1914: the σ disables gating rather than sharpening it** → three-way decision (heuristic / estimation / no gating) escalated, merge withheld
-- [x] Open finding: v4c D1 sign reversal — scenario gating was +75 in v4c, −129 on today's model; unbisected
-- [x] N2 first news verdict — **banked 2026-09-02 under v12 W2** (`gaffer evaluate --news-shadow`): GW2, n=620, Brier news 0.1276 vs flags 0.1191, MAE 13.29 vs 13.02, flags ahead on both; one gameweek, so a residual and not a verdict (CONVENTIONS §5)
-- Suite on branch: 1523 Python + 251 frontend, tsc clean; serving guards added (non-estimation asset refused when flag True; calibrate-noise refuses unsafe overwrite)
-
-## Planned
 
 ### v9a — pitch view (done, merged `02cf26e` 2026-08-31)
 Spec: `specs/2026-08-31-gaffer-v9a-pitch-view-design.md` (§4 outcome) · Plan: `plans/2026-08-31-gaffer-v9a-pitch-view.md`
@@ -315,7 +396,6 @@ Spec: §6 · Plan: `plans/2026-09-01-gaffer-v12-w5-interface.md` (16 tasks incl.
 - Blanket test mocks (`mockResolvedValue` answering every route) are where dead `?? []` guards come from and where removing them bites: type the mock as the model, route it by path, and read vitest's "unhandled errors" line as a failure — the suite exits 0 through it
 - Never `--amend`, reset, rebase, stash or restore in a worktree other agents commit to; stage-and-commit in one command; accept blurred attribution and reconcile by content
 - An agent that stalls mid-task leaves its work in `git status`; a paused program needs its HEAD, its dirty files and the one thing possibly missing written down before the connection drops
-
 
 ## Operational / housekeeping
 - [x] Untrack `reports/` artifacts + `.claude/`; gitignore both (`31dc239`)
