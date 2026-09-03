@@ -881,6 +881,133 @@ def field_rate_from_sample(sample: list[list[dict]] | None,
     return float(sum(rates) / len(rates)) if rates else None
 
 
+FIELD_POP_N = 300
+"""Synthetic managers in the field population.
+
+The same size as the scrape's own sample (``tier_eo``'s ~300 top-10k entries),
+so the Monte Carlo's population is not finer-grained than the measurement it
+is drawn from. Three hundred is also enough that the population median moves
+by well under a point between draws, which is what ``p_green`` is counted
+against."""
+
+
+def field_population(deadline_eo: dict[int, float], *,
+                     n_managers: int = FIELD_POP_N,
+                     seed: int = SIM_SEED):
+    """``(n_managers, n_elements)`` of 0/1 ownership drawn from EO.
+
+    Each synthetic manager owns element ``e`` with probability ``eo_e``,
+    independently. This is a **portfolio, not a squad**: no budget, no
+    position limits, no three-per-club, and a manager's holding count varies
+    where a real one's does not.
+
+    That is deliberate, and it is what the EO table actually describes. Field
+    EO is *effective* ownership — the captain's doubling is already inside it
+    — so over a real sample ``sum(eo)`` comes out near 16, which is eleven
+    starters plus an armband. Drawing legal squads instead would need a
+    solver per manager per gameweek and would buy a second-order correction to
+    a first-order quantity.
+
+    The cost, stated: a Bernoulli portfolio's week is a little wider than a
+    real manager's, which pushes every probability counted off it a shade
+    toward 0.5. That is the direction :data:`MEASURED_FIELD_CORRELATION`'s
+    docstring already argues is the right one to be wrong in.
+
+    An EO above 1 — a heavily captained player really does exceed 100%
+    effective ownership — is clamped rather than rejected: he is owned by
+    everybody, which is what an EO of 1.4 means once the doubling is stripped
+    back out.
+    """
+    elements = sorted(int(e) for e in deadline_eo)
+    if not elements:
+        return np.zeros((int(n_managers), 0))
+    probs = np.array([min(max(float(deadline_eo[e]), 0.0), 1.0)
+                      for e in elements])
+    rng = np.random.default_rng([int(seed), 1])
+    draws = rng.random((int(n_managers), len(elements)))
+    return (draws < probs).astype("float64")
+
+
+TOP10K_WAITING = (
+    "a top-10k weekly score threshold — no such series exists on this "
+    "machine or in any source gaffer reads (build-history stores player and "
+    "fixture tables only, and the events table carries no scores), so the "
+    "probability is not computed rather than guessed")
+"""What ``p_top10k`` is waiting for, said in full.
+
+Spec §5.3 asks for ``P(top-10k)`` "using the historical distribution of
+top-10k weekly scores by GW from ``build-history``". There is no such
+distribution: ``build_history`` writes ``history/player_gw.parquet`` and
+``history/fixtures.parquet`` and nothing event-level, and
+``data/live/events.parquet`` carries no score column at all. The honest answer
+is a null with this sentence beside it (spec §1: never render zeros as if they
+were measurements)."""
+
+
+def simulate_field_rank(inputs: SimInputs, deadline_eo: dict[int, float], *,
+                        n: int = SIM_N, seed: int = SIM_SEED,
+                        gw: int, n_managers: int = FIELD_POP_N) -> dict:
+    """One gameweek against a synthetic field: ``P(green arrow)`` and friends.
+
+    **Green arrow is defined against the population's own median week**, not
+    against an absolute score: a green arrow is a rank that improved, and a
+    rank improves when you beat the typical manager. Defining it this way is
+    also what makes spec §5.3's sanity test exactly true rather than
+    approximately — a squad exchangeable with the field's typical manager is
+    the same random variable as him, so it beats him half the time.
+
+    **Everybody is drawn off the same player weeks.** One ``(n, elements)``
+    matrix of player outcomes serves my squad and all ``n_managers``, so the
+    correlation between me and the field is the shared-ownership correlation
+    and is not a parameter. Players are independent of one another within a
+    week, which is this module's standing assumption
+    (:data:`OUTCOME_VAR_PER_EP`'s docstring says what it omits).
+
+    Returns a dict rather than a dataclass because two of its three headline
+    numbers are ``None`` today and a dataclass would invite a caller to treat
+    the nulls as zeros. Every null carries a ``waiting_for`` sentence.
+    """
+    elements = sorted(int(e) for e in deadline_eo)
+    me = next((e for e in inputs.entries if e.is_me), None)
+    base = {"gw": int(gw), "n": int(n), "seed": int(seed),
+            "managers": int(n_managers), "p_green": None,
+            "p_top10k": None, "top10k_waiting_for": TOP10K_WAITING,
+            "waiting_for": None}
+    if not elements:
+        return {**base, "waiting_for":
+                "a banked field EO sample for this gameweek — run "
+                "`gaffer field-scrape`"}
+    if me is None:
+        return {**base, "waiting_for":
+                "an entry flagged as yours in this league — set fpl.entry_id "
+                "in config.toml"}
+    picks = [(element, mult) for element, mult in effective_picks(me.picks)
+             if element in deadline_eo]
+    if not picks:
+        return {**base, "waiting_for":
+                "no player in your squad appears in the banked field sample, "
+                "so there is nothing to compare against — the sample is from "
+                "a different gameweek, or a different season's element ids"}
+    index = {element: i for i, element in enumerate(elements)}
+    eps = np.array([float(inputs.ep_by_element.get(e, 0.0)) for e in elements])
+    sds = np.array([float(inputs.sigma_by_element.get(e, 0.0))
+                    for e in elements])
+    rng = np.random.default_rng([int(seed), 2])
+    # One week of football, drawn n times: the same draws serve me and every
+    # synthetic manager, which is what makes the correlation real.
+    weeks = eps + sds * rng.standard_normal((int(n), len(elements)))
+    masks = field_population(deadline_eo, n_managers=n_managers, seed=seed)
+    field = weeks @ masks.T                       # (n, managers)
+    mine = np.zeros(int(n))
+    for element, mult in picks:
+        mine += float(mult) * weeks[:, index[element]]
+    median = np.median(field, axis=1)
+    return {**base,
+            "p_green": round(float((mine > median).mean()), 4),
+            "field_median_ep": round(float(median.mean()), 2),
+            "my_ep": round(float(mine.mean()), 2)}
+
+
 def build_inputs(cfg, client, *, gw: int | None = None) -> SimInputs:
     """Assemble a :class:`SimInputs` from artifacts on disk plus fresh league
     data.
