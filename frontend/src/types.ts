@@ -163,10 +163,9 @@ export interface AdviceLatest extends Omit<WireAdviceLatest, 'advice'> {
  *  through `?? []`, and the type has to admit what those guards are for.
  *  Absent reads as "nothing overridden".
  *
- *  The generated twin already types it optional — pydantic's serialization
- *  schema leaves a defaulted field out of `required` — so this override adds
- *  no type, only the reason. Delete it and the guards downstream become
- *  unexplained. */
+ *  The generated twin types it required, which is what *this* server sends;
+ *  the override is the older-payload case, and deleting it would make every
+ *  `?? []` downstream read as dead defence. */
 export interface PlayerExplain
   extends Omit<WirePlayerExplain, 'set_pieces_manual'> {
   set_pieces_manual?: string[]
@@ -181,8 +180,8 @@ export interface PlayerExplain
  *  file; optional because the read sites guard it with `?? []`, which is only
  *  honest if it can be absent.
  *
- *  As with `PlayerExplain`, the generated twin already types it optional; the
- *  override carries the reason, not a different type. */
+ *  As with `PlayerExplain`, the generated twin types it required — that is
+ *  what this server sends — and the override is the older-payload case. */
 export interface PlayerRow extends Omit<WirePlayerRow, 'set_piece_manual'> {
   set_piece_manual?: string[]
 }
@@ -273,8 +272,8 @@ export const JOB_KIND_LABEL: Record<JobKind, string> = {
  *  older than the field is a real case — typing it as always present made that
  *  guard read as dead defence.
  *
- *  The generated twin already types it optional; the override carries the
- *  reason, not a different type. */
+ *  The generated twin types it required — that is what this server sends —
+ *  and the override is the older-server case. */
 export interface PlanTimeline
   extends Omit<WirePlanTimeline, 'alternatives'> {
   alternatives?: PlanAlternative[]
