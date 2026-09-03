@@ -7,7 +7,7 @@ import {
 import { apiGet } from '../api/client'
 import {
   type Column, Card, DataTable, EmptyState, Loading, PageHeader, Sparkline,
-  fmtNum, fmtPct,
+  fmtNum, fmtPct, useTabParam,
 } from '../kit'
 import type {
   AdviceLatest, LeagueRaceData, LeagueSimData, RivalSummary,
@@ -20,6 +20,10 @@ import WhatIfSim, { type WhatIfSquadPlayer } from './league/WhatIfSim'
 const TAB_CLASS = 'shrink-0 whitespace-nowrap px-3 py-2 text-text-muted '
   + 'data-[state=active]:text-text '
   + 'data-[state=active]:border-b data-[state=active]:border-text'
+
+// The strip's values, in strip order. Named so `useTabParam` can reject a
+// `?tab=` this hub does not have rather than rendering an empty panel.
+const TABS = ['race', 'rivals', 'whatif'] as const
 
 const SERIES_COLOURS = ['var(--color-sage)', 'var(--color-info)',
   'var(--color-rust)', 'var(--color-text-muted)']
@@ -81,6 +85,7 @@ function MarginFan({ quantiles }: { quantiles: Record<string, number> }) {
 }
 
 export default function League() {
+  const [tab, setTab] = useTabParam(TABS, 'race')
   const [race, setRace] = useState<LeagueRaceData | null>(null)
   const [rivals, setRivals] = useState<RivalSummary[]>([])
   const [missing, setMissing] = useState(false)
@@ -179,7 +184,7 @@ export default function League() {
   return (
     <>
       <PageHeader title="League" context={leagueContext} />
-      <Tabs.Root defaultValue="race">
+      <Tabs.Root value={tab} onValueChange={setTab}>
         <Tabs.List className="mb-4 flex overflow-x-auto border-b
                               border-divider">
           <Tabs.Trigger value="race" className={TAB_CLASS}>Race</Tabs.Trigger>

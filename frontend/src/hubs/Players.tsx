@@ -4,7 +4,7 @@ import { apiDelete, apiGet, apiPost, errorText } from '../api/client'
 import { useDebounced } from '../api/useDebounced'
 import {
   type Column, Card, DataTable, EmptyState, Loading, PageHeader, PlayerName,
-  PosBadge, Sparkline, fmtNum, posColor, toast,
+  PosBadge, Sparkline, fmtNum, posColor, toast, useTabParam,
 } from '../kit'
 import type {
   AdviceLatest, OverridesPanel, PlayerRow, WatchlistPanel,
@@ -21,7 +21,12 @@ const TAB_CLASS = 'shrink-0 whitespace-nowrap px-3 py-2 text-text-muted '
   + 'data-[state=active]:text-text '
   + 'data-[state=active]:border-b data-[state=active]:border-text'
 
+// The strip's values, in strip order. Named so `useTabParam` can reject a
+// `?tab=` this hub does not have rather than rendering an empty panel.
+const TABS = ['explorer', 'compare', 'matrix'] as const
+
 export default function Players() {
+  const [tab, setTab] = useTabParam(TABS, 'explorer')
   const [rows, setRows] = useState<PlayerRow[] | null>(null)
   const [missing, setMissing] = useState(false)
   const [position, setPosition] = useState('')
@@ -223,7 +228,7 @@ export default function Players() {
           ? `${picked.length} selected for compare`
           : `${(rows ?? []).length} in the candidate pool`}
       />
-      <Tabs.Root defaultValue="explorer">
+      <Tabs.Root value={tab} onValueChange={setTab}>
         <Tabs.List className="mb-4 flex overflow-x-auto border-b
                               border-divider">
           <Tabs.Trigger value="explorer" className={TAB_CLASS}>Explorer</Tabs.Trigger>

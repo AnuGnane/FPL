@@ -1,6 +1,6 @@
 import * as Tabs from '@radix-ui/react-tabs'
 import { useCallback, useState } from 'react'
-import { JobButton, PageHeader } from '../kit'
+import { JobButton, PageHeader, useTabParam } from '../kit'
 import HealthTab from './model/HealthTab'
 import HistoryTab from './model/HistoryTab'
 import JournalTab from './model/JournalTab'
@@ -14,7 +14,13 @@ const TAB_CLASS = 'shrink-0 whitespace-nowrap px-3 py-2 text-text-muted '
   + 'data-[state=active]:text-text '
   + 'data-[state=active]:border-b data-[state=active]:border-text'
 
+// The strip's values, in strip order. Named so `useTabParam` can reject a
+// `?tab=` this hub does not have rather than rendering an empty panel.
+const TABS = ['quality', 'journal', 'review', 'season', 'history',
+              'health'] as const
+
 export default function Model() {
+  const [tab, setTab] = useTabParam(TABS, 'quality')
   // A finished job has just rewritten reports/, and the tab underneath was
   // still showing the numbers from before it ran with nothing to say they were
   // stale. Bumping the key remounts that tab, which is how each one fetches.
@@ -54,7 +60,7 @@ export default function Model() {
           </div>
         )}
       />
-      <Tabs.Root defaultValue="quality">
+      <Tabs.Root value={tab} onValueChange={setTab}>
         <Tabs.List className="mb-4 flex overflow-x-auto border-b
                               border-divider">
           <Tabs.Trigger value="quality" className={TAB_CLASS}>Quality</Tabs.Trigger>

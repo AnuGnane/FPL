@@ -1,7 +1,7 @@
 import * as Tabs from '@radix-ui/react-tabs'
 import { useEffect, useState } from 'react'
 import { apiGet } from '../api/client'
-import { EmptyState, PageHeader } from '../kit'
+import { EmptyState, PageHeader, useTabParam } from '../kit'
 import type { AdviceLatest, WhatIfRequest } from '../types'
 import ChipsTab from './planning/ChipsTab'
 import DraftsTab from './planning/DraftsTab'
@@ -23,8 +23,16 @@ const TAB_CLASS = 'shrink-0 whitespace-nowrap px-3 py-2 text-text-muted '
 // Since v11 the *selection* lives up here too, for the same reason turned
 // round: the board's "Try these changes" writes the constraints and then has
 // to move the reader to the tab that reads them, which an uncontrolled
-// `Tabs.Root` gives no way to do. Not persisted — a view preference is a real
-// feature with real questions behind it (`ThisWeek.tsx:31-34`).
+// `Tabs.Root` gives no way to do. Since v12 W5 §6.1 the selection lives in
+// `?tab=` rather than in a bare `useState`, so the handoff is linkable and a
+// reload keeps the reader where he was. Still not a stored *preference* —
+// nothing is written to localStorage (`ThisWeek.tsx:31-34`).
+
+// The strip's values, in strip order. Named so `useTabParam` can reject a
+// `?tab=` this hub does not have rather than rendering an empty panel.
+const TABS = ['timeline', 'board', 'whatif', 'drafts', 'chips',
+              'ticker'] as const
+
 const EMPTY_WHATIF: WhatIfRequest = {
   lock: [], ban: [], force_in: [], force_out: [], max_hits: 0,
   chip: 'none', horizon: null,
@@ -40,7 +48,7 @@ export default function Planning() {
   const [teamByCode, setTeamByCode] = useState<Map<number, number>>(new Map())
   const [missing, setMissing] = useState(false)
   const [whatif, setWhatif] = useState<WhatIfRequest>(EMPTY_WHATIF)
-  const [tab, setTab] = useState('timeline')
+  const [tab, setTab] = useTabParam(TABS, 'timeline')
 
   useEffect(() => {
     apiGet<AdviceLatest>('/api/advice/latest')
