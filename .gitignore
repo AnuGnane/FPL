@@ -4,6 +4,10 @@ __pycache__/
 data/raw/
 data/history/
 data/live/
+# v12 W4 §5.1: `gaffer core-insights` writes one parquet per season per table
+# here. Collected data, not source — ignored now rather than at the end of the
+# workstream, because the command is runnable today.
+data/core_insights/
 models/*.joblib
 models/*.json
 reports/*.html

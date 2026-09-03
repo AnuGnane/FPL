@@ -277,6 +277,12 @@ the project folder moves — the plists embed the path):
 | Nightly 23:45 | `com.gaffer.backup` | Tars the ~16 MB no command can rebuild into `~/gaffer-backups`; keeps fourteen. |
 | 06:30 & 18:30 | `com.gaffer.core-insights` | `gaffer core-insights` — FPL-Core-Insights per-match stats, published cup/European fixtures and club Elo into `data/core_insights/`. |
 
+Fetched CSVs are cached under `data/raw/core_insights/`. A finished gameweek
+is downloaded once; the gameweek being played is re-fetched every run, which
+is why this one is scheduled twice a day. To pull a week the publisher
+corrected after it went final, run `gaffer core-insights --refresh 3` — the
+last three gameweeks of each season, cache ignored.
+
 Check with `launchctl list | grep com.gaffer`. Everything else — sensitivity
 sweeps, news-shadow evaluation, snapshots on demand — runs from UI buttons.
 

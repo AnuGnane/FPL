@@ -1295,9 +1295,14 @@ Re-run it after moving the project.
   FPL-Core-Insights' per-match player detail, its published cup and European
   fixtures and its club Elo into `data/core_insights/`. The archive pushes at
   07:30 and 17:30 UTC, so the two slots sit either side of the later one.
-  Every fetched file is cached forever, so the second run of a day usually
-  downloads nothing, and the command prints its line rather than exiting
-  non-zero when GitHub is slow.
+  Fetched CSVs are cached under `data/raw/core_insights/`: a gameweek whose
+  every fixture is finished is downloaded once and never again, while the
+  gameweek being played — and any future one the archive has already listed —
+  is re-fetched on every run, which is what makes the second slot of the day
+  worth having. `gaffer core-insights --refresh N` re-fetches the last N
+  gameweeks even if they have gone final, for the file the publisher corrects
+  after the fact. The command prints its line rather than exiting non-zero
+  when GitHub is slow.
 
 Nothing else is scheduled. The rest of the work the UI can start — including
 `sensitivity`, twenty noised re-solves of this week's board in about five

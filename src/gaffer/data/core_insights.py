@@ -43,15 +43,30 @@ import pandas as pd
 from gaffer.data import store
 from gaffer.data.cups import (CUPS_RAW_BASE, CUPS_TREE_URL, _cached_get,
                               _http, repo_season)
+from gaffer.io import atomic_save, atomic_write
 
 __all__ = ["CI_CACHE", "SEASON_TABLES", "ci_paths_from_tree", "repo_season"]
 
 CI_CACHE = Path("data/raw/core_insights")
-"""Where fetched CSVs are cached. Same contract as ``cups.CUPS_CACHE``: a file
-on disk is never re-fetched, so a killed run costs only what it had not
-reached. A *finished* gameweek's files never change; an unfinished one's do,
-and re-collecting those means deleting their cache entry — the cache is
-deliberately dumber than a staleness rule it would have to get right."""
+"""Where fetched CSVs are cached, under ``data/raw/core_insights/<archive
+path>``.
+
+A **finished** gameweek's files never change and are fetched exactly once, so
+a killed run costs only what it had not reached. An **unfinished** one's files
+change every time the publisher pushes — which is twice a day, which is why
+this job runs twice a day — and a cache that never re-fetched them would mean
+the collector could never see the gameweek being played. That is the whole
+value of the collection, so the rule is not "cached forever":
+
+* a gameweek whose cached ``fixtures.csv`` has any row that is not
+  ``finished`` is re-fetched on the next run (:func:`hot_gameweeks`), and so
+  is one with no cached fixture list to judge by;
+* ``gaffer core-insights --refresh N`` forces the last ``N`` gameweeks of each
+  season to be re-fetched whatever their cache says, which is the escape hatch
+  for a file the publisher corrected after it went final.
+
+A re-fetch that fails leaves the previous cached copy in place: freshness is
+worth a request, never a deletion."""
 
 SEASON_TABLES = ("players", "teams", "fixtures", "playermatchstats")
 """The keys every bundle answers, present or absent. ``players`` and ``teams``
@@ -149,13 +164,121 @@ def fetch_tree(client: httpx.Client | None = None) -> dict:
 
 
 def fetch_csv(path: str, http: httpx.Client,
-              cache_dir: Path | str = CI_CACHE) -> str | None:
-    """One archive path -> its text, cached forever under ``cache_dir``.
+              cache_dir: Path | str = CI_CACHE, *,
+              refresh: bool = False) -> str | None:
+    """One archive path -> its text, cached under ``cache_dir``.
 
     ``None`` with a printed line on a 404 or a dead connection: a run spanning
     three seasons and a hundred gameweeks must not die on one missing folder.
+
+    ``refresh`` bypasses the cache for this one file — the gameweek is still
+    being played, or the caller asked for it by name. The old copy is put back
+    if the re-fetch fails, so a network blip costs freshness and never data;
+    that asymmetry is the same one ``download_core_insights`` makes when the
+    whole tree is unreachable.
     """
-    return _cached_get(http, f"{CUPS_RAW_BASE}/{path}", Path(cache_dir) / path)
+    dest = Path(cache_dir) / path
+    url = f"{CUPS_RAW_BASE}/{path}"
+    if not refresh or not dest.exists():
+        return _cached_get(http, url, dest)
+    previous = dest.read_text()
+    dest.unlink()
+    text = _cached_get(http, url, dest)
+    if text is None:
+        atomic_write(dest, previous)
+        return previous
+    return text
+
+
+def season_index_map(seasons: list[str],
+                     current_season: str | None = None) -> dict[str, int]:
+    """``{season: season_idx}``, taken from history rather than from a list's
+    position.
+
+    The collector stamps ``season_idx`` on every row and the two arm builders
+    (:func:`gaffer.features.engineer.add_role_wb_share`,
+    :func:`~gaffer.features.engineer.add_density_pub`) **join on it**. They
+    cannot join on the season *string* instead: the serving frame
+    ``build_prediction_frame`` produces carries ``season_idx`` and no
+    ``season`` column at all, so the string is not available on the side that
+    matters most.
+
+    That makes the index the join key, and a join key derived from
+    ``enumerate(config.train_seasons + [current_season])`` is a key that moves
+    when somebody reorders or trims a config list — silently attaching one
+    season's per-match rows to another season's fixtures. So it is read from
+    the same place ``models.train.load_training_frame`` reads it: the distinct
+    ``(season, season_idx)`` pairs already in ``history/player_gw.parquet``,
+    with the current season one past the newest stored one, which is exactly
+    that function's ``current_idx``.
+
+    A season neither in history nor named as current falls back to its
+    position in ``seasons``, which is the old behaviour and is all there is to
+    go on before ``build-history`` has ever run.
+    """
+    known: dict[str, int] = {}
+    rel = "history/player_gw.parquet"
+    if store.exists(rel):
+        try:
+            frame = pd.read_parquet(store.DATA_DIR / rel,
+                                    columns=["season", "season_idx"])
+        except Exception as exc:  # noqa: BLE001 — no history is not an error
+            print(f"core-insights: history season map unreadable ({exc})")
+            frame = pd.DataFrame()
+        if not frame.empty:
+            for season, idx in (frame.drop_duplicates()
+                                .itertuples(index=False)):
+                if pd.notna(season) and pd.notna(idx):
+                    known[str(season)] = int(idx)
+    out: dict[str, int] = {}
+    for position, season in enumerate(seasons):
+        if season in known:
+            out[season] = known[season]
+        elif season == current_season and known:
+            out[season] = max(known.values()) + 1
+        else:
+            out[season] = position
+    return out
+
+
+def hot_gameweeks(bundle: dict, cache_dir: Path | str = CI_CACHE,
+                  refresh: int = 0) -> set[int]:
+    """The gameweeks of one season's bundle whose cache must be bypassed.
+
+    A gameweek is *hot* when the archive is still going to change it:
+
+    * its cached ``fixtures.csv`` carries a row that is not ``finished`` —
+      the week in progress, and every week beyond it that the publisher has
+      already listed (A2d);
+    * or there is no readable cached fixture list to judge it by, in which
+      case the fetch is a fetch anyway and marking it hot costs nothing;
+    * or it is one of the last ``refresh`` gameweeks the season publishes, for
+      a caller who passed ``--refresh``.
+
+    A gameweek whose every fixture is finished is *cold* and is never fetched
+    twice. That is the half of the old "cached forever" rule worth keeping:
+    those files are immutable, and a twice-daily job that re-downloaded a
+    whole season every run would be a rate limit waiting to happen.
+    """
+    gws = sorted(set(bundle.get("fixtures") or {})
+                 | set(bundle.get("playermatchstats") or {}))
+    hot = set(gws[-int(refresh):]) if refresh > 0 else set()
+    for gw in gws:
+        path = (bundle.get("fixtures") or {}).get(gw)
+        if path is None:
+            hot.add(gw)
+            continue
+        cached = Path(cache_dir) / path
+        if not cached.exists():
+            continue
+        frame = _read_csv(cached.read_text())
+        if frame.empty or "finished" not in frame.columns:
+            hot.add(gw)
+            continue
+        done = frame["finished"].astype("string").str.strip().str.lower()
+        if not done.isin({"true", "1"}).all():
+            hot.add(gw)
+    return hot
 
 
 # --- parsers -------------------------------------------------------------
@@ -182,7 +305,44 @@ schema nobody can change.
 
 ``defensive_contributions`` is absent from the 2024-2025 layout (A3) and is
 carried as an all-NaN column there, so one parquet schema serves every season
-and a model sees a missing value rather than a missing column."""
+and a model sees a missing value rather than a missing column.
+
+The counting columns among these are subject to the blank-means-zero rule; see
+:data:`PMS_COUNT_COLS`."""
+
+PMS_COUNT_COLS = ("accurate_crosses", "touches_opposition_box",
+                  "final_third_passes", "tackles_won", "interceptions",
+                  "blocks", "clearances", "recoveries",
+                  "defensive_contributions")
+"""The counting columns, where **a blank in a played row means zero**.
+
+Measured drift, not a guess: the 2025-2026 files write ``0`` where a player
+recorded none of something, and the 2026-2027 files leave the cell **blank** —
+181 of 310 played rows in 2026-27 GW1. Read literally, that is a season in
+which two thirds of the league has an unknown number of crosses, and a rule
+built on it (``role_wb_share``) would read "unknown" for exactly the season it
+was built to describe. The archive is not saying it does not know; it is
+saying nothing happened.
+
+The rule is deliberately narrow, and every boundary of it is a case that would
+otherwise be a lie:
+
+* **only when the row was played.** ``minutes_played > 0`` is the gate. An
+  unused substitute recorded no crosses because he was not on the pitch, and
+  writing 0 there would put him in the denominator of every per-start rate as
+  a genuine zero;
+* **only counts.** ``minutes_played``, ``start_min`` and ``finish_min`` are
+  not counts and are not in this list. A blank ``start_min`` means the archive
+  did not record when he came on; filling it with 0 would assert he started;
+* **only a column that is populated somewhere in the file.** A column that is
+  blank for every row of a gameweek was not published for that gameweek — the
+  2026-27 files carry ``defensive_contributions`` as a header with nothing
+  under it in GW1 and GW2 — and "the publisher has not filled this in yet" is
+  not "every player recorded zero".
+
+Outside those bounds the cell stays NaN, which LightGBM reads as missing and
+:func:`gaffer.features.engineer.add_role_wb_share` also reads as a zero
+indicator without dropping the start."""
 
 CI_PLAYER_COLS = ["season", "season_idx", "gw", "code", "player_id",
                   "match_id"] + list(PMS_STAT_COLS)
@@ -271,6 +431,16 @@ def player_match_rows(pms_csv: str, season: str, season_idx: int, gw: int,
     if absent:
         print(f"core-insights: {season} gw{gw} playermatchstats does not "
               f"publish {', '.join(absent)} — carried as null")
+    # Blank means zero, in a played row, in a column the file actually fills.
+    # See PMS_COUNT_COLS for why each of those three qualifiers is there.
+    played = pd.to_numeric(out["minutes_played"], errors="coerce") > 0
+    for col in PMS_COUNT_COLS:
+        if col in absent:
+            continue
+        series = out[col]
+        if not series.notna().any():
+            continue
+        out[col] = series.where(series.notna() | ~played, 0.0)
     out["code"] = out["player_id"].map(
         lambda v: codes.get(int(v)) if pd.notna(v) else None)
     out = out[out["code"].notna() & out["player_id"].notna()]
@@ -310,6 +480,12 @@ def fixture_rows(fixtures_csv: str, season: str, season_idx: int,
     fixtures in the seven days before a deadline is available *at prediction
     time*. A row with no kickoff time has not been scheduled and carries
     nothing to count, so it drops.
+
+    ``gw`` comes from the enumerated folder name and is stamped on every row;
+    the file's own ``gameweek`` column is never read. That is deliberate — the
+    column is an int in 2026-2027 and a float string (``"10.0"``) in
+    2025-2026, and the folder is the thing the collector already trusts to
+    place the file at all.
     """
     empty = pd.DataFrame(columns=CI_FIXTURE_COLS)
     df = _fixture_frame(fixtures_csv)
@@ -455,12 +631,19 @@ def download_core_insights(seasons: list[str],
                            season_indexes: dict[str, int],
                            *, tree: dict | None = None,
                            client: httpx.Client | None = None,
-                           cache_dir: Path | str = CI_CACHE
+                           cache_dir: Path | str = CI_CACHE,
+                           refresh: int = 0
                            ) -> dict[str, dict[str, int]]:
     """Collect every requested season -> ``data/core_insights/<season>/``.
 
-    One tree listing, then one cached GET per file. Returns
-    ``{season: {table: rows written}}``, which is what the CLI prints.
+    One tree listing, then one GET per file that is not already cached cold.
+    Returns ``{season: {table: rows written}}``, which is what the CLI prints.
+
+    ``refresh`` forces the last N gameweeks of each season to be re-fetched
+    whatever their cache says. It is not needed for the ordinary case — a
+    gameweek still being played is re-fetched on its own (:func:`CI_CACHE`,
+    :func:`hot_gameweeks`) — and exists for the file the publisher corrects
+    after it has gone final.
 
     A season the archive does not publish writes three empty tables rather
     than nothing at all: "we looked and there was nothing" and "we never
@@ -486,10 +669,13 @@ def download_core_insights(seasons: list[str],
                   f"reachable; leaving any previous collection alone")
             out[season] = {t: 0 for t in CI_TABLES}
             continue
+        # The element map changes all season as players are added, so it is
+        # never served cold from the cache.
         codes: dict[int, int] = {}
         if bundle["players"]:
-            text = fetch_csv(bundle["players"], http, cache_dir)
+            text = fetch_csv(bundle["players"], http, cache_dir, refresh=True)
             codes = player_code_map(text or "")
+        hot = hot_gameweeks(bundle, cache_dir, refresh)
         if not codes:
             print(f"core-insights: {season} has no element map — player rows "
                   f"cannot be joined to a code and are skipped")
@@ -497,12 +683,14 @@ def download_core_insights(seasons: list[str],
         for gw in sorted(bundle["playermatchstats"]):
             if not codes:
                 break
-            text = fetch_csv(bundle["playermatchstats"][gw], http, cache_dir)
+            text = fetch_csv(bundle["playermatchstats"][gw], http, cache_dir,
+                             refresh=gw in hot)
             if not text:
                 continue
             players.append(player_match_rows(text, season, idx, gw, codes))
         for gw in sorted(bundle["fixtures"]):
-            text = fetch_csv(bundle["fixtures"][gw], http, cache_dir)
+            text = fetch_csv(bundle["fixtures"][gw], http, cache_dir,
+                             refresh=gw in hot)
             if not text:
                 continue
             fixtures.append(fixture_rows(text, season, idx, gw))
@@ -514,7 +702,7 @@ def download_core_insights(seasons: list[str],
             kept = [f for f in frames if not f.empty]
             frame = (pd.concat(kept, ignore_index=True)[cols] if kept
                      else pd.DataFrame(columns=cols))
-            store.save(frame, ci_path(season, table))
+            atomic_save(frame, ci_path(season, table))
             written[table] = int(len(frame))
         print(f"core-insights: {season} — "
               + ", ".join(f"{n} {t}" for t, n in written.items()))

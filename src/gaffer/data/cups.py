@@ -24,6 +24,7 @@ import httpx
 import pandas as pd
 
 from gaffer.data import store
+from gaffer.io import atomic_write
 
 CUPS_REPO = "olbauday/FPL-Core-Insights"
 CUPS_RAW_BASE = f"https://raw.githubusercontent.com/{CUPS_REPO}/main"
@@ -178,8 +179,10 @@ def _cached_get(http: httpx.Client, url: str, dest: Path) -> str | None:
     except httpx.HTTPError as exc:
         print(f"cups: skipping {url} ({exc})")
         return None
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(resp.text)
+    # Atomically (v12 W1's house rule): the cache is what a re-run trusts
+    # instead of the network, so a run killed mid-write must leave either the
+    # whole previous file or no file, never half of one that parses.
+    atomic_write(dest, resp.text)
     return resp.text
 
 

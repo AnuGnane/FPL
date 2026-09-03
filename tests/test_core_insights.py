@@ -124,7 +124,8 @@ def test_season_tables_is_the_contract_every_bundle_answers():
 
 from gaffer.data.core_insights import (CI_ELO_COLS, CI_FIXTURE_COLS,
                                        CI_PLAYER_COLS, PMS_KEY_COLS,
-                                       PMS_STAT_COLS, elo_rows, fixture_rows,
+                                       PMS_COUNT_COLS, PMS_STAT_COLS,
+                                       elo_rows, fixture_rows,
                                        player_code_map, player_match_rows)
 
 PLAYERS_CSV = (
@@ -214,9 +215,84 @@ def test_a_missing_key_column_drops_the_file_rather_than_guessing():
     assert list(out.columns) == CI_PLAYER_COLS
 
 
+PMS_CSV_2026_BLANKS = (
+    # The 2026-27 drift, in the proportions the live file has it: some played
+    # rows blank, some filled, one unused substitute, and
+    # defensive_contributions a header with nothing under it in GW1-2.
+    "player_id,match_id,minutes_played,accurate_crosses,"
+    "touches_opposition_box,final_third_passes,tackles_won,interceptions,"
+    "blocks,clearances,recoveries,start_min,finish_min,"
+    "defensive_contributions\n"
+    "452,26-27-prem-leeds-united-vs-brentford,90,,,,,,,,,0,90,\n"
+    "266,26-27-prem-leeds-united-vs-brentford,0,,,,,,,,,,,\n"
+    "7,26-27-prem-leeds-united-vs-brentford,78,3,5,12,2,1,1,3,8,0,78,\n")
+
+
+def test_a_blank_count_in_a_played_row_is_the_zero_the_archive_means():
+    """The 2026-27 files leave a count blank where 2025-26 wrote 0 — 181 of
+    310 played rows in GW1. Read literally that is a season in which two
+    thirds of the league has an unknown number of crosses, and role_wb_share
+    would report "unknown" for the season it was built to describe."""
+    out = player_match_rows(PMS_CSV_2026_BLANKS, "2026-27", 3, 2,
+                            player_code_map(PLAYERS_CSV))
+    played = out[out["code"] == 208706].iloc[0]
+    assert played["accurate_crosses"] == 0.0
+    assert played["touches_opposition_box"] == 0.0
+    assert played["recoveries"] == 0.0
+
+
+def test_a_blank_count_in_an_unplayed_row_stays_unknown():
+    """He recorded no crosses because he never came on. A zero there would
+    put him in the denominator of every per-start rate as a real zero."""
+    out = player_match_rows(PMS_CSV_2026_BLANKS, "2026-27", 3, 2,
+                            player_code_map(PLAYERS_CSV))
+    benched = out[out["code"] == 232413].iloc[0]
+    assert pd.isna(benched["accurate_crosses"])
+    assert pd.isna(benched["touches_opposition_box"])
+
+
+def test_the_minute_columns_are_never_filled_with_zero():
+    """``start_min`` is not a count. A blank means the archive did not record
+    when he came on; filling it with 0 would assert that he started."""
+    out = player_match_rows(PMS_CSV_2026_BLANKS, "2026-27", 3, 2,
+                            player_code_map(PLAYERS_CSV))
+    benched = out[out["code"] == 232413].iloc[0]
+    assert pd.isna(benched["start_min"])
+    assert pd.isna(benched["finish_min"])
+
+
+def test_a_column_blank_for_every_row_is_unpublished_not_all_zero():
+    """2026-27 GW1-2 carry ``defensive_contributions`` as a header with
+    nothing under it. "The publisher has not filled this in yet" is not
+    "every player recorded zero"."""
+    out = player_match_rows(PMS_CSV_2026_BLANKS, "2026-27", 3, 2,
+                            player_code_map(PLAYERS_CSV))
+    assert out["defensive_contributions"].isna().all()
+
+
+def test_a_real_zero_and_a_filled_blank_are_the_same_number():
+    """The convention only matters if it agrees with the season that spells
+    it out: 2025-26's explicit 0 and 2026-27's blank must read alike."""
+    explicit = player_match_rows(
+        PMS_CSV_2026_BLANKS.replace(",90,,,,,,,,,0,90,",
+                                    ",90,0,0,0,0,0,0,0,0,0,90,"),
+        "2025-26", 2, 2, player_code_map(PLAYERS_CSV))
+    blank = player_match_rows(PMS_CSV_2026_BLANKS, "2026-27", 3, 2,
+                              player_code_map(PLAYERS_CSV))
+    for col in ("accurate_crosses", "touches_opposition_box", "recoveries"):
+        assert (explicit[explicit["code"] == 208706][col].iloc[0]
+                == blank[blank["code"] == 208706][col].iloc[0])
+
+
 def test_pms_column_contracts_are_disjoint_and_complete():
     assert set(PMS_KEY_COLS).isdisjoint(PMS_STAT_COLS)
     assert CI_PLAYER_COLS[:4] == ["season", "season_idx", "gw", "code"]
+    # The blank-means-zero rule applies to counts and to nothing else: the
+    # minute columns and minutes_played itself are measurements, and a zero
+    # written into one of them is a claim rather than a fill.
+    assert set(PMS_COUNT_COLS) < set(PMS_STAT_COLS)
+    assert set(PMS_COUNT_COLS).isdisjoint(
+        {"minutes_played", "start_min", "finish_min"})
 
 
 def test_fixture_rows_emit_one_row_per_league_club_per_match():
@@ -246,11 +322,14 @@ def test_unplayed_fixtures_are_kept_because_that_is_the_whole_point():
     assert future["kickoff"].notna().all()
 
 
-def test_a_float_gameweek_column_is_coerced_not_astyped():
-    """A2c: 2025-2026 writes "10.0" where 2026-2027 writes "10"."""
-    floaty = FIXTURES_CSV.replace("\n2,2026-08-30", "\n2.0,2026-08-30")
-    out = fixture_rows(floaty, "2025-26", 2, 2)
-    assert set(out[out["tournament"] == "prem"]["gw"]) == {2}
+# ``test_a_float_gameweek_column_is_coerced_not_astyped`` stood here and was
+# deleted in the T1-T6 review (2026-09-03) as vacuous by construction:
+# ``fixture_rows`` stamps ``gw`` from its own argument and never reads the
+# file's ``gameweek`` column, so a fixture that made that column a float
+# string asserted nothing about anything. A2c's float/int drift is real, and
+# the way it is handled is by not reading the column at all — a claim that
+# belongs in ``fixture_rows``' docstring, where it now is, rather than in a
+# test that cannot fail.
 
 
 def test_a_fixture_file_with_no_kickoff_column_is_dropped():
@@ -457,3 +536,165 @@ def test_the_installer_loop_names_every_plist_and_no_others():
     shipped = {p.stem.removeprefix("com.gaffer.")
                for p in _Path("scripts").glob("com.gaffer.*.plist")}
     assert installed == shipped
+
+
+# --- T1-T6 review: the cache, the season map, and the atomic write -------
+
+from gaffer.data.core_insights import (CI_CACHE,  # noqa: E402
+                                       fetch_csv, hot_gameweeks,
+                                       season_index_map)
+
+FINISHED_FIXTURES = (
+    "gameweek,kickoff_time,home_team,home_team_elo,home_score,away_score,"
+    "away_team,away_team_elo,finished,match_id,tournament\n"
+    "2,2026-08-30T13:00:00,2.0,1801.5,1,1,94.0,1750.25,True,m1,prem\n")
+
+LIVE_FIXTURES = FINISHED_FIXTURES.replace(",True,m1", ",False,m1")
+
+
+def _bundle(gws, prefix="data/2026-2027/By Gameweek"):
+    return {"players": None, "teams": None,
+            "fixtures": {gw: f"{prefix}/GW{gw}/fixtures.csv" for gw in gws},
+            "playermatchstats": {gw: f"{prefix}/GW{gw}/playermatchstats.csv"
+                                 for gw in gws}}
+
+
+def _bank(cache: _Path, path: str, text: str) -> None:
+    dest = cache / path
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(text)
+
+
+def test_a_finished_gameweek_is_cold_and_is_never_fetched_twice(tmp_path):
+    bundle = _bundle([1])
+    _bank(tmp_path, bundle["fixtures"][1], FINISHED_FIXTURES)
+    assert hot_gameweeks(bundle, tmp_path) == set()
+
+
+def test_the_gameweek_being_played_is_hot_on_every_run(tmp_path):
+    """The one that matters. "Cached forever" meant the collector could never
+    see the week in progress, which is the week the tool is answering about."""
+    bundle = _bundle([1, 2])
+    _bank(tmp_path, bundle["fixtures"][1], FINISHED_FIXTURES)
+    _bank(tmp_path, bundle["fixtures"][2], LIVE_FIXTURES)
+    assert hot_gameweeks(bundle, tmp_path) == {2}
+
+
+def test_a_gameweek_with_nothing_cached_needs_no_marking(tmp_path):
+    """Nothing to bypass: the fetch is a fetch either way."""
+    assert hot_gameweeks(_bundle([3]), tmp_path) == set()
+
+
+def test_an_unreadable_cached_fixture_list_is_hot_not_trusted(tmp_path):
+    bundle = _bundle([1])
+    _bank(tmp_path, bundle["fixtures"][1], "not a csv at all")
+    assert hot_gameweeks(bundle, tmp_path) == {1}
+
+
+def test_refresh_forces_the_last_n_gameweeks_however_final_they_are(tmp_path):
+    bundle = _bundle([1, 2, 3])
+    for gw in (1, 2, 3):
+        _bank(tmp_path, bundle["fixtures"][gw], FINISHED_FIXTURES)
+    assert hot_gameweeks(bundle, tmp_path, refresh=2) == {2, 3}
+
+
+def test_a_hot_file_is_re_fetched_and_a_cold_one_is_not(tmp_path):
+    path = "data/2026-2027/By Gameweek/GW2/fixtures.csv"
+    _bank(tmp_path, path, "stale\n")
+    http = _FakeHTTP({path: FINISHED_FIXTURES})
+    assert fetch_csv(path, http, tmp_path) == "stale\n"
+    assert http.asked == []
+    assert fetch_csv(path, http, tmp_path, refresh=True) == FINISHED_FIXTURES
+    assert len(http.asked) == 1
+    assert (tmp_path / path).read_text() == FINISHED_FIXTURES
+
+
+def test_a_failed_re_fetch_keeps_the_copy_it_had(tmp_path):
+    """Freshness is worth a request and never a deletion: the collector's
+    other rail is that an unreachable archive truncates nothing."""
+    path = "data/2026-2027/By Gameweek/GW2/fixtures.csv"
+    _bank(tmp_path, path, FINISHED_FIXTURES)
+    got = fetch_csv(path, http=_FakeHTTP({}), cache_dir=tmp_path,
+                    refresh=True)
+    assert got == FINISHED_FIXTURES
+    assert (tmp_path / path).read_text() == FINISHED_FIXTURES
+
+
+def test_the_collector_re_reads_an_unfinished_gameweek_on_the_next_run(clone):
+    live = dict(ARCHIVE)
+    live["data/2026-2027/By Gameweek/GW2/fixtures.csv"] = LIVE_FIXTURES
+    http = _FakeHTTP(live)
+    download_core_insights(["2026-27"], {"2026-27": 3},
+                           tree=ARCHIVE_TREE, client=http)
+    first = len(http.asked)
+    download_core_insights(["2026-27"], {"2026-27": 3},
+                           tree=ARCHIVE_TREE, client=http)
+    # The element map and GW2's two files, every run — and nothing else.
+    assert len(http.asked) - first == 3
+
+
+def test_the_collector_leaves_a_finished_gameweek_alone_on_the_next_run(clone):
+    # ARCHIVE's fixture file carries an unplayed GW6 tie, which is what makes
+    # that gameweek hot for ever; this is the week that has actually finished.
+    done = dict(ARCHIVE)
+    done["data/2026-2027/By Gameweek/GW2/fixtures.csv"] = FINISHED_FIXTURES
+    http = _FakeHTTP(done)
+    download_core_insights(["2026-27"], {"2026-27": 3},
+                           tree=ARCHIVE_TREE, client=http)
+    first = len(http.asked)
+    download_core_insights(["2026-27"], {"2026-27": 3},
+                           tree=ARCHIVE_TREE, client=http)
+    # Only the element map, which changes all season as players are added.
+    assert len(http.asked) - first == 1
+
+
+def test_a_write_that_dies_mid_parquet_leaves_the_previous_one_whole(
+        clone, monkeypatch):
+    """W1's house rule, on the collector's own output: a reader must never see
+    half a parquet, and a killed run must not cost the last good one."""
+    download_core_insights(["2026-27"], {"2026-27": 3}, tree=ARCHIVE_TREE,
+                           client=_FakeHTTP(ARCHIVE))
+    before = load_core_insights("2026-27", "players")
+    assert len(before) == 2
+
+    real = store.save
+
+    def _explode(frame, rel):
+        real(frame, rel)
+        raise OSError("disk full")
+
+    monkeypatch.setattr(store, "save", _explode)
+    with pytest.raises(OSError):
+        download_core_insights(["2026-27"], {"2026-27": 3}, tree=ARCHIVE_TREE,
+                               client=_FakeHTTP(ARCHIVE))
+    # Restored by hand rather than with ``monkeypatch.undo``, which would also
+    # undo the ``clone`` fixture's chdir and leave the assertions below
+    # reading the repository's own data directory.
+    monkeypatch.setattr(store, "save", real)
+    assert len(load_core_insights("2026-27", "players")) == 2
+    assert not list((tmp := _Path("data/core_insights")).glob("**/*.tmp*")), \
+        f"a temp file was left behind under {tmp}"
+
+
+def test_the_season_index_comes_from_history_not_from_the_config_order(clone):
+    """The arm builders join on season_idx, and the serving frame has no
+    `season` column to join on instead — so the index is the join key, and a
+    key derived from a config list's *position* moves when somebody reorders
+    that list."""
+    store.save(pd.DataFrame({"season": ["2022-23", "2023-24", "2024-25"],
+                             "season_idx": [0, 1, 2]}),
+               "history/player_gw.parquet")
+    # A config that names them in a different order, and one season history
+    # has never seen.
+    out = season_index_map(["2024-25", "2022-23", "2023-24", "2026-27"],
+                           "2026-27")
+    assert out == {"2022-23": 0, "2023-24": 1, "2024-25": 2, "2026-27": 3}
+
+
+def test_the_season_index_falls_back_to_position_before_any_history(clone):
+    out = season_index_map(["2024-25", "2025-26"], "2025-26")
+    assert out == {"2024-25": 0, "2025-26": 1}
+
+
+def test_the_cache_lives_where_the_docstring_says_it_does():
+    assert str(CI_CACHE) == "data/raw/core_insights"

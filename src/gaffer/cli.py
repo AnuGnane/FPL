@@ -176,16 +176,26 @@ def cups():
 
 
 @app.command("core-insights")
-def core_insights_cmd():
+def core_insights_cmd(
+        refresh: int = typer.Option(
+            0, "--refresh",
+            help="Re-fetch the last N gameweeks of each season, ignoring the "
+                 "cache under data/raw/core_insights.")):
     """Ingest FPL-Core-Insights per-match, fixture and Elo tables.
 
     The launchd job's body, and held to ``snapshot``'s contract: it prints its
     own line and never fails. A twice-daily job that exits non-zero the
     morning GitHub is slow is a job that gets uninstalled.
+
+    ``--refresh`` is not what picks up the gameweek being played: an
+    unfinished gameweek's files are re-fetched on every run already (see
+    ``core_insights.CI_CACHE``). It is for the file the publisher corrects
+    *after* a gameweek has gone final, which nothing else would fetch again.
     """
     try:
         from gaffer.config import load_config
-        from gaffer.data.core_insights import download_core_insights
+        from gaffer.data.core_insights import (download_core_insights,
+                                               season_index_map)
 
         cfg = load_config()
         # The current season as well as the training ones. The fixture table
@@ -193,8 +203,13 @@ def core_insights_cmd():
         # published ties), so the season being played is the one that matters
         # most, and the training seasons are what makes an arm measurable.
         seasons = list(cfg.train_seasons) + [cfg.current_season]
+        # The index comes from history, not from this list's position. The
+        # arm builders join on season_idx and the training frame's season_idx
+        # is history's own, so a config whose train_seasons are reordered or
+        # trimmed would silently attach one season's rows to another.
         written = download_core_insights(
-            seasons, {s: i for i, s in enumerate(seasons)})
+            seasons, season_index_map(seasons, cfg.current_season),
+            refresh=refresh)
         total = sum(sum(v.values()) for v in written.values())
         typer.echo(f"Core insights: {total} rows across {len(seasons)} "
                    "seasons -> data/core_insights/.")
