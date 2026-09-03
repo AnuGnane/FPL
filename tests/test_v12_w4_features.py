@@ -82,6 +82,21 @@ def test_fewer_than_five_starts_is_missing_not_a_partial_mean():
     assert out["role_wb_missing"].iloc[0] == 1.0
 
 
+def test_a_blank_count_is_read_as_a_zero_and_the_start_is_not_dropped():
+    """The 2026-27 archive leaves a count blank where 2025-26 wrote 0, and
+    the collector fills the played ones (``PMS_COUNT_COLS``). Where a blank
+    survives — an unpublished column, a season the fill did not reach — the
+    start still counts and reads as *not* a wing-back. Dropping the row
+    instead would silently shorten the five-start window and turn a
+    centre-back's quiet season into "we have not seen enough of him"."""
+    stats = _pms([{"gw": g, "accurate_crosses": float("nan"),
+                   "touches_opposition_box": float("nan")}
+                  for g in range(1, 6)])
+    out = add_role_wb_share(_players([{}]), stats)
+    assert out["role_wb_share"].iloc[0] == 0.0
+    assert out["role_wb_missing"].iloc[0] == 0.0
+
+
 def test_a_non_defender_is_missing_by_definition():
     stats = _pms([{"gw": g, "accurate_crosses": 4.0} for g in range(1, 6)])
     out = add_role_wb_share(_players([{"position": "MID"}]), stats)
@@ -348,6 +363,13 @@ def _archive(tmp_path, monkeypatch, *, season="2025-26", season_idx=3,
         ignore_index=True)[CI_FIXTURE_COLS]
     store.save(players, ci_path(season, "players"))
     store.save(fixtures, ci_path(season, "fixtures"))
+    # Prove the throwaway DATA_DIR took before anything downstream reads it.
+    # Without this a monkeypatch that did not apply — a module holding its own
+    # copy of the path, an earlier test leaving one behind — shows up as an
+    # all-NaN arm column three assertions later and reads as a wiring bug.
+    from gaffer.data.core_insights import load_core_insights
+    assert len(load_core_insights(season, "players")) == starts
+    assert not load_core_insights(season, "fixtures").empty
     return kick
 
 
@@ -394,6 +416,10 @@ def test_the_prediction_frame_degrades_to_missing_with_no_collection(
 def test_the_training_frame_populates_both_arms_from_the_archive(
         monkeypatch, tmp_path):
     """The training seam, measured on the real ``load_training_frame``."""
+    # And on the *shipped* one: both arm drivers rebind this name to a
+    # memoised loader for the length of a run, and a run that died without
+    # its ``finally`` would leave this test reading a frame it never wrote.
+    assert tr.load_training_frame.__module__ == "gaffer.models.train"
     kick = _archive(tmp_path, monkeypatch)
     hist = pd.DataFrame([
         {"code": 100, "season_idx": 3, "gw": gw, "team_code": 8,
@@ -418,13 +444,23 @@ def test_the_training_frame_populates_both_arms_from_the_archive(
 import importlib.util as _ilu  # noqa: E402
 from pathlib import Path as _P  # noqa: E402
 
+_SCRIPTS = _P(__file__).resolve().parent.parent / "scripts"
+"""Resolved from this file rather than from the working directory: a dozen
+test modules ``monkeypatch.chdir`` into a tmp tree, and a relative
+``scripts/...`` here would load or fail to load depending on which of them ran
+last. Order-dependence in a *loader* is the kind that reads as a broken
+driver."""
 
-def _driver():
-    spec = _ilu.spec_from_file_location("v12_w4_arms",
-                                        _P("scripts/v12_w4_arms.py"))
+
+def _load(name: str):
+    spec = _ilu.spec_from_file_location(name, _SCRIPTS / f"{name}.py")
     mod = _ilu.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
+
+
+def _driver():
+    return _load("v12_w4_arms")
 
 
 def test_the_window_is_the_shifted_one_and_is_stated():
@@ -550,11 +586,7 @@ def test_the_arm_composes_from_the_shipped_list_and_not_from_its_predecessor():
 
 
 def _cf_driver():
-    spec = _ilu.spec_from_file_location("v12_w4_autosub_cf",
-                                        _P("scripts/v12_w4_autosub_cf.py"))
-    mod = _ilu.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
+    return _load("v12_w4_autosub_cf")
 
 
 def test_the_counterfactual_shares_the_arms_and_the_window_it_does_not_copy():

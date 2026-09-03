@@ -346,13 +346,14 @@ def health() -> Health:
     # not run it must say what it is waiting for rather than render three
     # zeros that look like a measurement.
     from gaffer.data.core_insights import ci_path, season_table_stats
-    try:
-        season = str(load_config().current_season)
-    except Exception:  # noqa: BLE001 — no config.toml is a valid state here
-        # A clone with no config.toml still knows which season the collector
-        # would fetch, because Config's own default says so. Naming it beats
-        # a blank: "not collected yet (—)" tells the reader nothing.
-        season = str(getattr(Config, "current_season", ""))
+    # ``season_config`` above is this payload's one config read. A third read
+    # here could disagree with it if the file changed mid-request, and one
+    # health line saying 2026-27 beside another saying 2025-26 is a bug report
+    # nobody can reproduce. A clone with no config.toml still knows which
+    # season the collector would fetch, because Config's own default says so;
+    # naming it beats a blank, since "not collected yet (—)" tells the reader
+    # nothing.
+    season = str(season_config or getattr(Config, "current_season", ""))
     stats = season_table_stats(season) if season else {}
     collected = bool(season) and any(
         store.exists(ci_path(season, table)) for table in stats)

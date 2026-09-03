@@ -115,6 +115,14 @@ def test_an_unknown_column_added_upstream_changes_nothing(clone):
     frame = load_core_insights("2026-27", "players")
     assert list(frame.columns) == CI_PLAYER_COLS
     assert len(frame) == 1
+    # Not merely "the column list is unchanged": the unknown column was
+    # *prepended*, so a parser that carried it through would also have shifted
+    # every value one place and still produced a right-looking header. The
+    # known columns have to still read what the file says.
+    assert "brand_new_metric" not in frame.columns
+    row = frame.iloc[0]
+    assert (row["minutes_played"], row["accurate_crosses"],
+            row["defensive_contributions"]) == (90.0, 2.0, 6.0)
 
 
 def test_an_expected_column_removed_upstream_is_null_not_a_crash(clone,
@@ -151,6 +159,12 @@ def test_an_empty_season_writes_empty_tables_with_the_right_columns(clone):
     assert list(load_core_insights("2026-27", "fixtures").columns) == \
         CI_FIXTURE_COLS
     assert list(load_core_insights("2026-27", "elo").columns) == CI_ELO_COLS
+    # The existence of the file *is* the "we looked and there was nothing"
+    # signal — it is the only thing that separates this state from "we never
+    # looked", and it is what the health line reads to say so. An empty frame
+    # from load_core_insights is both states at once; the file is not.
+    for table in ("players", "fixtures", "elo"):
+        assert store.exists(ci_path("2026-27", table))
 
 
 def test_a_season_whose_elo_column_is_blank_collects_no_elo(clone):
