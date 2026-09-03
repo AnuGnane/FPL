@@ -221,7 +221,7 @@ def save_solve_state(state: SolveState) -> tuple[Path, Path]:
     #
     # The import is local, not top-of-module: ``artifacts`` is imported early
     # by ``config``'s own callers and a module-level import here is a cycle
-    # waiting for a refactor. ``_availability_frame`` sets the precedent.
+    # waiting for a refactor. ``save_availability`` (:454) sets the precedent.
     from gaffer.config import serving_config
     try:
         save_projection_snapshot(
@@ -756,7 +756,13 @@ class ProjectionSnapshot:
     """The writer's own UTC stamp, ``%Y%m%dT%H%M%SZ``. Sorts
     lexicographically, which is why it is the sort key rather than mtime: two
     runs a second apart can share an mtime, and a copied ``reports/`` has
-    mtimes that say nothing at all (``_history_stamp``'s reasoning)."""
+    mtimes that say nothing at all (``_history_stamp``'s reasoning).
+
+    The resolution is one second, and that is also the collision: two advise
+    runs that start inside the same second write the same filename and the
+    later one silently replaces the earlier. It is not guarded against,
+    because the two would be solving over the same pool anyway — but a caller
+    counting snapshots to count runs would be counting the wrong thing."""
     post_deadline: bool = False
     """Set only by :func:`latest_projection_before`, and only when *every*
     snapshot for the gameweek was written after the deadline."""

@@ -151,6 +151,10 @@ describe('ReviewTab', () => {
     render(<ReviewTab />)
     const line = await screen.findByTestId('review-projections-2')
     expect(line.textContent).toBe('projections 20260903')
+    // The visible label is the date; advise runs several times a week, so the
+    // hour has to be somewhere and the tooltip is where.
+    expect(line.getAttribute('title')).toContain('20260903 09:00 UTC')
+    expect(line.getAttribute('title')).toContain('before the deadline')
   })
 
   it('says a gameweek whose every projection run was late', async () => {
@@ -162,6 +166,14 @@ describe('ReviewTab', () => {
     render(<ReviewTab />)
     const line = await screen.findByTestId('review-projections-2')
     expect(line.textContent).toContain('(late)')
+    // Two causes, and the tooltip must name both. The flag is also set when
+    // the run never recorded a deadline, in which case an in-time snapshot
+    // may well be the one named — "every run was late" would be a claim the
+    // server did not make.
+    const title = line.getAttribute('title') ?? ''
+    expect(title).toContain('20260905 09:00 UTC')
+    expect(title).toContain('written after the deadline')
+    expect(title).toContain('did not record when the deadline was')
   })
 
   it('renders nothing at all when no projections were frozen', async () => {

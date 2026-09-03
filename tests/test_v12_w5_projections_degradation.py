@@ -5,6 +5,8 @@ named behaviour, none a crash.
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 import pandas as pd
 import pytest
 
@@ -64,6 +66,42 @@ def test_an_unwritable_directory_is_a_line_and_not_a_crash(here, capsys,
                                    "2026-09-01T09:00:00+00:00", "2026-27")
     assert out is None
     assert "no snapshot kept" in capsys.readouterr().out
+
+
+def test_a_failed_write_leaves_the_previous_snapshot_whole(here):
+    """The writer goes through io.atomic_path, so a write that dies mid-file
+    leaves the snapshot that was already there untouched and no debris beside
+    it.
+
+    A bare ``to_parquet`` onto the destination fails this: the reader selects
+    this directory by glob and would meet a truncated parquet under a name
+    that says it is a complete run.
+    """
+    first = save_projection_snapshot(pd.DataFrame({"code": [1, 2, 3]}), 5,
+                                     "2026-09-01T09:00:00+00:00", "2026-27")
+    assert first is not None
+    before = first.read_bytes()
+
+    real = pd.DataFrame.to_parquet
+
+    def dies(self, where, *a, **k):
+        # Half a file, then the disk goes. A bare writer would be pointing at
+        # the destination here; the atomic one is pointing at a temp.
+        Path(where).write_bytes(b"PAR1truncated")
+        raise OSError("no space left on device")
+
+    try:
+        pd.DataFrame.to_parquet = dies
+        out = save_projection_snapshot(pd.DataFrame({"code": [1, 2, 3]}), 5,
+                                       "2026-09-01T09:00:00+00:00", "2026-27")
+    finally:
+        pd.DataFrame.to_parquet = real
+
+    assert out is None
+    assert first.read_bytes() == before
+    assert len(pd.read_parquet(first)) == 3
+    assert list(PROJECTIONS.glob("*.tmp")) == []
+    assert sorted(p.name for p in PROJECTIONS.iterdir()) == [first.name]
 
 
 def test_an_unparseable_generated_at_still_writes_under_now(here):

@@ -34,6 +34,25 @@ const NO_ADVICE = 'no surviving advice — this gameweek is graded on '
 const LATE_RUN = 'every banked run of this gameweek was written after the '
   + 'deadline, so the model saw team news you could not act on'
 
+// v12 W5 §6.4. Two causes, and naming only the first would be a claim the
+// server does not make: the flag is also set when the run never recorded when
+// the deadline was, which is the ordinary state of a gameweek graded after the
+// advice payload carrying it was pruned. An in-time snapshot may exist; there
+// is nothing left to compare its stamp against.
+const LATE_PROJECTIONS = 'Either every projection run for this gameweek was '
+  + 'written after the deadline, or the run did not record when the deadline '
+  + 'was — so this table may have seen team news you could not act on.'
+
+const IN_TIME_PROJECTIONS = 'The last projections written before the deadline.'
+
+/** `20260903T090000Z` as `20260903 09:00`. The visible label is the date
+ *  alone, so the hour belongs in the tooltip: advise runs several times a
+ *  week and two of them land on the same day. */
+function stampTime(stamp: string): string {
+  const [day, time] = stamp.split('T')
+  return time ? `${day} ${time.slice(0, 2)}:${time.slice(2, 4)}` : day
+}
+
 /** A whole number as a string, or an em dash. `Stat` would render a raw
  *  number through `fmtNum` and print "61.0" for a points total. */
 function num(value: number | null): string {
@@ -98,10 +117,9 @@ function GwCard({ row, onSelect }:
             <span
               className="text-text-faint"
               data-testid={`review-projections-${row.gw}`}
-              title={row.projection_post_deadline
-                ? 'Every projection run for this gameweek was written after '
-                  + 'the deadline, so it saw team news you could not act on.'
-                : 'The last projections written before the deadline.'}
+              title={`${stampTime(row.projection_snapshot)} UTC — `
+                + (row.projection_post_deadline
+                  ? LATE_PROJECTIONS : IN_TIME_PROJECTIONS)}
             >
               {`projections ${row.projection_snapshot.slice(0, 8)}`}
               {row.projection_post_deadline ? ' (late)' : ''}

@@ -1537,3 +1537,26 @@ export interface DigestPanel {
   available: boolean
   digest: Digest | null
 }
+
+/** One editable setting (v12 W5 §6.2). `value` is `unknown` because the five
+ *  kinds carry five shapes; `kind` is what narrows it. */
+export interface SettingRow {
+  key: string
+  label: string
+  kind: 'int' | 'float' | 'bool' | 'floats3' | 'pool'
+  value: unknown
+  lo: number | null
+  hi: number | null
+  section: string
+  help: string
+  /** Which file the value came from. Only a `local` value can be reset. */
+  source: 'local' | 'base' | 'default'
+}
+
+export interface SettingsPanel {
+  rows: SettingRow[]
+  /** Whitelisted settings this build does not have — named, never hidden. */
+  unavailable: string[]
+  overlay_error: string | null
+  apply_note: string
+}

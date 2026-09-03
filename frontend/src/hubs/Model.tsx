@@ -7,6 +7,7 @@ import JournalTab from './model/JournalTab'
 import QualityTab from './model/QualityTab'
 import ReviewTab from './model/ReviewTab'
 import SeasonTab from './model/SeasonTab'
+import SettingsTab from './model/SettingsTab'
 
 // `shrink-0 whitespace-nowrap` so a trigger scrolls out of the strip rather
 // than compressing into two lines of one word at 390px.
@@ -17,7 +18,7 @@ const TAB_CLASS = 'shrink-0 whitespace-nowrap px-3 py-2 text-text-muted '
 // The strip's values, in strip order. Named so `useTabParam` can reject a
 // `?tab=` this hub does not have rather than rendering an empty panel.
 const TABS = ['quality', 'journal', 'review', 'season', 'history',
-              'health'] as const
+              'health', 'settings'] as const
 
 export default function Model() {
   const [tab, setTab] = useTabParam(TABS, 'quality')
@@ -69,6 +70,7 @@ export default function Model() {
           <Tabs.Trigger value="season" className={TAB_CLASS}>Season</Tabs.Trigger>
           <Tabs.Trigger value="history" className={TAB_CLASS}>History</Tabs.Trigger>
           <Tabs.Trigger value="health" className={TAB_CLASS}>Health</Tabs.Trigger>
+          <Tabs.Trigger value="settings" className={TAB_CLASS}>Settings</Tabs.Trigger>
         </Tabs.List>
         <Tabs.Content value="quality">
           <QualityTab key={qualityNonce} />
@@ -80,6 +82,7 @@ export default function Model() {
         <Tabs.Content value="season"><SeasonTab key={reviewNonce} /></Tabs.Content>
         <Tabs.Content value="history"><HistoryTab /></Tabs.Content>
         <Tabs.Content value="health"><HealthTab key={healthNonce} /></Tabs.Content>
+        <Tabs.Content value="settings"><SettingsTab /></Tabs.Content>
       </Tabs.Root>
     </>
   )

@@ -52,7 +52,15 @@ def test_saving_a_solve_state_also_freezes_the_pool(here):
     assert len(frame) == 4
 
 
-def test_a_second_run_does_not_overwrite_the_first(here):
+def test_two_runs_at_different_seconds_are_two_snapshots(here):
+    """Two slots rather than one, which is the whole point of the directory.
+
+    Named for what it actually proves. The stamp's resolution is one second,
+    so two runs that *started inside the same second* would share a filename
+    and the later would silently replace the earlier; this pins the case the
+    versioning exists for, and ``ProjectionSnapshot.stamp`` records the
+    collision it does not.
+    """
     save_solve_state(_state(at="2026-09-01T09:00:00+00:00"))
     save_solve_state(_state(at="2026-09-03T18:00:00+00:00"))
     assert len(projection_snapshots("2026-27", 5)) == 2
@@ -102,6 +110,32 @@ def test_all_runs_late_gives_the_newest_and_flags_it(here):
                                       "2026-09-04T17:30:00+00:00")
     assert chosen.stamp.startswith("20260906T09")
     assert chosen.post_deadline is True
+
+
+def test_a_snapshot_stamped_at_the_deadline_second_is_late(here):
+    """The boundary is strict, and it is strict on purpose.
+
+    journal.latest_run_per_gw's own rule is ``written < deadline`` — a run
+    banked *at* the deadline second is not a run banked before it, because
+    one second of resolution cannot tell 17:30:00.0 from 17:30:00.9 and the
+    second of those has seen the lineups. With only that snapshot on disk the
+    reader takes its late branch rather than counting it as in-time.
+    """
+    save_solve_state(_state(at="2026-09-04T17:30:00+00:00"))
+    chosen = latest_projection_before("2026-27", 5,
+                                      "2026-09-04T17:30:00+00:00")
+    assert chosen.stamp == "20260904T173000Z"
+    assert chosen.post_deadline is True
+
+
+def test_a_snapshot_one_second_earlier_is_in_time(here):
+    """The other side of the same boundary, so the ``<`` cannot quietly
+    become a ``<=`` in one direction or an off-by-one in the other."""
+    save_solve_state(_state(at="2026-09-04T17:29:59+00:00"))
+    chosen = latest_projection_before("2026-27", 5,
+                                      "2026-09-04T17:30:00+00:00")
+    assert chosen.stamp == "20260904T172959Z"
+    assert chosen.post_deadline is False
 
 
 def test_no_snapshot_at_all_is_None_and_not_an_exception(here):

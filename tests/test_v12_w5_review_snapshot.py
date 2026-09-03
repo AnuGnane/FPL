@@ -92,6 +92,39 @@ def test_a_missing_deadline_takes_the_newest_and_flags_it(graded, monkeypatch):
     assert row["projection_post_deadline"] is True
 
 
+def test_a_payload_that_predates_the_deadline_field_reads_as_None(monkeypatch):
+    """model_decisions carries whatever the run banked and does not invent
+    one. An artifact written before ``deadline`` was saved into the payload
+    has no deadline, and ``None`` is what sends grade_gw down its late
+    branch rather than a guess that reads as a measurement."""
+    monkeypatch.setattr(
+        review, "latest_run_per_gw",
+        lambda: {5: {"gw": 5, "post_deadline": False, "xi": [], "bench": [],
+                     "buys": [], "sells": [], "hits": 0}})
+    model = review.model_decisions(5)
+    assert "deadline" in model
+    assert model["deadline"] is None
+
+
+def test_an_advice_payload_with_no_deadline_flags_the_snapshot(graded,
+                                                               monkeypatch):
+    """The real shape of the second cause: the advice survived the prune but
+    predates the field, so an in-time snapshot exists on disk with nothing to
+    compare its stamp against. Flagged, not silently trusted."""
+    save_projection_snapshot(_pool(), 5, "2026-09-03T09:00:00+00:00", SEASON)
+    monkeypatch.setattr(
+        review, "model_decisions",
+        lambda gw: {"xi": [100] * 11, "bench": [100] * 4, "captain": 100,
+                    "vice": 100, "buys": [], "sells": [], "hits": 0,
+                    "chip": None, "names": {100: "P"},
+                    "positions": {100: "MID"}, "post_deadline": False,
+                    "deadline": None})
+    row = review.grade_gw(5, cfg=graded)
+    assert row["no_advice"] is False
+    assert row["projection_snapshot"] == "20260903T090000Z"
+    assert row["projection_post_deadline"] is True
+
+
 def test_another_seasons_snapshot_is_not_read(graded):
     save_projection_snapshot(_pool(), 5, "2026-09-03T09:00:00+00:00", "2025-26")
     assert review.grade_gw(5, cfg=graded)["projection_snapshot"] is None

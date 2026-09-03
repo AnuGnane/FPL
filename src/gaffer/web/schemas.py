@@ -1610,11 +1610,20 @@ class ReviewGw(BaseModel):
     a zero or a blank that reads like one.
     """
     projection_post_deadline: bool = False
-    """True when *every* snapshot for the gameweek was written after the
-    deadline, so the projections graded here saw team news nobody could act
-    on. The same flag, for the same reason, as ``post_deadline`` above — which
-    is about the advice payload rather than the EP table, and the two can
-    disagree."""
+    """The snapshot named above cannot be trusted to predate the deadline.
+
+    **Two causes, and the reader must not be told only the first.** Either
+    every snapshot for the gameweek was written after the deadline, or the
+    run did not record when the deadline was — which is the ordinary state of
+    a gameweek graded late, after ``ADVICE_HISTORY_KEEP`` pruned the payload
+    the deadline was carried on. In that second case an in-time snapshot may
+    well exist on disk; there is simply nothing left to compare its stamp
+    against, and guessing would be worse than saying so.
+
+    Either way the claim is the same and it is the weaker one: this table may
+    have seen team news nobody could act on. Related to ``post_deadline``
+    above — which is about the advice payload rather than the EP table — and
+    the two can disagree."""
     our_bench_points: int | None = None
     model_points: int | None = None
     accuracy: int | None = None
