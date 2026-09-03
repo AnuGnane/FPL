@@ -46,7 +46,10 @@ describe('league sim types', () => {
       // sentence saying what each is waiting for.
       field: {
         gw: 7, n: 2000, seed: 20260831, managers: 300,
-        eo_source: 'last-sample', p_green: 0.48, waiting_for: null,
+        // eo_gw is 6, not 7: the sample can only be banked for the last
+        // scored week, and §3.3 extrapolates it one gameweek forward.
+        eo_source: 'last-sample', eo_gw: 6, field_draws: 8,
+        unsampled_picks: 1, p_green: 0.48, waiting_for: null,
         p_top10k: null, top10k_waiting_for: 'a top-10k weekly score threshold',
         rank_slope: null, rank_slope_rows: 2,
         rank_waiting_for: '2 of 5 graded gameweeks',

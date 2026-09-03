@@ -1136,6 +1136,20 @@ export interface FieldRank {
   /** `'deadline-trend'`, `'last-sample'` or `'none'`. A trend-extrapolated EO
    *  and a last-sample EO are different numbers, so the panel says which. */
   eo_source: string
+  /** Which gameweek's sample the EO came from — *not* `gw`. Entry picks 404
+   *  before a deadline, so the field scrape can only have banked the last
+   *  scored week, and §3.3 extrapolates it one gameweek forward. null when no
+   *  sample answered. Two gameweek numbers in one payload is something the
+   *  reader is told rather than left to infer. */
+  eo_gw: number | null
+  /** Independent field populations the headline was averaged over. Which 300
+   *  managers were drawn is a source of noise in its own right, and it was
+   *  the larger one — provenance, like `n` and `seed`. */
+  field_draws: number
+  /** Players in my squad the sample never saw. Field EO omits anyone no
+   *  sampled entry started, so a genuine differential is routinely absent; he
+   *  is simulated as owned by nobody rather than dropped from my week. */
+  unsampled_picks: number
   p_green: number | null
   waiting_for: string | null
   p_top10k: number | null
