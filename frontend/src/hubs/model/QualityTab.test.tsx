@@ -188,11 +188,12 @@ describe('QualityTab', () => {
   })
 
   it('hides the section until a gameweek has been scored', async () => {
-    apiGet.mockResolvedValue({
-      ...payload,
-      news_shadow: { run_at: 'x', git_sha: 'y', rows: 0, overall: {},
-                     by_gw: [] },
-    })
+    apiGet.mockImplementation((path: string) => Promise.resolve(
+      path === '/api/review' ? EMPTY_REVIEW : {
+        ...payload,
+        news_shadow: { run_at: 'x', git_sha: 'y', rows: 0, overall: {},
+                       by_gw: [] },
+      }))
     render(<MemoryRouter><QualityTab /></MemoryRouter>)
     await screen.findByRole('heading', { name: /holdout/i })
     expect(screen.queryByRole('heading', { name: /news layer/i }))

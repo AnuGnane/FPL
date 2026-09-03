@@ -480,15 +480,21 @@ describe('PlannerBoard', () => {
 
     it('shows the week note and no charge line when the charge is null',
       async () => {
+        // The server's own wording (trace.py:268), which is deliberately
+        // present tense: the switch is read when the board is drawn, so the
+        // note says nothing about the solve that produced the plan.
         wire(plan([{ ...WEEK,
           trace: { ...TRACE, price_charge: null,
-            note: 'price_timing is off, so the plan was solved without a '
-                  + 'price-timing term' } }]))
+            note: '`[optimizer] price_timing` is off now, so no charge is '
+                  + 'shown; this says nothing about the solve that produced '
+                  + 'this plan' } }]))
         render(<PlannerBoard gw={5} />)
         const why = await open()
         expect(within(why).queryByText(/price-timing charge/)).toBeNull()
         expect(within(why).getByTestId('board-why-note-5'))
-          .toHaveTextContent('price_timing is off')
+          .toHaveTextContent('is off now, so no charge is shown')
+        expect(within(why).getByTestId('board-why-note-5'))
+          .toHaveTextContent('says nothing about the solve')
       })
 
     it('shows no charge line for a charge of zero', async () => {
