@@ -303,13 +303,38 @@ def pen_table(comp: pd.DataFrame, players: pd.DataFrame,
     order_of = dict(zip(players["code"],
                         pd.to_numeric(players["penalties_order"],
                                       errors="coerce")))
-    # v12 W4 §5.4 (specs/2026-09-01-gaffer-v12-program-design.md). The user's
-    # hand-edited file beats the bootstrap, per club and per player, and an
-    # absent file is an empty dict — so a machine that has never written one
-    # takes exactly the branch it took before v12.
+    # v12 W4 §5.4 (specs/2026-09-01-gaffer-v12-program-design.md), club-aware
+    # by the 2026-09-03 ruling. The user's hand-edited file beats the
+    # bootstrap, per club and per player, and an absent file is an empty dict
+    # — so a machine that has never written one takes exactly the branch it
+    # took before v12.
+    #
+    # A club the file speaks about, it speaks about *whole*: the queue is
+    # exactly what the file lists for that club, so a teammate it leaves out
+    # is not a taker, however FPL has him ordered. Otherwise the line a user
+    # actually types — "the new man takes them now" — leaves the incumbent at
+    # FPL's order 1 and prices both men for every penalty the club wins.
+    #
+    # The club is read off the *frame* (the `team_code` of the codes the file
+    # names), never off the table header: the header is a comment for the
+    # reader, and a file listing two clubs' codes under one of their names is
+    # two queues, not one.
     from gaffer.data.set_piece_overrides import penalty_order_overrides
 
-    order_of.update(penalty_order_overrides())
+    over = penalty_order_overrides()
+    if over:
+        team_of = dict(zip(comp["code"], comp["team_code"]))
+        clubs = set()
+        for code in over:
+            if code in team_of:
+                clubs.add(int(team_of[code]))
+            else:
+                print(f"set pieces: code {code} is not in this week's field "
+                      f"— its override changes nothing")
+        for code, team in team_of.items():
+            if int(team) in clubs and int(code) not in over:
+                order_of[code] = float("nan")
+        order_of.update(over)
     now = share_now(comp["code"].map(order_of))
     now.index = comp.index
     if float(now.abs().sum()) == 0.0:
