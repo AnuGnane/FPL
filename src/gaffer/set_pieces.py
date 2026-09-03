@@ -37,8 +37,16 @@ half a penalty's xG counts zero, one plausible spot kick (~0.79) counts one,
 ~1.58 counts two. Rounding noise no longer accumulates, because noise below
 half a penalty is not a penalty.
 
-Nothing here does I/O, loads a model or touches the network. Everything is
-handed in.
+Nothing here loads a model or touches the network, and everything the caller
+knows is handed in. One exception, added in v12: :func:`pen_table` reads
+``data/set_pieces.toml`` for the user's manual taker overrides. It is read
+here rather than threaded through because the only caller is ``advise.py``,
+which is protected, and because writing manual values into
+``data/live/players.parquet`` would corrupt a file whose job is to record what
+FPL said. The read is lazy, is behind
+:func:`gaffer.data.set_piece_overrides.penalty_order_overrides`' own
+never-raises contract, and returns ``{}`` on every machine that has not
+written the file — which is byte-identical to the pre-v12 behaviour.
 """
 
 from __future__ import annotations
@@ -295,6 +303,13 @@ def pen_table(comp: pd.DataFrame, players: pd.DataFrame,
     order_of = dict(zip(players["code"],
                         pd.to_numeric(players["penalties_order"],
                                       errors="coerce")))
+    # v12 W4 §5.4 (specs/2026-09-01-gaffer-v12-program-design.md). The user's
+    # hand-edited file beats the bootstrap, per club and per player, and an
+    # absent file is an empty dict — so a machine that has never written one
+    # takes exactly the branch it took before v12.
+    from gaffer.data.set_piece_overrides import penalty_order_overrides
+
+    order_of.update(penalty_order_overrides())
     now = share_now(comp["code"].map(order_of))
     now.index = comp.index
     if float(now.abs().sum()) == 0.0:
