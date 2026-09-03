@@ -7,7 +7,7 @@
  */
 import { renderHook, act } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { MemoryRouter, useLocation } from 'react-router-dom'
+import { MemoryRouter, useLocation, useNavigationType } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import { useTabParam } from './useTabParam'
 
@@ -58,13 +58,18 @@ describe('useTabParam', () => {
 
   it('replaces rather than pushes, so a tab strip is not a history trail', () => {
     const { result } = renderHook(
-      () => [useTabParam(TABS, 'quality'), useLocation()] as const,
+      () => [useTabParam(TABS, 'quality'), useLocation(),
+             useNavigationType()] as const,
       { wrapper: wrapper('/model') })
+    expect(result.current[2]).toBe('POP')
     act(() => { result.current[0][1]('journal') })
     act(() => { result.current[0][1]('health') })
-    // MemoryRouter's index does not advance under a replace. Three renders,
-    // one entry: the back button leaves the hub rather than walking the tabs.
-    expect(result.current[1].key).toBeDefined()
+    // The claim is about the *history*, not just the URL: six clicks through a
+    // strip must be one entry, so the back button leaves the hub rather than
+    // walking backwards through the tabs. `replace: false` would make this
+    // 'PUSH' while leaving the search string below exactly as it is, which is
+    // why the search assertion alone was not enough.
+    expect(result.current[2]).toBe('REPLACE')
     expect(result.current[1].search).toBe('?tab=health')
   })
 })

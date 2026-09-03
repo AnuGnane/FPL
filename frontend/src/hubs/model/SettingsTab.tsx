@@ -23,9 +23,13 @@ function label(row: SettingRow): string {
 }
 
 function Field(
-  { row, onSave, busy }: {
+  { row, onSave, error, busy }: {
     row: SettingRow
     onSave: (value: unknown) => void
+    /** The server's refusal for this row, or null. Rendered below by the
+     *  caller; the control needs it too, so a screen reader is told the field
+     *  is invalid and where the sentence explaining it is. */
+    error: string | null
     busy: boolean
   },
 ) {
@@ -44,6 +48,8 @@ function Field(
           type="checkbox"
           checked={row.value === true}
           disabled={busy}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? `settings-error-${row.key}` : undefined}
           onChange={(e) => onSave(e.target.checked)}
         />
         <span>{label(row)}</span>
@@ -62,6 +68,8 @@ function Field(
           step={row.kind === 'float' ? 0.01 : 1}
           value={numeric ? draft.replace(/"/g, '') : draft}
           disabled={busy}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? `settings-error-${row.key}` : undefined}
           onChange={(e) => setDraft(e.target.value)}
         />
       </label>
@@ -140,8 +148,14 @@ export default function SettingsTab() {
   return (
     <div className="flex flex-col gap-3">
       {panel.overlay_error && (
+        // A save can turn this on without anything else moving on the page,
+        // so it is announced rather than only drawn. `polite` and not
+        // `assertive`: the reader is mid-form, and the overlay being ignored
+        // is news he needs at the end of his sentence, not in the middle of it.
         <p
           data-testid="settings-overlay-error"
+          role="status"
+          aria-live="polite"
           className="rounded-card border border-rust bg-card px-3 py-2
                      text-rust"
         >
@@ -155,6 +169,7 @@ export default function SettingsTab() {
               <Field
                 row={row}
                 busy={busy === row.key}
+                error={errors[row.key] || null}
                 onSave={(value) => save(row.key, value)}
               />
               <p className="text-text-faint">{row.help}</p>
@@ -169,6 +184,9 @@ export default function SettingsTab() {
               )}
               {errors[row.key] && (
                 <p data-testid={`settings-error-${row.key}`}
+                   id={`settings-error-${row.key}`}
+                   role="status"
+                   aria-live="polite"
                    className="text-rust">
                   {errors[row.key]}
                 </p>

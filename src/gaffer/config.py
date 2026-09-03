@@ -197,11 +197,22 @@ def _overlay(raw: dict, base: Path) -> dict:
     tree passes a ``tmp_path`` config, and a relative path would read the
     developer's own overlay into the fixture.
 
+    Merged one level *inside* a section as well as across it, wherever both
+    sides of a key are tables. ``[optimizer] top_n`` is the case that forced
+    it: it is a table of four positions, and a whole-value overwrite would let
+    an overlay saying ``top_n = {GKP = 3}`` silently drop the three pool sizes
+    ``config.toml`` had set. The Settings tab always writes all four, but a
+    hand-edited overlay is exactly the file somebody writes one line into. One
+    level and no deeper: nothing in this config nests further, and a general
+    deep merge would be a rule no reader could predict from the file.
+
     Never raises. A missing overlay is the normal case; an unparseable one is
     ignored with a printed line, because one bad write from the Settings tab
     must not stop every job on the machine. The line is the only signal there
-    is, so it names the file and says the word "ignored" — the settings
-    endpoint greps for exactly that when it reports the overlay's health.
+    is, so it names the file and says the word "ignored".
+    ``routers/settings.py`` builds its own sentence for the same condition and
+    does not read this one; what keeps the two in step is a test asserting
+    both name the file and both say "ignored".
     """
     local = Path(base).parent / LOCAL_OVERLAY
     if not local.exists():
@@ -226,7 +237,14 @@ def _overlay(raw: dict, base: Path) -> dict:
                 print(f"config: {local} sets [{section}] {key}, which is not "
                       f"a config field — ignored")
                 continue
-            merged[key] = value
+            prior = merged.get(key)
+            # One level in. A table over a table merges key by key, so a
+            # partial `top_n` keeps the positions it did not mention; anything
+            # else replaces, which is what a scalar or a list has to do.
+            merged[key] = ({**prior, **value}
+                           if isinstance(prior, dict) and isinstance(value,
+                                                                     dict)
+                           else value)
         out[section] = merged
     return out
 
@@ -235,12 +253,15 @@ def _raw_with_overlay(path: Path | str) -> dict:
     """``config.toml`` parsed, with ``config.local.toml`` merged over it.
 
     The one place the merge happens. ``load_config`` is not the only reader of
-    ``config.toml``: :func:`price_timing`, :func:`xg_per_shot` and
-    :func:`optimizer_top_n` open the file themselves, because the keys they
-    serve are either not ``Config`` fields or are needed where no ``Config`` is
-    in hand. Two of the nine keys the Settings tab writes are served by two of
-    those readers, so an overlay only the loader honoured would be a switch
-    that saves and changes nothing.
+    ``config.toml``: :func:`lineup_providers`, :func:`price_timing`,
+    :func:`xg_per_shot` and :func:`optimizer_top_n` open the file themselves,
+    because the keys they serve are either not ``Config`` fields or are needed
+    where no ``Config`` is in hand. Two of the nine keys the Settings tab
+    writes are served by two of those readers, so an overlay only the loader
+    honoured would be a switch that saves and changes nothing — and the fourth
+    is here for the same reason even though nothing edits it from the web: a
+    file that means one thing to the loader and another to a reader is worse
+    than a file no reader honours at all.
 
     Raises whatever reading or parsing ``path`` raises — every caller already
     has an answer for that, and inventing a second one here would hide the
@@ -390,7 +411,7 @@ def lineup_providers(path: Path | str = "config.toml") -> list[str]:
     give the shipped default, for the reason :func:`serving_config` gives.
     """
     try:
-        raw = tomllib.loads(Path(path).read_text())
+        raw = _raw_with_overlay(path)
     except Exception:  # noqa: BLE001 — a serve-time reader never raises
         return list(DEFAULT_LINEUP_PROVIDERS)
     return _providers(raw.get("news", {}).get("lineup_providers"))

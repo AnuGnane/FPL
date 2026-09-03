@@ -112,6 +112,38 @@ describe('SettingsTab', () => {
       .toHaveTextContent('between 1 and 8')
   })
 
+  it('tells a screen reader which field was refused and where to read why',
+    async () => {
+      const boom = Object.assign(new Error('bad'),
+        { detail: { error: 'Horizon (gameweeks) is between 1 and 8' } })
+      apiPost.mockRejectedValueOnce(boom)
+      render(<SettingsTab />)
+      const field = await screen.findByLabelText('Horizon (gameweeks)')
+      expect(field).not.toHaveAttribute('aria-invalid')
+      await userEvent.click(screen.getByRole('button', { name: 'Save Horizon (gameweeks)' }))
+      await waitFor(() => {
+        expect(field).toHaveAttribute('aria-invalid', 'true')
+      })
+      // The sentence is not just near the control, it is *named* by it: the
+      // refusal is the server's own text and a reader who cannot see the red
+      // paragraph beside the box has no other way to reach it.
+      expect(field).toHaveAttribute('aria-describedby', 'settings-error-horizon')
+      expect(document.getElementById('settings-error-horizon'))
+        .toHaveTextContent('between 1 and 8')
+      // And it is announced. A refusal that only changes colour is a save the
+      // user believes worked.
+      expect(screen.getByTestId('settings-error-horizon'))
+        .toHaveAttribute('aria-live', 'polite')
+    })
+
+  it('announces an overlay error rather than only drawing it', async () => {
+    apiGet.mockResolvedValue({ ...PANEL, overlay_error: 'config.local.toml is not readable TOML' })
+    render(<SettingsTab />)
+    const banner = await screen.findByTestId('settings-overlay-error')
+    expect(banner).toHaveAttribute('aria-live', 'polite')
+    expect(banner).toHaveAttribute('role', 'status')
+  })
+
   it('renders the apply note verbatim', async () => {
     render(<SettingsTab />)
     expect(await screen.findByTestId('settings-apply-note'))

@@ -76,7 +76,7 @@ WHITELIST: tuple[SettingKey, ...] = (
     SettingKey("decay", "optimizer", "decay", "Decay per gameweek",
                "float", 0.0, 1.0,
                "How much less a point in week two is worth than one in week "
-               "one."),
+               "one. 0.0 ignores every week after this one."),
     SettingKey("itb_value", "optimizer", "itb_value",
                "Value of money in the bank", "float", 0.0, 1.0,
                "Points per £1m held back. Priced in points, like the hit "

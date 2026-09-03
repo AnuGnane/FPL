@@ -33,8 +33,20 @@ router = APIRouter(prefix="/api", tags=["settings"])
 
 APPLY_NOTE = (
     "Saved to config.local.toml. A job started after this save reads the new "
-    "value; a job already running keeps the one it started with, and a page "
-    "already open keeps the numbers it fetched. Reload to see them change.")
+    "value, and a page already open keeps the numbers it fetched — reload to "
+    "see them change. A job already running mostly keeps the values it "
+    "started with, but not entirely: the solver re-reads the candidate pool "
+    "on every solve, so a long run can pick up a new pool size part-way "
+    "through.")
+"""The one sentence the tab renders verbatim about what a save reaches.
+
+Hedged on purpose. The first draft said a running job keeps the values it
+started with, full stop, and that is not true of every key: ``build_pool``
+calls ``optimizer_top_n()`` per solve rather than taking a ``Config``, so a
+multi-week plan that is still solving can cross a ``top_n`` save mid-run. A
+note that overstates the isolation is worse than one that admits the seam,
+because the reader who hits it has been told it cannot happen.
+"""
 
 BASE = "config.toml"
 
@@ -56,7 +68,12 @@ def _read(path: Path) -> tuple[dict, str | None]:
 
 
 def _panel() -> SettingsPanel:
-    base_raw, base_err = _read(Path(BASE))
+    # The base file's parse error is deliberately dropped: if config.toml will
+    # not parse, `load_config` below raises and the early return names it in
+    # its own words. Keeping a second copy here only to `or` it into a branch
+    # that cannot be reached would be a line that looks like a fallback and is
+    # not one.
+    base_raw, _ = _read(Path(BASE))
     local_raw, local_err = _read(Path(LOCAL_OVERLAY))
     if not Path(BASE).exists():
         return SettingsPanel(
@@ -92,7 +109,7 @@ def _panel() -> SettingsPanel:
     return SettingsPanel(
         rows=rows,
         unavailable=[e.field for e in WHITELIST if e.field not in live],
-        overlay_error=local_err or base_err, apply_note=APPLY_NOTE)
+        overlay_error=local_err, apply_note=APPLY_NOTE)
 
 
 def _real(entry, number: float) -> float:
