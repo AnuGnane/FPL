@@ -1114,6 +1114,33 @@ export interface SimPoint {
   run_at: string
 }
 
+/** v12 W4 §5.3 — see web/schemas.py::FieldRank.
+ *
+ *  Three headline numbers and two of them are null today, each with its own
+ *  reason: `p_green` waits for a banked field sample, `p_top10k` for a score
+ *  series that exists nowhere, `rank_slope` for graded gameweeks. The panel
+ *  renders the reason rather than hiding the row. */
+export interface FieldRank {
+  gw: number
+  n: number
+  seed: number
+  managers: number
+  /** `'deadline-trend'`, `'last-sample'` or `'none'`. A trend-extrapolated EO
+   *  and a last-sample EO are different numbers, so the panel says which. */
+  eo_source: string
+  p_green: number | null
+  waiting_for: string | null
+  p_top10k: number | null
+  top10k_waiting_for: string | null
+  /** Overall-rank places per point, from the graded ledger. Negative: more
+   *  points is a better (smaller) rank. */
+  rank_slope: number | null
+  rank_slope_rows: number
+  rank_waiting_for: string | null
+  my_ep: number | null
+  field_median_ep: number | null
+}
+
 export interface LeagueSimData {
   gw: number
   entries: number
@@ -1133,6 +1160,9 @@ export interface LeagueSimData {
   field_rate: number | null
   notice: string | null
   legacy_win_probability: WinProb[]
+  /** null only when the simulation itself could not be built; an
+   *  unanswerable question is a FieldRank full of nulls with their reasons. */
+  field: FieldRank | null
 }
 
 export type LeagueWhatIfEvent = 'haul' | 'blank' | 'score'

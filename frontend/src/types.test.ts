@@ -41,8 +41,20 @@ describe('league sim types', () => {
       history: [{ gw: 6, p_win: 0.18, p_top3: 0.5, exp_finish: 3.1,
                   run_at: '2026-09-05T09:00:00+00:00' }],
       field_rate: 54.2, notice: null, legacy_win_probability: [],
+      // v12 W4 §5.3. Populated the way a real machine serialises it today:
+      // a green-arrow probability, and two headlines that are null with the
+      // sentence saying what each is waiting for.
+      field: {
+        gw: 7, n: 2000, seed: 20260831, managers: 300,
+        eo_source: 'last-sample', p_green: 0.48, waiting_for: null,
+        p_top10k: null, top10k_waiting_for: 'a top-10k weekly score threshold',
+        rank_slope: null, rank_slope_rows: 2,
+        rank_waiting_for: '2 of 5 graded gameweeks',
+        my_ep: 54.1, field_median_ep: 55.3,
+      },
     }
     expect(sim.per_rival[0].p_beat).toBeGreaterThan(0)
+    expect(sim.field?.p_top10k).toBeNull()
   })
 
   it('types the what-if result', () => {

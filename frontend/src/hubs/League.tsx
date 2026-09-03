@@ -12,6 +12,7 @@ import {
 import type {
   AdviceLatest, LeagueRaceData, LeagueSimData, RivalSummary,
 } from '../types'
+import FieldPanel from './league/FieldPanel'
 import WhatIfSim, { type WhatIfSquadPlayer } from './league/WhatIfSim'
 
 // `shrink-0 whitespace-nowrap` so a trigger scrolls out of the strip rather
@@ -360,6 +361,11 @@ export default function League() {
               </Card>
             </div>
           )}
+          {/* Below the win-probability card and outside its ternary rather
+              than inside the `sim` branch: the panel already renders nothing
+              when there is no simulation, so a fragment around that branch
+              would buy a second place for the same null check to live. */}
+          <FieldPanel field={sim?.field ?? null} />
         </Tabs.Content>
         <Tabs.Content value="rivals">
           <Card>
