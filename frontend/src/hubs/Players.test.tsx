@@ -275,8 +275,12 @@ describe('the watchlist star', () => {
       render(<MemoryRouter><Players /></MemoryRouter>)
       await userEvent.click(await screen.findByLabelText('star Saka'))
       expect(await screen.findByLabelText('unstar Saka')).toBeInTheDocument()
-      expect(apiPost).toHaveBeenCalledWith('/api/watchlist',
-                                           { code: 2, note: '' })
+      // `{ code }` and no `note`. An omitted note is a third request — "star
+      // him, say nothing about the note" — and the store then keeps the note
+      // and the star date the row already has. `note: ''` is how a note is
+      // *cleared*, so this button used to destroy a sentence typed on the
+      // Watchlist tab on every click.
+      expect(apiPost).toHaveBeenCalledWith('/api/watchlist', { code: 2 })
     })
 
   it('unstars a starred player', async () => {
@@ -346,9 +350,14 @@ describe('the watchlist star', () => {
       expect(currentToasts()[0].text).toContain('Salah')
     })
 
-  it('leaves the explorer usable when the watchlist endpoint is down',
+  it('leaves the explorer usable, and the star unclickable, when the '
+     + 'watchlist endpoint is down',
     async () => {
-      // The whole hub must render on a clone whose reports/ directory is empty.
+      // The whole hub must render on a clone whose reports/ directory is
+      // empty — and the star column must not lie about it. A failed read used
+      // to empty `starred`, which drew a hollow ☆ on every row; one click on
+      // one of those posts a star for a player who may already have one, and
+      // that used to wipe his note.
       apiGet.mockImplementation((path: string) => (
         path.startsWith('/api/players') ? Promise.resolve(ROWS)
           : path === '/api/watchlist'
@@ -357,6 +366,13 @@ describe('the watchlist star', () => {
       ))
       render(<MemoryRouter><Players /></MemoryRouter>)
       expect(await screen.findByText('Salah')).toBeInTheDocument()
-      expect(screen.getByLabelText('star Salah')).toBeInTheDocument()
+      expect(screen.queryByLabelText('star Salah')).toBeNull()
+      const star = await screen.findByLabelText(
+        'watchlist unavailable for Salah')
+      expect(star).toBeDisabled()
+      expect(star).toHaveAttribute('title', 'watchlist unavailable')
+      await userEvent.click(star)
+      expect(apiPost).not.toHaveBeenCalledWith('/api/watchlist',
+                                               expect.anything())
     })
 })

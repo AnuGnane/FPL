@@ -6406,13 +6406,20 @@
      "type": "integer"
     },
     "note": {
-     "default": "",
-     "type": "string"
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Three requests, not two. ``None`` \u2014 the key omitted \u2014 is \"star him and\nsay nothing about the note\", which keeps whatever note and star date the\nrow already has; ``\"\"`` is \"clear the note\", which is what a cleared\ntextbox on the Watchlist tab sends; text sets it.\n\nThe first two used to be one value, so a star from the explorer destroyed\na note typed on the Watchlist tab. Only a caller that means to write the\nnote sends the key at all."
     }
    },
    "required": [
-    "code",
-    "note"
+    "code"
    ],
    "title": "WatchRequest",
    "type": "object"

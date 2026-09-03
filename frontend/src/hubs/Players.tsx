@@ -44,10 +44,15 @@ export default function Players() {
   // dialog's own answer, so the table says which of these numbers are the
   // manager's own without a second round trip per save.
   const [pinned, setPinned] = useState<number[]>([])
-  // Starred codes. Read once on mount and then kept current from each write's
-  // own answer, exactly as `pinned` is: the alternative is a GET per star, on
-  // a table of six hundred rows.
-  const [starred, setStarred] = useState<number[]>([])
+  // Starred codes, or `null` for "we do not know yet". Read once on mount and
+  // then kept current from each write's own answer, exactly as `pinned` is:
+  // the alternative is a GET per star, on a table of six hundred rows.
+  //
+  // Three states rather than two, for the same reason `gwFailed` exists. `[]`
+  // used to mean both "nobody is starred" and "the read failed", so a failed
+  // GET drew an empty ☆ on every row — and one click on a ☆ that is wrong
+  // posts a star for a player who already has one.
+  const [starred, setStarred] = useState<number[] | null>(null)
   // Every keystroke drove a GET, and five letters is five requests whose
   // answers can land out of order — the last one back wins, not the last typed.
   const settledSearch = useDebounced(search)
@@ -61,7 +66,9 @@ export default function Players() {
   useEffect(() => {
     apiGet<WatchlistPanel>('/api/watchlist')
       .then((panel) => setStarred(panel.rows.map((r) => r.code)))
-      .catch(() => setStarred([]))
+      // Left `null`, not emptied. The star column disables itself rather than
+      // showing a hollow star the manager can click.
+      .catch(() => setStarred(null))
   }, [])
 
   // A star is a bookmark and its success is the flip itself — no toast (spec
@@ -69,6 +76,10 @@ export default function Players() {
   // *failure* is a different matter: the write was swallowed, so the star
   // stayed filled and claimed a player was on a list he was not on.
   const toggleStar = (code: number, name: string) => {
+    // Unreachable through the UI — the control is disabled while this is
+    // unknown — and stated anyway, because "which way do I toggle?" has no
+    // answer here and guessing would be the bug this state exists to stop.
+    if (starred === null) return
     const on = starred.includes(code)
     // Functional throughout, and per-code on the way back. A whole-array
     // snapshot taken at click time is wrong twice over: two stars in one
@@ -77,19 +88,24 @@ export default function Players() {
     // player whose write succeeded while this one was in flight — wiping
     // from the UI a row the server has.
     setStarred((prev) => (on
-      ? prev.filter((c) => c !== code)
-      : [...prev, code]))
+      ? (prev ?? []).filter((c) => c !== code)
+      : [...(prev ?? []), code]))
     const request = on
       ? apiDelete<WatchlistPanel>(`/api/watchlist/${code}`)
-      : apiPost<WatchlistPanel>('/api/watchlist', { code, note: '' })
+      // `{ code }`, with no `note`. An omitted note means "star him and say
+      // nothing about the note", and the store then keeps whatever note and
+      // star date the row has; sending `note: ''` used to destroy a sentence
+      // typed on the Watchlist tab on every star. (Not every *click* — this
+      // is a toggle, and the other half of the clicks are the DELETE above.)
+      : apiPost<WatchlistPanel>('/api/watchlist', { code })
     request
       .then((panel) => setStarred(panel.rows.map((r) => r.code)))
       .catch((e) => {
         // The inverse of the change that was attempted, touching this code
         // and nothing else.
         setStarred((prev) => (on
-          ? [...prev, code]
-          : prev.filter((c) => c !== code)))
+          ? [...(prev ?? []), code]
+          : (prev ?? []).filter((c) => c !== code)))
         toast('negative',
           `Could not ${on ? 'unstar' : 'star'} ${name} — ${errorText(e)}`)
       })
@@ -189,17 +205,28 @@ export default function Players() {
       render: (r) => <Sparkline values={r.last4} /> },
     {
       key: 'star', header: '', value: () => '',
-      render: (r) => (
-        <button
-          type="button"
-          aria-label={`${starred.includes(r.code) ? 'unstar' : 'star'} `
-            + `${r.name}`}
-          onClick={() => toggleStar(r.code, r.name)}
-          className="px-1 text-text-muted hover:text-text"
-        >
-          {starred.includes(r.code) ? '★' : '☆'}
-        </button>
-      ),
+      render: (r) => {
+        // A hollow star over an unknown watchlist is a claim, and a clickable
+        // one is worse: the click posts a star for a player who may already
+        // have one. Disabled, and the title says which of the two it is.
+        const unknown = starred === null
+        const on = starred?.includes(r.code) ?? false
+        return (
+          <button
+            type="button"
+            disabled={unknown}
+            title={unknown ? 'watchlist unavailable' : undefined}
+            aria-label={unknown
+              ? `watchlist unavailable for ${r.name}`
+              : `${on ? 'unstar' : 'star'} ${r.name}`}
+            onClick={() => toggleStar(r.code, r.name)}
+            className="px-1 text-text-muted hover:text-text
+                       disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {on ? '★' : '☆'}
+          </button>
+        )
+      },
     },
     {
       key: 'pin', header: '', value: () => '',

@@ -6,17 +6,20 @@ import type { WatchRow, WatchlistPanel } from '../../types'
 /**
  * v12 W5 §6.3 — the starred players, with their notes.
  *
- * The endpoint has carried `note` and `set_at` since v8e and nothing has ever
- * rendered either, because the explorer's star posts `{ code, note: '' }` for
- * every click (`Players.tsx:84`). This is the only surface from which a note
- * can be written or read.
+ * The endpoint has carried `note` and `set_at` since v8e and nothing had ever
+ * rendered either. This is the only surface that *writes* one: the explorer's
+ * ☆ posts `{ code }` with no note at all, which the store reads as "say
+ * nothing about the note" and leaves the row's note and date alone.
  *
- * `set_at` is labelled "Noted" and not "watching since", and the caveat below
- * the rows says why: `watchlist.watch` replaces *both* the note and the
- * timestamp on every star (`watchlist.py:107`), so re-starring from the
- * explorer wipes a note and resets the date. That is the store's behaviour,
- * not this view's to change — but a label reading "watching since" would be a
- * claim the data does not support.
+ * It did not always. The star used to post `note: ''`, and `''` was the same
+ * request as "no note", so one click on the explorer's ☆ destroyed a sentence
+ * typed here. The tri-state on `WatchRequest.note` is the fix, and it is
+ * server-side, because a second tab, a second device and a failed watchlist
+ * read all reach the same click.
+ *
+ * `set_at` is still labelled "Noted" and not "watching since": a *write* —
+ * `''` or text — stamps the row with the time it happened, so the date is
+ * when the note was last touched and not when the star went on.
  *
  * Each row seeds its field from the panel it was mounted with and keeps the
  * manager's typing thereafter, so a note changed by another surface while
@@ -178,8 +181,9 @@ export default function WatchlistTab(
         <Row key={row.code} row={row} onSaved={adopt} onRemoved={adopt} />
       ))}
       <p data-testid="watchlist-caveat" className="mt-2 text-text-faint">
-        {'Starring a player again from the Explorer replaces the note and the '
-         + 'date, so edit notes here rather than re-starring.'}
+        {'Starring a player again from the Explorer no longer touches a note. '
+         + 'This is the only view that writes one, and the date beside each '
+         + 'name is when its note was last saved here.'}
       </p>
     </Card>
   )

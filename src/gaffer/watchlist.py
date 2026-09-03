@@ -103,8 +103,20 @@ def watched_codes() -> list[int]:
     return sorted(load_watchlist())
 
 
-def watch(code: int, *, note: str = "", known_codes=None) -> dict:
-    """Star ``code``. Re-starring replaces the note and the timestamp.
+def watch(code: int, *, note: str | None = None, known_codes=None) -> dict:
+    """Star ``code``. ``note`` is a tri-state, and that is the whole point.
+
+    ``None`` — the default, and what a caller that only wants the star sends —
+    leaves an existing row exactly as it is: the note *and* the ``set_at``,
+    because ``set_at`` is the star date and a click that said nothing about the
+    note has no business moving it. Re-starring a player who is already starred
+    is then idempotent. ``""`` clears the note; text sets it. Either of those
+    two is a write, and a write stamps the row with the time it happened.
+
+    It used to take one string with ``""`` for a default, which made "star him"
+    and "clear his note" the same request — so the explorer's ☆, which sends no
+    note at all, destroyed a sentence typed on the Watchlist tab. A second tab,
+    a second device or a failed watchlist read all reach the same click.
 
     ``known_codes`` is the universe the star has to belong to, supplied by the
     caller so this module needs no data layer; omitting it skips the check,
@@ -118,12 +130,15 @@ def watch(code: int, *, note: str = "", known_codes=None) -> dict:
         raise GafferError(
             f"player {code} is not in the current player list — star a code "
             f"the tool knows about")
-    if len(str(note or "")) > NOTE_MAX:
+    if note is not None and len(str(note)) > NOTE_MAX:
         raise GafferError(f"note is longer than {NOTE_MAX} characters")
     rows = load_watchlist()
     if code not in rows and len(rows) >= MAX_WATCHED:
         raise GafferError(
             f"{MAX_WATCHED} starred players is the cap — unstar one first")
+    existing = rows.get(code)
+    if note is None and existing is not None:
+        return dict(existing)
     row = {"note": str(note or ""),
            "set_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
     rows[code] = row

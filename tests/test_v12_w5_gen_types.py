@@ -161,20 +161,27 @@ def test_a_defaulted_field_is_still_required():
     assert "rows" in panel["required"]
 
 
-def test_the_one_field_the_client_omits_is_optional_and_says_why():
+def test_the_fields_the_client_omits_are_optional_and_say_why():
+    """Two of them, and both are request bodies where the omission *means*
+    something: `cached_only` absent is "do the fetch", and `WatchRequest.note`
+    absent is "say nothing about the note", which is not the same request as
+    `note: ''`."""
     from scripts.gen_types import OPTIONAL_ON_THE_WIRE
 
     req = build_schema()["definitions"]["LeagueWhatIfRequest"]
     assert "cached_only" in req["properties"]
     assert "cached_only" not in req["required"]
+    star = build_schema()["definitions"]["WatchRequest"]
+    assert "note" in star["properties"]
+    assert "note" not in star["required"]
     for (model, field), why in OPTIONAL_ON_THE_WIRE.items():
         assert field in _live()[model].model_fields, (model, field)
         assert len(why) > 20, (model, field)
 
 
 def test_nothing_else_is_optional():
-    """One exception, and it is the listed one. A second that crept in unlisted
-    would soften a type in the browser with nothing saying why."""
+    """Two exceptions, and they are the listed ones. A third that crept in
+    unlisted would soften a type in the browser with nothing saying why."""
     from scripts.gen_types import OPTIONAL_ON_THE_WIRE
 
     loose = {(name, field)

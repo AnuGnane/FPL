@@ -97,8 +97,12 @@ OPTIONAL_ON_THE_WIRE = {
     ("LeagueWhatIfRequest", "cached_only"):
         "This Week sets it and both league views omit it; "
         "WhatIfSim.test.tsx:55 pins that the body carries no such key.",
+    ("WatchRequest", "note"):
+        "Omitting it is a third request and not a default: the explorer's ☆ "
+        "sends `{ code }`, and the store then keeps the note and the star "
+        "date the row already has. `''` is how a note is cleared.",
 }
-"""``(model, field) -> why this one field may be absent.``
+"""``(model, field) -> why this field may be absent.``
 
 Every other field is emitted ``required``, which is what the wire actually
 carries: a response model is serialized on the way out with its defaults filled
@@ -108,10 +112,10 @@ reads in the client as possibly-undefined — each of which would have been
 answered with a `?? {}` guard against a case that cannot happen.
 
 Request bodies are the direction where a default *can* be left out, and the
-client builds all of them complete except this one. Listing the exception by
-field rather than exempting every request model keeps the guard where the
-omission is: a new partial body fails at its own call site, loudly, instead of
-softening every request type in the tree.
+client builds all of them complete except the two listed here. Listing the
+exceptions by field rather than exempting every request model keeps the guard
+where the omission is: a new partial body fails at its own call site, loudly,
+instead of softening every request type in the tree.
 """
 
 RENAME = {

@@ -1070,16 +1070,18 @@ started with — *mostly*, because `build_pool` calls `optimizer_top_n()` on
 every solve, so a long multi-week plan can cross a `top_n` save part-way
 through.
 
-**Players → Watchlist is where a note can finally be read.** `WatchRow` has
+**Players → Watchlist is where a note can finally be written.** `WatchRow` has
 carried `note` and `set_at` since v8e and nothing rendered either: the
-explorer's ☆ posts `note: ''` on every click, so the field was written empty
-every time and shown nowhere. The tab lists every starred player with an
-editable note (Enter saves it) and an unstar button, through the same endpoints
-the star already used — no server change. The date says **"noted"** and not
-"watching since", because `watchlist.watch` replaces the note *and* the
-timestamp on every star, so re-starring from the explorer resets both; the
-caveat under the rows says so rather than letting you infer a start date the
-store does not keep. This Week also now renders **`captain_note`**, the
+explorer's ☆ posted `note: ''` when it starred, so the field was written empty
+and shown nowhere. The tab lists every starred player with an editable note
+(Enter saves it) and an unstar button, through the same endpoints the star
+already used. `WatchRequest.note` is now a **tri-state**: omitted means "star
+him and say nothing about the note", and the store then keeps the note and the
+star date the row has; `''` clears it; text sets it. The explorer's ☆ sends
+`{ code }` and therefore cannot destroy a sentence typed here — which it could,
+from a second tab, a second device, or a stale star column. The date says
+**"noted"** and not "watching since", because a note *write* stamps the row
+with the time it happened. This Week also now renders **`captain_note`**, the
 half-sentence the advice run has written since v4d and only the CLI and the
 HTML report ever showed, beside the captain's field note.
 

@@ -2386,7 +2386,17 @@ export interface UpcomingFixture {
  */
 export interface WatchRequest {
   code: number
-  note: string
+  /**
+   * Three requests, not two. ``None`` — the key omitted — is "star him and
+   * say nothing about the note", which keeps whatever note and star date the
+   * row already has; ``""`` is "clear the note", which is what a cleared
+   * textbox on the Watchlist tab sends; text sets it.
+   *
+   * The first two used to be one value, so a star from the explorer destroyed
+   * a note typed on the Watchlist tab. Only a caller that means to write the
+   * note sends the key at all.
+   */
+  note?: string | null
 }
 /**
  * This interface was referenced by `GafferApi`'s JSON-Schema

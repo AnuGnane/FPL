@@ -119,9 +119,12 @@ describe('WatchlistTab', () => {
   })
 
   it('says what re-starring from the explorer does to a note', async () => {
+    // Which, since the note tri-state landed server-side, is nothing. The old
+    // caveat warned about a wipe that no longer happens, and a warning about
+    // a fixed bug is a reason not to use a working button.
     render(<WatchlistTab onChange={vi.fn()} />)
     expect(await screen.findByTestId('watchlist-caveat'))
-      .toHaveTextContent(/replaces the note/)
+      .toHaveTextContent(/no longer touches a note/)
   })
 
   it('has an honest empty state', async () => {

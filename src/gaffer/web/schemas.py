@@ -1967,7 +1967,15 @@ class WatchRequest(BaseModel):
     """A star, and optionally a sentence about why."""
 
     code: int
-    note: str = ""
+    note: str | None = None
+    """Three requests, not two. ``None`` — the key omitted — is "star him and
+    say nothing about the note", which keeps whatever note and star date the
+    row already has; ``""`` is "clear the note", which is what a cleared
+    textbox on the Watchlist tab sends; text sets it.
+
+    The first two used to be one value, so a star from the explorer destroyed
+    a note typed on the Watchlist tab. Only a caller that means to write the
+    note sends the key at all."""
 
 
 class WatchRow(BaseModel):

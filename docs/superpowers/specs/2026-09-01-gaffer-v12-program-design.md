@@ -1399,10 +1399,11 @@ result below is unfilled on purpose.
    re-derived, so every ledger row banked before W5 keeps `null` for ever.
 5. **`reports/projections/` is never pruned.** ~6–12 MB a season, gitignored.
    A future `gaffer tidy` target, deliberately not invented here.
-6. **The watchlist's `set_at` is reset by every save**, because
-   `watchlist.watch` replaces the note and the timestamp together. The column
-   is labelled "noted" rather than "watching since" for that reason; fixing it
-   means a second store field.
+6. **The watchlist's `set_at` is reset by every note save**, because
+   `watchlist.watch` writes the note and the timestamp together. A bare star
+   no longer touches either — that is the note tri-state — but there is still
+   no field holding when the star went on, so the column is labelled "noted"
+   rather than "watching since"; fixing it means a second store field.
 7. **The decision ledger has no season key.** After a rollover, a GW-N row
    could name last season's GW-N snapshot: the snapshot *reader* is
    season-guarded, the ledger is not. Nothing reads across a rollover today,

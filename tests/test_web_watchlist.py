@@ -95,3 +95,48 @@ def test_unstarring_something_that_was_never_starred_is_a_404(client):
 def test_a_corrupt_store_reads_as_an_empty_panel(client, tmp_path):
     (tmp_path / "reports/watchlist.json").write_text("{not json")
     assert client.get("/api/watchlist").json() == {"rows": []}
+
+
+# --- The note tri-state (v12 W5 review, I4) ------------------------------
+#
+# `None`, `""` and text are three different requests and the store used to
+# collapse them into one. A POST that omitted `note` — which is what the
+# explorer's star sends — replaced the row unconditionally and destroyed a
+# note the manager had typed on the Watchlist tab.
+
+
+def test_a_star_with_no_note_keeps_the_note_that_is_already_there(client):
+    client.post("/api/watchlist", json={"code": 11, "note": "cheap on Fri"})
+    body = client.post("/api/watchlist", json={"code": 11}).json()
+    assert body["rows"][0]["note"] == "cheap on Fri"
+
+
+def test_a_star_with_no_note_keeps_the_date_too(client):
+    """A re-star is idempotent. `set_at` is the star date, and moving it on a
+    click that said nothing about the note would reset "noted 3 Sep" for a
+    reason nobody in front of the screen gave."""
+    first = client.post("/api/watchlist",
+                        json={"code": 11, "note": "cheap on Fri"}).json()
+    again = client.post("/api/watchlist", json={"code": 11}).json()
+    assert again["rows"][0]["set_at"] == first["rows"][0]["set_at"]
+
+
+def test_an_explicit_empty_note_clears_the_note(client):
+    """The Watchlist tab's cleared textbox. `""` is a request, not an
+    omission, and it is the only way to take a note back off."""
+    client.post("/api/watchlist", json={"code": 11, "note": "cheap on Fri"})
+    body = client.post("/api/watchlist", json={"code": 11, "note": ""}).json()
+    assert body["rows"][0]["note"] == ""
+
+
+def test_a_note_with_text_sets_it(client):
+    client.post("/api/watchlist", json={"code": 11, "note": "one"})
+    body = client.post("/api/watchlist", json={"code": 11,
+                                               "note": "two"}).json()
+    assert body["rows"][0]["note"] == "two"
+
+
+def test_a_first_star_with_no_note_is_starred_with_an_empty_one(client):
+    body = client.post("/api/watchlist", json={"code": 11}).json()
+    assert body["rows"][0]["note"] == ""
+    assert body["rows"][0]["set_at"]

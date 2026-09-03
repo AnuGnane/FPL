@@ -217,11 +217,11 @@ An **EO lens** toggle tints the pitch by how owned each player is; a
   ownership numbers (global / your league / top-10k with ±SE), and a radar.
 - *Matrix*: the Dixon-Coles fixture matrix.
 - *Watchlist* (v12 W5): the starred players, each with a note you can edit
-  (Enter saves it) and an unstar button. This is the only surface a note can
-  be written or read from — the explorer's ☆ posts an empty one on every
-  click. The date says "noted" and not "watching since", because re-starring
-  from the explorer replaces the note *and* the timestamp; the caveat under
-  the rows says so.
+  (Enter saves it) and an unstar button. This is the only surface that writes
+  a note: the explorer's ☆ sends the code and nothing else, and a request
+  that says nothing about the note leaves the note and the star date alone.
+  The date says "noted" and not "watching since", because saving a note —
+  including clearing it — stamps the row with the time you did it.
 
 **League** — the race. Standings with win probabilities, the trajectory,
 what the λ tilt is doing and why; *Rivals* (each rival's squad, overlap,
@@ -635,10 +635,11 @@ Left open by v12 W5, each recorded rather than fixed:
   re-derived, so every ledger row banked before W5 keeps `null` for ever.
 - **`reports/projections/` is never pruned.** ~6–12 MB a season, gitignored.
   A future `gaffer tidy` target, deliberately not invented here.
-- **The watchlist's `set_at` is reset by every save**, because
-  `watchlist.watch` replaces the note and the timestamp together. The column
-  is labelled "noted" rather than "watching since" for that reason; fixing it
-  means a second store field.
+- **The watchlist's `set_at` is reset by every note save**, because
+  `watchlist.watch` writes the note and the timestamp together. A bare star
+  no longer touches either — that is the note tri-state — but there is still
+  no field holding when the star went on, so the column is labelled "noted"
+  rather than "watching since"; fixing it means a second store field.
 - **The decision ledger has no season key.** After a rollover, a GW-N row
   could name last season's GW-N snapshot: the snapshot *reader* is
   season-guarded, the ledger is not. Nothing reads across a rollover today,

@@ -49,6 +49,22 @@ def test_a_second_star_on_the_same_player_replaces_the_note():
     assert len(load_watchlist()) == 1
 
 
+def test_a_star_that_says_nothing_about_the_note_changes_nothing():
+    """The tri-state, at the store. ``None`` is not ``""``: a caller that only
+    wants the star must not be able to destroy a sentence it never mentioned,
+    and it must not move the star date either."""
+    first = watch(11, note="cheap on Fri")
+    again = watch(11)
+    assert again == first
+    assert load_watchlist()[11] == first
+
+
+def test_an_explicit_empty_note_is_the_way_to_clear_one():
+    watch(11, note="cheap on Fri")
+    watch(11, note="")
+    assert load_watchlist()[11]["note"] == ""
+
+
 def test_a_star_needs_no_note_at_all():
     """A bookmark with nothing written on it is still a bookmark — the whole
     difference between this store and the override store."""
