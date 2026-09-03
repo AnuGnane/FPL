@@ -120,12 +120,17 @@ def _fit(arm: str, train_df, train_tg):
     shipped list and then composed onto it would build arm n+1 on top of
     arm n. Here ``shipped`` is captured before the assignment and restored in
     the ``finally``, so every arm composes from the same base.
+
+    What is added is ``arms_mod.arm_additions``' answer and not the raw arm
+    list: W4 shipped ``role``, so its columns are inside ``shipped`` already
+    and naming them again would hand LightGBM a duplicated feature name.
     """
     from gaffer.models.train import train_all
 
     shipped = list(tr.MINUTES_FEATURES)
+    adds = arms_mod.arm_additions(arm, shipped)
     try:
-        tr.MINUTES_FEATURES = list(shipped) + list(arms_mod.ARMS[arm])
+        tr.MINUTES_FEATURES = list(shipped) + adds
         return train_all(train_df, train_tg.dropna(subset=["elo_diff"]),
                          save=False)
     finally:

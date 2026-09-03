@@ -539,13 +539,23 @@ ones):
   grades are never rewritten.
 - A season of price-log data must accrue before a price-timing term is
   worth building.
-- The two v12 minutes arms built on FPL-Core-Insights (`role_wb_share`,
-  `density_pub_7d`) are **built and fed to no head**: both columns exist on
-  the training frame and the serving frame, neither is in `MINUTES_FEATURES`,
-  and the pre-registered two-half rule — a starters-slice log-loss gain *and*
-  an autosub-week points delta — is measured by two drivers the orchestrator
-  runs after a `gaffer core-insights` collection. Until then the honest
-  reading is "not yet measured", not "no effect".
+- **Closed rather than pending, and left here because the previous entry
+  said otherwise:** the two v12 minutes arms built on FPL-Core-Insights were
+  measured on 2026-09-03 and the pre-registered two-half rule split them.
+  **`role_wb_share` ships on**: starters-slice `p_start` log-loss 0.43723 →
+  0.42889 (−1.907% relative) for +0.002 of zeros RMSE, and +0.133 mean points
+  over the 15 weeks of 38 an autosub fired. It is in `MINUTES_FEATURES` and
+  takes effect on the next `gaffer train`; a model pickled before the flip
+  pins its columns at fit time and keeps predicting.
+- **`density_pub_7d` is withdrawn**: 0.43584 (−0.318%, under the 1% bar) for
+  +0.006 of zeros RMSE (over the 0.005 guard), so half (a) fails and its
+  half (b) pass (+0.333) does not rescue it. It stays built on both seams and
+  fed to no head, for a later cycle to re-measure.
+- Recorded outside the rule, because it is worth knowing: over **all** 38
+  weeks the mean points delta is −0.211 for role and −0.895 for density.
+  Half (b) was pre-registered on the autosub weeks and read as written; the
+  W4 no-regression replay was run with both arms off, as pre-registered, so
+  the flip's decision-path evidence is the counterfactual and not the replay.
 - The Field panel's `P(top-10k)` has no source: no top-10k weekly score
   threshold series exists in anything gaffer reads, so it is a named empty
   state rather than a guess.

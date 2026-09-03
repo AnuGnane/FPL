@@ -840,7 +840,7 @@ file the publisher corrects *after* it went final, not for the week being
 played, which refreshes itself. A failed re-fetch leaves the previous copy in
 place, because freshness is worth a request and never a deletion.
 
-**Two minutes arms, built on both seams and fed to no head.**
+**Two minutes arms, built on both seams; one of them now ships.**
 `role_wb_share` reads the share of a defender's last five starts whose
 per-match profile is a wing-back's rather than a centre-back's — a stated
 convention (a start with at least one accurate cross or three touches in the
@@ -856,8 +856,7 @@ not cover is **missing rather than zero** — a zero there is a claim the club
 played nothing, and it read as 100% coverage to the arm driver until a review
 caught it.
 
-Neither is in `MINUTES_FEATURES`. **They ship off, built and unmeasured**, and
-the arm rule was pre-registered before either driver ran: an arm is kept only
+The arm rule was pre-registered before either driver ran: an arm is kept only
 if `scripts/v12_w4_arms.py` shows the starters-slice `p_start` log-loss improve
 by at least 1% relative against *that run's own control* with zeros RMSE no
 worse by more than 0.005, **and** `scripts/v12_w4_autosub_cf.py` shows the mean
@@ -871,6 +870,28 @@ learn is "populated implies test season" — the exact confound that withdrew
 v5's congestion features. If training coverage comes back zero the drivers
 **exit**: "not measurable on any window the archive covers" and "no effect" are
 different findings, and only one of them would be true.
+
+**Both drivers ran on 2026-09-03** and the rule decided them opposite ways.
+Half (a): baseline starters-slice log-loss 0.43723 with zeros RMSE 0.917;
+`role_wb_share` 0.42889 — a **1.907%** relative gain — for **+0.002** of zeros
+RMSE, clearing both guards; `density_pub_7d` 0.43584, a **0.318%** gain for
+**+0.006** of zeros, failing both. Half (b), over the 15 weeks of 38 in which
+an autosub actually fired: role **+0.133** mean points, density **+0.333** —
+both pass. So **`role_wb_share` and `role_wb_missing` are now in
+`MINUTES_FEATURES`** and take effect on the next `gaffer train`; a minutes
+model pickled before the flip pins its own column list at fit time and keeps
+predicting untouched. **`density_pub_7d` is withdrawn** — half (b) passing
+does not rescue an arm that failed half (a) — and stays built on both seams
+and fed to no head, so a later cycle re-measures it rather than rebuilding it.
+
+One number stated because burying it would be the dishonest thing: over **all
+38 weeks**, not only the autosub ones, the mean points delta is **−0.211** for
+role and **−0.895** for density. That is outside the pre-registered rule,
+which asked about the weeks the intervention is *about*, and the rule is read
+as written rather than rewritten after the fact. It is recorded here anyway,
+and the next cycle to touch these arms should read it first. The W4
+no-regression replay was run with **both arms off**, exactly as pre-registered
+— the arm's evidence is the counterfactual, not the replay.
 
 One qualification stated rather than glossed: the fixture table is *today's*
 published schedule, not a snapshot of what was published at the time — the

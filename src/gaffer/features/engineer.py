@@ -877,8 +877,11 @@ def feature_columns(stats: list[str] = ROLL_STATS,
             + SHRUNK_FEATURES + SHRUNK_MODE_FEATURES
             + SHRUNK_CARD_FEATURES + XG_PER_SHOT_FEATURES
             # v12 W4 §5.2. Listed here because ``feature_columns`` is what a
-            # caller strips before re-deriving; the columns are *built* on
-            # every frame and fed to no head until an arm passes.
+            # caller strips before re-deriving; both pairs are *built* on
+            # every frame whatever any head reads. The gate (2026-09-03) put
+            # ROLE_FEATURES into ``MINUTES_FEATURES`` and withdrew
+            # DENSITY_FEATURES, which is still built and fed to no head —
+            # numbers in the ``MINUTES_FEATURES`` docstring.
             + ROLE_FEATURES + DENSITY_FEATURES)
 
 
@@ -1582,6 +1585,12 @@ season indicator wearing a role's name, which is exactly what withdrew v5's
 :data:`WB_MIN_STARTS` prior starts, and on a machine with no collection. Three
 different silences, one indicator: LightGBM handles the NaN natively and the
 indicator is what lets it separate "we do not know" from "we know it is zero".
+
+**The gate kept this arm** (2026-09-03): both columns are in
+``gaffer.models.train.MINUTES_FEATURES`` and take effect on the next
+``gaffer train``. Its docstring carries the numbers, both halves of the rule
+and the all-weeks caveat — that is where every kept and withdrawn minutes arm
+in this project is recorded.
 """
 
 WB_CROSSES = 1
@@ -1722,6 +1731,13 @@ away.
 season the collection does not cover, and on a row with no kickoff time. Zero
 would be a claim that the club plays nothing that week, which is a different
 and much stronger statement than "we do not know".
+
+**The gate withdrew this arm** (2026-09-03): half (a) failed on both guards —
+a 0.318% log-loss gain where 1% was required, for +0.006 of zeros RMSE where
+0.005 was the tolerance — and half (b) passing does not rescue it. Both
+columns stay built on both seams and are fed to no head, so the next cycle
+re-measures them rather than rebuilding them. Numbers in the
+``MINUTES_FEATURES`` docstring.
 """
 
 DENSITY_WINDOW_DAYS = 7

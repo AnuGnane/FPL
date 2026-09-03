@@ -22,6 +22,7 @@ from gaffer.features.bps import (FIRST_NEW_RULES_SEASON, apply_new_bps,
 from gaffer.data.understat import UNDERSTAT_PLAYER_PATH, UNDERSTAT_TEAM_PATH
 from gaffer.features.engineer import (LEAGUE_CONGESTION_FEATURES,
                                       LEAGUE_CONGESTION_PREFIX,
+                                      ROLE_FEATURES,
                                       ROTATION_FEATURES,
                                       ROTATION_PRIOR_FEATURES, US_STATS,
                                       XG_PER_SHOT_FEATURES,
@@ -51,7 +52,7 @@ from gaffer.models.team import (BLEND_PARAMS_NAME, TEAM_FEATURES, TeamModel,
 
 MINUTES_FEATURES = ["minutes_r1", "minutes_r3", "minutes_r5", "minutes_r10",
                     "starts_r1", "starts_r3", "starts_r5", "starts_r10",
-                    "days_rest", "home"] + ROTATION_FEATURES
+                    "days_rest", "home"] + ROTATION_FEATURES + ROLE_FEATURES
 """Feature set for :class:`ThreeModeModel`.
 
 The ``starts_r*`` means answer "is he a starter?" on a season-long timescale
@@ -168,11 +169,43 @@ Either half failing is a withdrawal, and ``train_covered == 0`` is neither: the
 drivers exit, and the honest record is "not measurable on any window the
 archive covers".
 
-Both columns are built on the training frame *and* the serving frame and
-**neither is listed above**, so the shipped minutes model is not told about
-them and this docstring records the registration rather than a result.
-Numbers, ship-or-withdraw, and the coverage report go here when the
-orchestrator has run them.
+**Result, 2026-09-03**, both drivers run on the shifted window after
+``gaffer core-insights`` had collected 2024-25, 2025-26 and 2026-27. Half (a),
+``scripts/v12_w4_arms.py``, over 18555 zeros rows and 7815 starter rows:
+
+    baseline  zeros 0.917  haulers 5.508  all 1.946  p_start LL 0.43723
+    role      zeros 0.919  haulers 5.517  all 1.949  p_start LL 0.42889
+    density   zeros 0.923  haulers 5.488  all 1.946  p_start LL 0.43584
+
+— ``role`` a relative log-loss gain of **1.907%** against a zeros cost of
+**+0.002**, which clears both guards; ``density`` **0.318%** against
+**+0.006**, which fails both. Half (b), ``scripts/v12_w4_autosub_cf.py``, over
+the 15 weeks of 38 in which an autosub actually fired: role **+0.133** mean
+points, density **+0.333**, both non-negative and both passing.
+
+**Kept: role_wb_share, role_wb_missing** — both halves hold, and they are
+listed above. **Withdrawn: density_pub_7d, density_pub_missing** — half (a)
+fails, and half (b) passing does not rescue it, because either half failing is
+a withdrawal. Density stays built on both seams and fed to no head, the way
+every withdrawn arm in this docstring does: the column costs a fit nothing and
+the next cycle re-measures it rather than rebuilding it.
+
+One caveat recorded rather than buried, because it is outside the rule and the
+rule is what ships an arm: over **all** 38 weeks, not only the autosub ones,
+the mean points delta is **−0.211** for role and **−0.895** for density (role
+picked a different XI in 23 weeks and a different bench in 29). Half (b) was
+pre-registered on the autosub weeks — the weeks the intervention is *about* —
+and it is read as pre-registered. But neither arm's all-weeks delta came back
+positive, and a later cycle re-measuring these arms should start there.
+
+Two operational notes. The flip takes effect on the next ``gaffer train``: a
+minutes asset pickled before it pins its own column list at fit time
+(``ThreeModeModel.feature_cols``), so it keeps predicting on a post-flip frame
+and simply ignores the two new columns. And the served frame really does carry
+them — ``add_role_wb_share`` is wired into ``load_training_frame`` *and*
+``build_prediction_frame``, W2 §3.5's lesson — so there is no train/serve skew;
+on 2026-27 the share is all-missing until a defender has five prior starts in
+the archive, and ``role_wb_missing`` is the column that carries those rows.
 """
 
 # Team-level clean sheet / goals conceded held at league-average constants

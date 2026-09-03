@@ -1,5 +1,19 @@
 """v12 W4 §5.2: the two new minutes arms, pre-registered.
 
+**Verdict, 2026-09-03 — role SHIPPED, density WITHDRAWN.** Run on the shifted
+window below after ``gaffer core-insights`` had collected 2024-25, 2025-26 and
+2026-27. Half (a), this driver: baseline starters ``p_start`` log-loss 0.43723
+with zeros RMSE 0.917; ``role`` 0.42889 (−1.907% relative) with zeros 0.919
+(+0.002); ``density`` 0.43584 (−0.318%) with zeros 0.923 (+0.006). Half (b),
+``scripts/v12_w4_autosub_cf.py``, over the 15 weeks of 38 an autosub fired:
+role +0.133, density +0.333, both passing. Role holds both halves and is now
+inside ``MINUTES_FEATURES``; density fails half (a) and stays built on both
+seams and fed to no head. Recorded outside the rule: over all 38 weeks the
+mean deltas are −0.211 (role) and −0.895 (density). The file is kept runnable
+so the next cycle can re-measure density — and re-measure role by taking it
+back out of ``MINUTES_FEATURES``, which is what :func:`arm_additions` makes
+safe rather than silently duplicative.
+
 **These are new arms and they are not the withdrawn congestion arm.**
 ``role_wb_share`` is a *positional* reading of a defender's last five starts,
 which nothing in this project has ever had. ``density_pub_7d`` is a count of
@@ -111,7 +125,11 @@ ARMS: dict[str, list[str]] = {
 }
 """Two arms and one control, each arm's columns going in as a block: the share
 and its missing indicator are one claim, and a withdrawal is a withdrawal of
-the claim rather than of a column."""
+the claim rather than of a column.
+
+``role`` is now shipped, so its columns already sit inside
+``MINUTES_FEATURES``. It stays listed here as the record of what was measured;
+:func:`arm_additions` is what keeps that from meaning "fit it twice"."""
 
 ARM_COLS = ["role_wb_share", "density_pub_7d"]
 """The *value* columns, as opposed to the missing indicators. Coverage is
@@ -135,8 +153,34 @@ def _memoised():
     return df.copy(), tg.copy(), elo
 
 
+def arm_additions(name: str, shipped: list[str] | None = None) -> list[str]:
+    """The arm's columns that the shipped list does not already carry.
+
+    W4's gate shipped ``role`` ON, which puts ``ROLE_FEATURES`` inside
+    ``MINUTES_FEATURES``; ``shipped + ARMS["role"]`` would then name the same
+    column twice, and LightGBM refuses a duplicated feature name. Worse, if it
+    did not, the "arm" would be the control with a label on it.
+
+    So an arm is its *additions* to whatever is shipped today, and an arm with
+    no additions is an arm already in the model — a state the callers name
+    (``W4_ARM_SHIPPED``) and skip rather than measure. Take a shipped arm back
+    out of ``MINUTES_FEATURES`` and this file re-measures it unchanged.
+    """
+    base = set(tr.MINUTES_FEATURES if shipped is None else shipped)
+    return [c for c in ARMS[name] if c not in base]
+
+
+def is_shipped(name: str) -> bool:
+    """``True`` for an arm that has columns and has nothing left to add.
+
+    An arm with *no columns at all* is not shipped, it is misconfigured, and
+    :func:`check_lever` must still refuse it — that is guard 1's whole job.
+    """
+    return bool(ARMS[name]) and not arm_additions(name)
+
+
 def arm_features(name: str) -> list[str]:
-    return list(tr.MINUTES_FEATURES) + list(ARMS[name])
+    return list(tr.MINUTES_FEATURES) + arm_additions(name)
 
 
 def _histogram(values: pd.Series, nonnull: float) -> dict:
@@ -227,10 +271,21 @@ def check_coverage(report: dict) -> None:
 
 
 def check_lever(df: pd.DataFrame) -> None:
-    """Lever guards 1-3 (``scripts/v10_shrunk_arm.py:107-133``)."""
+    """Lever guards 1-3 (``scripts/v10_shrunk_arm.py:107-133``).
+
+    A *shipped* arm is announced and skipped, not refused. Guard 1 exists to
+    catch a lever that is not connected to anything; an arm the gate already
+    passed builds the control's feature list for the opposite reason, and
+    exiting on it would kill every later run of this driver on the one arm
+    that worked.
+    """
     base = set(arm_features("baseline"))
     for name, cols in ARMS.items():
         if name == "baseline":
+            continue
+        if is_shipped(name):
+            print(f"W4_ARM_SHIPPED {name} — its columns are already in "
+                  f"MINUTES_FEATURES; not re-measured", flush=True)
             continue
         if set(arm_features(name)) == base:
             raise SystemExit(
@@ -359,11 +414,16 @@ def main() -> None:
         # later test reads.
         tr.load_training_frame = _memoised
         for name in ARMS:
+            adds = arm_additions(name, shipped)
+            if name != "baseline" and not adds:
+                # Already inside the shipped list — check_lever said so and
+                # said why. Measuring it would score the control twice.
+                continue
             # One statement, and that is the point: ``arm_features`` reads the
             # module global, so assigning the shipped list and then composing
             # onto the global would leave arm n+1 built on top of arm n and
             # report the union of two arms under the second one's name.
-            tr.MINUTES_FEATURES = list(shipped) + list(ARMS[name])
+            tr.MINUTES_FEATURES = list(shipped) + adds
             results[name] = run_arm(name)
             print("W4_ARM_DONE", name, json.dumps(results[name]), flush=True)
     finally:
@@ -371,7 +431,7 @@ def main() -> None:
         tr.load_training_frame = _real_load
 
     verdicts = {name: verdict(results["baseline"], results[name])
-                for name in ARMS if name != "baseline"}
+                for name in ARMS if name != "baseline" and name in results}
     for name, v in verdicts.items():
         print("W4_VERDICT", name, json.dumps(v), flush=True)
     Path("reports").mkdir(exist_ok=True)

@@ -394,11 +394,26 @@ def test_the_new_columns_are_canonical_inputs():
         assert name in cols
 
 
-def test_neither_arm_ships_inside_the_minutes_model():
-    """CONVENTIONS §2: the gate is pre-registered and the arm is off until it
-    passes. A feature that arrives already in the model is a feature nobody
-    measured."""
-    for name in ROLE_FEATURES + DENSITY_FEATURES:
+def test_role_ships_inside_the_minutes_model_and_density_does_not():
+    """The §5.2 gate's verdict, pinned (run 2026-09-03, window
+    ``train_max_idx=2`` / ``test_idx=3``, after ``gaffer core-insights``).
+
+    Half (a), ``scripts/v12_w4_arms.py``: baseline starters-slice ``p_start``
+    log-loss 0.43723 with zeros RMSE 0.917; ``role`` 0.42889 (−1.907%
+    relative) with zeros 0.919 (+0.002) — **keep**; ``density`` 0.43584
+    (−0.318%) with zeros 0.923 (+0.006) — **withdraw**, failing both the 1%
+    bar and the 0.005 zeros guard.
+
+    Half (b), ``scripts/v12_w4_autosub_cf.py``, 15 autosub weeks of 38: role
+    +0.133 and density +0.333 mean points, both passing.
+
+    Both halves therefore hold for ``role`` and half (a) fails for
+    ``density``, so role ships ON and density is withdrawn — built on both
+    seams, fed to no head, kept for re-measurement.
+    """
+    for name in ROLE_FEATURES:
+        assert name in tr.MINUTES_FEATURES
+    for name in DENSITY_FEATURES:
         assert name not in tr.MINUTES_FEATURES
 
 
@@ -507,6 +522,60 @@ def test_the_prediction_frame_degrades_to_missing_with_no_collection(
     assert out["role_wb_missing"].iloc[0] == 1.0
     assert np.isnan(out["density_pub_7d"].iloc[0])
     assert out["density_pub_missing"].iloc[0] == 1.0
+
+
+def test_the_serving_frame_carries_every_column_the_minutes_head_was_fitted_on(
+        monkeypatch, tmp_path):
+    """Now that ``role`` is inside ``MINUTES_FEATURES``, W2 §3.5's lesson has
+    teeth: a column the training seam grows and the serving seam does not is a
+    ``KeyError`` in ``predict_modes`` on the first weekly run, not a quiet
+    degradation. Fit on a frame that has the role columns, then predict on a
+    frame the *serving* path built — on a cold clone, where they are
+    all-missing and only the indicator carries the row."""
+    from gaffer.models.minutes import ThreeModeModel
+
+    monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")
+    rng = np.random.default_rng(5)
+    train = pd.DataFrame({c: rng.random(60) for c in tr.MINUTES_FEATURES})
+    train["minutes"] = [0, 20, 90] * 20
+    train["starts"] = [0.0, 0.0, 1.0] * 20
+    train["season_idx"] = 3
+    train["gw"] = list(range(1, 21)) * 3
+    fitted = ThreeModeModel(list(tr.MINUTES_FEATURES)).fit(train)
+
+    future = pd.DataFrame([
+        {"code": 100, "season_idx": 3, "gw": 7, "team_code": 8, "opp_code": 2,
+         "was_home": True, "position": "DEF",
+         "kickoff_time": "2025-09-20T14:00:00Z"}])
+    served = build_prediction_frame(
+        pd.DataFrame(columns=list(future.columns)), future)
+
+    missing = [c for c in fitted.feature_cols if c not in served.columns]
+    assert missing == []
+    modes = fitted.predict_modes(served)
+    assert 0.0 <= float(modes["p_start"].iloc[0]) <= 1.0
+
+
+def test_a_pre_flip_minutes_asset_still_predicts_on_a_post_flip_frame():
+    """``feature_cols`` is pinned at fit, so a pickle trained before the flip
+    selects the columns it knows and ignores the two new ones. Nobody has to
+    retrain before the next ``gaffer advise``; the flip takes effect on the
+    next ``gaffer train``."""
+    from gaffer.models.minutes import ThreeModeModel
+
+    before = [c for c in tr.MINUTES_FEATURES if c not in ROLE_FEATURES]
+    rng = np.random.default_rng(6)
+    old_frame = pd.DataFrame({c: rng.random(60) for c in before})
+    old_frame["minutes"] = [0, 20, 90] * 20
+    old_frame["starts"] = [0.0, 0.0, 1.0] * 20
+    old_frame["season_idx"] = 3
+    old_frame["gw"] = list(range(1, 21)) * 3
+    fitted = ThreeModeModel(before).fit(old_frame)
+
+    new_frame = old_frame.copy()
+    new_frame["role_wb_share"] = float("nan")
+    new_frame["role_wb_missing"] = 1.0
+    assert len(fitted.predict_modes(new_frame)) == len(new_frame)
 
 
 def test_the_training_frame_populates_both_arms_from_the_archive(
@@ -743,8 +812,47 @@ def test_the_arm_composes_from_the_shipped_list_and_not_from_its_predecessor():
     d = _driver()
     import inspect
     src = inspect.getsource(d.main)
-    assert "tr.MINUTES_FEATURES = list(shipped) + list(ARMS[name])" in src
+    assert "tr.MINUTES_FEATURES = list(shipped) + adds" in src
     assert "tr.MINUTES_FEATURES = shipped\n" not in src.split("finally:")[0]
+
+
+def test_an_arm_already_shipped_adds_nothing_and_is_skipped():
+    """W4's gate shipped ``role`` ON, so ``MINUTES_FEATURES`` now carries
+    ROLE_FEATURES and ``shipped + ARMS["role"]`` would hand LightGBM the same
+    column twice. An arm with nothing left to add is the control by another
+    name: the driver names it and moves on rather than measuring it."""
+    d = _driver()
+    assert d.arm_additions("role") == []
+    assert d.arm_additions("density") == list(DENSITY_FEATURES)
+    assert d.arm_features("role") == list(tr.MINUTES_FEATURES)
+
+
+def test_the_lever_guard_flags_a_shipped_arm_instead_of_exiting(capsys):
+    """Guard 1 refuses an arm that builds the control's list — which is
+    exactly what a shipped arm now does. The refusal is for a *disconnected*
+    lever, so a shipped arm has to be told apart from a broken one or every
+    later run of this driver dies on the arm that passed."""
+    d = _driver()
+    frame = pd.DataFrame({"season_idx": [2, 2, 3],
+                          "role_wb_share": [0.5, 0.25, float("nan")],
+                          "role_wb_missing": [0.0, 0.0, 1.0],
+                          "density_pub_7d": [1.0, 2.0, float("nan")],
+                          "density_pub_missing": [0.0, 0.0, 1.0]})
+    d.check_lever(frame)          # does not raise: role is shipped, not broken
+    out = capsys.readouterr().out
+    assert "W4_ARM_SHIPPED role" in out
+    assert "W4_ARM_LEVER ok" in out
+
+
+def test_an_arm_with_no_columns_is_still_refused_as_a_disconnected_lever(
+        monkeypatch):
+    """The guard the shipped-arm skip must not have swallowed. An arm with no
+    columns at all also builds the control's list, and that one is
+    misconfigured rather than shipped — the exit still has to fire."""
+    d = _driver()
+    monkeypatch.setitem(d.ARMS, "density", [])
+    with pytest.raises(SystemExit):
+        d.check_lever(pd.DataFrame({"role_wb_share": [0.5, 0.25]}))
 
 
 # --- Task 11: the autosub counterfactual driver --------------------------
@@ -793,5 +901,6 @@ def test_both_drivers_say_what_a_run_costs():
 def test_each_arm_fits_from_the_shipped_list_and_not_from_its_predecessor():
     import inspect
     src = inspect.getsource(_cf_driver()._fit)
-    assert ("tr.MINUTES_FEATURES = list(shipped) "
-            "+ list(arms_mod.ARMS[arm])") in src
+    assert "adds = arms_mod.arm_additions(arm, shipped)" in src
+    assert "tr.MINUTES_FEATURES = list(shipped) + adds" in src
+    assert "tr.MINUTES_FEATURES = shipped\n" not in src.split("try:")[0]

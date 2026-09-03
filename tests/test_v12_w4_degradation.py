@@ -251,14 +251,32 @@ def test_the_arms_are_all_missing_and_never_zero_without_a_collection(clone):
     assert out["density_pub_missing"].tolist() == [1.0]
 
 
-def test_the_arms_are_wired_but_fed_to_no_head(clone):
-    """CONVENTIONS §2: pre-registered means off until the gate says on."""
+def test_role_is_fed_to_the_minutes_head_and_density_is_not(clone):
+    """CONVENTIONS §2: pre-registered means off until the gate says on, and
+    the §5.2 gate said on for one arm of the two (run 2026-09-03, window
+    ``train_max_idx=2`` / ``test_idx=3``).
+
+    Half (a): baseline starters ``p_start`` log-loss 0.43723 / zeros 0.917;
+    ``role`` 0.42889 (−1.907%) / zeros 0.919 (+0.002) — keep; ``density``
+    0.43584 (−0.318%) / zeros 0.923 (+0.006) — withdraw. Half (b), over the
+    15 autosub weeks of 38: role +0.133, density +0.333, both passing. Role
+    holds both halves; density fails (a). **Role ships on, density is
+    withdrawn** and stays built on both seams, fed to no head.
+
+    The degradation claim is the one this file exists for: on a clone that
+    has never collected, ``role_wb_share`` is all-missing and
+    ``role_wb_missing`` is 1.0, so a *shipped* column changes nothing about
+    what a cold machine can answer.
+    """
     from gaffer.features.engineer import (DENSITY_FEATURES, ROLE_FEATURES,
                                           feature_columns)
     from gaffer.models.train import MINUTES_FEATURES
 
     for name in ROLE_FEATURES + DENSITY_FEATURES:
         assert name in feature_columns()
+    for name in ROLE_FEATURES:
+        assert name in MINUTES_FEATURES
+    for name in DENSITY_FEATURES:
         assert name not in MINUTES_FEATURES
 
 
