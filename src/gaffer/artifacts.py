@@ -213,6 +213,22 @@ def save_solve_state(state: SolveState) -> tuple[Path, Path]:
                         for g, c in state.avail_by_gw.items()},
         "opt": dict(state.opt),
     }, indent=1))
+    # v12 W5 §6.4. The same pool, frozen and dated, so Review can read the EP
+    # table that stood at the deadline rather than the one the last re-run
+    # left behind. Wrapped and swallowed: banking the solve state is this
+    # function's job, and a run that died because a snapshot could not be
+    # written would be a far worse trade (``save_components``' reasoning).
+    #
+    # The import is local, not top-of-module: ``artifacts`` is imported early
+    # by ``config``'s own callers and a module-level import here is a cycle
+    # waiting for a refactor. ``_availability_frame`` sets the precedent.
+    from gaffer.config import serving_config
+    try:
+        save_projection_snapshot(
+            state.pool, state.gw, state.generated_at,
+            str(getattr(serving_config(), "current_season", "") or ""))
+    except Exception as exc:  # noqa: BLE001 — a snapshot is never worth a run
+        print(f"projections: no snapshot kept for GW{state.gw} ({exc})")
     return parquet, meta
 
 
@@ -711,3 +727,139 @@ def ep_movers(gw: int, threshold: float = EP_MOVER_THRESHOLD) -> list | None:
                      "delta": round(delta, 2)})
     rows.sort(key=lambda r: abs(r["delta"]), reverse=True)
     return rows[:EP_MOVERS_KEEP]
+
+
+PROJECTIONS = REPORTS / "projections"
+"""Frozen copies of the EP table each advise run solved over (v12 W5 §6.4).
+
+``solve_state_gw{N}.parquet`` is one slot per gameweek and advise runs several
+times a week, so the file that survives to Tuesday is the *last* run — which
+may be the one written after kickoff. The advice payload has not had that
+problem since v9c (``ADVICE_HISTORY`` keeps 20 and
+``journal.latest_run_per_gw`` picks the newest run written before the
+deadline); this directory gives the EP table the same treatment under the same
+rule.
+
+Kept for the season and never pruned here. A snapshot is the pool — roughly
+700 codes times the horizon times nine columns, 40-80 KB — so four runs a week
+across a season is about 6-12 MB in a gitignored directory. Deciding which one
+Review will want, before Review has ever wanted one, is not this cycle's call.
+"""
+
+
+@dataclass(frozen=True)
+class ProjectionSnapshot:
+    path: Path
+    season: str
+    gw: int
+    stamp: str
+    """The writer's own UTC stamp, ``%Y%m%dT%H%M%SZ``. Sorts
+    lexicographically, which is why it is the sort key rather than mtime: two
+    runs a second apart can share an mtime, and a copied ``reports/`` has
+    mtimes that say nothing at all (``_history_stamp``'s reasoning)."""
+    post_deadline: bool = False
+    """Set only by :func:`latest_projection_before`, and only when *every*
+    snapshot for the gameweek was written after the deadline."""
+
+
+def _stamp_utc(when) -> str | None:
+    """An ISO instant as a filename stamp, or ``None`` if it is not one."""
+    try:
+        at = pd.Timestamp(when)
+    except (TypeError, ValueError):
+        return None
+    if at is pd.NaT or at != at:
+        return None
+    at = at.tz_localize("UTC") if at.tzinfo is None else at.tz_convert("UTC")
+    return at.strftime("%Y%m%dT%H%M%SZ")
+
+
+def projection_path(season: str, gw: int, stamp: str) -> Path:
+    return PROJECTIONS / f"{season}-gw{int(gw)}-{stamp}.parquet"
+
+
+def save_projection_snapshot(pool: "pd.DataFrame", gw: int, generated_at,
+                             season: str) -> Path | None:
+    """Freeze ``pool`` under ``season`` and ``gw``. Never raises.
+
+    ``None`` — and a printed line — rather than an exception on every failure
+    mode, including an empty season. A snapshot filed under the wrong season
+    is worse than no snapshot: the reader selects by glob, and a season-less
+    name would be read back next August as this August's projections.
+    """
+    if not str(season or "").strip():
+        print("projections: no current_season — no snapshot written for "
+              f"GW{int(gw)}")
+        return None
+    # Two chances at a stamp and then give up: the run's own instant, then
+    # now. ``or`` on the pair is not enough on its own — if both came back
+    # ``None`` the f-string below would file the snapshot under the literal
+    # name "None" and every later run would overwrite it.
+    stamp = _stamp_utc(generated_at) or _stamp_utc(datetime.now(timezone.utc))
+    if not stamp:
+        print(f"projections: no usable timestamp — no snapshot written for "
+              f"GW{int(gw)}")
+        return None
+    try:
+        path = projection_path(str(season), int(gw), str(stamp))
+        # ``io.atomic_path`` rather than a bare ``to_parquet``: a reader
+        # globbing this directory must never meet a half-written file, and
+        # two advise runs a second apart are two writers (``io``'s pid temp).
+        # Not ``atomic_save``, which names a path relative to the data store
+        # and this one is under ``reports/``.
+        from gaffer.io import atomic_path
+
+        with atomic_path(path) as tmp:
+            pool.to_parquet(tmp, index=False)
+        return path
+    except Exception as exc:  # noqa: BLE001 — instrumentation never gates a run
+        print(f"projections: no snapshot kept for GW{int(gw)} ({exc})")
+        return None
+
+
+def projection_snapshots(season: str, gw: int) -> list[ProjectionSnapshot]:
+    """Every frozen EP table for one ``(season, gw)``, oldest first.
+
+    ``season`` is a required argument and is matched exactly. Codes, not
+    element ids, are what the pool is keyed on — but a directory selected by a
+    glob is exactly the shape of the cross-season read that element-id remaps
+    make dangerous, so the season is in the name and in the filter.
+    """
+    if not PROJECTIONS.is_dir():
+        return []
+    prefix = f"{season}-gw{int(gw)}-"
+    out = []
+    for path in PROJECTIONS.glob(f"{prefix}*.parquet"):
+        if not path.is_file():
+            continue
+        out.append(ProjectionSnapshot(path=path, season=str(season),
+                                      gw=int(gw),
+                                      stamp=path.stem.rsplit("-", 1)[1]))
+    return sorted(out, key=lambda s: s.stamp)
+
+
+def latest_projection_before(season: str, gw: int,
+                             deadline) -> ProjectionSnapshot | None:
+    """The newest snapshot written before ``deadline``, or the newest at all.
+
+    ``journal.latest_run_per_gw``'s rule applied to the EP table: a run banked
+    after kickoff has seen the team news, and scoring a decision against
+    projections that saw it flatters the model with information nobody had. So
+    the newest *in-time* snapshot wins, and when every one of them is late the
+    newest is returned with ``post_deadline`` set — a flagged comparison is
+    worth more than a missing row as long as it cannot pass itself off as
+    foresight.
+
+    An unparseable deadline takes the same late branch rather than guessing.
+    """
+    snaps = projection_snapshots(season, gw)
+    if not snaps:
+        return None
+    cutoff = _stamp_utc(deadline)
+    if cutoff is not None:
+        in_time = [s for s in snaps if s.stamp < cutoff]
+        if in_time:
+            return in_time[-1]
+    return ProjectionSnapshot(path=snaps[-1].path, season=snaps[-1].season,
+                              gw=snaps[-1].gw, stamp=snaps[-1].stamp,
+                              post_deadline=True)
