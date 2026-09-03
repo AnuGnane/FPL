@@ -250,8 +250,10 @@ def hot_gameweeks(bundle: dict, cache_dir: Path | str = CI_CACHE,
     * its cached ``fixtures.csv`` carries a row that is not ``finished`` —
       the week in progress, and every week beyond it that the publisher has
       already listed (A2d);
-    * or there is no readable cached fixture list to judge it by, in which
-      case the fetch is a fetch anyway and marking it hot costs nothing;
+    * or there is no readable cached fixture list to judge it by — nothing
+      cached at all, or a file that does not parse — in which case the fetch
+      is a fetch anyway (``fetch_csv`` takes the same branch for ``refresh``
+      on a file it has not got) and marking it hot costs nothing;
     * or it is one of the last ``refresh`` gameweeks the season publishes, for
       a caller who passed ``--refresh``.
 
@@ -270,6 +272,7 @@ def hot_gameweeks(bundle: dict, cache_dir: Path | str = CI_CACHE,
             continue
         cached = Path(cache_dir) / path
         if not cached.exists():
+            hot.add(gw)
             continue
         frame = _read_csv(cached.read_text())
         if frame.empty or "finished" not in frame.columns:

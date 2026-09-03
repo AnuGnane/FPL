@@ -580,9 +580,15 @@ def test_the_gameweek_being_played_is_hot_on_every_run(tmp_path):
     assert hot_gameweeks(bundle, tmp_path) == {2}
 
 
-def test_a_gameweek_with_nothing_cached_needs_no_marking(tmp_path):
-    """Nothing to bypass: the fetch is a fetch either way."""
-    assert hot_gameweeks(_bundle([3]), tmp_path) == set()
+def test_a_gameweek_with_nothing_cached_is_hot(tmp_path):
+    """"No readable cached fixture list to judge it by" is the docstring's own
+    second clause and the module docstring's too, and it was the one case the
+    code answered the other way: an uncached gameweek fell through `continue`
+    and came back cold. Harmless today — `fetch_csv` takes the same branch for
+    `refresh=True` on a file it has not got — but a caller reading the set as
+    "the weeks this run will go and look at" was reading a lie, and the fix is
+    to make the code say what both docstrings promise."""
+    assert hot_gameweeks(_bundle([3]), tmp_path) == {3}
 
 
 def test_an_unreadable_cached_fixture_list_is_hot_not_trusted(tmp_path):
