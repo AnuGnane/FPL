@@ -596,7 +596,18 @@ class FixtureExplain(BaseModel):
     ep: float
 
 
-class NextFixture(BaseModel):
+class UpcomingFixture(BaseModel):
+    """One of the next three league games, as the explain panel lists them.
+
+    Deliberately *not* ``NextFixture`` (``:87``), whose name it shadowed until
+    v12 W5: that one is the advised gameweek's single game, with an opponent
+    short name, a kickoff and a difficulty; this one is a gameweek number and
+    an opponent's full name. Two response models under one name gave the
+    schema generator two definitions it could only tell apart by mangling
+    both, and gave every ``from .schemas import NextFixture`` in the tree the
+    second class rather than the first.
+    """
+
     gw: int
     opponent: str
     home: bool
@@ -609,7 +620,7 @@ class PlayerExplain(BaseModel):
     team_name: str
     ep_next: float
     fixtures: list[FixtureExplain]
-    next_fixtures: list[NextFixture]
+    next_fixtures: list[UpcomingFixture]
     set_pieces: dict[str, int | None]
     """``penalties`` / ``free_kicks`` / ``corners``, each the user's override
     file's word where it has one and FPL's otherwise — the same numbers

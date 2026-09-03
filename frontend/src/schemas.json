@@ -1,0 +1,7776 @@
+{
+ "definitions": {
+  "AdviceDiff": {
+   "description": "What changed between the two newest runs of one gameweek.\n\n``available`` is false on a first run of the week \u2014 the ordinary case, not\nan error \u2014 and everything else is then empty, so the client renders\nnothing without having to special-case a status code.",
+   "properties": {
+    "available": {
+     "title": "Available",
+     "type": "boolean"
+    },
+    "buys_added": {
+     "items": {
+      "$ref": "#/definitions/AdvicePlayer"
+     },
+     "title": "Buys Added",
+     "type": "array"
+    },
+    "buys_dropped": {
+     "items": {
+      "$ref": "#/definitions/AdvicePlayer"
+     },
+     "title": "Buys Dropped",
+     "type": "array"
+    },
+    "captain_from": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/AdvicePlayer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "captain_to": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/AdvicePlayer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "changed": {
+     "default": false,
+     "title": "Changed",
+     "type": "boolean"
+    },
+    "chip_from": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Chip From"
+    },
+    "chip_to": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Chip To"
+    },
+    "current_at": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Current At"
+    },
+    "ep_movers": {
+     "items": {
+      "$ref": "#/definitions/EpMover"
+     },
+     "title": "Ep Movers",
+     "type": "array"
+    },
+    "ep_movers_count": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Ep Movers Count"
+    },
+    "expected_pts_delta": {
+     "default": 0.0,
+     "title": "Expected Pts Delta",
+     "type": "number"
+    },
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "previous_at": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Previous At"
+    },
+    "sells_added": {
+     "items": {
+      "$ref": "#/definitions/AdvicePlayer"
+     },
+     "title": "Sells Added",
+     "type": "array"
+    },
+    "sells_dropped": {
+     "items": {
+      "$ref": "#/definitions/AdvicePlayer"
+     },
+     "title": "Sells Dropped",
+     "type": "array"
+    }
+   },
+   "required": [
+    "gw",
+    "available"
+   ],
+   "title": "AdviceDiff",
+   "type": "object"
+  },
+  "AdvicePlayer": {
+   "properties": {
+    "code": {
+     "title": "Code",
+     "type": "integer"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    }
+   },
+   "required": [
+    "code",
+    "name"
+   ],
+   "title": "AdvicePlayer",
+   "type": "object"
+  },
+  "ArtifactItem": {
+   "properties": {
+    "bytes": {
+     "title": "Bytes",
+     "type": "integer"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    }
+   },
+   "required": [
+    "name",
+    "bytes"
+   ],
+   "title": "ArtifactItem",
+   "type": "object"
+  },
+  "BackupHealth": {
+   "properties": {
+    "bytes": {
+     "title": "Bytes",
+     "type": "integer"
+    },
+    "modified_at": {
+     "title": "Modified At",
+     "type": "string"
+    },
+    "path": {
+     "title": "Path",
+     "type": "string"
+    }
+   },
+   "required": [
+    "path",
+    "modified_at",
+    "bytes"
+   ],
+   "title": "BackupHealth",
+   "type": "object"
+  },
+  "BenchmarkEvaluation": {
+   "properties": {
+    "caveat": {
+     "title": "Caveat",
+     "type": "string"
+    },
+    "git_sha": {
+     "title": "Git Sha",
+     "type": "string"
+    },
+    "references": {
+     "additionalProperties": {
+      "additionalProperties": {
+       "$ref": "#/definitions/ReferenceMetrics"
+      },
+      "type": "object"
+     },
+     "title": "References",
+     "type": "object"
+    },
+    "run_at": {
+     "title": "Run At",
+     "type": "string"
+    },
+    "stratified": {
+     "additionalProperties": {
+      "additionalProperties": {
+       "$ref": "#/definitions/CategoryMetrics"
+      },
+      "type": "object"
+     },
+     "title": "Stratified",
+     "type": "object"
+    },
+    "test_season": {
+     "title": "Test Season",
+     "type": "string"
+    }
+   },
+   "required": [
+    "run_at",
+    "git_sha",
+    "test_season",
+    "stratified",
+    "references",
+    "caveat"
+   ],
+   "title": "BenchmarkEvaluation",
+   "type": "object"
+  },
+  "CalibrationGw": {
+   "properties": {
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "heads": {
+     "additionalProperties": {
+      "$ref": "#/definitions/CalibrationHead"
+     },
+     "default": {},
+     "title": "Heads",
+     "type": "object"
+    },
+    "n": {
+     "title": "N",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "gw",
+    "n"
+   ],
+   "title": "CalibrationGw",
+   "type": "object"
+  },
+  "CalibrationHead": {
+   "description": "One probability head's calibration for one gameweek, or a refusal.\n\n``status`` rather than a missing key: a head under\n``evaluation.MIN_CALIBRATION_SAMPLES`` has the same shape as a scored one\nwith nulls in it, so the card renders \"not enough data\" from a field\ninstead of branching on absence.",
+   "properties": {
+    "brier": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Brier"
+    },
+    "log_loss": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Log Loss"
+    },
+    "n": {
+     "title": "N",
+     "type": "integer"
+    },
+    "reliability": {
+     "default": [],
+     "items": {
+      "$ref": "#/definitions/ReliabilityBin"
+     },
+     "title": "Reliability",
+     "type": "array"
+    },
+    "status": {
+     "title": "Status",
+     "type": "string"
+    }
+   },
+   "required": [
+    "status",
+    "n"
+   ],
+   "title": "CalibrationHead",
+   "type": "object"
+  },
+  "CategoryMetrics": {
+   "properties": {
+    "mae": {
+     "title": "Mae",
+     "type": "number"
+    },
+    "n": {
+     "title": "N",
+     "type": "integer"
+    },
+    "rmse": {
+     "title": "Rmse",
+     "type": "number"
+    }
+   },
+   "required": [
+    "rmse",
+    "mae",
+    "n"
+   ],
+   "title": "CategoryMetrics",
+   "type": "object"
+  },
+  "ChipPlan": {
+   "properties": {
+    "chips": {
+     "items": {
+      "$ref": "#/definitions/ChipPlanRow"
+     },
+     "title": "Chips",
+     "type": "array"
+    },
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "gw",
+    "chips"
+   ],
+   "title": "ChipPlan",
+   "type": "object"
+  },
+  "ChipPlanRow": {
+   "properties": {
+    "best_gain": {
+     "title": "Best Gain",
+     "type": "number"
+    },
+    "best_gain_per_week": {
+     "title": "Best Gain Per Week",
+     "type": "number"
+    },
+    "best_gw": {
+     "title": "Best Gw",
+     "type": "integer"
+    },
+    "chip": {
+     "title": "Chip",
+     "type": "string"
+    },
+    "now_gain": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Now Gain"
+    },
+    "play_now": {
+     "anyOf": [
+      {
+       "type": "boolean"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Play Now"
+    },
+    "play_now_delta": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Play Now Delta"
+    },
+    "thetas": {
+     "default": [],
+     "items": {
+      "type": "number"
+     },
+     "title": "Thetas",
+     "type": "array"
+    },
+    "threshold_now": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Threshold Now"
+    },
+    "threshold_source": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Threshold Source"
+    },
+    "weeks": {
+     "items": {
+      "$ref": "#/definitions/ChipWeek"
+     },
+     "title": "Weeks",
+     "type": "array"
+    },
+    "weeks_scored": {
+     "title": "Weeks Scored",
+     "type": "integer"
+    },
+    "window": {
+     "default": [],
+     "items": {
+      "type": "integer"
+     },
+     "title": "Window",
+     "type": "array"
+    }
+   },
+   "required": [
+    "chip",
+    "weeks",
+    "best_gw",
+    "best_gain",
+    "best_gain_per_week",
+    "weeks_scored",
+    "now_gain",
+    "play_now_delta"
+   ],
+   "title": "ChipPlanRow",
+   "type": "object"
+  },
+  "ChipWeek": {
+   "properties": {
+    "gain": {
+     "title": "Gain",
+     "type": "number"
+    },
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "per_week": {
+     "title": "Per Week",
+     "type": "number"
+    }
+   },
+   "required": [
+    "gw",
+    "gain",
+    "per_week"
+   ],
+   "title": "ChipWeek",
+   "type": "object"
+  },
+  "ChipWorkbenchRow": {
+   "description": "One (chip, gameweek) cell of the advice run's own chip table.\n\n``threshold`` is the \u03b8 bar that week \u2014 the surplus the best remaining week\nis expected to offer \u2014 so the workbench can draw the gain against the bar\nrather than against an arbitrary axis. Both it and ``play_now`` are\noptional because an advice payload written before the chip policy landed\ncarries neither.",
+   "properties": {
+    "chip": {
+     "title": "Chip",
+     "type": "string"
+    },
+    "gain": {
+     "title": "Gain",
+     "type": "number"
+    },
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "gw2": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Gw2"
+    },
+    "note": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Note"
+    },
+    "per_week": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Per Week"
+    },
+    "play_now": {
+     "default": false,
+     "title": "Play Now",
+     "type": "boolean"
+    },
+    "threshold": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Threshold"
+    },
+    "threshold_source": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Threshold Source"
+    }
+   },
+   "required": [
+    "chip",
+    "gw",
+    "gain"
+   ],
+   "title": "ChipWorkbenchRow",
+   "type": "object"
+  },
+  "ChipsWorkbench": {
+   "properties": {
+    "chips": {
+     "items": {
+      "$ref": "#/definitions/ChipWorkbenchRow"
+     },
+     "title": "Chips",
+     "type": "array"
+    },
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "wildcard": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/SquadDiff"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "required": [
+    "gw",
+    "chips"
+   ],
+   "title": "ChipsWorkbench",
+   "type": "object"
+  },
+  "Component": {
+   "properties": {
+    "label": {
+     "title": "Label",
+     "type": "string"
+    },
+    "points": {
+     "title": "Points",
+     "type": "number"
+    }
+   },
+   "required": [
+    "label",
+    "points"
+   ],
+   "title": "Component",
+   "type": "object"
+  },
+  "ComponentFixture": {
+   "description": "One player-fixture's additive terms.\n\nDeliberately shaped like :class:`FixtureExplain` (the explain modal's\nper-fixture row) without being it: this one is read from the saved\ncomponents parquet with no model loading at all, and carries only what a\nwhy-panel renders.",
+   "properties": {
+    "components": {
+     "items": {
+      "$ref": "#/definitions/Component"
+     },
+     "title": "Components",
+     "type": "array"
+    },
+    "ep": {
+     "title": "Ep",
+     "type": "number"
+    },
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "home": {
+     "title": "Home",
+     "type": "boolean"
+    },
+    "kickoff_time": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Kickoff Time"
+    },
+    "minutes": {
+     "$ref": "#/definitions/MinutesOutput"
+    },
+    "opponent": {
+     "title": "Opponent",
+     "type": "string"
+    },
+    "pen_taker": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Pen Taker"
+    }
+   },
+   "required": [
+    "gw",
+    "opponent",
+    "home",
+    "kickoff_time",
+    "components",
+    "minutes",
+    "ep"
+   ],
+   "title": "ComponentFixture",
+   "type": "object"
+  },
+  "ComponentPlayer": {
+   "properties": {
+    "code": {
+     "title": "Code",
+     "type": "integer"
+    },
+    "ep": {
+     "title": "Ep",
+     "type": "number"
+    },
+    "ep_gw": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Ep Gw"
+    },
+    "ep_hi": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Ep Hi"
+    },
+    "ep_lo": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Ep Lo"
+    },
+    "fixtures": {
+     "items": {
+      "$ref": "#/definitions/ComponentFixture"
+     },
+     "title": "Fixtures",
+     "type": "array"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "p_blank": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "P Blank"
+    },
+    "p_haul": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "P Haul"
+    },
+    "position": {
+     "title": "Position",
+     "type": "string"
+    },
+    "sigma": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Sigma"
+    },
+    "team_name": {
+     "title": "Team Name",
+     "type": "string"
+    }
+   },
+   "required": [
+    "code",
+    "name",
+    "position",
+    "team_name",
+    "ep",
+    "fixtures"
+   ],
+   "title": "ComponentPlayer",
+   "type": "object"
+  },
+  "ComponentsBreakdown": {
+   "properties": {
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "players": {
+     "items": {
+      "$ref": "#/definitions/ComponentPlayer"
+     },
+     "title": "Players",
+     "type": "array"
+    }
+   },
+   "required": [
+    "gw",
+    "players"
+   ],
+   "title": "ComponentsBreakdown",
+   "type": "object"
+  },
+  "ConfidenceData": {
+   "properties": {
+    "captain": {
+     "$ref": "#/definitions/ConfidenceTier"
+    }
+   },
+   "title": "Confidence",
+   "type": "object"
+  },
+  "ConfidenceTier": {
+   "description": "One record-derived claim, with the counts that back it.\n\n``text`` is the whole product \u2014 a sentence quoting counts. The counts are\ncarried beside it so a caller can style the tier without re-parsing prose,\nnever so it can compute a rate: the absence of a percentage anywhere in\nthis model is the point of it (spec D3).",
+   "properties": {
+    "aligned": {
+     "default": 0,
+     "title": "Aligned",
+     "type": "integer"
+    },
+    "graded": {
+     "default": 0,
+     "title": "Graded",
+     "type": "integer"
+    },
+    "losses": {
+     "default": 0,
+     "title": "Losses",
+     "type": "integer"
+    },
+    "reviewed": {
+     "default": 0,
+     "title": "Reviewed",
+     "type": "integer"
+    },
+    "text": {
+     "default": "",
+     "title": "Text",
+     "type": "string"
+    },
+    "tier": {
+     "default": "early",
+     "enum": [
+      "early",
+      "mixed",
+      "backed"
+     ],
+     "title": "Tier",
+     "type": "string"
+    },
+    "wins": {
+     "default": 0,
+     "title": "Wins",
+     "type": "integer"
+    }
+   },
+   "title": "ConfidenceTier",
+   "type": "object"
+  },
+  "CoreInsightsHealth": {
+   "properties": {
+    "collected": {
+     "title": "Collected",
+     "type": "boolean"
+    },
+    "season": {
+     "title": "Season",
+     "type": "string"
+    },
+    "tables": {
+     "items": {
+      "$ref": "#/definitions/CoreInsightsTable"
+     },
+     "title": "Tables",
+     "type": "array"
+    },
+    "waiting_for": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Waiting For"
+    }
+   },
+   "required": [
+    "season",
+    "collected",
+    "tables"
+   ],
+   "title": "CoreInsightsHealth",
+   "type": "object"
+  },
+  "CoreInsightsTable": {
+   "properties": {
+    "latest": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Latest"
+    },
+    "rows": {
+     "title": "Rows",
+     "type": "integer"
+    },
+    "table": {
+     "title": "Table",
+     "type": "string"
+    }
+   },
+   "required": [
+    "table",
+    "rows"
+   ],
+   "title": "CoreInsightsTable",
+   "type": "object"
+  },
+  "CurrentEvaluation": {
+   "properties": {
+    "baselines": {
+     "additionalProperties": {
+      "additionalProperties": {
+       "$ref": "#/definitions/CategoryMetrics"
+      },
+      "type": "object"
+     },
+     "title": "Baselines",
+     "type": "object"
+    },
+    "git_sha": {
+     "title": "Git Sha",
+     "type": "string"
+    },
+    "heads": {
+     "additionalProperties": {
+      "$ref": "#/definitions/HeadMetrics"
+     },
+     "title": "Heads",
+     "type": "object"
+    },
+    "holdout_slots": {
+     "title": "Holdout Slots",
+     "type": "integer"
+    },
+    "run_at": {
+     "title": "Run At",
+     "type": "string"
+    },
+    "stratified": {
+     "additionalProperties": {
+      "additionalProperties": {
+       "$ref": "#/definitions/CategoryMetrics"
+      },
+      "type": "object"
+     },
+     "title": "Stratified",
+     "type": "object"
+    }
+   },
+   "required": [
+    "run_at",
+    "git_sha",
+    "holdout_slots",
+    "stratified",
+    "heads",
+    "baselines"
+   ],
+   "title": "CurrentEvaluation",
+   "type": "object"
+  },
+  "DecompositionCell": {
+   "properties": {
+    "hits": {
+     "title": "Hits",
+     "type": "integer"
+    },
+    "per_gw": {
+     "title": "Per Gw",
+     "type": "number"
+    },
+    "total": {
+     "title": "Total",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "total",
+    "per_gw",
+    "hits"
+   ],
+   "title": "DecompositionCell",
+   "type": "object"
+  },
+  "DecompositionData": {
+   "properties": {
+    "cells": {
+     "additionalProperties": {
+      "$ref": "#/definitions/DecompositionCell"
+     },
+     "title": "Cells",
+     "type": "object"
+    },
+    "forecast_gap_h3": {
+     "title": "Forecast Gap H3",
+     "type": "number"
+    },
+    "git_sha": {
+     "title": "Git Sha",
+     "type": "string"
+    },
+    "planning_ceiling": {
+     "title": "Planning Ceiling",
+     "type": "number"
+    },
+    "run_at": {
+     "title": "Run At",
+     "type": "string"
+    },
+    "season": {
+     "title": "Season",
+     "type": "string"
+    },
+    "start_gw": {
+     "title": "Start Gw",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "run_at",
+    "git_sha",
+    "season",
+    "start_gw",
+    "cells",
+    "forecast_gap_h3",
+    "planning_ceiling"
+   ],
+   "title": "Decomposition",
+   "type": "object"
+  },
+  "Digest": {
+   "properties": {
+    "error": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Error"
+    },
+    "generated_at": {
+     "default": "",
+     "title": "Generated At",
+     "type": "string"
+    },
+    "gw": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Gw"
+    },
+    "headline": {
+     "title": "Headline",
+     "type": "string"
+    },
+    "kind": {
+     "title": "Kind",
+     "type": "string"
+    },
+    "sections": {
+     "items": {
+      "$ref": "#/definitions/DigestSection"
+     },
+     "title": "Sections",
+     "type": "array"
+    }
+   },
+   "required": [
+    "kind",
+    "headline"
+   ],
+   "title": "Digest",
+   "type": "object"
+  },
+  "DigestPanel": {
+   "description": "The newest digest, or a stated absence.\n\n``available`` false covers all three ways there is nothing to show \u2014 never\nrun, deleted, unparseable \u2014 because the card's empty state says the same\nsentence for each of them: press the button, or wait for Friday.",
+   "properties": {
+    "available": {
+     "title": "Available",
+     "type": "boolean"
+    },
+    "digest": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/Digest"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "required": [
+    "available"
+   ],
+   "title": "DigestPanel",
+   "type": "object"
+  },
+  "DigestSection": {
+   "description": "One block of a digest. ``bits`` is prose the client joins.\n\nThe DiffStrip idiom: clauses assembled server-side, rendered by joining\nthem, so there is no markdown dependency anywhere in the client. A section\nwith no bits never reaches here \u2014 the builder drops it (plan A5).",
+   "properties": {
+    "bits": {
+     "items": {
+      "type": "string"
+     },
+     "title": "Bits",
+     "type": "array"
+    },
+    "key": {
+     "title": "Key",
+     "type": "string"
+    },
+    "title": {
+     "title": "Title",
+     "type": "string"
+    }
+   },
+   "required": [
+    "key",
+    "title"
+   ],
+   "title": "DigestSection",
+   "type": "object"
+  },
+  "DraftCompare": {
+   "properties": {
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "rows": {
+     "items": {
+      "$ref": "#/definitions/DraftCompareRow"
+     },
+     "title": "Rows",
+     "type": "array"
+    },
+    "weeks": {
+     "title": "Weeks",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "gw",
+    "weeks"
+   ],
+   "title": "DraftCompare",
+   "type": "object"
+  },
+  "DraftCompareRequest": {
+   "properties": {
+    "names": {
+     "items": {
+      "type": "string"
+     },
+     "title": "Names",
+     "type": "array"
+    }
+   },
+   "title": "DraftCompareRequest",
+   "type": "object"
+  },
+  "DraftCompareRow": {
+   "properties": {
+    "buys": {
+     "items": {
+      "$ref": "#/definitions/PlayerRef"
+     },
+     "title": "Buys",
+     "type": "array"
+    },
+    "captain": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/PlayerRef"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "chip": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Chip"
+    },
+    "delta_xpts": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Delta Xpts"
+    },
+    "error": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Error"
+    },
+    "expected_pts": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Expected Pts"
+    },
+    "hits": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Hits"
+    },
+    "horizon": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Horizon"
+    },
+    "horizon_pts": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Horizon Pts"
+    },
+    "is_reference": {
+     "default": false,
+     "title": "Is Reference",
+     "type": "boolean"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "sells": {
+     "items": {
+      "$ref": "#/definitions/PlayerRef"
+     },
+     "title": "Sells",
+     "type": "array"
+    },
+    "solved_at": {
+     "default": "",
+     "title": "Solved At",
+     "type": "string"
+    }
+   },
+   "required": [
+    "name"
+   ],
+   "title": "DraftCompareRow",
+   "type": "object"
+  },
+  "DraftList": {
+   "properties": {
+    "drafts": {
+     "items": {
+      "$ref": "#/definitions/DraftRow"
+     },
+     "title": "Drafts",
+     "type": "array"
+    }
+   },
+   "title": "DraftList",
+   "type": "object"
+  },
+  "DraftRow": {
+   "properties": {
+    "constraints": {
+     "$ref": "#/definitions/WhatIfRequest"
+    },
+    "created_at": {
+     "default": "",
+     "title": "Created At",
+     "type": "string"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    }
+   },
+   "required": [
+    "name",
+    "constraints"
+   ],
+   "title": "DraftRow",
+   "type": "object"
+  },
+  "DraftSaveRequest": {
+   "properties": {
+    "constraints": {
+     "$ref": "#/definitions/WhatIfRequest"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    }
+   },
+   "required": [
+    "name"
+   ],
+   "title": "DraftSaveRequest",
+   "type": "object"
+  },
+  "EpMover": {
+   "description": "One player the newest retrain moved, in the gameweek being decided.",
+   "properties": {
+    "code": {
+     "title": "Code",
+     "type": "integer"
+    },
+    "delta": {
+     "title": "Delta",
+     "type": "number"
+    },
+    "ep_now": {
+     "title": "Ep Now",
+     "type": "number"
+    },
+    "ep_prev": {
+     "title": "Ep Prev",
+     "type": "number"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    }
+   },
+   "required": [
+    "code",
+    "name",
+    "ep_prev",
+    "ep_now",
+    "delta"
+   ],
+   "title": "EpMover",
+   "type": "object"
+  },
+  "FieldRank": {
+   "description": "v12 W4 \u00a75.3. One gameweek against a synthetic field drawn from EO.\n\nThree headline numbers and two of them are ``None`` today. Each null has\nits own sentence rather than a shared one, because they are waiting for\ndifferent things: ``p_green`` for a banked field sample, ``p_top10k`` for\na score series that does not exist anywhere, ``rank_slope`` for graded\ngameweeks. Spec \u00a71: a view whose data does not exist says what it is\nwaiting for and never renders a zero as a measurement.",
+   "properties": {
+    "eo_gw": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Eo Gw"
+    },
+    "eo_source": {
+     "title": "Eo Source",
+     "type": "string"
+    },
+    "field_draws": {
+     "default": 1,
+     "title": "Field Draws",
+     "type": "integer"
+    },
+    "field_median_ep": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Field Median Ep"
+    },
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "managers": {
+     "title": "Managers",
+     "type": "integer"
+    },
+    "my_ep": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "My Ep"
+    },
+    "n": {
+     "title": "N",
+     "type": "integer"
+    },
+    "p_green": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "P Green"
+    },
+    "p_top10k": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "P Top10K"
+    },
+    "rank_slope": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Rank Slope"
+    },
+    "rank_slope_rows": {
+     "default": 0,
+     "title": "Rank Slope Rows",
+     "type": "integer"
+    },
+    "rank_waiting_for": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Rank Waiting For"
+    },
+    "seed": {
+     "title": "Seed",
+     "type": "integer"
+    },
+    "top10k_waiting_for": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Top10K Waiting For"
+    },
+    "unsampled_picks": {
+     "default": 0,
+     "title": "Unsampled Picks",
+     "type": "integer"
+    },
+    "waiting_for": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Waiting For"
+    }
+   },
+   "required": [
+    "gw",
+    "n",
+    "seed",
+    "managers",
+    "eo_source"
+   ],
+   "title": "FieldRank",
+   "type": "object"
+  },
+  "FixtureExplain": {
+   "properties": {
+    "calibration_delta": {
+     "title": "Calibration Delta",
+     "type": "number"
+    },
+    "components": {
+     "items": {
+      "$ref": "#/definitions/Component"
+     },
+     "title": "Components",
+     "type": "array"
+    },
+    "ep": {
+     "title": "Ep",
+     "type": "number"
+    },
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "home": {
+     "title": "Home",
+     "type": "boolean"
+    },
+    "kickoff_time": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Kickoff Time"
+    },
+    "minutes": {
+     "$ref": "#/definitions/MinutesOutput"
+    },
+    "odds": {
+     "$ref": "#/definitions/OddsInfluence"
+    },
+    "opponent": {
+     "title": "Opponent",
+     "type": "string"
+    }
+   },
+   "required": [
+    "gw",
+    "opponent",
+    "home",
+    "kickoff_time",
+    "components",
+    "minutes",
+    "calibration_delta",
+    "odds",
+    "ep"
+   ],
+   "title": "FixtureExplain",
+   "type": "object"
+  },
+  "FixtureMatrixData": {
+   "properties": {
+    "gws": {
+     "items": {
+      "type": "integer"
+     },
+     "title": "Gws",
+     "type": "array"
+    },
+    "source": {
+     "enum": [
+      "dixon_coles",
+      "none"
+     ],
+     "title": "Source",
+     "type": "string"
+    },
+    "teams": {
+     "items": {
+      "$ref": "#/definitions/MatrixTeam"
+     },
+     "title": "Teams",
+     "type": "array"
+    }
+   },
+   "required": [
+    "gws",
+    "teams",
+    "source"
+   ],
+   "title": "FixtureMatrix",
+   "type": "object"
+  },
+  "FixtureOutlook": {
+   "description": "Doubles and blanks in the season ahead (v10b \u00a7F2a).\n\nEvery failure is a 200 with a ``note`` rather than an error: this renders\nas one card beside populated cards, and a 422 there is indistinguishable\nfrom a broken endpoint.",
+   "properties": {
+    "from_gw": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "From Gw"
+    },
+    "has_blanks": {
+     "default": false,
+     "title": "Has Blanks",
+     "type": "boolean"
+    },
+    "has_doubles": {
+     "default": false,
+     "title": "Has Doubles",
+     "type": "boolean"
+    },
+    "note": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Note"
+    },
+    "teams_known": {
+     "default": false,
+     "title": "Teams Known",
+     "type": "boolean"
+    },
+    "weeks": {
+     "items": {
+      "$ref": "#/definitions/OutlookWeek"
+     },
+     "title": "Weeks",
+     "type": "array"
+    }
+   },
+   "title": "FixtureOutlook",
+   "type": "object"
+  },
+  "FlagChange": {
+   "description": "One (gameweek, player) whose status moved before the deadline.",
+   "properties": {
+    "chance_of_playing": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Chance Of Playing"
+    },
+    "code": {
+     "title": "Code",
+     "type": "integer"
+    },
+    "final_status": {
+     "title": "Final Status",
+     "type": "string"
+    },
+    "first_change": {
+     "title": "First Change",
+     "type": "string"
+    },
+    "from_status": {
+     "title": "From Status",
+     "type": "string"
+    },
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "lead_days": {
+     "title": "Lead Days",
+     "type": "number"
+    },
+    "started": {
+     "title": "Started",
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "gw",
+    "code",
+    "first_change",
+    "lead_days",
+    "from_status",
+    "final_status",
+    "started"
+   ],
+   "title": "FlagChange",
+   "type": "object"
+  },
+  "FlagLatencyData": {
+   "description": "v12 \u00a73.1's readout, or its refusal.\n\n``available`` is what the card branches on, and ``note`` is the sentence\nit prints when the answer is no. Both are on the payload rather than in\nthe page because the CLI prints the same sentence, and two copies of an\nempty state drift.\n\nThe scorer's ``changes`` \u2014 every status move it found, one row each \u2014 is\n**deliberately not declared here**, so pydantic drops it on the way out.\nIt is the evidence behind the histogram and it stays in the artifact for\nanyone who wants their own bands over it, but nothing on the page reads\nit and it is the only field on this payload that grows without bound: one\nrow per player per move per gameweek, all season. ``rows`` carries the\ncount that the page does show.",
+   "properties": {
+    "available": {
+     "default": false,
+     "title": "Available",
+     "type": "boolean"
+    },
+    "checked_covered_gws": {
+     "default": [],
+     "items": {
+      "type": "integer"
+     },
+     "title": "Checked Covered Gws",
+     "type": "array"
+    },
+    "covered_gws": {
+     "default": [],
+     "items": {
+      "type": "integer"
+     },
+     "title": "Covered Gws",
+     "type": "array"
+    },
+    "git_sha": {
+     "title": "Git Sha",
+     "type": "string"
+    },
+    "histogram": {
+     "default": [],
+     "items": {
+      "$ref": "#/definitions/LeadBucket"
+     },
+     "title": "Histogram",
+     "type": "array"
+    },
+    "late_flags": {
+     "default": [],
+     "items": {
+      "$ref": "#/definitions/FlagChange"
+     },
+     "title": "Late Flags",
+     "type": "array"
+    },
+    "min_snap_dates": {
+     "default": 14,
+     "title": "Min Snap Dates",
+     "type": "integer"
+    },
+    "note": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Note"
+    },
+    "rows": {
+     "default": 0,
+     "title": "Rows",
+     "type": "integer"
+    },
+    "run_at": {
+     "title": "Run At",
+     "type": "string"
+    },
+    "snap_dates": {
+     "default": 0,
+     "title": "Snap Dates",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "run_at",
+    "git_sha"
+   ],
+   "title": "FlagLatency",
+   "type": "object"
+  },
+  "Freshness": {
+   "properties": {
+    "rows": {
+     "items": {
+      "$ref": "#/definitions/FreshnessRow"
+     },
+     "title": "Rows",
+     "type": "array"
+    }
+   },
+   "title": "Freshness",
+   "type": "object"
+  },
+  "FreshnessRow": {
+   "properties": {
+    "age_hours": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Age Hours"
+    },
+    "modified_at": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Modified At"
+    },
+    "path": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Path"
+    },
+    "source": {
+     "enum": [
+      "refresh",
+      "odds",
+      "field",
+      "advise",
+      "backup"
+     ],
+     "title": "Source",
+     "type": "string"
+    }
+   },
+   "required": [
+    "source"
+   ],
+   "title": "FreshnessRow",
+   "type": "object"
+  },
+  "GapPoint": {
+   "properties": {
+    "gap": {
+     "title": "Gap",
+     "type": "integer"
+    },
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "gw",
+    "gap"
+   ],
+   "title": "GapPoint",
+   "type": "object"
+  },
+  "GwPoint": {
+   "properties": {
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "points": {
+     "title": "Points",
+     "type": "integer"
+    },
+    "total": {
+     "title": "Total",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "gw",
+    "points",
+    "total"
+   ],
+   "title": "GwPoint",
+   "type": "object"
+  },
+  "HeadMetrics": {
+   "properties": {
+    "log_loss": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Log Loss"
+    },
+    "reliability": {
+     "items": {
+      "$ref": "#/definitions/ReliabilityBin"
+     },
+     "title": "Reliability",
+     "type": "array"
+    }
+   },
+   "required": [
+    "log_loss",
+    "reliability"
+   ],
+   "title": "HeadMetrics",
+   "type": "object"
+  },
+  "HistoryRun": {
+   "properties": {
+    "actual_pts": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Actual Pts"
+    },
+    "buys": {
+     "items": {
+      "type": "string"
+     },
+     "title": "Buys",
+     "type": "array"
+    },
+    "captain": {
+     "title": "Captain",
+     "type": "string"
+    },
+    "deadline": {
+     "title": "Deadline",
+     "type": "string"
+    },
+    "expected_pts": {
+     "title": "Expected Pts",
+     "type": "number"
+    },
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "hits": {
+     "title": "Hits",
+     "type": "integer"
+    },
+    "sells": {
+     "items": {
+      "type": "string"
+     },
+     "title": "Sells",
+     "type": "array"
+    }
+   },
+   "required": [
+    "gw",
+    "deadline",
+    "captain",
+    "buys",
+    "sells",
+    "hits",
+    "expected_pts",
+    "actual_pts"
+   ],
+   "title": "HistoryRun",
+   "type": "object"
+  },
+  "JobAccepted": {
+   "properties": {
+    "job_id": {
+     "title": "Job Id",
+     "type": "string"
+    }
+   },
+   "required": [
+    "job_id"
+   ],
+   "title": "JobAccepted",
+   "type": "object"
+  },
+  "JobRunView": {
+   "properties": {
+    "error": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Error"
+    },
+    "finished_at": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Finished At"
+    },
+    "id": {
+     "title": "Id",
+     "type": "string"
+    },
+    "kind": {
+     "title": "Kind",
+     "type": "string"
+    },
+    "line_count": {
+     "title": "Line Count",
+     "type": "integer"
+    },
+    "started_at": {
+     "title": "Started At",
+     "type": "string"
+    },
+    "status": {
+     "enum": [
+      "queued",
+      "running",
+      "done",
+      "failed"
+     ],
+     "title": "Status",
+     "type": "string"
+    },
+    "summary": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Summary"
+    }
+   },
+   "required": [
+    "id",
+    "kind",
+    "status",
+    "started_at",
+    "line_count"
+   ],
+   "title": "JobRunView",
+   "type": "object"
+  },
+  "JobStarted": {
+   "description": "The v7 runner's accept body. ``JobAccepted`` above still serves the v6\nqueue endpoints, whose clients read only ``job_id``.",
+   "properties": {
+    "job_id": {
+     "title": "Job Id",
+     "type": "string"
+    },
+    "kind": {
+     "title": "Kind",
+     "type": "string"
+    }
+   },
+   "required": [
+    "job_id",
+    "kind"
+   ],
+   "title": "JobStarted",
+   "type": "object"
+  },
+  "JournalData": {
+   "properties": {
+    "built_at": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Built At"
+    },
+    "cumulative": {
+     "items": {
+      "$ref": "#/definitions/JournalPoint"
+     },
+     "title": "Cumulative",
+     "type": "array"
+    },
+    "rows": {
+     "items": {
+      "$ref": "#/definitions/JournalRow"
+     },
+     "title": "Rows",
+     "type": "array"
+    }
+   },
+   "title": "Journal",
+   "type": "object"
+  },
+  "JournalPoint": {
+   "properties": {
+    "actual": {
+     "title": "Actual",
+     "type": "integer"
+    },
+    "delta": {
+     "title": "Delta",
+     "type": "integer"
+    },
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "model": {
+     "title": "Model",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "gw",
+    "model",
+    "actual",
+    "delta"
+   ],
+   "title": "JournalPoint",
+   "type": "object"
+  },
+  "JournalRow": {
+   "properties": {
+    "actual_captain": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Actual Captain"
+    },
+    "actual_pts": {
+     "title": "Actual Pts",
+     "type": "integer"
+    },
+    "delta": {
+     "title": "Delta",
+     "type": "integer"
+    },
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "model_buys": {
+     "items": {
+      "type": "string"
+     },
+     "title": "Model Buys",
+     "type": "array"
+    },
+    "model_captain": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Model Captain"
+    },
+    "model_pts": {
+     "title": "Model Pts",
+     "type": "integer"
+    },
+    "model_sells": {
+     "items": {
+      "type": "string"
+     },
+     "title": "Model Sells",
+     "type": "array"
+    },
+    "post_deadline": {
+     "default": false,
+     "title": "Post Deadline",
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "gw",
+    "model_pts",
+    "actual_pts",
+    "delta"
+   ],
+   "title": "JournalRow",
+   "type": "object"
+  },
+  "LaunchdHealth": {
+   "properties": {
+    "last_line": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Last Line"
+    },
+    "log": {
+     "title": "Log",
+     "type": "string"
+    },
+    "modified_at": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Modified At"
+    },
+    "present": {
+     "title": "Present",
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "log",
+    "present",
+    "modified_at",
+    "last_line"
+   ],
+   "title": "LaunchdHealth",
+   "type": "object"
+  },
+  "LeadBucket": {
+   "description": "One band of the lead-time histogram, split by what happened.",
+   "properties": {
+    "bucket": {
+     "title": "Bucket",
+     "type": "string"
+    },
+    "missed": {
+     "title": "Missed",
+     "type": "integer"
+    },
+    "started": {
+     "title": "Started",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "bucket",
+    "started",
+    "missed"
+   ],
+   "title": "LeadBucket",
+   "type": "object"
+  },
+  "LeagueRaceData": {
+   "properties": {
+    "entry_id": {
+     "title": "Entry Id",
+     "type": "integer"
+    },
+    "gap": {
+     "items": {
+      "$ref": "#/definitions/GapPoint"
+     },
+     "title": "Gap",
+     "type": "array"
+    },
+    "lam": {
+     "title": "Lam",
+     "type": "number"
+    },
+    "lam_explained": {
+     "title": "Lam Explained",
+     "type": "string"
+    },
+    "league_id": {
+     "title": "League Id",
+     "type": "integer"
+    },
+    "stance": {
+     "title": "Stance",
+     "type": "string"
+    },
+    "standings": {
+     "items": {
+      "$ref": "#/definitions/StandingRow"
+     },
+     "title": "Standings",
+     "type": "array"
+    },
+    "trajectory": {
+     "items": {
+      "$ref": "#/definitions/Trajectory"
+     },
+     "title": "Trajectory",
+     "type": "array"
+    },
+    "win_probability": {
+     "items": {
+      "$ref": "#/definitions/WinProb"
+     },
+     "title": "Win Probability",
+     "type": "array"
+    }
+   },
+   "required": [
+    "league_id",
+    "entry_id",
+    "standings",
+    "trajectory",
+    "gap",
+    "win_probability",
+    "lam",
+    "stance",
+    "lam_explained"
+   ],
+   "title": "LeagueRace",
+   "type": "object"
+  },
+  "LeagueSimData": {
+   "properties": {
+    "entries": {
+     "title": "Entries",
+     "type": "integer"
+    },
+    "exp_finish": {
+     "title": "Exp Finish",
+     "type": "number"
+    },
+    "field": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/FieldRank"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "field_rate": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Field Rate"
+    },
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "history": {
+     "items": {
+      "$ref": "#/definitions/SimPoint"
+     },
+     "title": "History",
+     "type": "array"
+    },
+    "legacy_win_probability": {
+     "items": {
+      "$ref": "#/definitions/WinProb"
+     },
+     "title": "Legacy Win Probability",
+     "type": "array"
+    },
+    "margin_quantiles": {
+     "additionalProperties": {
+      "type": "number"
+     },
+     "title": "Margin Quantiles",
+     "type": "object"
+    },
+    "n": {
+     "title": "N",
+     "type": "integer"
+    },
+    "notice": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Notice"
+    },
+    "p_top3": {
+     "title": "P Top3",
+     "type": "number"
+    },
+    "p_win": {
+     "title": "P Win",
+     "type": "number"
+    },
+    "per_rival": {
+     "items": {
+      "$ref": "#/definitions/RivalBeat"
+     },
+     "title": "Per Rival",
+     "type": "array"
+    },
+    "rival_drift": {
+     "title": "Rival Drift",
+     "type": "number"
+    },
+    "seed": {
+     "title": "Seed",
+     "type": "integer"
+    },
+    "weeks_left": {
+     "title": "Weeks Left",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "gw",
+    "entries",
+    "weeks_left",
+    "n",
+    "seed",
+    "rival_drift",
+    "p_win",
+    "p_top3",
+    "exp_finish",
+    "per_rival",
+    "margin_quantiles",
+    "history"
+   ],
+   "title": "LeagueSimData",
+   "type": "object"
+  },
+  "LeagueWhatIfPin": {
+   "properties": {
+    "code": {
+     "title": "Code",
+     "type": "integer"
+    },
+    "event": {
+     "default": "blank",
+     "title": "Event",
+     "type": "string"
+    }
+   },
+   "required": [
+    "code"
+   ],
+   "title": "LeagueWhatIfPin",
+   "type": "object"
+  },
+  "LeagueWhatIfRequest": {
+   "properties": {
+    "cached_only": {
+     "default": false,
+     "title": "Cached Only",
+     "type": "boolean"
+    },
+    "captain_override": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Captain Override"
+    },
+    "pins": {
+     "items": {
+      "$ref": "#/definitions/LeagueWhatIfPin"
+     },
+     "title": "Pins",
+     "type": "array"
+    },
+    "rival_captain_blanks": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Rival Captain Blanks"
+    }
+   },
+   "title": "LeagueWhatIfRequest",
+   "type": "object"
+  },
+  "LeagueWhatIfResult": {
+   "properties": {
+    "baseline_exp_finish": {
+     "title": "Baseline Exp Finish",
+     "type": "number"
+    },
+    "baseline_p_win": {
+     "title": "Baseline P Win",
+     "type": "number"
+    },
+    "delta_p_win": {
+     "title": "Delta P Win",
+     "type": "number"
+    },
+    "delta_rank": {
+     "title": "Delta Rank",
+     "type": "number"
+    },
+    "exp_finish": {
+     "title": "Exp Finish",
+     "type": "number"
+    },
+    "p_win": {
+     "title": "P Win",
+     "type": "number"
+    },
+    "table": {
+     "items": {
+      "$ref": "#/definitions/LeagueWhatIfRow"
+     },
+     "title": "Table",
+     "type": "array"
+    },
+    "unknown_codes": {
+     "items": {
+      "type": "integer"
+     },
+     "title": "Unknown Codes",
+     "type": "array"
+    }
+   },
+   "required": [
+    "baseline_p_win",
+    "p_win",
+    "delta_p_win",
+    "baseline_exp_finish",
+    "exp_finish",
+    "delta_rank",
+    "table"
+   ],
+   "title": "LeagueWhatIfResult",
+   "type": "object"
+  },
+  "LeagueWhatIfRow": {
+   "properties": {
+    "entry": {
+     "title": "Entry",
+     "type": "integer"
+    },
+    "exp_finish": {
+     "title": "Exp Finish",
+     "type": "number"
+    },
+    "is_you": {
+     "title": "Is You",
+     "type": "boolean"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "p_win": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "P Win"
+    },
+    "total": {
+     "title": "Total",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "entry",
+    "name",
+    "is_you",
+    "total",
+    "exp_finish"
+   ],
+   "title": "LeagueWhatIfRow",
+   "type": "object"
+  },
+  "LivePlayer": {
+   "properties": {
+    "code": {
+     "title": "Code",
+     "type": "integer"
+    },
+    "element": {
+     "title": "Element",
+     "type": "integer"
+    },
+    "minutes": {
+     "title": "Minutes",
+     "type": "integer"
+    },
+    "multiplier": {
+     "title": "Multiplier",
+     "type": "integer"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "points": {
+     "title": "Points",
+     "type": "integer"
+    },
+    "position": {
+     "title": "Position",
+     "type": "string"
+    },
+    "projected_in": {
+     "default": false,
+     "title": "Projected In",
+     "type": "boolean"
+    },
+    "projected_out": {
+     "default": false,
+     "title": "Projected Out",
+     "type": "boolean"
+    },
+    "provisional_bonus": {
+     "title": "Provisional Bonus",
+     "type": "integer"
+    },
+    "remaining_ep": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Remaining Ep"
+    },
+    "selected_by_percent": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Selected By Percent"
+    },
+    "status": {
+     "enum": [
+      "played",
+      "playing",
+      "yet to play"
+     ],
+     "title": "Status",
+     "type": "string"
+    },
+    "sub_partner": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Sub Partner"
+    },
+    "sub_reason": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Sub Reason"
+    },
+    "tier_eo": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Tier Eo"
+    },
+    "tier_eo_se": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Tier Eo Se"
+    }
+   },
+   "required": [
+    "element",
+    "code",
+    "name",
+    "position",
+    "multiplier",
+    "points",
+    "provisional_bonus",
+    "minutes",
+    "status"
+   ],
+   "title": "LivePlayer",
+   "type": "object"
+  },
+  "LiveRacePoint": {
+   "description": "One poll's snapshot of the race, held in memory for this session only.",
+   "properties": {
+    "at": {
+     "title": "At",
+     "type": "string"
+    },
+    "rival": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Rival"
+    },
+    "you": {
+     "title": "You",
+     "type": "number"
+    }
+   },
+   "required": [
+    "at",
+    "you"
+   ],
+   "title": "LiveRacePoint",
+   "type": "object"
+  },
+  "LiveSafety": {
+   "description": "One league place worth watching, priced in points.",
+   "properties": {
+    "entry": {
+     "title": "Entry",
+     "type": "integer"
+    },
+    "margin": {
+     "title": "Margin",
+     "type": "integer"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "need": {
+     "title": "Need",
+     "type": "integer"
+    },
+    "role": {
+     "enum": [
+      "above",
+      "below",
+      "leader"
+     ],
+     "title": "Role",
+     "type": "string"
+    }
+   },
+   "required": [
+    "entry",
+    "name",
+    "role",
+    "margin",
+    "need"
+   ],
+   "title": "LiveSafety",
+   "type": "object"
+  },
+  "LiveState": {
+   "properties": {
+    "active": {
+     "title": "Active",
+     "type": "boolean"
+    },
+    "gw": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Gw"
+    },
+    "matches_in_play": {
+     "title": "Matches In Play",
+     "type": "integer"
+    },
+    "my_points": {
+     "title": "My Points",
+     "type": "integer"
+    },
+    "my_projected_points": {
+     "default": 0,
+     "title": "My Projected Points",
+     "type": "integer"
+    },
+    "my_race": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "My Race"
+    },
+    "notice": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Notice"
+    },
+    "players": {
+     "items": {
+      "$ref": "#/definitions/LivePlayer"
+     },
+     "title": "Players",
+     "type": "array"
+    },
+    "race_notice": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Race Notice"
+    },
+    "race_reference": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Race Reference"
+    },
+    "race_series": {
+     "items": {
+      "$ref": "#/definitions/LiveRacePoint"
+     },
+     "title": "Race Series",
+     "type": "array"
+    },
+    "rival_name": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Rival Name"
+    },
+    "safety": {
+     "items": {
+      "$ref": "#/definitions/LiveSafety"
+     },
+     "title": "Safety",
+     "type": "array"
+    },
+    "table": {
+     "items": {
+      "$ref": "#/definitions/LiveTableRow"
+     },
+     "title": "Table",
+     "type": "array"
+    }
+   },
+   "required": [
+    "active",
+    "gw",
+    "my_points",
+    "matches_in_play",
+    "players",
+    "table"
+   ],
+   "title": "LiveState",
+   "type": "object"
+  },
+  "LiveTableRow": {
+   "properties": {
+    "delta": {
+     "title": "Delta",
+     "type": "integer"
+    },
+    "entry": {
+     "title": "Entry",
+     "type": "integer"
+    },
+    "live": {
+     "title": "Live",
+     "type": "integer"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "pre_total": {
+     "title": "Pre Total",
+     "type": "integer"
+    },
+    "projected": {
+     "title": "Projected",
+     "type": "integer"
+    },
+    "projected_live": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Projected Live"
+    },
+    "race": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Race"
+    },
+    "remaining_ep": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Remaining Ep"
+    }
+   },
+   "required": [
+    "entry",
+    "name",
+    "pre_total",
+    "live",
+    "projected",
+    "delta"
+   ],
+   "title": "LiveTableRow",
+   "type": "object"
+  },
+  "MatrixCell": {
+   "properties": {
+    "attack": {
+     "title": "Attack",
+     "type": "number"
+    },
+    "defence": {
+     "title": "Defence",
+     "type": "number"
+    },
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "home": {
+     "title": "Home",
+     "type": "boolean"
+    },
+    "opponent": {
+     "title": "Opponent",
+     "type": "string"
+    }
+   },
+   "required": [
+    "gw",
+    "opponent",
+    "home",
+    "attack",
+    "defence"
+   ],
+   "title": "MatrixCell",
+   "type": "object"
+  },
+  "MatrixTeam": {
+   "properties": {
+    "cells": {
+     "items": {
+      "$ref": "#/definitions/MatrixCell"
+     },
+     "title": "Cells",
+     "type": "array"
+    },
+    "code": {
+     "title": "Code",
+     "type": "integer"
+    },
+    "mean_attack": {
+     "title": "Mean Attack",
+     "type": "number"
+    },
+    "mean_defence": {
+     "title": "Mean Defence",
+     "type": "number"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "short_name": {
+     "title": "Short Name",
+     "type": "string"
+    }
+   },
+   "required": [
+    "code",
+    "name",
+    "short_name",
+    "cells",
+    "mean_attack",
+    "mean_defence"
+   ],
+   "title": "MatrixTeam",
+   "type": "object"
+  },
+  "MinutesOutput": {
+   "properties": {
+    "p60": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "P60"
+    },
+    "p_play": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "P Play"
+    },
+    "xmins": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Xmins"
+    }
+   },
+   "title": "MinutesOutput",
+   "type": "object"
+  },
+  "MissRow": {
+   "description": "One player-gameweek the forecast got most wrong.\n\n``miss`` is ``actual - ep``, so it is signed: a positive one is a player\nthe model under-rated and a negative one is a transfer it may have talked\nsomebody into. Both directions are shown, which is why the card sorts on\nthe absolute value and prints the sign.",
+   "properties": {
+    "actual": {
+     "title": "Actual",
+     "type": "integer"
+    },
+    "code": {
+     "title": "Code",
+     "type": "integer"
+    },
+    "ep": {
+     "title": "Ep",
+     "type": "number"
+    },
+    "minutes": {
+     "default": 0,
+     "title": "Minutes",
+     "type": "integer"
+    },
+    "miss": {
+     "title": "Miss",
+     "type": "number"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "position": {
+     "default": "",
+     "title": "Position",
+     "type": "string"
+    },
+    "price": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Price"
+    }
+   },
+   "required": [
+    "code",
+    "name",
+    "ep",
+    "actual",
+    "miss"
+   ],
+   "title": "MissRow",
+   "type": "object"
+  },
+  "MissesData": {
+   "properties": {
+    "gw": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Gw"
+    },
+    "rows": {
+     "items": {
+      "$ref": "#/definitions/MissRow"
+     },
+     "title": "Rows",
+     "type": "array"
+    }
+   },
+   "title": "Misses",
+   "type": "object"
+  },
+  "MoverRow": {
+   "description": "One watched player FPL's predictor has near a threshold tonight.",
+   "properties": {
+    "calibrating": {
+     "title": "Calibrating",
+     "type": "boolean"
+    },
+    "code": {
+     "title": "Code",
+     "type": "integer"
+    },
+    "direction": {
+     "title": "Direction",
+     "type": "string"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "now_cost": {
+     "title": "Now Cost",
+     "type": "number"
+    },
+    "price_change_percent": {
+     "title": "Price Change Percent",
+     "type": "number"
+    },
+    "source": {
+     "title": "Source",
+     "type": "string"
+    }
+   },
+   "required": [
+    "code",
+    "name",
+    "now_cost",
+    "price_change_percent",
+    "direction",
+    "calibrating",
+    "source"
+   ],
+   "title": "MoverRow",
+   "type": "object"
+  },
+  "MoversPanel": {
+   "description": "Tonight's likely price changes among players the manager cares about.\n\n``as_of`` is the age of the *reading*, not of the request: this is served\noff ``data/live/players.parquet`` and never off the network, so a panel\nthat did not say how stale it was would be a panel claiming to know\nsomething about tonight when it might be quoting Tuesday.",
+   "properties": {
+    "as_of": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "As Of"
+    },
+    "available": {
+     "title": "Available",
+     "type": "boolean"
+    },
+    "rows": {
+     "items": {
+      "$ref": "#/definitions/MoverRow"
+     },
+     "title": "Rows",
+     "type": "array"
+    }
+   },
+   "required": [
+    "available"
+   ],
+   "title": "MoversPanel",
+   "type": "object"
+  },
+  "NamedPlayer": {
+   "description": "A player a report names but does not price.",
+   "properties": {
+    "code": {
+     "title": "Code",
+     "type": "integer"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "position": {
+     "default": "",
+     "title": "Position",
+     "type": "string"
+    }
+   },
+   "required": [
+    "code",
+    "name"
+   ],
+   "title": "NamedPlayer",
+   "type": "object"
+  },
+  "NewsPanelData": {
+   "properties": {
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "moved": {
+     "title": "Moved",
+     "type": "integer"
+    },
+    "rows": {
+     "items": {
+      "$ref": "#/definitions/NewsRow"
+     },
+     "title": "Rows",
+     "type": "array"
+    }
+   },
+   "required": [
+    "gw",
+    "moved",
+    "rows"
+   ],
+   "title": "NewsPanelData",
+   "type": "object"
+  },
+  "NewsRow": {
+   "description": "One player the news layer moved, with the evidence that moved him.\n\nBoth sides of every number, because the panel's claim is a *difference*:\n\"we think 5%, the official flag says 75%\" is the sentence, and either half\non its own is not.",
+   "properties": {
+    "chance_of_playing": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Chance Of Playing"
+    },
+    "code": {
+     "title": "Code",
+     "type": "integer"
+    },
+    "e_min_flags": {
+     "title": "E Min Flags",
+     "type": "number"
+    },
+    "e_min_news": {
+     "title": "E Min News",
+     "type": "number"
+    },
+    "expected_return_gw": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Expected Return Gw"
+    },
+    "fetched_at": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Fetched At"
+    },
+    "injury_type": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Injury Type"
+    },
+    "lineup_hint": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Lineup Hint"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "official_note": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Official Note"
+    },
+    "p_play_flags": {
+     "title": "P Play Flags",
+     "type": "number"
+    },
+    "p_play_news": {
+     "title": "P Play News",
+     "type": "number"
+    },
+    "p_start_hint": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "P Start Hint"
+    },
+    "source": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Source"
+    },
+    "status": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Status"
+    },
+    "team_name": {
+     "title": "Team Name",
+     "type": "string"
+    }
+   },
+   "required": [
+    "code",
+    "name",
+    "team_name",
+    "p_play_news",
+    "p_play_flags",
+    "e_min_news",
+    "e_min_flags"
+   ],
+   "title": "NewsRow",
+   "type": "object"
+  },
+  "NewsShadowData": {
+   "description": "Gate N2's standing readout.\n\n``rows`` is the field that says whether any of it means anything: the log\nis written every week and scored only once a gameweek has been played, so\na fresh install carries a payload with ``rows: 0``, an empty ``overall``\nand no gameweeks. That is not an error state \u2014 it is \"come back Monday\".",
+   "properties": {
+    "by_gw": {
+     "items": {
+      "$ref": "#/definitions/NewsShadowGw"
+     },
+     "title": "By Gw",
+     "type": "array"
+    },
+    "git_sha": {
+     "title": "Git Sha",
+     "type": "string"
+    },
+    "overall": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/NewsShadowSummary"
+      },
+      {
+       "additionalProperties": true,
+       "type": "object"
+      }
+     ],
+     "title": "Overall"
+    },
+    "rows": {
+     "title": "Rows",
+     "type": "integer"
+    },
+    "run_at": {
+     "title": "Run At",
+     "type": "string"
+    }
+   },
+   "required": [
+    "run_at",
+    "git_sha",
+    "rows"
+   ],
+   "title": "NewsShadow",
+   "type": "object"
+  },
+  "NewsShadowGw": {
+   "properties": {
+    "brier_flags": {
+     "title": "Brier Flags",
+     "type": "number"
+    },
+    "brier_news": {
+     "title": "Brier News",
+     "type": "number"
+    },
+    "cum_brier_flags": {
+     "title": "Cum Brier Flags",
+     "type": "number"
+    },
+    "cum_brier_news": {
+     "title": "Cum Brier News",
+     "type": "number"
+    },
+    "cum_mae_flags": {
+     "title": "Cum Mae Flags",
+     "type": "number"
+    },
+    "cum_mae_news": {
+     "title": "Cum Mae News",
+     "type": "number"
+    },
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "mae_flags": {
+     "title": "Mae Flags",
+     "type": "number"
+    },
+    "mae_news": {
+     "title": "Mae News",
+     "type": "number"
+    },
+    "rows": {
+     "title": "Rows",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "gw",
+    "brier_news",
+    "brier_flags",
+    "mae_news",
+    "mae_flags",
+    "rows",
+    "cum_brier_news",
+    "cum_brier_flags",
+    "cum_mae_news",
+    "cum_mae_flags"
+   ],
+   "title": "NewsShadowGw",
+   "type": "object"
+  },
+  "NewsShadowSummary": {
+   "description": "Both sides of gate N2's two metrics over one slice of the log.",
+   "properties": {
+    "brier_flags": {
+     "title": "Brier Flags",
+     "type": "number"
+    },
+    "brier_news": {
+     "title": "Brier News",
+     "type": "number"
+    },
+    "mae_flags": {
+     "title": "Mae Flags",
+     "type": "number"
+    },
+    "mae_news": {
+     "title": "Mae News",
+     "type": "number"
+    },
+    "rows": {
+     "title": "Rows",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "brier_news",
+    "brier_flags",
+    "mae_news",
+    "mae_flags",
+    "rows"
+   ],
+   "title": "NewsShadowSummary",
+   "type": "object"
+  },
+  "NextFixture": {
+   "description": "One team's next game in the advised gameweek.\n\nResolved at serve time from the banked fixture list, never solved for.\nTwo of the four fields are independently optional and mean different\nthings when null: ``kickoff_utc`` is null while FPL still has the date as\nTBC, and ``difficulty`` is null when the ticker could rate nothing \u2014 a\nchip in a neutral colour rather than a chip that is not drawn.\n\nA team with *no* game gets ``next_fixture: null`` on the player instead of\nthis model with empty fields, because \"he does not play\" and \"he plays and\nwe know less than usual about it\" are different sentences.",
+   "properties": {
+    "difficulty": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Difficulty"
+    },
+    "home": {
+     "title": "Home",
+     "type": "boolean"
+    },
+    "kickoff_utc": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Kickoff Utc"
+    },
+    "opponent_short": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Opponent Short"
+    }
+   },
+   "required": [
+    "home"
+   ],
+   "title": "NextFixture",
+   "type": "object"
+  },
+  "OddsInfluence": {
+   "properties": {
+    "e_gc_blended": {
+     "title": "E Gc Blended",
+     "type": "number"
+    },
+    "e_gc_model": {
+     "title": "E Gc Model",
+     "type": "number"
+    },
+    "e_goals_against": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "E Goals Against"
+    },
+    "p_cs_blended": {
+     "title": "P Cs Blended",
+     "type": "number"
+    },
+    "p_cs_model": {
+     "title": "P Cs Model",
+     "type": "number"
+    },
+    "weight": {
+     "title": "Weight",
+     "type": "number"
+    }
+   },
+   "required": [
+    "weight",
+    "e_goals_against",
+    "p_cs_model",
+    "p_cs_blended",
+    "e_gc_model",
+    "e_gc_blended"
+   ],
+   "title": "OddsInfluence",
+   "type": "object"
+  },
+  "OutlookTeam": {
+   "description": "A club in the outlook. ``short_name`` is null when the teams snapshot\ncould not be read \u2014 the counts are still true, only the label is missing,\nand losing the whole answer over a cosmetic join is the wrong trade.",
+   "properties": {
+    "code": {
+     "title": "Code",
+     "type": "integer"
+    },
+    "short_name": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Short Name"
+    }
+   },
+   "required": [
+    "code"
+   ],
+   "title": "OutlookTeam",
+   "type": "object"
+  },
+  "OutlookWeek": {
+   "properties": {
+    "blanks": {
+     "items": {
+      "$ref": "#/definitions/OutlookTeam"
+     },
+     "title": "Blanks",
+     "type": "array"
+    },
+    "doubles": {
+     "items": {
+      "$ref": "#/definitions/OutlookTeam"
+     },
+     "title": "Doubles",
+     "type": "array"
+    },
+    "fixtures": {
+     "title": "Fixtures",
+     "type": "integer"
+    },
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "gw",
+    "fixtures"
+   ],
+   "title": "OutlookWeek",
+   "type": "object"
+  },
+  "OverrideRequest": {
+   "description": "One pin. At least one of the two values must be present.",
+   "properties": {
+    "code": {
+     "title": "Code",
+     "type": "integer"
+    },
+    "e_min": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "E Min"
+    },
+    "note": {
+     "default": "",
+     "title": "Note",
+     "type": "string"
+    },
+    "p_play": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "P Play"
+    }
+   },
+   "required": [
+    "code"
+   ],
+   "title": "OverrideRequest",
+   "type": "object"
+  },
+  "OverrideRow": {
+   "properties": {
+    "code": {
+     "title": "Code",
+     "type": "integer"
+    },
+    "e_min": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "E Min"
+    },
+    "model_e_min": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Model E Min"
+    },
+    "model_p_play": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Model P Play"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "note": {
+     "default": "",
+     "title": "Note",
+     "type": "string"
+    },
+    "p_play": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "P Play"
+    },
+    "set_at": {
+     "default": "",
+     "title": "Set At",
+     "type": "string"
+    }
+   },
+   "required": [
+    "code",
+    "name"
+   ],
+   "title": "OverrideRow",
+   "type": "object"
+  },
+  "OverridesPanel": {
+   "properties": {
+    "active": {
+     "default": true,
+     "title": "Active",
+     "type": "boolean"
+    },
+    "rows": {
+     "items": {
+      "$ref": "#/definitions/OverrideRow"
+     },
+     "title": "Rows",
+     "type": "array"
+    },
+    "warning": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Warning"
+    }
+   },
+   "title": "OverridesPanel",
+   "type": "object"
+  },
+  "PenTrackerData": {
+   "description": "``reports/pen_tracker.json``, as written by ``gaffer track-pens``.",
+   "properties": {
+    "gws": {
+     "items": {
+      "$ref": "#/definitions/PenTrackerGw"
+     },
+     "title": "Gws",
+     "type": "array"
+    },
+    "notes": {
+     "items": {
+      "type": "string"
+     },
+     "title": "Notes",
+     "type": "array"
+    },
+    "season": {
+     "default": "",
+     "title": "Season",
+     "type": "string"
+    },
+    "season_totals": {
+     "$ref": "#/definitions/PenTrackerTotals"
+    }
+   },
+   "title": "PenTracker",
+   "type": "object"
+  },
+  "PenTrackerGw": {
+   "description": "One finished gameweek of the penalty tracker.\n\nEvery field but ``gw`` is optional because ``pen_tracker.safe_gw_block``\nwrites one of two shapes: the full block, or ``{\"gw\": N, \"error\": ...}``\nwhen that week would not read. One optional-field model rather than a\nunion \u2014 a union would make the client discriminate before it can render\na row that is a row either way.",
+   "properties": {
+    "component_rows": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Component Rows"
+    },
+    "covered_rows": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Covered Rows"
+    },
+    "error": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Error"
+    },
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "instrument": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Instrument"
+    },
+    "pens_by_first_choice": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Pens By First Choice"
+    },
+    "pens_per_team_game": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Pens Per Team Game"
+    },
+    "pens_taken": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Pens Taken"
+    },
+    "predicted_ep_pen_taker": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Predicted Ep Pen Taker"
+    },
+    "predicted_takers": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Predicted Takers"
+    },
+    "realized_pen_points": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Realized Pen Points"
+    },
+    "rows": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Rows"
+    },
+    "taker_hit_rate": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Taker Hit Rate"
+    },
+    "team_games": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Team Games"
+    }
+   },
+   "required": [
+    "gw"
+   ],
+   "title": "PenTrackerGw",
+   "type": "object"
+  },
+  "PenTrackerTotals": {
+   "description": "The season line. All optional: a report that degraded before it\nreached a single finished gameweek writes ``{}`` here.",
+   "properties": {
+    "gws": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Gws"
+    },
+    "instruments": {
+     "items": {
+      "type": "string"
+     },
+     "title": "Instruments",
+     "type": "array"
+    },
+    "league_pens_pg_served": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "League Pens Pg Served"
+    },
+    "pens_by_first_choice": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Pens By First Choice"
+    },
+    "pens_per_team_game": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Pens Per Team Game"
+    },
+    "pens_taken": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Pens Taken"
+    },
+    "predicted_ep_pen_taker": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Predicted Ep Pen Taker"
+    },
+    "realized_pen_points": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Realized Pen Points"
+    },
+    "taker_hit_rate": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Taker Hit Rate"
+    },
+    "team_games": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Team Games"
+    }
+   },
+   "title": "PenTrackerTotals",
+   "type": "object"
+  },
+  "PlanAlternative": {
+   "description": "A plan the solver ranked behind the recommended one (v12 W3 \u00a74.3).",
+   "properties": {
+    "gap": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Gap"
+    },
+    "label": {
+     "title": "Label",
+     "type": "string"
+    },
+    "weeks": {
+     "items": {
+      "$ref": "#/definitions/PlanGw"
+     },
+     "title": "Weeks",
+     "type": "array"
+    }
+   },
+   "required": [
+    "label",
+    "weeks"
+   ],
+   "title": "PlanAlternative",
+   "type": "object"
+  },
+  "PlanGw": {
+   "properties": {
+    "bank": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Bank"
+    },
+    "buys": {
+     "items": {
+      "$ref": "#/definitions/PlanMove"
+     },
+     "title": "Buys",
+     "type": "array"
+    },
+    "captain": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/PlanMove"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "chip": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Chip"
+    },
+    "expected_pts": {
+     "title": "Expected Pts",
+     "type": "number"
+    },
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "hit_cost": {
+     "title": "Hit Cost",
+     "type": "integer"
+    },
+    "hits": {
+     "title": "Hits",
+     "type": "integer"
+    },
+    "sells": {
+     "items": {
+      "$ref": "#/definitions/PlanMove"
+     },
+     "title": "Sells",
+     "type": "array"
+    },
+    "trace": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/PlanWeekTrace"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "vice": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/PlanMove"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "required": [
+    "gw",
+    "buys",
+    "sells",
+    "hits",
+    "hit_cost",
+    "expected_pts"
+   ],
+   "title": "PlanGw",
+   "type": "object"
+  },
+  "PlanMove": {
+   "properties": {
+    "code": {
+     "title": "Code",
+     "type": "integer"
+    },
+    "ep": {
+     "title": "Ep",
+     "type": "number"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "position": {
+     "title": "Position",
+     "type": "string"
+    },
+    "price": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Price"
+    }
+   },
+   "required": [
+    "code",
+    "name",
+    "position",
+    "ep"
+   ],
+   "title": "PlanMove",
+   "type": "object"
+  },
+  "PlanMoveTrace": {
+   "description": "One transfer, priced against the objective's own terms (v12 W5 \u00a76.5).\n\nNot a counterfactual. ``ep_gain`` is the decayed expected-points\ndifference of a position-matched swap over the rest of the horizon \u2014 the\nobjective's own arithmetic at the plan the solver returned \u2014 and **not**\n\"the plan is this much worse without this move\", which would need a\nre-solve. ``None`` everywhere means unknown, never a measured zero.",
+   "properties": {
+    "buy_code": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Buy Code"
+    },
+    "buy_name": {
+     "default": "",
+     "title": "Buy Name",
+     "type": "string"
+    },
+    "ep_gain": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Ep Gain"
+    },
+    "lambda_tilt": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Lambda Tilt"
+    },
+    "note": {
+     "default": "",
+     "title": "Note",
+     "type": "string"
+    },
+    "sell_code": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Sell Code"
+    },
+    "sell_name": {
+     "default": "",
+     "title": "Sell Name",
+     "type": "string"
+    }
+   },
+   "title": "PlanMoveTrace",
+   "type": "object"
+  },
+  "PlanSummary": {
+   "properties": {
+    "bench": {
+     "items": {
+      "$ref": "#/definitions/PlayerRef"
+     },
+     "title": "Bench",
+     "type": "array"
+    },
+    "buys": {
+     "items": {
+      "$ref": "#/definitions/PlayerRef"
+     },
+     "title": "Buys",
+     "type": "array"
+    },
+    "captain": {
+     "$ref": "#/definitions/PlayerRef"
+    },
+    "expected_pts": {
+     "title": "Expected Pts",
+     "type": "number"
+    },
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "hits": {
+     "title": "Hits",
+     "type": "integer"
+    },
+    "horizon_pts": {
+     "title": "Horizon Pts",
+     "type": "number"
+    },
+    "sells": {
+     "items": {
+      "$ref": "#/definitions/PlayerRef"
+     },
+     "title": "Sells",
+     "type": "array"
+    },
+    "vice": {
+     "$ref": "#/definitions/PlayerRef"
+    },
+    "xi": {
+     "items": {
+      "$ref": "#/definitions/PlayerRef"
+     },
+     "title": "Xi",
+     "type": "array"
+    }
+   },
+   "required": [
+    "gw",
+    "xi",
+    "bench",
+    "captain",
+    "vice",
+    "buys",
+    "sells",
+    "hits",
+    "expected_pts",
+    "horizon_pts"
+   ],
+   "title": "PlanSummary",
+   "type": "object"
+  },
+  "PlanWeekTrace": {
+   "description": "One planned week's charges. Four of them are week-level on purpose:\na week with two transfers and one hit cannot attribute the hit to one of\nthem, and splitting it would be arithmetic dressed as a finding.\n\nThree of the objective's terms are **not** here \u2014 the XI, captain and vice\nweightings and the bench seats (``milp.py:813-835``, including\n``_decision_scales``' per-week autosub scales). They price the whole squad\nrather than a swap, so these numbers do not sum to ``expected_pts`` and\nare not meant to. The board's caption says so in the same words.",
+   "properties": {
+    "bank_value": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Bank Value"
+    },
+    "ep_gain": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Ep Gain"
+    },
+    "ft_after": {
+     "default": 0,
+     "title": "Ft After",
+     "type": "integer"
+    },
+    "ft_basis": {
+     "default": "flat",
+     "enum": [
+      "flat",
+      "lambda"
+     ],
+     "title": "Ft Basis",
+     "type": "string"
+    },
+    "ft_shadow": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Ft Shadow"
+    },
+    "ft_use_penalty": {
+     "default": 0.0,
+     "title": "Ft Use Penalty",
+     "type": "number"
+    },
+    "ft_used": {
+     "default": 0,
+     "title": "Ft Used",
+     "type": "integer"
+    },
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "hit_cost": {
+     "default": 0.0,
+     "title": "Hit Cost",
+     "type": "number"
+    },
+    "moves": {
+     "items": {
+      "$ref": "#/definitions/PlanMoveTrace"
+     },
+     "title": "Moves",
+     "type": "array"
+    },
+    "note": {
+     "default": "",
+     "title": "Note",
+     "type": "string"
+    },
+    "price_charge": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Price Charge"
+    },
+    "theta": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Theta"
+    }
+   },
+   "required": [
+    "gw"
+   ],
+   "title": "PlanWeekTrace",
+   "type": "object"
+  },
+  "PlayerRef": {
+   "properties": {
+    "code": {
+     "title": "Code",
+     "type": "integer"
+    },
+    "ep": {
+     "title": "Ep",
+     "type": "number"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "next_fixture": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/NextFixture"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "position": {
+     "title": "Position",
+     "type": "string"
+    },
+    "team_code": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Team Code"
+    },
+    "team_short": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Team Short"
+    }
+   },
+   "required": [
+    "code",
+    "name",
+    "position",
+    "ep"
+   ],
+   "title": "PlayerRef",
+   "type": "object"
+  },
+  "PresserGradesData": {
+   "description": "v12 \u00a73.2's readout, or its refusal.\n\n``recall_population`` is a field rather than a footnote: recall here is\nover the rows that carried a verdict, and the same word over every absent\nplayer in the gameweek would be a much harsher number about a much larger\npopulation.",
+   "properties": {
+    "absent_rows": {
+     "default": 0,
+     "title": "Absent Rows",
+     "type": "integer"
+    },
+    "available": {
+     "default": false,
+     "title": "Available",
+     "type": "boolean"
+    },
+    "by_source": {
+     "default": [],
+     "items": {
+      "$ref": "#/definitions/SourceRows"
+     },
+     "title": "By Source",
+     "type": "array"
+    },
+    "confusion": {
+     "default": [],
+     "items": {
+      "$ref": "#/definitions/VerdictRow"
+     },
+     "title": "Confusion",
+     "type": "array"
+    },
+    "git_sha": {
+     "title": "Git Sha",
+     "type": "string"
+    },
+    "graded_gws": {
+     "default": [],
+     "items": {
+      "type": "integer"
+     },
+     "title": "Graded Gws",
+     "type": "array"
+    },
+    "note": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Note"
+    },
+    "per_class": {
+     "default": [],
+     "items": {
+      "$ref": "#/definitions/VerdictScore"
+     },
+     "title": "Per Class",
+     "type": "array"
+    },
+    "recall_population": {
+     "default": "verdict-carrying rows",
+     "title": "Recall Population",
+     "type": "string"
+    },
+    "rows": {
+     "default": 0,
+     "title": "Rows",
+     "type": "integer"
+    },
+    "run_at": {
+     "title": "Run At",
+     "type": "string"
+    },
+    "verdicts_banked": {
+     "default": 0,
+     "title": "Verdicts Banked",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "run_at",
+    "git_sha"
+   ],
+   "title": "PresserGrades",
+   "type": "object"
+  },
+  "PricePoint": {
+   "properties": {
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "price": {
+     "title": "Price",
+     "type": "number"
+    }
+   },
+   "required": [
+    "gw",
+    "price"
+   ],
+   "title": "PricePoint",
+   "type": "object"
+  },
+  "PriceSeries": {
+   "properties": {
+    "code": {
+     "title": "Code",
+     "type": "integer"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "points": {
+     "items": {
+      "$ref": "#/definitions/PricePoint"
+     },
+     "title": "Points",
+     "type": "array"
+    }
+   },
+   "required": [
+    "code",
+    "name",
+    "points"
+   ],
+   "title": "PriceSeries",
+   "type": "object"
+  },
+  "QualityData": {
+   "description": "Whichever modes have been run. Each is independent and may be absent.",
+   "properties": {
+    "benchmark": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/BenchmarkEvaluation"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "current": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/CurrentEvaluation"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "decomposition": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/DecompositionData"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "flag_latency": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/FlagLatencyData"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "news_shadow": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/NewsShadowData"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "presser_grades": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/PresserGradesData"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "title": "Quality",
+   "type": "object"
+  },
+  "ReferenceMetrics": {
+   "description": "A published number: no row count, because we did not measure it.",
+   "properties": {
+    "mae": {
+     "title": "Mae",
+     "type": "number"
+    },
+    "rmse": {
+     "title": "Rmse",
+     "type": "number"
+    }
+   },
+   "required": [
+    "rmse",
+    "mae"
+   ],
+   "title": "ReferenceMetrics",
+   "type": "object"
+  },
+  "ReliabilityBin": {
+   "properties": {
+    "n": {
+     "title": "N",
+     "type": "integer"
+    },
+    "obs": {
+     "title": "Obs",
+     "type": "number"
+    },
+    "pred": {
+     "title": "Pred",
+     "type": "number"
+    }
+   },
+   "required": [
+    "n",
+    "pred",
+    "obs"
+   ],
+   "title": "ReliabilityBin",
+   "type": "object"
+  },
+  "ReviewAccuracyPoint": {
+   "properties": {
+    "accuracy": {
+     "title": "Accuracy",
+     "type": "integer"
+    },
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "gw",
+    "accuracy"
+   ],
+   "title": "ReviewAccuracyPoint",
+   "type": "object"
+  },
+  "ReviewData": {
+   "properties": {
+    "gws": {
+     "items": {
+      "$ref": "#/definitions/ReviewGw"
+     },
+     "title": "Gws",
+     "type": "array"
+    },
+    "summary": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/WireReviewSummary"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "title": "Review",
+   "type": "object"
+  },
+  "ReviewGw": {
+   "description": "One gameweek's banked grade. Every field but ``gw`` has a default, so\na ledger written by an older build still renders.",
+   "properties": {
+    "accuracy": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Accuracy"
+    },
+    "chip": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Chip"
+    },
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "hindsight": {
+     "$ref": "#/definitions/ReviewHindsight"
+    },
+    "hits": {
+     "default": 0,
+     "title": "Hits",
+     "type": "integer"
+    },
+    "lanes": {
+     "items": {
+      "$ref": "#/definitions/ReviewLane"
+     },
+     "title": "Lanes",
+     "type": "array"
+    },
+    "misses": {
+     "items": {
+      "$ref": "#/definitions/ReviewMiss"
+     },
+     "title": "Misses",
+     "type": "array"
+    },
+    "model_chip": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Model Chip"
+    },
+    "model_points": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Model Points"
+    },
+    "my_points": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "My Points"
+    },
+    "no_advice": {
+     "default": false,
+     "title": "No Advice",
+     "type": "boolean"
+    },
+    "notices": {
+     "items": {
+      "type": "string"
+     },
+     "title": "Notices",
+     "type": "array"
+    },
+    "official_gross": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Official Gross"
+    },
+    "official_points": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Official Points"
+    },
+    "our_bench_points": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Our Bench Points"
+    },
+    "overall_rank": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Overall Rank"
+    },
+    "points_on_bench": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Points On Bench"
+    },
+    "post_deadline": {
+     "default": false,
+     "title": "Post Deadline",
+     "type": "boolean"
+    },
+    "projection_post_deadline": {
+     "default": false,
+     "title": "Projection Post Deadline",
+     "type": "boolean"
+    },
+    "projection_snapshot": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Projection Snapshot"
+    },
+    "pwin_granularity_pp": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Pwin Granularity Pp"
+    },
+    "pwin_n": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Pwin N"
+    },
+    "pwin_seed": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Pwin Seed"
+    },
+    "reconciled": {
+     "anyOf": [
+      {
+       "type": "boolean"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Reconciled"
+    },
+    "reviewed_at": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Reviewed At"
+    }
+   },
+   "required": [
+    "gw"
+   ],
+   "title": "ReviewGw",
+   "type": "object"
+  },
+  "ReviewHindsight": {
+   "description": "The best legal eleven out of the fifteen I owned, by actual points.\n\n``points`` and ``gap`` are ``None`` \u2014 never zero \u2014 when no legal eleven\ncould be built at all, which is what a fifteen the results frame does not\ncover looks like. A zero there would bank a *negative* gap.",
+   "properties": {
+    "captain": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Captain"
+    },
+    "gap": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Gap"
+    },
+    "points": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Points"
+    },
+    "xi": {
+     "items": {
+      "type": "integer"
+     },
+     "title": "Xi",
+     "type": "array"
+    }
+   },
+   "title": "ReviewHindsight",
+   "type": "object"
+  },
+  "ReviewLane": {
+   "description": "One graded decision lane (spec D5).\n\n``delta_pts`` and ``label`` are ``None`` \u2014 never zero \u2014 for a lane that\ncould not be built: the model's captain was not in my eleven, the model\nsold a player I never owned, either side played a wildcard. \"The model had\nno opinion I could have acted on\" and \"the model agreed with me\" are\ndifferent facts and the UI colours them differently.",
+   "properties": {
+    "aligned": {
+     "default": false,
+     "title": "Aligned",
+     "type": "boolean"
+    },
+    "delta_pts": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Delta Pts"
+    },
+    "delta_pwin": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Delta Pwin"
+    },
+    "label": {
+     "anyOf": [
+      {
+       "enum": [
+        "Brilliant",
+        "Good",
+        "Aligned",
+        "Inaccuracy",
+        "Blunder"
+       ],
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Label"
+    },
+    "lane": {
+     "enum": [
+      "transfers",
+      "captaincy",
+      "bench",
+      "chip"
+     ],
+     "title": "Lane",
+     "type": "string"
+    },
+    "mine": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Mine"
+    },
+    "model": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Model"
+    },
+    "note": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Note"
+    }
+   },
+   "required": [
+    "lane"
+   ],
+   "title": "ReviewLane",
+   "type": "object"
+  },
+  "ReviewLaneTotal": {
+   "properties": {
+    "graded": {
+     "default": 0,
+     "title": "Graded",
+     "type": "integer"
+    },
+    "losses": {
+     "default": 0,
+     "title": "Losses",
+     "type": "integer"
+    },
+    "pts": {
+     "default": 0.0,
+     "title": "Pts",
+     "type": "number"
+    },
+    "pwin": {
+     "default": 0.0,
+     "title": "Pwin",
+     "type": "number"
+    },
+    "wins": {
+     "default": 0,
+     "title": "Wins",
+     "type": "integer"
+    }
+   },
+   "title": "ReviewLaneTotal",
+   "type": "object"
+  },
+  "ReviewMiss": {
+   "description": "A move the model flagged, I did not make, and that returned anyway.",
+   "properties": {
+    "code": {
+     "title": "Code",
+     "type": "integer"
+    },
+    "gain": {
+     "title": "Gain",
+     "type": "integer"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "over": {
+     "title": "Over",
+     "type": "string"
+    }
+   },
+   "required": [
+    "code",
+    "name",
+    "over",
+    "gain"
+   ],
+   "title": "ReviewMiss",
+   "type": "object"
+  },
+  "RivalBeat": {
+   "properties": {
+    "entry": {
+     "title": "Entry",
+     "type": "integer"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "p_beat": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "P Beat"
+    }
+   },
+   "required": [
+    "entry",
+    "name"
+   ],
+   "title": "RivalBeat",
+   "type": "object"
+  },
+  "RivalDetailData": {
+   "properties": {
+    "captain": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/SquadPlayer"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "chips_used": {
+     "items": {
+      "type": "string"
+     },
+     "title": "Chips Used",
+     "type": "array"
+    },
+    "entry": {
+     "title": "Entry",
+     "type": "integer"
+    },
+    "live_points": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Live Points"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "player_name": {
+     "title": "Player Name",
+     "type": "string"
+    },
+    "shared": {
+     "items": {
+      "$ref": "#/definitions/SquadPlayer"
+     },
+     "title": "Shared",
+     "type": "array"
+    },
+    "squad": {
+     "items": {
+      "$ref": "#/definitions/SquadPlayer"
+     },
+     "title": "Squad",
+     "type": "array"
+    },
+    "squad_gw": {
+     "title": "Squad Gw",
+     "type": "integer"
+    },
+    "team_value": {
+     "title": "Team Value",
+     "type": "number"
+    },
+    "their_differentials": {
+     "items": {
+      "$ref": "#/definitions/SquadPlayer"
+     },
+     "title": "Their Differentials",
+     "type": "array"
+    },
+    "total": {
+     "title": "Total",
+     "type": "integer"
+    },
+    "your_differentials": {
+     "items": {
+      "$ref": "#/definitions/SquadPlayer"
+     },
+     "title": "Your Differentials",
+     "type": "array"
+    }
+   },
+   "required": [
+    "entry",
+    "name",
+    "player_name",
+    "total",
+    "team_value",
+    "chips_used",
+    "captain",
+    "squad_gw",
+    "squad",
+    "shared",
+    "their_differentials",
+    "your_differentials",
+    "live_points"
+   ],
+   "title": "RivalDetail",
+   "type": "object"
+  },
+  "RivalSummary": {
+   "properties": {
+    "differentials": {
+     "title": "Differentials",
+     "type": "integer"
+    },
+    "entry": {
+     "title": "Entry",
+     "type": "integer"
+    },
+    "event_total": {
+     "title": "Event Total",
+     "type": "integer"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "overlap": {
+     "title": "Overlap",
+     "type": "integer"
+    },
+    "player_name": {
+     "title": "Player Name",
+     "type": "string"
+    },
+    "rank": {
+     "title": "Rank",
+     "type": "integer"
+    },
+    "total": {
+     "title": "Total",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "entry",
+    "name",
+    "player_name",
+    "rank",
+    "total",
+    "event_total",
+    "overlap",
+    "differentials"
+   ],
+   "title": "RivalSummary",
+   "type": "object"
+  },
+  "SensitivityMove": {
+   "properties": {
+    "code": {
+     "title": "Code",
+     "type": "integer"
+    },
+    "count": {
+     "title": "Count",
+     "type": "integer"
+    },
+    "frequency": {
+     "title": "Frequency",
+     "type": "number"
+    },
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "kind": {
+     "title": "Kind",
+     "type": "string"
+    },
+    "label": {
+     "title": "Label",
+     "type": "string"
+    },
+    "name": {
+     "default": "",
+     "title": "Name",
+     "type": "string"
+    }
+   },
+   "required": [
+    "kind",
+    "code",
+    "gw",
+    "label",
+    "count",
+    "frequency"
+   ],
+   "title": "SensitivityMove",
+   "type": "object"
+  },
+  "SensitivityPlan": {
+   "properties": {
+    "buys": {
+     "items": {
+      "$ref": "#/definitions/NamedPlayer"
+     },
+     "title": "Buys",
+     "type": "array"
+    },
+    "captain": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/NamedPlayer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "count": {
+     "title": "Count",
+     "type": "integer"
+    },
+    "hits": {
+     "default": 0,
+     "title": "Hits",
+     "type": "integer"
+    },
+    "sells": {
+     "items": {
+      "$ref": "#/definitions/NamedPlayer"
+     },
+     "title": "Sells",
+     "type": "array"
+    },
+    "value": {
+     "default": 0.0,
+     "title": "Value",
+     "type": "number"
+    }
+   },
+   "required": [
+    "count"
+   ],
+   "title": "SensitivityPlan",
+   "type": "object"
+  },
+  "SensitivityReport": {
+   "properties": {
+    "available": {
+     "default": false,
+     "title": "Available",
+     "type": "boolean"
+    },
+    "completed": {
+     "default": 0,
+     "title": "Completed",
+     "type": "integer"
+    },
+    "decision_sigma": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Decision Sigma"
+    },
+    "failures": {
+     "default": 0,
+     "title": "Failures",
+     "type": "integer"
+    },
+    "frequencies": {
+     "items": {
+      "$ref": "#/definitions/SensitivityMove"
+     },
+     "title": "Frequencies",
+     "type": "array"
+    },
+    "generated_at": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Generated At"
+    },
+    "gw": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Gw"
+    },
+    "horizon": {
+     "default": 0,
+     "title": "Horizon",
+     "type": "integer"
+    },
+    "k": {
+     "default": 0,
+     "title": "K",
+     "type": "integer"
+    },
+    "margin": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Margin"
+    },
+    "modal": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/SensitivityPlan"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "notice": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Notice"
+    },
+    "runner_up": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/SensitivityPlan"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "seed": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Seed"
+    },
+    "verdict": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Verdict"
+    },
+    "wall_s": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Wall S"
+    }
+   },
+   "title": "SensitivityReport",
+   "type": "object"
+  },
+  "SettingRow": {
+   "description": "One editable setting, as the Settings tab receives it (v12 W5 \u00a76.2).",
+   "properties": {
+    "help": {
+     "title": "Help",
+     "type": "string"
+    },
+    "hi": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Hi"
+    },
+    "key": {
+     "title": "Key",
+     "type": "string"
+    },
+    "kind": {
+     "enum": [
+      "int",
+      "float",
+      "bool",
+      "floats3",
+      "pool"
+     ],
+     "title": "Kind",
+     "type": "string"
+    },
+    "label": {
+     "title": "Label",
+     "type": "string"
+    },
+    "lo": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Lo"
+    },
+    "section": {
+     "title": "Section",
+     "type": "string"
+    },
+    "source": {
+     "enum": [
+      "local",
+      "base",
+      "default"
+     ],
+     "title": "Source",
+     "type": "string"
+    },
+    "value": {
+     "title": "Value"
+    }
+   },
+   "required": [
+    "key",
+    "label",
+    "kind",
+    "value",
+    "section",
+    "help",
+    "source"
+   ],
+   "title": "SettingRow",
+   "type": "object"
+  },
+  "SettingWrite": {
+   "properties": {
+    "key": {
+     "title": "Key",
+     "type": "string"
+    },
+    "value": {
+     "default": null,
+     "title": "Value"
+    }
+   },
+   "required": [
+    "key"
+   ],
+   "title": "SettingWrite",
+   "type": "object"
+  },
+  "SettingsPanel": {
+   "properties": {
+    "apply_note": {
+     "title": "Apply Note",
+     "type": "string"
+    },
+    "overlay_error": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Overlay Error"
+    },
+    "rows": {
+     "items": {
+      "$ref": "#/definitions/SettingRow"
+     },
+     "title": "Rows",
+     "type": "array"
+    },
+    "unavailable": {
+     "items": {
+      "type": "string"
+     },
+     "title": "Unavailable",
+     "type": "array"
+    }
+   },
+   "required": [
+    "apply_note"
+   ],
+   "title": "SettingsPanel",
+   "type": "object"
+  },
+  "SimPoint": {
+   "description": "One banked gameweek of the headline, for the card's sparkline.",
+   "properties": {
+    "exp_finish": {
+     "title": "Exp Finish",
+     "type": "number"
+    },
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "p_top3": {
+     "title": "P Top3",
+     "type": "number"
+    },
+    "p_win": {
+     "title": "P Win",
+     "type": "number"
+    },
+    "run_at": {
+     "title": "Run At",
+     "type": "string"
+    }
+   },
+   "required": [
+    "gw",
+    "p_win",
+    "p_top3",
+    "exp_finish",
+    "run_at"
+   ],
+   "title": "SimPoint",
+   "type": "object"
+  },
+  "SourceHealth": {
+   "properties": {
+    "age_hours": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Age Hours"
+    },
+    "modified_at": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Modified At"
+    },
+    "path": {
+     "title": "Path",
+     "type": "string"
+    },
+    "present": {
+     "title": "Present",
+     "type": "boolean"
+    },
+    "source": {
+     "title": "Source",
+     "type": "string"
+    }
+   },
+   "required": [
+    "source",
+    "path",
+    "present",
+    "modified_at",
+    "age_hours"
+   ],
+   "title": "SourceHealth",
+   "type": "object"
+  },
+  "SourceRows": {
+   "properties": {
+    "rows": {
+     "title": "Rows",
+     "type": "integer"
+    },
+    "source": {
+     "title": "Source",
+     "type": "string"
+    }
+   },
+   "required": [
+    "source",
+    "rows"
+   ],
+   "title": "SourceRows",
+   "type": "object"
+  },
+  "SquadDiff": {
+   "description": "A candidate squad against the one you own, resolved server-side.",
+   "properties": {
+    "added": {
+     "items": {
+      "$ref": "#/definitions/SquadPlayerRef"
+     },
+     "title": "Added",
+     "type": "array"
+    },
+    "dropped": {
+     "items": {
+      "$ref": "#/definitions/SquadPlayerRef"
+     },
+     "title": "Dropped",
+     "type": "array"
+    },
+    "gain_over_horizon": {
+     "title": "Gain Over Horizon",
+     "type": "number"
+    },
+    "kept": {
+     "items": {
+      "$ref": "#/definitions/SquadPlayerRef"
+     },
+     "title": "Kept",
+     "type": "array"
+    },
+    "recommend": {
+     "title": "Recommend",
+     "type": "boolean"
+    },
+    "threshold": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Threshold"
+    },
+    "threshold_source": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Threshold Source"
+    }
+   },
+   "required": [
+    "gain_over_horizon",
+    "recommend",
+    "kept",
+    "dropped",
+    "added"
+   ],
+   "title": "SquadDiff",
+   "type": "object"
+  },
+  "SquadPlayer": {
+   "properties": {
+    "code": {
+     "title": "Code",
+     "type": "integer"
+    },
+    "element": {
+     "title": "Element",
+     "type": "integer"
+    },
+    "is_captain": {
+     "title": "Is Captain",
+     "type": "boolean"
+    },
+    "multiplier": {
+     "title": "Multiplier",
+     "type": "integer"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "position": {
+     "title": "Position",
+     "type": "string"
+    },
+    "price": {
+     "title": "Price",
+     "type": "number"
+    }
+   },
+   "required": [
+    "code",
+    "element",
+    "name",
+    "position",
+    "price",
+    "is_captain",
+    "multiplier"
+   ],
+   "title": "SquadPlayer",
+   "type": "object"
+  },
+  "SquadPlayerRef": {
+   "properties": {
+    "code": {
+     "title": "Code",
+     "type": "integer"
+    },
+    "ep": {
+     "title": "Ep",
+     "type": "number"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "position": {
+     "title": "Position",
+     "type": "string"
+    },
+    "price": {
+     "title": "Price",
+     "type": "number"
+    }
+   },
+   "required": [
+    "code",
+    "name",
+    "position",
+    "price",
+    "ep"
+   ],
+   "title": "SquadPlayerRef",
+   "type": "object"
+  },
+  "Staleness": {
+   "properties": {
+    "advice_gw": {
+     "title": "Advice Gw",
+     "type": "integer"
+    },
+    "current_gw": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Current Gw"
+    },
+    "data_through_gw": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Data Through Gw"
+    },
+    "data_warning": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Data Warning"
+    },
+    "deadline": {
+     "title": "Deadline",
+     "type": "string"
+    },
+    "deadline_passed": {
+     "title": "Deadline Passed",
+     "type": "boolean"
+    },
+    "generated_at": {
+     "title": "Generated At",
+     "type": "string"
+    },
+    "reason": {
+     "title": "Reason",
+     "type": "string"
+    },
+    "stale": {
+     "title": "Stale",
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "advice_gw",
+    "current_gw",
+    "generated_at",
+    "deadline",
+    "deadline_passed",
+    "stale",
+    "reason"
+   ],
+   "title": "Staleness",
+   "type": "object"
+  },
+  "StandingRow": {
+   "properties": {
+    "entry": {
+     "title": "Entry",
+     "type": "integer"
+    },
+    "event_total": {
+     "title": "Event Total",
+     "type": "integer"
+    },
+    "is_you": {
+     "title": "Is You",
+     "type": "boolean"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "player_name": {
+     "title": "Player Name",
+     "type": "string"
+    },
+    "rank": {
+     "title": "Rank",
+     "type": "integer"
+    },
+    "total": {
+     "title": "Total",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "entry",
+    "name",
+    "player_name",
+    "rank",
+    "total",
+    "event_total",
+    "is_you"
+   ],
+   "title": "StandingRow",
+   "type": "object"
+  },
+  "TickerCell": {
+   "properties": {
+    "difficulty": {
+     "title": "Difficulty",
+     "type": "number"
+    },
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "home": {
+     "title": "Home",
+     "type": "boolean"
+    },
+    "opponent": {
+     "title": "Opponent",
+     "type": "string"
+    }
+   },
+   "required": [
+    "gw",
+    "opponent",
+    "home",
+    "difficulty"
+   ],
+   "title": "TickerCell",
+   "type": "object"
+  },
+  "TickerData": {
+   "properties": {
+    "gws": {
+     "items": {
+      "type": "integer"
+     },
+     "title": "Gws",
+     "type": "array"
+    },
+    "source": {
+     "enum": [
+      "odds",
+      "elo"
+     ],
+     "title": "Source",
+     "type": "string"
+    },
+    "teams": {
+     "items": {
+      "$ref": "#/definitions/TickerTeam"
+     },
+     "title": "Teams",
+     "type": "array"
+    }
+   },
+   "required": [
+    "gws",
+    "source",
+    "teams"
+   ],
+   "title": "Ticker",
+   "type": "object"
+  },
+  "TickerTeam": {
+   "properties": {
+    "cells": {
+     "items": {
+      "$ref": "#/definitions/TickerCell"
+     },
+     "title": "Cells",
+     "type": "array"
+    },
+    "code": {
+     "title": "Code",
+     "type": "integer"
+    },
+    "mean_difficulty": {
+     "title": "Mean Difficulty",
+     "type": "number"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "short_name": {
+     "title": "Short Name",
+     "type": "string"
+    }
+   },
+   "required": [
+    "code",
+    "name",
+    "short_name",
+    "cells",
+    "mean_difficulty"
+   ],
+   "title": "TickerTeam",
+   "type": "object"
+  },
+  "Trajectory": {
+   "properties": {
+    "entry": {
+     "title": "Entry",
+     "type": "integer"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "points": {
+     "items": {
+      "$ref": "#/definitions/GwPoint"
+     },
+     "title": "Points",
+     "type": "array"
+    }
+   },
+   "required": [
+    "entry",
+    "name",
+    "points"
+   ],
+   "title": "Trajectory",
+   "type": "object"
+  },
+  "UpcomingFixture": {
+   "description": "One of the next three league games, as the explain panel lists them.\n\nDeliberately *not* ``NextFixture`` (``:87``), whose name it shadowed until\nv12 W5: that one is the advised gameweek's single game, with an opponent\nshort name, a kickoff and a difficulty; this one is a gameweek number and\nan opponent's full name. Two response models under one name gave the\nschema generator two definitions it could only tell apart by mangling\nboth, and gave every ``from .schemas import NextFixture`` in the tree the\nsecond class rather than the first.",
+   "properties": {
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "home": {
+     "title": "Home",
+     "type": "boolean"
+    },
+    "opponent": {
+     "title": "Opponent",
+     "type": "string"
+    }
+   },
+   "required": [
+    "gw",
+    "opponent",
+    "home"
+   ],
+   "title": "UpcomingFixture",
+   "type": "object"
+  },
+  "VerdictRow": {
+   "properties": {
+    "n": {
+     "title": "N",
+     "type": "integer"
+    },
+    "not_started": {
+     "title": "Not Started",
+     "type": "integer"
+    },
+    "started": {
+     "title": "Started",
+     "type": "integer"
+    },
+    "verdict": {
+     "title": "Verdict",
+     "type": "string"
+    }
+   },
+   "required": [
+    "verdict",
+    "n",
+    "started",
+    "not_started"
+   ],
+   "title": "VerdictRow",
+   "type": "object"
+  },
+  "VerdictScore": {
+   "properties": {
+    "n": {
+     "title": "N",
+     "type": "integer"
+    },
+    "precision": {
+     "title": "Precision",
+     "type": "number"
+    },
+    "recall": {
+     "title": "Recall",
+     "type": "number"
+    },
+    "verdict": {
+     "title": "Verdict",
+     "type": "string"
+    }
+   },
+   "required": [
+    "verdict",
+    "n",
+    "precision",
+    "recall"
+   ],
+   "title": "VerdictScore",
+   "type": "object"
+  },
+  "WatchRequest": {
+   "description": "A star, and optionally a sentence about why.",
+   "properties": {
+    "code": {
+     "title": "Code",
+     "type": "integer"
+    },
+    "note": {
+     "default": "",
+     "title": "Note",
+     "type": "string"
+    }
+   },
+   "required": [
+    "code"
+   ],
+   "title": "WatchRequest",
+   "type": "object"
+  },
+  "WatchRow": {
+   "properties": {
+    "code": {
+     "title": "Code",
+     "type": "integer"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "note": {
+     "title": "Note",
+     "type": "string"
+    },
+    "set_at": {
+     "title": "Set At",
+     "type": "string"
+    }
+   },
+   "required": [
+    "code",
+    "name",
+    "note",
+    "set_at"
+   ],
+   "title": "WatchRow",
+   "type": "object"
+  },
+  "WatchlistPanel": {
+   "description": "Every starred player, name-resolved.\n\n``rows`` is empty on a fresh clone and on a broken store alike \u2014 the\ndistinction is a printed line on the server, not a field here, because a\nclient that rendered \"your watchlist may be corrupt\" would be showing the\nuser a problem they cannot act on.",
+   "properties": {
+    "rows": {
+     "items": {
+      "$ref": "#/definitions/WatchRow"
+     },
+     "title": "Rows",
+     "type": "array"
+    }
+   },
+   "title": "WatchlistPanel",
+   "type": "object"
+  },
+  "WhatIfRequest": {
+   "properties": {
+    "ban": {
+     "items": {
+      "type": "integer"
+     },
+     "title": "Ban",
+     "type": "array"
+    },
+    "chip": {
+     "default": "none",
+     "enum": [
+      "none",
+      "wc",
+      "bb",
+      "fh",
+      "tc"
+     ],
+     "title": "Chip",
+     "type": "string"
+    },
+    "force_in": {
+     "items": {
+      "type": "integer"
+     },
+     "title": "Force In",
+     "type": "array"
+    },
+    "force_out": {
+     "items": {
+      "type": "integer"
+     },
+     "title": "Force Out",
+     "type": "array"
+    },
+    "horizon": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Horizon"
+    },
+    "lock": {
+     "items": {
+      "type": "integer"
+     },
+     "title": "Lock",
+     "type": "array"
+    },
+    "max_hits": {
+     "default": 0,
+     "title": "Max Hits",
+     "type": "integer"
+    }
+   },
+   "title": "WhatIfRequest",
+   "type": "object"
+  },
+  "WhatIfResult": {
+   "properties": {
+    "baseline": {
+     "$ref": "#/definitions/PlanSummary"
+    },
+    "captain_changed": {
+     "title": "Captain Changed",
+     "type": "boolean"
+    },
+    "delta_xpts": {
+     "title": "Delta Xpts",
+     "type": "number"
+    },
+    "transfers_changed": {
+     "title": "Transfers Changed",
+     "type": "boolean"
+    },
+    "verdict": {
+     "title": "Verdict",
+     "type": "string"
+    },
+    "xi_in": {
+     "items": {
+      "$ref": "#/definitions/PlayerRef"
+     },
+     "title": "Xi In",
+     "type": "array"
+    },
+    "xi_out": {
+     "items": {
+      "$ref": "#/definitions/PlayerRef"
+     },
+     "title": "Xi Out",
+     "type": "array"
+    },
+    "yours": {
+     "$ref": "#/definitions/PlanSummary"
+    }
+   },
+   "required": [
+    "baseline",
+    "yours",
+    "delta_xpts",
+    "xi_in",
+    "xi_out",
+    "transfers_changed",
+    "captain_changed",
+    "verdict"
+   ],
+   "title": "WhatIfResult",
+   "type": "object"
+  },
+  "WinProb": {
+   "properties": {
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "p_win": {
+     "title": "P Win",
+     "type": "number"
+    },
+    "total": {
+     "title": "Total",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "name",
+    "total",
+    "p_win"
+   ],
+   "title": "WinProb",
+   "type": "object"
+  },
+  "WireAdviceLatest": {
+   "properties": {
+    "advice": {
+     "additionalProperties": true,
+     "title": "Advice",
+     "type": "object"
+    },
+    "deadline": {
+     "title": "Deadline",
+     "type": "string"
+    },
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "mode": {
+     "title": "Mode",
+     "type": "string"
+    },
+    "staleness": {
+     "$ref": "#/definitions/Staleness"
+    }
+   },
+   "required": [
+    "gw",
+    "mode",
+    "deadline",
+    "advice",
+    "staleness"
+   ],
+   "title": "AdviceLatest",
+   "type": "object"
+  },
+  "WireCalibrationReport": {
+   "description": "The banked report, or the honest empty one.\n\n``available`` is what the card branches on. The route answers 200 either\nway (spec \u00a74) because this card sits beside populated ones and a 422 there\nis indistinguishable from a broken endpoint.",
+   "properties": {
+    "available": {
+     "default": false,
+     "title": "Available",
+     "type": "boolean"
+    },
+    "cumulative": {
+     "additionalProperties": {
+      "$ref": "#/definitions/CalibrationHead"
+     },
+     "default": {},
+     "title": "Cumulative",
+     "type": "object"
+    },
+    "excluded": {
+     "default": [],
+     "items": {
+      "additionalProperties": true,
+      "type": "object"
+     },
+     "title": "Excluded",
+     "type": "array"
+    },
+    "gameweeks": {
+     "default": [],
+     "items": {
+      "$ref": "#/definitions/CalibrationGw"
+     },
+     "title": "Gameweeks",
+     "type": "array"
+    },
+    "git_sha": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Git Sha"
+    },
+    "missing": {
+     "default": [],
+     "items": {
+      "type": "integer"
+     },
+     "title": "Missing",
+     "type": "array"
+    },
+    "note": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Note"
+    },
+    "omitted": {
+     "additionalProperties": {
+      "type": "string"
+     },
+     "default": {},
+     "title": "Omitted",
+     "type": "object"
+    },
+    "per_gw_omitted": {
+     "additionalProperties": {
+      "type": "string"
+     },
+     "default": {},
+     "title": "Per Gw Omitted",
+     "type": "object"
+    },
+    "run_at": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Run At"
+    },
+    "season": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Season"
+    }
+   },
+   "title": "CalibrationReport",
+   "type": "object"
+  },
+  "WireHealth": {
+   "properties": {
+    "artifacts": {
+     "items": {
+      "$ref": "#/definitions/ArtifactItem"
+     },
+     "title": "Artifacts",
+     "type": "array"
+    },
+    "core_insights": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/CoreInsightsHealth"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "data": {
+     "items": {
+      "$ref": "#/definitions/SourceHealth"
+     },
+     "title": "Data",
+     "type": "array"
+    },
+    "data_through_gw": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Data Through Gw"
+    },
+    "last_backup": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/BackupHealth"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "launchd": {
+     "$ref": "#/definitions/LaunchdHealth"
+    },
+    "model_health": {
+     "anyOf": [
+      {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Model Health"
+    },
+    "models": {
+     "items": {
+      "$ref": "#/definitions/WireModelHealth"
+     },
+     "title": "Models",
+     "type": "array"
+    },
+    "odds_key_present": {
+     "title": "Odds Key Present",
+     "type": "boolean"
+    },
+    "season_config": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Season Config"
+    },
+    "season_ingested": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Season Ingested"
+    },
+    "season_ok": {
+     "anyOf": [
+      {
+       "type": "boolean"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Season Ok"
+    },
+    "solver_top_n": {
+     "anyOf": [
+      {
+       "additionalProperties": {
+        "type": "integer"
+       },
+       "type": "object"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Solver Top N"
+    }
+   },
+   "required": [
+    "data",
+    "models",
+    "launchd",
+    "odds_key_present",
+    "model_health",
+    "artifacts"
+   ],
+   "title": "Health",
+   "type": "object"
+  },
+  "WireHistory": {
+   "properties": {
+    "backtests": {
+     "items": {
+      "additionalProperties": true,
+      "type": "object"
+     },
+     "title": "Backtests",
+     "type": "array"
+    },
+    "prices": {
+     "items": {
+      "$ref": "#/definitions/PriceSeries"
+     },
+     "title": "Prices",
+     "type": "array"
+    },
+    "runs": {
+     "items": {
+      "$ref": "#/definitions/HistoryRun"
+     },
+     "title": "Runs",
+     "type": "array"
+    }
+   },
+   "required": [
+    "runs",
+    "prices",
+    "backtests"
+   ],
+   "title": "History",
+   "type": "object"
+  },
+  "WireModelHealth": {
+   "properties": {
+    "metrics": {
+     "additionalProperties": true,
+     "title": "Metrics",
+     "type": "object"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "saved_at": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Saved At"
+    }
+   },
+   "required": [
+    "name",
+    "saved_at",
+    "metrics"
+   ],
+   "title": "ModelHealth",
+   "type": "object"
+  },
+  "WirePlanTimeline": {
+   "properties": {
+    "alternatives": {
+     "default": [],
+     "items": {
+      "$ref": "#/definitions/PlanAlternative"
+     },
+     "title": "Alternatives",
+     "type": "array"
+    },
+    "bank": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Bank"
+    },
+    "generated_at": {
+     "title": "Generated At",
+     "type": "string"
+    },
+    "gw": {
+     "title": "Gw",
+     "type": "integer"
+    },
+    "weeks": {
+     "items": {
+      "$ref": "#/definitions/PlanGw"
+     },
+     "title": "Weeks",
+     "type": "array"
+    }
+   },
+   "required": [
+    "gw",
+    "generated_at",
+    "weeks"
+   ],
+   "title": "PlanTimeline",
+   "type": "object"
+  },
+  "WirePlayerExplain": {
+   "properties": {
+    "code": {
+     "title": "Code",
+     "type": "integer"
+    },
+    "ep_next": {
+     "title": "Ep Next",
+     "type": "number"
+    },
+    "fixtures": {
+     "items": {
+      "$ref": "#/definitions/FixtureExplain"
+     },
+     "title": "Fixtures",
+     "type": "array"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "next_fixtures": {
+     "items": {
+      "$ref": "#/definitions/UpcomingFixture"
+     },
+     "title": "Next Fixtures",
+     "type": "array"
+    },
+    "position": {
+     "title": "Position",
+     "type": "string"
+    },
+    "set_pieces": {
+     "additionalProperties": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "title": "Set Pieces",
+     "type": "object"
+    },
+    "set_pieces_manual": {
+     "items": {
+      "type": "string"
+     },
+     "title": "Set Pieces Manual",
+     "type": "array"
+    },
+    "team_name": {
+     "title": "Team Name",
+     "type": "string"
+    }
+   },
+   "required": [
+    "code",
+    "name",
+    "position",
+    "team_name",
+    "ep_next",
+    "fixtures",
+    "next_fixtures",
+    "set_pieces"
+   ],
+   "title": "PlayerExplain",
+   "type": "object"
+  },
+  "WirePlayerRow": {
+   "properties": {
+    "available": {
+     "title": "Available",
+     "type": "boolean"
+    },
+    "chance_of_playing": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Chance Of Playing"
+    },
+    "code": {
+     "title": "Code",
+     "type": "integer"
+    },
+    "corners_order": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Corners Order"
+    },
+    "element": {
+     "title": "Element",
+     "type": "integer"
+    },
+    "ep_hi": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Ep Hi"
+    },
+    "ep_horizon": {
+     "title": "Ep Horizon",
+     "type": "number"
+    },
+    "ep_lo": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Ep Lo"
+    },
+    "ep_next": {
+     "title": "Ep Next",
+     "type": "number"
+    },
+    "field_class": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Field Class"
+    },
+    "field_eo": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Field Eo"
+    },
+    "field_eo_deadline": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Field Eo Deadline"
+    },
+    "field_eo_delta": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Field Eo Delta"
+    },
+    "field_n": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Field N"
+    },
+    "field_se": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Field Se"
+    },
+    "free_kicks_order": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Free Kicks Order"
+    },
+    "in_squad": {
+     "title": "In Squad",
+     "type": "boolean"
+    },
+    "last4": {
+     "items": {
+      "type": "integer"
+     },
+     "title": "Last4",
+     "type": "array"
+    },
+    "league_eo": {
+     "title": "League Eo",
+     "type": "number"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "news": {
+     "title": "News",
+     "type": "string"
+    },
+    "ownership": {
+     "title": "Ownership",
+     "type": "number"
+    },
+    "p_blank": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "P Blank"
+    },
+    "p_haul": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "P Haul"
+    },
+    "penalties_order": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Penalties Order"
+    },
+    "position": {
+     "title": "Position",
+     "type": "string"
+    },
+    "price": {
+     "title": "Price",
+     "type": "number"
+    },
+    "set_piece_manual": {
+     "items": {
+      "type": "string"
+     },
+     "title": "Set Piece Manual",
+     "type": "array"
+    },
+    "status": {
+     "title": "Status",
+     "type": "string"
+    },
+    "team_code": {
+     "title": "Team Code",
+     "type": "integer"
+    },
+    "team_name": {
+     "title": "Team Name",
+     "type": "string"
+    }
+   },
+   "required": [
+    "code",
+    "element",
+    "name",
+    "position",
+    "team_code",
+    "team_name",
+    "price",
+    "ep_next",
+    "ep_horizon",
+    "ownership",
+    "league_eo",
+    "available",
+    "status",
+    "news",
+    "chance_of_playing",
+    "penalties_order",
+    "free_kicks_order",
+    "corners_order",
+    "in_squad"
+   ],
+   "title": "PlayerRow",
+   "type": "object"
+  },
+  "WireReviewSummary": {
+   "properties": {
+    "accuracy": {
+     "items": {
+      "$ref": "#/definitions/ReviewAccuracyPoint"
+     },
+     "title": "Accuracy",
+     "type": "array"
+    },
+    "best": {
+     "anyOf": [
+      {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Best"
+    },
+    "gws": {
+     "items": {
+      "type": "integer"
+     },
+     "title": "Gws",
+     "type": "array"
+    },
+    "hindsight_gap": {
+     "default": 0,
+     "title": "Hindsight Gap",
+     "type": "integer"
+    },
+    "hindsight_gap_gws": {
+     "default": 0,
+     "title": "Hindsight Gap Gws",
+     "type": "integer"
+    },
+    "lanes": {
+     "additionalProperties": {
+      "$ref": "#/definitions/ReviewLaneTotal"
+     },
+     "title": "Lanes",
+     "type": "object"
+    },
+    "points_on_bench": {
+     "default": 0,
+     "title": "Points On Bench",
+     "type": "integer"
+    },
+    "points_on_bench_gws": {
+     "default": 0,
+     "title": "Points On Bench Gws",
+     "type": "integer"
+    },
+    "reconciled_gws": {
+     "default": 0,
+     "title": "Reconciled Gws",
+     "type": "integer"
+    },
+    "unreconciled_gws": {
+     "default": 0,
+     "title": "Unreconciled Gws",
+     "type": "integer"
+    },
+    "worst": {
+     "anyOf": [
+      {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Worst"
+    }
+   },
+   "title": "ReviewSummary",
+   "type": "object"
+  }
+ }
+}

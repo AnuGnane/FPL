@@ -20,8 +20,8 @@ from gaffer.data.field import field_eo_trend, latest_field_eo
 from gaffer.errors import GafferError
 from gaffer.uncertainty import band_for, shipped_table, xmins_by_player_gw
 from gaffer.web.schemas import (Component, FixtureExplain, MinutesOutput,
-                                NextFixture, OddsInfluence, PlayerExplain,
-                                PlayerRow)
+                                OddsInfluence, PlayerExplain, PlayerRow,
+                                UpcomingFixture)
 
 router = APIRouter(prefix="/api/players", tags=["players"])
 
@@ -506,7 +506,7 @@ def explain(code: int) -> PlayerExplain:
                                 (fx.away_id, fx.home_id, False)):
             if int(side) != int(me["team_id"]):
                 continue
-            next_three.append(NextFixture(
+            next_three.append(UpcomingFixture(
                 gw=int(fx.gw),
                 opponent=str(team_name.get(id_to_code.get(int(opp)), "")),
                 home=home))
