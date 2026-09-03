@@ -178,3 +178,29 @@ def test_a_malformed_file_serves_fpls_orders(client):
     rows = _rows(client)
     assert rows["Incumbent"]["penalties_order"] == 1
     assert rows["Incumbent"]["set_piece_manual"] == []
+
+
+def test_a_snapshot_row_with_no_club_does_not_500_the_endpoint(client):
+    """The clubs come off the frame, and a frame value is not an int until it
+    is one.
+
+    A snapshot carries every player FPL publishes, not only this week's
+    candidates, so a row with a missing `team_code` never reaches the row loop
+    — it is filtered out as a non-candidate first. It did reach
+    `set_piece_orders`, which called `int()` on it, and one such row would have
+    taken the whole explorer down over a display fact.
+    """
+    stray = PLAYERS.iloc[[2]].copy()
+    stray["code"] = 103
+    stray["element"] = 10
+    stray["name"] = "Clubless"
+    stray["team_code"] = float("nan")
+    pd.concat([PLAYERS, stray], ignore_index=True).to_parquet(
+        "data/live/players.parquet", index=False)
+    _write('["Liverpool"]\npenalties = [101]\n')
+    resp = client.get("/api/players")
+    assert resp.status_code == 200
+    rows = {r["name"]: r for r in resp.json()}
+    assert "Clubless" not in rows            # not a candidate this week
+    assert rows["Newcomer"]["penalties_order"] == 1
+    assert rows["Incumbent"]["penalties_order"] is None

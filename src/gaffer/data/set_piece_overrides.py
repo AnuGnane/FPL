@@ -78,7 +78,7 @@ def load_set_piece_overrides(path: Path | str | None = None
     The file lists takers **in order**::
 
         [Arsenal]
-        penalties = [118748, 232413]   # Saka, then Eze
+        penalties = [223340, 232413]   # Saka, then Eze
 
     which is turned into ``{223340: 1, 232413: 2}`` — the same 1-based
     ``*_order`` shape the bootstrap uses, so a reader can substitute one for

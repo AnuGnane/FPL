@@ -98,3 +98,28 @@ def test_an_empty_list_does_not_remove_the_published_taker(clone):
     # found nobody; to demote a taker, list the club's replacement queue —
     # which is what the test above does with one name.
     assert pen_table(COMP, PLAYERS, PRIORS)["share_now"].tolist() == [1.0, 0.0]
+
+
+# A frame value is not an int until it is one. `pen_table`'s contract is an
+# all-zero table on any path it cannot price (its own docstring), never an
+# exception into `advise` — and the club-aware branch called `int()` on a
+# `team_code` straight off the frame.
+
+NO_CLUB = pd.DataFrame({"code": [1, 2, 3], "team_code": [3, 3, float("nan")],
+                        "position": ["MID"] * 3, "p_play": [0.9] * 3})
+NO_CLUB_PLAYERS = pd.DataFrame(
+    {"code": [1, 2, 3], "name": ["A", "B", "C"],
+     "penalties_order": [1, None, 1]})
+
+
+def test_a_row_with_no_club_does_not_break_the_penalty_table(clone):
+    """A missing `team_code` is a skipped row, not a ValueError.
+
+    Player 3 has no club, so he is in no club's queue: the file cannot demote
+    him and does not promote him, and he keeps FPL's order. Players 1 and 2
+    are Arsenal's, and the file's one name is Arsenal's whole queue.
+    """
+    (clone / "data" / "set_pieces.toml").write_text(
+        "[Arsenal]\npenalties = [2]\n")
+    table = pen_table(NO_CLUB, NO_CLUB_PLAYERS, PRIORS)
+    assert table["share_now"].tolist() == [0.0, 1.0, 1.0]

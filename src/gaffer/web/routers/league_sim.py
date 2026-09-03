@@ -259,6 +259,13 @@ def eo_gw_for(gw: int) -> int:
     on what time of week the page was opened. §3.3's ``deadline_eo`` is
     already the one-gameweek-ahead extrapolation of the sample it is given,
     so ``gw - 1``'s sample *is* the number for ``gw``.
+
+    **The floor is the one exception**, and it is the only one: at plan
+    gameweek 1 there is no previous gameweek, so ``max(1, ...)`` reads GW1's
+    *own* sample. Before that deadline none exists and the panel renders its
+    empty state; after it, the sample is the field's frozen opening squads —
+    the post-deadline reading the paragraph above refuses everywhere else,
+    admitted here because it is the only answer the season has yet.
     """
     return max(1, int(gw) - 1)
 

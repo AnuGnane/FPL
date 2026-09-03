@@ -426,9 +426,10 @@ def _archive(tmp_path, monkeypatch, *, season="2025-26", season_idx=3,
     Six starts, every one of them a wing-back's (two crosses), and a midweek
     cup tie three days before each league kickoff. A correctly wired frame
     therefore reads ``role_wb_share == 1.0`` and ``density_pub_7d == 2.0`` —
-    the previous week's league match, exactly seven days back and inside the
-    closed lower bound, plus the cup tie three days back, which is the pair
-    that shows both tournaments count — and an unwired one reads NaN.
+    the previous week's league match, whose kickoff *date* is the earliest of
+    the seven calendar days the window counts, plus the cup tie three days
+    back, which is the pair that shows both tournaments count — and an unwired
+    one reads NaN.
     """
     monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")
     kick = lambda gw: (pd.Timestamp("2025-08-09", tz="UTC")   # noqa: E731

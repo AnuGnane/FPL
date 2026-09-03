@@ -795,14 +795,16 @@ sanity test; suite green.
 
 ### W4 G1 — suites, rails, pins (measured by the implementer)
 
-Measured in the W4 worktree at `6a9601c`, the last implementer commit of the
-cycle. The orchestrator re-runs all of it on the merge commit; these are the
-numbers it is checking against, not a substitute for that run.
+Measured in the W4 worktree at `6a9601c`, and re-measured on the fix round
+that closes the cycle. The orchestrator re-runs all of it on the merge commit;
+these are the numbers it is checking against, not a substitute for that run.
 
 - [x] **Python suite:** `PYTHONPATH=src .venv/bin/pytest tests/ -q` —
-      **3829 passed, 13 skipped**. The skips are the built-asset tests, which
-      skip in a worktree with no `web/static/` build; the main tree collects
-      them.
+      **3829 passed, 13 skipped** at `6a9601c`, **3831 / 13** after the fix
+      round adds two rails (a `pen_table` and a `/api/players` frame value
+      that is not an int until it is one). The skips are the built-asset
+      tests, which skip in a worktree with no `web/static/` build; the main
+      tree collects them.
 - [x] **Frontend:** `cd frontend && npx vitest run` — **722 passed, 4 skipped**
       over 73 files; `npx tsc --noEmit` clean.
 - [x] **Pins:** `46 12 55` — routes / `JOB_KINDS` / `fields(Config)`,

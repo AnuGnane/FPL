@@ -329,16 +329,25 @@ def pen_table(comp: pd.DataFrame, players: pd.DataFrame,
 
     over = penalty_order_overrides()
     if over:
-        team_of = dict(zip(comp["code"], comp["team_code"]))
+        # A row whose code or club is not a number is skipped rather than
+        # coerced. ``int()`` on a frame value is a promise the frame cannot
+        # keep — a missing `team_code` arrives as NaN and raises ValueError —
+        # and this function's contract is an all-zero table on any path it
+        # cannot price, never an exception into `advise`. A row with no club
+        # identifies none, so it can neither define a queue nor be demoted
+        # from one.
+        team_of = {int(code): int(team)
+                   for code, team in zip(comp["code"], comp["team_code"])
+                   if pd.notna(code) and pd.notna(team)}
         clubs = set()
         for code in over:
             if code in team_of:
-                clubs.add(int(team_of[code]))
+                clubs.add(team_of[code])
             else:
                 print(f"set pieces: code {code} is not in this week's field "
                       f"— its override changes nothing")
         for code, team in team_of.items():
-            if int(team) in clubs and int(code) not in over:
+            if team in clubs and code not in over:
                 order_of[code] = float("nan")
         order_of.update(over)
     now = share_now(comp["code"].map(order_of))

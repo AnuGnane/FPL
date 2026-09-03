@@ -179,12 +179,18 @@ def set_piece_orders(team_of: Mapping[int, int] | None = None
                 # ``penalty_order_overrides`` so the badge and the EP term
                 # cannot disagree about a mid-window transfer typed twice.
                 out[kind].setdefault(int(code), int(rank))
-    if team_of:
+    # A row whose code or club is not a number is skipped rather than coerced:
+    # `int(NaN)` raises, and a snapshot with one club missing would take the
+    # whole endpoint down over a display fact. A row with no club identifies
+    # none, so it can neither define a queue nor be demoted from one.
+    clubs_of = {int(code): int(team) for code, team in (team_of or {}).items()
+                if pd.notna(code) and pd.notna(team)}
+    if clubs_of:
         for served in out.values():
-            clubs = {int(team_of[c]) for c in served if c in team_of}
-            for code, team in team_of.items():
-                if int(team) in clubs and int(code) not in served:
-                    served[int(code)] = None
+            clubs = {clubs_of[c] for c in served if c in clubs_of}
+            for code, team in clubs_of.items():
+                if team in clubs and code not in served:
+                    served[code] = None
     return out
 
 
