@@ -247,6 +247,38 @@ Also optional, and also all-defaults. League mode itself is gated by
 | `sim_n` | 2000 | Simulations per mini-league Monte Carlo run. |
 | `rival_drift` | 0.5 | How far a rival's squad drifts toward the field template over the rest of the season. 0 freezes every squad. |
 
+### `config.local.toml` (v12 W5)
+
+An **overlay**, merged over `config.toml` after it is read — same tables, same
+keys, and it may introduce a section `config.toml` never declared. It is the
+file **Model → Settings owns and writes**; `config.toml` carries the odds API
+key and the web UI never touches it. Gitignored, like `config.toml`. Hand-edit
+it freely; the tab reads back whatever is in it and says, per row, which of the
+two files the value in force came from.
+
+The merge is per table and per key, and **one level further in** wherever both
+sides of a key are themselves tables — so an overlay saying
+`top_n = { GKP = 3 }` keeps the other three pool sizes instead of dropping
+them. One level and no deeper: nothing in this config nests further.
+
+Every reader honours it, not just the loader. `load_config` is not the only
+thing that opens `config.toml` — `price_timing`, `xg_per_shot`,
+`optimizer_top_n` and `lineup_providers` each read the file directly, because
+the keys they serve are either not `Config` fields or are needed where no
+`Config` is in hand. All five go through the same merge, because an overlay
+only the loader honoured would be a switch that saves and changes nothing.
+
+A key in `[optimizer]` or `[data]` that is **not a config field is ignored,
+with a printed line naming it**. Those two tables are splatted straight into
+`Config(...)`, so an unknown key there is a `TypeError` — and the serve-time
+reader catches that by falling back to `Config(entry_id=0, league_id=0)`, which
+would discard your whole real config without a word and quietly re-point the
+news layer at entry 0. One exception, by design: `price_timing` is popped out
+of `[optimizer]` before the splat and is not a field, so the guard exempts it
+and the Settings tab can write it. An overlay that will not parse at all is
+ignored the same way, with a line saying so: one bad write from the tab must
+not stop every job on the machine.
+
 ## Bookmaker odds (optional)
 
 `[odds].api_key` takes a free key from [the-odds-api.com](https://the-odds-api.com)
@@ -1000,6 +1032,115 @@ keep doing so, and the `pen_taker` training column in `features/engineer.py`,
 which is built from history and not from your opinion of it. A missing file, a
 malformed file, a half-edited one at 11pm on a Friday are all "no override",
 byte-identical to pre-v12.
+
+### The tab in the URL, the settings file, and why each move (v12 W5)
+
+Six interface items. Nothing on the training path moved and nothing on the
+decision path moved; **no view solves**, and the trace below is accounting, not
+a counterfactual.
+
+**Every hub's open tab is in the URL.** `?tab=` on Model, Players, League and
+Planning, written with `replace: true` so clicking through a strip is one
+navigation and not six — the back button leaves the hub rather than walking
+backwards through the tabs. `/players?tab=watchlist` is a link you can send
+yourself. An **unknown tab name opens the hub's default**: Radix renders a root
+whose value matches no content as an empty panel with no error, so
+`/model?tab=board` would otherwise be a blank page with nothing to diagnose.
+This Week and Live have no tabs; This Week's pitch/table toggle is a view
+preference and is still not persisted.
+
+**Model → Settings edits `config.local.toml`, never `config.toml`.** Nine
+settings — horizon, decay, the value of money in the bank, the three bench
+weights, the λ tilt cap, the calibrated θ/λ priors switch, the candidate pool
+per position, the price-timing charge and the availability draw. Everything
+else in `Config` is untouchable from the web: the odds API key first, the web
+token beside it, but also the entry and league ids, the training seasons and
+every news switch whose failure mode is a quietly degraded availability pass.
+One save per field, and the server owns the bounds and the refusal text, so
+there is no second copy of a limit to keep in step with the dataclass. A save
+drops the three serve-time caches keyed on that file — `serving_config`,
+`optimizer_top_n` and `owned_price_falls` — because two of them are what the
+solver and the news layer actually read, and a save that cleared only the first
+would be a setting that saved and did nothing until a restart. A setting this
+build does not have is **named** in the panel rather than dropped from the
+form. The tab prints, verbatim, the server's own sentence about what a save
+reaches: a job started afterwards reads the new value, a page already open
+keeps the numbers it fetched, and a job already running mostly keeps what it
+started with — *mostly*, because `build_pool` calls `optimizer_top_n()` on
+every solve, so a long multi-week plan can cross a `top_n` save part-way
+through.
+
+**Players → Watchlist is where a note can finally be read.** `WatchRow` has
+carried `note` and `set_at` since v8e and nothing rendered either: the
+explorer's ☆ posts `note: ''` on every click, so the field was written empty
+every time and shown nowhere. The tab lists every starred player with an
+editable note (Enter saves it) and an unstar button, through the same endpoints
+the star already used — no server change. The date says **"noted"** and not
+"watching since", because `watchlist.watch` replaces the note *and* the
+timestamp on every star, so re-starring from the explorer resets both; the
+caveat under the rows says so rather than letting you infer a start date the
+store does not keep. This Week also now renders **`captain_note`**, the
+half-sentence the advice run has written since v4d and only the CLI and the
+HTML report ever showed, beside the captain's field note.
+
+**Every advise run freezes the EP table it solved over.** The table was already
+on disk — `reports/solve_state_gw{N}.parquet` is the MILP pool with raw EP per
+`(code, gw)` — but that is *one slot per gameweek*, and advise runs several
+times a week. What survived to Tuesday was the last run, which may be the one
+written after kickoff. Each run now also writes
+`reports/projections/<season>-gw<N>-<stamp>.parquet`, and `gaffer review`
+records which one it graded against, under journal's own rule: the newest
+snapshot **strictly** before the deadline wins, and a stamp *at* the deadline
+second counts as late, because one second of resolution cannot tell 17:30:00.0
+from 17:30:00.9 and the second of those has seen the lineups. The Review card
+prints `projections 20260903`, with `(late)` when the snapshot cannot be
+trusted to predate the deadline — which has **two** causes, and the tooltip
+names both: either every run for that gameweek was written after it, or the run
+never recorded when the deadline was, which is the ordinary state of a gameweek
+graded after its advice payload was pruned. Snapshots are keyed by code rather
+than element id, but the season is in the filename *and* a required argument to
+both readers, because a directory selected by a glob is exactly the shape of
+the cross-season read that element-id remaps make dangerous. Roughly 6–12 MB a
+season, gitignored, and never pruned by this cycle.
+
+**"Why this move" on the Planning board.** A disclosure per week, in the
+objective's own terms: the decayed expected-points difference of each
+position-matched swap, the decayed hit charge, the per-transfer friction, how
+many free transfers the week spends and what one is worth at the horizon's end
+(flat `ft_value`, or the λ table, and it says which), the terminal bank's
+value, θ where a chip is played, the league tilt's contribution per move, and
+the price-timing charge. Every input was already in the two artifacts the plan
+router loads, so **the solver is not touched and never runs** — the trace lives
+in `src/gaffer/trace.py` and a test asserts that `advise.py`, `backtest.py` and
+every module under `optimize/` import it nowhere, which is a stronger guarantee
+than the byte-identity check the spec asked for because it makes the failure
+impossible rather than detectable. Three of the objective's terms are
+**deliberately not attributed** — the XI, captain and vice weightings and the
+three bench seats price the whole fifteen rather than a swap — and the caption
+under the numbers names them, so a reader who adds these lines up and finds
+they miss the week's xPts is told why. The same caption says the numbers are
+not a comparison against a plan that was never solved. The trace is computed
+for Plan A only: B and C came out of different solves with their own
+free-transfer counts, and the strip says so rather than leaving an absent
+control to be noticed. A charge the solver never carried is printed as
+**absent, not zero** — with `[optimizer] price_timing` off there is no such
+term, and a "−0.00" would say "we checked and it was free".
+
+**Half of `types.ts` is now generated.** `.venv/bin/python scripts/gen_types.py`
+writes `frontend/src/schemas.json` from the live pydantic models; a vitest test
+compiles that with `json-schema-to-typescript` (pinned exactly at `16.0.0`, as
+a library — no network and no subprocess) and diffs the result against the
+committed `frontend/src/types.generated.ts`; a pytest regenerates the schema
+and diffs it against the committed JSON. **Run the script after any change to
+`web/schemas.py`** or both tests fail. `types.ts` itself is *not* generated and
+cannot be: thirty of its exports have no pydantic source, fourteen more are
+renames, and eleven models are narrowed by hand — `AdviceLatest.advice` above
+all, which is `dict[str, Any]` on the server and an `Advice` interface in every
+consumer. So the file splits: `types.ts` keeps the hand-written half, narrows
+the eleven `Wire*` models and re-exports the generated one, and no import
+anywhere in the tree changed. Three guards keep the split honest — the two
+halves declare disjoint names, every name the tree imported before still
+exists, and every `Wire` model has exactly one narrowing.
 
 ### Pinning a player (v8e)
 

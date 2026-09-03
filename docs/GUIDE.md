@@ -18,7 +18,7 @@ reference; this document is for understanding.*
 8. [Everything the CLI can do](#8-everything-the-cli-can-do)
 9. [The data it collects and why](#9-the-data-it-collects-and-why)
 10. [How the project measures itself](#10-how-the-project-measures-itself)
-11. [The version history, v1 to v11](#11-the-version-history-v1-to-v11)
+11. [The version history, v1 to v12](#11-the-version-history-v1-to-v12)
 12. [What is pending and what was left open](#12-what-is-pending-and-what-was-left-open)
 13. [Troubleshooting](#13-troubleshooting)
 
@@ -155,11 +155,19 @@ fixture ticker alongside, three-state light/dark theme. Everything reads the
 artifacts the CLI writes, so most of it works offline. Long jobs (a re-solve,
 a retrain) run through a single-lane job runner with live streamed logs.
 
+Every tabbed hub's open tab is in the URL as `?tab=` (v12 W5), so a tab can be
+bookmarked or linked to — `/players?tab=watchlist`. Switching tabs replaces the
+history entry rather than adding one, so Back leaves the hub instead of walking
+backwards through the strip, and a `?tab=` naming a tab the hub does not have
+opens the hub's default rather than a blank panel.
+
 **This Week** — the answer. The advised XI on a pitch in formation rows,
 shirts, C/V armbands, difficulty-tinted next-opponent chips; the bench in
 substitution order; the transfer list with attack/cover tags; the captain
 sentence telling you where your pick stands against the top-10k field
-(cover or attack, with its error bar); the chip planner's best week per
+(cover or attack, with its error bar) and, when the league tilt moved the
+armband, the run's own half-sentence saying why (v12 W5); the chip planner's
+best week per
 chip; the Friday/Tuesday digest cards; a re-run button (full or `--fast`).
 An **EO lens** toggle tints the pitch by how owned each player is; a
 **Table** toggle returns the dense squad table.
@@ -172,7 +180,15 @@ An **EO lens** toggle tints the pitch by how owned each player is; a
   (v12 W3) switches between the recommended plan and the two next-best
   *distinct* ones when the run banked any, each labelled with its gap from
   Plan A in the solver's own objective points — signed, so an alternative
-  that is ahead of the recommendation says so.
+  that is ahead of the recommendation says so. **"Why this move"** (v12 W5)
+  opens the objective's own terms for that week's transfers — the decayed
+  points difference of each swap, the hit charge, the per-transfer friction,
+  what a free transfer is worth at the end of the horizon, the terminal
+  bank, θ where a chip is played, and the price-timing charge. It is
+  accounting over the plan the solver returned, not a comparison against a
+  plan it did not make, and it names the terms it does not attribute (the
+  captain, vice and bench weightings), so the lines are not meant to add up
+  to the week's xPts. Plan A only: B and C came out of different solves.
 - *What-If*: lock, ban, force in or **must-sell** players, cap the hits, and
   re-solve the real MILP. Must sell (v12 W3) is the constraint `ban` was
   standing in for: the player goes in the first week of the horizon and the
@@ -190,7 +206,7 @@ An **EO lens** toggle tints the pitch by how owned each player is; a
   any double/blank gameweeks in the published fixture list.
 - *Ticker*: the odds-implied fixture difficulty grid.
 
-**Players** — the evidence. Three tabs:
+**Players** — the evidence. Four tabs:
 - *Explorer*: the full candidate pool with the "why 6.8?" breakdown behind
   every name, uncertainty ranges, haul/blank chips, a **Pin** button (set
   your own p_play/minutes for the week — applied over every other source),
@@ -200,6 +216,12 @@ An **EO lens** toggle tints the pitch by how owned each player is; a
   expected minutes, set-piece order, next-six difficulty strip, all three
   ownership numbers (global / your league / top-10k with ±SE), and a radar.
 - *Matrix*: the Dixon-Coles fixture matrix.
+- *Watchlist* (v12 W5): the starred players, each with a note you can edit
+  (Enter saves it) and an unstar button. This is the only surface a note can
+  be written or read from — the explorer's ☆ posts an empty one on every
+  click. The date says "noted" and not "watching since", because re-starring
+  from the explorer replaces the note *and* the timestamp; the caveat under
+  the rows says so.
 
 **League** — the race. Standings with win probabilities, the trajectory,
 what the λ tilt is doing and why; *Rivals* (each rival's squad, overlap,
@@ -222,13 +244,15 @@ provisional bonus reconstructed from BPS, a race chart of where your score
 is heading against the pre-gameweek plan, and the league places above and
 below you with what they need.
 
-**Model** — the mirror. Six tabs:
+**Model** — the mirror. Seven tabs:
 - *Quality*: holdout metrics, reliability curves (including calibration by
   gameweek — how good the probabilities the tool *actually served* were),
   your points vs the model's per gameweek, last week's biggest misses.
 - *Review*: the graded decision ledger — every finished gameweek scored
   across four lanes (transfers, captaincy, bench, chip) against what the
-  model would have done, in points and in title odds.
+  model would have done, in points and in title odds. Each row also names
+  the frozen projection table it was graded against (v12 W5), tagged
+  `(late)` when that table cannot be trusted to predate the deadline.
 - *Season* (v11): the season dashboard — per-lane records and win rates,
   cumulative points left on the bench, accuracy and overall-rank
   trajectories, the calibration trend. Built to fill as the season grades;
@@ -239,6 +263,14 @@ below you with what they need.
   with its size (or `never — run gaffer backup`).
 - *Journal*: the decision journal with its deadline guard.
 - *History*: past runs, expected versus actual, price charts.
+- *Settings* (v12 W5): the nine settings the UI may edit — horizon, decay,
+  the bank's value, the bench weights, the λ tilt cap, the θ/λ priors
+  switch, the pool size per position, the price-timing charge and the
+  availability draw. It writes `config.local.toml` and **never**
+  `config.toml`, which carries the odds API key; one save per field, bounds
+  and refusals from the server, and a setting this build does not have is
+  named rather than dropped. The note under the form is the server's own
+  sentence about what a save reaches.
 
 ## 6. Your week with the tool
 
@@ -394,6 +426,13 @@ Housekeeping (v12):
   logs, the corpus logs or `logs/advise.log`
 - `gaffer mcp` — a stdio MCP server for Claude Code:
   `claude mcp add gaffer -- gaffer mcp`. Six read tools, no writes
+- `.venv/bin/python scripts/gen_types.py` (v12 W5) — not a `gaffer`
+  subcommand: a developer script. It writes `frontend/src/schemas.json` from
+  the live pydantic models, which a vitest test compiles into
+  `frontend/src/types.generated.ts`. **Run it after any change to
+  `src/gaffer/web/schemas.py`**, and commit both files, or the two diff tests
+  (`tests/test_v12_w5_gen_types.py` and `frontend/src/types.generated.test.ts`)
+  fail. `frontend/src/types.ts` is hand-written and is never overwritten by it
 
 One-time / rollover setup:
 
@@ -458,7 +497,7 @@ Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 `reports/evaluation.json`, and the Model hub.
 
-## 11. The version history, v1 to v11
+## 11. The version history, v1 to v12
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
 reviewed. What each era added:
@@ -513,7 +552,23 @@ detector.
 shows the model's working, and the season review dashboard — built empty on
 purpose, filling as the season grades.
 
-The suite grew from nothing to **3,193 Python + 655 frontend tests** along
+**v12 — five workstreams in one program (Sep 2–3).** W1, hygiene: the "as of"
+freshness strip, `gaffer backup` and `gaffer tidy`, a write token for `--lan`,
+one atomic-write helper to replace six copies of the idiom, and `top_n` in
+config. W2, the logs we already had: the nightly price log turned into a
+price-timing charge on a deferred sale, and the xG-per-shot arm — measured,
+and withdrawn on the season replay after the bucket metric liked it. W3, what
+the solver is allowed to say: Plan B and Plan C, the *must-sell* constraint the
+`ban` switch had been standing in for, and the availability draw in the
+scenario sweep. W4, the field: the FPL-Core-Insights collector, `P(green
+arrow)` against 300 synthetic managers drawn from the banked top-10k sample,
+set-piece overrides in TOML, and two minutes arms of which one shipped and one
+was withdrawn. W5, the interface: the open tab in the URL, the Settings tab and
+the overlay file it owns, the watchlist's notes, frozen projection snapshots
+behind every graded row, "why this move" on the board, and half of `types.ts`
+generated from `schemas.py`.
+
+The suite grew from nothing to **4,029 Python + 792 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above
 so a future change cannot quietly break one.
 
@@ -559,6 +614,37 @@ ones):
 - The Field panel's `P(top-10k)` has no source: no top-10k weekly score
   threshold series exists in anything gaffer reads, so it is a named empty
   state rather than a guess.
+
+Left open by v12 W5, each recorded rather than fixed:
+
+- **The trace's price-timing charge is read from tonight's price log, not
+  from the solve.** `owned_price_falls` is the same reader the objective
+  uses, but a board drawn on Saturday against a Thursday plan multiplies a
+  probability the solve never saw. Freezing it would mean writing it into the
+  solve state from `advise.py`, which is protected, for a decoration.
+- **The trace does not attribute the squad-side terms.** The XI, captain and
+  vice weightings and the three bench seats price the whole fifteen and a
+  per-week autosub scale, not a swap, so a share of them assigned to one
+  transfer would be invented. The week's lines therefore do not sum to its
+  xPts, and the caption says so rather than leaving it to be discovered.
+- **`projection_snapshot` fills forward only.** Grades are banked and never
+  re-derived, so every ledger row banked before W5 keeps `null` for ever.
+- **`reports/projections/` is never pruned.** ~6–12 MB a season, gitignored.
+  A future `gaffer tidy` target, deliberately not invented here.
+- **The watchlist's `set_at` is reset by every save**, because
+  `watchlist.watch` replaces the note and the timestamp together. The column
+  is labelled "noted" rather than "watching since" for that reason; fixing it
+  means a second store field.
+- **The decision ledger has no season key.** After a rollover, a GW-N row
+  could name last season's GW-N snapshot: the snapshot *reader* is
+  season-guarded, the ledger is not. Nothing reads across a rollover today,
+  and the fix is a ledger migration rather than a W5 line.
+- **The generated half carried away the client's field comments.** The split
+  deleted 113 hand-written interfaces; 119 of the 891 field sentences were
+  recovered by reading `schemas.py`'s attribute docstrings, and the rest of
+  the client-side commentary on those interfaces is gone. The follow-up is to
+  move the sentences worth keeping into `schemas.py` field docstrings, where
+  the generator can carry them, rather than back into a file it overwrites.
 
 ## 13. Troubleshooting
 
