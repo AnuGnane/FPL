@@ -1,0 +1,23 @@
+# Who really takes them. Copy to data/set_pieces.toml and edit.
+#
+# One table per club, named exactly as FPL's bootstrap names it ("Arsenal",
+# "Man City", "Nott'm Forest", "Spurs"). Inside it, list takers in order by
+# their gaffer *code* — the number in the URL of a player's explain panel, not
+# his season element id, because element ids are remapped every summer and
+# codes are not.
+#
+# Only `penalties` reaches expected points; `direct_free_kicks` and `corners`
+# are context in the UI and are shown with a "manual" badge where you have
+# overridden them.
+#
+# An empty list is a statement, not an absence: it says "the published taker
+# has left and nobody has replaced him", and the model will price nobody.
+
+# [Arsenal]
+# penalties = [118748, 232413]         # Saka, then Eze
+# direct_free_kicks = [232413]
+# corners = [232413, 118748]
+
+# [Liverpool]
+# penalties = [118748]
+# corners = []

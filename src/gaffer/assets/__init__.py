@@ -119,3 +119,18 @@ def load_scenario_noise() -> dict | None:
     return json.loads(
         files(__package__).joinpath(SCENARIO_NOISE).read_text(
             encoding="utf-8"))
+
+
+SET_PIECES_EXAMPLE = "set_pieces.example.toml"
+
+
+def load_set_pieces_example() -> str:
+    """The bundled ``data/set_pieces.toml`` template, as text.
+
+    Shipped in the package rather than under ``data/`` because ``data/`` is
+    never staged and a fresh clone must still carry the template. The *live*
+    file is ``data/set_pieces.toml``, untracked, because it is one user's
+    knowledge about one season and belongs to nobody else's clone.
+    """
+    return files(__package__).joinpath(SET_PIECES_EXAMPLE).read_text(
+        encoding="utf-8")

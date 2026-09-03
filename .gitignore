@@ -26,3 +26,7 @@ frontend/tsconfig.tsbuildinfo
 reports/
 .claude/
 config.toml
+# v12 W4 §5.4: the hand-edited set-piece override. One user's knowledge about
+# one season, so it is untracked; the template ships as a package asset
+# (src/gaffer/assets/set_pieces.example.toml) so a fresh clone still has one.
+data/set_pieces.toml
