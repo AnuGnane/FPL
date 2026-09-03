@@ -401,6 +401,121 @@ describe('PlannerBoard', () => {
         .not.toHaveAttribute('role')
     })
 
+  // v12 W5 §6.5 — "Why this move". Accounting over the objective's own terms
+  // at the plan the solver returned; the board still never solves.
+  describe('the move trace', () => {
+    const MOVE = {
+      buy_code: 1, buy_name: 'Wirtz', sell_code: 2, sell_name: 'Isak',
+      ep_gain: 3.5, lambda_tilt: 0.0, note: '',
+    }
+    const TRACE = {
+      gw: 5, moves: [MOVE], ep_gain: 3.5, hit_cost: 0, ft_used: 1,
+      ft_after: 1, ft_use_penalty: 0, ft_shadow: 1.5, ft_basis: 'flat',
+      bank_value: null, theta: null, price_charge: 0, note: '',
+    }
+    const open = async (gw = 5) => {
+      const why = await screen.findByTestId(`board-why-${gw}`)
+      await userEvent.click(within(why).getByText('Why this move'))
+      return why
+    }
+
+    it('renders the pair and its signed gain', async () => {
+      wire(plan([{ ...WEEK, trace: TRACE }]))
+      render(<PlannerBoard gw={5} />)
+      const why = await open()
+      const move = within(why).getByTestId('board-why-move-5-1')
+      expect(move).toHaveTextContent('Isak → Wirtz')
+      // Signed, because the sign is the whole claim: fmtDelta prints '+3.5'.
+      expect(move).toHaveTextContent('+3.5')
+    })
+
+    it('renders an em dash and the note for a gain it could not price',
+      async () => {
+        // Never a zero. "We could not price this" and "this swap is worth
+        // nothing" are different facts and must not print the same.
+        wire(plan([{ ...WEEK,
+          trace: { ...TRACE,
+            moves: [{ ...MOVE, ep_gain: null,
+              note: 'player 2 is not in the pool the solver used' }],
+            ep_gain: null } }]))
+        render(<PlannerBoard gw={5} />)
+        const why = await open()
+        const move = within(why).getByTestId('board-why-move-5-1')
+        expect(move).toHaveTextContent('—')
+        expect(move).not.toHaveTextContent('0.0')
+        expect(move).toHaveTextContent('not in the pool')
+      })
+
+    it('says a week does nothing rather than showing an empty list',
+      async () => {
+        wire(plan([{ ...WEEK, buys: [], sells: [],
+          trace: { ...TRACE, moves: [], ep_gain: 0 } }]))
+        render(<PlannerBoard gw={5} />)
+        const why = await open()
+        expect(within(why).getByText('No moves this week.'))
+          .toBeInTheDocument()
+      })
+
+    it('draws no disclosure at all for a week with no trace', async () => {
+      // A payload from a server older than the field, or a trace that threw:
+      // the plan still draws, without a control that would open on nothing.
+      wire(plan([{ ...WEEK, trace: null }]))
+      render(<PlannerBoard gw={5} />)
+      expect(await screen.findByTestId('board-week-5')).toBeInTheDocument()
+      expect(screen.queryByTestId('board-why-5')).toBeNull()
+    })
+
+    it('prints the disclaimer with the numbers rather than behind a hover',
+      async () => {
+        // A caveat discovered by hovering is a caveat discovered after the
+        // decision — and it has to name the terms that are missing, or a
+        // reader adds these lines up and asks why they miss the xPts.
+        wire(plan([{ ...WEEK, trace: TRACE }]))
+        render(<PlannerBoard gw={5} />)
+        const why = await open()
+        expect(why).toHaveTextContent('the board never re-solves')
+        expect(why).toHaveTextContent(
+          'captain, vice and bench weightings are not attributed here')
+      })
+
+    it('shows the week note and no charge line when the charge is null',
+      async () => {
+        wire(plan([{ ...WEEK,
+          trace: { ...TRACE, price_charge: null,
+            note: 'price_timing is off, so the plan was solved without a '
+                  + 'price-timing term' } }]))
+        render(<PlannerBoard gw={5} />)
+        const why = await open()
+        expect(within(why).queryByText(/price-timing charge/)).toBeNull()
+        expect(within(why).getByTestId('board-why-note-5'))
+          .toHaveTextContent('price_timing is off')
+      })
+
+    it('shows no charge line for a charge of zero', async () => {
+      // The first week is never charged the term, and a "−0.000" would read
+      // as a charge that was checked and found to be nothing.
+      wire(plan([{ ...WEEK, trace: { ...TRACE, price_charge: 0 } }]))
+      render(<PlannerBoard gw={5} />)
+      const why = await open()
+      expect(within(why).queryByText(/price-timing charge/)).toBeNull()
+    })
+
+    it('says the alternatives carry no trace instead of showing nothing',
+      async () => {
+        // An absent control is not an explanation. Plan B came out of a
+        // different solve, so its weeks carry no trace and the board says why.
+        wire(plan([{ ...WEEK, trace: TRACE }], 1.5, [
+          { label: 'Plan B', gap: 0.4, weeks: [altWeek({ trace: null })] },
+        ]))
+        render(<PlannerBoard gw={5} />)
+        await open()
+        await pickPlan('Plan B')
+        expect(screen.queryByTestId('board-why-5')).toBeNull()
+        expect(screen.getByTestId('plan-no-trace'))
+          .toHaveTextContent('shown for Plan A only')
+      })
+  })
+
   // Plan A18: the hub-level cold-clone rail renders only Planning's default
   // tab, so the board's own cold-clone case is asserted here.
   it('renders an empty state on a cold clone with no console error',

@@ -960,6 +960,49 @@ export interface PlanMove {
   price: number | null
 }
 
+/** One transfer, priced against the objective's own terms (v12 W5 §6.5).
+ *
+ *  Not a counterfactual: `ep_gain` is the decayed expected-points difference
+ *  of a position-matched swap over the rest of the horizon, at the plan the
+ *  solver returned — not "the plan is this much worse without this move",
+ *  which would need a re-solve. Null is unknown, never a measured zero. */
+export interface PlanMoveTrace {
+  buy_code: number | null
+  buy_name: string
+  sell_code: number | null
+  sell_name: string
+  ep_gain: number | null
+  lambda_tilt: number | null
+  note: string
+}
+
+/** One planned week's charges, in the objective's own terms (v12 W5 §6.5).
+ *
+ *  Four are week-level on purpose: a week with two transfers and one hit
+ *  cannot attribute the hit to one of them. And three of the objective's
+ *  terms are missing on purpose — the XI, captain and vice weightings and the
+ *  bench seats price the whole squad rather than a swap — so these numbers do
+ *  not sum to the week's `expected_pts`, and the board's caption says so. */
+export interface PlanWeekTrace {
+  gw: number
+  moves: PlanMoveTrace[]
+  ep_gain: number | null
+  hit_cost: number
+  ft_used: number
+  ft_after: number
+  /** The per-transfer friction, decayed and waived on a wildcard. */
+  ft_use_penalty: number
+  ft_shadow: number | null
+  ft_basis: 'flat' | 'lambda'
+  /** `itb_value * bank` on the horizon's last week — the only week the
+   *  objective prices the bank at. Null elsewhere, and null when the running
+   *  bank itself is unknown. */
+  bank_value: number | null
+  theta: number | null
+  price_charge: number | null
+  note: string
+}
+
 export interface PlanGw {
   gw: number
   buys: PlanMove[]
@@ -976,6 +1019,16 @@ export interface PlanGw {
    *  different state. Once a move with no price breaks the running total it
    *  stays broken: this week and every later one are null. */
   bank: number | null
+  /** Why this week's moves, in the objective's own terms (v12 W5 §6.5).
+   *
+   *  Null only when the trace could not be computed at all — a week that does
+   *  nothing carries a trace with no moves, because "this week does nothing"
+   *  and "the trace is broken" must not look alike on the board. Always null
+   *  on an alternative plan, which a different solve returned.
+   *
+   *  Optional, because a payload from a server older than the field is a real
+   *  case and the board guards for it. */
+  trace?: PlanWeekTrace | null
 }
 
 /** A plan the solver ranked behind the recommended one (v12 W3 §4.3). */

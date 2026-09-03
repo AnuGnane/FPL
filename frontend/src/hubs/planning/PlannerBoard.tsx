@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../../api/client'
-import { Badge, Card, EmptyState, Loading, PosBadge, fmtNum } from '../../kit'
+import {
+  Badge, Card, EmptyState, Loading, PosBadge, fmtDelta, fmtNum,
+} from '../../kit'
 import type {
   MoverRow, MoversPanel, PlanGw, PlanMove, PlanTimeline, WhatIfRequest,
 } from '../../types'
@@ -266,6 +268,16 @@ export default function PlannerBoard(
            + 'raw xPts gap.'}
         </p>
       )}
+      {/* v12 W5 §6.5: the trace is the objective's terms at the plan the
+          solver returned, and this is not that plan. Said here rather than
+          left as an absent control the reader has to notice. */}
+      {shown !== null && (
+        <p className="mb-2 text-text-faint" data-testid="plan-no-trace">
+          {'“Why this move” is shown for Plan A only: the trace prices the '
+           + 'plan the solver returned, and this one came out of a different '
+           + 'solve with its own free-transfer count.'}
+        </p>
+      )}
       {/* One column per week the plan names, and never a padded sixth: a
           shorter horizon is a shorter board. */}
       <div className="flex gap-3 overflow-x-auto pb-2" id="plan-board"
@@ -320,6 +332,94 @@ export default function PlannerBoard(
               <p className="num text-xl text-text">
                 {fmtNum(week.expected_pts)}
               </p>
+              {/* v12 W5 §6.5. Every line below is a term of the solver's own
+                  objective at the plan it returned — no re-solve, and the
+                  caption at the bottom says so rather than leaving "+3.5" to
+                  be read as a comparison. */}
+              {week.trace && (
+                <details className="mt-2" data-testid={`board-why-${week.gw}`}>
+                  <summary className="cursor-pointer text-text-muted">
+                    Why this move
+                  </summary>
+                  <div className="mt-1 flex flex-col gap-0.5">
+                    {week.trace.moves.length === 0 && (
+                      <p className="text-text-muted">No moves this week.</p>
+                    )}
+                    {week.trace.moves.map((m) => (
+                      <p key={`${m.buy_code}-${m.sell_code}`}
+                         data-testid={`board-why-move-${week.gw}-${m.buy_code}`}>
+                        <span>{`${m.sell_name} → ${m.buy_name}`}</span>
+                        <span className="num ml-2 text-text">
+                          {fmtDelta(m.ep_gain)}
+                        </span>
+                        {m.note && (
+                          <span className="ml-2 text-text-faint">{m.note}</span>
+                        )}
+                      </p>
+                    ))}
+                    {week.trace.hit_cost > 0 && (
+                      <p className="text-rust">
+                        {`hit charge −${fmtNum(week.trace.hit_cost)}`}
+                      </p>
+                    )}
+                    <p className="text-text-faint">
+                      {`${week.trace.ft_used} free transfer(s) used; one is `
+                       + `worth ${fmtNum(week.trace.ft_shadow)} at the end of `
+                       + `the horizon (${week.trace.ft_basis})`}
+                    </p>
+                    {week.trace.ft_use_penalty > 0 && (
+                      <p className="text-text-faint">
+                        {`transfer friction −`
+                         + `${fmtNum(week.trace.ft_use_penalty, 3)}`}
+                      </p>
+                    )}
+                    {week.trace.bank_value !== null
+                      && week.trace.bank_value !== undefined && (
+                      <p className="text-text-faint">
+                        {`bank left at the end of the horizon, valued `
+                         + `${fmtNum(week.trace.bank_value, 3)}`}
+                      </p>
+                    )}
+                    {week.trace.theta !== null && (
+                      <p className="text-text-faint">
+                        {`chip threshold θ ${fmtNum(week.trace.theta)}`}
+                      </p>
+                    )}
+                    {/* Only when there is a number. `null` means the term was
+                        off or the log had no row for a player sold here, and
+                        a "−0.00" would read as a charge that was checked and
+                        found to be nothing. The week's note carries which. */}
+                    {week.trace.price_charge !== null
+                      && week.trace.price_charge !== 0 && (
+                      <p className="text-text-faint">
+                        {`price-timing charge −`
+                         + `${fmtNum(week.trace.price_charge, 3)}`
+                         + ', priced against tonight’s price log'}
+                      </p>
+                    )}
+                    {week.trace.note && (
+                      <p className="text-text-faint"
+                         data-testid={`board-why-note-${week.gw}`}>
+                        {week.trace.note}
+                      </p>
+                    )}
+                    {/* The sentence that stops "+3.5" being read as a
+                        comparison against not doing it, and the one that
+                        stops these lines being added up and compared to the
+                        week's xPts. Printed, never hovered: a caveat
+                        discovered by hovering is a caveat discovered after
+                        the decision. */}
+                    <p className="text-text-faint">
+                      {'These are the plan’s own objective terms for the '
+                       + 'moves it made, not a comparison against a plan that '
+                       + 'did not make them — the board never re-solves. The '
+                       + 'captain, vice and bench weightings are not '
+                       + 'attributed here, so these lines do not add up to '
+                       + 'the week’s xPts.'}
+                    </p>
+                  </div>
+                </details>
+              )}
               {/* No handoff from an alternative: it was solved without the
                   sweep's coherence constraints, and prefilling its moves into
                   a lab that solves from now would silently re-impose them

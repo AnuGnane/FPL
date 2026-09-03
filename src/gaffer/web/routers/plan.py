@@ -7,14 +7,26 @@ draws must be the plan the report printed, not a fresh solve that could differ.
 
 from __future__ import annotations
 
+from dataclasses import asdict
+
 from fastapi import APIRouter, HTTPException
 
 from gaffer.artifacts import load_advice, load_solve_state
 from gaffer.errors import GafferError
+from gaffer.trace import trace_plan
 from gaffer.web.schemas import (PlanAlternative, PlanGw, PlanMove,
-                                PlanTimeline)
+                                PlanTimeline, PlanWeekTrace)
 
 router = APIRouter(prefix="/api", tags=["plan"])
+
+TRACE = True
+"""Whether to compute the move trace (v12 W5 §6.5).
+
+A module flag rather than a config key: it exists so the byte-identity test can
+turn the accounting off and compare the payload the board already drew. There
+is nothing here for a user to switch, and a ``Config`` field for a test would
+be a knob nobody sets.
+"""
 
 
 # The advice JSON on disk was written by whatever version of `gaffer advise`
@@ -192,6 +204,91 @@ def _alternatives(advice: dict, build) -> list[PlanAlternative]:
     return out
 
 
+def _trace_inputs(state) -> tuple[dict, dict, dict]:
+    """``({(code, gw): ep}, {code: position}, {code: name})`` off the pool.
+
+    Degrades the way every other reader in this module does: a pool with no
+    ``ep_raw`` column yields an empty EP table, which the trace reports as
+    "not in the pool" per move rather than as a zero.
+    """
+    pool = getattr(state, "pool", None)
+    columns = getattr(pool, "columns", None)
+    if columns is None or "code" not in columns:
+        return {}, {}, {}
+    ep_by: dict = {}
+    positions: dict = {}
+    player_names: dict = {}
+    has_ep = "ep_raw" in columns
+    for row in pool.itertuples():
+        code = _int(getattr(row, "code", None), -1)
+        if code < 0:
+            continue
+        positions.setdefault(code, str(getattr(row, "position", "")))
+        player_names.setdefault(code, str(getattr(row, "name", code)))
+        if has_ep:
+            ep_by[(code, _int(getattr(row, "gw", None), -1))] = _float(
+                getattr(row, "ep_raw", None))
+    return ep_by, positions, player_names
+
+
+def _thresholds(advice: dict) -> dict[int, float]:
+    """``{gw: θ}`` for the chips this run recommends playing."""
+    out: dict[int, float] = {}
+    rows = advice.get("chip_table")
+    if not isinstance(rows, list):
+        return out
+    for row in rows:
+        if not (isinstance(row, dict) and row.get("play_now")):
+            continue
+        if row.get("gw") is None or row.get("threshold") is None:
+            continue
+        out[_int(row["gw"], -1)] = _float(row["threshold"])
+    out.pop(-1, None)
+    return out
+
+
+def _price_falls(state) -> tuple[bool, dict[int, float]]:
+    """``(price_timing is on, {code: p_fall_tonight})`` for the owned squad.
+
+    The same reader the objective's price-timing term uses (W2 §3.4), called
+    the same way — so the charge the board prints is the charge the solver
+    applied, and not a second estimate of it computed from the same log by
+    slightly different arithmetic. Doubly gated, deliberately:
+    ``owned_price_falls`` already returns ``{}`` when the switch is off
+    (``price_timing.py:168``), and the switch is read here as well because the
+    trace has to tell "off" from "on and empty" — the first is a term the
+    objective never carried and the second is an unknown.
+
+    Two switches, two different answers. ``price_timing`` off means the
+    objective carried **no such term**, so the trace reports ``None`` and says
+    so rather than printing a zero, which would read as "we checked and it was
+    free". A reader that will not import, or that has no row for a code, is
+    also ``None`` — an unknown, which is not a zero chance of a fall.
+
+    Imported lazily and called inside the trace's own ``try`` for the same
+    reason the λ table is: a decoration must never be the reason a plan does
+    not render.
+    """
+    try:
+        # W2's own reader and W2's own switch — the dotted paths
+        # `settings_keys.py` names, so the two surfaces cannot disagree about
+        # whether the term is on.
+        from gaffer.config import price_timing as price_timing_on
+        from gaffer.price_timing import owned_price_falls
+    except Exception as exc:  # noqa: BLE001 — W2 may not have landed
+        print(f"plan trace: no price-timing reader ({exc})")
+        return False, {}
+    try:
+        if not price_timing_on():
+            return False, {}
+        owned = [int(c) for c in getattr(state, "owned_codes", []) or []]
+        return True, {int(k): float(v)
+                      for k, v in (owned_price_falls(owned) or {}).items()}
+    except Exception as exc:  # noqa: BLE001
+        print(f"plan trace: price falls unreadable ({exc})")
+        return True, {}
+
+
 @router.get("/plan/{gw}", response_model=PlanTimeline)
 def plan(gw: int) -> PlanTimeline:
     try:
@@ -207,6 +304,21 @@ def plan(gw: int) -> PlanTimeline:
     opt = state.opt if isinstance(state.opt, dict) else {}
     hit_cost = _int(opt.get("hit_cost", 4), 4)
     head = _int(advice.get("gw", gw), gw)
+
+    # v12 §6.5 (specs/2026-09-01-gaffer-v12-program-design.md, plan A8). Every
+    # input the trace needs is already in these two artifacts, so it is
+    # accounting over what the router has in hand — the solver is not called,
+    # not imported for anything but two constants, and cannot see this.
+    ep_by, positions, player_names = _trace_inputs(state)
+    thresholds = _thresholds(advice)
+    ft_lambda = None
+    if opt.get("decision_priors"):
+        try:
+            from gaffer.assets import load_decision_priors
+            from gaffer.optimize.ft_value import lambda_from_priors
+            ft_lambda = lambda_from_priors(load_decision_priors())
+        except Exception as exc:  # noqa: BLE001 — a decoration, never a gate
+            print(f"plan trace: no lambda table ({exc}); flat ft_value")
 
     # v11 §F1 (specs/2026-09-02-gaffer-v11-ui-design.md, plan A8). The bank is
     # not in ``plan_by_gw`` — ``advise.py`` writes no money into it — so it is
@@ -267,5 +379,42 @@ def plan(gw: int) -> PlanTimeline:
         return out
 
     weeks = build(_weeks_of(advice), head_refs=True)
+
+    # The recommended plan only. An alternative was returned by a different
+    # solve, over a different XI, and the free-transfer count this runs
+    # forward is Plan A's — lending it to Plan B would print Plan A's numbers
+    # under Plan B's moves. The board says so under the strip.
+    #
+    # One pass over the whole horizon rather than a week at a time, because
+    # the free-transfer recurrence is what makes the week after depend on the
+    # week before.
+    if TRACE and weeks:
+        try:
+            price_timing, price_fall = _price_falls(state)
+            traced = trace_plan(
+                [{"gw": w.gw, "hits": w.hits,
+                  "buys": [m.code for m in w.buys],
+                  "sells": [m.code for m in w.sells], "chip": w.chip}
+                 for w in weeks],
+                gws=[int(g) for g in getattr(state, "gws", [])],
+                ep_by=ep_by, positions=positions, names=player_names,
+                decay=_float(opt.get("decay", 1.0), 1.0), hit_cost=hit_cost,
+                ft_value=_float(opt.get("ft_value", 0.0)),
+                itb_value=_float(opt.get("itb_value", 0.0)),
+                free_transfers=_int(getattr(state, "free_transfers", 0)),
+                ft_lambda=ft_lambda,
+                ft_use_penalty=_float(opt.get("ft_use_penalty", 0.0)),
+                lam=_float(getattr(state, "lam", 0.0)),
+                cover=getattr(state, "cover", None) or {},
+                thresholds=thresholds,
+                banks={w.gw: w.bank for w in weeks},
+                price_timing=price_timing, price_fall=price_fall)
+            for week, one in zip(weeks, traced):
+                week.trace = PlanWeekTrace(**asdict(one))
+        except Exception as exc:  # noqa: BLE001
+            # A decoration must never be the reason a plan does not render —
+            # the board's own rule for the price movers.
+            print(f"plan trace unavailable for GW{head}: {exc}")
+
     return PlanTimeline(gw=head, generated_at=state.generated_at, weeks=weeks,
                         bank=start, alternatives=_alternatives(advice, build))
