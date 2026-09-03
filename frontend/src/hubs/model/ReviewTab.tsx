@@ -91,6 +91,22 @@ function GwCard({ row, onSelect }:
               {`did not reconcile — FPL says ${row.official_points}`}
             </Badge>
           ) : null}
+          {/* v12 W5 §6.4. Absent is absent: a week graded before the
+              snapshots existed gets no slot at all, not an em dash, because
+              "we never froze one" is not a measurement of anything. */}
+          {row.projection_snapshot && (
+            <span
+              className="text-text-faint"
+              data-testid={`review-projections-${row.gw}`}
+              title={row.projection_post_deadline
+                ? 'Every projection run for this gameweek was written after '
+                  + 'the deadline, so it saw team news you could not act on.'
+                : 'The last projections written before the deadline.'}
+            >
+              {`projections ${row.projection_snapshot.slice(0, 8)}`}
+              {row.projection_post_deadline ? ' (late)' : ''}
+            </span>
+          )}
         </span>
       )}
       className="mb-4"

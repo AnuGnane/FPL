@@ -1282,6 +1282,11 @@ export interface ReviewGw {
    *  a zero, and never a line through it, because zero is the best rank in the
    *  game. */
   overall_rank: number | null
+  /** UTC stamp of the frozen EP table this grade was read against, or null
+   *  for a week graded before the snapshots existed. Never rendered as a
+   *  zero or an empty date. */
+  projection_snapshot?: string | null
+  projection_post_deadline?: boolean
   our_bench_points: number | null
   model_points: number | null
   accuracy: number | null

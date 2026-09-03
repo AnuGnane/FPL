@@ -1600,6 +1600,21 @@ class ReviewGw(BaseModel):
     show a gap, never a zero and never a line through it: zero is the best
     rank in the game.
     """
+    projection_snapshot: str | None = None
+    """The UTC stamp of the frozen EP table this grade was read against.
+
+    ``None`` for a gameweek graded before v12 W5 existed, and for one where no
+    snapshot was ever written. Grades are banked and never re-derived (spec
+    D2), so every row already in the ledger keeps ``None`` for ever and the
+    column fills forward from the next graded week — drawn as absent, never as
+    a zero or a blank that reads like one.
+    """
+    projection_post_deadline: bool = False
+    """True when *every* snapshot for the gameweek was written after the
+    deadline, so the projections graded here saw team news nobody could act
+    on. The same flag, for the same reason, as ``post_deadline`` above — which
+    is about the advice payload rather than the EP table, and the two can
+    disagree."""
     our_bench_points: int | None = None
     model_points: int | None = None
     accuracy: int | None = None

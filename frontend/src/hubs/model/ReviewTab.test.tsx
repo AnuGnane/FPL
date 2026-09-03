@@ -143,6 +143,39 @@ describe('ReviewTab', () => {
     expect(await screen.findByText(/late run/i)).toBeTruthy()
   })
 
+  it('names the projections a gameweek was graded against', async () => {
+    mock({
+      ...DATA,
+      gws: [{ ...DATA.gws[0], projection_snapshot: '20260903T090000Z' }],
+    })
+    render(<ReviewTab />)
+    const line = await screen.findByTestId('review-projections-2')
+    expect(line.textContent).toBe('projections 20260903')
+  })
+
+  it('says a gameweek whose every projection run was late', async () => {
+    mock({
+      ...DATA,
+      gws: [{ ...DATA.gws[0], projection_snapshot: '20260905T090000Z',
+              projection_post_deadline: true }],
+    })
+    render(<ReviewTab />)
+    const line = await screen.findByTestId('review-projections-2')
+    expect(line.textContent).toContain('(late)')
+  })
+
+  it('renders nothing at all when no projections were frozen', async () => {
+    // Absent, never an em dash. Every row banked before v12 W5 is in this
+    // state for ever, and a dash in the heading would read as a measurement
+    // that came back empty rather than one that was never taken.
+    mock({ ...DATA, gws: [{ ...DATA.gws[0], projection_snapshot: null }] })
+    render(<ReviewTab />)
+    // Wait on the card actually rendering before asserting an absence, or the
+    // assertion passes against a tab that has not finished fetching yet.
+    await screen.findByTestId('hindsight-2')
+    expect(screen.queryByTestId('review-projections-2')).toBeNull()
+  })
+
   it('says so when a gameweek has no surviving advice', async () => {
     mock({
       ...DATA,

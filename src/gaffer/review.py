@@ -198,6 +198,11 @@ def model_decisions(gw: int) -> dict | None:
         "names": names,
         "positions": positions,
         "post_deadline": bool(payload.get("post_deadline")),
+        # v12 W5 §6.4. The run's own record of when the deadline was — the
+        # same field journal.latest_run_per_gw sorts on. Needed here to pick
+        # the projections that stood at it; ``None`` when the payload predates
+        # the field, which sends the reader down its own late branch.
+        "deadline": payload.get("deadline"),
     }
 
 
@@ -960,11 +965,24 @@ def grade_gw(gw: int, *, cfg, client=None) -> dict | None:
     mine = {**mine, "code_of": {e: c for e, c in code_of_element().items()},
             "names": names_by_code()}
 
+    # v12 W5 §6.4. Which frozen EP table this grade is being read against.
+    # Not used to re-derive anything — the grade is points against actuals —
+    # but a Review row that cannot say which projections it judged is a row
+    # nobody can re-check, and a re-run between the deadline and Tuesday used
+    # to move the answer silently.
+    from gaffer.artifacts import latest_projection_before
+
+    snapshot = latest_projection_before(
+        season, gw, (model or {}).get("deadline"))
+
     n = int(getattr(cfg, "sim_n", 2000) or 2000)
     meta = {"pwin_n": n, "pwin_seed": SIM_SEED,
             "pwin_granularity_pp": round(100.0 / max(n, 1), 3)}
     if model is None or client is None:
         row = grade_gw_from(gw, mine, model, frame, pwin_meta=meta)
+        row["projection_snapshot"] = None if snapshot is None else snapshot.stamp
+        row["projection_post_deadline"] = bool(
+            snapshot is not None and snapshot.post_deadline)
         # Either way the pricing pass never ran, and an empty Δwin% column
         # with nothing on the row to explain it is the silent zero spec G2
         # exists to forbid.
@@ -986,6 +1004,9 @@ def grade_gw(gw: int, *, cfg, client=None) -> dict | None:
                                         counterfactuals, element_of)
     row = grade_gw_from(gw, mine, model, frame, pwin=priced, pwin_meta=meta,
                         lanes=lanes)
+    row["projection_snapshot"] = None if snapshot is None else snapshot.stamp
+    row["projection_post_deadline"] = bool(
+        snapshot is not None and snapshot.post_deadline)
     if notice:
         row["notices"] = list(row["notices"]) + [notice]
     return row
