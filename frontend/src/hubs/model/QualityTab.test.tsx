@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ReviewData } from '../../types'
 import QualityTab from './QualityTab'
 
 const { FakeApiError, apiGet } = vi.hoisted(() => {
@@ -111,9 +112,17 @@ const payload = {
   },
 }
 
+// `/api/review` is answered separately from the quality payload because the
+// two are different models. `ReviewData.gws` is required on the wire — the
+// route returns `{gws: [], summary: null}` on an empty ledger — so the scatter
+// section reads it unguarded, and a blanket `mockResolvedValue(payload)` hands
+// it a body with no such key.
+const EMPTY_REVIEW: ReviewData = { gws: [], summary: null }
+
 beforeEach(() => {
   apiGet.mockReset()
-  apiGet.mockResolvedValue(payload)
+  apiGet.mockImplementation((path: string) => Promise.resolve(
+    path === '/api/review' ? EMPTY_REVIEW : payload))
 })
 
 describe('QualityTab', () => {
@@ -321,6 +330,7 @@ const pens = {
 
 function routed(penResponse: unknown, reject = false) {
   return (path: string) => {
+    if (path === '/api/review') return Promise.resolve(EMPTY_REVIEW)
     if (path !== '/api/pens') return Promise.resolve(payload)
     return reject ? Promise.reject(penResponse) : Promise.resolve(penResponse)
   }

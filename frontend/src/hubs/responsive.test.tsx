@@ -238,7 +238,12 @@ describe('a phone screen scrolls nothing sideways', () => {
   it('wraps every table the Health tab draws', async () => {
     // The likeliest real body scroll on a phone: the data-freshness tables
     // carry filesystem paths, which do not wrap.
-    apiGet.mockResolvedValue(HEALTH)
+    // `/api/review` answered separately: the Model hub mounts Quality beside
+    // Health, and `ReviewData.gws` is required on the wire — a blanket mock
+    // that hands every path the health body gives the scatter section no such
+    // key.
+    apiGet.mockImplementation((path: string) => Promise.resolve(
+      path === '/api/review' ? { gws: [], summary: null } : HEALTH))
     render(<MemoryRouter><Model /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('tab', { name: 'Health' }))
     await screen.findAllByText(/bootstrap/)

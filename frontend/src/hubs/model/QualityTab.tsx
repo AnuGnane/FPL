@@ -822,7 +822,7 @@ function PensSection() {
         initialSort="gw"
         empty={<p className="text-text-muted">No finished gameweek yet.</p>}
       />
-      {(data.notes ?? []).map((note) => (
+      {data.notes.map((note) => (
         <p key={note} className="mt-2 text-text-faint">{note}</p>
       ))}
     </Card>
@@ -863,7 +863,7 @@ function ScatterSection() {
 
   useEffect(() => {
     apiGet<ReviewData>('/api/review')
-      .then((body) => setGws(body.gws ?? []))
+      .then((body) => setGws(body.gws))
       .catch(() => setGws([]))
   }, [])
 

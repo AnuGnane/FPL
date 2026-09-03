@@ -106,7 +106,7 @@ export default function PlannerBoard(
         // `calibrating` says the price log is not yet trustworthy, and a
         // warning drawn from an untrustworthy log is worse than no warning —
         // so those rows never enter the map at all.
-        for (const row of body.rows ?? []) {
+        for (const row of body.rows) {
           if (!row.calibrating) map.set(row.code, row)
         }
         setMovers(map)
@@ -357,9 +357,21 @@ export default function PlannerBoard(
                         )}
                       </p>
                     ))}
+                    {/* "after decay" is not decoration. The badge above this
+                        panel prints `week.hit_cost` — the undecayed
+                        `hits × 4` the FPL rules charge — and this is the
+                        objective's own term, `hits × 4 × decay**i`. On any
+                        week but the first they are two different numbers on
+                        one card, and without the clause the reader has to
+                        guess which of them is wrong. */}
                     {week.trace.hit_cost > 0 && (
-                      <p className="text-rust">
-                        {`hit charge −${fmtNum(week.trace.hit_cost)}`}
+                      <p className="text-rust"
+                         title={'The badge above is what the hits cost you. '
+                           + 'This is what the solver paid for them: the same '
+                           + 'charge discounted by this week’s decay factor, '
+                           + 'which is why a later week’s is smaller.'}>
+                        {`hit charge −${fmtNum(week.trace.hit_cost)} `
+                         + 'after decay'}
                       </p>
                     )}
                     <p className="text-text-faint">

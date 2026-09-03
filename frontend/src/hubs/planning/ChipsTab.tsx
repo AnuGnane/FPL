@@ -423,7 +423,7 @@ function ChipOutlook() {
                   </span>
                 )}
               </div>
-              <ThetaTrack weeks={row.weeks} thetas={row.thetas ?? []} />
+              <ThetaTrack weeks={row.weeks} thetas={row.thetas} />
             </div>
           )
         })}

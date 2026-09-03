@@ -38,7 +38,7 @@ export default function OverridesCard() {
           {' '}is false in config.toml.
         </p>
       )}
-      {(data.rows ?? []).length === 0
+      {data.rows.length === 0
         ? <p className="text-text-muted">Nothing pinned.</p>
         : (
           <ul className="flex flex-col gap-2">
