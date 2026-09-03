@@ -2,8 +2,11 @@
 
 Writes ``config.local.toml`` and **never** ``config.toml`` (spec §8: a UI that
 edits ``config.toml`` is out of scope, and that file carries the odds API key).
-The overlay is merged over the base by ``config.load_config`` and by the three
-module-level readers — see ``config.py``'s ``_raw_with_overlay``.
+The overlay is merged over the base by ``config.load_config`` and by all four
+module-level readers — ``price_timing``, ``xg_per_shot``, ``optimizer_top_n``
+and ``lineup_providers``, five call sites of ``config.py``'s
+``_raw_with_overlay`` between them. An overlay only the loader honoured would
+be a switch that saves and changes nothing.
 
 Refusals use the what-if lab's ``{constraint, error, players}`` shape so the
 client has one error shape for every write endpoint, exactly as
@@ -67,6 +70,20 @@ def _read(path: Path) -> tuple[dict, str | None]:
         return {}, f"{path.name} is not readable TOML ({exc}) — ignored"
 
 
+def _table(raw: dict, section: str) -> dict:
+    """One section of a parsed TOML file, or ``{}`` if it is not a table.
+
+    ``raw.get(section) or {}`` was not enough: ``optimizer = 5`` in
+    ``config.local.toml`` parses, so the section comes back as an ``int`` and
+    the membership test below raised ``TypeError: argument of type 'int' is
+    not iterable`` — a 500 on the tab whose job is to tell the manager the
+    overlay is wrong. ``config._overlay`` drops the same value for the same
+    reason; this is the read side of it.
+    """
+    value = raw.get(section)
+    return value if isinstance(value, dict) else {}
+
+
 def _panel() -> SettingsPanel:
     # The base file's parse error is deliberately dropped: if config.toml will
     # not parse, `load_config` below raises and the early return names it in
@@ -93,9 +110,9 @@ def _panel() -> SettingsPanel:
     for entry in WHITELIST:
         if entry.field not in live:
             continue
-        if entry.toml_key in (local_raw.get(entry.section) or {}):
+        if entry.toml_key in _table(local_raw, entry.section):
             source = "local"
-        elif entry.toml_key in (base_raw.get(entry.section) or {}):
+        elif entry.toml_key in _table(base_raw, entry.section):
             source = "base"
         else:
             source = "default"

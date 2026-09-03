@@ -5,13 +5,14 @@ is absent, malformed, or carries a key `Config` has never heard of — because
 the third one is a `TypeError` out of a splatted section, and `serving_config`
 catches that by discarding the user's entire real config (config.py:311-333).
 
-The second half of the file is about *reach*. `config.py` has three
-module-level readers — `price_timing`, `xg_per_shot` and `optimizer_top_n` —
-that open `config.toml` themselves rather than going through `load_config`,
-because the keys they serve are either not `Config` fields or are needed
-somewhere no `Config` is in hand. An overlay the loader honoured and those
-three did not would be a Settings tab whose price-timing switch saved and did
-nothing, so the merge lives in one place they all read through.
+The second half of the file is about *reach*. `config.py` has four
+module-level readers — `price_timing`, `xg_per_shot`, `optimizer_top_n` and
+`lineup_providers` — that open `config.toml` themselves rather than going
+through `load_config`, because the keys they serve are either not `Config`
+fields or are needed somewhere no `Config` is in hand. An overlay the loader
+honoured and those four did not would be a Settings tab whose price-timing
+switch saved and did nothing, so the merge lives in one place they all read
+through.
 """
 from __future__ import annotations
 
@@ -305,3 +306,48 @@ def test_every_splatted_section_is_read_by_key_or_exempt(tree, capsys):
     # And the exemption is exactly the non-field optimizer keys, not a blanket
     # "anything [optimizer] carries": a typo there is still reported.
     assert not set(mod.NON_FIELD_OPTIMIZER_KEYS) & fields
+
+
+def test_a_scalar_where_the_base_has_a_table_is_dropped_not_swallowed(tree,
+                                                                      capsys):
+    """`optimizer = 5` in the overlay, from a hand-edit or a half-typed line.
+
+    The key guard above walks *inside* a section; nothing guarded the section
+    itself, so a scalar replaced the whole table and `load_config`'s
+    `**optimizer` splat then raised `AttributeError: 'int' object has no
+    attribute 'items'`. `serving_config` catches that by falling back to
+    `Config(entry_id=0, league_id=0)` — the manager's entire real config,
+    silently gone, over one bad line in a file the UI writes.
+
+    Dropped with the same printed sentence the key guard uses, because it is
+    the same fact: the overlay said something the config cannot mean.
+    """
+    base, overlay = tree
+    overlay("optimizer = 5\n")
+    cfg = load_config(base)
+    assert cfg.horizon == 3 and cfg.decay == 0.7
+    assert cfg.entry_id == 111
+    out = capsys.readouterr().out
+    assert LOCAL_OVERLAY in out and "ignored" in out and "optimizer" in out
+
+
+def test_the_settings_panel_does_not_blame_config_toml_for_the_overlay(
+        tree, tmp_path, monkeypatch):
+    """The other half. `load_config` raising made the panel print
+    "config.toml unreadable (…)" while config.toml was fine — pointing the
+    manager at the one file the Settings tab is forbidden to touch."""
+    from fastapi.testclient import TestClient
+
+    from gaffer.config import serving_config
+    from gaffer.web.app import create_app
+
+    _, overlay = tree
+    overlay("optimizer = 5\n")
+    monkeypatch.chdir(tmp_path)
+    serving_config.cache_clear()
+    try:
+        body = TestClient(create_app()).get("/api/settings").json()
+    finally:
+        serving_config.cache_clear()
+    assert "config.toml unreadable" not in (body["overlay_error"] or "")
+    assert [r["key"] for r in body["rows"]]

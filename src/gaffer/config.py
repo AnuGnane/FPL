@@ -206,6 +206,12 @@ def _overlay(raw: dict, base: Path) -> dict:
     level and no deeper: nothing in this config nests further, and a general
     deep merge would be a rule no reader could predict from the file.
 
+    A *scalar* where the base has a table is dropped rather than merged, with
+    the same printed line an unknown key gets. ``optimizer = 5`` used to
+    replace the whole ``[optimizer]`` table and take ``load_config`` down with
+    it, which ``serving_config`` turns into ``Config(entry_id=0, league_id=0)``
+    — every real setting the manager has, discarded over one line.
+
     Never raises. A missing overlay is the normal case; an unparseable one is
     ignored with a printed line, because one bad write from the Settings tab
     must not stop every job on the machine. The line is the only signal there
@@ -227,6 +233,21 @@ def _overlay(raw: dict, base: Path) -> dict:
                | set(NON_FIELD_OPTIMIZER_KEYS))
     out = dict(raw)
     for section, values in extra.items():
+        if not isinstance(values, dict) and isinstance(out.get(section), dict):
+            # A scalar over a table. `optimizer = 5` from a hand-edit replaced
+            # the whole `[optimizer]` table, and `load_config`'s `**optimizer`
+            # splat then raised `AttributeError: 'int' object has no attribute
+            # 'items'` — which `serving_config` catches by handing back
+            # `Config(entry_id=0, league_id=0)`: the manager's entire real
+            # config gone over one bad line in a file the UI writes. Dropped
+            # with the key guard's own sentence below, because it is the key
+            # guard's own fact — the overlay said something the config cannot
+            # mean. (A scalar over a section the *base* does not declare is
+            # left alone: there is nothing to compare it against, and every
+            # section this tree splats is in config.example.toml.)
+            print(f"config: {local} sets [{section}] to something that is not "
+                  f"a table, which is not a config section — ignored")
+            continue
         if not isinstance(values, dict) or not isinstance(out.get(section),
                                                           (dict, type(None))):
             out[section] = values
