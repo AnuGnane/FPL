@@ -149,12 +149,14 @@ def test_the_overlay_cannot_conjure_a_config_without_a_base(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# The three module-level readers
+# The four module-level readers
 # ---------------------------------------------------------------------------
 # `load_config` is not the only thing that opens config.toml. `price_timing`,
-# `xg_per_shot` and `optimizer_top_n` each read the file directly, and two of
-# the nine keys the Settings tab writes are served by two of them. An overlay
-# only `load_config` honoured would be a switch that saves and does nothing.
+# `xg_per_shot`, `optimizer_top_n` and `lineup_providers` each read the file
+# directly, and two of the nine keys the Settings tab writes are served by two
+# of them. An overlay only `load_config` honoured would be a switch that saves
+# and does nothing — and `lineup_providers`, which the web never writes, is
+# the one easiest to leave behind, so it is tested here beside the three.
 
 
 def test_price_timing_in_the_overlay_is_honoured_by_its_reader(tree, capsys):
@@ -329,6 +331,65 @@ def test_a_scalar_where_the_base_has_a_table_is_dropped_not_swallowed(tree,
     assert cfg.entry_id == 111
     out = capsys.readouterr().out
     assert LOCAL_OVERLAY in out and "ignored" in out and "optimizer" in out
+
+
+def test_a_scalar_over_a_section_the_base_omits_is_dropped_too(tmp_path,
+                                                                capsys):
+    """The other half of the same line, and the worse half.
+
+    The first guard asked whether the *base* held a table at that key, so
+    `optimizer = 5` sailed through against a config.toml with no `[optimizer]`
+    — the shape a fresh clone that has never touched a solver knob actually
+    has. Two of the module-level readers then do
+    `raw.get(section, {}).get(...)` *outside* their `try`, so the
+    AttributeError lands on the solve path, past the one guard written to keep
+    a config file from being fatal there.
+
+    So the rule is about the overlay's own shape, not the base's: a bare value
+    at the top level is a section name with a scalar under it, and there is no
+    section this tree reads that a scalar can mean. Only scalar-over-scalar
+    merges.
+    """
+    from gaffer.config import DEFAULT_LINEUP_PROVIDERS, lineup_providers
+
+    base = tmp_path / "config.toml"
+    base.write_text("[fpl]\nentry_id = 111\nleague_id = 222\n")
+    (tmp_path / LOCAL_OVERLAY).write_text("optimizer = 5\nnews = 7\n")
+    optimizer_top_n.cache_clear()
+
+    cfg = load_config(base)
+    # The base survives whole, and the sections the overlay tried to scalarise
+    # read as the shipped defaults rather than as anything the overlay said.
+    assert cfg.entry_id == 111
+    assert cfg.horizon == Config(entry_id=0, league_id=0).horizon
+    # One line per dropped key, naming the file and saying "ignored".
+    out = capsys.readouterr().out
+    lines = [ln for ln in out.splitlines() if "ignored" in ln]
+    assert len(lines) == 2
+    assert all(LOCAL_OVERLAY in ln for ln in lines)
+    assert sum("[optimizer]" in ln for ln in lines) == 1
+    assert sum("[news]" in ln for ln in lines) == 1
+
+    # And the two readers that reach past their own `try` do not raise.
+    assert price_timing(base) is True
+    assert lineup_providers(base) == list(DEFAULT_LINEUP_PROVIDERS)
+    optimizer_top_n.cache_clear()
+
+
+def test_a_scalar_over_a_scalar_the_base_declares_is_still_a_merge(tmp_path):
+    """The exemption the rule leaves open, so "drop every bare value" does not
+    become the remembered version of it. Nothing this tree reads is a top-level
+    scalar today, but the base is the authority on what a key means: where
+    config.toml already says a key is a bare value, the overlay saying so too
+    is an ordinary override, not a malformed section."""
+    from gaffer.config import _raw_with_overlay
+
+    base = tmp_path / "config.toml"
+    # `banner` before the first header, or TOML reads it as a key *inside*
+    # `[fpl]` and there is no top-level scalar to overlay at all.
+    base.write_text("banner = 1\n[fpl]\nentry_id = 111\nleague_id = 222\n")
+    (tmp_path / LOCAL_OVERLAY).write_text("banner = 2\n")
+    assert _raw_with_overlay(base)["banner"] == 2
 
 
 def test_the_settings_panel_does_not_blame_config_toml_for_the_overlay(
