@@ -35,7 +35,7 @@ from gaffer.artifacts import (SolveState, append_advice_history,
                               ingested_through, pool_rows, save_availability,
                               save_components, save_snapshots,
                               save_solve_state)
-from gaffer.config import Config
+from gaffer.config import NO_CAP, Config
 from gaffer.data import store
 from gaffer.data.bootstrap import (build_events, build_players, build_teams,
                                    next_gw, scoring_table)
@@ -165,6 +165,9 @@ class Advice:
     # every payload written before this — and every positional construction —
     # still loads.
     alternative_plans: list[dict] = field(default_factory=list)
+    # v13 §2.3: the appetite this advice solved under, for the CLI line and
+    # the report. ``None`` for the initial-squad build, which is uncapped.
+    caps: dict | None = None
 
 
 INITIAL_BUDGET = 1000
@@ -554,6 +557,12 @@ def captain_haul_by_code(components: pd.DataFrame,
     return haul
 
 
+def _cap(value: int) -> int | None:
+    """A config cap as ``SolveInput`` wants it: ``NO_CAP`` and above is
+    "no constraint"; anything else is the number."""
+    return None if int(value) >= NO_CAP else int(value)
+
+
 def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     """The whole weekly pipeline, from live refresh to ``reports/``."""
     missing = [n for n in MODEL_NAMES if not model_exists(n)]
@@ -743,7 +752,12 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     else:
         my_picks = my.picks
         state = SolveInput(owned_codes=my.picks["code"].tolist(), bank=my.bank,
-                           free_transfers=my.free_transfers, gws=gws)
+                           free_transfers=my.free_transfers, gws=gws,
+                           # v13 §2.3: the manager's appetite, on the one
+                           # SolveInput the sweep, the alternative plans and
+                           # the chip table inherit through ``state``.
+                           max_hits=_cap(cfg.max_hits),
+                           max_transfers=_cap(cfg.max_transfers))
     pool = build_pool(players, pool_ep, my_picks, gws)
     # v10 §F1/T10-A (specs/2026-09-01-gaffer-v10-minutes-design.md): the one
     # caller that hands the optimizer its minutes probabilities. There is no
@@ -1136,6 +1150,9 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         captain_note=captain_note,
         demoted_captain=demoted_captain,
         alternative_plans=alt_rows,
+        caps=(None if my is None
+              else {"max_hits": int(cfg.max_hits),
+                    "max_transfers": int(cfg.max_transfers)}),
     )
     REPORTS.mkdir(exist_ok=True)
     # v9c orchestrator-authorized protected edit (review I1): atomic advice
@@ -1166,7 +1183,11 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         # is all the web re-solve needs to rebuild the same lookup from the
         # shipped asset and price a What-If baseline exactly like this advice.
         opt={**opt_kw, "horizon": cfg.horizon,
-             "decision_priors": bool(cfg.decision_priors)},
+             "decision_priors": bool(cfg.decision_priors),
+             # v13 §2.3: raw config values (15 = no cap); read back through
+             # ``artifacts.caps_from_state`` by every re-solve of this board.
+             "max_hits": int(cfg.max_hits),
+             "max_transfers": int(cfg.max_transfers)},
         pool=pool_rows(pool, players, owned_now, ep_by, gws)))
     # Two artifacts nothing in the pipeline reads: the availability frame this
     # run predicted on, and the payload itself, appended to a pruned log. Both

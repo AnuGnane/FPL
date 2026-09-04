@@ -14,6 +14,25 @@ import typer
 app = typer.Typer(help="FPL ML advisor", no_args_is_help=True)
 
 
+def _caps_line(caps: dict) -> str:
+    """'Caps: 2 hits/week, transfers uncapped' — v13 §2.3, one line."""
+    from gaffer.config import NO_CAP
+
+    hits = int(caps.get("max_hits", NO_CAP))
+    moves = int(caps.get("max_transfers", NO_CAP))
+    if hits >= NO_CAP and moves >= NO_CAP:
+        return "Caps: none"
+    hits_txt = ("hits uncapped" if hits >= NO_CAP
+                else f"{hits} hit{'' if hits == 1 else 's'}/week")
+    if moves >= NO_CAP:
+        moves_txt = "transfers uncapped"
+    elif moves == 0:
+        moves_txt = "no transfers (bank)"
+    else:
+        moves_txt = f"{moves} transfer{'' if moves == 1 else 's'}/week"
+    return f"Caps: {hits_txt}, {moves_txt}"
+
+
 @app.command()
 def advise(fast: bool = typer.Option(
         False, "--fast",
@@ -71,6 +90,10 @@ def advise(fast: bool = typer.Option(
         typer.echo("No transfers — bank the FT.")
     if advice.hits:
         typer.echo(f"Hits: -{advice.hits * 4}")
+    # v13: absent on an Advice built without the field — which is what keeps
+    # tests/test_v4c_degradation.py's character-for-character rail green.
+    if getattr(advice, "caps", None):
+        typer.echo(_caps_line(advice.caps))
     cap_pct = ""
     if advice.scenarios and advice.scenarios.get("captain_frequency"):
         cap_pct = (f" [{round(advice.scenarios['captain_frequency'] * 100)}"

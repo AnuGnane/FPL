@@ -294,6 +294,29 @@ is the routers' signal to say "re-run `gaffer advise`" rather than 500.
 """
 
 
+def caps_from_state(state: SolveState) -> tuple[int | None, int | None]:
+    """``(max_hits, max_transfers)`` the saved advice solved under.
+
+    v13 §2.3. ``None`` means uncapped — both for a key the state never
+    carried (written before v13) and for the ``NO_CAP`` sentinel the config
+    stores. A What-If baseline, a draft's reference row and the ladder's
+    highlight all read this, so the plan the report served and the plan the
+    re-solve calls "original" are the same plan.
+    """
+    # Local import: this module is imported early by config's own callers
+    # (see ``save_solve_state``'s ``serving_config`` import for the cycle).
+    from gaffer.config import NO_CAP
+
+    def cap(key: str) -> int | None:
+        value = state.opt.get(key)
+        if value is None:
+            return None
+        value = int(value)
+        return None if value >= NO_CAP else value
+
+    return cap("max_hits"), cap("max_transfers")
+
+
 def solve_kw_from_state(state: SolveState) -> dict:
     """The ``solve_plan`` keyword bundle a saved state re-solves under.
 

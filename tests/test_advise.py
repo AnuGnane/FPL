@@ -771,3 +771,40 @@ def test_run_advise_persists_the_availability_and_history_artifacts():
     history = src.index("append_advice_history(asdict(advice), gw)")
     assert state < avail < history
     assert "pool_ep" not in src[src.index("ep_gw1 ="):]
+
+
+# --- v13: the appetite reaches the one SolveInput --------------------------
+
+
+def test_run_advise_hands_the_caps_to_the_weekly_solve_input():
+    """Source-level seam, like the protected orderings above: the caps ride on
+    the SolveInput the sweep, the alternatives and the chip table all
+    inherit, and on no other. The initial-squad branch builds fifteen
+    transfers and must stay uncapped."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    assert "max_hits=_cap(cfg.max_hits)" in src
+    assert "max_transfers=_cap(cfg.max_transfers)" in src
+    assert src.index("free_transfers=my.free_transfers, gws=gws") \
+        < src.index("max_hits=_cap(cfg.max_hits)") \
+        < src.index("pool = build_pool(")
+    assert '"max_hits": int(cfg.max_hits)' in src
+    assert '"max_transfers": int(cfg.max_transfers)' in src
+
+
+def test_cap_maps_the_no_cap_sentinel_to_none():
+    from gaffer.advise import _cap
+    from gaffer.config import NO_CAP
+
+    assert _cap(NO_CAP) is None
+    assert _cap(99) is None
+    assert _cap(2) == 2
+    assert _cap(0) == 0
+
+
+def test_advice_carries_the_caps_with_a_safe_default():
+    a = _bare_advice()
+    assert getattr(a, "caps", None) is None
