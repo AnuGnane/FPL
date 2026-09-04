@@ -597,12 +597,12 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
             n_buys, free_transfers = 0, 1
         else:
             # A wildcard's transfers are free and unlimited, and a free hit
-            # makes none at all, so both weeks feed the ordinary formula a
-            # transfer-free week and simply bank another FT.
-            counted = 0 if chip == "wildcard" else n_buys
-            free_transfers = min(
-                MAX_FREE_TRANSFERS,
-                max(0, free_transfers - counted + hits) + 1)
+            # makes none at all — but neither week accrues the usual +1
+            # either: the FT count carries over unchanged (official rule).
+            if chip not in ("wildcard", "freehit"):
+                free_transfers = min(
+                    MAX_FREE_TRANSFERS,
+                    max(0, free_transfers - n_buys + hits) + 1)
         log.append({"gw": gw, "points": pts, "total": total,
                     "hits": hits, "transfers": n_buys, "chip": chip,
                     "buys": ", ".join(name_of.get(c, str(c)) for c in buys),

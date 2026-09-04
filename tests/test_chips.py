@@ -54,7 +54,13 @@ def test_wildcard_gain_is_large_when_squad_is_bad():
                            **CFG)
     wc = table[(table.chip == "wildcard") & (table.gw == 1)]["gain"].iloc[0]
     assert wc > 5.0
-    assert (table["gain"] > -1e-6).all()
+    # No chip may be forced to hurt, with one priced exception: a wildcard
+    # forgoes that week's +1 free transfer (the count carries over unchanged,
+    # the official rule), so in a week where it buys nothing its gain is
+    # -ft_value and never lower.
+    is_wc = table["chip"] == "wildcard"
+    assert (table.loc[~is_wc, "gain"] > -1e-6).all()
+    assert (table.loc[is_wc, "gain"] > -CFG["ft_value"] - 1e-6).all()
 
 
 def test_wildcard_now_assessment_recommends_only_when_it_pays():
@@ -158,8 +164,13 @@ def test_wildcard_per_week_gain_is_flat_across_identical_weeks():
     Its per-week gain must not shrink: that would be the decay again."""
     state = SolveInput(owned_codes=list(BIG_OWNED), bank=0, free_transfers=0,
                        gws=list(FLAT_GWS))
+    # ft_value off: the wildcard forgoes one +1 accrual (the count carries
+    # over unchanged), a one-off cost that amortises over a shrinking number
+    # of remaining weeks and would read as decay here. The guard is about
+    # points, so price the transfers at zero and measure the points alone.
     table = evaluate_chips(_out_of_reach_pool(), state,
-                           chips_available=["wildcard"], **FLAT_CFG)
+                           chips_available=["wildcard"],
+                           **{**FLAT_CFG, "ft_value": 0.0})
     wc = table[table.chip == "wildcard"].sort_values("gw")
     assert wc["gain"].iloc[0] > 5.0            # the wildcard is worth playing
     per_week = wc["per_week"].tolist()
@@ -306,8 +317,9 @@ def test_an_empty_lambda_table_is_also_unchanged():
 
 
 def test_the_wildcard_does_not_charge_for_the_banked_transfers():
-    """B2. The MILP models a wildcard week as ``ftv <= prev_ft + 1`` — banked
-    transfers *survive* the chip, which is the rule since 2024-25. Deducting
+    """B2. The MILP models a wildcard week as ``ftv <= prev_ft`` — banked
+    transfers *survive* the chip (the week itself accruing nothing), which is
+    the rule since 2024-25. Deducting
     their lambda value on top of that was charging the manager twice for a
     bank he never loses, and the two halves of the codebase disagreed about
     what a wildcard costs."""

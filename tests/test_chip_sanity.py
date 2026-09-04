@@ -36,10 +36,13 @@ TC_BAND = (0.0, 25.0)
 hat-trick with the bonus and the clean sheet, which is the ceiling of a
 gameweek nobody plans for."""
 
-WC_BAND = (0.0, 120.0)
-"""Wildcard, over the whole horizon. A whole squad rebuilt across six weeks
-can be worth a lot; a hundred and twenty is where the number stops being a
-squad upgrade and starts being a units bug."""
+WC_BAND = (-1.5, 120.0)
+"""Wildcard, over the whole horizon. The floor is minus one free transfer at
+``CFG["ft_value"]``: the week a wildcard is played accrues no free transfer
+(the count carries over unchanged, the official rule), so a wildcard that
+fixes nothing costs exactly that and never more. A whole squad rebuilt across
+six weeks can be worth a lot; a hundred and twenty is where the number stops
+being a squad upgrade and starts being a units bug."""
 
 CFG = dict(decay=0.85, bench_weight=0.1, vice_weight=0.1, ft_value=1.5,
            itb_value=0.05, hit_cost=4)
@@ -77,8 +80,16 @@ def _gain(table: pd.DataFrame, chip: str) -> float:
 
 def test_no_chip_is_ever_valued_negative():
     """A chip you may decline to play is worth zero, never less: a negative
-    gain means the no-chip baseline was solved on a different board."""
-    assert (_table()["gain"] > -1e-6).all()
+    gain means the no-chip baseline was solved on a different board.
+
+    The one priced exception is the wildcard: the week it is played accrues
+    no free transfer (the count carries over unchanged, the official rule),
+    so a wildcard that fixes nothing costs exactly ``ft_value`` and never
+    more. Anything below that is still the different-board bug."""
+    table = _table()
+    is_wc = table["chip"] == "wildcard"
+    assert (table.loc[~is_wc, "gain"] > -1e-6).all()
+    assert (table.loc[is_wc, "gain"] > -CFG["ft_value"] - 1e-6).all()
 
 
 def test_the_bench_boost_stays_inside_its_band():

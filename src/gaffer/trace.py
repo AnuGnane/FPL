@@ -241,7 +241,9 @@ def trace_plan(weeks, *, gws: list[int], ep_by: dict, positions: dict,
                      else round(sum(gains), 3))
 
         if wildcard:
-            used, after = 0, min(MAX_FREE_TRANSFERS, ft + 1)
+            # The chip consumes nothing and the week accrues nothing:
+            # the banked count carries over unchanged (official rule).
+            used, after = 0, ft
         else:
             used = min(len(buys), ft)
             after = min(MAX_FREE_TRANSFERS,

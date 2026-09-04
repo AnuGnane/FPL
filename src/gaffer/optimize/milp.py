@@ -727,7 +727,9 @@ def _solve_once(pool: pd.DataFrame, state: SolveInput, *, decay: float,
         prev_ft = state.free_transfers if t_i == 0 else ftv[T[t_i - 1]]
         if wc:
             prob += hits[t] == 0                 # unlimited free transfers
-            prob += ftv[t] <= prev_ft + 1        # banked FTs survive the WC
+            # Banked FTs survive the wildcard, but the week accrues nothing:
+            # the count carries over unchanged (official FPL rule).
+            prob += ftv[t] <= prev_ft
         else:
             # hits is penalised in the objective so the >= bound is tight;
             # ftv is rewarded so its <= bound is tight. The <= nt cut stops

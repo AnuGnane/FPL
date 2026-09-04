@@ -230,6 +230,21 @@ def test_backtest_plays_triple_captain_and_spends_it_for_the_half(monkeypatch):
                               ["wildcard", "freehit", "bboost"]]
 
 
+def test_backtest_carries_the_free_transfers_across_a_wildcard(monkeypatch):
+    """A wildcard's transfers are free, but the week accrues nothing either:
+    the FT count leaves the chip week exactly as it entered."""
+    calls = _install_stubs(monkeypatch, _season_rows([1, 2, 3]))
+    _stub_evaluate_chips(monkeypatch, calls, {(2, "wildcard"): 50.0})
+    out = run_backtest(season="2025-26", start_gw=1, retrain_every=4,
+                       chips=True)
+    rows = {r["gw"]: r for r in out["log"]}
+
+    assert rows[2]["chip"] == "wildcard"
+    assert rows[1]["free_transfers"] == 1
+    assert rows[2]["free_transfers"] == 1     # unchanged, not banked to 2
+    assert rows[3]["free_transfers"] == 2     # accrual resumes after the chip
+
+
 FH_GW = 2
 
 
@@ -269,6 +284,11 @@ def test_backtest_free_hit_scores_one_week_then_reverts(monkeypatch):
     assert set(after) != set(fh_squad)       # ... and it is not the FH squad
     assert rows[2]["bank"] == rows[1]["bank"]
     assert rows[2]["transfers"] == 0 and rows[2]["hits"] == 0
+    # The chip week neither consumes nor accrues an FT: the count entering
+    # GW2 is the count leaving it, and the ordinary +1 resumes in GW3.
+    assert rows[1]["free_transfers"] == 1
+    assert rows[2]["free_transfers"] == 1
+    assert rows[3]["free_transfers"] == 2
     assert rows[2]["points"] == 24           # the free-hit XI was scored
     # The free hit is spent for the half.
     assert calls["avail"] == [["wildcard", "freehit", "bboost", "3xc"],

@@ -125,11 +125,13 @@ def test_free_transfers_run_forward_across_the_plan():
     assert [w.ft_after for w in out] == [1, 2, 3]
 
 
-def test_a_wildcard_week_charges_no_transfer_and_banks_one():
+def test_a_wildcard_week_charges_no_transfer_and_carries_the_bank():
+    """The chip consumes nothing and accrues nothing: one FT into the
+    wildcard week is one FT out of it (official rule)."""
     out = run([week(5, buys=[100, 300], sells=[200, 400], chip="wildcard")],
               free_transfers=1)
     assert out[0].ft_used == 0
-    assert out[0].ft_after == 2
+    assert out[0].ft_after == 1
 
 
 def test_the_transfer_friction_is_charged_per_transfer_and_decayed():

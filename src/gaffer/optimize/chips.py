@@ -359,7 +359,8 @@ def wildcard_now_assessment(pool: pd.DataFrame, state: SolveInput,
     wc = solve_plan(pool, replace(state, wildcard_gw=state.gws[0]), **cfg)
     # No deduction for the banked free transfers. A wildcard does not reset
     # the bank — it has not since 2024-25 — and ``milp`` models that directly
-    # (``ftv[t] <= prev_ft + 1`` on a wildcard week), so the lambda value of
+    # (``ftv[t] <= prev_ft`` on a wildcard week — the bank carries over
+    # unchanged, the week accruing nothing), so the lambda value of
     # the bank is already inside ``wc.objective``. Subtracting it again here
     # charged the manager twice for transfers he keeps, and left the two
     # halves of the codebase disagreeing about what a wildcard costs.

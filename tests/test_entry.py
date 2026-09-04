@@ -18,8 +18,15 @@ def test_free_transfers_bank_and_cap():
     assert compute_free_transfers({2: 1}, {}, current_gw=3) == 1
     # used 2 in GW2 (one was a hit) -> still 1 in GW3 (can't go below 0 + 1)
     assert compute_free_transfers({2: 2}, {}, current_gw=3) == 1
-    # wildcard GW: transfers don't consume FTs
-    assert compute_free_transfers({2: 8}, {2: "wildcard"}, current_gw=3) == 2
+    # A wildcard/free hit week neither consumes nor accrues: the count is
+    # carried over unchanged. 1 FT into the chip week -> 1 FT after it.
+    assert compute_free_transfers({2: 8}, {2: "wildcard"}, current_gw=3) == 1
+    assert compute_free_transfers({2: 5}, {2: "freehit"}, current_gw=3) == 1
+    # Two banked before the chip are still two after it: nothing GW2 banks a
+    # second FT for GW3, the GW3 wildcard leaves it alone.
+    assert compute_free_transfers({3: 8}, {3: "wildcard"}, current_gw=4) == 2
+    # ... and the ordinary +1 accrual resumes the week after the chip.
+    assert compute_free_transfers({2: 8}, {2: "wildcard"}, current_gw=4) == 2
 
 
 class _FakeClient:
@@ -72,9 +79,9 @@ def test_fetch_my_team_builds_state():
     assert team.bank == 13
     assert team.current_gw == 5
     assert team.entry_id == 99
-    # GW2: no transfers -> 2; GW3: wildcard, doesn't consume -> 3;
-    # GW4: no transfers -> 4.
-    assert team.free_transfers == 4
+    # GW2: no transfers -> 2; GW3: wildcard, carries 2 over unchanged;
+    # GW4: no transfers -> 3.
+    assert team.free_transfers == 3
     assert team.chips_by_gw == {3: "wildcard"}
     assert team.chips_used == ["wildcard"]
 

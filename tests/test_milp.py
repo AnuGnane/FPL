@@ -552,3 +552,29 @@ def test_the_churn_penalty_is_waived_on_a_wildcard_week():
     src = inspect.getsource(_solve_once)
     penalty = src.index("ft_use_penalty *")
     assert "if not wc:" in src[max(0, penalty - 200):penalty + 200]
+
+
+def _wc_carry_pool():
+    """The 20-man pool with two spare forwards who are worth having in the
+    second gameweek and ruinous to hold through the first, so the solver
+    cannot simply take them for free on the wildcard week."""
+    pool = _pool()
+    for code in (19, 20):
+        pool.loc[pool["code"] == code, "ep"] = pd.Series(
+            [{1: -100.0, 2: 60.0}], index=pool.index[pool["code"] == code])
+    return pool
+
+
+def test_a_wildcard_week_accrues_no_free_transfer():
+    """A wildcard carries the banked FTs over *unchanged*: one FT into the
+    chip week is one FT the week after, so a two-transfer second week takes
+    a hit. Under the old ``ftv <= prev_ft + 1`` it was two FTs and no hit."""
+    from dataclasses import replace as dc_replace
+
+    state = dc_replace(_state(ft=1), gws=[1, 2])
+    plan = solve_plan(_wc_carry_pool(), dc_replace(state, wildcard_gw=1),
+                      decay=0.85, bench_weight=0.1, vice_weight=0.1,
+                      ft_value=1.5, itb_value=0.05, hit_cost=4)
+    second = plan.gw_plans[1]
+    assert sorted(second.buys) == [19, 20]     # both stars bought in week 2
+    assert second.hits == 1                    # 1 FT + 1 hit, not 2 FTs

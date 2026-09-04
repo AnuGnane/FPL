@@ -29,14 +29,16 @@ def compute_free_transfers(
 ) -> int:
     """FTs available at ``current_gw``'s deadline. 1/GW, bank to 5, floor 0.
 
-    Wildcard/Free Hit gameweeks don't consume FTs (and Free Hit transfers
-    revert), so transfers made in those weeks are ignored.
+    Wildcard/Free Hit weeks neither consume nor accrue: the count carries
+    over unchanged. Transfers made under the chip cost nothing, and the
+    week's usual +1 does not happen either — 2 saved FTs going into the
+    chip are still 2 saved FTs the gameweek after it.
     """
     ft = 1
     for gw in range(start_gw, current_gw):
-        chip = chips_by_gw.get(gw, "")
-        used = 0 if chip in FREE_TRANSFER_CHIPS else transfers_by_gw.get(gw, 0)
-        ft = max(0, ft - used)
+        if chips_by_gw.get(gw, "") in FREE_TRANSFER_CHIPS:
+            continue
+        ft = max(0, ft - transfers_by_gw.get(gw, 0))
         ft = min(FT_CAP, ft + 1)
     return ft
 
