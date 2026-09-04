@@ -1868,6 +1868,76 @@ class SensitivityReport(BaseModel):
     verdict: str | None = None
 
 
+# --- v13 §3: the transfer ladder ------------------------------------------
+
+
+class LadderVsBelow(BaseModel):
+    """What the extra hit bought, against the previous distinct rung."""
+
+    extra_buys: list[PlayerRef] = Field(default_factory=list)
+    extra_sells: list[PlayerRef] = Field(default_factory=list)
+    dropped_buys: list[PlayerRef] = Field(default_factory=list)
+    dropped_sells: list[PlayerRef] = Field(default_factory=list)
+    delta_mean_pts: float
+    delta_cost: int
+
+
+class LadderWeek(BaseModel):
+    gw: int
+    hits: int
+    buys: list[PlayerRef] = Field(default_factory=list)
+    sells: list[PlayerRef] = Field(default_factory=list)
+    xi: list[PlayerRef] = Field(default_factory=list)
+    bench: list[PlayerRef] = Field(default_factory=list)
+    captain: PlayerRef
+    vice: PlayerRef
+    expected_pts: float
+
+
+class LadderRung(BaseModel):
+    """One row. Every number is ``None`` on a ``same_as`` row, which repeats
+    the rung below rather than re-solving it."""
+
+    key: str
+    hits: int
+    transfers: int
+    cost: int
+    same_as: str | None = None
+    plan_by_gw: list[LadderWeek] = Field(default_factory=list)
+    week_pts: float | None = None
+    horizon_pts: float | None = None
+    objective: float | None = None
+    mean_pts: float | None = None
+    p10_pts: float | None = None
+    p90_pts: float | None = None
+    p_beats_bank: float | None = None
+    p_beats_top: float | None = None
+    p_best: float | None = None
+    vs_below: LadderVsBelow | None = None
+
+
+class LadderCap(BaseModel):
+    max_hits: int | None = None
+    max_transfers: int | None = None
+
+
+class LadderPayload(BaseModel):
+    gw: int | None = None
+    gws: list[int] = Field(default_factory=list)
+    generated_at: str | None = None
+    free_transfers: int | None = None
+    cap: LadderCap = Field(default_factory=LadderCap)
+    cap_rung: str | None = None
+    recommended: str | None = None
+    n_draws: int = 0
+    seed: int | None = None
+    sigma_source: str | None = None
+    wall_s: float | None = None
+    rungs: list[LadderRung] = Field(default_factory=list)
+    note: str | None = None
+    """Why ``rungs`` is empty, when it is: no state, or no ladder banked."""
+
+
 class DraftRow(BaseModel):
     name: str
     created_at: str = ""

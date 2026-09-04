@@ -362,12 +362,17 @@ def test_the_route_total_did_not_move_and_this_is_where_it_is_pinned(
 
     Both are pinned by name below as well as by count, because a count alone
     would let a route be added and another removed in one cycle.
+
+    # v13 §3.2 (specs/2026-09-04-gaffer-v13-transfer-ladder-design.md)
+    47 → 48, and the one is ``/api/ladder`` — GET and POST share one path
+    key, like ``/api/settings`` — the transfer ladder.
     """
     monkeypatch.chdir(tmp_path)
     paths = set(create_app().openapi()["paths"])
-    assert len(paths) == 47
+    assert len(paths) == 48
     assert "/api/meta/freshness" in paths
     assert "/api/settings" in paths
+    assert "/api/ladder" in paths
     # v11's own claim, untouched: /api/meta/freshness collides with none of
     # these three prefixes.
     assert not [p for p in paths

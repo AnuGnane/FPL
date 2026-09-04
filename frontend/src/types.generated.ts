@@ -737,6 +737,7 @@ export interface WhatIfRequest {
   horizon: number | null
   lock: number[]
   max_hits: number
+  max_transfers: number | null
 }
 /**
  * This interface was referenced by `GafferApi`'s JSON-Schema
@@ -1131,6 +1132,90 @@ export interface JournalRow {
    * the model's side of the comparison had the team news the user did not.
    */
   post_deadline: boolean
+}
+/**
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "LadderCap".
+ */
+export interface LadderCap {
+  max_hits: number | null
+  max_transfers: number | null
+}
+/**
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "LadderPayload".
+ */
+export interface LadderPayload {
+  cap: LadderCap
+  cap_rung: string | null
+  free_transfers: number | null
+  generated_at: string | null
+  gw: number | null
+  gws: number[]
+  n_draws: number
+  /**
+   * Why ``rungs`` is empty, when it is: no state, or no ladder banked.
+   */
+  note: string | null
+  recommended: string | null
+  rungs: LadderRung[]
+  seed: number | null
+  sigma_source: string | null
+  wall_s: number | null
+}
+/**
+ * One row. Every number is ``None`` on a ``same_as`` row, which repeats
+ * the rung below rather than re-solving it.
+ *
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "LadderRung".
+ */
+export interface LadderRung {
+  cost: number
+  hits: number
+  horizon_pts: number | null
+  key: string
+  mean_pts: number | null
+  objective: number | null
+  p10_pts: number | null
+  p90_pts: number | null
+  p_beats_bank: number | null
+  p_beats_top: number | null
+  p_best: number | null
+  plan_by_gw: LadderWeek[]
+  same_as: string | null
+  transfers: number
+  vs_below: LadderVsBelow | null
+  week_pts: number | null
+}
+/**
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "LadderWeek".
+ */
+export interface LadderWeek {
+  bench: WirePlayerRef[]
+  buys: WirePlayerRef[]
+  captain: WirePlayerRef
+  expected_pts: number
+  gw: number
+  hits: number
+  sells: WirePlayerRef[]
+  vice: WirePlayerRef
+  xi: WirePlayerRef[]
+}
+/**
+ * What the extra hit bought, against the previous distinct rung.
+ *
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "LadderVsBelow".
+ */
+export interface LadderVsBelow {
+  delta_cost: number
+  delta_mean_pts: number
+  dropped_buys: WirePlayerRef[]
+  dropped_sells: WirePlayerRef[]
+  extra_buys: WirePlayerRef[]
+  extra_sells: WirePlayerRef[]
 }
 /**
  * This interface was referenced by `GafferApi`'s JSON-Schema

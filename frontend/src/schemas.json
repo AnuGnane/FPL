@@ -2254,6 +2254,443 @@
    "title": "JournalRow",
    "type": "object"
   },
+  "LadderCap": {
+   "properties": {
+    "max_hits": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "max_transfers": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "required": [
+    "max_hits",
+    "max_transfers"
+   ],
+   "title": "LadderCap",
+   "type": "object"
+  },
+  "LadderPayload": {
+   "properties": {
+    "cap": {
+     "$ref": "#/definitions/LadderCap"
+    },
+    "cap_rung": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "free_transfers": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "generated_at": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "gw": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "gws": {
+     "items": {
+      "type": "integer"
+     },
+     "type": "array"
+    },
+    "n_draws": {
+     "default": 0,
+     "type": "integer"
+    },
+    "note": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Why ``rungs`` is empty, when it is: no state, or no ladder banked."
+    },
+    "recommended": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "rungs": {
+     "items": {
+      "$ref": "#/definitions/LadderRung"
+     },
+     "type": "array"
+    },
+    "seed": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "sigma_source": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "wall_s": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "required": [
+    "cap",
+    "cap_rung",
+    "free_transfers",
+    "generated_at",
+    "gw",
+    "gws",
+    "n_draws",
+    "note",
+    "recommended",
+    "rungs",
+    "seed",
+    "sigma_source",
+    "wall_s"
+   ],
+   "title": "LadderPayload",
+   "type": "object"
+  },
+  "LadderRung": {
+   "description": "One row. Every number is ``None`` on a ``same_as`` row, which repeats\nthe rung below rather than re-solving it.",
+   "properties": {
+    "cost": {
+     "type": "integer"
+    },
+    "hits": {
+     "type": "integer"
+    },
+    "horizon_pts": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "key": {
+     "type": "string"
+    },
+    "mean_pts": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "objective": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "p10_pts": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "p90_pts": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "p_beats_bank": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "p_beats_top": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "p_best": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "plan_by_gw": {
+     "items": {
+      "$ref": "#/definitions/LadderWeek"
+     },
+     "type": "array"
+    },
+    "same_as": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "transfers": {
+     "type": "integer"
+    },
+    "vs_below": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/LadderVsBelow"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "week_pts": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "required": [
+    "cost",
+    "hits",
+    "horizon_pts",
+    "key",
+    "mean_pts",
+    "objective",
+    "p10_pts",
+    "p90_pts",
+    "p_beats_bank",
+    "p_beats_top",
+    "p_best",
+    "plan_by_gw",
+    "same_as",
+    "transfers",
+    "vs_below",
+    "week_pts"
+   ],
+   "title": "LadderRung",
+   "type": "object"
+  },
+  "LadderVsBelow": {
+   "description": "What the extra hit bought, against the previous distinct rung.",
+   "properties": {
+    "delta_cost": {
+     "type": "integer"
+    },
+    "delta_mean_pts": {
+     "type": "number"
+    },
+    "dropped_buys": {
+     "items": {
+      "$ref": "#/definitions/WirePlayerRef"
+     },
+     "type": "array"
+    },
+    "dropped_sells": {
+     "items": {
+      "$ref": "#/definitions/WirePlayerRef"
+     },
+     "type": "array"
+    },
+    "extra_buys": {
+     "items": {
+      "$ref": "#/definitions/WirePlayerRef"
+     },
+     "type": "array"
+    },
+    "extra_sells": {
+     "items": {
+      "$ref": "#/definitions/WirePlayerRef"
+     },
+     "type": "array"
+    }
+   },
+   "required": [
+    "delta_cost",
+    "delta_mean_pts",
+    "dropped_buys",
+    "dropped_sells",
+    "extra_buys",
+    "extra_sells"
+   ],
+   "title": "LadderVsBelow",
+   "type": "object"
+  },
+  "LadderWeek": {
+   "properties": {
+    "bench": {
+     "items": {
+      "$ref": "#/definitions/WirePlayerRef"
+     },
+     "type": "array"
+    },
+    "buys": {
+     "items": {
+      "$ref": "#/definitions/WirePlayerRef"
+     },
+     "type": "array"
+    },
+    "captain": {
+     "$ref": "#/definitions/WirePlayerRef"
+    },
+    "expected_pts": {
+     "type": "number"
+    },
+    "gw": {
+     "type": "integer"
+    },
+    "hits": {
+     "type": "integer"
+    },
+    "sells": {
+     "items": {
+      "$ref": "#/definitions/WirePlayerRef"
+     },
+     "type": "array"
+    },
+    "vice": {
+     "$ref": "#/definitions/WirePlayerRef"
+    },
+    "xi": {
+     "items": {
+      "$ref": "#/definitions/WirePlayerRef"
+     },
+     "type": "array"
+    }
+   },
+   "required": [
+    "bench",
+    "buys",
+    "captain",
+    "expected_pts",
+    "gw",
+    "hits",
+    "sells",
+    "vice",
+    "xi"
+   ],
+   "title": "LadderWeek",
+   "type": "object"
+  },
   "LaunchdHealth": {
    "properties": {
     "last_line": {
@@ -6516,6 +6953,17 @@
     "max_hits": {
      "default": 0,
      "type": "integer"
+    },
+    "max_transfers": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
     }
    },
    "required": [
@@ -6525,7 +6973,8 @@
     "force_out",
     "horizon",
     "lock",
-    "max_hits"
+    "max_hits",
+    "max_transfers"
    ],
    "title": "WhatIfRequest",
    "type": "object"

@@ -261,3 +261,21 @@ def test_build_ladder_on_a_saved_board_has_the_spec_shape(tmp_path,
     distinct = [r for r in out["rungs"] if r["same_as"] is None]
     assert sum(r["p_best"] for r in distinct) == pytest.approx(1.0, abs=1e-6)
     assert any(r["same_as"] for r in out["rungs"])
+
+
+# --- Block 6: routes and kinds -------------------------------------------
+
+def test_the_ladder_route_exists_and_the_job_kinds_did_not_move(tmp_path,
+                                                                monkeypatch):
+    """By name, never by total: the absolute route count lives in
+    ``test_v11_degradation.py`` alone (47 → 48 there; GET and POST share one
+    path key, as ``/api/settings`` did). No thirteenth kind: the rebuild is
+    an anonymous ``JobRegistry`` submission like What-If."""
+    from gaffer.web.app import create_app
+    from gaffer.web.job_kinds import JOB_KINDS
+
+    monkeypatch.chdir(tmp_path)
+    paths = create_app().openapi()["paths"]
+    assert "/api/ladder" in paths
+    assert {"get", "post"} <= set(paths["/api/ladder"])
+    assert len(JOB_KINDS) == 12
