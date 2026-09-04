@@ -125,7 +125,10 @@ model is byte-identical: `tests/data/v12_w3_milp_golden.lp` stays the pin.
   and `max_transfers` ("Max transfers per week", int, 0–15, help: "15 = no
   cap; 0 = bank"). Saved to `config.local.toml` like every other row.
 * **CLI** — `gaffer advise` prints one line after the deadline header:
-  `Caps: 2 hits/week, transfers uncapped` (or `no caps`).
+  `Caps: 2 hits/week, transfers uncapped` (or `no caps`), carried on a new
+  defaulted `Advice.caps` field so the v4c character-for-character CLI rail
+  (`tests/test_v4c_degradation.py:31-90`, whose fixture has no caps) is
+  unchanged.
 
 ## 3. The ladder
 
@@ -167,7 +170,9 @@ solver would not spend the third hit" rather than a duplicated row.
 ```
 key, hits, transfers, cost (4*hits), same_as,
 plan_by_gw: [{gw, hits, buys:[PlayerRef], sells:[PlayerRef],
-              xi:[code], bench:[code], captain, vice, expected_pts}],
+              xi:[PlayerRef], bench:[PlayerRef], captain: PlayerRef,
+              vice: PlayerRef, expected_pts}],   # refs, not codes: the card
+                                                  # has no code→name map
 week_pts, horizon_pts,            # raw, as whatif._summary computes them
 objective,                        # the solver's, in its own frame
 mean_pts, p10_pts, p90_pts,       # the draw distribution of horizon_pts
@@ -216,7 +221,9 @@ minute, inside `WHATIF_TIMEOUT_S`.
   payload for the latest gameweek or `{"gw": N, "rungs": []}` with a
   `note` ("run `gaffer advise` or rebuild") when none is banked.
 
-Routes 47 → 49. `JOB_KINDS` stays 12.
+Routes 47 → **48** — GET and POST share one OpenAPI path key, as
+`/api/settings` did (`tests/test_v11_degradation.py:353-359`). `JOB_KINDS`
+stays 12.
 
 ## 4. The UI
 
@@ -276,7 +283,7 @@ follows.
 * `tests/test_v13_degradation.py` — the rail: `Config` fields 57 with the
   two names and defaults 2/15; `SolveInput()` with both caps `None` writes
   the golden LP byte-for-byte; a `max_transfers=0` solve makes no move; a
-  `max_transfers=1` solve makes at most one; routes 49 with `/api/ladder`
+  `max_transfers=1` solve makes at most one; routes 48 with `/api/ladder`
   present; `JOB_KINDS` still 12; `build_ladder` on the golden pool returns
   the six-or-five rungs in order with every probability in `[0, 1]`,
   `bank.p_beats_bank is None`, `p_best` summing to 1 ± 1e-6, `same_as` set
@@ -296,8 +303,13 @@ follows.
 * `tests/test_config_v8a.py` / README: the two keys documented under
   `[optimizer]` in `config.example.toml` and the README's config table.
 * Frontend: `LadderCard.test.tsx` (rows, highlight, muted-above-cap, the
-  expand, the rebuild job, `same_as`), `MovesCard.test.tsx` (the cap line),
-  `SettingsTab.test.tsx` (two new rows). vitest must end with `Errors 0`.
+  expand, the rebuild job, `same_as`), `MovesCard.test.tsx` (the cap line).
+  `SettingsTab` renders served rows generically, so the two-row claim is
+  made against the Python panel test instead. vitest must end with
+  `Errors 0`.
+* `tests/test_drafts.py:46-62` pins the constraint keys as exactly seven;
+  `max_transfers` makes it eight, with `drafts.CONSTRAINT_DEFAULTS` and
+  `normalize` (`src/gaffer/drafts.py:32-59`) updated alongside.
 
 ## 6. Measurement
 
@@ -330,4 +342,4 @@ ladder call, the CLI line via `cli.py`), `artifacts.py` (`caps_from_state`),
 
 Protected files touched, authorized by this spec: `advise.py`,
 `optimize/milp.py`, `web/routers/whatif.py`, `tests/test_advise.py`.
-Pins after: routes 49, `JOB_KINDS` 12, `Config` 57.
+Pins after: routes 48, `JOB_KINDS` 12, `Config` 57.
