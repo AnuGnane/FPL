@@ -232,3 +232,32 @@ def test_a_cap_above_fifteen_is_refused_at_the_endpoint(settings_client):
                                 json={"key": "max_transfers", "value": 16})
     assert resp.status_code == 422
     assert resp.json()["detail"]["constraint"] == "out_of_range"
+
+
+# --- Block 5: the ladder's shape on the golden board ----------------------
+
+def test_build_ladder_on_a_saved_board_has_the_spec_shape(tmp_path,
+                                                          monkeypatch):
+    from tests.test_ladder import save_state
+
+    from gaffer.ladder import build_ladder
+
+    monkeypatch.chdir(tmp_path)
+    save_state({"max_hits": 2, "max_transfers": 15})
+    out = build_ladder(1, n_draws=20, seed=5)
+    assert out["gw"] == 1 and out["n_draws"] == 20 and out["seed"] == 5
+    assert out["free_transfers"] == 1
+    assert [r["key"] for r in out["rungs"]][:5] == \
+        ["bank", "hits0", "hits1", "hits2", "hits3"]
+    assert len(out["rungs"]) in (5, 6)
+    for r in out["rungs"]:
+        assert set(r) >= {"key", "hits", "transfers", "cost", "same_as",
+                          "plan_by_gw", "week_pts", "horizon_pts",
+                          "objective", "mean_pts", "p10_pts", "p90_pts",
+                          "p_beats_bank", "p_beats_top", "p_best",
+                          "vs_below"}
+    bank = out["rungs"][0]
+    assert bank["p_beats_bank"] is None and bank["vs_below"] is None
+    distinct = [r for r in out["rungs"] if r["same_as"] is None]
+    assert sum(r["p_best"] for r in distinct) == pytest.approx(1.0, abs=1e-6)
+    assert any(r["same_as"] for r in out["rungs"])
