@@ -109,7 +109,7 @@ describe('the freshness strip on a phone', () => {
 describe('a phone screen scrolls nothing sideways', () => {
   const EMPTY_WHATIF: WhatIfRequest = {
     lock: [], ban: [], force_in: [], force_out: [], max_hits: 0,
-    chip: 'none', horizon: null,
+    max_transfers: null, chip: 'none', horizon: null,
   }
 
   const CHIPS = {

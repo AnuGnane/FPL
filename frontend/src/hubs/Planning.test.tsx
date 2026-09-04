@@ -41,7 +41,7 @@ vi.mock('./planning/PlannerBoard', () => ({
         // The shape the board now produces: a planned sell is carried as
         // force_out, and ban is left empty (v12 W3 §4.1).
         lock: [], ban: [], force_in: [1], force_out: [2], max_hits: 1,
-        chip: 'none', horizon: null,
+        max_transfers: null, chip: 'none', horizon: null,
       })}>
         try week
       </button>

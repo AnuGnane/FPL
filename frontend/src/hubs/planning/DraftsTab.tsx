@@ -224,6 +224,9 @@ function summarize(c: WhatIfRequest): string {
   if (c.ban.length) bits.push(`${c.ban.length} banned`)
   if (c.force_in.length) bits.push(`${c.force_in.length} forced in`)
   if (c.max_hits) bits.push(`up to ${c.max_hits} hits`)
+  if (c.max_transfers !== null && c.max_transfers !== undefined) {
+    bits.push(c.max_transfers === 0 ? 'bank' : `up to ${c.max_transfers} transfers`)
+  }
   if (c.chip !== 'none') bits.push(c.chip)
   if (c.horizon) bits.push(`${c.horizon} weeks`)
   return bits.length ? `· ${bits.join(', ')}` : '· no constraints'

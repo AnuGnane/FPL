@@ -30,6 +30,9 @@ vi.mock('../../api/client', () => ({
 // tests. Stub them so this file keeps testing the solve and nothing else.
 vi.mock('./SensitivityCard', () => ({ default: () => <p>sensitivity card</p> }))
 vi.mock('./OverridesCard', () => ({ default: () => <p>pins card</p> }))
+vi.mock('../this-week/LadderCard', () => ({
+  default: () => <p>ladder card</p>, capText: () => '',
+}))
 
 const PLAYERS = [
   { code: 100, name: 'Salah', position: 'MID', price: 13.0, ep_next: 6.4 },
@@ -97,7 +100,8 @@ describe('what-if tab', () => {
       <MemoryRouter>
         <WhatIfTab
           value={{ lock: [], ban: [], force_in: [], force_out: [],
-                   max_hits: 2, chip: 'none', horizon: null }}
+                   max_hits: 2, max_transfers: null, chip: 'none',
+                   horizon: null }}
           onChange={onChange}
         />
       </MemoryRouter>)
@@ -121,7 +125,7 @@ describe('what-if tab', () => {
 
     await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/api/whatif', {
       lock: [], ban: [100], force_in: [], force_out: [], max_hits: 1,
-      chip: 'bb', horizon: null,
+      max_transfers: null, chip: 'bb', horizon: null,
     }))
     expect(await screen.findByText('your version costs 2.8 expected points'))
       .toBeInTheDocument()
@@ -221,4 +225,12 @@ describe('what-if tab', () => {
       expect(await screen.findByText('Solver failed')).toBeInTheDocument()
       expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument()
     })
+
+  it('mounts the transfer ladder above the sensitivity card', async () => {
+    render(<MemoryRouter><WhatIfTab /></MemoryRouter>)
+    const ladder = await screen.findByText('ladder card')
+    const sensitivity = screen.getByText('sensitivity card')
+    expect(ladder.compareDocumentPosition(sensitivity)
+      & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
 })

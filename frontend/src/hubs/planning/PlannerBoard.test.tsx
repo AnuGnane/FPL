@@ -173,7 +173,7 @@ describe('PlannerBoard', () => {
       expect(onTry).toHaveBeenCalledWith({
         lock: [], ban: [], force_out: [2], force_in: [1],
         // clamped into ConstraintsPanel's 0-3 range
-        max_hits: 3, chip: 'bb',
+        max_hits: 3, max_transfers: null, chip: 'bb',
         // the target week is the current one, so one week spans it
         horizon: 1,
       })

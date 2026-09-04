@@ -137,7 +137,7 @@ export default function ConstraintsPanel(
         from the candidate pool, so he never enters the squad and the sale
         money never arrives.
       </p>
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+      <div className="mt-4 grid gap-3 sm:grid-cols-4">
         <div>
           <label className="flex flex-col gap-1">
             <span className="label">Max hits</span>
@@ -155,6 +155,28 @@ export default function ConstraintsPanel(
           <p className="mt-1 text-text-faint">
             0 is the default and forbids hits in your version; the original
             plan is solved unconstrained.
+          </p>
+        </div>
+        <div>
+          <label className="flex flex-col gap-1">
+            <span className="label">Max transfers</span>
+            <select
+              value={value.max_transfers ?? ''}
+              onChange={(event) => onChange({
+                ...value,
+                max_transfers: event.target.value === '' ? null
+                  : Number(event.target.value),
+              })}
+              className={FIELD}
+            >
+              <option value="">no cap</option>
+              <option value={0}>bank</option>
+              {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </label>
+          <p className="mt-1 text-text-faint">
+            Caps the moves in your version; the original solves under the
+            caps the advice ran with.
           </p>
         </div>
         <label className="flex h-fit flex-col gap-1">

@@ -144,6 +144,7 @@ export default function PlannerBoard(
       force_out: week.sells.map((m) => m.code),
       force_in: week.buys.map((m) => m.code),
       max_hits: Math.max(0, Math.min(3, week.hits)),
+      max_transfers: null,
       chip: (week.chip && CHIP_CODES[week.chip]) || 'none',
       horizon: horizonFor(week),
     }

@@ -1,11 +1,12 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import ConstraintsPanel from './ConstraintsPanel'
 import type { WhatIfRequest } from '../../types'
 
 const EMPTY: WhatIfRequest = {
   lock: [], ban: [], force_in: [], force_out: [], max_hits: 0,
-  chip: 'none', horizon: null,
+  max_transfers: null, chip: 'none', horizon: null,
 }
 
 describe('ConstraintsPanel', () => {
@@ -45,5 +46,14 @@ describe('ConstraintsPanel', () => {
       .getAttribute('aria-describedby')).toBe('force-out-note')
     expect(screen.getByLabelText('Ban')
       .getAttribute('aria-describedby')).toBeNull()
+  })
+
+  it('offers a max-transfers cap that reads back as a number or null', async () => {
+    const onChange = vi.fn()
+    render(<ConstraintsPanel value={EMPTY} onChange={onChange} />)
+    await userEvent.selectOptions(screen.getByLabelText('Max transfers'), '0')
+    expect(onChange).toHaveBeenLastCalledWith({ ...EMPTY, max_transfers: 0 })
+    await userEvent.selectOptions(screen.getByLabelText('Max transfers'), '')
+    expect(onChange).toHaveBeenLastCalledWith({ ...EMPTY, max_transfers: null })
   })
 })

@@ -34,4 +34,17 @@ describe('MovesCard', () => {
                       hits={0} />)
     expect(screen.getByText('—')).toBeInTheDocument()
   })
+
+  it('prints the free-transfer and cap line above the moves when given one', () => {
+    render(<MovesCard buys={BUYS} sells={SELLS} hits={0}
+                      capLine="1 free transfer · cap 2 hits" />)
+    expect(screen.getByTestId('moves-cap-line'))
+      .toHaveTextContent('1 free transfer · cap 2 hits')
+  })
+
+  it('prints no cap line without one', () => {
+    render(<MovesCard buys={[]} sells={[]} hits={0} />)
+    expect(screen.queryByTestId('moves-cap-line')).not.toBeInTheDocument()
+    expect(screen.getByText(/bank the free transfer/i)).toBeInTheDocument()
+  })
 })

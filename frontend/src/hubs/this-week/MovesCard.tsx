@@ -14,15 +14,24 @@ export interface MovesCardProps {
   buys: Move[]
   sells: Move[]
   hits: number
+  /** v13: "1 free transfer · cap 2 hits", from the ladder payload. */
+  capLine?: string | null
 }
 
-export default function MovesCard({ buys, sells, hits }: MovesCardProps) {
+export default function MovesCard(
+  { buys, sells, hits, capLine }: MovesCardProps,
+) {
   const rows: Array<[string, Move]> = [
     ...buys.map((m) => ['IN', m] as [string, Move]),
     ...sells.map((m) => ['OUT', m] as [string, Move]),
   ]
   return (
     <Card title="Recommended moves">
+      {capLine && (
+        <p className="mb-2 text-text-secondary" data-testid="moves-cap-line">
+          {capLine}
+        </p>
+      )}
       {rows.length === 0
         ? <p className="text-text-muted">No transfers — bank the free transfer.</p>
         : (

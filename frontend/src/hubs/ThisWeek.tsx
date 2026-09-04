@@ -5,11 +5,12 @@ import {
   ThresholdBar, fmtNum, fmtPct,
 } from '../kit'
 import type {
-  AdviceChipRow, AdviceLatest, ComponentsBreakdown, LeagueWhatIfResult,
-  PlayerRow,
+  AdviceChipRow, AdviceLatest, ComponentsBreakdown, LadderPayload,
+  LeagueWhatIfResult, PlayerRow,
 } from '../types'
 import ConfidenceLine from './this-week/ConfidenceLine'
 import DigestCard from './this-week/DigestCard'
+import LadderCard, { capText } from './this-week/LadderCard'
 import MovesCard from './this-week/MovesCard'
 import NewsPanel from './this-week/NewsPanel'
 import WhyPanel from './this-week/WhyPanel'
@@ -38,6 +39,15 @@ export default function ThisWeek() {
   // the same information, so the lens is offered only on the pitch — a
   // control that does nothing is worse than no control.
   const [lens, setLens] = useState(false)
+  // v13: the ladder knows the free transfers and the caps the advice ran
+  // under; the moves card prints them rather than fetching them again.
+  const [capLine, setCapLine] = useState<string | null>(null)
+
+  // Stable, so the card's load effect does not re-run on every render of
+  // the hub above it.
+  const onLadder = useCallback((p: LadderPayload) => {
+    setCapLine(p.rungs.length > 0 ? capText(p) : null)
+  }, [])
 
   const load = useCallback(() => {
     apiGet<AdviceLatest>('/api/advice/latest')
@@ -326,8 +336,11 @@ export default function ThisWeek() {
         <ConfidenceLine />
       </Card>
       <div className="mb-4">
-        <MovesCard buys={advice.buys} sells={advice.sells} hits={advice.hits} />
+        <MovesCard buys={advice.buys} sells={advice.sells} hits={advice.hits}
+                   capLine={capLine} />
       </div>
+      {/* v13: the ladder, directly under the moves it prices. */}
+      <LadderCard onLoaded={onLadder} />
       {/* The plan, then the week around the plan. */}
       <DigestCard />
       <WhyPanel gw={data.gw} codes={squad.map((r) => r.code)} />

@@ -35,7 +35,7 @@ const TABS = ['timeline', 'board', 'whatif', 'drafts', 'chips',
 
 const EMPTY_WHATIF: WhatIfRequest = {
   lock: [], ban: [], force_in: [], force_out: [], max_hits: 0,
-  chip: 'none', horizon: null,
+  max_transfers: null, chip: 'none', horizon: null,
 }
 
 export default function Planning() {

@@ -3,6 +3,7 @@ import { ApiError, apiPost } from '../../api/client'
 import { useJob } from '../../api/useJob'
 import { Card, Skeleton } from '../../kit'
 import type { WhatIfRequest, WhatIfResult } from '../../types'
+import LadderCard from '../this-week/LadderCard'
 import ConstraintsPanel from './ConstraintsPanel'
 import FixtureTicker from './FixtureTicker'
 import OverridesCard from './OverridesCard'
@@ -11,7 +12,7 @@ import SensitivityCard from './SensitivityCard'
 
 const EMPTY: WhatIfRequest = {
   lock: [], ban: [], force_in: [], force_out: [], max_hits: 0,
-  chip: 'none', horizon: null,
+  max_transfers: null, chip: 'none', horizon: null,
 }
 
 interface StructuredError {
@@ -92,6 +93,8 @@ export default function WhatIfTab({ value, onChange }: {
           rather than pulsing beneath a result from the previous run — which
           is the specific lie this pair exists to remove. */}
       {diff && !busy && <PlanDiffTable diff={diff} />}
+      {/* v13: the ladder prices the appetite the panel above caps. */}
+      <LadderCard />
       <SensitivityCard />
       <OverridesCard />
       <FixtureTicker weeks={6} />

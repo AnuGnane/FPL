@@ -27,6 +27,15 @@ vi.mock('../api/useJobStream', () => ({
   }),
 }))
 
+vi.mock('./this-week/LadderCard', () => ({
+  default: ({ onLoaded }: { onLoaded?: (p: unknown) => void }) => {
+    onLoaded?.({ gw: 5, gws: [5, 6, 7], free_transfers: 1,
+                 cap: { max_hits: 2, max_transfers: null }, rungs: [{}] })
+    return <p>ladder card</p>
+  },
+  capText: () => '1 free transfer · cap 2 hits',
+}))
+
 const ADVICE = {
   gw: 5,
   mode: 'weekly',
@@ -181,6 +190,14 @@ describe('This Week hub', () => {
       expect(await screen.findByText(/no advice/i)).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Run advise' }))
         .toBeInTheDocument()
+    })
+
+  it('prints the cap line on the moves card once the ladder has loaded',
+    async () => {
+      render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+      expect(await screen.findByTestId('moves-cap-line'))
+        .toHaveTextContent('1 free transfer · cap 2 hits')
+      expect(screen.getByText('ladder card')).toBeInTheDocument()
     })
 })
 
