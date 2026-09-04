@@ -53,6 +53,10 @@ LADDER_HITS = (0, 1, 2, 3)
 """The hit rungs. Above three the *open* row exists only if the solver wants
 it, so the table never lists a rung nobody would take."""
 
+RUNG_ORDER = ("bank", *(f"hits{k}" for k in LADDER_HITS), "open")
+"""The rungs in order of appetite. A cap naming a rung that did not solve
+steps back along this to the richest one still on the table."""
+
 SEED_OFFSET = 2_000_000
 """Two million clear of the advice sweep's ``scenarios_seed + gw`` and one
 million clear of the sensitivity sweep's, so the three draw independent
@@ -286,7 +290,18 @@ def _cap_rung(max_hits: int | None, max_transfers: int | None,
         requested = keys[-1] if keys else "bank"
     else:
         requested = f"hits{int(max_hits)}"
-    resolved, seen = requested, set()
+    if requested not in by:
+        # The requested rung was dropped for a solve that failed, so naming
+        # it would highlight nothing at all. Step down the ladder to the
+        # richest appetite that is actually on the table, and if even that is
+        # empty take the first row: some row is always the right answer to
+        # "where is my cap", and a caption already carries the key asked for.
+        below = [k for k in RUNG_ORDER[:RUNG_ORDER.index(requested) + 1]
+                 if k in by] if requested in RUNG_ORDER else []
+        resolved = below[-1] if below else (keys[0] if keys else requested)
+    else:
+        resolved = requested
+    seen: set[str] = set()
     while resolved in by and by[resolved].get("same_as") \
             and resolved not in seen:
         seen.add(resolved)
@@ -297,10 +312,42 @@ def _cap_rung(max_hits: int | None, max_transfers: int | None,
 def _cap_note(max_transfers: int | None) -> str | None:
     """No rung models a transfer cap between "bank" and "as many as you
     like", so a state carrying one gets a sentence rather than a wrong row."""
-    if max_transfers is None or not 1 <= int(max_transfers) < 15:
+    from gaffer.config import NO_CAP
+
+    if max_transfers is None or not 1 <= int(max_transfers) < NO_CAP:
         return None
     return (f"a transfer cap of {int(max_transfers)} has no rung of its own; "
             "the highlight follows the hit cap")
+
+
+def _caps(state) -> tuple[tuple[int | None, int | None], str]:
+    """``((max_hits, max_transfers), source)`` — the caps to highlight under.
+
+    The *live* config, not the caps the saved state was solved with: the card
+    changes a cap through ``/api/settings`` and rebuilds, and a highlight
+    that only moved at the next ``gaffer advise`` would answer the previous
+    question. The saved caps stay the fallback, so a config that will not
+    read is a ladder off the state rather than no ladder, and ``cap_source``
+    on the payload says which of the two the reader is looking at.
+
+    Local import for the cycle ``caps_from_state`` documents, and the
+    ``NO_CAP`` mapping is written out here rather than imported from
+    ``advise``: the ladder does not depend on that module.
+    """
+    try:
+        from gaffer.config import NO_CAP, serving_config
+
+        def cap(value) -> int | None:
+            value = int(value)
+            return None if value >= NO_CAP else value
+
+        cfg = serving_config()
+        return (cap(cfg.max_hits), cap(cfg.max_transfers)), "config"
+    except Exception as exc:  # noqa: BLE001 — an unreadable config is a
+        # fallback, not a failed ladder.
+        print(f"ladder: the live config would not read ({exc}); "
+              "the caps come from the saved state")
+        return caps_from_state(state), "state"
 
 
 def _recommended(gw: int, solved: list[tuple[str, Plan]]
@@ -399,6 +446,13 @@ def build_ladder(gw: int | None = None, *, n_draws: int = LADDER_DRAWS,
               for key, plan in distinct}
     best = p_best(scores)
     top_key = distinct[-1][0]
+    bank_scores = scores.get("bank")
+    if bank_scores is None:
+        # Every rung is measured against banking, so without that rung there
+        # is nothing to measure against — a blank column and a line saying
+        # why, rather than a KeyError that takes the whole ladder down.
+        notes.append("the bank rung is missing, so no rung can be compared "
+                     "against banking")
 
     rows: list[dict] = []
     by_key: dict[str, dict] = {}
@@ -427,8 +481,8 @@ def build_ladder(gw: int | None = None, *, n_draws: int = LADDER_DRAWS,
             "mean_pts": round(mean, 2),
             "p10_pts": round(float(np.percentile(sc, 10)), 2),
             "p90_pts": round(float(np.percentile(sc, 90)), 2),
-            "p_beats_bank": (None if key == "bank"
-                             else round(float((sc > scores["bank"]).mean()), 4)),
+            "p_beats_bank": (None if key == "bank" or bank_scores is None
+                             else round(float((sc > bank_scores).mean()), 4)),
             "p_beats_top": (None if key == top_key
                             else round(float((sc > scores[top_key]).mean()), 4)),
             "p_best": round(best[key], 4),
@@ -442,7 +496,7 @@ def build_ladder(gw: int | None = None, *, n_draws: int = LADDER_DRAWS,
         by_key[key] = row
         prev = (key, plan, horizon_hits)
 
-    max_hits, max_transfers = caps_from_state(state)
+    (max_hits, max_transfers), cap_source = _caps(state)
     cap_rung, cap_requested = _cap_rung(max_hits, max_transfers, rows)
     recommended, recommended_note = _recommended(gw, solved)
     payload = {
@@ -451,6 +505,7 @@ def build_ladder(gw: int | None = None, *, n_draws: int = LADDER_DRAWS,
             timespec="seconds"),
         "free_transfers": int(state.free_transfers),
         "cap": {"max_hits": max_hits, "max_transfers": max_transfers},
+        "cap_source": cap_source,
         "cap_rung": cap_rung, "cap_rung_requested": cap_requested,
         "cap_note": _cap_note(max_transfers),
         "recommended": recommended, "recommended_note": recommended_note,

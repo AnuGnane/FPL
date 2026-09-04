@@ -2327,6 +2327,18 @@
      "default": null,
      "description": "The row the saved cap literally names, before that resolution."
     },
+    "cap_source": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Where ``cap`` came from: ``\"config\"``, the live settings the card\nwrites, or ``\"state\"`` when that could not be read and the caps the saved\nsolve ran under stood in."
+    },
     "free_transfers": {
      "anyOf": [
       {
@@ -2462,6 +2474,7 @@
     "cap_note",
     "cap_rung",
     "cap_rung_requested",
+    "cap_source",
     "free_transfers",
     "generated_at",
     "gw",

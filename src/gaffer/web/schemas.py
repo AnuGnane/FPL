@@ -1938,6 +1938,10 @@ class LadderPayload(BaseModel):
     generated_at: str | None = None
     free_transfers: int | None = None
     cap: LadderCap = Field(default_factory=LadderCap)
+    cap_source: str | None = None
+    """Where ``cap`` came from: ``"config"``, the live settings the card
+    writes, or ``"state"`` when that could not be read and the caps the saved
+    solve ran under stood in."""
     cap_rung: str | None = None
     """The highlighted row, resolved through ``same_as`` to a row that
     carries numbers."""

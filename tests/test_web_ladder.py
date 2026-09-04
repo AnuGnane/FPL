@@ -11,9 +11,13 @@ from tests.test_ladder import save_state
 
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
+    from gaffer.config import serving_config
+
     monkeypatch.chdir(tmp_path)
+    serving_config.cache_clear()
     save_state({"max_hits": 2, "max_transfers": 15})
-    return TestClient(create_app())
+    yield TestClient(create_app())
+    serving_config.cache_clear()
 
 
 def _wait(client, job_id):
@@ -77,3 +81,26 @@ def test_post_with_no_state_is_the_advise_first_error(tmp_path, monkeypatch):
     resp = TestClient(create_app()).post("/api/ladder")
     assert resp.status_code in (400, 422)
     assert "gaffer advise" in resp.text
+
+
+def test_a_cap_saved_through_settings_moves_the_ladder_now(client,
+                                                          tmp_path):
+    """The end of the loop the card drives: POST /api/settings, rebuild,
+    and the served payload highlights the new cap — without a re-`advise`.
+    The state was saved under `max_hits=2`."""
+    from gaffer.config import serving_config
+    from gaffer.ladder import build_ladder
+
+    # The settings panel only offers a key it can read a *current* value for,
+    # and that read goes through `load_config`, which needs a config.toml.
+    (tmp_path / "config.toml").write_text(
+        "[fpl]\nentry_id = 111\nleague_id = 222\n\n[optimizer]\n"
+        "horizon = 2\n")
+    serving_config.cache_clear()
+    resp = client.post("/api/settings", json={"key": "max_hits", "value": 1})
+    assert resp.status_code == 200, resp.text
+    build_ladder(1, n_draws=10, seed=1)
+    body = client.get("/api/ladder").json()
+    assert body["cap"]["max_hits"] == 1
+    assert body["cap_source"] == "config"
+    assert body["cap_rung_requested"] == "hits1"

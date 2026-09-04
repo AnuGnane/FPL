@@ -33,6 +33,7 @@ const week = (gw: number, hits: number, buys: ReturnType<typeof ref>[],
 const PAYLOAD: LadderPayload = {
   gw: 3, gws: [3, 4, 5], generated_at: '2026-09-04T13:00:00+00:00',
   free_transfers: 1, cap: { max_hits: 2, max_transfers: null },
+  cap_source: 'config',
   cap_rung: 'hits2', cap_rung_requested: 'hits2', cap_note: null,
   recommended: 'hits1', recommended_note: null, notes: [],
   n_draws: 200, seed: 7, sigma_source: 'bands', sigma_fallbacks: 0,
@@ -166,6 +167,29 @@ describe('LadderCard', () => {
                                                               undefined))
     expect(onLoaded).toHaveBeenCalled()
   })
+
+  it('keeps a cap the select does not offer as an option of its own',
+    async () => {
+      // A cap of five hits is a legal setting the ladder has no rung for, so
+      // it is not one of the offered options; without a row for it the select
+      // would render blank and the next change would silently be off a value
+      // the user never saw.
+      apiGet.mockImplementation(async (path: string) => {
+        if (path === '/api/ladder') {
+          return { ...PAYLOAD, cap: { max_hits: 5, max_transfers: 7 } }
+        }
+        throw new Error(path)
+      })
+      mount()
+      const hits = await screen.findByLabelText('Max hits')
+      expect((hits as HTMLSelectElement).value).toBe('5')
+      expect(within(hits).getByRole('option', { name: '5' }))
+        .toBeInTheDocument()
+      const moves = screen.getByLabelText('Max transfers')
+      expect((moves as HTMLSelectElement).value).toBe('7')
+      expect(within(moves).getByRole('option', { name: '7' }))
+        .toBeInTheDocument()
+    })
 
   it('offers a rebuild when nothing is banked yet', async () => {
     apiGet.mockImplementation(async (path: string) => {

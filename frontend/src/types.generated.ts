@@ -1160,6 +1160,12 @@ export interface LadderPayload {
    * The row the saved cap literally names, before that resolution.
    */
   cap_rung_requested: string | null
+  /**
+   * Where ``cap`` came from: ``"config"``, the live settings the card
+   * writes, or ``"state"`` when that could not be read and the caps the saved
+   * solve ran under stood in.
+   */
+  cap_source: string | null
   free_transfers: number | null
   generated_at: string | null
   gw: number | null

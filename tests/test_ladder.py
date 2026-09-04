@@ -45,8 +45,17 @@ def save_state(opt_extra=None, star=9.0, second=7.0, gws=(1, 2)):
 
 @pytest.fixture()
 def board(tmp_path, monkeypatch):
+    """The saved board, with the serve-time config cache dropped either side.
+
+    ``build_ladder`` now reads the *live* caps through ``serving_config``,
+    which is cached for the life of the process: without these the ladder
+    would answer with whatever config the last test's directory held."""
+    from gaffer.config import serving_config
+
     monkeypatch.chdir(tmp_path)
-    return save_state({"max_hits": 2, "max_transfers": 15})
+    serving_config.cache_clear()
+    yield save_state({"max_hits": 2, "max_transfers": 15})
+    serving_config.cache_clear()
 
 
 def _zero_noise(monkeypatch):
@@ -182,8 +191,12 @@ def test_a_cap_on_a_collapsed_rung_resolves_to_the_row_with_the_numbers(
     """F4 — a cap of three hits names a row the solver would not fill."""
     from gaffer.ladder import build_ladder
 
+    from gaffer import config
+
     monkeypatch.chdir(tmp_path)
     save_state({"max_hits": 3, "max_transfers": 15})
+    monkeypatch.setattr(config, "serving_config",
+                        lambda: SimpleNamespace(max_hits=3, max_transfers=15))
     out = build_ladder(1, n_draws=10, seed=1)
     assert out["cap_rung_requested"] == "hits3"
     assert out["cap_rung"] == "hits1"
@@ -196,8 +209,12 @@ def test_a_transfer_cap_with_no_rung_of_its_own_gets_a_note(tmp_path,
     """F7 — no rung models ``max_transfers`` in 1..14."""
     from gaffer.ladder import build_ladder
 
+    from gaffer import config
+
     monkeypatch.chdir(tmp_path)
     save_state({"max_hits": 2, "max_transfers": 2})
+    monkeypatch.setattr(config, "serving_config",
+                        lambda: SimpleNamespace(max_hits=2, max_transfers=2))
     out = build_ladder(1, n_draws=10, seed=1)
     assert out["cap_note"] == ("a transfer cap of 2 has no rung of its own; "
                                "the highlight follows the hit cap")
@@ -207,10 +224,16 @@ def test_a_bank_cap_and_an_uncapped_state_pick_their_rungs(tmp_path,
                                                             monkeypatch):
     from gaffer.ladder import build_ladder
 
+    from gaffer import config
+
     monkeypatch.chdir(tmp_path)
     save_state({"max_hits": 15, "max_transfers": 0})
+    monkeypatch.setattr(config, "serving_config",
+                        lambda: SimpleNamespace(max_hits=15, max_transfers=0))
     assert build_ladder(1, n_draws=10, seed=1)["cap_rung"] == "bank"
     save_state({})
+    monkeypatch.setattr(config, "serving_config",
+                        lambda: SimpleNamespace(max_hits=15, max_transfers=15))
     out = build_ladder(1, n_draws=10, seed=1)
     assert out["cap"] == {"max_hits": None, "max_transfers": None}
     assert [r["key"] for r in out["rungs"]][-1] == "hits3"
@@ -400,3 +423,86 @@ def test_vs_below_is_set_arithmetic_on_the_first_week():
     # The horizon difference is what the extra appetite really costs; the
     # first week's is `delta_cost_now`.
     assert out["delta_cost"] == 12 and out["delta_cost_now"] == 4
+
+
+# --- The final-review pass: live caps, a dropped cap rung, a dropped bank ---
+
+
+def _cfg(max_hits=2, max_transfers=15):
+    return SimpleNamespace(max_hits=max_hits, max_transfers=max_transfers,
+                           scenarios_seed=0)
+
+
+def test_the_cap_comes_from_the_live_config_not_the_saved_state(board,
+                                                                monkeypatch):
+    """A cap changed through Settings moves the highlight now, not at the
+    next `gaffer advise`: the state was solved under `max_hits=2`, the live
+    config says one, and the payload says one."""
+    from gaffer import config, ladder
+
+    monkeypatch.setattr(config, "serving_config", lambda: _cfg(max_hits=1))
+    out = ladder.build_ladder(1, n_draws=10, seed=1)
+    assert out["cap"] == {"max_hits": 1, "max_transfers": None}
+    assert out["cap_source"] == "config"
+    assert out["cap_rung_requested"] == "hits1"
+
+
+def test_an_unreadable_config_falls_back_to_the_states_caps(board,
+                                                            monkeypatch):
+    from gaffer import config, ladder
+
+    def boom():
+        raise RuntimeError("no config here")
+
+    monkeypatch.setattr(config, "serving_config", boom)
+    out = ladder.build_ladder(1, n_draws=10, seed=1)
+    assert out["cap"] == {"max_hits": 2, "max_transfers": None}
+    assert out["cap_source"] == "state"
+
+
+def test_a_cap_naming_a_dropped_rung_falls_back_to_the_one_below(board,
+                                                                  monkeypatch):
+    """The `hits2` solve fails, so the cap of two names a key no row has;
+    the highlight drops to the highest rung at or below it that is there."""
+    from gaffer import config, ladder
+
+    monkeypatch.setattr(config, "serving_config", lambda: _cfg(max_hits=2))
+    real = ladder.solve_plan
+
+    def flaky(pool, solve_state, **kw):
+        if getattr(solve_state, "max_hits", None) == 2:
+            raise RuntimeError("no feasible plan")
+        return real(pool, solve_state, **kw)
+
+    monkeypatch.setattr(ladder, "solve_plan", flaky)
+    out = ladder.build_ladder(1, n_draws=10, seed=1)
+    assert "hits2" not in [r["key"] for r in out["rungs"]]
+    assert out["cap_rung_requested"] == "hits2"
+    assert out["cap_rung"] == "hits1"
+
+
+def test_a_dropped_bank_rung_blanks_p_beats_bank_instead_of_crashing(
+        board, monkeypatch):
+    from gaffer import config, ladder
+
+    monkeypatch.setattr(config, "serving_config", lambda: _cfg())
+    real = ladder.solve_plan
+
+    def flaky(pool, solve_state, **kw):
+        if getattr(solve_state, "max_transfers", None) == 0:
+            raise RuntimeError("no feasible plan")
+        return real(pool, solve_state, **kw)
+
+    monkeypatch.setattr(ladder, "solve_plan", flaky)
+    out = ladder.build_ladder(1, n_draws=10, seed=1)
+    assert "bank" not in [r["key"] for r in out["rungs"]]
+    assert all(r["p_beats_bank"] is None for r in out["rungs"])
+    assert any("bank" in note for note in out["notes"])
+
+
+def test_the_cap_note_reads_its_sentinel_from_the_config(board):
+    from gaffer.config import NO_CAP
+    from gaffer.ladder import _cap_note
+
+    assert _cap_note(NO_CAP) is None
+    assert _cap_note(NO_CAP - 1) is not None

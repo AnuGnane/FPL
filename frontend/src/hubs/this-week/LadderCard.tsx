@@ -41,6 +41,18 @@ function rungLabel(r: LadderRung): string {
   return `${n} hit${n === 1 ? '' : 's'}`
 }
 
+/** The offered options, plus the current value when it is not among them.
+ *
+ *  Both caps accept any whole number the config does, and the ladder has
+ *  rungs for only a few of them: a `max_hits` of 5 saved by hand is a legal
+ *  setting this select does not offer. Without a row for it the select
+ *  renders blank, which reads as "no cap set" and makes the next change a
+ *  move off a value the user was never shown. */
+export function withCurrent(options: number[], value: number): number[] {
+  return options.includes(value) ? options : [...options, value].sort(
+    (a, b) => a - b)
+}
+
 /** A signed hit bill: `−4`, or `0` when nothing was spent. */
 function costText(n: number): string {
   return n > 0 ? `\u2212${n}` : '0'
@@ -259,7 +271,9 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
             onChange={(e) => setCap('max_hits', Number(e.target.value))}
             className={FIELD}
           >
-            {[0, 1, 2, 3].map((n) => <option key={n} value={n}>{n}</option>)}
+            {withCurrent([0, 1, 2, 3], hitsValue).map((n) => (
+              n === NO_CAP ? null
+                : <option key={n} value={n}>{n}</option>))}
             <option value={NO_CAP}>no cap</option>
           </select>
         </label>
@@ -273,7 +287,9 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
             className={FIELD}
           >
             <option value={0}>bank</option>
-            {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}
+            {withCurrent([1, 2, 3, 4, 5], movesValue).map((n) => (
+              n === 0 || n === NO_CAP ? null
+                : <option key={n} value={n}>{n}</option>))}
             <option value={NO_CAP}>no cap</option>
           </select>
         </label>
