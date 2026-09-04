@@ -141,7 +141,9 @@ def save_ladder(payload: dict, gw: int) -> Path      # reports/ladder_gw{N}.json
 def load_ladder(gw: int) -> dict | None
 ```
 
-`LADDER_DRAWS = 200`. The board is built exactly as `sensitivity.run_sensitivity`
+`LADDER_DRAWS = 2000` (the six MILP solves dominate the wall time; at 200 the
+rung-to-rung differences the card prints moved by several points across
+seeds — the core review's F2). The board is built exactly as `sensitivity.run_sensitivity`
 builds it — saved state, raw EP, cover converted from `league_eo` when the
 state predates it, `tilt_ep`, `milp_pool`, `solve_kw_from_state` — and the
 idiom is repeated rather than shared, for the reason `sensitivity.py`
@@ -168,7 +170,9 @@ solver would not spend the third hit" rather than a duplicated row.
 **Per-rung fields.**
 
 ```
-key, hits, transfers, cost (4*hits), same_as,
+key, hits, transfers, cost (4*hits, first week), same_as,
+horizon_hits, horizon_cost,      # the caps are per week, so a one-hit plan
+                                 # can spend a hit in every horizon week
 plan_by_gw: [{gw, hits, buys:[PlayerRef], sells:[PlayerRef],
               xi:[PlayerRef], bench:[PlayerRef], captain: PlayerRef,
               vice: PlayerRef, expected_pts}],   # refs, not codes: the card
@@ -178,7 +182,8 @@ objective,                        # the solver's, in its own frame
 mean_pts, p10_pts, p90_pts,       # the draw distribution of horizon_pts
 p_beats_bank, p_beats_top, p_best # from the shared draws
 vs_below: {extra_buys, extra_sells, dropped_buys, dropped_sells,
-           delta_mean_pts, delta_cost}   # against the previous distinct rung
+           delta_mean_pts, delta_cost, delta_cost_now}   # against the
+           # previous distinct rung; delta_cost is over the horizon
 ```
 
 Top-level: `gw, gws, generated_at, free_transfers, cap: {max_hits,
@@ -188,13 +193,17 @@ the served advice, or `null`), `n_draws, seed, sigma_source`.
 
 **Scoring under noise.** One matrix of draws shared by every rung, so the
 rows are comparable and the common players cancel: for each of `n_draws`,
-each `(code, gw)` in the union of the rungs' squads draws points
-`max(0, N(ep, σ))` with `ep` the raw EP and σ from
+each `(code, gw)` any rung's XI or captain names draws points `N(ep, σ)`
+— **not clipped at zero**: FPL points can be negative, and the review
+showed the clip biased every rung's mean up by ~6 and shrank the
+bank-to-top gap by ~0.75, the size of the differences the card shows —
+with `ep` the raw EP and σ from
 `uncertainty.bands_by_player_gw(load_components(gw))` — the *outcome*
 distribution the squad table's bands already show, estimation σ folded in
 in quadrature as that module does. When no components frame is banked,
 σ² = `league_sim.OUTCOME_VAR_PER_EP × ep` alone, and `sigma_source` says
-`"outcome_only"`. Seed: `scenarios_seed + 2_000_000 + gw`, two million
+`"outcome_only"`; a table that lacks some cells falls back cell by cell and
+says `"bands+outcome"` with `sigma_fallbacks` counted. Seed: `scenarios_seed + 2_000_000 + gw`, two million
 clear of the advice sweep and one million clear of the sensitivity sweep.
 
 A rung's score in a draw is `Σ_weeks (Σ_xi pts + captain pts − 4·hits)`
@@ -204,6 +213,14 @@ clipping at zero. `p_beats_bank` is the fraction of draws in which the
 rung's score exceeds the `bank` rung's; `p_beats_top` the same against the
 last distinct rung; `p_best` the fraction in which the rung is the maximum
 (ties split). By construction `bank.p_beats_bank` is `null`, not 0.5.
+`mean_pts` equals `horizon_pts` up to Monte Carlo error.
+
+**Robustness.** A rung whose solve fails is dropped and named in
+`notes`; non-finite floats are written as `null`; `cap_rung` resolves
+through `same_as` to a row with numbers and `cap_rung_requested` keeps the
+key the cap named; `cap_note` says when a transfer cap of 1–14 has no rung
+of its own; `recommended_note` says why `recommended` is null (no advice on
+disk, or an advice the sweep gated to a plan no rung solves for).
 
 **Cost.** Five solves at ~7 s and 200 draws over ~40 player-weeks: under a
 minute, inside `WHATIF_TIMEOUT_S`.
