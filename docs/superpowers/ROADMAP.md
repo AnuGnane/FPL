@@ -8,12 +8,15 @@ fills, and the index below points at them. Measurement rules every cycle
 follows: `CONVENTIONS.md`. For the same material written for a reader rather
 than an auditor, `docs/GUIDE.md` §11–12.
 
-## Where things stand (2026-09-03)
+## Where things stand (2026-09-04)
 
 v12 — the five-workstream polish program — is **closed**: W1–W5 all merged,
-`main` at `9274f33`, suite 4042 Python + 795 frontend, pins routes 47 /
-job kinds 12 / `Config` fields 55, security ritual clean. **Nothing is in
-flight and nothing is spec'd.** The research that produced v12
+then the 2026-09-04 free-transfer rule hotfix (`3c39048`), `main` at
+`3c39048`, suite 4044 Python + 795 frontend, pins routes 47 / job kinds 12 /
+`Config` fields 55, security ritual clean. **Nothing is in flight; the next
+spec is the transfer-appetite feature the user asked for on 2026-09-04** (how
+many transfers and hits he is willing to take, the expected outcome of each
+choice, with probabilities) — brainstorm first. The research that produced v12
 (`research/2026-09-01-polish-and-improvement-research.md`) has leftovers
 listed under *Candidates* below; the next step, when there is one, is a
 brainstorm that picks from that list.
@@ -396,6 +399,27 @@ Spec: §6 · Plan: `plans/2026-09-01-gaffer-v12-w5-interface.md` (16 tasks incl.
 - Blanket test mocks (`mockResolvedValue` answering every route) are where dead `?? []` guards come from and where removing them bites: type the mock as the model, route it by path, and read vitest's "unhandled errors" line as a failure — the suite exits 0 through it
 - Never `--amend`, reset, rebase, stash or restore in a worktree other agents commit to; stage-and-commit in one command; accept blurred attribution and reconcile by content
 - An agent that stalls mid-task leaves its work in `git status`; a paused program needs its HEAD, its dirty files and the one thing possibly missing written down before the connection drops
+
+### Hotfix 2026-09-04 — the free-transfer rule (done, `3c39048`)
+- [x] FPL's rule: a wildcard or free hit week carries the FT count over
+  **unchanged** — the chip consumes nothing and the week accrues nothing (2
+  saved FTs into the chip are 2 saved FTs after it). Gaffer banked the +1, so
+  entry 2210493's GW2 wildcard read as 2 FTs for GW3 against FPL's 1, and the
+  GW3 board was priced a hit short.
+- [x] Four sites now agree: `compute_free_transfers` (live count), the MILP's
+  wildcard week (`ftv <= prev_ft`, was `prev_ft + 1`), the backtest's FT
+  bookkeeping, the plan trace's `ft_after`.
+- [x] Priced consequence: a wildcard that fixes nothing costs exactly
+  `ft_value` (the forgone accrual). `WC_BAND` floor is −1.5; the two chip
+  tests and the sanity rail that said "never negative" carry that exception
+  for the wildcard only.
+- [x] Tests: entry (wildcard, free hit, two-banked, accrual resumes), MILP
+  (a hit in the week after a wildcard), backtest carry-over, trace. Suite
+  4044 / rails 469. Protected-file diff authorized by the user's request:
+  `optimize/milp.py`, `optimize/chips.py` (comment only).
+- Residual: the deterministic GW3 re-solve still wanted all four moves at
+  three hits, 1.2 objective points ahead of the one-hit plan over three weeks
+  — inside noise, and the motivating case for the transfer-appetite feature.
 
 ## Operational / housekeeping
 - [x] Untrack `reports/` artifacts + `.claude/`; gitignore both (`31dc239`)

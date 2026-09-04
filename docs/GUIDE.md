@@ -1,7 +1,7 @@
 # The gaffer guide
 
 *A tour of everything this project does, how it got here, and how to use it.
-Last updated 2026-09-03, after the v12 program closed (`main` `9274f33`). The
+Last updated 2026-09-04, after the free-transfer rule hotfix (`main` `3c39048`). The
 README covers setup and reference; this document is for understanding. If you
 only read one section, read §12: it is the current to-do list.*
 
@@ -128,6 +128,14 @@ earned:
 - **Shadow prices for transfers** (v4c): a dynamic program values holding a
   free transfer and charges hits properly across the horizon, so "take a −4
   now" competes fairly with "bank the transfer".
+- **The free-transfer rule, as FPL plays it** (hotfix 2026-09-04): one free
+  transfer a week, banked to five, and a wildcard or free hit week *carries
+  the count over unchanged* — the chip consumes nothing and the week accrues
+  nothing, so one FT into the chip is one FT out of it. Gaffer had banked
+  the +1, and read a GW2 wildcard as two FTs for GW3. The live count, the
+  MILP's wildcard week, the backtest and the plan trace now all say the same
+  thing, and a wildcard that fixes nothing is priced at exactly the one
+  accrual it forgoes.
 - **Chip timing by optimal stopping** (v4c): each unused chip has a
   week-by-week threshold θ — the chip plays when this week's gain clears the
   bar of what waiting could still buy. This was the single biggest measured
