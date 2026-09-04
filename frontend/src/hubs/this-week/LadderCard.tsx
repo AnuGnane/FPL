@@ -41,6 +41,23 @@ function rungLabel(r: LadderRung): string {
   return `${n} hit${n === 1 ? '' : 's'}`
 }
 
+/** A signed hit bill: `−4`, or `0` when nothing was spent. */
+function costText(n: number): string {
+  return n > 0 ? `\u2212${n}` : '0'
+}
+
+/** The cost cell.
+ *
+ *  `max_hits` is a *per-week* cap, so a rung that takes one hit takes it in
+ *  every horizon week: the decision on the table costs 4, the plan behind it
+ *  costs 12. Printing only one of those misprices the row, so both go in
+ *  whenever they differ. */
+function rungCost(r: LadderRung, weeks: number): string {
+  if (r.horizon_cost === r.cost) return costText(r.cost)
+  return `${costText(r.cost)} now \u00b7 ${costText(r.horizon_cost)}`
+    + ` over ${weeks} GW${weeks === 1 ? '' : 's'}`
+}
+
 function pct(v: number | null | undefined): string {
   return v === null || v === undefined ? '—' : `${Math.round(v * 100)}%`
 }
@@ -120,8 +137,15 @@ function Expanded({ rung, weeks }: { rung: LadderRung; weeks: number }) {
               <span className={TONE_CLASS[toneOf(vb.delta_mean_pts)]}>
                 ({vb.delta_mean_pts >= 0 ? '+' : '−'}
                 {fmtNum(Math.abs(vb.delta_mean_pts), 1)} xPts over {weeks} GWs,
-                {' '}{vb.delta_cost > 0 ? `−${vb.delta_cost}` : `${vb.delta_cost}`} now)
+                {' '}{costText(vb.delta_cost)})
               </span>
+              {/* The delta is net of the whole horizon's hits; the first
+                  week's share of that bill is the part being decided now. */}
+              {vb.delta_cost_now !== vb.delta_cost && (
+                <span className="text-text-muted">
+                  {' '}({costText(vb.delta_cost_now)} of it now)
+                </span>
+              )}
             </p>
             )}
       </div>
@@ -180,6 +204,16 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
   const capIndex = rungs.findIndex((r) => r.key === data?.cap_rung)
   const hitsValue = data?.cap.max_hits ?? NO_CAP
   const movesValue = data?.cap.max_transfers ?? NO_CAP
+  const requested = rungs.find((r) => r.key === data?.cap_rung_requested)
+  const resolved = rungs.find((r) => r.key === data?.cap_rung)
+  const requestedNote = (data && data.cap_rung_requested !== null
+    && data.cap_rung_requested !== data.cap_rung)
+    ? `your cap of ${(requested ? rungLabel(requested)
+        : data.cap_rung_requested).toLowerCase()}: the solver would not `
+      + `spend it \u2014 same as `
+      + `${(resolved ? rungLabel(resolved) : data.cap_rung ?? '\u2014')
+          .toLowerCase()}`
+    : null
 
   return (
     <Card
@@ -198,7 +232,15 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
       )}
     >
       {data && data.gw !== null && (
-        <p className="mb-2 text-text-secondary">{capText(data)}</p>
+        <p className="mb-2 text-text-secondary">
+          {capText(data)}
+          {/* The saved cap can name a rung the solver refused to spend; the
+              highlight then sits on the rung it resolved to, and the reason
+              is said here rather than left as a silent jump. */}
+          {requestedNote && (
+            <span className="text-text-muted">{' · '}{requestedNote}</span>
+          )}
+        </p>
       )}
       <p className="mb-3 text-text-muted">
         Every rung of appetite solved on the same board, then every plan
@@ -304,7 +346,7 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
                           <>
                             <td className="py-1">{movesText(r)}</td>
                             <td className="num py-1 text-right">
-                              {r.cost > 0 ? `−${r.cost}` : '0'}
+                              {rungCost(r, weeks)}
                             </td>
                             <td className="num py-1 text-right">{fmtNum(r.week_pts)}</td>
                             <td className="num py-1 text-right">{fmtNum(r.mean_pts)}</td>
@@ -328,6 +370,22 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
             </tbody>
           </table>
         </div>
+      )}
+      {!busy && data?.cap_note && (
+        <p className="mt-2 text-text-muted">{data.cap_note}</p>
+      )}
+      {!busy && data?.recommended_note && (
+        <p className="mt-2 text-text-muted">{data.recommended_note}</p>
+      )}
+      {!busy && (data?.notes ?? []).map((n) => (
+        <p key={n} className="mt-2 text-text-muted">{n}</p>
+      ))}
+      {!busy && rungs.length > 0 && (
+        <p className="mt-2 text-text-muted" data-testid="ladder-points-note">
+          Points are raw expected XI + captain over the horizon, undecayed and
+          untilted, so they can rank the rungs differently from the objective
+          the solver optimises.
+        </p>
       )}
     </Card>
   )

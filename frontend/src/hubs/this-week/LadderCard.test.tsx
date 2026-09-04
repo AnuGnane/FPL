@@ -33,22 +33,29 @@ const week = (gw: number, hits: number, buys: ReturnType<typeof ref>[],
 const PAYLOAD: LadderPayload = {
   gw: 3, gws: [3, 4, 5], generated_at: '2026-09-04T13:00:00+00:00',
   free_transfers: 1, cap: { max_hits: 2, max_transfers: null },
-  cap_rung: 'hits2', recommended: 'hits1', n_draws: 200, seed: 7,
-  sigma_source: 'bands', wall_s: 31.2, note: null,
+  cap_rung: 'hits2', cap_rung_requested: 'hits2', cap_note: null,
+  recommended: 'hits1', recommended_note: null, notes: [],
+  n_draws: 200, seed: 7, sigma_source: 'bands', sigma_fallbacks: 0,
+  wall_s: 31.2, note: null,
   rungs: [
     { key: 'bank', hits: 0, transfers: 0, cost: 0, same_as: null,
+      horizon_hits: 0, horizon_cost: 0,
       plan_by_gw: [week(3, 0, [], [])], week_pts: 60, horizon_pts: 180,
       objective: 170, mean_pts: 180, p10_pts: 160, p90_pts: 200,
       p_beats_bank: null, p_beats_top: 0.42, p_best: 0.2, vs_below: null },
     { key: 'hits0', hits: 0, transfers: 1, cost: 0, same_as: null,
+      horizon_hits: 0, horizon_cost: 0,
       plan_by_gw: [week(3, 0, [ref(20, 'Star')], [ref(16, 'Dud')])],
       week_pts: 63, horizon_pts: 186, objective: 176, mean_pts: 186,
       p10_pts: 165, p90_pts: 207, p_beats_bank: 0.71, p_beats_top: 0.5,
       p_best: 0.3,
       vs_below: { extra_buys: [ref(20, 'Star')], extra_sells: [ref(16, 'Dud')],
                   dropped_buys: [], dropped_sells: [], delta_mean_pts: 6,
-                  delta_cost: 0 } },
+                  delta_cost: 0, delta_cost_now: 0 } },
+    // The caps are per week, so a one-hit plan spends a hit in every horizon
+    // week: 4 now, 12 over the three.
     { key: 'hits1', hits: 1, transfers: 2, cost: 4, same_as: null,
+      horizon_hits: 3, horizon_cost: 12,
       plan_by_gw: [week(3, 1, [ref(20, 'Star'), ref(19, 'Second')],
                         [ref(16, 'Dud'), ref(17, 'Filler')])],
       week_pts: 64, horizon_pts: 188, objective: 177, mean_pts: 188,
@@ -56,12 +63,15 @@ const PAYLOAD: LadderPayload = {
       p_best: 0.5,
       vs_below: { extra_buys: [ref(19, 'Second')],
                   extra_sells: [ref(17, 'Filler')], dropped_buys: [],
-                  dropped_sells: [], delta_mean_pts: 1.9, delta_cost: 4 } },
+                  dropped_sells: [], delta_mean_pts: 1.9, delta_cost: 12,
+                  delta_cost_now: 4 } },
     { key: 'hits2', hits: 1, transfers: 2, cost: 4, same_as: 'hits1',
+      horizon_hits: 3, horizon_cost: 12,
       plan_by_gw: [], week_pts: null, horizon_pts: null, objective: null,
       mean_pts: null, p10_pts: null, p90_pts: null, p_beats_bank: null,
       p_beats_top: null, p_best: null, vs_below: null },
     { key: 'hits3', hits: 1, transfers: 2, cost: 4, same_as: 'hits1',
+      horizon_hits: 3, horizon_cost: 12,
       plan_by_gw: [], week_pts: null, horizon_pts: null, objective: null,
       mean_pts: null, p10_pts: null, p90_pts: null, p_beats_bank: null,
       p_beats_top: null, p_best: null, vs_below: null },
@@ -128,8 +138,11 @@ describe('LadderCard', () => {
     mount()
     await userEvent.click(await screen.findByText('1 hit'))
     expect(screen.getByText(/\+ Second for Filler/)).toBeInTheDocument()
-    expect(screen.getByText(/\+1.9 xPts over 3 GWs, −4 now/))
+    // The delta is net of the *horizon* hit bill; the first week's share is
+    // spelled out beside it.
+    expect(screen.getByText(/\+1.9 xPts over 3 GWs, −12/))
       .toBeInTheDocument()
+    expect(screen.getByText(/−4 of it now/)).toBeInTheDocument()
     expect(screen.getByText('Back')).toBeInTheDocument()   // the XI
   })
 
@@ -164,4 +177,69 @@ describe('LadderCard', () => {
     mount()
     expect(await screen.findByText(/no ladder for GW3/)).toBeInTheDocument()
   })
+
+  it('prints the first week\u2019s hit cost and the horizon cost when they differ',
+    async () => {
+      mount()
+      const row = (await screen.findByText('1 hit')).closest('tr')!
+      expect(row).toHaveTextContent('−4 now · −12 over 3 GWs')
+      // A rung that spends the same either way says it once.
+      expect(screen.getByText('Bank').closest('tr')).toHaveTextContent('0')
+    })
+
+  it('prints a single cost when the horizon bill equals the first week\u2019s',
+    async () => {
+      apiGet.mockImplementation(async (path: string) => {
+        if (path !== '/api/ladder') throw new Error(path)
+        return {
+          ...PAYLOAD,
+          rungs: PAYLOAD.rungs.map((r) => (r.key === 'hits1'
+            ? { ...r, horizon_hits: 1, horizon_cost: 4 } : r)),
+        }
+      })
+      mount()
+      const row = (await screen.findByText('1 hit')).closest('tr')!
+      expect(row).toHaveTextContent('−4')
+      expect(row).not.toHaveTextContent('over 3 GWs')
+    })
+
+  it('says when the cap the reader asked for resolved to a lower rung',
+    async () => {
+      apiGet.mockImplementation(async (path: string) => {
+        if (path !== '/api/ladder') throw new Error(path)
+        return { ...PAYLOAD, cap: { max_hits: 3, max_transfers: null },
+                 cap_rung: 'hits1', cap_rung_requested: 'hits3' }
+      })
+      mount()
+      expect(await screen.findByText(
+        /your cap of 3 hits: the solver would not spend it — same as 1 hit/))
+        .toBeInTheDocument()
+    })
+
+  it('prints the cap note, the recommendation note and every ladder note',
+    async () => {
+      apiGet.mockImplementation(async (path: string) => {
+        if (path !== '/api/ladder') throw new Error(path)
+        return { ...PAYLOAD,
+                 cap_note: 'no rung matches max_transfers = 4',
+                 recommended_note: 'no rung beat the bank by enough',
+                 notes: ['hits3 did not solve', 'open did not solve'] }
+      })
+      mount()
+      expect(await screen.findByText('no rung matches max_transfers = 4'))
+        .toBeInTheDocument()
+      expect(screen.getByText('no rung beat the bank by enough'))
+        .toBeInTheDocument()
+      expect(screen.getByText('hits3 did not solve')).toBeInTheDocument()
+      expect(screen.getByText('open did not solve')).toBeInTheDocument()
+    })
+
+  it('says the points are raw, so they can rank against the objective',
+    async () => {
+      mount()
+      const copy = await screen.findByTestId('ladder-points-note')
+      expect(copy.textContent).toMatch(/raw expected XI \+ captain/)
+      expect(copy.textContent).toMatch(/undecayed and untilted/)
+      expect(copy.textContent).toMatch(/objective the solver optimises/)
+    })
 })
