@@ -2622,7 +2622,7 @@ Expected: `Config 57 routes 48 kinds 12`.
 
 ```bash
 git show main:config.toml >/dev/null 2>&1 && echo "RITUAL FAIL" || echo "ritual clean"
-git log -S e87e739977a1e6dfbdc60aa13b2e2d57 --all --oneline | wc -l   # must be 0
+git log -S <the odds API key from config.toml> --all --oneline | wc -l   # must be 0
 ```
 
 - [ ] **Step 4: The pre-registered measurement (orchestrator, §6 of the spec) — documented here, not run by an implementer**
