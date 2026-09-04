@@ -55,7 +55,7 @@ from dataclasses import replace
 
 import pandas as pd
 
-from gaffer.advise import chips_available_for
+from gaffer.advise import _cap, chips_available_for
 from gaffer.assets import load_bootstrap_sample
 from gaffer.config import load_config
 from gaffer.data import store
@@ -504,8 +504,12 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
                 sell_of[c] = int(price_now.get(c, sell_of.get(c, 0)))
             picks = pd.DataFrame({"code": squad,
                                   "sell": [sell_of[c] for c in squad]})
+            # v13 §2.3/§6: the replay measures the tool as it advises, so
+            # the owned-squad solve carries the same caps advise.py applies.
             state = SolveInput(owned_codes=list(squad), bank=bank,
-                               free_transfers=free_transfers, gws=gws)
+                               free_transfers=free_transfers, gws=gws,
+                               max_hits=_cap(cfg.max_hits),
+                               max_transfers=_cap(cfg.max_transfers))
 
         pool = build_pool(players, ep_by, picks, gws)
         # gw_plans[1:] are discarded: next week re-plans from scratch.

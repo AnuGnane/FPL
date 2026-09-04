@@ -697,3 +697,51 @@ def test_run_backtest_prices_chips_on_the_raw_pool_under_a_tilt(monkeypatch):
                  tilt=lambda ep_by, gw: {k: v * 2 for k, v in ep_by.items()})
     assert seen and set(seen) == {1.0}       # raw, not the tilted 2.0
     assert calls["pool_gws"]                 # the execution solves still ran
+
+
+# --- v13 caps ------------------------------------------------------------
+
+
+def _capture_states(monkeypatch):
+    """Record every ``SolveInput`` the replay hands the solver."""
+    states = []
+    inner = bt.solve_plan
+
+    def spy(pool, state, **kw):
+        states.append(state)
+        return inner(pool, state, **kw)
+
+    monkeypatch.setattr(bt, "solve_plan", spy)
+    return states
+
+
+def test_backtest_applies_the_config_caps_to_the_owned_squad_solve(
+        monkeypatch):
+    _install_stubs(monkeypatch, _season_rows([1, 2, 3]))
+    monkeypatch.setattr(bt, "load_config", lambda *a, **k: Config(
+        entry_id=1, league_id=1, train_seasons=["2025-26"],
+        max_hits=0, max_transfers=1))
+    states = _capture_states(monkeypatch)
+    run_backtest(season="2025-26", start_gw=1, retrain_every=4)
+
+    # Week 1 builds from scratch: a squad build is not a transfer decision,
+    # so neither cap applies to it.
+    assert states[0].free_transfers == 15
+    assert states[0].max_hits is None
+    assert states[0].max_transfers is None
+    # Every owned-squad week carries the configured caps.
+    assert len(states) >= 2
+    for state in states[1:]:
+        assert state.max_hits == 0
+        assert state.max_transfers == 1
+
+
+def test_backtest_owned_squad_solve_carries_the_default_caps(monkeypatch):
+    _install_stubs(monkeypatch, _season_rows([1, 2, 3]))
+    states = _capture_states(monkeypatch)
+    run_backtest(season="2025-26", start_gw=1, retrain_every=4)
+
+    # Defaults: max_hits=2, max_transfers=NO_CAP -> None (uncapped).
+    for state in states[1:]:
+        assert state.max_hits == 2
+        assert state.max_transfers is None
