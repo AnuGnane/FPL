@@ -1880,6 +1880,11 @@ class LadderVsBelow(BaseModel):
     dropped_sells: list[PlayerRef] = Field(default_factory=list)
     delta_mean_pts: float
     delta_cost: int
+    """The **horizon** hit cost this rung carries over the rung below.
+    ``max_hits`` is a per-gameweek cap, so a rung can pay it every week, and
+    it is the horizon figure that ``delta_mean_pts`` is net of."""
+    delta_cost_now: int = 0
+    """The first week's difference alone."""
 
 
 class LadderWeek(BaseModel):
@@ -1900,8 +1905,14 @@ class LadderRung(BaseModel):
 
     key: str
     hits: int
+    """Hits taken in the **first** week — the decision on the table now."""
     transfers: int
     cost: int
+    """The first week's hits, in points."""
+    horizon_hits: int = 0
+    """Hits over the whole horizon, which is what ``horizon_pts`` and
+    ``mean_pts`` are already net of."""
+    horizon_cost: int = 0
     same_as: str | None = None
     plan_by_gw: list[LadderWeek] = Field(default_factory=list)
     week_pts: float | None = None
@@ -1928,11 +1939,23 @@ class LadderPayload(BaseModel):
     free_transfers: int | None = None
     cap: LadderCap = Field(default_factory=LadderCap)
     cap_rung: str | None = None
+    """The highlighted row, resolved through ``same_as`` to a row that
+    carries numbers."""
+    cap_rung_requested: str | None = None
+    """The row the saved cap literally names, before that resolution."""
+    cap_note: str | None = None
+    """Set when the saved ``max_transfers`` has no rung of its own."""
     recommended: str | None = None
+    recommended_note: str | None = None
+    """Why ``recommended`` is ``None``, when it is."""
     n_draws: int = 0
     seed: int | None = None
     sigma_source: str | None = None
+    sigma_fallbacks: int = 0
+    """Player-weeks that fell back to the outcome σ for want of a band."""
     wall_s: float | None = None
+    notes: list[str] = Field(default_factory=list)
+    """Rungs dropped because they would not solve."""
     rungs: list[LadderRung] = Field(default_factory=list)
     note: str | None = None
     """Why ``rungs`` is empty, when it is: no state, or no ladder banked."""

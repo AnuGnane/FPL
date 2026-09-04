@@ -1147,7 +1147,19 @@ export interface LadderCap {
  */
 export interface LadderPayload {
   cap: LadderCap
+  /**
+   * Set when the saved ``max_transfers`` has no rung of its own.
+   */
+  cap_note: string | null
+  /**
+   * The highlighted row, resolved through ``same_as`` to a row that
+   * carries numbers.
+   */
   cap_rung: string | null
+  /**
+   * The row the saved cap literally names, before that resolution.
+   */
+  cap_rung_requested: string | null
   free_transfers: number | null
   generated_at: string | null
   gw: number | null
@@ -1157,9 +1169,21 @@ export interface LadderPayload {
    * Why ``rungs`` is empty, when it is: no state, or no ladder banked.
    */
   note: string | null
+  /**
+   * Rungs dropped because they would not solve.
+   */
+  notes: string[]
   recommended: string | null
+  /**
+   * Why ``recommended`` is ``None``, when it is.
+   */
+  recommended_note: string | null
   rungs: LadderRung[]
   seed: number | null
+  /**
+   * Player-weeks that fell back to the outcome σ for want of a band.
+   */
+  sigma_fallbacks: number
   sigma_source: string | null
   wall_s: number | null
 }
@@ -1171,8 +1195,20 @@ export interface LadderPayload {
  * via the `definition` "LadderRung".
  */
 export interface LadderRung {
+  /**
+   * The first week's hits, in points.
+   */
   cost: number
+  /**
+   * Hits taken in the **first** week — the decision on the table now.
+   */
   hits: number
+  horizon_cost: number
+  /**
+   * Hits over the whole horizon, which is what ``horizon_pts`` and
+   * ``mean_pts`` are already net of.
+   */
+  horizon_hits: number
   horizon_pts: number | null
   key: string
   mean_pts: number | null
@@ -1210,7 +1246,16 @@ export interface LadderWeek {
  * via the `definition` "LadderVsBelow".
  */
 export interface LadderVsBelow {
+  /**
+   * The **horizon** hit cost this rung carries over the rung below.
+   * ``max_hits`` is a per-gameweek cap, so a rung can pay it every week, and
+   * it is the horizon figure that ``delta_mean_pts`` is net of.
+   */
   delta_cost: number
+  /**
+   * The first week's difference alone.
+   */
+  delta_cost_now: number
   delta_mean_pts: number
   dropped_buys: WirePlayerRef[]
   dropped_sells: WirePlayerRef[]

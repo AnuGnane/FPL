@@ -2291,6 +2291,18 @@
     "cap": {
      "$ref": "#/definitions/LadderCap"
     },
+    "cap_note": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Set when the saved ``max_transfers`` has no rung of its own."
+    },
     "cap_rung": {
      "anyOf": [
       {
@@ -2300,7 +2312,20 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The highlighted row, resolved through ``same_as`` to a row that\ncarries numbers."
+    },
+    "cap_rung_requested": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "The row the saved cap literally names, before that resolution."
     },
     "free_transfers": {
      "anyOf": [
@@ -2357,6 +2382,13 @@
      "default": null,
      "description": "Why ``rungs`` is empty, when it is: no state, or no ladder banked."
     },
+    "notes": {
+     "description": "Rungs dropped because they would not solve.",
+     "items": {
+      "type": "string"
+     },
+     "type": "array"
+    },
     "recommended": {
      "anyOf": [
       {
@@ -2367,6 +2399,18 @@
       }
      ],
      "default": null
+    },
+    "recommended_note": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Why ``recommended`` is ``None``, when it is."
     },
     "rungs": {
      "items": {
@@ -2384,6 +2428,11 @@
       }
      ],
      "default": null
+    },
+    "sigma_fallbacks": {
+     "default": 0,
+     "description": "Player-weeks that fell back to the outcome \u03c3 for want of a band.",
+     "type": "integer"
     },
     "sigma_source": {
      "anyOf": [
@@ -2410,16 +2459,21 @@
    },
    "required": [
     "cap",
+    "cap_note",
     "cap_rung",
+    "cap_rung_requested",
     "free_transfers",
     "generated_at",
     "gw",
     "gws",
     "n_draws",
     "note",
+    "notes",
     "recommended",
+    "recommended_note",
     "rungs",
     "seed",
+    "sigma_fallbacks",
     "sigma_source",
     "wall_s"
    ],
@@ -2430,9 +2484,20 @@
    "description": "One row. Every number is ``None`` on a ``same_as`` row, which repeats\nthe rung below rather than re-solving it.",
    "properties": {
     "cost": {
+     "description": "The first week's hits, in points.",
      "type": "integer"
     },
     "hits": {
+     "description": "Hits taken in the **first** week \u2014 the decision on the table now.",
+     "type": "integer"
+    },
+    "horizon_cost": {
+     "default": 0,
+     "type": "integer"
+    },
+    "horizon_hits": {
+     "default": 0,
+     "description": "Hits over the whole horizon, which is what ``horizon_pts`` and\n``mean_pts`` are already net of.",
      "type": "integer"
     },
     "horizon_pts": {
@@ -2572,6 +2637,8 @@
    "required": [
     "cost",
     "hits",
+    "horizon_cost",
+    "horizon_hits",
     "horizon_pts",
     "key",
     "mean_pts",
@@ -2594,6 +2661,12 @@
    "description": "What the extra hit bought, against the previous distinct rung.",
    "properties": {
     "delta_cost": {
+     "description": "The **horizon** hit cost this rung carries over the rung below.\n``max_hits`` is a per-gameweek cap, so a rung can pay it every week, and\nit is the horizon figure that ``delta_mean_pts`` is net of.",
+     "type": "integer"
+    },
+    "delta_cost_now": {
+     "default": 0,
+     "description": "The first week's difference alone.",
      "type": "integer"
     },
     "delta_mean_pts": {
@@ -2626,6 +2699,7 @@
    },
    "required": [
     "delta_cost",
+    "delta_cost_now",
     "delta_mean_pts",
     "dropped_buys",
     "dropped_sells",

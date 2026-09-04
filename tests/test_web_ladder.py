@@ -49,7 +49,15 @@ def test_post_builds_banks_and_get_then_serves_it(client):
     assert [r["key"] for r in body["rungs"]][:5] == \
         ["bank", "hits0", "hits1", "hits2", "hits3"]
     assert body["cap"] == {"max_hits": 2, "max_transfers": None}
-    assert body["cap_rung"] == "hits2"
+    # The cap names hits2; hits2 repeats hits1, so the highlight resolves to
+    # the row that carries the numbers and the un-resolved key rides along.
+    assert body["cap_rung_requested"] == "hits2"
+    assert body["cap_rung"] == "hits1"
+    assert body["cap_note"] is None and body["notes"] == []
+    assert body["recommended_note"] == "no served advice for GW1"
+    hits1 = next(r for r in body["rungs"] if r["key"] == "hits1")
+    assert hits1["horizon_hits"] >= hits1["hits"]
+    assert hits1["horizon_cost"] == hits1["horizon_hits"] * 4
 
 
 def test_a_full_queue_is_a_429(client):

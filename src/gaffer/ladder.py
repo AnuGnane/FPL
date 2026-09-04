@@ -42,9 +42,12 @@ from gaffer.league_sim import OUTCOME_VAR_PER_EP
 from gaffer.optimize.milp import GwPlan, Plan, SolveInput, solve_plan
 from gaffer.uncertainty import bands_by_player_gw
 
-LADDER_DRAWS = 200
-"""Draws per rung. Two hundred resolves a probability to about ±3.5%, which
-is the precision the card prints (whole percents) and no finer."""
+LADDER_DRAWS = 2000
+"""Draws per rung. Two hundred resolved a probability only to about ±3.5%,
+and the card prints whole percents off differences smaller than that — a
+``p_best`` moved 0.09 → 0.15 across seeds. Two thousand holds it to about
+±1%. The draws are free next to the six MILP solves, which dominate the wall
+time: two thousand normal variates per player-week cost milliseconds."""
 
 LADDER_HITS = (0, 1, 2, 3)
 """The hit rungs. Above three the *open* row exists only if the solver wants
@@ -74,11 +77,29 @@ def load_ladder(gw: int) -> dict | None:
         return None
 
 
+def _finite(value):
+    """The payload with every non-finite float replaced by ``None``.
+
+    ``allow_nan=False`` is the right setting — a ``NaN`` in a JSON report is
+    a landmine for the browser — but it made a single degenerate σ abort the
+    whole save with a raw ``ValueError``. A missing number is a blank cell
+    the card already knows how to draw, so the NaN becomes one.
+    """
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, dict):
+        return {k: _finite(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_finite(v) for v in value]
+    return value
+
+
 def save_ladder(payload: dict, gw: int) -> Path:
     """Atomic, like every other banked report."""
     artifacts.REPORTS.mkdir(exist_ok=True)
     path = ladder_path(gw)
-    atomic_write(path, json.dumps(payload, indent=1, allow_nan=False))
+    atomic_write(path, json.dumps(_finite(payload), indent=1,
+                                  allow_nan=False))
     return path
 
 
@@ -120,7 +141,15 @@ def sigma_table(gw: int) -> tuple[dict[tuple[int, int], float], str]:
 
 def draw_points(keys, ep_by: dict, sigmas: dict, rng: np.random.Generator,
                 n_draws: int) -> dict[tuple[int, int], np.ndarray]:
-    """One vector of ``n_draws`` points per player-week, ``max(0, N(ep, σ))``.
+    """One vector of ``n_draws`` points per player-week, ``N(ep, σ)``.
+
+    **Unclipped, on purpose.** An FPL score can be negative — two yellow
+    cards, an own goal, a missed penalty — and what a rung is scored on is
+    the sum over eleven players, not one. Clipping each player at zero moved
+    every rung's mean up by about six points and squeezed the bank-to-hits3
+    gap by three quarters of a point, which is a bias in exactly the
+    comparison the table exists to make. With the clip gone ``mean_pts``
+    lands on ``horizon_pts`` up to Monte Carlo error.
 
     Keys are visited in sorted order so the draw a player-week receives is a
     function of the seed and the set, never of which rung named him first.
@@ -130,9 +159,9 @@ def draw_points(keys, ep_by: dict, sigmas: dict, rng: np.random.Generator,
         mu = float(ep_by.get(key, 0.0))
         sigma = sigmas.get(key)
         if sigma is None:
+            # ``max(mu, 0)`` guards the square root, not the draw.
             sigma = math.sqrt(OUTCOME_VAR_PER_EP * max(mu, 0.0))
-        out[key] = np.maximum(0.0, mu + float(sigma)
-                              * rng.standard_normal(n_draws))
+        out[key] = mu + float(sigma) * rng.standard_normal(n_draws)
     return out
 
 
@@ -169,10 +198,17 @@ def _refs(codes, gw: int, meta: dict, ep_by: dict) -> list[dict]:
 
 
 def vs_below(below, rung, *, prev_mean: float, mean: float, hit_cost: int,
-             meta: dict, ep_by: dict) -> dict:
+             meta: dict, ep_by: dict, below_horizon_hits: int,
+             horizon_hits: int) -> dict:
     """What the extra hit bought: the first-week moves this rung makes that
     the rung below did not (and any it dropped), the mean-points gain and
-    the points it cost."""
+    the points it cost.
+
+    The moves are the first week's, because that is the decision a manager
+    takes now. ``delta_cost`` is the **horizon** difference, because that is
+    what is inside ``delta_mean_pts`` — a rung capped at one hit per week may
+    take one every week. ``delta_cost_now`` is the first week's alone.
+    """
     below_buys, buys = set(int(c) for c in below.buys), set(int(c) for c in rung.buys)
     below_sells, sells = set(int(c) for c in below.sells), set(int(c) for c in rung.sells)
     return {
@@ -182,7 +218,9 @@ def vs_below(below, rung, *, prev_mean: float, mean: float, hit_cost: int,
         "dropped_sells": _refs(sorted(below_sells - sells), below.gw, meta,
                                ep_by),
         "delta_mean_pts": round(float(mean - prev_mean), 2),
-        "delta_cost": int((int(rung.hits) - int(below.hits)) * hit_cost),
+        "delta_cost": int((int(horizon_hits) - int(below_horizon_hits))
+                          * hit_cost),
+        "delta_cost_now": int((int(rung.hits) - int(below.hits)) * hit_cost),
     }
 
 
@@ -197,26 +235,78 @@ def _week(plan: GwPlan, meta: dict, ep_by: dict, hit_cost: int) -> dict:
             "expected_pts": plan_points([plan], ep_by, hit_cost)}
 
 
-def _empty_rung(key: str, hits: int, transfers: int, cost: int,
-                same_as: str) -> dict:
-    return {"key": key, "hits": hits, "transfers": transfers, "cost": cost,
+def _empty_rung(key: str, source: dict, same_as: str) -> dict:
+    """A collapsed row: the source's four hit numbers and nothing else, so
+    the card can print "same as one hit" without re-deriving them."""
+    return {"key": key, "hits": source["hits"],
+            "transfers": source["transfers"], "cost": source["cost"],
+            "horizon_hits": source["horizon_hits"],
+            "horizon_cost": source["horizon_cost"],
             "same_as": same_as, "plan_by_gw": [], "week_pts": None,
             "horizon_pts": None, "objective": None, "mean_pts": None,
             "p10_pts": None, "p90_pts": None, "p_beats_bank": None,
             "p_beats_top": None, "p_best": None, "vs_below": None}
 
 
+def collapse(solved: list[tuple[str, Plan]]) -> tuple[list, dict[str, str]]:
+    """Split the solved rungs into the distinct ones and the repeats.
+
+    A rung repeats *any* earlier distinct rung, not merely the one directly
+    below it: with a cap that binds in the middle, ``hits3`` can land back on
+    ``hits0``'s decision while ``hits2`` differs from both, and the row must
+    name the rung it actually matches.
+    """
+    distinct: list[tuple[str, Plan]] = []
+    same_as: dict[str, str] = {}
+    for key, plan in solved:
+        sig = signature(plan.gw_plans[0])
+        match = next((k for k, p in distinct
+                      if signature(p.gw_plans[0]) == sig), None)
+        if match is None:
+            distinct.append((key, plan))
+        else:
+            same_as[key] = match
+    return distinct, same_as
+
+
 def _cap_rung(max_hits: int | None, max_transfers: int | None,
-              keys: list[str]) -> str:
+              rows: list[dict]) -> tuple[str, str]:
+    """``(highlighted, requested)``.
+
+    The requested row can be a ``same_as`` row with no numbers on it — a cap
+    of three hits on a board where the solver will not spend a second one —
+    so the highlight follows the ``same_as`` chain to the row that carries
+    the plan, and the un-resolved key rides along for the caption.
+    """
+    keys = [r["key"] for r in rows]
+    by = {r["key"]: r for r in rows}
     if max_transfers == 0:
-        return "bank"
-    if max_hits is None or max_hits > max(LADDER_HITS):
-        return keys[-1]
-    return f"hits{int(max_hits)}"
+        requested = "bank"
+    elif max_hits is None or max_hits > max(LADDER_HITS):
+        requested = keys[-1] if keys else "bank"
+    else:
+        requested = f"hits{int(max_hits)}"
+    resolved, seen = requested, set()
+    while resolved in by and by[resolved].get("same_as") \
+            and resolved not in seen:
+        seen.add(resolved)
+        resolved = by[resolved]["same_as"]
+    return resolved, requested
 
 
-def _recommended(gw: int, solved: list[tuple[str, Plan]]) -> str | None:
-    """The rung whose first-week decision is the served advice's, or None."""
+def _cap_note(max_transfers: int | None) -> str | None:
+    """No rung models a transfer cap between "bank" and "as many as you
+    like", so a state carrying one gets a sentence rather than a wrong row."""
+    if max_transfers is None or not 1 <= int(max_transfers) < 15:
+        return None
+    return (f"a transfer cap of {int(max_transfers)} has no rung of its own; "
+            "the highlight follows the hit cap")
+
+
+def _recommended(gw: int, solved: list[tuple[str, Plan]]
+                 ) -> tuple[str | None, str | None]:
+    """``(rung, note)`` — the rung whose first-week decision is the served
+    advice's, and, when there is none, why."""
     try:
         advice = load_advice(gw)
         wanted = (tuple(sorted(int(b["code"]) for b in advice.get("buys", []))),
@@ -224,11 +314,12 @@ def _recommended(gw: int, solved: list[tuple[str, Plan]]) -> str | None:
                   int(advice["captain"]["code"]))
     except Exception as exc:  # noqa: BLE001 — no advice is no chip, not a crash
         print(f"ladder: no served advice to mark ({exc})")
-        return None
+        return None, f"no served advice for GW{int(gw)}"
     for key, plan in solved:
         if signature(plan.gw_plans[0]) == wanted:
-            return key
-    return None
+            return key, None
+    return None, ("the served advice was sweep-gated to a plan no rung "
+                  "solves for")
 
 
 def build_ladder(gw: int | None = None, *, n_draws: int = LADDER_DRAWS,
@@ -268,22 +359,28 @@ def build_ladder(gw: int | None = None, *, n_draws: int = LADDER_DRAWS,
     specs.append(("open", SolveInput(**base)))
 
     solved: list[tuple[str, Plan]] = []
+    notes: list[str] = []
     for key, solve_state in specs:
-        plan = solve_plan(pool, solve_state, **opt)
+        try:
+            plan = solve_plan(pool, solve_state, **opt)
+        except (RuntimeError, KeyError, ValueError) as exc:
+            # One infeasible or malformed rung is a missing row, not a
+            # missing ladder: the others still answer the question.
+            note = f"the {key} rung did not solve ({exc}) and was dropped"
+            print(f"ladder: {note}")
+            notes.append(note)
+            continue
         if key == "open" and plan.gw_plans[0].hits <= max(LADDER_HITS):
             continue
         solved.append((key, plan))
+    if not solved:
+        raise GafferError("no rung of the ladder solved — "
+                          + "; ".join(notes))
 
-    # Distinct rungs solve and score; a rung whose first-week decision is the
-    # rung below's is kept as a row that says so and carries no numbers.
-    distinct: list[tuple[str, Plan]] = []
-    same_as: dict[str, str] = {}
-    for key, plan in solved:
-        if distinct and signature(plan.gw_plans[0]) == signature(
-                distinct[-1][1].gw_plans[0]):
-            same_as[key] = distinct[-1][0]
-        else:
-            distinct.append((key, plan))
+    # Distinct rungs solve and score; a rung whose first-week decision
+    # repeats an earlier rung's is kept as a row that says so and carries no
+    # numbers of its own.
+    distinct, same_as = collapse(solved)
 
     keys_needed: set[tuple[int, int]] = set()
     for _, plan in distinct:
@@ -291,6 +388,11 @@ def build_ladder(gw: int | None = None, *, n_draws: int = LADDER_DRAWS,
             keys_needed.update((int(c), int(week.gw)) for c in week.xi)
             keys_needed.add((int(week.captain), int(week.gw)))
     sigmas, sigma_source = sigma_table(gw)
+    sigma_fallbacks = sum(1 for key in keys_needed if key not in sigmas)
+    if sigma_source == "bands" and sigma_fallbacks:
+        # Some cell the plans need had no band — a player with no component
+        # history — so the row is a mix of the two σ sources and says so.
+        sigma_source = "bands+outcome"
     rng = np.random.default_rng(int(seed))
     draws = draw_points(keys_needed, ep_by, sigmas, rng, n_draws)
     scores = {key: score_plan(plan.gw_plans, draws, hit_cost, n_draws)
@@ -300,22 +402,23 @@ def build_ladder(gw: int | None = None, *, n_draws: int = LADDER_DRAWS,
 
     rows: list[dict] = []
     by_key: dict[str, dict] = {}
-    prev: tuple[str, Plan] | None = None
+    prev: tuple[str, Plan, int] | None = None
     for key, plan in solved:
         if key in same_as:
-            src = by_key[same_as[key]]
-            row = _empty_rung(key, src["hits"], src["transfers"],
-                              src["cost"], same_as[key])
+            row = _empty_rung(key, by_key[same_as[key]], same_as[key])
             rows.append(row)
             by_key[key] = row
             continue
         first = plan.gw_plans[0]
         sc = scores[key]
         mean = float(sc.mean())
+        horizon_hits = sum(int(p.hits) for p in plan.gw_plans)
         row = {
             "key": key, "hits": int(first.hits),
             "transfers": int(len(first.buys)),
-            "cost": int(first.hits * hit_cost), "same_as": None,
+            "cost": int(first.hits * hit_cost),
+            "horizon_hits": horizon_hits,
+            "horizon_cost": int(horizon_hits * hit_cost), "same_as": None,
             "plan_by_gw": [_week(p, meta, ep_by, hit_cost)
                            for p in plan.gw_plans],
             "week_pts": plan_points(plan.gw_plans[:1], ep_by, hit_cost),
@@ -332,25 +435,31 @@ def build_ladder(gw: int | None = None, *, n_draws: int = LADDER_DRAWS,
             "vs_below": (None if prev is None else vs_below(
                 prev[1].gw_plans[0], first,
                 prev_mean=float(scores[prev[0]].mean()), mean=mean,
-                hit_cost=hit_cost, meta=meta, ep_by=ep_by)),
+                hit_cost=hit_cost, meta=meta, ep_by=ep_by,
+                below_horizon_hits=prev[2], horizon_hits=horizon_hits)),
         }
         rows.append(row)
         by_key[key] = row
-        prev = (key, plan)
+        prev = (key, plan, horizon_hits)
 
     max_hits, max_transfers = caps_from_state(state)
+    cap_rung, cap_requested = _cap_rung(max_hits, max_transfers, rows)
+    recommended, recommended_note = _recommended(gw, solved)
     payload = {
         "gw": int(gw), "gws": [int(g) for g in gws],
         "generated_at": datetime.now(timezone.utc).isoformat(
             timespec="seconds"),
         "free_transfers": int(state.free_transfers),
         "cap": {"max_hits": max_hits, "max_transfers": max_transfers},
-        "cap_rung": _cap_rung(max_hits, max_transfers,
-                              [r["key"] for r in rows]),
-        "recommended": _recommended(gw, solved),
+        "cap_rung": cap_rung, "cap_rung_requested": cap_requested,
+        "cap_note": _cap_note(max_transfers),
+        "recommended": recommended, "recommended_note": recommended_note,
         "n_draws": n_draws, "seed": int(seed), "sigma_source": sigma_source,
+        "sigma_fallbacks": int(sigma_fallbacks),
         "wall_s": round(time.perf_counter() - started, 1),
+        "notes": notes,
         "rungs": rows,
     }
+    payload = _finite(payload)
     save_ladder(payload, gw)
     return payload
