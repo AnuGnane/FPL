@@ -36,6 +36,15 @@ prompt asks for a JSON array and :func:`~gaffer.data.news.classifier
 """
 
 
+NO_CAP = 15
+"""``[optimizer] max_hits`` / ``max_transfers`` value meaning "no cap".
+
+The tree's idiom for unlimited — ``free_transfers=15`` is how every
+from-scratch solve says it — so the two keys share it rather than inventing
+a sentinel. ``max_transfers = 0`` is a real cap: bank, no moves at all.
+"""
+
+
 @dataclass
 class Config:
     entry_id: int
@@ -56,6 +65,14 @@ class Config:
     # tree does not have, and the program-wide ruling is that solver knobs live
     # in [optimizer] under their own names.
     alt_plan_max_gap: float = 2.0
+    # v13 §2.1 (specs/2026-09-04-gaffer-v13-transfer-ladder-design.md). The
+    # manager's appetite, not a model parameter: the most hits and the most
+    # transfers the solver may take in any one non-wildcard gameweek. The
+    # Thursday advice, its scenario sweep, its alternative plans and its chip
+    # table all solve under them (advise.py builds the one SolveInput they
+    # inherit). NO_CAP means uncapped; max_transfers = 0 means bank.
+    max_hits: int = 2
+    max_transfers: int = NO_CAP
     train_seasons: list[str] = field(default_factory=list)
     current_season: str = "2026-27"
     odds_api_key: str = ""
@@ -304,6 +321,20 @@ def _raw_with_overlay(path: Path | str) -> dict:
     return _overlay(tomllib.loads(file.read_text()), file)
 
 
+def _check_caps(cfg: "Config") -> None:
+    """v13 §2.1: both caps are whole numbers in ``0..NO_CAP``, refused by
+    name. Checked here rather than in ``__post_init__`` so a ``Config`` built
+    in a test with a deliberate bad value can still exist; the file is where
+    a wrong number comes from."""
+    for key in ("max_hits", "max_transfers"):
+        value = getattr(cfg, key)
+        if (isinstance(value, bool) or not isinstance(value, int)
+                or not 0 <= value <= NO_CAP):
+            raise GafferError(
+                f"[optimizer] {key} = {value!r} — must be a whole number "
+                f"between 0 and {NO_CAP} ({NO_CAP} means no cap)")
+
+
 def load_config(path: Path | str = "config.toml") -> Config:
     file = Path(path)
     if not file.exists():
@@ -333,7 +364,7 @@ def load_config(path: Path | str = "config.toml") -> Config:
     # W1's top_n, which is a real field, keeps travelling through the splat.
     optimizer = {k: v for k, v in raw.get("optimizer", {}).items()
                  if k not in NON_FIELD_OPTIMIZER_KEYS}
-    return Config(
+    cfg = Config(
         entry_id=raw["fpl"]["entry_id"],
         league_id=raw["fpl"]["league_id"],
         **optimizer,
@@ -394,6 +425,8 @@ def load_config(path: Path | str = "config.toml") -> Config:
         backup_keep=int(backup.get("keep", 14)),
         web_token=str(web.get("token", "")),
     )
+    _check_caps(cfg)
+    return cfg
 
 
 def _providers(raw) -> list[str]:

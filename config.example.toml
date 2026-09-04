@@ -19,6 +19,11 @@ hit_cost = 4
 # discount later weeks and price banked transfers, so this is not a raw xPts
 # gap. 0 turns the search off; each alternative costs one more MILP solve.
 alt_plan_max_gap = 2.0
+# v13: your appetite. The most hits and the most transfers the solver may take
+# in any one gameweek; the Thursday advice, its sweep, its alternatives and its
+# chip table all solve under them. 15 = no cap; max_transfers = 0 = bank.
+max_hits = 2
+max_transfers = 15
 # v12: how many players per position the MILP may consider, on top of the ones
 # you already own. These four numbers have decided the candidate pool since the
 # first solve and lived only in the source until now; they are here so that "he

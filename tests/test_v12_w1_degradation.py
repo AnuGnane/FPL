@@ -80,6 +80,8 @@ def test_only_one_file_pins_the_absolute_config_field_count():
     cycle's file rather than its own. "Exactly one, and it is the newest
     cycle's" is the claim; the rail moves with the pin, which is one line and
     is the whole maintenance cost of keeping the count in one place.
+
+    v13 moved it again, to ``test_v13_degradation.py``.
     """
     import re
 
@@ -102,7 +104,7 @@ def test_only_one_file_pins_the_absolute_config_field_count():
                      r"\s*==\s*\d+", re.M)
     hits = [p.name for p in _suite_files()
             if "fields(Config)" in (text := p.read_text()) and pin.search(text)]
-    assert hits == ["test_v12_w3_degradation.py"]
+    assert hits == ["test_v13_degradation.py"]
 
 
 def test_only_one_file_pins_the_absolute_route_count():

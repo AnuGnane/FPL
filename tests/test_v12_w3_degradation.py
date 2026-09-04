@@ -527,13 +527,15 @@ def test_the_config_gained_exactly_two_fields():
 
     Pinned as a total *and* by name: a count alone would let a key be added
     and another removed in one cycle.
+
+    v13 (2026-09-04) moved the absolute total to ``test_v13_degradation.py``
+    (57); this file keeps the by-name claim about its own two keys.
     """
     import dataclasses
 
     from gaffer.config import Config
 
     names = {f.name for f in dataclasses.fields(Config)}
-    assert len(names) == 55
     assert {"alt_plan_max_gap", "draw_availability"} <= names
 
 
