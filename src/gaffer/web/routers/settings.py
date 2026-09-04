@@ -1,4 +1,4 @@
-"""GET/POST ``/api/settings`` — the nine settings the UI may edit.
+"""GET/POST ``/api/settings`` — the eleven settings the UI may edit.
 
 Writes ``config.local.toml`` and **never** ``config.toml`` (spec §8: a UI that
 edits ``config.toml`` is out of scope, and that file carries the odds API key).

@@ -173,3 +173,62 @@ def test_the_caps_line_wording(caps, line):
     from gaffer.cli import _caps_line
 
     assert _caps_line(caps) == line
+
+
+# --- Block 4: Settings ---------------------------------------------------
+
+SETTINGS_BASE = """
+[fpl]
+entry_id = 111
+league_id = 222
+
+[optimizer]
+horizon = 3
+"""
+
+
+@pytest.fixture()
+def settings_client(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from gaffer.config import optimizer_top_n, serving_config
+    from gaffer.web.app import create_app
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "config.toml").write_text(SETTINGS_BASE)
+    serving_config.cache_clear()
+    optimizer_top_n.cache_clear()
+    yield TestClient(create_app())
+    serving_config.cache_clear()
+    optimizer_top_n.cache_clear()
+
+
+def test_the_settings_panel_serves_both_caps_with_their_range(settings_client):
+    rows = {r["key"]: r for r in settings_client.get("/api/settings").json()["rows"]}
+    assert rows["max_hits"]["value"] == 2
+    assert rows["max_transfers"]["value"] == 15
+    for key in ("max_hits", "max_transfers"):
+        assert rows[key]["kind"] == "int"
+        assert (rows[key]["lo"], rows[key]["hi"]) == (0, 15)
+        assert rows[key]["section"] == "optimizer"
+        assert rows[key]["source"] == "default"
+
+
+def test_a_saved_cap_reaches_load_config(settings_client, tmp_path):
+    import tomllib
+
+    from gaffer.config import LOCAL_OVERLAY, load_config
+
+    resp = settings_client.post("/api/settings",
+                                json={"key": "max_hits", "value": 1})
+    assert resp.status_code == 200, resp.text
+    overlay = tomllib.loads((tmp_path / LOCAL_OVERLAY).read_text())
+    assert overlay["optimizer"]["max_hits"] == 1
+    assert load_config(tmp_path / "config.toml").max_hits == 1
+
+
+def test_a_cap_above_fifteen_is_refused_at_the_endpoint(settings_client):
+    resp = settings_client.post("/api/settings",
+                                json={"key": "max_transfers", "value": 16})
+    assert resp.status_code == 422
+    assert resp.json()["detail"]["constraint"] == "out_of_range"

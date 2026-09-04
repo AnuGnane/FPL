@@ -1,4 +1,4 @@
-"""The nine settings the UI may edit (v12 W5 §6.2).
+"""The eleven settings the UI may edit (v12 W5 §6.2; v13 added the two caps).
 
 A whitelist, not a schema dump. Everything in ``Config`` that is not here is
 untouchable from the web: the odds API key above all, and the web token beside
@@ -113,6 +113,18 @@ WHITELIST: tuple[SettingKey, ...] = (
                "Draw availability in the sweep", "bool", None, None,
                "Each scenario draws whether each player is available, so "
                "\"bought in N%\" reflects availability risk."),
+    # v13 §2.3 (specs/2026-09-04-gaffer-v13-transfer-ladder-design.md). The
+    # appetite. Also editable from the ladder card on the This Week hub,
+    # which writes through this same endpoint.
+    SettingKey("max_hits", "optimizer", "max_hits", "Max hits per week",
+               "int", 0, 15,
+               "15 = no cap. The Thursday advice, its sweep, its alternatives "
+               "and its chip table all solve under this. The transfer ladder "
+               "on the This Week hub edits it too."),
+    SettingKey("max_transfers", "optimizer", "max_transfers",
+               "Max transfers per week", "int", 0, 15,
+               "15 = no cap; 0 = bank (no moves at all). Also edited from "
+               "the transfer ladder."),
 )
 
 BY_FIELD = {entry.field: entry for entry in WHITELIST}
