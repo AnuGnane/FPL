@@ -808,3 +808,21 @@ def test_cap_maps_the_no_cap_sentinel_to_none():
 def test_advice_carries_the_caps_with_a_safe_default():
     a = _bare_advice()
     assert getattr(a, "caps", None) is None
+
+
+def test_run_advise_builds_the_ladder_after_the_state_and_never_fails_on_it():
+    """v13 §3.2, source-level like the artifact seams above: the ladder is
+    solved off the state just saved, sits between the state write and the
+    availability write, and is wrapped so its failure is one printed line."""
+    import inspect
+
+    from gaffer.advise import run_advise
+
+    src = inspect.getsource(run_advise)
+    state = src.index("save_solve_state(")
+    ladder = src.index("build_ladder(gw)")
+    avail = src.index("save_availability(avail, gw)")
+    assert state < ladder < avail
+    guard = src[src.rindex("try:", 0, ladder):ladder]
+    assert "try:" in guard
+    assert 'print(f"ladder: not built for GW{gw} ({exc})")' in src

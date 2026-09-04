@@ -51,6 +51,7 @@ from gaffer.data.odds import (OddsClient, ags_frame, blend_attacking_odds,
                               next_gw_event_ids, odds_frame)
 from gaffer.features.engineer import build_prediction_frame, feature_columns
 from gaffer.io import atomic_write
+from gaffer.ladder import build_ladder
 from gaffer.league_mode import (LeagueParams, captain_cover, captaincy_note,
                                 captaincy_override, compute_strategy,
                                 cover_table, tilt_ep, win_probability)
@@ -1189,6 +1190,13 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
              "max_hits": int(cfg.max_hits),
              "max_transfers": int(cfg.max_transfers)},
         pool=pool_rows(pool, players, owned_now, ep_by, gws)))
+    # v13 §3.2: the transfer ladder, off the state just saved. Never the
+    # run's failure — a ladder that could not be built is one printed line
+    # and a card with a rebuild button.
+    try:
+        build_ladder(gw)
+    except Exception as exc:  # noqa: BLE001
+        print(f"ladder: not built for GW{gw} ({exc})")
     # Two artifacts nothing in the pipeline reads: the availability frame this
     # run predicted on, and the payload itself, appended to a pruned log. Both
     # exist so the UI can answer "why?" and "what changed since Tuesday?"
