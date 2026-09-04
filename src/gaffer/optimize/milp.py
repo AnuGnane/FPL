@@ -171,6 +171,13 @@ class SolveInput:
     dataclass in the tree still builds — and so an empty list adds not one
     constraint to the model. ``tests/data/v12_w3_milp_golden.lp`` pins that.
     """
+    # v13 §2.2 (specs/2026-09-04-gaffer-v13-transfer-ladder-design.md)
+    max_transfers: int | None = None
+    """Cap on transfers in a non-wildcard week; ``None`` adds no constraint.
+
+    Appended last and defaulted, like ``force_out``, so the golden LP above
+    is byte-identical with it ``None``. ``0`` is "bank": no move at all.
+    """
 
 
 @dataclass
@@ -748,6 +755,10 @@ def _solve_once(pool: pd.DataFrame, state: SolveInput, *, decay: float,
             prob += sq[c][t] == 0
         if state.max_hits is not None and not wc:
             prob += hits[t] <= state.max_hits
+        # v13 §2.2: the transfer cap, the same shape as the hit cap and exempt
+        # on a wildcard week for the same reason.
+        if state.max_transfers is not None and not wc:
+            prob += nt <= state.max_transfers
     for c in state.force_in_gw:
         prob += tin[c][T[0]] == 1
 

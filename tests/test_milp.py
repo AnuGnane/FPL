@@ -578,3 +578,47 @@ def test_a_wildcard_week_accrues_no_free_transfer():
     second = plan.gw_plans[1]
     assert sorted(second.buys) == [19, 20]     # both stars bought in week 2
     assert second.hits == 1                    # 1 FT + 1 hit, not 2 FTs
+
+
+# --- v13: max_transfers -------------------------------------------------
+
+KW13 = dict(decay=0.85, bench_weight=0.1, vice_weight=0.1, ft_value=1.5,
+            itb_value=0.05, hit_cost=4)
+
+
+def _two_star_pool():
+    """Codes 19 and 20 (both FWD, neither owned) are worth a free transfer
+    each: with two FTs the solver takes both, one hit or none."""
+    pool = _pool(star_ep=9.0)
+    pool.loc[pool["code"] == 19, "ep"] = pd.Series(
+        [{1: 9.0, 2: 9.0}], index=pool.index[pool["code"] == 19])
+    return pool
+
+
+def test_max_transfers_none_is_the_identity():
+    from dataclasses import replace as dc_replace
+
+    a = solve_plan(_two_star_pool(), _state(ft=2), **KW13)
+    b = solve_plan(_two_star_pool(), dc_replace(_state(ft=2),
+                                                max_transfers=None), **KW13)
+    assert round(a.objective, 9) == round(b.objective, 9)
+    assert sorted(a.gw_plans[0].buys) == sorted(b.gw_plans[0].buys) == [19, 20]
+
+
+def test_max_transfers_zero_is_bank():
+    from dataclasses import replace as dc_replace
+
+    plan = solve_plan(_two_star_pool(),
+                      dc_replace(_state(ft=2), max_transfers=0), **KW13)
+    assert plan.gw_plans[0].buys == []
+    assert plan.gw_plans[0].sells == []
+    assert plan.gw_plans[0].hits == 0
+
+
+def test_max_transfers_one_caps_a_two_move_week():
+    from dataclasses import replace as dc_replace
+
+    plan = solve_plan(_two_star_pool(),
+                      dc_replace(_state(ft=2), max_transfers=1), **KW13)
+    assert len(plan.gw_plans[0].buys) == 1
+    assert plan.gw_plans[0].hits == 0

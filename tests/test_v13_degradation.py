@@ -57,3 +57,32 @@ def test_the_two_keys_are_documented():
     for doc in ("config.example.toml", "README.md"):
         text = (root / doc).read_text(encoding="utf-8")
         assert "max_hits" in text and "max_transfers" in text, doc
+
+
+# --- Block 2: the MILP ---------------------------------------------------
+
+def test_both_caps_none_build_the_golden_lp_byte_for_byte(tmp_path):
+    """``tests/data/v12_w3_milp_golden.lp`` came off the code before
+    ``force_out`` existed and is unchanged by this cycle: a defaulted
+    ``max_transfers`` emits no constraint."""
+    from tests.test_v12_w3_force_out import GOLDEN, _capture_lp, _state
+
+    captured = _capture_lp(tmp_path, _state(max_transfers=None,
+                                            max_hits=None))
+    assert len(captured) == 1
+    assert captured[0] == GOLDEN.read_text()
+
+
+def test_a_transfer_cap_does_change_the_lp(tmp_path):
+    """The counterpart: a cap that *is* set writes a row, so the byte
+    equality above is evidence about ``None`` and not about the instrument.
+
+    Two, not one. That fixture's owned 15 is 7 MID and 1 FWD against a
+    ``SQUAD_COMPOSITION`` of 5 and 3, so it takes two moves to become a legal
+    squad at all and a cap of one is infeasible for a reason that has nothing
+    to do with this constraint.
+    """
+    from tests.test_v12_w3_force_out import GOLDEN, _capture_lp, _state
+
+    captured = _capture_lp(tmp_path, _state(max_transfers=2))
+    assert captured[0] != GOLDEN.read_text()
