@@ -18,8 +18,8 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from gaffer.artifacts import (latest_gw, load_solve_state, milp_pool,
-                              raw_ep_by, solve_kw_from_state)
+from gaffer.artifacts import (caps_from_state, latest_gw, load_solve_state,
+                              milp_pool, raw_ep_by, solve_kw_from_state)
 from gaffer.drafts import (MAX_DRAFTS, add_draft, delete_draft, load_drafts)
 from gaffer.errors import GafferError
 from gaffer.league_mode import cover_from_eo, tilt_ep
@@ -146,10 +146,14 @@ def compare_drafts(names: list[str], gw: int) -> dict:
                                                 str | None]:
         chip = CHIP_CODES.get(req.chip) if req else None
         if req is None:
+            # v13 §2.3: the reference row is the plan the report served, so it
+            # solves under the caps the advice solved under.
+            base_hits, base_transfers = caps_from_state(state)
             solve_state = SolveInput(owned_codes=state.owned_codes,
                                      bank=state.bank,
                                      free_transfers=state.free_transfers,
-                                     gws=gws)
+                                     gws=gws, max_hits=base_hits,
+                                     max_transfers=base_transfers)
         elif chip == "freehit":
             # The same one-week conjuring ``chips.free_hit_gain`` scores.
             budget = state.bank + int(
@@ -170,7 +174,8 @@ def compare_drafts(names: list[str], gw: int) -> dict:
                 # v12 W3 §4.1: a draft is what you asked for, so the re-solve
                 # has to be able to ask for it. The free-hit branch above does
                 # not, for the reason ``whatif._validate`` refuses it.
-                force_out=list(req.force_out), max_hits=req.max_hits)
+                force_out=list(req.force_out), max_hits=req.max_hits,
+                max_transfers=req.max_transfers)
         try:
             plans = solve_plan(pool, solve_state, **opt).gw_plans
         except Exception as exc:  # noqa: BLE001 — one bad draft is a row

@@ -17,7 +17,8 @@ from gaffer.drafts import (MAX_DRAFTS, add_draft, delete_draft, drafts_path,
 from gaffer.errors import GafferError
 
 CONSTRAINTS = {"lock": [11], "ban": [], "force_in": [22], "force_out": [33],
-               "max_hits": 1, "chip": "none", "horizon": 3}
+               "max_hits": 1, "max_transfers": None, "chip": "none",
+               "horizon": 3}
 
 
 def test_an_absent_store_is_an_empty_list(tmp_path, monkeypatch):
@@ -44,12 +45,13 @@ def test_a_draft_round_trips_with_its_constraints(tmp_path, monkeypatch):
 
 
 def test_unknown_constraint_keys_are_dropped(tmp_path, monkeypatch):
-    """The store is fed by an HTTP body; it keeps the seven keys the solver
+    """The store is fed by an HTTP body; it keeps the eight keys the solver
     understands and nothing else."""
     monkeypatch.chdir(tmp_path)
     add_draft("odd", {**CONSTRAINTS, "wildcard_everything": True})
     assert set(load_drafts()[0]["constraints"]) == {
-        "lock", "ban", "force_in", "force_out", "max_hits", "chip", "horizon"}
+        "lock", "ban", "force_in", "force_out", "max_hits", "max_transfers",
+        "chip", "horizon"}
 
 
 def test_missing_constraint_keys_get_their_defaults(tmp_path, monkeypatch):
@@ -57,7 +59,7 @@ def test_missing_constraint_keys_get_their_defaults(tmp_path, monkeypatch):
     add_draft("bare", {})
     assert load_drafts()[0]["constraints"] == {
         "lock": [], "ban": [], "force_in": [], "force_out": [], "max_hits": 0,
-        "chip": "none", "horizon": None}
+        "max_transfers": None, "chip": "none", "horizon": None}
 
 
 def test_a_duplicate_name_is_refused(tmp_path, monkeypatch):

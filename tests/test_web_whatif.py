@@ -21,7 +21,7 @@ def _pool_frame(star_ep=9.0):
 
 
 def _save_state(gws=(1, 2), star_ep=9.0, lam=0.0, league_eo=None,
-                chips=("wildcard", "bboost"), cover=None):
+                chips=("wildcard", "bboost"), cover=None, opt_extra=None):
     frame, star_ep = _pool_frame(star_ep)
     players = pd.DataFrame({"code": frame["code"],
                             "name": [f"P{c}" for c in frame["code"]]})
@@ -35,7 +35,7 @@ def _save_state(gws=(1, 2), star_ep=9.0, lam=0.0, league_eo=None,
         avail_by_gw={g: list(chips) for g in gws},
         opt={"decay": 0.85, "bench_weight": 0.1, "vice_weight": 0.1,
              "ft_value": 1.5, "itb_value": 0.05, "hit_cost": 4,
-             "horizon": len(gws)},
+             "horizon": len(gws), **(opt_extra or {})},
         pool=pool_rows(frame, players, OWNED, ep_by, list(gws)),
         cover=cover))
 
@@ -272,3 +272,30 @@ def test_both_re_solving_routers_use_the_shared_bundle():
     assert "solve_kw_from_state(state)" in inspect.getsource(
         whatif.solve_whatif)
     assert "solve_kw_from_state(state)" in inspect.getsource(meta.chips_plan)
+
+
+# --- v13: the baseline is the plan the report served -----------------------
+
+
+def test_the_baseline_solves_under_the_saved_states_caps(tmp_path, monkeypatch):
+    """A state that solved with ``max_transfers = 0`` (bank) was served a plan
+    with no moves; its What-If baseline must be that plan, not a looser one."""
+    monkeypatch.chdir(tmp_path)
+    _save_state(opt_extra={"max_hits": 15, "max_transfers": 0})
+    client = TestClient(create_app())
+    job = _run(client, {"ban": [19]})
+    assert job["status"] == "done", job["error"]
+    assert job["result"]["baseline"]["buys"] == []
+
+
+def test_max_transfers_on_the_request_caps_your_version(client):
+    job = _run(client, {"max_transfers": 0})
+    assert job["status"] == "done", job["error"]
+    assert job["result"]["yours"]["buys"] == []
+    assert 20 in [p["code"] for p in job["result"]["baseline"]["buys"]]
+
+
+def test_a_negative_max_transfers_is_a_structured_422(client):
+    resp = client.post("/api/whatif", json={"max_transfers": -1})
+    assert resp.status_code == 422
+    assert resp.json()["detail"]["constraint"] == "max_transfers"

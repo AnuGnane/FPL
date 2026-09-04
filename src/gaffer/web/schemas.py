@@ -80,6 +80,9 @@ class WhatIfRequest(BaseModel):
     approximating with ``ban`` since v11.
     """
     max_hits: int = 0
+    # v13 §2.3. ``None`` is "no cap" (the baseline's cap is the saved state's,
+    # never this); 0 is bank.
+    max_transfers: int | None = None
     chip: Literal["none", "wc", "bb", "fh", "tc"] = "none"
     horizon: int | None = None
 

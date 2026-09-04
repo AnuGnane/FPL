@@ -18,8 +18,8 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from gaffer.artifacts import (latest_gw, load_solve_state, milp_pool,
-                              raw_ep_by, solve_kw_from_state)
+from gaffer.artifacts import (caps_from_state, latest_gw, load_solve_state,
+                              milp_pool, raw_ep_by, solve_kw_from_state)
 from gaffer.errors import GafferError
 from gaffer.league_mode import cover_from_eo, tilt_ep
 from gaffer.optimize.milp import GwPlan, SolveInput, solve_plan
@@ -110,6 +110,8 @@ def _validate(req: WhatIfRequest, state) -> None:
                         f"available: {', '.join(available) or 'none'}", [])
     if req.max_hits < 0:
         raise _fail("max_hits", "max_hits cannot be negative", [])
+    if req.max_transfers is not None and req.max_transfers < 0:
+        raise _fail("max_transfers", "max_transfers cannot be negative", [])
 
 
 def _summary(plans: list[GwPlan], ep_by: dict, meta: dict, weeks: int,
@@ -167,8 +169,13 @@ def solve_whatif(req: WhatIfRequest, gw: int) -> dict:
     meta = {int(r.code): {"name": str(r.name), "position": str(r.position)}
             for r in state.pool.drop_duplicates("code").itertuples()}
 
+    # v13 §2.3: the baseline is the plan the report served, so it solves
+    # under the caps the advice solved under. The user's version takes only
+    # what the request says.
+    base_hits, base_transfers = caps_from_state(state)
     base_state = SolveInput(owned_codes=state.owned_codes, bank=state.bank,
-                            free_transfers=state.free_transfers, gws=gws)
+                            free_transfers=state.free_transfers, gws=gws,
+                            max_hits=base_hits, max_transfers=base_transfers)
     baseline = solve_plan(pool, base_state, **opt).gw_plans
 
     chip = CHIP_CODES.get(req.chip)
@@ -181,7 +188,8 @@ def solve_whatif(req: WhatIfRequest, gw: int) -> dict:
         locked_out=list(req.ban), locked_in=list(req.lock),
         force_in_gw=list(req.force_in),
         # v12 W3 §4.1 (specs/2026-09-01-gaffer-v12-program-design.md)
-        force_out=list(req.force_out), max_hits=req.max_hits)
+        force_out=list(req.force_out), max_hits=req.max_hits,
+        max_transfers=req.max_transfers)
     if chip == "freehit":
         # Free hit conjures a one-week squad on the sell value of the current
         # one and reverts after, exactly as ``chips.free_hit_gain`` scores it.
