@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { apiDelete, apiGet, apiPost, errorText } from '../../api/client'
 import { useJob } from '../../api/useJob'
 import {
-  Button, Card, EmptyState, INPUT_CLASS, JobLog, Skeleton, fmtNum, toast,
+  Button, Callout, Card, EmptyState, INPUT_CLASS, JobLog, Skeleton,
+  TABLE_CLASS, THEAD_CLASS, TR_CLASS, fmtNum, tdClass, thClass, toast,
 } from '../../kit'
 import type {
   DraftCompare, DraftCompareRequest, DraftList, DraftSaveRequest,
@@ -103,7 +104,9 @@ export default function DraftsTab({ current }: { current: WhatIfRequest }) {
             another.
           </p>
         )}
-        {error && <p className="mb-3 text-rust">{error}</p>}
+        {error && (
+          <Callout tone="error" className="mb-3">{error}</Callout>
+        )}
         {drafts.drafts.length === 0
           ? (
             <EmptyState
@@ -154,38 +157,38 @@ export default function DraftsTab({ current }: { current: WhatIfRequest }) {
       {result && job.status !== 'queued' && job.status !== 'running' && (
         <Card title={`Compared over ${result.weeks} weeks`} className="mb-4">
           <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
+          <table className={TABLE_CLASS}>
+            <thead className={THEAD_CLASS}>
               <tr>
-                <th className="label pb-1 text-left">Draft</th>
-                <th className="label pb-1 text-right">Horizon xPts</th>
-                <th className="label pb-1 text-right">vs optimum</th>
-                <th className="label pb-1 text-right">Hits</th>
-                <th className="label pb-1 text-left">Chip</th>
-                <th className="label pb-1 text-left">Week 1</th>
+                <th className={thClass()}>Draft</th>
+                <th className={thClass(true)}>Horizon xPts</th>
+                <th className={thClass(true)}>vs optimum</th>
+                <th className={thClass(true)}>Hits</th>
+                <th className={thClass()}>Chip</th>
+                <th className={thClass()}>Week 1</th>
               </tr>
             </thead>
             <tbody>
               {result.rows.map((row) => (
-                <tr key={row.name}>
-                  <td className="py-1.5 text-text">{row.name}</td>
-                  <td className="num py-1.5 text-right">
+                <tr key={row.name} className={TR_CLASS}>
+                  <td className={`${tdClass()} text-text`}>{row.name}</td>
+                  <td className={tdClass(true)}>
                     {row.horizon_pts === null
                       ? '–' : fmtNum(row.horizon_pts, 1)}
                   </td>
-                  <td className="num py-1.5 text-right text-text-secondary">
+                  <td className={`${tdClass(true)} text-text-secondary`}>
                     {row.is_reference || row.delta_xpts === null
                       ? '–' : fmtNum(row.delta_xpts, 1)}
                   </td>
-                  <td className="num py-1.5 text-right">{row.hits ?? '–'}</td>
-                  <td className="py-1.5 text-text-secondary">
+                  <td className={tdClass(true)}>{row.hits ?? '–'}</td>
+                  <td className={`${tdClass()} text-text-secondary`}>
                     {row.chip ?? '–'}
                     {row.horizon !== null && result.weeks < row.horizon
                       && ` · ${row.horizon}-week plan`}
                   </td>
-                  <td className="py-1.5 text-text-secondary">
+                  <td className={`${tdClass()} text-text-secondary`}>
                     {row.error
-                      ? <span className="text-rust">{row.error}</span>
+                      ? <span className="text-down">{row.error}</span>
                       : moves(row.buys, row.sells)}
                   </td>
                 </tr>

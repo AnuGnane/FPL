@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../../api/client'
 import {
-  Badge, Card, EmptyState, Loading, PosBadge, difficultyBackground, fmtNum,
+  Card, Chip, EmptyState, Loading, PosBadge, difficultyTone, fmtNum,
 } from '../../kit'
 import type { PlanMove, PlanTimeline, TickerData } from '../../types'
 
@@ -13,13 +13,13 @@ type TickerCell = TickerData['teams'][number]['cells'][number]
 function MoveLine({ move, side }: { move: PlanMove; side: 'in' | 'out' }) {
   return (
     <p className={`flex items-center gap-1 ${side === 'in'
-      ? 'text-sage' : 'text-rust'}`}>
+      ? 'text-up' : 'text-down'}`}>
       {/* The arrow carries the verdict; the dot carries the identity. */}
       <span aria-hidden>{side === 'in' ? '↑' : '↓'}</span>
       <PosBadge pos={move.position} variant="dot" />
       {move.name}
       {move.price !== null && (
-        <span className="num ml-1 text-text-faint">{fmtNum(move.price)}</span>
+        <span className="tn ml-1 text-text-faint">{fmtNum(move.price)}</span>
       )}
     </p>
   )
@@ -93,15 +93,18 @@ export default function Timeline(
 
   return (
     <div className="flex gap-3 overflow-x-auto pb-2">
-      {data.weeks.map((week) => (
+      {/* No boxes (§5): every column after the first is told apart from its
+          neighbour by one hairline rule, not by a card. */}
+      {data.weeks.map((week, i) => (
         <div key={week.gw} data-testid={`plan-week-${week.gw}`}
-             className="min-w-[220px] flex-1">
+             className={`min-w-[220px] flex-1${
+               i > 0 ? ' border-l border-border pl-3' : ''}`}>
           <Card
             title={`GW${week.gw}`}
-            action={week.chip ? <Badge variant="info">{week.chip}</Badge> : null}
+            action={week.chip ? <Chip>{week.chip}</Chip> : null}
           >
             <p className="label">xPts</p>
-            <p className="num text-xl text-text">
+            <p className="tn text-[22px] font-semibold text-text">
               {fmtNum(week.expected_pts)}
             </p>
             <div className="mt-2 flex flex-col gap-0.5">
@@ -117,7 +120,7 @@ export default function Timeline(
             </div>
             {week.hits > 0 && (
               <p className="mt-2">
-                <Badge variant="negative">-{week.hit_cost}</Badge>
+                <Chip tone="down">-{week.hit_cost}</Chip>
               </p>
             )}
             <p data-testid={`plan-captain-${week.gw}`}
@@ -144,17 +147,21 @@ export default function Timeline(
                 const cell = cells.get(`${teamCode}:${week.gw}`)
                 // Absent, not guessed (spec D6): no team, no cell, no chip.
                 if (!cell) continue
+                // The wrapper carries the test id, the tone and the title;
+                // `Chip` is a closed primitive that draws the tint (rule 1).
+                const tone = difficultyTone(cell.difficulty)
                 chips.push(
                   <span
                     key={teamCode}
                     data-testid={`gw-fixture-${teamCode}-${week.gw}`}
-                    className="rounded px-1 text-[10px] text-text"
-                    style={{ background: difficultyBackground(cell.difficulty) }}
+                    data-tone={tone}
                     title={`${move.name} — ${cell.home ? 'vs' : 'at'} `
                       + `${cell.opponent} (GW${week.gw}), difficulty `
                       + `${cell.difficulty}`}
                   >
-                    {`${cell.opponent} (${cell.home ? 'H' : 'A'})`}
+                    <Chip tone={tone}>
+                      {`${cell.opponent} (${cell.home ? 'H' : 'A'})`}
+                    </Chip>
                   </span>,
                 )
               }

@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Timeline from './Timeline'
-import { difficultyBackground } from '../../kit'
+import { difficultyTone } from '../../kit'
 
 const { apiGet } = vi.hoisted(() => ({ apiGet: vi.fn() }))
 
@@ -43,11 +43,11 @@ describe('Timeline', () => {
     expect(screen.getByTestId('plan-week-6')).toBeInTheDocument()
   })
 
-  it('colours ins sage and outs rust, with prices', async () => {
+  it('colours ins up and outs down, with prices', async () => {
     render(<Timeline gw={5} />)
     const week = await screen.findByTestId('plan-week-5')
-    expect(within(week).getByText(/Wirtz/)).toHaveClass('text-sage')
-    expect(within(week).getByText(/Isak/)).toHaveClass('text-rust')
+    expect(within(week).getByText(/Wirtz/)).toHaveClass('text-up')
+    expect(within(week).getByText(/Isak/)).toHaveClass('text-down')
     expect(within(week).getByText(/8.5/)).toBeInTheDocument()
   })
 
@@ -103,12 +103,11 @@ describe('Timeline difficulty chips', () => {
       mockBoth()
       render(<Timeline gw={5} teamByCode={new Map([[3, 43]])} />)
       const chip = await screen.findByTestId('gw-fixture-43-5')
-      // The same number and the same function as the ticker square: two ramps
-      // for one idea is how two views end up disagreeing about how hard a
-      // fixture is, in the same colour scale, on the same page.
+      // The same number and the same function as the ticker square: two
+      // scales for one idea is how two views end up disagreeing about how
+      // hard a fixture is, on the same page. 0.7 is above the hard cut.
       expect(chip).toHaveTextContent('ARS (H)')
-      expect(chip.getAttribute('style'))
-        .toContain(difficultyBackground(0.7).slice(0, 20))
+      expect(chip).toHaveAttribute('data-tone', difficultyTone(0.7))
     })
 
   it('draws no strip for a gameweek the ticker payload does not cover',

@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import {
-  Badge, type Column, DataTable, PosBadge, Sparkline, fmtNum, fmtPct,
-  useIsMobile,
+  Bar, Chip, type Column, DataTable, PosBadge, Sparkline, TABLE_CLASS,
+  TR_CLASS, fmtNum, fmtPct, tdClass, useIsMobile,
 } from '../../kit'
 import type { NextFixture } from '../../types'
 
@@ -81,27 +81,27 @@ function columnsFor(mobile: boolean): Column<SquadRow>[] { return [
         {mobile && <PosBadge pos={r.position} variant="dot" />}
         {r.name}
         {r.news && (
-          <Badge variant="negative" title={r.news}>
+          <Chip tone="warn" title={r.news}>
             {r.chanceOfPlaying === null ? 'News' : `${r.chanceOfPlaying}%`}
-          </Badge>
+          </Chip>
         )}
-        {r.penalties && <Badge variant="info">Pens</Badge>}
+        {r.penalties && <Chip>Pens</Chip>}
         {r.pHaul !== null && r.pHaul >= HAUL_CHIP && (
-          <Badge variant="positive"
-                 title={`${pct(r.pHaul)} chance of 10+ points — the upper `
+          <Chip tone="up"
+                title={`${pct(r.pHaul)} chance of 10+ points — the upper `
                    + 'tail of his outcome distribution, which is his '
                    + 'expected points plus the variance a footballer’s week '
                    + 'carries, not a guess at his ceiling'}>
             {`10+ pts ${pct(r.pHaul)}`}
-          </Badge>
+          </Chip>
         )}
         {r.pBlank !== null && r.pBlank >= BLANK_CHIP && (
-          <Badge variant="negative"
-                 title={`${pct(r.pBlank)} chance of 2 points or fewer — the `
-                   + 'lower tail of the same distribution. A blank is an '
-                   + 'appearance and nothing else, not a missed match'}>
+          <Chip tone="down"
+                title={`${pct(r.pBlank)} chance of 2 points or fewer — the `
+                  + 'lower tail of the same distribution. A blank is an '
+                  + 'appearance and nothing else, not a missed match'}>
             {`blank ${pct(r.pBlank)}`}
-          </Badge>
+          </Chip>
         )}
       </span>
     ),
@@ -114,9 +114,9 @@ function columnsFor(mobile: boolean): Column<SquadRow>[] { return [
     value: (r) => (r.epHi === null || r.epLo === null
       ? null : r.epHi - r.epLo),
     render: (r) => (r.epLo === null || r.epHi === null
-      ? <span className="num text-text-muted">—</span>
+      ? <span className="tn text-text-muted">—</span>
       : (
-        <span className="num text-text-secondary"
+        <span className="tn text-text-secondary"
               title={'p25–p75 of what he might score: his expected points '
                 + 'plus football’s own variance, plus how far the forecast '
                 + 'itself might move. Not a plus-or-minus — the centre is '
@@ -127,17 +127,35 @@ function columnsFor(mobile: boolean): Column<SquadRow>[] { return [
       )) },
   { key: 'xmins', header: 'xMin', numeric: true, value: (r) => r.xmins,
     render: (r) => fmtNum(r.xmins, 0) },
+  // Rule 7: ownership and effective ownership are magnitudes against one
+  // ceiling with a whole squad to compare, so each gets the bar with its
+  // number beside it. The Bar clamps, so an EO above 100 fills the track.
   { key: 'leagueEo', header: 'EO%', primary: true, numeric: true,
-    value: (r) => r.leagueEo, render: (r) => fmtNum(r.leagueEo) },
+    value: (r) => r.leagueEo,
+    render: (r) => (
+      <Bar fraction={r.leagueEo / 100} text={fmtNum(r.leagueEo)}
+           testId={`eo-${r.code}`} aria-label={`EO ${fmtNum(r.leagueEo)}%`} />
+    ) },
   // v10b §F1a. Deliberately not `primary`: EO% already holds the primary slot
   // for ownership on the 390px collapsed card, and two ownership columns
   // there is how the card stops being readable. The sort value falls back to
   // -1 so unknowns sort below a genuine 0.0 rather than beside it.
   { key: 'fieldEo', header: 'Field%', numeric: true,
     value: (r) => r.fieldEo ?? -1,
-    render: (r) => (r.fieldEo == null ? '—' : fmtNum(r.fieldEo, 1)) },
+    render: (r) => (r.fieldEo == null
+      ? <span className="tn text-text-muted">—</span>
+      : (
+        <Bar fraction={r.fieldEo / 100} text={fmtNum(r.fieldEo, 1)}
+             testId={`field-${r.code}`}
+             aria-label={`Field ${fmtNum(r.fieldEo, 1)}%`} />
+        )) },
   { key: 'ownership', header: 'Own%', numeric: true,
-    value: (r) => r.ownership, render: (r) => fmtNum(r.ownership) },
+    value: (r) => r.ownership,
+    render: (r) => (
+      <Bar fraction={r.ownership / 100} text={fmtNum(r.ownership)}
+           testId={`own-${r.code}`}
+           aria-label={`Owned by ${fmtNum(r.ownership)}%`} />
+    ) },
   { key: 'simPct', header: 'sim%', numeric: true, value: (r) => r.simPct,
     render: (r) => fmtPct(r.simPct) },
   { key: 'last4', header: 'Last 4', numeric: true,
@@ -168,19 +186,21 @@ export default function SquadTable({ rows, breakdown }: SquadTableProps) {
         return (
           <div>
             <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className={TABLE_CLASS}>
               <tbody>
                 {detail.components.map((c) => (
-                  <tr key={c.label}>
-                    <td className="py-0.5 text-text-secondary">{c.label}</td>
-                    <td className="num py-0.5 text-right text-text">
+                  <tr key={c.label} className={TR_CLASS}>
+                    <td className={`${tdClass()} text-text-secondary`}>
+                      {c.label}
+                    </td>
+                    <td className={`${tdClass(true)} text-text`}>
                       {fmtNum(c.points)}
                     </td>
                   </tr>
                 ))}
                 <tr>
-                  <td className="label pt-1">Total</td>
-                  <td className="num pt-1 text-right text-text">
+                  <td className={`${tdClass()} label`}>Total</td>
+                  <td className={`${tdClass(true)} text-text`}>
                     {fmtNum(detail.ep)}
                   </td>
                 </tr>

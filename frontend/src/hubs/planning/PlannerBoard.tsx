@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../../api/client'
 import {
-  Badge, Button, Card, EmptyState, Loading, PosBadge, fmtDelta, fmtNum,
+  Button, Card, Chip, EmptyState, Loading, PosBadge, fmtDelta, fmtNum,
   segmentClass,
 } from '../../kit'
 import type {
@@ -36,14 +36,14 @@ function MoveRow(
       data-testid={`board-${side}-${move.code}`}
       data-differs={String(differs)}
       className={`flex flex-wrap items-center gap-1 ${side === 'in'
-        ? 'text-sage' : 'text-rust'} ${differs
+        ? 'text-up' : 'text-down'} ${differs
         ? 'border-l-2 border-current pl-1.5' : ''}`}
     >
       <span aria-hidden>{side === 'in' ? '↑' : '↓'}</span>
       <PosBadge pos={move.position} variant="dot" />
       {move.name}
       {move.price !== null && (
-        <span className="num ml-1 text-text-faint">{fmtNum(move.price)}</span>
+        <span className="tn ml-1 text-text-faint">{fmtNum(move.price)}</span>
       )}
       {/* The direction and how far through the threshold he is, and nothing
           else: MoverRow carries no predicted price, and a board printing
@@ -202,7 +202,7 @@ export default function PlannerBoard(
     <div>
       <p className="mb-2 text-text-muted">
         {'Starting bank '}
-        <span className="num text-text">{fmtNum(data.bank)}</span>
+        <span className="tn text-text">{fmtNum(data.bank)}</span>
         {' — the horizon the last advice run solved. The board draws that '
          + 'plan; it never re-solves.'}
       </p>
@@ -287,14 +287,15 @@ export default function PlannerBoard(
            role={alternatives.length > 0 ? 'tabpanel' : undefined}
            aria-labelledby={alternatives.length > 0
              ? `plan-tab-${pick}` : undefined}>
-        {weeks.map((week) => (
+        {/* No boxes (§5): one hairline rule tells a column from the one
+            before it, as on the timeline. */}
+        {weeks.map((week, i) => (
           <div key={week.gw} data-testid={`board-week-${week.gw}`}
-               className="min-w-[220px] flex-1">
+               className={`min-w-[220px] flex-1${
+                 i > 0 ? ' border-l border-border pl-3' : ''}`}>
             <Card
               title={`GW${week.gw}`}
-              action={week.chip
-                ? <Badge variant="info">{week.chip}</Badge>
-                : null}
+              action={week.chip ? <Chip>{week.chip}</Chip> : null}
             >
               <div className="flex flex-col gap-0.5">
                 {week.buys.map((m) => (
@@ -313,16 +314,16 @@ export default function PlannerBoard(
               </div>
               {week.hits > 0 && (
                 <p data-testid={`board-hits-${week.gw}`} className="mt-2">
-                  <Badge variant="negative">
+                  <Chip tone="down">
                     {`${week.hits} hit${week.hits === 1 ? '' : 's'} `
                      + `· -${week.hit_cost}`}
-                  </Badge>
+                  </Chip>
                 </p>
               )}
               <p className="mt-2 label">Bank after</p>
               <p
                 data-testid={`board-bank-${week.gw}`}
-                className="num text-text"
+                className="tn text-text"
                 title={week.bank === null
                   ? 'A move in this week or an earlier one has no price, or '
                     + 'could not be read at all, so the running bank is '
@@ -332,7 +333,7 @@ export default function PlannerBoard(
                 {fmtNum(week.bank)}
               </p>
               <p className="mt-2 label">xPts</p>
-              <p className="num text-xl text-text">
+              <p className="tn text-[22px] font-semibold text-text">
                 {fmtNum(week.expected_pts)}
               </p>
               {/* v12 W5 §6.5. Every line below is a term of the solver's own
@@ -350,9 +351,10 @@ export default function PlannerBoard(
                     )}
                     {week.trace.moves.map((m) => (
                       <p key={`${m.buy_code}-${m.sell_code}`}
+                         className="font-mono tn text-xs"
                          data-testid={`board-why-move-${week.gw}-${m.buy_code}`}>
                         <span>{`${m.sell_name} → ${m.buy_name}`}</span>
-                        <span className="num ml-2 text-text">
+                        <span className="ml-2 text-text">
                           {fmtDelta(m.ep_gain)}
                         </span>
                         {m.note && (
@@ -368,8 +370,8 @@ export default function PlannerBoard(
                         one card, and without the clause the reader has to
                         guess which of them is wrong. */}
                     {week.trace.hit_cost > 0 && (
-                      <p className="text-rust"
-                         title={'The badge above is what the hits cost you. '
+                      <p className="font-mono tn text-xs text-down"
+                         title={'The chip above is what the hits cost you. '
                            + 'This is what the solver paid for them: the same '
                            + 'charge discounted by this week’s decay factor, '
                            + 'which is why a later week’s is smaller.'}>
@@ -390,13 +392,13 @@ export default function PlannerBoard(
                     )}
                     {week.trace.bank_value !== null
                       && week.trace.bank_value !== undefined && (
-                      <p className="text-text-faint">
+                      <p className="font-mono tn text-xs text-text-faint">
                         {`bank left at the end of the horizon, valued `
                          + `${fmtNum(week.trace.bank_value, 3)}`}
                       </p>
                     )}
                     {week.trace.theta !== null && (
-                      <p className="text-text-faint">
+                      <p className="font-mono tn text-xs text-text-faint">
                         {`chip threshold θ ${fmtNum(week.trace.theta)}`}
                       </p>
                     )}
@@ -406,7 +408,7 @@ export default function PlannerBoard(
                         found to be nothing. The week's note carries which. */}
                     {week.trace.price_charge !== null
                       && week.trace.price_charge !== 0 && (
-                      <p className="text-text-faint">
+                      <p className="font-mono tn text-xs text-text-faint">
                         {`price-timing charge −`
                          + `${fmtNum(week.trace.price_charge, 3)}`
                          + ', priced against tonight’s price log'}

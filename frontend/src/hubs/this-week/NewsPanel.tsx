@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../../api/client'
-import { Badge, Card, PlayerName } from '../../kit'
+import {
+  Card, Chip, PlayerName, TABLE_CLASS, THEAD_CLASS, TR_CLASS, tdClass,
+  thClass,
+} from '../../kit'
 import type { NewsPanelData, NewsRow } from '../../types'
 
 const pct = (value: number) => `${Math.round(value * 100)}%`
@@ -54,35 +57,35 @@ export default function NewsPanel({ gw }: { gw: number }) {
       )}
     >
       <div className="overflow-x-auto">
-      <table className="w-full">
-        <thead>
+      <table className={TABLE_CLASS}>
+        <thead className={THEAD_CLASS}>
           <tr>
-            <th className="label pb-1 text-left">Player</th>
-            <th className="label pb-1 text-right">P(plays) news / flags</th>
-            <th className="label pb-1 text-right">xMins news / flags</th>
-            <th className="label pb-1 text-left">Why</th>
+            <th className={thClass()}>Player</th>
+            <th className={thClass(true)}>P(plays) news / flags</th>
+            <th className={thClass(true)}>xMins news / flags</th>
+            <th className={thClass()}>Why</th>
           </tr>
         </thead>
         <tbody>
           {data.rows.map((row) => (
-            <tr key={row.code} className="border-t border-divider">
-              <td className="py-1.5">
+            <tr key={row.code} className={TR_CLASS}>
+              <td className={tdClass()}>
                 <PlayerName code={row.code} name={row.name} />
                 <span className="ml-1.5 text-text-faint">{row.team_name}</span>
               </td>
-              {/* Sage/rust here is a verdict and means it: the news layer
-                  either raised this player's chances or cut them. */}
-              <td className={`num py-1.5 text-right ${row.p_play_news
-                < row.p_play_flags ? 'text-rust' : 'text-sage'}`}>
+              {/* Rule 1: the pair is a direction — the news layer either
+                  raised this player's chances or cut them. */}
+              <td className={`${tdClass(true)} ${row.p_play_news
+                < row.p_play_flags ? 'text-down' : 'text-up'}`}>
                 {pct(row.p_play_news)} / {pct(row.p_play_flags)}
               </td>
-              <td className="num py-1.5 text-right text-text">
+              <td className={`${tdClass(true)} text-text`}>
                 {Math.round(row.e_min_news)} / {Math.round(row.e_min_flags)}
               </td>
-              <td className="py-1.5">
+              <td className={tdClass()}>
                 <span className="flex flex-wrap gap-1">
                   {evidence(row).map((bit) => (
-                    <Badge key={bit}>{bit}</Badge>
+                    <Chip key={bit}>{bit}</Chip>
                   ))}
                 </span>
               </td>

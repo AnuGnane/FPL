@@ -80,7 +80,7 @@ export default function SquadPitch(
                    bg-turf px-2 py-4"
       >
         {/* Hairline markings: an inner rectangle and the halfway line, in
-            the turf-line token — no texture, no gradient (spec §5). */}
+            the turf-line token — flat, no texture at all (spec §5). */}
         <div aria-hidden data-turf-line
              className="pointer-events-none absolute inset-2 rounded-chip
                         border border-turf-line" />

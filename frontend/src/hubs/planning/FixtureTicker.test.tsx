@@ -31,7 +31,7 @@ describe('FixtureTicker', () => {
       render(<FixtureTicker weeks={2} />)
       const cell = await screen.findByTitle('LIV vs ARS (GW3) — 0.2')
       expect(cell).toHaveTextContent('ARS (H)')
-      expect(cell.getAttribute('style')).toContain('background')
+      expect(cell).toHaveAttribute('data-tone', 'up')
       expect(screen.getByText(/Elo-implied/)).toBeInTheDocument()
     })
 

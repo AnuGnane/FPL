@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiGet } from '../../api/client'
-import { Card, EmptyState, JobButton } from '../../kit'
+import { Callout, Card, EmptyState, JobButton } from '../../kit'
 import { JOB_KIND_LABEL, type DigestPanel } from '../../types'
 
 const KIND_LABEL: Record<string, string> = {
@@ -75,7 +75,7 @@ export default function DigestCard() {
       {/* A digest that failed to build still banks an artifact, so it must
           read as a failure rather than as a briefing with nothing in it. */}
       {digest.error && (
-        <p className="mt-2 text-text-muted">{digest.error}</p>
+        <Callout tone="error" className="mt-2">{digest.error}</Callout>
       )}
       <dl className="mt-3 space-y-2">
         {digest.sections.map((section) => (

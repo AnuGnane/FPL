@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../../api/client'
-import { Card, difficultyBackground, fmtNum } from '../../kit'
+import {
+  Callout, Card, Chip, TABLE_CLASS, THEAD_CLASS, TR_CLASS, difficultyTone,
+  fmtNum, tdClass, thClass,
+} from '../../kit'
 import type { TickerData } from '../../types'
 
 export default function FixtureTicker(
@@ -22,7 +25,7 @@ export default function FixtureTicker(
   if (error) {
     return (
       <Card title="Fixture ticker" className="mb-4">
-        <p className="text-rust">{error}</p>
+        <Callout tone="error">{error}</Callout>
       </Card>
     )
   }
@@ -61,34 +64,33 @@ export default function FixtureTicker(
       )}
     >
       {data.source === 'elo' && oddsKeyPresent !== true && (
-        <p className="mb-3 rounded-card border-l-2 border-info bg-base px-3
-                      py-2 text-text-muted">
+        <Callout className="mb-3">
           No banked odds for these gameweeks — add an odds key for
           market-implied numbers.
-        </p>
+        </Callout>
       )}
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
+        <table className={TABLE_CLASS}>
+          <thead className={THEAD_CLASS}>
             <tr>
-              <th className="label pb-1 text-left">Team</th>
+              <th className={thClass()}>Team</th>
               {data.gws.map((gw) => (
-                <th key={gw} className="pb-1 text-center">
+                <th key={gw} className={thClass()}>
                   <button type="button" onClick={() => toggle(gw)}
-                          className="label hover:text-text">
+                          className="label block w-full hover:text-text">
                     GW{gw}
                     {sortGw === gw ? (ascending ? ' ▴' : ' ▾') : ''}
                   </button>
                 </th>
               ))}
-              <th className="label pb-1 text-right">Mean</th>
+              <th className={thClass(true)}>Mean</th>
             </tr>
           </thead>
           <tbody>
             {teams.map((team) => (
-              <tr key={team.code} className="border-t border-divider">
+              <tr key={team.code} className={TR_CLASS}>
                 <th scope="row"
-                    className="py-1 pr-2 text-left font-normal text-text">
+                    className={`${tdClass()} font-normal text-text`}>
                   {team.name}
                 </th>
                 {data.gws.map((gw) => {
@@ -96,26 +98,31 @@ export default function FixtureTicker(
                   if (!cell) {
                     return (
                       <td key={gw}
-                          className="px-1 py-1 text-center text-text-faint">
-                        –
+                          className={`${tdClass()} text-text-faint`}>
+                        <span className="flex justify-center">–</span>
                       </td>
                     )
                   }
+                  // The tint moves onto the chip (rule 1's three words); the
+                  // cell keeps the title and carries the tone for the tests.
+                  const tone = difficultyTone(cell.difficulty)
                   return (
                     <td
                       key={gw}
-                      style={{
-                        background: difficultyBackground(cell.difficulty),
-                      }}
-                      className="px-1 py-1 text-center text-text"
+                      data-tone={tone}
+                      className={tdClass()}
                       title={`${team.short_name} ${cell.home ? 'vs' : 'at'} `
                         + `${cell.opponent} (GW${gw}) — ${cell.difficulty}`}
                     >
-                      {cell.opponent} ({cell.home ? 'H' : 'A'})
+                      <span className="flex justify-center">
+                        <Chip tone={tone}>
+                          {cell.opponent} ({cell.home ? 'H' : 'A'})
+                        </Chip>
+                      </span>
                     </td>
                   )
                 })}
-                <td className="num py-1 text-right text-text-secondary">
+                <td className={`${tdClass(true)} text-text-secondary`}>
                   {fmtNum(team.mean_difficulty, 2)}
                 </td>
               </tr>

@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { ApiError, apiGet, apiPost } from '../../api/client'
 import { useJob } from '../../api/useJob'
 import {
-  Card, EmptyState, Loading, PlayerName, Skeleton, fmtNum,
+  Bar, Button, Callout, Card, Chip, EmptyState, Loading, PlayerName,
+  Segmented, Skeleton, TABLE_CLASS, THEAD_CLASS, TR_CLASS, fmtNum, tdClass,
+  thClass,
 } from '../../kit'
 import ConstraintsPanel from './ConstraintsPanel'
 import PlanDiffTable from './PlanDiffTable'
@@ -41,17 +43,16 @@ export const CHIP_CODES: Record<string, WhatIfRequest['chip']> = {
 function GainBar({ gain, threshold }: { gain: number
                                         threshold: number | null }) {
   const bar = threshold ?? gain
-  const width = bar > 0 ? Math.min(100, (gain / bar) * 100) : 0
+  // Rule 1: over the bar is a direction — this chip is worth playing. Under
+  // it the fill is information, so it stays grey.
   return (
-    <span className="inline-block h-1.5 w-24 rounded-full bg-base align-middle">
-      <span
-        className="block h-1.5 rounded-full"
-        style={{ width: `${Math.max(2, width)}%`,
-                 background: gain >= bar
-                   ? 'var(--color-sage)' : 'var(--color-border)' }}
-        aria-label={`${gain} against a bar of ${bar}`}
-      />
-    </span>
+    <Bar
+      fraction={bar > 0 ? gain / bar : 0}
+      tone={gain >= bar ? 'up' : 'neutral'}
+      width={96}
+      testId={`gain-${gain}-${bar}`}
+      aria-label={`${gain} against a bar of ${bar}`}
+    />
   )
 }
 
@@ -85,7 +86,7 @@ function SquadColumn({ title, players }: { title: string
         {players.map((p) => (
           <li key={p.code} className="flex items-center gap-1.5">
             <PlayerName code={p.code} name={p.name} pos={p.position} />
-            <span className="num ml-auto text-text-muted">
+            <span className="tn ml-auto text-text-muted">
               £{fmtNum(p.price)}m · {fmtNum(p.ep)} xPts
             </span>
           </li>
@@ -107,8 +108,9 @@ function WildcardTab({ wildcard }: { wildcard: SquadDiff | null }) {
   }
   return (
     <Card title="Wildcard now" className="mb-4">
-      <p className={wildcard.recommend ? 'text-sage' : 'text-text-muted'}>
-        Worth <span className="num">{wildcard.gain_over_horizon}</span> expected
+      {/* Rule 1: worth playing or not is a verdict against the bar. */}
+      <p className={wildcard.recommend ? 'text-up' : 'text-text-muted'}>
+        Worth <span className="tn">{wildcard.gain_over_horizon}</span> expected
         points over the horizon —
         {wildcard.recommend ? ' worth playing.' : ' not worth it yet.'}
       </p>
@@ -200,7 +202,7 @@ export default function ChipsTab() {
   if (error) {
     return (
       <Card title="Chips unavailable">
-        <p className="text-rust">{error}</p>
+        <Callout tone="error">{error}</Callout>
       </Card>
     )
   }
@@ -226,25 +228,18 @@ export default function ChipsTab() {
           buttons because two already fit, and a third reopens that. Wrapping
           is the cheapest answer and the one responsive.test.tsx's existing
           rail already recognises — no third way of making a strip narrow. */}
-      <div className="mb-4 flex flex-wrap gap-1">
-        {([['table', 'Chip table'], ['wildcard', 'Wildcard'],
-           ['outlook', 'Season outlook']] as const).map(
-          ([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              aria-pressed={tab === key}
-              onClick={() => {
-                setTab(key)
-                if (key === 'wildcard') pick('wildcard')
-              }}
-              className={`rounded-card border px-3 py-1.5 ${tab === key
-                ? 'border-text text-text' : 'border-border text-text-muted'}`}
-            >
-              {label}
-            </button>
-          ))}
-      </div>
+      <Segmented
+        className="mb-4 flex-wrap"
+        label="Chips panel"
+        value={tab}
+        options={[{ value: 'table', label: 'Chip table' },
+                  { value: 'wildcard', label: 'Wildcard' },
+                  { value: 'outlook', label: 'Season outlook' }]}
+        onChange={(key) => {
+          setTab(key)
+          if (key === 'wildcard') pick('wildcard')
+        }}
+      />
       {tab === 'outlook' && <ChipOutlook />}
       {tab === 'table' && (
         <Card title="Gain against the bar" className="mb-4">
@@ -257,47 +252,48 @@ export default function ChipsTab() {
             />
           )}
           <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
+          <table className={TABLE_CLASS}>
+            <thead className={THEAD_CLASS}>
               <tr>
-                <th className="label pb-1 text-left">Chip</th>
-                <th className="label pb-1 text-right">GW</th>
-                <th className="label pb-1 text-right">Gain</th>
-                <th className="label pb-1 text-right">Bar</th>
-                <th className="label pb-1 text-right">Per week</th>
-                <th className="label pb-1 pl-3 text-left">Against the bar</th>
+                <th className={thClass()}>Chip</th>
+                <th className={thClass(true)}>GW</th>
+                <th className={thClass(true)}>Gain</th>
+                <th className={thClass(true)}>Bar</th>
+                <th className={thClass(true)}>Per week</th>
+                <th className={thClass()}>Against the bar</th>
               </tr>
             </thead>
             <tbody>
               {data.chips.map((row) => (
                 <tr key={`${row.chip}-${row.gw}`}
-                    className="border-t border-divider"
+                    className={TR_CLASS}
                     data-play-now={String(row.play_now)}
                     aria-selected={row.chip === chip}>
-                  <td className="py-1.5">
+                  {/* Rule 1: "play it now" is this row clearing its bar. */}
+                  <td className={tdClass()}>
                     <button
                       type="button"
                       onClick={() => pick(row.chip)}
                       className={`hover:underline ${row.play_now
-                        ? 'text-sage' : 'text-text'}`}
+                        ? 'text-up' : 'text-text'}`}
                     >
                       {LABELS[row.chip] ?? row.chip}
                     </button>
                   </td>
-                  <td className="num py-1.5 text-right text-text-secondary">
+                  <td className={`${tdClass(true)} text-text-secondary`}>
                     {row.gw2 == null ? `GW${row.gw}`
                       : `GW${row.gw} + GW${row.gw2}`}
                   </td>
-                  <td className={`num py-1.5 text-right ${row.play_now
-                    ? 'text-sage' : 'text-text'}`}>{row.gain}</td>
-                  <td className="num py-1.5 text-right text-text-muted">
+                  <td className={`${tdClass(true)} ${row.play_now
+                    ? 'text-up' : 'text-text'}`}>{row.gain}</td>
+                  <td className={`${tdClass(true)} text-text-muted`}>
                     {row.threshold ?? '—'}
                     <BarSource source={row.threshold_source} />
                   </td>
-                  <td className="num py-1.5 text-right text-text-muted">
+                  <td className={`${tdClass(true)} text-text-muted`}>
                     {row.per_week ?? '—'}
                   </td>
-                  <td className="py-1.5 pl-3">
+                  <td className={tdClass()}>
                     <GainBar gain={row.gain} threshold={row.threshold} />
                     {row.note && (
                       <span className="ml-2 text-text-muted">{row.note}</span>
@@ -326,19 +322,14 @@ export default function ChipsTab() {
           )}
         </p>
         <ConstraintsPanel value={request} onChange={setRequest} />
-        <button
-          type="button"
-          onClick={solve}
-          disabled={busy || !armed}
-          className="rounded-card border border-border bg-base px-3 py-2
-                     text-text-secondary hover:text-text
-                     disabled:text-text-faint"
-        >
+        <Button onClick={solve} disabled={busy || !armed}>
           {busy ? 'Solving…' : 'Re-solve'}
-        </button>
-        {invalid && <p className="mt-2 text-rust">{invalid}</p>}
+        </Button>
+        {invalid && (
+          <Callout tone="error" className="mt-2">{invalid}</Callout>
+        )}
         {job.status === 'error' && (
-          <p className="mt-2 text-rust">{job.error}</p>
+          <Callout tone="error" className="mt-2">{job.error}</Callout>
         )}
       </Card>
       {busy && (
@@ -403,7 +394,7 @@ function ChipOutlook() {
           the coming weeks and which weeks are unusual. What to play this week
           is This Week&rsquo;s answer.
         </p>
-        {planError && <p className="text-rust">{planError}</p>}
+        {planError && <Callout tone="error">{planError}</Callout>}
         {plan?.chips.map((row) => {
           const expiry = row.window?.[1]
           return (
@@ -411,10 +402,10 @@ function ChipOutlook() {
                  className="mb-3 border-t border-divider pt-2">
               <div className="flex flex-wrap items-baseline gap-x-3">
                 <span className="text-text">{LABELS[row.chip] ?? row.chip}</span>
-                <span className="num text-text-secondary">
+                <span className="tn text-text-secondary">
                   {`best GW${row.best_gw} · ${fmtNum(row.best_gain, 1)} pts`}
                 </span>
-                <span className="num text-text-muted">
+                <span className="tn text-text-muted">
                   {`θ ${fmtNum(row.threshold_now ?? null, 1)}`}
                 </span>
                 {expiry != null && (
@@ -429,7 +420,7 @@ function ChipOutlook() {
         })}
       </Card>
       <Card title="Doubles and blanks">
-        {outlookError && <p className="text-rust">{outlookError}</p>}
+        {outlookError && <Callout tone="error">{outlookError}</Callout>}
         {/* Only alongside rows: on a fresh clone the server serves no weeks
             at all, and "club names unavailable" over an empty table is a
             complaint about names nothing was going to print. */}
@@ -451,27 +442,29 @@ function ChipOutlook() {
         )}
         {interesting.length > 0 && (
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
+            <table className={TABLE_CLASS}>
+              <thead className={THEAD_CLASS}>
                 <tr>
-                  <th className="label pb-1 text-left">GW</th>
-                  <th className="label pb-1 text-right">Fixtures</th>
-                  <th className="label pb-1 pl-3 text-left">Doubles</th>
-                  <th className="label pb-1 pl-3 text-left">Blanks</th>
+                  <th className={thClass()}>GW</th>
+                  <th className={thClass(true)}>Fixtures</th>
+                  <th className={thClass()}>Doubles</th>
+                  <th className={thClass()}>Blanks</th>
                 </tr>
               </thead>
               <tbody>
                 {interesting.map((w) => (
-                  <tr key={w.gw} className="border-t border-divider"
+                  <tr key={w.gw} className={TR_CLASS}
                       data-testid={`outlook-week-${w.gw}`}>
-                    <td className="num py-1.5">GW{w.gw}</td>
-                    <td className="num py-1.5 text-right text-text-secondary">
+                    <td className={`${tdClass()} tn`}>GW{w.gw}</td>
+                    <td className={`${tdClass(true)} text-text-secondary`}>
                       {w.fixtures}
                     </td>
-                    <td className="py-1.5 pl-3 text-sage">
+                    {/* Rule 1: an extra fixture is a week going your way and
+                        a blank is one going against you. */}
+                    <td className={`${tdClass()} text-up`}>
                       {w.doubles.map(teamLabel).join(', ') || '—'}
                     </td>
-                    <td className="py-1.5 pl-3 text-rust">
+                    <td className={`${tdClass()} text-down`}>
                       {w.blanks.map(teamLabel).join(', ') || '—'}
                     </td>
                   </tr>
@@ -508,16 +501,18 @@ function ThetaTrack(
       {weeks.map((w, i) => {
         const theta = thetas[i]
         const over = theta !== undefined && w.gain >= theta
+        // Rule 1: clearing the bar is the direction the strip is read for;
+        // a week under it is information and stays grey.
         return (
-          <span key={w.gw}
-                className={`num rounded-card border px-1.5 py-0.5 ${over
-                  ? 'border-sage text-sage' : 'border-border text-text-muted'}`}
+          <Chip key={w.gw}
+                tone={over ? 'up' : 'neutral'}
+                className="tn"
                 title={theta === undefined
                   ? `GW${w.gw}: gain ${w.gain.toFixed(1)}`
                   : `GW${w.gw}: gain ${w.gain.toFixed(1)} against a bar of `
                     + theta.toFixed(1)}>
             {`GW${w.gw} ${w.gain.toFixed(1)}`}
-          </span>
+          </Chip>
         )
       })}
     </div>

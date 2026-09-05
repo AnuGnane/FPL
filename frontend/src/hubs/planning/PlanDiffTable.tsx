@@ -1,4 +1,7 @@
-import { Card, PlayerName, TONE_CLASS, fmtNum, toneOf } from '../../kit'
+import {
+  Card, PlayerName, TABLE_CLASS, THEAD_CLASS, TONE_CLASS, fmtNum, tdClass,
+  thClass, toneOf,
+} from '../../kit'
 import type { WhatIfResult } from '../../types'
 
 // Both plans are scored the way the solver scores them: the captain's points
@@ -44,12 +47,12 @@ export default function PlanDiffTable({ diff }: { diff: WhatIfResult }) {
   return (
     <Card title="Original vs yours" className="mb-4">
       <div className="overflow-x-auto">
-      <table className="w-full">
-        <thead>
+      <table className={TABLE_CLASS}>
+        <thead className={THEAD_CLASS}>
           <tr>
-            <th />
-            <th className="label pb-1 text-right">Original</th>
-            <th className="label pb-1 text-right">Yours</th>
+            <th className={thClass()} />
+            <th className={thClass(true)}>Original</th>
+            <th className={thClass(true)}>Yours</th>
           </tr>
         </thead>
         <tbody>
@@ -61,19 +64,21 @@ export default function PlanDiffTable({ diff }: { diff: WhatIfResult }) {
               // one that keeps full-strength text; the rest recede.
               className="border-t border-divider"
             >
-              <td className={`py-1.5 ${row.changed
+              <td className={`${tdClass()} ${row.changed
                 ? 'text-text' : 'text-text-muted'}`}>
+                {/* Changed is information, not something to click: the dot
+                    is ink, never accent (rule 3). */}
                 {row.changed && (
-                  <span aria-hidden className="mr-1.5 text-info">●</span>
+                  <span aria-hidden className="mr-1.5 text-text">●</span>
                 )}
                 {row.label}
               </td>
-              <td className={`py-1.5 text-right ${row.numeric ? 'num' : ''}
-                ${row.changed ? 'text-text-secondary' : 'text-text-muted'}`}>
+              <td className={`${tdClass(row.numeric)} text-right ${row.changed
+                ? 'text-text-secondary' : 'text-text-muted'}`}>
                 {row.original}
               </td>
-              <td className={`py-1.5 text-right ${row.numeric ? 'num' : ''}
-                ${row.changed ? 'text-text' : 'text-text-muted'}`}>
+              <td className={`${tdClass(row.numeric)} text-right ${row.changed
+                ? 'text-text' : 'text-text-muted'}`}>
                 {row.yours}
               </td>
             </tr>

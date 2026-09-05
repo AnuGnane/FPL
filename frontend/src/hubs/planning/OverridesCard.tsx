@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiDelete, apiGet, errorText } from '../../api/client'
-import { Card, fmtNum, toast } from '../../kit'
+import { Button, Callout, Card, fmtNum, toast } from '../../kit'
 import type { OverridesPanel } from '../../types'
 
 export default function OverridesCard() {
@@ -31,12 +31,12 @@ export default function OverridesCard() {
         automated source, to the coming gameweek only. Set them from a
         player's row on the Players page.
       </p>
+      {/* Rule 2: doubt about whether your own pins act at all. */}
       {!data.active && (
-        <p className="mb-3 rounded-card border-l-2 border-rust bg-base px-3
-                      py-2 text-text-muted">
+        <Callout tone="warn" className="mb-3">
           These are saved but not being applied: <code>[news] overrides</code>
           {' '}is false in config.toml.
-        </p>
+        </Callout>
       )}
       {data.rows.length === 0
         ? <p className="text-text-muted">Nothing pinned.</p>
@@ -63,15 +63,10 @@ export default function OverridesCard() {
                     <span className="text-text-muted">{` — ${row.note}`}</span>
                   )}
                 </span>
-                <button
-                  type="button"
-                  aria-label={`unpin ${row.name}`}
-                  onClick={() => drop(row.code, row.name)}
-                  className="rounded-card border border-border px-2 py-1
-                             text-text-muted hover:text-text"
-                >
+                <Button variant="ghost" aria-label={`unpin ${row.name}`}
+                        onClick={() => drop(row.code, row.name)}>
                   Unpin
-                </button>
+                </Button>
               </li>
             ))}
           </ul>

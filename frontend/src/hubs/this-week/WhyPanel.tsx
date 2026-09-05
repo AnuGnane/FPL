@@ -1,7 +1,8 @@
 import { Fragment, useEffect, useState } from 'react'
 import { apiGet } from '../../api/client'
 import {
-  Card, PosBadge, TONE_CLASS, fmtDelta, fmtNum, fmtPct, toneOf,
+  Callout, Card, PosBadge, TABLE_CLASS, THEAD_CLASS, TONE_CLASS, fmtDelta,
+  fmtNum, fmtPct, tdClass, thClass, toneOf,
 } from '../../kit'
 import type {
   AdviceDiff, ComponentPlayer, ComponentsBreakdown, OverridesPanel,
@@ -46,11 +47,10 @@ function DiffStrip({ diff }: { diff: AdviceDiff }) {
   }
   const delta = diff.expected_pts_delta
   return (
-    <div className="mb-4 rounded-card border border-border border-l-2
-                    border-l-info bg-card px-4 py-3">
+    <Callout className="mb-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="label">Since last run</p>
-        <p className="num text-text-faint">
+        <p className="tn text-text-faint">
           {diff.available ? diff.previous_at : 'since the last retrain'}
         </p>
       </div>
@@ -59,12 +59,12 @@ function DiffStrip({ diff }: { diff: AdviceDiff }) {
         {/* Both ornaments below only mean anything against a previous run: a
             movers-only strip must not print a delta of 0.0 xPts. */}
         {diff.available && (
-          <span className={`num ${TONE_CLASS[toneOf(delta)]}`}>
+          <span className={`tn ${TONE_CLASS[toneOf(delta)]}`}>
             {fmtDelta(delta)} xPts
           </span>
         )}
       </p>
-    </div>
+    </Callout>
   )
 }
 
@@ -73,7 +73,7 @@ function PlayerRow({ player }: { player: ComponentPlayer }) {
   return (
     <>
       <tr className="border-t border-divider">
-        <td className="py-1.5">
+        <td className={tdClass()}>
           <button type="button" onClick={() => setOpen(!open)}
                   className="inline-flex items-center gap-1.5 text-text
                              hover:underline">
@@ -83,9 +83,11 @@ function PlayerRow({ player }: { player: ComponentPlayer }) {
             {player.name}
           </button>
         </td>
-        <td className="py-1.5"><PosBadge pos={player.position} /></td>
-        <td className="py-1.5 text-text-secondary">{player.team_name}</td>
-        <td className="num py-1.5 text-right text-text">
+        <td className={tdClass()}><PosBadge pos={player.position} /></td>
+        <td className={`${tdClass()} text-text-secondary`}>
+          {player.team_name}
+        </td>
+        <td className={`${tdClass(true)} text-text`}>
           {fmtNum(player.ep)}
         </td>
       </tr>
@@ -98,13 +100,15 @@ function PlayerRow({ player }: { player: ComponentPlayer }) {
               {fmtPct(fixture.minutes.p60)} · {fmtNum(fixture.ep)} xPts
             </p>
             <div className="overflow-x-auto">
-            <table className="mt-2 w-full">
+            <table className={`mt-2 ${TABLE_CLASS}`}>
               <tbody>
                 {fixture.components.map((c) => (
                   <Fragment key={c.label}>
                     <tr>
-                      <td className="py-0.5 text-text-secondary">{c.label}</td>
-                      <td className="num py-0.5 text-right text-text">
+                      <td className={`${tdClass()} text-text-secondary`}>
+                        {c.label}
+                      </td>
+                      <td className={`${tdClass(true)} text-text`}>
                         {fmtNum(c.points)}
                       </td>
                     </tr>
@@ -115,7 +119,8 @@ function PlayerRow({ player }: { player: ComponentPlayer }) {
                     {c.label === 'Goals' && fixture.pen_taker !== null
                       && fixture.pen_taker !== undefined && (
                       <tr>
-                        <td className="num py-0.5 text-text-faint" colSpan={2}>
+                        <td className={`${tdClass()} tn text-text-faint`}
+                            colSpan={2}>
                           of which penalty duty{' '}
                           {fixture.pen_taker >= 0 ? '+' : ''}
                           {fixture.pen_taker}
@@ -180,8 +185,7 @@ export default function WhyPanel({ gw, codes }: { gw: number
                 || diff.ep_movers.length > 0)
         && <DiffStrip diff={diff} />}
       {pins && shown.length > 0 && (
-        <div className="mb-4 rounded-card border-l-2 border-info bg-base px-3
-                        py-2">
+        <Callout className="mb-4">
           <p className="label mb-1">Your pins are in this plan</p>
           {shown.map((row) => (
             <p key={row.code} className="text-text-secondary">
@@ -195,20 +199,20 @@ export default function WhyPanel({ gw, codes }: { gw: number
               {!pins.active && ' (not currently applied)'}
             </p>
           ))}
-        </div>
+        </Callout>
       )}
       <Card title="Why this plan" className="mb-4">
         <p className="mb-2 text-text-muted">
           Click a name for the terms that produced his expected points.
         </p>
         <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
+        <table className={TABLE_CLASS}>
+          <thead className={THEAD_CLASS}>
             <tr>
-              <th className="label pb-1 text-left">Player</th>
-              <th className="label pb-1 text-left">Pos</th>
-              <th className="label pb-1 text-left">Club</th>
-              <th className="label pb-1 text-right">xPts</th>
+              <th className={thClass()}>Player</th>
+              <th className={thClass()}>Pos</th>
+              <th className={thClass()}>Club</th>
+              <th className={thClass(true)}>xPts</th>
             </tr>
           </thead>
           <tbody>

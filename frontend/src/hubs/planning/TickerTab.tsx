@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../../api/client'
-import { Card } from '../../kit'
+import { Card, INPUT_CLASS } from '../../kit'
 import FixtureTicker from './FixtureTicker'
 import type { HealthData } from '../../types'
 
@@ -24,8 +24,7 @@ export default function TickerTab() {
           <select
             value={weeks}
             onChange={(event) => setWeeks(Number(event.target.value))}
-            className="num rounded-card border border-border bg-base px-2 py-1
-                       text-text"
+            className={`${INPUT_CLASS} tn`}
           >
             {[4, 6, 8, 10, 12].map((n) =>
               <option key={n} value={n}>{n}</option>)}
