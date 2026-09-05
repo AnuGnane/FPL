@@ -1,3 +1,6 @@
+import { CircleDashed } from 'lucide-react'
+import Button from './Button'
+
 export interface EmptyStateProps {
   title: string
   detail: string
@@ -13,26 +16,17 @@ export default function EmptyState(
   return (
     <div
       data-testid="empty-state"
-      className="flex flex-col items-center gap-2 rounded-card border
-                 border-border bg-card px-6 py-10 text-center"
+      className="flex flex-col items-center gap-2 border-y border-border
+                 px-6 py-10 text-center"
     >
-      <span aria-hidden className="text-2xl text-text-faint">◍</span>
-      <p className="text-base text-text">{title}</p>
+      <CircleDashed aria-hidden size={20} className="text-text-faint" />
+      <p className="text-[15px] font-medium text-text">{title}</p>
       <p className="max-w-md text-text-muted">{detail}</p>
       {onAction
-        ? (
-          <button
-            type="button"
-            onClick={onAction}
-            className="mt-2 rounded-card border border-border bg-base px-3 py-2
-                       text-text-secondary hover:text-text"
-          >
-            {action}
-          </button>
-          )
+        ? <Button className="mt-2" onClick={onAction}>{action}</Button>
         : (
-          <code className="mt-2 rounded-card border border-border bg-base px-2
-                           py-1 font-mono text-text-secondary">
+          <code className="tn mt-2 rounded-ctl border border-border bg-input
+                           px-2 py-1 text-text-secondary">
             {action}
           </code>
           )}

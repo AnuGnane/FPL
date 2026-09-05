@@ -123,10 +123,10 @@ export default function ToastOutlet() {
           key={t.id}
           data-testid="toast"
           data-tone={t.tone}
-          className={'pointer-events-auto max-w-md rounded-card border '
-            + 'bg-card px-3 py-2 shadow-lg '
+          className={'pointer-events-auto max-w-md rounded-ctl border '
+            + 'bg-raised px-3 py-2 '
             + (t.tone === 'negative'
-              ? 'border-rust text-rust' : 'border-border text-text')}
+              ? 'border-down text-down' : 'border-border text-text')}
         >
           {t.text}
         </div>

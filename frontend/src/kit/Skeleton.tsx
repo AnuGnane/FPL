@@ -42,7 +42,7 @@ export default function Skeleton({
           key={i}
           aria-hidden
           data-testid="skeleton-bar"
-          className="block h-3 animate-pulse rounded-card bg-base"
+          className="block h-3 animate-pulse rounded-chip bg-raised"
           // Ragged rather than uniform: a stack of identical bars reads as a
           // component, and a stack of unequal ones reads as text about to
           // arrive. The width only ever shrinks, so the block stays a block.

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { apiGet } from '../api/client'
 import { useJobStream } from '../api/useJobStream'
 import { JOB_KIND_LABEL, type JobKind } from '../types'
+import Button, { type ButtonVariant } from './Button'
 import JobLog from './JobLog'
 
 export interface JobButtonProps {
@@ -14,6 +15,9 @@ export interface JobButtonProps {
    *  Optional: the button owns the stream, and lifting `useJobStream` into
    *  every caller to answer one question would be a refactor. */
   onRunning?: (running: boolean) => void
+  /** `primary` for the action the page is for (Run advise); secondary
+   *  otherwise. */
+  variant?: ButtonVariant
 }
 
 /** The shape of GET /api/jobs/current; 204 (nothing running) arrives as null. */
@@ -24,7 +28,7 @@ interface CurrentRun {
 }
 
 export default function JobButton(
-  { kind, label, onDone, onRunning }: JobButtonProps,
+  { kind, label, onDone, onRunning, variant = 'secondary' }: JobButtonProps,
 ) {
   const job = useJobStream()
   const fired = useRef(false)
@@ -69,16 +73,10 @@ export default function JobButton(
   const busy = job.status === 'running'
   return (
     <div>
-      <button
-        type="button"
-        disabled={busy}
-        onClick={() => job.start(kind)}
-        className="rounded-card border border-border bg-card px-3 py-2
-                   text-text-secondary hover:text-text disabled:opacity-50"
-      >
+      <Button variant={variant} disabled={busy} onClick={() => job.start(kind)}>
         {busy ? `${label ?? JOB_KIND_LABEL[kind]} — running…`
               : label ?? JOB_KIND_LABEL[kind]}
-      </button>
+      </Button>
       <JobLog status={job.status} lines={job.lines} error={job.error} />
     </div>
   )

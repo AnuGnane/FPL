@@ -3,11 +3,18 @@ import { describe, expect, it } from 'vitest'
 import Card from './Card'
 
 describe('Card', () => {
-  it('renders its children inside a bordered surface', () => {
-    const { container } = render(<Card><p>inside</p></Card>)
+  it('renders its children under a label band, with no card box', () => {
+    const { container } = render(<Card title="Squad"><p>inside</p></Card>)
     expect(screen.getByText('inside')).toBeInTheDocument()
-    expect(container.firstChild).toHaveClass('border-border')
-    expect(container.firstChild).toHaveClass('bg-card')
+    const root = container.firstChild as HTMLElement
+    expect(root).toHaveAttribute('data-kit', 'section')
+    expect(root.className).not.toMatch(/bg-card|border-border|rounded/)
+    expect(root.querySelector('header')).toHaveClass('border-b')
+  })
+
+  it('is also exported as Section (v14)', async () => {
+    const kit = await import('./index')
+    expect(kit.Section).toBe(kit.Card)
   })
 
   it('renders a header row with a title and an action slot', () => {

@@ -12,7 +12,7 @@ describe('JobLog', () => {
   it('renders every streamed line in the mono face', () => {
     render(<JobLog status="running" lines={['one', 'two']} error={null} />)
     expect(screen.getByText('one')).toBeInTheDocument()
-    expect(screen.getByTestId('job-log-lines')).toHaveClass('num')
+    expect(screen.getByTestId('job-log-lines')).toHaveClass('font-mono')
   })
 
   it('shows the failure message and the last twenty lines on failure', () => {

@@ -1,26 +1,23 @@
 import type { ReactNode } from 'react'
 
 /**
- * `titleSize` exists because a card is used for two different things: a
- * section of a page, whose title is chrome and belongs in the 9px uppercase
- * label voice, and a card *about* something — a player, in ComparePanel —
- * whose title is the content and has to read as such.
+ * A section of the page (spec §5): a label band with a hairline under it and
+ * an optional right-aligned action; the content sits on the page surface.
+ * No border box, no fill, no radius — the ledger separates sections with
+ * rules, not cards.
  *
- * The title is an `h3` regardless of `titleSize`: a card always sits under a
- * page heading, and several cards side by side (ComparePanel renders four)
- * would otherwise emit a row of sibling `h2`s that a screen reader reads as
- * four top-level sections of the page rather than four items within one.
+ * Still named `Card` (and also exported as `Section`) because 35 files
+ * compose it under that name and the spec allows the alias for one cycle.
+ *
+ * `titleSize` exists because a section is used for two different things: a
+ * region of a page, whose title is chrome and belongs in the label voice,
+ * and a panel *about* something — a player, in ComparePanel — whose title
+ * is the content and has to read as such. The title is an `h3` regardless:
+ * several sections side by side would otherwise emit a row of sibling `h2`s.
  */
 export interface CardProps {
   title?: string
-  /**
-   * Rich heading content. When given it is what the `h3` renders, so a card
-   * *about* something can carry that thing's own control — ComparePanel's
-   * click-to-explain player name — rather than a copy of its name as text.
-   * `title` stays the string form of the same thing and may be passed with
-   * it; `heading` wins visually, and the `h3` (and its `titleSize` class) is
-   * the same element either way.
-   */
+  /** Rich heading content; `title` stays the string form of the same thing. */
   heading?: ReactNode
   titleSize?: 'sm' | 'lg'
   action?: ReactNode
@@ -30,7 +27,7 @@ export interface CardProps {
 
 const TITLE_CLASS = {
   sm: 'label',
-  lg: 'text-lg font-medium text-text',
+  lg: 'text-lg font-semibold text-text',
 } as const
 
 export default function Card({
@@ -38,17 +35,15 @@ export default function Card({
 }: CardProps) {
   const shown = heading ?? title
   return (
-    <section
-      className={`rounded-card border border-border bg-card ${className ?? ''}`}
-    >
+    <section data-kit="section" className={`min-w-0 ${className ?? ''}`}>
       {(shown || action) && (
-        <header className="flex items-center justify-between gap-3 border-b
-                           border-divider px-4 py-3">
+        <header className="mb-3 flex min-h-8 items-center justify-between
+                           gap-3 border-b border-border pb-1.5">
           {shown && <h3 className={TITLE_CLASS[titleSize]}>{shown}</h3>}
           {action}
         </header>
       )}
-      <div className="p-4">{children}</div>
+      <div>{children}</div>
     </section>
   )
 }

@@ -7,7 +7,8 @@ describe('Loading', () => {
     const { container } = render(<Loading />)
     const text = screen.getByText('Loading…')
     expect(text).toHaveClass('text-text-muted')
-    expect(container.querySelector('section.bg-card')).toBeInTheDocument()
+    expect(container.querySelector('section[data-kit="section"]'))
+      .toBeInTheDocument()
   })
 
   it('names what is being waited on when the page knows', () => {
