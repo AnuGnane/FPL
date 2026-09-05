@@ -1,7 +1,7 @@
 # The gaffer guide
 
 *A tour of everything this project does, how it got here, and how to use it.
-Last updated 2026-09-04, after the free-transfer rule hotfix (`main` `3c39048`). The
+Last updated 2026-09-04, after v13 (the transfer ladder) merged. The
 README covers setup and reference; this document is for understanding. If you
 only read one section, read §12: it is the current to-do list.*
 
@@ -19,7 +19,7 @@ only read one section, read §12: it is the current to-do list.*
 8. [Everything the CLI can do](#8-everything-the-cli-can-do)
 9. [The data it collects and why](#9-the-data-it-collects-and-why)
 10. [How the project measures itself](#10-how-the-project-measures-itself)
-11. [The version history, v1 to v12](#11-the-version-history-v1-to-v12)
+11. [The version history, v1 to v13](#11-the-version-history-v1-to-v13)
 12. [What is pending and what was left open](#12-what-is-pending-and-what-was-left-open)
 13. [Troubleshooting](#13-troubleshooting)
 
@@ -156,6 +156,19 @@ earned:
   **+0.38 points per week across the 21 weeks of 2024-25 in which an
   autosub actually fired**, with the reshaping confined to the bench — the
   intended shape.
+- **Transfer appetite and the ladder** (v13): two `[optimizer]` keys, `max_hits`
+  (default 2) and `max_transfers` (default 15 = no cap), cap what the solver
+  may do in any one non-wildcard week, and the Thursday advice, its scenario
+  sweep, its alternative plans, its chip table and the season replay all
+  solve under them. The **transfer ladder** then prices every rung of
+  appetite off the saved board — bank, then 0, 1, 2 and 3 hits — and scores
+  each fixed plan on one shared matrix of 2,000 outcome-noise draws, so
+  P(a rung beats banking) and P(it is the best) compare only the players
+  that differ. Its points are raw XI + captain over the horizon, undecayed
+  and untilted, so they can rank the rungs differently from the objective:
+  on the GW3 board the extra hits bought points but fewer than four each,
+  and the zero-hit rung was the best on raw points at 33% against 20% for
+  three hits.
 
 ## 5. The web UI, hub by hub
 
@@ -179,7 +192,14 @@ armband, the run's own half-sentence saying why (v12 W5); the chip planner's
 best week per
 chip; the Friday/Tuesday digest cards; a re-run button (full or `--fast`).
 An **EO lens** toggle tints the pitch by how owned each player is; a
-**Table** toggle returns the dense squad table.
+**Table** toggle returns the dense squad table. Under the moves card sits
+the **transfer ladder** (v13): one row per rung of hits with the moves, the
+cost now and over the horizon, this week's and the horizon's expected
+points, and the probabilities; your cap's row is highlighted and the rows
+beyond it stay visible but muted; expand a row for that rung's squad and
+exactly what the last hit bought; two selects set your max hits and max
+transfers (saved to `config.local.toml`) and rebuild the ladder in a couple
+of seconds. The moves card's heading names the live count and cap.
 
 **Planning** — the future. Six tabs:
 - *Board* (v11): the solved horizon laid out week by week — buys, sells,
@@ -198,8 +218,11 @@ An **EO lens** toggle tints the pitch by how owned each player is; a
   plan it did not make, and it names the terms it does not attribute (the
   captain, vice and bench weightings), so the lines are not meant to add up
   to the week's xPts. Plan A only: B and C came out of different solves.
-- *What-If*: lock, ban, force in or **must-sell** players, cap the hits, and
-  re-solve the real MILP. Must sell (v12 W3) is the constraint `ban` was
+- *What-If*: lock, ban, force in or **must-sell** players, cap the hits and
+  (v13) the transfers, and re-solve the real MILP; the baseline it diffs
+  against is solved under your saved caps, so "original" is the plan the
+  report served. The transfer ladder is on this tab too, above the
+  sensitivity card. Must sell (v12 W3) is the constraint `ban` was
   standing in for: the player goes in the first week of the horizon and the
   bank receives the sale. It is refused inline, before the solve, on someone
   you do not own (use ban), on someone you also locked, banned or forced in,
@@ -509,7 +532,7 @@ Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 `reports/evaluation.json`, and the Model hub.
 
-## 11. The version history, v1 to v12
+## 11. The version history, v1 to v13
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
 reviewed. Every cycle ran the same way, and knowing the shape tells you where
@@ -616,7 +639,21 @@ Also in v12: the first news-shadow verdict, four cycles after it was
 instrumented — on GW2 the plain FPL flag beat the news layer (Brier 0.1191
 vs 0.1276), one gameweek and therefore a residual, but the direction to watch.
 
-The suite grew from nothing to **4,042 Python + 795 frontend tests** along
+**v13 — the transfer ladder** (2026-09-04, one day after v12 closed). The
+morning's free-transfer hotfix (§4) regenerated a GW3 board that still
+wanted four moves at three hits, and one solve per hit cap showed the
+objective and the raw points pointing different ways. The cycle put the
+manager's appetite into the tool: `max_hits` / `max_transfers` obeyed by
+the advice, the sweep, the alternatives, the chip table, the What-If
+baseline and the season replay, and the ladder card that prices every rung
+with probabilities from shared draws. Two reviews reshaped it before merge:
+the cost column now shows the horizon's hits (a one-hit-per-week plan
+spends 12, not 4), the draws are no longer clipped at zero (the clip had
+inflated every rung by ~6 points and shrunk the gaps), and the caps the
+ladder highlights come from the live config so the selects move the row at
+once. Pins after: routes 48, job kinds 12, `Config` fields 57.
+
+The suite grew from nothing to **4,104 Python + 813 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above
 so a future change cannot quietly break one.
 
@@ -644,6 +681,15 @@ single most useful thing on the list: everything in §9 that cannot be
 rebuilt is unprotected until the backup job runs.
 
 ### 12.1 Things only you can check — the live spot-checks
+
+**v13, the ladder (2026-09-04):** on This Week, the ladder card shows five
+rows with the 2-hit row highlighted and the 3-hit row muted; change *Max
+hits* to 1 and the highlight moves within a few seconds without a re-run;
+expand the 1-hit row and the "what the last hit bought" line names one
+extra move and its horizon cost; the moves card heading reads "1 free
+transfer · cap 2 hits"; the Settings tab lists the two new rows with source
+*local* after the change; the What-If tab's *Max transfers* select at
+"bank" re-solves to no moves.
 
 Every cycle's spec ends with a list of checks on the running UI that no test
 can do, and v12's were deferred rather than passed (the W5 gate says so in

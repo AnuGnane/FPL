@@ -8,18 +8,20 @@ fills, and the index below points at them. Measurement rules every cycle
 follows: `CONVENTIONS.md`. For the same material written for a reader rather
 than an auditor, `docs/GUIDE.md` §11–12.
 
-## Where things stand (2026-09-04)
+## Where things stand (2026-09-04, evening)
 
-v12 — the five-workstream polish program — is **closed**: W1–W5 all merged,
-then the 2026-09-04 free-transfer rule hotfix (`3c39048`), `main` at
-`3c39048`, suite 4044 Python + 795 frontend, pins routes 47 / job kinds 12 /
-`Config` fields 55, security ritual clean. **Nothing is in flight; the next
-spec is the transfer-appetite feature the user asked for on 2026-09-04** (how
-many transfers and hits he is willing to take, the expected outcome of each
-choice, with probabilities) — brainstorm first. The research that produced v12
-(`research/2026-09-01-polish-and-improvement-research.md`) has leftovers
-listed under *Candidates* below; the next step, when there is one, is a
-brainstorm that picks from that list.
+v13 — the transfer ladder — is **merged** (`main` `8fddb0b`; ff-merge of
+`v13-ladder`, 18 commits, two review passes), on top of the morning's
+free-transfer hotfix (`3c39048`). Suite 4110 Python + 814 frontend, pins
+routes 48 / job kinds 12 / `Config` fields 57. **Security incident, open:**
+the odds API key's value reached a committed plan document (`dd47c0a`) via
+a forked plan-writing subagent and was pushed to the public remote with the
+merge; removed at the tip (`8fddb0b`), history rewrite + force-push and key
+rotation put to the user. Next: the user's answer on that, the §6
+informational replay (2-hit cap vs none, K=3), the live spot-checks in
+GUIDE §12.1, then the model cycle the 2026-09-04 current-state review
+ranks (bonus head sees goals; calibration season default; e_goals odds
+artifact; Dixon-Coles sanity) and the UI design refresh the user asked for.
 
 ## Open
 
@@ -420,6 +422,29 @@ Spec: §6 · Plan: `plans/2026-09-01-gaffer-v12-w5-interface.md` (16 tasks incl.
 - Residual: the deterministic GW3 re-solve still wanted all four moves at
   three hits, 1.2 objective points ahead of the one-hit plan over three weeks
   — inside noise, and the motivating case for the transfer-appetite feature.
+
+### v13 — the transfer ladder (done, merged `8fddb0b` 2026-09-04)
+- [x] `[optimizer] max_hits` (default 2) and `max_transfers` (default 15 =
+  no cap), validated 0..15, on the Settings whitelist; obeyed by the weekly
+  advice, its sweep, alternatives, chip table, the What-If baseline, drafts
+  and the season replay. `SolveInput.max_transfers`; golden LP unchanged.
+- [x] `gaffer/ladder.py`: bank / 0 / 1 / 2 / 3-hit rungs (+ `open`) off the
+  saved board, scored on 2,000 shared outcome-noise draws (unclipped),
+  `p_beats_bank` / `p_beats_top` / `p_best`, `vs_below`, horizon hit cost,
+  caps read from the live config, dropped-rung and NaN robustness; built at
+  the end of every `advise`; `GET/POST /api/ladder`.
+- [x] `LadderCard` on This Week and What-If; cap highlight, muted beyond
+  the cap, expand for the squad and "what the last hit bought", rebuild,
+  cap selects writing `config.local.toml`; the moves card's cap line;
+  `max_transfers` in the What-If panel.
+- [x] Reviews: core (10 findings, all fixed in `91e54fb`), final (blocker:
+  live caps; fixed in `83fb025`). Pins 48 / 12 / 57.
+- [ ] §6 informational replay: 2-hit cap vs none, K=3 (`scripts/replay_pair.sh`
+  needs a config-driven pair now that the branch is merged).
+- [ ] Live spot-checks: GUIDE §12.1 (v13 block).
+- Finding banked for the next model cycle: on the GW3 board the objective
+  rises with hits while raw XI points fall — decay, the chase tilt and the
+  bench/FT/ITB terms buy the hits, not the players' forecasts.
 
 ## Operational / housekeeping
 - [x] Untrack `reports/` artifacts + `.claude/`; gitignore both (`31dc239`)
