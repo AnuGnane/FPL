@@ -3398,7 +3398,7 @@ Claude-Session: https://claude.ai/code/session_01Mx6ovTnhpZzdEJpKkmSRke"
 1. Final whole-branch review; `.venv/bin/pytest -q 2>&1 | tail -3` must read 4110 passed; `cd frontend && npx tsc --noEmit && npx vitest run`.
 2. The user's approval of the `sweep` screenshots.
 3. `git switch main && git merge --ff-only v14-ledger`; fill the ROADMAP's `<merge>` hash in a follow-up docs commit.
-4. Security ritual before the push: `git grep -c "$(grep odds_api_key config.toml | cut -d'"' -f2)" HEAD` must print nothing (0 matches), `git show main:config.toml` must fail. Then `git push`.
+4. Security ritual before the push. The TOML field is `api_key` inside the `[odds]` table (the dataclass field is `odds_api_key`; grepping for that name extracts an empty pattern, which matches every file): `V="$(sed -n '/^\[odds\]/,/^\[/p' config.toml | grep '^api_key' | cut -d'"' -f2)"`, require `${#V}` ≥ 8, then `git grep -c "$V" HEAD` must print nothing and `git show main:config.toml` must fail. Then `git push`.
 5. Memory: the project file's v14 line.
 
 ## Self-review

@@ -10,7 +10,7 @@ than an auditor, `docs/GUIDE.md` §11–12.
 
 ## Where things stand (2026-09-05)
 
-v14 — the dark ledger — is **merged** (`main` `<merge>`; ff-merge of
+v14 — the dark ledger — is **merged** (`main` `40d4dcd`; ff-merge of
 `v14-ledger`, 15 commits), on top of v13's transfer ladder (`8fddb0b`). It
 is a design cycle: the whole web UI now speaks one language, gated on the
 user's approval of the screenshots and on nothing else. Suite 4110 Python +
@@ -447,7 +447,7 @@ Spec: §6 · Plan: `plans/2026-09-01-gaffer-v12-w5-interface.md` (16 tasks incl.
   rises with hits while raw XI points fall — decay, the chase tilt and the
   bench/FT/ITB terms buy the hits, not the players' forecasts.
 
-### v14 — the dark ledger (done, merged `<merge>` 2026-09-05)
+### v14 — the dark ledger (done, merged `40d4dcd` 2026-09-05)
 Design language only: no route, no schema, no number, no backend line. Decided
 with the visual companion on 2026-09-04 and spec'd in `bb6ae40`
 (`specs/2026-09-04-gaffer-v14-ui-ledger-design.md`); planned in `7e4f7e2`;
