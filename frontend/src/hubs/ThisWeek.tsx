@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiGet, apiPost } from '../api/client'
 import {
-  Card, EmptyState, JobButton, Loading, PageHeader, Stat,
-  ThresholdBar, fmtNum, fmtPct,
+  Bar, Button, Callout, Card, EmptyState, JobButton, Loading, PageHeader,
+  Segmented, Stat, StatRow, fmtNum, fmtPct,
 } from '../kit'
 import type {
   AdviceChipRow, AdviceLatest, ComponentsBreakdown, LadderPayload,
@@ -22,6 +22,20 @@ import SquadTable, { type SquadBreakdown, type SquadRow }
 function nextChip(rows: AdviceChipRow[] | undefined) {
   if (!rows || rows.length === 0) return null
   return [...rows].sort((a, b) => b.gain - a.gain)[0]
+}
+
+/** The chip's two-letter code, as the mockup prints it. */
+const CHIP_CODE: Record<string, string> = {
+  bboost: 'BB', wildcard: 'WC', freehit: 'FH', '3xc': 'TC',
+}
+
+/** Which side of the gap you are on; `gap` is signed by the stance
+ *  (league_mode.py:271-280): points behind the leader when chasing, points
+ *  ahead of the nearest rival when defending. */
+function gapUnit(stance: string): string {
+  if (stance === 'chase') return 'behind'
+  if (stance === 'defend') return 'ahead'
+  return 'gap'
 }
 
 export default function ThisWeek() {
@@ -192,49 +206,61 @@ export default function ThisWeek() {
           ? data.staleness.reason
           : `deadline ${new Date(data.deadline).toLocaleString()}`}
         action={(
-          // Two runs, one lane: the full solve and the same solve with the
-          // scenario sweep off (~5 min cheaper). Both reload this page.
+          // Two runs, one lane: the full solve is the page's primary action;
+          // the same solve with the sweep off (~5 min cheaper) is secondary.
           <div className="flex flex-wrap gap-2">
-            <JobButton kind="advise" onDone={load} />
             <JobButton kind="advise-fast" onDone={load} />
+            <JobButton kind="advise" variant="primary" onDone={load} />
           </div>
         )}
       />
       {data.staleness.data_warning && (
-        <p role="alert" className="mb-4 rounded-card border border-rust-soft
-                                   bg-card px-3 py-2 text-rust">
+        <Callout tone="warn" role="alert" className="mb-4">
           {data.staleness.data_warning}
-        </p>
+        </Callout>
       )}
-      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Expected XI" value={`${fmtNum(advice.expected_pts)} pts`} />
+      <StatRow>
+        <Stat label="Expected XI" value={fmtNum(advice.expected_pts)}
+              unit="pts" context="raw model points" />
         <Stat
           label="Captain"
           value={advice.captain.name}
-          delta={null}
-          deltaLabel={undefined}
+          context={(advice.scenarios?.captain_frequency !== undefined
+            ? `${fmtPct(advice.scenarios.captain_frequency)} of sims · `
+            : '') + `vice ${advice.vice.name}`}
         />
-        <div className="rounded-card border border-border bg-card px-4 py-3">
-          <p className="label">Next chip</p>
-          {chip
-            ? (
-              <div className="mt-2">
-                <ThresholdBar
-                  label={`${chip.chip} · GW${chip.gw}`}
-                  value={chip.gain}
-                  threshold={chip.threshold ?? 0}
+        {chip
+          ? (
+            <Stat
+              label="Next chip"
+              value={CHIP_CODE[chip.chip] ?? chip.chip.toUpperCase()}
+              unit={`GW${chip.gw}`}
+              context={chip.threshold == null
+                ? `${fmtNum(chip.gain)} expected gain`
+                : `${fmtNum(chip.gain)} of ${fmtNum(chip.threshold)} needed`}
+              meter={(
+                // Rule 7: the one bar inside a tile. Scale is twice θ, as
+                // ThresholdBar has always drawn it.
+                <Bar
+                  width="full"
+                  testId="threshold"
+                  fraction={chip.gain / Math.max((chip.threshold ?? 0) * 2, 1)}
+                  mark={chip.threshold == null ? undefined : 0.5}
+                  tone={chip.gain >= (chip.threshold ?? 0) ? 'up' : 'down'}
                 />
-              </div>
-              )
-            : <p className="mt-1 text-text-muted">No chips available.</p>}
-        </div>
+              )}
+            />
+            )
+          : <Stat label="Next chip" value="—" context="No chips available." />}
         <Stat
           label="League"
-          value={strategy ? `${strategy.gap} pts` : '—'}
-          delta={strategy ? strategy.lam : null}
-          deltaLabel={strategy ? `λ · ${strategy.stance}` : undefined}
+          value={strategy ? fmtNum(Math.abs(strategy.gap), 0) : '—'}
+          unit={strategy ? gapUnit(strategy.stance) : undefined}
+          context={strategy
+            ? `${strategy.stance} · tilt ${strategy.lam >= 0 ? '+' : ''}${fmtNum(strategy.lam, 2)}`
+            : undefined}
         />
-      </div>
+      </StatRow>
       {/* One card, two views (plan A11). The XI used to be drawn twice — as a
           bare pitch here and again inside the squad table below — and the new
           pitch carries the bench too, so a third rendering would be absurd.
@@ -292,33 +318,23 @@ export default function ThisWeek() {
               </span>
             )}
             {view === 'pitch' && (
-              <button
-                type="button"
+              <Button
                 aria-pressed={lens}
                 onClick={() => setLens((on) => !on)}
-                className={'rounded-card border border-border px-2 py-0.5 '
-                  + (lens ? 'bg-card text-text' : 'hover:text-text')}
+                className={lens ? 'bg-raised text-accent-text' : ''}
               >
                 EO lens
-              </button>
+              </Button>
             )}
-            <span className="flex overflow-hidden rounded-card
-                             border border-border">
-              {(['pitch', 'table'] as const).map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  aria-pressed={view === option}
-                  onClick={() => setView(option)}
-                  className={'px-2 py-0.5 capitalize '
-                    + (view === option
-                      ? 'bg-card text-text'
-                      : 'text-text-muted hover:text-text')}
-                >
-                  {option === 'pitch' ? 'Pitch' : 'Table'}
-                </button>
-              ))}
-            </span>
+            <Segmented
+              label="Squad view"
+              value={view}
+              onChange={setView}
+              options={[
+                { value: 'pitch', label: 'Pitch' },
+                { value: 'table', label: 'Table' },
+              ]}
+            />
           </span>
         )}
       >

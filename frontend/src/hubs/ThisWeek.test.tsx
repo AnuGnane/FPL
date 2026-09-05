@@ -142,7 +142,8 @@ describe('This Week hub', () => {
     expect(await screen.findByText('Expected XI')).toBeInTheDocument()
     // v9a: the pitch is the default view, so the bare '61.5' that used to
     // come off the squad table's EO cell is now only the stat tile's value.
-    expect(screen.getByText('61.5 pts')).toBeInTheDocument()
+    expect(screen.getByText('61.5')).toBeInTheDocument()
+    expect(screen.getByText('pts')).toBeInTheDocument()
     // The captain's name is on the pitch, in the squad table and in the
     // caption too, so this one is scoped to the stat tile.
     const captainStat = screen.getByText('Captain').closest('div')!
@@ -151,19 +152,60 @@ describe('This Week hub', () => {
     expect(screen.getByText('League')).toBeInTheDocument()
   })
 
-  it('draws the chip gain against its threshold', async () => {
+  it('draws the chip gain against its threshold, as a meter with the need stated', async () => {
     render(<MemoryRouter><ThisWeek /></MemoryRouter>)
     await waitFor(() =>
       expect(screen.getByTestId('threshold-fill')).toBeInTheDocument())
-    expect(screen.getByText(/θ 6.0/)).toBeInTheDocument()
+    expect(screen.getByTestId('threshold-mark')).toBeInTheDocument()
+    expect(screen.getByText('BB')).toBeInTheDocument()
+    expect(screen.getByText('GW7')).toBeInTheDocument()
+    expect(screen.getByText('8.2 of 6.0 needed')).toBeInTheDocument()
+  })
+
+  it('states the league gap as a number with the side of it as the unit', async () => {
+    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    const league = (await screen.findByText('League')).closest('div')!
+    expect(within(league).getByText('84')).toBeInTheDocument()
+    expect(within(league).getByText('behind')).toBeInTheDocument()
+    expect(within(league).getByText(/chase · tilt \+0\.25/)).toBeInTheDocument()
+  })
+
+  it('states the captain with the sims share and the vice as context', async () => {
+    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    const captain = (await screen.findByText('Captain')).closest('div')!
+    expect(within(captain).getByText(/of sims · vice/)).toBeInTheDocument()
+  })
+
+  it('renders a data warning as an amber strip, not rust text', async () => {
+    apiGet.mockImplementation((path: string) => (
+      path === '/api/advice/latest'
+        ? Promise.resolve({ ...ADVICE,
+                            staleness: { ...ADVICE.staleness,
+                                         data_warning:
+                                           'model has no data for GW5' } })
+        : route(path)))
+    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveAttribute('data-tone', 'warn')
+    expect(alert).toHaveTextContent('model has no data for GW5')
+  })
+
+  it('makes Run advise the primary action and Fast advise secondary', async () => {
+    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    expect(await screen.findByRole('button', { name: 'Run advise' }))
+      .toHaveClass('bg-accent')
+    expect(screen.getByRole('button', { name: 'Fast advise' }))
+      .toHaveClass('border-border')
   })
 
   it('lists the squad with EO from the players endpoint', async () => {
     // v9a: one click away rather than on screen at load — the table itself
-    // is unchanged.
+    // is unchanged. Scoped to the squad card because v14's Expected XI tile
+    // prints its unit beside the value rather than inside it, so the page now
+    // carries the bare '61.5' twice: the tile's points and this EO cell.
     render(<MemoryRouter><ThisWeek /></MemoryRouter>)
     fireEvent.click(await screen.findByRole('button', { name: 'Table' }))
-    expect(await screen.findByText('61.5')).toBeInTheDocument()
+    expect(within(await squadCard()).getByText('61.5')).toBeInTheDocument()
   })
 
   it('lists the recommended moves', async () => {
