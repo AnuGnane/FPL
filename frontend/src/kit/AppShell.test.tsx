@@ -91,4 +91,28 @@ describe('AppShell', () => {
     // Still six hubs: the toggle is a button, never a seventh destination.
     expect(within(nav).getAllByRole('link')).toHaveLength(6)
   })
+
+  it('draws an icon, not a glyph character, beside every hub (v14)', () => {
+    render(<MemoryRouter><AppShell><p>page</p></AppShell></MemoryRouter>)
+    for (const label of ['This Week', 'Planning', 'Players', 'League', 'Live',
+      'Model']) {
+      const link = screen.getByRole('link', { name: label })
+      expect(link.querySelector('svg')).not.toBeNull()
+      expect(link.textContent).toBe(label)
+    }
+  })
+
+  it('marks the active hub in accent with a left bar, never a white card', () => {
+    stubMatchMedia(false)
+    render(
+      <MemoryRouter initialEntries={['/planning']}>
+        <AppShell><p>page</p></AppShell>
+      </MemoryRouter>,
+    )
+    const active = screen.getByRole('link', { name: 'Planning' })
+    expect(active).toHaveClass('text-accent-text', 'border-accent')
+    expect(active.className).not.toMatch(/bg-card|rounded-card/)
+    expect(screen.getByRole('link', { name: 'Players' }))
+      .toHaveClass('border-transparent')
+  })
 })

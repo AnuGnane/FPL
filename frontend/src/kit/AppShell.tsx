@@ -1,3 +1,6 @@
+import {
+  Activity, CalendarCheck, type LucideIcon, Radio, Route, Trophy, Users,
+} from 'lucide-react'
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import FreshnessStrip from './FreshnessStrip'
@@ -5,31 +8,36 @@ import ThemeToggle from './ThemeToggle'
 import ToastOutlet from './Toast'
 import { useIsMobile } from './useMediaQuery'
 
-/** The six hubs, in the order the spec lists them (§4). */
-const HUBS: Array<[string, string, string]> = [
-  ['/', 'This Week', '◎'],
-  ['/planning', 'Planning', '▤'],
-  ['/players', 'Players', '☰'],
-  ['/league', 'League', '⚑'],
-  ['/live', 'Live', '◉'],
-  ['/model', 'Model', '◍'],
+/** The six hubs, in the order the spec lists them, each with its icon
+ *  (spec §5: calendar-check, route, users, trophy, radio, activity). */
+const HUBS: Array<[string, string, LucideIcon]> = [
+  ['/', 'This Week', CalendarCheck],
+  ['/planning', 'Planning', Route],
+  ['/players', 'Players', Users],
+  ['/league', 'League', Trophy],
+  ['/live', 'Live', Radio],
+  ['/model', 'Model', Activity],
 ]
 
 export default function AppShell({ children }: { children: ReactNode }) {
   const mobile = useIsMobile()
 
-  const links = HUBS.map(([path, label, icon]) => (
+  // Active: accent text and a 2px accent bar on the left edge (sidebar) —
+  // rule 3, "blue means it is active". No fill, no card.
+  const links = HUBS.map(([path, label, Icon]) => (
     <NavLink
       key={path}
       to={path}
       end={path === '/'}
-      className={({ isActive }) => (
-        `flex items-center gap-2 rounded-card px-3 py-2 ${isActive
-          ? 'bg-card text-text' : 'text-text-muted hover:text-text'}
-         ${mobile ? 'flex-col gap-0.5 text-[11px]' : ''}`
-      )}
+      className={({ isActive }) => (mobile
+        ? `flex flex-col items-center gap-0.5 px-3 py-1.5 text-[11px] ${isActive
+            ? 'text-accent-text' : 'text-text-muted hover:text-text'}`
+        : `flex items-center gap-2.5 border-l-2 py-1.5 pl-2.5 pr-3 text-[13px]
+           ${isActive
+             ? 'border-accent text-accent-text'
+             : 'border-transparent text-text-muted hover:text-text'}`)}
     >
-      <span aria-hidden>{icon}</span>
+      <Icon aria-hidden size={16} className="shrink-0" />
       {label}
     </NavLink>
   ))
@@ -46,14 +54,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
           data-testid="nav"
           data-mode="tabbar"
           className="fixed inset-x-0 bottom-0 flex justify-around border-t
-                     border-border bg-card py-1"
+                     border-border bg-base py-1"
         >
           {links}
           {/* The seventh slot. Six hubs already fill this row, so the theme
               control gets an icon and carries its state in the label. */}
           <ThemeToggle compact />
         </nav>
-        {/* One outlet per layout. It is `position: fixed`, so where it sits
+        {/* One outlet per layout: it is `position: fixed`, so where it sits
             in the tree does not matter visually — but it must exist in both
             branches or a phone silently loses every acknowledgement. */}
         <ToastOutlet />
@@ -66,14 +74,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <nav
         data-testid="nav"
         data-mode="sidebar"
-        className="flex flex-col gap-1 border-r border-border p-3"
+        className="flex flex-col gap-0.5 border-r border-border py-4 pr-3"
       >
-        <p className="mb-3 px-3 text-lg font-semibold text-text">gaffer</p>
+        <p className="mb-3 pl-5 text-[15px] font-semibold text-text">gaffer</p>
         {links}
         {/* Footer, under the nav: chrome about the app rather than a place
             in it, so it sits below every destination and off the tab order
             of the six. */}
-        <div className="mt-auto pt-3">
+        <div className="mt-auto pl-3 pt-3">
           <ThemeToggle />
         </div>
       </nav>
