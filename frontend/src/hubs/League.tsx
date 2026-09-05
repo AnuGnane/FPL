@@ -6,7 +6,7 @@ import {
 } from 'recharts'
 import { apiGet } from '../api/client'
 import {
-  type Column, Card, DataTable, EmptyState, Loading, PageHeader, SERIES_COLOURS,
+  type Column, Card, DataTable, EmptyState, Loading, PageHeader,
   Sparkline, Stat, StatRow, TABLE_CLASS, TAB_CLASS, TAB_LIST_CLASS, THEAD_CLASS,
   TR_CLASS, TR_SELECTED_CLASS, fmtNum, fmtPct, tdClass, thClass, useTabParam,
 } from '../kit'
@@ -149,16 +149,12 @@ export default function League() {
   const isYou = (entry: number) => Boolean(
     race.standings.find((row) => row.entry === entry)?.is_you)
 
-  // "You" is drawn first, so you take the brightest of the four greys (plan
-  // R6). A stable sort, so the rest keep the order the server sent.
+  // A four-grey palette cannot separate fifty managers: it draws fifty
+  // near-identical lines and the reader cannot find himself in them. So the
+  // field is one faint grey and you are text ink on top of it — drawn LAST, a
+  // stable sort so the rest keep the order the server sent.
   const trajectory = [...race.trajectory].sort(
-    (a, b) => Number(isYou(b.entry)) - Number(isYou(a.entry)))
-
-  /** The line colour this entry was drawn in, so the table is the legend. */
-  const seriesColour = (entry: number) => {
-    const i = trajectory.findIndex((t) => t.entry === entry)
-    return i < 0 ? 'transparent' : SERIES_COLOURS[i % 4]
-  }
+    (a, b) => Number(isYou(a.entry)) - Number(isYou(b.entry)))
 
   // The one sentence the hub exists to answer: where you are in it.
   const you = race.standings.find((row) => row.is_you)
@@ -204,8 +200,9 @@ export default function League() {
                   border: '1px solid var(--color-border)',
                 }} />
                 {/* No Recharts <Legend>: the standings table below names every
-                    entry already, and its swatch carries the same colour. */}
-                {trajectory.map((entry, i) => (
+                    entry already, and the accent tint on your own row there
+                    says which of these lines is yours. */}
+                {trajectory.map((entry) => (
                   <Line
                     key={entry.entry}
                     type="monotone"
@@ -214,8 +211,10 @@ export default function League() {
                     // table below is the legend and names every entry.
                     name={entry.name}
                     dot={false}
-                    strokeWidth={isYou(entry.entry) ? 2.5 : 1.5}
-                    stroke={SERIES_COLOURS[i % 4]}
+                    strokeWidth={isYou(entry.entry) ? 2.5 : 1}
+                    stroke={isYou(entry.entry)
+                      ? 'var(--color-text)' : 'var(--color-text-faint)'}
+                    strokeOpacity={isYou(entry.entry) ? 1 : 0.7}
                   />
                 ))}
               </LineChart>
@@ -240,11 +239,6 @@ export default function League() {
                       className={`${TR_CLASS}${row.is_you
                         ? ` ${TR_SELECTED_CLASS}` : ''}`}>
                     <td className={`${tdClass()} tn text-text-muted`}>
-                      <span
-                        aria-hidden
-                        className="mr-2 inline-block h-2 w-2 rounded-chip"
-                        style={{ background: seriesColour(row.entry) }}
-                      />
                       {row.rank}
                     </td>
                     <td className={`${tdClass()} ${row.is_you
