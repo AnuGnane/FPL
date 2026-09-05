@@ -40,10 +40,8 @@ const DARK: Array<[string, string]> = [
 // Retired names kept for one cycle (spec §3, plan R11): same value as the
 // name that replaced them, so a class not yet swept renders identically.
 const ALIASES: Array<[string, string]> = [
-  ['--color-card', '--color-raised'],
   ['--color-sage', '--color-up'],
   ['--color-rust', '--color-down'],
-  ['--color-info', '--color-accent-text'],
 ]
 
 const TOKENS = [...DARK.map(([name]) => name), ...ALIASES.map(([name]) => name)]
@@ -123,12 +121,14 @@ describe('theme tokens', () => {
     expect(css).toContain('--radius-chip: 2px;')
     expect(css).toContain('--radius-ctl: 3px;')
     expect(css).not.toContain('--radius-card: 10px;')
+    expect(css).not.toContain('--radius-card')
   })
 
   it('defines the faces, the tabular utility and the 13px base', () => {
     expect(css).toContain("--font-mono: 'SF Mono', Menlo, monospace;")
     expect(css).toMatch(/\.tn\s*\{[^}]*font-variant-numeric:\s*tabular-nums/)
     expect(css).not.toMatch(/\.num[^}]*font-family/)
+    expect(css).not.toMatch(/\.num\b/)
     expect(css).toMatch(/body\s*\{[^}]*font-size:\s*13px/)
   })
 

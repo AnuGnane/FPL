@@ -27,7 +27,7 @@ function clamp(pct: number): number {
 
 /**
  * The one bar (rule 7): a flat single-colour fill, 6px, no border, no
- * gradient, the number printed beside it. Allowed only where a magnitude
+ * fade, the number printed beside it. Allowed only where a magnitude
  * between zero and a known ceiling matters and there are several to compare
  * in one view. The track is drawn in `border` rather than `raised` so it is
  * still visible inside a hovered (raised) row (plan R8).

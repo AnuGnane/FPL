@@ -44,24 +44,18 @@
   --color-turf: #1b3a2b;
   --color-turf-line: #ffffff1f;
 
-  /* Retired names, one cycle (plan R11): literal copies of the token that
-     replaced each, so a class the sweep has not reached yet renders the new
-     value. No new uses; tokens.test.ts forbids them from Task 12 on. */
-  --color-card: #181b20;
+  /* Retired, unused, deleted next cycle (spec §3). */
   --color-sage: #5fcf94;
   --color-rust: #f0876a;
-  --color-info: #7fb0ff;
 
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'SF Mono', Menlo, monospace;
 
   /* Two radii: chips and meters, then buttons, tiles and inputs. Named
      chip/ctl rather than s/m because Tailwind owns `rounded-s-*` for the
-     logical inline-start radius (plan R1). `--radius-card` is a one-cycle
-     alias of the control radius. */
+     logical inline-start radius (plan R1). */
   --radius-chip: 2px;
   --radius-ctl: 3px;
-  --radius-card: 3px;
 }
 
 /* Tells the browser to paint its own furniture — scrollbars, form controls,
@@ -99,10 +93,8 @@
   --color-pos-fwd: #b04f78;
   --color-turf: #2f6b45;
   --color-turf-line: #ffffff47;
-  --color-card: #eaecef;
   --color-sage: #25703f;
   --color-rust: #a3471f;
-  --color-info: #2458b3;
 }
 
 /* "System" is the absence of the attribute, so the OS preference speaks
@@ -135,10 +127,8 @@
     --color-pos-fwd: #b04f78;
     --color-turf: #2f6b45;
     --color-turf-line: #ffffff47;
-    --color-card: #eaecef;
     --color-sage: #25703f;
     --color-rust: #a3471f;
-    --color-info: #2458b3;
   }
 }
 
@@ -154,10 +144,8 @@ body {
 }
 
 /* Every numeral in the app is tabular, in the one sans face: table cells,
-   stat values and numbers inside sentences alike (spec §3). `.num` is the
-   pre-v14 name and a synonym until Task 12 deletes it. */
+   stat values and numbers inside sentences alike (spec §3). */
 .tn { font-variant-numeric: tabular-nums; }
-.num { font-variant-numeric: tabular-nums; }
 
 /* 10px letter-spaced uppercase muted — the one label style in the system;
    section titles and table headers are this. */
