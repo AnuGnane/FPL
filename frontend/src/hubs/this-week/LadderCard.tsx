@@ -1,14 +1,15 @@
 import { Fragment, useCallback, useEffect, useState } from 'react'
 import { apiGet, apiPost, errorText } from '../../api/client'
 import { useJob } from '../../api/useJob'
-import { Badge, Card, PlayerName, Skeleton, TONE_CLASS, fmtNum, toneOf }
-  from '../../kit'
+import {
+  Bar, Button, Callout, Card, Chip, INPUT_CLASS, PlayerName, Skeleton,
+  TABLE_CLASS, THEAD_CLASS, TONE_CLASS, TONE_TINT_CLASS, TR_CLASS,
+  TR_EXPANDED_CLASS, TR_SELECTED_CLASS, fmtNum, tdClass, thClass, toneOf,
+} from '../../kit'
 import type { LadderPayload, LadderRung, PlayerRef } from '../../types'
 
 /** `[optimizer]` value meaning "no cap" — `gaffer.config.NO_CAP`. */
 export const NO_CAP = 15
-
-const FIELD = 'rounded-card border border-border bg-base px-2 py-1 text-text'
 
 /** "1 free transfer · cap 2 hits" — the heading, and MovesCard's line. */
 export function capText(p: LadderPayload): string {
@@ -63,11 +64,19 @@ function costText(n: number): string {
  *  `max_hits` is a *per-week* cap, so a rung that takes one hit takes it in
  *  every horizon week: the decision on the table costs 4, the plan behind it
  *  costs 12. Printing only one of those misprices the row, so both go in
- *  whenever they differ. */
-function rungCost(r: LadderRung, weeks: number): string {
-  if (r.horizon_cost === r.cost) return costText(r.cost)
-  return `${costText(r.cost)} now \u00b7 ${costText(r.horizon_cost)}`
-    + ` over ${weeks} GW${weeks === 1 ? '' : 's'}`
+ *  whenever they differ — the horizon figure in `down`, because it is the
+ *  bill the reader is being warned about (spec §6.3). */
+function RungCost({ rung, weeks }: { rung: LadderRung; weeks: number }) {
+  if (rung.horizon_cost === rung.cost) return <>{costText(rung.cost)}</>
+  return (
+    <>
+      <span>{costText(rung.cost)} now</span>
+      <span className="text-text-muted"> · </span>
+      <span className="text-down">
+        {`${costText(rung.horizon_cost)} over ${weeks} GW${weeks === 1 ? '' : 's'}`}
+      </span>
+    </>
+  )
 }
 
 function pct(v: number | null | undefined): string {
@@ -109,7 +118,7 @@ function Expanded({ rung, weeks }: { rung: LadderRung; weeks: number }) {
             <p className="text-text-secondary">
               GW{w.gw}
               {w.hits > 0 && (
-                <span className="text-rust">
+                <span className="text-down">
                   {' '}· {w.hits} hit{w.hits === 1 ? '' : 's'}
                 </span>
               )}
@@ -232,15 +241,9 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
       title="Transfer ladder"
       className="mb-4"
       action={(
-        <button
-          type="button"
-          onClick={rebuild}
-          disabled={busy || !data?.gw}
-          className="rounded-card border border-border bg-card px-2 py-1
-                     text-text-secondary hover:text-text disabled:text-text-faint"
-        >
+        <Button onClick={rebuild} disabled={busy || !data?.gw}>
           {busy ? 'Rebuilding…' : 'Rebuild'}
-        </button>
+        </Button>
       )}
     >
       {data && data.gw !== null && (
@@ -269,7 +272,7 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
             value={hitsValue}
             disabled={busy || !data?.gw}
             onChange={(e) => setCap('max_hits', Number(e.target.value))}
-            className={FIELD}
+            className={INPUT_CLASS}
           >
             {withCurrent([0, 1, 2, 3], hitsValue).map((n) => (
               n === NO_CAP ? null
@@ -284,7 +287,7 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
             value={movesValue}
             disabled={busy || !data?.gw}
             onChange={(e) => setCap('max_transfers', Number(e.target.value))}
-            className={FIELD}
+            className={INPUT_CLASS}
           >
             <option value={0}>bank</option>
             {withCurrent([1, 2, 3, 4, 5], movesValue).map((n) => (
@@ -294,9 +297,9 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
           </select>
         </label>
       </div>
-      {failed && <p className="mb-3 text-rust">{failed}</p>}
+      {failed && <Callout tone="error" className="mb-3">{failed}</Callout>}
       {job.status === 'error' && (
-        <p className="mb-3 text-rust">{job.error}</p>
+        <Callout tone="error" className="mb-3">{job.error}</Callout>
       )}
       {busy && (
         <Skeleton bare lines={5}
@@ -307,17 +310,17 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
       )}
       {!busy && rungs.length > 0 && (
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
+          <table className={TABLE_CLASS}>
+            <thead className={THEAD_CLASS}>
               <tr>
-                <th className="label text-left">Rung</th>
-                <th className="label text-left">Moves</th>
-                <th className="label text-right">Cost</th>
-                <th className="label text-right">GW xPts</th>
-                <th className="label text-right">{weeks}-GW xPts</th>
-                <th className="label text-right">vs bank</th>
-                <th className="label text-right">P(beats bank)</th>
-                <th className="label text-right">P(best)</th>
+                <th className={thClass()}>Rung</th>
+                <th className={thClass()}>Moves</th>
+                <th className={thClass(true)}>Cost</th>
+                <th className={thClass(true)}>GW xPts</th>
+                <th className={thClass(true)}>{weeks}-GW xPts</th>
+                <th className={thClass(true)}>vs bank</th>
+                <th className={thClass()}>P(beats bank)</th>
+                <th className={thClass()}>P(best)</th>
               </tr>
             </thead>
             <tbody>
@@ -330,9 +333,9 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
                 const label = rungLabel(r)
                 const below = rungs.find((x) => x.key === r.same_as)
                 const rowClass = [
-                  'cursor-pointer border-t border-divider',
-                  isCap ? 'bg-card' : '',
-                  beyond ? 'text-text-muted' : 'text-text',
+                  'cursor-pointer', TR_CLASS,
+                  isCap ? TR_SELECTED_CLASS : '',
+                  beyond ? 'text-text-faint' : 'text-text',
                 ].join(' ')
                 return (
                   <Fragment key={r.key}>
@@ -342,42 +345,45 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
                       className={rowClass}
                       onClick={() => setOpen(open === r.key ? null : r.key)}
                     >
-                      <td className="py-1">
+                      <td className={tdClass()}>
                         <span className="inline-flex items-center gap-1.5">
                           {label}
-                          {r.key === data?.recommended && (
-                            <Badge variant="info">recommended</Badge>
-                          )}
+                          {r.key === data?.recommended && <Chip>recommended</Chip>}
                         </span>
                       </td>
                       {r.same_as
                         ? (
-                          <td className="py-1 text-text-muted" colSpan={7}>
+                          <td className={`${tdClass()} text-text-muted`} colSpan={7}>
                             solver would not spend it — same as{' '}
-                            {(below ? rungLabel(below) : r.same_as)
-                              .toLowerCase()}
+                            {(below ? rungLabel(below) : r.same_as).toLowerCase()}
                           </td>
                           )
                         : (
                           <>
-                            <td className="py-1">{movesText(r)}</td>
-                            <td className="num py-1 text-right">
-                              {rungCost(r, weeks)}
-                            </td>
-                            <td className="num py-1 text-right">{fmtNum(r.week_pts)}</td>
-                            <td className="num py-1 text-right">{fmtNum(r.mean_pts)}</td>
-                            <td className={`num py-1 text-right ${vsBank === null ? '' : TONE_CLASS[toneOf(vsBank)]}`}>
+                            <td className={tdClass()}>{movesText(r)}</td>
+                            <td className={tdClass(true)}><RungCost rung={r} weeks={weeks} /></td>
+                            <td className={tdClass(true)}>{fmtNum(r.week_pts)}</td>
+                            <td className={tdClass(true)}>{fmtNum(r.mean_pts)}</td>
+                            <td className={`${tdClass(true)} ${vsBank === null || r.key === 'bank' ? '' : TONE_TINT_CLASS[toneOf(vsBank)]}`}>
                               {vsBank === null || r.key === 'bank' ? '—'
                                 : `${vsBank >= 0 ? '+' : '−'}${fmtNum(Math.abs(vsBank), 1)}`}
                             </td>
-                            <td className="num py-1 text-right">{pct(r.p_beats_bank)}</td>
-                            <td className="num py-1 text-right">{pct(r.p_best)}</td>
+                            <td className={tdClass()}>
+                              <Bar testId="p-beats-bank" fraction={r.p_beats_bank ?? null}
+                                   text={pct(r.p_beats_bank)} />
+                            </td>
+                            <td className={tdClass()}>
+                              <Bar testId="p-best" fraction={r.p_best ?? null}
+                                   text={pct(r.p_best)} />
+                            </td>
                           </>
                           )}
                     </tr>
                     {open === r.key && !r.same_as && (
-                      <tr className="border-t border-divider">
-                        <td colSpan={8}><Expanded rung={r} weeks={weeks} /></td>
+                      <tr className={TR_EXPANDED_CLASS}>
+                        <td className="px-2.5 py-3" colSpan={8}>
+                          <Expanded rung={r} weeks={weeks} />
+                        </td>
                       </tr>
                     )}
                   </Fragment>

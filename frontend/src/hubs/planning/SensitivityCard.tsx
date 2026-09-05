@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiGet } from '../../api/client'
-import { Card, EmptyState, JobButton, Skeleton, fmtNum } from '../../kit'
+import {
+  Bar, Callout, Card, EmptyState, JobButton, Skeleton, TABLE_CLASS,
+  THEAD_CLASS, TR_CLASS, fmtNum, tdClass, thClass,
+} from '../../kit'
 import { JOB_KIND_LABEL, type SensitivityReport } from '../../types'
 
 /** The move kinds this card lists. No frequency cut at all: the ones that are
@@ -122,37 +125,37 @@ export default function SensitivityCard() {
         <>
           {data.verdict && <p className="mb-3 text-text">{data.verdict}</p>}
           {data.notice && (
-            <p className="mb-3 rounded-card border-l-2 border-info bg-base
-                          px-3 py-2 text-text-muted">
-              {data.notice}
-            </p>
+            <Callout className="mb-3">{data.notice}</Callout>
           )}
           <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
+          <table className={TABLE_CLASS}>
+            <thead className={THEAD_CLASS}>
               <tr>
-                <th className="label pb-1 text-left">Move</th>
-                <th className="label pb-1 text-left">Player</th>
-                <th className="label pb-1 text-right">Solves</th>
-                <th className="label pb-1 text-right">Share</th>
+                <th className={thClass()}>Move</th>
+                <th className={thClass()}>Player</th>
+                <th className={thClass(true)}>Solves</th>
+                <th className={thClass()}>Share</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={`${r.kind}-${r.code}-${r.gw}`}>
-                  <td className="py-1.5 text-text-secondary">{r.label}</td>
-                  <td className="py-1.5 text-text">{r.name || '—'}</td>
-                  <td className="num py-1.5 text-right text-text-secondary">
+                <tr key={`${r.kind}-${r.code}-${r.gw}`} className={TR_CLASS}>
+                  <td className={`${tdClass()} text-text-secondary`}>{r.label}</td>
+                  <td className={`${tdClass()} text-text`}>{r.name || '—'}</td>
+                  <td className={`${tdClass(true)} text-text-secondary`}>
                     {r.count}/{data.completed}
                   </td>
-                  <td className="num py-1.5 text-right">{pct(r.frequency)}</td>
+                  <td className={tdClass()}>
+                    <Bar testId="share" fraction={r.frequency}
+                         text={pct(r.frequency)} />
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
           </div>
           {data.failures > 0 && (
-            <p className="mt-3 text-rust">
+            <p className="mt-3 text-down">
               {`${data.failures} of the ${data.k} re-solves failed; every `}
               share above is out of the {data.completed} that finished.
             </p>

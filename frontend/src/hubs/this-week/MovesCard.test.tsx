@@ -13,15 +13,16 @@ describe('MovesCard', () => {
     expect(screen.getByText('82%')).toBeInTheDocument()
   })
 
-  it('colours the in row sage and the out row rust', () => {
+  it('marks IN as an up chip and OUT as a down chip, with sims as a bar', () => {
     render(<MovesCard buys={BUYS} sells={SELLS} hits={0} />)
-    expect(screen.getByText('IN')).toHaveClass('text-sage')
-    expect(screen.getByText('OUT')).toHaveClass('text-rust')
+    expect(screen.getByText('IN')).toHaveAttribute('data-tone', 'up')
+    expect(screen.getByText('OUT')).toHaveAttribute('data-tone', 'down')
+    expect(screen.getAllByTestId('sims-fill')[0]).toHaveStyle({ width: '82%' })
   })
 
   it('prices hits explicitly', () => {
     render(<MovesCard buys={BUYS} sells={SELLS} hits={2} />)
-    expect(screen.getByText('-8 pts')).toBeInTheDocument()
+    expect(screen.getByText('\u22128 pts')).toBeInTheDocument()
   })
 
   it('says to bank the transfer when there are no moves', () => {

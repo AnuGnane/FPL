@@ -112,9 +112,26 @@ describe('LadderCard', () => {
     const cap = (await screen.findByText('2 hits')).closest('tr')!
     expect(cap).toHaveAttribute('data-cap', 'true')
     const beyond = screen.getByText('3 hits').closest('tr')!
-    expect(beyond).toHaveClass('text-text-muted')
+    expect(beyond).toHaveClass('text-text-faint')
     expect(beyond).toHaveAttribute('title', 'beyond your cap')
-    expect(cap).not.toHaveClass('text-text-muted')
+    expect(cap).not.toHaveClass('text-text-faint')
+  })
+
+  it('tints the cap rung accent and draws the odds as bars with the percent beside', async () => {
+    mount()
+    const cap = (await screen.findByText('2 hits')).closest('tr')!
+    expect(cap).toHaveClass('bg-accent-tint')
+    const rec = screen.getByText('1 hit').closest('tr')!
+    expect(within(rec).getByTestId('p-beats-bank-fill')).toHaveStyle({ width: '74%' })
+    expect(within(rec).getByTestId('p-best-fill')).toHaveStyle({ width: '50%' })
+    expect(rec).toHaveTextContent('74%')
+  })
+
+  it('prints the horizon cost in down ink beside the cost now', async () => {
+    mount()
+    const row = (await screen.findByText('1 hit')).closest('tr')!
+    const horizon = within(row).getByText(/over \d+ GWs?/)
+    expect(horizon).toHaveClass('text-down')
   })
 
   it('marks the recommended rung and says when a rung repeats the one below', async () => {

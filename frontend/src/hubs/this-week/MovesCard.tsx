@@ -1,4 +1,7 @@
-import { Badge, Card, PosBadge, fmtNum, fmtPct } from '../../kit'
+import {
+  Bar, Card, Chip, PosBadge, TABLE_CLASS, THEAD_CLASS, TR_CLASS, fmtNum,
+  fmtPct, tdClass, thClass,
+} from '../../kit'
 
 export interface Move {
   code: number
@@ -21,9 +24,9 @@ export interface MovesCardProps {
 export default function MovesCard(
   { buys, sells, hits, capLine }: MovesCardProps,
 ) {
-  const rows: Array<[string, Move]> = [
-    ...buys.map((m) => ['IN', m] as [string, Move]),
-    ...sells.map((m) => ['OUT', m] as [string, Move]),
+  const rows: Array<['IN' | 'OUT', Move]> = [
+    ...buys.map((m) => ['IN', m] as ['IN', Move]),
+    ...sells.map((m) => ['OUT', m] as ['OUT', Move]),
   ]
   return (
     <Card title="Recommended moves">
@@ -36,36 +39,39 @@ export default function MovesCard(
         ? <p className="text-text-muted">No transfers — bank the free transfer.</p>
         : (
           <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
+          <table className={TABLE_CLASS}>
+            <thead className={THEAD_CLASS}>
               <tr>
-                <th className="label text-left">Move</th>
-                <th className="label text-left">Player</th>
-                <th className="label text-right">xPts</th>
-                <th className="label text-right">sim%</th>
-                <th />
+                <th className={thClass()}>Move</th>
+                <th className={thClass()}>Player</th>
+                <th className={thClass(true)}>xPts</th>
+                <th className={thClass()}>Sims</th>
+                <th className={thClass()} />
               </tr>
             </thead>
             <tbody>
               {rows.map(([side, move]) => (
-                <tr key={`${side}-${move.code}`} className="border-t border-divider">
-                  <td className={`py-1 ${side === 'IN' ? 'text-sage' : 'text-rust'}`}>
-                    {side}
+                <tr key={`${side}-${move.code}`} className={TR_CLASS}>
+                  <td className={tdClass()}>
+                    {/* In/out is a direction (rule 1). */}
+                    <Chip tone={side === 'IN' ? 'up' : 'down'}>{side}</Chip>
                   </td>
-                  <td className="py-1 text-text">
+                  <td className={`${tdClass()} text-text`}>
                     <span className="inline-flex items-center gap-1.5">
                       <PosBadge pos={move.position} variant="dot" />
                       {move.name}
                     </span>
                   </td>
-                  <td className="num py-1 text-right text-text">
+                  <td className={`${tdClass(true)} text-text`}>
                     {fmtNum(move.ep)}
                   </td>
-                  <td className="num py-1 text-right text-text-secondary">
-                    {fmtPct(move.frequency ?? null)}
+                  <td className={tdClass()}>
+                    {/* Scenario support: several rows, one ceiling (rule 7). */}
+                    <Bar testId="sims" fraction={move.frequency ?? null}
+                         text={fmtPct(move.frequency ?? null)} />
                   </td>
-                  <td className="py-1 text-right">
-                    {move.tag && <Badge variant="info">{move.tag}</Badge>}
+                  <td className={`${tdClass()} text-right`}>
+                    {move.tag && <Chip>{move.tag}</Chip>}
                   </td>
                 </tr>
               ))}
@@ -74,9 +80,9 @@ export default function MovesCard(
           </div>
           )}
       {hits > 0 && (
-        <p className="mt-3 text-rust">
+        <p className="mt-3 text-text-secondary">
           {hits} hit{hits === 1 ? '' : 's'}:{' '}
-          <span className="num">-{hits * 4} pts</span>
+          <span className="tn text-down">{`−${hits * 4} pts`}</span>
         </p>
       )}
     </Card>
