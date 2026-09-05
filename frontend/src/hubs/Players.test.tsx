@@ -84,15 +84,15 @@ describe('Players hub', () => {
     expect(apiGet).toHaveBeenCalledWith(expect.stringContaining('position=DEF'))
   })
 
-  it('paints the active position filter in that position’s own hue', async () => {
+  it('paints the active position filter in accent (v14)', async () => {
     render(<MemoryRouter><Players /></MemoryRouter>)
     await screen.findByText('Salah')
     const filters = screen.getByRole('group', { name: 'Position' })
     const def = within(filters).getByRole('button', { name: 'DEF' })
-    expect(def.style.color).toBe('')
+    expect(def).toHaveAttribute('aria-pressed', 'false')
     await userEvent.click(def)
     expect(def).toHaveAttribute('aria-pressed', 'true')
-    expect(def.style.color).toBe('var(--color-pos-def)')
+    expect(def).toHaveClass('text-accent-text')
   })
 
   it('selects players for comparison and counts them', async () => {

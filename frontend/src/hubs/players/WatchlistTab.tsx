@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { apiDelete, apiGet, apiPost, errorText } from '../../api/client'
-import { Card, EmptyState, Loading, PlayerName } from '../../kit'
+import {
+  Card, EmptyState, INPUT_CLASS, Loading, PlayerName, buttonClass,
+} from '../../kit'
 import type { WatchRow, WatchlistPanel } from '../../types'
 
 /**
@@ -109,8 +111,7 @@ function Row(
       >
         <input
           aria-label={`note for ${row.name}`}
-          className="min-w-0 flex-1 rounded-card border border-border bg-base
-                     px-2 py-1"
+          className={`${INPUT_CLASS} min-w-0 flex-1`}
           value={draft}
           disabled={busy}
           onChange={(e) => setDraft(e.target.value)}
@@ -118,8 +119,7 @@ function Row(
         <button
           ref={saveRef}
           type="submit"
-          className="rounded-card border border-border bg-base px-2 py-1
-                     text-text-secondary hover:text-text"
+          className={buttonClass('ghost')}
           disabled={busy}
         >
           {`Save note for ${row.name}`}

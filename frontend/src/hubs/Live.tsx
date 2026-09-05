@@ -5,8 +5,8 @@ import {
 } from 'recharts'
 import { apiGet } from '../api/client'
 import {
-  type Column, Badge, Card, DataTable, EmptyState, ExplainModal, Loading,
-  PageHeader, PlayerCard, Stat, fmtNum,
+  type Column, Badge, Callout, Card, DataTable, EmptyState, ExplainModal,
+  Loading, PageHeader, PlayerCard, Stat, fmtNum,
 } from '../kit'
 import type { LiveState, LiveTableRow } from '../types'
 
@@ -149,10 +149,7 @@ export default function Live() {
         )}
       >
         {data.race_notice && (
-          <p className="mb-3 rounded-card border-l-2 border-info bg-base px-3
-                        py-2 text-text-muted">
-            {data.race_notice}
-          </p>
+          <Callout className="mb-3">{data.race_notice}</Callout>
         )}
         {(data.race_series?.length ?? 0) < 2 ? (
           <p className="text-text-muted">
@@ -186,7 +183,7 @@ export default function Live() {
                     strokeWidth={2.5} stroke="var(--color-sage)" />
               <Line type="monotone" dataKey="rival"
                     name={data.rival_name ?? 'Top rival'} dot={false}
-                    strokeWidth={1.5} stroke="var(--color-info)" />
+                    strokeWidth={1.5} stroke="var(--color-text)" />
             </LineChart>
           </ResponsiveContainer>
         )}
@@ -201,10 +198,7 @@ export default function Live() {
         )}
       >
         {data.notice && (
-          <p className="mb-3 rounded-card border-l-2 border-info bg-base px-3
-                        py-2 text-text-muted">
-            {data.notice}
-          </p>
+          <Callout className="mb-3">{data.notice}</Callout>
         )}
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -260,28 +254,28 @@ export default function Live() {
                       )}
                     </span>
                   </td>
-                  <td className="num py-1.5 text-right text-text">
+                  <td className="tn py-1.5 text-right text-text">
                     {player.points}
                   </td>
-                  <td className={`num py-1.5 text-right ${
+                  <td className={`tn py-1.5 text-right ${
                     player.provisional_bonus > 0
-                      ? 'text-sage' : 'text-text-faint'}`}>
+                      ? 'text-up' : 'text-text-faint'}`}>
                     {player.provisional_bonus > 0
                       ? `+${player.provisional_bonus}` : '–'}
                   </td>
-                  <td className="num py-1.5 text-right text-text-secondary">
+                  <td className="tn py-1.5 text-right text-text-secondary">
                     {player.minutes}
                   </td>
-                  <td className="num py-1.5 text-right text-text-secondary">
+                  <td className="tn py-1.5 text-right text-text-secondary">
                     {player.remaining_ep == null
                       ? '–' : fmtNum(player.remaining_ep, 1)}
                   </td>
                   <td className="py-1.5 text-text-muted">{player.status}</td>
-                  <td className="num py-1.5 text-right text-text-secondary">
+                  <td className="tn py-1.5 text-right text-text-secondary">
                     {player.tier_eo == null ? '–'
                       : `${player.tier_eo}% ±${player.tier_eo_se ?? 0}`}
                   </td>
-                  <td className="num py-1.5 text-right text-text-muted">
+                  <td className="tn py-1.5 text-right text-text-muted">
                     {player.selected_by_percent == null ? '–'
                       : `${player.selected_by_percent}%`}
                   </td>
@@ -296,12 +290,11 @@ export default function Live() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {data.safety?.map((place) => (
               <div key={`${place.role}-${place.entry}`}
-                   className="rounded-card border border-border bg-card px-4
-                              py-3">
+                   className="border-l-2 border-border pl-3">
                 <p className="label">{ROLE_LABEL[place.role]}</p>
                 <p className="text-text">{place.name}</p>
-                <p className={`num ${place.margin >= 0
-                  ? 'text-rust' : 'text-sage'}`}>
+                <p className={`tn ${place.margin >= 0
+                  ? 'text-down' : 'text-up'}`}>
                   {place.margin >= 0
                     ? `${place.margin} ahead · need +${place.need} beyond `
                       + 'your current projection'

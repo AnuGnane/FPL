@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { apiGet, apiPost, errorText } from '../../api/client'
-import { Card, EmptyState, Loading } from '../../kit'
+import {
+  Button, Callout, Card, EmptyState, INPUT_CLASS, Loading,
+} from '../../kit'
 import type { SettingRow, SettingsPanel } from '../../types'
 
 /**
@@ -63,7 +65,7 @@ function Field(
       <label className="flex items-center gap-2">
         <span>{label(row)}</span>
         <input
-          className="w-32 rounded-card border border-border bg-base px-2 py-1"
+          className={`${INPUT_CLASS} w-32`}
           type={numeric ? 'number' : 'text'}
           step={row.kind === 'float' ? 0.01 : 1}
           value={numeric ? draft.replace(/"/g, '') : draft}
@@ -73,11 +75,8 @@ function Field(
           onChange={(e) => setDraft(e.target.value)}
         />
       </label>
-      <button
-        type="button"
+      <Button
         disabled={busy}
-        className="rounded-card border border-border bg-base px-2 py-1
-                   text-text-secondary hover:text-text"
         onClick={() => {
           if (numeric) {
             const n = Number(draft)
@@ -95,7 +94,7 @@ function Field(
         }}
       >
         {`Save ${label(row)}`}
-      </button>
+      </Button>
     </div>
   )
 }
@@ -152,15 +151,14 @@ export default function SettingsTab() {
         // so it is announced rather than only drawn. `polite` and not
         // `assertive`: the reader is mid-form, and the overlay being ignored
         // is news he needs at the end of his sentence, not in the middle of it.
-        <p
+        <Callout
+          tone="error"
           data-testid="settings-overlay-error"
           role="status"
           aria-live="polite"
-          className="rounded-card border border-rust bg-card px-3 py-2
-                     text-rust"
         >
           {panel.overlay_error}
-        </p>
+        </Callout>
       )}
       <Card title="Settings">
         <div className="flex flex-col gap-4">
@@ -174,20 +172,20 @@ export default function SettingsTab() {
               />
               <p className="text-text-faint">{row.help}</p>
               {row.source === 'local' && (
-                <button
-                  type="button"
-                  className="self-start text-text-muted hover:text-text"
+                <Button
+                  variant="ghost"
+                  className="self-start"
                   onClick={() => save(row.key, null)}
                 >
                   {`Reset ${label(row)}`}
-                </button>
+                </Button>
               )}
               {errors[row.key] && (
                 <p data-testid={`settings-error-${row.key}`}
                    id={`settings-error-${row.key}`}
                    role="status"
                    aria-live="polite"
-                   className="text-rust">
+                   className="text-down">
                   {errors[row.key]}
                 </p>
               )}

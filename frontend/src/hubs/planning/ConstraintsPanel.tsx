@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../../api/client'
 import { useDebounced } from '../../api/useDebounced'
-import { Card, PosBadge, fmtNum } from '../../kit'
+import { Card, INPUT_CLASS, PosBadge, fmtNum } from '../../kit'
 import type { PlayerRow, WhatIfRequest } from '../../types'
 
 type ListKey = 'lock' | 'ban' | 'force_in' | 'force_out'
@@ -9,8 +9,6 @@ type ListKey = 'lock' | 'ban' | 'force_in' | 'force_out'
 const LABELS: Record<ListKey, string> = {
   lock: 'Lock', ban: 'Ban', force_in: 'Force in', force_out: 'Must sell',
 }
-
-const FIELD = 'rounded-card border border-border bg-base px-2 py-1 text-text'
 
 function PlayerPicker(
   { label, codes, names, onAdd, onRemove, describedBy }: {
@@ -47,7 +45,7 @@ function PlayerPicker(
           onChange={(event) => setQuery(event.target.value)}
           placeholder="search a player"
           aria-describedby={describedBy}
-          className={FIELD}
+          className={INPUT_CLASS}
         />
       </label>
       {codes.length > 0 && (
@@ -55,16 +53,16 @@ function PlayerPicker(
           {codes.map((code) => (
             <span
               key={code}
-              className="inline-flex items-center gap-1 rounded border
-                         border-border px-1.5 py-0.5 text-[11px]
-                         text-text-secondary"
+              className="inline-flex items-center gap-1 rounded-chip border
+                         border-border px-1.5 py-px text-[10px] font-semibold
+                         leading-4 text-text-secondary"
             >
               {names[code] ?? code}
               <button
                 type="button"
                 aria-label={`remove ${names[code] ?? code}`}
                 onClick={() => onRemove(code)}
-                className="text-text-faint hover:text-rust"
+                className="text-text-faint hover:text-down"
               >
                 ×
               </button>
@@ -73,19 +71,19 @@ function PlayerPicker(
         </div>
       )}
       {matches.length > 0 && (
-        <div className="absolute z-10 mt-1 flex w-full flex-col rounded-card
-                        border border-border bg-card p-1">
+        <div className="absolute z-10 mt-1 flex w-full flex-col rounded-ctl
+                        border border-border bg-raised p-1">
           {matches.map((player) => (
             <button
               key={player.code}
               type="button"
               onClick={() => { onAdd(player); setQuery('') }}
-              className="flex items-center gap-2 rounded px-2 py-1 text-left
+              className="flex items-center gap-2 rounded-chip px-2 py-1 text-left
                          text-text-secondary hover:bg-base hover:text-text"
             >
               <PosBadge pos={player.position} variant="dot" />
               {player.name}
-              <span className="num ml-auto text-text-faint">
+              <span className="tn ml-auto text-text-faint">
                 {fmtNum(player.price)}
               </span>
             </button>
@@ -145,7 +143,7 @@ export default function ConstraintsPanel(
               value={value.max_hits}
               onChange={(event) =>
                 onChange({ ...value, max_hits: Number(event.target.value) })}
-              className={FIELD}
+              className={INPUT_CLASS}
             >
               {[0, 1, 2, 3].map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
@@ -167,7 +165,7 @@ export default function ConstraintsPanel(
                 max_transfers: event.target.value === '' ? null
                   : Number(event.target.value),
               })}
-              className={FIELD}
+              className={INPUT_CLASS}
             >
               <option value="">no cap</option>
               <option value={0}>bank</option>
@@ -186,7 +184,7 @@ export default function ConstraintsPanel(
             onChange={(event) => onChange({
               ...value, chip: event.target.value as WhatIfRequest['chip'],
             })}
-            className={FIELD}
+            className={INPUT_CLASS}
           >
             <option value="none">none</option>
             <option value="wc">wildcard</option>
@@ -204,7 +202,7 @@ export default function ConstraintsPanel(
               horizon: event.target.value === '' ? null
                 : Number(event.target.value),
             })}
-            className={FIELD}
+            className={INPUT_CLASS}
           >
             <option value="">config default</option>
             {[1, 2, 3, 4, 5, 6].map((n) =>

@@ -1,7 +1,9 @@
 import * as Tabs from '@radix-ui/react-tabs'
 import { useEffect, useState } from 'react'
 import { apiGet } from '../api/client'
-import { EmptyState, PageHeader, useTabParam } from '../kit'
+import {
+  EmptyState, PageHeader, TAB_CLASS, TAB_LIST_CLASS, useTabParam,
+} from '../kit'
 import type { AdviceLatest, WhatIfRequest } from '../types'
 import ChipsTab from './planning/ChipsTab'
 import DraftsTab from './planning/DraftsTab'
@@ -9,12 +11,6 @@ import PlannerBoard from './planning/PlannerBoard'
 import TickerTab from './planning/TickerTab'
 import Timeline from './planning/Timeline'
 import WhatIfTab from './planning/WhatIfTab'
-
-// `shrink-0 whitespace-nowrap` so a trigger scrolls out of the strip rather
-// than compressing into two lines of one word at 390px.
-const TAB_CLASS = 'shrink-0 whitespace-nowrap px-3 py-2 text-text-muted '
-  + 'data-[state=active]:text-text '
-  + 'data-[state=active]:border-b data-[state=active]:border-text'
 
 // Radix keeps an unselected tab unmounted, so the constraints have to live
 // above both tabs or a draft saved from the Drafts tab would save whatever
@@ -92,8 +88,7 @@ export default function Planning() {
       <PageHeader title="Planning"
                   context={gw === null ? undefined : `GW${gw} horizon`} />
       <Tabs.Root value={tab} onValueChange={setTab}>
-        <Tabs.List className="mb-4 flex overflow-x-auto border-b
-                              border-divider">
+        <Tabs.List className={TAB_LIST_CLASS}>
           <Tabs.Trigger value="timeline" className={TAB_CLASS}>Timeline</Tabs.Trigger>
           <Tabs.Trigger value="board" className={TAB_CLASS}>Board</Tabs.Trigger>
           <Tabs.Trigger value="whatif" className={TAB_CLASS}>What-If</Tabs.Trigger>

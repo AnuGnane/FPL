@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../../api/client'
 import {
-  Badge, Card, EmptyState, Loading, PosBadge, fmtDelta, fmtNum,
+  Badge, Button, Card, EmptyState, Loading, PosBadge, fmtDelta, fmtNum,
+  segmentClass,
 } from '../../kit'
 import type {
   MoverRow, MoversPanel, PlanGw, PlanMove, PlanTimeline, WhatIfRequest,
@@ -211,7 +212,9 @@ export default function PlannerBoard(
       {alternatives.length > 0 && (
         // A tablist, not a row of toggles: each control swaps the panel below
         // rather than turning something on, and aria-pressed said the latter.
-        <div className="mb-3 flex flex-wrap gap-1" data-testid="plan-tabs"
+        <div className="mb-4 inline-flex flex-wrap divide-x divide-border
+                        overflow-hidden rounded-ctl border border-border"
+             data-testid="plan-tabs"
              role="tablist" aria-label="Plan A and its alternatives"
              // T8-T11 review, Minor 9: the roles arrived without the keyboard
              // half of the pattern. A tablist is one tab stop — the roving
@@ -241,8 +244,7 @@ export default function PlannerBoard(
                 aria-controls="plan-board"
                 tabIndex={pick === i ? 0 : -1}
                 onClick={() => setPick(i)}
-                className={`rounded-card border px-3 py-1.5 ${pick === i
-                  ? 'border-text text-text' : 'border-border text-text-muted'}`}
+                className={segmentClass(pick === i)}
               >
                 {label}
               </button>
@@ -440,15 +442,12 @@ export default function PlannerBoard(
               {onTry && shown === null
                 && (week.buys.length > 0 || week.sells.length > 0) && (
                 <div className="mt-3">
-                  <button
-                    type="button"
+                  <Button
                     data-testid={`board-try-${week.gw}`}
                     onClick={() => onTry(request(week))}
-                    className="rounded-card border border-border bg-base px-2
-                               py-1 text-text-secondary hover:text-text"
                   >
                     Try these changes
-                  </button>
+                  </Button>
                   <p data-testid={`board-try-note-${week.gw}`}
                      className="mt-1 text-text-faint">
                     {'This prefills the lab; it does not solve. A planned sell '

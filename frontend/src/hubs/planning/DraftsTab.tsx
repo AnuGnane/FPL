@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { apiDelete, apiGet, apiPost, errorText } from '../../api/client'
 import { useJob } from '../../api/useJob'
 import {
-  Card, EmptyState, JobLog, Skeleton, fmtNum, toast,
+  Button, Card, EmptyState, INPUT_CLASS, JobLog, Skeleton, fmtNum, toast,
 } from '../../kit'
 import type {
   DraftCompare, DraftCompareRequest, DraftList, DraftSaveRequest,
@@ -81,30 +81,21 @@ export default function DraftsTab({ current }: { current: WhatIfRequest }) {
         </p>
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <input
-            className="rounded-card border border-border bg-base px-2 py-1
-                       text-text"
+            className={INPUT_CLASS}
             aria-label="draft name"
             placeholder="Name this what-if"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
-          <button type="button" onClick={save}
-                  disabled={!name.trim() || full}
-                  className="rounded-card border border-border bg-card px-3
-                             py-2 text-text-secondary hover:text-text
-                             disabled:text-text-faint">
+          <Button onClick={save} disabled={!name.trim() || full}>
             Save the current What-If
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
             disabled={picked.length === 0 || job.status === 'running'}
             onClick={compare}
-            className="rounded-card border border-border bg-card px-3 py-2
-                       text-text-secondary hover:text-text
-                       disabled:text-text-faint"
           >
             {job.status === 'running' ? 'Comparing…' : 'Compare'}
-          </button>
+          </Button>
         </div>
         {full && (
           <p className="mb-3 text-text-muted">
@@ -142,12 +133,10 @@ export default function DraftsTab({ current }: { current: WhatIfRequest }) {
                       {summarize(draft.constraints)}
                     </span>
                   </label>
-                  <button type="button" aria-label={`delete ${draft.name}`}
-                          onClick={() => remove(draft.name)}
-                          className="rounded-card border border-border px-2
-                                     py-1 text-text-muted hover:text-text">
+                  <Button variant="ghost" aria-label={`delete ${draft.name}`}
+                          onClick={() => remove(draft.name)}>
                     Delete
-                  </button>
+                  </Button>
                 </li>
               ))}
             </ul>

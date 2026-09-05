@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { apiPost, errorText } from '../../api/client'
-import { toast } from '../../kit'
+import { Button, Callout, INPUT_CLASS, buttonClass, toast } from '../../kit'
 import type { OverrideRequest, OverridesPanel } from '../../types'
-
-const FIELD = 'rounded-card border border-border bg-base px-2 py-1 text-text'
 
 /** `overrides.NOTE_MAX`. The store refuses a longer note rather than
  *  truncating it — a silently halved note is a sentence the user did not
@@ -94,7 +92,7 @@ export default function PinDialog(
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-card border border-border bg-card"
+        className="w-full max-w-md rounded-ctl border border-border bg-base"
         role="dialog"
         aria-modal="true"
         aria-label={`Pin availability for ${name}`}
@@ -107,8 +105,7 @@ export default function PinDialog(
             <p className="label mt-1">Applied over the model, this gameweek</p>
           </div>
           <button ref={closeRef} type="button" onClick={onClose}
-                  className="rounded-card border border-border px-2 py-1
-                             text-text-muted hover:text-text">
+                  className={buttonClass('ghost')}>
             Close
           </button>
         </header>
@@ -119,13 +116,13 @@ export default function PinDialog(
           </p>
           <label className="flex items-center justify-between gap-3">
             <span className="label">Probability of playing</span>
-            <input className={FIELD} inputMode="decimal" value={pPlay}
+            <input className={INPUT_CLASS} inputMode="decimal" value={pPlay}
                    aria-label="probability of playing"
                    onChange={(e) => setPPlay(e.target.value)} />
           </label>
           <label className="flex items-center justify-between gap-3">
             <span className="label">Expected minutes</span>
-            <input className={FIELD} inputMode="decimal" value={eMin}
+            <input className={INPUT_CLASS} inputMode="decimal" value={eMin}
                    aria-label="expected minutes"
                    onChange={(e) => setEMin(e.target.value)} />
           </label>
@@ -137,19 +134,16 @@ export default function PinDialog(
                   {note.length}/{NOTE_MAX}
                 </span>
               )}
-              <input className={FIELD} value={note} aria-label="why"
+              <input className={INPUT_CLASS} value={note} aria-label="why"
                      maxLength={NOTE_MAX}
                      onChange={(e) => setNote(e.target.value)} />
             </span>
           </label>
-          {error && <p className="text-rust">{error}</p>}
-          {warning && <p className="text-info">{warning}</p>}
-          <button type="button" onClick={save}
-                  className="self-end rounded-card border border-border
-                             bg-card px-3 py-2 text-text-secondary
-                             hover:text-text">
+          {error && <Callout tone="error">{error}</Callout>}
+          {warning && <Callout tone="warn">{warning}</Callout>}
+          <Button variant="primary" className="self-end" onClick={save}>
             Pin
-          </button>
+          </Button>
         </div>
       </div>
     </div>

@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react'
 import { apiDelete, apiGet, apiPost, errorText } from '../api/client'
 import { useDebounced } from '../api/useDebounced'
 import {
-  type Column, Card, DataTable, EmptyState, Loading, PageHeader, PlayerName,
-  PosBadge, Sparkline, fmtNum, posColor, toast, useTabParam,
+  type Column, Button, Card, DataTable, EmptyState, INPUT_CLASS, Loading,
+  PageHeader, PlayerName, PosBadge, Sparkline, TAB_CLASS, TAB_LIST_CLASS,
+  fmtNum, segmentClass, toast, useTabParam,
 } from '../kit'
 import type {
   AdviceLatest, OverridesPanel, PlayerRow, WatchlistPanel,
@@ -15,12 +16,6 @@ import PinDialog from './players/PinDialog'
 import WatchlistTab from './players/WatchlistTab'
 
 const POSITIONS = ['', 'GKP', 'DEF', 'MID', 'FWD']
-
-// `shrink-0 whitespace-nowrap` so a trigger scrolls out of the strip rather
-// than compressing into two lines of one word at 390px.
-const TAB_CLASS = 'shrink-0 whitespace-nowrap px-3 py-2 text-text-muted '
-  + 'data-[state=active]:text-text '
-  + 'data-[state=active]:border-b data-[state=active]:border-text'
 
 // The strip's values, in strip order. Named so `useTabParam` can reject a
 // `?tab=` this hub does not have rather than rendering an empty panel.
@@ -220,7 +215,7 @@ export default function Players() {
               ? `watchlist unavailable for ${r.name}`
               : `${on ? 'unstar' : 'star'} ${r.name}`}
             onClick={() => toggleStar(r.code, r.name)}
-            className="px-1 text-text-muted hover:text-text
+            className="px-1 text-text-muted hover:text-accent-text
                        disabled:cursor-not-allowed disabled:opacity-40"
           >
             {on ? '★' : '☆'}
@@ -231,15 +226,13 @@ export default function Players() {
     {
       key: 'pin', header: '', value: () => '',
       render: (r) => (
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           aria-label={`pin ${r.name}`}
           onClick={() => setPinning(r)}
-          className="rounded-card border border-border px-2 py-0.5
-                     text-text-muted hover:text-text"
         >
           {pinned.includes(r.code) ? 'Pinned' : 'Pin'}
-        </button>
+        </Button>
       ),
     },
   ]
@@ -257,8 +250,7 @@ export default function Players() {
           : `${(rows ?? []).length} in the candidate pool`}
       />
       <Tabs.Root value={tab} onValueChange={setTab}>
-        <Tabs.List className="mb-4 flex overflow-x-auto border-b
-                              border-divider">
+        <Tabs.List className={TAB_LIST_CLASS}>
           <Tabs.Trigger value="explorer" className={TAB_CLASS}>Explorer</Tabs.Trigger>
           <Tabs.Trigger value="compare" className={TAB_CLASS}>Compare</Tabs.Trigger>
           <Tabs.Trigger value="matrix" className={TAB_CLASS}>Fixture matrix</Tabs.Trigger>
@@ -278,38 +270,27 @@ export default function Players() {
               <Card>
                 <div className="mb-3 flex flex-wrap items-center gap-4">
                   <div role="group" aria-label="Position"
-                       className="flex flex-wrap gap-1">
-                    {POSITIONS.map((p) => {
-                      const active = position === p
-                      const hue = posColor(p)
-                      return (
-                        <button
-                          key={p || 'all'}
-                          type="button"
-                          aria-pressed={active}
-                          onClick={() => setPosition(p)}
-                          className={`num rounded-card border px-2.5 py-1
-                            text-[11px] tracking-[0.08em] ${active
-                              ? 'bg-card' : 'border-border text-text-muted'}`}
-                          // Active takes the position's own hue, so the filter
-                          // and the column agree on what a MID looks like.
-                          style={active
-                            ? { color: hue ?? 'var(--color-text)',
-                                borderColor: hue ?? 'var(--color-text)' }
-                            : undefined}
-                        >
-                          {p || 'ALL'}
-                        </button>
-                      )
-                    })}
+                       className="inline-flex divide-x divide-border
+                                  overflow-hidden rounded-ctl border
+                                  border-border">
+                    {POSITIONS.map((p) => (
+                      <button
+                        key={p || 'all'}
+                        type="button"
+                        aria-pressed={position === p}
+                        onClick={() => setPosition(p)}
+                        className={segmentClass(position === p)}
+                      >
+                        {p || 'ALL'}
+                      </button>
+                    ))}
                   </div>
                   <label className="flex items-center gap-2">
                     <span className="label">Search</span>
                     <input
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      className="rounded-card border border-border bg-base
-                                 px-2 py-1 text-text"
+                      className={INPUT_CLASS}
                     />
                   </label>
                 </div>

@@ -7,19 +7,13 @@ import {
 import { apiGet } from '../api/client'
 import {
   type Column, Card, DataTable, EmptyState, Loading, PageHeader, Sparkline,
-  fmtNum, fmtPct, useTabParam,
+  TAB_CLASS, TAB_LIST_CLASS, fmtNum, fmtPct, useTabParam,
 } from '../kit'
 import type {
   AdviceLatest, LeagueRaceData, LeagueSimData, RivalSummary,
 } from '../types'
 import FieldPanel from './league/FieldPanel'
 import WhatIfSim, { type WhatIfSquadPlayer } from './league/WhatIfSim'
-
-// `shrink-0 whitespace-nowrap` so a trigger scrolls out of the strip rather
-// than compressing into two lines of one word at 390px.
-const TAB_CLASS = 'shrink-0 whitespace-nowrap px-3 py-2 text-text-muted '
-  + 'data-[state=active]:text-text '
-  + 'data-[state=active]:border-b data-[state=active]:border-text'
 
 // The strip's values, in strip order. Named so `useTabParam` can reject a
 // `?tab=` this hub does not have rather than rendering an empty panel.
@@ -185,8 +179,7 @@ export default function League() {
     <>
       <PageHeader title="League" context={leagueContext} />
       <Tabs.Root value={tab} onValueChange={setTab}>
-        <Tabs.List className="mb-4 flex overflow-x-auto border-b
-                              border-divider">
+        <Tabs.List className={TAB_LIST_CLASS}>
           <Tabs.Trigger value="race" className={TAB_CLASS}>Race</Tabs.Trigger>
           <Tabs.Trigger value="rivals" className={TAB_CLASS}>Rivals</Tabs.Trigger>
           <Tabs.Trigger value="whatif" className={TAB_CLASS}>What if</Tabs.Trigger>

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ApiError, apiPost } from '../../api/client'
 import { useJob } from '../../api/useJob'
-import { Card, Skeleton } from '../../kit'
+import { Button, Callout, Card, Skeleton } from '../../kit'
 import type { WhatIfRequest, WhatIfResult } from '../../types'
 import LadderCard from '../this-week/LadderCard'
 import ConstraintsPanel from './ConstraintsPanel'
@@ -61,19 +61,12 @@ export default function WhatIfTab({ value, onChange }: {
       <ConstraintsPanel value={request} onChange={setRequest} />
       {/* The one control on the tab, so it sits on the page rather than
           inside a card of its own. */}
-      <button
-        type="button"
-        onClick={solve}
-        disabled={busy}
-        className="mb-4 rounded-card border border-border bg-card px-3 py-2
-                   text-text-secondary hover:text-text
-                   disabled:text-text-faint"
-      >
+      <Button className="mb-4" onClick={solve} disabled={busy}>
         {busy ? 'Solving…' : 'Re-solve'}
-      </button>
+      </Button>
       {invalid && (
         <Card title="Infeasible" className="mb-4">
-          <p className="text-rust">{invalid.error}</p>
+          <p className="text-down">{invalid.error}</p>
           <p className="mt-1">
             <span className="label">Constraint</span>{' '}
             <span className="text-text-secondary">{invalid.constraint}</span>
@@ -82,7 +75,7 @@ export default function WhatIfTab({ value, onChange }: {
       )}
       {job.status === 'error' && (
         <Card title="Solver failed" className="mb-4">
-          <p className="text-rust">{job.error}</p>
+          <Callout tone="error">{job.error}</Callout>
         </Card>
       )}
       {busy && (

@@ -1,6 +1,8 @@
 import * as Tabs from '@radix-ui/react-tabs'
 import { useCallback, useState } from 'react'
-import { JobButton, PageHeader, useTabParam } from '../kit'
+import {
+  JobButton, PageHeader, TAB_CLASS, TAB_LIST_CLASS, useTabParam,
+} from '../kit'
 import HealthTab from './model/HealthTab'
 import HistoryTab from './model/HistoryTab'
 import JournalTab from './model/JournalTab'
@@ -8,12 +10,6 @@ import QualityTab from './model/QualityTab'
 import ReviewTab from './model/ReviewTab'
 import SeasonTab from './model/SeasonTab'
 import SettingsTab from './model/SettingsTab'
-
-// `shrink-0 whitespace-nowrap` so a trigger scrolls out of the strip rather
-// than compressing into two lines of one word at 390px.
-const TAB_CLASS = 'shrink-0 whitespace-nowrap px-3 py-2 text-text-muted '
-  + 'data-[state=active]:text-text '
-  + 'data-[state=active]:border-b data-[state=active]:border-text'
 
 // The strip's values, in strip order. Named so `useTabParam` can reject a
 // `?tab=` this hub does not have rather than rendering an empty panel.
@@ -62,8 +58,7 @@ export default function Model() {
         )}
       />
       <Tabs.Root value={tab} onValueChange={setTab}>
-        <Tabs.List className="mb-4 flex overflow-x-auto border-b
-                              border-divider">
+        <Tabs.List className={TAB_LIST_CLASS}>
           <Tabs.Trigger value="quality" className={TAB_CLASS}>Quality</Tabs.Trigger>
           <Tabs.Trigger value="journal" className={TAB_CLASS}>Journal</Tabs.Trigger>
           <Tabs.Trigger value="review" className={TAB_CLASS}>Review</Tabs.Trigger>

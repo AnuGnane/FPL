@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { apiGet } from '../../api/client'
 import {
-  Badge, Card, ExplainModal, Loading, PageHeader, PlayerCard, fmtNum,
+  Badge, Button, Card, ExplainModal, Loading, PageHeader, PlayerCard, fmtNum,
 } from '../../kit'
 import type { RivalDetailData, SquadPlayer } from '../../types'
 
@@ -66,14 +66,7 @@ export default function RivalDetail() {
         <PageHeader title="Rival" />
         <Card title="Could not load this rival">
           <p className="text-rust">{error}</p>
-          <button
-            type="button"
-            onClick={load}
-            className="mt-3 rounded-card border border-border bg-base px-3 py-2
-                       text-text-secondary hover:text-text"
-          >
-            Retry
-          </button>
+          <Button className="mt-3" onClick={load}>Retry</Button>
         </Card>
       </>
     )
