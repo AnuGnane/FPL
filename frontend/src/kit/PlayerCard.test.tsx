@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import type { ComponentProps } from 'react'
 import { describe, expect, it } from 'vitest'
-import PlayerCard, { PLAIN_SHIRT } from './PlayerCard'
+import PlayerCard, { PLAIN_SHIRT, lensBackground } from './PlayerCard'
 import type { NextFixture } from '../types'
 
 const FIXTURE: NextFixture = {
@@ -17,6 +17,10 @@ function card(over: Partial<ComponentProps<typeof PlayerCard>> = {}) {
     />,
   )
 }
+
+/** The card's own frame — the element the tile classes and the lens tint
+ *  land on, whether it rendered as a div or as a button. */
+const frame = () => document.querySelector('[data-code="11"]') as HTMLElement
 
 describe('PlayerCard', () => {
   it('draws the shirt through the backend, never the CDN', () => {
@@ -72,12 +76,14 @@ describe('PlayerCard', () => {
     expect(screen.getByText('5.1')).toBeInTheDocument()
   })
 
-  it('draws the fixture chip with the opponent, the side and the kickoff',
-     () => {
+  it('draws the fixture chip with the opponent and the side, the kickoff '
+     + 'in its title', () => {
     card()
     const chip = screen.getByTestId('fixture-chip')
     expect(chip).toHaveTextContent('MUN (H)')
-    expect(chip.textContent).toMatch(/\d/)   // some rendered kickoff
+    // R3: the tile is not where a captain is chosen, so the kickoff moved
+    // out of the chip's face and into what it says on hover.
+    expect(chip).toHaveAttribute('title', expect.stringMatching(/\d/))
   })
 
   it('says Blank rather than drawing an empty chip', () => {
@@ -90,19 +96,42 @@ describe('PlayerCard', () => {
     card({ fixture: { ...FIXTURE, kickoff_utc: null } })
     const chip = screen.getByTestId('fixture-chip')
     expect(chip).toHaveTextContent('MUN (H)')
-    expect(chip).toHaveTextContent('TBC')
+    expect(chip).toHaveAttribute('title', expect.stringContaining('TBC'))
   })
 
-  it('tints the chip by difficulty and leaves an unrated one neutral', () => {
-    const { rerender } = card()
-    const tinted = screen.getByTestId('fixture-chip').style.backgroundColor
-    rerender(
-      <PlayerCard code={11} name="Saka" position="MID" teamShort="ARS"
-                  teamCode={3} ep={5.1}
-                  fixture={{ ...FIXTURE, difficulty: null }} />,
-    )
-    expect(screen.getByTestId('fixture-chip').style.backgroundColor)
-      .not.toBe(tinted)
+  it('speaks difficulty in the tint language, not a colour ramp', () => {
+    // Rule 1: easy and hard are directions. An unrated fixture is grey
+    // rather than the midpoint of a ramp, which would read as "average" —
+    // a claim the ticker did not make.
+    card()
+    expect(screen.getByTestId('fixture-chip'))
+      .toHaveAttribute('data-tone', 'up')
+    card({ fixture: { ...FIXTURE, difficulty: 0.9 } })
+    expect(screen.getAllByTestId('fixture-chip')[1])
+      .toHaveAttribute('data-tone', 'down')
+    card({ fixture: { ...FIXTURE, difficulty: null } })
+    expect(screen.getAllByTestId('fixture-chip')[2])
+      .toHaveAttribute('data-tone', 'neutral')
+  })
+
+  it('is a 92px tile with a 26px shirt at pitch size', () => {
+    card()
+    expect(frame().className).toContain('w-[92px]')
+    expect(screen.getByRole('img')).toHaveAttribute('width', '26')
+  })
+
+  it('tags the captain after the name as a square C, the vice as a grey V',
+     () => {
+    card({ armband: 'C' })
+    expect(screen.getByTitle('Captain')).toHaveTextContent('C')
+    expect(screen.getByTitle('Captain').className).not.toContain('rounded-full')
+    card({ armband: 'V' })
+    expect(screen.getByTitle('Vice-captain')).toHaveTextContent('V')
+  })
+
+  it('flags doubt in amber (rule 2)', () => {
+    card({ news: 'Knock', chanceOfPlaying: 75 })
+    expect(screen.getByText('75%')).toHaveAttribute('data-tone', 'warn')
   })
 
   it('wears the captain armband', () => {
@@ -182,28 +211,26 @@ describe('PlayerCard', () => {
   })
 })
 
-describe('PlayerCard: the field tint (v10b §F1c)', () => {
-  const frame = () => document.querySelector('[data-code="11"]') as HTMLElement
-
-  it('draws no inline border colour without a fieldClass', () => {
+describe('PlayerCard: the EO lens (v14)', () => {
+  it('draws no inline background without a lens ownership', () => {
     // The assertion that keeps the prop genuinely optional: every existing
     // caller renders the default frame, unchanged.
     card()
-    expect(frame().style.borderColor).toBe('')
+    expect(frame().style.backgroundColor).toBe('')
   })
 
-  it('tints a shield and a sword differently', () => {
-    card({ fieldClass: 'shield' })
-    const shield = frame().style.borderColor
-    expect(shield).not.toBe('')
-    card({ fieldClass: 'sword' })
-    const sword = document.querySelectorAll('[data-code="11"]')[1] as
-      HTMLElement
-    expect(sword.style.borderColor).not.toBe(shield)
+  it('tints the tile background by lens ownership', () => {
+    card({ lensEo: 80 })
+    expect(frame().style.backgroundColor).not.toBe('')
   })
 
-  it('treats an explicit null exactly as absent', () => {
-    card({ fieldClass: null })
-    expect(frame().style.borderColor).toBe('')
+  it('mixes more of the text colour in the more he is owned', () => {
+    expect(lensBackground(80)).not.toBe(lensBackground(10))
+    expect(lensBackground(80)).toContain('var(--color-text)')
+  })
+
+  it('names the field class in the title, never as a colour', () => {
+    card({ lensEo: 45.7, fieldClass: 'shield' })
+    expect(frame()).toHaveAttribute('title', expect.stringContaining('shield'))
   })
 })

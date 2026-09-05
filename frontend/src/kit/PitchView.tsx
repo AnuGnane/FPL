@@ -30,7 +30,8 @@ export default function PitchView(
   ].filter(([, players]) => players.length > 0)
 
   return (
-    <div className="flex w-full flex-col gap-2">
+    <div className="relative flex w-full flex-col gap-3 rounded-ctl bg-turf
+                    px-2 py-4">
       {rows.map(([line, players]) => (
         <div key={line} data-testid={`pitch-row-${line}`}
              className="flex flex-wrap justify-center gap-2">
@@ -40,8 +41,8 @@ export default function PitchView(
               type="button"
               onClick={() => onSelect?.(player.code)}
               data-position={player.position || undefined}
-              className="flex min-w-[86px] flex-col items-center rounded-card
-                         border-2 bg-card px-2 py-1"
+              className="flex w-[92px] flex-col items-center rounded-ctl
+                         border bg-base px-1.5 py-1.5"
               // Identity, not judgement: the ring says which line he is on.
               // A player the artifact gave no position keeps the plain border.
               style={{
@@ -52,13 +53,25 @@ export default function PitchView(
               <span className="flex items-center gap-1 text-text">
                 {player.name}
                 {player.code === captain && (
-                  <span title="Captain" className="text-sage">C</span>
+                  <span
+                    title="Captain"
+                    className="rounded-chip px-0.5 text-[9px] font-bold
+                               leading-none"
+                    style={{ background: 'var(--color-text)',
+                             color: 'var(--color-base)' }}
+                  >C</span>
                 )}
                 {player.code === vice && (
-                  <span title="Vice-captain" className="text-info">V</span>
+                  <span
+                    title="Vice-captain"
+                    className="rounded-chip px-0.5 text-[9px] font-bold
+                               leading-none"
+                    style={{ background: 'var(--color-text-muted)',
+                             color: 'var(--color-base)' }}
+                  >V</span>
                 )}
               </span>
-              <span className="num text-xs text-text-muted">
+              <span className="tn text-[10.5px] text-text-muted">
                 {fmtNum(player.ep)}
               </span>
             </button>

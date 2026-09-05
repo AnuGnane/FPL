@@ -116,6 +116,18 @@ describe('SquadPitch', () => {
     expect(screen.getAllByText('Blank')).toHaveLength(1)
   })
 
+  it('draws the turf with hairline markings and the bench on the page surface',
+     () => {
+    pitch()
+    expect(screen.getByTestId('turf')).toHaveClass('bg-turf')
+    expect(screen.getByTestId('turf').querySelectorAll('[data-turf-line]'))
+      .toHaveLength(2)
+    expect(screen.getByTestId('bench-strip').className)
+      .not.toMatch(/border|bg-/)
+    expect(screen.getByTestId('turf').getAttribute('style') ?? '')
+      .not.toContain('gradient')
+  })
+
   it('renders with no identity at all, as a cold clone would', () => {
     // Every new field null: no snapshot, no fixtures, no ticker. The pitch is
     // still a pitch.
@@ -129,14 +141,14 @@ describe('SquadPitch', () => {
   })
 })
 
-describe('SquadPitch: the EO lens (v10b §F1c)', () => {
+describe('SquadPitch: the EO lens (v10b §F1c, v14 as a tint)', () => {
   const tinted = () => Array.from(document.querySelectorAll('[data-code]'))
-    .filter((el) => (el as HTMLElement).style.borderColor !== '')
+    .filter((el) => (el as HTMLElement).style.backgroundColor !== '')
 
   const lensXi = XI.map((p, i) => (
-    i === 0 ? { ...p, fieldClass: 'shield' as const } : p))
+    i === 0 ? { ...p, fieldEo: 45, fieldClass: 'shield' as const } : p))
   const lensBench = BENCH.map((p, i) => (
-    i === 0 ? { ...p, fieldClass: 'sword' as const } : p))
+    i === 0 ? { ...p, fieldEo: 45, fieldClass: 'sword' as const } : p))
 
   it('tints through the one card() funnel when the lens is on', () => {
     render(<SquadPitch xi={lensXi} bench={BENCH} captain={1} vice={2} lens />)

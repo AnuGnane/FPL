@@ -1,6 +1,6 @@
-import Badge from './Badge'
+import Chip from './Chip'
 import { fmtNum } from './format'
-import { difficultyBackground } from './scale'
+import { difficultyTone } from './scale'
 import type { NextFixture } from '../types'
 
 /**
@@ -57,19 +57,12 @@ export interface PlayerCardProps {
    * is the third of the game the classifier deliberately says nothing about.
    */
   fieldClass?: 'shield' | 'sword' | 'threat' | null
+  /** v14: the EO lens. Field effective ownership, 0–100, when the lens is
+   *  on; the tile background is tinted by it (rule 7 as a tint, not a bar).
+   *  Null or absent draws no tint. `fieldClass` then only names the class in
+   *  the title — never a colour, because a colour would be a verdict. */
+  lensEo?: number | null
   onSelect?: (code: number) => void
-}
-
-/** The lens palette. Tokens, not hex: a literal would be right in one theme.
- *
- * Inline `style` rather than a Tailwind class, because the value is
- * data-driven and this file already has that idiom (`FixtureChip`). It moves
- * `borderColor` only, so the pitch and chip sizes both inherit the tint
- * without a second class table. */
-export const FIELD_TINT: Record<'shield' | 'sword' | 'threat', string> = {
-  shield: 'var(--color-sage)',
-  sword: 'var(--color-info)',
-  threat: 'var(--color-rust)',
 }
 
 /** The bundled plain shirt, inline.
@@ -116,38 +109,41 @@ function kickoffLabel(iso: string | null): string {
   })
 }
 
+/** The lens tint: more owned, more of the text colour mixed into the base.
+ *  A token mix rather than a hex so it is right in both themes. */
+export function lensBackground(eo: number): string {
+  const pct = Math.round(Math.min(Math.max(eo, 0), 100) * 0.28)
+  return `color-mix(in srgb, var(--color-text) ${pct}%, var(--color-base))`
+}
+
 function FixtureChip({ fixture }: { fixture: NextFixture | null }) {
   // A blank gameweek is a word, not an empty box: the reader has to be able
   // to tell "he does not play" from "we failed to load his fixture".
   if (!fixture) {
     return (
-      <span data-testid="fixture-chip"
-            className="rounded px-1 text-[10px] text-text-muted"
-            style={{ backgroundColor: 'var(--color-card)' }}>
+      <span data-testid="fixture-chip" data-tone="neutral"
+            className="mt-1 inline-flex rounded-chip border border-border
+                       px-1.5 text-[10px] leading-4 text-text-muted">
         Blank
       </span>
     )
   }
   const side = fixture.home ? 'H' : 'A'
+  const tone = difficultyTone(fixture.difficulty)
+  const rating = fixture.difficulty === null
+    ? 'No difficulty rating available for this fixture'
+    : `Fixture difficulty ${fixture.difficulty.toFixed(2)} — the ticker's `
+      + 'odds-implied rating, not FPL\'s FDR'
+  // The kickoff moved into the title (plan R3): the tile is not where a
+  // captain is chosen, and the mockup's tile carries none. The wrapper
+  // holds the test id, the tone and the title because `Chip` is a closed
+  // primitive that takes no arbitrary attributes; it draws the tint.
   return (
-    <span
-      data-testid="fixture-chip"
-      className="rounded px-1 text-[10px] text-text"
-      // An unrated fixture keeps the card colour rather than borrowing the
-      // midpoint of the difficulty scale, which would read as "average" —
-      // a claim the ticker did not make.
-      style={{
-        backgroundColor: fixture.difficulty === null
-          ? 'var(--color-card)'
-          : difficultyBackground(fixture.difficulty),
-      }}
-      title={fixture.difficulty === null
-        ? 'No difficulty rating available for this fixture'
-        : `Fixture difficulty ${fixture.difficulty.toFixed(2)} — the ticker's `
-          + 'odds-implied rating, not FPL\'s FDR'}
-    >
-      {`${fixture.opponent_short ?? '???'} (${side}) `}
-      {kickoffLabel(fixture.kickoff_utc)}
+    <span data-testid="fixture-chip" data-tone={tone} className="mt-1"
+          title={`${kickoffLabel(fixture.kickoff_utc)} · ${rating}`}>
+      <Chip tone={tone}>
+        {`${fixture.opponent_short ?? '???'} (${side})`}
+      </Chip>
     </span>
   )
 }
@@ -155,82 +151,74 @@ function FixtureChip({ fixture }: { fixture: NextFixture | null }) {
 export default function PlayerCard({
   code, name, position, teamShort, teamCode, ep, fixture = null,
   armband = null, multiplier = null, news = '', chanceOfPlaying = null,
-  size = 'pitch', fieldClass = null, onSelect,
+  size = 'pitch', fieldClass = null, lensEo = null, onSelect,
 }: PlayerCardProps) {
   const pitch = size === 'pitch'
+  const shirtPx = pitch ? 26 : 20
 
   const shirt = (
-    <span className="relative shrink-0">
-      <img
-        src={shirtSrc(teamCode, position)}
-        alt={teamShort ? `${teamShort} shirt` : 'shirt'}
-        width={pitch ? 44 : 24}
-        height={pitch ? 44 : 24}
-        // A request that fails on the wire falls back to the same plain
-        // shirt a missing team code gets, rather than hiding the element:
-        // a hidden image is a gap in the row, and a gap reads as a bug
-        // where a plain shirt reads as "we do not know his club". The
-        // guard stops the swap retriggering if the data URI itself
-        // somehow fails — an onError that reassigns the source it is
-        // already showing is an infinite loop.
-        onError={(e) => {
-          if (e.currentTarget.getAttribute('src') !== PLAIN_SHIRT) {
-            e.currentTarget.setAttribute('src', PLAIN_SHIRT)
-          }
-        }}
-        className={pitch ? 'mx-auto block' : 'block'}
-      />
-      {armband && (
-        <span
-          title={armband === 'C' ? 'Captain' : 'Vice-captain'}
-          className={'absolute -right-1 -top-1 flex h-4 w-4 items-center '
-            + 'justify-center rounded-full border border-border '
-            + 'bg-card text-[9px] font-semibold '
-            + (armband === 'C' ? 'text-sage' : 'text-info')}
-        >
-          {armband}
-        </span>
-      )}
+    <img
+      src={shirtSrc(teamCode, position)}
+      alt={teamShort ? `${teamShort} shirt` : 'shirt'}
+      width={shirtPx}
+      height={shirtPx}
+      // A request that fails on the wire falls back to the same plain shirt
+      // a missing team code gets. The guard stops the swap retriggering if
+      // the data URI itself somehow fails.
+      onError={(e) => {
+        if (e.currentTarget.getAttribute('src') !== PLAIN_SHIRT) {
+          e.currentTarget.setAttribute('src', PLAIN_SHIRT)
+        }
+      }}
+      className={pitch ? 'mx-auto mb-1 block' : 'block shrink-0'}
+    />
+  )
+
+  // C: a white square tag after the name; V: the same tag in grey (spec §5).
+  const tag = armband && (
+    <span
+      title={armband === 'C' ? 'Captain' : 'Vice-captain'}
+      className="ml-1 inline-flex h-3 min-w-3 shrink-0 items-center
+                 justify-center rounded-chip px-0.5 text-[9px] font-bold
+                 leading-none"
+      style={{
+        background: armband === 'C' ? 'var(--color-text)'
+                                    : 'var(--color-text-muted)',
+        color: 'var(--color-base)',
+      }}
+    >
+      {armband}
     </span>
   )
 
   const nameLine = (
-    <span className={'flex items-center gap-1 text-xs text-text '
-      + (pitch ? 'mt-0.5 justify-center' : 'min-w-0')}>
+    <span className={'flex min-w-0 items-center text-[11.5px] font-semibold '
+      + `text-text ${pitch ? 'justify-center' : ''}`}>
       <span className="truncate">{name}</span>
+      {tag}
       {news && (
-        <Badge variant="negative" title={news}>
+        <Chip tone="warn" title={news} className="ml-1">
           {chanceOfPlaying === null ? 'News' : `${chanceOfPlaying}%`}
-        </Badge>
+        </Chip>
       )}
     </span>
   )
 
   const metaLine = (
-    <span className={'flex items-center gap-1 text-[10px] text-text-muted '
+    <span className={'tn flex items-center gap-1 text-[10.5px] text-text-muted '
       + (pitch ? 'justify-center' : '')}>
       {teamShort && <span>{teamShort}</span>}
-      <span className="num">{fmtNum(ep)}</span>
-      {/* Drawn only when the payload already named a chip (D3): no new
-          chip plumbing this cycle. */}
+      {teamShort && <span aria-hidden>·</span>}
+      <span>{fmtNum(ep)}</span>
+      {/* Drawn only when the payload already named a chip (D3). */}
       {multiplier !== null && multiplier > 1 && (
-        <span className="num text-sage">{`×${multiplier}`}</span>
+        <span className="text-up">{`×${multiplier}`}</span>
       )}
     </span>
   )
 
-  // The two sizes share every piece except their frame (plan A2): the pitch
-  // keeps v9a's centred stack with its fixture chip, and the chip lies along
-  // a row so it can sit in a table cell without tripling the row height.
   const body = pitch
-    ? (
-      <>
-        {shirt}
-        {nameLine}
-        {metaLine}
-        <FixtureChip fixture={fixture} />
-      </>
-      )
+    ? <>{shirt}{nameLine}{metaLine}<FixtureChip fixture={fixture} /></>
     : (
       <>
         {shirt}
@@ -239,27 +227,34 @@ export default function PlayerCard({
       )
 
   const className = pitch
-    ? 'flex w-[76px] flex-col items-center rounded-card '
-      + 'border border-border bg-card px-1 py-1 text-center'
+    ? 'flex w-[92px] flex-col items-center rounded-ctl border border-border '
+      + 'bg-base px-1.5 py-1.5 text-center'
     // No fixed width: a chip sits in a table cell, a list row and a wrapping
     // strip, and each of those knows its own width better than the card does.
-    : 'inline-flex max-w-full items-center gap-1.5 rounded-card border '
-      + 'border-border bg-card px-1.5 py-1 text-left'
+    : 'inline-flex max-w-full items-center gap-1.5 rounded-ctl border '
+      + 'border-border bg-base px-1.5 py-1 text-left'
+
+  // `undefined` rather than an empty object so an untinted card carries no
+  // inline style at all.
+  const style = lensEo !== null && lensEo !== undefined
+    ? { backgroundColor: lensBackground(lensEo) }
+    : undefined
+  const title = lensEo !== null && lensEo !== undefined
+    ? `field EO ${fmtNum(lensEo, 1)}%${fieldClass ? ` · ${fieldClass}` : ''}`
+    : undefined
 
   // A div unless something is listening: a button nothing responds to is a
   // focus stop that lies about being interactive.
-  // The tint, when the caller asked for one. `undefined` rather than an
-  // empty object so an untinted card carries no inline style at all.
-  const style = fieldClass
-    ? { borderColor: FIELD_TINT[fieldClass] }
-    : undefined
-
   return onSelect
     ? (
       <button type="button" data-code={code} className={className}
-              style={style} onClick={() => onSelect(code)}>
+              style={style} title={title} onClick={() => onSelect(code)}>
         {body}
       </button>
       )
-    : <div data-code={code} className={className} style={style}>{body}</div>
+    : (
+      <div data-code={code} className={className} style={style} title={title}>
+        {body}
+      </div>
+      )
 }

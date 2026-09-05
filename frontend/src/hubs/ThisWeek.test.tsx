@@ -514,9 +514,9 @@ describe('the captain against the field (v10b §F1a)', () => {
      })
 })
 
-describe('the EO lens (v10b §F1c)', () => {
+describe('the EO lens (v10b §F1c, v14 as a background tint)', () => {
   const tinted = () => Array.from(document.querySelectorAll('[data-code]'))
-    .filter((el) => (el as HTMLElement).style.borderColor !== '')
+    .filter((el) => (el as HTMLElement).style.backgroundColor !== '')
 
   it('is off on first render', async () => {
     // A14: off by default, and state rather than localStorage — persisting a

@@ -13,10 +13,10 @@ import type { SquadRow } from './SquadTable'
  * worse than an ugly extra row, and advice written before v3.1 has no
  * positions at all.
  *
- * The bench is a strip below the grass in the order the payload lists it
- * (GK first, then outfield in bench order), because that order is the
- * substitution priority and re-sorting it would destroy the only information
- * the sequence carries.
+ * The bench is a labelled row on the page surface under the turf, in the
+ * order the payload lists it (GK first, then outfield in bench order),
+ * because that order is the substitution priority and re-sorting it would
+ * destroy the only information the sequence carries.
  *
  * Every card is `kit/PlayerCard`; nothing about a player is drawn here.
  */
@@ -66,7 +66,8 @@ export default function SquadPitch(
       armband={armbandFor(player.code, captain, vice)}
       news={player.news}
       chanceOfPlaying={player.chanceOfPlaying}
-      fieldClass={lens ? player.fieldClass ?? null : null}
+      lensEo={lens ? player.fieldEo ?? null : null}
+      fieldClass={player.fieldClass ?? null}
       onSelect={onSelect}
     />
   )
@@ -74,29 +75,29 @@ export default function SquadPitch(
   return (
     <div>
       <div
-        className="flex flex-col justify-between gap-3 rounded-card px-2 py-3"
-        // The grass. A gradient rather than a flat green so the four bands
-        // read as depth, and a token-free literal because this is the one
-        // surface on the page that is not part of the palette — a pitch is
-        // green in both themes.
-        style={{
-          background:
-            'linear-gradient(to bottom, #1f6b3a 0%, #2a8049 55%, #1f6b3a 100%)',
-        }}
+        data-testid="turf"
+        className="relative flex flex-col justify-between gap-3 rounded-ctl
+                   bg-turf px-2 py-4"
       >
+        {/* Hairline markings: an inner rectangle and the halfway line, in
+            the turf-line token — no texture, no gradient (spec §5). */}
+        <div aria-hidden data-turf-line
+             className="pointer-events-none absolute inset-2 rounded-chip
+                        border border-turf-line" />
+        <div aria-hidden data-turf-line
+             className="pointer-events-none absolute inset-x-2 top-1/2
+                        border-t border-turf-line" />
         {rows.map(([line, players]) => (
           <div key={line} data-testid={`pitch-row-${line}`}
-               className="flex flex-wrap justify-center gap-1.5">
+               className="relative flex flex-wrap justify-center gap-2">
             {players.map(card)}
           </div>
         ))}
       </div>
       {bench.length > 0 && (
-        <div data-testid="bench-strip"
-             className="mt-2 rounded-card border border-border bg-surface
-                        px-2 py-2">
-          <p className="label mb-1">Bench</p>
-          <div className="flex flex-wrap justify-center gap-1.5">
+        <div data-testid="bench-strip" className="mt-3">
+          <p className="label mb-1.5">Bench · in order</p>
+          <div className="flex flex-wrap gap-2">
             {bench.map(card)}
           </div>
         </div>
