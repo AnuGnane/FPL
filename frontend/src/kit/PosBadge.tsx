@@ -40,7 +40,7 @@ export default function PosBadge(
         data-testid={`pos-dot-${key}`}
         title={key}
         aria-label={key}
-        className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full
+        className={`inline-block h-1.5 w-1.5 shrink-0 rounded-chip
                     ${className ?? ''}`}
         // An unrecognised position gets the faint neutral, never a hue it
         // could be mistaken for.
@@ -52,7 +52,7 @@ export default function PosBadge(
   return (
     <span
       data-testid={`pos-badge-${key}`}
-      className={`num text-[10px] tracking-[0.08em]
+      className={`tn text-[10px] font-semibold tracking-[0.06em]
                   ${colour ? '' : 'text-text-muted'} ${className ?? ''}`}
       style={colour ? { color: colour } : undefined}
     >

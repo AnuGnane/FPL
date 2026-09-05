@@ -86,12 +86,12 @@ describe('the colouring', () => {
     expect(tone(null)).toBe('text-text-faint')
   })
 
-  it('is green under a day, amber under three, red beyond', () => {
-    expect(tone(0.5)).toBe('text-moss')
-    expect(tone(23.9)).toBe('text-moss')
-    expect(tone(24)).toBe('text-amber')
-    expect(tone(71.9)).toBe('text-amber')
-    expect(tone(72)).toBe('text-rust')
+  it('is grey under a day, amber under three, down beyond (plan R2)', () => {
+    expect(tone(0.5)).toBe('text-text-muted')
+    expect(tone(23.9)).toBe('text-text-muted')
+    expect(tone(24)).toBe('text-warn')
+    expect(tone(71.9)).toBe('text-warn')
+    expect(tone(72)).toBe('text-down')
   })
 })
 

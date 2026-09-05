@@ -21,7 +21,7 @@ describe('DataTable', () => {
   it('renders one row per record with numeric cells in the mono face', () => {
     render(<DataTable columns={COLUMNS} rows={ROWS} rowKey={(r) => r.code} />)
     expect(screen.getAllByRole('row')).toHaveLength(4) // header + 3
-    expect(screen.getByText('6.4')).toHaveClass('num')
+    expect(screen.getByText('6.4')).toHaveClass('tn')
   })
 
   it('sorts descending on the first header click and ascending on the second',
@@ -71,6 +71,16 @@ describe('DataTable', () => {
     await userEvent.click(await screen.findByRole('menuitem', { name: 'xPts' }))
     expect(screen.getAllByTestId(/row-card-/)[0]).toHaveAttribute(
       'data-testid', 'row-card-2')
+  })
+
+  it('tints the selected row accent and raises the header band', () => {
+    const { container } = render(
+      <DataTable columns={COLUMNS} rows={ROWS} rowKey={(r) => r.code}
+                 collapse={false} selected={(r) => r.code === 2} />)
+    expect(container.querySelector('thead')).toHaveClass('bg-raised')
+    const rows = screen.getAllByRole('row').slice(1)
+    expect(rows[1]).toHaveClass('bg-accent-tint')
+    expect(rows[0]).not.toHaveClass('bg-accent-tint')
   })
 })
 

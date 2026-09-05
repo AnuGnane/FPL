@@ -13,7 +13,7 @@ export interface PlayerNameProps {
  * A player's name, everywhere: the one control that opens his EP breakdown.
  *
  * Styled as text rather than as a button, because a squad list of fifteen
- * buttons reads as a toolbar. The underline on hover is the only affordance
+ * buttons reads as a toolbar. Turning accent on hover is the only affordance
  * it needs.
  */
 export default function PlayerName({ code, name, pos }: PlayerNameProps) {
@@ -25,7 +25,7 @@ export default function PlayerName({ code, name, pos }: PlayerNameProps) {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="text-text hover:underline"
+          className="text-text hover:text-accent-text"
         >
           {name}
         </button>

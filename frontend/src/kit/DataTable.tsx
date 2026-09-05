@@ -1,5 +1,10 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { type ReactNode, useMemo, useState } from 'react'
+import { buttonClass } from './Button'
+import {
+  TABLE_CLASS, THEAD_CLASS, TR_CLASS, TR_EXPANDED_CLASS, TR_SELECTED_CLASS,
+  tdClass, thClass,
+} from './table'
 import { useIsMobile } from './useMediaQuery'
 
 export interface Column<T> {
@@ -7,7 +12,7 @@ export interface Column<T> {
   header: string
   /** One of the three columns the mobile card shows before expanding (§8). */
   primary?: boolean
-  /** Right-aligned and rendered in the mono face. */
+  /** Right-aligned, tabular figures. */
   numeric?: boolean
   /** The sortable, printable value. */
   value: (row: T) => string | number | null
@@ -26,6 +31,8 @@ export interface DataTableProps<T> {
   /** Forces card mode; otherwise the `md` breakpoint decides. */
   collapse?: boolean
   initialSort?: string
+  /** The row to draw accent-tinted — the one the reader has chosen. */
+  selected?: (row: T) => boolean
 }
 
 type Cell = string | number | null
@@ -60,7 +67,7 @@ function compare(a: Cell, b: Cell, desc: boolean): number {
 
 export default function DataTable<T>(
   { columns, rows, rowKey, rowLabel, expand, empty, collapse,
-    initialSort }: DataTableProps<T>,
+    initialSort, selected }: DataTableProps<T>,
 ) {
   const [sortKey, setSortKey] = useState<string | null>(initialSort ?? null)
   const [desc, setDesc] = useState(true)
@@ -99,19 +106,18 @@ export default function DataTable<T>(
     return (
       <div className="flex flex-col gap-2">
         <DropdownMenu.Root>
-          <DropdownMenu.Trigger className="self-start rounded-card border
-            border-border bg-card px-2 py-1 text-text-secondary">
+          <DropdownMenu.Trigger className={buttonClass('secondary', 'self-start')}>
             Sort
           </DropdownMenu.Trigger>
           <DropdownMenu.Portal>
-            <DropdownMenu.Content className="rounded-card border border-border
-              bg-card p-1 text-text-secondary">
+            <DropdownMenu.Content className="rounded-ctl border border-border
+              bg-raised p-1 text-text-secondary">
               {columns.map((column) => (
                 <DropdownMenu.Item
                   key={column.key}
                   onSelect={() => toggleSort(column.key)}
-                  className="cursor-pointer px-2 py-1 outline-none
-                             data-[highlighted]:text-text"
+                  className="cursor-pointer rounded-chip px-2 py-1 outline-none
+                             data-[highlighted]:bg-base data-[highlighted]:text-text"
                 >
                   {column.header}
                 </DropdownMenu.Item>
@@ -124,17 +130,18 @@ export default function DataTable<T>(
           const isOpen = open.has(key)
           return (
             <div key={key} data-testid={`row-card-${key}`}
-                 className="rounded-card border border-border bg-card p-3">
+                 className={'rounded-ctl border border-border p-3 '
+                   + (selected?.(row) ? TR_SELECTED_CLASS : 'bg-base')}>
               <div className="flex items-baseline justify-between gap-2">
                 {primary.map((column) => (
                   <span key={column.key}
-                        className={column.numeric ? 'num text-text' : 'text-text'}>
+                        className={column.numeric ? 'tn text-text' : 'text-text'}>
                     {column.render ? column.render(row) : column.value(row)}
                   </span>
                 ))}
               </div>
               <button type="button" onClick={() => toggleOpen(key)}
-                      className="mt-2 text-text-muted">
+                      className="mt-2 text-text-muted hover:text-accent-text">
                 {isOpen ? 'Less' : 'More'}
               </button>
               {isOpen && (
@@ -142,7 +149,7 @@ export default function DataTable<T>(
                   {rest.map((column) => (
                     <div key={column.key} className="contents">
                       <dt className="label">{column.header}</dt>
-                      <dd className={column.numeric ? 'num text-text' : 'text-text'}>
+                      <dd className={column.numeric ? 'tn text-text' : 'text-text'}>
                         {column.render ? column.render(row) : column.value(row)}
                       </dd>
                     </div>
@@ -159,14 +166,12 @@ export default function DataTable<T>(
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse">
-        <thead className="sticky top-0 bg-card">
+      <table className={TABLE_CLASS}>
+        <thead className={`sticky top-0 ${THEAD_CLASS}`}>
           <tr>
-            {expand && <th className="w-8" />}
+            {expand && <th className={`${thClass()} w-8`} />}
             {columns.map((column) => (
-              <th key={column.key}
-                  className={`border-b border-divider px-2 py-2
-                              ${column.numeric ? 'text-right' : 'text-left'}`}>
+              <th key={column.key} className={thClass(column.numeric)}>
                 <button type="button" onClick={() => toggleSort(column.key)}
                         className="label hover:text-text">
                   {column.header}
@@ -181,28 +186,28 @@ export default function DataTable<T>(
             const key = String(rowKey(row))
             const isOpen = open.has(key)
             return [
-              <tr key={key} className="border-b border-divider">
+              <tr key={key}
+                  className={`${TR_CLASS} ${selected?.(row) ? TR_SELECTED_CLASS : ''}`}>
                 {expand && (
-                  <td className="px-2 py-2">
+                  <td className={tdClass()}>
                     <button type="button" onClick={() => toggleOpen(key)}
                             aria-label={`expand ${label(row)}`}
-                            className="text-text-muted">
+                            className="text-text-muted hover:text-accent-text">
                       {isOpen ? '▾' : '▸'}
                     </button>
                   </td>
                 )}
                 {columns.map((column) => (
                   <td key={column.key}
-                      className={`px-2 py-2 ${column.numeric
-                        ? 'num text-right text-text' : 'text-text'}`}>
+                      className={`${tdClass(column.numeric)} text-text`}>
                     {column.render ? column.render(row) : column.value(row)}
                   </td>
                 ))}
               </tr>,
               isOpen && expand
                 ? (
-                  <tr key={`${key}-expand`} className="border-b border-divider">
-                    <td colSpan={columns.length + 1} className="px-2 py-3">
+                  <tr key={`${key}-expand`} className={TR_EXPANDED_CLASS}>
+                    <td colSpan={columns.length + 1} className="px-2.5 py-3">
                       {expand(row)}
                     </td>
                   </tr>

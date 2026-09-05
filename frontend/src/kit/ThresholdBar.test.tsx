@@ -10,12 +10,12 @@ describe('ThresholdBar', () => {
     expect(screen.getByText(/θ 6.0/)).toBeInTheDocument()
   })
 
-  it('fills sage above the threshold and rust below it', () => {
+  it('fills up above the threshold and down below it', () => {
     const { rerender } = render(<ThresholdBar value={8.2} threshold={6}
                                               label="BB" />)
-    expect(screen.getByTestId('threshold-fill')).toHaveClass('bg-sage')
+    expect(screen.getByTestId('threshold-fill')).toHaveClass('bg-up')
     rerender(<ThresholdBar value={2.0} threshold={6} label="BB" />)
-    expect(screen.getByTestId('threshold-fill')).toHaveClass('bg-rust')
+    expect(screen.getByTestId('threshold-fill')).toHaveClass('bg-down')
   })
 
   it('clamps the fill width to the bar', () => {

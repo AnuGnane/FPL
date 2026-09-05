@@ -29,7 +29,7 @@ export default function Sparkline(
         points={points}
         fill="none"
         strokeWidth={1.5}
-        stroke={rising ? 'var(--color-sage)' : 'var(--color-rust)'}
+        stroke={rising ? 'var(--color-up)' : 'var(--color-down)'}
       />
     </svg>
   )

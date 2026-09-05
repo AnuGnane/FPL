@@ -8,7 +8,8 @@ const LABELS: Record<string, string> = {
 }
 
 /**
- * Green under a day, amber under three, red beyond, grey for never.
+ * Grey under a day (information), amber under three (doubt, rule 2), down
+ * beyond (behind where it should be, rule 1), faint for never.
  *
  * `null` is checked before the number and not folded into it: "never" and
  * "very old" are different states, and a `>= 72` branch would paint a cold
@@ -16,9 +17,9 @@ const LABELS: Record<string, string> = {
  */
 export function tone(age: number | null): string {
   if (age === null) return 'text-text-faint'
-  if (age < 24) return 'text-moss'
-  if (age < 72) return 'text-amber'
-  return 'text-rust'
+  if (age < 24) return 'text-text-muted'
+  if (age < 72) return 'text-warn'
+  return 'text-down'
 }
 
 export function ageText(age: number | null): string {
@@ -52,7 +53,7 @@ export default function FreshnessStrip() {
       // thing every reader has.
       role="status"
       aria-label="data freshness"
-      className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs
+      className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]
                  text-text-muted"
     >
       <span className="text-text-faint">as of</span>

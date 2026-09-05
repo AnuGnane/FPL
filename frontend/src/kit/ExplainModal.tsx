@@ -1,24 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { apiGet } from '../api/client'
 import type { PlayerExplain } from '../types'
-import Badge from './Badge'
+import Bar from './Bar'
+import { buttonClass } from './Button'
+import Callout from './Callout'
+import Chip from './Chip'
 import PosBadge from './PosBadge'
 import { fmtNum, fmtPct } from './format'
-
-/** A term's weight, drawn against a fixed 12-points-wide scale so bars are
- *  comparable between two players rather than only within one. */
-function TermBar({ points }: { points: number }) {
-  return (
-    <span
-      aria-hidden
-      className="block h-1.5 rounded-full"
-      style={{
-        width: `${Math.max(2, Math.min(Math.abs(points) * 12, 100))}%`,
-        background: points < 0 ? 'var(--color-rust)' : 'var(--color-sage)',
-      }}
-    />
-  )
-}
+import { TABLE_CLASS, TR_CLASS, tdClass } from './table'
 
 // One modal, reachable from every player name on every page (spec §3.6).
 export default function ExplainModal(
@@ -65,7 +54,7 @@ export default function ExplainModal(
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl rounded-card border border-border bg-card"
+        className="w-full max-w-2xl rounded-ctl border border-border bg-base"
         role="dialog"
         aria-modal="true"
         aria-label="Expected points explained"
@@ -89,7 +78,7 @@ export default function ExplainModal(
                 width={44}
                 height={56}
                 onError={() => setPhotoFailed(true)}
-                className="rounded-card border border-border bg-base"
+                className="rounded-ctl border border-border bg-raised"
               />
             )}
             <div>
@@ -119,14 +108,13 @@ export default function ExplainModal(
             ref={closeRef}
             type="button"
             onClick={onClose}
-            className="rounded-card border border-border px-2 py-1
-                       text-text-muted hover:text-text"
+            className={buttonClass('ghost')}
           >
             Close
           </button>
         </header>
         <div className="flex flex-col gap-4 p-4">
-          {error && <p className="text-rust">{error}</p>}
+          {error && <p className="text-down">{error}</p>}
           {!data && !error && <p className="text-text-muted">Loading…</p>}
           {data && (
             <>
@@ -141,12 +129,11 @@ export default function ExplainModal(
               )
                 .filter(([, eps]) => eps.length > 1)
                 .map(([gw, eps]) => (
-                  <p key={gw} className="num rounded-card border-l-2 border-info
-                                         bg-base px-3 py-2 text-text-secondary">
+                  <Callout key={gw} className="tn">
                     GW{gw} total:{' '}
                     {Math.round(eps.reduce((a, b) => a + b, 0) * 100) / 100}
                     {' '}xPts across {eps.length} fixtures
-                  </p>
+                  </Callout>
                 ))}
               {data.fixtures.map((fixture, index) => (
                 // A double can be two fixtures against the same opponent, so
@@ -157,19 +144,22 @@ export default function ExplainModal(
                     {fixture.opponent} — {fmtNum(fixture.ep)} xPts
                   </h3>
                   <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className={TABLE_CLASS}>
                     <tbody>
                       {fixture.components.map((component) => (
-                        <tr key={component.label}
-                            className="border-t border-divider">
-                          <td className="py-1 text-text-secondary">
+                        <tr key={component.label} className={TR_CLASS}>
+                          <td className={`${tdClass()} text-text-secondary`}>
                             {component.label}
                           </td>
-                          <td className="num w-16 py-1 text-right text-text">
+                          <td className={`${tdClass(true)} w-16 text-text`}>
                             {fmtNum(component.points)}
                           </td>
-                          <td className="w-1/2 py-1 pl-3">
-                            <TermBar points={component.points} />
+                          <td className={`${tdClass()} w-1/2`}>
+                            {/* Against a fixed 12-point scale so bars compare
+                                between two players, not only within one. */}
+                            <Bar width="full"
+                                 fraction={Math.abs(component.points) / 12}
+                                 tone={component.points < 0 ? 'down' : 'up'} />
                           </td>
                         </tr>
                       ))}
@@ -179,7 +169,7 @@ export default function ExplainModal(
                   <p className="mt-2 text-text-muted">
                     Minutes: P(play) {fmtPct(fixture.minutes.p_play)},
                     P(60+) {fmtPct(fixture.minutes.p60)} · calibration{' '}
-                    <span className="num">
+                    <span className="tn">
                       {fixture.calibration_delta >= 0 ? '+' : ''}
                       {fixture.calibration_delta}
                     </span>
@@ -200,22 +190,22 @@ export default function ExplainModal(
                 <h3 className="label mb-2">Next fixtures</h3>
                 <ul className="flex flex-wrap gap-2">
                   {data.next_fixtures.map((fixture) => (
-                    <li key={`${fixture.gw}-${fixture.opponent}`}
-                        className="rounded-card border border-border bg-base
-                                   px-2 py-1 text-text-secondary">
-                      <span className="num">GW{fixture.gw}</span>{' '}
-                      {fixture.home ? 'vs' : 'at'} {fixture.opponent}
+                    <li key={`${fixture.gw}-${fixture.opponent}`}>
+                      <Chip>
+                        <span className="tn">GW{fixture.gw}</span>{' '}
+                        {fixture.home ? 'vs' : 'at'} {fixture.opponent}
+                      </Chip>
                     </li>
                   ))}
                 </ul>
               </section>
               <p className="text-text-muted">
                 <span className="label">Set pieces</span>{' '}
-                penalties <span className="num">
+                penalties <span className="tn">
                   {data.set_pieces.penalties ?? '–'}
-                </span>, free kicks <span className="num">
+                </span>, free kicks <span className="tn">
                   {data.set_pieces.free_kicks ?? '–'}
-                </span>, corners <span className="num">
+                </span>, corners <span className="tn">
                   {data.set_pieces.corners ?? '–'}
                 </span>
                 {/* v12 W4 §5.4. The three numbers above are FPL's unless the
@@ -228,11 +218,10 @@ export default function ExplainModal(
                 {(data.set_pieces_manual ?? []).length > 0 && (
                   <>
                     {' '}
-                    <Badge variant="info"
-                           title={'Your override: '
-                                  + (data.set_pieces_manual ?? []).join(', ')}>
+                    <Chip title={'Your override: '
+                            + (data.set_pieces_manual ?? []).join(', ')}>
                       manual
-                    </Badge>
+                    </Chip>
                   </>
                 )}
               </p>

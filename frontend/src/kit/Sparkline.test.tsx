@@ -9,13 +9,13 @@ describe('Sparkline', () => {
     expect(points?.trim().split(/\s+/)).toHaveLength(4)
   })
 
-  it('is sage when the trend rises and rust when it falls', () => {
+  it('is up when the trend rises and down when it falls', () => {
     const { container, rerender } = render(<Sparkline values={[1, 2, 3, 8]} />)
     expect(container.querySelector('polyline')).toHaveAttribute(
-      'stroke', 'var(--color-sage)')
+      'stroke', 'var(--color-up)')
     rerender(<Sparkline values={[8, 3, 2, 1]} />)
     expect(container.querySelector('polyline')).toHaveAttribute(
-      'stroke', 'var(--color-rust)')
+      'stroke', 'var(--color-down)')
   })
 
   it('renders an em dash rather than an empty chart with no data', () => {
