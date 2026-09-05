@@ -1,44 +1,67 @@
 @import "tailwindcss";
 
-/* The locked design language (spec §2). The @theme block is the dark
-   palette and the source of every token name; light is an override of the
-   same names, so no component knows which one is on. */
+/* v14 — the dark ledger (spec §3). The @theme block is the dark palette and
+   the source of every token name; light is an override of the same names,
+   so no component knows which one is on.
+
+   Colour rules (spec §4) in one breath: up/down mean a direction relative to
+   something the reader cares about; warn means doubt; accent means you can
+   click it or it is active; grey is information; the position hues are
+   identity; turf is the one non-semantic patch of colour. */
 @theme {
-  --color-base: #101216;
-  --color-card: #16181d;
-  --color-border: #23262d;
-  --color-divider: #1e2127;
-  --color-text: #f2f3f5;
-  --color-text-secondary: #c8cbd2;
-  --color-text-muted: #9ca3af;
-  --color-text-faint: #6b7280;
-  --color-sage: #86b388;
-  --color-rust: #e0876f;
-  --color-info: #7da7c9;
+  /* Surfaces. */
+  --color-base: #121418;
+  --color-raised: #181b20;
+  --color-input: #1b1f25;
+  --color-border: #262a31;
+  --color-divider: #1c1f25;
 
-  /* The soft outline tier, as tokens rather than as an opacity modifier on
-     the border utility. Tailwind v4 resolves a slash modifier at build time
-     and bakes the dark hex into the compiled CSS, so such a border would
-     keep its dark colour under the light theme. A token is re-declared per
-     theme and the generated `border-sage-soft` utility follows it.
-     (Spelling the modifier out here would make the scanner emit the very
-     utility this replaces, so it is described rather than quoted.) */
-  --color-sage-soft: #86b38866;
-  --color-rust-soft: #e0876f66;
-  --color-info-soft: #7da7c966;
+  /* Text. */
+  --color-text: #e4e6ea;
+  --color-text-secondary: #c3c7ce;
+  --color-text-muted: #8a909b;
+  --color-text-faint: #5f6570;
 
-  /* Position hues are IDENTITY, not judgement. They are deliberately kept
-     clear of sage/rust/blue so that a violet MID never reads as a verdict on
-     the player the way a sage number does. */
-  --color-pos-gkp: #d4a95c;
-  --color-pos-def: #6ea8d8;
-  --color-pos-mid: #a48fd8;
-  --color-pos-fwd: #d88fa8;
+  /* Semantic, each with a 14% tint for the cell that carries the signal. */
+  --color-up: #5fcf94;
+  --color-up-tint: #5fcf9424;
+  --color-down: #f0876a;
+  --color-down-tint: #f0876a24;
+  --color-warn: #e2b25a;
+  --color-warn-tint: #e2b25a24;
+  --color-accent: #4f8ff7;
+  --color-accent-text: #7fb0ff;
+  --color-accent-tint: #4f8ff724;
+
+  /* Position hues are IDENTITY, not judgement — kept clear of every meaning
+     colour so a violet MID never reads as a verdict. */
+  --color-pos-gkp: #d9b064;
+  --color-pos-def: #7fb4e6;
+  --color-pos-mid: #b39ee8;
+  --color-pos-fwd: #e59ab5;
+
+  /* The pitch: deep desaturated turf, hairline markings. */
+  --color-turf: #1b3a2b;
+  --color-turf-line: #ffffff1f;
+
+  /* Retired names, one cycle (plan R11): literal copies of the token that
+     replaced each, so a class the sweep has not reached yet renders the new
+     value. No new uses; tokens.test.ts forbids them from Task 12 on. */
+  --color-card: #181b20;
+  --color-sage: #5fcf94;
+  --color-rust: #f0876a;
+  --color-info: #7fb0ff;
 
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'SF Mono', Menlo, monospace;
 
-  --radius-card: 10px;
+  /* Two radii: chips and meters, then buttons, tiles and inputs. Named
+     chip/ctl rather than s/m because Tailwind owns `rounded-s-*` for the
+     logical inline-start radius (plan R1). `--radius-card` is a one-cycle
+     alias of the control radius. */
+  --radius-chip: 2px;
+  --radius-ctl: 3px;
+  --radius-card: 3px;
 }
 
 /* Tells the browser to paint its own furniture — scrollbars, form controls,
@@ -48,54 +71,74 @@
 
 /* An explicit light choice: `data-theme="light"` on <html>, set by
    kit/useTheme.ts and by the boot script in index.html. Position hues are
-   darkened rather than re-hued — a MID is violet in both themes, because
-   the hue is identity and identity does not change with the lights. */
+   darkened rather than re-hued. Muted and faint are darker than the v12
+   light palette because they now also sit on the raised band. */
 [data-theme="light"] {
   color-scheme: light;
   --color-base: #f4f5f7;
-  --color-card: #ffffff;
-  --color-border: #d9dce2;
-  --color-divider: #e7e9ee;
+  --color-raised: #eaecef;
+  --color-input: #ffffff;
+  --color-border: #d6d9df;
+  --color-divider: #e6e8ec;
   --color-text: #191c22;
   --color-text-secondary: #3d434e;
-  --color-text-muted: #686f7d;
-  --color-text-faint: #7d848e;
-  --color-sage: #3f7a44;
-  --color-rust: #b0532f;
-  --color-info: #2f6b96;
-  --color-sage-soft: #3f7a4466;
-  --color-rust-soft: #b0532f66;
-  --color-info-soft: #2f6b9666;
+  --color-text-muted: #5f6672;
+  --color-text-faint: #737a85;
+  --color-up: #25703f;
+  --color-up-tint: #25703f24;
+  --color-down: #a3471f;
+  --color-down-tint: #a3471f24;
+  --color-warn: #86600f;
+  --color-warn-tint: #c9931f24;
+  --color-accent: #2f6fd6;
+  --color-accent-text: #2458b3;
+  --color-accent-tint: #2f6fd624;
   --color-pos-gkp: #96731f;
   --color-pos-def: #2867a5;
   --color-pos-mid: #6f51b8;
   --color-pos-fwd: #b04f78;
+  --color-turf: #2f6b45;
+  --color-turf-line: #ffffff47;
+  --color-card: #eaecef;
+  --color-sage: #25703f;
+  --color-rust: #a3471f;
+  --color-info: #2458b3;
 }
 
 /* "System" is the absence of the attribute, so the OS preference speaks
-   here. The :not() guard is what keeps an explicit dark choice dark on a
-   light-set machine. */
+   here. The :not() guard keeps an explicit dark choice dark on a light-set
+   machine. Byte-for-byte the block above; theme.test.ts holds them equal. */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
     color-scheme: light;
     --color-base: #f4f5f7;
-    --color-card: #ffffff;
-    --color-border: #d9dce2;
-    --color-divider: #e7e9ee;
+    --color-raised: #eaecef;
+    --color-input: #ffffff;
+    --color-border: #d6d9df;
+    --color-divider: #e6e8ec;
     --color-text: #191c22;
     --color-text-secondary: #3d434e;
-    --color-text-muted: #686f7d;
-    --color-text-faint: #7d848e;
-    --color-sage: #3f7a44;
-    --color-rust: #b0532f;
-    --color-info: #2f6b96;
-    --color-sage-soft: #3f7a4466;
-    --color-rust-soft: #b0532f66;
-    --color-info-soft: #2f6b9666;
+    --color-text-muted: #5f6672;
+    --color-text-faint: #737a85;
+    --color-up: #25703f;
+    --color-up-tint: #25703f24;
+    --color-down: #a3471f;
+    --color-down-tint: #a3471f24;
+    --color-warn: #86600f;
+    --color-warn-tint: #c9931f24;
+    --color-accent: #2f6fd6;
+    --color-accent-text: #2458b3;
+    --color-accent-tint: #2f6fd624;
     --color-pos-gkp: #96731f;
     --color-pos-def: #2867a5;
     --color-pos-mid: #6f51b8;
     --color-pos-fwd: #b04f78;
+    --color-turf: #2f6b45;
+    --color-turf-line: #ffffff47;
+    --color-card: #eaecef;
+    --color-sage: #25703f;
+    --color-rust: #a3471f;
+    --color-info: #2458b3;
   }
 }
 
@@ -106,17 +149,28 @@ body {
   background: var(--color-base);
   color: var(--color-text);
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
-/* Every numeral in a data context is mono (spec §2); components opt in with
-   the `num` class rather than each one re-declaring the face. */
-.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+/* Every numeral in the app is tabular, in the one sans face: table cells,
+   stat values and numbers inside sentences alike (spec §3). `.num` is the
+   pre-v14 name and a synonym until Task 12 deletes it. */
+.tn { font-variant-numeric: tabular-nums; }
+.num { font-variant-numeric: tabular-nums; }
 
-/* 9px letter-spaced uppercase muted — the one label style in the system. */
+/* 10px letter-spaced uppercase muted — the one label style in the system;
+   section titles and table headers are this. */
 .label {
-  font-size: 9px;
-  letter-spacing: 0.12em;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-text-muted);
+}
+
+/* Focus is accent, like every other "you can act here" (rule 3). */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
 }

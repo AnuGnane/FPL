@@ -47,11 +47,11 @@ function indexesOf(source: string, needle: string): number[] {
   return found
 }
 
-// The three dark soft values. Each may appear in the compiled sheet ONLY as
-// the value of a `--color-*-soft` custom property — never as a literal
-// border-color, which is what a re-baked opacity modifier looks like.
-const SOFT = ['#86b38866', '#e0876f66', '#7da7c966']
-const BASE = ['#86b388', '#e0876f', '#7da7c9']
+// The dark tint values. Each may appear in the compiled sheet ONLY as the
+// value of a `--color-*-tint` custom property — never as a literal
+// background-color, which is what a re-baked opacity modifier looks like.
+const TINT = ['#5fcf9424', '#f0876a24', '#e2b25a24', '#4f8ff724']
+const BASE = ['#5fcf94', '#f0876a', '#e2b25a', '#4f8ff7']
 
 describe.skipIf(css === null)('the compiled stylesheet', () => {
   it('carries the light overrides at top level, after the @layer tokens', () => {
@@ -65,15 +65,13 @@ describe.skipIf(css === null)('the compiled stylesheet', () => {
     expect(Math.max(...at)).toBeGreaterThan(css!.lastIndexOf('@layer'))
   })
 
-  it('keeps the soft tier as variables, not as baked border colours', () => {
-    for (const value of SOFT) {
+  it('keeps the tint tier as variables, not as baked colours', () => {
+    for (const value of TINT) {
       for (const at of indexesOf(css!, value)) {
-        // Walk back to the start of this declaration and require it to be a
-        // custom property. A baked utility reads `border-color:#86b38866`.
         const from = Math.max(css!.lastIndexOf(';', at),
                               css!.lastIndexOf('{', at)) + 1
         expect(css!.slice(from, at), `${value} outside a variable`)
-          .toMatch(/^--color-[a-z-]+-soft:\s*$/)
+          .toMatch(/^--color-[a-z-]+-tint:\s*$/)
       }
     }
   })
