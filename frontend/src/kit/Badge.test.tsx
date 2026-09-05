@@ -5,11 +5,11 @@ import Badge from './Badge'
 describe('Badge', () => {
   it('maps each variant to its meaning colour', () => {
     const { rerender } = render(<Badge variant="positive">C</Badge>)
-    expect(screen.getByText('C')).toHaveClass('text-sage')
+    expect(screen.getByText('C')).toHaveClass('text-up')
     rerender(<Badge variant="negative">Doubt</Badge>)
-    expect(screen.getByText('Doubt')).toHaveClass('text-rust')
+    expect(screen.getByText('Doubt')).toHaveClass('text-down')
     rerender(<Badge variant="info">Pens</Badge>)
-    expect(screen.getByText('Pens')).toHaveClass('text-info')
+    expect(screen.getByText('Pens')).toHaveClass('text-text-muted')
     rerender(<Badge variant="neutral">WC</Badge>)
     expect(screen.getByText('WC')).toHaveClass('text-text-muted')
   })

@@ -13,10 +13,10 @@ describe('Stat', () => {
     const { rerender } = render(
       <Stat label="Gap" value="12" delta={2.4} deltaLabel="vs last run" />,
     )
-    expect(screen.getByTestId('stat-delta')).toHaveClass('text-sage')
+    expect(screen.getByTestId('stat-delta')).toHaveClass('text-up')
     expect(screen.getByTestId('stat-delta')).toHaveTextContent('+2.4')
     rerender(<Stat label="Gap" value="12" delta={-2.4} deltaLabel="vs last run" />)
-    expect(screen.getByTestId('stat-delta')).toHaveClass('text-rust')
+    expect(screen.getByTestId('stat-delta')).toHaveClass('text-down')
     expect(screen.getByTestId('stat-delta')).toHaveTextContent('-2.4')
   })
 

@@ -5,9 +5,17 @@ describe('kit barrel', () => {
   it('exports every component a hub is allowed to compose', () => {
     for (const name of ['Badge', 'Card', 'DataTable', 'EmptyState',
       'PageHeader', 'PitchView', 'PlayerCard', 'PosBadge', 'Skeleton',
-      'Sparkline', 'Stat', 'ThresholdBar', 'ToastOutlet']) {
+      'Sparkline', 'Stat', 'ThresholdBar', 'ToastOutlet',
+      'Button', 'Segmented', 'Chip', 'Bar', 'Callout', 'StatRow', 'Section']) {
       expect(typeof (kit as Record<string, unknown>)[name]).toBe('function')
     }
+  })
+
+  it('exports the shared class strings and the chart palette', () => {
+    expect(kit.TAB_CLASS).toContain('data-[state=active]:border-accent')
+    expect(kit.INPUT_CLASS).toContain('bg-input')
+    expect(kit.SERIES_COLOURS).toHaveLength(4)
+    expect(kit.thClass(true)).toContain('text-right')
   })
 
   it('exports the formatters and the breakpoint hook', () => {

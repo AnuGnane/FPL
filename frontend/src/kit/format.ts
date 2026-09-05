@@ -32,7 +32,14 @@ export function toneOf(value: number | null | undefined): Tone {
 }
 
 export const TONE_CLASS: Record<Tone, string> = {
-  positive: 'text-sage',
-  negative: 'text-rust',
+  positive: 'text-up',
+  negative: 'text-down',
+  neutral: 'text-text-muted',
+}
+
+/** Rule 6: a tint may sit behind a *cell* that carries a direction. */
+export const TONE_TINT_CLASS: Record<Tone, string> = {
+  positive: 'bg-up-tint text-up',
+  negative: 'bg-down-tint text-down',
   neutral: 'text-text-muted',
 }

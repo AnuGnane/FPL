@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { fmtDelta, fmtNum, fmtPct, fmtPrice } from './format'
+import {
+  TONE_CLASS, TONE_TINT_CLASS, fmtDelta, fmtNum, fmtPct, fmtPrice,
+} from './format'
 
 describe('formatters', () => {
   it('renders an em dash for anything that is not a finite number', () => {
@@ -30,5 +32,14 @@ describe('formatters', () => {
     expect(fmtDelta(1.25)).toBe('+1.3')
     expect(fmtDelta(-1.25)).toBe('-1.3')
     expect(fmtDelta(0)).toBe('0.0')
+  })
+})
+
+describe('tone classes (v14)', () => {
+  it('speak up/down, never sage/rust', () => {
+    expect(TONE_CLASS.positive).toBe('text-up')
+    expect(TONE_CLASS.negative).toBe('text-down')
+    expect(TONE_TINT_CLASS.positive).toContain('bg-up-tint')
+    expect(TONE_TINT_CLASS.neutral).not.toContain('bg-')
   })
 })

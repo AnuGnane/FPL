@@ -54,10 +54,10 @@ describe('JournalTab', () => {
     expect(screen.getByText('55')).toBeInTheDocument()
   })
 
-  it('colours a gameweek the model won sage and one it lost rust', async () => {
+  it('colours a gameweek the model won up and one it lost down', async () => {
     render(<JournalTab />)
-    expect(await screen.findByText('+7')).toHaveClass('text-sage')
-    expect(screen.getByText('-3')).toHaveClass('text-rust')
+    expect(await screen.findByText('+7')).toHaveClass('text-up')
+    expect(screen.getByText('-3')).toHaveClass('text-down')
   })
 
   it('names both captains when they differ', async () => {
@@ -79,7 +79,7 @@ describe('JournalTab', () => {
     render(<JournalTab />)
     const badge = await screen.findByText('late run')
     expect(badge).toHaveAttribute('title', expect.stringContaining('hindsight'))
-    expect(badge).toHaveClass('text-rust')
+    expect(badge).toHaveClass('text-down')
   })
 
   it('leaves an in-time gameweek unflagged', async () => {
