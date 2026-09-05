@@ -6,8 +6,9 @@ import {
 } from 'recharts'
 import { apiGet } from '../api/client'
 import {
-  type Column, Card, DataTable, EmptyState, Loading, PageHeader, Sparkline,
-  TAB_CLASS, TAB_LIST_CLASS, fmtNum, fmtPct, useTabParam,
+  type Column, Card, DataTable, EmptyState, Loading, PageHeader, SERIES_COLOURS,
+  Sparkline, Stat, StatRow, TABLE_CLASS, TAB_CLASS, TAB_LIST_CLASS, THEAD_CLASS,
+  TR_CLASS, TR_SELECTED_CLASS, fmtNum, fmtPct, tdClass, thClass, useTabParam,
 } from '../kit'
 import type {
   AdviceLatest, LeagueRaceData, LeagueSimData, RivalSummary,
@@ -18,9 +19,6 @@ import WhatIfSim, { type WhatIfSquadPlayer } from './league/WhatIfSim'
 // The strip's values, in strip order. Named so `useTabParam` can reject a
 // `?tab=` this hub does not have rather than rendering an empty panel.
 const TABS = ['race', 'rivals', 'whatif'] as const
-
-const SERIES_COLOURS = ['var(--color-sage)', 'var(--color-info)',
-  'var(--color-rust)', 'var(--color-text-muted)']
 
 const FAN_KEYS = ['p05', 'p25', 'p50', 'p75', 'p95'] as const
 
@@ -49,18 +47,22 @@ function MarginFan({ quantiles }: { quantiles: Record<string, number> }) {
   return (
     <div className="mb-3" data-testid="sim-margin-fan">
       <div className="label mb-1">Final margin over the best rival</div>
-      <div className="relative mb-1 h-2 w-full rounded-sm bg-divider">
+      {/* Rule 7's named league-race gap: one flat fill on the track, the
+          median in text ink, zero in muted. Ahead is a direction (rule 1), so
+          a median on the wrong side of zero draws the fan in `down`. */}
+      <div className="relative mb-1 h-1.5 w-full rounded-chip bg-border">
         <div
-          className="absolute h-2 rounded-sm bg-sage"
+          className={`absolute h-1.5 rounded-chip ${p50 >= 0
+            ? 'bg-up' : 'bg-down'}`}
           style={{ left: `${at(p25)}%`, width: `${at(p75) - at(p25)}%` }}
         />
         <div
-          className="absolute h-2 w-px bg-text"
+          className="absolute h-1.5 w-px bg-text"
           style={{ left: `${at(p50)}%` }}
         />
         {span > 0 && p05 <= 0 && p95 >= 0 && (
           <div
-            className="absolute h-2 w-px bg-text-muted"
+            className="absolute h-1.5 w-px bg-text-muted"
             style={{ left: `${zero}%` }}
             data-testid="sim-margin-zero"
           />
@@ -68,7 +70,7 @@ function MarginFan({ quantiles }: { quantiles: Record<string, number> }) {
       </div>
       <div className="flex justify-between">
         {FAN_KEYS.map((key) => (
-          <span key={key} className="num text-xs text-text-muted"
+          <span key={key} className="tn text-xs text-text-muted"
                 data-testid={`margin-${key}`}>
             {fmtNum(quantiles[key], 0)}
           </span>
@@ -147,10 +149,15 @@ export default function League() {
   const isYou = (entry: number) => Boolean(
     race.standings.find((row) => row.entry === entry)?.is_you)
 
+  // "You" is drawn first, so you take the brightest of the four greys (plan
+  // R6). A stable sort, so the rest keep the order the server sent.
+  const trajectory = [...race.trajectory].sort(
+    (a, b) => Number(isYou(b.entry)) - Number(isYou(a.entry)))
+
   /** The line colour this entry was drawn in, so the table is the legend. */
   const seriesColour = (entry: number) => {
-    const i = race.trajectory.findIndex((t) => t.entry === entry)
-    return i < 0 ? 'transparent' : SERIES_COLOURS[i % SERIES_COLOURS.length]
+    const i = trajectory.findIndex((t) => t.entry === entry)
+    return i < 0 ? 'transparent' : SERIES_COLOURS[i % 4]
   }
 
   // The one sentence the hub exists to answer: where you are in it.
@@ -166,7 +173,8 @@ export default function League() {
     {
       key: 'name', header: 'Team', primary: true, value: (r) => r.name,
       render: (r) => (
-        <Link to={`/league/rival/${r.entry}`} className="text-info underline">
+        <Link to={`/league/rival/${r.entry}`}
+              className="text-accent-text hover:underline">
           {r.name}
         </Link>
       ),
@@ -192,12 +200,12 @@ export default function League() {
                 <XAxis dataKey="gw" stroke="var(--color-text-muted)" />
                 <YAxis stroke="var(--color-text-muted)" />
                 <Tooltip contentStyle={{
-                  background: 'var(--color-card)',
+                  background: 'var(--color-raised)',
                   border: '1px solid var(--color-border)',
                 }} />
                 {/* No Recharts <Legend>: the standings table below names every
                     entry already, and its swatch carries the same colour. */}
-                {race.trajectory.map((entry, i) => (
+                {trajectory.map((entry, i) => (
                   <Line
                     key={entry.entry}
                     type="monotone"
@@ -207,7 +215,7 @@ export default function League() {
                     name={entry.name}
                     dot={false}
                     strokeWidth={isYou(entry.entry) ? 2.5 : 1.5}
-                    stroke={SERIES_COLOURS[i % SERIES_COLOURS.length]}
+                    stroke={SERIES_COLOURS[i % 4]}
                   />
                 ))}
               </LineChart>
@@ -215,30 +223,33 @@ export default function League() {
           </Card>
           <Card title="Standings" className="mb-4">
             <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
+            <table className={TABLE_CLASS}>
+              <thead className={THEAD_CLASS}>
                 <tr>
-                  <th className="label pb-1 text-left">#</th>
-                  <th className="label pb-1 text-left">Team</th>
-                  <th className="label pb-1 text-right">Total</th>
+                  <th className={thClass()}>#</th>
+                  <th className={thClass()}>Team</th>
+                  <th className={thClass(true)}>Total</th>
                 </tr>
               </thead>
               <tbody>
                 {race.standings.map((row) => (
+                  // Your own row is the one the reader is: the selected row
+                  // of this table, accent-tinted like every other (rule 3).
                   <tr key={row.entry} data-testid={`standing-${row.entry}`}
                       data-you={String(row.is_you)}
-                      className="border-t border-divider">
-                    <td className="num py-1 text-text-muted">
+                      className={`${TR_CLASS}${row.is_you
+                        ? ` ${TR_SELECTED_CLASS}` : ''}`}>
+                    <td className={`${tdClass()} tn text-text-muted`}>
                       <span
                         aria-hidden
-                        className="mr-2 inline-block h-2 w-2 rounded-full"
+                        className="mr-2 inline-block h-2 w-2 rounded-chip"
                         style={{ background: seriesColour(row.entry) }}
                       />
                       {row.rank}
                     </td>
-                    <td className={`py-1 ${row.is_you
+                    <td className={`${tdClass()} ${row.is_you
                       ? 'text-text' : 'text-text-secondary'}`}>{row.name}</td>
-                    <td className="num py-1 text-right text-text">
+                    <td className={`${tdClass(true)} text-text`}>
                       {row.total}
                     </td>
                   </tr>
@@ -249,40 +260,35 @@ export default function League() {
           </Card>
           {sim ? (
             <Card title="Win probability">
-              <div className="mb-3 flex flex-wrap items-baseline gap-4">
-                <div>
-                  <div className="label">P(win)</div>
-                  {/* fmtPct rounds to whole percent, which is the right
-                      resolution here rather than a stylistic one: at
-                      n = 2,000 the Monte Carlo standard error on a
-                      probability near 0.5 is sqrt(0.25 / 2000) ≈ 0.9pp, so
-                      a decimal place would be reporting the seed. Raise
-                      [league] sim_n before adding one. */}
-                  <div className="num text-2xl text-text"
-                       data-testid="sim-p-win">{fmtPct(sim.p_win)}</div>
+              {/* The three numbers are stat tiles like every other on the
+                  site; the testids ride on a span inside each value so the
+                  tile shape is the kit's and nothing that reads them moved. */}
+              <StatRow cols={3} className="mb-3">
+                {/* fmtPct rounds to whole percent, which is the right
+                    resolution here rather than a stylistic one: at n = 2,000
+                    the Monte Carlo standard error on a probability near 0.5
+                    is sqrt(0.25 / 2000) ≈ 0.9pp, so a decimal place would be
+                    reporting the seed. Raise [league] sim_n before adding
+                    one. */}
+                <Stat label="P(win)" value={(
+                  <span data-testid="sim-p-win">{fmtPct(sim.p_win)}</span>
+                )} />
+                <Stat label="P(top 3)" value={(
+                  <span data-testid="sim-p-top3">{fmtPct(sim.p_top3)}</span>
+                )} />
+                {/* One decimal. A second one is finer than the Monte Carlo
+                    resolves: at n = 2,000 the standard error on a probability
+                    near 0.5 is about 0.9pp, and the finish is the same draws
+                    counted a different way. */}
+                <Stat label="Expected finish"
+                      value={fmtNum(sim.exp_finish, 1)} />
+              </StatRow>
+              {sim.history.length > 1 && (
+                <div className="mb-3" data-testid="sim-sparkline">
+                  <div className="label">Trend</div>
+                  <Sparkline values={sim.history.map((h) => h.p_win)} />
                 </div>
-                <div>
-                  <div className="label">P(top 3)</div>
-                  <div className="num text-2xl text-text"
-                       data-testid="sim-p-top3">{fmtPct(sim.p_top3)}</div>
-                </div>
-                <div>
-                  <div className="label">Expected finish</div>
-                  <div className="num text-2xl text-text">
-                    {/* One decimal. A second one is finer than the Monte
-                        Carlo resolves: at n = 2,000 the standard error on a
-                        probability near 0.5 is about 0.9pp, and the finish
-                        is the same draws counted a different way. */}
-                    {fmtNum(sim.exp_finish, 1)}
-                  </div>
-                </div>
-                {sim.history.length > 1 && (
-                  <div data-testid="sim-sparkline">
-                    <div className="label">Trend</div>
-                    <Sparkline values={sim.history.map((h) => h.p_win)} />
-                  </div>
-                )}
-              </div>
+              )}
               {/* A probability with no n and no seed beside it is a
                   decoration: this is the line that makes it a measurement. */}
               <p className="mb-3 text-text-muted" data-testid="sim-provenance">
@@ -302,19 +308,21 @@ export default function League() {
               )}
               <MarginFan quantiles={sim.margin_quantiles} />
               <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
+              <table className={TABLE_CLASS}>
+                <thead className={THEAD_CLASS}>
                   <tr>
-                    <th className="label pb-1 text-left">Rival</th>
-                    <th className="label pb-1 text-right">P(I beat him)</th>
+                    <th className={thClass()}>Rival</th>
+                    <th className={thClass(true)}>P(I beat him)</th>
                   </tr>
                 </thead>
                 <tbody>
                   {sim.per_rival.map((rival) => (
                     <tr key={rival.entry} data-testid={`beat-${rival.entry}`}
-                        className="border-t border-divider">
-                      <td className="py-1 text-text-secondary">{rival.name}</td>
-                      <td className="num py-1 text-right text-text">
+                        className={TR_CLASS}>
+                      <td className={`${tdClass()} text-text-secondary`}>
+                        {rival.name}
+                      </td>
+                      <td className={`${tdClass(true)} text-text`}>
                         {/* A dash, not a number: an entry whose squad could
                             not be read is not one I am certain to beat. */}
                         {rival.p_beat === null ? '—' : fmtPct(rival.p_beat)}
@@ -333,22 +341,24 @@ export default function League() {
                 {/* The pre-v8c parametric pairwise numbers, kept as the
                     fallback until the simulated card is always available. */}
                 <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
+                <table className={TABLE_CLASS}>
+                  <thead className={THEAD_CLASS}>
                     <tr>
-                      <th className="label pb-1 text-left">Team</th>
-                      <th className="label pb-1 text-right">P(win)</th>
-                      <th className="label pb-1 text-right">Projected</th>
+                      <th className={thClass()}>Team</th>
+                      <th className={thClass(true)}>P(win)</th>
+                      <th className={thClass(true)}>Projected</th>
                     </tr>
                   </thead>
                   <tbody>
                     {race.win_probability.map((prob) => (
-                      <tr key={prob.name} className="border-t border-divider">
-                        <td className="py-1 text-text-secondary">{prob.name}</td>
-                        <td className="num py-1 text-right text-text">
+                      <tr key={prob.name} className={TR_CLASS}>
+                        <td className={`${tdClass()} text-text-secondary`}>
+                          {prob.name}
+                        </td>
+                        <td className={`${tdClass(true)} text-text`}>
                           {fmtPct(prob.p_win)}
                         </td>
-                        <td className="num py-1 text-right text-text-muted">
+                        <td className={`${tdClass(true)} text-text-muted`}>
                           {fmtNum(prob.total, 0)}
                         </td>
                       </tr>

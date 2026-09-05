@@ -5,8 +5,8 @@ import {
 } from 'recharts'
 import { apiGet } from '../../api/client'
 import {
-  type Column, Badge, Card, DataTable, EmptyState, Loading, TONE_CLASS,
-  fmtDelta, toneOf,
+  type Column, Card, Chip, DataTable, EmptyState, Loading, SERIES_COLOURS,
+  TONE_CLASS, fmtDelta, toneOf,
 } from '../../kit'
 import type { JournalData, JournalRow } from '../../types'
 
@@ -23,7 +23,7 @@ const COLUMNS: Column<JournalRow>[] = [
       <span className="inline-flex items-center gap-1.5">
         {r.gw}
         {r.post_deadline
-          ? <Badge variant="negative" title={LATE_RUN}>late run</Badge>
+          ? <Chip tone="warn" title={LATE_RUN}>late run</Chip>
           : null}
       </span>
     ),
@@ -76,14 +76,17 @@ export default function JournalTab() {
             <XAxis dataKey="gw" stroke="var(--color-text-muted)" />
             <YAxis stroke="var(--color-text-muted)" />
             <Tooltip contentStyle={{
-              background: 'var(--color-card)',
+              background: 'var(--color-raised)',
               border: '1px solid var(--color-border)',
             }} />
             <Legend />
-            <Line type="monotone" dataKey="model" dot={false}
-                  stroke="var(--color-sage)" strokeWidth={2} />
+            {/* You are the first series and the brightest; the model is the
+                second (plan R6). Neither is a direction, so neither is
+                green. */}
             <Line type="monotone" dataKey="actual" dot={false}
-                  stroke="var(--color-info)" strokeWidth={2} />
+                  stroke={SERIES_COLOURS[0]} strokeWidth={2} />
+            <Line type="monotone" dataKey="model" dot={false}
+                  stroke={SERIES_COLOURS[1]} strokeWidth={2} />
           </LineChart>
         </ResponsiveContainer>
       </Card>

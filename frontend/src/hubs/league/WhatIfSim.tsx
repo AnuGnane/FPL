@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { apiPost } from '../../api/client'
-import { Badge, Card, EmptyState, Loading, fmtPct } from '../../kit'
+import {
+  Card, Chip, EmptyState, Loading, TABLE_CLASS, THEAD_CLASS, TR_CLASS, fmtPct,
+  tdClass, thClass,
+} from '../../kit'
 import type {
   LeagueWhatIfEvent, LeagueWhatIfRequest, LeagueWhatIfResult,
 } from '../../types'
@@ -86,22 +89,24 @@ export default function WhatIfSim({ squad, rivals }: WhatIfSimProps) {
     <>
       <Card title="Pin an event" className="mb-4">
         <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
+        <table className={TABLE_CLASS}>
+          <thead className={THEAD_CLASS}>
             <tr>
-              <th className="label pb-1 text-left">Player</th>
+              <th className={thClass()}>Player</th>
               {EVENTS.map((e) => (
-                <th key={e} className="label pb-1 text-right capitalize">{e}</th>
+                <th key={e} className={`${thClass(true)} capitalize`}>{e}</th>
               ))}
-              <th className="label pb-1 text-right">Captain</th>
+              <th className={thClass(true)}>Captain</th>
             </tr>
           </thead>
           <tbody>
             {squad.map((player) => (
-              <tr key={player.code} className="border-t border-divider">
-                <td className="py-1 text-text-secondary">{player.name}</td>
+              <tr key={player.code} className={TR_CLASS}>
+                <td className={`${tdClass()} text-text-secondary`}>
+                  {player.name}
+                </td>
                 {EVENTS.map((event) => (
-                  <td key={event} className="py-1 text-right">
+                  <td key={event} className={`${tdClass()} text-right`}>
                     <button
                       type="button"
                       data-testid={`pin-${player.code}-${event}`}
@@ -115,7 +120,7 @@ export default function WhatIfSim({ squad, rivals }: WhatIfSimProps) {
                     </button>
                   </td>
                 ))}
-                <td className="py-1 text-right">
+                <td className={`${tdClass()} text-right`}>
                   <button
                     type="button"
                     data-testid={`captain-${player.code}`}
@@ -189,7 +194,8 @@ export default function WhatIfSim({ squad, rivals }: WhatIfSimProps) {
                 near 0.5 is about 0.9pp; printing a tenth of a point would
                 be printing the seed. ``fmtPct`` below rounds to whole
                 percent for the same reason. */}
-            <span className="num text-2xl text-text" data-testid="delta-p-win">
+            <span className="tn text-[22px] font-semibold text-text"
+                  data-testid="delta-p-win">
               {`${result.delta_p_win >= 0 ? '+' : ''}${
                 Math.round(result.delta_p_win * 100)} pp`}
             </span>
@@ -207,29 +213,29 @@ export default function WhatIfSim({ squad, rivals }: WhatIfSimProps) {
             </p>
           )}
           <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
+          <table className={TABLE_CLASS}>
+            <thead className={THEAD_CLASS}>
               <tr>
-                <th className="label pb-1 text-left">Team</th>
-                <th className="label pb-1 text-right">Total</th>
-                <th className="label pb-1 text-right">P(win)</th>
+                <th className={thClass()}>Team</th>
+                <th className={thClass(true)}>Total</th>
+                <th className={thClass(true)}>P(win)</th>
               </tr>
             </thead>
             <tbody>
               {result.table.map((row) => (
                 <tr key={row.entry} data-testid={`whatif-row-${row.entry}`}
-                    className="border-t border-divider">
-                  <td className="py-1 text-text-secondary">
+                    className={TR_CLASS}>
+                  <td className={`${tdClass()} text-text-secondary`}>
                     {row.name}
-                    {/* Badge takes no className, so the gap is a plain span. */}
+                    {/* Chip takes no className here, so the gap is a span. */}
                     {row.is_you && (
-                      <span className="ml-2"><Badge>you</Badge></span>
+                      <span className="ml-2"><Chip>you</Chip></span>
                     )}
                   </td>
-                  <td className="num py-1 text-right text-text-muted">
+                  <td className={`${tdClass(true)} text-text-muted`}>
                     {row.total}
                   </td>
-                  <td className="num py-1 text-right text-text">
+                  <td className={`${tdClass(true)} text-text`}>
                     {row.p_win === null ? '—' : fmtPct(row.p_win)}
                   </td>
                 </tr>

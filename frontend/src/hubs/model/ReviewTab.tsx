@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../../api/client'
 import {
-  Badge, Card, EmptyState, ExplainModal, Loading, PlayerCard, Stat,
-  TONE_CLASS, fmtDelta, fmtNum, toneOf,
+  type ChipTone, Card, Chip, EmptyState, ExplainModal, Loading, PlayerCard,
+  Stat, StatRow, TONE_CLASS, fmtDelta, fmtNum, toneOf,
 } from '../../kit'
 import type {
   ReviewData, ReviewGw, ReviewLabel, ReviewLane, ReviewLaneName,
@@ -20,12 +20,13 @@ const LANE_TITLE: Record<ReviewLaneName, string> = {
 // The bands are the spec's, pre-registered before any gameweek was graded.
 // Aligned is deliberately neutral rather than green: following the model is
 // not a good week, it is a week with nothing to learn from.
-const LABEL_VARIANT: Record<ReviewLabel, 'positive' | 'negative' | 'neutral'> = {
-  Brilliant: 'positive',
-  Good: 'positive',
+// A grade is a direction relative to the plan the model wrote (rule 1).
+const LABEL_TONE: Record<ReviewLabel, ChipTone> = {
+  Brilliant: 'up',
+  Good: 'up',
   Aligned: 'neutral',
-  Inaccuracy: 'negative',
-  Blunder: 'negative',
+  Inaccuracy: 'down',
+  Blunder: 'down',
 }
 
 const NO_ADVICE = 'no surviving advice — this gameweek is graded on '
@@ -55,7 +56,7 @@ function stampTime(stamp: string): string {
 
 /** A whole number as a string, or an em dash. `Stat` would render a raw
  *  number through `fmtNum` and print "61.0" for a points total. */
-function num(value: number | null): string {
+function whole(value: number | null): string {
   return value === null || value === undefined ? '—' : String(value)
 }
 
@@ -70,12 +71,12 @@ function LaneRow({ lane }: { lane: ReviewLane }) {
          className="flex flex-wrap items-baseline gap-2 py-1.5">
       <span className="w-28 text-text-muted">{LANE_TITLE[lane.lane]}</span>
       {lane.label ? (
-        <Badge variant={LABEL_VARIANT[lane.label]}>{lane.label}</Badge>
-      ) : <Badge variant="neutral">not graded</Badge>}
-      <span className={`num ${TONE_CLASS[toneOf(lane.delta_pts)]}`}>
+        <Chip tone={LABEL_TONE[lane.label]}>{lane.label}</Chip>
+      ) : <Chip>not graded</Chip>}
+      <span className={`tn ${TONE_CLASS[toneOf(lane.delta_pts)]}`}>
         {graded ? `${fmtDelta(lane.delta_pts, 0)} pts` : '—'}
       </span>
-      <span className={`num text-xs ${TONE_CLASS[toneOf(lane.delta_pwin)]}`}>
+      <span className={`tn text-xs ${TONE_CLASS[toneOf(lane.delta_pwin)]}`}>
         {/* An ungraded lane has no answer in either currency, whatever the
             server sent in this field. */}
         {!graded || lane.delta_pwin === null
@@ -102,13 +103,15 @@ function GwCard({ row, onSelect }:
         // because they qualify the whole gameweek, not one lane of it.
         <span className="inline-flex flex-wrap items-center gap-2">
           {`GW${row.gw}`}
+          {/* Both are doubt about the grade rather than a direction in it
+              (rule 2): a run written late, and a total FPL disagrees with. */}
           {row.post_deadline
-            ? <Badge variant="negative" title={LATE_RUN}>late run</Badge>
+            ? <Chip tone="warn" title={LATE_RUN}>late run</Chip>
             : null}
           {row.reconciled === false ? (
-            <Badge variant="negative">
+            <Chip tone="warn">
               {`did not reconcile — FPL says ${row.official_points}`}
-            </Badge>
+            </Chip>
           ) : null}
           {/* v12 W5 §6.4. Absent is absent: a week graded before the
               snapshots existed gets no slot at all, not an em dash, because
@@ -129,15 +132,15 @@ function GwCard({ row, onSelect }:
       )}
       className="mb-4"
     >
-      <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {/* Every value is pre-formatted as a string: `Stat` runs a raw
-            number through fmtNum, which would print a points total as
-            "61.0". These are counts, not measurements. */}
-        <Stat label="You" value={num(row.my_points)} />
-        <Stat label="Model" value={num(row.model_points)} />
-        <Stat label="Accuracy" value={num(row.accuracy)} />
-        <Stat label="Bench" value={num(row.points_on_bench)} />
-      </div>
+      {/* Every value is pre-formatted as a string: `Stat` runs a raw number
+          through fmtNum, which would print a points total as "61.0". These
+          are counts, not measurements. */}
+      <StatRow>
+        <Stat label="You" value={whole(row.my_points)} />
+        <Stat label="Model" value={whole(row.model_points)} />
+        <Stat label="Accuracy" value={whole(row.accuracy)} />
+        <Stat label="Bench" value={whole(row.points_on_bench)} />
+      </StatRow>
       {row.no_advice
         ? <p className="text-sm text-text-muted">{NO_ADVICE}</p>
         : <div className="divide-y divide-divider">
@@ -171,7 +174,7 @@ function GwCard({ row, onSelect }:
                 ep={null}
                 onSelect={onSelect}
               />
-              <span className="num">{`+${m.gain} over ${m.over}`}</span>
+              <span className="tn">{`+${m.gain} over ${m.over}`}</span>
             </span>
           ))}
         </div>
@@ -215,27 +218,29 @@ export default function ReviewTab() {
     <div>
       {data.summary && (
         <Card title="Season ledger" className="mb-4">
-          <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {/* No boxes (§5): the four lanes are stat tiles in the kit's own
+              hairline grid, like every other tile on the site. */}
+          <StatRow>
             {LANE_ORDER.map((name) => {
               const cell = data.summary!.lanes[name]
               return (
-                <div key={name} data-testid={`season-${name}`}
-                     className="rounded-card border border-border bg-card
-                                px-4 py-3">
-                  <p className="label">{LANE_TITLE[name]}</p>
-                  <p className={`num mt-1 text-2xl
-                                 ${TONE_CLASS[toneOf(cell?.pts ?? 0)]}`}>
-                    {cell && cell.graded > 0 ? fmtDelta(cell.pts, 0) : '—'}
-                  </p>
-                  <p className="num mt-1 text-xs text-text-faint">
-                    {cell && cell.graded > 0
+                <div key={name} data-testid={`season-${name}`}>
+                  <Stat
+                    label={LANE_TITLE[name]}
+                    value={(
+                      <span className={TONE_CLASS[toneOf(cell?.pts ?? 0)]}>
+                        {cell && cell.graded > 0
+                          ? fmtDelta(cell.pts, 0) : '—'}
+                      </span>
+                    )}
+                    context={cell && cell.graded > 0
                       ? `${fmtDelta(cell.pwin)} pp over ${cell.graded} GW`
                       : 'never graded'}
-                  </p>
+                  />
                 </div>
               )
             })}
-          </div>
+          </StatRow>
           <p className="text-sm text-text-muted">
             {/* Both totals name the gameweeks they cover: a season of
                 unbanked histories sums to zero, which is not a season of

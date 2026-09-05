@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ComparePanel from './ComparePanel'
-import { difficultyBackground } from '../../kit'
+import { difficultyTone } from '../../kit'
 import type { PlayerRow } from '../../types'
 
 const { apiGet } = vi.hoisted(() => ({ apiGet: vi.fn() }))
@@ -197,8 +197,8 @@ describe('the model’s own working', () => {
       .getByTestId('breakdown-1')
     expect(rows).toHaveTextContent('-0.40')
     // The bar for a negative term sits on the other side of the centre line.
-    expect(rows.querySelector('.bg-rust')).not.toBeNull()
-    expect(rows.querySelector('.bg-sage')).not.toBeNull()
+    expect(rows.querySelector('.bg-down')).not.toBeNull()
+    expect(rows.querySelector('.bg-up')).not.toBeNull()
   })
 
   it('prints an em dash for an unknown minutes pair, never a zero',
@@ -359,17 +359,17 @@ describe('the fixture strip colours', () => {
     ))
   })
 
-  // The chips carry the tint the rest of the app uses for a difficulty, so
-  // the assertion is against `difficultyBackground` itself rather than against
-  // a colour name: one function for one idea.
-  const tint = (score: number) => difficultyBackground(score).slice(0, 20)
+  // The chips carry the tone the rest of the app uses for a difficulty, so
+  // the assertion is against `difficultyTone` itself rather than against a
+  // colour name: one function for one idea.
+  const tone = (score: number) => difficultyTone(score)
 
   it('reads a keeper off the clean-sheet axis', async () => {
     render(<ComparePanel gw={5} players={[
       { ...PLAYERS[0], position: 'GKP' }, PLAYERS[1],
     ]} />)
     await screen.findByTestId('compare-1')
-    expect(strip(1)[0].getAttribute('style')).toContain(tint(0.9))
+    expect(strip(1)[0]).toHaveAttribute('data-tone', tone(0.9))
   })
 
   it('reads a defender off the clean-sheet axis too', async () => {
@@ -377,13 +377,13 @@ describe('the fixture strip colours', () => {
       { ...PLAYERS[0], position: 'DEF' }, PLAYERS[1],
     ]} />)
     await screen.findByTestId('compare-1')
-    expect(strip(1)[0].getAttribute('style')).toContain(tint(0.9))
+    expect(strip(1)[0]).toHaveAttribute('data-tone', tone(0.9))
   })
 
   it('reads a midfielder off the attacking axis', async () => {
     render(<ComparePanel gw={5} players={[PLAYERS[0], PLAYERS[1]]} />)
     await screen.findByTestId('compare-1')
-    expect(strip(1)[0].getAttribute('style')).toContain(tint(0.1))
+    expect(strip(1)[0]).toHaveAttribute('data-tone', tone(0.1))
   })
 
   it('reads a forward off the attacking axis', async () => {
@@ -391,7 +391,7 @@ describe('the fixture strip colours', () => {
       { ...PLAYERS[0], position: 'FWD' }, PLAYERS[1],
     ]} />)
     await screen.findByTestId('compare-1')
-    expect(strip(1)[0].getAttribute('style')).toContain(tint(0.1))
+    expect(strip(1)[0]).toHaveAttribute('data-tone', tone(0.1))
   })
 
   it('draws nothing for a team the matrix has no cells for', async () => {

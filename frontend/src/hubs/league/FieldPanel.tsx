@@ -21,11 +21,13 @@ export default function FieldPanel({ field }: { field: FieldRank | null }) {
       ) : (
         <>
           <div className="flex items-baseline gap-2">
-            <span className="num text-2xl text-text">{pct(field.p_green)}</span>
+            <span className="tn text-[22px] font-semibold text-text">
+              {pct(field.p_green)}
+            </span>
             <span className="text-text-muted">chance of a green arrow</span>
           </div>
           {field.my_ep != null && field.field_median_ep != null && (
-            <p className="num mt-1 text-text-muted">
+            <p className="tn mt-1 text-text-muted">
               your week {field.my_ep.toFixed(1)} pts vs the field&rsquo;s
               median {field.field_median_ep.toFixed(1)}
             </p>
@@ -57,7 +59,7 @@ export default function FieldPanel({ field }: { field: FieldRank | null }) {
                   {field.top10k_waiting_for ?? 'a score threshold'}
                 </span>
               )
-              : <span className="num text-text">{pct(field.p_top10k)}</span>}
+              : <span className="tn text-text">{pct(field.p_top10k)}</span>}
           </dd>
         </div>
         <div>
@@ -79,7 +81,7 @@ export default function FieldPanel({ field }: { field: FieldRank | null }) {
                   // fit never made. Keyed on the rounded number because that
                   // is the one on screen: a slope of −0.4 would otherwise
                   // read "0 places per point better".
-                  <span className="num text-text">
+                  <span className="tn text-text">
                     no measurable move, over {field.rank_slope_rows}{' '}
                     graded gameweeks
                   </span>
@@ -89,7 +91,7 @@ export default function FieldPanel({ field }: { field: FieldRank | null }) {
                   // down, so a negative slope is points buying places — and
                   // rendering the magnitude alone read a squad that was
                   // sliding as one that was climbing.
-                  <span className="num text-text">
+                  <span className="tn text-text">
                     {Math.abs(Math.round(field.rank_slope)).toLocaleString()}
                     {' '}places per point{' '}
                     {field.rank_slope < 0 ? 'better' : 'worse'}, over{' '}

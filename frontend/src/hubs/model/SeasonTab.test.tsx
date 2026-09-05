@@ -305,8 +305,8 @@ describe('SeasonTab, filled', () => {
   it('prints the bench total with the gameweeks it covers', async () => {
     render(<SeasonTab />)
     const card = await screen.findByTestId('season-lane-transfers')
-    expect(within(card.closest('div[class*="rounded-card"]')!.parentElement!
-      .parentElement!).getByText(/Bench points this season: 7 over 3 GW/))
+    expect(within(card.parentElement!.parentElement!)
+      .getByText(/Bench points this season: 7 over 3 GW/))
       .toBeInTheDocument()
   })
 })

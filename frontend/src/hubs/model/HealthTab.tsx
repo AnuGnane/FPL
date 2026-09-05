@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../../api/client'
-import { Card, EmptyState, Loading } from '../../kit'
+import {
+  Callout, Card, Chip, EmptyState, Loading, TABLE_CLASS, THEAD_CLASS, TR_CLASS,
+  tdClass, thClass, tone,
+} from '../../kit'
 import type { HealthData } from '../../types'
 
 // No buttons here. This tab used to carry its own "Refresh data" and "Re-run
@@ -21,7 +24,8 @@ export default function HealthTab() {
   if (error) {
     return (
       <Card title="Health unavailable">
-        <p className="text-rust">{error}</p>
+        {/* A read the server refused, in `down` ink (plan R4). */}
+        <Callout tone="error">{error}</Callout>
       </Card>
     )
   }
@@ -32,45 +36,44 @@ export default function HealthTab() {
       {/* `=== false`, never `!data.season_ok`: null is "cannot tell" and a
           falsy check would paint this on every cold clone. */}
       {data.season_ok === false && (
-        <div
-          data-testid="season-mismatch"
-          className="mb-4 rounded-card border border-rust bg-card px-4 py-3
-                     text-rust"
-        >
+        <Callout tone="error" className="mb-4" data-testid="season-mismatch">
           <p className="font-semibold">Season mismatch</p>
           <p className="mt-1 text-text-secondary">
             The last refresh banked {data.season_ingested}; config.toml says{' '}
-            {data.season_config}. Set <span className="num">[data]
+            {data.season_config}. Set <span className="tn">[data]
             current_season</span> to {data.season_ingested} and append{' '}
-            {data.season_config} to <span className="num">train_seasons</span>{' '}
+            {data.season_config} to <span className="tn">train_seasons</span>{' '}
             — both, together. Until then every row ingested carries the wrong
             season label and every model trained on them trains on the mixture.
           </p>
-        </div>
+        </Callout>
       )}
       <Card title="Data freshness" className="mb-4">
         <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
+        <table className={TABLE_CLASS}>
+          <thead className={THEAD_CLASS}>
             <tr>
-              <th className="label pb-1 text-left">Source</th>
-              <th className="label pb-1 text-left">Path</th>
-              <th className="label pb-1 text-right">Age</th>
+              <th className={thClass()}>Source</th>
+              <th className={thClass()}>Path</th>
+              <th className={thClass(true)}>Age</th>
             </tr>
           </thead>
           <tbody>
             {data.data.map((source) => (
-              <tr key={source.source} className="border-t border-divider">
-                <td className="py-1.5 text-text">{source.source}</td>
-                <td className="num py-1.5 text-xs text-text-faint">
+              <tr key={source.source} className={TR_CLASS}>
+                <td className={`${tdClass()} text-text`}>{source.source}</td>
+                <td className={`${tdClass()} tn text-xs text-text-faint`}>
                   {source.path}
                 </td>
-                <td className="py-1.5 text-right">
+                <td className={tdClass(true)}>
+                  {/* The strip's own three ages (plan R2), so one feed does
+                      not read as stale here and fresh in the header. A
+                      source nobody has fetched is doubt, not a failure. */}
                   {source.present
-                    ? <span className="num text-text-secondary">
+                    ? <span className={`tn ${tone(source.age_hours)}`}>
                         {`${source.age_hours}h ago`}
                       </span>
-                    : <span className="text-rust">missing</span>}
+                    : <Chip tone="warn">missing</Chip>}
                 </td>
               </tr>
             ))}
@@ -84,7 +87,7 @@ export default function HealthTab() {
         <p className="mt-3 text-text-secondary" data-testid="last-backup">
           <span className="label">last backup: </span>
           {data.last_backup
-            ? <span className="num">
+            ? <span className="tn">
                 {/* The stamp is served as UTC ISO-8601 and sliced rather
                     than parsed, so the zone has to be said out loud: a
                     23:45 nightly job rendered as a bare "23:45" reads as
@@ -95,7 +98,7 @@ export default function HealthTab() {
                 {' '}({(data.last_backup.bytes / 1e6).toFixed(1)} MB)
               </span>
             : <span className="text-text-muted">
-                never — run <span className="num">gaffer backup</span>
+                never — run <span className="tn">gaffer backup</span>
               </span>}
         </p>
         {!data.odds_key_present && (
@@ -116,20 +119,20 @@ export default function HealthTab() {
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
+            <table className={TABLE_CLASS}>
+              <thead className={THEAD_CLASS}>
                 <tr>
-                  <th className="label pb-1 text-left">Table</th>
-                  <th className="label pb-1 text-right">Rows</th>
-                  <th className="label pb-1 text-right">Latest</th>
+                  <th className={thClass()}>Table</th>
+                  <th className={thClass(true)}>Rows</th>
+                  <th className={thClass(true)}>Latest</th>
                 </tr>
               </thead>
               <tbody>
                 {data.core_insights.tables.map((t) => (
-                  <tr key={t.table}>
-                    <td className="text-text">{t.table}</td>
-                    <td className="num text-right">{t.rows}</td>
-                    <td className="num text-right text-text-muted">
+                  <tr key={t.table} className={TR_CLASS}>
+                    <td className={`${tdClass()} text-text`}>{t.table}</td>
+                    <td className={tdClass(true)}>{t.rows}</td>
+                    <td className={`${tdClass(true)} text-text-muted`}>
                       {t.rows === 0
                         ? 'the archive publishes none yet'
                         : (t.latest ?? '—')}
@@ -151,7 +154,7 @@ export default function HealthTab() {
               players per position the solver may consider, on top of the ones
               you own
             </p>
-            <p className="num mt-1 text-text">
+            <p className="tn mt-1 text-text">
               {Object.entries(data.solver_top_n)
                 .map(([pos, n]) => `${pos} ${n}`).join('  ·  ')}
             </p>
@@ -160,22 +163,22 @@ export default function HealthTab() {
       )}
       <Card title="Models" className="mb-4">
         <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
+        <table className={TABLE_CLASS}>
+          <thead className={THEAD_CLASS}>
             <tr>
-              <th className="label pb-1 text-left">Model</th>
-              <th className="label pb-1 text-left">Saved</th>
-              <th className="label pb-1 text-left">Metrics</th>
+              <th className={thClass()}>Model</th>
+              <th className={thClass()}>Saved</th>
+              <th className={thClass()}>Metrics</th>
             </tr>
           </thead>
           <tbody>
             {data.models.map((model) => (
-              <tr key={model.name} className="border-t border-divider">
-                <td className="py-1.5 text-text">{model.name}</td>
-                <td className="num py-1.5 text-text-secondary">
+              <tr key={model.name} className={TR_CLASS}>
+                <td className={`${tdClass()} text-text`}>{model.name}</td>
+                <td className={`${tdClass()} tn text-text-secondary`}>
                   {model.saved_at}
                 </td>
-                <td className="num py-1.5 text-xs text-text-faint">
+                <td className={`${tdClass()} tn text-xs text-text-faint`}>
                   {JSON.stringify(model.metrics)}
                 </td>
               </tr>
@@ -186,18 +189,19 @@ export default function HealthTab() {
         {data.model_health && (
           <p className="mt-3">
             <span className="label">Last scored gameweek</span>{' '}
-            <span className="num text-xs text-text-faint">
+            <span className="tn text-xs text-text-faint">
               {JSON.stringify(data.model_health)}
             </span>
           </p>
         )}
       </Card>
       <Card title="Automation" className="mb-4">
-        <p className="num text-xs text-text-faint">{data.launchd.log}</p>
+        <p className="tn text-xs text-text-faint">{data.launchd.log}</p>
         {data.launchd.present
           ? (
-            <p className="num mt-2 overflow-x-auto rounded-card border
-                          border-border bg-base px-2 py-1 text-text-secondary">
+            /* No box (§5): one hairline down the left says "a log line". */
+            <p className="tn mt-2 overflow-x-auto border-l-2 border-border
+                          pl-3 text-text-secondary">
               {data.launchd.last_line}
             </p>
             )
@@ -212,18 +216,18 @@ export default function HealthTab() {
       </Card>
       <Card title="Artifacts">
         <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
+        <table className={TABLE_CLASS}>
+          <thead className={THEAD_CLASS}>
             <tr>
-              <th className="label pb-1 text-left">Artifact</th>
-              <th className="label pb-1 text-right">Bytes</th>
+              <th className={thClass()}>Artifact</th>
+              <th className={thClass(true)}>Bytes</th>
             </tr>
           </thead>
           <tbody>
             {data.artifacts.map((item) => (
-              <tr key={item.name} className="border-t border-divider">
-                <td className="py-1.5 text-text">{item.name}</td>
-                <td className="num py-1.5 text-right text-text-secondary">
+              <tr key={item.name} className={TR_CLASS}>
+                <td className={`${tdClass()} text-text`}>{item.name}</td>
+                <td className={`${tdClass(true)} text-text-secondary`}>
                   {item.bytes}
                 </td>
               </tr>

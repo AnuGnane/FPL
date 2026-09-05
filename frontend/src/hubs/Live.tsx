@@ -5,8 +5,9 @@ import {
 } from 'recharts'
 import { apiGet } from '../api/client'
 import {
-  type Column, Badge, Callout, Card, DataTable, EmptyState, ExplainModal,
-  Loading, PageHeader, PlayerCard, Stat, fmtNum,
+  type Column, Callout, Card, Chip, DataTable, EmptyState, ExplainModal,
+  Loading, PageHeader, PlayerCard, SERIES_COLOURS, Stat, TABLE_CLASS,
+  THEAD_CLASS, TR_CLASS, fmtNum, tdClass, thClass,
 } from '../kit'
 import type { LiveState, LiveTableRow } from '../types'
 
@@ -167,7 +168,7 @@ export default function Live() {
               <Tooltip
                 labelFormatter={clock}
                 contentStyle={{
-                  background: 'var(--color-card)',
+                  background: 'var(--color-raised)',
                   border: '1px solid var(--color-border)',
                 }} />
               {data.race_reference != null && (
@@ -179,11 +180,13 @@ export default function Live() {
                            position: 'insideTopRight',
                            fill: 'var(--color-text-muted)', fontSize: 11 }} />
               )}
+              {/* You are the first series, so you take the brightest of the
+                  four greys and the heavier stroke (plan R6). */}
               <Line type="monotone" dataKey="you" name="You" dot={false}
-                    strokeWidth={2.5} stroke="var(--color-sage)" />
+                    strokeWidth={2.5} stroke={SERIES_COLOURS[0]} />
               <Line type="monotone" dataKey="rival"
                     name={data.rival_name ?? 'Top rival'} dot={false}
-                    strokeWidth={1.5} stroke="var(--color-text)" />
+                    strokeWidth={1.5} stroke={SERIES_COLOURS[1]} />
             </LineChart>
           </ResponsiveContainer>
         )}
@@ -201,23 +204,23 @@ export default function Live() {
           <Callout className="mb-3">{data.notice}</Callout>
         )}
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
+          <table className={TABLE_CLASS}>
+            <thead className={THEAD_CLASS}>
               <tr>
-                <th className="label pb-1 text-left">Player</th>
-                <th className="label pb-1 text-right">Pts</th>
-                <th className="label pb-1 text-right">Bonus</th>
-                <th className="label pb-1 text-right">Mins</th>
-                <th className="label pb-1 text-right">Left</th>
-                <th className="label pb-1 text-left">Status</th>
-                <th className="label pb-1 text-right">Top 10k EO</th>
-                <th className="label pb-1 text-right">Owned</th>
+                <th className={thClass()}>Player</th>
+                <th className={thClass(true)}>Pts</th>
+                <th className={thClass(true)}>Bonus</th>
+                <th className={thClass(true)}>Mins</th>
+                <th className={thClass(true)}>Left</th>
+                <th className={thClass()}>Status</th>
+                <th className={thClass(true)}>Top 10k EO</th>
+                <th className={thClass(true)}>Owned</th>
               </tr>
             </thead>
             <tbody>
               {data.players.map((player) => (
-                <tr key={player.element} className="border-t border-divider">
-                  <td className="py-1.5">
+                <tr key={player.element} className={TR_CLASS}>
+                  <td className={tdClass()}>
                     <span className="inline-flex flex-wrap items-center
                                      gap-1.5">
                       <PlayerCard
@@ -236,46 +239,48 @@ export default function Live() {
                         onSelect={setExplain}
                       />
                       {player.multiplier > 1 && ' (C)'}
+                      {/* Out of your XI and into it: a direction relative to
+                          the team the reader is watching (rule 1). */}
                       {player.projected_out && (
-                        <Badge
-                          variant="negative"
+                        <Chip
+                          tone="down"
                           title={'His matches are over and he did not play, '
                                  + 'so FPL will substitute him.'}>
                           auto-sub out
-                        </Badge>
+                        </Chip>
                       )}
                       {player.projected_in && (
-                        <Badge
-                          variant="positive"
+                        <Chip
+                          tone="up"
                           title={'Projected to come on for a starter whose '
                                  + 'matches are over.'}>
                           {`auto-sub in · ${player.sub_reason ?? ''}`}
-                        </Badge>
+                        </Chip>
                       )}
                     </span>
                   </td>
-                  <td className="tn py-1.5 text-right text-text">
+                  <td className={`${tdClass(true)} text-text`}>
                     {player.points}
                   </td>
-                  <td className={`tn py-1.5 text-right ${
+                  <td className={`${tdClass(true)} ${
                     player.provisional_bonus > 0
                       ? 'text-up' : 'text-text-faint'}`}>
                     {player.provisional_bonus > 0
                       ? `+${player.provisional_bonus}` : '–'}
                   </td>
-                  <td className="tn py-1.5 text-right text-text-secondary">
+                  <td className={`${tdClass(true)} text-text-secondary`}>
                     {player.minutes}
                   </td>
-                  <td className="tn py-1.5 text-right text-text-secondary">
+                  <td className={`${tdClass(true)} text-text-secondary`}>
                     {player.remaining_ep == null
                       ? '–' : fmtNum(player.remaining_ep, 1)}
                   </td>
-                  <td className="py-1.5 text-text-muted">{player.status}</td>
-                  <td className="tn py-1.5 text-right text-text-secondary">
+                  <td className={`${tdClass()} text-text-muted`}>{player.status}</td>
+                  <td className={`${tdClass(true)} text-text-secondary`}>
                     {player.tier_eo == null ? '–'
                       : `${player.tier_eo}% ±${player.tier_eo_se ?? 0}`}
                   </td>
-                  <td className="tn py-1.5 text-right text-text-muted">
+                  <td className={`${tdClass(true)} text-text-muted`}>
                     {player.selected_by_percent == null ? '–'
                       : `${player.selected_by_percent}%`}
                   </td>

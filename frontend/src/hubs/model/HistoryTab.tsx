@@ -4,11 +4,11 @@ import {
   Tooltip, XAxis, YAxis,
 } from 'recharts'
 import { apiGet } from '../../api/client'
-import { Card, EmptyState, Loading, fmtNum } from '../../kit'
+import {
+  Callout, Card, EmptyState, Loading, SERIES_COLOURS, SERIES_DASH, TABLE_CLASS,
+  THEAD_CLASS, TR_CLASS, fmtNum, tdClass, thClass,
+} from '../../kit'
 import type { HistoryData } from '../../types'
-
-const COLOURS = ['var(--color-sage)', 'var(--color-info)', 'var(--color-rust)',
-  'var(--color-text-muted)', 'var(--color-text-faint)']
 
 /** Recharts wants one row per x with a column per series. */
 function priceRows(prices: HistoryData['prices']): Array<Record<string, number>> {
@@ -35,7 +35,8 @@ export default function HistoryTab() {
   if (error) {
     return (
       <Card title="History unavailable">
-        <p className="text-rust">{error}</p>
+        {/* A read the server refused, in `down` ink (plan R4). */}
+        <Callout tone="error">{error}</Callout>
       </Card>
     )
   }
@@ -47,41 +48,42 @@ export default function HistoryTab() {
     <>
       <Card title="Past runs" className="mb-4">
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
+          <table className={TABLE_CLASS}>
+            <thead className={THEAD_CLASS}>
               <tr>
-                <th className="label pb-1 text-right">GW</th>
-                <th className="label pb-1 text-left">Captain</th>
-                <th className="label pb-1 text-left">In</th>
-                <th className="label pb-1 text-left">Out</th>
-                <th className="label pb-1 text-right">Hits</th>
-                <th className="label pb-1 text-right">Expected</th>
-                <th className="label pb-1 text-right">Actual</th>
+                <th className={thClass(true)}>GW</th>
+                <th className={thClass()}>Captain</th>
+                <th className={thClass()}>In</th>
+                <th className={thClass()}>Out</th>
+                <th className={thClass(true)}>Hits</th>
+                <th className={thClass(true)}>Expected</th>
+                <th className={thClass(true)}>Actual</th>
               </tr>
             </thead>
             <tbody>
               {data.runs.map((run) => (
-                <tr key={run.gw} className="border-t border-divider">
-                  <td className="num py-1.5 text-right text-text-secondary">
+                <tr key={run.gw} className={TR_CLASS}>
+                  <td className={`${tdClass(true)} text-text-secondary`}>
                     {run.gw}
                   </td>
-                  <td className="py-1.5 text-text">{run.captain}</td>
-                  <td className="py-1.5 text-sage">
+                  <td className={`${tdClass()} text-text`}>{run.captain}</td>
+                  {/* In and out of the squad: a direction (rule 1). */}
+                  <td className={`${tdClass()} text-up`}>
                     {run.buys.join(', ') || '—'}
                   </td>
-                  <td className="py-1.5 text-rust">
+                  <td className={`${tdClass()} text-down`}>
                     {run.sells.join(', ') || '—'}
                   </td>
-                  <td className="num py-1.5 text-right text-text-muted">
+                  <td className={`${tdClass(true)} text-text-muted`}>
                     {run.hits}
                   </td>
-                  <td className="num py-1.5 text-right text-text-secondary">
+                  <td className={`${tdClass(true)} text-text-secondary`}>
                     {fmtNum(run.expected_pts)}
                   </td>
-                  <td className="py-1.5 text-right">
+                  <td className={tdClass(true)}>
                     {run.actual_pts === null
                       ? <span className="text-text-faint">not resolved yet</span>
-                      : <span className="num text-text">{run.actual_pts}</span>}
+                      : <span className="text-text">{run.actual_pts}</span>}
                   </td>
                 </tr>
               ))}
@@ -96,13 +98,16 @@ export default function HistoryTab() {
               <CartesianGrid stroke="var(--color-divider)" vertical={false} />
               <XAxis dataKey="gw" stroke="var(--color-text-muted)" />
               <YAxis stroke="var(--color-text-muted)" />
-              <Tooltip contentStyle={{ background: 'var(--color-card)',
+              <Tooltip contentStyle={{ background: 'var(--color-raised)',
                                        border: '1px solid var(--color-border)' }} />
               <Legend />
+              {/* Four greys, the last two dashed (plan R6): a price line is
+                  not a direction and not something you click. */}
               {data.prices.map((series, index) => (
                 <Line key={series.code} type="monotone" dataKey={series.name}
                       dot={false} strokeWidth={2}
-                      stroke={COLOURS[index % COLOURS.length]} />
+                      stroke={SERIES_COLOURS[index % 4]}
+                      strokeDasharray={SERIES_DASH[index % 4]} />
               ))}
             </RLineChart>
           </ResponsiveContainer>
@@ -119,12 +124,13 @@ export default function HistoryTab() {
             />
             )
           : (
+            /* No box (§5): one hairline down the left says "a record" as
+               well as a card did. */
             <ul className="flex flex-col gap-1">
               {data.backtests.map((row, index) => (
                 <li key={index}
-                    className="num overflow-x-auto rounded-card border
-                               border-border bg-base px-2 py-1 text-xs
-                               text-text-secondary">
+                    className="tn overflow-x-auto border-l-2 border-border
+                               pl-3 text-xs text-text-secondary">
                   {JSON.stringify(row)}
                 </li>
               ))}

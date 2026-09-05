@@ -79,7 +79,7 @@ describe('JournalTab', () => {
     render(<JournalTab />)
     const badge = await screen.findByText('late run')
     expect(badge).toHaveAttribute('title', expect.stringContaining('hindsight'))
-    expect(badge).toHaveClass('text-down')
+    expect(badge).toHaveAttribute('data-tone', 'warn')
   })
 
   it('leaves an in-time gameweek unflagged', async () => {

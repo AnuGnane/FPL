@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../../api/client'
-import { Card, EmptyState, Loading, difficultyBackground } from '../../kit'
+import {
+  Card, Chip, EmptyState, Loading, Segmented, TABLE_CLASS, THEAD_CLASS,
+  TR_CLASS, difficultyTone, tdClass, thClass,
+} from '../../kit'
 import type { FixtureMatrixData, MatrixCell } from '../../types'
 
 type View = 'attack' | 'defence'
@@ -38,55 +41,54 @@ export default function FixtureMatrix({ from }: { from: number }) {
         </span>
       )}
     >
-      <div className="mb-3 flex gap-2">
-        {(['attack', 'defence'] as View[]).map((option) => (
-          <button
-            key={option}
-            type="button"
-            onClick={() => setView(option)}
-            className={`rounded-card border px-3 py-1 ${view === option
-              ? 'border-text text-text' : 'border-border text-text-muted'}`}
-          >
-            {option === 'attack' ? 'Attacking' : 'Clean sheet'}
-          </button>
-        ))}
+      <div className="mb-3">
+        <Segmented
+          label="Difficulty view"
+          value={view}
+          onChange={setView}
+          options={[{ value: 'attack', label: 'Attacking' },
+                    { value: 'defence', label: 'Clean sheet' }]}
+        />
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
+        <table className={TABLE_CLASS}>
+          <thead className={THEAD_CLASS}>
             <tr>
-              <th className="label text-left">Team</th>
+              <th className={thClass()}>Team</th>
               {data.gws.map((gw) => (
-                <th key={gw} className="label text-center">GW{gw}</th>
+                <th key={gw} className={thClass()}>GW{gw}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {data.teams.map((team) => (
-              <tr key={team.code}>
-                <th scope="row" className="py-1 text-left text-text">
+              <tr key={team.code} className={TR_CLASS}>
+                <th scope="row" className={`${thClass()} text-text`}>
                   {team.short_name}
                 </th>
                 {data.gws.map((gw) => {
                   const cell = team.cells.find((c) => c.gw === gw)
                   if (!cell) {
                     return (
-                      <td key={gw} className="px-1 py-1 text-center
-                                              text-text-faint">—</td>
+                      <td key={gw}
+                          className={`${tdClass()} text-text-faint`}>—</td>
                     )
                   }
+                  // A grid of chips: the same tint language every other
+                  // fixture on the page speaks (rule 1 on the meaning scale),
+                  // rather than a per-cell ramp only this table used.
                   return (
                     <td
                       key={gw}
                       data-testid={`matrix-cell-${team.code}-${gw}`}
                       data-score={String(score(cell))}
-                      style={{
-                        background: difficultyBackground(score(cell)),
-                      }}
-                      className="px-1 py-1 text-center text-text"
+                      className={tdClass()}
                     >
-                      {cell.home ? cell.opponent
-                                 : cell.opponent.toLowerCase()}
+                      <Chip tone={difficultyTone(score(cell))}
+                            className="w-full justify-center">
+                        {cell.home ? cell.opponent
+                                   : cell.opponent.toLowerCase()}
+                      </Chip>
                     </td>
                   )
                 })}

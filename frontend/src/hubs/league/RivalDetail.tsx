@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { apiGet } from '../../api/client'
 import {
-  Badge, Button, Card, ExplainModal, Loading, PageHeader, PlayerCard, fmtNum,
+  Button, Callout, Card, Chip, ExplainModal, Loading, PageHeader, PlayerCard,
+  fmtNum,
 } from '../../kit'
 import type { RivalDetailData, SquadPlayer } from '../../types'
 
@@ -34,7 +35,7 @@ function SquadList({ title, players }:
                   ep={null}
                   onSelect={setExplain}
                 />
-                <span className="num ml-auto text-text-muted">
+                <span className="tn ml-auto text-text-muted">
                   £{player.price}m
                 </span>
               </li>
@@ -65,7 +66,8 @@ export default function RivalDetail() {
       <>
         <PageHeader title="Rival" />
         <Card title="Could not load this rival">
-          <p className="text-rust">{error}</p>
+          {/* A read the server refused, in `down` ink (plan R4). */}
+          <Callout tone="error">{error}</Callout>
           <Button className="mt-3" onClick={load}>Retry</Button>
         </Card>
       </>
@@ -90,7 +92,7 @@ export default function RivalDetail() {
         <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3">
           <div>
             <dt className="label">Team value</dt>
-            <dd className="num text-text">£{data.team_value}m</dd>
+            <dd className="tn text-text">£{data.team_value}m</dd>
           </div>
           <div>
             <dt className="label">Armband</dt>
@@ -107,15 +109,17 @@ export default function RivalDetail() {
               {data.chips_used.length === 0
                 ? <span className="text-text-muted">none</span>
                 : data.chips_used.map((chip) => (
-                  <Badge key={chip} variant="info">{chip}</Badge>
+                  <Chip key={chip}>{chip}</Chip>
                 ))}
             </dd>
           </div>
         </dl>
+        {/* A count of points is information, not a direction relative to
+            anything the reader holds (rule 1), so it is stated in ink. */}
         {data.live_points !== null && (
-          <p className="mt-3 text-sage">
-            <span className="num">{data.live_points}</span> live points this
-            gameweek
+          <p className="mt-3 text-text-muted">
+            <span className="tn text-text">{data.live_points}</span> live points
+            this gameweek
           </p>
         )}
       </Card>

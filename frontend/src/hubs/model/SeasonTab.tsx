@@ -5,7 +5,8 @@ import {
 } from 'recharts'
 import { apiGet } from '../../api/client'
 import {
-  Card, EmptyState, Loading, TONE_CLASS, fmtDelta, toneOf,
+  Card, EmptyState, Loading, SERIES_COLOURS, SERIES_DASH, Stat, StatRow,
+  TONE_CLASS, fmtDelta, toneOf,
 } from '../../kit'
 import type {
   CalibrationData, ReviewData, ReviewLaneName,
@@ -42,9 +43,6 @@ const NEVER_GRADED = 'never graded'
 
 const GATE = 'The first grades land when FPL marks GW2 data_checked — the '
   + 'Tuesday review job banks them automatically.'
-
-const HEAD_COLOURS = ['var(--color-sage)', 'var(--color-info)',
-  'var(--color-rust)', 'var(--color-text-muted)']
 
 /**
  * The calibration trend, beside the decision record because the spec's claim
@@ -99,13 +97,16 @@ function CalibrationTrend() {
             <CartesianGrid stroke="var(--color-divider)" vertical={false} />
             <XAxis dataKey="gw" stroke="var(--color-text-muted)" />
             <YAxis stroke="var(--color-text-muted)" />
-            <Tooltip contentStyle={{ background: 'var(--color-card)',
+            <Tooltip contentStyle={{ background: 'var(--color-raised)',
                                      border: '1px solid var(--color-border)' }} />
             <Legend />
+            {/* One grey palette for every chart on the site (plan R6): the
+                third and fourth heads are told apart by their dash. */}
             {drawn.map(([key, label], i) => (
               <Line key={key} type="monotone" dataKey={key} name={label}
                     dot={false} strokeWidth={2}
-                    stroke={HEAD_COLOURS[i % HEAD_COLOURS.length]} />
+                    stroke={SERIES_COLOURS[i % 4]}
+                    strokeDasharray={SERIES_DASH[i % 4]} />
             ))}
           </LineChart>
         </ResponsiveContainer>
@@ -178,31 +179,33 @@ export default function SeasonTab() {
   return (
     <div>
       <Card title="Decision record" className="mb-4">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {/* No boxes (§5): the four lanes are stat tiles in the kit's own
+            hairline grid, like every other tile on the site. */}
+        <StatRow className="">
           {LANE_ORDER.map((name) => {
             const cell = summary!.lanes[name]
             const graded = cell?.graded ?? 0
             return (
-              <div key={name} data-testid={`season-lane-${name}`}
-                   className="rounded-card border border-border bg-card
-                              px-4 py-3">
-                <p className="label">{LANE_TITLE[name]}</p>
-                <p className={`num mt-1 text-2xl
-                               ${TONE_CLASS[toneOf(cell?.pts ?? 0)]}`}>
-                  {graded > 0 ? fmtDelta(cell.pts, 0) : '—'}
-                </p>
-                <p className="num mt-1 text-xs text-text-faint">
-                  {/* The denominator is `graded` and not `wins + losses`: a
-                      zero delta is a week I did what the model did, and
-                      dividing it away would turn agreement into judgment. */}
-                  {graded > 0
+              <div key={name} data-testid={`season-lane-${name}`}>
+                <Stat
+                  label={LANE_TITLE[name]}
+                  // Points against the lane's own plan: a direction (rule 1).
+                  value={(
+                    <span className={TONE_CLASS[toneOf(cell?.pts ?? 0)]}>
+                      {graded > 0 ? fmtDelta(cell.pts, 0) : '—'}
+                    </span>
+                  )}
+                  // The denominator is `graded` and not `wins + losses`: a
+                  // zero delta is a week I did what the model did, and
+                  // dividing it away would turn agreement into judgment.
+                  context={graded > 0
                     ? `${cell.wins}/${graded} won · ${cell.losses} lost`
                     : NEVER_GRADED}
-                </p>
+                />
               </div>
             )
           })}
-        </div>
+        </StatRow>
         <p className="mt-3 text-sm text-text-muted">
           {`Bench points this season: ${summary!.points_on_bench} over `
            + `${summary!.points_on_bench_gws} GW. Selection left `
@@ -223,10 +226,10 @@ export default function SeasonTab() {
                 <CartesianGrid stroke="var(--color-divider)" vertical={false} />
                 <XAxis dataKey="gw" stroke="var(--color-text-muted)" />
                 <YAxis stroke="var(--color-text-muted)" />
-                <Tooltip contentStyle={{ background: 'var(--color-card)',
+                <Tooltip contentStyle={{ background: 'var(--color-raised)',
                                          border: '1px solid var(--color-border)' }} />
                 <Line type="monotone" dataKey="bench" dot={false}
-                      strokeWidth={2} stroke="var(--color-rust)" />
+                      strokeWidth={2} stroke={SERIES_COLOURS[0]} />
               </LineChart>
             </ResponsiveContainer>
             {/* The caption describes the line above it — under the empty
@@ -253,10 +256,10 @@ export default function SeasonTab() {
                 <CartesianGrid stroke="var(--color-divider)" vertical={false} />
                 <XAxis dataKey="gw" stroke="var(--color-text-muted)" />
                 <YAxis stroke="var(--color-text-muted)" />
-                <Tooltip contentStyle={{ background: 'var(--color-card)',
+                <Tooltip contentStyle={{ background: 'var(--color-raised)',
                                          border: '1px solid var(--color-border)' }} />
                 <Line type="monotone" dataKey="accuracy" dot={false}
-                      strokeWidth={2} stroke="var(--color-info)" />
+                      strokeWidth={2} stroke={SERIES_COLOURS[0]} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -280,13 +283,13 @@ export default function SeasonTab() {
                     shape. */}
                 <YAxis reversed stroke="var(--color-text-muted)"
                        domain={['dataMin', 'dataMax']} />
-                <Tooltip contentStyle={{ background: 'var(--color-card)',
+                <Tooltip contentStyle={{ background: 'var(--color-raised)',
                                          border: '1px solid var(--color-border)' }} />
                 {/* `connectNulls` is false by default and stays that way: a
                     straight line through a missing rank is the most confident
                     lie this dashboard could tell. */}
                 <Line type="monotone" dataKey="overall_rank" dot={false}
-                      strokeWidth={2} stroke="var(--color-sage)" />
+                      strokeWidth={2} stroke={SERIES_COLOURS[0]} />
               </LineChart>
             </ResponsiveContainer>
           </div>

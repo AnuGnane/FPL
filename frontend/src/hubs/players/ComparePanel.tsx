@@ -5,16 +5,13 @@ import {
 } from 'recharts'
 import { apiGet } from '../../api/client'
 import {
-  Badge, Card, EmptyState, PlayerName, PosBadge, Sparkline,
-  difficultyBackground, fmtDelta, fmtNum,
+  Card, Chip, EmptyState, PlayerName, PosBadge, SERIES_COLOURS, Sparkline,
+  difficultyTone, fmtDelta, fmtNum,
 } from '../../kit'
 import type {
   ComponentsBreakdown, FixtureMatrixData, PlayerRow,
 } from '../../types'
 import CompareRadar from './CompareRadar'
-
-const SERIES_COLOURS = ['var(--color-sage)', 'var(--color-info)',
-  'var(--color-rust)', 'var(--color-text-muted)']
 
 /**
  * The additive terms `web/routers/components.py`'s `TERMS` writes for one
@@ -64,17 +61,20 @@ function SignedBar({ label, points, scale }: { label: string; points: number
   return (
     <div className="flex items-center gap-2">
       <span className="label flex-1 truncate">{label}</span>
-      <span className="relative h-2 w-20 rounded bg-base">
-        <span className="absolute left-1/2 top-0 h-2 w-px bg-text-faint" />
+      {/* Not two `<Bar>`s: this is one signed bar about a centre, which is a
+          different reading from a magnitude off zero. Restyled to the rule-7
+          language — flat fill, no border — with the centre in text ink. */}
+      <span className="relative h-1.5 w-20 rounded-chip bg-border">
+        <span className="absolute left-1/2 top-0 h-1.5 w-px bg-text" />
         <span
-          className={`absolute top-0 h-2 ${points < 0
-            ? 'rounded-l bg-rust' : 'rounded-r bg-sage'}`}
+          className={`absolute top-0 h-1.5 rounded-chip ${points < 0
+            ? 'bg-down' : 'bg-up'}`}
           style={points < 0
             ? { right: '50%', width: `${width}%` }
             : { left: '50%', width: `${width}%` }}
         />
       </span>
-      <span className="num w-12 text-right text-text">
+      <span className="tn w-12 text-right text-text">
         {fmtDelta(points, 2)}
       </span>
     </div>
@@ -170,7 +170,7 @@ export default function ComparePanel(
             <CartesianGrid stroke="var(--color-divider)" vertical={false} />
             <XAxis dataKey="label" stroke="var(--color-text-muted)" />
             <YAxis stroke="var(--color-text-muted)" />
-            <Tooltip contentStyle={{ background: 'var(--color-card)',
+            <Tooltip contentStyle={{ background: 'var(--color-raised)',
                                      border: '1px solid var(--color-border)' }} />
             <Legend />
             {players.map((player, i) => (
@@ -186,7 +186,7 @@ export default function ComparePanel(
                       components={components} matrix={matrix} />
       </Card>
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-        {players.map((player) => {
+        {players.map((player, column) => {
           const team = matrix?.teams.find((t) => t.code === player.team_code)
           const comp = components?.players.find((p) => p.code === player.code)
           // One row per label, summed over the horizon the payload holds —
@@ -222,7 +222,10 @@ export default function ComparePanel(
             ? null
             : here.reduce((sum, f) => sum + (f.minutes.xmins ?? 0), 0)
           return (
-            <div key={player.code} data-testid={`compare-${player.code}`}>
+            // No boxes (§5): the timeline's device — one hairline rule tells
+            // each column from its neighbour.
+            <div key={player.code} data-testid={`compare-${player.code}`}
+                 className={column > 0 ? 'border-l border-border pl-3' : ''}>
               {/* The name is the control, not a label of one: the same
                   click-to-explain affordance every other page gives it.
                   PosBadge stays in the action slot, so no dot here. */}
@@ -233,11 +236,11 @@ export default function ComparePanel(
               >
                 <dl className="grid grid-cols-2 gap-1">
                   <dt className="label">Price</dt>
-                  <dd className="num text-right text-text">
+                  <dd className="tn text-right text-text">
                     {fmtNum(player.price)}
                   </dd>
                   <dt className="label">xPts</dt>
-                  <dd className="num text-right text-text">
+                  <dd className="tn text-right text-text">
                     {fmtNum(player.ep_next)}
                     {player.ep_lo != null && player.ep_hi != null && (
                       // `ep_gw` and `sigma` ride in the tooltip rather than
@@ -256,11 +259,11 @@ export default function ComparePanel(
                     )}
                   </dd>
                   <dt className="label">EO%</dt>
-                  <dd className="num text-right text-text">
+                  <dd className="tn text-right text-text">
                     {fmtNum(player.league_eo)}
                   </dd>
                   <dt className="label">Field EO</dt>
-                  <dd className="num text-right text-text"
+                  <dd className="tn text-right text-text"
                       data-testid={`field-eo-${player.code}`}>
                     {/* A "± —" is a plus-or-minus of nothing: the glyph
                         promises an interval the log did not record. An older
@@ -295,7 +298,7 @@ export default function ComparePanel(
                     )}
                   </dd>
                   <dt className="label">Own%</dt>
-                  <dd className="num text-right text-text">
+                  <dd className="tn text-right text-text">
                     {fmtNum(player.ownership)}
                   </dd>
                 </dl>
@@ -320,7 +323,7 @@ export default function ComparePanel(
                        className="mt-1 flex items-baseline justify-between
                                   border-t border-divider pt-1">
                       <span className="label">Total</span>
-                      <span className="num text-text">{fmtNum(total, 2)}</span>
+                      <span className="tn text-text">{fmtNum(total, 2)}</span>
                     </p>
                     <p className="text-xs text-text-faint">
                       {/* `total` is the terms summed over every fixture the
@@ -357,7 +360,7 @@ export default function ComparePanel(
                         <span className="text-text-muted">
                           {`${fixture.home ? 'vs' : 'at'} ${fixture.opponent}`}
                         </span>
-                        <span className="num text-text">
+                        <span className="tn text-text">
                           {/* An em dash, never 0.00: zero here reads as
                               "expected not to play", which is the strongest
                               claim this payload can make. */}
@@ -372,7 +375,7 @@ export default function ComparePanel(
                          className="flex items-baseline justify-between
                                     border-t border-divider pt-1">
                         <span className="label">xMins across both</span>
-                        <span className="num text-text"
+                        <span className="tn text-text"
                               title={xmSum === null
                                 ? 'One of these fixtures has no expected '
                                   + 'minutes, so the pair has no total. It is '
@@ -402,12 +405,11 @@ export default function ComparePanel(
                         server: a payload that predates it means "nothing
                         overridden", not a column that throws. */}
                     {(player.set_piece_manual ?? []).length > 0 && (
-                      <Badge variant="info"
-                             title={'Your override: '
-                                    + (player.set_piece_manual
-                                       ?? []).join(', ')}>
+                      <Chip title={'Your override: '
+                                   + (player.set_piece_manual
+                                      ?? []).join(', ')}>
                         manual
-                      </Badge>
+                      </Chip>
                     )}
                   </p>
                 )}
@@ -426,17 +428,17 @@ export default function ComparePanel(
                       || player.position === 'DEF'
                       ? cell.defence
                       : cell.attack
-                    // Timeline's idiom (plan A4): the tint is the number
-                    // itself rather than a three-way band over it.
+                    // Rule 1 on the meaning scale: easy, hard, or neither —
+                    // three words the eye can tell apart at 10px, rather than
+                    // the continuous ramp that preceded them.
                     return (
-                      <span
+                      <Chip
                         key={cell.gw}
-                        className="rounded px-1 text-[10px] text-text"
-                        style={{ background: difficultyBackground(score) }}
+                        tone={difficultyTone(score)}
                         title={`GW${cell.gw} · ${cell.home ? 'home' : 'away'}`}
                       >
                         {`${cell.opponent} (${cell.home ? 'H' : 'A'})`}
-                      </span>
+                      </Chip>
                     )
                   })}
                 </div>

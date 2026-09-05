@@ -130,7 +130,7 @@ export default function PinDialog(
             <span className="label">Why</span>
             <span className="flex items-center gap-2">
               {note.length > NOTE_HINT && (
-                <span className="num text-text-faint">
+                <span className="tn text-text-faint">
                   {note.length}/{NOTE_MAX}
                 </span>
               )}

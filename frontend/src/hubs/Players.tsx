@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { apiDelete, apiGet, apiPost, errorText } from '../api/client'
 import { useDebounced } from '../api/useDebounced'
 import {
-  type Column, Button, Card, DataTable, EmptyState, INPUT_CLASS, Loading,
+  type Column, Bar, Button, Card, DataTable, EmptyState, INPUT_CLASS, Loading,
   PageHeader, PlayerName, PosBadge, Sparkline, TAB_CLASS, TAB_LIST_CLASS,
   fmtNum, segmentClass, toast, useTabParam,
 } from '../kit'
@@ -155,9 +155,9 @@ export default function Players() {
       value: (r) => (r.ep_hi == null || r.ep_lo == null
         ? null : r.ep_hi - r.ep_lo),
       render: (r) => (r.ep_lo == null || r.ep_hi == null
-        ? <span className="num text-text-muted">—</span>
+        ? <span className="tn text-text-muted">—</span>
         : (
-          <span className="num text-text-secondary"
+          <span className="tn text-text-secondary"
                 title={'p25–p75 of what he might score next gameweek: his '
                   + 'expected points plus football’s own variance, plus how '
                   + 'far the forecast itself might move'}>
@@ -166,10 +166,23 @@ export default function Players() {
         )) },
     { key: 'ep_horizon', header: 'Horizon', numeric: true,
       value: (r) => r.ep_horizon, render: (r) => fmtNum(r.ep_horizon) },
+    // Rule 7: ownership and effective ownership are magnitudes against one
+    // ceiling with six hundred rows to compare, so each is the bar with its
+    // number beside it. 48px: the explorer carries three of these columns.
     { key: 'ownership', header: 'Own%', numeric: true,
-      value: (r) => r.ownership, render: (r) => fmtNum(r.ownership) },
+      value: (r) => r.ownership,
+      render: (r) => (
+        <Bar fraction={r.ownership / 100} text={fmtNum(r.ownership)}
+             width={48} testId={`own-${r.code}`}
+             aria-label={`Owned by ${fmtNum(r.ownership)}%`} />
+      ) },
     { key: 'league_eo', header: 'EO%', numeric: true,
-      value: (r) => r.league_eo, render: (r) => fmtNum(r.league_eo) },
+      value: (r) => r.league_eo,
+      render: (r) => (
+        <Bar fraction={r.league_eo / 100} text={fmtNum(r.league_eo)}
+             width={48} testId={`eo-${r.code}`}
+             aria-label={`EO ${fmtNum(r.league_eo)}%`} />
+      ) },
     // The label is the reason the column is here: a number is ownership, a
     // word is a position. `Column` has no `sub` member, so the word rides
     // inside the rendered cell; `value` stays the sortable number.
@@ -177,7 +190,9 @@ export default function Players() {
       value: (r) => r.field_eo,
       render: (r) => (r.field_eo === null ? '—' : (
         <>
-          {fmtNum(r.field_eo, 1)}
+          <Bar fraction={r.field_eo / 100} text={fmtNum(r.field_eo, 1)}
+               width={48} testId={`field-${r.code}`}
+               aria-label={`Field ${fmtNum(r.field_eo, 1)}%`} />
           {r.field_eo_delta !== null && r.field_eo_delta !== undefined && (
             // The arrow is the sign and the title is the number. A delta drawn
             // as a second figure in the cell would read as a second ownership.

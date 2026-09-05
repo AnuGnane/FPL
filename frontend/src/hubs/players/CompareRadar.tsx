@@ -2,12 +2,10 @@ import {
   Legend, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart,
   ResponsiveContainer, Tooltip,
 } from 'recharts'
+import { SERIES_COLOURS, SERIES_DASH } from '../../kit'
 import type {
   ComponentsBreakdown, FixtureMatrixData, PlayerRow,
 } from '../../types'
-
-const SERIES_COLOURS = ['var(--color-sage)', 'var(--color-info)',
-  'var(--color-rust)', 'var(--color-text-muted)']
 
 /** How far ahead the fixture axis looks. Three, because that is the horizon a
  *  transfer is normally justified over and the one the fixture matrix's own
@@ -186,14 +184,18 @@ export default function CompareRadar(
             <PolarGrid stroke="var(--color-divider)" />
             <PolarAngleAxis dataKey="axis" stroke="var(--color-text-muted)" />
             <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
-            <Tooltip contentStyle={{ background: 'var(--color-card)',
+            <Tooltip contentStyle={{ background: 'var(--color-raised)',
                                      border: '1px solid var(--color-border)' }} />
             <Legend />
             {players.map((player, i) => (
+              // Grey, not hues (plan R6): blue is chrome and green/rust are
+              // directions, so the third and fourth shapes are told apart by
+              // their dash rather than by a colour that would mean something.
               <Radar key={player.code} name={player.name}
                      dataKey={player.name} fillOpacity={0.15}
-                     fill={SERIES_COLOURS[i % SERIES_COLOURS.length]}
-                     stroke={SERIES_COLOURS[i % SERIES_COLOURS.length]} />
+                     fill={SERIES_COLOURS[i % 4]}
+                     stroke={SERIES_COLOURS[i % 4]}
+                     strokeDasharray={SERIES_DASH[i % 4]} />
             ))}
           </RadarChart>
         </ResponsiveContainer>

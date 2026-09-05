@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { apiDelete, apiGet, apiPost, errorText } from '../../api/client'
 import {
-  Card, EmptyState, INPUT_CLASS, Loading, PlayerName, buttonClass,
+  Callout, Card, EmptyState, INPUT_CLASS, Loading, PlayerName, buttonClass,
 } from '../../kit'
 import type { WatchRow, WatchlistPanel } from '../../types'
 
@@ -125,10 +125,13 @@ function Row(
           {`Save note for ${row.name}`}
         </button>
       </form>
+      {/* A save the server refused, in `down` ink (plan R4) — the one use
+          of that colour that is not a direction. */}
       {error && (
-        <p data-testid={`watchlist-error-${row.code}`} className="text-rust">
+        <Callout tone="error" className="mt-1"
+                 data-testid={`watchlist-error-${row.code}`}>
           {error}
-        </p>
+        </Callout>
       )}
     </div>
   )

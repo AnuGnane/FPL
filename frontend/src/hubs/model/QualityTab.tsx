@@ -5,8 +5,9 @@ import {
 } from 'recharts'
 import { ApiError, apiGet } from '../../api/client'
 import {
-  type Column, Badge, Card, DataTable, EmptyState, Loading, PlayerName,
-  PosBadge, Stat, fmtNum, fmtPct,
+  type Column, Bar, Callout, Card, Chip, DataTable, EmptyState, Loading,
+  PlayerName, PosBadge, SERIES_COLOURS, Stat, StatRow, TABLE_CLASS, THEAD_CLASS,
+  TR_CLASS, fmtNum, fmtPct, tdClass, thClass,
 } from '../../kit'
 import type {
   BenchmarkEvaluation, CalibrationData, CalibrationHead, CurrentEvaluation,
@@ -52,13 +53,14 @@ function StratifiedTableView(
 ) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full">
-        <thead>
+      <table className={TABLE_CLASS}>
+        <thead className={THEAD_CLASS}>
           <tr>
-            <th className="label pb-1 text-left">Category</th>
+            <th className={thClass()}>Category</th>
             {columns.map(([name]) => (
               <th key={name} colSpan={2}
-                  className="label border-l border-divider pb-1 text-center">
+                  className={`${thClass()} border-l border-divider
+                              text-center`}>
                 {name}
               </th>
             ))}
@@ -67,11 +69,10 @@ function StratifiedTableView(
             <th />
             {columns.map(([name]) => [
               <th key={`${name}-rmse`}
-                  className="label border-l border-divider pb-1 pl-2
-                             text-right">
+                  className={`${thClass(true)} border-l border-divider`}>
                 RMSE
               </th>,
-              <th key={`${name}-mae`} className="label pb-1 text-right">
+              <th key={`${name}-mae`} className={thClass(true)}>
                 MAE
               </th>,
             ])}
@@ -79,16 +80,16 @@ function StratifiedTableView(
         </thead>
         <tbody>
           {CATEGORIES.map(([key, label]) => (
-            <tr key={key} className="border-t border-divider">
-              <td className="py-1.5 text-text">{label}</td>
+            <tr key={key} className={TR_CLASS}>
+              <td className={`${tdClass()} text-text`}>{label}</td>
               {columns.map(([name, table]) => [
                 <td key={`${name}-${key}-rmse`}
-                    className="num border-l border-divider py-1.5 pl-2
-                               text-right text-text">
+                    className={`${tdClass(true)} border-l border-divider
+                                text-text`}>
                   {table[key] === undefined ? '—' : table[key].rmse}
                 </td>,
                 <td key={`${name}-${key}-mae`}
-                    className="num py-1.5 text-right text-text-secondary">
+                    className={`${tdClass(true)} text-text-secondary`}>
                   {table[key] === undefined ? '—' : table[key].mae}
                 </td>,
               ])}
@@ -130,7 +131,7 @@ function Reliability({ label, head }: { label: string; head: HeadMetrics }) {
                    stroke="var(--color-text-muted)" />
             <YAxis type="number" domain={[0, 1]}
                    stroke="var(--color-text-muted)" />
-            <Tooltip contentStyle={{ background: 'var(--color-card)',
+            <Tooltip contentStyle={{ background: 'var(--color-raised)',
                                      border: '1px solid var(--color-border)' }} />
             {/* Perfect calibration. Drawn as a segment rather than a
                 ReferenceLine because a diagonal reference needs two points
@@ -139,8 +140,10 @@ function Reliability({ label, head }: { label: string; head: HeadMetrics }) {
                   dataKey="ideal" dot={false} isAnimationActive={false}
                   stroke="var(--color-text-muted)" strokeDasharray="4 4"
                   strokeWidth={1} />
+            {/* The observed curve is the first series: the brightest grey,
+                not a green (plan R6 — nothing here is a direction). */}
             <Line type="monotone" dataKey="obs" dot={false}
-                  stroke="var(--color-sage)" strokeWidth={2} />
+                  stroke={SERIES_COLOURS[0]} strokeWidth={2} />
           </RLineChart>
         </ResponsiveContainer>
       </div>
@@ -204,7 +207,8 @@ function CalibrationSection() {
   if (error) {
     return (
       <Card title="Calibration by gameweek" className="mt-4">
-        <p className="text-rust">{error}</p>
+        {/* A read the server refused, in `down` ink (plan R4). */}
+        <Callout tone="error">{error}</Callout>
       </Card>
     )
   }
@@ -235,21 +239,21 @@ function CalibrationSection() {
         served — read back off the banked components, never refitted. Lower is
         better.
       </p>
-      <table className="w-full">
-        <thead>
+      <table className={TABLE_CLASS}>
+        <thead className={THEAD_CLASS}>
           <tr>
-            <th className="text-left">GW</th>
+            <th className={thClass()}>GW</th>
             {CALIBRATION_HEADS.map(([key, label]) => (
-              <th key={key} className="text-right">{label}</th>
+              <th key={key} className={thClass(true)}>{label}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {data.gameweeks.map((row) => (
-            <tr key={row.gw}>
-              <th scope="row" className="text-left">{`GW${row.gw}`}</th>
+            <tr key={row.gw} className={TR_CLASS}>
+              <th scope="row" className={thClass()}>{`GW${row.gw}`}</th>
               {CALIBRATION_HEADS.map(([key]) => (
-                <td key={key} className="text-right">
+                <td key={key} className={tdClass(true)}>
                   {/* A head with no per-gameweek column says so once, in the
                       footer, rather than printing a week's worth of "not
                       enough data" that reads as a fault in the model. */}
@@ -263,10 +267,10 @@ function CalibrationSection() {
           ))}
           {/* The cumulative row is what a model cycle is chosen on, so it is
               separated rather than sorted in among the weeks. */}
-          <tr className="border-t border-divider">
-            <th scope="row" className="text-left">All</th>
+          <tr className={TR_CLASS}>
+            <th scope="row" className={thClass()}>All</th>
             {CALIBRATION_HEADS.map(([key]) => (
-              <td key={key} className="text-right">
+              <td key={key} className={tdClass(true)}>
                 {brierCell(data.cumulative[key])}
               </td>
             ))}
@@ -369,28 +373,28 @@ function DecompositionSection(
       className="mb-4"
     >
       <div className="overflow-x-auto">
-      <table className="w-full">
-        <thead>
+      <table className={TABLE_CLASS}>
+        <thead className={THEAD_CLASS}>
           <tr>
-            <th className="label pb-1 text-left">Run</th>
-            <th className="label pb-1 text-right">Total</th>
-            <th className="label pb-1 text-right">Per GW</th>
-            <th className="label pb-1 text-right">Hits</th>
+            <th className={thClass()}>Run</th>
+            <th className={thClass(true)}>Total</th>
+            <th className={thClass(true)}>Per GW</th>
+            <th className={thClass(true)}>Hits</th>
           </tr>
         </thead>
         <tbody>
           {CELLS.map(([key, label]) => {
             const cell = decomposition.cells[key]
             return cell === undefined ? null : (
-              <tr key={key} className="border-t border-divider">
-                <td className="py-1.5 text-text">{label}</td>
-                <td className="num py-1.5 text-right text-text">
+              <tr key={key} className={TR_CLASS}>
+                <td className={`${tdClass()} text-text`}>{label}</td>
+                <td className={`${tdClass(true)} text-text`}>
                   {cell.total}
                 </td>
-                <td className="num py-1.5 text-right text-text-secondary">
+                <td className={`${tdClass(true)} text-text-secondary`}>
                   {cell.per_gw}
                 </td>
-                <td className="num py-1.5 text-right text-text-muted">
+                <td className={`${tdClass(true)} text-text-muted`}>
                   {cell.hits}
                 </td>
               </tr>
@@ -400,7 +404,7 @@ function DecompositionSection(
       </table>
       </div>
       <div className="overflow-x-auto">
-      <table className="mt-4 w-full">
+      <table className={`mt-4 ${TABLE_CLASS}`}>
         <tbody>
           {([
             ['Forecast gap (3-week)', decomposition.forecast_gap_h3,
@@ -408,10 +412,10 @@ function DecompositionSection(
             ['Planning ceiling', decomposition.planning_ceiling,
              'the most multi-week planning can ever be worth'],
           ] as const).map(([label, value, note]) => (
-            <tr key={label} className="border-t border-divider">
-              <td className="py-1.5 text-text">{label}</td>
-              <td className="num py-1.5 pl-3 text-right text-text">{value}</td>
-              <td className="py-1.5 pl-3 text-text-muted">{note}</td>
+            <tr key={label} className={TR_CLASS}>
+              <td className={`${tdClass()} text-text`}>{label}</td>
+              <td className={`${tdClass(true)} text-text`}>{value}</td>
+              <td className={`${tdClass()} text-text-muted`}>{note}</td>
             </tr>
           ))}
         </tbody>
@@ -453,20 +457,14 @@ function verdict(shadow: NewsShadowData): string {
 // shared axis across gameweeks would draw every pair as one flat line.
 function PairedBar({ news, flags }: { news: number; flags: number }) {
   const top = Math.max(news, flags) || 1
+  // Both grey: the pair compares two instruments measuring the same thing,
+  // and neither of them is a direction the reader is ahead or behind on.
   return (
-    <span className="inline-flex w-28 flex-col gap-0.5 align-middle">
-      <span className="h-1.5 rounded-full bg-base">
-        <span className="block h-1.5 rounded-full"
-              style={{ width: `${(news / top) * 100}%`,
-                       background: 'var(--color-sage)' }}
-              aria-label={`news ${news}`} />
-      </span>
-      <span className="h-1.5 rounded-full bg-base">
-        <span className="block h-1.5 rounded-full"
-              style={{ width: `${(flags / top) * 100}%`,
-                       background: 'var(--color-text-muted)' }}
-              aria-label={`flags ${flags}`} />
-      </span>
+    <span className="inline-flex flex-col gap-0.5 align-middle">
+      <Bar fraction={news / top} width={112} testId="paired-news"
+           aria-label={`news ${news}`} />
+      <Bar fraction={flags / top} width={112} testId="paired-flags"
+           aria-label={`flags ${flags}`} />
     </span>
   )
 }
@@ -474,47 +472,47 @@ function PairedBar({ news, flags }: { news: number; flags: number }) {
 function NewsShadowSection({ shadow }: { shadow: NewsShadowData }) {
   return (
     <Card title="News layer">
-      <p className="mb-3 rounded-card border-l-2 border-info bg-base px-3
-                    py-2 text-text-secondary">
-        {verdict(shadow)}
-      </p>
+      {/* Information, not a warning (plan R5): grey bar, raised surface. */}
+      <Callout className="mb-3">{verdict(shadow)}</Callout>
       <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
+        <table className={TABLE_CLASS}>
+          <thead className={THEAD_CLASS}>
             <tr>
-              <th className="label pb-1 text-left">GW</th>
-              <th className="label pb-1 text-right">Brier news</th>
-              <th className="label pb-1 text-right">Brier flags</th>
+              <th className={thClass()}>GW</th>
+              <th className={thClass(true)}>Brier news</th>
+              <th className={thClass(true)}>Brier flags</th>
               <th />
-              <th className="label pb-1 text-right">Minutes MAE news</th>
-              <th className="label pb-1 text-right">MAE flags</th>
+              <th className={thClass(true)}>Minutes MAE news</th>
+              <th className={thClass(true)}>MAE flags</th>
               <th />
-              <th className="label pb-1 text-right">Rows</th>
+              <th className={thClass(true)}>Rows</th>
             </tr>
           </thead>
           <tbody>
             {shadow.by_gw.map((row) => (
-              <tr key={row.gw} className="border-t border-divider">
-                <td className="num py-1.5 text-text">GW{row.gw}</td>
-                <td className="num py-1.5 text-right text-sage">
+              <tr key={row.gw} className={TR_CLASS}>
+                <td className={`${tdClass()} tn text-text`}>GW{row.gw}</td>
+                {/* News against flags is two instruments, not better against
+                    worse: the verdict sentence above says which is ahead. */}
+                <td className={`${tdClass(true)} text-text`}>
                   {row.brier_news}
                 </td>
-                <td className="num py-1.5 text-right text-text-muted">
+                <td className={`${tdClass(true)} text-text-muted`}>
                   {row.brier_flags}
                 </td>
-                <td className="px-2 py-1.5">
+                <td className={tdClass()}>
                   <PairedBar news={row.brier_news} flags={row.brier_flags} />
                 </td>
-                <td className="num py-1.5 text-right text-sage">
+                <td className={`${tdClass(true)} text-text`}>
                   {row.mae_news}
                 </td>
-                <td className="num py-1.5 text-right text-text-muted">
+                <td className={`${tdClass(true)} text-text-muted`}>
                   {row.mae_flags}
                 </td>
-                <td className="px-2 py-1.5">
+                <td className={tdClass()}>
                   <PairedBar news={row.mae_news} flags={row.mae_flags} />
                 </td>
-                <td className="num py-1.5 text-right text-text-secondary">
+                <td className={`${tdClass(true)} text-text-secondary`}>
                   {row.rows}
                 </td>
               </tr>
@@ -532,19 +530,13 @@ function NewsShadowSection({ shadow }: { shadow: NewsShadowData }) {
 function LeadBar({ started, missed, top }:
                  { started: number; missed: number; top: number }) {
   return (
-    <span className="inline-flex w-32 flex-col gap-0.5 align-middle">
-      <span className="h-1.5 rounded-full bg-base">
-        <span className="block h-1.5 rounded-full"
-              style={{ width: `${(started / top) * 100}%`,
-                       background: 'var(--color-sage)' }}
-              aria-label={`started ${started}`} />
-      </span>
-      <span className="h-1.5 rounded-full bg-base">
-        <span className="block h-1.5 rounded-full"
-              style={{ width: `${(missed / top) * 100}%`,
-                       background: 'var(--color-rust)' }}
-              aria-label={`did not start ${missed}`} />
-      </span>
+    // Both grey, like the news pair above: started and did not start are
+    // two counts of one histogram, not a direction the reader is on.
+    <span className="inline-flex flex-col gap-0.5 align-middle">
+      <Bar fraction={started / top} width={128} testId="lead-started"
+           aria-label={`started ${started}`} />
+      <Bar fraction={missed / top} width={128} testId="lead-missed"
+           aria-label={`did not start ${missed}`} />
     </span>
   )
 }
@@ -577,27 +569,27 @@ function FlagLatencySection({ data }: { data: FlagLatencyData }) {
         {'.'}
       </p>
       <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
+        <table className={TABLE_CLASS}>
+          <thead className={THEAD_CLASS}>
             <tr>
-              <th className="label pb-1 text-left">Warning</th>
-              <th className="label pb-1 text-right">Started</th>
-              <th className="label pb-1 text-right">Did not</th>
+              <th className={thClass()}>Warning</th>
+              <th className={thClass(true)}>Started</th>
+              <th className={thClass(true)}>Did not</th>
               <th />
             </tr>
           </thead>
           <tbody>
             {data.histogram.map((b) => (
               <tr key={b.bucket} data-testid={`lead-bucket-${b.bucket}`}
-                  className="border-t border-divider">
-                <td className="num py-1.5 text-text">{b.bucket}</td>
-                <td className="num py-1.5 text-right text-sage">
+                  className={TR_CLASS}>
+                <td className={`${tdClass()} tn text-text`}>{b.bucket}</td>
+                <td className={`${tdClass(true)} text-text`}>
                   {b.started}
                 </td>
-                <td className="num py-1.5 text-right text-rust">
+                <td className={`${tdClass(true)} text-text-muted`}>
                   {b.missed}
                 </td>
-                <td className="px-2 py-1.5">
+                <td className={tdClass()}>
                   <LeadBar started={b.started} missed={b.missed} top={top} />
                 </td>
               </tr>
@@ -610,23 +602,23 @@ function FlagLatencySection({ data }: { data: FlagLatencyData }) {
           <p className="label mb-1">
             Latest flags whose final status disagreed with the start
           </p>
-          <table className="w-full">
+          <table className={TABLE_CLASS}>
             <tbody>
               {data.late_flags.map((f) => (
                 <tr key={`${f.gw}-${f.code}`}
                     data-testid={`late-flag-${f.gw}-${f.code}`}
-                    className="border-t border-divider">
-                  <td className="num py-1.5 text-text">{`GW${f.gw}`}</td>
-                  <td className="num py-1.5 text-text-secondary">
+                    className={TR_CLASS}>
+                  <td className={`${tdClass()} tn text-text`}>{`GW${f.gw}`}</td>
+                  <td className={`${tdClass()} tn text-text-secondary`}>
                     {`code ${f.code}`}
                   </td>
-                  <td className="num py-1.5 text-right">
+                  <td className={tdClass(true)}>
                     {`${fmtNum(f.lead_days, 0)}d`}
                   </td>
-                  <td className="py-1.5 text-text-muted">
+                  <td className={`${tdClass()} text-text-muted`}>
                     {`${f.from_status} → ${f.final_status}`}
                   </td>
-                  <td className="py-1.5 text-right">
+                  <td className={tdClass(true)}>
                     {f.started ? 'started' : 'did not start'}
                   </td>
                 </tr>
@@ -652,33 +644,34 @@ function PresserGradesSection({ data }: { data: PresserGradesData }) {
     <div className="mt-4">
       <p className="label mb-1">Presser verdicts</p>
       <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
+        <table className={TABLE_CLASS}>
+          <thead className={THEAD_CLASS}>
             <tr>
-              <th className="label pb-1 text-left">Verdict</th>
-              <th className="label pb-1 text-right">Graded</th>
-              <th className="label pb-1 text-right">Started</th>
-              <th className="label pb-1 text-right">Absent</th>
-              <th className="label pb-1 text-right">Precision</th>
-              <th className="label pb-1 text-right">Recall</th>
+              <th className={thClass()}>Verdict</th>
+              <th className={thClass(true)}>Graded</th>
+              <th className={thClass(true)}>Started</th>
+              <th className={thClass(true)}>Absent</th>
+              <th className={thClass(true)}>Precision</th>
+              <th className={thClass(true)}>Recall</th>
             </tr>
           </thead>
           <tbody>
             {data.per_class.map((row) => (
               <tr key={row.verdict} data-testid={`verdict-${row.verdict}`}
-                  className="border-t border-divider">
-                <td className="py-1.5 text-text">{row.verdict}</td>
-                <td className="num py-1.5 text-right">{row.n}</td>
-                <td className="num py-1.5 text-right text-text-muted">
+                  className={TR_CLASS}>
+                <td className={`${tdClass()} text-text`}>{row.verdict}</td>
+                <td className={tdClass(true)}>{row.n}</td>
+                <td className={`${tdClass(true)} text-text-muted`}>
                   {conf.get(row.verdict)?.started ?? 0}
                 </td>
-                <td className="num py-1.5 text-right text-text-muted">
+                <td className={`${tdClass(true)} text-text-muted`}>
                   {conf.get(row.verdict)?.not_started ?? 0}
                 </td>
-                <td className="num py-1.5 text-right text-sage">
+                {/* A precision is a measurement, not a direction (rule 1). */}
+                <td className={`${tdClass(true)} text-text`}>
                   {fmtNum(row.precision, 2)}
                 </td>
-                <td className="num py-1.5 text-right text-text-secondary">
+                <td className={`${tdClass(true)} text-text-secondary`}>
                   {/* The denominator is the gameweek's absences. With none,
                       the payload stores 0 and this prints a dash: 0.00 beside
                       a class that found none of nothing reads as a class that
@@ -722,21 +715,22 @@ function InstrumentCell({ row }: { row: PenTrackerGw }) {
     )
   }
   if (row.instrument === 'pens_missed_only') {
+    // A floor is doubt about the count, not a bad number (rule 2).
     return (
-      <Badge variant="negative"
-             title="counted from missed penalties only — converted spot kicks
-                    are invisible, so every count on this row is a floor">
+      <Chip tone="warn"
+            title="counted from missed penalties only — converted spot kicks
+                   are invisible, so every count on this row is a floor">
         floor
-      </Badge>
+      </Chip>
     )
   }
-  return <Badge variant="info">{row.instrument ?? '—'}</Badge>
+  return <Chip>{row.instrument ?? '—'}</Chip>
 }
 
 const PEN_COLUMNS: Column<PenTrackerGw>[] = [
   { key: 'gw', header: 'GW', primary: true, value: (r) => r.gw,
     render: (r) => (
-      <span className={r.error ? 'num text-text-muted' : 'num text-text'}>
+      <span className={r.error ? 'tn text-text-muted' : 'tn text-text'}>
         GW{r.gw}
       </span>
     ) },
@@ -779,7 +773,8 @@ function PensSection() {
   if (error) {
     return (
       <Card title="Penalty term unavailable" className="mt-4">
-        <p className="text-rust">{error}</p>
+        {/* A read the server refused, in `down` ink (plan R4). */}
+        <Callout tone="error">{error}</Callout>
       </Card>
     )
   }
@@ -800,7 +795,7 @@ function PensSection() {
   return (
     <Card title={`Penalty term — ${data.season || 'season unknown'}`}
           className="mt-4">
-      <div className="mb-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <StatRow>
         <Stat label="Pens taken" value={fmtNum(totals.pens_taken)} />
         <Stat label="Taker hit rate" value={fmtPct(totals.taker_hit_rate)} />
         <Stat
@@ -813,7 +808,7 @@ function PensSection() {
           value={`${fmtNum(totals.predicted_ep_pen_taker)} / `
             + `${fmtNum(totals.realized_pen_points)}`}
         />
-      </div>
+      </StatRow>
       <DataTable
         columns={PEN_COLUMNS}
         rows={data.gws}
@@ -922,12 +917,12 @@ function ScatterSection() {
             <ZAxis range={[60, 60]} />
             <Tooltip
               cursor={{ strokeDasharray: '3 3' }}
-              contentStyle={{ background: 'var(--color-card)',
+              contentStyle={{ background: 'var(--color-raised)',
                               border: '1px solid var(--color-border)' }} />
             <ReferenceLine segment={[{ x: 0, y: 0 }, { x: top, y: top }]}
                            stroke="var(--color-text-muted)"
                            strokeDasharray="4 4" />
-            <Scatter data={points} fill="var(--color-sage)" />
+            <Scatter data={points} fill={SERIES_COLOURS[0]} />
           </ScatterChart>
         </ResponsiveContainer>
       </div>
@@ -953,8 +948,9 @@ const MISS_COLUMNS: Column<MissRow>[] = [
     render: (r) => r.minutes },
   { key: 'miss', header: 'Miss', primary: true, numeric: true,
     value: (r) => Math.abs(r.miss),
+    // Over or under what the model forecast: a direction (rule 1).
     render: (r) => (
-      <span className={r.miss >= 0 ? 'num text-sage' : 'num text-rust'}>
+      <span className={r.miss >= 0 ? 'tn text-up' : 'tn text-down'}>
         {`${r.miss >= 0 ? '+' : ''}${r.miss.toFixed(1)}`}
       </span>
     ) },
@@ -1017,7 +1013,8 @@ export default function QualityTab() {
   if (error) {
     return (
       <Card title="Quality unavailable">
-        <p className="text-rust">{error}</p>
+        {/* A read the server refused, in `down` ink (plan R4). */}
+        <Callout tone="error">{error}</Callout>
       </Card>
     )
   }
