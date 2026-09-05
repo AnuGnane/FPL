@@ -1,7 +1,7 @@
 # The gaffer guide
 
 *A tour of everything this project does, how it got here, and how to use it.
-Last updated 2026-09-04, after v13 (the transfer ladder) merged. The
+Last updated 2026-09-05, after v14 (the dark ledger) merged. The
 README covers setup and reference; this document is for understanding. If you
 only read one section, read §12: it is the current to-do list.*
 
@@ -19,7 +19,7 @@ only read one section, read §12: it is the current to-do list.*
 8. [Everything the CLI can do](#8-everything-the-cli-can-do)
 9. [The data it collects and why](#9-the-data-it-collects-and-why)
 10. [How the project measures itself](#10-how-the-project-measures-itself)
-11. [The version history, v1 to v13](#11-the-version-history-v1-to-v13)
+11. [The version history, v1 to v14](#11-the-version-history-v1-to-v14)
 12. [What is pending and what was left open](#12-what-is-pending-and-what-was-left-open)
 13. [Troubleshooting](#13-troubleshooting)
 
@@ -182,6 +182,64 @@ bookmarked or linked to — `/players?tab=watchlist`. Switching tabs replaces th
 history entry rather than adding one, so Back leaves the hub instead of walking
 backwards through the strip, and a `?tab=` naming a tab the hub does not have
 opens the hub's default rather than a blank panel.
+
+### The dark ledger (v14)
+
+The whole UI is drawn in one design language, chosen on 2026-09-04: hairline
+rules instead of card boxes, one sans face with tabular figures everywhere a
+number appears, and colour spent only where it means something. It is dark by
+default; the light theme is the same token set re-declared, so no component
+picks a colour twice and nothing is styled for one theme alone. The tokens —
+four surfaces, four text weights, the semantic colours with their tints, the
+position hues, the turf, two radii — live in
+`frontend/src/styles/theme.css`.
+
+Eight rules govern colour, and the rest of the UI follows from them:
+
+1. **Green and rust are directions** relative to something you care about:
+   price up or down, better or worse than the plan, an easy or hard fixture,
+   in or out, ahead or behind. Never chrome, never emphasis.
+2. **Amber is doubt**: availability under 100%, a data warning, a stale feed.
+3. **Blue is interaction**: the primary button, the active tab's underline,
+   the active nav item, links, a focused input, the selected row. Blue never
+   carries data.
+4. **Grey is information**: labels, units, context lines, neutral values, a
+   fixture of middling difficulty.
+5. **The position hues are identity**: the position badge, a tile's stripe,
+   the compare panel's header. Never a verdict.
+6. **A tint** — a 14% fill behind one cell — may repeat a direction or a
+   doubt, never behind a whole row and never on a heading.
+7. **A bar** appears only where a magnitude against a known ceiling matters
+   *and* several are compared in one view: the ladder's probabilities,
+   ownership and EO in the Players table, scenario support in the moves and
+   sensitivity tables, the chip threshold meter, the league race gap. Flat
+   fill, 6px, no gradient, the number printed beside it.
+8. **The turf** is the one patch of colour on any page that means nothing at
+   all.
+
+Every page is assembled from the same handful of pieces: a **Section** (a
+small uppercase label over a hairline, no border box) holds the content; a
+**Stat** is one label, one 22px value with its unit, one context line and an
+optional meter; **Button** has three weights and one height and **Segmented**
+is the toggle group built from it; a **Chip** is the tinted 2px tag used for
+IN/OUT, fixture difficulty, attack/cover and availability; a **Bar** is rule
+7; a **Callout** is the note, warning or error strip; **DataTable** is the
+one table style every table in the app renders through or matches
+class-for-class; and the pitch is muted turf with hairline markings and dark
+92px player tiles.
+
+If you change the UI, `frontend/src/kit/tokens.test.ts` is the rule-book your
+change is held to: no `rounded-full`, no shadows, no gradients, no raw hex
+outside `theme.css` and the shirt/turf tokens, monospace only in the job log
+and the plan trace, and none of the retired colour names. The visual gate is
+a screenshot pass — build the frontend, serve it with
+`uv run gaffer ui --no-open-browser --port 8927`, then
+`frontend/scripts/shots.sh <stage>` writes the six hubs in both themes to
+`.superpowers/shots/<stage>/` (the headless shell needs
+`--blink-settings=preferredColorScheme=0` for dark; `--force-dark-mode` does
+nothing).
+
+### The six hubs
 
 **This Week** — the answer. The advised XI on a pitch in formation rows,
 shirts, C/V armbands, difficulty-tinted next-opponent chips; the bench in
@@ -532,7 +590,7 @@ Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 `reports/evaluation.json`, and the Model hub.
 
-## 11. The version history, v1 to v13
+## 11. The version history, v1 to v14
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
 reviewed. Every cycle ran the same way, and knowing the shape tells you where
@@ -653,7 +711,23 @@ inflated every rung by ~6 points and shrunk the gaps), and the caps the
 ladder highlights come from the live config so the selects move the row at
 once. Pins after: routes 48, job kinds 12, `Config` fields 57.
 
-The suite grew from nothing to **4,104 Python + 813 frontend tests** along
+**v14 — the dark ledger** (2026-09-05). A design cycle, not a feature one:
+no route, no number and no backend line changed. The user's verdict on the
+built UI was that it lacked a unified design language, and the four choices
+he made from mockups — a dark ledger rather than cards, ink plus tint plus
+bars, one sans face with tabular figures and one blue accent, a muted-turf
+pitch — became §4's eight colour rules. The branch moved in four stages so
+every page moved at once: the token set, then five new kit primitives
+(Button, Segmented, Chip, Bar, Callout) with the rest of the kit restyled,
+then five reworks by hand (the nav, This Week's tiles, the pitch, the moves
+and ladder tables, the button set), then a sweep of every hub and a
+`tokens.test.ts` that pins the rules a reader cannot be asked to police.
+`Card` kept its name over the new Section rendering, so 100 call sites did
+not churn. The gate was the user's approval of headless screenshots of six
+hubs in both themes, taken after each of the last three stages; there was no
+replay to run. Frontend suite 814 → **866**; pins unchanged.
+
+The suite grew from nothing to **4,110 Python + 866 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above
 so a future change cannot quietly break one.
 
@@ -802,6 +876,12 @@ weekly use.
   in `schemas.py` field docstrings, where the generator can carry them.
 - **`density_pub_7d` is built on both seams and fed to no head**, kept for a
   later re-measure with a replay half of its own.
+- **The light theme's turf reads more saturated than the mockup** (v14). The
+  final screenshots flagged it; the value shipped is the spec's, so changing
+  it is a decision rather than a fix.
+- **The empty state's shell command borrows the browser's monospace face**
+  (v14) — it is a bare `<code>`, with no `font-mono` class, which is also why
+  `tokens.test.ts` cannot see it.
 
 ### 12.5 Not planned — what the research proposed and v12 did not take
 

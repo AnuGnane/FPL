@@ -8,20 +8,21 @@ fills, and the index below points at them. Measurement rules every cycle
 follows: `CONVENTIONS.md`. For the same material written for a reader rather
 than an auditor, `docs/GUIDE.md` §11–12.
 
-## Where things stand (2026-09-04, evening)
+## Where things stand (2026-09-05)
 
-v13 — the transfer ladder — is **merged** (`main` `8fddb0b`; ff-merge of
-`v13-ladder`, 18 commits, two review passes), on top of the morning's
-free-transfer hotfix (`3c39048`). Suite 4110 Python + 814 frontend, pins
-routes 48 / job kinds 12 / `Config` fields 57. **Security incident, open:**
-the odds API key's value reached a committed plan document (`dd47c0a`) via
-a forked plan-writing subagent and was pushed to the public remote with the
-merge; removed at the tip (`8fddb0b`), history rewrite + force-push and key
-rotation put to the user. Next: the user's answer on that, the §6
-informational replay (2-hit cap vs none, K=3), the live spot-checks in
-GUIDE §12.1, then the model cycle the 2026-09-04 current-state review
-ranks (bonus head sees goals; calibration season default; e_goals odds
-artifact; Dixon-Coles sanity) and the UI design refresh the user asked for.
+v14 — the dark ledger — is **merged** (`main` `<merge>`; ff-merge of
+`v14-ledger`, 15 commits), on top of v13's transfer ladder (`8fddb0b`). It
+is a design cycle: the whole web UI now speaks one language, gated on the
+user's approval of the screenshots and on nothing else. Suite 4110 Python +
+866 frontend, pins routes 48 / job kinds 12 / `Config` fields 57.
+**Security incident, open:** the odds API key's value reached a committed
+plan document (`dd47c0a`) via a forked plan-writing subagent and was pushed
+to the public remote with the merge; removed at the tip (`8fddb0b`), history
+rewrite + force-push and key rotation put to the user. Next: the user's
+answer on that, the §6 informational replay (2-hit cap vs none, K=3), the
+live spot-checks in GUIDE §12.1, then the model cycle the 2026-09-04
+current-state review ranks (bonus head sees goals; calibration season
+default; e_goals odds artifact; Dixon-Coles sanity).
 
 ## Open
 
@@ -445,6 +446,77 @@ Spec: §6 · Plan: `plans/2026-09-01-gaffer-v12-w5-interface.md` (16 tasks incl.
 - Finding banked for the next model cycle: on the GW3 board the objective
   rises with hits while raw XI points fall — decay, the chase tilt and the
   bench/FT/ITB terms buy the hits, not the players' forecasts.
+
+### v14 — the dark ledger (done, merged `<merge>` 2026-09-05)
+Design language only: no route, no schema, no number, no backend line. Decided
+with the visual companion on 2026-09-04 and spec'd in `bb6ae40`
+(`specs/2026-09-04-gaffer-v14-ui-ledger-design.md`); planned in `7e4f7e2`;
+branch `v14-ledger` off `main` at `bb6ae40`, 15 commits.
+- [x] Tokens (`theme.css`): surfaces base/raised/input/border/divider, four
+  text weights, `up`/`down`/`warn`/`accent`/`accent-text` each with a 14%
+  tint, the position hues, `turf` + `turf-line`, `--radius-chip` 2px /
+  `--radius-ctl` 3px, `.tn` tabular figures, `.label` 10px, 13px base, accent
+  focus ring; the light theme re-declares every name.
+- [x] Kit primitives: `Button`/`buttonClass`, `Segmented`/`segmentClass`,
+  `Chip` (up/down/warn/neutral), `Bar`, `Callout` (note/warn/error),
+  `StatRow`, the shared `table.ts` / `tabs.ts` / `field.ts` / `series.ts`
+  constants, `TONE_CLASS`, `difficultyTone`; `Badge` kept as a one-cycle
+  alias of `Chip`.
+- [x] Kit restyle: part A — `Card` renders as Section and is exported under
+  both names, `Stat` with unit/context/meter, `PageHeader`, `EmptyState`,
+  `Skeleton`, `Toast`, `JobLog`, `JobButton`; part B — `DataTable` on the
+  table constants with a selected row, `ExplainModal`, `FreshnessStrip`,
+  `ThemeToggle` as a Segmented, `PosBadge`, `PlayerName`, `ThresholdBar`,
+  `Sparkline`.
+- [x] The five reworks: nav with lucide icons and an accent bar; This Week's
+  tiles, banner, buttons and toggles; the pitch on muted turf with 92px
+  tiles, C/V tags, tinted fixture chips and the EO lens as a background tint;
+  moves, ladder and sensitivity on the one table style with chips, bars and
+  the horizon cost in `down`; buttons, toggles, tabs and inputs in every hub.
+- [x] Sweep in two passes (This Week + Planning; Players, League, Live,
+  Model with one grey chart palette), then `kit/tokens.test.ts` pinning the
+  mechanical rules, and the retirement of `--color-card`, `--color-info`,
+  `--radius-card`, `.num` and `difficultyBackground`. A late fix put the
+  League race chart's "you" line in text colour on top with the field in one
+  faint grey, the standings' accent-tinted row serving as the legend.
+- [x] Gate: headless screenshots of the six hubs in both themes after the
+  kit, the reworks and the sweep, shown to the user on the visual companion —
+  the kit stage approved on the way through, the final set approved at the
+  merge. No replay; there is no number in this cycle to gate on.
+- [x] `lucide-react` ^1.41.0 added. Frontend suite 814 → **866 passed, 1
+  skipped, 87 files**; `tsc` clean at every commit. Python untouched, 4110.
+  Pins 48 / 12 / 57.
+- Rulings taken while implementing (the plan's R1–R12, each the
+  orchestrator's to overturn):
+  - R1 the 2px/3px radii ship as `--radius-chip` / `--radius-ctl`, because
+    Tailwind v4 already owns `rounded-s-*`.
+  - R2 `FreshnessStrip` had been emitting classes no token defined; its three
+    ages are now muted / `warn` / `down`.
+  - R3 the pitch tile's second line is `TEAM · xPts`, which is what it has
+    always printed; the kickoff moves into the chip's `title`.
+  - R4 errors are stated in `down` ink in a `down`-tinted callout — the one
+    use of `down` that is not a direction.
+  - R5 the old `info`-bar notices are information, so grey bar on the raised
+    surface; blue never carries data.
+  - R6 every multi-series chart draws from one grey `SERIES_COLOURS`, "you"
+    first and brightest; position hues are identity, not series.
+  - R7 `Badge variant="info"` becomes `Chip tone="neutral"`; availability
+    doubt moves from negative to `warn`.
+  - R8 the bar track is drawn in `border`, not `raised`, or it vanishes
+    inside a hovered row.
+  - R9 the active position filter is accent text, not the position's hue;
+    the one `Players.test.tsx` assertion was rewritten.
+  - R10 the headless shell needs `--blink-settings=preferredColorScheme=0`
+    for the dark capture; `--force-dark-mode` is a no-op (probed).
+  - R11 the retired names lived on as literal aliases for the branch and
+    were removed in the sweep task; `sage`/`rust` stay declared and unused.
+  - R12 `Card` keeps its name over the Section rendering (100 call sites);
+    `Badge` stays exported as a thin alias of `Chip`.
+- [ ] Open for a later cycle, both flagged by the final screenshots: the
+  light theme's turf (`#2f6b45`, the spec's own value) reads more saturated
+  than the mockup; `EmptyState`'s shell-command `<code>` takes the browser's
+  monospace face and carries no `font-mono` class, so `tokens.test.ts`
+  cannot see it.
 
 ## Operational / housekeeping
 - [x] Untrack `reports/` artifacts + `.claude/`; gitignore both (`31dc239`)
