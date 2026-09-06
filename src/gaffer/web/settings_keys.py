@@ -130,6 +130,15 @@ WHITELIST: tuple[SettingKey, ...] = (
                "Max transfers per week", "int", 0, 15,
                "15 = no cap; 0 = bank (no moves at all). Also edited from "
                "the transfer ladder."),
+    # v16 §3.2 (specs/2026-09-06-gaffer-v16-restraint-brief-design.md). How
+    # sure the ladder has to be before the advice steps up a rung. Also edited
+    # from the ladder card, which writes through this same endpoint.
+    SettingKey("hit_bar", "optimizer", "hit_bar", "Hit bar",
+               "float", 0.5, 0.95,
+               "The share of the ladder's draws a rung must win against the "
+               "rung below before the advice steps up to it. 0.60 is three "
+               "draws in five. The transfer ladder on the This Week hub "
+               "edits it too."),
     # v15 §4.2 (specs/2026-09-06-gaffer-v15-leagues-design.md), plan R7.
     # The focus league. Written as [league] focus and read back through a
     # reader as the *effective* Config.league_id, which the loader resolves

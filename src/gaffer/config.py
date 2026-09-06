@@ -44,6 +44,10 @@ from-scratch solve says it — so the two keys share it rather than inventing
 a sentinel. ``max_transfers = 0`` is a real cap: bank, no moves at all.
 """
 
+HIT_BAR_LO, HIT_BAR_HI = 0.5, 0.95
+"""``[optimizer] hit_bar`` bounds (v16 §3.2). Below 0.5 a step up the ladder
+would be taken on a coin toss; above 0.95 no step ever passes."""
+
 
 @dataclass
 class Config:
@@ -73,6 +77,12 @@ class Config:
     # inherit). NO_CAP means uncapped; max_transfers = 0 means bank.
     max_hits: int = 2
     max_transfers: int = NO_CAP
+    # v16 §3.2 (specs/2026-09-06-gaffer-v16-restraint-brief-design.md). The
+    # share of the ladder's shared draws in which a rung must beat the rung
+    # below it before the served advice steps up to it. A policy knob, not a
+    # model parameter: the ladder's probabilities decide, this says how sure
+    # they have to be.
+    hit_bar: float = 0.60
     train_seasons: list[str] = field(default_factory=list)
     current_season: str = "2026-27"
     odds_api_key: str = ""
@@ -353,6 +363,17 @@ def _check_stance(cfg: "Config") -> None:
             f"{', '.join(STANCES)}")
 
 
+def _check_hit_bar(cfg: "Config") -> None:
+    """v16 §3.2: a real number inside ``[HIT_BAR_LO, HIT_BAR_HI]``, refused
+    by name, like the caps."""
+    value = cfg.hit_bar
+    if (isinstance(value, bool) or not isinstance(value, (int, float))
+            or not HIT_BAR_LO <= float(value) <= HIT_BAR_HI):
+        raise GafferError(
+            f"[optimizer] hit_bar = {value!r} — must be a number between "
+            f"{HIT_BAR_LO} and {HIT_BAR_HI}")
+
+
 def load_config(path: Path | str = "config.toml") -> Config:
     file = Path(path)
     if not file.exists():
@@ -448,6 +469,7 @@ def load_config(path: Path | str = "config.toml") -> Config:
     )
     _check_caps(cfg)
     _check_stance(cfg)
+    _check_hit_bar(cfg)
     return cfg
 
 

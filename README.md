@@ -186,6 +186,9 @@ alt_plan_max_gap = 2.0
 max_hits = 2         # v13: most hits in any one gameweek; 15 = no cap. The
                      # weekly advice and everything solved off it obey this.
 max_transfers = 15   # v13: most transfers in any one gameweek; 0 = bank.
+hit_bar = 0.60       # v16: the share of the transfer ladder's draws a rung
+                     # must win against the rung below before the advice
+                     # steps up to it.
 # top_n = {GKP = 8, DEF = 22, MID = 26, FWD = 14}
 #                    # how many players per position reach the solver at all.
 #                    # Merged over these defaults, so tuning one position does

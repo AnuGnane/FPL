@@ -24,6 +24,9 @@ alt_plan_max_gap = 2.0
 # chip table all solve under them. 15 = no cap; max_transfers = 0 = bank.
 max_hits = 2
 max_transfers = 15
+# v16: how sure the transfer ladder has to be before the advice steps up a
+# rung — the share of its shared draws a rung must win against the one below.
+hit_bar = 0.60
 # v12: how many players per position the MILP may consider, on top of the ones
 # you already own. These four numbers have decided the candidate pool since the
 # first solve and lived only in the source until now; they are here so that "he
