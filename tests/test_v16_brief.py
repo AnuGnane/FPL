@@ -103,7 +103,7 @@ def test_extract_text_reads_the_envelope_a_string_or_plain_text():
 
 
 def test_the_cache_key_is_salted_by_the_prompt_version():
-    assert BRIEF_PROMPT_VERSION == 1
+    assert BRIEF_PROMPT_VERSION == 2   # 2: R2 named the week's points and the chips
     assert cache_key("2026-09-05T09:00:00", 1) != cache_key("2026-09-05T09:00:00", 2)
     assert cache_key("a", 1) == cache_key("a", 1)
 
@@ -182,7 +182,7 @@ def test_a_passing_brief_is_banked_and_the_line_printed(artifacts_on_disk, capsy
     assert out["written"] is True and out["note"] is None
     banked = load_brief(4)
     assert banked["prose"] == TRUE and banked["gw"] == 4
-    assert banked["prompt_version"] == 1 and banked["run_stamp"] == "2026-09-05T09:00:00"
+    assert banked["prompt_version"] == BRIEF_PROMPT_VERSION and banked["run_stamp"] == "2026-09-05T09:00:00"
     assert banked["facts"]["gw"] == 4 and banked["checked_at"]
     assert "Brief GW4: The ladder chose" in capsys.readouterr().out
 

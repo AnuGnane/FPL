@@ -33,9 +33,9 @@ from gaffer import artifacts
 from gaffer.artifacts import latest_gw, load_advice, load_solve_state
 from gaffer.data.news.classifier import LLM_CACHE
 from gaffer.io import atomic_write
-from gaffer.ladder import load_ladder, rung_label
+from gaffer.ladder import CHIP_LABEL, load_ladder, rung_label
 
-BRIEF_PROMPT_VERSION = 1
+BRIEF_PROMPT_VERSION = 2
 """Bumped whenever :func:`build_prompt` changes; salts the cache key."""
 
 BRIEF_CACHE = LLM_CACHE / "brief"
@@ -161,7 +161,8 @@ def build_facts(gw: int) -> dict:
                   "gap": (None if strat.get("gap") is None else int(round(abs(float(strat["gap"]))))),
                   "lam": (None if strat.get("lam") is None else round(float(strat["lam"]), 2)),
                   "rival": strat.get("rival_name")}
-    chip = next(({"chip": r.get("chip"), "gw": int(r["gw"]),
+    chip = next(({"chip": CHIP_LABEL.get(str(r.get("chip")), str(r.get("chip"))),
+                  "gw": int(r["gw"]),
                   "gain": round(float(r.get("gain") or 0), 1),
                   "threshold": (None if r.get("threshold") is None
                                 else round(float(r["threshold"]), 1))}
@@ -225,6 +226,12 @@ def build_prompt(facts: dict) -> str:
         "Never name a club. Do not start a sentence with a player's name.",
         "- Do not invent a fact, a reason or a caveat. If a field is null, "
         "leave it out.",
+        "- expected_pts is this gameweek's starting eleven alone, before any "
+        "hit is paid; say it as this week's number, never as a total over "
+        "the horizon. horizon is the run of gameweeks the plan was solved "
+        "over. A move's gain is over that horizon.",
+        "- hits is the number of hits this week and hit_points what they "
+        "cost.",
         "",
         "Say, in this order: which rung the ladder chose and every step, taken "
         "or refused, with its share and reason; each move with its gain and "

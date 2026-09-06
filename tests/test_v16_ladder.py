@@ -146,7 +146,7 @@ def test_fixtures_need_a_grade_of_difference():
 def test_chip_then_points():
     kind, text = explain_step(ROWS[0], ROWS[1], _ctx(
         chip_plan=[{"gw": 5, "chip": "bboost"}]), gw=4, gws=[4, 5, 6])
-    assert (kind, text) == ("chip", "a bboost is planned for GW5")
+    assert (kind, text) == ("chip", "a Bench Boost is planned for GW5")
     assert explain_step(ROWS[0], ROWS[1], _ctx(), gw=4, gws=[4]) == \
         ("points", "expected points alone")
 

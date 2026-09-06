@@ -35,6 +35,18 @@ if [[ "$STAGE" == v15* ]]; then
     "settings:/model?tab=settings"
   )
 fi
+# v16 gate (specs/2026-09-06-gaffer-v16-restraint-brief-design.md §8): This
+# Week (the restrained moves, the objective line, the decision panel, the
+# brief card, the ladder's bar and steps), the Planning board's objective
+# block, Review with a note beside a grade, and Settings with the hit bar.
+if [[ "$STAGE" == v16* ]]; then
+  HUBS=(
+    "this-week:/"
+    "planning-board:/planning?tab=board"
+    "review:/model?tab=review"
+    "settings:/model?tab=settings"
+  )
+fi
 for entry in "${HUBS[@]}"; do
   name="${entry%%:*}"; path="${entry#*:}"
   for theme in dark light; do

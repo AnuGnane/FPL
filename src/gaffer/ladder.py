@@ -73,6 +73,10 @@ PRICE_FALL_BAR = 0.5
 FIXTURE_GRADE = 0.2
 """One grade of five on the ticker's 0..1 difficulty (plan R7)."""
 
+CHIP_LABEL = {"bboost": "Bench Boost", "3xc": "Triple Captain",
+              "freehit": "Free Hit", "wildcard": "Wildcard"}
+"""The chips as prose spells them; the reason and the brief both read it."""
+
 HIT_BAR_FALLBACK = 0.60
 """What the walk uses when the live config will not read — the field's own
 default, so an unreadable config is a ladder at the shipped bar and not no
@@ -233,7 +237,8 @@ def explain_step(below: dict, above: dict, ctx: StepContext, *, gw: int,
                             f"{mb * 5:.1f} against {s['name']}'s {ms * 5:.1f}")
     for c in ctx.chip_plan:
         if int(c["gw"]) in {int(g) for g in gws}:
-            return "chip", f"a {c.get('chip')} is planned for GW{int(c['gw'])}"
+            chip = CHIP_LABEL.get(str(c.get("chip")), str(c.get("chip")))
+            return "chip", f"a {chip} is planned for GW{int(c['gw'])}"
     return "points", "expected points alone"
 
 
