@@ -96,8 +96,21 @@ const COMPONENTS = {
   }],
 }
 
+const OVERVIEW = {
+  gw: 5,
+  focus_league_id: 1,
+  focus_name: 'Shocky Supplies',
+  focus_stance: 'chase',
+  focus_lam: 0.25,
+  focus_warning: null,
+  stance: 'auto',
+  private: [],
+  public: [],
+}
+
 function route(path: string) {
   if (path === '/api/advice/latest') return Promise.resolve(ADVICE)
+  if (path === '/api/league/leagues') return Promise.resolve(OVERVIEW)
   if (path.startsWith('/api/players')) return Promise.resolve(PLAYERS)
   if (path.startsWith('/api/components/')) return Promise.resolve(COMPONENTS)
   if (path.startsWith('/api/news/')) {
@@ -168,6 +181,25 @@ describe('This Week hub', () => {
     expect(within(league).getByText('84')).toBeInTheDocument()
     expect(within(league).getByText('behind')).toBeInTheDocument()
     expect(within(league).getByText(/chase · tilt \+0\.25/)).toBeInTheDocument()
+  })
+
+  it('captions the league gap with the focus league', async () => {
+    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    const league = (await screen.findByText('League')).closest('div')!
+    expect(await within(league).findByText(/Shocky Supplies · chase · tilt \+0\.25/))
+      .toBeInTheDocument()
+    expect(within(league).queryByText('manual')).toBeNull()
+  })
+
+  it('flags a manual stance on the tile', async () => {
+    apiGet.mockImplementation((path: string) => (
+      path === '/api/league/leagues'
+        ? Promise.resolve({ ...OVERVIEW, stance: 'defend',
+                            focus_stance: 'defend' })
+        : route(path)))
+    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    const league = (await screen.findByText('League')).closest('div')!
+    expect(await within(league).findByText('manual')).toBeInTheDocument()
   })
 
   it('states the captain with the sims share and the vice as context', async () => {

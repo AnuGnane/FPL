@@ -78,6 +78,8 @@ export interface Strategy {
   weeks_left: number
   stance: string
   rival_name: string
+  /** v15: "auto" | "manual" — absent on payloads banked before the stance. */
+  source?: string
 }
 
 /** One row of the advice payload's own chip table.

@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiGet, apiPost } from '../api/client'
 import {
-  Bar, Button, Callout, Card, EmptyState, JobButton, Loading, PageHeader,
+  Bar, Button, Callout, Card, Chip, EmptyState, JobButton, Loading, PageHeader,
   Segmented, Stat, StatRow, fmtNum, fmtPct,
 } from '../kit'
 import type {
   AdviceChipRow, AdviceLatest, ComponentsBreakdown, LadderPayload,
-  LeagueWhatIfResult, PlayerRow,
+  LeaguesOverview, LeagueWhatIfResult, PlayerRow,
 } from '../types'
 import ConfidenceLine from './this-week/ConfidenceLine'
 import DigestCard from './this-week/DigestCard'
@@ -78,6 +78,15 @@ export default function ThisWeek() {
   }, [])
 
   useEffect(load, [load])
+
+  // v15: the League tile names the focus league and says when the stance was
+  // set by hand. Decoration on a page that already has its advice — its own
+  // effect, and a failure is silence, not an error state.
+  const [leagues, setLeagues] = useState<LeaguesOverview | null>(null)
+  useEffect(() => {
+    apiGet<LeaguesOverview>('/api/league/leagues')
+      .then(setLeagues).catch(() => setLeagues(null))
+  }, [])
 
   // The armband priced in title odds. Deliberately fire-and-forget: This Week
   // is the page the user opens on a Thursday evening and it must render at
@@ -256,9 +265,16 @@ export default function ThisWeek() {
           label="League"
           value={strategy ? fmtNum(Math.abs(strategy.gap), 0) : '—'}
           unit={strategy ? gapUnit(strategy.stance) : undefined}
-          context={strategy
-            ? `${strategy.stance} · tilt ${strategy.lam >= 0 ? '+' : ''}${fmtNum(strategy.lam, 2)}`
-            : undefined}
+          context={strategy ? (
+            <span className="inline-flex items-center gap-1.5">
+              {`${leagues?.focus_name ? `${leagues.focus_name} · ` : ''}`
+               + `${strategy.stance} · tilt ${strategy.lam >= 0 ? '+' : ''}`
+               + fmtNum(strategy.lam, 2)}
+              {leagues && leagues.stance !== 'auto' && (
+                <Chip tone="warn">manual</Chip>
+              )}
+            </span>
+          ) : undefined}
         />
       </StatRow>
       {/* One card, two views (plan A11). The XI used to be drawn twice — as a
