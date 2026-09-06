@@ -20,16 +20,31 @@ HUBS=(
   "league:/league"
   "settings:/model?tab=settings"
 )
+# v15 gate (specs/2026-09-06-gaffer-v15-leagues-design.md §10): the League
+# hub's four tabs, a non-focus league open, This Week and Settings. Pass the
+# non-focus league id as LEAGUE_OTHER (a small private league keeps the
+# history fetch short).
+if [[ "$STAGE" == v15* ]]; then
+  HUBS=(
+    "this-week:/"
+    "league-leagues:/league?tab=leagues"
+    "league-race:/league?tab=race"
+    "league-other:/league?tab=race&league=${LEAGUE_OTHER:?set LEAGUE_OTHER}"
+    "league-rivals:/league?tab=rivals"
+    "league-whatif:/league?tab=whatif"
+    "settings:/model?tab=settings"
+  )
+fi
 for entry in "${HUBS[@]}"; do
   name="${entry%%:*}"; path="${entry#*:}"
   for theme in dark light; do
     if [[ "$theme" == dark ]]; then
       "$SHELL_BIN" --headless --blink-settings=preferredColorScheme=0 \
-        --hide-scrollbars --window-size=1400,1600 --virtual-time-budget=12000 \
+        --hide-scrollbars --run-all-compositor-stages-before-draw --window-size=1400,1600 --virtual-time-budget=15000 \
         --screenshot="$OUT/$name-$theme.png" "$BASE$path" >/dev/null 2>&1
     else
       "$SHELL_BIN" --headless \
-        --hide-scrollbars --window-size=1400,1600 --virtual-time-budget=12000 \
+        --hide-scrollbars --run-all-compositor-stages-before-draw --window-size=1400,1600 --virtual-time-budget=15000 \
         --screenshot="$OUT/$name-$theme.png" "$BASE$path" >/dev/null 2>&1
     fi
     echo "$OUT/$name-$theme.png"

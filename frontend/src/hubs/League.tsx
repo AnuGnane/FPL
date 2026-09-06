@@ -221,7 +221,17 @@ export default function League() {
 
   return (
     <>
-      <PageHeader title={title} context={leagueContext} action={back} />
+      {/* On the overview the context is the overview's own count, not the
+          focus league's standings line, which belongs to the Race tab. */}
+      <PageHeader
+        title={title}
+        context={onLeagues
+          ? (overview
+              ? `${overview.private.length} private · ${overview.public.length} public`
+              : undefined)
+          : leagueContext}
+        action={back}
+      />
       <Tabs.Root value={tab} onValueChange={setTab}>
         <Tabs.List className={TAB_LIST_CLASS}>
           <Tabs.Trigger value="leagues" className={TAB_CLASS}>Leagues</Tabs.Trigger>
