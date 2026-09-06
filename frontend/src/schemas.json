@@ -3060,6 +3060,18 @@
      ],
      "default": null
     },
+    "league_id": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Which private league to re-count (v15 \u00a75.2); ``None`` is the focus."
+    },
     "pins": {
      "items": {
       "$ref": "#/definitions/LeagueWhatIfPin"
@@ -3080,6 +3092,7 @@
    },
    "required": [
     "captain_override",
+    "league_id",
     "pins",
     "rival_captain_blanks"
    ],

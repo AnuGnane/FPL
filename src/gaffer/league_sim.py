@@ -1137,7 +1137,8 @@ def rank_slope(ledger_rows: list[dict]) -> dict:
     return {"slope": round(slope, 1), "rows": rows, "waiting_for": None}
 
 
-def build_inputs(cfg, client, *, gw: int | None = None) -> SimInputs:
+def build_inputs(cfg, client, *, gw: int | None = None,
+                 league_id: int | None = None) -> SimInputs:
     """Assemble a :class:`SimInputs` from artifacts on disk plus fresh league
     data.
 
@@ -1152,8 +1153,13 @@ def build_inputs(cfg, client, *, gw: int | None = None) -> SimInputs:
     gameweek; when there is none — a fresh clone, a week the scrape missed —
     it is ``None`` and drift is off however the config is set. That is the
     documented degradation and one of G3's rails.
+
+    ``league_id`` (v15 §5.2) simulates another of the entry's leagues; ``None``
+    is the focus, ``cfg.league_id``.
     """
-    if not getattr(cfg, "league_id", 0):
+    league = int(league_id) if league_id else int(getattr(cfg, "league_id", 0)
+                                                  or 0)
+    if not league:
         raise GafferError(
             "set fpl.league_id in config.toml, or make a league the focus on "
             "the League page, to use the league simulation")
@@ -1167,7 +1173,7 @@ def build_inputs(cfg, client, *, gw: int | None = None) -> SimInputs:
 
     rows, page = [], 1
     while True:
-        data = client.get_league_standings(cfg.league_id, page)
+        data = client.get_league_standings(league, page)
         rows.extend(data["standings"]["results"])
         if not data["standings"].get("has_next") or len(rows) >= 50:
             break

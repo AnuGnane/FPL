@@ -30,8 +30,10 @@ RIVAL_PICKS = {"picks": [{"element": 9, "position": 1, "multiplier": 2},
 class FakeClient:
     def __init__(self, dead=False):
         self.dead = dead
+        self.calls: list = []
 
     def get_league_standings(self, league_id, page=1):
+        self.calls.append((league_id, page))
         if self.dead:
             raise RuntimeError("FPL is down")
         return STANDINGS
@@ -97,14 +99,21 @@ def _artifacts(tmp_path):
 
 
 @pytest.fixture()
-def client(tmp_path, monkeypatch):
+def fake():
+    """The one client the app is handed, so a test can read what it asked
+    the FPL API for — which league, which page."""
+    return FakeClient()
+
+
+@pytest.fixture()
+def client(tmp_path, monkeypatch, fake):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")
     monkeypatch.setattr("gaffer.data.field.RAW_FIELD",
                         tmp_path / "data/raw/field")
     _artifacts(tmp_path)
     monkeypatch.setattr("gaffer.web.routers.league_sim.fpl_client",
-                        lambda: FakeClient())
+                        lambda: fake)
     monkeypatch.setattr("gaffer.web.routers.league_sim._CACHE", {})
     return TestClient(create_app())
 
@@ -564,3 +573,29 @@ def test_a_second_request_landing_mid_swap_does_not_lose_its_answer(cache,
 
     assert len(cache._CACHE) == 1
     assert cache._cache_get("b") == ("sim-b", "in-b")
+
+
+def test_the_sim_defaults_to_the_focus_league(client, fake):
+    client.get("/api/league/sim")
+    assert {c[0] for c in fake.calls if isinstance(c, tuple)} == {5}
+
+
+def test_the_sim_takes_another_league(client, fake):
+    client.get("/api/league/sim?league_id=9")
+    assert 9 in {c[0] for c in fake.calls if isinstance(c, tuple)}
+
+
+def test_the_cache_is_keyed_by_league(client):
+    from gaffer.config import load_config
+    from gaffer.web.routers.league_sim import _cache_key
+
+    cfg = load_config()
+    assert _cache_key(cfg, 3, 5) != _cache_key(cfg, 3, 9)
+    assert _cache_key(cfg, 3, None) == _cache_key(cfg, 3, 5)
+
+
+def test_the_whatif_carries_the_league(client, fake):
+    resp = client.post("/api/league/whatif",
+                       json={"pins": [], "league_id": 9})
+    assert resp.status_code == 200
+    assert 9 in {c[0] for c in fake.calls if isinstance(c, tuple)}

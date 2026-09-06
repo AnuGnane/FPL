@@ -354,6 +354,8 @@ class LeagueWhatIfRequest(BaseModel):
     pins: list[LeagueWhatIfPin] = Field(default_factory=list)
     captain_override: int | None = None
     rival_captain_blanks: int | None = None
+    league_id: int | None = None
+    """Which private league to re-count (v15 §5.2); ``None`` is the focus."""
     cached_only: bool = False
     """Answer from the cache or not at all (204).
 

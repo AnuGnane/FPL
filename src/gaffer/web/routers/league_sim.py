@@ -120,7 +120,7 @@ def fpl_client():
     return FPLClient()
 
 
-def _cache_key(cfg, gw: int) -> tuple:
+def _cache_key(cfg, gw: int, league_id: int | None = None) -> tuple:
     """Everything the cached answer depends on that can change under it.
 
     The solve state's mtime, so a fresh advise run invalidates it — and the
@@ -135,7 +135,8 @@ def _cache_key(cfg, gw: int) -> tuple:
     sample = field_sample_path(str(getattr(cfg, "current_season", "") or ""),
                                eo_gw_for(gw))
     field_stamp = sample.stat().st_mtime if sample.is_file() else 0.0
-    return (int(cfg.league_id), int(gw), stamp, field_stamp, int(cfg.sim_n),
+    league = int(league_id) if league_id else int(cfg.league_id)
+    return (league, int(gw), stamp, field_stamp, int(cfg.sim_n),
             float(cfg.rival_drift))
 
 
@@ -149,7 +150,8 @@ def _guard(fn, *args, **kwargs):
             from exc
 
 
-def _run(cfg, gw: int | None = None, *, cached_only: bool = False):
+def _run(cfg, gw: int | None = None, *, cached_only: bool = False,
+         league_id: int | None = None):
     """``(sim, inputs)`` for the current gameweek, cached per advice run.
 
     ``cached_only`` answers only from the cache and returns ``None`` on a
@@ -157,17 +159,21 @@ def _run(cfg, gw: int | None = None, *, cached_only: bool = False):
     on a Thursday evening, its chip is decoration, and building the inputs
     means fifty entry-picks requests at the FPL API — a fetch storm fired by a
     page load, at the hour everybody in the country is loading pages.
+
+    ``league_id`` (v15 §5.2) runs another of the entry's leagues; ``None`` is
+    the focus. It is part of the cache key, so the two never share an answer.
     """
     plan_gw = int(gw) if gw is not None else latest_gw()
     if plan_gw is None:
         raise GafferError("no saved advice — run `gaffer advise` first")
-    key = _cache_key(cfg, plan_gw)
+    key = _cache_key(cfg, plan_gw, league_id)
     hit = _cache_get(key)
     if hit is not None:
         return hit
     if cached_only:
         return None
-    inputs = _guard(build_inputs, cfg, fpl_client(), gw=plan_gw)
+    inputs = _guard(build_inputs, cfg, fpl_client(), gw=plan_gw,
+                    league_id=league_id)
     sim = simulate_league(inputs, n=int(cfg.sim_n),
                           rival_drift=float(cfg.rival_drift))
     _cache_store(key, (sim, inputs))
@@ -350,11 +356,11 @@ def _field_panel(cfg, inputs, gw: int) -> FieldRank:
 
 
 @router.get("/sim", response_model=LeagueSimData)
-def sim() -> LeagueSimData:
+def sim(league_id: int | None = None) -> LeagueSimData:
     cfg = load_config()
     gw = latest_gw()
-    key = _cache_key(cfg, int(gw)) if gw is not None else None
-    result, inputs = _run(cfg, gw)
+    key = _cache_key(cfg, int(gw), league_id) if gw is not None else None
+    result, inputs = _run(cfg, gw, league_id=league_id)
     run_at = datetime.now(timezone.utc).isoformat()
     if _take_fresh(key):
         try:
@@ -455,7 +461,8 @@ def whatif(req: LeagueWhatIfRequest) -> LeagueWhatIfResult:
     """
     cfg = load_config()
     gw = latest_gw()
-    hit = _run(cfg, gw, cached_only=bool(req.cached_only))
+    hit = _run(cfg, gw, cached_only=bool(req.cached_only),
+               league_id=req.league_id)
     if hit is None:
         # 204, not an error and not a wait: the caller asked for a cached
         # answer, there is not one, and the honest reply is nothing at all.

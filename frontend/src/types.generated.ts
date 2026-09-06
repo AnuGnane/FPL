@@ -1424,6 +1424,10 @@ export interface LeagueWhatIfRequest {
    */
   cached_only?: boolean
   captain_override: number | null
+  /**
+   * Which private league to re-count (v15 §5.2); ``None`` is the focus.
+   */
+  league_id: number | null
   pins: LeagueWhatIfPin[]
   rival_captain_blanks: number | null
 }

@@ -253,3 +253,29 @@ def test_a_league_the_frame_covers_carries_no_notice(here, monkeypatch):
                         lambda gw: _comp())
     assert build_inputs(Config(entry_id=1, league_id=5),
                         FakeClient()).notices == []
+
+
+def test_build_inputs_takes_a_league_id_over_the_config(here, monkeypatch):
+    monkeypatch.setattr("gaffer.artifacts.latest_gw", lambda: 5)
+    monkeypatch.setattr("gaffer.artifacts.load_components",
+                        lambda gw: _comp())
+
+    class Recording(FakeClient):
+        asked = []
+
+        def get_league_standings(self, league_id, page=1):
+            self.asked.append(league_id)
+            return STANDINGS
+
+    ins = build_inputs(Config(entry_id=1, league_id=5), Recording(),
+                       league_id=9)
+    assert Recording.asked == [9]
+    assert [e.entry for e in ins.entries] == [1, 2]
+    build_inputs(Config(entry_id=1, league_id=5), Recording())
+    assert Recording.asked == [9, 5]
+
+
+def test_build_inputs_with_no_league_anywhere_says_so(here, monkeypatch):
+    monkeypatch.setattr("gaffer.artifacts.latest_gw", lambda: 5)
+    with pytest.raises(GafferError, match="focus"):
+        build_inputs(Config(entry_id=1, league_id=0), FakeClient())
