@@ -21,10 +21,14 @@ from gaffer.errors import GafferError
 def test_the_config_gained_exactly_two_fields():
     """55 after v12 W3 (``test_v12_w3_degradation.py``), 57 here. The claim
     is the two names; 57 is the arithmetic. Pinned as a total *and* by name
-    so a key cannot be swapped for another in one cycle."""
+    so a key cannot be swapped for another in one cycle.
+
+    58 after v15 (specs/2026-09-06-gaffer-v15-leagues-design.md §4.1): the
+    one new name is ``stance``; the focus league reuses ``league_id``."""
     names = {f.name for f in dataclasses.fields(Config)}
-    assert len(names) == 57
+    assert len(names) == 58
     assert {"max_hits", "max_transfers"} <= names
+    assert "stance" in names
 
 
 def test_the_caps_default_to_two_hits_and_no_transfer_cap():
