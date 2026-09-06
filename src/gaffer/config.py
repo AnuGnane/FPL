@@ -128,6 +128,14 @@ class Config:
     field_sample: int = 300
     sim_n: int = 2000
     rival_drift: float = 0.5
+    # --- v15 leagues (specs/2026-09-06-gaffer-v15-leagues-design.md) ------
+    # The manual stance: "auto" is the dial, the other three pin λ at the
+    # cap (chase +, defend -) or at exactly 0.0 (neutral). Read from [league]
+    # stance, which the League page writes through the settings overlay. The
+    # focus league itself is not a new field: [league] focus, when set, is
+    # resolved by load_config into league_id, so every reader of league_id
+    # sees the focus without knowing the word.
+    stance: str = "auto"
     # --- v5 news layer -----------------------------------------------------
     # Defaults are shipped-behaviour-ON, individually switchable. Every source
     # degrades to the official-flags path by itself (spec §7), so these exist
@@ -335,6 +343,16 @@ def _check_caps(cfg: "Config") -> None:
                 f"between 0 and {NO_CAP} ({NO_CAP} means no cap)")
 
 
+def _check_stance(cfg: "Config") -> None:
+    """v15 §3.2: the stance is one of four words, refused by name."""
+    from gaffer.league_mode import STANCES
+
+    if cfg.stance not in STANCES:
+        raise GafferError(
+            f"[league] stance = {cfg.stance!r} — must be one of "
+            f"{', '.join(STANCES)}")
+
+
 def load_config(path: Path | str = "config.toml") -> Config:
     file = Path(path)
     if not file.exists():
@@ -366,7 +384,9 @@ def load_config(path: Path | str = "config.toml") -> Config:
                  if k not in NON_FIELD_OPTIMIZER_KEYS}
     cfg = Config(
         entry_id=raw["fpl"]["entry_id"],
-        league_id=raw["fpl"]["league_id"],
+        # v15 §3.1: the overlay's [league] focus wins over fpl.league_id when
+        # it is set and non-zero. fpl.league_id itself is never rewritten.
+        league_id=int(league.get("focus") or 0) or raw["fpl"]["league_id"],
         **optimizer,
         **raw.get("data", {}),
         # Read explicitly rather than splatted: [odds] is optional and its
@@ -403,6 +423,7 @@ def load_config(path: Path | str = "config.toml") -> Config:
                                     league.get("tier_sample", 300))),
         sim_n=int(league.get("sim_n", 2000)),
         rival_drift=float(league.get("rival_drift", 0.5)),
+        stance=str(league.get("stance", "auto")),
         # Read key-by-key like [odds] and [league]: the TOML keys are
         # deliberately shorter than the dataclass fields (enabled, injuries)
         # so the section reads as prose in config.toml.
@@ -426,6 +447,7 @@ def load_config(path: Path | str = "config.toml") -> Config:
         web_token=str(web.get("token", "")),
     )
     _check_caps(cfg)
+    _check_stance(cfg)
     return cfg
 
 
