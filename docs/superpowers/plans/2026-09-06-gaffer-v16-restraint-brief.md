@@ -1091,18 +1091,20 @@ Then, in `run_advise`, **insert** the following block directly after the alterna
         ladder = build_ladder(gw)
     except Exception as exc:  # noqa: BLE001
         print(f"ladder: not built for GW{gw} ({exc})")
-    served = serve_rung(ladder, {
-        "buys": buys, "sells": sells, "hits": int(first.hits),
-        "xi": _named(first.xi, name_of, pos_of, ep_by, gw),
-        "bench": _named(first.bench, name_of, pos_of, ep_by, gw),
-        "captain": _named([first.captain], name_of, pos_of, ep_by, gw)[0],
-        "vice": _named([first.vice], name_of, pos_of, ep_by, gw)[0],
-        "expected_pts": round(raw_xi_pts(first, ep_by), 2),
-        "plan_by_gw": [{"gw": p.gw, "hits": p.hits,
-                        "buys": _named(p.buys, name_of, pos_of, ep_by, p.gw),
-                        "sells": _named(p.sells, name_of, pos_of, ep_by, p.gw),
-                        "expected_pts": round(raw_xi_pts(p, ep_by), 2)}
-                       for p in plan.gw_plans]},
+    # Keyword form, not a dict literal: tests/test_advise.py pins the literal
+    # ``expected_pts=round(raw_xi_pts(first, ep_by), 2)`` inside run_advise.
+    served = serve_rung(ladder, dict(
+        buys=buys, sells=sells, hits=int(first.hits),
+        xi=_named(first.xi, name_of, pos_of, ep_by, gw),
+        bench=_named(first.bench, name_of, pos_of, ep_by, gw),
+        captain=_named([first.captain], name_of, pos_of, ep_by, gw)[0],
+        vice=_named([first.vice], name_of, pos_of, ep_by, gw)[0],
+        expected_pts=round(raw_xi_pts(first, ep_by), 2),
+        plan_by_gw=[{"gw": p.gw, "hits": p.hits,
+                     "buys": _named(p.buys, name_of, pos_of, ep_by, p.gw),
+                     "sells": _named(p.sells, name_of, pos_of, ep_by, p.gw),
+                     "expected_pts": round(raw_xi_pts(p, ep_by), 2)}
+                    for p in plan.gw_plans]),
         captain_note=captain_note)
     # The tags and the sweep frequencies below decorate the *served* moves.
     buys, sells = served["buys"], served["sells"]
@@ -1143,7 +1145,7 @@ def test_the_state_is_saved_then_the_ladder_then_the_served_plan():
     src = inspect.getsource(run_advise)
     state = src.index("save_solve_state(")
     ladder = src.index("build_ladder(gw)")
-    served = src.index("served = serve_rung(ladder, {")
+    served = src.index("served = serve_rung(ladder, dict(")
     advice = src.index("advice = Advice(")
     written = src.index("atomic_write(advice_path")
     assert state < ladder < served < advice < written
@@ -1160,9 +1162,9 @@ def test_the_objective_dict_is_the_solvers_own_week_one():
     from gaffer.advise import run_advise
 
     src = inspect.getsource(run_advise)
-    block = src[src.index("served = serve_rung(ladder, {"):src.index("captain_note=captain_note)")]
-    assert '"hits": int(first.hits)' in block
-    assert '"expected_pts": round(raw_xi_pts(first, ep_by), 2)' in block
+    block = src[src.index("served = serve_rung(ladder, dict("):src.index("captain_note=captain_note)")]
+    assert "hits=int(first.hits)" in block
+    assert "expected_pts=round(raw_xi_pts(first, ep_by), 2)" in block
     assert "for p in plan.gw_plans]" in block
 
 

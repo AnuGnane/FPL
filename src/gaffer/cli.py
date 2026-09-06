@@ -94,6 +94,16 @@ def advise(fast: bool = typer.Option(
     # tests/test_v4c_degradation.py's character-for-character rail green.
     if getattr(advice, "caps", None):
         typer.echo(_caps_line(advice.caps))
+    # v16 §4: the rung the ladder chose, and the objective's own plan when
+    # they differ. Absent on an Advice built without the field — which keeps
+    # tests/test_v4c_degradation.py's character-for-character rail green.
+    restraint = getattr(advice, "restraint", None)
+    if restraint:
+        from gaffer.ladder import objective_line, restraint_line
+
+        typer.echo(restraint_line(restraint))
+        if not restraint.get("agrees", True):
+            typer.echo(objective_line(getattr(advice, "objective", None)))
     cap_pct = ""
     if advice.scenarios and advice.scenarios.get("captain_frequency"):
         cap_pct = (f" [{round(advice.scenarios['captain_frequency'] * 100)}"
@@ -413,6 +423,25 @@ def digest(kind: str = typer.Option(
         # kind; the imports cannot, and an ImportError here would be the one
         # traceback the launchd job still emits every Friday evening.
         typer.echo(f"digest not written: {exc}")
+
+
+@app.command()
+def brief():
+    """Write this week's brief from the banked advice (v16 §6).
+
+    The same body the web button and the advise job run. Never fails: a
+    dead LLM command or a brief that did not pass its check is one printed
+    line, and the card falls back to the digest.
+    """
+    try:
+        from gaffer.brief import run_brief
+
+        out = run_brief()
+    except Exception as exc:  # noqa: BLE001 — a scheduled job never blocks
+        typer.echo(f"brief not written: {exc}")
+        return
+    if out.get("note"):
+        typer.echo(out["note"])
 
 
 @app.command()

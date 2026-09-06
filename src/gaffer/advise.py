@@ -51,7 +51,7 @@ from gaffer.data.odds import (OddsClient, ags_frame, blend_attacking_odds,
                               next_gw_event_ids, odds_frame)
 from gaffer.features.engineer import build_prediction_frame, feature_columns
 from gaffer.io import atomic_write
-from gaffer.ladder import build_ladder
+from gaffer.ladder import build_ladder, serve_rung
 from gaffer.league_mode import (LeagueParams, apply_stance, captain_cover,
                                 captaincy_note, captaincy_override,
                                 compute_strategy, cover_table, tilt_ep,
@@ -170,6 +170,13 @@ class Advice:
     # v13 §2.3: the appetite this advice solved under, for the CLI line and
     # the report. ``None`` for the initial-squad build, which is uncapped.
     caps: dict | None = None
+    # v16 §4 (specs/2026-09-06-gaffer-v16-restraint-brief-design.md). The
+    # objective's own week-one plan, kept beside the served (restrained) one,
+    # and the ladder walk that chose the served rung. Both default to None so
+    # a payload written before this — and every positional construction —
+    # still loads.
+    objective: dict | None = None
+    restraint: dict | None = None
 
 
 INITIAL_BUDGET = 1000
@@ -1098,6 +1105,61 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
                      "expected_pts": round(raw_xi_pts(p, ep_by), 2)}
                     for p in alt.gw_plans]})
 
+    # v16 §4 (specs/2026-09-06-gaffer-v16-restraint-brief-design.md): the
+    # components and the solve state are banked *before* the payload, because
+    # the ladder solves off the state and the payload's plan is the rung the
+    # ladder's restraint walk chose. The objective's own plan rides beside it
+    # as ``objective`` and the walk as ``restraint``; a ladder that will not
+    # build leaves the objective's plan served, with a note.
+    REPORTS.mkdir(exist_ok=True)
+    # The same frame §4.6 banded above, not a second build of it: one frame
+    # means the ceiling on the page and the breakdown on disk cannot disagree.
+    save_components(components, gw)
+    save_solve_state(SolveState(
+        gw=gw, gws=gws, deadline=deadline,
+        generated_at=datetime.now(timezone.utc).isoformat(),
+        mode="weekly" if my is not None else "initial_squad", bank=state.bank,
+        free_transfers=state.free_transfers, owned_codes=owned_now,
+        lam=lam, league_eo=league_eo, cover=cover, avail_by_gw=avail_by_gw,
+        # The lambda lookup is not JSON, but "were the priors on" is, and it
+        # is all the web re-solve needs to rebuild the same lookup from the
+        # shipped asset and price a What-If baseline exactly like this advice.
+        opt={**opt_kw, "horizon": cfg.horizon,
+             "decision_priors": bool(cfg.decision_priors),
+             # v13 §2.3: raw config values (15 = no cap); read back through
+             # ``artifacts.caps_from_state`` by every re-solve of this board.
+             "max_hits": int(cfg.max_hits),
+             "max_transfers": int(cfg.max_transfers),
+             # v16 §3.3: the chips the table would play, for the ladder's
+             # ``chip`` step reason. ``solve_kw_from_state`` reads named keys
+             # only, so no re-solve sees this.
+             "chip_plan": [{"gw": int(r["gw"]), "chip": str(r["chip"])}
+                           for r in chip_rows if r.get("play_now")]},
+        pool=pool_rows(pool, players, owned_now, ep_by, gws)))
+    # v13 §3.2 / v16 §4: the transfer ladder, off the state just saved. Never
+    # the run's failure — a ladder that could not be built is one printed
+    # line, the objective's plan served, and a card with a rebuild button.
+    ladder = None
+    try:
+        ladder = build_ladder(gw)
+    except Exception as exc:  # noqa: BLE001
+        print(f"ladder: not built for GW{gw} ({exc})")
+    served = serve_rung(ladder, dict(
+        buys=buys, sells=sells, hits=int(first.hits),
+        xi=_named(first.xi, name_of, pos_of, ep_by, gw),
+        bench=_named(first.bench, name_of, pos_of, ep_by, gw),
+        captain=_named([first.captain], name_of, pos_of, ep_by, gw)[0],
+        vice=_named([first.vice], name_of, pos_of, ep_by, gw)[0],
+        expected_pts=round(raw_xi_pts(first, ep_by), 2),
+        plan_by_gw=[{"gw": p.gw, "hits": p.hits,
+                     "buys": _named(p.buys, name_of, pos_of, ep_by, p.gw),
+                     "sells": _named(p.sells, name_of, pos_of, ep_by, p.gw),
+                     "expected_pts": round(raw_xi_pts(p, ep_by), 2)}
+                    for p in plan.gw_plans]),
+        captain_note=captain_note)
+    # The tags and the sweep frequencies below decorate the *served* moves.
+    buys, sells = served["buys"], served["sells"]
+
     for b in buys:
         # An empty EO map is "nobody's ownership is known", not "nobody owns
         # them" — at GW1 no rival picks are public yet, and tagging all 15
@@ -1127,23 +1189,19 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         deadline=deadline,
         buys=buys,
         sells=sells,
-        hits=first.hits,
-        xi=_named(first.xi, name_of, pos_of, ep_by, gw),
-        bench=_named(first.bench, name_of, pos_of, ep_by, gw),
-        captain=_named([first.captain], name_of, pos_of, ep_by, gw)[0],
-        vice=_named([first.vice], name_of, pos_of, ep_by, gw)[0],
+        hits=served["hits"],
+        xi=served["xi"],
+        bench=served["bench"],
+        captain=served["captain"],
+        vice=served["vice"],
         captain_options=cap_tab.to_dict("records"),
         chip_table=chip_rows,
         wildcard_now=wc_now,
         alternatives=alts.to_dict("records"),
         threats=threats.to_dict("records"),
         price_alerts=alerts.to_dict("records"),
-        expected_pts=round(raw_xi_pts(first, ep_by), 2),
-        plan_by_gw=[{"gw": p.gw, "hits": p.hits,
-                     "buys": _named(p.buys, name_of, pos_of, ep_by, p.gw),
-                     "sells": _named(p.sells, name_of, pos_of, ep_by, p.gw),
-                     "expected_pts": round(raw_xi_pts(p, ep_by), 2)}
-                    for p in plan.gw_plans],
+        expected_pts=served["expected_pts"],
+        plan_by_gw=served["plan_by_gw"],
         strategy=strategy,
         win_probs=win_probs,
         mode="weekly" if my is not None else "initial_squad",
@@ -1152,14 +1210,15 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         move_frequencies=move_freqs,
         raw_optimum_agrees=raw_agrees,
         scenarios=scenario_report,
-        captain_note=captain_note,
+        captain_note=served["captain_note"],
         demoted_captain=demoted_captain,
         alternative_plans=alt_rows,
         caps=(None if my is None
               else {"max_hits": int(cfg.max_hits),
                     "max_transfers": int(cfg.max_transfers)}),
+        objective=served["objective"],
+        restraint=served["restraint"],
     )
-    REPORTS.mkdir(exist_ok=True)
     # v9c orchestrator-authorized protected edit (review I1): atomic advice
     # artifact write. Three docstrings in web/jobs.py and routers/jobs.py now
     # rest on "every job kind writes its artifacts idempotently", which is what
@@ -1175,32 +1234,6 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     advice_path = REPORTS / f"gw{gw}-advice.json"
     atomic_write(advice_path, json.dumps(asdict(advice), indent=1,
                                          default=str))
-    # The same frame §4.6 banded above, not a second build of it: one frame
-    # means the ceiling on the page and the breakdown on disk cannot disagree.
-    save_components(components, gw)
-    save_solve_state(SolveState(
-        gw=gw, gws=gws, deadline=deadline,
-        generated_at=datetime.now(timezone.utc).isoformat(),
-        mode=advice.mode, bank=state.bank,
-        free_transfers=state.free_transfers, owned_codes=owned_now,
-        lam=lam, league_eo=league_eo, cover=cover, avail_by_gw=avail_by_gw,
-        # The lambda lookup is not JSON, but "were the priors on" is, and it
-        # is all the web re-solve needs to rebuild the same lookup from the
-        # shipped asset and price a What-If baseline exactly like this advice.
-        opt={**opt_kw, "horizon": cfg.horizon,
-             "decision_priors": bool(cfg.decision_priors),
-             # v13 §2.3: raw config values (15 = no cap); read back through
-             # ``artifacts.caps_from_state`` by every re-solve of this board.
-             "max_hits": int(cfg.max_hits),
-             "max_transfers": int(cfg.max_transfers)},
-        pool=pool_rows(pool, players, owned_now, ep_by, gws)))
-    # v13 §3.2: the transfer ladder, off the state just saved. Never the
-    # run's failure — a ladder that could not be built is one printed line
-    # and a card with a rebuild button.
-    try:
-        build_ladder(gw)
-    except Exception as exc:  # noqa: BLE001
-        print(f"ladder: not built for GW{gw} ({exc})")
     # Two artifacts nothing in the pipeline reads: the availability frame this
     # run predicted on, and the payload itself, appended to a pruned log. Both
     # exist so the UI can answer "why?" and "what changed since Tuesday?"
