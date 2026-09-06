@@ -560,6 +560,17 @@ export interface DecisionNote {
   text: string
 }
 /**
+ * The deviation note beside a grade (v16 §5).
+ *
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "DecisionRef".
+ */
+export interface DecisionRef {
+  at: string | null
+  reason: string | null
+  text: string
+}
+/**
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "DecisionWrite".
  */
@@ -2250,6 +2261,18 @@ export interface QualityData {
   presser_grades: PresserGradesData | null
 }
 /**
+ * One reason code's row in the season tally: how many graded gameweeks
+ * carried it, and the mean transfers-lane delta over them.
+ *
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "ReasonTally".
+ */
+export interface ReasonTally {
+  count: number
+  mean_delta_pts: number | null
+  reason: string
+}
+/**
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "ReviewAccuracyPoint".
  */
@@ -2267,6 +2290,11 @@ export interface ReviewAccuracyPoint {
 export interface ReviewGw {
   accuracy: number | null
   chip: string | null
+  /**
+   * Why I did something other than what the advice said. ``None`` is "no
+   * note was written", which is not the same as a note with no reason.
+   */
+  decision: DecisionRef | null
   gw: number
   hindsight: ReviewHindsight
   hits: number
@@ -3024,6 +3052,11 @@ export interface WireReviewSummary {
   best: {
     [k: string]: unknown
   } | null
+  /**
+   * The deviation tally, ``REASONS`` order then ``none``. Codes with no
+   * graded gameweek are absent — a nought would read as a measurement.
+   */
+  by_reason: ReasonTally[]
   gws: number[]
   hindsight_gap: number
   hindsight_gap_gws: number

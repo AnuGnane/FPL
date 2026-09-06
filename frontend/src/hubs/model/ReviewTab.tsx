@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { apiGet } from '../../api/client'
 import {
   type ChipTone, Card, Chip, EmptyState, ExplainModal, Loading, PlayerCard,
-  Stat, StatRow, TONE_CLASS, fmtDelta, fmtNum, toneOf,
+  Stat, StatRow, TABLE_CLASS, THEAD_CLASS, TONE_CLASS, TR_CLASS, fmtDelta,
+  fmtNum, tdClass, thClass, toneOf,
 } from '../../kit'
 import type {
   ReviewData, ReviewGw, ReviewLabel, ReviewLane, ReviewLaneName,
@@ -27,6 +28,13 @@ const LABEL_TONE: Record<ReviewLabel, ChipTone> = {
   Aligned: 'neutral',
   Inaccuracy: 'down',
   Blunder: 'down',
+}
+
+// The eight reason codes plus the tally's row for a graded gameweek nobody
+// wrote a note on. `none` is "no note", never "no reason".
+const REASON_LABEL: Record<string, string> = {
+  injury: 'Injury', fixtures: 'Fixtures', eye_test: 'Eye test', price: 'Price',
+  chip: 'Chip', rival: 'Rival', gut: 'Gut', other: 'Other', none: 'No note',
 }
 
 const NO_ADVICE = 'no surviving advice — this gameweek is graded on '
@@ -143,9 +151,31 @@ function GwCard({ row, onSelect }:
       </StatRow>
       {row.no_advice
         ? <p className="text-sm text-text-muted">{NO_ADVICE}</p>
-        : <div className="divide-y divide-divider">
-            {lanes.map((lane) => <LaneRow key={lane.lane} lane={lane} />)}
-          </div>}
+        : (
+          <>
+            <div className="divide-y divide-divider">
+              {lanes.map((lane) => <LaneRow key={lane.lane} lane={lane} />)}
+            </div>
+            {/* The note sits under the lanes it explains, in your own words,
+                and only when there is one: an absent note is silence, not an
+                empty line. */}
+            {row.decision?.reason && (
+              <p data-testid={`decision-${row.gw}`}
+                 className="mt-1 flex flex-wrap items-baseline gap-2 text-sm
+                            text-text-muted">
+                <span>You said:</span>
+                <Chip>
+                  {REASON_LABEL[row.decision.reason] ?? row.decision.reason}
+                </Chip>
+                {row.decision.text && (
+                  <span className="text-text-secondary">
+                    {row.decision.text}
+                  </span>
+                )}
+              </p>
+            )}
+          </>
+        )}
       <p data-testid={`hindsight-${row.gw}`}
          className="mt-3 text-sm text-text-muted">
         {row.hindsight.points === null
@@ -261,6 +291,38 @@ export default function ReviewTab() {
               {LANE_TITLE[data.summary.worst.lane]}{' '}
               {fmtNum(data.summary.worst.delta_pts, 0)} pts.
             </p>
+          )}
+          {/* Which reasons cost, and which paid. Codes with no graded
+              gameweek are absent rather than nought, so the table is only
+              ever as long as the season actually is. */}
+          {data.summary.by_reason.length > 0 && (
+            <div className="mt-3 overflow-x-auto" data-testid="by-reason">
+              <p className="label mb-1">Deviations by reason</p>
+              <table className={TABLE_CLASS}>
+                <thead className={THEAD_CLASS}>
+                  <tr>
+                    <th className={thClass()}>Reason</th>
+                    <th className={thClass(true)}>GWs</th>
+                    <th className={thClass(true)}>Mean vs model</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.summary.by_reason.map((cell) => (
+                    <tr key={cell.reason} className={TR_CLASS}>
+                      <td className={tdClass()}>
+                        {REASON_LABEL[cell.reason] ?? cell.reason}
+                      </td>
+                      <td className={tdClass(true)}>{cell.count}</td>
+                      <td className={`${tdClass(true)} `
+                        + TONE_CLASS[toneOf(cell.mean_delta_pts)]}>
+                        {cell.mean_delta_pts === null
+                          ? '—' : `${fmtDelta(cell.mean_delta_pts, 1)} pts`}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </Card>
       )}

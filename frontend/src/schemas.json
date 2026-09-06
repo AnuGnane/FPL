@@ -1105,6 +1105,44 @@
    "title": "DecisionNote",
    "type": "object"
   },
+  "DecisionRef": {
+   "description": "The deviation note beside a grade (v16 \u00a75).",
+   "properties": {
+    "at": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "reason": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "text": {
+     "default": "",
+     "type": "string"
+    }
+   },
+   "required": [
+    "at",
+    "reason",
+    "text"
+   ],
+   "title": "DecisionRef",
+   "type": "object"
+  },
   "DecisionWrite": {
    "properties": {
     "reason": {
@@ -5859,6 +5897,35 @@
    "title": "QualityData",
    "type": "object"
   },
+  "ReasonTally": {
+   "description": "One reason code's row in the season tally: how many graded gameweeks\ncarried it, and the mean transfers-lane delta over them.",
+   "properties": {
+    "count": {
+     "type": "integer"
+    },
+    "mean_delta_pts": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "reason": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "count",
+    "mean_delta_pts",
+    "reason"
+   ],
+   "title": "ReasonTally",
+   "type": "object"
+  },
   "ReferenceMetrics": {
    "description": "A published number: no row count, because we did not measure it.",
    "properties": {
@@ -5936,6 +6003,18 @@
       }
      ],
      "default": null
+    },
+    "decision": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/DecisionRef"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Why I did something other than what the advice said. ``None`` is \"no\nnote was written\", which is not the same as a note with no reason."
     },
     "gw": {
      "type": "integer"
@@ -6138,6 +6217,7 @@
    "required": [
     "accuracy",
     "chip",
+    "decision",
     "gw",
     "hindsight",
     "hits",
@@ -8464,6 +8544,13 @@
      ],
      "default": null
     },
+    "by_reason": {
+     "description": "The deviation tally, ``REASONS`` order then ``none``. Codes with no\ngraded gameweek are absent \u2014 a nought would read as a measurement.",
+     "items": {
+      "$ref": "#/definitions/ReasonTally"
+     },
+     "type": "array"
+    },
     "gws": {
      "items": {
       "type": "integer"
@@ -8517,6 +8604,7 @@
    "required": [
     "accuracy",
     "best",
+    "by_reason",
     "gws",
     "hindsight_gap",
     "hindsight_gap_gws",

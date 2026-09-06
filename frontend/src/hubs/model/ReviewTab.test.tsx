@@ -31,7 +31,7 @@ const DATA: ReviewData = {
     pwin_granularity_pp: 0.05, lanes: LANES,
     misses: [{ code: 16, name: 'Guehi', over: 'Blank', gain: 15 }],
     hindsight: { points: 74, xi: [1, 2, 3], captain: 3, gap: 13 },
-    notices: [],
+    notices: [], decision: null,
   }],
   summary: {
     gws: [2], lanes: {
@@ -44,6 +44,7 @@ const DATA: ReviewData = {
     points_on_bench_gws: 1, hindsight_gap: 13, hindsight_gap_gws: 1,
     reconciled_gws: 1, unreconciled_gws: 0,
     best: { ...LANES[1], gw: 2 }, worst: { ...LANES[0], gw: 2 },
+    by_reason: [],
   },
 }
 
@@ -244,6 +245,31 @@ describe('ReviewTab', () => {
       expect(within(screen.getByTestId('lane-captaincy'))
         .queryByRole('button')).toBeNull()
     })
+  })
+
+  it('shows the deviation note under the lanes and the by-reason table',
+     async () => {
+       mock({ ...DATA,
+         gws: [{ ...DATA.gws[0],
+                 decision: { reason: 'injury', text: 'Rice was out', at: null } }],
+         summary: { ...DATA.summary!, by_reason: [
+           { reason: 'injury', count: 1, mean_delta_pts: -7 }] } })
+       render(<ReviewTab />)
+       const note = await screen.findByTestId('decision-2')
+       expect(note).toHaveTextContent('Injury')
+       expect(note).toHaveTextContent('Rice was out')
+       const table = screen.getByTestId('by-reason')
+       expect(within(table).getByText('Injury')).toBeInTheDocument()
+       // `fmtDelta` prints an ASCII hyphen, so the assertion matches the kit.
+       expect(table).toHaveTextContent('-7.0 pts')
+     })
+
+  it('shows no note line for a gameweek nobody wrote one on', async () => {
+    mock(DATA)
+    render(<ReviewTab />)
+    await screen.findByTestId('hindsight-2')
+    expect(screen.queryByTestId('decision-2')).toBeNull()
+    expect(screen.queryByTestId('by-reason')).toBeNull()
   })
 
   it('already names the command for its pre-first-review state', async () => {

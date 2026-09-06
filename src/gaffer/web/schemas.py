@@ -1723,6 +1723,23 @@ class ReviewHindsight(BaseModel):
     gap: int | None = None
 
 
+class DecisionRef(BaseModel):
+    """The deviation note beside a grade (v16 §5)."""
+
+    reason: str | None = None
+    text: str = ""
+    at: str | None = None
+
+
+class ReasonTally(BaseModel):
+    """One reason code's row in the season tally: how many graded gameweeks
+    carried it, and the mean transfers-lane delta over them."""
+
+    reason: str
+    count: int
+    mean_delta_pts: float | None = None
+
+
 class ReviewGw(BaseModel):
     """One gameweek's banked grade. Every field but ``gw`` has a default, so
     a ledger written by an older build still renders."""
@@ -1784,6 +1801,9 @@ class ReviewGw(BaseModel):
     misses: list[ReviewMiss] = Field(default_factory=list)
     hindsight: ReviewHindsight = Field(default_factory=ReviewHindsight)
     notices: list[str] = Field(default_factory=list)
+    decision: DecisionRef | None = None
+    """Why I did something other than what the advice said. ``None`` is "no
+    note was written", which is not the same as a note with no reason."""
 
 
 class ReviewLaneTotal(BaseModel):
@@ -1822,6 +1842,9 @@ class ReviewSummary(BaseModel):
     unreconciled_gws: int = 0
     best: dict[str, Any] | None = None
     worst: dict[str, Any] | None = None
+    by_reason: list[ReasonTally] = Field(default_factory=list)
+    """The deviation tally, ``REASONS`` order then ``none``. Codes with no
+    graded gameweek are absent — a nought would read as a measurement."""
 
 
 class Review(BaseModel):

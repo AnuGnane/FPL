@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from gaffer.decisions import by_reason, load_decisions
 from gaffer.review import load_ledger, season_summary
 from gaffer.web.schemas import Review
 
@@ -28,7 +29,17 @@ def review() -> Review:
         ledger = load_ledger()
         if not ledger:
             return EMPTY
-        return Review(gws=ledger, summary=season_summary(ledger))
+        # The note is joined on here rather than banked into the ledger: a
+        # grade is written once and never re-derived (spec D2), while a note
+        # can be written or rewritten long after the gameweek was graded.
+        notes = load_decisions()
+        gws = [{**row, "decision": ({k: notes[int(row["gw"])][k]
+                                     for k in ("reason", "text", "at")}
+                                    if int(row["gw"]) in notes else None)}
+               for row in ledger]
+        summary = season_summary(ledger) or {}
+        summary["by_reason"] = by_reason(ledger, notes)
+        return Review(gws=gws, summary=summary)
     except Exception as exc:  # noqa: BLE001 — a corrupt bank is an empty one
         print(f"review ledger unavailable: {exc}")
         return EMPTY
