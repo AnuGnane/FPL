@@ -1155,7 +1155,8 @@ def build_inputs(cfg, client, *, gw: int | None = None) -> SimInputs:
     """
     if not getattr(cfg, "league_id", 0):
         raise GafferError(
-            "set fpl.league_id in config.toml to use the league simulation")
+            "set fpl.league_id in config.toml, or make a league the focus on "
+            "the League page, to use the league simulation")
     plan_gw = int(gw) if gw is not None else artifacts.latest_gw()
     if plan_gw is None:
         raise GafferError("no saved advice — run `gaffer advise` first")

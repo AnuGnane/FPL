@@ -451,7 +451,8 @@ def league():
 
     cfg = load_config()
     if not cfg.league_id:
-        typer.echo("Set fpl.league_id in config.toml first.")
+        typer.echo("Set fpl.league_id in config.toml first, or make a league "
+                   "the focus on the League page.")
         raise typer.Exit(1)
     rivals = fetch_rival_entries(FPLClient(), cfg.league_id, cfg.entry_id)
     if rivals.empty:

@@ -11,13 +11,15 @@ from __future__ import annotations
 import threading
 import time
 
+import pandas as pd
 from fastapi import APIRouter
 
 from gaffer.artifacts import latest_gw, load_solve_state
 from gaffer.config import load_config
+from gaffer.data.league import HISTORY_COLS, STANDINGS_COLS
 from gaffer.errors import GafferError
 from gaffer.league_mode import (LeagueParams, Strategy, apply_stance,
-                                explain_lam, win_probability)
+                                compute_strategy, explain_lam, win_probability)
 from gaffer.web.schemas import (GapPoint, GwPoint, LeagueRace, LeaguesOverview,
                                 PrivateLeagueRow, PublicLeagueRow, RivalDetail,
                                 RivalSummary, SquadPlayer, StandingRow,
@@ -36,7 +38,9 @@ def fpl_client():
 def _config():
     cfg = load_config()
     if not cfg.league_id:
-        raise GafferError("set fpl.league_id in config.toml to use this page")
+        raise GafferError("set fpl.league_id in config.toml, or make a "
+                          "league the focus on the Leagues tab, to use this "
+                          "page")
     return cfg
 
 
@@ -160,22 +164,53 @@ def leagues() -> LeaguesOverview:
         gw=rows["gw"])
 
 
-def _standings(client, league_id: int) -> list[dict]:
+MAX_STANDINGS_PAGES = 4
+"""Two hundred rows. Plan R1: the race fetches one history per row, so the
+table stops at the page the user is on rather than one further."""
+
+
+def _standings(client, league_id: int, entry_id: int) -> list[dict]:
+    """Standings pages until the user's own row is in, capped (plan R1)."""
     rows, page = [], 1
     while True:
         data = _guard(client.get_league_standings, league_id, page)
-        rows.extend(data["standings"]["results"])
-        if not data["standings"].get("has_next") or len(rows) >= 50:
+        results = data["standings"]["results"]
+        rows.extend(results)
+        mine = any(int(r["entry"]) == entry_id for r in results)
+        if (mine or not data["standings"].get("has_next")
+                or page >= MAX_STANDINGS_PAGES):
             break
         page += 1
     return sorted(rows, key=lambda r: -int(r["total"]))
 
 
+def _league(cfg, client, league_id: int | None) -> tuple[int, str, bool]:
+    """``(id, name, is_focus)`` for the league asked for, or the focus.
+
+    An explicit id must be one of the private leagues. The focus is served
+    whatever it is (plan R3) — named from the classic list when it is there,
+    "League {id}" otherwise — so today's single-league config keeps working.
+    """
+    rows = _league_rows(client, cfg)
+    if league_id is None or int(league_id) == cfg.league_id:
+        wanted = int(cfg.league_id)
+        named = {r["league_id"]: r["name"]
+                 for r in rows["private"] + rows["public"]}
+        return wanted, named.get(wanted, f"League {wanted}"), True
+    row = next((r for r in rows["private"] if r["league_id"] == int(league_id)),
+               None)
+    if row is None:
+        raise GafferError(f"league {league_id} is not one of your private "
+                          "leagues")
+    return int(league_id), row["name"], False
+
+
 @router.get("/race", response_model=LeagueRace)
-def race() -> LeagueRace:
+def race(league_id: int | None = None) -> LeagueRace:
     cfg = _config()
     client = fpl_client()
-    rows = _standings(client, cfg.league_id)
+    league, league_name, is_focus = _league(cfg, client, league_id)
+    rows = _standings(client, league, cfg.entry_id)
     standings = [StandingRow(entry=int(r["entry"]), name=str(r["entry_name"]),
                              player_name=str(r["player_name"]),
                              rank=int(r["rank"]), total=int(r["total"]),
@@ -199,27 +234,52 @@ def race() -> LeagueRace:
     gap = [GapPoint(gw=gw, gap=int(mine[gw] - leader.get(gw, 0)))
            for gw in sorted(mine)]
 
-    state = None
-    gw = latest_gw()
-    if gw is not None:
-        state = load_solve_state(gw)
-    lam = state.lam if state else 0.0
     my_total = max(mine.values(), default=0)
-    weeks_left = 38 - (max(mine, default=1))
+    scored_gw = max(mine, default=1)
+    weeks_left = max(1, 38 - scored_gw)
     rivals = [row for row in standings if not row.is_you]
     win_probs = [WinProb(name=row.name, total=row.total,
                          p_win=round(win_probability(my_total, row.total,
-                                                     max(1, weeks_left)), 3))
+                                                     weeks_left), 3))
                  for row in rivals]
     top = max(rivals, key=lambda r: r.total, default=None)
-    stance = "neutral" if lam == 0 else ("chase" if lam > 0 else "defend")
-    strategy = Strategy(lam=lam, gap=abs(my_total - (top.total if top else 0)),
-                        weeks_left=max(1, weeks_left), stance=stance,
-                        rival_name=top.name if top else "the field")
-    return LeagueRace(league_id=cfg.league_id, entry_id=cfg.entry_id,
+    params = LeagueParams.from_config(cfg)
+    if is_focus:
+        # The solver's own λ, then the manual stance over it (plan R2).
+        state = load_solve_state(latest_gw()) if latest_gw() is not None else None
+        lam = float(state.lam) if state else 0.0
+        strategy = Strategy(lam=lam, gap=abs(my_total - (top.total if top else 0)),
+                            weeks_left=weeks_left, stance=_stance_of(lam),
+                            rival_name=top.name if top else "the field")
+        strategy = apply_stance(strategy, cfg.stance, params)
+    else:
+        strategy = _display_strategy(cfg, rows, trajectory, my_total,
+                                     scored_gw, weeks_left, params)
+    return LeagueRace(league_id=league, entry_id=cfg.entry_id,
                       standings=standings, trajectory=trajectory, gap=gap,
-                      win_probability=win_probs, lam=lam, stance=stance,
-                      lam_explained=explain_lam(strategy))
+                      win_probability=win_probs, lam=strategy.lam,
+                      stance=strategy.stance,
+                      lam_explained=explain_lam(strategy),
+                      league_name=league_name, focus=is_focus,
+                      stance_source=strategy.source)
+
+
+def _display_strategy(cfg, rows, trajectory, my_total, scored_gw, weeks_left,
+                      params) -> Strategy:
+    """What the dial would say for a league that is not the focus (v15
+    §3.3). Its own standings and the histories the race just fetched (plan
+    R4); ``apply_stance`` is deliberately not applied — nothing here tilts."""
+    rivals = pd.DataFrame([r for r in rows if int(r["entry"]) != cfg.entry_id],
+                          columns=STANDINGS_COLS)
+    if rivals.empty:
+        return Strategy(lam=0.0, gap=0, weeks_left=weeks_left, stance="neutral",
+                        rival_name="the field")
+    history = pd.DataFrame(
+        [{"entry": t.entry, "gw": p.gw, "points": p.points}
+         for t in trajectory for p in t.points if p.gw <= scored_gw],
+        columns=HISTORY_COLS)
+    return compute_strategy(my_total, rivals, scored_gw + 1, history=history,
+                            my_entry=cfg.entry_id, params=params)
 
 
 def _players_snapshot():
@@ -259,14 +319,15 @@ def _squad(picks: list[dict], players) -> list[SquadPlayer]:
 
 
 @router.get("/rivals", response_model=list[RivalSummary])
-def rivals() -> list[RivalSummary]:
+def rivals(league_id: int | None = None) -> list[RivalSummary]:
     cfg = _config()
     client = fpl_client()
+    league, _, _ = _league(cfg, client, league_id)
     players = _players_snapshot()
     mine = _my_codes()
     gw = _last_scored_gw()
     out = []
-    for row in _standings(client, cfg.league_id):
+    for row in _standings(client, league, cfg.entry_id):
         if int(row["entry"]) == cfg.entry_id:
             continue
         try:
@@ -283,17 +344,18 @@ def rivals() -> list[RivalSummary]:
 
 
 @router.get("/rivals/{entry_id}", response_model=RivalDetail)
-def rival(entry_id: int) -> RivalDetail:
+def rival(entry_id: int, league_id: int | None = None) -> RivalDetail:
     from gaffer.live_gw import active_gameweek, entry_live_points
 
     cfg = _config()
     client = fpl_client()
+    league, _, _ = _league(cfg, client, league_id)
     players = _players_snapshot()
     mine = _my_codes()
-    row = next((r for r in _standings(client, cfg.league_id)
+    row = next((r for r in _standings(client, league, cfg.entry_id)
                 if int(r["entry"]) == entry_id), None)
     if row is None:
-        raise GafferError(f"entry {entry_id} is not in league {cfg.league_id}")
+        raise GafferError(f"entry {entry_id} is not in league {league}")
 
     squad_gw = _last_scored_gw()
     picks_payload = _guard(client.get_entry_picks, entry_id, squad_gw)

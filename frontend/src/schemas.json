@@ -2842,6 +2842,11 @@
     "entry_id": {
      "type": "integer"
     },
+    "focus": {
+     "default": true,
+     "description": "False when this is another private league opened for display: its\n\u03bb is computed from its own standings and tilts nothing (v15 \u00a73.3).",
+     "type": "boolean"
+    },
     "gap": {
      "items": {
       "$ref": "#/definitions/GapPoint"
@@ -2857,7 +2862,19 @@
     "league_id": {
      "type": "integer"
     },
+    "league_name": {
+     "default": "",
+     "type": "string"
+    },
     "stance": {
+     "type": "string"
+    },
+    "stance_source": {
+     "default": "auto",
+     "enum": [
+      "auto",
+      "manual"
+     ],
      "type": "string"
     },
     "standings": {
@@ -2881,11 +2898,14 @@
    },
    "required": [
     "entry_id",
+    "focus",
     "gap",
     "lam",
     "lam_explained",
     "league_id",
+    "league_name",
     "stance",
+    "stance_source",
     "standings",
     "trajectory",
     "win_probability"

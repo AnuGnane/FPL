@@ -1284,11 +1284,18 @@ export interface LaunchdHealth {
  */
 export interface LeagueRaceData {
   entry_id: number
+  /**
+   * False when this is another private league opened for display: its
+   * λ is computed from its own standings and tilts nothing (v15 §3.3).
+   */
+  focus: boolean
   gap: GapPoint[]
   lam: number
   lam_explained: string
   league_id: number
+  league_name: string
   stance: string
+  stance_source: 'auto' | 'manual'
   standings: StandingRow[]
   trajectory: Trajectory[]
   win_probability: WinProb[]

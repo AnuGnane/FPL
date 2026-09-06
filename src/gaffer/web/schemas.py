@@ -192,6 +192,11 @@ class LeagueRace(BaseModel):
     lam: float
     stance: str
     lam_explained: str
+    league_name: str = ""
+    focus: bool = True
+    """False when this is another private league opened for display: its
+    λ is computed from its own standings and tilts nothing (v15 §3.3)."""
+    stance_source: Literal["auto", "manual"] = "auto"
 
 
 class PrivateLeagueRow(BaseModel):
