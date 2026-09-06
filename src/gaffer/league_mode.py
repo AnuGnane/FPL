@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import math
 import statistics
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import pandas as pd
 
@@ -142,10 +142,39 @@ class Strategy:
     z: float = 0.0
     sigma_m: float = SIGMA_FALLBACK
     cover_weights: dict = field(default_factory=dict)
+    # --- v15 §3.2. "auto" when the dial set lam, "manual" when the user's
+    # stance did. Appended and defaulted for the same reason as the v4d
+    # fields; asdict() in advise.py carries it into the advice payload.
+    source: str = "auto"
 
 
 def _sign(x: float) -> float:
     return 1.0 if x > 0 else (-1.0 if x < 0 else 0.0)
+
+
+STANCES = ("auto", "chase", "defend", "neutral")
+"""The ``[league] stance`` values (v15 §3.2). ``auto`` is the dial."""
+
+
+def apply_stance(strategy: Strategy, stance: str,
+                 params: LeagueParams | None = None) -> Strategy:
+    """The manual override, at full tilt (v15 §3.2).
+
+    ``auto`` returns the computed strategy with ``source="auto"``. ``chase``
+    and ``defend`` pin ``lam`` to plus and minus the cap — the sign convention
+    :func:`compute_strategy` already uses — and ``neutral`` pins it to exactly
+    0.0, which is the points-max path. The gap, the rival, ``z``, ``sigma_m``
+    and the cover weights are kept as computed so the reports still say where
+    the user stands; only the tilt is overridden. Never mutates its input.
+    """
+    if stance not in STANCES:
+        raise ValueError(
+            f"stance must be one of {', '.join(STANCES)}, got {stance!r}")
+    if stance == "auto":
+        return replace(strategy, source="auto")
+    cap = (params or LeagueParams()).lambda_cap
+    lam = {"chase": cap, "defend": -cap, "neutral": 0.0}[stance]
+    return replace(strategy, lam=lam, stance=stance, source="manual")
 
 
 def threat_weights(my_total: int, rivals: pd.DataFrame,
