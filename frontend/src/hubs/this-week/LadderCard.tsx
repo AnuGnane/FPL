@@ -6,10 +6,16 @@ import {
   TABLE_CLASS, THEAD_CLASS, TONE_CLASS, TONE_TINT_CLASS, TR_CLASS,
   TR_EXPANDED_CLASS, TR_SELECTED_CLASS, fmtNum, tdClass, thClass, toneOf,
 } from '../../kit'
-import type { LadderPayload, LadderRung, PlayerRef } from '../../types'
+import type {
+  LadderPayload, LadderRung, LadderStep, PlayerRef,
+} from '../../types'
 
 /** `[optimizer]` value meaning "no cap" — `gaffer.config.NO_CAP`. */
 export const NO_CAP = 15
+
+/** The bars the select offers; the saved value is added by `withCurrent`
+ *  when it is not one of them (a hand-edited 0.62 must not render blank). */
+export const HIT_BARS = [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.9, 0.95]
 
 /** "1 free transfer · cap 2 hits" — the heading, and MovesCard's line. */
 export function capText(p: LadderPayload): string {
@@ -81,6 +87,16 @@ function RungCost({ rung, weeks }: { rung: LadderRung; weeks: number }) {
 
 function pct(v: number | null | undefined): string {
   return v === null || v === undefined ? '—' : `${Math.round(v * 100)}%`
+}
+
+/** "Bank → No hits: taken, 79% — expected points alone". */
+export function stepText(step: LadderStep, rungs: LadderRung[]): string {
+  const label = (key: string) => {
+    const r = rungs.find((x) => x.key === key)
+    return r ? rungLabel(r) : key
+  }
+  return `${label(step.below)} → ${label(step.above)}: `
+    + `${step.taken ? 'taken' : 'refused'}, ${pct(step.share)} — ${step.reason}`
 }
 
 function movesText(r: LadderRung): string {
@@ -208,7 +224,9 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
     if (job.status === 'done') load()
   }, [job.status, load])
 
-  const setCap = async (key: 'max_hits' | 'max_transfers', value: number) => {
+  const setSetting = async (
+    key: 'max_hits' | 'max_transfers' | 'hit_bar', value: number,
+  ) => {
     try {
       await apiPost('/api/settings', { key, value })
     } catch (e) {
@@ -262,7 +280,8 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
         scored on the same {data?.n_draws || 200} noise draws — so the rows
         are comparable and the players they share cancel out. Your cap is
         highlighted; the rungs beyond it stay visible so you can see what it
-        costs.
+        costs. The walk steps up one rung at a time and stops at the first
+        rung that does not clear the bar; the rung it stops on is the advice.
       </p>
       <div className="mb-3 flex flex-wrap gap-3">
         <label className="flex items-center gap-2">
@@ -271,7 +290,7 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
             aria-label="Max hits"
             value={hitsValue}
             disabled={busy || !data?.gw}
-            onChange={(e) => setCap('max_hits', Number(e.target.value))}
+            onChange={(e) => setSetting('max_hits', Number(e.target.value))}
             className={INPUT_CLASS}
           >
             {withCurrent([0, 1, 2, 3], hitsValue).map((n) => (
@@ -286,7 +305,7 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
             aria-label="Max transfers"
             value={movesValue}
             disabled={busy || !data?.gw}
-            onChange={(e) => setCap('max_transfers', Number(e.target.value))}
+            onChange={(e) => setSetting('max_transfers', Number(e.target.value))}
             className={INPUT_CLASS}
           >
             <option value={0}>bank</option>
@@ -294,6 +313,19 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
               n === 0 || n === NO_CAP ? null
                 : <option key={n} value={n}>{n}</option>))}
             <option value={NO_CAP}>no cap</option>
+          </select>
+        </label>
+        <label className="flex items-center gap-2">
+          <span className="label">Hit bar</span>
+          <select
+            aria-label="Hit bar"
+            value={String(data?.bar ?? 0.6)}
+            disabled={busy || !data?.gw}
+            className={INPUT_CLASS}
+            onChange={(e) => setSetting('hit_bar', Number(e.target.value))}
+          >
+            {withCurrent(HIT_BARS, data?.bar ?? 0.6).map((b) => (
+              <option key={b} value={String(b)}>{`${Math.round(b * 100)}%`}</option>))}
           </select>
         </label>
       </div>
@@ -349,6 +381,7 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
                         <span className="inline-flex items-center gap-1.5">
                           {label}
                           {r.key === data?.recommended && <Chip>recommended</Chip>}
+                          {r.key === data?.chosen && <Chip tone="up">chosen</Chip>}
                         </span>
                       </td>
                       {r.same_as
@@ -392,6 +425,18 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
             </tbody>
           </table>
         </div>
+      )}
+      {!busy && (data?.steps ?? []).length > 0 && (
+        <ul className="mt-2 flex flex-col gap-0.5 text-text-secondary" data-testid="ladder-steps">
+          {data!.steps.map((s) => (
+            <li key={`${s.below}-${s.above}`} className={s.taken ? '' : 'text-text-muted'}>
+              {stepText(s, rungs)}
+            </li>
+          ))}
+        </ul>
+      )}
+      {!busy && data?.served_note && (
+        <p className="mt-2 text-text-muted" data-testid="ladder-served-note">{data.served_note}</p>
       )}
       {!busy && data?.cap_note && (
         <p className="mt-2 text-text-muted">{data.cap_note}</p>

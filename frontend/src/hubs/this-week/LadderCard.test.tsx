@@ -36,7 +36,13 @@ const PAYLOAD: LadderPayload = {
   cap_source: 'config',
   cap_rung: 'hits2', cap_rung_requested: 'hits2', cap_note: null,
   recommended: 'hits1', recommended_note: null, notes: [],
-  bar: 0.6, chosen: 'hits1', steps: [], served_note: null,
+  bar: 0.6, chosen: 'hits0', served_note: null,
+  steps: [
+    { below: 'bank', above: 'hits0', share: 0.79, taken: true,
+      reason: 'expected points alone', reason_kind: 'points' },
+    { below: 'hits0', above: 'hits1', share: 0.46, taken: false,
+      reason: 'Filler is 0% to play', reason_kind: 'flagged' },
+  ],
   n_draws: 200, seed: 7, sigma_source: 'bands', sigma_fallbacks: 0,
   wall_s: 31.2, note: null,
   rungs: [
@@ -275,6 +281,35 @@ describe('LadderCard', () => {
       expect(screen.getByText('hits3 did not solve')).toBeInTheDocument()
       expect(screen.getByText('open did not solve')).toBeInTheDocument()
     })
+
+  it('offers the hit bar beside the caps and writes it through settings', async () => {
+    mount()
+    const bar = await screen.findByLabelText('Hit bar')
+    expect((bar as HTMLSelectElement).value).toBe('0.6')
+    await userEvent.selectOptions(bar, '0.7')
+    await waitFor(() => expect(apiPost).toHaveBeenCalledWith(
+      '/api/settings', { key: 'hit_bar', value: 0.7 }))
+    expect(apiPost).toHaveBeenCalledWith('/api/ladder', undefined)
+  })
+
+  it('marks the chosen rung and lists every step with its share and reason', async () => {
+    mount()
+    const chosen = (await screen.findByText('No hits')).closest('tr')!
+    expect(within(chosen).getByText('chosen')).toBeInTheDocument()
+    const steps = screen.getByTestId('ladder-steps')
+    expect(steps).toHaveTextContent('Bank → No hits: taken, 79% — expected points alone')
+    expect(steps).toHaveTextContent('No hits → 1 hit: refused, 46% — Filler is 0% to play')
+  })
+
+  it('says when a rebuild chose differently from the served advice', async () => {
+    apiGet.mockImplementation(async (path: string) => (path === '/api/ladder'
+      ? { ...PAYLOAD, chosen: 'bank',
+          served_note: 'the served advice was the free transfers only rung at bar 0.60; this rebuild at 0.70 chooses bank' }
+      : { id: 'j1', status: 'done', result: PAYLOAD, error: null }))
+    mount()
+    expect(await screen.findByTestId('ladder-served-note'))
+      .toHaveTextContent('this rebuild at 0.70 chooses bank')
+  })
 
   it('says the points are raw, so they can rank against the objective',
     async () => {
