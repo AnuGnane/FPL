@@ -72,7 +72,6 @@ def test_source_defaults_to_auto_on_a_bare_strategy():
     assert Strategy(0.0, 0, 1, "neutral", "the field").source == "auto"
 
 
-@pytest.mark.xfail(strict=True, reason="Task 7 wires advise.py")
 def test_advise_applies_the_stance_after_computing_it():
     """The one protected-file change of the cycle, pinned by text: the call
     sits after ``compute_strategy`` in the league block."""

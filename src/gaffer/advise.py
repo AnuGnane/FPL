@@ -52,9 +52,10 @@ from gaffer.data.odds import (OddsClient, ags_frame, blend_attacking_odds,
 from gaffer.features.engineer import build_prediction_frame, feature_columns
 from gaffer.io import atomic_write
 from gaffer.ladder import build_ladder
-from gaffer.league_mode import (LeagueParams, captain_cover, captaincy_note,
-                                captaincy_override, compute_strategy,
-                                cover_table, tilt_ep, win_probability)
+from gaffer.league_mode import (LeagueParams, apply_stance, captain_cover,
+                                captaincy_note, captaincy_override,
+                                compute_strategy, cover_table, tilt_ep,
+                                win_probability)
 from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
 from gaffer.models.components import card_penalty
 from gaffer.models.minutes import apply_availability
@@ -716,6 +717,9 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
                     my_total, rivals, gw, history=history,
                     my_entry=cfg.entry_id,
                     params=LeagueParams.from_config(cfg))
+                # v15 §3.2: the manual stance, at full tilt, over the dial.
+                strat = apply_stance(strat, cfg.stance,
+                                     LeagueParams.from_config(cfg))
                 # Covering is computed from the squads the threats actually
                 # own, then re-keyed from FPL element ids to player codes,
                 # which is what the pool and every downstream table use.
