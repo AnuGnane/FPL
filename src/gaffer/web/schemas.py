@@ -2247,6 +2247,29 @@ class DigestPanel(BaseModel):
     digest: Digest | None = None
 
 
+class DecisionGrade(BaseModel):
+    lane: str = "transfers"
+    label: str | None = None
+    delta_pts: int | None = None
+
+
+class DecisionNote(BaseModel):
+    """v16 §5: one gameweek's deviation note and whether it may be edited."""
+
+    gw: int
+    reason: str | None = None
+    text: str = ""
+    at: str | None = None
+    state: Literal["before_deadline", "open", "graded"] = "open"
+    deadline: str | None = None
+    grade: DecisionGrade | None = None
+
+
+class DecisionWrite(BaseModel):
+    reason: str
+    text: str = ""
+
+
 class SettingRow(BaseModel):
     """One editable setting, as the Settings tab receives it (v12 W5 §6.2)."""
 

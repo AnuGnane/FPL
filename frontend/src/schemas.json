@@ -992,6 +992,136 @@
    "title": "CurrentEvaluation",
    "type": "object"
   },
+  "DecisionGrade": {
+   "properties": {
+    "delta_pts": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "label": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "lane": {
+     "default": "transfers",
+     "type": "string"
+    }
+   },
+   "required": [
+    "delta_pts",
+    "label",
+    "lane"
+   ],
+   "title": "DecisionGrade",
+   "type": "object"
+  },
+  "DecisionNote": {
+   "description": "v16 \u00a75: one gameweek's deviation note and whether it may be edited.",
+   "properties": {
+    "at": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "deadline": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "grade": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/DecisionGrade"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "gw": {
+     "type": "integer"
+    },
+    "reason": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "state": {
+     "default": "open",
+     "enum": [
+      "before_deadline",
+      "open",
+      "graded"
+     ],
+     "type": "string"
+    },
+    "text": {
+     "default": "",
+     "type": "string"
+    }
+   },
+   "required": [
+    "at",
+    "deadline",
+    "grade",
+    "gw",
+    "reason",
+    "state",
+    "text"
+   ],
+   "title": "DecisionNote",
+   "type": "object"
+  },
+  "DecisionWrite": {
+   "properties": {
+    "reason": {
+     "type": "string"
+    },
+    "text": {
+     "default": "",
+     "type": "string"
+    }
+   },
+   "required": [
+    "reason",
+    "text"
+   ],
+   "title": "DecisionWrite",
+   "type": "object"
+  },
   "DecompositionCell": {
    "properties": {
     "hits": {

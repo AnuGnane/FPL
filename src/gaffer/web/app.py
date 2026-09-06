@@ -24,7 +24,7 @@ from gaffer.errors import GafferError
 from gaffer.web.job_kinds import JOB_KINDS
 from gaffer.web.jobs import JobRegistry, JobRunner
 from gaffer.web.routers import (advice, assets, chips, components, confidence,
-                                digest,
+                                decisions, digest,
                                 drafts, fixtures, jobs, journal, ladder,
                                 league,
                                 league_sim, live, meta, misses, news,
@@ -86,6 +86,7 @@ def create_app(*, token: str | None = None) -> FastAPI:
     app.include_router(components.router)
     app.include_router(digest.router)
     app.include_router(confidence.router)
+    app.include_router(decisions.router)
     app.include_router(drafts.router)
     app.include_router(fixtures.router)
     app.include_router(jobs.router)

@@ -537,6 +537,38 @@ export interface HeadMetrics {
 }
 /**
  * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "DecisionGrade".
+ */
+export interface DecisionGrade {
+  delta_pts: number | null
+  label: string | null
+  lane: string
+}
+/**
+ * v16 §5: one gameweek's deviation note and whether it may be edited.
+ *
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "DecisionNote".
+ */
+export interface DecisionNote {
+  at: string | null
+  deadline: string | null
+  grade: DecisionGrade | null
+  gw: number
+  reason: string | null
+  state: 'before_deadline' | 'open' | 'graded'
+  text: string
+}
+/**
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "DecisionWrite".
+ */
+export interface DecisionWrite {
+  reason: string
+  text: string
+}
+/**
+ * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "DecompositionCell".
  */
 export interface DecompositionCell {
