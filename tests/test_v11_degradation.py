@@ -366,13 +366,18 @@ def test_the_route_total_did_not_move_and_this_is_where_it_is_pinned(
     # v13 §3.2 (specs/2026-09-04-gaffer-v13-transfer-ladder-design.md)
     47 → 48, and the one is ``/api/ladder`` — GET and POST share one path
     key, like ``/api/settings`` — the transfer ladder.
+
+    # v15 §5.4 (specs/2026-09-06-gaffer-v15-leagues-design.md)
+    48 → 49, and the one is ``/api/league/leagues`` — the overview of every
+    league the entry is in.
     """
     monkeypatch.chdir(tmp_path)
     paths = set(create_app().openapi()["paths"])
-    assert len(paths) == 48
+    assert len(paths) == 49
     assert "/api/meta/freshness" in paths
     assert "/api/settings" in paths
     assert "/api/ladder" in paths
+    assert "/api/league/leagues" in paths
     # v11's own claim, untouched: /api/meta/freshness collides with none of
     # these three prefixes.
     assert not [p for p in paths
