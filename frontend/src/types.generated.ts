@@ -1452,6 +1452,71 @@ export interface LeagueWhatIfRow {
 }
 /**
  * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "LeaguesOverview".
+ */
+export interface LeaguesOverview {
+  /**
+   * The focus league's tilt as the next advise will see it: the solve
+   * state's λ with a manual stance applied (plan R2).
+   */
+  focus_lam: number
+  focus_league_id: number
+  /**
+   * ``None`` when the focus is not one of the private leagues, in which
+   * case ``focus_warning`` says so.
+   */
+  focus_name: string | null
+  focus_stance: 'chase' | 'defend' | 'neutral'
+  focus_warning: string | null
+  gw: number | null
+  private: PrivateLeagueRow[]
+  public: PublicLeagueRow[]
+  /**
+   * ``[league] stance`` as configured.
+   */
+  stance: 'auto' | 'chase' | 'defend' | 'neutral'
+}
+/**
+ * One private mini-league the entry is in (v15 §5.1).
+ *
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "PrivateLeagueRow".
+ */
+export interface PrivateLeagueRow {
+  /**
+   * ``rank_count`` from the entry payload; ``None`` before the league has
+   * a scored gameweek.
+   */
+  entries: number | null
+  gap: number | null
+  gap_kind: ('ahead' | 'behind') | null
+  is_focus: boolean
+  last_rank: number | null
+  league_id: number
+  name: string
+  rank: number | null
+  started: boolean
+  /**
+   * Gap-sign only — what the dial would lean to. The deadband and λ
+   * appear when the league is opened (``/race?league_id=``).
+   */
+  would: ('chase' | 'defend') | null
+}
+/**
+ * A public or system league: rank line only (v15 §1.1).
+ *
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "PublicLeagueRow".
+ */
+export interface PublicLeagueRow {
+  entries: number | null
+  last_rank: number | null
+  league_id: number
+  name: string
+  rank: number | null
+}
+/**
+ * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "LivePlayer".
  */
 export interface LivePlayer {

@@ -3153,6 +3153,94 @@
    "title": "LeagueWhatIfRow",
    "type": "object"
   },
+  "LeaguesOverview": {
+   "properties": {
+    "focus_lam": {
+     "description": "The focus league's tilt as the next advise will see it: the solve\nstate's \u03bb with a manual stance applied (plan R2).",
+     "type": "number"
+    },
+    "focus_league_id": {
+     "type": "integer"
+    },
+    "focus_name": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "``None`` when the focus is not one of the private leagues, in which\ncase ``focus_warning`` says so."
+    },
+    "focus_stance": {
+     "enum": [
+      "chase",
+      "defend",
+      "neutral"
+     ],
+     "type": "string"
+    },
+    "focus_warning": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "gw": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "private": {
+     "items": {
+      "$ref": "#/definitions/PrivateLeagueRow"
+     },
+     "type": "array"
+    },
+    "public": {
+     "items": {
+      "$ref": "#/definitions/PublicLeagueRow"
+     },
+     "type": "array"
+    },
+    "stance": {
+     "description": "``[league] stance`` as configured.",
+     "enum": [
+      "auto",
+      "chase",
+      "defend",
+      "neutral"
+     ],
+     "type": "string"
+    }
+   },
+   "required": [
+    "focus_lam",
+    "focus_league_id",
+    "focus_name",
+    "focus_stance",
+    "focus_warning",
+    "gw",
+    "private",
+    "public",
+    "stance"
+   ],
+   "title": "LeaguesOverview",
+   "type": "object"
+  },
   "LivePlayer": {
    "properties": {
     "code": {
@@ -5284,6 +5372,166 @@
     "points"
    ],
    "title": "PriceSeries",
+   "type": "object"
+  },
+  "PrivateLeagueRow": {
+   "description": "One private mini-league the entry is in (v15 \u00a75.1).",
+   "properties": {
+    "entries": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "``rank_count`` from the entry payload; ``None`` before the league has\na scored gameweek."
+    },
+    "gap": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "gap_kind": {
+     "anyOf": [
+      {
+       "enum": [
+        "ahead",
+        "behind"
+       ],
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "is_focus": {
+     "type": "boolean"
+    },
+    "last_rank": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "league_id": {
+     "type": "integer"
+    },
+    "name": {
+     "type": "string"
+    },
+    "rank": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "started": {
+     "type": "boolean"
+    },
+    "would": {
+     "anyOf": [
+      {
+       "enum": [
+        "chase",
+        "defend"
+       ],
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Gap-sign only \u2014 what the dial would lean to. The deadband and \u03bb\nappear when the league is opened (``/race?league_id=``)."
+    }
+   },
+   "required": [
+    "entries",
+    "gap",
+    "gap_kind",
+    "is_focus",
+    "last_rank",
+    "league_id",
+    "name",
+    "rank",
+    "started",
+    "would"
+   ],
+   "title": "PrivateLeagueRow",
+   "type": "object"
+  },
+  "PublicLeagueRow": {
+   "description": "A public or system league: rank line only (v15 \u00a71.1).",
+   "properties": {
+    "entries": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "last_rank": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "league_id": {
+     "type": "integer"
+    },
+    "name": {
+     "type": "string"
+    },
+    "rank": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "required": [
+    "entries",
+    "last_rank",
+    "league_id",
+    "name",
+    "rank"
+   ],
+   "title": "PublicLeagueRow",
    "type": "object"
   },
   "QualityData": {

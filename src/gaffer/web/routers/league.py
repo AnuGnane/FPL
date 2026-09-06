@@ -8,13 +8,18 @@ a readable 422 so the page can show a retry button instead of a stack trace
 
 from __future__ import annotations
 
+import threading
+import time
+
 from fastapi import APIRouter
 
 from gaffer.artifacts import latest_gw, load_solve_state
 from gaffer.config import load_config
 from gaffer.errors import GafferError
-from gaffer.league_mode import Strategy, explain_lam, win_probability
-from gaffer.web.schemas import (GapPoint, GwPoint, LeagueRace, RivalDetail,
+from gaffer.league_mode import (LeagueParams, Strategy, apply_stance,
+                                explain_lam, win_probability)
+from gaffer.web.schemas import (GapPoint, GwPoint, LeagueRace, LeaguesOverview,
+                                PrivateLeagueRow, PublicLeagueRow, RivalDetail,
                                 RivalSummary, SquadPlayer, StandingRow,
                                 Trajectory, WinProb)
 
@@ -44,6 +49,115 @@ def _guard(fn, *args, **kwargs):
     except Exception as exc:  # noqa: BLE001 — network, JSON, schema drift
         raise GafferError(f"FPL API unavailable ({exc}) — retry in a moment") \
             from exc
+
+
+OVERVIEW_TTL_S = 300.0
+"""How long the league list and its gaps are served from memory. Roughly
+eight FPL calls uncached, asked for by two hubs."""
+
+_OVERVIEW: dict[int, tuple[float, dict]] = {}
+"""entry_id -> (monotonic stamp, rows). Holds only what the FPL API said —
+never the focus or the stance, which come from config on every request."""
+_OVERVIEW_LOCK = threading.Lock()
+
+
+def _maybe_int(value) -> int | None:
+    return None if value is None else int(value)
+
+
+def _stance_of(lam: float) -> str:
+    return "neutral" if lam == 0 else ("chase" if lam > 0 else "defend")
+
+
+def _league_rows(client, cfg) -> dict:
+    """The entry's classic leagues, split by the private flag, with a gap per
+    started private league from one standings page. Cached per entry for
+    ``OVERVIEW_TTL_S``.
+
+    The gap is the leader's or the runner-up's total against mine: when I am
+    not on page 1 my total is the entry payload's own. A league of one, or
+    one with no scored gameweek yet, has no gap.
+    """
+    now = time.monotonic()
+    with _OVERVIEW_LOCK:
+        hit = _OVERVIEW.get(cfg.entry_id)
+        if hit is not None and now - hit[0] < OVERVIEW_TTL_S:
+            return hit[1]
+    entry = _guard(client.get_entry, cfg.entry_id)
+    my_total = int(entry.get("summary_overall_points") or 0)
+    private, public = [], []
+    for league in (entry.get("leagues") or {}).get("classic") or []:
+        base = {"league_id": int(league["id"]), "name": str(league["name"]),
+                "rank": _maybe_int(league.get("entry_rank")),
+                "last_rank": _maybe_int(league.get("entry_last_rank")),
+                "entries": _maybe_int(league.get("rank_count"))}
+        if league.get("league_type") != "x":
+            public.append(base)
+            continue
+        started = base["entries"] is not None
+        gap = gap_kind = would = None
+        if started and (base["entries"] or 0) > 1:
+            page = _guard(client.get_league_standings, base["league_id"], 1)
+            results = page["standings"]["results"]
+            mine = next((r for r in results
+                         if int(r["entry"]) == cfg.entry_id), None)
+            total = int(mine["total"]) if mine else my_total
+            others = sorted((int(r["total"]) for r in results
+                             if int(r["entry"]) != cfg.entry_id), reverse=True)
+            if others:
+                if base["rank"] == 1:
+                    gap, gap_kind, would = total - others[0], "ahead", "defend"
+                else:
+                    gap, gap_kind, would = others[0] - total, "behind", "chase"
+        private.append({**base, "started": started, "gap": gap,
+                        "gap_kind": gap_kind, "would": would})
+    private.sort(key=lambda r: (r["rank"] if r["rank"] is not None else 10**9,
+                                -(r["entries"] or 0)))
+    public.sort(key=lambda r: -(r["entries"] or 0))
+    rows = {"private": private, "public": public,
+            "gw": _maybe_int(entry.get("current_event"))}
+    with _OVERVIEW_LOCK:
+        _OVERVIEW[cfg.entry_id] = (now, rows)
+    return rows
+
+
+def _focus_strategy(cfg) -> Strategy:
+    """The focus league's tilt as the next advise will see it (plan R2): the
+    solve state's λ, then the manual stance over it."""
+    gw = latest_gw()
+    state = load_solve_state(gw) if gw is not None else None
+    lam = float(state.lam) if state else 0.0
+    base = Strategy(lam=lam, gap=0, weeks_left=1, stance=_stance_of(lam),
+                    rival_name="the field")
+    return apply_stance(base, cfg.stance, LeagueParams.from_config(cfg))
+
+
+@router.get("/leagues", response_model=LeaguesOverview)
+def leagues() -> LeaguesOverview:
+    """Every league the entry is in (v15 §5.1). Does not require a focus:
+    with none, or a focus that is not private, the page still lists the
+    leagues and says so in ``focus_warning``."""
+    cfg = load_config()
+    rows = _league_rows(fpl_client(), cfg)
+    private = [PrivateLeagueRow(**r, is_focus=r["league_id"] == cfg.league_id)
+               for r in rows["private"]]
+    focus = next((r for r in private if r.is_focus), None)
+    strategy = _focus_strategy(cfg)
+    if focus is not None:
+        warning = None
+    elif cfg.league_id:
+        warning = (f"focus league {cfg.league_id} is not one of your private "
+                   "leagues — make one the focus below, or reset the focus "
+                   "in Settings")
+    else:
+        warning = "no focus league yet — make one the focus below"
+    return LeaguesOverview(
+        focus_league_id=int(cfg.league_id), focus_name=focus.name if focus else None,
+        stance=cfg.stance, focus_stance=strategy.stance,
+        focus_lam=round(strategy.lam, 3), focus_warning=warning,
+        private=private,
+        public=[PublicLeagueRow(**r) for r in rows["public"]],
+        gw=rows["gw"])
 
 
 def _standings(client, league_id: int) -> list[dict]:

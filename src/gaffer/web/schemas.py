@@ -194,6 +194,52 @@ class LeagueRace(BaseModel):
     lam_explained: str
 
 
+class PrivateLeagueRow(BaseModel):
+    """One private mini-league the entry is in (v15 §5.1)."""
+
+    league_id: int
+    name: str
+    rank: int | None = None
+    last_rank: int | None = None
+    entries: int | None = None
+    """``rank_count`` from the entry payload; ``None`` before the league has
+    a scored gameweek."""
+    started: bool
+    gap: int | None = None
+    gap_kind: Literal["ahead", "behind"] | None = None
+    would: Literal["chase", "defend"] | None = None
+    """Gap-sign only — what the dial would lean to. The deadband and λ
+    appear when the league is opened (``/race?league_id=``)."""
+    is_focus: bool
+
+
+class PublicLeagueRow(BaseModel):
+    """A public or system league: rank line only (v15 §1.1)."""
+
+    league_id: int
+    name: str
+    rank: int | None = None
+    last_rank: int | None = None
+    entries: int | None = None
+
+
+class LeaguesOverview(BaseModel):
+    focus_league_id: int
+    focus_name: str | None = None
+    """``None`` when the focus is not one of the private leagues, in which
+    case ``focus_warning`` says so."""
+    stance: Literal["auto", "chase", "defend", "neutral"]
+    """``[league] stance`` as configured."""
+    focus_stance: Literal["chase", "defend", "neutral"]
+    focus_lam: float
+    """The focus league's tilt as the next advise will see it: the solve
+    state's λ with a manual stance applied (plan R2)."""
+    focus_warning: str | None = None
+    private: list[PrivateLeagueRow] = Field(default_factory=list)
+    public: list[PublicLeagueRow] = Field(default_factory=list)
+    gw: int | None = None
+
+
 class RivalBeat(BaseModel):
     entry: int
     name: str
