@@ -130,16 +130,19 @@ WHITELIST: tuple[SettingKey, ...] = (
                "Max transfers per week", "int", 0, 15,
                "15 = no cap; 0 = bank (no moves at all). Also edited from "
                "the transfer ladder."),
-    # v15 §4.2 (specs/2026-09-06-gaffer-v15-leagues-design.md). The focus
-    # league. Written as [league] focus, read back as the *effective*
-    # Config.league_id, which the loader resolves from the overlay over
-    # fpl.league_id — so `field` is league_id and `toml_key` is focus, and
-    # fpl.* itself is never written. The League page's "make focus" writes
-    # this row; hi is a numeric bound because the range check needs one.
-    SettingKey("league_id", "league", "focus", "Focus league",
+    # v15 §4.2 (specs/2026-09-06-gaffer-v15-leagues-design.md), plan R7.
+    # The focus league. Written as [league] focus and read back through a
+    # reader as the *effective* Config.league_id, which the loader resolves
+    # from the overlay over fpl.league_id. A reader rather than a "config"
+    # entry named league_id, so the v12 W5 pin that this whitelist never
+    # names league_id holds as written — and fpl.* itself is never written.
+    # The League page's "make focus" writes this row; hi is a numeric bound
+    # because the range check needs one.
+    SettingKey("focus", "league", "focus", "Focus league",
                "int", 1, 99_999_999,
                "The private league that sets the plan. Pick it on the League "
-               "page; reset to fall back to fpl.league_id."),
+               "page; reset to fall back to fpl.league_id.",
+               source="reader", reader="gaffer.config:focus_league"),
     SettingKey("stance", "league", "stance", "Stance",
                "choice", None, None,
                "Auto lets the standings set the tilt. Chase and defend force "

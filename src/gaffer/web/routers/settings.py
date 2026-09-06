@@ -114,12 +114,6 @@ def _panel() -> SettingsPanel:
             source = "local"
         elif entry.toml_key in _table(base_raw, entry.section):
             source = "base"
-        # v15 §4.2: the focus row is written as [league] focus but falls back
-        # to fpl.league_id, which is where a reset lands it — so its "base"
-        # is that key, in the one table this endpoint never writes.
-        elif (entry.field == "league_id"
-              and "league_id" in _table(base_raw, "fpl")):
-            source = "base"
         else:
             source = "default"
         rows.append(SettingRow(

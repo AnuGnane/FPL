@@ -55,7 +55,7 @@ def test_the_panel_names_every_live_key_and_no_dead_one(client):
     assert served <= {entry.field for entry in WHITELIST}
 
 
-def test_exactly_one_entry_is_read_through_a_reader_and_it_is_price_timing():
+def test_the_readers_are_price_timing_and_the_focus():
     """Orchestrator ruling 3, 2026-09-02. price_timing is popped out of
     [optimizer] before the splat, so it never becomes a Config field and a
     getattr-based liveness check would drop the one key that is in fact
@@ -65,7 +65,9 @@ def test_exactly_one_entry_is_read_through_a_reader_and_it_is_price_timing():
     from gaffer.config import Config
 
     readers = [e for e in WHITELIST if e.source == "reader"]
-    assert [e.field for e in readers] == ["price_timing"]
+    # v15 (plan R7): `focus` is the second reader — it reads the *effective*
+    # league_id, and is not named league_id so the secrets pin holds.
+    assert [e.field for e in readers] == ["price_timing", "focus"]
     fields = {f.name for f in dataclasses.fields(Config)}
     assert "price_timing" not in fields, (
         "price_timing became a Config field — move it to source='config' and "
@@ -117,12 +119,10 @@ def test_the_secrets_are_not_in_the_whitelist():
     or letting it be rewritten — from an unauthenticated GET would be the
     interface handing over its own front door."""
     named = {e.field for e in WHITELIST}
-    # v15 §4.2: league_id left this list — it is editable as [league] focus,
-    # and fpl.league_id itself is still never written.
-    assert not named & {"odds_api_key", "web_token", "entry_id",
+    assert not named & {"odds_api_key", "web_token", "entry_id", "league_id",
                         "train_seasons", "backup_rsync_target",
                         "news_llm_command"}
-    assert BY_FIELD["league_id"].section == "league"
+    assert BY_FIELD["focus"].section == "league"    # v15: the focus row
 
 
 def test_price_timing_is_written_into_optimizer_like_any_other_key(client,

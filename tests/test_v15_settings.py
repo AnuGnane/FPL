@@ -32,10 +32,10 @@ def _overlay(tmp_path):
 
 
 def test_the_focus_row_reads_the_effective_league_id(client):
-    row = _row(client, "league_id")
+    row = _row(client, "focus")
     assert row["label"] == "Focus league"
     assert row["kind"] == "int" and row["value"] == 5
-    assert row["section"] == "league" and row["source"] == "base"
+    assert row["section"] == "league" and row["source"] == "default"
 
 
 def test_the_stance_row_is_a_choice_with_four_options(client):
@@ -54,20 +54,20 @@ def test_every_other_row_has_no_choices(client):
 def test_a_focus_write_lands_in_league_focus_and_not_in_config_toml(
         client, tmp_path):
     body = client.post("/api/settings",
-                       json={"key": "league_id", "value": 77}).json()
+                       json={"key": "focus", "value": 77}).json()
     assert _overlay(tmp_path) == {"league": {"focus": 77}}
     assert "focus" not in (tmp_path / "config.toml").read_text()
-    row = next(r for r in body["rows"] if r["key"] == "league_id")
+    row = next(r for r in body["rows"] if r["key"] == "focus")
     assert row["value"] == 77 and row["source"] == "local"
 
 
 def test_resetting_the_focus_falls_back_to_fpl_league_id(client, tmp_path):
-    client.post("/api/settings", json={"key": "league_id", "value": 77})
+    client.post("/api/settings", json={"key": "focus", "value": 77})
     body = client.post("/api/settings",
-                       json={"key": "league_id", "value": None}).json()
+                       json={"key": "focus", "value": None}).json()
     assert _overlay(tmp_path) == {}
-    row = next(r for r in body["rows"] if r["key"] == "league_id")
-    assert row["value"] == 5 and row["source"] == "base"
+    row = next(r for r in body["rows"] if r["key"] == "focus")
+    assert row["value"] == 5 and row["source"] == "default"
 
 
 def test_a_stance_write_is_the_word_itself(client, tmp_path):
@@ -89,14 +89,16 @@ def test_a_stance_outside_the_four_is_refused_and_writes_nothing(
 
 
 def test_a_focus_below_one_is_refused(client, tmp_path):
-    resp = client.post("/api/settings", json={"key": "league_id", "value": 0})
+    resp = client.post("/api/settings", json={"key": "focus", "value": 0})
     assert resp.status_code == 422
     assert _overlay(tmp_path) == {}
 
 
 def test_the_whitelist_declares_the_two_rows_in_the_league_table():
-    assert BY_FIELD["league_id"].section == "league"
-    assert BY_FIELD["league_id"].toml_key == "focus"
+    assert BY_FIELD["focus"].section == "league"
+    assert BY_FIELD["focus"].toml_key == "focus"
+    assert BY_FIELD["focus"].source == "reader"
+    assert "league_id" not in BY_FIELD      # the v12 W5 pin, kept as written
     assert BY_FIELD["stance"].toml_key == "stance"
     assert BY_FIELD["stance"].choices == ("auto", "chase", "defend", "neutral")
     assert all(e.choices == () for e in WHITELIST if e.kind != "choice")

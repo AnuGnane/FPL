@@ -52,6 +52,7 @@
 - **R3 A focus that is not private is lenient.** `race`/`rivals`/`sim` with no `league_id` serve whatever `cfg.league_id` is, as today, naming it from the entry's classic list when present and "League {id}" otherwise. Only an explicit `league_id` that is not one of the private leagues is refused.
 - **R4 The non-focus Strategy uses the histories the race already fetched.** No second history fetch and no cache file: the trajectory rows become the `history` frame.
 - **R5 Focus league bound.** The int row needs a numeric `hi` (the range check does `<= hi`); it is 99,999,999.
+- **R7 The focus row is a reader named `focus`.** Task 3 found the protected `tests/test_v12_w5_degradation.py` pins that the whitelist never names `league_id`. The row is therefore `SettingKey("focus", ..., source="reader", reader="gaffer.config:focus_league")`: the wire key the hub writes is `focus`, the value read back is the effective `Config.league_id`, and the pin holds unchanged. Its `source` is `default` when nothing sets `[league] focus`.
 - **R6 File layout.** New Python tests are new files (`tests/test_league_stance.py`, `tests/test_v15_config.py`, `tests/test_v15_settings.py`, `tests/test_web_league_overview.py`); existing `tests/test_web_league.py` and `tests/test_web_league_sim.py` gain tests and a richer `FakeClient`.
 
 ## File map
@@ -2049,7 +2050,7 @@ In `League.test.tsx`: add `league_name: 'Focus FC League', focus: true, stance_s
     const nlt = await screen.findByTestId('league-9')
     await userEvent.click(within(nlt).getByRole('button', { name: 'make focus' }))
     await waitFor(() => expect(apiPost).toHaveBeenCalledWith(
-      '/api/settings', { key: 'league_id', value: 9 }))
+      '/api/settings', { key: 'focus', value: 9 }))
     await waitFor(() => expect(
       apiGet.mock.calls.filter(([p]) => p === '/api/league/leagues').length)
       .toBeGreaterThan(1))
@@ -2161,7 +2162,7 @@ export default function League() {
   // Both writes go through the settings endpoint (v15 §4.2), so the Model
   // tab, the CLI and the solve job read the same file. A refusal is a toast
   // and the control stays where the server left it.
-  function write(key: 'league_id' | 'stance', value: number | string,
+  function write(key: 'focus' | 'stance', value: number | string,
                  what: string) {
     setBusy(true)
     apiPost('/api/settings', { key, value })
@@ -2169,7 +2170,7 @@ export default function League() {
       .catch((e) => toast('negative', `Could not ${what} — ${errorText(e)}`))
       .finally(() => setBusy(false))
   }
-  const onFocus = (id: number) => write('league_id', id, 'set the focus league')
+  const onFocus = (id: number) => write('focus', id, 'set the focus league')
   const onStance = (s: Stance) => write('stance', s, 'set the stance')
 
   if (missing !== null && overview === null) {

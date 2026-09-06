@@ -505,6 +505,18 @@ def lineup_providers(path: Path | str = "config.toml") -> list[str]:
     return _providers(raw.get("news", {}).get("lineup_providers"))
 
 
+def focus_league() -> int:
+    """v15 §4.2 (plan R7): the effective focus league id, for the settings
+    row's reader. ``[league] focus`` over ``fpl.league_id``, exactly as
+    :func:`load_config` resolves ``Config.league_id``. Never raises: a clone
+    with no config.toml reads 0, which the row's bound (lo 1) marks as unset.
+    """
+    try:
+        return int(load_config().league_id)
+    except Exception:  # noqa: BLE001 — a settings reader never raises
+        return 0
+
+
 @lru_cache(maxsize=1)
 def serving_config() -> Config:
     """The config as the *serve-time seams* read it — never raising.

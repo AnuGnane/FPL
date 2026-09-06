@@ -118,7 +118,7 @@ Two new rows in section `league`:
 
 | field | toml_key | label | kind | bounds |
 |---|---|---|---|---|
-| `league_id` | `focus` | Focus league | `int` | lo 1, hi none |
+| `focus` (reader of the effective `league_id`) | `focus` | Focus league | `int` | lo 1, hi 99,999,999 |
 | `stance` | `stance` | Stance | `choice` | `auto, chase, defend, neutral` |
 
 - New kind `choice`: `SettingKey` gains `choices: tuple[str, ...] = ()`.
@@ -126,8 +126,10 @@ Two new rows in section `league`:
   in `choices`, else the existing 422 refusal shape. `SettingRow` (schema)
   gains `choices: list[str]`, empty for other kinds. The Model → Settings
   tab renders a `choice` row as a `Segmented` control.
-- Reading: `current_value` already does `getattr(cfg, field)`, so "Focus
-  league" reads the effective focus and "Stance" reads `cfg.stance`.
+- Reading: "Stance" reads `cfg.stance` through `getattr`. "Focus league" is a
+  `reader` row (`gaffer.config:focus_league`) returning the effective
+  `Config.league_id`, named `focus` rather than `league_id` so the v12 W5
+  pin that the whitelist never names `league_id` holds (plan R7).
 - Writing `value: None` removes the overlay key, as today: focus falls back
   to `fpl.league_id`, stance to `auto`.
 - The module docstring's "entry/league ids are untouchable" sentence is
