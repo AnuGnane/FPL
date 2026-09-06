@@ -229,3 +229,38 @@ def test_no_advice_on_disk_is_a_note(tmp_path, monkeypatch):
     monkeypatch.setattr("gaffer.brief.latest_gw", lambda: None)
     out = run_brief(None)
     assert out["written"] is False and "no advice" in out["note"]
+
+
+# --- review fixes: reasons are sayable, chips are allowed, a ban evicts ------
+
+def test_a_name_and_a_number_that_live_only_in_a_step_reason_are_sayable():
+    facts = {**FACTS, "restraint": {**FACTS["restraint"], "steps": [
+        {"below_label": "free transfers only", "above_label": "1 hit",
+         "share_pct": 46, "taken": False,
+         "reason": "Fernandes is 96% to drop tonight"}]}}
+    prose = "The step to 1 hit was refused at 46% because Fernandes is 96% to drop tonight."
+    assert check_brief(prose, facts) == []
+
+
+def test_the_chips_as_the_prose_spells_them_are_not_names():
+    prose = ("A Bench Boost is planned for GW5. The Triple Captain and the "
+             "Free Hit stay in hand, as does the Wildcard; Plan A holds.")
+    assert check_brief(prose, FACTS) == []
+
+
+def test_a_failed_check_evicts_the_cached_prose(artifacts_on_disk, monkeypatch):
+    from gaffer import brief as brief_mod
+
+    calls = []
+
+    def fake(cmd, prompt, timeout_s):
+        calls.append(1)
+        return "The obvious captain is Haaland."
+    monkeypatch.setattr(brief_mod, "run_command", fake)
+    cache = artifacts_on_disk / "cache"
+    cfg = type("C", (), {"news_llm_command": "claude -p",
+                         "news_llm_timeout_s": 1})()
+    out = brief_mod.run_brief(4, cfg=cfg, cache_dir=cache)
+    assert out["written"] is False and not list(cache.glob("*.json"))
+    brief_mod.run_brief(4, cfg=cfg, cache_dir=cache)
+    assert len(calls) == 2

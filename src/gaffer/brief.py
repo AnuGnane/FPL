@@ -45,11 +45,14 @@ NOTE_FILE = "brief_note.json"
 
 ALLOW = frozenset({
     "GW", "FPL", "XI", "I", "British", "Premier", "League", "Bank", "Free",
-    "Hit", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
+    "Hit", "Bench", "Boost", "Triple", "Captain", "Wildcard", "Fantasy",
+    "Plan", "A", "B", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
     "Sunday", "January", "February", "March", "April", "May", "June", "July",
     "August", "September", "October", "November", "December",
 })
-"""Capitalised tokens that are never a name (plan R8)."""
+"""Capitalised tokens that are never a name (plan R8): the product, the
+chips as the prose spells them ("Bench Boost", "Triple Captain", "Free
+Hit"), "Plan A"/"Plan B", days and months."""
 
 _NUMBER = re.compile(r"[-+−]?\d+(?:[.,]\d+)?")
 _SENTENCE = re.compile(r"(?<=[.!?])\s+")
@@ -281,9 +284,17 @@ def _leaves(node):
 
 
 def fact_numbers(facts: dict) -> set[str]:
-    """Every number in the facts, in the forms the prose may write it."""
+    """Every number in the facts, in the forms the prose may write it —
+    the numeric leaves, and the numbers inside the strings: a step's reason
+    ("Fernandes is 96% to drop tonight"), the note, a data warning. The
+    prompt asks for every reason to be said, so what a reason says has to
+    be sayable."""
     out: set[str] = set()
     for leaf in _leaves(facts):
+        if isinstance(leaf, str):
+            out |= {tok.replace("−", "-").replace(",", ".").lstrip("+")
+                    for tok in _NUMBER.findall(leaf)}
+            continue
         if isinstance(leaf, bool) or not isinstance(leaf, (int, float)):
             continue
         forms = {str(leaf)}
@@ -297,30 +308,19 @@ def fact_numbers(facts: dict) -> set[str]:
 
 
 def fact_names(facts: dict) -> set[str]:
-    """Every name string, whole and token by token (``"Shocky Supplies"``,
-    ``"Shocky"``, ``"Supplies"``; a hyphenated name stays whole)."""
+    """Every string in the facts, whole and token by token (``"Shocky
+    Supplies"``, ``"Shocky"``, ``"Supplies"``; a hyphenated name stays
+    whole). Every string, not only the name fields: a refused step's reason
+    names the player the rung above would have sold, who is in no move
+    list, and the prompt asks for that reason to be said."""
     out: set[str] = set()
-
-    def take(value):
-        if isinstance(value, str) and value:
-            out.add(value)
-            out.update(value.split())
-
-    for node in _walk(facts):
-        if isinstance(node, dict):
-            for k in ("in", "out", "name", "rival"):
-                take(node.get(k))
+    for leaf in _leaves(facts):
+        if isinstance(leaf, str) and leaf:
+            out.add(leaf)
+            out.update(_POSSESSIVE.sub("", tok.strip(_STRIP))
+                       for tok in leaf.split())
+    out.discard("")
     return out
-
-
-def _walk(node):
-    yield node
-    if isinstance(node, dict):
-        for v in node.values():
-            yield from _walk(v)
-    elif isinstance(node, list):
-        for v in node:
-            yield from _walk(v)
 
 
 def check_brief(prose: str, facts: dict) -> list[str]:
@@ -421,6 +421,9 @@ def run_brief(gw: int | None = None, *, cfg=None,
             print(f"brief check: {line}")
         note = f"the brief did not pass its check this week ({offences[0]})"
         brief_path(gw).unlink(missing_ok=True)
+        # The banned prose leaves the cache too: a retry from the button is
+        # a fresh sample, not the same sentence refused a second time.
+        cached.unlink(missing_ok=True)
         _bank_note(gw, note)
         return {"gw": gw, "written": False, "note": note, "path": None}
     payload = {"gw": gw, "run_stamp": stamp, "prose": prose, "facts": facts,
