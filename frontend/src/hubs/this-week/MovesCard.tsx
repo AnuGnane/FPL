@@ -2,6 +2,7 @@ import {
   Bar, Card, Chip, PosBadge, TABLE_CLASS, THEAD_CLASS, TR_CLASS, fmtNum,
   fmtPct, tdClass, thClass,
 } from '../../kit'
+import type { Objective, Restraint } from '../../types'
 
 export interface Move {
   code: number
@@ -19,10 +20,33 @@ export interface MovesCardProps {
   hits: number
   /** v13: "1 free transfer · cap 2 hits", from the ladder payload. */
   capLine?: string | null
+  /** v16: the ladder's restraint walk, absent on an older payload. */
+  restraint?: Restraint | null
+  /** v16: the solver's own week, printed when it differs from the served
+   *  plan. */
+  objective?: Objective | null
+}
+
+/** A rung key as a sentence names it. */
+export function rungLabel(key: string): string {
+  if (key === 'bank') return 'Bank'
+  if (key === 'open') return 'No cap'
+  if (key === 'hits0') return 'Free transfers only'
+  const n = Number(key.replace('hits', ''))
+  return `${n} hit${n === 1 ? '' : 's'}`
+}
+
+/** The one line the walk is worth: where it stopped, and why. */
+export function restraintText(r: Restraint): string {
+  const refused = r.steps.find((s) => !s.taken)
+  const head = rungLabel(r.chosen ?? 'bank')
+  if (!refused) return `${head} — every step up the ladder was taken`
+  return `${head} — the step to ${rungLabel(refused.above).toLowerCase()} was refused `
+    + `at ${Math.round(refused.share * 100)}%: ${refused.reason}`
 }
 
 export default function MovesCard(
-  { buys, sells, hits, capLine }: MovesCardProps,
+  { buys, sells, hits, capLine, restraint, objective }: MovesCardProps,
 ) {
   const rows: Array<['IN' | 'OUT', Move]> = [
     ...buys.map((m) => ['IN', m] as ['IN', Move]),
@@ -33,6 +57,19 @@ export default function MovesCard(
       {capLine && (
         <p className="mb-2 text-text-secondary" data-testid="moves-cap-line">
           {capLine}
+        </p>
+      )}
+      {restraint && restraint.chosen && (
+        <p className="mb-2 text-text-secondary" data-testid="moves-restraint-line">
+          {restraintText(restraint)}
+        </p>
+      )}
+      {restraint && !restraint.agrees && objective && (
+        <p className="mb-2 text-text-muted" data-testid="moves-objective-line">
+          {'The objective wanted '}
+          {[...objective.buys.map((m) => `${m.name} in`),
+            ...objective.sells.map((m) => `${m.name} out`)].join(', ') || 'no moves'}
+          {`, ${objective.hits} hit${objective.hits === 1 ? '' : 's'}`}
         </p>
       )}
       {rows.length === 0

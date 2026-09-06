@@ -9,6 +9,7 @@ import type {
   LeaguesOverview, LeagueWhatIfResult, PlayerRow,
 } from '../types'
 import ConfidenceLine from './this-week/ConfidenceLine'
+import DecisionPanel from './this-week/DecisionPanel'
 import DigestCard from './this-week/DigestCard'
 import LadderCard, { capText } from './this-week/LadderCard'
 import MovesCard from './this-week/MovesCard'
@@ -369,8 +370,12 @@ export default function ThisWeek() {
       </Card>
       <div className="mb-4">
         <MovesCard buys={advice.buys} sells={advice.sells} hits={advice.hits}
-                   capLine={capLine} />
+                   capLine={capLine}
+                   restraint={advice.restraint ?? null}
+                   objective={advice.objective ?? null} />
       </div>
+      {/* v16 §5: what you actually did, beside the moves it departs from. */}
+      <DecisionPanel gw={data.gw} />
       {/* v13: the ladder, directly under the moves it prices. */}
       <LadderCard onLoaded={onLadder} />
       {/* The plan, then the week around the plan. */}

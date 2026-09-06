@@ -48,4 +48,24 @@ describe('MovesCard', () => {
     expect(screen.queryByTestId('moves-cap-line')).not.toBeInTheDocument()
     expect(screen.getByText(/bank the free transfer/i)).toBeInTheDocument()
   })
+
+  it('prints the restraint line and, when they differ, what the objective wanted', () => {
+    render(<MovesCard buys={[]} sells={[]} hits={0}
+      restraint={{ chosen: 'hits0', bar: 0.6, agrees: false, note: null,
+        steps: [{ below: 'bank', above: 'hits0', share: 0.79, taken: true,
+                  reason: 'expected points alone', reason_kind: 'points' },
+                { below: 'hits0', above: 'hits1', share: 0.46, taken: false,
+                  reason: 'Rice is 0% to play', reason_kind: 'flagged' }] }}
+      objective={{ buys: [{ code: 5, name: 'Isak', ep: 6 }], sells: [{ code: 6, name: 'Rice', ep: 2 }],
+                   hits: 1, expected_pts: 63 }} />)
+    expect(screen.getByTestId('moves-restraint-line')).toHaveTextContent(
+      'Free transfers only — the step to 1 hit was refused at 46%: Rice is 0% to play')
+    expect(screen.getByTestId('moves-objective-line')).toHaveTextContent(
+      'The objective wanted Isak in, Rice out, 1 hit')
+  })
+
+  it('prints neither line on a payload without the walk', () => {
+    render(<MovesCard buys={[]} sells={[]} hits={0} />)
+    expect(screen.queryByTestId('moves-restraint-line')).toBeNull()
+  })
 })

@@ -98,6 +98,32 @@ export interface AdviceChipRow {
   note?: string | null
 }
 
+/** One step of the ladder's restraint walk (v16 §3). */
+export interface RestraintStep {
+  below: string
+  above: string
+  share: number
+  taken: boolean
+  reason: string
+  reason_kind: string
+}
+
+export interface Restraint {
+  chosen: string | null
+  bar: number | null
+  steps: RestraintStep[]
+  agrees: boolean
+  note: string | null
+}
+
+/** The solver's own week one, kept beside the served plan (v16 §4). */
+export interface Objective {
+  buys: PlayerRef[]
+  sells: PlayerRef[]
+  hits: number
+  expected_pts: number
+}
+
 export interface Advice {
   gw: number
   xi: PlayerRef[]
@@ -125,6 +151,10 @@ export interface Advice {
    *  (`league_mode.py:425`). Test it for truthiness, exactly as
    *  `cli.py:81` does. */
   captain_note?: string | null
+  /** v16: absent on a payload banked before the restraint walk. */
+  objective?: Objective | null
+  /** v16: absent on a payload banked before the restraint walk. */
+  restraint?: Restraint | null
 }
 
 /** Where the captain stands against the top 10k (v10b §F1a).

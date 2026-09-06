@@ -113,6 +113,15 @@ function route(path: string) {
   if (path === '/api/league/leagues') return Promise.resolve(OVERVIEW)
   if (path.startsWith('/api/players')) return Promise.resolve(PLAYERS)
   if (path.startsWith('/api/components/')) return Promise.resolve(COMPONENTS)
+  if (path.startsWith('/api/decisions/')) {
+    return Promise.resolve({ gw: 5, reason: null, text: '', at: null,
+                             state: 'before_deadline',
+                             deadline: '2099-09-18T17:30:00Z', grade: null })
+  }
+  if (path === '/api/brief') {
+    return Promise.resolve({ gw: null, prose: null, note: null,
+                             fallback: { available: false, digest: null } })
+  }
   if (path.startsWith('/api/news/')) {
     return Promise.resolve({ gw: 5, moved: 0, rows: [] })
   }
@@ -631,4 +640,9 @@ describe("the captain's own note (v12 W5 §6.3)", () => {
        const header = (await squadCard()).querySelector('header')!
        expect(header.textContent).toMatch(/Captain Salah/)
      })
+
+  it('offers the deviation note under the moves', async () => {
+    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    expect(await screen.findByText(/opens at the deadline/i)).toBeInTheDocument()
+  })
 })
