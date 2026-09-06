@@ -24,11 +24,15 @@ def test_the_config_gained_exactly_two_fields():
     so a key cannot be swapped for another in one cycle.
 
     58 after v15 (specs/2026-09-06-gaffer-v15-leagues-design.md §4.1): the
-    one new name is ``stance``; the focus league reuses ``league_id``."""
+    one new name is ``stance``; the focus league reuses ``league_id``.
+
+    59 after v16 (specs/2026-09-06-gaffer-v16-restraint-brief-design.md
+    §3.2): the one new name is ``hit_bar``."""
     names = {f.name for f in dataclasses.fields(Config)}
-    assert len(names) == 58
+    assert len(names) == 59
     assert {"max_hits", "max_transfers"} <= names
     assert "stance" in names
+    assert "hit_bar" in names
 
 
 def test_the_caps_default_to_two_hits_and_no_transfer_cap():
