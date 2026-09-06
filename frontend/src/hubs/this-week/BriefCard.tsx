@@ -58,8 +58,8 @@ export default function BriefCard() {
       )}
     >
       {job.status === 'error' && <Callout tone="error" className="mb-2">{job.error}</Callout>}
-      {panel.prose.split(/\n\s*\n/).map((para) => (
-        <p key={para.slice(0, 40)} className="mb-2 max-w-prose text-text">{para.trim()}</p>
+      {panel.prose.split(/\n\s*\n/).map((para, i) => (
+        <p key={i} className="mb-2 max-w-prose text-text">{para.trim()}</p>
       ))}
       <p className="text-text-faint">
         Written from the banked facts and checked against them: every number
