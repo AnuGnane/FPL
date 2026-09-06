@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SettingsTab from './SettingsTab'
@@ -33,6 +33,10 @@ const PANEL: SettingsPanel = {
     { key: 'decision_priors', label: 'Use calibrated θ/λ priors', kind: 'bool',
       value: true, lo: null, hi: null, choices: [], section: 'scenarios',
       help: 'Off falls back to flat thresholds.', source: 'local' },
+    { key: 'stance', label: 'Stance', kind: 'choice', value: 'auto',
+      choices: ['auto', 'chase', 'defend', 'neutral'], lo: null, hi: null,
+      section: 'league', help: 'Auto lets the standings set the tilt.',
+      source: 'default' },
   ],
   unavailable: ['price_timing'],
   overlay_error: null,
@@ -79,6 +83,25 @@ describe('SettingsTab', () => {
       expect(apiPost).toHaveBeenCalledWith('/api/settings',
         { key: 'decision_priors', value: false })
     })
+  })
+
+  it('renders a choice as a pressed-button group with every option', async () => {
+    render(<SettingsTab />)
+    const group = await screen.findByRole('group', { name: 'Stance' })
+    const buttons = within(group).getAllByRole('button')
+    expect(buttons.map((b) => b.textContent)).toEqual(
+      ['auto', 'chase', 'defend', 'neutral'])
+    expect(within(group).getByRole('button', { name: 'auto' }))
+      .toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('saves a choice on the click itself', async () => {
+    render(<SettingsTab />)
+    const group = await screen.findByRole('group', { name: 'Stance' })
+    await userEvent.click(within(group).getByRole('button', { name: 'defend' }))
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenCalledWith('/api/settings',
+                                          { key: 'stance', value: 'defend' }))
   })
 
   it('offers a reset only where the overlay is what set the value', async () => {

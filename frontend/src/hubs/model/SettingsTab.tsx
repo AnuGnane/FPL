@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiGet, apiPost, errorText } from '../../api/client'
 import {
-  Button, Callout, Card, EmptyState, INPUT_CLASS, Loading,
+  Button, Callout, Card, EmptyState, INPUT_CLASS, Loading, Segmented,
 } from '../../kit'
 import type { SettingRow, SettingsPanel } from '../../types'
 
@@ -56,6 +56,23 @@ function Field(
         />
         <span>{label(row)}</span>
       </label>
+    )
+  }
+
+  if (row.kind === 'choice') {
+    // v15 §4.2: a word from a fixed list. The save is the click, like the
+    // toggle above — a segmented control with a separate Save button would
+    // show a state the server does not have.
+    return (
+      <div className="flex flex-col gap-1">
+        <span>{label(row)}</span>
+        <Segmented
+          label={label(row)}
+          options={row.choices.map((c) => ({ value: c, label: c }))}
+          value={String(row.value)}
+          onChange={(next) => { if (!busy) onSave(next) }}
+        />
+      </div>
     )
   }
 
