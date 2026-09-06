@@ -483,9 +483,10 @@ def plan(gw: int) -> PlanTimeline:
     # same way, only when the two differ — the board says "the objective
     # wanted" under week one, and an agreeing objective would say it twice.
     objective_week: PlanGw | None = None
-    restraint = advice.get("restraint") or {}
+    restraint = advice.get("restraint")
     objective = advice.get("objective")
-    if isinstance(objective, dict) and restraint.get("agrees") is False:
+    if (isinstance(objective, dict) and isinstance(restraint, dict)
+            and restraint.get("agrees") is False):
         built = build([{"gw": head, "hits": objective.get("hits", 0),
                         "buys": objective.get("buys") or [],
                         "sells": objective.get("sells") or [],

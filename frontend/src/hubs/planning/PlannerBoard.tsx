@@ -440,8 +440,9 @@ export default function PlannerBoard(
               {/* v16 §4: the objective's own week one, when the ladder's
                   restraint served a different rung. Its trace is the same
                   accounting over the plan the solver returned, so the two
-                  "why"s are comparable. */}
-              {i === 0 && data.objective && (
+                  "why"s are comparable. Plan A only, like the trace: an
+                  alternative carries no trace to compare it with. */}
+              {i === 0 && shown === null && data.objective && (
                 <details className="mt-2" data-testid="board-objective">
                   <summary className="cursor-pointer text-text-muted">
                     The objective wanted
