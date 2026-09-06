@@ -19,7 +19,7 @@ only read one section, read §12: it is the current to-do list.*
 8. [Everything the CLI can do](#8-everything-the-cli-can-do)
 9. [The data it collects and why](#9-the-data-it-collects-and-why)
 10. [How the project measures itself](#10-how-the-project-measures-itself)
-11. [The version history, v1 to v14](#11-the-version-history-v1-to-v14)
+11. [The version history, v1 to v15](#11-the-version-history-v1-to-v15)
 12. [What is pending and what was left open](#12-what-is-pending-and-what-was-left-open)
 13. [Troubleshooting](#13-troubleshooting)
 
@@ -148,7 +148,12 @@ earned:
   leans toward differentials when you are chasing and toward covering rival
   ownership when you are defending, with a dead-band where the gap is just
   noise. It only tilts which players are *considered* — reported expected
-  points are always the raw model numbers.
+  points are always the raw model numbers. Since v15 exactly one league —
+  the **focus** league, `fpl.league_id` unless `[league] focus` in the
+  overlay says otherwise — feeds the tilt, and a manual **stance**
+  (`[league] stance`: auto, chase, defend, neutral) can override the dial at
+  full tilt: chase and defend pin λ to ±`lambda_cap`, neutral pins it to 0,
+  which is plain points-max. Both are set from the League page.
 - **Minutes-weighted bench, bench order and vice** (v10): the bench slots,
   the reserve keeper and the vice-captain hedge are priced by each player's
   actual chance of appearing rather than population averages, in a two-pass
@@ -313,10 +318,20 @@ of seconds. The moves card's heading names the live count and cap.
   The date says "noted" and not "watching since", because saving a note —
   including clearing it — stamps the row with the time you did it.
 
-**League** — the race. Standings with win probabilities, the trajectory,
-what the λ tilt is doing and why; *Rivals* (each rival's squad, overlap,
-differentials against you); *What if* (pin a haul or a blank and re-simulate
-the league — pricing a week, not proposing transfers). The win-probability
+**League** — every league you are in, and one of them drives the plan.
+The *Leagues* tab (v15) lists your private mini-leagues with rank, size,
+last week's move, the gap to first or over second and what the dial *would*
+do there, marks the **focus** league — the one whose standings set λ — and
+lets you make any other the focus or set the **stance** (Auto · the live
+word, Chase, Defend, Neutral) for it; both write through the same settings
+overlay the Model tab uses. Public leagues (Overall, country, club) are a
+rank line beneath. Click a private league for its *Race*: standings with
+win probabilities, the trajectory, what the λ tilt is doing and why — and,
+when it is not the focus, a note saying which league sets the plan and what
+this one would want, its λ computed from its own standings and tilting
+nothing; *Rivals* (each rival's squad, overlap, differentials against you);
+*What if* (pin a haul or a blank and re-simulate the league — pricing a
+week, not proposing transfers). The win-probability
 card is a real Monte Carlo: 2,000 seeded seasons with rivals correlated
 through a shared weekly factor, because simulating managers independently
 provably overstates every margin. The **Field** panel (v12) prices your week
@@ -590,7 +605,7 @@ Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 `reports/evaluation.json`, and the Model hub.
 
-## 11. The version history, v1 to v14
+## 11. The version history, v1 to v15
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
 reviewed. Every cycle ran the same way, and knowing the shape tells you where
@@ -727,7 +742,27 @@ not churn. The gate was the user's approval of headless screenshots of six
 hubs in both themes, taken after each of the last three stages; there was no
 replay to run. Frontend suite 814 → **866**; pins unchanged.
 
-The suite grew from nothing to **4,110 Python + 866 frontend tests** along
+**v15 — leagues** (2026-09-06). The entry endpoint already listed every
+classic league the manager is in; nothing read it. Now the League hub opens
+on all of them: the private mini-leagues (the FPL `league_type` flag, no
+size rule) in one table with rank, move, gap and the "would chase / would
+defend" word, the public ones as a rank line. One squad can only be tilted
+one way, so exactly one league — the **focus** — reaches the solver, as
+before; the others get the full race, rivals and what-if for display, each
+computing its own Strategy from its own standings. The user's three
+decisions: mini-leagues only, a focus league rather than a blend or an
+auto-pick, and a manual stance at full tilt. The stance is one pure
+function (`apply_stance`) and one added call in `advise.py`; the focus is
+`[league] focus` in the settings overlay resolved into `Config.league_id`,
+so no reader of `league_id` changed. Two things the build corrected: the
+protected v12 W5 pin that the settings whitelist never names `league_id`
+made the focus row a reader named `focus`; and the standings fetch now pages
+to your own row instead of stopping at 50 (the user was 80th of 138 the
+week before). Routes 48 → **49** (`/api/league/leagues`), `Config` fields
+57 → **58** (`stance`); Python 4110 → **4170**, frontend 866 → **893**.
+Deferred to a model cycle: a blended stance across leagues.
+
+The suite grew from nothing to **4,170 Python + 893 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above
 so a future change cannot quietly break one.
 
@@ -882,6 +917,13 @@ weekly use.
 - **The empty state's shell command borrows the browser's monospace face**
   (v14) — it is a bare `<code>`, with no `font-mono` class, which is also why
   `tokens.test.ts` cannot see it.
+- **The overview's "would" word is gap-sign only** (v15): rank 1 says
+  defend, anything else says chase, with no dead-band, because the row costs
+  one standings page and the dial's real answer (which honours the band)
+  appears when the league is opened. The column is labelled "would".
+- **A non-focus league's sim shares the focus league's one-entry cache
+  slot** (v15): switching leagues on the What-if tab re-runs the Monte
+  Carlo rather than remembering both.
 
 ### 12.5 Not planned — what the research proposed and v12 did not take
 

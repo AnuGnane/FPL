@@ -8,13 +8,14 @@ fills, and the index below points at them. Measurement rules every cycle
 follows: `CONVENTIONS.md`. For the same material written for a reader rather
 than an auditor, `docs/GUIDE.md` §11–12.
 
-## Where things stand (2026-09-05)
+## Where things stand (2026-09-06)
 
-v14 — the dark ledger — is **merged** (`main` `40d4dcd`; ff-merge of
-`v14-ledger`, 15 commits), on top of v13's transfer ladder (`8fddb0b`). It
-is a design cycle: the whole web UI now speaks one language, gated on the
-user's approval of the screenshots and on nothing else. Suite 4110 Python +
-866 frontend, pins routes 48 / job kinds 12 / `Config` fields 57.
+v15 — leagues — is **merged** (`main` `5bf0ed8`; ff-merge of `v15-leagues`,
+15 commits), on top of v14's dark ledger (`40d4dcd`). The League hub lists
+every private league, one focus league drives the solver, and a manual
+stance (auto / chase / defend / neutral) overrides the dial at full tilt;
+gated on the user's approval of seven screenshots in both themes. Suite 4170
+Python + 893 frontend, pins routes 49 / job kinds 12 / `Config` fields 58.
 **Security incident, open:** the odds API key's value reached a committed
 plan document (`dd47c0a`) via a forked plan-writing subagent and was pushed
 to the public remote with the merge; removed at the tip (`8fddb0b`), history
@@ -95,8 +96,41 @@ Detail in `docs/GUIDE.md` §12.5.
 6. B1's second half — a "days since status last changed" `p_play` feature off the availability log, after the flag-latency report has shown the signal
 7. Housekeeping from the residuals: `tidy` for projections and API snapshots, ledger season key, `starred_at`, `schemas.py` field docstrings, render `threshold_source`, chip-pair What-If arm, web button banking prices
 8. B8 FotMob xG fallback — only if Understat goes down
+9. **A blended league stance** (v15 deferred): per-league λ and cover tables merged by weight. Chasing in one league and defending in another largely cancel, so it needs a replay to justify before it touches protected solver code
 
 ## Shipped
+
+### v15 — leagues (done, merged `5bf0ed8` 2026-09-06)
+Every private league in the hub, one focus league drives the solver, a manual
+stance at full tilt. Brainstormed with the visual companion on 2026-09-06
+(layout B: an overview tab, then drill in), spec `c90d8dc`
+(`specs/2026-09-06-gaffer-v15-leagues-design.md`), plan `0fb7531`, branch
+`v15-leagues` off `main` at `0fb7531`, 15 commits, Opus implementers under
+Fable's review.
+- [x] `league_mode.apply_stance` + `Strategy.source`; one added call in
+  `advise.py` (shown to the user first).
+- [x] `Config.stance`; `[league] focus` in the overlay resolved into
+  `Config.league_id` by the loader — no reader of `league_id` changed.
+- [x] Settings rows "Focus league" (a reader named `focus`, plan R7, so the
+  v12 W5 pin that the whitelist never names `league_id` holds) and "Stance"
+  (new `choice` kind, rendered as a Segmented in Model → Settings).
+- [x] `GET /api/league/leagues`: private rows with rank/move/gap/would from
+  the entry payload plus one standings page each, public rows as a rank
+  line, cached 5 min per entry; the focus, the stance and the focus tilt come
+  from config on every request.
+- [x] `league_id` on race / rivals / rival / sim / what-if; a non-focus
+  league computes its own display Strategy from the histories the race
+  already fetched (R4) and never tilts; the focus race applies the manual
+  stance at once (R2); standings page to the user's row, capped at 4 pages
+  (R1); the sim cache keyed by league.
+- [x] League hub: Leagues tab first, `?league=` drives the other three, focus
+  and stance written through `/api/settings` with a toast on refusal, the
+  league name in the header with a back link, the "plan is set by" note;
+  This Week's tile names the focus league and flags a manual stance.
+- [x] Pins: routes 48 → 49, `Config` 57 → 58, job kinds 12; Python 4110 →
+  4170, frontend 866 → 893.
+- Deferred: blended stance (Candidates 9); per-league stance overrides;
+  head-to-head leagues; a CLI overview command.
 
 ### v1 — core advisor (done)
 - [x] LightGBM component models (minutes p_play/p60, goals, assists, CS via team model, saves, bonus)
