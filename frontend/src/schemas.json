@@ -2288,6 +2288,18 @@
   },
   "LadderPayload": {
    "properties": {
+    "bar": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "The hit bar the walk used (v16 \u00a73.2)."
+    },
     "cap": {
      "$ref": "#/definitions/LadderCap"
     },
@@ -2338,6 +2350,18 @@
      ],
      "default": null,
      "description": "Where ``cap`` came from: ``\"config\"``, the live settings the card\nwrites, or ``\"state\"`` when that could not be read and the caps the saved\nsolve ran under stood in."
+    },
+    "chosen": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "The rung the walk stopped on \u2014 the served advice's plan."
     },
     "free_transfers": {
      "anyOf": [
@@ -2441,6 +2465,18 @@
      ],
      "default": null
     },
+    "served_note": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Set by the router when a rebuild's choice differs from the advice\non disk."
+    },
     "sigma_fallbacks": {
      "default": 0,
      "description": "Player-weeks that fell back to the outcome \u03c3 for want of a band.",
@@ -2457,6 +2493,12 @@
      ],
      "default": null
     },
+    "steps": {
+     "items": {
+      "$ref": "#/definitions/LadderStep"
+     },
+     "type": "array"
+    },
     "wall_s": {
      "anyOf": [
       {
@@ -2470,11 +2512,13 @@
     }
    },
    "required": [
+    "bar",
     "cap",
     "cap_note",
     "cap_rung",
     "cap_rung_requested",
     "cap_source",
+    "chosen",
     "free_transfers",
     "generated_at",
     "gw",
@@ -2486,8 +2530,10 @@
     "recommended_note",
     "rungs",
     "seed",
+    "served_note",
     "sigma_fallbacks",
     "sigma_source",
+    "steps",
     "wall_s"
    ],
    "title": "LadderPayload",
@@ -2668,6 +2714,41 @@
     "week_pts"
    ],
    "title": "LadderRung",
+   "type": "object"
+  },
+  "LadderStep": {
+   "description": "One step of the restraint walk (v16 \u00a73.1). ``share`` is the share of\nthe shared draws in which ``above`` outscored ``below``.",
+   "properties": {
+    "above": {
+     "type": "string"
+    },
+    "below": {
+     "type": "string"
+    },
+    "reason": {
+     "default": "",
+     "type": "string"
+    },
+    "reason_kind": {
+     "default": "points",
+     "type": "string"
+    },
+    "share": {
+     "type": "number"
+    },
+    "taken": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "above",
+    "below",
+    "reason",
+    "reason_kind",
+    "share",
+    "taken"
+   ],
+   "title": "LadderStep",
    "type": "object"
   },
   "LadderVsBelow": {

@@ -1980,6 +1980,18 @@ class LadderRung(BaseModel):
     vs_below: LadderVsBelow | None = None
 
 
+class LadderStep(BaseModel):
+    """One step of the restraint walk (v16 §3.1). ``share`` is the share of
+    the shared draws in which ``above`` outscored ``below``."""
+
+    below: str
+    above: str
+    share: float
+    taken: bool
+    reason: str = ""
+    reason_kind: str = "points"
+
+
 class LadderCap(BaseModel):
     max_hits: int | None = None
     max_transfers: int | None = None
@@ -2005,6 +2017,14 @@ class LadderPayload(BaseModel):
     recommended: str | None = None
     recommended_note: str | None = None
     """Why ``recommended`` is ``None``, when it is."""
+    bar: float | None = None
+    """The hit bar the walk used (v16 §3.2)."""
+    chosen: str | None = None
+    """The rung the walk stopped on — the served advice's plan."""
+    steps: list[LadderStep] = Field(default_factory=list)
+    served_note: str | None = None
+    """Set by the router when a rebuild's choice differs from the advice
+    on disk."""
     n_draws: int = 0
     seed: int | None = None
     sigma_source: str | None = None

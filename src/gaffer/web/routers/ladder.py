@@ -12,9 +12,10 @@ from __future__ import annotations
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import JSONResponse
 
-from gaffer.artifacts import latest_gw
+from gaffer.artifacts import latest_gw, load_advice
 from gaffer.errors import GafferError
-from gaffer.ladder import build_ladder, load_ladder
+from gaffer.ladder import (build_ladder, load_ladder, recommended_rung,
+                           served_note)
 from gaffer.web.jobs import WHATIF_TIMEOUT_S, JobQueueFull
 from gaffer.web.schemas import JobAccepted, LadderPayload
 
@@ -34,6 +35,17 @@ def ladder(gw: int | None = Query(default=None)) -> LadderPayload:
             gw=wanted,
             note=f"no ladder for GW{wanted} — run `gaffer advise` or "
                  f"rebuild it here")
+    # v16 (plan R4): the advise-time build ran before the advice was written,
+    # so the served rung and the rebuild note are read off the advice *now*.
+    advice = None
+    try:
+        advice = load_advice(wanted)
+    except Exception:  # noqa: BLE001 — no advice is no chip
+        advice = None
+    if advice is not None and int(advice.get("gw", -1)) == int(wanted):
+        payload["recommended"], payload["recommended_note"] = recommended_rung(
+            advice, payload.get("rungs") or [])
+        payload["served_note"] = served_note(payload, advice)
     fields = {k: v for k, v in payload.items()
               if k in LadderPayload.model_fields}
     return LadderPayload(**fields)

@@ -26,6 +26,7 @@ from __future__ import annotations
 import json
 import math
 import time
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -61,6 +62,308 @@ SEED_OFFSET = 2_000_000
 """Two million clear of the advice sweep's ``scenarios_seed + gw`` and one
 million clear of the sensitivity sweep's, so the three draw independent
 noise rather than replaying each other."""
+
+STEP_REASONS = ("flagged", "price", "fixtures", "chip", "points", "cap")
+"""Why a step was taken or refused, in precedence order (v16 §3.3); ``cap``
+is the one the caps add (plan R12). Descriptive, never a second gate: the
+share decides, the reason is what the brief reads."""
+
+FLAGGED_P_PLAY = 0.5
+PRICE_FALL_BAR = 0.5
+FIXTURE_GRADE = 0.2
+"""One grade of five on the ticker's 0..1 difficulty (plan R7)."""
+
+HIT_BAR_FALLBACK = 0.60
+"""What the walk uses when the live config will not read — the field's own
+default, so an unreadable config is a ladder at the shipped bar and not no
+ladder."""
+
+
+def rung_label(key: str) -> str:
+    """The rung's name in prose: ``bank``, ``free transfers only``, ``2 hits``,
+    ``no cap``."""
+    if key == "bank":
+        return "bank"
+    if key == "open":
+        return "no cap"
+    if key == "hits0":
+        return "free transfers only"
+    n = int(key[4:]) if key.startswith("hits") else 0
+    return f"{n} hit{'' if n == 1 else 's'}"
+
+
+def walk(scores: dict[str, np.ndarray], rows: list[dict], *, hit_bar: float,
+         max_hits: int | None, max_transfers: int | None
+         ) -> tuple[str | None, list[dict]]:
+    """The restraint walk (v16 §3.1): from the lowest scored rung, one
+    distinct rung at a time, a step is taken when the higher rung beats the
+    lower in at least ``hit_bar`` of the shared draws; the walk stops at the
+    first refusal. ``rows`` are the ladder's rows in ``RUNG_ORDER``; a row
+    with ``same_as`` or no score is never stepped to. A rung above a cap is
+    refused with reason ``cap`` whatever the draws say.
+
+    Returns ``(chosen, steps)``; ``steps`` carry ``below/above/share/taken``
+    and, for a cap refusal, ``reason``/``reason_kind`` — every other step's
+    reason is :func:`explain_step`'s to add.
+    """
+    order = [r for r in rows if not r.get("same_as") and r["key"] in scores]
+    if not order:
+        return None, []
+    current = order[0]
+    steps: list[dict] = []
+    for above in order[1:]:
+        share = round(float((scores[above["key"]] > scores[current["key"]]).mean()), 4)
+        step = {"below": current["key"], "above": above["key"], "share": share,
+                "taken": False}
+        if max_hits is not None and int(above["hits"]) > int(max_hits):
+            step.update(reason_kind="cap",
+                        reason=f"above your cap of {int(max_hits)} hit"
+                               f"{'' if int(max_hits) == 1 else 's'}")
+            steps.append(step)
+            break
+        if max_transfers is not None and int(above["transfers"]) > int(max_transfers):
+            step.update(reason_kind="cap",
+                        reason=(f"above your cap of {int(max_transfers)} "
+                                f"transfer{'' if int(max_transfers) == 1 else 's'}"
+                                if max_transfers else "your cap is bank"))
+            steps.append(step)
+            break
+        step["taken"] = share >= float(hit_bar)
+        steps.append(step)
+        if not step["taken"]:
+            break
+        current = above
+    return current["key"], steps
+
+
+@dataclass(frozen=True)
+class StepContext:
+    """What the reasons read (plan R3). Every map may be empty."""
+
+    p_play: dict = field(default_factory=dict)
+    """``{(code, gw): p_play}`` off the banked components frame."""
+    price_fall: dict = field(default_factory=dict)
+    """``{code: P(drops tonight)}`` off the banked price log."""
+    difficulty: dict = field(default_factory=dict)
+    """``{(team_code, gw): difficulty}``, the ticker's 0..1 rating."""
+    team_of: dict = field(default_factory=dict)
+    """``{code: team_code}`` off the saved pool."""
+    chip_plan: list = field(default_factory=list)
+    """``[{"gw", "chip"}]`` the advice's chip table would play, off the
+    saved state's ``opt`` (written by ``advise.py``)."""
+
+
+def step_context(gw: int, state, gws: list[int]) -> StepContext:
+    """Build the context off the artifacts, swallowing every failure: a
+    missing source is an empty map, and the reason falls through."""
+    p_play: dict = {}
+    try:
+        comp = load_components(gw)
+        p_play = {(int(c), int(g)): float(p) for c, g, p in
+                  zip(comp["code"], comp["gw"], comp["p_play"])
+                  if p == p}                                       # NaN-safe
+    except Exception as exc:  # noqa: BLE001
+        print(f"ladder: no p_play for the step reasons ({exc})")
+    price_fall: dict = {}
+    try:
+        from gaffer.price_timing import owned_price_falls
+        price_fall = {int(c): float(p) for c, p in
+                      owned_price_falls(list(state.owned_codes)).items()}
+    except Exception as exc:  # noqa: BLE001
+        print(f"ladder: no price falls for the step reasons ({exc})")
+    difficulty: dict = {}
+    try:
+        from gaffer.web.identity import _difficulty_by_team
+        difficulty = _difficulty_by_team([int(g) for g in gws])
+    except Exception as exc:  # noqa: BLE001
+        print(f"ladder: no fixture difficulty for the step reasons ({exc})")
+    team_of: dict = {}
+    try:
+        team_of = {int(c): int(t) for c, t in
+                   zip(state.pool["code"], state.pool["team_code"])}
+    except Exception:  # noqa: BLE001
+        pass
+    chip_plan = [c for c in (state.opt.get("chip_plan") or [])
+                 if isinstance(c, dict) and c.get("gw") is not None]
+    return StepContext(p_play=p_play, price_fall=price_fall,
+                       difficulty=difficulty, team_of=team_of,
+                       chip_plan=chip_plan)
+
+
+def _diff(below: dict, above: dict, key: str) -> list[dict]:
+    """First-week ``key`` refs on ``above`` that ``below`` does not have."""
+    have = {int(p["code"]) for p in (below.get("plan_by_gw") or [{}])[0].get(key, [])}
+    return [p for p in (above.get("plan_by_gw") or [{}])[0].get(key, [])
+            if int(p["code"]) not in have]
+
+
+def _mean_difficulty(code: int, ctx: StepContext, gws: list[int]) -> float | None:
+    team = ctx.team_of.get(int(code))
+    cells = [ctx.difficulty[(team, int(g))] for g in gws
+             if team is not None and (team, int(g)) in ctx.difficulty]
+    return sum(cells) / len(cells) if cells else None
+
+
+def explain_step(below: dict, above: dict, ctx: StepContext, *, gw: int,
+                 gws: list[int]) -> tuple[str, str]:
+    """``(reason_kind, reason)`` for the step ``below`` → ``above`` (v16 §3.3),
+    first match in precedence: flagged, price, fixtures, chip, points."""
+    extra_sells = _diff(below, above, "sells")
+    extra_buys = _diff(below, above, "buys")
+    for s in extra_sells:
+        p = ctx.p_play.get((int(s["code"]), int(gw)))
+        if p is not None and p < FLAGGED_P_PLAY:
+            return "flagged", f"{s['name']} is {round(p * 100)}% to play"
+    for s in extra_sells:
+        f = ctx.price_fall.get(int(s["code"]))
+        if f is not None and f >= PRICE_FALL_BAR:
+            return "price", f"{s['name']} is {round(f * 100)}% to drop tonight"
+    best = None
+    for b in extra_buys:
+        mb = _mean_difficulty(b["code"], ctx, gws)
+        for s in extra_sells:
+            ms = _mean_difficulty(s["code"], ctx, gws)
+            if mb is None or ms is None:
+                continue
+            if ms - mb >= FIXTURE_GRADE and (best is None or ms - mb > best[0]):
+                best = (ms - mb, b, s, mb, ms)
+    if best is not None:
+        _, b, s, mb, ms = best
+        return "fixtures", (f"{b['name']}'s next {len(gws)} average "
+                            f"{mb * 5:.1f} against {s['name']}'s {ms * 5:.1f}")
+    for c in ctx.chip_plan:
+        if int(c["gw"]) in {int(g) for g in gws}:
+            return "chip", f"a {c.get('chip')} is planned for GW{int(c['gw'])}"
+    return "points", "expected points alone"
+
+
+def _moves(entry: dict) -> tuple[tuple[int, ...], tuple[int, ...]]:
+    return (tuple(sorted(int(p["code"]) for p in entry.get("buys") or [])),
+            tuple(sorted(int(p["code"]) for p in entry.get("sells") or [])))
+
+
+def _week_pts(week: dict) -> float:
+    """Raw XI points the way ``advise.raw_xi_pts`` sums them: the eleven's
+    EP, no captain doubling, no hits."""
+    return round(sum(float(p.get("ep") or 0.0) for p in week.get("xi") or []), 2)
+
+
+def serve_rung(ladder: dict | None, objective: dict, *,
+               captain_note: str | None) -> dict:
+    """The payload's plan fields from the chosen rung (v16 §4), or the
+    objective's own when there is no rung to serve.
+
+    ``objective`` is ``{buys, sells, hits, xi, bench, captain, vice,
+    expected_pts, plan_by_gw}`` in ``advise._named``'s shape. The result has
+    the same keys plus ``captain_note``, ``objective`` and ``restraint``. The
+    sweep's captain stands unless he is not in the rung's XI.
+    """
+    base = {**objective, "captain_note": captain_note,
+            "objective": {k: objective[k]
+                          for k in ("buys", "sells", "hits", "expected_pts")},
+            "restraint": {"chosen": None, "bar": None, "steps": [],
+                          "agrees": True, "note": None}}
+    if ladder is None:
+        base["restraint"]["note"] = ("the ladder did not build; this is the "
+                                     "objective's plan")
+        return base
+    chosen = ladder.get("chosen")
+    row = next((r for r in ladder.get("rungs") or [] if r.get("key") == chosen), None)
+    if chosen is None or row is None or not row.get("plan_by_gw"):
+        base["restraint"].update(bar=ladder.get("bar"), steps=list(ladder.get("steps") or []),
+                                 note="no rung of the ladder could be served; "
+                                      "this is the objective's plan")
+        return base
+    weeks = row["plan_by_gw"]
+    first = weeks[0]
+    xi_codes = {int(p["code"]) for p in first["xi"]}
+    captain, note = objective["captain"], captain_note
+    if int(captain["code"]) not in xi_codes:
+        captain = first["captain"]
+        note = (f"captain from the restrained plan; the sweep's choice "
+                f"({objective['captain']['name']}) is not in it")
+    vice = first["vice"]
+    if int(vice["code"]) == int(captain["code"]):
+        vice = first["captain"] if int(first["captain"]["code"]) != int(captain["code"]) \
+            else next(p for p in first["xi"] if int(p["code"]) != int(captain["code"]))
+    agrees = _moves(first) == _moves(objective)
+    return {
+        **base,
+        "buys": list(first["buys"]), "sells": list(first["sells"]),
+        "hits": int(first["hits"]), "xi": list(first["xi"]),
+        "bench": list(first["bench"]), "captain": captain, "vice": vice,
+        "expected_pts": _week_pts(first),
+        "plan_by_gw": [{"gw": int(w["gw"]), "hits": int(w["hits"]),
+                        "buys": list(w["buys"]), "sells": list(w["sells"]),
+                        "expected_pts": _week_pts(w)} for w in weeks],
+        "captain_note": note,
+        "restraint": {"chosen": chosen, "bar": ladder.get("bar"),
+                      "steps": list(ladder.get("steps") or []),
+                      "agrees": agrees,
+                      "note": None if agrees else
+                      f"the objective's plan was the {rung_label(chosen)} rung's "
+                      f"neighbour; the walk stopped at {rung_label(chosen)}"},
+    }
+
+
+def restraint_line(restraint: dict) -> str:
+    """One CLI line: the rung, and the refused step if there was one."""
+    chosen = rung_label(str(restraint.get("chosen") or "bank"))
+    refused = next((s for s in restraint.get("steps") or [] if not s.get("taken")), None)
+    if refused is None:
+        return f"restraint: {chosen}; every step was taken"
+    return (f"restraint: {chosen}; the step to {rung_label(refused['above'])} was "
+            f"refused, {round(float(refused['share']) * 100)}% — {refused['reason']}")
+
+
+def objective_line(objective: dict | None) -> str:
+    """"the objective wanted: X, Y in; Z out; 1 hit"."""
+    if not objective:
+        return "the objective wanted: nothing on record"
+    buys = ", ".join(str(p["name"]) for p in objective.get("buys") or []) or "nobody"
+    sells = ", ".join(str(p["name"]) for p in objective.get("sells") or []) or "nobody"
+    hits = int(objective.get("hits") or 0)
+    return (f"the objective wanted: {buys} in; {sells} out; {hits} hit"
+            f"{'' if hits == 1 else 's'}")
+
+
+def recommended_rung(advice: dict | None, rows: list[dict]
+                     ) -> tuple[str | None, str | None]:
+    """``(rung, note)`` — the rung whose first-week **moves** are the served
+    advice's (plan R4: the captain is ignored, the sweep's may stand)."""
+    if not advice:
+        return None, "no served advice"
+    wanted = _moves(advice)
+    for row in rows:
+        if row.get("same_as") or not row.get("plan_by_gw"):
+            continue
+        if _moves(row["plan_by_gw"][0]) == wanted:
+            return row["key"], None
+    return None, "the served advice's moves match no rung"
+
+
+def served_note(ladder: dict, advice: dict | None) -> str | None:
+    """When a rebuild's choice differs from what the advice served (v16 §4)."""
+    if not advice or int(advice.get("gw", -1)) != int(ladder.get("gw", -2)):
+        return None
+    served = advice.get("restraint") or {}
+    if served.get("chosen") is None or ladder.get("chosen") is None:
+        return None
+    if (served.get("chosen"), served.get("bar")) == (ladder.get("chosen"), ladder.get("bar")):
+        return None
+    return (f"the served advice was the {rung_label(served['chosen'])} rung at "
+            f"bar {float(served.get('bar') or 0):.2f}; this rebuild at "
+            f"{float(ladder.get('bar') or 0):.2f} chooses "
+            f"{rung_label(ladder['chosen'])}")
+
+
+def _hit_bar() -> float:
+    try:
+        from gaffer.config import serving_config
+        return float(serving_config().hit_bar)
+    except Exception as exc:  # noqa: BLE001
+        print(f"ladder: the live config would not read ({exc}); bar {HIT_BAR_FALLBACK}")
+        return HIT_BAR_FALLBACK
 
 
 def ladder_path(gw: int) -> Path:
@@ -350,25 +653,6 @@ def _caps(state) -> tuple[tuple[int | None, int | None], str]:
         return caps_from_state(state), "state"
 
 
-def _recommended(gw: int, solved: list[tuple[str, Plan]]
-                 ) -> tuple[str | None, str | None]:
-    """``(rung, note)`` — the rung whose first-week decision is the served
-    advice's, and, when there is none, why."""
-    try:
-        advice = load_advice(gw)
-        wanted = (tuple(sorted(int(b["code"]) for b in advice.get("buys", []))),
-                  tuple(sorted(int(s["code"]) for s in advice.get("sells", []))),
-                  int(advice["captain"]["code"]))
-    except Exception as exc:  # noqa: BLE001 — no advice is no chip, not a crash
-        print(f"ladder: no served advice to mark ({exc})")
-        return None, f"no served advice for GW{int(gw)}"
-    for key, plan in solved:
-        if signature(plan.gw_plans[0]) == wanted:
-            return key, None
-    return None, ("the served advice was sweep-gated to a plan no rung "
-                  "solves for")
-
-
 def build_ladder(gw: int | None = None, *, n_draws: int = LADDER_DRAWS,
                  seed: int | None = None) -> dict:
     """Solve every rung off the saved board, score them on shared draws,
@@ -498,7 +782,21 @@ def build_ladder(gw: int | None = None, *, n_draws: int = LADDER_DRAWS,
 
     (max_hits, max_transfers), cap_source = _caps(state)
     cap_rung, cap_requested = _cap_rung(max_hits, max_transfers, rows)
-    recommended, recommended_note = _recommended(gw, solved)
+    try:
+        recommended, recommended_note = recommended_rung(load_advice(gw), rows)
+    except Exception as exc:  # noqa: BLE001 — no advice is no chip, not a crash
+        print(f"ladder: no served advice to mark ({exc})")
+        recommended, recommended_note = None, f"no served advice for GW{int(gw)}"
+    # v16 §3.1: the restraint walk on the same draws, with its reasons.
+    hit_bar = _hit_bar()
+    chosen, steps = walk(scores, rows, hit_bar=hit_bar, max_hits=max_hits,
+                         max_transfers=max_transfers)
+    ctx = step_context(gw, state, gws)
+    for step in steps:
+        if "reason_kind" not in step:
+            kind, text = explain_step(by_key[step["below"]], by_key[step["above"]],
+                                      ctx, gw=gw, gws=gws)
+            step.update(reason_kind=kind, reason=text)
     payload = {
         "gw": int(gw), "gws": [int(g) for g in gws],
         "generated_at": datetime.now(timezone.utc).isoformat(
@@ -509,6 +807,7 @@ def build_ladder(gw: int | None = None, *, n_draws: int = LADDER_DRAWS,
         "cap_rung": cap_rung, "cap_rung_requested": cap_requested,
         "cap_note": _cap_note(max_transfers),
         "recommended": recommended, "recommended_note": recommended_note,
+        "bar": hit_bar, "chosen": chosen, "steps": steps,
         "n_draws": n_draws, "seed": int(seed), "sigma_source": sigma_source,
         "sigma_fallbacks": int(sigma_fallbacks),
         "wall_s": round(time.perf_counter() - started, 1),

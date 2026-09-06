@@ -36,6 +36,7 @@ const PAYLOAD: LadderPayload = {
   cap_source: 'config',
   cap_rung: 'hits2', cap_rung_requested: 'hits2', cap_note: null,
   recommended: 'hits1', recommended_note: null, notes: [],
+  bar: 0.6, chosen: 'hits1', steps: [], served_note: null,
   n_draws: 200, seed: 7, sigma_source: 'bands', sigma_fallbacks: 0,
   wall_s: 31.2, note: null,
   rungs: [

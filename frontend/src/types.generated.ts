@@ -1146,6 +1146,10 @@ export interface LadderCap {
  * via the `definition` "LadderPayload".
  */
 export interface LadderPayload {
+  /**
+   * The hit bar the walk used (v16 §3.2).
+   */
+  bar: number | null
   cap: LadderCap
   /**
    * Set when the saved ``max_transfers`` has no rung of its own.
@@ -1166,6 +1170,10 @@ export interface LadderPayload {
    * solve ran under stood in.
    */
   cap_source: string | null
+  /**
+   * The rung the walk stopped on — the served advice's plan.
+   */
+  chosen: string | null
   free_transfers: number | null
   generated_at: string | null
   gw: number | null
@@ -1187,10 +1195,16 @@ export interface LadderPayload {
   rungs: LadderRung[]
   seed: number | null
   /**
+   * Set by the router when a rebuild's choice differs from the advice
+   * on disk.
+   */
+  served_note: string | null
+  /**
    * Player-weeks that fell back to the outcome σ for want of a band.
    */
   sigma_fallbacks: number
   sigma_source: string | null
+  steps: LadderStep[]
   wall_s: number | null
 }
 /**
@@ -1267,6 +1281,21 @@ export interface LadderVsBelow {
   dropped_sells: WirePlayerRef[]
   extra_buys: WirePlayerRef[]
   extra_sells: WirePlayerRef[]
+}
+/**
+ * One step of the restraint walk (v16 §3.1). ``share`` is the share of
+ * the shared draws in which ``above`` outscored ``below``.
+ *
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "LadderStep".
+ */
+export interface LadderStep {
+  above: string
+  below: string
+  reason: string
+  reason_kind: string
+  share: number
+  taken: boolean
 }
 /**
  * This interface was referenced by `GafferApi`'s JSON-Schema

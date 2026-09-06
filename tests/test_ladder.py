@@ -175,7 +175,7 @@ def test_the_cap_rung_and_the_recommended_rung(board, monkeypatch):
     gated = build_ladder(1, n_draws=10, seed=1)
     assert gated["recommended"] is None
     assert gated["recommended_note"] == \
-        "the served advice was sweep-gated to a plan no rung solves for"
+        "the served advice's moves match no rung"
 
     Path("reports/gw1-advice.json").write_text(json.dumps({
         "buys": [{"code": b["code"]} for b in first["buys"]],
