@@ -8,9 +8,9 @@ import type {
   AdviceChipRow, AdviceLatest, ComponentsBreakdown, LadderPayload,
   LeaguesOverview, LeagueWhatIfResult, PlayerRow,
 } from '../types'
+import BriefCard from './this-week/BriefCard'
 import ConfidenceLine from './this-week/ConfidenceLine'
 import DecisionPanel from './this-week/DecisionPanel'
-import DigestCard from './this-week/DigestCard'
 import LadderCard, { capText } from './this-week/LadderCard'
 import MovesCard from './this-week/MovesCard'
 import NewsPanel from './this-week/NewsPanel'
@@ -379,7 +379,7 @@ export default function ThisWeek() {
       {/* v13: the ladder, directly under the moves it prices. */}
       <LadderCard onLoaded={onLadder} />
       {/* The plan, then the week around the plan. */}
-      <DigestCard />
+      <BriefCard />
       <WhyPanel gw={data.gw} codes={squad.map((r) => r.code)} />
       <NewsPanel gw={data.gw} />
     </>

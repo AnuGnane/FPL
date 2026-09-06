@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { apiGet } from '../../api/client'
 import { Callout, Card, EmptyState, JobButton } from '../../kit'
 import { JOB_KIND_LABEL, type DigestPanel } from '../../types'
@@ -6,6 +6,16 @@ import { JOB_KIND_LABEL, type DigestPanel } from '../../types'
 const KIND_LABEL: Record<string, string> = {
   friday: 'Friday briefing',
   tuesday: 'Tuesday debrief',
+}
+
+export interface DigestCardProps {
+  /** Rendered in the button row, before the two job buttons. */
+  extra?: ReactNode
+  /** Shown above the card's content, in the note voice. */
+  note?: string | null
+  /** The panel to render. Omitted, the card fetches its own as it always has;
+   *  given (even as null) it renders that and makes no request. */
+  panel?: DigestPanel | null
 }
 
 /**
@@ -18,27 +28,42 @@ const KIND_LABEL: Record<string, string> = {
  * The card renders what the schedule banked — it never builds one, because
  * building reads seven files and a page load cannot wait for that. The two
  * job buttons are how a user builds one on demand.
+ *
+ * v16: BriefCard renders this card as its fallback, so it lends the card a
+ * control of its own (`extra`) and the sentence saying why there is no brief
+ * (`note`). It can also hand over the panel it was already served — the
+ * brief endpoint carries the digest panel with it — which is `given`.
  */
-export default function DigestCard() {
-  const [panel, setPanel] = useState<DigestPanel | null>(null)
+export default function DigestCard(
+  { extra, note, panel: given }: DigestCardProps = {},
+) {
+  const [fetched, setFetched] = useState<DigestPanel | null>(null)
 
   const load = useCallback(() => {
-    apiGet<DigestPanel>('/api/digest').then(setPanel).catch(() => {})
+    apiGet<DigestPanel>('/api/digest').then(setFetched).catch(() => {})
   }, [])
-  useEffect(load, [load])
+  const owned = given === undefined
+  useEffect(() => { if (owned) load() }, [owned, load])
 
+  const panel = given === undefined ? fetched : given
   if (panel === null) return null
 
   const buttons = (
     <div className="flex flex-wrap gap-2">
+      {extra}
       <JobButton kind="digest-friday" onDone={load} />
       <JobButton kind="digest-tuesday" onDone={load} />
     </div>
   )
 
+  const noteLine = note
+    ? <Callout tone="note" className="mb-2">{note}</Callout>
+    : null
+
   if (!panel.available || panel.digest === null) {
     return (
       <Card title="Digest" className="mb-4" action={buttons}>
+        {noteLine}
         <EmptyState
           title="No digest yet"
           detail="The Friday briefing is written at 17:00 and the Tuesday
@@ -71,6 +96,7 @@ export default function DigestCard() {
         </div>
       )}
     >
+      {noteLine}
       <p className="text-text">{digest.headline}</p>
       {/* A digest that failed to build still banks an artifact, so it must
           read as a failure rather than as a briefing with nothing in it. */}
