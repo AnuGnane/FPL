@@ -134,6 +134,70 @@ export interface CategoryMetrics {
   rmse: number
 }
 /**
+ * The newest brief, or the digest to fall back on (v16 §6.5).
+ *
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "BriefPanel".
+ */
+export interface BriefPanel {
+  checked_at: string | null
+  fallback: DigestPanel | null
+  gw: number | null
+  model_command: string | null
+  /**
+   * Why there is no brief for the newest gameweek, when there is none.
+   */
+  note: string | null
+  prose: string | null
+  run_stamp: string | null
+}
+/**
+ * The newest digest, or a stated absence.
+ *
+ * ``available`` false covers all three ways there is nothing to show — never
+ * run, deleted, unparseable — because the card's empty state says the same
+ * sentence for each of them: press the button, or wait for Friday.
+ *
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "DigestPanel".
+ */
+export interface DigestPanel {
+  available: boolean
+  digest: Digest | null
+}
+/**
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "Digest".
+ */
+export interface Digest {
+  /**
+   * Set only on a digest that failed to build. A run that crashes still
+   * banks an artifact so the card can say "Friday's briefing did not build"
+   * rather than falling back to the never-run empty state.
+   */
+  error: string | null
+  generated_at: string
+  gw: number | null
+  headline: string
+  kind: string
+  sections: DigestSection[]
+}
+/**
+ * One block of a digest. ``bits`` is prose the client joins.
+ *
+ * The DiffStrip idiom: clauses assembled server-side, rendered by joining
+ * them, so there is no markdown dependency anywhere in the client. A section
+ * with no bits never reaches here — the builder drops it (plan A5).
+ *
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "DigestSection".
+ */
+export interface DigestSection {
+  bits: string[]
+  key: string
+  title: string
+}
+/**
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "CalibrationGw".
  */
@@ -610,52 +674,6 @@ export interface DecompositionData {
   run_at: string
   season: string
   start_gw: number
-}
-/**
- * This interface was referenced by `GafferApi`'s JSON-Schema
- * via the `definition` "Digest".
- */
-export interface Digest {
-  /**
-   * Set only on a digest that failed to build. A run that crashes still
-   * banks an artifact so the card can say "Friday's briefing did not build"
-   * rather than falling back to the never-run empty state.
-   */
-  error: string | null
-  generated_at: string
-  gw: number | null
-  headline: string
-  kind: string
-  sections: DigestSection[]
-}
-/**
- * One block of a digest. ``bits`` is prose the client joins.
- *
- * The DiffStrip idiom: clauses assembled server-side, rendered by joining
- * them, so there is no markdown dependency anywhere in the client. A section
- * with no bits never reaches here — the builder drops it (plan A5).
- *
- * This interface was referenced by `GafferApi`'s JSON-Schema
- * via the `definition` "DigestSection".
- */
-export interface DigestSection {
-  bits: string[]
-  key: string
-  title: string
-}
-/**
- * The newest digest, or a stated absence.
- *
- * ``available`` false covers all three ways there is nothing to show — never
- * run, deleted, unparseable — because the card's empty state says the same
- * sentence for each of them: press the button, or wait for Friday.
- *
- * This interface was referenced by `GafferApi`'s JSON-Schema
- * via the `definition` "DigestPanel".
- */
-export interface DigestPanel {
-  available: boolean
-  digest: Digest | null
 }
 /**
  * This interface was referenced by `GafferApi`'s JSON-Schema

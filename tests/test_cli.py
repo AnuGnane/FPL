@@ -17,7 +17,7 @@ def test_cli_help_lists_commands():
     assert result.exit_code == 0
     for cmd in ["advise", "refresh", "train", "prices", "league", "live",
                 "backtest", "evaluate", "build-history", "ui",
-                "calibrate-decisions"]:
+                "calibrate-decisions", "brief"]:
         assert cmd in result.output
 
 
@@ -35,7 +35,7 @@ def test_every_command_help_renders():
     that no command is wired to a name that does not exist yet."""
     for cmd in ["advise", "refresh", "train", "prices", "league", "live",
                 "backtest", "evaluate", "build-history", "ui",
-                "calibrate-decisions"]:
+                "calibrate-decisions", "brief"]:
         result = runner.invoke(app, [cmd, "--help"])
         assert result.exit_code == 0, f"{cmd} --help failed: {result.output}"
 

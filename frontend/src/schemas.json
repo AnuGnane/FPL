@@ -244,6 +244,100 @@
    "title": "BenchmarkEvaluation",
    "type": "object"
   },
+  "BriefPanel": {
+   "description": "The newest brief, or the digest to fall back on (v16 \u00a76.5).",
+   "properties": {
+    "checked_at": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "fallback": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/DigestPanel"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "gw": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "model_command": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "note": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Why there is no brief for the newest gameweek, when there is none."
+    },
+    "prose": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "run_stamp": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "required": [
+    "checked_at",
+    "fallback",
+    "gw",
+    "model_command",
+    "note",
+    "prose",
+    "run_stamp"
+   ],
+   "title": "BriefPanel",
+   "type": "object"
+  },
   "CalibrationGw": {
    "properties": {
     "gw": {

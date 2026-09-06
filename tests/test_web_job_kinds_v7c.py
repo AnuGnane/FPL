@@ -46,9 +46,14 @@ def test_the_advise_body_still_defaults_to_the_config_on_disk():
         is None
 
 
-def test_the_advise_body_uses_the_config_it_is_handed(monkeypatch):
+def test_the_advise_body_uses_the_config_it_is_handed(tmp_path, monkeypatch):
     from gaffer.config import Config
     from gaffer.web.routers.advice import run_train_and_advise
+
+    # v16 §6.5: the body chains ``brief.run_brief``, which banks a note under
+    # ``reports/`` when there is no advice to brief. Run it in a tmp_path so
+    # the note lands there and not in the developer's own reports directory.
+    monkeypatch.chdir(tmp_path)
 
     seen = {}
 
@@ -72,7 +77,10 @@ def test_the_advise_body_uses_the_config_it_is_handed(monkeypatch):
     out = run_train_and_advise(
         Config(entry_id=1, league_id=2, scenarios_n=7))
     assert seen["scenarios_n"] == 7
-    assert out == {"gw": 5, "expected_pts": 61.0}
+    assert out["gw"] == 5 and out["expected_pts"] == 61.0
+    # v16 §6.5 (plan R1): the brief is chained in the job body, and a run with
+    # no advice on disk to brief is a note, not a failed advise.
+    assert out["brief"]["written"] is False
 
 
 def test_fast_advise_replaces_the_sweep_count_with_zero(monkeypatch):

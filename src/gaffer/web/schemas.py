@@ -2270,6 +2270,19 @@ class DigestPanel(BaseModel):
     digest: Digest | None = None
 
 
+class BriefPanel(BaseModel):
+    """The newest brief, or the digest to fall back on (v16 §6.5)."""
+
+    gw: int | None = None
+    prose: str | None = None
+    checked_at: str | None = None
+    run_stamp: str | None = None
+    model_command: str | None = None
+    note: str | None = None
+    """Why there is no brief for the newest gameweek, when there is none."""
+    fallback: DigestPanel | None = None
+
+
 class DecisionGrade(BaseModel):
     lane: str = "transfers"
     label: str | None = None

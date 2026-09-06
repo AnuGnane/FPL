@@ -515,6 +515,15 @@ def friday_briefing() -> dict:
                     + (f"{len(buys)} transfer"
                        f"{'s' if len(buys) != 1 else ''}." if buys
                        else "no transfers."))
+    # v16 §6.5: the brief's first sentence is the headline when one exists.
+    try:
+        from gaffer.brief import first_sentence, load_brief
+
+        banked = load_brief(gw) if gw is not None else None
+        if banked and banked.get("prose"):
+            headline = first_sentence(banked["prose"])
+    except Exception as exc:  # noqa: BLE001 — a headline is decoration
+        print(f"digest: no brief headline ({exc})")
     return {"kind": "friday", "generated_at": _now(), "gw": gw,
             "headline": headline, "sections": kept}
 

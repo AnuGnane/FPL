@@ -50,7 +50,18 @@ def run_train_and_advise(cfg: "Config | None" = None) -> dict:
     train_all(frame, team_frame, save=True)
     advice = run_advise(cfg if cfg is not None else load_config())
     render_report(advice, model_health=latest_health())
-    return {"gw": advice.gw, "expected_pts": advice.expected_pts}
+    # v16 §6.5 (plan R1): the brief is chained here, in the web job's body —
+    # never inside ``run_advise`` — and never fails the run.
+    try:
+        from gaffer.brief import run_brief
+
+        brief = run_brief(advice.gw)
+    except Exception as exc:  # noqa: BLE001
+        brief = {"gw": advice.gw, "written": False,
+                 "note": f"brief not written: {exc}", "path": None}
+        print(brief["note"])
+    return {"gw": advice.gw, "expected_pts": advice.expected_pts,
+            "brief": brief}
 
 
 def staleness_for(advice_gw: int, deadline: str,
