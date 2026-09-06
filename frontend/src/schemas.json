@@ -6297,6 +6297,13 @@
   "SettingRow": {
    "description": "One editable setting, as the Settings tab receives it (v12 W5 \u00a76.2).",
    "properties": {
+    "choices": {
+     "description": "For ``kind == \"choice\"`` the allowed strings, in display order (v15\n\u00a74.2). Empty for every other kind.",
+     "items": {
+      "type": "string"
+     },
+     "type": "array"
+    },
     "help": {
      "type": "string"
     },
@@ -6320,7 +6327,8 @@
       "float",
       "bool",
       "floats3",
-      "pool"
+      "pool",
+      "choice"
      ],
      "type": "string"
     },
@@ -6356,6 +6364,7 @@
     }
    },
    "required": [
+    "choices",
     "help",
     "hi",
     "key",

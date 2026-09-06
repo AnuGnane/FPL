@@ -19,7 +19,7 @@ from fastapi.testclient import TestClient
 from gaffer.config import (LOCAL_OVERLAY, load_config, optimizer_top_n,
                            price_timing, serving_config)
 from gaffer.web.app import create_app
-from gaffer.web.settings_keys import WHITELIST, live_keys
+from gaffer.web.settings_keys import BY_FIELD, WHITELIST, live_keys
 
 BASE = """
 [fpl]
@@ -117,9 +117,12 @@ def test_the_secrets_are_not_in_the_whitelist():
     or letting it be rewritten — from an unauthenticated GET would be the
     interface handing over its own front door."""
     named = {e.field for e in WHITELIST}
-    assert not named & {"odds_api_key", "web_token", "entry_id", "league_id",
+    # v15 §4.2: league_id left this list — it is editable as [league] focus,
+    # and fpl.league_id itself is still never written.
+    assert not named & {"odds_api_key", "web_token", "entry_id",
                         "train_seasons", "backup_rsync_target",
                         "news_llm_command"}
+    assert BY_FIELD["league_id"].section == "league"
 
 
 def test_price_timing_is_written_into_optimizer_like_any_other_key(client,

@@ -1,4 +1,4 @@
-"""GET/POST ``/api/settings`` — the eleven settings the UI may edit.
+"""GET/POST ``/api/settings`` — the thirteen settings the UI may edit.
 
 Writes ``config.local.toml`` and **never** ``config.toml`` (spec §8: a UI that
 edits ``config.toml`` is out of scope, and that file carries the odds API key).
@@ -114,6 +114,12 @@ def _panel() -> SettingsPanel:
             source = "local"
         elif entry.toml_key in _table(base_raw, entry.section):
             source = "base"
+        # v15 §4.2: the focus row is written as [league] focus but falls back
+        # to fpl.league_id, which is where a reset lands it — so its "base"
+        # is that key, in the one table this endpoint never writes.
+        elif (entry.field == "league_id"
+              and "league_id" in _table(base_raw, "fpl")):
+            source = "base"
         else:
             source = "default"
         rows.append(SettingRow(
@@ -122,6 +128,7 @@ def _panel() -> SettingsPanel:
             # `price_timing` is not a Config field and never becomes one, so
             # a getattr here would drop the one row the reader kind exists for.
             value=current_value(entry, cfg), lo=entry.lo, hi=entry.hi,
+            choices=list(entry.choices),
             section=entry.section, help=entry.help, source=source))
     return SettingsPanel(
         rows=rows,
@@ -190,6 +197,11 @@ def _checked(entry, value):
                             f"each of {entry.label} is between "
                             f"{int(entry.lo)} and {int(entry.hi)}")
         return {k: int(value[k]) for k in wanted}
+    elif kind == "choice":
+        if not isinstance(value, str) or value not in entry.choices:
+            raise _fail("wrong_type",
+                        f"{entry.label} is one of {', '.join(entry.choices)}")
+        return value
     else:  # pragma: no cover — a kind with no branch is a wiring bug
         raise _fail("wrong_type", f"{entry.label} cannot be edited here")
     if entry.lo is not None and not entry.lo <= number <= entry.hi:

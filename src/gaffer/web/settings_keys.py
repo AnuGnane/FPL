@@ -3,9 +3,11 @@
 A whitelist, not a schema dump. Everything in ``Config`` that is not here is
 untouchable from the web: the odds API key above all, and the web token beside
 it — an endpoint that handed out or rewrote the app's own front door would be
-worse than no settings page — but also the entry and league ids, the training
-seasons, and every news switch whose failure mode is a silently degraded
-availability pass.
+worse than no settings page — but also the training seasons and every news
+switch whose failure mode is a silently degraded availability pass. The fpl
+table — entry_id, league_id — stays untouchable; v15's [league] focus is an
+overlay override of which league is the focus, read back as the effective
+Config.league_id.
 
 Four of the spec's nine names do not name anything in this tree and are
 mapped here rather than in prose (plan A4):
@@ -55,7 +57,7 @@ class SettingKey:
     entry rather than assumed."""
     label: str
     kind: str
-    """``int`` | ``float`` | ``bool`` | ``floats3`` | ``pool``."""
+    """``int`` | ``float`` | ``bool`` | ``floats3`` | ``pool`` | ``choice``."""
     lo: float | None
     hi: float | None
     help: str
@@ -67,6 +69,9 @@ class SettingKey:
     """``"module.path:function"`` for a ``"reader"`` entry, called with no
     arguments. Imported lazily and per call, so a build whose reader is not
     there drops the row rather than failing to import at start-up."""
+    choices: tuple[str, ...] = ()
+    """For ``kind == "choice"``: the exact strings the value may be. Empty
+    for every other kind."""
 
 
 WHITELIST: tuple[SettingKey, ...] = (
@@ -125,6 +130,21 @@ WHITELIST: tuple[SettingKey, ...] = (
                "Max transfers per week", "int", 0, 15,
                "15 = no cap; 0 = bank (no moves at all). Also edited from "
                "the transfer ladder."),
+    # v15 §4.2 (specs/2026-09-06-gaffer-v15-leagues-design.md). The focus
+    # league. Written as [league] focus, read back as the *effective*
+    # Config.league_id, which the loader resolves from the overlay over
+    # fpl.league_id — so `field` is league_id and `toml_key` is focus, and
+    # fpl.* itself is never written. The League page's "make focus" writes
+    # this row; hi is a numeric bound because the range check needs one.
+    SettingKey("league_id", "league", "focus", "Focus league",
+               "int", 1, 99_999_999,
+               "The private league that sets the plan. Pick it on the League "
+               "page; reset to fall back to fpl.league_id."),
+    SettingKey("stance", "league", "stance", "Stance",
+               "choice", None, None,
+               "Auto lets the standings set the tilt. Chase and defend force "
+               "it at the λ tilt cap; neutral is plain points-max.",
+               choices=("auto", "chase", "defend", "neutral")),
 )
 
 BY_FIELD = {entry.field: entry for entry in WHITELIST}

@@ -2388,10 +2388,15 @@ export interface SensitivityReport {
  * via the `definition` "SettingRow".
  */
 export interface SettingRow {
+  /**
+   * For ``kind == "choice"`` the allowed strings, in display order (v15
+   * §4.2). Empty for every other kind.
+   */
+  choices: string[]
   help: string
   hi: number | null
   key: string
-  kind: 'int' | 'float' | 'bool' | 'floats3' | 'pool'
+  kind: 'int' | 'float' | 'bool' | 'floats3' | 'pool' | 'choice'
   label: string
   lo: number | null
   section: string

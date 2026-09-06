@@ -2174,13 +2174,16 @@ class SettingRow(BaseModel):
 
     key: str
     label: str
-    kind: Literal["int", "float", "bool", "floats3", "pool"]
+    kind: Literal["int", "float", "bool", "floats3", "pool", "choice"]
     value: Any
     """Whatever the merged config holds. ``None`` only for ``bench_curve``,
     where it means "no curve — one flat bench weight", which is a real
     setting and not an absent one."""
     lo: float | None = None
     hi: float | None = None
+    choices: list[str] = Field(default_factory=list)
+    """For ``kind == "choice"`` the allowed strings, in display order (v15
+    §4.2). Empty for every other kind."""
     section: str
     help: str
     source: Literal["local", "base", "default"]
