@@ -374,10 +374,15 @@ def test_the_route_total_did_not_move_and_this_is_where_it_is_pinned(
     # v16 §5 (specs/2026-09-06-gaffer-v16-restraint-brief-design.md)
     49 → 50, and the one is ``/api/decisions/{gw}`` — GET and POST share one
     path key — the deviation note.
+
+    # v16 §6 (specs/2026-09-06-gaffer-v16-restraint-brief-design.md), plan R1
+    50 → 51, and the one is ``/api/brief`` — GET and POST share one path key
+    — the brief and its anonymous job. No thirteenth job kind.
     """
     monkeypatch.chdir(tmp_path)
     paths = set(create_app().openapi()["paths"])
-    assert len(paths) == 50
+    assert len(paths) == 51
+    assert "/api/brief" in paths
     assert "/api/meta/freshness" in paths
     assert "/api/settings" in paths
     assert "/api/ladder" in paths
