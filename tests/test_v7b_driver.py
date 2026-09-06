@@ -437,3 +437,69 @@ def test_the_conventions_doc_is_committed_and_linked_from_the_roadmap():
         assert f"## {n}." in body, f"convention {n} is missing"
     roadmap = Path("docs/superpowers/ROADMAP.md").read_text(encoding="utf-8")
     assert "CONVENTIONS.md" in roadmap
+
+
+def test_the_restraint_arm_parses_with_its_bar_and_draws():
+    cfg = v7b_replay.arm_config(["--arm", "restraint", "--tag", "t"])
+    assert cfg.arm == "restraint" and cfg.hit_bar == 0.6 and cfg.ladder_draws == 2000
+    cfg = v7b_replay.arm_config(["--arm", "restraint", "--tag", "t",
+                                 "--hit-bar", "0.7", "--ladder-draws", "50"])
+    assert (cfg.hit_bar, cfg.ladder_draws) == (0.7, 50)
+    assert cfg.echo()["hit_bar"] == 0.7
+    configs, bases, _ = v7b_replay.arm_configs(
+        ["--arm", "restraint", "--tag", "q", "--seed-bases", "1,2"])
+    assert bases == [1, 2]
+
+
+def test_the_restraint_gate_serves_the_chosen_rung(monkeypatch):
+    """Two rung specs that solve to different plans; the draws are zero-noise
+    so the higher-scoring plan wins every draw and the walk takes it."""
+    from dataclasses import dataclass
+
+    import pandas as pd
+
+    from gaffer.optimize.milp import GwPlan, Plan, SolveInput
+
+    def plan(buys, sells, hits, xi):
+        return Plan(objective=0.0, gw_plans=[GwPlan(
+            gw=5, squad=xi, xi=xi, xi_rows=[], bench=[], captain=xi[0],
+            vice=xi[1], buys=buys, sells=sells, hits=hits, expected_pts=0.0)])
+
+    def fake_solve(pool, state, **kw):
+        if state.max_transfers == 0:
+            return plan([], [], 0, [1, 2, 3])
+        if state.max_hits == 0:
+            return plan([9], [3], 0, [1, 2, 9])          # 9 scores more than 3
+        return plan([9, 8], [3, 2], 1, [1, 9, 8])          # a hit for 8 over 2
+
+    pool = pd.DataFrame({"code": [1, 2, 3, 8, 9],
+                         "ep": [{5: 2.0}, {5: 2.0}, {5: 1.0}, {5: 9.0}, {5: 6.0}]})
+    state = SolveInput(owned_codes=[1, 2, 3], bank=0, free_transfers=1, gws=[5])
+    monkeypatch.setattr("gaffer.ladder.OUTCOME_VAR_PER_EP", 0.0)
+    cfg = v7b_replay.arm_config(["--arm", "restraint", "--tag", "t", "--ladder-draws", "8"])
+    gate = v7b_replay.make_restraint_gate(cfg, fake_solve)
+    out = gate(pool, state, hit_cost=4)
+    # hits1 beats hits0 in every draw (8 adds 7 EP for a 4-point hit).
+    assert out.gw_plans[0].buys == [9, 8]
+    assert gate.gated_weeks == 1 and gate.steps_taken == 2 and gate.steps_refused == 0
+    cfg = v7b_replay.arm_config(["--arm", "restraint", "--tag", "t", "--ladder-draws", "8",
+                                 "--hit-bar", "0.95"])
+    gate = v7b_replay.make_restraint_gate(cfg, fake_solve)
+    assert gate(pool, state, hit_cost=4).gw_plans[0].buys == [9, 8]   # 100% > 95%
+
+
+def test_the_restraint_gate_stands_aside_where_the_sweep_gate_does():
+    from gaffer.optimize.milp import SolveInput
+
+    calls = []
+
+    def fake_solve(pool, state, **kw):
+        calls.append(state)
+        return "plan"
+
+    cfg = v7b_replay.arm_config(["--arm", "restraint", "--tag", "t"])
+    gate = v7b_replay.make_restraint_gate(cfg, fake_solve)
+    assert gate(None, SolveInput(owned_codes=[], bank=0, free_transfers=15, gws=[5])) == "plan"
+    assert gate(None, SolveInput(owned_codes=[1], bank=0, free_transfers=1, gws=[5],
+                                 wildcard_gw=5)) == "plan"
+    assert len(calls) == 2

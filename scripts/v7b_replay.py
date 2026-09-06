@@ -23,6 +23,12 @@ Which arm answers which question:
                          ``composite_floor`` or the run is refused — an arm
                          tagged composite that is really the plain estimation
                          table is a silently wrong measurement.
+  ``--arm restraint``    v16 §7 R1: the raw solve plus the transfer ladder's
+                         rung specs, one shared matrix of outcome draws and
+                         the restraint walk at ``--hit-bar``
+                         (``--ladder-draws`` sets the matrix width). No
+                         scenario sweep — it is read against ``--arm raw``,
+                         so the pair isolates the restraint policy.
 
 ``--minutes legacy`` and ``--frame v4c`` are the **Q2 ablations, run on current
 code** rather than as historical checkouts (facts F1/F2). ``--minutes legacy``
@@ -93,6 +99,8 @@ class ArmConfig:
     minutes: str = "current"
     frame: str = "current"
     noise_asset: str | None = None
+    hit_bar: float = 0.6
+    ladder_draws: int = 2000
     log_path: str = field(init=False)
     report_path: str = field(init=False)
 
@@ -104,7 +112,8 @@ class ArmConfig:
         return {"arm": self.arm, "tag": self.tag, "seed_base": self.seed_base,
                 "n": self.n, "chips": self.chips, "priors": self.priors,
                 "minutes": self.minutes, "frame": self.frame,
-                "noise_asset": self.noise_asset}
+                "noise_asset": self.noise_asset, "hit_bar": self.hit_bar,
+                "ladder_draws": self.ladder_draws}
 
 
 class _ArmStore:
@@ -129,7 +138,8 @@ class _ArmStore:
 def _parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--arm", required=True,
-                   choices=["raw", "heur", "estimation", "composite"])
+                   choices=["raw", "heur", "estimation", "composite",
+                            "restraint"])
     p.add_argument("--tag", required=True,
                    help="per-arm output suffix; two arms may not share one")
     seeds = p.add_mutually_exclusive_group()
@@ -148,6 +158,12 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("--noise-asset", default=None,
                    help="required for --arm estimation/composite, refused "
                         "otherwise")
+    p.add_argument("--hit-bar", type=float, default=0.6,
+                   help="--arm restraint: the share of shared draws a richer "
+                        "rung must win before the walk steps up to it")
+    p.add_argument("--ladder-draws", type=int, default=2000,
+                   help="--arm restraint: draws per rung in the shared "
+                        "outcome matrix")
     return p
 
 
@@ -185,7 +201,8 @@ def _configs(a: argparse.Namespace) -> list[ArmConfig]:
     def one(tag: str, base: int) -> ArmConfig:
         return ArmConfig(arm=a.arm, tag=tag, seed_base=base, n=a.n,
                          chips=a.chips, priors=a.priors, minutes=a.minutes,
-                         frame=a.frame, noise_asset=a.noise_asset)
+                         frame=a.frame, noise_asset=a.noise_asset,
+                         hit_bar=a.hit_bar, ladder_draws=a.ladder_draws)
 
     if a.bases is None:
         return [one(a.tag, a.seed_base)]
@@ -307,6 +324,95 @@ def make_gate(cfg: ArmConfig, stash: dict, real_solve,
     return gate
 
 
+def make_restraint_gate(cfg: ArmConfig, real_solve):
+    """v16 §7 R1 (plan R10): the restraint arm's ``solve_plan``.
+
+    The raw solve is the objective; then the ladder's rung specs are solved
+    off the same pool and state, collapsed by their first-week moves, scored
+    on one shared matrix of zero-band outcome draws (the replay has no
+    component bands, so every cell takes the ladder's σ fallback), and the
+    walk picks the rung under ``cfg.hit_bar`` and the state's own caps. The
+    chosen rung's plan is returned — the rest of the replay executes its
+    first week exactly as it executes the objective's. Stands aside where
+    the sweep gate does: the opening squad, a wildcard, a free hit.
+    """
+    from dataclasses import replace as _replace
+
+    import numpy as np
+
+    from gaffer.ladder import (LADDER_HITS, SEED_OFFSET, collapse,
+                               draw_points, score_plan, walk)
+
+    def gate(pool, state, **kw):
+        plan = real_solve(pool, state, **kw)
+        if (not state.owned_codes or state.wildcard_gw is not None
+                or state.free_transfers >= 15):
+            return plan
+        gw = int(state.gws[0])
+        specs = [("bank", _replace(state, max_transfers=0))]
+        specs += [(f"hits{k}", _replace(state, max_hits=k)) for k in LADDER_HITS]
+        specs.append(("open", state))
+        solved = []
+        for key, spec in specs:
+            try:
+                p = real_solve(pool, spec, **kw)
+            except (RuntimeError, KeyError, ValueError):
+                continue
+            if key == "open" and p.gw_plans[0].hits <= max(LADDER_HITS):
+                continue
+            solved.append((key, p))
+        if not solved:
+            return plan
+        distinct, same_as = collapse(solved)
+        ep_by = {(int(r.code), int(g)): float(v)
+                 for r in pool.itertuples() for g, v in r.ep.items()}
+        keys = set()
+        for _, p in distinct:
+            for w in p.gw_plans:
+                keys.update((int(c), int(w.gw)) for c in w.xi)
+                keys.add((int(w.captain), int(w.gw)))
+        rng = np.random.default_rng(cfg.seed_base + gw + SEED_OFFSET)
+        draws = draw_points(keys, ep_by, {}, rng, cfg.ladder_draws)
+        hit_cost = int(kw.get("hit_cost", 4))
+        scores = {k: score_plan(p.gw_plans, draws, hit_cost, cfg.ladder_draws)
+                  for k, p in distinct}
+        rows = [{"key": k, "same_as": same_as.get(k),
+                 "hits": int(p.gw_plans[0].hits),
+                 "transfers": len(p.gw_plans[0].buys)} for k, p in solved]
+        chosen, steps = walk(scores, rows, hit_bar=cfg.hit_bar,
+                             max_hits=state.max_hits,
+                             max_transfers=getattr(state, "max_transfers", None))
+        gate.gated_weeks += 1
+        gate.steps_taken += sum(1 for s in steps if s["taken"])
+        gate.steps_refused += sum(1 for s in steps if not s["taken"])
+        by = dict(solved)
+        return by[chosen] if chosen in by else plan
+
+    gate.gated_weeks = 0
+    gate.steps_taken = 0
+    gate.steps_refused = 0
+    return gate
+
+
+def config_caps() -> dict:
+    """The live config's caps, banked on the report so a season's refusals can
+    be read against the caps the walk ran under.
+
+    Wrapped, and not read at import: ``load_config`` raises on a tree with no
+    ``config.toml`` (a fresh clone, and every test that chdirs to a tmp dir),
+    and a replay is not worth losing over a cap the report only quotes.
+    """
+    try:
+        from gaffer.config import load_config
+
+        cfg = load_config()
+        return {"max_hits": int(cfg.max_hits),
+                "max_transfers": int(cfg.max_transfers)}
+    except Exception as exc:  # noqa: BLE001
+        print(f"v7b: the config would not read ({exc}); no caps on the report")
+        return {"max_hits": None, "max_transfers": None}
+
+
 def run_one(cfg: ArmConfig, payload: dict | None) -> dict:
     """One seed base end to end: replay, report file, ``V7B_ARM_DONE`` line.
 
@@ -325,7 +431,12 @@ def run_one(cfg: ArmConfig, payload: dict | None) -> dict:
     real_solve = bt.solve_plan
     stash: dict = {}
     gate = None
-    if gate_wanted(cfg):
+    if cfg.arm == "restraint":
+        # No xmins stash and no scenario sweep: the restraint arm reads only
+        # the pool and the state the solver was already handed.
+        gate = make_restraint_gate(cfg, real_solve)
+        bt.solve_plan = gate
+    elif gate_wanted(cfg):
 
         def pcs(models, rows):
             comp = real_pcs(models, rows)
@@ -345,7 +456,10 @@ def run_one(cfg: ArmConfig, payload: dict | None) -> dict:
             "hits": int(d["hits"].sum()),
             "transfers": int(d["transfers"].sum()),
             "gated_weeks": gate.gated_weeks if gate else 0,
-            "held_weeks": gate.held_weeks if gate else 0,
+            "held_weeks": getattr(gate, "held_weeks", 0) if gate else 0,
+            "steps_taken": getattr(gate, "steps_taken", 0),
+            "steps_refused": getattr(gate, "steps_refused", 0),
+            "caps": config_caps(),
             "chips_played": r["chips_played"],
             "chip_points": {str(k): int(v) for k, v in chip_pts.items()},
             "composite_floor": (payload or {}).get("composite_floor"),
