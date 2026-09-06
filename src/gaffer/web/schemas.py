@@ -1516,6 +1516,11 @@ class PlanTimeline(BaseModel):
     ``[optimizer] alt_plan_max_gap = 0``. The board draws no tab strip for an
     empty list rather than a strip with one tab in it (v12 W3 §4.3)."""
 
+    objective: PlanGw | None = None
+    """v16 §4: the solver's own week one, traced, when the served plan is a
+    different rung of the ladder. ``None`` when they agree or when the
+    payload predates the field."""
+
 
 class MatrixCell(BaseModel):
     gw: int

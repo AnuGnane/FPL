@@ -437,6 +437,44 @@ export default function PlannerBoard(
                   </div>
                 </details>
               )}
+              {/* v16 §4: the objective's own week one, when the ladder's
+                  restraint served a different rung. Its trace is the same
+                  accounting over the plan the solver returned, so the two
+                  "why"s are comparable. */}
+              {i === 0 && data.objective && (
+                <details className="mt-2" data-testid="board-objective">
+                  <summary className="cursor-pointer text-text-muted">
+                    The objective wanted
+                  </summary>
+                  <div className="mt-1 flex flex-col gap-0.5">
+                    <p className="text-text">
+                      {[...data.objective.buys.map((m) => `${m.name} in`),
+                        ...data.objective.sells.map((m) => `${m.name} out`)]
+                        .join(', ') || 'no moves'}
+                      {data.objective.hits > 0 && (
+                        <span className="text-down">
+                          {` · ${data.objective.hits} hit`
+                           + `${data.objective.hits === 1 ? '' : 's'}`}
+                        </span>
+                      )}
+                    </p>
+                    {data.objective.trace?.moves.map((m) => (
+                      <p key={`${m.buy_code}-${m.sell_code}`}
+                         className="font-mono tn text-xs">
+                        <span>{`${m.sell_name} → ${m.buy_name}`}</span>
+                        <span className="ml-2 text-text">
+                          {fmtDelta(m.ep_gain)}
+                        </span>
+                      </p>
+                    ))}
+                    <p className="text-text-faint">
+                      {'The board above draws the plan the ladder’s restraint '
+                       + 'served; this is the solver’s own choice, traced the '
+                       + 'same way.'}
+                    </p>
+                  </div>
+                </details>
+              )}
               {/* No handoff from an alternative: it was solved without the
                   sweep's coherence constraints, and prefilling its moves into
                   a lab that solves from now would silently re-impose them

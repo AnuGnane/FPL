@@ -525,6 +525,34 @@ describe('PlannerBoard', () => {
       })
   })
 
+  // v16 §4 — what the solver itself wanted, when the ladder's restraint
+  // served a different rung.
+  it('shows what the objective wanted under week one when it differs',
+    async () => {
+      wire({ ...plan([WEEK]),
+        objective: { ...WEEK,
+          hits: 1,
+          hit_cost: 4,
+          trace: { gw: 5,
+            moves: [{ gw: 5, buy_code: 1, buy_name: 'Wirtz', sell_code: 2,
+              sell_name: 'Isak', ep_gain: 3.5, lambda_tilt: 0, note: '' }],
+            ep_gain: 3.5, hits: 1, hit_cost: 4, ft_used: 1, ft_after: 1,
+            ft_use_penalty: 0, ft_shadow: 1.5, ft_basis: 'flat',
+            bank_value: null, theta: null, price_charge: null, note: '' } } })
+      render(<PlannerBoard gw={5} />)
+      const block = await screen.findByTestId('board-objective')
+      expect(block).toHaveTextContent('Wirtz in, Isak out')
+      expect(block).toHaveTextContent('1 hit')
+      expect(block).toHaveTextContent('Isak → Wirtz')
+    })
+
+  it('draws no objective block when the payload has none', async () => {
+    wire(plan([WEEK]))
+    render(<PlannerBoard gw={5} />)
+    await screen.findByTestId('board-week-5')
+    expect(screen.queryByTestId('board-objective')).toBeNull()
+  })
+
   // Plan A18: the hub-level cold-clone rail renders only Planning's default
   // tab, so the board's own cold-clone case is asserted here.
   it('renders an empty state on a cold clone with no console error',

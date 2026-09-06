@@ -7870,6 +7870,18 @@
     "gw": {
      "type": "integer"
     },
+    "objective": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/PlanGw"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "v16 \u00a74: the solver's own week one, traced, when the served plan is a\ndifferent rung of the ladder. ``None`` when they agree or when the\npayload predates the field."
+    },
     "weeks": {
      "items": {
       "$ref": "#/definitions/PlanGw"
@@ -7882,6 +7894,7 @@
     "bank",
     "generated_at",
     "gw",
+    "objective",
     "weeks"
    ],
    "title": "WirePlanTimeline",

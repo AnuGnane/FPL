@@ -2822,6 +2822,12 @@ export interface WirePlanTimeline {
   bank: number | null
   generated_at: string
   gw: number
+  /**
+   * v16 §4: the solver's own week one, traced, when the served plan is a
+   * different rung of the ladder. ``None`` when they agree or when the
+   * payload predates the field.
+   */
+  objective: PlanGw | null
   weeks: PlanGw[]
 }
 /**

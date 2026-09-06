@@ -409,14 +409,21 @@ def plan(gw: int) -> PlanTimeline:
     # One pass over the whole horizon rather than a week at a time, because
     # the free-transfer recurrence is what makes the week after depend on the
     # week before.
-    if TRACE and weeks:
+    def attach_trace(target: list[PlanGw]) -> None:
+        """Hang the objective's own terms on each week of ``target``.
+
+        A nested function rather than the inline block it was, because v16 §4
+        runs the same accounting twice: once over the served rung's weeks and
+        once over the objective's own week one, and two copies of this would
+        drift into two different tables of numbers on one board.
+        """
         try:
             price_timing, price_fall = _price_falls(state)
             # The moves' own names, under the pool's: the pool is the solver's
             # candidate list and a move can name a player who is not on it —
             # and a bare code on the board is a database key shown to a human.
             move_names = {m.code: m.name
-                          for w in weeks for m in (*w.buys, *w.sells)}
+                          for w in target for m in (*w.buys, *w.sells)}
             # `chip: None`, deliberately, and not `w.chip`. `w.chip` is what
             # the *chip table* recommends; `plan_by_gw` is the base solve, and
             # `advise` never sets `wildcard_gw` on it. So the objective did
@@ -431,7 +438,7 @@ def plan(gw: int) -> PlanTimeline:
                 [{"gw": w.gw, "hits": w.hits,
                   "buys": [m.code for m in w.buys],
                   "sells": [m.code for m in w.sells], "chip": None}
-                 for w in weeks],
+                 for w in target],
                 gws=[int(g) for g in getattr(state, "gws", [])],
                 ep_by=ep_by, positions=positions,
                 names={**move_names, **player_names},
@@ -453,9 +460,9 @@ def plan(gw: int) -> PlanTimeline:
                        else cover_from_eo(getattr(state, "league_eo", {})
                                           or {})),
                 thresholds=thresholds,
-                banks={w.gw: w.bank for w in weeks},
+                banks={w.gw: w.bank for w in target},
                 price_timing=price_timing, price_fall=price_fall)
-            for week, one in zip(weeks, traced):
+            for week, one in zip(target, traced):
                 payload = asdict(one)
                 if week.chip:
                     said = (f"a {week.chip} is recommended this week; these "
@@ -469,5 +476,24 @@ def plan(gw: int) -> PlanTimeline:
             # the board's own rule for the price movers.
             print(f"plan trace unavailable for GW{head}: {exc}")
 
+    if TRACE and weeks:
+        attach_trace(weeks)
+
+    # v16 §4: the objective's week one beside the served rung's, traced the
+    # same way, only when the two differ — the board says "the objective
+    # wanted" under week one, and an agreeing objective would say it twice.
+    objective_week: PlanGw | None = None
+    restraint = advice.get("restraint") or {}
+    objective = advice.get("objective")
+    if isinstance(objective, dict) and restraint.get("agrees") is False:
+        built = build([{"gw": head, "hits": objective.get("hits", 0),
+                        "buys": objective.get("buys") or [],
+                        "sells": objective.get("sells") or [],
+                        "expected_pts": objective.get("expected_pts", 0.0)}],
+                      head_refs=False)
+        if TRACE and built:
+            attach_trace(built)
+        objective_week = built[0] if built else None
     return PlanTimeline(gw=head, generated_at=state.generated_at, weeks=weeks,
-                        bank=start, alternatives=_alternatives(advice, build))
+                        bank=start, alternatives=_alternatives(advice, build),
+                        objective=objective_week)
