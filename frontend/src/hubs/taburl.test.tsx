@@ -8,8 +8,8 @@
  * Model and Players render their strip on a cold clone and are tested that
  * way: every fetch rejected. League and Planning do not, and that is their own
  * pre-existing answer rather than something §6.1 changes — League replaces the
- * whole hub with "No league configured" when `/api/league/race` fails
- * (`League.tsx:113`), and Planning with "Nothing planned yet" when there is no
+ * whole hub with "No league configured" when both `/api/league/race` and the
+ * v15 overview fail, and Planning with "Nothing planned yet" when there is no
  * advice (`Planning.tsx:75`). Both are deliberate empty states with no tab
  * strip in them at all, so those two hubs are given the one payload each needs
  * to get past its own gate and no more. The claim under test is the same for
@@ -142,7 +142,8 @@ describe('the tab in the URL', () => {
   it.each([
     ['Model', <Model key="m" />, '/model', 'Quality'],
     ['Players', <Players key="p" />, '/players', 'Explorer'],
-    ['League', <League key="l" />, '/league', 'Race'],
+    // v15 §6.1: League's first tab is Leagues, not Race.
+    ['League', <League key="l" />, '/league', 'Leagues'],
     ['Planning', <Planning key="n" />, '/planning', 'Timeline'],
   ])('%s ignores a tab it does not have', async (name, node, at, first) => {
     serve(name)

@@ -31,6 +31,7 @@ vi.mock('../api/client', () => ({
   ApiError,
   apiGet: (path: string) => apiGet(path),
   apiPost: vi.fn(),
+  errorText: (e: unknown) => (e instanceof Error ? e.message : String(e)),
 }))
 
 vi.mock('../api/useJobStream', () => ({

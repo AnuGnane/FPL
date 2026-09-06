@@ -48,9 +48,9 @@ const DETAIL = {
   live_points: 74,
 }
 
-function renderDetail() {
+function renderDetail(at = '/league/rival/2') {
   render(
-    <MemoryRouter initialEntries={['/league/rival/2']}>
+    <MemoryRouter initialEntries={[at]}>
       <Routes>
         <Route path="/league/rival/:id" element={<RivalDetail />} />
       </Routes>
@@ -102,5 +102,21 @@ describe('Rival detail', () => {
     const chips = await screen.findAllByRole('button', { name: /Salah/ })
     await userEvent.click(chips[0])
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  })
+})
+
+describe('a rival opened from a non-focus league', () => {
+  // v15 §6.1: the league in the URL is the one the comparison is against, so
+  // it rides along to the server rather than being dropped for the focus.
+  it('carries the league through to the fetch', async () => {
+    renderDetail('/league/rival/2?league=9')
+    await screen.findByRole('heading', { name: /Ten Hag Hive/ })
+    expect(apiGet).toHaveBeenCalledWith('/api/league/rivals/2?league_id=9')
+  })
+
+  it('asks for the focus league when the URL names none', async () => {
+    renderDetail()
+    await screen.findByRole('heading', { name: /Ten Hag Hive/ })
+    expect(apiGet).toHaveBeenCalledWith('/api/league/rivals/2')
   })
 })

@@ -19,6 +19,7 @@ vi.mock('../api/client', () => ({
   ApiError: class extends Error { status = 0; detail: unknown = null },
   apiGet: (path: string) => apiGet(path),
   apiPost: vi.fn(),
+  errorText: (e: unknown) => (e instanceof Error ? e.message : String(e)),
 }))
 
 vi.mock('../api/useJobStream', () => ({
@@ -230,7 +231,10 @@ describe('a phone screen scrolls nothing sideways', () => {
     // means something once the standings and the win-probability table are
     // actually on the page.
     serveLeague()
-    render(<MemoryRouter><League /></MemoryRouter>)
+    // v15 §6.1: the hub opens on the Leagues tab, and the tables this claim
+    // is about are the Race tab's — so the deep link is the one to render.
+    render(
+      <MemoryRouter initialEntries={['/league?tab=race']}><League /></MemoryRouter>)
     await screen.findAllByText('Ten Hag Hive')
     wrapped(2)
   })

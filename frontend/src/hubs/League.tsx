@@ -1,24 +1,31 @@
 import * as Tabs from '@radix-ui/react-tabs'
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useCallback, useEffect, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
-import { apiGet } from '../api/client'
+import { apiGet, apiPost, errorText } from '../api/client'
 import {
-  type Column, Card, DataTable, EmptyState, Loading, PageHeader,
+  type Column, Callout, Card, DataTable, EmptyState, Loading, PageHeader,
   Sparkline, Stat, StatRow, TABLE_CLASS, TAB_CLASS, TAB_LIST_CLASS, THEAD_CLASS,
-  TR_CLASS, TR_SELECTED_CLASS, fmtNum, fmtPct, tdClass, thClass, useTabParam,
+  TR_CLASS, TR_SELECTED_CLASS, fmtNum, fmtPct, tdClass, thClass, toast,
+  useTabParam,
 } from '../kit'
 import type {
-  AdviceLatest, LeagueRaceData, LeagueSimData, RivalSummary,
+  AdviceLatest, LeagueRaceData, LeagueSimData, LeaguesOverview, RivalSummary,
 } from '../types'
 import FieldPanel from './league/FieldPanel'
+import LeaguesTab, { type Stance, lamText } from './league/LeaguesTab'
 import WhatIfSim, { type WhatIfSquadPlayer } from './league/WhatIfSim'
 
-// The strip's values, in strip order. Named so `useTabParam` can reject a
-// `?tab=` this hub does not have rather than rendering an empty panel.
-const TABS = ['race', 'rivals', 'whatif'] as const
+// v15 §6.1: the overview first. `race`/`rivals`/`whatif` show the league in
+// `?league=`, or the focus when it is absent.
+const TABS = ['leagues', 'race', 'rivals', 'whatif'] as const
+
+/** `path?league_id=N` when a league is chosen; the bare path is the focus. */
+function withLeague(path: string, leagueId: number | null): string {
+  return leagueId === null ? path : `${path}?league_id=${leagueId}`
+}
 
 const FAN_KEYS = ['p05', 'p25', 'p50', 'p75', 'p95'] as const
 
@@ -81,23 +88,41 @@ function MarginFan({ quantiles }: { quantiles: Record<string, number> }) {
 }
 
 export default function League() {
-  const [tab, setTab] = useTabParam(TABS, 'race')
+  const [tab, setTab] = useTabParam(TABS, 'leagues')
+  const [params] = useSearchParams()
+  const asked = params.get('league')
+  const leagueId = asked !== null && /^\d+$/.test(asked) ? Number(asked) : null
+  const [overview, setOverview] = useState<LeaguesOverview | null>(null)
   const [race, setRace] = useState<LeagueRaceData | null>(null)
   const [rivals, setRivals] = useState<RivalSummary[]>([])
-  const [missing, setMissing] = useState(false)
+  const [missing, setMissing] = useState<string | null>(null)
   const [sim, setSim] = useState<LeagueSimData | null>(null)
   const [squad, setSquad] = useState<WhatIfSquadPlayer[]>([])
+  const [busy, setBusy] = useState(false)
 
-  useEffect(() => {
-    apiGet<LeagueRaceData>('/api/league/race')
-      .then((body) => { setRace(body); setMissing(false) })
-      .catch(() => setMissing(true))
-    apiGet<RivalSummary[]>('/api/league/rivals').then(setRivals).catch(() => {})
+  const loadOverview = useCallback(() => {
+    apiGet<LeaguesOverview>('/api/league/leagues')
+      .then(setOverview).catch(() => setOverview(null))
+  }, [])
+
+  const loadLeague = useCallback(() => {
+    setRace(null)
+    apiGet<LeagueRaceData>(withLeague('/api/league/race', leagueId))
+      .then((body) => { setRace(body); setMissing(null) })
+      .catch((e) => setMissing(errorText(e)))
+    apiGet<RivalSummary[]>(withLeague('/api/league/rivals', leagueId))
+      .then(setRivals).catch(() => setRivals([]))
     // The simulated card degrades to the parametric one rather than to an
     // error: /api/league/race already carries those numbers, and a league
     // page with no win-probability panel at all is a worse answer than an
     // older one.
-    apiGet<LeagueSimData>('/api/league/sim').then(setSim).catch(() => setSim(null))
+    apiGet<LeagueSimData>(withLeague('/api/league/sim', leagueId))
+      .then(setSim).catch(() => setSim(null))
+  }, [leagueId])
+
+  useEffect(() => { loadOverview() }, [loadOverview])
+  useEffect(() => { loadLeague() }, [loadLeague])
+  useEffect(() => {
     // An empty squad is a working empty state in the What-if panel, so the
     // failure path is [] rather than an error.
     apiGet<AdviceLatest>('/api/advice/latest')
@@ -106,7 +131,21 @@ export default function League() {
       .catch(() => setSquad([]))
   }, [])
 
-  if (missing) {
+  // Both writes go through the settings endpoint (v15 §4.2), so the Model
+  // tab, the CLI and the solve job read the same file. A refusal is a toast
+  // and the control stays where the server left it.
+  function write(key: 'focus' | 'stance', value: number | string,
+                 what: string) {
+    setBusy(true)
+    apiPost('/api/settings', { key, value })
+      .then(() => { loadOverview(); loadLeague() })
+      .catch((e) => toast('negative', `Could not ${what} — ${errorText(e)}`))
+      .finally(() => setBusy(false))
+  }
+  const onFocus = (id: number) => write('focus', id, 'set the focus league')
+  const onStance = (s: Stance) => write('stance', s, 'set the stance')
+
+  if (missing !== null && overview === null) {
     return (
       <>
         <PageHeader title="League" />
@@ -119,14 +158,14 @@ export default function League() {
       </>
     )
   }
-  if (!race) {
-    return (
-      <>
-        <PageHeader title="League" />
-        <Loading />
-      </>
-    )
-  }
+
+  const onLeagues = tab === 'leagues'
+  const title = onLeagues ? 'Leagues' : (race?.league_name ?? 'League')
+  const back = onLeagues ? undefined : (
+    <Link to="/league?tab=leagues" className="text-accent-text hover:underline">
+      ‹ Leagues
+    </Link>
+  )
 
   // Recharts wants one row per gameweek with a column per entry. Keyed by the
   // entry id, not the team name: FPL does not make team names unique, and two
@@ -134,11 +173,11 @@ export default function League() {
   // the second overwrote the first, so they were drawn as one line and one
   // manager's season vanished off the chart.
   const seriesKey = (entry: number) => `e${entry}`
-  const gws = [...new Set(race.trajectory
+  const gws = [...new Set((race?.trajectory ?? [])
     .flatMap((t) => t.points.map((p) => p.gw)))].sort((a, b) => a - b)
   const chart = gws.map((gw) => {
     const row: Record<string, number> = { gw }
-    for (const entry of race.trajectory) {
+    for (const entry of race?.trajectory ?? []) {
       const point = entry.points.find((p) => p.gw === gw)
       if (point) row[seriesKey(entry.entry)] = point.total
     }
@@ -147,21 +186,21 @@ export default function League() {
 
   /** Trajectories carry no `is_you`; the standings row for the entry does. */
   const isYou = (entry: number) => Boolean(
-    race.standings.find((row) => row.entry === entry)?.is_you)
+    race?.standings.find((row) => row.entry === entry)?.is_you)
 
   // A four-grey palette cannot separate fifty managers: it draws fifty
   // near-identical lines and the reader cannot find himself in them. So the
   // field is one faint grey and you are text ink on top of it — drawn LAST, a
   // stable sort so the rest keep the order the server sent.
-  const trajectory = [...race.trajectory].sort(
+  const trajectory = [...(race?.trajectory ?? [])].sort(
     (a, b) => Number(isYou(a.entry)) - Number(isYou(b.entry)))
 
   // The one sentence the hub exists to answer: where you are in it.
-  const you = race.standings.find((row) => row.is_you)
-  const leagueContext = you
+  const you = race?.standings.find((row) => row.is_you)
+  const leagueContext = race === null ? undefined : (you
     ? `${race.standings.length} managers · you are ${you.rank}`
       + ` on ${you.total}`
-    : `${race.standings.length} managers`
+    : `${race.standings.length} managers`)
 
   const rivalColumns: Column<RivalSummary>[] = [
     { key: 'rank', header: '#', primary: true, numeric: true,
@@ -169,7 +208,8 @@ export default function League() {
     {
       key: 'name', header: 'Team', primary: true, value: (r) => r.name,
       render: (r) => (
-        <Link to={`/league/rival/${r.entry}`}
+        <Link to={`/league/rival/${r.entry}${leagueId === null
+                    ? '' : `?league=${leagueId}`}`}
               className="text-accent-text hover:underline">
           {r.name}
         </Link>
@@ -181,179 +221,89 @@ export default function League() {
 
   return (
     <>
-      <PageHeader title="League" context={leagueContext} />
+      <PageHeader title={title} context={leagueContext} action={back} />
       <Tabs.Root value={tab} onValueChange={setTab}>
         <Tabs.List className={TAB_LIST_CLASS}>
+          <Tabs.Trigger value="leagues" className={TAB_CLASS}>Leagues</Tabs.Trigger>
           <Tabs.Trigger value="race" className={TAB_CLASS}>Race</Tabs.Trigger>
           <Tabs.Trigger value="rivals" className={TAB_CLASS}>Rivals</Tabs.Trigger>
           <Tabs.Trigger value="whatif" className={TAB_CLASS}>What if</Tabs.Trigger>
         </Tabs.List>
+        <Tabs.Content value="leagues">
+          {overview ? (
+            <LeaguesTab overview={overview} busy={busy}
+                        onFocus={onFocus} onStance={onStance} />
+          ) : <Loading />}
+        </Tabs.Content>
         <Tabs.Content value="race">
-          <Card title="Cumulative points" className="mb-4">
-            <ResponsiveContainer width="100%" height={260}>
-              <LineChart data={chart}>
-                <CartesianGrid stroke="var(--color-divider)" vertical={false} />
-                <XAxis dataKey="gw" stroke="var(--color-text-muted)" />
-                <YAxis stroke="var(--color-text-muted)" />
-                <Tooltip contentStyle={{
-                  background: 'var(--color-raised)',
-                  border: '1px solid var(--color-border)',
-                }} />
-                {/* No Recharts <Legend>: the standings table below names every
-                    entry already, and the accent tint on your own row there
-                    says which of these lines is yours. */}
-                {trajectory.map((entry) => (
-                  <Line
-                    key={entry.entry}
-                    type="monotone"
-                    dataKey={seriesKey(entry.entry)}
-                    // The tooltip would otherwise read "e2"; the standings
-                    // table below is the legend and names every entry.
-                    name={entry.name}
-                    dot={false}
-                    strokeWidth={isYou(entry.entry) ? 2.5 : 1}
-                    stroke={isYou(entry.entry)
-                      ? 'var(--color-text)' : 'var(--color-text-faint)'}
-                    strokeOpacity={isYou(entry.entry) ? 1 : 0.7}
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </Card>
-          <Card title="Standings" className="mb-4">
-            <div className="overflow-x-auto">
-            <table className={TABLE_CLASS}>
-              <thead className={THEAD_CLASS}>
-                <tr>
-                  <th className={thClass()}>#</th>
-                  <th className={thClass()}>Team</th>
-                  <th className={thClass(true)}>Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {race.standings.map((row) => (
-                  // Your own row is the one the reader is: the selected row
-                  // of this table, accent-tinted like every other (rule 3).
-                  <tr key={row.entry} data-testid={`standing-${row.entry}`}
-                      data-you={String(row.is_you)}
-                      className={`${TR_CLASS}${row.is_you
-                        ? ` ${TR_SELECTED_CLASS}` : ''}`}>
-                    <td className={`${tdClass()} tn text-text-muted`}>
-                      {row.rank}
-                    </td>
-                    <td className={`${tdClass()} ${row.is_you
-                      ? 'text-text' : 'text-text-secondary'}`}>{row.name}</td>
-                    <td className={`${tdClass(true)} text-text`}>
-                      {row.total}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
-          </Card>
-          {sim ? (
-            <Card title="Win probability">
-              {/* The three numbers are stat tiles like every other on the
-                  site; the testids ride on a span inside each value so the
-                  tile shape is the kit's and nothing that reads them moved. */}
-              <StatRow cols={3} className="mb-3">
-                {/* fmtPct rounds to whole percent, which is the right
-                    resolution here rather than a stylistic one: at n = 2,000
-                    the Monte Carlo standard error on a probability near 0.5
-                    is sqrt(0.25 / 2000) ≈ 0.9pp, so a decimal place would be
-                    reporting the seed. Raise [league] sim_n before adding
-                    one. */}
-                <Stat label="P(win)" value={(
-                  <span data-testid="sim-p-win">{fmtPct(sim.p_win)}</span>
-                )} />
-                <Stat label="P(top 3)" value={(
-                  <span data-testid="sim-p-top3">{fmtPct(sim.p_top3)}</span>
-                )} />
-                {/* One decimal. A second one is finer than the Monte Carlo
-                    resolves: at n = 2,000 the standard error on a probability
-                    near 0.5 is about 0.9pp, and the finish is the same draws
-                    counted a different way. */}
-                <Stat label="Expected finish"
-                      value={fmtNum(sim.exp_finish, 1)} />
-              </StatRow>
-              {sim.history.length > 1 && (
-                <div className="mb-3" data-testid="sim-sparkline">
-                  <div className="label">Trend</div>
-                  <Sparkline values={sim.history.map((h) => h.p_win)} />
-                </div>
+          {race === null ? (missing !== null
+            ? <Callout tone="error">{missing}</Callout> : <Loading />) : (
+            <>
+              {overview && !race.focus && (
+                <Callout tone="note" className="mb-4" data-testid="focus-note">
+                  {`Plan is set by ${overview.focus_name ?? 'the focus league'} `
+                   + `(${overview.stance === 'auto'
+                        ? overview.focus_stance : `manual ${overview.stance}`}). `
+                   + `Here you would ${race.stance === 'neutral'
+                        ? 'be neutral' : race.stance}, λ ${lamText(race.lam)}.`}
+                </Callout>
               )}
-              {/* A probability with no n and no seed beside it is a
-                  decoration: this is the line that makes it a measurement. */}
-              <p className="mb-3 text-text-muted" data-testid="sim-provenance">
-                {`${sim.n.toLocaleString()} simulations, seed ${sim.seed}, `}
-                {`rival drift ${sim.rival_drift}, ${sim.weeks_left} `}
-                {'gameweeks left, '}
-                {/* Which model produced the fan below, in three words. With
-                    a field sample banked the managers share a weekly factor
-                    weighted by how much of the template they own; without
-                    one they are drawn independently and the fan is wide. */}
-                {sim.field_rate === null
-                  ? 'independence assumed — fan wide.'
-                  : 'shared-ownership correlated.'}
-              </p>
-              {sim.notice && (
-                <p className="mb-3 text-text-muted">{sim.notice}</p>
-              )}
-              <MarginFan quantiles={sim.margin_quantiles} />
-              <div className="overflow-x-auto">
-              <table className={TABLE_CLASS}>
-                <thead className={THEAD_CLASS}>
-                  <tr>
-                    <th className={thClass()}>Rival</th>
-                    <th className={thClass(true)}>P(I beat him)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sim.per_rival.map((rival) => (
-                    <tr key={rival.entry} data-testid={`beat-${rival.entry}`}
-                        className={TR_CLASS}>
-                      <td className={`${tdClass()} text-text-secondary`}>
-                        {rival.name}
-                      </td>
-                      <td className={`${tdClass(true)} text-text`}>
-                        {/* A dash, not a number: an entry whose squad could
-                            not be read is not one I am certain to beat. */}
-                        {rival.p_beat === null ? '—' : fmtPct(rival.p_beat)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              </div>
-            </Card>
-          ) : (
-            // Card does not forward data-testid, so the fallback marker sits
-            // on a wrapper rather than on the card itself.
-            <div data-testid="legacy-win-probability">
-              <Card title="Win probability">
-                {/* The pre-v8c parametric pairwise numbers, kept as the
-                    fallback until the simulated card is always available. */}
+              <Card title="Cumulative points" className="mb-4">
+                <ResponsiveContainer width="100%" height={260}>
+                  <LineChart data={chart}>
+                    <CartesianGrid stroke="var(--color-divider)" vertical={false} />
+                    <XAxis dataKey="gw" stroke="var(--color-text-muted)" />
+                    <YAxis stroke="var(--color-text-muted)" />
+                    <Tooltip contentStyle={{
+                      background: 'var(--color-raised)',
+                      border: '1px solid var(--color-border)',
+                    }} />
+                    {/* No Recharts <Legend>: the standings table below names every
+                        entry already, and the accent tint on your own row there
+                        says which of these lines is yours. */}
+                    {trajectory.map((entry) => (
+                      <Line
+                        key={entry.entry}
+                        type="monotone"
+                        dataKey={seriesKey(entry.entry)}
+                        // The tooltip would otherwise read "e2"; the standings
+                        // table below is the legend and names every entry.
+                        name={entry.name}
+                        dot={false}
+                        strokeWidth={isYou(entry.entry) ? 2.5 : 1}
+                        stroke={isYou(entry.entry)
+                          ? 'var(--color-text)' : 'var(--color-text-faint)'}
+                        strokeOpacity={isYou(entry.entry) ? 1 : 0.7}
+                      />
+                    ))}
+                  </LineChart>
+                </ResponsiveContainer>
+              </Card>
+              <Card title="Standings" className="mb-4">
                 <div className="overflow-x-auto">
                 <table className={TABLE_CLASS}>
                   <thead className={THEAD_CLASS}>
                     <tr>
+                      <th className={thClass()}>#</th>
                       <th className={thClass()}>Team</th>
-                      <th className={thClass(true)}>P(win)</th>
-                      <th className={thClass(true)}>Projected</th>
+                      <th className={thClass(true)}>Total</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {race.win_probability.map((prob) => (
-                      <tr key={prob.name} className={TR_CLASS}>
-                        <td className={`${tdClass()} text-text-secondary`}>
-                          {prob.name}
+                    {race.standings.map((row) => (
+                      // Your own row is the one the reader is: the selected row
+                      // of this table, accent-tinted like every other (rule 3).
+                      <tr key={row.entry} data-testid={`standing-${row.entry}`}
+                          data-you={String(row.is_you)}
+                          className={`${TR_CLASS}${row.is_you
+                            ? ` ${TR_SELECTED_CLASS}` : ''}`}>
+                        <td className={`${tdClass()} tn text-text-muted`}>
+                          {row.rank}
                         </td>
+                        <td className={`${tdClass()} ${row.is_you
+                          ? 'text-text' : 'text-text-secondary'}`}>{row.name}</td>
                         <td className={`${tdClass(true)} text-text`}>
-                          {fmtPct(prob.p_win)}
-                        </td>
-                        <td className={`${tdClass(true)} text-text-muted`}>
-                          {fmtNum(prob.total, 0)}
+                          {row.total}
                         </td>
                       </tr>
                     ))}
@@ -361,13 +311,124 @@ export default function League() {
                 </table>
                 </div>
               </Card>
-            </div>
+              {sim ? (
+                <Card title="Win probability">
+                  {/* The three numbers are stat tiles like every other on the
+                      site; the testids ride on a span inside each value so the
+                      tile shape is the kit's and nothing that reads them moved. */}
+                  <StatRow cols={3} className="mb-3">
+                    {/* fmtPct rounds to whole percent, which is the right
+                        resolution here rather than a stylistic one: at n = 2,000
+                        the Monte Carlo standard error on a probability near 0.5
+                        is sqrt(0.25 / 2000) ≈ 0.9pp, so a decimal place would be
+                        reporting the seed. Raise [league] sim_n before adding
+                        one. */}
+                    <Stat label="P(win)" value={(
+                      <span data-testid="sim-p-win">{fmtPct(sim.p_win)}</span>
+                    )} />
+                    <Stat label="P(top 3)" value={(
+                      <span data-testid="sim-p-top3">{fmtPct(sim.p_top3)}</span>
+                    )} />
+                    {/* One decimal. A second one is finer than the Monte Carlo
+                        resolves: at n = 2,000 the standard error on a probability
+                        near 0.5 is about 0.9pp, and the finish is the same draws
+                        counted a different way. */}
+                    <Stat label="Expected finish"
+                          value={fmtNum(sim.exp_finish, 1)} />
+                  </StatRow>
+                  {sim.history.length > 1 && (
+                    <div className="mb-3" data-testid="sim-sparkline">
+                      <div className="label">Trend</div>
+                      <Sparkline values={sim.history.map((h) => h.p_win)} />
+                    </div>
+                  )}
+                  {/* A probability with no n and no seed beside it is a
+                      decoration: this is the line that makes it a measurement. */}
+                  <p className="mb-3 text-text-muted" data-testid="sim-provenance">
+                    {`${sim.n.toLocaleString()} simulations, seed ${sim.seed}, `}
+                    {`rival drift ${sim.rival_drift}, ${sim.weeks_left} `}
+                    {'gameweeks left, '}
+                    {/* Which model produced the fan below, in three words. With
+                        a field sample banked the managers share a weekly factor
+                        weighted by how much of the template they own; without
+                        one they are drawn independently and the fan is wide. */}
+                    {sim.field_rate === null
+                      ? 'independence assumed — fan wide.'
+                      : 'shared-ownership correlated.'}
+                  </p>
+                  {sim.notice && (
+                    <p className="mb-3 text-text-muted">{sim.notice}</p>
+                  )}
+                  <MarginFan quantiles={sim.margin_quantiles} />
+                  <div className="overflow-x-auto">
+                  <table className={TABLE_CLASS}>
+                    <thead className={THEAD_CLASS}>
+                      <tr>
+                        <th className={thClass()}>Rival</th>
+                        <th className={thClass(true)}>P(I beat him)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sim.per_rival.map((rival) => (
+                        <tr key={rival.entry} data-testid={`beat-${rival.entry}`}
+                            className={TR_CLASS}>
+                          <td className={`${tdClass()} text-text-secondary`}>
+                            {rival.name}
+                          </td>
+                          <td className={`${tdClass(true)} text-text`}>
+                            {/* A dash, not a number: an entry whose squad could
+                                not be read is not one I am certain to beat. */}
+                            {rival.p_beat === null ? '—' : fmtPct(rival.p_beat)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  </div>
+                </Card>
+              ) : (
+                // Card does not forward data-testid, so the fallback marker sits
+                // on a wrapper rather than on the card itself.
+                <div data-testid="legacy-win-probability">
+                  <Card title="Win probability">
+                    {/* The pre-v8c parametric pairwise numbers, kept as the
+                        fallback until the simulated card is always available. */}
+                    <div className="overflow-x-auto">
+                    <table className={TABLE_CLASS}>
+                      <thead className={THEAD_CLASS}>
+                        <tr>
+                          <th className={thClass()}>Team</th>
+                          <th className={thClass(true)}>P(win)</th>
+                          <th className={thClass(true)}>Projected</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {race.win_probability.map((prob) => (
+                          <tr key={prob.name} className={TR_CLASS}>
+                            <td className={`${tdClass()} text-text-secondary`}>
+                              {prob.name}
+                            </td>
+                            <td className={`${tdClass(true)} text-text`}>
+                              {fmtPct(prob.p_win)}
+                            </td>
+                            <td className={`${tdClass(true)} text-text-muted`}>
+                              {fmtNum(prob.total, 0)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    </div>
+                  </Card>
+                </div>
+              )}
+              {/* Below the win-probability card and outside its ternary rather
+                  than inside the `sim` branch: the panel already renders nothing
+                  when there is no simulation, so a fragment around that branch
+                  would buy a second place for the same null check to live. */}
+              <FieldPanel field={sim?.field ?? null} />
+            </>
           )}
-          {/* Below the win-probability card and outside its ternary rather
-              than inside the `sim` branch: the panel already renders nothing
-              when there is no simulation, so a fragment around that branch
-              would buy a second place for the same null check to live. */}
-          <FieldPanel field={sim?.field ?? null} />
         </Tabs.Content>
         <Tabs.Content value="rivals">
           <Card>
@@ -382,11 +443,14 @@ export default function League() {
           </Card>
         </Tabs.Content>
         <Tabs.Content value="whatif">
-          <WhatIfSim
-            squad={squad}
-            rivals={race.standings.filter((s) => !s.is_you)
-              .map((s) => ({ entry: s.entry, name: s.name }))}
-          />
+          {race === null ? <Loading /> : (
+            <WhatIfSim
+              squad={squad}
+              leagueId={leagueId}
+              rivals={race.standings.filter((s) => !s.is_you)
+                .map((s) => ({ entry: s.entry, name: s.name }))}
+            />
+          )}
         </Tabs.Content>
       </Tabs.Root>
     </>

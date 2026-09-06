@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { apiGet } from '../../api/client'
 import {
   Button, Callout, Card, Chip, ExplainModal, Loading, PageHeader, PlayerCard,
@@ -51,15 +51,21 @@ function SquadList({ title, players }:
 
 export default function RivalDetail() {
   const { id: entryId } = useParams()
+  // The league the reader came from, so a rival opened off a non-focus
+  // league's table is compared against that league (v15 §6.1).
+  const [params] = useSearchParams()
+  const league = params.get('league')
   const [data, setData] = useState<RivalDetailData | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const load = () => {
     setError(null)
-    apiGet<RivalDetailData>(`/api/league/rivals/${entryId}`).then(setData)
+    apiGet<RivalDetailData>(
+      `/api/league/rivals/${entryId}${league ? `?league_id=${league}` : ''}`)
+      .then(setData)
       .catch((e: Error) => setError(e.message))
   }
-  useEffect(load, [entryId])
+  useEffect(load, [entryId, league])
 
   if (error) {
     return (

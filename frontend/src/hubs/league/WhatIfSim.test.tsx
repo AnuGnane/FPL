@@ -49,7 +49,7 @@ describe('WhatIfSim', () => {
     await waitFor(() => expect(apiPost).toHaveBeenCalledWith(
       '/api/league/whatif',
       { pins: [{ code: 100, event: 'blank' }], captain_override: null,
-        rival_captain_blanks: null }))
+        rival_captain_blanks: null, league_id: null }))
     // The tab never sets ``cached_only``: here the simulation is the page,
     // and a 204 would be a blank panel.
     expect(apiPost.mock.calls[0][1]).not.toHaveProperty('cached_only')
@@ -87,5 +87,29 @@ describe('WhatIfSim', () => {
   it('is an empty state without a squad', () => {
     render(<WhatIfSim squad={[]} rivals={[]} />)
     expect(screen.getByText(/run advise/i)).toBeInTheDocument()
+  })
+})
+
+describe('the league the what-if is run against', () => {
+  beforeEach(() => {
+    apiGet.mockReset()
+    apiPost.mockReset()
+    apiPost.mockResolvedValue(RESULT)
+  })
+
+  // v15 §6.1: the panel is shown for whichever league the hub has open, so
+  // the request names it; `null` is the focus league, as the route's default.
+  it('posts the league it was given', async () => {
+    render(<WhatIfSim squad={SQUAD} rivals={[]} leagueId={9} />)
+    await userEvent.click(screen.getByTestId('pin-100-haul'))
+    await waitFor(() => expect(apiPost).toHaveBeenCalled())
+    expect(apiPost.mock.calls[0][1]).toMatchObject({ league_id: 9 })
+  })
+
+  it('posts a null league when none is given', async () => {
+    render(<WhatIfSim squad={SQUAD} rivals={[]} />)
+    await userEvent.click(screen.getByTestId('pin-100-haul'))
+    await waitFor(() => expect(apiPost).toHaveBeenCalled())
+    expect(apiPost.mock.calls[0][1]).toMatchObject({ league_id: null })
   })
 })

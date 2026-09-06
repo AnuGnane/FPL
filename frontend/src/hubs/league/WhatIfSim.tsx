@@ -22,6 +22,8 @@ export interface WhatIfRival {
 export interface WhatIfSimProps {
   squad: WhatIfSquadPlayer[]
   rivals: WhatIfRival[]
+  /** The league being played with; `null` is the focus league (v15 §6.1). */
+  leagueId?: number | null
 }
 
 const EVENTS: LeagueWhatIfEvent[] = ['haul', 'score', 'blank']
@@ -37,7 +39,9 @@ const EVENTS: LeagueWhatIfEvent[] = ['haul', 'score', 'blank']
  * Nothing is requested until something is pinned: an empty panel and the
  * league card would otherwise ask the same question twice on every page load.
  */
-export default function WhatIfSim({ squad, rivals }: WhatIfSimProps) {
+export default function WhatIfSim(
+  { squad, rivals, leagueId = null }: WhatIfSimProps,
+) {
   const [pins, setPins] = useState<Record<number, LeagueWhatIfEvent>>({})
   const [captain, setCaptain] = useState<number | null>(null)
   const [rivalBlank, setRivalBlank] = useState<number | null>(null)
@@ -55,6 +59,7 @@ export default function WhatIfSim({ squad, rivals }: WhatIfSimProps) {
         { code: Number(code), event })),
       captain_override: captain,
       rival_captain_blanks: rivalBlank,
+      league_id: leagueId,
     }
     let cancelled = false
     setBusy(true)
@@ -63,7 +68,7 @@ export default function WhatIfSim({ squad, rivals }: WhatIfSimProps) {
       .catch(() => { if (!cancelled) { setResult(null); setFailed(true) } })
       .finally(() => { if (!cancelled) setBusy(false) })
     return () => { cancelled = true }
-  }, [pins, captain, rivalBlank, empty])
+  }, [pins, captain, rivalBlank, empty, leagueId])
 
   if (squad.length === 0) {
     return (

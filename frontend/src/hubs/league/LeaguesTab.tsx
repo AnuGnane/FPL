@@ -42,7 +42,7 @@ function gapText(row: PrivateLeagueRow): string {
 }
 
 /** λ with its sign, the minus a real minus like every other number here. */
-function lamText(lam: number): string {
+export function lamText(lam: number): string {
   const body = fmtNum(Math.abs(lam), 2)
   return lam < 0 ? `−${body}` : `+${body}`
 }
