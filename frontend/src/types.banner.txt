@@ -2,10 +2,10 @@
 /**
  * GENERATED — do not edit.
  *
- * `scripts/gen_types.py` writes `src/schemas.json` from
- * `src/gaffer/web/schemas.py`; `src/types.generated.test.ts` compiles that
- * with json-schema-to-typescript (pinned 16.0.0) and asserts this file is the
- * result. Edit the pydantic model, re-run both, commit all three.
+ * `npm run types` (in frontend/) writes `src/schemas.json` and this file
+ * from `src/gaffer/web/schemas.py`, compiling with json-schema-to-typescript
+ * (pinned 16.0.0); `npm run types -- --check` says whether either is stale.
+ * Edit the pydantic model, run the command, commit both.
  *
  * The hand-written half of the client's types — and the narrowings of the
  * eleven `Wire*` models, six of which carry a `dict[str, Any]` the browser
