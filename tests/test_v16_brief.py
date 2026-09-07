@@ -244,7 +244,8 @@ def test_a_name_and_a_number_that_live_only_in_a_step_reason_are_sayable():
 
 def test_the_chips_as_the_prose_spells_them_are_not_names():
     prose = ("A Bench Boost is planned for GW5. The Triple Captain and the "
-             "Free Hit stay in hand, as does the Wildcard; Plan A holds.")
+             "Free Hit stay in hand, as does the Wildcard; Plan A holds. "
+             "The ladder settled on free transfers only for Gameweek 4.")
     assert check_brief(prose, FACTS) == []
 
 

@@ -46,6 +46,7 @@ NOTE_FILE = "brief_note.json"
 ALLOW = frozenset({
     "GW", "FPL", "XI", "I", "British", "Premier", "League", "Bank", "Free",
     "Hit", "Bench", "Boost", "Triple", "Captain", "Wildcard", "Fantasy",
+    "Gameweek", "Gameweeks",
     "Plan", "A", "B", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
     "Sunday", "January", "February", "March", "April", "May", "June", "July",
     "August", "September", "October", "November", "December",
