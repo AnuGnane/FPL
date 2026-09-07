@@ -253,10 +253,14 @@ def _week_pts(week: dict) -> float:
     return round(sum(float(p.get("ep") or 0.0) for p in week.get("xi") or []), 2)
 
 
-def serve_rung(ladder: dict | None, objective: dict, *,
+def serve_rung(ladder: dict | None, objective: dict, *, hit_cost: int,
                captain_note: str | None) -> dict:
     """The payload's plan fields from the chosen rung (v16 §4), or the
     objective's own when there is no rung to serve.
+
+    ``hit_cost`` is the solve's price per hit (v17b §3.2): the block prices
+    the served hits, and a ladder that did not build carries no cost of its
+    own.
 
     ``objective`` is ``{buys, sells, hits, xi, bench, captain, vice,
     expected_pts, plan_by_gw}`` in ``advise._named``'s shape. The result has
@@ -274,7 +278,8 @@ def serve_rung(ladder: dict | None, objective: dict, *,
             "objective": {k: objective[k]
                           for k in ("buys", "sells", "hits", "expected_pts")},
             "restraint": {"chosen": None, "bar": None, "steps": [],
-                          "agrees": True, "note": None}}
+                          "agrees": True, "note": None,
+                          "hit_cost": int(hit_cost)}}
     if ladder is None:
         base["restraint"]["note"] = ("the ladder did not build; this is the "
                                      "objective's plan")
@@ -313,7 +318,7 @@ def serve_rung(ladder: dict | None, objective: dict, *,
         "captain_note": note,
         "restraint": {"chosen": chosen, "bar": ladder.get("bar"),
                       "steps": list(ladder.get("steps") or []),
-                      "agrees": agrees,
+                      "agrees": agrees, "hit_cost": int(hit_cost),
                       "note": None if agrees else
                       f"the objective's plan was the {rung_label(chosen)} rung's "
                       f"neighbour; the walk stopped at {rung_label(chosen)}"},

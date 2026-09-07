@@ -188,7 +188,7 @@ def _ladder(chosen="hits0"):
 
 
 def test_the_rungs_plan_replaces_week_one_and_every_horizon_week():
-    out = serve_rung(_ladder(), _objective(), captain_note=None)
+    out = serve_rung(_ladder(), _objective(), hit_cost=4, captain_note=None)
     assert [b["code"] for b in out["buys"]] == [20]
     assert [s["code"] for s in out["sells"]] == [16]
     assert out["hits"] == 0 and len(out["plan_by_gw"]) == 2
@@ -202,7 +202,7 @@ def test_the_rungs_plan_replaces_week_one_and_every_horizon_week():
 
 
 def test_the_sweeps_captain_stands_when_he_is_in_the_rungs_xi():
-    out = serve_rung(_ladder(), _objective(), captain_note="covering Dave")
+    out = serve_rung(_ladder(), _objective(), hit_cost=4, captain_note="covering Dave")
     assert out["captain"]["code"] == 3 and out["captain_note"] == "covering Dave"
     assert out["vice"]["code"] == 20            # the rung's vice
 
@@ -213,7 +213,7 @@ def test_without_a_note_the_rungs_own_captain_is_served():
     board's Groß/Palmer case. No note, so the rung's own armband is served."""
     obj = _objective()
     obj["captain"] = {"code": 4, "name": "P4", "position": "MID", "ep": 5.0}
-    out = serve_rung(_ladder(), obj, captain_note=None)
+    out = serve_rung(_ladder(), obj, hit_cost=4, captain_note=None)
     assert out["captain"]["code"] == 3 and out["vice"]["code"] == 20
     assert out["captain_note"] is None
 
@@ -221,7 +221,7 @@ def test_without_a_note_the_rungs_own_captain_is_served():
 def test_a_noted_captain_not_in_the_rung_falls_to_the_rungs_with_a_note():
     obj = _objective()
     obj["captain"] = {"code": 99, "name": "Gone", "position": "FWD", "ep": 9.0}
-    out = serve_rung(_ladder(), obj, captain_note="covering Dave")
+    out = serve_rung(_ladder(), obj, hit_cost=4, captain_note="covering Dave")
     assert out["captain"]["code"] == 3
     assert out["captain_note"] == ("captain from the restrained plan; the "
                                    "sweep's choice (Gone) is not in it")
@@ -231,22 +231,23 @@ def test_the_vice_never_equals_the_captain():
     lad_ = _ladder()
     lad_["rungs"][1]["plan_by_gw"][0]["vice"] = {"code": 3, "name": "P3",
                                                  "position": "MID", "ep": 5.0}
-    out = serve_rung(lad_, _objective(), captain_note="covering Dave")
+    out = serve_rung(lad_, _objective(), hit_cost=4, captain_note="covering Dave")
     # The noted captain (3) stands; the rung's vice is also 3, so the vice
     # falls to the rung's own captain (20).
     assert out["captain"]["code"] == 3 and out["vice"]["code"] == 20
 
 
 def test_agreement_is_on_the_moves():
-    out = serve_rung(_ladder("hits1"), _objective(), captain_note=None)
+    out = serve_rung(_ladder("hits1"), _objective(), hit_cost=4, captain_note=None)
     assert out["restraint"]["agrees"] is True and out["restraint"]["note"] is None
 
 
 def test_no_ladder_or_no_chosen_rung_serves_the_objective_with_a_note():
-    out = serve_rung(None, _objective(), captain_note=None)
+    out = serve_rung(None, _objective(), hit_cost=4, captain_note=None)
+    assert out["restraint"]["hit_cost"] == 4
     assert out["buys"] == _objective()["buys"] and out["hits"] == 1
     assert out["restraint"]["chosen"] is None and "ladder" in out["restraint"]["note"]
-    out = serve_rung({**_ladder(), "chosen": None}, _objective(), captain_note=None)
+    out = serve_rung({**_ladder(), "chosen": None}, _objective(), hit_cost=4, captain_note=None)
     assert out["restraint"]["chosen"] is None and out["hits"] == 1
 
 
@@ -258,7 +259,7 @@ def test_rung_labels():
 
 
 def test_the_cli_lines():
-    r = serve_rung(_ladder(), _objective(), captain_note=None)["restraint"]
+    r = serve_rung(_ladder(), _objective(), hit_cost=4, captain_note=None)["restraint"]
     assert restraint_line(r) == ("restraint: free transfers only; the step to "
                                  "1 hit was refused, 46% — expected points alone")
     assert objective_line(_objective()) == \

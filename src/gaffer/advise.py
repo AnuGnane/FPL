@@ -1156,7 +1156,8 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
                      "sells": _named(p.sells, name_of, pos_of, ep_by, p.gw),
                      "expected_pts": round(raw_xi_pts(p, ep_by), 2)}
                     for p in plan.gw_plans]),
-        captain_note=captain_note)
+        # v17b §3.2: the served block prices its hits off the solve's cost.
+        hit_cost=int(cfg.hit_cost), captain_note=captain_note)
     # The tags and the sweep frequencies below decorate the *served* moves.
     buys, sells = served["buys"], served["sells"]
 
