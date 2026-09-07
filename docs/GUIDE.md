@@ -19,7 +19,7 @@ only read one section, read §12: it is the current to-do list.*
 8. [Everything the CLI can do](#8-everything-the-cli-can-do)
 9. [The data it collects and why](#9-the-data-it-collects-and-why)
 10. [How the project measures itself](#10-how-the-project-measures-itself)
-11. [The version history, v1 to v16](#11-the-version-history-v1-to-v16)
+11. [The version history, v1 to v17a](#11-the-version-history-v1-to-v17a)
 12. [What is pending and what was left open](#12-what-is-pending-and-what-was-left-open)
 13. [Troubleshooting](#13-troubleshooting)
 
@@ -643,7 +643,7 @@ Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 `reports/evaluation.json`, and the Model hub.
 
-## 11. The version history, v1 to v16
+## 11. The version history, v1 to v17a
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
 reviewed. Every cycle ran the same way, and knowing the shape tells you where
@@ -831,7 +831,22 @@ now forbids. Routes 49 → **51** (`/api/decisions/{gw}`, `/api/brief`),
 `Config` fields 58 → **59** (`hit_bar`); Python 4170 → **4266**, frontend
 893 → **910**. R1: raw 1844 points with 15 hits and 65 transfers; restraint 1819 / 1867 / 1819 across seeds 20260901–3 (mean 1835, spread 48) with 5 hits and 45–54 transfers each — nine points behind raw, well inside the seed spread, for a third of the hits.
 
-The suite grew from nothing to **4,266 Python + 910 frontend tests** along
+**v17a — the wire types, one command** (2026-09-07). The first sub-cycle
+of the deepening programme that the 2026-09-07 architecture review produced
+(`docs/superpowers/plans/2026-09-07-v17-deepening-programme.md`): a tooling
+cycle that changes no number. `cd frontend && npm run types` now writes
+`schemas.json` and `types.generated.ts` from one module,
+`frontend/scripts/gen_types.ts`, which holds the only copy of the compile
+options, runs the Python half `scripts/gen_types.py` and compiles the result;
+`npm run types -- --check` writes nothing and exits 1 naming every file that
+drifted. Node runs the script as written. The vitest drift test imports the
+writer's own `render`, CLAUDE.md's twelve-line node one-liner is one command,
+and the eleven hand narrowings in `types.ts` stay where they are with their
+written reasons. Gated by exercising the lever: a hand edit to each generated
+file made the check fail naming that file and the writer cleared it. Pins
+unchanged; Python 4266 → **4271**.
+
+The suite grew from nothing to **4,271 Python + 910 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above
 so a future change cannot quietly break one.
 

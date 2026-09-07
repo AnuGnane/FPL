@@ -18,6 +18,8 @@ by-reason tally; a grounded, mechanically checked LLM brief replaces the
 template digest on This Week. Gated on the 2024-25 replay (mean 1835 vs raw 1844 inside a 48-point spread, hits 5 vs 15), a
 real brief the user read, and four screenshots in both themes. Suite 4266
 Python + 910 frontend, pins routes 51 / job kinds 12 / `Config` fields 59.
+The v17 deepening programme has started: v17a (the wire types, one command)
+is merged at `400c2f5`, suite 4271 / 910, pins unchanged; v17b is next.
 **Security incident, open:** the odds API key's value reached a committed
 plan document (`dd47c0a`) via a forked plan-writing subagent and was pushed
 to the public remote with the merge; removed at the tip (`8fddb0b`), history
@@ -101,7 +103,7 @@ Detail in `docs/GUIDE.md` §12.5.
 9. **A blended league stance** (v15 deferred): per-league λ and cover tables merged by weight. Chasing in one league and defending in another largely cancel, so it needs a replay to justify before it touches protected solver code
 10. **The in-app chat** (v16 deferred, gated on a few briefs read): a question box on This Week over the same facts document the brief reads, the same no-tools command, the same truth check on every answer
 
-### The v17 deepening programme (planned 2026-09-07, not started)
+### The v17 deepening programme (planned 2026-09-07; v17a merged, v17b next)
 
 The 2026-09-07 architecture review
 (`docs/superpowers/research/2026-09-07-architecture-review.html`) found seven
@@ -111,9 +113,34 @@ refactor changes no number, and
 `docs/superpowers/plans/2026-09-07-v17-tracker.md` is the checklist each
 chat updates on merge. Order: types command, restraint prose on the server,
 golden board, weekly pipeline, config in force, the served plan, pure
-build_advice, the This Week loader.
+build_advice, the This Week loader. v17a is shipped (below); v17b starts
+from `main` at `400c2f5`.
 
 ## Shipped
+
+### v17a — the wire types, one command (done, merged `400c2f5` 2026-09-07)
+`npm run types` (from `frontend/`) writes `schemas.json` and
+`types.generated.ts` from one module, `frontend/scripts/gen_types.ts`, which
+owns the `json-schema-to-typescript` `OPTIONS`, spawns the Python half
+`scripts/gen_types.py` (now with `--check`), and compiles; `npm run types --
+--check` writes nothing and exits 1 naming every file that drifted. Node
+runs the `.ts` natively (type stripping, unflagged since 22.18; 26.3 here).
+The vitest drift test imports the driver's `render`, so `OPTIONS` has one
+definition; CLAUDE.md's twelve-line node one-liner is one command. Spec
+`docs/superpowers/specs/2026-09-07-v17a-types-design.md` (§10 has the gate
+numbers), plan `2026-09-07-v17a-types.md`, ten branch commits, Opus
+implementers under Fable spec and code review. Gate (surface, pre-registered,
+passed first run): a hand-edited `types.generated.ts` and a hand-edited
+`schemas.json` each made the check exit 1 naming that file and the writer
+cleared each with an empty diff; one `bannerComment` in the tree; zero
+`input-type=module` in CLAUDE.md. Review findings fixed on the branch: the
+entry-point guard failed open under a symlinked checkout (`resolve` vs Node's
+realpathed main module; now `existsSync` + `realpathSync`); the banner had
+dropped the model edit from "commit all three". Pins unchanged (routes 51,
+job kinds 12, `Config` 59); Python 4267 → **4271**, frontend 910. Out of
+scope and still so: the eleven hand narrowings in `types.ts`, each with a
+reason in `NARROWING_REASON`. Programme tracker:
+`docs/superpowers/plans/2026-09-07-v17-tracker.md`.
 
 ### v16 — restraint and the brief (done, merged `9f5be20` 2026-09-07)
 The ladder decides how many changes the advice commits to; the user records
