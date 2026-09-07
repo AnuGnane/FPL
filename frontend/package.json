@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "test": "vitest"
+    "test": "vitest",
+    "types": "node scripts/gen_types.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.6",
