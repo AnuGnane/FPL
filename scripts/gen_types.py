@@ -1,9 +1,12 @@
-"""schemas.py -> frontend/src/schemas.json (v12 W5 §6.6).
+"""schemas.py -> frontend/src/schemas.json (v12 W5 §6.6; the one command, v17a).
 
-Run it and commit both outputs:
+The Python half of `npm run types`. `frontend/scripts/gen_types.ts` runs this
+file, then compiles what it wrote into `frontend/src/types.generated.ts`;
+`--check` on either half exits 1 naming the file that drifted and writes
+nothing. Commit both outputs together:
 
-    .venv/bin/python scripts/gen_types.py
-    cd frontend && npx vitest run src/types.generated.test.ts
+    cd frontend && npm run types
+    cd frontend && npm run types -- --check
 
 `types.ts` is **not** generated and cannot be. Thirty of its exports have no
 pydantic source — thirteen of them type the *inside* of payloads the server
@@ -11,10 +14,10 @@ declares as `dict[str, Any]` — and eleven models are narrowed by hand in the
 browser. A generator that overwrote `types.ts` would delete a third of the file
 and stop every `advice.captain.name` in the tree from compiling (plan A9).
 
-So the file splits. This script emits the JSON Schema; the vitest test
-`frontend/src/types.generated.test.ts` compiles it with
-`json-schema-to-typescript` and diffs the result against the committed
-`frontend/src/types.generated.ts`; and `frontend/src/types.ts` keeps the
+So the file splits. This script emits the JSON Schema; the node half compiles
+it with `json-schema-to-typescript` and writes
+`frontend/src/types.generated.ts`, which `frontend/src/types.generated.test.ts`
+diffs against a fresh compile; and `frontend/src/types.ts` keeps the
 hand-written half and re-exports the generated one, so every existing
 `import ... from '../types'` is unchanged.
 """
@@ -297,13 +300,39 @@ def serialize(schema: dict) -> str:
     return json.dumps(schema, sort_keys=True, indent=1) + "\n"
 
 
-def main() -> int:
-    root = pathlib.Path(__file__).resolve().parents[1]
+def check(root: pathlib.Path) -> int:
+    """v17a §3.3 — exit 1 naming the file when the committed schema is not
+    what the live models produce. Writes nothing. The node half of
+    ``npm run types -- --check`` forwards the flag here and runs its own
+    check on ``types.generated.ts`` afterwards, so both drifts are reported
+    in one run."""
+    target = root / schema_path()
+    committed = target.read_text() if target.exists() else None
+    if committed == serialize(build_schema()):
+        return 0
+    print(f"{schema_path()} is stale — run `cd frontend && npm run types`")
+    return 1
+
+
+def write(root: pathlib.Path) -> int:
     target = root / schema_path()
     target.write_text(serialize(build_schema()))
-    print(f"wrote {target}")
-    print("now run: cd frontend && npx vitest run src/types.generated.test.ts")
+    print(f"wrote {schema_path()}")
     return 0
+
+
+def main(argv: list[str] | None = None,
+         root: pathlib.Path | None = None) -> int:
+    """``gen_types.py [--check]``. ``root`` is the repo root; a test points
+    it at a temporary copy."""
+    args = sys.argv[1:] if argv is None else argv
+    root = root or pathlib.Path(__file__).resolve().parents[1]
+    if args == ["--check"]:
+        return check(root)
+    if args:
+        print("usage: gen_types.py [--check]", file=sys.stderr)
+        return 2
+    return write(root)
 
 
 if __name__ == "__main__":

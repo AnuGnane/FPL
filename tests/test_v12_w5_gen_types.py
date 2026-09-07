@@ -216,3 +216,53 @@ def test_the_root_uses_definitions_and_not_defs():
     document compiles to a single empty interface and nothing says why."""
     schema = build_schema()
     assert "definitions" in schema and "$defs" not in schema
+
+
+def _root_with_schema(tmp_path: pathlib.Path, text: str) -> pathlib.Path:
+    """A throwaway repo root holding one committed schema."""
+    target = tmp_path / schema_path()
+    target.parent.mkdir(parents=True)
+    target.write_text(text)
+    return target
+
+
+def test_check_mode_exits_one_and_names_the_file_when_the_schema_drifted(
+        tmp_path, capsys):
+    """v17a §3.3 — `npm run types -- --check` forwards here. A drifted schema
+    is reported by its repo-relative path and left exactly as it was."""
+    from scripts.gen_types import main
+
+    drifted = serialize(build_schema()).replace(
+        '"definitions"', '"definitionz"', 1)
+    target = _root_with_schema(tmp_path, drifted)
+    assert main(["--check"], root=tmp_path) == 1
+    assert schema_path() in capsys.readouterr().out
+    assert target.read_text() == drifted
+
+
+def test_check_mode_exits_zero_when_the_schema_is_current(tmp_path, capsys):
+    from scripts.gen_types import main
+
+    target = _root_with_schema(tmp_path, serialize(build_schema()))
+    before = target.stat().st_mtime_ns
+    assert main(["--check"], root=tmp_path) == 0
+    assert capsys.readouterr().out == ""
+    assert target.stat().st_mtime_ns == before
+
+
+def test_write_mode_writes_the_serialized_schema(tmp_path, capsys):
+    from scripts.gen_types import main
+
+    target = _root_with_schema(tmp_path, "stale\n")
+    assert main([], root=tmp_path) == 0
+    assert target.read_text() == serialize(build_schema())
+    assert f"wrote {schema_path()}" in capsys.readouterr().out
+
+
+def test_an_unknown_argument_is_a_usage_error(tmp_path, capsys):
+    from scripts.gen_types import main
+
+    target = _root_with_schema(tmp_path, "stale\n")
+    assert main(["--frobnicate"], root=tmp_path) == 2
+    assert "usage" in capsys.readouterr().err
+    assert target.read_text() == "stale\n"
