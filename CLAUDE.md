@@ -11,36 +11,59 @@ for what is open. This file holds the rules for working in the repo.
 ## Commands
 
 ```
-uv run gaffer advise                     # the weekly run (needs models/)
+uv run gaffer advise                     # the weekly solve (needs models/)
+uv run gaffer brief                      # the LLM brief over that advice; the CLI
+                                         # advise does not chain it, the web job does
 uv run gaffer ui --no-open-browser --port 8927
 .venv/bin/pytest -q                      # Python suite (~4300 tests)
 cd frontend && npx tsc --noEmit && npx vitest run   # types + ~910 tests
 cd frontend && npm run dev               # Vite on :5173, proxies /api to :8927
 cd frontend && npm run build             # emits src/gaffer/web/static/ (untracked)
-.venv/bin/python scripts/gen_types.py    # schemas.py -> frontend/src/schemas.json
 ```
 
 Read vitest's `Errors  N error` line as a failure; an unhandled rejection does
-not change its exit code. After any change to `src/gaffer/web/schemas.py`,
-regenerate types, run `frontend/src/types.generated.test.ts`, and commit
-`schemas.json` and `types.generated.ts` together. `frontend/src/types.ts` is
-hand-written and must not be regenerated.
+not change its exit code.
 
 One `gaffer ui` process at a time. The job runner is per-instance, so a second
 worker breaks job polling silently.
 
+### Regenerating types after a change to `src/gaffer/web/schemas.py`
+
+`scripts/gen_types.py` writes only `frontend/src/schemas.json`; the vitest
+test only diffs. The write step for `types.generated.ts` is this node call:
+
+```
+.venv/bin/python scripts/gen_types.py
+cd frontend && node --input-type=module -e "
+import { readFileSync, writeFileSync } from 'node:fs'
+import { compile } from 'json-schema-to-typescript'
+const OPTIONS = { bannerComment: '', additionalProperties: false,
+  unreachableDefinitions: true, declareExternallyReferenced: true,
+  style: { singleQuote: true, semi: false } }
+const banner = readFileSync('src/types.banner.txt', 'utf8')
+const schema = JSON.parse(readFileSync('src/schemas.json', 'utf8'))
+compile(schema, 'GafferApi', OPTIONS).then((ts) => writeFileSync('src/types.generated.ts', banner + ts))
+" && npx vitest run src/types.generated.test.ts && cd .. \
+  && .venv/bin/pytest -q tests/test_v12_w5_gen_types.py
+```
+
+Commit `schemas.json` and `types.generated.ts` together. `frontend/src/types.ts`
+is hand-written and must never be regenerated.
+
 ## Layout
 
-- `src/gaffer/` — `advise.py` (the weekly run), `ladder.py` (rungs and
+- `src/gaffer/` — `advise.py` (the weekly solve), `ladder.py` (rungs and
   restraint), `brief.py` (LLM prose with a truth check), `decisions.py`,
   `review.py`, `optimize/` (MILP), `models/`, `features/`, `web/` (FastAPI:
   `app.py`, `jobs.py`, `routers/`, `schemas.py`).
 - `frontend/src/` — `hubs/` (This Week, Planning, Players, League, Live,
   Model), `kit/` (shared components and tokens), `api/`, `styles/theme.css`.
-- `tests/` — pytest; `tests/test_v*_degradation.py` are the rails, one per
-  cycle, that pin counts and honesty rules (see below).
-- `scripts/` — replay drivers (`v7b_replay.py`, `seed_stats.py`), launchd
-  plists, `install_automation.sh`, `gen_types.py`.
+- `tests/` — pytest. The rails that pin counts and honesty rules live in
+  `tests/test_v*_degradation.py` (v4c to v13), in `tests/test_v16_restraint.py`
+  (source-order pins on `run_advise`), in `tests/test_web_job_kinds*.py`, and
+  for the frontend in `frontend/src/kit/tokens.test.ts`.
+- `scripts/` — replay drivers (`v7b_replay.py`, `replay_pair.sh`,
+  `seed_stats.py`), launchd plists, `install_automation.sh`, `gen_types.py`.
 - `docs/superpowers/` — `CONVENTIONS.md` (measurement rules), `ROADMAP.md`,
   `research/`, `specs/`, `plans/`.
 - Untracked and machine-local: `config.toml`, `config.local.toml`, `data/`
@@ -56,9 +79,15 @@ only. Subagents never open `config.toml`. Before every push:
 ```
 V="$(sed -n '/^\[odds\]/,/^\[/p' config.toml | grep '^api_key' | cut -d'"' -f2)"
 [ "${#V}" -ge 8 ] || echo "extraction failed"
-git grep -c "$V" HEAD          # must print nothing
-git show main:config.toml      # must fail
+git grep -c "$V" HEAD                          # must print nothing
+git log -p origin/main..HEAD | grep -c "$V"    # must print 0
+git show main:config.toml                      # must fail
 ```
+
+The second grep exists because the tip can be clean while an intermediate
+commit is not. That is the shape of the open incident: the value reached a
+plan document in commit dd47c0a, was removed at the tip, and was pushed. The
+rotation and any history rewrite are the user's decision, not the agent's.
 
 ## Git
 
@@ -67,26 +96,33 @@ git show main:config.toml      # must fail
   `config.toml`, `config.local.toml`, `src/gaffer/web/static/`.
 - Work on a branch per cycle (`v16-restraint` style); merge to `main`
   fast-forward only, after the gates pass and the user approves screenshots.
-- Commit messages: `feat(v16): ...`, `fix(v16): ...`, `test(v16): ...`,
-  `docs: ...`. One line, present tense, says what changed and why.
+- Subject line: `<type>(<cycle>): what changed and why`, with `type` one of
+  feat, fix, test, style, chore, refactor, perf, docs; `docs:` may be
+  unscoped. Body: the trailers the session asks for (Co-Authored-By and
+  Claude-Session).
 
 ## Pins and protected files
 
-The degradation rails pin counts that a change must not move silently. When
-one fails, the message names the rule and the file that owns it. Do not edit a
-rail to make it pass; change the pin only when the plan says so, in its own
-commit.
+The rails pin counts that a change must not move silently. The headline pins
+are bare asserts, so a failure prints the numbers and the test name; the
+provenance is in the docstring. Do not edit a rail to make it pass; change a
+pin only when the plan says so, in its own commit.
 
 | Pin | Value | Where |
 |---|---|---|
 | API routes | 51 | `tests/test_v11_degradation.py` |
-| `JOB_KINDS` | 12 | pinned in the degradation rails; never add a kind, run new work as an anonymous JobRegistry job |
+| `JOB_KINDS` | 12 | `tests/test_web_job_kinds*.py` and several rails; never add a kind, run new work as an anonymous JobRegistry job |
 | `Config` fields | 59 | `tests/test_v13_degradation.py` |
+
+`tests/test_v12_w1_degradation.py` is the meta-rail: it asserts the route
+total is pinned only in the v11 file and the Config total only in the v13
+file. A new cycle bumps those two files, never a new home for the number.
 
 Orchestrator-only files, which subagent implementers must not touch:
 `src/gaffer/advise.py`, `set_pieces.py`, `optimize/**`, `web/jobs.py`,
 `web/routers/whatif.py`, `tests/test_advise.py`, `test_odds.py`,
-`test_web_jobs.py`, every pre-existing `tests/test_v*_degradation.py`, and
+`test_web_jobs.py`, every pre-existing `tests/test_v*_degradation.py`,
+`tests/test_v16_restraint.py`, `tests/test_web_job_kinds*.py`, and
 `scripts/s2_replay.py`. A plan that needs a change there records the ruling and
 the orchestrator makes the diff.
 
@@ -98,25 +134,33 @@ implementation on a branch (fresh implementer per task, spec review then code
 review between tasks) → gates → screenshot approval → ff-merge → push →
 security ritual → GUIDE, ROADMAP and memory updated.
 
-The measurement rules in `docs/superpowers/CONVENTIONS.md` are house rules:
-every replay gate runs at least three seed bases and quotes the spread, every
-comparison carries its raw control arm, gates are pre-registered, the
-orchestrator runs them (never the implementer), a failing arm ships off behind
-its flag with the result recorded, and the `*_ARM_DONE` lines are transcribed
-into the spec because `logs/` is gitignored.
+The measurement rules in `docs/superpowers/CONVENTIONS.md` are house rules.
+The short form: every replay gate runs K >= 3 seed bases and quotes the
+spread, and K >= 5 when the arm touches a head the backtest refits (K = 3
+there supports only a paired sign test); every comparison carries its raw
+control arm; gates are pre-registered; the orchestrator runs them, never the
+implementer; a failing arm ships off behind its flag with the result recorded;
+the `*_ARM_DONE` and `MULTISEED_DONE` lines are transcribed into the spec
+because `logs/` is gitignored.
 
-Replay: `scripts/v7b_replay.py --arm <arm> --tag <tag> --seed-base <n>`. One
-seed takes about 20 minutes and 1.6 GB; run seeds sequentially, two in
-parallel have been OOM-killed here.
+Replay: `scripts/v7b_replay.py --arm <arm> --tag <tag> --seed-bases a,b,c`
+runs the trio in one process and prints the aggregate `seed_stats.py` and the
+spec appendix are built around; `--seed-base <n>` is a single draw.
+`scripts/replay_pair.sh` runs an arm against its control. On this machine the
+restraint arm takes about 1.6 GB and 20 minutes per seed, and two of those
+seeds run concurrently were OOM-killed, so run them one at a time and treat
+`CONCURRENT=1` as safe only for lighter arms.
 
 ## Frontend rules
 
-Tailwind v4 with tokens in `styles/theme.css`; `kit/tokens.test.ts` enforces
-the ledger style across `frontend/src`: no `rounded-full`, no card radius, no
-shadow, no gradient, no raw hex outside `theme.css`, mono face only in the job
-log and plan trace, tabular figures, no retired colour or class, `Chip` not
-`Badge`, fixture difficulty as a tone. Charts use the one grey palette. Pages
-render in dark and light; screenshots for a gate come from
+Tailwind v4 with tokens in `styles/theme.css`. `kit/tokens.test.ts` scans
+`hubs/` and `kit/` for the ledger style: no `rounded-full`, no card radius, no
+shadow, no gradient, no six-digit hex outside `theme.css` and the bundled
+plain shirt, mono face only in the job log and plan trace, no retired `num`
+class, colour or token, `Chip` not `Badge`, fixture difficulty as a tone. The
+same rules apply by hand to `App.tsx`, `api/` and anything the scan misses,
+and to short hex forms. Use tabular figures for numbers. Charts use the one
+grey palette. Pages render in dark and light; screenshots for a gate come from
 `frontend/scripts/shots.sh <stage>`.
 
 ## Writing style in code and docs
