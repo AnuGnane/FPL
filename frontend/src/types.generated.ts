@@ -3,9 +3,10 @@
  * GENERATED — do not edit.
  *
  * `npm run types` (in frontend/) writes `src/schemas.json` and this file
- * from `src/gaffer/web/schemas.py`, compiling with json-schema-to-typescript
- * (pinned 16.0.0); `npm run types -- --check` says whether either is stale.
- * Edit the pydantic model, run the command, commit both.
+ * from `src/gaffer/web/schemas.py` at the repo root, compiling with
+ * json-schema-to-typescript (pinned 16.0.0); `npm run types -- --check`
+ * exits 1 naming whichever is stale. Edit the pydantic model, run the
+ * command, commit all three.
  *
  * The hand-written half of the client's types — and the narrowings of the
  * eleven `Wire*` models, six of which carry a `dict[str, Any]` the browser
