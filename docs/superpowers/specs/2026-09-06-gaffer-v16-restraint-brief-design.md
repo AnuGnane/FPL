@@ -322,3 +322,20 @@ security ritual, GUIDE, ROADMAP, memory.
   code.
 - Notifications beyond the Friday headline.
 - A blended league stance (still v15's candidate 9).
+
+## 12. R1 result (2026-09-07)
+
+`scripts/v7b_replay.py`, 2024-25, chips on, caps at the tree's defaults
+(`max_hits` 15, `max_transfers` 15 — the user's own config, no cap), bar
+0.60, 2000 draws. The raw arm is deterministic; the restraint arm draws the
+ladder's shared matrix from its seed.
+
+| arm | seed | total | hits | transfers | steps taken / refused | gated weeks |
+|---|---|---|---|---|---|---|
+| raw | — | 1844 | 15 | 65 | — | — |
+| restraint | 20260901 | 1819 | 5 | 54 | 38 / 17 | 33 |
+| restraint | 20260902 | 1867 | 5 | 45 | 36 / 19 | 33 |
+| restraint | 20260903 | 1819 | 5 | 54 | 37 / 18 | 33 |
+
+**Pass.** mean(restraint total) = 1835 ≥ raw − spread = 1844 − 48 = 1796, and hits 5 < 15 on every seed. The walk took 36–38 steps and refused 17–19 over the 33 weeks it ran (the opening squad, the two wildcards and the free hits stand aside); transfers fell from 65 to 45–54. Read plainly: the policy gives up about half a point a week of raw expected points for two thirds fewer hits, and the seed noise is five times that gap, so the season cannot tell the two apart on points and can on hits. The replay draws every rung with the ladder's σ fallback (no component bands in the replay), so the verdict is on the walk's policy, not on production's exact σ.
+
