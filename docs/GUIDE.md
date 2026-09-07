@@ -19,7 +19,7 @@ only read one section, read §12: it is the current to-do list.*
 8. [Everything the CLI can do](#8-everything-the-cli-can-do)
 9. [The data it collects and why](#9-the-data-it-collects-and-why)
 10. [How the project measures itself](#10-how-the-project-measures-itself)
-11. [The version history, v1 to v15](#11-the-version-history-v1-to-v15)
+11. [The version history, v1 to v16](#11-the-version-history-v1-to-v16)
 12. [What is pending and what was left open](#12-what-is-pending-and-what-was-left-open)
 13. [Troubleshooting](#13-troubleshooting)
 
@@ -174,6 +174,21 @@ earned:
   on the GW3 board the extra hits bought points but fewer than four each,
   and the zero-hit rung was the best on raw points at 33% against 20% for
   three hits.
+- **Restraint** (v16): the ladder now *decides* how many changes the
+  advice commits to. Inside the ladder build a walk starts at the lowest
+  rung and steps up one distinct rung at a time only when the higher rung
+  beats the lower in at least `[optimizer] hit_bar` of the shared draws
+  (default 0.60, three draws in five, bounded 0.5–0.95); it stops at the
+  first refusal, and the rung it stops on is the plan the advice serves —
+  its moves, XI, bench and expected points, with the rung's own captain
+  unless a league-mode note explains the sweep's. Each step carries a
+  reason in a fixed precedence — a flagged player, a price fall, a fixture
+  grade, a planned chip, else expected points alone — descriptive, never a
+  second gate. The objective's own week one rides beside the served plan
+  as `objective`, and the CLI, the moves card and the Planning board all
+  say what it wanted when the two differ. Measured on the 2024-25 replay
+  (`scripts/v7b_replay.py --arm restraint`, three seeds against one raw
+  run): raw 1844 points with 15 hits and 65 transfers; restraint 1819 / 1867 / 1819 across seeds 20260901–3 (mean 1835, spread 48) with 5 hits and 45–54 transfers each — nine points behind raw, well inside the seed spread, for a third of the hits.
 
 ## 5. The web UI, hub by hub
 
@@ -262,7 +277,21 @@ points, and the probabilities; your cap's row is highlighted and the rows
 beyond it stay visible but muted; expand a row for that rung's squad and
 exactly what the last hit bought; two selects set your max hits and max
 transfers (saved to `config.local.toml`) and rebuild the ladder in a couple
-of seconds. The moves card's heading names the live count and cap.
+of seconds. The moves card's heading names the live count and cap. Since
+v16 the moves card also says which rung the walk chose and the one step it
+refused, with its share and reason, and — when they differ — what the
+objective wanted; the ladder card gains a **Hit bar** select, a *chosen*
+chip on the served rung, the walk's steps in words, and a note when a
+rebuild at another bar would choose differently. Below the moves sits
+**What I did and why** (v16): closed until the deadline, then one of eight
+reasons (injury, fixtures, eye test, price, chip, rival, gut, other) and a
+line of text for the week you did something other than the advice, closed
+again once the review has graded it. The digest cards are replaced by
+**The week** (v16): a brief written by the classifier's `claude -p` command
+from a facts document off the advice, the ladder, the trace, the ledger and
+your note, checked mechanically so every number and every name in it is in
+the facts, with a *Write the brief* button; when no brief passed, the card
+falls back to the digest with the reason.
 
 **Planning** — the future. Six tabs:
 - *Board* (v11): the solved horizon laid out week by week — buys, sells,
@@ -358,6 +387,10 @@ below you with what they need.
   model would have done, in points and in title odds. Each row also names
   the frozen projection table it was graded against (v12 W5), tagged
   `(late)` when that table cannot be trusted to predate the deadline.
+  Since v16 your deviation note sits under the transfers lane ("You said:
+  Gut — …") and a **Deviations by reason** table above the rows counts the
+  graded gameweeks per reason code with the mean transfers-lane result, so
+  the season can say which of your reasons cost and which paid.
 - *Season* (v11): the season dashboard — per-lane records and win rates,
   cumulative points left on the bench, accuracy and overall-rank
   trajectories, the calibration trend. Built to fill as the season grades;
@@ -508,6 +541,10 @@ Standing intelligence:
 - `gaffer field-scrape [--gw N]` — bank the top-10k sample
 - `gaffer review` — grade finished gameweeks into the ledger
 - `gaffer digest --kind friday|tuesday` — write and notify the digest
+- `gaffer brief` (v16) — write this week's brief from the banked advice:
+  the same body the web button and the web advise job run; never fails,
+  a dead command or a brief that did not pass its check is one printed
+  line and the card falls back to the digest
 - `gaffer league` / `gaffer live` / `gaffer league-sim [--seeds a,b,c]`
 
 Evaluation and research:
@@ -605,7 +642,7 @@ Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 `reports/evaluation.json`, and the Model hub.
 
-## 11. The version history, v1 to v15
+## 11. The version history, v1 to v16
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
 reviewed. Every cycle ran the same way, and knowing the shape tells you where
@@ -762,7 +799,38 @@ week before). Routes 48 → **49** (`/api/league/leagues`), `Config` fields
 57 → **58** (`stance`); Python 4110 → **4170**, frontend 866 → **893**.
 Deferred to a model cycle: a blended stance across leagues.
 
-The suite grew from nothing to **4,170 Python + 893 frontend tests** along
+**v16 — restraint and the brief** (2026-09-07). The user's ask, after a
+week of the advice buying and selling more than felt right: let the ladder
+decide how much to commit, write down why you deviated, and read the week
+as prose. Three pieces. *Restraint*: the walk described in §4, inside
+`build_ladder`, reading `hit_bar` through the live config; `advise.py`
+(protected, one orchestrator diff shown to the user first) now saves the
+components and the solve state, builds the ladder, and serves the chosen
+rung's plan through a pure `serve_rung`, keeping the objective's own week
+one beside it. *The note*: `reports/decisions.json`, `GET/POST
+/api/decisions/{gw}` with the settings endpoint's refusal shape (unknown
+reason, text over 280 characters, a future gameweek, before the deadline,
+already graded), joined into the Review payload with a by-reason tally.
+*The brief*: `brief.py` builds a rounded facts document, runs the presser
+classifier's no-tools `claude -p` command, checks every number and every
+capitalised name in the reply against the facts (sentence starts, `GW\d`,
+the chips' names and a short allow-list exempt), banks the prose keyed by
+the advice run's stamp and the prompt version, and is chained after the
+web advise job and offered as `gaffer brief`; the Friday digest's headline
+becomes the brief's first sentence. Things the build corrected: the
+job-kinds pin lives in sixteen protected files, so the brief runs as an
+anonymous job like the ladder rebuild (job kinds stay 12); a protected pin
+on the objective's expected-points literal made the objective a keyword
+dict; the served rung's *own* captain is served unless a note explains the
+sweep's, because the objective never saw the rung's buy on its captain
+table (Groß over Palmer on the GW4 board); the truth check reads every
+string of the facts so a refused step's reason is sayable; and the first
+brief called this week's XI points a horizon total, which prompt version 2
+now forbids. Routes 49 → **51** (`/api/decisions/{gw}`, `/api/brief`),
+`Config` fields 58 → **59** (`hit_bar`); Python 4170 → **4266**, frontend
+893 → **910**. R1: raw 1844 points with 15 hits and 65 transfers; restraint 1819 / 1867 / 1819 across seeds 20260901–3 (mean 1835, spread 48) with 5 hits and 45–54 transfers each — nine points behind raw, well inside the seed spread, for a third of the hits.
+
+The suite grew from nothing to **4,266 Python + 910 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above
 so a future change cannot quietly break one.
 
@@ -924,6 +992,23 @@ weekly use.
 - **A non-focus league's sim shares the focus league's one-entry cache
   slot** (v15): switching leagues on the What-if tab re-runs the Monte
   Carlo rather than remembering both.
+- **The chip step reason needs a `chip_plan` on the solve state** (v16):
+  `advise.py` writes it from the chip table's `play_now` rows, so a ladder
+  rebuilt off a state written before v16 gives no chip reason and falls
+  through to the next one.
+- **Sentence-initial names escape the truth check** (v16): English
+  capitalises sentence starts, so the first word of a sentence is never
+  checked; the prompt forbids opening a sentence with a player's name,
+  and the check catches the same name anywhere else.
+- **The brief is chained only on the web advise job** (v16): the Thursday
+  launchd `gaffer advise` needs `gaffer brief` added after it in its plist
+  to have a Friday headline from the brief rather than the template.
+- **The walk can step past the objective's own hit count** (v16): the
+  policy is symmetric by design — on the GW4 board it served one hit where
+  the objective wanted none, on a 60.25% share — and the replay in §4 is
+  the evidence it is net positive over a season. A rule that the walk
+  never goes above the objective's hits is a one-line candidate if a
+  season says otherwise.
 
 ### 12.5 Not planned — what the research proposed and v12 did not take
 

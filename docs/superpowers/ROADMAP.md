@@ -8,14 +8,16 @@ fills, and the index below points at them. Measurement rules every cycle
 follows: `CONVENTIONS.md`. For the same material written for a reader rather
 than an auditor, `docs/GUIDE.md` §11–12.
 
-## Where things stand (2026-09-06)
+## Where things stand (2026-09-07)
 
-v15 — leagues — is **merged** (`main` `5bf0ed8`; ff-merge of `v15-leagues`,
-15 commits), on top of v14's dark ledger (`40d4dcd`). The League hub lists
-every private league, one focus league drives the solver, and a manual
-stance (auto / chase / defend / neutral) overrides the dial at full tilt;
-gated on the user's approval of seven screenshots in both themes. Suite 4170
-Python + 893 frontend, pins routes 49 / job kinds 12 / `Config` fields 58.
+v16 — restraint and the brief — is **merged** (`main` `9f5be20`; ff-merge
+of `v16-restraint`), on top of v15's leagues (`ed3e8fe`). The ladder's
+restraint walk chooses the rung the advice serves under `[optimizer]
+hit_bar`; a deviation note per gameweek joins the Review ledger with a
+by-reason tally; a grounded, mechanically checked LLM brief replaces the
+template digest on This Week. Gated on the 2024-25 replay (mean 1835 vs raw 1844 inside a 48-point spread, hits 5 vs 15), a
+real brief the user read, and four screenshots in both themes. Suite 4266
+Python + 910 frontend, pins routes 51 / job kinds 12 / `Config` fields 59.
 **Security incident, open:** the odds API key's value reached a committed
 plan document (`dd47c0a`) via a forked plan-writing subagent and was pushed
 to the public remote with the merge; removed at the tip (`8fddb0b`), history
@@ -97,8 +99,36 @@ Detail in `docs/GUIDE.md` §12.5.
 7. Housekeeping from the residuals: `tidy` for projections and API snapshots, ledger season key, `starred_at`, `schemas.py` field docstrings, render `threshold_source`, chip-pair What-If arm, web button banking prices
 8. B8 FotMob xG fallback — only if Understat goes down
 9. **A blended league stance** (v15 deferred): per-league λ and cover tables merged by weight. Chasing in one league and defending in another largely cancel, so it needs a replay to justify before it touches protected solver code
+10. **The in-app chat** (v16 deferred, gated on a few briefs read): a question box on This Week over the same facts document the brief reads, the same no-tools command, the same truth check on every answer
 
 ## Shipped
+
+### v16 — restraint and the brief (done, merged `9f5be20` 2026-09-07)
+The ladder decides how many changes the advice commits to; the user records
+why they deviated; a grounded brief replaces the template digest. Spec
+`d69579c` (`specs/2026-09-06-gaffer-v16-restraint-brief-design.md`), plan
+`80ea715` (13 tasks, 13 rulings), branch `v16-restraint` off `main` at
+`80ea715`, Opus implementers under Fable's review, `advise.py` diff shown to
+the user before its commit.
+- [x] `Config.hit_bar` (0.60, bounded 0.5–0.95) and a Settings row.
+- [x] `ladder.walk` / `explain_step` / `serve_rung` inside `build_ladder`;
+  `LadderPayload.bar/chosen/steps/served_note`; `recommended` by moves,
+  recomputed at GET time (R4).
+- [x] `advise.py`: state saved, ladder built, then the served plan from
+  `serve_rung`; `Advice.objective/restraint`; CLI restraint + objective
+  lines; the rung's own captain unless a note explains the sweep's.
+- [x] `PlanTimeline.objective` traced beside the served plan; the board's
+  "The objective wanted" block on Plan A.
+- [x] `decisions.py` + `GET/POST /api/decisions/{gw}` (R11 states), the
+  Review join and by-reason table, the This Week panel.
+- [x] `brief.py` + `GET/POST /api/brief` as an anonymous job (R1: no
+  thirteenth kind), chained after the web advise job, `gaffer brief` (R9),
+  the Friday headline; prompt version 2 after R2.
+- [x] `scripts/v7b_replay.py --arm restraint` (R10); R1: mean 1835 vs raw 1844 inside a 48-point spread, hits 5 vs 15.
+- [x] Pins: routes 49 → 51, `Config` 58 → 59, job kinds 12; Python 4170 →
+  4266, frontend 893 → 910.
+- Deferred: the in-app chat (Candidates 10); a rule that the walk never
+  steps above the objective's own hits (GUIDE §12.4); more reason codes.
 
 ### v15 — leagues (done, merged `5bf0ed8` 2026-09-06)
 Every private league in the hub, one focus league drives the solver, a manual
