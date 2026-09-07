@@ -15,7 +15,7 @@
  * schema.
  */
 import { spawnSync } from 'node:child_process'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { compile, type JSONSchema } from 'json-schema-to-typescript'
@@ -80,15 +80,20 @@ export async function main(argv: string[]): Promise<number> {
   const py = pythonHalf(check)
   // In check mode a drifted schema (1) is reported and the check goes on to
   // the TypeScript file, so one run names every stale file. Anything else
-  // non-zero — a traceback, a missing venv — stops here; compiling a schema
-  // the Python half did not just write would report on the wrong file.
+  // non-zero (a missing venv, a usage error) stops here; compiling a schema
+  // the Python half did not just write would report on the wrong file. In
+  // check mode a traceback also exits 1 and reads as drift; the trace is
+  // already on the terminal and the run exits 1 either way.
   if (py !== 0 && !(check && py === 1)) return py
   const ts = await typesHalf(check)
   return py || ts
 }
 
 // Only when this file is the entry point. Under vitest `process.argv[1]` is
-// the worker, so importing `render` in a test runs nothing.
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+// the worker, so importing `render` in a test runs nothing. realpathSync, not
+// resolve: Node realpaths the main module, so under a symlinked checkout a
+// plain resolve never matches and the check would pass vacuously (v17a code
+// review).
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   process.exitCode = await main(process.argv.slice(2))
 }
