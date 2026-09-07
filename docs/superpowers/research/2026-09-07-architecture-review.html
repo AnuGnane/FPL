@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Architecture review for gaffer</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+</script>
+<style>
+  .seam { stroke-dasharray: 4 4; }
+  .leak { stroke: #dc2626; }
+  .deep { background: linear-gradient(135deg, #0f172a, #1e293b); }
+  .lbl { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+  .box { border: 1px solid #94a3b8; background: #fff; border-radius: 4px; padding: 6px 8px; }
+  .deepbox { border: 3px solid #0f172a; background: #0f172a; color: #f8fafc; border-radius: 4px; padding: 8px 10px; }
+  .faded { color: #94a3b8; }
+  .mermaid { font-size: 12px; }
+</style>
+</head>
+<body class="bg-stone-50 text-slate-900 font-sans">
+<main class="max-w-5xl mx-auto px-6 py-12 space-y-12">
+
+<header class="space-y-3">
+  <h1 class="font-serif text-3xl">Architecture review for gaffer</h1>
+  <p class="text-sm text-slate-500">2026-09-07 · main at 852bf9a + e0d74bd · scoped by the last 120 commits: schemas.py, the generated types, config and settings, advise.py, ladder.py, routers/plan.py, the This Week hub</p>
+  <div class="flex flex-wrap gap-4 text-xs text-slate-600 pt-2">
+    <span class="inline-flex items-center gap-2"><span class="inline-block w-5 h-3 border border-slate-400 bg-white"></span> module</span>
+    <span class="inline-flex items-center gap-2"><svg width="28" height="8"><line x1="0" y1="4" x2="28" y2="4" stroke="#475569" stroke-width="2" class="seam"/></svg> seam</span>
+    <span class="inline-flex items-center gap-2"><svg width="28" height="8"><line x1="0" y1="4" x2="28" y2="4" stroke="#dc2626" stroke-width="2"/></svg> leakage</span>
+    <span class="inline-flex items-center gap-2"><span class="inline-block w-5 h-3 border-2 border-slate-900 bg-slate-900"></span> deep module</span>
+  </div>
+</header>
+
+<section id="candidates" class="space-y-10">
+
+<!-- ============ 1 ============ -->
+<article id="c1" class="rounded-xl border border-slate-200 bg-white p-6 space-y-5">
+  <div class="flex items-start justify-between gap-4">
+    <h2 class="font-serif text-2xl">The served plan, owned once</h2>
+    <div class="flex gap-2 shrink-0">
+      <span class="rounded px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-800">Strong</span>
+      <span class="rounded px-2 py-0.5 text-xs bg-slate-100 text-slate-700">in-process</span>
+    </div>
+  </div>
+  <pre class="font-mono text-xs text-slate-600 whitespace-pre-wrap">src/gaffer/advise.py:1141-1160, 1195-1221   src/gaffer/ladder.py:256-321 (serve_rung)
+src/gaffer/web/routers/plan.py:319-336, 352-410, 437-484   src/gaffer/artifacts.py
+src/gaffer/web/routers/meta.py:125,229   src/gaffer/tracking.py:49</pre>
+
+  <div class="grid grid-cols-2 gap-4">
+    <div class="rounded-lg border border-slate-200 bg-stone-50 p-3">
+      <p class="lbl text-slate-500 mb-2">Before</p>
+      <pre class="mermaid">
+flowchart TB
+  A["advise.py<br/>objective week<br/>as anonymous dict"] --> B["serve_rung<br/>13-key dict"]
+  B --> C["advise.py<br/>Advice(served[...] x9)"]
+  C --> D[("gwN-advice.json")]
+  D --> E["routers/plan.py<br/>_int _float _price<br/>runs the bank again<br/>traces the objective again"]
+  D -.-> F["meta.py globs gw*-advice.json"]
+  D -.-> G["tracking.py hardcodes the path"]
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class E,F,G leak
+      </pre>
+    </div>
+    <div class="rounded-lg border border-slate-200 bg-stone-50 p-3">
+      <p class="lbl text-slate-500 mb-2">After</p>
+      <pre class="mermaid">
+flowchart TB
+  A["advise.py"] --> S["ServedPlan<br/>weeks · moves · bank · restraint · trace"]
+  S --> D[("gwN-advice.json")]
+  D --> L["artifacts.served_plan(gw)"]
+  L --> P["routers/plan.py<br/>shape adapter only"]
+  L --> M["meta · tracking · brief · digest"]
+  classDef deep fill:#0f172a,stroke:#0f172a,color:#f8fafc,stroke-width:3px;
+  class S,L deep
+      </pre>
+    </div>
+  </div>
+
+  <p><span class="font-medium">Problem.</span> "What does the user see for GW7?" is answered across four modules: the objective week is a bare dict, serve_rung hands back a bag of thirteen keys, Advice is splatted from it field by field, and the plan router re-parses the JSON with its own coercers and re-runs the bank because the artifact carries no money.</p>
+  <p><span class="font-medium">Solution.</span> One ServedPlan value object built in advise, written whole, and read back by one loader that every router, the CLI, the brief and the digest call; artifacts owns every path and the enumeration of gameweeks.</p>
+  <ul class="grid grid-cols-2 gap-x-6 text-sm list-disc pl-5">
+    <li>locality: week shape defined once, not eight times</li>
+    <li>leverage: one loader, twelve call sites</li>
+    <li>plan router's bank arithmetic deleted</li>
+    <li>one round-trip test replaces the coercer tests</li>
+    <li>path knowledge leaves meta.py and tracking.py</li>
+    <li>serve_rung's interface shrinks to one return type</li>
+  </ul>
+  <div class="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">Touches advise.py and ladder.py, both orchestrator-only under CLAUDE.md, and moves the v16 source-order pins in tests/test_v16_restraint.py; the plan for this cycle records that ruling.</div>
+</article>
+
+<!-- ============ 2 ============ -->
+<article id="c2" class="rounded-xl border border-slate-200 bg-white p-6 space-y-5">
+  <div class="flex items-start justify-between gap-4">
+    <h2 class="font-serif text-2xl">Restraint narrated once, on the server</h2>
+    <div class="flex gap-2 shrink-0">
+      <span class="rounded px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-800">Strong</span>
+      <span class="rounded px-2 py-0.5 text-xs bg-slate-100 text-slate-700">in-process</span>
+    </div>
+  </div>
+  <pre class="font-mono text-xs text-slate-600 whitespace-pre-wrap">src/gaffer/ladder.py:86-95 (rung_label), 323-342 (restraint_line, objective_line)   src/gaffer/cli.py:100-106
+src/gaffer/brief.py:146-186   src/gaffer/web/routers/ladder.py:46-48
+frontend/src/hubs/this-week/MovesCard.tsx:30-45, 122   frontend/src/hubs/this-week/LadderCard.tsx:40-49, 91-99</pre>
+
+  <div class="grid grid-cols-2 gap-4">
+    <div class="rounded-lg border border-slate-200 bg-stone-50 p-3 space-y-2">
+      <p class="lbl text-slate-500">Before — one rung, four dialects</p>
+      <div class="grid grid-cols-2 gap-2 text-xs">
+        <div class="box"><p class="lbl text-slate-500">ladder.py</p><p>"free transfers only"</p><p class="faded">restraint_line, objective_line</p></div>
+        <div class="box"><p class="lbl text-slate-500">MovesCard.tsx</p><p>"Free transfers only"</p><p class="faded">rungLabel, restraintText, −hits×4 pts</p></div>
+        <div class="box"><p class="lbl text-slate-500">LadderCard.tsx</p><p>"No hits"</p><p class="faded">rungLabel, stepText</p></div>
+        <div class="box"><p class="lbl text-slate-500">brief.py</p><p>its own _pct, its own steps</p><p class="faded">facts for the LLM</p></div>
+      </div>
+      <svg width="100%" height="28"><line x1="10%" y1="14" x2="90%" y2="14" stroke="#dc2626" stroke-width="2"/><text x="50%" y="10" text-anchor="middle" font-size="10" fill="#dc2626">the same fact, four implementations, already disagreeing</text></svg>
+    </div>
+    <div class="rounded-lg border border-slate-200 bg-stone-50 p-3 space-y-2">
+      <p class="lbl text-slate-500">After — the rung carries its own name</p>
+      <div class="deepbox text-xs">
+        <p class="lbl">ladder.py · Restraint</p>
+        <p>rung.label · step.line · restraint.line() · restraint.differs_from_objective · hit_cost</p>
+        <p class="faded mt-1">rung_label, restraint_line, objective_line, served_note, _pct, steps projection all inside</p>
+      </div>
+      <div class="grid grid-cols-4 gap-2 text-xs mt-2">
+        <div class="box text-center">CLI</div><div class="box text-center">MovesCard</div><div class="box text-center">LadderCard</div><div class="box text-center">brief facts</div>
+      </div>
+      <p class="text-xs text-slate-500 text-center">render strings; compute nothing</p>
+    </div>
+  </div>
+
+  <p><span class="font-medium">Problem.</span> The rung's name and the step's sentence are written on the server, in two cards and in the brief's facts, and the browser already says "No hits" where the CLI says "free transfers only"; one card also multiplies hits by a literal 4 while every other surface reads the served hit_cost.</p>
+  <p><span class="font-medium">Solution.</span> ladder.py serves a label on each rung and a line on each step next to the reason it already serves, plus the hit cost; both TS rungLabel functions and the client multiplication are deleted.</p>
+  <ul class="grid grid-cols-2 gap-x-6 text-sm list-disc pl-5">
+    <li>locality: change a word once, every surface follows</li>
+    <li>one table-driven phrasing test replaces three</li>
+    <li>LadderCard shrinks by two helpers</li>
+    <li>the brief's facts and the card agree by construction</li>
+    <li>first step towards candidate 1</li>
+  </ul>
+</article>
+
+<!-- ============ 3 ============ -->
+<article id="c3" class="rounded-xl border border-slate-200 bg-white p-6 space-y-5">
+  <div class="flex items-start justify-between gap-4">
+    <h2 class="font-serif text-2xl">build_advice as a pure module behind gather_inputs</h2>
+    <div class="flex gap-2 shrink-0">
+      <span class="rounded px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-800">Strong</span>
+      <span class="rounded px-2 py-0.5 text-xs bg-slate-100 text-slate-700">ports &amp; adapters</span>
+    </div>
+  </div>
+  <pre class="font-mono text-xs text-slate-600 whitespace-pre-wrap">src/gaffer/advise.py:575 (run_advise(cfg, client))   tests/test_advise.py (35 inspect.getsource pins)
+tests/test_v16_restraint.py:19-49 (source-order pins)   45 test files use the getsource idiom</pre>
+
+  <div class="grid grid-cols-2 gap-4">
+    <div class="rounded-lg border border-slate-200 bg-stone-50 p-3">
+      <p class="lbl text-slate-500 mb-2">Before — mass diagram</p>
+      <div class="flex items-end gap-6 h-64 px-4">
+        <div class="flex flex-col items-center gap-1 w-1/2">
+          <div class="w-full bg-red-100 border border-red-400 rounded" style="height:200px"><p class="lbl text-red-700 p-1">interface</p><p class="text-xs px-1 text-red-800">cfg · client · models on disk · live data · solver · news · reports/ · the source text itself (35 pins)</p></div>
+          <p class="lbl text-slate-500">run_advise</p>
+        </div>
+        <div class="flex flex-col items-center gap-1 w-1/2">
+          <div class="w-full bg-slate-200 border border-slate-400 rounded" style="height:220px"><p class="lbl text-slate-600 p-1">implementation</p><p class="text-xs px-1 text-slate-700">1243 lines</p></div>
+          <p class="lbl text-slate-500">&nbsp;</p>
+        </div>
+      </div>
+      <p class="text-xs text-slate-500 mt-2">Shallow: tests can only reach the body by grepping it.</p>
+    </div>
+    <div class="rounded-lg border border-slate-200 bg-stone-50 p-3">
+      <p class="lbl text-slate-500 mb-2">After</p>
+      <div class="flex items-end gap-6 h-64 px-4">
+        <div class="flex flex-col items-center gap-1 w-1/3">
+          <div class="w-full bg-white border border-slate-400 rounded" style="height:90px"><p class="lbl text-slate-600 p-1">gather_inputs</p><p class="text-xs px-1">client · models · news → Inputs</p></div>
+          <p class="lbl text-slate-500">adapters</p>
+        </div>
+        <div class="flex flex-col items-center gap-1 w-2/3">
+          <div class="w-full bg-slate-900 border-2 border-slate-900 rounded text-slate-100" style="height:220px"><p class="lbl p-1">build_advice(Inputs) → ServedPlan</p><p class="text-xs px-1 faded">solves · alt plans · ladder · serve_rung · Advice · state, all inside; interface: one frozen input, one output</p></div>
+          <p class="lbl text-slate-500">deep</p>
+        </div>
+      </div>
+      <p class="text-xs text-slate-500 mt-2">Golden-artifact tests over build_advice on a fixture; the source-order pins go.</p>
+    </div>
+  </div>
+
+  <p><span class="font-medium">Problem.</span> run_advise is testable only through the widest interface in the repo, so the wiring of walk, serve_rung and the state write is pinned by string-matching the source, while the helpers are unit-tested apart from the calls where the bugs live.</p>
+  <p><span class="font-medium">Solution.</span> Split at the one real seam that exists today (the FPL client) and add two more (Predictions, Solver) so that build_advice is a pure function of a frozen Inputs object; run_advise becomes gather then build.</p>
+  <ul class="grid grid-cols-2 gap-x-6 text-sm list-disc pl-5">
+    <li>locality: a miswired call fails a test, not a Thursday</li>
+    <li>two adapters per seam: live and fixture</li>
+    <li>delete 35 getsource pins</li>
+    <li>the replay driver reuses build_advice</li>
+    <li>interface: Inputs in, ServedPlan out</li>
+  </ul>
+  <div class="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">Contradicts the convention that the protected-file rails pin advise.py by source text. Worth reopening: the rails exist because the body could not be tested any other way, and this removes that reason.</div>
+</article>
+
+<!-- ============ 4 ============ -->
+<article id="c4" class="rounded-xl border border-slate-200 bg-white p-6 space-y-5">
+  <div class="flex items-start justify-between gap-4">
+    <h2 class="font-serif text-2xl">One weekly pipeline module</h2>
+    <div class="flex gap-2 shrink-0">
+      <span class="rounded px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800">Worth exploring</span>
+      <span class="rounded px-2 py-0.5 text-xs bg-slate-100 text-slate-700">in-process</span>
+    </div>
+  </div>
+  <pre class="font-mono text-xs text-slate-600 whitespace-pre-wrap">src/gaffer/web/routers/advice.py:34-64 (run_train_and_advise)   src/gaffer/web/job_kinds.py:19
+src/gaffer/cli.py:44-106 (advise), 429 (brief)   scripts/com.gaffer.advise.plist</pre>
+
+  <div class="grid grid-cols-2 gap-4">
+    <div class="rounded-lg border border-slate-200 bg-stone-50 p-3">
+      <p class="lbl text-slate-500 mb-2">Before</p>
+      <pre class="mermaid">
+flowchart LR
+  J["job_kinds.py"] --> R["routers/advice.py<br/>train → advise → render → brief"]
+  W["web POST"] --> R
+  C["cli.py advise<br/>train → advise → render"] -. no brief .-> X["Friday digest<br/>falls back to the template"]
+  P["launchd plist<br/>prices → train → advise"] --> C
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class R,X leak
+      </pre>
+    </div>
+    <div class="rounded-lg border border-slate-200 bg-stone-50 p-3">
+      <p class="lbl text-slate-500 mb-2">After</p>
+      <pre class="mermaid">
+flowchart LR
+  C["cli.py"] --> W["pipeline.weekly_run(cfg) → RunResult<br/>train · advise · render · brief"]
+  J["job kind"] --> W
+  P["launchd"] --> C
+  R["routers/advice.py<br/>HTTP only"] --> J
+  classDef deep fill:#0f172a,stroke:#0f172a,color:#f8fafc,stroke-width:3px;
+  class W deep
+      </pre>
+    </div>
+  </div>
+
+  <p><span class="font-medium">Problem.</span> The weekly run is defined inside an HTTP router, imported from there by the job registry, and re-assembled by hand in the CLI, which is why the CLI and the Thursday plist produce advice with no brief.</p>
+  <p><span class="font-medium">Solution.</span> A pipeline module with one interface that the CLI, the job kind and launchd all call; the router keeps only request handling.</p>
+  <ul class="grid grid-cols-2 gap-x-6 text-sm list-disc pl-5">
+    <li>leverage: one pipeline, three callers</li>
+    <li>locality: a missing step is missing everywhere</li>
+    <li>closes the open plist item without editing the plist</li>
+    <li>the router stops being imported by non-web code</li>
+  </ul>
+</article>
+
+<!-- ============ 5 ============ -->
+<article id="c5" class="rounded-xl border border-slate-200 bg-white p-6 space-y-5">
+  <div class="flex items-start justify-between gap-4">
+    <h2 class="font-serif text-2xl">The config in force, one interface</h2>
+    <div class="flex gap-2 shrink-0">
+      <span class="rounded px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800">Worth exploring</span>
+      <span class="rounded px-2 py-0.5 text-xs bg-slate-100 text-slate-700">local-substitutable</span>
+    </div>
+  </div>
+  <pre class="font-mono text-xs text-slate-600 whitespace-pre-wrap">src/gaffer/config.py:47, 323-336, 366-374, 377, 543   src/gaffer/web/settings_keys.py:24-33, 130-141
+src/gaffer/web/routers/settings.py:201-204, 259-261   src/gaffer/web/routers/meta.py:312-318
+frontend/src/hubs/this-week/LadderCard.tsx:14, 18, 320</pre>
+
+  <div class="grid grid-cols-2 gap-4">
+    <div class="rounded-lg border border-slate-200 bg-stone-50 p-3 space-y-1">
+      <p class="lbl text-slate-500 mb-2">Before — cross-section of one read of hit_bar</p>
+      <div class="h-9 border-l-4 border-slate-400 bg-white px-2 text-xs flex items-center">config.py · HIT_BAR_LO/HI, default, _check_hit_bar's sentence</div>
+      <div class="h-9 border-l-4 border-red-500 bg-white px-2 text-xs flex items-center">settings_keys.py · literals 0.5, 0.95 again, label, help</div>
+      <div class="h-9 border-l-4 border-red-500 bg-white px-2 text-xs flex items-center">routers/settings.py · a second refusal sentence</div>
+      <div class="h-9 border-l-4 border-slate-400 bg-white px-2 text-xs flex items-center">load_config ×41 sites · serving_config ×19 · 4 private TOML readers</div>
+      <div class="h-9 border-l-4 border-red-500 bg-white px-2 text-xs flex items-center">cache clearing duplicated in settings.py and meta.py</div>
+      <div class="h-9 border-l-4 border-red-500 bg-white px-2 text-xs flex items-center">LadderCard.tsx · HIT_BARS nine stops, NO_CAP=15, ?? 0.6</div>
+    </div>
+    <div class="rounded-lg border border-slate-200 bg-stone-50 p-3 space-y-2">
+      <p class="lbl text-slate-500 mb-2">After</p>
+      <div class="deepbox text-xs" style="min-height:120px">
+        <p class="lbl">config_in_force() · invalidate()</p>
+        <p>one frozen view; the four file readers become accessors on it; the caches behind one call</p>
+      </div>
+      <div class="deepbox text-xs" style="min-height:90px">
+        <p class="lbl">SettingKey</p>
+        <p>label · bounds imported from config · options · the one refusal sentence</p>
+      </div>
+      <div class="grid grid-cols-2 gap-2 text-xs"><div class="box text-center">SettingsTab renders rows</div><div class="box text-center">LadderCard renders the same rows</div></div>
+    </div>
+  </div>
+
+  <p><span class="font-medium">Problem.</span> Which value is in force depends on which reader a module happened to call, the bounds and refusal text for a key are stated in three places, and the ladder card bypasses the settings registry that SettingsTab uses correctly.</p>
+  <p><span class="font-medium">Solution.</span> One read interface with one invalidation, a SettingKey that owns label, bounds and offered values, and the ladder card's selects rendered from the settings rows it already posts to.</p>
+  <ul class="grid grid-cols-2 gap-x-6 text-sm list-disc pl-5">
+    <li>locality: a bound changes in one file</li>
+    <li>the source: "config" | "reader" seam gets its second adapter or goes</li>
+    <li>one test: every WHITELIST key readable and writable</li>
+    <li>LadderCard loses three constants</li>
+  </ul>
+</article>
+
+<!-- ============ 6 ============ -->
+<article id="c6" class="rounded-xl border border-slate-200 bg-white p-6 space-y-5">
+  <div class="flex items-start justify-between gap-4">
+    <h2 class="font-serif text-2xl">The wire types, one command</h2>
+    <div class="flex gap-2 shrink-0">
+      <span class="rounded px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800">Worth exploring</span>
+      <span class="rounded px-2 py-0.5 text-xs bg-slate-100 text-slate-700">in-process</span>
+    </div>
+  </div>
+  <pre class="font-mono text-xs text-slate-600 whitespace-pre-wrap">scripts/gen_types.py   frontend/src/types.generated.test.ts:16-22 (OPTIONS)   frontend/package.json:6-10
+docs/superpowers/plans/*.md (the node one-liner, three copies)   CLAUDE.md (a fourth)</pre>
+
+  <div class="grid grid-cols-2 gap-4">
+    <div class="rounded-lg border border-slate-200 bg-stone-50 p-3">
+      <p class="lbl text-slate-500 mb-2">Before</p>
+      <div class="flex items-center gap-1 text-xs">
+        <div class="box">schemas.py</div><span>→</span>
+        <div class="box">gen_types.py</div><span>→</span>
+        <div class="box">schemas.json</div><span class="text-red-600">→</span>
+        <div class="box border-dashed border-red-500 text-red-700">node -e … in plan docs</div><span>→</span>
+        <div class="box">types.generated.ts</div>
+      </div>
+      <div class="flex items-center gap-1 text-xs mt-3">
+        <div class="box">test_v12_w5_gen_types.py ×20</div>
+        <div class="box">types.generated.test.ts ×2, re-declares OPTIONS</div>
+        <div class="box">types.test.ts ×13</div>
+      </div>
+      <p class="text-xs text-slate-500 mt-3">The writer has no home; the test is the only executable copy of the generator's options.</p>
+    </div>
+    <div class="rounded-lg border border-slate-200 bg-stone-50 p-3">
+      <p class="lbl text-slate-500 mb-2">After</p>
+      <div class="deepbox text-xs" style="min-height:110px">
+        <p class="lbl">npm run types · npm run types -- --check</p>
+        <p>writes schemas.json and types.generated.ts from one OPTIONS; --check exits 1 on drift</p>
+        <p class="faded mt-1">gen_types.py, the node call and OPTIONS all inside</p>
+      </div>
+      <div class="flex items-center gap-1 text-xs mt-3"><div class="box">one drift test</div><div class="box">types.ts stays hand-written</div></div>
+    </div>
+  </div>
+
+  <p><span class="font-medium">Problem.</span> The step that writes types.generated.ts lives in prose in four documents, and its options are duplicated in the test that checks its output.</p>
+  <p><span class="font-medium">Solution.</span> One script with a check mode; the test imports the options rather than restating them. The hand-narrowed half of types.ts is a real seam with a written reason per model and stays.</p>
+  <ul class="grid grid-cols-2 gap-x-6 text-sm list-disc pl-5">
+    <li>the generator's interface: one command</li>
+    <li>OPTIONS defined once</li>
+    <li>CLAUDE.md's 12-line block becomes one line</li>
+  </ul>
+</article>
+
+<!-- ============ 7 ============ -->
+<article id="c7" class="rounded-xl border border-slate-200 bg-white p-6 space-y-5">
+  <div class="flex items-start justify-between gap-4">
+    <h2 class="font-serif text-2xl">This Week's data, fetched once; one job interface</h2>
+    <div class="flex gap-2 shrink-0">
+      <span class="rounded px-2 py-0.5 text-xs font-medium bg-slate-200 text-slate-700">Speculative</span>
+      <span class="rounded px-2 py-0.5 text-xs bg-slate-100 text-slate-700">mock</span>
+    </div>
+  </div>
+  <pre class="font-mono text-xs text-slate-600 whitespace-pre-wrap">frontend/src/hubs/ThisWeek.tsx:63-65, 66-116, 141-186   frontend/src/hubs/ThisWeek.test.tsx:112-131
+frontend/src/api/useJob.ts:52   frontend/src/api/useJobStream.ts:17   frontend/src/kit/JobButton.tsx:29-55   frontend/src/hubs/this-week/BriefCard.tsx:13, 55-56</pre>
+
+  <div class="grid grid-cols-2 gap-4">
+    <div class="rounded-lg border border-slate-200 bg-stone-50 p-3">
+      <p class="lbl text-slate-500 mb-2">Before</p>
+      <pre class="mermaid">
+flowchart TB
+  T["ThisWeek.tsx<br/>5 fetches + 60-line SquadRow mapper"] --> A["/api/advice/latest"]
+  T --> B["/api/players"]
+  T --> C["/api/components"]
+  L["LadderCard"] --> A2["/api/ladder"]
+  Br["BriefCard<br/>useJob + useJobStream"] --> A3["/api/brief"]
+  D["DecisionPanel"] --> A4["/api/decisions"]
+  W["WhyPanel ×3"] --> A5["/api/…"]
+  T -. capLine passed down to avoid a 13th fetch .-> M["MovesCard"]
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class Br leak
+      </pre>
+    </div>
+    <div class="rounded-lg border border-slate-200 bg-stone-50 p-3">
+      <p class="lbl text-slate-500 mb-2">After</p>
+      <pre class="mermaid">
+flowchart TB
+  H["usePageData(gw)<br/>one in-flight request per endpoint, shared across hubs"] --> T["ThisWeek"]
+  H --> P["Planning · Players · League"]
+  S["squadRows(advice, players, components)<br/>pure"] --> T
+  J["useJob({kind} | {path})<br/>streams if it can, polls if not"] --> Br["BriefCard · JobButton"]
+  classDef deep fill:#0f172a,stroke:#0f172a,color:#f8fafc,stroke-width:3px;
+  class H,S,J deep
+      </pre>
+    </div>
+  </div>
+
+  <p><span class="font-medium">Problem.</span> Rendering one hub in a test means faking eight GET endpoints and a POST, four hubs each fetch the latest advice for themselves, and a card that starts work picks between two job hooks by a server detail.</p>
+  <p><span class="font-medium">Solution.</span> A shared loader with one in-flight request per endpoint, the row assembly as a pure function, and one job hook that chooses its transport internally.</p>
+  <ul class="grid grid-cols-2 gap-x-6 text-sm list-disc pl-5">
+    <li>test surface: two mocks, not nine</li>
+    <li>locality: row bugs tested in squadRows</li>
+    <li>capLine prop-drilling deleted</li>
+    <li>one recovery story for jobs</li>
+  </ul>
+  <p class="text-xs text-slate-500">Speculative because per-card fetching may be a deliberate choice for cards that reload independently after a job; the grilling should settle that first.</p>
+</article>
+
+</section>
+
+<section id="top-recommendation" class="rounded-xl border-2 border-slate-900 bg-white p-8 space-y-3">
+  <p class="lbl text-slate-500">Top recommendation</p>
+  <h2 class="font-serif text-2xl"><a href="#c2" class="underline decoration-slate-400">Restraint narrated once, on the server</a></h2>
+  <p>It is the smallest cut, it fixes a disagreement the user can already see between the CLI and the card, it lands entirely in the v16 code that changed last, and it is the first move of <a href="#c1" class="underline">the served plan, owned once</a>: once the server owns the prose, owning the plan is the same direction with a bigger step.</p>
+</section>
+
+</main>
+</body>
+</html>

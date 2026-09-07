@@ -101,6 +101,18 @@ Detail in `docs/GUIDE.md` §12.5.
 9. **A blended league stance** (v15 deferred): per-league λ and cover tables merged by weight. Chasing in one league and defending in another largely cancel, so it needs a replay to justify before it touches protected solver code
 10. **The in-app chat** (v16 deferred, gated on a few briefs read): a question box on This Week over the same facts document the brief reads, the same no-tools command, the same truth check on every answer
 
+### The v17 deepening programme (planned 2026-09-07, not started)
+
+The 2026-09-07 architecture review
+(`docs/superpowers/research/2026-09-07-architecture-review.html`) found seven
+shallow modules; `docs/superpowers/plans/2026-09-07-v17-deepening-programme.md`
+sequences them as v17a–v17h behind a golden board (v17c) that proves each
+refactor changes no number, and
+`docs/superpowers/plans/2026-09-07-v17-tracker.md` is the checklist each
+chat updates on merge. Order: types command, restraint prose on the server,
+golden board, weekly pipeline, config in force, the served plan, pure
+build_advice, the This Week loader.
+
 ## Shipped
 
 ### v16 — restraint and the brief (done, merged `9f5be20` 2026-09-07)
