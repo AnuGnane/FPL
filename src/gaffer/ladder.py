@@ -260,8 +260,15 @@ def serve_rung(ladder: dict | None, objective: dict, *,
 
     ``objective`` is ``{buys, sells, hits, xi, bench, captain, vice,
     expected_pts, plan_by_gw}`` in ``advise._named``'s shape. The result has
-    the same keys plus ``captain_note``, ``objective`` and ``restraint``. The
-    sweep's captain stands unless he is not in the rung's XI.
+    the same keys plus ``captain_note``, ``objective`` and ``restraint``.
+
+    The armband: the rung's own plan captains its own squad, and that is
+    what is served — the objective's captain was chosen for the objective's
+    squad, and a buy the rung makes (Palmer, GW4) was never on the captain
+    table the objective read. The one exception is a captain a note
+    explains: the league sweep's cover or attack override (``captain_note``
+    set) is a decision about the field, not the squad, so it stands when he
+    is in the rung's XI and is replaced with a note when he is not.
     """
     base = {**objective, "captain_note": captain_note,
             "objective": {k: objective[k]
@@ -282,11 +289,13 @@ def serve_rung(ladder: dict | None, objective: dict, *,
     weeks = row["plan_by_gw"]
     first = weeks[0]
     xi_codes = {int(p["code"]) for p in first["xi"]}
-    captain, note = objective["captain"], captain_note
-    if int(captain["code"]) not in xi_codes:
-        captain = first["captain"]
-        note = (f"captain from the restrained plan; the sweep's choice "
-                f"({objective['captain']['name']}) is not in it")
+    captain, note = first["captain"], captain_note
+    if captain_note:
+        captain = objective["captain"]
+        if int(captain["code"]) not in xi_codes:
+            captain = first["captain"]
+            note = (f"captain from the restrained plan; the sweep's choice "
+                    f"({objective['captain']['name']}) is not in it")
     vice = first["vice"]
     if int(vice["code"]) == int(captain["code"]):
         vice = first["captain"] if int(first["captain"]["code"]) != int(captain["code"]) \

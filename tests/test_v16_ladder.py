@@ -207,10 +207,21 @@ def test_the_sweeps_captain_stands_when_he_is_in_the_rungs_xi():
     assert out["vice"]["code"] == 20            # the rung's vice
 
 
-def test_the_rungs_captain_takes_over_when_the_sweeps_is_not_in_it():
+def test_without_a_note_the_rungs_own_captain_is_served():
+    """The objective captained its own squad (4, who is in the rung's XI
+    too); the rung's plan, solved with its buy in, captained 3 — the GW4
+    board's Groß/Palmer case. No note, so the rung's own armband is served."""
+    obj = _objective()
+    obj["captain"] = {"code": 4, "name": "P4", "position": "MID", "ep": 5.0}
+    out = serve_rung(_ladder(), obj, captain_note=None)
+    assert out["captain"]["code"] == 3 and out["vice"]["code"] == 20
+    assert out["captain_note"] is None
+
+
+def test_a_noted_captain_not_in_the_rung_falls_to_the_rungs_with_a_note():
     obj = _objective()
     obj["captain"] = {"code": 99, "name": "Gone", "position": "FWD", "ep": 9.0}
-    out = serve_rung(_ladder(), obj, captain_note=None)
+    out = serve_rung(_ladder(), obj, captain_note="covering Dave")
     assert out["captain"]["code"] == 3
     assert out["captain_note"] == ("captain from the restrained plan; the "
                                    "sweep's choice (Gone) is not in it")
@@ -220,8 +231,8 @@ def test_the_vice_never_equals_the_captain():
     lad_ = _ladder()
     lad_["rungs"][1]["plan_by_gw"][0]["vice"] = {"code": 3, "name": "P3",
                                                  "position": "MID", "ep": 5.0}
-    out = serve_rung(lad_, _objective(), captain_note=None)
-    # The sweep's captain (3) stands; the rung's vice is also 3, so the vice
+    out = serve_rung(lad_, _objective(), captain_note="covering Dave")
+    # The noted captain (3) stands; the rung's vice is also 3, so the vice
     # falls to the rung's own captain (20).
     assert out["captain"]["code"] == 3 and out["vice"]["code"] == 20
 
