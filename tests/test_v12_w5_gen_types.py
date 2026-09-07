@@ -34,7 +34,7 @@ def test_the_committed_schema_is_the_one_the_models_produce():
     committed = json.loads((REPO / schema_path()).read_text())
     assert committed == build_schema(), (
         "frontend/src/schemas.json is stale — run "
-        "`.venv/bin/python scripts/gen_types.py` and commit both it and "
+        "`cd frontend && npm run types` and commit both it and "
         "frontend/src/types.generated.ts")
 
 

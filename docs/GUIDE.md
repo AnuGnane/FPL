@@ -568,13 +568,14 @@ Housekeeping (v12):
   logs, the corpus logs or `logs/advise.log`
 - `gaffer mcp` — a stdio MCP server for Claude Code:
   `claude mcp add gaffer -- gaffer mcp`. Six read tools, no writes
-- `.venv/bin/python scripts/gen_types.py` (v12 W5) — not a `gaffer`
-  subcommand: a developer script. It writes `frontend/src/schemas.json` from
-  the live pydantic models, which a vitest test compiles into
-  `frontend/src/types.generated.ts`. **Run it after any change to
-  `src/gaffer/web/schemas.py`**, and commit both files, or the two diff tests
-  (`tests/test_v12_w5_gen_types.py` and `frontend/src/types.generated.test.ts`)
-  fail. `frontend/src/types.ts` is hand-written and is never overwritten by it
+- `cd frontend && npm run types` (v12 W5, one command since v17a) — not a
+  `gaffer` subcommand: a developer command. It writes `frontend/src/schemas.json`
+  from the live pydantic models and `frontend/src/types.generated.ts` from
+  that. **Run it after any change to `src/gaffer/web/schemas.py`** and commit
+  both files; `npm run types -- --check` exits 1 naming any file that
+  drifted, and the two suites (`tests/test_v12_w5_gen_types.py`,
+  `frontend/src/types.generated.test.ts`) fail on the same drift.
+  `frontend/src/types.ts` is hand-written and is never overwritten by it
 
 One-time / rollover setup:
 

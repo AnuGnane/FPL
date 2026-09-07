@@ -29,22 +29,9 @@ worker breaks job polling silently.
 
 ### Regenerating types after a change to `src/gaffer/web/schemas.py`
 
-`scripts/gen_types.py` writes only `frontend/src/schemas.json`; the vitest
-test only diffs. The write step for `types.generated.ts` is this node call:
-
 ```
-.venv/bin/python scripts/gen_types.py
-cd frontend && node --input-type=module -e "
-import { readFileSync, writeFileSync } from 'node:fs'
-import { compile } from 'json-schema-to-typescript'
-const OPTIONS = { bannerComment: '', additionalProperties: false,
-  unreachableDefinitions: true, declareExternallyReferenced: true,
-  style: { singleQuote: true, semi: false } }
-const banner = readFileSync('src/types.banner.txt', 'utf8')
-const schema = JSON.parse(readFileSync('src/schemas.json', 'utf8'))
-compile(schema, 'GafferApi', OPTIONS).then((ts) => writeFileSync('src/types.generated.ts', banner + ts))
-" && npx vitest run src/types.generated.test.ts && cd .. \
-  && .venv/bin/pytest -q tests/test_v12_w5_gen_types.py
+cd frontend && npm run types              # writes src/schemas.json and src/types.generated.ts
+cd frontend && npm run types -- --check   # exits 1 naming any file that drifted
 ```
 
 Commit `schemas.json` and `types.generated.ts` together. `frontend/src/types.ts`
@@ -63,7 +50,9 @@ is hand-written and must never be regenerated.
   (source-order pins on `run_advise`), in `tests/test_web_job_kinds*.py`, and
   for the frontend in `frontend/src/kit/tokens.test.ts`.
 - `scripts/` — replay drivers (`v7b_replay.py`, `replay_pair.sh`,
-  `seed_stats.py`), launchd plists, `install_automation.sh`, `gen_types.py`.
+  `seed_stats.py`), launchd plists, `install_automation.sh`, `gen_types.py`
+  (the Python half of `npm run types`; the node half is
+  `frontend/scripts/gen_types.ts`).
 - `docs/superpowers/` — `CONVENTIONS.md` (measurement rules), `ROADMAP.md`,
   `research/`, `specs/`, `plans/`.
 - Untracked and machine-local: `config.toml`, `config.local.toml`, `data/`
