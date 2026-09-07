@@ -167,6 +167,8 @@ New, in `tests/test_v12_w5_gen_types.py`:
   unaltered copy; returns 0, writes nothing.
 - `test_write_mode_writes_the_serialized_schema`: `main([], root=tmp)`
   writes exactly `serialize(build_schema())`.
+- `test_an_unknown_argument_is_a_usage_error`: `main(["--frobnicate"])`
+  returns 2, prints a usage line to stderr, writes nothing.
 
 Die: none. The vitest test's private `OPTIONS` and `generate()` are
 deleted, not tests.
@@ -211,7 +213,7 @@ None of routes 51, job kinds 12, `Config` 59 move. No protected file is
 touched: `tests/test_v12_w5_gen_types.py` is not a degradation rail and is
 not on the orchestrator-only list. `kit/tokens.test.ts` scans `hubs/` and
 `kit/` only, so `frontend/scripts/` is outside it. Suite counts move by the
-three new Python tests: 4267 → 4270 Python, frontend 910 unchanged.
+four new Python tests: 4267 → 4271 Python, frontend 910 unchanged.
 
 ## 8. Process
 
