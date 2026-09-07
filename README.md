@@ -1134,13 +1134,13 @@ control to be noticed. A charge the solver never carried is printed as
 **absent, not zero** — with `[optimizer] price_timing` off there is no such
 term, and a "−0.00" would say "we checked and it was free".
 
-**Half of `types.ts` is now generated.** `.venv/bin/python scripts/gen_types.py`
-writes `frontend/src/schemas.json` from the live pydantic models; a vitest test
-compiles that with `json-schema-to-typescript` (pinned exactly at `16.0.0`, as
-a library — no network and no subprocess) and diffs the result against the
-committed `frontend/src/types.generated.ts`; a pytest regenerates the schema
-and diffs it against the committed JSON. **Run the script after any change to
-`web/schemas.py`** or both tests fail. `types.ts` itself is *not* generated and
+**Half of `types.ts` is now generated.** `cd frontend && npm run types` (one
+command since v17a) writes `frontend/src/schemas.json` from the live pydantic
+models and compiles it with `json-schema-to-typescript` (pinned exactly at
+`16.0.0`, as a library — no network) into `frontend/src/types.generated.ts`;
+`npm run types -- --check` exits 1 naming any file that drifted, and a vitest
+test and a pytest fail on the same drift. **Run the command after any change
+to `web/schemas.py`** and commit both files. `types.ts` itself is *not* generated and
 cannot be: thirty of its exports have no pydantic source, twenty-four more are
 renames — thirteen of them the `Data` suffixes that predate this cycle — and
 eleven models are narrowed by hand, `AdviceLatest.advice` above

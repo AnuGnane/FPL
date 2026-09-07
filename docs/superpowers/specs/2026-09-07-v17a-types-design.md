@@ -231,4 +231,44 @@ documents. A vitest test that spawns the interpreter.
 
 ## 10. Outcome
 
-_(filled after the gate)_
+Gate run once by the orchestrator on 2026-09-07, branch `v17a-types` at
+`108d052` (the docs commit), after the suites. **Pass** on the first run; no
+rerun was needed.
+
+Suites before the gate: Python `4271 passed` (4267 + 4); `npx tsc --noEmit`
+silent; vitest `910 passed | 1 skipped`, no `Errors` line.
+
+1. **Drift seen and cleared.** With line 20 of `types.generated.ts` given a
+   trailing comment, `npm run types -- --check` printed
+   `frontend/src/types.generated.ts is stale — run \`npm run types\`` and
+   exited 1; `npm run types` wrote both files; the check exited 0 and
+   `git diff --stat` was empty. With one space inserted into line 1 of
+   `schemas.json`, the check printed
+   `frontend/src/schemas.json is stale — run \`cd frontend && npm run types\``
+   and only that, exited 1; the writer restored it; the check exited 0; the
+   diff was empty.
+2. **One definition.** `tests/test_v12_w5_gen_types.py` 24 passed;
+   `types.generated.test.ts` 2 passed; `grep -rln bannerComment
+   frontend/scripts frontend/src` printed `frontend/scripts/gen_types.ts`
+   alone.
+3. **One command.** `grep -c 'input-type=module' CLAUDE.md` printed 0; the
+   *Regenerating types* block contains the command and its check flag.
+
+The lever was exercised, not inferred: Task 3's banner change made the check
+fail on `types.generated.ts` before the writer ran, and the code review's
+guard fix was proved through a symlinked entry point.
+
+Reviews recorded. Task 2's code review found the entry-point guard failed
+open under a symlinked checkout (`resolve` against Node's realpathed main
+module); fixed in `3c98457` with `realpathSync`, and an `existsSync` guard
+added in the record commit so a runner whose `argv[1]` is not a file skips
+`main` instead of failing the import. Task 3's review restored "commit all
+three" to the banner and anchored `schemas.py` at the repo root. The final
+review found three headers outside §3.5 still telling the v12 story
+(`tests/test_v12_w5_gen_types.py`, `README.md`, the driver's own path bases);
+all three are corrected in the record commit. Left as is: the Python half's
+stale line says `cd frontend && npm run types` and the node half's says
+`npm run types`, because the Python half also runs alone from the repo root.
+
+Pins unchanged: routes 51, job kinds 12, `Config` 59. Protected files: none
+touched. Screenshots: not applicable.

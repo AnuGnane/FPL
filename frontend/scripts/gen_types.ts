@@ -2,8 +2,9 @@
  * The wire types, one command (v17a §3).
  *
  * `npm run types` writes `src/schemas.json` through `scripts/gen_types.py`
- * at the repo root (the Python half) and then `src/types.generated.ts` from
- * it (this half), both from `src/gaffer/web/schemas.py`.
+ * (the Python half) and then `src/types.generated.ts` from it (this half),
+ * both from `src/gaffer/web/schemas.py`; the last two paths are from the repo
+ * root, the first two from `frontend/`.
  * `npm run types -- --check` writes nothing and exits 1 naming every file
  * that drifted. `src/types.generated.test.ts` imports `render`, so the suite
  * diffs exactly what this writes and no option is restated there.
@@ -93,7 +94,10 @@ export async function main(argv: string[]): Promise<number> {
 // the worker, so importing `render` in a test runs nothing. realpathSync, not
 // resolve: Node realpaths the main module, so under a symlinked checkout a
 // plain resolve never matches and the check would pass vacuously (v17a code
-// review).
-if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
+// review). existsSync first: realpathSync throws on a path that is not
+// there, and a runner whose argv[1] is not a file must skip `main`, not fail
+// the import.
+if (process.argv[1] && existsSync(process.argv[1])
+    && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   process.exitCode = await main(process.argv.slice(2))
 }

@@ -1,9 +1,10 @@
 """v12 W5 §6.6 — the committed JSON Schema is the live models'.
 
-The Python half of the types pipeline. The TypeScript half is
-frontend/src/types.generated.test.ts, which compiles *this* file and diffs the
-result against the committed types.generated.ts — so if this test is green and
-that one is green, the browser's types are the server's.
+The Python half of `npm run types` (v17a). The node half,
+frontend/scripts/gen_types.ts, compiles what this half writes into
+types.generated.ts, and frontend/src/types.generated.test.ts diffs the committed
+file against a fresh compile — so if this file is green and that one is green,
+the browser's types are the server's.
 """
 from __future__ import annotations
 
