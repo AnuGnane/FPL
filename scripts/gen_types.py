@@ -104,6 +104,12 @@ OPTIONAL_ON_THE_WIRE = {
         "Omitting it is a third request and not a default: the explorer's ☆ "
         "sends `{ code }`, and the store then keeps the note and the star "
         "date the row already has. `''` is how a note is cleared.",
+    ("ServedMove", "tag"):
+        "Advise tags a served buy and nothing else; the write is "
+        "model_dump(exclude_unset=True), so an XI or sell move carries no key.",
+    ("ServedMove", "frequency"):
+        "Present only on a served move the scenario sweep saw; absent with "
+        "[scenarios] n = 0, and never on the XI.",
 }
 """``(model, field) -> why this field may be absent.``
 
@@ -234,10 +240,11 @@ def _models():
     from gaffer.web import schemas
 
     out = []
+    exported = set(getattr(schemas, "WIRE_EXPORTS", ()))
     for name, obj in sorted(vars(schemas).items()):
         if (isinstance(obj, type) and issubclass(obj, BaseModel)
                 and obj is not BaseModel
-                and obj.__module__ == schemas.__name__):
+                and (obj.__module__ == schemas.__name__ or obj in exported)):
             out.append((name, obj))
     return out
 

@@ -21,14 +21,20 @@ REPO = pathlib.Path(__file__).resolve().parents[1]
 
 
 def _live(module_only: bool = True) -> dict:
+    """The models the generator emits. ``module_only`` means "defined here",
+    which since v17f §2.9 includes the ones ``WIRE_EXPORTS`` names: they are
+    defined in ``gaffer.served`` and served on this wire, so a rule about
+    what the wire carries has to reach them too."""
     from pydantic import BaseModel
 
     from gaffer.web import schemas
 
+    exported = set(getattr(schemas, "WIRE_EXPORTS", ()))
     return {name: obj for name, obj in vars(schemas).items()
             if isinstance(obj, type) and issubclass(obj, BaseModel)
             and obj is not BaseModel
-            and (not module_only or obj.__module__ == schemas.__name__)}
+            and (not module_only or obj.__module__ == schemas.__name__
+                 or obj in exported)}
 
 
 def test_the_committed_schema_is_the_one_the_models_produce():

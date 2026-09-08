@@ -5532,8 +5532,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "description": "``itb_value * bank`` on the horizon's **last** week, which is the only\nweek the objective prices the bank at (``milp.py:889``). ``None``\nelsewhere, and ``None`` when the running bank is unknown."
+     "default": null
     },
     "ep_gain": {
      "anyOf": [
@@ -5567,12 +5566,10 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "description": "What one banked free transfer is worth, priced at the horizon's end:\nflat ``ft_value``, or \u03bb at **this week's** banked count and the weeks left\nafter the horizon's last gameweek. The count is the week's and only the\nbasis is terminal, because the end of the horizon is the only place the\nobjective prices a free transfer at all (``milp.py:878-888``)."
+     "default": null
     },
     "ft_use_penalty": {
      "default": 0.0,
-     "description": "The per-transfer friction this week, decayed exactly as the objective\ndecays it (``milp.py:867``).\n\nCharged even in a week the chip table recommends a wildcard for: the plan\non this payload is the base solve, which the solver returned with the\ntransfers charged and the free-transfer recurrence running. The week's\n``note`` says so.",
      "type": "number"
     },
     "ft_used": {
@@ -6970,6 +6967,518 @@
     "wall_s"
    ],
    "title": "SensitivityReport",
+   "type": "object"
+  },
+  "ServedAlternative": {
+   "description": "A plan the solver ranked behind the recommended one (v12 W3 \u00a74.3),\nunder the advice's own ``alternative_plans`` key and shape.",
+   "properties": {
+    "gap": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "plan_by_gw": {
+     "items": {
+      "$ref": "#/definitions/ServedWeek"
+     },
+     "type": "array"
+    }
+   },
+   "required": [
+    "gap",
+    "plan_by_gw"
+   ],
+   "title": "ServedAlternative",
+   "type": "object"
+  },
+  "ServedMove": {
+   "description": "A player on a move or in the XI, in ``advise._named``'s shape plus\nthe price the pool gives him (millions; ``None`` when it cannot) and\nthe decorations advise adds to a served buy or sell.",
+   "properties": {
+    "code": {
+     "type": "integer"
+    },
+    "ep": {
+     "default": 0.0,
+     "type": "number"
+    },
+    "frequency": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "name": {
+     "default": "",
+     "type": "string"
+    },
+    "position": {
+     "default": "",
+     "type": "string"
+    },
+    "price": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "tag": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "required": [
+    "code",
+    "ep",
+    "name",
+    "position",
+    "price"
+   ],
+   "title": "ServedMove",
+   "type": "object"
+  },
+  "ServedObjective": {
+   "description": "The solver's own week one, kept beside the served plan (v16 \u00a74),\nand the same week priced, banked and traced under ``week`` so the\nboard's objective column is carried rather than rebuilt.",
+   "properties": {
+    "buys": {
+     "items": {
+      "$ref": "#/definitions/ServedMove"
+     },
+     "type": "array"
+    },
+    "expected_pts": {
+     "default": 0.0,
+     "type": "number"
+    },
+    "hits": {
+     "default": 0,
+     "type": "integer"
+    },
+    "line": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "sells": {
+     "items": {
+      "$ref": "#/definitions/ServedMove"
+     },
+     "type": "array"
+    },
+    "week": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/ServedWeek"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "required": [
+    "buys",
+    "expected_pts",
+    "hits",
+    "line",
+    "sells",
+    "week"
+   ],
+   "title": "ServedObjective",
+   "type": "object"
+  },
+  "ServedPlan": {
+   "description": "Field names are the advice JSON's own keys: ``model_dump`` is the\nwrite and ``model_validate(advice_dict)`` is the read.",
+   "properties": {
+    "alternative_plans": {
+     "items": {
+      "$ref": "#/definitions/ServedAlternative"
+     },
+     "type": "array"
+    },
+    "bank": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "bench": {
+     "items": {
+      "$ref": "#/definitions/ServedMove"
+     },
+     "type": "array"
+    },
+    "buys": {
+     "items": {
+      "$ref": "#/definitions/ServedMove"
+     },
+     "type": "array"
+    },
+    "captain": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/ServedMove"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "captain_note": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "expected_pts": {
+     "default": 0.0,
+     "type": "number"
+    },
+    "generated_at": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "gw": {
+     "type": "integer"
+    },
+    "hits": {
+     "default": 0,
+     "type": "integer"
+    },
+    "objective": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/ServedObjective"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "plan_by_gw": {
+     "items": {
+      "$ref": "#/definitions/ServedWeek"
+     },
+     "type": "array"
+    },
+    "restraint": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/ServedRestraint"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "sells": {
+     "items": {
+      "$ref": "#/definitions/ServedMove"
+     },
+     "type": "array"
+    },
+    "vice": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/ServedMove"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "xi": {
+     "items": {
+      "$ref": "#/definitions/ServedMove"
+     },
+     "type": "array"
+    }
+   },
+   "required": [
+    "alternative_plans",
+    "bank",
+    "bench",
+    "buys",
+    "captain",
+    "captain_note",
+    "expected_pts",
+    "generated_at",
+    "gw",
+    "hits",
+    "objective",
+    "plan_by_gw",
+    "restraint",
+    "sells",
+    "vice",
+    "xi"
+   ],
+   "title": "ServedPlan",
+   "type": "object"
+  },
+  "ServedRestraint": {
+   "properties": {
+    "agrees": {
+     "default": true,
+     "type": "boolean"
+    },
+    "bar": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "chosen": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "hit_cost": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "label": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "line": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "note": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "steps": {
+     "items": {
+      "$ref": "#/definitions/ServedStep"
+     },
+     "type": "array"
+    }
+   },
+   "required": [
+    "agrees",
+    "bar",
+    "chosen",
+    "hit_cost",
+    "label",
+    "line",
+    "note",
+    "steps"
+   ],
+   "title": "ServedRestraint",
+   "type": "object"
+  },
+  "ServedStep": {
+   "description": "One step of the ladder's restraint walk (v16 \u00a73), as the ladder\nwrites it, with v17b's served sentence.",
+   "properties": {
+    "above": {
+     "type": "string"
+    },
+    "below": {
+     "type": "string"
+    },
+    "line": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "reason": {
+     "default": "",
+     "type": "string"
+    },
+    "reason_kind": {
+     "default": "",
+     "type": "string"
+    },
+    "share": {
+     "type": "number"
+    },
+    "taken": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "above",
+    "below",
+    "line",
+    "reason",
+    "reason_kind",
+    "share",
+    "taken"
+   ],
+   "title": "ServedStep",
+   "type": "object"
+  },
+  "ServedWeek": {
+   "properties": {
+    "bank": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "buys": {
+     "items": {
+      "$ref": "#/definitions/ServedMove"
+     },
+     "type": "array"
+    },
+    "chip": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "expected_pts": {
+     "default": 0.0,
+     "type": "number"
+    },
+    "gw": {
+     "type": "integer"
+    },
+    "hit_cost": {
+     "default": 0,
+     "type": "integer"
+    },
+    "hits": {
+     "default": 0,
+     "type": "integer"
+    },
+    "sells": {
+     "items": {
+      "$ref": "#/definitions/ServedMove"
+     },
+     "type": "array"
+    },
+    "trace": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/PlanWeekTrace"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "required": [
+    "bank",
+    "buys",
+    "chip",
+    "expected_pts",
+    "gw",
+    "hit_cost",
+    "hits",
+    "sells",
+    "trace"
+   ],
+   "title": "ServedWeek",
    "type": "object"
   },
   "SettingOption": {

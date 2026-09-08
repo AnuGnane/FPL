@@ -10,6 +10,17 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from gaffer.served import (PlanMoveTrace, PlanWeekTrace, ServedAlternative,  # noqa: F401
+                           ServedMove, ServedObjective, ServedPlan,
+                           ServedRestraint, ServedStep, ServedWeek)
+
+WIRE_EXPORTS = (PlanMoveTrace, PlanWeekTrace, ServedMove, ServedWeek, ServedStep,
+                ServedRestraint, ServedObjective, ServedAlternative, ServedPlan)
+"""Models defined in :mod:`gaffer.served` and served on the wire (v17f §2.9):
+``scripts/gen_types.py`` emits a model named here as if it were defined in
+this file, so the served plan is typed once and the frontend takes the
+generated names."""
+
 
 class JobAccepted(BaseModel):
     job_id: str
@@ -1388,67 +1399,6 @@ class PlanMove(BaseModel):
     ep: float
     price: float | None = None
     """Buy price for an in, sell value for an out — in millions."""
-
-
-class PlanMoveTrace(BaseModel):
-    """One transfer, priced against the objective's own terms (v12 W5 §6.5).
-
-    Not a counterfactual. ``ep_gain`` is the decayed expected-points
-    difference of a position-matched swap over the rest of the horizon — the
-    objective's own arithmetic at the plan the solver returned — and **not**
-    "the plan is this much worse without this move", which would need a
-    re-solve. ``None`` everywhere means unknown, never a measured zero.
-    """
-
-    buy_code: int | None = None
-    buy_name: str = ""
-    sell_code: int | None = None
-    sell_name: str = ""
-    ep_gain: float | None = None
-    lambda_tilt: float | None = None
-    note: str = ""
-
-
-class PlanWeekTrace(BaseModel):
-    """One planned week's charges. Four of them are week-level on purpose:
-    a week with two transfers and one hit cannot attribute the hit to one of
-    them, and splitting it would be arithmetic dressed as a finding.
-
-    Three of the objective's terms are **not** here — the XI, captain and vice
-    weightings and the bench seats (``milp.py:813-835``, including
-    ``_decision_scales``' per-week autosub scales). They price the whole squad
-    rather than a swap, so these numbers do not sum to ``expected_pts`` and
-    are not meant to. The board's caption says so in the same words.
-    """
-
-    gw: int
-    moves: list[PlanMoveTrace] = Field(default_factory=list)
-    ep_gain: float | None = None
-    hit_cost: float = 0.0
-    ft_used: int = 0
-    ft_after: int = 0
-    ft_use_penalty: float = 0.0
-    """The per-transfer friction this week, decayed exactly as the objective
-    decays it (``milp.py:867``).
-
-    Charged even in a week the chip table recommends a wildcard for: the plan
-    on this payload is the base solve, which the solver returned with the
-    transfers charged and the free-transfer recurrence running. The week's
-    ``note`` says so."""
-    ft_shadow: float | None = None
-    """What one banked free transfer is worth, priced at the horizon's end:
-    flat ``ft_value``, or λ at **this week's** banked count and the weeks left
-    after the horizon's last gameweek. The count is the week's and only the
-    basis is terminal, because the end of the horizon is the only place the
-    objective prices a free transfer at all (``milp.py:878-888``)."""
-    ft_basis: Literal["flat", "lambda"] = "flat"
-    bank_value: float | None = None
-    """``itb_value * bank`` on the horizon's **last** week, which is the only
-    week the objective prices the bank at (``milp.py:889``). ``None``
-    elsewhere, and ``None`` when the running bank is unknown."""
-    theta: float | None = None
-    price_charge: float | None = None
-    note: str = ""
 
 
 class PlanGw(BaseModel):

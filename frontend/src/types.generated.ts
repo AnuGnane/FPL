@@ -2124,32 +2124,11 @@ export interface PlanMove {
  * via the `definition` "PlanWeekTrace".
  */
 export interface PlanWeekTrace {
-  /**
-   * ``itb_value * bank`` on the horizon's **last** week, which is the only
-   * week the objective prices the bank at (``milp.py:889``). ``None``
-   * elsewhere, and ``None`` when the running bank is unknown.
-   */
   bank_value: number | null
   ep_gain: number | null
   ft_after: number
   ft_basis: 'flat' | 'lambda'
-  /**
-   * What one banked free transfer is worth, priced at the horizon's end:
-   * flat ``ft_value``, or λ at **this week's** banked count and the weeks left
-   * after the horizon's last gameweek. The count is the week's and only the
-   * basis is terminal, because the end of the horizon is the only place the
-   * objective prices a free transfer at all (``milp.py:878-888``).
-   */
   ft_shadow: number | null
-  /**
-   * The per-transfer friction this week, decayed exactly as the objective
-   * decays it (``milp.py:867``).
-   *
-   * Charged even in a week the chip table recommends a wildcard for: the plan
-   * on this payload is the base solve, which the solver returned with the
-   * transfers charged and the free-transfer recurrence running. The week's
-   * ``note`` says so.
-   */
   ft_use_penalty: number
   ft_used: number
   gw: number
@@ -2575,6 +2554,120 @@ export interface SensitivityReport {
   seed: number | null
   verdict: string | null
   wall_s: number | null
+}
+/**
+ * A plan the solver ranked behind the recommended one (v12 W3 §4.3),
+ * under the advice's own ``alternative_plans`` key and shape.
+ *
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "ServedAlternative".
+ */
+export interface ServedAlternative {
+  gap: number | null
+  plan_by_gw: ServedWeek[]
+}
+/**
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "ServedWeek".
+ */
+export interface ServedWeek {
+  bank: number | null
+  buys: ServedMove[]
+  chip: string | null
+  expected_pts: number
+  gw: number
+  hit_cost: number
+  hits: number
+  sells: ServedMove[]
+  trace: PlanWeekTrace | null
+}
+/**
+ * A player on a move or in the XI, in ``advise._named``'s shape plus
+ * the price the pool gives him (millions; ``None`` when it cannot) and
+ * the decorations advise adds to a served buy or sell.
+ *
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "ServedMove".
+ */
+export interface ServedMove {
+  code: number
+  ep: number
+  frequency?: number | null
+  name: string
+  position: string
+  price: number | null
+  tag?: string | null
+}
+/**
+ * The solver's own week one, kept beside the served plan (v16 §4),
+ * and the same week priced, banked and traced under ``week`` so the
+ * board's objective column is carried rather than rebuilt.
+ *
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "ServedObjective".
+ */
+export interface ServedObjective {
+  buys: ServedMove[]
+  expected_pts: number
+  hits: number
+  line: string | null
+  sells: ServedMove[]
+  week: ServedWeek | null
+}
+/**
+ * Field names are the advice JSON's own keys: ``model_dump`` is the
+ * write and ``model_validate(advice_dict)`` is the read.
+ *
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "ServedPlan".
+ */
+export interface ServedPlan {
+  alternative_plans: ServedAlternative[]
+  bank: number | null
+  bench: ServedMove[]
+  buys: ServedMove[]
+  captain: ServedMove | null
+  captain_note: string | null
+  expected_pts: number
+  generated_at: string | null
+  gw: number
+  hits: number
+  objective: ServedObjective | null
+  plan_by_gw: ServedWeek[]
+  restraint: ServedRestraint | null
+  sells: ServedMove[]
+  vice: ServedMove | null
+  xi: ServedMove[]
+}
+/**
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "ServedRestraint".
+ */
+export interface ServedRestraint {
+  agrees: boolean
+  bar: number | null
+  chosen: string | null
+  hit_cost: number | null
+  label: string | null
+  line: string | null
+  note: string | null
+  steps: ServedStep[]
+}
+/**
+ * One step of the ladder's restraint walk (v16 §3), as the ladder
+ * writes it, with v17b's served sentence.
+ *
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "ServedStep".
+ */
+export interface ServedStep {
+  above: string
+  below: string
+  line: string | null
+  reason: string
+  reason_kind: string
+  share: number
+  taken: boolean
 }
 /**
  * One value a select offers and the word for it (v17e §2.4).
