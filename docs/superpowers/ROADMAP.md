@@ -20,9 +20,9 @@ real brief the user read, and four screenshots in both themes. Suite 4266
 Python + 910 frontend, pins routes 51 / job kinds 12 / `Config` fields 59.
 The v17 deepening programme has started: v17a (the wire types, one command)
 is merged at `400c2f5`, v17b (restraint narrated once, on the server) at
-`b1b3b7e`, and v17c (the golden board harness) at `ee02520`, suite 4317 /
-923, pins unchanged; v17d is next and is the first sub-cycle the golden
-board gates.
+`b1b3b7e`, v17c (the golden board harness) at `ee02520`, and v17d (one
+weekly pipeline module) at `c6b049f`, suite 4329 / 923, pins unchanged;
+v17e (the config in force) is next.
 **Security incident, open:** the odds API key's value reached a committed
 plan document (`dd47c0a`) via a forked plan-writing subagent and was pushed
 to the public remote with the merge; removed at the tip (`8fddb0b`), history
@@ -121,6 +121,36 @@ build_advice, the This Week loader. v17a, v17b and v17c are shipped
 `.venv/bin/pytest -q tests/test_golden_board.py`.
 
 ## Shipped
+
+### v17d — one weekly pipeline module (done, merged `c6b049f` 2026-09-08)
+Review card #c4. `src/gaffer/pipeline.py` holds the weekly run once:
+`weekly_run(cfg, *, client=None, train=True, log=print) -> RunResult`
+(train → advise → render → brief; `RunResult.record()` is the job
+runner's dict, byte for byte). `web/job_kinds.py` defines
+`run_train_and_advise` over it and no longer imports the advice router;
+`routers/advice.py` keeps request handling only; `cli.py::advise` calls
+`weekly_run(cfg, train=False)` and echoes the brief's note, so the
+Thursday plist — unchanged — yields a brief and GUIDE §12.4's note is
+closed. The brief takes the config in force (`run_brief(gw, cfg=cfg)`).
+`tests/golden_client.py` gained `golden_cwd(root, client)`; `tests/test_pipeline.py`
+holds the unit tests, the router-import and plist rails, and the parity
+gate. Gate (spec §1, four items): golden board unmoved, parity across the
+CLI and the job kind on the recorded board with `news_llm_command` stubbed
+to `python3 -c "print('…')"` (both advice files equal the expected, both
+briefs pass their check), the two greps empty, the plist byte-identical to
+`main` — passed first run, 44 tests in 475 s. Protected-file rulings: the
+CLI rails (v4c ×3, v13, v16, `test_cli.py`) stub `run_brief`; two job-kind
+rails import from `job_kinds`; v7c's train stub carries a length. Incident:
+the plan's Task 2 red step ran the real trainer and rewrote `models/`
+(no backup existed); the golden was re-recorded with `--write` on a
+worktree of `main` at `0cff561`, levers identical, numbers moved with the
+models (spec §10). Spec `2026-09-07-v17d-pipeline-design.md`, plan
+`2026-09-07-v17d-pipeline.md`. Pins unchanged (routes 51, job kinds 12,
+`Config` 59); Python 4317 → **4329**, frontend 923 unchanged. Left open:
+the brief's failure note can print twice in `logs/advise.log` (as
+`gaffer brief` already does); `advise.py`'s docstring still says "the
+whole weekly pipeline"; `models/` has no backup until `com.gaffer.backup`
+is installed.
 
 ### v17c — the golden board harness (done, merged `ee02520` 2026-09-08)
 The gate for v17d–v17g: `tests/test_golden_board.py` runs `run_advise` over

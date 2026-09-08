@@ -501,7 +501,7 @@ the project folder moves — the plists embed the path):
 
 | When | Job | What it does |
 |---|---|---|
-| Thu 18:00 | `com.gaffer.advise` | `prices`, then `train` then `advise`; logs to `logs/prices.log` and `logs/advise.log`. The price bank comes first so the optimizer's timing term has a same-day log; a failed fetch does not stop the advice. |
+| Thu 18:00 | `com.gaffer.advise` | `prices`, then `train` then `advise`; logs to `logs/prices.log` and `logs/advise.log`. The price bank comes first so the optimizer's timing term has a same-day log; a failed fetch does not stop the advice. Since v17d `advise` chains the brief, so the Thursday log ends with the brief's line (or its note) and Friday's digest headline comes from the brief. |
 | Nightly 23:15 | `com.gaffer.prices` | Banks every player's price reading; flags likely changes. |
 | Daily 17:00 | `com.gaffer.snapshot` | Banks the day's availability state (the corpus a future news model trains on). |
 | Sat & Sun 12:30 | `com.gaffer.field` | Samples ~300 top-10k squads; banks their EO with standard errors. |
@@ -524,7 +524,10 @@ sweeps, news-shadow evaluation, snapshots on demand — runs from UI buttons.
 
 The weekly core:
 
-- `gaffer advise` (and `--fast` to skip the five-minute scenario sweep)
+- `gaffer advise` (and `--fast` to skip the five-minute scenario sweep) —
+  since v17d one call to `pipeline.weekly_run` (advise, render, brief; the
+  train step is off here because the plist and the user run `gaffer train`
+  first), the same body the web advise job runs with the train step on
 - `gaffer refresh` — pull latest FPL data
 - `gaffer train` — retrain all models
 - `gaffer ui` — `--lan` serves to your whole network and prints a QR code
@@ -653,7 +656,7 @@ Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 `reports/evaluation.json`, and the Model hub.
 
-## 11. The version history, v1 to v17c
+## 11. The version history, v1 to v17d
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
 reviewed. Every cycle ran the same way, and knowing the shape tells you where
@@ -883,7 +886,25 @@ Gate passed first run: byte-identical twice, every lever floor met, fixture
 960 KB, no odds table anywhere. Nothing under `src/` changed. Pins
 unchanged; Python 4288 → **4317**, frontend 923.
 
-The suite grew from nothing to **4,317 Python + 923 frontend tests** along
+**v17d — one weekly pipeline module** (2026-09-08). The weekly run was
+defined inside an HTTP router, imported from there by the job registry,
+and re-assembled by hand in the CLI without the brief, which is why the
+Thursday launchd run had no brief. `src/gaffer/pipeline.py` now holds it
+once: `weekly_run(cfg, *, client=None, train=True, log=print)` runs train
+→ advise → render → brief and returns a `RunResult` whose `record()` is
+the job runner's stored dict. The `advise` job kind is defined in
+`job_kinds.py` over it (train on), `gaffer advise` calls it with the train
+step off (the plist runs `gaffer train` first), and the router keeps
+request handling only. The brief gets the config in force rather than a
+second read, and its own line now prints before the CLI's banner. Gated
+on the golden board plus a parity test that runs the CLI entry and the
+job kind over the recorded board with the LLM command stubbed to fixed
+prose; passed first run. During the build the plan's "watch it fail" step
+retrained the real models, so the golden was re-recorded on `main`'s code
+before the gate (spec §10). Pins unchanged; Python 4317 → **4329**,
+frontend 923.
+
+The suite grew from nothing to **4,329 Python + 923 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above
 so a future change cannot quietly break one.
 
@@ -1053,9 +1074,6 @@ weekly use.
   capitalises sentence starts, so the first word of a sentence is never
   checked; the prompt forbids opening a sentence with a player's name,
   and the check catches the same name anywhere else.
-- **The brief is chained only on the web advise job** (v16): the Thursday
-  launchd `gaffer advise` needs `gaffer brief` added after it in its plist
-  to have a Friday headline from the brief rather than the template.
 - **The walk can step past the objective's own hit count** (v16): the
   policy is symmetric by design — on the GW4 board it served one hit where
   the objective wanted none, on a 60.25% share — and the replay in §4 is
