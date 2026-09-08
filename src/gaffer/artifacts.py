@@ -410,13 +410,53 @@ def data_warning(upcoming: int | None, through: int | None) -> str | None:
     return f"model has no data for {span} — {DATA_WARNING_TAIL}"
 
 
+def advice_path(gw: int) -> Path:
+    """The one place the advice filename is spelled (v17f §1 part 4)."""
+    return REPORTS / f"gw{gw}-advice.json"
+
+
+def advice_gws() -> list[int]:
+    """Every gameweek with an advice file, ascending."""
+    gws = []
+    for path in REPORTS.glob("gw*-advice.json"):
+        stem = path.stem.removeprefix("gw").removesuffix("-advice")
+        if stem.isdigit():
+            gws.append(int(stem))
+    return sorted(gws)
+
+
 def load_advice(gw: int) -> dict:
     """The advice payload ``run_advise`` wrote for ``gw``."""
-    path = REPORTS / f"gw{gw}-advice.json"
+    path = advice_path(gw)
     if not path.exists():
         raise GafferError(
             f"no advice for GW{gw} — run `gaffer advise` first")
     return json.loads(path.read_text())
+
+
+def served_plan(gw: int):
+    """The served plan for ``gw`` as one value (v17f §2.3): a file advise
+    wrote through ``ServedPlan`` is served as written; a file written
+    before v17f is priced, banked and traced here from its solve state,
+    through the functions advise runs at write time. A file that is not
+    the shape any ``gaffer advise`` wrote is a ``GafferError`` naming the
+    field, never a 500 and never a silently degraded number."""
+    from pydantic import ValidationError
+
+    from gaffer.served import ServedPlan, completed, with_alternatives
+
+    raw = load_advice(gw)
+    try:
+        plan = ServedPlan.model_validate(raw)
+    except ValidationError as exc:
+        first = exc.errors()[0]
+        where = ".".join(str(p) for p in first.get("loc", ())) or "payload"
+        raise GafferError(f"advice for GW{gw} will not read at {where}: "
+                          f"{first.get('msg')}") from exc
+    if "bank" in raw and "generated_at" in raw:
+        return plan
+    return completed(with_alternatives(plan, raw.get("alternative_plans")),
+                     state=load_solve_state(gw), chip_table=raw.get("chip_table"))
 
 
 def save_snapshots(players: pd.DataFrame, teams: pd.DataFrame,

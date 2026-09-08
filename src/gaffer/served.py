@@ -384,3 +384,196 @@ def price_falls(state) -> tuple[bool, dict[int, float]]:
     except Exception as exc:  # noqa: BLE001
         print(f"plan trace: price falls unreadable ({exc})")
         return True, {}
+
+
+# --- the passes: a value in, a value out (v17f §4) -------------------------
+
+def decorated(plan: ServedPlan, *, tags: dict[int, str],
+              frequencies: dict[tuple[str, int], float]) -> ServedPlan:
+    """The tags and sweep frequencies on the *served* moves (v16 §4): a tag
+    for every buy ``tags`` names, a frequency for a buy or sell the sweep
+    saw. A move with neither is left unset, so the write carries no null
+    for it."""
+    def one(kind: str, move: ServedMove) -> ServedMove:
+        update: dict = {}
+        if kind == "buy" and move.code in tags:
+            update["tag"] = tags[move.code]
+        if (kind, move.code) in frequencies:
+            update["frequency"] = frequencies[(kind, move.code)]
+        return move.model_copy(update=update) if update else move
+    return plan.model_copy(update={
+        "buys": [one("buy", m) for m in plan.buys],
+        "sells": [one("sell", m) for m in plan.sells]})
+
+
+def with_alternatives(plan: ServedPlan, rows) -> ServedPlan:
+    """The alternatives typed from the rows advise built, or from the file's
+    ``alternative_plans`` on a backfill. ``None`` and ``[]`` are the same
+    empty strip."""
+    return plan.model_copy(update={
+        "alternative_plans": [ServedAlternative.model_validate(r) for r in (rows or [])]})
+
+
+def _priced_moves(moves, prices: dict[int, float]) -> list[ServedMove]:
+    return [m.model_copy(update={"price": prices.get(m.code)}) for m in moves]
+
+
+def _priced_week(week: ServedWeek, buy, sell) -> ServedWeek:
+    return week.model_copy(update={"buys": _priced_moves(week.buys, buy),
+                                   "sells": _priced_moves(week.sells, sell)})
+
+
+def _each_week(plan: ServedPlan, fn) -> ServedPlan:
+    """``fn(weeks) -> weeks`` over the served weeks, the objective's week
+    (as a one-week list) and every alternative's weeks."""
+    update: dict = {"plan_by_gw": fn(plan.plan_by_gw),
+                    "alternative_plans": [a.model_copy(update={"plan_by_gw": fn(a.plan_by_gw)})
+                                          for a in plan.alternative_plans]}
+    if plan.objective is not None and plan.objective.week is not None:
+        update["objective"] = plan.objective.model_copy(
+            update={"week": fn([plan.objective.week])[0]})
+    return plan.model_copy(update=update)
+
+
+def priced(plan: ServedPlan, buy: dict[int, float], sell: dict[int, float]) -> ServedPlan:
+    """Every move priced from the pool's two columns: buy price for an in,
+    sell value for an out; the XI, bench and armband at buy price, as the
+    board's head week always showed them. A code the pool cannot price is
+    ``None``."""
+    def moves(name, prices):
+        return _priced_moves(getattr(plan, name), prices)
+
+    out = _each_week(plan, lambda weeks: [_priced_week(w, buy, sell) for w in weeks])
+    return out.model_copy(update={
+        "buys": moves("buys", buy), "sells": moves("sells", sell),
+        "xi": moves("xi", buy), "bench": moves("bench", buy),
+        "captain": None if plan.captain is None else _priced_moves([plan.captain], buy)[0],
+        "vice": None if plan.vice is None else _priced_moves([plan.vice], buy)[0]})
+
+
+def charged(plan: ServedPlan, *, hit_cost: int, chips: dict[int, str]) -> ServedPlan:
+    """The hit charge and the chip table's recommendation on every week."""
+    return _each_week(plan, lambda weeks: [
+        w.model_copy(update={"hit_cost": w.hits * hit_cost, "chip": chips.get(w.gw)})
+        for w in weeks])
+
+
+def _banked_weeks(weeks: list[ServedWeek], start: float | None) -> list[ServedWeek]:
+    # v11 §F1: an unpriced move breaks the total permanently. Skipping it
+    # would report a bank wrong by exactly that player's price with nothing
+    # on the page to say so, and there is no later week at which the sum
+    # re-synchronises.
+    running = start
+    out = []
+    for week in weeks:
+        moves = [*week.buys, *week.sells]
+        if running is not None and all(m.price is not None for m in moves):
+            # round(..., 1): every price is one decimal, and float drift over
+            # a six-week horizon puts 0.8999999999999995 on the page.
+            running = round(running + sum(m.price for m in week.sells)
+                            - sum(m.price for m in week.buys), 1)
+        else:
+            running = None
+        out.append(week.model_copy(update={"bank": running}))
+    return out
+
+
+def banked(plan: ServedPlan, start: float | None) -> ServedPlan:
+    """The bank run forward from ``start`` (millions) over the served weeks,
+    the objective's week and each alternative — one implementation, because
+    the board prints their banks side by side."""
+    return _each_week(plan, lambda weeks: _banked_weeks(weeks, start)).model_copy(
+        update={"bank": start})
+
+
+def _traced_weeks(weeks: list[ServedWeek], *, state, ep_by, positions, names,
+                  thresholds, ft_lambda, price_timing, price_fall) -> list[ServedWeek]:
+    from gaffer.league_mode import cover_from_eo
+    from gaffer.trace import trace_plan
+
+    opt = state.opt if isinstance(state.opt, dict) else {}
+    hit_cost = _int(opt.get("hit_cost", 4), 4)
+    # The moves' own names under the pool's: a move can name a player who
+    # is not on the solver's candidate list.
+    move_names = {m.code: m.name for w in weeks for m in (*w.buys, *w.sells)}
+    # ``chip: None``, deliberately: ``plan_by_gw`` is the base solve, which
+    # charged this week's transfers and ran the free-transfer recurrence,
+    # and telling the trace a wildcard was played would report a charge that
+    # was made as zero. θ still comes from the chip table; the note says so.
+    traced = trace_plan(
+        [{"gw": w.gw, "hits": w.hits, "buys": [m.code for m in w.buys],
+          "sells": [m.code for m in w.sells], "chip": None} for w in weeks],
+        gws=[int(g) for g in getattr(state, "gws", [])],
+        ep_by=ep_by, positions=positions, names={**move_names, **names},
+        decay=_float(opt.get("decay", 1.0), 1.0), hit_cost=hit_cost,
+        ft_value=_float(opt.get("ft_value", 0.0)),
+        itb_value=_float(opt.get("itb_value", 0.0)),
+        free_transfers=_int(getattr(state, "free_transfers", 0)),
+        ft_lambda=ft_lambda,
+        ft_use_penalty=_float(opt.get("ft_use_penalty", 0.0)),
+        lam=_float(getattr(state, "lam", 0.0)),
+        # ``is not None``, not ``or {}``: an empty cover tilts nothing, and
+        # ``or {}`` would report 0.0 for a term the objective applied.
+        cover=(state.cover if getattr(state, "cover", None) is not None
+               else cover_from_eo(getattr(state, "league_eo", {}) or {})),
+        thresholds=thresholds, banks={w.gw: w.bank for w in weeks},
+        price_timing=price_timing, price_fall=price_fall)
+    out = []
+    for week, one in zip(weeks, traced):
+        payload = asdict(one)
+        if week.chip:
+            said = (f"a {week.chip} is recommended this week; these terms are "
+                    f"the base plan's, which the solver returned without it")
+            payload["note"] = "; ".join(part for part in (payload["note"], said) if part)
+        out.append(week.model_copy(update={"trace": PlanWeekTrace(**payload)}))
+    return out
+
+
+def traced(plan: ServedPlan, *, state, thresholds: dict[int, float], ft_lambda,
+           price_timing: bool, price_fall: dict[int, float]) -> ServedPlan:
+    """The objective's own terms on the served weeks and on the objective's
+    week (v12 W5 §6.5, v16 §4) — never on an alternative, which was returned
+    by a different solve. A trace that throws costs the trace and not the
+    plan: every week is written with ``trace=None`` and one line is printed."""
+    ep_by, positions, names = trace_inputs(getattr(state, "pool", None))
+    kw = dict(state=state, ep_by=ep_by, positions=positions, names=names,
+              thresholds=thresholds, ft_lambda=ft_lambda,
+              price_timing=price_timing, price_fall=price_fall)
+    try:
+        update: dict = {"plan_by_gw": _traced_weeks(plan.plan_by_gw, **kw)}
+        if plan.objective is not None and plan.objective.week is not None:
+            update["objective"] = plan.objective.model_copy(
+                update={"week": _traced_weeks([plan.objective.week], **kw)[0]})
+        return plan.model_copy(update=update)
+    except Exception as exc:  # noqa: BLE001 — a decoration, never a gate
+        print(f"plan trace unavailable for GW{plan.gw}: {exc}")
+        untraced = lambda weeks: [w.model_copy(update={"trace": None}) for w in weeks]  # noqa: E731
+        update = {"plan_by_gw": untraced(plan.plan_by_gw)}
+        if plan.objective is not None and plan.objective.week is not None:
+            update["objective"] = plan.objective.model_copy(
+                update={"week": untraced([plan.objective.week])[0]})
+        return plan.model_copy(update=update)
+
+
+def completed(plan: ServedPlan, *, state, chip_table) -> ServedPlan:
+    """Prices, charges, chips, banks and traces off one solve state — the
+    one pass advise runs at write time and ``artifacts.served_plan`` runs
+    for a file written before v17f (§2.3). ``generated_at`` is the state's,
+    so the two files that describe one run carry one stamp."""
+    buy, sell = pool_prices(getattr(state, "pool", None))
+    opt = state.opt if isinstance(state.opt, dict) else {}
+    ft_lambda = None
+    if opt.get("decision_priors"):
+        try:
+            from gaffer.assets import load_decision_priors
+            from gaffer.optimize.ft_value import lambda_from_priors
+            ft_lambda = lambda_from_priors(load_decision_priors())
+        except Exception as exc:  # noqa: BLE001 — a decoration, never a gate
+            print(f"plan trace: no lambda table ({exc}); flat ft_value")
+    price_timing, price_fall = price_falls(state)
+    out = priced(plan, buy, sell)
+    out = charged(out, hit_cost=_int(opt.get("hit_cost", 4), 4), chips=chip_by_gw(chip_table))
+    out = banked(out, _price(getattr(state, "bank", None)))
+    out = traced(out, state=state, thresholds=thresholds(chip_table), ft_lambda=ft_lambda,
+                 price_timing=price_timing, price_fall=price_fall)
+    return out.model_copy(update={"generated_at": getattr(state, "generated_at", None)})
