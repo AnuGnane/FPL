@@ -23,6 +23,7 @@ from contextlib import nullcontext
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from gaffer.advise import run_advise
@@ -342,13 +343,15 @@ def run_golden(root: Path, client: FPLClient | None = None) -> tuple[dict, dict]
     nor the golden's leaks into the other; ``refresh_live``'s politeness
     sleep is patched out for a ``RecordedClient`` only — those 654 waits are
     courtesy to a server the replay never contacts, and every other client,
-    the recorder included, does contact it and keeps the real pacing."""
+    the recorder included, does contact it and keeps the real pacing. The
+    patch replaces ``time`` inside ``live``'s own namespace rather than
+    ``time.sleep`` itself, so nothing else in the process loses its sleep."""
     from gaffer.config import serving_config
     import gaffer.data.live as live_mod
 
     root = Path(root).resolve()
     client = client if client is not None else RecordedClient()
-    hush = (patch.object(live_mod.time, "sleep", lambda *_: None)
+    hush = (patch.object(live_mod, "time", SimpleNamespace(sleep=lambda *_: None))
             if isinstance(client, RecordedClient) else nullcontext())
     before = Path.cwd()
     serving_config.cache_clear()
@@ -380,13 +383,27 @@ def _git_head(repo: Path) -> str:
 def write_expected(golden: Path = GOLDEN_DIR, *, scratch: Path | None = None,
                    recorded_at: str | None = None) -> dict:
     """The retrain path (spec §2.10): run the golden over the *existing*
-    bundle and rewrite ``expected/`` and the header. Returns the header."""
+    bundle and rewrite ``expected/`` and the header. Returns the header.
+
+    Both refusals come before anything is built or written, so a mistyped
+    directory or a half-set-up machine costs nothing. The scratch tree is
+    printed and deliberately not cleaned up: it is the only post-mortem for
+    a run whose numbers came out wrong."""
     repo = _repo_root()
     golden = Path(golden)
+    bundle = golden / BUNDLE_NAME
+    if not bundle.exists():
+        raise SystemExit(f"no bundle at {bundle}; run --record first")
+    missing = [r for r in HASHED_ROOTS if not (repo / r).is_dir()]
+    if missing:
+        raise SystemExit(f"cannot pin inputs, missing: {missing}")
     root = Path(scratch) if scratch else Path(tempfile.mkdtemp(prefix="golden-"))
+    print(f"scratch: {root}", file=sys.stderr)
     build_scratch_tree(root, repo, golden)
     started = time.monotonic()
-    advice, state = run_golden(root)
+    # The golden's own bundle, not GOLDEN_DIR's: ``write_expected`` must be
+    # able to rewrite a board that is not the shipped one (Task 4 review).
+    advice, state = run_golden(root, client=RecordedClient(golden))
     runtime = round(time.monotonic() - started, 1)
     cwd = str(root.resolve())
     advice, state = strip_volatile(advice, cwd), strip_volatile(state, cwd)
@@ -394,7 +411,6 @@ def write_expected(golden: Path = GOLDEN_DIR, *, scratch: Path | None = None,
     expected.mkdir(exist_ok=True)
     (expected / "advice.json").write_text(json.dumps(advice, indent=1, sort_keys=True) + "\n")
     (expected / "solve_state.json").write_text(json.dumps(state, indent=1, sort_keys=True) + "\n")
-    bundle = golden / BUNDLE_NAME
     old = json.loads((golden / HEADER_NAME).read_text()) if (golden / HEADER_NAME).exists() else {}
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     header = {
@@ -418,16 +434,23 @@ def record(golden: Path = GOLDEN_DIR) -> dict:
     write the golden ``config.toml``, run the pipeline once through
     ``RecordingClient`` to bank every response, then ``write_expected`` over
     the bundle so the expected files come from the replay path, not the
-    live one."""
+    live one. The scratch tree is printed and left on disk: with the live
+    fetch behind it, a failed record is worth a post-mortem."""
     repo = _repo_root()
     golden = Path(golden)
+    source = repo / "data" / "core_insights"
+    # Checked before the rmtree: a missing source would otherwise delete the
+    # fixture's frozen copy and leave the board with neither (Task 4 review).
+    if not source.is_dir():
+        raise SystemExit(f"no {source} to freeze; run gaffer core-insights first")
     golden.mkdir(parents=True, exist_ok=True)
     frozen = golden / "data" / "core_insights"
     if frozen.exists():
         shutil.rmtree(frozen)
-    shutil.copytree(repo / "data" / "core_insights", frozen)
+    shutil.copytree(source, frozen)
     write_golden_toml(golden_config(), golden / "config.toml")
     root = Path(tempfile.mkdtemp(prefix="golden-record-"))
+    print(f"scratch: {root}", file=sys.stderr)
     build_scratch_tree(root, repo, golden)
     recorder = RecordingClient(golden, raw_dir=root / "data" / "raw")
     run_golden(root, client=recorder)

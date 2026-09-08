@@ -236,7 +236,7 @@ def _header() -> dict | None:
 
 @pytest.fixture(scope="module")
 def golden_run(tmp_path_factory):
-    """One pipeline run per session, shared by the golden tests. Skips,
+    """One pipeline run per module, shared by the golden tests. Skips,
     with the file named, when a hashed input moved (spec §2.6), and when the
     board has not been recorded."""
     header = _header()
@@ -296,11 +296,14 @@ def test_the_recorded_config_file_has_no_odds_section():
 def _stub_run_advise(tmp_path: Path, calls: dict, live_mod):
     """The ``run_advise`` a ``run_golden`` test runs instead of the pipeline:
     it records what it was handed and writes the two report files."""
+    import time as time_mod
+
     def fake_run_advise(cfg, client=None):
         calls["cwd"] = Path.cwd()
         calls["cfg"] = cfg
         calls["client"] = client
         calls["sleep"] = live_mod.time.sleep
+        calls["stdlib_sleep"] = time_mod.sleep
         (tmp_path / "reports" / "gw4-advice.json").write_text(
             json.dumps({"gw": 4, "generated_at": "x"}))
         (tmp_path / "reports" / "solve_state_gw4.json").write_text(
@@ -336,6 +339,9 @@ def test_run_golden_runs_in_the_scratch_tree_and_reads_the_two_files_back(tmp_pa
     assert asdict(calls["cfg"]) == asdict(gc.golden_config())
     assert calls["client"] is client
     assert calls["sleep"] is not time_mod.sleep
+    # The patch is on live's own ``time`` name, so the stdlib module keeps
+    # its sleep throughout the run (Task 4 review).
+    assert calls["stdlib_sleep"] is time_mod.sleep
     assert live_mod.time.sleep is time_mod.sleep
     assert advice == {"gw": 4, "generated_at": "x"} and state == {"gw": 4, "generated_at": "y"}
     assert serving_config.cache_info().currsize == 0
@@ -358,6 +364,8 @@ def test_run_golden_keeps_the_politeness_sleep_for_a_live_client(tmp_path, monke
 
 
 def test_run_golden_restores_the_cwd_when_the_run_raises(tmp_path, monkeypatch):
+    from gaffer.config import serving_config
+
     def boom(cfg, client=None):
         raise RuntimeError("solver died")
 
@@ -366,6 +374,15 @@ def test_run_golden_restores_the_cwd_when_the_run_raises(tmp_path, monkeypatch):
     with pytest.raises(RuntimeError, match="solver died"):
         gc.run_golden(tmp_path, client=object())
     assert Path.cwd() == before
+    # The golden's config must not survive the failure into the next caller.
+    assert serving_config.cache_info().currsize == 0
+
+
+def test_write_expected_refuses_without_a_bundle(tmp_path):
+    """The refusal comes before the scratch tree, so a mistyped directory
+    writes nothing (Task 4 review)."""
+    with pytest.raises(SystemExit, match="run --record first"):
+        gc.write_expected(tmp_path / "empty")
 
 
 def test_main_refuses_to_run_outside_the_repo_root(tmp_path, monkeypatch, capsys):
