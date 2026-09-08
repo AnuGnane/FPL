@@ -197,7 +197,11 @@ def input_hashes(repo: Path) -> dict[str, str]: ...   # models/**, data/history/
 def stale_inputs(header: dict, repo: Path) -> list[str]: ...  # [] when fresh
 def strip_volatile(obj, cwd: str): ...          # generated_at out, <cwd> in
 def lever_counts(advice: dict) -> dict[str, int | float | bool]: ...
-def run_golden(root: Path, repo: Path) -> tuple[dict, dict]: ...  # (advice, state)
+def run_golden(root: Path, client: FPLClient | None = None) -> tuple[dict, dict]: ...
+    # (advice, state); the client defaults to RecordedClient()
+def write_expected(golden=GOLDEN_DIR, *, scratch=None, recorded_at=None) -> dict: ...  # --write
+def record(golden=GOLDEN_DIR) -> dict: ...   # --record
+def main(argv=None) -> int: ...
 ```
 
 `golden_config()` returns a `Config` built from literals, never from
@@ -221,7 +225,8 @@ The header, `tests/data/golden_board/header.json`:
 ```json
 {
   "recorded_at": "<iso utc>",
-  "recorded_by": "python -m tests.golden_client --record",
+  "written_at": "<iso utc of the last --record or --write>",
+  "recorded_by": "python -m tests.golden_client --record; --write after a retrain",
   "gw": 4,
   "commit": "<hash the recording ran at>",
   "config": { "...asdict(golden_config())..." },
@@ -269,7 +274,9 @@ was. LightGBM prediction is deterministic for a fixed model file.
 
 ## 6. Tests (`tests/test_golden_board.py`)
 
-Sentences, as the house writes them:
+Sentences, as the house writes them. This list is the spine; the shipped
+file has 29 tests, the rest added by the task reviews (the recorder's
+real `_live` path, bundle byte determinism, `price_timing`, the refusals):
 
 - `test_the_golden_board_reproduces_the_expected_advice_and_state` — the
   gate's item 1; marked `golden`; skips through `stale_inputs`.
@@ -284,7 +291,8 @@ Sentences, as the house writes them:
 - `test_the_recorded_client_never_writes_a_raw_snapshot`.
 - `test_golden_config_round_trips_through_the_toml_writer` — the §2.3 pin.
 - `test_the_header_config_is_golden_config` — the §4 pin.
-- `test_the_recorded_config_has_no_odds_section_and_no_key`.
+- `test_the_recorded_config_file_has_no_odds_section` (the fixture file) and
+  `test_the_written_toml_has_no_odds_section_and_no_key` (the writer).
 - `test_strip_volatile_removes_generated_at_and_rewrites_paths`.
 - `test_the_fixture_is_under_the_size_budget` — item 4, in-process.
 
@@ -332,7 +340,7 @@ commit `bd5f9b2`, GW4 (deadline 2026-09-12 12:30 UTC), with
 
 | Item | Rule | Result |
 |---|---|---|
-| 1 twice green, same bytes | two consecutive `pytest -q tests/test_golden_board.py` | 28 passed / 28 passed, 62.1 s and 61.1 s, no skip |
+| 1 twice green, same bytes | two consecutive `pytest -q tests/test_golden_board.py` | 28 passed / 28 passed, 62.1 s and 61.1 s, no skip, at `bd5f9b2` (the file had 28 tests); re-established at the tip by the final reviewer: 29 passed / 29 passed, 62.6 s and 60.5 s |
 | 2 the lever was exercised | every floor met, run's counts == header's | taken 2, refused 1, objective hits 2, chip rows 12, λ 0.0958, bench 4, vice yes, plan weeks 6 |
 | 3 skip rule both ways | unit tests over `stale_inputs` | pass (changed digest, deleted file, optional input appearing) |
 | 4 size | `du -sk` < 5120 | 960 KB (bundle 543 KB, 759 responses; Core Insights 388 KB; expected 24 KB) |
