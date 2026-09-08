@@ -27,12 +27,18 @@ def test_the_config_gained_exactly_two_fields():
     one new name is ``stance``; the focus league reuses ``league_id``.
 
     59 after v16 (specs/2026-09-06-gaffer-v16-restraint-brief-design.md
-    §3.2): the one new name is ``hit_bar``."""
+    §3.2): the one new name is ``hit_bar``.
+
+    62 after v17e (specs/2026-09-08-v17e-config-in-force-design.md §2.1):
+    the three names are ``price_timing``, ``xg_per_shot`` and
+    ``news_lineup_providers`` — the private TOML readers became fields so
+    that one read interface serves every key."""
     names = {f.name for f in dataclasses.fields(Config)}
-    assert len(names) == 59
+    assert len(names) == 62
     assert {"max_hits", "max_transfers"} <= names
     assert "stance" in names
     assert "hit_bar" in names
+    assert {"price_timing", "xg_per_shot", "news_lineup_providers"} <= names
 
 
 def test_the_caps_default_to_two_hits_and_no_transfer_cap():
