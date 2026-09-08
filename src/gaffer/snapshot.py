@@ -71,9 +71,9 @@ def snapshot_rows(avail: pd.DataFrame, gw: int, season: str = "",
     what was known on the day, and what the *user* knew is part of that.
     """
     out = avail.copy()
-    from gaffer.config import serving_config
+    from gaffer.config import config_in_force
     from gaffer.overrides import attach_overrides
-    if serving_config().news_overrides:
+    if config_in_force().news_overrides:
         out = attach_overrides(out)
     for col in AVAILABILITY_COLS:
         if col not in out.columns:

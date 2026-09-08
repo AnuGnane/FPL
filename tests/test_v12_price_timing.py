@@ -34,6 +34,16 @@ def _clear_price_fall_cache():
     price_timing.owned_price_falls.cache_clear()
 
 
+def _switch(monkeypatch, on: bool):
+    """The price-timing switch as the solve path reads it (v17e §2.2): the
+    module's own view, patched at the name it calls."""
+    from gaffer.config import Config
+
+    monkeypatch.setattr(price_timing, "config_in_force",
+                        lambda: Config(entry_id=1, league_id=2,
+                                       price_timing=on))
+
+
 def test_a_falling_owned_player_gets_his_predictor_reading_as_a_probability():
     log = pd.DataFrame({
         "snap_date": [TODAY] * 3,
@@ -96,7 +106,7 @@ def test_the_switch_is_on_by_default_and_lives_under_optimizer(tmp_path):
     Under [optimizer] and not [solver]: program ruling. A field since v17e
     §2.1; an unreadable file degrades through ``config_in_force`` to the
     shipped default, because a solve must not die of a config file."""
-    from gaffer.config import config_in_force, invalidate, load_config
+    from gaffer.config import config_in_force, load_config
 
     base = "[fpl]\nentry_id = 1\nleague_id = 2\n"
     on = tmp_path / "on.toml"
@@ -111,9 +121,9 @@ def test_the_switch_is_on_by_default_and_lives_under_optimizer(tmp_path):
     assert load_config(off).price_timing is False
     assert load_config(unset).price_timing is True
     assert load_config(stale).price_timing is True
-    invalidate()
-    assert config_in_force().price_timing is True   # no config.toml here at all
-    invalidate()
+    # None of the four is the cwd's, so the view answers with the shipped
+    # default rather than with any of them.
+    assert config_in_force().price_timing is True
 
 
 def test_the_flag_reaches_the_config_constructor(tmp_path):
@@ -164,7 +174,7 @@ def test_a_typo_under_optimizer_still_raises_loudly(tmp_path):
 
 
 def test_the_switch_off_is_an_empty_table(monkeypatch):
-    monkeypatch.setattr(price_timing, "price_timing_enabled", lambda: False)
+    _switch(monkeypatch, False)
     monkeypatch.setattr(price_timing, "load_price_log",
                         lambda: pd.DataFrame({
                             "snap_date": [TODAY], "code": [1],
@@ -177,7 +187,7 @@ def test_a_missing_price_log_costs_the_term_and_not_the_solve(monkeypatch):
     def boom():
         raise OSError("no price log on this machine")
 
-    monkeypatch.setattr(price_timing, "price_timing_enabled", lambda: True)
+    _switch(monkeypatch, True)
     monkeypatch.setattr(price_timing, "load_price_log", boom)
     assert price_timing.owned_price_falls([1]) == {}
 
@@ -197,7 +207,7 @@ def test_the_table_is_read_once_per_squad_and_handed_out_as_a_copy(monkeypatch):
             "price_change_percent": [-50.0], "direction": ["drop"],
             "calibrating": [False]})
 
-    monkeypatch.setattr(price_timing, "price_timing_enabled", lambda: True)
+    _switch(monkeypatch, True)
     monkeypatch.setattr(price_timing, "load_price_log", counted)
     first = price_timing.owned_price_falls([2, 1])
     assert first == {1: 0.5}
@@ -240,7 +250,7 @@ def test_the_cache_does_not_serve_yesterdays_table_after_midnight(monkeypatch):
     resolved, which is the double charge the freshness rule exists to stop.
     The day is part of the key."""
     day = {"now": TODAY}
-    monkeypatch.setattr(price_timing, "price_timing_enabled", lambda: True)
+    _switch(monkeypatch, True)
     monkeypatch.setattr(price_timing, "snap_date",
                         lambda *a, **k: day["now"])
     monkeypatch.setattr(price_timing, "load_price_log",

@@ -24,8 +24,8 @@ from gaffer.data.elo import compute_elo, expected_score
 from gaffer.data.odds import poisson_win_prob
 from gaffer.errors import GafferError
 from gaffer.assets import load_decision_priors
-from gaffer.config import Config, load_config, optimizer_top_n
-from gaffer.price_timing import owned_price_falls
+from gaffer.config import (Config, config_in_force, invalidate,
+                           load_config)
 from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
                                          chip_windows, load_chip_scenarios,
                                          threshold_with_source)
@@ -274,7 +274,7 @@ def health() -> Health:
     # the data on disk the data the config describes" — which is the state
     # that matters — without a network call on a page-load path.
     #
-    # `load_config` here rather than `serving_config`, on purpose: this is the
+    # `load_config` here rather than `config_in_force`, on purpose: this is the
     # page a user opens *after* editing `current_season`, and the cached
     # reader would keep showing the red banner until the process restarted.
     # One TOML read per health poll is cheap; a banner that will not clear is
@@ -294,28 +294,25 @@ def health() -> Health:
 
     # v12 W1 §2.6. The four numbers that decide which players a solve is
     # allowed to consider at all, on the one page a user reads to find out
-    # what this install is doing. `optimizer_top_n` never raises, so the try
+    # what this install is doing. `config_in_force` never raises, so the try
     # is belt and braces for an unforeseeable read.
     try:
         # `cache_clear` first, for the reason the season banner reads
-        # `load_config` rather than `serving_config`: this is the page a user
+        # `load_config` rather than `config_in_force`: this is the page a user
         # opens *after* editing `[optimizer] top_n`, and a cached reader would
         # keep showing the old pool sizes until the process restarted. One
         # TOML read per health poll is cheap; a card that will not update is
         # a card that teaches the user their edit did nothing.
         #
         # The clear is process-wide, not this call's: `build_pool` reads the
-        # same cached `optimizer_top_n`, so the first solve after any health
-        # poll pays one TOML read too. That is the whole cost, and it is the
-        # right way round — a solve that picks up the edited value is what a
-        # user who just edited it expects.
-        optimizer_top_n.cache_clear()
-        solver_top_n = optimizer_top_n()
-        # v12 W2 §3.4. The price-timing table is cached on the same terms and
-        # goes stale on the same events — an edited `[optimizer]` switch, and
-        # a nightly `gaffer prices` run that banked a fresher day under a
-        # long-lived server. One clear per health poll, same trade.
-        owned_price_falls.cache_clear()
+        # same cached view, so the first solve after any health poll pays one
+        # TOML read too. That is the whole cost, and it is the right way round
+        # — a solve that picks up the edited value is what a user who just
+        # edited it expects. `invalidate()` also drops the price-timing table,
+        # which is cached on the same terms and goes stale on the same events
+        # (v12 W2 §3.4, one call since v17e §2.2).
+        invalidate()
+        solver_top_n = config_in_force().solver_top_n()
     except Exception:  # noqa: BLE001 — a health page never 500s
         solver_top_n = None
 

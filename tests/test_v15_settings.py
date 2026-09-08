@@ -5,7 +5,7 @@ import tomllib
 import pytest
 from fastapi.testclient import TestClient
 
-from gaffer.config import LOCAL_OVERLAY, serving_config
+from gaffer.config import LOCAL_OVERLAY, invalidate
 from gaffer.web.app import create_app
 from gaffer.web.settings_keys import BY_FIELD, WHITELIST
 
@@ -16,9 +16,9 @@ BASE = "[fpl]\nentry_id = 1\nleague_id = 5\n"
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "config.toml").write_text(BASE)
-    serving_config.cache_clear()
+    invalidate()
     yield TestClient(create_app())
-    serving_config.cache_clear()
+    invalidate()
 
 
 def _row(client, key):

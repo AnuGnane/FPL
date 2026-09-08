@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import dataclasses
 
-from gaffer.config import (DEFAULT_TOP_N, Config, config_in_force, invalidate,
+from gaffer.config import (DEFAULT_TOP_N, Config, config_in_force,
                            load_config)
 
 
@@ -39,9 +39,7 @@ def test_the_shipped_default_is_what_it_always_was():
 
 def test_no_config_at_all_gives_the_shipped_default(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    invalidate()
     assert config_in_force().solver_top_n() == DEFAULT_TOP_N
-    invalidate()
 
 
 def test_a_config_without_the_section_gives_the_default(tmp_path):
@@ -93,20 +91,18 @@ def test_a_corrupt_toml_gives_the_default(tmp_path, monkeypatch):
     taking the solver down."""
     (tmp_path / "config.toml").write_text("[optimizer\n")
     monkeypatch.chdir(tmp_path)
-    invalidate()
     assert config_in_force().solver_top_n() == DEFAULT_TOP_N
-    invalidate()
 
 
 def test_the_key_is_on_the_dataclass_too(tmp_path):
     """Read twice, deliberately, and they are not the same read.
 
     `solver_top_n()` is what `build_pool` reads through the view; it merges
-    over the shipped default and forgives anything
-    unreadable. `Config.top_n` comes through `[optimizer]`'s splat, which
-    forgives nothing and carries exactly what the file said — and it is what
-    W5 §6.2's Settings tab will edit. The next test pins the gap between them
-    so it cannot rot into a disagreement nobody notices."""
+    over the shipped default and forgives anything unreadable. `Config.top_n`
+    comes through `[optimizer]`'s splat, which forgives nothing and carries
+    exactly what the file said — and it is what W5 §6.2's Settings tab edits.
+    The next test pins the gap between them so it cannot rot into a
+    disagreement nobody notices."""
     body = "[optimizer]\ntop_n = {DEF = 30}\n"
     assert load_config(_cfg(tmp_path, body)).top_n["DEF"] == 30
 
@@ -183,7 +179,6 @@ def test_the_health_card_reflects_a_config_edit_because_it_clears_the_cache(
     from gaffer.web.routers import meta
 
     monkeypatch.chdir(tmp_path)
-    invalidate()
     _cfg(tmp_path, "[optimizer]\ntop_n = {MID = 12}\n")
     assert config_in_force().solver_top_n()["MID"] == 12
 

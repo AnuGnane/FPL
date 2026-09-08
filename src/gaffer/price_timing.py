@@ -61,7 +61,7 @@ from functools import lru_cache
 
 import pandas as pd
 
-from gaffer.config import price_timing as price_timing_enabled
+from gaffer.config import config_in_force
 from gaffer.price_log import load_price_log
 from gaffer.snapshot import snap_date
 
@@ -114,7 +114,7 @@ def owned_price_falls(owned: list[int] | None) -> dict[int, float]:
     absent, which is what keeps a machine with no price log solving exactly
     what it always did.
 
-    Cached, and for the reason :func:`gaffer.config.optimizer_top_n` is:
+    Cached, and for the reason the solver's candidate pool was:
     ``solve_plan`` builds its ``kw`` once per solve and both passes read the
     same table from it, but a long-lived process solves many times and a
     parquet read on each is the cost this reader exists to avoid. The key is
@@ -125,14 +125,15 @@ def owned_price_falls(owned: list[int] | None) -> dict[int, float]:
     23:50 would still be served at 00:10, charging a fall that had by then
     already resolved. Anything that rewrites the price log (or
     ``config.toml``) under a running process calls
-    ``owned_price_falls.cache_clear()``; the health poll
-    already does, beside ``optimizer_top_n``'s. The returned dict is a fresh
-    copy per call so a caller that mutates it cannot poison the cache.
+    ``owned_price_falls.cache_clear()``; the health poll already does. The
+    returned dict is a fresh copy per call so a caller that mutates it cannot
+    poison the cache.
 
-    Note the switch itself is *not* cached: :func:`gaffer.config.price_timing`
-    re-reads ``config.toml`` on every call, so a flipped flag takes effect on
-    the next solve. It is this table — the parquet read — that the cache is
-    for.
+    The switch is read through :func:`~gaffer.config.config_in_force`, so a
+    flipped flag reaches the next solve after
+    :func:`~gaffer.config.invalidate` — which the settings save and the
+    health poll call, and which drops this table in the same breath (v17e
+    §2.2).
     """
     key = tuple(sorted(int(c) for c in owned)) if owned else ()
     return dict(_owned_price_falls(_today(), key))
@@ -165,7 +166,7 @@ def _owned_price_falls(day: str,
     freshness rule inside :func:`price_falls` cannot be outlived by the cache
     that wraps it. Midnight is a new key."""
     try:
-        if not price_timing_enabled():
+        if not config_in_force().price_timing:
             return {}
         return price_falls(load_price_log(), list(owned))
     except Exception as exc:  # noqa: BLE001 — never blocks a solve
@@ -174,6 +175,7 @@ def _owned_price_falls(day: str,
 
 
 # The cache lives on the private reader, but callers should not have to know
-# that — `optimizer_top_n`'s precedent, verbatim.
+# that; `invalidate` and the nightly `gaffer prices` run clear it by this
+# public name.
 owned_price_falls.cache_clear = _owned_price_falls.cache_clear
 owned_price_falls.cache_info = _owned_price_falls.cache_info

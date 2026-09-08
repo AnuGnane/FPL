@@ -291,16 +291,16 @@ def _price_falls(state) -> tuple[bool, dict[int, float]]:
     not render.
     """
     try:
-        # W2's own reader and W2's own switch — the dotted paths
-        # `settings_keys.py` names, so the two surfaces cannot disagree about
-        # whether the term is on.
-        from gaffer.config import price_timing as price_timing_on
+        # W2's own table and the switch as the solve path reads it — the
+        # one config interface (v17e §2.2), so the two surfaces cannot
+        # disagree about whether the term is on.
+        from gaffer.config import config_in_force
         from gaffer.price_timing import owned_price_falls
     except Exception as exc:  # noqa: BLE001 — W2 may not have landed
         print(f"plan trace: no price-timing reader ({exc})")
         return False, {}
     try:
-        if not price_timing_on():
+        if not config_in_force().price_timing:
             return False, {}
         owned = [int(c) for c in getattr(state, "owned_codes", []) or []]
         return True, {int(k): float(v)

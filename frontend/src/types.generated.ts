@@ -2862,8 +2862,9 @@ export interface WireHealth {
    * Players per position the solver may consider, on top of the ones you own.
    *
    * Named for what it is on the wire — a solver pool — since a schema field
-   * carries no TOML section with it. The value is ``optimizer_top_n()``'s, so
-   * it is what an actual solve would get rather than what the file says.
+   * carries no TOML section with it. The value is
+   * ``config_in_force().solver_top_n()``'s, so it is what an actual solve
+   * would get rather than what the file says.
    */
   solver_top_n: {
     [k: string]: number

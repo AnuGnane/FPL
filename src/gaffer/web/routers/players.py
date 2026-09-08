@@ -15,7 +15,7 @@ from fastapi import APIRouter, Query
 
 from gaffer.artifacts import (latest_gw, load_components, load_snapshot,
                               load_solve_state)
-from gaffer.config import serving_config
+from gaffer.config import config_in_force
 from gaffer.data.field import field_eo_trend, latest_field_eo
 from gaffer.errors import GafferError
 from gaffer.uncertainty import band_for, shipped_table, xmins_by_player_gw
@@ -277,7 +277,7 @@ def players(position: str | None = None, team: int | None = None,
     # recorded it as a residual — `element` is season-scoped, so after a
     # rollover the largest gameweek in the log is last season's and every row
     # on this page would have carried a different footballer's ownership.
-    # `serving_config` rather than `load_config`: this is a per-row serve path
+    # `config_in_force` rather than `load_config`: this is a per-row serve path
     # and it is exactly the seam that reader exists for — cached, so the
     # explorer does not re-read a TOML file per request, and never raising, so
     # a clone with no config.toml still renders. The cost is that a
@@ -289,7 +289,7 @@ def players(position: str | None = None, team: int | None = None,
     # disagree. An unreadable config leaves it empty, which no banked row
     # matches — the same empty map the bare `except` below produced.
     try:
-        season = str(serving_config().current_season)
+        season = str(config_in_force().current_season)
     except Exception:  # noqa: BLE001
         season = ""
     try:

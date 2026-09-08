@@ -5,7 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from gaffer.artifacts import SolveState, pool_rows, save_solve_state
-from gaffer.config import LOCAL_OVERLAY, serving_config
+from gaffer.config import LOCAL_OVERLAY, invalidate
 from gaffer.web.app import create_app
 from gaffer.web.routers import league as mod
 
@@ -92,9 +92,9 @@ def client(tmp_path, monkeypatch, fake):
     _artifacts(tmp_path)
     monkeypatch.setattr(mod, "fpl_client", lambda: fake)
     monkeypatch.setattr(mod, "_OVERVIEW", {})
-    serving_config.cache_clear()
+    invalidate()
     yield TestClient(create_app())
-    serving_config.cache_clear()
+    invalidate()
 
 
 def test_private_and_public_are_split_by_the_league_type_flag(client):
@@ -164,7 +164,7 @@ def test_the_stance_and_the_focus_tilt_come_from_config_and_solve_state(
 def test_a_manual_stance_shows_at_the_cap_before_any_advise(
         client, tmp_path):
     (tmp_path / LOCAL_OVERLAY).write_text('[league]\nstance = "defend"\n')
-    serving_config.cache_clear()
+    invalidate()
     body = client.get("/api/league/leagues").json()
     assert body["stance"] == "defend"
     assert body["focus_stance"] == "defend" and body["focus_lam"] == -0.5
@@ -176,7 +176,7 @@ def test_a_focus_that_is_not_private_is_a_warning_not_a_refusal(
     _artifacts(tmp_path, league_id=42)
     monkeypatch.setattr(mod, "fpl_client", lambda: fake)
     monkeypatch.setattr(mod, "_OVERVIEW", {})
-    serving_config.cache_clear()
+    invalidate()
     body = TestClient(create_app()).get("/api/league/leagues").json()
     assert body["focus_name"] is None
     assert "42" in body["focus_warning"]
@@ -189,7 +189,7 @@ def test_no_league_id_at_all_still_lists_the_leagues(tmp_path, monkeypatch,
     _artifacts(tmp_path, league_id=0)
     monkeypatch.setattr(mod, "fpl_client", lambda: fake)
     monkeypatch.setattr(mod, "_OVERVIEW", {})
-    serving_config.cache_clear()
+    invalidate()
     resp = TestClient(create_app()).get("/api/league/leagues")
     assert resp.status_code == 200
     assert resp.json()["focus_warning"] is not None
@@ -211,7 +211,7 @@ def test_the_rows_are_cached_for_five_minutes_per_entry(client, fake):
 def test_the_cache_does_not_hold_the_focus_or_the_stance(client, tmp_path):
     client.get("/api/league/leagues")
     (tmp_path / LOCAL_OVERLAY).write_text('[league]\nfocus = 9\n')
-    serving_config.cache_clear()
+    invalidate()
     body = client.get("/api/league/leagues").json()
     assert body["focus_league_id"] == 9 and body["focus_name"] == "NLT"
 
@@ -226,7 +226,7 @@ def test_a_dead_api_is_a_retriable_422(tmp_path, monkeypatch):
 
     monkeypatch.setattr(mod, "fpl_client", lambda: Dead())
     monkeypatch.setattr(mod, "_OVERVIEW", {})
-    serving_config.cache_clear()
+    invalidate()
     resp = TestClient(create_app()).get("/api/league/leagues")
     assert resp.status_code == 422
     assert "retry" in resp.json()["detail"]

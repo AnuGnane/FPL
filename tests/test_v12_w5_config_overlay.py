@@ -2,24 +2,23 @@
 
 The file the Settings tab owns. Everything here is about what happens when it
 is absent, malformed, or carries a key `Config` has never heard of — because
-the third one is a `TypeError` out of a splatted section, and `serving_config`
-catches that by discarding the user's entire real config (config.py:311-333).
+the third one is a `TypeError` out of a splatted section, and
+`config_in_force` catches that by discarding the user's entire real config.
 
-The second half of the file is about *reach*. `config.py` has four
-module-level readers — `price_timing`, `xg_per_shot`, `optimizer_top_n` and
-`lineup_providers` — that open `config.toml` themselves rather than going
-through `load_config`, because the keys they serve are either not `Config`
-fields or are needed somewhere no `Config` is in hand. An overlay the loader
-honoured and those four did not would be a Settings tab whose price-timing
-switch saved and did nothing, so the merge lives in one place they all read
-through.
+The second half of the file is about *reach*. `config.py` used to carry four
+module-level readers — `price_timing`, `xg_per_shot`, the solver's pool and
+`lineup_providers` — that opened `config.toml` themselves, and an overlay the
+loader honoured and those four did not would have been a Settings tab whose
+price-timing switch saved and did nothing. v17e §2.1 made all four keys
+fields, so the merge is `load_config`'s alone; the tests below stayed, because
+what they assert is that the overlay reaches every one of those keys.
 """
 from __future__ import annotations
 
 import pytest
 
-from gaffer.config import (LOCAL_OVERLAY, Config, load_config, optimizer_top_n,
-                           price_timing, xg_per_shot)
+from gaffer.config import (LOCAL_OVERLAY, Config, config_in_force,
+                           invalidate, load_config)
 
 # Every value here is deliberately *different* from the dataclass default, so
 # a merge bug that dropped the base file wholesale would change the number
@@ -46,14 +45,11 @@ def tree(tmp_path):
     """A config.toml on disk and a writer for its overlay."""
     base = tmp_path / "config.toml"
     base.write_text(BASE)
-    optimizer_top_n.cache_clear()
 
     def overlay(text: str):
         (tmp_path / LOCAL_OVERLAY).write_text(text)
-        optimizer_top_n.cache_clear()
 
     yield base, overlay
-    optimizer_top_n.cache_clear()
 
 
 def test_no_overlay_is_the_config_exactly_as_it_was(tree):
@@ -102,7 +98,7 @@ def test_the_overlay_is_a_sibling_of_the_config_it_overlays(tree, tmp_path,
 
 def test_an_unparseable_overlay_is_ignored_and_says_so(tree, capsys):
     """Ignored, not raised on: one bad write from the UI must not take every
-    job down, and `serving_config` would swallow the raise by falling back to
+    job down, and `config_in_force` would swallow the raise by falling back to
     Config(entry_id=0) — the user's whole config, silently gone."""
     base, overlay = tree
     overlay("[optimizer\nhorizon = 5")
@@ -149,71 +145,74 @@ def test_the_overlay_cannot_conjure_a_config_without_a_base(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# The four module-level readers
+# The four keys that had their own readers
 # ---------------------------------------------------------------------------
-# `load_config` is not the only thing that opens config.toml. `price_timing`,
-# `xg_per_shot`, `optimizer_top_n` and `lineup_providers` each read the file
-# directly, and two of the nine keys the Settings tab writes are served by two
-# of them. An overlay only `load_config` honoured would be a switch that saves
-# and does nothing — and `lineup_providers`, which the web never writes, is
-# the one easiest to leave behind, so it is tested here beside the three.
+# Until v17e §2.1 `load_config` was not the only thing that opened config.toml:
+# `price_timing`, `xg_per_shot`, the solver's pool and `lineup_providers` each
+# read the file directly, and an overlay only `load_config` honoured would have
+# been a switch that saves and does nothing. They are fields now and there is
+# one reader, but these four keys are still the ones a merge is most likely to
+# miss, so the coverage stays.
 
 
 def test_price_timing_in_the_overlay_is_honoured_by_its_reader(tree, capsys):
-    """The one whitelist key that is not a Config field at all. It is popped
-    out of [optimizer] before the splat (NON_FIELD_OPTIMIZER_KEYS), so the
-    unknown-key guard has to *exempt* it — dropping it would leave the Settings
-    tab writing a key nothing ever reads."""
+    """The whitelist key that was not a Config field until v17e §2.1. It was
+    popped out of [optimizer] before the splat and the unknown-key guard had
+    to exempt it; as a field it needs no exemption, and the guard has to let
+    it through on its own name."""
     base, overlay = tree
-    assert price_timing(base) is True
+    assert load_config(base).price_timing is True
     overlay("[optimizer]\nprice_timing = false\n")
-    assert price_timing(base) is False
-    # Exempted, so it is not reported as a typo — and the config still loads,
-    # which is the other half of what the exemption buys.
+    assert load_config(base).price_timing is False
+    # Not reported as a typo — and the config still loads, which is the other
+    # half of what being a field buys.
     assert "price_timing" not in capsys.readouterr().out
     assert load_config(base).horizon == 3
 
 
 def test_top_n_in_the_overlay_reaches_the_field_and_the_solvers_reader(tree):
     """`top_n` is served twice over: `Config.top_n` carries what the file said
-    and `optimizer_top_n()` is what `build_pool` actually gets. The Settings
-    row edits one key, so both have to move or the tab reports a pool the
-    solver never uses."""
+    and `solver_top_n()` is what `build_pool` actually gets. The Settings row
+    edits one key, so both have to move or the tab reports a pool the solver
+    never uses."""
     base, overlay = tree
     overlay("[optimizer]\ntop_n = { GKP = 4, DEF = 5, MID = 6, FWD = 7 }\n")
     wanted = {"GKP": 4, "DEF": 5, "MID": 6, "FWD": 7}
     assert load_config(base).top_n == wanted
-    assert optimizer_top_n(base) == wanted
+    assert load_config(base).solver_top_n() == wanted
 
 
 def test_xg_per_shot_in_the_overlay_is_honoured_by_its_reader(tree):
-    """[model] is not splatted and not on the whitelist, but it is read by the
-    third module-level reader — so the merge has to be in one place all three
-    read through rather than copied into the two that happened to need it."""
+    """[model] is not splatted and not on the whitelist: it is read key by
+    key, so the merge has to happen before that read rather than inside the
+    sections that happened to need it."""
     base, overlay = tree
-    assert xg_per_shot(base) is False
+    assert load_config(base).xg_per_shot is False
     overlay("[model]\nxg_per_shot = true\n")
-    assert xg_per_shot(base) is True
+    assert load_config(base).xg_per_shot is True
 
 
 def test_a_reader_survives_an_unparseable_overlay(tree):
-    """Same posture as the loader's: these three are on the solve and training
-    paths, where a config file must never be fatal."""
+    """An overlay that will not parse is ignored with a line rather than
+    raised on: these keys are on the solve and training paths, where a config
+    file must never be fatal."""
     base, overlay = tree
     overlay("[optimizer\nprice_timing = false")
-    assert price_timing(base) is True
+    assert load_config(base).price_timing is True
     # The base file's own pool, not the shipped default: an overlay that will
     # not parse falls back to config.toml, not past it.
-    assert optimizer_top_n(base)["GKP"] == 9
+    assert load_config(base).solver_top_n()["GKP"] == 9
 
 
-def test_a_reader_with_no_base_config_still_gives_the_shipped_default(tmp_path):
-    base = tmp_path / "config.toml"
+def test_a_reader_with_no_base_config_still_gives_the_shipped_default(
+        tmp_path, monkeypatch):
     (tmp_path / LOCAL_OVERLAY).write_text("[optimizer]\nprice_timing = false\n")
-    # No base file at all: the readers degrade rather than reading the overlay
+    # No base file at all: the view degrades rather than reading the overlay
     # on its own, because an overlay without the file it overlays is a tree in
     # a state nobody configured.
-    assert price_timing(base) is True
+    monkeypatch.chdir(tmp_path)
+    invalidate()
+    assert config_in_force().price_timing is True
 
 
 def test_a_partial_pool_in_the_overlay_keeps_the_positions_it_did_not_name(
@@ -222,7 +221,7 @@ def test_a_partial_pool_in_the_overlay_keeps_the_positions_it_did_not_name(
 
     `top_n` is a table, so a whole-value overwrite would let an overlay naming
     one position drop the other three back to the shipped default — and
-    `_optimizer_top_n` starts from DEFAULT_TOP_N, so the drop would look like
+    `solver_top_n()` starts from DEFAULT_TOP_N, so the drop would look like
     a deliberate 8/22/26/14 rather than like a bug. The Settings tab always
     writes all four; a hand-edited overlay is exactly the file somebody puts
     one line into.
@@ -231,23 +230,23 @@ def test_a_partial_pool_in_the_overlay_keeps_the_positions_it_did_not_name(
     overlay("[optimizer]\ntop_n = { GKP = 3 }\n")
     wanted = {"GKP": 3, "DEF": 21, "MID": 25, "FWD": 13}
     assert load_config(base).top_n == wanted
-    assert optimizer_top_n(base) == wanted
+    assert load_config(base).solver_top_n() == wanted
 
 
 def test_lineup_providers_in_the_overlay_is_honoured_by_its_reader(tree):
-    """The fourth module-level reader. Nothing edits it from the web, which is
-    exactly why it is easy to leave behind — and a file that means one thing to
-    the loader and another to a reader is worse than a file no reader
-    honours."""
-    from gaffer.config import DEFAULT_LINEUP_PROVIDERS, lineup_providers
+    """The fourth of them. Nothing edits it from the web, which is exactly
+    why it is easy to leave behind — and a file that means one thing to the
+    loader and another to a reader is worse than a file no reader honours."""
+    from gaffer.config import DEFAULT_LINEUP_PROVIDERS
 
     base, overlay = tree
-    assert lineup_providers(base) == list(DEFAULT_LINEUP_PROVIDERS)
+    assert (load_config(base).news_lineup_providers
+            == list(DEFAULT_LINEUP_PROVIDERS))
     overlay('[news]\nlineup_providers = ["ffs"]\n')
-    assert lineup_providers(base) == ["ffs"]
+    assert load_config(base).news_lineup_providers == ["ffs"]
     # And the kill switch survives the merge as itself rather than as "absent".
     overlay("[news]\nlineup_providers = []\n")
-    assert lineup_providers(base) == []
+    assert load_config(base).news_lineup_providers == []
 
 
 def test_the_loader_and_the_endpoint_name_the_same_file_the_same_way(tree,
@@ -274,14 +273,14 @@ def test_every_splatted_section_is_read_by_key_or_exempt(tree, capsys):
     off SPLATTED_SECTIONS, because the constant is what could be wrong. A
     section added to the splat and not to the constant is unguarded, and an
     unknown key in it is a TypeError out of `Config(...)` that
-    `serving_config` swallows by discarding the user's whole config.
+    `config_in_force` swallows by discarding the user's whole config.
 
     Note the two splat shapes the source carries: `**raw.get("data", {})` and
-    `**optimizer`, the latter a local pre-filtered against
-    NON_FIELD_OPTIMIZER_KEYS. Both resolve to a section name here, so a fourth
-    written either way is caught.
+    `**optimizer`, the latter a local. v17e §2.1 made `price_timing` a field,
+    so that local is no longer pre-filtered and the section is read whole;
+    both shapes resolve to a section name here, so a third written either way
+    is caught.
     """
-    import dataclasses
     import inspect
     import re
 
@@ -299,15 +298,11 @@ def test_every_splatted_section_is_read_by_key_or_exempt(tree, capsys):
     assert derived == set(mod.SPLATTED_SECTIONS)
 
     base, overlay = tree
-    fields = {f.name for f in dataclasses.fields(Config)}
     for section in sorted(derived):
         overlay(f"[{section}]\nnot_a_field_anywhere = 1\n")
         # Survives at all: an unguarded splat raises TypeError right here.
         load_config(base)
         assert "not_a_field_anywhere" in capsys.readouterr().out
-    # And the exemption is exactly the non-field optimizer keys, not a blanket
-    # "anything [optimizer] carries": a typo there is still reported.
-    assert not set(mod.NON_FIELD_OPTIMIZER_KEYS) & fields
 
 
 def test_a_scalar_where_the_base_has_a_table_is_dropped_not_swallowed(tree,
@@ -317,7 +312,7 @@ def test_a_scalar_where_the_base_has_a_table_is_dropped_not_swallowed(tree,
     The key guard above walks *inside* a section; nothing guarded the section
     itself, so a scalar replaced the whole table and `load_config`'s
     `**optimizer` splat then raised `AttributeError: 'int' object has no
-    attribute 'items'`. `serving_config` catches that by falling back to
+    attribute 'items'`. `config_in_force` catches that by falling back to
     `Config(entry_id=0, league_id=0)` — the manager's entire real config,
     silently gone, over one bad line in a file the UI writes.
 
@@ -350,12 +345,11 @@ def test_a_scalar_over_a_section_the_base_omits_is_dropped_too(tmp_path,
     section this tree reads that a scalar can mean. Only scalar-over-scalar
     merges.
     """
-    from gaffer.config import DEFAULT_LINEUP_PROVIDERS, lineup_providers
+    from gaffer.config import DEFAULT_LINEUP_PROVIDERS
 
     base = tmp_path / "config.toml"
     base.write_text("[fpl]\nentry_id = 111\nleague_id = 222\n")
     (tmp_path / LOCAL_OVERLAY).write_text("optimizer = 5\nnews = 7\n")
-    optimizer_top_n.cache_clear()
 
     cfg = load_config(base)
     # The base survives whole, and the sections the overlay tried to scalarise
@@ -370,10 +364,10 @@ def test_a_scalar_over_a_section_the_base_omits_is_dropped_too(tmp_path,
     assert sum("[optimizer]" in ln for ln in lines) == 1
     assert sum("[news]" in ln for ln in lines) == 1
 
-    # And the two readers that reach past their own `try` do not raise.
-    assert price_timing(base) is True
-    assert lineup_providers(base) == list(DEFAULT_LINEUP_PROVIDERS)
-    optimizer_top_n.cache_clear()
+    # And the two keys whose readers used to reach past their own `try` do
+    # not raise.
+    assert cfg.price_timing is True
+    assert cfg.news_lineup_providers == list(DEFAULT_LINEUP_PROVIDERS)
 
 
 def test_a_scalar_over_a_scalar_the_base_declares_is_still_a_merge(tmp_path):
@@ -399,16 +393,15 @@ def test_the_settings_panel_does_not_blame_config_toml_for_the_overlay(
     manager at the one file the Settings tab is forbidden to touch."""
     from fastapi.testclient import TestClient
 
-    from gaffer.config import serving_config
     from gaffer.web.app import create_app
 
     _, overlay = tree
     overlay("optimizer = 5\n")
     monkeypatch.chdir(tmp_path)
-    serving_config.cache_clear()
+    invalidate()
     try:
         body = TestClient(create_app()).get("/api/settings").json()
     finally:
-        serving_config.cache_clear()
+        invalidate()
     assert "config.toml unreadable" not in (body["overlay_error"] or "")
     assert [r["key"] for r in body["rows"]]

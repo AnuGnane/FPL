@@ -335,16 +335,16 @@ def test_build_ladder_carries_the_bar_the_chosen_rung_and_the_steps(tmp_path,
                                                                      monkeypatch):
     from tests.test_ladder import save_state
 
-    from gaffer.config import serving_config
+    from gaffer.config import invalidate
     from gaffer.ladder import build_ladder
 
     monkeypatch.chdir(tmp_path)
-    serving_config.cache_clear()
+    invalidate()
     save_state({"max_hits": 15, "max_transfers": 15})
     monkeypatch.setattr(lad, "OUTCOME_VAR_PER_EP", 0.0)
     monkeypatch.setattr(lad, "sigma_table", lambda gw: ({}, "outcome_only"))
     out = build_ladder(1, n_draws=20, seed=5)
-    serving_config.cache_clear()
+    invalidate()
     assert out["bar"] == 0.60
     assert out["chosen"] in {r["key"] for r in out["rungs"]}
     keys = {"below", "above", "share", "taken", "reason", "reason_kind", "line"}

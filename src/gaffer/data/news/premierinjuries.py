@@ -21,7 +21,7 @@ from pathlib import Path
 import httpx
 import pandas as pd
 
-from gaffer.config import serving_config
+from gaffer.config import config_in_force
 from gaffer.data.news import NEWS_CACHE, cache_path, cached_text, fetched_at
 from gaffer.data.news.classifier import NewsText, classify_news
 from gaffer.data.news.normalize import NEWS_MIN_COVERAGE, match_codes
@@ -298,7 +298,7 @@ def fetch_injuries(players: pd.DataFrame, teams: pd.DataFrame,
     out["further_detail"] = out.get("further_detail")
     out["llm_verdict"] = None
     out["llm_confidence"] = float("nan")
-    cfg = serving_config()
+    cfg = config_in_force()
     classifier = cfg.news_llm_classifier if classifier is None else classifier
     shadow = cfg.news_llm_shadow if shadow is None else shadow
     if classifier or shadow:

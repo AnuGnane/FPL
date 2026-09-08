@@ -150,9 +150,13 @@ _TOML_LAYOUT: dict[str, list[tuple[str, str]]] = {
     "optimizer": [(k, k) for k in (
         "horizon", "decay", "vice_weight", "bench_weight", "ft_value",
         "itb_value", "hit_cost", "alt_plan_max_gap", "max_hits",
-        "max_transfers", "hit_bar", "ft_use_penalty", "bench_curve", "top_n")],
+        "max_transfers", "hit_bar", "ft_use_penalty", "bench_curve", "top_n",
+        # Last, so the written file is byte-identical to the one v17c's
+        # special case produced (v17e §2.7); a field since v17e §2.1.
+        "price_timing")],
     "data": [("train_seasons", "train_seasons"),
              ("current_season", "current_season")],
+    "model": [("xg_per_shot", "xg_per_shot")],
     "understat": [("enabled", "understat_enabled")],
     "scenarios": [("n", "scenarios_n"), ("seed", "scenarios_seed"),
                   ("transfer_threshold", "transfer_threshold"),
@@ -168,7 +172,8 @@ _TOML_LAYOUT: dict[str, list[tuple[str, str]]] = {
         "news_min_coverage", "news_llm_classifier", "news_llm_shadow",
         "news_llm_command", "news_llm_timeout_s", "news_lineup_absence",
         "news_lineup_absence_damp", "news_lineup_start_floor",
-        "news_overrides")],
+        "news_overrides")] + [("lineup_providers",
+                               "news_lineup_providers")],
     "digest": [("notify", "digest_notify")],
     "backup": [("dir", "backup_dir"), ("rsync_target", "backup_rsync_target"),
                ("keep", "backup_keep")],
@@ -193,13 +198,6 @@ def write_golden_toml(cfg: Config, path: Path) -> None:
             if value is None:
                 continue
             lines.append(f"{key} = {_toml(value)}")
-        if section == "optimizer":
-            # v17c §2.3: not a Config field (see NON_FIELD_OPTIMIZER_KEYS),
-            # read by price_timing() on the solve path; written so a default
-            # flip cannot move the golden silently. xg_per_shot is train-time
-            # only and lineup_providers is moot with news off, so neither is
-            # written.
-            lines.append("price_timing = true")
         lines.append("")
     Path(path).write_text("\n".join(lines))
 
@@ -338,7 +336,7 @@ def fixture_kb(directory: Path = GOLDEN_DIR) -> float:
 def golden_cwd(root: Path, client: FPLClient | None = None):
     """Inside ``root`` for the length of the block (spec v17c §2.3, §2.8;
     v17d §2.8): the working directory is the second, implicit seam
-    (``serving_config()`` and every relative ``Path("data")``), so the
+    (``config_in_force()`` and every relative ``Path("data")``), so the
     process moves into it and back out after. The serving cache is
     cleared on both sides so neither the repo's ``config.toml`` nor the
     golden's leaks into the other; ``refresh_live``'s politeness sleep is
@@ -348,21 +346,21 @@ def golden_cwd(root: Path, client: FPLClient | None = None):
     pacing. The patch replaces ``time`` inside ``live``'s own namespace
     rather than ``time.sleep`` itself, so nothing else in the process
     loses its sleep. Yields the resolved root."""
-    from gaffer.config import serving_config
+    from gaffer.config import invalidate
     import gaffer.data.live as live_mod
 
     root = Path(root).resolve()
     hush = (patch.object(live_mod, "time", SimpleNamespace(sleep=lambda *_: None))
             if isinstance(client, RecordedClient) else nullcontext())
     before = Path.cwd()
-    serving_config.cache_clear()
+    invalidate()
     try:
         os.chdir(root)
         with hush:
             yield root
     finally:
         os.chdir(before)
-        serving_config.cache_clear()
+        invalidate()
 
 
 def run_golden(root: Path, client: FPLClient | None = None) -> tuple[dict, dict]:

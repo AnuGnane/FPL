@@ -12,7 +12,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from gaffer.config import NO_CAP, load_config, price_timing
+from gaffer.config import NO_CAP, load_config
 from tests import golden_client as gc
 
 
@@ -88,13 +88,15 @@ def test_the_written_toml_has_no_odds_section_and_no_key(tmp_path):
 
 
 def test_the_written_toml_carries_the_price_timing_flag_the_solve_path_reads(tmp_path):
-    """v17c §2.3: ``price_timing`` is no Config field, so the round trip
-    cannot see it — but ``price_timing()`` opens the cwd's config.toml on the
-    solve path, and an unwritten flag would let a default flip move the
-    golden."""
+    """v17c §2.3 wrote the flag by hand because it was no Config field; since
+    v17e §2.1 it is one and the round trip covers it. The line is still
+    asserted here, and last in ``[optimizer]``, because the recorded
+    ``config.toml`` is byte-pinned and a layout that moved it would rewrite
+    the fixture."""
     gc.write_golden_toml(gc.golden_config(), tmp_path / "config.toml")
-    assert "price_timing = true" in (tmp_path / "config.toml").read_text()
-    assert price_timing(tmp_path / "config.toml") is True
+    text = (tmp_path / "config.toml").read_text()
+    assert "price_timing = true" in text
+    assert load_config(tmp_path / "config.toml").price_timing is True
 
 
 def test_save_bundle_writes_the_same_bytes_for_the_same_answers(tmp_path):
@@ -278,10 +280,20 @@ def test_the_golden_run_writes_nothing_through_the_symlinks(golden_run):
 
 
 def test_the_header_config_is_golden_config():
+    """On the keys the header recorded: a field added after the recording
+    (v17e §2.7 added three) is not in the header, and the fixture is never
+    rewritten by a refactor. The added fields must hold what the recorded
+    config.toml implies — price_timing = true is written, the other two are
+    absent and so default."""
     header = _header()
     if header is None:
         pytest.skip("golden board not recorded yet")
-    assert header["config"] == asdict(gc.golden_config())
+    golden = asdict(gc.golden_config())
+    assert {k: v for k, v in golden.items()
+            if k in header["config"]} == header["config"]
+    added = {k: v for k, v in golden.items() if k not in header["config"]}
+    assert added == {"price_timing": True, "xg_per_shot": False,
+                     "news_lineup_providers": ["ffs", "rotowire"]}
     assert header["config"]["odds_api_key"] == ""
 
 
@@ -324,14 +336,14 @@ def test_run_golden_runs_in_the_scratch_tree_and_reads_the_two_files_back(tmp_pa
     import time as time_mod
 
     import gaffer.data.live as live_mod
-    from gaffer.config import serving_config
+    from gaffer.config import config_in_force, invalidate
 
     calls: dict[str, object] = {}
     (tmp_path / "reports").mkdir()
     client = gc.RecordedClient(_bundle(tmp_path / "bundle"))
 
     monkeypatch.setattr(gc, "run_advise", _stub_run_advise(tmp_path, calls, live_mod))
-    serving_config.cache_clear()
+    invalidate()
     before = Path.cwd()
     advice, state = gc.run_golden(tmp_path, client=client)
     assert Path.cwd() == before
@@ -344,7 +356,7 @@ def test_run_golden_runs_in_the_scratch_tree_and_reads_the_two_files_back(tmp_pa
     assert calls["stdlib_sleep"] is time_mod.sleep
     assert live_mod.time.sleep is time_mod.sleep
     assert advice == {"gw": 4, "generated_at": "x"} and state == {"gw": 4, "generated_at": "y"}
-    assert serving_config.cache_info().currsize == 0
+    assert config_in_force.cache_info().currsize == 0
 
 
 def test_run_golden_keeps_the_politeness_sleep_for_a_live_client(tmp_path, monkeypatch):
@@ -364,7 +376,7 @@ def test_run_golden_keeps_the_politeness_sleep_for_a_live_client(tmp_path, monke
 
 
 def test_run_golden_restores_the_cwd_when_the_run_raises(tmp_path, monkeypatch):
-    from gaffer.config import serving_config
+    from gaffer.config import config_in_force
 
     def boom(cfg, client=None):
         raise RuntimeError("solver died")
@@ -375,7 +387,7 @@ def test_run_golden_restores_the_cwd_when_the_run_raises(tmp_path, monkeypatch):
         gc.run_golden(tmp_path, client=object())
     assert Path.cwd() == before
     # The golden's config must not survive the failure into the next caller.
-    assert serving_config.cache_info().currsize == 0
+    assert config_in_force.cache_info().currsize == 0
 
 
 def test_write_expected_refuses_without_a_bundle(tmp_path):

@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from gaffer.config import (HIT_BAR_HI, HIT_BAR_LO, LOCAL_OVERLAY, Config,
-                           load_config, optimizer_top_n, serving_config)
+                           invalidate, load_config)
 from gaffer.errors import GafferError
 
 BASE = "[fpl]\nentry_id = 1\nleague_id = 5\n"
@@ -54,11 +54,9 @@ def settings_client(tmp_path, monkeypatch):
 
     monkeypatch.chdir(tmp_path)
     (tmp_path / "config.toml").write_text(BASE)
-    serving_config.cache_clear()
-    optimizer_top_n.cache_clear()
+    invalidate()
     yield TestClient(create_app())
-    serving_config.cache_clear()
-    optimizer_top_n.cache_clear()
+    invalidate()
 
 
 def test_the_settings_panel_serves_the_bar_with_its_range(settings_client):

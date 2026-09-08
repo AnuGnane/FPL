@@ -186,12 +186,12 @@ def _notify_enabled() -> bool:
 
     Its own function rather than an inline read so the rail that asserts the
     switch reaches the module has one thing to patch, and so a clone with no
-    ``config.toml`` — which ``serving_config`` degrades to defaults for — gets
+    ``config.toml`` — which ``config_in_force`` degrades to defaults for — gets
     its notification rather than an exception.
     """
-    from gaffer.config import serving_config
+    from gaffer.config import config_in_force
 
-    return bool(serving_config().digest_notify)
+    return bool(config_in_force().digest_notify)
 
 
 def _digest_job(kind: str) -> dict:

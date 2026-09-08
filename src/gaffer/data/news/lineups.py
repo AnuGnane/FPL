@@ -24,7 +24,7 @@ from pathlib import Path
 import httpx
 import pandas as pd
 
-from gaffer.config import lineup_providers, serving_config
+from gaffer.config import config_in_force
 from gaffer.data.news import NEWS_CACHE, cache_path, cached_text, fetched_at
 from gaffer.data.news.normalize import (NEWS_MIN_COVERAGE, club_code,
                                         club_code_map, match_codes)
@@ -485,11 +485,11 @@ def fetch_lineups(players: pd.DataFrame, teams: pd.DataFrame,
     says nothing leaves the others exactly where they were, which is today's
     single-source behaviour by construction. ``[]`` fetches nothing at all.
     """
-    cfg = serving_config()
+    cfg = config_in_force()
     absence = cfg.news_lineup_absence if absence is None else bool(absence)
     absence_damp = (cfg.news_lineup_absence_damp if absence_damp is None
                     else float(absence_damp))
-    names = lineup_providers() if providers is None else [
+    names = list(cfg.news_lineup_providers) if providers is None else [
         str(n).strip().casefold() for n in providers]
 
     # v10 §F2a (specs/2026-09-01-gaffer-v10-minutes-design.md): one source was

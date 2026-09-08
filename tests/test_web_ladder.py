@@ -11,13 +11,13 @@ from tests.test_ladder import save_state
 
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
-    from gaffer.config import serving_config
+    from gaffer.config import invalidate
 
     monkeypatch.chdir(tmp_path)
-    serving_config.cache_clear()
+    invalidate()
     save_state({"max_hits": 2, "max_transfers": 15})
     yield TestClient(create_app())
-    serving_config.cache_clear()
+    invalidate()
 
 
 def _wait(client, job_id):
@@ -88,7 +88,7 @@ def test_a_cap_saved_through_settings_moves_the_ladder_now(client,
     """The end of the loop the card drives: POST /api/settings, rebuild,
     and the served payload highlights the new cap — without a re-`advise`.
     The state was saved under `max_hits=2`."""
-    from gaffer.config import serving_config
+    from gaffer.config import invalidate
     from gaffer.ladder import build_ladder
 
     # The settings panel only offers a key it can read a *current* value for,
@@ -96,7 +96,7 @@ def test_a_cap_saved_through_settings_moves_the_ladder_now(client,
     (tmp_path / "config.toml").write_text(
         "[fpl]\nentry_id = 111\nleague_id = 222\n\n[optimizer]\n"
         "horizon = 2\n")
-    serving_config.cache_clear()
+    invalidate()
     resp = client.post("/api/settings", json={"key": "max_hits", "value": 1})
     assert resp.status_code == 200, resp.text
     build_ladder(1, n_draws=10, seed=1)

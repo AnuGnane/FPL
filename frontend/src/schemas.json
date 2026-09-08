@@ -8079,7 +8079,7 @@
       }
      ],
      "default": null,
-     "description": "Players per position the solver may consider, on top of the ones you own.\n\nNamed for what it is on the wire \u2014 a solver pool \u2014 since a schema field\ncarries no TOML section with it. The value is ``optimizer_top_n()``'s, so\nit is what an actual solve would get rather than what the file says."
+     "description": "Players per position the solver may consider, on top of the ones you own.\n\nNamed for what it is on the wire \u2014 a solver pool \u2014 since a schema field\ncarries no TOML section with it. The value is\n``config_in_force().solver_top_n()``'s, so it is what an actual solve\nwould get rather than what the file says."
     }
    },
    "required": [

@@ -222,11 +222,11 @@ def save_solve_state(state: SolveState) -> tuple[Path, Path]:
     # The import is local, not top-of-module: ``artifacts`` is imported early
     # by ``config``'s own callers and a module-level import here is a cycle
     # waiting for a refactor. ``save_availability`` (:454) sets the precedent.
-    from gaffer.config import serving_config
+    from gaffer.config import config_in_force
     try:
         save_projection_snapshot(
             state.pool, state.gw, state.generated_at,
-            str(getattr(serving_config(), "current_season", "") or ""))
+            str(getattr(config_in_force(), "current_season", "") or ""))
     except Exception as exc:  # noqa: BLE001 — a snapshot is never worth a run
         print(f"projections: no snapshot kept for GW{state.gw} ({exc})")
     return parquet, meta
@@ -304,7 +304,7 @@ def caps_from_state(state: SolveState) -> tuple[int | None, int | None]:
     re-solve calls "original" are the same plan.
     """
     # Local import: this module is imported early by config's own callers
-    # (see ``save_solve_state``'s ``serving_config`` import for the cycle).
+    # (see ``save_solve_state``'s ``config_in_force`` import for the cycle).
     from gaffer.config import NO_CAP
 
     def cap(key: str) -> int | None:
@@ -495,9 +495,9 @@ def save_availability(avail, gw: int) -> Path | None:
         # Gated on the same key the availability pass reads, so "no read, no
         # marker" holds for the artifact too. Idempotent, so a frame that
         # already carries them is not re-read.
-        from gaffer.config import serving_config
+        from gaffer.config import config_in_force
         from gaffer.overrides import attach_overrides
-        if serving_config().news_overrides:
+        if config_in_force().news_overrides:
             out = attach_overrides(out)
         for col in AVAILABILITY_COLS:
             if col not in out.columns:

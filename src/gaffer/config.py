@@ -53,7 +53,7 @@ DEFAULT_TOP_N = {"GKP": 8, "DEF": 22, "MID": 26, "FWD": 14}
 that ``Config.solver_top_n`` can merge over it without ``config`` importing
 the optimizer; ``milp`` imports it from here."""
 
-BOUNDS: dict[str, tuple[float, float]] = {
+BOUNDS: dict[str, tuple[int | float, int | float]] = {
     "horizon": (1, 8), "decay": (0.0, 1.0), "itb_value": (0.0, 1.0),
     "bench_curve": (0.0, 1.0), "lambda_cap": (0.0, 2.0), "top_n": (1, 200),
     "max_hits": (0, NO_CAP), "max_transfers": (0, NO_CAP),
@@ -65,7 +65,9 @@ enforces all of it on a write; the loader enforces the three it always
 did (the two caps and the bar). ``hit_bar``: below 0.5 a step up the
 ladder would be taken on a coin toss; above 0.95 no step ever passes
 (v16 §3.2). ``focus``'s ceiling is a numeric bound because the range
-check needs one."""
+check needs one. An integer pair is the declaration that the setting
+is a whole number, and :func:`out_of_range` words it so; a pair written
+``(0.0, 1.0)`` is the declaration that it is not."""
 
 HIT_BAR_LO, HIT_BAR_HI = BOUNDS["hit_bar"]
 
@@ -75,19 +77,19 @@ _SECTION = {"max_hits": "optimizer", "max_transfers": "optimizer",
 router that knows the section passes it instead."""
 
 
-def out_of_range(field: str, value, section: str | None = None) -> str:
-    """The one sentence for a value outside ``BOUNDS[field]`` (v17e §2.3):
+def out_of_range(name: str, value, section: str | None = None) -> str:
+    """The one sentence for a value outside ``BOUNDS[name]`` (v17e §2.3):
     ``[optimizer] hit_bar = 1.2 — must be a number between 0.5 and 0.95``,
     with ``(15 means no cap)`` appended for the two caps. The loader raises
     it as :class:`GafferError`; the settings router returns it as the
     422's ``error``. "whole number" when both bounds are integers."""
-    lo, hi = BOUNDS[field]
-    section = section or _SECTION.get(field, "optimizer")
+    lo, hi = BOUNDS[name]
+    section = section or _SECTION.get(name, "optimizer")
     kind = ("a whole number" if isinstance(lo, int) and isinstance(hi, int)
             else "a number")
-    tail = f" ({NO_CAP} means no cap)" if field in ("max_hits",
-                                                    "max_transfers") else ""
-    return (f"[{section}] {field} = {value!r} — must be {kind} between "
+    tail = (f" ({NO_CAP} means no cap)"
+            if name in ("max_hits", "max_transfers") else "")
+    return (f"[{section}] {name} = {value!r} — must be {kind} between "
             f"{lo} and {hi}{tail}")
 
 
@@ -288,7 +290,11 @@ BASE_FILE = "config.toml"
 
 def base_exists() -> bool:
     """Whether the working directory has a ``config.toml`` at all — the
-    state a cold clone is in (v17e §2.8)."""
+    state a cold clone is in (v17e §2.8).
+
+    The working directory's pair, which is what a serving process reads;
+    ``load_config(path)`` is the other question, and resolves the overlay
+    beside ``path``."""
     return Path(BASE_FILE).exists()
 
 
@@ -333,7 +339,11 @@ def value_source(section: str, key: str) -> str:
     """Which file the in-force value of ``[section] key`` comes from:
     ``"local"`` (the overlay), ``"base"`` (``config.toml``) or
     ``"default"`` (the dataclass). Three different facts: only a local
-    value can be reset (v17e §2.8)."""
+    value can be reset (v17e §2.8).
+
+    The working directory's pair, which is what a serving process reads;
+    ``load_config(path)`` is the other question, and resolves the overlay
+    beside ``path``."""
     local, _ = read_overlay()
     if key in _table(local, section):
         return "local"
@@ -513,7 +523,7 @@ def _check_hit_bar(cfg: "Config") -> None:
         raise GafferError(out_of_range("hit_bar", value))
 
 
-def load_config(path: Path | str = "config.toml") -> Config:
+def load_config(path: Path | str = BASE_FILE) -> Config:
     file = Path(path)
     if not file.exists():
         # A fresh clone has no config.toml: it carries an API key, so it is
@@ -636,22 +646,11 @@ def invalidate() -> None:
     that write a ``config.toml`` under a running process call this; so
     does anything else that edits the file."""
     config_in_force.cache_clear()
-    from gaffer.price_timing import owned_price_falls  # circular at import
+    # Deferred: ``gaffer.price_timing`` imports this module at load
+    # (v17e §2.2), so a module-level import here would be circular.
+    from gaffer.price_timing import owned_price_falls
 
     owned_price_falls.cache_clear()
-
-
-def serving_config() -> Config:
-    """Deleted in v17e Task 3; :func:`config_in_force` is the read."""
-    return config_in_force()
-
-
-# The view's own cache handle and not :func:`invalidate`, so the wrapper is
-# exactly what it was until Task 3 deletes it: the two callers that also want
-# the price-fall table dropped still spend their own line for it, and a test
-# counting those clears counts the same number it always did.
-serving_config.cache_clear = config_in_force.cache_clear
-serving_config.cache_info = config_in_force.cache_info
 
 
 def focus_league() -> int:
@@ -660,38 +659,3 @@ def focus_league() -> int:
     :func:`load_config` resolves ``Config.league_id``, read through the
     view so a cold clone reads 0 by the same path as everything else."""
     return int(config_in_force().league_id)
-
-
-def price_timing(path: Path | str = "config.toml") -> bool:
-    """Deleted in v17e Task 3; ``config_in_force().price_timing`` is the read."""
-    try:
-        return bool(load_config(path).price_timing)
-    except Exception:  # noqa: BLE001
-        return True
-
-
-def xg_per_shot(path: Path | str = "config.toml") -> bool:
-    """Deleted in v17e Task 3; ``config_in_force().xg_per_shot`` is the read."""
-    try:
-        return bool(load_config(path).xg_per_shot)
-    except Exception:  # noqa: BLE001
-        return False
-
-
-def lineup_providers(path: Path | str = "config.toml") -> list[str]:
-    """Deleted in v17e Task 3; the field is ``news_lineup_providers``."""
-    try:
-        return list(load_config(path).news_lineup_providers)
-    except Exception:  # noqa: BLE001
-        return list(DEFAULT_LINEUP_PROVIDERS)
-
-
-def optimizer_top_n(path: Path | str = "config.toml") -> dict[str, int]:
-    """Deleted in v17e Task 3; ``config_in_force().solver_top_n()`` is the read."""
-    try:
-        return load_config(path).solver_top_n()
-    except Exception:  # noqa: BLE001
-        return dict(DEFAULT_TOP_N)
-
-
-optimizer_top_n.cache_clear = lambda: None

@@ -152,7 +152,7 @@ def _model_values(code: int) -> tuple[float | None, float | None]:
 
 
 def _panel() -> OverridesPanel:
-    from gaffer.config import serving_config
+    from gaffer.config import config_in_force
 
     names = _names()
     rows = [OverrideRow(code=code, name=names.get(code, str(code)),
@@ -162,7 +162,7 @@ def _panel() -> OverridesPanel:
                         model_p_play=row.get("model_p_play"),
                         model_e_min=row.get("model_e_min"))
             for code, row in sorted(load_overrides().items())]
-    return OverridesPanel(active=bool(serving_config().news_overrides),
+    return OverridesPanel(active=bool(config_in_force().news_overrides),
                           rows=rows)
 
 

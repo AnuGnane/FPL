@@ -275,8 +275,8 @@ def test_the_report_makes_no_claim_about_chips(board):
 def test_the_default_seed_is_the_advice_seed_moved_out_of_its_way(board,
                                                                   monkeypatch):
     """I4: the sweep must not re-draw the advice path's own noise sequence."""
-    from gaffer.config import serving_config
+    from gaffer.config import config_in_force
 
-    base = int(serving_config().scenarios_seed)
+    base = int(config_in_force().scenarios_seed)
     payload = run_sensitivity(k=2)
     assert payload["seed"] == base + 1_000_000 + 5

@@ -2,11 +2,11 @@
 
 Writes ``config.local.toml`` and **never** ``config.toml`` (spec §8: a UI that
 edits ``config.toml`` is out of scope, and that file carries the odds API key).
-The overlay is merged over the base by ``config.load_config`` and by all four
-module-level readers — ``price_timing``, ``xg_per_shot``, ``optimizer_top_n``
-and ``lineup_providers``, five call sites of ``config.py``'s
-``_raw_with_overlay`` between them. An overlay only the loader honoured would
-be a switch that saves and changes nothing.
+The overlay is merged over the base by ``config.load_config``, which since
+v17e §2.1 is the only reader there is: every key the tab writes is a
+``Config`` field, and every serve-time read of one goes through
+``config.config_in_force``. An overlay only the loader honoured would be a
+switch that saves and changes nothing.
 
 Refusals use the what-if lab's ``{constraint, error, players}`` shape so the
 client has one error shape for every write endpoint, exactly as
@@ -24,10 +24,8 @@ from pathlib import Path
 import tomli_w
 from fastapi import APIRouter, HTTPException
 
-from gaffer.config import (LOCAL_OVERLAY, load_config, optimizer_top_n,
-                           serving_config)
+from gaffer.config import LOCAL_OVERLAY, invalidate, load_config
 from gaffer.io import atomic_write
-from gaffer.price_timing import owned_price_falls
 from gaffer.web.schemas import SettingRow, SettingsPanel, SettingWrite
 from gaffer.web.settings_keys import (BY_FIELD, WHITELIST, current_value,
                                       live_keys)
@@ -45,7 +43,8 @@ APPLY_NOTE = (
 
 Hedged on purpose. The first draft said a running job keeps the values it
 started with, full stop, and that is not true of every key: ``build_pool``
-calls ``optimizer_top_n()`` per solve rather than taking a ``Config``, so a
+calls ``config_in_force().solver_top_n()`` per solve rather than taking the
+``Config`` it was handed, so a
 multi-week plan that is still solving can cross a ``top_n`` save mid-run. A
 note that overstates the isolation is worse than one that admits the seam,
 because the reader who hits it has been told it cannot happen.
@@ -118,9 +117,9 @@ def _panel() -> SettingsPanel:
             source = "default"
         rows.append(SettingRow(
             key=entry.field, label=entry.label, kind=entry.kind,
-            # Through `current_value`, never `getattr(cfg, ...)`:
-            # `price_timing` is not a Config field and never becomes one, so
-            # a getattr here would drop the one row the reader kind exists for.
+            # Through `current_value`, never `getattr(cfg, ...)`: the focus
+            # row's value comes from a reader and not the dataclass, so a
+            # getattr here would drop the one row the reader kind exists for.
             value=current_value(entry, cfg), lo=entry.lo, hi=entry.hi,
             choices=list(entry.choices),
             section=entry.section, help=entry.help, source=source))
@@ -252,11 +251,8 @@ def save(req: SettingWrite) -> SettingsPanel:
     else:
         raw.pop(entry.section, None)
     _write(raw)
-    # Three serve-time caches are keyed on this file and every one of them
-    # lives for the life of the process, so a save that did not drop them
-    # would leave a seam on the old value with nothing on the page to say so.
-    # `price_timing()` is uncached by design and needs no line here.
-    serving_config.cache_clear()
-    optimizer_top_n.cache_clear()
-    owned_price_falls.cache_clear()
+    # v17e §2.2: every cache keyed on the file, dropped in one call. A save
+    # that did not drop them would leave a seam on the old value with nothing
+    # on the page to say so.
+    invalidate()
     return _panel()

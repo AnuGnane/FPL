@@ -22,13 +22,14 @@ mapped here rather than in prose (plan A4):
 * the spec's ``[solver]`` section does not exist. ``top_n`` and
   ``price_timing`` are ``[optimizer]`` keys (orchestrator ruling, 2026-09-02).
 
-And one entry is not a ``Config`` field at all. ``price_timing`` is popped out
-of ``[optimizer]`` before the splat and read by a module-level reader (grep
-``NON_FIELD_OPTIMIZER_KEYS``), so its current value cannot come from
-``getattr(cfg, ...)``. That is what :attr:`SettingKey.source` exists for:
-``"config"`` reads the dataclass, ``"reader"`` imports a dotted path lazily.
-Writing is identical either way — the overlay is a TOML file and the write
-goes to ``[optimizer] price_timing`` exactly as it would for a field.
+Every entry but one is a ``Config`` field. ``price_timing`` was the
+exception until v17e §2.1 made it a field; the focus league is the one that
+remains, because the whitelist may never name ``league_id`` (v12 W5's secrets
+pin) and the effective id has to be read some other way. That is what
+:attr:`SettingKey.source` exists for: ``"config"`` reads the dataclass,
+``"reader"`` imports a dotted path lazily. Writing is identical either way —
+the overlay is a TOML file and the write goes to the entry's
+``[section] key`` regardless.
 
 An entry whose reader cannot find it is dropped by :func:`live_keys` and named
 in the panel's ``unavailable`` list, because a form that is quietly a field
@@ -103,7 +104,7 @@ WHITELIST: tuple[SettingKey, ...] = (
                "How many players per position reach the solver. A smaller "
                "pool solves faster and can exclude a player you own. One key, "
                "read twice: it sets Config.top_n and the pool "
-               "`optimizer_top_n()` hands the solver."),
+               "`Config.solver_top_n()` hands the solver."),
     # A field since v17e §2.1 (it was v12 W2's popped-out reader key); read
     # like every other "config" entry.
     SettingKey("price_timing", "optimizer", "price_timing",

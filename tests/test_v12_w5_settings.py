@@ -1,9 +1,9 @@
 """v12 W5 §6.2 — the Settings endpoint.
 
 Each whitelist entry declares how to read its own current value (plan A4):
-eight from `dataclasses.fields(Config)`, one — `price_timing` — from a
-module-level reader W2 owns, because that key is popped out of `[optimizer]`
-before the splat and never becomes a field. Absence is a first-class answer
+all but one from `dataclasses.fields(Config)`, and `focus` from a reader,
+because the effective league id is resolved by the loader and the whitelist
+may never name `league_id`. Absence is a first-class answer
 here rather than a fixture problem: an entry whose reader cannot find it is
 named in `unavailable` and left out of the form.
 """
@@ -16,8 +16,8 @@ import pytest
 import tomllib
 from fastapi.testclient import TestClient
 
-from gaffer.config import (LOCAL_OVERLAY, load_config, optimizer_top_n,
-                           price_timing, serving_config)
+from gaffer.config import (LOCAL_OVERLAY, config_in_force, invalidate,
+                           load_config)
 from gaffer.web.app import create_app
 from gaffer.web.settings_keys import BY_FIELD, WHITELIST, live_keys
 
@@ -36,11 +36,9 @@ decay = 0.85
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "config.toml").write_text(BASE)
-    serving_config.cache_clear()
-    optimizer_top_n.cache_clear()
+    invalidate()
     yield TestClient(create_app())
-    serving_config.cache_clear()
-    optimizer_top_n.cache_clear()
+    invalidate()
 
 
 def overlay(tmp_path) -> dict:
@@ -130,9 +128,9 @@ def test_price_timing_is_written_into_optimizer_like_any_other_key(client,
                        json={"key": "price_timing",
                              "value": False}).status_code == 200
     assert overlay(tmp_path)["optimizer"]["price_timing"] is False
-    # And the reader that serves it sees the write, which is the only reason
-    # the row is worth having at all.
-    assert price_timing(tmp_path / "config.toml") is False
+    # And the loader sees the write, which is the only reason the row is
+    # worth having at all.
+    assert load_config(tmp_path / "config.toml").price_timing is False
 
 
 def test_a_key_this_build_does_not_have_is_reported_not_hidden(client):
@@ -281,35 +279,35 @@ def test_the_pool_is_a_whole_number_for_each_position(client, tmp_path):
                                                        "MID": 7, "FWD": 8}
 
 
-def test_the_write_clears_the_serving_config_cache(client):
-    """serving_config is lru_cached for the life of the process (config.py
-    :311-333). A save that did not clear it would leave the news layer on the
-    old value with nothing on the page to say so."""
-    assert serving_config().horizon == 3
+def test_the_write_clears_the_config_in_force_cache(client):
+    """`config_in_force` is lru_cached for the life of the process (v17e
+    §2.2). A save that did not clear it would leave the news layer on the old
+    value with nothing on the page to say so."""
+    assert config_in_force().horizon == 3
     client.post("/api/settings", json={"key": "horizon", "value": 6})
-    assert serving_config().horizon == 6
+    assert config_in_force().horizon == 6
 
 
 def test_the_write_clears_the_solver_pool_cache(client):
-    """`optimizer_top_n` is cached on the same terms and is what `build_pool`
+    """The pool comes off the same cached view and is what `build_pool`
     actually reads. A saved pool size the solver never sees is the exact shape
     of the failure this endpoint exists to avoid."""
-    assert optimizer_top_n()["GKP"] == 8
+    assert config_in_force().solver_top_n()["GKP"] == 8
     client.post("/api/settings",
                 json={"key": "top_n",
                       "value": {"GKP": 3, "DEF": 4, "MID": 5, "FWD": 6}})
-    assert optimizer_top_n()["GKP"] == 3
+    assert config_in_force().solver_top_n()["GKP"] == 3
 
 
 def test_the_write_clears_the_price_fall_cache(client, monkeypatch):
-    """The third serve-time cache keyed on `[optimizer]`. Nothing on this
+    """The other serve-time cache keyed on `[optimizer]`. Nothing on this
     endpoint can observe its contents, so the claim under test is that the
-    save asks for it to be dropped — the same one line meta.py's health poll
-    spends (`meta.py:318`)."""
-    from gaffer.web.routers import settings as mod
+    save asks for it to be dropped — which since v17e §2.2 is `invalidate()`'s
+    second half rather than a line of the router's own."""
+    import gaffer.price_timing
 
     seen = []
-    monkeypatch.setattr(mod.owned_price_falls, "cache_clear",
+    monkeypatch.setattr(gaffer.price_timing.owned_price_falls, "cache_clear",
                         lambda: seen.append(1))
     client.post("/api/settings", json={"key": "price_timing", "value": False})
     assert seen == [1]
@@ -350,9 +348,9 @@ def test_a_cold_clone_with_no_config_is_a_200_that_says_so(tmp_path,
     """Every other read endpoint degrades rather than 500s and this one is
     the endpoint a new user reaches first."""
     monkeypatch.chdir(tmp_path)
-    serving_config.cache_clear()
+    invalidate()
     body = TestClient(create_app()).get("/api/settings")
     assert body.status_code == 200
     assert body.json()["rows"] == []
     assert "config.toml" in body.json()["overlay_error"]
-    serving_config.cache_clear()
+    invalidate()

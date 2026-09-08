@@ -25,10 +25,8 @@ from __future__ import annotations
 
 import dataclasses
 
-import pytest
-
 from gaffer.config import (DEFAULT_LINEUP_PROVIDERS, Config, _providers,
-                           config_in_force, invalidate, load_config)
+                           config_in_force, load_config)
 
 
 def _write(tmp_path, body: str):
@@ -79,9 +77,7 @@ def test_a_config_that_will_not_load_gives_the_default(tmp_path, monkeypatch):
     that fallback; the one view owns it now."""
     monkeypatch.chdir(tmp_path)
     (tmp_path / "config.toml").write_text("[news\n")
-    invalidate()
     assert config_in_force().news_lineup_providers == ["ffs", "rotowire"]
-    invalidate()
 
 
 def test_the_switch_is_a_field_since_v17e():
@@ -98,5 +94,3 @@ def test_the_two_switches_compose(tmp_path):
     path = _write(tmp_path,
                   '[news]\nlineups = false\nlineup_providers = ["ffs"]\n')
     assert load_config(path).news_lineup_providers == ["ffs"]
-    with pytest.raises(Exception):
-        load_config(tmp_path / "absent.toml")

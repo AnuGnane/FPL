@@ -104,9 +104,9 @@ def main() -> None:
     # offset: this gate is about the sweep that decided, so it replays that
     # sweep's draws. ``SolveState.opt`` does not carry the seed — it holds the
     # solver bundle — so it comes from the config, exactly as advise reads it.
-    from gaffer.config import serving_config
+    from gaffer.config import config_in_force
 
-    seed = int(serving_config().scenarios_seed) + int(gw)
+    seed = int(config_in_force().scenarios_seed) + int(gw)
     captain = int(advice["captain"]["code"])
     out = {"gw": int(gw), "captain": captain, "seed": seed, "n": N}
     for arm, draw in (("off", False), ("on", True)):

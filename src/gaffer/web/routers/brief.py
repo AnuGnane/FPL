@@ -31,9 +31,9 @@ def brief() -> BriefPanel:
 
 @router.post("/brief", status_code=202, response_model=JobAccepted)
 def write(request: Request):
-    from gaffer.config import serving_config
+    from gaffer.config import config_in_force
 
-    timeout = float(serving_config().news_llm_timeout_s) + BRIEF_TIMEOUT_MARGIN_S
+    timeout = float(config_in_force().news_llm_timeout_s) + BRIEF_TIMEOUT_MARGIN_S
     try:
         job_id = request.app.state.jobs.submit(lambda: run_brief(), timeout_s=timeout)
     except JobQueueFull as exc:

@@ -4,7 +4,12 @@
 The four private readers are fields (§2.1), ``config_in_force()`` is the
 one cached view and ``invalidate()`` the one clearing (§2.2), the bounds
 and the refusal sentence are stated once (§2.3), and nothing outside
-``config.py`` opens either TOML file (§1.2a)."""
+``config.py`` opens either TOML file (§1.2a).
+
+The three field-read tests below deliberately restate facts the moved v12
+and v10 files also assert. That is the point: this file is the cycle's one
+readable rail, and a reader who opens it should not have to go and find
+four other files to learn what the interface promises."""
 from __future__ import annotations
 
 import dataclasses
@@ -26,13 +31,6 @@ def _cfg(tmp_path, body: str = "", local: str | None = None):
     if local is not None:
         (tmp_path / LOCAL_OVERLAY).write_text(local)
     return tmp_path / "config.toml"
-
-
-@pytest.fixture(autouse=True)
-def _fresh():
-    invalidate()
-    yield
-    invalidate()
 
 
 # --- §2.1 the four readers as fields -------------------------------------
@@ -112,13 +110,17 @@ def test_config_in_force_never_raises(tmp_path, monkeypatch):
     assert cfg.price_timing is True
 
 
-def test_invalidate_drops_the_price_fall_table(monkeypatch):
-    from gaffer import price_timing as pt
+def test_invalidate_drops_the_price_fall_table(tmp_path, monkeypatch):
+    """Behaviour, not a mock: seeding the table under a config-less cwd
+    caches an empty answer, and ``invalidate()`` has to drop that entry too
+    or a flipped switch would be read against a stale table (v17e §2.2)."""
+    from gaffer.price_timing import owned_price_falls
 
-    seen = []
-    monkeypatch.setattr(pt.owned_price_falls, "cache_clear", lambda: seen.append(1))
+    monkeypatch.chdir(tmp_path)
+    owned_price_falls([1])
+    assert owned_price_falls.cache_info().currsize == 1
     invalidate()
-    assert seen == [1]
+    assert owned_price_falls.cache_info().currsize == 0
 
 
 def test_focus_league_reads_the_effective_id_through_the_view(tmp_path, monkeypatch):
@@ -145,7 +147,10 @@ def test_out_of_range_is_one_sentence_with_the_section_and_the_bounds():
     assert out_of_range("max_hits", 16) == (
         "[optimizer] max_hits = 16 — must be a whole number between 0 and 15 "
         "(15 means no cap)")
-    assert out_of_range("decay", 4.0, "optimizer").startswith("[optimizer] decay = 4.0")
+    assert out_of_range("horizon", 9) == (
+        "[optimizer] horizon = 9 — must be a whole number between 1 and 8")
+    assert out_of_range("decay", 4.0, "optimizer") == (
+        "[optimizer] decay = 4.0 — must be a number between 0.0 and 1.0")
 
 
 def test_the_loader_refuses_with_the_same_sentence(tmp_path):
@@ -191,3 +196,17 @@ def test_base_exists_is_the_cwd_file(tmp_path, monkeypatch):
     assert base_exists() is False
     _cfg(tmp_path)
     assert base_exists() is True
+
+
+# --- §0 the deletion test ---------------------------------------------------
+
+def test_the_old_readers_and_serving_config_are_gone():
+    """v17e §0: a name that survives is a name someone keeps reading
+    through, so the four private readers and the old view are deleted
+    rather than aliased."""
+    import gaffer.config as mod
+
+    for name in ("serving_config", "price_timing", "xg_per_shot",
+                 "lineup_providers", "optimizer_top_n",
+                 "NON_FIELD_OPTIMIZER_KEYS", "_optimizer_top_n"):
+        assert not hasattr(mod, name), name

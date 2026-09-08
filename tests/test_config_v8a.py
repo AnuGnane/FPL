@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from gaffer.config import Config, load_config, serving_config
+from gaffer.config import (Config, config_in_force, invalidate,
+                           load_config)
 
 _TOML = """
 [fpl]
@@ -55,11 +56,11 @@ def test_a_missing_config_gives_the_serving_defaults_not_a_raise(monkeypatch,
     """The serve-time seams read this from inside fetchers that must never
     block advice, and a clone without a config.toml still has to predict."""
     monkeypatch.chdir(tmp_path)
-    serving_config.cache_clear()
-    cfg = serving_config()
+    invalidate()
+    cfg = config_in_force()
     assert cfg.news_lineup_absence is True
     assert cfg.news_llm_classifier is False
-    serving_config.cache_clear()
+    invalidate()
 
 
 def test_the_shipped_command_hands_the_model_no_tools():

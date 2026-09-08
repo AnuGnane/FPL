@@ -422,10 +422,10 @@ def digest(kind: str = typer.Option(
     opinion about it; the opinion is ``[digest] notify``, read here.
     """
     try:
-        from gaffer.config import serving_config
+        from gaffer.config import config_in_force
         from gaffer.digest import run_digest
 
-        run_digest(kind, notify=bool(serving_config().digest_notify))
+        run_digest(kind, notify=bool(config_in_force().digest_notify))
     except Exception as exc:  # noqa: BLE001 — a scheduled job never blocks
         # run_digest swallows its own failures and raises only on an unknown
         # kind; the imports cannot, and an ImportError here would be the one

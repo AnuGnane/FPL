@@ -187,7 +187,7 @@ def run_sensitivity(gw: int | None = None, k: int = SENSITIVITY_K,
             for r in state.pool.drop_duplicates("code").itertuples()}
 
     if seed is None:
-        from gaffer.config import serving_config
+        from gaffer.config import config_in_force
         # Per gameweek, like the advice sweep: one fixed seed reused every
         # week would re-draw the same noise sequence all season. Offset a
         # million clear of the advice path's own seeds so the two sweeps are
@@ -195,7 +195,7 @@ def run_sensitivity(gw: int | None = None, k: int = SENSITIVITY_K,
         # number, and a report that re-ran exactly the draws the advice
         # already gated on would agree with it for that reason and not
         # because the plan is robust.
-        seed = int(serving_config().scenarios_seed) + 1_000_000 + int(gw)
+        seed = int(config_in_force().scenarios_seed) + 1_000_000 + int(gw)
     xmins, notice = _xmins(gw, ep_by)
 
     solve_state = SolveInput(owned_codes=state.owned_codes, bank=state.bank,

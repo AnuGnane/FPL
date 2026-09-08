@@ -411,8 +411,8 @@ def served_note(ladder: dict, advice: dict | None) -> str | None:
 
 def _hit_bar() -> float:
     try:
-        from gaffer.config import serving_config
-        return float(serving_config().hit_bar)
+        from gaffer.config import config_in_force
+        return float(config_in_force().hit_bar)
     except Exception as exc:  # noqa: BLE001
         print(f"ladder: the live config would not read ({exc}); bar {HIT_BAR_FALLBACK}")
         return HIT_BAR_FALLBACK
@@ -717,13 +717,13 @@ def _caps(state) -> tuple[tuple[int | None, int | None], str]:
     ``advise``: the ladder does not depend on that module.
     """
     try:
-        from gaffer.config import NO_CAP, serving_config
+        from gaffer.config import NO_CAP, config_in_force
 
         def cap(value) -> int | None:
             value = int(value)
             return None if value >= NO_CAP else value
 
-        cfg = serving_config()
+        cfg = config_in_force()
         return (cap(cfg.max_hits), cap(cfg.max_transfers)), "config"
     except Exception as exc:  # noqa: BLE001 — an unreadable config is a
         # fallback, not a failed ladder.
@@ -755,8 +755,8 @@ def build_ladder(gw: int | None = None, *, n_draws: int = LADDER_DRAWS,
     meta = {int(r.code): {"name": str(r.name), "position": str(r.position)}
             for r in state.pool.drop_duplicates("code").itertuples()}
     if seed is None:
-        from gaffer.config import serving_config
-        seed = int(serving_config().scenarios_seed) + SEED_OFFSET + int(gw)
+        from gaffer.config import config_in_force
+        seed = int(config_in_force().scenarios_seed) + SEED_OFFSET + int(gw)
     n_draws = max(1, int(n_draws))
     started = time.perf_counter()
 

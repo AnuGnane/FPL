@@ -13,7 +13,7 @@ from __future__ import annotations
 import pandas as pd
 
 from gaffer.assets import load_bootstrap_sample
-from gaffer.config import xg_per_shot
+from gaffer.config import config_in_force
 from gaffer.data import store
 from gaffer.data.bootstrap import scoring_table
 from gaffer.data.elo import compute_elo
@@ -574,10 +574,14 @@ def attacking_features() -> list[str]:
     A function rather than a module constant, because the v12 §3.5 arm is a
     config flag and a constant evaluated at import time would bind whatever
     ``config.toml`` said when the process started — which is v9c's
-    disconnected-lever lesson from the other direction.
+    disconnected-lever lesson from the other direction. Since v17e §2.1 the
+    read is the one cached view, so a flag edited under a running process
+    reaches the next fit after ``invalidate()`` rather than on the next call;
+    a train run is minutes long and started from a cold process, so the trade
+    the cache makes costs this caller nothing.
     """
     return list(ATTACK_FEATURES) + (list(XG_PER_SHOT_FEATURES)
-                                    if xg_per_shot() else [])
+                                    if config_in_force().xg_per_shot else [])
 
 
 def train_all(df: pd.DataFrame, tg: pd.DataFrame, save: bool = True,

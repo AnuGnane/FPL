@@ -106,16 +106,16 @@ def _artifacts(tmp_path):
 
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
-    from gaffer.config import serving_config
+    from gaffer.config import invalidate
 
     monkeypatch.chdir(tmp_path)
     _artifacts(tmp_path)
     monkeypatch.setattr("gaffer.web.routers.league.fpl_client",
                         lambda: FakeClient())
     monkeypatch.setattr("gaffer.web.routers.league._OVERVIEW", {})
-    serving_config.cache_clear()
+    invalidate()
     yield TestClient(create_app())
-    serving_config.cache_clear()
+    invalidate()
 
 
 def test_race_has_standings_trajectory_gap_and_lambda(client):
@@ -195,10 +195,10 @@ def test_the_focus_race_names_its_league_and_its_source(client):
 
 
 def test_a_manual_stance_shows_on_the_focus_race_at_once(client, tmp_path):
-    from gaffer.config import LOCAL_OVERLAY, serving_config
+    from gaffer.config import LOCAL_OVERLAY, invalidate
 
     (tmp_path / LOCAL_OVERLAY).write_text('[league]\nstance = "defend"\n')
-    serving_config.cache_clear()
+    invalidate()
     body = client.get("/api/league/race").json()
     assert body["lam"] == -0.5 and body["stance"] == "defend"
     assert body["stance_source"] == "manual"
@@ -225,7 +225,7 @@ def test_a_league_that_is_not_private_is_refused_by_id(client):
 
 
 def test_a_focus_that_is_not_private_is_still_served(tmp_path, monkeypatch):
-    from gaffer.config import serving_config
+    from gaffer.config import invalidate
 
     monkeypatch.chdir(tmp_path)
     _artifacts(tmp_path)
@@ -234,14 +234,14 @@ def test_a_focus_that_is_not_private_is_still_served(tmp_path, monkeypatch):
     monkeypatch.setattr("gaffer.web.routers.league.fpl_client",
                         lambda: FakeClient())
     monkeypatch.setattr("gaffer.web.routers.league._OVERVIEW", {})
-    serving_config.cache_clear()
+    invalidate()
     body = TestClient(create_app()).get("/api/league/race").json()
     assert body["league_id"] == 314 and body["league_name"] == "Overall"
     assert body["focus"] is True
 
 
 def test_standings_page_until_my_row_is_in(tmp_path, monkeypatch):
-    from gaffer.config import serving_config
+    from gaffer.config import invalidate
 
     monkeypatch.chdir(tmp_path)
     _artifacts(tmp_path)
@@ -270,7 +270,7 @@ def test_standings_page_until_my_row_is_in(tmp_path, monkeypatch):
     fake = Paged()
     monkeypatch.setattr("gaffer.web.routers.league.fpl_client", lambda: fake)
     monkeypatch.setattr("gaffer.web.routers.league._OVERVIEW", {})
-    serving_config.cache_clear()
+    invalidate()
     body = TestClient(create_app()).get("/api/league/race").json()
     # The overview asked league 5 for page 1 first; the race's own calls
     # are the last two, and page 3 is never fetched.

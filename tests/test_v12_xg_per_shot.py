@@ -117,6 +117,17 @@ def test_the_prediction_frame_builds_the_columns_too():
     assert set(XG_PER_SHOT_FEATURES) <= set(out.columns)
 
 
+def _switch(monkeypatch, on: bool):
+    """The training head's switch as ``attacking_features`` reads it (v17e
+    §2.2): the module's own view, patched at the name it calls."""
+    from gaffer.config import Config
+    from gaffer.models import train as tr
+
+    monkeypatch.setattr(tr, "config_in_force",
+                        lambda: Config(entry_id=1, league_id=2,
+                                       xg_per_shot=on))
+
+
 def test_every_attacking_feature_exists_on_the_prediction_frame(monkeypatch):
     """With the arm on, ``AttackingModel.predict`` indexes the served frame by
     ``attacking_features()``; a name it cannot find raises before a single
@@ -125,7 +136,7 @@ def test_every_attacking_feature_exists_on_the_prediction_frame(monkeypatch):
     are the caller's job, not this feature's."""
     from gaffer.models import train as tr
 
-    monkeypatch.setattr(tr, "xg_per_shot", lambda: True)
+    _switch(monkeypatch, True)
     out = build_prediction_frame(_pred_hist(), _pred_future())
     told = [c for c in tr.attacking_features() if c in XG_PER_SHOT_FEATURES]
     assert told == list(XG_PER_SHOT_FEATURES)
@@ -145,9 +156,9 @@ def test_the_attacking_model_is_told_only_when_the_flag_is_on(monkeypatch,
     assert load_config(off).xg_per_shot is False
     assert load_config(on).xg_per_shot is True
 
-    monkeypatch.setattr(tr, "xg_per_shot", lambda: False)
+    _switch(monkeypatch, False)
     assert set(tr.attacking_features()) & set(XG_PER_SHOT_FEATURES) == set()
-    monkeypatch.setattr(tr, "xg_per_shot", lambda: True)
+    _switch(monkeypatch, True)
     assert set(XG_PER_SHOT_FEATURES) <= set(tr.attacking_features())
 
 
@@ -159,9 +170,7 @@ def test_the_flag_defaults_off_and_survives_a_missing_file(tmp_path,
     from gaffer.config import config_in_force, invalidate
 
     monkeypatch.chdir(tmp_path)
-    invalidate()
     assert config_in_force().xg_per_shot is False
     (tmp_path / "config.toml").write_text("[model\nxg_per_shot = true")
     invalidate()
     assert config_in_force().xg_per_shot is False
-    invalidate()

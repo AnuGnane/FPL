@@ -182,6 +182,7 @@ def test_a_seeded_member_is_fit_on_member_zeros_feature_list(monkeypatch):
     ``ATTACK_FEATURES`` while the v12 §3.5 arm is on differs from member zero
     in its *inputs*, not its seed, and the measured spread stops being
     estimation noise."""
+    from gaffer.config import Config
     from gaffer.features.engineer import XG_PER_SHOT_FEATURES
     from gaffer.models import train as tr
 
@@ -196,7 +197,9 @@ def test_a_seeded_member_is_fit_on_member_zeros_feature_list(monkeypatch):
 
     import gaffer.calibrate_noise as cn
 
-    monkeypatch.setattr(tr, "xg_per_shot", lambda: True)
+    monkeypatch.setattr(
+        tr, "config_in_force",
+        lambda: Config(entry_id=1, league_id=2, xg_per_shot=True))
     out = cn._seeded_bundle(base, pd.DataFrame({"a": [1]}), 17,
                             minutes_cls=_Fake, attack_cls=_Fake)
     assert out["attacking"].cols == tr.attacking_features()

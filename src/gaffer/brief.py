@@ -396,8 +396,8 @@ def run_brief(gw: int | None = None, *, cfg=None,
         print(f"brief not written: {note}")
         return {"gw": None, "written": False, "note": note, "path": None}
     if cfg is None:
-        from gaffer.config import serving_config
-        cfg = serving_config()
+        from gaffer.config import config_in_force
+        cfg = config_in_force()
     cmd = str(getattr(cfg, "news_llm_command", "") or "").strip()
     if not cmd:
         note = "no llm_command configured under [news]"
