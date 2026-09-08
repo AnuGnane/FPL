@@ -10,7 +10,10 @@ from __future__ import annotations
 
 import copy
 import gzip
+import hashlib
 import json
+import os
+import shutil
 from dataclasses import asdict
 from pathlib import Path
 
@@ -189,3 +192,125 @@ def write_golden_toml(cfg: Config, path: Path) -> None:
             lines.append("price_timing = true")
         lines.append("")
     Path(path).write_text("\n".join(lines))
+
+
+HASHED_ROOTS = ("models", "data/history")
+"""The two inputs that stay on the machine and are pinned by digest (spec
+§2.5, §2.6): the models (14 MB) and the archive (3.3 MB)."""
+ABSENT_INPUTS = ("data/chip_scenarios.toml", "data/set_pieces.toml")
+"""Optional inputs the pipeline reads when present. Recorded as ``"absent"``
+so a later presence is a drift, not a surprise (spec §5)."""
+LEVER_FLOORS: dict[str, object] = {
+    "restraint_steps_taken": 1, "restraint_steps_refused": 1,
+    "objective_hits": 1, "chip_rows": 1, "league_lam": "nonzero",
+    "bench": 4, "vice": True, "plan_weeks": 6}
+"""What the golden must carry (spec §1 item 2; CONVENTIONS §10)."""
+
+
+def _sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def input_hashes(repo: Path) -> dict[str, str]:
+    """``{relative path: sha256}`` for every file under ``HASHED_ROOTS`` and
+    ``"absent"`` or a digest for each ``ABSENT_INPUTS`` entry. Sorted keys,
+    so the header is stable."""
+    repo = Path(repo)
+    out: dict[str, str] = {}
+    for root in HASHED_ROOTS:
+        base = repo / root
+        if not base.exists():
+            continue
+        for file in sorted(p for p in base.rglob("*") if p.is_file()):
+            out[file.relative_to(repo).as_posix()] = _sha256(file)
+    for rel in ABSENT_INPUTS:
+        file = repo / rel
+        out[rel] = _sha256(file) if file.exists() else "absent"
+    return dict(sorted(out.items()))
+
+
+def stale_inputs(header: dict, repo: Path) -> list[str]:
+    """The recorded inputs whose file on disk is missing or different, in
+    header order. Empty means the golden may run. A file on disk that the
+    header never recorded is ignored: the golden pins what it used."""
+    repo = Path(repo)
+    stale: list[str] = []
+    for rel, digest in header.get("inputs", {}).items():
+        file = repo / rel
+        now = _sha256(file) if file.exists() else "absent"
+        if now != digest:
+            stale.append(rel)
+    return stale
+
+
+def build_scratch_tree(root: Path, repo: Path, golden: Path = GOLDEN_DIR) -> None:
+    """The working directory a golden run executes in (spec §2.4). Symlinks
+    for the two hashed roots, copies for the frozen Core Insights, the
+    tracked tenures file and the golden ``config.toml``; an empty
+    ``reports/``; nothing else, so ``data/live`` and the rest are created by
+    the run and the repo's own trees are never written."""
+    root, repo, golden = Path(root), Path(repo), Path(golden)
+    (root / "data").mkdir(parents=True, exist_ok=True)
+    (root / "reports").mkdir(exist_ok=True)
+    os.symlink(repo / "models", root / "models")
+    os.symlink(repo / "data" / "history", root / "data" / "history")
+    shutil.copytree(golden / "data" / "core_insights",
+                    root / "data" / "core_insights")
+    shutil.copy(repo / "data" / "manager_tenures.toml",
+                root / "data" / "manager_tenures.toml")
+    shutil.copy(golden / "config.toml", root / "config.toml")
+
+
+def strip_volatile(obj, cwd: str):
+    """``generated_at`` removed at every depth; every string that starts with
+    the run's working directory rewritten to ``<cwd>`` (spec §1 item 1)."""
+    if isinstance(obj, dict):
+        return {k: strip_volatile(v, cwd) for k, v in obj.items()
+                if k != "generated_at"}
+    if isinstance(obj, list):
+        return [strip_volatile(v, cwd) for v in obj]
+    if isinstance(obj, str) and obj.startswith(cwd):
+        return "<cwd>" + obj[len(cwd):]
+    return obj
+
+
+def lever_counts(advice: dict) -> dict[str, object]:
+    """The counts the header's ``levers`` block carries, off the served
+    advice (spec §1 item 2)."""
+    steps = ((advice.get("restraint") or {}).get("steps")) or []
+    strategy = advice.get("strategy") or {}
+    return {
+        "restraint_steps_taken": sum(1 for s in steps if s.get("taken")),
+        "restraint_steps_refused": sum(1 for s in steps if not s.get("taken")),
+        "objective_hits": int((advice.get("objective") or {}).get("hits") or 0),
+        "chip_rows": len(advice.get("chip_table") or []),
+        "league_lam": float(strategy.get("lam") or 0.0),
+        "bench": len(advice.get("bench") or []),
+        "vice": bool(advice.get("vice")),
+        "plan_weeks": len(advice.get("plan_by_gw") or []),
+    }
+
+
+def levers_below_floor(counts: dict[str, object]) -> list[str]:
+    """The lever names that miss ``LEVER_FLOORS``, in floor order."""
+    missing: list[str] = []
+    for name, floor in LEVER_FLOORS.items():
+        value = counts.get(name)
+        if floor == "nonzero":
+            ok = bool(value)
+        elif isinstance(floor, bool):
+            ok = bool(value) is floor
+        else:
+            ok = value is not None and value >= floor
+        if not ok:
+            missing.append(name)
+    return missing
+
+
+def fixture_kb(directory: Path = GOLDEN_DIR) -> float:
+    return sum(p.stat().st_size for p in Path(directory).rglob("*")
+               if p.is_file()) / 1024

@@ -4,6 +4,7 @@ Unit tests over a synthetic bundle, and the two ``golden``-marked tests that
 run the real pipeline over the recorded one."""
 from __future__ import annotations
 
+import hashlib
 from dataclasses import asdict
 from pathlib import Path
 
@@ -119,3 +120,102 @@ def test_the_recording_client_fetches_through_the_parent_without_a_raw_dump(tmp_
     rec.save()
     assert gc.load_bundle(tmp_path / "out") == {"bootstrap-static/": {"events": [{"id": 4}]}}
     assert list((tmp_path / "raw").iterdir()) == []
+
+
+def _fake_repo(tmp_path: Path) -> Path:
+    repo = tmp_path / "repo"
+    (repo / "models").mkdir(parents=True)
+    (repo / "models" / "team.joblib").write_bytes(b"model")
+    (repo / "data" / "history").mkdir(parents=True)
+    (repo / "data" / "history" / "player_gw.parquet").write_bytes(b"rows")
+    (repo / "data" / "core_insights" / "2026-27").mkdir(parents=True)
+    (repo / "data" / "core_insights" / "2026-27" / "stats.parquet").write_bytes(b"ci")
+    (repo / "data" / "manager_tenures.toml").write_text("[x]\n")
+    return repo
+
+
+def test_input_hashes_cover_models_and_history_and_name_absent_optionals(tmp_path):
+    repo = _fake_repo(tmp_path)
+    hashes = gc.input_hashes(repo)
+    assert hashes["models/team.joblib"] == hashlib.sha256(b"model").hexdigest()
+    assert hashes["data/history/player_gw.parquet"] == hashlib.sha256(b"rows").hexdigest()
+    assert hashes["data/chip_scenarios.toml"] == "absent"
+    assert hashes["data/set_pieces.toml"] == "absent"
+    assert not any(k.startswith("data/core_insights") for k in hashes)
+
+
+def test_matching_hashes_do_not_skip(tmp_path):
+    repo = _fake_repo(tmp_path)
+    header = {"inputs": gc.input_hashes(repo)}
+    assert gc.stale_inputs(header, repo) == []
+
+
+def test_a_changed_model_hash_skips_with_the_file_named(tmp_path):
+    repo = _fake_repo(tmp_path)
+    header = {"inputs": gc.input_hashes(repo)}
+    (repo / "models" / "team.joblib").write_bytes(b"retrained")
+    assert gc.stale_inputs(header, repo) == ["models/team.joblib"]
+    (repo / "models" / "team.joblib").unlink()
+    assert gc.stale_inputs(header, repo) == ["models/team.joblib"]
+
+
+def test_an_optional_input_that_appears_is_a_drift(tmp_path):
+    repo = _fake_repo(tmp_path)
+    header = {"inputs": gc.input_hashes(repo)}
+    (repo / "data" / "set_pieces.toml").write_text("[pens]\n")
+    assert gc.stale_inputs(header, repo) == ["data/set_pieces.toml"]
+
+
+def test_build_scratch_tree_links_the_heavy_inputs_and_copies_the_frozen_ones(tmp_path):
+    repo = _fake_repo(tmp_path)
+    golden = tmp_path / "golden"
+    (golden / "data" / "core_insights" / "2026-27").mkdir(parents=True)
+    (golden / "data" / "core_insights" / "2026-27" / "stats.parquet").write_bytes(b"frozen")
+    gc.write_golden_toml(gc.golden_config(), golden / "config.toml")
+    root = tmp_path / "scratch"
+    gc.build_scratch_tree(root, repo, golden)
+    assert (root / "models").is_symlink() and (root / "models" / "team.joblib").read_bytes() == b"model"
+    assert (root / "data" / "history").is_symlink()
+    assert not (root / "data" / "core_insights").is_symlink()
+    assert (root / "data" / "core_insights" / "2026-27" / "stats.parquet").read_bytes() == b"frozen"
+    assert (root / "data" / "manager_tenures.toml").read_text() == "[x]\n"
+    assert (root / "config.toml").read_text() == (golden / "config.toml").read_text()
+    assert (root / "reports").is_dir()
+    assert not (root / "data" / "live").exists()
+
+
+def test_strip_volatile_removes_generated_at_and_rewrites_paths():
+    obj = {"generated_at": "2026-09-08T09:17:00", "gw": 4,
+           "nested": [{"generated_at": 1, "path": "/tmp/x/reports/a.json"}],
+           "other": "/tmp/y/z"}
+    assert gc.strip_volatile(obj, "/tmp/x") == {
+        "gw": 4, "nested": [{"path": "<cwd>/reports/a.json"}], "other": "/tmp/y/z"}
+
+
+def test_lever_counts_read_the_served_advice():
+    advice = {
+        "restraint": {"steps": [{"taken": True}, {"taken": False}, {"taken": False}]},
+        "objective": {"hits": 1}, "chip_table": [{}, {}],
+        "strategy": {"lam": 0.0958}, "bench": [1, 2, 3, 4], "vice": {"code": 9},
+        "plan_by_gw": [{}] * 6}
+    counts = gc.lever_counts(advice)
+    assert counts == {"restraint_steps_taken": 1, "restraint_steps_refused": 2,
+                      "objective_hits": 1, "chip_rows": 2, "league_lam": 0.0958,
+                      "bench": 4, "vice": True, "plan_weeks": 6}
+    assert gc.levers_below_floor(counts) == []
+    assert gc.levers_below_floor({**counts, "league_lam": 0.0, "plan_weeks": 3}) == [
+        "league_lam", "plan_weeks"]
+
+
+def test_lever_counts_survive_a_missing_block():
+    counts = gc.lever_counts({"restraint": None, "objective": None, "strategy": None,
+                              "chip_table": [], "bench": [], "vice": None,
+                              "plan_by_gw": []})
+    assert counts["restraint_steps_taken"] == 0 and counts["league_lam"] == 0.0
+    assert set(gc.levers_below_floor(counts)) == set(gc.LEVER_FLOORS)
+
+
+def test_the_fixture_is_under_the_size_budget():
+    if not (gc.GOLDEN_DIR / gc.HEADER_NAME).exists():
+        pytest.skip("golden board not recorded yet")
+    assert gc.fixture_kb(gc.GOLDEN_DIR) < 5120
