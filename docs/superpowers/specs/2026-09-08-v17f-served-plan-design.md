@@ -177,9 +177,12 @@ old router — loads.
 
 What it drops is the tolerance for a file that is not the shape any
 `gaffer advise` ever wrote: a non-numeric
-`hits`, a plan entry that is not a dict, a chip table that is not a list, a
-`gap` that is not a number. Such a file fails validation, and the route
-answers 404 with the field named in the detail. The one older shape a real
+`hits`, a plan entry that is not a dict, a chip table that is not a list.
+Such a file fails validation, and the route answers 404 with the field
+named in the detail. A `gap` that is not a number is the exception, and
+stays one: "unknown, and never 0.0" is a rule about a number the board
+prints, so the model keeps the router's coercion to `None` and
+`tests/test_v12_w3_plan_alternatives.py` keeps the test. The one older shape a real
 writer produced — `plan_by_gw` keyed by gameweek — is accepted by a
 before-validator on `plan_by_gw`.
 
