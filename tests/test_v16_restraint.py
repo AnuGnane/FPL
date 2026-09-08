@@ -75,7 +75,13 @@ def _cli(tmp_path, monkeypatch, advice):
 def test_the_cli_prints_the_restraint_line_and_the_objective_when_they_differ(
         tmp_path, monkeypatch):
     advice = _fixture_advice()
-    advice.restraint = {"chosen": "hits0", "bar": 0.6, "agrees": False, "note": "x",
+    # v17b §3.3 (orchestrator ruling): the CLI prints the served line rather
+    # than composing it, so the fixture carries what serve_rung now writes;
+    # the asserted strings are unchanged.
+    advice.restraint = {"chosen": "hits0", "label": "free transfers only", "bar": 0.6,
+                        "agrees": False, "note": "x", "hit_cost": 4,
+                        "line": ("restraint: free transfers only; the step to 1 hit "
+                                 "was refused, 46% — expected points alone"),
                         "steps": [{"below": "bank", "above": "hits0", "share": 0.79,
                                    "taken": True, "reason": "expected points alone",
                                    "reason_kind": "points"},
@@ -83,7 +89,8 @@ def test_the_cli_prints_the_restraint_line_and_the_objective_when_they_differ(
                                    "taken": False, "reason": "expected points alone",
                                    "reason_kind": "points"}]}
     advice.objective = {"buys": [{"name": "Isak"}], "sells": [{"name": "Rice"}],
-                        "hits": 1, "expected_pts": 60.0}
+                        "hits": 1, "expected_pts": 60.0,
+                        "line": "the objective wanted: Isak in; Rice out; 1 hit"}
     out = _cli(tmp_path, monkeypatch, advice)
     assert out.exit_code == 0, out.output
     assert ("restraint: free transfers only; the step to 1 hit was refused, "
@@ -94,8 +101,9 @@ def test_the_cli_prints_the_restraint_line_and_the_objective_when_they_differ(
 
 def test_the_cli_prints_no_objective_line_when_they_agree(tmp_path, monkeypatch):
     advice = _fixture_advice()
-    advice.restraint = {"chosen": "hits1", "bar": 0.6, "agrees": True, "note": None,
-                        "steps": []}
+    advice.restraint = {"chosen": "hits1", "label": "1 hit", "bar": 0.6, "agrees": True,
+                        "note": None, "hit_cost": 4, "steps": [],
+                        "line": "restraint: 1 hit; every step was taken"}
     advice.objective = {"buys": [], "sells": [], "hits": 1, "expected_pts": 60.0}
     out = _cli(tmp_path, monkeypatch, advice)
     assert "restraint: 1 hit; every step was taken\n" in out.output
