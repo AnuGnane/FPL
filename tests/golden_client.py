@@ -19,6 +19,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from contextlib import nullcontext
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -339,18 +340,21 @@ def run_golden(root: Path, client: FPLClient | None = None) -> tuple[dict, dict]
     process moves into it for the call and back out after. The serving
     cache is cleared on both sides so neither the repo's ``config.toml``
     nor the golden's leaks into the other; ``refresh_live``'s politeness
-    sleep is the one thing patched — 654 calls to a server the recorded
-    client never contacts."""
+    sleep is patched out for a ``RecordedClient`` only — those 654 waits are
+    courtesy to a server the replay never contacts, and every other client,
+    the recorder included, does contact it and keeps the real pacing."""
     from gaffer.config import serving_config
     import gaffer.data.live as live_mod
 
     root = Path(root).resolve()
     client = client if client is not None else RecordedClient()
+    hush = (patch.object(live_mod.time, "sleep", lambda *_: None)
+            if isinstance(client, RecordedClient) else nullcontext())
     before = Path.cwd()
     serving_config.cache_clear()
     try:
         os.chdir(root)
-        with patch.object(live_mod.time, "sleep", lambda *_: None):
+        with hush:
             advice = run_advise(golden_config(), client)
         gw = int(advice.gw)
         advice_json = json.loads((root / "reports" / f"gw{gw}-advice.json").read_text())

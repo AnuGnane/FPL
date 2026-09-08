@@ -293,18 +293,9 @@ def test_the_recorded_config_file_has_no_odds_section():
     assert "api_key" not in path.read_text()
 
 
-def test_run_golden_runs_in_the_scratch_tree_and_reads_the_two_files_back(tmp_path, monkeypatch):
-    """``run_golden`` over a stub ``run_advise``: it chdirs into the root,
-    clears the serving-config cache on both sides, silences the refresh
-    sleep, and hands back the two JSON files the run wrote."""
-    import time as time_mod
-
-    import gaffer.data.live as live_mod
-    from gaffer.config import serving_config
-
-    calls: dict[str, object] = {}
-    (tmp_path / "reports").mkdir()
-
+def _stub_run_advise(tmp_path: Path, calls: dict, live_mod):
+    """The ``run_advise`` a ``run_golden`` test runs instead of the pipeline:
+    it records what it was handed and writes the two report files."""
     def fake_run_advise(cfg, client=None):
         calls["cwd"] = Path.cwd()
         calls["cfg"] = cfg
@@ -319,19 +310,51 @@ def test_run_golden_runs_in_the_scratch_tree_and_reads_the_two_files_back(tmp_pa
             gw = 4
         return A()
 
-    monkeypatch.setattr(gc, "run_advise", fake_run_advise)
+    return fake_run_advise
+
+
+def test_run_golden_runs_in_the_scratch_tree_and_reads_the_two_files_back(tmp_path, monkeypatch):
+    """``run_golden`` over a stub ``run_advise``: it chdirs into the root,
+    clears the serving-config cache on both sides, silences the refresh
+    sleep for the replay client, and hands back the two JSON files the run
+    wrote."""
+    import time as time_mod
+
+    import gaffer.data.live as live_mod
+    from gaffer.config import serving_config
+
+    calls: dict[str, object] = {}
+    (tmp_path / "reports").mkdir()
+    client = gc.RecordedClient(_bundle(tmp_path / "bundle"))
+
+    monkeypatch.setattr(gc, "run_advise", _stub_run_advise(tmp_path, calls, live_mod))
     serving_config.cache_clear()
     before = Path.cwd()
-    sentinel = object()
-    advice, state = gc.run_golden(tmp_path, client=sentinel)
+    advice, state = gc.run_golden(tmp_path, client=client)
     assert Path.cwd() == before
     assert calls["cwd"] == tmp_path.resolve()
     assert asdict(calls["cfg"]) == asdict(gc.golden_config())
-    assert calls["client"] is sentinel
+    assert calls["client"] is client
     assert calls["sleep"] is not time_mod.sleep
     assert live_mod.time.sleep is time_mod.sleep
     assert advice == {"gw": 4, "generated_at": "x"} and state == {"gw": 4, "generated_at": "y"}
     assert serving_config.cache_info().currsize == 0
+
+
+def test_run_golden_keeps_the_politeness_sleep_for_a_live_client(tmp_path, monkeypatch):
+    """v17c §2.8: the sleep is silenced only for a ``RecordedClient``. The
+    recorder does contact the server, so ``--record``'s 654 element-summary
+    fetches keep ``refresh_live``'s pacing."""
+    import time as time_mod
+
+    import gaffer.data.live as live_mod
+
+    calls: dict[str, object] = {}
+    (tmp_path / "reports").mkdir()
+
+    monkeypatch.setattr(gc, "run_advise", _stub_run_advise(tmp_path, calls, live_mod))
+    gc.run_golden(tmp_path, client=object())
+    assert calls["sleep"] is time_mod.sleep
 
 
 def test_run_golden_restores_the_cwd_when_the_run_raises(tmp_path, monkeypatch):
