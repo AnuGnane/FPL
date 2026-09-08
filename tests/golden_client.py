@@ -11,9 +11,11 @@ from __future__ import annotations
 import copy
 import gzip
 import json
+from dataclasses import asdict
 from pathlib import Path
 
 from gaffer.api.client import FPLClient
+from gaffer.config import NO_CAP, Config
 
 GOLDEN_DIR = Path(__file__).resolve().parent / "data" / "golden_board"
 BUNDLE_NAME = "responses.json.gz"
@@ -41,6 +43,7 @@ def save_bundle(directory: Path, bodies: dict[str, object]) -> Path:
 
 
 def load_bundle(directory: Path) -> dict[str, object]:
+    """The read side of §2.2's bundle."""
     with gzip.open(Path(directory) / BUNDLE_NAME, "rb") as fh:
         return json.loads(fh.read())
 
@@ -82,3 +85,97 @@ class RecordingClient(FPLClient):
 
     def save(self) -> Path:
         return save_bundle(self.directory, self._bodies)
+
+
+def golden_config() -> Config:
+    """The config the golden was recorded under (spec §4). Literals, never
+    ``config.toml``: the header echoes ``asdict`` of this and the test
+    compares them, so an edit here without a re-record fails loudly.
+    Every knob that was a shipped value on 2026-09-08 is written out, and
+    the three lever knobs are the ones §4 starts from."""
+    return Config(
+        entry_id=2210493, league_id=1794743,
+        horizon=6, decay=0.85, vice_weight=0.1, bench_weight=0.10,
+        ft_value=1.5, itb_value=0.08, hit_cost=4, alt_plan_max_gap=2.0,
+        ft_use_penalty=0.2, bench_curve=[0.21, 0.06, 0.002],
+        max_hits=2, max_transfers=NO_CAP, hit_bar=0.60,
+        train_seasons=["2022-23", "2023-24", "2024-25", "2025-26"],
+        current_season="2026-27",
+        # No odds: the key is absent, and without a key player_props is
+        # unreachable, so it keeps the loader's default (True).
+        odds_api_key="",
+        scenarios_n=40, scenarios_seed=20260825, decision_priors=True,
+        news_enabled=False,
+        stance="auto",
+    )
+
+
+def _toml(value) -> str:
+    """A TOML literal for the value kinds ``Config`` carries. JSON's string
+    escaping is a subset of TOML's basic strings, so ``json.dumps`` is the
+    string writer."""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return repr(value)
+    if isinstance(value, str):
+        return json.dumps(value)
+    if isinstance(value, (list, tuple)):
+        return "[" + ", ".join(_toml(v) for v in value) + "]"
+    if isinstance(value, dict):
+        return "{ " + ", ".join(f"{k} = {_toml(v)}" for k, v in value.items()) + " }"
+    raise TypeError(f"no TOML form for {type(value).__name__}")
+
+
+# Section → (toml key, Config field). The inverse of ``load_config``'s
+# reading, table by table; ``[odds]`` is deliberately not here (spec §2.3).
+_TOML_LAYOUT: dict[str, list[tuple[str, str]]] = {
+    "fpl": [("entry_id", "entry_id"), ("league_id", "league_id")],
+    "optimizer": [(k, k) for k in (
+        "horizon", "decay", "vice_weight", "bench_weight", "ft_value",
+        "itb_value", "hit_cost", "alt_plan_max_gap", "max_hits",
+        "max_transfers", "hit_bar", "ft_use_penalty", "bench_curve", "top_n")],
+    "data": [("train_seasons", "train_seasons"),
+             ("current_season", "current_season")],
+    "understat": [("enabled", "understat_enabled")],
+    "scenarios": [("n", "scenarios_n"), ("seed", "scenarios_seed"),
+                  ("transfer_threshold", "transfer_threshold"),
+                  ("irreversible_threshold", "irreversible_threshold"),
+                  ("decision_priors", "decision_priors"),
+                  ("draw_availability", "draw_availability")],
+    "league": [(k, k) for k in (
+        "z_scale", "lambda_cap", "sigma_floor", "sigma_cap",
+        "sigma_min_weeks", "z_deadband", "tier_eo", "tier_sample",
+        "field_scrape", "field_sample", "sim_n", "rival_drift", "stance")],
+    "news": [(k[len("news_"):], k) for k in (
+        "news_enabled", "news_injuries", "news_lineups", "news_cache_hours",
+        "news_min_coverage", "news_llm_classifier", "news_llm_shadow",
+        "news_llm_command", "news_llm_timeout_s", "news_lineup_absence",
+        "news_lineup_absence_damp", "news_lineup_start_floor",
+        "news_overrides")],
+    "digest": [("notify", "digest_notify")],
+    "backup": [("dir", "backup_dir"), ("rsync_target", "backup_rsync_target"),
+               ("keep", "backup_keep")],
+    "web": [("token", "web_token")],
+}
+
+
+def write_golden_toml(cfg: Config, path: Path) -> None:
+    """``cfg`` as a ``config.toml`` ``load_config`` reads back field for
+    field (pinned by the round-trip test). Every field is written, so the
+    file does not depend on the dataclass defaults staying put."""
+    values = asdict(cfg)
+    lines = ["# v17c golden board: written by tests/golden_client.py from",
+             # Not spelling the section name here: the test greps the written
+             # file for it, and a header mentioning it would pass for the
+             # wrong reason (v17c §2.3).
+             "# golden_config(). The odds table is absent, by design.", ""]
+    for section, keys in _TOML_LAYOUT.items():
+        lines.append(f"[{section}]")
+        for key, field_name in keys:
+            value = values[field_name]
+            if value is None:
+                continue
+            lines.append(f"{key} = {_toml(value)}")
+        lines.append("")
+    Path(path).write_text("\n".join(lines))
