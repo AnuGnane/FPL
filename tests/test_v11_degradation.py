@@ -46,7 +46,10 @@ def _week(gw, buys=(), sells=(), hits=0):
 @pytest.fixture()
 def planned(monkeypatch):
     def install(weeks, bank=15):
-        monkeypatch.setattr(plan_router, "load_advice", lambda gw: {
+        # v17f §2.6: the router reads through ``artifacts.served_plan``, so the
+        # rail patches the artifact loaders and its old-shape fixture goes
+        # through the loader's backfill.
+        monkeypatch.setattr("gaffer.artifacts.load_advice", lambda gw: {
             "gw": 5, "deadline": "2026-09-18T17:30:00Z", "chip_table": [],
             "captain": None, "vice": None, "plan_by_gw": weeks})
         state = SolveState(gw=5, gws=[5, 6, 7],
@@ -55,7 +58,7 @@ def planned(monkeypatch):
                            mode="weekly", bank=bank, free_transfers=1,
                            owned_codes=[200], lam=0.0, league_eo={},
                            avail_by_gw={}, opt={"hit_cost": 4}, pool=POOL)
-        monkeypatch.setattr(plan_router, "load_solve_state", lambda gw: state)
+        monkeypatch.setattr("gaffer.artifacts.load_solve_state", lambda gw: state)
     return install
 
 
@@ -77,29 +80,11 @@ def test_one_unpriced_move_blanks_that_week_and_every_later_one(planned):
     assert [w.bank for w in out.weeks] == [1.5, None, None]
 
 
-@pytest.mark.parametrize("broken", [
-    "not a dict at all",
-    {"code": None, "name": "Nameless"},
-    {"code": "not a number", "name": "Bad code"},
-    {"name": "No code key"},
-])
-def test_a_move_too_broken_to_parse_blanks_the_bank_the_same_way(
-        planned, broken):
-    """The dropped move and the unpriced one do identical damage: the week's
-    total comes out short by exactly that player's price, confidently. Only
-    the unpriced case said so."""
-    planned([_week(5), {"gw": 6, "hits": 0, "expected_pts": 60.0,
-                        "buys": [broken], "sells": []},
-             _week(7)])
-    assert [w.bank for w in plan_router.plan(5).weeks] == [1.5, None, None]
-
-
-def test_a_buys_key_that_is_not_a_list_blanks_it_too(planned):
-    """The plan said something here and it could not be read — which is not
-    the same as a week that named no moves."""
-    planned([{"gw": 5, "hits": 0, "expected_pts": 60.0,
-              "buys": {"code": 100}, "sells": []}])
-    assert plan_router.plan(5).weeks[0].bank is None
+# v17f §2.7 ruling: ``test_a_move_too_broken_to_parse_blanks_the_bank_the_same_way``
+# and ``test_a_buys_key_that_is_not_a_list_blanks_it_too`` retired. A move too
+# broken to parse, or a ``buys`` that is not a list, is a file no ``gaffer
+# advise`` ever wrote; the loader refuses it by name (a 404 naming the
+# field) rather than drawing a board with a silently blanked bank.
 
 
 def test_a_week_that_simply_has_no_moves_keeps_its_bank(planned):

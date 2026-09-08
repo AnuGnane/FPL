@@ -217,8 +217,10 @@ def _wire(monkeypatch, advice):
                        owned_codes=[200], gws=[5, 6, 7], gw=5, deadline="",
                        mode="weekly", free_transfers=1, lam=0.0,
                        league_eo={}, avail_by_gw={})
-    monkeypatch.setattr(plan_router, "load_advice", lambda gw: advice)
-    monkeypatch.setattr(plan_router, "load_solve_state", lambda gw: state)
+    # v17f §2.6: the router reads through ``artifacts.served_plan``; the
+    # rail patches the artifact loaders and the fixture takes the backfill.
+    monkeypatch.setattr("gaffer.artifacts.load_advice", lambda gw: advice)
+    monkeypatch.setattr("gaffer.artifacts.load_solve_state", lambda gw: state)
     return plan_router
 
 
@@ -235,18 +237,9 @@ def test_an_artifact_with_no_alternatives_key_serves_an_empty_strip(
     assert len(out.weeks) == 2
 
 
-@pytest.mark.parametrize("payload", ["nonsense", {"a": 1}, 7,
-                                     ["nonsense"], [{"gap": 1.0}]])
-def test_a_malformed_alternative_costs_a_tab_and_not_the_board(monkeypatch,
-                                                               payload):
-    """The board is v11's timeline and the reader's main view of the week. A
-    key this cycle added must not be able to take it down."""
-    from tests.test_v12_w3_plan_alternatives import _advice, _week
-
-    router = _wire(monkeypatch, _advice([_week(5)], payload))
-    out = router.plan(5)
-    assert len(out.weeks) == 1
-    assert all(a.weeks for a in out.alternatives)
+# v17f §2.7 ruling: ``test_a_malformed_alternative_costs_a_tab_and_not_the_board``
+# retired. An ``alternative_plans`` that is not a list of plans is a file no
+# ``gaffer advise`` ever wrote; the loader refuses it by name.
 
 
 def test_a_plan_still_constructs_with_two_arguments():
