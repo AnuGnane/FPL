@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from gaffer.artifacts import load_advice
 from gaffer.data import store
 
 
@@ -48,15 +49,15 @@ def update_health(finished_gw: int) -> dict | None:
         return None
     # v17f §1 part 4: the advice file is read through ``artifacts``, which is
     # the one place its name is spelled. A run with no advice on disk — or one
-    # whose payload names no captain — still writes a health summary; the
-    # captain's actual score is simply the one line it cannot fill.
-    from gaffer.artifacts import load_advice
-    from gaffer.errors import GafferError
-
+    # whose payload names no captain, or is not an object at all — still
+    # writes a health summary; the captain's actual score is simply the one
+    # line it cannot fill. ``GafferError`` is a ``ValueError``, so the three
+    # named cover the missing file, a payload that is not a mapping and a
+    # code that is not a number.
     try:
         captain = int((load_advice(finished_gw).get("captain") or {})
                       .get("code", 0))
-    except (GafferError, TypeError, ValueError):
+    except (AttributeError, TypeError, ValueError):
         captain = 0
     health = compute_health(preds, actuals, captain_code=captain)
     Path("reports").mkdir(exist_ok=True)

@@ -128,7 +128,11 @@ export interface Advice {
   captain_note?: string | null
   /** v16: absent on a payload banked before the restraint walk; v17f §2.9:
    *  the generated served type, so the hand-written half cannot drift from
-   *  what `ServedPlan` writes. */
+   *  what `ServedPlan` writes. It arrives inside `AdviceLatest.advice`, a
+   *  `dict[str, Any]` the server does not validate, so the generated type
+   *  describes what `advise` writes *today*: on a payload banked before
+   *  v17b the nullable fields are absent rather than null, and every
+   *  reader guards them. */
   objective?: ServedObjective | null
   /** v16: absent on a payload banked before the restraint walk; v17f §2.9:
    *  the generated served type (see `objective` above). */

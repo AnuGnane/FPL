@@ -564,7 +564,9 @@ def test_update_health_reads_the_captain_through_artifacts(tmp_path,
     monkeypatch.setattr(
         tracking, "compute_health",
         lambda preds, actuals, captain_code: seen.update(c=captain_code) or {})
-    monkeypatch.setattr("gaffer.artifacts.load_advice",
+    # v17f: ``tracking`` binds the name at import, so the stand-in goes on
+    # the consumer.
+    monkeypatch.setattr(tracking, "load_advice",
                         lambda gw: {"captain": {"code": 42}})
     monkeypatch.setattr(tracking.store, "exists", lambda rel: True)
     monkeypatch.setattr(tracking.store, "load",
