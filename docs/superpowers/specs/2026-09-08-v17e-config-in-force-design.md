@@ -42,12 +42,13 @@ all required.
    the three new fields' defaults must equal what the recorded
    `config.toml` says (`price_timing = true`; the other two absent, so
    defaults).
-2. **The rail** `tests/test_v17e_config.py` passes: (a) the grep — no file
-   under `src/gaffer` other than `config.py` contains `tomllib`,
-   `config.toml` or `config.local.toml` as code (docstrings and comments
-   excluded by stripping them before the search; `optimize/chip_policy.py`
-   reads `data/chip_scenarios.toml` through `tomllib` and is the one named
-   exemption, listed in the test with its path); (b) every `WHITELIST`
+2. **The rail** `tests/test_v17e_config.py` passes: (a) the grep, over the
+   AST of every module under `src/gaffer` but `config.py` — no string
+   literal equal to `config.toml` or `config.local.toml` outside a
+   docstring, no import of `tomli_w`, and no import of `tomllib` under
+   `web/` (`data/managers.py`, `data/set_piece_overrides.py` and
+   `optimize/chip_policy.py` read files under `data/` with `tomllib` and
+   need no exemption); (b) every `WHITELIST`
    entry with a numeric bound has `(lo, hi) == BOUNDS[field]`; (c) every
    `WHITELIST` entry reads through `config_in_force()` and, written through
    `POST /api/settings`, is read back changed through `config_in_force()`
@@ -248,17 +249,17 @@ is the full-range editor and keeps its number inputs.
 `LadderCard` fetches `GET /api/settings` once on mount, beside
 `/api/ladder`, keeps the three rows it needs by `key`, and renders each
 select from `row.options` (`value` and `label` verbatim) with `row.value`
-selected. `setSetting` posts as today and rebuilds; after the rebuild's
-reload the card re-fetches the settings rows so the selects show the value
-the server holds. The `?? 0.6` default goes: the bar select's value is the
-`hit_bar` row's value, and until the rows arrive the selects are disabled
-with no options. `NO_CAP`, `HIT_BARS` and `withCurrent` are deleted;
+selected and labelled by `row.label`. `setSetting` posts as today and
+rebuilds; after the rebuild's reload the card re-fetches the settings rows
+so the selects show the value the server holds. The `?? 0.6` default goes:
+the bar select's value is the `hit_bar` row's value, and until the rows
+arrive no select is rendered. `NO_CAP`, `HIT_BARS` and `withCurrent` are deleted;
 `capText` stays (it prints the payload's cap, not a setting).
 `ThisWeek.test.tsx`'s route mock answers `/api/settings` with a three-row
 panel; `LadderCard.test.tsx` mocks it the same way and gains the options
 test §1.3 names. A settings fetch that fails leaves the ladder table
-rendered and the three selects disabled with the failure in the card's
-callout: the ladder is the card, the selects are its controls.
+rendered, no selects, and the failure in the card's callout: the ladder is
+the card, the selects are its controls.
 
 v17h will fold this fetch into `usePageData`; this cycle adds one request
 to This Week and says so.
@@ -384,7 +385,7 @@ Orchestrator-only diffs, each with its ruling:
 | `tests/test_v13_degradation.py` | 31-35, 207-216 | 59 → 62 with names; `invalidate()` in the fixture | the pin moves by plan |
 | `tests/test_v10_degradation.py` | 33, 434-437 | the absence pin becomes a presence pin on `news_lineup_providers` with the default; import changes | the docstring reopens the question on the merits; §0 |
 | `tests/test_v12_w2_degradation.py` | 195-196 | the two `not in names` become `in names` with the defaults asserted | same |
-| `tests/test_v12_w5_degradation.py` | 21, 33-52, 250 | `invalidate()`; line 250 unchanged (a kwarg on a solver call, not the reader) | rename |
+| `tests/test_v12_w5_degradation.py` | 21, 33-52, 129-155, 250 | `invalidate()`; the no-field test drops its `"price_timing" in n` clause; line 250 unchanged (a kwarg on a solver call, not the reader) | rename; the field is §2.1's decision |
 | `tests/test_v8e_degradation.py` | 17, 39-48 | `invalidate()` | rename |
 | `tests/test_web_job_kinds_v8f.py` | 94-101 | `invalidate()` | rename |
 | `tests/test_v12_w5_settings.py` | 58-75 | readers == `["focus"]`; `price_timing` is a field, as the message told the next cycle to do | the rail's own instruction |
