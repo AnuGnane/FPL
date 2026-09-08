@@ -162,7 +162,8 @@ says which fact the check tripped on.
    ignores stdin. The brief payload's `model_command` is then `python3`,
    which is the second thing the parity test reads to know the stub, not a
    cache, answered. Each entry runs in a fresh scratch tree so the
-   `data/llm_cache/brief/` written by entry A cannot serve entry B.
+   brief cache (`brief.BRIEF_CACHE`, a relative path under
+   `data/raw/news/llm/`) written by entry A cannot serve entry B.
 
 8. **`golden_client.run_golden` grows a context manager, not a second
    runner.** The chdir, the `serving_config` cache clears on both sides and
