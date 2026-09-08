@@ -57,6 +57,14 @@ if [[ "$STAGE" == v17b* ]]; then
     "this-week-lower:/:3400"
   )
 fi
+# v17e gate (specs/2026-09-08-v17e-config-in-force-design.md §1.4): This
+# Week tall enough to reach the ladder card's selects, and Settings.
+if [[ "$STAGE" == v17e* ]]; then
+  HUBS=(
+    "this-week-lower:/:3400"
+    "settings:/model?tab=settings"
+  )
+fi
 for entry in "${HUBS[@]}"; do
   name="${entry%%:*}"; rest="${entry#*:}"
   path="${rest%%:*}"; height="${rest#*:}"

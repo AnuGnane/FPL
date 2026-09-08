@@ -139,6 +139,12 @@ function route(path: string) {
       expected_pts_delta: 0, ep_movers: [], ep_movers_count: null,
     })
   }
+  // The ladder card's selects are settings rows now (v17e §2.6); this page
+  // does not read them, so an empty panel is enough.
+  if (path === '/api/settings') {
+    return Promise.resolve({ rows: [], unavailable: [], overlay_error: null,
+                             apply_note: '' })
+  }
   return Promise.reject(new Error(`unexpected path ${path}`))
 }
 

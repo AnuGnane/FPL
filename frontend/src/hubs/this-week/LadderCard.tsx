@@ -7,15 +7,11 @@ import {
   TR_EXPANDED_CLASS, TR_SELECTED_CLASS, fmtNum, tdClass, thClass, toneOf,
 } from '../../kit'
 import type {
-  LadderPayload, LadderRung, PlayerRef,
+  LadderPayload, LadderRung, PlayerRef, SettingRow, SettingsPanel,
 } from '../../types'
 
-/** `[optimizer]` value meaning "no cap" — `gaffer.config.NO_CAP`. */
-export const NO_CAP = 15
-
-/** The bars the select offers; the saved value is added by `withCurrent`
- *  when it is not one of them (a hand-edited 0.62 must not render blank). */
-export const HIT_BARS = [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.9, 0.95]
+const SETTING_KEYS = ['max_hits', 'max_transfers', 'hit_bar'] as const
+type SettingKeyName = typeof SETTING_KEYS[number]
 
 /** "1 free transfer · cap 2 hits" — the heading, and MovesCard's line. */
 export function capText(p: LadderPayload): string {
@@ -33,16 +29,32 @@ export function capText(p: LadderPayload): string {
   return bits.join(' · ')
 }
 
-/** The offered options, plus the current value when it is not among them.
+/** One select over a settings row.
  *
- *  Both caps accept any whole number the config does, and the ladder has
- *  rungs for only a few of them: a `max_hits` of 5 saved by hand is a legal
- *  setting this select does not offer. Without a row for it the select
- *  renders blank, which reads as "no cap set" and makes the next change a
- *  move off a value the user was never shown. */
-export function withCurrent(options: number[], value: number): number[] {
-  return options.includes(value) ? options : [...options, value].sort(
-    (a, b) => a - b)
+ *  The options, their words and the saved value are the server's (v17e
+ *  §2.6): a hand-edited `max_hits = 5` arrives as an option of its own, so
+ *  the card never has to guess what is legal and never renders blank. */
+function SettingSelect({ row, disabled, onChange }: {
+  row: SettingRow
+  disabled: boolean
+  onChange: (value: number) => void
+}) {
+  return (
+    <label className="flex items-center gap-2">
+      <span className="label">{row.label}</span>
+      <select
+        aria-label={row.label}
+        value={String(row.value)}
+        disabled={disabled}
+        className={INPUT_CLASS}
+        onChange={(e) => onChange(Number(e.target.value))}
+      >
+        {row.options.map((o) => (
+          <option key={String(o.value)} value={String(o.value)}>{o.label}</option>
+        ))}
+      </select>
+    </label>
+  )
 }
 
 /** A signed hit bill: `−4`, or `0` when nothing was spent. */
@@ -175,6 +187,7 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
   const [data, setData] = useState<LadderPayload | null>(null)
   const [failed, setFailed] = useState<string | null>(null)
   const [open, setOpen] = useState<string | null>(null)
+  const [rows, setRows] = useState<SettingRow[] | null>(null)
   const job = useJob('ladder')
 
   const load = useCallback(() => {
@@ -188,6 +201,17 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
   }, [onLoaded])
   useEffect(() => { load() }, [load])
 
+  // The selects are these rows (v17e §2.6). A failure leaves the ladder
+  // table standing with no selects and the reason in the card's callout:
+  // the ladder is the card, the selects are only its controls.
+  const loadRows = useCallback(() => {
+    apiGet<SettingsPanel>('/api/settings')
+      .then((panel) => setRows(panel.rows.filter(
+        (r) => (SETTING_KEYS as readonly string[]).includes(r.key))))
+      .catch((e) => { setFailed(errorText(e)); setRows(null) })
+  }, [])
+  useEffect(() => { loadRows() }, [loadRows])
+
   const rebuild = useCallback(() => {
     setOpen(null)
     job.start('/api/ladder')
@@ -196,12 +220,10 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
   // A finished rebuild is read back from the banked payload rather than the
   // job record, so the card and the next page load agree byte for byte.
   useEffect(() => {
-    if (job.status === 'done') load()
-  }, [job.status, load])
+    if (job.status === 'done') { load(); loadRows() }
+  }, [job.status, load, loadRows])
 
-  const setSetting = async (
-    key: 'max_hits' | 'max_transfers' | 'hit_bar', value: number,
-  ) => {
+  const setSetting = async (key: SettingKeyName, value: number) => {
     try {
       await apiPost('/api/settings', { key, value })
     } catch (e) {
@@ -216,8 +238,6 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
   const weeks = data?.gws.length ?? 0
   const bank = rungs.find((r) => r.key === 'bank')
   const capIndex = rungs.findIndex((r) => r.key === data?.cap_rung)
-  const hitsValue = data?.cap.max_hits ?? NO_CAP
-  const movesValue = data?.cap.max_transfers ?? NO_CAP
   const requested = rungs.find((r) => r.key === data?.cap_rung_requested)
   const resolved = rungs.find((r) => r.key === data?.cap_rung)
   const requestedNote = (data && data.cap_rung_requested !== null
@@ -257,50 +277,14 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
         rung that does not clear the bar; the rung it stops on is the advice.
       </p>
       <div className="mb-3 flex flex-wrap gap-3">
-        <label className="flex items-center gap-2">
-          <span className="label">Max hits</span>
-          <select
-            aria-label="Max hits"
-            value={hitsValue}
+        {(rows ?? []).map((row) => (
+          <SettingSelect
+            key={row.key}
+            row={row}
             disabled={busy || !data?.gw}
-            onChange={(e) => setSetting('max_hits', Number(e.target.value))}
-            className={INPUT_CLASS}
-          >
-            {withCurrent([0, 1, 2, 3], hitsValue).map((n) => (
-              n === NO_CAP ? null
-                : <option key={n} value={n}>{n}</option>))}
-            <option value={NO_CAP}>no cap</option>
-          </select>
-        </label>
-        <label className="flex items-center gap-2">
-          <span className="label">Max transfers</span>
-          <select
-            aria-label="Max transfers"
-            value={movesValue}
-            disabled={busy || !data?.gw}
-            onChange={(e) => setSetting('max_transfers', Number(e.target.value))}
-            className={INPUT_CLASS}
-          >
-            <option value={0}>bank</option>
-            {withCurrent([1, 2, 3, 4, 5], movesValue).map((n) => (
-              n === 0 || n === NO_CAP ? null
-                : <option key={n} value={n}>{n}</option>))}
-            <option value={NO_CAP}>no cap</option>
-          </select>
-        </label>
-        <label className="flex items-center gap-2">
-          <span className="label">Hit bar</span>
-          <select
-            aria-label="Hit bar"
-            value={String(data?.bar ?? 0.6)}
-            disabled={busy || !data?.gw}
-            className={INPUT_CLASS}
-            onChange={(e) => setSetting('hit_bar', Number(e.target.value))}
-          >
-            {withCurrent(HIT_BARS, data?.bar ?? 0.6).map((b) => (
-              <option key={b} value={String(b)}>{`${Math.round(b * 100)}%`}</option>))}
-          </select>
-        </label>
+            onChange={(value) => setSetting(row.key as SettingKeyName, value)}
+          />
+        ))}
       </div>
       {failed && <Callout tone="error" className="mb-3">{failed}</Callout>}
       {job.status === 'error' && (

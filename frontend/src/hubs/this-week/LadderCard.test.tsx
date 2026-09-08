@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { LadderPayload } from '../../types'
+import type { LadderPayload, SettingsPanel } from '../../types'
 import LadderCard, { capText } from './LadderCard'
 
 const { apiGet, apiPost } = vi.hoisted(() => ({
@@ -88,11 +88,36 @@ const PAYLOAD: LadderPayload = {
   ],
 }
 
+// The selects are the settings rows (v17e §2.6): the options, their words
+// and the saved value are all the server's, so the fixture is the panel.
+const ROWS: SettingsPanel = {
+  rows: [
+    { key: 'max_hits', label: 'Max hits per week', kind: 'int', value: 2,
+      lo: 0, hi: 15, choices: [], section: 'optimizer', help: '', source: 'default',
+      options: [{ value: 0, label: '0' }, { value: 1, label: '1' },
+                { value: 2, label: '2' }, { value: 3, label: '3' },
+                { value: 15, label: 'no cap' }] },
+    { key: 'max_transfers', label: 'Max transfers per week', kind: 'int',
+      value: 15, lo: 0, hi: 15, choices: [], section: 'optimizer', help: '',
+      source: 'default',
+      options: [{ value: 0, label: 'bank' }, { value: 1, label: '1' },
+                { value: 15, label: 'no cap' }] },
+    { key: 'hit_bar', label: 'Hit bar', kind: 'float', value: 0.6,
+      lo: 0.5, hi: 0.95, choices: [], section: 'optimizer', help: '',
+      source: 'default',
+      // 0.62 is a value the card could not know: the server inserted it.
+      options: [{ value: 0.6, label: '60%' }, { value: 0.62, label: '62%' },
+                { value: 0.7, label: '70%' }] },
+  ],
+  unavailable: [], overlay_error: null, apply_note: 'note',
+}
+
 beforeEach(() => {
   apiGet.mockReset()
   apiPost.mockReset()
   apiGet.mockImplementation(async (path: string) => {
     if (path === '/api/ladder') return PAYLOAD
+    if (path === '/api/settings') return ROWS
     if (path.startsWith('/api/jobs/')) {
       return { id: 'j1', status: 'done', result: PAYLOAD, error: null }
     }
@@ -178,7 +203,9 @@ describe('LadderCard', () => {
     await userEvent.click(await screen.findByRole('button',
                                                     { name: /rebuild/i }))
     expect(apiPost).toHaveBeenCalledWith('/api/ladder', undefined)
-    await waitFor(() => expect(apiGet).toHaveBeenCalledTimes(3),
+    // Mount fetches the ladder and the settings rows; the finished job is
+    // polled once and reloads both.
+    await waitFor(() => expect(apiGet).toHaveBeenCalledTimes(5),
                   { timeout: 4000 })
   })
 
@@ -186,35 +213,45 @@ describe('LadderCard', () => {
     const onLoaded = vi.fn()
     mount({ onLoaded })
     await screen.findByText('1 hit')
-    await userEvent.selectOptions(screen.getByLabelText('Max hits'), '1')
+    await userEvent.selectOptions(
+      screen.getByLabelText('Max hits per week'), '1')
     await waitFor(() => expect(apiPost).toHaveBeenCalledWith(
       '/api/settings', { key: 'max_hits', value: 1 }))
     await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/api/ladder',
                                                               undefined))
     expect(onLoaded).toHaveBeenCalled()
+    // The rebuild reloads the rows too, so the selects show what the server
+    // now holds rather than what was posted.
+    await waitFor(() => expect(apiGet.mock.calls.filter(
+      (call) => call[0] === '/api/settings').length)
+      .toBeGreaterThanOrEqual(2), { timeout: 4000 })
   })
 
-  it('keeps a cap the select does not offer as an option of its own',
+  it('renders the three selects from the settings rows the server sends',
     async () => {
-      // A cap of five hits is a legal setting the ladder has no rung for, so
-      // it is not one of the offered options; without a row for it the select
-      // would render blank and the next change would silently be off a value
-      // the user never saw.
+      mount()
+      const hits = await screen.findByLabelText('Max hits per week')
+      expect(within(hits).getByRole('option', { name: 'no cap' }))
+        .toHaveValue('15')
+      const moves = screen.getByLabelText('Max transfers per week')
+      expect(within(moves).getByRole('option', { name: 'bank' }))
+        .toHaveValue('0')
+      const bar = screen.getByLabelText('Hit bar')
+      expect((bar as HTMLSelectElement).value).toBe('0.6')
+      expect(within(bar).getByRole('option', { name: '62%' }))
+        .toHaveValue('0.62')
+    })
+
+  it('shows no selects until the settings rows arrive, and says so when they never do',
+    async () => {
       apiGet.mockImplementation(async (path: string) => {
-        if (path === '/api/ladder') {
-          return { ...PAYLOAD, cap: { max_hits: 5, max_transfers: 7 } }
-        }
-        throw new Error(path)
+        if (path === '/api/ladder') return PAYLOAD
+        throw new Error('settings down')
       })
       mount()
-      const hits = await screen.findByLabelText('Max hits')
-      expect((hits as HTMLSelectElement).value).toBe('5')
-      expect(within(hits).getByRole('option', { name: '5' }))
-        .toBeInTheDocument()
-      const moves = screen.getByLabelText('Max transfers')
-      expect((moves as HTMLSelectElement).value).toBe('7')
-      expect(within(moves).getByRole('option', { name: '7' }))
-        .toBeInTheDocument()
+      await screen.findByText('1 hit')
+      expect(screen.queryByLabelText('Hit bar')).toBeNull()
+      expect(await screen.findByText(/settings down/)).toBeInTheDocument()
     })
 
   it('offers a rebuild when nothing is banked yet', async () => {
@@ -222,6 +259,7 @@ describe('LadderCard', () => {
       if (path === '/api/ladder') {
         return { ...PAYLOAD, rungs: [], note: 'no ladder for GW3 — rebuild' }
       }
+      if (path === '/api/settings') return ROWS
       throw new Error(path)
     })
     mount()
@@ -240,6 +278,7 @@ describe('LadderCard', () => {
   it('prints a single cost when the horizon bill equals the first week\u2019s',
     async () => {
       apiGet.mockImplementation(async (path: string) => {
+        if (path === '/api/settings') return ROWS
         if (path !== '/api/ladder') throw new Error(path)
         return {
           ...PAYLOAD,
@@ -256,6 +295,7 @@ describe('LadderCard', () => {
   it('says when the cap the reader asked for resolved to a lower rung',
     async () => {
       apiGet.mockImplementation(async (path: string) => {
+        if (path === '/api/settings') return ROWS
         if (path !== '/api/ladder') throw new Error(path)
         return { ...PAYLOAD, cap: { max_hits: 3, max_transfers: null },
                  cap_rung: 'hits1', cap_rung_requested: 'hits3' }
@@ -269,6 +309,7 @@ describe('LadderCard', () => {
   it('prints the cap note, the recommendation note and every ladder note',
     async () => {
       apiGet.mockImplementation(async (path: string) => {
+        if (path === '/api/settings') return ROWS
         if (path !== '/api/ladder') throw new Error(path)
         return { ...PAYLOAD,
                  cap_note: 'no rung matches max_transfers = 4',
@@ -306,10 +347,13 @@ describe('LadderCard', () => {
   })
 
   it('says when a rebuild chose differently from the served advice', async () => {
-    apiGet.mockImplementation(async (path: string) => (path === '/api/ladder'
-      ? { ...PAYLOAD, chosen: 'bank',
-          served_note: 'the served advice was the free transfers only rung at bar 0.60; this rebuild at 0.70 chooses bank' }
-      : { id: 'j1', status: 'done', result: PAYLOAD, error: null }))
+    apiGet.mockImplementation(async (path: string) => {
+      if (path === '/api/settings') return ROWS
+      return path === '/api/ladder'
+        ? { ...PAYLOAD, chosen: 'bank',
+            served_note: 'the served advice was the free transfers only rung at bar 0.60; this rebuild at 0.70 chooses bank' }
+        : { id: 'j1', status: 'done', result: PAYLOAD, error: null }
+    })
     mount()
     expect(await screen.findByTestId('ladder-served-note'))
       .toHaveTextContent('this rebuild at 0.70 chooses bank')
