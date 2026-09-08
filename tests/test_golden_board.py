@@ -4,14 +4,13 @@ Unit tests over a synthetic bundle, and the two ``golden``-marked tests that
 run the real pipeline over the recorded one."""
 from __future__ import annotations
 
-import time
 from dataclasses import asdict
 from pathlib import Path
 
 import httpx
 import pytest
 
-from gaffer.config import Config, load_config
+from gaffer.config import NO_CAP, load_config, price_timing
 from tests import golden_client as gc
 
 
@@ -70,8 +69,8 @@ def test_golden_config_round_trips_through_the_toml_writer(tmp_path):
 
 def test_golden_config_is_a_literal_with_the_levers_the_spec_names():
     cfg = gc.golden_config()
-    assert isinstance(cfg, Config)
     assert cfg.horizon == 6
+    assert (cfg.max_hits, cfg.max_transfers, cfg.hit_bar) == (2, NO_CAP, 0.60)
     assert cfg.scenarios_n == 40 and cfg.scenarios_seed == 20260825
     assert cfg.news_enabled is False
     assert cfg.odds_api_key == ""
@@ -86,13 +85,26 @@ def test_the_written_toml_has_no_odds_section_and_no_key(tmp_path):
     assert "api_key" not in text
 
 
+def test_the_written_toml_carries_the_price_timing_flag_the_solve_path_reads(tmp_path):
+    """v17c §2.3: ``price_timing`` is no Config field, so the round trip
+    cannot see it — but ``price_timing()`` opens the cwd's config.toml on the
+    solve path, and an unwritten flag would let a default flip move the
+    golden."""
+    gc.write_golden_toml(gc.golden_config(), tmp_path / "config.toml")
+    assert "price_timing = true" in (tmp_path / "config.toml").read_text()
+    assert price_timing(tmp_path / "config.toml") is True
+
+
 def test_save_bundle_writes_the_same_bytes_for_the_same_answers(tmp_path):
     """v17c §2.2: sorted keys, zero mtime, no filename — the three things
-    that make a re-record with the same answers the same bytes."""
-    a = gc.save_bundle(tmp_path / "a", {"x/": 1, "y/": [2.5]})
-    time.sleep(1.1)
-    b = gc.save_bundle(tmp_path / "b", {"y/": [2.5], "x/": 1})
-    assert a.read_bytes() == b.read_bytes()
+    that make a re-record with the same answers the same bytes. The two
+    header fields are read off the gzip member directly rather than waited
+    out, so the test costs nothing and names the field that broke."""
+    a = gc.save_bundle(tmp_path / "a", {"x/": 1, "y/": [2.5]}).read_bytes()
+    b = gc.save_bundle(tmp_path / "b", {"y/": [2.5], "x/": 1}).read_bytes()
+    assert a == b
+    assert a[3] & 0x08 == 0, "FNAME set: the path is in the header"
+    assert a[4:8] == b"\x00\x00\x00\x00", "mtime is not zero"
 
 
 def test_the_recording_client_fetches_through_the_parent_without_a_raw_dump(tmp_path):

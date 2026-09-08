@@ -119,10 +119,13 @@ def _toml(value) -> str:
     if isinstance(value, (int, float)):
         return repr(value)
     if isinstance(value, str):
-        return json.dumps(value)
+        # ensure_ascii=False so an astral character stays itself: escaped, it
+        # would come out as a surrogate pair, which tomllib rejects.
+        return json.dumps(value, ensure_ascii=False)
     if isinstance(value, (list, tuple)):
         return "[" + ", ".join(_toml(v) for v in value) + "]"
     if isinstance(value, dict):
+        # Bare keys: the only dict field is ``top_n``, keyed by position code.
         return "{ " + ", ".join(f"{k} = {_toml(v)}" for k, v in value.items()) + " }"
     raise TypeError(f"no TOML form for {type(value).__name__}")
 
@@ -177,5 +180,12 @@ def write_golden_toml(cfg: Config, path: Path) -> None:
             if value is None:
                 continue
             lines.append(f"{key} = {_toml(value)}")
+        if section == "optimizer":
+            # v17c §2.3: not a Config field (see NON_FIELD_OPTIMIZER_KEYS),
+            # read by price_timing() on the solve path; written so a default
+            # flip cannot move the golden silently. xg_per_shot is train-time
+            # only and lineup_providers is moot with news off, so neither is
+            # written.
+            lines.append("price_timing = true")
         lines.append("")
     Path(path).write_text("\n".join(lines))
