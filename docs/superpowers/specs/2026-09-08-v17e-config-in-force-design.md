@@ -413,3 +413,65 @@ literal hit price (v17b's open item).
 ## 10. Outcome
 
 _(filled by the orchestrator after the gate)_
+
+**Pass, first full run, 2026-09-08.** Branch `v17e-config-in-force`, ten
+commits over `f28fa20`; gate run by the orchestrator at `2de4242` (the
+final-review docstring commit `a2f818d` followed, test-only).
+
+1. Golden board: `git diff --stat main -- tests/data/golden_board` empty;
+   `.venv/bin/pytest -q tests/test_golden_board.py tests/test_pipeline.py`
+   → **44 passed, none skipped, 501.95 s**. No key differed.
+2. The rail: `.venv/bin/pytest -q tests/test_v17e_config.py` → **31
+   passed** (the AST grep, the `BOUNDS` equality over the whitelist, the
+   fourteen-entry write-then-read through `config_in_force()` with no
+   `cache_clear` in the test, the inserted saved value, one parse of each
+   file per settings GET, the deletion test).
+3. The card: both greps print nothing; `LadderCard.test.tsx` renders `no
+   cap`, `bank` and a server-invented `62%` option.
+4. Screenshots `this-week-lower` and `settings`, dark and light, from
+   `shots.sh v17e` against the branch server (restarted for the gate; the
+   headless shell had to be reinstalled first, its cache having gone —
+   `chromium_headless_shell-1243` now, passed through
+   `CHROME_HEADLESS_SHELL`), approved by the user on 2026-09-08.
+
+Suites: Python **4360 passed** (golden included, 697 s); frontend `tsc`
+clean, **925 passed, 1 skipped**; `npm run types -- --check` clean. Pins:
+routes 51, job kinds 12, `Config` fields **62** (`a8bc687`, its own
+commit).
+
+Reviews: every task had an Opus spec review and an Opus code review; a
+final whole-branch review found nothing blocking. Items the reviews added
+beyond the plan, all merged: a `tests/conftest.py` autouse `invalidate()`
+around every test and a shared `patch_view` helper (a stand-in view must
+carry `cache_clear`); the golden header compared on its recorded keys with
+the added fields pinned only when present, so a `--record` does not break
+it; `overlay_and_base()` and `_source_of()` in `config.py` so a settings
+GET parses each file once rather than twice per row (28 → 2); the percent
+label named once (`_pct`); the ladder card's settings failure and a
+200-with-`overlay_error` in their own callout, and its render order pinned
+to the three keys.
+
+Readings recorded for the spec's wording: `out_of_range`'s first parameter
+is `name`, not `field` (it shadowed `dataclasses.field`); the `floats3` and
+`pool` refusals name the offending element in the one sentence rather than
+saying "each of"; §2.6's "disabled selects until the rows arrive" became
+"no selects until the rows arrive"; `overlay_and_base` and `_source_of` are
+two names §4 did not list (the router imports the private one; its
+docstring records that the settings panel is its one outside caller).
+
+Behaviour differences a same-file golden cannot see, all sanctioned by
+§2.2 and listed for the record: `focus_league()` now reads the cached view
+(a hand edit of `[league] focus` reaches the settings row after an
+`invalidate()`, which the save and the health poll both call);
+`price_timing` is the splatted value, not `bool()`-coerced; a
+`config.toml` that fails validation degrades all four former reader keys to
+defaults along with everything else; the overlay's allowed set is exactly
+`fields(Config)`; `_providers` cleaning runs in the loader, so its line
+prints on every CLI load and a hand-built `Config(...)` is not cleaned.
+
+Left open: the ladder card's settings fetch is one more request on This
+Week until v17h's page hook; `report.html.j2` still prices hits at a
+literal 4 (v17b); one order-dependent flake was seen once in
+`tests/test_v10_lineup_providers.py::test_one_silent_provider_leaves_the_other_alone`
+under random order during Task 4 and not reproduced in five later full
+runs.
