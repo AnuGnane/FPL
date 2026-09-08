@@ -30,7 +30,8 @@ import pandas as pd
 import pytest
 
 import gaffer.optimize.milp as milp
-from gaffer.config import DEFAULT_LINEUP_PROVIDERS, Config, lineup_providers
+from gaffer.config import (DEFAULT_LINEUP_PROVIDERS, Config, config_in_force,
+                           invalidate)
 from gaffer.data.news.lineups import (LINEUP_COLS, PROVIDERS, Provider,
                                       ROTOWIRE_URL, fetch_lineups)
 from gaffer.evaluation import score_news_shadow
@@ -428,13 +429,18 @@ def test_the_config_dataclass_did_not_grow(tmp_path, monkeypatch):
     question A6 lost on a technicality is open again, and losing it a second
     time would have to be on the merits.
 
-    What v10 is entitled to claim is below, unchanged: the switch is a reader,
-    and the field it would have been is absent.
+    v17e §2.1 (specs/2026-09-08-v17e-config-in-force-design.md) took the
+    question up on the merits: one read interface, no private TOML readers,
+    so the switch is the field ``news_lineup_providers`` and the reader is
+    gone. What v10 still claims is the behaviour: the shipped default is
+    both providers, read through the config in force.
     """
-    assert not any(f.name == "news_lineup_providers"
-                   for f in dataclasses.fields(Config))
+    assert any(f.name == "news_lineup_providers"
+               for f in dataclasses.fields(Config))
     monkeypatch.chdir(tmp_path)
-    assert lineup_providers() == list(DEFAULT_LINEUP_PROVIDERS)
+    invalidate()
+    assert config_in_force().news_lineup_providers == list(DEFAULT_LINEUP_PROVIDERS)
+    invalidate()
 
 
 def test_the_route_count_did_not_move(tmp_path, monkeypatch):

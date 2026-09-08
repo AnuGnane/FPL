@@ -14,7 +14,7 @@ import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
-from gaffer.config import serving_config
+from gaffer.config import invalidate
 from gaffer.models.availability import apply_availability
 from gaffer.web.app import create_app
 
@@ -36,16 +36,16 @@ def _client(tmp_path, monkeypatch, overrides: bool = True):
     (tmp_path / "config.toml").write_text(
         f'[fpl]\nentry_id = 1\nleague_id = 5\n\n[news]\n'
         f'overrides = {"true" if overrides else "false"}\n')
-    serving_config.cache_clear()
+    invalidate()
     (tmp_path / "reports").mkdir(exist_ok=True)
     return TestClient(create_app())
 
 
 @pytest.fixture(autouse=True)
 def _clear_config_cache():
-    serving_config.cache_clear()
+    invalidate()
     yield
-    serving_config.cache_clear()
+    invalidate()
 
 
 # --- overrides absent, corrupt, or off --------------------------------

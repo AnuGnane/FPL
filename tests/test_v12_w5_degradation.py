@@ -18,7 +18,7 @@ import subprocess
 import pytest
 from fastapi.testclient import TestClient
 
-from gaffer.config import serving_config
+from gaffer.config import invalidate
 from gaffer.web.app import create_app
 
 # Filled in from Task 0's measurement, not assumed. JOB_KINDS is what W1-W4
@@ -30,9 +30,9 @@ JOB_KINDS_AT_BASE = 12      # <- Task 0, measured at 5bb7d0e
 @pytest.fixture()
 def cold(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    serving_config.cache_clear()
+    invalidate()
     yield TestClient(create_app())
-    serving_config.cache_clear()
+    invalidate()
 
 
 @pytest.fixture()
@@ -47,9 +47,9 @@ def configured(tmp_path, monkeypatch):
     root = pathlib.Path(__file__).resolve().parents[1]
     shutil.copy(root / "config.example.toml", tmp_path / "config.toml")
     monkeypatch.chdir(tmp_path)
-    serving_config.cache_clear()
+    invalidate()
     yield TestClient(create_app())
-    serving_config.cache_clear()
+    invalidate()
 
 
 # --- Block 1: the cold clone reaches every new surface --------------------
@@ -143,6 +143,10 @@ def test_w5_added_no_config_field():
     constant, which is the blind spot that rail's own docstring names — is a
     number that would have to be edited twice from now on. What W5 owes the
     suite is the claim.
+
+    v17e §2.1 (specs/2026-09-08-v17e-config-in-force-design.md) made
+    ``price_timing`` a field on the merits, so that name leaves the list;
+    the absence claim keeps every other.
     """
     import dataclasses
 
@@ -150,7 +154,7 @@ def test_w5_added_no_config_field():
 
     names = {f.name for f in dataclasses.fields(Config)}
     assert not [n for n in names
-                if "price_timing" in n or "overlay" in n or "settings" in n
+                if "overlay" in n or "settings" in n
                 or "local" in n or "trace" in n or "snapshot" in n]
 
 

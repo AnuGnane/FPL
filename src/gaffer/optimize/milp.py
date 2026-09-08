@@ -27,6 +27,7 @@ from dataclasses import dataclass, field
 import pandas as pd
 import pulp
 
+from gaffer.config import DEFAULT_TOP_N  # noqa: F401 — re-exported; v17e §2.1
 from gaffer.errors import GafferError
 from gaffer.optimize.ft_value import LambdaLookup
 
@@ -132,9 +133,6 @@ through the arithmetic anyway, would shift the bench block against the XI block
 by a constant nobody chose. So an absent ``p_play`` and a uniform ``p_play``
 take the same path — the pre-v10 one, byte for byte (plan A2).
 """
-
-DEFAULT_TOP_N = {"GKP": 8, "DEF": 22, "MID": 26, "FWD": 14}
-
 
 @dataclass
 class SolveInput:
@@ -986,11 +984,12 @@ def build_pool(players: pd.DataFrame, ep_by_code_gw: dict,
         # mentioned an owned player could not be distinguished from a plan
         # that had considered and rejected him. `[optimizer] top_n` in config
         # is the same four numbers where a user can see them, and
-        # `optimizer_top_n()` falls back to DEFAULT_TOP_N on anything
-        # unreadable: a typo in a TOML file must not silently shrink the pool.
-        from gaffer.config import optimizer_top_n
+        # `config_in_force().solver_top_n()` falls back to DEFAULT_TOP_N on
+        # anything unreadable (v17e §2.1): a typo in a TOML file must not
+        # silently shrink the pool.
+        from gaffer.config import config_in_force
 
-        top_n = optimizer_top_n()
+        top_n = config_in_force().solver_top_n()
     players = players.copy()
     players["ep"] = players["code"].map(
         lambda c: {g: ep_by_code_gw.get((c, g), 0.0) for g in gws})

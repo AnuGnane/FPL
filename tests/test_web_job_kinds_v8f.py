@@ -91,14 +91,14 @@ def test_the_notify_switch_reaches_the_module(monkeypatch):
 def test_the_switch_defaults_on_with_no_config_at_all(monkeypatch, tmp_path):
     """A clone with no config.toml still gets its notification: the key is a
     way to turn a working thing off, not a thing to find before it works."""
-    from gaffer.config import serving_config
+    from gaffer.config import invalidate
 
     monkeypatch.chdir(tmp_path)
-    serving_config.cache_clear()
+    invalidate()
     try:
         assert job_kinds._notify_enabled() is True
     finally:
-        serving_config.cache_clear()
+        invalidate()
 
 
 def test_the_config_carries_exactly_one_new_key():

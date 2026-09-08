@@ -190,10 +190,16 @@ def test_w2_adds_no_config_field():
 
     ``top_n`` is asserted *present* on purpose. It is W1's field, it is
     splatted out of the same ``[optimizer]`` section W2's flag hides in, and
-    the pop list is one careless line away from swallowing it."""
+    the pop list is one careless line away from swallowing it.
+
+    v17e §2.1 (specs/2026-09-08-v17e-config-in-force-design.md) made both
+    fields and deleted the pop list; the claim now is that they are present
+    with W2's defaults (on since the 2026-09-02 gate; off since the §3.5
+    replay)."""
     names = {f.name for f in dataclasses.fields(Config)}
-    assert "price_timing" not in names
-    assert "xg_per_shot" not in names
+    cfg = Config(entry_id=1, league_id=2)
+    assert "price_timing" in names and cfg.price_timing is True
+    assert "xg_per_shot" in names and cfg.xg_per_shot is False
     assert "top_n" in names
 
 

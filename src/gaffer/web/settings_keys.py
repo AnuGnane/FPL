@@ -104,16 +104,12 @@ WHITELIST: tuple[SettingKey, ...] = (
                "pool solves faster and can exclude a player you own. One key, "
                "read twice: it sets Config.top_n and the pool "
                "`optimizer_top_n()` hands the solver."),
-    # Not a Config field: W2 pops it out of [optimizer] before the splat, so
-    # `getattr(cfg, "price_timing")` would raise and a fields(Config) liveness
-    # check would drop the row. The dotted path is the reader itself, which
-    # lives beside the loader in gaffer/config.py rather than under
-    # optimize/** — verified, not guessed.
+    # A field since v17e §2.1 (it was v12 W2's popped-out reader key); read
+    # like every other "config" entry.
     SettingKey("price_timing", "optimizer", "price_timing",
                "Charge price timing", "bool", None, None,
                "Charges a sell that is scheduled for a later week by the "
-               "chance the player drops tonight. Never rewards a rise.",
-               source="reader", reader="gaffer.config:price_timing"),
+               "chance the player drops tonight. Never rewards a rise."),
     SettingKey("draw_availability", "scenarios", "draw_availability",
                "Draw availability in the sweep", "bool", None, None,
                "Each scenario draws whether each player is available, so "

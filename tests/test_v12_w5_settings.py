@@ -55,23 +55,20 @@ def test_the_panel_names_every_live_key_and_no_dead_one(client):
     assert served <= {entry.field for entry in WHITELIST}
 
 
-def test_the_readers_are_price_timing_and_the_focus():
-    """Orchestrator ruling 3, 2026-09-02. price_timing is popped out of
-    [optimizer] before the splat, so it never becomes a Config field and a
-    getattr-based liveness check would drop the one key that is in fact
-    configurable."""
+def test_the_one_reader_is_the_focus():
+    """Orchestrator ruling 3, 2026-09-02, closed by v17e §2.1: this test's
+    own message said that if ``price_timing`` ever became a field its
+    reader should go — it is a field now, and the reader is gone. ``focus``
+    (v15 plan R7) is the one reader left: it reads the *effective*
+    league_id and is not named league_id, so the secrets pin holds."""
     import dataclasses
 
     from gaffer.config import Config
 
     readers = [e for e in WHITELIST if e.source == "reader"]
-    # v15 (plan R7): `focus` is the second reader — it reads the *effective*
-    # league_id, and is not named league_id so the secrets pin holds.
-    assert [e.field for e in readers] == ["price_timing", "focus"]
+    assert [e.field for e in readers] == ["focus"]
     fields = {f.name for f in dataclasses.fields(Config)}
-    assert "price_timing" not in fields, (
-        "price_timing became a Config field — move it to source='config' and "
-        "delete its reader rather than serving a stale one")
+    assert "price_timing" in fields
     assert ":" in readers[0].reader
 
 

@@ -210,16 +210,14 @@ horizon = 3
 def settings_client(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
 
-    from gaffer.config import optimizer_top_n, serving_config
+    from gaffer.config import invalidate
     from gaffer.web.app import create_app
 
     monkeypatch.chdir(tmp_path)
     (tmp_path / "config.toml").write_text(SETTINGS_BASE)
-    serving_config.cache_clear()
-    optimizer_top_n.cache_clear()
+    invalidate()
     yield TestClient(create_app())
-    serving_config.cache_clear()
-    optimizer_top_n.cache_clear()
+    invalidate()
 
 
 def test_the_settings_panel_serves_both_caps_with_their_range(settings_client):
