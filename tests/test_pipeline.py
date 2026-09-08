@@ -230,3 +230,90 @@ def test_the_cli_still_exits_one_on_a_missing_model(tmp_path, monkeypatch):
     monkeypatch.setattr("gaffer.pipeline.weekly_run", fake_run)
     out = CliRunner().invoke(app, ["advise"])
     assert out.exit_code == 1 and "gaffer train" in out.output
+
+
+# --- the parity gate (spec §1 item 2) -------------------------------------
+
+STUB_PROSE = "The plan holds. Bank the free transfer and keep the armband where it is."
+STUB_COMMAND = f"python3 -c \"print('{STUB_PROSE}')\""
+"""No digit and no capitalised word off a sentence start, so the truth
+check has nothing to test; it ignores the prompt on stdin (spec §2.7)."""
+
+REPO = Path(__file__).resolve().parents[1]
+
+
+def _golden_header_or_skip():
+    import json
+
+    from tests import golden_client as gc
+
+    path = gc.GOLDEN_DIR / gc.HEADER_NAME
+    if not path.exists():
+        pytest.skip("golden board not recorded (tests/data/golden_board/header.json)")
+    header = json.loads(path.read_text())
+    stale = gc.stale_inputs(header, REPO)
+    if stale:
+        pytest.skip(f"golden board recorded under a different {stale[0]}; "
+                    "re-record with python -m tests.golden_client --write")
+    return header
+
+
+def _parity_run(root: Path, monkeypatch, entry: str):
+    """One entry over the golden board in a fresh scratch tree: the CLI or
+    the job kind, both over the recorded client, training stubbed (the
+    models are the pinned input, spec §2.6), the LLM stubbed."""
+    import dataclasses
+    import json
+
+    from tests import golden_client as gc
+
+    gc.build_scratch_tree(root, REPO)
+    cfg = dataclasses.replace(gc.golden_config(), news_llm_command=STUB_COMMAND)
+    client = gc.RecordedClient()
+    monkeypatch.setattr("gaffer.config.load_config", lambda path="config.toml": cfg)
+    monkeypatch.setattr("gaffer.advise.FPLClient", lambda: client)
+    monkeypatch.setattr("gaffer.models.train.load_training_frame", lambda: ([], None, None))
+    monkeypatch.setattr("gaffer.models.train.train_all", lambda *a, **k: None)
+    with gc.golden_cwd(root, client):
+        if entry == "cli":
+            from typer.testing import CliRunner
+
+            from gaffer.cli import app
+
+            out = CliRunner().invoke(app, ["advise"])
+            assert out.exit_code == 0, out.output
+            returned = None
+        else:
+            from gaffer.web.job_kinds import JOB_KINDS
+
+            returned = JOB_KINDS["advise"]()
+    advice_files = sorted((root / "reports").glob("gw*-advice.json"))
+    assert len(advice_files) == 1, advice_files
+    advice = json.loads(advice_files[0].read_text())
+    brief = json.loads((root / "reports" / f"brief_gw{advice['gw']}.json").read_text())
+    return gc.strip_volatile(advice, str(root.resolve())), brief, returned
+
+
+@pytest.mark.golden
+def test_the_cli_and_the_job_kind_run_the_same_pipeline_on_the_golden_board(
+        tmp_path_factory, monkeypatch):
+    import json
+
+    from gaffer.brief import check_brief
+    from tests import golden_client as gc
+
+    _golden_header_or_skip()
+    expected = json.loads((gc.GOLDEN_DIR / gc.EXPECTED_DIR / "advice.json").read_text())
+
+    advice_a, brief_a, _ = _parity_run(tmp_path_factory.mktemp("parity-cli"), monkeypatch, "cli")
+    advice_b, brief_b, returned = _parity_run(tmp_path_factory.mktemp("parity-job"), monkeypatch, "job")
+
+    assert advice_a == expected
+    assert advice_b == expected
+    for brief in (brief_a, brief_b):
+        assert brief["prose"] == STUB_PROSE
+        assert brief["model_command"] == "python3"
+        assert check_brief(brief["prose"], brief["facts"]) == []
+    assert returned["gw"] == expected["gw"]
+    assert returned["expected_pts"] == expected["expected_pts"]
+    assert returned["brief"]["written"] is True

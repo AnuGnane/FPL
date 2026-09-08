@@ -19,7 +19,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from contextlib import nullcontext
+from contextlib import contextmanager, nullcontext
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -334,23 +334,24 @@ def fixture_kb(directory: Path = GOLDEN_DIR) -> float:
                if p.is_file()) / 1024
 
 
-def run_golden(root: Path, client: FPLClient | None = None) -> tuple[dict, dict]:
-    """``run_advise(golden_config(), client)`` inside ``root`` (spec §2.3,
-    §2.8): the working directory is the second, implicit seam
+@contextmanager
+def golden_cwd(root: Path, client: FPLClient | None = None):
+    """Inside ``root`` for the length of the block (spec v17c §2.3, §2.8;
+    v17d §2.8): the working directory is the second, implicit seam
     (``serving_config()`` and every relative ``Path("data")``), so the
-    process moves into it for the call and back out after. The serving
-    cache is cleared on both sides so neither the repo's ``config.toml``
-    nor the golden's leaks into the other; ``refresh_live``'s politeness
-    sleep is patched out for a ``RecordedClient`` only — those 654 waits are
-    courtesy to a server the replay never contacts, and every other client,
-    the recorder included, does contact it and keeps the real pacing. The
-    patch replaces ``time`` inside ``live``'s own namespace rather than
-    ``time.sleep`` itself, so nothing else in the process loses its sleep."""
+    process moves into it and back out after. The serving cache is
+    cleared on both sides so neither the repo's ``config.toml`` nor the
+    golden's leaks into the other; ``refresh_live``'s politeness sleep is
+    patched out for a ``RecordedClient`` only — those 654 waits are
+    courtesy to a server the replay never contacts, and every other
+    client, the recorder included, does contact it and keeps the real
+    pacing. The patch replaces ``time`` inside ``live``'s own namespace
+    rather than ``time.sleep`` itself, so nothing else in the process
+    loses its sleep. Yields the resolved root."""
     from gaffer.config import serving_config
     import gaffer.data.live as live_mod
 
     root = Path(root).resolve()
-    client = client if client is not None else RecordedClient()
     hush = (patch.object(live_mod, "time", SimpleNamespace(sleep=lambda *_: None))
             if isinstance(client, RecordedClient) else nullcontext())
     before = Path.cwd()
@@ -358,13 +359,21 @@ def run_golden(root: Path, client: FPLClient | None = None) -> tuple[dict, dict]
     try:
         os.chdir(root)
         with hush:
-            advice = run_advise(golden_config(), client)
-        gw = int(advice.gw)
-        advice_json = json.loads((root / "reports" / f"gw{gw}-advice.json").read_text())
-        state_json = json.loads((root / "reports" / f"solve_state_gw{gw}.json").read_text())
+            yield root
     finally:
         os.chdir(before)
         serving_config.cache_clear()
+
+
+def run_golden(root: Path, client: FPLClient | None = None) -> tuple[dict, dict]:
+    """``run_advise(golden_config(), client)`` inside ``golden_cwd`` and the
+    two files it wrote, read back."""
+    client = client if client is not None else RecordedClient()
+    with golden_cwd(root, client) as root:
+        advice = run_advise(golden_config(), client)
+        gw = int(advice.gw)
+        advice_json = json.loads((root / "reports" / f"gw{gw}-advice.json").read_text())
+        state_json = json.loads((root / "reports" / f"solve_state_gw{gw}.json").read_text())
     return advice_json, state_json
 
 
