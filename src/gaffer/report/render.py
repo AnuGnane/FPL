@@ -1,7 +1,7 @@
 """Render an :class:`~gaffer.advise.Advice` into a standalone HTML report.
 
 The template reads a plain dict (``asdict`` of the dataclass) rather than the
-dataclass itself, so a payload round-tripped through ``reports/gwN-advice.json``
+dataclass itself, so a payload round-tripped through the advice artifact
 renders identically to one straight off the pipeline.
 """
 

@@ -2,7 +2,7 @@ import {
   Bar, Card, Chip, PosBadge, TABLE_CLASS, THEAD_CLASS, TR_CLASS, fmtNum,
   fmtPct, tdClass, thClass,
 } from '../../kit'
-import type { Objective, Restraint } from '../../types'
+import type { ServedObjective, ServedRestraint } from '../../types.generated'
 
 export interface Move {
   code: number
@@ -21,11 +21,12 @@ export interface MovesCardProps {
   /** v13: "1 free transfer · cap 2 hits", from the ladder payload. */
   capLine?: string | null
   /** v16: the ladder's restraint walk, absent on an older payload; v17b: the
-   *  card renders its served `line` verbatim. */
-  restraint?: Restraint | null
+   *  card renders its served `line` verbatim; v17f §2.8: the generated type,
+   *  so the card reads what `ServedPlan` writes. */
+  restraint?: ServedRestraint | null
   /** v16: the solver's own week, printed when it differs from the served
    *  plan; v17b: the card renders its served `line`. */
-  objective?: Objective | null
+  objective?: ServedObjective | null
 }
 
 export default function MovesCard(

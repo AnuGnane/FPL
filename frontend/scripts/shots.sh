@@ -65,6 +65,14 @@ if [[ "$STAGE" == v17e* ]]; then
     "settings:/model?tab=settings"
   )
 fi
+# v17f gate (specs/2026-09-08-v17f-served-plan-design.md §1): the Planning
+# board's timeline (banks, traces, the objective column) and This Week.
+if [[ "$STAGE" == v17f* ]]; then
+  HUBS=(
+    "planning-board:/planning?tab=board"
+    "this-week:/"
+  )
+fi
 for entry in "${HUBS[@]}"; do
   name="${entry%%:*}"; rest="${entry#*:}"
   path="${rest%%:*}"; height="${rest#*:}"

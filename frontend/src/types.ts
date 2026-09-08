@@ -23,6 +23,7 @@ export * from './types.generated'
 // *uses* are imported as well.
 import type {
   CategoryMetrics, PlanAlternative, ReviewLane,
+  ServedObjective, ServedRestraint,
   WireAdviceLatest, WireCalibrationReport, WireHealth, WireHistory,
   WireModelHealth, WirePlanTimeline, WirePlayerExplain, WirePlayerRef,
   WirePlayerRow, WireReview, WireReviewSummary,
@@ -98,41 +99,6 @@ export interface AdviceChipRow {
   note?: string | null
 }
 
-/** One step of the ladder's restraint walk (v16 §3). */
-export interface RestraintStep {
-  below: string
-  above: string
-  share: number
-  taken: boolean
-  reason: string
-  reason_kind: string
-  /** v17b: the step as one served sentence. */
-  line?: string
-}
-
-export interface Restraint {
-  chosen: string | null
-  bar: number | null
-  steps: RestraintStep[]
-  agrees: boolean
-  note: string | null
-  /** v17b §3.3: the served label, hit price and prose; absent on advice
-   *  banked before it. */
-  label?: string | null
-  hit_cost?: number | null
-  line?: string | null
-}
-
-/** The solver's own week one, kept beside the served plan (v16 §4). */
-export interface Objective {
-  buys: PlayerRef[]
-  sells: PlayerRef[]
-  hits: number
-  expected_pts: number
-  /** v17b: the served sentence naming what the solver wanted. */
-  line?: string | null
-}
-
 export interface Advice {
   gw: number
   xi: PlayerRef[]
@@ -160,10 +126,13 @@ export interface Advice {
    *  (`league_mode.py:425`). Test it for truthiness, exactly as
    *  `cli.py:81` does. */
   captain_note?: string | null
-  /** v16: absent on a payload banked before the restraint walk. */
-  objective?: Objective | null
-  /** v16: absent on a payload banked before the restraint walk. */
-  restraint?: Restraint | null
+  /** v16: absent on a payload banked before the restraint walk; v17f §2.8:
+   *  the generated served type, so the hand-written half cannot drift from
+   *  what `ServedPlan` writes. */
+  objective?: ServedObjective | null
+  /** v16: absent on a payload banked before the restraint walk; v17f §2.8:
+   *  the generated served type (see `objective` above). */
+  restraint?: ServedRestraint | null
 }
 
 /** Where the captain stands against the top 10k (v10b §F1a).

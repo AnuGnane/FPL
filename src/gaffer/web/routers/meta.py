@@ -15,9 +15,10 @@ from pathlib import Path
 import pandas as pd
 from fastapi import APIRouter, Query
 
-from gaffer.artifacts import (REPORTS, ingested_through, latest_gw,
-                              load_advice, load_snapshot, load_solve_state,
-                              milp_pool, raw_ep_by, solve_kw_from_state)
+from gaffer.artifacts import (REPORTS, advice_gws, advice_path,
+                              ingested_through, latest_gw, load_advice,
+                              load_snapshot, load_solve_state, milp_pool,
+                              raw_ep_by, solve_kw_from_state)
 from gaffer.data import store
 from gaffer.data.bootstrap import season_from_events
 from gaffer.data.elo import compute_elo, expected_score
@@ -122,11 +123,8 @@ def history() -> History:
             else pd.DataFrame(columns=["code", "gw", "total_points",
                                        "value"]))
     runs = []
-    for path in sorted(REPORTS.glob("gw*-advice.json")):
-        stem = path.stem.removeprefix("gw").removesuffix("-advice")
-        if not stem.isdigit():
-            continue
-        advice = load_advice(int(stem))
+    for gw_seen in advice_gws():
+        advice = load_advice(gw_seen)
         runs.append(HistoryRun(
             gw=int(advice["gw"]), deadline=str(advice["deadline"]),
             captain=str((advice.get("captain") or {}).get("name", "")),
@@ -222,11 +220,18 @@ def freshness() -> Freshness:
     except Exception:  # noqa: BLE001 — one grey row, never a broken strip
         backup_newest = None
 
+    # v17f §1 part 4: the advice filename is spelled only in ``artifacts``, so
+    # the row is the *highest gameweek*'s file rather than the newest mtime.
+    # They are the same file in practice — advise writes for the gameweek it is
+    # planning and never backfills an older one — and a re-run of an earlier
+    # gameweek is a debugging session, not the run this strip is reporting.
+    gws = advice_gws()
+
     return Freshness(rows=[
         _row("refresh", store.DATA_DIR / "live" / "player_gw.parquet"),
         _row("odds", _newest(store.DATA_DIR / "live" / "odds", "gw*.parquet")),
         _row("field", store.DATA_DIR / "live" / "field_eo_log.parquet"),
-        _row("advise", _newest(REPORTS, "gw*-advice.json")),
+        _row("advise", advice_path(gws[-1]) if gws else None),
         _row("backup", backup_newest),
     ])
 

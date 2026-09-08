@@ -23,7 +23,7 @@ describe('MovesCard', () => {
   it('prices hits explicitly', () => {
     render(<MovesCard buys={BUYS} sells={SELLS} hits={2}
       restraint={{ chosen: 'hits1', bar: 0.6, agrees: true, note: null,
-                   steps: [], hit_cost: 4 }} />)
+                   steps: [], hit_cost: 4, label: null, line: null }} />)
     expect(screen.getByText('\u22128 pts')).toBeInTheDocument()
   })
 
@@ -69,8 +69,9 @@ describe('MovesCard', () => {
                 { below: 'hits0', above: 'hits1', share: 0.46, taken: false,
                   reason: 'Rice is 0% to play', reason_kind: 'flagged',
                   line: 'free transfers only → 1 hit: refused, 46% — Rice is 0% to play' }] }}
-      objective={{ buys: [{ code: 5, name: 'Isak', ep: 6 }], sells: [{ code: 6, name: 'Rice', ep: 2 }],
-                   hits: 1, expected_pts: 63,
+      objective={{ buys: [{ code: 5, name: 'Isak', ep: 6, position: 'FWD', price: 8.5 }],
+                   sells: [{ code: 6, name: 'Rice', ep: 2, position: 'MID', price: 6.5 }],
+                   hits: 1, expected_pts: 63, week: null,
                    line: 'the objective wanted: Isak in; Rice out; 1 hit' }} />)
     expect(screen.getByTestId('moves-restraint-line')).toHaveTextContent(
       'restraint: free transfers only; the step to 1 hit was refused, 46% — Rice is 0% to play')

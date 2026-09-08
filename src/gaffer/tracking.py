@@ -46,10 +46,18 @@ def update_health(finished_gw: int) -> dict | None:
     if actuals.empty:
         # GW not finalised yet (refresh_live only stores data_checked GWs).
         return None
-    advice_file = Path(f"reports/gw{finished_gw}-advice.json")
-    captain = 0
-    if advice_file.exists():
-        captain = json.loads(advice_file.read_text())["captain"]["code"]
+    # v17f §1 part 4: the advice file is read through ``artifacts``, which is
+    # the one place its name is spelled. A run with no advice on disk — or one
+    # whose payload names no captain — still writes a health summary; the
+    # captain's actual score is simply the one line it cannot fill.
+    from gaffer.artifacts import load_advice
+    from gaffer.errors import GafferError
+
+    try:
+        captain = int((load_advice(finished_gw).get("captain") or {})
+                      .get("code", 0))
+    except (GafferError, TypeError, ValueError):
+        captain = 0
     health = compute_health(preds, actuals, captain_code=captain)
     Path("reports").mkdir(exist_ok=True)
     Path("reports/health.json").write_text(json.dumps(health, indent=1))

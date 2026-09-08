@@ -199,6 +199,21 @@ describe('the types.ts / types.generated.ts split', () => {
     expect(missing).toEqual([])
   })
 
+  it('takes the six served models from the generated half', () => {
+    // v17f §2.9: `WIRE_EXPORTS` re-exports them through the generator, so the
+    // client reads the served plan's own shape rather than a hand-typed copy
+    // of it — which is what `Restraint` and `Objective` had become.
+    const gen = exportsOf('types.generated.ts')
+    const hand = exportsOf('types.ts')
+    for (const name of ['ServedMove', 'ServedWeek', 'ServedObjective',
+      'ServedRestraint', 'ServedAlternative', 'ServedPlan']) {
+      expect(gen.has(name)).toBe(true)
+      expect(hand.has(name)).toBe(false)
+    }
+    expect(hand.has('Restraint')).toBe(false)
+    expect(hand.has('Objective')).toBe(false)
+  })
+
   it('narrows every Wire model exactly once', () => {
     // The narrowing does not always keep the pydantic name: four of the eleven
     // are also `*Data` renames on the client, and the Wire prefix won in the

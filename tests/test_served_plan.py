@@ -522,3 +522,54 @@ def test_the_served_plan_round_trips_through_the_advice_file(tmp_path, monkeypat
     raw = json.loads(advice_path(5).read_text())
     assert "tag" not in raw["xi"][0] and raw["buys"][0]["tag"] == "attack"
     assert raw["plan_by_gw"][0]["bank"] == 0.9 and raw["bank"] == 1.5
+
+
+# --- no filename outside artifacts (v17f §1 part 4) ----------------------
+
+def test_the_advice_filename_is_spelled_only_in_artifacts():
+    import subprocess
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    out = subprocess.run(["grep", "-rln", "advice.json", "src/gaffer",
+                          "--include=*.py"],
+                         cwd=root, capture_output=True, text=True).stdout.split()
+    assert out == ["src/gaffer/artifacts.py"], out
+
+
+def test_the_history_route_reads_the_gameweeks_through_artifacts(tmp_path,
+                                                                 monkeypatch):
+    from pathlib import Path
+
+    from fastapi.testclient import TestClient
+
+    from gaffer.web.app import create_app
+
+    monkeypatch.chdir(tmp_path)
+    Path("reports").mkdir()
+    for gw in (5, 4):
+        Path(f"reports/gw{gw}-advice.json").write_text(json.dumps({
+            "gw": gw, "deadline": "d", "captain": P, "buys": [P], "sells": [S],
+            "hits": 0, "expected_pts": 60.0, "xi": [P]}))
+    runs = TestClient(create_app()).get("/api/history").json()["runs"]
+    assert [r["gw"] for r in runs] == [5, 4]
+
+
+def test_update_health_reads_the_captain_through_artifacts(tmp_path,
+                                                           monkeypatch):
+    import gaffer.tracking as tracking
+
+    monkeypatch.chdir(tmp_path)
+    seen = {}
+    monkeypatch.setattr(
+        tracking, "compute_health",
+        lambda preds, actuals, captain_code: seen.update(c=captain_code) or {})
+    monkeypatch.setattr("gaffer.artifacts.load_advice",
+                        lambda gw: {"captain": {"code": 42}})
+    monkeypatch.setattr(tracking.store, "exists", lambda rel: True)
+    monkeypatch.setattr(tracking.store, "load",
+                        lambda rel: pd.DataFrame({"code": [1], "gw": [4],
+                                                  "total_points": [2],
+                                                  "minutes": [90]}))
+    tracking.update_health(4)
+    assert seen["c"] == 42
