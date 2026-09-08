@@ -1,9 +1,9 @@
 {
  "recorded_at": "2026-09-08T09:29:43+00:00",
- "written_at": "2026-09-08T10:22:59+00:00",
+ "written_at": "2026-09-08T19:32:27+00:00",
  "recorded_by": "python -m tests.golden_client --record; --write after a retrain",
  "gw": 4,
- "commit": "0cff561",
+ "commit": "378b56b",
  "config": {
   "entry_id": 2210493,
   "league_id": 1794743,
@@ -25,6 +25,7 @@
    "2025-26"
   ],
   "current_season": "2026-27",
+  "xg_per_shot": false,
   "odds_api_key": "",
   "player_props": true,
   "ags_blend_weight": 0.5,
@@ -47,6 +48,7 @@
    "MID": 26,
    "FWD": 14
   },
+  "price_timing": true,
   "z_scale": 1.5,
   "lambda_cap": 0.5,
   "sigma_floor": 8.0,
@@ -73,6 +75,10 @@
   "news_lineup_absence_damp": 0.75,
   "news_lineup_start_floor": 0.0,
   "news_overrides": true,
+  "news_lineup_providers": [
+   "ffs",
+   "rotowire"
+  ],
   "digest_notify": true,
   "backup_dir": "",
   "backup_rsync_target": "",
@@ -118,5 +124,5 @@
   "vice": true,
   "plan_weeks": 6
  },
- "runtime_s": 156.8
+ "runtime_s": 162.3
 }

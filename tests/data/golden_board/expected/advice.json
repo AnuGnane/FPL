@@ -4,108 +4,136 @@
    "gap": -0.24,
    "plan_by_gw": [
     {
+     "bank": 0.3,
      "buys": [
       {
        "code": 146426,
        "ep": 6.83,
        "name": "Ajayi",
-       "position": "DEF"
+       "position": "DEF",
+       "price": 4.1
       },
       {
        "code": 244851,
        "ep": 8.32,
        "name": "Palmer",
-       "position": "MID"
+       "position": "MID",
+       "price": 9.6
       }
      ],
+     "chip": "bboost",
      "expected_pts": 76.64,
      "gw": 4,
+     "hit_cost": 4,
      "hits": 1,
      "sells": [
       {
        "code": 494521,
        "ep": 4.52,
        "name": "Truffert",
-       "position": "DEF"
+       "position": "DEF",
+       "price": 5.5
       },
       {
        "code": 466052,
        "ep": 3.88,
        "name": "Cherki",
-       "position": "MID"
+       "position": "MID",
+       "price": 7.7
       }
      ]
     },
     {
+     "bank": 0.5,
      "buys": [
       {
        "code": 473284,
        "ep": 7.26,
        "name": "Tzolakis",
-       "position": "GKP"
+       "position": "GKP",
+       "price": 4.6
       },
       {
        "code": 446008,
        "ep": 7.13,
        "name": "Mbeumo",
-       "position": "MID"
+       "position": "MID",
+       "price": 7.9
       },
       {
        "code": 444102,
        "ep": 5.07,
        "name": "Evanilson",
-       "position": "FWD"
+       "position": "FWD",
+       "price": 6.0
       }
      ],
+     "chip": "bboost",
      "expected_pts": 74.32,
      "gw": 5,
+     "hit_cost": 8,
      "hits": 2,
      "sells": [
       {
        "code": 243298,
        "ep": 5.54,
        "name": "Gakpo",
-       "position": "MID"
+       "position": "MID",
+       "price": 7.1
       },
       {
        "code": 475168,
        "ep": 4.11,
        "name": "Jo\u00e3o Pedro",
-       "position": "FWD"
+       "position": "FWD",
+       "price": 7.6
       },
       {
        "code": 67089,
        "ep": 0.41,
        "name": "Dubravka",
-       "position": "GKP"
+       "position": "GKP",
+       "price": 4.0
       }
      ]
     },
     {
+     "bank": 0.5,
      "buys": [],
+     "chip": "bboost",
      "expected_pts": 71.22,
      "gw": 6,
+     "hit_cost": 0,
      "hits": 0,
      "sells": []
     },
     {
+     "bank": 0.5,
      "buys": [],
+     "chip": "bboost",
      "expected_pts": 77.42,
      "gw": 7,
+     "hit_cost": 0,
      "hits": 0,
      "sells": []
     },
     {
+     "bank": 0.5,
      "buys": [],
+     "chip": "bboost",
      "expected_pts": 75.77,
      "gw": 8,
+     "hit_cost": 0,
      "hits": 0,
      "sells": []
     },
     {
+     "bank": 0.5,
      "buys": [],
+     "chip": "bboost",
      "expected_pts": 74.33,
      "gw": 9,
+     "hit_cost": 0,
      "hits": 0,
      "sells": []
     }
@@ -115,108 +143,136 @@
    "gap": -0.24,
    "plan_by_gw": [
     {
+     "bank": 0.3,
      "buys": [
       {
        "code": 146426,
        "ep": 6.83,
        "name": "Ajayi",
-       "position": "DEF"
+       "position": "DEF",
+       "price": 4.1
       },
       {
        "code": 244851,
        "ep": 8.32,
        "name": "Palmer",
-       "position": "MID"
+       "position": "MID",
+       "price": 9.6
       }
      ],
+     "chip": "bboost",
      "expected_pts": 76.64,
      "gw": 4,
+     "hit_cost": 4,
      "hits": 1,
      "sells": [
       {
        "code": 494521,
        "ep": 4.52,
        "name": "Truffert",
-       "position": "DEF"
+       "position": "DEF",
+       "price": 5.5
       },
       {
        "code": 466052,
        "ep": 3.88,
        "name": "Cherki",
-       "position": "MID"
+       "position": "MID",
+       "price": 7.7
       }
      ]
     },
     {
+     "bank": 0.4,
      "buys": [
       {
        "code": 473284,
        "ep": 7.26,
        "name": "Tzolakis",
-       "position": "GKP"
+       "position": "GKP",
+       "price": 4.6
       },
       {
        "code": 446008,
        "ep": 7.13,
        "name": "Mbeumo",
-       "position": "MID"
+       "position": "MID",
+       "price": 7.9
       },
       {
        "code": 219847,
        "ep": 4.16,
        "name": "Havertz",
-       "position": "FWD"
+       "position": "FWD",
+       "price": 7.5
       }
      ],
+     "chip": "bboost",
      "expected_pts": 73.41,
      "gw": 5,
+     "hit_cost": 8,
      "hits": 2,
      "sells": [
       {
        "code": 243298,
        "ep": 5.54,
        "name": "Gakpo",
-       "position": "MID"
+       "position": "MID",
+       "price": 7.1
       },
       {
        "code": 219168,
        "ep": 4.47,
        "name": "Isak",
-       "position": "FWD"
+       "position": "FWD",
+       "price": 9.0
       },
       {
        "code": 67089,
        "ep": 0.41,
        "name": "Dubravka",
-       "position": "GKP"
+       "position": "GKP",
+       "price": 4.0
       }
      ]
     },
     {
+     "bank": 0.4,
      "buys": [],
+     "chip": "bboost",
      "expected_pts": 71.96,
      "gw": 6,
+     "hit_cost": 0,
      "hits": 0,
      "sells": []
     },
     {
+     "bank": 0.4,
      "buys": [],
+     "chip": "bboost",
      "expected_pts": 77.47,
      "gw": 7,
+     "hit_cost": 0,
      "hits": 0,
      "sells": []
     },
     {
+     "bank": 0.4,
      "buys": [],
+     "chip": "bboost",
      "expected_pts": 76.59,
      "gw": 8,
+     "hit_cost": 0,
      "hits": 0,
      "sells": []
     },
     {
+     "bank": 0.4,
      "buys": [],
+     "chip": "bboost",
      "expected_pts": 73.75,
      "gw": 9,
+     "hit_cost": 0,
      "hits": 0,
      "sells": []
     }
@@ -260,30 +316,35 @@
    "p_haul": 0.030862234680478218
   }
  ],
+ "bank": 0.8,
  "bench": [
   {
    "code": 475168,
    "ep": 4.92,
    "name": "Jo\u00e3o Pedro",
-   "position": "FWD"
+   "position": "FWD",
+   "price": 7.7
   },
   {
    "code": 451284,
    "ep": 3.73,
    "name": "van Ewijk",
-   "position": "DEF"
+   "position": "DEF",
+   "price": 4.0
   },
   {
    "code": 219924,
    "ep": 2.57,
    "name": "Diop",
-   "position": "DEF"
+   "position": "DEF",
+   "price": 4.0
   },
   {
    "code": 67089,
    "ep": 0.4,
    "name": "Dubravka",
-   "position": "GKP"
+   "position": "GKP",
+   "price": 4.0
   }
  ],
  "buys": [
@@ -293,6 +354,7 @@
    "frequency": 0.8,
    "name": "Ajayi",
    "position": "DEF",
+   "price": 4.1,
    "tag": "attack"
   },
   {
@@ -301,6 +363,7 @@
    "frequency": 0.925,
    "name": "Palmer",
    "position": "MID",
+   "price": 9.6,
    "tag": "attack"
   }
  ],
@@ -312,7 +375,8 @@
   "code": 244851,
   "ep": 8.32,
   "name": "Palmer",
-  "position": "MID"
+  "position": "MID",
+  "price": 9.6
  },
  "captain_note": null,
  "captain_options": [
@@ -727,10 +791,108 @@
     "name": "Cherki",
     "position": "MID"
    }
-  ]
+  ],
+  "week": {
+   "bank": 1.9,
+   "buys": [
+    {
+     "code": 146426,
+     "ep": 6.83,
+     "name": "Ajayi",
+     "position": "DEF",
+     "price": 4.1
+    },
+    {
+     "code": 244851,
+     "ep": 8.32,
+     "name": "Palmer",
+     "position": "MID",
+     "price": 9.6
+    },
+    {
+     "code": 444102,
+     "ep": 6.08,
+     "name": "Evanilson",
+     "position": "FWD",
+     "price": 6.0
+    }
+   ],
+   "chip": "bboost",
+   "expected_pts": 77.05,
+   "gw": 4,
+   "hit_cost": 8,
+   "hits": 2,
+   "sells": [
+    {
+     "code": 475168,
+     "ep": 4.92,
+     "name": "Jo\u00e3o Pedro",
+     "position": "FWD",
+     "price": 7.6
+    },
+    {
+     "code": 494521,
+     "ep": 4.52,
+     "name": "Truffert",
+     "position": "DEF",
+     "price": 5.5
+    },
+    {
+     "code": 466052,
+     "ep": 3.88,
+     "name": "Cherki",
+     "position": "MID",
+     "price": 7.7
+    }
+   ],
+   "trace": {
+    "bank_value": null,
+    "ep_gain": 28.085,
+    "ft_after": 1,
+    "ft_basis": "lambda",
+    "ft_shadow": 5.8396,
+    "ft_use_penalty": 0.6,
+    "ft_used": 1,
+    "gw": 4,
+    "hit_cost": 8.0,
+    "moves": [
+     {
+      "buy_code": 146426,
+      "buy_name": "Ajayi",
+      "ep_gain": 10.445,
+      "lambda_tilt": 0.0,
+      "note": "",
+      "sell_code": 494521,
+      "sell_name": "Truffert"
+     },
+     {
+      "buy_code": 244851,
+      "buy_name": "Palmer",
+      "ep_gain": 14.256,
+      "lambda_tilt": 0.0,
+      "note": "",
+      "sell_code": 466052,
+      "sell_name": "Cherki"
+     },
+     {
+      "buy_code": 444102,
+      "buy_name": "Evanilson",
+      "ep_gain": 3.384,
+      "lambda_tilt": 1.668,
+      "note": "",
+      "sell_code": 475168,
+      "sell_name": "Jo\u00e3o Pedro"
+     }
+    ],
+    "note": "a bboost is recommended this week; these terms are the base plan's, which the solver returned without it",
+    "price_charge": 0.0,
+    "theta": 12.79
+   }
+  }
  },
  "plan_by_gw": [
   {
+   "bank": 0.3,
    "buys": [
     {
      "code": 146426,
@@ -738,6 +900,7 @@
      "frequency": 0.8,
      "name": "Ajayi",
      "position": "DEF",
+     "price": 4.1,
      "tag": "attack"
     },
     {
@@ -746,11 +909,14 @@
      "frequency": 0.925,
      "name": "Palmer",
      "position": "MID",
+     "price": 9.6,
      "tag": "attack"
     }
    ],
+   "chip": "bboost",
    "expected_pts": 76.64,
    "gw": 4,
+   "hit_cost": 4,
    "hits": 1,
    "sells": [
     {
@@ -758,91 +924,252 @@
      "ep": 4.52,
      "frequency": 0.5,
      "name": "Truffert",
-     "position": "DEF"
+     "position": "DEF",
+     "price": 5.5
     },
     {
      "code": 466052,
      "ep": 3.88,
      "frequency": 0.95,
      "name": "Cherki",
-     "position": "MID"
+     "position": "MID",
+     "price": 7.7
     }
-   ]
+   ],
+   "trace": {
+    "bank_value": null,
+    "ep_gain": 24.701,
+    "ft_after": 1,
+    "ft_basis": "lambda",
+    "ft_shadow": 5.8396,
+    "ft_use_penalty": 0.4,
+    "ft_used": 1,
+    "gw": 4,
+    "hit_cost": 4.0,
+    "moves": [
+     {
+      "buy_code": 146426,
+      "buy_name": "Ajayi",
+      "ep_gain": 10.445,
+      "lambda_tilt": 0.0,
+      "note": "",
+      "sell_code": 494521,
+      "sell_name": "Truffert"
+     },
+     {
+      "buy_code": 244851,
+      "buy_name": "Palmer",
+      "ep_gain": 14.256,
+      "lambda_tilt": 0.0,
+      "note": "",
+      "sell_code": 466052,
+      "sell_name": "Cherki"
+     }
+    ],
+    "note": "a bboost is recommended this week; these terms are the base plan's, which the solver returned without it",
+    "price_charge": 0.0,
+    "theta": 12.79
+   }
   },
   {
+   "bank": 1.3,
    "buys": [
     {
      "code": 473284,
      "ep": 7.26,
      "name": "Tzolakis",
-     "position": "GKP"
+     "position": "GKP",
+     "price": 4.6
     },
     {
      "code": 444102,
      "ep": 5.07,
      "name": "Evanilson",
-     "position": "FWD"
+     "position": "FWD",
+     "price": 6.0
     }
    ],
+   "chip": "bboost",
    "expected_pts": 72.73,
    "gw": 5,
+   "hit_cost": 4,
    "hits": 1,
    "sells": [
     {
      "code": 475168,
      "ep": 4.11,
      "name": "Jo\u00e3o Pedro",
-     "position": "FWD"
+     "position": "FWD",
+     "price": 7.6
     },
     {
      "code": 67089,
      "ep": 0.41,
      "name": "Dubravka",
-     "position": "GKP"
+     "position": "GKP",
+     "price": 4.0
     }
-   ]
+   ],
+   "trace": {
+    "bank_value": null,
+    "ep_gain": 23.85,
+    "ft_after": 1,
+    "ft_basis": "lambda",
+    "ft_shadow": 5.8396,
+    "ft_use_penalty": 0.34,
+    "ft_used": 1,
+    "gw": 5,
+    "hit_cost": 3.4,
+    "moves": [
+     {
+      "buy_code": 473284,
+      "buy_name": "Tzolakis",
+      "ep_gain": 21.625,
+      "lambda_tilt": -0.0,
+      "note": "",
+      "sell_code": 67089,
+      "sell_name": "Dubravka"
+     },
+     {
+      "buy_code": 444102,
+      "buy_name": "Evanilson",
+      "ep_gain": 2.225,
+      "lambda_tilt": 1.238,
+      "note": "",
+      "sell_code": 475168,
+      "sell_name": "Jo\u00e3o Pedro"
+     }
+    ],
+    "note": "the chance of a price fall was not recorded for every player sold here, so the price-timing charge is unknown; a bboost is recommended this week; these terms are the base plan's, which the solver returned without it",
+    "price_charge": null,
+    "theta": 12.79
+   }
   },
   {
+   "bank": 0.5,
    "buys": [
     {
      "code": 446008,
      "ep": 7.2,
      "name": "Mbeumo",
-     "position": "MID"
+     "position": "MID",
+     "price": 7.9
     }
    ],
+   "chip": "bboost",
    "expected_pts": 71.21,
    "gw": 6,
+   "hit_cost": 0,
    "hits": 0,
    "sells": [
     {
      "code": 243298,
      "ep": 5.26,
      "name": "Gakpo",
-     "position": "MID"
+     "position": "MID",
+     "price": 7.1
     }
-   ]
+   ],
+   "trace": {
+    "bank_value": null,
+    "ep_gain": 3.175,
+    "ft_after": 1,
+    "ft_basis": "lambda",
+    "ft_shadow": 5.8396,
+    "ft_use_penalty": 0.1445,
+    "ft_used": 1,
+    "gw": 6,
+    "hit_cost": 0.0,
+    "moves": [
+     {
+      "buy_code": 446008,
+      "buy_name": "Mbeumo",
+      "ep_gain": 3.175,
+      "lambda_tilt": 0.0,
+      "note": "",
+      "sell_code": 243298,
+      "sell_name": "Gakpo"
+     }
+    ],
+    "note": "the chance of a price fall was not recorded for every player sold here, so the price-timing charge is unknown; a bboost is recommended this week; these terms are the base plan's, which the solver returned without it",
+    "price_charge": null,
+    "theta": 12.33
+   }
   },
   {
+   "bank": 0.5,
    "buys": [],
+   "chip": "bboost",
    "expected_pts": 77.41,
    "gw": 7,
+   "hit_cost": 0,
    "hits": 0,
-   "sells": []
+   "sells": [],
+   "trace": {
+    "bank_value": null,
+    "ep_gain": 0.0,
+    "ft_after": 2,
+    "ft_basis": "lambda",
+    "ft_shadow": 4.1031,
+    "ft_use_penalty": 0.0,
+    "ft_used": 0,
+    "gw": 7,
+    "hit_cost": 0.0,
+    "moves": [],
+    "note": "a bboost is recommended this week; these terms are the base plan's, which the solver returned without it",
+    "price_charge": 0.0,
+    "theta": 11.94
+   }
   },
   {
+   "bank": 0.5,
    "buys": [],
+   "chip": "bboost",
    "expected_pts": 75.79,
    "gw": 8,
+   "hit_cost": 0,
    "hits": 0,
-   "sells": []
+   "sells": [],
+   "trace": {
+    "bank_value": null,
+    "ep_gain": 0.0,
+    "ft_after": 3,
+    "ft_basis": "lambda",
+    "ft_shadow": 3.6105,
+    "ft_use_penalty": 0.0,
+    "ft_used": 0,
+    "gw": 8,
+    "hit_cost": 0.0,
+    "moves": [],
+    "note": "a bboost is recommended this week; these terms are the base plan's, which the solver returned without it",
+    "price_charge": 0.0,
+    "theta": 11.33
+   }
   },
   {
+   "bank": 0.5,
    "buys": [],
+   "chip": "bboost",
    "expected_pts": 74.34,
    "gw": 9,
+   "hit_cost": 0,
    "hits": 0,
-   "sells": []
+   "sells": [],
+   "trace": {
+    "bank_value": 0.04,
+    "ep_gain": 0.0,
+    "ft_after": 4,
+    "ft_basis": "lambda",
+    "ft_shadow": 3.242,
+    "ft_use_penalty": 0.0,
+    "ft_used": 0,
+    "gw": 9,
+    "hit_cost": 0.0,
+    "moves": [],
+    "note": "a bboost is recommended this week; these terms are the base plan's, which the solver returned without it",
+    "price_charge": 0.0,
+    "theta": 11.33
+   }
   }
  ],
  "price_alerts": [
@@ -932,14 +1259,16 @@
    "ep": 4.52,
    "frequency": 0.5,
    "name": "Truffert",
-   "position": "DEF"
+   "position": "DEF",
+   "price": 5.5
   },
   {
    "code": 466052,
    "ep": 3.88,
    "frequency": 0.95,
    "name": "Cherki",
-   "position": "MID"
+   "position": "MID",
+   "price": 7.7
   }
  ],
  "strategy": {
@@ -989,7 +1318,8 @@
   "code": 108416,
   "ep": 8.3,
   "name": "Egan",
-  "position": "DEF"
+  "position": "DEF",
+  "price": 4.1
  },
  "wildcard_now": null,
  "win_probs": [
@@ -1244,67 +1574,78 @@
    "code": 489639,
    "ep": 7.71,
    "name": "Verbruggen",
-   "position": "GKP"
+   "position": "GKP",
+   "price": 4.5
   },
   {
    "code": 108416,
    "ep": 8.3,
    "name": "Egan",
-   "position": "DEF"
+   "position": "DEF",
+   "price": 4.1
   },
   {
    "code": 146426,
    "ep": 6.83,
    "name": "Ajayi",
-   "position": "DEF"
+   "position": "DEF",
+   "price": 4.1
   },
   {
    "code": 209036,
    "ep": 5.11,
    "name": "Gu\u00e9hi",
-   "position": "DEF"
+   "position": "DEF",
+   "price": 6.0
   },
   {
    "code": 244851,
    "ep": 8.32,
    "name": "Palmer",
-   "position": "MID"
+   "position": "MID",
+   "price": 9.6
   },
   {
    "code": 222531,
    "ep": 7.46,
    "name": "Gibbs-White",
-   "position": "MID"
+   "position": "MID",
+   "price": 7.9
   },
   {
    "code": 60307,
    "ep": 8.22,
    "name": "Gro\u00df",
-   "position": "MID"
+   "position": "MID",
+   "price": 5.5
   },
   {
    "code": 424876,
    "ep": 6.61,
    "name": "Szoboszlai",
-   "position": "MID"
+   "position": "MID",
+   "price": 7.0
   },
   {
    "code": 243298,
    "ep": 5.94,
    "name": "Gakpo",
-   "position": "MID"
+   "position": "MID",
+   "price": 7.2
   },
   {
    "code": 223094,
    "ep": 6.46,
    "name": "Haaland",
-   "position": "FWD"
+   "position": "FWD",
+   "price": 15.5
   },
   {
    "code": 219168,
    "ep": 5.68,
    "name": "Isak",
-   "position": "FWD"
+   "position": "FWD",
+   "price": 9.1
   }
  ]
 }
