@@ -256,8 +256,9 @@ def _golden_header_or_skip():
     header = json.loads(path.read_text())
     stale = gc.stale_inputs(header, REPO)
     if stale:
-        pytest.skip(f"golden board recorded under a different {stale[0]}; "
-                    "re-record with python -m tests.golden_client --write")
+        pytest.skip(f"golden board recorded under a different {stale[0]} "
+                    f"({len(stale)} input(s) differ); re-record with "
+                    "python -m tests.golden_client --write")
     return header
 
 
@@ -270,6 +271,7 @@ def _parity_run(root: Path, monkeypatch, entry: str):
 
     from tests import golden_client as gc
 
+    assert entry in ("cli", "job"), entry
     gc.build_scratch_tree(root, REPO)
     cfg = dataclasses.replace(gc.golden_config(), news_llm_command=STUB_COMMAND)
     client = gc.RecordedClient()
@@ -284,14 +286,14 @@ def _parity_run(root: Path, monkeypatch, entry: str):
             from gaffer.cli import app
 
             out = CliRunner().invoke(app, ["advise"])
-            assert out.exit_code == 0, out.output
+            assert out.exit_code == 0, (entry, out.output)
             returned = None
         else:
             from gaffer.web.job_kinds import JOB_KINDS
 
             returned = JOB_KINDS["advise"]()
     advice_files = sorted((root / "reports").glob("gw*-advice.json"))
-    assert len(advice_files) == 1, advice_files
+    assert len(advice_files) == 1, (entry, advice_files)
     advice = json.loads(advice_files[0].read_text())
     brief = json.loads((root / "reports" / f"brief_gw{advice['gw']}.json").read_text())
     return gc.strip_volatile(advice, str(root.resolve())), brief, returned
@@ -305,15 +307,21 @@ def test_the_cli_and_the_job_kind_run_the_same_pipeline_on_the_golden_board(
     from gaffer.brief import check_brief
     from tests import golden_client as gc
 
-    _golden_header_or_skip()
+    header = _golden_header_or_skip()
     expected = json.loads((gc.GOLDEN_DIR / gc.EXPECTED_DIR / "advice.json").read_text())
 
-    advice_a, brief_a, _ = _parity_run(tmp_path_factory.mktemp("parity-cli"), monkeypatch, "cli")
-    advice_b, brief_b, returned = _parity_run(tmp_path_factory.mktemp("parity-job"), monkeypatch, "job")
+    advice_cli, brief_cli, _ = _parity_run(
+        tmp_path_factory.mktemp("parity-cli"), monkeypatch, "cli")
+    advice_job, brief_job, returned = _parity_run(
+        tmp_path_factory.mktemp("parity-job"), monkeypatch, "job")
 
-    assert advice_a == expected
-    assert advice_b == expected
-    for brief in (brief_a, brief_b):
+    # Task 4 review: the job arm runs with the train step on, stubbed; had
+    # the stub not held, the models would have been rewritten through the
+    # scratch tree's symlink, and this is what says so.
+    assert gc.stale_inputs(header, REPO) == []
+    assert advice_cli == expected
+    assert advice_job == expected
+    for brief in (brief_cli, brief_job):
         assert brief["prose"] == STUB_PROSE
         assert brief["model_command"] == "python3"
         assert check_brief(brief["prose"], brief["facts"]) == []
