@@ -439,3 +439,39 @@ def test_serve_rung_returns_the_objectives_plan_typed_when_there_is_no_ladder():
     assert set(dumped) == {"gw", "buys", "sells", "hits", "xi", "bench", "captain", "vice",
                            "expected_pts", "plan_by_gw", "captain_note", "objective",
                            "restraint"}
+
+
+# --- the round trip (v17f §1 part 3; replaces the v16 source-order pins) --
+
+def test_the_served_plan_round_trips_through_the_advice_file(tmp_path, monkeypatch):
+    """Build → write the way advise writes → load → equal. This is the pin
+    the three source-order tests in test_v16_restraint.py became: the
+    served fields reach the file through one dump and come back through
+    one loader, so the order of the calls in run_advise is no longer a
+    thing a test has to read the source to check."""
+    from dataclasses import asdict
+    from pathlib import Path
+
+    from gaffer.advise import Advice
+    from gaffer.artifacts import advice_path, served_plan
+    from gaffer.io import atomic_write
+    from gaffer.ladder import serve_rung
+    from gaffer.served import completed, decorated, with_alternatives
+
+    monkeypatch.chdir(tmp_path)
+    Path("reports").mkdir()
+    objective = {"gw": 5, "buys": [P], "sells": [S], "hits": 1, "xi": [P], "bench": [S],
+                 "captain": P, "vice": S, "expected_pts": 61.5,
+                 "plan_by_gw": [_week(5, buys=[P], sells=[S], hits=1), _week(6)]}
+    plan = serve_rung(None, objective, hit_cost=4, captain_note="covering Dave")
+    plan = decorated(plan, tags={100: "attack"}, frequencies={("buy", 100): 0.7})
+    plan = completed(with_alternatives(plan, [{"gap": 0.4, "plan_by_gw": [_week(6, buys=[P])]}]),
+                     state=_state(), chip_table=[{"chip": "bboost", "gw": 6, "play_now": True}])
+    advice = Advice(deadline="2026-09-18T17:30:00Z", captain_options=[], chip_table=[],
+                    wildcard_now=None, alternatives=[], threats=[], price_alerts=[],
+                    **plan.model_dump(exclude_unset=True))
+    atomic_write(advice_path(5), json.dumps(asdict(advice), indent=1, default=str))
+    assert served_plan(5) == plan
+    raw = json.loads(advice_path(5).read_text())
+    assert "tag" not in raw["xi"][0] and raw["buys"][0]["tag"] == "attack"
+    assert raw["plan_by_gw"][0]["bank"] == 0.9 and raw["bank"] == 1.5

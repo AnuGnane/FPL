@@ -1,52 +1,9 @@
-"""v16 §4 — the advice is the chosen rung: source pins on the protected
-diff, the Advice fields, the CLI lines."""
+"""v16 §4 — the advice is the chosen rung: the CLI lines. The source-order
+pins on ``run_advise`` moved to the round trip in
+``tests/test_served_plan.py`` (v17f §1 part 3)."""
 from __future__ import annotations
 
-import inspect
-
 from tests.test_v4c_degradation import _fixture_advice
-
-
-def test_advice_carries_the_two_blocks_with_safe_defaults():
-    from gaffer.advise import Advice
-
-    a = _fixture_advice()
-    assert isinstance(a, Advice)
-    assert getattr(a, "objective", None) is None
-    assert getattr(a, "restraint", None) is None
-
-
-def test_the_state_is_saved_then_the_ladder_then_the_served_plan():
-    """Source-level like every v13/v15 pin (plan R6): the order the spec
-    fixes, and the served fields coming from ``serve_rung``."""
-    from gaffer.advise import run_advise
-
-    src = inspect.getsource(run_advise)
-    state = src.index("save_solve_state(")
-    ladder = src.index("build_ladder(gw)")
-    served = src.index("served = serve_rung(ladder, dict(")
-    advice = src.index("advice = Advice(")
-    written = src.index("atomic_write(advice_path")
-    assert state < ladder < served < advice < written
-    for key in ("hits", "xi", "bench", "captain", "vice", "expected_pts",
-                "plan_by_gw", "captain_note", "objective", "restraint"):
-        assert f'served["{key}"]' in src, key
-    assert 'buys, sells = served["buys"], served["sells"]' in src
-    # The tags and frequencies decorate the served moves, not the objective's.
-    assert src.index('buys, sells = served["buys"]') < src.index("transfer_tag(")
-    assert '"chip_plan": [{"gw": int(r["gw"]), "chip": str(r["chip"])}' in src
-
-
-def test_the_objective_dict_is_the_solvers_own_week_one():
-    """Keyword form, not a dict literal: ``tests/test_advise.py`` pins the
-    literal ``expected_pts=round(raw_xi_pts(first, ep_by), 2)``."""
-    from gaffer.advise import run_advise
-
-    src = inspect.getsource(run_advise)
-    block = src[src.index("served = serve_rung(ladder, dict("):src.index("captain_note=captain_note)")]
-    assert "hits=int(first.hits)" in block
-    assert "expected_pts=round(raw_xi_pts(first, ep_by), 2)" in block
-    assert "for p in plan.gw_plans]" in block
 
 
 def _cli(tmp_path, monkeypatch, advice):
