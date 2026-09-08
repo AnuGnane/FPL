@@ -171,7 +171,10 @@ def test_non_web_code_does_not_import_the_advice_router():
     from gaffer.web.routers import advice as advice_router
 
     for mod in (gaffer.pipeline, gaffer.cli, gaffer.web.job_kinds):
-        assert "routers.advice" not in Path(mod.__file__).read_text()
+        source = Path(mod.__file__).read_text()
+        # Both spellings of the import (Task 2 review).
+        assert "routers.advice" not in source
+        assert "routers import advice" not in source
     assert not hasattr(advice_router, "run_train_and_advise")
 
 
