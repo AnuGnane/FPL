@@ -1,7 +1,10 @@
 """The job kinds the browser may start (spec §5, v7c F1, v7d F1/F2).
 
-Every entry is the *same* callable the CLI runs. ``advise`` is defined here
-over ``gaffer.pipeline.weekly_run`` (v17d), the one body the CLI runs too;
+Every entry is the same *body* the CLI runs. ``advise`` is defined here
+over ``gaffer.pipeline.weekly_run`` (v17d), the one body ``cli.advise`` runs
+too — with the train step on here, because the button has no separate train
+step, and off in the CLI, because the Thursday plist runs ``gaffer train``
+first (v17d §2.3);
 ``refresh-data`` already existed as a job body for the v6 rerun buttons and is
 reused by reference; ``evaluate`` and ``news-shadow`` are thin wrappers around
 ``gaffer.evaluation`` that mirror ``cli.py::evaluate`` line for line. Nothing
