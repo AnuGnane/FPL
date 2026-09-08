@@ -279,6 +279,16 @@ def test_the_golden_run_writes_nothing_through_the_symlinks(golden_run):
     assert gc.stale_inputs(golden_run["header"], REPO) == []
 
 
+@pytest.mark.golden
+def test_the_golden_board_serves_the_recorded_plan_route(golden_run):
+    """v17f §1 part 2: the board's plan route, byte for byte, over the run
+    the module fixture already made. Recorded on main's code before the
+    served plan moved; never re-recorded inside v17f."""
+    expected = json.loads((gc.GOLDEN_DIR / gc.EXPECTED_DIR / "plan.json").read_text())
+    served = gc.plan_route(Path(golden_run["cwd"]), int(golden_run["header"]["gw"]))
+    assert served == expected
+
+
 def test_the_header_config_is_golden_config():
     """On the keys the header recorded: a field added after the recording
     (v17e §2.7 added three) is not in the header, and the fixture is never

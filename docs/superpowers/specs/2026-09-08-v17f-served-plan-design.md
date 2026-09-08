@@ -125,7 +125,7 @@ Every pre-existing key keeps its value. New keys, all additive:
 |---|---|---|
 | top level | `generated_at` | the run's ISO stamp, the same one the solve state carries; the loader need not open the state for a timestamp |
 | top level | `bank` | the starting bank in millions (`SolveState.bank / 10`, one decimal), `None` when unknown |
-| top level | `alternatives` | `[{gap, weeks: [week]}]`, the served alternatives priced and banked, no trace |
+| every week of `alternative_plans[*].plan_by_gw` | `price`, `hit_cost`, `chip`, `bank` | as `plan_by_gw`'s weeks; no trace |
 | every move (`buys`, `sells`, `xi`, `bench`, `captain`, `vice`, and inside every week) | `price` | buy price for an in, sell value for an out, in millions; `None` when the pool cannot price it |
 | every week of `plan_by_gw` | `hit_cost` | hits × the solve's price per hit |
 | every week of `plan_by_gw` | `chip` | the chip table's `play_now` chip for that gameweek, or `None` |
@@ -133,20 +133,26 @@ Every pre-existing key keeps its value. New keys, all additive:
 | every week of `plan_by_gw` | `trace` | the `PlanWeekTrace` block, or `None` |
 | `objective` | `week` | the objective's week one as a week (priced, banked, traced), so the board's objective column is carried, not rebuilt |
 
-`alternative_plans` stays beside `alternatives`, unchanged, for the report
-template and the diff strip that read it; v17g, which rebuilds the payload,
-retires it. `xi` and `bench` moves gain `price` because they go through
-the same `priced` pass; the head week's armband on the board is the
-captain's `price`, which the router used to look up again.
+The served alternatives keep the advice's own `alternative_plans` key and
+`{gap, plan_by_gw}` shape: the JSON already has a top-level `alternatives`
+key (the captain-alternatives table), and one key with new fields inside
+it is one shape, not two. `xi` and `bench` moves gain `price` because they
+go through the same `priced` pass; the head week's armband on the board is
+the captain's `price`, which the router used to look up again.
+
+The write is `model_dump(exclude_unset=True)`: a key the writer never set
+is not on disk, so a move advise never tagged carries no `tag`, and the
+XI's moves carry no `frequency`. A rail in `tests/test_served_plan.py`
+pins it.
 
 `strip_volatile` already strips `generated_at` at every depth, so the
 golden comparison sees none of the timestamps.
 
 ### 2.5 The alternatives live inside `ServedPlan`
 
-Each is its gap plus priced, banked weeks with no trace, built at write
-time from the same rows that fill `alternative_plans` and backfilled the
-same way. The router assigns the `Plan B` labels by position, which is
+Each is its gap plus priced, banked weeks with no trace, typed from the
+rows advise builds today under the same `alternative_plans` key, and
+backfilled the same way. The router assigns the `Plan B` labels by position, which is
 shape, and nothing else.
 
 ### 2.6 What the router keeps
@@ -163,13 +169,14 @@ computed.
 
 The loader keeps every rule about *numbers*: an unpriced move blanks the
 bank from that week on; an unknown bank or gap is `None`, never `0.0`; a
-captain absent from the file is a missing armband, not a missing plan; a
+captain or vice that cannot name a player (absent, not a dict, no integer
+code) is `None`, a missing armband and not a missing plan; a
 week with no moves is a week with no moves. Every field but `gw` has a
 default so a partial file — and every test fixture written against the
 old router — loads.
 
 What it drops is the tolerance for a file that is not the shape any
-`gaffer advise` ever wrote: a captain that is not a dict, a non-numeric
+`gaffer advise` ever wrote: a non-numeric
 `hits`, a plan entry that is not a dict, a chip table that is not a list, a
 `gap` that is not a number. Such a file fails validation, and the route
 answers 404 with the field named in the detail. The one older shape a real
@@ -181,8 +188,8 @@ before-validator on `plan_by_gw`.
 `artifacts.advice_gws() -> list[int]` enumerates the gameweeks with an
 advice file, ascending. The history route iterates it and reads each
 advice through `load_advice` as today. `update_health` takes the captain
-code from `served_plan(gw).captain`, `0` when there is no advice or no
-captain, through the same `try` it uses for the file today.
+code through `load_advice(gw)`, `0` when there is no advice or no captain;
+`served_plan` there would trace a whole plan for one integer.
 
 ### 2.9 `gen_types.py` emits a re-exported model
 
@@ -227,18 +234,19 @@ ServedObjective:   buys=[], sells=[], hits=0, expected_pts=0.0, line=None,
                    week: ServedWeek | None = None
 ServedRestraint:   chosen=None, label=None, bar=None, steps=[], agrees=True,
                    note=None, hit_cost=None, line=None
-ServedAlternative: gap=None, weeks=[]
+ServedStep:        below, above, share, taken, reason="", reason_kind="", line=None
+ServedAlternative: gap=None, plan_by_gw=[]
 ServedPlan:        gw, generated_at=None, bank=None, buys=[], sells=[], hits=0,
                    xi=[], bench=[], captain=None, vice=None, captain_note=None,
                    expected_pts=0.0, plan_by_gw=[], objective=None,
-                   restraint=None, alternatives=[]
+                   restraint=None, alternative_plans=[]
 ```
 
 `PlanWeekTrace` moves from `web/schemas.py` to `served.py` with
 `PlanMoveTrace` (both unchanged) and `schemas.py` re-exports them, so the
 core module does not import the web layer. `ServedRestraint.steps` is a
-list of dicts as the ladder writes them (v17b's `line` included); typing
-the step is the ladder's business, not this cycle's.
+list of `ServedStep`, the seven keys the ladder writes (v17b's `line`
+included).
 
 Functions, each a value in and a value out:
 
@@ -324,7 +332,6 @@ and `gaffer.artifacts.load_solve_state` instead of the router's names;
 their old-shape fixture dicts exercise the backfill.
 
 Die, by ruling (§2.7): in `tests/test_web_plan.py`
-`test_a_captain_that_is_not_a_dict_is_ignored`,
 `test_a_non_numeric_hits_count_reads_as_none_taken`,
 `test_a_non_numeric_ep_on_a_move_reads_as_zero`,
 `test_a_move_with_no_code_is_dropped_not_fatal`,
@@ -388,7 +395,7 @@ Task 0 and is committed before any served-plan code.
 
 Which rung is served, the trace's accounting, the ladder's walk, the chip
 table's shape, `Advice` as a dataclass and its `asdict` readers (v17g),
-retiring `alternative_plans` (v17g), the This Week fetch count (v17h),
+the This Week fetch count (v17h),
 `report.html.j2`'s literal 4 (open since v17b).
 
 ## 10. Outcome

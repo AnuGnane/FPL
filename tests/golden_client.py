@@ -375,6 +375,22 @@ def run_golden(root: Path, client: FPLClient | None = None) -> tuple[dict, dict]
     return advice_json, state_json
 
 
+def plan_route(root: Path, gw: int, client: FPLClient | None = None) -> dict:
+    """``GET /api/plan/{gw}`` served over the scratch tree ``run_golden``
+    filled, ``strip_volatile``d (v17f §1 part 2). The route reads only
+    ``reports/`` under the cwd, so it runs inside ``golden_cwd`` exactly
+    as the pipeline did; the recorded client keeps the sleep hush."""
+    from fastapi.testclient import TestClient
+
+    from gaffer.web.app import create_app
+
+    client = client if client is not None else RecordedClient()
+    with golden_cwd(root, client) as root:
+        resp = TestClient(create_app()).get(f"/api/plan/{gw}")
+        assert resp.status_code == 200, resp.text
+        return strip_volatile(resp.json(), str(root))
+
+
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
@@ -418,6 +434,9 @@ def write_expected(golden: Path = GOLDEN_DIR, *, scratch: Path | None = None,
     expected.mkdir(exist_ok=True)
     (expected / "advice.json").write_text(json.dumps(advice, indent=1, sort_keys=True) + "\n")
     (expected / "solve_state.json").write_text(json.dumps(state, indent=1, sort_keys=True) + "\n")
+    (expected / "plan.json").write_text(
+        json.dumps(plan_route(root, int(advice["gw"]), RecordedClient(golden)),
+                   indent=1, sort_keys=True) + "\n")
     old = json.loads((golden / HEADER_NAME).read_text()) if (golden / HEADER_NAME).exists() else {}
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     header = {
