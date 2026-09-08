@@ -9,17 +9,16 @@ turned off without also turning off the provider that is working. Creating a
 failure mode whose only remedy is disabling the whole feature is not a trade
 worth one saved config key (plan A6).
 
-**Deviation from plan A6, and the reason.** A6 specified a 49th ``Config``
-dataclass field. It cannot have one: ``tests/test_v9c_degradation.py:323`` and
-``tests/test_v9d_degradation.py:421`` both pin
-``len(dataclasses.fields(Config)) == 48``, both files are protected, and the
-plan's own Task 2 pre-registered this grep as a stop. The switch is therefore
-a module-level reader — :func:`gaffer.config.lineup_providers`, reading
-``[news] lineup_providers`` from the same TOML through the same tolerant
-parsing — which keeps every behaviour A6 argued for (a per-source kill, an
-empty list as the limit case, a typo that is dropped rather than raised on)
-and moves no pin. ``fetch_lineups`` reads it at serve time exactly as it reads
-``serving_config()``, because ``advise.py`` is protected and cannot forward it.
+**The deviation from plan A6, and its end.** A6 specified a 49th ``Config``
+dataclass field. v10 could not have one: ``tests/test_v9c_degradation.py:323``
+and ``tests/test_v9d_degradation.py:421`` both pinned
+``len(dataclasses.fields(Config)) == 48``, both files were protected, and the
+plan's own Task 2 pre-registered that grep as a stop, so the switch shipped as
+a module-level reader instead. v17e §2.1 took the question up on the merits
+and granted the field: it is ``news_lineup_providers``, cleaned by the loader
+with the same tolerant parsing, and every behaviour A6 argued for (a
+per-source kill, an empty list as the limit case, a typo that is dropped
+rather than raised on) is unchanged. Only the storage moved.
 """
 
 from __future__ import annotations
@@ -29,12 +28,12 @@ import dataclasses
 import pytest
 
 from gaffer.config import (DEFAULT_LINEUP_PROVIDERS, Config, _providers,
-                           lineup_providers)
+                           config_in_force, invalidate, load_config)
 
 
 def _write(tmp_path, body: str):
     path = tmp_path / "config.toml"
-    path.write_text(body)
+    path.write_text("[fpl]\nentry_id = 1\nleague_id = 2\n" + body)
     return path
 
 
@@ -45,7 +44,7 @@ def test_the_default_is_both_providers():
 
 def test_a_toml_list_overrides_the_default(tmp_path):
     path = _write(tmp_path, '[news]\nlineup_providers = ["ffs"]\n')
-    assert lineup_providers(path) == ["ffs"]
+    assert load_config(path).news_lineup_providers == ["ffs"]
 
 
 def test_an_unknown_name_is_dropped_with_a_line_not_raised(capsys):
@@ -69,30 +68,27 @@ def test_names_are_lowercased_and_stripped():
     assert _providers(["  FFS ", "RotoWire"]) == ["ffs", "rotowire"]
 
 
-def test_a_missing_file_or_section_gives_the_default(tmp_path):
-    assert lineup_providers(tmp_path / "nope.toml") == ["ffs", "rotowire"]
-    assert lineup_providers(_write(tmp_path, "[news]\n")) == ["ffs", "rotowire"]
+def test_a_missing_section_gives_the_default(tmp_path):
+    assert load_config(_write(tmp_path, "[news]\n")).news_lineup_providers == [
+        "ffs", "rotowire"]
 
 
-def test_a_corrupt_toml_gives_the_default_rather_than_raising(tmp_path):
-    """Serve-time readers never raise: a broken config must degrade to the
-    shipped behaviour, not take the news layer down."""
-    assert lineup_providers(_write(tmp_path, "[news\n")) == ["ffs", "rotowire"]
+def test_a_config_that_will_not_load_gives_the_default(tmp_path, monkeypatch):
+    """The view never raises (v17e §2.2): a broken config must degrade to the
+    shipped behaviour, not take the news layer down. The reader used to own
+    that fallback; the one view owns it now."""
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "config.toml").write_text("[news\n")
+    invalidate()
+    assert config_in_force().news_lineup_providers == ["ffs", "rotowire"]
+    invalidate()
 
 
-def test_the_config_dataclass_did_not_grow(tmp_path):
-    """The deviation, pinned. v9c and v9d both asserted 48 and both were
-    protected; the switch is a reader, so the count was untouched.
-
-    v12 W1 §2.6/§2.8 (specs/2026-09-01-gaffer-v12-program-design.md): the
-    seven protected counts are gone and the total lives in
-    ``tests/test_v12_w1_degradation.py`` alone — this file's own docstring is
-    the evidence that cited shape cost a real design, and it is the reason the
-    restructure happened. The absence claim below is the substance; the count
-    never was.
-    """
-    assert not any(f.name == "news_lineup_providers"
-                   for f in dataclasses.fields(Config))
+def test_the_switch_is_a_field_since_v17e():
+    """A6's 49th field, refused in v10 on a protected count and granted in
+    v17e §2.1 on the merits: one read interface, no private TOML readers."""
+    assert any(f.name == "news_lineup_providers"
+               for f in dataclasses.fields(Config))
 
 
 def test_the_two_switches_compose(tmp_path):
@@ -101,7 +97,6 @@ def test_the_two_switches_compose(tmp_path):
     refinement of it."""
     path = _write(tmp_path,
                   '[news]\nlineups = false\nlineup_providers = ["ffs"]\n')
-    assert lineup_providers(path) == ["ffs"]
-    from gaffer.config import load_config
+    assert load_config(path).news_lineup_providers == ["ffs"]
     with pytest.raises(Exception):
         load_config(tmp_path / "absent.toml")

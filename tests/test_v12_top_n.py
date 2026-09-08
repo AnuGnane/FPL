@@ -13,17 +13,18 @@ error that changes the advice without saying so.
 
 The key lives in `[optimizer]` beside horizon, decay and bench_curve — orchestrator
 ruling, 2026-09-02 — and that section is *splatted* into Config, which is why the
-field is named `top_n` after its key and why the forgiveness lives in the reader
-rather than in `load_config`. The two are pinned against each other below: the
-dataclass carries what the file says, the reader carries what the solver gets.
+field is named `top_n` after its key and why the forgiveness lives in the
+accessor rather than in `load_config`. The two are pinned against each other
+below: the dataclass carries what the file says, `solver_top_n()` carries what
+the solver gets (v17e §2.1).
 """
 
 from __future__ import annotations
 
 import dataclasses
 
-from gaffer.config import Config, load_config, optimizer_top_n
-from gaffer.optimize.milp import DEFAULT_TOP_N
+from gaffer.config import (DEFAULT_TOP_N, Config, config_in_force, invalidate,
+                           load_config)
 
 
 def _cfg(tmp_path, body=""):
@@ -38,16 +39,18 @@ def test_the_shipped_default_is_what_it_always_was():
 
 def test_no_config_at_all_gives_the_shipped_default(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    assert optimizer_top_n() == DEFAULT_TOP_N
+    invalidate()
+    assert config_in_force().solver_top_n() == DEFAULT_TOP_N
+    invalidate()
 
 
 def test_a_config_without_the_section_gives_the_default(tmp_path):
-    assert optimizer_top_n(_cfg(tmp_path)) == DEFAULT_TOP_N
+    assert load_config(_cfg(tmp_path)).solver_top_n() == DEFAULT_TOP_N
 
 
 def test_the_section_is_read(tmp_path):
     body = "[optimizer]\ntop_n = {GKP = 4, DEF = 10, MID = 12, FWD = 6}\n"
-    assert optimizer_top_n(_cfg(tmp_path, body)) == {"GKP": 4, "DEF": 10,
+    assert load_config(_cfg(tmp_path, body)).solver_top_n() == {"GKP": 4, "DEF": 10,
                                                      "MID": 12, "FWD": 6}
 
 
@@ -56,7 +59,7 @@ def test_a_missing_position_keeps_its_shipped_value(tmp_path):
     position should not have to restate the other three, and a solver with no
     goalkeepers in its pool is infeasible rather than fast."""
     body = "[optimizer]\ntop_n = {DEF = 30}\n"
-    assert optimizer_top_n(_cfg(tmp_path, body)) == {
+    assert load_config(_cfg(tmp_path, body)).solver_top_n() == {
         "GKP": 8, "DEF": 30, "MID": 26, "FWD": 14}
 
 
@@ -66,13 +69,13 @@ def test_an_unknown_position_is_dropped_rather_than_added(tmp_path):
     as harmless is a typo nobody finds. Dropped, so the pool is exactly the
     four positions that exist."""
     body = '[optimizer]\ntop_n = {GKP = 4, MIDD = 99}\n'
-    assert set(optimizer_top_n(_cfg(tmp_path, body))) == {"GKP", "DEF", "MID",
+    assert set(load_config(_cfg(tmp_path, body)).solver_top_n()) == {"GKP", "DEF", "MID",
                                                           "FWD"}
 
 
 def test_a_non_numeric_value_falls_back_for_that_position(tmp_path):
     body = '[optimizer]\ntop_n = {GKP = "lots"}\n'
-    assert optimizer_top_n(_cfg(tmp_path, body))["GKP"] == 8
+    assert load_config(_cfg(tmp_path, body)).solver_top_n()["GKP"] == 8
 
 
 def test_a_zero_or_negative_falls_back(tmp_path):
@@ -80,24 +83,26 @@ def test_a_zero_or_negative_falls_back(tmp_path):
     which surfaces as "no plan" — a long way from the config line that caused
     it."""
     body = "[optimizer]\ntop_n = {GKP = 0, DEF = -3}\n"
-    out = optimizer_top_n(_cfg(tmp_path, body))
+    out = load_config(_cfg(tmp_path, body)).solver_top_n()
     assert (out["GKP"], out["DEF"]) == (8, 22)
 
 
-def test_a_corrupt_toml_gives_the_default(tmp_path):
-    """The serve-time reader convention (`config.lineup_providers`): a broken
-    config degrades to the shipped behaviour rather than taking the solver
-    down."""
-    path = tmp_path / "config.toml"
-    path.write_text("[optimizer\n")
-    assert optimizer_top_n(path) == DEFAULT_TOP_N
+def test_a_corrupt_toml_gives_the_default(tmp_path, monkeypatch):
+    """The view's convention (v17e §2.2): the loader raises on a broken file
+    and `config_in_force` degrades to the shipped behaviour rather than
+    taking the solver down."""
+    (tmp_path / "config.toml").write_text("[optimizer\n")
+    monkeypatch.chdir(tmp_path)
+    invalidate()
+    assert config_in_force().solver_top_n() == DEFAULT_TOP_N
+    invalidate()
 
 
 def test_the_key_is_on_the_dataclass_too(tmp_path):
     """Read twice, deliberately, and they are not the same read.
 
-    `optimizer_top_n` is the serve-time reader `build_pool` calls without a
-    Config in hand; it merges over the shipped default and forgives anything
+    `solver_top_n()` is what `build_pool` reads through the view; it merges
+    over the shipped default and forgives anything
     unreadable. `Config.top_n` comes through `[optimizer]`'s splat, which
     forgives nothing and carries exactly what the file said — and it is what
     W5 §6.2's Settings tab will edit. The next test pins the gap between them
@@ -117,8 +122,8 @@ def test_the_splat_carries_a_partial_table_and_the_reader_completes_it(
     body = "[optimizer]\ntop_n = {DEF = 30}\n"
     path = _cfg(tmp_path, body)
     assert load_config(path).top_n == {"DEF": 30}
-    assert optimizer_top_n(path) == {"GKP": 8, "DEF": 30, "MID": 26,
-                                     "FWD": 14}
+    assert load_config(path).solver_top_n() == {"GKP": 8, "DEF": 30,
+                                               "MID": 26, "FWD": 14}
 
 
 def test_a_config_with_no_top_n_key_still_loads(tmp_path):
@@ -162,15 +167,15 @@ def test_the_config_field_count_moved_deliberately():
 
 def test_the_health_card_reflects_a_config_edit_because_it_clears_the_cache(
         tmp_path, monkeypatch):
-    """`optimizer_top_n` is `lru_cache`d, which is what keeps a per-solve TOML
+    """`config_in_force` is `lru_cache`d, which is what keeps a per-solve TOML
     read off the serving path — and which means a user who edits
     `[optimizer] top_n` and reloads Health would otherwise keep reading the
     value the process started with, for ever.
 
     Both halves are asserted, because the stale value is the trade the cache
     exists to make and the reader should be able to see it: before
-    `cache_clear` the old number is still there, after it the file's number
-    is. The route calls `cache_clear` first, so the card is honest.
+    `invalidate` the old number is still there, after it the file's number
+    is. The route calls `invalidate` first, so the card is honest (v17e §2.2).
     """
     from fastapi.testclient import TestClient
 
@@ -178,14 +183,14 @@ def test_the_health_card_reflects_a_config_edit_because_it_clears_the_cache(
     from gaffer.web.routers import meta
 
     monkeypatch.chdir(tmp_path)
-    optimizer_top_n.cache_clear()
+    invalidate()
     _cfg(tmp_path, "[optimizer]\ntop_n = {MID = 12}\n")
-    assert optimizer_top_n()["MID"] == 12
+    assert config_in_force().solver_top_n()["MID"] == 12
 
     # Rewritten at the same path — the case a cache keyed on the path cannot
     # notice by itself.
     _cfg(tmp_path, "[optimizer]\ntop_n = {MID = 33}\n")
-    assert optimizer_top_n()["MID"] == 12          # the trade, documented
+    assert config_in_force().solver_top_n()["MID"] == 12   # the trade
 
     assert meta.health().solver_top_n["MID"] == 33
     client = TestClient(create_app())

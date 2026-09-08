@@ -6,7 +6,10 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 
+import tomli_w
+
 from gaffer.errors import GafferError
+from gaffer.io import atomic_write
 
 LLM_NO_TOOLS = ("Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,"
                 "Task,NotebookEdit")
@@ -44,9 +47,48 @@ from-scratch solve says it — so the two keys share it rather than inventing
 a sentinel. ``max_transfers = 0`` is a real cap: bank, no moves at all.
 """
 
-HIT_BAR_LO, HIT_BAR_HI = 0.5, 0.95
-"""``[optimizer] hit_bar`` bounds (v16 §3.2). Below 0.5 a step up the ladder
-would be taken on a coin toss; above 0.95 no step ever passes."""
+DEFAULT_TOP_N = {"GKP": 8, "DEF": 22, "MID": 26, "FWD": 14}
+"""The candidate pool per position the solver has used since the first MILP
+(v12 W1 §2.6). Here rather than in ``optimize/milp.py`` since v17e §2.1, so
+that ``Config.solver_top_n`` can merge over it without ``config`` importing
+the optimizer; ``milp`` imports it from here."""
+
+BOUNDS: dict[str, tuple[float, float]] = {
+    "horizon": (1, 8), "decay": (0.0, 1.0), "itb_value": (0.0, 1.0),
+    "bench_curve": (0.0, 1.0), "lambda_cap": (0.0, 2.0), "top_n": (1, 200),
+    "max_hits": (0, NO_CAP), "max_transfers": (0, NO_CAP),
+    "hit_bar": (0.5, 0.95), "focus": (1, 99_999_999),
+}
+"""The one statement of every numeric setting's range (v17e §2.3). The
+settings registry reads its ``lo``/``hi`` from here and the router
+enforces all of it on a write; the loader enforces the three it always
+did (the two caps and the bar). ``hit_bar``: below 0.5 a step up the
+ladder would be taken on a coin toss; above 0.95 no step ever passes
+(v16 §3.2). ``focus``'s ceiling is a numeric bound because the range
+check needs one."""
+
+HIT_BAR_LO, HIT_BAR_HI = BOUNDS["hit_bar"]
+
+_SECTION = {"max_hits": "optimizer", "max_transfers": "optimizer",
+            "hit_bar": "optimizer"}
+"""The TOML table of the fields the loader checks, for the sentence. A
+router that knows the section passes it instead."""
+
+
+def out_of_range(field: str, value, section: str | None = None) -> str:
+    """The one sentence for a value outside ``BOUNDS[field]`` (v17e §2.3):
+    ``[optimizer] hit_bar = 1.2 — must be a number between 0.5 and 0.95``,
+    with ``(15 means no cap)`` appended for the two caps. The loader raises
+    it as :class:`GafferError`; the settings router returns it as the
+    422's ``error``. "whole number" when both bounds are integers."""
+    lo, hi = BOUNDS[field]
+    section = section or _SECTION.get(field, "optimizer")
+    kind = ("a whole number" if isinstance(lo, int) and isinstance(hi, int)
+            else "a number")
+    tail = f" ({NO_CAP} means no cap)" if field in ("max_hits",
+                                                    "max_transfers") else ""
+    return (f"[{section}] {field} = {value!r} — must be {kind} between "
+            f"{lo} and {hi}{tail}")
 
 
 @dataclass
@@ -85,6 +127,10 @@ class Config:
     hit_bar: float = 0.60
     train_seasons: list[str] = field(default_factory=list)
     current_season: str = "2026-27"
+    # v17e §2.1. ``[model] xg_per_shot``; read key by key because [model] is
+    # not a splatted section. Default off: the 2026-09-02 §3.5 season
+    # replay with the head on lost 28 points on the mean.
+    xg_per_shot: bool = False
     odds_api_key: str = ""
     player_props: bool = True
     ags_blend_weight: float = 0.5
@@ -113,10 +159,15 @@ class Config:
     # [optimizer] is splatted and the key *is* the keyword argument. The
     # default_factory is load-bearing rather than tidy: without it every
     # existing config.toml in the world, none of which has this key, stops
-    # loading. What the solver actually gets is `optimizer_top_n()`, which
-    # merges over the shipped default; this carries what the file said.
+    # loading. What the solver actually gets is `solver_top_n()` (v17e §2.1),
+    # which merges over the shipped default; this carries what the file said.
     top_n: dict[str, int] = field(
-        default_factory=lambda: {"GKP": 8, "DEF": 22, "MID": 26, "FWD": 14})
+        default_factory=lambda: dict(DEFAULT_TOP_N))
+    # v17e §2.1. Was a module-level reader popped out of [optimizer] before
+    # the splat (v12 W2); a field now, splatted like every other key here.
+    # Default on since the 2026-09-02 W2 gate: the term is a 0.008-point
+    # tie-breaker and the replay with it live was byte-identical to main.
+    price_timing: bool = True
     # --- v4d league mode ---------------------------------------------------
     # The z-dial's constants. Every default is the pinned value from the v4d
     # design, and league mode itself stays gated by league_id — there is no
@@ -175,6 +226,11 @@ class Config:
     # default: an empty store is a no-op, and a switch that has to be found
     # before a feature works is a feature nobody finds.
     news_overrides: bool = True
+    # v17e §2.1 (was v10 §F2a's reader). Which predicted-XI providers may
+    # speak; ``[]`` is the per-source kill switch. Cleaned by the loader
+    # with ``_providers`` so a typo is dropped with a line, never raised on.
+    news_lineup_providers: list[str] = field(
+        default_factory=lambda: list(DEFAULT_LINEUP_PROVIDERS))
     # v8f. The only switch this cycle adds. On by default, for the reason the
     # override switch is: a notification nobody has to enable is the whole
     # feature, and a switch that must be found before the tool works is a
@@ -197,6 +253,26 @@ class Config:
     # edits the file holding your API key is a surprise nobody asked for.
     web_token: str = ""
 
+    def solver_top_n(self) -> dict[str, int]:
+        """``top_n`` merged over :data:`DEFAULT_TOP_N` with v12 W1's
+        lenience: a position that is missing, non-integer, boolean or
+        ≤ 0 keeps the shipped value; an unknown position is dropped; a
+        value that is not a table at all is the default whole. A fresh dict
+        per call, so a caller that mutates its pool cannot poison anyone
+        else's (v17e §2.1). This is what the solver gets; ``top_n`` is
+        what the file said."""
+        out = dict(DEFAULT_TOP_N)
+        table = self.top_n
+        if not isinstance(table, dict):
+            return out
+        for pos in out:
+            value = table.get(pos)
+            if isinstance(value, bool) or not isinstance(value, int):
+                continue
+            if value > 0:
+                out[pos] = int(value)
+        return out
+
 
 LOCAL_OVERLAY = "config.local.toml"
 """The overlay the Settings tab owns (v12 W5 §6.2).
@@ -207,21 +283,75 @@ carries the odds API key and is gitignored for that reason. Spec §8 forbids a
 UI that edits ``config.toml``; this is the file it edits instead.
 """
 
+BASE_FILE = "config.toml"
+
+
+def base_exists() -> bool:
+    """Whether the working directory has a ``config.toml`` at all — the
+    state a cold clone is in (v17e §2.8)."""
+    return Path(BASE_FILE).exists()
+
+
+def _read_toml(path: Path) -> tuple[dict, str | None]:
+    """A TOML file as a dict, plus why it could not be read."""
+    if not path.exists():
+        return {}, None
+    try:
+        return tomllib.loads(path.read_text()), None
+    except Exception as exc:  # noqa: BLE001 — a read is never worth a 500
+        return {}, f"{path.name} is not readable TOML ({exc}) — ignored"
+
+
+def read_overlay() -> tuple[dict, str | None]:
+    """``config.local.toml`` parsed, or ``({}, why)`` when it is unreadable;
+    ``({}, None)`` when absent (v17e §2.8). The settings router's read."""
+    return _read_toml(Path(LOCAL_OVERLAY))
+
+
+def write_overlay(raw: dict) -> None:
+    """The overlay, atomically, with the header comment (v12 W5 §6.2;
+    moved here in v17e §2.8 so no module but this one writes the file).
+    Through ``gaffer.io.atomic_write`` rather than another copy of the
+    pid-temp + ``os.replace`` idiom; ``tomli_w.dumps`` rather than ``dump``
+    because the helper owns the file handle and the comment goes first."""
+    body = ("# Written by the gaffer web UI (v12 W5 §6.2).\n"
+            "# Merged over config.toml, key by key. Safe to hand-edit; a key\n"
+            "# that is not a config field is ignored with a printed line.\n\n"
+            + tomli_w.dumps(raw))
+    atomic_write(Path(LOCAL_OVERLAY), body)
+
+
+def _table(raw: dict, section: str) -> dict:
+    """One section of a parsed file, or ``{}`` if it is not a table:
+    ``optimizer = 5`` parses, and a membership test on an ``int`` was a 500
+    on the tab whose job is to say the overlay is wrong."""
+    value = raw.get(section)
+    return value if isinstance(value, dict) else {}
+
+
+def value_source(section: str, key: str) -> str:
+    """Which file the in-force value of ``[section] key`` comes from:
+    ``"local"`` (the overlay), ``"base"`` (``config.toml``) or
+    ``"default"`` (the dataclass). Three different facts: only a local
+    value can be reset (v17e §2.8)."""
+    local, _ = read_overlay()
+    if key in _table(local, section):
+        return "local"
+    base, _ = _read_toml(Path(BASE_FILE))
+    if key in _table(base, section):
+        return "base"
+    return "default"
+
+
 SPLATTED_SECTIONS = ("optimizer", "data")
 """Sections :func:`load_config` splats straight into ``Config(...)``.
 
 A key here that is not a dataclass field is a ``TypeError``, and
-:func:`serving_config` catches that by falling all the way back to
+:func:`config_in_force` catches that by falling all the way back to
 ``Config(entry_id=0, league_id=0)`` — discarding the user's real config
 without a word. So the overlay drops unknown keys in these sections rather
 than letting one typo silently re-point the news layer at entry 0. Every other
 section is read key-by-key and ignores what it does not recognise already.
-
-One exemption, and it is the reason this is a named tuple rather than a
-``fields(Config)`` filter on the whole file: ``load_config`` pops
-:data:`NON_FIELD_OPTIMIZER_KEYS` out of ``[optimizer]`` *before* the splat, so
-those keys never reach ``Config.__init__`` and dropping them here would leave
-the Settings tab writing ``price_timing`` into a file nothing reads back.
 """
 
 
@@ -245,13 +375,12 @@ def _overlay(raw: dict, base: Path) -> dict:
     printed line an unknown key gets, unless the base holds a scalar at that
     key too — only scalar-over-scalar is a merge. ``optimizer = 5`` used to
     replace the whole ``[optimizer]`` table and take ``load_config`` down with
-    it, which ``serving_config`` turns into ``Config(entry_id=0, league_id=0)``
-    — every real setting the manager has, discarded over one line. The rule
-    does not ask whether the base declares the section, because the readers
-    below do not either: :func:`price_timing` and :func:`lineup_providers`
-    reach for ``raw.get(section, {}).get(...)`` *outside* their ``try``, so a
-    scalar landing on a section ``config.toml`` happens to omit would raise
-    ``AttributeError`` on the solve path — the one place that must not.
+    it, which :func:`config_in_force` turns into
+    ``Config(entry_id=0, league_id=0)`` — every real setting the manager has,
+    discarded over one line. The rule does not ask whether the base declares
+    the section, because ``load_config`` does ``raw.get(section, {})`` per
+    table and a scalar there would raise ``AttributeError`` on the solve path
+    — the one place that must not.
 
     Never raises. A missing overlay is the normal case; an unparseable one is
     ignored with a printed line, because one bad write from the Settings tab
@@ -270,8 +399,7 @@ def _overlay(raw: dict, base: Path) -> dict:
         print(f"config: {local} is not readable TOML ({exc}) — ignored, "
               f"using {base} alone")
         return raw
-    allowed = ({f.name for f in dataclasses.fields(Config)}
-               | set(NON_FIELD_OPTIMIZER_KEYS))
+    allowed = {f.name for f in dataclasses.fields(Config)}
     out = dict(raw)
     for section, values in extra.items():
         if not isinstance(values, dict):
@@ -283,16 +411,15 @@ def _overlay(raw: dict, base: Path) -> dict:
             # A scalar where a section belongs. `optimizer = 5` from a
             # hand-edit replaced the whole `[optimizer]` table, and
             # `load_config`'s `**optimizer` splat then raised `AttributeError:
-            # 'int' object has no attribute 'items'` — which `serving_config`
+            # 'int' object has no attribute 'items'` — which `config_in_force`
             # catches by handing back `Config(entry_id=0, league_id=0)`: the
             # manager's entire real config gone over one bad line in a file the
             # UI writes. Dropped with the key guard's own sentence below,
             # because it is the key guard's own fact — the overlay said
             # something the config cannot mean. Dropped whether or not the base
-            # declares the section: `price_timing()` and `lineup_providers()`
-            # do `.get(section, {}).get(...)` outside their `try`, so letting
-            # `optimizer = 5` through against a base with no `[optimizer]`
-            # would raise on the solve path instead.
+            # declares the section: `load_config` does `raw.get(section, {})`
+            # per table, so letting `optimizer = 5` through against a base with
+            # no `[optimizer]` would raise on the solve path instead.
             print(f"config: {local} sets [{section}] to something that is not "
                   f"a table, which is not a config section — ignored")
             continue
@@ -320,23 +447,38 @@ def _overlay(raw: dict, base: Path) -> dict:
 def _raw_with_overlay(path: Path | str) -> dict:
     """``config.toml`` parsed, with ``config.local.toml`` merged over it.
 
-    The one place the merge happens. ``load_config`` is not the only reader of
-    ``config.toml``: :func:`lineup_providers`, :func:`price_timing`,
-    :func:`xg_per_shot` and :func:`optimizer_top_n` open the file themselves,
-    because the keys they serve are either not ``Config`` fields or are needed
-    where no ``Config`` is in hand. Two of the nine keys the Settings tab
-    writes are served by two of those readers, so an overlay only the loader
-    honoured would be a switch that saves and changes nothing — and the fourth
-    is here for the same reason even though nothing edits it from the web: a
-    file that means one thing to the loader and another to a reader is worse
-    than a file no reader honours at all.
+    The one place the merge happens, and since v17e §2.1 ``load_config`` is
+    its only caller: the keys that used to need their own readers are fields.
 
-    Raises whatever reading or parsing ``path`` raises — every caller already
-    has an answer for that, and inventing a second one here would hide the
-    missing-``config.toml`` error :func:`load_config` is careful to phrase.
+    Raises whatever reading or parsing ``path`` raises — ``load_config``
+    phrases the missing-file error and :func:`config_in_force` degrades.
     """
     file = Path(path)
     return _overlay(tomllib.loads(file.read_text()), file)
+
+
+def _providers(raw) -> list[str]:
+    """A ``[news] lineup_providers`` value -> a clean list of known names.
+
+    A typo in a TOML file must not take advice down, so an unknown name is
+    dropped with a line rather than raised on, and a value that is not a list
+    at all falls back to the default. An explicit empty list is honoured —
+    that is the kill switch, not a mistake.
+    """
+    if raw is None:
+        return list(DEFAULT_LINEUP_PROVIDERS)
+    if not isinstance(raw, (list, tuple)):
+        print(f"config: [news] lineup_providers is not a list ({raw!r}) — "
+              f"using {list(DEFAULT_LINEUP_PROVIDERS)}")
+        return list(DEFAULT_LINEUP_PROVIDERS)
+    out = []
+    for name in raw:
+        key = str(name).strip().casefold()
+        if key in DEFAULT_LINEUP_PROVIDERS:
+            out.append(key)
+        elif key:
+            print(f"config: unknown predicted-XI provider {key!r} — ignored")
+    return out
 
 
 def _check_caps(cfg: "Config") -> None:
@@ -346,11 +488,10 @@ def _check_caps(cfg: "Config") -> None:
     a wrong number comes from."""
     for key in ("max_hits", "max_transfers"):
         value = getattr(cfg, key)
+        lo, hi = BOUNDS[key]
         if (isinstance(value, bool) or not isinstance(value, int)
-                or not 0 <= value <= NO_CAP):
-            raise GafferError(
-                f"[optimizer] {key} = {value!r} — must be a whole number "
-                f"between 0 and {NO_CAP} ({NO_CAP} means no cap)")
+                or not lo <= value <= hi):
+            raise GafferError(out_of_range(key, value))
 
 
 def _check_stance(cfg: "Config") -> None:
@@ -364,14 +505,12 @@ def _check_stance(cfg: "Config") -> None:
 
 
 def _check_hit_bar(cfg: "Config") -> None:
-    """v16 §3.2: a real number inside ``[HIT_BAR_LO, HIT_BAR_HI]``, refused
-    by name, like the caps."""
+    """v16 §3.2: a real number inside ``BOUNDS["hit_bar"]``, refused by
+    name, like the caps."""
     value = cfg.hit_bar
     if (isinstance(value, bool) or not isinstance(value, (int, float))
             or not HIT_BAR_LO <= float(value) <= HIT_BAR_HI):
-        raise GafferError(
-            f"[optimizer] hit_bar = {value!r} — must be a number between "
-            f"{HIT_BAR_LO} and {HIT_BAR_HI}")
+        raise GafferError(out_of_range("hit_bar", value))
 
 
 def load_config(path: Path | str = "config.toml") -> Config:
@@ -395,14 +534,9 @@ def load_config(path: Path | str = "config.toml") -> Config:
     digest = raw.get("digest", {})
     backup = raw.get("backup", {})
     web = raw.get("web", {})
-    # v12 W2 §3.4 (specs/2026-09-01-gaffer-v12-program-design.md). The
-    # program's solver knobs live in [optimizer] and this section is splatted
-    # wholesale, so a knob read by a module-level reader has to be lifted out
-    # first or it arrives at Config.__init__ as an unexpected keyword. Popped
-    # by name, so a *typo* under [optimizer] still raises loudly — and so that
-    # W1's top_n, which is a real field, keeps travelling through the splat.
-    optimizer = {k: v for k, v in raw.get("optimizer", {}).items()
-                 if k not in NON_FIELD_OPTIMIZER_KEYS}
+    # v17e §2.1: every [optimizer] key is a field now, price_timing
+    # included, so the section splats whole and a typo is still a TypeError.
+    optimizer = dict(raw.get("optimizer", {}))
     cfg = Config(
         entry_id=raw["fpl"]["entry_id"],
         # v15 §3.1: the overlay's [league] focus wins over fpl.league_id when
@@ -461,6 +595,8 @@ def load_config(path: Path | str = "config.toml") -> Config:
         news_lineup_absence_damp=float(news.get("lineup_absence_damp", 0.75)),
         news_lineup_start_floor=float(news.get("lineup_start_floor", 0.0)),
         news_overrides=bool(news.get("overrides", True)),
+        news_lineup_providers=_providers(news.get("lineup_providers")),
+        xg_per_shot=bool(raw.get("model", {}).get("xg_per_shot", False)),
         digest_notify=bool(digest.get("notify", True)),
         backup_dir=str(backup.get("dir", "")),
         backup_rsync_target=str(backup.get("rsync_target", "")),
@@ -473,90 +609,20 @@ def load_config(path: Path | str = "config.toml") -> Config:
     return cfg
 
 
-def _providers(raw) -> list[str]:
-    """A ``[news] lineup_providers`` value -> a clean list of known names.
-
-    A typo in a TOML file must not take advice down, so an unknown name is
-    dropped with a line rather than raised on, and a value that is not a list
-    at all falls back to the default. An explicit empty list is honoured —
-    that is the kill switch, not a mistake.
-    """
-    if raw is None:
-        return list(DEFAULT_LINEUP_PROVIDERS)
-    if not isinstance(raw, (list, tuple)):
-        print(f"config: [news] lineup_providers is not a list ({raw!r}) — "
-              f"using {list(DEFAULT_LINEUP_PROVIDERS)}")
-        return list(DEFAULT_LINEUP_PROVIDERS)
-    out = []
-    for name in raw:
-        key = str(name).strip().casefold()
-        if key in DEFAULT_LINEUP_PROVIDERS:
-            out.append(key)
-        elif key:
-            print(f"config: unknown predicted-XI provider {key!r} — ignored")
-    return out
-
-
-def lineup_providers(path: Path | str = "config.toml") -> list[str]:
-    """Which predicted-XI providers may speak (v10 §F2a, plan A6).
-
-    A per-source kill, which ``[news] lineups`` cannot be: that switch covers
-    a source going silent, and a silent source needs no switch. This one
-    covers a source going *wrong* — parsing, resolving, and lying — which the
-    pessimistic merge in ``fetch_lineups`` turns into benched starters. ``[]``
-    behaves exactly like ``lineups = false``; ``lineups = false``
-    short-circuits in ``advise.py`` before this is read, so the two compose in
-    the only order that makes sense.
-
-    A module-level reader rather than a :class:`Config` field, which is a
-    deviation from plan A6 with a reason the tree supplies: a 49th field would
-    break ``len(dataclasses.fields(Config)) == 48`` in
-    ``tests/test_v9c_degradation.py`` and ``tests/test_v9d_degradation.py``,
-    both of which are protected this cycle. Every behaviour A6 argued for
-    survives the move; only the storage does not. It is read at serve time by
-    ``fetch_lineups``, the same seam ``serving_config`` exists for, because
-    ``advise.py`` is protected and cannot forward it.
-
-    Never raises. A missing file, a missing section and a corrupt TOML all
-    give the shipped default, for the reason :func:`serving_config` gives.
-    """
-    try:
-        raw = _raw_with_overlay(path)
-    except Exception:  # noqa: BLE001 — a serve-time reader never raises
-        return list(DEFAULT_LINEUP_PROVIDERS)
-    return _providers(raw.get("news", {}).get("lineup_providers"))
-
-
-def focus_league() -> int:
-    """v15 §4.2 (plan R7): the effective focus league id, for the settings
-    row's reader. ``[league] focus`` over ``fpl.league_id``, exactly as
-    :func:`load_config` resolves ``Config.league_id``. Never raises: a clone
-    with no config.toml reads 0, which the row's bound (lo 1) marks as unset.
-    """
-    try:
-        return int(load_config().league_id)
-    except Exception:  # noqa: BLE001 — a settings reader never raises
-        return 0
-
-
 @lru_cache(maxsize=1)
-def serving_config() -> Config:
-    """The config as the *serve-time seams* read it — never raising.
+def config_in_force() -> Config:
+    """The config in force: the working directory's ``config.toml`` with
+    ``config.local.toml`` merged over it, cached for the life of the
+    process, never raising (v17e §2.2).
 
-    ``advise.py`` is protected, so v8a's fetcher- and availability-level
-    switches cannot arrive as arguments; they are read here instead. Two
-    consequences are deliberate. It is cached, because a fetcher must not
-    re-read a TOML file per call. And it degrades to the dataclass defaults
-    rather than raising, because a clone with no ``config.toml`` still has to
-    predict — the loud "copy config.example.toml" error belongs to the CLI's
-    own :func:`load_config` call, not to a news source.
-
-    Tests that change ``config.toml`` under a running process call
-    ``serving_config.cache_clear()``. So must anything else: the cache lives
-    for the life of the process, so editing ``[news]`` while the web app is
-    up changes nothing until it is restarted. That is the intended trade —
-    a per-call TOML read on a serving path is worse — but it is a trap for
-    anyone toggling a flag and watching for an effect.
+    The one read for everything that is not a person at a terminal — a
+    fetcher, the solver's pool, the ladder's bar, a router. Cached because a
+    fetcher must not re-read a TOML file per call; degrading to the
+    dataclass defaults because a clone with no ``config.toml`` still has to
+    predict (the loud "copy config.example.toml" error belongs to the CLI's
+    own :func:`load_config` call). :func:`invalidate` is the one clearing,
+    and the two places that change or re-read the file under a running
+    process — the settings router's save and the health poll — call it.
     """
     try:
         return load_config()
@@ -564,137 +630,68 @@ def serving_config() -> Config:
         return Config(entry_id=0, league_id=0)
 
 
-NON_FIELD_OPTIMIZER_KEYS = ("price_timing",)
-"""``[optimizer]`` keys that are **not** :class:`Config` fields.
+def invalidate() -> None:
+    """Drop every cache keyed on the config file (v17e §2.2): the view, and
+    the price-fall table that reads its switch through the view. Tests
+    that write a ``config.toml`` under a running process call this; so
+    does anything else that edits the file."""
+    config_in_force.cache_clear()
+    from gaffer.price_timing import owned_price_falls  # circular at import
 
-``load_config`` splats ``[optimizer]`` wholesale, so a key here that nobody
-pops is a ``TypeError`` out of ``Config.__init__`` on the next advise run.
-``price_timing`` is read by a module-level reader instead — see
-:func:`price_timing` for why a field was not available to it.
+    owned_price_falls.cache_clear()
 
-**One entry, and ``top_n`` is deliberately not the second.** W1 §2.6 ships
-``top_n`` as a real ``Config`` field with a ``default_factory``, splatted from
-this same section and read through ``optimizer_top_n()``; popping it here
-would strip a configured pool size out of the constructor and hand every user
-the dataclass default, silently. A key belongs in this tuple only when
-``Config`` has no field of that name.
 
-A **named** tuple and not a ``fields(Config)`` filter: a filter would also
-swallow ``horizen = 6``, and a silently ignored typo in the horizon is a
-season of quietly wrong advice.
-"""
+def serving_config() -> Config:
+    """Deleted in v17e Task 3; :func:`config_in_force` is the read."""
+    return config_in_force()
+
+
+# The view's own cache handle and not :func:`invalidate`, so the wrapper is
+# exactly what it was until Task 3 deletes it: the two callers that also want
+# the price-fall table dropped still spend their own line for it, and a test
+# counting those clears counts the same number it always did.
+serving_config.cache_clear = config_in_force.cache_clear
+serving_config.cache_info = config_in_force.cache_info
+
+
+def focus_league() -> int:
+    """v15 §4.2 (plan R7): the effective focus league id, for the settings
+    row's reader. ``[league] focus`` over ``fpl.league_id``, exactly as
+    :func:`load_config` resolves ``Config.league_id``, read through the
+    view so a cold clone reads 0 by the same path as everything else."""
+    return int(config_in_force().league_id)
 
 
 def price_timing(path: Path | str = "config.toml") -> bool:
-    """``[optimizer] price_timing`` (v12 §3.4).
-
-    Default **on** since the 2026-09-02 W2 gate: the term is a 0.008-point
-    tie-breaker and the replay with it live was byte-identical to main
-    (pre-registered outcome); set ``false`` to drop it. Live only when the
-    price log carries today's reading — the scheduled advise banks one first.
-
-    A module-level reader rather than a :class:`Config` field, for
-    :func:`lineup_providers`' reason: another field moves
-    ``len(dataclasses.fields(Config))``, which several **protected**
-    degradation files pin, and W1 §2.6 has already paid that toll once for
-    ``top_n``. Paying it twice in one program for a flag nobody sets is not a
-    trade this workstream is entitled to make. See
-    :data:`NON_FIELD_OPTIMIZER_KEYS`, which is what stops this key reaching
-    ``Config.__init__`` through the ``[optimizer]`` splat — and note that
-    ``top_n``, which *is* a field, must not be listed there.
-
-    Never raises. A missing file, a missing section and corrupt TOML all give
-    the shipped default: this is read on the solve path, and a solve must not
-    die of a config file.
-    """
+    """Deleted in v17e Task 3; ``config_in_force().price_timing`` is the read."""
     try:
-        raw = _raw_with_overlay(path)
-    except Exception:  # noqa: BLE001 — a solve-path reader never raises
+        return bool(load_config(path).price_timing)
+    except Exception:  # noqa: BLE001
         return True
-    return bool(raw.get("optimizer", {}).get("price_timing", True))
 
 
 def xg_per_shot(path: Path | str = "config.toml") -> bool:
-    """``[model] xg_per_shot`` (v12 §3.5).
-
-    Default **off**. The 2026-09-02 §3.5 RMSE-bucket arm said keep (hauler
-    5.207 → 5.203, inside the 0.019 spread) but the season replay with the head
-    on scored [1874, 1834, 1799] against main's [1854, 1875, 1862] — −28 on the
-    mean, beyond the control spread, with the seed spread tripled (75 vs 21).
-    The outcome measure wins; set ``true`` to fit the head anyway.
-
-    A module-level reader for :func:`price_timing`'s reason. Never raises: a
-    training run must not die of a config file, and the default is the
-    shipped behaviour.
-
-    ``[model]`` rather than ``[optimizer]``, and that section is *not*
-    splatted into :class:`Config`, so this key needs no entry in
-    :data:`NON_FIELD_OPTIMIZER_KEYS`.
-    """
+    """Deleted in v17e Task 3; ``config_in_force().xg_per_shot`` is the read."""
     try:
-        raw = _raw_with_overlay(path)
-    except Exception:  # noqa: BLE001 — a training reader never raises
+        return bool(load_config(path).xg_per_shot)
+    except Exception:  # noqa: BLE001
         return False
-    return bool(raw.get("model", {}).get("xg_per_shot", False))
+
+
+def lineup_providers(path: Path | str = "config.toml") -> list[str]:
+    """Deleted in v17e Task 3; the field is ``news_lineup_providers``."""
+    try:
+        return list(load_config(path).news_lineup_providers)
+    except Exception:  # noqa: BLE001
+        return list(DEFAULT_LINEUP_PROVIDERS)
 
 
 def optimizer_top_n(path: Path | str = "config.toml") -> dict[str, int]:
-    """``[optimizer] top_n`` merged over the shipped default.
-
-    Cached, for the reason :func:`serving_config` is: ``build_pool`` calls this
-    on every solve and a per-solve TOML read on the serving path is the cost
-    this reader was added to avoid. Same trap, same remedy — a test (or
-    anything else) that edits ``config.toml`` under a running process calls
-    ``optimizer_top_n.cache_clear()``. The returned dict is a fresh copy each
-    call so a caller that mutates its pool sizes cannot poison the cache.
-
-    v12 W1 §2.6. Never raises: a missing file, a missing section, a corrupt
-    TOML, a typo'd position and a non-numeric value all degrade to the shipped
-    value for that position. A config error that silently shrank the solver's
-    candidate pool would change the advice without saying so, and the symptom
-    — a plan that never mentions a player — looks nothing like its cause.
-
-    Merged rather than replaced so a user tuning one position does not have to
-    restate the other three, and unknown keys are dropped so a typo cannot
-    contribute an empty position to a pool that then reads as intentional.
-
-    Separate from ``Config.top_n``, which comes through ``[optimizer]``'s
-    splat and carries exactly what the file said. That one is what the
-    Settings tab edits; this one is what the solver gets. ``build_pool`` has
-    no ``Config`` in hand and cannot be given one without an ``optimize/**``
-    signature change, which is the other half of why this reader exists.
-    """
-    # Keyed on the absolute path, so the default relative "config.toml" is a
-    # different cache entry per working directory rather than one entry that
-    # follows a chdir into somebody else's tree.
-    return dict(_optimizer_top_n(str(Path(path).resolve())))
-
-
-@lru_cache(maxsize=8)
-def _optimizer_top_n(path: str) -> dict[str, int]:
-    """:func:`optimizer_top_n`'s cache. Never call this one directly — it hands
-    back the cached dict itself, and a mutation of it would be permanent."""
-    from gaffer.optimize.milp import DEFAULT_TOP_N
-
-    out = dict(DEFAULT_TOP_N)
+    """Deleted in v17e Task 3; ``config_in_force().solver_top_n()`` is the read."""
     try:
-        raw = _raw_with_overlay(path)
-        table = raw.get("optimizer", {}).get("top_n", {})
-    except Exception:  # noqa: BLE001 — serve-time readers never raise
-        return out
-    if not isinstance(table, dict):
-        return out
-    for pos in out:
-        value = table.get(pos)
-        if isinstance(value, bool) or not isinstance(value, int):
-            continue
-        if value > 0:
-            out[pos] = int(value)
-    return out
+        return load_config(path).solver_top_n()
+    except Exception:  # noqa: BLE001
+        return dict(DEFAULT_TOP_N)
 
 
-# The cache lives on the private reader, but callers should not have to know
-# that: `optimizer_top_n.cache_clear()` is what a test reaches for, by analogy
-# with `serving_config.cache_clear()`, so it is what it gets.
-optimizer_top_n.cache_clear = _optimizer_top_n.cache_clear
-optimizer_top_n.cache_info = _optimizer_top_n.cache_info
+optimizer_top_n.cache_clear = lambda: None

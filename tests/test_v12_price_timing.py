@@ -92,64 +92,54 @@ def test_an_unowned_player_is_not_in_the_table():
 
 
 def test_the_switch_is_on_by_default_and_lives_under_optimizer(tmp_path):
-    """On since the 2026-09-02 W2 gate met the pre-registered §3.4 flip rule:
-    the replay with the term live was byte-identical to main and the hit count
-    did not rise. Under [optimizer] and not [solver]: program ruling.
+    """On since the 2026-09-02 W2 gate met the pre-registered §3.4 flip rule.
+    Under [optimizer] and not [solver]: program ruling. A field since v17e
+    §2.1; an unreadable file degrades through ``config_in_force`` to the
+    shipped default, because a solve must not die of a config file."""
+    from gaffer.config import config_in_force, invalidate, load_config
 
-    The unreadable-file fallback is the shipped default for the reason it was
-    when the default was off — a solve must not die of a config file, and it
-    must not silently serve behaviour nobody chose either."""
-    from gaffer.config import price_timing as read_flag
-
+    base = "[fpl]\nentry_id = 1\nleague_id = 2\n"
     on = tmp_path / "on.toml"
-    on.write_text("[optimizer]\nprice_timing = true\n")
+    on.write_text(base + "[optimizer]\nprice_timing = true\n")
     off = tmp_path / "off.toml"
-    off.write_text("[optimizer]\nprice_timing = false\n")
+    off.write_text(base + "[optimizer]\nprice_timing = false\n")
     unset = tmp_path / "unset.toml"
-    unset.write_text("[optimizer]\nhorizon = 3\n")
-    assert read_flag(on) is True
-    assert read_flag(off) is False
-    assert read_flag(unset) is True
-    assert read_flag(tmp_path / "nothing.toml") is True
-    broken = tmp_path / "broken.toml"
-    broken.write_text("[optimizer\nprice_timing = false")
-    assert read_flag(broken) is True
+    unset.write_text(base + "[optimizer]\nhorizon = 3\n")
     stale = tmp_path / "stale.toml"
-    stale.write_text("[solver]\nprice_timing = false\n")
-    # A key in a section this project does not have is not a switch.
-    assert read_flag(stale) is True
+    stale.write_text(base + "[solver]\nprice_timing = false\n")
+    assert load_config(on).price_timing is True
+    assert load_config(off).price_timing is False
+    assert load_config(unset).price_timing is True
+    assert load_config(stale).price_timing is True
+    invalidate()
+    assert config_in_force().price_timing is True   # no config.toml here at all
+    invalidate()
 
 
-def test_the_flag_does_not_reach_the_config_constructor(tmp_path):
-    """The grenade the [optimizer] ruling armed: that section is splatted
-    wholesale, so an unpopped knob is a TypeError out of Config.__init__ on
-    the next advise run — for anyone who copies config.example.toml."""
+def test_the_flag_reaches_the_config_constructor(tmp_path):
+    """v12 W2 popped it out of [optimizer] to keep the field count still;
+    v17e §2.1 made it a field, so the splat carries it like horizon."""
     from gaffer.config import load_config
 
     path = tmp_path / "config.toml"
     path.write_text("[fpl]\nentry_id = 1\nleague_id = 2\n\n"
-                    "[optimizer]\nhorizon = 3\nprice_timing = true\n")
+                    "[optimizer]\nhorizon = 3\nprice_timing = false\n")
     cfg = load_config(path)
-    assert cfg.horizon == 3
-    assert not hasattr(cfg, "price_timing")
+    assert (cfg.horizon, cfg.price_timing) == (3, False)
 
 
 def test_w1s_top_n_still_travels_through_the_splat(tmp_path):
-    """The other half of the pop list, and the expensive mistake it prevents.
+    """The other half of the pop list, and the expensive mistake it prevented.
 
     W1 §2.6 ships ``top_n`` as a real Config field read through
-    ``optimizer_top_n()``. Popping it beside ``price_timing`` would strip a
-    configured pool size out of the constructor and hand every user the
+    ``solver_top_n()``. Popping it beside ``price_timing`` would have stripped
+    a configured pool size out of the constructor and handed every user the
     dataclass default — silently, because a smaller pool is a valid solve.
-    A key belongs in NON_FIELD_OPTIMIZER_KEYS only when Config has no field
-    of that name.
+    v17e §2.1 retired the pop list entirely: every ``[optimizer]`` key is a
+    field, so the splat carries both of them and the claim below is that
+    ``top_n`` still arrives whole.
     """
-    import dataclasses
-
-    from gaffer.config import NON_FIELD_OPTIMIZER_KEYS, Config, load_config
-
-    names = {f.name for f in dataclasses.fields(Config)}
-    assert not (set(NON_FIELD_OPTIMIZER_KEYS) & names)
+    from gaffer.config import load_config
 
     path = tmp_path / "config.toml"
     path.write_text(
@@ -160,8 +150,10 @@ def test_w1s_top_n_still_travels_through_the_splat(tmp_path):
 
 
 def test_a_typo_under_optimizer_still_raises_loudly(tmp_path):
-    """Why the pop is a named list and not a fields(Config) filter: a silently
-    ignored `horizen = 6` is a season of quietly wrong advice."""
+    """Why the pop was a named list and not a fields(Config) filter, and why
+    v17e §2.1 could drop it without losing anything: a silently ignored
+    `horizen = 6` is a season of quietly wrong advice, and the bare splat
+    still raises on one."""
     from gaffer.config import load_config
 
     path = tmp_path / "config.toml"

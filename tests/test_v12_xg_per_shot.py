@@ -134,15 +134,16 @@ def test_every_attacking_feature_exists_on_the_prediction_frame(monkeypatch):
 
 def test_the_attacking_model_is_told_only_when_the_flag_is_on(monkeypatch,
                                                               tmp_path):
-    from gaffer.config import xg_per_shot
+    from gaffer.config import load_config
     from gaffer.models import train as tr
 
+    base = "[fpl]\nentry_id = 1\nleague_id = 2\n"
     off = tmp_path / "off.toml"
-    off.write_text("[model]\nxg_per_shot = false\n")
+    off.write_text(base + "[model]\nxg_per_shot = false\n")
     on = tmp_path / "on.toml"
-    on.write_text("[model]\nxg_per_shot = true\n")
-    assert xg_per_shot(off) is False
-    assert xg_per_shot(on) is True
+    on.write_text(base + "[model]\nxg_per_shot = true\n")
+    assert load_config(off).xg_per_shot is False
+    assert load_config(on).xg_per_shot is True
 
     monkeypatch.setattr(tr, "xg_per_shot", lambda: False)
     assert set(tr.attacking_features()) & set(XG_PER_SHOT_FEATURES) == set()
@@ -150,20 +151,17 @@ def test_the_attacking_model_is_told_only_when_the_flag_is_on(monkeypatch,
     assert set(XG_PER_SHOT_FEATURES) <= set(tr.attacking_features())
 
 
-def test_the_flag_defaults_off_and_survives_a_missing_file(tmp_path):
-    """Back off on 2026-09-02: the §3.5 RMSE-bucket arm said ``keep``, but the
-    season replay with the head on scored [1874, 1834, 1799] against main's
-    [1854, 1875, 1862] — 28 points off the mean, past the control spread. The
-    outcome measure wins over the fit measure. The default is the shipped
-    behaviour and an unreadable file must fall back to it rather than to a head
-    nobody chose — the same rule as before the flip, read the other way
-    round."""
-    from gaffer.config import xg_per_shot
+def test_the_flag_defaults_off_and_survives_a_missing_file(tmp_path,
+                                                          monkeypatch):
+    """Back off on 2026-09-02 (see the field's comment). The default is the
+    shipped behaviour and an unreadable file must fall back to it rather
+    than to a head nobody chose — through the view, since v17e §2.1."""
+    from gaffer.config import config_in_force, invalidate
 
-    assert xg_per_shot(tmp_path / "nothing.toml") is False
-    broken = tmp_path / "broken.toml"
-    broken.write_text("[model\nxg_per_shot = true")
-    assert xg_per_shot(broken) is False
-    unset = tmp_path / "unset.toml"
-    unset.write_text("[model]\nsomething_else = 1\n")
-    assert xg_per_shot(unset) is False
+    monkeypatch.chdir(tmp_path)
+    invalidate()
+    assert config_in_force().xg_per_shot is False
+    (tmp_path / "config.toml").write_text("[model\nxg_per_shot = true")
+    invalidate()
+    assert config_in_force().xg_per_shot is False
+    invalidate()
