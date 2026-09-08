@@ -6972,6 +6972,30 @@
    "title": "SensitivityReport",
    "type": "object"
   },
+  "SettingOption": {
+   "description": "One value a select offers and the word for it (v17e \u00a72.4).\n\nServed rather than hard-coded on the client so that the words a manager\npicks between are stated once, beside the bound they live inside.",
+   "properties": {
+    "label": {
+     "type": "string"
+    },
+    "value": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "integer"
+      }
+     ]
+    }
+   },
+   "required": [
+    "label",
+    "value"
+   ],
+   "title": "SettingOption",
+   "type": "object"
+  },
   "SettingRow": {
    "description": "One editable setting, as the Settings tab receives it (v12 W5 \u00a76.2).",
    "properties": {
@@ -7024,6 +7048,13 @@
      ],
      "default": null
     },
+    "options": {
+     "description": "What a select offers, in order, the saved value included when it is\nnot offered (v17e \u00a72.5). Empty for a row the tab types into.",
+     "items": {
+      "$ref": "#/definitions/SettingOption"
+     },
+     "type": "array"
+    },
     "section": {
      "type": "string"
     },
@@ -7049,6 +7080,7 @@
     "kind",
     "label",
     "lo",
+    "options",
     "section",
     "source",
     "value"

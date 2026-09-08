@@ -40,8 +40,9 @@ from __future__ import annotations
 
 import dataclasses
 from dataclasses import dataclass
+from typing import Callable
 
-from gaffer.config import Config
+from gaffer.config import BOUNDS, NO_CAP, Config
 
 
 @dataclass(frozen=True)
@@ -59,8 +60,6 @@ class SettingKey:
     label: str
     kind: str
     """``int`` | ``float`` | ``bool`` | ``floats3`` | ``pool`` | ``choice``."""
-    lo: float | None
-    hi: float | None
     help: str
     source: str = "config"
     """``"config"`` — the value is ``getattr(load_config(), field)``, live iff
@@ -73,34 +72,55 @@ class SettingKey:
     choices: tuple[str, ...] = ()
     """For ``kind == "choice"``: the exact strings the value may be. Empty
     for every other kind."""
+    options: tuple[tuple[int | float, str], ...] = ()
+    """The values a select offers, with the word for each (v17e §2.4); empty
+    for a row that is typed rather than picked. The served row also carries
+    the saved value when it is not one of these (§2.5), so a hand-edited
+    number never renders as a blank select."""
+    label_for: Callable[[int | float], str] = str
+    """The word for a value that is not in :attr:`options` (v17e §2.5)."""
+
+    @property
+    def lo(self) -> float | None:
+        """From :data:`gaffer.config.BOUNDS`, the one statement (v17e §2.3):
+        a bound written here as well would be the second place to change it
+        and the first place to forget."""
+        bounds = BOUNDS.get(self.field)
+        return None if bounds is None else bounds[0]
+
+    @property
+    def hi(self) -> float | None:
+        """The other half of :attr:`lo`'s bound."""
+        bounds = BOUNDS.get(self.field)
+        return None if bounds is None else bounds[1]
 
 
 WHITELIST: tuple[SettingKey, ...] = (
     SettingKey("horizon", "optimizer", "horizon", "Horizon (gameweeks)",
-               "int", 1, 8,
+               "int",
                "How many gameweeks the solver plans over."),
     SettingKey("decay", "optimizer", "decay", "Decay per gameweek",
-               "float", 0.0, 1.0,
+               "float",
                "How much less a point in week two is worth than one in week "
                "one. 0.0 ignores every week after this one."),
     SettingKey("itb_value", "optimizer", "itb_value",
-               "Value of money in the bank", "float", 0.0, 1.0,
+               "Value of money in the bank", "float",
                "Points per £1m held back. Priced in points, like the hit "
                "cost."),
     SettingKey("bench_curve", "optimizer", "bench_curve", "Bench weights",
-               "floats3", 0.0, 1.0,
+               "floats3",
                "Three weights, first to third outfield substitute. Reset the "
                "row to fall back to one flat bench weight."),
     SettingKey("lambda_cap", "league", "lambda_cap", "λ tilt cap",
-               "float", 0.0, 2.0,
+               "float",
                "The most the league tilt may push the pool. λ itself is "
                "computed each week; this is its ceiling."),
     SettingKey("decision_priors", "scenarios", "decision_priors",
-               "Use calibrated θ/λ priors", "bool", None, None,
+               "Use calibrated θ/λ priors", "bool",
                "Off falls back to the flat pre-v4c thresholds. The asset "
                "ships with the package and has no path to configure."),
     SettingKey("top_n", "optimizer", "top_n", "Candidate pool per position",
-               "pool", 1, 200,
+               "pool",
                "How many players per position reach the solver. A smaller "
                "pool solves faster and can exclude a player you own. One key, "
                "read twice: it sets Config.top_n and the pool "
@@ -108,34 +128,42 @@ WHITELIST: tuple[SettingKey, ...] = (
     # A field since v17e §2.1 (it was v12 W2's popped-out reader key); read
     # like every other "config" entry.
     SettingKey("price_timing", "optimizer", "price_timing",
-               "Charge price timing", "bool", None, None,
+               "Charge price timing", "bool",
                "Charges a sell that is scheduled for a later week by the "
                "chance the player drops tonight. Never rewards a rise."),
     SettingKey("draw_availability", "scenarios", "draw_availability",
-               "Draw availability in the sweep", "bool", None, None,
+               "Draw availability in the sweep", "bool",
                "Each scenario draws whether each player is available, so "
                "\"bought in N%\" reflects availability risk."),
     # v13 §2.3 (specs/2026-09-04-gaffer-v13-transfer-ladder-design.md). The
     # appetite. Also editable from the ladder card on the This Week hub,
     # which writes through this same endpoint.
     SettingKey("max_hits", "optimizer", "max_hits", "Max hits per week",
-               "int", 0, 15,
+               "int",
                "15 = no cap. The Thursday advice, its sweep, its alternatives "
                "and its chip table all solve under this. The transfer ladder "
-               "on the This Week hub edits it too."),
+               "on the This Week hub edits it too.",
+               options=((0, "0"), (1, "1"), (2, "2"), (3, "3"),
+                        (NO_CAP, "no cap"))),
     SettingKey("max_transfers", "optimizer", "max_transfers",
-               "Max transfers per week", "int", 0, 15,
+               "Max transfers per week", "int",
                "15 = no cap; 0 = bank (no moves at all). Also edited from "
-               "the transfer ladder."),
+               "the transfer ladder.",
+               options=((0, "bank"), (1, "1"), (2, "2"), (3, "3"), (4, "4"),
+                        (5, "5"), (NO_CAP, "no cap"))),
     # v16 §3.2 (specs/2026-09-06-gaffer-v16-restraint-brief-design.md). How
     # sure the ladder has to be before the advice steps up a rung. Also edited
     # from the ladder card, which writes through this same endpoint.
     SettingKey("hit_bar", "optimizer", "hit_bar", "Hit bar",
-               "float", 0.5, 0.95,
+               "float",
                "The share of the ladder's draws a rung must win against the "
                "rung below before the advice steps up to it. 0.60 is three "
                "draws in five. The transfer ladder on the This Week hub "
-               "edits it too."),
+               "edits it too.",
+               options=tuple((bar, f"{round(bar * 100)}%") for bar in
+                             (0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.9,
+                              0.95)),
+               label_for=lambda value: f"{round(value * 100)}%"),
     # v15 §4.2 (specs/2026-09-06-gaffer-v15-leagues-design.md), plan R7.
     # The focus league. Written as [league] focus and read back through a
     # reader as the *effective* Config.league_id, which the loader resolves
@@ -145,12 +173,12 @@ WHITELIST: tuple[SettingKey, ...] = (
     # The League page's "make focus" writes this row; hi is a numeric bound
     # because the range check needs one.
     SettingKey("focus", "league", "focus", "Focus league",
-               "int", 1, 99_999_999,
+               "int",
                "The private league that sets the plan. Pick it on the League "
                "page; reset to fall back to fpl.league_id.",
                source="reader", reader="gaffer.config:focus_league"),
     SettingKey("stance", "league", "stance", "Stance",
-               "choice", None, None,
+               "choice",
                "Auto lets the standings set the tilt. Chase and defend force "
                "it at the λ tilt cap; neutral is plain points-max.",
                choices=("auto", "chase", "defend", "neutral")),

@@ -210,3 +210,88 @@ def test_the_old_readers_and_serving_config_are_gone():
                  "lineup_providers", "optimizer_top_n",
                  "NON_FIELD_OPTIMIZER_KEYS", "_optimizer_top_n"):
         assert not hasattr(mod, name), name
+
+
+# --- §2.3–§2.5 the registry -------------------------------------------------
+
+SETTINGS_BASE = "[fpl]\nentry_id = 111\nleague_id = 222\n[optimizer]\nhorizon = 3\n"
+
+
+@pytest.fixture()
+def settings_client(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from gaffer.web.app import create_app
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "config.toml").write_text(SETTINGS_BASE)
+    # The chdir is what the view is keyed on, so the cache is dropped on both
+    # sides of it (v17e §2.2).
+    invalidate()
+    yield TestClient(create_app())
+    invalidate()
+
+
+def test_every_whitelist_bound_is_the_config_bound():
+    from gaffer.web.settings_keys import WHITELIST
+
+    for entry in WHITELIST:
+        if entry.field in BOUNDS:
+            assert (entry.lo, entry.hi) == BOUNDS[entry.field], entry.field
+        else:
+            assert (entry.lo, entry.hi) == (None, None), entry.field
+
+
+def test_every_whitelist_entry_reads_and_writes_through_the_one_interface(settings_client):
+    """Written through the endpoint, read back changed through
+    config_in_force() with no cache_clear in this test: the save's
+    invalidate() is the only clearing there is."""
+    from gaffer.web.settings_keys import WHITELIST, current_value
+
+    samples = {"int": 2, "float": 0.3, "bool": False, "floats3": [0.5, 0.4, 0.3],
+               "pool": {"GKP": 2, "DEF": 3, "MID": 4, "FWD": 5}, "choice": "chase"}
+    samples_by_field = {"hit_bar": 0.7, "focus": 222, "max_hits": 1,
+                        "max_transfers": 1, "horizon": 2}
+    for entry in WHITELIST:
+        value = samples_by_field.get(entry.field, samples[entry.kind])
+        before = current_value(entry, config_in_force())
+        resp = settings_client.post("/api/settings", json={"key": entry.field, "value": value})
+        assert resp.status_code == 200, (entry.field, resp.text)
+        after = current_value(entry, config_in_force())
+        assert after == value, entry.field
+        assert after != before or entry.field == "focus", entry.field
+
+
+def test_the_three_select_rows_carry_labelled_options(settings_client):
+    rows = {r["key"]: r for r in settings_client.get("/api/settings").json()["rows"]}
+    assert rows["max_hits"]["options"][-1] == {"value": 15, "label": "no cap"}
+    assert rows["max_transfers"]["options"][0] == {"value": 0, "label": "bank"}
+    assert [o["label"] for o in rows["hit_bar"]["options"]][:3] == ["50%", "55%", "60%"]
+    assert rows["horizon"]["options"] == []
+
+
+def test_a_saved_value_the_select_does_not_offer_is_inserted_in_order(settings_client, tmp_path):
+    (tmp_path / LOCAL_OVERLAY).write_text("[optimizer]\nmax_hits = 5\nhit_bar = 0.62\n")
+    invalidate()
+    rows = {r["key"]: r for r in settings_client.get("/api/settings").json()["rows"]}
+    hits = [o["value"] for o in rows["max_hits"]["options"]]
+    assert hits == [0, 1, 2, 3, 5, 15]
+    bar = rows["hit_bar"]["options"]
+    assert {"value": 0.62, "label": "62%"} in bar
+    assert [o["value"] for o in bar] == sorted(o["value"] for o in bar)
+
+
+def test_the_router_refuses_with_the_config_sentence(settings_client):
+    resp = settings_client.post("/api/settings", json={"key": "hit_bar", "value": 0.99})
+    assert resp.status_code == 422
+    assert resp.json()["detail"] == {
+        "constraint": "out_of_range",
+        "error": out_of_range("hit_bar", 0.99, "optimizer"), "players": []}
+    resp = settings_client.post("/api/settings", json={"key": "max_hits", "value": 16})
+    assert resp.json()["detail"]["error"] == out_of_range("max_hits", 16, "optimizer")
+
+
+def test_the_settings_router_imports_no_toml_library():
+    import gaffer.web.routers.settings as mod
+
+    assert not hasattr(mod, "tomllib") and not hasattr(mod, "tomli_w")

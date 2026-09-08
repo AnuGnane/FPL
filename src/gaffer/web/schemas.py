@@ -2314,6 +2314,16 @@ class DecisionWrite(BaseModel):
     text: str = ""
 
 
+class SettingOption(BaseModel):
+    """One value a select offers and the word for it (v17e §2.4).
+
+    Served rather than hard-coded on the client so that the words a manager
+    picks between are stated once, beside the bound they live inside."""
+
+    value: float | int
+    label: str
+
+
 class SettingRow(BaseModel):
     """One editable setting, as the Settings tab receives it (v12 W5 §6.2)."""
 
@@ -2329,6 +2339,9 @@ class SettingRow(BaseModel):
     choices: list[str] = Field(default_factory=list)
     """For ``kind == "choice"`` the allowed strings, in display order (v15
     §4.2). Empty for every other kind."""
+    options: list[SettingOption] = Field(default_factory=list)
+    """What a select offers, in order, the saved value included when it is
+    not offered (v17e §2.5). Empty for a row the tab types into."""
     section: str
     help: str
     source: Literal["local", "base", "default"]

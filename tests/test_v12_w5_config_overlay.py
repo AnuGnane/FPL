@@ -249,21 +249,22 @@ def test_lineup_providers_in_the_overlay_is_honoured_by_its_reader(tree):
     assert load_config(base).news_lineup_providers == []
 
 
-def test_the_loader_and_the_endpoint_name_the_same_file_the_same_way(tree,
-                                                                     capsys):
-    """`config.py` prints one sentence when it ignores a bad overlay and
-    `routers/settings.py` builds another for its 422. Neither reads the
-    other's, and neither should: a serve-time refusal and a print on the solve
-    path are different jobs. What keeps them from drifting into two different
-    stories is this — both name the file, and both say the word the user is
-    looking for."""
-    from gaffer.web.routers import settings as endpoint
+def test_the_loader_and_the_endpoint_name_the_same_file_the_same_way(
+        tree, tmp_path, monkeypatch, capsys):
+    """`config.py` prints one sentence when it ignores a bad overlay and the
+    settings endpoint serves another in its 422. They were two sentences in
+    two modules and had to be checked against each other; since v17e §2.8 the
+    served one comes from `config.read_overlay` as well, because the router
+    no longer opens the file. Both still have to name the file and say the
+    word the user is looking for, so the check stays."""
+    from gaffer.config import read_overlay
 
     base, overlay = tree
     overlay("[optimizer\nhorizon = 5")
     load_config(base)
     printed = capsys.readouterr().out
-    _, served = endpoint._read(base.parent / LOCAL_OVERLAY)
+    monkeypatch.chdir(tmp_path)
+    _, served = read_overlay()
     assert LOCAL_OVERLAY in printed and LOCAL_OVERLAY in served
     assert "ignored" in printed and "ignored" in served
 

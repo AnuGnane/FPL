@@ -28,13 +28,13 @@ vi.mock('../../api/client', () => ({
 const PANEL: SettingsPanel = {
   rows: [
     { key: 'horizon', label: 'Horizon (gameweeks)', kind: 'int', value: 3,
-      lo: 1, hi: 8, choices: [], section: 'optimizer',
+      lo: 1, hi: 8, choices: [], options: [], section: 'optimizer',
       help: 'How far it plans.', source: 'base' },
     { key: 'decision_priors', label: 'Use calibrated θ/λ priors', kind: 'bool',
-      value: true, lo: null, hi: null, choices: [], section: 'scenarios',
+      value: true, lo: null, hi: null, choices: [], options: [], section: 'scenarios',
       help: 'Off falls back to flat thresholds.', source: 'local' },
     { key: 'stance', label: 'Stance', kind: 'choice', value: 'auto',
-      choices: ['auto', 'chase', 'defend', 'neutral'], lo: null, hi: null,
+      choices: ['auto', 'chase', 'defend', 'neutral'], options: [], lo: null, hi: null,
       section: 'league', help: 'Auto lets the standings set the tilt.',
       source: 'default' },
   ],

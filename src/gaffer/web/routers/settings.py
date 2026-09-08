@@ -2,6 +2,12 @@
 
 Writes ``config.local.toml`` and **never** ``config.toml`` (spec §8: a UI that
 edits ``config.toml`` is out of scope, and that file carries the odds API key).
+It does not open either file itself: the overlay is read and written through
+``config.read_overlay`` / ``config.write_overlay`` and a row's provenance comes
+from ``config.value_source``, because since v17e §2.8 no module but
+``config.py`` opens either file — a second reader is a second answer to which
+value is in force. What is left here is validation and the wire shapes.
+
 The overlay is merged over the base by ``config.load_config``, which since
 v17e §2.1 is the only reader there is: every key the tab writes is a
 ``Config`` field, and every serve-time read of one goes through
@@ -18,15 +24,13 @@ is how a UI ends up with two error renderers.
 from __future__ import annotations
 
 import math
-import tomllib
-from pathlib import Path
 
-import tomli_w
 from fastapi import APIRouter, HTTPException
 
-from gaffer.config import LOCAL_OVERLAY, invalidate, load_config
-from gaffer.io import atomic_write
-from gaffer.web.schemas import SettingRow, SettingsPanel, SettingWrite
+from gaffer.config import (base_exists, invalidate, load_config, out_of_range,
+                           read_overlay, value_source, write_overlay)
+from gaffer.web.schemas import (SettingOption, SettingRow, SettingsPanel,
+                                SettingWrite)
 from gaffer.web.settings_keys import (BY_FIELD, WHITELIST, current_value,
                                       live_keys)
 
@@ -50,37 +54,26 @@ note that overstates the isolation is worse than one that admits the seam,
 because the reader who hits it has been told it cannot happen.
 """
 
-BASE = "config.toml"
-
-
 def _fail(constraint: str, error: str) -> HTTPException:
     return HTTPException(status_code=422,
                          detail={"constraint": constraint, "error": error,
                                  "players": []})
 
 
-def _read(path: Path) -> tuple[dict, str | None]:
-    """A TOML file as a dict, plus why it could not be read."""
-    if not path.exists():
-        return {}, None
-    try:
-        return tomllib.loads(path.read_text()), None
-    except Exception as exc:  # noqa: BLE001 — a read is never worth a 500
-        return {}, f"{path.name} is not readable TOML ({exc}) — ignored"
-
-
-def _table(raw: dict, section: str) -> dict:
-    """One section of a parsed TOML file, or ``{}`` if it is not a table.
-
-    ``raw.get(section) or {}`` was not enough: ``optimizer = 5`` in
-    ``config.local.toml`` parses, so the section comes back as an ``int`` and
-    the membership test below raised ``TypeError: argument of type 'int' is
-    not iterable`` — a 500 on the tab whose job is to tell the manager the
-    overlay is wrong. ``config._overlay`` drops the same value for the same
-    reason; this is the read side of it.
+def _options(entry, value) -> list[SettingOption]:
+    """The entry's options with the saved value inserted in order when it is
+    not offered (v17e §2.5): a hand-edited ``max_hits = 5`` must not render a
+    blank select, and the manager must be able to see what is in force before
+    they change it.
     """
-    value = raw.get(section)
-    return value if isinstance(value, dict) else {}
+    if not entry.options:
+        return []
+    offered = [SettingOption(value=v, label=w) for v, w in entry.options]
+    is_number = isinstance(value, (int, float)) and not isinstance(value, bool)
+    if is_number and value not in {v for v, _ in entry.options}:
+        offered.append(SettingOption(value=value, label=entry.label_for(value)))
+        offered.sort(key=lambda option: option.value)
+    return offered
 
 
 def _panel() -> SettingsPanel:
@@ -89,9 +82,7 @@ def _panel() -> SettingsPanel:
     # its own words. Keeping a second copy here only to `or` it into a branch
     # that cannot be reached would be a line that looks like a fallback and is
     # not one.
-    base_raw, _ = _read(Path(BASE))
-    local_raw, local_err = _read(Path(LOCAL_OVERLAY))
-    if not Path(BASE).exists():
+    if not base_exists():
         return SettingsPanel(
             rows=[], unavailable=[e.field for e in WHITELIST],
             overlay_error=("no config.toml — copy config.example.toml to "
@@ -104,25 +95,21 @@ def _panel() -> SettingsPanel:
         return SettingsPanel(rows=[], unavailable=[e.field for e in WHITELIST],
                              overlay_error=f"config.toml unreadable ({exc})",
                              apply_note=APPLY_NOTE)
+    _, local_err = read_overlay()
     live = set(live_keys(cfg))
     rows = []
     for entry in WHITELIST:
         if entry.field not in live:
             continue
-        if entry.toml_key in _table(local_raw, entry.section):
-            source = "local"
-        elif entry.toml_key in _table(base_raw, entry.section):
-            source = "base"
-        else:
-            source = "default"
+        # Through `current_value`, never `getattr(cfg, ...)`: the focus row
+        # reads through a reader rather than the dataclass.
+        value = current_value(entry, cfg)
         rows.append(SettingRow(
             key=entry.field, label=entry.label, kind=entry.kind,
-            # Through `current_value`, never `getattr(cfg, ...)`: the focus
-            # row's value comes from a reader and not the dataclass, so a
-            # getattr here would drop the one row the reader kind exists for.
-            value=current_value(entry, cfg), lo=entry.lo, hi=entry.hi,
-            choices=list(entry.choices),
-            section=entry.section, help=entry.help, source=source))
+            value=value, lo=entry.lo, hi=entry.hi,
+            choices=list(entry.choices), options=_options(entry, value),
+            section=entry.section, help=entry.help,
+            source=value_source(entry.section, entry.toml_key)))
     return SettingsPanel(
         rows=rows,
         unavailable=[e.field for e in WHITELIST if e.field not in live],
@@ -132,10 +119,10 @@ def _panel() -> SettingsPanel:
 def _real(entry, number: float) -> float:
     """A float that TOML can write and the objective can use.
 
-    ``tomli_w`` writes a bare ``nan``/``inf`` and ``tomllib`` reads them back,
-    so ``decay = nan`` would reach the objective and turn every score into
-    NaN — the guarded-parse-unguarded-arithmetic shape, one file further out.
-    Refused here, where there is still somebody to tell.
+    ``config.write_overlay`` writes a bare ``nan``/``inf`` and the loader
+    reads it straight back, so ``decay = nan`` would reach the objective and
+    turn every score into NaN — the guarded-parse-unguarded-arithmetic shape,
+    one file further out. Refused here, where there is still somebody to tell.
     """
     if not math.isfinite(number):
         raise _fail("wrong_type", f"{entry.label} is a real number")
@@ -147,7 +134,9 @@ def _checked(entry, value):
 
     ``bool`` is checked before ``int`` throughout: ``isinstance(True, int)``
     is True in Python, so ``horizon = true`` would otherwise reach the overlay
-    as a boolean and come back out of tomllib as one.
+    as a boolean and come back out of the loader as one. Every range refusal
+    is :func:`gaffer.config.out_of_range`, so the sentence a manager reads is
+    the sentence the loader raises (v17e §2.3).
     """
     kind = entry.kind
     if kind == "bool":
@@ -173,8 +162,7 @@ def _checked(entry, value):
         for v in value:
             if not entry.lo <= _real(entry, float(v)) <= entry.hi:
                 raise _fail("out_of_range",
-                            f"each of {entry.label} is between {entry.lo} "
-                            f"and {entry.hi}")
+                            out_of_range(entry.field, v, entry.section))
         return [float(v) for v in value]
     elif kind == "pool":
         wanted = ("GKP", "DEF", "MID", "FWD")
@@ -187,8 +175,7 @@ def _checked(entry, value):
         for v in value.values():
             if not entry.lo <= v <= entry.hi:
                 raise _fail("out_of_range",
-                            f"each of {entry.label} is between "
-                            f"{int(entry.lo)} and {int(entry.hi)}")
+                            out_of_range(entry.field, v, entry.section))
         return {k: int(value[k]) for k in wanted}
     elif kind == "choice":
         if not isinstance(value, str) or value not in entry.choices:
@@ -199,26 +186,8 @@ def _checked(entry, value):
         raise _fail("wrong_type", f"{entry.label} cannot be edited here")
     if entry.lo is not None and not entry.lo <= number <= entry.hi:
         raise _fail("out_of_range",
-                    f"{entry.label} is between {entry.lo} and {entry.hi}")
+                    out_of_range(entry.field, number, entry.section))
     return number
-
-
-def _write(raw: dict) -> None:
-    """The overlay, atomically. Two saves in flight must not interleave.
-
-    Through ``gaffer.io.atomic_write`` (W1 §2.11) rather than a seventh copy of
-    the pid-temp + ``os.replace`` idiom — the helper exists so that copy is
-    never written again. The tab saves one field at a time, so two writers
-    racing on this file is a click, not a hypothetical.
-
-    ``tomli_w.dumps`` rather than ``dump``: the helper owns the file handle,
-    and the header comment has to go in front of the tables.
-    """
-    body = ("# Written by the gaffer web UI (v12 W5 §6.2).\n"
-            "# Merged over config.toml, key by key. Safe to hand-edit; a key\n"
-            "# that is not a config field is ignored with a printed line.\n\n"
-            + tomli_w.dumps(raw))
-    atomic_write(Path(LOCAL_OVERLAY), body)
 
 
 @router.get("/settings", response_model=SettingsPanel)
@@ -232,7 +201,7 @@ def save(req: SettingWrite) -> SettingsPanel:
     if entry is None or entry.field not in set(live_keys()):
         raise _fail("unknown_setting",
                     f"{req.key} is not a setting this page may change")
-    raw, err = _read(Path(LOCAL_OVERLAY))
+    raw, err = read_overlay()
     if err:
         # Overwriting a file we could not read would discard whatever else the
         # user had put in it. Refuse and say where to look.
@@ -250,7 +219,7 @@ def save(req: SettingWrite) -> SettingsPanel:
         raw[entry.section] = section
     else:
         raw.pop(entry.section, None)
-    _write(raw)
+    write_overlay(raw)
     # v17e §2.2: every cache keyed on the file, dropped in one call. A save
     # that did not drop them would leave a seam on the old value with nothing
     # on the page to say so.

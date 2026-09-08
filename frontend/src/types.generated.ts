@@ -2577,6 +2577,19 @@ export interface SensitivityReport {
   wall_s: number | null
 }
 /**
+ * One value a select offers and the word for it (v17e §2.4).
+ *
+ * Served rather than hard-coded on the client so that the words a manager
+ * picks between are stated once, beside the bound they live inside.
+ *
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "SettingOption".
+ */
+export interface SettingOption {
+  label: string
+  value: number
+}
+/**
  * One editable setting, as the Settings tab receives it (v12 W5 §6.2).
  *
  * This interface was referenced by `GafferApi`'s JSON-Schema
@@ -2594,6 +2607,11 @@ export interface SettingRow {
   kind: 'int' | 'float' | 'bool' | 'floats3' | 'pool' | 'choice'
   label: string
   lo: number | null
+  /**
+   * What a select offers, in order, the saved value included when it is
+   * not offered (v17e §2.5). Empty for a row the tab types into.
+   */
+  options: SettingOption[]
   section: string
   /**
    * Which file this value came from. ``local`` is ``config.local.toml``,
