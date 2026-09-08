@@ -406,4 +406,93 @@ the This Week fetch count (v17h),
 
 ## 10. Outcome
 
-_(filled by the orchestrator after the gate runs)_
+**Pass, on the second strip check.** Run by the orchestrator on
+`v17f-served-plan` over commits `2b3eb02`…`1a59b35`. Transcribed here
+because `logs/` and the scratch trees are not in the repo
+(CONVENTIONS §4).
+
+**Part 1 — the golden board, key-aware.** The strip script removed
+`generated_at` and `bank` at the top, `price` from every move, and
+`hit_cost`, `chip`, `bank` and `trace` from every week (the served weeks,
+each alternative's, and `objective.week`), then compared. First run:
+
+```
+RESULT advice stripped equal: False
+  differs: plan_by_gw
+RESULT state equal: True
+RESULT levers equal: True
+RESULT plan route equal: True
+```
+
+The one difference was week one's `buys` and `sells` losing `tag` and
+`frequency`, with every value otherwise identical. Cause: before this
+cycle `serve_rung` handed back lists holding *the same dicts* for the
+top-level moves and for week one, and advise decorated them by mutation,
+so the artifact showed the tag in both places — on the ladder path only,
+since the objective path builds week one's moves separately. Ruled a
+thing to keep and to say rather than to lose: `decorated` now decorates
+the head week's moves explicitly (`378b56b`), which also makes the two
+paths agree. Second run, after that commit:
+
+```
+RESULT advice stripped equal: True
+RESULT state equal: True
+RESULT levers equal: True
+RESULT plan route equal: True
+```
+
+`expected/advice.json` was then re-recorded with
+`.venv/bin/python -m tests.golden_client --write` (`1a59b35`, its own
+commit). The re-record moved exactly two files —
+`expected/advice.json` and `header.json` (the header's `commit`,
+`written_at`, `runtime_s` 156.8 → 162.3, and the three v17e config
+fields it now carries) — leaving `expected/solve_state.json` and
+`expected/plan.json` byte-identical. Levers unchanged. Then:
+
+```
+.venv/bin/pytest -q tests/test_golden_board.py tests/test_pipeline.py
+45 passed, 2163 warnings in 500.18s (0:08:20)
+```
+
+None skipped, so the hashed inputs had not moved.
+
+**Part 2 — route parity.** `expected/plan.json` was recorded on `main`'s
+code in the branch's first commit (`a4575b6`) and never re-recorded: it
+is absent from `--write`'s diff above, and the branch's
+`GET /api/plan/4` over the golden board equals it byte for byte after
+`strip_volatile` (the fourth `RESULT` line, both runs, and the
+golden-marked `test_the_golden_board_serves_the_recorded_plan_route`
+inside the 45). The router's whole rewrite is therefore invisible on the
+wire.
+
+**Part 3 — the v16 pins.** Replaced in `e2bb56e` by
+`test_the_served_plan_round_trips_through_the_advice_file`: build →
+`Advice(**model_dump(exclude_unset=True))` → `asdict` → `atomic_write` →
+`served_plan(gw)` → equal, plus the `tag`-on-disk assertions. The three
+CLI tests in `tests/test_v16_restraint.py` stand.
+
+**Part 4 — the filename.**
+
+```
+$ grep -rn "advice.json" src/gaffer --include='*.py'
+src/gaffer/artifacts.py:418:    return REPORTS / f"gw{gw}-advice.json"
+src/gaffer/artifacts.py:424:    for path in REPORTS.glob("gw*-advice.json"):
+```
+
+**Suites.** Python 4369 (`-m "not golden"`: 4364 passed, 5 deselected;
+the five are inside the 45 above). Frontend `npx tsc --noEmit` clean,
+`npx vitest run` 926 passed, 1 skipped, 91 files, no `Errors` line.
+
+**Screenshots.** `frontend/scripts/shots.sh v17f` → planning-board and
+this-week, dark and light, served from the machine's real `reports/`,
+whose advice files were written before this cycle. The board they show
+is therefore the *backfill's* work: starting bank 0.8, a bank on every
+week, the trace under "Why this move", the objective column on GW4 and
+the Plan B/C tabs, all reconstructed by `served_plan` from a file that
+carries none of them.
+
+**A second ruling, recorded in §7.** `tests/test_v9c_degradation.py`'s
+atomic-write pin anchored its source window on the literal filename in
+`advise.py`, which part 4 removed. It now anchors on `advice_path(gw)`
+and additionally asserts the filename is not spelled there at all
+(`27bb89e`).
