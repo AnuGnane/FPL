@@ -45,3 +45,6 @@ include = ["src/gaffer", "tests", "README.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# v17c §2.11: the golden board runs in the default suite; a fast local loop
+# deselects it with -m "not golden".
+markers = ["golden: runs the recorded pipeline (v17c); deselect with -m 'not golden'"]

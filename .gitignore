@@ -33,3 +33,6 @@ config.local.toml
 # one season, so it is untracked; the template ships as a package asset
 # (src/gaffer/assets/set_pieces.example.toml) so a fresh clone still has one.
 data/set_pieces.toml
+# v17c §2.3: the golden board's config.toml is a fixture written from
+# golden_config(), with no [odds] table; the machine's own stays ignored.
+!tests/data/golden_board/config.toml
