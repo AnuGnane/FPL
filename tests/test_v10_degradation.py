@@ -415,11 +415,11 @@ def test_the_job_count_did_not_move():
 def test_the_config_dataclass_did_not_grow(tmp_path, monkeypatch):
     """Plan A6 argued for a 49th field and the tree refused it:
     tests/test_v9c_degradation.py and tests/test_v9d_degradation.py both pin
-    48 and both are protected this cycle. The per-provider switch is
+    48 and both are protected this cycle. The per-provider switch was
     ``config.lineup_providers()`` instead — a module-level reader of the same
-    ``[news] lineup_providers`` key, read at serve time the way
-    ``serving_config()`` is read and for the same reason. Every behaviour A6
-    argued for survives; only the storage does not.
+    ``[news] lineup_providers`` key, read at serve time the way the cached
+    serving view was read and for the same reason. Every behaviour A6
+    argued for survived; only the storage did not.
 
     v12 W1 §2.6/§2.8 (specs/2026-09-01-gaffer-v12-program-design.md): **that
     refusal's cause has been retired.** The absolute count this test used to
