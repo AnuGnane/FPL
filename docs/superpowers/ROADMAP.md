@@ -19,8 +19,10 @@ template digest on This Week. Gated on the 2024-25 replay (mean 1835 vs raw 1844
 real brief the user read, and four screenshots in both themes. Suite 4266
 Python + 910 frontend, pins routes 51 / job kinds 12 / `Config` fields 59.
 The v17 deepening programme has started: v17a (the wire types, one command)
-is merged at `400c2f5` and v17b (restraint narrated once, on the server) at
-`b1b3b7e`, suite 4288 / 923, pins unchanged; v17c is next.
+is merged at `400c2f5`, v17b (restraint narrated once, on the server) at
+`b1b3b7e`, and v17c (the golden board harness) at `ee02520`, suite 4317 /
+923, pins unchanged; v17d is next and is the first sub-cycle the golden
+board gates.
 **Security incident, open:** the odds API key's value reached a committed
 plan document (`dd47c0a`) via a forked plan-writing subagent and was pushed
 to the public remote with the merge; removed at the tip (`8fddb0b`), history
@@ -104,7 +106,7 @@ Detail in `docs/GUIDE.md` §12.5.
 9. **A blended league stance** (v15 deferred): per-league λ and cover tables merged by weight. Chasing in one league and defending in another largely cancel, so it needs a replay to justify before it touches protected solver code
 10. **The in-app chat** (v16 deferred, gated on a few briefs read): a question box on This Week over the same facts document the brief reads, the same no-tools command, the same truth check on every answer
 
-### The v17 deepening programme (planned 2026-09-07; v17a and v17b merged, v17c next)
+### The v17 deepening programme (planned 2026-09-07; v17a–v17c merged, v17d next)
 
 The 2026-09-07 architecture review
 (`docs/superpowers/research/2026-09-07-architecture-review.html`) found seven
@@ -114,10 +116,48 @@ refactor changes no number, and
 `docs/superpowers/plans/2026-09-07-v17-tracker.md` is the checklist each
 chat updates on merge. Order: types command, restraint prose on the server,
 golden board, weekly pipeline, config in force, the served plan, pure
-build_advice, the This Week loader. v17a and v17b are shipped (below);
-v17c starts from `main` at `b1b3b7e`.
+build_advice, the This Week loader. v17a, v17b and v17c are shipped
+(below); v17d starts from `main` at `ee02520` and is gated by
+`.venv/bin/pytest -q tests/test_golden_board.py`.
 
 ## Shipped
+
+### v17c — the golden board harness (done, merged `ee02520` 2026-09-08)
+The gate for v17d–v17g: `tests/test_golden_board.py` runs `run_advise` over
+recorded FPL responses in a frozen working directory and compares the
+advice JSON and the solve state byte for byte with committed expected
+files. `tests/golden_client.py` holds the whole harness: `RecordedClient`,
+the second adapter behind `run_advise(cfg, client)` (one `_get` override
+over a gzip bundle; never a socket, never a `data/raw` dump), the
+`RecordingClient` that made it, `golden_config()` as literals and its TOML
+writer (round-tripped through `load_config`; no `[odds]` table;
+`[optimizer] price_timing` written explicitly because it is a module-level
+reader outside `Config`), the scratch tree (`models/` and `data/history/`
+symlinked and SHA-256-pinned, Core Insights frozen into the fixture,
+`config.toml` written so `serving_config()`'s hidden reads see the golden's
+values), `strip_volatile`, the lever counts, and `python -m
+tests.golden_client --record | --write`. Recorded GW4 on 2026-09-08 at the
+starting knobs (`max_hits 2`, no transfer cap, `hit_bar 0.60`, horizon 6):
+759 responses in a 543 KB bundle, fixture 960 KB; the board carries two
+restraint steps taken and one refused (53%), an objective at 2 hits served
+at 1, twelve chip rows, a live league tilt, a bench of four with a vice and
+a six-week plan. Gate (spec §1, five items, pre-registered): passed on the
+first full run — twice green at 62 s and 61 s, every lever floor met, the
+skip rule tested both ways, size under budget, security greps empty. A
+retrain or re-ingest skips the module with the file named; `--write`
+re-records the expected files over the same bundle. Reviews found four
+things worth recording: `gzip.open` takes no `mtime`; `price_timing` was
+invisible to the round trip; nothing on the advise path writes under
+`data/history/` or `models/` (a third golden test now re-hashes after every
+run); the recorder keeps `refresh_live`'s politeness sleep and only the
+replay silences it. Spec
+`docs/superpowers/specs/2026-09-07-v17c-golden-board-design.md` (§10), plan
+`2026-09-07-v17c-golden-board.md`, fifteen branch commits, no change under
+`src/`. Pins unchanged (routes 51, job kinds 12, `Config` 59); Python 4288
+→ **4317** (the golden file adds about a minute to the default suite;
+`-m "not golden"` deselects it), frontend 923 unchanged. Left open: the
+golden runs only on the machine that holds the models it was recorded
+under, until v17g records at the `Inputs` level.
 
 ### v17b — restraint narrated once, on the server (done, merged `b1b3b7e` 2026-09-08)
 `src/gaffer/ladder.py` is the one author of the ladder's prose: every rung

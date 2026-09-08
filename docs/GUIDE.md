@@ -19,7 +19,7 @@ only read one section, read §12: it is the current to-do list.*
 8. [Everything the CLI can do](#8-everything-the-cli-can-do)
 9. [The data it collects and why](#9-the-data-it-collects-and-why)
 10. [How the project measures itself](#10-how-the-project-measures-itself)
-11. [The version history, v1 to v17b](#11-the-version-history-v1-to-v17b)
+11. [The version history, v1 to v17c](#11-the-version-history-v1-to-v17c)
 12. [What is pending and what was left open](#12-what-is-pending-and-what-was-left-open)
 13. [Troubleshooting](#13-troubleshooting)
 
@@ -639,11 +639,21 @@ and it is worth knowing because you can read the evidence yourself:
   served* (from artifacts written before kickoff — a re-run after the
   matches is detected and excluded), not a model refitted in hindsight.
 
+- **A golden board gates every refactor** (v17c). `tests/test_golden_board.py`
+  replays one recorded gameweek through the whole weekly solve in a frozen
+  working directory and compares the advice and solve state byte for byte
+  with committed expected files, on a board chosen to carry a restraint
+  step taken and refused, a hit, a chip row and a league tilt, so a "no
+  diff" is evidence of something (CONVENTIONS §10). It skips, naming the
+  file, when the models or the archive on disk are not the ones it was
+  recorded under; `python -m tests.golden_client --write` re-records after
+  a retrain.
+
 Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 `reports/evaluation.json`, and the Model hub.
 
-## 11. The version history, v1 to v17b
+## 11. The version history, v1 to v17c
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
 reviewed. Every cycle ran the same way, and knowing the shape tells you where
@@ -860,7 +870,20 @@ differed only in the live-input noise a same-code pair also shows, with
 every served decision identical. Pins unchanged; Python 4271 → **4288**,
 frontend 910 → **923**.
 
-The suite grew from nothing to **4,288 Python + 923 frontend tests** along
+**v17c — the golden board harness** (2026-09-08). The programme's remaining
+refactors promise to change no served number, and v17b showed two live
+runs minutes apart differ anyway. `tests/golden_client.py` adds the second
+adapter behind `run_advise(cfg, client)`: a client that replays recorded
+FPL responses, run in a scratch directory whose `config.toml`, Core
+Insights, models and archive are the recorded ones (the last two pinned by
+SHA-256, so a retrain skips the test with the file named). GW4 recorded
+2026-09-08; the board carries two restraint steps taken and one refused, an
+objective at two hits, twelve chip rows, a league tilt and a six-week plan.
+Gate passed first run: byte-identical twice, every lever floor met, fixture
+960 KB, no odds table anywhere. Nothing under `src/` changed. Pins
+unchanged; Python 4288 → **4317**, frontend 923.
+
+The suite grew from nothing to **4,317 Python + 923 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above
 so a future change cannot quietly break one.
 
