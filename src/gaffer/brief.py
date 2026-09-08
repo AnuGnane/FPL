@@ -33,9 +33,10 @@ from gaffer import artifacts
 from gaffer.artifacts import latest_gw, load_advice, load_solve_state
 from gaffer.data.news.classifier import LLM_CACHE
 from gaffer.io import atomic_write
-from gaffer.ladder import CHIP_LABEL, _rung_label, load_ladder
+from gaffer.config import Config
+from gaffer.ladder import CHIP_LABEL, load_ladder
 
-BRIEF_PROMPT_VERSION = 2
+BRIEF_PROMPT_VERSION = 3
 """Bumped whenever :func:`build_prompt` changes; salts the cache key."""
 
 BRIEF_CACHE = LLM_CACHE / "brief"
@@ -144,9 +145,10 @@ def build_facts(gw: int) -> dict:
             for r in advice.get("move_frequencies") or []
             if r.get("code") is not None and r.get("frequency") is not None}
     restraint = advice.get("restraint") or {}
-    steps = [{"below_label": _rung_label(s["below"]), "above_label": _rung_label(s["above"]),
-              "share_pct": _pct(s.get("share")), "taken": bool(s.get("taken")),
-              "reason": s.get("reason") or ""}
+    # v17b §3.3: the steps are the served lines; the prose and the cards agree
+    # by construction, and the checker already reads numbers and names out of
+    # strings.
+    steps = [{"line": s.get("line") or "", "taken": bool(s.get("taken"))}
              for s in restraint.get("steps") or []]
     buys, sells = advice.get("buys") or [], advice.get("sells") or []
     moves = [{"in": b["name"], "out": (sells[i]["name"] if i < len(sells) else None),
@@ -176,15 +178,23 @@ def build_facts(gw: int) -> dict:
                "hits": int(objective.get("hits") or 0),
                "moves": [{"in": b["name"],
                           "out": osells[i]["name"] if i < len(osells) else None}
-                         for i, b in enumerate(objective.get("buys") or [])]}
+                         for i, b in enumerate(objective.get("buys") or [])],
+               "line": objective.get("line")}
     hits = int(advice.get("hits") or 0)
+    # v17b §3.3: the served cost, or the config's own default for an advice
+    # banked before the block carried one; never a literal.
+    cost = restraint.get("hit_cost")
+    hit_points = hits * int(cost if cost is not None else Config.hit_cost)
+    # A v16 advice has ``chosen`` but no ``label``; the key stands in.
+    chosen_label = restraint.get("label") or restraint.get("chosen") or "bank"
     return {
         "gw": int(gw), "horizon": [int(g) for g in ladder.get("gws") or [int(gw)]],
         "expected_pts": (None if advice.get("expected_pts") is None
                          else round(float(advice["expected_pts"]), 1)),
-        "hits": hits, "hit_points": hits * 4,
-        "restraint": {"chosen_label": _rung_label(str(restraint.get("chosen") or "bank")),
-                      "bar_pct": _pct(restraint.get("bar")), "steps": steps},
+        "hits": hits, "hit_points": hit_points,
+        "restraint": {"chosen_label": chosen_label,
+                      "bar_pct": _pct(restraint.get("bar")),
+                      "line": restraint.get("line"), "steps": steps},
         "moves": moves,
         "captain": {"name": (advice.get("captain") or {}).get("name"),
                     "sims_pct": _pct((advice.get("scenarios") or {}).get("captain_frequency")),
@@ -234,8 +244,8 @@ def build_prompt(facts: dict) -> str:
         "- hits is the number of hits this week and hit_points what they "
         "cost.",
         "",
-        "Say, in this order: which rung the ladder chose and every step, taken "
-        "or refused, with its share and reason; each move with its gain and "
+        "Say, in this order: which rung the ladder chose and every step's line, "
+        "taken or refused; each move with its gain and "
         "its sims share; the captain, his sims share and any note; the league "
         "(name, stance, whether it was set by hand, the gap and the tilt); a "
         "chip if there is one; last week's grade per lane and the manager's "

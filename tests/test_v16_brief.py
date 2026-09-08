@@ -16,11 +16,9 @@ from gaffer.brief import (BRIEF_PROMPT_VERSION, build_facts, build_prompt,
 FACTS = {
     "gw": 4, "horizon": [4, 5, 6], "expected_pts": 61.2, "hits": 0, "hit_points": 0,
     "restraint": {"chosen_label": "free transfers only", "bar_pct": 60,
-                  "steps": [{"below_label": "bank", "above_label": "free transfers only",
-                             "share_pct": 79, "taken": True, "reason": "expected points alone"},
-                            {"below_label": "free transfers only", "above_label": "1 hit",
-                             "share_pct": 46, "taken": False,
-                             "reason": "Rice is 0% to play"}]},
+                  "line": "restraint: free transfers only; the step to 1 hit was refused, 46% — Rice is 0% to play",
+                  "steps": [{"line": "bank → free transfers only: taken, 79% — expected points alone", "taken": True},
+                            {"line": "free transfers only → 1 hit: refused, 46% — Rice is 0% to play", "taken": False}]},
     "moves": [{"in": "Gibbs-White", "out": "B.Fernandes", "gain": 3.1, "sims_pct": 70}],
     "captain": {"name": "Guéhi", "sims_pct": 55, "note": None},
     "league": {"name": "Shocky Supplies", "stance": "chase", "manual": False,
@@ -32,7 +30,8 @@ FACTS = {
     "data_warning": None,
     "objective": {"agrees": False, "hits": 1,
                   "moves": [{"in": "Gibbs-White", "out": "B.Fernandes"},
-                            {"in": "Isak", "out": "Rice"}]},
+                            {"in": "Isak", "out": "Rice"}],
+                  "line": "the objective wanted: Gibbs-White, Isak in; B.Fernandes, Rice out; 1 hit"},
 }
 
 
@@ -103,7 +102,7 @@ def test_extract_text_reads_the_envelope_a_string_or_plain_text():
 
 
 def test_the_cache_key_is_salted_by_the_prompt_version():
-    assert BRIEF_PROMPT_VERSION == 2   # 2: R2 named the week's points and the chips
+    assert BRIEF_PROMPT_VERSION == 3   # 3: v17b, the steps are served lines
     assert cache_key("2026-09-05T09:00:00", 1) != cache_key("2026-09-05T09:00:00", 2)
     assert cache_key("a", 1) == cache_key("a", 1)
 
@@ -138,14 +137,19 @@ def artifacts_on_disk(tmp_path, monkeypatch):
         "chip_table": [], "data_warning": None,
         "objective": {"buys": [ref(1, "Gibbs-White"), ref(5, "Isak")],
                       "sells": [ref(2, "B.Fernandes"), ref(6, "Rice")], "hits": 1,
-                      "expected_pts": 63.0},
-        "restraint": {"chosen": "hits0", "bar": 0.6, "agrees": False, "note": "x",
+                      "expected_pts": 63.0,
+                      "line": "the objective wanted: Gibbs-White, Isak in; B.Fernandes, Rice out; 1 hit"},
+        "restraint": {"chosen": "hits0", "label": "free transfers only", "bar": 0.6,
+                      "agrees": False, "note": "x", "hit_cost": 4,
+                      "line": "restraint: free transfers only; the step to 1 hit was refused, 46% — Rice is 0% to play",
                       "steps": [{"below": "bank", "above": "hits0", "share": 0.7875,
                                  "taken": True, "reason": "expected points alone",
-                                 "reason_kind": "points"},
+                                 "reason_kind": "points",
+                                 "line": "bank → free transfers only: taken, 79% — expected points alone"},
                                 {"below": "hits0", "above": "hits1", "share": 0.46,
                                  "taken": False, "reason": "Rice is 0% to play",
-                                 "reason_kind": "flagged"}]}}))
+                                 "reason_kind": "flagged",
+                                 "line": "free transfers only → 1 hit: refused, 46% — Rice is 0% to play"}]}}))
     (artifacts.REPORTS / "ladder_gw4.json").write_text(json.dumps(
         {"gw": 4, "gws": [4, 5, 6], "chosen": "hits0", "bar": 0.6, "rungs": []}))
     monkeypatch.setattr("gaffer.brief.run_stamp", lambda gw: "2026-09-05T09:00:00")
@@ -166,13 +170,30 @@ def test_build_facts_has_the_spec_shape_and_rounding(artifacts_on_disk):
     assert facts["gw"] == 4 and facts["horizon"] == [4, 5, 6]
     assert facts["restraint"]["chosen_label"] == "free transfers only"
     assert facts["restraint"]["bar_pct"] == 60
-    assert facts["restraint"]["steps"][0]["share_pct"] == 79
+    assert facts["restraint"]["steps"][0] == {
+        "line": "bank → free transfers only: taken, 79% — expected points alone", "taken": True}
+    assert facts["restraint"]["line"].startswith("restraint: free transfers only;")
+    assert facts["hit_points"] == 0
+    assert facts["objective"]["line"].startswith("the objective wanted:")
     assert facts["moves"] == [{"in": "Gibbs-White", "out": "B.Fernandes", "gain": 3.1,
                                "sims_pct": 70}]
     assert facts["captain"] == {"name": "Guéhi", "sims_pct": 55, "note": None}
     assert facts["league"]["lam"] == 0.13 and facts["league"]["manual"] is False
     assert facts["objective"]["hits"] == 1 and facts["objective"]["agrees"] is False
     assert facts["last_week"] is None and facts["chip"] is None
+
+
+def test_hit_points_read_the_served_cost_and_fall_back_to_the_config_default(artifacts_on_disk):
+    from gaffer.config import Config
+    path = artifacts.REPORTS / "gw4-advice.json"
+    adv = json.loads(path.read_text())
+    adv["hits"] = 2
+    adv["restraint"]["hit_cost"] = 5
+    path.write_text(json.dumps(adv))
+    assert build_facts(4)["hit_points"] == 10
+    del adv["restraint"]
+    path.write_text(json.dumps(adv))
+    assert build_facts(4)["hit_points"] == 2 * Config.hit_cost
 
 
 def test_a_passing_brief_is_banked_and_the_line_printed(artifacts_on_disk, capsys):
@@ -234,10 +255,9 @@ def test_no_advice_on_disk_is_a_note(tmp_path, monkeypatch):
 # --- review fixes: reasons are sayable, chips are allowed, a ban evicts ------
 
 def test_a_name_and_a_number_that_live_only_in_a_step_reason_are_sayable():
-    facts = {**FACTS, "restraint": {**FACTS["restraint"], "steps": [
-        {"below_label": "free transfers only", "above_label": "1 hit",
-         "share_pct": 46, "taken": False,
-         "reason": "Fernandes is 96% to drop tonight"}]}}
+    facts = {**FACTS, "restraint": {**FACTS["restraint"], "line": None, "steps": [
+        {"line": "free transfers only → 1 hit: refused, 46% — Fernandes is 96% to drop tonight",
+         "taken": False}]}}
     prose = "The step to 1 hit was refused at 46% because Fernandes is 96% to drop tonight."
     assert check_brief(prose, facts) == []
 

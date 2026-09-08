@@ -89,7 +89,11 @@ def advise(fast: bool = typer.Option(
     if not advice.buys:
         typer.echo("No transfers — bank the FT.")
     if advice.hits:
-        typer.echo(f"Hits: -{advice.hits * 4}")
+        # v17b §3.3: the served cost when the block carries one; the config's
+        # own default otherwise (a pre-v16 advice), never a literal.
+        from gaffer.config import Config
+        cost = (getattr(advice, "restraint", None) or {}).get("hit_cost")
+        typer.echo(f"Hits: -{advice.hits * int(cost if cost is not None else Config.hit_cost)}")
     # v13: absent on an Advice built without the field — which is what keeps
     # tests/test_v4c_degradation.py's character-for-character rail green.
     if getattr(advice, "caps", None):
@@ -97,13 +101,13 @@ def advise(fast: bool = typer.Option(
     # v16 §4: the rung the ladder chose, and the objective's own plan when
     # they differ. Absent on an Advice built without the field — which keeps
     # tests/test_v4c_degradation.py's character-for-character rail green.
+    # v17b §3.3: both lines are served; the CLI composes nothing.
     restraint = getattr(advice, "restraint", None)
-    if restraint:
-        from gaffer.ladder import _objective_line, _restraint_line
-
-        typer.echo(_restraint_line(restraint))
-        if not restraint.get("agrees", True):
-            typer.echo(_objective_line(getattr(advice, "objective", None)))
+    if restraint and restraint.get("line"):
+        typer.echo(restraint["line"])
+        objective = getattr(advice, "objective", None) or {}
+        if not restraint.get("agrees", True) and objective.get("line"):
+            typer.echo(objective["line"])
     cap_pct = ""
     if advice.scenarios and advice.scenarios.get("captain_frequency"):
         cap_pct = (f" [{round(advice.scenarios['captain_frequency'] * 100)}"
