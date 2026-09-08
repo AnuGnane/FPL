@@ -126,11 +126,11 @@ export interface Advice {
    *  (`league_mode.py:425`). Test it for truthiness, exactly as
    *  `cli.py:81` does. */
   captain_note?: string | null
-  /** v16: absent on a payload banked before the restraint walk; v17f §2.8:
+  /** v16: absent on a payload banked before the restraint walk; v17f §2.9:
    *  the generated served type, so the hand-written half cannot drift from
    *  what `ServedPlan` writes. */
   objective?: ServedObjective | null
-  /** v16: absent on a payload banked before the restraint walk; v17f §2.8:
+  /** v16: absent on a payload banked before the restraint walk; v17f §2.9:
    *  the generated served type (see `objective` above). */
   restraint?: ServedRestraint | null
 }

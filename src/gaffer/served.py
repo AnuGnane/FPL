@@ -7,10 +7,11 @@ own week. ``advise`` builds it and writes it whole; ``artifacts.served_plan``
 reads it back and, for a file written before v17f, fills the same fields
 through the same functions. Everything here is a value in and a value out.
 
-The four pool readers at the bottom moved from ``web/routers/plan.py`` with
-their docstrings: the pool parquet is written by whatever run wrote the
-advice and drifts with it, so they still degrade a column they cannot
-read rather than raise.
+The five readers at the bottom moved from ``web/routers/plan.py`` with
+their docstrings — three off the solve state's pool, two off the chip
+table. The pool parquet is written by whatever run wrote the advice and
+drifts with it, so they still degrade a column they cannot read rather
+than raise.
 """
 
 from __future__ import annotations
@@ -393,7 +394,14 @@ def decorated(plan: ServedPlan, *, tags: dict[int, str],
     """The tags and sweep frequencies on the *served* moves (v16 §4): a tag
     for every buy ``tags`` names, a frequency for a buy or sell the sweep
     saw. A move with neither is left unset, so the write carries no null
-    for it."""
+    for it.
+
+    The head week's moves carry them too, because they *are* the served
+    moves: before v17f the two lists held the same dicts and advise
+    decorated them by mutation, so the artifact showed the tag in both
+    places (v17f §2.4). Said here instead of relied on, and it now holds
+    on the objective's own plan as well, where the aliasing never did.
+    """
     def one(kind: str, move: ServedMove) -> ServedMove:
         update: dict = {}
         if kind == "buy" and move.code in tags:
@@ -401,9 +409,16 @@ def decorated(plan: ServedPlan, *, tags: dict[int, str],
         if (kind, move.code) in frequencies:
             update["frequency"] = frequencies[(kind, move.code)]
         return move.model_copy(update=update) if update else move
+
+    def week(w: ServedWeek) -> ServedWeek:
+        if w.gw != plan.gw:
+            return w
+        return w.model_copy(update={"buys": [one("buy", m) for m in w.buys],
+                                    "sells": [one("sell", m) for m in w.sells]})
     return plan.model_copy(update={
         "buys": [one("buy", m) for m in plan.buys],
-        "sells": [one("sell", m) for m in plan.sells]})
+        "sells": [one("sell", m) for m in plan.sells],
+        "plan_by_gw": [week(w) for w in plan.plan_by_gw]})
 
 
 def with_alternatives(plan: ServedPlan, rows) -> ServedPlan:
@@ -423,6 +438,10 @@ def with_objective_week(plan: ServedPlan) -> ServedPlan:
     those four before pricing it — without this the board loses its
     objective column. ``serve_rung`` writes the week at write time, so a
     loaded plan that already carries one is left alone.
+
+    Unconditional, and not gated on ``restraint.agrees``: which surface
+    draws the week is the surface's business, and a loader that guessed
+    would hand a different value to the board and to the brief.
     """
     objective = plan.objective
     if objective is None or objective.week is not None:

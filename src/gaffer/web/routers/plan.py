@@ -66,5 +66,9 @@ def plan(gw: int) -> PlanTimeline:
     if (served.objective is not None and served.objective.week is not None
             and served.restraint is not None and served.restraint.agrees is False):
         objective = week(served.objective.week, head_refs=False)
+    # ``or ""``: the stamp is the one served field the board only prints,
+    # and a file with no ``generated_at`` is a pre-v17f file whose solve
+    # state carried none either — a blank "as of" line, not a 404 over a
+    # plan that is otherwise whole.
     return PlanTimeline(gw=head, generated_at=served.generated_at or "", weeks=weeks,
                         bank=served.bank, alternatives=alternatives, objective=objective)

@@ -21,7 +21,7 @@ export interface MovesCardProps {
   /** v13: "1 free transfer · cap 2 hits", from the ladder payload. */
   capLine?: string | null
   /** v16: the ladder's restraint walk, absent on an older payload; v17b: the
-   *  card renders its served `line` verbatim; v17f §2.8: the generated type,
+   *  card renders its served `line` verbatim; v17f §2.9: the generated type,
    *  so the card reads what `ServedPlan` writes. */
   restraint?: ServedRestraint | null
   /** v16: the solver's own week, printed when it differs from the served

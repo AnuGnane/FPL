@@ -248,3 +248,28 @@ def test_a_pool_with_no_code_column_costs_only_the_prices(tmp_path,
     week = resp.json()["weeks"][0]
     assert week["buys"][0]["name"] == "Salah"     # the plan still draws
     assert week["buys"][0]["price"] is None
+
+
+def test_a_v17f_file_is_served_as_written_without_a_solve_state(tmp_path,
+                                                                monkeypatch):
+    """The other half of the loader (v17f §2.3): a file advise wrote through
+    ``ServedPlan`` carries its own prices, banks and trace, so the route
+    answers with no solve state on disk at all. Every other fixture here
+    takes the backfill, which would hide a loader that always re-priced."""
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "reports").mkdir()
+    move = {"code": 100, "name": "Salah", "position": "MID", "ep": 6.4,
+            "price": 13.0}
+    (tmp_path / "reports" / "gw5-advice.json").write_text(json.dumps({
+        "gw": 5, "generated_at": "2026-08-29T09:00:00Z", "bank": 2.5,
+        "deadline": "2099-09-18T17:30:00Z", "captain": move, "vice": None,
+        "plan_by_gw": [{"gw": 5, "hits": 1, "hit_cost": 4, "buys": [move],
+                        "sells": [], "expected_pts": 61.5, "chip": "bboost",
+                        "bank": -10.5, "trace": None}]}))
+    body = TestClient(create_app(), raise_server_exceptions=False).get(
+        "/api/plan/5").json()
+    assert body["generated_at"] == "2026-08-29T09:00:00Z" and body["bank"] == 2.5
+    week = body["weeks"][0]
+    assert week["bank"] == -10.5 and week["hit_cost"] == 4
+    assert week["chip"] == "bboost" and week["buys"][0]["price"] == 13.0
+    assert week["captain"]["name"] == "Salah"

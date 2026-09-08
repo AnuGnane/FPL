@@ -573,3 +573,19 @@ def test_update_health_reads_the_captain_through_artifacts(tmp_path,
                                                   "minutes": [90]}))
     tracking.update_health(4)
     assert seen["c"] == 42
+
+
+def test_the_head_weeks_moves_carry_the_same_tags_and_a_later_weeks_do_not():
+    """v17f §2.4: before this cycle the top-level moves and week one's were
+    the same dicts, so advise's mutation tagged both; the artifact keeps
+    them. A later week's moves were never the served moves and never
+    carried a tag."""
+    from gaffer.served import decorated
+
+    plan = _plan([_week(5, buys=[P], sells=[S]), _week(6, buys=[P], sells=[S])],
+                 buys=[P], sells=[S])
+    out = decorated(plan, tags={100: "attack"}, frequencies={("sell", 200): 0.5})
+    head, later = out.plan_by_gw
+    assert head.buys[0].tag == "attack" and head.sells[0].frequency == 0.5
+    assert "tag" not in later.buys[0].model_fields_set
+    assert "frequency" not in later.sells[0].model_fields_set

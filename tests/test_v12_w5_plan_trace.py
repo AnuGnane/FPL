@@ -13,6 +13,8 @@ import pandas as pd
 import pytest
 
 from gaffer.artifacts import POOL_COLS, SolveState
+from gaffer import price_timing as price_timing_mod
+from gaffer.config import config_in_force
 from gaffer.web.routers import plan as plan_router
 
 
@@ -229,15 +231,26 @@ def test_a_missing_price_reader_costs_the_charge_and_not_the_plan(wired,
     answers "on, and unknown" (v17f §2.2), so the break costs the charge and
     not the plan: the week still renders and still carries a trace, and the
     charge is a null rather than a zero chance of a fall."""
+    import dataclasses
+
+    from tests.conftest import patch_view
+
     def boom(*a, **k):
         raise ImportError("no such module")
 
     wired([_week(5), _week(6, buys=[P], sells=[S])])
+    # The switch is forced on: with the machine's own config off, the "off
+    # now" branch would give a null charge too and the test would pass
+    # without ever reaching the reader.
+    cfg = dataclasses.replace(config_in_force(), price_timing=True)
+    patch_view(monkeypatch, lambda: cfg, module=price_timing_mod)
     monkeypatch.setattr("gaffer.price_timing.owned_price_falls", boom)
     out = plan_router.plan(5)
     assert out.weeks[1].expected_pts == 60.0
     assert out.weeks[1].trace is not None
     assert out.weeks[1].trace.price_charge is None
+    assert "was not recorded for every player sold" in out.weeks[1].trace.note
+    assert "is off now" not in out.weeks[1].trace.note
 
 
 def test_the_alternatives_carry_no_trace(wired):
