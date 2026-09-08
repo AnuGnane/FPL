@@ -370,7 +370,9 @@ def test_the_advice_artifact_is_written_through_a_temp_and_os_replace():
     import gaffer.io as io_mod
 
     source = inspect.getsource(advise_mod)
-    start = source.index('f"gw{gw}-advice.json"')
+    # v17f §1 part 4 (orchestrator ruling): the filename is spelled only in
+    # ``artifacts.py`` now, so the anchor is the write's path call.
+    start = source.index("advice_path(gw)")
     window = source[start - 600:start + 600]
     # v12 W1 §2.11 (specs/2026-09-01-gaffer-v12-program-design.md). The idiom
     # moved into gaffer.io, so the grep follows it. `atomic_write` in the
@@ -379,7 +381,8 @@ def test_the_advice_artifact_is_written_through_a_temp_and_os_replace():
     # cannot satisfy this one, because the name has to be called.
     assert "atomic_write(" in window
     # And the non-atomic form is gone, not merely joined.
-    assert 'f"gw{gw}-advice.json").write_text' not in source
+    assert "advice_path(gw).write_text" not in source
+    assert "advice.json" not in source
     # The guarantee itself, checked where it now lives.
     helper = inspect.getsource(io_mod)
     assert "os.replace" in helper and "os.getpid()" in helper

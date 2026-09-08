@@ -376,8 +376,11 @@ file is not protected but the return is by the prompt's ruling),
 `tests/test_advise.py` (if a pin moves; expected none),
 `tests/test_v16_restraint.py` (gate part 3), `tests/test_v11_degradation.py`
 and `tests/test_v12_w3_degradation.py` and `tests/test_v12_w5_degradation.py`
-(the rewire and the deaths in §6). `tests/test_v12_w1_degradation.py` is
-untouched.
+(the rewire and the deaths in §6); `tests/test_v9c_degradation.py`, whose
+atomic-write pin anchored on the literal filename in `advise.py` and now
+anchors on the `advice_path(gw)` call, with a second assertion that the
+filename is not spelled there at all (ruling recorded when gate part 4
+turned it red). `tests/test_v12_w1_degradation.py` is untouched.
 
 ## 8. Process
 
