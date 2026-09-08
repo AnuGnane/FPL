@@ -40,7 +40,7 @@ def test_the_advise_body_still_defaults_to_the_config_on_disk():
     table stores the function itself, and the runner calls it with no args."""
     import inspect
 
-    from gaffer.web.routers.advice import run_train_and_advise
+    from gaffer.web.job_kinds import run_train_and_advise
 
     assert inspect.signature(run_train_and_advise).parameters["cfg"].default \
         is None
@@ -48,7 +48,7 @@ def test_the_advise_body_still_defaults_to_the_config_on_disk():
 
 def test_the_advise_body_uses_the_config_it_is_handed(tmp_path, monkeypatch):
     from gaffer.config import Config
-    from gaffer.web.routers.advice import run_train_and_advise
+    from gaffer.web.job_kinds import run_train_and_advise
 
     # v16 §6.5: the body chains ``brief.run_brief``, which banks a note under
     # ``reports/`` when there is no advice to brief. Run it in a tmp_path so
