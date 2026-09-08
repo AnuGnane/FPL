@@ -47,16 +47,28 @@ if [[ "$STAGE" == v16* ]]; then
     "settings:/model?tab=settings"
   )
 fi
+# v17b gate (specs/2026-09-07-v17b-restraint-prose-design.md §6.4): This
+# Week twice — the moves card's served restraint line at the usual height,
+# and the page in a window tall enough to reach the ladder card's labels,
+# steps and notes. An entry's optional third field is the window height.
+if [[ "$STAGE" == v17b* ]]; then
+  HUBS=(
+    "this-week:/"
+    "this-week-lower:/:3400"
+  )
+fi
 for entry in "${HUBS[@]}"; do
-  name="${entry%%:*}"; path="${entry#*:}"
+  name="${entry%%:*}"; rest="${entry#*:}"
+  path="${rest%%:*}"; height="${rest#*:}"
+  [[ "$height" == "$path" ]] && height=1600
   for theme in dark light; do
     if [[ "$theme" == dark ]]; then
       "$SHELL_BIN" --headless --blink-settings=preferredColorScheme=0 \
-        --hide-scrollbars --run-all-compositor-stages-before-draw --window-size=1400,1600 --virtual-time-budget=15000 \
+        --hide-scrollbars --run-all-compositor-stages-before-draw --window-size=1400,$height --virtual-time-budget=15000 \
         --screenshot="$OUT/$name-$theme.png" "$BASE$path" >/dev/null 2>&1
     else
       "$SHELL_BIN" --headless \
-        --hide-scrollbars --run-all-compositor-stages-before-draw --window-size=1400,1600 --virtual-time-budget=15000 \
+        --hide-scrollbars --run-all-compositor-stages-before-draw --window-size=1400,$height --virtual-time-budget=15000 \
         --screenshot="$OUT/$name-$theme.png" "$BASE$path" >/dev/null 2>&1
     fi
     echo "$OUT/$name-$theme.png"
