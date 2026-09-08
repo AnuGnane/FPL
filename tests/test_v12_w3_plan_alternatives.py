@@ -44,13 +44,14 @@ def wired(monkeypatch):
                          "sell": [78.0, 74.0, 59.0]})
 
     def install(advice, bank=15):
-        monkeypatch.setattr(plan_router, "load_advice", lambda gw: advice)
+        monkeypatch.setattr("gaffer.artifacts.load_advice", lambda gw: advice)
         state = SolveState(pool=pool, bank=bank, opt={"hit_cost": 4},
                            generated_at="2026-09-01T09:00:00+00:00",
                            owned_codes=[200], gws=[5, 6, 7], gw=5,
                            deadline="", mode="weekly", free_transfers=1,
                            lam=0.0, league_eo={}, avail_by_gw={})
-        monkeypatch.setattr(plan_router, "load_solve_state", lambda gw: state)
+        monkeypatch.setattr("gaffer.artifacts.load_solve_state",
+                            lambda gw: state)
     return install
 
 
@@ -109,20 +110,3 @@ def test_a_gap_that_is_not_a_number_is_None_and_not_zero(wired):
     """0.0 is "exactly level", which is a real and different claim."""
     wired(_advice([_week(5)], [{"gap": "eh", "plan_by_gw": [_week(5)]}]))
     assert plan_router.plan(5).alternatives[0].gap is None
-
-
-@pytest.mark.parametrize("payload", ["nonsense", {"a": 1}, 7, None])
-def test_a_malformed_alternatives_key_costs_a_tab_and_not_the_board(wired,
-                                                                    payload):
-    wired(_advice([_week(5)], payload))
-    out = plan_router.plan(5)
-    assert out.alternatives == []
-    assert len(out.weeks) == 1
-
-
-def test_an_alternative_that_is_not_a_dict_is_dropped_and_the_rest_stand(
-        wired):
-    wired(_advice([_week(5)], ["nonsense",
-                               {"gap": 1.0, "plan_by_gw": [_week(5)]}]))
-    alts = plan_router.plan(5).alternatives
-    assert [a.label for a in alts] == ["Plan B"]

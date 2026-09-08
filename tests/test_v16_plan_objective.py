@@ -6,9 +6,11 @@ from tests.test_v12_w5_plan_trace import P, S, _week, wired  # noqa: F401
 from gaffer.web.routers import plan as plan_router
 
 
-def _with_objective(wired, agrees):
+def _with_objective(wired, monkeypatch, agrees):
+    import gaffer.artifacts as artifacts
+
     state = wired([_week(5, buys=[P], sells=[S])])
-    real = plan_router.load_advice
+    real = artifacts.load_advice
 
     def advice(gw):
         out = real(gw)
@@ -16,12 +18,12 @@ def _with_objective(wired, agrees):
         out["restraint"] = {"chosen": "hits0", "bar": 0.6, "agrees": agrees,
                             "steps": [], "note": None}
         return out
-    plan_router.load_advice = advice
+    monkeypatch.setattr("gaffer.artifacts.load_advice", advice)
     return state
 
 
 def test_a_disagreeing_objective_is_served_with_its_own_trace(wired, monkeypatch):
-    _with_objective(wired, agrees=False)
+    _with_objective(wired, monkeypatch, agrees=False)
     out = plan_router.plan(5)
     assert out.objective is not None
     assert out.objective.gw == 5 and out.objective.hits == 1
@@ -31,8 +33,8 @@ def test_a_disagreeing_objective_is_served_with_its_own_trace(wired, monkeypatch
     assert out.objective.captain is None            # never the armband
 
 
-def test_an_agreeing_objective_is_not_repeated(wired):
-    _with_objective(wired, agrees=True)
+def test_an_agreeing_objective_is_not_repeated(wired, monkeypatch):
+    _with_objective(wired, monkeypatch, agrees=True)
     assert plan_router.plan(5).objective is None
 
 

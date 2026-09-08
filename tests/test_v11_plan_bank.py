@@ -44,7 +44,7 @@ def wired(monkeypatch):
                          "sell": [78.0, 74.0, 59.0]})
 
     def install(weeks, bank=15):
-        monkeypatch.setattr(plan_router, "load_advice",
+        monkeypatch.setattr("gaffer.artifacts.load_advice",
                             lambda gw: _advice(weeks))
         # Every keyword ``SolveState`` requires: the dataclass has no defaults
         # before ``pool``, so a shorter construction is a TypeError rather than
@@ -55,7 +55,8 @@ def wired(monkeypatch):
                            mode="weekly", bank=bank, free_transfers=1,
                            owned_codes=[200], lam=0.0, league_eo={},
                            avail_by_gw={}, opt={"hit_cost": 4}, pool=pool)
-        monkeypatch.setattr(plan_router, "load_solve_state", lambda gw: state)
+        monkeypatch.setattr("gaffer.artifacts.load_solve_state",
+                            lambda gw: state)
         return state
     return install
 

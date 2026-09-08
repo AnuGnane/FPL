@@ -1,13 +1,13 @@
 """v12 W5 §6.5 — the trace on /api/plan/{gw}.
 
-The byte-identity gate lives here. The trace is outside the solver by
-construction (tests/test_v12_w5_trace.py proves nothing that decides can import
-it), so what is left to prove is that turning it on changed nothing else on the
-payload the board already draws.
+The trace is outside the solver by construction (tests/test_v12_w5_trace.py
+proves nothing that decides can import it); what is left to prove is that the
+terms the board prints are the objective's own. Since v17f §2.6 the trace is
+computed in ``gaffer.served`` and the router only shapes it, so the byte-
+identity gate and the throwing-trace rule moved to tests/test_served_plan.py
+with the code they guard.
 """
 from __future__ import annotations
-
-import json
 
 import pandas as pd
 import pytest
@@ -44,7 +44,7 @@ def _week(gw, buys=(), sells=(), hits=0):
 @pytest.fixture()
 def wired(monkeypatch):
     def install(weeks, chips=(), lam=0.0, cover=None, alts=(), opt=None):
-        monkeypatch.setattr(plan_router, "load_advice",
+        monkeypatch.setattr("gaffer.artifacts.load_advice",
                             lambda gw: _advice(weeks, chips, alts))
         state = SolveState(
             pool=_pool(), bank=15,
@@ -54,7 +54,8 @@ def wired(monkeypatch):
             owned_codes=[200], gws=[5, 6, 7], gw=5, mode="weekly",
             free_transfers=1, lam=lam, league_eo={}, cover=cover,
             avail_by_gw={})
-        monkeypatch.setattr(plan_router, "load_solve_state", lambda gw: state)
+        monkeypatch.setattr("gaffer.artifacts.load_solve_state",
+                            lambda gw: state)
         return state
     return install
 
@@ -199,7 +200,7 @@ def test_the_price_charge_reaches_the_trace_through_w2s_own_reader(wired,
     records what the solve saw. The note beside the number says so.
     """
     wired([_week(5), _week(6, buys=[P], sells=[S])])
-    monkeypatch.setattr(plan_router, "_price_falls",
+    monkeypatch.setattr("gaffer.served.price_falls",
                         lambda state: (True, {200: 0.8}))
     trace = plan_router.plan(5).weeks[1].trace
     assert trace.price_charge == pytest.approx(0.8 * 0.1 * 0.05)
@@ -212,7 +213,7 @@ def test_price_timing_off_reports_no_charge_and_says_why(wired, monkeypatch):
     who turned it off after the plan was written must not be told the plan was
     solved without the term."""
     wired([_week(5), _week(6, buys=[P], sells=[S])])
-    monkeypatch.setattr(plan_router, "_price_falls",
+    monkeypatch.setattr("gaffer.served.price_falls",
                         lambda state: (False, {}))
     trace = plan_router.plan(5).weeks[1].trace
     assert trace.price_charge is None
@@ -229,7 +230,7 @@ def test_a_missing_price_reader_costs_the_charge_and_not_the_plan(wired,
         raise ImportError("no such module")
 
     wired([_week(5), _week(6, buys=[P], sells=[S])])
-    monkeypatch.setattr(plan_router, "_price_falls", boom)
+    monkeypatch.setattr("gaffer.served.price_falls", boom)
     out = plan_router.plan(5)
     assert out.weeks[1].expected_pts == 60.0
     assert out.weeks[1].trace is None
@@ -248,49 +249,8 @@ def test_the_alternatives_carry_no_trace(wired):
     assert out.alternatives[0].weeks[0].trace is None
 
 
-def test_the_payload_is_byte_identical_with_the_trace_off(wired,
-                                                          monkeypatch):
-    """§6.5's gate. Everything the board already drew must be exactly what it
-    was; the only difference the trace makes is the key it adds — on the
-    recommended plan's weeks *and* on every alternative's, which is why both
-    are stripped rather than only the first."""
-    wired([_week(5, buys=[P], sells=[S], hits=1), _week(6), _week(7)],
-          alts=[{"gap": 0.4, "plan_by_gw": [_week(6, buys=[P], sells=[S])]}])
-    with_trace = plan_router.plan(5).model_dump()
-    monkeypatch.setattr(plan_router, "TRACE", False)
-    without = plan_router.plan(5).model_dump()
-
-    def strip(payload):
-        def weeks(rows):
-            return [{k: v for k, v in w.items() if k != "trace"}
-                    for w in rows]
-        return {**payload, "weeks": weeks(payload["weeks"]),
-                "alternatives": [{**a, "weeks": weeks(a["weeks"])}
-                                 for a in payload["alternatives"]]}
-
-    assert json.dumps(strip(with_trace), sort_keys=True) == json.dumps(
-        strip(without), sort_keys=True)
-    assert all(w["trace"] is None for w in without["weeks"])
-    assert with_trace["alternatives"][0]["weeks"][0]["trace"] is None
-
-
-def test_a_trace_that_throws_costs_the_trace_and_not_the_plan(wired,
-                                                              monkeypatch):
-    """A decoration must never be the reason a plan does not render — the
-    board's own rule for the price movers (PlannerBoard.tsx:63-65)."""
-    def boom(*a, **k):
-        raise ValueError("nope")
-
-    wired([_week(5, buys=[P], sells=[S])])
-    monkeypatch.setattr(plan_router, "trace_plan", boom)
-    out = plan_router.plan(5)
-    assert out.weeks[0].expected_pts == 60.0
-    assert out.weeks[0].trace is None
-
-
 def test_a_pool_with_no_ep_column_does_not_stop_the_plan(wired):
-    wired([_week(5, buys=[P], sells=[S])])
-    state = plan_router.load_solve_state(5)
+    state = wired([_week(5, buys=[P], sells=[S])])
     state.pool = state.pool.drop(columns=["ep_raw"])
     out = plan_router.plan(5)
     assert out.weeks[0].buys[0].code == 100
