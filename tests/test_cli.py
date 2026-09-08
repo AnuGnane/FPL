@@ -141,10 +141,15 @@ def _advise_run(tmp_path, monkeypatch, advice):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "config.toml").write_text(
         '[fpl]\nentry_id = 1\nleague_id = 0\n')
-    monkeypatch.setattr("gaffer.advise.run_advise", lambda cfg: advice)
+    monkeypatch.setattr("gaffer.advise.run_advise", lambda cfg, client=None: advice)
     monkeypatch.setattr("gaffer.report.render.render_report",
                         lambda a, model_health=None: "reports/gw2.md")
     monkeypatch.setattr("gaffer.tracking.latest_health", lambda: None)
+    # v17d §2.9: the CLI chains the brief; stubbed so this rail neither
+    # reads the real reports/ nor runs the configured LLM command.
+    monkeypatch.setattr("gaffer.brief.run_brief",
+                        lambda gw, cfg=None: {"gw": gw, "written": False,
+                                              "note": None, "path": None})
     return runner.invoke(app, ["advise"])
 
 
@@ -533,7 +538,7 @@ def _fast_run(tmp_path, monkeypatch, seen, argv):
     (tmp_path / "config.toml").write_text(
         '[fpl]\nentry_id = 1\nleague_id = 0\n\n[scenarios]\nn = 40\n')
 
-    def _run(cfg):
+    def _run(cfg, client=None):
         seen["scenarios_n"] = cfg.scenarios_n
         return _stub_advice()
 
@@ -541,6 +546,11 @@ def _fast_run(tmp_path, monkeypatch, seen, argv):
     monkeypatch.setattr("gaffer.report.render.render_report",
                         lambda a, model_health=None: "reports/gw2.md")
     monkeypatch.setattr("gaffer.tracking.latest_health", lambda: None)
+    # v17d §2.9: the CLI chains the brief; stubbed so this rail neither
+    # reads the real reports/ nor runs the configured LLM command.
+    monkeypatch.setattr("gaffer.brief.run_brief",
+                        lambda gw, cfg=None: {"gw": gw, "written": False,
+                                              "note": None, "path": None})
     return runner.invoke(app, argv)
 
 

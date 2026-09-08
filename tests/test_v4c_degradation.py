@@ -83,6 +83,11 @@ def test_advise_prints_exactly_the_pre_v4c_block(tmp_path, monkeypatch):
     monkeypatch.setattr(render_mod, "render_report",
                         lambda advice, **kw: "reports/gw7.html")
     monkeypatch.setattr(tracking_mod, "latest_health", lambda: None)
+    # v17d §2.9: the CLI chains the brief; stubbed so this rail neither
+    # reads the real reports/ nor runs the configured LLM command.
+    monkeypatch.setattr("gaffer.brief.run_brief",
+                        lambda gw, cfg=None: {"gw": gw, "written": False,
+                                              "note": None, "path": None})
 
     result = runner.invoke(app, ["advise"])
     assert result.exit_code == 0, result.output
@@ -193,6 +198,11 @@ def test_advise_prints_frequencies_when_scenarios_ran(tmp_path, monkeypatch):
     monkeypatch.setattr(render_mod, "render_report",
                         lambda advice, **kw: "reports/gw7.html")
     monkeypatch.setattr(tracking_mod, "latest_health", lambda: None)
+    # v17d §2.9: the CLI chains the brief; stubbed so this rail neither
+    # reads the real reports/ nor runs the configured LLM command.
+    monkeypatch.setattr("gaffer.brief.run_brief",
+                        lambda gw, cfg=None: {"gw": gw, "written": False,
+                                              "note": None, "path": None})
 
     out = runner.invoke(app, ["advise"]).output
     assert "BUY  Bruno Fernandes (6.4 xPts) [85% of sims]" in out
@@ -225,6 +235,11 @@ def test_advise_prints_the_disagreement_line_when_the_gate_held_moves_back(
     monkeypatch.setattr(render_mod, "render_report",
                         lambda advice, **kw: "reports/gw7.html")
     monkeypatch.setattr(tracking_mod, "latest_health", lambda: None)
+    # v17d §2.9: the CLI chains the brief; stubbed so this rail neither
+    # reads the real reports/ nor runs the configured LLM command.
+    monkeypatch.setattr("gaffer.brief.run_brief",
+                        lambda gw, cfg=None: {"gw": gw, "written": False,
+                                              "note": None, "path": None})
 
     out = runner.invoke(app, ["advise"]).output
     assert "No transfers — bank the FT." in out

@@ -37,13 +37,12 @@ def _caps_line(caps: dict) -> str:
 def advise(fast: bool = typer.Option(
         False, "--fast",
         help="Skip the scenario sweep (~5 min); serves the raw optimum.")):
-    """Full weekly run: refresh -> predict -> optimize -> report."""
+    """Full weekly run: refresh -> predict -> optimize -> report -> brief."""
     import dataclasses
 
-    from gaffer.advise import run_advise
     from gaffer.config import load_config
     from gaffer.errors import GafferError
-    from gaffer.report.render import render_report
+    from gaffer.pipeline import weekly_run
 
     cfg = load_config()
     # n = 0 is the byte-pinned pre-v4c rail: solve once, deterministically.
@@ -55,8 +54,12 @@ def advise(fast: bool = typer.Option(
     if not cfg.entry_id:
         typer.echo("Set fpl.entry_id in config.toml first.")
         raise typer.Exit(1)
+    # v17d §2.3: the one weekly pipeline, without the train step — the
+    # Thursday plist runs `gaffer train` first, and so does a user by hand.
+    # The brief is chained inside, so the launchd log gains the brief's own
+    # line before the banner below (spec §2.5).
     try:
-        advice = run_advise(cfg)
+        result = weekly_run(cfg, train=False)
     except SystemExit as e:  # missing models, raised before any network call
         typer.echo(str(e))
         raise typer.Exit(1)
@@ -64,10 +67,7 @@ def advise(fast: bool = typer.Option(
                               # (GW1 is handled inside run_advise)
         typer.echo(str(e))
         raise typer.Exit(1)
-    from gaffer.tracking import latest_health
-
-    health = latest_health()
-    path = render_report(advice, model_health=health)
+    advice, path = result.advice, result.report_path
     typer.echo(f"\n=== GW{advice.gw} — deadline {advice.deadline} ===")
     if advice.data_warning:
         # Loud, and above the picks: the advice below was built without last
@@ -132,6 +132,10 @@ def advise(fast: bool = typer.Option(
                        f"{round(miss['frequency'] * 100)}%")
     typer.echo(f"Expected XI points: {advice.expected_pts}")
     typer.echo(f"Report: {path}")
+    # v17d §2.3: the note when the brief was not written — what `gaffer
+    # brief` prints; the written case already printed its own line.
+    if result.brief.get("note"):
+        typer.echo(result.brief["note"])
 
 
 @app.command()

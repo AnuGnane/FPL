@@ -69,6 +69,11 @@ def _cli(tmp_path, monkeypatch, advice):
     monkeypatch.setattr(render_mod, "render_report",
                         lambda advice, **kw: "reports/gw7.html")
     monkeypatch.setattr(tracking_mod, "latest_health", lambda: None)
+    # v17d §2.9: the CLI chains the brief; stubbed so this rail neither
+    # reads the real reports/ nor runs the configured LLM command.
+    monkeypatch.setattr("gaffer.brief.run_brief",
+                        lambda gw, cfg=None: {"gw": gw, "written": False,
+                                              "note": None, "path": None})
     return CliRunner().invoke(app, ["advise"])
 
 

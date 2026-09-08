@@ -165,6 +165,11 @@ def test_the_cli_prints_the_caps_line_when_the_advice_carries_one(
     monkeypatch.setattr(render_mod, "render_report",
                         lambda advice, **kw: "reports/gw7.html")
     monkeypatch.setattr(tracking_mod, "latest_health", lambda: None)
+    # v17d §2.9: the CLI chains the brief; stubbed so this rail neither
+    # reads the real reports/ nor runs the configured LLM command.
+    monkeypatch.setattr("gaffer.brief.run_brief",
+                        lambda gw, cfg=None: {"gw": gw, "written": False,
+                                              "note": None, "path": None})
 
     result = CliRunner().invoke(app, ["advise"])
     assert result.exit_code == 0, result.output

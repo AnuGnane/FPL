@@ -180,3 +180,53 @@ def test_the_plist_is_unchanged_and_still_runs_advise():
     text = Path("scripts/com.gaffer.advise.plist").read_text()
     assert "uv run gaffer train &amp;&amp; uv run gaffer advise" in text
     assert "gaffer brief" not in text
+
+
+# --- the CLI (spec §2.3, gate item 4) -------------------------------------
+
+def _cli_config(tmp_path, monkeypatch):
+    import gaffer.config as config_mod
+
+    cfg_path = tmp_path / "config.toml"
+    cfg_path.write_text('[fpl]\nentry_id = 1\nleague_id = 2\n')
+    real_load = config_mod.load_config
+    monkeypatch.setattr(config_mod, "load_config",
+                        lambda path="config.toml": real_load(cfg_path))
+
+
+def test_the_cli_advise_command_runs_the_pipeline_without_training(tmp_path, monkeypatch):
+    from typer.testing import CliRunner
+
+    from gaffer.cli import app
+    from gaffer.pipeline import RunResult
+    from tests.test_v4c_degradation import _fixture_advice
+
+    _cli_config(tmp_path, monkeypatch)
+    seen = {}
+
+    def fake_run(cfg, *, client=None, train=True, log=print):
+        seen["train"], seen["entry_id"] = train, cfg.entry_id
+        return RunResult(advice=_fixture_advice(), report_path=Path("reports/gw7.html"),
+                         brief={"gw": 7, "written": False,
+                                "note": "no llm_command configured under [news]", "path": None},
+                         trained=False, training_rows=None)
+    monkeypatch.setattr("gaffer.pipeline.weekly_run", fake_run)
+    out = CliRunner().invoke(app, ["advise"])
+    assert out.exit_code == 0, out.output
+    assert seen == {"train": False, "entry_id": 1}
+    assert out.output.endswith("Report: reports/gw7.html\n"
+                               "no llm_command configured under [news]\n")
+
+
+def test_the_cli_still_exits_one_on_a_missing_model(tmp_path, monkeypatch):
+    from typer.testing import CliRunner
+
+    from gaffer.cli import app
+
+    _cli_config(tmp_path, monkeypatch)
+
+    def fake_run(cfg, **kw):
+        raise SystemExit("Model 'minutes' missing — run `gaffer train` first.")
+    monkeypatch.setattr("gaffer.pipeline.weekly_run", fake_run)
+    out = CliRunner().invoke(app, ["advise"])
+    assert out.exit_code == 1 and "gaffer train" in out.output
