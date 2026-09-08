@@ -2835,6 +2835,11 @@
     "key": {
      "type": "string"
     },
+    "label": {
+     "default": "",
+     "description": "The rung's name in prose (v17b \u00a73.1): ``bank``, ``free transfers\nonly``, ``1 hit``, ``no cap``. Every surface renders this; none composes\nit.",
+     "type": "string"
+    },
     "mean_pts": {
      "anyOf": [
       {
@@ -2962,6 +2967,7 @@
     "horizon_hits",
     "horizon_pts",
     "key",
+    "label",
     "mean_pts",
     "objective",
     "p10_pts",
@@ -2987,6 +2993,11 @@
     "below": {
      "type": "string"
     },
+    "line": {
+     "default": "",
+     "description": "The step as one sentence (v17b \u00a73.1), composed once by\n``ladder._step_line``.",
+     "type": "string"
+    },
     "reason": {
      "default": "",
      "type": "string"
@@ -3005,6 +3016,7 @@
    "required": [
     "above",
     "below",
+    "line",
     "reason",
     "reason_kind",
     "share",

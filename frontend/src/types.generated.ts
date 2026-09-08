@@ -1293,6 +1293,12 @@ export interface LadderRung {
   horizon_hits: number
   horizon_pts: number | null
   key: string
+  /**
+   * The rung's name in prose (v17b §3.1): ``bank``, ``free transfers
+   * only``, ``1 hit``, ``no cap``. Every surface renders this; none composes
+   * it.
+   */
+  label: string
   mean_pts: number | null
   objective: number | null
   p10_pts: number | null
@@ -1354,6 +1360,11 @@ export interface LadderVsBelow {
 export interface LadderStep {
   above: string
   below: string
+  /**
+   * The step as one sentence (v17b §3.1), composed once by
+   * ``ladder._step_line``.
+   */
+  line: string
   reason: string
   reason_kind: string
   share: number
