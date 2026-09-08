@@ -134,7 +134,12 @@ def save_bundle(directory: Path, bodies: dict[str, object]) -> Path:
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / BUNDLE_NAME
     raw = json.dumps(bodies, sort_keys=True, separators=(",", ":")).encode()
-    with gzip.open(path, "wb", compresslevel=9, mtime=0) as fh:
+    # GzipFile, not gzip.open: only the class takes mtime, and the empty
+    # filename keeps the file's own path out of the gzip header, so the same
+    # answers are the same bytes wherever they were written.
+    with open(path, "wb") as raw_fh, gzip.GzipFile(
+            filename="", fileobj=raw_fh, mode="wb", compresslevel=9,
+            mtime=0) as fh:
         fh.write(raw)
     return path
 
