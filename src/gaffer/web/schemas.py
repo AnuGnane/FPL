@@ -1985,6 +1985,10 @@ class LadderRung(BaseModel):
     the rung below rather than re-solving it."""
 
     key: str
+    label: str = ""
+    """The rung's name in prose (v17b §3.1): ``bank``, ``free transfers
+    only``, ``1 hit``, ``no cap``. Every surface renders this; none composes
+    it."""
     hits: int
     """Hits taken in the **first** week — the decision on the table now."""
     transfers: int
@@ -2018,6 +2022,9 @@ class LadderStep(BaseModel):
     taken: bool
     reason: str = ""
     reason_kind: str = "points"
+    line: str = ""
+    """The step as one sentence (v17b §3.1), composed once by
+    ``ladder._step_line``."""
 
 
 class LadderCap(BaseModel):

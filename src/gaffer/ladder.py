@@ -14,6 +14,9 @@ narrower estimation σ. "Will two hits actually outscore one" is a question
 about what the players score, so the probabilities here are closer to a
 coin flip than that card's margins, and the spec chose that on purpose.
 
+Since v17b the module is also the one author of the ladder's prose: labels,
+step lines, the served restraint and objective lines.
+
 The board is built as ``sensitivity.run_sensitivity`` builds it — saved
 state, raw EP, the cover table converted from ``league_eo`` when the state
 predates it, ``tilt_ep``, ``milp_pool``, ``solve_kw_from_state`` — and the
@@ -83,9 +86,10 @@ default, so an unreadable config is a ladder at the shipped bar and not no
 ladder."""
 
 
-def rung_label(key: str) -> str:
+def _rung_label(key: str) -> str:
     """The rung's name in prose: ``bank``, ``free transfers only``, ``2 hits``,
-    ``no cap``."""
+    ``no cap``. Private since v17b §4: every surface reads the served
+    ``label``."""
     if key == "bank":
         return "bank"
     if key == "open":
@@ -94,6 +98,15 @@ def rung_label(key: str) -> str:
         return "free transfers only"
     n = int(key[4:]) if key.startswith("hits") else 0
     return f"{n} hit{'' if n == 1 else 's'}"
+
+
+def _step_line(step: dict) -> str:
+    """The step as one sentence (v17b §3.1): ``bank → free transfers only:
+    taken, 79% — expected points alone``. What LadderCard's ``stepText``
+    composed in the browser, written once here."""
+    return (f"{_rung_label(str(step['below']))} → {_rung_label(str(step['above']))}: "
+            f"{'taken' if step.get('taken') else 'refused'}, "
+            f"{round(float(step.get('share') or 0) * 100)}% — {step.get('reason') or ''}")
 
 
 def walk(scores: dict[str, np.ndarray], rows: list[dict], *, hit_bar: float,
@@ -274,22 +287,28 @@ def serve_rung(ladder: dict | None, objective: dict, *, hit_cost: int,
     set) is a decision about the field, not the squad, so it stands when he
     is in the rung's XI and is replaced with a note when he is not.
     """
+    # v17b §3.2: the block carries its prose — the chosen rung's ``label``,
+    # the one ``line`` the CLI and the moves card print — and the objective
+    # block its own line, so no surface composes a sentence of its own.
     base = {**objective, "captain_note": captain_note,
-            "objective": {k: objective[k]
-                          for k in ("buys", "sells", "hits", "expected_pts")},
-            "restraint": {"chosen": None, "bar": None, "steps": [],
-                          "agrees": True, "note": None,
-                          "hit_cost": int(hit_cost)}}
+            "objective": {**{k: objective[k]
+                             for k in ("buys", "sells", "hits", "expected_pts")},
+                          "line": _objective_line(objective)},
+            "restraint": {"chosen": None, "label": None, "bar": None,
+                          "steps": [], "agrees": True, "note": None,
+                          "hit_cost": int(hit_cost), "line": None}}
     if ladder is None:
         base["restraint"]["note"] = ("the ladder did not build; this is the "
                                      "objective's plan")
+        base["restraint"]["line"] = _restraint_line(base["restraint"])
         return base
     chosen = ladder.get("chosen")
     row = next((r for r in ladder.get("rungs") or [] if r.get("key") == chosen), None)
     if chosen is None or row is None or not row.get("plan_by_gw"):
-        base["restraint"].update(bar=ladder.get("bar"), steps=list(ladder.get("steps") or []),
+        base["restraint"].update(bar=ladder.get("bar"), steps=_lined(ladder.get("steps")),
                                  note="no rung of the ladder could be served; "
                                       "this is the objective's plan")
+        base["restraint"]["line"] = _restraint_line(base["restraint"])
         return base
     weeks = row["plan_by_gw"]
     first = weeks[0]
@@ -306,6 +325,13 @@ def serve_rung(ladder: dict | None, objective: dict, *, hit_cost: int,
         vice = first["captain"] if int(first["captain"]["code"]) != int(captain["code"]) \
             else next(p for p in first["xi"] if int(p["code"]) != int(captain["code"]))
     agrees = _moves(first) == _moves(objective)
+    restraint = {"chosen": chosen, "label": _rung_label(str(chosen)),
+                 "bar": ladder.get("bar"), "steps": _lined(ladder.get("steps")),
+                 "agrees": agrees, "hit_cost": int(hit_cost),
+                 "note": None if agrees else
+                 f"the objective's plan was the {_rung_label(chosen)} rung's "
+                 f"neighbour; the walk stopped at {_rung_label(chosen)}"}
+    restraint["line"] = _restraint_line(restraint)
     return {
         **base,
         "buys": list(first["buys"]), "sells": list(first["sells"]),
@@ -316,27 +342,34 @@ def serve_rung(ladder: dict | None, objective: dict, *, hit_cost: int,
                         "buys": list(w["buys"]), "sells": list(w["sells"]),
                         "expected_pts": _week_pts(w)} for w in weeks],
         "captain_note": note,
-        "restraint": {"chosen": chosen, "bar": ladder.get("bar"),
-                      "steps": list(ladder.get("steps") or []),
-                      "agrees": agrees, "hit_cost": int(hit_cost),
-                      "note": None if agrees else
-                      f"the objective's plan was the {rung_label(chosen)} rung's "
-                      f"neighbour; the walk stopped at {rung_label(chosen)}"},
+        "restraint": restraint,
     }
 
 
-def restraint_line(restraint: dict) -> str:
-    """One CLI line: the rung, and the refused step if there was one."""
-    chosen = rung_label(str(restraint.get("chosen") or "bank"))
+def _lined(steps) -> list[dict]:
+    """The steps as the ladder wrote them, each carrying its ``line``; a
+    step from a ladder built before v17b gets one here (§3.2)."""
+    return [{**s, "line": s.get("line") or _step_line(s)} for s in steps or []]
+
+
+def _restraint_line(restraint: dict) -> str:
+    """The served block's one sentence (v17b §3.2): the rung, and the refused
+    step if there was one; the block's note when no rung was chosen. The CLI
+    and the moves card print it verbatim, so the v16 CLI wording is the
+    wording everywhere."""
+    if restraint.get("chosen") is None:
+        return f"restraint: {restraint.get('note') or 'no rung was chosen'}"
+    chosen = restraint.get("label") or _rung_label(str(restraint["chosen"]))
     refused = next((s for s in restraint.get("steps") or [] if not s.get("taken")), None)
     if refused is None:
         return f"restraint: {chosen}; every step was taken"
-    return (f"restraint: {chosen}; the step to {rung_label(refused['above'])} was "
+    return (f"restraint: {chosen}; the step to {_rung_label(refused['above'])} was "
             f"refused, {round(float(refused['share']) * 100)}% — {refused['reason']}")
 
 
-def objective_line(objective: dict | None) -> str:
-    """"the objective wanted: X, Y in; Z out; 1 hit"."""
+def _objective_line(objective: dict | None) -> str:
+    """"the objective wanted: X, Y in; Z out; 1 hit" — the objective block's
+    ``line`` (v17b §3.2)."""
     if not objective:
         return "the objective wanted: nothing on record"
     buys = ", ".join(str(p["name"]) for p in objective.get("buys") or []) or "nobody"
@@ -370,10 +403,10 @@ def served_note(ladder: dict, advice: dict | None) -> str | None:
         return None
     if (served.get("chosen"), served.get("bar")) == (ladder.get("chosen"), ladder.get("bar")):
         return None
-    return (f"the served advice was the {rung_label(served['chosen'])} rung at "
+    return (f"the served advice was the {_rung_label(served['chosen'])} rung at "
             f"bar {float(served.get('bar') or 0):.2f}; this rebuild at "
             f"{float(ladder.get('bar') or 0):.2f} chooses "
-            f"{rung_label(ladder['chosen'])}")
+            f"{_rung_label(ladder['chosen'])}")
 
 
 def _hit_bar() -> float:
@@ -397,10 +430,20 @@ def load_ladder(gw: int) -> dict | None:
     if not path.exists():
         return None
     try:
-        return json.loads(path.read_text())
+        return _labelled(json.loads(path.read_text()))
     except Exception as exc:  # noqa: BLE001 — a corrupt report is no report
         print(f"ladder report unreadable: {exc}")
         return None
+
+
+def _labelled(payload: dict) -> dict:
+    """A ladder banked before v17b carries no ``label`` or ``line``; the
+    route and the brief read through here, so they never see one (§3.1)."""
+    for row in payload.get("rungs") or []:
+        row.setdefault("label", _rung_label(str(row.get("key"))))
+    for step in payload.get("steps") or []:
+        step.setdefault("line", _step_line(step))
+    return payload
 
 
 def _finite(value):
@@ -564,7 +607,7 @@ def _week(plan: GwPlan, meta: dict, ep_by: dict, hit_cost: int) -> dict:
 def _empty_rung(key: str, source: dict, same_as: str) -> dict:
     """A collapsed row: the source's four hit numbers and nothing else, so
     the card can print "same as one hit" without re-deriving them."""
-    return {"key": key, "hits": source["hits"],
+    return {"key": key, "label": _rung_label(key), "hits": source["hits"],
             "transfers": source["transfers"], "cost": source["cost"],
             "horizon_hits": source["horizon_hits"],
             "horizon_cost": source["horizon_cost"],
@@ -771,7 +814,7 @@ def build_ladder(gw: int | None = None, *, n_draws: int = LADDER_DRAWS,
         mean = float(sc.mean())
         horizon_hits = sum(int(p.hits) for p in plan.gw_plans)
         row = {
-            "key": key, "hits": int(first.hits),
+            "key": key, "label": _rung_label(key), "hits": int(first.hits),
             "transfers": int(len(first.buys)),
             "cost": int(first.hits * hit_cost),
             "horizon_hits": horizon_hits,
@@ -816,6 +859,9 @@ def build_ladder(gw: int | None = None, *, n_draws: int = LADDER_DRAWS,
             kind, text = explain_step(by_key[step["below"]], by_key[step["above"]],
                                       ctx, gw=gw, gws=gws)
             step.update(reason_kind=kind, reason=text)
+    # v17b §3.1: the step's sentence, written once the reason is known.
+    for step in steps:
+        step["line"] = _step_line(step)
     payload = {
         "gw": int(gw), "gws": [int(g) for g in gws],
         "generated_at": datetime.now(timezone.utc).isoformat(

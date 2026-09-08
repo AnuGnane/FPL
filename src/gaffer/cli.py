@@ -99,11 +99,11 @@ def advise(fast: bool = typer.Option(
     # tests/test_v4c_degradation.py's character-for-character rail green.
     restraint = getattr(advice, "restraint", None)
     if restraint:
-        from gaffer.ladder import objective_line, restraint_line
+        from gaffer.ladder import _objective_line, _restraint_line
 
-        typer.echo(restraint_line(restraint))
+        typer.echo(_restraint_line(restraint))
         if not restraint.get("agrees", True):
-            typer.echo(objective_line(getattr(advice, "objective", None)))
+            typer.echo(_objective_line(getattr(advice, "objective", None)))
     cap_pct = ""
     if advice.scenarios and advice.scenarios.get("captain_frequency"):
         cap_pct = (f" [{round(advice.scenarios['captain_frequency'] * 100)}"

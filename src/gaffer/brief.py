@@ -33,7 +33,7 @@ from gaffer import artifacts
 from gaffer.artifacts import latest_gw, load_advice, load_solve_state
 from gaffer.data.news.classifier import LLM_CACHE
 from gaffer.io import atomic_write
-from gaffer.ladder import CHIP_LABEL, load_ladder, rung_label
+from gaffer.ladder import CHIP_LABEL, _rung_label, load_ladder
 
 BRIEF_PROMPT_VERSION = 2
 """Bumped whenever :func:`build_prompt` changes; salts the cache key."""
@@ -144,7 +144,7 @@ def build_facts(gw: int) -> dict:
             for r in advice.get("move_frequencies") or []
             if r.get("code") is not None and r.get("frequency") is not None}
     restraint = advice.get("restraint") or {}
-    steps = [{"below_label": rung_label(s["below"]), "above_label": rung_label(s["above"]),
+    steps = [{"below_label": _rung_label(s["below"]), "above_label": _rung_label(s["above"]),
               "share_pct": _pct(s.get("share")), "taken": bool(s.get("taken")),
               "reason": s.get("reason") or ""}
              for s in restraint.get("steps") or []]
@@ -183,7 +183,7 @@ def build_facts(gw: int) -> dict:
         "expected_pts": (None if advice.get("expected_pts") is None
                          else round(float(advice["expected_pts"]), 1)),
         "hits": hits, "hit_points": hits * 4,
-        "restraint": {"chosen_label": rung_label(str(restraint.get("chosen") or "bank")),
+        "restraint": {"chosen_label": _rung_label(str(restraint.get("chosen") or "bank")),
                       "bar_pct": _pct(restraint.get("bar")), "steps": steps},
         "moves": moves,
         "captain": {"name": (advice.get("captain") or {}).get("name"),

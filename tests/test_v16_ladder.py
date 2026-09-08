@@ -7,8 +7,7 @@ import numpy as np
 import pytest
 
 from gaffer import ladder as lad
-from gaffer.ladder import (StepContext, explain_step, objective_line,
-                           recommended_rung, restraint_line, rung_label,
+from gaffer.ladder import (StepContext, explain_step, recommended_rung,
                            serve_rung, served_note, walk)
 
 
@@ -196,7 +195,8 @@ def test_the_rungs_plan_replaces_week_one_and_every_horizon_week():
     assert set(out["plan_by_gw"][0]) == {"gw", "hits", "buys", "sells", "expected_pts"}
     assert out["expected_pts"] == 55.0            # eleven refs at 5.0
     assert out["objective"] == {"buys": _objective()["buys"], "sells": _objective()["sells"],
-                                "hits": 1, "expected_pts": 61.5}
+                                "hits": 1, "expected_pts": 61.5,
+                                "line": "the objective wanted: P20, P19 in; P16, P17 out; 1 hit"}
     assert out["restraint"]["chosen"] == "hits0" and out["restraint"]["bar"] == 0.6
     assert out["restraint"]["agrees"] is False and len(out["restraint"]["steps"]) == 2
 
@@ -253,19 +253,58 @@ def test_no_ladder_or_no_chosen_rung_serves_the_objective_with_a_note():
 
 # --- labels, lines, recommended, served note ----------------------------------
 
-def test_rung_labels():
-    assert [rung_label(k) for k in ("bank", "hits0", "hits1", "hits3", "open")] == \
+def test_every_rung_and_step_of_a_built_ladder_is_labelled():
+    """v17b §3.1: the label is the key's name in prose; the step line is the
+    sentence LadderCard used to compose."""
+    from gaffer.ladder import _rung_label, _step_line
+    assert [_rung_label(k) for k in ("bank", "hits0", "hits1", "hits3", "open")] == \
         ["bank", "free transfers only", "1 hit", "3 hits", "no cap"]
+    step = {"below": "bank", "above": "hits0", "share": 0.7875, "taken": True,
+            "reason": "expected points alone"}
+    assert _step_line(step) == "bank → free transfers only: taken, 79% — expected points alone"
+    refused = {**step, "below": "hits0", "above": "hits1", "share": 0.46, "taken": False}
+    assert _step_line(refused) == "free transfers only → 1 hit: refused, 46% — expected points alone"
 
 
-def test_the_cli_lines():
-    r = serve_rung(_ladder(), _objective(), hit_cost=4, captain_note=None)["restraint"]
-    assert restraint_line(r) == ("restraint: free transfers only; the step to "
-                                 "1 hit was refused, 46% — expected points alone")
-    assert objective_line(_objective()) == \
-        "the objective wanted: P20, P19 in; P16, P17 out; 1 hit"
-    taken = {**r, "steps": [r["steps"][0]]}
-    assert restraint_line(taken) == "restraint: free transfers only; every step was taken"
+def test_the_served_block_carries_its_label_line_and_the_objectives_line():
+    out = serve_rung(_ladder(), _objective(), hit_cost=4, captain_note=None)
+    r = out["restraint"]
+    assert r["label"] == "free transfers only" and r["hit_cost"] == 4
+    assert r["line"] == ("restraint: free transfers only; the step to 1 hit was "
+                         "refused, 46% — expected points alone")
+    assert [s["line"] for s in r["steps"]] == [
+        "bank → free transfers only: taken, 79% — expected points alone",
+        "free transfers only → 1 hit: refused, 46% — expected points alone"]
+    assert out["objective"]["line"] == "the objective wanted: P20, P19 in; P16, P17 out; 1 hit"
+    taken = serve_rung({**_ladder("hits1"), "steps": [_ladder()["steps"][0]]},
+                       _objective(), hit_cost=4, captain_note=None)["restraint"]
+    assert taken["line"] == "restraint: 1 hit; every step was taken"
+
+
+def test_a_ladder_that_did_not_build_serves_its_note_as_the_line():
+    r = serve_rung(None, _objective(), hit_cost=4, captain_note=None)["restraint"]
+    assert r["label"] is None
+    assert r["line"] == "restraint: the ladder did not build; this is the objective's plan"
+    r = serve_rung({**_ladder(), "chosen": None}, _objective(), hit_cost=4,
+                   captain_note=None)["restraint"]
+    assert r["label"] is None and r["line"].startswith("restraint: no rung of the ladder")
+
+
+def test_load_ladder_backfills_a_v16_file(tmp_path, monkeypatch):
+    from gaffer import artifacts
+    from gaffer.ladder import load_ladder
+    monkeypatch.chdir(tmp_path)
+    artifacts.REPORTS.mkdir()
+    (artifacts.REPORTS / "ladder_gw4.json").write_text(json.dumps(_ladder()))
+    out = load_ladder(4)
+    assert [r["label"] for r in out["rungs"]] == ["bank", "free transfers only", "1 hit"]
+    assert out["steps"][0]["line"] == "bank → free transfers only: taken, 79% — expected points alone"
+    # A file that already carries them is served as written.
+    lad_ = _ladder()
+    lad_["rungs"][0]["label"] = "kept"; lad_["steps"][0]["line"] = "kept"
+    (artifacts.REPORTS / "ladder_gw4.json").write_text(json.dumps(lad_))
+    out = load_ladder(4)
+    assert out["rungs"][0]["label"] == "kept" and out["steps"][0]["line"] == "kept"
 
 
 def test_recommended_matches_the_served_moves_and_ignores_the_captain():
@@ -308,8 +347,11 @@ def test_build_ladder_carries_the_bar_the_chosen_rung_and_the_steps(tmp_path,
     serving_config.cache_clear()
     assert out["bar"] == 0.60
     assert out["chosen"] in {r["key"] for r in out["rungs"]}
-    keys = {"below", "above", "share", "taken", "reason", "reason_kind"}
+    keys = {"below", "above", "share", "taken", "reason", "reason_kind", "line"}
     assert out["steps"] and all(set(s) == keys for s in out["steps"])
+    # v17b §3.1: every rung named and every step a sentence, on the payload.
+    assert all(r["label"] == lad._rung_label(r["key"]) for r in out["rungs"])
+    assert all(s["line"] == lad._step_line(s) for s in out["steps"])
     # No noise: every share is 0 or 1, and the walk is a prefix of the ladder.
     assert all(s["share"] in (0.0, 1.0) for s in out["steps"])
     taken = [s["taken"] for s in out["steps"]]
