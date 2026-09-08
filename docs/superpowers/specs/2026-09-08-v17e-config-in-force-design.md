@@ -132,14 +132,17 @@ def invalidate() -> None                                       # the one clearin
   file: today `_owned_price_falls` in `price_timing.py` (which reads the
   switch through the view and the parquet log; its own `cache_clear`
   stays as the price-log clear the nightly `gaffer prices` run needs).
-  `_optimizer_top_n`'s cache no longer exists. `routers/settings.py`'s
+  `_optimizer_top_n`'s cache no longer exists. `scenario_noise`'s cache in
+  `optimize/scenarios.py` is keyed on the draw, not the file, and is not
+  `invalidate()`'s business. `routers/settings.py`'s
   three clears become one `invalidate()`; `routers/meta.py`'s health poll
   calls `invalidate()` before it reads, for the reason its comment gives
   (the page a user opens after a hand edit). `golden_cwd` calls
   `invalidate()` on both sides.
 - Tests: every `serving_config.cache_clear()` and
   `optimizer_top_n.cache_clear()` becomes `invalidate()`. Unprotected files
-  are the implementer's; the protected ones are listed in §7.
+  are the implementer's (18 files); the protected ones are listed in §7
+  (four files).
 
 Two adapters, one seam: the loud read for a person at a terminal, the quiet
 read for a fetcher mid-solve. A third (`config_in_force(strict=True)`) was
@@ -386,7 +389,6 @@ Orchestrator-only diffs, each with its ruling:
 | `tests/test_web_job_kinds_v8f.py` | 94-101 | `invalidate()` | rename |
 | `tests/test_v12_w5_settings.py` | 58-75 | readers == `["focus"]`; `price_timing` is a field, as the message told the next cycle to do | the rail's own instruction |
 | `src/gaffer/optimize/milp.py` | 136, 985-993 | `DEFAULT_TOP_N` imported from `config`; `solver_top_n()` | one read site |
-| `tests/test_v6_degradation.py`, `test_v7_model_degradation.py`, `test_v8g_degradation.py` | their `cache_clear` lines | `invalidate()` | rename (verified by grep at plan time; a file with none is skipped) |
 
 `tests/test_v12_w5_settings.py` is not in CLAUDE.md's protected list but
 carries a rail with a pin; treated as protected for the one test.
