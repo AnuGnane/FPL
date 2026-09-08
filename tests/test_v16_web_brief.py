@@ -1,5 +1,6 @@
 """v16 §6.5 — GET /api/brief, POST /api/brief (an anonymous job, plan R1),
-the chain after a web advise, the Friday headline."""
+the Friday headline (the chain after an advise is
+`tests/test_pipeline.py` since v17d)."""
 from __future__ import annotations
 
 import json
@@ -54,63 +55,6 @@ def test_post_submits_an_anonymous_job_and_the_result_is_the_run_dict(client, mo
         if job["status"] in ("done", "error"):
             break
     assert job["status"] == "done" and job["result"]["note"] == "n"
-
-
-def test_the_web_advise_body_chains_the_brief_on_success(monkeypatch):
-    from types import SimpleNamespace
-
-    from gaffer.web.routers import advice as advice_router
-
-    calls = []
-    monkeypatch.setattr("gaffer.models.train.load_training_frame", lambda: (None, None, None))
-    monkeypatch.setattr("gaffer.models.train.train_all", lambda *a, **k: None)
-    monkeypatch.setattr("gaffer.config.load_config", lambda: SimpleNamespace())
-    monkeypatch.setattr("gaffer.advise.run_advise",
-                        lambda cfg: SimpleNamespace(gw=4, expected_pts=60.0))
-    monkeypatch.setattr("gaffer.report.render.render_report", lambda *a, **k: None)
-    monkeypatch.setattr("gaffer.tracking.latest_health", lambda: None)
-    monkeypatch.setattr("gaffer.brief.run_brief",
-                        lambda gw: calls.append(gw) or {"gw": gw, "written": True,
-                                                         "note": None, "path": "p"})
-    out = advice_router.run_train_and_advise()
-    assert calls == [4] and out["brief"]["written"] is True
-
-
-def test_the_chain_does_not_fire_when_advise_fails(monkeypatch):
-    from gaffer.web.routers import advice as advice_router
-
-    calls = []
-    monkeypatch.setattr("gaffer.models.train.load_training_frame", lambda: (None, None, None))
-    monkeypatch.setattr("gaffer.models.train.train_all", lambda *a, **k: None)
-    monkeypatch.setattr("gaffer.config.load_config", lambda: None)
-
-    def boom(cfg):
-        raise RuntimeError("no models")
-    monkeypatch.setattr("gaffer.advise.run_advise", boom)
-    monkeypatch.setattr("gaffer.brief.run_brief", lambda gw: calls.append(gw))
-    with pytest.raises(RuntimeError):
-        advice_router.run_train_and_advise()
-    assert calls == []
-
-
-def test_a_brief_that_raises_does_not_fail_the_advise_job(monkeypatch):
-    from types import SimpleNamespace
-
-    from gaffer.web.routers import advice as advice_router
-
-    monkeypatch.setattr("gaffer.models.train.load_training_frame", lambda: (None, None, None))
-    monkeypatch.setattr("gaffer.models.train.train_all", lambda *a, **k: None)
-    monkeypatch.setattr("gaffer.config.load_config", lambda: None)
-    monkeypatch.setattr("gaffer.advise.run_advise",
-                        lambda cfg: SimpleNamespace(gw=4, expected_pts=60.0))
-    monkeypatch.setattr("gaffer.report.render.render_report", lambda *a, **k: None)
-    monkeypatch.setattr("gaffer.tracking.latest_health", lambda: None)
-
-    def boom(gw):
-        raise RuntimeError("import failed")
-    monkeypatch.setattr("gaffer.brief.run_brief", boom)
-    out = advice_router.run_train_and_advise()
-    assert out["gw"] == 4 and "import failed" in out["brief"]["note"]
 
 
 def test_the_friday_headline_is_the_briefs_first_sentence(tmp_path, monkeypatch):

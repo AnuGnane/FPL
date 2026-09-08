@@ -1,17 +1,17 @@
 """This Week: the saved advice payload and its staleness.
 
-``run_train_and_advise`` lives here and is still the body of the ``advise``
-job kind (``job_kinds.JOB_KINDS``). What used to live here as well was a
-``POST /rerun`` that queued that same body on the legacy ``JobRegistry``, a
-second lane past the single-flight ``JobRunner`` — two callers could start two
-full train+advise runs writing to ``reports/`` at once. The route is gone;
+Request handling only. The weekly run that used to be defined here as
+``run_train_and_advise`` — and imported from here by the job registry —
+is ``gaffer.pipeline.weekly_run`` since v17d, and ``web.job_kinds`` holds
+the job body over it. What also used to live here was a ``POST /rerun``
+that queued that body on the legacy ``JobRegistry``, a second lane past
+the single-flight ``JobRunner``; the route is gone, and
 ``POST /api/jobs/advise`` is the one way in.
 """
 
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
 
 import pandas as pd
 from fastapi import APIRouter
@@ -25,43 +25,7 @@ from gaffer.web.field_frame import with_field_frame
 from gaffer.web.identity import with_identity
 from gaffer.web.schemas import AdviceDiff, AdviceLatest, Staleness
 
-if TYPE_CHECKING:  # the runtime import stays lazy inside the function body
-    from gaffer.config import Config
-
 router = APIRouter(prefix="/api/advice", tags=["advice"])
-
-
-def run_train_and_advise(cfg: "Config | None" = None) -> dict:
-    """The job body: exactly what the launchd Thursday run does.
-
-    ``cfg`` defaults to ``None`` — that is, to ``load_config()`` — so the
-    zero-argument callers (``JOB_KINDS['advise']``, which the runner calls
-    with no arguments) are untouched. The keyword exists for the one caller
-    that wants the same run under a modified config: ``advise-fast``, which
-    hands it ``scenarios_n=0``.
-    """
-    from gaffer.advise import run_advise
-    from gaffer.config import load_config
-    from gaffer.models.train import load_training_frame, train_all
-    from gaffer.report.render import render_report
-    from gaffer.tracking import latest_health
-
-    frame, team_frame, _ = load_training_frame()
-    train_all(frame, team_frame, save=True)
-    advice = run_advise(cfg if cfg is not None else load_config())
-    render_report(advice, model_health=latest_health())
-    # v16 §6.5 (plan R1): the brief is chained here, in the web job's body —
-    # never inside ``run_advise`` — and never fails the run.
-    try:
-        from gaffer.brief import run_brief
-
-        brief = run_brief(advice.gw)
-    except Exception as exc:  # noqa: BLE001
-        brief = {"gw": advice.gw, "written": False,
-                 "note": f"brief not written: {exc}", "path": None}
-        print(brief["note"])
-    return {"gw": advice.gw, "expected_pts": advice.expected_pts,
-            "brief": brief}
 
 
 def staleness_for(advice_gw: int, deadline: str,

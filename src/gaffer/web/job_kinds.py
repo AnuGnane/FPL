@@ -1,7 +1,8 @@
 """The job kinds the browser may start (spec §5, v7c F1, v7d F1/F2).
 
-Every entry is the *same* callable the CLI runs. ``advise`` and
-``refresh-data`` already existed as job bodies for the v6 rerun buttons and are
+Every entry is the *same* callable the CLI runs. ``advise`` is defined here
+over ``gaffer.pipeline.weekly_run`` (v17d), the one body the CLI runs too;
+``refresh-data`` already existed as a job body for the v6 rerun buttons and is
 reused by reference; ``evaluate`` and ``news-shadow`` are thin wrappers around
 ``gaffer.evaluation`` that mirror ``cli.py::evaluate`` line for line. Nothing
 here decides anything, and nothing here re-implements a pipeline.
@@ -14,10 +15,12 @@ the server's terminal, which is where a background thread's output belongs.
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
-from gaffer.web.routers.advice import run_train_and_advise
 from gaffer.web.routers.meta import run_data_refresh
+
+if TYPE_CHECKING:  # the runtime import stays lazy inside the function body
+    from gaffer.config import Config
 
 
 def run_evaluate() -> dict:
@@ -56,6 +59,21 @@ def run_snapshot_job() -> dict:
     rows = int(run_snapshot() or 0)
     print(f"Wrote {rows} availability rows to {SNAPSHOT_PATH}.")
     return {"rows": rows}
+
+
+def run_train_and_advise(cfg: "Config | None" = None) -> dict:
+    """The advise kind's body: ``pipeline.weekly_run`` with the train step
+    on, recorded as the runner stores it (v17d §2.3).
+
+    ``cfg`` defaults to ``None`` — that is, to ``load_config()`` — so the
+    zero-argument call the runner makes is untouched. The keyword exists
+    for ``advise-fast``, which hands it ``scenarios_n=0``. Exactly what the
+    launchd Thursday run does, less the price bank the plist runs first.
+    """
+    from gaffer.config import load_config
+    from gaffer.pipeline import weekly_run
+
+    return weekly_run(cfg if cfg is not None else load_config()).record()
 
 
 def run_train_and_advise_fast() -> dict:

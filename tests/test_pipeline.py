@@ -63,9 +63,9 @@ def test_the_client_reaches_run_advise(monkeypatch):
 
     calls = []
     _wire(monkeypatch, calls)
-    client = object()
-    weekly_run(object(), client=client, train=False)
-    assert calls[0] == ("advise", calls[0][1], client)
+    cfg, client = object(), object()
+    weekly_run(cfg, client=client, train=False)
+    assert calls[0] == ("advise", cfg, client)
 
 
 def test_the_brief_gets_the_gw_and_the_config_in_force(monkeypatch):
@@ -127,3 +127,73 @@ def test_record_is_the_dict_the_runner_stored(monkeypatch):
     assert list(rec) == ["gw", "expected_pts", "brief"]
     assert rec == {"gw": 5, "expected_pts": 61.0,
                    "brief": {"gw": 5, "written": False, "note": "n", "path": None}}
+
+
+# --- the job kind and the router (spec §2.10, §2.11, gate item 3) ---------
+
+def test_the_job_kind_body_records_the_result(monkeypatch):
+    from gaffer.config import Config
+    from gaffer.pipeline import RunResult
+    from gaffer.web import job_kinds
+
+    seen = {}
+
+    def fake_run(cfg, *, client=None, train=True, log=print):
+        seen["cfg"], seen["train"] = cfg, train
+        return RunResult(advice=_advice(5, 61.0), report_path=Path("r"),
+                         brief={"gw": 5, "written": True, "note": None, "path": "p"},
+                         trained=True, training_rows=1)
+    monkeypatch.setattr("gaffer.pipeline.weekly_run", fake_run)
+    monkeypatch.setattr("gaffer.config.load_config",
+                        lambda path="config.toml": Config(entry_id=1, league_id=2))
+
+    out = job_kinds.run_train_and_advise()
+    assert seen["train"] is True and seen["cfg"].entry_id == 1
+    assert out == {"gw": 5, "expected_pts": 61.0,
+                   "brief": {"gw": 5, "written": True, "note": None, "path": "p"}}
+    # The config it is handed wins over the one on disk (v7c's contract).
+    job_kinds.run_train_and_advise(Config(entry_id=9, league_id=2))
+    assert seen["cfg"].entry_id == 9
+
+
+def test_the_advise_kind_is_the_body_defined_in_job_kinds():
+    from gaffer.web import job_kinds
+
+    assert job_kinds.JOB_KINDS["advise"] is job_kinds.run_train_and_advise
+    assert job_kinds.run_train_and_advise.__module__ == "gaffer.web.job_kinds"
+
+
+def test_non_web_code_does_not_import_the_advice_router():
+    """Gate item 3 as a rail: the router is HTTP only."""
+    import gaffer.pipeline
+    import gaffer.cli
+    import gaffer.web.job_kinds
+    from gaffer.web.routers import advice as advice_router
+
+    for mod in (gaffer.pipeline, gaffer.cli, gaffer.web.job_kinds):
+        assert "routers.advice" not in Path(mod.__file__).read_text()
+    assert not hasattr(advice_router, "run_train_and_advise")
+
+
+def test_the_plist_is_unchanged_and_still_runs_advise():
+    """Gate item 4: the brief arrives through the CLI, not the plist."""
+    text = Path("scripts/com.gaffer.advise.plist").read_text()
+    assert "uv run gaffer train &amp;&amp; uv run gaffer advise" in text
+    assert "gaffer brief" not in text
+
+
+def test_a_train_step_that_reports_no_rows_still_finishes_the_run(monkeypatch):
+    """The v7c job-kind rail stubs the train step with a frame that has no
+    length; the run is still a trained one, with a count-free log line."""
+    from gaffer.pipeline import weekly_run
+
+    calls, logged = [], []
+    _wire(monkeypatch, calls)
+    monkeypatch.setattr("gaffer.models.train.load_training_frame",
+                        lambda: (None, None, None))
+    monkeypatch.setattr("gaffer.models.train.train_all",
+                        lambda frame, team_frame, save=True:
+                        calls.append(("train", None, team_frame, save)))
+    out = weekly_run(object(), log=logged.append)
+    assert out.trained is True and out.training_rows is None
+    assert logged == ["Trained. Models saved to models/."]

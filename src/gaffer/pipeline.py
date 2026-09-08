@@ -59,8 +59,14 @@ def weekly_run(cfg: "Config", *, client: "FPLClient | None" = None,
 
         frame, team_frame, _ = load_training_frame()
         train_all(frame, team_frame, save=True)
-        trained, rows = True, len(frame)
-        log(f"Trained on {rows} player-GW rows. Models saved to models/.")
+        # v17d §2.3: the row count is what the frame reports, and a frame that
+        # reports nothing (a stubbed train step, as in
+        # ``tests/test_web_job_kinds_v7c.py``) is still a run that trained —
+        # the count is a log line, never a reason to fail the week.
+        rows = len(frame) if hasattr(frame, "__len__") else None
+        trained = True
+        log(f"Trained on {rows} player-GW rows. Models saved to models/."
+            if rows is not None else "Trained. Models saved to models/.")
     from gaffer.advise import run_advise
     from gaffer.report.render import render_report
     from gaffer.tracking import latest_health
