@@ -1,0 +1,79 @@
+# v17c golden board: written by tests/golden_client.py from
+# golden_config(). The odds table is absent, by design.
+
+[fpl]
+entry_id = 2210493
+league_id = 1794743
+
+[optimizer]
+horizon = 6
+decay = 0.85
+vice_weight = 0.1
+bench_weight = 0.1
+ft_value = 1.5
+itb_value = 0.08
+hit_cost = 4
+alt_plan_max_gap = 2.0
+max_hits = 2
+max_transfers = 15
+hit_bar = 0.6
+ft_use_penalty = 0.2
+bench_curve = [0.21, 0.06, 0.002]
+top_n = { GKP = 8, DEF = 22, MID = 26, FWD = 14 }
+price_timing = true
+
+[data]
+train_seasons = ["2022-23", "2023-24", "2024-25", "2025-26"]
+current_season = "2026-27"
+
+[understat]
+enabled = true
+
+[scenarios]
+n = 40
+seed = 20260825
+transfer_threshold = 0.6
+irreversible_threshold = 0.75
+decision_priors = true
+draw_availability = true
+
+[league]
+z_scale = 1.5
+lambda_cap = 0.5
+sigma_floor = 8.0
+sigma_cap = 30.0
+sigma_min_weeks = 6
+z_deadband = 0.25
+tier_eo = true
+tier_sample = 300
+field_scrape = true
+field_sample = 300
+sim_n = 2000
+rival_drift = 0.5
+stance = "auto"
+
+[news]
+enabled = false
+injuries = true
+lineups = true
+cache_hours = 6
+min_coverage = 0.5
+llm_classifier = false
+llm_shadow = true
+llm_command = "claude -p --output-format json --disallowedTools \"Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task,NotebookEdit\""
+llm_timeout_s = 300
+lineup_absence = true
+lineup_absence_damp = 0.75
+lineup_start_floor = 0.0
+overrides = true
+
+[digest]
+notify = true
+
+[backup]
+dir = ""
+rsync_target = ""
+keep = 14
+
+[web]
+token = ""
