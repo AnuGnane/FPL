@@ -414,6 +414,24 @@ def with_alternatives(plan: ServedPlan, rows) -> ServedPlan:
         "alternative_plans": [ServedAlternative.model_validate(r) for r in (rows or [])]})
 
 
+def with_objective_week(plan: ServedPlan) -> ServedPlan:
+    """The objective's own week, synthesised from the four keys a file
+    written before v17f carries (§2.3).
+
+    Such a file has ``objective`` with its buys, sells, hits and expected
+    points and no ``week``, and the old router built the week from exactly
+    those four before pricing it — without this the board loses its
+    objective column. ``serve_rung`` writes the week at write time, so a
+    loaded plan that already carries one is left alone.
+    """
+    objective = plan.objective
+    if objective is None or objective.week is not None:
+        return plan
+    week = ServedWeek(gw=plan.gw, hits=objective.hits, buys=objective.buys,
+                      sells=objective.sells, expected_pts=objective.expected_pts)
+    return plan.model_copy(update={"objective": objective.model_copy(update={"week": week})})
+
+
 def _priced_moves(moves, prices: dict[int, float]) -> list[ServedMove]:
     return [m.model_copy(update={"price": prices.get(m.code)}) for m in moves]
 

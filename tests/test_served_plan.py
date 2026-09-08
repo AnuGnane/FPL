@@ -335,12 +335,44 @@ def test_with_alternatives_types_the_rows_advise_built():
     assert with_alternatives(_plan([]), None).alternative_plans == []
 
 
+def test_with_objective_week_builds_the_week_a_pre_v17f_file_has_no_room_for():
+    from gaffer.served import with_objective_week
+
+    plan = _plan([_week(5)], objective={"buys": [P], "sells": [S], "hits": 1,
+                                        "expected_pts": 58.0})
+    week = with_objective_week(plan).objective.week
+    assert week is not None
+    assert week.gw == 5 and week.hits == 1 and week.expected_pts == 58.0
+    assert [m.code for m in week.buys] == [100]
+    assert [m.code for m in week.sells] == [200]
+    # A file advise wrote through serve_rung already carries one: left alone.
+    written = _plan([_week(5)], objective={"buys": [P], "sells": [S], "hits": 1,
+                                           "expected_pts": 58.0,
+                                           "week": _week(6, buys=[P], hits=2)})
+    assert with_objective_week(written).objective.week == written.objective.week
+
+
 # --- the loader ---------------------------------------------------------
 
 def _write_state(bank=15):
     from gaffer.artifacts import save_solve_state
 
     save_solve_state(_state(bank=bank))
+
+
+def _write_pre_v17f_advice():
+    """A file with neither ``bank`` nor ``generated_at``, and an objective
+    block in the four keys a writer before v17f wrote (no ``week``)."""
+    from pathlib import Path
+
+    Path("reports/gw5-advice.json").write_text(json.dumps({
+        "gw": 5, "deadline": "x", "buys": [P], "sells": [S], "hits": 1,
+        "captain": P, "vice": S, "expected_pts": 60.0,
+        "chip_table": [{"chip": "bboost", "gw": 6, "play_now": True}],
+        "plan_by_gw": [_week(5, buys=[P], sells=[S], hits=1), _week(6)],
+        "objective": {"buys": [P], "sells": [S], "hits": 1, "expected_pts": 60.0},
+        "restraint": {"chosen": "hits0", "agrees": False, "hit_cost": 4},
+        "alternative_plans": [{"gap": 0.4, "plan_by_gw": [_week(6, buys=[P], sells=[S])]}]}))
 
 
 def test_the_loader_backfills_a_file_written_before_v17f_from_its_solve_state(tmp_path, monkeypatch):
@@ -351,12 +383,7 @@ def test_the_loader_backfills_a_file_written_before_v17f_from_its_solve_state(tm
     monkeypatch.chdir(tmp_path)
     Path("reports").mkdir()
     _write_state()
-    Path("reports/gw5-advice.json").write_text(json.dumps({
-        "gw": 5, "deadline": "x", "buys": [P], "sells": [S], "hits": 1,
-        "captain": P, "vice": S, "expected_pts": 60.0,
-        "chip_table": [{"chip": "bboost", "gw": 6, "play_now": True}],
-        "plan_by_gw": [_week(5, buys=[P], sells=[S], hits=1), _week(6)],
-        "alternative_plans": [{"gap": 0.4, "plan_by_gw": [_week(6, buys=[P], sells=[S])]}]}))
+    _write_pre_v17f_advice()
     plan = served_plan(5)
     assert plan.generated_at == "2026-09-01T09:00:00+00:00" and plan.bank == 1.5
     assert plan.plan_by_gw[0].bank == 0.9 and plan.plan_by_gw[0].trace is not None
@@ -364,6 +391,26 @@ def test_the_loader_backfills_a_file_written_before_v17f_from_its_solve_state(tm
     assert plan.alternative_plans[0].plan_by_gw[0].buys[0].price == 8.0
     assert plan.alternative_plans[0].plan_by_gw[0].trace is None
     assert plan.captain.price == 8.0
+
+
+def test_the_backfill_prices_banks_and_traces_a_pre_v17f_objectives_own_week(tmp_path, monkeypatch):
+    """§2.3: the week is synthesised before ``completed`` runs, so the
+    objective column the board draws is priced, banked and traced by the
+    same pass as the served weeks rather than left empty."""
+    from pathlib import Path
+
+    from gaffer.artifacts import served_plan
+
+    monkeypatch.chdir(tmp_path)
+    Path("reports").mkdir()
+    _write_state()
+    _write_pre_v17f_advice()
+    week = served_plan(5).objective.week
+    assert week.gw == 5
+    assert week.buys[0].price == 8.0 and week.sells[0].price == 7.4
+    assert week.hit_cost == 4
+    assert week.bank == 0.9
+    assert week.trace is not None and week.trace.moves[0].buy_code == 100
 
 
 def test_the_loader_serves_a_v17f_file_as_written_without_the_solve_state(tmp_path, monkeypatch):

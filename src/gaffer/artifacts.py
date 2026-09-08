@@ -32,7 +32,7 @@ from pydantic import ValidationError
 
 from gaffer.errors import GafferError
 # No cycle: ``gaffer.served`` imports nothing from ``gaffer`` at module level.
-from gaffer.served import ServedPlan, completed
+from gaffer.served import ServedPlan, completed, with_objective_week
 
 REPORTS = Path("reports")
 
@@ -459,7 +459,7 @@ def served_plan(gw: int) -> ServedPlan:
                           f"{first.get('msg')}") from exc
     if "bank" in raw and "generated_at" in raw:
         return plan
-    return completed(plan, state=load_solve_state(gw),
+    return completed(with_objective_week(plan), state=load_solve_state(gw),
                      chip_table=raw.get("chip_table"))
 
 

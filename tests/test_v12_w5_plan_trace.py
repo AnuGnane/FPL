@@ -225,15 +225,19 @@ def test_price_timing_off_reports_no_charge_and_says_why(wired, monkeypatch):
 def test_a_missing_price_reader_costs_the_charge_and_not_the_plan(wired,
                                                                   monkeypatch):
     """W5 may land on a tree where W2's reader moved or was renamed. The
-    import failure is a printed line and a null charge, never a 500."""
+    reader is ``served.price_falls``, which swallows its own failure and
+    answers "on, and unknown" (v17f §2.2), so the break costs the charge and
+    not the plan: the week still renders and still carries a trace, and the
+    charge is a null rather than a zero chance of a fall."""
     def boom(*a, **k):
         raise ImportError("no such module")
 
     wired([_week(5), _week(6, buys=[P], sells=[S])])
-    monkeypatch.setattr("gaffer.served.price_falls", boom)
+    monkeypatch.setattr("gaffer.price_timing.owned_price_falls", boom)
     out = plan_router.plan(5)
     assert out.weeks[1].expected_pts == 60.0
-    assert out.weeks[1].trace is None
+    assert out.weeks[1].trace is not None
+    assert out.weeks[1].trace.price_charge is None
 
 
 def test_the_alternatives_carry_no_trace(wired):
