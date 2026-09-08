@@ -417,4 +417,44 @@ moving `run_advise`; the `serving_config()` reads behind `cfg`'s back
 
 ## 10. Outcome
 
-_Filled by the orchestrator after the gate runs._
+**Verdict: pass, first full run** (2026-09-08, branch tip `77d1d59`).
+
+| Item | Result |
+|---|---|
+| 1. golden board unmoved | `tests/test_golden_board.py` 29 passed, none skipped, in the same run as item 2 |
+| 2. parity, stubbed LLM | `tests/test_pipeline.py::test_the_cli_and_the_job_kind_run_the_same_pipeline_on_the_golden_board` passed: both arms' advice equal `expected/advice.json`, both briefs carry the stub's sentence with `model_command == "python3"` and an empty `check_brief`, the job record's gw / expected_pts / `written` match; the post-run `stale_inputs` check is empty, so the stubbed train step wrote nothing through the symlinks |
+| 3. router not imported | both greps print nothing / 0 (`tests/test_pipeline.py::test_non_web_code_does_not_import_the_advice_router` pins it) |
+| 4. plist unchanged, yields a brief | `git diff main -- scripts/com.gaffer.advise.plist` empty; the plist test and the two CLI tests pass; the GUIDE §12.4 note is removed in the docs commit |
+
+One gate run: `pytest -q tests/test_golden_board.py tests/test_pipeline.py`
+→ 44 passed in 475 s (three pipeline runs over the recorded board).
+Suites: Python 4329 (4325 with `-m "not golden"`, 4 golden), frontend 923
+passed + 1 skipped, `tsc` clean. Pins routes 51 / job kinds 12 / `Config`
+59 unchanged.
+
+**Incident, recorded.** The plan's Task 2 Step 2 ("run to verify the new
+ones fail") called `job_kinds.run_train_and_advise()` while it was still
+the router's body; the plan said it would raise on the unstubbed frame,
+and instead it trained for real and rewrote every file under `models/`
+at 11:05 on 2026-09-08. No backup existed (the backup launchd job was
+never installed, GUIDE §12.0). The golden then skipped on all fifteen
+model hashes. Recovery: a worktree of `main` at `0cff561` with the
+retrained `models/` and the unchanged `data/history/` linked in,
+`python -m tests.golden_client --write` over the same bundle, and the
+three rewritten files (`expected/advice.json`, `expected/solve_state.json`,
+`header.json`) committed on the branch as `77d1d59`. Every lever count is
+identical to the 09:29 record; the numbers moved with the models
+(expected points 80.09 → 76.64). The gate above therefore compares the
+branch against `main`'s code on the same inputs, which is the comparison
+the golden exists for. Lessons: a red step must never call a body that
+can reach a real trainer; and `models/` needs a backup before any
+sub-cycle that touches the train step.
+
+**Review notes carried forward.** The brief's failure note can print
+twice in `logs/advise.log` (once from `run_brief`, once from the CLI's
+echo), exactly as `gaffer brief` already does; `render_report` now sits
+inside the CLI's two `except` arms, so a render failure is a one-line
+exit rather than a traceback; `src/gaffer/advise.py`'s docstring still
+calls `run_advise` "the whole weekly pipeline" (protected; v17g's
+business); the golden skip helper exists in two test files and could
+share a home once one exists.
