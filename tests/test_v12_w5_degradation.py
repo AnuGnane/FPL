@@ -130,10 +130,9 @@ def test_w5_added_no_config_field():
     """By absence, not by a total — W4's shape, and for W4's reason.
 
     ``config.local.toml`` is a loader change: a settings *file* is not a
-    settings *field*, and ``price_timing`` — the one whitelist entry that is
-    not a dataclass field and is not meant to become one — is named here
-    because that is the field this workstream would have grown if it had grown
-    any.
+    settings *field*, and ``price_timing`` — at W5 the one whitelist entry
+    that was not a dataclass field — was named here because that is the
+    field this workstream would have grown if it had grown any.
 
     There is deliberately no number. The suite's single absolute
     ``fields(Config)`` pin lives in ``tests/test_v12_w3_degradation.py`` and

@@ -124,7 +124,7 @@ describe('SettingsTab', () => {
 
   it('shows the refusal beside the field that caused it', async () => {
     const boom = Object.assign(new Error('bad'),
-      { detail: { error: 'Horizon (gameweeks) is between 1 and 8' } })
+      { detail: { error: '[optimizer] horizon = 9 — must be a whole number between 1 and 8' } })
     apiPost.mockRejectedValueOnce(boom)
     render(<SettingsTab />)
     const field = await screen.findByLabelText('Horizon (gameweeks)')
@@ -138,7 +138,7 @@ describe('SettingsTab', () => {
   it('tells a screen reader which field was refused and where to read why',
     async () => {
       const boom = Object.assign(new Error('bad'),
-        { detail: { error: 'Horizon (gameweeks) is between 1 and 8' } })
+        { detail: { error: '[optimizer] horizon = 9 — must be a whole number between 1 and 8' } })
       apiPost.mockRejectedValueOnce(boom)
       render(<SettingsTab />)
       const field = await screen.findByLabelText('Horizon (gameweeks)')
