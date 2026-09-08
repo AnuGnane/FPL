@@ -28,8 +28,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
+from pydantic import ValidationError
 
 from gaffer.errors import GafferError
+# No cycle: ``gaffer.served`` imports nothing from ``gaffer`` at module level.
+from gaffer.served import ServedPlan, completed
 
 REPORTS = Path("reports")
 
@@ -434,17 +437,18 @@ def load_advice(gw: int) -> dict:
     return json.loads(path.read_text())
 
 
-def served_plan(gw: int):
+def served_plan(gw: int) -> ServedPlan:
     """The served plan for ``gw`` as one value (v17f §2.3): a file advise
     wrote through ``ServedPlan`` is served as written; a file written
     before v17f is priced, banked and traced here from its solve state,
     through the functions advise runs at write time. A file that is not
     the shape any ``gaffer advise`` wrote is a ``GafferError`` naming the
-    field, never a 500 and never a silently degraded number."""
-    from pydantic import ValidationError
+    field, never a 500 and never a silently degraded number.
 
-    from gaffer.served import ServedPlan, completed, with_alternatives
-
+    The early return keys on ``bank`` and ``generated_at`` because only
+    ``completed`` sets them, so a file carrying neither was never priced,
+    banked or traced — backfilling it is the right answer for that file
+    rather than a fallback for a read that went wrong."""
     raw = load_advice(gw)
     try:
         plan = ServedPlan.model_validate(raw)
@@ -455,8 +459,8 @@ def served_plan(gw: int):
                           f"{first.get('msg')}") from exc
     if "bank" in raw and "generated_at" in raw:
         return plan
-    return completed(with_alternatives(plan, raw.get("alternative_plans")),
-                     state=load_solve_state(gw), chip_table=raw.get("chip_table"))
+    return completed(plan, state=load_solve_state(gw),
+                     chip_table=raw.get("chip_table"))
 
 
 def save_snapshots(players: pd.DataFrame, teams: pd.DataFrame,

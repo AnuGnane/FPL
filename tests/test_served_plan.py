@@ -257,7 +257,7 @@ def test_traced_hangs_a_trace_on_the_served_weeks_and_the_objective_and_never_an
                                alternative_plans=[{"gap": 0.4,
                                                    "plan_by_gw": [_week(6, buys=[P], sells=[S])]}]),
                          {100: 8.0}, {200: 7.4}), 15.0)
-    out = traced(plan, state=_state(), thresholds={}, ft_lambda=None,
+    out = traced(plan, state=_state(), theta_by_gw={}, ft_lambda=None,
                  price_timing=False, price_fall={})
     assert out.plan_by_gw[0].trace is not None
     assert out.plan_by_gw[0].trace.moves[0].buy_code == 100
@@ -275,7 +275,7 @@ def test_a_trace_that_throws_costs_the_trace_and_not_the_plan(monkeypatch, capsy
 
     monkeypatch.setattr("gaffer.trace.trace_plan", boom)
     out = traced(_plan([_week(5, buys=[P], sells=[S])]), state=_state(),
-                 thresholds={}, ft_lambda=None, price_timing=False, price_fall={})
+                 theta_by_gw={}, ft_lambda=None, price_timing=False, price_fall={})
     assert out.plan_by_gw[0].expected_pts == 60.0
     assert out.plan_by_gw[0].trace is None
     assert "trace" in out.plan_by_gw[0].model_fields_set     # written as None, not left unset
@@ -287,7 +287,7 @@ def test_a_chip_week_is_charged_what_the_base_plan_paid_and_the_note_says_so():
 
     plan = charged(_plan([_week(5, buys=[P], sells=[S], hits=1)]), hit_cost=4,
                    chips={5: "wildcard"})
-    out = traced(plan, state=_state(), thresholds={5: 1.0}, ft_lambda=None,
+    out = traced(plan, state=_state(), theta_by_gw={5: 1.0}, ft_lambda=None,
                  price_timing=False, price_fall={})
     trace = out.plan_by_gw[0].trace
     assert trace.hit_cost == 4.0 and trace.theta == 1.0

@@ -487,7 +487,7 @@ def banked(plan: ServedPlan, start: float | None) -> ServedPlan:
 
 
 def _traced_weeks(weeks: list[ServedWeek], *, state, ep_by, positions, names,
-                  thresholds, ft_lambda, price_timing, price_fall) -> list[ServedWeek]:
+                  theta_by_gw, ft_lambda, price_timing, price_fall) -> list[ServedWeek]:
     from gaffer.league_mode import cover_from_eo
     from gaffer.trace import trace_plan
 
@@ -500,7 +500,7 @@ def _traced_weeks(weeks: list[ServedWeek], *, state, ep_by, positions, names,
     # charged this week's transfers and ran the free-transfer recurrence,
     # and telling the trace a wildcard was played would report a charge that
     # was made as zero. θ still comes from the chip table; the note says so.
-    traced = trace_plan(
+    rows = trace_plan(
         [{"gw": w.gw, "hits": w.hits, "buys": [m.code for m in w.buys],
           "sells": [m.code for m in w.sells], "chip": None} for w in weeks],
         gws=[int(g) for g in getattr(state, "gws", [])],
@@ -516,10 +516,10 @@ def _traced_weeks(weeks: list[ServedWeek], *, state, ep_by, positions, names,
         # ``or {}`` would report 0.0 for a term the objective applied.
         cover=(state.cover if getattr(state, "cover", None) is not None
                else cover_from_eo(getattr(state, "league_eo", {}) or {})),
-        thresholds=thresholds, banks={w.gw: w.bank for w in weeks},
+        thresholds=theta_by_gw, banks={w.gw: w.bank for w in weeks},
         price_timing=price_timing, price_fall=price_fall)
     out = []
-    for week, one in zip(weeks, traced):
+    for week, one in zip(weeks, rows):
         payload = asdict(one)
         if week.chip:
             said = (f"a {week.chip} is recommended this week; these terms are "
@@ -529,17 +529,19 @@ def _traced_weeks(weeks: list[ServedWeek], *, state, ep_by, positions, names,
     return out
 
 
-def traced(plan: ServedPlan, *, state, thresholds: dict[int, float], ft_lambda,
+def traced(plan: ServedPlan, *, state, theta_by_gw: dict[int, float], ft_lambda,
            price_timing: bool, price_fall: dict[int, float]) -> ServedPlan:
     """The objective's own terms on the served weeks and on the objective's
     week (v12 W5 §6.5, v16 §4) — never on an alternative, which was returned
     by a different solve. A trace that throws costs the trace and not the
     plan: every week is written with ``trace=None`` and one line is printed."""
-    ep_by, positions, names = trace_inputs(getattr(state, "pool", None))
-    kw = dict(state=state, ep_by=ep_by, positions=positions, names=names,
-              thresholds=thresholds, ft_lambda=ft_lambda,
-              price_timing=price_timing, price_fall=price_fall)
     try:
+        # Inside the guard: a pool that will not read costs the trace and not
+        # the plan, which is what the line above promises.
+        ep_by, positions, names = trace_inputs(getattr(state, "pool", None))
+        kw = dict(state=state, ep_by=ep_by, positions=positions, names=names,
+                  theta_by_gw=theta_by_gw, ft_lambda=ft_lambda,
+                  price_timing=price_timing, price_fall=price_fall)
         update: dict = {"plan_by_gw": _traced_weeks(plan.plan_by_gw, **kw)}
         if plan.objective is not None and plan.objective.week is not None:
             update["objective"] = plan.objective.model_copy(
@@ -574,6 +576,6 @@ def completed(plan: ServedPlan, *, state, chip_table) -> ServedPlan:
     out = priced(plan, buy, sell)
     out = charged(out, hit_cost=_int(opt.get("hit_cost", 4), 4), chips=chip_by_gw(chip_table))
     out = banked(out, _price(getattr(state, "bank", None)))
-    out = traced(out, state=state, thresholds=thresholds(chip_table), ft_lambda=ft_lambda,
+    out = traced(out, state=state, theta_by_gw=thresholds(chip_table), ft_lambda=ft_lambda,
                  price_timing=price_timing, price_fall=price_fall)
     return out.model_copy(update={"generated_at": getattr(state, "generated_at", None)})
