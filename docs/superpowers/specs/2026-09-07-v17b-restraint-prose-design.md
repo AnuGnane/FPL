@@ -281,4 +281,69 @@ degrades to it.
 
 ## 10. Outcome
 
-_(written after the gate)_
+Gate run by the orchestrator on 2026-09-08, branch `v17b-restraint-prose`
+at `e5c61b6` (twelve branch commits after the spec and plan), after the
+suites. **Pass**; gate 1 needed a second, properly paired run (below) and
+carries one ruling.
+
+Suites at the tip: Python `4288 passed` (4271 + 17: the ladder, brief and
+rail cases net of the two replaced); `npx tsc --noEmit` silent; vitest
+`923 passed | 1 skipped`, no `Errors` line; `npm run types -- --check`
+exit 0.
+
+1. **The artifact diff.** Board: GW4, deadline 2026-09-12. First attempt:
+   the before-run (`main` code, 00:42) against the after-run (branch, 08:57)
+   differed in EP decimals across `xi`, `captain_options`, `chip_table` and
+   `expected_pts` (62.78 → 62.79) with the served moves, captain, restraint
+   steps and objective identical; the paired `main` run in a worktree failed
+   on a mis-made `data` symlink, so the first pair was not a pair. Second
+   attempt, back to back on the same live inputs: `main` at 09:20 in the
+   worktree (`PYTHONPATH` to its `src`, config/data/models shared), the
+   branch at 09:29 from the repo. Result, advice: pre-existing keys that
+   differ = `chip_table[*].gain`, `chip_table[*].per_week`, `expected_pts`
+   (62.78 → 62.79), `plan_by_gw[*].expected_pts`, `xi[*].ep` (one player,
+   Gibbs-White 6.15 → 6.16); new keys = exactly `objective.line`,
+   `restraint.hit_cost`, `restraint.label`, `restraint.line`,
+   `restraint.steps[*].line`. Ladder: differing = the EP-driven numbers
+   (`horizon_pts`, `mean_pts`, `objective`, `p10/p90_pts`, `week_pts`,
+   `plan_by_gw[*].expected_pts`, `plan_by_gw[*].xi[*].ep`) and `wall_s`;
+   new = exactly `rungs[*].label`, `steps[*].line`. **Ruling:** the same
+   run of `main` twice (09:20 and 09:25, the mis-paired attempt) differs in
+   exactly that key set — one EP moving 0.01 with the live lineup feeds
+   (`news: lineups matched …` in both logs) — so it is run-to-run noise,
+   not the branch. The rule as written (§6.1) named `expected_pts` and `xi`
+   among the failing keys without anticipating that noise; the verdict
+   holds because the branch's differing set equals the control's and every
+   served decision (buys, sells, hits, xi codes, captain, vice, every step's
+   share, taken and reason, `chosen`, `agrees`) is byte-identical. The CLI
+   printed the same two lines from both codes: `restraint: free transfers
+   only; the step to 1 hit was refused, 45% — a Bench Boost is planned for
+   GW6` and `the objective wanted: Palmer, Evanilson in; Isak, Cherki out;
+   1 hit`. The lever was live: the board carries a taken step, a refused
+   step and an objective that disagrees with the served rung.
+2. **One string, four surfaces.** `tests/test_v17b_prose.py` 13 passed (six
+   keys × CLI and route, plus the fixture check);
+   `restraint-prose.test.tsx` 12 passed (six keys × two cards), every
+   assertion `toBe` on the served string.
+3. **No client prose.** Both frontend greps print nothing; the brief's
+   matches are its `hit_points` lines reading the served or config cost.
+4. **Screenshots** `this-week` and `this-week-lower`, dark and light,
+   from `shots.sh v17b` against the branch server (restarted for the gate:
+   the one on 8927 predated v17a), approved by the user in the companion on
+   2026-09-08.
+
+Reviews recorded. The Opus implementer for Task 2 was cut off by a session
+rate limit after writing `_rung_label` and `_step_line`; the orchestrator
+finished Tasks 2, 4 and 5 and Sonnet implemented Tasks 6 and 7, each under a
+Sonnet review. The server review found that a v16 advice on disk (the walk
+without its prose) would give the brief empty step lines until the next
+advise; fixed in `8eb0774` with `ladder.narrated(advice)`, the advice file's
+counterpart of `load_ladder`'s backfill, one caller (the brief), recorded
+in §3.3–§4. The frontend review flagged that the ladder's first row and
+the Max-transfers select both now read `bank`; the user chose lowercase
+labels (§1.1) and approved the screenshots. The rail review recommended a
+smaller fixture (178 KB, six rungs × eleven-player XIs); left as is.
+
+Pins unchanged: routes 51, job kinds 12, `Config` 59. Protected files
+touched by the orchestrator: `src/gaffer/advise.py` (`c454e49`) and
+`tests/test_v16_restraint.py` (`0f8ad02`), rulings in the commit bodies.
