@@ -255,7 +255,11 @@ and the plan trace, and none of the retired colour names. The visual gate is
 a screenshot pass — build the frontend, serve it with
 `uv run gaffer ui --no-open-browser --port 8927`, then
 `frontend/scripts/shots.sh <stage>` writes the six hubs in both themes to
-`.superpowers/shots/<stage>/` (the headless shell needs
+`.superpowers/shots/<stage>/` (the shell is playwright's
+`chromium-headless-shell`; if its cache under `~/Library/Caches/ms-playwright`
+has been cleaned, `cd frontend && npx -y playwright@latest install
+chromium-headless-shell` restores it and `CHROME_HEADLESS_SHELL=<path>`
+points the script at the new version directory; the headless shell needs
 `--blink-settings=preferredColorScheme=0` for dark; `--force-dark-mode` does
 nothing).
 
@@ -275,9 +279,10 @@ the **transfer ladder** (v13): one row per rung of hits with the moves, the
 cost now and over the horizon, this week's and the horizon's expected
 points, and the probabilities; your cap's row is highlighted and the rows
 beyond it stay visible but muted; expand a row for that rung's squad and
-exactly what the last hit bought; two selects set your max hits and max
-transfers (saved to `config.local.toml`) and rebuild the ladder in a couple
-of seconds. The moves card's heading names the live count and cap. Since
+exactly what the last hit bought; three selects set your max hits, max
+transfers and hit bar (saved to `config.local.toml`; since v17e the
+options they offer come from the settings rows, so a hand-edited value is
+offered too) and rebuild the ladder in a couple of seconds. The moves card's heading names the live count and cap. Since
 v16 the moves card also says which rung the walk chose and the one step it
 refused, with its share and reason, and — when they differ — what the
 objective wanted; the ladder card gains a **Hit bar** select, a *chosen*
@@ -656,7 +661,7 @@ Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 `reports/evaluation.json`, and the Model hub.
 
-## 11. The version history, v1 to v17d
+## 11. The version history, v1 to v17e
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
 reviewed. Every cycle ran the same way, and knowing the shape tells you where
@@ -904,6 +909,23 @@ retrained the real models, so the golden was re-recorded on `main`'s code
 before the gate (spec §10). Pins unchanged; Python 4317 → **4329**,
 frontend 923.
 
+**v17e — the config in force, one interface** (2026-09-08). Which value
+of a knob was in force depended on which of seven readers a module
+called: the loud parser, a cached serving view, and four private readers
+that opened `config.toml` themselves, with three caches cleared from two
+places. `config.py` is now the only module that opens either TOML file
+(an AST rail says so): `config_in_force()` is the one cached,
+never-raising read, `invalidate()` the one clearing, `load_config(path)`
+the parser the CLI calls loudly. The four readers became fields
+(`price_timing`, `xg_per_shot`, `news_lineup_providers`, and
+`solver_top_n()` over `top_n`), so the `Config` pin moved 59 → **62**.
+Bounds and the refusal sentence are stated once and the settings
+registry reads them; the three ladder rows carry offered options, and
+the ladder card renders its selects from the settings rows rather than
+its own constants. The settings router stopped reading files. Gated on
+the golden board (unmoved), a rail, two greps and screenshots; passed
+first full run. Python 4329 → **4360**, frontend 923 → **925**.
+
 The suite grew from nothing to **4,329 Python + 923 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above
 so a future change cannot quietly break one.
@@ -916,12 +938,10 @@ would act on them.
 
 ### 12.0 First: install the two new launchd jobs
 
-`launchctl list | grep com.gaffer` shows **seven** jobs loaded on this
-machine (checked 2026-09-03). v12 added two — `com.gaffer.backup` (23:45
-nightly) and `com.gaffer.core-insights` (06:30 and 18:30) — and the plists
-exist but were never installed, so no backup has run and the Core-Insights
-archive is only as fresh as the last manual `gaffer core-insights`. One
-command:
+`launchctl list | grep com.gaffer` shows all **nine** jobs loaded on this
+machine (checked 2026-09-08; until then `com.gaffer.backup` and
+`com.gaffer.core-insights` were never installed, which is how v17d's
+retrain incident found no backup). One command:
 
 ```bash
 ./scripts/install_automation.sh

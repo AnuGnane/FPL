@@ -101,7 +101,7 @@ pin only when the plan says so, in its own commit.
 |---|---|---|
 | API routes | 51 | `tests/test_v11_degradation.py` |
 | `JOB_KINDS` | 12 | `tests/test_web_job_kinds*.py` and several rails; never add a kind, run new work as an anonymous JobRegistry job |
-| `Config` fields | 59 | `tests/test_v13_degradation.py` |
+| `Config` fields | 62 | `tests/test_v13_degradation.py` |
 
 `tests/test_v12_w1_degradation.py` is the meta-rail: it asserts the route
 total is pinned only in the v11 file and the Config total only in the v13

@@ -20,9 +20,10 @@ real brief the user read, and four screenshots in both themes. Suite 4266
 Python + 910 frontend, pins routes 51 / job kinds 12 / `Config` fields 59.
 The v17 deepening programme has started: v17a (the wire types, one command)
 is merged at `400c2f5`, v17b (restraint narrated once, on the server) at
-`b1b3b7e`, v17c (the golden board harness) at `ee02520`, and v17d (one
-weekly pipeline module) at `c6b049f`, suite 4329 / 923, pins unchanged;
-v17e (the config in force) is next.
+`b1b3b7e`, v17c (the golden board harness) at `ee02520`, v17d (one
+weekly pipeline module) at `c6b049f`, and v17e (the config in force, one
+interface) at `0f1a934`, suite 4360 / 925, `Config` pin 59 → 62;
+v17f (the served plan, owned once) is next.
 **Security incident, open:** the odds API key's value reached a committed
 plan document (`dd47c0a`) via a forked plan-writing subagent and was pushed
 to the public remote with the merge; removed at the tip (`8fddb0b`), history
@@ -121,6 +122,37 @@ build_advice, the This Week loader. v17a, v17b and v17c are shipped
 `.venv/bin/pytest -q tests/test_golden_board.py`.
 
 ## Shipped
+
+### v17e — the config in force, one interface (done, merged `0f1a934` 2026-09-08)
+Review card #c5. `src/gaffer/config.py` is the only module that opens
+`config.toml` or `config.local.toml`, pinned by an AST rail. One read for
+everything that is not a person at a terminal, `config_in_force()`
+(cached, never raising; `serving_config` deleted, not aliased), one
+clearing, `invalidate()` (the view and the price-fall table; the settings
+save and the health poll call it), and `load_config(path)` kept as the
+loud parser. The four private readers are fields: `price_timing`,
+`xg_per_shot`, `news_lineup_providers` (loader-cleaned) and
+`Config.solver_top_n()` over `top_n` (`DEFAULT_TOP_N` moved into
+`config`). Bounds and the refusal sentence are stated once (`BOUNDS`,
+`out_of_range`; the loader and the settings router both use it);
+`SettingKey.lo/hi` read `BOUNDS`, and `SettingKey.options` + `label_for`
+give the three ladder rows their offered values, served as
+`SettingRow.options` with the saved value inserted. The settings router
+reads and writes the overlay through `config.read_overlay` /
+`write_overlay` / `overlay_and_base` / `value_source` (one parse of each
+file per GET). The ladder card renders its selects from the settings rows
+it already posts to; `NO_CAP`, `HIT_BARS`, `withCurrent` and the `?? 0.6`
+default are gone, and a settings failure has its own callout. Gate (spec
+§1): golden board 44/44 unmoved, the rail 31/31, both card greps empty,
+screenshots `this-week-lower` + `settings` approved — passed first full
+run. Rulings: the v10, v12 W2 and v12 W5 "not a field" rails read the
+fields; `tests/conftest.py` clears the view around every test and
+offers `patch_view`. Spec `2026-09-08-v17e-config-in-force-design.md`,
+plan `2026-09-08-v17e-config-in-force.md`. Pins: routes 51, job kinds
+12, `Config` **62**; Python 4329 → **4360**, frontend 923 → **925**. Left
+open: the card's settings fetch is one more This Week request until
+v17h; one order-dependent flake seen once in
+`test_v10_lineup_providers.py` and not reproduced.
 
 ### v17d — one weekly pipeline module (done, merged `c6b049f` 2026-09-08)
 Review card #c4. `src/gaffer/pipeline.py` holds the weekly run once:
