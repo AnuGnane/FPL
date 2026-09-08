@@ -1,0 +1,7894 @@
+{
+ "cases": [
+  {
+   "key": "bank",
+   "hits": 0,
+   "restraint": {
+    "chosen": "bank",
+    "label": "bank",
+    "bar": 0.6,
+    "steps": [
+     {
+      "below": "bank",
+      "above": "hits0",
+      "share": 0.46,
+      "taken": false,
+      "reason": "Filler is 0% to play",
+      "reason_kind": "flagged",
+      "line": "bank → free transfers only: refused, 46% — Filler is 0% to play"
+     }
+    ],
+    "agrees": false,
+    "hit_cost": 4,
+    "note": "the objective's plan was the bank rung's neighbour; the walk stopped at bank",
+    "line": "restraint: bank; the step to free transfers only was refused, 46% — Filler is 0% to play"
+   },
+   "objective": {
+    "buys": [
+     {
+      "code": 20,
+      "name": "P20",
+      "position": "MID",
+      "ep": 5.0
+     },
+     {
+      "code": 19,
+      "name": "P19",
+      "position": "MID",
+      "ep": 5.0
+     }
+    ],
+    "sells": [
+     {
+      "code": 16,
+      "name": "P16",
+      "position": "MID",
+      "ep": 5.0
+     },
+     {
+      "code": 17,
+      "name": "P17",
+      "position": "MID",
+      "ep": 5.0
+     }
+    ],
+    "hits": 1,
+    "expected_pts": 61.5,
+    "line": "the objective wanted: P20, P19 in; P16, P17 out; 1 hit"
+   },
+   "payload": {
+    "gw": 4,
+    "gws": [
+     4,
+     5
+    ],
+    "generated_at": null,
+    "free_transfers": 1,
+    "cap": {
+     "max_hits": null,
+     "max_transfers": null
+    },
+    "cap_source": null,
+    "cap_rung": null,
+    "cap_rung_requested": null,
+    "cap_note": null,
+    "recommended": "bank",
+    "recommended_note": null,
+    "bar": 0.6,
+    "chosen": "bank",
+    "steps": [
+     {
+      "below": "bank",
+      "above": "hits0",
+      "share": 0.46,
+      "taken": false,
+      "reason": "Filler is 0% to play",
+      "reason_kind": "flagged",
+      "line": "bank → free transfers only: refused, 46% — Filler is 0% to play"
+     }
+    ],
+    "served_note": null,
+    "n_draws": 5,
+    "seed": null,
+    "sigma_source": null,
+    "sigma_fallbacks": 0,
+    "wall_s": null,
+    "notes": [],
+    "rungs": [
+     {
+      "key": "bank",
+      "label": "bank",
+      "hits": 0,
+      "transfers": 0,
+      "cost": 0,
+      "horizon_hits": 0,
+      "horizon_cost": 0,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 0,
+        "buys": [],
+        "sells": [],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "hits0",
+      "label": "free transfers only",
+      "hits": 0,
+      "transfers": 1,
+      "cost": 0,
+      "horizon_hits": 0,
+      "horizon_cost": 0,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 0,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "hits1",
+      "label": "1 hit",
+      "hits": 1,
+      "transfers": 2,
+      "cost": 4,
+      "horizon_hits": 1,
+      "horizon_cost": 4,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 1,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 21,
+          "name": "P21",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 15,
+          "name": "P15",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "hits2",
+      "label": "2 hits",
+      "hits": 2,
+      "transfers": 3,
+      "cost": 8,
+      "horizon_hits": 2,
+      "horizon_cost": 8,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 2,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 21,
+          "name": "P21",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 22,
+          "name": "P22",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 15,
+          "name": "P15",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 14,
+          "name": "P14",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "hits3",
+      "label": "3 hits",
+      "hits": 3,
+      "transfers": 4,
+      "cost": 12,
+      "horizon_hits": 3,
+      "horizon_cost": 12,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 3,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 21,
+          "name": "P21",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 22,
+          "name": "P22",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 23,
+          "name": "P23",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 15,
+          "name": "P15",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 14,
+          "name": "P14",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 13,
+          "name": "P13",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "open",
+      "label": "no cap",
+      "hits": 4,
+      "transfers": 5,
+      "cost": 16,
+      "horizon_hits": 4,
+      "horizon_cost": 16,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 4,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 21,
+          "name": "P21",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 22,
+          "name": "P22",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 23,
+          "name": "P23",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 24,
+          "name": "P24",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 15,
+          "name": "P15",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 14,
+          "name": "P14",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 13,
+          "name": "P13",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 12,
+          "name": "P12",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     }
+    ],
+    "note": null
+   }
+  },
+  {
+   "key": "hits0",
+   "hits": 0,
+   "restraint": {
+    "chosen": "hits0",
+    "label": "free transfers only",
+    "bar": 0.6,
+    "steps": [
+     {
+      "below": "bank",
+      "above": "hits0",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "bank → free transfers only: taken, 79% — expected points alone"
+     },
+     {
+      "below": "hits0",
+      "above": "hits1",
+      "share": 0.46,
+      "taken": false,
+      "reason": "Filler is 0% to play",
+      "reason_kind": "flagged",
+      "line": "free transfers only → 1 hit: refused, 46% — Filler is 0% to play"
+     }
+    ],
+    "agrees": false,
+    "hit_cost": 4,
+    "note": "the objective's plan was the free transfers only rung's neighbour; the walk stopped at free transfers only",
+    "line": "restraint: free transfers only; the step to 1 hit was refused, 46% — Filler is 0% to play"
+   },
+   "objective": {
+    "buys": [
+     {
+      "code": 20,
+      "name": "P20",
+      "position": "MID",
+      "ep": 5.0
+     },
+     {
+      "code": 19,
+      "name": "P19",
+      "position": "MID",
+      "ep": 5.0
+     }
+    ],
+    "sells": [
+     {
+      "code": 16,
+      "name": "P16",
+      "position": "MID",
+      "ep": 5.0
+     },
+     {
+      "code": 17,
+      "name": "P17",
+      "position": "MID",
+      "ep": 5.0
+     }
+    ],
+    "hits": 1,
+    "expected_pts": 61.5,
+    "line": "the objective wanted: P20, P19 in; P16, P17 out; 1 hit"
+   },
+   "payload": {
+    "gw": 4,
+    "gws": [
+     4,
+     5
+    ],
+    "generated_at": null,
+    "free_transfers": 1,
+    "cap": {
+     "max_hits": null,
+     "max_transfers": null
+    },
+    "cap_source": null,
+    "cap_rung": null,
+    "cap_rung_requested": null,
+    "cap_note": null,
+    "recommended": "hits0",
+    "recommended_note": null,
+    "bar": 0.6,
+    "chosen": "hits0",
+    "steps": [
+     {
+      "below": "bank",
+      "above": "hits0",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "bank → free transfers only: taken, 79% — expected points alone"
+     },
+     {
+      "below": "hits0",
+      "above": "hits1",
+      "share": 0.46,
+      "taken": false,
+      "reason": "Filler is 0% to play",
+      "reason_kind": "flagged",
+      "line": "free transfers only → 1 hit: refused, 46% — Filler is 0% to play"
+     }
+    ],
+    "served_note": null,
+    "n_draws": 5,
+    "seed": null,
+    "sigma_source": null,
+    "sigma_fallbacks": 0,
+    "wall_s": null,
+    "notes": [],
+    "rungs": [
+     {
+      "key": "bank",
+      "label": "bank",
+      "hits": 0,
+      "transfers": 0,
+      "cost": 0,
+      "horizon_hits": 0,
+      "horizon_cost": 0,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 0,
+        "buys": [],
+        "sells": [],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "hits0",
+      "label": "free transfers only",
+      "hits": 0,
+      "transfers": 1,
+      "cost": 0,
+      "horizon_hits": 0,
+      "horizon_cost": 0,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 0,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "hits1",
+      "label": "1 hit",
+      "hits": 1,
+      "transfers": 2,
+      "cost": 4,
+      "horizon_hits": 1,
+      "horizon_cost": 4,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 1,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 21,
+          "name": "P21",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 15,
+          "name": "P15",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "hits2",
+      "label": "2 hits",
+      "hits": 2,
+      "transfers": 3,
+      "cost": 8,
+      "horizon_hits": 2,
+      "horizon_cost": 8,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 2,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 21,
+          "name": "P21",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 22,
+          "name": "P22",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 15,
+          "name": "P15",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 14,
+          "name": "P14",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "hits3",
+      "label": "3 hits",
+      "hits": 3,
+      "transfers": 4,
+      "cost": 12,
+      "horizon_hits": 3,
+      "horizon_cost": 12,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 3,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 21,
+          "name": "P21",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 22,
+          "name": "P22",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 23,
+          "name": "P23",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 15,
+          "name": "P15",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 14,
+          "name": "P14",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 13,
+          "name": "P13",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "open",
+      "label": "no cap",
+      "hits": 4,
+      "transfers": 5,
+      "cost": 16,
+      "horizon_hits": 4,
+      "horizon_cost": 16,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 4,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 21,
+          "name": "P21",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 22,
+          "name": "P22",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 23,
+          "name": "P23",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 24,
+          "name": "P24",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 15,
+          "name": "P15",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 14,
+          "name": "P14",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 13,
+          "name": "P13",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 12,
+          "name": "P12",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     }
+    ],
+    "note": null
+   }
+  },
+  {
+   "key": "hits1",
+   "hits": 1,
+   "restraint": {
+    "chosen": "hits1",
+    "label": "1 hit",
+    "bar": 0.6,
+    "steps": [
+     {
+      "below": "bank",
+      "above": "hits0",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "bank → free transfers only: taken, 79% — expected points alone"
+     },
+     {
+      "below": "hits0",
+      "above": "hits1",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "free transfers only → 1 hit: taken, 79% — expected points alone"
+     },
+     {
+      "below": "hits1",
+      "above": "hits2",
+      "share": 0.46,
+      "taken": false,
+      "reason": "Filler is 0% to play",
+      "reason_kind": "flagged",
+      "line": "1 hit → 2 hits: refused, 46% — Filler is 0% to play"
+     }
+    ],
+    "agrees": false,
+    "hit_cost": 4,
+    "note": "the objective's plan was the 1 hit rung's neighbour; the walk stopped at 1 hit",
+    "line": "restraint: 1 hit; the step to 2 hits was refused, 46% — Filler is 0% to play"
+   },
+   "objective": {
+    "buys": [
+     {
+      "code": 20,
+      "name": "P20",
+      "position": "MID",
+      "ep": 5.0
+     },
+     {
+      "code": 19,
+      "name": "P19",
+      "position": "MID",
+      "ep": 5.0
+     }
+    ],
+    "sells": [
+     {
+      "code": 16,
+      "name": "P16",
+      "position": "MID",
+      "ep": 5.0
+     },
+     {
+      "code": 17,
+      "name": "P17",
+      "position": "MID",
+      "ep": 5.0
+     }
+    ],
+    "hits": 1,
+    "expected_pts": 61.5,
+    "line": "the objective wanted: P20, P19 in; P16, P17 out; 1 hit"
+   },
+   "payload": {
+    "gw": 4,
+    "gws": [
+     4,
+     5
+    ],
+    "generated_at": null,
+    "free_transfers": 1,
+    "cap": {
+     "max_hits": null,
+     "max_transfers": null
+    },
+    "cap_source": null,
+    "cap_rung": null,
+    "cap_rung_requested": null,
+    "cap_note": null,
+    "recommended": "hits1",
+    "recommended_note": null,
+    "bar": 0.6,
+    "chosen": "hits1",
+    "steps": [
+     {
+      "below": "bank",
+      "above": "hits0",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "bank → free transfers only: taken, 79% — expected points alone"
+     },
+     {
+      "below": "hits0",
+      "above": "hits1",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "free transfers only → 1 hit: taken, 79% — expected points alone"
+     },
+     {
+      "below": "hits1",
+      "above": "hits2",
+      "share": 0.46,
+      "taken": false,
+      "reason": "Filler is 0% to play",
+      "reason_kind": "flagged",
+      "line": "1 hit → 2 hits: refused, 46% — Filler is 0% to play"
+     }
+    ],
+    "served_note": null,
+    "n_draws": 5,
+    "seed": null,
+    "sigma_source": null,
+    "sigma_fallbacks": 0,
+    "wall_s": null,
+    "notes": [],
+    "rungs": [
+     {
+      "key": "bank",
+      "label": "bank",
+      "hits": 0,
+      "transfers": 0,
+      "cost": 0,
+      "horizon_hits": 0,
+      "horizon_cost": 0,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 0,
+        "buys": [],
+        "sells": [],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "hits0",
+      "label": "free transfers only",
+      "hits": 0,
+      "transfers": 1,
+      "cost": 0,
+      "horizon_hits": 0,
+      "horizon_cost": 0,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 0,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "hits1",
+      "label": "1 hit",
+      "hits": 1,
+      "transfers": 2,
+      "cost": 4,
+      "horizon_hits": 1,
+      "horizon_cost": 4,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 1,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 21,
+          "name": "P21",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 15,
+          "name": "P15",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "hits2",
+      "label": "2 hits",
+      "hits": 2,
+      "transfers": 3,
+      "cost": 8,
+      "horizon_hits": 2,
+      "horizon_cost": 8,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 2,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 21,
+          "name": "P21",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 22,
+          "name": "P22",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 15,
+          "name": "P15",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 14,
+          "name": "P14",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "hits3",
+      "label": "3 hits",
+      "hits": 3,
+      "transfers": 4,
+      "cost": 12,
+      "horizon_hits": 3,
+      "horizon_cost": 12,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 3,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 21,
+          "name": "P21",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 22,
+          "name": "P22",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 23,
+          "name": "P23",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 15,
+          "name": "P15",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 14,
+          "name": "P14",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 13,
+          "name": "P13",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "open",
+      "label": "no cap",
+      "hits": 4,
+      "transfers": 5,
+      "cost": 16,
+      "horizon_hits": 4,
+      "horizon_cost": 16,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 4,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 21,
+          "name": "P21",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 22,
+          "name": "P22",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 23,
+          "name": "P23",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 24,
+          "name": "P24",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 15,
+          "name": "P15",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 14,
+          "name": "P14",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 13,
+          "name": "P13",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 12,
+          "name": "P12",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     }
+    ],
+    "note": null
+   }
+  },
+  {
+   "key": "hits2",
+   "hits": 2,
+   "restraint": {
+    "chosen": "hits2",
+    "label": "2 hits",
+    "bar": 0.6,
+    "steps": [
+     {
+      "below": "bank",
+      "above": "hits0",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "bank → free transfers only: taken, 79% — expected points alone"
+     },
+     {
+      "below": "hits0",
+      "above": "hits1",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "free transfers only → 1 hit: taken, 79% — expected points alone"
+     },
+     {
+      "below": "hits1",
+      "above": "hits2",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "1 hit → 2 hits: taken, 79% — expected points alone"
+     },
+     {
+      "below": "hits2",
+      "above": "hits3",
+      "share": 0.46,
+      "taken": false,
+      "reason": "Filler is 0% to play",
+      "reason_kind": "flagged",
+      "line": "2 hits → 3 hits: refused, 46% — Filler is 0% to play"
+     }
+    ],
+    "agrees": false,
+    "hit_cost": 4,
+    "note": "the objective's plan was the 2 hits rung's neighbour; the walk stopped at 2 hits",
+    "line": "restraint: 2 hits; the step to 3 hits was refused, 46% — Filler is 0% to play"
+   },
+   "objective": {
+    "buys": [
+     {
+      "code": 20,
+      "name": "P20",
+      "position": "MID",
+      "ep": 5.0
+     },
+     {
+      "code": 19,
+      "name": "P19",
+      "position": "MID",
+      "ep": 5.0
+     }
+    ],
+    "sells": [
+     {
+      "code": 16,
+      "name": "P16",
+      "position": "MID",
+      "ep": 5.0
+     },
+     {
+      "code": 17,
+      "name": "P17",
+      "position": "MID",
+      "ep": 5.0
+     }
+    ],
+    "hits": 1,
+    "expected_pts": 61.5,
+    "line": "the objective wanted: P20, P19 in; P16, P17 out; 1 hit"
+   },
+   "payload": {
+    "gw": 4,
+    "gws": [
+     4,
+     5
+    ],
+    "generated_at": null,
+    "free_transfers": 1,
+    "cap": {
+     "max_hits": null,
+     "max_transfers": null
+    },
+    "cap_source": null,
+    "cap_rung": null,
+    "cap_rung_requested": null,
+    "cap_note": null,
+    "recommended": "hits2",
+    "recommended_note": null,
+    "bar": 0.6,
+    "chosen": "hits2",
+    "steps": [
+     {
+      "below": "bank",
+      "above": "hits0",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "bank → free transfers only: taken, 79% — expected points alone"
+     },
+     {
+      "below": "hits0",
+      "above": "hits1",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "free transfers only → 1 hit: taken, 79% — expected points alone"
+     },
+     {
+      "below": "hits1",
+      "above": "hits2",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "1 hit → 2 hits: taken, 79% — expected points alone"
+     },
+     {
+      "below": "hits2",
+      "above": "hits3",
+      "share": 0.46,
+      "taken": false,
+      "reason": "Filler is 0% to play",
+      "reason_kind": "flagged",
+      "line": "2 hits → 3 hits: refused, 46% — Filler is 0% to play"
+     }
+    ],
+    "served_note": null,
+    "n_draws": 5,
+    "seed": null,
+    "sigma_source": null,
+    "sigma_fallbacks": 0,
+    "wall_s": null,
+    "notes": [],
+    "rungs": [
+     {
+      "key": "bank",
+      "label": "bank",
+      "hits": 0,
+      "transfers": 0,
+      "cost": 0,
+      "horizon_hits": 0,
+      "horizon_cost": 0,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 0,
+        "buys": [],
+        "sells": [],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "hits0",
+      "label": "free transfers only",
+      "hits": 0,
+      "transfers": 1,
+      "cost": 0,
+      "horizon_hits": 0,
+      "horizon_cost": 0,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 0,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "hits1",
+      "label": "1 hit",
+      "hits": 1,
+      "transfers": 2,
+      "cost": 4,
+      "horizon_hits": 1,
+      "horizon_cost": 4,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 1,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 21,
+          "name": "P21",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 15,
+          "name": "P15",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "hits2",
+      "label": "2 hits",
+      "hits": 2,
+      "transfers": 3,
+      "cost": 8,
+      "horizon_hits": 2,
+      "horizon_cost": 8,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 2,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 21,
+          "name": "P21",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 22,
+          "name": "P22",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 15,
+          "name": "P15",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 14,
+          "name": "P14",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "hits3",
+      "label": "3 hits",
+      "hits": 3,
+      "transfers": 4,
+      "cost": 12,
+      "horizon_hits": 3,
+      "horizon_cost": 12,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 3,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 21,
+          "name": "P21",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 22,
+          "name": "P22",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 23,
+          "name": "P23",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 15,
+          "name": "P15",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 14,
+          "name": "P14",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 13,
+          "name": "P13",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "open",
+      "label": "no cap",
+      "hits": 4,
+      "transfers": 5,
+      "cost": 16,
+      "horizon_hits": 4,
+      "horizon_cost": 16,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 4,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 21,
+          "name": "P21",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 22,
+          "name": "P22",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 23,
+          "name": "P23",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 24,
+          "name": "P24",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 15,
+          "name": "P15",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 14,
+          "name": "P14",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 13,
+          "name": "P13",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 12,
+          "name": "P12",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     }
+    ],
+    "note": null
+   }
+  },
+  {
+   "key": "hits3",
+   "hits": 3,
+   "restraint": {
+    "chosen": "hits3",
+    "label": "3 hits",
+    "bar": 0.6,
+    "steps": [
+     {
+      "below": "bank",
+      "above": "hits0",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "bank → free transfers only: taken, 79% — expected points alone"
+     },
+     {
+      "below": "hits0",
+      "above": "hits1",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "free transfers only → 1 hit: taken, 79% — expected points alone"
+     },
+     {
+      "below": "hits1",
+      "above": "hits2",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "1 hit → 2 hits: taken, 79% — expected points alone"
+     },
+     {
+      "below": "hits2",
+      "above": "hits3",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "2 hits → 3 hits: taken, 79% — expected points alone"
+     },
+     {
+      "below": "hits3",
+      "above": "open",
+      "share": 0.46,
+      "taken": false,
+      "reason": "Filler is 0% to play",
+      "reason_kind": "flagged",
+      "line": "3 hits → no cap: refused, 46% — Filler is 0% to play"
+     }
+    ],
+    "agrees": false,
+    "hit_cost": 4,
+    "note": "the objective's plan was the 3 hits rung's neighbour; the walk stopped at 3 hits",
+    "line": "restraint: 3 hits; the step to no cap was refused, 46% — Filler is 0% to play"
+   },
+   "objective": {
+    "buys": [
+     {
+      "code": 20,
+      "name": "P20",
+      "position": "MID",
+      "ep": 5.0
+     },
+     {
+      "code": 19,
+      "name": "P19",
+      "position": "MID",
+      "ep": 5.0
+     }
+    ],
+    "sells": [
+     {
+      "code": 16,
+      "name": "P16",
+      "position": "MID",
+      "ep": 5.0
+     },
+     {
+      "code": 17,
+      "name": "P17",
+      "position": "MID",
+      "ep": 5.0
+     }
+    ],
+    "hits": 1,
+    "expected_pts": 61.5,
+    "line": "the objective wanted: P20, P19 in; P16, P17 out; 1 hit"
+   },
+   "payload": {
+    "gw": 4,
+    "gws": [
+     4,
+     5
+    ],
+    "generated_at": null,
+    "free_transfers": 1,
+    "cap": {
+     "max_hits": null,
+     "max_transfers": null
+    },
+    "cap_source": null,
+    "cap_rung": null,
+    "cap_rung_requested": null,
+    "cap_note": null,
+    "recommended": "hits3",
+    "recommended_note": null,
+    "bar": 0.6,
+    "chosen": "hits3",
+    "steps": [
+     {
+      "below": "bank",
+      "above": "hits0",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "bank → free transfers only: taken, 79% — expected points alone"
+     },
+     {
+      "below": "hits0",
+      "above": "hits1",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "free transfers only → 1 hit: taken, 79% — expected points alone"
+     },
+     {
+      "below": "hits1",
+      "above": "hits2",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "1 hit → 2 hits: taken, 79% — expected points alone"
+     },
+     {
+      "below": "hits2",
+      "above": "hits3",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "2 hits → 3 hits: taken, 79% — expected points alone"
+     },
+     {
+      "below": "hits3",
+      "above": "open",
+      "share": 0.46,
+      "taken": false,
+      "reason": "Filler is 0% to play",
+      "reason_kind": "flagged",
+      "line": "3 hits → no cap: refused, 46% — Filler is 0% to play"
+     }
+    ],
+    "served_note": null,
+    "n_draws": 5,
+    "seed": null,
+    "sigma_source": null,
+    "sigma_fallbacks": 0,
+    "wall_s": null,
+    "notes": [],
+    "rungs": [
+     {
+      "key": "bank",
+      "label": "bank",
+      "hits": 0,
+      "transfers": 0,
+      "cost": 0,
+      "horizon_hits": 0,
+      "horizon_cost": 0,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 0,
+        "buys": [],
+        "sells": [],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "hits0",
+      "label": "free transfers only",
+      "hits": 0,
+      "transfers": 1,
+      "cost": 0,
+      "horizon_hits": 0,
+      "horizon_cost": 0,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 0,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "hits1",
+      "label": "1 hit",
+      "hits": 1,
+      "transfers": 2,
+      "cost": 4,
+      "horizon_hits": 1,
+      "horizon_cost": 4,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 1,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 21,
+          "name": "P21",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 15,
+          "name": "P15",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "hits2",
+      "label": "2 hits",
+      "hits": 2,
+      "transfers": 3,
+      "cost": 8,
+      "horizon_hits": 2,
+      "horizon_cost": 8,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 2,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 21,
+          "name": "P21",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 22,
+          "name": "P22",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 15,
+          "name": "P15",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 14,
+          "name": "P14",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "hits3",
+      "label": "3 hits",
+      "hits": 3,
+      "transfers": 4,
+      "cost": 12,
+      "horizon_hits": 3,
+      "horizon_cost": 12,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 3,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 21,
+          "name": "P21",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 22,
+          "name": "P22",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 23,
+          "name": "P23",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 15,
+          "name": "P15",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 14,
+          "name": "P14",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 13,
+          "name": "P13",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "open",
+      "label": "no cap",
+      "hits": 4,
+      "transfers": 5,
+      "cost": 16,
+      "horizon_hits": 4,
+      "horizon_cost": 16,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 4,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 21,
+          "name": "P21",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 22,
+          "name": "P22",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 23,
+          "name": "P23",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 24,
+          "name": "P24",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 15,
+          "name": "P15",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 14,
+          "name": "P14",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 13,
+          "name": "P13",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 12,
+          "name": "P12",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     }
+    ],
+    "note": null
+   }
+  },
+  {
+   "key": "open",
+   "hits": 4,
+   "restraint": {
+    "chosen": "open",
+    "label": "no cap",
+    "bar": 0.6,
+    "steps": [
+     {
+      "below": "bank",
+      "above": "hits0",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "bank → free transfers only: taken, 79% — expected points alone"
+     },
+     {
+      "below": "hits0",
+      "above": "hits1",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "free transfers only → 1 hit: taken, 79% — expected points alone"
+     },
+     {
+      "below": "hits1",
+      "above": "hits2",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "1 hit → 2 hits: taken, 79% — expected points alone"
+     },
+     {
+      "below": "hits2",
+      "above": "hits3",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "2 hits → 3 hits: taken, 79% — expected points alone"
+     },
+     {
+      "below": "hits3",
+      "above": "open",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "3 hits → no cap: taken, 79% — expected points alone"
+     }
+    ],
+    "agrees": false,
+    "hit_cost": 4,
+    "note": "the objective's plan was the no cap rung's neighbour; the walk stopped at no cap",
+    "line": "restraint: no cap; every step was taken"
+   },
+   "objective": {
+    "buys": [
+     {
+      "code": 20,
+      "name": "P20",
+      "position": "MID",
+      "ep": 5.0
+     },
+     {
+      "code": 19,
+      "name": "P19",
+      "position": "MID",
+      "ep": 5.0
+     }
+    ],
+    "sells": [
+     {
+      "code": 16,
+      "name": "P16",
+      "position": "MID",
+      "ep": 5.0
+     },
+     {
+      "code": 17,
+      "name": "P17",
+      "position": "MID",
+      "ep": 5.0
+     }
+    ],
+    "hits": 1,
+    "expected_pts": 61.5,
+    "line": "the objective wanted: P20, P19 in; P16, P17 out; 1 hit"
+   },
+   "payload": {
+    "gw": 4,
+    "gws": [
+     4,
+     5
+    ],
+    "generated_at": null,
+    "free_transfers": 1,
+    "cap": {
+     "max_hits": null,
+     "max_transfers": null
+    },
+    "cap_source": null,
+    "cap_rung": null,
+    "cap_rung_requested": null,
+    "cap_note": null,
+    "recommended": "open",
+    "recommended_note": null,
+    "bar": 0.6,
+    "chosen": "open",
+    "steps": [
+     {
+      "below": "bank",
+      "above": "hits0",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "bank → free transfers only: taken, 79% — expected points alone"
+     },
+     {
+      "below": "hits0",
+      "above": "hits1",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "free transfers only → 1 hit: taken, 79% — expected points alone"
+     },
+     {
+      "below": "hits1",
+      "above": "hits2",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "1 hit → 2 hits: taken, 79% — expected points alone"
+     },
+     {
+      "below": "hits2",
+      "above": "hits3",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "2 hits → 3 hits: taken, 79% — expected points alone"
+     },
+     {
+      "below": "hits3",
+      "above": "open",
+      "share": 0.79,
+      "taken": true,
+      "reason": "expected points alone",
+      "reason_kind": "points",
+      "line": "3 hits → no cap: taken, 79% — expected points alone"
+     }
+    ],
+    "served_note": null,
+    "n_draws": 5,
+    "seed": null,
+    "sigma_source": null,
+    "sigma_fallbacks": 0,
+    "wall_s": null,
+    "notes": [],
+    "rungs": [
+     {
+      "key": "bank",
+      "label": "bank",
+      "hits": 0,
+      "transfers": 0,
+      "cost": 0,
+      "horizon_hits": 0,
+      "horizon_cost": 0,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 0,
+        "buys": [],
+        "sells": [],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "hits0",
+      "label": "free transfers only",
+      "hits": 0,
+      "transfers": 1,
+      "cost": 0,
+      "horizon_hits": 0,
+      "horizon_cost": 0,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 0,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "hits1",
+      "label": "1 hit",
+      "hits": 1,
+      "transfers": 2,
+      "cost": 4,
+      "horizon_hits": 1,
+      "horizon_cost": 4,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 1,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 21,
+          "name": "P21",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 15,
+          "name": "P15",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "hits2",
+      "label": "2 hits",
+      "hits": 2,
+      "transfers": 3,
+      "cost": 8,
+      "horizon_hits": 2,
+      "horizon_cost": 8,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 2,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 21,
+          "name": "P21",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 22,
+          "name": "P22",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 15,
+          "name": "P15",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 14,
+          "name": "P14",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "hits3",
+      "label": "3 hits",
+      "hits": 3,
+      "transfers": 4,
+      "cost": 12,
+      "horizon_hits": 3,
+      "horizon_cost": 12,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 3,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 21,
+          "name": "P21",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 22,
+          "name": "P22",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 23,
+          "name": "P23",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 15,
+          "name": "P15",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 14,
+          "name": "P14",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 13,
+          "name": "P13",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     },
+     {
+      "key": "open",
+      "label": "no cap",
+      "hits": 4,
+      "transfers": 5,
+      "cost": 16,
+      "horizon_hits": 4,
+      "horizon_cost": 16,
+      "same_as": null,
+      "plan_by_gw": [
+       {
+        "gw": 4,
+        "hits": 4,
+        "buys": [
+         {
+          "code": 20,
+          "name": "P20",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 21,
+          "name": "P21",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 22,
+          "name": "P22",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 23,
+          "name": "P23",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 24,
+          "name": "P24",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "sells": [
+         {
+          "code": 16,
+          "name": "P16",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 15,
+          "name": "P15",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 14,
+          "name": "P14",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 13,
+          "name": "P13",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 12,
+          "name": "P12",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "xi": [
+         {
+          "code": 1,
+          "name": "P1",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 2,
+          "name": "P2",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 3,
+          "name": "P3",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 4,
+          "name": "P4",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 5,
+          "name": "P5",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 6,
+          "name": "P6",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 7,
+          "name": "P7",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 8,
+          "name": "P8",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 9,
+          "name": "P9",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 10,
+          "name": "P10",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         },
+         {
+          "code": 11,
+          "name": "P11",
+          "position": "MID",
+          "ep": 5.0,
+          "team_short": null,
+          "team_code": null,
+          "next_fixture": null
+         }
+        ],
+        "bench": [],
+        "captain": {
+         "code": 3,
+         "name": "P3",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "vice": {
+         "code": 4,
+         "name": "P4",
+         "position": "MID",
+         "ep": 5.0,
+         "team_short": null,
+         "team_code": null,
+         "next_fixture": null
+        },
+        "expected_pts": 60.0
+       }
+      ],
+      "week_pts": null,
+      "horizon_pts": null,
+      "objective": null,
+      "mean_pts": null,
+      "p10_pts": null,
+      "p90_pts": null,
+      "p_beats_bank": null,
+      "p_beats_top": null,
+      "p_best": null,
+      "vs_below": null
+     }
+    ],
+    "note": null
+   }
+  }
+ ]
+}
