@@ -106,6 +106,8 @@ export interface RestraintStep {
   taken: boolean
   reason: string
   reason_kind: string
+  /** v17b: the step as one served sentence. */
+  line?: string
 }
 
 export interface Restraint {
@@ -114,6 +116,11 @@ export interface Restraint {
   steps: RestraintStep[]
   agrees: boolean
   note: string | null
+  /** v17b §3.3: the served label, hit price and prose; absent on advice
+   *  banked before it. */
+  label?: string | null
+  hit_cost?: number | null
+  line?: string | null
 }
 
 /** The solver's own week one, kept beside the served plan (v16 §4). */
@@ -122,6 +129,8 @@ export interface Objective {
   sells: PlayerRef[]
   hits: number
   expected_pts: number
+  /** v17b: the served sentence naming what the solver wanted. */
+  line?: string | null
 }
 
 export interface Advice {

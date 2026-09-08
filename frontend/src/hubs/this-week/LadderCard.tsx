@@ -7,7 +7,7 @@ import {
   TR_EXPANDED_CLASS, TR_SELECTED_CLASS, fmtNum, tdClass, thClass, toneOf,
 } from '../../kit'
 import type {
-  LadderPayload, LadderRung, LadderStep, PlayerRef,
+  LadderPayload, LadderRung, PlayerRef,
 } from '../../types'
 
 /** `[optimizer]` value meaning "no cap" — `gaffer.config.NO_CAP`. */
@@ -31,21 +31,6 @@ export function capText(p: LadderPayload): string {
     bits.push(`max ${moves} transfer${moves === 1 ? '' : 's'}`)
   }
   return bits.join(' · ')
-}
-
-/** The row's name, taken from the *key* rather than from `hits`.
- *
- *  A `same_as` rung repeats the plan below it, so it carries that plan's hit
- *  count: `hits2` deferring to `hits1` has `hits === 1`. Labelling off
- *  `r.hits` would print two rows called "1 hit" and lose the rung the reader
- *  is actually being told about. The key is the rung's identity. */
-function rungLabel(r: LadderRung): string {
-  if (r.key === 'bank') return 'Bank'
-  if (r.key === 'open') return 'No cap'
-  const m = /^hits(\d+)$/.exec(r.key)
-  const n = m ? Number(m[1]) : r.hits
-  if (n === 0) return 'No hits'
-  return `${n} hit${n === 1 ? '' : 's'}`
 }
 
 /** The offered options, plus the current value when it is not among them.
@@ -87,16 +72,6 @@ function RungCost({ rung, weeks }: { rung: LadderRung; weeks: number }) {
 
 function pct(v: number | null | undefined): string {
   return v === null || v === undefined ? '—' : `${Math.round(v * 100)}%`
-}
-
-/** "Bank → No hits: taken, 79% — expected points alone". */
-export function stepText(step: LadderStep, rungs: LadderRung[]): string {
-  const label = (key: string) => {
-    const r = rungs.find((x) => x.key === key)
-    return r ? rungLabel(r) : key
-  }
-  return `${label(step.below)} → ${label(step.above)}: `
-    + `${step.taken ? 'taken' : 'refused'}, ${pct(step.share)} — ${step.reason}`
 }
 
 function movesText(r: LadderRung): string {
@@ -247,11 +222,9 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
   const resolved = rungs.find((r) => r.key === data?.cap_rung)
   const requestedNote = (data && data.cap_rung_requested !== null
     && data.cap_rung_requested !== data.cap_rung)
-    ? `your cap of ${(requested ? rungLabel(requested)
-        : data.cap_rung_requested).toLowerCase()}: the solver would not `
-      + `spend it \u2014 same as `
-      + `${(resolved ? rungLabel(resolved) : data.cap_rung ?? '\u2014')
-          .toLowerCase()}`
+    ? `your cap of ${requested?.label ?? data.cap_rung_requested}: the solver `
+      + `would not spend it \u2014 same as `
+      + `${resolved?.label ?? data.cap_rung ?? '\u2014'}`
     : null
 
   return (
@@ -362,7 +335,7 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
                 const vsBank = (r.mean_pts !== null && r.mean_pts !== undefined
                   && bank?.mean_pts !== null && bank?.mean_pts !== undefined)
                   ? r.mean_pts - bank.mean_pts : null
-                const label = rungLabel(r)
+                const label = r.label
                 const below = rungs.find((x) => x.key === r.same_as)
                 const rowClass = [
                   'cursor-pointer', TR_CLASS,
@@ -388,7 +361,7 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
                         ? (
                           <td className={`${tdClass()} text-text-muted`} colSpan={7}>
                             solver would not spend it — same as{' '}
-                            {(below ? rungLabel(below) : r.same_as).toLowerCase()}
+                            {below ? below.label : r.same_as}
                           </td>
                           )
                         : (
@@ -430,7 +403,7 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
         <ul className="mt-2 flex flex-col gap-0.5 text-text-secondary" data-testid="ladder-steps">
           {data!.steps.map((s) => (
             <li key={`${s.below}-${s.above}`} className={s.taken ? '' : 'text-text-muted'}>
-              {stepText(s, rungs)}
+              {s.line}
             </li>
           ))}
         </ul>

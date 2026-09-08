@@ -21,8 +21,16 @@ describe('MovesCard', () => {
   })
 
   it('prices hits explicitly', () => {
-    render(<MovesCard buys={BUYS} sells={SELLS} hits={2} />)
+    render(<MovesCard buys={BUYS} sells={SELLS} hits={2}
+      restraint={{ chosen: 'hits1', bar: 0.6, agrees: true, note: null,
+                   steps: [], hit_cost: 4 }} />)
     expect(screen.getByText('\u22128 pts')).toBeInTheDocument()
+  })
+
+  it('prints the count alone when no cost is served', () => {
+    render(<MovesCard buys={BUYS} sells={SELLS} hits={2} />)
+    expect(screen.getByText(/2 hits/)).toBeInTheDocument()
+    expect(screen.queryByText(/pts/)).toBeNull()
   })
 
   it('says to bank the transfer when there are no moves', () => {
@@ -52,16 +60,22 @@ describe('MovesCard', () => {
   it('prints the restraint line and, when they differ, what the objective wanted', () => {
     render(<MovesCard buys={[]} sells={[]} hits={0}
       restraint={{ chosen: 'hits0', bar: 0.6, agrees: false, note: null,
+        label: 'free transfers only', hit_cost: 4,
+        line: 'restraint: free transfers only; the step to 1 hit was refused, '
+          + '46% — Rice is 0% to play',
         steps: [{ below: 'bank', above: 'hits0', share: 0.79, taken: true,
-                  reason: 'expected points alone', reason_kind: 'points' },
+                  reason: 'expected points alone', reason_kind: 'points',
+                  line: 'bank → free transfers only: taken, 79% — expected points alone' },
                 { below: 'hits0', above: 'hits1', share: 0.46, taken: false,
-                  reason: 'Rice is 0% to play', reason_kind: 'flagged' }] }}
+                  reason: 'Rice is 0% to play', reason_kind: 'flagged',
+                  line: 'free transfers only → 1 hit: refused, 46% — Rice is 0% to play' }] }}
       objective={{ buys: [{ code: 5, name: 'Isak', ep: 6 }], sells: [{ code: 6, name: 'Rice', ep: 2 }],
-                   hits: 1, expected_pts: 63 }} />)
+                   hits: 1, expected_pts: 63,
+                   line: 'the objective wanted: Isak in; Rice out; 1 hit' }} />)
     expect(screen.getByTestId('moves-restraint-line')).toHaveTextContent(
-      'Free transfers only — the step to 1 hit was refused at 46%: Rice is 0% to play')
+      'restraint: free transfers only; the step to 1 hit was refused, 46% — Rice is 0% to play')
     expect(screen.getByTestId('moves-objective-line')).toHaveTextContent(
-      'The objective wanted Isak in, Rice out, 1 hit')
+      'the objective wanted: Isak in; Rice out; 1 hit')
   })
 
   it('prints neither line on a payload without the walk', () => {

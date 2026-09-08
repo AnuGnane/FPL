@@ -20,29 +20,12 @@ export interface MovesCardProps {
   hits: number
   /** v13: "1 free transfer · cap 2 hits", from the ladder payload. */
   capLine?: string | null
-  /** v16: the ladder's restraint walk, absent on an older payload. */
+  /** v16: the ladder's restraint walk, absent on an older payload; v17b: the
+   *  card renders its served `line` verbatim. */
   restraint?: Restraint | null
   /** v16: the solver's own week, printed when it differs from the served
-   *  plan. */
+   *  plan; v17b: the card renders its served `line`. */
   objective?: Objective | null
-}
-
-/** A rung key as a sentence names it. */
-export function rungLabel(key: string): string {
-  if (key === 'bank') return 'Bank'
-  if (key === 'open') return 'No cap'
-  if (key === 'hits0') return 'Free transfers only'
-  const n = Number(key.replace('hits', ''))
-  return `${n} hit${n === 1 ? '' : 's'}`
-}
-
-/** The one line the walk is worth: where it stopped, and why. */
-export function restraintText(r: Restraint): string {
-  const refused = r.steps.find((s) => !s.taken)
-  const head = rungLabel(r.chosen ?? 'bank')
-  if (!refused) return `${head} — every step up the ladder was taken`
-  return `${head} — the step to ${rungLabel(refused.above).toLowerCase()} was refused `
-    + `at ${Math.round(refused.share * 100)}%: ${refused.reason}`
 }
 
 export default function MovesCard(
@@ -59,17 +42,14 @@ export default function MovesCard(
           {capLine}
         </p>
       )}
-      {restraint && restraint.chosen && (
+      {restraint?.line && (
         <p className="mb-2 text-text-secondary" data-testid="moves-restraint-line">
-          {restraintText(restraint)}
+          {restraint.line}
         </p>
       )}
-      {restraint && !restraint.agrees && objective && (
+      {restraint && !restraint.agrees && objective?.line && (
         <p className="mb-2 text-text-muted" data-testid="moves-objective-line">
-          {'The objective wanted '}
-          {[...objective.buys.map((m) => `${m.name} in`),
-            ...objective.sells.map((m) => `${m.name} out`)].join(', ') || 'no moves'}
-          {`, ${objective.hits} hit${objective.hits === 1 ? '' : 's'}`}
+          {objective.line}
         </p>
       )}
       {rows.length === 0
@@ -118,8 +98,12 @@ export default function MovesCard(
           )}
       {hits > 0 && (
         <p className="mt-3 text-text-secondary">
-          {hits} hit{hits === 1 ? '' : 's'}:{' '}
-          <span className="tn text-down">{`−${hits * 4} pts`}</span>
+          {hits} hit{hits === 1 ? '' : 's'}
+          {/* v17b §3.3: the price is the served cost; a payload banked before
+              the block carries none, and the count stands alone. */}
+          {typeof restraint?.hit_cost === 'number' && (
+            <>: <span className="tn text-down">{`−${hits * restraint.hit_cost} pts`}</span></>
+          )}
         </p>
       )}
     </Card>

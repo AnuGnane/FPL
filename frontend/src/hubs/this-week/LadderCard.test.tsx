@@ -39,20 +39,22 @@ const PAYLOAD: LadderPayload = {
   bar: 0.6, chosen: 'hits0', served_note: null,
   steps: [
     { below: 'bank', above: 'hits0', share: 0.79, taken: true,
-      reason: 'expected points alone', reason_kind: 'points' },
+      reason: 'expected points alone', reason_kind: 'points',
+      line: 'bank → free transfers only: taken, 79% — expected points alone' },
     { below: 'hits0', above: 'hits1', share: 0.46, taken: false,
-      reason: 'Filler is 0% to play', reason_kind: 'flagged' },
+      reason: 'Filler is 0% to play', reason_kind: 'flagged',
+      line: 'free transfers only → 1 hit: refused, 46% — Filler is 0% to play' },
   ],
   n_draws: 200, seed: 7, sigma_source: 'bands', sigma_fallbacks: 0,
   wall_s: 31.2, note: null,
   rungs: [
     { key: 'bank', hits: 0, transfers: 0, cost: 0, same_as: null,
-      horizon_hits: 0, horizon_cost: 0,
+      horizon_hits: 0, horizon_cost: 0, label: 'bank',
       plan_by_gw: [week(3, 0, [], [])], week_pts: 60, horizon_pts: 180,
       objective: 170, mean_pts: 180, p10_pts: 160, p90_pts: 200,
       p_beats_bank: null, p_beats_top: 0.42, p_best: 0.2, vs_below: null },
     { key: 'hits0', hits: 0, transfers: 1, cost: 0, same_as: null,
-      horizon_hits: 0, horizon_cost: 0,
+      horizon_hits: 0, horizon_cost: 0, label: 'free transfers only',
       plan_by_gw: [week(3, 0, [ref(20, 'Star')], [ref(16, 'Dud')])],
       week_pts: 63, horizon_pts: 186, objective: 176, mean_pts: 186,
       p10_pts: 165, p90_pts: 207, p_beats_bank: 0.71, p_beats_top: 0.5,
@@ -63,7 +65,7 @@ const PAYLOAD: LadderPayload = {
     // The caps are per week, so a one-hit plan spends a hit in every horizon
     // week: 4 now, 12 over the three.
     { key: 'hits1', hits: 1, transfers: 2, cost: 4, same_as: null,
-      horizon_hits: 3, horizon_cost: 12,
+      horizon_hits: 3, horizon_cost: 12, label: '1 hit',
       plan_by_gw: [week(3, 1, [ref(20, 'Star'), ref(19, 'Second')],
                         [ref(16, 'Dud'), ref(17, 'Filler')])],
       week_pts: 64, horizon_pts: 188, objective: 177, mean_pts: 188,
@@ -74,12 +76,12 @@ const PAYLOAD: LadderPayload = {
                   dropped_sells: [], delta_mean_pts: 1.9, delta_cost: 12,
                   delta_cost_now: 4 } },
     { key: 'hits2', hits: 1, transfers: 2, cost: 4, same_as: 'hits1',
-      horizon_hits: 3, horizon_cost: 12,
+      horizon_hits: 3, horizon_cost: 12, label: '2 hits',
       plan_by_gw: [], week_pts: null, horizon_pts: null, objective: null,
       mean_pts: null, p10_pts: null, p90_pts: null, p_beats_bank: null,
       p_beats_top: null, p_best: null, vs_below: null },
     { key: 'hits3', hits: 1, transfers: 2, cost: 4, same_as: 'hits1',
-      horizon_hits: 3, horizon_cost: 12,
+      horizon_hits: 3, horizon_cost: 12, label: '3 hits',
       plan_by_gw: [], week_pts: null, horizon_pts: null, objective: null,
       mean_pts: null, p10_pts: null, p90_pts: null, p_beats_bank: null,
       p_beats_top: null, p_best: null, vs_below: null },
@@ -111,7 +113,7 @@ describe('LadderCard', () => {
     expect(row).toHaveTextContent('−4')
     expect(row).toHaveTextContent('74%')     // P(beats bank)
     expect(row).toHaveTextContent('50%')     // P(best)
-    expect(screen.getByText('Bank').closest('tr')).toHaveTextContent('—')
+    expect(screen.getByText('bank', { selector: 'span' }).closest('tr')).toHaveTextContent('—')
   })
 
   it('highlights the cap rung and mutes the rungs beyond it', async () => {
@@ -232,7 +234,7 @@ describe('LadderCard', () => {
       const row = (await screen.findByText('1 hit')).closest('tr')!
       expect(row).toHaveTextContent('−4 now · −12 over 3 GWs')
       // A rung that spends the same either way says it once.
-      expect(screen.getByText('Bank').closest('tr')).toHaveTextContent('0')
+      expect(screen.getByText('bank', { selector: 'span' }).closest('tr')).toHaveTextContent('0')
     })
 
   it('prints a single cost when the horizon bill equals the first week\u2019s',
@@ -294,11 +296,13 @@ describe('LadderCard', () => {
 
   it('marks the chosen rung and lists every step with its share and reason', async () => {
     mount()
-    const chosen = (await screen.findByText('No hits')).closest('tr')!
+    const chosen = (await screen.findByText('free transfers only')).closest('tr')!
     expect(within(chosen).getByText('chosen')).toBeInTheDocument()
     const steps = screen.getByTestId('ladder-steps')
-    expect(steps).toHaveTextContent('Bank → No hits: taken, 79% — expected points alone')
-    expect(steps).toHaveTextContent('No hits → 1 hit: refused, 46% — Filler is 0% to play')
+    expect(steps).toHaveTextContent(
+      'bank → free transfers only: taken, 79% — expected points alone')
+    expect(steps).toHaveTextContent(
+      'free transfers only → 1 hit: refused, 46% — Filler is 0% to play')
   })
 
   it('says when a rebuild chose differently from the served advice', async () => {
