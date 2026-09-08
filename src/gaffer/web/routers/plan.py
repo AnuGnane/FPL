@@ -283,22 +283,21 @@ def _price_falls(state) -> tuple[bool, dict[int, float]]:
     Two switches, two different answers. ``price_timing`` off means the
     objective carried **no such term**, so the trace reports ``None`` and says
     so rather than printing a zero, which would read as "we checked and it was
-    free". A reader that will not import, or that has no row for a code, is
-    also ``None`` — an unknown, which is not a zero chance of a fall.
+    free". A table that will not read, or that has no row for a code, is also
+    ``None`` — an unknown, which is not a zero chance of a fall.
 
-    Imported lazily and called inside the trace's own ``try`` for the same
-    reason the λ table is: a decoration must never be the reason a plan does
-    not render.
+    Read inside the trace's own ``try`` for the same reason the λ table is: a
+    decoration must never be the reason a plan does not render. The imports
+    sit outside it since v17e: both modules are in this tree, so guarding
+    them bought a branch that could not be taken.
     """
-    try:
-        # W2's own table and the switch as the solve path reads it — the
-        # one config interface (v17e §2.2), so the two surfaces cannot
-        # disagree about whether the term is on.
-        from gaffer.config import config_in_force
-        from gaffer.price_timing import owned_price_falls
-    except Exception as exc:  # noqa: BLE001 — W2 may not have landed
-        print(f"plan trace: no price-timing reader ({exc})")
-        return False, {}
+    # W2's own table and the switch as the solve path reads it — the one
+    # config interface (v17e §2.2), so the two surfaces cannot disagree about
+    # whether the term is on. Both modules are in this tree, so the import
+    # itself cannot fail; only the reads below are guarded.
+    from gaffer.config import config_in_force
+    from gaffer.price_timing import owned_price_falls
+
     try:
         if not config_in_force().price_timing:
             return False, {}

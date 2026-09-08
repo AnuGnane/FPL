@@ -249,24 +249,31 @@ def test_lineup_providers_in_the_overlay_is_honoured_by_its_reader(tree):
     assert load_config(base).news_lineup_providers == []
 
 
-def test_the_loader_and_the_endpoint_name_the_same_file_the_same_way(
-        tree, tmp_path, monkeypatch, capsys):
+def test_both_of_the_configs_bad_overlay_sentences_name_the_file_the_same_way(
+        tree, monkeypatch, capsys):
     """`config.py` prints one sentence when it ignores a bad overlay and the
-    settings endpoint serves another in its 422. They were two sentences in
-    two modules and had to be checked against each other; since v17e §2.8 the
-    served one comes from `config.read_overlay` as well, because the router
-    no longer opens the file. Both still have to name the file and say the
-    word the user is looking for, so the check stays."""
+    settings panel serves another in `overlay_error`. They were two sentences
+    in two modules and had to be checked against each other; since v17e §2.8
+    the served one comes from `config.read_overlay` as well, because the
+    router no longer opens the file. Both still have to name the file and say
+    the word the user is looking for, so the check stays — and the old name's
+    claim, that the *endpoint* is where the served sentence surfaces, is
+    asserted here rather than implied by a name."""
     from gaffer.config import read_overlay
+    from gaffer.web.routers import settings
 
     base, overlay = tree
     overlay("[optimizer\nhorizon = 5")
     load_config(base)
     printed = capsys.readouterr().out
-    monkeypatch.chdir(tmp_path)
+    # Into the tree's own directory, because `read_overlay` and `_panel` read
+    # the *working directory's* pair while `load_config` resolves the overlay
+    # beside the path it was handed.
+    monkeypatch.chdir(base.parent)
     _, served = read_overlay()
     assert LOCAL_OVERLAY in printed and LOCAL_OVERLAY in served
     assert "ignored" in printed and "ignored" in served
+    assert settings._panel().overlay_error == served
 
 
 def test_every_splatted_section_is_read_by_key_or_exempt(tree, capsys):

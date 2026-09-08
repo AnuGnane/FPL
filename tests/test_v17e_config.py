@@ -291,7 +291,80 @@ def test_the_router_refuses_with_the_config_sentence(settings_client):
     assert resp.json()["detail"]["error"] == out_of_range("max_hits", 16, "optimizer")
 
 
+def test_one_settings_get_parses_each_file_at_most_once(settings_client, monkeypatch):
+    """The panel classifies fourteen rows, and ``value_source`` per row was
+    two file reads per row (v17e §2.8). Counted at ``_read_toml``, which is
+    every provenance read there is — ``load_config`` parses on its own path
+    and is one read either way — so a per-row reader put back shows up here
+    as twenty-eight."""
+    import gaffer.config as mod
+
+    original, calls = mod._read_toml, []
+
+    def counted(path):
+        calls.append(str(path))
+        return original(path)
+
+    monkeypatch.setattr(mod, "_read_toml", counted)
+    assert settings_client.get("/api/settings").status_code == 200
+    assert len(calls) <= 2, calls
+
+
 def test_the_settings_router_imports_no_toml_library():
+    """On the source, not the module attributes: a function-local
+    ``import tomllib`` binds nothing on the module and would pass an
+    ``hasattr`` check while opening the file all the same (v17e §2.8)."""
+    import inspect
+
     import gaffer.web.routers.settings as mod
 
-    assert not hasattr(mod, "tomllib") and not hasattr(mod, "tomli_w")
+    source = inspect.getsource(mod)
+    assert "tomllib" not in source and "tomli_w" not in source
+
+
+# --- §1.2(a) nothing outside config.py opens either file --------------------
+
+import ast
+import pathlib
+
+SRC = pathlib.Path(__file__).resolve().parents[1] / "src" / "gaffer"
+
+
+def _offences(path: pathlib.Path) -> list[str]:
+    """Code, not prose: the exact string literals ``"config.toml"`` and
+    ``"config.local.toml"`` outside a docstring, an import of ``tomli_w``,
+    and an import of ``tomllib`` under ``web/``. A sentence that mentions
+    the file ("Set fpl.entry_id in config.toml first.") is not an open."""
+    tree = ast.parse(path.read_text())
+    docstrings = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            if (node.body and isinstance(node.body[0], ast.Expr)
+                    and isinstance(node.body[0].value, ast.Constant)
+                    and isinstance(node.body[0].value.value, str)):
+                docstrings.add(id(node.body[0].value))
+    out = []
+    for node in ast.walk(tree):
+        if (isinstance(node, ast.Constant) and isinstance(node.value, str)
+                and id(node) not in docstrings
+                and node.value in ("config.toml", "config.local.toml")):
+            out.append(f"{node.lineno}: {node.value!r}")
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "tomli_w" or (alias.name == "tomllib" and "web" in path.parts):
+                    out.append(f"{node.lineno}: import {alias.name}")
+        if isinstance(node, ast.ImportFrom) and node.module in ("tomli_w", "tomllib"):
+            if node.module == "tomli_w" or "web" in path.parts:
+                out.append(f"{node.lineno}: from {node.module}")
+    return out
+
+
+def test_no_module_but_config_opens_either_toml_file():
+    offenders = {}
+    for path in sorted(SRC.rglob("*.py")):
+        if path.name == "config.py" and path.parent == SRC:
+            continue
+        found = _offences(path)
+        if found:
+            offenders[str(path.relative_to(SRC))] = found
+    assert offenders == {}

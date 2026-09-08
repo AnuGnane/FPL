@@ -1,12 +1,13 @@
-"""GET/POST ``/api/settings`` — the thirteen settings the UI may edit.
+"""GET/POST ``/api/settings`` — the fourteen settings the UI may edit.
 
 Writes ``config.local.toml`` and **never** ``config.toml`` (spec §8: a UI that
 edits ``config.toml`` is out of scope, and that file carries the odds API key).
 It does not open either file itself: the overlay is read and written through
 ``config.read_overlay`` / ``config.write_overlay`` and a row's provenance comes
-from ``config.value_source``, because since v17e §2.8 no module but
-``config.py`` opens either file — a second reader is a second answer to which
-value is in force. What is left here is validation and the wire shapes.
+from one ``config.overlay_and_base`` per panel, because since v17e §2.8 no
+module but ``config.py`` opens either file — a second reader is a second answer
+to which value is in force. What is left here is validation and the wire
+shapes.
 
 The overlay is merged over the base by ``config.load_config``, which since
 v17e §2.1 is the only reader there is: every key the tab writes is a
@@ -27,8 +28,9 @@ import math
 
 from fastapi import APIRouter, HTTPException
 
-from gaffer.config import (base_exists, invalidate, load_config, out_of_range,
-                           read_overlay, value_source, write_overlay)
+from gaffer.config import (_source_of, base_exists, invalidate, load_config,
+                           out_of_range, overlay_and_base, read_overlay,
+                           write_overlay)
 from gaffer.web.schemas import (SettingOption, SettingRow, SettingsPanel,
                                 SettingWrite)
 from gaffer.web.settings_keys import (BY_FIELD, WHITELIST, current_value,
@@ -77,11 +79,12 @@ def _options(entry, value) -> list[SettingOption]:
 
 
 def _panel() -> SettingsPanel:
-    # The base file's parse error is deliberately dropped: if config.toml will
-    # not parse, `load_config` below raises and the early return names it in
-    # its own words. Keeping a second copy here only to `or` it into a branch
-    # that cannot be reached would be a line that looks like a fallback and is
-    # not one.
+    # `overlay_and_base` drops the base file's parse error, and this is the
+    # caller that wanted it dropped: if config.toml will not parse,
+    # `load_config` below raises and its early return names it in the
+    # router's own words. A second copy of that error here, `or`-ed into a
+    # branch that cannot be reached, would look like a fallback and not be
+    # one.
     if not base_exists():
         return SettingsPanel(
             rows=[], unavailable=[e.field for e in WHITELIST],
@@ -95,7 +98,10 @@ def _panel() -> SettingsPanel:
         return SettingsPanel(rows=[], unavailable=[e.field for e in WHITELIST],
                              overlay_error=f"config.toml unreadable ({exc})",
                              apply_note=APPLY_NOTE)
-    _, local_err = read_overlay()
+    # One read of the pair for the whole panel (v17e §2.8): `value_source`
+    # per row was two file reads per row, fourteen rows deep, on a GET the
+    # tab issues on every mount.
+    local, base, local_err = overlay_and_base()
     live = set(live_keys(cfg))
     rows = []
     for entry in WHITELIST:
@@ -109,7 +115,7 @@ def _panel() -> SettingsPanel:
             value=value, lo=entry.lo, hi=entry.hi,
             choices=list(entry.choices), options=_options(entry, value),
             section=entry.section, help=entry.help,
-            source=value_source(entry.section, entry.toml_key)))
+            source=_source_of(local, base, entry.section, entry.toml_key)))
     return SettingsPanel(
         rows=rows,
         unavailable=[e.field for e in WHITELIST if e.field not in live],

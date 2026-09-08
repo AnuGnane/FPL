@@ -226,7 +226,7 @@ def save_solve_state(state: SolveState) -> tuple[Path, Path]:
     try:
         save_projection_snapshot(
             state.pool, state.gw, state.generated_at,
-            str(getattr(config_in_force(), "current_season", "") or ""))
+            str(config_in_force().current_season or ""))
     except Exception as exc:  # noqa: BLE001 — a snapshot is never worth a run
         print(f"projections: no snapshot kept for GW{state.gw} ({exc})")
     return parquet, meta

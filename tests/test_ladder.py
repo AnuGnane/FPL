@@ -8,6 +8,7 @@ import pandas as pd
 import pytest
 
 from gaffer.artifacts import SolveState, pool_rows, save_solve_state
+from tests.conftest import patch_view
 
 OWNED = [1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 16, 17, 18]
 
@@ -41,20 +42,6 @@ def save_state(opt_extra=None, star=9.0, second=7.0, gws=(1, 2)):
              "horizon": len(gws), **(opt_extra or {})},
         pool=pool_rows(frame, players, OWNED, ep_by, list(gws))))
     return ep_by
-
-
-def _patch_view(monkeypatch, reader):
-    """Stand in for the one config read (v17e §2.2) with a *cached* reader.
-
-    The real ``config_in_force`` is an ``lru_cache``, and ``invalidate()``
-    clears it through this same module attribute, so a bare lambda here would
-    break the next ``invalidate()`` — the fixtures' teardown included."""
-    from functools import lru_cache
-
-    from gaffer import config
-
-    monkeypatch.setattr(config, "config_in_force",
-                        lru_cache(maxsize=1)(reader))
 
 
 @pytest.fixture()
@@ -207,7 +194,7 @@ def test_a_cap_on_a_collapsed_rung_resolves_to_the_row_with_the_numbers(
 
     monkeypatch.chdir(tmp_path)
     save_state({"max_hits": 3, "max_transfers": 15})
-    _patch_view(monkeypatch,
+    patch_view(monkeypatch,
                 lambda: SimpleNamespace(max_hits=3, max_transfers=15))
     out = build_ladder(1, n_draws=10, seed=1)
     assert out["cap_rung_requested"] == "hits3"
@@ -223,7 +210,7 @@ def test_a_transfer_cap_with_no_rung_of_its_own_gets_a_note(tmp_path,
 
     monkeypatch.chdir(tmp_path)
     save_state({"max_hits": 2, "max_transfers": 2})
-    _patch_view(monkeypatch,
+    patch_view(monkeypatch,
                 lambda: SimpleNamespace(max_hits=2, max_transfers=2))
     out = build_ladder(1, n_draws=10, seed=1)
     assert out["cap_note"] == ("a transfer cap of 2 has no rung of its own; "
@@ -236,11 +223,11 @@ def test_a_bank_cap_and_an_uncapped_state_pick_their_rungs(tmp_path,
 
     monkeypatch.chdir(tmp_path)
     save_state({"max_hits": 15, "max_transfers": 0})
-    _patch_view(monkeypatch,
+    patch_view(monkeypatch,
                 lambda: SimpleNamespace(max_hits=15, max_transfers=0))
     assert build_ladder(1, n_draws=10, seed=1)["cap_rung"] == "bank"
     save_state({})
-    _patch_view(monkeypatch,
+    patch_view(monkeypatch,
                 lambda: SimpleNamespace(max_hits=15, max_transfers=15))
     out = build_ladder(1, n_draws=10, seed=1)
     assert out["cap"] == {"max_hits": None, "max_transfers": None}
@@ -310,7 +297,7 @@ def test_a_rung_that_will_not_solve_is_dropped_with_a_note(board, monkeypatch):
 def test_the_default_seed_is_the_offset_arithmetic(board, monkeypatch):
     from gaffer import ladder
 
-    _patch_view(monkeypatch,
+    patch_view(monkeypatch,
                 lambda: SimpleNamespace(scenarios_seed=7))
     out = ladder.build_ladder(1, n_draws=5)
     assert out["seed"] == 7 + ladder.SEED_OFFSET + 1
@@ -448,7 +435,7 @@ def test_the_cap_comes_from_the_live_config_not_the_saved_state(board,
     config says one, and the payload says one."""
     from gaffer import ladder
 
-    _patch_view(monkeypatch, lambda: _cfg(max_hits=1))
+    patch_view(monkeypatch, lambda: _cfg(max_hits=1))
     out = ladder.build_ladder(1, n_draws=10, seed=1)
     assert out["cap"] == {"max_hits": 1, "max_transfers": None}
     assert out["cap_source"] == "config"
@@ -462,7 +449,7 @@ def test_an_unreadable_config_falls_back_to_the_states_caps(board,
     def boom():
         raise RuntimeError("no config here")
 
-    _patch_view(monkeypatch, boom)
+    patch_view(monkeypatch, boom)
     out = ladder.build_ladder(1, n_draws=10, seed=1)
     assert out["cap"] == {"max_hits": 2, "max_transfers": None}
     assert out["cap_source"] == "state"
@@ -474,7 +461,7 @@ def test_a_cap_naming_a_dropped_rung_falls_back_to_the_one_below(board,
     the highlight drops to the highest rung at or below it that is there."""
     from gaffer import ladder
 
-    _patch_view(monkeypatch, lambda: _cfg(max_hits=2))
+    patch_view(monkeypatch, lambda: _cfg(max_hits=2))
     real = ladder.solve_plan
 
     def flaky(pool, solve_state, **kw):
@@ -493,7 +480,7 @@ def test_a_dropped_bank_rung_blanks_p_beats_bank_instead_of_crashing(
         board, monkeypatch):
     from gaffer import ladder
 
-    _patch_view(monkeypatch, lambda: _cfg())
+    patch_view(monkeypatch, lambda: _cfg())
     real = ladder.solve_plan
 
     def flaky(pool, solve_state, **kw):

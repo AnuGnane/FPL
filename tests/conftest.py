@@ -7,6 +7,8 @@ test makes that impossible to write by accident.
 """
 from __future__ import annotations
 
+import functools
+
 import pytest
 
 import gaffer.config
@@ -17,3 +19,14 @@ def _config_cache_is_never_shared_between_tests():
     gaffer.config.invalidate()
     yield
     gaffer.config.invalidate()
+
+
+def patch_view(monkeypatch, reader, module=None):
+    """Stand in for the one config read (v17e §2.2). Wrapped in
+    ``lru_cache`` because ``invalidate()`` clears through the attribute it
+    replaces, and a fixture's teardown runs before monkeypatch's undo.
+    Patched on ``module`` when the caller bound the name at import
+    (``gaffer.price_timing``, ``gaffer.models.train``) and on
+    ``gaffer.config`` when it imports lazily (``gaffer.ladder``)."""
+    monkeypatch.setattr(module or gaffer.config, "config_in_force",
+                        functools.lru_cache(maxsize=1)(reader))

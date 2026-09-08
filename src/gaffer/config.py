@@ -335,22 +335,46 @@ def _table(raw: dict, section: str) -> dict:
     return value if isinstance(value, dict) else {}
 
 
+def overlay_and_base() -> tuple[dict, dict, str | None]:
+    """Both files of the working directory's pair, parsed once:
+    ``(local, base, local_error)`` (v17e §2.8).
+
+    One read for a caller that classifies many keys — the settings panel
+    asks about fourteen — where :func:`value_source` per row was two file
+    reads per row. The base file's parse error is dropped: a
+    ``config.toml`` that will not parse is :func:`load_config`'s refusal to
+    make, in its own words, and a second copy of it here would be a
+    fallback nobody reaches."""
+    local, local_err = read_overlay()
+    base, _ = _read_toml(Path(BASE_FILE))
+    return local, base, local_err
+
+
+def _source_of(local: dict, base: dict, section: str, key: str) -> str:
+    """:func:`value_source` over an already-parsed pair.
+
+    Underscored because it is the rule, not the question: the question is
+    :func:`value_source`. The settings panel is the one caller outside this
+    module, and it holds the pair from :func:`overlay_and_base` so that its
+    fourteen rows are classified without fourteen pairs of file reads."""
+    if key in _table(local, section):
+        return "local"
+    if key in _table(base, section):
+        return "base"
+    return "default"
+
+
 def value_source(section: str, key: str) -> str:
     """Which file the in-force value of ``[section] key`` comes from:
     ``"local"`` (the overlay), ``"base"`` (``config.toml``) or
     ``"default"`` (the dataclass). Three different facts: only a local
     value can be reset (v17e §2.8).
 
-    The working directory's pair, which is what a serving process reads;
-    ``load_config(path)`` is the other question, and resolves the overlay
-    beside ``path``."""
-    local, _ = read_overlay()
-    if key in _table(local, section):
-        return "local"
-    base, _ = _read_toml(Path(BASE_FILE))
-    if key in _table(base, section):
-        return "base"
-    return "default"
+    Over the same pair :func:`base_exists` reads. One key, so one read of
+    each file; a caller with many keys asks :func:`overlay_and_base` once
+    and classifies through :func:`_source_of`."""
+    local, base, _ = overlay_and_base()
+    return _source_of(local, base, section, key)
 
 
 SPLATTED_SECTIONS = ("optimizer", "data")

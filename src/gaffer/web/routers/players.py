@@ -281,8 +281,9 @@ def players(position: str | None = None, team: int | None = None,
     # and it is exactly the seam that reader exists for — cached, so the
     # explorer does not re-read a TOML file per request, and never raising, so
     # a clone with no config.toml still renders. The cost is that a
-    # `current_season` edit needs a restart to reach this page, which is the
-    # documented trade and is what `/api/health`'s uncached read is for.
+    # `current_season` edit reaches this page only after an `invalidate()`,
+    # which the health poll and a settings save both call (v17e §2.2) — so a
+    # hand edit lands as soon as the user opens a page that polls health.
     #
     # v12 W2 §3.3: the season is a local rather than an inline read, because
     # two calls now need it and two inline reads are two answers that can

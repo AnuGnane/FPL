@@ -17,6 +17,7 @@ import pytest
 from gaffer import price_timing
 from gaffer.optimize import milp
 from gaffer.snapshot import snap_date
+from tests.conftest import patch_view
 
 # The reader drops a log whose newest day is not today, so the fixtures are
 # stamped relative to the clock rather than with a literal date that would
@@ -39,9 +40,9 @@ def _switch(monkeypatch, on: bool):
     module's own view, patched at the name it calls."""
     from gaffer.config import Config
 
-    monkeypatch.setattr(price_timing, "config_in_force",
-                        lambda: Config(entry_id=1, league_id=2,
-                                       price_timing=on))
+    patch_view(monkeypatch,
+               lambda: Config(entry_id=1, league_id=2, price_timing=on),
+               price_timing)
 
 
 def test_a_falling_owned_player_gets_his_predictor_reading_as_a_probability():

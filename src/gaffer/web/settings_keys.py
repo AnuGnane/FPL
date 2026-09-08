@@ -1,4 +1,4 @@
-"""The eleven settings the UI may edit (v12 W5 §6.2; v13 added the two caps).
+"""The fourteen settings the UI may edit (v12 W5 §6.2; v13 added the two caps).
 
 A whitelist, not a schema dump. Everything in ``Config`` that is not here is
 untouchable from the web: the odds API key above all, and the web token beside
@@ -95,6 +95,14 @@ class SettingKey:
         return None if bounds is None else bounds[1]
 
 
+def _pct(value: int | float) -> str:
+    """The hit bar's word for a value, named once (v17e §2.5): the select's
+    option labels and the label the server invents for a hand-edited value
+    have to agree, and two copies of one f-string is how they stop
+    agreeing."""
+    return f"{round(value * 100)}%"
+
+
 WHITELIST: tuple[SettingKey, ...] = (
     SettingKey("horizon", "optimizer", "horizon", "Horizon (gameweeks)",
                "int",
@@ -160,10 +168,10 @@ WHITELIST: tuple[SettingKey, ...] = (
                "rung below before the advice steps up to it. 0.60 is three "
                "draws in five. The transfer ladder on the This Week hub "
                "edits it too.",
-               options=tuple((bar, f"{round(bar * 100)}%") for bar in
+               options=tuple((bar, _pct(bar)) for bar in
                              (0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.9,
                               0.95)),
-               label_for=lambda value: f"{round(value * 100)}%"),
+               label_for=_pct),
     # v15 §4.2 (specs/2026-09-06-gaffer-v15-leagues-design.md), plan R7.
     # The focus league. Written as [league] focus and read back through a
     # reader as the *effective* Config.league_id, which the loader resolves

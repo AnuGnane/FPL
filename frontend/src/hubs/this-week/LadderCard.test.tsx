@@ -222,9 +222,11 @@ describe('LadderCard', () => {
     expect(onLoaded).toHaveBeenCalled()
     // The rebuild reloads the rows too, so the selects show what the server
     // now holds rather than what was posted.
+    // Exactly two: the mount's fetch and the finished rebuild's. A third
+    // would be a re-fetch loop, which `>= 2` would not have caught.
     await waitFor(() => expect(apiGet.mock.calls.filter(
       (call) => call[0] === '/api/settings').length)
-      .toBeGreaterThanOrEqual(2), { timeout: 4000 })
+      .toBe(2), { timeout: 4000 })
   })
 
   it('renders the three selects from the settings rows the server sends',
@@ -244,14 +246,48 @@ describe('LadderCard', () => {
 
   it('shows no selects until the settings rows arrive, and says so when they never do',
     async () => {
+      // The ladder answers *after* the settings fetch rejects, which is the
+      // ordering that used to eat the failure: `load`'s success path clears
+      // the shared error slot. The rows have their own slot now (v17e §2.6),
+      // so the table and the reason are both on screen.
       apiGet.mockImplementation(async (path: string) => {
-        if (path === '/api/ladder') return PAYLOAD
+        if (path === '/api/ladder') {
+          await new Promise((r) => setTimeout(r, 10))
+          return PAYLOAD
+        }
         throw new Error('settings down')
       })
       mount()
-      await screen.findByText('1 hit')
-      expect(screen.queryByLabelText('Hit bar')).toBeNull()
       expect(await screen.findByText(/settings down/)).toBeInTheDocument()
+      expect(await screen.findByText('1 hit')).toBeInTheDocument()
+      expect(screen.queryByLabelText('Hit bar')).toBeNull()
+      expect(screen.getByText(/settings down/)).toBeInTheDocument()
+    })
+
+  it('says why there are no selects when the panel has an overlay error',
+    async () => {
+      // The endpoint answers 200 with no rows and the reason in
+      // `overlay_error` when config.toml is missing or unreadable; reading
+      // `rows` alone would show an empty row of controls and no reason
+      // (v17e §2.6).
+      apiGet.mockImplementation(async (path: string) => {
+        if (path === '/api/ladder') return PAYLOAD
+        if (path === '/api/settings') {
+          return {
+            rows: [], unavailable: [],
+            overlay_error:
+              'no config.toml — copy config.example.toml to config.toml',
+            apply_note: '',
+          }
+        }
+        throw new Error(`unexpected GET ${path}`)
+      })
+      mount()
+      expect(await screen.findByText(
+        /no config.toml — copy config.example.toml to config.toml/))
+        .toBeInTheDocument()
+      expect(screen.queryByLabelText('Hit bar')).toBeNull()
+      expect(screen.queryByLabelText('Max hits per week')).toBeNull()
     })
 
   it('offers a rebuild when nothing is banked yet', async () => {

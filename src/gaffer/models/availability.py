@@ -107,10 +107,16 @@ def apply_availability(pred: pd.DataFrame, avail: pd.DataFrame,
     land on both — which is the honest reading, since a pinned player shows
     the same number on both sides and so contributes no *news* effect at all.
     """
+    # One read of the config in force for the whole pass (v17e §2.2): three
+    # fields were three lazy imports and three calls, which is three chances
+    # for a mid-pass ``invalidate()`` to hand one half of this function a
+    # different config from the other.
+    from gaffer.config import config_in_force
+    cfg = config_in_force()
+
     curves = curves if curves is not None else load_injury_curves()
     if overrides is None:
-        from gaffer.config import config_in_force
-        overrides = config_in_force().news_overrides
+        overrides = cfg.news_overrides
     if overrides:
         from gaffer.overrides import attach_overrides
         avail = attach_overrides(avail)
@@ -137,8 +143,7 @@ def apply_availability(pred: pd.DataFrame, avail: pd.DataFrame,
     if "p_start_hint" in out.columns:
         out = _gate_first_gw(out)
         if start_floor is None:
-            from gaffer.config import config_in_force
-            start_floor = config_in_force().news_lineup_start_floor
+            start_floor = cfg.news_lineup_start_floor
         out = _floor_first_gw(out, float(start_floor))
     if "absence_damp" in out.columns:
         out = _damp_first_gw(out)
@@ -146,8 +151,6 @@ def apply_availability(pred: pd.DataFrame, avail: pd.DataFrame,
         # Shadow first, always: the log records what serving *would* do
         # before anything is done, so the flag's evidence accrues from the
         # first run whether or not it is ever flipped (spec §5).
-        from gaffer.config import config_in_force
-        cfg = config_in_force()
         if "gw" in out.columns and len(out):
             try:
                 write_presser(out[out["gw"] == out["gw"].min()],

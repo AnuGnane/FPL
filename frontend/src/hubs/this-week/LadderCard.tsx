@@ -188,6 +188,11 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
   const [failed, setFailed] = useState<string | null>(null)
   const [open, setOpen] = useState<string | null>(null)
   const [rows, setRows] = useState<SettingRow[] | null>(null)
+  // The rows' own error slot (v17e §2.6). `load`'s success path clears
+  // `failed`, so a shared slot loses the settings failure whenever the
+  // ladder resolves second — which is the ordering that happens whenever
+  // /api/settings is the faster of the two to fail.
+  const [rowsFailed, setRowsFailed] = useState<string | null>(null)
   const job = useJob('ladder')
 
   const load = useCallback(() => {
@@ -206,9 +211,19 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
   // the ladder is the card, the selects are only its controls.
   const loadRows = useCallback(() => {
     apiGet<SettingsPanel>('/api/settings')
-      .then((panel) => setRows(panel.rows.filter(
-        (r) => (SETTING_KEYS as readonly string[]).includes(r.key))))
-      .catch((e) => { setFailed(errorText(e)); setRows(null) })
+      .then((panel) => {
+        // A 200 with no rows is the panel's way of saying config.toml is
+        // missing or unreadable, and the reason is in `overlay_error` (v17e
+        // §2.6): read from `rows` alone the card would show no selects and
+        // no reason at all.
+        setRowsFailed(panel.overlay_error)
+        // Selected and ordered by SETTING_KEYS, so a reordered whitelist
+        // cannot reorder the card's controls.
+        setRows(SETTING_KEYS
+          .map((key) => panel.rows.find((r) => r.key === key))
+          .filter((r): r is SettingRow => r !== undefined))
+      })
+      .catch((e) => { setRowsFailed(errorText(e)); setRows(null) })
   }, [])
   useEffect(() => { loadRows() }, [loadRows])
 
@@ -287,6 +302,9 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
         ))}
       </div>
       {failed && <Callout tone="error" className="mb-3">{failed}</Callout>}
+      {rowsFailed && (
+        <Callout tone="error" className="mb-3">{rowsFailed}</Callout>
+      )}
       {job.status === 'error' && (
         <Callout tone="error" className="mb-3">{job.error}</Callout>
       )}

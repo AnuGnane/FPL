@@ -576,9 +576,11 @@ def attacking_features() -> list[str]:
     ``config.toml`` said when the process started — which is v9c's
     disconnected-lever lesson from the other direction. Since v17e §2.1 the
     read is the one cached view, so a flag edited under a running process
-    reaches the next fit after ``invalidate()`` rather than on the next call;
-    a train run is minutes long and started from a cold process, so the trade
-    the cache makes costs this caller nothing.
+    reaches the next fit after ``invalidate()`` rather than on the next call.
+    "Started from a cold process" is not the whole story —
+    ``calibrate_noise.py`` calls this inside the long-lived ``gaffer ui`` —
+    so what makes the trade safe there is that a settings save calls
+    ``invalidate()`` before the job that reads the flag is queued.
     """
     return list(ATTACK_FEATURES) + (list(XG_PER_SHOT_FEATURES)
                                     if config_in_force().xg_per_shot else [])

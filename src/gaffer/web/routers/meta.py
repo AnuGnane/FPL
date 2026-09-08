@@ -297,7 +297,7 @@ def health() -> Health:
     # what this install is doing. `config_in_force` never raises, so the try
     # is belt and braces for an unforeseeable read.
     try:
-        # `cache_clear` first, for the reason the season banner reads
+        # `invalidate()` first, for the reason the season banner reads
         # `load_config` rather than `config_in_force`: this is the page a user
         # opens *after* editing `[optimizer] top_n`, and a cached reader would
         # keep showing the old pool sizes until the process restarted. One

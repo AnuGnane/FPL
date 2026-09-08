@@ -17,6 +17,7 @@ import pytest
 
 from gaffer.artifacts import (POOL_COLS, SolveState, latest_projection_before,
                               projection_snapshots, save_solve_state)
+from tests.conftest import patch_view
 
 
 def _pool(codes=(100, 200), gws=(5, 6)) -> pd.DataFrame:
@@ -38,8 +39,8 @@ def _state(gw=5, at="2026-09-01T09:00:00+00:00", pool=None) -> SolveState:
 @pytest.fixture(autouse=True)
 def here(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr("gaffer.config.config_in_force",
-                        lambda: type("C", (), {"current_season": "2026-27"})())
+    patch_view(monkeypatch,
+               lambda: type("C", (), {"current_season": "2026-27"})())
     return tmp_path
 
 
@@ -77,8 +78,8 @@ def test_another_season_is_not_this_seasons(here, monkeypatch):
     """Element ids remap every season and codes do not, but a directory
     selected by a glob is exactly the shape of that mistake."""
     save_solve_state(_state())
-    monkeypatch.setattr("gaffer.config.config_in_force",
-                        lambda: type("C", (), {"current_season": "2027-28"})())
+    patch_view(monkeypatch,
+               lambda: type("C", (), {"current_season": "2027-28"})())
     save_solve_state(_state())
     assert len(projection_snapshots("2026-27", 5)) == 1
     assert len(projection_snapshots("2027-28", 5)) == 1

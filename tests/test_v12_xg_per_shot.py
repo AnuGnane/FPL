@@ -20,6 +20,7 @@ import pandas as pd
 from gaffer.features.engineer import (US_WINDOWS, XG_PER_SHOT_FEATURES,
                                       add_xg_per_shot,
                                       build_prediction_frame, feature_columns)
+from tests.conftest import patch_view
 
 
 def _frame(npxg, shots):
@@ -123,9 +124,8 @@ def _switch(monkeypatch, on: bool):
     from gaffer.config import Config
     from gaffer.models import train as tr
 
-    monkeypatch.setattr(tr, "config_in_force",
-                        lambda: Config(entry_id=1, league_id=2,
-                                       xg_per_shot=on))
+    patch_view(monkeypatch,
+               lambda: Config(entry_id=1, league_id=2, xg_per_shot=on), tr)
 
 
 def test_every_attacking_feature_exists_on_the_prediction_frame(monkeypatch):

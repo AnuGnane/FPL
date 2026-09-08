@@ -284,7 +284,14 @@ def test_the_header_config_is_golden_config():
     (v17e §2.7 added three) is not in the header, and the fixture is never
     rewritten by a refactor. The added fields must hold what the recorded
     config.toml implies — price_timing = true is written, the other two are
-    absent and so default."""
+    absent and so default.
+
+    The comparison is two-sided even though it is written over the header's
+    keys: a field that is removed or renamed leaves the header carrying a key
+    the golden config lacks, and the dict equality fails on it. The added
+    fields are checked only where they are still added, so the next
+    legitimate `--record` — after which the header carries all of them and
+    `added` is empty — does not have to edit this test."""
     header = _header()
     if header is None:
         pytest.skip("golden board not recorded yet")
@@ -292,8 +299,9 @@ def test_the_header_config_is_golden_config():
     assert {k: v for k, v in golden.items()
             if k in header["config"]} == header["config"]
     added = {k: v for k, v in golden.items() if k not in header["config"]}
-    assert added == {"price_timing": True, "xg_per_shot": False,
-                     "news_lineup_providers": ["ffs", "rotowire"]}
+    defaults = {"price_timing": True, "xg_per_shot": False,
+                "news_lineup_providers": ["ffs", "rotowire"]}
+    assert added == {k: v for k, v in defaults.items() if k in added}
     assert header["config"]["odds_api_key"] == ""
 
 

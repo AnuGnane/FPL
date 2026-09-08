@@ -125,7 +125,7 @@ def owned_price_falls(owned: list[int] | None) -> dict[int, float]:
     23:50 would still be served at 00:10, charging a fall that had by then
     already resolved. Anything that rewrites the price log (or
     ``config.toml``) under a running process calls
-    ``owned_price_falls.cache_clear()``; the health poll already does. The
+    ``owned_price_falls.cache_clear()``. The
     returned dict is a fresh copy per call so a caller that mutates it cannot
     poison the cache.
 
