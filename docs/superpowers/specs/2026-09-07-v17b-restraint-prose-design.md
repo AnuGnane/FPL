@@ -118,7 +118,11 @@ The `objective` block gains `line`: `the objective wanted: {buys} in;
   steps: [{line, taken}]}`, `hit_points: hits × cost` with the same fallback
   as the CLI, and `objective.line` beside `objective.agrees`. `rung_label` is
   no longer imported. The prompt's step sentence reads "every step's line,
-  taken or refused". `BRIEF_PROMPT_VERSION = 3`.
+  taken or refused". `BRIEF_PROMPT_VERSION = 3`. The brief reads the
+  advice through `ladder.narrated(advice)`, which backfills `label`, `line`
+  and the steps' `line` on a block banked before this cycle (the advice
+  file's counterpart of `load_ladder`'s backfill; added at the Task 4
+  review) and never invents a `hit_cost`.
 - **MovesCard**: renders `restraint.line` when present (any `line`, not
   only when `chosen` is set), `objective.line` when `agrees` is false, and
   the hits line as `{hits} hit(s): −{hits × hit_cost} pts` only when
@@ -141,7 +145,8 @@ line names (the first). A reader of any surface needs none of them.
 
 `ladder.py` keeps, private: `_rung_label`, `_step_line`, `_restraint_line`,
 `_objective_line`. `served_note` stays public with its one caller (the
-route) and reads `_rung_label`. The brief's `_pct` stays for the sims and
+route) and reads `_rung_label`; `narrated` is public with one caller (the
+brief). The brief's `_pct` stays for the sims and
 bar shares; its step projection goes.
 
 Adapters of the block: the CLI, the brief, MovesCard — three readers of one

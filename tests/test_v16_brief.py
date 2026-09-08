@@ -183,6 +183,29 @@ def test_build_facts_has_the_spec_shape_and_rounding(artifacts_on_disk):
     assert facts["last_week"] is None and facts["chip"] is None
 
 
+def test_a_v16_advice_on_disk_is_narrated_before_the_facts_are_built(artifacts_on_disk):
+    """The advice banked by v16 carries the walk but none of its prose; the
+    facts read it through ``ladder.narrated`` and lose nothing (v17b §3.3)."""
+    path = artifacts.REPORTS / "gw4-advice.json"
+    adv = json.loads(path.read_text())
+    for key in ("label", "line", "hit_cost"):
+        adv["restraint"].pop(key)
+    for step in adv["restraint"]["steps"]:
+        step.pop("line")
+    adv["objective"].pop("line")
+    path.write_text(json.dumps(adv))
+    facts = build_facts(4)
+    assert facts["restraint"]["chosen_label"] == "free transfers only"
+    assert facts["restraint"]["line"] == ("restraint: free transfers only; the step to 1 hit "
+                                          "was refused, 46% — Rice is 0% to play")
+    assert [s["line"] for s in facts["restraint"]["steps"]] == [
+        "bank → free transfers only: taken, 79% — expected points alone",
+        "free transfers only → 1 hit: refused, 46% — Rice is 0% to play"]
+    assert facts["objective"]["line"] == ("the objective wanted: Gibbs-White, Isak in; "
+                                          "B.Fernandes, Rice out; 1 hit")
+    assert facts["hit_points"] == 0
+
+
 def test_hit_points_read_the_served_cost_and_fall_back_to_the_config_default(artifacts_on_disk):
     from gaffer.config import Config
     path = artifacts.REPORTS / "gw4-advice.json"

@@ -436,6 +436,23 @@ def load_ladder(gw: int) -> dict | None:
         return None
 
 
+def narrated(advice: dict) -> dict:
+    """The advice's ``restraint`` and ``objective`` blocks with their prose,
+    backfilled when the advice was banked before v17b wrote it (§3.3): a
+    reader of the file on disk — the brief — never composes a sentence, and
+    an advice written by this cycle is served as written. ``hit_cost`` is
+    not invented; its readers fall back to the config's default."""
+    restraint = advice.get("restraint")
+    if isinstance(restraint, dict) and restraint.get("chosen") is not None:
+        restraint.setdefault("label", _rung_label(str(restraint["chosen"])))
+        restraint["steps"] = _lined(restraint.get("steps"))
+        restraint.setdefault("line", _restraint_line(restraint))
+    objective = advice.get("objective")
+    if isinstance(objective, dict):
+        objective.setdefault("line", _objective_line(objective))
+    return advice
+
+
 def _labelled(payload: dict) -> dict:
     """A ladder banked before v17b carries no ``label`` or ``line``; the
     route and the brief read through here, so they never see one (§3.1)."""

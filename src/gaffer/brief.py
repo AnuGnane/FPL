@@ -34,7 +34,7 @@ from gaffer.artifacts import latest_gw, load_advice, load_solve_state
 from gaffer.data.news.classifier import LLM_CACHE
 from gaffer.io import atomic_write
 from gaffer.config import Config
-from gaffer.ladder import CHIP_LABEL, load_ladder
+from gaffer.ladder import CHIP_LABEL, load_ladder, narrated
 
 BRIEF_PROMPT_VERSION = 3
 """Bumped whenever :func:`build_prompt` changes; salts the cache key."""
@@ -138,7 +138,9 @@ def _last_week(gw: int) -> dict | None:
 
 def build_facts(gw: int) -> dict:
     """Everything the prose may say, rounded as the UI rounds (§6.2)."""
-    advice = load_advice(gw)
+    # v17b §3.3: the blocks carry their prose; an advice banked before this
+    # cycle gets it here, from the one author, never composed in the brief.
+    advice = narrated(load_advice(gw))
     ladder = load_ladder(gw) or {}
     gains = move_gains(gw)
     freq = {(str(r.get("kind")), int(r.get("code"))): float(r.get("frequency"))
@@ -185,8 +187,8 @@ def build_facts(gw: int) -> dict:
     # banked before the block carried one; never a literal.
     cost = restraint.get("hit_cost")
     hit_points = hits * int(cost if cost is not None else Config.hit_cost)
-    # A v16 advice has ``chosen`` but no ``label``; the key stands in.
-    chosen_label = restraint.get("label") or restraint.get("chosen") or "bank"
+    # ``narrated`` labelled any block with a chosen rung; none chosen is bank.
+    chosen_label = restraint.get("label") or "bank"
     return {
         "gw": int(gw), "horizon": [int(g) for g in ladder.get("gws") or [int(gw)]],
         "expected_pts": (None if advice.get("expected_pts") is None
