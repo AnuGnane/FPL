@@ -324,4 +324,53 @@ the initial-squad mode or for a chip-played week.
 
 ## 10. Outcome
 
-_(filled by the orchestrator after the gate)_
+**Gate: pass, first full run.** Recorded 2026-09-08 09:29 UTC at branch
+commit `bd5f9b2`, GW4 (deadline 2026-09-12 12:30 UTC), with
+`python -m tests.golden_client --record`. The starting knobs were kept:
+`max_hits = 2`, `max_transfers = 15` (no cap), `hit_bar = 0.60`,
+`horizon = 6`. Nothing was moved.
+
+| Item | Rule | Result |
+|---|---|---|
+| 1 twice green, same bytes | two consecutive `pytest -q tests/test_golden_board.py` | 28 passed / 28 passed, 62.1 s and 61.1 s, no skip |
+| 2 the lever was exercised | every floor met, run's counts == header's | taken 2, refused 1, objective hits 2, chip rows 12, λ 0.0958, bench 4, vice yes, plan weeks 6 |
+| 3 skip rule both ways | unit tests over `stale_inputs` | pass (changed digest, deleted file, optional input appearing) |
+| 4 size | `du -sk` < 5120 | 960 KB (bundle 543 KB, 759 responses; Core Insights 388 KB; expected 24 KB) |
+| 5 security | key grep, no `[odds]`, header key empty | grep prints nothing; 0 odds tables; `odds_api_key == ""` |
+
+The board the golden carries: the walk went bank → free transfers only →
+1 hit (shares 0.97 and 0.65) and refused 2 hits at 0.53; the objective's
+plan took 2 hits, the served plan 1; buys Palmer and Evanilson for Isak and
+Cherki; captain Groß, vice Palmer; a Bench Boost row passes θ in every
+week of the horizon (that is the shipped chip table's behaviour, recorded
+as is, not a finding of this cycle); league λ from the live mini-league.
+The expected advice contains no `generated_at` and no absolute path, so
+`strip_volatile`'s rewrite is a safety net that did no work (the Task 3
+review verified nothing on the advise path writes a path into a payload).
+
+Runtime of one golden run 56 s inside the harness, 62 s as a pytest file
+(the SHA-256 of 17 MB of inputs and collection are the difference). The
+default suite therefore grows by about a minute; `-m "not golden"`
+deselects it.
+
+Header `inputs`: 23 entries — 15 files under `models/`, 6 under
+`data/history/`, and the two optional TOMLs recorded `"absent"`. A retrain
+or a re-ingest skips the module with the first differing file named and
+the re-record command in the reason.
+
+Process notes for the tracker: the Task 1 review found `gzip.open` takes
+no `mtime` (the bundle is written through `GzipFile` with an empty
+filename); the Task 2 review found `[optimizer] price_timing`, a
+module-level reader outside `Config`, and the golden now writes it
+explicitly; the Task 3 review traced every `store.save` and confirmed the
+advise path never writes under `data/history/` or `models/`, which the
+third golden test now re-checks after every run; the recorder keeps
+`refresh_live`'s politeness sleep and only the replay silences it.
+
+Also required, not part of the verdict: full Python suite 4316 passed at
+the gate commit and **4317 passed** at the branch tip after the Task 4
+review fixes (`1eef740`: `write_expected` replays its own golden's bundle,
+the sleep patch scoped to `live`'s namespace, refusals on a missing bundle
+or input, one more test), with the golden file at 29 passed / 60 s on that
+code; frontend `tsc` clean and 923 passed + 1 skipped, unchanged. The
+fixture itself was committed at `7d8e370`.
