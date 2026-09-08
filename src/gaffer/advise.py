@@ -30,7 +30,7 @@ import pandas as pd
 
 from gaffer.api.client import FPLClient
 from gaffer.assets import load_decision_priors
-from gaffer.artifacts import (SolveState, append_advice_history,
+from gaffer.artifacts import (SolveState, advice_path, append_advice_history,
                               components_frame, data_warning,
                               ingested_through, pool_rows, save_availability,
                               save_components, save_snapshots,
@@ -52,6 +52,7 @@ from gaffer.data.odds import (OddsClient, ags_frame, blend_attacking_odds,
 from gaffer.features.engineer import build_prediction_frame, feature_columns
 from gaffer.io import atomic_write
 from gaffer.ladder import build_ladder, serve_rung
+from gaffer.served import completed, decorated, with_alternatives
 from gaffer.league_mode import (LeagueParams, apply_stance, captain_cover,
                                 captaincy_note, captaincy_override,
                                 compute_strategy, cover_table, tilt_ep,
@@ -177,6 +178,12 @@ class Advice:
     # still loads.
     objective: dict | None = None
     restraint: dict | None = None
+    # v17f §2.4 (specs/2026-09-08-v17f-served-plan-design.md): the run's
+    # stamp and the starting bank in millions, so a reader of the served plan
+    # never opens the solve state for either. Defaulted, so every payload
+    # written before this and every positional construction still loads.
+    generated_at: str | None = None
+    bank: float | None = None
 
 
 INITIAL_BUDGET = 1000
@@ -1115,9 +1122,10 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     # The same frame §4.6 banded above, not a second build of it: one frame
     # means the ceiling on the page and the breakdown on disk cannot disagree.
     save_components(components, gw)
-    save_solve_state(SolveState(
+    generated_at = datetime.now(timezone.utc).isoformat()
+    solve_state = SolveState(
         gw=gw, gws=gws, deadline=deadline,
-        generated_at=datetime.now(timezone.utc).isoformat(),
+        generated_at=generated_at,
         mode="weekly" if my is not None else "initial_squad", bank=state.bank,
         free_transfers=state.free_transfers, owned_codes=owned_now,
         lam=lam, league_eo=league_eo, cover=cover, avail_by_gw=avail_by_gw,
@@ -1135,7 +1143,8 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
              # only, so no re-solve sees this.
              "chip_plan": [{"gw": int(r["gw"]), "chip": str(r["chip"])}
                            for r in chip_rows if r.get("play_now")]},
-        pool=pool_rows(pool, players, owned_now, ep_by, gws)))
+        pool=pool_rows(pool, players, owned_now, ep_by, gws))
+    save_solve_state(solve_state)
     # v13 §3.2 / v16 §4: the transfer ladder, off the state just saved. Never
     # the run's failure — a ladder that could not be built is one printed
     # line, the objective's plan served, and a card with a rebuild button.
@@ -1145,7 +1154,7 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     except Exception as exc:  # noqa: BLE001
         print(f"ladder: not built for GW{gw} ({exc})")
     served = serve_rung(ladder, dict(
-        buys=buys, sells=sells, hits=int(first.hits),
+        gw=gw, buys=buys, sells=sells, hits=int(first.hits),
         xi=_named(first.xi, name_of, pos_of, ep_by, gw),
         bench=_named(first.bench, name_of, pos_of, ep_by, gw),
         captain=_named([first.captain], name_of, pos_of, ep_by, gw)[0],
@@ -1158,26 +1167,25 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
                     for p in plan.gw_plans]),
         # v17b §3.2: the served block prices its hits off the solve's cost.
         hit_cost=int(cfg.hit_cost), captain_note=captain_note)
-    # The tags and the sweep frequencies below decorate the *served* moves.
-    buys, sells = served["buys"], served["sells"]
-
-    for b in buys:
-        # An empty EO map is "nobody's ownership is known", not "nobody owns
-        # them" — at GW1 no rival picks are public yet, and tagging all 15
-        # opening picks "attack" off a missing map would be pure noise.
-        b["tag"] = transfer_tag(league_eo.get(b["code"]),
-                                strat is not None and bool(league_eo))
+    # The tags and the sweep frequencies decorate the *served* moves (v16
+    # §4). An empty EO map is "nobody's ownership is known", not "nobody
+    # owns them" — at GW1 no rival picks are public yet, and tagging all 15
+    # opening picks "attack" off a missing map would be pure noise.
     # Frequencies ride on the move dicts as well as on the standalone table:
     # the CLI and the UI both render per-move, and re-joining a DataFrame in
     # a Jinja template is not a thing anyone should have to do.
-    freq_of = {(str(r["kind"]), int(r["code"])): float(r["frequency"])
-               for r in move_freqs}
-    for b in buys:
-        if ("buy", b["code"]) in freq_of:
-            b["frequency"] = freq_of[("buy", b["code"])]
-    for s in sells:
-        if ("sell", s["code"]) in freq_of:
-            s["frequency"] = freq_of[("sell", s["code"])]
+    served = decorated(
+        served,
+        tags={b.code: transfer_tag(league_eo.get(b.code),
+                                   strat is not None and bool(league_eo))
+              for b in served.buys},
+        frequencies={(str(r["kind"]), int(r["code"])): float(r["frequency"])
+                     for r in move_freqs})
+    # v17f §2.2: prices, banks and the trace at write time, off the state
+    # just saved — the same pass ``artifacts.served_plan`` runs for a file
+    # written before this cycle, so the two cannot disagree.
+    served = completed(with_alternatives(served, alt_rows),
+                       state=solve_state, chip_table=chip_rows)
     strategy = None
     if strat is not None:
         strategy = asdict(strat)
@@ -1186,23 +1194,13 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         strategy["lam"] = abs(strategy["lam"]) if strategy["lam"] == 0 \
             else strategy["lam"]
     advice = Advice(
-        gw=gw,
         deadline=deadline,
-        buys=buys,
-        sells=sells,
-        hits=served["hits"],
-        xi=served["xi"],
-        bench=served["bench"],
-        captain=served["captain"],
-        vice=served["vice"],
         captain_options=cap_tab.to_dict("records"),
         chip_table=chip_rows,
         wildcard_now=wc_now,
         alternatives=alts.to_dict("records"),
         threats=threats.to_dict("records"),
         price_alerts=alerts.to_dict("records"),
-        expected_pts=served["expected_pts"],
-        plan_by_gw=served["plan_by_gw"],
         strategy=strategy,
         win_probs=win_probs,
         mode="weekly" if my is not None else "initial_squad",
@@ -1211,14 +1209,13 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         move_frequencies=move_freqs,
         raw_optimum_agrees=raw_agrees,
         scenarios=scenario_report,
-        captain_note=served["captain_note"],
         demoted_captain=demoted_captain,
-        alternative_plans=alt_rows,
         caps=(None if my is None
               else {"max_hits": int(cfg.max_hits),
                     "max_transfers": int(cfg.max_transfers)}),
-        objective=served["objective"],
-        restraint=served["restraint"],
+        # v17f §2.1: the served plan, written whole. ``exclude_unset`` so a
+        # move advise never tagged carries no ``tag`` key on disk.
+        **served.model_dump(exclude_unset=True),
     )
     # v9c orchestrator-authorized protected edit (review I1): atomic advice
     # artifact write. Three docstrings in web/jobs.py and routers/jobs.py now
@@ -1232,9 +1229,8 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     # this borrowed from digest.py is now gaffer.io.atomic_write, and the
     # guarantee is unchanged — a pid-suffixed sibling temp so two writers
     # cannot share one, and os.replace to make the swap atomic.
-    advice_path = REPORTS / f"gw{gw}-advice.json"
-    atomic_write(advice_path, json.dumps(asdict(advice), indent=1,
-                                         default=str))
+    atomic_write(advice_path(gw), json.dumps(asdict(advice), indent=1,
+                                             default=str))
     # Two artifacts nothing in the pipeline reads: the availability frame this
     # run predicted on, and the payload itself, appended to a pruned log. Both
     # exist so the UI can answer "why?" and "what changed since Tuesday?"
