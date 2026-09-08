@@ -19,7 +19,8 @@ template digest on This Week. Gated on the 2024-25 replay (mean 1835 vs raw 1844
 real brief the user read, and four screenshots in both themes. Suite 4266
 Python + 910 frontend, pins routes 51 / job kinds 12 / `Config` fields 59.
 The v17 deepening programme has started: v17a (the wire types, one command)
-is merged at `400c2f5`, suite 4271 / 910, pins unchanged; v17b is next.
+is merged at `400c2f5` and v17b (restraint narrated once, on the server) at
+`b1b3b7e`, suite 4288 / 923, pins unchanged; v17c is next.
 **Security incident, open:** the odds API key's value reached a committed
 plan document (`dd47c0a`) via a forked plan-writing subagent and was pushed
 to the public remote with the merge; removed at the tip (`8fddb0b`), history
@@ -103,7 +104,7 @@ Detail in `docs/GUIDE.md` §12.5.
 9. **A blended league stance** (v15 deferred): per-league λ and cover tables merged by weight. Chasing in one league and defending in another largely cancel, so it needs a replay to justify before it touches protected solver code
 10. **The in-app chat** (v16 deferred, gated on a few briefs read): a question box on This Week over the same facts document the brief reads, the same no-tools command, the same truth check on every answer
 
-### The v17 deepening programme (planned 2026-09-07; v17a merged, v17b next)
+### The v17 deepening programme (planned 2026-09-07; v17a and v17b merged, v17c next)
 
 The 2026-09-07 architecture review
 (`docs/superpowers/research/2026-09-07-architecture-review.html`) found seven
@@ -113,10 +114,40 @@ refactor changes no number, and
 `docs/superpowers/plans/2026-09-07-v17-tracker.md` is the checklist each
 chat updates on merge. Order: types command, restraint prose on the server,
 golden board, weekly pipeline, config in force, the served plan, pure
-build_advice, the This Week loader. v17a is shipped (below); v17b starts
-from `main` at `400c2f5`.
+build_advice, the This Week loader. v17a and v17b are shipped (below);
+v17c starts from `main` at `b1b3b7e`.
 
 ## Shipped
+
+### v17b — restraint narrated once, on the server (done, merged `b1b3b7e` 2026-09-08)
+`src/gaffer/ladder.py` is the one author of the ladder's prose: every rung
+carries `label` (`bank`, `free transfers only`, `1 hit`, `no cap`), every
+step `line` (`bank → free transfers only: taken, 75% — …`), the served
+`restraint` block `label`, `hit_cost` and `line` (the v16 CLI sentence,
+`restraint: free transfers only; the step to 1 hit was refused, 45% — …`)
+and the `objective` block `line`. `serve_rung` takes `hit_cost`; `advise.py`
+passes `cfg.hit_cost`. `load_ladder` and `ladder.narrated(advice)` backfill a
+v16 file. The CLI, the brief's facts (steps as `{line, taken}`, prompt v3),
+MovesCard and LadderCard render the strings; `rung_label`, `restraint_line`,
+`objective_line` are private, both TS `rungLabel`s, `restraintText`,
+`stepText` and the `hits * 4` literal are gone; hits are priced off the
+served cost with `Config.hit_cost` as the fallback. Spec
+`docs/superpowers/specs/2026-09-07-v17b-restraint-prose-design.md` (§10 has
+the gate numbers and the paired-run ruling), plan
+`2026-09-07-v17b-restraint-prose.md`, twelve branch commits; the Opus
+implementer was rate-limited after two helpers, so the orchestrator finished
+the server tasks and Sonnet took the frontend and the rail, each under
+review. Gate (surface + artifact, pre-registered, passed): `gaffer advise
+--fast` on `main` and on the branch back to back differ only in the
+run-to-run noise a same-code pair also shows (one EP 0.01 from the live
+lineup feed) with every served decision identical and the new keys exactly
+the five on the advice and two on the ladder; the rail
+`tests/test_v17b_prose.py` + `restraint-prose.test.tsx` holds for every rung
+key; both frontend greps empty; four screenshots approved. Review fix:
+`ladder.narrated`, so a brief over a v16 advice on disk keeps its step lines.
+Pins unchanged (routes 51, job kinds 12, `Config` 59); Python 4271 →
+**4288**, frontend 910 → **923**. Left as is: the 178 KB rail fixture; the
+HTML report template's own `hits * 4`.
 
 ### v17a — the wire types, one command (done, merged `400c2f5` 2026-09-07)
 `npm run types` (from `frontend/`) writes `schemas.json` and

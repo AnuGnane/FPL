@@ -19,7 +19,7 @@ only read one section, read §12: it is the current to-do list.*
 8. [Everything the CLI can do](#8-everything-the-cli-can-do)
 9. [The data it collects and why](#9-the-data-it-collects-and-why)
 10. [How the project measures itself](#10-how-the-project-measures-itself)
-11. [The version history, v1 to v17a](#11-the-version-history-v1-to-v17a)
+11. [The version history, v1 to v17b](#11-the-version-history-v1-to-v17b)
 12. [What is pending and what was left open](#12-what-is-pending-and-what-was-left-open)
 13. [Troubleshooting](#13-troubleshooting)
 
@@ -643,7 +643,7 @@ Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 `reports/evaluation.json`, and the Model hub.
 
-## 11. The version history, v1 to v17a
+## 11. The version history, v1 to v17b
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
 reviewed. Every cycle ran the same way, and knowing the shape tells you where
@@ -846,7 +846,21 @@ written reasons. Gated by exercising the lever: a hand edit to each generated
 file made the check fail naming that file and the writer cleared it. Pins
 unchanged; Python 4266 → **4271**.
 
-The suite grew from nothing to **4,271 Python + 910 frontend tests** along
+**v17b — restraint narrated once, on the server** (2026-09-08). The rung's
+name and the step's sentence were written in four places and already
+disagreed ("free transfers only" on the CLI, "No hits" in the ladder card).
+Now `ladder.py` writes them once: every rung carries `label`, every step
+`line`, the served `restraint` block `label`, `hit_cost` and `line`, the
+`objective` block `line`; the CLI, the brief's facts, the moves card and
+the ladder card render those strings and compose nothing, and a rail proves
+the four surfaces carry the same string for every rung key. A v16 advice or
+ladder on disk is backfilled on read (`load_ladder`, `ladder.narrated`).
+Gated by a paired `gaffer advise --fast` on `main` and the branch that
+differed only in the live-input noise a same-code pair also shows, with
+every served decision identical. Pins unchanged; Python 4271 → **4288**,
+frontend 910 → **923**.
+
+The suite grew from nothing to **4,288 Python + 923 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above
 so a future change cannot quietly break one.
 
