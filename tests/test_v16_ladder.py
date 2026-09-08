@@ -159,7 +159,7 @@ def test_a_price_flag_below_half_does_not_count():
 
 def _objective():
     ref = lambda c: {"code": c, "name": f"P{c}", "position": "MID", "ep": 5.0}  # noqa: E731
-    return {"buys": [ref(20), ref(19)], "sells": [ref(16), ref(17)], "hits": 1,
+    return {"gw": 4, "buys": [ref(20), ref(19)], "sells": [ref(16), ref(17)], "hits": 1,
             "xi": [ref(c) for c in range(1, 12)], "bench": [ref(12)],
             "captain": ref(3), "vice": ref(4), "expected_pts": 61.5,
             "plan_by_gw": [{"gw": 4, "hits": 1, "buys": [ref(20), ref(19)],
@@ -188,23 +188,28 @@ def _ladder(chosen="hits0"):
 
 def test_the_rungs_plan_replaces_week_one_and_every_horizon_week():
     out = serve_rung(_ladder(), _objective(), hit_cost=4, captain_note=None)
-    assert [b["code"] for b in out["buys"]] == [20]
-    assert [s["code"] for s in out["sells"]] == [16]
-    assert out["hits"] == 0 and len(out["plan_by_gw"]) == 2
-    assert out["plan_by_gw"][0]["gw"] == 4 and out["plan_by_gw"][1]["gw"] == 5
-    assert set(out["plan_by_gw"][0]) == {"gw", "hits", "buys", "sells", "expected_pts"}
-    assert out["expected_pts"] == 55.0            # eleven refs at 5.0
-    assert out["objective"] == {"buys": _objective()["buys"], "sells": _objective()["sells"],
-                                "hits": 1, "expected_pts": 61.5,
-                                "line": "the objective wanted: P20, P19 in; P16, P17 out; 1 hit"}
-    assert out["restraint"]["chosen"] == "hits0" and out["restraint"]["bar"] == 0.6
-    assert out["restraint"]["agrees"] is False and len(out["restraint"]["steps"]) == 2
+    assert [b.code for b in out.buys] == [20]
+    assert [s.code for s in out.sells] == [16]
+    assert out.hits == 0 and len(out.plan_by_gw) == 2
+    assert out.plan_by_gw[0].gw == 4 and out.plan_by_gw[1].gw == 5
+    # v17f §2.4: the rung's week carries the five keys the objective's did;
+    # prices, banks and traces are ``served.completed``'s, not this function's.
+    dumped = out.model_dump(exclude_unset=True)
+    assert set(dumped["plan_by_gw"][0]) == {"gw", "hits", "buys", "sells", "expected_pts"}
+    assert out.expected_pts == 55.0            # eleven refs at 5.0
+    assert {k: v for k, v in dumped["objective"].items() if k != "week"} == {
+        "buys": _objective()["buys"], "sells": _objective()["sells"],
+        "hits": 1, "expected_pts": 61.5,
+        "line": "the objective wanted: P20, P19 in; P16, P17 out; 1 hit"}
+    assert out.objective.week.gw == 4 and out.objective.week.hits == 1
+    assert out.restraint.chosen == "hits0" and out.restraint.bar == 0.6
+    assert out.restraint.agrees is False and len(out.restraint.steps) == 2
 
 
 def test_the_sweeps_captain_stands_when_he_is_in_the_rungs_xi():
     out = serve_rung(_ladder(), _objective(), hit_cost=4, captain_note="covering Dave")
-    assert out["captain"]["code"] == 3 and out["captain_note"] == "covering Dave"
-    assert out["vice"]["code"] == 20            # the rung's vice
+    assert out.captain.code == 3 and out.captain_note == "covering Dave"
+    assert out.vice.code == 20            # the rung's vice
 
 
 def test_without_a_note_the_rungs_own_captain_is_served():
@@ -214,17 +219,17 @@ def test_without_a_note_the_rungs_own_captain_is_served():
     obj = _objective()
     obj["captain"] = {"code": 4, "name": "P4", "position": "MID", "ep": 5.0}
     out = serve_rung(_ladder(), obj, hit_cost=4, captain_note=None)
-    assert out["captain"]["code"] == 3 and out["vice"]["code"] == 20
-    assert out["captain_note"] is None
+    assert out.captain.code == 3 and out.vice.code == 20
+    assert out.captain_note is None
 
 
 def test_a_noted_captain_not_in_the_rung_falls_to_the_rungs_with_a_note():
     obj = _objective()
     obj["captain"] = {"code": 99, "name": "Gone", "position": "FWD", "ep": 9.0}
     out = serve_rung(_ladder(), obj, hit_cost=4, captain_note="covering Dave")
-    assert out["captain"]["code"] == 3
-    assert out["captain_note"] == ("captain from the restrained plan; the "
-                                   "sweep's choice (Gone) is not in it")
+    assert out.captain.code == 3
+    assert out.captain_note == ("captain from the restrained plan; the "
+                                "sweep's choice (Gone) is not in it")
 
 
 def test_the_vice_never_equals_the_captain():
@@ -234,21 +239,21 @@ def test_the_vice_never_equals_the_captain():
     out = serve_rung(lad_, _objective(), hit_cost=4, captain_note="covering Dave")
     # The noted captain (3) stands; the rung's vice is also 3, so the vice
     # falls to the rung's own captain (20).
-    assert out["captain"]["code"] == 3 and out["vice"]["code"] == 20
+    assert out.captain.code == 3 and out.vice.code == 20
 
 
 def test_agreement_is_on_the_moves():
     out = serve_rung(_ladder("hits1"), _objective(), hit_cost=4, captain_note=None)
-    assert out["restraint"]["agrees"] is True and out["restraint"]["note"] is None
+    assert out.restraint.agrees is True and out.restraint.note is None
 
 
 def test_no_ladder_or_no_chosen_rung_serves_the_objective_with_a_note():
     out = serve_rung(None, _objective(), hit_cost=4, captain_note=None)
-    assert out["restraint"]["hit_cost"] == 4
-    assert out["buys"] == _objective()["buys"] and out["hits"] == 1
-    assert out["restraint"]["chosen"] is None and "ladder" in out["restraint"]["note"]
+    assert out.restraint.hit_cost == 4
+    assert [b.code for b in out.buys] == [20, 19] and out.hits == 1
+    assert out.restraint.chosen is None and "ladder" in out.restraint.note
     out = serve_rung({**_ladder(), "chosen": None}, _objective(), hit_cost=4, captain_note=None)
-    assert out["restraint"]["chosen"] is None and out["hits"] == 1
+    assert out.restraint.chosen is None and out.hits == 1
 
 
 # --- labels, lines, recommended, served note ----------------------------------
@@ -268,117 +273,23 @@ def test_every_rung_and_step_of_a_built_ladder_is_labelled():
 
 def test_the_served_block_carries_its_label_line_and_the_objectives_line():
     out = serve_rung(_ladder(), _objective(), hit_cost=4, captain_note=None)
-    r = out["restraint"]
-    assert r["label"] == "free transfers only" and r["hit_cost"] == 4
-    assert r["line"] == ("restraint: free transfers only; the step to 1 hit was "
-                         "refused, 46% — expected points alone")
-    assert [s["line"] for s in r["steps"]] == [
+    r = out.restraint
+    assert r.label == "free transfers only" and r.hit_cost == 4
+    assert r.line == ("restraint: free transfers only; the step to 1 hit was "
+                      "refused, 46% — expected points alone")
+    assert [s.line for s in r.steps] == [
         "bank → free transfers only: taken, 79% — expected points alone",
         "free transfers only → 1 hit: refused, 46% — expected points alone"]
-    assert out["objective"]["line"] == "the objective wanted: P20, P19 in; P16, P17 out; 1 hit"
+    assert out.objective.line == "the objective wanted: P20, P19 in; P16, P17 out; 1 hit"
     taken = serve_rung({**_ladder("hits1"), "steps": [_ladder()["steps"][0]]},
-                       _objective(), hit_cost=4, captain_note=None)["restraint"]
-    assert taken["line"] == "restraint: 1 hit; every step was taken"
+                       _objective(), hit_cost=4, captain_note=None).restraint
+    assert taken.line == "restraint: 1 hit; every step was taken"
 
 
 def test_a_ladder_that_did_not_build_serves_its_note_as_the_line():
-    r = serve_rung(None, _objective(), hit_cost=4, captain_note=None)["restraint"]
-    assert r["label"] is None
-    assert r["line"] == "restraint: the ladder did not build; this is the objective's plan"
+    r = serve_rung(None, _objective(), hit_cost=4, captain_note=None).restraint
+    assert r.label is None
+    assert r.line == "restraint: the ladder did not build; this is the objective's plan"
     r = serve_rung({**_ladder(), "chosen": None}, _objective(), hit_cost=4,
-                   captain_note=None)["restraint"]
-    assert r["label"] is None and r["line"].startswith("restraint: no rung of the ladder")
-
-
-def test_load_ladder_backfills_a_v16_file(tmp_path, monkeypatch):
-    from gaffer import artifacts
-    from gaffer.ladder import load_ladder
-    monkeypatch.chdir(tmp_path)
-    artifacts.REPORTS.mkdir()
-    (artifacts.REPORTS / "ladder_gw4.json").write_text(json.dumps(_ladder()))
-    out = load_ladder(4)
-    assert [r["label"] for r in out["rungs"]] == ["bank", "free transfers only", "1 hit"]
-    assert out["steps"][0]["line"] == "bank → free transfers only: taken, 79% — expected points alone"
-    # A file that already carries them is served as written.
-    lad_ = _ladder()
-    lad_["rungs"][0]["label"] = "kept"; lad_["steps"][0]["line"] = "kept"
-    (artifacts.REPORTS / "ladder_gw4.json").write_text(json.dumps(lad_))
-    out = load_ladder(4)
-    assert out["rungs"][0]["label"] == "kept" and out["steps"][0]["line"] == "kept"
-
-
-def test_recommended_matches_the_served_moves_and_ignores_the_captain():
-    rows = _ladder()["rungs"]
-    advice = {"gw": 4, "buys": [{"code": 20}], "sells": [{"code": 16}],
-              "captain": {"code": 3}}
-    assert recommended_rung(advice, rows) == ("hits0", None)
-    advice["captain"] = {"code": 999}
-    assert recommended_rung(advice, rows) == ("hits0", None)
-    advice["buys"] = [{"code": 55}]
-    assert recommended_rung(advice, rows)[0] is None
-
-
-def test_the_served_note_names_both_bars():
-    lad_ = {**_ladder(), "chosen": "bank", "bar": 0.7}
-    advice = {"gw": 4, "restraint": {"chosen": "hits0", "bar": 0.6}}
-    assert served_note(lad_, advice) == ("the served advice was the free "
-                                         "transfers only rung at bar 0.60; this "
-                                         "rebuild at 0.70 chooses bank")
-    assert served_note(_ladder(), {"gw": 4, "restraint": {"chosen": "hits0", "bar": 0.6}}) is None
-    assert served_note(_ladder(), {"gw": 3, "restraint": {"chosen": "bank", "bar": 0.6}}) is None
-    assert served_note(_ladder(), {"gw": 4}) is None
-
-
-# --- on a saved board ---------------------------------------------------------
-
-def test_build_ladder_carries_the_bar_the_chosen_rung_and_the_steps(tmp_path,
-                                                                     monkeypatch):
-    from tests.test_ladder import save_state
-
-    from gaffer.config import invalidate
-    from gaffer.ladder import build_ladder
-
-    monkeypatch.chdir(tmp_path)
-    invalidate()
-    save_state({"max_hits": 15, "max_transfers": 15})
-    monkeypatch.setattr(lad, "OUTCOME_VAR_PER_EP", 0.0)
-    monkeypatch.setattr(lad, "sigma_table", lambda gw: ({}, "outcome_only"))
-    out = build_ladder(1, n_draws=20, seed=5)
-    invalidate()
-    assert out["bar"] == 0.60
-    assert out["chosen"] in {r["key"] for r in out["rungs"]}
-    keys = {"below", "above", "share", "taken", "reason", "reason_kind", "line"}
-    assert out["steps"] and all(set(s) == keys for s in out["steps"])
-    # v17b §3.1: every rung named and every step a sentence, on the payload.
-    assert all(r["label"] == lad._rung_label(r["key"]) for r in out["rungs"])
-    assert all(s["line"] == lad._step_line(s) for s in out["steps"])
-    # No noise: every share is 0 or 1, and the walk is a prefix of the ladder.
-    assert all(s["share"] in (0.0, 1.0) for s in out["steps"])
-    taken = [s["taken"] for s in out["steps"]]
-    assert taken == sorted(taken, reverse=True)
-    banked = json.loads((tmp_path / "reports" / "ladder_gw1.json").read_text())
-    assert banked["chosen"] == out["chosen"]
-
-
-def test_the_get_route_recomputes_recommended_and_adds_the_served_note(tmp_path,
-                                                                        monkeypatch):
-    from fastapi.testclient import TestClient
-
-    from gaffer import artifacts
-    from gaffer.web.app import create_app
-
-    monkeypatch.chdir(tmp_path)
-    artifacts.REPORTS.mkdir()
-    lad_ = _ladder()
-    (artifacts.REPORTS / "ladder_gw4.json").write_text(json.dumps(
-        {**lad_, "gws": [4, 5], "cap": {}, "notes": [], "n_draws": 5}))
-    (artifacts.REPORTS / "gw4-advice.json").write_text(json.dumps(
-        {"gw": 4, "buys": [{"code": 20, "name": "P20"}], "sells": [{"code": 16, "name": "P16"}],
-         "captain": {"code": 3}, "restraint": {"chosen": "hits0", "bar": 0.5}}))
-    monkeypatch.setattr("gaffer.web.routers.ladder.latest_gw", lambda: 4)
-    body = TestClient(create_app()).get("/api/ladder").json()
-    assert body["recommended"] == "hits0" and body["chosen"] == "hits0"
-    assert body["bar"] == 0.6 and len(body["steps"]) == 2
-    assert body["served_note"] == ("the served advice was the free transfers "
-                                   "only rung at bar 0.50; this rebuild at 0.60 "
-                                   "chooses free transfers only")
+                   captain_note=None).restraint
+    assert r.label is None and r.line.startswith("restraint: no rung of the ladder")

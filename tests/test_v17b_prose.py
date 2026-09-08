@@ -60,7 +60,10 @@ def _case(key: str, root: Path) -> dict:
         os.chdir(root)
         save_ladder(ladder, 4)
         banked = load_ladder(4)
-        served = serve_rung(banked, _objective(), hit_cost=4, captain_note=None)
+        # v17f §4: serve_rung returns the typed plan; the file the route reads
+        # is the dump advise writes.
+        served = serve_rung(banked, _objective(), hit_cost=4, captain_note=None
+                            ).model_dump(exclude_unset=True)
         Path("reports/gw4-advice.json").write_text(json.dumps({
             "gw": 4, "buys": served["buys"], "sells": served["sells"],
             "captain": {"code": 3}, "restraint": served["restraint"],
@@ -70,8 +73,11 @@ def _case(key: str, root: Path) -> dict:
             payload = client.get("/api/ladder").json()
     finally:
         os.chdir(cwd)
+    # The objective block's prose only: v17f §2.4 put the objective's own
+    # priced week under ``week``, which the moves card never reads.
     return {"key": key, "hits": served["hits"], "restraint": served["restraint"],
-            "objective": served["objective"], "payload": payload}
+            "objective": {k: v for k, v in served["objective"].items() if k != "week"},
+            "payload": payload}
 
 
 def _fixture(root: Path) -> dict:

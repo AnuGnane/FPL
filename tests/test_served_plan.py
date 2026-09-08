@@ -417,3 +417,25 @@ def test_advice_gws_enumerates_ascending_and_ignores_a_stem_that_is_not_a_number
         Path("reports", name).write_text("{}")
     assert advice_gws() == [5, 7]
     assert advice_path(5) == Path("reports/gw5-advice.json")
+
+
+# --- serve_rung ---------------------------------------------------------
+
+def test_serve_rung_returns_the_objectives_plan_typed_when_there_is_no_ladder():
+    from gaffer.ladder import serve_rung
+    from gaffer.served import ServedPlan
+
+    objective = {"gw": 4, "buys": [P], "sells": [S], "hits": 1, "xi": [P], "bench": [S],
+                 "captain": P, "vice": S, "expected_pts": 61.5,
+                 "plan_by_gw": [_week(4, buys=[P], sells=[S], hits=1), _week(5)]}
+    out = serve_rung(None, objective, hit_cost=4, captain_note=None)
+    assert isinstance(out, ServedPlan)
+    assert out.gw == 4 and out.hits == 1 and out.buys[0].code == 100
+    assert out.restraint.chosen is None and out.restraint.hit_cost == 4
+    assert out.restraint.line == "restraint: the ladder did not build; this is the objective's plan"
+    assert out.objective.line == "the objective wanted: In in; Out out; 1 hit"
+    assert out.objective.week.gw == 4 and out.objective.week.hits == 1
+    dumped = out.model_dump(exclude_unset=True)
+    assert set(dumped) == {"gw", "buys", "sells", "hits", "xi", "bench", "captain", "vice",
+                           "expected_pts", "plan_by_gw", "captain_note", "objective",
+                           "restraint"}

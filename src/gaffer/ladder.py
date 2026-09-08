@@ -44,6 +44,7 @@ from gaffer.io import atomic_write
 from gaffer.league_mode import cover_from_eo, tilt_ep
 from gaffer.league_sim import OUTCOME_VAR_PER_EP
 from gaffer.optimize.milp import GwPlan, Plan, SolveInput, solve_plan
+from gaffer.served import ServedObjective, ServedPlan, ServedRestraint, ServedWeek
 from gaffer.uncertainty import bands_by_player_gw
 
 LADDER_DRAWS = 2000
@@ -267,17 +268,18 @@ def _week_pts(week: dict) -> float:
 
 
 def serve_rung(ladder: dict | None, objective: dict, *, hit_cost: int,
-               captain_note: str | None) -> dict:
-    """The payload's plan fields from the chosen rung (v16 §4), or the
-    objective's own when there is no rung to serve.
+               captain_note: str | None) -> ServedPlan:
+    """The served plan from the chosen rung (v16 §4), or the objective's
+    own when there is no rung to serve — one typed value (v17f §4), with
+    the moves unpriced and the weeks unbanked: ``served.completed`` fills
+    those off the solve state.
 
     ``hit_cost`` is the solve's price per hit (v17b §3.2): the block prices
     the served hits, and a ladder that did not build carries no cost of its
     own.
 
-    ``objective`` is ``{buys, sells, hits, xi, bench, captain, vice,
-    expected_pts, plan_by_gw}`` in ``advise._named``'s shape. The result has
-    the same keys plus ``captain_note``, ``objective`` and ``restraint``.
+    ``objective`` is ``{gw, buys, sells, hits, xi, bench, captain, vice,
+    expected_pts, plan_by_gw}`` in ``advise._named``'s shape.
 
     The armband: the rung's own plan captains its own squad, and that is
     what is served — the objective's captain was chosen for the objective's
@@ -287,29 +289,34 @@ def serve_rung(ladder: dict | None, objective: dict, *, hit_cost: int,
     set) is a decision about the field, not the squad, so it stands when he
     is in the rung's XI and is replaced with a note when he is not.
     """
+    obj = ServedPlan.model_validate(objective)
     # v17b §3.2: the block carries its prose — the chosen rung's ``label``,
     # the one ``line`` the CLI and the moves card print — and the objective
     # block its own line, so no surface composes a sentence of its own.
-    base = {**objective, "captain_note": captain_note,
-            "objective": {**{k: objective[k]
-                             for k in ("buys", "sells", "hits", "expected_pts")},
-                          "line": _objective_line(objective)},
-            "restraint": {"chosen": None, "label": None, "bar": None,
-                          "steps": [], "agrees": True, "note": None,
-                          "hit_cost": int(hit_cost), "line": None}}
+    objective_block = ServedObjective(
+        buys=obj.buys, sells=obj.sells, hits=obj.hits, expected_pts=obj.expected_pts,
+        line=_objective_line(objective),
+        week=ServedWeek(gw=obj.gw, hits=obj.hits, buys=obj.buys, sells=obj.sells,
+                        expected_pts=obj.expected_pts))
+    restraint = {"chosen": None, "label": None, "bar": None, "steps": [],
+                 "agrees": True, "note": None, "hit_cost": int(hit_cost), "line": None}
+
+    def served(**fields) -> ServedPlan:
+        restraint["line"] = _restraint_line(restraint)
+        return obj.model_copy(update={
+            "captain_note": captain_note, "objective": objective_block,
+            "restraint": ServedRestraint.model_validate(restraint), **fields})
+
     if ladder is None:
-        base["restraint"]["note"] = ("the ladder did not build; this is the "
-                                     "objective's plan")
-        base["restraint"]["line"] = _restraint_line(base["restraint"])
-        return base
+        restraint["note"] = "the ladder did not build; this is the objective's plan"
+        return served()
     chosen = ladder.get("chosen")
     row = next((r for r in ladder.get("rungs") or [] if r.get("key") == chosen), None)
     if chosen is None or row is None or not row.get("plan_by_gw"):
-        base["restraint"].update(bar=ladder.get("bar"), steps=_lined(ladder.get("steps")),
-                                 note="no rung of the ladder could be served; "
-                                      "this is the objective's plan")
-        base["restraint"]["line"] = _restraint_line(base["restraint"])
-        return base
+        restraint.update(bar=ladder.get("bar"), steps=_lined(ladder.get("steps")),
+                         note="no rung of the ladder could be served; "
+                              "this is the objective's plan")
+        return served()
     weeks = row["plan_by_gw"]
     first = weeks[0]
     xi_codes = {int(p["code"]) for p in first["xi"]}
@@ -325,26 +332,24 @@ def serve_rung(ladder: dict | None, objective: dict, *, hit_cost: int,
         vice = first["captain"] if int(first["captain"]["code"]) != int(captain["code"]) \
             else next(p for p in first["xi"] if int(p["code"]) != int(captain["code"]))
     agrees = _moves(first) == _moves(objective)
-    restraint = {"chosen": chosen, "label": _rung_label(str(chosen)),
-                 "bar": ladder.get("bar"), "steps": _lined(ladder.get("steps")),
-                 "agrees": agrees, "hit_cost": int(hit_cost),
-                 "note": None if agrees else
-                 f"the objective's plan was the {_rung_label(chosen)} rung's "
-                 f"neighbour; the walk stopped at {_rung_label(chosen)}"}
-    restraint["line"] = _restraint_line(restraint)
-    return {
-        **base,
+    restraint.update(
+        chosen=chosen, label=_rung_label(str(chosen)), bar=ladder.get("bar"),
+        steps=_lined(ladder.get("steps")), agrees=agrees,
+        note=None if agrees else
+        f"the objective's plan was the {_rung_label(chosen)} rung's "
+        f"neighbour; the walk stopped at {_rung_label(chosen)}")
+    rung = ServedPlan.model_validate({
+        "gw": obj.gw,
         "buys": list(first["buys"]), "sells": list(first["sells"]),
         "hits": int(first["hits"]), "xi": list(first["xi"]),
         "bench": list(first["bench"]), "captain": captain, "vice": vice,
         "expected_pts": _week_pts(first),
         "plan_by_gw": [{"gw": int(w["gw"]), "hits": int(w["hits"]),
                         "buys": list(w["buys"]), "sells": list(w["sells"]),
-                        "expected_pts": _week_pts(w)} for w in weeks],
-        "captain_note": note,
-        "restraint": restraint,
-    }
-
+                        "expected_pts": _week_pts(w)} for w in weeks]})
+    return served(captain_note=note, **{k: getattr(rung, k) for k in (
+        "buys", "sells", "hits", "xi", "bench", "captain", "vice",
+        "expected_pts", "plan_by_gw")})
 
 def _lined(steps) -> list[dict]:
     """The steps as the ladder wrote them, each carrying its ``line``; a
