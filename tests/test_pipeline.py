@@ -180,20 +180,3 @@ def test_the_plist_is_unchanged_and_still_runs_advise():
     text = Path("scripts/com.gaffer.advise.plist").read_text()
     assert "uv run gaffer train &amp;&amp; uv run gaffer advise" in text
     assert "gaffer brief" not in text
-
-
-def test_a_train_step_that_reports_no_rows_still_finishes_the_run(monkeypatch):
-    """The v7c job-kind rail stubs the train step with a frame that has no
-    length; the run is still a trained one, with a count-free log line."""
-    from gaffer.pipeline import weekly_run
-
-    calls, logged = [], []
-    _wire(monkeypatch, calls)
-    monkeypatch.setattr("gaffer.models.train.load_training_frame",
-                        lambda: (None, None, None))
-    monkeypatch.setattr("gaffer.models.train.train_all",
-                        lambda frame, team_frame, save=True:
-                        calls.append(("train", None, team_frame, save)))
-    out = weekly_run(object(), log=logged.append)
-    assert out.trained is True and out.training_rows is None
-    assert logged == ["Trained. Models saved to models/."]

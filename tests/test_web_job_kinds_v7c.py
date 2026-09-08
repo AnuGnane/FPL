@@ -61,12 +61,13 @@ def test_the_advise_body_uses_the_config_it_is_handed(tmp_path, monkeypatch):
         gw = 5
         expected_pts = 61.0
 
-    def _run(cfg):
+    def _run(cfg, client=None):  # v17d: weekly_run passes the client seam
         seen["scenarios_n"] = cfg.scenarios_n
         return _Advice()
 
+    # v17d §4: the pipeline logs len(frame), so the stub carries a length.
     monkeypatch.setattr("gaffer.models.train.load_training_frame",
-                        lambda: (None, None, None))
+                        lambda: ([], None, None))
     monkeypatch.setattr("gaffer.models.train.train_all",
                         lambda frame, team_frame, save=True: None)
     monkeypatch.setattr("gaffer.advise.run_advise", _run)
