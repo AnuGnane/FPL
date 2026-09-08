@@ -661,7 +661,7 @@ Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 `reports/evaluation.json`, and the Model hub.
 
-## 11. The version history, v1 to v17e
+## 11. The version history, v1 to v17f
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
 reviewed. Every cycle ran the same way, and knowing the shape tells you where
@@ -926,7 +926,27 @@ its own constants. The settings router stopped reading files. Gated on
 the golden board (unmoved), a rail, two greps and screenshots; passed
 first full run. Python 4329 → **4360**, frontend 923 → **925**.
 
-The suite grew from nothing to **4,329 Python + 923 frontend tests** along
+**v17f — the served plan, owned once** (2026-09-08). "What does the user
+see for GW7?" was answered across four modules and the shape of a served
+week was written four times: an anonymous dict into `serve_rung`, a
+thirteen-key dict out of it, nine fields splatted into `Advice`, and the
+plan route re-parsing the file with its own coercers, pricing every move
+a second time and running the bank forward because the artifact carried
+no money. Now one frozen value, `ServedPlan` (`src/gaffer/served.py`),
+owns the moves, the weeks with their prices, hit charge, chip, bank and
+trace, the restraint walk, the objective's own week and the
+alternatives. Its field names are the artifact's keys, so the write is
+one `model_dump` and the read one `model_validate`. `advise` completes
+it off the solve state it just saved — so the trace and the
+price-timing charge are the ones the solve saw, not tonight's —
+and `artifacts.served_plan(gw)` reads it back, filling those fields for
+a file written before the cycle from that file's own solve state. The
+plan route became a shape adapter: no coercers, no arithmetic, the wire
+unchanged, which a recorded `GET /api/plan/4` over the golden board
+proved byte for byte. The advice filename is now spelled once, in
+`artifacts.py`. Python 4360 → **4369**, frontend 925 → **926**.
+
+The suite grew from nothing to **4,369 Python + 926 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above
 so a future change cannot quietly break one.
 

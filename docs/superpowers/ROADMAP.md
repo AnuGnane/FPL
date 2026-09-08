@@ -21,9 +21,10 @@ Python + 910 frontend, pins routes 51 / job kinds 12 / `Config` fields 59.
 The v17 deepening programme has started: v17a (the wire types, one command)
 is merged at `400c2f5`, v17b (restraint narrated once, on the server) at
 `b1b3b7e`, v17c (the golden board harness) at `ee02520`, v17d (one
-weekly pipeline module) at `c6b049f`, and v17e (the config in force, one
-interface) at `0f1a934`, suite 4360 / 925, `Config` pin 59 → 62;
-v17f (the served plan, owned once) is next.
+weekly pipeline module) at `c6b049f`, v17e (the config in force, one
+interface) at `0f1a934`, suite 4360 / 925, `Config` pin 59 → 62, and v17f
+(the served plan, owned once) at `0e5d838`, suite 4369 / 926; v17g
+(`build_advice` as a pure module) is next.
 **Security incident, open:** the odds API key's value reached a committed
 plan document (`dd47c0a`) via a forked plan-writing subagent and was pushed
 to the public remote with the merge; removed at the tip (`8fddb0b`), history
@@ -122,6 +123,33 @@ build_advice, the This Week loader. v17a, v17b and v17c are shipped
 `.venv/bin/pytest -q tests/test_golden_board.py`.
 
 ## Shipped
+
+### v17f — the served plan, owned once (done, merged `0e5d838` 2026-09-08)
+Review card #c1. One frozen pydantic value, `ServedPlan` in the new
+`src/gaffer/served.py`, answers "what does the user see for GW N": the
+moves with their prices, the weeks with their hit charge, chip, running
+bank and trace, the restraint walk, the objective's own week and the
+alternatives. Its field names are the advice JSON's own keys, so
+`model_dump(exclude_unset=True)` is the write and
+`model_validate(payload)` is the read. `serve_rung` returns it;
+`advise` decorates and completes it off the solve state it just saved,
+so the trace and the price-timing charge are what the solve saw rather
+than what tonight's log says; `artifacts.served_plan(gw)` reads it back
+and fills prices, banks and the trace for a file written before this
+cycle through the same functions. `web/routers/plan.py` fell from 499
+lines to a shape adapter with no arithmetic in it — the three coercers,
+the second pricing pass, the bank recurrence, the trace call and the
+`TRACE` flag are gone — and `meta.py` and `tracking.py` no longer know
+the filename, which is now spelled only in `artifacts.py`. Gated on the
+golden board (every pre-existing value equal after the new keys are
+stripped, then re-recorded), on `GET /api/plan/4` recorded over the
+board on `main`'s code and byte-identical after, on the v16 source-order
+pins becoming a round-trip test, and on that grep; passed on the second
+strip check, which found and kept a decoration the old code carried by
+aliasing. Spec `2026-09-08-v17f-served-plan-design.md`, plan
+`2026-09-08-v17f-served-plan.md`. Pins: routes 51, job kinds 12,
+`Config` fields 62, all unmoved. Python 4360 → **4369**, frontend
+925 → **926**.
 
 ### v17e — the config in force, one interface (done, merged `0f1a934` 2026-09-08)
 Review card #c5. `src/gaffer/config.py` is the only module that opens
