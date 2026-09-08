@@ -1,10 +1,11 @@
 """v17c — the golden board harness (specs/2026-09-07-v17c-golden-board-design.md).
 
-Unit tests over a synthetic bundle, and the two ``golden``-marked tests that
-run the real pipeline over the recorded one."""
+Unit tests over a synthetic bundle, and the ``golden``-marked tests that run
+the real pipeline over the recorded one."""
 from __future__ import annotations
 
 import hashlib
+import json
 from dataclasses import asdict
 from pathlib import Path
 
@@ -187,9 +188,13 @@ def test_build_scratch_tree_links_the_heavy_inputs_and_copies_the_frozen_ones(tm
 def test_strip_volatile_removes_generated_at_and_rewrites_paths():
     obj = {"generated_at": "2026-09-08T09:17:00", "gw": 4,
            "nested": [{"generated_at": 1, "path": "/tmp/x/reports/a.json"}],
-           "other": "/tmp/y/z"}
+           "other": "/tmp/y/z",
+           # v17c §1 item 1: the rewrite is on a path boundary, so the sibling
+           # directory stays itself while the root itself becomes the marker.
+           "sibling": "/tmp/xy/z", "root": "/tmp/x"}
     assert gc.strip_volatile(obj, "/tmp/x") == {
-        "gw": 4, "nested": [{"path": "<cwd>/reports/a.json"}], "other": "/tmp/y/z"}
+        "gw": 4, "nested": [{"path": "<cwd>/reports/a.json"}], "other": "/tmp/y/z",
+        "sibling": "/tmp/xy/z", "root": "<cwd>"}
 
 
 def test_lever_counts_read_the_served_advice():
@@ -219,3 +224,128 @@ def test_the_fixture_is_under_the_size_budget():
     if not (gc.GOLDEN_DIR / gc.HEADER_NAME).exists():
         pytest.skip("golden board not recorded yet")
     assert gc.fixture_kb(gc.GOLDEN_DIR) < 5120
+
+
+REPO = Path(__file__).resolve().parents[1]
+
+
+def _header() -> dict | None:
+    path = gc.GOLDEN_DIR / gc.HEADER_NAME
+    return json.loads(path.read_text()) if path.exists() else None
+
+
+@pytest.fixture(scope="module")
+def golden_run(tmp_path_factory):
+    """One pipeline run per session, shared by the golden tests. Skips,
+    with the file named, when a hashed input moved (spec §2.6), and when the
+    board has not been recorded."""
+    header = _header()
+    if header is None:
+        pytest.skip("golden board not recorded (tests/data/golden_board/header.json)")
+    stale = gc.stale_inputs(header, REPO)
+    if stale:
+        pytest.skip(f"golden board recorded under a different {stale[0]} "
+                    f"({len(stale)} input(s) differ); re-record with "
+                    "python -m tests.golden_client --write")
+    root = tmp_path_factory.mktemp("golden")
+    gc.build_scratch_tree(root, REPO)
+    advice, state = gc.run_golden(root)
+    cwd = str(root.resolve())
+    return {"header": header, "cwd": cwd,
+            "advice": gc.strip_volatile(advice, cwd),
+            "state": gc.strip_volatile(state, cwd)}
+
+
+@pytest.mark.golden
+def test_the_golden_board_reproduces_the_expected_advice_and_state(golden_run):
+    expected = gc.GOLDEN_DIR / gc.EXPECTED_DIR
+    assert golden_run["advice"] == json.loads((expected / "advice.json").read_text())
+    assert golden_run["state"] == json.loads((expected / "solve_state.json").read_text())
+
+
+@pytest.mark.golden
+def test_the_golden_board_still_exercises_every_lever(golden_run):
+    counts = gc.lever_counts(golden_run["advice"])
+    assert gc.levers_below_floor(counts) == []
+    assert counts == golden_run["header"]["levers"]
+
+
+@pytest.mark.golden
+def test_the_golden_run_writes_nothing_through_the_symlinks(golden_run):
+    """``models/`` and ``data/history`` are symlinks into the repo (spec
+    §2.4); a run that wrote through one would have changed a digest."""
+    assert gc.stale_inputs(golden_run["header"], REPO) == []
+
+
+def test_the_header_config_is_golden_config():
+    header = _header()
+    if header is None:
+        pytest.skip("golden board not recorded yet")
+    assert header["config"] == asdict(gc.golden_config())
+    assert header["config"]["odds_api_key"] == ""
+
+
+def test_the_recorded_config_file_has_no_odds_section():
+    path = gc.GOLDEN_DIR / "config.toml"
+    if not path.exists():
+        pytest.skip("golden board not recorded yet")
+    assert "[odds]" not in path.read_text()
+    assert "api_key" not in path.read_text()
+
+
+def test_run_golden_runs_in_the_scratch_tree_and_reads_the_two_files_back(tmp_path, monkeypatch):
+    """``run_golden`` over a stub ``run_advise``: it chdirs into the root,
+    clears the serving-config cache on both sides, silences the refresh
+    sleep, and hands back the two JSON files the run wrote."""
+    import time as time_mod
+
+    import gaffer.data.live as live_mod
+    from gaffer.config import serving_config
+
+    calls: dict[str, object] = {}
+    (tmp_path / "reports").mkdir()
+
+    def fake_run_advise(cfg, client=None):
+        calls["cwd"] = Path.cwd()
+        calls["cfg"] = cfg
+        calls["client"] = client
+        calls["sleep"] = live_mod.time.sleep
+        (tmp_path / "reports" / "gw4-advice.json").write_text(
+            json.dumps({"gw": 4, "generated_at": "x"}))
+        (tmp_path / "reports" / "solve_state_gw4.json").write_text(
+            json.dumps({"gw": 4, "generated_at": "y"}))
+
+        class A:
+            gw = 4
+        return A()
+
+    monkeypatch.setattr(gc, "run_advise", fake_run_advise)
+    serving_config.cache_clear()
+    before = Path.cwd()
+    sentinel = object()
+    advice, state = gc.run_golden(tmp_path, client=sentinel)
+    assert Path.cwd() == before
+    assert calls["cwd"] == tmp_path.resolve()
+    assert asdict(calls["cfg"]) == asdict(gc.golden_config())
+    assert calls["client"] is sentinel
+    assert calls["sleep"] is not time_mod.sleep
+    assert live_mod.time.sleep is time_mod.sleep
+    assert advice == {"gw": 4, "generated_at": "x"} and state == {"gw": 4, "generated_at": "y"}
+    assert serving_config.cache_info().currsize == 0
+
+
+def test_run_golden_restores_the_cwd_when_the_run_raises(tmp_path, monkeypatch):
+    def boom(cfg, client=None):
+        raise RuntimeError("solver died")
+
+    monkeypatch.setattr(gc, "run_advise", boom)
+    before = Path.cwd()
+    with pytest.raises(RuntimeError, match="solver died"):
+        gc.run_golden(tmp_path, client=object())
+    assert Path.cwd() == before
+
+
+def test_main_refuses_to_run_outside_the_repo_root(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    assert gc.main(["--write"]) == 2
+    assert "repo root" in capsys.readouterr().err

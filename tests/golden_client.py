@@ -8,15 +8,23 @@ Lives in ``tests/`` because nothing in the package needs it.
 """
 from __future__ import annotations
 
+import argparse
 import copy
 import gzip
 import hashlib
 import json
 import os
 import shutil
+import subprocess
+import sys
+import tempfile
+import time
 from dataclasses import asdict
+from datetime import datetime, timezone
 from pathlib import Path
+from unittest.mock import patch
 
+from gaffer.advise import run_advise
 from gaffer.api.client import FPLClient
 from gaffer.config import NO_CAP, Config
 
@@ -252,8 +260,13 @@ def build_scratch_tree(root: Path, repo: Path, golden: Path = GOLDEN_DIR) -> Non
     for the two hashed roots, copies for the frozen Core Insights, the
     tracked tenures file and the golden ``config.toml``; an empty
     ``reports/``; nothing else, so ``data/live`` and the rest are created by
-    the run and the repo's own trees are never written."""
-    root, repo, golden = Path(root), Path(repo), Path(golden)
+    the run and the repo's own trees are never written.
+
+    ``root`` must be fresh: the symlink and copytree calls are not idempotent,
+    so a second build over the same directory raises. Every path is resolved
+    on entry so a relative ``repo`` cannot resolve against the new working
+    directory later and leave a self-referential symlink behind."""
+    root, repo, golden = Path(root).resolve(), Path(repo).resolve(), Path(golden).resolve()
     (root / "data").mkdir(parents=True, exist_ok=True)
     (root / "reports").mkdir(exist_ok=True)
     os.symlink(repo / "models", root / "models")
@@ -267,13 +280,16 @@ def build_scratch_tree(root: Path, repo: Path, golden: Path = GOLDEN_DIR) -> Non
 
 def strip_volatile(obj, cwd: str):
     """``generated_at`` removed at every depth; every string that starts with
-    the run's working directory rewritten to ``<cwd>`` (spec §1 item 1)."""
+    the run's working directory rewritten to ``<cwd>`` (spec §1 item 1).
+
+    The prefix match is on a path boundary, not on characters: a sibling
+    ``/tmp/xy/z`` is not inside ``/tmp/x`` and must survive untouched."""
     if isinstance(obj, dict):
         return {k: strip_volatile(v, cwd) for k, v in obj.items()
                 if k != "generated_at"}
     if isinstance(obj, list):
         return [strip_volatile(v, cwd) for v in obj]
-    if isinstance(obj, str) and obj.startswith(cwd):
+    if isinstance(obj, str) and (obj == cwd or obj.startswith(cwd.rstrip("/") + "/")):
         return "<cwd>" + obj[len(cwd):]
     return obj
 
@@ -314,3 +330,129 @@ def levers_below_floor(counts: dict[str, object]) -> list[str]:
 def fixture_kb(directory: Path = GOLDEN_DIR) -> float:
     return sum(p.stat().st_size for p in Path(directory).rglob("*")
                if p.is_file()) / 1024
+
+
+def run_golden(root: Path, client: FPLClient | None = None) -> tuple[dict, dict]:
+    """``run_advise(golden_config(), client)`` inside ``root`` (spec §2.3,
+    §2.8): the working directory is the second, implicit seam
+    (``serving_config()`` and every relative ``Path("data")``), so the
+    process moves into it for the call and back out after. The serving
+    cache is cleared on both sides so neither the repo's ``config.toml``
+    nor the golden's leaks into the other; ``refresh_live``'s politeness
+    sleep is the one thing patched — 654 calls to a server the recorded
+    client never contacts."""
+    from gaffer.config import serving_config
+    import gaffer.data.live as live_mod
+
+    root = Path(root).resolve()
+    client = client if client is not None else RecordedClient()
+    before = Path.cwd()
+    serving_config.cache_clear()
+    try:
+        os.chdir(root)
+        with patch.object(live_mod.time, "sleep", lambda *_: None):
+            advice = run_advise(golden_config(), client)
+        gw = int(advice.gw)
+        advice_json = json.loads((root / "reports" / f"gw{gw}-advice.json").read_text())
+        state_json = json.loads((root / "reports" / f"solve_state_gw{gw}.json").read_text())
+    finally:
+        os.chdir(before)
+        serving_config.cache_clear()
+    return advice_json, state_json
+
+
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[1]
+
+
+def _git_head(repo: Path) -> str:
+    try:
+        return subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=repo,
+                              capture_output=True, text=True, check=True).stdout.strip()
+    except Exception:  # noqa: BLE001 — a header without a hash is still a header
+        return ""
+
+
+def write_expected(golden: Path = GOLDEN_DIR, *, scratch: Path | None = None,
+                   recorded_at: str | None = None) -> dict:
+    """The retrain path (spec §2.10): run the golden over the *existing*
+    bundle and rewrite ``expected/`` and the header. Returns the header."""
+    repo = _repo_root()
+    golden = Path(golden)
+    root = Path(scratch) if scratch else Path(tempfile.mkdtemp(prefix="golden-"))
+    build_scratch_tree(root, repo, golden)
+    started = time.monotonic()
+    advice, state = run_golden(root)
+    runtime = round(time.monotonic() - started, 1)
+    cwd = str(root.resolve())
+    advice, state = strip_volatile(advice, cwd), strip_volatile(state, cwd)
+    expected = golden / EXPECTED_DIR
+    expected.mkdir(exist_ok=True)
+    (expected / "advice.json").write_text(json.dumps(advice, indent=1, sort_keys=True) + "\n")
+    (expected / "solve_state.json").write_text(json.dumps(state, indent=1, sort_keys=True) + "\n")
+    bundle = golden / BUNDLE_NAME
+    old = json.loads((golden / HEADER_NAME).read_text()) if (golden / HEADER_NAME).exists() else {}
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    header = {
+        "recorded_at": recorded_at or old.get("recorded_at") or now,
+        "written_at": now,
+        "recorded_by": "python -m tests.golden_client --record; --write after a retrain",
+        "gw": int(advice["gw"]),
+        "commit": _git_head(repo),
+        "config": asdict(golden_config()),
+        "inputs": input_hashes(repo),
+        "responses": {"count": len(load_bundle(golden)), "bytes_gz": bundle.stat().st_size},
+        "levers": lever_counts(advice),
+        "runtime_s": runtime,
+    }
+    (golden / HEADER_NAME).write_text(json.dumps(header, indent=1) + "\n")
+    return header
+
+
+def record(golden: Path = GOLDEN_DIR) -> dict:
+    """The live path (spec §2.10): freeze Core Insights into the fixture,
+    write the golden ``config.toml``, run the pipeline once through
+    ``RecordingClient`` to bank every response, then ``write_expected`` over
+    the bundle so the expected files come from the replay path, not the
+    live one."""
+    repo = _repo_root()
+    golden = Path(golden)
+    golden.mkdir(parents=True, exist_ok=True)
+    frozen = golden / "data" / "core_insights"
+    if frozen.exists():
+        shutil.rmtree(frozen)
+    shutil.copytree(repo / "data" / "core_insights", frozen)
+    write_golden_toml(golden_config(), golden / "config.toml")
+    root = Path(tempfile.mkdtemp(prefix="golden-record-"))
+    build_scratch_tree(root, repo, golden)
+    recorder = RecordingClient(golden, raw_dir=root / "data" / "raw")
+    run_golden(root, client=recorder)
+    recorder.save()
+    recorded_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return write_expected(golden, recorded_at=recorded_at)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="v17c golden board: --record fetches live and writes the "
+                    "bundle, the expected files and the header; --write reruns "
+                    "the existing bundle (after a retrain).")
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--record", action="store_true")
+    mode.add_argument("--write", action="store_true")
+    args = parser.parse_args(argv)
+    if Path.cwd().resolve() != _repo_root():
+        print(f"run from the repo root ({_repo_root()})", file=sys.stderr)
+        return 2
+    header = record() if args.record else write_expected()
+    print(json.dumps({k: header[k] for k in ("gw", "levers", "runtime_s", "responses")},
+                     indent=1))
+    below = levers_below_floor(header["levers"])
+    if below:
+        print(f"levers below floor: {', '.join(below)}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
