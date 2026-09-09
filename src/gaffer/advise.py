@@ -1211,15 +1211,16 @@ def build_advice(inputs: Inputs, cfg: Config, *,
                     for p in alt.gw_plans]})
 
     # v16 §4 (specs/2026-09-06-gaffer-v16-restraint-brief-design.md): the
-    # components and the solve state are banked *before* the payload, because
-    # the ladder solves off the state and the payload's plan is the rung the
-    # ladder's restraint walk chose. The objective's own plan rides beside it
-    # as ``objective`` and the walk as ``restraint``; a ladder that will not
-    # build leaves the objective's plan served, with a note.
-    REPORTS.mkdir(exist_ok=True)
-    # The same frame §4.6 banded above, not a second build of it: one frame
-    # means the ceiling on the page and the breakdown on disk cannot disagree.
-    save_components(components, gw)
+    # payload's plan is the rung the ladder's restraint walk chose, and the
+    # objective's own plan rides beside it as ``objective`` with the walk as
+    # ``restraint``; a ladder that will not build leaves the objective's plan
+    # served, with a note.
+    #
+    # v17g §2.6: §4's other half — "banked *before* the payload, because the
+    # ladder solves off the state" — is gone with the read it was about. The
+    # ladder solves off the state in memory, so nothing here has to reach the
+    # disk first, and the components frame is banked by ``gather_inputs``,
+    # which is the half that made it.
     generated_at = datetime.now(timezone.utc).isoformat()
     solve_state = SolveState(
         gw=gw, gws=gws, deadline=deadline,
