@@ -17,6 +17,12 @@ import { beforeEach } from 'vitest'
 beforeEach(async () => {
   const { resetJobSlots } = await import('./src/api/useJob')
   resetJobSlots()
+  // v17h: the page-data cache is module state with the hazard `useJob`'s
+  // slots have — a body fetched in one test would be served to the next
+  // test's first mount, and no request would be made at all. Dynamically
+  // imported for the reason the comment above gives.
+  const { resetPageData } = await import('./src/api/pageData')
+  resetPageData()
   // Toast is a module store for the same reason and with the same hazard: a
   // toast raised in one test is still in `live` for the next one's outlet.
   // Dynamically imported for the same reason as above.
