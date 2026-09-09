@@ -312,11 +312,10 @@ def test_the_advice_payloads_watch_set_is_still_squad_plus_plan():
     """advise.py is protected, so the payload's alerts stay narrow and the
     *web* card carries the wider set. A future cycle that widened one without
     the other would give the user two different answers to one question."""
-    import inspect
 
-    from gaffer import advise
+    from tests.advise_source import advise_source
 
-    src = inspect.getsource(advise.run_advise)
+    src = advise_source()
     assert "watch = set(first.buys + first.sells + owned_now)" in src
 
 

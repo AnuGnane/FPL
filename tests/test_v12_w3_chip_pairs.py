@@ -252,9 +252,9 @@ def test_advise_derives_the_doubles_from_the_probabilities_it_already_read():
     covers that — but about *where* the derivation happens: one read of the
     scenario asset per run, feeding both the surplus mixture and the pair arm,
     so the two cannot be told different things about the same week."""
-    from gaffer.advise import run_advise
+    from tests.advise_source import advise_source
 
-    src = inspect.getsource(run_advise)
+    src = advise_source()
     assert "dgw_probs = load_chip_scenarios()" in src
     assert src.count("load_chip_scenarios()") == 1
     assert "dgw_gws={int(g) for g, p" in src

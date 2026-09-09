@@ -110,11 +110,10 @@ def test_the_flag_on_actually_changes_something(monkeypatch):
 # --- rail 4: advise.py was not touched -----------------------------------
 
 def test_run_advise_still_pins_every_protected_ordering():
-    import inspect
 
-    from gaffer.advise import run_advise
+    from tests.advise_source import advise_source
 
-    src = inspect.getsource(run_advise)
+    src = advise_source()
     assert "ep_matrix(apply_calibration(assemble_ep(" in src
     assert src.index("fetch_rival_entries(") < src.index("tilt_ep(")
     assert src.index("tilt_ep(") < src.index("pool = build_pool(")

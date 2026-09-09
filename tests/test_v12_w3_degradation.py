@@ -278,19 +278,18 @@ def test_the_shipped_default_is_on_and_the_advice_run_wires_the_flag():
     below re-runs the sweep on a fixed seed and proves ``draw_availability =
     False`` is still v11's sweep to the byte.
     """
-    import inspect
     import tempfile
     from pathlib import Path
 
-    from gaffer.advise import run_advise
     from gaffer.config import Config, load_config
+    from tests.advise_source import advise_source
 
     assert Config(entry_id=1, league_id=2).draw_availability is True
     path = Path(tempfile.mkdtemp()) / "config.toml"
     path.write_text("[fpl]\nentry_id = 1\nleague_id = 2\n")
     assert load_config(path).draw_availability is True
 
-    src = inspect.getsource(run_advise)
+    src = advise_source()
     assert "p_play=(p_play_by_code if cfg.draw_availability" in src
     assert "draw_availability=cfg.draw_availability," in src
 

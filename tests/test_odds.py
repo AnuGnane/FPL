@@ -330,9 +330,9 @@ def test_run_advise_fetches_odds_before_building_the_team_future():
     feed cannot block advice, and merged onto tg_future afterwards."""
     import inspect
 
-    from gaffer.advise import run_advise
+    from tests.advise_source import advise_source
 
-    src = inspect.getsource(run_advise)
+    src = advise_source()
     fetch = src.index("odds_frame(raw_odds, teams, events)")
     build = src.index("tg_future = build_team_future(")
     merge = src.index("merge_team_odds(tg_future, odds_df)")
@@ -354,11 +354,10 @@ def test_run_advise_fetches_odds_before_building_the_team_future():
 def test_run_advise_persists_the_weekly_odds_frame():
     """Snapshotted for a future training backfill: history frames have no
     odds, so the only way to ever train on them is to bank them weekly."""
-    import inspect
 
-    from gaffer.advise import run_advise
+    from tests.advise_source import advise_source
 
-    src = inspect.getsource(run_advise)
+    src = advise_source()
     assert 'store.save(odds_df, f"live/odds/gw{gw}.parquet")' in src
 
 
@@ -475,11 +474,10 @@ def test_merge_team_odds_refuses_a_double_listed_fixture():
 def test_run_advise_degrades_when_the_odds_frame_will_not_merge():
     """Odds are a best-effort extra everywhere else; a malformed feed must
     not take the week's advice down with it."""
-    import inspect
 
-    from gaffer.advise import run_advise
+    from tests.advise_source import advise_source
 
-    src = inspect.getsource(run_advise)
+    src = advise_source()
     merge = src.index("merge_team_odds(tg_future, odds_df)")
     tail = src[merge:merge + 400]
     assert "except Exception" in tail
@@ -980,11 +978,10 @@ def test_run_advise_blends_player_props_before_assembling_ep():
     """Source-level seam (no cheap end-to-end harness for run_advise): the
     AGS blend has to land on the component frame before assemble_ep reads
     it, and the protected calibration literal must survive intact."""
-    import inspect
 
-    from gaffer.advise import run_advise
+    from tests.advise_source import advise_source
 
-    src = inspect.getsource(run_advise)
+    src = advise_source()
     comp = src.index("comp = predict_components(")
     blend = src.index("blend_attacking_odds(")
     assemble = src.index("ep_matrix(apply_calibration(assemble_ep(")
@@ -995,11 +992,10 @@ def test_run_advise_blends_player_props_before_assembling_ep():
 
 def test_run_advise_still_orders_the_league_tilt_seam():
     """The other two protected orderings must not have moved."""
-    import inspect
 
-    from gaffer.advise import run_advise
+    from tests.advise_source import advise_source
 
-    src = inspect.getsource(run_advise)
+    src = advise_source()
     assert (src.index("fetch_rival_entries(") < src.index("tilt_ep(")
             < src.index("pool = build_pool("))
     assert "build_pool(players, pool_ep," in src

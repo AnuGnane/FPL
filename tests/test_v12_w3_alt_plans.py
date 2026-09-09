@@ -210,12 +210,11 @@ def test_the_alternatives_are_solved_exactly_as_the_incumbent_was():
     must be corrected precisely where ``coherent_plan`` replaces the plan.
     """
     import ast
-    import inspect
     import textwrap
 
-    from gaffer.advise import run_advise
+    from tests.advise_source import advise_source
 
-    tree = ast.parse(textwrap.dedent(inspect.getsource(run_advise)))
+    tree = ast.parse(textwrap.dedent(advise_source()))
     assigns = [n for n in ast.walk(tree) if isinstance(n, ast.Assign)]
 
     def targets(node):
@@ -239,7 +238,7 @@ def test_the_alternatives_are_solved_exactly_as_the_incumbent_was():
 
     # And the correction sits with the coherent plan, not with the sweep's
     # own `if`: a sweep that ran and died must leave the flag False.
-    src = inspect.getsource(run_advise)
+    src = advise_source()
     coherent = src.index("plan = coherent_plan(")
     assert coherent < src.index("incumbent_weighted = True") < src.index(
         "weighted = {\"p_play\": p_play_by_code}")

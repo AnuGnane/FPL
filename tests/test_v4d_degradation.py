@@ -75,11 +75,10 @@ def test_the_no_league_advise_output_is_still_byte_identical(tmp_path,
 # --- rail 4: the protected source-text seams -------------------------------
 
 def test_the_advise_seams_still_hold_after_v4d():
-    import inspect
 
-    from gaffer.advise import run_advise
+    from tests.advise_source import advise_source
 
-    src = inspect.getsource(run_advise)
+    src = advise_source()
     league = src.index("fetch_rival_entries(")
     strategy = src.index("compute_strategy(")
     tilt = src.index("tilt_ep(")
@@ -95,11 +94,10 @@ def test_nothing_v4d_inserted_reads_the_tilted_pool():
     """cover, cap_cover and the captaincy seam all read ep_by. A tilted
     number on a printed table would be a lie, and the pool is the only
     consumer of the tilt."""
-    import inspect
 
-    from gaffer.advise import run_advise
+    from tests.advise_source import advise_source
 
-    src = inspect.getsource(run_advise)
+    src = advise_source()
     # ``captaincy_override`` is the seam's entry point since B4; it wraps
     # tilted_captaincy behind the override margin.
     for marker in ("cover_table(", "captain_cover(", "captaincy_override("):

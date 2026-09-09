@@ -262,11 +262,10 @@ def test_an_asset_with_no_pooled_curve_still_falls_through_to_the_constant():
 # --- rail 4: the protected orderings, restated -----------------------------
 
 def test_run_advise_still_orders_every_protected_seam():
-    import inspect
 
-    from gaffer.advise import run_advise
+    from tests.advise_source import advise_source
 
-    src = inspect.getsource(run_advise)
+    src = advise_source()
     league = src.index("fetch_rival_entries(")
     tilt = src.index("tilt_ep(")
     pool = src.index("pool = build_pool(")

@@ -225,11 +225,10 @@ def test_league_mode_win_probability_still_has_its_caller():
 
 
 def test_run_advise_still_orders_every_protected_seam():
-    import inspect
 
-    from gaffer.advise import run_advise
+    from tests.advise_source import advise_source
 
-    src = inspect.getsource(run_advise)
+    src = advise_source()
     league = src.index("fetch_rival_entries(")
     tilt = src.index("tilt_ep(")
     pool = src.index("pool = build_pool(")

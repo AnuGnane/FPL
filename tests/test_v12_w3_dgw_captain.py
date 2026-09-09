@@ -221,11 +221,10 @@ def test_advise_bands_the_components_frame_and_banks_the_same_one():
     frame that carries ``ep``, and the one frame in ``run_advise`` that does
     is ``components_frame``'s. Built once and reused by ``save_components``,
     so the banded frame and the banked frame cannot drift apart."""
-    import inspect
 
-    from gaffer.advise import run_advise
+    from tests.advise_source import advise_source
 
-    src = inspect.getsource(run_advise)
+    src = advise_source()
     built = "components = components_frame(comp, scoring, cal, players, teams)"
     assert built in src
     assert src.count("components_frame(") == 1
