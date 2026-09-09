@@ -138,6 +138,28 @@ describe('usePageData', () => {
     expect(later.getByTestId('b-data')).toHaveTextContent('12')
   })
 
+  it('leaves the second request holding the cache when the first one fails '
+     + 'after it', async () => {
+       let failFirst: (e: unknown) => void = () => {}
+       let settleSecond: (body: unknown) => void = () => {}
+       apiGet.mockReturnValueOnce(new Promise((_, reject) => { failFirst = reject }))
+       apiGet.mockReturnValueOnce(new Promise((r) => { settleSecond = r }))
+       apiGet.mockResolvedValue({ n: 99 })   // a third request would take this
+       render(<Reader path="/api/x" />)
+       invalidate('/api/x')                  // the second request starts
+       failFirst(new Error('late'))          // the first one dies after it
+       await waitFor(() => expect(apiGet).toHaveBeenCalledTimes(2))
+       settleSecond({ n: 15 })
+       await waitFor(() =>
+         expect(screen.getByTestId('a-data')).toHaveTextContent('15'))
+       // The dead request must not have cleared the live one's slot on its way
+       // out: a request nothing holds is a body nothing caches, and the next
+       // mount would open a third while the second was still in flight.
+       render(<Reader path="/api/x" name="b" />)
+       expect(screen.getByTestId('b-data')).toHaveTextContent('15')
+       expect(apiGet).toHaveBeenCalledTimes(2)
+     })
+
   it('paints nothing from the old URL when the path changes', async () => {
     apiGet.mockImplementation((path: string) =>
       Promise.resolve({ n: path === '/api/x' ? 13 : 14 }))
@@ -148,6 +170,32 @@ describe('usePageData', () => {
     expect(screen.getByTestId('a-data')).toHaveTextContent('—')
     await waitFor(() =>
       expect(screen.getByTestId('a-data')).toHaveTextContent('14'))
+  })
+
+  it('drops the old URL\'s error when the path changes', async () => {
+    apiGet.mockImplementation((path: string) => (path === '/api/x'
+      ? Promise.reject(new Error('stale'))
+      : Promise.resolve({ n: 16 })))
+    const view = render(<Reader path="/api/x" />)
+    await waitFor(() =>
+      expect(screen.getByTestId('a-error')).toHaveTextContent('stale'))
+    view.rerender(<Reader path="/api/y" />)
+    // The new URL is loading, not failing. Carrying the error over would put
+    // one code list's failure over the next one's empty frame.
+    expect(screen.getByTestId('a-error')).toHaveTextContent('—')
+    await waitFor(() =>
+      expect(screen.getByTestId('a-data')).toHaveTextContent('16'))
+  })
+
+  it('forgets what it held when the path goes back to null', async () => {
+    apiGet.mockResolvedValue({ n: 17 })
+    const view = render(<Reader path="/api/x" />)
+    await waitFor(() =>
+      expect(screen.getByTestId('a-data')).toHaveTextContent('17'))
+    // A card can return to not-yet: the gameweek or the code list it was
+    // waiting for goes away again, and it must go back to waiting.
+    view.rerender(<Reader path={null} />)
+    expect(screen.getByTestId('a-data')).toHaveTextContent('—')
   })
 
   it('caches a null body — 204 is an answer, not an absence', async () => {
