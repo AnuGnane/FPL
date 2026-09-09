@@ -1,5 +1,6 @@
 import * as Tabs from '@radix-ui/react-tabs'
 import { useCallback, useState } from 'react'
+import { invalidate, invalidatePrefix } from '../api/pageData'
 import {
   JobButton, PageHeader, TAB_CLASS, TAB_LIST_CLASS, useTabParam,
 } from '../kit'
@@ -30,6 +31,29 @@ export default function Model() {
   const [reviewNonce, setReviewNonce] = useState(0)
   const reloadReview = useCallback(() => setReviewNonce((n) => n + 1), [])
 
+  // The second class of writer (v17h §5): not a request that writes, but a job
+  // that rewrites the file another hub's card is reading. Before the cycle a
+  // navigation refetched and neither of these could strand anything; now This
+  // Week holds /api/players and /api/news/{gw} until something clears them,
+  // and the nonces above only remount the tab under this header.
+  //
+  // `refresh-data` rewrites live/players.parquet, which is the explorer's
+  // table and the names, clubs and official flags every news panel joins
+  // against; the panel's URL carries a gameweek this hub has no way to name,
+  // hence the prefix. `field-scrape` rewrites the top-10k sample behind the
+  // three EO columns. The other four write reports/ — and Snapshot news the
+  // availability log, which feeds the *next* advise run and Health, not a
+  // cached URL — so they clear nothing.
+  const refreshedData = useCallback(() => {
+    reloadHealth()
+    invalidate('/api/players')
+    invalidatePrefix('/api/news/')
+  }, [reloadHealth])
+  const scrapedField = useCallback(() => {
+    reloadHealth()
+    invalidate('/api/players')
+  }, [reloadHealth])
+
   return (
     <>
       <PageHeader
@@ -49,11 +73,11 @@ export default function Model() {
             <JobButton kind="review" label="Review last week"
                        onDone={reloadReview} />
             <JobButton kind="refresh-data" label="Refresh data"
-                       onDone={reloadHealth} />
+                       onDone={refreshedData} />
             <JobButton kind="snapshot" label="Snapshot news"
                        onDone={reloadHealth} />
             <JobButton kind="field-scrape" label="Field scrape"
-                       onDone={reloadHealth} />
+                       onDone={scrapedField} />
           </div>
         )}
       />

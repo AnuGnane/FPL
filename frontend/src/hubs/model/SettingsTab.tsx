@@ -21,6 +21,16 @@ import type { SettingRow, SettingsPanel } from '../../types'
  * are all worse than never being in that state.
  */
 
+/**
+ * The two whitelist rows the leagues overview is derived from (v17h §5).
+ *
+ * `/api/league/leagues` reads its focus name, its stance and the focus
+ * league's own λ off exactly these, and This Week's league tile holds that
+ * body across a navigation — so a stance set from this tab, on the other side
+ * of the app from the League hub, goes stale in two places at once.
+ */
+const LEAGUE_KEYS = new Set(['focus', 'stance'])
+
 function label(row: SettingRow): string {
   return row.label
 }
@@ -143,6 +153,13 @@ export default function SettingsTab() {
         // changed here must not leave that card printing the value the
         // manager has just changed away from.
         invalidate('/api/settings')
+        // The League hub invalidates two URLs for its stance and focus
+        // writes; this tab is the other writer of the same two rows, and
+        // reaches them through the whitelist like any other. Guarded on the
+        // key rather than cleared on every save: a horizon or a hit cost
+        // moves nothing in a league overview, and the Reset button below
+        // comes through here too, with `null` for a value.
+        if (LEAGUE_KEYS.has(key)) invalidate('/api/league/leagues')
       })
       .catch((e) => setErrors((prev) => ({ ...prev, [key]: errorText(e) })))
       .finally(() => setBusy(null))

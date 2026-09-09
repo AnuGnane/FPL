@@ -80,6 +80,23 @@ export function invalidate(path: string): void {
   for (const notify of [...entry.subscribers]) notify()
 }
 
+/**
+ * The same, for every held URL under `prefix`.
+ *
+ * One operation over a keyspace rather than one key, for the writer that
+ * cannot spell the URL it disturbed: `refresh-data` rewrites the player table
+ * every `/api/news/{gw}` panel joins names and clubs against, and the Model
+ * hub — where the button is — has no gameweek to build one from (v17h §5).
+ *
+ * Over a copy of the keys, so the reasoning holds even if `invalidate` ever
+ * drops an entry rather than emptying it.
+ */
+export function invalidatePrefix(prefix: string): void {
+  for (const path of [...entries.keys()]) {
+    if (path.startsWith(prefix)) invalidate(path)
+  }
+}
+
 /** Put bodies in the cache without a request. For tests. */
 export function seedPageData(bodies: Record<string, unknown>): void {
   for (const [path, body] of Object.entries(bodies)) {

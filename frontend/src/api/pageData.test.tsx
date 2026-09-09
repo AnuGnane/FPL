@@ -1,6 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { invalidate, resetPageData, seedPageData, usePageData } from './pageData'
+import {
+  invalidate, invalidatePrefix, resetPageData, seedPageData, usePageData,
+} from './pageData'
 
 const { apiGet } = vi.hoisted(() => ({ apiGet: vi.fn() }))
 vi.mock('./client', () => ({
@@ -116,6 +118,47 @@ describe('usePageData', () => {
     await waitFor(() => expect(apiGet).toHaveBeenCalledTimes(1))
     expect(apiGet).toHaveBeenCalledWith('/api/x')
   })
+
+  it('refetches every held URL under a prefix and nothing beside it',
+     async () => {
+       apiGet.mockResolvedValue({ n: 11 })
+       render(<><Reader path="/api/news/5" name="a" />
+               <Reader path="/api/news/6" name="b" />
+               <Reader path="/api/newsletter" name="c" />
+               <Reader path="/api/players" name="d" /></>)
+       await waitFor(() => { expect(apiGet).toHaveBeenCalledTimes(4) })
+       apiGet.mockClear()
+       invalidatePrefix('/api/news/')
+       await waitFor(() => { expect(apiGet).toHaveBeenCalledTimes(2) })
+       expect(apiGet.mock.calls.map((call) => call[0] as string).sort())
+         .toEqual(['/api/news/5', '/api/news/6'])
+     })
+
+  // The prefix is a prefix, not a path segment: `/api/news/` matches the
+  // gameweek URLs and stops short of `/api/newsletter`, which is the whole of
+  // the discipline the caller owes it.
+  it('leaves a URL that merely starts with the same letters alone',
+     async () => {
+       apiGet.mockResolvedValue({ n: 12 })
+       render(<Reader path="/api/newsletter" />)
+       await waitFor(() => { expect(apiGet).toHaveBeenCalledTimes(1) })
+       invalidatePrefix('/api/news/')
+       await new Promise((r) => { setTimeout(r, 0) })
+       expect(apiGet).toHaveBeenCalledTimes(1)
+     })
+
+  it('invalidates a URL under the prefix that nobody is mounted on',
+     async () => {
+       apiGet.mockResolvedValueOnce({ n: 13 }).mockResolvedValueOnce({ n: 14 })
+       const first = render(<Reader path="/api/news/5" />)
+       await waitFor(() =>
+         expect(screen.getByTestId('a-data')).toHaveTextContent('13'))
+       first.unmount()
+       invalidatePrefix('/api/news/')
+       render(<Reader path="/api/news/5" />)
+       await waitFor(() =>
+         expect(screen.getByTestId('a-data')).toHaveTextContent('14'))
+     })
 
   it('serves a seeded body without any request', () => {
     seedPageData({ '/api/x': { n: 10 } })
