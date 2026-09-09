@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { apiPost, errorText } from '../../api/client'
+import { invalidate } from '../../api/pageData'
 import { Button, Callout, INPUT_CLASS, buttonClass, toast } from '../../kit'
 import type { OverrideRequest, OverridesPanel } from '../../types'
 
@@ -68,6 +69,10 @@ export default function PinDialog(
       }
       const panel = await apiPost<OverridesPanel>('/api/overrides', body)
       onSaved?.(panel)
+      // The dialog's caller is re-seeded from the answer above, but the Why
+      // panel on This Week reads the same pins through the cache (v17h §5),
+      // and "your pins are in this plan" has to be true of the pin just taken.
+      invalidate('/api/overrides')
       // True on the warning path too: the pin *was* taken, and the dialog
       // stays up with its sentence.
       toast('positive', `Pinned ${name}. It applies to this gameweek only.`)

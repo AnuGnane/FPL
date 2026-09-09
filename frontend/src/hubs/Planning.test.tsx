@@ -10,6 +10,10 @@ vi.mock('../api/client', () => ({
   ApiError: class extends Error { status = 0; detail: unknown = null },
   apiGet: (path: string) => apiGet(path),
   apiPost: vi.fn(),
+  // The hub reads the advice through the page-data cache since v17h §3, and
+  // the cache turns a refusal into a sentence with this — so a mock without
+  // it makes the empty-state case fail inside the module under test.
+  errorText: (e: unknown) => (e instanceof Error ? e.message : String(e)),
 }))
 
 vi.mock('./planning/Timeline', () => ({

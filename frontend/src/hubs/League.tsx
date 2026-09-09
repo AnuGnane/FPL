@@ -1,10 +1,11 @@
 import * as Tabs from '@radix-ui/react-tabs'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import { apiGet, apiPost, errorText } from '../api/client'
+import { invalidate, usePageData } from '../api/pageData'
 import {
   type Column, Callout, Card, DataTable, EmptyState, Loading, PageHeader,
   Sparkline, Stat, StatRow, TABLE_CLASS, TAB_CLASS, TAB_LIST_CLASS, THEAD_CLASS,
@@ -97,8 +98,11 @@ export default function League() {
   const [rivals, setRivals] = useState<RivalSummary[]>([])
   const [missing, setMissing] = useState<string | null>(null)
   const [sim, setSim] = useState<LeagueSimData | null>(null)
-  const [squad, setSquad] = useState<WhatIfSquadPlayer[]>([])
   const [busy, setBusy] = useState(false)
+  // The same read This Week, Planning and Players make (v17h §3). The league's
+  // own four endpoints below keep `apiGet`: they are this hub's alone and no
+  // cached card is watching them.
+  const latest = usePageData<AdviceLatest>('/api/advice/latest')
 
   const loadOverview = useCallback(() => {
     apiGet<LeaguesOverview>('/api/league/leagues')
@@ -122,14 +126,14 @@ export default function League() {
 
   useEffect(() => { loadOverview() }, [loadOverview])
   useEffect(() => { loadLeague() }, [loadLeague])
-  useEffect(() => {
-    // An empty squad is a working empty state in the What-if panel, so the
-    // failure path is [] rather than an error.
-    apiGet<AdviceLatest>('/api/advice/latest')
-      .then((body) => setSquad(body.advice.xi.map((p) => (
-        { code: p.code, name: p.name, position: p.position ?? '' }))))
-      .catch(() => setSquad([]))
-  }, [])
+
+  // An empty squad is a working empty state in the What-if panel, so the
+  // failure path is [] rather than an error. Memoised because it is a prop:
+  // a fresh array each render is a new identity for the panel to chase.
+  const squad: WhatIfSquadPlayer[] = useMemo(
+    () => (latest.data?.advice?.xi ?? []).map((p) => (
+      { code: p.code, name: p.name, position: p.position ?? '' })),
+    [latest.data])
 
   // Both writes go through the settings endpoint (v15 §4.2), so the Model
   // tab, the CLI and the solve job read the same file. A refusal is a toast
@@ -138,7 +142,16 @@ export default function League() {
                  what: string) {
     setBusy(true)
     apiPost('/api/settings', { key, value })
-      .then(() => { loadOverview(); loadLeague() })
+      .then(() => {
+        // Two URLs, because a stance or a focus written here is read on
+        // another hub (v17h §5): the ladder card holds /api/settings, and the
+        // leagues overview is what This Week's league tile prints — it names
+        // the focus league and says whether the stance was set by hand.
+        invalidate('/api/settings')
+        invalidate('/api/league/leagues')
+        loadOverview()
+        loadLeague()
+      })
       .catch((e) => toast('negative', `Could not ${what} — ${errorText(e)}`))
       .finally(() => setBusy(false))
   }

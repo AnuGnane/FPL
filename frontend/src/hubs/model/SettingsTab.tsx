@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiGet, apiPost, errorText } from '../../api/client'
+import { invalidate } from '../../api/pageData'
 import {
   Button, Callout, Card, EmptyState, INPUT_CLASS, Loading, Segmented,
 } from '../../kit'
@@ -135,7 +136,14 @@ export default function SettingsTab() {
       // The response is the whole panel, so a save re-seeds every row's
       // `source` as well as its value — which is what turns the Reset button
       // on for the field that was just written.
-      .then((body) => setPanel(body))
+      .then((body) => {
+        setPanel(body)
+        // This tab keeps its own read, but the ladder card on This Week holds
+        // the same URL in the page-data cache (v17h §5), and a setting
+        // changed here must not leave that card printing the value the
+        // manager has just changed away from.
+        invalidate('/api/settings')
+      })
       .catch((e) => setErrors((prev) => ({ ...prev, [key]: errorText(e) })))
       .finally(() => setBusy(null))
   }

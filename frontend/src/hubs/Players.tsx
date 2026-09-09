@@ -1,6 +1,7 @@
 import * as Tabs from '@radix-ui/react-tabs'
 import { useEffect, useState } from 'react'
 import { apiDelete, apiGet, apiPost, errorText } from '../api/client'
+import { usePageData } from '../api/pageData'
 import { useDebounced } from '../api/useDebounced'
 import {
   type Column, Bar, Button, Card, DataTable, EmptyState, INPUT_CLASS, Loading,
@@ -28,11 +29,16 @@ export default function Players() {
   const [position, setPosition] = useState('')
   const [search, setSearch] = useState('')
   const [picked, setPicked] = useState<number[]>([])
-  const [gw, setGw] = useState<number | null>(null)
+  // Shared with This Week, Planning and League, which read the same URL
+  // through the same cache (v17h §3). The explorer's own /api/players read
+  // below keeps `apiGet`: it is a different URL per filter and per keystroke,
+  // and nothing else on the site asks it.
+  const latest = usePageData<AdviceLatest>('/api/advice/latest')
+  const gw = latest.data?.gw ?? null
   // Three states, not two: `gw === null` used to mean both "still loading" and
   // "there is nothing to load", so a failed /api/advice/latest left the Compare
   // tab on "Loading…" for ever with nothing saying what to do about it.
-  const [gwFailed, setGwFailed] = useState(false)
+  const gwFailed = latest.error !== null
   // The row whose availability the manager is overruling, or null.
   const [pinning, setPinning] = useState<PlayerRow | null>(null)
   // Codes with a pin standing. Read once and then kept current from the
@@ -105,12 +111,6 @@ export default function Players() {
           `Could not ${on ? 'unstar' : 'star'} ${name} — ${errorText(e)}`)
       })
   }
-
-  useEffect(() => {
-    apiGet<AdviceLatest>('/api/advice/latest')
-      .then((b) => { setGw(b.gw); setGwFailed(false) })
-      .catch(() => { setGw(null); setGwFailed(true) })
-  }, [])
 
   useEffect(() => {
     const params = new URLSearchParams()

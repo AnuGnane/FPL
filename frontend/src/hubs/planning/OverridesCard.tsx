@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiDelete, apiGet, errorText } from '../../api/client'
+import { invalidate } from '../../api/pageData'
 import { Button, Callout, Card, fmtNum, toast } from '../../kit'
 import type { OverridesPanel } from '../../types'
 
@@ -16,6 +17,10 @@ export default function OverridesCard() {
   const drop = async (code: number, name: string) => {
     try {
       setData(await apiDelete<OverridesPanel>(`/api/overrides/${code}`))
+      // The pin is gone from this card's own answer, and the Why panel on This
+      // Week is holding a list that still names him (v17h §5). The unpin is
+      // the write the spec put on the Players hub; the button is here.
+      invalidate('/api/overrides')
       toast('positive', `Unpinned ${name}. The model's own minutes apply again.`)
     } catch (e) {
       toast('negative', `Could not unpin ${name} — ${errorText(e)}`)

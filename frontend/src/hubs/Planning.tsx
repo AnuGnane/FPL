@@ -1,6 +1,6 @@
 import * as Tabs from '@radix-ui/react-tabs'
-import { useEffect, useState } from 'react'
-import { apiGet } from '../api/client'
+import { useMemo, useState } from 'react'
+import { usePageData } from '../api/pageData'
 import {
   EmptyState, PageHeader, TAB_CLASS, TAB_LIST_CLASS, useTabParam,
 } from '../kit'
@@ -35,39 +35,45 @@ const EMPTY_WHATIF: WhatIfRequest = {
 }
 
 export default function Planning() {
-  const [gw, setGw] = useState<number | null>(null)
+  // The same URL This Week, Players and League read, so the four hubs share
+  // one request rather than each asking again on every navigation (v17h §3).
+  // The hub keeps its own error slot, as the `.catch` it replaces was: a read
+  // that failed here is this hub's empty state and nobody else's (v17h §0.1).
+  const latest = usePageData<AdviceLatest>('/api/advice/latest')
+  const [whatif, setWhatif] = useState<WhatIfRequest>(EMPTY_WHATIF)
+  const [tab, setTab] = useTabParam(TABS, 'timeline')
+
+  const body = latest.data
+  const gw = body?.gw ?? null
   // code → team code, from the six player keys v9a's identity.py decorates on
   // the way out of /api/advice/latest. Built from the response Planning
   // already makes, so the timeline's fixture chips cost no extra request
   // (plan A11). A player the advice never named is simply absent, and the
   // timeline draws no chip for him.
-  const [teamByCode, setTeamByCode] = useState<Map<number, number>>(new Map())
-  const [missing, setMissing] = useState(false)
-  const [whatif, setWhatif] = useState<WhatIfRequest>(EMPTY_WHATIF)
-  const [tab, setTab] = useTabParam(TABS, 'timeline')
+  //
+  // Memoised, because it is a prop now rather than state: a fresh Map on every
+  // render would be a new identity the timeline has to re-read each time.
+  const teamByCode = useMemo(() => {
+    const map = new Map<number, number>()
+    const a = body?.advice
+    // captain and vice are single refs, not arrays; a payload written
+    // before v9a's enrichment carries `team_code: undefined`, which the
+    // typeof guard covers along with an explicit null.
+    // `?? []` on the lists: the map is a decoration on the timeline, and
+    // an advice payload that is missing one of them must not take the
+    // whole hub to its "nothing planned yet" state.
+    for (const ref of [...(a?.xi ?? []), ...(a?.bench ?? []),
+      ...(a?.buys ?? []), ...(a?.sells ?? []), a?.captain, a?.vice]) {
+      if (ref && typeof ref.team_code === 'number') {
+        map.set(ref.code, ref.team_code)
+      }
+    }
+    return map
+  }, [body])
 
-  useEffect(() => {
-    apiGet<AdviceLatest>('/api/advice/latest')
-      .then((body) => {
-        setGw(body.gw)
-        const map = new Map<number, number>()
-        const a = body.advice
-        // captain and vice are single refs, not arrays; a payload written
-        // before v9a's enrichment carries `team_code: undefined`, which the
-        // typeof guard covers along with an explicit null.
-        // `?? []` on the lists: the map is a decoration on the timeline, and
-        // an advice payload that is missing one of them must not take the
-        // whole hub to its "nothing planned yet" state.
-        for (const ref of [...(a?.xi ?? []), ...(a?.bench ?? []),
-          ...(a?.buys ?? []), ...(a?.sells ?? []), a?.captain, a?.vice]) {
-          if (ref && typeof ref.team_code === 'number') {
-            map.set(ref.code, ref.team_code)
-          }
-        }
-        setTeamByCode(map)
-      })
-      .catch(() => setMissing(true))
-  }, [])
+  // `!== null`, not truthiness: a refusal whose detail is the empty string is
+  // still a refusal, and this is the state that says so.
+  const missing = latest.error !== null
 
   if (missing) {
     return (

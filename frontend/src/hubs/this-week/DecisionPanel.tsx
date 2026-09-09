@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiPost, errorText } from '../../api/client'
-import { usePageData } from '../../api/pageData'
+import { invalidate, usePageData } from '../../api/pageData'
 import {
   Button, Callout, Card, Chip, INPUT_CLASS, Segmented, fmtDelta,
 } from '../../kit'
@@ -49,6 +49,10 @@ export default function DecisionPanel({ gw }: { gw: number }) {
                                               { reason, text })
       setNote(out)
       setSaved(true)
+      // The POST's answer is what this panel paints, but the cache still
+      // holds the note as it was before the save (v17h §5) — and the review
+      // reads the same URL. Cheap, because the one re-request is shared.
+      invalidate(`/api/decisions/${gw}`)
     } catch (e) {
       setFailed(errorText(e))
     }

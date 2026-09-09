@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useState } from 'react'
 import { apiPost, errorText } from '../../api/client'
-import { usePageData } from '../../api/pageData'
+import { invalidate, usePageData } from '../../api/pageData'
 import { useJob } from '../../api/useJob'
 import {
   Bar, Button, Callout, Card, Chip, INPUT_CLASS, PlayerName, Skeleton,
@@ -217,6 +217,11 @@ export default function LadderCard() {
       setSaveFailed(errorText(e))
       return
     }
+    // Before the rebuild, not after it (v17h §5). The selects are drawn from
+    // the cached panel, so a cap changed here would otherwise read back as the
+    // old one for as long as the rebuild takes — and the Settings tab on the
+    // Model hub writes the same file from the other side of the app.
+    invalidate('/api/settings')
     rebuild()
   }
 
