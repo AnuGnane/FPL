@@ -4,12 +4,15 @@ Unit tests over a synthetic bundle, and the ``golden``-marked tests that run
 the real pipeline over the recorded one."""
 from __future__ import annotations
 
+import functools
 import hashlib
+import io
 import json
 from dataclasses import asdict
 from pathlib import Path
 
 import httpx
+import pandas as pd
 import pytest
 
 from gaffer.config import NO_CAP, load_config
@@ -419,3 +422,257 @@ def test_main_refuses_to_run_outside_the_repo_root(tmp_path, monkeypatch, capsys
     monkeypatch.chdir(tmp_path)
     assert gc.main(["--write"]) == 2
     assert "repo root" in capsys.readouterr().err
+
+
+# --- the recorded Inputs (v17g §2.8) ------------------------------------
+
+
+def test_the_recording_models_bank_the_frame_the_live_models_returned(tmp_path,
+                                                                     monkeypatch):
+    """v17g §2.5: the frame banked is ``predict_components``' own, before the
+    blend and the rescale — so what is banked is what came back, untouched,
+    and ``missing`` and ``calibration`` are pass-throughs."""
+    frame = pd.DataFrame({"code": [101, 102], "gw": [4, 4], "ep": [5.5, 1.25]})
+    rec = gc.RecordingModels(tmp_path / "inputs")
+    monkeypatch.setattr(rec._live, "components", lambda **kw: frame)
+    monkeypatch.setattr(rec._live, "missing", lambda: ["team"])
+    monkeypatch.setattr(rec._live, "calibration", lambda: "cal")
+
+    out = rec.components(pred_frame=None, tg_future=None, players=None,
+                         avail=None, pens=None)
+    assert out is frame
+    pd.testing.assert_frame_equal(
+        pd.read_parquet(tmp_path / "inputs" / gc.PREDICTED_NAME), frame)
+    assert rec.missing() == ["team"] and rec.calibration() == "cal"
+
+
+def test_gather_golden_gathers_in_the_scratch_tree_under_the_golden_config(
+        tmp_path, monkeypatch):
+    """The sibling of ``run_golden``, asserted the way ``run_golden`` is: the
+    cwd, the config and the two seams it hands on."""
+    calls: dict[str, object] = {}
+
+    def fake_gather(cfg, client=None, *, predictions=None):
+        calls.update(cwd=Path.cwd(), cfg=cfg, client=client,
+                     predictions=predictions)
+        return "gathered"
+
+    monkeypatch.setattr(gc, "gather_inputs", fake_gather)
+    client = gc.RecordedClient(_bundle(tmp_path / "bundle"))
+    before = Path.cwd()
+    assert gc.gather_golden(tmp_path, client, "models") == "gathered"
+    assert Path.cwd() == before
+    assert calls["cwd"] == tmp_path.resolve()
+    assert asdict(calls["cfg"]) == asdict(gc.golden_config())
+    assert calls["client"] is client and calls["predictions"] == "models"
+
+
+def test_the_inputs_mode_records_the_inputs_and_leaves_the_header_alone(
+        tmp_path, monkeypatch, capsys):
+    """v17g §2.8: ``--write`` restamps ``written_at``, ``commit`` and
+    ``runtime_s`` and rewrites the expected files, which is churn a no-op
+    refactor must not create. ``--inputs`` writes one directory."""
+    seen: dict[str, object] = {}
+
+    def fake_gather_golden(root, client=None, predictions=None):
+        seen.update(root=root, predictions=predictions)
+        return "inputs"
+
+    monkeypatch.setattr(gc, "gather_golden", fake_gather_golden)
+    monkeypatch.setattr(gc.tempfile, "mkdtemp", lambda prefix=None: str(tmp_path))
+    monkeypatch.setattr(gc, "build_scratch_tree",
+                        lambda root, repo, golden=None: seen.update(built=root))
+    monkeypatch.setattr(gc, "write_expected", lambda *a, **kw: pytest.fail(
+        "--inputs must not rewrite the expected files"))
+    monkeypatch.setattr(gc, "save_inputs",
+                        lambda inputs, directory: seen.update(
+                            saved=(inputs, directory)))
+
+    assert gc.main(["--inputs"]) == 0
+    assert seen["built"] == seen["root"] == tmp_path
+    assert seen["saved"] == ("inputs", gc.GOLDEN_DIR / gc.INPUTS_DIR)
+    assert seen["predictions"].directory == gc.GOLDEN_DIR / gc.INPUTS_DIR
+    assert str(gc.GOLDEN_DIR / gc.INPUTS_DIR) in capsys.readouterr().out
+
+
+def _needs_recorded_inputs() -> None:
+    if not (gc.GOLDEN_DIR / gc.INPUTS_DIR).exists():
+        pytest.skip("inputs not recorded yet "
+                    "(python -m tests.golden_client --inputs)")
+
+
+def _built_from_inputs(tmp_path, monkeypatch):
+    """``build_advice`` over the recorded Inputs, serialized the way
+    ``run_advise`` serializes it, so the comparison is like for like.
+
+    Built in ``tmp_path`` and not in the repo root, which is
+    ``advice_fixture.a_scratch_working_directory``'s reason turned around: a
+    build is supposed to write nothing, and the day one regains a write is
+    the day this overwrites the user's own gameweek. It is also the cwd the
+    expected numbers were recorded under — a tree with no price log — so a
+    read that leaked past the seal answers here as it answered there, rather
+    than with this machine's week.
+    """
+    from gaffer.advise import build_advice
+    from gaffer.inputs import load_inputs
+
+    # Loaded before the chdir: the recording is addressed absolutely, and
+    # reading it is the caller's read, never the build's.
+    inputs = load_inputs(gc.GOLDEN_DIR / gc.INPUTS_DIR)
+    monkeypatch.chdir(tmp_path)
+    out = build_advice(inputs, gc.golden_config())
+    return out, json.loads(json.dumps(asdict(out.advice), default=str))
+
+
+@pytest.mark.golden
+def test_the_recorded_inputs_build_the_same_advice_with_no_models(tmp_path,
+                                                                 monkeypatch):
+    """Spec §1 part 2. No hash guard and no module fixture: the point of this
+    test is that it runs where the others cannot — with no ``models/`` on the
+    machine at all, which is the limit v17c wrote down."""
+    _needs_recorded_inputs()
+    _, advice = _built_from_inputs(tmp_path, monkeypatch)
+    expected = json.loads(
+        (gc.GOLDEN_DIR / gc.EXPECTED_DIR / "advice.json").read_text())
+    cwd = str(tmp_path.resolve())
+    assert gc.strip_volatile(advice, cwd) == gc.strip_volatile(expected, cwd)
+
+
+@pytest.mark.golden
+def test_the_recorded_inputs_build_the_same_solve_state(tmp_path, monkeypatch):
+    """The state is compared through its own writer, because that writer is
+    what made the expected file: the pool goes to parquet and the scalars to
+    JSON, and re-deriving that dict here would be a second opinion."""
+    _needs_recorded_inputs()
+    from gaffer.artifacts import save_solve_state
+
+    out, _ = _built_from_inputs(tmp_path, monkeypatch)
+    save_solve_state(out.state)
+    written = json.loads(
+        (tmp_path / "reports" / f"solve_state_gw{out.state.gw}.json").read_text())
+    expected = json.loads(
+        (gc.GOLDEN_DIR / gc.EXPECTED_DIR / "solve_state.json").read_text())
+    cwd = str(tmp_path.resolve())
+    assert gc.strip_volatile(written, cwd) == gc.strip_volatile(expected, cwd)
+
+
+@pytest.mark.golden
+def test_build_advice_opens_no_file(monkeypatch):
+    """Spec §1 part 4, the run-time half.
+
+    Run in the repo root on purpose, and it is the one build here that is:
+    ``config.toml`` is under the repo root, so a ``config_in_force()`` that
+    crept back onto the build path opens a file *here* and is caught, where
+    in a scratch tree it would find nothing and pass. Nothing can be written
+    from inside the seal, so the working tree is safe for the length of it.
+
+    The rail asserts the numbers as well as the absence of a traceback,
+    because a hidden read can hide behind a swallowed exception —
+    ``ladder._hit_bar`` falls back to a printed line and a default bar.
+
+    Two things this seal gets wrong if written the obvious way, both found by
+    mutation-testing the ladder's own rail (v17g, T2 review):
+
+    * ``pathlib.Path.read_text()`` resolves ``io.open``, not
+      ``builtins.open`` — and ``Path.read_text`` is the idiom every loader in
+      ``artifacts.py`` uses, so a builtins-only patch cannot see the reads
+      this rail exists to catch;
+    * an ``AssertionError`` sentinel is an ``Exception``, and the ladder and
+      the served passes are full of ``except Exception`` blocks that would
+      swallow it into a printed line and pass.
+
+    Two reads are tolerated, and warmed rather than worked around. Both are
+    **shipped package assets** read through ``importlib.resources``:
+    ``decision_priors.json``, which ``artifacts.solve_kw_from_state`` reads
+    when the board was solved with the priors on, and
+    ``scenario_noise.json``, which the σ table reads through
+    ``optimize.scenarios.scenario_noise``. Neither can replay anybody's
+    gameweek — they are the same bytes in every working directory — so the
+    read happens here, before the seal, and the value is served from the
+    cache inside it. ``scenario_noise`` has that cache already; the priors
+    reader is given one for the length of the test.
+    """
+    _needs_recorded_inputs()
+    # Every module build_advice reaches, imported before open() is taken
+    # away: an import that is not yet in sys.modules opens a file.
+    import gaffer.advise, gaffer.assets, gaffer.config  # noqa: F401
+    import gaffer.ladder, gaffer.served  # noqa: F401
+    from gaffer.advise import build_advice
+    from gaffer.inputs import load_inputs
+    from gaffer.optimize.scenarios import scenario_noise
+
+    # pd.read_parquet opens files, so the recording is loaded before the seal
+    # and not inside it.
+    inputs = load_inputs(gc.GOLDEN_DIR / gc.INPUTS_DIR)
+    expected = json.loads(
+        (gc.GOLDEN_DIR / gc.EXPECTED_DIR / "advice.json").read_text())
+
+    scenario_noise()
+    warmed = functools.lru_cache(maxsize=1)(gaffer.assets.load_decision_priors)
+    warmed()
+    monkeypatch.setattr(gaffer.assets, "load_decision_priors", warmed)
+
+    class _Opened(BaseException):
+        pass
+
+    def refuse(*a, **kw):
+        raise _Opened(f"build_advice opened {a[:1]}")
+
+    monkeypatch.setattr("builtins.open", refuse)
+    monkeypatch.setattr(io, "open", refuse)
+    try:
+        out = build_advice(inputs, gc.golden_config())
+    finally:
+        # Before any assertion and before pytest formats a traceback: with
+        # open() sealed, linecache cannot read the source of the frame it is
+        # trying to print, and the report is lost with the failure.
+        monkeypatch.undo()
+    advice = json.loads(json.dumps(asdict(out.advice), default=str))
+    cwd = str(Path.cwd())
+    assert gc.strip_volatile(advice, cwd) == gc.strip_volatile(expected, cwd)
+
+
+@pytest.mark.golden
+def test_the_recorded_predictions_regather_the_same_components(tmp_path):
+    """v17g §2.5: the Predictions seam is real only if its second adapter
+    reproduces the first. Gathers with the recorded client *and* the recorded
+    predictions — no network and no ``models/`` — and asks for the one frame
+    that seam controls. ``ep_named`` and ``ep_by`` are not compared: the
+    recorded adapter has no calibration model, which the adapter's own
+    docstring says."""
+    _needs_recorded_inputs()
+    from gaffer.inputs import RecordedComponents, load_inputs
+
+    root = tmp_path / "scratch"
+    gc.build_scratch_tree(root, REPO)
+    again = gc.gather_golden(root, gc.RecordedClient(),
+                             RecordedComponents(gc.GOLDEN_DIR / gc.INPUTS_DIR))
+    recorded = load_inputs(gc.GOLDEN_DIR / gc.INPUTS_DIR)
+    pd.testing.assert_frame_equal(again.comp, recorded.comp)
+
+
+def test_build_advice_names_no_reader_in_its_source():
+    """Spec §1 part 4, the static half. The run-time half above cannot run
+    until the board is recorded; this one always can."""
+    import inspect
+
+    from gaffer.advise import build_advice
+
+    src = inspect.getsource(build_advice)
+    for token in ("open(", "Path(", "client.", "load_", "save_", "store.",
+                  "atomic_write"):
+        assert token not in src, token
+
+
+def test_every_inputs_field_is_read_by_build_advice():
+    """Spec §2.7: a field nothing reads is a field the golden has to record
+    and keep correct for no reader."""
+    import dataclasses
+    import inspect
+
+    from gaffer.advise import build_advice
+    from gaffer.inputs import Inputs
+
+    src = inspect.getsource(build_advice)
+    for f in dataclasses.fields(Inputs):
+        assert f.name in src, f.name

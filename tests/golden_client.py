@@ -26,14 +26,22 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from gaffer.advise import run_advise
+from gaffer.advise import gather_inputs, run_advise
 from gaffer.api.client import FPLClient
 from gaffer.config import NO_CAP, Config
+from gaffer.inputs import LiveModels, RecordedComponents, save_inputs
 
 GOLDEN_DIR = Path(__file__).resolve().parent / "data" / "golden_board"
 BUNDLE_NAME = "responses.json.gz"
 HEADER_NAME = "header.json"
 EXPECTED_DIR = "expected"
+INPUTS_DIR = "inputs"
+"""The recorded Inputs (v17g §2.8). Written beside ``expected/``, so one
+command still re-records everything after a retrain."""
+PREDICTED_NAME = RecordedComponents(GOLDEN_DIR).filename
+"""The frame :class:`RecordingModels` banks, taken from the adapter that reads
+it back rather than spelled twice: a rename that only one side learned about
+would surface as a ``FileNotFoundError`` twenty minutes into a gather."""
 
 
 def save_bundle(directory: Path, bodies: dict[str, object]) -> Path:
@@ -98,6 +106,38 @@ class RecordingClient(FPLClient):
 
     def save(self) -> Path:
         return save_bundle(self.directory, self._bodies)
+
+
+class RecordingModels:
+    """``LiveModels``, banking what ``predict_components`` returned.
+
+    The predictions half of :class:`RecordingClient`, and there for the same
+    reason: v17c records the FPL responses by wrapping the live client, and
+    this records the predictions by wrapping the live models.
+
+    v17g §2.5: :class:`~gaffer.inputs.RecordedComponents` stands in for that
+    one call, which happens *before* ``blend_attacking_odds`` and
+    ``rescale_pen_after_blend`` — so the frame it serves is this one, not
+    ``Inputs.comp``, which is the frame after both. Serving the wrong one
+    would re-apply the rescale to a frame already carrying
+    ``set_pieces.BLEND_MARKER``, silently.
+    """
+
+    def __init__(self, directory: Path) -> None:
+        self.directory = Path(directory)
+        self._live = LiveModels()
+
+    def missing(self) -> list[str]:
+        return self._live.missing()
+
+    def components(self, **kw):
+        frame = self._live.components(**kw)
+        self.directory.mkdir(parents=True, exist_ok=True)
+        frame.to_parquet(self.directory / PREDICTED_NAME)
+        return frame
+
+    def calibration(self) -> object | None:
+        return self._live.calibration()
 
 
 def golden_config() -> Config:
@@ -375,6 +415,21 @@ def run_golden(root: Path, client: FPLClient | None = None) -> tuple[dict, dict]
     return advice_json, state_json
 
 
+def gather_golden(root: Path, client: FPLClient | None = None,
+                  predictions=None):
+    """``gather_inputs(golden_config(), client)`` inside ``golden_cwd``.
+
+    The recorded half of the split (v17g §2.8): what ``build_advice`` is
+    given, so the golden can build the same board on a machine with no
+    ``models/`` at all. ``predictions`` is :class:`RecordingModels` when
+    recording and :class:`~gaffer.inputs.RecordedComponents` in the test that
+    replays it; ``None`` is ``gather_inputs``' own default, the live models.
+    """
+    client = client if client is not None else RecordedClient()
+    with golden_cwd(root, client):
+        return gather_inputs(golden_config(), client, predictions=predictions)
+
+
 def plan_route(root: Path, gw: int, client: FPLClient | None = None) -> dict:
     """``GET /api/plan/{gw}`` served over the scratch tree ``run_golden``
     filled, ``strip_volatile``d (v17f §1 part 2). The route reads only
@@ -406,7 +461,15 @@ def _git_head(repo: Path) -> str:
 def write_expected(golden: Path = GOLDEN_DIR, *, scratch: Path | None = None,
                    recorded_at: str | None = None) -> dict:
     """The retrain path (spec §2.10): run the golden over the *existing*
-    bundle and rewrite ``expected/`` and the header. Returns the header.
+    bundle and rewrite ``expected/``, ``inputs/`` and the header. Returns the
+    header.
+
+    It runs once and then gathers once more (v17g §2.8). The second gather is
+    not waste and not avoidable: ``run_advise`` hands back an ``Advice``, not
+    the :class:`~gaffer.inputs.Inputs` it built from, and the recording is
+    made by *wrapping the live models*, which only a gather this function
+    controls can do. ``--inputs`` is the mode for re-recording that half
+    alone.
 
     Both refusals come before anything is built or written, so a mistyped
     directory or a half-set-up machine costs nothing. The scratch tree is
@@ -437,6 +500,12 @@ def write_expected(golden: Path = GOLDEN_DIR, *, scratch: Path | None = None,
     (expected / "plan.json").write_text(
         json.dumps(plan_route(root, int(advice["gw"]), RecordedClient(golden)),
                    indent=1, sort_keys=True) + "\n")
+    # The golden's own bundle here too, for the reason ``run_golden`` above
+    # was given it. Last, because a gather writes into the scratch tree a
+    # second time and nothing after this line reads what the run left there.
+    save_inputs(gather_golden(root, RecordedClient(golden),
+                              RecordingModels(golden / INPUTS_DIR)),
+                golden / INPUTS_DIR)
     old = json.loads((golden / HEADER_NAME).read_text()) if (golden / HEADER_NAME).exists() else {}
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     header = {
@@ -488,15 +557,33 @@ def record(golden: Path = GOLDEN_DIR) -> dict:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="v17c golden board: --record fetches live and writes the "
-                    "bundle, the expected files and the header; --write reruns "
-                    "the existing bundle (after a retrain).")
+                    "bundle, the expected files, the recorded Inputs and the "
+                    "header; --write reruns the existing bundle (after a "
+                    "retrain) and rewrites all but the bundle; --inputs "
+                    "re-records the Inputs alone.")
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--record", action="store_true")
     mode.add_argument("--write", action="store_true")
+    mode.add_argument("--inputs", action="store_true",
+                      help="record only the Inputs (v17g §2.8); the expected "
+                           "files and the header are left alone")
     args = parser.parse_args(argv)
     if Path.cwd().resolve() != _repo_root():
         print(f"run from the repo root ({_repo_root()})", file=sys.stderr)
         return 2
+    if args.inputs:
+        # Its own exit: there is no header to read levers off, and stamping
+        # one is the churn this mode exists to avoid. ``--write`` restamps
+        # ``written_at``, ``commit`` and ``runtime_s`` and rewrites the very
+        # expected files v17g claims have not moved.
+        root = Path(tempfile.mkdtemp(prefix="golden-inputs-"))
+        print(f"scratch: {root}", file=sys.stderr)
+        build_scratch_tree(root, _repo_root(), GOLDEN_DIR)
+        save_inputs(gather_golden(root, RecordedClient(),
+                                  RecordingModels(GOLDEN_DIR / INPUTS_DIR)),
+                    GOLDEN_DIR / INPUTS_DIR)
+        print(f"inputs: {GOLDEN_DIR / INPUTS_DIR}")
+        return 0
     header = record() if args.record else write_expected()
     print(json.dumps({k: header[k] for k in ("gw", "levers", "runtime_s", "responses")},
                      indent=1))
