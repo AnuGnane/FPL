@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { JobKind } from '../types'
 import { apiGet, apiPost, errorText } from './client'
-import { usePageData } from './pageData'
 
 export type JobStatus = 'idle' | 'queued' | 'running' | 'done' | 'error'
 
@@ -92,6 +91,32 @@ export interface Job {
 const remembered = new Map<string, string>()
 
 /**
+ * The probe in flight, shared while it is in flight and never once it lands
+ * (v17h §6).
+ *
+ * Four JobButtons mounting together is one request, which is the duplication
+ * this cycle removes; a button mounting later asks again, which is the part
+ * that must not be optimised away. "Is a run in flight right now?" is not page
+ * data: the page-data cache holds a body until something invalidates it,
+ * which is right for an artifact — the advice, the ladder and the brief only
+ * move when a job rewrites them, and this tab is told when that happens.
+ * Liveness has no such event. Nine launchd jobs run advise on a schedule on
+ * this machine and the CLI can start one at any moment, so a run this tab
+ * never heard of is the ordinary case, and a held answer means a button
+ * offering a run the single-flight runner can only refuse with a 409.
+ */
+let probing: Promise<CurrentRun | null> | null = null
+
+function probeCurrent(): Promise<CurrentRun | null> {
+  if (probing !== null) return probing
+  const probe: Promise<CurrentRun | null> = apiGet<CurrentRun | null>(
+    '/api/jobs/current',
+  ).finally(() => { if (probing === probe) probing = null })
+  probing = probe
+  return probe
+}
+
+/**
  * Forget every remembered job. For tests only.
  *
  * The map is module state, so it outlives a component, a test case and a test
@@ -102,6 +127,10 @@ const remembered = new Map<string, string>()
  */
 export function resetJobSlots(): void {
   remembered.clear()
+  // The shared probe is module state with the same hazard: a request left in
+  // flight by one test would be joined by the next test's first mount, which
+  // would then make no request of its own.
+  probing = null
 }
 
 export function useJob({ kind, path, slot }: JobSpec): Job {
@@ -202,22 +231,24 @@ export function useJob({ kind, path, slot }: JobSpec): Job {
   // the single-flight runner can only answer with a 409. Ask once, on mount,
   // and if the run in flight is ours, watch it as though we had started it.
   //
-  // Through the cache (v17h §2), because This Week carries four of these
-  // buttons and they were asking the single-flight runner the same question
-  // four times over four connections. The error is deliberately unread: a
-  // probe that cannot reach the server is not a failed job, so leave the
-  // button alone and let the click report the problem if it is still there.
-  const current = usePageData<CurrentRun | null>(
-    kind === undefined ? null : '/api/jobs/current')
-  const run = current.data
+  // Through `probeCurrent`, so four buttons mounting together share the one
+  // request without any of them keeping the answer (v17h §6).
   useEffect(() => {
-    if (kind === undefined || !run) return
-    if (run.kind !== kind || run.status !== 'running') return
-    watch(run.id)
-    // Once per answer rather than once per mount: the request may already have
-    // been made by another button, and re-attaching on every render would
-    // fight the stream we own.
-  }, [kind, run, watch])
+    if (kind === undefined) return
+    let cancelled = false
+    probeCurrent()
+      .then((run) => {
+        if (cancelled || !run) return
+        if (run.kind !== kind || run.status !== 'running') return
+        watch(run.id)
+      })
+      // A probe that cannot reach the server is not a failed job: leave the
+      // button alone and let the click report the problem if it is still there.
+      .catch(() => {})
+    return () => { cancelled = true }
+    // Mount only: re-attaching on every render would fight the stream we own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kind])
 
   // The one-shot probe. A finished job is painted from the record the server
   // still holds rather than re-polled, so a tab reopened long after the solve

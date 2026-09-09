@@ -67,10 +67,10 @@ export function squadBreakdown(
   return breakdown
 }
 
-/** The one spelling of the decomposition URL (v17h §3). Nothing calls it yet:
- *  it exists so that when This Week and the Why panel are converted they ask
- *  for the same codes in the same order, and the two cannot drift into a cache
- *  miss that fetches the same thing twice. */
+/** The one spelling of the decomposition URL (v17h §3). This Week and the Why
+ *  panel both call it, over the same codes in the same order, so their two
+ *  reads are one cached request and cannot drift into a cache miss that
+ *  fetches the same thing twice. */
 export function componentsPath(gw: number, codes: number[]): string {
   if (codes.length === 0) return `/api/components/${gw}`
   return `/api/components/${gw}?codes=${codes.join(',')}`

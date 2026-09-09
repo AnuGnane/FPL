@@ -77,6 +77,13 @@ export default function ThisWeek() {
   // the advice, and the players and components rows are read against it. The
   // ladder and the brief are other jobs' artifacts and are not touched here,
   // exactly as they were not before.
+  //
+  // The components key is this run's, not the next one's, because the new gw
+  // and the new squad are not known until the new advice lands. A run that
+  // changes either therefore refetches a URL nothing reads any more and then
+  // fetches the new one on the path change — a wasted GET, never a stale
+  // panel, since a key that changed was never cached. Costing it out of an
+  // effect that waits for the advice was judged not worth the effect.
   const codesKey = codes.join(',')
   const reloadAdvice = useCallback(() => {
     invalidate('/api/advice/latest')

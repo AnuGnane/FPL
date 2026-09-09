@@ -150,18 +150,24 @@ function PlayerRow({ player }: { player: ComponentPlayer }) {
  */
 export default function WhyPanel({ gw, codes }: { gw: number
                                                   codes: number[] }) {
+  // All three behind the codes, as the one effect they replace was: a panel
+  // with no players to explain renders nothing, and neither the strip nor the
+  // pins would have anything to sit above.
+  const named = codes.length > 0
   // Through `componentsPath`, which This Week calls over the same codes in the
   // same order, so the hub and this panel share one request rather than
   // spelling the same URL two ways (v17h §3).
   const { data } = usePageData<ComponentsBreakdown>(
-    codes.length === 0 ? null : componentsPath(gw, codes))
+    named ? componentsPath(gw, codes) : null)
   // The gw the page is showing, not whatever the server last wrote: This
   // Week can be asked for an explicit gameweek, and a strip comparing a
   // different week's two runs answers a question nobody asked.
-  const { data: diff } = usePageData<AdviceDiff>(`/api/advice/diff?gw=${gw}`)
+  const { data: diff } = usePageData<AdviceDiff>(
+    named ? `/api/advice/diff?gw=${gw}` : null)
   // The manager's own team news, so the panel that explains the plan can
   // say which parts of it he wrote himself.
-  const { data: pins } = usePageData<OverridesPanel>('/api/overrides')
+  const { data: pins } = usePageData<OverridesPanel>(
+    named ? '/api/overrides' : null)
 
   if (!data || data.players.length === 0) return null
 

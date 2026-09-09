@@ -256,10 +256,36 @@ describe('useJob', () => {
         expect(FakeEventSource.last?.url).toBe('/api/jobs/j4/stream'))
       // Named, and counted: `/api/jobs/current` is the only route that answers
       // "what is the single-flight runner doing", and This Week's fetch rail
-      // pins four of these against four buttons.
+      // pins two of these against four buttons — one per mount wave, because
+      // the probe is shared while in flight and never held (v17h §6).
       const spy = globalThis.fetch as ReturnType<typeof vi.fn>
       expect(spy.mock.calls[0][0]).toBe('/api/jobs/current')
       expect(spy).toHaveBeenCalledOnce()
+    })
+
+  it('probes again when a button remounts over a run it never started',
+    async () => {
+      // The v17h §6 rule, as the user meets it: nothing is running when the
+      // page loads, a run starts (from this tab, the CLI, or one of the nine
+      // launchd jobs), and the user comes back to the hub. React Router
+      // remounts the button with no reload, and a held answer of "nothing is
+      // running" would leave it offering a run the runner can only refuse.
+      let running = false
+      vi.stubGlobal('fetch', vi.fn(async () => new Response(
+        JSON.stringify(running
+          ? { id: 'j13', kind: 'advise', status: 'running' } : null),
+        { status: 200, headers: { 'Content-Type': 'application/json' } })))
+      vi.stubGlobal('EventSource', FakeEventSource)
+
+      const first = renderHook(() => useJob({ kind: 'advise' }))
+      await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledOnce())
+      expect(FakeEventSource.last).toBeNull()
+      first.unmount()
+
+      running = true
+      renderHook(() => useJob({ kind: 'advise' }))
+      await waitFor(() =>
+        expect(FakeEventSource.last?.url).toBe('/api/jobs/j13/stream'))
     })
 
   it('leaves a kind job alone when the run in flight is another kind',

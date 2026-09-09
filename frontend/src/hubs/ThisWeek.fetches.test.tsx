@@ -7,10 +7,14 @@ import ThisWeek from './ThisWeek'
  * What This Week asks the server for, on one render (v17h §1 part 2).
  *
  * The rail counts *paths*, not requests: the claim the cycle gates on is
- * "each endpoint once", and a total that merely falls would also be satisfied
+ * "each artifact once", and a total that merely falls would also be satisfied
  * by a card quietly losing its data. Committed first against the counts as
  * they stood before the conversion, so this file's own history is the control
  * arm (CONVENTIONS §3, §4).
+ *
+ * An artifact, because `/api/jobs/current` is not one: it answers a question
+ * about right now, so it is shared while in flight and asked again by a later
+ * mount. Its count is pinned with the rest and its reason is on the line.
  */
 
 const { apiGet, apiPost, apiDelete } = vi.hoisted(() => ({
@@ -67,8 +71,8 @@ const BODIES: Record<string, unknown> = {
   '/api/settings': { rows: [], unavailable: [], overlay_error: null,
                      apply_note: '' },
   // Prose, so BriefCard renders itself and its two digest buttons rather than
-  // handing over to DigestCard — four JobButtons on the page, which is the
-  // shape the duplicate probe shows up in.
+  // handing over to DigestCard — four JobButtons on the page, in the two
+  // mount waves the probe count below is counting.
   '/api/brief': { gw: 5, prose: 'The week.', note: null, checked_at: null,
                   model_command: 'llm', fallback: null },
   '/api/advice/diff?gw=5': {
@@ -119,7 +123,14 @@ describe("This Week's first render", () => {
       '/api/players': 1,
       '/api/components/5?codes=1,2': 1,
       '/api/league/leagues': 1,
-      '/api/jobs/current': 1,
+      // Two, and not one: the probe is shared while it is in flight and never
+      // held (v17h §6), so a mount wave is a request and This Week has two of
+      // them — the header's two buttons, and then the brief card's two digest
+      // buttons, which mount only once /api/brief has answered. Four buttons,
+      // two requests. Holding the answer instead would leave a button offering
+      // a run the runner can only refuse, which is the bug the probe exists to
+      // prevent.
+      '/api/jobs/current': 2,
       '/api/decisions/5': 1,
       '/api/ladder': 1,
       '/api/settings': 1,
@@ -132,10 +143,10 @@ describe("This Week's first render", () => {
     expect(apiDelete).not.toHaveBeenCalled()
   })
 
-  it('makes thirteen GETs in all', async () => {
+  it('makes fourteen GETs in all', async () => {
     render(<MemoryRouter><ThisWeek /></MemoryRouter>)
     await waitFor(() => expect(asked()).toContain('/api/confidence'))
     await waitFor(() => expect(asked()).toContain('/api/news/5'))
-    expect(asked()).toHaveLength(13)
+    expect(asked()).toHaveLength(14)
   })
 })
