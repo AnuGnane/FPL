@@ -294,15 +294,15 @@ def test_a_chip_week_is_charged_what_the_base_plan_paid_and_the_note_says_so():
     assert "a wildcard is recommended this week" in trace.note
 
 
-def test_completed_is_the_one_pass_over_a_solve_state(monkeypatch):
+def test_completed_is_the_one_pass_over_a_solve_state():
     from gaffer.served import completed
 
-    monkeypatch.setattr("gaffer.served.price_falls", lambda state: (True, {200: 0.8}))
     plan = _plan([_week(5, buys=[P], sells=[S], hits=1), _week(6, buys=[P], sells=[S])],
                  objective={"buys": [P], "sells": [S], "hits": 1, "expected_pts": 60.0,
                             "week": _week(5, buys=[P], sells=[S], hits=1)})
     out = completed(plan, state=_state(), chip_table=[
-        {"chip": "bboost", "gw": 6, "play_now": True, "threshold": 2.0}])
+        {"chip": "bboost", "gw": 6, "play_now": True, "threshold": 2.0}],
+        ft_lambda=None, price_timing=True, price_fall={200: 0.8})
     assert out.generated_at == "2026-09-01T09:00:00+00:00" and out.bank == 1.5
     week = out.plan_by_gw[0]
     assert (week.buys[0].price, week.sells[0].price, week.hit_cost) == (8.0, 7.4, 4)
@@ -311,6 +311,48 @@ def test_completed_is_the_one_pass_over_a_solve_state(monkeypatch):
     assert out.plan_by_gw[1].chip == "bboost" and out.plan_by_gw[1].trace.theta == 2.0
     assert out.plan_by_gw[1].trace.price_charge == pytest.approx(0.8 * 0.1 * 0.05)
     assert out.objective.week.bank == 0.9 and out.objective.week.trace is not None
+
+
+def _never_called(*a, **kw):
+    raise AssertionError("completed reached for something it was handed")
+
+
+def test_trace_context_makes_the_three_a_state_alone_can_give():
+    """v17g §2.3b: the loader has nothing but a state, so the derivations
+    live on for it — and only for it. ``ft_lambda`` is ``None`` for a solve
+    that ran with the priors off, which is the rule the call sites now
+    spell."""
+    from gaffer.served import trace_context
+
+    ft_lambda, price_timing, price_fall = trace_context(_state())
+    assert ft_lambda is None
+    assert price_timing in (True, False)
+    assert isinstance(price_fall, dict)
+
+
+def test_trace_context_reads_the_lambda_table_only_when_the_solve_used_it(
+        monkeypatch):
+    """``lambda_from_priors(None)`` is an empty ``LambdaLookup``, not
+    ``None``, and the trace prints a flat ``ft_value`` for one and says
+    nothing for the other — so the guard on ``decision_priors`` is what keeps
+    a run that never used the table from being traced against it."""
+    from gaffer.served import trace_context
+
+    monkeypatch.setattr("gaffer.assets.load_decision_priors",
+                        lambda: {"transfer_surplus": {}})
+    assert trace_context(_state(opt={"decision_priors": True}))[0] is not None
+    assert trace_context(_state(opt={"decision_priors": False}))[0] is None
+
+
+def test_completed_takes_its_trace_context_rather_than_reading_for_it(monkeypatch):
+    """The whole point: build_advice calls this and must open nothing."""
+    import gaffer.served as served_mod
+
+    monkeypatch.setattr(served_mod, "price_falls", _never_called)
+    out = served_mod.completed(_plan([]), state=_state(), chip_table=[],
+                               ft_lambda=None, price_timing=False,
+                               price_fall={})
+    assert out.generated_at is not None
 
 
 def test_decorated_tags_the_served_buys_and_carries_frequencies_only_where_seen():
@@ -513,7 +555,8 @@ def test_the_served_plan_round_trips_through_the_advice_file(tmp_path, monkeypat
     plan = serve_rung(None, objective, hit_cost=4, captain_note="covering Dave")
     plan = decorated(plan, tags={100: "attack"}, frequencies={("buy", 100): 0.7})
     plan = completed(with_alternatives(plan, [{"gap": 0.4, "plan_by_gw": [_week(6, buys=[P])]}]),
-                     state=_state(), chip_table=[{"chip": "bboost", "gw": 6, "play_now": True}])
+                     state=_state(), chip_table=[{"chip": "bboost", "gw": 6, "play_now": True}],
+                     ft_lambda=None, price_timing=True, price_fall={})
     advice = Advice(deadline="2026-09-18T17:30:00Z", captain_options=[], chip_table=[],
                     wildcard_now=None, alternatives=[], threats=[], price_alerts=[],
                     **plan.model_dump(exclude_unset=True))

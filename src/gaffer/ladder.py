@@ -515,19 +515,26 @@ def plan_points(gw_plans: list[GwPlan], ep_by: dict, hit_cost: int) -> float:
     return round(total, 2)
 
 
+def sigmas_from_components(comp) -> tuple[dict[tuple[int, int], float], str]:
+    """``{(code, gw): σ}`` off a components frame already in hand, and where
+    it came from. v17g §2.2: ``build_advice`` holds the frame this run
+    predicted on, so the ladder no longer round-trips it through parquet."""
+    bands = bands_by_player_gw(comp)
+    if not bands:
+        return {}, "outcome_only"
+    return {key: float(band.sigma) for key, band in bands.items()}, "bands"
+
+
 def sigma_table(gw: int) -> tuple[dict[tuple[int, int], float], str]:
-    """``{(code, gw): σ}`` off the banked components frame, and where it
-    came from. ``{}`` with ``"outcome_only"`` when no frame is banked, and
-    :func:`draw_points` then falls back cell by cell."""
+    """:func:`sigmas_from_components` off the banked frame. ``{}`` with
+    ``"outcome_only"`` when no frame is banked, and :func:`draw_points` then
+    falls back cell by cell."""
     try:
         comp = load_components(gw)
     except Exception as exc:  # noqa: BLE001 — a ladder is not worth a crash
         print(f"ladder: no component breakdown ({exc})")
         return {}, "outcome_only"
-    bands = bands_by_player_gw(comp)
-    if not bands:
-        return {}, "outcome_only"
-    return {key: float(band.sigma) for key, band in bands.items()}, "bands"
+    return sigmas_from_components(comp)
 
 
 def draw_points(keys, ep_by: dict, sigmas: dict, rng: np.random.Generator,
@@ -737,20 +744,20 @@ def _caps(state) -> tuple[tuple[int | None, int | None], str]:
         return caps_from_state(state), "state"
 
 
-def build_ladder(gw: int | None = None, *, n_draws: int = LADDER_DRAWS,
-                 seed: int | None = None) -> dict:
-    """Solve every rung off the saved board, score them on shared draws,
-    bank the payload. The job body and the end of ``advise``'s run.
+def ladder_payload(state, *, gw: int, gws: list[int], hit_bar: float,
+                   seed: int, sigmas: dict, sigma_source: str,
+                   prior_advice: dict | None,
+                   n_draws: int = LADDER_DRAWS) -> dict:
+    """Solve every rung off ``state``, score them on shared draws, return the
+    payload. v17g §2.2: pure of the three reads and the one write that used
+    to bracket it, so ``build_advice`` can call it on the state it has just
+    built in memory and :func:`build_ladder` can call it on one it has just
+    loaded.
 
-    Raises :class:`GafferError` when there is no saved state — the job
-    runner's cue to say "run `gaffer advise` first" rather than 500.
+    ``prior_advice`` is the served advice for this gameweek **as it stood
+    before the run** — the previous run's on a Thursday re-run, and ``None``
+    when there was none to read.
     """
-    gw = latest_gw() if gw is None else int(gw)
-    if gw is None:
-        raise GafferError("no saved solve state — run `gaffer advise` first")
-    state = load_solve_state(gw)
-    horizon = state.opt.get("horizon") or len(state.gws)
-    gws = state.gws[:max(1, int(horizon))]
     ep_by = raw_ep_by(state)
     cover = (state.cover if state.cover is not None
              else cover_from_eo(state.league_eo))
@@ -759,9 +766,6 @@ def build_ladder(gw: int | None = None, *, n_draws: int = LADDER_DRAWS,
     hit_cost = int(opt["hit_cost"])
     meta = {int(r.code): {"name": str(r.name), "position": str(r.position)}
             for r in state.pool.drop_duplicates("code").itertuples()}
-    if seed is None:
-        from gaffer.config import config_in_force
-        seed = int(config_in_force().scenarios_seed) + SEED_OFFSET + int(gw)
     n_draws = max(1, int(n_draws))
     started = time.perf_counter()
 
@@ -802,7 +806,6 @@ def build_ladder(gw: int | None = None, *, n_draws: int = LADDER_DRAWS,
         for week in plan.gw_plans:
             keys_needed.update((int(c), int(week.gw)) for c in week.xi)
             keys_needed.add((int(week.captain), int(week.gw)))
-    sigmas, sigma_source = sigma_table(gw)
     sigma_fallbacks = sum(1 for key in keys_needed if key not in sigmas)
     if sigma_source == "bands" and sigma_fallbacks:
         # Some cell the plans need had no band — a player with no component
@@ -866,13 +869,21 @@ def build_ladder(gw: int | None = None, *, n_draws: int = LADDER_DRAWS,
 
     (max_hits, max_transfers), cap_source = _caps(state)
     cap_rung, cap_requested = _cap_rung(max_hits, max_transfers, rows)
-    try:
-        recommended, recommended_note = recommended_rung(load_advice(gw), rows)
-    except Exception as exc:  # noqa: BLE001 — no advice is no chip, not a crash
-        print(f"ladder: no served advice to mark ({exc})")
+    if prior_advice is None:
+        # v17g §2.2: the load moved out to the callers, and its note came with
+        # it. ``None`` is the advice that would not read, whose note names the
+        # gameweek; an advice that read and matched no rung keeps
+        # ``recommended_rung``'s own shorter sentence.
         recommended, recommended_note = None, f"no served advice for GW{int(gw)}"
+    else:
+        try:
+            recommended, recommended_note = recommended_rung(prior_advice, rows)
+        except Exception as exc:  # noqa: BLE001 — a malformed advice is no
+            # chip on a row, not a crash.
+            print(f"ladder: no served advice to mark ({exc})")
+            recommended, recommended_note = (
+                None, f"no served advice for GW{int(gw)}")
     # v16 §3.1: the restraint walk on the same draws, with its reasons.
-    hit_bar = _hit_bar()
     chosen, steps = walk(scores, rows, hit_bar=hit_bar, max_hits=max_hits,
                          max_transfers=max_transfers)
     ctx = step_context(gw, state, gws)
@@ -901,6 +912,38 @@ def build_ladder(gw: int | None = None, *, n_draws: int = LADDER_DRAWS,
         "notes": notes,
         "rungs": rows,
     }
-    payload = _finite(payload)
+    return _finite(payload)
+
+
+def build_ladder(gw: int | None = None, *, n_draws: int = LADDER_DRAWS,
+                 seed: int | None = None) -> dict:
+    """Load the saved board, solve the ladder off it, bank the payload. The
+    job body, the route's rebuild, and ``advise``'s path before v17g §2.2
+    moved the solving into :func:`ladder_payload`. The defaults are the ones
+    it computed for itself before, so its callers see no change.
+
+    Raises :class:`GafferError` when there is no saved state — the job
+    runner's cue to say "run `gaffer advise` first" rather than 500.
+    """
+    gw = latest_gw() if gw is None else int(gw)
+    if gw is None:
+        raise GafferError("no saved solve state — run `gaffer advise` first")
+    state = load_solve_state(gw)
+    horizon = state.opt.get("horizon") or len(state.gws)
+    gws = state.gws[:max(1, int(horizon))]
+    if seed is None:
+        from gaffer.config import config_in_force
+        seed = int(config_in_force().scenarios_seed) + SEED_OFFSET + int(gw)
+    sigmas, sigma_source = sigma_table(gw)
+    try:
+        prior_advice = load_advice(gw)
+    except Exception as exc:  # noqa: BLE001 — no advice is no chip on a row,
+        # not a crash; the note the payload carries says so.
+        print(f"ladder: no served advice to mark ({exc})")
+        prior_advice = None
+    payload = ladder_payload(state, gw=gw, gws=gws, hit_bar=_hit_bar(),
+                             seed=int(seed), sigmas=sigmas,
+                             sigma_source=sigma_source,
+                             prior_advice=prior_advice, n_draws=n_draws)
     save_ladder(payload, gw)
     return payload

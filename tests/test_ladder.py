@@ -501,3 +501,97 @@ def test_the_cap_note_reads_its_sentinel_from_the_config(board):
 
     assert _cap_note(NO_CAP) is None
     assert _cap_note(NO_CAP - 1) is not None
+
+
+# --- v17g §2.2: the solving is a pure core, the loading is the wrapper ------
+
+
+def _saved_state(tmp_path, monkeypatch):
+    """The saved board as a value — what ``build_ladder`` loads and what
+    ``ladder_payload`` is handed. The config cache is dropped for the
+    ``board`` fixture's reason: the payload's cap highlight reads the live
+    config, which is cached for the life of the process."""
+    from gaffer.artifacts import load_solve_state
+    from gaffer.config import invalidate
+
+    monkeypatch.chdir(tmp_path)
+    invalidate()
+    save_state({"max_hits": 2, "max_transfers": 15})
+    return load_solve_state(1)
+
+
+def test_ladder_payload_solves_off_a_state_it_was_handed(tmp_path, monkeypatch):
+    """v17g §2.2: the pure core takes the board, the bar, the seed, the sigmas
+    and the prior advice, so build_advice can call it before anything is
+    written."""
+    from gaffer.ladder import ladder_payload
+
+    state = _saved_state(tmp_path, monkeypatch)
+    payload = ladder_payload(state, gw=state.gw, gws=state.gws, hit_bar=0.6,
+                             seed=11, sigmas={}, sigma_source="outcome_only",
+                             prior_advice=None, n_draws=64)
+    assert payload["gw"] == state.gw
+    assert payload["bar"] == 0.6
+    assert payload["seed"] == 11
+    assert payload["sigma_source"] == "outcome_only"
+    assert payload["rungs"]
+
+
+def test_ladder_payload_writes_nothing(tmp_path, monkeypatch):
+    """The whole point of the core: no file, so build_advice stays pure."""
+    from gaffer.ladder import ladder_payload
+
+    state = _saved_state(tmp_path, monkeypatch)
+    written: list = []
+    monkeypatch.setattr("gaffer.ladder.save_ladder",
+                        lambda payload, gw: written.append(gw))
+    ladder_payload(state, gw=state.gw, gws=state.gws, hit_bar=0.6, seed=11,
+                   sigmas={}, sigma_source="outcome_only", prior_advice=None,
+                   n_draws=32)
+    assert written == []
+
+
+def test_a_prior_advice_of_none_keeps_the_note_the_load_used_to_write(
+        tmp_path, monkeypatch):
+    """v17g §2.2: the load moved out of the core, and its note moved with it.
+    ``None`` is the advice that would not read, whose note names the
+    gameweek; an advice that read and matched nothing keeps
+    ``recommended_rung``'s own shorter sentence."""
+    from gaffer.ladder import ladder_payload
+
+    state = _saved_state(tmp_path, monkeypatch)
+    kw = dict(gw=state.gw, gws=state.gws, hit_bar=0.6, seed=11, sigmas={},
+              sigma_source="outcome_only", n_draws=8)
+    assert ladder_payload(state, prior_advice=None, **kw)["recommended_note"] \
+        == "no served advice for GW1"
+    stranger = {"buys": [{"code": 999}], "sells": [],
+                "captain": {"code": 999}}
+    assert ladder_payload(state, prior_advice=stranger, **kw)["recommended_note"] \
+        == "the served advice's moves match no rung"
+
+
+def test_build_ladder_still_loads_delegates_and_saves(tmp_path, monkeypatch):
+    """Its callers — the job kind and the router — pass a gameweek and expect
+    a banked payload, and that is unchanged."""
+    from gaffer import ladder as ladder_mod
+
+    state = _saved_state(tmp_path, monkeypatch)
+    seen, saved = {}, []
+    monkeypatch.setattr(
+        ladder_mod, "ladder_payload",
+        lambda st, **kw: seen.update(state=st, **kw) or {"gw": kw["gw"]})
+    monkeypatch.setattr(ladder_mod, "save_ladder",
+                        lambda payload, gw: saved.append((payload, gw)))
+    out = ladder_mod.build_ladder(state.gw)
+    assert out == {"gw": state.gw}
+    assert saved == [({"gw": state.gw}, state.gw)]
+    assert seen["hit_bar"] and seen["seed"] and "sigmas" in seen
+
+
+def test_sigmas_come_from_a_frame_not_a_file():
+    """v17g §2.2: build_advice already holds the components frame the ladder
+    used to re-read from parquet."""
+    from gaffer.ladder import sigmas_from_components
+
+    sigmas, source = sigmas_from_components(pd.DataFrame())
+    assert (sigmas, source) == ({}, "outcome_only")

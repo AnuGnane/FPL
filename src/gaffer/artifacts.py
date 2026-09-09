@@ -32,7 +32,8 @@ from pydantic import ValidationError
 
 from gaffer.errors import GafferError
 # No cycle: ``gaffer.served`` imports nothing from ``gaffer`` at module level.
-from gaffer.served import ServedPlan, completed, with_objective_week
+from gaffer.served import (ServedPlan, completed, trace_context,
+                           with_objective_week)
 
 REPORTS = Path("reports")
 
@@ -459,8 +460,14 @@ def served_plan(gw: int) -> ServedPlan:
                           f"{first.get('msg')}") from exc
     if "bank" in raw and "generated_at" in raw:
         return plan
-    return completed(with_objective_week(plan), state=load_solve_state(gw),
-                     chip_table=raw.get("chip_table"))
+    # v17g §2.3b: the loader holds nothing but the state, so it makes the
+    # three derivations ``completed`` used to make for itself; advise passes
+    # the ones its own run already computed.
+    state = load_solve_state(gw)
+    ft_lambda, price_timing, price_fall = trace_context(state)
+    return completed(with_objective_week(plan), state=state,
+                     chip_table=raw.get("chip_table"), ft_lambda=ft_lambda,
+                     price_timing=price_timing, price_fall=price_fall)
 
 
 def save_snapshots(players: pd.DataFrame, teams: pd.DataFrame,

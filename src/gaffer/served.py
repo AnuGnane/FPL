@@ -594,12 +594,12 @@ def traced(plan: ServedPlan, *, state, theta_by_gw: dict[int, float], ft_lambda,
         return plan.model_copy(update=update)
 
 
-def completed(plan: ServedPlan, *, state, chip_table) -> ServedPlan:
-    """Prices, charges, chips, banks and traces off one solve state — the
-    one pass advise runs at write time and ``artifacts.served_plan`` runs
-    for a file written before v17f (§2.3). ``generated_at`` is the state's,
-    so the two files that describe one run carry one stamp."""
-    buy, sell = pool_prices(getattr(state, "pool", None))
+def trace_context(state) -> tuple[object, bool, dict[int, float]]:
+    """``(ft_lambda, price_timing, price_fall)`` for a state read back off
+    disk. v17g §2.3b: the three derivations :func:`completed` used to make
+    for itself, kept for the one caller that has nothing but a state — the
+    loader. ``build_advice`` passes its own, because it has them already and
+    must open no file to answer."""
     opt = state.opt if isinstance(state.opt, dict) else {}
     ft_lambda = None
     if opt.get("decision_priors"):
@@ -610,6 +610,24 @@ def completed(plan: ServedPlan, *, state, chip_table) -> ServedPlan:
         except Exception as exc:  # noqa: BLE001 — a decoration, never a gate
             print(f"plan trace: no lambda table ({exc}); flat ft_value")
     price_timing, price_fall = price_falls(state)
+    return ft_lambda, price_timing, price_fall
+
+
+def completed(plan: ServedPlan, *, state, chip_table, ft_lambda,
+              price_timing: bool, price_fall: dict[int, float]) -> ServedPlan:
+    """Prices, charges, chips, banks and traces off one solve state — the
+    one pass advise runs at write time and ``artifacts.served_plan`` runs
+    for a file written before v17f (§2.3). ``generated_at`` is the state's,
+    so the two files that describe one run carry one stamp.
+
+    The trace context is handed in since v17g §2.3b: this pass sits inside
+    ``build_advice``, which opens nothing, and both callers already hold the
+    three — the loader through :func:`trace_context`. ``ft_lambda`` is
+    ``None`` for a solve that ran without the decision priors, because an
+    empty lookup is not the same statement as no lookup.
+    """
+    buy, sell = pool_prices(getattr(state, "pool", None))
+    opt = state.opt if isinstance(state.opt, dict) else {}
     out = priced(plan, buy, sell)
     out = charged(out, hit_cost=_int(opt.get("hit_cost", 4), 4), chips=chip_by_gw(chip_table))
     out = banked(out, _price(getattr(state, "bank", None)))
