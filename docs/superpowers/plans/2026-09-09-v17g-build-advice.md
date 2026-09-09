@@ -1450,16 +1450,47 @@ def gather_golden(root: Path, client: FPLClient | None = None):
         return gather_inputs(golden_config(), client)
 ```
 
-In `write_expected`, after the expected files are written, add:
+In `write_expected`, after the expected files are written, add — using
+`root`, which is what that function calls its scratch tree, and
+`RecordedClient(golden)`, which is the client it already passes to
+`run_golden` for the same reason (the golden's own bundle, not
+`GOLDEN_DIR`'s):
 
 ```python
-    from gaffer.inputs import save_inputs
-
-    save_inputs(gather_golden(scratch), golden / INPUTS_DIR)
+    save_inputs(gather_golden(root, RecordedClient(golden)),
+                golden / INPUTS_DIR)
 ```
 
-using whatever the function already calls its scratch root. Recording now
-gathers once and runs once; say so in `write_expected`'s docstring.
+Recording now gathers once and runs once; say so in `write_expected`'s
+docstring.
+
+**And add a third mode to `main`,** because `--write` rewrites `expected/`
+and stamps a fresh `written_at`, `commit` and `runtime_s` into the header —
+churn this cycle must not create, since its whole claim is that the board
+did not move:
+
+```python
+    mode.add_argument("--inputs", action="store_true",
+                      help="record only the Inputs (v17g §2.8); the expected "
+                           "files and the header are left alone")
+```
+
+with the branch:
+
+```python
+    if args.inputs:
+        root = Path(tempfile.mkdtemp(prefix="golden-inputs-"))
+        print(f"scratch: {root}", file=sys.stderr)
+        build_scratch_tree(root, _repo_root(), GOLDEN_DIR)
+        save_inputs(gather_golden(root, RecordedClient()),
+                    GOLDEN_DIR / INPUTS_DIR)
+        print(f"inputs: {GOLDEN_DIR / INPUTS_DIR}")
+        return 0
+```
+
+placed before the `record()`/`write_expected()` line, since it returns its
+own exit code and has no header to report levers from. Update the parser's
+`description` to name all three modes.
 
 - [ ] **Step 2: The five new tests**
 
@@ -1591,18 +1622,21 @@ tests need the fixture the orchestrator records next; report
 - [ ] **Step 4 (orchestrator): record and gate**
 
 ```
-PYTHONPATH=. .venv/bin/python -m tests.golden_client --write
+PYTHONPATH=. .venv/bin/python -m tests.golden_client --inputs
 git status --short tests/data/golden_board/
-git diff --stat tests/data/golden_board/expected
 .venv/bin/pytest -q tests/test_golden_board.py tests/test_pipeline.py
 mv models models.off && .venv/bin/pytest -q tests/test_golden_board.py -k inputs; mv models.off models
 du -sk tests/data/golden_board
 ```
 
-Expected: `inputs/` appears untracked, `expected/` shows **no diff** —
-`--write` rewrites those files, so a change in them means the board moved,
-which is a gate failure and not something to commit. The models-absent run
-passes and does not skip. The directory stays under 5,120 KB.
+Expected: `inputs/` appears as the only untracked path and **nothing under
+`expected/` or `header.json` is modified** — that is what `--inputs` is for.
+The models-absent run passes and does not skip. The directory stays under
+5,120 KB.
+
+The `--write` path is still the one to use after a retrain, and it now
+records the Inputs too. It is not used here, because it would restamp the
+header and rewrite the expected files this cycle claims are unmoved.
 
 - [ ] **Step 5: Commit**
 
