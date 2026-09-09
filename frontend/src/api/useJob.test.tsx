@@ -254,6 +254,12 @@ describe('useJob', () => {
       renderHook(() => useJob({ kind: 'advise' }))
       await waitFor(() =>
         expect(FakeEventSource.last?.url).toBe('/api/jobs/j4/stream'))
+      // Named, and counted: `/api/jobs/current` is the only route that answers
+      // "what is the single-flight runner doing", and This Week's fetch rail
+      // pins four of these against four buttons.
+      const spy = globalThis.fetch as ReturnType<typeof vi.fn>
+      expect(spy.mock.calls[0][0]).toBe('/api/jobs/current')
+      expect(spy).toHaveBeenCalledOnce()
     })
 
   it('leaves a kind job alone when the run in flight is another kind',
@@ -406,6 +412,19 @@ describe('useJob', () => {
     act(() => { FakeEventSource.last!.fail(FakeEventSource.CLOSED) })
     await waitFor(() => expect(result.current.status).toBe('error'))
     expect(result.current.lines).toEqual(['step one'])
+  })
+
+  it('closes the stream when the tab that started it unmounts', async () => {
+    // The teardown runs both halves because a spec picks one transport and the
+    // cleanup cannot tell which. Without the stream half a tab switched away
+    // mid-run left an EventSource open on a log nobody was reading.
+    stubSequence([[202, { job_id: 'j1', kind: 'advise' }]])
+    vi.stubGlobal('EventSource', FakeEventSource)
+    const { result, unmount } = renderHook(() => useJob({ kind: 'advise' }))
+    await act(async () => { await result.current.start() })
+    expect(FakeEventSource.last!.closed).toBe(false)
+    unmount()
+    expect(FakeEventSource.last!.closed).toBe(true)
   })
 
   it('does not fail a run that already ended', async () => {

@@ -75,8 +75,8 @@ export interface Job {
 // so switching away from the What-If Lab mid-solve tore down the hook, and
 // switching back mounted a fresh one that had never heard of the run still
 // grinding away on the server — an idle form where a result was about to
-// land. JobButton solved the same problem by asking the backend, once on
-// mount, whether the run it cares about is still going (kit/JobButton.tsx).
+// land. The kind probe below solves the same problem by asking the backend,
+// once on mount, whether the run it cares about is still going.
 //
 // It asks `/api/jobs/current`, which only knows the v7 kind-keyed runner.
 // These jobs are anonymous JobRegistry submissions with no kind to ask about,
@@ -207,7 +207,6 @@ export function useJob({ kind, path, slot }: JobSpec): Job {
       .then((run) => {
         if (cancelled || !run) return
         if (run.kind !== kind || run.status !== 'running') return
-        if (run.id === jobId) return          // already streaming this one
         watch(run.id)
       })
       // A probe that cannot reach the server is not a failed job: leave the
@@ -228,9 +227,9 @@ export function useJob({ kind, path, slot }: JobSpec): Job {
     const id = remembered.get(slot)
     if (id === undefined) return
     let cancelled = false
-    // Status is left alone until the probe answers, as JobButton leaves its
-    // button alone: guessing 'running' would flash a spinner over a result
-    // that has been sitting finished on the server for an hour.
+    // Status is left alone until the probe answers, as the kind probe above
+    // leaves its button alone: guessing 'running' would flash a spinner over a
+    // result that has been sitting finished on the server for an hour.
     apiGet<JobRecord>(`/api/jobs/${id}`)
       .then((job) => {
         if (cancelled) return
@@ -256,8 +255,11 @@ export function useJob({ kind, path, slot }: JobSpec): Job {
       setLines([])
       setError(null)
       try {
+        // `undefined`, not `body`: POST /api/jobs/{kind} declares no body
+        // param, so anything sent is discarded rather than refused, and a
+        // caller who passed one would never learn it went nowhere (v17h §6).
         const { job_id } = await apiPost<{ job_id: string; kind: JobKind }>(
-          `/api/jobs/${kind}`, body)
+          `/api/jobs/${kind}`, undefined)
         watch(job_id)
       } catch (e) {
         const detail = (e as { status?: number; detail?: unknown })

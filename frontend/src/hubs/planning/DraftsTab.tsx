@@ -146,7 +146,7 @@ export default function DraftsTab({ current }: { current: WhatIfRequest }) {
             )}
       </Card>
       {job.status === 'error' && (
-        <JobLog status="error" lines={[]} error={job.error ?? 'failed'} />
+        <JobLog status="error" lines={[]} error={job.error} />
       )}
       {(job.status === 'queued' || job.status === 'running') && (
         <Skeleton title="Comparing" lines={picked.length || 3}
