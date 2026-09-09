@@ -152,7 +152,7 @@ export default function ChipsTab() {
   const [request, setRequest] = useState<WhatIfRequest>(EMPTY)
   const [chip, setChip] = useState<string>('wildcard')
   const [invalid, setInvalid] = useState<string | null>(null)
-  const job = useJob('chips')
+  const job = useJob({ slot: 'chips' })
 
   useEffect(() => {
     apiGet<ChipsWorkbench>('/api/chips').then(setData).catch((e: Error) => {

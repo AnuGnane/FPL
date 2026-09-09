@@ -193,7 +193,7 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
   // ladder resolves second — which is the ordering that happens whenever
   // /api/settings is the faster of the two to fail.
   const [rowsFailed, setRowsFailed] = useState<string | null>(null)
-  const job = useJob('ladder')
+  const job = useJob({ path: '/api/ladder', slot: 'ladder' })
 
   const load = useCallback(() => {
     apiGet<LadderPayload>('/api/ladder')
@@ -229,7 +229,7 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
 
   const rebuild = useCallback(() => {
     setOpen(null)
-    job.start('/api/ladder')
+    job.start()
   }, [job])
 
   // A finished rebuild is read back from the banked payload rather than the

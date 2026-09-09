@@ -21,7 +21,7 @@ export default function DraftsTab({ current }: { current: WhatIfRequest }) {
   const [name, setName] = useState('')
   const [picked, setPicked] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
-  const job = useJob('drafts-compare')
+  const job = useJob({ path: '/api/drafts/compare', slot: 'drafts-compare' })
 
   const load = useCallback(() => {
     apiGet<DraftList>('/api/drafts').then(setDrafts).catch(() => {})
@@ -67,7 +67,7 @@ export default function DraftsTab({ current }: { current: WhatIfRequest }) {
 
   const compare = () => {
     const body: DraftCompareRequest = { names: picked }
-    job.start('/api/drafts/compare', body)
+    job.start(body)
   }
 
   const result = job.result as DraftCompare | null
@@ -146,7 +146,7 @@ export default function DraftsTab({ current }: { current: WhatIfRequest }) {
             )}
       </Card>
       {job.status === 'error' && (
-        <JobLog status="failed" lines={[]} error={job.error ?? 'failed'} />
+        <JobLog status="error" lines={[]} error={job.error ?? 'failed'} />
       )}
       {(job.status === 'queued' || job.status === 'running') && (
         <Skeleton title="Comparing" lines={picked.length || 3}

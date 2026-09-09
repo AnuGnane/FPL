@@ -17,7 +17,7 @@ describe('JobLog', () => {
 
   it('shows the failure message and the last twenty lines on failure', () => {
     const lines = Array.from({ length: 40 }, (_, i) => `line ${i}`)
-    render(<JobLog status="failed" lines={lines} error="no models on disk" />)
+    render(<JobLog status="error" lines={lines} error="no models on disk" />)
     expect(screen.getByRole('alert')).toHaveTextContent('no models on disk')
     expect(screen.queryByText('line 19')).toBeNull()
     expect(screen.getByText('line 20')).toBeInTheDocument()

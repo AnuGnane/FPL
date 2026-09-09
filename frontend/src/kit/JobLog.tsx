@@ -1,12 +1,12 @@
 import { useEffect, useRef } from 'react'
-import type { JobStreamStatus } from '../api/useJobStream'
+import type { JobStatus } from '../api/useJob'
 import Callout from './Callout'
 
 /** Lines kept on screen after a failure (spec §5). */
 const FAILURE_TAIL = 20
 
 export interface JobLogProps {
-  status: JobStreamStatus
+  status: JobStatus
   lines: string[]
   error: string | null
 }
@@ -20,7 +20,7 @@ export default function JobLog({ status, lines, error }: JobLogProps) {
 
   if (lines.length === 0 && !error) return null
 
-  const shown = status === 'failed' ? lines.slice(-FAILURE_TAIL) : lines
+  const shown = status === 'error' ? lines.slice(-FAILURE_TAIL) : lines
 
   return (
     <div className="mt-3">

@@ -10,7 +10,7 @@ import DigestCard from './DigestCard'
  *  (plan R1) exactly as the ladder's Rebuild does. */
 export default function BriefCard() {
   const [panel, setPanel] = useState<BriefPanel | null>(null)
-  const job = useJob('brief')
+  const job = useJob({ path: '/api/brief', slot: 'brief' })
 
   const load = useCallback(() => {
     apiGet<BriefPanel>('/api/brief').then(setPanel).catch(() => {})
@@ -20,7 +20,7 @@ export default function BriefCard() {
 
   const busy = job.status === 'queued' || job.status === 'running'
   const write = (
-    <Button onClick={() => job.start('/api/brief')} disabled={busy}>
+    <Button onClick={() => job.start()} disabled={busy}>
       {busy ? 'Writing…' : 'Write the brief'}
     </Button>
   )

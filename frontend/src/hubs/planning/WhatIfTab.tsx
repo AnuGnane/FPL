@@ -31,7 +31,7 @@ export default function WhatIfTab({ value, onChange }: {
   const request = value ?? own
   const setRequest = onChange ?? setOwn
   const [invalid, setInvalid] = useState<StructuredError | null>(null)
-  const job = useJob('whatif')
+  const job = useJob({ slot: 'whatif' })
 
   const solve = async () => {
     setInvalid(null)

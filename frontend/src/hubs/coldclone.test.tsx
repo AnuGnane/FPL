@@ -34,9 +34,13 @@ vi.mock('../api/client', () => ({
   errorText: (e: unknown) => (e instanceof Error ? e.message : String(e)),
 }))
 
-vi.mock('../api/useJobStream', () => ({
-  useJobStream: () => ({
-    status: 'idle', lines: [], error: null, jobId: null,
+// One hook, both transports (v17h §6). `resetJobSlots` is stubbed alongside it
+// because the shared setup clears the real hook's slots before every test and a
+// mocked module has none.
+vi.mock('../api/useJob', () => ({
+  resetJobSlots: () => {},
+  useJob: () => ({
+    status: 'idle', lines: [], result: null, error: null, jobId: null,
     start: vi.fn(), attach: vi.fn(), reset: vi.fn(),
   }),
 }))

@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { apiGet } from '../api/client'
-import { useJobStream } from '../api/useJobStream'
+import { useJob } from '../api/useJob'
 import { JOB_KIND_LABEL, type JobKind } from '../types'
 import Button, { type ButtonVariant } from './Button'
 import JobLog from './JobLog'
@@ -12,49 +11,21 @@ export interface JobButtonProps {
   onDone?: () => void
   /** Fired on every transition into and out of `running`, so the card that
    *  hosts the button can show a skeleton in the panel the job will fill.
-   *  Optional: the button owns the stream, and lifting `useJobStream` into
-   *  every caller to answer one question would be a refactor. */
+   *  Optional: the button owns the stream, and lifting `useJob` into every
+   *  caller to answer one question would be a refactor. */
   onRunning?: (running: boolean) => void
   /** `primary` for the action the page is for (Run advise); secondary
    *  otherwise. */
   variant?: ButtonVariant
 }
 
-/** The shape of GET /api/jobs/current; 204 (nothing running) arrives as null. */
-interface CurrentRun {
-  id: string
-  kind: JobKind
-  status: string
-}
-
 export default function JobButton(
   { kind, label, onDone, onRunning, variant = 'secondary' }: JobButtonProps,
 ) {
-  const job = useJobStream()
+  // A kind, so the hook streams and owns the mount probe that finds a run
+  // already in flight (v17h §6).
+  const job = useJob({ kind })
   const fired = useRef(false)
-  const { attach, jobId } = job
-
-  // A job outlives the tab that started it: an advise run is minutes long and
-  // the runner holds it in memory, not in this component. Reload the page, or
-  // open a second tab, and without this the button offers to start a run that
-  // the single-flight runner can only answer with a 409. Ask once, on mount,
-  // and if the run in flight is ours, watch it as though we had started it.
-  useEffect(() => {
-    let cancelled = false
-    apiGet<CurrentRun | null>('/api/jobs/current')
-      .then((run) => {
-        if (cancelled || !run) return
-        if (run.kind !== kind || run.status !== 'running') return
-        if (run.id === jobId) return          // already streaming this one
-        attach(run.id)
-      })
-      // A probe that cannot reach the server is not a failed job: leave the
-      // button alone and let the click report the problem if it is still there.
-      .catch(() => {})
-    return () => { cancelled = true }
-    // Mount only: re-attaching on every render would fight the stream we own.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kind])
 
   useEffect(() => {
     if (job.status === 'done' && !fired.current) {
@@ -73,7 +44,7 @@ export default function JobButton(
   const busy = job.status === 'running'
   return (
     <div>
-      <Button variant={variant} disabled={busy} onClick={() => job.start(kind)}>
+      <Button variant={variant} disabled={busy} onClick={() => job.start()}>
         {busy ? `${label ?? JOB_KIND_LABEL[kind]} — running…`
               : label ?? JOB_KIND_LABEL[kind]}
       </Button>

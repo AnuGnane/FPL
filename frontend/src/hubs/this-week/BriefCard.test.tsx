@@ -8,10 +8,6 @@ vi.mock('../../api/client', () => ({
   apiGet: (p: string) => apiGet(p), apiPost: (p: string, b: unknown) => apiPost(p, b),
   errorText: (e: unknown) => String(e), ApiError: class extends Error {},
 }))
-vi.mock('../../api/useJobStream', () => ({
-  useJobStream: () => ({ status: 'idle', lines: [], error: null, jobId: null,
-    start: vi.fn(), attach: vi.fn(), reset: vi.fn() }),
-}))
 
 const BRIEF = { gw: 4, prose: 'The ladder chose free transfers only.\n\nGuéhi keeps the armband.',
   checked_at: '2026-09-05T09:00:00+00:00', run_stamp: 's', model_command: 'claude',
