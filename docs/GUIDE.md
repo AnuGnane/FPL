@@ -19,7 +19,7 @@ only read one section, read §12: it is the current to-do list.*
 8. [Everything the CLI can do](#8-everything-the-cli-can-do)
 9. [The data it collects and why](#9-the-data-it-collects-and-why)
 10. [How the project measures itself](#10-how-the-project-measures-itself)
-11. [The version history, v1 to v17c](#11-the-version-history-v1-to-v17c)
+11. [The version history, v1 to v17g](#11-the-version-history-v1-to-v17g)
 12. [What is pending and what was left open](#12-what-is-pending-and-what-was-left-open)
 13. [Troubleshooting](#13-troubleshooting)
 
@@ -654,14 +654,19 @@ and it is worth knowing because you can read the evidence yourself:
   step taken and refused, a hit, a chip row and a league tilt, so a "no
   diff" is evidence of something (CONVENTIONS §10). It skips, naming the
   file, when the models or the archive on disk are not the ones it was
-  recorded under; `python -m tests.golden_client --write` re-records after
-  a retrain.
+  recorded under. Since v17g the board also carries a recorded `Inputs` —
+  everything the solve was handed for that gameweek, as parquet — so the
+  pure half of the pipeline, `build_advice`, is replayed and compared on
+  **any** machine, with no `models/` directory at all; only the full
+  `run_advise` replay still needs the recorded models. `python -m
+  tests.golden_client --write` re-records the board after a retrain, and
+  `--inputs` re-records the seam without restamping it.
 
 Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 `reports/evaluation.json`, and the Model hub.
 
-## 11. The version history, v1 to v17f
+## 11. The version history, v1 to v17g
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
 reviewed. Every cycle ran the same way, and knowing the shape tells you where
@@ -946,7 +951,27 @@ unchanged, which a recorded `GET /api/plan/4` over the golden board
 proved byte for byte. The advice filename is now spelled once, in
 `artifacts.py`. Python 4360 → **4369**, frontend 925 → **926**.
 
-The suite grew from nothing to **4,369 Python + 926 frontend tests** along
+**v17g — `build_advice` as a pure module** (2026-09-09). `run_advise` did
+two jobs in one 700-line body: fetch the world, then decide. Nothing could
+run the deciding half without a network, six trained models and this
+machine's own `reports/` directory, so the tests that guarded it asserted
+on its *source text* — thirty-five of them read the function with
+`inspect.getsource` and matched strings. It is now two functions with a
+value between them: `gather_inputs` does the fetching and the disk, and
+`build_advice(inputs, cfg)` does the deciding and touches nothing but its
+argument. A rail proves that at run time by sealing both spellings of
+`open` and rebuilding the board anyway. The thirty-five source pins became
+fifty-three tests that assert what the run actually *did*, and the golden
+board gained a recorded `Inputs`, so the decision half is now checked on a
+machine with no models on it. Asking for purity surfaced seven quiet file
+reads on that path — the ladder reloading a parquet and last week's advice,
+three chip pricers reading the price log, the ticker reading the fixture
+difficulty — each one a chance for a replay to be scored against tonight's
+files instead of the recorded gameweek's. All seven now take the value the
+run already holds. Nothing changed on screen, and no configuration field
+was added. Python 4369 → **4386**, frontend 926 unchanged.
+
+The suite grew from nothing to **4,386 Python + 926 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above
 so a future change cannot quietly break one.
 

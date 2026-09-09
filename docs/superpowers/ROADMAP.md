@@ -8,7 +8,7 @@ fills, and the index below points at them. Measurement rules every cycle
 follows: `CONVENTIONS.md`. For the same material written for a reader rather
 than an auditor, `docs/GUIDE.md` §11–12.
 
-## Where things stand (2026-09-07)
+## Where things stand (2026-09-09)
 
 v16 — restraint and the brief — is **merged** (`main` `9f5be20`; ff-merge
 of `v16-restraint`), on top of v15's leagues (`ed3e8fe`). The ladder's
@@ -22,9 +22,10 @@ The v17 deepening programme has started: v17a (the wire types, one command)
 is merged at `400c2f5`, v17b (restraint narrated once, on the server) at
 `b1b3b7e`, v17c (the golden board harness) at `ee02520`, v17d (one
 weekly pipeline module) at `c6b049f`, v17e (the config in force, one
-interface) at `0f1a934`, suite 4360 / 925, `Config` pin 59 → 62, and v17f
-(the served plan, owned once) at `0e5d838`, suite 4369 / 926; v17g
-(`build_advice` as a pure module) is next.
+interface) at `0f1a934`, suite 4360 / 925, `Config` pin 59 → 62, v17f
+(the served plan, owned once) at `0e5d838`, and v17g (`build_advice` as a
+pure module) at `0efa90b`, suite 4386 / 926; v17h (This Week's data fetched
+once) is the last of the eight.
 **Security incident, open:** the odds API key's value reached a committed
 plan document (`dd47c0a`) via a forked plan-writing subagent and was pushed
 to the public remote with the merge; removed at the tip (`8fddb0b`), history
@@ -123,6 +124,58 @@ build_advice, the This Week loader. v17a, v17b and v17c are shipped
 `.venv/bin/pytest -q tests/test_golden_board.py`.
 
 ## Shipped
+
+### v17g — `build_advice` as a pure module (done, merged `0efa90b` 2026-09-09)
+Review card #c3. `run_advise` splits into `gather_inputs(cfg, client, *,
+predictions)` — 269 lines that touch the network, the models and the disk
+— and `build_advice(inputs, cfg, *, solver)` — 492 lines that touch
+nothing but their argument — with a 31-line `run_advise` left as the
+caller. The seam is the new `src/gaffer/inputs.py`: a frozen `Inputs` of
+24 fields (a rail asserts the build reads every one), a frozen `Outputs`
+of advice, solve state and ladder, two `runtime_checkable` protocols, and
+`save_inputs`/`load_inputs` over a directory of parquet plus one
+`scalars.json`. Each protocol got both its adapters, because one is a
+hypothetical seam and two make it real: `Predictions` is `LiveModels` over
+the six heads and `RecordedComponents` over a recorded frame; `Solver` is
+`MilpSolver` and the tests' `ScriptedSolver`. Purity forced pure cores
+elsewhere — `ladder_payload` in `ladder.py` solves off a state, caps and
+a step context it is handed, `trace_context` and `completed` in `served.py`
+take the trace they are to charge, and `solve_plan` gained one optional
+`price_fall` keyword, the cycle's single `optimize/**` change, ruled by the
+user (+11 −2). Gated in four pre-registered parts, all passing on the
+first full run: the golden board unmoved and not re-recorded (54 passed, 0
+skipped; `git diff` over `expected/` and the header silent); **the same
+board rebuilt from recorded `Inputs` with `models/` moved off the machine**
+(6 passed), which closes the limit v17c's hand-off note left open;
+`inspect.getsource` gone from `tests/test_advise.py` (35 pins → **0**, 53
+behavioural tests over two new harnesses — `tests/gather_harness.py`,
+which reports the order the calls happened in, and `_predicted()`, which
+stubs all six models), with the twenty pins elsewhere redirected through
+`tests/advise_source.py` rather than rewritten; and `build_advice` pure
+both statically and at run time. The gate earned its keep twice. The static
+rail found `save_components` called in *both* halves, banking the
+components frame twice a run — invisible to the board, which compares the
+advice and the state and not that parquet. And the run-time seal, rewritten
+mid-cycle and then **mutation-tested**, was shown load-bearing in both
+halves: sealing only `builtins.open` lets a planted read through, because
+`pathlib.Path.read_text()` resolves `io.open` and that is the idiom every
+loader in `artifacts.py` uses, and an `AssertionError` sentinel is
+swallowed by the probe's own `except Exception`, so the sentinel is a
+`BaseException`. What the spec did not know when the user approved it:
+**seven** file reads on the supposedly pure path — the ladder's components
+parquet and prior advice, `hit_bar` and the ladder seed, `build_pool`'s
+`top_n`, the price-timing switch and the banked price log (twice), the
+ticker's difficulty, and the three chip pricers, which solve through
+`opt_kw` and so escaped the ruling — every one closed by passing a value
+the build already holds, and `Config` gained no field for any of them. The
+count of source pins outside `test_advise.py` was itself wrong twice before
+it was right (eighteen by grep, nineteen by AST, twenty by running the
+suite): the cycle's own argument read backwards. Spec
+`2026-09-09-v17g-build-advice-design.md` (§9), plan
+`2026-09-09-v17g-build-advice.md`, 25 branch commits. Pins: routes 51, job
+kinds 12, `Config` fields 62, all unmoved. Python 4369 → **4386**,
+frontend 926 unchanged — no pixel, no route, no schema, so no screenshots.
+Fixture 2,308 KB against a 5,120 KB budget.
 
 ### v17f — the served plan, owned once (done, merged `0e5d838` 2026-09-08)
 Review card #c1. One frozen pydantic value, `ServedPlan` in the new
@@ -247,7 +300,8 @@ replay silences it. Spec
 → **4317** (the golden file adds about a minute to the default suite;
 `-m "not golden"` deselects it), frontend 923 unchanged. Left open: the
 golden runs only on the machine that holds the models it was recorded
-under, until v17g records at the `Inputs` level.
+under, until v17g records at the `Inputs` level — **closed by v17g**,
+whose part-2 gate rebuilt the board with `models/` moved off the machine.
 
 ### v17b — restraint narrated once, on the server (done, merged `b1b3b7e` 2026-09-08)
 `src/gaffer/ladder.py` is the one author of the ladder's prose: every rung
