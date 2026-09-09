@@ -565,4 +565,107 @@ open `config.toml`.
 
 ## 9. Outcome
 
-_(written when the gate has run)_
+**Pass, on the first full run of all four parts** (2026-09-09). Transcribed
+here because `logs/` is gitignored (CONVENTIONS §4).
+
+### Part 1 — the golden board is unmoved, and not re-recorded
+
+```
+.venv/bin/pytest -q tests/test_golden_board.py tests/test_pipeline.py
+  54 passed, 4302 warnings in 904.52s (0:15:04)      # 0 skipped
+git diff --stat tests/data/golden_board/expected tests/data/golden_board/header.json
+  (prints nothing)
+```
+
+**Pass.** The board is byte-identical to what `main` produces, with no
+re-record and no permitted key — unlike v17f, which legitimately moved it.
+The suite grew from 45 to 54: part 2's four tests, the two purity rails, the
+field-coverage rail and the recorder's own three.
+
+### Part 2 — the same board, built from recorded `Inputs`, with no models
+
+```
+mv models models.off
+.venv/bin/pytest -q tests/test_golden_board.py -k "inputs or opens_no_file" -rs
+  6 passed, 33 deselected in 413.59s (0:06:53)       # 0 skipped
+mv models.off models                                  # 7 .joblib restored
+```
+
+**Pass.** `build_advice` rebuilt the recorded gameweek's advice and its solve
+state with no `models/` directory on the machine at all. This is the limit
+v17c wrote into its hand-off note — "the golden runs only where `models/` and
+`data/history/` match the header" — and it is now lifted for the pure half.
+
+### Part 3 — the source pins are gone from `tests/test_advise.py`
+
+```
+grep -c "inspect.getsource" tests/test_advise.py                 -> 0
+grep -rln "getsource(run_advise)\|getsource(advise.run_advise)" tests/
+  (only tests/advise_source.py)
+.venv/bin/pytest -q tests/test_advise.py                         -> 53 passed, 3.9s
+```
+
+**Pass.** Thirty-five pins, thirty-two over `run_advise` and three over
+`predict_components`, are behavioural tests over two new harnesses:
+`tests/gather_harness.py`, which runs `gather_inputs` with its heavy
+dependencies spied and reports the order the calls *happened* in, and
+`_predicted()`, which runs `predict_components` with all six models stubbed.
+
+### Part 4 — `build_advice` is pure, statically and at run time
+
+*Static:* none of `open(`, `Path(`, `client.`, `load_`, `save_`, `store.`,
+`atomic_write` appears in `build_advice`'s source. **Pass** — and this rail
+caught a real bug during the cycle: the split had left `save_components`
+called in *both* halves, banking the components frame twice per run, which
+the golden board cannot see because it compares the advice and the state and
+not that parquet.
+
+*Run time:* `build_advice` on the recorded `Inputs` with both `builtins.open`
+and `io.open` sealed produces the expected advice. **Pass.**
+
+The seal was rewritten mid-cycle and then **mutation-tested**, which is the
+single most valuable thing this cycle did to its own tests. A planted
+swallowed read (`try: load_advice(4)` / `except Exception: pass`) is caught,
+naming the file:
+
+```
+tests.test_golden_board...._Opened: build_advice opened (PosixPath('reports/gw4-advice.json'),)
+```
+
+and two counter-mutations show each half of the seal is load-bearing rather
+than decorative: sealing only `builtins.open` lets the read through
+(`1 passed`), because `pathlib.Path.read_text()` resolves `io.open` and that
+is the idiom every loader in `artifacts.py` uses; and an `AssertionError`
+sentinel instead of a `BaseException` also lets it through (`1 passed`),
+swallowed by the probe's own `except Exception`.
+
+Two reads are tolerated and named in the rail's docstring, both **shipped
+package assets** read through `importlib.resources` — `load_decision_priors`
+and `assets/scenario_noise.json`. Neither can replay this machine's gameweek,
+because both are the same bytes in every working directory.
+
+### Pins and scope
+
+Routes **51**, job kinds **12**, `Config` fields **62** — none moved; 84
+passed across the four pin rails. `git diff --stat main -- src/gaffer/optimize`
+names `milp.py` and nothing else: the one optional `price_fall` keyword of
+§7's ruling, +11 −2.
+
+Suite: **4,386 Python** with the golden board deselected, 0 failed. The golden
+fixture is 2,308 KB against its 5,120 KB budget, the recording having added
+1.3 MB.
+
+### What the gate found that the spec did not know
+
+Seven file reads on the supposedly pure path, none of them in §2.3b when the
+user approved it: the components parquet and the previous advice (the
+ladder), `hit_bar` and the ladder seed, `build_pool`'s `top_n`, the
+price-timing switch and the banked log (twice — in `served.completed`, then
+in `solve_plan` itself), the ticker's fixture difficulty, and finally the
+three chip pricers, which solve through `opt_kw` and so were never reached by
+§7's ruling. Every one is closed by passing a value the build already holds.
+
+The count of source pins outside `tests/test_advise.py` was wrong twice
+before it was right — eighteen by grep, nineteen by AST, twenty by running
+the suite (§2.4) — which is this cycle's own argument read backwards: a body
+testable only by inspection has tests that cannot be enumerated either.
