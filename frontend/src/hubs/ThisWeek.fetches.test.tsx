@@ -13,15 +13,15 @@ import ThisWeek from './ThisWeek'
  * arm (CONVENTIONS §3, §4).
  */
 
-const { apiGet, apiPost } = vi.hoisted(() => ({
-  apiGet: vi.fn(), apiPost: vi.fn(),
+const { apiGet, apiPost, apiDelete } = vi.hoisted(() => ({
+  apiGet: vi.fn(), apiPost: vi.fn(), apiDelete: vi.fn(),
 }))
 
 vi.mock('../api/client', () => ({
   ApiError: class extends Error { status = 0; detail: unknown = null },
   apiGet: (path: string) => apiGet(path),
   apiPost: (path: string, body: unknown) => apiPost(path, body),
-  apiDelete: (path: string) => apiGet(path),
+  apiDelete: (path: string) => apiDelete(path),
   errorText: (e: unknown) => (e instanceof Error ? e.message : String(e)),
 }))
 
@@ -93,6 +93,11 @@ function counted(): Record<string, number> {
 
 beforeEach(() => {
   apiGet.mockReset()
+  // Its own spy, not the GET one. Nothing on This Week deletes today, and a
+  // delete that arrived on the render path sharing a spy would land silently
+  // in the multiset below as though it were a read.
+  apiDelete.mockReset()
+  apiDelete.mockResolvedValue(null)
   apiGet.mockImplementation((path: string) => (path in BODIES
     ? Promise.resolve(BODIES[path])
     : Promise.reject(new Error(`unexpected path ${path}`))))
@@ -122,6 +127,7 @@ describe("This Week's first render", () => {
       '/api/news/5': 1,
       '/api/confidence': 1,
     })
+    expect(apiDelete).not.toHaveBeenCalled()
   })
 
   it('makes seventeen GETs in all', async () => {
