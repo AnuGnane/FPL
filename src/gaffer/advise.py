@@ -52,7 +52,8 @@ from gaffer.data.odds import (OddsClient, ags_frame, blend_attacking_odds,
 from gaffer.features.engineer import build_prediction_frame, feature_columns
 from gaffer.io import atomic_write
 from gaffer.ladder import build_ladder, serve_rung
-from gaffer.served import completed, decorated, with_alternatives
+from gaffer.served import (completed, decorated, trace_context,
+                           with_alternatives)
 from gaffer.league_mode import (LeagueParams, apply_stance, captain_cover,
                                 captaincy_note, captaincy_override,
                                 compute_strategy, cover_table, tilt_ep,
@@ -1184,8 +1185,15 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     # v17f §2.2: prices, banks and the trace at write time, off the state
     # just saved — the same pass ``artifacts.served_plan`` runs for a file
     # written before this cycle, so the two cannot disagree.
+    # v17g §2.3b: the three derivations ``completed`` used to make for itself,
+    # made here instead so that the pure build can hand them in. This is the
+    # loader's own helper, so the numbers are the ones this line always wrote;
+    # the split that replaces it with ``inputs``' values is v17g §3.
+    ft_lambda_now, price_timing_now, price_fall_now = trace_context(solve_state)
     served = completed(with_alternatives(served, alt_rows),
-                       state=solve_state, chip_table=chip_rows)
+                       state=solve_state, chip_table=chip_rows,
+                       ft_lambda=ft_lambda_now, price_timing=price_timing_now,
+                       price_fall=price_fall_now)
     strategy = None
     if strat is not None:
         strategy = asdict(strat)

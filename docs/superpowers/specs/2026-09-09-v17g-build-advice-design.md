@@ -187,6 +187,19 @@ of the four needs a protected file to change.
 | `config_in_force().scenarios_seed` | `build_ladder`'s seed default | `cfg.scenarios_seed`, passed the same way (§2.3) |
 | `config_in_force().solver_top_n()` | `optimize.milp.build_pool`, when `top_n` is `None` | `build_advice` passes `top_n=cfg.solver_top_n()` at the call site. `build_pool` already takes the parameter, so **`optimize/` does not change**; every other caller keeps the default |
 | `config_in_force().price_timing` **and** the banked price log | `served.price_falls`, called by `served.completed` | `gather_inputs` calls `price_falls` and puts the pair on `Inputs` as `price_timing` / `price_fall` |
+| `config_in_force().max_hits` / `.max_transfers` | `ladder._caps(state)` | `build_advice` passes `cfg`'s caps and the source `"config"`; `build_ladder` keeps calling `_caps` |
+| `load_components(gw)`, `owned_price_falls(...)`, `web.identity._difficulty_by_team(gws)` | `ladder.step_context(gw, state, gws)`, which builds the step reasons | a pure `step_context_from(...)`. Two of the three are already on `Inputs` — the components frame and `price_fall` — and the ticker's difficulty becomes the twenty-fourth field |
+
+The last two were found by the implementer of the ladder's pure core, not by
+this spec, and the second is the one that matters: **it breaks gate part 2,
+not only part 4.** `step_context` reads `load_components(gw)` relative to the
+working directory. Part 1 runs in the golden's scratch tree, where that file
+is the one the run just wrote; part 2 runs from the repo root, where it is
+the *real* `reports/components_gw4.parquet` of the user's own gameweek 4.
+Those two files are similar enough that the comparison might well have
+passed — which is precisely how a gate starts lying. A read that resolves
+differently depending on the caller's cwd is not a detail of purity; it is
+the reason purity is the gate.
 
 The fourth carries a fifth read with it: `completed` recomputes
 `lambda_from_priors(load_decision_priors())` when the state says the priors
@@ -319,9 +332,10 @@ rule by name (§6), which keeps the recording honest and small.
 live code builds it from the pre-merge matrix, and a left merge that
 duplicated a code would make the two disagree silently.
 
-`price_timing` and `price_fall` are on `Inputs` for the reason §2.3b gives —
-they are a config read and a parquet read that the served plan's trace makes
-today from inside the build. Twenty-three fields in all.
+`price_timing`, `price_fall` and `difficulty` are on `Inputs` for the reason
+§2.3b gives — a config read, a parquet read and a whole web route that the
+served plan's trace and the ladder's step reasons make today from inside the
+build. Twenty-four fields in all.
 
 ### 2.8 The recorded `Inputs` is a directory of parquet plus one JSON
 
@@ -374,6 +388,7 @@ class Inputs:
     prior_advice: dict | None
     price_timing: bool
     price_fall: dict[int, float]
+    difficulty: dict[tuple[int, int], float]
 
 @dataclass(frozen=True)
 class Outputs:
@@ -411,7 +426,7 @@ the job kind, the what-if router and `golden_client` are all unchanged.
 | Seam | Live adapter | Second adapter | What it hides |
 |---|---|---|---|
 | `FPLClient` (existing) | `FPLClient` | `RecordedClient` | the FPL API |
-| `Inputs` | `gather_inputs` | `load_inputs` | fetches, models, predictions, `reports/` reads |
+| `Inputs` | `gather_inputs` | `load_inputs` | fetches, models, predictions, `reports/` reads, the ticker |
 | `Predictions` | `LiveModels` | `RecordedComponents` | `models/*.joblib` |
 | `Solver` | `MilpSolver` | `ScriptedSolver` (tests) | HiGHS, and the CBC fallback below it |
 
