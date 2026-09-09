@@ -19,7 +19,7 @@ only read one section, read §12: it is the current to-do list.*
 8. [Everything the CLI can do](#8-everything-the-cli-can-do)
 9. [The data it collects and why](#9-the-data-it-collects-and-why)
 10. [How the project measures itself](#10-how-the-project-measures-itself)
-11. [The version history, v1 to v17g](#11-the-version-history-v1-to-v17g)
+11. [The version history, v1 to v17h](#11-the-version-history-v1-to-v17h)
 12. [What is pending and what was left open](#12-what-is-pending-and-what-was-left-open)
 13. [Troubleshooting](#13-troubleshooting)
 
@@ -666,7 +666,7 @@ Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 `reports/evaluation.json`, and the Model hub.
 
-## 11. The version history, v1 to v17g
+## 11. The version history, v1 to v17h
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
 reviewed. Every cycle ran the same way, and knowing the shape tells you where
@@ -971,7 +971,30 @@ files instead of the recorded gameweek's. All seven now take the value the
 run already holds. Nothing changed on screen, and no configuration field
 was added. Python 4369 → **4386**, frontend 926 unchanged.
 
-The suite grew from nothing to **4,386 Python + 926 frontend tests** along
+**v17h — This Week's data fetched once; one job hook** (2026-09-09). Every
+card on This Week owned its own request, so one render asked the server
+seventeen questions — four of them the identical "is a run in flight?", and
+two of them the same EP decomposition under two spellings, one of which
+fetched every player in the game to read the fifteen in your squad. The
+awkward part was that per-card fetching is *right*: it is what lets a card
+fail without blanking the page, reload after its own job, and not fetch at
+all until its tab is opened. So what changed is the wire underneath, not the
+cards: `usePageData` holds one in-flight request and one body per URL, shared
+by every card and kept across hub navigations, and each card still calls for
+itself and still keeps its own error. Seventeen GETs became fourteen, the
+advice is read once across four hubs instead of once per navigation, the
+squad-row assembly came out of the hub as a tested pure function, and the two
+job hooks became one that streams or polls on its argument alone. The cycle's
+own trap is worth knowing if you touch this: the cache holds a body until
+something clears it, which is right for an artifact and wrong for a liveness
+check — routing "is a run in flight?" through it made a cached 204 permanent,
+so the button offered a solve the server could only refuse. That probe now
+shares its request without caching its answer.
+
+This closes the v17 deepening programme: eight sub-cycles, none of which
+changed a number the advice serves.
+
+The suite grew from nothing to **4,425 Python + 986 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above
 so a future change cannot quietly break one.
 

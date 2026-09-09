@@ -18,14 +18,14 @@ by-reason tally; a grounded, mechanically checked LLM brief replaces the
 template digest on This Week. Gated on the 2024-25 replay (mean 1835 vs raw 1844 inside a 48-point spread, hits 5 vs 15), a
 real brief the user read, and four screenshots in both themes. Suite 4266
 Python + 910 frontend, pins routes 51 / job kinds 12 / `Config` fields 59.
-The v17 deepening programme has started: v17a (the wire types, one command)
-is merged at `400c2f5`, v17b (restraint narrated once, on the server) at
-`b1b3b7e`, v17c (the golden board harness) at `ee02520`, v17d (one
-weekly pipeline module) at `c6b049f`, v17e (the config in force, one
-interface) at `0f1a934`, suite 4360 / 925, `Config` pin 59 → 62, v17f
-(the served plan, owned once) at `0e5d838`, and v17g (`build_advice` as a
-pure module) at `0efa90b`, suite 4386 / 926; v17h (This Week's data fetched
-once) is the last of the eight.
+**The v17 deepening programme is complete.** All eight sub-cycles are merged,
+in order, each gated before it ran and each a no-op on the numbers the advice
+serves: v17a `400c2f5`, v17b `b1b3b7e`, v17c `ee02520`, v17d `c6b049f`,
+v17e `0f1a934` (`Config` pin 59 → 62), v17f `0e5d838`, v17g `0efa90b`, and
+v17h (This Week's data fetched once; one job hook) at `339f5d1`. Final suite
+**4425 Python + 986 frontend**, pins routes 51 / job kinds 12 / `Config`
+fields 62 — unmoved since v17e. The programme's ledger is in the v17 block
+below.
 **Security incident, open:** the odds API key's value reached a committed
 plan document (`dd47c0a`) via a forked plan-writing subagent and was pushed
 to the public remote with the merge; removed at the tip (`8fddb0b`), history
@@ -109,7 +109,7 @@ Detail in `docs/GUIDE.md` §12.5.
 9. **A blended league stance** (v15 deferred): per-league λ and cover tables merged by weight. Chasing in one league and defending in another largely cancel, so it needs a replay to justify before it touches protected solver code
 10. **The in-app chat** (v16 deferred, gated on a few briefs read): a question box on This Week over the same facts document the brief reads, the same no-tools command, the same truth check on every answer
 
-### The v17 deepening programme (planned 2026-09-07; v17a–v17c merged, v17d next)
+### The v17 deepening programme (planned 2026-09-07; **complete**, all eight merged 2026-09-07 → 09)
 
 The 2026-09-07 architecture review
 (`docs/superpowers/research/2026-09-07-architecture-review.html`) found seven
@@ -119,11 +119,100 @@ refactor changes no number, and
 `docs/superpowers/plans/2026-09-07-v17-tracker.md` is the checklist each
 chat updates on merge. Order: types command, restraint prose on the server,
 golden board, weekly pipeline, config in force, the served plan, pure
-build_advice, the This Week loader. v17a, v17b and v17c are shipped
-(below); v17d starts from `main` at `ee02520` and is gated by
-`.venv/bin/pytest -q tests/test_golden_board.py`.
+build_advice, the This Week loader. All eight are shipped (below).
+
+**The ledger.** Each row is one chat: research already done, a spec whose gate
+was written before anything ran, a plan, subagent implementers with a spec
+review and a code review between tasks, the gate run by the orchestrator,
+then ff-merge, push and the security ritual.
+
+| Sub-cycle | Card | Merged | Python | Frontend | What deepened |
+|---|---|---|---|---|---|
+| v17a — the wire types, one command | #c6 | `400c2f5` | 4271 | 910 | `npm run types` and `--check` from one `OPTIONS`; the twelve-line block in `CLAUDE.md` became one |
+| v17b — restraint narrated once | #c2 | `b1b3b7e` | 4288 | 923 | the server owns the prose: every rung carries its `label`, every step its `line`; two TS `rungLabel`s and a `hits * 4` literal deleted |
+| v17c — the golden board harness | new | `ee02520` | 4317 | 923 | a recorded client and a pinned board, so v17d–v17g could each prove they moved no number |
+| v17d — one weekly pipeline module | #c4 | `c6b049f` | 4329 | 923 | `pipeline.weekly_run` is the one weekly path; the router stopped holding a job body |
+| v17e — the config in force | #c5 | `0f1a934` | 4360 | 925 | `config_in_force()` is the single cached view; five back-door readers collapsed; `Config` 59 → **62** |
+| v17f — the served plan, owned once | #c1 | `0e5d838` | 4369 | 926 | frozen `ServedPlan` whose field names *are* the advice JSON's keys; `advice.json` spelled only in `artifacts.py` |
+| v17g — `build_advice` as a pure module | #c3 | `0efa90b` | 4425* | 926 | `gather_inputs` then `build_advice`; 35 `inspect.getsource` pins became 0; the golden replays with no `models/` on the machine |
+| v17h — This Week fetched once; one job hook | #c7 | `339f5d1` | 4425 | 986 | one in-flight request per URL across cards and hubs; 17 GETs → 14; two job hooks became one |
+
+\* the v17g row long recorded 4386; `pytest --collect-only -q` reports 4425
+and nothing deselects by default, so that figure under-recorded. v17h changed
+no Python, so both rows are the same number.
+
+**What the programme was for, and whether it worked.** The rule was that no
+sub-cycle may change a number the advice serves, and none did: v17d–v17g were
+each gated on the golden board being byte-identical and not re-recorded, and
+v17h on twelve screenshot pairs. What changed is where things live. The
+biggest single win is not in the table: `run_advise` was a 659-line body whose
+only end-to-end exercise anywhere in the suite was the golden, tested by
+string-matching its own source in thirteen files; it is now a 31-line
+composition of two testable halves, and a miswired call fails on a Tuesday
+instead of a Thursday.
+
+**Four lessons worth carrying out of it.** *Mutation-test a new rail* — v17g
+wrote one that was reviewed, looked right and could not fire; every cycle
+after it planted a fault before trusting a test, and v17h found four rails
+that proved nothing that way. *A "no diff" needs a same-code control* — v17b
+learned it on live EP noise, v17h met it again as a warm league-sim cache and
+answered it the same way, by re-shooting the control second. *`except
+Exception` around a subsystem hides wiring errors* — v17g's ladder swallowed a
+`TypeError` and reported it as a bench swap. And *a shallow module's cost is
+usually the thing you cannot test*, not the lines: every card of the seven was
+found by asking what a test would have to fake.
 
 ## Shipped
+
+### v17h — This Week's data fetched once; one job hook (done, merged `339f5d1` 2026-09-09)
+Review card #c7, the one the review marked **Speculative** — it asked the
+grilling to settle first whether per-card fetching is deliberate, and it is,
+in three respects the spec's §0 records and the cycle preserved: failure
+isolation (each card its own error slot, the v17e §2.6 lesson), reload after
+the card's own job, and lazy mount under Radix. What was *not* deliberate is
+the per-card **transport**. So `frontend/src/api/pageData.ts` is a subscribed
+cache, not a loader: `usePageData(path | null)` holds one in-flight request
+and one body per URL, shared across cards and across hub navigations, with
+`invalidate` refetching for whoever is mounted rather than merely forgetting.
+The cards keep their own effects and their own errors. This Week's first
+render fell from **17 GETs to 14** — the hub had been fetching every player's
+EP decomposition to read fifteen, and four `JobButton`s were asking the same
+liveness question — and `/api/advice/latest` is now read once across the four
+hubs instead of once per navigation. `squadRows`/`squadBreakdown` came out of
+the hub as pure functions with a 23-case table; `capText` moved to
+`ladderText.ts` and the inverted `onLoaded` → hub state → sibling flow behind
+`capLine` is gone. `useJobStream` was absorbed into `useJob({ kind } | { path,
+slot })`, which streams or polls on its argument alone, and deleted.
+
+Gated in four pre-registered parts, all passing: the hub's test renders from
+**three** mocked endpoints with 42 of 42 cases kept and one assertion
+*strengthened*; the fetch count 17 → 14 measured by a rail committed against
+`main`'s behaviour first, so the control arm lives in `git show 7ec0e0a`;
+`grep -rn useJobStream frontend/src` silent; and twelve screenshot pairs, ten
+byte-identical and This Week's two explained and then *proved* by re-shooting
+`main` with the league-sim cache warm.
+
+**The cycle's one real bug was one it introduced and caught.** Putting
+`/api/jobs/current` through the cache hit the pre-registered 13 and broke the
+probe: a 204 arrives as `null`, `null` is a *held* body, so after navigating
+away and back the button offered a run the single-flight runner could only
+409 — the exact failure its own comment was written to prevent. Liveness is
+not page data, and nine `com.gaffer` launchd jobs can start a run this tab
+never hears about, so the probe left the cache for a shared in-flight promise
+in `useJob.ts` and the gate's number moved to 14 rather than the semantics
+bending to it. Two other holes surfaced from review: the spec's write table
+put the overrides DELETE in the wrong file, and its whole framing —
+`apiPost`/`apiDelete` — missed a second class, **a job on one hub that
+rewrites an artifact another hub now holds** (`refresh-data`, `field-scrape`),
+which is what `invalidatePrefix` exists for. Spec
+`2026-09-09-v17h-page-data-design.md` (§7 has the gate numbers), plan
+`2026-09-09-v17h-page-data.md`, fourteen branch commits, every task an Opus
+implementer with an Opus spec-and-code review between. Pins: routes 51, job
+kinds 12, `Config` 62 — none moved, no schema change, no server change.
+Python 4425 unchanged; frontend 926 → **986**. Left open: `WhyPanel`'s
+guard, and the source-scan half of the invalidation rail cannot see a call on
+the wrong branch (stated in its own docstring, which is why the guarded case
+has two behavioural tests).
 
 ### v17g — `build_advice` as a pure module (done, merged `0efa90b` 2026-09-09)
 Review card #c3. `run_advise` splits into `gather_inputs(cfg, client, *,

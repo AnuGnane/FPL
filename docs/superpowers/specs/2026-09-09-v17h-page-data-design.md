@@ -327,8 +327,157 @@ into `useJob.test.tsx` unchanged in substance.
 
 ## 7. Outcome
 
-*Filled by the orchestrator when the gate has run. Both fetch counts, the
-suite sizes, the twelve screenshot pairs' verdict, and the merge hash.*
+**Gate passed on its first full run, all four parts. Merged to `main` at
+`339f5d1`, 2026-09-09.** One part passed at a number other than the one
+pre-registered; the reason is §7.2 and it is a finding, not a rationalisation.
+
+### Part 1 — the hub renders from three endpoints. PASS
+
+`ThisWeek.test.tsx`'s shared fixture table is exactly `/api/advice/latest`,
+`/api/players`, `/api/components/5?codes=1,2`. Every other URL the tree asks
+for is absent and the hub renders anyway. **42 `it(` cases before, 42 after**,
+and in the whole file exactly one `expect` line changed — `getByText('ladder
+card')` (a stub) became `getByText('Transfer ladder')` (the real card), which
+is a strengthening. Four cases seed one datum each of their own: the cap line
+(`/api/ladder`), the focus-league caption and the manual-stance flag
+(`/api/league/leagues`), and the deviation note (`/api/decisions/5`).
+
+### Part 2 — This Week's first render, counted. PASS at 14, not 13
+
+```
+17 GETs  ->  14 GETs
+```
+
+Before, recorded in `git show 7ec0e0a` (the control arm, committed against
+`main`'s behaviour before anything was converted):
+
+| path | n |
+|---|---|
+| `/api/jobs/current` | **4** |
+| `/api/components/5` | 1 |
+| `/api/components/5?codes=1,2` | 1 |
+| advice/latest, players, league/leagues, decisions/5, ladder, settings, brief, advice/diff, overrides, news/5, confidence | 1 each |
+
+After, `frontend/src/hubs/ThisWeek.fetches.test.tsx` on the branch: the same
+list with the bare `/api/components/5` **gone** and `/api/jobs/current` at
+**2**. Every *artifact* endpoint is requested exactly once. The two requests
+that disappeared are named rather than inferred (CONVENTIONS §10): the hub
+was asking for every player's decomposition in order to read fifteen, and
+three of the four liveness probes were duplicates of one question.
+
+**Why 14 and not the pre-registered 13.** The first conversion put
+`/api/jobs/current` through `usePageData` and hit 13 — and broke the probe.
+A cached 204 arrives as `null`, and `null` is a *held* body, not an absent
+one, so after an in-app navigation the probe made no request, `JobButton`
+found no run, and it offered a solve that the single-flight runner can only
+answer with a 409. That is precisely the bug the probe's own comment was
+written to prevent, and it was confirmed executably against a control
+worktree of the parent commit (2 probes and a reopened stream before, 1 probe
+and an enabled button after).
+
+The ruling: **liveness is not page data.** `usePageData`'s contract is "held
+until invalidated", which is right for an artifact — the advice, the ladder
+and the brief move only when a job rewrites them — and wrong for "is a run in
+flight right now", which has no invalidation event this tab can be sure of:
+nine `com.gaffer` launchd jobs start runs this tab never hears about, as can
+the CLI. Invalidating on `start()` and on the stream's `end` would have kept
+the number and papered over exactly the two transitions this tab happens to
+know about. Instead the probe left the cache entirely (`b54695a`): `useJob.ts`
+holds a module-level in-flight promise, cleared when it settles, so
+simultaneous mounts join one request and any later mount asks again — today's
+semantics minus the duplicate. This Week has two mount waves (the header's two
+buttons, then `BriefCard`'s two digest buttons once `/api/brief` resolves),
+hence two probes and a total of 14.
+
+### Part 3 — one job hook. PASS
+
+`grep -rn useJobStream frontend/src` prints nothing. `useJobStream.ts` and its
+test are deleted; all eleven of its cases live in `useJob.test.tsx`, re-mocked
+from `vi.mock('./client')` onto the fetch-stubbing idiom that file already
+used.
+
+### Part 4 — twelve screenshot pairs. PASS
+
+`shots.sh v17h-before` on `main` and `v17h-after` on the branch, one
+`gaffer ui` process, the same banked artifacts, minutes apart. **Ten of the
+twelve pairs are byte-identical.** `this-week-dark` and `this-week-light`
+differed by one string: the captain line's `+1pp title odds vs vice` chip,
+which comes from a fire-and-forget `POST /api/league/whatif` with
+`cached_only: true` and therefore renders only when the server's league-sim
+cache is warm — and the control run is what warmed it. Re-shooting `main`
+afterwards (`v17h-before2`) produced This Week shots **byte-identical to the
+branch's**, which settles it: the difference is run order, not code. The
+`capOdds` POST is untouched by this cycle. User approved all twelve.
+
+This is v17b's lesson in a new costume — two runs of identical code minutes
+apart differ — and the answer was the same: a same-code control, run second.
+
+### Suites
+
+| | before (`main` at `668839c`) | after (`339f5d1`) |
+|---|---|---|
+| frontend | 926 passed, 1 skipped, 91 files | **986 passed, 1 skipped, 94 files** |
+| `tsc --noEmit` | clean | clean |
+| Python | 4425 | **4425** (no Python changed) |
+
+**A correction to the ledger, not a change.** The tracker records 4386 Python
+tests at v17g. `pytest --collect-only -q` reports **4425 collected**, and
+nothing in `[tool.pytest.ini_options]` deselects by default (the `golden`
+marker runs unless you ask for `-m "not golden"`). Since v17h changed no
+Python, v17g's true figure was also 4425 and the row under-records. The v17h
+row states the measured number.
+
+**Pins.** Routes 51, `JOB_KINDS` 12, `Config` fields 62 — none moved, none
+touched. No schema change, so `schemas.json` and `types.generated.ts` did not
+move and `npm run types` was not run.
+
+### Two findings beyond the plan, both fixed
+
+**The write sweep had a wrong row and a missing class.** §5's table put the
+overrides DELETE in `Players.tsx`, where no such call exists — it is in
+`planning/OverridesCard.tsx`, and `/api/overrides` is read by `WhyPanel`, so
+the invalidation was needed but attributed to the wrong file. Separately,
+`SettingsTab` writes `focus` and `stance` — both on the settings whitelist —
+and `LeaguesOverview` derives This Week's league tile from exactly those two,
+so it must clear `/api/league/leagues` as `League.tsx` does when it writes the
+same fields.
+
+**And the sweep's own definition was too narrow.** It was framed over
+`apiPost`/`apiDelete`, which misses a second class: **a job that rewrites a
+cached artifact from another hub**. `refresh-data` rewrites `live/players.parquet`
+and `field-scrape` rewrites `FIELD_EO_PATH`; both feed `/api/players`, whose
+body This Week now holds across navigations, and both buttons live on the
+Model hub whose `onDone` reloads only its own tab. `refresh-data` also reaches
+`/api/news/{gw}`, which joins players.parquet for names, clubs and the official
+flag — which is why `invalidatePrefix` earns its place, the gameweek being
+unknown to the Model hub. Traced and *excluded* on evidence: `snapshot` writes
+the availability log, which nothing cached reads, and `news-shadow` has no
+button in the app at all.
+
+### Recorded exceptions to §5's "no reload behaviour changes"
+
+1. `DigestCard`'s given-panel branch no longer refetches `/api/digest` on a
+   digest job. The old code fetched a body it then never rendered (`panel`
+   resolves to `given` in that branch), so the request was dead. Removed
+   deliberately rather than preserved.
+2. `ThisWeek`'s `reloadAdvice` invalidates the **pre-run** components URL. If
+   a run changes the gameweek or the squad, that is one GET nothing reads, and
+   the new key is a cold fetch on the path change — a wasted request, never a
+   stale panel. The clean fix needs an effect that waits for the new advice to
+   land; left, with the reason written at the call site.
+
+### Residuals
+
+- `WhyPanel` reads `/api/advice/diff` and `/api/overrides` behind the same
+  `codes.length > 0` guard as its components read. Unreachable from its only
+  call site, where `codes` is never empty.
+- The source-scan half of the invalidation rail cannot see a call on the wrong
+  branch or after an early return. That limit is stated in the rail's own
+  docstring, and it is why the guarded `SettingsTab` case has two behavioural
+  tests rather than a cleverer regex.
+- `pageData.ts`'s subscriber-set copy is deliberately unpinned: the only test
+  that would discriminate pins the wrong half of the invariant, and a test
+  that passes either way is worse than none. The reasoning is in the module.
 
 ---
 
