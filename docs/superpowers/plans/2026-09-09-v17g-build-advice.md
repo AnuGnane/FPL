@@ -1392,6 +1392,22 @@ If `slow` is not already a registered marker in `pyproject.toml` or
 `pytest.ini`, drop the decorator rather than registering a new one — a
 warning about an unknown mark is noise, and this file is four tests.
 
+- [ ] **Step 2b: Close the `Solver` protocol's second adapter**
+
+`tests/test_inputs.py`'s `test_every_protocol_has_two_adapters` (T1) can name
+only `MilpSolver`, because the second adapter is the one you have just
+written. Spec §5 asks for two per protocol, so add to
+`tests/test_advice_fixture.py`:
+
+```python
+def test_the_scripted_solver_is_the_protocol_s_second_adapter():
+    """The review's test for a seam that is real rather than hypothetical:
+    one adapter is a hypothetical seam, two make it a real one."""
+    from gaffer.inputs import Solver
+
+    assert isinstance(ScriptedSolver(), Solver)
+```
+
 - [ ] **Step 3: Run**
 
 ```
