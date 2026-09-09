@@ -171,15 +171,48 @@ class StepContext:
     saved state's ``opt`` (written by ``advise.py``)."""
 
 
-def step_context(gw: int, state, gws: list[int]) -> StepContext:
-    """Build the context off the artifacts, swallowing every failure: a
-    missing source is an empty map, and the reason falls through."""
+def step_context_from(components, price_fall: dict, difficulty: dict,
+                      state) -> StepContext:
+    """The context off values already in hand (v17g §2.3b). ``build_advice``
+    holds all three: the components frame it predicted on, the price falls
+    the served trace charges from, and the ticker's difficulty, gathered.
+    Re-reading them there would answer a replay with the machine's own
+    gameweek instead of the recorded one.
+
+    ``components`` may be ``None`` — the frame :func:`step_context` could not
+    load and has already printed about — and a frame that will not yield a
+    ``p_play`` is an empty map, because a reason that cannot be worked out
+    falls through to the next one.
+    """
     p_play: dict = {}
+    if components is not None:
+        try:
+            p_play = {(int(c), int(g)): float(p) for c, g, p in
+                      zip(components["code"], components["gw"],
+                          components["p_play"]) if p == p}         # NaN-safe
+        except Exception as exc:  # noqa: BLE001
+            print(f"ladder: no p_play for the step reasons ({exc})")
+    team_of: dict = {}
     try:
-        comp = load_components(gw)
-        p_play = {(int(c), int(g)): float(p) for c, g, p in
-                  zip(comp["code"], comp["gw"], comp["p_play"])
-                  if p == p}                                       # NaN-safe
+        team_of = {int(c): int(t) for c, t in
+                   zip(state.pool["code"], state.pool["team_code"])}
+    except Exception:  # noqa: BLE001
+        pass
+    chip_plan = [c for c in (state.opt.get("chip_plan") or [])
+                 if isinstance(c, dict) and c.get("gw") is not None]
+    return StepContext(p_play=p_play, price_fall=price_fall,
+                       difficulty=difficulty, team_of=team_of,
+                       chip_plan=chip_plan)
+
+
+def step_context(gw: int, state, gws: list[int]) -> StepContext:
+    """Load the three sources and build the context off them, swallowing
+    every failure: a missing source is an empty map, and the reason falls
+    through. The loading wrapper over :func:`step_context_from` since v17g
+    §2.3b, for the callers that have a gameweek and nothing else."""
+    components = None
+    try:
+        components = load_components(gw)
     except Exception as exc:  # noqa: BLE001
         print(f"ladder: no p_play for the step reasons ({exc})")
     price_fall: dict = {}
@@ -195,17 +228,7 @@ def step_context(gw: int, state, gws: list[int]) -> StepContext:
         difficulty = _difficulty_by_team([int(g) for g in gws])
     except Exception as exc:  # noqa: BLE001
         print(f"ladder: no fixture difficulty for the step reasons ({exc})")
-    team_of: dict = {}
-    try:
-        team_of = {int(c): int(t) for c, t in
-                   zip(state.pool["code"], state.pool["team_code"])}
-    except Exception:  # noqa: BLE001
-        pass
-    chip_plan = [c for c in (state.opt.get("chip_plan") or [])
-                 if isinstance(c, dict) and c.get("gw") is not None]
-    return StepContext(p_play=p_play, price_fall=price_fall,
-                       difficulty=difficulty, team_of=team_of,
-                       chip_plan=chip_plan)
+    return step_context_from(components, price_fall, difficulty, state)
 
 
 def _diff(below: dict, above: dict, key: str) -> list[dict]:
@@ -747,16 +770,23 @@ def _caps(state) -> tuple[tuple[int | None, int | None], str]:
 def ladder_payload(state, *, gw: int, gws: list[int], hit_bar: float,
                    seed: int, sigmas: dict, sigma_source: str,
                    prior_advice: dict | None,
-                   n_draws: int = LADDER_DRAWS) -> dict:
+                   caps: tuple[int | None, int | None], cap_source: str,
+                   ctx: StepContext, n_draws: int = LADDER_DRAWS) -> dict:
     """Solve every rung off ``state``, score them on shared draws, return the
-    payload. v17g §2.2: pure of the three reads and the one write that used
-    to bracket it, so ``build_advice`` can call it on the state it has just
+    payload. v17g §2.2: pure of the reads and the one write that used to
+    bracket it, so ``build_advice`` can call it on the state it has just
     built in memory and :func:`build_ladder` can call it on one it has just
     loaded.
 
     ``prior_advice`` is the served advice for this gameweek **as it stood
     before the run** — the previous run's on a Thursday re-run, and ``None``
     when there was none to read.
+
+    ``caps``/``cap_source`` and ``ctx`` are passed rather than derived (v17g
+    §2.3b): :func:`_caps` reads the live config and :func:`step_context`
+    reads the components parquet, both against the working directory, so a
+    build replayed from a recording would otherwise answer with the
+    machine's own gameweek and look like agreement.
     """
     ep_by = raw_ep_by(state)
     cover = (state.cover if state.cover is not None
@@ -867,7 +897,7 @@ def ladder_payload(state, *, gw: int, gws: list[int], hit_bar: float,
         by_key[key] = row
         prev = (key, plan, horizon_hits)
 
-    (max_hits, max_transfers), cap_source = _caps(state)
+    max_hits, max_transfers = caps
     cap_rung, cap_requested = _cap_rung(max_hits, max_transfers, rows)
     if prior_advice is None:
         # v17g §2.2: the load moved out to the callers, and its note came with
@@ -886,7 +916,6 @@ def ladder_payload(state, *, gw: int, gws: list[int], hit_bar: float,
     # v16 §3.1: the restraint walk on the same draws, with its reasons.
     chosen, steps = walk(scores, rows, hit_bar=hit_bar, max_hits=max_hits,
                          max_transfers=max_transfers)
-    ctx = step_context(gw, state, gws)
     for step in steps:
         if "reason_kind" not in step:
             kind, text = explain_step(by_key[step["below"]], by_key[step["above"]],
@@ -941,9 +970,13 @@ def build_ladder(gw: int | None = None, *, n_draws: int = LADDER_DRAWS,
         # not a crash; the note the payload carries says so.
         print(f"ladder: no served advice to mark ({exc})")
         prior_advice = None
+    caps, cap_source = _caps(state)
     payload = ladder_payload(state, gw=gw, gws=gws, hit_bar=_hit_bar(),
                              seed=int(seed), sigmas=sigmas,
                              sigma_source=sigma_source,
-                             prior_advice=prior_advice, n_draws=n_draws)
+                             prior_advice=prior_advice, caps=caps,
+                             cap_source=cap_source,
+                             ctx=step_context(gw, state, gws),
+                             n_draws=n_draws)
     save_ladder(payload, gw)
     return payload

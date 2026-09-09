@@ -7,7 +7,7 @@ import dataclasses
 import pandas as pd
 import pytest
 
-from gaffer.inputs import (EP_BY, FRAMES, INT_KEYED, SCALARS, Inputs,
+from gaffer.inputs import (FRAMES, INT_KEYED, PAIR_KEYED, SCALARS, Inputs,
                            LiveModels, MilpSolver, Outputs, Predictions,
                            RecordedComponents, Solver, load_inputs,
                            save_inputs)
@@ -39,7 +39,7 @@ def _inputs(**over) -> Inputs:
         win_probs=[{"name": "Rivals", "total": 512, "p_win": 0.24}],
         priors={"lam": {"1": [0.4, 0.9]}, "theta": {"hit": 4.0}},
         dgw_probs={}, prior_advice={"gw": 6, "moves": [{"out": 200}]},
-        price_timing=True, price_fall={})
+        price_timing=True, price_fall={}, difficulty={(1, 7): 0.4})
     fields.update(over)
     return Inputs(**fields)
 
@@ -73,7 +73,7 @@ def test_the_round_trip_returns_every_field_unchanged(tmp_path):
 def test_the_recording_covers_every_field_of_inputs():
     """A field added later with a default would be dropped on save and
     silently defaulted on load, and every other test here would still pass."""
-    assert set(FRAMES) | {EP_BY} | set(INT_KEYED) | set(SCALARS) == {
+    assert set(FRAMES) | set(PAIR_KEYED) | set(INT_KEYED) | set(SCALARS) == {
         f.name for f in dataclasses.fields(Inputs)}
 
 
@@ -115,6 +115,20 @@ def test_the_integer_keys_survive_json(tmp_path):
     assert back.rival_names == {9: "Rivals"}
     assert back.dgw_probs == {12: 0.8}
     assert back.price_fall == {100: 0.7}
+
+
+def test_the_pair_keyed_maps_keep_their_tuple_keys(tmp_path):
+    """JSON has no tuple key at all, so each goes to a parquet of three
+    columns. An empty one is a real recording and not a broken gather: the
+    ticker answers with an empty map for any fixture it cannot rate."""
+    original = _inputs(ep_by={(100, 7): 6.0},
+                       difficulty={(1, 7): 0.4, (2, 8): 0.9})
+    save_inputs(original, tmp_path)
+    back = load_inputs(tmp_path)
+    assert back.ep_by == {(100, 7): 6.0}
+    assert back.difficulty == {(1, 7): 0.4, (2, 8): 0.9}
+    save_inputs(_inputs(difficulty={}), tmp_path)
+    assert load_inputs(tmp_path).difficulty == {}
 
 
 def test_a_squad_and_a_strategy_round_trip(tmp_path):

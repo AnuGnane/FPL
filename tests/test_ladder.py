@@ -509,8 +509,8 @@ def test_the_cap_note_reads_its_sentinel_from_the_config(board):
 def _saved_state(tmp_path, monkeypatch):
     """The saved board as a value — what ``build_ladder`` loads and what
     ``ladder_payload`` is handed. The config cache is dropped for the
-    ``board`` fixture's reason: the payload's cap highlight reads the live
-    config, which is cached for the life of the process."""
+    ``board`` fixture's reason: ``build_ladder`` reads the live config for
+    the caps and the seed, and it is cached for the life of the process."""
     from gaffer.artifacts import load_solve_state
     from gaffer.config import invalidate
 
@@ -520,16 +520,31 @@ def _saved_state(tmp_path, monkeypatch):
     return load_solve_state(1)
 
 
+def _payload_kw(state, **over):
+    """What ``build_ladder`` would hand the core for that board: nothing
+    gathered, the caps and the step context passed in (v17g §2.3b)."""
+    from gaffer.ladder import StepContext
+
+    return {**dict(gw=state.gw, gws=state.gws, hit_bar=0.6, seed=11,
+                   sigmas={}, sigma_source="outcome_only", prior_advice=None,
+                   caps=(2, None), cap_source="config", ctx=StepContext(),
+                   n_draws=8), **over}
+
+
 def test_ladder_payload_solves_off_a_state_it_was_handed(tmp_path, monkeypatch):
     """v17g §2.2: the pure core takes the board, the bar, the seed, the sigmas
     and the prior advice, so build_advice can call it before anything is
     written."""
     from gaffer.ladder import ladder_payload
 
+    from gaffer.ladder import StepContext
+
     state = _saved_state(tmp_path, monkeypatch)
     payload = ladder_payload(state, gw=state.gw, gws=state.gws, hit_bar=0.6,
                              seed=11, sigmas={}, sigma_source="outcome_only",
-                             prior_advice=None, n_draws=64)
+                             prior_advice=None, caps=(2, None),
+                             cap_source="config", ctx=StepContext(),
+                             n_draws=64)
     assert payload["gw"] == state.gw
     assert payload["bar"] == 0.6
     assert payload["seed"] == 11
@@ -545,9 +560,7 @@ def test_ladder_payload_writes_nothing(tmp_path, monkeypatch):
     written: list = []
     monkeypatch.setattr("gaffer.ladder.save_ladder",
                         lambda payload, gw: written.append(gw))
-    ladder_payload(state, gw=state.gw, gws=state.gws, hit_bar=0.6, seed=11,
-                   sigmas={}, sigma_source="outcome_only", prior_advice=None,
-                   n_draws=32)
+    ladder_payload(state, **_payload_kw(state))
     assert written == []
 
 
@@ -560,14 +573,12 @@ def test_a_prior_advice_of_none_keeps_the_note_the_load_used_to_write(
     from gaffer.ladder import ladder_payload
 
     state = _saved_state(tmp_path, monkeypatch)
-    kw = dict(gw=state.gw, gws=state.gws, hit_bar=0.6, seed=11, sigmas={},
-              sigma_source="outcome_only", n_draws=8)
-    assert ladder_payload(state, prior_advice=None, **kw)["recommended_note"] \
-        == "no served advice for GW1"
+    none = ladder_payload(state, **_payload_kw(state, prior_advice=None))
+    assert none["recommended_note"] == "no served advice for GW1"
     stranger = {"buys": [{"code": 999}], "sells": [],
                 "captain": {"code": 999}}
-    assert ladder_payload(state, prior_advice=stranger, **kw)["recommended_note"] \
-        == "the served advice's moves match no rung"
+    matched = ladder_payload(state, **_payload_kw(state, prior_advice=stranger))
+    assert matched["recommended_note"] == "the served advice's moves match no rung"
 
 
 def test_build_ladder_still_loads_delegates_and_saves(tmp_path, monkeypatch):
@@ -586,6 +597,10 @@ def test_build_ladder_still_loads_delegates_and_saves(tmp_path, monkeypatch):
     assert out == {"gw": state.gw}
     assert saved == [({"gw": state.gw}, state.gw)]
     assert seen["hit_bar"] and seen["seed"] and "sigmas" in seen
+    # v17g §2.3b: the two reads that used to sit inside the core are the
+    # wrapper's now, and this is where they are made.
+    assert seen["caps"] == (2, None) and seen["cap_source"] == "config"
+    assert seen["ctx"].team_of and seen["prior_advice"] is None
 
 
 def test_sigmas_come_from_a_frame_not_a_file():
@@ -595,3 +610,86 @@ def test_sigmas_come_from_a_frame_not_a_file():
 
     sigmas, source = sigmas_from_components(pd.DataFrame())
     assert (sigmas, source) == ({}, "outcome_only")
+
+
+# --- v17g §2.3b: the step reasons off values, and a core that opens nothing -
+
+
+def test_the_step_context_reads_the_values_it_is_handed(tmp_path, monkeypatch):
+    """v17g §2.3b: build_advice holds the components frame it predicted on,
+    the price falls the served trace charges from and the ticker's
+    difficulty. A replay that re-read them would answer with the machine's
+    own gameweek."""
+    from gaffer.ladder import step_context_from
+
+    state = _saved_state(tmp_path, monkeypatch)
+    comp = pd.DataFrame([{"code": 20, "gw": 1, "p_play": 0.25},
+                         {"code": 19, "gw": 1, "p_play": float("nan")}])
+    ctx = step_context_from(comp, {16: 0.9}, {(4, 1): 0.2}, state)
+    assert ctx.p_play == {(20, 1): 0.25}            # the NaN row is dropped
+    assert ctx.price_fall == {16: 0.9}
+    assert ctx.difficulty == {(4, 1): 0.2}
+    assert ctx.team_of[20] == 20 % 8                # off the saved pool
+    assert ctx.chip_plan == []
+
+
+def test_a_components_frame_it_cannot_read_costs_the_p_play_and_nothing_else(
+        tmp_path, monkeypatch, capsys):
+    """Every source in the context has always degraded to an empty map, and
+    a frame handed in degrades the same way — the reasons fall through to
+    the next one rather than the ladder falling over."""
+    from gaffer.ladder import step_context_from
+
+    state = _saved_state(tmp_path, monkeypatch)
+    # ``None`` is the frame the wrapper could not load and has already
+    # printed about, so the core says nothing a second time.
+    assert step_context_from(None, {}, {}, state).p_play == {}
+    assert capsys.readouterr().out == ""
+    nameless = pd.DataFrame([{"code": 20, "gw": 1}])
+    assert step_context_from(nameless, {}, {}, state).p_play == {}
+    assert "no p_play for the step reasons" in capsys.readouterr().out
+
+
+def test_step_context_loads_the_three_and_hands_them_to_the_core(tmp_path,
+                                                                 monkeypatch):
+    """The job kind and the route still pass a gameweek and expect the
+    context to be gathered for them; only build_advice skips the loading."""
+    from gaffer import ladder as ladder_mod
+
+    state = _saved_state(tmp_path, monkeypatch)
+    seen = {}
+    monkeypatch.setattr(ladder_mod, "load_components", lambda gw: f"COMP{gw}")
+    monkeypatch.setattr("gaffer.price_timing.owned_price_falls",
+                        lambda owned: {16: 0.9})
+    monkeypatch.setattr("gaffer.web.identity._difficulty_by_team",
+                        lambda gws: {(4, 1): 0.2})
+    monkeypatch.setattr(ladder_mod, "step_context_from",
+                        lambda *a: seen.update(args=a) or "CTX")
+    assert ladder_mod.step_context(1, state, [1, 2]) == "CTX"
+    assert seen["args"] == ("COMP1", {16: 0.9}, {(4, 1): 0.2}, state)
+
+
+def test_ladder_payload_reads_nothing_it_was_not_handed(tmp_path, monkeypatch):
+    """v17g §2.3b, the rail that would have caught the two late reads: the
+    caps the payload prints are the ones passed, not the live config's, and
+    the step reasons are the passed context's, not a parquet's. ``open`` is
+    sealed as well, but the caps carry the weight — a warm config cache
+    answers ``_caps`` without opening anything at all."""
+    import builtins
+
+    from gaffer import ladder as ladder_mod
+
+    state = _saved_state(tmp_path, monkeypatch)
+    patch_view(monkeypatch, lambda: _cfg(max_hits=2, max_transfers=15))
+    ctx = ladder_mod.StepContext(price_fall={c: 0.9 for c in OWNED})
+    kw = _payload_kw(state, caps=(1, None), cap_source="state", ctx=ctx)
+
+    def refuse(*a, **k):
+        raise AssertionError(f"the ladder's core opened {a[:1]}")
+
+    monkeypatch.setattr(builtins, "open", refuse)
+    out = ladder_mod.ladder_payload(state, **kw)
+    assert out["cap"] == {"max_hits": 1, "max_transfers": None}
+    assert out["cap_source"] == "state"
+    assert [s["reason_kind"] for s in out["steps"]] == ["price", "price"]
+    assert out["steps"][0]["reason"] == "P18 is 90% to drop tonight"

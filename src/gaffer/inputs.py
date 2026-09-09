@@ -71,6 +71,10 @@ class Inputs:
     # the banked fall table. Both are reads, so both are gathered.
     price_timing: bool
     price_fall: dict[int, float]
+    # v17g §2.3b: the ladder's step reasons rate a fixture through the
+    # ticker, which reads the snapshots. Gathered here so a replay from a
+    # recorded board cannot pick up the machine's own week instead.
+    difficulty: dict[tuple[int, int], float]
 
 
 @dataclass(frozen=True)
@@ -194,8 +198,16 @@ FRAMES = ("players", "comp", "components", "ep_named")
 """Fields stored one parquet each. ``my.picks`` has its own beside them."""
 
 EP_BY = "ep_by"
-"""Its own parquet, one row per pair: JSON has no tuple keys, and a frame of
-three columns is the one shape that keeps ``(code, gw) -> ep`` exact."""
+DIFFICULTY = "difficulty"
+
+PAIR_KEYED = {EP_BY: ("code", "gw", "ep"),
+              DIFFICULTY: ("team_code", "gw", "difficulty")}
+"""Dicts keyed on a pair, each its own parquet of one row per key: JSON has
+no tuple keys, and a frame of three columns is the one shape that keeps
+``(code, gw) -> ep`` exact. The value under each name is the three column
+headings, in order. A map with no rows is a real recording — the ticker
+answers with an empty one for a week it cannot rate — and reads back as the
+empty dict it was."""
 
 INT_KEYED = ("league_eo", "cover", "cap_cover", "rival_captains",
              "rival_names", "dgw_probs", "price_fall")
@@ -246,9 +258,10 @@ def save_inputs(inputs: Inputs, directory: Path | str) -> None:
     directory.mkdir(parents=True, exist_ok=True)
     for name in FRAMES:
         getattr(inputs, name).to_parquet(directory / f"{name}.parquet")
-    pd.DataFrame([{"code": c, "gw": g, "ep": v}
-                  for (c, g), v in inputs.ep_by.items()]).to_parquet(
-        directory / f"{EP_BY}.parquet")
+    for name, (left, right, value) in PAIR_KEYED.items():
+        pd.DataFrame([{left: a, right: b, value: v}
+                      for (a, b), v in getattr(inputs, name).items()]
+                     ).to_parquet(directory / f"{name}.parquet")
     my = None
     if inputs.my is not None:
         inputs.my.picks.to_parquet(directory / "my_picks.parquet")
@@ -281,8 +294,13 @@ def load_inputs(directory: Path | str) -> Inputs:
     scalars = json.loads((directory / "scalars.json").read_text())
     frames = {name: pd.read_parquet(directory / f"{name}.parquet")
               for name in FRAMES}
-    ep = pd.read_parquet(directory / f"{EP_BY}.parquet")
-    ep_by = {(int(r.code), int(r.gw)): float(r.ep) for r in ep.itertuples()}
+    pairs = {}
+    for name, (left, right, value) in PAIR_KEYED.items():
+        frame = pd.read_parquet(directory / f"{name}.parquet")
+        # ``itertuples`` and not ``iterrows``: the row-as-Series would put
+        # three columns through one dtype, and a code is not a float.
+        pairs[name] = {(int(getattr(r, left)), int(getattr(r, right))):
+                       float(getattr(r, value)) for r in frame.itertuples()}
 
     my = None
     if scalars["my"] is not None:
@@ -297,7 +315,7 @@ def load_inputs(directory: Path | str) -> Inputs:
     return Inputs(
         gw=int(scalars["gw"]), gws=[int(g) for g in scalars["gws"]],
         deadline=scalars["deadline"], through=_int_or_none(scalars["through"]),
-        gap_warning=scalars["gap_warning"], ep_by=ep_by, my=my,
+        gap_warning=scalars["gap_warning"], **pairs, my=my,
         strategy=strategy, win_probs=scalars["win_probs"],
         priors=scalars["priors"], prior_advice=scalars["prior_advice"],
         price_timing=bool(scalars["price_timing"]), **frames,
