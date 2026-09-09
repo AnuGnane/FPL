@@ -1450,21 +1450,60 @@ INPUTS_DIR = "inputs"
 ``expected/``, so one command still re-records everything after a retrain."""
 ```
 
+and a recording `Predictions` adapter, beside `RecordingClient` and for the
+same reason — v17c records the FPL responses by wrapping the live client, and
+this records the predictions by wrapping the live models:
+
+```python
+class RecordingModels:
+    """``LiveModels``, banking what ``predict_components`` returned.
+
+    v17g §2.5: ``RecordedComponents`` stands in for that call, which happens
+    *before* ``blend_attacking_odds`` and ``rescale_pen_after_blend`` — so the
+    frame it serves is this one, not ``Inputs.comp``, which is the frame after
+    both. Serving the wrong one would re-apply the rescale to a frame that
+    already carries ``set_pieces.BLEND_MARKER``, silently.
+    """
+
+    def __init__(self, directory: Path) -> None:
+        self.directory = Path(directory)
+        self._live = LiveModels()
+
+    def missing(self):
+        return self._live.missing()
+
+    def components(self, **kw):
+        frame = self._live.components(**kw)
+        self.directory.mkdir(parents=True, exist_ok=True)
+        frame.to_parquet(self.directory / "predicted.parquet")
+        return frame
+
+    def calibration(self):
+        return self._live.calibration()
+```
+
 and a sibling of `run_golden` that gathers rather than runs:
 
 ```python
-def gather_golden(root: Path, client: FPLClient | None = None):
+def gather_golden(root: Path, client: FPLClient | None = None,
+                  predictions=None):
     """``gather_inputs(golden_config(), client)`` inside ``golden_cwd``.
 
     The recorded half of the split: what ``build_advice`` is given, so the
     golden can build the same board on a machine with no ``models/``.
+    ``predictions`` defaults to ``RecordingModels`` when recording and is
+    ``RecordedComponents`` in the test that replays it.
     """
     from gaffer.advise import gather_inputs
 
     client = client if client is not None else RecordedClient()
     with golden_cwd(root, client):
-        return gather_inputs(golden_config(), client)
+        return gather_inputs(golden_config(), client,
+                             predictions=predictions)
 ```
+
+`gather_inputs` treats `predictions=None` as `LiveModels()`, so the default
+stays live and only the recorder passes `RecordingModels`.
 
 In `write_expected`, after the expected files are written, add — using
 `root`, which is what that function calls its scratch tree, and
@@ -1473,7 +1512,8 @@ In `write_expected`, after the expected files are written, add — using
 `GOLDEN_DIR`'s):
 
 ```python
-    save_inputs(gather_golden(root, RecordedClient(golden)),
+    save_inputs(gather_golden(root, RecordedClient(golden),
+                              RecordingModels(golden / INPUTS_DIR)),
                 golden / INPUTS_DIR)
 ```
 
@@ -1498,7 +1538,8 @@ with the branch:
         root = Path(tempfile.mkdtemp(prefix="golden-inputs-"))
         print(f"scratch: {root}", file=sys.stderr)
         build_scratch_tree(root, _repo_root(), GOLDEN_DIR)
-        save_inputs(gather_golden(root, RecordedClient()),
+        save_inputs(gather_golden(root, RecordedClient(),
+                                  RecordingModels(GOLDEN_DIR / INPUTS_DIR)),
                     GOLDEN_DIR / INPUTS_DIR)
         print(f"inputs: {GOLDEN_DIR / INPUTS_DIR}")
         return 0
@@ -1594,6 +1635,26 @@ def test_build_advice_opens_no_file(monkeypatch):
     assert gc.strip_volatile(advice, cwd) == gc.strip_volatile(expected, cwd)
 
 
+@pytest.mark.golden
+def test_the_recorded_predictions_regather_the_same_components(tmp_path):
+    """v17g §2.5: the Predictions seam is real only if its second adapter
+    reproduces the first. Gathers with the recorded client *and* the recorded
+    predictions — no network and no ``models/`` — and asks for the one frame
+    that seam controls. ``ep_named`` and ``ep_by`` are not compared: the
+    recorded adapter has no calibration model, which the adapter's own
+    docstring says."""
+    if not (gc.GOLDEN_DIR / gc.INPUTS_DIR).exists():
+        pytest.skip("inputs not recorded yet")
+    from gaffer.inputs import RecordedComponents, load_inputs
+
+    root = tmp_path / "scratch"
+    gc.build_scratch_tree(root, REPO)
+    again = gc.gather_golden(root, gc.RecordedClient(),
+                             RecordedComponents(gc.GOLDEN_DIR / gc.INPUTS_DIR))
+    recorded = load_inputs(gc.GOLDEN_DIR / gc.INPUTS_DIR)
+    pd.testing.assert_frame_equal(again.comp, recorded.comp)
+
+
 def test_build_advice_names_no_reader_in_its_source():
     """Spec §1 part 4, the static half."""
     import inspect
@@ -1624,6 +1685,11 @@ Two warnings about the purity test. `monkeypatch.setattr("builtins.open",
 ...)` breaks pytest's own machinery on failure, which is why the real `open`
 goes back in a `finally` before any assertion runs. And `pd.read_parquet`
 opens files, so `load_inputs` is called *before* the patch, not inside it.
+
+`test_the_recorded_predictions_regather_the_same_components` runs a whole
+gather, which is the slow half of the pipeline. If it pushes the golden file
+past twelve minutes at gate time, say so in your report and the orchestrator
+will decide whether to keep it; do not drop it yourself.
 
 - [ ] **Step 3: Run what you can**
 
