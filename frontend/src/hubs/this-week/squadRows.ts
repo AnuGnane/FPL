@@ -1,7 +1,5 @@
-import type { AdviceLatest, ComponentsBreakdown, PlayerRow } from '../../types'
+import type { Advice, ComponentsBreakdown, PlayerRow } from '../../types'
 import type { SquadBreakdown, SquadRow } from './SquadTable'
-
-type Advice = AdviceLatest['advice']
 
 /** The squad table's rows: the advice's XI and bench, joined to the players
  *  row and the decomposition by code (v17h §4). Pure, so a row bug is a unit
@@ -69,9 +67,10 @@ export function squadBreakdown(
   return breakdown
 }
 
-/** The one spelling of the decomposition URL (v17h §3). Called by both This
- *  Week and the Why panel over the same codes in the same order, so the two
- *  cannot drift into a cache miss and fetch the same thing twice. */
+/** The one spelling of the decomposition URL (v17h §3). Nothing calls it yet:
+ *  it exists so that when This Week and the Why panel are converted they ask
+ *  for the same codes in the same order, and the two cannot drift into a cache
+ *  miss that fetches the same thing twice. */
 export function componentsPath(gw: number, codes: number[]): string {
   if (codes.length === 0) return `/api/components/${gw}`
   return `/api/components/${gw}?codes=${codes.join(',')}`
