@@ -90,10 +90,11 @@ is deleted to reach the number — the file's `it(` count does not fall.
 
 A new rail, `src/hubs/ThisWeek.fetches.test.tsx`, renders the hub with every
 endpoint answered and asserts the **multiset of request paths**, not a total:
-each URL exactly once. The rail is run **on `main` first** — the control arm,
-CONVENTIONS §3 — in a worktree of `main` with the branch's rail file copied
-in and its expected multiset relaxed to a print, so the two numbers come from
-one instrument rather than from a count by eye.
+each URL exactly once. The control arm (CONVENTIONS §3) is captured **in git,
+not in a worktree**: the rail is written and committed *first*, asserting the
+counts as they stand on `main`, and the conversion commit flips the expected
+multiset. One instrument, two commits, and `git show` on the first is the
+control record.
 
 ```
 npx vitest run src/hubs/ThisWeek.fetches.test.tsx
@@ -218,13 +219,21 @@ below in §5 are writes in those files that must invalidate a converted URL.
 
 ### Two merges fall out of the conversion
 
-**`capLine` dies.** `MovesCard` calls `usePageData<LadderPayload>('/api/ladder')`
-and shares the request `LadderCard` already makes. `LadderCardProps.onLoaded`,
-`ThisWeek`'s `onLadder` callback and its `capLine` state are all deleted.
-`capText` moves from `LadderCard.tsx` to `this-week/ladderText.ts` so that
-neither card imports the other. The rendered string is unchanged: the same
-`capText` over the same payload, `null` when `rungs` is empty exactly as
-today.
+**The inverted data flow behind `capLine` dies.** Today the ladder payload
+travels *up* out of `LadderCard` through an `onLoaded` callback into
+`ThisWeek` state and back *down* into `MovesCard`. `ThisWeek` instead calls
+`usePageData<LadderPayload>('/api/ladder')` itself and shares the request
+`LadderCard` already makes; `LadderCardProps.onLoaded`, `ThisWeek`'s
+`onLadder` callback and its `capLine` state are all deleted. `capText` moves
+from `LadderCard.tsx` to `this-week/ladderText.ts` so neither card imports the
+other.
+
+`MovesCard` keeps its `capLine` **prop** and stays a pure presentational
+component. Pushing the fetch down into it would trade one inverted flow for a
+component that can no longer be rendered from a table of props, and this cycle
+is about where the transport lives, not about how far down it can be pushed.
+The rendered string is unchanged: the same `capText` over the same payload,
+`null` when `rungs` is empty exactly as today.
 
 **One components request.** `ThisWeek` stops asking for every player's
 decomposition and asks for the fifteen it names, through a shared
