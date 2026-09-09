@@ -225,12 +225,23 @@ two callers supply them:
 
 ### 2.4 The eighteen pins outside `test_advise.py` are redirected, not rewritten
 
-Thirteen files hold `getsource(run_advise)` pins. The programme's gate names
-only `tests/test_advise.py`; the other twelve — **eighteen pins, fourteen of
-them in protected rails** — go red the moment `run_advise` becomes a
-composition, and the programme does not mention them. Six of them pin the
-same `fetch_rival_entries < tilt_ep < build_pool` chain, which straddles the
-split.
+Fifteen files take the pipeline's source. The programme's gate names only
+`tests/test_advise.py`; the other fourteen — **twenty pins, sixteen of them in
+protected rails** — go red the moment `run_advise` becomes a composition, and
+the programme does not mention them. Six pin the same
+`fetch_rival_entries < tilt_ep < build_pool` chain, which straddles the split.
+
+**That count was wrong twice before it was right, and how each miss was found
+is worth keeping.** A literal `grep "getsource(run_advise)"` found eighteen in
+twelve files. Walking the AST for every `getsource` call found a nineteenth:
+`tests/test_v10_degradation.py` spells it
+`getsource(__import__("gaffer.advise", fromlist=["run_advise"]).run_advise)`,
+which no grep for the obvious string matches. The twentieth —
+`tests/test_assemble.py` — calls `getsource(fn)` on a **loop variable**, so
+the target is not in the call at all and no static scan can see it; only
+running the suite found that one. The honest reading is that a body testable
+only by inspection is a body whose tests cannot be reliably enumerated
+either, which is the case for this cycle stated from the other end.
 
 They keep their claims through one helper:
 
@@ -259,8 +270,26 @@ players, comp, components = inputs.players, inputs.comp, inputs.components
 
 so `build_pool(players, pool_ep, my_picks, gws)` and every other pinned line
 reads exactly as it does today. It is a few lines of unpacking bought against
-touching fourteen protected rails, and it makes the diff readable as what it
+touching sixteen protected rails, and it makes the diff readable as what it
 is: a move, not a rewrite.
+
+**Unpacking preserves variable names, not call spellings**, and §2.5's two
+protocols deliberately change five of those. Each is a one-token edit to the
+rails that pin it, in the ruling commit, with the claim untouched:
+
+| Was | Now | Pinned in |
+|---|---|---|
+| `comp = predict_components(` | `predictions.components(` | five files |
+| `plan = solve_plan(` | `solver.solve(` | `test_v10_degradation.py` |
+| `run_scenarios(` | `solver.scenarios(` | `test_v10_degradation.py` |
+| `coherent_plan(` | `solver.coherent(` | `test_v10`, `test_v12_w3_alt_plans` |
+| `solve_kw = dict(opt_kw, ft_lambda=ft_lambda)` | gains `price_fall` | `test_v10_degradation.py` |
+
+A sixth follows from the split rather than the protocols: `advice_path(gw)`
+becomes `advice_path(inputs.gw)`, so v9c's atomic-write rail re-anchors on
+`advice_path(` — the call alone. Pinning an argument's spelling is the same
+mistake v17f made when it pinned the filename, and this is the second time
+that rail has had to learn it.
 
 The remaining `getsource` idiom is recorded as debt in the ROADMAP, not
 smuggled out. Deleting the other eighteen is a later pass over eight other
