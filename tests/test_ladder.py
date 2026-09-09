@@ -687,6 +687,37 @@ def test_step_context_loads_the_three_and_hands_them_to_the_core(tmp_path,
                           "difficulty": {(4, 1): 0.2}}
 
 
+def test_every_rung_solves_with_the_price_falls_it_was_handed(tmp_path,
+                                                              monkeypatch):
+    """v17g §2.3b: ``solve_plan`` reads ``owned_price_falls`` off the disk
+    for itself when it is handed no map, and ``price_fall`` is on neither
+    ``OPT_REQUIRED_KEYS`` nor the saved state, so the ladder's six rungs went
+    on charging whatever price log sat under the working directory while the
+    build's own solves were already handed one.
+
+    The sealed-``open`` rail below cannot see this: a missing log returns
+    before anything is opened, and the golden's scratch tree has none — it
+    would bite on the first machine that has a real one. So the pin is the
+    keyword at the call, which does not depend on what is on the disk.
+
+    Patched on ``ladder`` rather than on ``optimize.milp`` because this
+    module bound the name at import, as the other solver tests here do.
+    """
+    from gaffer import ladder as ladder_mod
+
+    state = _saved_state(tmp_path, monkeypatch)
+    falls = {c: 0.9 for c in OWNED}
+    real, seen = ladder_mod.solve_plan, []
+    monkeypatch.setattr(
+        ladder_mod, "solve_plan",
+        lambda pool, st, **kw: seen.append(kw.get("price_fall", "read its own"))
+        or real(pool, st, **kw))
+    ladder_mod.ladder_payload(state, **_payload_kw(
+        state, ctx=ladder_mod.StepContext(price_fall=falls)))
+    assert len(seen) == len(ladder_mod.RUNG_ORDER)      # every rung, not most
+    assert all(f == falls for f in seen)
+
+
 class _Opened(BaseException):
     """The sealed-``open`` sentinel, and **not** an ``Exception``: every
     reader in ``ladder.py`` swallows those by design, so a sentinel it could

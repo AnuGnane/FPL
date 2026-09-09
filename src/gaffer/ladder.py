@@ -826,7 +826,17 @@ def ladder_payload(state, *, gw: int, gws: list[int], hit_bar: float,
     notes: list[str] = []
     for key, solve_state in specs:
         try:
-            plan = solve_plan(pool, solve_state, **opt)
+            # v17g §2.3b: ``price_fall`` is on neither ``OPT_REQUIRED_KEYS``
+            # nor the saved state — advise carries it on ``solve_kw`` and the
+            # state's ``opt`` is plain JSON — so without this every rung read
+            # the price log off the working directory for itself. The map is
+            # the one the step reasons already charge from, and it is the same
+            # value the read returned: through ``build_ladder`` the context's
+            # own ``owned_price_falls(state.owned_codes)``, and through
+            # ``build_advice`` the gathered pair, which is that call when the
+            # switch is on and ``{}`` when it is off — as the read is too.
+            plan = solve_plan(pool, solve_state, **opt,
+                              price_fall=ctx.price_fall)
         except (RuntimeError, KeyError, ValueError) as exc:
             # One infeasible or malformed rung is a missing row, not a
             # missing ladder: the others still answer the question.
