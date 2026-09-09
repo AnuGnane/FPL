@@ -8,10 +8,10 @@ golden board is what proves the real solver is wired the same way.
 Three things a user of this module has to know, because all three are ways a
 test can end up asserting something other than what it says.
 
-*It writes.* ``build_advice`` banks the component breakdown before it builds
-the ladder, so a build run from the repo root overwrites
-``reports/components_gw7.parquet``. Import :func:`a_scratch_working_directory`
-into any module that builds; it is autouse wherever it is imported.
+*It runs somewhere.* ``build_advice`` writes nothing, but ``gather_inputs``
+and the savers do, against ``reports/`` under the working directory. Import
+:func:`a_scratch_working_directory` into any module that builds; it is
+autouse wherever it is imported.
 
 *The ladder still solves, and it is what gets served.* ``ladder_payload``
 calls ``solve_plan`` directly rather than through the
@@ -334,11 +334,13 @@ def without_the_ladder(monkeypatch) -> None:
 
 @pytest.fixture(autouse=True)
 def a_scratch_working_directory(tmp_path, monkeypatch):
-    """Every build banks its components frame, so run them somewhere else.
+    """Run every build somewhere that is not the user's own ``reports/``.
 
-    ``build_advice`` is pure of the network but not of the disk: it calls
-    ``save_components`` before the ladder, against ``reports/`` under the
-    working directory. Autouse in whichever module imports the name, because
-    a test that forgets it silently overwrites the user's own week.
+    ``build_advice`` itself writes nothing — gate part 4 pins that — but
+    ``gather_inputs`` banks the components and availability frames, and a
+    test that drives ``run_advise`` or calls a saver directly would land them
+    on the user's real week. Autouse in whichever module imports the name,
+    because the cost of forgetting is silent and the cost of having it is a
+    ``chdir``.
     """
     monkeypatch.chdir(tmp_path)
