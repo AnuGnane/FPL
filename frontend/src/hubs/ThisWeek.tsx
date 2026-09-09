@@ -16,8 +16,8 @@ import MovesCard from './this-week/MovesCard'
 import NewsPanel from './this-week/NewsPanel'
 import WhyPanel from './this-week/WhyPanel'
 import SquadPitch from './this-week/SquadPitch'
-import SquadTable, { type SquadBreakdown, type SquadRow }
-  from './this-week/SquadTable'
+import SquadTable from './this-week/SquadTable'
+import { squadBreakdown, squadRows } from './this-week/squadRows'
 
 /** The chip the run rated highest that is still ahead of us. */
 function nextChip(rows: AdviceChipRow[] | undefined) {
@@ -144,49 +144,7 @@ export default function ThisWeek() {
   }
 
   const advice = data.advice
-  const byCode = new Map(players.map((p) => [p.code, p]))
-  const squad: SquadRow[] = [...advice.xi, ...advice.bench].map((p) => {
-    const row = byCode.get(p.code)
-    const comp = components?.players.find((c) => c.code === p.code)
-    const move = [...advice.buys, ...advice.sells]
-      .find((m) => m.code === p.code)
-    return {
-      code: p.code,
-      name: p.name,
-      position: p.position ?? row?.position ?? '',
-      ep: p.ep,
-      // The band comes off the components payload, which keys it (code, gw) —
-      // the sweep's own key. Null flows straight through: no minutes model
-      // means no band, not a band of width zero.
-      epLo: comp?.ep_lo ?? null,
-      epHi: comp?.ep_hi ?? null,
-      pHaul: comp?.p_haul ?? null,
-      pBlank: comp?.p_blank ?? null,
-      xmins: comp?.fixtures[0]?.minutes.xmins ?? null,
-      ownership: row?.ownership ?? NaN,
-      leagueEo: row?.league_eo ?? NaN,
-      simPct: move?.frequency ?? null,
-      last4: row?.last4 ?? [],
-      news: row?.news ?? '',
-      chanceOfPlaying: row?.chance_of_playing ?? null,
-      penalties: (row?.penalties_order ?? 0) === 1,
-      // Resolved server-side and passed straight through. `?? null` rather
-      // than a default: an advice payload served by a backend that could read
-      // no snapshot has these undefined, and the pitch's honest answer to
-      // that is a plain shirt and the word "Blank" — not an invented club.
-      teamShort: p.team_short ?? null,
-      teamCode: p.team_code ?? null,
-      nextFixture: p.next_fixture ?? null,
-      // v10b §F1a. Off /api/players, which already computes both against
-      // state.owned_codes — the same owned set these rows describe — so the
-      // page has one answer to "where does he put me against the field"
-      // rather than two. `?? null`, not `?? NaN`: the field EO contract is
-      // explicitly "never 0 for unknown", and a NaN reaching a tint
-      // comparison is a silent false.
-      fieldEo: row?.field_eo ?? null,
-      fieldClass: row?.field_class ?? null,
-    }
-  })
+  const squad = squadRows(advice, players, components)
 
   // One array, two views. The pitch needs the split; the table wants the
   // whole squad in one sortable body, exactly as it always has.
@@ -194,16 +152,7 @@ export default function ThisWeek() {
   const pitchXi = squad.filter((r) => xiCodes.has(r.code))
   const pitchBench = squad.filter((r) => !xiCodes.has(r.code))
 
-  const breakdown: Record<number, SquadBreakdown> = {}
-  for (const player of components?.players ?? []) {
-    const fixture = player.fixtures[0]
-    if (!fixture) continue
-    breakdown[player.code] = {
-      ep: player.ep,
-      components: fixture.components,
-      penTaker: fixture.pen_taker ?? null,
-    }
-  }
+  const breakdown = squadBreakdown(components)
 
   const chip = nextChip(advice.chip_table)
   const strategy = advice.strategy
