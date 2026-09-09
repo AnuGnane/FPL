@@ -46,7 +46,7 @@ git diff --stat tests/data/golden_board/expected tests/data/golden_board/header.
 
 **Verdict:** the first command reports **no failures and no skips**, and the
 second prints **nothing**. This is a no-op refactor, so unlike v17f there is
-no re-record and no permitted key: the expected `advice.json`, `state.json`
+no re-record and no permitted key: the expected `advice.json`, `solve_state.json`
 and `plan.json` are byte-identical to what `main` produces. A skip is a
 failure — it means the inputs moved, not that the refactor is fine (v17c's
 note). The suite grows by the new tests of part 2; the pre-existing count is
@@ -55,7 +55,7 @@ note). The suite grows by the new tests of part 2; the pre-existing count is
 ### Part 2 — the same board, built from recorded `Inputs`, with no models
 
 A second golden test runs `build_advice` on the recorded `Inputs` alone and
-compares against **the same** `expected/advice.json` and `expected/state.json`,
+compares against **the same** `expected/advice.json` and `expected/solve_state.json`,
 volatile keys stripped exactly as part 1 strips them.
 
 ```
@@ -175,6 +175,39 @@ behind `cfg`'s back". v17e made both real `Config` fields, so `build_advice`
 passes `cfg.hit_bar` and `cfg.scenarios_seed + SEED_OFFSET + gw` explicitly.
 `build_ladder(gw)`'s own defaults are unchanged for its other callers.
 
+### 2.3b Four hidden reads on the build path, and how each closes
+
+`build_advice` is pure only if nothing it *calls* reaches for a file either.
+Four do today, and the runtime half of gate part 4 is what finds them. None
+of the four needs a protected file to change.
+
+| Read | Where | Closed by |
+|---|---|---|
+| `config_in_force().hit_bar` | `ladder._hit_bar()` | `cfg.hit_bar`, passed to `ladder_payload` (§2.3) |
+| `config_in_force().scenarios_seed` | `build_ladder`'s seed default | `cfg.scenarios_seed`, passed the same way (§2.3) |
+| `config_in_force().solver_top_n()` | `optimize.milp.build_pool`, when `top_n` is `None` | `build_advice` passes `top_n=cfg.solver_top_n()` at the call site. `build_pool` already takes the parameter, so **`optimize/` does not change**; every other caller keeps the default |
+| `config_in_force().price_timing` **and** the banked price log | `served.price_falls`, called by `served.completed` | `gather_inputs` calls `price_falls` and puts the pair on `Inputs` as `price_timing` / `price_fall` |
+
+The fourth carries a fifth read with it: `completed` recomputes
+`lambda_from_priors(load_decision_priors())` when the state says the priors
+were on, and `build_advice` already holds that lookup. So `completed` gains
+three required keywords — `ft_lambda`, `price_timing`, `price_fall` — and its
+two callers supply them:
+
+- `build_advice` passes its own `ft_lambda`, **`None` unless
+  `cfg.decision_priors`**. That is `completed`'s own rule today, spelled at
+  the call site. It matters: `lambda_from_priors(None)` returns an empty
+  `LambdaLookup`, not `None`, so passing the build's value unconditionally
+  would hand the trace a different object on every run with the priors off.
+- `artifacts.served_plan` — the v17f loader — passes
+  `*trace_context(state)`, a new helper in `served.py` holding the three
+  derivations `completed` used to make for itself. The loader's behaviour is
+  unchanged, and `price_falls` stays where it is because that path is a
+  present-tense read and its week note already says so.
+
+`Config` gains no field: `hit_bar`, `scenarios_seed`, `price_timing`,
+`decision_priors` and `top_n` are all v17e fields already. The pin stays 62.
+
 ### 2.4 The eighteen pins outside `test_advise.py` are redirected, not rewritten
 
 Thirteen files hold `getsource(run_advise)` pins. The programme's gate names
@@ -236,7 +269,7 @@ class Solver(Protocol):
     def solve(self, pool, state, **kw) -> Plan: ...
     def coherent(self, pool, state, decision, **kw) -> Plan: ...
     def scenarios(self, pool, state, xmins, **kw) -> ScenarioRun: ...
-    def alternatives(self, pool, state, plan, *, max_gap, **kw) -> list: ...
+    def alternatives(self, pool, state, plan, **kw) -> list: ...
 ```
 
 `Predictions` is the three places `gather_inputs` touches `models/`: the
@@ -285,6 +318,10 @@ rule by name (§6), which keeps the recording honest and small.
 `ep_by` is kept as its own field rather than re-derived from `ep_named`: the
 live code builds it from the pre-merge matrix, and a left merge that
 duplicated a code would make the two disagree silently.
+
+`price_timing` and `price_fall` are on `Inputs` for the reason §2.3b gives —
+they are a config read and a parquet read that the served plan's trace makes
+today from inside the build. Twenty-three fields in all.
 
 ### 2.8 The recorded `Inputs` is a directory of parquet plus one JSON
 
@@ -335,6 +372,8 @@ class Inputs:
     priors: dict | None
     dgw_probs: dict[int, float]
     prior_advice: dict | None
+    price_timing: bool
+    price_fall: dict[int, float]
 
 @dataclass(frozen=True)
 class Outputs:
@@ -392,7 +431,9 @@ behavioural tests over `build_advice` and `gather_inputs` with a
 name and its docstring's provenance. The three pins on `predict_components`
 become calls with small frames.
 
-**Extended.** `tests/test_golden_board.py`: the `Inputs` round trip on the
+**Extended.** `tests/test_served_plan.py`: `completed` with its three new
+keywords, and `trace_context` making the same three from a state.
+`tests/test_golden_board.py`: the `Inputs` round trip on the
 real recording, the build-from-`Inputs` equality of gate part 2, the
 models-absent run, and the two purity rails of gate part 4.
 `tests/test_ladder.py`: `ladder_payload` called directly, and `build_ladder`
@@ -411,7 +452,7 @@ No claim changes.
 | `tests/test_advise.py` | yes | The orchestrator's; gate part 3 is its whole content. |
 | `tests/test_odds.py` | yes | Five pins redirected to `advise_source()`; claims unchanged. Orchestrator's diff. |
 | `tests/test_v4d_degradation.py` (2), `test_v5`, `test_v6`, `test_v7_model`, `test_v8a`, `test_v8c`, `test_v8f`, `test_v12_w3_degradation` | yes | Nine pins redirected the same way, in one ruling commit. |
-| `src/gaffer/optimize/**` | yes | **Untouched.** `MilpSolver` calls it and changes nothing in it; the orchestrator checks `git diff --stat main -- src/gaffer/optimize` prints nothing before the merge. |
+| `src/gaffer/optimize/**` | yes | **Untouched.** `MilpSolver` calls it, and `top_n` is passed to the `build_pool` parameter that already exists (§2.3b); nothing in the package changes; the orchestrator checks `git diff --stat main -- src/gaffer/optimize` prints nothing before the merge. |
 | `src/gaffer/web/jobs.py`, `web/routers/whatif.py`, `set_pieces.py`, `scripts/s2_replay.py`, `tests/test_web_jobs.py`, `tests/test_web_job_kinds*.py`, `tests/test_v16_restraint.py` | yes | Untouched. |
 
 Unprotected and open to implementers: `src/gaffer/inputs.py` (new),
