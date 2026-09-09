@@ -189,6 +189,8 @@ of the four needs a protected file to change.
 | `config_in_force().price_timing` **and** the banked price log | `served.price_falls`, called by `served.completed` | `gather_inputs` calls `price_falls` and puts the pair on `Inputs` as `price_timing` / `price_fall` |
 | `config_in_force().max_hits` / `.max_transfers` | `ladder._caps(state)` | `build_advice` passes `cfg`'s caps and the source `"config"`; `build_ladder` keeps calling `_caps` |
 | `load_components(gw)`, `owned_price_falls(...)`, `web.identity._difficulty_by_team(gws)` | `ladder.step_context(gw, state, gws)`, which builds the step reasons | a pure `step_context_from(...)`. Two of the three are already on `Inputs` — the components frame and `price_fall` — and the ticker's difficulty becomes the twenty-fourth field |
+| the banked price log, **on every solve** | `optimize.milp.solve_plan`, which builds its keyword bundle with `price_fall=owned_price_falls(state.owned_codes)` | a `price_fall` keyword, defaulting to `None`, which reads exactly as before. **Orchestrator ruling, user-approved — see §7.** |
+| `load_decision_priors()` | `artifacts.solve_kw_from_state`, when the state says the priors were on | nothing: it is a *shipped package asset* read through `importlib.resources`, so it is independent of the working directory and cannot replay this machine's week. It is named here because gate part 4's runtime rail must account for it, not because it can move a number |
 
 The last two were found by the implementer of the ladder's pure core, not by
 this spec, and the second is the one that matters: **it breaks gate part 2,
@@ -467,7 +469,7 @@ No claim changes.
 | `tests/test_advise.py` | yes | The orchestrator's; gate part 3 is its whole content. |
 | `tests/test_odds.py` | yes | Five pins redirected to `advise_source()`; claims unchanged. Orchestrator's diff. |
 | `tests/test_v4d_degradation.py` (2), `test_v5`, `test_v6`, `test_v7_model`, `test_v8a`, `test_v8c`, `test_v8f`, `test_v12_w3_degradation` | yes | Nine pins redirected the same way, in one ruling commit. |
-| `src/gaffer/optimize/**` | yes | **Untouched.** `MilpSolver` calls it, and `top_n` is passed to the `build_pool` parameter that already exists (§2.3b); nothing in the package changes; the orchestrator checks `git diff --stat main -- src/gaffer/optimize` prints nothing before the merge. |
+| `src/gaffer/optimize/**` | yes | **One line, by orchestrator ruling (§7).** `solve_plan` gains a `price_fall=None` keyword; nothing else in the package changes, and `top_n` goes to the `build_pool` parameter that already exists (§2.3b). The orchestrator checks `git diff --stat main -- src/gaffer/optimize` names `milp.py` and nothing else. |
 | `src/gaffer/web/jobs.py`, `web/routers/whatif.py`, `set_pieces.py`, `scripts/s2_replay.py`, `tests/test_web_jobs.py`, `tests/test_web_job_kinds*.py`, `tests/test_v16_restraint.py` | yes | Untouched. |
 
 Unprotected and open to implementers: `src/gaffer/inputs.py` (new),
@@ -480,8 +482,30 @@ Unprotected and open to implementers: `src/gaffer/inputs.py` (new),
 
 ## 7. Out of scope
 
-- **Any change to a solve.** No file under `optimize/` changes; no objective,
-  no bound, no seed.
+- **Any change to a solve.** No objective, no bound, no seed.
+
+  **One exception, ruled on mid-cycle and approved by the user
+  (2026-09-09).** `optimize/milp.py` gains a single `price_fall` keyword on
+  `solve_plan`, defaulting to `None`. This spec's §7 originally said no file
+  under `optimize/` changes at all; the implementer of the ladder's pure core
+  found that `solve_plan` reads the banked price log itself, on every solve,
+  relative to the working directory. That read cannot be closed at a call
+  site because there is no parameter to pass — the function's own comment
+  records why it was written that way, and names the two protected files
+  among its seven callers.
+
+  Leaving it would make gate part 2 unsound rather than merely impure: the
+  replay runs from the repo root, where the log is this machine's, while the
+  expected board was recorded in a scratch tree that had none. On the day of
+  the ruling both sides happened to be empty — `snap_date()` was 2026-09-09
+  and the banked log was stale — so the gate would have passed by luck and
+  broken after the next real `gaffer advise`.
+
+  The change is one optional keyword: every one of the seven existing call
+  sites passes nothing and gets `owned_price_falls(state.owned_codes)`,
+  character for character as before. No objective, no bound and no seed
+  moves, and the golden board is the proof. The two solver rails
+  (`tests/test_milp.py`, `tests/test_v12_w2_degradation.py`) pass unchanged.
 - **The replay driver.** `scripts/v7b_replay.py` and `scripts/s2_replay.py`
   do not call `run_advise` — verified: `grep -rn "run_advise" scripts/`
   prints nothing — so they neither gain nor lose anything here.

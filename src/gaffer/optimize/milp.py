@@ -467,7 +467,8 @@ def solve_plan(pool: pd.DataFrame, state: SolveInput, *, decay: float,
                ft_use_penalty: float = 0.0,
                bench_curve: list[float] | None = None,
                p_play: dict[int, dict[int, float]] | None = None,
-               no_good: list[list[tuple[str, int, int]]] | None = None
+               no_good: list[list[tuple[str, int, int]]] | None = None,
+               price_fall: dict[int, float] | None = None
                ) -> Plan:
     """Solve the multi-period plan; see :func:`_solve_once` for the model.
 
@@ -509,6 +510,13 @@ def solve_plan(pool: pd.DataFrame, state: SolveInput, *, decay: float,
     # two of them are protected files. Empty dict when the switch is off, the
     # log is missing, corrupt, or stale — and an empty dict makes every
     # expression below arithmetically today's.
+    #
+    # v17g §2.3b (orchestrator ruling, specs/2026-09-09-v17g-build-advice-design.md):
+    # ``price_fall`` may now be handed in instead. The read is relative to the
+    # working directory, so a pure ``build_advice`` replaying a recorded board
+    # from the repo root would charge *this machine's* price log against a
+    # board recorded with none — a comparison that passes or fails by luck.
+    # ``None`` is every existing caller, and reads exactly as before.
     from gaffer.price_timing import owned_price_falls
 
     kw = dict(decay=decay, bench_weight=bench_weight,
@@ -516,7 +524,8 @@ def solve_plan(pool: pd.DataFrame, state: SolveInput, *, decay: float,
               itb_value=itb_value, hit_cost=hit_cost,
               fixed_moves=fixed_moves, ft_lambda=ft_lambda,
               ft_use_penalty=ft_use_penalty, bench_curve=bench_curve,
-              price_fall=owned_price_falls(state.owned_codes),
+              price_fall=(owned_price_falls(state.owned_codes)
+                          if price_fall is None else price_fall),
               # v12 W3 §4.3: in ``kw`` and not passed separately, so the
               # re-weighted second pass excludes the same plans the first did.
               # A cut that lived only in pass one would let pass two hand back
