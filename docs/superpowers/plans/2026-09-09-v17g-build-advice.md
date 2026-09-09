@@ -1617,19 +1617,28 @@ def test_build_advice_opens_no_file(monkeypatch):
     expected = json.loads(
         (gc.GOLDEN_DIR / gc.EXPECTED_DIR / "advice.json").read_text())
 
-    real_open = open
+    # Two things this seal gets wrong if written the obvious way, both found
+    # by mutation-testing the ladder's own rail (v17g, T2 review):
+    #   * ``pathlib.Path.read_text()`` resolves ``io.open``, not
+    #     ``builtins.open`` — and Path.read_text is the idiom every loader in
+    #     artifacts.py uses, so a builtins-only patch cannot see the reads
+    #     this rail exists to catch;
+    #   * an ``AssertionError`` sentinel is an ``Exception``, and the ladder
+    #     and the served passes are full of ``except Exception`` blocks that
+    #     would swallow it into a printed line and pass.
+    class _Opened(BaseException):
+        pass
 
     def refuse(*a, **kw):
-        raise AssertionError(f"build_advice opened {a[:1]}")
+        raise _Opened(f"build_advice opened {a[:1]}")
 
     monkeypatch.setattr("builtins.open", refuse)
-    try:
-        from dataclasses import asdict
+    monkeypatch.setattr(io, "open", refuse)
+    from dataclasses import asdict
 
-        from gaffer.advise import build_advice
-        out = build_advice(inputs, gc.golden_config())
-    finally:
-        monkeypatch.setattr("builtins.open", real_open)
+    from gaffer.advise import build_advice
+    out = build_advice(inputs, gc.golden_config())
+    monkeypatch.undo()
     advice = json.loads(json.dumps(asdict(out.advice), default=str))
     cwd = str(Path.cwd())
     assert gc.strip_volatile(advice, cwd) == gc.strip_volatile(expected, cwd)
@@ -1681,10 +1690,28 @@ def test_every_inputs_field_is_read_by_build_advice():
         assert f.name in src, f.name
 ```
 
-Two warnings about the purity test. `monkeypatch.setattr("builtins.open",
-...)` breaks pytest's own machinery on failure, which is why the real `open`
-goes back in a `finally` before any assertion runs. And `pd.read_parquet`
-opens files, so `load_inputs` is called *before* the patch, not inside it.
+Four warnings about the purity test, three of them learned the hard way.
+
+Sealing `open` breaks pytest's own machinery on failure, so `monkeypatch.undo()`
+runs before any assertion does. `pd.read_parquet` opens files, so `load_inputs`
+is called *before* the seal, not inside it. Every module `build_advice`
+reaches must be imported before the seal, because an import that is not yet in
+`sys.modules` opens a file: `gaffer.advise`, `gaffer.ladder`, `gaffer.served`
+and `gaffer.config` at the top of the test.
+
+And one read will survive the seal and must be named rather than worked
+around: `artifacts.solve_kw_from_state` calls `load_decision_priors()`, a
+**shipped package asset** read through `importlib.resources`. It cannot
+replay this machine's gameweek because it is the same bytes in every working
+directory. Warm it once before sealing, and say in the docstring that it is
+the one read this rail tolerates and why.
+
+**Then mutation-test the seal and report the result.** Add a swallowed read
+inside `build_advice` — `try: load_advice(gw)` / `except Exception: pass` —
+and confirm the rail *fails*; remove it and confirm it passes. A seal that
+cannot fire reads like a guarantee and is worse than no rail at all. The
+ladder's equivalent rail shipped in exactly that state, and only a mutation
+test found it.
 
 `test_the_recorded_predictions_regather_the_same_components` runs a whole
 gather, which is the slow half of the pipeline. If it pushes the golden file
