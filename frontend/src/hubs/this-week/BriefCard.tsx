@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { apiGet } from '../../api/client'
+import { useEffect } from 'react'
+import { usePageData } from '../../api/pageData'
 import { useJob } from '../../api/useJob'
 import { Button, Callout, Card, JobButton } from '../../kit'
 import type { BriefPanel } from '../../types'
@@ -9,14 +9,14 @@ import DigestCard from './DigestCard'
  *  prose; the two digest buttons stay. The button posts an anonymous job
  *  (plan R1) exactly as the ladder's Rebuild does. */
 export default function BriefCard() {
-  const [panel, setPanel] = useState<BriefPanel | null>(null)
+  const brief = usePageData<BriefPanel>('/api/brief')
+  const panel = brief.data
   const job = useJob({ path: '/api/brief', slot: 'brief' })
 
-  const load = useCallback(() => {
-    apiGet<BriefPanel>('/api/brief').then(setPanel).catch(() => {})
-  }, [])
-  useEffect(load, [load])
-  useEffect(() => { if (job.status === 'done') load() }, [job.status, load])
+  // This card's own job rewrote this card's own artifact, and nobody else's
+  // (v17h §5).
+  const reload = brief.reload
+  useEffect(() => { if (job.status === 'done') reload() }, [job.status, reload])
 
   const busy = job.status === 'queued' || job.status === 'running'
   const write = (
@@ -52,8 +52,8 @@ export default function BriefCard() {
             {`GW${panel.gw} · ${panel.model_command ?? 'llm'}${stamp ? ` · ${stamp}` : ''}`}
           </span>
           {write}
-          <JobButton kind="digest-friday" onDone={load} />
-          <JobButton kind="digest-tuesday" onDone={load} />
+          <JobButton kind="digest-friday" onDone={reload} />
+          <JobButton kind="digest-tuesday" onDone={reload} />
         </div>
       )}
     >

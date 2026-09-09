@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LadderPayload, SettingsPanel } from '../../types'
-import LadderCard, { capText } from './LadderCard'
+import LadderCard from './LadderCard'
+import { capText } from './ladderText'
 
 const { apiGet, apiPost } = vi.hoisted(() => ({
   apiGet: vi.fn(), apiPost: vi.fn(),
@@ -126,8 +127,8 @@ beforeEach(() => {
   apiPost.mockResolvedValue({ job_id: 'j1' })
 })
 
-function mount(props: Parameters<typeof LadderCard>[0] = {}) {
-  return render(<MemoryRouter><LadderCard {...props} /></MemoryRouter>)
+function mount() {
+  return render(<MemoryRouter><LadderCard /></MemoryRouter>)
 }
 
 describe('LadderCard', () => {
@@ -210,8 +211,7 @@ describe('LadderCard', () => {
   })
 
   it('saves a changed cap through settings and then rebuilds', async () => {
-    const onLoaded = vi.fn()
-    mount({ onLoaded })
+    mount()
     await screen.findByText('1 hit')
     await userEvent.selectOptions(
       screen.getByLabelText('Max hits per week'), '1')
@@ -219,7 +219,6 @@ describe('LadderCard', () => {
       '/api/settings', { key: 'max_hits', value: 1 }))
     await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/api/ladder',
                                                               undefined))
-    expect(onLoaded).toHaveBeenCalled()
     // The rebuild reloads the rows too, so the selects show what the server
     // now holds rather than what was posted.
     // Exactly two: the mount's fetch and the finished rebuild's. A third

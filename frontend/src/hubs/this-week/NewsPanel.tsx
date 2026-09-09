@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react'
-import { apiGet } from '../../api/client'
+import { usePageData } from '../../api/pageData'
 import {
   Card, Chip, PlayerName, TABLE_CLASS, THEAD_CLASS, TR_CLASS, tdClass,
   thClass,
@@ -37,12 +36,9 @@ function evidence(row: NewsRow): string[] {
  * something the manager has to act on.
  */
 export default function NewsPanel({ gw }: { gw: number }) {
-  const [data, setData] = useState<NewsPanelData | null>(null)
-
-  useEffect(() => {
-    apiGet<NewsPanelData>(`/api/news/${gw}`).then(setData)
-      .catch(() => setData(null))
-  }, [gw])
+  // The error is deliberately unread: a panel nobody can fetch and a week the
+  // news moved nobody render identically, which is the rule above.
+  const { data } = usePageData<NewsPanelData>(`/api/news/${gw}`)
 
   if (!data || data.moved === 0) return null
 

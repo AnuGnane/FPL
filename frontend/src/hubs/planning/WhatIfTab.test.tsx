@@ -31,7 +31,7 @@ vi.mock('../../api/client', () => ({
 vi.mock('./SensitivityCard', () => ({ default: () => <p>sensitivity card</p> }))
 vi.mock('./OverridesCard', () => ({ default: () => <p>pins card</p> }))
 vi.mock('../this-week/LadderCard', () => ({
-  default: () => <p>ladder card</p>, capText: () => '',
+  default: () => <p>ladder card</p>,
 }))
 
 const PLAYERS = [

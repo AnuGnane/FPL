@@ -21,6 +21,9 @@ vi.mock('../../api/client', () => ({
   ApiError: FakeApiError,
   apiGet: (path: string) => apiGet(path),
   apiPost: vi.fn(),
+  // `usePageData` reads the real one to turn a rejection into a card's
+  // error string (v17h §2), so the mock must carry it.
+  errorText: (e: unknown) => (e instanceof Error ? e.message : String(e)),
 }))
 
 const COMPONENTS = {

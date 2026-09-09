@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { apiGet, apiPost } from '../api/client'
+import { apiPost } from '../api/client'
+import { invalidate, usePageData } from '../api/pageData'
 import {
   Bar, Button, Callout, Card, Chip, EmptyState, JobButton, Loading, PageHeader,
   Segmented, Stat, StatRow, fmtNum, fmtPct,
@@ -11,13 +12,14 @@ import type {
 import BriefCard from './this-week/BriefCard'
 import ConfidenceLine from './this-week/ConfidenceLine'
 import DecisionPanel from './this-week/DecisionPanel'
-import LadderCard, { capText } from './this-week/LadderCard'
+import LadderCard from './this-week/LadderCard'
 import MovesCard from './this-week/MovesCard'
 import NewsPanel from './this-week/NewsPanel'
 import WhyPanel from './this-week/WhyPanel'
 import SquadPitch from './this-week/SquadPitch'
 import SquadTable from './this-week/SquadTable'
-import { squadBreakdown, squadRows } from './this-week/squadRows'
+import { capText } from './this-week/ladderText'
+import { componentsPath, squadBreakdown, squadRows } from './this-week/squadRows'
 
 /** The chip the run rated highest that is still ahead of us. */
 function nextChip(rows: AdviceChipRow[] | undefined) {
@@ -40,10 +42,20 @@ function gapUnit(stance: string): string {
 }
 
 export default function ThisWeek() {
-  const [data, setData] = useState<AdviceLatest | null>(null)
-  const [players, setPlayers] = useState<PlayerRow[]>([])
-  const [components, setComponents] = useState<ComponentsBreakdown | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const latest = usePageData<AdviceLatest>('/api/advice/latest')
+  const data = latest.data
+  const error = latest.error
+  const codes = data
+    ? [...data.advice.xi, ...data.advice.bench].map((p) => p.code)
+    : []
+  // Both of these are decoration on a page that already has its advice: null
+  // until it lands, so they load behind it, and their failure never blanks the
+  // hub because each keeps its own error slot and this one reads none of them.
+  const playerRows = usePageData<PlayerRow[]>(data ? '/api/players' : null)
+  const players = playerRows.data ?? []
+  const componentRows = usePageData<ComponentsBreakdown>(
+    data ? componentsPath(data.gw, codes) : null)
+  const components = componentRows.data
   // Pitch by default (spec D3). Component state, not localStorage: persisting
   // a view preference is a real feature with real questions behind it
   // (per hub? per device? across a rebuild?) and inventing an answer inside a
@@ -55,39 +67,28 @@ export default function ThisWeek() {
   // control that does nothing is worse than no control.
   const [lens, setLens] = useState(false)
   // v13: the ladder knows the free transfers and the caps the advice ran
-  // under; the moves card prints them rather than fetching them again.
-  const [capLine, setCapLine] = useState<string | null>(null)
+  // under; the moves card prints them rather than fetching them again. The
+  // ladder card asks for the same URL and the two share the one request
+  // (v17h §3), which is what the payload's old trip up through `onLoaded` and
+  // back down into MovesCard was standing in for.
+  const ladder = usePageData<LadderPayload>('/api/ladder')
 
-  // Stable, so the card's load effect does not re-run on every render of
-  // the hub above it.
-  const onLadder = useCallback((p: LadderPayload) => {
-    setCapLine(p.rungs.length > 0 ? capText(p) : null)
-  }, [])
-
-  const load = useCallback(() => {
-    apiGet<AdviceLatest>('/api/advice/latest')
-      .then((body) => {
-        setData(body)
-        setError(null)
-        // Both of these are decoration on a page that already has its advice:
-        // they load behind it and their failure never blanks the hub.
-        apiGet<PlayerRow[]>('/api/players').then(setPlayers).catch(() => {})
-        apiGet<ComponentsBreakdown>(`/api/components/${body.gw}`)
-          .then(setComponents).catch(() => {})
-      })
-      .catch((e: Error) => setError(e.message))
-  }, [])
-
-  useEffect(load, [load])
+  // v17h §5: the same three the old `load` refetched — an advise run rewrites
+  // the advice, and the players and components rows are read against it. The
+  // ladder and the brief are other jobs' artifacts and are not touched here,
+  // exactly as they were not before.
+  const codesKey = codes.join(',')
+  const reloadAdvice = useCallback(() => {
+    invalidate('/api/advice/latest')
+    invalidate('/api/players')
+    if (data) invalidate(componentsPath(data.gw, codes))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, codesKey])
 
   // v15: the League tile names the focus league and says when the stance was
   // set by hand. Decoration on a page that already has its advice — its own
-  // effect, and a failure is silence, not an error state.
-  const [leagues, setLeagues] = useState<LeaguesOverview | null>(null)
-  useEffect(() => {
-    apiGet<LeaguesOverview>('/api/league/leagues')
-      .then(setLeagues).catch(() => setLeagues(null))
-  }, [])
+  // read, and a failure is silence, not an error state.
+  const leagues = usePageData<LeaguesOverview>('/api/league/leagues').data
 
   // The armband priced in title odds. Deliberately fire-and-forget: This Week
   // is the page the user opens on a Thursday evening and it must render at
@@ -138,7 +139,8 @@ export default function ThisWeek() {
             />
             )
           : <Loading />}
-        {(error || armbandMissing) && <JobButton kind="advise" onDone={load} />}
+        {(error || armbandMissing)
+          && <JobButton kind="advise" onDone={reloadAdvice} />}
       </>
     )
   }
@@ -168,8 +170,8 @@ export default function ThisWeek() {
           // Two runs, one lane: the full solve is the page's primary action;
           // the same solve with the sweep off (~5 min cheaper) is secondary.
           <div className="flex flex-wrap gap-2">
-            <JobButton kind="advise-fast" onDone={load} />
-            <JobButton kind="advise" variant="primary" onDone={load} />
+            <JobButton kind="advise-fast" onDone={reloadAdvice} />
+            <JobButton kind="advise" variant="primary" onDone={reloadAdvice} />
           </div>
         )}
       />
@@ -319,17 +321,20 @@ export default function ThisWeek() {
       </Card>
       <div className="mb-4">
         <MovesCard buys={advice.buys} sells={advice.sells} hits={advice.hits}
-                   capLine={capLine}
+                   capLine={ladder.data && ladder.data.rungs.length > 0
+                     ? capText(ladder.data) : null}
                    restraint={advice.restraint ?? null}
                    objective={advice.objective ?? null} />
       </div>
       {/* v16 §5: what you actually did, beside the moves it departs from. */}
       <DecisionPanel gw={data.gw} />
       {/* v13: the ladder, directly under the moves it prices. */}
-      <LadderCard onLoaded={onLadder} />
+      <LadderCard />
       {/* The plan, then the week around the plan. */}
       <BriefCard />
-      <WhyPanel gw={data.gw} codes={squad.map((r) => r.code)} />
+      {/* The same list the hub asked the components endpoint for, in the same
+          order, so the panel's own read is the hub's request (v17h §3). */}
+      <WhyPanel gw={data.gw} codes={codes} />
       <NewsPanel gw={data.gw} />
     </>
   )

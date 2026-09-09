@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useState } from 'react'
-import { apiGet, apiPost, errorText } from '../../api/client'
+import { apiPost, errorText } from '../../api/client'
+import { usePageData } from '../../api/pageData'
 import { useJob } from '../../api/useJob'
 import {
   Bar, Button, Callout, Card, Chip, INPUT_CLASS, PlayerName, Skeleton,
@@ -9,25 +10,10 @@ import {
 import type {
   LadderPayload, LadderRung, PlayerRef, SettingRow, SettingsPanel,
 } from '../../types'
+import { capText } from './ladderText'
 
 const SETTING_KEYS = ['max_hits', 'max_transfers', 'hit_bar'] as const
 type SettingKeyName = typeof SETTING_KEYS[number]
-
-/** "1 free transfer · cap 2 hits" — the heading, and MovesCard's line. */
-export function capText(p: LadderPayload): string {
-  const ft = p.free_transfers ?? 0
-  const bits = [`${ft} free transfer${ft === 1 ? '' : 's'}`]
-  const hits = p.cap.max_hits
-  bits.push(hits === null || hits === undefined
-    ? 'hits uncapped'
-    : `cap ${hits} hit${hits === 1 ? '' : 's'}`)
-  const moves = p.cap.max_transfers
-  if (moves === 0) bits.push('bank')
-  else if (moves !== null && moves !== undefined) {
-    bits.push(`max ${moves} transfer${moves === 1 ? '' : 's'}`)
-  }
-  return bits.join(' · ')
-}
 
 /** One select over a settings row.
  *
@@ -177,55 +163,38 @@ function Expanded({ rung, weeks }: { rung: LadderRung; weeks: number }) {
   )
 }
 
-export interface LadderCardProps {
-  /** Called with every payload this card loads, so a parent (This Week) can
-   *  print the cap line on the moves card without a second request. */
-  onLoaded?: (payload: LadderPayload) => void
-}
-
-export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
-  const [data, setData] = useState<LadderPayload | null>(null)
-  const [failed, setFailed] = useState<string | null>(null)
+export default function LadderCard() {
+  const ladder = usePageData<LadderPayload>('/api/ladder')
+  const settings = usePageData<SettingsPanel>('/api/settings')
   const [open, setOpen] = useState<string | null>(null)
-  const [rows, setRows] = useState<SettingRow[] | null>(null)
-  // The rows' own error slot (v17e §2.6). `load`'s success path clears
-  // `failed`, so a shared slot loses the settings failure whenever the
-  // ladder resolves second — which is the ordering that happens whenever
-  // /api/settings is the faster of the two to fail.
-  const [rowsFailed, setRowsFailed] = useState<string | null>(null)
+  // The write's own failure, which is not the read's: a rejected POST must
+  // say so even though the ladder on screen is still the one the server
+  // banked.
+  const [saveFailed, setSaveFailed] = useState<string | null>(null)
   const job = useJob({ path: '/api/ladder', slot: 'ladder' })
 
-  const load = useCallback(() => {
-    apiGet<LadderPayload>('/api/ladder')
-      .then((payload) => {
-        setFailed(null)
-        setData(payload)
-        onLoaded?.(payload)
-      })
-      .catch((e) => { setFailed(errorText(e)); setData(null) })
-  }, [onLoaded])
-  useEffect(() => { load() }, [load])
-
+  const data = ladder.data
+  const failed = saveFailed ?? ladder.error
+  // Two slots, not one (v17e §2.6). `load`'s success path cleared `failed`,
+  // so a shared slot lost the settings failure whenever the ladder resolved
+  // second — which is the ordering that happens whenever /api/settings is the
+  // faster of the two to fail. v17h §2 keeps them apart by construction: each
+  // call site of the cache holds its own error.
+  //
+  // A 200 with no rows is the panel's way of saying config.toml is missing or
+  // unreadable, and the reason is in `overlay_error` (v17e §2.6): read from
+  // `rows` alone the card would show no selects and no reason at all.
+  const rowsFailed = settings.error ?? settings.data?.overlay_error ?? null
   // The selects are these rows (v17e §2.6). A failure leaves the ladder
   // table standing with no selects and the reason in the card's callout:
   // the ladder is the card, the selects are only its controls.
-  const loadRows = useCallback(() => {
-    apiGet<SettingsPanel>('/api/settings')
-      .then((panel) => {
-        // A 200 with no rows is the panel's way of saying config.toml is
-        // missing or unreadable, and the reason is in `overlay_error` (v17e
-        // §2.6): read from `rows` alone the card would show no selects and
-        // no reason at all.
-        setRowsFailed(panel.overlay_error)
-        // Selected and ordered by SETTING_KEYS, so a reordered whitelist
-        // cannot reorder the card's controls.
-        setRows(SETTING_KEYS
-          .map((key) => panel.rows.find((r) => r.key === key))
-          .filter((r): r is SettingRow => r !== undefined))
-      })
-      .catch((e) => { setRowsFailed(errorText(e)); setRows(null) })
-  }, [])
-  useEffect(() => { loadRows() }, [loadRows])
+  //
+  // Selected and ordered by SETTING_KEYS, so a reordered whitelist
+  // cannot reorder the card's controls.
+  const panel = settings.data
+  const rows: SettingRow[] = panel === null ? [] : SETTING_KEYS
+    .map((key) => panel.rows.find((r) => r.key === key))
+    .filter((r): r is SettingRow => r !== undefined)
 
   const rebuild = useCallback(() => {
     setOpen(null)
@@ -234,15 +203,18 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
 
   // A finished rebuild is read back from the banked payload rather than the
   // job record, so the card and the next page load agree byte for byte.
+  const reloadLadder = ladder.reload
+  const reloadRows = settings.reload
   useEffect(() => {
-    if (job.status === 'done') { load(); loadRows() }
-  }, [job.status, load, loadRows])
+    if (job.status === 'done') { reloadLadder(); reloadRows() }
+  }, [job.status, reloadLadder, reloadRows])
 
   const setSetting = async (key: SettingKeyName, value: number) => {
+    setSaveFailed(null)
     try {
       await apiPost('/api/settings', { key, value })
     } catch (e) {
-      setFailed(errorText(e))
+      setSaveFailed(errorText(e))
       return
     }
     rebuild()
@@ -292,7 +264,7 @@ export default function LadderCard({ onLoaded }: LadderCardProps = {}) {
         rung that does not clear the bar; the rung it stops on is the advice.
       </p>
       <div className="mb-3 flex flex-wrap gap-3">
-        {(rows ?? []).map((row) => (
+        {rows.map((row) => (
           <SettingSelect
             key={row.key}
             row={row}

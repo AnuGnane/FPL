@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react'
-import { apiGet } from '../../api/client'
+import { usePageData } from '../../api/pageData'
 import type { ConfidenceData } from '../../types'
 
 /**
@@ -15,12 +14,8 @@ import type { ConfidenceData } from '../../types'
  * error strip next to an armband would read as a problem with the armband.
  */
 export default function ConfidenceLine() {
-  const [data, setData] = useState<ConfidenceData | null>(null)
-
-  useEffect(() => {
-    apiGet<ConfidenceData>('/api/confidence').then(setData)
-      .catch(() => setData(null))
-  }, [])
+  // The error is deliberately unread: the line renders or it does not.
+  const { data } = usePageData<ConfidenceData>('/api/confidence')
 
   if (!data?.captain?.text) return null
   return (

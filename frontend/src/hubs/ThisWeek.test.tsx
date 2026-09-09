@@ -3,7 +3,7 @@ import {
 } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { AdviceDiff } from '../types'
+import { seedPageData } from '../api/pageData'
 import ThisWeek from './ThisWeek'
 
 const { FakeApiError, apiGet, apiPost } = vi.hoisted(() => {
@@ -18,6 +18,9 @@ vi.mock('../api/client', () => ({
   ApiError: FakeApiError,
   apiGet: (path: string) => apiGet(path),
   apiPost: (path: string, body: unknown) => apiPost(path, body),
+  // `usePageData` reads the real one to turn a rejection into a card's error
+  // string (v17h §2), so the mock must carry it.
+  errorText: (e: unknown) => (e instanceof Error ? e.message : String(e)),
 }))
 
 // One hook, both transports (v17h §6). `resetJobSlots` is stubbed alongside it
@@ -29,15 +32,6 @@ vi.mock('../api/useJob', () => ({
     status: 'idle', lines: [], result: null, error: null, jobId: null,
     start: vi.fn(), attach: vi.fn(), reset: vi.fn(),
   }),
-}))
-
-vi.mock('./this-week/LadderCard', () => ({
-  default: ({ onLoaded }: { onLoaded?: (p: unknown) => void }) => {
-    onLoaded?.({ gw: 5, gws: [5, 6, 7], free_transfers: 1,
-                 cap: { max_hits: 2, max_transfers: null }, rungs: [{}] })
-    return <p>ladder card</p>
-  },
-  capText: () => '1 free transfer · cap 2 hits',
 }))
 
 const ADVICE = {
@@ -112,44 +106,20 @@ const OVERVIEW = {
   public: [],
 }
 
+/** The three endpoints the hub itself renders from (v17h §1 part 1). */
+const BODIES: Record<string, unknown> = {
+  '/api/advice/latest': ADVICE,
+  '/api/players': PLAYERS,
+  '/api/components/5?codes=1,2': COMPONENTS,
+}
+
 function route(path: string) {
-  if (path === '/api/advice/latest') return Promise.resolve(ADVICE)
-  if (path === '/api/league/leagues') return Promise.resolve(OVERVIEW)
-  if (path.startsWith('/api/players')) return Promise.resolve(PLAYERS)
-  if (path.startsWith('/api/components/')) return Promise.resolve(COMPONENTS)
-  if (path.startsWith('/api/decisions/')) {
-    return Promise.resolve({ gw: 5, reason: null, text: '', at: null,
-                             state: 'before_deadline',
-                             deadline: '2099-09-18T17:30:00Z', grade: null })
-  }
-  if (path === '/api/brief') {
-    return Promise.resolve({ gw: null, prose: null, note: null,
-                             fallback: { available: false, digest: null } })
-  }
-  if (path.startsWith('/api/news/')) {
-    return Promise.resolve({ gw: 5, moved: 0, rows: [] })
-  }
-  if (path.startsWith('/api/advice/diff')) {
-    // The whole model, not the two fields the strip happens to read first:
-    // `/api/advice/diff` declares `response_model=AdviceDiff`, so a first run
-    // of the week arrives with every key present and the lists empty. A mock
-    // that omitted them was the only thing in the tree producing the payload
-    // the movers guard used to defend against.
-    return Promise.resolve<AdviceDiff>({
-      gw: 5, available: false, changed: false,
-      current_at: null, previous_at: null,
-      buys_added: [], buys_dropped: [], sells_added: [], sells_dropped: [],
-      captain_from: null, captain_to: null, chip_from: null, chip_to: null,
-      expected_pts_delta: 0, ep_movers: [], ep_movers_count: null,
-    })
-  }
-  // The ladder card's selects are settings rows now (v17e §2.6); this page
-  // does not read them, so an empty panel is enough.
-  if (path === '/api/settings') {
-    return Promise.resolve({ rows: [], unavailable: [], overlay_error: null,
-                             apply_note: '' })
-  }
-  return Promise.reject(new Error(`unexpected path ${path}`))
+  if (path in BODIES) return Promise.resolve(BODIES[path])
+  // Everything else is simply not there, and the hub renders anyway: that is
+  // the failure isolation v17h §0.1 rules deliberate, under test on every case
+  // in this file rather than in one of them. A card that needs its endpoint
+  // answered seeds it for itself.
+  return Promise.reject(new Error(`absent: ${path}`))
 }
 
 beforeEach(() => {
@@ -203,6 +173,9 @@ describe('This Week hub', () => {
   })
 
   it('captions the league gap with the focus league', async () => {
+    // The tile's own fixture, in the case that reads it: the overview is
+    // decoration and every other case here renders without it.
+    seedPageData({ '/api/league/leagues': OVERVIEW })
     render(<MemoryRouter><ThisWeek /></MemoryRouter>)
     const league = (await screen.findByText('League')).closest('div')!
     expect(await within(league).findByText(/Shocky Supplies · chase · tilt \+0\.25/))
@@ -211,11 +184,8 @@ describe('This Week hub', () => {
   })
 
   it('flags a manual stance on the tile', async () => {
-    apiGet.mockImplementation((path: string) => (
-      path === '/api/league/leagues'
-        ? Promise.resolve({ ...OVERVIEW, stance: 'defend',
-                            focus_stance: 'defend' })
-        : route(path)))
+    seedPageData({ '/api/league/leagues': { ...OVERVIEW, stance: 'defend',
+                                            focus_stance: 'defend' } })
     render(<MemoryRouter><ThisWeek /></MemoryRouter>)
     const league = (await screen.findByText('League')).closest('div')!
     expect(await within(league).findByText('manual')).toBeInTheDocument()
@@ -287,10 +257,24 @@ describe('This Week hub', () => {
 
   it('prints the cap line on the moves card once the ladder has loaded',
     async () => {
+      // The real ladder card, and one seeded body: the hub and the card read
+      // the same URL through the cache, which is what replaced the payload's
+      // trip up through `onLoaded` and back down (v17h §3).
+      seedPageData({ '/api/ladder': {
+        gw: 5, gws: [5], free_transfers: 1,
+        cap: { max_hits: 2, max_transfers: null },
+        cap_rung: null, cap_rung_requested: null,
+        // One rung, because the cap line is printed only for a ladder that
+        // has any; the card draws this row too, so it is a whole one.
+        rungs: [{ key: 'bank', label: 'bank', cost: 0, horizon_cost: 0,
+                  same_as: null, plan_by_gw: [], week_pts: null,
+                  mean_pts: null, p_beats_bank: null, p_best: null,
+                  vs_below: null }],
+      } })
       render(<MemoryRouter><ThisWeek /></MemoryRouter>)
       expect(await screen.findByTestId('moves-cap-line'))
         .toHaveTextContent('1 free transfer · cap 2 hits')
-      expect(screen.getByText('ladder card')).toBeInTheDocument()
+      expect(screen.getByText('Transfer ladder')).toBeInTheDocument()
     })
 })
 
@@ -652,6 +636,10 @@ describe("the captain's own note (v12 W5 §6.3)", () => {
      })
 
   it('offers the deviation note under the moves', async () => {
+    seedPageData({ '/api/decisions/5': {
+      gw: 5, reason: null, text: '', at: null, state: 'before_deadline',
+      deadline: '2099-09-18T17:30:00Z', grade: null,
+    } })
     render(<MemoryRouter><ThisWeek /></MemoryRouter>)
     expect(await screen.findByText(/opens at the deadline/i)).toBeInTheDocument()
   })

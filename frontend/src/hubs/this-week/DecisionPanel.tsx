@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
-import { apiGet, apiPost, errorText } from '../../api/client'
+import { useEffect, useState } from 'react'
+import { apiPost, errorText } from '../../api/client'
+import { usePageData } from '../../api/pageData'
 import {
   Button, Callout, Card, Chip, INPUT_CLASS, Segmented, fmtDelta,
 } from '../../kit'
@@ -20,22 +21,23 @@ const TEXT_MAX = 280
 /** "What I did and why" (v16 §5): a reason from eight and one line of text,
  *  editable from the deadline until the gameweek is graded. */
 export default function DecisionPanel({ gw }: { gw: number }) {
+  const banked = usePageData<DecisionNote>(`/api/decisions/${gw}`)
+  // The note the panel is editing, which is the banked one until this panel
+  // writes one of its own: the POST answers with the row the server stored and
+  // that answer is what the graded strip reads back (v17h §5).
   const [note, setNote] = useState<DecisionNote | null>(null)
   const [reason, setReason] = useState<Reason | null>(null)
   const [text, setText] = useState('')
   const [saved, setSaved] = useState(false)
   const [failed, setFailed] = useState<string | null>(null)
 
-  const load = useCallback(() => {
-    apiGet<DecisionNote>(`/api/decisions/${gw}`)
-      .then((n) => {
-        setNote(n)
-        setReason((n.reason as Reason | null) ?? null)
-        setText(n.text ?? '')
-      })
-      .catch(() => setNote(null))
-  }, [gw])
-  useEffect(load, [load])
+  const read = banked.data
+  useEffect(() => {
+    setNote(read)
+    if (read === null) return
+    setReason((read.reason as Reason | null) ?? null)
+    setText(read.text ?? '')
+  }, [read])
 
   if (note === null) return null
 

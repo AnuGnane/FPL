@@ -47,7 +47,10 @@ const ADVICE = {
 const BODIES: Record<string, unknown> = {
   '/api/advice/latest': ADVICE,
   '/api/players': [],
-  '/api/components/5': { gw: 5, players: [] },
+  // No bare `/api/components/5`: the hub asks for the fifteen players it
+  // names, through the same `componentsPath` the Why panel calls, so a request
+  // for every player's decomposition now means the merge did not happen and
+  // this table answers it with a rejection.
   '/api/components/5?codes=1,2': { gw: 5, players: [] },
   '/api/league/leagues': {
     gw: 5, focus_league_id: null, focus_name: null, focus_stance: 'auto',
@@ -114,10 +117,9 @@ describe("This Week's first render", () => {
     expect(counted()).toEqual({
       '/api/advice/latest': 1,
       '/api/players': 1,
-      '/api/components/5': 1,
       '/api/components/5?codes=1,2': 1,
       '/api/league/leagues': 1,
-      '/api/jobs/current': 4,
+      '/api/jobs/current': 1,
       '/api/decisions/5': 1,
       '/api/ladder': 1,
       '/api/settings': 1,
@@ -130,10 +132,10 @@ describe("This Week's first render", () => {
     expect(apiDelete).not.toHaveBeenCalled()
   })
 
-  it('makes seventeen GETs in all', async () => {
+  it('makes thirteen GETs in all', async () => {
     render(<MemoryRouter><ThisWeek /></MemoryRouter>)
     await waitFor(() => expect(asked()).toContain('/api/confidence'))
     await waitFor(() => expect(asked()).toContain('/api/news/5'))
-    expect(asked()).toHaveLength(17)
+    expect(asked()).toHaveLength(13)
   })
 })

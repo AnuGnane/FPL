@@ -1,5 +1,5 @@
-import { Fragment, useEffect, useState } from 'react'
-import { apiGet } from '../../api/client'
+import { Fragment, useState } from 'react'
+import { usePageData } from '../../api/pageData'
 import {
   Callout, Card, PosBadge, TABLE_CLASS, THEAD_CLASS, TONE_CLASS, fmtDelta,
   fmtNum, fmtPct, tdClass, thClass, toneOf,
@@ -7,6 +7,7 @@ import {
 import type {
   AdviceDiff, ComponentPlayer, ComponentsBreakdown, OverridesPanel,
 } from '../../types'
+import { componentsPath } from './squadRows'
 
 /**
  * Mirrors `artifacts.EP_MOVER_THRESHOLD`, the server-side constant the movers
@@ -149,26 +150,18 @@ function PlayerRow({ player }: { player: ComponentPlayer }) {
  */
 export default function WhyPanel({ gw, codes }: { gw: number
                                                   codes: number[] }) {
-  const [data, setData] = useState<ComponentsBreakdown | null>(null)
-  const [diff, setDiff] = useState<AdviceDiff | null>(null)
-  const [pins, setPins] = useState<OverridesPanel | null>(null)
-
-  useEffect(() => {
-    if (codes.length === 0) return
-    const query = `?codes=${codes.join(',')}`
-    apiGet<ComponentsBreakdown>(`/api/components/${gw}${query}`)
-      .then(setData).catch(() => setData(null))
-    // The gw the page is showing, not whatever the server last wrote: This
-    // Week can be asked for an explicit gameweek, and a strip comparing a
-    // different week's two runs answers a question nobody asked.
-    apiGet<AdviceDiff>(`/api/advice/diff?gw=${gw}`)
-      .then(setDiff).catch(() => setDiff(null))
-    // The manager's own team news, so the panel that explains the plan can
-    // say which parts of it he wrote himself.
-    apiGet<OverridesPanel>('/api/overrides').then(setPins).catch(
-      () => setPins(null))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gw, codes.join(',')])
+  // Through `componentsPath`, which This Week calls over the same codes in the
+  // same order, so the hub and this panel share one request rather than
+  // spelling the same URL two ways (v17h §3).
+  const { data } = usePageData<ComponentsBreakdown>(
+    codes.length === 0 ? null : componentsPath(gw, codes))
+  // The gw the page is showing, not whatever the server last wrote: This
+  // Week can be asked for an explicit gameweek, and a strip comparing a
+  // different week's two runs answers a question nobody asked.
+  const { data: diff } = usePageData<AdviceDiff>(`/api/advice/diff?gw=${gw}`)
+  // The manager's own team news, so the panel that explains the plan can
+  // say which parts of it he wrote himself.
+  const { data: pins } = usePageData<OverridesPanel>('/api/overrides')
 
   if (!data || data.players.length === 0) return null
 

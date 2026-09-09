@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { apiGet } from '../../api/client'
+import type { ReactNode } from 'react'
+import { usePageData } from '../../api/pageData'
 import { Callout, Card, EmptyState, JobButton } from '../../kit'
 import { JOB_KIND_LABEL, type DigestPanel } from '../../types'
 
@@ -37,22 +37,20 @@ export interface DigestCardProps {
 export default function DigestCard(
   { extra, note, panel: given }: DigestCardProps = {},
 ) {
-  const [fetched, setFetched] = useState<DigestPanel | null>(null)
-
-  const load = useCallback(() => {
-    apiGet<DigestPanel>('/api/digest').then(setFetched).catch(() => {})
-  }, [])
+  // A null path is the "given a panel, make no request" branch (v17h §2): the
+  // card asks for nothing rather than asking and throwing the answer away.
   const owned = given === undefined
-  useEffect(() => { if (owned) load() }, [owned, load])
+  const digestPanel = usePageData<DigestPanel>(owned ? '/api/digest' : null)
+  const reload = digestPanel.reload
 
-  const panel = given === undefined ? fetched : given
+  const panel = owned ? digestPanel.data : given
   if (panel === null) return null
 
   const buttons = (
     <div className="flex flex-wrap gap-2">
       {extra}
-      <JobButton kind="digest-friday" onDone={load} />
-      <JobButton kind="digest-tuesday" onDone={load} />
+      <JobButton kind="digest-friday" onDone={reload} />
+      <JobButton kind="digest-tuesday" onDone={reload} />
     </div>
   )
 
