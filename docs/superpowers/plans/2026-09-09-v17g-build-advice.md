@@ -808,7 +808,7 @@ git commit -m "refactor(v17g): the pure cores — ladder_payload solves off a st
 recorded in spec §2.4 and §6.
 
 **Files:**
-- Create: `tests/advise_source.py`
+- Create: `tests/advise_source.py`, `tests/test_advise_source.py`
 - Modify (protected, orchestrator's diff): `tests/test_odds.py` (5 pins),
   `tests/test_v4d_degradation.py` (2), `tests/test_v5_degradation.py`,
   `tests/test_v6_degradation.py`, `tests/test_v7_model_degradation.py`,
@@ -847,12 +847,27 @@ import inspect
 def advise_source() -> str:
     from gaffer.advise import run_advise
     return inspect.getsource(run_advise)
+```
+
+The helper's own rail goes in `tests/test_advise_source.py`, because
+`advise_source.py` does not match `test_*.py` and pytest would never collect
+a rail written inside it:
+
+```python
+"""v17g §2.4 — the helper the older ordering rails read through."""
+from tests.advise_source import advise_source
 
 
 def test_the_helper_reads_the_whole_weekly_pipeline():
+    """Three functions, in pipeline order: an ordering assertion that
+    straddles the split is true only if they are concatenated that way."""
     src = advise_source()
     assert "def run_advise(" in src
 ```
+
+After T4 lands, extend that rail to name all three functions and to assert
+the order: `src.index("def gather_inputs(") < src.index("def build_advice(")
+< src.index("def run_advise(")`.
 
 - [ ] **Step 2: Redirect all eighteen pins**
 
@@ -892,7 +907,8 @@ Expected: matches only in `tests/test_advise.py` (T7 removes those) and
 - [ ] **Step 5: Commit — the ruling commit**
 
 ```bash
-git add tests/advise_source.py tests/test_odds.py tests/test_v4d_degradation.py \
+git add tests/advise_source.py tests/test_advise_source.py \
+  tests/test_odds.py tests/test_v4d_degradation.py \
   tests/test_v5_degradation.py tests/test_v6_degradation.py \
   tests/test_v7_model_degradation.py tests/test_v8a_degradation.py \
   tests/test_v8c_degradation.py tests/test_v8f_degradation.py \
@@ -1260,7 +1276,12 @@ def a_plan(*, buys=(), sells=(), hits=0, squad=None, xi=None, bench=None,
                     sells=list(sells) if g == GW else [],
                     hits=hits if g == GW else 0, squad=squad, xi=xi,
                     bench=bench, captain=captain or xi[0],
-                    vice=vice or xi[1]) for g in GWS]
+                    vice=vice or xi[1],
+                    # The solver's own objective, in tilted units. Nothing on
+                    # the build path reads it — ``advise.raw_xi_pts`` re-sums
+                    # the untilted ep_by over ``xi`` — and ``xi_rows`` has no
+                    # reader outside optimize/milp.py at all.
+                    xi_rows=[], expected_pts=objective) for g in GWS]
     return Plan(gw_plans=weeks, objective=objective)
 
 
@@ -1306,11 +1327,11 @@ class ScriptedSolver:
         return self._alternatives
 ```
 
-`GwPlan` and `Plan` are in `src/gaffer/optimize/milp.py:182` and `:207` —
-read their field lists and match them exactly; the constructor above is
-written from them but a field may have been appended since. If `a_plan`
-needs a field this plan does not name, add it with the module's default and
-say nothing else about it.
+`GwPlan` and `Plan` are in `src/gaffer/optimize/milp.py:182` and `:207`.
+`GwPlan` has eleven required fields and one defaulted (`bank`); `Plan` takes
+`objective` and `gw_plans` with `gap` defaulted. Read both field lists and
+match them: if a field has been appended since this plan was written, add it
+with the module's default and say nothing else about it.
 
 `ScriptedSolver.scenarios` returning `None` is deliberate: a build with
 `scenarios_n = 0` never calls it, and a test that wants a sweep passes a
