@@ -537,14 +537,8 @@ def test_ladder_payload_solves_off_a_state_it_was_handed(tmp_path, monkeypatch):
     written."""
     from gaffer.ladder import ladder_payload
 
-    from gaffer.ladder import StepContext
-
     state = _saved_state(tmp_path, monkeypatch)
-    payload = ladder_payload(state, gw=state.gw, gws=state.gws, hit_bar=0.6,
-                             seed=11, sigmas={}, sigma_source="outcome_only",
-                             prior_advice=None, caps=(2, None),
-                             cap_source="config", ctx=StepContext(),
-                             n_draws=64)
+    payload = ladder_payload(state, **_payload_kw(state, n_draws=64))
     assert payload["gw"] == state.gw
     assert payload["bar"] == 0.6
     assert payload["seed"] == 11
@@ -612,6 +606,24 @@ def test_sigmas_come_from_a_frame_not_a_file():
     assert (sigmas, source) == ({}, "outcome_only")
 
 
+def test_a_band_per_player_week_becomes_the_sigma_map_and_says_bands(
+        monkeypatch):
+    """The branch that actually moved. The empty frame above answers exactly
+    as a missing file does, so only this one tells the two apart: a band
+    table becomes ``{(code, gw): σ}`` as **floats** — the payload is JSON,
+    and a numpy scalar does not serialise — under the label the card reads.
+    """
+    from gaffer import ladder as ladder_mod
+
+    monkeypatch.setattr(ladder_mod, "bands_by_player_gw",
+                        lambda comp: {(20, 1): SimpleNamespace(
+                            sigma=np.float32(2.5))})
+    sigmas, source = ladder_mod.sigmas_from_components(
+        pd.DataFrame([{"code": 20, "gw": 1, "ep": 9.0}]))
+    assert (sigmas, source) == ({(20, 1): 2.5}, "bands")
+    assert type(sigmas[(20, 1)]) is float
+
+
 # --- v17g §2.3b: the step reasons off values, and a core that opens nothing -
 
 
@@ -625,7 +637,8 @@ def test_the_step_context_reads_the_values_it_is_handed(tmp_path, monkeypatch):
     state = _saved_state(tmp_path, monkeypatch)
     comp = pd.DataFrame([{"code": 20, "gw": 1, "p_play": 0.25},
                          {"code": 19, "gw": 1, "p_play": float("nan")}])
-    ctx = step_context_from(comp, {16: 0.9}, {(4, 1): 0.2}, state)
+    ctx = step_context_from(comp, state, price_fall={16: 0.9},
+                            difficulty={(4, 1): 0.2})
     assert ctx.p_play == {(20, 1): 0.25}            # the NaN row is dropped
     assert ctx.price_fall == {16: 0.9}
     assert ctx.difficulty == {(4, 1): 0.2}
@@ -643,10 +656,11 @@ def test_a_components_frame_it_cannot_read_costs_the_p_play_and_nothing_else(
     state = _saved_state(tmp_path, monkeypatch)
     # ``None`` is the frame the wrapper could not load and has already
     # printed about, so the core says nothing a second time.
-    assert step_context_from(None, {}, {}, state).p_play == {}
+    empty = dict(price_fall={}, difficulty={})
+    assert step_context_from(None, state, **empty).p_play == {}
     assert capsys.readouterr().out == ""
     nameless = pd.DataFrame([{"code": 20, "gw": 1}])
-    assert step_context_from(nameless, {}, {}, state).p_play == {}
+    assert step_context_from(nameless, state, **empty).p_play == {}
     assert "no p_play for the step reasons" in capsys.readouterr().out
 
 
@@ -664,18 +678,42 @@ def test_step_context_loads_the_three_and_hands_them_to_the_core(tmp_path,
     monkeypatch.setattr("gaffer.web.identity._difficulty_by_team",
                         lambda gws: {(4, 1): 0.2})
     monkeypatch.setattr(ladder_mod, "step_context_from",
-                        lambda *a: seen.update(args=a) or "CTX")
+                        lambda *a, **kw: seen.update(args=a, kw=kw) or "CTX")
     assert ladder_mod.step_context(1, state, [1, 2]) == "CTX"
-    assert seen["args"] == ("COMP1", {16: 0.9}, {(4, 1): 0.2}, state)
+    # By name, because the two maps are adjacent dicts: transposed, both
+    # lookups miss and every reason falls through to "points".
+    assert seen["args"] == ("COMP1", state)
+    assert seen["kw"] == {"price_fall": {16: 0.9},
+                          "difficulty": {(4, 1): 0.2}}
+
+
+class _Opened(BaseException):
+    """The sealed-``open`` sentinel, and **not** an ``Exception``: every
+    reader in ``ladder.py`` swallows those by design, so a sentinel it could
+    catch would be printed as a degraded source and the rail would pass."""
 
 
 def test_ladder_payload_reads_nothing_it_was_not_handed(tmp_path, monkeypatch):
-    """v17g §2.3b, the rail that would have caught the two late reads: the
-    caps the payload prints are the ones passed, not the live config's, and
-    the step reasons are the passed context's, not a parquet's. ``open`` is
-    sealed as well, but the caps carry the weight — a warm config cache
-    answers ``_caps`` without opening anything at all."""
+    """v17g §2.3b, the rail that would have caught the two late reads.
+
+    Three seals, because no one of them is enough. ``builtins.open`` catches
+    a bare ``open()``; ``io.open`` catches ``Path(...).read_text()``, which
+    is what ``artifacts`` actually uses and which never looks at
+    ``builtins``; and the caps and the reasons catch a read that goes
+    through neither — a warm config cache answers ``_caps`` without opening
+    anything, and pyarrow opens a parquet below Python. So the payload's
+    caps must be the ones passed rather than the live config's, and its step
+    reasons the passed context's rather than a components frame's.
+
+    The board is solved with ``decision_priors`` off, which is the one read
+    left inside the core: ``solve_kw_from_state`` would rebuild the lambda
+    table from the shipped asset. That one is tolerated (it is a package
+    asset, identical wherever the code runs) and it is named in
+    ``ladder_payload``'s docstring, but it would trip this seal, so the
+    fixture does not turn it on.
+    """
     import builtins
+    import io
 
     from gaffer import ladder as ladder_mod
 
@@ -685,9 +723,10 @@ def test_ladder_payload_reads_nothing_it_was_not_handed(tmp_path, monkeypatch):
     kw = _payload_kw(state, caps=(1, None), cap_source="state", ctx=ctx)
 
     def refuse(*a, **k):
-        raise AssertionError(f"the ladder's core opened {a[:1]}")
+        raise _Opened(f"the ladder's core opened {a[:1]}")
 
     monkeypatch.setattr(builtins, "open", refuse)
+    monkeypatch.setattr(io, "open", refuse)
     out = ladder_mod.ladder_payload(state, **kw)
     assert out["cap"] == {"max_hits": 1, "max_transfers": None}
     assert out["cap_source"] == "state"

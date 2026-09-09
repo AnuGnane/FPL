@@ -17,9 +17,15 @@ than raise.
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+if TYPE_CHECKING:  # v17g §2.3b: the trace context's first element, named
+    # rather than typed ``object``. Not imported at run time — this module is
+    # the one every layer reads a served plan through, and it stays clear of
+    # ``optimize/``.
+    from gaffer.optimize.ft_value import LambdaLookup
 
 
 class _Frozen(BaseModel):
@@ -594,7 +600,7 @@ def traced(plan: ServedPlan, *, state, theta_by_gw: dict[int, float], ft_lambda,
         return plan.model_copy(update=update)
 
 
-def trace_context(state) -> tuple[object, bool, dict[int, float]]:
+def trace_context(state) -> tuple[LambdaLookup | None, bool, dict[int, float]]:
     """``(ft_lambda, price_timing, price_fall)`` for a state read back off
     disk. v17g §2.3b: the three derivations :func:`completed` used to make
     for itself, kept for the one caller that has nothing but a state — the

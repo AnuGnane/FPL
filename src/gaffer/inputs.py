@@ -197,17 +197,14 @@ class MilpSolver:
 FRAMES = ("players", "comp", "components", "ep_named")
 """Fields stored one parquet each. ``my.picks`` has its own beside them."""
 
-EP_BY = "ep_by"
-DIFFICULTY = "difficulty"
-
-PAIR_KEYED = {EP_BY: ("code", "gw", "ep"),
-              DIFFICULTY: ("team_code", "gw", "difficulty")}
-"""Dicts keyed on a pair, each its own parquet of one row per key: JSON has
-no tuple keys, and a frame of three columns is the one shape that keeps
-``(code, gw) -> ep`` exact. The value under each name is the three column
-headings, in order. A map with no rows is a real recording — the ticker
-answers with an empty one for a week it cannot rate — and reads back as the
-empty dict it was."""
+PAIR_KEYED = {"ep_by": ("code", "gw", "ep"),
+              "difficulty": ("team_code", "gw", "difficulty")}
+"""Dicts keyed on a pair — ``(code, gw) -> ep`` and ``(team_code, gw) ->
+difficulty`` — each its own parquet of one row per key, under the three
+column headings named here. JSON has no tuple key at all, and three columns
+is the one shape that keeps a pair exact. A map with no rows is a real
+recording — the ticker answers with an empty one for a week it cannot rate —
+and reads back as the empty dict it was."""
 
 INT_KEYED = ("league_eo", "cover", "cap_cover", "rival_captains",
              "rival_names", "dgw_probs", "price_fall")

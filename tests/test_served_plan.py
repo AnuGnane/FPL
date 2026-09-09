@@ -317,17 +317,16 @@ def _never_called(*a, **kw):
     raise AssertionError("completed reached for something it was handed")
 
 
-def test_trace_context_makes_the_three_a_state_alone_can_give():
+def test_trace_context_makes_the_three_a_state_alone_can_give(monkeypatch):
     """v17g §2.3b: the loader has nothing but a state, so the derivations
-    live on for it — and only for it. ``ft_lambda`` is ``None`` for a solve
-    that ran with the priors off, which is the rule the call sites now
-    spell."""
-    from gaffer.served import trace_context
+    live on for it — and only for it. The price pair is forwarded as the
+    reader gave it, and ``ft_lambda`` is ``None`` for a solve that ran with
+    the priors off, which is the rule the call sites now spell."""
+    import gaffer.served as served_mod
 
-    ft_lambda, price_timing, price_fall = trace_context(_state())
-    assert ft_lambda is None
-    assert price_timing in (True, False)
-    assert isinstance(price_fall, dict)
+    monkeypatch.setattr(served_mod, "price_falls",
+                        lambda state: (True, {200: 0.8}))
+    assert served_mod.trace_context(_state()) == (None, True, {200: 0.8})
 
 
 def test_trace_context_reads_the_lambda_table_only_when_the_solve_used_it(

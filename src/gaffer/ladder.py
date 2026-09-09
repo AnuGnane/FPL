@@ -171,13 +171,18 @@ class StepContext:
     saved state's ``opt`` (written by ``advise.py``)."""
 
 
-def step_context_from(components, price_fall: dict, difficulty: dict,
-                      state) -> StepContext:
+def step_context_from(components, state, *, price_fall: dict,
+                      difficulty: dict) -> StepContext:
     """The context off values already in hand (v17g §2.3b). ``build_advice``
     holds all three: the components frame it predicted on, the price falls
     the served trace charges from, and the ticker's difficulty, gathered.
     Re-reading them there would answer a replay with the machine's own
     gameweek instead of the recorded one.
+
+    The two maps are keyword-only because they are adjacent dicts whose keys
+    are shaped differently — ``code`` against ``(team_code, gw)`` — so a
+    transposed pair would raise nothing at all: both lookups would simply
+    miss and every step reason would fall through to ``points``.
 
     ``components`` may be ``None`` — the frame :func:`step_context` could not
     load and has already printed about — and a frame that will not yield a
@@ -228,7 +233,8 @@ def step_context(gw: int, state, gws: list[int]) -> StepContext:
         difficulty = _difficulty_by_team([int(g) for g in gws])
     except Exception as exc:  # noqa: BLE001
         print(f"ladder: no fixture difficulty for the step reasons ({exc})")
-    return step_context_from(components, price_fall, difficulty, state)
+    return step_context_from(components, state, price_fall=price_fall,
+                             difficulty=difficulty)
 
 
 def _diff(below: dict, above: dict, key: str) -> list[dict]:
@@ -787,6 +793,15 @@ def ladder_payload(state, *, gw: int, gws: list[int], hit_bar: float,
     reads the components parquet, both against the working directory, so a
     build replayed from a recording would otherwise answer with the
     machine's own gameweek and look like agreement.
+
+    One read is left, and named here rather than left to be discovered:
+    ``solve_kw_from_state`` rebuilds the free-transfer lambda from the
+    shipped decision priors when the board was solved with them on. That is
+    a package asset and not a working-directory artifact, so it cannot
+    replay anybody's gameweek — it is the same table wherever the code runs.
+
+    ``wall_s`` on the payload is the solving alone since the split: the
+    loads it used to include are the caller's now.
     """
     ep_by = raw_ep_by(state)
     cover = (state.cover if state.cover is not None
@@ -899,20 +914,21 @@ def ladder_payload(state, *, gw: int, gws: list[int], hit_bar: float,
 
     max_hits, max_transfers = caps
     cap_rung, cap_requested = _cap_rung(max_hits, max_transfers, rows)
+    # v17g §2.2: the load moved out to the callers, and its note came with
+    # it. ``None`` is the advice that would not read, whose note names the
+    # gameweek — the sentence the load's own ``except`` wrote, shared by both
+    # branches here; an advice that read and matched no rung keeps
+    # ``recommended_rung``'s own shorter one.
+    unread = f"no served advice for GW{int(gw)}"
     if prior_advice is None:
-        # v17g §2.2: the load moved out to the callers, and its note came with
-        # it. ``None`` is the advice that would not read, whose note names the
-        # gameweek; an advice that read and matched no rung keeps
-        # ``recommended_rung``'s own shorter sentence.
-        recommended, recommended_note = None, f"no served advice for GW{int(gw)}"
+        recommended, recommended_note = None, unread
     else:
         try:
             recommended, recommended_note = recommended_rung(prior_advice, rows)
         except Exception as exc:  # noqa: BLE001 — a malformed advice is no
             # chip on a row, not a crash.
             print(f"ladder: no served advice to mark ({exc})")
-            recommended, recommended_note = (
-                None, f"no served advice for GW{int(gw)}")
+            recommended, recommended_note = None, unread
     # v16 §3.1: the restraint walk on the same draws, with its reasons.
     chosen, steps = walk(scores, rows, hit_bar=hit_bar, max_hits=max_hits,
                          max_transfers=max_transfers)
