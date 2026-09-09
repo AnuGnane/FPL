@@ -982,7 +982,7 @@ def test_run_advise_blends_player_props_before_assembling_ep():
     from tests.advise_source import advise_source
 
     src = advise_source()
-    comp = src.index("comp = predict_components(")
+    comp = src.index("comp = predictions.components(")
     blend = src.index("blend_attacking_odds(")
     assemble = src.index("ep_matrix(apply_calibration(assemble_ep(")
     assert comp < blend < assemble

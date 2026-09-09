@@ -25,6 +25,7 @@ import json
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 import pandas as pd
 
@@ -32,9 +33,9 @@ from gaffer.api.client import FPLClient
 from gaffer.assets import load_decision_priors
 from gaffer.artifacts import (SolveState, advice_path, append_advice_history,
                               components_frame, data_warning,
-                              ingested_through, pool_rows, save_availability,
-                              save_components, save_snapshots,
-                              save_solve_state)
+                              ingested_through, load_advice, pool_rows,
+                              save_availability, save_components,
+                              save_snapshots, save_solve_state)
 from gaffer.config import NO_CAP, Config
 from gaffer.data import store
 from gaffer.data.bootstrap import (build_events, build_players, build_teams,
@@ -51,8 +52,12 @@ from gaffer.data.odds import (OddsClient, ags_frame, blend_attacking_odds,
                               next_gw_event_ids, odds_frame)
 from gaffer.features.engineer import build_prediction_frame, feature_columns
 from gaffer.io import atomic_write
-from gaffer.ladder import build_ladder, serve_rung
-from gaffer.served import (completed, decorated, trace_context,
+from gaffer.inputs import (Inputs, LiveModels, MilpSolver, Outputs,
+                           Predictions, Solver)
+from gaffer.ladder import (SEED_OFFSET as LADDER_SEED_OFFSET, ladder_payload,
+                           save_ladder, serve_rung, sigmas_from_components,
+                           step_context_from)
+from gaffer.served import (completed, decorated, price_falls,
                            with_alternatives)
 from gaffer.league_mode import (LeagueParams, apply_stance, captain_cover,
                                 captaincy_note, captaincy_override,
@@ -61,7 +66,7 @@ from gaffer.league_mode import (LeagueParams, apply_stance, captain_cover,
 from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
 from gaffer.models.components import card_penalty
 from gaffer.models.minutes import apply_availability
-from gaffer.models.persistence import load_model, model_exists
+from gaffer.models.persistence import load_model
 from gaffer.models.team import (ODDS_AGAINST_COL, ODDS_BLEND_WEIGHT,
                                 add_team_rolling, blend_team_odds,
                                 odds_blend_weight)
@@ -80,12 +85,9 @@ from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
                                          load_chip_scenarios,
                                          threshold_with_source)
 from gaffer.optimize.ft_value import lambda_from_priors
-from gaffer.optimize.milp import (SolveInput, alternative_plans, build_pool,
-                                  solve_plan)
-from gaffer.optimize.policy import (Thresholds, captain_frequency_of,
-                                    coherent_plan, decide)
-from gaffer.optimize.scenarios import (move_frequencies, run_scenarios,
-                                       xmins_by_player_gw)
+from gaffer.optimize.milp import SolveInput, build_pool
+from gaffer.optimize.policy import Thresholds, captain_frequency_of, decide
+from gaffer.optimize.scenarios import move_frequencies, xmins_by_player_gw
 from gaffer.news_shadow import write_shadow
 # v12 W3 §4.6 (specs/2026-09-01-gaffer-v12-program-design.md): the captain
 # table's ceiling is the gameweek's own point distribution, which this module
@@ -580,9 +582,18 @@ def _cap(value: int) -> int | None:
     return None if int(value) >= NO_CAP else int(value)
 
 
-def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
-    """The whole weekly pipeline, from live refresh to ``reports/``."""
-    missing = [n for n in MODEL_NAMES if not model_exists(n)]
+def gather_inputs(cfg: Config, client: FPLClient | None = None, *,
+                  predictions: Predictions | None = None) -> Inputs:
+    """Every fetch, every model load and every prediction (v17g §3).
+
+    The impure half of the weekly run, and the reason :func:`build_advice`
+    can be pure: what crosses the seam is a frozen value, not a client. It
+    banks what it made — the component breakdown and the availability frame —
+    because the rule the split follows is that gather saves what gather made
+    and ``run_advise`` saves what the build made (§2.6).
+    """
+    predictions = predictions or LiveModels()
+    missing = predictions.missing()
     if missing:
         raise SystemExit(
             f"Model '{missing[0]}' missing — run `gaffer train` first.")
@@ -655,7 +666,9 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
 
     pens = pen_priors(hist)
     avail = news_availability(cfg, players, teams, events, gw)
-    comp = predict_components(pred_frame, tg_future, players, avail, pens)
+    comp = predictions.components(pred_frame=pred_frame,
+                                  tg_future=tg_future, players=players,
+                                  avail=avail, pens=pens)
     write_shadow(comp, gw)
     # Player props are the most optional signal here: the free tier meters
     # every request, the market may not exist for a fixture, and a quota that
@@ -680,8 +693,26 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     comp = rescale_pen_after_blend(comp, cfg.ags_blend_weight)
     # Optional artifact: model directories trained before calibration existed
     # have no such file, and None means the identity map.
-    cal = load_model("calibration") if model_exists("calibration") else None
+    cal = predictions.calibration()
     scoring = scoring_table(raw)
+    # v12 W3 §4.6 (specs/2026-09-01-gaffer-v12-program-design.md): the ceiling
+    # the captain table ranks on is the gameweek's own point distribution —
+    # a double's two fixtures summed, under the sweep's sigma — and not
+    # ``ep_matrix``'s best-single-fixture ``p_haul``, which in a double is the
+    # better of two numbers printed as though it were the week's.
+    #
+    # The banded frame is the **breakdown**, built once and both banked and
+    # served (T8-T11 final review, Critical: banding ``comp`` instead banded a
+    # frame with no ``ep`` column, so the map was empty on every run and the
+    # served table silently kept the attacking ``p_haul``).
+    #
+    # v17g §2.6: built here rather than beside the captain table, because it
+    # takes the *calibration model* — and a model object on the pure side of
+    # the seam is what would make a build with no ``models/`` impossible. The
+    # frame is identical: ``comp`` has not moved since
+    # ``rescale_pen_after_blend``, and ``components_frame`` copies before it
+    # touches anything, so the served EP path is untouched.
+    components = components_frame(comp, scoring, cal, players, teams)
     ep = ep_matrix(apply_calibration(assemble_ep(comp, scoring), cal))
     ep_named = ep.merge(players[["code", "name", "position"]], on="code",
                         how="left")
@@ -766,6 +797,84 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
             cover, cap_cover = {}, {}
             rival_captains, rival_names = {}, {}
 
+    # v17g §2.2: the ladder marks the rung this gameweek's *previous* advice
+    # recommended. Read here, before anything is written, because the pure
+    # build cannot open a file — and the value is the same either way, since
+    # nothing writes that file between this line and the ladder.
+    try:
+        prior_advice = load_advice(gw)
+    except Exception as exc:  # noqa: BLE001 — no advice is no mark, not a crash
+        print(f"ladder: no served advice to mark ({exc})")
+        prior_advice = None
+    # Calibrated decision tables, or the flat pre-v4c values when the asset
+    # is absent or switched off. Resolved before the first solve so the raw
+    # optimum and every scenario are priced identically.
+    priors = load_decision_priors() if cfg.decision_priors else None
+    # v12 W3 §4.5: kept rather than passed straight through — the same
+    # probabilities decide θ's tail and which weeks a chip pair is worth
+    # solving for, and reading the file twice is two chances to disagree.
+    dgw_probs = load_chip_scenarios()
+    # v17g §2.3b: the switch and the banked table the served trace charges
+    # from, and the step reasons read. Both are reads, so the build is handed
+    # the values rather than the readers.
+    price_timing, price_fall = price_falls(
+        SimpleNamespace(owned_codes=[] if my is None
+                        else my.picks["code"].tolist()))
+    # The ticker's fixture rating, for the ladder's step reasons. Swallowed
+    # exactly as ``ladder.step_context`` swallowed it: an empty map means the
+    # reasons fall through, never that the run fails.
+    difficulty: dict[tuple[int, int], float] = {}
+    try:
+        from gaffer.web.identity import _difficulty_by_team
+        difficulty = _difficulty_by_team([int(g) for g in gws])
+    except Exception as exc:  # noqa: BLE001
+        print(f"ladder: no fixture difficulty for the step reasons ({exc})")
+
+    # v17g §2.6: gather banks what gather made. The ladder used to need the
+    # state on disk before it could solve, which is why v16 §4 wrote these
+    # here in a particular order; it now solves off the state in memory, so
+    # what is left is simply two artifacts belonging to the half that made
+    # them.
+    REPORTS.mkdir(exist_ok=True)
+    save_components(components, gw)
+    # Two artifacts nothing in the pipeline reads: the availability frame this
+    # run predicted on exists so the UI can answer "why?" offline, and it
+    # swallows its own failures.
+    save_availability(avail, gw)
+    return Inputs(
+        gw=gw, gws=gws, deadline=deadline, through=through,
+        gap_warning=gap_warning, players=players, comp=comp,
+        components=components, ep_named=ep_named, ep_by=ep_by, my=my,
+        league_eo=league_eo, cover=cover, cap_cover=cap_cover,
+        rival_captains=rival_captains, rival_names=rival_names,
+        strategy=strat, win_probs=win_probs, priors=priors,
+        dgw_probs=dgw_probs, prior_advice=prior_advice,
+        price_timing=price_timing, price_fall=price_fall,
+        difficulty=difficulty)
+
+
+def build_advice(inputs: Inputs, cfg: Config, *,
+                 solver: Solver | None = None) -> Outputs:
+    """Every solve, the alternatives, the ladder, the served plan, the state
+    and the payload — from one frozen value, with no file and no socket
+    (v17g §3).
+
+    The locals below are unpacked rather than read through ``inputs.`` at each
+    use, so that the body under them is the body that was here before: the
+    ordering rails eight earlier cycles wrote read this text through
+    ``tests/advise_source.py`` (§2.4), and a rename would have moved a pinned
+    literal in fourteen protected files to no purpose.
+    """
+    solver = solver or MilpSolver()
+    gw, gws, deadline = inputs.gw, inputs.gws, inputs.deadline
+    through, gap_warning = inputs.through, inputs.gap_warning
+    players, comp, components = inputs.players, inputs.comp, inputs.components
+    ep_named, ep_by, my = inputs.ep_named, inputs.ep_by, inputs.my
+    league_eo, cover = inputs.league_eo, inputs.cover
+    cap_cover, rival_captains = inputs.cap_cover, inputs.rival_captains
+    rival_names, strat = inputs.rival_names, inputs.strategy
+    win_probs, priors, dgw_probs = inputs.win_probs, inputs.priors, inputs.dgw_probs
+
     pool_ep = tilt_ep(ep_by, cover, strat.lam if strat else 0.0)
     if my is None:
         state, my_picks = initial_squad_state(gws)
@@ -778,7 +887,10 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
                            # the chip table inherit through ``state``.
                            max_hits=_cap(cfg.max_hits),
                            max_transfers=_cap(cfg.max_transfers))
-    pool = build_pool(players, pool_ep, my_picks, gws)
+    # v17g §2.3b: told, not read. ``build_pool`` asks ``config_in_force``
+    # for ``top_n`` when the caller passes none, and a read is a read.
+    pool = build_pool(players, pool_ep, my_picks, gws,
+                      top_n=cfg.solver_top_n())
     # v10 §F1/T10-A (specs/2026-09-01-gaffer-v10-minutes-design.md): the one
     # caller that hands the optimizer its minutes probabilities. There is no
     # existing seam — `players` is the bootstrap frame and the FPL API carries
@@ -808,15 +920,9 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
                     .agg(p_play=("p_play", "mean")).itertuples()):
             p_play_by_code.setdefault(int(row.code), {})[int(row.gw)] = float(
                 row.p_play)
-    # Calibrated decision tables, or the flat pre-v4c values when the asset
-    # is absent or switched off. Resolved before the first solve so the raw
-    # optimum and every scenario are priced identically.
-    priors = load_decision_priors() if cfg.decision_priors else None
+    # v17g §3: the tables themselves are gathered; these two derivations are
+    # arithmetic over them and stay on the pure side.
     ft_lambda = lambda_from_priors(priors)
-    # v12 W3 §4.5: kept rather than passed straight through — the same
-    # probabilities decide θ's tail and which weeks a chip pair is worth
-    # solving for, and reading the file twice is two chances to disagree.
-    dgw_probs = load_chip_scenarios()
     chip_thresholds = chip_thresholds_from_asset(priors, dgw_probs)
     opt_kw = dict(decay=cfg.decay, bench_weight=cfg.bench_weight,
                   vice_weight=cfg.vice_weight, ft_value=cfg.ft_value,
@@ -826,7 +932,13 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     # opt_kw is serialized into SolveState.opt at the end of this function, so
     # it stays plain JSON — floats and a list of three floats. solve_kw is the
     # same bundle plus anything that is only meaningful in-process.
-    solve_kw = dict(opt_kw, ft_lambda=ft_lambda)
+    # v17g §2.3b: ``price_fall`` rides in the bundle every solve shares, so
+    # the term the objective charges is the one this run gathered rather than
+    # whatever price log happens to sit under the working directory. It is on
+    # ``solve_kw`` and not ``opt_kw`` because ``opt_kw`` is serialized into
+    # the solve state as plain JSON.
+    solve_kw = dict(opt_kw, ft_lambda=ft_lambda,
+                    price_fall=inputs.price_fall)
     # Whether the sweep below runs at all is asked here, once, because it is
     # what decides who sees p_play. Gating is a weekly question: with no squad
     # yet — the initial-squad mode — there is no incumbent to hold on to,
@@ -854,9 +966,9 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     # flag so that `gap` is a distance and not a difference of two frames.
     incumbent_weighted = not sweep_runs
     if sweep_runs:
-        plan = solve_plan(pool, state, **solve_kw)
+        plan = solver.solve(pool, state, **solve_kw)
     else:
-        plan = solve_plan(pool, state, **solve_kw, p_play=p_play_by_code)
+        plan = solver.solve(pool, state, **solve_kw, p_play=p_play_by_code)
     first = plan.gw_plans[0]
 
     # --- scenario re-solving and the decision policy ----------------------
@@ -882,7 +994,7 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         # objective weight. ``solve_kw`` is unchanged and carries no p_play, so
         # no scenario is solved under §F1's frailty and the raw optimum this
         # gate compares against is still the unweighted one (v10 T10-A).
-        run = run_scenarios(pool, state, xmins, n=cfg.scenarios_n,
+        run = solver.scenarios(pool, state, xmins, n=cfg.scenarios_n,
                             seed=cfg.scenarios_seed + gw,
                             p_play=(p_play_by_code if cfg.draw_availability
                                     else None),
@@ -906,8 +1018,8 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
                            irreversible=cfg.irreversible_threshold))
             # v10 §F1/T10-A: the one solve that sees p_play — the plan that is
             # actually recommended, after the sweep has decided the moves.
-            plan = coherent_plan(pool, state, decision, **solve_kw,
-                                 p_play=p_play_by_code)
+            plan = solver.coherent(pool, state, decision, **solve_kw,
+                                   p_play=p_play_by_code)
             # v12 W3 §4.3: the incumbent is now the weighted one. The sweep
             # dying leaves this False, which is the branch that made `gap` a
             # comparison of two objectives.
@@ -962,7 +1074,8 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     # burn a wildcard on a differential shuffle worth nothing. When lam is 0
     # the tilt is an exact passthrough, so the raw pool is the same pool.
     lam = strat.lam if strat is not None else 0.0
-    chip_pool = (build_pool(players, ep_by, my_picks, gws)
+    chip_pool = (build_pool(players, ep_by, my_picks, gws,
+                            top_n=cfg.solver_top_n())
                  if lam and my is not None else pool)
 
     # Hoisted out of the chip block below so the saved solve state records it
@@ -1028,22 +1141,6 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
                   if "wildcard" in chip_names else None)
 
     ep_gw1 = ep_named[ep_named["gw"] == gw]
-    # v12 W3 §4.6 (specs/2026-09-01-gaffer-v12-program-design.md): the ceiling
-    # the captain table ranks on is the gameweek's own point distribution —
-    # a double's two fixtures summed, under the sweep's sigma — and not
-    # ``ep_matrix``'s best-single-fixture ``p_haul``, which in a double is the
-    # better of two numbers printed as though it were the week's.
-    #
-    # The banded frame is the **breakdown**, built here rather than at the
-    # save below and reused there (T8-T11 final review, Critical: banding
-    # ``comp`` instead banded a frame with no ``ep`` column, so the map was
-    # empty on every run and the served table silently kept the attacking
-    # ``p_haul``). ``comp`` has not moved since ``rescale_pen_after_blend``,
-    # so building it here and banking it there are the same frame — and
-    # ``components_frame`` copies before it touches anything, so the served
-    # EP path is untouched. Same numbers the components panel bands: one
-    # answer per (code, gw).
-    components = components_frame(comp, scoring, cal, players, teams)
     haul_by_code = captain_haul_by_code(components, gw)
     cap_tab = captain_table(ep_gw1, first.xi, league_eo,
                             haul=haul_by_code or None)
@@ -1101,9 +1198,9 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     weighted = {"p_play": p_play_by_code} if incumbent_weighted else {}
     alt_rows: list[dict] = []
     if cfg.alt_plan_max_gap > 0 and state.owned_codes:
-        for alt in alternative_plans(pool, state, plan,
-                                     max_gap=cfg.alt_plan_max_gap,
-                                     **solve_kw, **weighted):
+        for alt in solver.alternatives(pool, state, plan,
+                                       max_gap=cfg.alt_plan_max_gap,
+                                       **solve_kw, **weighted):
             alt_rows.append({
                 "gap": None if alt.gap is None else round(float(alt.gap), 2),
                 "plan_by_gw": [
@@ -1145,14 +1242,37 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
              "chip_plan": [{"gw": int(r["gw"]), "chip": str(r["chip"])}
                            for r in chip_rows if r.get("play_now")]},
         pool=pool_rows(pool, players, owned_now, ep_by, gws))
-    save_solve_state(solve_state)
-    # v13 §3.2 / v16 §4: the transfer ladder, off the state just saved. Never
-    # the run's failure — a ladder that could not be built is one printed
+    # v13 §3.2 / v16 §4: the transfer ladder. v17g §2.2: off the state above
+    # *in memory* — it has not been written yet — with the σ table taken from
+    # the components frame this run predicted on rather than from the parquet
+    # of it, and the caps, the bar, the seed and the step reasons handed in.
+    # Never the run's failure: a ladder that could not be built is one printed
     # line, the objective's plan served, and a card with a rebuild button.
     ladder = None
     try:
-        ladder = build_ladder(gw)
+        sigmas, sigma_source = sigmas_from_components(components)
+        horizon = solve_state.opt.get("horizon") or len(solve_state.gws)
+        ladder = ladder_payload(
+            solve_state, gw=gw,
+            # The slice ``build_ladder`` takes, spelled the same way: the two
+            # are equal on this path, but equal today is not the same thing.
+            gws=solve_state.gws[:max(1, int(horizon))],
+            hit_bar=float(cfg.hit_bar),
+            seed=int(cfg.scenarios_seed) + LADDER_SEED_OFFSET + int(gw),
+            sigmas=sigmas, sigma_source=sigma_source,
+            prior_advice=inputs.prior_advice,
+            caps=(_cap(cfg.max_hits), _cap(cfg.max_transfers)),
+            cap_source="config",
+            ctx=step_context_from(components, solve_state,
+                                  price_fall=inputs.price_fall,
+                                  difficulty=inputs.difficulty))
     except Exception as exc:  # noqa: BLE001
+        # A ladder that will not build is one line and the objective's plan
+        # served — which is also how a *miswired call here* would look, so
+        # the message carries the exception and the golden board carries the
+        # numbers. v17g caught exactly that: a signature change turned this
+        # into a TypeError, and the only visible symptom was a different
+        # bench.
         print(f"ladder: not built for GW{gw} ({exc})")
     served = serve_rung(ladder, dict(
         gw=gw, buys=buys, sells=sells, hits=int(first.hits),
@@ -1185,15 +1305,14 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     # v17f §2.2: prices, banks and the trace at write time, off the state
     # just saved — the same pass ``artifacts.served_plan`` runs for a file
     # written before this cycle, so the two cannot disagree.
-    # v17g §2.3b: the three derivations ``completed`` used to make for itself,
-    # made here instead so that the pure build can hand them in. This is the
-    # loader's own helper, so the numbers are the ones this line always wrote;
-    # the split that replaces it with ``inputs``' values is v17g §3.
-    ft_lambda_now, price_timing_now, price_fall_now = trace_context(solve_state)
     served = completed(with_alternatives(served, alt_rows),
                        state=solve_state, chip_table=chip_rows,
-                       ft_lambda=ft_lambda_now, price_timing=price_timing_now,
-                       price_fall=price_fall_now)
+                       # v17g §2.3b: ``completed``'s own rule, spelled at the
+                       # call site. ``lambda_from_priors(None)`` is an empty
+                       # lookup and not ``None``, so the guard is not optional.
+                       ft_lambda=ft_lambda if cfg.decision_priors else None,
+                       price_timing=inputs.price_timing,
+                       price_fall=inputs.price_fall)
     strategy = None
     if strat is not None:
         strategy = asdict(strat)
@@ -1225,6 +1344,21 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
         # move advise never tagged carries no ``tag`` key on disk.
         **served.model_dump(exclude_unset=True),
     )
+    return Outputs(advice=advice, state=solve_state, ladder=ladder)
+
+
+def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
+    """The whole weekly pipeline, from live refresh to ``reports/``.
+
+    v17g §3: gather, build, bank. The signature has not moved, so the CLI,
+    the ``train_and_advise`` job, ``pipeline.weekly_run``, the what-if router
+    and the golden board all call it exactly as they did.
+    """
+    inputs = gather_inputs(cfg, client)
+    out = build_advice(inputs, cfg)
+    save_solve_state(out.state)
+    if out.ladder is not None:
+        save_ladder(out.ladder, inputs.gw)
     # v9c orchestrator-authorized protected edit (review I1): atomic advice
     # artifact write. Three docstrings in web/jobs.py and routers/jobs.py now
     # rest on "every job kind writes its artifacts idempotently", which is what
@@ -1237,12 +1371,10 @@ def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
     # this borrowed from digest.py is now gaffer.io.atomic_write, and the
     # guarantee is unchanged — a pid-suffixed sibling temp so two writers
     # cannot share one, and os.replace to make the swap atomic.
-    atomic_write(advice_path(gw), json.dumps(asdict(advice), indent=1,
-                                             default=str))
-    # Two artifacts nothing in the pipeline reads: the availability frame this
-    # run predicted on, and the payload itself, appended to a pruned log. Both
-    # exist so the UI can answer "why?" and "what changed since Tuesday?"
-    # offline, and both swallow their own failures.
-    save_availability(avail, gw)
-    append_advice_history(asdict(advice), gw)
-    return advice
+    atomic_write(advice_path(inputs.gw),
+                 json.dumps(asdict(out.advice), indent=1, default=str))
+    # An artifact nothing in the pipeline reads: the payload itself, appended
+    # to a pruned log, so the UI can answer "what changed since Tuesday?"
+    # offline. It swallows its own failures.
+    append_advice_history(asdict(out.advice), inputs.gw)
+    return out.advice

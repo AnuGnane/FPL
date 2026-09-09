@@ -239,7 +239,7 @@ def test_the_alternatives_are_solved_exactly_as_the_incumbent_was():
     # And the correction sits with the coherent plan, not with the sweep's
     # own `if`: a sweep that ran and died must leave the flag False.
     src = advise_source()
-    coherent = src.index("plan = coherent_plan(")
+    coherent = src.index("plan = solver.coherent(")
     assert coherent < src.index("incumbent_weighted = True") < src.index(
         "weighted = {\"p_play\": p_play_by_code}")
 

@@ -273,7 +273,7 @@ def test_run_advise_still_orders_every_protected_seam():
     assert src.index("compute_strategy(") < pool
     assert "build_pool(players, pool_ep," in src
 
-    comp = src.index("comp = predict_components(")
+    comp = src.index("comp = predictions.components(")
     blend = src.index("blend_attacking_odds(")
     assemble = src.index("ep_matrix(apply_calibration(assemble_ep(")
     assert comp < blend < assemble

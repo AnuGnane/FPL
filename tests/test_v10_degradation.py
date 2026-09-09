@@ -512,13 +512,21 @@ def test_a_mixed_vintage_shadow_parquet_still_serialises(tmp_path,
 
 
 def _advise_src() -> str:
-    return inspect.getsource(__import__("gaffer.advise",
-                                        fromlist=["run_advise"]).run_advise)
+    # v17g §2.4: the pipeline is three functions now, and this file's rails
+    # ask the same questions of the same text through the shared helper.
+    from tests.advise_source import advise_source
+
+    return advise_source()
 
 
 def _raw_solve_branches() -> tuple[ast.Call, ast.Call]:
-    """The two ``solve_plan`` calls of the raw-optimum ``if``, as AST nodes:
-    ``(sweep_runs, sweep_does_not_run)``."""
+    """The two raw-optimum solves of the ``if``, as AST nodes:
+    ``(sweep_runs, sweep_does_not_run)``.
+
+    v17g §2.5: spelled ``solver.solve`` since the solver became a protocol
+    with two adapters. The claim is unchanged — this rail is about which of
+    the two branches carries ``p_play``, not about how the call is written.
+    """
     tree = ast.parse(textwrap.dedent(_advise_src()))
     for node in ast.walk(tree):
         if not isinstance(node, ast.If):
@@ -526,7 +534,7 @@ def _raw_solve_branches() -> tuple[ast.Call, ast.Call]:
         calls = [c for branch in (node.body, node.orelse)
                  for stmt in branch for c in ast.walk(stmt)
                  if isinstance(c, ast.Call)
-                 and getattr(c.func, "id", None) == "solve_plan"]
+                 and getattr(c.func, "attr", None) == "solve"]
         if len(calls) == 2 and node.orelse:
             return calls[0], calls[1]
     raise AssertionError("the raw optimum is no longer a two-branch if")
@@ -561,10 +569,10 @@ def test_the_p_play_seam_follows_the_sweep_and_not_the_solve():
     information.
     """
     src = _advise_src()
-    assert "solve_kw = dict(opt_kw, ft_lambda=ft_lambda)" in src
+    assert "solve_kw = dict(opt_kw, ft_lambda=ft_lambda," in src
     # The sweep's own bundle is still untouched: it never had p_play.
     assert "scenario_kw" not in src
-    sweep = src[src.index("run_scenarios("):src.index("run_scenarios(") + 400]
+    sweep = src[src.index("solver.scenarios("):src.index("solver.scenarios(") + 400]
     # The solve bundle the sweep passes through is still the unweighted one.
     assert "**solve_kw" in sweep
     # p_play reaches the sweep as a draw and only behind its own switch.
@@ -580,7 +588,7 @@ def test_the_p_play_seam_follows_the_sweep_and_not_the_solve():
 def test_the_coherent_plan_carries_the_weights_when_the_sweep_ran():
     """The other consumer, and the only one inside the gated branch."""
     src = _advise_src()
-    coherent = src.index("coherent_plan(pool, state, decision")
+    coherent = src.index("solver.coherent(pool, state, decision")
     assert "p_play=p_play_by_code" in src[coherent:coherent + 200]
     # Two consumers now, and both are plans that are actually recommended:
     # the coherent plan, and the raw solve of the modes that have no sweep.
@@ -594,7 +602,7 @@ def test_the_sweep_condition_is_asked_once_and_named():
     src = _advise_src()
     assert src.count("if cfg.scenarios_n > 0 and state.owned_codes:") == 1
     assert src.index("if cfg.scenarios_n > 0 and state.owned_codes:") < \
-        src.index("plan = solve_plan(pool, state, **solve_kw)")
+        src.index("plan = solver.solve(pool, state, **solve_kw)")
     assert "if sweep_runs:" in src
 
 

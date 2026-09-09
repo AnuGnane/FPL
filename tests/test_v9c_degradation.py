@@ -372,7 +372,13 @@ def test_the_advice_artifact_is_written_through_a_temp_and_os_replace():
     source = inspect.getsource(advise_mod)
     # v17f §1 part 4 (orchestrator ruling): the filename is spelled only in
     # ``artifacts.py`` now, so the anchor is the write's path call.
-    start = source.index("advice_path(gw)")
+    #
+    # v17g §2.4 (orchestrator ruling): the call, not the call *and its
+    # argument*. The split moved the write into ``run_advise``'s composition,
+    # where the gameweek is ``inputs.gw`` — and pinning an argument spelling
+    # is the same mistake v17f made when it pinned the filename. The import
+    # line reads ``advice_path,``, so this matches the call and nothing else.
+    start = source.index("advice_path(")
     window = source[start - 600:start + 600]
     # v12 W1 §2.11 (specs/2026-09-01-gaffer-v12-program-design.md). The idiom
     # moved into gaffer.io, so the grep follows it. `atomic_write` in the

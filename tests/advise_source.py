@@ -22,13 +22,12 @@ import inspect
 
 
 def advise_source() -> str:
-    """The pipeline's source, whatever it is currently split into.
+    """``gather_inputs``, ``build_advice`` and ``run_advise``, concatenated.
 
-    Until the split lands this is ``run_advise`` alone, so the commit that
-    points eighteen rails here changes not one character of what any of them
-    reads — which is the point of doing it first: the split that follows
-    cannot be blamed for a rail this commit broke.
+    In that order, which is pipeline order and therefore the order every
+    ordering assertion was written against.
     """
-    from gaffer.advise import run_advise
+    from gaffer.advise import build_advice, gather_inputs, run_advise
 
-    return inspect.getsource(run_advise)
+    return "\n".join(inspect.getsource(f)
+                     for f in (gather_inputs, build_advice, run_advise))

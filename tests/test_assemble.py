@@ -216,9 +216,13 @@ def test_advise_and_backtest_wire_calibration_into_the_ep_pipeline():
     """The application point is pinned by spec: inside ``ep_matrix(...)``,
     wrapping ``assemble_ep``. Neither entry point has a cheap end-to-end
     harness, so pin the seam at the source level."""
-    for fn in (run_advise, run_backtest):
-        src = inspect.getsource(fn)
-        assert "ep_matrix(apply_calibration(assemble_ep(" in src, fn.__name__
+    # v17g §2.4: the advise half of the pipeline is three functions now, so
+    # its source comes through the shared helper; the backtest is untouched.
+    from tests.advise_source import advise_source
+
+    for name, src in (("run_advise", advise_source()),
+                      ("run_backtest", inspect.getsource(run_backtest))):
+        assert "ep_matrix(apply_calibration(assemble_ep(" in src, name
 
 
 def test_ep_breakdown_terms_sum_to_assembled_ep():
