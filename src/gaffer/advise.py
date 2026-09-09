@@ -939,6 +939,14 @@ def build_advice(inputs: Inputs, cfg: Config, *,
     # the solve state as plain JSON.
     solve_kw = dict(opt_kw, ft_lambda=ft_lambda,
                     price_fall=inputs.price_fall)
+    # v17g §2.3b: the chip pricers sit outside the Solver protocol on purpose
+    # (they answer what a chip is worth against a baseline, not what to do
+    # this week), but they still solve — so they charge the falls this run
+    # gathered, like every other solve. Their own bundle rather than
+    # ``solve_kw``'s, because they are scored undecayed and without the
+    # free-transfer lambda, and rather than ``opt_kw``'s, because that one is
+    # serialized into the solve state as plain JSON.
+    chip_kw = dict(opt_kw, price_fall=inputs.price_fall)
     # Whether the sweep below runs at all is asked here, once, because it is
     # what decides who sees p_play. Gating is a weekly question: with no squad
     # yet — the initial-squad mode — there is no incumbent to hold on to,
@@ -1098,7 +1106,7 @@ def build_advice(inputs: Inputs, cfg: Config, *,
         # rather than reusing `plan` because chips are scored undecayed (the
         # decay made every chip's best week the current one); solved once
         # rather than inside each helper, which would repeat the same MILP.
-        chip_base = chip_baseline(chip_pool, state, **opt_kw)
+        chip_base = chip_baseline(chip_pool, state, **chip_kw)
         chip_table = evaluate_chips(chip_pool, state, base=chip_base,
                                     avail_by_gw=avail_by_gw,
                                     # v12 W3 §4.5: the weeks a pair is worth
@@ -1108,7 +1116,7 @@ def build_advice(inputs: Inputs, cfg: Config, *,
                                     dgw_gws={int(g) for g, p
                                              in dgw_probs.items()
                                              if p >= PAIR_DGW_MIN_PROB},
-                                    **opt_kw)
+                                    **chip_kw)
         chip_rows = chip_table.to_dict("records")
         for row in chip_rows:
             if row["chip"] == "freehit":
@@ -1137,7 +1145,7 @@ def build_advice(inputs: Inputs, cfg: Config, *,
         # while the very same lookup priced the wildcard row above it.
         wc_now = (wildcard_now_assessment(chip_pool, state, base=chip_base,
                                           thresholds=chip_thresholds,
-                                          **opt_kw)
+                                          **chip_kw)
                   if "wildcard" in chip_names else None)
 
     ep_gw1 = ep_named[ep_named["gw"] == gw]
