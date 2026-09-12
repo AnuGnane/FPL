@@ -14,7 +14,7 @@ than an auditor, `docs/GUIDE.md` §11–12.
 `specs/2026-09-12-v18-polish-design.md`, plan
 `plans/2026-09-12-v18-polish-programme.md`, tracker
 `plans/2026-09-12-v18-tracker.md`), eight sub-cycles that change no number
-the advice serves. v18a — the gate, back on — is merged (`20185aa`);
+the advice serves. v18a (the gate, back on) and v18b (the advice path tells the truth) are merged (`f662d6d`);
 the golden board had been skipping since the 09-11 retrain. Next: v18b the
 advice path, then v18c–v18h; the model cycle follows v18 (the user's
 ruling, 2026-09-12).
@@ -172,6 +172,36 @@ usually the thing you cannot test*, not the lines: every card of the seven was
 found by asking what a test would have to fake.
 
 ## Shipped
+
+### v18b — the advice path tells the truth (done, merged `f662d6d` 2026-09-12)
+Rulings 2, 3 and 4 of the polish design. The ladder's guard in
+`build_advice` caught `Exception` — the exact swallow v17g named as its
+lesson — and now catches `GafferError`, `ValueError` and the MILP's
+`RuntimeError` for an infeasible rung, so a `TypeError` from a miswired
+call propagates instead of being served as a bench swap. The HiGHS → CBC
+fallback in `optimize/milp.py` was silent; `_solve` names the solver that
+ran, `Plan.solver` carries it, and the solve state's `opt` gains
+`solver: "cbc"` only when the fallback fired, so a HiGHS board is
+byte-identical. `gather_inputs` and `build_advice` now read `cfg` and never
+the cached view: `served.price_falls`, `price_timing.owned_price_falls`
+(the switch joined its cache key), `apply_availability` (four switches,
+one of them — `current_season` — undocumented until the sentinel found
+it) and `save_availability` are *told*; `predict_components` takes a
+keyword-only `cfg` through the `Predictions` protocol; a sealed rail
+raises a `BaseException` sentinel on any `config_in_force` call during
+either half and was planted-fault tested twice. `build_advice` and
+`ladder_payload` take `now`; the ladder joined the golden as a fourth
+expected file with `wall_s` stripped. Also: the `NameError` at
+`calibrate_noise.py:443` (no test had reached the line), the report's
+hit line priced off the served `hit_cost` instead of a literal 4, the
+brief's note printed once, `run_advise`'s docstring. Found on the way:
+the first sealed rail compared a board the recorded adapter cannot
+calibrate (ten points off) and was rebuilt on the recorded Inputs; and
+two fake FPL clients had never answered `get_entry` behind a warm cache.
+Gate: 58 passed, 0 skipped, three expected files and the Inputs
+byte-identical to v18a's recording, the ladder file added; every rail
+shown to fire. Suite 4434 Python (4445 with the golden), 986 frontend;
+pins 51 / 12 / 62.
 
 ### v18a — the gate, back on (done, merged `20185aa` 2026-09-12)
 The first sub-cycle of the v18 polish programme

@@ -666,7 +666,7 @@ Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 `reports/evaluation.json`, and the Model hub.
 
-## 11. The version history, v1 to v18a
+## 11. The version history, v1 to v18b
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
 reviewed. Every cycle ran the same way, and knowing the shape tells you where
@@ -1004,6 +1004,18 @@ board itself had not moved), the recorder was fixed so its two modes record
 the same Inputs, one loud skip helper replaced three wordings, the pipeline
 test runs alone again, and `CLAUDE.md` stopped saying three things that had
 been false since v17. Python 4425 → **4427**, frontend 986 unchanged.
+
+**v18b — the advice path tells the truth** (2026-09-12). Three things the
+advice path could do quietly, it now cannot. The ladder's guard swallowed
+every exception, so a wiring error looked like a different bench; it
+catches the domain failures only. The solver fell from HiGHS to the bundled
+CBC without a word; the solve state now says so when it happens. And the
+"pure" build still read the process-wide config behind its back in four
+helpers; each is told the value instead, and a sealed rail refuses any such
+read during either half. The ladder joined the golden board as a fourth
+file, a `NameError` no test had reached was fixed with one that does, the
+report prices hits off the served hit cost, and the brief's note prints
+once. Python 4427 → **4445**, frontend 986 unchanged.
 
 The suite grew from nothing to **4,425 Python + 986 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above
