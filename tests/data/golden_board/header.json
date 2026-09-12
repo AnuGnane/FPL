@@ -1,9 +1,9 @@
 {
  "recorded_at": "2026-09-08T09:29:43+00:00",
- "written_at": "2026-09-08T19:32:27+00:00",
+ "written_at": "2026-09-12T10:26:33+00:00",
  "recorded_by": "python -m tests.golden_client --record; --write after a retrain",
  "gw": 4,
- "commit": "378b56b",
+ "commit": "04f24e5",
  "config": {
   "entry_id": 2210493,
   "league_id": 1794743,
@@ -95,20 +95,20 @@
   "data/history/understat_team.parquet": "f26f291a0bc26d3f9ac32cb037e3a6789cb6af039ecca0a8f80368e7937f5848",
   "data/set_pieces.toml": "absent",
   "models/attacking.joblib": "935a9b61b1fcb1645215b4ad5e89ac1728f291c549e9811f2a6b3593dd495df0",
-  "models/attacking.meta.json": "0804f25bdedeb9e22bb852307bff624c7e62517f295e5c5c3926739172c03724",
-  "models/blend.params.json": "0bfd4bbeff2e9e4905123d6db8e11331e2f0f7340a7af341233d8235bed2f35c",
+  "models/attacking.meta.json": "3bd2e0e75fdb6550bc575e80ac038e53bc73cc1b449c8317789a689b75e240af",
+  "models/blend.params.json": "039ec203c2593931071b44593834f0fc5795d0150644214543b3f74a2b6a66c6",
   "models/bonus.joblib": "614570ce94d91d364f52d3404b6caff2149f9365e4e1f0351a71bebfeb5cc1fe",
-  "models/bonus.meta.json": "fe3a50d19fe6ab49dcd3c2eaf3f93daa4ea8092396bc1ed0885a64c322a0d618",
+  "models/bonus.meta.json": "445ccaa8bd2037bb4a3d1600c187e9b5c0b6c7b16de67824624b7cdbc36fcca0",
   "models/calibration.joblib": "34743051990bb2245ae5e94f47f842f8f1480f48e1b852342d2cb845380256d7",
-  "models/calibration.meta.json": "8b7e7af999a521091cf150b5d37062d9aaa3575a063de8810c441b484f36b6fa",
+  "models/calibration.meta.json": "e53a6fefd613d8f56b92436bf018bb9331f917157d218cbdf5d579e60708aa08",
   "models/defcon.joblib": "9a8cd20d61c05138a492d33c97c1f2cd75d4676eacd755b73ac2503fb162e81d",
-  "models/defcon.meta.json": "80d6989e77f7b57ccbd53faf2158aee76985216552cfb5d320990677c23f918c",
+  "models/defcon.meta.json": "0d060ffc436c5ff720357ab1e19bee57b293946b73b0035d3d0b99235c033237",
   "models/minutes.joblib": "bde9040abcfcde81aea969638b989ac08376b6185821d1d5beca71b01e57e5fa",
-  "models/minutes.meta.json": "a5205048613ceb46b485fdf576bccfa72af117a3b4ab6475da968fa448424d5c",
+  "models/minutes.meta.json": "cb8c525130e70f5b8856e07138ffae6c1448df3d07965fbc588d5908c677b2e6",
   "models/saves.joblib": "9db988b641c1e6d2e64aa602ec7019a84e44476abc8d6e5ff84950c592afb9c8",
-  "models/saves.meta.json": "d857f6dfe8e4e52b7ec764f8c11481aff2cc757c0a8caeb5fe375ad7aa4f1327",
+  "models/saves.meta.json": "2e719fbe5a8c6c82058925c5f6e0c6b9e515cac19c2cf7f290c5a4b0172806ac",
   "models/team.joblib": "db292e8eb957b159c1439962732cd9268170a7c161848be33f491c10fe340a9a",
-  "models/team.meta.json": "b5557ab67bf37edbf24dbefd77c8de7274f01f7f52b57c3864dcbce85140cf0a"
+  "models/team.meta.json": "73dba721b95eb5e5f352dadd8982ae376d41b09f4765f71dd1ed4ab3f35be9ea"
  },
  "responses": {
   "count": 759,
@@ -124,5 +124,5 @@
   "vice": true,
   "plan_weeks": 6
  },
- "runtime_s": 162.3
+ "runtime_s": 160.3
 }
