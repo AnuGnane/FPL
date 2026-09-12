@@ -132,10 +132,12 @@ def advise(fast: bool = typer.Option(
                        f"{round(miss['frequency'] * 100)}%")
     typer.echo(f"Expected XI points: {advice.expected_pts}")
     typer.echo(f"Report: {path}")
-    # v17d §2.3: the note when the brief was not written — what `gaffer
-    # brief` prints; the written case already printed its own line.
-    if result.brief.get("note"):
-        typer.echo(result.brief["note"])
+    # v18b Task 6: the note, when the brief was not written, already reached
+    # the terminal once — ``weekly_run``'s own ``log`` default is ``print``,
+    # and ``cli.advise`` passes no ``log`` of its own (v17d §2.3's comment
+    # here was wrong: the written case has no note to print, and the
+    # unwritten case printed through the pipeline already). Echoing
+    # ``result.brief["note"]`` a second time doubled that one line.
 
 
 @app.command()

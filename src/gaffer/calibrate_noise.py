@@ -418,7 +418,7 @@ def ensemble_rows(max_train_idx: int | None = None,
     from gaffer.models.assemble import (apply_calibration, assemble_ep,
                                         ep_matrix)
     from gaffer.models.minutes import LGB_KW
-    from gaffer.models.train import (load_training_frame,
+    from gaffer.models.train import (attacking_features, load_training_frame,
                                      predict_components_simple, train_all)
     from gaffer.optimize.scenarios import xmins_by_player_gw
 

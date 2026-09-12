@@ -175,6 +175,31 @@ def test_advise_says_nothing_extra_when_the_data_is_current(tmp_path,
     assert "WARNING" not in result.output
 
 
+def test_advise_prints_the_unwritten_brief_note_exactly_once(tmp_path,
+                                                             monkeypatch):
+    """v18b Task 6: ``weekly_run`` prints the note itself when ``run_brief``
+    raises — its own ``log`` defaults to ``print``, and ``cli.advise`` passes
+    none, so the note already reaches the terminal once from the pipeline.
+    ``cli.advise`` used to echo ``result.brief["note"]`` again, doubling it."""
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "config.toml").write_text(
+        '[fpl]\nentry_id = 1\nleague_id = 0\n')
+    advice = _stub_advice(data_through_gw=1, data_warning=None)
+    monkeypatch.setattr("gaffer.advise.run_advise", lambda cfg, client=None: advice)
+    monkeypatch.setattr("gaffer.report.render.render_report",
+                        lambda a, model_health=None: "reports/gw2.md")
+    monkeypatch.setattr("gaffer.tracking.latest_health", lambda: None)
+
+    def boom(gw, cfg=None):
+        raise RuntimeError("the configured LLM command timed out")
+
+    monkeypatch.setattr("gaffer.brief.run_brief", boom)
+    result = runner.invoke(app, ["advise"])
+    assert result.exit_code == 0
+    note = "brief not written: the configured LLM command timed out"
+    assert result.output.count(note) == 1
+
+
 def test_evaluate_writes_the_artifact_and_prints_the_table(tmp_path,
                                                            monkeypatch):
     import json

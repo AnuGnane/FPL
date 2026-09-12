@@ -278,3 +278,59 @@ def test_the_cli_carries_the_estimation_mode_and_an_out_path():
 
     params = inspect.signature(calibrate_noise).parameters
     assert "estimation" in params and "out" in params
+
+
+def test_ensemble_rows_falls_back_when_member_zero_has_no_feature_cols(monkeypatch):
+    """v18b Task 5: ``attacking_features`` was read at the ``getattr``
+    default (~calibrate_noise.py:443) without being in ``ensemble_rows``'
+    own local import, so an attacking model with no ``feature_cols``
+    attribute raised ``NameError`` instead of falling back. Every
+    collaborator ``ensemble_rows`` calls is stubbed to a trivial
+    pass-through un-stubbed only at the top level — the real function body
+    runs, so the default line has to execute for the run to complete."""
+    import gaffer.assets as assets_mod
+    import gaffer.calibrate_noise as cn
+    import gaffer.data.bootstrap as bootstrap_mod
+    import gaffer.evaluation as evaluation_mod
+    import gaffer.models.assemble as assemble_mod
+    import gaffer.models.train as train_mod
+    import gaffer.optimize.scenarios as scenarios_mod
+
+    frame = pd.DataFrame({"code": [1, 2], "season_idx": [0, 0], "gw": [1, 1],
+                          "position": ["MID", "MID"], "team_code": [1, 2],
+                          "elo_diff": [0.0, 0.0]})
+
+    class _AttackingWithNoFeatureCols:
+        """No ``feature_cols`` attribute — the shape the getattr default
+        on ~line 443 exists to handle."""
+
+    base_bundle = {"attacking": _AttackingWithNoFeatureCols(),
+                  "minutes": object(), "calibration": None}
+
+    monkeypatch.setattr(train_mod, "load_training_frame",
+                        lambda: (frame, frame, None))
+    monkeypatch.setattr(evaluation_mod, "benchmark_split",
+                        lambda df, *a, **k: (df, df))
+    monkeypatch.setattr(train_mod, "train_all", lambda *a, **k: base_bundle)
+    # Every member is member zero: the point is the default's line, not the
+    # ensemble spread, so a real refit (slow) buys the test nothing.
+    monkeypatch.setattr(cn, "_seeded_bundle", lambda base, *a, **k: base)
+    # attacking_features() itself only has to be *callable*, not truthful —
+    # if the local import were still missing, referencing its bare name
+    # would raise NameError before this stub is ever consulted.
+    monkeypatch.setattr(train_mod, "attacking_features", lambda: [])
+    monkeypatch.setattr(assets_mod, "load_bootstrap_sample", lambda: None)
+    monkeypatch.setattr(bootstrap_mod, "scoring_table", lambda *a, **k: None)
+    monkeypatch.setattr(train_mod, "predict_components_simple",
+                        lambda member, rows: rows)
+    monkeypatch.setattr(assemble_mod, "assemble_ep", lambda comp, scoring: comp)
+    monkeypatch.setattr(assemble_mod, "apply_calibration", lambda ep, cal: ep)
+    monkeypatch.setattr(assemble_mod, "ep_matrix", lambda comp: pd.DataFrame(
+        {"code": comp["code"], "gw": comp["gw"], "ep": 5.0}))
+    monkeypatch.setattr(scenarios_mod, "xmins_by_player_gw",
+                        lambda comp: {(int(c), int(g)): 60.0
+                                      for c, g in zip(comp["code"], comp["gw"])})
+
+    out = cn.ensemble_rows()
+    assert list(out.columns) == ["code", "gw", "ep", "xmins", "sigma_est"]
+    assert len(out) == 2

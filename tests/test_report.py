@@ -82,6 +82,24 @@ def test_report_renders_without_a_wildcard_assessment(tmp_path):
     assert "None" not in html
 
 
+def test_the_hit_line_uses_the_served_hit_cost(tmp_path):
+    """v18b Task 6: the report used to hardcode ``4`` for the hit cost;
+    cli.py ~98-101 already reads it off ``restraint["hit_cost"]`` when the
+    ladder built, and the report must say the same number."""
+    from gaffer.config import Config
+
+    advice = _advice()
+    advice.hits = 1
+    advice.restraint = {"hit_cost": 5, "steps": []}
+    html = render_report(advice, out_dir=tmp_path).read_text()
+    assert "−5 pts" in html
+    assert "−4 pts" not in html
+
+    advice.restraint = None
+    html = render_report(advice, out_dir=tmp_path).read_text()
+    assert f"−{Config.hit_cost} pts" in html
+
+
 def _league_advice(stance="chase", lam=0.35, gap=42):
     advice = _advice()
     advice.strategy = {"lam": lam, "gap": gap, "weeks_left": 36,

@@ -223,8 +223,13 @@ def test_the_cli_advise_command_runs_the_pipeline_without_training(tmp_path, mon
     out = CliRunner().invoke(app, ["advise"])
     assert out.exit_code == 0, out.output
     assert seen == {"train": False, "entry_id": 1}
-    assert out.output.endswith("Report: reports/gw7.html\n"
-                               "no llm_command configured under [news]\n")
+    # v18b Task 6: the note is ``weekly_run``'s own ``log`` to print, once,
+    # when ``run_brief`` raises inside it — a stub that replaces the whole
+    # function (as this one does) never calls that ``log``, and ``cli.advise``
+    # no longer echoes ``result.brief["note"]`` itself, so the stubbed note
+    # here does not reach the CLI's output at all.
+    assert out.output.endswith("Report: reports/gw7.html\n")
+    assert "no llm_command configured under [news]" not in out.output
 
 
 def test_the_cli_still_exits_one_on_a_missing_model(tmp_path, monkeypatch):

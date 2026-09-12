@@ -42,7 +42,7 @@
 {% for s in a.sells %}<li>SELL <strong>{{ s.name }}</strong> ({{ s.ep }} xPts)
 {%- if advice.scenarios and s.frequency %} <span class="freq">{{ (s.frequency * 100) | round | int }}% of sims</span>{% endif %}</li>{% endfor %}
 {% if not a.buys %}<li>No transfers — bank the free transfer.</li>{% endif %}
-{% if a.hits %}<li class="warn">Taking {{ a.hits }} hit(s): −{{ a.hits * 4 }} pts, maths clears it.</li>{% endif %}
+{% if a.hits %}<li class="warn">Taking {{ a.hits }} hit(s): −{{ a.hits * hit_cost }} pts, maths clears it.</li>{% endif %}
 {% endif %}
 <li>Captain: <strong>{{ a.captain.name }}</strong>
 {%- if a.captain_note %} <span class="diff">({{ a.captain_note }})</span>{% endif %}
