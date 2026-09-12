@@ -1,0 +1,3884 @@
+{
+ "bar": 0.6,
+ "cap": {
+  "max_hits": 2,
+  "max_transfers": null
+ },
+ "cap_note": null,
+ "cap_rung": "hits2",
+ "cap_rung_requested": "hits2",
+ "cap_source": "config",
+ "chosen": "hits1",
+ "free_transfers": 1,
+ "gw": 4,
+ "gws": [
+  4,
+  5,
+  6,
+  7,
+  8,
+  9
+ ],
+ "n_draws": 2000,
+ "notes": [],
+ "recommended": null,
+ "recommended_note": "no served advice for GW4",
+ "rungs": [
+  {
+   "cost": 0,
+   "hits": 0,
+   "horizon_cost": 0,
+   "horizon_hits": 0,
+   "horizon_pts": 444.7,
+   "key": "bank",
+   "label": "bank",
+   "mean_pts": 444.4,
+   "objective": 332.38,
+   "p10_pts": 392.65,
+   "p90_pts": 498.28,
+   "p_beats_bank": null,
+   "p_beats_top": 0.1085,
+   "p_best": 0.0255,
+   "plan_by_gw": [
+    {
+     "bench": [
+      {
+       "code": 466052,
+       "ep": 3.88,
+       "name": "Cherki",
+       "position": "MID"
+      },
+      {
+       "code": 451284,
+       "ep": 3.73,
+       "name": "van Ewijk",
+       "position": "DEF"
+      },
+      {
+       "code": 219924,
+       "ep": 2.57,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 67089,
+       "ep": 0.4,
+       "name": "Dubravka",
+       "position": "GKP"
+      }
+     ],
+     "buys": [],
+     "captain": {
+      "code": 108416,
+      "ep": 8.3,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "expected_pts": 79.22,
+     "gw": 4,
+     "hits": 0,
+     "sells": [],
+     "vice": {
+      "code": 60307,
+      "ep": 8.22,
+      "name": "Gro\u00df",
+      "position": "MID"
+     },
+     "xi": [
+      {
+       "code": 489639,
+       "ep": 7.71,
+       "name": "Verbruggen",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 8.3,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 5.11,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 222531,
+       "ep": 7.46,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 8.22,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.61,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 243298,
+       "ep": 5.94,
+       "name": "Gakpo",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 6.46,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 219168,
+       "ep": 5.68,
+       "name": "Isak",
+       "position": "FWD"
+      },
+      {
+       "code": 475168,
+       "ep": 4.92,
+       "name": "Jo\u00e3o Pedro",
+       "position": "FWD"
+      },
+      {
+       "code": 494521,
+       "ep": 4.52,
+       "name": "Truffert",
+       "position": "DEF"
+      }
+     ]
+    },
+    {
+     "bench": [
+      {
+       "code": 451284,
+       "ep": 3.91,
+       "name": "van Ewijk",
+       "position": "DEF"
+      },
+      {
+       "code": 475168,
+       "ep": 4.11,
+       "name": "Jo\u00e3o Pedro",
+       "position": "FWD"
+      },
+      {
+       "code": 219924,
+       "ep": 2.65,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 67089,
+       "ep": 0.41,
+       "name": "Dubravka",
+       "position": "GKP"
+      }
+     ],
+     "buys": [],
+     "captain": {
+      "code": 108416,
+      "ep": 8.31,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "expected_pts": 71.99,
+     "gw": 5,
+     "hits": 0,
+     "sells": [],
+     "vice": {
+      "code": 222531,
+      "ep": 7.51,
+      "name": "Gibbs-White",
+      "position": "MID"
+     },
+     "xi": [
+      {
+       "code": 489639,
+       "ep": 4.05,
+       "name": "Verbruggen",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 8.31,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 6.29,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 222531,
+       "ep": 7.51,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 5.91,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.28,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 243298,
+       "ep": 5.54,
+       "name": "Gakpo",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 6.75,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 219168,
+       "ep": 4.47,
+       "name": "Isak",
+       "position": "FWD"
+      },
+      {
+       "code": 494521,
+       "ep": 4.21,
+       "name": "Truffert",
+       "position": "DEF"
+      },
+      {
+       "code": 466052,
+       "ep": 4.37,
+       "name": "Cherki",
+       "position": "MID"
+      }
+     ]
+    },
+    {
+     "bench": [
+      {
+       "code": 466052,
+       "ep": 3.74,
+       "name": "Cherki",
+       "position": "MID"
+      },
+      {
+       "code": 451284,
+       "ep": 3.69,
+       "name": "van Ewijk",
+       "position": "DEF"
+      },
+      {
+       "code": 219924,
+       "ep": 2.92,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 67089,
+       "ep": 0.42,
+       "name": "Dubravka",
+       "position": "GKP"
+      }
+     ],
+     "buys": [],
+     "captain": {
+      "code": 108416,
+      "ep": 7.92,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "expected_pts": 69.42,
+     "gw": 6,
+     "hits": 0,
+     "sells": [],
+     "vice": {
+      "code": 222531,
+      "ep": 6.64,
+      "name": "Gibbs-White",
+      "position": "MID"
+     },
+     "xi": [
+      {
+       "code": 489639,
+       "ep": 4.4,
+       "name": "Verbruggen",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 7.92,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 5.36,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 222531,
+       "ep": 6.64,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 6.54,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.09,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 243298,
+       "ep": 5.26,
+       "name": "Gakpo",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 5.94,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 219168,
+       "ep": 4.56,
+       "name": "Isak",
+       "position": "FWD"
+      },
+      {
+       "code": 475168,
+       "ep": 5.09,
+       "name": "Jo\u00e3o Pedro",
+       "position": "FWD"
+      },
+      {
+       "code": 494521,
+       "ep": 3.7,
+       "name": "Truffert",
+       "position": "DEF"
+      }
+     ]
+    },
+    {
+     "bench": [
+      {
+       "code": 466052,
+       "ep": 3.45,
+       "name": "Cherki",
+       "position": "MID"
+      },
+      {
+       "code": 475168,
+       "ep": 3.57,
+       "name": "Jo\u00e3o Pedro",
+       "position": "FWD"
+      },
+      {
+       "code": 219924,
+       "ep": 1.79,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 67089,
+       "ep": 0.61,
+       "name": "Dubravka",
+       "position": "GKP"
+      }
+     ],
+     "buys": [],
+     "captain": {
+      "code": 223094,
+      "ep": 9.31,
+      "name": "Haaland",
+      "position": "FWD"
+     },
+     "expected_pts": 76.67,
+     "gw": 7,
+     "hits": 0,
+     "sells": [],
+     "vice": {
+      "code": 108416,
+      "ep": 8.48,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "xi": [
+      {
+       "code": 489639,
+       "ep": 4.23,
+       "name": "Verbruggen",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 8.48,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 5.99,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 222531,
+       "ep": 6.22,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 6.81,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.58,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 243298,
+       "ep": 5.12,
+       "name": "Gakpo",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 9.31,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 219168,
+       "ep": 4.69,
+       "name": "Isak",
+       "position": "FWD"
+      },
+      {
+       "code": 494521,
+       "ep": 5.16,
+       "name": "Truffert",
+       "position": "DEF"
+      },
+      {
+       "code": 451284,
+       "ep": 4.75,
+       "name": "van Ewijk",
+       "position": "DEF"
+      }
+     ]
+    },
+    {
+     "bench": [
+      {
+       "code": 466052,
+       "ep": 3.7,
+       "name": "Cherki",
+       "position": "MID"
+      },
+      {
+       "code": 494521,
+       "ep": 3.52,
+       "name": "Truffert",
+       "position": "DEF"
+      },
+      {
+       "code": 219924,
+       "ep": 2.95,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 67089,
+       "ep": 0.32,
+       "name": "Dubravka",
+       "position": "GKP"
+      }
+     ],
+     "buys": [],
+     "captain": {
+      "code": 108416,
+      "ep": 8.17,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "expected_pts": 74.52,
+     "gw": 8,
+     "hits": 0,
+     "sells": [],
+     "vice": {
+      "code": 222531,
+      "ep": 7.27,
+      "name": "Gibbs-White",
+      "position": "MID"
+     },
+     "xi": [
+      {
+       "code": 489639,
+       "ep": 3.58,
+       "name": "Verbruggen",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 8.17,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 5.5,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 222531,
+       "ep": 7.27,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 6.39,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.89,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 243298,
+       "ep": 6.41,
+       "name": "Gakpo",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 6.62,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 219168,
+       "ep": 5.8,
+       "name": "Isak",
+       "position": "FWD"
+      },
+      {
+       "code": 475168,
+       "ep": 5.35,
+       "name": "Jo\u00e3o Pedro",
+       "position": "FWD"
+      },
+      {
+       "code": 451284,
+       "ep": 4.39,
+       "name": "van Ewijk",
+       "position": "DEF"
+      }
+     ]
+    },
+    {
+     "bench": [
+      {
+       "code": 466052,
+       "ep": 4.23,
+       "name": "Cherki",
+       "position": "MID"
+      },
+      {
+       "code": 475168,
+       "ep": 4.5,
+       "name": "Jo\u00e3o Pedro",
+       "position": "FWD"
+      },
+      {
+       "code": 219924,
+       "ep": 3.19,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 67089,
+       "ep": 0.41,
+       "name": "Dubravka",
+       "position": "GKP"
+      }
+     ],
+     "buys": [],
+     "captain": {
+      "code": 108416,
+      "ep": 8.74,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "expected_pts": 72.89,
+     "gw": 9,
+     "hits": 0,
+     "sells": [],
+     "vice": {
+      "code": 222531,
+      "ep": 7.81,
+      "name": "Gibbs-White",
+      "position": "MID"
+     },
+     "xi": [
+      {
+       "code": 489639,
+       "ep": 3.33,
+       "name": "Verbruggen",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 8.74,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 5.94,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 222531,
+       "ep": 7.81,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 6.02,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.22,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 243298,
+       "ep": 4.95,
+       "name": "Gakpo",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 7.01,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 219168,
+       "ep": 4.6,
+       "name": "Isak",
+       "position": "FWD"
+      },
+      {
+       "code": 494521,
+       "ep": 4.91,
+       "name": "Truffert",
+       "position": "DEF"
+      },
+      {
+       "code": 451284,
+       "ep": 4.61,
+       "name": "van Ewijk",
+       "position": "DEF"
+      }
+     ]
+    }
+   ],
+   "same_as": null,
+   "transfers": 0,
+   "vs_below": null,
+   "week_pts": 79.22
+  },
+  {
+   "cost": 0,
+   "hits": 0,
+   "horizon_cost": 0,
+   "horizon_hits": 0,
+   "horizon_pts": 483.74,
+   "key": "hits0",
+   "label": "free transfers only",
+   "mean_pts": 483.69,
+   "objective": 357.3,
+   "p10_pts": 430.28,
+   "p90_pts": 538.38,
+   "p_beats_bank": 0.949,
+   "p_beats_top": 0.4335,
+   "p_best": 0.344,
+   "plan_by_gw": [
+    {
+     "bench": [
+      {
+       "code": 466052,
+       "ep": 3.88,
+       "name": "Cherki",
+       "position": "MID"
+      },
+      {
+       "code": 451284,
+       "ep": 3.73,
+       "name": "van Ewijk",
+       "position": "DEF"
+      },
+      {
+       "code": 219924,
+       "ep": 2.57,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 67089,
+       "ep": 0.4,
+       "name": "Dubravka",
+       "position": "GKP"
+      }
+     ],
+     "buys": [
+      {
+       "code": 146426,
+       "ep": 6.83,
+       "name": "Ajayi",
+       "position": "DEF"
+      }
+     ],
+     "captain": {
+      "code": 108416,
+      "ep": 8.3,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "expected_pts": 81.54,
+     "gw": 4,
+     "hits": 0,
+     "sells": [
+      {
+       "code": 494521,
+       "ep": 4.52,
+       "name": "Truffert",
+       "position": "DEF"
+      }
+     ],
+     "vice": {
+      "code": 60307,
+      "ep": 8.22,
+      "name": "Gro\u00df",
+      "position": "MID"
+     },
+     "xi": [
+      {
+       "code": 489639,
+       "ep": 7.71,
+       "name": "Verbruggen",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 8.3,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 146426,
+       "ep": 6.83,
+       "name": "Ajayi",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 5.11,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 222531,
+       "ep": 7.46,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 8.22,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.61,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 243298,
+       "ep": 5.94,
+       "name": "Gakpo",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 6.46,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 219168,
+       "ep": 5.68,
+       "name": "Isak",
+       "position": "FWD"
+      },
+      {
+       "code": 475168,
+       "ep": 4.92,
+       "name": "Jo\u00e3o Pedro",
+       "position": "FWD"
+      }
+     ]
+    },
+    {
+     "bench": [
+      {
+       "code": 451284,
+       "ep": 3.91,
+       "name": "van Ewijk",
+       "position": "DEF"
+      },
+      {
+       "code": 475168,
+       "ep": 4.11,
+       "name": "Jo\u00e3o Pedro",
+       "position": "FWD"
+      },
+      {
+       "code": 219924,
+       "ep": 2.65,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 489639,
+       "ep": 4.05,
+       "name": "Verbruggen",
+       "position": "GKP"
+      }
+     ],
+     "buys": [
+      {
+       "code": 473284,
+       "ep": 7.26,
+       "name": "Tzolakis",
+       "position": "GKP"
+      }
+     ],
+     "captain": {
+      "code": 108416,
+      "ep": 8.31,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "expected_pts": 77.74,
+     "gw": 5,
+     "hits": 0,
+     "sells": [
+      {
+       "code": 67089,
+       "ep": 0.41,
+       "name": "Dubravka",
+       "position": "GKP"
+      }
+     ],
+     "vice": {
+      "code": 222531,
+      "ep": 7.51,
+      "name": "Gibbs-White",
+      "position": "MID"
+     },
+     "xi": [
+      {
+       "code": 473284,
+       "ep": 7.26,
+       "name": "Tzolakis",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 8.31,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 146426,
+       "ep": 6.75,
+       "name": "Ajayi",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 6.29,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 222531,
+       "ep": 7.51,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 5.91,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.28,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 243298,
+       "ep": 5.54,
+       "name": "Gakpo",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 6.75,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 219168,
+       "ep": 4.47,
+       "name": "Isak",
+       "position": "FWD"
+      },
+      {
+       "code": 466052,
+       "ep": 4.37,
+       "name": "Cherki",
+       "position": "MID"
+      }
+     ]
+    },
+    {
+     "bench": [
+      {
+       "code": 219168,
+       "ep": 4.56,
+       "name": "Isak",
+       "position": "FWD"
+      },
+      {
+       "code": 451284,
+       "ep": 3.69,
+       "name": "van Ewijk",
+       "position": "DEF"
+      },
+      {
+       "code": 219924,
+       "ep": 2.92,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 489639,
+       "ep": 4.4,
+       "name": "Verbruggen",
+       "position": "GKP"
+      }
+     ],
+     "buys": [
+      {
+       "code": 446008,
+       "ep": 7.2,
+       "name": "Mbeumo",
+       "position": "MID"
+      }
+     ],
+     "captain": {
+      "code": 108416,
+      "ep": 7.92,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "expected_pts": 78.06,
+     "gw": 6,
+     "hits": 0,
+     "sells": [
+      {
+       "code": 466052,
+       "ep": 3.74,
+       "name": "Cherki",
+       "position": "MID"
+      }
+     ],
+     "vice": {
+      "code": 446008,
+      "ep": 7.2,
+      "name": "Mbeumo",
+      "position": "MID"
+     },
+     "xi": [
+      {
+       "code": 473284,
+       "ep": 7.16,
+       "name": "Tzolakis",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 7.92,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 146426,
+       "ep": 6.93,
+       "name": "Ajayi",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 5.36,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 222531,
+       "ep": 6.64,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 6.54,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 446008,
+       "ep": 7.2,
+       "name": "Mbeumo",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.09,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 243298,
+       "ep": 5.26,
+       "name": "Gakpo",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 5.94,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 475168,
+       "ep": 5.09,
+       "name": "Jo\u00e3o Pedro",
+       "position": "FWD"
+      }
+     ]
+    },
+    {
+     "bench": [
+      {
+       "code": 219168,
+       "ep": 4.69,
+       "name": "Isak",
+       "position": "FWD"
+      },
+      {
+       "code": 475168,
+       "ep": 3.57,
+       "name": "Jo\u00e3o Pedro",
+       "position": "FWD"
+      },
+      {
+       "code": 219924,
+       "ep": 1.79,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 489639,
+       "ep": 4.23,
+       "name": "Verbruggen",
+       "position": "GKP"
+      }
+     ],
+     "buys": [],
+     "captain": {
+      "code": 223094,
+      "ep": 9.31,
+      "name": "Haaland",
+      "position": "FWD"
+     },
+     "expected_pts": 83.34,
+     "gw": 7,
+     "hits": 0,
+     "sells": [],
+     "vice": {
+      "code": 108416,
+      "ep": 8.48,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "xi": [
+      {
+       "code": 473284,
+       "ep": 7.3,
+       "name": "Tzolakis",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 8.48,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 146426,
+       "ep": 6.75,
+       "name": "Ajayi",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 5.99,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 222531,
+       "ep": 6.22,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 6.81,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 446008,
+       "ep": 6.7,
+       "name": "Mbeumo",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.58,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 243298,
+       "ep": 5.12,
+       "name": "Gakpo",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 9.31,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 451284,
+       "ep": 4.75,
+       "name": "van Ewijk",
+       "position": "DEF"
+      }
+     ]
+    },
+    {
+     "bench": [
+      {
+       "code": 475168,
+       "ep": 5.35,
+       "name": "Jo\u00e3o Pedro",
+       "position": "FWD"
+      },
+      {
+       "code": 451284,
+       "ep": 4.39,
+       "name": "van Ewijk",
+       "position": "DEF"
+      },
+      {
+       "code": 219924,
+       "ep": 2.95,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 489639,
+       "ep": 3.58,
+       "name": "Verbruggen",
+       "position": "GKP"
+      }
+     ],
+     "buys": [],
+     "captain": {
+      "code": 108416,
+      "ep": 8.17,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "expected_pts": 82.16,
+     "gw": 8,
+     "hits": 0,
+     "sells": [],
+     "vice": {
+      "code": 473284,
+      "ep": 7.47,
+      "name": "Tzolakis",
+      "position": "GKP"
+     },
+     "xi": [
+      {
+       "code": 473284,
+       "ep": 7.47,
+       "name": "Tzolakis",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 8.17,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 146426,
+       "ep": 6.79,
+       "name": "Ajayi",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 5.5,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 222531,
+       "ep": 7.27,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 6.39,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 446008,
+       "ep": 6.7,
+       "name": "Mbeumo",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.89,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 243298,
+       "ep": 6.41,
+       "name": "Gakpo",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 6.62,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 219168,
+       "ep": 5.8,
+       "name": "Isak",
+       "position": "FWD"
+      }
+     ]
+    },
+    {
+     "bench": [
+      {
+       "code": 219168,
+       "ep": 4.6,
+       "name": "Isak",
+       "position": "FWD"
+      },
+      {
+       "code": 475168,
+       "ep": 4.5,
+       "name": "Jo\u00e3o Pedro",
+       "position": "FWD"
+      },
+      {
+       "code": 219924,
+       "ep": 3.19,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 489639,
+       "ep": 3.33,
+       "name": "Verbruggen",
+       "position": "GKP"
+      }
+     ],
+     "buys": [],
+     "captain": {
+      "code": 108416,
+      "ep": 8.74,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "expected_pts": 80.91,
+     "gw": 9,
+     "hits": 0,
+     "sells": [],
+     "vice": {
+      "code": 222531,
+      "ep": 7.81,
+      "name": "Gibbs-White",
+      "position": "MID"
+     },
+     "xi": [
+      {
+       "code": 473284,
+       "ep": 7.39,
+       "name": "Tzolakis",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 8.74,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 146426,
+       "ep": 7.07,
+       "name": "Ajayi",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 5.94,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 222531,
+       "ep": 7.81,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 6.02,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 446008,
+       "ep": 6.41,
+       "name": "Mbeumo",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.22,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 243298,
+       "ep": 4.95,
+       "name": "Gakpo",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 7.01,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 451284,
+       "ep": 4.61,
+       "name": "van Ewijk",
+       "position": "DEF"
+      }
+     ]
+    }
+   ],
+   "same_as": null,
+   "transfers": 1,
+   "vs_below": {
+    "delta_cost": 0,
+    "delta_cost_now": 0,
+    "delta_mean_pts": 39.29,
+    "dropped_buys": [],
+    "dropped_sells": [],
+    "extra_buys": [
+     {
+      "code": 146426,
+      "ep": 6.83,
+      "name": "Ajayi",
+      "position": "DEF"
+     }
+    ],
+    "extra_sells": [
+     {
+      "code": 494521,
+      "ep": 4.52,
+      "name": "Truffert",
+      "position": "DEF"
+     }
+    ]
+   },
+   "week_pts": 81.54
+  },
+  {
+   "cost": 4,
+   "hits": 1,
+   "horizon_cost": 8,
+   "horizon_hits": 2,
+   "horizon_pts": 490.91,
+   "key": "hits1",
+   "label": "1 hit",
+   "mean_pts": 490.84,
+   "objective": 361.52,
+   "p10_pts": 435.44,
+   "p90_pts": 546.08,
+   "p_beats_bank": 0.914,
+   "p_beats_top": 0.5935,
+   "p_best": 0.346,
+   "plan_by_gw": [
+    {
+     "bench": [
+      {
+       "code": 475168,
+       "ep": 4.92,
+       "name": "Jo\u00e3o Pedro",
+       "position": "FWD"
+      },
+      {
+       "code": 451284,
+       "ep": 3.73,
+       "name": "van Ewijk",
+       "position": "DEF"
+      },
+      {
+       "code": 219924,
+       "ep": 2.57,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 67089,
+       "ep": 0.4,
+       "name": "Dubravka",
+       "position": "GKP"
+      }
+     ],
+     "buys": [
+      {
+       "code": 146426,
+       "ep": 6.83,
+       "name": "Ajayi",
+       "position": "DEF"
+      },
+      {
+       "code": 244851,
+       "ep": 8.32,
+       "name": "Palmer",
+       "position": "MID"
+      }
+     ],
+     "captain": {
+      "code": 244851,
+      "ep": 8.32,
+      "name": "Palmer",
+      "position": "MID"
+     },
+     "expected_pts": 80.97,
+     "gw": 4,
+     "hits": 1,
+     "sells": [
+      {
+       "code": 494521,
+       "ep": 4.52,
+       "name": "Truffert",
+       "position": "DEF"
+      },
+      {
+       "code": 466052,
+       "ep": 3.88,
+       "name": "Cherki",
+       "position": "MID"
+      }
+     ],
+     "vice": {
+      "code": 108416,
+      "ep": 8.3,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "xi": [
+      {
+       "code": 489639,
+       "ep": 7.71,
+       "name": "Verbruggen",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 8.3,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 146426,
+       "ep": 6.83,
+       "name": "Ajayi",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 5.11,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 244851,
+       "ep": 8.32,
+       "name": "Palmer",
+       "position": "MID"
+      },
+      {
+       "code": 222531,
+       "ep": 7.46,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 8.22,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.61,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 243298,
+       "ep": 5.94,
+       "name": "Gakpo",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 6.46,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 219168,
+       "ep": 5.68,
+       "name": "Isak",
+       "position": "FWD"
+      }
+     ]
+    },
+    {
+     "bench": [
+      {
+       "code": 219168,
+       "ep": 4.47,
+       "name": "Isak",
+       "position": "FWD"
+      },
+      {
+       "code": 451284,
+       "ep": 3.91,
+       "name": "van Ewijk",
+       "position": "DEF"
+      },
+      {
+       "code": 219924,
+       "ep": 2.65,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 489639,
+       "ep": 4.05,
+       "name": "Verbruggen",
+       "position": "GKP"
+      }
+     ],
+     "buys": [
+      {
+       "code": 473284,
+       "ep": 7.26,
+       "name": "Tzolakis",
+       "position": "GKP"
+      },
+      {
+       "code": 444102,
+       "ep": 5.07,
+       "name": "Evanilson",
+       "position": "FWD"
+      }
+     ],
+     "captain": {
+      "code": 108416,
+      "ep": 8.31,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "expected_pts": 77.03,
+     "gw": 5,
+     "hits": 1,
+     "sells": [
+      {
+       "code": 475168,
+       "ep": 4.11,
+       "name": "Jo\u00e3o Pedro",
+       "position": "FWD"
+      },
+      {
+       "code": 67089,
+       "ep": 0.41,
+       "name": "Dubravka",
+       "position": "GKP"
+      }
+     ],
+     "vice": {
+      "code": 222531,
+      "ep": 7.51,
+      "name": "Gibbs-White",
+      "position": "MID"
+     },
+     "xi": [
+      {
+       "code": 473284,
+       "ep": 7.26,
+       "name": "Tzolakis",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 8.31,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 146426,
+       "ep": 6.75,
+       "name": "Ajayi",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 6.29,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 244851,
+       "ep": 7.06,
+       "name": "Palmer",
+       "position": "MID"
+      },
+      {
+       "code": 222531,
+       "ep": 7.51,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 5.91,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.28,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 243298,
+       "ep": 5.54,
+       "name": "Gakpo",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 6.75,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 444102,
+       "ep": 5.07,
+       "name": "Evanilson",
+       "position": "FWD"
+      }
+     ]
+    },
+    {
+     "bench": [
+      {
+       "code": 219168,
+       "ep": 4.56,
+       "name": "Isak",
+       "position": "FWD"
+      },
+      {
+       "code": 451284,
+       "ep": 3.69,
+       "name": "van Ewijk",
+       "position": "DEF"
+      },
+      {
+       "code": 219924,
+       "ep": 2.92,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 489639,
+       "ep": 4.4,
+       "name": "Verbruggen",
+       "position": "GKP"
+      }
+     ],
+     "buys": [
+      {
+       "code": 446008,
+       "ep": 7.2,
+       "name": "Mbeumo",
+       "position": "MID"
+      }
+     ],
+     "captain": {
+      "code": 108416,
+      "ep": 7.92,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "expected_pts": 79.14,
+     "gw": 6,
+     "hits": 0,
+     "sells": [
+      {
+       "code": 243298,
+       "ep": 5.26,
+       "name": "Gakpo",
+       "position": "MID"
+      }
+     ],
+     "vice": {
+      "code": 446008,
+      "ep": 7.2,
+      "name": "Mbeumo",
+      "position": "MID"
+     },
+     "xi": [
+      {
+       "code": 473284,
+       "ep": 7.16,
+       "name": "Tzolakis",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 7.92,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 146426,
+       "ep": 6.93,
+       "name": "Ajayi",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 5.36,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 244851,
+       "ep": 6.52,
+       "name": "Palmer",
+       "position": "MID"
+      },
+      {
+       "code": 222531,
+       "ep": 6.64,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 6.54,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 446008,
+       "ep": 7.2,
+       "name": "Mbeumo",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.09,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 5.94,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 444102,
+       "ep": 4.91,
+       "name": "Evanilson",
+       "position": "FWD"
+      }
+     ]
+    },
+    {
+     "bench": [
+      {
+       "code": 451284,
+       "ep": 4.75,
+       "name": "van Ewijk",
+       "position": "DEF"
+      },
+      {
+       "code": 219168,
+       "ep": 4.69,
+       "name": "Isak",
+       "position": "FWD"
+      },
+      {
+       "code": 219924,
+       "ep": 1.79,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 489639,
+       "ep": 4.23,
+       "name": "Verbruggen",
+       "position": "GKP"
+      }
+     ],
+     "buys": [],
+     "captain": {
+      "code": 223094,
+      "ep": 9.31,
+      "name": "Haaland",
+      "position": "FWD"
+     },
+     "expected_pts": 86.73,
+     "gw": 7,
+     "hits": 0,
+     "sells": [],
+     "vice": {
+      "code": 108416,
+      "ep": 8.48,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "xi": [
+      {
+       "code": 473284,
+       "ep": 7.3,
+       "name": "Tzolakis",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 8.48,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 146426,
+       "ep": 6.75,
+       "name": "Ajayi",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 5.99,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 244851,
+       "ep": 6.98,
+       "name": "Palmer",
+       "position": "MID"
+      },
+      {
+       "code": 222531,
+       "ep": 6.22,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 6.81,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 446008,
+       "ep": 6.7,
+       "name": "Mbeumo",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.58,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 9.31,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 444102,
+       "ep": 6.29,
+       "name": "Evanilson",
+       "position": "FWD"
+      }
+     ]
+    },
+    {
+     "bench": [
+      {
+       "code": 444102,
+       "ep": 4.51,
+       "name": "Evanilson",
+       "position": "FWD"
+      },
+      {
+       "code": 451284,
+       "ep": 4.39,
+       "name": "van Ewijk",
+       "position": "DEF"
+      },
+      {
+       "code": 219924,
+       "ep": 2.95,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 489639,
+       "ep": 3.58,
+       "name": "Verbruggen",
+       "position": "GKP"
+      }
+     ],
+     "buys": [],
+     "captain": {
+      "code": 244851,
+      "ep": 8.19,
+      "name": "Palmer",
+      "position": "MID"
+     },
+     "expected_pts": 83.96,
+     "gw": 8,
+     "hits": 0,
+     "sells": [],
+     "vice": {
+      "code": 108416,
+      "ep": 8.17,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "xi": [
+      {
+       "code": 473284,
+       "ep": 7.47,
+       "name": "Tzolakis",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 8.17,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 146426,
+       "ep": 6.79,
+       "name": "Ajayi",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 5.5,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 244851,
+       "ep": 8.19,
+       "name": "Palmer",
+       "position": "MID"
+      },
+      {
+       "code": 222531,
+       "ep": 7.27,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 6.39,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 446008,
+       "ep": 6.7,
+       "name": "Mbeumo",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.89,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 6.62,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 219168,
+       "ep": 5.8,
+       "name": "Isak",
+       "position": "FWD"
+      }
+     ]
+    },
+    {
+     "bench": [
+      {
+       "code": 451284,
+       "ep": 4.61,
+       "name": "van Ewijk",
+       "position": "DEF"
+      },
+      {
+       "code": 219168,
+       "ep": 4.6,
+       "name": "Isak",
+       "position": "FWD"
+      },
+      {
+       "code": 219924,
+       "ep": 3.19,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 489639,
+       "ep": 3.33,
+       "name": "Verbruggen",
+       "position": "GKP"
+      }
+     ],
+     "buys": [],
+     "captain": {
+      "code": 108416,
+      "ep": 8.74,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "expected_pts": 83.07,
+     "gw": 9,
+     "hits": 0,
+     "sells": [],
+     "vice": {
+      "code": 222531,
+      "ep": 7.81,
+      "name": "Gibbs-White",
+      "position": "MID"
+     },
+     "xi": [
+      {
+       "code": 473284,
+       "ep": 7.39,
+       "name": "Tzolakis",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 8.74,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 146426,
+       "ep": 7.07,
+       "name": "Ajayi",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 5.94,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 244851,
+       "ep": 6.54,
+       "name": "Palmer",
+       "position": "MID"
+      },
+      {
+       "code": 222531,
+       "ep": 7.81,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 6.02,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 446008,
+       "ep": 6.41,
+       "name": "Mbeumo",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.22,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 7.01,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 444102,
+       "ep": 5.19,
+       "name": "Evanilson",
+       "position": "FWD"
+      }
+     ]
+    }
+   ],
+   "same_as": null,
+   "transfers": 2,
+   "vs_below": {
+    "delta_cost": 8,
+    "delta_cost_now": 4,
+    "delta_mean_pts": 7.15,
+    "dropped_buys": [],
+    "dropped_sells": [],
+    "extra_buys": [
+     {
+      "code": 244851,
+      "ep": 8.32,
+      "name": "Palmer",
+      "position": "MID"
+     }
+    ],
+    "extra_sells": [
+     {
+      "code": 466052,
+      "ep": 3.88,
+      "name": "Cherki",
+      "position": "MID"
+     }
+    ]
+   },
+   "week_pts": 80.97
+  },
+  {
+   "cost": 8,
+   "hits": 2,
+   "horizon_cost": 12,
+   "horizon_hits": 3,
+   "horizon_pts": 488.9,
+   "key": "hits2",
+   "label": "2 hits",
+   "mean_pts": 488.74,
+   "objective": 362.3,
+   "p10_pts": 434.68,
+   "p90_pts": 544.79,
+   "p_beats_bank": 0.8915,
+   "p_beats_top": 0.02,
+   "p_best": 0.143,
+   "plan_by_gw": [
+    {
+     "bench": [
+      {
+       "code": 219168,
+       "ep": 5.68,
+       "name": "Isak",
+       "position": "FWD"
+      },
+      {
+       "code": 451284,
+       "ep": 3.73,
+       "name": "van Ewijk",
+       "position": "DEF"
+      },
+      {
+       "code": 219924,
+       "ep": 2.57,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 67089,
+       "ep": 0.4,
+       "name": "Dubravka",
+       "position": "GKP"
+      }
+     ],
+     "buys": [
+      {
+       "code": 146426,
+       "ep": 6.83,
+       "name": "Ajayi",
+       "position": "DEF"
+      },
+      {
+       "code": 244851,
+       "ep": 8.32,
+       "name": "Palmer",
+       "position": "MID"
+      },
+      {
+       "code": 444102,
+       "ep": 6.08,
+       "name": "Evanilson",
+       "position": "FWD"
+      }
+     ],
+     "captain": {
+      "code": 244851,
+      "ep": 8.32,
+      "name": "Palmer",
+      "position": "MID"
+     },
+     "expected_pts": 77.37,
+     "gw": 4,
+     "hits": 2,
+     "sells": [
+      {
+       "code": 475168,
+       "ep": 4.92,
+       "name": "Jo\u00e3o Pedro",
+       "position": "FWD"
+      },
+      {
+       "code": 494521,
+       "ep": 4.52,
+       "name": "Truffert",
+       "position": "DEF"
+      },
+      {
+       "code": 466052,
+       "ep": 3.88,
+       "name": "Cherki",
+       "position": "MID"
+      }
+     ],
+     "vice": {
+      "code": 108416,
+      "ep": 8.3,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "xi": [
+      {
+       "code": 489639,
+       "ep": 7.71,
+       "name": "Verbruggen",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 8.3,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 146426,
+       "ep": 6.83,
+       "name": "Ajayi",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 5.11,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 244851,
+       "ep": 8.32,
+       "name": "Palmer",
+       "position": "MID"
+      },
+      {
+       "code": 222531,
+       "ep": 7.46,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 8.22,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.61,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 243298,
+       "ep": 5.94,
+       "name": "Gakpo",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 6.46,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 444102,
+       "ep": 6.08,
+       "name": "Evanilson",
+       "position": "FWD"
+      }
+     ]
+    },
+    {
+     "bench": [
+      {
+       "code": 219168,
+       "ep": 4.47,
+       "name": "Isak",
+       "position": "FWD"
+      },
+      {
+       "code": 451284,
+       "ep": 3.91,
+       "name": "van Ewijk",
+       "position": "DEF"
+      },
+      {
+       "code": 219924,
+       "ep": 2.65,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 489639,
+       "ep": 4.05,
+       "name": "Verbruggen",
+       "position": "GKP"
+      }
+     ],
+     "buys": [
+      {
+       "code": 473284,
+       "ep": 7.26,
+       "name": "Tzolakis",
+       "position": "GKP"
+      },
+      {
+       "code": 446008,
+       "ep": 7.13,
+       "name": "Mbeumo",
+       "position": "MID"
+      }
+     ],
+     "captain": {
+      "code": 108416,
+      "ep": 8.31,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "expected_pts": 78.63,
+     "gw": 5,
+     "hits": 1,
+     "sells": [
+      {
+       "code": 243298,
+       "ep": 5.54,
+       "name": "Gakpo",
+       "position": "MID"
+      },
+      {
+       "code": 67089,
+       "ep": 0.41,
+       "name": "Dubravka",
+       "position": "GKP"
+      }
+     ],
+     "vice": {
+      "code": 222531,
+      "ep": 7.51,
+      "name": "Gibbs-White",
+      "position": "MID"
+     },
+     "xi": [
+      {
+       "code": 473284,
+       "ep": 7.26,
+       "name": "Tzolakis",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 8.31,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 146426,
+       "ep": 6.75,
+       "name": "Ajayi",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 6.29,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 244851,
+       "ep": 7.06,
+       "name": "Palmer",
+       "position": "MID"
+      },
+      {
+       "code": 222531,
+       "ep": 7.51,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 5.91,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 446008,
+       "ep": 7.13,
+       "name": "Mbeumo",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.28,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 6.75,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 444102,
+       "ep": 5.07,
+       "name": "Evanilson",
+       "position": "FWD"
+      }
+     ]
+    },
+    {
+     "bench": [
+      {
+       "code": 219168,
+       "ep": 4.56,
+       "name": "Isak",
+       "position": "FWD"
+      },
+      {
+       "code": 451284,
+       "ep": 3.69,
+       "name": "van Ewijk",
+       "position": "DEF"
+      },
+      {
+       "code": 219924,
+       "ep": 2.92,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 489639,
+       "ep": 4.4,
+       "name": "Verbruggen",
+       "position": "GKP"
+      }
+     ],
+     "buys": [],
+     "captain": {
+      "code": 108416,
+      "ep": 7.92,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "expected_pts": 79.14,
+     "gw": 6,
+     "hits": 0,
+     "sells": [],
+     "vice": {
+      "code": 446008,
+      "ep": 7.2,
+      "name": "Mbeumo",
+      "position": "MID"
+     },
+     "xi": [
+      {
+       "code": 473284,
+       "ep": 7.16,
+       "name": "Tzolakis",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 7.92,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 146426,
+       "ep": 6.93,
+       "name": "Ajayi",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 5.36,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 244851,
+       "ep": 6.52,
+       "name": "Palmer",
+       "position": "MID"
+      },
+      {
+       "code": 222531,
+       "ep": 6.64,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 6.54,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 446008,
+       "ep": 7.2,
+       "name": "Mbeumo",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.09,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 5.94,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 444102,
+       "ep": 4.91,
+       "name": "Evanilson",
+       "position": "FWD"
+      }
+     ]
+    },
+    {
+     "bench": [
+      {
+       "code": 451284,
+       "ep": 4.75,
+       "name": "van Ewijk",
+       "position": "DEF"
+      },
+      {
+       "code": 219168,
+       "ep": 4.69,
+       "name": "Isak",
+       "position": "FWD"
+      },
+      {
+       "code": 219924,
+       "ep": 1.79,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 489639,
+       "ep": 4.23,
+       "name": "Verbruggen",
+       "position": "GKP"
+      }
+     ],
+     "buys": [],
+     "captain": {
+      "code": 223094,
+      "ep": 9.31,
+      "name": "Haaland",
+      "position": "FWD"
+     },
+     "expected_pts": 86.73,
+     "gw": 7,
+     "hits": 0,
+     "sells": [],
+     "vice": {
+      "code": 108416,
+      "ep": 8.48,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "xi": [
+      {
+       "code": 473284,
+       "ep": 7.3,
+       "name": "Tzolakis",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 8.48,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 146426,
+       "ep": 6.75,
+       "name": "Ajayi",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 5.99,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 244851,
+       "ep": 6.98,
+       "name": "Palmer",
+       "position": "MID"
+      },
+      {
+       "code": 222531,
+       "ep": 6.22,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 6.81,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 446008,
+       "ep": 6.7,
+       "name": "Mbeumo",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.58,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 9.31,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 444102,
+       "ep": 6.29,
+       "name": "Evanilson",
+       "position": "FWD"
+      }
+     ]
+    },
+    {
+     "bench": [
+      {
+       "code": 444102,
+       "ep": 4.51,
+       "name": "Evanilson",
+       "position": "FWD"
+      },
+      {
+       "code": 451284,
+       "ep": 4.39,
+       "name": "van Ewijk",
+       "position": "DEF"
+      },
+      {
+       "code": 219924,
+       "ep": 2.95,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 489639,
+       "ep": 3.58,
+       "name": "Verbruggen",
+       "position": "GKP"
+      }
+     ],
+     "buys": [],
+     "captain": {
+      "code": 244851,
+      "ep": 8.19,
+      "name": "Palmer",
+      "position": "MID"
+     },
+     "expected_pts": 83.96,
+     "gw": 8,
+     "hits": 0,
+     "sells": [],
+     "vice": {
+      "code": 108416,
+      "ep": 8.17,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "xi": [
+      {
+       "code": 473284,
+       "ep": 7.47,
+       "name": "Tzolakis",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 8.17,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 146426,
+       "ep": 6.79,
+       "name": "Ajayi",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 5.5,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 244851,
+       "ep": 8.19,
+       "name": "Palmer",
+       "position": "MID"
+      },
+      {
+       "code": 222531,
+       "ep": 7.27,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 6.39,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 446008,
+       "ep": 6.7,
+       "name": "Mbeumo",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.89,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 6.62,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 219168,
+       "ep": 5.8,
+       "name": "Isak",
+       "position": "FWD"
+      }
+     ]
+    },
+    {
+     "bench": [
+      {
+       "code": 451284,
+       "ep": 4.61,
+       "name": "van Ewijk",
+       "position": "DEF"
+      },
+      {
+       "code": 219168,
+       "ep": 4.6,
+       "name": "Isak",
+       "position": "FWD"
+      },
+      {
+       "code": 219924,
+       "ep": 3.19,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 489639,
+       "ep": 3.33,
+       "name": "Verbruggen",
+       "position": "GKP"
+      }
+     ],
+     "buys": [],
+     "captain": {
+      "code": 108416,
+      "ep": 8.74,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "expected_pts": 83.07,
+     "gw": 9,
+     "hits": 0,
+     "sells": [],
+     "vice": {
+      "code": 222531,
+      "ep": 7.81,
+      "name": "Gibbs-White",
+      "position": "MID"
+     },
+     "xi": [
+      {
+       "code": 473284,
+       "ep": 7.39,
+       "name": "Tzolakis",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 8.74,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 146426,
+       "ep": 7.07,
+       "name": "Ajayi",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 5.94,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 244851,
+       "ep": 6.54,
+       "name": "Palmer",
+       "position": "MID"
+      },
+      {
+       "code": 222531,
+       "ep": 7.81,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 6.02,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 446008,
+       "ep": 6.41,
+       "name": "Mbeumo",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.22,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 7.01,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 444102,
+       "ep": 5.19,
+       "name": "Evanilson",
+       "position": "FWD"
+      }
+     ]
+    }
+   ],
+   "same_as": null,
+   "transfers": 3,
+   "vs_below": {
+    "delta_cost": 4,
+    "delta_cost_now": 4,
+    "delta_mean_pts": -2.1,
+    "dropped_buys": [],
+    "dropped_sells": [],
+    "extra_buys": [
+     {
+      "code": 444102,
+      "ep": 6.08,
+      "name": "Evanilson",
+      "position": "FWD"
+     }
+    ],
+    "extra_sells": [
+     {
+      "code": 475168,
+      "ep": 4.92,
+      "name": "Jo\u00e3o Pedro",
+      "position": "FWD"
+     }
+    ]
+   },
+   "week_pts": 77.37
+  },
+  {
+   "cost": 12,
+   "hits": 3,
+   "horizon_cost": 12,
+   "horizon_hits": 3,
+   "horizon_pts": 488.9,
+   "key": "hits3",
+   "label": "3 hits",
+   "mean_pts": 488.74,
+   "objective": 363.1,
+   "p10_pts": 434.68,
+   "p90_pts": 544.79,
+   "p_beats_bank": 0.8915,
+   "p_beats_top": null,
+   "p_best": 0.1415,
+   "plan_by_gw": [
+    {
+     "bench": [
+      {
+       "code": 219168,
+       "ep": 5.68,
+       "name": "Isak",
+       "position": "FWD"
+      },
+      {
+       "code": 451284,
+       "ep": 3.73,
+       "name": "van Ewijk",
+       "position": "DEF"
+      },
+      {
+       "code": 219924,
+       "ep": 2.57,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 473284,
+       "ep": 7.25,
+       "name": "Tzolakis",
+       "position": "GKP"
+      }
+     ],
+     "buys": [
+      {
+       "code": 473284,
+       "ep": 7.25,
+       "name": "Tzolakis",
+       "position": "GKP"
+      },
+      {
+       "code": 146426,
+       "ep": 6.83,
+       "name": "Ajayi",
+       "position": "DEF"
+      },
+      {
+       "code": 244851,
+       "ep": 8.32,
+       "name": "Palmer",
+       "position": "MID"
+      },
+      {
+       "code": 444102,
+       "ep": 6.08,
+       "name": "Evanilson",
+       "position": "FWD"
+      }
+     ],
+     "captain": {
+      "code": 244851,
+      "ep": 8.32,
+      "name": "Palmer",
+      "position": "MID"
+     },
+     "expected_pts": 73.37,
+     "gw": 4,
+     "hits": 3,
+     "sells": [
+      {
+       "code": 475168,
+       "ep": 4.92,
+       "name": "Jo\u00e3o Pedro",
+       "position": "FWD"
+      },
+      {
+       "code": 494521,
+       "ep": 4.52,
+       "name": "Truffert",
+       "position": "DEF"
+      },
+      {
+       "code": 466052,
+       "ep": 3.88,
+       "name": "Cherki",
+       "position": "MID"
+      },
+      {
+       "code": 67089,
+       "ep": 0.4,
+       "name": "Dubravka",
+       "position": "GKP"
+      }
+     ],
+     "vice": {
+      "code": 108416,
+      "ep": 8.3,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "xi": [
+      {
+       "code": 489639,
+       "ep": 7.71,
+       "name": "Verbruggen",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 8.3,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 146426,
+       "ep": 6.83,
+       "name": "Ajayi",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 5.11,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 244851,
+       "ep": 8.32,
+       "name": "Palmer",
+       "position": "MID"
+      },
+      {
+       "code": 222531,
+       "ep": 7.46,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 8.22,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.61,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 243298,
+       "ep": 5.94,
+       "name": "Gakpo",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 6.46,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 444102,
+       "ep": 6.08,
+       "name": "Evanilson",
+       "position": "FWD"
+      }
+     ]
+    },
+    {
+     "bench": [
+      {
+       "code": 219168,
+       "ep": 4.47,
+       "name": "Isak",
+       "position": "FWD"
+      },
+      {
+       "code": 451284,
+       "ep": 3.91,
+       "name": "van Ewijk",
+       "position": "DEF"
+      },
+      {
+       "code": 219924,
+       "ep": 2.65,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 489639,
+       "ep": 4.05,
+       "name": "Verbruggen",
+       "position": "GKP"
+      }
+     ],
+     "buys": [
+      {
+       "code": 446008,
+       "ep": 7.13,
+       "name": "Mbeumo",
+       "position": "MID"
+      }
+     ],
+     "captain": {
+      "code": 108416,
+      "ep": 8.31,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "expected_pts": 82.63,
+     "gw": 5,
+     "hits": 0,
+     "sells": [
+      {
+       "code": 243298,
+       "ep": 5.54,
+       "name": "Gakpo",
+       "position": "MID"
+      }
+     ],
+     "vice": {
+      "code": 222531,
+      "ep": 7.51,
+      "name": "Gibbs-White",
+      "position": "MID"
+     },
+     "xi": [
+      {
+       "code": 473284,
+       "ep": 7.26,
+       "name": "Tzolakis",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 8.31,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 146426,
+       "ep": 6.75,
+       "name": "Ajayi",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 6.29,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 244851,
+       "ep": 7.06,
+       "name": "Palmer",
+       "position": "MID"
+      },
+      {
+       "code": 222531,
+       "ep": 7.51,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 5.91,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 446008,
+       "ep": 7.13,
+       "name": "Mbeumo",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.28,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 6.75,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 444102,
+       "ep": 5.07,
+       "name": "Evanilson",
+       "position": "FWD"
+      }
+     ]
+    },
+    {
+     "bench": [
+      {
+       "code": 219168,
+       "ep": 4.56,
+       "name": "Isak",
+       "position": "FWD"
+      },
+      {
+       "code": 451284,
+       "ep": 3.69,
+       "name": "van Ewijk",
+       "position": "DEF"
+      },
+      {
+       "code": 219924,
+       "ep": 2.92,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 489639,
+       "ep": 4.4,
+       "name": "Verbruggen",
+       "position": "GKP"
+      }
+     ],
+     "buys": [],
+     "captain": {
+      "code": 108416,
+      "ep": 7.92,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "expected_pts": 79.14,
+     "gw": 6,
+     "hits": 0,
+     "sells": [],
+     "vice": {
+      "code": 446008,
+      "ep": 7.2,
+      "name": "Mbeumo",
+      "position": "MID"
+     },
+     "xi": [
+      {
+       "code": 473284,
+       "ep": 7.16,
+       "name": "Tzolakis",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 7.92,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 146426,
+       "ep": 6.93,
+       "name": "Ajayi",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 5.36,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 244851,
+       "ep": 6.52,
+       "name": "Palmer",
+       "position": "MID"
+      },
+      {
+       "code": 222531,
+       "ep": 6.64,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 6.54,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 446008,
+       "ep": 7.2,
+       "name": "Mbeumo",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.09,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 5.94,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 444102,
+       "ep": 4.91,
+       "name": "Evanilson",
+       "position": "FWD"
+      }
+     ]
+    },
+    {
+     "bench": [
+      {
+       "code": 451284,
+       "ep": 4.75,
+       "name": "van Ewijk",
+       "position": "DEF"
+      },
+      {
+       "code": 219168,
+       "ep": 4.69,
+       "name": "Isak",
+       "position": "FWD"
+      },
+      {
+       "code": 219924,
+       "ep": 1.79,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 489639,
+       "ep": 4.23,
+       "name": "Verbruggen",
+       "position": "GKP"
+      }
+     ],
+     "buys": [],
+     "captain": {
+      "code": 223094,
+      "ep": 9.31,
+      "name": "Haaland",
+      "position": "FWD"
+     },
+     "expected_pts": 86.73,
+     "gw": 7,
+     "hits": 0,
+     "sells": [],
+     "vice": {
+      "code": 108416,
+      "ep": 8.48,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "xi": [
+      {
+       "code": 473284,
+       "ep": 7.3,
+       "name": "Tzolakis",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 8.48,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 146426,
+       "ep": 6.75,
+       "name": "Ajayi",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 5.99,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 244851,
+       "ep": 6.98,
+       "name": "Palmer",
+       "position": "MID"
+      },
+      {
+       "code": 222531,
+       "ep": 6.22,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 6.81,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 446008,
+       "ep": 6.7,
+       "name": "Mbeumo",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.58,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 9.31,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 444102,
+       "ep": 6.29,
+       "name": "Evanilson",
+       "position": "FWD"
+      }
+     ]
+    },
+    {
+     "bench": [
+      {
+       "code": 444102,
+       "ep": 4.51,
+       "name": "Evanilson",
+       "position": "FWD"
+      },
+      {
+       "code": 451284,
+       "ep": 4.39,
+       "name": "van Ewijk",
+       "position": "DEF"
+      },
+      {
+       "code": 219924,
+       "ep": 2.95,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 489639,
+       "ep": 3.58,
+       "name": "Verbruggen",
+       "position": "GKP"
+      }
+     ],
+     "buys": [],
+     "captain": {
+      "code": 244851,
+      "ep": 8.19,
+      "name": "Palmer",
+      "position": "MID"
+     },
+     "expected_pts": 83.96,
+     "gw": 8,
+     "hits": 0,
+     "sells": [],
+     "vice": {
+      "code": 108416,
+      "ep": 8.17,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "xi": [
+      {
+       "code": 473284,
+       "ep": 7.47,
+       "name": "Tzolakis",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 8.17,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 146426,
+       "ep": 6.79,
+       "name": "Ajayi",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 5.5,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 244851,
+       "ep": 8.19,
+       "name": "Palmer",
+       "position": "MID"
+      },
+      {
+       "code": 222531,
+       "ep": 7.27,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 6.39,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 446008,
+       "ep": 6.7,
+       "name": "Mbeumo",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.89,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 6.62,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 219168,
+       "ep": 5.8,
+       "name": "Isak",
+       "position": "FWD"
+      }
+     ]
+    },
+    {
+     "bench": [
+      {
+       "code": 451284,
+       "ep": 4.61,
+       "name": "van Ewijk",
+       "position": "DEF"
+      },
+      {
+       "code": 219168,
+       "ep": 4.6,
+       "name": "Isak",
+       "position": "FWD"
+      },
+      {
+       "code": 219924,
+       "ep": 3.19,
+       "name": "Diop",
+       "position": "DEF"
+      },
+      {
+       "code": 489639,
+       "ep": 3.33,
+       "name": "Verbruggen",
+       "position": "GKP"
+      }
+     ],
+     "buys": [],
+     "captain": {
+      "code": 108416,
+      "ep": 8.74,
+      "name": "Egan",
+      "position": "DEF"
+     },
+     "expected_pts": 83.07,
+     "gw": 9,
+     "hits": 0,
+     "sells": [],
+     "vice": {
+      "code": 222531,
+      "ep": 7.81,
+      "name": "Gibbs-White",
+      "position": "MID"
+     },
+     "xi": [
+      {
+       "code": 473284,
+       "ep": 7.39,
+       "name": "Tzolakis",
+       "position": "GKP"
+      },
+      {
+       "code": 108416,
+       "ep": 8.74,
+       "name": "Egan",
+       "position": "DEF"
+      },
+      {
+       "code": 146426,
+       "ep": 7.07,
+       "name": "Ajayi",
+       "position": "DEF"
+      },
+      {
+       "code": 209036,
+       "ep": 5.94,
+       "name": "Gu\u00e9hi",
+       "position": "DEF"
+      },
+      {
+       "code": 244851,
+       "ep": 6.54,
+       "name": "Palmer",
+       "position": "MID"
+      },
+      {
+       "code": 222531,
+       "ep": 7.81,
+       "name": "Gibbs-White",
+       "position": "MID"
+      },
+      {
+       "code": 60307,
+       "ep": 6.02,
+       "name": "Gro\u00df",
+       "position": "MID"
+      },
+      {
+       "code": 446008,
+       "ep": 6.41,
+       "name": "Mbeumo",
+       "position": "MID"
+      },
+      {
+       "code": 424876,
+       "ep": 6.22,
+       "name": "Szoboszlai",
+       "position": "MID"
+      },
+      {
+       "code": 223094,
+       "ep": 7.01,
+       "name": "Haaland",
+       "position": "FWD"
+      },
+      {
+       "code": 444102,
+       "ep": 5.19,
+       "name": "Evanilson",
+       "position": "FWD"
+      }
+     ]
+    }
+   ],
+   "same_as": null,
+   "transfers": 4,
+   "vs_below": {
+    "delta_cost": 0,
+    "delta_cost_now": 4,
+    "delta_mean_pts": 0.0,
+    "dropped_buys": [],
+    "dropped_sells": [],
+    "extra_buys": [
+     {
+      "code": 473284,
+      "ep": 7.25,
+      "name": "Tzolakis",
+      "position": "GKP"
+     }
+    ],
+    "extra_sells": [
+     {
+      "code": 67089,
+      "ep": 0.4,
+      "name": "Dubravka",
+      "position": "GKP"
+     }
+    ]
+   },
+   "week_pts": 73.37
+  }
+ ],
+ "seed": 22260829,
+ "sigma_fallbacks": 0,
+ "sigma_source": "bands",
+ "steps": [
+  {
+   "above": "hits0",
+   "below": "bank",
+   "line": "bank \u2192 free transfers only: taken, 95% \u2014 a Bench Boost is planned for GW7",
+   "reason": "a Bench Boost is planned for GW7",
+   "reason_kind": "chip",
+   "share": 0.949,
+   "taken": true
+  },
+  {
+   "above": "hits1",
+   "below": "hits0",
+   "line": "free transfers only \u2192 1 hit: taken, 60% \u2014 a Bench Boost is planned for GW7",
+   "reason": "a Bench Boost is planned for GW7",
+   "reason_kind": "chip",
+   "share": 0.605,
+   "taken": true
+  },
+  {
+   "above": "hits2",
+   "below": "hits1",
+   "line": "1 hit \u2192 2 hits: refused, 41% \u2014 a Bench Boost is planned for GW7",
+   "reason": "a Bench Boost is planned for GW7",
+   "reason_kind": "chip",
+   "share": 0.4065,
+   "taken": false
+  }
+ ]
+}
