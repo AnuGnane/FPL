@@ -70,6 +70,10 @@ export default function JournalTab() {
   return (
     <div>
       <Card title="Model vs you, cumulative" className="mb-4">
+        <p className="mb-2 text-sm text-text-muted">
+          Scores the model's own recommended XI, gross of hit costs, against
+          your actual points.
+        </p>
         <ResponsiveContainer width="100%" height={240}>
           <LineChart data={data.cumulative}>
             <CartesianGrid stroke="var(--color-divider)" vertical={false} />

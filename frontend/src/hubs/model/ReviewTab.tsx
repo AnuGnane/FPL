@@ -326,6 +326,11 @@ export default function ReviewTab() {
           )}
         </Card>
       )}
+      <p className="mb-2 text-sm text-text-muted">
+        Scores your squad with one lane at a time — transfers, captaincy,
+        bench order, chip — swapped to the model's call, so a week you agreed
+        on every lane is evidence of nothing.
+      </p>
       {[...data.gws].reverse().map((row) => (
         <GwCard key={row.gw} row={row} onSelect={setExplain} />
       ))}

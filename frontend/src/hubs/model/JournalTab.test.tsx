@@ -71,6 +71,12 @@ describe('JournalTab', () => {
     expect(container.querySelector('.recharts-wrapper')).not.toBeNull()
   })
 
+  it('names what the cumulative chart scores', async () => {
+    render(<JournalTab />)
+    expect(await screen.findByText(
+      /model's own recommended XI, gross of hit costs/)).toBeInTheDocument()
+  })
+
   it('flags a gameweek whose only advice run was late', async () => {
     apiGet.mockResolvedValue({
       ...JOURNAL,

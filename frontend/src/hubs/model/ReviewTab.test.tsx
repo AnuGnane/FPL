@@ -88,6 +88,13 @@ describe('ReviewTab', () => {
     expect(screen.getByText('89')).toBeTruthy()
   })
 
+  it('names what the by-gameweek table scores', async () => {
+    mock(DATA)
+    render(<ReviewTab />)
+    expect(await screen.findByText(
+      /one lane at a time.*swapped to the model's call/)).toBeInTheDocument()
+  })
+
   it('labels every graded lane', async () => {
     mock(DATA)
     render(<ReviewTab />)
