@@ -367,12 +367,16 @@ def build_scratch_tree(root: Path, repo: Path, golden: Path = GOLDEN_DIR) -> Non
 def strip_volatile(obj, cwd: str):
     """``generated_at`` removed at every depth; every string that starts with
     the run's working directory rewritten to ``<cwd>`` (spec §1 item 1).
+    ``wall_s`` is also removed at every depth (v18b Task 4): it is elapsed
+    wall-clock time for the run that produced it, not a value the advice
+    serves, so it varies run to run even off the same inputs and would
+    otherwise fail the golden board on machine noise alone.
 
     The prefix match is on a path boundary, not on characters: a sibling
     ``/tmp/xy/z`` is not inside ``/tmp/x`` and must survive untouched."""
     if isinstance(obj, dict):
         return {k: strip_volatile(v, cwd) for k, v in obj.items()
-                if k != "generated_at"}
+                if k not in ("generated_at", "wall_s")}
     if isinstance(obj, list):
         return [strip_volatile(v, cwd) for v in obj]
     if isinstance(obj, str) and (obj == cwd or obj.startswith(cwd.rstrip("/") + "/")):
@@ -453,16 +457,18 @@ def golden_cwd(root: Path, client: FPLClient | None = None):
         invalidate()
 
 
-def run_golden(root: Path, client: FPLClient | None = None) -> tuple[dict, dict]:
+def run_golden(root: Path, client: FPLClient | None = None) -> tuple[dict, dict, dict]:
     """``run_advise(golden_config(), client)`` inside ``golden_cwd`` and the
-    two files it wrote, read back."""
+    three files it wrote, read back — advice, solve state, and the ladder
+    ``run_advise`` banks alongside them (v18b Task 4)."""
     client = client if client is not None else RecordedClient()
     with golden_cwd(root, client) as root:
         advice = run_advise(golden_config(), client)
         gw = int(advice.gw)
         advice_json = json.loads((root / "reports" / f"gw{gw}-advice.json").read_text())
         state_json = json.loads((root / "reports" / f"solve_state_gw{gw}.json").read_text())
-    return advice_json, state_json
+        ladder_json = json.loads((root / "reports" / f"ladder_gw{gw}.json").read_text())
+    return advice_json, state_json, ladder_json
 
 
 def gather_golden(root: Path, client: FPLClient | None = None,
@@ -539,14 +545,19 @@ def write_expected(golden: Path = GOLDEN_DIR, *, scratch: Path | None = None,
     started = time.monotonic()
     # The golden's own bundle, not GOLDEN_DIR's: ``write_expected`` must be
     # able to rewrite a board that is not the shipped one (Task 4 review).
-    advice, state = run_golden(root, client=RecordedClient(golden))
+    advice, state, ladder = run_golden(root, client=RecordedClient(golden))
     runtime = round(time.monotonic() - started, 1)
     cwd = str(root.resolve())
+    # v18b Task 4: the ladder is stripped before it is written, exactly as
+    # advice, state and (via ``plan_route``) plan already are — the fixture
+    # files never carry ``generated_at``/``wall_s`` in the first place.
     advice, state = strip_volatile(advice, cwd), strip_volatile(state, cwd)
+    ladder = strip_volatile(ladder, cwd)
     expected = golden / EXPECTED_DIR
     expected.mkdir(exist_ok=True)
     (expected / "advice.json").write_text(json.dumps(advice, indent=1, sort_keys=True) + "\n")
     (expected / "solve_state.json").write_text(json.dumps(state, indent=1, sort_keys=True) + "\n")
+    (expected / "ladder.json").write_text(json.dumps(ladder, indent=1, sort_keys=True) + "\n")
     (expected / "plan.json").write_text(
         json.dumps(plan_route(root, int(advice["gw"]), RecordedClient(golden)),
                    indent=1, sort_keys=True) + "\n")

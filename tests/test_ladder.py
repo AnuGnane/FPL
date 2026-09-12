@@ -558,6 +558,26 @@ def test_ladder_payload_writes_nothing(tmp_path, monkeypatch):
     assert written == []
 
 
+def test_ladder_payload_takes_its_clock(tmp_path, monkeypatch):
+    """v18b Task 4: two payloads built with different ``now`` differ only in
+    ``generated_at`` and ``wall_s`` — the same rungs, on the same clock, for
+    the rest of the payload."""
+    from datetime import datetime, timezone
+
+    from gaffer.ladder import ladder_payload
+
+    state = _saved_state(tmp_path, monkeypatch)
+    a = ladder_payload(state, **_payload_kw(
+        state, now=datetime(2026, 1, 1, tzinfo=timezone.utc)))
+    b = ladder_payload(state, **_payload_kw(
+        state, now=datetime(2026, 6, 1, tzinfo=timezone.utc)))
+    assert a["generated_at"] == "2026-01-01T00:00:00+00:00"
+    assert b["generated_at"] == "2026-06-01T00:00:00+00:00"
+    a_rest = {k: v for k, v in a.items() if k not in ("generated_at", "wall_s")}
+    b_rest = {k: v for k, v in b.items() if k not in ("generated_at", "wall_s")}
+    assert a_rest == b_rest
+
+
 def test_a_prior_advice_of_none_keeps_the_note_the_load_used_to_write(
         tmp_path, monkeypatch):
     """v17g §2.2: the load moved out of the core, and its note moved with it.

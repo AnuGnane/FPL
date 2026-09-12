@@ -777,7 +777,8 @@ def ladder_payload(state, *, gw: int, gws: list[int], hit_bar: float,
                    seed: int, sigmas: dict, sigma_source: str,
                    prior_advice: dict | None,
                    caps: tuple[int | None, int | None], cap_source: str,
-                   ctx: StepContext, n_draws: int = LADDER_DRAWS) -> dict:
+                   ctx: StepContext, n_draws: int = LADDER_DRAWS,
+                   now: datetime | None = None) -> dict:
     """Solve every rung off ``state``, score them on shared draws, return the
     payload. v17g §2.2: pure of the reads and the one write that used to
     bracket it, so ``build_advice`` can call it on the state it has just
@@ -802,6 +803,10 @@ def ladder_payload(state, *, gw: int, gws: list[int], hit_bar: float,
 
     ``wall_s`` on the payload is the solving alone since the split: the
     loads it used to include are the caller's now.
+
+    ``now``, like ``build_advice``'s clock (v18b Task 4), stamps
+    ``generated_at``; it never touches ``wall_s``, which stays measured
+    elapsed time regardless of what clock the caller passed.
     """
     ep_by = raw_ep_by(state)
     cover = (state.cover if state.cover is not None
@@ -952,7 +957,7 @@ def ladder_payload(state, *, gw: int, gws: list[int], hit_bar: float,
         step["line"] = _step_line(step)
     payload = {
         "gw": int(gw), "gws": [int(g) for g in gws],
-        "generated_at": datetime.now(timezone.utc).isoformat(
+        "generated_at": (now or datetime.now(timezone.utc)).isoformat(
             timespec="seconds"),
         "free_transfers": int(state.free_transfers),
         "cap": {"max_hits": max_hits, "max_transfers": max_transfers},

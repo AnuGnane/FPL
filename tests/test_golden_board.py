@@ -268,11 +268,12 @@ def golden_run(tmp_path_factory):
     header = gc.golden_header_or_skip(REPO)
     root = tmp_path_factory.mktemp("golden")
     gc.build_scratch_tree(root, REPO)
-    advice, state = gc.run_golden(root)
+    advice, state, ladder = gc.run_golden(root)
     cwd = str(root.resolve())
     return {"header": header, "cwd": cwd,
             "advice": gc.strip_volatile(advice, cwd),
-            "state": gc.strip_volatile(state, cwd)}
+            "state": gc.strip_volatile(state, cwd),
+            "ladder": gc.strip_volatile(ladder, cwd)}
 
 
 @pytest.mark.golden
@@ -280,6 +281,17 @@ def test_the_golden_board_reproduces_the_expected_advice_and_state(golden_run):
     expected = gc.GOLDEN_DIR / gc.EXPECTED_DIR
     assert golden_run["advice"] == json.loads((expected / "advice.json").read_text())
     assert golden_run["state"] == json.loads((expected / "solve_state.json").read_text())
+
+
+@pytest.mark.golden
+def test_the_golden_board_reproduces_the_expected_ladder(golden_run):
+    """v18b Task 4: the ladder joins advice and state as a fourth expected
+    file. Fails clearly, naming the missing fixture, until the orchestrator
+    re-records ``expected/ladder.json`` for this cycle."""
+    path = gc.GOLDEN_DIR / gc.EXPECTED_DIR / "ladder.json"
+    if not path.exists():
+        pytest.fail(f"{path} not recorded; run python -m tests.golden_client --write")
+    assert golden_run["ladder"] == json.loads(path.read_text())
 
 
 @pytest.mark.golden
@@ -352,6 +364,8 @@ def _stub_run_advise(tmp_path: Path, calls: dict, live_mod):
             json.dumps({"gw": 4, "generated_at": "x"}))
         (tmp_path / "reports" / "solve_state_gw4.json").write_text(
             json.dumps({"gw": 4, "generated_at": "y"}))
+        (tmp_path / "reports" / "ladder_gw4.json").write_text(
+            json.dumps({"gw": 4, "generated_at": "z", "wall_s": 1.2}))
 
         class A:
             gw = 4
@@ -377,7 +391,7 @@ def test_run_golden_runs_in_the_scratch_tree_and_reads_the_two_files_back(tmp_pa
     monkeypatch.setattr(gc, "run_advise", _stub_run_advise(tmp_path, calls, live_mod))
     invalidate()
     before = Path.cwd()
-    advice, state = gc.run_golden(tmp_path, client=client)
+    advice, state, ladder = gc.run_golden(tmp_path, client=client)
     assert Path.cwd() == before
     assert calls["cwd"] == tmp_path.resolve()
     assert asdict(calls["cfg"]) == asdict(gc.golden_config())
@@ -388,6 +402,7 @@ def test_run_golden_runs_in_the_scratch_tree_and_reads_the_two_files_back(tmp_pa
     assert calls["stdlib_sleep"] is time_mod.sleep
     assert live_mod.time.sleep is time_mod.sleep
     assert advice == {"gw": 4, "generated_at": "x"} and state == {"gw": 4, "generated_at": "y"}
+    assert ladder == {"gw": 4, "generated_at": "z", "wall_s": 1.2}
     assert config_in_force.cache_info().currsize == 0
 
 
@@ -449,7 +464,7 @@ def test_write_expected_gathers_the_inputs_in_a_fresh_scratch_tree(tmp_path, mon
 
     def fake_run_golden(root, client=None):
         run_roots.append(Path(root))
-        return {"gw": 4}, {"gw": 4}
+        return {"gw": 4}, {"gw": 4}, {"gw": 4}
 
     monkeypatch.setattr(gc, "run_golden", fake_run_golden)
     monkeypatch.setattr(gc, "plan_route", lambda root, gw, client=None: {"plan": True})
