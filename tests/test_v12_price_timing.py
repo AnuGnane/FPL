@@ -264,6 +264,45 @@ def test_the_cache_does_not_serve_yesterdays_table_after_midnight(monkeypatch):
     assert price_timing.owned_price_falls([1]) == {}
 
 
+def test_told_price_timing_off_is_an_empty_table_with_no_view_read(monkeypatch):
+    """v18b ruling 4: the build path already has the switch, so it hands it
+    in — and a caller that does must never fall through to the view, even
+    one the view would answer differently."""
+    def boom():
+        raise AssertionError("owned_price_falls read the view")
+
+    monkeypatch.setattr(price_timing, "config_in_force", boom)
+    assert price_timing.owned_price_falls([1], price_timing=False) == {}
+
+
+def test_told_price_timing_on_reads_the_stubbed_log_with_no_view_read(
+        monkeypatch):
+    def boom():
+        raise AssertionError("owned_price_falls read the view")
+
+    monkeypatch.setattr(price_timing, "config_in_force", boom)
+    monkeypatch.setattr(price_timing, "load_price_log",
+                        lambda: pd.DataFrame({
+                            "snap_date": [TODAY], "code": [1],
+                            "now_cost": [80], "price_change_percent": [-50.0],
+                            "direction": ["drop"], "calibrating": [False]}))
+    assert price_timing.owned_price_falls([1], price_timing=True) == {1: 0.5}
+
+
+def test_the_cache_key_carries_the_switch(monkeypatch):
+    """A key of ``(day, owned)`` alone would let the off table answer an
+    ``on`` call for the same squad on the same day, or vice versa — the bug
+    this cache key exists to rule out."""
+    monkeypatch.setattr(price_timing, "load_price_log",
+                        lambda: pd.DataFrame({
+                            "snap_date": [TODAY], "code": [1],
+                            "now_cost": [80], "price_change_percent": [-50.0],
+                            "direction": ["drop"], "calibrating": [False]}))
+    assert price_timing.owned_price_falls([1], price_timing=False) == {}
+    assert price_timing.owned_price_falls([1], price_timing=True) == {1: 0.5}
+    assert price_timing.owned_price_falls([1], price_timing=False) == {}
+
+
 # --- the objective ------------------------------------------------------
 
 def _pool():

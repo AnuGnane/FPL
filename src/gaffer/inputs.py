@@ -90,12 +90,19 @@ class Outputs:
 
 @runtime_checkable
 class Predictions(Protocol):
-    """The three places the weekly run touches ``models/`` (v17g §2.5)."""
+    """The three places the weekly run touches ``models/`` (v17g §2.5).
+
+    ``components`` takes ``cfg`` (v18b ruling 4): ``predict_components``
+    calls :func:`~gaffer.models.availability.apply_availability` twice and
+    both used to read the news switches off the process-wide view behind
+    ``gather_inputs``' back. Told, not read, so the recorded adapter takes
+    and ignores the same keyword the live one forwards.
+    """
 
     def missing(self) -> list[str]: ...
 
     def components(self, *, pred_frame, tg_future, players, avail,
-                   pens) -> pd.DataFrame: ...
+                   pens, cfg) -> pd.DataFrame: ...
 
     def calibration(self) -> object | None: ...
 
@@ -128,11 +135,12 @@ class LiveModels:
         return [n for n in MODEL_NAMES if not model_exists(n)]
 
     def components(self, *, pred_frame, tg_future, players, avail,
-                   pens) -> pd.DataFrame:
+                   pens, cfg) -> pd.DataFrame:
         # Imported in the body because ``advise`` imports this module: the
         # seam has to be declarable without the pipeline that fills it.
         from gaffer.advise import predict_components
-        return predict_components(pred_frame, tg_future, players, avail, pens)
+        return predict_components(pred_frame, tg_future, players, avail,
+                                  pens, cfg=cfg)
 
     def calibration(self) -> object | None:
         from gaffer.models.persistence import load_model, model_exists
@@ -168,7 +176,9 @@ class RecordedComponents:
         return []
 
     def components(self, *, pred_frame, tg_future, players, avail,
-                   pens) -> pd.DataFrame:
+                   pens, cfg=None) -> pd.DataFrame:
+        # The recording already carries what the switches decided; cfg is
+        # accepted (and ignored) only so the seam is real (v18b ruling 4).
         return pd.read_parquet(self.directory / self.filename)
 
     def calibration(self) -> object | None:

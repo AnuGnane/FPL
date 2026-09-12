@@ -525,7 +525,8 @@ def availability_path(gw: int) -> Path:
     return REPORTS / f"availability_gw{gw}.parquet"
 
 
-def save_availability(avail, gw: int) -> Path | None:
+def save_availability(avail, gw: int, *,
+                      overrides: bool | None = None) -> Path | None:
     """Snapshot the availability frame this run predicted on.
 
     The only record of *why* the news layer moved a player: the shadow log
@@ -535,6 +536,12 @@ def save_availability(avail, gw: int) -> Path | None:
     Never raises and returns ``None`` when there is nothing worth keeping —
     it is instrumentation for a UI panel, and an advise run that died of its
     own snapshot would be a much worse trade than a hidden panel.
+
+    Told, not read (v18b ruling 4): ``overrides`` defaults to the view's
+    ``[news] overrides``, so a router or a stand-alone call still gets
+    today's behaviour, but ``gather_inputs`` is on the build path and hands
+    in the same flag it gave :func:`~gaffer.models.availability.apply_availability`
+    — "no read, no marker" now means no read of the view either.
     """
     try:
         if avail is None or len(avail) == 0:
@@ -546,9 +553,11 @@ def save_availability(avail, gw: int) -> Path | None:
         # Gated on the same key the availability pass reads, so "no read, no
         # marker" holds for the artifact too. Idempotent, so a frame that
         # already carries them is not re-read.
-        from gaffer.config import config_in_force
-        from gaffer.overrides import attach_overrides
-        if config_in_force().news_overrides:
+        if overrides is None:
+            from gaffer.config import config_in_force
+            overrides = config_in_force().news_overrides
+        if overrides:
+            from gaffer.overrides import attach_overrides
             out = attach_overrides(out)
         for col in AVAILABILITY_COLS:
             if col not in out.columns:

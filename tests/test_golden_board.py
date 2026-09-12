@@ -712,6 +712,65 @@ def test_the_recorded_predictions_regather_the_same_components(tmp_path):
     pd.testing.assert_frame_equal(again.comp, recorded.comp)
 
 
+@pytest.mark.golden
+def test_gather_inputs_and_build_advice_read_no_view(tmp_path, monkeypatch):
+    """v18b ruling 4: both halves read ``cfg`` and never the process-wide
+    cached view. The sibling above seals ``open()``; this one seals
+    ``config_in_force`` the same way, over the same two calls — but aimed
+    at ``gather_inputs`` rather than ``build_advice``, because every read
+    ruling 4 exists to catch (``served.price_falls``,
+    ``price_timing._owned_price_falls``,
+    ``models.availability.apply_availability``,
+    ``artifacts.save_availability``) fires on the gather side: ``build_advice``
+    itself takes ``price_timing``/``price_fall`` off ``inputs`` and never
+    calls :func:`~gaffer.served.price_falls` at all (grep confirms it — the
+    only caller left is :func:`~gaffer.served.trace_context`, the loader's
+    own present-tense read for a file written before v17f).
+
+    Gathered with the recorded client and :class:`~gaffer.inputs.RecordedComponents`
+    — no network and no ``models/`` — so the seal covers the same ground the
+    ``open()`` rail's ``load_inputs`` shortcut cannot: it runs seconds, not
+    the full pipeline the golden gate times.
+
+    Patched at the name each consumer bound it (``tests.conftest.patch_view``):
+    ``gaffer.price_timing`` binds ``config_in_force`` at import time, so a
+    patch on ``gaffer.config`` alone would never reach
+    ``_owned_price_falls``; ``served.py``, ``models/availability.py`` and
+    ``artifacts.py`` import it lazily inside the function they read it in,
+    so patching ``gaffer.config`` catches those three.
+    """
+    _needs_recorded_inputs()
+    import gaffer.config
+    import gaffer.price_timing
+    from gaffer.advise import build_advice
+    from gaffer.inputs import RecordedComponents
+    from tests.conftest import patch_view
+
+    root = tmp_path / "scratch"
+    gc.build_scratch_tree(root, REPO)
+
+    class _Read(BaseException):
+        pass
+
+    def refuse():
+        raise _Read("config_in_force read on the build path")
+
+    patch_view(monkeypatch, refuse)
+    patch_view(monkeypatch, refuse, gaffer.price_timing)
+    try:
+        inputs = gc.gather_golden(
+            root, gc.RecordedClient(),
+            RecordedComponents(gc.GOLDEN_DIR / gc.INPUTS_DIR))
+        out = build_advice(inputs, gc.golden_config())
+    finally:
+        monkeypatch.undo()
+    expected = json.loads(
+        (gc.GOLDEN_DIR / gc.EXPECTED_DIR / "advice.json").read_text())
+    advice = json.loads(json.dumps(asdict(out.advice), default=str))
+    cwd = str(root.resolve())
+    assert gc.strip_volatile(advice, cwd) == gc.strip_volatile(expected, cwd)
+
+
 def test_build_advice_names_no_reader_in_its_source():
     """Spec §1 part 4, the static half. The run-time half above cannot run
     until the board is recorded; this one always can."""

@@ -294,6 +294,42 @@ def test_a_chip_week_is_charged_what_the_base_plan_paid_and_the_note_says_so():
     assert "a wildcard is recommended this week" in trace.note
 
 
+def test_price_falls_told_off_answers_false_empty_with_no_view_read(monkeypatch):
+    """v18b ruling 4: gather_inputs already has the switch, so it hands it
+    in — and a caller that does must never fall through to the view."""
+    import gaffer.config
+    from gaffer.served import price_falls
+
+    def boom():
+        raise AssertionError("price_falls read the view")
+
+    monkeypatch.setattr(gaffer.config, "config_in_force", boom)
+    assert price_falls(_state(), price_timing=False) == (False, {})
+
+
+def test_price_falls_told_on_threads_the_switch_to_owned_price_falls(
+        monkeypatch):
+    """The switch also has to reach ``owned_price_falls``, or its cache
+    could serve a table computed under the other setting."""
+    import gaffer.config
+    import gaffer.price_timing as pt_mod
+    from gaffer.served import price_falls
+
+    def boom():
+        raise AssertionError("price_falls read the view")
+
+    seen = {}
+
+    def fake_owned(owned, *, price_timing=None):
+        seen["price_timing"] = price_timing
+        return {200: 0.9}
+
+    monkeypatch.setattr(gaffer.config, "config_in_force", boom)
+    monkeypatch.setattr(pt_mod, "owned_price_falls", fake_owned)
+    assert price_falls(_state(), price_timing=True) == (True, {200: 0.9})
+    assert seen["price_timing"] is True
+
+
 def test_completed_is_the_one_pass_over_a_solve_state():
     from gaffer.served import completed
 

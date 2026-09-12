@@ -364,7 +364,8 @@ def thresholds(chip_table) -> dict[int, float]:
     return out
 
 
-def price_falls(state) -> tuple[bool, dict[int, float]]:
+def price_falls(state, *,
+                price_timing: bool | None = None) -> tuple[bool, dict[int, float]]:
     """``(price_timing is on, {code: p_fall_tonight})`` for the owned squad.
 
     The same reader the objective's price-timing term uses (W2 §3.4), called
@@ -378,16 +379,27 @@ def price_falls(state) -> tuple[bool, dict[int, float]]:
     the trace reports ``None`` and says so rather than printing a zero. A
     table that will not read is also ``None`` — an unknown, which is not a
     zero chance of a fall.
+
+    Told, not read (v18b ruling 4): ``gather_inputs`` calls this on the
+    build path and must hand in the switch it already has, so the keyword
+    defaults to the view for the one caller with nothing but a state —
+    :func:`trace_context`, reading a file written before v17f present-tense.
+    The switch is threaded on to :func:`~gaffer.price_timing.owned_price_falls`
+    too, so the cache it wraps is never asked to serve a table computed under
+    the other setting.
     """
-    from gaffer.config import config_in_force
     from gaffer.price_timing import owned_price_falls
 
     try:
-        if not config_in_force().price_timing:
+        if price_timing is None:
+            from gaffer.config import config_in_force
+            price_timing = config_in_force().price_timing
+        if not price_timing:
             return False, {}
         owned = [int(c) for c in getattr(state, "owned_codes", []) or []]
         return True, {int(k): float(v)
-                      for k, v in (owned_price_falls(owned) or {}).items()}
+                      for k, v in (owned_price_falls(
+                          owned, price_timing=price_timing) or {}).items()}
     except Exception as exc:  # noqa: BLE001
         print(f"plan trace: price falls unreadable ({exc})")
         return True, {}

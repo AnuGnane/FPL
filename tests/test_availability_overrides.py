@@ -198,3 +198,23 @@ def test_a_flags_only_week_still_writes_the_override_schema(tmp_path,
     banked = load_availability(5)
     assert set(OVERRIDE_COLS) <= set(banked.columns)
     assert not banked["override"].fillna(False).any()
+
+
+def test_apply_availability_told_every_switch_reads_no_view(tmp_path,
+                                                             monkeypatch):
+    """v18b ruling 4: ``gather_inputs`` is on the build path and hands in
+    every switch this function would otherwise read off the process-wide
+    view — a call that supplies all four takes no read at all, even one
+    that would answer differently (the pin below is never applied)."""
+    import gaffer.config
+
+    def boom():
+        raise AssertionError("apply_availability read the view")
+
+    monkeypatch.chdir(tmp_path)
+    set_override(1, p_play=1.0, known_codes=CODES)
+    monkeypatch.setattr(gaffer.config, "config_in_force", boom)
+    out = apply_availability(_pred(), _avail(), overrides=False,
+                             start_floor=0.0, llm_serving=False,
+                             current_season="2026-27")
+    assert not [c for c in out.columns if c.startswith("override")]

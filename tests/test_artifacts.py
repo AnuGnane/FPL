@@ -274,6 +274,25 @@ def test_save_availability_never_raises(tmp_path, monkeypatch):
     assert art.save_availability(pd.DataFrame({"nope": [1]}), 5) is None
 
 
+def test_save_availability_told_overrides_off_never_reads_the_view(
+        tmp_path, monkeypatch):
+    """v18b ruling 4: gather_inputs already has the flag, so it hands it in
+    — never calls ``attach_overrides`` even when the view says on, and
+    never reads the view at all when told."""
+    import gaffer.artifacts as art
+    import gaffer.config
+
+    def boom():
+        raise AssertionError("save_availability read the view")
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(gaffer.config, "config_in_force", boom)
+    path = art.save_availability(_avail(), 5, overrides=False)
+    assert path == art.availability_path(5)
+    back = art.load_availability(5)
+    assert not back["override"].fillna(False).any()
+
+
 def test_load_availability_is_none_when_nothing_was_written(tmp_path,
                                                             monkeypatch):
     import gaffer.artifacts as art

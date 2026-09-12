@@ -106,7 +106,8 @@ def price_falls(log: pd.DataFrame,
     return out
 
 
-def owned_price_falls(owned: list[int] | None) -> dict[int, float]:
+def owned_price_falls(owned: list[int] | None, *,
+                      price_timing: bool | None = None) -> dict[int, float]:
     """:func:`price_falls` over the banked log, behind the switch.
 
     Empty dict on the switch being off, on no log, on a corrupt log and on a
@@ -129,14 +130,20 @@ def owned_price_falls(owned: list[int] | None) -> dict[int, float]:
     returned dict is a fresh copy per call so a caller that mutates it cannot
     poison the cache.
 
-    The switch is read through :func:`~gaffer.config.config_in_force`, so a
-    flipped flag reaches the next solve after
-    :func:`~gaffer.config.invalidate` — which the settings save and the
-    health poll call, and which drops this table in the same breath (v17e
-    §2.2).
+    The switch defaults to a read through
+    :func:`~gaffer.config.config_in_force`, so a flipped flag reaches the
+    next solve after :func:`~gaffer.config.invalidate` — which the settings
+    save and the health poll call, and which drops this table in the same
+    breath (v17e §2.2). Told, not read (v18b ruling 4), for the one caller on
+    the build path that already has the switch: it is resolved *before* the
+    cached call rather than inside it, because the cache's key has to carry
+    it — a key of ``(day, owned)`` alone could serve a table computed under
+    the other setting to a caller asking under this one.
     """
     key = tuple(sorted(int(c) for c in owned)) if owned else ()
-    return dict(_owned_price_falls(_today(), key))
+    if price_timing is None:
+        price_timing = config_in_force().price_timing
+    return dict(_owned_price_falls(_today(), key, price_timing))
 
 
 def _today() -> str:
@@ -156,17 +163,21 @@ def _today() -> str:
 
 
 @lru_cache(maxsize=8)
-def _owned_price_falls(day: str,
-                       owned: tuple[int, ...]) -> dict[int, float]:
+def _owned_price_falls(day: str, owned: tuple[int, ...],
+                       price_timing: bool) -> dict[int, float]:
     """:func:`owned_price_falls`'s cache. Never call this one directly — it
     hands back the cached dict itself, and a mutation of it would be
     permanent.
 
     ``day`` is not read in the body: it is in the signature so that the
     freshness rule inside :func:`price_falls` cannot be outlived by the cache
-    that wraps it. Midnight is a new key."""
+    that wraps it. Midnight is a new key. ``price_timing`` joins it for the
+    same reason (v18b ruling 4): it is always a resolved ``bool`` by the time
+    it gets here — :func:`owned_price_falls` reads the view itself when a
+    caller hands in nothing — so a table computed with the switch off is
+    never the one served to a caller asking with it on."""
     try:
-        if not config_in_force().price_timing:
+        if not price_timing:
             return {}
         return price_falls(load_price_log(), list(owned))
     except Exception as exc:  # noqa: BLE001 — never blocks a solve

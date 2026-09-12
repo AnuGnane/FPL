@@ -176,14 +176,18 @@ def test_the_milp_solver_passes_its_arguments_straight_through(
 def test_live_models_hands_the_five_arguments_to_predict_components(
         monkeypatch):
     """The five are positional at the call site and keyword-only here, so an
-    order that drifted would swap two frames rather than raise."""
+    order that drifted would swap two frames rather than raise. ``cfg``
+    rides along as a keyword (v18b ruling 4): ``predict_components`` reads
+    the news switches off it rather than off the process-wide view."""
     seen = {}
-    monkeypatch.setattr("gaffer.advise.predict_components",
-                        lambda *a: seen.update(a=a) or "comp")
+    monkeypatch.setattr(
+        "gaffer.advise.predict_components",
+        lambda *a, **kw: seen.update(a=a, kw=kw) or "comp")
     assert LiveModels().components(pred_frame="P", tg_future="T",
                                    players="PL", avail="A",
-                                   pens="PE") == "comp"
+                                   pens="PE", cfg="CFG") == "comp"
     assert seen["a"] == ("P", "T", "PL", "A", "PE")
+    assert seen["kw"] == {"cfg": "CFG"}
 
 
 @pytest.mark.parametrize("exists, expected", [(False, None), (True, "cal")])

@@ -56,7 +56,8 @@ def apply_availability(pred: pd.DataFrame, avail: pd.DataFrame,
                        curves: dict | None = None,
                        start_floor: float | None = None,
                        llm_serving: bool | None = None,
-                       overrides: bool | None = None) -> pd.DataFrame:
+                       overrides: bool | None = None,
+                       current_season: str | None = None) -> pd.DataFrame:
     """avail: the normalized availability frame, or the bare bootstrap slice.
 
     ``status`` i/s/u/n (injured/suspended/unavailable/not in squad) -> factor
@@ -87,36 +88,49 @@ def apply_availability(pred: pd.DataFrame, avail: pd.DataFrame,
     (v8a F4). It composes with the hint ceiling and obeys the same
     one-row-per-player rule.
 
-    ``start_floor`` defaults to the ``[news] lineup_start_floor`` config key,
-    read here because ``advise`` is protected and cannot forward it. At its
-    shipped ``0.0`` the pass is a no-op and this function is arithmetically
-    identical to v7's.
+    ``start_floor`` defaults to the ``[news] lineup_start_floor`` config key.
+    At its shipped ``0.0`` the pass is a no-op and this function is
+    arithmetically identical to v7's.
 
     ``overrides`` reads ``reports/overrides.json`` — the user's own pins — and
     applies them **last**, as fact rather than as evidence: a manager who has
     decided a player is fit outranks every automated source, including the one
     that just docked him. First gameweek only, one row per player, like every
-    other pass here. It defaults to the ``[news] overrides`` config key, read
-    at the top of the function because ``advise`` is protected and cannot
-    forward it, and with an empty store the whole pass is arithmetically a
-    no-op.
+    other pass here. It defaults to the ``[news] overrides`` config key, and
+    with an empty store the whole pass is arithmetically a no-op.
 
     Note what that means for gate N2 (spec A1): ``predict_components`` calls
     this function twice, once for the news arm and once for the flags-only
     control, and nothing inside can tell those calls apart. Pins therefore
     land on both — which is the honest reading, since a pinned player shows
     the same number on both sides and so contributes no *news* effect at all.
-    """
-    # One read of the config in force for the whole pass (v17e §2.2): three
-    # fields were three lazy imports and three calls, which is three chances
-    # for a mid-pass ``invalidate()`` to hand one half of this function a
-    # different config from the other.
-    from gaffer.config import config_in_force
-    cfg = config_in_force()
 
+    ``current_season`` names the season the shadow log banks a presser
+    verdict under; it defaults to ``[fpl] current_season``.
+
+    Told, not read (v18b ruling 4): every one of ``start_floor``,
+    ``llm_serving``, ``overrides`` and ``current_season`` defaults to the
+    process-wide view, so a router or the CLI passes nothing and gets today's
+    behaviour — but ``gather_inputs`` is on the build path and must hand in
+    all four so this function never opens the view for itself. The config is
+    read at most once, and only for the fields a caller left as ``None``:
+    three lazy imports and three calls each mid-pass invalidate could hand a
+    different config from the other was the original worry (v17e §2.2);
+    a call that supplies every field now takes no read at all.
+    """
     curves = curves if curves is not None else load_injury_curves()
-    if overrides is None:
-        overrides = cfg.news_overrides
+    if (overrides is None or start_floor is None or llm_serving is None
+            or current_season is None):
+        from gaffer.config import config_in_force
+        cfg = config_in_force()
+        if overrides is None:
+            overrides = cfg.news_overrides
+        if start_floor is None:
+            start_floor = cfg.news_lineup_start_floor
+        if llm_serving is None:
+            llm_serving = cfg.news_llm_classifier
+        if current_season is None:
+            current_season = cfg.current_season
     if overrides:
         from gaffer.overrides import attach_overrides
         avail = attach_overrides(avail)
@@ -142,8 +156,6 @@ def apply_availability(pred: pd.DataFrame, avail: pd.DataFrame,
     out["e_min"] = out["e_min"] * factor
     if "p_start_hint" in out.columns:
         out = _gate_first_gw(out)
-        if start_floor is None:
-            start_floor = cfg.news_lineup_start_floor
         out = _floor_first_gw(out, float(start_floor))
     if "absence_damp" in out.columns:
         out = _damp_first_gw(out)
@@ -154,11 +166,11 @@ def apply_availability(pred: pd.DataFrame, avail: pd.DataFrame,
         if "gw" in out.columns and len(out):
             try:
                 write_presser(out[out["gw"] == out["gw"].min()],
-                              str(cfg.current_season or ""),
+                              str(current_season or ""),
                               int(out["gw"].min()))
             except Exception as exc:  # noqa: BLE001 — logging never blocks
                 print(f"news: presser log not written ({exc})")
-        if (cfg.news_llm_classifier if llm_serving is None else llm_serving):
+        if llm_serving:
             out = _presser_first_gw(out)
     # Last, and after everything: the user outranks every automated source.
     out = _override_first_gw(out)
