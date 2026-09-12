@@ -18,6 +18,12 @@ def _wire(monkeypatch, calls, *, advice=None, brief=None, run_advise=None):
     """Stub the four steps by module attribute (the lazy imports read them)
     and record every call in ``calls``."""
     advice = advice if advice is not None else _advice()
+    # v18a: import every dotted-path target before the first setattr. A
+    # dotted monkeypatch.setattr imports the module if it is not loaded yet;
+    # gaffer.advise's top-level `from gaffer.models.train import
+    # load_training_frame` would otherwise bind the stub below for the rest
+    # of the process, once the first golden-marked test imports it live.
+    import gaffer.advise  # noqa: F401
     monkeypatch.setattr("gaffer.models.train.load_training_frame",
                         lambda: ([1, 2, 3], "team_frame", None))
     monkeypatch.setattr("gaffer.models.train.train_all",
@@ -246,20 +252,11 @@ REPO = Path(__file__).resolve().parents[1]
 
 
 def _golden_header_or_skip():
-    import json
-
+    # v18a: the one shared skip helper (tests/golden_client.py), not a
+    # second copy of it.
     from tests import golden_client as gc
 
-    path = gc.GOLDEN_DIR / gc.HEADER_NAME
-    if not path.exists():
-        pytest.skip("golden board not recorded (tests/data/golden_board/header.json)")
-    header = json.loads(path.read_text())
-    stale = gc.stale_inputs(header, REPO)
-    if stale:
-        pytest.skip(f"golden board recorded under a different {stale[0]} "
-                    f"({len(stale)} input(s) differ); re-record with "
-                    "python -m tests.golden_client --write")
-    return header
+    return gc.golden_header_or_skip(REPO)
 
 
 def _parity_run(root: Path, monkeypatch, entry: str):
