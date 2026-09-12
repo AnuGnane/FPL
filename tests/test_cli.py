@@ -5,6 +5,7 @@ from typer.testing import CliRunner
 
 from gaffer.cli import app
 from gaffer.cli import main as cli_main
+from tests.conftest import patch_view
 
 runner = CliRunner()
 
@@ -599,3 +600,81 @@ def test_advise_without_fast_keeps_the_configured_sweep(tmp_path, monkeypatch):
 def test_advise_help_names_the_fast_flag():
     out = runner.invoke(app, ["advise", "--help"]).output
     assert "--fast" in out
+
+
+def test_evaluate_calibration_passes_no_season_by_default(tmp_path,
+                                                          monkeypatch):
+    """v18c Task 1: the CLI no longer hard-codes a season — the grader's own
+    default (None) grades whatever season live/player_gw.parquet carries."""
+    monkeypatch.chdir(tmp_path)
+    seen = {}
+
+    def fake_evaluate_calibration(season=None):
+        seen["season"] = season
+        return {"run_at": "now", "git_sha": "abc1234", "season": season}
+
+    monkeypatch.setattr("gaffer.evaluation.evaluate_calibration",
+                        fake_evaluate_calibration)
+    result = runner.invoke(app, ["evaluate", "--calibration"])
+    assert result.exit_code == 0, result.output
+    assert seen["season"] is None
+
+
+def test_evaluate_calibration_still_accepts_an_explicit_season(tmp_path,
+                                                               monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    seen = {}
+
+    def fake_evaluate_calibration(season=None):
+        seen["season"] = season
+        return {"run_at": "now", "git_sha": "abc1234", "season": season}
+
+    monkeypatch.setattr("gaffer.evaluation.evaluate_calibration",
+                        fake_evaluate_calibration)
+    result = runner.invoke(app, ["evaluate", "--calibration", "--season",
+                                 "2024-25"])
+    assert result.exit_code == 0, result.output
+    assert seen["season"] == "2024-25"
+
+
+def test_backtest_with_no_season_resolves_to_the_last_train_season(tmp_path,
+                                                                   monkeypatch):
+    """v18c Task 1: a backtest needs a finished season; ``train_seasons`` is
+    the list of those, so its last entry is the default."""
+    from gaffer.config import Config
+
+    monkeypatch.chdir(tmp_path)
+    seen = {}
+
+    def fake_run_backtest(season, start_gw=5, horizon=1, chips=False):
+        seen["season"] = season
+        return {"total": 0, "per_gw": 0.0, "log": []}
+
+    monkeypatch.setattr("gaffer.backtest.run_backtest", fake_run_backtest)
+    patch_view(monkeypatch, lambda: Config(
+        entry_id=1, league_id=2,
+        train_seasons=["2022-23", "2023-24", "2024-25"],
+        current_season="2025-26"))
+    result = runner.invoke(app, ["backtest"])
+    assert result.exit_code == 0, result.output
+    assert seen["season"] == "2024-25"
+
+
+def test_backtest_still_accepts_an_explicit_season(tmp_path, monkeypatch):
+    from gaffer.config import Config
+
+    monkeypatch.chdir(tmp_path)
+    seen = {}
+
+    def fake_run_backtest(season, start_gw=5, horizon=1, chips=False):
+        seen["season"] = season
+        return {"total": 0, "per_gw": 0.0, "log": []}
+
+    monkeypatch.setattr("gaffer.backtest.run_backtest", fake_run_backtest)
+    patch_view(monkeypatch, lambda: Config(
+        entry_id=1, league_id=2,
+        train_seasons=["2022-23", "2023-24", "2024-25"],
+        current_season="2025-26"))
+    result = runner.invoke(app, ["backtest", "--season", "2021-22"])
+    assert result.exit_code == 0, result.output
+    assert seen["season"] == "2021-22"

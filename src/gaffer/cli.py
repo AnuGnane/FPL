@@ -522,12 +522,17 @@ def live():
 
 
 @app.command()
-def backtest(season: str = "2025-26", start_gw: int = 5, horizon: int = 1,
+def backtest(season: str | None = None, start_gw: int = 5, horizon: int = 1,
              chips: bool = False):
     """Replay a past season following the tool's advice."""
     from gaffer.backtest import run_backtest
+    from gaffer.config import config_in_force
 
-    result = run_backtest(season, start_gw, horizon=horizon, chips=chips)
+    # v18c Task 1: a backtest needs a *finished* season to grade against —
+    # ``train_seasons`` is the list of those (config.py), so its last entry
+    # is the default rather than a hard-coded year that goes stale.
+    resolved = season if season is not None else config_in_force().train_seasons[-1]
+    result = run_backtest(resolved, start_gw, horizon=horizon, chips=chips)
     typer.echo(result)
 
 
@@ -686,7 +691,7 @@ def evaluate(mode: str = typer.Option(
                  help="Per-gameweek reliability for the probabilities the "
                       "weekly run actually served (v9d §4). Reads banked "
                       "components, refits nothing, takes seconds."),
-             season: str = "2025-26", start_gw: int = 5):
+             season: str | None = None, start_gw: int = 5):
     """Score the model and write reports/evaluation.json."""
     from gaffer.evaluation import (evaluate_benchmark, evaluate_calibration,
                                    evaluate_current, evaluate_news_shadow,
@@ -702,12 +707,21 @@ def evaluate(mode: str = typer.Option(
 
         key, payload = "presser_grades", evaluate_presser_grades()
     elif calibration:
+        # evaluate_calibration's own default (None) grades whatever season
+        # live/player_gw.parquet carries — the configured current one — so
+        # unlike decompose below, no resolution is needed here.
         key, payload = "calibration", evaluate_calibration(season=season)
     elif news_shadow:
         key, payload = "news_shadow", evaluate_news_shadow()
     elif decompose:
-        key, payload = "decomposition", run_decomposition(season=season,
-                                                          start_gw=start_gw)
+        # The decomposition replays a past season, so — like `backtest` — it
+        # needs a *finished* one; resolve to the last train season.
+        from gaffer.config import config_in_force
+
+        decompose_season = (season if season is not None
+                            else config_in_force().train_seasons[-1])
+        key, payload = "decomposition", run_decomposition(
+            season=decompose_season, start_gw=start_gw)
     elif mode == "benchmark":
         key, payload = "benchmark", evaluate_benchmark()
     elif mode == "current":
