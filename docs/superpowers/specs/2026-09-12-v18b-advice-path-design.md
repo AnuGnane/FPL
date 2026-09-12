@@ -1,0 +1,66 @@
+# v18b — the advice path tells the truth
+
+**Cycle:** v18b, the second sub-cycle of the polish programme
+(`docs/superpowers/plans/2026-09-12-v18-polish-programme.md` §3 v18b;
+design `specs/2026-09-12-v18-polish-design.md`, rulings 2, 3 and 4).
+**Branch:** `v18b-advice-path` off `main` at `ca6d25d`.
+**Date:** 2026-09-12. **Plan:** the programme's §3 v18b task list.
+
+## 1. Gate, stated before anything runs
+
+1. The golden, untouched since v18a's recording except for the one
+   declared addition (the ladder file, task 4): `.venv/bin/pytest -q -rs
+   tests/test_golden_board.py tests/test_pipeline.py` → **all passed, 0
+   skipped**, `expected/advice.json`, `plan.json` and `solve_state.json`
+   byte-identical to `a0bd45c`.
+2. Rails, each shown to fire by a planted fault before it is trusted:
+   - a `ladder_payload` that raises `TypeError` propagates out of
+     `build_advice`; one that raises `GafferError` is reported as today
+     (one printed line, the objective's plan served);
+   - with `pulp.HiGHS` patched to raise, the solve state's `opt` carries
+     `solver: "cbc"`; unpatched, the key is absent;
+   - the purity sentinel: a `config_in_force()` call planted inside
+     `gather_inputs` or `build_advice` raises the `BaseException` sentinel;
+   - `report.html.j2` renders `−5` for a week with one hit at
+     `hit_cost=5`;
+   - the CLI prints the brief's note exactly once;
+   - `calibrate_noise.ensemble_rows` runs un-stubbed over a three-row
+     frame with a bundle lacking `feature_cols`.
+3. `build_advice(..., now=...)` and `ladder_payload(..., now=...)`: two
+   calls with different `now` values differ only in `generated_at` (and
+   the ladder's stamp), nothing else.
+
+Verdict: line 1 byte-identical and every rail in line 2 shown to fire, or
+no merge.
+
+## 2. What the cycle must know
+
+- The reads the sentinel will find are inside helpers, not in the two
+  halves' own bodies: `served.price_falls` (`served.py:382-386`, reached
+  through `trace_context`), `price_timing._owned_price_falls`
+  (`price_timing.py:169`), the availability pass
+  (`models/availability.py:114-117`, `overrides` defaulting from the
+  view), and `artifacts.py:229-233,549-551` on the bank step. The three
+  reads in `ladder.py` (`:449,:767,:991`) are on the router's
+  `build_ladder` path, which is allowed to read the view; they are out of
+  scope. `models/train.py:586` is the trainer; out of scope.
+- The fix shape is "told, not read": the caller passes the value it
+  already has on `cfg` (`price_timing`, `news_overrides`,
+  `current_season`) as a keyword; the helper keeps its default of reading
+  the view for the router and CLI callers that have no `cfg`. The two
+  halves must then pass it everywhere, which is what the sentinel checks.
+- `_owned_price_falls` is an `lru_cache` keyed on `(day, owned)`; if
+  `price_timing` becomes a parameter it must join the key, or the cache
+  can serve a table computed under the other switch.
+
+- Ruling 2, refined on the way: the tuple is `(GafferError, ValueError,
+  RuntimeError)`, not two. `optimize/milp.py` reports an infeasible rung as
+  `RuntimeError("MILP not optimal")`, and
+  `tests/test_advise.py::test_run_advise_builds_the_ladder_after_the_state_and_never_fails_on_it`
+  pins that a rung that will not solve is one line, never the run's
+  failure. `TypeError`, `KeyError` and `AttributeError` still propagate,
+  which is what the ruling was for.
+
+## 3. Outcome
+
+_(filled at the gate)_

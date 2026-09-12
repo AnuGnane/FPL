@@ -237,6 +237,12 @@ class Plan:
     two plans on a quantity neither was chosen by. ``None`` on any plan that
     is not somebody's alternative.
     """
+    solver: str | None = None
+    """Which solver produced the plan (v18b ruling 3): ``"highs"`` normally,
+    ``"cbc"`` when HiGHS failed at solve time and the bundled CBC ran.
+    ``None`` on a plan no solver built — a scripted one, or one written
+    before v18b — and defaulted so every construction in the tree is the
+    object it was."""
     alternatives: list["Plan"] = field(default_factory=list)
     """Distinct plans behind this one, best first. Each carries its own
     ``gap``; this list is always empty on them (one level, not a tree)."""
@@ -909,7 +915,7 @@ def _solve_once(pool: pd.DataFrame, state: SolveInput, *, decay: float,
     obj.append((itb_value / 10.0) * bank[T[-1]])
     prob += pulp.lpSum(obj)
 
-    _solve(prob)
+    solver_name = _solve(prob)
     if pulp.LpStatus[prob.status] != "Optimal":
         raise RuntimeError(f"MILP not optimal: {pulp.LpStatus[prob.status]}")
 
@@ -962,21 +968,27 @@ def _solve_once(pool: pd.DataFrame, state: SolveInput, *, decay: float,
             bank=(None if bank[t].varValue is None
                   else round(float(bank[t].varValue), 4)),
         ))
-    return Plan(objective=pulp.value(prob.objective), gw_plans=gw_plans)
+    return Plan(objective=pulp.value(prob.objective), gw_plans=gw_plans,
+                solver=solver_name)
 
 
-def _solve(prob: pulp.LpProblem) -> None:
-    """Solve with HiGHS, falling back to bundled CBC on any failure.
+def _solve(prob: pulp.LpProblem) -> str:
+    """Solve with HiGHS, falling back to bundled CBC on any failure, and say
+    which one ran (``"highs"`` or ``"cbc"``).
 
     HiGHS can construct fine and still blow up at solve time (missing shared
     library, unsupported build), so the fallback wraps the solve itself.
+    v18b ruling 3: the switch used to be silent; a solver change changes
+    numbers, so the name travels up to ``Plan.solver`` and, when it was the
+    fallback, into the solve state's ``opt``.
     """
     try:
         prob.solve(pulp.HiGHS(msg=False))
-        return
-    except Exception:
+        return "highs"
+    except Exception:  # noqa: BLE001 — the fallback is the point
         pass
     prob.solve(pulp.PULP_CBC_CMD(msg=False))
+    return "cbc"
 
 
 def build_pool(players: pd.DataFrame, ep_by_code_gw: dict,

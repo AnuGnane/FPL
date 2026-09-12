@@ -1241,6 +1241,11 @@ def build_advice(inputs: Inputs, cfg: Config, *,
         # shipped asset and price a What-If baseline exactly like this advice.
         opt={**opt_kw, "horizon": cfg.horizon,
              "decision_priors": bool(cfg.decision_priors),
+             # v18b ruling 3: which solver produced the served plan, written
+             # only when it was the fallback. HiGHS is the contract; a board
+             # solved by CBC says so in the artifact, and a board solved by
+             # HiGHS carries nothing new, so the golden does not move.
+             **({"solver": plan.solver} if plan.solver == "cbc" else {}),
              # v13 §2.3: raw config values (15 = no cap); read back through
              # ``artifacts.caps_from_state`` by every re-solve of this board.
              "max_hits": int(cfg.max_hits),
@@ -1275,13 +1280,16 @@ def build_advice(inputs: Inputs, cfg: Config, *,
             ctx=step_context_from(components, solve_state,
                                   price_fall=inputs.price_fall,
                                   difficulty=inputs.difficulty))
-    except Exception as exc:  # noqa: BLE001
-        # A ladder that will not build is one line and the objective's plan
-        # served — which is also how a *miswired call here* would look, so
-        # the message carries the exception and the golden board carries the
-        # numbers. v17g caught exactly that: a signature change turned this
-        # into a TypeError, and the only visible symptom was a different
-        # bench.
+    except (GafferError, ValueError, RuntimeError) as exc:
+        # v18b ruling 2: the *domain* failures — no σ table, a degenerate
+        # draw, a rung the MILP reports infeasible (``RuntimeError`` from
+        # ``optimize/milp.py``) — are one line and the objective's plan
+        # served. A programming
+        # error (TypeError, KeyError, AttributeError) propagates, because
+        # v17g caught exactly that being swallowed here: a signature change
+        # turned this into a TypeError and the only visible symptom was a
+        # different bench. The golden board still carries the numbers; this
+        # line now carries the wiring.
         print(f"ladder: not built for GW{gw} ({exc})")
     served = serve_rung(ladder, dict(
         gw=gw, buys=buys, sells=sells, hits=int(first.hits),
@@ -1357,9 +1365,12 @@ def build_advice(inputs: Inputs, cfg: Config, *,
 
 
 def run_advise(cfg: Config, client: FPLClient | None = None) -> Advice:
-    """The whole weekly pipeline, from live refresh to ``reports/``.
+    """Gather, build, bank: the weekly run as three calls (v17g §3).
 
-    v17g §3: gather, build, bank. The signature has not moved, so the CLI,
+    ``gather_inputs`` is the half that talks to the world (the FPL client,
+    the models on disk, the news feeds) and returns one frozen ``Inputs``;
+    ``build_advice`` is the pure half, ``Inputs`` in and ``Outputs`` out;
+    this function writes what came back. The signature has not moved, so the CLI,
     the ``train_and_advise`` job, ``pipeline.weekly_run``, the what-if router
     and the golden board all call it exactly as they did.
     """
