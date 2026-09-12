@@ -666,7 +666,7 @@ Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 `reports/evaluation.json`, and the Model hub.
 
-## 11. The version history, v1 to v18b
+## 11. The version history, v1 to v18c
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
 reviewed. Every cycle ran the same way, and knowing the shape tells you where
@@ -1016,6 +1016,16 @@ read during either half. The ladder joined the golden board as a fourth
 file, a `NameError` no test had reached was fixed with one that does, the
 report prices hits off the served hit cost, and the brief's note prints
 once. Python 4427 → **4445**, frontend 986 unchanged.
+
+**v18c — measurement that has never run** (2026-09-12). The calibration
+report had reported "no graded gameweeks" for eleven days because the
+command hard-coded last season; it grades two now. The health file's two
+numbers, null since the file existed, come from the decision ledger. The
+model's own expected goals are banked beside the market-blended value, so
+the model cycle can measure from day one. And the two scoring tabs each say
+which counterfactual they score, because they give opposite signs for the
+same week and both are right. Python 4445 → **4458**, frontend 986 →
+**988**.
 
 The suite grew from nothing to **4,425 Python + 986 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above

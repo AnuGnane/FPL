@@ -14,7 +14,7 @@ than an auditor, `docs/GUIDE.md` §11–12.
 `specs/2026-09-12-v18-polish-design.md`, plan
 `plans/2026-09-12-v18-polish-programme.md`, tracker
 `plans/2026-09-12-v18-tracker.md`), eight sub-cycles that change no number
-the advice serves. v18a (the gate, back on) and v18b (the advice path tells the truth) are merged (`f662d6d`);
+the advice serves. v18a (the gate), v18b (the advice path) and v18c (measurement) are merged (`dfb0984`);
 the golden board had been skipping since the 09-11 retrain. Next: v18b the
 advice path, then v18c–v18h; the model cycle follows v18 (the user's
 ruling, 2026-09-12).
@@ -172,6 +172,25 @@ usually the thing you cannot test*, not the lines: every card of the seven was
 found by asking what a test would have to fake.
 
 ## Shipped
+
+### v18c — measurement that has never run (done, merged `dfb0984` 2026-09-12)
+The calibration report had said "no graded gameweeks" since 2026-09-01
+because `gaffer evaluate` hard-coded last season; its default is `None`
+now and the report grades **GW2 (n=618) and GW3 (n=652)** on this machine.
+`backtest` and `evaluate --decompose` default to `train_seasons[-1]`, a
+finished season that survives rollover. `reports/health.json`'s two
+structural nulls are filled from the decision ledger's `model_points` and
+`my_points` (63 / 70 for GW3). The model's own `e_goals` is banked as
+`e_goals_model` beside the blended value, so an evaluation can read the
+pre-cap number; the blend is untouched. Each scoring surface says what it
+scores — the Journal the model's own XI gross of hits, the Review your
+squad with one lane swapped at a time — and GUIDE §3's "70/30" is the
+fitted weight. Gate: golden 58 passed, 0 skipped, four expected files
+byte-identical, the Inputs re-recorded for the one added column; four
+screenshot pairs differing by the sentence alone. Two gate lines were
+written wrong and corrected in the spec: the `jq` path, and health's
+trigger, which is the advise run rather than `review`. Suite 4458 Python,
+988 frontend; pins 51 / 12 / 62.
 
 ### v18b — the advice path tells the truth (done, merged `f662d6d` 2026-09-12)
 Rulings 2, 3 and 4 of the polish design. The ladder's guard in
