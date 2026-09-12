@@ -73,6 +73,14 @@ if [[ "$STAGE" == v17f* ]]; then
     "this-week:/"
   )
 fi
+# v18c gate (specs/2026-09-12-v18c-measurement-design.md §1.5): the two
+# scoring tabs, each with its counterfactual sentence.
+if [[ "$STAGE" == v18c* ]]; then
+  HUBS=(
+    "review:/model?tab=review"
+    "journal:/model?tab=journal"
+  )
+fi
 for entry in "${HUBS[@]}"; do
   name="${entry%%:*}"; rest="${entry#*:}"
   path="${rest%%:*}"; height="${rest#*:}"
