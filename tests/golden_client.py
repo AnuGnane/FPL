@@ -23,8 +23,9 @@ from contextlib import contextmanager, nullcontext
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import patch
+
+import pytest
 
 from gaffer.advise import gather_inputs, run_advise
 from gaffer.api.client import FPLClient
@@ -42,6 +43,23 @@ PREDICTED_NAME = RecordedComponents(GOLDEN_DIR).filename
 """The frame :class:`RecordingModels` banks, taken from the adapter that reads
 it back rather than spelled twice: a rename that only one side learned about
 would surface as a ``FileNotFoundError`` twenty minutes into a gather."""
+
+
+class _HushedTime:
+    """Stands in for ``time`` inside ``gaffer.data.live``'s own namespace
+    (v18a Task 4): every name but ``sleep`` is forwarded to the real
+    module, so a call the golden has never exercised — ``time.monotonic()``,
+    say — still works instead of raising ``AttributeError`` the way a bare
+    ``SimpleNamespace(sleep=...)`` would. The real ``time`` module is left
+    untouched: this is a rebind of ``live``'s ``time`` attribute, not a
+    patch of the stdlib module's ``sleep``, so every other caller in the
+    process keeps its real sleep for the length of the golden run."""
+
+    def sleep(self, *_a, **_kw) -> None:
+        return None
+
+    def __getattr__(self, name):
+        return getattr(time, name)
 
 
 def save_bundle(directory: Path, bodies: dict[str, object]) -> Path:
@@ -295,6 +313,34 @@ def stale_inputs(header: dict, repo: Path) -> list[str]:
     return stale
 
 
+def golden_header_or_skip(repo: Path, golden: Path = GOLDEN_DIR) -> dict:
+    """The one "may the golden run" gate (v18a Task 2), replacing the two
+    copies of this helper (``test_pipeline.py``, ``test_golden_board.py``)
+    and the third inline wording that repeated only the "not recorded yet"
+    half. A stale board skips, never fails, but loudly: the sentence names
+    the first differing input, how many differ, and the exact re-record
+    command, so the failure is actionable from the test output alone.
+
+    Order: no ``models/`` at all is reported on its own (a fresh checkout
+    with the board recorded but nothing trained), then a missing header,
+    then staleness. Seam-level tests that need no models at all — the ones
+    over a synthetic bundle earlier in this file — never call this."""
+    repo = Path(repo)
+    if not (repo / "models").is_dir():
+        pytest.skip(f"golden board needs models/ under {repo} (absent); "
+                    "run gaffer train first")
+    path = Path(golden) / HEADER_NAME
+    if not path.exists():
+        pytest.skip(f"golden board not recorded ({path})")
+    header = json.loads(path.read_text())
+    stale = stale_inputs(header, repo)
+    if stale:
+        pytest.skip(f"golden board recorded under a different {stale[0]} "
+                    f"({len(stale)} input(s) differ); re-record with "
+                    "python -m tests.golden_client --write")
+    return header
+
+
 def build_scratch_tree(root: Path, repo: Path, golden: Path = GOLDEN_DIR) -> None:
     """The working directory a golden run executes in (spec §2.4). Symlinks
     for the two hashed roots, copies for the frozen Core Insights, the
@@ -385,12 +431,16 @@ def golden_cwd(root: Path, client: FPLClient | None = None):
     client, the recorder included, does contact it and keeps the real
     pacing. The patch replaces ``time`` inside ``live``'s own namespace
     rather than ``time.sleep`` itself, so nothing else in the process
-    loses its sleep. Yields the resolved root."""
+    loses its sleep; the replacement (v18a) delegates every other name to
+    the real ``time`` module instead of standing in for the whole thing, so
+    a future ``time.monotonic()`` in ``data/live.py`` still works inside the
+    golden rather than raising ``AttributeError``. Yields the resolved
+    root."""
     from gaffer.config import invalidate
     import gaffer.data.live as live_mod
 
     root = Path(root).resolve()
-    hush = (patch.object(live_mod, "time", SimpleNamespace(sleep=lambda *_: None))
+    hush = (patch.object(live_mod, "time", _HushedTime())
             if isinstance(client, RecordedClient) else nullcontext())
     before = Path.cwd()
     invalidate()
@@ -500,10 +550,15 @@ def write_expected(golden: Path = GOLDEN_DIR, *, scratch: Path | None = None,
     (expected / "plan.json").write_text(
         json.dumps(plan_route(root, int(advice["gw"]), RecordedClient(golden)),
                    indent=1, sort_keys=True) + "\n")
-    # The golden's own bundle here too, for the reason ``run_golden`` above
-    # was given it. Last, because a gather writes into the scratch tree a
-    # second time and nothing after this line reads what the run left there.
-    save_inputs(gather_golden(root, RecordedClient(golden),
+    # v18a Task 2b: a fresh scratch tree for the gather, not ``root`` again.
+    # ``root`` already has a ``reports/gwN-advice.json`` from the run above,
+    # and gathering there records it as ``Inputs.prior_advice`` — a value
+    # ``--inputs`` mode (below), which always gathers in its own fresh tree,
+    # never records. The two entry points must agree on the same Inputs.
+    inputs_root = Path(tempfile.mkdtemp(prefix="golden-inputs-"))
+    print(f"scratch (inputs): {inputs_root}", file=sys.stderr)
+    build_scratch_tree(inputs_root, repo, golden)
+    save_inputs(gather_golden(inputs_root, RecordedClient(golden),
                               RecordingModels(golden / INPUTS_DIR)),
                 golden / INPUTS_DIR)
     old = json.loads((golden / HEADER_NAME).read_text()) if (golden / HEADER_NAME).exists() else {}

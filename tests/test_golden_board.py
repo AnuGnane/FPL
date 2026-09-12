@@ -172,6 +172,33 @@ def test_an_optional_input_that_appears_is_a_drift(tmp_path):
     assert gc.stale_inputs(header, repo) == ["data/set_pieces.toml"]
 
 
+def test_a_stale_board_skips_naming_the_file_and_the_command(tmp_path):
+    """v18a Task 2: the one shared skip helper must be loud — the sentence
+    names the first differing input, how many differ, and the exact
+    re-record command, so a stale board is actionable from the pytest
+    output alone rather than from reading ``golden_client.py``.
+
+    The tree is the same minimal fake repo ``input_hashes``' own tests use
+    (``_fake_repo``): a ``models/`` file and a ``data/history`` file are all
+    ``stale_inputs`` reads, so nothing heavier — no real ``models/`` copy,
+    no symlink to the real ``data/history`` — is needed to make it compute
+    honestly."""
+    repo = _fake_repo(tmp_path)
+    golden = tmp_path / "golden"
+    golden.mkdir()
+    header = {"inputs": gc.input_hashes(repo)}
+    (golden / gc.HEADER_NAME).write_text(json.dumps(header))
+
+    (repo / "models" / "team.joblib").write_bytes(b"retrained")
+
+    with pytest.raises(pytest.skip.Exception) as exc:
+        gc.golden_header_or_skip(repo, golden)
+    message = str(exc.value)
+    assert "models/team.joblib" in message
+    assert "1 input(s) differ" in message
+    assert "python -m tests.golden_client --write" in message
+
+
 def test_build_scratch_tree_links_the_heavy_inputs_and_copies_the_frozen_ones(tmp_path):
     repo = _fake_repo(tmp_path)
     golden = tmp_path / "golden"
@@ -225,33 +252,20 @@ def test_lever_counts_survive_a_missing_block():
     assert set(gc.levers_below_floor(counts)) == set(gc.LEVER_FLOORS)
 
 
-def test_the_fixture_is_under_the_size_budget():
-    if not (gc.GOLDEN_DIR / gc.HEADER_NAME).exists():
-        pytest.skip("golden board not recorded yet")
-    assert gc.fixture_kb(gc.GOLDEN_DIR) < 5120
-
-
 REPO = Path(__file__).resolve().parents[1]
 
 
-def _header() -> dict | None:
-    path = gc.GOLDEN_DIR / gc.HEADER_NAME
-    return json.loads(path.read_text()) if path.exists() else None
+def test_the_fixture_is_under_the_size_budget():
+    gc.golden_header_or_skip(REPO)
+    assert gc.fixture_kb(gc.GOLDEN_DIR) < 5120
 
 
 @pytest.fixture(scope="module")
 def golden_run(tmp_path_factory):
     """One pipeline run per module, shared by the golden tests. Skips,
-    with the file named, when a hashed input moved (spec §2.6), and when the
-    board has not been recorded."""
-    header = _header()
-    if header is None:
-        pytest.skip("golden board not recorded (tests/data/golden_board/header.json)")
-    stale = gc.stale_inputs(header, REPO)
-    if stale:
-        pytest.skip(f"golden board recorded under a different {stale[0]} "
-                    f"({len(stale)} input(s) differ); re-record with "
-                    "python -m tests.golden_client --write")
+    loudly (v18a), when a hashed input moved (spec §2.6), when the board has
+    not been recorded, or when there is no models/ at all."""
+    header = gc.golden_header_or_skip(REPO)
     root = tmp_path_factory.mktemp("golden")
     gc.build_scratch_tree(root, REPO)
     advice, state = gc.run_golden(root)
@@ -305,9 +319,7 @@ def test_the_header_config_is_golden_config():
     fields are checked only where they are still added, so the next
     legitimate `--record` — after which the header carries all of them and
     `added` is empty — does not have to edit this test."""
-    header = _header()
-    if header is None:
-        pytest.skip("golden board not recorded yet")
+    header = gc.golden_header_or_skip(REPO)
     golden = asdict(gc.golden_config())
     assert {k: v for k, v in golden.items()
             if k in header["config"]} == header["config"]
@@ -319,9 +331,8 @@ def test_the_header_config_is_golden_config():
 
 
 def test_the_recorded_config_file_has_no_odds_section():
+    gc.golden_header_or_skip(REPO)
     path = gc.GOLDEN_DIR / "config.toml"
-    if not path.exists():
-        pytest.skip("golden board not recorded yet")
     assert "[odds]" not in path.read_text()
     assert "api_key" not in path.read_text()
 
@@ -416,6 +427,56 @@ def test_write_expected_refuses_without_a_bundle(tmp_path):
     writes nothing (Task 4 review)."""
     with pytest.raises(SystemExit, match="run --record first"):
         gc.write_expected(tmp_path / "empty")
+
+
+def test_write_expected_gathers_the_inputs_in_a_fresh_scratch_tree(tmp_path, monkeypatch):
+    """v18a Task 2b: the run's own scratch tree already carries the report
+    it wrote, and gathering there a second time would record it as
+    ``Inputs.prior_advice`` — a value ``--inputs`` mode, which always
+    gathers in a tree of its own, records as ``None``. The two entry points
+    must build the same Inputs, so the gather here must not reuse the run's
+    root."""
+    golden = tmp_path / "golden"
+    golden.mkdir()
+    (golden / gc.BUNDLE_NAME).write_bytes(b"not a real bundle")
+    monkeypatch.setattr(gc, "HASHED_ROOTS", ())  # the missing-roots refusal is not this test's concern
+
+    built: list[Path] = []
+    monkeypatch.setattr(gc, "build_scratch_tree",
+                        lambda root, repo, golden=None: built.append(Path(root)))
+
+    run_roots: list[Path] = []
+
+    def fake_run_golden(root, client=None):
+        run_roots.append(Path(root))
+        return {"gw": 4}, {"gw": 4}
+
+    monkeypatch.setattr(gc, "run_golden", fake_run_golden)
+    monkeypatch.setattr(gc, "plan_route", lambda root, gw, client=None: {"plan": True})
+
+    gather_roots: list[Path] = []
+
+    def fake_gather_golden(root, client=None, predictions=None):
+        gather_roots.append(Path(root))
+        return "the-inputs"
+
+    monkeypatch.setattr(gc, "gather_golden", fake_gather_golden)
+    saved: dict[str, object] = {}
+    monkeypatch.setattr(gc, "save_inputs",
+                        lambda inputs, directory: saved.update(
+                            inputs=inputs, directory=directory))
+    monkeypatch.setattr(gc, "load_bundle", lambda directory: {})
+    monkeypatch.setattr(gc, "lever_counts", lambda advice: {})
+    monkeypatch.setattr(gc, "input_hashes", lambda repo: {})
+    monkeypatch.setattr(gc, "_git_head", lambda repo: "deadbee")
+
+    gc.write_expected(golden)
+
+    assert len(built) == 2, "one scratch tree for the run, one for the gather"
+    assert run_roots == [built[0]]
+    assert gather_roots == [built[1]]
+    assert built[0] != built[1], "the gather must not reuse the run's own root"
+    assert saved == {"inputs": "the-inputs", "directory": golden / gc.INPUTS_DIR}
 
 
 def test_main_refuses_to_run_outside_the_repo_root(tmp_path, monkeypatch, capsys):
