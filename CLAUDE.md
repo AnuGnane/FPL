@@ -11,12 +11,15 @@ for what is open. This file holds the rules for working in the repo.
 ## Commands
 
 ```
-uv run gaffer advise                     # the weekly solve (needs models/)
-uv run gaffer brief                      # the LLM brief over that advice; the CLI
-                                         # advise does not chain it, the web job does
+uv run gaffer advise                     # the weekly solve (needs models/); since
+                                         # v17d it chains the brief, as the web job does
+uv run gaffer brief                      # rewrite the LLM brief alone
 uv run gaffer ui --no-open-browser --port 8927
-.venv/bin/pytest -q                      # Python suite (~4300 tests)
-cd frontend && npx tsc --noEmit && npx vitest run   # types + ~910 tests
+.venv/bin/pytest -q                      # Python suite (~4400 tests)
+.venv/bin/pytest -q -rs tests/test_golden_board.py tests/test_pipeline.py
+                                         # the golden gate (~15 min); -rs so a stale
+                                         # board's skip names the file; 0 skipped is a pass
+cd frontend && npx tsc --noEmit && npx vitest run   # types + ~990 tests
 cd frontend && npm run dev               # Vite on :5173, proxies /api to :8927
 cd frontend && npm run build             # emits src/gaffer/web/static/ (untracked)
 ```
@@ -39,16 +42,23 @@ is hand-written and must never be regenerated.
 
 ## Layout
 
-- `src/gaffer/` — `advise.py` (the weekly solve), `ladder.py` (rungs and
-  restraint), `brief.py` (LLM prose with a truth check), `decisions.py`,
-  `review.py`, `optimize/` (MILP), `models/`, `features/`, `web/` (FastAPI:
-  `app.py`, `jobs.py`, `routers/`, `schemas.py`).
+- `src/gaffer/` — `advise.py` (`gather_inputs` then `build_advice`, v17g),
+  `inputs.py` (the frozen `Inputs`/`Outputs` seam), `served.py` (the
+  `ServedPlan` the advice JSON *is*, v17f), `pipeline.py` (`weekly_run`, the
+  one weekly path, v17d), `config.py` (`config_in_force()`, the one cached
+  view, v17e), `ladder.py` (rungs and restraint), `brief.py` (LLM prose with
+  a truth check), `decisions.py`, `review.py`, `optimize/` (MILP), `models/`,
+  `features/`, `web/` (FastAPI: `app.py`, `jobs.py`, `routers/`,
+  `schemas.py`).
 - `frontend/src/` — `hubs/` (This Week, Planning, Players, League, Live,
   Model), `kit/` (shared components and tokens), `api/`, `styles/theme.css`.
 - `tests/` — pytest. The rails that pin counts and honesty rules live in
   `tests/test_v*_degradation.py` (v4c to v13), in `tests/test_v16_restraint.py`
-  (source-order pins on `run_advise`), in `tests/test_web_job_kinds*.py`, and
-  for the frontend in `frontend/src/kit/tokens.test.ts`.
+  (the CLI's restraint lines; its source-order pins moved to
+  `tests/test_served_plan.py` in v17f and became behaviour in v17g), in
+  `tests/test_web_job_kinds*.py`, in `tests/test_golden_board.py` with
+  `tests/test_pipeline.py` (the golden board, v17c), and for the frontend in
+  `frontend/src/kit/tokens.test.ts`.
 - `scripts/` — replay drivers (`v7b_replay.py`, `replay_pair.sh`,
   `seed_stats.py`), launchd plists, `install_automation.sh`, `gen_types.py`
   (the Python half of `npm run types`; the node half is
