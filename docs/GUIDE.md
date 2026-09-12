@@ -666,7 +666,7 @@ Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 `reports/evaluation.json`, and the Model hub.
 
-## 11. The version history, v1 to v17h
+## 11. The version history, v1 to v18a
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
 reviewed. Every cycle ran the same way, and knowing the shape tells you where
@@ -993,6 +993,17 @@ shares its request without caching its answer.
 
 This closes the v17 deepening programme: eight sub-cycles, none of which
 changed a number the advice serves.
+
+**v18a — the gate, back on** (2026-09-12). The first sub-cycle of the v18
+polish programme, which the 2026-09-12 final review
+(`docs/superpowers/research/2026-09-12-final-review.md`) set up: eight
+gated sub-cycles that change no served number. The golden board — the
+thing every refactor since v17c is gated on — had been silently skipping
+since the Thursday retrain moved the model files. It was re-recorded (the
+board itself had not moved), the recorder was fixed so its two modes record
+the same Inputs, one loud skip helper replaced three wordings, the pipeline
+test runs alone again, and `CLAUDE.md` stopped saying three things that had
+been false since v17. Python 4425 → **4427**, frontend 986 unchanged.
 
 The suite grew from nothing to **4,425 Python + 986 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above

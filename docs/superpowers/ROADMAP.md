@@ -8,7 +8,16 @@ fills, and the index below points at them. Measurement rules every cycle
 follows: `CONVENTIONS.md`. For the same material written for a reader rather
 than an auditor, `docs/GUIDE.md` §11–12.
 
-## Where things stand (2026-09-09)
+## Where things stand (2026-09-12)
+
+**The v18 polish programme is running** (design
+`specs/2026-09-12-v18-polish-design.md`, plan
+`plans/2026-09-12-v18-polish-programme.md`, tracker
+`plans/2026-09-12-v18-tracker.md`), eight sub-cycles that change no number
+the advice serves. v18a — the gate, back on — is merged (`20185aa`);
+the golden board had been skipping since the 09-11 retrain. Next: v18b the
+advice path, then v18c–v18h; the model cycle follows v18 (the user's
+ruling, 2026-09-12).
 
 v16 — restraint and the brief — is **merged** (`main` `9f5be20`; ff-merge
 of `v16-restraint`), on top of v15's leagues (`ed3e8fe`). The ladder's
@@ -163,6 +172,32 @@ usually the thing you cannot test*, not the lines: every card of the seven was
 found by asking what a test would have to fake.
 
 ## Shipped
+
+### v18a — the gate, back on (done, merged `20185aa` 2026-09-12)
+The first sub-cycle of the v18 polish programme
+(`docs/superpowers/plans/2026-09-12-v18-polish-programme.md`; design
+`specs/2026-09-12-v18-polish-design.md`). The golden board's five
+live-model tests had **skipped since the 2026-09-11 retrain** moved every
+`models/*.meta.json`, and the suite read green with the gate off. The board
+was re-recorded with `--write` — every expected file byte-identical, the
+retrain having rebuilt the same models from the same frame — and the
+Inputs with `--inputs`, because `--write`'s second gather ran in the tree
+the board had just written into and recorded the board's own advice as
+`prior_advice`; the recorder now gathers in a fresh tree, so the two modes
+agree. The user's ruling on staleness: **skip, never fail, but loudly** —
+one `golden_header_or_skip` in `tests/golden_client.py` replaces the two
+copies and a third wording, its sentence names the first differing file and
+the `--write` command, a rail asserts it, and the gate command in
+`CLAUDE.md` carries `-rs`. `tests/test_pipeline.py` runs alone again (its
+`_wire` imported `gaffer.advise` while a `load_training_frame` stub was
+live); the golden's `time` hush delegates every name but `sleep`. Three
+`CLAUDE.md` sentences agents obey were corrected: `advise` chains the brief
+since v17d, the v16 rail holds lines not pins, the layout names the v17
+modules. Gate: 56 passed, 0 skipped at the tip (54 on the fixture alone);
+the pipeline file alone 15 passed; the rail mutation-tested; with `models/`
+absent 48 passed, 8 skipped naming the reason. Suite 4427 Python (4418 +
+9 golden), 986 frontend; pins 51 / 12 / 62. Also this day, by the user's
+decision: the 26 local and 5 remote fully merged branches deleted.
 
 ### v17h — This Week's data fetched once; one job hook (done, merged `339f5d1` 2026-09-09)
 Review card #c7, the one the review marked **Speculative** — it asked the
