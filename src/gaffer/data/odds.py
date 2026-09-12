@@ -685,6 +685,10 @@ def blend_attacking_odds(comp: pd.DataFrame, ags: pd.DataFrame | None,
              .drop_duplicates(subset=["code", "gw", "opp_code"]))
     out = comp.merge(keyed, on=["code", "gw", "opp_code"], how="left",
                      validate="many_to_one")
+    # v18c Task 3: the model's own value, banked before the blend overwrites
+    # it below — otherwise every reader of components_gw*.parquet sees only
+    # the market-capped number (2026-09-04 review, §2).
+    out["e_goals_model"] = out["e_goals"]
     p_play = pd.to_numeric(out["p_play"], errors="coerce")
     has = out["lambda_ags"].notna() & (p_play > 0)
     out["e_goals_odds"] = float("nan")

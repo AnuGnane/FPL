@@ -59,7 +59,24 @@ def update_health(finished_gw: int) -> dict | None:
                       .get("code", 0))
     except (AttributeError, TypeError, ValueError):
         captain = 0
-    health = compute_health(preds, actuals, captain_code=captain)
+    # v18c Task 2: the two currencies the health file has carried as null
+    # forever live in the decision ledger, keyed by gameweek. Imported
+    # lazily — ``review`` is the heavier module and nothing at package import
+    # time needs it — and never allowed to raise: the health file is a
+    # decoration, not a gate.
+    advice_pts = actual_pts = None
+    try:
+        from gaffer.review import load_ledger
+
+        row = next((r for r in load_ledger()
+                   if int(r.get("gw", -1)) == int(finished_gw)), None)
+        if row is not None:
+            advice_pts = row.get("model_points")
+            actual_pts = row.get("my_points")
+    except Exception:  # noqa: BLE001 — decoration, never a reason to fail
+        advice_pts = actual_pts = None
+    health = compute_health(preds, actuals, captain_code=captain,
+                            advice_pts=advice_pts, actual_pts=actual_pts)
     Path("reports").mkdir(exist_ok=True)
     Path("reports/health.json").write_text(json.dumps(health, indent=1))
     return health

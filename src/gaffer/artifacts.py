@@ -40,7 +40,8 @@ REPORTS = Path("reports")
 COMPONENT_COLS = [
     "code", "element", "name", "position", "team_code", "team_name",
     "gw", "opp_code", "opp_name", "was_home", "kickoff_time",
-    "p_play", "p60", "e_goals", "e_assists", "p_defcon", "e_saves",
+    "p_play", "p60", "e_goals", "e_goals_model", "e_assists", "p_defcon",
+    "e_saves",
     "e_bonus", "e_cards", "p_cs", "e_gc", "p_cs_model", "e_gc_model",
     "odds_e_goals_against", "odds_weight", "pen_taker", "setpiece_taker",
     "ep_minutes", "ep_goals", "ep_assists", "ep_cs", "ep_gc", "ep_saves",
@@ -104,7 +105,11 @@ def components_frame(comp: pd.DataFrame, scoring: dict, cal,
     out["opp_name"] = out["opp_code"].map(team_name)
     for col in COMPONENT_COLS:
         if col not in out.columns:
-            out[col] = float("nan")
+            # v18c Task 3: a run with no odds key never calls
+            # blend_attacking_odds, so no e_goals_model column exists — there
+            # the model value *is* e_goals, not an absence.
+            out[col] = (out["e_goals"] if col == "e_goals_model"
+                       else float("nan"))
     return out[COMPONENT_COLS].reset_index(drop=True)
 
 
@@ -134,6 +139,11 @@ def save_components(frame: pd.DataFrame, gw: int) -> Path:
             shutil.copyfile(path, prev_components_path(gw))
         except Exception as exc:  # noqa: BLE001 — a diff is never worth a run
             print(f"components: no predecessor kept for GW{gw} ({exc})")
+    if "e_goals_model" not in frame.columns and "e_goals" in frame.columns:
+        # v18c Task 3: a caller that built its frame before this column
+        # existed (or a no-odds-key run) gets the model value backfilled
+        # rather than a silent null forever.
+        frame = frame.assign(e_goals_model=frame["e_goals"])
     frame.to_parquet(path, index=False)
     return path
 

@@ -641,7 +641,8 @@ def test_update_health_reads_the_captain_through_artifacts(tmp_path,
     seen = {}
     monkeypatch.setattr(
         tracking, "compute_health",
-        lambda preds, actuals, captain_code: seen.update(c=captain_code) or {})
+        lambda preds, actuals, captain_code, advice_pts=None,
+        actual_pts=None: seen.update(c=captain_code) or {})
     # v17f: ``tracking`` binds the name at import, so the stand-in goes on
     # the consumer.
     monkeypatch.setattr(tracking, "load_advice",

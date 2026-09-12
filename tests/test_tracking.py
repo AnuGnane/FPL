@@ -47,3 +47,48 @@ def test_update_health_returns_none_before_live_refresh(tmp_path, monkeypatch):
                "live/predictions/gw3.parquet")
 
     assert tracking.update_health(3) is None
+
+
+def test_update_health_carries_the_ledgers_two_points(tmp_path, monkeypatch):
+    """v18c Task 2: reports/health.json has carried advice_pts/actual_pts
+    as null forever because update_health never read the ledger."""
+    import json
+
+    from gaffer.data import store
+    from gaffer import tracking
+
+    monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")
+    monkeypatch.chdir(tmp_path)
+
+    preds = pd.DataFrame({"code": [1, 2], "gw": [3, 3], "ep": [6.0, 4.0]})
+    store.save(preds, "live/predictions/gw3.parquet")
+    live = pd.DataFrame({"code": [1, 2], "gw": [3, 3],
+                         "total_points": [8, 3], "minutes": [90, 90]})
+    store.save(live, "live/player_gw.parquet")
+
+    (tmp_path / "reports").mkdir(exist_ok=True)
+    (tmp_path / "reports" / "decision_ledger.json").write_text(json.dumps(
+        {"gws": [{"gw": 3, "model_points": 62, "my_points": 58}]}))
+
+    health = tracking.update_health(3)
+    assert health["advice_pts"] == 62
+    assert health["actual_pts"] == 58
+
+
+def test_update_health_leaves_the_two_points_null_without_a_ledger(
+        tmp_path, monkeypatch):
+    from gaffer.data import store
+    from gaffer import tracking
+
+    monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")
+    monkeypatch.chdir(tmp_path)
+
+    preds = pd.DataFrame({"code": [1, 2], "gw": [3, 3], "ep": [6.0, 4.0]})
+    store.save(preds, "live/predictions/gw3.parquet")
+    live = pd.DataFrame({"code": [1, 2], "gw": [3, 3],
+                         "total_points": [8, 3], "minutes": [90, 90]})
+    store.save(live, "live/player_gw.parquet")
+
+    health = tracking.update_health(3)
+    assert health["advice_pts"] is None
+    assert health["actual_pts"] is None
