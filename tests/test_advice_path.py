@@ -8,8 +8,12 @@ test; the ``opt`` line removed fails the third.
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import pulp
 import pytest
+
+from dataclasses import asdict
 
 from gaffer.advise import build_advice
 from gaffer.errors import GafferError
@@ -75,3 +79,18 @@ def test_solve_names_highs_when_it_runs_and_cbc_when_it_falls_back(monkeypatch):
     prob = _a_problem()
     assert milp._solve(prob) == "cbc"
     assert pulp.LpStatus[prob.status] == "Optimal"
+
+
+def test_two_builds_with_different_clocks_differ_only_in_their_stamp():
+    plan = a_plan(captain=116, vice=117)
+    t1 = datetime(2026, 9, 12, 10, 0, tzinfo=timezone.utc)
+    t2 = datetime(2026, 9, 12, 11, 0, tzinfo=timezone.utc)
+    one = build_advice(tiny_inputs(), tiny_cfg(), solver=ScriptedSolver(plan=plan),
+                       now=t1)
+    two = build_advice(tiny_inputs(), tiny_cfg(), solver=ScriptedSolver(plan=plan),
+                       now=t2)
+    assert one.state.generated_at == t1.isoformat()
+    assert two.state.generated_at == t2.isoformat()
+    a, b = asdict(one.advice), asdict(two.advice)
+    assert a.pop("generated_at") != b.pop("generated_at")
+    assert a == b

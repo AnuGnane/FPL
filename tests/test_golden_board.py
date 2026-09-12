@@ -728,9 +728,12 @@ def test_gather_inputs_and_build_advice_read_no_view(tmp_path, monkeypatch):
     own present-tense read for a file written before v17f).
 
     Gathered with the recorded client and :class:`~gaffer.inputs.RecordedComponents`
-    — no network and no ``models/`` — so the seal covers the same ground the
-    ``open()`` rail's ``load_inputs`` shortcut cannot: it runs seconds, not
-    the full pipeline the golden gate times.
+    — no network and no ``models/`` — and the gathered components frame is
+    compared to the recorded one, as the sibling above does; the *build* half
+    runs off the recorded Inputs, because the recorded adapter has no
+    calibration model and a board built from its gather is not the expected
+    board (the sibling's docstring says so). The seal is the assertion for
+    both halves; the byte comparison is the build's.
 
     Patched at the name each consumer bound it (``tests.conftest.patch_view``):
     ``gaffer.price_timing`` binds ``config_in_force`` at import time, so a
@@ -743,7 +746,7 @@ def test_gather_inputs_and_build_advice_read_no_view(tmp_path, monkeypatch):
     import gaffer.config
     import gaffer.price_timing
     from gaffer.advise import build_advice
-    from gaffer.inputs import RecordedComponents
+    from gaffer.inputs import RecordedComponents, load_inputs
     from tests.conftest import patch_view
 
     root = tmp_path / "scratch"
@@ -758,12 +761,14 @@ def test_gather_inputs_and_build_advice_read_no_view(tmp_path, monkeypatch):
     patch_view(monkeypatch, refuse)
     patch_view(monkeypatch, refuse, gaffer.price_timing)
     try:
-        inputs = gc.gather_golden(
+        gathered = gc.gather_golden(
             root, gc.RecordedClient(),
             RecordedComponents(gc.GOLDEN_DIR / gc.INPUTS_DIR))
-        out = build_advice(inputs, gc.golden_config())
+        recorded = load_inputs(gc.GOLDEN_DIR / gc.INPUTS_DIR)
+        out = build_advice(recorded, gc.golden_config())
     finally:
         monkeypatch.undo()
+    pd.testing.assert_frame_equal(gathered.comp, recorded.comp)
     expected = json.loads(
         (gc.GOLDEN_DIR / gc.EXPECTED_DIR / "advice.json").read_text())
     advice = json.loads(json.dumps(asdict(out.advice), default=str))

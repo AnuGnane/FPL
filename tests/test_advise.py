@@ -18,6 +18,7 @@ import pandas as pd
 import pytest
 
 import gaffer.advise as advise_mod
+from gaffer.config import Config
 from gaffer.advise import build_advice
 from gaffer.league_mode import Strategy
 from tests.advice_fixture import (GW, ScriptedSolver, a_plan,
@@ -130,7 +131,8 @@ def _predicted(monkeypatch, *, avail=None, pens=None):
     players = pd.DataFrame({"code": [1, 2], "status": ["a", "a"],
                             "chance_of_playing": [100, 100]})
     return advise_mod.predict_components(pred, team_future, players,
-                                         avail, pens)
+                                         avail, pens,
+                                         cfg=Config(entry_id=1, league_id=2))
 
 
 def a_strategy(*, lam: float = 0.0, **over) -> Strategy:
@@ -761,9 +763,11 @@ def test_predict_components_defaults_to_the_official_flags():
 
     sig = inspect.signature(predict_components)
     # v6 appended ``pens`` behind ``avail``; both default to None, so the
-    # pre-v5 four-argument call shape still means the pre-v5 thing.
+    # pre-v5 four-argument call shape still means the pre-v5 thing. v18b
+    # ruling 4 appended a keyword-only ``cfg``: the availability pass is told
+    # its switches, never reads them.
     assert list(sig.parameters) == ["pred_frame", "tg_future", "players",
-                                    "avail", "pens"]
+                                    "avail", "pens", "cfg"]
     assert sig.parameters["avail"].default is None
     assert sig.parameters["pens"].default is None
 
@@ -893,7 +897,8 @@ def test_run_advise_builds_the_penalty_priors_before_predicting(monkeypatch):
     inputs, order = gather(monkeypatch, predictions=_Predictions())
     at = order.index
     assert at("pen_priors") < at("news_availability")
-    assert set(seen) == {"pred_frame", "tg_future", "players", "avail", "pens"}
+    assert set(seen) == {"pred_frame", "tg_future", "players", "avail", "pens",
+                         "cfg"}
     assert inputs.comp is not None
 
 

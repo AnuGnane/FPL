@@ -415,7 +415,7 @@ def news_availability(cfg: Config, players: pd.DataFrame,
 def predict_components(pred_frame: pd.DataFrame, tg_future: pd.DataFrame,
                        players: pd.DataFrame,
                        avail: pd.DataFrame | None = None,
-                       pens=None) -> pd.DataFrame:
+                       pens=None, *, cfg: Config) -> pd.DataFrame:
     """Every component prediction on one row per player-fixture.
 
     Assembled positionally (see the module docstring): each ``predict``
@@ -438,8 +438,15 @@ def predict_components(pred_frame: pd.DataFrame, tg_future: pd.DataFrame,
     # running the model twice to get it would be both slower and wrong — the
     # two sides have to differ by the availability layer alone.
     flags = players[["code", "status", "chance_of_playing"]]
-    mp_flags = apply_availability(mp, flags)
-    mp = apply_availability(mp, avail if avail is not None else flags)
+    # v18b ruling 4: told, not read — the four switches the pass used to
+    # take off the process-wide view come from the cfg this run was given.
+    switches = dict(overrides=cfg.news_overrides,
+                    start_floor=cfg.news_lineup_start_floor,
+                    llm_serving=cfg.news_llm_classifier,
+                    current_season=cfg.current_season)
+    mp_flags = apply_availability(mp, flags, **switches)
+    mp = apply_availability(mp, avail if avail is not None else flags,
+                            **switches)
 
     keys = ["code", "season_idx", "gw", "opp_code"]
     carried = ["position", "team_code", "e_cards", "was_home",
@@ -668,7 +675,7 @@ def gather_inputs(cfg: Config, client: FPLClient | None = None, *,
     avail = news_availability(cfg, players, teams, events, gw)
     comp = predictions.components(pred_frame=pred_frame,
                                   tg_future=tg_future, players=players,
-                                  avail=avail, pens=pens)
+                                  avail=avail, pens=pens, cfg=cfg)
     write_shadow(comp, gw)
     # Player props are the most optional signal here: the free tier meters
     # every request, the market may not exist for a fixture, and a quota that
@@ -819,7 +826,8 @@ def gather_inputs(cfg: Config, client: FPLClient | None = None, *,
     # the values rather than the readers.
     price_timing, price_fall = price_falls(
         SimpleNamespace(owned_codes=[] if my is None
-                        else my.picks["code"].tolist()))
+                        else my.picks["code"].tolist()),
+        price_timing=cfg.price_timing)
     # The ticker's fixture rating, for the ladder's step reasons. Swallowed
     # exactly as ``ladder.step_context`` swallowed it: an empty map means the
     # reasons fall through, never that the run fails.
@@ -840,7 +848,7 @@ def gather_inputs(cfg: Config, client: FPLClient | None = None, *,
     # Two artifacts nothing in the pipeline reads: the availability frame this
     # run predicted on exists so the UI can answer "why?" offline, and it
     # swallows its own failures.
-    save_availability(avail, gw)
+    save_availability(avail, gw, overrides=cfg.news_overrides)
     return Inputs(
         gw=gw, gws=gws, deadline=deadline, through=through,
         gap_warning=gap_warning, players=players, comp=comp,
@@ -854,7 +862,8 @@ def gather_inputs(cfg: Config, client: FPLClient | None = None, *,
 
 
 def build_advice(inputs: Inputs, cfg: Config, *,
-                 solver: Solver | None = None) -> Outputs:
+                 solver: Solver | None = None,
+                 now: datetime | None = None) -> Outputs:
     """Every solve, the alternatives, the ladder, the served plan, the state
     and the payload — from one frozen value, with no file and no socket
     (v17g §3).
@@ -1229,7 +1238,9 @@ def build_advice(inputs: Inputs, cfg: Config, *,
     # ladder solves off the state in memory, so nothing here has to reach the
     # disk first, and the components frame is banked by ``gather_inputs``,
     # which is the half that made it.
-    generated_at = datetime.now(timezone.utc).isoformat()
+    # v18b: the clock is a parameter, so two builds of one board can be
+    # compared on everything but their stamp; the default is the clock.
+    generated_at = (now or datetime.now(timezone.utc)).isoformat()
     solve_state = SolveState(
         gw=gw, gws=gws, deadline=deadline,
         generated_at=generated_at,
