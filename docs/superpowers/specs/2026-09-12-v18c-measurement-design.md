@@ -54,6 +54,37 @@ Verdict: all five, or no merge.
   the other. One sentence on each tab says which it is.
 - GUIDE §3's "70/30" becomes the fitted weight sentence.
 
-## 3. Outcome
+## 3. Outcome — PASS, with two gate lines corrected on the way
 
-_(filled at the gate)_
+Run by the orchestrator on the branch tip, 2026-09-12.
+
+1. **Golden:** 58 passed, 0 skipped in 18:11; the four expected files
+   byte-identical to v18b's recording; the Inputs re-recorded once
+   (`afc6e7c`), the diff exactly one file, `inputs/components.parquet`,
+   which gained the `e_goals_model` column.
+2. **Calibration on this machine:** `uv run gaffer evaluate --calibration`
+   grades **GW2 (n=618) and GW3 (n=652)** for `p_play`, `p60` and `p_haul`,
+   with `p_cs` in the cumulative row (about 20 club-fixtures a gameweek,
+   under the 30-sample floor). Before: `season: 2025-26`, `gameweeks: []`,
+   unchanged since 2026-09-01. The gate line's `jq` path was wrong (the
+   counts live under `gameweeks[].heads.<head>.n`); the numbers are the ones
+   above.
+3. **Health:** the gate line named `gaffer review` as the trigger; it is
+   not — `update_health(gw - 1)` runs from `gather_inputs` on the advise
+   path (`advise.py:627-629`), and `review` had nothing new to grade. A
+   post-deadline `advise` would overwrite the served GW4 artifact, so the
+   function was called directly: `update_health(3)` →
+   `advice_pts: 63, actual_pts: 70`, matching the review tab's GW3 row. The
+   file fills on its own at the next advise run.
+4. **Rails:** 4 CLI, 2 tracking, 5 components-artifact, 2 vitest, all
+   green; the golden's sealed rail compares the gathered frame with the new
+   column to the re-recorded one.
+5. **Screenshots:** four pairs under `.superpowers/shots/v18c-{before,after}`,
+   the control shot from a `main` worktree served through its own source
+   path; each pair differs by the one sentence and nothing else (checked by
+   eye on `review-dark` and `journal-light`). The user was not present;
+   approved by the orchestrator under the user's standing instruction to run
+   the programme, with the images kept for the user's review.
+
+Suite: 4445 → **4458** Python (with the golden), 986 → **988** frontend.
+Verdict: merge. Pins unmoved (51 / 12 / 62).
