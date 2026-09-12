@@ -44,6 +44,12 @@ def bare(tmp_path, monkeypatch):
         tmp_path / "data/live/teams.parquet", index=False)
     monkeypatch.setattr("gaffer.web.routers.league_sim.fpl_client",
                         lambda: FakeClient())
+    # v18b: the league router builds its own client for the league list
+    # (v15) and caches the answer per entry id; a warm cache left by an
+    # earlier test file had been standing in for this patch.
+    monkeypatch.setattr("gaffer.web.routers.league.fpl_client",
+                        lambda: FakeClient())
+    monkeypatch.setattr("gaffer.web.routers.league._OVERVIEW", {})
     monkeypatch.setattr("gaffer.web.routers.league_sim._CACHE", {})
     return tmp_path
 

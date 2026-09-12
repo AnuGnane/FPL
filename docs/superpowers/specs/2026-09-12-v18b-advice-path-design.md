@@ -61,6 +61,50 @@ no merge.
   failure. `TypeError`, `KeyError` and `AttributeError` still propagate,
   which is what the ruling was for.
 
-## 3. Outcome
+## 3. Outcome — PASS, first full run
 
-_(filled at the gate)_
+Run by the orchestrator on the branch tip, 2026-09-12.
+
+1. **Golden:** `pytest -q -rs tests/test_golden_board.py tests/test_pipeline.py`
+   → **58 passed, 0 skipped** in 18:13 (56 from v18a, plus the ladder
+   comparison and the sealed-view rail). `expected/advice.json`,
+   `plan.json` and `solve_state.json` byte-identical to `a0bd45c`; the
+   recorded Inputs unchanged; `expected/ladder.json` added (`afefc31`) —
+   the one declared fixture change.
+2. **Rails, each shown to fire:** the ladder catch widened back to
+   `Exception` → `test_a_programming_error_inside_the_ladder_propagates`
+   fails; the `opt` line removed →
+   `test_the_fallback_solver_is_recorded_on_the_state_and_highs_is_not`
+   fails; a `config_in_force()` planted in `build_advice` → the sealed rail
+   raises the sentinel (`tests/test_golden_board.py:759: _Read`); the
+   `save_availability` hop reverted → the sentinel again, in 22 s; the
+   `--write` command dropped from the recorder's sentence (v18a) and the
+   `attacking_features` import reverted → `NameError` at
+   `calibrate_noise.py:443`; the CLI's second echo restored → the note
+   counted twice. The template rail renders `−5 pts` at `hit_cost=5`.
+3. **Clocks:** two builds with different `now` differ only in
+   `generated_at` (`test_two_builds_with_different_clocks_differ_only_in_their_stamp`);
+   two ladder payloads likewise, plus `wall_s`
+   (`test_ladder_payload_takes_its_clock`).
+
+**Found on the way.** The sealed rail's first draft compared a board built
+from a fresh `RecordedComponents` gather to the expected files and was ten
+points off: the recorded adapter has no calibration model, which its
+sibling's docstring already said. The rail now gathers under the seal,
+compares the gathered components frame to the recorded one, and builds
+from the recorded Inputs under the same seal. And the full suite exposed a
+latent order dependence unrelated to this cycle: two fake FPL clients
+(`tests/test_web_smoke.py`, `tests/test_web_league_sim.py`) never answered
+`get_entry`/`get_entry_history`, and the v8c rail's fixture never patched
+the league router's client — a warm `_OVERVIEW` cache from an earlier file
+had stood in for all three. Verified against `main`'s source in a worktree
+(4 failed there too). Fixed here; v18g's cache-clearing fixture is what
+makes it impossible to reintroduce.
+
+**Suite:** `pytest -q -m "not golden"` → 4434 passed, 11 deselected, in
+three consecutive runs the first of which reported one failure whose name
+the capture did not keep; the two runs after it were clean. Recorded as an
+unattributed flake for v18g, whose cache-clearing fixture and random-order
+run are the instruments for it.
+
+Verdict: merge. Pins unmoved (51 / 12 / 62).

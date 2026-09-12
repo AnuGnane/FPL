@@ -38,6 +38,25 @@ class FakeClient:
             raise RuntimeError("FPL is down")
         return STANDINGS
 
+    def get_entry(self, entry_id):
+        # v18b: ``/api/league/*`` reads the entry payload for the league
+        # list first (v15, ``routers/league.py``), through a module cache
+        # keyed on the entry id. A warm cache from an earlier test file had
+        # been hiding that this fake never answered the call; run alone, the
+        # league routes raised AttributeError.
+        return {"summary_overall_points": 106, "current_event": 3,
+                "leagues": {"classic": [
+                    {"id": 5, "name": "Sim League", "league_type": "x",
+                     "entry_rank": 1, "entry_last_rank": 1,
+                     "rank_count": 2}]}}
+
+    def get_entry_history(self, entry_id):
+        # v18b: ``/api/league/race`` reads each entry's history (v8a); see
+        # ``get_entry`` above for why the fake answers it now.
+        return {"current": [{"event": 2, "points": 55,
+                             "total_points": 106 if entry_id == 1 else 98}],
+                "chips": []}
+
     def get_entry_picks(self, entry_id, gw):
         if self.dead:
             raise RuntimeError("FPL is down")
