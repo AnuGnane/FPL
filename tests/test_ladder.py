@@ -695,7 +695,7 @@ def test_step_context_loads_the_three_and_hands_them_to_the_core(tmp_path,
     monkeypatch.setattr(ladder_mod, "load_components", lambda gw: f"COMP{gw}")
     monkeypatch.setattr("gaffer.price_timing.owned_price_falls",
                         lambda owned: {16: 0.9})
-    monkeypatch.setattr("gaffer.web.identity._difficulty_by_team",
+    monkeypatch.setattr(ladder_mod, "difficulty_by_team",
                         lambda gws: {(4, 1): 0.2})
     monkeypatch.setattr(ladder_mod, "step_context_from",
                         lambda *a, **kw: seen.update(args=a, kw=kw) or "CTX")

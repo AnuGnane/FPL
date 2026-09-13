@@ -39,6 +39,7 @@ from gaffer import artifacts
 from gaffer.artifacts import (caps_from_state, latest_gw, load_advice,
                               load_components, load_solve_state, milp_pool,
                               raw_ep_by, solve_kw_from_state)
+from gaffer.difficulty import difficulty_by_team
 from gaffer.errors import GafferError
 from gaffer.io import atomic_write
 from gaffer.league_mode import cover_from_eo, tilt_ep
@@ -229,8 +230,7 @@ def step_context(gw: int, state, gws: list[int]) -> StepContext:
         print(f"ladder: no price falls for the step reasons ({exc})")
     difficulty: dict = {}
     try:
-        from gaffer.web.identity import _difficulty_by_team
-        difficulty = _difficulty_by_team([int(g) for g in gws])
+        difficulty = difficulty_by_team([int(g) for g in gws])
     except Exception as exc:  # noqa: BLE001
         print(f"ladder: no fixture difficulty for the step reasons ({exc})")
     return step_context_from(components, state, price_fall=price_fall,

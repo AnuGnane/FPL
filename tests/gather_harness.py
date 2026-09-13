@@ -106,18 +106,17 @@ def gather(monkeypatch, *, cfg: Config | None = None, my: bool = True,
         "load_advice": {"gw": GW},
         "load_decision_priors": None, "load_chip_scenarios": {},
         "price_falls": (False, {}),
+        "difficulty_by_team": {},
     }
     stubs.update(overrides)
     for name, value in stubs.items():
         monkeypatch.setattr(advise, name, spy(name, value), raising=False)
-    # Two of gather's reads are imported inside the function body — the
-    # health update because ``tracking`` imports back, the ticker's
-    # difficulty because it lives under ``web``. Patching ``advise`` would
-    # miss both, so they are patched where they are looked up.
+    # One of gather's reads is imported inside the function body — the
+    # health update, because ``tracking`` imports back. Patching ``advise``
+    # would miss it, so it is patched where it is looked up. (The fixture
+    # rating was the other until v18d §2 moved it into the core.)
     monkeypatch.setattr("gaffer.tracking.update_health",
                         spy("update_health", None))
-    monkeypatch.setattr("gaffer.web.identity._difficulty_by_team",
-                        spy("_difficulty_by_team", {}))
 
     # The predictions seam, spied like the rest: this is the model load.
     class _Predictions:

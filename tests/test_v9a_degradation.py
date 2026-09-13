@@ -245,11 +245,13 @@ def test_a_clone_with_no_snapshots_at_all_still_serves_the_advice(wired):
 
 def test_a_fixture_the_ticker_cannot_rate_keeps_the_chip_and_loses_the_tint(
         wired, monkeypatch):
-    from gaffer.web.routers import meta
+    from gaffer import difficulty
 
     _tmp, client = wired
-    monkeypatch.setattr(meta, "ticker", lambda weeks=8: (_ for _ in ()).throw(
-        RuntimeError("no odds, no elo")))
+    # v18d §2: the rating is the core's, so the stub is on its reader.
+    monkeypatch.setattr(difficulty, "rate_fixtures",
+                        lambda weeks=8: (_ for _ in ()).throw(
+                            RuntimeError("no odds, no elo")))
     fixture = client.get("/api/advice/latest").json()[
         "advice"]["xi"][0]["next_fixture"]
     assert fixture["opponent_short"] == "MUN"

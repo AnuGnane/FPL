@@ -41,6 +41,7 @@ from gaffer.data import store
 from gaffer.data.bootstrap import (build_events, build_players, build_teams,
                                    next_gw, scoring_table)
 from gaffer.data.entry import fetch_my_team
+from gaffer.difficulty import difficulty_by_team
 from gaffer.data.league import (effective_ownership, fetch_rival_entries,
                                 fetch_rival_history, fetch_rival_picks)
 from gaffer.data.live import refresh_live
@@ -828,13 +829,13 @@ def gather_inputs(cfg: Config, client: FPLClient | None = None, *,
         SimpleNamespace(owned_codes=[] if my is None
                         else my.picks["code"].tolist()),
         price_timing=cfg.price_timing)
-    # The ticker's fixture rating, for the ladder's step reasons. Swallowed
+    # The fixture rating, for the ladder's step reasons (``gaffer.difficulty``
+    # since v18d §2, so the core no longer imports the web layer). Swallowed
     # exactly as ``ladder.step_context`` swallowed it: an empty map means the
     # reasons fall through, never that the run fails.
     difficulty: dict[tuple[int, int], float] = {}
     try:
-        from gaffer.web.identity import _difficulty_by_team
-        difficulty = _difficulty_by_team([int(g) for g in gws])
+        difficulty = difficulty_by_team([int(g) for g in gws])
     except Exception as exc:  # noqa: BLE001
         print(f"ladder: no fixture difficulty for the step reasons ({exc})")
 
