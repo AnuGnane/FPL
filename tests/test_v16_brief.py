@@ -308,3 +308,43 @@ def test_a_failed_check_evicts_the_cached_prose(artifacts_on_disk, monkeypatch):
     assert out["written"] is False and not list(cache.glob("*.json"))
     brief_mod.run_brief(4, cfg=cfg, cache_dir=cache)
     assert len(calls) == 2
+
+
+# --- v18d §2: the gains come off the served plan, not off the route ---------
+
+def _served(trace):
+    from gaffer.served import ServedPlan
+
+    return ServedPlan.model_validate(
+        {"gw": 4, "plan_by_gw": [{"gw": 4, "trace": trace}, {"gw": 5}]})
+
+
+def test_a_gain_is_read_off_the_head_weeks_trace(monkeypatch):
+    """The route was only ever a shape adapter over ``served_plan``; the
+    brief reads the file itself now, and a move with no measured gain is
+    left out rather than counted as zero."""
+    from gaffer import brief as brief_mod
+
+    trace = {"gw": 4, "moves": [{"buy_code": 11, "ep_gain": 3.1},
+                                {"buy_code": 22, "ep_gain": None}]}
+    monkeypatch.setattr(brief_mod, "served_plan", lambda gw: _served(trace))
+    assert brief_mod.move_gains(4) == {11: 3.1}
+
+
+def test_a_plan_with_no_trace_is_no_gains(monkeypatch):
+    from gaffer import brief as brief_mod
+
+    monkeypatch.setattr(brief_mod, "served_plan", lambda gw: _served(None))
+    assert brief_mod.move_gains(4) == {}
+
+
+def test_an_unreadable_served_plan_is_swallowed_into_no_gains(monkeypatch,
+                                                              capsys):
+    from gaffer import brief as brief_mod
+    from gaffer.errors import GafferError
+
+    def raise_it(gw):
+        raise GafferError("no advice on disk yet")
+    monkeypatch.setattr(brief_mod, "served_plan", raise_it)
+    assert brief_mod.move_gains(4) == {}
+    assert "no trace gains" in capsys.readouterr().out

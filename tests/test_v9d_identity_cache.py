@@ -13,13 +13,14 @@ Two things this file pins that are easy to get wrong later:
   test's ``teams.parquet`` to the next test's tmpdir — and, worse, one user's
   data directory to another's.
 * **``_difficulty_by_team`` is not cached** (plan A7). It calls
-  ``meta.ticker``, which composes odds, Elo and fixtures; there is no single
-  file to stat, and a key that pretended otherwise would serve a stale tint
-  after an odds refresh. So its reads are excluded from the counts below.
+  ``difficulty.rate_fixtures``, which composes odds, Elo and fixtures; there
+  is no single file to stat, and a key that pretended otherwise would serve a
+  stale tint after an odds refresh. So its reads are excluded from the counts
+  below.
 
   Plan A7 expected to exclude them *by path* — count only the three identity
-  paths and let the ticker's own reads through. The tree is harsher than that:
-  ``meta.ticker`` reads ``live/teams.parquet`` and
+  paths and let the rating's own reads through. The tree is harsher than that:
+  ``difficulty.rate_fixtures`` reads ``live/teams.parquet`` and
   ``live/fixtures_all.parquet``, the very paths being counted, so a
   path filter cannot tell whose read it is looking at. The exclusion is
   therefore made at the seam — ``_difficulty_by_team`` is stubbed — which is
@@ -49,7 +50,7 @@ def wired(tmp_path, monkeypatch):
                              "away_id": [1],
                              "kickoff_time": ["2026-01-01T12:00:00Z"]}),
                "live/fixtures_all.parquet")
-    # The uncached ticker reads two of the three counted paths itself; see
+    # The uncached rating reads two of the three counted paths itself; see
     # this module's docstring. Stubbed so every read below is identity's own.
     monkeypatch.setattr(identity, "_difficulty_by_team", lambda gws: {})
     reads: list[str] = []

@@ -17,12 +17,11 @@ from fastapi import APIRouter, Query
 
 from gaffer.artifacts import (REPORTS, advice_gws, advice_path,
                               ingested_through, latest_gw, load_advice,
-                              load_snapshot, load_solve_state, milp_pool,
-                              raw_ep_by, solve_kw_from_state)
+                              load_solve_state, milp_pool, raw_ep_by,
+                              solve_kw_from_state)
 from gaffer.data import store
 from gaffer.data.bootstrap import season_from_events
-from gaffer.data.elo import compute_elo, expected_score
-from gaffer.data.odds import poisson_win_prob
+from gaffer.difficulty import rate_fixtures
 from gaffer.errors import GafferError
 from gaffer.assets import load_decision_priors
 from gaffer.config import (Config, config_in_force, invalidate,
@@ -384,75 +383,24 @@ def health() -> Health:
                   core_insights=core_insights)
 
 
-def _odds_lookup() -> dict[tuple[int, int, int], tuple[float, float]]:
-    """``(team, gw, opp)`` -> ``(goals for, against)`` from banked odds."""
-    odds_dir = store.DATA_DIR / "live" / "odds"
-    if not odds_dir.is_dir():
-        return {}
-    out: dict[tuple[int, int, int], tuple[float, float]] = {}
-    for path in sorted(odds_dir.glob("gw*.parquet")):
-        frame = pd.read_parquet(path)
-        for row in frame.itertuples():
-            out[(int(row.team_code), int(row.gw), int(row.opp_code))] = (
-                float(row.odds_e_goals_for), float(row.odds_e_goals_against))
-    return out
-
-
 @router.get("/fixtures/ticker", response_model=Ticker)
 def ticker(weeks: int = Query(8, ge=1, le=20)) -> Ticker:
-    teams = load_snapshot("live/teams.parquet")
-    fixtures = load_snapshot("live/fixtures_all.parquet")
-    code_of = dict(zip(teams["team_id"], teams["code"]))
-    short_of = dict(zip(teams["code"], teams["short_name"]))
-
-    upcoming = fixtures[~fixtures["finished"].astype(bool)].copy()
-    gws = sorted(int(g) for g in upcoming["gw"].dropna().unique())[:weeks]
-    upcoming = upcoming[upcoming["gw"].isin(gws)]
-
-    odds = _odds_lookup()
-    elo_final: dict[int, float] = {}
-    if store.exists("live/fixtures.parquet"):
-        finished = store.load("live/fixtures.parquet")
-        if not finished.empty:
-            elo_final = compute_elo(finished).attrs["final"]
-
-    used_odds = False
-    cells: dict[int, list[TickerCell]] = {int(c): [] for c in teams["code"]}
-    for fx in upcoming.sort_values("gw").itertuples():
-        home_code = code_of.get(int(fx.home_id))
-        away_code = code_of.get(int(fx.away_id))
-        if home_code is None or away_code is None:
-            continue
-        # Rate the fixture once from the home side: home advantage belongs to
-        # the fixture, not to each half of it, so the away side takes the
-        # complement rather than a second call that would hand *both* teams
-        # the boost.
-        home_elo_win = expected_score(elo_final.get(home_code, 1500.0),
-                                      elo_final.get(away_code, 1500.0),
-                                      home=True)
-        for own, other, home, elo_win in (
-                (home_code, away_code, True, home_elo_win),
-                (away_code, home_code, False, 1.0 - home_elo_win)):
-            priced = odds.get((own, int(fx.gw), other))
-            if priced is not None:
-                used_odds = True
-                win = poisson_win_prob(priced[0], priced[1])
-            else:
-                win = elo_win
-            cells[own].append(TickerCell(
-                gw=int(fx.gw), opponent=str(short_of.get(other, "")),
-                home=home, difficulty=round(min(max(1.0 - win, 0.0), 1.0), 3)))
-
-    rows = []
-    for team in teams.itertuples():
-        mine = cells[int(team.code)]
-        mean = round(sum(c.difficulty for c in mine) / len(mine), 3) if mine \
-            else 0.0
-        rows.append(TickerTeam(code=int(team.code), name=str(team.name),
-                               short_name=str(team.short_name), cells=mine,
-                               mean_difficulty=mean))
-    rows.sort(key=lambda t: t.mean_difficulty)
-    return Ticker(gws=gws, source="odds" if used_odds else "elo", teams=rows)
+    # A shape adapter over ``gaffer.difficulty`` since v18d §2: the rating
+    # moved to the core because the ladder and the identity decorator need it
+    # and must not import the web layer. The order the core returns — teams by
+    # mean difficulty, cells by gameweek — is the order served.
+    rated = rate_fixtures(weeks)
+    return Ticker(
+        gws=rated.gws, source=rated.source,
+        teams=[TickerTeam(code=team.code, name=team.name,
+                          short_name=team.short_name,
+                          mean_difficulty=team.mean_difficulty,
+                          cells=[TickerCell(gw=cell.gw,
+                                            opponent=cell.opponent,
+                                            home=cell.home,
+                                            difficulty=cell.difficulty)
+                                 for cell in team.cells])
+               for team in rated.teams])
 
 
 def run_data_refresh() -> dict:

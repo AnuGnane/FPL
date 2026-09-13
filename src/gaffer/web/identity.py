@@ -30,6 +30,7 @@ from typing import Any, Callable
 
 import pandas as pd
 
+from gaffer import difficulty
 from gaffer.data import store
 
 PLAYER_KEYS = ("xi", "bench", "buys", "sells", "captain", "vice")
@@ -288,31 +289,12 @@ def _fixture_by_team(gw: int, code_of: dict[int, int],
 
 
 def _difficulty_by_team(gws: list[int]) -> dict[tuple[int, int], float]:
-    """``{(team_code, gw): difficulty}`` from the ticker's own rating.
+    """The core's rating (v18d §2), kept behind this name.
 
-    The ticker is *called*, not reimplemented (plan A4). Its odds lookup, its
-    Elo fallback, its rate-the-fixture-once-from-the-home-side rule and its
-    clamp are sixty lines inside ``routers/meta.ticker``, and a second copy
-    beside them would be a second answer to "how hard is this fixture" drawn
-    on the same page in the same colour scale — a disagreement nobody could
-    see. ``weeks=2`` rather than 1 because ``ticker`` slices the first *n*
-    unfinished gameweeks and a mid-week reload can find the advice gameweek
-    second in that window.
-
-    Every failure is an empty map, which means every chip renders without its
-    tint and with everything else intact.
+    The rating itself moved to ``gaffer.difficulty``; the seam stays here
+    because ``with_identity`` and its tests stub it by this name.
     """
-    from gaffer.web.routers import meta
-
-    try:
-        table = meta.ticker(weeks=2)
-    except Exception as exc:  # noqa: BLE001 — a tint is never fatal
-        print(f"identity: no fixture difficulty available ({exc})")
-        return {}
-    wanted = {int(g) for g in gws}
-    return {(int(team.code), int(cell.gw)): float(cell.difficulty)
-            for team in table.teams for cell in team.cells
-            if int(cell.gw) in wanted}
+    return difficulty.difficulty_by_team(gws)
 
 
 def with_identity(payload: dict, gw: int) -> dict:

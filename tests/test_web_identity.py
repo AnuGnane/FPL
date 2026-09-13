@@ -61,26 +61,28 @@ PAYLOAD = {
 
 
 def _ticker(*cells):
-    """A ``Ticker`` shaped exactly as ``routers/meta.ticker`` returns one.
+    """A ``FixtureDifficulty`` shaped as ``difficulty.rate_fixtures`` returns
+    one (v18d §2: the rating moved out of the web layer).
 
-    Stubbing the *ticker* rather than ``identity._difficulty_by_team`` keeps
-    the module's own indexing under test in every case: A4's whole claim is
-    that the chip's number is the ticker's number, and a stub that replaced
-    the join would stop asserting it.
+    Stubbing ``rate_fixtures`` rather than ``difficulty.difficulty_by_team``
+    keeps the join under test in every case: A4's whole claim is that the
+    chip's number is the rating's number, and a stub that replaced the join
+    would stop asserting it.
     """
-    from gaffer.web.schemas import Ticker, TickerCell, TickerTeam
+    from gaffer.difficulty import (FixtureCell, FixtureDifficulty,
+                                   TeamDifficulty)
 
-    return Ticker(gws=[5], source="odds", teams=[
-        TickerTeam(code=code, name=str(code), short_name=str(code),
-                   mean_difficulty=diff,
-                   cells=[TickerCell(gw=gw, opponent="?", home=True,
-                                     difficulty=diff)])
+    return FixtureDifficulty(gws=[5], source="odds", teams=[
+        TeamDifficulty(code=code, name=str(code), short_name=str(code),
+                       mean_difficulty=diff,
+                       cells=[FixtureCell(gw=gw, opponent="?", home=True,
+                                          difficulty=diff)])
         for code, gw, diff in cells])
 
 
 @pytest.fixture()
 def banked(tmp_path, monkeypatch):
-    from gaffer.web.routers import meta
+    from gaffer import difficulty
 
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")
@@ -89,9 +91,9 @@ def banked(tmp_path, monkeypatch):
     TEAMS.to_parquet(tmp_path / "data/live/teams.parquet", index=False)
     FIXTURES.to_parquet(tmp_path / "data/live/fixtures_all.parquet",
                         index=False)
-    # Arsenal rated 0.31 in GW5, Man Utd 0.69. The ticker's own odds/Elo reads
+    # Arsenal rated 0.31 in GW5, Man Utd 0.69. The rating's own odds/Elo reads
     # want banked odds files this fixture deliberately does not write.
-    monkeypatch.setattr(meta, "ticker",
+    monkeypatch.setattr(difficulty, "rate_fixtures",
                         lambda weeks=8: _ticker((3, 5, 0.31), (1, 5, 0.69)))
     return tmp_path
 
@@ -246,9 +248,9 @@ def test_each_side_takes_its_own_rating_not_the_fixtures(banked):
 def test_a_fixture_the_ticker_cannot_rate_keeps_everything_but_the_tint(
         banked, monkeypatch):
     """A4: a chip in a neutral colour is the whole feature minus its tint."""
-    from gaffer.web.routers import meta
+    from gaffer import difficulty
 
-    monkeypatch.setattr(meta, "ticker", lambda weeks=8: _ticker())
+    monkeypatch.setattr(difficulty, "rate_fixtures", lambda weeks=8: _ticker())
     fx = identity.with_identity(PAYLOAD, 5)["xi"][0]["next_fixture"]
     assert fx["difficulty"] is None
     assert fx["opponent_short"] == "MUN"
@@ -257,10 +259,12 @@ def test_a_fixture_the_ticker_cannot_rate_keeps_everything_but_the_tint(
 def test_a_ticker_that_raises_is_swallowed_into_no_difficulty(banked,
                                                               monkeypatch,
                                                               capsys):
-    from gaffer.web.routers import meta
+    from gaffer import difficulty
 
-    monkeypatch.setattr(meta, "ticker", lambda weeks=8: (_ for _ in ()).throw(
-        RuntimeError("no odds, no elo, no fixtures")))
+    monkeypatch.setattr(
+        difficulty, "rate_fixtures",
+        lambda weeks=8: (_ for _ in ()).throw(
+            RuntimeError("no odds, no elo, no fixtures")))
     fx = identity.with_identity(PAYLOAD, 5)["xi"][0]["next_fixture"]
     assert fx["difficulty"] is None
     assert "difficulty" in capsys.readouterr().out

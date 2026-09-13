@@ -30,7 +30,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from gaffer import artifacts
-from gaffer.artifacts import latest_gw, load_advice, load_solve_state
+from gaffer.artifacts import (latest_gw, load_advice, load_solve_state,
+                              served_plan)
 from gaffer.data.news.classifier import LLM_CACHE
 from gaffer.io import atomic_write
 from gaffer.config import Config
@@ -101,10 +102,15 @@ def run_stamp(gw: int) -> str:
 
 
 def move_gains(gw: int) -> dict[int, float]:
-    """``{buy code: decayed gain}`` off the plan trace, or ``{}``."""
+    """``{buy code: decayed gain}`` off the plan trace, or ``{}``.
+
+    Read off the served plan rather than off ``GET /api/plan/{gw}`` (v18d §2):
+    the route is a shape adapter over ``served_plan`` that copies the trace
+    through untouched, so the brief was importing the web layer to reach a
+    file it can open itself.
+    """
     try:
-        from gaffer.web.routers.plan import plan as plan_timeline
-        week = plan_timeline(gw).weeks[0]
+        week = served_plan(gw).plan_by_gw[0]
         if week.trace is None:
             return {}
         return {int(m.buy_code): float(m.ep_gain) for m in week.trace.moves
