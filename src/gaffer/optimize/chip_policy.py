@@ -38,6 +38,47 @@ never across the boundary.
 
 SEASON_LAST_GW = 38
 
+WILDCARD_RECOMMEND_THRESHOLD = 8.0
+"""Objective points a wildcard must gain before we say "play it".
+
+Deliberately conservative: a wildcard is a scarce, one-shot asset, so a
+marginal gain is not a reason to burn it.
+
+Unchanged from when chip gains were decayed, and so slightly more willing to
+play the chip now that they are not: the same wildcard clears this bar a
+little more often. That is the direction we want — v2 §9 recorded the
+standing weakness as firing chips on unlock, and the fix for that is the
+per-week comparison below, not a threshold that was only ever holding chips
+back by accident.
+"""
+
+CHIP_PLAY_THRESHOLD = 4.0
+"""Objective points a bench boost, triple captain or free hit must gain
+before we play it.
+
+Lower than the wildcard bar because these three are one-week chips: playing
+one costs you nothing but the chip itself, whereas a wildcard also throws
+away the plan you had.
+
+Also unchanged, and binds against undecayed gains — see the note on
+``WILDCARD_RECOMMEND_THRESHOLD``. These are one-week chips played in the
+current gameweek, which the decay never discounted directly, so the shift is
+small: it comes from the *baseline* now being an undecayed plan (on the
+recorded GW2 state, bench boost 4.65 -> 4.98, triple captain unchanged).
+"""
+
+# v12 W3 §4.5 (specs/2026-09-01-gaffer-v12-program-design.md)
+PAIR_CHIP = "wildcard+bboost"
+"""The one chip *pair* ``chips`` evaluates: a wildcard in one week and a
+bench boost in a later one, scored as a single option.
+
+Named rather than composed, because everything downstream keys on the chip
+string: the workbench row, the UI's label table, the ledger. A name with a
+``+`` in it is deliberately not a two-letter code — there is no What-If code
+for a pair, and ``ChipsTab``'s mapping already leaves an unknown row alone
+rather than re-solving it as no chip at all.
+"""
+
 CHIP_SCENARIOS_PATH = Path("data/chip_scenarios.toml")
 """Optional per-gameweek double-gameweek probabilities.
 
@@ -177,11 +218,9 @@ def chips_spent(chip: str) -> list[str]:
     beat what waiting is worth for the wildcard *and* what waiting is worth
     for the boost, because playing it forgoes both options at once.
 
-    Imported rather than restrung, so the pair's name lives in exactly one
-    place; deferred, because ``chips`` imports this module.
+    Split on the name rather than restrung, so the pair's spelling lives in
+    exactly one place.
     """
-    from gaffer.optimize.chips import PAIR_CHIP
-
     return chip.split("+") if chip == PAIR_CHIP else [chip]
 
 
@@ -197,9 +236,6 @@ def flat_thresholds(reason: str = FLAT_SOURCE):
     :func:`chip_thresholds_from_asset`, which reaches this function by a route
     :data:`FLAT_SOURCE` would misdescribe.
     """
-    from gaffer.optimize.chips import (CHIP_PLAY_THRESHOLD,
-                                       WILDCARD_RECOMMEND_THRESHOLD)
-
     def one(chip: str) -> float:
         return (WILDCARD_RECOMMEND_THRESHOLD if chip == "wildcard"
                 else CHIP_PLAY_THRESHOLD)

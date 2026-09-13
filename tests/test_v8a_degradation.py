@@ -275,16 +275,16 @@ def test_the_floor_being_off_does_not_turn_the_ceiling_off():
 def test_the_news_master_switch_still_skips_every_fetcher(monkeypatch):
     """v5's rail, restated: v8a added arguments to both fetchers and neither
     may be reached with ``[news] enabled = false``."""
-    from gaffer import advise as advise_mod
+    from gaffer.models import predict as predict_mod
 
     calls: list[str] = []
-    monkeypatch.setattr(advise_mod, "fetch_injuries",
+    monkeypatch.setattr(predict_mod, "fetch_injuries",
                         lambda *a, **k: calls.append("injuries"))
-    monkeypatch.setattr(advise_mod, "fetch_lineups",
+    monkeypatch.setattr(predict_mod, "fetch_lineups",
                         lambda *a, **k: calls.append("lineups"))
     cfg = Config(entry_id=1, league_id=2, news_enabled=False)
     events = pd.DataFrame({"gw": [5], "deadline_time": ["2026-09-05T10:00Z"]})
-    out = advise_mod.news_availability(cfg, _players(), _teams(), events, gw=5)
+    out = predict_mod.news_availability(cfg, _players(), _teams(), events, gw=5)
     assert calls == []
     assert list(out.columns) == ["code", "status", "chance_of_playing"]
 
@@ -319,7 +319,7 @@ def test_run_advise_still_orders_every_protected_seam():
 def test_predict_components_still_blends_before_merging_onto_players():
     import inspect
 
-    from gaffer.advise import predict_components
+    from gaffer.models.predict import predict_components
 
     src = inspect.getsource(predict_components)
     assert src.index("blend_team_odds(") < src.index("comp.merge(tp")

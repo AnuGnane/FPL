@@ -18,6 +18,7 @@ import pandas as pd
 import pytest
 
 import gaffer.advise as advise_mod
+from gaffer.models import predict as predict_mod
 from gaffer.config import Config
 from gaffer.advise import build_advice
 from gaffer.league_mode import Strategy
@@ -117,8 +118,8 @@ def _predicted(monkeypatch, *, avail=None, pens=None):
               "defcon": _StubModel(p_defcon=0.5),
               "saves": _StubModel(e_saves=1.0),
               "bonus": _StubModel(e_bonus=0.3)}
-    monkeypatch.setattr(advise_mod, "load_model", lambda name: models[name])
-    monkeypatch.setattr(advise_mod, "attack_multipliers", lambda model: {})
+    monkeypatch.setattr(predict_mod, "load_model", lambda name: models[name])
+    monkeypatch.setattr(predict_mod, "attack_multipliers", lambda model: {})
     pred = pd.DataFrame({"code": [1, 2], "gw": [7, 7], "season_idx": [1, 1],
                          "team_code": [3, 4], "opp_code": [4, 3],
                          "position": ["MID", "DEF"], "home": [1, 0],
@@ -130,7 +131,7 @@ def _predicted(monkeypatch, *, avail=None, pens=None):
                                 "home": [1, 0]})
     players = pd.DataFrame({"code": [1, 2], "status": ["a", "a"],
                             "chance_of_playing": [100, 100]})
-    return advise_mod.predict_components(pred, team_future, players,
+    return predict_mod.predict_components(pred, team_future, players,
                                          avail, pens,
                                          cfg=Config(entry_id=1, league_id=2))
 
@@ -759,7 +760,7 @@ def test_predict_components_defaults_to_the_official_flags():
     frame passed means the bootstrap's own status columns."""
     import inspect
 
-    from gaffer.advise import predict_components
+    from gaffer.models.predict import predict_components
 
     sig = inspect.signature(predict_components)
     # v6 appended ``pens`` behind ``avail``; both default to None, so the
@@ -805,7 +806,7 @@ def test_news_availability_degrades_to_the_bootstrap_slice():
     three-column frame apply_availability has always taken."""
     import pandas as pd
 
-    from gaffer.advise import news_availability
+    from gaffer.models.predict import news_availability
     from gaffer.config import Config
 
     players = pd.DataFrame({"code": [1], "status": ["a"],
@@ -825,13 +826,13 @@ def test_news_availability_makes_no_fetch_calls_when_disabled(monkeypatch):
     only at the fetcher."""
     import pandas as pd
 
-    from gaffer import advise as advise_mod
+    from gaffer.models import predict as predict_mod
     from gaffer.config import Config
 
     calls = []
-    monkeypatch.setattr(advise_mod, "fetch_injuries",
+    monkeypatch.setattr(predict_mod, "fetch_injuries",
                         lambda *a, **k: calls.append("i"))
-    monkeypatch.setattr(advise_mod, "fetch_lineups",
+    monkeypatch.setattr(predict_mod, "fetch_lineups",
                         lambda *a, **k: calls.append("l"))
     players = pd.DataFrame({"code": [1], "status": ["a"],
                             "chance_of_playing": [None], "team_code": [3],
@@ -841,7 +842,7 @@ def test_news_availability_makes_no_fetch_calls_when_disabled(monkeypatch):
                           "short_name": ["ARS"]})
     events = pd.DataFrame({"gw": [5], "deadline_time": ["2026-09-05T10:00Z"]})
     cfg = Config(entry_id=1, league_id=2, news_enabled=False)
-    advise_mod.news_availability(cfg, players, teams, events, gw=5)
+    predict_mod.news_availability(cfg, players, teams, events, gw=5)
     assert calls == []
 
 
@@ -867,7 +868,7 @@ def test_predict_components_prices_penalties_after_the_availability_passes(
         out["ep_pen_taker"] = out["p_play"] * 2.0
         return out
 
-    monkeypatch.setattr(advise_mod, "add_pen_ep", spy)
+    monkeypatch.setattr(predict_mod, "add_pen_ep", spy)
     doubtful = pd.DataFrame({"code": [1, 2], "status": ["d", "a"],
                              "chance_of_playing": [25, 100]})
     priced = _predicted(monkeypatch, avail=doubtful, pens=object())
@@ -875,7 +876,7 @@ def test_predict_components_prices_penalties_after_the_availability_passes(
     # the raw model's 0.9 — which is the ordering this test is about.
     assert seen["p_play"][1] < 0.9
     assert priced["ep_pen_taker"][0] == seen["p_play"][1] * 2.0
-    assert "pens" in inspect.signature(advise_mod.predict_components).parameters
+    assert "pens" in inspect.signature(predict_mod.predict_components).parameters
 
 
 def test_run_advise_builds_the_penalty_priors_before_predicting(monkeypatch):
@@ -952,13 +953,12 @@ def test_run_advise_hands_the_caps_to_the_weekly_solve_input():
 
 
 def test_cap_maps_the_no_cap_sentinel_to_none():
-    from gaffer.advise import _cap
-    from gaffer.config import NO_CAP
+    from gaffer.config import NO_CAP, cap
 
-    assert _cap(NO_CAP) is None
-    assert _cap(99) is None
-    assert _cap(2) == 2
-    assert _cap(0) == 0
+    assert cap(NO_CAP) is None
+    assert cap(99) is None
+    assert cap(2) == 2
+    assert cap(0) == 0
 
 
 def test_advice_carries_the_caps_with_a_safe_default():

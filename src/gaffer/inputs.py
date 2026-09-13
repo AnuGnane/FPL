@@ -22,6 +22,9 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 import pandas as pd
 
+from gaffer.models.persistence import load_model, model_exists
+from gaffer.models.predict import MODEL_NAMES, predict_components
+
 from gaffer.data.entry import MyTeam
 from gaffer.league_mode import Strategy
 from gaffer.optimize.milp import alternative_plans, solve_plan
@@ -130,20 +133,16 @@ class LiveModels:
     """The real ``models/`` directory."""
 
     def missing(self) -> list[str]:
-        from gaffer.advise import MODEL_NAMES
-        from gaffer.models.persistence import model_exists
         return [n for n in MODEL_NAMES if not model_exists(n)]
 
     def components(self, *, pred_frame, tg_future, players, avail,
                    pens, cfg) -> pd.DataFrame:
-        # Imported in the body because ``advise`` imports this module: the
-        # seam has to be declarable without the pipeline that fills it.
-        from gaffer.advise import predict_components
+        # Top-level imports since v18d §2: the two live in ``models``, so the
+        # seam is declarable without the pipeline that fills it.
         return predict_components(pred_frame, tg_future, players, avail,
                                   pens, cfg=cfg)
 
     def calibration(self) -> object | None:
-        from gaffer.models.persistence import load_model, model_exists
         # An optional artifact: directories trained before calibration
         # existed have no such file, and None is the identity map.
         return load_model("calibration") if model_exists("calibration") else None

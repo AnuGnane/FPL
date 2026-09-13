@@ -44,16 +44,21 @@ def _priors_covering_everything() -> dict:
 
 @pytest.fixture()
 def sentinels(monkeypatch):
-    """Both flat constants replaced by numbers a calibration cannot produce."""
-    monkeypatch.setattr(chips_mod, "WILDCARD_RECOMMEND_THRESHOLD",
+    """Both flat constants replaced by numbers a calibration cannot produce.
+
+    Patched on ``chip_policy``, which has defined them since v18d §2 (it used
+    to read them back out of ``chips`` inside a function body)."""
+    from gaffer.optimize import chip_policy
+
+    monkeypatch.setattr(chip_policy, "WILDCARD_RECOMMEND_THRESHOLD",
                         SENTINEL_WC)
-    monkeypatch.setattr(chips_mod, "CHIP_PLAY_THRESHOLD", SENTINEL_CHIP)
+    monkeypatch.setattr(chip_policy, "CHIP_PLAY_THRESHOLD", SENTINEL_CHIP)
 
 
 def test_the_sentinels_reach_the_flat_lookup(sentinels):
-    """The instrument first. ``flat_thresholds`` imports the constants inside
-    its body, so the monkeypatch is only effective if it is read at call
-    time — if this fails, every assertion below is vacuous."""
+    """The instrument first. ``flat_thresholds`` reads the constants at call
+    time off its own module, so the monkeypatch is only effective if that is
+    still so — if this fails, every assertion below is vacuous."""
     flat = flat_thresholds()
     assert flat("wildcard", 7) == SENTINEL_WC
     assert flat("bboost", 7) == SENTINEL_CHIP

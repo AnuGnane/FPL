@@ -127,14 +127,14 @@ def whatif(transfers_in: list[int], transfers_out: list[int],
         req = WhatIfRequest(force_in=list(transfers_in),
                             ban=list(transfers_out), chip=chip)
         gw = _latest_gw()
-        # `_validate` first, exactly as the route does before queueing the
+        # `validate` first, exactly as the route does before queueing the
         # job. `solve_whatif` is the job *body*: it assumes a request that has
         # already been checked, so a model asking to force in a player it
         # already owns would otherwise reach the solver and come back as an
         # infeasibility — a MILP message where the honest answer is one
         # sentence naming the player and the constraint.
         try:
-            router._validate(req, load_solve_state(gw))
+            router.validate(req, load_solve_state(gw))
         except HTTPException as exc:
             # The 422 detail is `{"constraint", "error", "players"}`, shaped
             # for a form field the UI can outline in red. A model has no form,

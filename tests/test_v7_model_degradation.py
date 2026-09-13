@@ -127,7 +127,7 @@ def test_predict_components_still_calls_the_minutes_model_once():
     one model call, two availability passes, exactly as v6 left it."""
     import inspect
 
-    from gaffer.advise import predict_components
+    from gaffer.models.predict import predict_components
 
     src = inspect.getsource(predict_components)
     assert src.count("minutes.predict(pf)") == 1

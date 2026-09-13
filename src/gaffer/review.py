@@ -43,6 +43,7 @@ from gaffer.data.my_entry import (bank_my_entry, chip_for_gw, gw_history_row,
                                   load_my_transfers, my_transfers_for_gw)
 from gaffer.io import atomic_write
 from gaffer.journal import _code_of_element, latest_run_per_gw
+from gaffer.optimize.formation import formation_legal
 
 __all__ = ["ACTUAL_COLS", "CHIP_SCORING", "LANES", "LEDGER", "MISS_BAR",
            "PWIN_LANES", "SQUAD_CHIPS", "actuals_for_gw", "append_ledger",
@@ -625,14 +626,12 @@ def hindsight_xi(squad15, actuals: pd.DataFrame):
     """
     from itertools import combinations
 
-    from gaffer.backtest import _formation_legal
-
     codes = [int(c) for c in squad15]
     points = dict(zip(actuals["code"], actuals["total_points"]))
     pos = dict(zip(actuals["code"], actuals["position"]))
     best: tuple[list[int], int | None, int] = ([], None, 0)
     for combo in combinations(codes, 11):
-        if not _formation_legal([str(pos.get(c, "MID")) for c in combo]):
+        if not formation_legal([str(pos.get(c, "MID")) for c in combo]):
             continue
         armband = max(combo, key=lambda c: int(points.get(c, 0) or 0))
         total = sum(int(points.get(c, 0) or 0) for c in combo) \

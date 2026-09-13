@@ -367,7 +367,7 @@ def test_predict_components_blends_odds_before_merging_onto_players():
     applied once per player."""
     import inspect
 
-    from gaffer.advise import predict_components
+    from gaffer.models.predict import predict_components
 
     src = inspect.getsource(predict_components)
     blend = src.index("blend_team_odds(")
@@ -595,7 +595,7 @@ def test_predict_components_still_blends_before_merging_onto_players():
     what the fitted weight must not disturb."""
     import inspect
 
-    from gaffer.advise import predict_components
+    from gaffer.models.predict import predict_components
 
     src = inspect.getsource(predict_components)
     assert src.index("blend_team_odds(") < src.index("comp.merge(tp")

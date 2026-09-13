@@ -129,48 +129,48 @@ def _events() -> pd.DataFrame:
 
 
 def test_news_disabled_makes_no_fetch_calls_at_all(monkeypatch):
-    from gaffer import advise as advise_mod
+    from gaffer.models import predict as predict_mod
 
     calls: list[str] = []
-    monkeypatch.setattr(advise_mod, "fetch_injuries",
+    monkeypatch.setattr(predict_mod, "fetch_injuries",
                         lambda *a, **k: calls.append("injuries"))
-    monkeypatch.setattr(advise_mod, "fetch_lineups",
+    monkeypatch.setattr(predict_mod, "fetch_lineups",
                         lambda *a, **k: calls.append("lineups"))
     cfg = Config(entry_id=1, league_id=2, news_enabled=False)
-    out = advise_mod.news_availability(cfg, _players(), _teams(), _events(),
+    out = predict_mod.news_availability(cfg, _players(), _teams(), _events(),
                                        gw=5)
     assert calls == []
     assert list(out.columns) == ["code", "status", "chance_of_playing"]
 
 
 def test_each_source_can_be_disabled_on_its_own(monkeypatch):
-    from gaffer import advise as advise_mod
+    from gaffer.models import predict as predict_mod
 
     calls: list[str] = []
-    monkeypatch.setattr(advise_mod, "fetch_injuries",
+    monkeypatch.setattr(predict_mod, "fetch_injuries",
                         lambda *a, **k: (calls.append("injuries"),
                                          pd.DataFrame())[1])
-    monkeypatch.setattr(advise_mod, "fetch_lineups",
+    monkeypatch.setattr(predict_mod, "fetch_lineups",
                         lambda *a, **k: (calls.append("lineups"),
                                          pd.DataFrame())[1])
     cfg = Config(entry_id=1, league_id=2, news_lineups=False)
-    advise_mod.news_availability(cfg, _players(), _teams(), _events(), gw=5)
+    predict_mod.news_availability(cfg, _players(), _teams(), _events(), gw=5)
     assert calls == ["injuries"]
 
 
 def test_a_fetcher_that_raises_never_reaches_the_caller(monkeypatch):
     """Advice never blocks on news, and the printed line is the whole of the
     user-visible consequence."""
-    from gaffer import advise as advise_mod
+    from gaffer.models import predict as predict_mod
 
     def boom(*a, **k):
         raise RuntimeError("premierinjuries redesigned overnight")
 
-    monkeypatch.setattr(advise_mod, "fetch_injuries", boom)
-    monkeypatch.setattr(advise_mod, "fetch_lineups",
+    monkeypatch.setattr(predict_mod, "fetch_injuries", boom)
+    monkeypatch.setattr(predict_mod, "fetch_lineups",
                         lambda *a, **k: pd.DataFrame())
     cfg = Config(entry_id=1, league_id=2)
-    out = advise_mod.news_availability(cfg, _players(), _teams(), _events(),
+    out = predict_mod.news_availability(cfg, _players(), _teams(), _events(),
                                        gw=5)
     assert list(out.columns) == ["code", "status", "chance_of_playing"]
 
@@ -178,14 +178,14 @@ def test_a_fetcher_that_raises_never_reaches_the_caller(monkeypatch):
 def test_an_enabled_source_that_returns_nothing_is_named(monkeypatch, capsys):
     """A source that comes back empty is as degraded as one that raised, and
     silence about it reads as "the league has no injuries this week"."""
-    from gaffer import advise as advise_mod
+    from gaffer.models import predict as predict_mod
 
-    monkeypatch.setattr(advise_mod, "fetch_injuries",
+    monkeypatch.setattr(predict_mod, "fetch_injuries",
                         lambda *a, **k: pd.DataFrame())
-    monkeypatch.setattr(advise_mod, "fetch_lineups",
+    monkeypatch.setattr(predict_mod, "fetch_lineups",
                         lambda *a, **k: pd.DataFrame())
     cfg = Config(entry_id=1, league_id=2)
-    advise_mod.news_availability(cfg, _players(), _teams(), _events(), gw=5)
+    predict_mod.news_availability(cfg, _players(), _teams(), _events(), gw=5)
     printed = capsys.readouterr().out
     assert "premierinjuries returned nothing" in printed
     assert "line-ups returned nothing" in printed
@@ -193,12 +193,12 @@ def test_an_enabled_source_that_returns_nothing_is_named(monkeypatch, capsys):
 
 def test_a_disabled_source_is_not_reported_as_empty(monkeypatch, capsys):
     """Off is not degraded. Only a source we asked and got nothing from."""
-    from gaffer import advise as advise_mod
+    from gaffer.models import predict as predict_mod
 
-    monkeypatch.setattr(advise_mod, "fetch_injuries",
+    monkeypatch.setattr(predict_mod, "fetch_injuries",
                         lambda *a, **k: pd.DataFrame())
     cfg = Config(entry_id=1, league_id=2, news_lineups=False)
-    advise_mod.news_availability(cfg, _players(), _teams(), _events(), gw=5)
+    predict_mod.news_availability(cfg, _players(), _teams(), _events(), gw=5)
     printed = capsys.readouterr().out
     assert "premierinjuries returned nothing" in printed
     assert "line-ups returned nothing" not in printed
@@ -290,7 +290,7 @@ def test_run_advise_still_orders_every_protected_seam():
 def test_predict_components_still_blends_before_merging_onto_players():
     import inspect
 
-    from gaffer.advise import predict_components
+    from gaffer.models.predict import predict_components
 
     src = inspect.getsource(predict_components)
     assert src.index("blend_team_odds(") < src.index("comp.merge(tp")
@@ -302,11 +302,13 @@ def test_predict_components_still_blends_before_merging_onto_players():
 
 
 def test_the_minutes_module_still_re_exports_the_availability_seam():
-    """advise.py imports apply_availability from gaffer.models.minutes, and
-    v5 moved the implementation. The import must not have moved with it."""
+    """``predict_components`` imports apply_availability from
+    gaffer.models.minutes, and v5 moved the implementation. The import must
+    not have moved with it. (The function itself moved to
+    ``models/predict.py`` in v18d §2; the seam went with it.)"""
     import inspect
 
-    from gaffer import advise
+    from gaffer.models import predict
 
-    src = inspect.getsource(advise)
+    src = inspect.getsource(predict)
     assert "from gaffer.models.minutes import apply_availability" in src

@@ -29,10 +29,10 @@ import pulp
 
 from gaffer.config import DEFAULT_TOP_N  # noqa: F401 — re-exported; v17e §2.1
 from gaffer.errors import GafferError
+from gaffer.optimize.formation import XI_BOUNDS
 from gaffer.optimize.ft_value import LambdaLookup
 
 SQUAD_COMPOSITION = {"GKP": 2, "DEF": 5, "MID": 5, "FWD": 3}
-XI_BOUNDS = {"GKP": (1, 1), "DEF": (3, 5), "MID": (2, 5), "FWD": (1, 3)}
 MAX_PER_CLUB = 3
 MAX_FREE_TRANSFERS = 5
 

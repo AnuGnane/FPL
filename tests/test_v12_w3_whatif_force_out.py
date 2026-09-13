@@ -22,7 +22,7 @@ from gaffer.web.schemas import WhatIfRequest
 
 
 class _State:
-    """The saved solve state ``_validate`` reads, and nothing more."""
+    """The saved solve state ``validate`` reads, and nothing more."""
 
     def __init__(self, owned=(1, 2, 3), pool_codes=(1, 2, 3, 4, 5)):
         self.owned_codes = list(owned)
@@ -42,26 +42,26 @@ def test_the_request_carries_force_out_and_defaults_it_empty():
 
 def test_an_unknown_code_is_refused_like_every_other_list():
     with pytest.raises(Exception) as exc:
-        wf._validate(_req(force_out=[99]), _State())
+        wf.validate(_req(force_out=[99]), _State())
     assert exc.value.detail["constraint"] == "unknown_player"
 
 
 def test_forcing_out_a_player_you_do_not_own_is_refused():
     with pytest.raises(Exception) as exc:
-        wf._validate(_req(force_out=[4]), _State())
+        wf.validate(_req(force_out=[4]), _State())
     assert exc.value.detail["constraint"] == "force_out_not_owned"
     assert "use ban" in exc.value.detail["error"]
 
 
 def test_locking_and_forcing_out_the_same_player_is_refused():
     with pytest.raises(Exception) as exc:
-        wf._validate(_req(lock=[1], force_out=[1]), _State())
+        wf.validate(_req(lock=[1], force_out=[1]), _State())
     assert exc.value.detail["constraint"] == "force_out_and_lock"
 
 
 def test_banning_and_forcing_out_the_same_player_is_refused():
     with pytest.raises(Exception) as exc:
-        wf._validate(_req(ban=[1], force_out=[1]), _State())
+        wf.validate(_req(ban=[1], force_out=[1]), _State())
     assert exc.value.detail["constraint"] == "force_out_and_ban"
 
 
@@ -69,7 +69,7 @@ def test_force_out_on_a_free_hit_is_refused_rather_than_ignored():
     """The FH branch builds ``owned_codes=[]``, so the constraint would apply
     to nobody and the user would read an answer that looked like it applied."""
     with pytest.raises(Exception) as exc:
-        wf._validate(_req(force_out=[1], chip="fh"), _State())
+        wf.validate(_req(force_out=[1], chip="fh"), _State())
     assert exc.value.detail["constraint"] == "force_out_on_free_hit"
 
 
@@ -82,21 +82,21 @@ def test_buying_and_selling_the_same_player_is_refused_as_that(code):
     for one he does not own. Both true, neither the point.
     """
     with pytest.raises(Exception) as exc:
-        wf._validate(_req(force_in=[code], force_out=[code]), _State())
+        wf.validate(_req(force_in=[code], force_out=[code]), _State())
     assert exc.value.detail["constraint"] == "force_in_and_force_out"
     assert exc.value.detail["players"] == [code]
 
 
 def test_an_empty_force_out_still_validates_every_pre_existing_way():
     """The degradation direction: nothing above may fire on today's requests."""
-    wf._validate(_req(lock=[1], ban=[4], force_in=[5]), _State())
+    wf.validate(_req(lock=[1], ban=[4], force_in=[5]), _State())
 
 
 # --- the drafts store, on a tree with no solve state yet ------------------
 
 def test_a_free_hit_draft_cannot_bank_a_force_out_on_a_cold_clone(
         monkeypatch):
-    """``save`` skips ``_validate`` when there is no gameweek on disk, because
+    """``save`` skips ``validate`` when there is no gameweek on disk, because
     most of it needs a pool. This contradiction needs no pool, and skipping it
     stored a draft whose ``force_out`` would be dropped without a word at
     compare time."""
@@ -167,14 +167,14 @@ def test_the_router_passes_force_out_and_prints_it_when_infeasible():
     now that the test above drives the same wiring end to end. Two things it
     pins that behaviour cannot reach cheaply — the free-hit branch *not*
     carrying the constraint (a board that never reaches a solver because
-    ``_validate`` refuses it first), and the infeasibility sentence naming
+    ``validate`` refuses it first), and the infeasibility sentence naming
     every list the user set."""
     import inspect
 
     src = inspect.getsource(wf.solve_whatif)
     assert "force_out=list(req.force_out)" in src
     assert "force_out={req.force_out}" in src
-    # The free-hit branch must NOT carry it: _validate has already refused the
+    # The free-hit branch must NOT carry it: validate has already refused the
     # combination, and encoding a forbidden state is how it becomes reachable.
     fh = src[src.index('if chip == "freehit"'):src.index("try:")]
     assert "force_out" not in fh
@@ -195,7 +195,7 @@ def test_a_draft_records_the_constraint_it_was_asked_for():
 def test_the_drafts_re_solve_passes_it_and_the_free_hit_branch_does_not():
     """T8-T11 final review, Important 2: **kept** as a rail on branch shape.
     The claim is a *negative* one — the free-hit arm does not carry the
-    constraint — and a negative about a branch that ``_validate`` refuses to
+    constraint — and a negative about a branch that ``validate`` refuses to
     let anyone reach is not a thing behaviour can demonstrate: there is no
     request that gets there. The positive half is covered on the wire by
     ``test_forcing_a_player_out_actually_sells_him_on_the_wire`` above."""

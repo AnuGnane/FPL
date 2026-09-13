@@ -36,7 +36,7 @@ from gaffer.artifacts import (SolveState, advice_path, append_advice_history,
                               ingested_through, load_advice, pool_rows,
                               save_availability, save_components,
                               save_snapshots, save_solve_state)
-from gaffer.config import NO_CAP, Config
+from gaffer.config import Config, cap
 from gaffer.data import store
 from gaffer.data.bootstrap import (build_events, build_players, build_teams,
                                    next_gw, scoring_table)
@@ -45,9 +45,6 @@ from gaffer.difficulty import difficulty_by_team
 from gaffer.data.league import (effective_ownership, fetch_rival_entries,
                                 fetch_rival_history, fetch_rival_picks)
 from gaffer.data.live import refresh_live
-from gaffer.data.news.lineups import fetch_lineups
-from gaffer.data.news.normalize import availability_frame
-from gaffer.data.news.premierinjuries import fetch_injuries
 from gaffer.errors import GafferError
 from gaffer.data.odds import (OddsClient, ags_frame, blend_attacking_odds,
                               next_gw_event_ids, odds_frame)
@@ -65,12 +62,8 @@ from gaffer.league_mode import (LeagueParams, apply_stance, captain_cover,
                                 compute_strategy, cover_table, tilt_ep,
                                 win_probability)
 from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
-from gaffer.models.components import card_penalty
-from gaffer.models.minutes import apply_availability
-from gaffer.models.persistence import load_model
-from gaffer.models.team import (ODDS_AGAINST_COL, ODDS_BLEND_WEIGHT,
-                                add_team_rolling, blend_team_odds,
-                                odds_blend_weight)
+from gaffer.models.predict import news_availability, predict_components
+from gaffer.models.team import add_team_rolling
 from gaffer.models.train import (cup_matches, load_training_frame,
                                  understat_team_rolled)
 from gaffer.optimize.chips import (PAIR_DGW_MIN_PROB, chip_baseline,
@@ -97,23 +90,15 @@ from gaffer.news_shadow import write_shadow
 # is alphabetical.
 from gaffer.uncertainty import bands_by_player_gw
 from gaffer.prices import price_alerts
-from gaffer.set_pieces import add_pen_ep, attack_multipliers, pen_notices, \
-    pen_priors, rescale_pen_after_blend
+from gaffer.set_pieces import pen_priors, rescale_pen_after_blend
 
 REPORTS = Path("reports")
-MODEL_NAMES = ["minutes", "team", "attacking", "defcon", "saves", "bonus"]
 
 CHIPS = ["wildcard", "freehit", "bboost", "3xc"]
 FIRST_HALF_LAST_GW = 19
 """Last gameweek of the first chip half — the GW1 set expires after it."""
 
 LAST_GW = 38
-
-# Fallbacks for a team-fixture the team model could not score (a promoted
-# side with no rolling history, say): roughly a league-average clean sheet
-# rate and goals conceded, so the row still produces a finite EP.
-DEFAULT_P_CS = 0.25
-DEFAULT_E_GC = 1.4
 
 TEAM_BASE_COLS = ["season_idx", "gw", "kickoff_time", "code", "opp_code",
                   "home", "gf", "ga", "cs"]
@@ -359,154 +344,6 @@ def merge_team_odds(tg_future: pd.DataFrame,
     ).drop(columns=["team_code"])
 
 
-def news_availability(cfg: Config, players: pd.DataFrame,
-                      teams: pd.DataFrame, events: pd.DataFrame,
-                      gw: int) -> pd.DataFrame:
-    """The availability frame for this run: official flags, sharpened by news.
-
-    Every failure mode lands in the same place. ``[news] enabled = false``
-    skips the fetchers entirely; a dead host, a rewritten page or a match rate
-    below the floor returns an empty frame from the fetcher itself; and
-    :func:`availability_frame` with empty news inputs reproduces the official
-    frame exactly. Advice never blocks on news, and each degraded source
-    prints one line — the same shape the league and tier-EO paths use.
-
-    "Degraded" includes *returning nothing*, not only raising: a rewritten
-    page and a match rate under the floor both come back as an empty frame,
-    and an unremarked empty frame reads as "nobody in the league is injured".
-    Every enabled source that answered with nothing is named.
-    """
-    official = players[["code", "status", "chance_of_playing"]]
-    if not cfg.news_enabled:
-        return official
-    injuries = lineups = None
-    spoke_up: set[str] = set()
-    if cfg.news_injuries:
-        try:
-            injuries = fetch_injuries(players, teams,
-                                      cache_hours=cfg.news_cache_hours,
-                                      min_coverage=cfg.news_min_coverage)
-        except Exception as e:  # noqa: BLE001 — news must never block advice
-            spoke_up.add("premierinjuries")
-            print(f"news: premierinjuries unavailable — official flags "
-                  f"only ({e})")
-    if cfg.news_lineups:
-        try:
-            lineups = fetch_lineups(players, teams,
-                                    cache_hours=cfg.news_cache_hours,
-                                    min_coverage=cfg.news_min_coverage)
-        except Exception as e:  # noqa: BLE001 — news must never block advice
-            spoke_up.add("line-ups")
-            print(f"news: predicted line-ups unavailable — official flags "
-                  f"only ({e})")
-    for enabled, frame, name in ((cfg.news_injuries, injuries,
-                                  "premierinjuries"),
-                                 (cfg.news_lineups, lineups, "line-ups")):
-        if enabled and name not in spoke_up and (frame is None
-                                                 or frame.empty):
-            print(f"news: {name} returned nothing — official flags only")
-    if (injuries is None or injuries.empty) and (lineups is None
-                                                 or lineups.empty):
-        return official
-    print(f"news: {0 if injuries is None else len(injuries)} injuries, "
-          f"{0 if lineups is None else len(lineups)} line-up hints")
-    return availability_frame(official, injuries, lineups, gw, events)
-
-
-def predict_components(pred_frame: pd.DataFrame, tg_future: pd.DataFrame,
-                       players: pd.DataFrame,
-                       avail: pd.DataFrame | None = None,
-                       pens=None, *, cfg: Config) -> pd.DataFrame:
-    """Every component prediction on one row per player-fixture.
-
-    Assembled positionally (see the module docstring): each ``predict``
-    returns one row per input row in input order, so ``.values`` lines up
-    exactly while a merge on ``(code, season_idx, gw)`` would fan a double
-    gameweek out.
-
-    ``pens`` is the :class:`~gaffer.set_pieces.PenPriors` bundle, or ``None``
-    for the pre-v6 behaviour: without it the penalty term is identically zero
-    and this function returns exactly the frame it always did, plus a zero
-    column.
-    """
-    pf = pred_frame.copy().reset_index(drop=True)
-    pf["e_cards"] = pf.apply(card_penalty, axis=1)
-
-    minutes = load_model("minutes")
-    mp = minutes.predict(pf)
-    # Two availability passes over one model run. The news pass is what the
-    # advice is built on; the flags-only pass is gate N2's control, and
-    # running the model twice to get it would be both slower and wrong — the
-    # two sides have to differ by the availability layer alone.
-    flags = players[["code", "status", "chance_of_playing"]]
-    # v18b ruling 4: told, not read — the four switches the pass used to
-    # take off the process-wide view come from the cfg this run was given.
-    switches = dict(overrides=cfg.news_overrides,
-                    start_floor=cfg.news_lineup_start_floor,
-                    llm_serving=cfg.news_llm_classifier,
-                    current_season=cfg.current_season)
-    mp_flags = apply_availability(mp, flags, **switches)
-    mp = apply_availability(mp, avail if avail is not None else flags,
-                            **switches)
-
-    keys = ["code", "season_idx", "gw", "opp_code"]
-    carried = ["position", "team_code", "e_cards", "was_home",
-               "kickoff_time", "pen_taker", "setpiece_taker"]
-    comp = pf[keys + [c for c in carried if c in pf.columns]] \
-        .reset_index(drop=True)
-    for col in ["p_play", "p60"]:
-        comp[col] = mp[col].values
-    # Carried for the shadow log and dropped by components_frame's column
-    # selection, so nothing downstream sees them.
-    comp["e_min"] = mp["e_min"].values
-    comp["p_play_flags"] = mp_flags["p_play"].values
-    comp["e_min_flags"] = mp_flags["e_min"].values
-    for name, cols in (("attacking", ["e_goals", "e_assists"]),
-                       ("defcon", ["p_defcon"]),
-                       ("saves", ["e_saves"]),
-                       ("bonus", ["e_bonus"])):
-        out = load_model(name).predict(pf)
-        for col in cols:
-            comp[col] = out[col].values
-
-    # The fitted model itself, not only its predictions: the penalty term
-    # reads Dixon-Coles' attack strengths off it at the bottom of this
-    # function, and loading it twice would be two deserialisations of the
-    # same file.
-    team_model = load_model("team")
-    tp = team_model.predict(tg_future)
-    tp["opp_code"] = tg_future["opp_code"].values
-    # Keep the model's own numbers before the market touches them: the
-    # explainability page shows both sides of the blend and the weight that
-    # was actually applied, and after blending there is no way back.
-    tp["p_cs_model"] = tp["p_cs"].values
-    tp["e_gc_model"] = tp["e_gc"].values
-    # Blend the market in while tp is still one row per team-fixture: the
-    # merge below is many-to-one, so blending after it would apply the same
-    # correction once per player in the squad.
-    if ODDS_AGAINST_COL in tg_future.columns:
-        tp[ODDS_AGAINST_COL] = tg_future[ODDS_AGAINST_COL].values
-    tp = blend_team_odds(tp, weight=odds_blend_weight())
-    if ODDS_AGAINST_COL not in tp.columns:
-        tp[ODDS_AGAINST_COL] = float("nan")
-    tp["odds_weight"] = (tp[ODDS_AGAINST_COL].notna().astype(float)
-                         * odds_blend_weight())
-    tp = tp.rename(columns={"code": "team_code"})
-    comp = comp.merge(tp, on=["team_code", "season_idx", "gw", "opp_code"],
-                      how="left")
-    comp["p_cs"] = comp["p_cs"].fillna(DEFAULT_P_CS)
-    comp["e_gc"] = comp["e_gc"].fillna(DEFAULT_E_GC)
-    # Set pieces last, and deliberately so. The term multiplies by p_play, so
-    # it has to see the availability passes above; it reads the club's attack
-    # strength, so it has to see the team model; and it folds into e_goals
-    # rather than into ep, so it has to land before assemble_ep ever runs.
-    # With no priors it is identically zero and this is a no-op.
-    for line in pen_notices(comp, players, pens,
-                            attack_multipliers(team_model)):
-        print(line)
-    return add_pen_ep(comp, players, pens, attack_multipliers(team_model))
-
-
 def transfer_tag(eo_pct: float | None, has_strategy: bool) -> str:
     """Label a buy ``attack`` / ``cover`` / "" by how owned it is in the league.
 
@@ -583,11 +420,6 @@ def captain_haul_by_code(components: pd.DataFrame,
               "returns)")
     return haul
 
-
-def _cap(value: int) -> int | None:
-    """A config cap as ``SolveInput`` wants it: ``NO_CAP`` and above is
-    "no constraint"; anything else is the number."""
-    return None if int(value) >= NO_CAP else int(value)
 
 
 def gather_inputs(cfg: Config, client: FPLClient | None = None, *,
@@ -895,8 +727,8 @@ def build_advice(inputs: Inputs, cfg: Config, *,
                            # v13 §2.3: the manager's appetite, on the one
                            # SolveInput the sweep, the alternative plans and
                            # the chip table inherit through ``state``.
-                           max_hits=_cap(cfg.max_hits),
-                           max_transfers=_cap(cfg.max_transfers))
+                           max_hits=cap(cfg.max_hits),
+                           max_transfers=cap(cfg.max_transfers))
     # v17g §2.3b: told, not read. ``build_pool`` asks ``config_in_force``
     # for ``top_n`` when the caller passes none, and a read is a read.
     pool = build_pool(players, pool_ep, my_picks, gws,
@@ -1287,7 +1119,7 @@ def build_advice(inputs: Inputs, cfg: Config, *,
             seed=int(cfg.scenarios_seed) + LADDER_SEED_OFFSET + int(gw),
             sigmas=sigmas, sigma_source=sigma_source,
             prior_advice=inputs.prior_advice,
-            caps=(_cap(cfg.max_hits), _cap(cfg.max_transfers)),
+            caps=(cap(cfg.max_hits), cap(cfg.max_transfers)),
             cap_source="config",
             ctx=step_context_from(components, solve_state,
                                   price_fall=inputs.price_fall,

@@ -34,7 +34,13 @@ from dataclasses import replace
 
 import pandas as pd
 
-from gaffer.optimize.chip_policy import threshold_with_source
+# The three bars are ``chip_policy``'s since v18d §2 (it read them back
+# through a function-body import); they are still this module's names.
+from gaffer.optimize import chip_policy
+from gaffer.optimize.chip_policy import (CHIP_PLAY_THRESHOLD,  # noqa: F401
+                                         PAIR_CHIP,
+                                         WILDCARD_RECOMMEND_THRESHOLD,
+                                         threshold_with_source)
 from gaffer.optimize.milp import (SEASON_LAST_GW, Plan, SolveInput,
                                   solve_plan)
 
@@ -49,47 +55,6 @@ CHIP_EVAL_DECAY = 1.0
 Evaluation-only. The plan ``run_advise`` actually recommends keeps its own
 (decayed) solve; this frame exists so that "chip vs no chip over the horizon"
 is answered in plain expected points.
-"""
-
-WILDCARD_RECOMMEND_THRESHOLD = 8.0
-"""Objective points a wildcard must gain before we say "play it".
-
-Deliberately conservative: a wildcard is a scarce, one-shot asset, so a
-marginal gain is not a reason to burn it.
-
-Unchanged from when chip gains were decayed, and so slightly more willing to
-play the chip now that they are not: the same wildcard clears this bar a
-little more often. That is the direction we want — v2 §9 recorded the
-standing weakness as firing chips on unlock, and the fix for that is the
-per-week comparison below, not a threshold that was only ever holding chips
-back by accident.
-"""
-
-CHIP_PLAY_THRESHOLD = 4.0
-"""Objective points a bench boost, triple captain or free hit must gain
-before we play it.
-
-Lower than the wildcard bar because these three are one-week chips: playing
-one costs you nothing but the chip itself, whereas a wildcard also throws
-away the plan you had.
-
-Also unchanged, and binds against undecayed gains — see the note on
-``WILDCARD_RECOMMEND_THRESHOLD``. These are one-week chips played in the
-current gameweek, which the decay never discounted directly, so the shift is
-small: it comes from the *baseline* now being an undecayed plan (on the
-recorded GW2 state, bench boost 4.65 -> 4.98, triple captain unchanged).
-"""
-
-# v12 W3 §4.5 (specs/2026-09-01-gaffer-v12-program-design.md)
-PAIR_CHIP = "wildcard+bboost"
-"""The one chip *pair* this module evaluates: a wildcard in one week and a
-bench boost in a later one, scored as a single option.
-
-Named rather than composed, because everything downstream keys on the chip
-string: the workbench row, the UI's label table, the ledger. A name with a
-``+`` in it is deliberately not a two-letter code — there is no What-If code
-for a pair, and ``ChipsTab``'s mapping already leaves an unknown row alone
-rather than re-solving it as no chip at all.
 """
 
 PAIR_DGW_MIN_PROB = 0.5
@@ -367,7 +332,10 @@ def wildcard_now_assessment(pool: pd.DataFrame, state: SolveInput,
     gain = wc.objective - base.objective
     # v12 W3 §4.2 (specs/2026-09-01-gaffer-v12-program-design.md).
     if thresholds is None:
-        bar, source = float(WILDCARD_RECOMMEND_THRESHOLD), NO_THRESHOLDS
+        # Read off ``chip_policy`` at call time (v18d §2): one binding for
+        # the sentinel rails to patch, not one here and one there.
+        bar = float(chip_policy.WILDCARD_RECOMMEND_THRESHOLD)
+        source = NO_THRESHOLDS
         recommend = gain > bar
     else:
         bar, source = threshold_with_source(thresholds, "wildcard",

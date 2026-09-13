@@ -25,7 +25,7 @@ from gaffer.errors import GafferError
 from gaffer.league_mode import cover_from_eo, tilt_ep
 from gaffer.optimize.milp import SolveInput, solve_plan
 from gaffer.web.jobs import WHATIF_TIMEOUT_S, JobQueueFull
-from gaffer.web.routers.whatif import _summary, _validate
+from gaffer.web.routers.whatif import summary, validate
 from gaffer.web.schemas import (CHIP_CODES, DraftCompare, DraftCompareRequest,
                                 DraftCompareRow, DraftList, DraftRow,
                                 DraftSaveRequest, JobAccepted, WhatIfRequest)
@@ -83,9 +83,9 @@ def save(req: DraftSaveRequest) -> DraftList:
     if gw is not None:
         # Reuses the what-if lab's own validator, so a draft and a what-if
         # are refused for the same reasons in the same words.
-        _validate(req.constraints, load_solve_state(gw))
+        validate(req.constraints, load_solve_state(gw))
     elif req.constraints.force_out and req.constraints.chip == "fh":
-        # whatif._validate's ``force_out_on_free_hit``, in its words, for the
+        # whatif.validate's ``force_out_on_free_hit``, in its words, for the
         # one case that does not need a pool to be wrong.
         raise _fail("force_out_on_free_hit",
                     "a free hit squad is built from scratch, so there is "
@@ -173,7 +173,7 @@ def compare_drafts(names: list[str], gw: int) -> dict:
                 force_in_gw=list(req.force_in),
                 # v12 W3 §4.1: a draft is what you asked for, so the re-solve
                 # has to be able to ask for it. The free-hit branch above does
-                # not, for the reason ``whatif._validate`` refuses it.
+                # not, for the reason ``whatif.validate`` refuses it.
                 force_out=list(req.force_out), max_hits=req.max_hits,
                 max_transfers=req.max_transfers)
         try:
@@ -197,16 +197,16 @@ def compare_drafts(names: list[str], gw: int) -> dict:
     rows = []
     for entry, plans, chip in solved:
         if plans is not None:
-            summary = _summary(plans, ep_by, meta, weeks,
-                               hit_cost=opt["hit_cost"],
+            head = summary(plans, ep_by, meta, weeks,
+                            hit_cost=opt["hit_cost"],
                                cap_extra=2.0 if chip == "3xc" else 1.0,
                                bench_counts=chip == "bboost")
-            entry.horizon_pts = summary.horizon_pts
-            entry.expected_pts = summary.expected_pts
-            entry.hits = summary.hits
-            entry.buys = summary.buys
-            entry.sells = summary.sells
-            entry.captain = summary.captain
+            entry.horizon_pts = head.horizon_pts
+            entry.expected_pts = head.expected_pts
+            entry.hits = head.hits
+            entry.buys = head.buys
+            entry.sells = head.sells
+            entry.captain = head.captain
         rows.append(entry)
     base = rows[0].horizon_pts
     for entry in rows:

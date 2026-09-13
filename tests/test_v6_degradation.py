@@ -108,7 +108,7 @@ def test_run_advise_still_orders_every_protected_seam():
 def test_predict_components_still_blends_before_merging_onto_players():
     import inspect
 
-    from gaffer.advise import predict_components
+    from gaffer.models.predict import predict_components
 
     src = inspect.getsource(predict_components)
     assert src.index("blend_team_odds(") < src.index("comp.merge(tp")

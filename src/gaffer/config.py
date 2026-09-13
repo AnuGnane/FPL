@@ -47,6 +47,13 @@ from-scratch solve says it — so the two keys share it rather than inventing
 a sentinel. ``max_transfers = 0`` is a real cap: bank, no moves at all.
 """
 
+
+def cap(value: int) -> int | None:
+    """A config cap as ``SolveInput`` wants it: ``NO_CAP`` and above is
+    "no constraint"; anything else is the number. Here beside the sentinel
+    (v18d §2) so ``backtest`` no longer reaches into ``advise`` for it."""
+    return None if int(value) >= NO_CAP else int(value)
+
 DEFAULT_TOP_N = {"GKP": 8, "DEF": 22, "MID": 26, "FWD": 14}
 """The candidate pool per position the solver has used since the first MILP
 (v12 W1 §2.6). Here rather than in ``optimize/milp.py`` since v17e §2.1, so

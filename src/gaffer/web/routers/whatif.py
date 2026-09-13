@@ -37,7 +37,7 @@ def _fail(constraint: str, error: str, players: list[int]) -> HTTPException:
                                  "players": players})
 
 
-def _validate(req: WhatIfRequest, state) -> None:
+def validate(req: WhatIfRequest, state) -> None:
     both = sorted(set(req.lock) & set(req.ban))
     if both:
         raise _fail("lock_and_ban",
@@ -114,7 +114,7 @@ def _validate(req: WhatIfRequest, state) -> None:
         raise _fail("max_transfers", "max_transfers cannot be negative", [])
 
 
-def _summary(plans: list[GwPlan], ep_by: dict, meta: dict, weeks: int,
+def summary(plans: list[GwPlan], ep_by: dict, meta: dict, weeks: int,
              *, hit_cost: int, cap_extra: float = 1.0,
              bench_counts: bool = False) -> PlanSummary:
     """A plan in **raw** expected points, the way the report does it.
@@ -210,8 +210,8 @@ def solve_whatif(req: WhatIfRequest, gw: int) -> dict:
             f"{exc}") from exc
 
     weeks = min(len(baseline), len(yours))
-    base = _summary(baseline, ep_by, meta, weeks, hit_cost=opt["hit_cost"])
-    mine = _summary(yours, ep_by, meta, weeks, hit_cost=opt["hit_cost"],
+    base = summary(baseline, ep_by, meta, weeks, hit_cost=opt["hit_cost"])
+    mine = summary(yours, ep_by, meta, weeks, hit_cost=opt["hit_cost"],
                     cap_extra=2.0 if chip == "3xc" else 1.0,
                     bench_counts=chip == "bboost")
     base_xi = {p.code for p in base.xi}
@@ -238,7 +238,7 @@ def whatif(req: WhatIfRequest, request: Request):
     gw = latest_gw()
     if gw is None:
         raise GafferError("no saved solve state — run `gaffer advise` first")
-    _validate(req, load_solve_state(gw))
+    validate(req, load_solve_state(gw))
     try:
         job_id = request.app.state.jobs.submit(
             lambda: solve_whatif(req, gw), timeout_s=WHATIF_TIMEOUT_S)

@@ -93,7 +93,7 @@ def test_top_truncates_and_is_not_passed_to_the_router(monkeypatch):
 def accepts_anything(monkeypatch):
     """A saved state that exists and a validator that passes it.
 
-    `whatif` now runs `_validate` before the solve, exactly as the route does,
+    `whatif` now runs `validate` before the solve, exactly as the route does,
     so a test about what reaches `solve_whatif` has to get past both. Both are
     stubbed rather than fixtured: the thing under test is the plumbing, and the
     validator has its own tests next door in the whatif suite.
@@ -102,7 +102,7 @@ def accepts_anything(monkeypatch):
     from gaffer.web.routers import whatif as whatif_router
 
     monkeypatch.setattr(artifacts, "load_solve_state", lambda gw: object())
-    monkeypatch.setattr(whatif_router, "_validate", lambda req, state: None)
+    monkeypatch.setattr(whatif_router, "validate", lambda req, state: None)
     monkeypatch.setattr(mcp_server, "_latest_gw", lambda: 5)
 
 
@@ -134,7 +134,7 @@ def test_whatif_maps_the_chip_code(monkeypatch, accepts_anything):
 
 
 def test_whatif_validates_before_solving_and_flattens_the_422(monkeypatch):
-    """`solve_whatif` is the job *body*: the route runs `_validate` before
+    """`solve_whatif` is the job *body*: the route runs `validate` before
     queueing it, so a tool that called the body directly handed the solver a
     request nobody had checked. "You already own him" would come back as a
     MILP infeasibility, which is the least useful true sentence available.
@@ -156,7 +156,7 @@ def test_whatif_validates_before_solving_and_flattens_the_422(monkeypatch):
                                   "you already own player 7 — use lock to "
                                   "keep him", [7])
 
-    monkeypatch.setattr(whatif_router, "_validate", refuse)
+    monkeypatch.setattr(whatif_router, "validate", refuse)
     out = mcp_server.TOOLS["whatif"](transfers_in=[7], transfers_out=[])
     assert out == {"error": "force_in_owned: you already own player 7 — use "
                             "lock to keep him"}

@@ -204,9 +204,9 @@ def test_the_protected_seams_are_imported_not_copied():
     assert "def move_frequencies" not in source
 
     drafts_source = inspect.getsource(drafts)
-    assert "from gaffer.web.routers.whatif import _summary, _validate" \
+    assert "from gaffer.web.routers.whatif import summary, validate" \
         in drafts_source
-    assert "def _summary" not in drafts_source
+    assert "def summary" not in drafts_source
 
 
 def test_the_board_building_idiom_is_the_same_in_all_four_places():

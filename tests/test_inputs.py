@@ -181,7 +181,7 @@ def test_live_models_hands_the_five_arguments_to_predict_components(
     the news switches off it rather than off the process-wide view."""
     seen = {}
     monkeypatch.setattr(
-        "gaffer.advise.predict_components",
+        "gaffer.inputs.predict_components",
         lambda *a, **kw: seen.update(a=a, kw=kw) or "comp")
     assert LiveModels().components(pred_frame="P", tg_future="T",
                                    players="PL", avail="A",
@@ -194,15 +194,15 @@ def test_live_models_hands_the_five_arguments_to_predict_components(
 def test_the_calibration_map_is_optional(monkeypatch, exists, expected):
     """A models directory trained before calibration existed has no such
     file, and None is the identity map, not an error."""
-    monkeypatch.setattr("gaffer.models.persistence.model_exists",
+    monkeypatch.setattr("gaffer.inputs.model_exists",
                         lambda name: exists)
-    monkeypatch.setattr("gaffer.models.persistence.load_model",
+    monkeypatch.setattr("gaffer.inputs.load_model",
                         lambda name: "cal")
     assert LiveModels().calibration() == expected
 
 
 def test_live_models_names_the_models_it_cannot_find(monkeypatch):
-    monkeypatch.setattr("gaffer.models.persistence.model_exists",
+    monkeypatch.setattr("gaffer.inputs.model_exists",
                         lambda name: name != "saves")
     assert LiveModels().missing() == ["saves"]
 

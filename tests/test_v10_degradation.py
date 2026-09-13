@@ -154,11 +154,12 @@ def test_an_empty_provider_list_fetches_nothing_at_all(tmp_path):
 
 
 def test_the_coarse_switch_short_circuits_before_providers_are_read():
-    """``[news] lineups = false`` is checked in advise.py before
+    """``[news] lineups = false`` is checked in ``news_availability`` before
     fetch_lineups is reached at all, which is the composition plan A6
-    promises: the coarse switch wins and the fine one refines it."""
-    src = inspect.getsource(__import__("gaffer.advise",
-                                       fromlist=["run_advise"]))
+    promises: the coarse switch wins and the fine one refines it. (The
+    function moved from advise.py to models/predict.py in v18d §2.)"""
+    src = inspect.getsource(__import__("gaffer.models.predict",
+                                       fromlist=["news_availability"]))
     assert "cfg.news_lineups" in src
 
 

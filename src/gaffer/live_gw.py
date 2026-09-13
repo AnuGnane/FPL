@@ -18,6 +18,7 @@ Two FPL quirks shape the module:
 from __future__ import annotations
 
 from gaffer.errors import GafferError
+from gaffer.optimize.formation import formation_legal
 
 BONUS_BY_RANK = (3, 2, 1)
 
@@ -165,7 +166,7 @@ def projected_subs(picks: list[dict], minutes_of: dict[int, int],
     from a match still to come and the page claims nothing it cannot see.
 
     The bench is walked in order and the first *legal* swap wins, under
-    :func:`gaffer.backtest._formation_legal` — the same rule the replay scores
+    :func:`gaffer.optimize.formation.formation_legal` — the same rule the replay scores
     with, imported rather than copied so the projected XI and the scored XI
     cannot drift apart. That rule is what keeps the bench keeper for the
     keeper: two GKPs in an eleven is not a formation, and neither is none.
@@ -181,8 +182,6 @@ def projected_subs(picks: list[dict], minutes_of: dict[int, int],
     left to bring on, and a half-read payload should not have a formation
     invented for it.
     """
-    from gaffer.backtest import _formation_legal
-
     xi = _starting_xi(picks)
     bench = _bench_order(picks)
     if len(xi) != 11 or not bench:
@@ -202,7 +201,7 @@ def projected_subs(picks: list[dict], minutes_of: dict[int, int],
                 continue
             trial = list(xi)
             trial[slot] = sub
-            if not _formation_legal([str(positions.get(c, "MID"))
+            if not formation_legal([str(positions.get(c, "MID"))
                                      for c in trial]):
                 continue
             xi = trial

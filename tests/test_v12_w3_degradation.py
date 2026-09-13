@@ -42,7 +42,7 @@ def test_an_empty_force_out_still_builds_the_pre_change_lp(tmp_path):
 def test_a_code_outside_the_pool_is_refused_by_name_at_both_layers():
     """Once beside the input and once at the solver.
 
-    The lab's refusal is a 422 raised by ``_validate`` *before* the job is
+    The lab's refusal is a 422 raised by ``validate`` *before* the job is
     queued, so the user is told at the form rather than by a failed job he has
     to go and read. The solver's is the backstop for every other caller.
     """
@@ -63,7 +63,7 @@ def test_a_code_outside_the_pool_is_refused_by_name_at_both_layers():
         avail_by_gw: dict = {}
 
     with pytest.raises(Exception) as exc:
-        wf._validate(WhatIfRequest(force_out=[9999]), _State())
+        wf.validate(WhatIfRequest(force_out=[9999]), _State())
     assert exc.value.status_code == 422
     assert exc.value.detail["constraint"] == "unknown_player"
     assert 9999 in exc.value.detail["players"]
@@ -103,7 +103,7 @@ CHIP_CFG = dict(decay=0.85, bench_weight=0.1, vice_weight=0.1, ft_value=1.5,
 @pytest.fixture()
 def sentinels(monkeypatch):
     """Both flat constants replaced by numbers no calibration could produce."""
-    from gaffer.optimize import chips as chips_mod
+    from gaffer.optimize import chip_policy as chips_mod  # the bars' home, v18d §2
 
     monkeypatch.setattr(chips_mod, "WILDCARD_RECOMMEND_THRESHOLD",
                         SENTINEL_WC)

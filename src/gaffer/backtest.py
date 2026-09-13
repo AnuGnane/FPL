@@ -50,14 +50,13 @@ tool would really have scored:
 
 from __future__ import annotations
 
-from collections import Counter
 from dataclasses import replace
 
 import pandas as pd
 
-from gaffer.advise import _cap, chips_available_for
+from gaffer.advise import chips_available_for
 from gaffer.assets import load_bootstrap_sample
-from gaffer.config import load_config
+from gaffer.config import cap, load_config
 from gaffer.data import store
 from gaffer.data.bootstrap import scoring_table
 from gaffer.data.understat import UNDERSTAT_TEAM_PATH
@@ -73,10 +72,9 @@ from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
 from gaffer.optimize.chips import (CHIP_PLAY_THRESHOLD,  # noqa: F401
                                    WILDCARD_RECOMMEND_THRESHOLD,  # noqa: F401
                                    evaluate_chips)
+from gaffer.optimize.formation import formation_legal
 from gaffer.optimize.ft_value import lambda_from_priors
 from gaffer.optimize.milp import SolveInput, build_pool, solve_plan
-
-XI_BOUNDS = {"GKP": (1, 1), "DEF": (3, 5), "MID": (2, 5), "FWD": (1, 3)}
 
 LAST_GW = 38
 STARTING_BUDGET = 1000
@@ -94,12 +92,6 @@ MAX_FREE_TRANSFERS = 5
 # must run offline, so it reads the same payload shape from the bundled
 # package asset (gaffer.assets), which works from an installed wheel too.
 
-
-def _formation_legal(positions: list[str]) -> bool:
-    c = Counter(positions)
-    return (len(positions) == 11
-            and all(lo <= c.get(p, 0) <= hi
-                    for p, (lo, hi) in XI_BOUNDS.items()))
 
 
 def score_gw(actuals: pd.DataFrame, xi: list[int], bench: list[int],
@@ -139,7 +131,7 @@ def score_gw(actuals: pd.DataFrame, xi: list[int], bench: list[int],
                     continue
                 trial = list(xi)
                 trial[i] = sub
-                if _formation_legal([str(pos_of.get(c, "MID")) for c in trial]):
+                if formation_legal([str(pos_of.get(c, "MID")) for c in trial]):
                     on_pitch.discard(starter)
                     on_pitch.add(sub)
                     xi = trial
@@ -508,8 +500,8 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
             # the owned-squad solve carries the same caps advise.py applies.
             state = SolveInput(owned_codes=list(squad), bank=bank,
                                free_transfers=free_transfers, gws=gws,
-                               max_hits=_cap(cfg.max_hits),
-                               max_transfers=_cap(cfg.max_transfers))
+                               max_hits=cap(cfg.max_hits),
+                               max_transfers=cap(cfg.max_transfers))
 
         pool = build_pool(players, ep_by, picks, gws)
         # gw_plans[1:] are discarded: next week re-plans from scratch.
