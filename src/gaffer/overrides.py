@@ -16,6 +16,12 @@ Scope is deliberately two numbers. ``p_play`` and ``e_min`` are the minutes
 model's outputs, which is where almost all of FPL's forecast error lives; an
 attacking-EP override would need a seam inside protected code and would let a
 bad afternoon rewrite the model's whole opinion of a player.
+
+Since v18d §2 this file is the *write* half only. Reading the store, and
+attaching its four columns to an availability frame, is banked-file work and
+lives in :mod:`gaffer.artifacts` beside every other banked file; the names are
+imported back here so a caller that has always said ``overrides.<name>`` is
+unaffected.
 """
 
 from __future__ import annotations
@@ -25,20 +31,15 @@ import math
 from datetime import datetime, timezone
 from pathlib import Path
 
-import pandas as pd
-
 from gaffer import artifacts
+# v18d §2: the read half is in ``gaffer.artifacts`` — the store is a banked
+# file and that is the banked-file reader. Re-exported here so a caller that
+# has always said ``overrides.load_overrides`` still finds it.
+from gaffer.artifacts import (OVERRIDE_COLS, attach_overrides,  # noqa: F401
+                              clipped, load_overrides, opt_float,
+                              overrides_path)
 from gaffer.errors import GafferError
 from gaffer.io import atomic_write
-
-OVERRIDE_COLS = ["override", "override_p_play", "override_e_min",
-                 "override_note"]
-"""The four columns :func:`attach_overrides` adds to an availability frame.
-
-``override`` is the marker the why-panel and the daily snapshot read: a
-boolean saying "the user pinned something about this player", which stays
-true and legible long after the pin itself has been deleted from the store.
-"""
 
 MAX_OVERRIDES = 50
 """More pins than this is not a manager's judgement, it is a second model.
@@ -50,53 +51,6 @@ serialization problem, and so the why-panel stays a list somebody reads.
 NOTE_MAX = 200
 """Characters. Refused rather than truncated: a silently halved note is a
 sentence the user did not write."""
-
-
-def overrides_path() -> Path:
-    """``reports/overrides.json``, resolved at call time.
-
-    ``artifacts.REPORTS`` is a relative path, so a test that changes directory
-    changes this with it — the same trade every other report store makes.
-    """
-    return artifacts.REPORTS / "overrides.json"
-
-
-def load_overrides() -> dict[int, dict]:
-    """``{code: {p_play, e_min, note, set_at, model_p_play, model_e_min}}``.
-
-    Never raises. An absent file, a hand-edited one, a half-written one and a
-    file whose top-level shape has drifted all come back as ``{}`` — an advise
-    run that died of its own override store would be a far worse failure than
-    one that ignored it, and the print is what makes the difference visible.
-
-    JSON object keys are strings by definition; this is where they become
-    integers again, so a caller looking a code up with an int cannot miss.
-    """
-    path = overrides_path()
-    if not path.exists():
-        return {}
-    try:
-        raw = json.loads(path.read_text())
-        rows = raw.get("overrides") if isinstance(raw, dict) else None
-        if not isinstance(rows, dict):
-            return {}
-        out: dict[int, dict] = {}
-        for code, row in rows.items():
-            if not isinstance(row, dict):
-                continue
-            out[int(code)] = {
-                "p_play": _clipped(row.get("p_play"), 0.0, 1.0, "p_play",
-                                   code),
-                "e_min": _clipped(row.get("e_min"), 0.0, 90.0, "e_min", code),
-                "note": str(row.get("note") or ""),
-                "set_at": str(row.get("set_at") or ""),
-                "model_p_play": _opt_float(row.get("model_p_play")),
-                "model_e_min": _opt_float(row.get("model_e_min")),
-            }
-        return out
-    except Exception as exc:  # noqa: BLE001 — a bad store is an empty one
-        print(f"overrides store unreadable, ignoring it: {exc}")
-        return {}
 
 
 def save_overrides(rows: dict[int, dict]) -> Path:
@@ -113,37 +67,6 @@ def save_overrides(rows: dict[int, dict]) -> Path:
     path = overrides_path()
     atomic_write(path, json.dumps(payload, indent=1, allow_nan=False))
     return path
-
-
-def _opt_float(value) -> float | None:
-    if value is None:
-        return None
-    try:
-        out = float(value)
-    except (TypeError, ValueError):
-        return None
-    return None if math.isnan(out) else out
-
-
-def _clipped(value, lo: float, hi: float, name: str, code) -> float | None:
-    """A stored value, forced into the range the availability pass applies.
-
-    :func:`set_override` refuses anything outside it, but the store is a file:
-    it can be hand-edited, restored from an older schema, or written by a
-    future version. ``_override_first_gw`` clips both fields on the way in, so
-    an unclipped read would show the panel a number the model never applied —
-    "the model had 0.82, you pinned 1.70" beside a squad built on 1.00. The
-    print is what stops the correction being silent.
-    """
-    out = _opt_float(value)
-    if out is None:
-        return None
-    if out < lo or out > hi:
-        clipped = min(max(out, lo), hi)
-        print(f"overrides: player {code}'s {name} is {out:g}, outside "
-              f"{lo:g}-{hi:g} — reading it as {clipped:g}")
-        return clipped
-    return out
 
 
 def _checked(value, lo: float, hi: float, name: str) -> float | None:
@@ -197,10 +120,10 @@ def set_override(code: int, *, p_play=None, e_min=None, note: str = "",
         "set_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "model_p_play": (previous.get("model_p_play")
                          if previous.get("model_p_play") is not None
-                         else _opt_float(model_p_play)),
+                         else opt_float(model_p_play)),
         "model_e_min": (previous.get("model_e_min")
                         if previous.get("model_e_min") is not None
-                        else _opt_float(model_e_min)),
+                        else opt_float(model_e_min)),
     }
     rows[code] = row
     save_overrides(rows)
@@ -215,46 +138,3 @@ def delete_override(code: int) -> bool:
     rows.pop(int(code))
     save_overrides(rows)
     return True
-
-
-def attach_overrides(frame: pd.DataFrame,
-                     overrides: dict[int, dict] | None = None) -> pd.DataFrame:
-    """Add :data:`OVERRIDE_COLS` to an availability frame.
-
-    Idempotent by design: the availability pass and the artifact writer both
-    call it, and a frame that already carries the marker is returned untouched
-    rather than re-read from disk. A frame with no ``code`` column is returned
-    as it came — the bare bootstrap slice always has one, but a caller holding
-    something else should get a no-op rather than a KeyError.
-
-    The columns are added whether or not anybody has pinned anything, so the
-    parquet schema does not depend on the week: an all-null column with a
-    settled dtype is what the news layer's own optional fields already do.
-
-    Never mutates the caller's frame.
-    """
-    if frame is None or "code" not in getattr(frame, "columns", []):
-        return frame
-    if "override" in frame.columns:
-        return frame
-    table = load_overrides() if overrides is None else dict(overrides)
-    marks, plays, mins, notes = [], [], [], []
-    for raw in frame["code"]:
-        try:
-            row = table.get(int(raw))
-        except (TypeError, ValueError):
-            row = None
-        marks.append(row is not None)
-        plays.append(None if row is None else row.get("p_play"))
-        mins.append(None if row is None else row.get("e_min"))
-        notes.append(None if row is None else (row.get("note") or None))
-    out = frame.copy()
-    out["override"] = pd.array(marks, dtype="boolean")
-    out["override_p_play"] = pd.to_numeric(pd.Series(plays,
-                                                     index=out.index),
-                                           errors="coerce")
-    out["override_e_min"] = pd.to_numeric(pd.Series(mins, index=out.index),
-                                          errors="coerce")
-    out["override_note"] = pd.Series(notes, index=out.index,
-                                     dtype="object").astype("string")
-    return out

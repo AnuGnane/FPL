@@ -21,6 +21,8 @@ from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from gaffer.price_timing import owned_price_falls
+
 if TYPE_CHECKING:  # v17g §2.3b: the trace context's first element, named
     # rather than typed ``object``. Not imported at run time — this module is
     # the one every layer reads a served plan through, and it stays clear of
@@ -388,8 +390,6 @@ def price_falls(state, *,
     too, so the cache it wraps is never asked to serve a table computed under
     the other setting.
     """
-    from gaffer.price_timing import owned_price_falls
-
     try:
         if price_timing is None:
             from gaffer.config import config_in_force

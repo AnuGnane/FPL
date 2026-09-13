@@ -1,6 +1,7 @@
 """Chip planner, history, health and the fixture ticker.
 
-Everything here is disk-only except the explicit data-refresh job. The chip
+Everything here is disk-only since v18d §2, when the data-refresh job body
+left for ``gaffer.refresh``: a job body is not a route. The chip
 planner re-runs ``evaluate_chips`` against the saved pool: that is a handful
 of small MILP solves, which is why it is a GET the page can afford to call
 directly rather than a job.
@@ -401,41 +402,3 @@ def ticker(weeks: int = Query(8, ge=1, le=20)) -> Ticker:
                                             difficulty=cell.difficulty)
                                  for cell in team.cells])
                for team in rated.teams])
-
-
-def run_data_refresh() -> dict:
-    """Pull the live season and re-write the bootstrap snapshots.
-
-    The body of the ``refresh-data`` job kind, started through
-    ``POST /api/jobs/refresh-data``. The ``POST /api/data/refresh`` route that
-    used to queue this on the legacy ``JobRegistry`` is gone: it was a second
-    lane past the single-flight runner, and two concurrent refreshes rewrite
-    the same parquet files underneath each other.
-    """
-    from gaffer.advise import fixture_frame, save_live_fixtures
-    from gaffer.api.client import FPLClient
-    from gaffer.artifacts import save_snapshots
-    from gaffer.config import load_config
-    from gaffer.data.bootstrap import build_events, build_players, build_teams
-    from gaffer.data.chip_scenarios import write_chip_scenarios
-    from gaffer.data.live import refresh_live
-
-    cfg = load_config()
-    season_idx = len(cfg.train_seasons)
-    client = FPLClient()
-    frame = refresh_live(client, cfg.current_season, season_idx)
-    raw = client.get_bootstrap()
-    teams = build_teams(raw)
-    fixtures = fixture_frame(client.get_fixtures())
-    # The finished-only copy too, exactly as `advise` writes it: it is what
-    # the ticker's Elo reads and what /api/health grades as "fixtures", so a
-    # refresh that skipped it would leave both stale for ever.
-    save_live_fixtures(fixtures, teams, season_idx)
-    save_snapshots(build_players(raw), teams, build_events(raw), fixtures)
-    # v10b §F2b: the DGW hook v4c shipped has been waiting for data since
-    # August. Derived here rather than in a new job kind because the fixture
-    # list was just fetched and is in hand — a second kind would re-fetch it
-    # to learn the same thing. Never raises; see the writer's docstring.
-    write_chip_scenarios(fixtures,
-                         dict(zip(teams["team_id"], teams["code"])))
-    return {"rows": int(len(frame))}

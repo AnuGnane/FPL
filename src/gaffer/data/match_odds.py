@@ -227,8 +227,13 @@ way it was then. Without this bridge every one of that club's fixtures misses
 its code and drops silently as "unmatched"."""
 
 
-def _code_for(name: str, name_to_code: dict[str, int]) -> int | float:
-    """A season's code for a club, trying its earlier names before giving up."""
+def code_for(name: str, name_to_code: dict[str, int]) -> int | float:
+    """A season's code for a club, trying its earlier names before giving up.
+
+    Public since v18d §2: ``gaffer.data.understat`` needs the same rename
+    bridge, and a second module reaching for a private name is the shape of
+    a name that was never private.
+    """
     if name in name_to_code:
         return name_to_code[name]
     for old in FPL_RENAMES.get(name, ()):
@@ -258,8 +263,8 @@ def join_to_fixtures(parsed: pd.DataFrame, fixtures: pd.DataFrame,
     kt = pd.to_datetime(fx["kickoff_time"], utc=True, format="mixed")
     fx["_date"] = kt.dt.tz_convert("Europe/London").dt.date
     left = parsed.copy()
-    left["home_code"] = [_code_for(n, name_to_code) for n in left["home_name"]]
-    left["away_code"] = [_code_for(n, name_to_code) for n in left["away_name"]]
+    left["home_code"] = [code_for(n, name_to_code) for n in left["home_name"]]
+    left["away_code"] = [code_for(n, name_to_code) for n in left["away_name"]]
     left["_date"] = left["date"]
     merged = left.merge(
         fx[["season_idx", "gw", "kickoff_time", "home_code", "away_code",

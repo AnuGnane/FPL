@@ -171,7 +171,7 @@ def test_run_data_refresh_calls_the_writer():
     executing the job body would mean a live API call."""
     import inspect
 
-    from gaffer.web.routers import meta
+    from gaffer import refresh
 
-    source = inspect.getsource(meta.run_data_refresh)
+    source = inspect.getsource(refresh.run_data_refresh)
     assert "write_chip_scenarios" in source

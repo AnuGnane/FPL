@@ -123,6 +123,19 @@ def test_invalidate_drops_the_price_fall_table(tmp_path, monkeypatch):
     assert owned_price_falls.cache_info().currsize == 0
 
 
+def test_a_registered_callable_runs_on_invalidate(monkeypatch):
+    """v18d §2: the config no longer names the feature it has to drop. A
+    cache tells the config about itself through ``on_invalidate``, and the
+    clearing above is only the first entry in that list."""
+    from gaffer import config as config_mod
+
+    monkeypatch.setattr(config_mod, "_on_invalidate", [])
+    calls: list[int] = []
+    config_mod.on_invalidate(lambda: calls.append(1))
+    invalidate()
+    assert calls == [1]
+
+
 def test_focus_league_reads_the_effective_id_through_the_view(tmp_path, monkeypatch):
     from gaffer.config import focus_league
 

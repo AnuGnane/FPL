@@ -111,6 +111,15 @@ def _slotted(n_codes=80, n_gws=30, seed=1) -> pd.DataFrame:
 _FIT_COLS = ["minutes_r5", "starts_r5", "home"]
 
 
+def _inner():
+    """The inner model the fitter now asks its caller for (v18d §2). A test
+    may name ``ThreeModeModel``; the calibrator may not, because ``minutes``
+    imports it."""
+    from gaffer.models.minutes import ThreeModeModel
+
+    return ThreeModeModel(_FIT_COLS, _fit_dnp=False)
+
+
 def test_the_fitter_holds_out_the_last_slots_and_fits_on_them(monkeypatch):
     import gaffer.models.dnp_calibrate as dc
 
@@ -123,7 +132,8 @@ def test_the_fitter_holds_out_the_last_slots_and_fits_on_them(monkeypatch):
 
     monkeypatch.setattr(dc.DnpCalibrator, "fit", spy)
     monkeypatch.setattr(dc, "DNP_MIN_ROWS", 10)
-    dc.fit_dnp_calibrator(_slotted(), _FIT_COLS, holdout_slots=10)
+    dc.fit_dnp_calibrator(_slotted(), _FIT_COLS, holdout_slots=10,
+                          inner=_inner)
     # 80 codes x the last 10 of 30 slots.
     assert seen["rows"] == 800
 
@@ -143,7 +153,8 @@ def test_the_inner_model_never_sees_a_held_out_slot(monkeypatch):
 
     monkeypatch.setattr(ThreeModeModel, "fit", spy)
     monkeypatch.setattr(dc, "DNP_MIN_ROWS", 10)
-    dc.fit_dnp_calibrator(_slotted(), _FIT_COLS, holdout_slots=10)
+    dc.fit_dnp_calibrator(_slotted(), _FIT_COLS, holdout_slots=10,
+                          inner=_inner)
     assert seen["max_gw"] == 20        # slots 21-30 are the holdout
 
 
@@ -151,7 +162,8 @@ def test_a_frame_with_too_few_slots_returns_the_identity():
     from gaffer.models.dnp_calibrate import fit_dnp_calibrator
 
     thin = _slotted(n_codes=80, n_gws=8)
-    assert fit_dnp_calibrator(thin, _FIT_COLS, holdout_slots=10).iso is None
+    assert fit_dnp_calibrator(thin, _FIT_COLS, holdout_slots=10,
+                              inner=_inner).iso is None
 
 
 def test_the_fitter_does_not_recurse_into_itself(monkeypatch):
@@ -169,5 +181,6 @@ def test_the_fitter_does_not_recurse_into_itself(monkeypatch):
 
     monkeypatch.setattr(ThreeModeModel, "__init__", spy)
     monkeypatch.setattr(dc, "DNP_MIN_ROWS", 10)
-    dc.fit_dnp_calibrator(_slotted(), _FIT_COLS, holdout_slots=10)
+    dc.fit_dnp_calibrator(_slotted(), _FIT_COLS, holdout_slots=10,
+                          inner=_inner)
     assert built == [False]

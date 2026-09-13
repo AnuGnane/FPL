@@ -13,14 +13,14 @@ dies loudly every afternoon.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
 import pandas as pd
 
-from gaffer.artifacts import AVAILABILITY_COLS
+from gaffer.artifacts import AVAILABILITY_COLS, attach_overrides
+from gaffer.clock import snap_date
 from gaffer.data import store
 from gaffer.errors import GafferError
 from gaffer.io import atomic_save
+from gaffer.models.predict import news_availability
 
 SNAPSHOT_PATH = "live/availability_log.parquet"
 
@@ -31,15 +31,6 @@ Reused from :mod:`gaffer.artifacts` rather than restated: the news endpoint,
 the per-gameweek snapshot and this log all read one column list, so a source
 that starts carrying a new field lands in all three at once.
 """
-
-
-def snap_date(now: datetime | None = None) -> str:
-    """Today in UTC, ``YYYY-MM-DD``. The log's idempotency key.
-
-    UTC rather than local time so a machine that travels, or one running the
-    job either side of a clock change, cannot bank two "days" for one.
-    """
-    return (now or datetime.now(timezone.utc)).strftime("%Y-%m-%d")
 
 
 def next_unfinished_gw(events: pd.DataFrame) -> int:
@@ -72,7 +63,6 @@ def snapshot_rows(avail: pd.DataFrame, gw: int, season: str = "",
     """
     out = avail.copy()
     from gaffer.config import config_in_force
-    from gaffer.overrides import attach_overrides
     if config_in_force().news_overrides:
         out = attach_overrides(out)
     for col in AVAILABILITY_COLS:
@@ -137,10 +127,13 @@ def load_snapshot_log() -> pd.DataFrame:
 def run_snapshot(cfg=None) -> int | None:
     """Bank today's availability state. Rows written, or ``None``.
 
-    Imports are local: the news layer pulls in half the advise pipeline, and a
-    module the CLI touches to print ``--help`` must not pay for that. The
-    config is an argument so a caller that already has one does not read
-    ``config.toml`` twice.
+    v18d §2: the news layer is named at module scope now that it lives in
+    ``gaffer.models.predict`` and nothing there reaches back here — the old
+    local import was dodging the ``advise`` cycle, not saving anything. The
+    client, the config reader and the bootstrap builders stay local because
+    they are this one function's, and none of them is on the import path of a
+    module that only wants the log. The config is an argument so a caller that
+    already has one does not read the config file twice.
 
     Prints its own one-line result, success or degradation, so the launchd
     log, the CLI and the web job all say the same sentence without three
@@ -148,7 +141,6 @@ def run_snapshot(cfg=None) -> int | None:
     instrumentation, and instrumentation never blocks.
     """
     try:
-        from gaffer.advise import news_availability
         from gaffer.api.client import FPLClient
         from gaffer.config import load_config
         from gaffer.data.bootstrap import (build_events, build_players,

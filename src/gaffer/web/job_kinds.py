@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Callable
 
-from gaffer.web.routers.meta import run_data_refresh
+from gaffer.refresh import run_data_refresh
 
 if TYPE_CHECKING:  # the runtime import stays lazy inside the function body
     from gaffer.config import Config

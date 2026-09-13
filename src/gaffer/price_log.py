@@ -13,7 +13,7 @@ It is the availability log's twin and shares its every mechanic on purpose:
 one row per player per UTC day, ``snap_date`` as the idempotency key,
 append-by-rewrite because parquet has no append, and an atomic rename at the
 end so a job killed mid-write costs the day rather than the season. Even the
-clock is shared — :func:`gaffer.snapshot.snap_date` is imported rather than
+clock is shared — :func:`gaffer.clock.snap_date` is imported rather than
 restated, because two definitions of "today" in one project is a bug waiting
 for the week somebody joins the two logs.
 
@@ -30,9 +30,9 @@ from __future__ import annotations
 
 import pandas as pd
 
+from gaffer.clock import snap_date
 from gaffer.data import store
 from gaffer.io import atomic_save
-from gaffer.snapshot import snap_date
 
 PRICE_LOG_PATH = "live/price_log.parquet"
 

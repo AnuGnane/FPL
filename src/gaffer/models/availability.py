@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import pandas as pd
 
+from gaffer.artifacts import attach_overrides
 from gaffer.assets import load_injury_curves
 from gaffer.data.news.presser_log import (PRESSER_COLS, would_factor,  # noqa: F401
                                           write_presser)
@@ -132,7 +133,6 @@ def apply_availability(pred: pd.DataFrame, avail: pd.DataFrame,
         if current_season is None:
             current_season = cfg.current_season
     if overrides:
-        from gaffer.overrides import attach_overrides
         avail = attach_overrides(avail)
     news_cols = [c for c in ("injury_type", "expected_return_gw",
                              "p_start_hint", "absence_damp", "llm_verdict",

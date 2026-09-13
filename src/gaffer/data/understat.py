@@ -24,6 +24,7 @@ from pathlib import Path
 import httpx
 import pandas as pd
 
+from gaffer.data.match_odds import code_for
 from gaffer.data.names import normalize_name
 from gaffer.errors import GafferError
 from gaffer.io import atomic_write
@@ -564,13 +565,12 @@ def build_understat_team(seasons: list[str], season_indexes: dict[str, int],
     are printed per season: silence here is how a whole promoted club goes
     missing from a season's features without anyone noticing.
 
-    The lookup goes through :func:`gaffer.data.match_odds._code_for` rather
+    The lookup goes through :func:`gaffer.data.match_odds.code_for` rather
     than a plain dict hit, because ``UNDERSTAT_TEAM_ALIASES`` targets the
     *current* bootstrap spelling ("Ipswich Town") while an older season's
     table still carries the one it used then ("Ipswich").
     """
     from gaffer.data import store
-    from gaffer.data.match_odds import _code_for
 
     client = client or UnderstatClient()
     frames = []
@@ -580,7 +580,7 @@ def build_understat_team(seasons: list[str], season_indexes: dict[str, int],
             continue
         rows = rows.copy()
         fpl_names = rows["team"].map(lambda t: UNDERSTAT_TEAM_ALIASES.get(t, t))
-        rows["team_code"] = [_code_for(n, name_to_code) for n in fpl_names]
+        rows["team_code"] = [code_for(n, name_to_code) for n in fpl_names]
         keep = rows["team_code"].notna()
         dropped = sorted(set(fpl_names[~keep]))
         if dropped:

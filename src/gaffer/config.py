@@ -5,6 +5,7 @@ import tomllib
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
+from typing import Callable
 
 import tomli_w
 
@@ -671,17 +672,36 @@ def config_in_force() -> Config:
         return Config(entry_id=0, league_id=0)
 
 
+_on_invalidate: list[Callable[[], None]] = []
+"""What else :func:`invalidate` has to drop (v18d §2).
+
+The direction of the old code was wrong: this module named
+``gaffer.price_timing`` to clear its table, so the config knew a feature,
+and the import had to be deferred because the feature imports the config.
+A feature registers its own clearing here instead, and the config knows
+only that there is a list to walk.
+"""
+
+
+def on_invalidate(fn: Callable[[], None]) -> None:
+    """Register ``fn`` to run whenever the config view is dropped.
+
+    For a cache keyed, however indirectly, on the config file: register at
+    import so a config written under a running process cannot be read
+    against a table built before it (v18d §2).
+    """
+    _on_invalidate.append(fn)
+
+
 def invalidate() -> None:
     """Drop every cache keyed on the config file (v17e §2.2): the view, and
-    the price-fall table that reads its switch through the view. Tests
-    that write a ``config.toml`` under a running process call this; so
-    does anything else that edits the file."""
+    whatever registered itself through :func:`on_invalidate` — the
+    price-fall table that reads its switch through the view is the one such
+    today. Tests that write a ``config.toml`` under a running process call
+    this; so does anything else that edits the file."""
     config_in_force.cache_clear()
-    # Deferred: ``gaffer.price_timing`` imports this module at load
-    # (v17e §2.2), so a module-level import here would be circular.
-    from gaffer.price_timing import owned_price_falls
-
-    owned_price_falls.cache_clear()
+    for fn in _on_invalidate:
+        fn()
 
 
 def focus_league() -> int:

@@ -61,9 +61,9 @@ from functools import lru_cache
 
 import pandas as pd
 
-from gaffer.config import config_in_force
+from gaffer.clock import snap_date
+from gaffer.config import config_in_force, on_invalidate
 from gaffer.price_log import load_price_log
-from gaffer.snapshot import snap_date
 
 
 def price_falls(log: pd.DataFrame,
@@ -74,7 +74,7 @@ def price_falls(log: pd.DataFrame,
     Thursday night, and the log keeps every day precisely so that "the newest"
     is a choice somebody made rather than the only row there is.
 
-    And the newest day has to be *today* (``snapshot.snap_date()``, UTC). A
+    And the newest day has to be *today* (``clock.snap_date()``, UTC). A
     log whose freshest row is yesterday's is describing a price change that
     has already resolved; charging it again is charging a fall twice. So a
     stale log yields ``{}``, exactly as a missing one does.
@@ -190,3 +190,14 @@ def _owned_price_falls(day: str, owned: tuple[int, ...],
 # public name.
 owned_price_falls.cache_clear = _owned_price_falls.cache_clear
 owned_price_falls.cache_info = _owned_price_falls.cache_info
+
+# v18d §2: the config does not know this feature — the feature tells the
+# config what to drop. The switch above is read through the view, so a
+# ``config.toml`` rewritten under a running process has to take this table
+# with it; before v18d ``invalidate`` reached in here by name and had to
+# defer the import to dodge the cycle. Registered here rather than beside
+# the definition because the public ``cache_clear`` is bound two lines up,
+# and through a lambda so the attribute is read when the clearing runs —
+# ``invalidate`` looked it up per call before v18d, and a test that swaps it
+# out has to keep seeing the swap.
+on_invalidate(lambda: owned_price_falls.cache_clear())

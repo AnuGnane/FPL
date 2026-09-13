@@ -183,7 +183,7 @@ def _wire(monkeypatch, tmp_path, avail=None, boom=False):
                         lambda raw: pd.DataFrame())
     monkeypatch.setattr("gaffer.data.bootstrap.build_events",
                         lambda raw: _events())
-    monkeypatch.setattr("gaffer.advise.news_availability",
+    monkeypatch.setattr("gaffer.snapshot.news_availability",
                         lambda *a, **kw: _avail() if avail is None else avail)
     monkeypatch.setattr("gaffer.snapshot.snap_date", lambda *a: "2026-08-30")
 

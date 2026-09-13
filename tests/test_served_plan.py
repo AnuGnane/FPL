@@ -312,7 +312,7 @@ def test_price_falls_told_on_threads_the_switch_to_owned_price_falls(
     """The switch also has to reach ``owned_price_falls``, or its cache
     could serve a table computed under the other setting."""
     import gaffer.config
-    import gaffer.price_timing as pt_mod
+    import gaffer.served as served_mod
     from gaffer.served import price_falls
 
     def boom():
@@ -325,7 +325,9 @@ def test_price_falls_told_on_threads_the_switch_to_owned_price_falls(
         return {200: 0.9}
 
     monkeypatch.setattr(gaffer.config, "config_in_force", boom)
-    monkeypatch.setattr(pt_mod, "owned_price_falls", fake_owned)
+    # v18d §2: ``served`` names the reader at module scope now, so the seam
+    # is this module's binding rather than ``price_timing``'s.
+    monkeypatch.setattr(served_mod, "owned_price_falls", fake_owned)
     assert price_falls(_state(), price_timing=True) == (True, {200: 0.9})
     assert seen["price_timing"] is True
 

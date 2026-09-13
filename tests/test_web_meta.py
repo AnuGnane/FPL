@@ -211,7 +211,7 @@ def test_the_legacy_data_refresh_route_is_gone(client):
 def test_the_refresh_body_is_still_the_refresh_data_job_kind():
     """The route went; the callable it queued did not."""
     from gaffer.web.job_kinds import JOB_KINDS
-    from gaffer.web.routers.meta import run_data_refresh
+    from gaffer.refresh import run_data_refresh
 
     assert JOB_KINDS["refresh-data"] is run_data_refresh
 

@@ -16,6 +16,12 @@ import pandas as pd
 from lightgbm import LGBMClassifier, LGBMRegressor
 
 from gaffer.models.dnp_calibrate import fit_dnp_calibrator
+# v18d §2: the mode vocabulary is a leaf module now, so the calibrator can
+# name it without reaching back in here. Imported rather than moved out of
+# reach: ``minutes.DNP`` and ``minutes.mode_labels`` are what the rest of the
+# codebase has always said.
+from gaffer.models.modes import (DNP, MODE_COLS, SIXTY_MINUTES,  # noqa: F401
+                                 START, SUB, mode_labels)
 
 LGB_KW = dict(n_estimators=300, learning_rate=0.05, num_leaves=31,
               verbose=-1, random_state=7)
@@ -85,33 +91,6 @@ Off means off all the way down: ``fit`` does not pay for the inner refit and
 ``predict_modes`` does not branch, so a run with this False is the pre-v7
 model prediction for prediction.
 """
-
-DNP, SUB, START = 0, 1, 2
-MODE_COLS = ["p_dnp", "p_sub", "p_start"]
-SIXTY_MINUTES = 60
-
-
-def mode_labels(df: pd.DataFrame) -> pd.Series:
-    """{0 DNP, 1 sub, 2 start} from ``starts`` and ``minutes``.
-
-    ``starts`` is the FPL feed's own flag and is present from 2022-23, which
-    is every season in ``train_seasons``. Where it is missing the label falls
-    back to the 60-minute threshold, which is what the old model used for
-    everything and is wrong only for the cameo-heavy tail — better than
-    dropping a season.
-    """
-    mins = pd.to_numeric(df["minutes"], errors="coerce").fillna(0.0)
-    starts = (pd.to_numeric(df["starts"], errors="coerce")
-              if "starts" in df.columns
-              else pd.Series(float("nan"), index=df.index))
-    starts = starts.fillna((mins >= SIXTY_MINUTES).astype("float64"))
-    label = pd.Series(DNP, index=df.index, dtype="int64")
-    label[mins > 0] = SUB
-    # ``>= 1`` rather than ``== 1``: the column is a count, and a double
-    # gameweek's aggregated row carries a 2.
-    label[(mins > 0) & (starts >= 1)] = START
-    return label
-
 
 class _ConstantHead:
     """The value a head takes when its training slice held one answer.
@@ -198,8 +177,10 @@ class ThreeModeModel:
         # The recursion guard, mirroring ``train_all``'s ``_fit_cal``: the
         # calibrator's own inner model is built with it False.
         if self._fit_dnp and DNP_CALIBRATION_DEFAULT:
-            self.dnp_cal = fit_dnp_calibrator(df, self.feature_cols,
-                                              seed=self.seed)
+            self.dnp_cal = fit_dnp_calibrator(
+                df, self.feature_cols, seed=self.seed,
+                inner=lambda: ThreeModeModel(self.feature_cols,
+                                             seed=self.seed, _fit_dnp=False))
         return self
 
     def _binary(self, X, y, default: float):

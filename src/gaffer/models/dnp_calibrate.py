@@ -27,9 +27,13 @@ calibration has just admitted might play is a substitute, not a starter.
 
 from __future__ import annotations
 
+from typing import Any, Callable
+
 import numpy as np
 import pandas as pd
 from sklearn.isotonic import IsotonicRegression
+
+from gaffer.models.modes import DNP, mode_labels
 
 DNP_MIN_ROWS = 500
 """Out-of-sample rows the fit needs before its curve is trusted.
@@ -110,28 +114,32 @@ class DnpCalibrator:
 
 def fit_dnp_calibrator(df: pd.DataFrame, feature_cols: list[str],
                        holdout_slots: int = DNP_HOLDOUT_SLOTS,
-                       seed: int | None = None) -> DnpCalibrator:
+                       seed: int | None = None, *,
+                       inner: Callable[[], Any]) -> DnpCalibrator:
     """Fit the calibrator on out-of-sample DNP predictions.
 
     The same shape as :func:`gaffer.models.train.fit_calibration`, and for the
     same reason. The last ``holdout_slots`` ``(season_idx, gw)`` slots are held
-    out, an inner :class:`~gaffer.models.minutes.ThreeModeModel` is fit on the
-    rows strictly before them, and the calibration learns its map from that
-    model's predictions on slots it never saw. Spec §2.2's no-leakage
-    requirement — "calibrator for slot t fits on slots < t" — is met by
-    construction at the slot boundary, and it composes with the harness: when
-    ``evaluate_current`` fits on rows before *its* boundary, this inner split
-    sits entirely inside that, so nothing the gate scores can have leaked in.
+    out, an inner model is fit on the rows strictly before them, and the
+    calibration learns its map from that model's predictions on slots it never
+    saw. Spec §2.2's no-leakage requirement — "calibrator for slot t fits on
+    slots < t" — is met by construction at the slot boundary, and it composes
+    with the harness: when ``evaluate_current`` fits on rows before *its*
+    boundary, this inner split sits entirely inside that, so nothing the gate
+    scores can have leaked in.
 
-    ``_fit_dnp=False`` on the inner model is the recursion guard, exactly as
-    ``_fit_cal=False`` is in ``train_all``.
-
-    The import is function-local because ``minutes`` imports this module at
-    module scope for the flag and the fitter; deferring the reverse edge keeps
-    the cycle from ever being real at import time.
+    ``inner()`` returns an unfitted model with ``.fit(df)`` and
+    ``.predict_modes(df)`` — in production a
+    :class:`~gaffer.models.minutes.ThreeModeModel` built with
+    ``_fit_dnp=False``, the recursion guard, exactly as ``_fit_cal=False`` is
+    in ``train_all``. Required rather than defaulted, and a factory rather
+    than a class: v18d §2, because ``minutes`` imports this module at module
+    scope for the flag and the fitter, and naming ``ThreeModeModel`` here
+    could only ever be a function-local import dodging that edge. The caller
+    already holds the class; it hands it in — and with it the seed, which is
+    why ``seed`` here is now only part of the signature callers have always
+    written rather than something this body can apply.
     """
-    from gaffer.models.minutes import DNP, ThreeModeModel, mode_labels
-
     slots = (df[["season_idx", "gw"]].drop_duplicates()
              .sort_values(["season_idx", "gw"]))
     if len(slots) <= holdout_slots:
@@ -143,8 +151,7 @@ def fit_dnp_calibrator(df: pd.DataFrame, feature_cols: list[str],
     inner_df, hold = df[before], df[~before]
     if inner_df.empty or hold.empty:
         return DnpCalibrator()
-    inner = ThreeModeModel(feature_cols, seed=seed,
-                           _fit_dnp=False).fit(inner_df)
-    modes = inner.predict_modes(hold)
+    model = inner().fit(inner_df)
+    modes = model.predict_modes(hold)
     return DnpCalibrator().fit(
         modes["p_dnp"], (mode_labels(hold) == DNP).astype("float64"))

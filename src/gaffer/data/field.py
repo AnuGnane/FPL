@@ -31,13 +31,13 @@ from pathlib import Path
 
 import pandas as pd
 
+from gaffer.clock import snap_date
 from gaffer.data import store
 from gaffer.data.tier_eo import (RAW_TIER, TIER_SAMPLE, TIER_SEED,
                                  eo_from_picks, fetch_sample_picks,
                                  read_tier_cache, tier_cache_path,
                                  write_tier_cache)
 from gaffer.io import atomic_save, atomic_write
-from gaffer.snapshot import snap_date
 
 RAW_FIELD = Path("data/raw/field")
 """Beside ``data/raw/league`` and ``data/raw/tier_eo``, not under ``live/``:
