@@ -32,8 +32,12 @@ def _rung_row(i: int, key: str) -> dict:
         hits = 0
     buys = [20 + j for j in range(i)]
     sells = [16 - j for j in range(i)]
+    # v18g §2.6: a three-man XI, not an eleven. Nothing the gate reads — the
+    # rung labels, the step lines, the CLI's line — is a function of the XI,
+    # and the eleven was repeated once per rung per case: 178 KB of fixture
+    # for six strings a case.
     return _row(key, hits=hits, transfers=i, buys=buys, sells=sells,
-                xi=list(range(1, 12)), captain=3, vice=4)
+                xi=[1, 2, 3], captain=3, vice=4)
 
 
 def _case(key: str, root: Path) -> dict:

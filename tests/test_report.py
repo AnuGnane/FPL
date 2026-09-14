@@ -1,12 +1,13 @@
 import json
 from pathlib import Path
 
-import pytest
-
 from gaffer.advise import Advice
 from gaffer.report.render import render_report
 
-REAL_PAYLOAD = Path("reports/gw2-advice.json")
+REAL_PAYLOAD = Path(__file__).parent / "data" / "gw2-advice.json"
+"""A real served payload, trimmed to three entries per player list (v18g
+§2.6). It was ``reports/gw2-advice.json`` and skipped on a clone; tracked, the
+rail that renders a payload nobody hand-wrote runs everywhere."""
 
 
 def _advice():
@@ -46,8 +47,6 @@ def test_report_parenthesizes_the_captain_note_like_the_cli(tmp_path):
     assert ">(differential vs Ten Hag Hive&#39;s last armband)<" in html
 
 
-@pytest.mark.skipif(not REAL_PAYLOAD.exists(),
-                    reason="no real advice payload checked out")
 def test_render_report_handles_real_payload(tmp_path):
     advice = Advice(**json.loads(REAL_PAYLOAD.read_text()))
     html = render_report(advice, out_dir=tmp_path).read_text()

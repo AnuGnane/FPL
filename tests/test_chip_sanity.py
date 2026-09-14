@@ -10,18 +10,19 @@ model is allowed to disagree with a forum and is not allowed to disagree with
 addition.
 
 The board is a fixture, so these rails run in milliseconds on any machine and
-say the same thing on all of them. The second half checks the *real* served
-table when there is one on disk, and skips when there is not.
+say the same thing on all of them. The second half checks a *real* served
+table — ``tests/data/gw2-advice.json``, tracked since v18g §2.6 so it is
+there on a clone too.
 """
 
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pandas as pd
 import pytest
 
-from gaffer.artifacts import REPORTS, latest_gw
 from gaffer.optimize.chip_policy import chip_thresholds_from_asset
 from gaffer.optimize.chips import evaluate_chips
 from gaffer.optimize.milp import SolveInput
@@ -176,19 +177,18 @@ def test_a_chip_worth_nothing_is_never_flagged():
             assert flagged is False
 
 
-# --- the served table, when there is one ------------------------------
+# --- the served table -------------------------------------------------
+
+
+SERVED_PAYLOAD = Path(__file__).parent / "data" / "gw2-advice.json"
+"""v18g §2.6: the served half read ``reports/gw{gw}-advice.json`` and skipped
+on any machine that had never run ``advise`` — which is every clone and CI.
+The tracked copy is a real payload (GW2, twelve priced chip rows, player lists
+trimmed to three), so these two rails now say the same thing everywhere."""
 
 
 def _served() -> list[dict]:
-    gw = latest_gw()
-    if gw is None:
-        pytest.skip("no advice on disk — the fixture rails still ran")
-    path = REPORTS / f"gw{gw}-advice.json"
-    if not path.exists():
-        pytest.skip(f"no reports/gw{gw}-advice.json on this machine")
-    rows = json.loads(path.read_text()).get("chip_table") or []
-    if not rows:
-        pytest.skip("this week's advice priced no chips")
+    rows = json.loads(SERVED_PAYLOAD.read_text()).get("chip_table") or []
     return [r for r in rows if isinstance(r, dict)]
 
 

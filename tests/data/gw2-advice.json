@@ -1,0 +1,456 @@
+{
+ "gw": 2,
+ "deadline": "2026-08-28T17:30:00Z",
+ "buys": [
+  {
+   "code": 108416,
+   "name": "Egan",
+   "position": "DEF",
+   "ep": 4.92,
+   "tag": "attack",
+   "frequency": 0.8
+  },
+  {
+   "code": 424876,
+   "name": "Szoboszlai",
+   "position": "MID",
+   "ep": 5.16,
+   "tag": "",
+   "frequency": 0.875
+  },
+  {
+   "code": 60307,
+   "name": "Gro\u00df",
+   "position": "MID",
+   "ep": 4.94,
+   "tag": "attack",
+   "frequency": 0.75
+  }
+ ],
+ "sells": [
+  {
+   "code": 244723,
+   "name": "Mitchell",
+   "position": "DEF",
+   "ep": 3.25,
+   "frequency": 0.6
+  },
+  {
+   "code": 108413,
+   "name": "Hughes",
+   "position": "MID",
+   "ep": 0.59,
+   "frequency": 0.525
+  },
+  {
+   "code": 153682,
+   "name": "Wilson",
+   "position": "MID",
+   "ep": 3.44,
+   "frequency": 0.525
+  }
+ ],
+ "hits": 3,
+ "xi": [
+  {
+   "code": 489639,
+   "name": "Verbruggen",
+   "position": "GKP",
+   "ep": 3.41
+  },
+  {
+   "code": 209036,
+   "name": "Gu\u00e9hi",
+   "position": "DEF",
+   "ep": 5.7
+  },
+  {
+   "code": 108416,
+   "name": "Egan",
+   "position": "DEF",
+   "ep": 4.92
+  }
+ ],
+ "bench": [
+  {
+   "code": 204480,
+   "name": "Rice",
+   "position": "MID",
+   "ep": 4.03
+  },
+  {
+   "code": 451284,
+   "name": "van Ewijk",
+   "position": "DEF",
+   "ep": 3.83
+  },
+  {
+   "code": 219924,
+   "name": "Diop",
+   "position": "DEF",
+   "ep": 3.48
+  }
+ ],
+ "captain": {
+  "code": 141746,
+  "name": "B.Fernandes",
+  "position": "MID",
+  "ep": 8.37
+ },
+ "vice": {
+  "code": 209036,
+  "name": "Gu\u00e9hi",
+  "position": "DEF",
+  "ep": 5.7
+ },
+ "captain_options": [
+  {
+   "code": 141746,
+   "name": "B.Fernandes",
+   "position": "MID",
+   "ep": 8.36597251520362,
+   "p_haul": 0.4374452446027477,
+   "league_eo": 102.0,
+   "differential": false
+  },
+  {
+   "code": 223094,
+   "name": "Haaland",
+   "position": "FWD",
+   "ep": 5.903748998353645,
+   "p_haul": 0.18736189268791714,
+   "league_eo": 122.0,
+   "differential": false
+  },
+  {
+   "code": 209036,
+   "name": "Gu\u00e9hi",
+   "position": "DEF",
+   "ep": 5.700413657877678,
+   "p_haul": 0.03785247720966656,
+   "league_eo": 6.0,
+   "differential": false
+  }
+ ],
+ "chip_table": [
+  {
+   "chip": "wildcard",
+   "gw": 2,
+   "gain": 26.7,
+   "per_week": 8.9,
+   "threshold": 21.0,
+   "play_now": true
+  },
+  {
+   "chip": "wildcard",
+   "gw": 3,
+   "gain": 19.9,
+   "per_week": 9.95,
+   "threshold": 21.0,
+   "play_now": false
+  },
+  {
+   "chip": "bboost",
+   "gw": 4,
+   "gain": 14.64,
+   "per_week": 14.64,
+   "threshold": 12.79,
+   "play_now": true
+  },
+  {
+   "chip": "wildcard",
+   "gw": 4,
+   "gain": 12.42,
+   "per_week": 12.42,
+   "threshold": 21.0,
+   "play_now": false
+  },
+  {
+   "chip": "bboost",
+   "gw": 3,
+   "gain": 12.13,
+   "per_week": 12.13,
+   "threshold": 12.79,
+   "play_now": false
+  },
+  {
+   "chip": "bboost",
+   "gw": 2,
+   "gain": 11.35,
+   "per_week": 11.35,
+   "threshold": 12.79,
+   "play_now": false
+  },
+  {
+   "chip": "3xc",
+   "gw": 2,
+   "gain": 8.37,
+   "per_week": 8.37,
+   "threshold": 10.56,
+   "play_now": false
+  },
+  {
+   "chip": "3xc",
+   "gw": 3,
+   "gain": 8.03,
+   "per_week": 8.03,
+   "threshold": 10.56,
+   "play_now": false
+  },
+  {
+   "chip": "3xc",
+   "gw": 4,
+   "gain": 7.71,
+   "per_week": 7.71,
+   "threshold": 10.56,
+   "play_now": false
+  },
+  {
+   "chip": "freehit",
+   "gw": 3,
+   "gain": 5.89,
+   "per_week": 5.89,
+   "note": "conservative lower bound",
+   "threshold": 15.61,
+   "play_now": false
+  },
+  {
+   "chip": "freehit",
+   "gw": 4,
+   "gain": 5.42,
+   "per_week": 5.42,
+   "note": "conservative lower bound",
+   "threshold": 15.61,
+   "play_now": false
+  },
+  {
+   "chip": "freehit",
+   "gw": 2,
+   "gain": 5.16,
+   "per_week": 5.16,
+   "note": "conservative lower bound",
+   "threshold": 15.61,
+   "play_now": false
+  }
+ ],
+ "wildcard_now": {
+  "gain_over_horizon": 26.7,
+  "wc_squad": [
+   473284,
+   489639,
+   209036
+  ],
+  "recommend": true
+ },
+ "alternatives": [
+  {
+   "code": 97032,
+   "name": "Virgil",
+   "ep": 5.73991524529027,
+   "p_haul": 0.001966720321932458,
+   "league_eo": 4.0
+  },
+  {
+   "code": 522047,
+   "name": "Muharemovi\u0107",
+   "ep": 5.145100372912547,
+   "p_haul": 0.004662086976132573,
+   "league_eo": 16.0
+  },
+  {
+   "code": 221466,
+   "name": "Senesi",
+   "ep": 5.034429666286589,
+   "p_haul": 0.007049028704136706,
+   "league_eo": 0.0
+  }
+ ],
+ "threats": [
+  {
+   "code": 177815,
+   "name": "Calvert-Lewin",
+   "position": "FWD",
+   "ep": 5.280827330476802,
+   "league_eo": 52.0
+  },
+  {
+   "code": 446008,
+   "name": "Mbeumo",
+   "position": "MID",
+   "ep": 4.418920721671089,
+   "league_eo": 54.0
+  },
+  {
+   "code": 439509,
+   "name": "Tzolis",
+   "position": "MID",
+   "ep": 4.141292365227934,
+   "league_eo": 56.0
+  }
+ ],
+ "price_alerts": [
+  {
+   "code": 222531,
+   "name": "Gibbs-White",
+   "price_change_percent": -174.8,
+   "direction": "drop",
+   "calibrating": false
+  }
+ ],
+ "expected_pts": 57.95,
+ "plan_by_gw": [
+  {
+   "gw": 2,
+   "hits": 3,
+   "buys": [
+    {
+     "code": 108416,
+     "name": "Egan",
+     "position": "DEF",
+     "ep": 4.92
+    },
+    {
+     "code": 424876,
+     "name": "Szoboszlai",
+     "position": "MID",
+     "ep": 5.16
+    },
+    {
+     "code": 60307,
+     "name": "Gro\u00df",
+     "position": "MID",
+     "ep": 4.94
+    }
+   ],
+   "sells": [
+    {
+     "code": 244723,
+     "name": "Mitchell",
+     "position": "DEF",
+     "ep": 3.25
+    },
+    {
+     "code": 108413,
+     "name": "Hughes",
+     "position": "MID",
+     "ep": 0.59
+    },
+    {
+     "code": 153682,
+     "name": "Wilson",
+     "position": "MID",
+     "ep": 3.44
+    }
+   ],
+   "expected_pts": 57.95
+  },
+  {
+   "gw": 3,
+   "hits": 0,
+   "buys": [],
+   "sells": [],
+   "expected_pts": 62.39
+  },
+  {
+   "gw": 4,
+   "hits": 0,
+   "buys": [],
+   "sells": [],
+   "expected_pts": 63.87
+  }
+ ],
+ "strategy": {
+  "lam": 0.1504602365399624,
+  "gap": 51,
+  "weeks_left": 37,
+  "stance": "chase",
+  "rival_name": "wirtz case scenario",
+  "z": 0.46579713069851236,
+  "sigma_m": 18.0,
+  "cover_weights": {
+   "5277161": 1.0
+  }
+ },
+ "win_probs": [
+  {
+   "name": "wirtz case scenario",
+   "total": 97,
+   "p_win": 0.371
+  },
+  {
+   "name": "Not too Xabi",
+   "total": 95,
+   "p_win": 0.376
+  },
+  {
+   "name": "Sound of the Tzolis",
+   "total": 82,
+   "p_win": 0.408
+  }
+ ],
+ "mode": "weekly",
+ "data_through_gw": 1,
+ "data_warning": null,
+ "move_frequencies": [
+  {
+   "kind": "buy",
+   "code": 424876,
+   "gw": 2,
+   "label": "buy",
+   "count": 35,
+   "frequency": 0.875
+  },
+  {
+   "kind": "buy",
+   "code": 108416,
+   "gw": 2,
+   "label": "buy",
+   "count": 32,
+   "frequency": 0.8
+  },
+  {
+   "kind": "buy",
+   "code": 60307,
+   "gw": 2,
+   "label": "buy",
+   "count": 30,
+   "frequency": 0.75
+  }
+ ],
+ "raw_optimum_agrees": false,
+ "scenarios": {
+  "n": 40,
+  "completed": 40,
+  "failures": 0,
+  "seed": 20260827,
+  "hold": false,
+  "captain_frequency": 0.975,
+  "captain_wanted": 141746,
+  "captain_agrees": true,
+  "near_misses": [
+   {
+    "kind": "sell",
+    "code": 108413,
+    "gw": 2,
+    "label": "sell",
+    "frequency": 0.525
+   },
+   {
+    "kind": "sell",
+    "code": 153682,
+    "gw": 2,
+    "label": "sell",
+    "frequency": 0.525
+   },
+   {
+    "kind": "buy",
+    "code": 243298,
+    "gw": 2,
+    "label": "buy",
+    "frequency": 0.475
+   }
+  ]
+ },
+ "captain_note": null,
+ "demoted_captain": null
+}
