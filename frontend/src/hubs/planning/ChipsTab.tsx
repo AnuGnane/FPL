@@ -13,7 +13,7 @@ import PlanDiffTable from './PlanDiffTable'
 import { CHIP_CODES, LABELS } from './chips'
 import { useWhatIfSubmit } from './useWhatIfSubmit'
 import type {
-  ChipsWorkbench, ChipSquadPlayer, SquadDiff, WhatIfRequest, WhatIfResult,
+  ChipsWorkbench, SquadDiff, SquadPlayerRef, WhatIfRequest, WhatIfResult,
 } from '../../types'
 
 // A chip's gain is only ever read against its own threshold, so the bar is
@@ -59,7 +59,7 @@ function BarSource({ source }: { source?: string | null }) {
 }
 
 function SquadColumn({ title, players }: { title: string
-                                           players: ChipSquadPlayer[] }) {
+                                           players: SquadPlayerRef[] }) {
   return (
     <div>
       <h3 className="label mb-1">{title} ({players.length})</h3>
@@ -234,12 +234,12 @@ export default function ChipsTab() {
           <table className={TABLE_CLASS}>
             <thead className={THEAD_CLASS}>
               <tr>
-                <th className={thClass()}>Chip</th>
-                <th className={thClass(true)}>GW</th>
-                <th className={thClass(true)}>Gain</th>
-                <th className={thClass(true)}>Bar</th>
-                <th className={thClass(true)}>Per week</th>
-                <th className={thClass()}>Against the bar</th>
+                <th scope="col" className={thClass()}>Chip</th>
+                <th scope="col" className={thClass(true)}>GW</th>
+                <th scope="col" className={thClass(true)}>Gain</th>
+                <th scope="col" className={thClass(true)}>Bar</th>
+                <th scope="col" className={thClass(true)}>Per week</th>
+                <th scope="col" className={thClass()}>Against the bar</th>
               </tr>
             </thead>
             <tbody>

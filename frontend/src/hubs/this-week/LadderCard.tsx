@@ -107,6 +107,10 @@ export default function LadderCard() {
 
   const busy = job.status === 'queued' || job.status === 'running'
   const rungs = data?.rungs ?? []
+  // Narrowed once, here, rather than asserted non-null at the one place the
+  // list is mapped: the guard the JSX reads is `steps.length`, so the two
+  // have to be the same expression (v18f §2.2).
+  const steps = data?.steps ?? []
   const weeks = data?.gws.length ?? 0
   const bank = rungs.find((r) => r.key === 'bank')
   const capIndex = rungs.findIndex((r) => r.key === data?.cap_rung)
@@ -177,14 +181,14 @@ export default function LadderCard() {
           <table className={TABLE_CLASS}>
             <thead className={THEAD_CLASS}>
               <tr>
-                <th className={thClass()}>Rung</th>
-                <th className={thClass()}>Moves</th>
-                <th className={thClass(true)}>Cost</th>
-                <th className={thClass(true)}>GW xPts</th>
-                <th className={thClass(true)}>{weeks}-GW xPts</th>
-                <th className={thClass(true)}>vs bank</th>
-                <th className={thClass()}>P(beats bank)</th>
-                <th className={thClass()}>P(best)</th>
+                <th scope="col" className={thClass()}>Rung</th>
+                <th scope="col" className={thClass()}>Moves</th>
+                <th scope="col" className={thClass(true)}>Cost</th>
+                <th scope="col" className={thClass(true)}>GW xPts</th>
+                <th scope="col" className={thClass(true)}>{weeks}-GW xPts</th>
+                <th scope="col" className={thClass(true)}>vs bank</th>
+                <th scope="col" className={thClass()}>P(beats bank)</th>
+                <th scope="col" className={thClass()}>P(best)</th>
               </tr>
             </thead>
             <tbody>
@@ -207,9 +211,9 @@ export default function LadderCard() {
           </table>
         </div>
       )}
-      {!busy && (data?.steps ?? []).length > 0 && (
+      {!busy && steps.length > 0 && (
         <ul className="mt-2 flex flex-col gap-0.5 text-text-secondary" data-testid="ladder-steps">
-          {data!.steps.map((s) => (
+          {steps.map((s) => (
             <li key={`${s.below}-${s.above}`} className={s.taken ? '' : 'text-text-muted'}>
               {s.line}
             </li>

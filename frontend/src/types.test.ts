@@ -13,11 +13,16 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 /** Every name `types.ts` exported before v12 W5 split the file, transcribed
  *  from `git show <the split's parent>:frontend/src/types.ts`. A short list
  *  would be a test that passes by not looking. */
+/* v18f §2.2 retired two of them, each a hand-written copy of a name the
+ * generator already produces: `ChipSquadPlayer` was field-for-field
+ * `SquadPlayerRef`, and `AdvicePlayerRef` — which nothing imported — was
+ * `AdvicePlayer`. A name deleted on purpose leaves this list; a name that
+ * merely stopped being imported does not. */
 const BEFORE_THE_SPLIT = [
   'Advice', 'AdviceChipRow', 'AdviceDiff', 'AdviceLatest',
-  'AdvicePlayerRef', 'BenchmarkEvaluation', 'CalibrationData',
+  'BenchmarkEvaluation', 'CalibrationData',
   'CalibrationGw', 'CalibrationHead', 'CaptainField',
-  'CategoryMetrics', 'ChipPlan', 'ChipPlanRow', 'ChipSquadPlayer',
+  'CategoryMetrics', 'ChipPlan', 'ChipPlanRow',
   'ChipsWorkbench', 'ChipWorkbenchRow', 'Component',
   'ComponentFixture', 'ComponentPlayer', 'ComponentsBreakdown',
   'ConfidenceData', 'ConfidenceTier', 'CoreInsightsHealth',

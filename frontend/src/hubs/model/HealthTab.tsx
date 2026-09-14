@@ -49,9 +49,9 @@ export default function HealthTab() {
         <table className={TABLE_CLASS}>
           <thead className={THEAD_CLASS}>
             <tr>
-              <th className={thClass()}>Source</th>
-              <th className={thClass()}>Path</th>
-              <th className={thClass(true)}>Age</th>
+              <th scope="col" className={thClass()}>Source</th>
+              <th scope="col" className={thClass()}>Path</th>
+              <th scope="col" className={thClass(true)}>Age</th>
             </tr>
           </thead>
           <tbody>
@@ -118,9 +118,9 @@ export default function HealthTab() {
             <table className={TABLE_CLASS}>
               <thead className={THEAD_CLASS}>
                 <tr>
-                  <th className={thClass()}>Table</th>
-                  <th className={thClass(true)}>Rows</th>
-                  <th className={thClass(true)}>Latest</th>
+                  <th scope="col" className={thClass()}>Table</th>
+                  <th scope="col" className={thClass(true)}>Rows</th>
+                  <th scope="col" className={thClass(true)}>Latest</th>
                 </tr>
               </thead>
               <tbody>
@@ -162,9 +162,9 @@ export default function HealthTab() {
         <table className={TABLE_CLASS}>
           <thead className={THEAD_CLASS}>
             <tr>
-              <th className={thClass()}>Model</th>
-              <th className={thClass()}>Saved</th>
-              <th className={thClass()}>Metrics</th>
+              <th scope="col" className={thClass()}>Model</th>
+              <th scope="col" className={thClass()}>Saved</th>
+              <th scope="col" className={thClass()}>Metrics</th>
             </tr>
           </thead>
           <tbody>
@@ -215,8 +215,8 @@ export default function HealthTab() {
         <table className={TABLE_CLASS}>
           <thead className={THEAD_CLASS}>
             <tr>
-              <th className={thClass()}>Artifact</th>
-              <th className={thClass(true)}>Bytes</th>
+              <th scope="col" className={thClass()}>Artifact</th>
+              <th scope="col" className={thClass(true)}>Bytes</th>
             </tr>
           </thead>
           <tbody>

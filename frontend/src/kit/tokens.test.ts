@@ -2,7 +2,7 @@
 // v14 (spec §7): the design rules that can be pinned mechanically. Reads the
 // sources rather than rendering anything, so a class that drifts back in is
 // caught wherever it lands.
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
@@ -63,12 +63,37 @@ describe('the ledger rules (spec §3–§5)', () => {
     expect(offenders(/text-moss|text-amber|bg-surface/)).toEqual([])
   })
 
-  it('composes Chip, not Badge, everywhere but the alias itself', () => {
-    expect(offenders(/<Badge\b|\bBadge,|\{ Badge\b/, ['kit/Badge.tsx',
-      'kit/index.ts'])).toEqual([])
+  it('composes Chip, and no longer knows the word Badge', () => {
+    // v18f §2.2: the alias and its own allowance are gone with the file.
+    expect(offenders(/<Badge\b|\bBadge,|\{ Badge\b/)).toEqual([])
   })
 
   it('draws fixture difficulty as a tone, never a ramp', () => {
     expect(offenders(/difficultyBackground/)).toEqual([])
+  })
+
+  // v18f §2.2. The four rules below each landed with the change that made
+  // them true, which is the only order in which a rule is worth writing.
+  it('names the scrim by its token, never Tailwind’s black', () => {
+    // `--color-scrim`: the same rgba the two modals painted as `bg-black/70`,
+    // owned by theme.css like every other colour in the app.
+    expect(offenders(/bg-black/)).toEqual([])
+  })
+
+  it('names the text on the accent fill by its token, never white', () => {
+    expect(offenders(/text-white/)).toEqual([])
+  })
+
+  it('has no Badge left to compose: not the file, not the export', () => {
+    expect(existsSync(join(SRC, 'kit/Badge.tsx'))).toBe(false)
+    expect(readFileSync(join(SRC, 'kit/index.ts'), 'utf8'))
+      .not.toMatch(/\bBadge\b/)
+  })
+
+  it('scopes every column header, by hand or through Th', () => {
+    // A `<th>` with no `scope` leaves a screen reader to guess which cells
+    // the header governs. `<Th>` emits it; the hand-written ones say it.
+    // `<thead` is not a header cell, so the lookahead lets it past.
+    expect(offenders(/<th(?![A-Za-z])(?!.*scope=)/)).toEqual([])
   })
 })

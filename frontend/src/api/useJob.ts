@@ -246,8 +246,9 @@ export function useJob({ kind, path, slot }: JobSpec): Job {
       // button alone and let the click report the problem if it is still there.
       .catch(() => {})
     return () => { cancelled = true }
-    // Mount only: re-attaching on every render would fight the stream we own.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // The probe asks once. Re-running it when `watch` or `probeCurrent`
+    // changes identity would re-attach over the stream this hook already owns.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only
   }, [kind])
 
   // The one-shot probe. A finished job is painted from the record the server
@@ -279,8 +280,9 @@ export function useJob({ kind, path, slot }: JobSpec): Job {
       })
       .catch(() => { remembered.delete(slot) })
     return () => { cancelled = true }
-    // Mount only: re-probing on every render would fight the poll we own.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // The one-shot probe runs once per slot. Re-running it when `poll` changes
+    // identity would fight the poll this hook already owns.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only
   }, [slot])
 
   const start = useCallback(async (body?: unknown) => {

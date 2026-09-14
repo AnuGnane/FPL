@@ -80,8 +80,13 @@ function columnsFor(mobile: boolean): Column<SquadRow>[] { return [
       <span className="flex items-center gap-1.5">
         {mobile && <PosBadge pos={r.position} variant="dot" />}
         {r.name}
+        {/* v18f §2.2. Three chips whose tone carries the verdict — doubt,
+            upside, downside — and a bare percentage in a colour says nothing
+            to a screen reader. Each names its own tone in `sr-only` text,
+            which is absolutely positioned and so changes no layout. */}
         {r.news && (
           <Chip tone="warn" title={r.news}>
+            <span className="sr-only">doubt: </span>
             {r.chanceOfPlaying === null ? 'News' : `${r.chanceOfPlaying}%`}
           </Chip>
         )}
@@ -92,6 +97,7 @@ function columnsFor(mobile: boolean): Column<SquadRow>[] { return [
                    + 'tail of his outcome distribution, which is his '
                    + 'expected points plus the variance a footballer’s week '
                    + 'carries, not a guess at his ceiling'}>
+            <span className="sr-only">upside: </span>
             {`10+ pts ${pct(r.pHaul)}`}
           </Chip>
         )}
@@ -100,6 +106,7 @@ function columnsFor(mobile: boolean): Column<SquadRow>[] { return [
                 title={`${pct(r.pBlank)} chance of 2 points or fewer — the `
                   + 'lower tail of the same distribution. A blank is an '
                   + 'appearance and nothing else, not a missed match'}>
+            <span className="sr-only">downside: </span>
             {`blank ${pct(r.pBlank)}`}
           </Chip>
         )}

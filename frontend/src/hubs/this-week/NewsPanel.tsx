@@ -56,10 +56,10 @@ export default function NewsPanel({ gw }: { gw: number }) {
       <table className={TABLE_CLASS}>
         <thead className={THEAD_CLASS}>
           <tr>
-            <th className={thClass()}>Player</th>
-            <th className={thClass(true)}>P(plays) news / flags</th>
-            <th className={thClass(true)}>xMins news / flags</th>
-            <th className={thClass()}>Why</th>
+            <th scope="col" className={thClass()}>Player</th>
+            <th scope="col" className={thClass(true)}>P(plays) news / flags</th>
+            <th scope="col" className={thClass(true)}>xMins news / flags</th>
+            <th scope="col" className={thClass()}>Why</th>
           </tr>
         </thead>
         <tbody>

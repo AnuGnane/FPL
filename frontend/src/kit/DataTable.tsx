@@ -3,8 +3,9 @@ import { type ReactNode, useMemo, useState } from 'react'
 import { buttonClass } from './Button'
 import {
   TABLE_CLASS, THEAD_CLASS, TR_CLASS, TR_EXPANDED_CLASS, TR_SELECTED_CLASS,
-  tdClass, thClass,
+  tdClass,
 } from './table'
+import Th from './Th'
 import { useIsMobile } from './useMediaQuery'
 
 export interface Column<T> {
@@ -169,15 +170,27 @@ export default function DataTable<T>(
       <table className={TABLE_CLASS}>
         <thead className={`sticky top-0 ${THEAD_CLASS}`}>
           <tr>
-            {expand && <th className={`${thClass()} w-8`} />}
+            {expand && <Th className="w-8" />}
             {columns.map((column) => (
-              <th key={column.key} className={thClass(column.numeric)}>
+              <Th
+                key={column.key}
+                numeric={column.numeric}
+                // Every column here is sortable, so every one carries a
+                // state: `none` is how a reader learns the header is a
+                // control (v18f §2.2).
+                sort={sortKey === column.key
+                  ? (desc ? 'descending' : 'ascending') : 'none'}
+              >
                 <button type="button" onClick={() => toggleSort(column.key)}
                         className="label hover:text-text">
                   {column.header}
-                  {sortKey === column.key ? (desc ? ' ▾' : ' ▴') : ''}
+                  {/* The glyph is the same sentence `aria-sort` above just
+                      said, in a character. Saying it twice is noise. */}
+                  {sortKey === column.key && (
+                    <span aria-hidden="true">{desc ? ' ▾' : ' ▴'}</span>
+                  )}
                 </button>
-              </th>
+              </Th>
             ))}
           </tr>
         </thead>

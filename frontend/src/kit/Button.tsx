@@ -9,7 +9,7 @@ const BASE = 'inline-flex h-7 shrink-0 items-center justify-center gap-1.5 '
   + 'disabled:cursor-not-allowed disabled:opacity-50'
 
 const VARIANT: Record<ButtonVariant, string> = {
-  primary: 'bg-accent text-white hover:opacity-90',
+  primary: 'bg-accent text-on-accent hover:opacity-90',
   secondary: 'border border-border text-text hover:bg-raised',
   ghost: 'text-text-secondary hover:text-accent-text',
 }

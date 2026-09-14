@@ -75,13 +75,13 @@ export default function LeaguesTab(
             <table className={TABLE_CLASS}>
               <thead className={THEAD_CLASS}>
                 <tr>
-                  <th className={thClass()}>League</th>
-                  <th className={thClass(true)}>Rank</th>
-                  <th className={thClass(true)}>Of</th>
-                  <th className={thClass(true)}>Move</th>
-                  <th className={thClass(true)}>Gap</th>
-                  <th className={thClass()}>Would</th>
-                  <th className={thClass()}></th>
+                  <th scope="col" className={thClass()}>League</th>
+                  <th scope="col" className={thClass(true)}>Rank</th>
+                  <th scope="col" className={thClass(true)}>Of</th>
+                  <th scope="col" className={thClass(true)}>Move</th>
+                  <th scope="col" className={thClass(true)}>Gap</th>
+                  <th scope="col" className={thClass()}>Would</th>
+                  <th scope="col" className={thClass()}></th>
                 </tr>
               </thead>
               <tbody>
@@ -158,10 +158,10 @@ export default function LeaguesTab(
           <table className={TABLE_CLASS}>
             <thead className={THEAD_CLASS}>
               <tr>
-                <th className={thClass()}>League</th>
-                <th className={thClass(true)}>Rank</th>
-                <th className={thClass(true)}>Of</th>
-                <th className={thClass(true)}>Move</th>
+                <th scope="col" className={thClass()}>League</th>
+                <th scope="col" className={thClass(true)}>Rank</th>
+                <th scope="col" className={thClass(true)}>Of</th>
+                <th scope="col" className={thClass(true)}>Move</th>
               </tr>
             </thead>
             <tbody>

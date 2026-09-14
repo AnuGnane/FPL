@@ -3,9 +3,12 @@ import * as kit from './index'
 
 describe('kit barrel', () => {
   it('exports every component a hub is allowed to compose', () => {
-    for (const name of ['Badge', 'Card', 'DataTable', 'EmptyState',
+    // `Badge` was the v14 alias of `Chip` and is gone in v18f §2.2: no file
+    // in the tree composed it, and a name nothing writes is a second
+    // vocabulary for the same thing.
+    for (const name of ['Card', 'DataTable', 'EmptyState',
       'PageHeader', 'PitchView', 'PlayerCard', 'PosBadge', 'Skeleton',
-      'Sparkline', 'Stat', 'ThresholdBar', 'ToastOutlet',
+      'Sparkline', 'Stat', 'Th', 'ThresholdBar', 'ToastOutlet',
       'Button', 'Segmented', 'Chip', 'Bar', 'Callout', 'StatRow', 'Section',
       'ErrorBoundary', 'Loaded']) {
       expect(typeof (kit as Record<string, unknown>)[name]).toBe('function')

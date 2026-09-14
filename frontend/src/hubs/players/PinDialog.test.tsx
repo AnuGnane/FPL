@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import PinDialog from './PinDialog'
@@ -174,6 +175,33 @@ describe('PinDialog', () => {
     expect(onClose).not.toHaveBeenCalled()
     await userEvent.click(screen.getByTestId('modal-backdrop'))
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('traps focus while it is open and gives it back on close', async () => {
+    // v18f §2.2: Radix's focus scope, not the hand-rolled `closeRef.focus()`.
+    // The row's pin control is the opener, and it is where focus belongs
+    // again — a keyboard user who cancels a pin is back on the player he was
+    // pinning, not at the top of the players table.
+    function Harness() {
+      const [open, setOpen] = useState(false)
+      return (
+        <MemoryRouter>
+          <button type="button" onClick={() => setOpen(true)}>Pin Salah</button>
+          {open && (
+            <PinDialog code={100} name="Salah"
+                       onClose={() => setOpen(false)} />
+          )}
+        </MemoryRouter>
+      )
+    }
+    render(<Harness />)
+    const opener = screen.getByRole('button', { name: 'Pin Salah' })
+    await userEvent.click(opener)
+    const dialog = screen.getByRole('dialog')
+    await waitFor(() => expect(dialog).toContainElement(
+      document.activeElement as HTMLElement))
+    await userEvent.click(screen.getByRole('button', { name: 'Close' }))
+    await waitFor(() => expect(opener).toHaveFocus())
   })
 
   it('says what it saved, in a sentence naming the player', async () => {

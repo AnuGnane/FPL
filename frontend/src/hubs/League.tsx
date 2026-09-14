@@ -248,9 +248,9 @@ export default function League() {
                 <table className={TABLE_CLASS}>
                   <thead className={THEAD_CLASS}>
                     <tr>
-                      <th className={thClass()}>#</th>
-                      <th className={thClass()}>Team</th>
-                      <th className={thClass(true)}>Total</th>
+                      <th scope="col" className={thClass()}>#</th>
+                      <th scope="col" className={thClass()}>Team</th>
+                      <th scope="col" className={thClass(true)}>Total</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -328,8 +328,10 @@ export default function League() {
                   <table className={TABLE_CLASS}>
                     <thead className={THEAD_CLASS}>
                       <tr>
-                        <th className={thClass()}>Rival</th>
-                        <th className={thClass(true)}>P(I beat him)</th>
+                        <th scope="col" className={thClass()}>Rival</th>
+                        <th scope="col" className={thClass(true)}>
+                          P(I beat him)
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -361,9 +363,11 @@ export default function League() {
                     <table className={TABLE_CLASS}>
                       <thead className={THEAD_CLASS}>
                         <tr>
-                          <th className={thClass()}>Team</th>
-                          <th className={thClass(true)}>P(win)</th>
-                          <th className={thClass(true)}>Projected</th>
+                          <th scope="col" className={thClass()}>Team</th>
+                          <th scope="col" className={thClass(true)}>P(win)</th>
+                          <th scope="col" className={thClass(true)}>
+                            Projected
+                          </th>
                         </tr>
                       </thead>
                       <tbody>

@@ -236,19 +236,6 @@ export interface HealthData extends Omit<WireHealth, 'model_health'> {
 
 export type StratifiedTable = Record<string, CategoryMetrics>
 
-export interface ChipSquadPlayer {
-  code: number
-  name: string
-  position: string
-  price: number
-  ep: number
-}
-
-export interface AdvicePlayerRef {
-  code: number
-  name: string
-}
-
 /** `WireCalibrationReport` with `excluded` narrowed. The server declares it as
  *  `list[dict[str, Any]]`; every row the report writes is a gameweek and the
  *  reason it was dropped, and the card renders both. */

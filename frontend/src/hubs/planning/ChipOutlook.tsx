@@ -113,10 +113,10 @@ export default function ChipOutlook() {
             <table className={TABLE_CLASS}>
               <thead className={THEAD_CLASS}>
                 <tr>
-                  <th className={thClass()}>GW</th>
-                  <th className={thClass(true)}>Fixtures</th>
-                  <th className={thClass()}>Doubles</th>
-                  <th className={thClass()}>Blanks</th>
+                  <th scope="col" className={thClass()}>GW</th>
+                  <th scope="col" className={thClass(true)}>Fixtures</th>
+                  <th scope="col" className={thClass()}>Doubles</th>
+                  <th scope="col" className={thClass()}>Blanks</th>
                 </tr>
               </thead>
               <tbody>

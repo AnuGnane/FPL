@@ -81,9 +81,9 @@ export default function FixtureTicker(
         <table className={TABLE_CLASS}>
           <thead className={THEAD_CLASS}>
             <tr>
-              <th className={thClass()}>Team</th>
+              <th scope="col" className={thClass()}>Team</th>
               {data.gws.map((gw) => (
-                <th key={gw} className={thClass()}>
+                <th scope="col" key={gw} className={thClass()}>
                   <button type="button" onClick={() => toggle(gw)}
                           className="label block w-full hover:text-text">
                     GW{gw}
@@ -91,7 +91,7 @@ export default function FixtureTicker(
                   </button>
                 </th>
               ))}
-              <th className={thClass(true)}>Mean</th>
+              <th scope="col" className={thClass(true)}>Mean</th>
             </tr>
           </thead>
           <tbody>

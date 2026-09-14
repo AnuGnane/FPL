@@ -12,3 +12,16 @@ export function difficultyTone(score: number | null | undefined): ChipTone {
   if (score > 0.65) return 'down'
   return 'neutral'
 }
+
+/**
+ * The same three bands as a word, for the reader who cannot see the tint.
+ *
+ * v18f §2.2. Read off `difficultyTone` rather than off the thresholds again,
+ * so the word and the colour cannot come to disagree about a fixture.
+ */
+export function difficultyWord(score: number | null | undefined): string {
+  const tone = difficultyTone(score)
+  if (tone === 'up') return 'easy'
+  if (tone === 'down') return 'hard'
+  return 'medium'
+}

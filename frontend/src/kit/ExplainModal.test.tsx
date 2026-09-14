@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { useState } from 'react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ExplainModal from './ExplainModal'
@@ -56,6 +57,30 @@ describe('ExplainModal', () => {
     expect(close).toHaveFocus()
     await userEvent.click(screen.getByTestId('modal-backdrop'))
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('traps focus while it is open and gives it back on close', async () => {
+    // v18f §2.2: Radix's, not the hand-rolled effect's. The opener is a
+    // button outside the dialog, which is where focus has to land again —
+    // otherwise a keyboard reader who closes the modal is back at the top of
+    // the document with no idea which name he had opened.
+    function Harness() {
+      const [open, setOpen] = useState(false)
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>Salah</button>
+          {open && <ExplainModal code={100} onClose={() => setOpen(false)} />}
+        </>
+      )
+    }
+    render(<Harness />)
+    const opener = screen.getByRole('button', { name: 'Salah' })
+    await userEvent.click(opener)
+    const dialog = await screen.findByRole('dialog')
+    await waitFor(() => expect(dialog).toContainElement(
+      document.activeElement as HTMLElement))
+    await userEvent.click(screen.getByRole('button', { name: 'Close' }))
+    await waitFor(() => expect(opener).toHaveFocus())
   })
 
   it('ignores a stale response when the code changes mid-flight', async () => {

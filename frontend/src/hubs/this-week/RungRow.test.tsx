@@ -98,7 +98,7 @@ describe('the rung row', () => {
     expect(row).toHaveTextContent('−4')
     expect(row).toHaveTextContent('74%')     // P(beats bank)
     expect(row).toHaveTextContent('50%')     // P(best)
-    expect(screen.getByText('bank', { selector: 'span' }).closest('tr')).toHaveTextContent('—')
+    expect(screen.getByText('bank', { selector: 'button' }).closest('tr')).toHaveTextContent('—')
   })
 
   it('highlights the cap rung and mutes the rungs beyond it', () => {
@@ -154,7 +154,7 @@ describe('the rung row', () => {
        const row = screen.getByText('1 hit').closest('tr')!
        expect(row).toHaveTextContent('−4 now · −12 over 3 GWs')
        // A rung that spends the same either way says it once.
-       expect(screen.getByText('bank', { selector: 'span' }).closest('tr')).toHaveTextContent('0')
+       expect(screen.getByText('bank', { selector: 'button' }).closest('tr')).toHaveTextContent('0')
      })
 
   it('prints a single cost when the horizon bill equals the first week’s',
@@ -165,6 +165,21 @@ describe('the rung row', () => {
        expect(row).toHaveTextContent('−4')
        expect(row).not.toHaveTextContent('over 3 GWs')
      })
+
+  it('opens a rung from the keyboard, which the row alone could not', () => {
+    // v18f §2.2. The label is a button so Tab reaches it and Enter works it;
+    // the row keeps its own click, so the mouse is unchanged.
+    render(<Ladder />)
+    const label = screen.getByText('1 hit', { selector: 'button' })
+    expect(label).toHaveAttribute('aria-expanded', 'false')
+    label.focus()
+    expect(label).toHaveFocus()
+    fireEvent.keyDown(label, { key: 'Enter', code: 'Enter' })
+    fireEvent.click(label)
+    expect(screen.getByText(/\+ Second for Filler/)).toBeInTheDocument()
+    expect(screen.getByText('1 hit', { selector: 'button' }))
+      .toHaveAttribute('aria-expanded', 'true')
+  })
 
   it('closes an open rung when it is clicked again', () => {
     // The row is the toggle, so the second click is what puts the panel away

@@ -150,7 +150,10 @@ export default function SeasonTab() {
   const anyGraded = summary !== null
     && LANE_ORDER.some((name) => (summary.lanes[name]?.graded ?? 0) > 0)
 
-  if (!anyGraded || data === null) {
+  // `summary === null` is redundant with `!anyGraded` — a null summary can
+  // never be graded — and it is what narrows the type, so the six reads below
+  // stop being non-null assertions (v18f §2.2).
+  if (!anyGraded || data === null || summary === null) {
     // The detail names a thing that happens by itself; the action beside it is
     // the manual path, and it is the command `ReviewTab` already prints for
     // exactly this case rather than a second wording of it.
@@ -164,7 +167,7 @@ export default function SeasonTab() {
     )
   }
 
-  const accuracy = summary!.accuracy
+  const accuracy = summary.accuracy
   // A null rank is a gap, never a zero and never a line through it —
   // `connectNulls` is false by default and must stay that way.
   const ranks = [...data.gws]
@@ -174,14 +177,17 @@ export default function SeasonTab() {
   // A gameweek whose history was never banked is a gap in the series, not a
   // zero: a season of unbanked histories sums to a season of empty benches,
   // which is a season nobody had.
-  let running = 0
-  const bench = [...data.gws]
-    .sort((a, b) => a.gw - b.gw)
-    .map((row) => {
-      if (row.points_on_bench === null) return { gw: row.gw, bench: null }
-      running += row.points_on_bench
-      return { gw: row.gw, bench: running }
-    })
+  // Summed over the slice rather than into a variable the map reassigns:
+  // thirty-eight gameweeks make the quadratic read free, and a render that
+  // mutates a binding declared outside it is the one thing React's own lint
+  // will not have (v18f §2.2).
+  const byGw = [...data.gws].sort((a, b) => a.gw - b.gw)
+  const bench = byGw.map((row, i) => ({
+    gw: row.gw,
+    bench: row.points_on_bench === null ? null
+      : byGw.slice(0, i + 1)
+        .reduce((sum, seen) => sum + (seen.points_on_bench ?? 0), 0),
+  }))
   // The same count `ranked` keeps, for the same reason: a series of nothing
   // but gaps is a chart with no line in it, and `bench.length` counts the
   // gameweeks rather than the totals. A season of unbanked histories would
@@ -195,7 +201,7 @@ export default function SeasonTab() {
             hairline grid, like every other tile on the site. */}
         <StatRow className="">
           {LANE_ORDER.map((name) => {
-            const cell = summary!.lanes[name]
+            const cell = summary.lanes[name]
             const graded = cell?.graded ?? 0
             return (
               <div key={name} data-testid={`season-lane-${name}`}>
@@ -219,10 +225,10 @@ export default function SeasonTab() {
           })}
         </StatRow>
         <p className="mt-3 text-sm text-text-muted">
-          {`Bench points this season: ${summary!.points_on_bench} over `
-           + `${summary!.points_on_bench_gws} GW. Selection left `
-           + `${summary!.hindsight_gap} on the table over `
-           + `${summary!.hindsight_gap_gws} GW.`}
+          {`Bench points this season: ${summary.points_on_bench} over `
+           + `${summary.points_on_bench_gws} GW. Selection left `
+           + `${summary.hindsight_gap} on the table over `
+           + `${summary.hindsight_gap_gws} GW.`}
         </p>
       </Card>
 
@@ -248,7 +254,7 @@ export default function SeasonTab() {
                 state it would be reading out a gameweek count for a chart
                 that is not there. */}
             <p className="mt-1 text-xs text-text-faint">
-              {`Cumulative, over the ${summary!.points_on_bench_gws} `
+              {`Cumulative, over the ${summary.points_on_bench_gws} `
                + 'gameweek(s) whose history was banked. A gameweek with none '
                + 'is a gap, not a zero.'}
             </p>

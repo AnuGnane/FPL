@@ -228,14 +228,14 @@ export default function Live() {
           <table className={TABLE_CLASS}>
             <thead className={THEAD_CLASS}>
               <tr>
-                <th className={thClass()}>Player</th>
-                <th className={thClass(true)}>Pts</th>
-                <th className={thClass(true)}>Bonus</th>
-                <th className={thClass(true)}>Mins</th>
-                <th className={thClass(true)}>Left</th>
-                <th className={thClass()}>Status</th>
-                <th className={thClass(true)}>Top 10k EO</th>
-                <th className={thClass(true)}>Owned</th>
+                <th scope="col" className={thClass()}>Player</th>
+                <th scope="col" className={thClass(true)}>Pts</th>
+                <th scope="col" className={thClass(true)}>Bonus</th>
+                <th scope="col" className={thClass(true)}>Mins</th>
+                <th scope="col" className={thClass(true)}>Left</th>
+                <th scope="col" className={thClass()}>Status</th>
+                <th scope="col" className={thClass(true)}>Top 10k EO</th>
+                <th scope="col" className={thClass(true)}>Owned</th>
               </tr>
             </thead>
             <tbody>

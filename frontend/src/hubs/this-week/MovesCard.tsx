@@ -60,11 +60,11 @@ export default function MovesCard(
           <table className={TABLE_CLASS}>
             <thead className={THEAD_CLASS}>
               <tr>
-                <th className={thClass()}>Move</th>
-                <th className={thClass()}>Player</th>
-                <th className={thClass(true)}>xPts</th>
-                <th className={thClass()}>Sims</th>
-                <th className={thClass()} />
+                <th scope="col" className={thClass()}>Move</th>
+                <th scope="col" className={thClass()}>Player</th>
+                <th scope="col" className={thClass(true)}>xPts</th>
+                <th scope="col" className={thClass()}>Sims</th>
+                <th scope="col" className={thClass()} />
               </tr>
             </thead>
             <tbody>

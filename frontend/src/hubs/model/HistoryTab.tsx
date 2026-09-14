@@ -48,13 +48,13 @@ export default function HistoryTab() {
           <table className={TABLE_CLASS}>
             <thead className={THEAD_CLASS}>
               <tr>
-                <th className={thClass(true)}>GW</th>
-                <th className={thClass()}>Captain</th>
-                <th className={thClass()}>In</th>
-                <th className={thClass()}>Out</th>
-                <th className={thClass(true)}>Hits</th>
-                <th className={thClass(true)}>Expected</th>
-                <th className={thClass(true)}>Actual</th>
+                <th scope="col" className={thClass(true)}>GW</th>
+                <th scope="col" className={thClass()}>Captain</th>
+                <th scope="col" className={thClass()}>In</th>
+                <th scope="col" className={thClass()}>Out</th>
+                <th scope="col" className={thClass(true)}>Hits</th>
+                <th scope="col" className={thClass(true)}>Expected</th>
+                <th scope="col" className={thClass(true)}>Actual</th>
               </tr>
             </thead>
             <tbody>

@@ -180,7 +180,21 @@ export default function RungRow({
       >
         <td className={tdClass()}>
           <span className="inline-flex items-center gap-1.5">
-            {label}
+            {/* v18f §2.2. The row is the toggle for the mouse and always was;
+                the label is the toggle for the keyboard, which had none — a
+                `<tr onClick>` is not reachable by Tab and announces nothing.
+                No class: Tailwind's preflight already strips a button back to
+                inherited type and colour, which is what the bare label was,
+                so this renders the same pixels. The click stops here rather
+                than reaching the row, or the two handlers would toggle the
+                panel open and shut again in one press. */}
+            <button
+              type="button"
+              aria-expanded={open}
+              onClick={(event) => { event.stopPropagation(); onToggle() }}
+            >
+              {label}
+            </button>
             {recommended && <Chip>recommended</Chip>}
             {chosen && <Chip tone="up">chosen</Chip>}
           </span>

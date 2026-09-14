@@ -44,6 +44,17 @@
   --color-turf: #1b3a2b;
   --color-turf-line: #ffffff1f;
 
+  /* v18f §2.2. Two names for two colours the tree was writing as Tailwind
+     literals: black at seventy percent behind a modal, and plain white on the
+     accent fill. Both hold the value the literal already resolved to, so no
+     pixel moves, and neither is overridden in light — a scrim is black in
+     both themes, and the accent fill is the same blue in both, so the text
+     on it stays white. (The literals are spelled out nowhere here: the class
+     scanner reads this file, and naming them would keep emitting the two
+     utilities these tokens replaced.) */
+  --color-scrim: #000000b3;
+  --color-on-accent: #ffffff;
+
   /* Retired, unused, deleted next cycle (spec §3). */
   --color-sage: #5fcf94;
   --color-rust: #f0876a;

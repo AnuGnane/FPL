@@ -50,9 +50,9 @@ export default function PlanDiffTable({ diff }: { diff: WhatIfResult }) {
       <table className={TABLE_CLASS}>
         <thead className={THEAD_CLASS}>
           <tr>
-            <th className={thClass()} />
-            <th className={thClass(true)}>Original</th>
-            <th className={thClass(true)}>Yours</th>
+            <th scope="col" className={thClass()} />
+            <th scope="col" className={thClass(true)}>Original</th>
+            <th scope="col" className={thClass(true)}>Yours</th>
           </tr>
         </thead>
         <tbody>

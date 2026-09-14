@@ -84,13 +84,18 @@ export default function ThisWeek() {
   // fetches the new one on the path change — a wasted GET, never a stale
   // panel, since a key that changed was never cached. Costing it out of an
   // effect that waits for the advice was judged not worth the effect.
-  const codesKey = codes.join(',')
   const reloadAdvice = useCallback(() => {
     invalidate('/api/advice/latest')
     invalidate('/api/players')
-    if (data) invalidate(componentsPath(data.gw, codes))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, codesKey])
+    // The codes are derived here rather than closed over: `codes` above is a
+    // fresh array on every render, so depending on it meant depending on
+    // nothing and the effect carried a disable (v18f §2.2). Read off `data`,
+    // which is the only thing either line actually varies with.
+    if (data) {
+      invalidate(componentsPath(
+        data.gw, [...data.advice.xi, ...data.advice.bench].map((p) => p.code)))
+    }
+  }, [data])
 
   // v15: the League tile names the focus league and says when the stance was
   // set by hand. Decoration on a page that already has its advice — its own
@@ -128,8 +133,8 @@ export default function ThisWeek() {
   // The boundary in App.tsx now catches that class of render error and states
   // it, rather than leaving the user a white screen (v18e §2.4); this guard
   // stays because naming the missing armband beats reporting the TypeError.
-  const armbandMissing = Boolean(data)
-    && (!data!.advice?.captain || !data!.advice?.vice)
+  const armbandMissing = data !== null
+    && (!data.advice?.captain || !data.advice?.vice)
 
   if (error || !data || armbandMissing) {
     return (

@@ -12,11 +12,13 @@ describe('Button', () => {
     expect(b).toHaveAttribute('type', 'button')
   })
 
-  it('fills primary in accent with white text', () => {
+  it('fills primary in accent, with the token for the text on it', () => {
     render(<Button variant="primary">Run advise</Button>)
     const b = screen.getByRole('button', { name: 'Run advise' })
     expect(b).toHaveClass('bg-accent')
-    expect(b).toHaveClass('text-white')
+    // v18f §2.2: `--color-on-accent`, the palette's name for what was
+    // written as Tailwind's `text-white`. Same white, owned by theme.css.
+    expect(b).toHaveClass('text-on-accent')
     expect(b).not.toHaveClass('border-border')
   })
 

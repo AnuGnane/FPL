@@ -173,12 +173,12 @@ export default function DraftsTab({ current }: { current: WhatIfRequest }) {
           <table className={TABLE_CLASS}>
             <thead className={THEAD_CLASS}>
               <tr>
-                <th className={thClass()}>Draft</th>
-                <th className={thClass(true)}>Horizon xPts</th>
-                <th className={thClass(true)}>vs optimum</th>
-                <th className={thClass(true)}>Hits</th>
-                <th className={thClass()}>Chip</th>
-                <th className={thClass()}>Week 1</th>
+                <th scope="col" className={thClass()}>Draft</th>
+                <th scope="col" className={thClass(true)}>Horizon xPts</th>
+                <th scope="col" className={thClass(true)}>vs optimum</th>
+                <th scope="col" className={thClass(true)}>Hits</th>
+                <th scope="col" className={thClass()}>Chip</th>
+                <th scope="col" className={thClass()}>Week 1</th>
               </tr>
             </thead>
             <tbody>

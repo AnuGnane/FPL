@@ -127,10 +127,10 @@ export default function SensitivityCard() {
           <table className={TABLE_CLASS}>
             <thead className={THEAD_CLASS}>
               <tr>
-                <th className={thClass()}>Move</th>
-                <th className={thClass()}>Player</th>
-                <th className={thClass(true)}>Solves</th>
-                <th className={thClass()}>Share</th>
+                <th scope="col" className={thClass()}>Move</th>
+                <th scope="col" className={thClass()}>Player</th>
+                <th scope="col" className={thClass(true)}>Solves</th>
+                <th scope="col" className={thClass()}>Share</th>
               </tr>
             </thead>
             <tbody>

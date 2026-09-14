@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { usePageData } from '../../api/pageData'
 import {
   Card, Chip, EmptyState, Loaded, Loading, Segmented, TABLE_CLASS,
-  THEAD_CLASS, TR_CLASS, difficultyTone, tdClass, thClass,
+  THEAD_CLASS, TR_CLASS, difficultyTone, difficultyWord, tdClass, thClass,
 } from '../../kit'
 import type { FixtureMatrixData, MatrixCell } from '../../types'
 
@@ -64,9 +64,9 @@ function Matrix({ data }: { data: FixtureMatrixData }) {
         <table className={TABLE_CLASS}>
           <thead className={THEAD_CLASS}>
             <tr>
-              <th className={thClass()}>Team</th>
+              <th scope="col" className={thClass()}>Team</th>
               {data.gws.map((gw) => (
-                <th key={gw} className={thClass()}>GW{gw}</th>
+                <th scope="col" key={gw} className={thClass()}>GW{gw}</th>
               ))}
             </tr>
           </thead>
@@ -96,6 +96,13 @@ function Matrix({ data }: { data: FixtureMatrixData }) {
                     >
                       <Chip tone={difficultyTone(score(cell))}
                             className="w-full justify-center">
+                        {/* v18f §2.2. The tint is the whole of what this cell
+                            says about difficulty, and a tint is nothing to a
+                            screen reader. `sr-only` is absolutely positioned,
+                            so the word costs no space in the grid. */}
+                        <span className="sr-only">
+                          {difficultyWord(score(cell))} fixture,{' '}
+                        </span>
                         {cell.home ? cell.opponent
                                    : cell.opponent.toLowerCase()}
                       </Chip>

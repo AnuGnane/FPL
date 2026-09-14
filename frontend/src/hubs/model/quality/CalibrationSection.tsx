@@ -99,9 +99,9 @@ export default function CalibrationSection() {
       <table className={TABLE_CLASS}>
         <thead className={THEAD_CLASS}>
           <tr>
-            <th className={thClass()}>GW</th>
+            <th scope="col" className={thClass()}>GW</th>
             {CALIBRATION_HEADS.map(([key, label]) => (
-              <th key={key} className={thClass(true)}>{label}</th>
+              <th scope="col" key={key} className={thClass(true)}>{label}</th>
             ))}
           </tr>
         </thead>

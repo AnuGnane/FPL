@@ -208,10 +208,10 @@ export default function WhyPanel({ gw, codes }: { gw: number
         <table className={TABLE_CLASS}>
           <thead className={THEAD_CLASS}>
             <tr>
-              <th className={thClass()}>Player</th>
-              <th className={thClass()}>Pos</th>
-              <th className={thClass()}>Club</th>
-              <th className={thClass(true)}>xPts</th>
+              <th scope="col" className={thClass()}>Player</th>
+              <th scope="col" className={thClass()}>Pos</th>
+              <th scope="col" className={thClass()}>Club</th>
+              <th scope="col" className={thClass(true)}>xPts</th>
             </tr>
           </thead>
           <tbody>

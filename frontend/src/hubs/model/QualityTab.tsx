@@ -54,9 +54,9 @@ function StratifiedTableView(
       <table className={TABLE_CLASS}>
         <thead className={THEAD_CLASS}>
           <tr>
-            <th className={thClass()}>Category</th>
+            <th scope="col" className={thClass()}>Category</th>
             {columns.map(([name]) => (
-              <th key={name} colSpan={2}
+              <th scope="col" key={name} colSpan={2}
                   className={`${thClass()} border-l border-divider
                               text-center`}>
                 {name}
@@ -64,13 +64,13 @@ function StratifiedTableView(
             ))}
           </tr>
           <tr>
-            <th />
+            <th scope="col" />
             {columns.map(([name]) => [
-              <th key={`${name}-rmse`}
+              <th scope="col" key={`${name}-rmse`}
                   className={`${thClass(true)} border-l border-divider`}>
                 RMSE
               </th>,
-              <th key={`${name}-mae`} className={thClass(true)}>
+              <th scope="col" key={`${name}-mae`} className={thClass(true)}>
                 MAE
               </th>,
             ])}
@@ -165,10 +165,10 @@ function DecompositionSection(
       <table className={TABLE_CLASS}>
         <thead className={THEAD_CLASS}>
           <tr>
-            <th className={thClass()}>Run</th>
-            <th className={thClass(true)}>Total</th>
-            <th className={thClass(true)}>Per GW</th>
-            <th className={thClass(true)}>Hits</th>
+            <th scope="col" className={thClass()}>Run</th>
+            <th scope="col" className={thClass(true)}>Total</th>
+            <th scope="col" className={thClass(true)}>Per GW</th>
+            <th scope="col" className={thClass(true)}>Hits</th>
           </tr>
         </thead>
         <tbody>
@@ -267,14 +267,14 @@ function NewsShadowSection({ shadow }: { shadow: NewsShadowData }) {
         <table className={TABLE_CLASS}>
           <thead className={THEAD_CLASS}>
             <tr>
-              <th className={thClass()}>GW</th>
-              <th className={thClass(true)}>Brier news</th>
-              <th className={thClass(true)}>Brier flags</th>
-              <th />
-              <th className={thClass(true)}>Minutes MAE news</th>
-              <th className={thClass(true)}>MAE flags</th>
-              <th />
-              <th className={thClass(true)}>Rows</th>
+              <th scope="col" className={thClass()}>GW</th>
+              <th scope="col" className={thClass(true)}>Brier news</th>
+              <th scope="col" className={thClass(true)}>Brier flags</th>
+              <th scope="col" />
+              <th scope="col" className={thClass(true)}>Minutes MAE news</th>
+              <th scope="col" className={thClass(true)}>MAE flags</th>
+              <th scope="col" />
+              <th scope="col" className={thClass(true)}>Rows</th>
             </tr>
           </thead>
           <tbody>
@@ -361,10 +361,10 @@ function FlagLatencySection({ data }: { data: FlagLatencyData }) {
         <table className={TABLE_CLASS}>
           <thead className={THEAD_CLASS}>
             <tr>
-              <th className={thClass()}>Warning</th>
-              <th className={thClass(true)}>Started</th>
-              <th className={thClass(true)}>Did not</th>
-              <th />
+              <th scope="col" className={thClass()}>Warning</th>
+              <th scope="col" className={thClass(true)}>Started</th>
+              <th scope="col" className={thClass(true)}>Did not</th>
+              <th scope="col" />
             </tr>
           </thead>
           <tbody>
@@ -436,12 +436,12 @@ function PresserGradesSection({ data }: { data: PresserGradesData }) {
         <table className={TABLE_CLASS}>
           <thead className={THEAD_CLASS}>
             <tr>
-              <th className={thClass()}>Verdict</th>
-              <th className={thClass(true)}>Graded</th>
-              <th className={thClass(true)}>Started</th>
-              <th className={thClass(true)}>Absent</th>
-              <th className={thClass(true)}>Precision</th>
-              <th className={thClass(true)}>Recall</th>
+              <th scope="col" className={thClass()}>Verdict</th>
+              <th scope="col" className={thClass(true)}>Graded</th>
+              <th scope="col" className={thClass(true)}>Started</th>
+              <th scope="col" className={thClass(true)}>Absent</th>
+              <th scope="col" className={thClass(true)}>Precision</th>
+              <th scope="col" className={thClass(true)}>Recall</th>
             </tr>
           </thead>
           <tbody>

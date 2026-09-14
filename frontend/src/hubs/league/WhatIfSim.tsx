@@ -97,11 +97,12 @@ export default function WhatIfSim(
         <table className={TABLE_CLASS}>
           <thead className={THEAD_CLASS}>
             <tr>
-              <th className={thClass()}>Player</th>
+              <th scope="col" className={thClass()}>Player</th>
               {EVENTS.map((e) => (
-                <th key={e} className={`${thClass(true)} capitalize`}>{e}</th>
+                <th scope="col" key={e}
+                    className={`${thClass(true)} capitalize`}>{e}</th>
               ))}
-              <th className={thClass(true)}>Captain</th>
+              <th scope="col" className={thClass(true)}>Captain</th>
             </tr>
           </thead>
           <tbody>
@@ -221,9 +222,9 @@ export default function WhatIfSim(
           <table className={TABLE_CLASS}>
             <thead className={THEAD_CLASS}>
               <tr>
-                <th className={thClass()}>Team</th>
-                <th className={thClass(true)}>Total</th>
-                <th className={thClass(true)}>P(win)</th>
+                <th scope="col" className={thClass()}>Team</th>
+                <th scope="col" className={thClass(true)}>Total</th>
+                <th scope="col" className={thClass(true)}>P(win)</th>
               </tr>
             </thead>
             <tbody>
