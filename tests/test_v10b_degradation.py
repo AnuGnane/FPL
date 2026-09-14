@@ -48,7 +48,6 @@ def _payload() -> dict:
 def clone(tmp_path, monkeypatch):
     """A machine with a squad snapshot and nothing else."""
     monkeypatch.chdir(tmp_path)
-    field_frame.clear_cache()
     (tmp_path / "data" / "live").mkdir(parents=True)
     store.save(pd.DataFrame({"code": [500, 501], "element": [411, 165],
                              "name": ["Salah", "Haaland"]}),

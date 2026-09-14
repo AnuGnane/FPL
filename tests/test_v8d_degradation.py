@@ -9,22 +9,12 @@ from __future__ import annotations
 
 import inspect
 
-import pytest
 from fastapi.testclient import TestClient
 
 import gaffer.live_gw as live_gw
 import gaffer.web.routers.live as live_mod
 from gaffer.web.app import create_app
 from tests.test_web_live_v8d import COMPONENTS, MY_PICKS, FakeClient, _setup
-
-
-@pytest.fixture(autouse=True)
-def _clean_series():
-    live_mod.RACE_SERIES.clear()
-    live_mod.RACE_RIVAL.clear()
-    yield
-    live_mod.RACE_SERIES.clear()
-    live_mod.RACE_RIVAL.clear()
 
 
 def _client(tmp_path, monkeypatch, standings=True, **kwargs):

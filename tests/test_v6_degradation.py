@@ -126,11 +126,7 @@ def test_an_unreadable_noise_asset_degrades_to_the_heuristic(monkeypatch):
 
     monkeypatch.setattr(sc, "CALIBRATED_NOISE_DEFAULT", True)
     monkeypatch.setattr(sc, "load_scenario_noise", boom)
-    sc.scenario_noise.cache_clear()
-    try:
-        assert sc.scenario_noise() is None
-    finally:
-        sc.scenario_noise.cache_clear()
+    assert sc.scenario_noise() is None
 
 
 def test_the_shipped_asset_is_optional_by_construction():
@@ -170,12 +166,8 @@ def test_the_shipped_asset_is_served_by_default():
 
     assert scenario_noise_exists(), "the fitted asset is meant to stay shipped"
 
-    sc.scenario_noise.cache_clear()
-    try:
-        assert sc.CALIBRATED_NOISE_DEFAULT is True
-        assert sc.scenario_noise() == load_scenario_noise()
-    finally:
-        sc.scenario_noise.cache_clear()
+    assert sc.CALIBRATED_NOISE_DEFAULT is True
+    assert sc.scenario_noise() == load_scenario_noise()
 
 
 def test_the_flag_off_path_still_refuses_to_read_the_asset(monkeypatch):
@@ -190,11 +182,7 @@ def test_the_flag_off_path_still_refuses_to_read_the_asset(monkeypatch):
 
     monkeypatch.setattr(sc, "CALIBRATED_NOISE_DEFAULT", False)
     monkeypatch.setattr(sc, "load_scenario_noise", boom)
-    sc.scenario_noise.cache_clear()
-    try:
-        assert sc.scenario_noise() is None
-    finally:
-        sc.scenario_noise.cache_clear()
+    assert sc.scenario_noise() is None
 
 
 def test_the_flag_off_path_is_the_pre_v6_heuristic_value_for_value(monkeypatch):
@@ -205,20 +193,16 @@ def test_the_flag_off_path_is_the_pre_v6_heuristic_value_for_value(monkeypatch):
     import gaffer.optimize.scenarios as sc
 
     monkeypatch.setattr(sc, "CALIBRATED_NOISE_DEFAULT", False)
-    sc.scenario_noise.cache_clear()
-    try:
-        ep = {(1, 5): 4.0, (2, 5): 1.0, (3, 5): 0.2}
-        xmins = {(1, 5): 88.0, (2, 5): 20.0, (3, 5): 0.0}
-        out = sc.noise_ep(ep, xmins, np.random.default_rng(7))
+    ep = {(1, 5): 4.0, (2, 5): 1.0, (3, 5): 0.2}
+    xmins = {(1, 5): 88.0, (2, 5): 20.0, (3, 5): 0.0}
+    out = sc.noise_ep(ep, xmins, np.random.default_rng(7))
 
-        rng = np.random.default_rng(7)
-        for key, value in ep.items():
-            scale = (sc.NOISE_FLOOR_XMINS - xmins[key]) / sc.NOISE_DENOM
-            want = max(0.0,
-                       value + value * scale * float(rng.standard_normal()))
-            assert out[key] == want
-    finally:
-        sc.scenario_noise.cache_clear()
+    rng = np.random.default_rng(7)
+    for key, value in ep.items():
+        scale = (sc.NOISE_FLOOR_XMINS - xmins[key]) / sc.NOISE_DENOM
+        want = max(0.0,
+                   value + value * scale * float(rng.standard_normal()))
+        assert out[key] == want
 
 
 def test_flipping_the_constant_serves_the_shipped_table(monkeypatch):
@@ -228,11 +212,7 @@ def test_flipping_the_constant_serves_the_shipped_table(monkeypatch):
     from gaffer.assets import load_scenario_noise
 
     monkeypatch.setattr(sc, "CALIBRATED_NOISE_DEFAULT", True)
-    sc.scenario_noise.cache_clear()
-    try:
-        assert sc.scenario_noise() == load_scenario_noise()
-    finally:
-        sc.scenario_noise.cache_clear()
+    assert sc.scenario_noise() == load_scenario_noise()
 
 
 def test_the_shipped_asset_serves_whatever_edge_list_it_carries():

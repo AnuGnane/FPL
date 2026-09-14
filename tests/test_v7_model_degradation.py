@@ -181,13 +181,9 @@ def test_a_residual_table_is_refused_with_the_flag_on(monkeypatch, capsys):
                 "sigma": {"0_0": 2.1}}
     monkeypatch.setattr(sc, "CALIBRATED_NOISE_DEFAULT", True)
     monkeypatch.setattr(sc, "load_scenario_noise", lambda: residual)
-    sc.scenario_noise.cache_clear()
-    try:
-        assert sc.scenario_noise() is None
-        out = capsys.readouterr().out
-        assert "residual" in out and "estimation" in out
-    finally:
-        sc.scenario_noise.cache_clear()
+    assert sc.scenario_noise() is None
+    out = capsys.readouterr().out
+    assert "residual" in out and "estimation" in out
 
 
 def test_the_estimation_table_is_still_served(monkeypatch):
@@ -199,8 +195,4 @@ def test_the_estimation_table_is_still_served(monkeypatch):
                "sigma": {"0_0": 0.018}}
     monkeypatch.setattr(sc, "CALIBRATED_NOISE_DEFAULT", True)
     monkeypatch.setattr(sc, "load_scenario_noise", lambda: payload)
-    sc.scenario_noise.cache_clear()
-    try:
-        assert sc.scenario_noise() is payload
-    finally:
-        sc.scenario_noise.cache_clear()
+    assert sc.scenario_noise() is payload

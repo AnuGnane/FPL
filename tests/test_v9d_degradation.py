@@ -218,13 +218,11 @@ def test_a_file_that_vanishes_between_calls_does_not_serve_a_stale_map(
     from gaffer.web import identity
 
     monkeypatch.chdir(tmp_path)
-    identity.clear_cache()
     _identity_files(tmp_path)
     payload = {"xi": [{"code": 7, "name": "Someone"}]}
     assert identity.with_identity(payload, 9)["xi"][0]["team_code"] == 3
     (tmp_path / "data" / "live" / "players.parquet").unlink()
     assert identity.with_identity(payload, 9)["xi"][0]["team_code"] is None
-    identity.clear_cache()
 
 
 def test_a_same_size_rewrite_with_a_new_mtime_misses(tmp_path, monkeypatch):
@@ -235,14 +233,12 @@ def test_a_same_size_rewrite_with_a_new_mtime_misses(tmp_path, monkeypatch):
     from gaffer.web import identity
 
     monkeypatch.chdir(tmp_path)
-    identity.clear_cache()
     _identity_files(tmp_path)
     payload = {"xi": [{"code": 7, "name": "Someone"}]}
     assert identity.with_identity(payload, 9)["xi"][0]["team_short"] == "ARS"
     store.save(pd.DataFrame({"code": [3], "short_name": ["ARZ"],
                              "team_id": [1]}), "live/teams.parquet")
     assert identity.with_identity(payload, 9)["xi"][0]["team_short"] == "ARZ"
-    identity.clear_cache()
 
 
 def test_clear_cache_exists_and_empties_the_memo():

@@ -201,12 +201,8 @@ def test_an_unreadable_noise_asset_bands_on_the_heuristic(monkeypatch):
 
     monkeypatch.setattr(sc, "CALIBRATED_NOISE_DEFAULT", True)
     monkeypatch.setattr(sc, "load_scenario_noise", boom)
-    sc.scenario_noise.cache_clear()
-    try:
-        assert unc.shipped_table() is None
-        assert unc.band_for(4.0, 20.0) is not None
-    finally:
-        sc.scenario_noise.cache_clear()
+    assert unc.shipped_table() is None
+    assert unc.band_for(4.0, 20.0) is not None
 
 
 def test_the_band_module_reads_the_asset_through_one_seam():
