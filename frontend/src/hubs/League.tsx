@@ -145,15 +145,13 @@ export default function League() {
         // leagues overview is what This Week's league tile prints — it names
         // the focus league and says whether the stance was set by hand.
         invalidate('/api/settings')
-        invalidate('/api/league/leagues')
-        // And the prefix, because since v18e §2.3 this hub's own race, rivals
-        // and sim are cached too and every one of them is answered *for the
-        // focus* when no ?league= is asked. The URLs differ by the league id,
-        // which is exactly the thing a focus write changes, so there is no
-        // single URL to name — this is `invalidatePrefix`'s case. It sweeps
-        // the overview a second time, and the line above stays anyway: the
-        // invalidation table names the reader each writer disturbs, and the
-        // leagues tile it is talking about is on another hub.
+        // The prefix, not the overview's URL alone: since v18e §2.3 this
+        // hub's own race, rivals and sim are cached too and every one of them
+        // is answered *for the focus* when no ?league= is asked. The URLs
+        // differ by the league id, which is exactly the thing a focus write
+        // changes, so there is no single URL to name — this is
+        // `invalidatePrefix`'s case, and the overview This Week's tile prints
+        // is under the same prefix, so one sweep re-asks each once.
         invalidatePrefix('/api/league/')
       })
       .catch((e) => toast('negative', `Could not ${what} — ${errorText(e)}`))

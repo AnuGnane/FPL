@@ -68,7 +68,7 @@ const TABLE: Record<string, string[]> = {
   // write is precisely the thing that changes which league the bare path
   // answers for.
   'src/hubs/League.tsx': ["invalidate('/api/settings')",
-                          "invalidate('/api/league/leagues')",
+                          // the overview is under the prefix (v18e §2.5)
                           "invalidatePrefix('/api/league/')"],
   'src/hubs/this-week/DecisionPanel.tsx': ['invalidate(`/api/decisions/${gw}`)'],
   'src/hubs/players/PinDialog.tsx': ["invalidate('/api/overrides')"],
