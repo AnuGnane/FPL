@@ -14,11 +14,12 @@ import Model from './Model'
  * out. The header's six JobButtons share one `/api/jobs/current` probe
  * (v17h §6) regardless of which tab is open, so every `it` below carries it.
  * The three-tab walk exists because Quality, Review and Season all read
- * `/api/review` independently — nothing shares that read across tabs — so a
- * manager who opens all three in one visit asks for it more than once, and
- * this file states the true number rather than assuming one. Committed first
- * against the counts as they stand before the refactor, so this file's own
- * history is the control arm (CONVENTIONS §3, §4).
+ * `/api/review`: before v18e §2.3 they read it independently and a manager
+ * who opened all three in one visit asked for it three times, which is the
+ * number this file was committed against as the control arm (CONVENTIONS §3,
+ * §4). It is now one, and the walk below is where that shows — the per-tab
+ * counts above it did not move, because no tab asks for anything new and none
+ * asked twice on its own.
  */
 
 const { apiGet, apiPost, apiDelete } = vi.hoisted(() => ({
@@ -251,32 +252,32 @@ describe('Model, one tab at a time', () => {
 })
 
 describe('Model, walking three tabs in one visit', () => {
-  it('asks for /api/review three times crossing Quality, Review and Season',
+  it('asks for /api/review once crossing Quality, Review and Season',
     async () => {
       render(<MemoryRouter initialEntries={['/model']}><Model /></MemoryRouter>)
       // Quality (the default tab) reads /api/review through ScatterSection.
       await waitFor(() => expect(apiGet).toHaveBeenCalledWith('/api/misses'))
 
       await userEvent.click(screen.getByRole('tab', { name: 'Review' }))
-      await waitFor(() => expect(
-        apiGet.mock.calls.filter((c) => c[0] === '/api/review').length,
-      ).toBe(2))
+      // The Review tab's own cards, painted from the entry Quality's scatter
+      // already holds — which is the whole claim: the tab renders without
+      // asking. Waited for, not merely asserted, so the case would fail if
+      // the tab were still pending rather than served.
+      await screen.findByTestId('season-transfers')
 
       await userEvent.click(screen.getByRole('tab', { name: 'Season' }))
-      await waitFor(() => expect(
-        apiGet.mock.calls.filter((c) => c[0] === '/api/review').length,
-      ).toBe(3))
+      await screen.findByTestId('season-lane-transfers')
 
-      // Season also asks for calibration a second time — Quality's own
-      // CalibrationSection already asked once — because Radix remounts a
-      // tab's content fresh every time it becomes active again and neither
-      // panel shares its read with the other.
+      // One request for the ledger and one for the calibration report, both
+      // shared: Radix still remounts a tab's content fresh every time it
+      // becomes active, and since v18e §2.3 a remount is served from the
+      // cache instead of asking again.
       expect(counted()).toEqual({
         '/api/jobs/current': 1,
         '/api/quality': 1,
-        '/api/model/calibration': 2,
+        '/api/model/calibration': 1,
         '/api/pens': 1,
-        '/api/review': 3,
+        '/api/review': 1,
         '/api/misses': 1,
       })
     })

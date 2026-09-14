@@ -51,19 +51,25 @@ function code(file: string): string {
 /**
  * file → the calls its write must make. Spec §5, transcribed.
  *
- * Not listed, and checked rather than assumed: `snapshot` rewrites
- * `live/availability_log.parquet`, which is an input to the next advise run
- * and to /api/health — no cached URL reads it. `news-shadow` writes an
- * evaluation report and has no button in this app at all. Evaluate, Track pens
- * and Review write `reports/` alone.
+ * The note that used to stand here said Evaluate, Track pens, Review and
+ * Snapshot cleared nothing, because in v17h no cached URL read what they
+ * write. v18e §2.3 cached those URLs — the Model hub's own seven tabs, the
+ * freshness strip in the shell — and the six buttons in that header are now
+ * the largest block below. `news-shadow` still writes an evaluation report
+ * and still has no button in this app at all.
  */
 const TABLE: Record<string, string[]> = {
   // Requests that write.
   'src/hubs/this-week/LadderCard.tsx': ["invalidate('/api/settings')"],
   'src/hubs/model/SettingsTab.tsx': ["invalidate('/api/settings')",
                                      "invalidate('/api/league/leagues')"],
+  // The prefix, and not a third URL: since v18e §2.3 this hub's race, rivals
+  // and sim are cached under a URL that carries the league id, and a focus
+  // write is precisely the thing that changes which league the bare path
+  // answers for.
   'src/hubs/League.tsx': ["invalidate('/api/settings')",
-                          "invalidate('/api/league/leagues')"],
+                          "invalidate('/api/league/leagues')",
+                          "invalidatePrefix('/api/league/')"],
   'src/hubs/this-week/DecisionPanel.tsx': ['invalidate(`/api/decisions/${gw}`)'],
   'src/hubs/players/PinDialog.tsx': ["invalidate('/api/overrides')"],
   // The spec put the unpin on the Players hub, where the pin *dialog* lives.
@@ -79,9 +85,24 @@ const TABLE: Record<string, string[]> = {
   'src/hubs/planning/DraftsTab.tsx': ["invalidate('/api/drafts')"],
   // Jobs that rewrite. Refresh data moves live/players.parquet, which is both
   // the explorer's table and the names and clubs every /api/news/{gw} panel
-  // joins against; field scrape moves the sample behind the EO columns.
+  // joins against, and the fixtures behind every ticker and matrix; field
+  // scrape moves the sample behind the EO columns.
+  //
+  // v18e §2.3 adds the rest of this header's six buttons, which until this
+  // cycle answered a finished job by remounting the tab under them on a
+  // nonce. The three that move a file on disk clear what Health grades and
+  // what the shell's freshness strip dates; the three that write reports/
+  // clear the report each one wrote — and Review clears the journal too,
+  // which is built from the same ledger and which the nonce never reached.
   'src/hubs/Model.tsx': ["invalidate('/api/players')",
-                         "invalidatePrefix('/api/news/')"],
+                         "invalidatePrefix('/api/news/')",
+                         "invalidatePrefix('/api/fixtures/')",
+                         "invalidate('/api/health')",
+                         "invalidate('/api/meta/freshness')",
+                         "invalidate('/api/quality')",
+                         "invalidate('/api/pens')",
+                         "invalidate('/api/review')",
+                         "invalidate('/api/journal')"],
 }
 
 describe('every write clears the cached reads it disturbs', () => {

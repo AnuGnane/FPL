@@ -1,12 +1,11 @@
-import { useEffect, useState } from 'react'
 import {
   CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis,
   YAxis,
 } from 'recharts'
-import { apiGet } from '../../api/client'
+import { usePageData } from '../../api/pageData'
 import {
-  type Column, Card, Chip, DataTable, EmptyState, Loading, SERIES_COLOURS,
-  TONE_CLASS, fmtDelta, toneOf,
+  type Column, Card, Chip, DataTable, EmptyState, Loaded, Loading,
+  SERIES_COLOURS, TONE_CLASS, fmtDelta, toneOf,
 } from '../../kit'
 import type { JournalData, JournalRow } from '../../types'
 
@@ -47,57 +46,60 @@ const COLUMNS: Column<JournalRow>[] = [
 ]
 
 export default function JournalTab() {
-  const [data, setData] = useState<JournalData | null>(null)
-
-  useEffect(() => {
-    apiGet<JournalData>('/api/journal').then(setData)
-      .catch(() => setData({ rows: [], cumulative: [], built_at: null }))
-  }, [])
-
-  if (!data) return <Loading />
-  if (data.rows.length === 0) {
-    return (
-      <EmptyState
-        title="Nothing to compare yet"
-        detail="The journal scores the model's XI against the one you played,
-                so it needs a gameweek with both a banked advice run and a
-                finished result."
-        action="Run advise"
-      />
-    )
-  }
+  // v18e §2.3, ruling 7: the `.catch` here used to build an empty journal, so
+  // a server that could not answer drew "Nothing to compare yet" — the one
+  // reading of the failure that is certainly wrong. A 404 or 422 is still
+  // that sentence; anything else is the error callout with its retry.
+  const page = usePageData<JournalData>('/api/journal')
 
   return (
-    <div>
-      <Card title="Model vs you, cumulative" className="mb-4">
-        <p className="mb-2 text-sm text-text-muted">
-          Scores the model's own recommended XI, gross of hit costs, against
-          your actual points.
-        </p>
-        <ResponsiveContainer width="100%" height={240}>
-          <LineChart data={data.cumulative}>
-            <CartesianGrid stroke="var(--color-divider)" vertical={false} />
-            <XAxis dataKey="gw" stroke="var(--color-text-muted)" />
-            <YAxis stroke="var(--color-text-muted)" />
-            <Tooltip contentStyle={{
-              background: 'var(--color-raised)',
-              border: '1px solid var(--color-border)',
-            }} />
-            <Legend />
-            {/* You are the first series and the brightest; the model is the
-                second (plan R6). Neither is a direction, so neither is
-                green. */}
-            <Line type="monotone" dataKey="actual" dot={false}
-                  stroke={SERIES_COLOURS[0]} strokeWidth={2} />
-            <Line type="monotone" dataKey="model" dot={false}
-                  stroke={SERIES_COLOURS[1]} strokeWidth={2} />
-          </LineChart>
-        </ResponsiveContainer>
-      </Card>
-      <Card title="By gameweek">
-        <DataTable columns={COLUMNS} rows={data.rows} rowKey={(r) => r.gw}
-                   rowLabel={(r) => `GW${r.gw}`} initialSort="gw" />
-      </Card>
-    </div>
+    <Loaded
+      page={page}
+      loading={<Loading />}
+      isEmpty={(data) => data.rows.length === 0}
+      empty={(
+        <EmptyState
+          title="Nothing to compare yet"
+          detail="The journal scores the model's XI against the one you played,
+                  so it needs a gameweek with both a banked advice run and a
+                  finished result."
+          action="Run advise"
+        />
+      )}
+    >
+      {(data) => (
+        <div>
+          <Card title="Model vs you, cumulative" className="mb-4">
+            <p className="mb-2 text-sm text-text-muted">
+              Scores the model's own recommended XI, gross of hit costs, against
+              your actual points.
+            </p>
+            <ResponsiveContainer width="100%" height={240}>
+              <LineChart data={data.cumulative}>
+                <CartesianGrid stroke="var(--color-divider)" vertical={false} />
+                <XAxis dataKey="gw" stroke="var(--color-text-muted)" />
+                <YAxis stroke="var(--color-text-muted)" />
+                <Tooltip contentStyle={{
+                  background: 'var(--color-raised)',
+                  border: '1px solid var(--color-border)',
+                }} />
+                <Legend />
+                {/* You are the first series and the brightest; the model is the
+                    second (plan R6). Neither is a direction, so neither is
+                    green. */}
+                <Line type="monotone" dataKey="actual" dot={false}
+                      stroke={SERIES_COLOURS[0]} strokeWidth={2} />
+                <Line type="monotone" dataKey="model" dot={false}
+                      stroke={SERIES_COLOURS[1]} strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
+          </Card>
+          <Card title="By gameweek">
+            <DataTable columns={COLUMNS} rows={data.rows} rowKey={(r) => r.gw}
+                       rowLabel={(r) => `GW${r.gw}`} initialSort="gw" />
+          </Card>
+        </div>
+      )}
+    </Loaded>
   )
 }

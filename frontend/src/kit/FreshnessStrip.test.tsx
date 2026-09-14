@@ -1,15 +1,26 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import FreshnessStrip, { ageText, tone } from './FreshnessStrip'
 
 // v12 W1 §2.9. Every hub in this app can be read as if it were current — a page
 // of ownership figures from Saturday's scrape looks exactly like a page from an
 // hour ago. This strip is the cure, so its own failure modes matter: it must
-// stay on screen when its fetch fails, and it must show all five sources even
-// when the payload carries fewer.
-const apiGet = vi.hoisted(() => vi.fn())
+// show all five sources even when the payload carries fewer, and it must never
+// draw five nevers over a question it could not ask (v18e ruling 7).
+const { apiGet, FakeApiError } = vi.hoisted(() => {
+  class FakeApiError extends Error {
+    status: number
+
+    constructor(status: number, message: string) {
+      super(message)
+      this.status = status
+    }
+  }
+  return { apiGet: vi.fn(), FakeApiError }
+})
 vi.mock('../api/client', () => ({
-  ApiError: class extends Error {},
+  ApiError: FakeApiError,
+  errorText: (e: unknown) => (e instanceof Error ? e.message : String(e)),
   apiGet: (path: string) => apiGet(path),
   apiPost: vi.fn(),
 }))
@@ -48,16 +59,29 @@ describe('the strip', () => {
     expect(screen.getByTestId('freshness-backup')).toHaveTextContent('never')
   })
 
-  it('stays visible with five nevers when its own fetch fails', async () => {
-    // The one that matters most. A strip that vanished on an error would
-    // teach the reader that no strip means nothing is stale.
-    apiGet.mockRejectedValue(new Error('offline'))
-    render(<FreshnessStrip />)
-    await screen.findByTestId('freshness-strip')
-    for (const source of ['refresh', 'odds', 'field', 'advise', 'backup']) {
-      expect(screen.getByTestId(`freshness-${source}`))
-        .toHaveTextContent('never')
-    }
+  // Until v18e this was the strip's one loud claim — that it stayed on screen
+  // with five nevers whatever happened — and it was the worst of the nine
+  // synthesised empties, because "never" is the strip saying nothing is
+  // stale. It is on every page, so it says that everywhere at once.
+  it('says the failure instead of five nevers when its own fetch fails',
+     async () => {
+       apiGet.mockRejectedValue(new FakeApiError(500, 'offline'))
+       render(<FreshnessStrip />)
+       const callout = await screen.findByText(/offline/)
+       expect(callout.closest('[data-tone="error"]')).not.toBeNull()
+       expect(screen.queryByTestId('freshness-strip')).toBeNull()
+     })
+
+  // The cold clone is the other half of the split: nothing has run, which is
+  // not a failure to report on every page in the app.
+  it('draws nothing at all on a cold clone', async () => {
+    apiGet.mockRejectedValue(new FakeApiError(422, 'nothing dated yet'))
+    const { container } = render(<FreshnessStrip />)
+    // Settled, then still empty: without the await this passes on the frame
+    // before the rejection lands.
+    await waitFor(() => { expect(apiGet).toHaveBeenCalled() })
+    expect(container).toBeEmptyDOMElement()
+    expect(screen.queryByTestId('freshness-strip')).toBeNull()
   })
 
   it('carries the timestamp in the title', async () => {

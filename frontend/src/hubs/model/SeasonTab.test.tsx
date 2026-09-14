@@ -12,6 +12,7 @@ const { apiGet, ApiError } = vi.hoisted(() => ({
 
 vi.mock('../../api/client', () => ({
   ApiError,
+  errorText: (e: unknown) => (e instanceof Error ? e.message : String(e)),
   apiGet: (path: string) => apiGet(path),
   apiPost: vi.fn(),
 }))

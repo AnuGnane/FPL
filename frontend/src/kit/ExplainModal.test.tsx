@@ -8,6 +8,7 @@ import ExplainModal from './ExplainModal'
 const { apiGet } = vi.hoisted(() => ({ apiGet: vi.fn() }))
 vi.mock('../api/client', () => ({
   ApiError: class extends Error {},
+  errorText: (e: unknown) => (e instanceof Error ? e.message : String(e)),
   apiGet: (path: string) => apiGet(path),
   apiPost: vi.fn(),
 }))

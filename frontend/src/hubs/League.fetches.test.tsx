@@ -15,7 +15,9 @@ import League from './League'
  * already fetched — so one render covers every tab's request set and one
  * `it` pins it. Committed first against the counts as they stand before the
  * refactor, so this file's own history is the control arm (CONVENTIONS §3,
- * §4).
+ * §4) — and the v18e §2.3 conversion of all four reads onto `usePageData`
+ * left every count where it was, which is the whole of what this rail had to
+ * say about it: no path is asked more often and none is new.
  */
 
 const { apiGet, apiPost, apiDelete } = vi.hoisted(() => ({

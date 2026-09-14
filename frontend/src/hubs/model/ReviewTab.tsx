@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
-import { apiGet } from '../../api/client'
+import { useState } from 'react'
+import { usePageData } from '../../api/pageData'
 import {
-  type ChipTone, Card, Chip, EmptyState, ExplainModal, Loading, PlayerCard,
-  Stat, StatRow, TABLE_CLASS, THEAD_CLASS, TONE_CLASS, TR_CLASS, fmtDelta,
-  fmtNum, tdClass, thClass, toneOf,
+  type ChipTone, Card, Chip, EmptyState, ExplainModal, Loaded, Loading,
+  PlayerCard, Stat, StatRow, TABLE_CLASS, THEAD_CLASS, TONE_CLASS, TR_CLASS,
+  fmtDelta, fmtNum, tdClass, thClass, toneOf,
 } from '../../kit'
 import type {
   ReviewData, ReviewGw, ReviewLabel, ReviewLane, ReviewLaneName,
@@ -217,126 +217,131 @@ function GwCard({ row, onSelect }:
 }
 
 export default function ReviewTab() {
-  const [data, setData] = useState<ReviewData | null>(null)
+  // v18e §2.3. The three readers of /api/review — this tab, Season and
+  // Quality's scatter — share the one entry, so the walk across them is one
+  // request; and the `.catch` that used to build `{ gws: [], summary: null }`
+  // is gone, because a review that could not be read is not a season nobody
+  // has reviewed (ruling 7).
+  const page = usePageData<ReviewData>('/api/review')
   // One modal for the whole tab rather than one per gameweek card.
   const [explain, setExplain] = useState<number | null>(null)
 
-  useEffect(() => {
-    apiGet<ReviewData>('/api/review').then(setData)
-      .catch(() => setData({ gws: [], summary: null }))
-  }, [])
-
-  if (!data) return <Loading />
-  if (data.gws.length === 0) {
-    return (
-      // `EmptyState` renders an unwired action as a shell command, so the
-      // action is the command — "Review last week" is the label on the
-      // hub's own JobButton, which sits above this tab and is the other way
-      // to run exactly this.
-      <EmptyState
-        title="Nothing reviewed yet"
-        detail="The review grades the decisions you made against the ones the
-                model made before the same deadline, so it needs a gameweek
-                whose results FPL has finalised. The hub's Review last week
-                button runs the same thing."
-        action="gaffer review"
-      />
-    )
-  }
-
   return (
-    <div>
-      {data.summary && (
-        <Card title="Season ledger" className="mb-4">
-          {/* No boxes (§5): the four lanes are stat tiles in the kit's own
-              hairline grid, like every other tile on the site. */}
-          <StatRow>
-            {LANE_ORDER.map((name) => {
-              const cell = data.summary!.lanes[name]
-              return (
-                <div key={name} data-testid={`season-${name}`}>
-                  <Stat
-                    label={LANE_TITLE[name]}
-                    value={(
-                      <span className={TONE_CLASS[toneOf(cell?.pts ?? 0)]}>
-                        {cell && cell.graded > 0
-                          ? fmtDelta(cell.pts, 0) : '—'}
-                      </span>
-                    )}
-                    context={cell && cell.graded > 0
-                      ? `${fmtDelta(cell.pwin)} pp over ${cell.graded} GW`
-                      : 'never graded'}
-                  />
+    <Loaded
+      page={page}
+      loading={<Loading />}
+      isEmpty={(data) => data.gws.length === 0}
+      empty={(
+        // `EmptyState` renders an unwired action as a shell command, so the
+        // action is the command — "Review last week" is the label on the
+        // hub's own JobButton, which sits above this tab and is the other way
+        // to run exactly this.
+        <EmptyState
+          title="Nothing reviewed yet"
+          detail="The review grades the decisions you made against the ones the
+                  model made before the same deadline, so it needs a gameweek
+                  whose results FPL has finalised. The hub's Review last week
+                  button runs the same thing."
+          action="gaffer review"
+        />
+      )}
+    >
+      {(data) => (
+        <div>
+          {data.summary && (
+            <Card title="Season ledger" className="mb-4">
+              {/* No boxes (§5): the four lanes are stat tiles in the kit's own
+                  hairline grid, like every other tile on the site. */}
+              <StatRow>
+                {LANE_ORDER.map((name) => {
+                  const cell = data.summary!.lanes[name]
+                  return (
+                    <div key={name} data-testid={`season-${name}`}>
+                      <Stat
+                        label={LANE_TITLE[name]}
+                        value={(
+                          <span className={TONE_CLASS[toneOf(cell?.pts ?? 0)]}>
+                            {cell && cell.graded > 0
+                              ? fmtDelta(cell.pts, 0) : '—'}
+                          </span>
+                        )}
+                        context={cell && cell.graded > 0
+                          ? `${fmtDelta(cell.pwin)} pp over ${cell.graded} GW`
+                          : 'never graded'}
+                      />
+                    </div>
+                  )
+                })}
+              </StatRow>
+              <p className="text-sm text-text-muted">
+                {/* Both totals name the gameweeks they cover: a season of
+                    unbanked histories sums to zero, which is not a season of
+                    empty benches. */}
+                Bench points this season:{' '}
+                {data.summary.points_on_bench} over{' '}
+                {data.summary.points_on_bench_gws} GW. Selection left{' '}
+                {data.summary.hindsight_gap} on the table over{' '}
+                {data.summary.hindsight_gap_gws} GW.{' '}
+                {data.summary.unreconciled_gws > 0
+                  ? `${data.summary.unreconciled_gws} gameweek(s) did not
+                     reconcile against FPL's own score.`
+                  : 'Every reviewed gameweek reconciles against FPL’s own '
+                    + 'score.'}
+              </p>
+              {data.summary.worst && (
+                <p className="mt-1 text-sm text-text-muted">
+                  Worst single decision: GW{data.summary.worst.gw}{' '}
+                  {LANE_TITLE[data.summary.worst.lane]}{' '}
+                  {fmtNum(data.summary.worst.delta_pts, 0)} pts.
+                </p>
+              )}
+              {/* Which reasons cost, and which paid. Codes with no graded
+                  gameweek are absent rather than nought, so the table is only
+                  ever as long as the season actually is. */}
+              {data.summary.by_reason.length > 0 && (
+                <div className="mt-3 overflow-x-auto" data-testid="by-reason">
+                  <p className="label mb-1">Deviations by reason</p>
+                  <table className={TABLE_CLASS}>
+                    <thead className={THEAD_CLASS}>
+                      <tr>
+                        <th className={thClass()}>Reason</th>
+                        <th className={thClass(true)}>GWs</th>
+                        <th className={thClass(true)}>Mean vs model</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.summary.by_reason.map((cell) => (
+                        <tr key={cell.reason} className={TR_CLASS}>
+                          <td className={tdClass()}>
+                            {REASON_LABEL[cell.reason] ?? cell.reason}
+                          </td>
+                          <td className={tdClass(true)}>{cell.count}</td>
+                          <td className={`${tdClass(true)} `
+                            + TONE_CLASS[toneOf(cell.mean_delta_pts)]}>
+                            {cell.mean_delta_pts === null ? '—'
+                              : `${fmtDelta(cell.mean_delta_pts, 1)} pts`}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              )
-            })}
-          </StatRow>
-          <p className="text-sm text-text-muted">
-            {/* Both totals name the gameweeks they cover: a season of
-                unbanked histories sums to zero, which is not a season of
-                empty benches. */}
-            Bench points this season: {data.summary.points_on_bench} over{' '}
-            {data.summary.points_on_bench_gws} GW. Selection left{' '}
-            {data.summary.hindsight_gap} on the table over{' '}
-            {data.summary.hindsight_gap_gws} GW.{' '}
-            {data.summary.unreconciled_gws > 0
-              ? `${data.summary.unreconciled_gws} gameweek(s) did not
-                 reconcile against FPL's own score.`
-              : 'Every reviewed gameweek reconciles against FPL’s own '
-                + 'score.'}
+              )}
+            </Card>
+          )}
+          <p className="mb-2 text-sm text-text-muted">
+            Scores your squad with one lane at a time — transfers,
+            captaincy, bench order, chip — swapped to the model's call, so a
+            week you agreed on every lane is evidence of nothing.
           </p>
-          {data.summary.worst && (
-            <p className="mt-1 text-sm text-text-muted">
-              Worst single decision: GW{data.summary.worst.gw}{' '}
-              {LANE_TITLE[data.summary.worst.lane]}{' '}
-              {fmtNum(data.summary.worst.delta_pts, 0)} pts.
-            </p>
+          {[...data.gws].reverse().map((row) => (
+            <GwCard key={row.gw} row={row} onSelect={setExplain} />
+          ))}
+          {explain !== null && (
+            <ExplainModal code={explain} onClose={() => setExplain(null)} />
           )}
-          {/* Which reasons cost, and which paid. Codes with no graded
-              gameweek are absent rather than nought, so the table is only
-              ever as long as the season actually is. */}
-          {data.summary.by_reason.length > 0 && (
-            <div className="mt-3 overflow-x-auto" data-testid="by-reason">
-              <p className="label mb-1">Deviations by reason</p>
-              <table className={TABLE_CLASS}>
-                <thead className={THEAD_CLASS}>
-                  <tr>
-                    <th className={thClass()}>Reason</th>
-                    <th className={thClass(true)}>GWs</th>
-                    <th className={thClass(true)}>Mean vs model</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.summary.by_reason.map((cell) => (
-                    <tr key={cell.reason} className={TR_CLASS}>
-                      <td className={tdClass()}>
-                        {REASON_LABEL[cell.reason] ?? cell.reason}
-                      </td>
-                      <td className={tdClass(true)}>{cell.count}</td>
-                      <td className={`${tdClass(true)} `
-                        + TONE_CLASS[toneOf(cell.mean_delta_pts)]}>
-                        {cell.mean_delta_pts === null
-                          ? '—' : `${fmtDelta(cell.mean_delta_pts, 1)} pts`}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Card>
+        </div>
       )}
-      <p className="mb-2 text-sm text-text-muted">
-        Scores your squad with one lane at a time — transfers, captaincy,
-        bench order, chip — swapped to the model's call, so a week you agreed
-        on every lane is evidence of nothing.
-      </p>
-      {[...data.gws].reverse().map((row) => (
-        <GwCard key={row.gw} row={row} onSelect={setExplain} />
-      ))}
-      {explain !== null && (
-        <ExplainModal code={explain} onClose={() => setExplain(null)} />
-      )}
-    </div>
+    </Loaded>
   )
 }

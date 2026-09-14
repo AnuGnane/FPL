@@ -6,6 +6,7 @@ import HistoryTab from './HistoryTab'
 const apiGet = vi.hoisted(() => vi.fn())
 vi.mock('../../api/client', () => ({
   ApiError: class extends Error {},
+  errorText: (e: unknown) => (e instanceof Error ? e.message : String(e)),
   apiGet: (path: string) => apiGet(path),
   apiPost: vi.fn(),
 }))

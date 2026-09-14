@@ -54,6 +54,12 @@ function mock(data: ReviewData | Error) {
     : Promise.resolve({ ok: true, json: () => Promise.resolve(data) }))))
 }
 
+/** A refusal with a status on it, the way the server answers one. */
+function refuse(status: number, detail: string) {
+  vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(
+    { ok: false, status, json: () => Promise.resolve({ detail }) })))
+}
+
 describe('ReviewTab', () => {
   beforeEach(() => vi.unstubAllGlobals())
 
@@ -75,10 +81,22 @@ describe('ReviewTab', () => {
        expect(empty.querySelector('button')).toBeNull()
      })
 
-  it('falls back to the empty state when the request fails', async () => {
-    mock(new Error('offline'))
+  // v18e ruling 7. The tab used to synthesise `{ gws: [], summary: null }` in
+  // its `.catch`, so a server that could not be asked was drawn as a season
+  // nobody had reviewed — with a command under it that would not have fixed
+  // it. The cold clone's own answer keeps that sentence.
+  it('keeps the empty state when the artifact is not written yet', async () => {
+    refuse(422, 'no review on disk yet — run `gaffer review` first')
     render(<ReviewTab />)
     expect(await screen.findByText(/Nothing reviewed yet/i)).toBeTruthy()
+  })
+
+  it('says the failure instead when the request breaks', async () => {
+    mock(new Error('offline'))
+    render(<ReviewTab />)
+    const said = await screen.findByText(/offline/)
+    expect(said.closest('[data-tone="error"]')).not.toBeNull()
+    expect(screen.queryByText(/Nothing reviewed yet/i)).toBeNull()
   })
 
   it('renders a card per reviewed gameweek with its accuracy', async () => {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { apiGet } from '../api/client'
+import { usePageData } from '../api/pageData'
 import type { PlayerExplain } from '../types'
 import Bar from './Bar'
 import { buttonClass } from './Button'
@@ -13,26 +13,25 @@ import { TABLE_CLASS, TR_CLASS, tdClass } from './table'
 export default function ExplainModal(
   { code, onClose }: { code: number; onClose: () => void },
 ) {
-  const [data, setData] = useState<PlayerExplain | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // v18e §2.3. Every caller mounts this modal only while it is open — the
+  // name, the player card and the three hubs all render it behind an `open`
+  // or a non-null code — so the hook is handed a path only when the modal
+  // exists, and a closed modal reads nothing. The ask counter inside it is
+  // what the `live` flag here used to be: a second click while the first
+  // request is in flight cannot repaint the modal with the player the user
+  // has already moved off.
+  const page = usePageData<PlayerExplain>(`/api/players/${code}/explain`)
+  const data = page.data
+  const error = page.error
   // Not a src swap to a local placeholder: the backend already answers a dead
   // upstream with the bundled silhouette (v9a), so reaching this means the
   // *fallback* failed too, and the honest response is no picture.
   const [photoFailed, setPhotoFailed] = useState(false)
   const closeRef = useRef<HTMLButtonElement>(null)
 
-  useEffect(() => {
-    // A second click while the first request is in flight must not repaint
-    // the modal with the player the user already moved off.
-    let live = true
-    setData(null)
-    setError(null)
-    setPhotoFailed(false)
-    apiGet<PlayerExplain>(`/api/players/${code}/explain`)
-      .then((body) => { if (live) setData(body) })
-      .catch((e: Error) => { if (live) setError(e.message) })
-    return () => { live = false }
-  }, [code])
+  // A new player is a new photo, and the previous one's failure says nothing
+  // about it.
+  useEffect(() => { setPhotoFailed(false) }, [code])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {

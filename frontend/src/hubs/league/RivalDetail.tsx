@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
-import { apiGet } from '../../api/client'
+import { usePageData } from '../../api/pageData'
 import {
   Button, Callout, Card, Chip, ExplainModal, Loading, PageHeader, PlayerCard,
   fmtNum,
@@ -55,26 +55,22 @@ export default function RivalDetail() {
   // league's table is compared against that league (v15 §6.1).
   const [params] = useSearchParams()
   const league = params.get('league')
-  const [data, setData] = useState<RivalDetailData | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // v18e §2.3: the URL is the key, so opening a rival, going back and opening
+  // him again is one request — and the hook's ask counter is what keeps the
+  // previous rival's squad off this page, which the hand-rolled effect here
+  // never guarded against at all.
+  const page = usePageData<RivalDetailData>(
+    `/api/league/rivals/${entryId}${league ? `?league_id=${league}` : ''}`)
+  const data = page.data
 
-  const load = () => {
-    setError(null)
-    apiGet<RivalDetailData>(
-      `/api/league/rivals/${entryId}${league ? `?league_id=${league}` : ''}`)
-      .then(setData)
-      .catch((e: Error) => setError(e.message))
-  }
-  useEffect(load, [entryId, league])
-
-  if (error) {
+  if (page.error !== null) {
     return (
       <>
         <PageHeader title="Rival" />
         <Card title="Could not load this rival">
           {/* A read the server refused, in `down` ink (plan R4). */}
-          <Callout tone="error">{error}</Callout>
-          <Button className="mt-3" onClick={load}>Retry</Button>
+          <Callout tone="error">{page.error}</Callout>
+          <Button className="mt-3" onClick={page.reload}>Retry</Button>
         </Card>
       </>
     )

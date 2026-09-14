@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
-import { apiGet } from '../api/client'
+import { usePageData } from '../api/pageData'
 import type { Freshness, FreshnessRow } from '../types'
+import Loaded from './Loaded'
 
 const LABELS: Record<string, string> = {
   refresh: 'data', odds: 'odds', field: 'field EO',
@@ -30,18 +30,22 @@ export function ageText(age: number | null): string {
 }
 
 export default function FreshnessStrip() {
-  const [rows, setRows] = useState<FreshnessRow[] | null>(null)
+  // v18e §2.3, ruling 7. The `.catch(() => setRows([]))` here was the worst
+  // of the nine synthesised empties, because this strip is on every page: a
+  // server that could not be asked drew five greys reading "never", which is
+  // the strip saying nothing is stale. A cold clone with no artifacts at all
+  // (404 or 422) still draws nothing rather than a red line across the top of
+  // every page; anything else is one error callout where the strip goes.
+  const page = usePageData<Freshness>('/api/meta/freshness')
 
-  useEffect(() => {
-    // Fails soft and stays visible. A strip that disappeared when its own
-    // fetch failed would teach the reader that no strip means nothing stale.
-    apiGet<Freshness>('/api/meta/freshness')
-      .then((data) => setRows(data.rows))
-      .catch(() => setRows([]))
-  }, [])
+  return (
+    <Loaded page={page} isEmpty={(data) => data.rows.length === 0}>
+      {(data) => <Strip rows={data.rows} />}
+    </Loaded>
+  )
+}
 
-  if (rows === null) return null
-
+function Strip({ rows }: { rows: FreshnessRow[] }) {
   const known = new Map<string, FreshnessRow>(rows.map((r) => [r.source, r]))
   return (
     <div

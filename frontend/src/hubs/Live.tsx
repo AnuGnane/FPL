@@ -3,7 +3,7 @@ import {
   CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip,
   XAxis, YAxis,
 } from 'recharts'
-import { apiGet } from '../api/client'
+import { ApiError, apiGet, errorText } from '../api/client'
 import {
   type Column, Callout, Card, Chip, DataTable, EmptyState, ExplainModal,
   Loading, PageHeader, PlayerCard, SERIES_COLOURS, Stat, TABLE_CLASS,
@@ -46,8 +46,16 @@ const TABLE_COLUMNS: Column<LiveTableRow>[] = [
 ]
 
 export default function Live() {
+  // The one read in the app that stays raw (v17h's trap, restated in v18e
+  // §2.3): a cached entry would hand every poll the body the first one got,
+  // which for a live gameweek is the worst answer of all.
   const [data, setData] = useState<LiveState | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // The status beside the sentence, so this hub can make the split `Loaded`
+  // makes for every cached read (ruling 7). `null` for a throw that carried
+  // no status — a network drop, a parse — which is a failure, not an
+  // absence.
+  const [status, setStatus] = useState<number | null>(null)
   const [active, setActive] = useState(true)
   const [auto, setAuto] = useState(true)
   // PlayerCard has no modal inside it (that was PlayerName's bargain), so the
@@ -59,9 +67,13 @@ export default function Live() {
     .then((body) => {
       setData(body)
       setError(null)
+      setStatus(null)
       setActive(body.active)
     })
-    .catch((e: Error) => { setError(e.message) }), [])
+    .catch((e: unknown) => {
+      setError(errorText(e))
+      setStatus(e instanceof ApiError ? e.status : null)
+    }), [])
 
   useEffect(() => { void load() }, [load])
 
@@ -92,16 +104,25 @@ export default function Live() {
 
   // A cold clone has no live snapshot at all, which is an ordinary state and
   // not a crash: say what populates it rather than showing a bare error line
-  // (spec §9).
-  if (error) {
+  // (spec §9). But only an absence is that state, in `Loaded`'s words — this
+  // route raises `GafferError` on a cold tree, which `web/app.py` maps to
+  // 422. Until v18e every failure wore the empty state, so a server that had
+  // fallen over told the reader to run a job that would not have helped
+  // (ruling 7).
+  if (error !== null) {
+    const absent = status === 404 || status === 422
     return (
       <>
         {header}
-        <EmptyState
-          title="No live data yet"
-          detail={error}
-          action="gaffer refresh-data"
-        />
+        {absent
+          ? (
+            <EmptyState
+              title="No live data yet"
+              detail={error}
+              action="gaffer refresh-data"
+            />
+            )
+          : <Callout tone="error">{error}</Callout>}
       </>
     )
   }

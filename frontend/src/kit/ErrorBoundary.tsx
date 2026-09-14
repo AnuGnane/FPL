@@ -1,5 +1,6 @@
 import { Component } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
+import { errorText } from '../api/client'
 import Button from './Button'
 import Callout from './Callout'
 
@@ -52,7 +53,11 @@ export default class ErrorBoundary
     if (error === null) return this.props.children
     return (
       <Callout tone="error">
-        {error.message}{' '}
+        {/* `errorText` rather than the raw Error's own text: it is the app's
+            one way of turning a thrown thing into a sentence (v18e §2.3), and
+            an `ApiError` escaping into a render is exactly the case where the
+            two differ. */}
+        {errorText(error)}{' '}
         <Button variant="ghost" onClick={() => { window.location.reload() }}>
           Reload page
         </Button>

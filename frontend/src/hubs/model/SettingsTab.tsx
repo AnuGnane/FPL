@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { apiGet, apiPost, errorText } from '../../api/client'
-import { invalidate } from '../../api/pageData'
+import { apiPost, errorText } from '../../api/client'
+import { invalidate, usePageData } from '../../api/pageData'
 import {
   Button, Callout, Card, EmptyState, INPUT_CLASS, Loading, Segmented,
 } from '../../kit'
@@ -128,29 +128,26 @@ function Field(
 }
 
 export default function SettingsTab() {
-  const [panel, setPanel] = useState<SettingsPanel | null>(null)
-  const [failed, setFailed] = useState(false)
+  // v18e §2.3: the same entry the ladder card on This Week holds, so the
+  // `invalidate` below is what repaints both — the panel is no longer this
+  // component's own copy to set.
+  const page = usePageData<SettingsPanel>('/api/settings')
+  const panel = page.data
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState<string | null>(null)
-
-  useEffect(() => {
-    apiGet<SettingsPanel>('/api/settings')
-      .then(setPanel)
-      .catch(() => setFailed(true))
-  }, [])
 
   function save(key: string, value: unknown) {
     setBusy(key)
     setErrors((prev) => ({ ...prev, [key]: '' }))
     apiPost<SettingsPanel>('/api/settings', { key, value })
-      // The response is the whole panel, so a save re-seeds every row's
+      // The re-read answers the whole panel, so a save re-seeds every row's
       // `source` as well as its value — which is what turns the Reset button
       // on for the field that was just written.
-      .then((body) => {
-        setPanel(body)
-        // This tab keeps its own read, but the ladder card on This Week holds
-        // the same URL in the page-data cache (v17h §5), and a setting
-        // changed here must not leave that card printing the value the
+      .then(() => {
+        // The response is the whole panel, but the panel on screen is the
+        // cache's since v18e, so clearing the URL is both how this tab
+        // re-reads its own rows and how the ladder card on This Week — which
+        // holds the same entry (v17h §5) — stops printing the value the
         // manager has just changed away from.
         invalidate('/api/settings')
         // The League hub invalidates two URLs for its stance and focus
@@ -165,7 +162,7 @@ export default function SettingsTab() {
       .finally(() => setBusy(null))
   }
 
-  if (failed) {
+  if (page.error !== null) {
     return (
       <EmptyState
         title="Settings unavailable"

@@ -6,6 +6,7 @@ import App from './App'
 
 vi.mock('./api/client', () => ({
   ApiError: class extends Error { status = 0; detail: unknown = null },
+  errorText: (e: unknown) => (e instanceof Error ? e.message : String(e)),
   // The shell test only cares about routing, so every page stays pending:
   // a resolved empty body would feed the real hubs a payload they can't read.
   apiGet: vi.fn(() => new Promise(() => {})),

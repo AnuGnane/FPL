@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react'
-import { apiGet } from '../../api/client'
+import { usePageData } from '../../api/pageData'
 import {
   Callout, Card, Chip, EmptyState, Loading, TABLE_CLASS, THEAD_CLASS, TR_CLASS,
   tdClass, thClass, tone,
@@ -12,23 +11,20 @@ import type { HealthData } from '../../types'
 // reports/ at once. The Model hub's JobButtons are the one control, and the
 // routes those buttons posted to are gone.
 export default function HealthTab() {
-  const [data, setData] = useState<HealthData | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // v18e §2.3. The hub used to remount this tab on a nonce to refresh it
+  // after a job; the job now clears this URL instead, and the entry the hook
+  // holds is what every reader of it sees.
+  const page = usePageData<HealthData>('/api/health')
 
-  const load = () => {
-    apiGet<HealthData>('/api/health').then(setData)
-      .catch((e: Error) => setError(e.message))
-  }
-  useEffect(load, [])
-
-  if (error) {
+  if (page.error !== null) {
     return (
       <Card title="Health unavailable">
         {/* A read the server refused, in `down` ink (plan R4). */}
-        <Callout tone="error">{error}</Callout>
+        <Callout tone="error">{page.error}</Callout>
       </Card>
     )
   }
+  const data = page.data
   if (!data) return <Loading />
 
   return (

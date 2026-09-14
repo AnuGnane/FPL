@@ -1,12 +1,11 @@
-import { useEffect, useState } from 'react'
 import {
   CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis,
   YAxis,
 } from 'recharts'
-import { apiGet } from '../../api/client'
+import { usePageData } from '../../api/pageData'
 import {
-  Card, EmptyState, Loading, SERIES_COLOURS, SERIES_DASH, Stat, StatRow,
-  TONE_CLASS, fmtDelta, toneOf,
+  Callout, Card, EmptyState, Loaded, Loading, SERIES_COLOURS, SERIES_DASH,
+  Stat, StatRow, TONE_CLASS, fmtDelta, toneOf,
 } from '../../kit'
 import type {
   CalibrationData, ReviewData, ReviewLaneName,
@@ -53,14 +52,21 @@ const GATE = 'The first grades land when FPL marks GW2 data_checked — the '
  * two fetch-and-format implementations of one artifact is what would rot.
  */
 function CalibrationTrend() {
-  const [data, setData] = useState<CalibrationData | null>(null)
+  // v18e §2.3: the same entry `QualityTab`'s own calibration card holds, so a
+  // manager who opens Quality and then Season asks once. The `.catch` that
+  // set `null` — indistinguishable from "still loading" — is gone: a 404 or
+  // 422 is still nothing at all, and anything else is the kit's error callout
+  // (ruling 7).
+  const page = usePageData<CalibrationData>('/api/model/calibration')
 
-  useEffect(() => {
-    apiGet<CalibrationData>('/api/model/calibration').then(setData)
-      .catch(() => setData(null))
-  }, [])
+  return (
+    <Loaded page={page}>
+      {(data) => <TrendBody data={data} />}
+    </Loaded>
+  )
+}
 
-  if (!data) return null
+function TrendBody({ data }: { data: CalibrationData }) {
   if (!data.available || data.gameweeks.length === 0) {
     return (
       <Card title="Calibration trend">
@@ -123,22 +129,28 @@ function CalibrationTrend() {
 }
 
 export default function SeasonTab() {
-  const [data, setData] = useState<ReviewData | null>(null)
+  // v18e §2.3. Shared with `ReviewTab` and Quality's scatter, so the walk
+  // across the three tabs is one request. Split inline rather than through
+  // `Loaded` because the empty state below is a fact about the *body* — no
+  // lane graded — that has to be read off the summary, and the same sentence
+  // has to serve the cold clone's 404 and 422 (ruling 7).
+  const page = usePageData<ReviewData>('/api/review')
+  const data = page.data
+  const absent = page.status === 404 || page.status === 422
 
-  useEffect(() => {
-    // `/api/review` never errors (routers/review.py); the catch is for a clone
-    // whose server is not up, which reads the same to the page.
-    apiGet<ReviewData>('/api/review').then(setData)
-      .catch(() => setData({ gws: [], summary: null }))
-  }, [])
+  if (page.error !== null && !absent) {
+    // `/api/review` never errors on a written artifact (routers/review.py),
+    // so reaching this is a server that could not answer at all — which used
+    // to be drawn as a season nobody had graded.
+    return <Callout tone="error">{page.error}</Callout>
+  }
+  if (data === null && !absent) return <Loading />
 
-  if (!data) return <Loading />
-
-  const summary = data.summary
+  const summary = data?.summary ?? null
   const anyGraded = summary !== null
     && LANE_ORDER.some((name) => (summary.lanes[name]?.graded ?? 0) > 0)
 
-  if (!anyGraded) {
+  if (!anyGraded || data === null) {
     // The detail names a thing that happens by itself; the action beside it is
     // the manual path, and it is the command `ReviewTab` already prints for
     // exactly this case rather than a second wording of it.

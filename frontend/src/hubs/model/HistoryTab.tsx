@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react'
 import {
   CartesianGrid, Legend, Line, LineChart as RLineChart, ResponsiveContainer,
   Tooltip, XAxis, YAxis,
 } from 'recharts'
-import { apiGet } from '../../api/client'
+import { usePageData } from '../../api/pageData'
 import {
   Callout, Card, EmptyState, Loading, SERIES_COLOURS, SERIES_DASH, TABLE_CLASS,
   THEAD_CLASS, TR_CLASS, fmtNum, tdClass, thClass,
@@ -24,22 +23,20 @@ function priceRows(prices: HistoryData['prices']): Array<Record<string, number>>
 }
 
 export default function HistoryTab() {
-  const [data, setData] = useState<HistoryData | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // v18e §2.3: one entry per URL, so the tab remounting under Radix does not
+  // ask again. The branches below are the ones this tab already had — it
+  // synthesised no empty body, so ruling 7 leaves its two states alone.
+  const page = usePageData<HistoryData>('/api/history')
 
-  useEffect(() => {
-    apiGet<HistoryData>('/api/history').then(setData)
-      .catch((e: Error) => setError(e.message))
-  }, [])
-
-  if (error) {
+  if (page.error !== null) {
     return (
       <Card title="History unavailable">
         {/* A read the server refused, in `down` ink (plan R4). */}
-        <Callout tone="error">{error}</Callout>
+        <Callout tone="error">{page.error}</Callout>
       </Card>
     )
   }
+  const data = page.data
   if (!data) return <Loading />
 
   const rows = priceRows(data.prices)

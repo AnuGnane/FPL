@@ -9,6 +9,7 @@ import AppShell from './AppShell'
 // strip renders null and every assertion below is about the shell alone.
 vi.mock('../api/client', () => ({
   ApiError: class extends Error { status = 0; detail: unknown = null },
+  errorText: (e: unknown) => (e instanceof Error ? e.message : String(e)),
   apiGet: vi.fn(() => new Promise(() => {})),
   apiPost: vi.fn(),
 }))

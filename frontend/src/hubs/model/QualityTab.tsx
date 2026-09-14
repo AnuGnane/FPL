@@ -1,13 +1,12 @@
-import { useEffect, useState } from 'react'
 import {
   CartesianGrid, Line, LineChart as RLineChart, ReferenceLine,
   ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis,
 } from 'recharts'
-import { ApiError, apiGet } from '../../api/client'
+import { usePageData } from '../../api/pageData'
 import {
-  type Column, Bar, Callout, Card, Chip, DataTable, EmptyState, Loading,
-  PlayerName, PosBadge, SERIES_COLOURS, Stat, StatRow, TABLE_CLASS, THEAD_CLASS,
-  TR_CLASS, fmtNum, fmtPct, tdClass, thClass,
+  type Column, Bar, Callout, Card, Chip, DataTable, EmptyState, Loaded,
+  Loading, PlayerName, PosBadge, SERIES_COLOURS, Stat, StatRow, TABLE_CLASS,
+  THEAD_CLASS, TR_CLASS, fmtNum, fmtPct, tdClass, thClass,
 } from '../../kit'
 import type {
   BenchmarkEvaluation, CalibrationData, CalibrationHead, CurrentEvaluation,
@@ -195,23 +194,21 @@ function brierCell(head: CalibrationHead | undefined) {
  * name showing different things is worse than either alone.
  */
 function CalibrationSection() {
-  const [data, setData] = useState<CalibrationData | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // v18e §2.3: its own read still, where it lives — but through the one
+  // entry `SeasonTab`'s trend card shares, so the two views of this artifact
+  // are one request. It synthesised no empty body, so ruling 7 leaves its
+  // branches where they were.
+  const page = usePageData<CalibrationData>('/api/model/calibration')
 
-  useEffect(() => {
-    apiGet<CalibrationData>('/api/model/calibration')
-      .then(setData)
-      .catch((e: Error) => setError(e.message))
-  }, [])
-
-  if (error) {
+  if (page.error !== null) {
     return (
       <Card title="Calibration by gameweek" className="mt-4">
         {/* A read the server refused, in `down` ink (plan R4). */}
-        <Callout tone="error">{error}</Callout>
+        <Callout tone="error">{page.error}</Callout>
       </Card>
     )
   }
+  const data = page.data
   if (!data) return null
 
   if (!data.available || data.gameweeks.length === 0) {
@@ -755,38 +752,33 @@ const PEN_COLUMNS: Column<PenTrackerGw>[] = [
  * blank the other's page.
  */
 function PensSection() {
-  const [data, setData] = useState<PenTrackerData | null>(null)
-  const [empty, setEmpty] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // v18e §2.3. The status split this section already made by hand — 422 is
+  // "nobody has run it yet", anything else is a server that cannot answer,
+  // said in this card and no louder because the page above still has its
+  // numbers — is exactly `Loaded`'s, so it is spelt with the hook's status
+  // rather than by re-reading the exception.
+  const page = usePageData<PenTrackerData>('/api/pens')
+  const absent = page.status === 404 || page.status === 422
 
-  useEffect(() => {
-    apiGet<PenTrackerData>('/api/pens').then(setData).catch((e: Error) => {
-      // 422 is the ordinary "nobody has run it yet". Anything else is a
-      // server that cannot answer — said in this card and no louder, because
-      // the page above still has its numbers. Silence was worse: a card that
-      // simply disappears reads as "no penalties tracked".
-      if (e instanceof ApiError && e.status === 422) setEmpty(e.message)
-      else setError(e.message)
-    })
-  }, [])
-
-  if (error) {
+  if (page.error !== null && !absent) {
     return (
       <Card title="Penalty term unavailable" className="mt-4">
         {/* A read the server refused, in `down` ink (plan R4). */}
-        <Callout tone="error">{error}</Callout>
+        <Callout tone="error">{page.error}</Callout>
       </Card>
     )
   }
-  if (empty) {
+  if (page.error !== null) {
     return (
       <EmptyState
         title="No penalty tracker yet"
-        detail={empty}
+        // The server's own sentence for why there is nothing to show.
+        detail={page.error}
         action="gaffer track-pens"
       />
     )
   }
+  const data = page.data
   // A payload without a gws array is not a tracker: render nothing rather
   // than crash the tab on an artifact half-written by an older version.
   if (!data || !Array.isArray(data.gws)) return null
@@ -853,34 +845,43 @@ function PensSection() {
  * card says *that* instead of vanishing: an absent card reads as a missing
  * feature, where the truth is a season that has not been graded yet.
  */
-function ScatterSection() {
-  const [gws, setGws] = useState<ReviewData['gws'] | null>(null)
-
-  useEffect(() => {
-    apiGet<ReviewData>('/api/review')
-      .then((body) => setGws(body.gws))
-      .catch(() => setGws([]))
-  }, [])
-
-  if (gws === null) return null
-  const points = gws
+function scatterPoints(gws: ReviewData['gws']) {
+  return gws
     .filter((r) => r.model_points !== null && r.my_points !== null)
     .map((r) => ({ gw: r.gw, model: r.model_points as number,
                    mine: r.my_points as number }))
+}
 
-  if (points.length === 0) {
-    return (
-      <Card title="Your points against the model’s" className="mt-4">
-        <EmptyState
-          title="No graded gameweek yet"
-          detail="This compares what you scored against what the model's own
-                  squad would have scored, for every gameweek FPL has
-                  finalised. None has been graded yet."
-          action="gaffer review"
-        />
-      </Card>
-    )
-  }
+function ScatterSection() {
+  // v18e §2.3, ruling 7: `.catch(() => setGws([]))` drew "No graded gameweek
+  // yet" over a review the server could not hand over. The 404 and the 422
+  // keep that sentence — the artifact really is not written — and every
+  // other status is the kit's error callout with its retry. The entry is
+  // shared with the Review and Season tabs, so the walk asks once.
+  const page = usePageData<ReviewData>('/api/review')
+
+  return (
+    <Loaded
+      page={page}
+      isEmpty={(body) => scatterPoints(body.gws).length === 0}
+      empty={(
+        <Card title="Your points against the model’s" className="mt-4">
+          <EmptyState
+            title="No graded gameweek yet"
+            detail="This compares what you scored against what the model's own
+                    squad would have scored, for every gameweek FPL has
+                    finalised. None has been graded yet."
+            action="gaffer review"
+          />
+        </Card>
+      )}
+    >
+      {(body) => <ScatterBody points={scatterPoints(body.gws)} />}
+    </Loaded>
+  )
+}
+
+function ScatterBody({ points }: { points: ReturnType<typeof scatterPoints> }) {
   // One point is not an empty state, it is an *insufficient* one, and the
   // sentence is telling the reader something true about statistics.
   if (points.length < 2) {
@@ -966,18 +967,29 @@ const MISS_COLUMNS: Column<MissRow>[] = [
  * captaincy it talked them out of.
  */
 function MissesSection() {
-  const [data, setData] = useState<MissesData | null>(null)
+  // v18e §2.3, ruling 7: `.catch(() => setData(null))` made a server that
+  // could not answer look exactly like a week nobody has scored — the card
+  // simply was not there. No scored gameweek is still an absent card, because
+  // that is the honest drawing of an artifact with nothing in it; a 500 now
+  // says so.
+  const page = usePageData<MissesData>('/api/misses')
 
-  useEffect(() => {
-    apiGet<MissesData>('/api/misses').then(setData).catch(() => setData(null))
-  }, [])
+  return (
+    <Loaded
+      page={page}
+      // No scored gameweek is an absent card, not a card of zeros — and a
+      // payload without a rows array is not a misses report at all, so render
+      // nothing rather than crash the tab on an artifact an older version
+      // half-wrote.
+      isEmpty={(data) => !data.gw || !Array.isArray(data.rows)
+        || data.rows.length === 0}
+    >
+      {(data) => <MissesCard data={data} />}
+    </Loaded>
+  )
+}
 
-  // No scored gameweek is an absent card, not a card of zeros — and a payload
-  // without a rows array is not a misses report at all, so render nothing
-  // rather than crash the tab on an artifact an older version half-wrote.
-  if (!data?.gw || !Array.isArray(data.rows) || data.rows.length === 0) {
-    return null
-  }
+function MissesCard({ data }: { data: MissesData }) {
   return (
     <Card title={`Biggest misses — GW${data.gw}`} className="mt-4">
       <p className="mb-3 text-text-muted">
@@ -997,36 +1009,31 @@ function MissesSection() {
 }
 
 export default function QualityTab() {
-  const [data, setData] = useState<QualityData | null>(null)
-  const [empty, setEmpty] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // v18e §2.3. Four sections below keep their own reads, each where it lives;
+  // this one is the tab's own. The status split it made by hand — a 422 is
+  // "nothing has been evaluated yet" and the server's own sentence says what
+  // to run — is `Loaded`'s, spelt in its words.
+  const page = usePageData<QualityData>('/api/quality')
+  const absent = page.status === 404 || page.status === 422
 
-  useEffect(() => {
-    apiGet<QualityData>('/api/quality').then(setData).catch((e: Error) => {
-      // A 422 here is the ordinary "nothing has been evaluated yet" state,
-      // not a failure: the server's own sentence says what to run.
-      if (e instanceof ApiError && e.status === 422) setEmpty(e.message)
-      else setError(e.message)
-    })
-  }, [])
-
-  if (error) {
+  if (page.error !== null && !absent) {
     return (
       <Card title="Quality unavailable">
         {/* A read the server refused, in `down` ink (plan R4). */}
-        <Callout tone="error">{error}</Callout>
+        <Callout tone="error">{page.error}</Callout>
       </Card>
     )
   }
-  if (empty) {
+  if (page.error !== null) {
     return (
       <EmptyState
         title="Nothing evaluated yet"
-        detail={empty}
+        detail={page.error}
         action="gaffer evaluate"
       />
     )
   }
+  const data = page.data
   if (!data) return <Loading />
 
   return (

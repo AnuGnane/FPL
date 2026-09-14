@@ -1,11 +1,11 @@
 import * as Tabs from '@radix-ui/react-tabs'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
-import { apiGet, apiPost, errorText } from '../api/client'
-import { invalidate, usePageData } from '../api/pageData'
+import { apiPost, errorText } from '../api/client'
+import { invalidate, invalidatePrefix, usePageData } from '../api/pageData'
 import {
   type Column, Callout, Card, DataTable, EmptyState, Loading, PageHeader,
   Sparkline, Stat, StatRow, TABLE_CLASS, TAB_CLASS, TAB_LIST_CLASS, THEAD_CLASS,
@@ -29,6 +29,10 @@ function withLeague(path: string, leagueId: number | null): string {
 }
 
 const FAN_KEYS = ['p05', 'p25', 'p50', 'p75', 'p95'] as const
+
+/** One identity for "not landed yet", so the rivals table is not handed a
+ *  fresh empty array on every render of the hub. */
+const NO_RIVALS: RivalSummary[] = []
 
 /**
  * The margin fan: how far ahead of — or behind — the best rival the season
@@ -93,39 +97,32 @@ export default function League() {
   const [params] = useSearchParams()
   const asked = params.get('league')
   const leagueId = asked !== null && /^\d+$/.test(asked) ? Number(asked) : null
-  const [overview, setOverview] = useState<LeaguesOverview | null>(null)
-  const [race, setRace] = useState<LeagueRaceData | null>(null)
-  const [rivals, setRivals] = useState<RivalSummary[]>([])
-  const [missing, setMissing] = useState<string | null>(null)
-  const [sim, setSim] = useState<LeagueSimData | null>(null)
   const [busy, setBusy] = useState(false)
-  // The same read This Week, Planning and Players make (v17h §3). The league's
-  // own four endpoints below keep `apiGet`: they are this hub's alone and no
-  // cached card is watching them.
+  // The same read This Week, Planning and Players make (v17h §3). Since v18e
+  // §2.3 the league's own four endpoints go through the same cache: the
+  // comment that used to stand here said they could stay raw because no
+  // cached card was watching them, and the settings write below is the reason
+  // that is no longer true — a focus set here changes what all four answer.
   const latest = usePageData<AdviceLatest>('/api/advice/latest')
-
-  const loadOverview = useCallback(() => {
-    apiGet<LeaguesOverview>('/api/league/leagues')
-      .then(setOverview).catch(() => setOverview(null))
-  }, [])
-
-  const loadLeague = useCallback(() => {
-    setRace(null)
-    apiGet<LeagueRaceData>(withLeague('/api/league/race', leagueId))
-      .then((body) => { setRace(body); setMissing(null) })
-      .catch((e) => setMissing(errorText(e)))
-    apiGet<RivalSummary[]>(withLeague('/api/league/rivals', leagueId))
-      .then(setRivals).catch(() => setRivals([]))
-    // The simulated card degrades to the parametric one rather than to an
-    // error: /api/league/race already carries those numbers, and a league
-    // page with no win-probability panel at all is a worse answer than an
-    // older one.
-    apiGet<LeagueSimData>(withLeague('/api/league/sim', leagueId))
-      .then(setSim).catch(() => setSim(null))
-  }, [leagueId])
-
-  useEffect(() => { loadOverview() }, [loadOverview])
-  useEffect(() => { loadLeague() }, [loadLeague])
+  const overviewPage = usePageData<LeaguesOverview>('/api/league/leagues')
+  // The URL carries the league, so switching leagues is a new key and the
+  // hook's own ask counter — not a `live` flag written four times over — is
+  // what keeps the previous league's answer off this page.
+  const racePage = usePageData<LeagueRaceData>(
+    withLeague('/api/league/race', leagueId))
+  const rivalsPage = usePageData<RivalSummary[]>(
+    withLeague('/api/league/rivals', leagueId))
+  // The simulated card degrades to the parametric one rather than to an
+  // error: /api/league/race already carries those numbers, and a league
+  // page with no win-probability panel at all is a worse answer than an
+  // older one.
+  const simPage = usePageData<LeagueSimData>(
+    withLeague('/api/league/sim', leagueId))
+  const overview = overviewPage.data
+  const race = racePage.data
+  const rivals = rivalsPage.data ?? NO_RIVALS
+  const sim = simPage.data
+  const missing = racePage.error
 
   // An empty squad is a working empty state in the What-if panel, so the
   // failure path is [] rather than an error. Memoised because it is a prop:
@@ -149,8 +146,15 @@ export default function League() {
         // the focus league and says whether the stance was set by hand.
         invalidate('/api/settings')
         invalidate('/api/league/leagues')
-        loadOverview()
-        loadLeague()
+        // And the prefix, because since v18e §2.3 this hub's own race, rivals
+        // and sim are cached too and every one of them is answered *for the
+        // focus* when no ?league= is asked. The URLs differ by the league id,
+        // which is exactly the thing a focus write changes, so there is no
+        // single URL to name — this is `invalidatePrefix`'s case. It sweeps
+        // the overview a second time, and the line above stays anyway: the
+        // invalidation table names the reader each writer disturbs, and the
+        // leagues tile it is talking about is on another hub.
+        invalidatePrefix('/api/league/')
       })
       .catch((e) => toast('negative', `Could not ${what} — ${errorText(e)}`))
       .finally(() => setBusy(false))
