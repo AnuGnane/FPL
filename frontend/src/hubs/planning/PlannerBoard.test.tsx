@@ -126,6 +126,19 @@ describe('PlannerBoard', () => {
         .toBeInTheDocument()
     })
 
+  // v18e ruling 7: a page must never render a failure as a healthy empty. The
+  // 422 above is the cold clone's; anything else is a server that broke, and
+  // the board says so instead of sending the reader to run a job.
+  it('says the server broke rather than that nothing has been advised',
+    async () => {
+      apiGet.mockRejectedValue(
+        Object.assign(new ApiError('boom'), { status: 500 }))
+      render(<PlannerBoard gw={5} />)
+      const callout = await screen.findByText('boom')
+      expect(callout.closest('[data-tone="error"]')).toBeInTheDocument()
+      expect(screen.queryByText('Nothing to plan from')).not.toBeInTheDocument()
+    })
+
   it('warns with a direction and a percentage, and never a price', async () => {
     wire(plan([WEEK]), { available: true, as_of: '2026-09-01T02:00:00Z',
       rows: [{ code: 1, name: 'Wirtz', now_cost: 85,

@@ -18,11 +18,18 @@ export default function FixtureTicker(
   const [ascending, setAscending] = useState(true)
   const data = page.data
 
-  // The endpoint is a 200 for a season with no banked fixtures at all, so
-  // there is no 404 to tell from a failure here and the two branches below
-  // are the ones this card has always had. What changed is the sentence: the
-  // hook reads every rejection through `errorText`, so a refusal that carries
-  // a structured body prints its `error` rather than `[object Object]`.
+  // Not split on the status (v18e ruling 7), and the reason is that there is
+  // nothing to split *to*. A cold clone does reach a 422 here — `rate_fixtures`
+  // opens `live/teams.parquet` through `load_snapshot`, which raises a
+  // `GafferError` the app-wide handler maps (app.py:67-69) — but this card has
+  // never had an empty state of its own for that: the callout below is what it
+  // rendered for a cold clone before v18e and after it, so a split would
+  // *change* the cold-clone pixels rather than preserve them. Giving the ticker
+  // an empty state is a design change and not this task's.
+  //
+  // What v18e did change is the sentence: the hook reads every rejection
+  // through `errorText`, so a refusal that carries a structured body prints its
+  // `error` rather than `[object Object]`.
   if (page.error !== null) {
     return (
       <Card title="Fixture ticker" className="mb-4">

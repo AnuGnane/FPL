@@ -197,8 +197,12 @@ export default function ChipsTab() {
   // already made it and made it better: `/api/chips` answers 404 for a
   // gameweek nobody has advised (chips.py:60) and the server's own sentence
   // says what to run, so the empty state carries it rather than a generic
-  // callout. Only the source of the two sentences changed in v18e.
-  if (page.error !== null && page.status === 404) {
+  // callout. 422 joins 404 because a cold clone never reaches chips.py's own
+  // 404 — every read under it raises a `GafferError` the app-wide handler
+  // maps (app.py:67-69), and both statuses mean the same thing: run the job
+  // (v18e §2.2, ruling 7).
+  const absent = page.status === 404 || page.status === 422
+  if (page.error !== null && absent) {
     return (
       <EmptyState
         title="No chips to weigh"

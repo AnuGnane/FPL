@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { usePageData } from '../../api/pageData'
 import {
-  Button, Card, Chip, EmptyState, Loading, PosBadge, fmtDelta, fmtNum,
-  segmentClass,
+  Button, Callout, Card, Chip, EmptyState, Loading, PosBadge, fmtDelta,
+  fmtNum, segmentClass,
 } from '../../kit'
 import type {
   MoverRow, MoversPanel, PlanGw, PlanMove, PlanTimeline, WhatIfRequest,
@@ -135,16 +135,18 @@ export default function PlannerBoard(
     }
   }
 
-  // Every failure is this state, exactly as it was before v18e. `/api/plan`
-  // answers 404 for a horizon nobody has solved, but a cold clone answers the
-  // app-wide 422 for most of what this hub reads (app.py:67-69), so splitting
-  // the two on the status here would put a red callout where the documented
-  // cold-clone walk expects an empty state. `Loaded`'s split is for the nine
-  // reads spec §2.3 names; this is not one of them.
-  //
-  // The two empty states below are different facts and get different words:
-  // nothing was ever advised, versus a run that solved no horizon. Collapsing
-  // them would tell a reader to run advise when he already has.
+  // `Loaded`'s split, in `Loaded`'s words (v18e ruling 7). `/api/plan` answers
+  // 404 for a horizon nobody has solved and a cold clone answers the app-wide
+  // 422 (app.py:67-69), so both statuses keep the empty state the cold-clone
+  // walk expects; a 500 is a server that broke and must not be painted as a
+  // healthy "nothing solved yet". Not through `Loaded` itself because the two
+  // empty states below are different facts and get different words — nothing
+  // was ever advised, versus a run that solved no horizon — and collapsing
+  // them into one slot would tell a reader to run advise when he already has.
+  const absent = plan.status === 404 || plan.status === 422
+  if (plan.error !== null && !absent) {
+    return <Callout tone="error">{plan.error}</Callout>
+  }
   if (plan.error !== null) {
     return (
       <EmptyState

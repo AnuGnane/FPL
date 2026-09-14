@@ -4,9 +4,9 @@ import { apiDelete, apiPost, errorText } from '../api/client'
 import { invalidate, usePageData } from '../api/pageData'
 import { useDebounced } from '../api/useDebounced'
 import {
-  type Column, Bar, Button, Card, DataTable, EmptyState, INPUT_CLASS, Loading,
-  PageHeader, PlayerName, PosBadge, Sparkline, TAB_CLASS, TAB_LIST_CLASS,
-  fmtNum, segmentClass, toast, useTabParam,
+  type Column, Bar, Button, Callout, Card, DataTable, EmptyState, INPUT_CLASS,
+  Loading, PageHeader, PlayerName, PosBadge, Sparkline, TAB_CLASS,
+  TAB_LIST_CLASS, fmtNum, segmentClass, toast, useTabParam,
 } from '../kit'
 import type {
   AdviceLatest, OverridesPanel, PlayerRow, WatchlistPanel,
@@ -31,10 +31,16 @@ export default function Players() {
   // through the same cache (v17h §3).
   const latest = usePageData<AdviceLatest>('/api/advice/latest')
   const gw = latest.data?.gw ?? null
-  // Three states, not two: `gw === null` used to mean both "still loading" and
+  // Four states, not two: `gw === null` used to mean both "still loading" and
   // "there is nothing to load", so a failed /api/advice/latest left the Compare
-  // tab on "Loading…" for ever with nothing saying what to do about it.
-  const gwFailed = latest.error !== null
+  // tab on "Loading…" for ever with nothing saying what to do about it — and
+  // since v18e ruling 7 a read that broke is told from one that has nothing to
+  // read yet, in `Loaded`'s words. Split inline rather than through `Loaded`
+  // because this hub renders its header and its tab strip above every one of
+  // these states, and two of its tabs read different pages.
+  const gwAbsent = latest.status === 404 || latest.status === 422
+  const gwFailed = latest.error !== null && gwAbsent
+  const gwBroke = latest.error !== null && !gwAbsent
   // The row whose availability the manager is overruling, or null.
   const [pinning, setPinning] = useState<PlayerRow | null>(null)
   // Codes with a pin standing, so the table says which of these numbers are
@@ -122,11 +128,13 @@ export default function Players() {
   if (settledSearch) params.set('search', settledSearch)
   const poolPage = usePageData<PlayerRow[]>(`/api/players?${params.toString()}`)
   const rows = poolPage.data
-  // Every failure is this state, as it was before v18e: a cold clone answers
-  // the app-wide 422 here (`players.py:245` raises, `app.py:67-69` maps it),
-  // not the 404 `Loaded`'s split is written around, so this read is not one
-  // of the nine spec §2.3 moves onto it.
-  const missing = poolPage.error !== null
+  // A cold clone answers the app-wide 422 here (`players.py:245` raises,
+  // `app.py:67-69` maps it), which is the same "run the job" the 404 is, so
+  // both keep the empty state; a 500 is a server that broke and says so
+  // (ruling 7).
+  const poolAbsent = poolPage.status === 404 || poolPage.status === 422
+  const missing = poolPage.error !== null && poolAbsent
+  const poolBroke = poolPage.error !== null && !poolAbsent
 
   const toggle = (code: number) => setPicked((prev) => (
     prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
@@ -279,7 +287,9 @@ export default function Players() {
           <Tabs.Trigger value="watchlist" className={TAB_CLASS}>Watchlist</Tabs.Trigger>
         </Tabs.List>
         <Tabs.Content value="explorer">
-          {missing
+          {poolBroke
+            ? <Callout tone="error">{poolPage.error}</Callout>
+            : missing
             ? (
               <EmptyState
                 title="No candidate pool"
@@ -328,7 +338,9 @@ export default function Players() {
               )}
         </Tabs.Content>
         <Tabs.Content value="compare">
-          {gwFailed
+          {gwBroke
+            ? <Callout tone="error">{latest.error}</Callout>
+            : gwFailed
             ? (
               <EmptyState
                 title="Nothing to compare against"

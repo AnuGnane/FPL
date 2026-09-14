@@ -250,6 +250,26 @@ describe('chips tab', () => {
       .toBeInTheDocument()
   })
 
+  it('shows the same empty state for the cold clone’s 422', async () => {
+    // The 404 above is `chips.py`'s own. A clone with nothing on disk never
+    // reaches it: the read raises a `GafferError` the app-wide handler maps to
+    // 422 (app.py:67-69), and both mean "run the job" (v18e ruling 7).
+    apiGet.mockRejectedValue(new FakeApiError(
+      422, 'no advice on disk yet — run `gaffer advise` first'))
+    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    expect(await screen.findByTestId('empty-state')).toBeInTheDocument()
+    expect(screen.queryByText('Chips unavailable')).not.toBeInTheDocument()
+  })
+
+  it('says the server broke rather than that no chips can be weighed',
+    async () => {
+      apiGet.mockRejectedValue(new FakeApiError(500, 'boom'))
+      render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+      const callout = await screen.findByText('boom')
+      expect(callout.closest('[data-tone="error"]')).toBeInTheDocument()
+      expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument()
+    })
+
   it('names the wildcard’s own bar and where it came from', async () => {
     // Minor 9: the fixture had no threshold, so this caption never rendered
     // in any test and its wording was unasserted.

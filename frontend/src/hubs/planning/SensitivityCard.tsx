@@ -58,13 +58,15 @@ export default function SensitivityCard() {
   const page = usePageData<SensitivityReport>('/api/sensitivity')
   const data = page.data
   // A GET that failed is not a week nobody has swept. The endpoint is a 200
-  // for every empty state it knows about, so a rejection here means the
-  // server did not answer, and "no report yet" would send the user to press
-  // a button that is not the problem. Which is why this card keeps its own
-  // two-branch body rather than rendering through `Loaded`: it already told
-  // the two apart, and the sentence it tells them apart with is better than
-  // a generic callout would be (v18e §2.3).
-  const failed = page.error !== null
+  // for every empty state it knows about — `sensitivity.py:110` answers an
+  // un-advised tree with an empty report, not a refusal — so in practice
+  // `absent` never fires here and a rejection means the server did not
+  // answer. It is spelled anyway, in `Loaded`'s words, so this card cannot
+  // drift from the ruling if the route ever learns to 404 (v18e ruling 7).
+  // Split inline rather than through `Loaded` because the card draws its
+  // header, its blurb and its Run button above whichever state this is.
+  const absent = page.status === 404 || page.status === 422
+  const failed = page.error !== null && !absent
   // The button owns the stream, so it is the button that says when the sweep
   // is running (plan A10). Wrapped so the effect inside it does not refire on
   // every render of this card.
@@ -100,16 +102,12 @@ export default function SensitivityCard() {
                  points…"
         />
       )}
-      {/* The failed branch stays prose: a server that did not answer is not
-          an empty state, and it must not send the reader to press a button
-          that is not the problem. */}
+      {/* A server that did not answer is not an empty state, and it must not
+          send the reader to press a button that is not the problem — so it
+          gets the callout every other broken read gets, carrying the server's
+          own sentence rather than this card's guess at one (ruling 7). */}
       {!running && !data?.available && (failed
-        ? (
-          <p className="text-text-muted">
-            The sensitivity report could not be read — the server did not
-            answer.
-          </p>
-          )
+        ? <Callout tone="error">{page.error}</Callout>
         : (
           <EmptyState
             title="No sensitivity report yet"

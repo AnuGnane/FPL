@@ -3,10 +3,24 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Timeline from './Timeline'
 import { difficultyTone } from '../../kit'
 
-const { apiGet } = vi.hoisted(() => ({ apiGet: vi.fn() }))
+const { ApiError, apiGet } = vi.hoisted(() => {
+  // `usePageData` narrows on `instanceof ApiError` to fill `status`, and
+  // `Timeline` splits a failed read on that status (v18e ruling 7) — so a
+  // double whose rejections are plain Errors would exercise the broken-server
+  // branch on every test that means the cold clone.
+  class ApiError extends Error {
+    status: number
+    detail: unknown = null
+    constructor(status: number, message: string) {
+      super(message)
+      this.status = status
+    }
+  }
+  return { ApiError, apiGet: vi.fn() }
+})
 
 vi.mock('../../api/client', () => ({
-  ApiError: class extends Error { status = 0; detail: unknown = null },
+  ApiError,
   apiGet: (path: string) => apiGet(path),
   apiPost: vi.fn(),
   // `usePageData` reads every rejection through this, so a double that
@@ -81,14 +95,32 @@ describe('Timeline', () => {
   })
 
   it('shows an empty state naming the run when there is no plan', async () => {
-    apiGet.mockRejectedValue(Object.assign(
-      new Error('no advice for GW5 — run `gaffer advise` first'),
-      { status: 404 }))
-    // Every failure is this state, 404 or not: see the note on `missing`.
+    apiGet.mockRejectedValue(new ApiError(
+      404, 'no advice for GW5 — run `gaffer advise` first'))
     render(<Timeline gw={5} />)
     expect(await screen.findByText(/no plan/i)).toBeInTheDocument()
     expect(screen.getByText('Run advise')).toBeInTheDocument()
   })
+
+  it('shows the same empty state for the cold clone\'s 422', async () => {
+    // The 404 above is `/api/plan`'s own; a clone with nothing on disk never
+    // reaches it, because the read raises a `GafferError` the app-wide handler
+    // maps to 422 (app.py:67-69). Both mean "run the job" (v18e ruling 7).
+    apiGet.mockRejectedValue(new ApiError(
+      422, 'no advice on disk yet — run `gaffer advise` first'))
+    render(<Timeline gw={5} />)
+    expect(await screen.findByTestId('empty-state')).toBeInTheDocument()
+    expect(screen.getByText('Run advise')).toBeInTheDocument()
+  })
+
+  it('says the server broke rather than that nothing has been solved',
+    async () => {
+      apiGet.mockRejectedValue(new ApiError(500, 'boom'))
+      render(<Timeline gw={5} />)
+      const callout = await screen.findByText('boom')
+      expect(callout.closest('[data-tone="error"]')).toBeInTheDocument()
+      expect(screen.queryByText(/no plan to draw/i)).not.toBeInTheDocument()
+    })
 })
 
 describe('Timeline difficulty chips', () => {

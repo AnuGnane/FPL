@@ -7,12 +7,25 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Players from './Players'
 import { currentToasts } from '../kit/Toast'
 
-const { apiGet, apiPost, apiDelete } = vi.hoisted(() => ({
-  apiGet: vi.fn(), apiPost: vi.fn(), apiDelete: vi.fn(),
-}))
+const { ApiError, apiGet, apiPost, apiDelete } = vi.hoisted(() => {
+  // `usePageData` narrows on `instanceof ApiError` to fill `status`, and this
+  // hub splits a failed read on that status (v18e ruling 7) — so a refusal
+  // meant as "nothing on disk yet" has to be thrown as one.
+  class ApiError extends Error {
+    status: number
+    detail: unknown = null
+    constructor(status: number, message: string) {
+      super(message)
+      this.status = status
+    }
+  }
+  return {
+    ApiError, apiGet: vi.fn(), apiPost: vi.fn(), apiDelete: vi.fn(),
+  }
+})
 
 vi.mock('../api/client', () => ({
-  ApiError: class extends Error { status = 0; detail: unknown = null },
+  ApiError,
   apiGet: (path: string) => apiGet(path),
   apiPost: (path: string, body: unknown) => apiPost(path, body),
   apiDelete: (path: string) => apiDelete(path),
@@ -129,9 +142,8 @@ describe('Players hub', () => {
       // swallowed inside a promise.
       apiGet.mockImplementation((path: string) => (
         path.startsWith('/api/players')
-          ? Promise.reject(Object.assign(
-            new Error('no saved solve state — run `gaffer advise` first'),
-            { status: 422 }))
+          ? Promise.reject(new ApiError(
+            422, 'no saved solve state — run `gaffer advise` first'))
           : path === '/api/watchlist' ? Promise.resolve({ rows: watch })
           : path === '/api/overrides'
             ? Promise.resolve({ active: true, rows: pins, warning: null })
@@ -157,7 +169,7 @@ describe('Players hub', () => {
     async () => {
       apiGet.mockImplementation((path: string) => (
         path.startsWith('/api/players') ? Promise.resolve(ROWS)
-          : Promise.reject(new Error('no advice on disk yet'))
+          : Promise.reject(new ApiError(422, 'no advice on disk yet'))
       ))
       render(<MemoryRouter><Players /></MemoryRouter>)
       await screen.findByText('Salah')
@@ -165,6 +177,39 @@ describe('Players hub', () => {
       const empty = await screen.findByTestId('empty-state')
       expect(empty).toHaveTextContent(/advise/i)
       expect(screen.queryByText('Loading…')).toBeNull()
+    })
+
+  // v18e ruling 7: a page must never render a failure as a healthy empty. The
+  // two reads split separately, so both are pinned — the pool feeds the
+  // Explorer tab and the advice gameweek feeds Compare.
+  it('says the server broke rather than that there is no candidate pool',
+    async () => {
+      apiGet.mockImplementation((path: string) => (
+        path.startsWith('/api/players')
+          ? Promise.reject(new ApiError(500, 'boom'))
+          : Promise.resolve({ rows: watch })
+      ))
+      render(<MemoryRouter><Players /></MemoryRouter>)
+      const callout = await screen.findByText('boom')
+      expect(callout.closest('[data-tone="error"]')).toBeInTheDocument()
+      expect(screen.queryByText(/no candidate pool/i)).not.toBeInTheDocument()
+    })
+
+  it('says the server broke rather than that there is nothing to compare',
+    async () => {
+      apiGet.mockImplementation((path: string) => (
+        path.startsWith('/api/players') ? Promise.resolve(ROWS)
+          : path === '/api/advice/latest'
+            ? Promise.reject(new ApiError(500, 'boom'))
+          : Promise.resolve({ rows: watch })
+      ))
+      render(<MemoryRouter><Players /></MemoryRouter>)
+      await screen.findByText('Salah')
+      await userEvent.click(screen.getByRole('tab', { name: 'Compare' }))
+      const callout = await screen.findByText('boom')
+      expect(callout.closest('[data-tone="error"]')).toBeInTheDocument()
+      expect(screen.queryByText(/nothing to compare against/i))
+        .not.toBeInTheDocument()
     })
 
   it('still says Loading while the advice request is in flight', async () => {

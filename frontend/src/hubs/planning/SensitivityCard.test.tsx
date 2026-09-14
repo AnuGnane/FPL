@@ -3,10 +3,22 @@ import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SensitivityCard from './SensitivityCard'
 
-const { apiGet } = vi.hoisted(() => ({ apiGet: vi.fn() }))
+const { ApiError, apiGet } = vi.hoisted(() => {
+  // `usePageData` narrows on `instanceof ApiError` to fill `status`, which is
+  // what this card splits a failed read on (v18e ruling 7).
+  class ApiError extends Error {
+    status: number
+    detail: unknown = null
+    constructor(status: number, message: string) {
+      super(message)
+      this.status = status
+    }
+  }
+  return { ApiError, apiGet: vi.fn() }
+})
 
 vi.mock('../../api/client', () => ({
-  ApiError: class extends Error { status = 0; detail: unknown = null },
+  ApiError,
   apiGet: (path: string) => apiGet(path),
   apiPost: vi.fn(),
   // `usePageData` reads every rejection through this, so a double that
@@ -127,12 +139,14 @@ describe('SensitivityCard', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })
 
+  // v18e ruling 7: a page must never render a failure as a healthy empty, and
+  // the sentence it prints is the server's own rather than this card's guess.
   it('says the fetch failed rather than that nothing has been swept',
     async () => {
-      apiGet.mockRejectedValue(new Error('nope'))
+      apiGet.mockRejectedValue(new ApiError(500, 'boom'))
       render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
-      expect(await screen.findByText(/could not be read/))
-        .toBeInTheDocument()
+      const callout = await screen.findByText('boom')
+      expect(callout.closest('[data-tone="error"]')).toBeInTheDocument()
       expect(screen.queryByText(/No sensitivity report yet/))
         .not.toBeInTheDocument()
     })

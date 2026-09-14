@@ -4,9 +4,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import WatchlistTab from './WatchlistTab'
 import type { WatchlistPanel } from '../../types'
 
-const { apiGet, apiPost, apiDelete } = vi.hoisted(() => ({
-  apiGet: vi.fn(), apiPost: vi.fn(), apiDelete: vi.fn(),
-}))
+const { ApiError, apiGet, apiPost, apiDelete } = vi.hoisted(() => {
+  // `usePageData` narrows on `instanceof ApiError` to fill `status`, and this
+  // tab splits a failed read on that status (v18e ruling 7) — so a refusal
+  // meant as the cold clone's has to be thrown as one.
+  class ApiError extends Error {
+    status: number
+    detail: unknown = null
+    constructor(status: number, message: string) {
+      super(message)
+      this.status = status
+    }
+  }
+  return {
+    ApiError, apiGet: vi.fn(), apiPost: vi.fn(), apiDelete: vi.fn(),
+  }
+})
 
 vi.mock('../../api/client', () => ({
   apiGet: (p: string) => apiGet(p),
@@ -19,7 +32,7 @@ vi.mock('../../api/client', () => ({
   errorText: (e: unknown) => String(
     (e as { detail?: { error?: unknown } })?.detail?.error ?? e,
   ),
-  ApiError: class extends Error { status = 422; detail: unknown = null },
+  ApiError,
 }))
 
 const PANEL: WatchlistPanel = {
@@ -135,10 +148,21 @@ describe('WatchlistTab', () => {
   })
 
   it('has an empty state when the list cannot be read at all', async () => {
-    apiGet.mockRejectedValue(new Error('cold'))
+    apiGet.mockRejectedValue(new ApiError(422, 'cold'))
     render(<WatchlistTab onChange={vi.fn()} />)
     expect(await screen.findByTestId('empty-state')).toBeInTheDocument()
   })
+
+  // v18e ruling 7: a page must never render a failure as a healthy empty.
+  it('says the server broke rather than that the list is unavailable',
+    async () => {
+      apiGet.mockRejectedValue(new ApiError(500, 'boom'))
+      render(<WatchlistTab onChange={vi.fn()} />)
+      const callout = await screen.findByText(/boom/)
+      expect(callout.closest('[data-tone="error"]')).toBeInTheDocument()
+      expect(screen.queryByText(/watchlist unavailable/i))
+        .not.toBeInTheDocument()
+    })
 
   it('shows a failed save beside the row and keeps the typing', async () => {
     apiPost.mockRejectedValueOnce(Object.assign(new Error('nope'),

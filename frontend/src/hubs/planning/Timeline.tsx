@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { usePageData } from '../../api/pageData'
 import {
-  Card, Chip, EmptyState, Loading, PosBadge, difficultyTone, fmtNum,
+  Callout, Card, Chip, EmptyState, Loading, PosBadge, difficultyTone, fmtNum,
 } from '../../kit'
 import type { PlanMove, PlanTimeline, TickerData } from '../../types'
 
@@ -63,14 +63,18 @@ export default function Timeline(
     return map
   }, [ticker.data])
 
-  // Every failure is this state, exactly as it was before v18e. `/api/plan`
-  // answers 404 for a horizon nobody has solved, but a cold clone answers the
-  // app-wide 422 for most of what this hub reads (app.py:67-69), so splitting
-  // the two on the status here would put a red callout on the one page the
-  // documented cold-clone walk expects an empty state on. `Loaded`'s split is
-  // for the nine reads spec §2.3 names; this is not one of them.
-  const missing = plan.error !== null
+  // `Loaded`'s split, in `Loaded`'s words (v18e ruling 7). `/api/plan` answers
+  // 404 for a horizon nobody has solved and a cold clone answers the app-wide
+  // 422 (app.py:67-69), so both keep the empty state the cold-clone walk
+  // expects; anything else is a server that broke and gets the callout. Not
+  // through `Loaded` itself: this view reads two pages, and the ticker's own
+  // failure is silence rather than a state (see `cells` above).
+  const absent = plan.status === 404 || plan.status === 422
+  const missing = plan.error !== null && absent
 
+  if (plan.error !== null && !absent) {
+    return <Callout tone="error">{plan.error}</Callout>
+  }
   if (missing) {
     return (
       <EmptyState

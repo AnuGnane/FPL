@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { apiDelete, apiPost, errorText } from '../../api/client'
 import { invalidate, usePageData } from '../../api/pageData'
 import {
-  Callout, Card, EmptyState, INPUT_CLASS, Loading, PlayerName, buttonClass,
+  Callout, Card, EmptyState, INPUT_CLASS, Loaded, Loading, PlayerName,
+  buttonClass,
 } from '../../kit'
 import type { WatchRow, WatchlistPanel } from '../../types'
 
@@ -154,44 +155,48 @@ export default function WatchlistTab(
     invalidate('/api/watchlist')
   }
 
-  // Every failure is still this state. The watchlist is a local store the
-  // server answers 200 for when it is empty, so a rejection here is the app
-  // being unreachable rather than a 404 — which is why this read is not one
-  // of the nine that spec §2.3 moves onto `Loaded`'s status split.
-  const panel = page.data
-
-  if (page.error !== null) {
-    return (
-      <EmptyState
-        title="Watchlist unavailable"
-        detail="The starred list could not be read. It lives in the tool's
-                own store, not in FPL."
-        action="Check that the app is running"
-      />
-    )
-  }
-  if (!panel) return <Loading />
-  if (panel.rows.length === 0) {
-    return (
-      <EmptyState
-        title="Nobody starred yet"
-        detail="Star a player from the Explorer tab and he appears here with
-                room for a note."
-        action="Explorer → star"
-      />
-    )
-  }
-
+  // Through `Loaded` (v18e ruling 7): one page, one body, and the two empty
+  // states this tab has are exactly the two the `empty` slot distinguishes —
+  // a message means the read was refused, `null` means it arrived saying
+  // nobody is starred. The watchlist is a local store the server answers 200
+  // for when it is empty, so the refused branch is the cold clone's 422 and
+  // nothing else; a 500 falls through to the callout above it, which is the
+  // change ruling 7 makes here.
   return (
-    <Card title="Watchlist">
-      {panel.rows.map((row) => (
-        <Row key={row.code} row={row} onSaved={adopt} onRemoved={adopt} />
-      ))}
-      <p data-testid="watchlist-caveat" className="mt-2 text-text-faint">
-        {'Starring a player again from the Explorer no longer touches a note. '
-         + 'This is the only view that writes one, and the date beside each '
-         + 'name is when its note was last saved here.'}
-      </p>
-    </Card>
+    <Loaded
+      page={page}
+      loading={<Loading />}
+      isEmpty={(panel) => panel.rows.length === 0}
+      empty={(message) => (message === null
+        ? (
+          <EmptyState
+            title="Nobody starred yet"
+            detail="Star a player from the Explorer tab and he appears here
+                    with room for a note."
+            action="Explorer → star"
+          />
+          )
+        : (
+          <EmptyState
+            title="Watchlist unavailable"
+            detail="The starred list could not be read. It lives in the tool's
+                    own store, not in FPL."
+            action="Check that the app is running"
+          />
+          ))}
+    >
+      {(panel) => (
+        <Card title="Watchlist">
+          {panel.rows.map((row) => (
+            <Row key={row.code} row={row} onSaved={adopt} onRemoved={adopt} />
+          ))}
+          <p data-testid="watchlist-caveat" className="mt-2 text-text-faint">
+            {'Starring a player again from the Explorer no longer touches a '
+             + 'note. This is the only view that writes one, and the date '
+             + 'beside each name is when its note was last saved here.'}
+          </p>
+        </Card>
+      )}
+    </Loaded>
   )
 }
