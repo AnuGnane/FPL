@@ -15,9 +15,9 @@ than an auditor, `docs/GUIDE.md` §11–12.
 `plans/2026-09-12-v18-polish-programme.md`, tracker
 `plans/2026-09-12-v18-tracker.md`), eight sub-cycles that change no number
 the advice serves. v18a (the gate), v18b (the advice path), v18c
-(measurement), v18d (the core out of the web layer), v18e (the loader)
-and v18f (the surface) are merged (`bf84d7c`); the golden board had been
-skipping since the 09-11 retrain. Next: v18g the suite, then v18h; the
+(measurement), v18d (the core out of the web layer), v18e (the loader),
+v18f (the surface) and v18g (the suite) are merged (`bc02faf`); the golden
+board had been skipping since the 09-11 retrain. Next: v18h the docs; the
 model cycle follows v18 (the user's ruling, 2026-09-12).
 
 v16 — restraint and the brief — is **merged** (`main` `9f5be20`; ff-merge
@@ -173,6 +173,28 @@ usually the thing you cannot test*, not the lines: every card of the seven was
 found by asking what a test would have to fake.
 
 ## Shipped
+
+### v18g — the suite, one home per rule (done, merged `bc02faf` 2026-09-14)
+Ruff committed (`E`, `F`, `B`, `I` at line 100; `B905` ignored with its
+reason, `E402`/`E501` per file): one `style:` commit of the auto-fix alone
+(335 fixes, 205 files) and one by-hand commit of the 63 left, the sixteen
+B023 closures binding their loop names as defaults. The job-kind count
+pinned in one file — the v12 W1 meta-rail scans both spellings and found
+seventeen homes, not the review's fourteen; each asserts membership now.
+The seam order as behaviour over the gather harness (`tests/test_advise_order.py`,
+mutation-tested by swapping two lines in `gather_inputs`); the four
+verbatim text copies gone. One caches fixture in `conftest` clearing the
+seven process-lifetime caches around every test, the ad-hoc clears removed;
+the lineup-providers test reads a pinned `Config` (v18b's unattributed
+flake). `slow` on the five fit files and five `filterwarnings` by message:
+the inner loop `-m "not slow and not golden"` is **4349 tests, 4 warnings,
+68 s** (was 4486, 11,032, 191 s). A tracked, trimmed `tests/data/gw2-advice.json`
+so `test_report` and `test_chip_sanity` run on a clone; the prose fixture at
+three-player XIs (178 → 118 KB); six closed-cycle drivers under
+`scripts/archive/`; twelve CLI smoke tests. Gate: all six lines held; golden
+58 passed, 0 skipped. Python 4496 → **4509**; frontend 1098 untouched; pins
+51 / 12 / 62. Left open: the PuLP 4 migration the filters defer; the four
+singleton warnings; `test_advise.py` at 3.4 s is the next slow file.
 
 ### v18f — the surface, correct to the hand (done, merged `bf84d7c` 2026-09-14)
 Six components cut at their seams as pure moves (`QualityTab` 1060 → 546,

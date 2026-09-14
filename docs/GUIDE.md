@@ -666,7 +666,7 @@ Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 `reports/evaluation.json`, and the Model hub.
 
-## 11. The version history, v1 to v18f
+## 11. The version history, v1 to v18g
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
 reviewed. Every cycle ran the same way, and knowing the shape tells you where
@@ -1056,6 +1056,15 @@ four hundred lines were cut at their natural seams without moving a pixel,
 the settings write and the what-if solve exist once each, the first paint
 no longer downloads the charting library, and a linter and one `check`
 command guard it all. Frontend 1058 → **1098**, Python 4496 unchanged.
+
+**v18g — the suite, one home per rule** (2026-09-14). The Python suite has
+a linter with a committed config, one file that pins the job-kind count,
+the weekly run's seam order asserted on what the run did rather than on
+its source text, one fixture that empties every process-lifetime cache
+between tests, a `slow` marker so the inner loop runs in about a minute
+with four warnings instead of eleven thousand, and a tracked advice fixture
+so it runs on a fresh clone. Python 4496 → **4509**, frontend 1098
+unchanged; no number the advice serves moved.
 
 The suite grew from nothing to **4,425 Python + 986 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above
