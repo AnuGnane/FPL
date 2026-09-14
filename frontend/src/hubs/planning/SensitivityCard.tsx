@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { apiGet } from '../../api/client'
+import { useCallback, useState } from 'react'
+import { usePageData } from '../../api/pageData'
 import {
   Bar, Callout, Card, EmptyState, JobButton, Skeleton, TABLE_CLASS,
   THEAD_CLASS, TR_CLASS, fmtNum, tdClass, thClass,
@@ -55,23 +55,21 @@ function marginLine(margin: number | null,
 }
 
 export default function SensitivityCard() {
-  const [data, setData] = useState<SensitivityReport | null>(null)
+  const page = usePageData<SensitivityReport>('/api/sensitivity')
+  const data = page.data
   // A GET that failed is not a week nobody has swept. The endpoint is a 200
   // for every empty state it knows about, so a rejection here means the
   // server did not answer, and "no report yet" would send the user to press
-  // a button that is not the problem.
-  const [failed, setFailed] = useState(false)
+  // a button that is not the problem. Which is why this card keeps its own
+  // two-branch body rather than rendering through `Loaded`: it already told
+  // the two apart, and the sentence it tells them apart with is better than
+  // a generic callout would be (v18e §2.3).
+  const failed = page.error !== null
   // The button owns the stream, so it is the button that says when the sweep
   // is running (plan A10). Wrapped so the effect inside it does not refire on
   // every render of this card.
   const [running, setRunning] = useState(false)
   const onRunning = useCallback((r: boolean) => setRunning(r), [])
-  const load = useCallback(() => {
-    apiGet<SensitivityReport>('/api/sensitivity')
-      .then((report) => { setFailed(false); setData(report) })
-      .catch(() => { setFailed(true); setData(null) })
-  }, [])
-  useEffect(() => { load() }, [load])
 
   const rows = (data?.frequencies ?? [])
     .filter((r) => KINDS.includes(r.kind))
@@ -82,7 +80,7 @@ export default function SensitivityCard() {
     <Card
       title="How robust is this plan?"
       className="mb-4"
-      action={<JobButton kind="sensitivity" onDone={load}
+      action={<JobButton kind="sensitivity" onDone={page.reload}
                          onRunning={onRunning} />}
     >
       <p className="mb-3 text-text-muted">

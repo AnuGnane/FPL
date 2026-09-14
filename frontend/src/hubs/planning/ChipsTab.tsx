@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
-import { ApiError, apiGet, apiPost } from '../../api/client'
+import { useState } from 'react'
+import { apiPost, errorText } from '../../api/client'
+import { usePageData } from '../../api/pageData'
 import { useJob } from '../../api/useJob'
 import {
   Bar, Button, Callout, Card, Chip, EmptyState, Loading, PlayerName,
@@ -145,23 +146,12 @@ const EMPTY: WhatIfRequest = {
 }
 
 export default function ChipsTab() {
-  const [data, setData] = useState<ChipsWorkbench | null>(null)
-  const [empty, setEmpty] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const page = usePageData<ChipsWorkbench>('/api/chips')
   const [tab, setTab] = useState<'table' | 'wildcard' | 'outlook'>('table')
   const [request, setRequest] = useState<WhatIfRequest>(EMPTY)
   const [chip, setChip] = useState<string>('wildcard')
   const [invalid, setInvalid] = useState<string | null>(null)
   const job = useJob({ slot: 'chips' })
-
-  useEffect(() => {
-    apiGet<ChipsWorkbench>('/api/chips').then(setData).catch((e: Error) => {
-      // 404 is the ordinary "nothing has been advised yet" state, and the
-      // server's own sentence says what to run.
-      if (e instanceof ApiError && e.status === 404) setEmpty(e.message)
-      else setError(e.message)
-    })
-  }, [])
 
   // Picking a chip is the whole point of the page: "Try it" has to re-solve
   // the chip the reader is looking at, not the wildcard it happened to open
@@ -192,33 +182,40 @@ export default function ChipsTab() {
         request)
       job.attach(job_id)
     } catch (e) {
-      setInvalid(e instanceof ApiError && typeof e.detail === 'object'
-        && e.detail !== null
-        ? (e.detail as { error: string }).error
-        : e instanceof Error ? e.message : String(e))
+      // `errorText` is the one place that unwraps a refusal's `{constraint,
+      // error, players}` body; this used to hand-roll the same three cases
+      // and got a fourth — a detail object with no `error` key — wrong
+      // (v18e §2.3).
+      setInvalid(errorText(e))
     }
   }
 
-  if (error) {
-    return (
-      <Card title="Chips unavailable">
-        <Callout tone="error">{error}</Callout>
-      </Card>
-    )
-  }
-  if (empty) {
+  const busy = job.status === 'queued' || job.status === 'running'
+  const diff = job.result as WhatIfResult | null
+
+  // The split `Loaded` makes on the status, made here because this card
+  // already made it and made it better: `/api/chips` answers 404 for a
+  // gameweek nobody has advised (chips.py:60) and the server's own sentence
+  // says what to run, so the empty state carries it rather than a generic
+  // callout. Only the source of the two sentences changed in v18e.
+  if (page.error !== null && page.status === 404) {
     return (
       <EmptyState
         title="No chips to weigh"
-        detail={empty}
+        detail={page.error}
         action="Run advise"
       />
     )
   }
-  if (!data) return <Loading />
-
-  const busy = job.status === 'queued' || job.status === 'running'
-  const diff = job.result as WhatIfResult | null
+  if (page.error !== null) {
+    return (
+      <Card title="Chips unavailable">
+        <Callout tone="error">{page.error}</Callout>
+      </Card>
+    )
+  }
+  if (page.data === null) return <Loading />
+  const data = page.data
 
   return (
     <>
@@ -355,17 +352,15 @@ export default function ChipsTab() {
  *  says where the season stands, not what to do about it.
  */
 function ChipOutlook() {
-  const [plan, setPlan] = useState<ChipPlan | null>(null)
-  const [outlook, setOutlook] = useState<FixtureOutlook | null>(null)
-  const [planError, setPlanError] = useState<string | null>(null)
-  const [outlookError, setOutlookError] = useState<string | null>(null)
-
-  useEffect(() => {
-    apiGet<ChipPlan>('/api/chips/plan').then(setPlan)
-      .catch((e: Error) => setPlanError(e.message))
-    apiGet<FixtureOutlook>('/api/fixtures/outlook').then(setOutlook)
-      .catch((e: Error) => setOutlookError(e.message))
-  }, [])
+  // Two hooks and not one `Loaded`, for the reason the docblock gives: each
+  // half keeps its own error slot beside the half that did load, which is
+  // what a shared loader would take away (v18e §2.3).
+  const planPage = usePageData<ChipPlan>('/api/chips/plan')
+  const outlookPage = usePageData<FixtureOutlook>('/api/fixtures/outlook')
+  const plan = planPage.data
+  const outlook = outlookPage.data
+  const planError = planPage.error
+  const outlookError = outlookPage.error
 
   if (!plan && !outlook && !planError && !outlookError) return <Loading />
 

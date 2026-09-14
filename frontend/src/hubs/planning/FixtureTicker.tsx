@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { apiGet } from '../../api/client'
+import { useState } from 'react'
+import { usePageData } from '../../api/pageData'
 import {
   Callout, Card, Chip, TABLE_CLASS, THEAD_CLASS, TR_CLASS, difficultyTone,
   fmtNum, tdClass, thClass,
@@ -9,23 +9,24 @@ import type { TickerData } from '../../types'
 export default function FixtureTicker(
   { weeks, oddsKeyPresent }: { weeks: number; oddsKeyPresent?: boolean },
 ) {
-  const [data, setData] = useState<TickerData | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // Keyed by the window, so the eight-week table and the six-week one on the
+  // What-If tab are two entries and neither can answer for the other; the
+  // hook's ask counter is the `live` guard this effect used to carry.
+  const page = usePageData<TickerData>(`/api/fixtures/ticker?weeks=${weeks}`)
+
   const [sortGw, setSortGw] = useState<number | null>(null)
   const [ascending, setAscending] = useState(true)
+  const data = page.data
 
-  useEffect(() => {
-    let live = true
-    apiGet<TickerData>(`/api/fixtures/ticker?weeks=${weeks}`)
-      .then((body) => { if (live) setData(body) })
-      .catch((e: Error) => { if (live) setError(e.message) })
-    return () => { live = false }
-  }, [weeks])
-
-  if (error) {
+  // The endpoint is a 200 for a season with no banked fixtures at all, so
+  // there is no 404 to tell from a failure here and the two branches below
+  // are the ones this card has always had. What changed is the sentence: the
+  // hook reads every rejection through `errorText`, so a refusal that carries
+  // a structured body prints its `error` rather than `[object Object]`.
+  if (page.error !== null) {
     return (
       <Card title="Fixture ticker" className="mb-4">
-        <Callout tone="error">{error}</Callout>
+        <Callout tone="error">{page.error}</Callout>
       </Card>
     )
   }

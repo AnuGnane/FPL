@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { apiGet } from '../../api/client'
+import { useEffect, useMemo, useState } from 'react'
+import { usePageData } from '../../api/pageData'
 import {
   Button, Card, Chip, EmptyState, Loading, PosBadge, fmtDelta, fmtNum,
   segmentClass,
@@ -70,51 +70,35 @@ export default function PlannerBoard(
                     *  board draws no handoff — it never solves either way. */
                    onTry?: (request: WhatIfRequest) => void },
 ) {
-  const [data, setData] = useState<PlanTimeline | null>(null)
-  const [missing, setMissing] = useState(false)
+  const plan = usePageData<PlanTimeline>(`/api/plan/${gw}`)
   // Which plan the strip is on. Plan A is the recommendation and is index 0;
   // an alternative is 1-based into `data.alternatives`. Not persisted, for
   // ThisWeek.tsx:31-34's standing reason: a view preference is a real feature
   // with real questions behind it, and inventing an answer inside a lean cycle
   // is how a preference store gets built by accident.
   const [pick, setPick] = useState(0)
-  // Null while it loads and after any failure. A price decoration must never
+  // A new gameweek's plan set is a different set; holding index 2 across the
+  // switch would open on whichever plan happened to land there. All that is
+  // left of the fetching effect this card used to run: v18e §2.3 retired its
+  // `live` guard along with the stale-response class the hook's ask counter
+  // now closes.
+  useEffect(() => { setPick(0) }, [gw])
+
+  // The price decoration, read beside the plan and never inside it: null
+  // while it loads and after any failure, because a price warning must never
   // be the reason a plan does not render — Timeline's ticker rule, verbatim.
-  const [movers, setMovers] = useState<Map<number, MoverRow> | null>(null)
-
-  useEffect(() => {
-    // The same `live` guard the movers fetch has, for the same reason: a
-    // gameweek switched while this one is in flight would otherwise let the
-    // stale response land on top of the new one, and the board would draw
-    // last week's plan under this week's heading.
-    let live = true
-    setMissing(false)
-    // A new gameweek's plan set is a different set; holding index 2 across the
-    // switch would open on whichever plan happened to land there.
-    setPick(0)
-    apiGet<PlanTimeline>(`/api/plan/${gw}`)
-      .then((body) => { if (live) setData(body) })
-      .catch(() => { if (live) setMissing(true) })
-    return () => { live = false }
-  }, [gw])
-
-  useEffect(() => {
-    let live = true
-    apiGet<MoversPanel>('/api/prices/movers')
-      .then((body) => {
-        if (!live) return
-        const map = new Map<number, MoverRow>()
-        // `calibrating` says the price log is not yet trustworthy, and a
-        // warning drawn from an untrustworthy log is worse than no warning —
-        // so those rows never enter the map at all.
-        for (const row of body.rows) {
-          if (!row.calibrating) map.set(row.code, row)
-        }
-        setMovers(map)
-      })
-      .catch(() => { if (live) setMovers(null) })
-    return () => { live = false }
-  }, [])
+  // `calibrating` says the price log is not yet trustworthy, and a warning
+  // drawn from an untrustworthy log is worse than no warning, so those rows
+  // never enter the map at all.
+  const moversPage = usePageData<MoversPanel>('/api/prices/movers')
+  const movers = useMemo(() => {
+    if (moversPage.data === null) return null
+    const map = new Map<number, MoverRow>()
+    for (const row of moversPage.data.rows) {
+      if (!row.calibrating) map.set(row.code, row)
+    }
+    return map
+  }, [moversPage.data])
 
   // A planned week as the constraint vocabulary can express it (plan A7).
   // `ban` is not an exact fit for a sell — it also forbids buying him back —
@@ -151,10 +135,17 @@ export default function PlannerBoard(
     }
   }
 
-  // The two empty states are different facts and get different words: nothing
-  // was ever advised, versus a run that solved no horizon. Collapsing them
-  // would tell a reader to run advise when he already has.
-  if (missing) {
+  // Every failure is this state, exactly as it was before v18e. `/api/plan`
+  // answers 404 for a horizon nobody has solved, but a cold clone answers the
+  // app-wide 422 for most of what this hub reads (app.py:67-69), so splitting
+  // the two on the status here would put a red callout where the documented
+  // cold-clone walk expects an empty state. `Loaded`'s split is for the nine
+  // reads spec §2.3 names; this is not one of them.
+  //
+  // The two empty states below are different facts and get different words:
+  // nothing was ever advised, versus a run that solved no horizon. Collapsing
+  // them would tell a reader to run advise when he already has.
+  if (plan.error !== null) {
     return (
       <EmptyState
         title="Nothing to plan from"
@@ -164,7 +155,8 @@ export default function PlannerBoard(
       />
     )
   }
-  if (!data) return <Loading />
+  const data = plan.data
+  if (data === null) return <Loading />
   if (data.weeks.length === 0) {
     return (
       <EmptyState

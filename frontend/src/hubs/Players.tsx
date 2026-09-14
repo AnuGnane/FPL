@@ -1,7 +1,7 @@
 import * as Tabs from '@radix-ui/react-tabs'
 import { useEffect, useState } from 'react'
-import { apiDelete, apiGet, apiPost, errorText } from '../api/client'
-import { usePageData } from '../api/pageData'
+import { apiDelete, apiPost, errorText } from '../api/client'
+import { invalidate, usePageData } from '../api/pageData'
 import { useDebounced } from '../api/useDebounced'
 import {
   type Column, Bar, Button, Card, DataTable, EmptyState, INPUT_CLASS, Loading,
@@ -24,15 +24,11 @@ const TABS = ['explorer', 'compare', 'matrix', 'watchlist'] as const
 
 export default function Players() {
   const [tab, setTab] = useTabParam(TABS, 'explorer')
-  const [rows, setRows] = useState<PlayerRow[] | null>(null)
-  const [missing, setMissing] = useState(false)
   const [position, setPosition] = useState('')
   const [search, setSearch] = useState('')
   const [picked, setPicked] = useState<number[]>([])
   // Shared with This Week, Planning and League, which read the same URL
-  // through the same cache (v17h §3). The explorer's own /api/players read
-  // below keeps `apiGet`: it is a different URL per filter and per keystroke,
-  // and nothing else on the site asks it.
+  // through the same cache (v17h §3).
   const latest = usePageData<AdviceLatest>('/api/advice/latest')
   const gw = latest.data?.gw ?? null
   // Three states, not two: `gw === null` used to mean both "still loading" and
@@ -41,36 +37,37 @@ export default function Players() {
   const gwFailed = latest.error !== null
   // The row whose availability the manager is overruling, or null.
   const [pinning, setPinning] = useState<PlayerRow | null>(null)
-  // Codes with a pin standing. Read once and then kept current from the
-  // dialog's own answer, so the table says which of these numbers are the
-  // manager's own without a second round trip per save.
-  const [pinned, setPinned] = useState<number[]>([])
-  // Starred codes, or `null` for "we do not know yet". Read once on mount and
-  // then kept current from each write's own answer, exactly as `pinned` is:
-  // the alternative is a GET per star, on a table of six hundred rows.
+  // Codes with a pin standing, so the table says which of these numbers are
+  // the manager's own. Through the cache since v18e: the pin dialog and the
+  // planning card's unpin both invalidate this URL, so the column follows a
+  // write made anywhere without being handed the answer.
+  const overrides = usePageData<OverridesPanel>('/api/overrides')
+  const pinned = overrides.data?.rows.map((r) => r.code) ?? []
+  // Starred codes, or `null` for "we do not know yet".
   //
   // Three states rather than two, for the same reason `gwFailed` exists. `[]`
   // used to mean both "nobody is starred" and "the read failed", so a failed
   // GET drew an empty ☆ on every row — and one click on a ☆ that is wrong
-  // posts a star for a player who already has one.
-  const [starred, setStarred] = useState<number[] | null>(null)
+  // posts a star for a player who already has one. `data` is null for both
+  // "in flight" and "refused", and the column reads that as unknown.
+  //
+  // The Watchlist tab reads the same URL through the same cache, so the two
+  // surfaces are one request and cannot disagree (v18e §1 part 1).
+  const watchlist = usePageData<WatchlistPanel>('/api/watchlist')
+  const served = watchlist.data
   // Every keystroke drove a GET, and five letters is five requests whose
   // answers can land out of order — the last one back wins, not the last typed.
   const settledSearch = useDebounced(search)
 
+  // The optimistic overlay on the served list, and only that: a star is a
+  // bookmark on a six-hundred-row table and it has to flip under the cursor,
+  // not a round trip later. It is re-seeded from the cache whenever the
+  // served answer changes — the write's own invalidate is what brings that
+  // about — so nothing here is the source of truth for longer than a request.
+  const [starred, setStarred] = useState<number[] | null>(null)
   useEffect(() => {
-    apiGet<OverridesPanel>('/api/overrides')
-      .then((panel) => setPinned(panel.rows.map((r) => r.code)))
-      .catch(() => setPinned([]))
-  }, [])
-
-  useEffect(() => {
-    apiGet<WatchlistPanel>('/api/watchlist')
-      .then((panel) => setStarred(panel.rows.map((r) => r.code)))
-      // Left `null`, not emptied. The star column disables itself rather than
-      // showing a hollow star the manager can click.
-      .catch(() => setStarred(null))
-  }, [])
+    setStarred(served === null ? null : served.rows.map((r) => r.code))
+  }, [served])
 
   // A star is a bookmark and its success is the flip itself — no toast (spec
   // D3): a toast for every bookmark on a six-hundred-row table is noise. Its
@@ -100,7 +97,10 @@ export default function Players() {
       // is a toggle, and the other half of the clicks are the DELETE above.)
       : apiPost<WatchlistPanel>('/api/watchlist', { code })
     request
-      .then((panel) => setStarred(panel.rows.map((r) => r.code)))
+      // The panel comes back on the write, and the cache is what the column
+      // and the Watchlist tab both read — so the answer is put where they
+      // are looking rather than into this component alone (v17h §5).
+      .then(() => invalidate('/api/watchlist'))
       .catch((e) => {
         // The inverse of the change that was attempted, touching this code
         // and nothing else.
@@ -112,14 +112,21 @@ export default function Players() {
       })
   }
 
-  useEffect(() => {
-    const params = new URLSearchParams()
-    if (position) params.set('position', position)
-    if (settledSearch) params.set('search', settledSearch)
-    apiGet<PlayerRow[]>(`/api/players?${params.toString()}`)
-      .then((body) => { setRows(body); setMissing(false) })
-      .catch(() => setMissing(true))
-  }, [position, settledSearch])
+  // One URL per filter and per settled search word. Through the cache like
+  // every other read since v18e §2.3: it is keyed by URL, so going back to a
+  // filter costs nothing, and the hook's ask counter is the stale-response
+  // guard this effect never had — five letters' answers could land in any
+  // order and the last one back won, not the last one typed.
+  const params = new URLSearchParams()
+  if (position) params.set('position', position)
+  if (settledSearch) params.set('search', settledSearch)
+  const poolPage = usePageData<PlayerRow[]>(`/api/players?${params.toString()}`)
+  const rows = poolPage.data
+  // Every failure is this state, as it was before v18e: a cold clone answers
+  // the app-wide 422 here (`players.py:245` raises, `app.py:67-69` maps it),
+  // not the 404 `Loaded`'s split is written around, so this read is not one
+  // of the nine spec §2.3 moves onto it.
+  const missing = poolPage.error !== null
 
   const toggle = (code: number) => setPicked((prev) => (
     prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
@@ -340,17 +347,20 @@ export default function Players() {
           <FixtureMatrix from={gw ?? 1} />
         </Tabs.Content>
         <Tabs.Content value="watchlist">
-          {/* The hub already owns `starred` for the explorer's star column
-              (`:49`), and every write here returns the whole panel — so the
-              two surfaces are re-seeded from one answer instead of drifting. */}
+          {/* The hub already owns `starred` for the explorer's star column,
+              and both read `/api/watchlist` through the one cache entry — so
+              the two surfaces are one request and cannot drift. `onChange`
+              is what keeps the column optimistic while the write is in
+              flight; the invalidate behind it is what settles both. */}
           <WatchlistTab onChange={setStarred} />
         </Tabs.Content>
       </Tabs.Root>
+      {/* No `onSaved`: the dialog invalidates `/api/overrides` and the pin
+          column above reads that URL, so the "Pinned" label follows the write
+          without the panel being handed back up (v18e §2.3). */}
       {pinning && (
         <PinDialog code={pinning.code} name={pinning.name}
-                   onClose={() => setPinning(null)}
-                   onSaved={(panel) => setPinned(
-                     panel.rows.map((r) => r.code))} />
+                   onClose={() => setPinning(null)} />
       )}
     </>
   )

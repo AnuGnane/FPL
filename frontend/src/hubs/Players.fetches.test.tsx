@@ -160,16 +160,17 @@ describe('Players, one tab at a time', () => {
     render(<MemoryRouter initialEntries={['/players?tab=watchlist']}>
       <Players />
     </MemoryRouter>)
-    // Two, and not one: the hub's own star column reads it (`Players.tsx`)
-    // and WatchlistTab reads it again for its own list, rather than the two
-    // sharing one cached answer — a duplicate the rail records rather than
-    // corrects (spec §1 part 1 gates the control arm, not a fix).
+    // One, where the control arm recorded two: the hub's own star column and
+    // WatchlistTab's list are the same URL, and since v18e both read it
+    // through the one cache entry instead of each asking for itself. This is
+    // the only count the conversion moved, and it moved down.
     await waitFor(() => expect(
       apiGet.mock.calls.filter((c) => c[0] === '/api/watchlist').length,
-    ).toBe(2))
+    ).toBe(1))
     expect(counted()).toEqual({
       ...BASE,
-      '/api/watchlist': 2,
+      // was 2: the star column and the watchlist tab each asked; one cache now.
+      '/api/watchlist': 1,
     })
   })
 })

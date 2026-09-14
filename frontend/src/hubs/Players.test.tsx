@@ -43,7 +43,18 @@ const ROWS = [
     p_haul: 0.18, p_blank: 0.16 },
 ]
 
+// Two little stores rather than two fixed answers. Since v18e the star
+// column and the pin column read `/api/watchlist` and `/api/overrides`
+// through the shared cache, and a write invalidates rather than handing its
+// answer back — so a double that kept serving the list as it stood before
+// the write would be testing the opposite of what happens.
+const SALAH_STARRED = { code: 1, name: 'Salah', note: '', set_at: '' }
+let watch: Array<{ code: number; name: string; note: string; set_at: string }>
+let pins: Array<Record<string, unknown>>
+
 beforeEach(() => {
+  watch = [SALAH_STARRED]
+  pins = []
   apiGet.mockReset()
   apiPost.mockReset()
   apiDelete.mockReset()
@@ -51,10 +62,9 @@ beforeEach(() => {
   apiGet.mockImplementation((path: string) => (
     path.startsWith('/api/players') ? Promise.resolve(ROWS)
       : path === '/api/watchlist'
-        ? Promise.resolve({ rows: [{ code: 1, name: 'Salah', note: '',
-                                     set_at: '' }] })
+        ? Promise.resolve({ rows: watch })
       : path === '/api/overrides'
-        ? Promise.resolve({ active: true, rows: [], warning: null })
+        ? Promise.resolve({ active: true, rows: pins, warning: null })
         : path === '/api/advice/latest'
         ? Promise.resolve({ gw: 5, mode: 'weekly',
                             deadline: '2099-09-18T17:30:00Z', advice: {},
@@ -113,11 +123,18 @@ describe('Players hub', () => {
 
   it('shows an empty state naming the run when the pool is unavailable',
     async () => {
+      // Only the pool refuses. The star and pin columns keep their own
+      // shapes: they build their code lists in render now, so a watchlist
+      // answered with an advice payload would throw where it used to be
+      // swallowed inside a promise.
       apiGet.mockImplementation((path: string) => (
         path.startsWith('/api/players')
           ? Promise.reject(Object.assign(
             new Error('no saved solve state — run `gaffer advise` first'),
             { status: 422 }))
+          : path === '/api/watchlist' ? Promise.resolve({ rows: watch })
+          : path === '/api/overrides'
+            ? Promise.resolve({ active: true, rows: pins, warning: null })
           : Promise.resolve({ gw: 5, mode: 'weekly',
                               deadline: '2099-09-18T17:30:00Z', advice: {},
                               staleness: { advice_gw: 5, current_gw: 5,
@@ -236,13 +253,15 @@ describe('Players hub', () => {
   })
 
   it('marks the row it has just pinned', async () => {
-    // The dialog hands back the whole panel; the table is the one place the
-    // manager can see which of his own numbers are standing.
-    apiPost.mockResolvedValue({
-      active: true, warning: null,
-      rows: [{ code: 1, name: 'Salah', p_play: 1, e_min: null, note: '',
-               set_at: '2026-08-31T09:00:00+00:00', model_p_play: 0.8,
-               model_e_min: 60 }],
+    // The table is the one place the manager can see which of his own
+    // numbers are standing. Since v18e it learns that from a re-read of
+    // `/api/overrides` the dialog invalidates, not from a panel handed back
+    // up through a prop — so the store below is what the assertion rests on.
+    apiPost.mockImplementation(() => {
+      pins = [{ code: 1, name: 'Salah', p_play: 1, e_min: null, note: '',
+                set_at: '2026-08-31T09:00:00+00:00', model_p_play: 0.8,
+                model_e_min: 60 }]
+      return Promise.resolve({ active: true, warning: null, rows: pins })
     })
     render(<MemoryRouter><Players /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('button',
@@ -268,9 +287,10 @@ describe('the watchlist star', () => {
 
   it('stars a player and flips the button without refetching the table',
     async () => {
-      apiPost.mockResolvedValue({
-        rows: [{ code: 1, name: 'Salah', note: '', set_at: '' },
-               { code: 2, name: 'Saka', note: '', set_at: '' }],
+      apiPost.mockImplementation(() => {
+        watch = [SALAH_STARRED, { code: 2, name: 'Saka', note: '',
+                                  set_at: '' }]
+        return Promise.resolve({ rows: watch })
       })
       render(<MemoryRouter><Players /></MemoryRouter>)
       await userEvent.click(await screen.findByLabelText('star Saka'))
@@ -284,7 +304,10 @@ describe('the watchlist star', () => {
     })
 
   it('unstars a starred player', async () => {
-    apiDelete.mockResolvedValue({ rows: [] })
+    apiDelete.mockImplementation(() => {
+      watch = []
+      return Promise.resolve({ rows: watch })
+    })
     render(<MemoryRouter><Players /></MemoryRouter>)
     await userEvent.click(await screen.findByLabelText('unstar Salah'))
     expect(await screen.findByLabelText('star Salah')).toBeInTheDocument()
@@ -304,9 +327,9 @@ describe('the watchlist star', () => {
     })
 
   it('stays silent when the star write succeeds', async () => {
-    apiPost.mockResolvedValue({
-      rows: [{ code: 1, name: 'Salah', note: '', set_at: '' },
-             { code: 2, name: 'Saka', note: '', set_at: '' }],
+    apiPost.mockImplementation(() => {
+      watch = [SALAH_STARRED, { code: 2, name: 'Saka', note: '', set_at: '' }]
+      return Promise.resolve({ rows: watch })
     })
     render(<MemoryRouter><Players /></MemoryRouter>)
     await userEvent.click(await screen.findByLabelText('star Saka'))
@@ -327,9 +350,10 @@ describe('the watchlist star', () => {
       }))
       // The server still has Salah — his delete is the one that failed — so
       // the successful POST answers with both.
-      apiPost.mockResolvedValue({
-        rows: [{ code: 1, name: 'Salah', note: '', set_at: '' },
-               { code: 2, name: 'Saka', note: '', set_at: '' }],
+      apiPost.mockImplementation(() => {
+        watch = [SALAH_STARRED, { code: 2, name: 'Saka', note: '',
+                                  set_at: '' }]
+        return Promise.resolve({ rows: watch })
       })
 
       render(<MemoryRouter><Players /></MemoryRouter>)

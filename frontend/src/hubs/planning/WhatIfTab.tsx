@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ApiError, apiPost } from '../../api/client'
+import { ApiError, apiPost, errorText } from '../../api/client'
 import { useJob } from '../../api/useJob'
 import { Button, Callout, Card, Skeleton } from '../../kit'
 import type { WhatIfRequest, WhatIfResult } from '../../types'
@@ -47,8 +47,8 @@ export default function WhatIfTab({ value, onChange }: {
         && e.detail !== null) {
         setInvalid(e.detail as StructuredError)
       } else {
-        setInvalid({ constraint: 'request',
-          error: e instanceof Error ? e.message : String(e), players: [] })
+        setInvalid({ constraint: 'request', error: errorText(e),
+          players: [] })
       }
     }
   }

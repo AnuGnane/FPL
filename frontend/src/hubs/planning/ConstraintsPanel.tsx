@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { apiGet } from '../../api/client'
+import { useState } from 'react'
+import { usePageData } from '../../api/pageData'
 import { useDebounced } from '../../api/useDebounced'
 import { Card, INPUT_CLASS, PosBadge, fmtNum } from '../../kit'
 import type { PlayerRow, WhatIfRequest } from '../../types'
@@ -24,17 +24,21 @@ function PlayerPicker(
   },
 ) {
   const [query, setQuery] = useState('')
-  const [matches, setMatches] = useState<PlayerRow[]>([])
   const search = useDebounced(query)
-
-  useEffect(() => {
-    if (search.length < 2) { setMatches([]); return }
-    let live = true
-    apiGet<PlayerRow[]>(`/api/players?search=${encodeURIComponent(search)}`)
-      .then((rows) => { if (live) setMatches(rows.slice(0, 8)) })
-      .catch(() => { if (live) setMatches([]) })
-    return () => { live = false }
-  }, [search])
+  // A parameterised URL reads through the cache like any other (v18e §2.3):
+  // it is keyed by URL, so a name typed twice costs one request, and the
+  // hook's ask counter is the `live` guard this effect used to carry. `null`
+  // under two letters, because "search=a" is not a question this box asks.
+  //
+  // Still debounced, and no more than that: the counter fixes which answer
+  // lands, not how many are asked for.
+  const page = usePageData<PlayerRow[]>(
+    search.length < 2 ? null
+      : `/api/players?search=${encodeURIComponent(search)}`)
+  // A search that failed shows no rows, exactly as it did before: this is a
+  // dropdown under a field the reader is still typing in, and a callout under
+  // the cursor is the wrong place to report a server that broke.
+  const matches = (page.data ?? []).slice(0, 8)
 
   return (
     <div className="relative">

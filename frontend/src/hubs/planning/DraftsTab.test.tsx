@@ -75,12 +75,19 @@ const COMPARE = {
   ],
 }
 
+// A store, not a fixed answer. Since v18e the tab reads its list through the
+// shared cache and a write invalidates rather than handing the answer back,
+// so a double that kept serving the list as it was before the write would be
+// testing the opposite of what happens.
+let drafts = [...LIST.drafts]
+
 beforeEach(() => {
+  drafts = [...LIST.drafts]
   apiGet.mockReset()
   apiPost.mockReset()
   apiDelete.mockReset()
   apiGet.mockImplementation((path: string) => (
-    path === '/api/drafts' ? Promise.resolve(LIST)
+    path === '/api/drafts' ? Promise.resolve({ drafts })
       : Promise.resolve({ id: 'j1', status: 'done', result: COMPARE,
                           error: null })))
   apiPost.mockResolvedValue({ job_id: 'j1' })
@@ -98,7 +105,10 @@ describe('DraftsTab', () => {
   })
 
   it('saves the constraints the What-If tab is holding', async () => {
-    apiPost.mockResolvedValue({ drafts: [...LIST.drafts, draft('third')] })
+    apiPost.mockImplementation(() => {
+      drafts = [...LIST.drafts, draft('third')]
+      return Promise.resolve({ drafts })
+    })
     render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
     await screen.findByText('keep Salah')
     await userEvent.type(screen.getByLabelText('draft name'), 'third')
@@ -229,7 +239,10 @@ describe('DraftsTab', () => {
   it('unpicks a draft it has just deleted', async () => {
     // A name ticked for comparison and then deleted would otherwise be sent
     // to /compare, which answers 422 unknown_draft.
-    apiDelete.mockResolvedValue({ drafts: [draft('go wildcard')] })
+    apiDelete.mockImplementation(() => {
+      drafts = [draft('go wildcard')]
+      return Promise.resolve({ drafts })
+    })
     render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
     await userEvent.click(await screen.findByLabelText('compare keep Salah'))
     await userEvent.click(screen.getByRole('button',
@@ -243,7 +256,10 @@ describe('DraftsTab', () => {
   })
 
   it('deletes a draft through DELETE', async () => {
-    apiDelete.mockResolvedValue({ drafts: [draft('go wildcard')] })
+    apiDelete.mockImplementation(() => {
+      drafts = [draft('go wildcard')]
+      return Promise.resolve({ drafts })
+    })
     render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('button',
       { name: 'delete keep Salah' }))

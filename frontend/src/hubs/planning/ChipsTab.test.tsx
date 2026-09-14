@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { resetPageData } from '../../api/pageData'
 import ChipsTab from './ChipsTab'
 
 const { FakeApiError, apiGet, apiPost } = vi.hoisted(() => {
@@ -21,6 +22,9 @@ vi.mock('../../api/client', () => ({
   ApiError: FakeApiError,
   apiGet: (path: string) => apiGet(path),
   apiPost: (path: string, body: unknown) => apiPost(path, body),
+  // `usePageData` reads every rejection through this, so a double that
+  // omitted it would make the failure path throw rather than render.
+  errorText: (e: unknown) => (e instanceof Error ? e.message : String(e)),
 }))
 
 const CHIPS = {
@@ -262,6 +266,10 @@ describe('chips tab', () => {
       // "flat: …", so wrapping it printed "flat fallback — flat: …"; the
       // "unknown" sentinel was printed as though it were a reason.
       const bar = async (source: string | null) => {
+        // Three renders in one case, and the tab reads `/api/chips` through
+        // the shared cache now: without this the second render is answered
+        // from the first one's body and the mock below is never asked.
+        resetPageData()
         apiGet.mockImplementation((path: string) => (
           path.startsWith('/api/chips')
             ? Promise.resolve({ ...CHIPS,

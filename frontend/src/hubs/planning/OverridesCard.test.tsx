@@ -29,11 +29,21 @@ const PANEL = {
   ],
 }
 
+// A store, not a fixed answer. Since v18e the card repaints from a re-read
+// of `/api/overrides` rather than from the DELETE's own reply, so a double
+// that kept answering with the row it had just deleted would be testing the
+// opposite of what happens.
+let rows = [...PANEL.rows]
+
 beforeEach(() => {
+  rows = [...PANEL.rows]
   apiGet.mockReset()
   apiDelete.mockReset()
-  apiGet.mockResolvedValue(PANEL)
-  apiDelete.mockResolvedValue({ active: true, rows: [PANEL.rows[1]] })
+  apiGet.mockImplementation(() => Promise.resolve({ active: true, rows }))
+  apiDelete.mockImplementation((path: string) => {
+    rows = rows.filter((r) => !path.endsWith(`/${r.code}`))
+    return Promise.resolve({ active: true, rows })
+  })
 })
 
 describe('OverridesCard', () => {
@@ -61,7 +71,7 @@ describe('OverridesCard', () => {
     expect(await screen.findByText('Nothing pinned.')).toBeInTheDocument()
   })
 
-  it('unpins through DELETE and repaints from the reply', async () => {
+  it('unpins through DELETE and repaints from the re-read', async () => {
     render(<MemoryRouter><OverridesCard /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('button',
       { name: 'unpin Salah' }))

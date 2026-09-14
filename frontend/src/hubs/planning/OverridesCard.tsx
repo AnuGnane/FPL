@@ -1,33 +1,35 @@
-import { useCallback, useEffect, useState } from 'react'
-import { apiDelete, apiGet, errorText } from '../../api/client'
-import { invalidate } from '../../api/pageData'
+import { apiDelete, errorText } from '../../api/client'
+import { invalidate, usePageData } from '../../api/pageData'
 import { Button, Callout, Card, fmtNum, toast } from '../../kit'
 import type { OverridesPanel } from '../../types'
 
 export default function OverridesCard() {
-  const [data, setData] = useState<OverridesPanel | null>(null)
-  const load = useCallback(() => {
-    apiGet<OverridesPanel>('/api/overrides').then(setData).catch(
-      () => setData(null))
-  }, [])
-  useEffect(() => { load() }, [load])
+  const page = usePageData<OverridesPanel>('/api/overrides')
 
   // A row that simply disappears is indistinguishable from a delete that
   // failed and a refetch that followed it, so both halves say what happened.
   const drop = async (code: number, name: string) => {
     try {
-      setData(await apiDelete<OverridesPanel>(`/api/overrides/${code}`))
-      // The pin is gone from this card's own answer, and the Why panel on This
-      // Week is holding a list that still names him (v17h §5). The unpin is
-      // the write the spec put on the Players hub; the button is here.
+      await apiDelete<OverridesPanel>(`/api/overrides/${code}`)
+      // The pin is gone from the store, and this card and the Why panel on
+      // This Week are both holding a list that still names him (v17h §5). The
+      // unpin is the write the spec put on the Players hub; the button is
+      // here, and one invalidate re-reads it for every card on the URL.
       invalidate('/api/overrides')
       toast('positive', `Unpinned ${name}. The model's own minutes apply again.`)
     } catch (e) {
+      // No re-read: nothing was written, so the row on screen is still the
+      // store's own answer.
       toast('negative', `Could not unpin ${name} — ${errorText(e)}`)
-      load()
     }
   }
 
+  // Nothing at all until the pins are known, and nothing at all if they
+  // cannot be read: this is a card that appears when there is something to
+  // say, and a manager who has pinned nobody is the ordinary case. Not one of
+  // the nine reads spec §2.3 moves onto `Loaded` — the endpoint answers 200
+  // with an empty list rather than a 404.
+  const data = page.data
   if (!data) return null
   return (
     <Card title="Your pins" className="mb-4">

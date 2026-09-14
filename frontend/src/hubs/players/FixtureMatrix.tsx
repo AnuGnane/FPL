@@ -1,34 +1,44 @@
-import { useEffect, useState } from 'react'
-import { apiGet } from '../../api/client'
+import { useState } from 'react'
+import { usePageData } from '../../api/pageData'
 import {
-  Card, Chip, EmptyState, Loading, Segmented, TABLE_CLASS, THEAD_CLASS,
-  TR_CLASS, difficultyTone, tdClass, thClass,
+  Card, Chip, EmptyState, Loaded, Loading, Segmented, TABLE_CLASS,
+  THEAD_CLASS, TR_CLASS, difficultyTone, tdClass, thClass,
 } from '../../kit'
 import type { FixtureMatrixData, MatrixCell } from '../../types'
 
 type View = 'attack' | 'defence'
 
 export default function FixtureMatrix({ from }: { from: number }) {
-  const [data, setData] = useState<FixtureMatrixData | null>(null)
+  const page = usePageData<FixtureMatrixData>(
+    `/api/fixtures/matrix?from=${from}&n=6`)
+
+  // The catch this replaces synthesised `{ gws: [], teams: [], source:
+  // 'none' }` — so a server that broke drew "no team model has been fitted",
+  // which sent the reader to train a model that was already there. The
+  // sentence now belongs to the two states that mean it: a 404, and a served
+  // matrix with no teams in it (v18e §2.2, ruling 7).
+  return (
+    <Loaded
+      page={page}
+      loading={<Loading />}
+      empty={(
+        <EmptyState
+          title="No fixture difficulty yet"
+          detail="The matrix prices fixtures with the trained Dixon-Coles team
+                  model, and no team model has been fitted on this machine."
+          action="gaffer train"
+        />
+      )}
+      isEmpty={(d) => d.source === 'none' || d.teams.length === 0}
+    >
+      {(data) => <Matrix data={data} />}
+    </Loaded>
+  )
+}
+
+/** The grid itself, and the lens the reader put on it. */
+function Matrix({ data }: { data: FixtureMatrixData }) {
   const [view, setView] = useState<View>('attack')
-
-  useEffect(() => {
-    apiGet<FixtureMatrixData>(`/api/fixtures/matrix?from=${from}&n=6`)
-      .then(setData)
-      .catch(() => setData({ gws: [], teams: [], source: 'none' }))
-  }, [from])
-
-  if (!data) return <Loading />
-  if (data.source === 'none' || data.teams.length === 0) {
-    return (
-      <EmptyState
-        title="No fixture difficulty yet"
-        detail="The matrix prices fixtures with the trained Dixon-Coles team
-                model, and no team model has been fitted on this machine."
-        action="gaffer train"
-      />
-    )
-  }
 
   const score = (cell: MatrixCell) => view === 'attack' ? cell.attack : cell.defence
 

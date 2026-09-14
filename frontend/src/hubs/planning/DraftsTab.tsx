@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
-import { apiDelete, apiGet, apiPost, errorText } from '../../api/client'
+import { useState } from 'react'
+import { apiDelete, apiPost, errorText } from '../../api/client'
+import { invalidate, usePageData } from '../../api/pageData'
 import { useJob } from '../../api/useJob'
 import {
-  Button, Callout, Card, EmptyState, INPUT_CLASS, JobLog, Skeleton,
+  Button, Callout, Card, EmptyState, INPUT_CLASS, JobLog, Loaded, Skeleton,
   TABLE_CLASS, THEAD_CLASS, TR_CLASS, fmtNum, tdClass, thClass, toast,
 } from '../../kit'
 import type {
@@ -17,24 +18,27 @@ const MAX_COMPARE = 6
 const MAX_DRAFTS = 12
 
 export default function DraftsTab({ current }: { current: WhatIfRequest }) {
-  const [drafts, setDrafts] = useState<DraftList>({ drafts: [] })
+  // v18e §2.3: the read that used to swallow its own failure — a store that
+  // could not be read drew "No drafts yet", which is the one thing it was not.
+  const page = usePageData<DraftList>('/api/drafts')
   const [name, setName] = useState('')
   const [picked, setPicked] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const job = useJob({ path: '/api/drafts/compare', slot: 'drafts-compare' })
 
-  const load = useCallback(() => {
-    apiGet<DraftList>('/api/drafts').then(setDrafts).catch(() => {})
-  }, [])
-  useEffect(() => { load() }, [load])
-
-  const full = drafts.drafts.length >= MAX_DRAFTS
+  // Unknown counts as not full: the cap is a courtesy on the button, and
+  // refusing to save because the list has not landed yet is the worse of the
+  // two mistakes. The server holds the real cap either way.
+  const full = (page.data?.drafts.length ?? 0) >= MAX_DRAFTS
 
   const save = async () => {
     setError(null)
     try {
       const body: DraftSaveRequest = { name, constraints: current }
-      setDrafts(await apiPost<DraftList>('/api/drafts', body))
+      await apiPost<DraftList>('/api/drafts', body)
+      // The write's own answer is the whole list, but the list on screen is
+      // the cache's now, and this is the one thing that clears it (v17h §5).
+      invalidate('/api/drafts')
       toast('positive', `Saved "${name}".`)
       setName('')
     } catch (e) {
@@ -53,12 +57,14 @@ export default function DraftsTab({ current }: { current: WhatIfRequest }) {
 
   const remove = async (draft: string) => {
     try {
-      setDrafts(await apiDelete<DraftList>(
-        `/api/drafts/${encodeURIComponent(draft)}`))
+      await apiDelete<DraftList>(`/api/drafts/${encodeURIComponent(draft)}`)
+      invalidate('/api/drafts')
       toast('positive', `Deleted "${draft}".`)
     } catch (e) {
+      // No re-read on the failure path either: the invalidate above is the
+      // only thing that moves the list, so a delete that did not happen
+      // leaves the row exactly where the store still has it.
       toast('negative', `Could not delete "${draft}" — ${errorText(e)}`)
-      load()
     }
     // A deleted name left ticked is a name the compare endpoint answers 422
     // unknown_draft for.
@@ -107,8 +113,12 @@ export default function DraftsTab({ current }: { current: WhatIfRequest }) {
         {error && (
           <Callout tone="error" className="mb-3">{error}</Callout>
         )}
-        {drafts.drafts.length === 0
-          ? (
+        <Loaded
+          page={page}
+          // The empty artifact and the 404 are the same fact here — nothing
+          // has been named yet — and a store that could not be read is now
+          // the error callout instead of this sentence (ruling 7).
+          empty={(
             <EmptyState
               title="No drafts yet"
               detail="A draft is a set of What-If constraints under a name, so
@@ -118,10 +128,12 @@ export default function DraftsTab({ current }: { current: WhatIfRequest }) {
               // The exact label on the button three lines above it.
               action="Save the current What-If"
             />
-            )
-          : (
+          )}
+          isEmpty={(list) => list.drafts.length === 0}
+        >
+          {(list) => (
             <ul className="flex flex-col gap-2">
-              {drafts.drafts.map((draft) => (
+              {list.drafts.map((draft) => (
                 <li key={draft.name}
                     className="flex items-baseline justify-between gap-3">
                   <label className="flex items-center gap-2">
@@ -143,7 +155,8 @@ export default function DraftsTab({ current }: { current: WhatIfRequest }) {
                 </li>
               ))}
             </ul>
-            )}
+          )}
+        </Loaded>
       </Card>
       {job.status === 'error' && (
         <JobLog status="error" lines={[]} error={job.error} />

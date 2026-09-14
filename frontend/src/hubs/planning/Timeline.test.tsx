@@ -9,6 +9,9 @@ vi.mock('../../api/client', () => ({
   ApiError: class extends Error { status = 0; detail: unknown = null },
   apiGet: (path: string) => apiGet(path),
   apiPost: vi.fn(),
+  // `usePageData` reads every rejection through this, so a double that
+  // omitted it would make the failure path throw rather than render.
+  errorText: (e: unknown) => (e instanceof Error ? e.message : String(e)),
 }))
 
 const TIMELINE = {
@@ -31,9 +34,17 @@ const TIMELINE = {
   ],
 }
 
+/** The ticker window this plan asks for, with no cells for anybody. The
+ *  tint is a separate suite's subject; what matters here is that the second
+ *  read is answered with a *ticker*. Answering it with the plan used to build
+ *  a map from `undefined.teams` inside a promise nobody awaited, which the
+ *  runner swallowed; the same mistake is now a render. */
+const TICKER = { gws: [5, 6], source: 'elo', teams: [] }
+
 beforeEach(() => {
   apiGet.mockReset()
-  apiGet.mockResolvedValue(TIMELINE)
+  apiGet.mockImplementation((path: string) => Promise.resolve(
+    path.startsWith('/api/fixtures/ticker') ? TICKER : TIMELINE))
 })
 
 describe('Timeline', () => {
@@ -73,6 +84,7 @@ describe('Timeline', () => {
     apiGet.mockRejectedValue(Object.assign(
       new Error('no advice for GW5 — run `gaffer advise` first'),
       { status: 404 }))
+    // Every failure is this state, 404 or not: see the note on `missing`.
     render(<Timeline gw={5} />)
     expect(await screen.findByText(/no plan/i)).toBeInTheDocument()
     expect(screen.getByText('Run advise')).toBeInTheDocument()

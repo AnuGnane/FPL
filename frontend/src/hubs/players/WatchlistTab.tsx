@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { apiDelete, apiGet, apiPost, errorText } from '../../api/client'
+import { apiDelete, apiPost, errorText } from '../../api/client'
+import { invalidate, usePageData } from '../../api/pageData'
 import {
   Callout, Card, EmptyState, INPUT_CLASS, Loading, PlayerName, buttonClass,
 } from '../../kit'
@@ -140,23 +141,26 @@ function Row(
 export default function WatchlistTab(
   { onChange }: { onChange: (codes: number[]) => void },
 ) {
-  const [panel, setPanel] = useState<WatchlistPanel | null>(null)
-  const [failed, setFailed] = useState(false)
+  // The same URL the hub's star column reads, through the one cache entry:
+  // the tab and the column are one request now, where they used to be two
+  // answers to the same question (v18e §1 part 1).
+  const page = usePageData<WatchlistPanel>('/api/watchlist')
 
-  useEffect(() => {
-    apiGet<WatchlistPanel>('/api/watchlist')
-      .then(setPanel)
-      .catch(() => setFailed(true))
-  }, [])
-
-  // Every write returns the whole panel, so the hub's star column and this
-  // table are re-seeded from the same answer rather than from two guesses.
+  // Every write returns the whole panel. The column upstairs is told at once
+  // so its star flips under the cursor; the cache is cleared behind it so
+  // every reader — this list included — settles on the store's own answer.
   function adopt(next: WatchlistPanel) {
-    setPanel(next)
     onChange(next.rows.map((r) => r.code))
+    invalidate('/api/watchlist')
   }
 
-  if (failed) {
+  // Every failure is still this state. The watchlist is a local store the
+  // server answers 200 for when it is empty, so a rejection here is the app
+  // being unreachable rather than a 404 — which is why this read is not one
+  // of the nine that spec §2.3 moves onto `Loaded`'s status split.
+  const panel = page.data
+
+  if (page.error !== null) {
     return (
       <EmptyState
         title="Watchlist unavailable"

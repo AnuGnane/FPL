@@ -68,8 +68,15 @@ const TABLE: Record<string, string[]> = {
   'src/hubs/players/PinDialog.tsx': ["invalidate('/api/overrides')"],
   // The spec put the unpin on the Players hub, where the pin *dialog* lives.
   // The DELETE is the planning card's, and the reader it disturbs — the Why
-  // panel's pin list — is the same one either way.
+  // panel's pin list — is the same one either way. Since v18e the card is a
+  // reader of that URL itself, so this clears its own list too.
   'src/hubs/planning/OverridesCard.tsx': ["invalidate('/api/overrides')"],
+  // v18e §2.3, the four writers whose readers only became cached this cycle.
+  // One call each covers both verbs: the star's POST and DELETE share a
+  // `.then`, and the watchlist tab's save and unstar share `adopt`.
+  'src/hubs/Players.tsx': ["invalidate('/api/watchlist')"],
+  'src/hubs/players/WatchlistTab.tsx': ["invalidate('/api/watchlist')"],
+  'src/hubs/planning/DraftsTab.tsx': ["invalidate('/api/drafts')"],
   // Jobs that rewrite. Refresh data moves live/players.parquet, which is both
   // the explorer's table and the names and clubs every /api/news/{gw} panel
   // joins against; field scrape moves the sample behind the EO columns.

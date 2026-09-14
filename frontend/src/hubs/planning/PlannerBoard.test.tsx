@@ -15,6 +15,9 @@ vi.mock('../../api/client', () => ({
   ApiError,
   apiGet: (path: string) => apiGet(path),
   apiPost: vi.fn(),
+  // `usePageData` reads every rejection through this, so a double that
+  // omitted it would make the failure path throw rather than render.
+  errorText: (e: unknown) => (e instanceof Error ? e.message : String(e)),
 }))
 
 const WEEK = {

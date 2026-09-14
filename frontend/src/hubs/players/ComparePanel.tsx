@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react'
 import {
   Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis,
   YAxis,
 } from 'recharts'
-import { apiGet } from '../../api/client'
+import { usePageData } from '../../api/pageData'
 import {
   Card, Chip, EmptyState, PlayerName, PosBadge, SERIES_COLOURS, Sparkline,
   difficultyTone, fmtDelta, fmtNum,
@@ -108,15 +107,15 @@ export interface ComparePanelProps {
 export default function ComparePanel(
   { gw, players, pool = [] }: ComparePanelProps,
 ) {
-  const [components, setComponents] = useState<ComponentsBreakdown | null>(null)
-  const [matrix, setMatrix] = useState<FixtureMatrixData | null>(null)
-
-  useEffect(() => {
-    apiGet<ComponentsBreakdown>(`/api/components/${gw}`).then(setComponents)
-      .catch(() => setComponents(null))
-    apiGet<FixtureMatrixData>(`/api/fixtures/matrix?from=${gw}&n=6`)
-      .then(setMatrix).catch(() => setMatrix(null))
-  }, [gw])
+  // Two reads, each a decoration on a panel whose own empty states are about
+  // how many names are ticked: a half that cannot be read is silence, and the
+  // chart and the radar say so by having nothing to draw. Through the cache
+  // since v18e §2.3, which also closes the race the pair of effects had — a
+  // gameweek switched mid-flight let the old answer land under the new one.
+  const components = usePageData<ComponentsBreakdown>(
+    `/api/components/${gw}`).data
+  const matrix = usePageData<FixtureMatrixData>(
+    `/api/fixtures/matrix?from=${gw}&n=6`).data
 
   if (players.length < 2) {
     return (

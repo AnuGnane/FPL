@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { apiGet } from '../../api/client'
+import { useMemo } from 'react'
+import { usePageData } from '../../api/pageData'
 import {
   Card, Chip, EmptyState, Loading, PosBadge, difficultyTone, fmtNum,
 } from '../../kit'
@@ -28,21 +28,13 @@ function MoveLine({ move, side }: { move: PlanMove; side: 'in' | 'out' }) {
 export default function Timeline(
   { gw, teamByCode }: { gw: number; teamByCode?: Map<number, number> },
 ) {
-  const [data, setData] = useState<PlanTimeline | null>(null)
-  const [missing, setMissing] = useState(false)
-  // The ticker's own cells, indexed by `${teamCode}:${gw}`. Null while it
-  // loads and after any failure — the timeline is the feature and the tint is
-  // a decoration on it, so a decoration that cannot load costs nothing else.
-  const [cells, setCells] = useState<Map<string, TickerCell> | null>(null)
-
-  useEffect(() => {
-    setMissing(false)
-    apiGet<PlanTimeline>(`/api/plan/${gw}`).then(setData)
-      .catch(() => setMissing(true))
-  }, [gw])
+  const plan = usePageData<PlanTimeline>(`/api/plan/${gw}`)
+  const data = plan.data
 
   // Exactly the window the plan covers, asked for after the plan lands — one
-  // request, and the only one this decoration costs.
+  // request, and the only one this decoration costs. `null` until the plan is
+  // known is how v18e §2.3 spells a read that waits on another read: no URL
+  // is invented for a horizon whose length nobody has said yet.
   //
   // `weeks=N` asks the ticker for N gameweeks *from the current one*, which
   // is the window the plan covers whenever the plan starts at the current
@@ -54,21 +46,30 @@ export default function Timeline(
   // around: absent, never guessed (spec D6). Widening the request to cover an
   // offset plan would need a start-gameweek parameter the endpoint does not
   // take, which is a server change and not this cycle's.
-  useEffect(() => {
-    if (data === null || data.weeks.length === 0) return
-    let live = true
-    apiGet<TickerData>(`/api/fixtures/ticker?weeks=${data.weeks.length}`)
-      .then((body) => {
-        if (!live) return
-        const map = new Map<string, TickerCell>()
-        for (const team of body.teams) {
-          for (const cell of team.cells) map.set(`${team.code}:${cell.gw}`, cell)
-        }
-        setCells(map)
-      })
-      .catch(() => { if (live) setCells(null) })
-    return () => { live = false }
-  }, [data])
+  const ticker = usePageData<TickerData>(
+    data !== null && data.weeks.length > 0
+      ? `/api/fixtures/ticker?weeks=${data.weeks.length}` : null)
+
+  // The ticker's own cells, indexed by `${teamCode}:${gw}`. Null while it
+  // loads and after any failure — the timeline is the feature and the tint is
+  // a decoration on it, so a decoration that cannot load costs nothing else:
+  // its failure is silence, where the plan's own is the empty state below.
+  const cells = useMemo(() => {
+    if (ticker.data === null) return null
+    const map = new Map<string, TickerCell>()
+    for (const team of ticker.data.teams) {
+      for (const cell of team.cells) map.set(`${team.code}:${cell.gw}`, cell)
+    }
+    return map
+  }, [ticker.data])
+
+  // Every failure is this state, exactly as it was before v18e. `/api/plan`
+  // answers 404 for a horizon nobody has solved, but a cold clone answers the
+  // app-wide 422 for most of what this hub reads (app.py:67-69), so splitting
+  // the two on the status here would put a red callout on the one page the
+  // documented cold-clone walk expects an empty state on. `Loaded`'s split is
+  // for the nine reads spec §2.3 names; this is not one of them.
+  const missing = plan.error !== null
 
   if (missing) {
     return (
@@ -80,7 +81,7 @@ export default function Timeline(
       />
     )
   }
-  if (!data) return <Loading />
+  if (data === null) return <Loading />
   if (data.weeks.length === 0) {
     return (
       <EmptyState
