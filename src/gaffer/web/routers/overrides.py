@@ -11,8 +11,6 @@ The store itself is :mod:`gaffer.overrides`; nothing here does arithmetic.
 
 from __future__ import annotations
 
-import math
-
 import pandas as pd
 from fastapi import APIRouter, HTTPException
 
@@ -20,16 +18,10 @@ from gaffer.artifacts import latest_gw, load_components, load_snapshot
 from gaffer.errors import GafferError
 from gaffer.news_shadow import SHADOW_PATH, load_shadow
 from gaffer.overrides import delete_override, load_overrides, set_override
+from gaffer.web.coerce import fail, opt_float
 from gaffer.web.schemas import OverrideRequest, OverrideRow, OverridesPanel
 
 router = APIRouter(prefix="/api", tags=["overrides"])
-
-
-def _fail(constraint: str, error: str, players: list[int]) -> HTTPException:
-    """The what-if lab's structured 422, reused so the UI has one shape."""
-    return HTTPException(status_code=422,
-                         detail={"constraint": constraint, "error": error,
-                                 "players": players})
 
 
 def _names() -> dict[int, str]:
@@ -130,7 +122,7 @@ def _model_values(code: int) -> tuple[float | None, float | None]:
         if not rows.empty:
             value = float(pd.to_numeric(rows["p_play"],
                                         errors="coerce").mean())
-            p_play = None if math.isnan(value) else round(value, 3)
+            p_play = opt_float(value, 3)
     except Exception as exc:  # noqa: BLE001
         print(f"overrides: no component reading for {code} ({exc})")
     try:
@@ -145,7 +137,7 @@ def _model_values(code: int) -> tuple[float | None, float | None]:
             if rows is not None and not rows.empty:
                 newest = rows.sort_values("run_at").iloc[-1]
                 value = float(newest["e_min_news"])
-                e_min = None if math.isnan(value) else round(value, 1)
+                e_min = opt_float(value, 1)
     except Exception as exc:  # noqa: BLE001
         print(f"overrides: no shadow reading for {code} ({exc})")
     return p_play, e_min
@@ -175,20 +167,20 @@ def overrides() -> OverridesPanel:
 def pin(req: OverrideRequest) -> OverridesPanel:
     known = _names()
     if not known:
-        raise _fail("no_player_list",
-                    "no player snapshot on disk — run `gaffer advise` before "
-                    "pinning anyone", [int(req.code)])
+        raise fail("no_player_list",
+                   "no player snapshot on disk — run `gaffer advise` before "
+                   "pinning anyone", [int(req.code)])
     if int(req.code) not in known:
-        raise _fail("unknown_player",
-                    f"player {req.code} is not in the current player list",
-                    [int(req.code)])
+        raise fail("unknown_player",
+                   f"player {req.code} is not in the current player list",
+                   [int(req.code)])
     model_p_play, model_e_min = _model_values(int(req.code))
     try:
         set_override(int(req.code), p_play=req.p_play, e_min=req.e_min,
                      note=req.note, known_codes=list(known),
                      model_p_play=model_p_play, model_e_min=model_e_min)
     except GafferError as exc:
-        raise _fail("override_value", str(exc), [int(req.code)]) from exc
+        raise fail("override_value", str(exc), [int(req.code)]) from exc
     panel = _panel()
     panel.warning = _coherence_warning(req.p_play, req.e_min, model_p_play)
     return panel

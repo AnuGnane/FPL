@@ -8,12 +8,18 @@ small health summary to ``reports/health.json`` for the next advice run to show.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pandas as pd
 
-from gaffer.artifacts import load_advice
+from gaffer.artifacts import REPORTS, load_advice
 from gaffer.data import store
+
+HEALTH_PATH = REPORTS / "health.json"
+"""v18d §2: ``reports/health.json`` was spelled three times in this
+module and once in ``web/routers/meta.py``; ``reports/`` itself now
+only exists in :mod:`gaffer.artifacts`. Relative, so a test that
+changes directory still writes its own health file.
+"""
 
 
 def compute_health(preds: pd.DataFrame, actuals: pd.DataFrame,
@@ -77,11 +83,11 @@ def update_health(finished_gw: int) -> dict | None:
         advice_pts = actual_pts = None
     health = compute_health(preds, actuals, captain_code=captain,
                             advice_pts=advice_pts, actual_pts=actual_pts)
-    Path("reports").mkdir(exist_ok=True)
-    Path("reports/health.json").write_text(json.dumps(health, indent=1))
+    REPORTS.mkdir(exist_ok=True)
+    HEALTH_PATH.write_text(json.dumps(health, indent=1))
     return health
 
 
 def latest_health() -> dict | None:
-    p = Path("reports/health.json")
-    return json.loads(p.read_text()) if p.exists() else None
+    return (json.loads(HEALTH_PATH.read_text())
+            if HEALTH_PATH.exists() else None)

@@ -12,14 +12,13 @@ should not print nine zeroes to get to the one number that did.
 
 from __future__ import annotations
 
-import math
-
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Query
 
 from gaffer.artifacts import load_components
 from gaffer.errors import GafferError
 from gaffer.uncertainty import bands_by_player_gw
+from gaffer.web.coerce import finite, opt_float
 from gaffer.web.schemas import (Component, ComponentFixture, ComponentPlayer,
                                 ComponentsBreakdown, MinutesOutput)
 
@@ -50,37 +49,6 @@ for exactly the players anyone would check. It travels instead as
 """
 
 
-def _num(value) -> float:
-    try:
-        out = float(value)
-    except (TypeError, ValueError):
-        return 0.0
-    return 0.0 if math.isnan(out) else out
-
-
-def _round(value: float | None) -> float | None:
-    return None if value is None else round(value, 3)
-
-
-def _prob(value) -> float | None:
-    """A probability, or ``None`` for one the frame never carried.
-
-    :func:`_num`'s 0.0 is the right answer for an EP term nobody scored and
-    the wrong one for ``p_play``: zero there reads as "expected not to play",
-    which is the strongest claim this payload can make about a player and is
-    false of every player a frame banked without a minutes model. The compare
-    radar drew it as a zero-length spoke on the minutes axis, so an unknown
-    came out looking like the most damning thing the model could say.
-    """
-    if value is None:
-        return None
-    try:
-        out = float(value)
-    except (TypeError, ValueError):
-        return None
-    return None if math.isnan(out) else out
-
-
 def _xmins(p_play, p60) -> float | None:
     """Expected minutes from the two probabilities the minutes model emits.
 
@@ -92,13 +60,8 @@ def _xmins(p_play, p60) -> float | None:
     table's xMin column would otherwise report an un-modelled player as one
     expected to play no minutes, which is a different and much stronger claim.
     """
-    if p_play is None or p60 is None:
-        return None
-    try:
-        play, hour = float(p_play), float(p60)
-    except (TypeError, ValueError):
-        return None
-    if math.isnan(play) or math.isnan(hour):
+    play, hour = opt_float(p_play), opt_float(p60)
+    if play is None or hour is None:
         return None
     return round(play * (45 + 45 * hour), 1)
 
@@ -144,14 +107,14 @@ def components(gw: int,
                                 kind="mergesort")
         fixtures = []
         for row in rows.itertuples():
-            terms = [Component(label=label, points=round(_num(
+            terms = [Component(label=label, points=round(finite(
                 getattr(row, col, 0.0)), 2))
                 for col, label in TERMS
-                if round(_num(getattr(row, col, 0.0)), 2) != 0.0]
-            pen = round(_num(getattr(row, "ep_pen_taker", 0.0)), 2)
+                if round(finite(getattr(row, col, 0.0)), 2) != 0.0]
+            pen = round(finite(getattr(row, "ep_pen_taker", 0.0)), 2)
             fixtures.append(ComponentFixture(
                 gw=int(row.gw), opponent=_text(row.opp_name),
-                home=bool(_num(row.was_home)),
+                home=bool(finite(row.was_home)),
                 kickoff_time=(None if pd.isna(row.kickoff_time)
                               else str(row.kickoff_time)),
                 components=terms,
@@ -161,16 +124,27 @@ def components(gw: int,
                     # already used it: a frame banked with no minutes model
                     # carries no such column at all, and a breakdown is not
                     # worth a 500 over a probability it never had.
-                    p_play=_round(_prob(getattr(row, "p_play", None))),
-                    # ``_prob`` and not ``_num`` for the same reason as
-                    # ``p_play`` above: 0.0 here is "expected off before the
-                    # hour", a forecast, and not the absence of one.
-                    p60=_round(_prob(getattr(row, "p60", None))),
-                    # From the raw cells, not the _num'd ones: _num turns a
-                    # missing probability into 0.0, and 0.0 is a real answer.
+                    #
+                    # ``opt_float`` and not ``finite`` (v18d §2): ``finite``'s
+                    # 0.0 is the right answer for an EP term nobody scored and
+                    # the wrong one here, where zero reads as "expected not to
+                    # play" — the strongest claim this payload can make about a
+                    # player, and false of every player a frame banked without
+                    # a minutes model. The compare radar drew it as a
+                    # zero-length spoke on the minutes axis, so an unknown came
+                    # out looking like the most damning thing the model could
+                    # say.
+                    p_play=opt_float(getattr(row, "p_play", None), 3),
+                    # ``opt_float`` again for the same reason as ``p_play``
+                    # above: 0.0 here is "expected off before the hour", a
+                    # forecast, and not the absence of one.
+                    p60=opt_float(getattr(row, "p60", None), 3),
+                    # From the raw cells, not the ``finite``'d ones: ``finite``
+                    # turns a missing probability into 0.0, and 0.0 is a real
+                    # answer.
                     xmins=_xmins(getattr(row, "p_play", None),
                                  getattr(row, "p60", None))),
-                ep=round(_num(row.ep), 2)))
+                ep=round(finite(row.ep), 2)))
         head = rows.iloc[0]
         band = bands.get((int(code), int(gw)))
         players.append(ComponentPlayer(

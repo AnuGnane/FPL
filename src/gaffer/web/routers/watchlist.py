@@ -17,16 +17,10 @@ from fastapi import APIRouter, HTTPException
 from gaffer.artifacts import load_snapshot
 from gaffer.errors import GafferError
 from gaffer.watchlist import load_watchlist, unwatch, watch
+from gaffer.web.coerce import fail
 from gaffer.web.schemas import WatchlistPanel, WatchRequest, WatchRow
 
 router = APIRouter(prefix="/api", tags=["watchlist"])
-
-
-def _fail(constraint: str, error: str, players: list[int]) -> HTTPException:
-    """The what-if lab's structured 422, reused so the UI has one shape."""
-    return HTTPException(status_code=422,
-                         detail={"constraint": constraint, "error": error,
-                                 "players": players})
 
 
 def names() -> dict[int, str]:
@@ -62,17 +56,17 @@ def watchlist() -> WatchlistPanel:
 def star(req: WatchRequest) -> WatchlistPanel:
     known = names()
     if not known:
-        raise _fail("no_player_list",
-                    "no player snapshot on disk — run `gaffer advise` before "
-                    "starring anyone", [int(req.code)])
+        raise fail("no_player_list",
+                   "no player snapshot on disk — run `gaffer advise` before "
+                   "starring anyone", [int(req.code)])
     if int(req.code) not in known:
-        raise _fail("unknown_player",
-                    f"player {req.code} is not in the current player list",
-                    [int(req.code)])
+        raise fail("unknown_player",
+                   f"player {req.code} is not in the current player list",
+                   [int(req.code)])
     try:
         watch(int(req.code), note=req.note, known_codes=list(known))
     except GafferError as exc:
-        raise _fail("watch_value", str(exc), [int(req.code)]) from exc
+        raise fail("watch_value", str(exc), [int(req.code)]) from exc
     return _panel()
 
 

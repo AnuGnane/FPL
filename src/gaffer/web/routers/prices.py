@@ -25,14 +25,13 @@ the whole claim the card makes is about *tonight*.
 
 from __future__ import annotations
 
-import math
-
 import pandas as pd
 from fastapi import APIRouter
 
 from gaffer.digest import freshest_prices
 from gaffer.prices import price_alerts
 from gaffer.watchlist import watch_targets
+from gaffer.web.coerce import finite
 from gaffer.web.schemas import MoverRow, MoversPanel
 
 router = APIRouter(prefix="/api/prices", tags=["prices"])
@@ -54,12 +53,12 @@ def _snapshot() -> tuple[pd.DataFrame | None, str | None]:
 
 
 def _cost(value) -> float:
-    """The bootstrap's 0.1m integer as the millions the UI shows."""
-    try:
-        out = float(value) / 10.0
-    except (TypeError, ValueError):
-        return 0.0
-    return 0.0 if math.isnan(out) else round(out, 1)
+    """The bootstrap's 0.1m integer as the millions the UI shows.
+
+    The reading is :func:`gaffer.web.coerce.finite` (v18d §2): a cell that is
+    not a number is 0.0m, which is what the card already showed.
+    """
+    return round(finite(value) / 10.0, 1)
 
 
 @router.get("/movers", response_model=MoversPanel)

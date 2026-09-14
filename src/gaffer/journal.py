@@ -22,9 +22,15 @@ from pathlib import Path
 
 import pandas as pd
 
-from gaffer.artifacts import _history_stamp, advice_history_files
+from gaffer.artifacts import (REPORTS, _history_stamp,
+                              advice_history_files)
 
-JOURNAL_PATH = Path("reports/journal.json")
+JOURNAL_PATH = REPORTS / "journal.json"
+"""v18d §2: ``reports/`` is spelled once, in :mod:`gaffer.artifacts`.
+
+Still relative, so a test that changes directory still gets its own
+journal — which is what :mod:`tests.test_journal` relies on.
+"""
 
 CACHE_MAX_AGE_S = 6 * 3600
 """Post-gameweek data changes at most weekly; six hours is generous."""

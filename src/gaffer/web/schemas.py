@@ -22,6 +22,9 @@ this file, so the served plan is typed once and the frontend takes the
 generated names."""
 
 
+# --- jobs and health: the runner's accept and poll bodies -----------------
+
+
 class JobAccepted(BaseModel):
     job_id: str
 
@@ -43,6 +46,9 @@ class JobRunView(BaseModel):
     finished_at: str | None = None
     error: str | None = None
     summary: str | None = None
+
+
+# --- This Week: the served advice and how old it is -----------------------
 
 
 class Staleness(BaseModel):
@@ -70,6 +76,9 @@ class AdviceLatest(BaseModel):
 CHIP_CODES = {"wc": "wildcard", "bb": "bboost", "fh": "freehit",
               "tc": "3xc"}
 """UI chip codes -> the names ``chips_available_for`` uses."""
+
+
+# --- Planning: the what-if lab's request and its result -------------------
 
 
 class WhatIfRequest(BaseModel):
@@ -157,6 +166,9 @@ class WhatIfResult(BaseModel):
     transfers_changed: bool
     captain_changed: bool
     verdict: str
+
+
+# --- League: the standings, the race and the rivals -----------------------
 
 
 class StandingRow(BaseModel):
@@ -438,6 +450,9 @@ class RivalDetail(BaseModel):
     live_points: int | None
 
 
+# --- Live: the in-play scoreboard -----------------------------------------
+
+
 class LivePlayer(BaseModel):
     element: int
     code: int
@@ -525,6 +540,9 @@ class LiveState(BaseModel):
     race_notice: str | None = None
     """The race's own degradation line. Deliberately not ``notice``, which is
     the tier-EO line and belongs to a different card."""
+
+
+# --- Players: the browser row and the "why 6.8?" panel --------------------
 
 
 class PlayerRow(BaseModel):
@@ -704,6 +722,9 @@ class PlayerExplain(BaseModel):
     does not read it is unaffected."""
 
 
+# --- Planning: the chip plan and the chip workbench -----------------------
+
+
 class ChipWeek(BaseModel):
     gw: int
     gain: float
@@ -820,6 +841,9 @@ class ChipsWorkbench(BaseModel):
     wildcard: SquadDiff | None = None
 
 
+# --- Players: the saved EP decomposition ----------------------------------
+
+
 class ComponentFixture(BaseModel):
     """One player-fixture's additive terms.
 
@@ -883,6 +907,9 @@ class ComponentsBreakdown(BaseModel):
     players: list[ComponentPlayer]
 
 
+# --- This Week: what moved since the last run -----------------------------
+
+
 class AdvicePlayer(BaseModel):
     code: int
     name: str
@@ -931,6 +958,9 @@ class AdviceDiff(BaseModel):
     the strip renders only the second."""
 
 
+# --- This Week: the team news panel ---------------------------------------
+
+
 class NewsRow(BaseModel):
     """One player the news layer moved, with the evidence that moved him.
 
@@ -967,6 +997,9 @@ class NewsPanelData(BaseModel):
     rows: list[NewsRow]
 
 
+# --- Model: the run history and its price series --------------------------
+
+
 class HistoryRun(BaseModel):
     gw: int
     deadline: str
@@ -993,6 +1026,9 @@ class History(BaseModel):
     runs: list[HistoryRun]
     prices: list[PriceSeries]
     backtests: list[dict[str, Any]]
+
+
+# --- jobs and health: what is fresh, what is stale, what broke ------------
 
 
 class SourceHealth(BaseModel):
@@ -1106,6 +1142,9 @@ class Health(BaseModel):
     core_insights: CoreInsightsHealth | None = None
 
 
+# --- Planning: the fixture ticker -----------------------------------------
+
+
 class TickerCell(BaseModel):
     gw: int
     opponent: str
@@ -1125,6 +1164,9 @@ class Ticker(BaseModel):
     gws: list[int]
     source: Literal["odds", "elo"]
     teams: list[TickerTeam]
+
+
+# --- Model: the evaluation, the shadows and the calibration ---------------
 
 
 class CategoryMetrics(BaseModel):
@@ -1392,6 +1434,9 @@ class CalibrationReport(BaseModel):
     note: str | None = None
 
 
+# --- Planning: the multi-week plan timeline -------------------------------
+
+
 class PlanMove(BaseModel):
     code: int
     name: str
@@ -1473,6 +1518,9 @@ class PlanTimeline(BaseModel):
     payload predates the field."""
 
 
+# --- Players and Planning: the fixture matrix and the outlook -------------
+
+
 class MatrixCell(BaseModel):
     gw: int
     opponent: str
@@ -1549,6 +1597,9 @@ class FixtureOutlook(BaseModel):
     note: str | None = None
 
 
+# --- Model: the decision journal ------------------------------------------
+
+
 class JournalRow(BaseModel):
     gw: int
     model_pts: int
@@ -1574,6 +1625,9 @@ class Journal(BaseModel):
     rows: list[JournalRow] = Field(default_factory=list)
     cumulative: list[JournalPoint] = Field(default_factory=list)
     built_at: str | None = None
+
+
+# --- Model: the penalty-taker tracker -------------------------------------
 
 
 class PenTrackerGw(BaseModel):
@@ -1625,6 +1679,9 @@ class PenTracker(BaseModel):
     gws: list[PenTrackerGw] = Field(default_factory=list)
     season_totals: PenTrackerTotals = Field(default_factory=PenTrackerTotals)
     notes: list[str] = Field(default_factory=list)
+
+
+# --- Model: the season review ---------------------------------------------
 
 
 class ReviewLane(BaseModel):
@@ -1803,6 +1860,9 @@ class Review(BaseModel):
     summary: ReviewSummary | None = None
 
 
+# --- Planning: the manager's own team news --------------------------------
+
+
 class OverrideRequest(BaseModel):
     """One pin. At least one of the two values must be present."""
 
@@ -1836,6 +1896,9 @@ class OverridesPanel(BaseModel):
     beside a probability of playing that says he probably does not. A refusal
     would be wrong (the manager is allowed to mean it) and silence would be
     worse, so the dialog shows this and stays open."""
+
+
+# --- Planning: the sensitivity sweep --------------------------------------
 
 
 class NamedPlayer(BaseModel):
@@ -1900,7 +1963,7 @@ class SensitivityReport(BaseModel):
     verdict: str | None = None
 
 
-# --- v13 §3: the transfer ladder ------------------------------------------
+# --- This Week: the transfer ladder (v13 §3) ------------------------------
 
 
 class LadderVsBelow(BaseModel):
@@ -2024,6 +2087,9 @@ class LadderPayload(BaseModel):
     """Why ``rungs`` is empty, when it is: no state, or no ladder banked."""
 
 
+# --- Planning: the saved drafts and their comparison ----------------------
+
+
 class DraftRow(BaseModel):
     name: str
     created_at: str = ""
@@ -2071,6 +2137,9 @@ class DraftCompare(BaseModel):
     rows: list[DraftCompareRow] = Field(default_factory=list)
 
 
+# --- This Week: the confidence line ---------------------------------------
+
+
 class ConfidenceTier(BaseModel):
     """One record-derived claim, with the counts that back it.
 
@@ -2094,6 +2163,9 @@ class ConfidenceTier(BaseModel):
 
 class Confidence(BaseModel):
     captain: ConfidenceTier = Field(default_factory=ConfidenceTier)
+
+
+# --- Model: the misses table ----------------------------------------------
 
 
 class MissRow(BaseModel):
@@ -2120,6 +2192,9 @@ class Misses(BaseModel):
     """``None`` when no gameweek has both a banked forecast and a banked
     result. That is an absent card, not a card of zeros (spec D1)."""
     rows: list[MissRow] = Field(default_factory=list)
+
+
+# --- Players: the watchlist -----------------------------------------------
 
 
 class WatchRequest(BaseModel):
@@ -2156,6 +2231,9 @@ class WatchlistPanel(BaseModel):
     rows: list[WatchRow] = Field(default_factory=list)
 
 
+# --- Planning: the price movers card --------------------------------------
+
+
 class MoverRow(BaseModel):
     """One watched player FPL's predictor has near a threshold tonight."""
 
@@ -2189,6 +2267,9 @@ class MoversPanel(BaseModel):
     available: bool
     as_of: str | None = None
     rows: list[MoverRow] = Field(default_factory=list)
+
+
+# --- This Week: the digest and the LLM brief ------------------------------
 
 
 class DigestSection(BaseModel):
@@ -2241,6 +2322,9 @@ class BriefPanel(BaseModel):
     fallback: DigestPanel | None = None
 
 
+# --- This Week: the deviation note ----------------------------------------
+
+
 class DecisionGrade(BaseModel):
     lane: str = "transfers"
     label: str | None = None
@@ -2262,6 +2346,9 @@ class DecisionNote(BaseModel):
 class DecisionWrite(BaseModel):
     reason: str
     text: str = ""
+
+
+# --- Model: the settings tab ----------------------------------------------
 
 
 class SettingOption(BaseModel):

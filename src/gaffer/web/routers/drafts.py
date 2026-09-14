@@ -24,6 +24,7 @@ from gaffer.drafts import (MAX_DRAFTS, add_draft, delete_draft, load_drafts)
 from gaffer.errors import GafferError
 from gaffer.league_mode import cover_from_eo, tilt_ep
 from gaffer.optimize.milp import SolveInput, solve_plan
+from gaffer.web.coerce import fail
 from gaffer.web.jobs import WHATIF_TIMEOUT_S, JobQueueFull
 from gaffer.web.routers.whatif import summary, validate
 from gaffer.web.schemas import (CHIP_CODES, DraftCompare, DraftCompareRequest,
@@ -44,12 +45,6 @@ fixture ones when the pool is full and the horizon long.
 """
 
 NO_RUN = "no saved solve state — run `gaffer advise` first"
-
-
-def _fail(constraint: str, error: str, players: list[int]) -> HTTPException:
-    return HTTPException(status_code=422,
-                         detail={"constraint": constraint, "error": error,
-                                 "players": players})
 
 
 def _list() -> DraftList:
@@ -87,14 +82,14 @@ def save(req: DraftSaveRequest) -> DraftList:
     elif req.constraints.force_out and req.constraints.chip == "fh":
         # whatif.validate's ``force_out_on_free_hit``, in its words, for the
         # one case that does not need a pool to be wrong.
-        raise _fail("force_out_on_free_hit",
-                    "a free hit squad is built from scratch, so there is "
-                    "nothing to force out of it",
-                    list(req.constraints.force_out))
+        raise fail("force_out_on_free_hit",
+                   "a free hit squad is built from scratch, so there is "
+                   "nothing to force out of it",
+                   list(req.constraints.force_out))
     try:
         add_draft(req.name, req.constraints.model_dump())
     except GafferError as exc:
-        raise _fail("draft_name", str(exc), []) from exc
+        raise fail("draft_name", str(exc), []) from exc
     return _list()
 
 
@@ -221,13 +216,13 @@ def compare(req: DraftCompareRequest, request: Request):
     if gw is None:
         raise GafferError(NO_RUN)
     if len(req.names) > MAX_COMPARE:
-        raise _fail("too_many_drafts",
-                    f"compare at most {MAX_COMPARE} drafts at once — the "
-                    f"solve budget is {MAX_COMPARE + 1} boards", [])
+        raise fail("too_many_drafts",
+                   f"compare at most {MAX_COMPARE} drafts at once — the "
+                   f"solve budget is {MAX_COMPARE + 1} boards", [])
     known = {r["name"] for r in load_drafts()}
     missing = [n for n in req.names if n not in known]
     if missing:
-        raise _fail("unknown_draft", f"no draft called {missing[0]}", [])
+        raise fail("unknown_draft", f"no draft called {missing[0]}", [])
     names = list(req.names)
     try:
         job_id = request.app.state.jobs.submit(

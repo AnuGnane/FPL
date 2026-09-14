@@ -7,7 +7,6 @@ bootstrap snapshots. No model is loaded and no request is made.
 
 from __future__ import annotations
 
-import math
 from collections.abc import Mapping
 
 import pandas as pd
@@ -19,6 +18,7 @@ from gaffer.config import config_in_force
 from gaffer.data.field import field_eo_trend, latest_field_eo
 from gaffer.errors import GafferError
 from gaffer.uncertainty import band_for, shipped_table, xmins_by_player_gw
+from gaffer.web.coerce import opt_float, opt_int
 from gaffer.web.schemas import (Component, FixtureExplain, MinutesOutput,
                                 OddsInfluence, PlayerExplain, PlayerRow,
                                 UpcomingFixture)
@@ -36,18 +36,6 @@ badge in the browser and the number in the EP agree about who is flagged; the
 SORTS = {"ep_next": ("ep_next", False), "ep_horizon": ("ep_horizon", False),
          "price": ("price", False), "ownership": ("ownership", False),
          "league_eo": ("league_eo", False), "name": ("name", True)}
-
-
-def _opt_int(value) -> int | None:
-    if value is None or (isinstance(value, float) and math.isnan(value)):
-        return None
-    return int(value)
-
-
-def _opt_float(value) -> float | None:
-    if value is None or (isinstance(value, float) and math.isnan(value)):
-        return None
-    return round(float(value), 4)
 
 
 def _state():
@@ -228,7 +216,7 @@ def _served_set_pieces(orders: dict[str, dict[int, int | None]], code: int,
              ("free_kicks", "direct_free_kicks", "direct_freekicks_order"),
              ("corners", "corners", "corners_and_indirect_freekicks_order"))
     return {shown: (orders[kind][code] if code in orders[kind]
-                    else _opt_int(me[column]))
+                    else opt_int(me[column]))
             for shown, kind, column in pairs}
 
 
@@ -341,30 +329,30 @@ def players(position: str | None = None, team: int | None = None,
             ep_horizon=round(float(ep_horizon[code]), 2),
             ownership=float(r.selected_by_percent or 0.0),
             league_eo=float(state.league_eo.get(code, 0.0)),
-            field_eo=_opt_float(me.get("eo")),
+            field_eo=opt_float(me.get("eo"), 4),
             # v11 §F2 (plan A2). ``latest_field_eo`` has always returned the
             # error and the sample size beside the figure and this row has
             # always dropped them. ``.get``, never ``.get(k, 0.0)``: a standard
             # error of zero is a claim of perfect precision from a sample of a
             # few hundred entries.
-            field_se=_opt_float(me.get("se")),
-            field_n=_opt_int(me.get("n")),
+            field_se=opt_float(me.get("se"), 4),
+            field_n=opt_int(me.get("n")),
             **_trend_fields(trend, int(r.element)),
             field_class=field_class(code in owned,
-                                    _opt_float(me.get("eo"))),
+                                    opt_float(me.get("eo"), 4)),
             available=status not in UNAVAILABLE_STATUS,
             status=status, news=str(r.news or ""),
-            chance_of_playing=_opt_float(r.chance_of_playing),
+            chance_of_playing=opt_float(r.chance_of_playing, 4),
             # The file's word where it has one, FPL's otherwise. `in` rather
             # than `.get(code)`: a demoted teammate is served `None`, and
             # `None` here means "the file cleared him", not "the file is
             # silent" — which is exactly the distinction a default would eat.
             penalties_order=(pens[code] if code in pens
-                             else _opt_int(r.penalties_order)),
+                             else opt_int(r.penalties_order)),
             free_kicks_order=(kicks[code] if code in kicks
-                              else _opt_int(r.direct_freekicks_order)),
+                              else opt_int(r.direct_freekicks_order)),
             corners_order=(corners[code] if code in corners
-                           else _opt_int(
+                           else opt_int(
                                r.corners_and_indirect_freekicks_order)),
             set_piece_manual=manual.get(code, []),
             in_squad=code in owned,
@@ -395,15 +383,11 @@ def _cell(row, col: str):
     added carries it as all-NaN. Neither is a number, and neither is worth a
     500 over: ``routers/components.py`` already defaults its way past exactly
     this, and an explain panel is no more entitled to a crash than a breakdown.
+
+    The reading is :func:`gaffer.web.coerce.opt_float` (v18d §2); what stays
+    here is the ``getattr`` that covers the first of the two.
     """
-    value = getattr(row, col, None)
-    if value is None:
-        return None
-    try:
-        out = float(value)
-    except (TypeError, ValueError):
-        return None
-    return None if math.isnan(out) else out
+    return opt_float(getattr(row, col, None))
 
 
 def _cell_or(row, col: str, default: float) -> float:
@@ -475,8 +459,8 @@ def explain(code: int) -> PlayerExplain:
                 # fall back to the model's own, which is what a zero-weight
                 # blend evaluates to anyway.
                 weight=round(_cell_or(row, "odds_weight", 0.0), 2),
-                e_goals_against=_opt_float(
-                    getattr(row, "odds_e_goals_against", None)),
+                e_goals_against=opt_float(
+                    getattr(row, "odds_e_goals_against", None), 4),
                 p_cs_model=round(_cell_or(row, "p_cs_model", 0.0), 3),
                 p_cs_blended=round(
                     _cell_or(row, "p_cs", _cell_or(row, "p_cs_model", 0.0)), 3),

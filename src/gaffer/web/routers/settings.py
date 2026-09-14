@@ -26,11 +26,12 @@ from __future__ import annotations
 
 import math
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from gaffer.config import (_source_of, base_exists, invalidate, load_config,
                            out_of_range, overlay_and_base, read_overlay,
                            write_overlay)
+from gaffer.web.coerce import fail
 from gaffer.web.schemas import (SettingOption, SettingRow, SettingsPanel,
                                 SettingWrite)
 from gaffer.web.settings_keys import (BY_FIELD, WHITELIST, current_value,
@@ -55,11 +56,6 @@ multi-week plan that is still solving can cross a ``top_n`` save mid-run. A
 note that overstates the isolation is worse than one that admits the seam,
 because the reader who hits it has been told it cannot happen.
 """
-
-def _fail(constraint: str, error: str) -> HTTPException:
-    return HTTPException(status_code=422,
-                         detail={"constraint": constraint, "error": error,
-                                 "players": []})
 
 
 def _options(entry, value) -> list[SettingOption]:
@@ -131,7 +127,7 @@ def _real(entry, number: float) -> float:
     one file further out. Refused here, where there is still somebody to tell.
     """
     if not math.isfinite(number):
-        raise _fail("wrong_type", f"{entry.label} is a real number")
+        raise fail("wrong_type", f"{entry.label} is a real number")
     return number
 
 
@@ -147,52 +143,52 @@ def _checked(entry, value):
     kind = entry.kind
     if kind == "bool":
         if not isinstance(value, bool):
-            raise _fail("wrong_type", f"{entry.label} is on or off")
+            raise fail("wrong_type", f"{entry.label} is on or off")
         return value
     if kind == "int":
         if isinstance(value, bool) or not isinstance(value, int):
-            raise _fail("wrong_type", f"{entry.label} is a whole number")
+            raise fail("wrong_type", f"{entry.label} is a whole number")
         number = value
     elif kind == "float":
         if isinstance(value, bool) or not isinstance(value, (int, float)):
-            raise _fail("wrong_type", f"{entry.label} is a number")
+            raise fail("wrong_type", f"{entry.label} is a number")
         number = _real(entry, float(value))
     elif kind == "floats3":
         if (not isinstance(value, list) or len(value) != 3
                 or any(isinstance(v, bool) or not isinstance(v, (int, float))
                        for v in value)):
-            raise _fail("wrong_type",
-                        f"{entry.label} is exactly three numbers, first to "
-                        f"third outfield substitute — reset the row to fall "
-                        f"back to one flat bench weight")
+            raise fail("wrong_type",
+                       f"{entry.label} is exactly three numbers, first to "
+                       f"third outfield substitute — reset the row to fall "
+                       f"back to one flat bench weight")
         for v in value:
             if not entry.lo <= _real(entry, float(v)) <= entry.hi:
-                raise _fail("out_of_range",
-                            out_of_range(entry.field, v, entry.section))
+                raise fail("out_of_range",
+                           out_of_range(entry.field, v, entry.section))
         return [float(v) for v in value]
     elif kind == "pool":
         wanted = ("GKP", "DEF", "MID", "FWD")
         if (not isinstance(value, dict) or set(value) != set(wanted)
                 or any(isinstance(v, bool) or not isinstance(v, int)
                        for v in value.values())):
-            raise _fail("wrong_type",
-                        f"{entry.label} is a whole number for each of "
-                        f"{', '.join(wanted)}")
+            raise fail("wrong_type",
+                       f"{entry.label} is a whole number for each of "
+                       f"{', '.join(wanted)}")
         for v in value.values():
             if not entry.lo <= v <= entry.hi:
-                raise _fail("out_of_range",
-                            out_of_range(entry.field, v, entry.section))
+                raise fail("out_of_range",
+                           out_of_range(entry.field, v, entry.section))
         return {k: int(value[k]) for k in wanted}
     elif kind == "choice":
         if not isinstance(value, str) or value not in entry.choices:
-            raise _fail("wrong_type",
-                        f"{entry.label} is one of {', '.join(entry.choices)}")
+            raise fail("wrong_type",
+                       f"{entry.label} is one of {', '.join(entry.choices)}")
         return value
     else:  # pragma: no cover — a kind with no branch is a wiring bug
-        raise _fail("wrong_type", f"{entry.label} cannot be edited here")
+        raise fail("wrong_type", f"{entry.label} cannot be edited here")
     if entry.lo is not None and not entry.lo <= number <= entry.hi:
-        raise _fail("out_of_range",
-                    out_of_range(entry.field, number, entry.section))
+        raise fail("out_of_range",
+                   out_of_range(entry.field, number, entry.section))
     return number
 
 
@@ -205,13 +201,13 @@ def settings() -> SettingsPanel:
 def save(req: SettingWrite) -> SettingsPanel:
     entry = BY_FIELD.get(req.key)
     if entry is None or entry.field not in set(live_keys()):
-        raise _fail("unknown_setting",
-                    f"{req.key} is not a setting this page may change")
+        raise fail("unknown_setting",
+                   f"{req.key} is not a setting this page may change")
     raw, err = read_overlay()
     if err:
         # Overwriting a file we could not read would discard whatever else the
         # user had put in it. Refuse and say where to look.
-        raise _fail("overlay_unreadable", err)
+        raise fail("overlay_unreadable", err)
     section = dict(raw.get(entry.section) or {})
     if req.value is None:
         # One reset branch for every kind, `bench_curve` included: TOML has no

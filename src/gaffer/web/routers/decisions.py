@@ -7,11 +7,12 @@ refuses in the settings endpoint's ``{constraint, error, players}`` shape.
 from __future__ import annotations
 
 import pandas as pd
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from gaffer.artifacts import upcoming_gw
 from gaffer.decisions import (REASONS, TEXT_MAX, note_for, note_state,
                               save_note)
+from gaffer.web.coerce import fail
 from gaffer.web.schemas import DecisionNote, DecisionWrite
 
 router = APIRouter(prefix="/api", tags=["decisions"])
@@ -19,12 +20,6 @@ router = APIRouter(prefix="/api", tags=["decisions"])
 
 def _now() -> pd.Timestamp:
     return pd.Timestamp.now(tz="UTC")
-
-
-def _fail(constraint: str, error: str) -> HTTPException:
-    return HTTPException(status_code=422,
-                         detail={"constraint": constraint, "error": error,
-                                 "players": []})
 
 
 def _view(gw: int) -> DecisionNote:
@@ -41,20 +36,20 @@ def decision(gw: int) -> DecisionNote:
 @router.post("/decisions/{gw}", response_model=DecisionNote)
 def save(gw: int, req: DecisionWrite) -> DecisionNote:
     if req.reason not in REASONS:
-        raise _fail("unknown_reason",
-                    f"the reason is one of {', '.join(REASONS)}")
+        raise fail("unknown_reason",
+                   f"the reason is one of {', '.join(REASONS)}")
     if len(req.text or "") > TEXT_MAX:
-        raise _fail("text_too_long", f"the note is at most {TEXT_MAX} characters")
+        raise fail("text_too_long", f"the note is at most {TEXT_MAX} characters")
     try:
         nxt = upcoming_gw()
     except Exception:  # noqa: BLE001 — no snapshot is no rule
         nxt = None
     if nxt is not None and int(gw) > int(nxt):
-        raise _fail("future_gw", f"GW{gw} is past the next deadline (GW{nxt})")
+        raise fail("future_gw", f"GW{gw} is past the next deadline (GW{nxt})")
     state, _, _ = note_state(gw, now=_now())
     if state == "before_deadline":
-        raise _fail("not_open", f"GW{gw}'s note opens at the deadline")
+        raise fail("not_open", f"GW{gw}'s note opens at the deadline")
     if state == "graded":
-        raise _fail("graded", f"GW{gw} has been graded; the note is closed")
+        raise fail("graded", f"GW{gw} has been graded; the note is closed")
     save_note(gw, req.reason, req.text or "")
     return _view(gw)
