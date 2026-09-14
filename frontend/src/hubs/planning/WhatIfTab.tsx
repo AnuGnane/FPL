@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ApiError, apiPost, errorText } from '../../api/client'
+import { ApiError, errorText } from '../../api/client'
 import { useJob } from '../../api/useJob'
 import { Button, Callout, Card, Skeleton } from '../../kit'
 import type { WhatIfRequest, WhatIfResult } from '../../types'
@@ -9,6 +9,7 @@ import FixtureTicker from './FixtureTicker'
 import OverridesCard from './OverridesCard'
 import PlanDiffTable from './PlanDiffTable'
 import SensitivityCard from './SensitivityCard'
+import { useWhatIfSubmit } from './useWhatIfSubmit'
 
 const EMPTY: WhatIfRequest = {
   lock: [], ban: [], force_in: [], force_out: [], max_hits: 0,
@@ -33,24 +34,22 @@ export default function WhatIfTab({ value, onChange }: {
   const [invalid, setInvalid] = useState<StructuredError | null>(null)
   const job = useJob({ slot: 'whatif' })
 
+  // Submitted through the shared submit rather than useJob.start so a
+  // structured 422 renders next to the inputs instead of becoming a generic
+  // job error (v18f §2.1 — one copy of the two lines both tabs wrote).
+  const submit = useWhatIfSubmit(job, (e) => {
+    if (e instanceof ApiError && typeof e.detail === 'object'
+      && e.detail !== null) {
+      setInvalid(e.detail as StructuredError)
+    } else {
+      setInvalid({ constraint: 'request', error: errorText(e),
+        players: [] })
+    }
+  })
+
   const solve = async () => {
     setInvalid(null)
-    job.reset()
-    try {
-      // Submitted here rather than through useJob.start so a structured 422
-      // renders next to the inputs instead of becoming a generic job error.
-      const { job_id } = await apiPost<{ job_id: string }>('/api/whatif',
-        request)
-      job.attach(job_id)
-    } catch (e) {
-      if (e instanceof ApiError && typeof e.detail === 'object'
-        && e.detail !== null) {
-        setInvalid(e.detail as StructuredError)
-      } else {
-        setInvalid({ constraint: 'request', error: errorText(e),
-          players: [] })
-      }
-    }
+    await submit(request)
   }
 
   const busy = job.status === 'queued' || job.status === 'running'

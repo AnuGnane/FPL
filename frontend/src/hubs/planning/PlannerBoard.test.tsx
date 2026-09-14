@@ -435,32 +435,9 @@ describe('PlannerBoard', () => {
       return why
     }
 
-    it('renders the pair and its signed gain', async () => {
-      wire(plan([{ ...WEEK, trace: TRACE }]))
-      render(<PlannerBoard gw={5} />)
-      const why = await open()
-      const move = within(why).getByTestId('board-why-move-5-1')
-      expect(move).toHaveTextContent('Isak → Wirtz')
-      // Signed, because the sign is the whole claim: fmtDelta prints '+3.5'.
-      expect(move).toHaveTextContent('+3.5')
-    })
-
-    it('renders an em dash and the note for a gain it could not price',
-      async () => {
-        // Never a zero. "We could not price this" and "this swap is worth
-        // nothing" are different facts and must not print the same.
-        wire(plan([{ ...WEEK,
-          trace: { ...TRACE,
-            moves: [{ ...MOVE, ep_gain: null,
-              note: 'player 2 is not in the pool the solver used' }],
-            ep_gain: null } }]))
-        render(<PlannerBoard gw={5} />)
-        const why = await open()
-        const move = within(why).getByTestId('board-why-move-5-1')
-        expect(move).toHaveTextContent('—')
-        expect(move).not.toHaveTextContent('0.0')
-        expect(move).toHaveTextContent('not in the pool')
-      })
+    // The two cases about the rows themselves moved to `TraceMoves.test.tsx`
+    // with the component, in v18f §2.1; every case below is about the
+    // disclosure that holds them, which is still the board's.
 
     it('says a week does nothing rather than showing an empty list',
       async () => {

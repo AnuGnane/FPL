@@ -306,30 +306,9 @@ describe('QualityTab', () => {
      })
 })
 
-// Gameweeks 11-13, deliberately clear of the news-shadow fixture's GW3/GW4:
-// both sections render "GW{n}" cells into the same document.
-const pens = {
-  season: '2026-27',
-  gws: [
-    { gw: 11, instrument: 'xg_gap', rows: 520, covered_rows: 498,
-      team_games: 10, component_rows: 520, predicted_ep_pen_taker: 3.2,
-      predicted_takers: 12, pens_taken: 2, pens_by_first_choice: 2,
-      taker_hit_rate: 1, pens_per_team_game: 0.2, realized_pen_points: 6.4 },
-    { gw: 12, instrument: 'pens_missed_only', rows: 515, covered_rows: 0,
-      team_games: 10, component_rows: 515, predicted_ep_pen_taker: 2.9,
-      predicted_takers: 12, pens_taken: 1, pens_by_first_choice: 0,
-      taker_hit_rate: 0, pens_per_team_game: 0.1, realized_pen_points: 3.2 },
-    { gw: 13, error: 'the week would not read' },
-  ],
-  season_totals: {
-    gws: 2, instruments: ['pens_missed_only', 'xg_gap'], team_games: 20,
-    predicted_ep_pen_taker: 6.1, pens_taken: 3, pens_by_first_choice: 2,
-    taker_hit_rate: 0.667, pens_per_team_game: 0.15,
-    league_pens_pg_served: 0.13, realized_pen_points: 9.6,
-  },
-  notes: ['penalties counted from pens_missed only'],
-}
-
+// The card's own cases moved to `quality/PensSection.test.tsx` in v18f §2.1;
+// what is left here is the one claim about the *tab* — a section that fails
+// takes nothing else down with it.
 function routed(penResponse: unknown, reject = false) {
   return (path: string) => {
     if (path === '/api/review') return Promise.resolve(EMPTY_REVIEW)
@@ -339,50 +318,6 @@ function routed(penResponse: unknown, reject = false) {
 }
 
 describe('QualityTab penalty card', () => {
-  it('states the season line', async () => {
-    apiGet.mockImplementation(routed(pens))
-    render(<MemoryRouter><QualityTab /></MemoryRouter>)
-    expect(await screen.findByRole('heading',
-                                   { name: /penalty term — 2026-27/i }))
-      .toBeInTheDocument()
-    expect(screen.getByText('67%')).toBeInTheDocument()
-    expect(screen.getByText('0.150 vs 0.13 served')).toBeInTheDocument()
-    expect(screen.getByText('6.1 / 9.6')).toBeInTheDocument()
-  })
-
-  it('flags a missed-only week as a floor', async () => {
-    apiGet.mockImplementation(routed(pens))
-    render(<MemoryRouter><QualityTab /></MemoryRouter>)
-    expect(await screen.findByText('floor')).toBeInTheDocument()
-    expect(screen.getByText('xg_gap')).toBeInTheDocument()
-  })
-
-  it('renders a broken week as an unreadable row', async () => {
-    apiGet.mockImplementation(routed(pens))
-    render(<MemoryRouter><QualityTab /></MemoryRouter>)
-    const cell = await screen.findByTitle('the week would not read')
-    expect(cell).toHaveTextContent('unreadable')
-    expect(screen.getByText('GW13')).toBeInTheDocument()
-  })
-
-  it('prints the report notes as a footer', async () => {
-    apiGet.mockImplementation(routed(pens))
-    render(<MemoryRouter><QualityTab /></MemoryRouter>)
-    expect(await screen.findByText(/counted from pens_missed only/))
-      .toBeInTheDocument()
-  })
-
-  it('names the command when no tracker has been written', async () => {
-    apiGet.mockImplementation(routed(
-      new FakeApiError(422,
-                       'no pen tracker report — run `gaffer track-pens` first'),
-      true))
-    render(<MemoryRouter><QualityTab /></MemoryRouter>)
-    expect(await screen.findByText(/no pen tracker report/))
-      .toBeInTheDocument()
-    expect(screen.getByText('gaffer track-pens')).toBeInTheDocument()
-  })
-
   // A server that cannot answer is not the same as one with nothing to say.
   // The card used to vanish on a 500, which reads as "no penalties tracked"
   // — so the one thing it must do is stay visible and admit the failure,
@@ -415,7 +350,6 @@ let misses: unknown = { gw: null, rows: [] }
 let review: unknown = { gws: [] }
 
 function mockMisses(body: unknown) { misses = body }
-function mockReview(body: unknown) { review = body }
 
 function renderQuality(over: { current?: unknown }) {
   apiGet.mockImplementation((path: string) => {
@@ -459,81 +393,10 @@ describe('v8g calibration', () => {
     expect(await screen.findByText(/over 300 observations/)).toBeInTheDocument()
   })
 
-  it('plots both axes off the ledger, in the same unit', async () => {
-    // B3. Both series are squads hand-scored off the same actuals frame:
-    // mine net of hits, and mine with every comparable lane taken from the
-    // model. The old card put `advise.raw_xi_pts` — an untilted EP sum over
-    // the model's chosen eleven, before captaincy — on one axis and the
-    // entry's official net score on the other, and drew a y = x line through
-    // them.
-    mockReview({ gws: [
-      { gw: 1, my_points: 61, model_points: 58, no_advice: false,
-        lanes: [], misses: [], notices: [] },
-      { gw: 2, my_points: 44, model_points: 52, no_advice: false,
-        lanes: [], misses: [], notices: [] },
-      { gw: 3, my_points: 39, model_points: null, no_advice: true,
-        lanes: [], misses: [], notices: [] },
-    ] })
-    renderQuality({})
-    const chart = await screen.findByLabelText('your points against the '
-                                               + 'model’s')
-    expect(chart).toBeInTheDocument()
-    // GW3's advice was pruned, so there is no model squad to score it
-    // against — two graded weeks, not three.
-    expect(screen.getByText(/2 graded gameweeks/)).toBeInTheDocument()
-  })
-
-  it('keeps the card and states the reason when nothing is graded yet',
-     async () => {
-    mockReview({ gws: [
-      { gw: 1, my_points: 39, model_points: null, no_advice: true,
-        lanes: [], misses: [], notices: [] }] })
-    renderQuality({})
-    expect(await screen.findByText(/No graded gameweek yet/))
-      .toBeInTheDocument()
-    expect(screen.queryByLabelText('your points against the model’s'))
-      .toBeNull()
-  })
-
-  it('will not draw a trend through a single point', async () => {
-    mockReview({ gws: [
-      { gw: 1, my_points: 61, model_points: 58, no_advice: false,
-        lanes: [], misses: [], notices: [] }] })
-    renderQuality({})
-    expect(await screen.findByText(/1 graded gameweek so far/))
-      .toBeInTheDocument()
-    expect(screen.queryByLabelText('your points against the model’s'))
-      .toBeNull()
-  })
-
-  it('lists the biggest misses with their sign', async () => {
-    mockMisses({ gw: 5, rows: [
-      { code: 11, name: 'Saka', position: 'MID', price: 10.0, ep: 5.5,
-        actual: 16, minutes: 90, miss: 10.5 },
-      { code: 22, name: 'Sub', position: 'FWD', price: 6.0, ep: 7.0,
-        actual: 1, minutes: 12, miss: -6.0 },
-    ] })
-    renderQuality({})
-    expect(await screen.findByText('Saka')).toBeInTheDocument()
-    expect(screen.getByText('+10.5')).toBeInTheDocument()
-    expect(screen.getByText('-6.0')).toBeInTheDocument()
-  })
-
-  it('renders no misses card when no week has been scored', async () => {
-    mockMisses({ gw: null, rows: [] })
-    renderQuality({})
-    await screen.findByText(/Nothing evaluated yet|Holdout/)
-    expect(screen.queryByText(/Biggest misses/)).toBeNull()
-  })
-
-  it('names the command that grades a gameweek in the scatter empty state',
-    async () => {
-      mockReview({ gws: [] })
-      renderQuality({})
-      expect(await screen.findByText(/No graded gameweek yet/))
-        .toBeInTheDocument()
-      expect(screen.getAllByText('gaffer review').length).toBeGreaterThan(0)
-    })
+  // The scatter's four cases and the misses card's two moved beside their
+  // sections in v18f §2.1 (`quality/ScatterSection.test.tsx`,
+  // `quality/MissesSection.test.tsx`); the reliability cases above belong to
+  // `CurrentSection`, which still lives in the tab.
 
   it('keeps the two states that were already right', async () => {
     // Audited 2026-08-31 and left alone (plan A12): title, detail and an
@@ -597,61 +460,9 @@ function renderWithCalibration(calibration: unknown, reject = false) {
 }
 
 describe('v9d calibration by gameweek', () => {
-  it('prints the server’s own sentence when nothing has been graded',
-    async () => {
-      renderWithCalibration({
-        available: false, run_at: null, git_sha: null, season: null,
-        gameweeks: [], cumulative: {}, omitted: {}, per_gw_omitted: {},
-        excluded: [], missing: [],
-        note: 'Run `gaffer evaluate --calibration` after a graded gameweek.',
-      })
-      expect(await screen.findByText(/after a graded gameweek/))
-        .toBeInTheDocument()
-      // CLI-only: JOB_KINDS maps a kind to a zero-argument callable, so there
-      // is no flag a button could pass.
-      expect(screen.getByText('gaffer evaluate --calibration'))
-        .toBeInTheDocument()
-    })
-
-  it('renders one row per graded gameweek with each head’s Brier',
-    async () => {
-      renderWithCalibration(calibrationPayload())
-      expect(await screen.findByRole('heading',
-                                     { name: 'Calibration by gameweek' }))
-        .toBeInTheDocument()
-      expect(screen.getByRole('rowheader', { name: 'GW1' })).toBeInTheDocument()
-      expect(screen.getAllByText('0.1234').length).toBeGreaterThan(0)
-    })
-
-  it('says "not enough data" rather than leaving a blank cell', async () => {
-    // A blank reads as "perfect" at a glance, which is the worst possible
-    // default for a calibration table.
-    renderWithCalibration(calibrationPayload())
-    expect((await screen.findAllByText(/not enough data \(12\)/)).length)
-      .toBeGreaterThan(0)
-  })
-
-  it('shows p_cs cumulatively rather than a column of refusals', async () => {
-    // Twenty club-fixtures a gameweek against a thirty-row floor: a per-week
-    // p_cs column could only ever read "not enough data", which looks like a
-    // fault in the model rather than arithmetic about the grain.
-    renderWithCalibration(calibrationPayload())
-    expect(await screen.findByText('cumulative only')).toBeInTheDocument()
-    expect(screen.getByText(/Per gameweek: p_cs/)).toBeInTheDocument()
-  })
-
-  it('names the omitted head and why it is omitted', async () => {
-    renderWithCalibration(calibrationPayload())
-    expect(await screen.findByText(/Omitted: p_start — not banked/))
-      .toBeInTheDocument()
-  })
-
-  it('shows an excluded gameweek with its reason', async () => {
-    renderWithCalibration(calibrationPayload())
-    expect(await screen.findByText(/Excluded: GW2 — written after kickoff/))
-      .toBeInTheDocument()
-    expect(screen.getByText(/No banked components: GW3/)).toBeInTheDocument()
-  })
+  // The card's own six cases moved to `quality/CalibrationSection.test.tsx`
+  // in v18f §2.1. The two below are claims about the tab around it and can
+  // only be made from here.
 
   it('does not take the tab down when its own fetch fails', async () => {
     renderWithCalibration(new FakeApiError(500, 'calibration blew up'), true)

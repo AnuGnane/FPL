@@ -40,8 +40,13 @@ describe('the ledger rules (spec §3–§5)', () => {
   })
 
   it('uses the mono face only in the job log and the plan trace', () => {
+    // Two files for the plan trace since v18f §2.1: the board draws the
+    // disclosure and its charge lines, `TraceMoves` the move rows it wrote
+    // twice. The rule is unchanged — the face follows the trace, and the
+    // allowance follows the file the trace now lives in.
     expect(offenders(/font-mono/, ['kit/JobLog.tsx',
-      'hubs/planning/PlannerBoard.tsx'])).toEqual([])
+      'hubs/planning/PlannerBoard.tsx',
+      'hubs/planning/TraceMoves.tsx'])).toEqual([])
   })
 
   it('uses tabular figures, never the retired num class', () => {

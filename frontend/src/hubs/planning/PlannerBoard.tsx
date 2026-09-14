@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { usePageData } from '../../api/pageData'
 import {
-  Button, Callout, Card, Chip, EmptyState, Loading, PosBadge, fmtDelta,
+  Button, Callout, Card, Chip, EmptyState, Loading, PosBadge,
   fmtNum, segmentClass,
 } from '../../kit'
 import type {
   MoverRow, MoversPanel, PlanGw, PlanMove, PlanTimeline, WhatIfRequest,
 } from '../../types'
-import { CHIP_CODES } from './ChipsTab'
+import TraceMoves from './TraceMoves'
+import { HORIZON_MAX, boardRequest, horizonFor } from './boardRequest'
 
 /**
  * v11 §F1 — the solved horizon, week by week.
@@ -100,39 +101,11 @@ export default function PlannerBoard(
     return map
   }, [moversPage.data])
 
-  // A planned week as the constraint vocabulary can express it (plan A7).
-  // `ban` is not an exact fit for a sell — it also forbids buying him back —
-  // and there is no bank constraint at all; both are printed under the button
-  // rather than smoothed over, because a limit discovered by hovering is a
-  // limit discovered after the solve.
-  //
-  // The lab always solves from *now*. A week further down the board is
-  // therefore only inside the solve if the horizon reaches it, so the handoff
-  // spans it rather than leaving the constraints to be applied to a horizon
-  // that stops short — a solve told to buy a GW8 target over a one-week plan
-  // buys him this week instead, which is a different plan wearing the board's
-  // numbers. Clamped into ConstraintsPanel's own 1-6 range: past six weeks
-  // the lab cannot span it and the sentence under the button says so.
-  const HORIZON_MAX = 6
-
-  function horizonFor(week: PlanGw): number {
-    return Math.max(1, Math.min(HORIZON_MAX, week.gw - gw + 1))
-  }
-
+  // The body a handoff sends, and the horizon it reaches, are `boardRequest`'s
+  // — a pure function of the week and this gameweek, with a table test of its
+  // own since v18f §2.1.
   function request(week: PlanGw): WhatIfRequest {
-    return {
-      lock: [],
-      ban: [],
-      // v11 carried a planned sell across as `ban`, which also forbade buying
-      // him back — the imprecision plan A7 printed under the button. §4.1 gave
-      // the solver the constraint that actually says "sell him".
-      force_out: week.sells.map((m) => m.code),
-      force_in: week.buys.map((m) => m.code),
-      max_hits: Math.max(0, Math.min(3, week.hits)),
-      max_transfers: null,
-      chip: (week.chip && CHIP_CODES[week.chip]) || 'none',
-      horizon: horizonFor(week),
-    }
+    return boardRequest({ week, gw })
   }
 
   // `Loaded`'s split, in `Loaded`'s words (v18e ruling 7). `/api/plan` answers
@@ -343,19 +316,7 @@ export default function PlannerBoard(
                     {week.trace.moves.length === 0 && (
                       <p className="text-text-muted">No moves this week.</p>
                     )}
-                    {week.trace.moves.map((m) => (
-                      <p key={`${m.buy_code}-${m.sell_code}`}
-                         className="font-mono tn text-xs"
-                         data-testid={`board-why-move-${week.gw}-${m.buy_code}`}>
-                        <span>{`${m.sell_name} → ${m.buy_name}`}</span>
-                        <span className="ml-2 text-text">
-                          {fmtDelta(m.ep_gain)}
-                        </span>
-                        {m.note && (
-                          <span className="ml-2 text-text-faint">{m.note}</span>
-                        )}
-                      </p>
-                    ))}
+                    <TraceMoves moves={week.trace.moves} gw={week.gw} />
                     {/* "after decay" is not decoration. The badge above this
                         panel prints `week.hit_cost` — the undecayed
                         `hits × 4` the FPL rules charge — and this is the
@@ -453,15 +414,8 @@ export default function PlannerBoard(
                         </span>
                       )}
                     </p>
-                    {data.objective.trace?.moves.map((m) => (
-                      <p key={`${m.buy_code}-${m.sell_code}`}
-                         className="font-mono tn text-xs">
-                        <span>{`${m.sell_name} → ${m.buy_name}`}</span>
-                        <span className="ml-2 text-text">
-                          {fmtDelta(m.ep_gain)}
-                        </span>
-                      </p>
-                    ))}
+                    {data.objective.trace
+                      && <TraceMoves moves={data.objective.trace.moves} />}
                     <p className="text-text-faint">
                       {'The board above draws the plan the ladder’s restraint '
                        + 'served; this is the solver’s own choice, traced the '
@@ -494,7 +448,7 @@ export default function PlannerBoard(
                         this week — every limit of that is said here rather
                         than left to be discovered in the result. */}
                     {` The constraints are applied to a solve that starts now `
-                     + `at GW${gw}, over ${horizonFor(week)} week(s)`
+                     + `at GW${gw}, over ${horizonFor({ week, gw })} week(s)`
                      + `${week.gw - gw + 1 > HORIZON_MAX
                        ? `, which is as far as the lab reaches and stops short `
                          + `of GW${week.gw}` : ''} — a future week's buys may `

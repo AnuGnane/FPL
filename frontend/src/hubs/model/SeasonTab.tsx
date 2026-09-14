@@ -10,7 +10,7 @@ import {
 import type {
   CalibrationData, ReviewData, ReviewLaneName,
 } from '../../types'
-import { CALIBRATION_HEADS } from './QualityTab'
+import { CALIBRATION_HEADS } from './quality/CalibrationSection'
 
 /**
  * v11 §F3 — the season, as it fills.
