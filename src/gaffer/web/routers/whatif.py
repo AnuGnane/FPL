@@ -15,7 +15,7 @@ exactly as ``advise.run_advise`` does it.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from gaffer.artifacts import (caps_from_state, latest_gw, load_solve_state,
@@ -23,6 +23,7 @@ from gaffer.artifacts import (caps_from_state, latest_gw, load_solve_state,
 from gaffer.errors import GafferError
 from gaffer.league_mode import cover_from_eo, tilt_ep
 from gaffer.optimize.milp import GwPlan, SolveInput, solve_plan
+from gaffer.web.coerce import fail
 from gaffer.web.jobs import WHATIF_TIMEOUT_S, JobQueueFull
 from gaffer.web.schemas import (CHIP_CODES, JobAccepted, PlanSummary,
                                 PlayerRef, WhatIfRequest, WhatIfResult)
@@ -30,19 +31,12 @@ from gaffer.web.schemas import (CHIP_CODES, JobAccepted, PlanSummary,
 router = APIRouter(prefix="/api", tags=["whatif"])
 
 
-def _fail(constraint: str, error: str, players: list[int]) -> HTTPException:
-    """A 422 the UI can render inline next to the offending input."""
-    return HTTPException(status_code=422,
-                         detail={"constraint": constraint, "error": error,
-                                 "players": players})
-
-
 def validate(req: WhatIfRequest, state) -> None:
     both = sorted(set(req.lock) & set(req.ban))
     if both:
-        raise _fail("lock_and_ban",
-                    f"player {both[0]} cannot be both locked in and banned",
-                    both)
+        raise fail("lock_and_ban",
+                   f"player {both[0]} cannot be both locked in and banned",
+                   both)
     known = {int(c) for c in state.pool["code"]}
     # v12 W3 §4.1 (specs/2026-09-01-gaffer-v12-program-design.md): force_out is
     # checked against the same pool as the other three — ``_solve_once``
@@ -51,9 +45,9 @@ def validate(req: WhatIfRequest, state) -> None:
     unknown = sorted({*req.lock, *req.ban, *req.force_in,
                       *req.force_out} - known)
     if unknown:
-        raise _fail("unknown_player",
-                    f"player {unknown[0]} is not in this week's candidate "
-                    f"pool", unknown)
+        raise fail("unknown_player",
+                   f"player {unknown[0]} is not in this week's candidate "
+                   f"pool", unknown)
     # v12 W3 §4.1 (specs/2026-09-01-gaffer-v12-program-design.md): buy him and
     # sell him is not a plan. Ahead of the two checks below rather than beside
     # the other force_out refusals, because it would be unreachable there: a
@@ -63,55 +57,55 @@ def validate(req: WhatIfRequest, state) -> None:
     # neither is the contradiction the user typed.
     in_and_out = sorted(set(req.force_in) & set(req.force_out))
     if in_and_out:
-        raise _fail("force_in_and_force_out",
-                    f"player {in_and_out[0]} cannot be both bought and sold "
-                    f"in the same solve", in_and_out)
+        raise fail("force_in_and_force_out",
+                   f"player {in_and_out[0]} cannot be both bought and sold "
+                   f"in the same solve", in_and_out)
     forced_and_owned = sorted(set(req.force_in) & set(state.owned_codes))
     if forced_and_owned:
-        raise _fail("force_in_owned",
-                    f"you already own player {forced_and_owned[0]} — use "
-                    f"lock to keep him", forced_and_owned)
+        raise fail("force_in_owned",
+                   f"you already own player {forced_and_owned[0]} — use "
+                   f"lock to keep him", forced_and_owned)
     forced_and_banned = sorted(set(req.force_in) & set(req.ban))
     if forced_and_banned:
-        raise _fail("force_in_and_ban",
-                    f"player {forced_and_banned[0]} cannot be forced in and "
-                    f"banned", forced_and_banned)
+        raise fail("force_in_and_ban",
+                   f"player {forced_and_banned[0]} cannot be forced in and "
+                   f"banned", forced_and_banned)
     # v12 W3 §4.1 (specs/2026-09-01-gaffer-v12-program-design.md). Five
     # combinations that cannot mean anything, each named where the user typed
     # it rather than left to produce a constraint that silently does nothing.
     not_owned = sorted(set(req.force_out) - set(state.owned_codes))
     if not_owned:
-        raise _fail("force_out_not_owned",
-                    f"you do not own player {not_owned[0]} — use ban to keep "
-                    f"him out of the squad", not_owned)
+        raise fail("force_out_not_owned",
+                   f"you do not own player {not_owned[0]} — use ban to keep "
+                   f"him out of the squad", not_owned)
     out_and_lock = sorted(set(req.force_out) & set(req.lock))
     if out_and_lock:
-        raise _fail("force_out_and_lock",
-                    f"player {out_and_lock[0]} cannot be both kept and sold",
-                    out_and_lock)
+        raise fail("force_out_and_lock",
+                   f"player {out_and_lock[0]} cannot be both kept and sold",
+                   out_and_lock)
     out_and_ban = sorted(set(req.force_out) & set(req.ban))
     if out_and_ban:
-        raise _fail("force_out_and_ban",
-                    f"banning player {out_and_ban[0]} removes him without "
-                    f"sale proceeds; force_out sells him — pick one",
-                    out_and_ban)
+        raise fail("force_out_and_ban",
+                   f"banning player {out_and_ban[0]} removes him without "
+                   f"sale proceeds; force_out sells him — pick one",
+                   out_and_ban)
     if req.force_out and req.chip == "fh":
         # A free hit squad is conjured from nothing (``owned_codes=[]``), so
         # there is nobody to sell and the constraint would apply to no one.
-        raise _fail("force_out_on_free_hit",
-                    "a free hit squad is built from scratch, so there is "
-                    "nothing to force out of it", list(req.force_out))
+        raise fail("force_out_on_free_hit",
+                   "a free hit squad is built from scratch, so there is "
+                   "nothing to force out of it", list(req.force_out))
     if req.chip != "none":
         chip = CHIP_CODES[req.chip]
         available = state.avail_by_gw.get(state.gws[0], [])
         if chip not in available:
-            raise _fail("chip_unavailable",
-                        f"{chip} is not available in GW{state.gws[0]} — "
-                        f"available: {', '.join(available) or 'none'}", [])
+            raise fail("chip_unavailable",
+                       f"{chip} is not available in GW{state.gws[0]} — "
+                       f"available: {', '.join(available) or 'none'}", [])
     if req.max_hits < 0:
-        raise _fail("max_hits", "max_hits cannot be negative", [])
+        raise fail("max_hits", "max_hits cannot be negative", [])
     if req.max_transfers is not None and req.max_transfers < 0:
-        raise _fail("max_transfers", "max_transfers cannot be negative", [])
+        raise fail("max_transfers", "max_transfers cannot be negative", [])
 
 
 def summary(plans: list[GwPlan], ep_by: dict, meta: dict, weeks: int,

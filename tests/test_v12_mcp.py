@@ -152,9 +152,10 @@ def test_whatif_validates_before_solving_and_flattens_the_422(monkeypatch):
                         lambda req, gw: solved.append(1) or {})
 
     def refuse(req, state):
-        raise whatif_router._fail("force_in_owned",
-                                  "you already own player 7 — use lock to "
-                                  "keep him", [7])
+        from gaffer.web.coerce import fail
+
+        raise fail("force_in_owned",
+                   "you already own player 7 — use lock to keep him", [7])
 
     monkeypatch.setattr(whatif_router, "validate", refuse)
     out = mcp_server.TOOLS["whatif"](transfers_in=[7], transfers_out=[])
