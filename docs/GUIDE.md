@@ -666,7 +666,7 @@ Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 `reports/evaluation.json`, and the Model hub.
 
-## 11. The version history, v1 to v18c
+## 11. The version history, v1 to v18d
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
 reviewed. Every cycle ran the same way, and knowing the shape tells you where
@@ -1026,6 +1026,17 @@ the model cycle can measure from day one. And the two scoring tabs each say
 which counterfactual they score, because they give opposite signs for the
 same week and both are right. Python 4445 → **4458**, frontend 986 →
 **988**.
+
+**v18d — the core out of the web layer** (2026-09-14). The ladder, the
+identity tint and the brief had been calling route handlers for a fixture
+rating and a trace; the rating is `gaffer/difficulty.py` now and the routes
+are shape adapters over the core, so nothing outside `web/` imports the web
+layer but the CLI and the MCP server, which exist to. Seven imports that had
+been hiding inside function bodies to dodge import cycles are top-level
+because what they reached for moved home; the top-level import graph is
+acyclic and a rail keeps it so. Six copies of the same 422 became one
+`web/coerce.py`, with every sentence unchanged. Python 4458 → **4496**,
+frontend 988 unchanged.
 
 The suite grew from nothing to **4,425 Python + 986 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above

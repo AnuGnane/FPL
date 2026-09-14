@@ -14,10 +14,11 @@ than an auditor, `docs/GUIDE.md` §11–12.
 `specs/2026-09-12-v18-polish-design.md`, plan
 `plans/2026-09-12-v18-polish-programme.md`, tracker
 `plans/2026-09-12-v18-tracker.md`), eight sub-cycles that change no number
-the advice serves. v18a (the gate), v18b (the advice path) and v18c (measurement) are merged (`dfb0984`);
-the golden board had been skipping since the 09-11 retrain. Next: v18b the
-advice path, then v18c–v18h; the model cycle follows v18 (the user's
-ruling, 2026-09-12).
+the advice serves. v18a (the gate), v18b (the advice path), v18c
+(measurement) and v18d (the core out of the web layer) are merged
+(`b94fbc4`); the golden board had been skipping since the 09-11
+retrain. Next: v18e the loader, then v18f–v18h; the model cycle follows v18
+(the user's ruling, 2026-09-12).
 
 v16 — restraint and the brief — is **merged** (`main` `9f5be20`; ff-merge
 of `v16-restraint`), on top of v15's leagues (`ed3e8fe`). The ladder's
@@ -172,6 +173,29 @@ usually the thing you cannot test*, not the lines: every card of the seven was
 found by asking what a test would have to fake.
 
 ## Shipped
+
+### v18d — the core out of the web layer (done, merged `b94fbc4` 2026-09-14)
+Nothing under `src/gaffer` outside `web/` imports the web layer except the
+two surfaces (`cli.py`, `mcp_server.py`); the top-level import graph is
+acyclic; the seven cycle-dodging function-body imports are gone. The fixture
+rating lives in `gaffer/difficulty.py` and the ticker route, the identity
+tint, `advise` and `ladder` all call it; the brief reads the served plan
+instead of the plan route; the refresh job body is `gaffer/refresh.py`.
+`predict_components`, `news_availability` and `MODEL_NAMES` moved to
+`models/predict.py`, `formation_legal` to `optimize/formation.py`, the chip
+bars to `chip_policy`, `snap_date` to a new `clock.py` leaf, the override
+store's read half into `artifacts`; `config.invalidate` walks a registry.
+`web/coerce.py` replaced six `_fail`s and their number-reading cousins with
+every 4xx sentence byte-identical; `journal`, `tracking` and `advise` take
+their paths from `artifacts.REPORTS`; `schemas.py` has 29 hub banners.
+Three rails in `tests/test_layering.py`, each planted-fault tested and
+mutation-tested live. Two rulings: the what-if validators stay in the router
+(a core copy would import the schemas) and went public; rail 1 exempts the
+two surfaces whole. Gate: golden 58 passed, 0 skipped, three times, fixture
+untouched; routes 51; types check silent. Suite 4496 Python (4438 without
+the golden), 988 frontend; pins 51 / 12 / 62. Left open: four private
+reaches the spec did not name (`_history_stamp`, `_code_of_element`,
+`_source_of`, `_cached_get`), for v18g.
 
 ### v18c — measurement that has never run (done, merged `dfb0984` 2026-09-12)
 The calibration report had said "no graded gameweeks" since 2026-09-01
