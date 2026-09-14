@@ -113,8 +113,7 @@ class DnpCalibrator:
 
 
 def fit_dnp_calibrator(df: pd.DataFrame, feature_cols: list[str],
-                       holdout_slots: int = DNP_HOLDOUT_SLOTS,
-                       seed: int | None = None, *,
+                       holdout_slots: int = DNP_HOLDOUT_SLOTS, *,
                        inner: Callable[[], Any]) -> DnpCalibrator:
     """Fit the calibrator on out-of-sample DNP predictions.
 
@@ -136,9 +135,8 @@ def fit_dnp_calibrator(df: pd.DataFrame, feature_cols: list[str],
     than a class: v18d §2, because ``minutes`` imports this module at module
     scope for the flag and the fitter, and naming ``ThreeModeModel`` here
     could only ever be a function-local import dodging that edge. The caller
-    already holds the class; it hands it in — and with it the seed, which is
-    why ``seed`` here is now only part of the signature callers have always
-    written rather than something this body can apply.
+    already holds the class and the seed; it hands both in through the
+    factory, which is why this signature carries no seed of its own.
     """
     slots = (df[["season_idx", "gw"]].drop_duplicates()
              .sort_values(["season_idx", "gw"]))

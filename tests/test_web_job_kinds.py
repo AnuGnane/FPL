@@ -31,9 +31,10 @@ def test_exactly_the_kinds_the_spec_allows():
 
 def test_advise_and_refresh_reuse_the_job_kind_and_meta_entry_points():
     # v17d §2.10: the advise body is defined in job_kinds over
-    # pipeline.weekly_run; the router no longer holds it.
+    # pipeline.weekly_run; the router no longer holds it. v18d §2: nor the
+    # refresh body, which is ``gaffer.refresh``'s.
     from gaffer.web.job_kinds import run_train_and_advise
-    from gaffer.web.routers.meta import run_data_refresh
+    from gaffer.refresh import run_data_refresh
 
     assert JOB_KINDS["advise"] is run_train_and_advise
     assert JOB_KINDS["refresh-data"] is run_data_refresh

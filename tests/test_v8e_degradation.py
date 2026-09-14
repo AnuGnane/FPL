@@ -74,13 +74,15 @@ def test_a_corrupt_override_file_changes_nothing_and_says_so(tmp_path,
 def test_the_flag_off_means_no_read_and_no_marker(tmp_path, monkeypatch):
     """G3: not "read it and ignore it" — the store is never opened, and the
     artifact carries no marker."""
-    from gaffer import overrides as overrides_mod
+    from gaffer import artifacts, overrides as overrides_mod
     from gaffer.artifacts import load_availability, save_availability
 
     _client(tmp_path, monkeypatch, overrides=False)
     overrides_mod.set_override(1, p_play=1.0, known_codes=CODES)
     reads = []
-    monkeypatch.setattr(overrides_mod, "load_overrides",
+    # v18d §2: the reader lives in ``artifacts`` now, and ``attach_overrides``
+    # looks it up there, so that is where a read would be seen.
+    monkeypatch.setattr(artifacts, "load_overrides",
                         lambda: reads.append(1) or {})
     out = apply_availability(_pred(), _avail())
     assert reads == []

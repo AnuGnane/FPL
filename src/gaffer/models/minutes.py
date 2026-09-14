@@ -178,7 +178,7 @@ class ThreeModeModel:
         # calibrator's own inner model is built with it False.
         if self._fit_dnp and DNP_CALIBRATION_DEFAULT:
             self.dnp_cal = fit_dnp_calibrator(
-                df, self.feature_cols, seed=self.seed,
+                df, self.feature_cols,
                 inner=lambda: ThreeModeModel(self.feature_cols,
                                              seed=self.seed, _fit_dnp=False))
         return self

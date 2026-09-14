@@ -24,15 +24,15 @@ from __future__ import annotations
 import json
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
-from pathlib import Path
 from types import SimpleNamespace
 
 import pandas as pd
 
 from gaffer.api.client import FPLClient
 from gaffer.assets import load_decision_priors
-from gaffer.artifacts import (SolveState, advice_path, append_advice_history,
-                              components_frame, data_warning,
+from gaffer.artifacts import (REPORTS, SolveState, advice_path,
+                              append_advice_history, components_frame,
+                              data_warning,
                               ingested_through, load_advice, pool_rows,
                               save_availability, save_components,
                               save_snapshots, save_solve_state)
@@ -62,7 +62,7 @@ from gaffer.league_mode import (LeagueParams, apply_stance, captain_cover,
                                 compute_strategy, cover_table, tilt_ep,
                                 win_probability)
 from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
-from gaffer.models.predict import news_availability, predict_components
+from gaffer.models.predict import news_availability
 from gaffer.models.team import add_team_rolling
 from gaffer.models.train import (cup_matches, load_training_frame,
                                  understat_team_rolled)
@@ -92,7 +92,6 @@ from gaffer.uncertainty import bands_by_player_gw
 from gaffer.prices import price_alerts
 from gaffer.set_pieces import pen_priors, rescale_pen_after_blend
 
-REPORTS = Path("reports")
 
 CHIPS = ["wildcard", "freehit", "bboost", "3xc"]
 FIRST_HALF_LAST_GW = 19
