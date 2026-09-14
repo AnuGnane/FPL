@@ -15,12 +15,13 @@ uv run gaffer advise                     # the weekly solve (needs models/); sin
                                          # v17d it chains the brief, as the web job does
 uv run gaffer brief                      # rewrite the LLM brief alone
 uv run gaffer ui --no-open-browser --port 8927
-.venv/bin/pytest -q                      # Python suite (~4400 tests)
+.venv/bin/pytest -q                      # Python suite (~4500 tests, ~22 min with the golden)
 .venv/bin/pytest -q -m "not slow and not golden"   # the inner loop (~2 min); slow = the fit files, v18g
 .venv/bin/pytest -q -rs tests/test_golden_board.py tests/test_pipeline.py
-                                         # the golden gate (~15 min); -rs so a stale
+                                         # the golden gate (~18 min); -rs so a stale
                                          # board's skip names the file; 0 skipped is a pass
-cd frontend && npx tsc --noEmit && npx vitest run   # types + ~990 tests
+uvx ruff check src tests                 # the linter, a gate line since v18g
+cd frontend && npm run check             # tsc, ~1100 vitest tests, types drift, eslint (v18f)
 cd frontend && npm run dev               # Vite on :5173, proxies /api to :8927
 cd frontend && npm run build             # emits src/gaffer/web/static/ (untracked)
 ```
@@ -111,20 +112,24 @@ pin only when the plan says so, in its own commit.
 | Pin | Value | Where |
 |---|---|---|
 | API routes | 51 | `tests/test_v11_degradation.py` |
-| `JOB_KINDS` | 12 | `tests/test_web_job_kinds*.py` and several rails; never add a kind, run new work as an anonymous JobRegistry job |
+| `JOB_KINDS` | 12 | `tests/test_v12_w1_degradation.py` alone since v18g (the other rails assert membership); never add a kind, run new work as an anonymous JobRegistry job |
 | `Config` fields | 62 | `tests/test_v13_degradation.py` |
 
 `tests/test_v12_w1_degradation.py` is the meta-rail: it asserts the route
-total is pinned only in the v11 file and the Config total only in the v13
-file. A new cycle bumps those two files, never a new home for the number.
+total is pinned only in the v11 file, the Config total only in the v13
+file and the job-kind total only in itself. A new cycle bumps those files,
+never a new home for a number.
 
 Orchestrator-only files, which subagent implementers must not touch:
 `src/gaffer/advise.py`, `set_pieces.py`, `optimize/**`, `web/jobs.py`,
 `web/routers/whatif.py`, `tests/test_advise.py`, `test_odds.py`,
 `test_web_jobs.py`, every pre-existing `tests/test_v*_degradation.py`,
-`tests/test_v16_restraint.py`, `tests/test_web_job_kinds*.py`, and
-`scripts/s2_replay.py`. A plan that needs a change there records the ruling and
-the orchestrator makes the diff.
+`tests/test_v16_restraint.py`, `tests/test_web_job_kinds*.py`,
+`tests/test_served_plan.py`, `tests/test_golden_board.py`,
+`tests/test_pipeline.py`, `tests/test_advise_order.py`, `tests/test_layering.py`
+(the pins the older rails protected live in these five since v17f–v18g)
+and `scripts/s2_replay.py`. A plan that needs a change there records the
+ruling and the orchestrator makes the diff.
 
 ## How a cycle runs
 

@@ -273,7 +273,12 @@ someone does, neither result should be treated as settled.
 Also noted: the live run's armband (Guéhi, chase-tilt artifact of
 mid-GW2 data) is a league-mode question, not a noise question.
 
-### N2 — pending
+### N2 — pending at cycle close; read since
+
+_v18h, 2026-09-14:_ the first reading was taken once GW2 settled and is
+recorded in the ROADMAP (v12 block: "GW2: flags ahead — one draw,
+CONVENTIONS §5") and GUIDE §12 ("GW2's said the plain flag was ahead");
+the second waits on GW3. The text below is as the cycle left it.
 
 GW2 was not `data_checked` when the cycle closed (2026-08-30). Run
 `gaffer evaluate --news-shadow` after FPL settles GW2 (usually the day

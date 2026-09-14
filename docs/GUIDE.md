@@ -102,6 +102,7 @@ All trained by `gaffer train` into `models/` (LightGBM, one `.joblib` +
 | **Minutes** | A three-mode outcome per player: did not play / came off the bench / started — giving `p_play`, `p60`, expected minutes. |
 | **Attacking** | Goals and assists rates, blended with Understat xG history. |
 | **Team** | A Dixon-Coles goals model per fixture: clean-sheet and goals-conceded probabilities, blended with bookmaker odds at a fitted market weight (`models/blend.params.json`, refitted each train; 0.7 when unfitted) when a key is configured. |
+| **Defcon** | The probability a player clears the defensive-contribution threshold (the 2025/26 rule), trained only on seasons that carry the component stats; scaled by `p_play` when assembled. |
 | **Saves** | Goalkeeper save points. |
 | **Bonus** | Bonus points via the BPS system (restated for the 2026/27 rule changes). |
 | **Calibration** | A final per-position additive correction to the assembled expected points, scaled by each player's chance of a 60-minute appearance. |

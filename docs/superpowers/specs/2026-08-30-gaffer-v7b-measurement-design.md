@@ -135,7 +135,10 @@ Open question this cycle deliberately leaves: whether to expose a
 config switch to skip the sweep entirely (raw mode) for speed — a UX
 choice, not a points choice, on this evidence.
 
-### N2 — still pending at cycle close
+### N2 — still pending at cycle close; read since
+
+_v18h, 2026-09-14:_ read once GW2 settled — the plain flag was ahead, one
+draw (ROADMAP v12 block; GUIDE §12); the second reading waits on GW3.
 
 GW2 not `data_checked` (checked repeatedly through 2026-08-30; final
 check at close). The watcher pipeline stands: on data_checked →

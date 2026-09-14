@@ -8,17 +8,22 @@ fills, and the index below points at them. Measurement rules every cycle
 follows: `CONVENTIONS.md`. For the same material written for a reader rather
 than an auditor, `docs/GUIDE.md` §11–12.
 
-## Where things stand (2026-09-12)
+## Where things stand (2026-09-14)
 
-**The v18 polish programme is running** (design
+**The v18 polish programme is complete** (design
 `specs/2026-09-12-v18-polish-design.md`, plan
 `plans/2026-09-12-v18-polish-programme.md`, tracker
 `plans/2026-09-12-v18-tracker.md`), eight sub-cycles that change no number
 the advice serves. v18a (the gate), v18b (the advice path), v18c
 (measurement), v18d (the core out of the web layer), v18e (the loader),
-v18f (the surface) and v18g (the suite) are merged (`bc02faf`); the golden
-board had been skipping since the 09-11 retrain. Next: v18h the docs; the
-model cycle follows v18 (the user's ruling, 2026-09-12).
+v18f (the surface), v18g (the suite) and v18h (the docs) are merged; the
+ledger is in the v18 block below. Golden 58 passed, 0 skipped at v18g;
+suite 4509 Python + 1098 frontend; pins routes 51 / job kinds 12 / `Config`
+fields 62, unmoved since v17e. The three decisions of ruling 12 (2026-09-12):
+the 31 merged branches were deleted before v18a; the model cycle follows
+v18; the security incident stays with the user, still undecided. Next: the
+model cycle (candidates 11–13 below), after the user re-runs
+`scripts/install_automation.sh` (see the install box).
 
 v16 — restraint and the brief — is **merged** (`main` `9f5be20`; ff-merge
 of `v16-restraint`), on top of v15's leagues (`ed3e8fe`). The ladder's
@@ -39,17 +44,19 @@ below.
 **Security incident, open:** the odds API key's value reached a committed
 plan document (`dd47c0a`) via a forked plan-writing subagent and was pushed
 to the public remote with the merge; removed at the tip (`8fddb0b`), history
-rewrite + force-push and key rotation put to the user. Next: the user's
-answer on that, the §6 informational replay (2-hit cap vs none, K=3), the
-live spot-checks in GUIDE §12.1, then the model cycle the 2026-09-04
-current-state review ranks (bonus head sees goals; calibration season
-default; e_goals odds artifact; Dixon-Coles sanity).
+rewrite + force-push and key rotation put to the user (still open at
+v18h, 2026-09-14). Of the 2026-09-04 review's eight ranked items, v18c
+closed 2 (the calibration season default), 6 (the two counterfactual
+captions) and 8 (the fitted blend sentence) and banked the pre-blend
+column item 5 asked for; 1 is the install box; 3, 4 and 7 are the model
+cycle, listed as candidates 11–13.
 
 ## Open
 
 ### Install the two v12 launchd jobs
 
-- [ ] `./scripts/install_automation.sh` — `launchctl list | grep com.gaffer` showed **7 of 9** loaded on 2026-09-03: `com.gaffer.backup` and `com.gaffer.core-insights` were shipped by W1/W4 and never installed, so no nightly backup has run
+- [ ] `./scripts/install_automation.sh` — `launchctl list | grep com.gaffer` showed **7 of 9** loaded on 2026-09-03 (`backup` and `core-insights` never installed), **9 of 9** on 2026-09-08, and **2 of 9** on 2026-09-14 (v18h: only `backup` and `core-insights` are loaded; the seven older jobs are not). The user's to run; the agent does not touch launchd
+- [ ] §6 informational replay — 2-hit cap vs none, K=3 (carried from v16; the plist note it depended on closed with v17d)
 
 ### Live spot-checks — the user's, on the dev server
 
@@ -70,15 +77,15 @@ Nine rows. The box for each lives in its cycle block (W2, W3, W4, W5 below).
 
 | Row | Unblocks when | Expected |
 |---|---|---|
-| W2 §3.1 flag latency | 14 snapshot days + one graded covered GW (4 banked, 08-30 → 09-02) | ~2026-09-13 |
-| W2 §3.2 presser grading | a `data_checked` GW with verdicts banked before its deadline (GW2 had none) | GW3 graded |
-| W2 §3.3 EO trend | a second GW in `field_eo_log.parquet` | GW3 weekend scrape |
+| W2 §3.1 flag latency | 14 snapshot days + one graded covered GW (4 banked, 08-30 → 09-02) | ~2026-09-13 — past due at v18h, unread |
+| W2 §3.2 presser grading | a `data_checked` GW with verdicts banked before its deadline (GW2 had none) | **met** (GW3 graded, v18c) |
+| W2 §3.3 EO trend | a second GW in `field_eo_log.parquet` | **met** (GW3's scrape) |
 | W3 §4.5 WC+BB pair row | a `[dgw]` entry in `data/chip_scenarios.toml` — only written from a real double | first announced rearrangement |
 | W4 §5.3 `P(top-10k)` | a top-10k weekly threshold series — **no source exists**; needs a new scrape | next spec candidate |
 | W4 §5.3 overall-rank change | 5 graded GWs with both `my_points` and `overall_rank` (1 of 5 today: GW1's rank is null) | ~GW6 |
 | W4 §5.1 Elo 2026-27 | the publisher fills the `elo` column | out of our hands |
 | W5 §6.5 price-timing line shows a number | `price_timing` on (default) **and** a price log long enough for a row per owned player | ~2 weeks of the 23:15 job |
-| W5 §6.4 Review row names its snapshot | the first GW graded after the W5 merge; earlier rows stay `null` | GW3's Tuesday review |
+| W5 §6.4 Review row names its snapshot | the first GW graded after the W5 merge; earlier rows stay `null` | **met** (GW3's review row) |
 
 Accruing verdicts, not boxes: `gaffer evaluate --news-shadow` after each
 `data_checked` GW (GW2: flags ahead — one draw, CONVENTIONS §5); the presser
@@ -118,6 +125,46 @@ Detail in `docs/GUIDE.md` §12.5.
 8. B8 FotMob xG fallback — only if Understat goes down
 9. **A blended league stance** (v15 deferred): per-league λ and cover tables merged by weight. Chasing in one league and defending in another largely cancel, so it needs a replay to justify before it touches protected solver code
 10. **The in-app chat** (v16 deferred, gated on a few briefs read): a question box on This Week over the same facts document the brief reads, the same no-tools command, the same truth check on every answer
+11. **The bonus head sees goals** (09-04 review item 3): feed `e_goals`, `e_assists` and `position` to the bonus model — the review's clearest structural defect. The model cycle's first arm; replay-gated
+12. **Bound `e_gc_model`** (item 4): a Dixon-Coles sanity floor so 0.035 expected goals conceded cannot be served. Replay-gated
+13. **A GKP calibration delta, or the reason there is none** (item 7): `by_pos` has no goalkeeper row
+
+The model cycle (11–13, plus the role replay above and the news ablation, C1)
+follows v18 by the user's ruling of 2026-09-12; each arm moves a served
+number and needs its own gate.
+
+### The v18 polish programme (planned 2026-09-12; **complete**, all eight merged 2026-09-12 → 14)
+
+The 2026-09-12 final review
+(`docs/superpowers/research/2026-09-12-final-review.md`) found the golden
+gate skipping, three faults on the advice path, measurement that had never
+run, the core reaching into the web layer, a loader half-finished, a
+surface with no keyboard path, a suite with fourteen homes for one number
+and docs three cycles stale. `specs/2026-09-12-v18-polish-design.md` (twelve
+rulings) and `plans/2026-09-12-v18-polish-programme.md` sequence the
+answers as v18a–v18h; `plans/2026-09-12-v18-tracker.md` is the checklist
+each chat updated on merge. No sub-cycle changes a number the advice
+serves; the golden board (58 passed, 0 skipped) is the proof, run at every
+backend merge.
+
+**The ledger.** Transcribed from the tracker at v18h.
+
+| Sub-cycle | Branch | Merged | Python | Frontend | What changed |
+|---|---|---|---|---|---|
+| v18a | `v18a-gate` | `20185aa` 09-12 | 4427 | 986 | the golden re-recorded; a stale board skips loudly; `CLAUDE.md` corrected |
+| v18b | `v18b-advice-path` | `f662d6d` 09-12 | 4445 | 986 | the ladder catch narrowed, the solver recorded, the build path told not read, the `NameError` |
+| v18c | `v18c-measurement` | `dfb0984` 09-12 | 4458 | 988 | calibration grades GW2/GW3, health filled, `e_goals_model` banked, captions |
+| v18d | `v18d-layering` | `b94fbc4` 09-14 | 4496 | 988 | the core out of the web layer; import graph acyclic; seven lazy imports gone |
+| v18e | `v18e-loader` | `b1867b9` 09-14 | 4496 | 1058 | every read through `usePageData`; `Loaded`'s five states; the error boundary; 422 is empty |
+| v18f | `v18f-surface` | `bf84d7c` 09-14 | 4496 | 1098 | six cuts, Radix dialogs, `Th`, lazy routes, ESLint, `npm run check` |
+| v18g | `v18g-suite` | `bc02faf` 09-14 | 4509 | 1098 | ruff committed, one home for the job-kind pin, seam order as behaviour, the caches fixture, `slow`, a clone-runnable suite |
+| v18h | `v18h-docs` | (below) 09-14 | 4509 | 1098 | `CLAUDE.md`, GUIDE, README, ROADMAP and three specs true as of today |
+
+Pins routes 51 / job kinds 12 / `Config` fields 62 throughout. Rulings
+taken on the way: rail 1 exempts `cli.py` and `mcp_server.py` whole (v18d);
+a `GafferError` is a 422 and the loader treats it as empty (v18e);
+`set-state-in-effect` is `warn` (v18f); seventeen job-kind homes, not
+fourteen, and typer's builders as immutable calls (v18g).
 
 ### The v17 deepening programme (planned 2026-09-07; **complete**, all eight merged 2026-09-07 → 09)
 

@@ -173,4 +173,16 @@ which is v10's G2 and v10b's G2 for the third time.
 
 ### Outcomes
 
-_TBD by the cycle._
+Recorded by v18h (2026-09-14) from the ROADMAP's v11 block, which the cycle
+wrote at merge and this section never received. Merged `57ef6c8`
+2026-09-02. §F1 the planner board: the horizon week by week with a bank
+trajectory derived at the router and blanked by the first unpriced move;
+price warnings from `/api/prices/movers`; the prefill-and-switch handoff
+into What-If. §F2: the field EO's standard error served, the rest already
+on the wire. §F3: per-lane win rates where the graded-counter rule lives;
+`overall_rank` banked for the first time. §0 the route-pin restructure:
+the absolute count in `test_v11_degradation.py` alone. No replay — seven
+additive fields. G2: an adversarial review (2 blockers, 6 importants), a
+fix round, a re-verify that caught one fix comparing two equal-by-
+construction numbers. Pins routes 45, job kinds 12, Config 48. Suite
+3193 Python + 655 frontend. Residuals in the ROADMAP block.
