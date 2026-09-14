@@ -15,10 +15,10 @@ than an auditor, `docs/GUIDE.md` §11–12.
 `plans/2026-09-12-v18-polish-programme.md`, tracker
 `plans/2026-09-12-v18-tracker.md`), eight sub-cycles that change no number
 the advice serves. v18a (the gate), v18b (the advice path), v18c
-(measurement) and v18d (the core out of the web layer) are merged
-(`b94fbc4`); the golden board had been skipping since the 09-11
-retrain. Next: v18e the loader, then v18f–v18h; the model cycle follows v18
-(the user's ruling, 2026-09-12).
+(measurement), v18d (the core out of the web layer) and v18e (the loader)
+are merged (`b1867b9`); the golden board had been skipping since
+the 09-11 retrain. Next: v18f the surface, then v18g–v18h; the model cycle
+follows v18 (the user's ruling, 2026-09-12).
 
 v16 — restraint and the brief — is **merged** (`main` `9f5be20`; ff-merge
 of `v16-restraint`), on top of v15's leagues (`ed3e8fe`). The ladder's
@@ -173,6 +173,26 @@ usually the thing you cannot test*, not the lines: every card of the seven was
 found by asking what a test would have to fake.
 
 ## Shipped
+
+### v18e — the loader, finished (done, merged `b1867b9` 2026-09-14)
+Every artifact read in `hubs/` and `kit/` goes through `usePageData`; the
+one raw read left is Live's poll. `PageData` carries `status`; `kit/Loaded`
+renders a page's five states in one place — a 500 is an error callout with
+Retry, a 404 or 422 the component's own empty state — and an
+`ErrorBoundary` around the routes turns a render throw into a message. The
+nine components that had rendered a failure as a healthy empty now say
+which it was. The Model hub's remount nonces became invalidations; the
+watchlist, drafts and the league prefix gained their rows. Ruling made in
+the cycle: the cold clone answers 422 (every `GafferError`), not 404, so
+`Loaded` treats both as "not there yet". Gate: five fetch rails committed
+first as the control (`8db1259`) — no hub asks for more; the Model walk's
+`/api/review` 3 → 1, `/api/model/calibration` 2 → 1, Players' watchlist 2
+→ 1; twelve screenshot pairs byte-identical against a same-time control
+(the first control differed by the clock alone); the nine-row 500/404
+table; the grep lists Live alone. Frontend 988 → 1058 (+1 skipped); Python
+4496 untouched; pins 51 / 12 / 62. Left open: the Players matrix tab's
+double fetch before the gameweek is known; a sentence for `FixtureTicker`'s
+cold clone (v18f).
 
 ### v18d — the core out of the web layer (done, merged `b94fbc4` 2026-09-14)
 Nothing under `src/gaffer` outside `web/` imports the web layer except the

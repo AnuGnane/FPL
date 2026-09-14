@@ -666,7 +666,7 @@ Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 `reports/evaluation.json`, and the Model hub.
 
-## 11. The version history, v1 to v18d
+## 11. The version history, v1 to v18e
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
 reviewed. Every cycle ran the same way, and knowing the shape tells you where
@@ -1037,6 +1037,16 @@ because what they reached for moved home; the top-level import graph is
 acyclic and a rail keeps it so. Six copies of the same 422 became one
 `web/coerce.py`, with every sentence unchanged. Python 4458 → **4496**,
 frontend 988 unchanged.
+
+**v18e — the loader, finished** (2026-09-14). Every artifact the pages read
+comes through the one cache now, so the Model hub asks for the review once
+across its tabs instead of three times, and a page that fails says so: a
+server error is a red callout with a retry, and the "run `gaffer advise`
+first" empty states are kept for the two statuses that mean it (404, and
+the 422 every `GafferError` becomes). A boundary around the routes turns a
+render crash into a sentence instead of a white screen. Six hubs, twelve
+screenshots, not a pixel changed on the happy path. Frontend 988 →
+**1058**, Python 4496 unchanged.
 
 The suite grew from nothing to **4,425 Python + 986 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above
