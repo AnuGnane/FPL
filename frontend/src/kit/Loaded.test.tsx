@@ -38,6 +38,19 @@ describe('Loaded', () => {
     expect(screen.queryByText(/no advice yet/)).toBeNull()
   })
 
+  it('shows the empty slot for a 422 too: a GafferError is the cold clone', () => {
+    // `web/app.py` answers every GafferError with 422 — "run gaffer advise
+    // first" — so the same slot; the sentence reaches a function slot.
+    render(
+      <Loaded page={page({ error: 'run gaffer advise first', status: 422 })}
+              empty={(message) => <p>empty: {message}</p>}>
+        {body}
+      </Loaded>,
+    )
+    expect(screen.getByText('empty: run gaffer advise first')).toBeInTheDocument()
+    expect(screen.queryByText('Retry')).toBeNull()
+  })
+
   it('shows the loading slot while there is no body', () => {
     render(
       <Loaded page={page()} empty={EMPTY} loading={<p>waiting</p>}>
