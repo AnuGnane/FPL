@@ -137,4 +137,67 @@ four; the two new tokens are the only additions to `theme.css`.
 
 ## 3. Outcome
 
-_(filled at the gate)_
+Run 2026-09-14 on `v18f-surface`, four implementer commits after the spec
+(`da6b495`, `ed84a6b`, `ed4cd4d`, `f4e6c21`). All five parts held.
+
+1. **Twelve screenshot pairs: PASS, byte-identical** against a control
+   shot from a `main` worktree minutes before the branch (`v18f-before` /
+   `v18f-after`), lazy routes and all: the Suspense fallback is not in any
+   shot at the script's 15 s virtual-time budget.
+2. **Token rules: PASS.** Four new rules in `kit/tokens.test.ts` (no
+   `text-white`, no `bg-black`, no `Badge` export or file, every `<th`
+   scoped or a `<Th`), each planted by the implementer and again by the
+   orchestrator on the real tree (`text-white` and `bg-black/70` in
+   `Live.tsx`, a `Badge` re-export in `kit/index.ts`, a bare `<th>`): each
+   fails exactly one rule, `1 failed | 11 passed` four times, clean 12/12.
+3. **`npm run check`: PASS, exit 0, zero ESLint errors, 8 warnings.**
+   Ruling made in the cycle: `eslint-plugin-react-hooks` v7's recommended
+   set includes the React Compiler rule `set-state-in-effect`, which eight
+   effects trip (reset-on-prop-change in `ExplainModal` and
+   `DecisionPanel`; re-seed-from-payload in `Players`, `WhatIfSim`,
+   `SettingsTab`, `PlannerBoard`; subscribe-then-resync in `Toast` and
+   `api/pageData`). Each fix is a behaviour change on a page under part 1,
+   so the rule is `warn` with the reason in `eslint.config.js`, and the
+   eight are a recorded residual, not a silence. The three disables:
+   `ThisWeek.tsx` fixed (the callback derives its codes from `data`);
+   the two in `useJob.ts` are mount-only and keep the directive with the
+   reason on its line.
+4. **Suite and job test: PASS.** vitest **1098 passed, 1 skipped**
+   (1058 at the start; +40, the moved tests counted, none lost);
+   `api/useJob.test.tsx` **13.7 s → 31 ms**, the suite **14.5 s → 8.4 s**;
+   the `console.error` spy asserting no `act(` warning fails eight tests
+   when the `act` wrapper is removed (the implementer's mutation).
+5. **No recharts on the first paint: PASS.** After `npm run build` the two
+   entry chunks `index-nD2hjIyB.js` and `index-CLy6XwdW.js` contain the
+   string `recharts` 0 times; the library sits in
+   `generateCategoricalChart-*.js` (375 kB) loaded by the hubs that draw.
+
+**The cuts (§2.1).** `QualityTab` 1060 → 546 (`quality/{Calibration,Pens,
+Scatter,Misses}Section.tsx`, `quality/shared.tsx` for the one helper both
+sides draw), `ChipsTab` 519 → 321 (`ChipOutlook.tsx`, `chips.ts`,
+`useWhatIfSubmit.ts` shared with `WhatIfTab`), `PlannerBoard` 514 → 468
+(`boardRequest.ts` with its table, `TraceMoves.tsx` — the token rail's
+mono-face allowance follows the trace to its second file), `League` 483 →
+422 (`league/MarginFan.tsx`; `api/useSettingWrite.ts` for the three
+settings writers, returning whether the write landed so the ladder can
+skip a rebuild after a refusal; the invalidation table now has a row for
+the hook and each caller's row names the hook and its extras, and a
+planted removal fails exactly those rows), `ComparePanel` 451 → 399
+(`compareRows.ts`, joined by code), `LadderCard` 411 → 240 (`RungRow.tsx`).
+
+**Hand and eye (§2.2).** Both dialogs on Radix `Dialog` with an explicit
+`aria-label` so the accessible name stays the sentence the tests pin, and
+`kit/useOpener` to return focus where Radix has no `Trigger`; `kit/Th.tsx`
+(`scope="col"`, `aria-sort`, glyph `aria-hidden`) under `DataTable`, and
+`scope="col"` by hand on the ~130 other headers; the rung toggle a
+`<button aria-expanded>`; `sr-only` words on the matrix and squad chips;
+`--color-scrim` (`#000000b3`, the same bytes Tailwind's `bg-black/70`
+emitted) and `--color-on-accent`; `Badge` gone; `ChipSquadPlayer` →
+generated `SquadPlayerRef`, `AdvicePlayerRef` deleted (no user);
+`@radix-ui/react-tooltip` removed; lazy routes.
+
+**Left open.** The eight `set-state-in-effect` warnings; `ExplainModal`'s
+21 lines over 80 columns from the extra nesting; the compiled CSS still
+emits `.text-white` and `.bg-black\/70` (~120 bytes) because Tailwind's
+scanner reads the class names out of `tokens.test.ts`'s own patterns (the
+v7d trap, harmless); `FixtureTicker` still has no cold-clone sentence.
