@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The replay delta, branch against a re-run main — for any cycle.
 #
-# v9c's driver, generalized. ``scripts/v9c_replay.sh`` is left byte-identical
+# v9c's driver, generalized. ``scripts/archive/v9c_replay.sh`` is left byte-identical
 # because it is *evidence*: it is the exact script that produced v9c's banked
 # verdict, and editing it in place would make that verdict unreproducible. The
 # two things it hardcoded — the cycle name and the worktree path — are the only

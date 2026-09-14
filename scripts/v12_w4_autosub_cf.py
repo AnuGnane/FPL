@@ -21,7 +21,7 @@ Either half failing is a withdrawal; neither half alone ships an arm. And when
 :func:`v12_w4_arms.check_coverage` is called here first, and exits, for
 exactly that reason.
 
-``scripts/v10_autosub_cf.py`` is the template and the differences are two.
+``scripts/archive/v10_autosub_cf.py`` is the template and the differences are two.
 There, both arms were the same fitted model into two solvers; here both arms
 are two *fitted models* into the same solver, so the fit is inside the arm
 loop and the memoised frame is the only thing shared. And the window is
@@ -75,7 +75,7 @@ name."""
 OPT_KW = dict(decay=0.9, bench_weight=0.1, vice_weight=0.1, ft_value=0.0,
               itb_value=0.0, hit_cost=4, ft_use_penalty=0.0,
               bench_curve=[0.21, 0.06, 0.002])
-"""The solve every arm shares, ``scripts/v10_autosub_cf.py:56-58`` verbatim.
+"""The solve every arm shares, ``scripts/archive/v10_autosub_cf.py:56-58`` verbatim.
 
 The ``bench_curve`` is required and is not read from ``config.toml``: with no
 curve there are no bench-slot indicators and a better ``p_play`` has nothing
@@ -91,7 +91,7 @@ def _p_play_by_code(comp: pd.DataFrame, gw: int) -> dict[int, dict[int, float]]:
     Grouped ``mean`` per ``(code, gw)``: "did he turn out at all" is one
     outcome, so a doubled-up player's probability is the mean of his fixtures
     and not their sum — ``news_shadow.shadow_rows``' rule, for its reason, and
-    ``scripts/v10_autosub_cf.py:71-86`` verbatim.
+    ``scripts/archive/v10_autosub_cf.py:71-86`` verbatim.
     """
     grouped = (comp[comp["gw"] == int(gw)]
                .groupby("code", as_index=False)
