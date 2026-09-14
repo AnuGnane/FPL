@@ -71,4 +71,72 @@ Verdict: all five, or no merge.
 
 ## 3. Outcome
 
-_(filled at the gate)_
+Run 2026-09-13/14 on branch `v18d-layering`, seven code commits after the
+spec (`6d67df4` … `27c5d67`). All five gate lines held; two rulings the spec
+did not foresee are recorded below.
+
+1. **Golden after every group: PASS three times.** `.venv/bin/pytest -q -rs
+   tests/test_golden_board.py tests/test_pipeline.py` → `58 passed` after
+   group A (`e74e5f0`, 18:04), after group B (`6431353`, 17:58) and after
+   group C (`27c5d67`). No skip line, no fixture change; the four expected
+   files and the Inputs are v18c's recording (`afc6e7c`) untouched.
+2. **Routes 51; `npm run types -- --check` silent** (exit 0). No schema
+   class or field moved; `schemas.py` gained 29 hub banners, comments only.
+3. **Rails in `tests/test_layering.py`: three functions, nine tests,** each
+   with a planted-fault twin under `tmp_path`, plus a live mutation by the
+   orchestrator on the real tree (a `gaffer.web` import appended to
+   `brief.py`, a function-body `price_timing` import replanted in
+   `served.py`, an `advise` import appended to `config.py`): each fired,
+   each reverted.
+4. **Every router 4xx sentence unchanged:** the router tests passed
+   throughout; `web/coerce.py` has its own table (`tests/test_web_coerce.py`).
+5. **Suites green:** Python 4438 without the golden (4496 with it),
+   frontend 988 (+1 skipped), `tsc` clean; frontend source untouched.
+
+**Rulings made during the cycle.**
+
+- *The what-if validators stay in the router* (against §2's fourth bullet
+  and the design's ruling 6). `_validate` is built from `WhatIfRequest` and
+  raises the 422; `_summary` returns `PlanSummary`. A core copy would import
+  `web.schemas` — the very edge rail 1 forbids — or duplicate the sentences
+  rail 4 pins. Their names went public (`validate`, `summary`) for `drafts`
+  and the MCP server, which was the reach the move was for.
+- *Rail 1 exempts the two surfaces whole,* `cli.py` (`gaffer ui`, `gaffer
+  mcp`) and `mcp_server.py`, rather than "server-wiring lines": both exist to
+  call the web layer. After group A they are the only importers of
+  `gaffer.web` outside `web/`.
+- *`snap_date` moved to a new leaf, `gaffer/clock.py`.* The `served →
+  price_timing` hoist was blocked by `price_timing → price_log → snapshot →
+  artifacts → served`, and the only thing the two price modules took from
+  `snapshot` was the day key.
+- *The override store's read half moved into `artifacts`* (`overrides_path`,
+  `load_overrides`, `attach_overrides`, `OVERRIDE_COLS`, `opt_float`,
+  `clipped`); `overrides.py` keeps the write half and imports the names
+  back. That is what let `artifacts`, `snapshot` and `models/availability`
+  import `attach_overrides` at the top.
+- *`fit_dnp_calibrator` takes the inner model as a factory* (`inner=`) and
+  lost its `seed` parameter, which the factory carries; the mode vocabulary
+  (`DNP`, `SUB`, `START`, `MODE_COLS`, `mode_labels`, `SIXTY_MINUTES`) is
+  `models/modes.py`, imported back into `minutes`.
+- *`config.invalidate` walks a registry* (`config.on_invalidate`);
+  `price_timing` registers its cache clear at import.
+- *`chips` reads the wildcard bar off `chip_policy` at call time,* so the
+  sentinel rails patch one binding.
+
+**New names.** `gaffer/difficulty.py` (`rate_fixtures`,
+`difficulty_by_team`, three frozen dataclasses), `gaffer/refresh.py`
+(`run_data_refresh`), `gaffer/clock.py` (`snap_date`),
+`gaffer/models/predict.py` (`MODEL_NAMES`, `predict_components`,
+`news_availability`), `gaffer/models/modes.py`,
+`gaffer/optimize/formation.py` (`XI_BOUNDS`, `formation_legal`),
+`gaffer/web/coerce.py` (`fail`, `opt_float`, `opt_int`, `finite`),
+`config.cap`, `config.on_invalidate`, `match_odds.code_for`,
+`tracking.HEALTH_PATH`, `journal.JOURNAL_PATH` off `artifacts.REPORTS`.
+
+**Left open.** `routers/meta.py` still spells `REPORTS / "health.json"`
+for the health route (a web→tracking edge was not worth the one line);
+`artifacts._history_stamp` (from `journal`), `journal._code_of_element`
+(from `review`), `config._source_of` (from `routers/settings`) and
+`data.cups._cached_get` (from `core_insights`) are private reaches the spec
+did not name and the rail does not pin — v18g's single-home pass is the
+place to decide them.
