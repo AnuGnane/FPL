@@ -167,4 +167,73 @@ assertions collapse to membership.
 
 ## 3. Outcome
 
-_(filled at the gate)_
+Run 2026-09-14 on `v18g-suite`, nine commits over `1d90ba8`. All six lines
+held.
+
+1. **Ruff.** `uvx ruff check src tests` → `All checks passed!` under the
+   committed `[tool.ruff]`. The `style:` commit was the auto-fix and nothing
+   else: 335 fixes over 205 files; four names left `src/` (two feature lists
+   in `models/train`, `SEASON_LAST_GW` in `optimize/chips`, `MAX_DRAFTS` in
+   `routers/drafts`, pandas in `sensitivity`), none reached through its
+   module by a test or a patch. The by-hand commit closed 63: the sixteen
+   B023 closures bind their loop names as defaults (called only inside the
+   iteration that made them; the binding says so), B904 `from None` on the
+   CLI's three echo-then-exit paths, B011 `pytest.fail`, B017 the type
+   (`ValidationError`, `FrozenInstanceError`, `ValueError` for pyarrow's
+   junk), the rest by hand. Two deviations from §2.1, recorded: three test
+   files with a sectioned mid-file import block (`test_calibrate_decisions`,
+   `test_chip_policy`, `test_estimation_noise`) had their block merged into
+   the top import rather than an E402 ignore, and typer's declarative
+   defaults are listed under `extend-immutable-calls` rather than B008
+   rewritten at two of twenty-eight sites. `wired` keeps its F811 with the
+   reason on the import line; a fixture imported and then named as a
+   parameter is what the rule sees.
+2. **One home for the job-kind count.** Seventeen homes, not fourteen: the
+   new rail's scan (either spelling, any module prefix) found three more
+   under `job_kinds.JOB_KINDS` (`test_v8b_degradation`,
+   `test_v8c_degradation`, `test_web_job_kinds_v8b`), and they collapsed with
+   the rest. Mutation shown: a scratch `tests/test_zz_scratch.py` asserting
+   `len(JOB_KINDS) == 12` failed the rail (`Left contains 1 more item`);
+   deleted. Pin-only commit `e096a01`.
+3. **Seam order as behaviour.** `tests/test_advise_order.py`, four tests over
+   the harness's call record: the seven seams (`pen_priors`,
+   `news_availability`, `Predictions.components`, `write_shadow`,
+   `blend_attacking_odds`, `apply_calibration`, `ep_matrix`) in order and
+   each once; the league fetch after the EP matrix; a failing goalscorer-odds
+   request costs the blend and nothing else (the printed line proves the path
+   was taken). The four copies deleted; `test_advise_source`'s straddle pin
+   gained `compute_strategy` before the pool, the other name the copies
+   pinned across the split. Mutation shown: `pen_priors` and
+   `news_availability` swapped in `gather_inputs` fails the first test;
+   reverted.
+4. **The inner loop.** `-m "not slow and not golden"`: before, 4486 passed,
+   11,032 warnings in 191 s (the marker did not exist); after, **4349 passed,
+   148 deselected, 4 warnings in 68 s**. `slow` on five files
+   (`test_train` 80 s, `test_dixon_coles` 19 s, `test_estimation_noise` 9 s,
+   `test_minutes` 7 s, `test_v7b_driver` 6 s; next is `test_advise` at 3.4 s).
+   Five `filterwarnings` entries by message, each with its reason:
+   `LpVariable.dicts` 10,927, `LpProblem.constraints` mapping 96,
+   `LpVariable(name, …)` 2, `PULP_CBC_CMD` 1 (all PuLP 3.3, migrate at
+   PuLP 4), NumPy's array-shape deprecation 2 (from joblib's unpickler,
+   ignored by module). The four left are singletons in `src/` and one test.
+   The command is in `CLAUDE.md`'s block.
+5. **On a clone.** `mv reports reports.off && pytest -rs test_report.py
+   test_chip_sanity.py` → `27 passed`, no skip; `reports/` restored.
+   `tests/data/gw2-advice.json` 7,244 bytes, three per list, all twelve
+   chip rows; it carries a rival's team name and entry id already tracked in
+   the golden board's inputs, and nothing else that is not. The prose
+   fixture 178,290 → 118,242 bytes with three-player XIs; its Python and
+   frontend readers both pass. Six drivers under `scripts/archive/` with a
+   README naming each spec; two live referrers repointed.
+6. **Counts.** Python 4496 (4485 + 11 golden) → **4509**: +12
+   `test_cli_smoke`, +4 `test_advise_order`, −4 copies, +1 meta-rail. The
+   inner loop collects 4361. Frontend 1098 untouched; `npm run check` exit 0,
+   8 warnings (the v18f residual). Pins 51 / 12 / 62.
+
+Golden gate, once at the end: **58 passed, 0 skipped in 18:02** (`-rs`; no
+skip line). Routes 51, kinds 12, Config 62.
+
+Also: task 4's orchestrator half (the isolation clears in six rails) is its
+own commit `29e6690`, not folded into the pin-only commit §2.2 promised would
+change nothing else. The `test_v7_model_degradation` phrase pin
+`"scenario_noise.cache_clear()" in src` is about `src/` and stands.
