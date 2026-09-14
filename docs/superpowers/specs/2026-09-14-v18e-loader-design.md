@@ -103,6 +103,16 @@ because several artifacts answer 200 with an empty list rather than 404
 the slot is one. Render props rather than children-as-element, so the
 body is typed and never rendered with `null`.
 
+**Corrected during the cycle (`47dd7fe`):** the cold clone does not answer
+404. `web/app.py` maps every `GafferError` — "nothing on disk yet, run
+`gaffer advise` first" — to **422**; only the plan, chips and components
+routes answer 404 by design. So `Loaded`'s empty branch is `status === 404
+|| status === 422`, and `empty` may be a function of the server's sentence
+for the states that print it. Gate part 3's 404 rows are read as "404 or
+422, whichever the route answers". Task 3 found this and, correctly, left
+the page-level branches on `error` alone rather than paint the cold clone
+red; task 3b converts them under the corrected rule.
+
 ### 2.3 What converts, and the nine synthesised empties (ruling 7)
 
 Every `apiGet` in `hubs/` and `kit/` converts to `usePageData` except the
