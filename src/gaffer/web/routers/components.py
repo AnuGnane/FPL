@@ -19,8 +19,13 @@ from gaffer.artifacts import load_components
 from gaffer.errors import GafferError
 from gaffer.uncertainty import bands_by_player_gw
 from gaffer.web.coerce import finite, opt_float
-from gaffer.web.schemas import (Component, ComponentFixture, ComponentPlayer,
-                                ComponentsBreakdown, MinutesOutput)
+from gaffer.web.schemas import (
+    Component,
+    ComponentFixture,
+    ComponentPlayer,
+    ComponentsBreakdown,
+    MinutesOutput,
+)
 
 router = APIRouter(prefix="/api", tags=["components"])
 

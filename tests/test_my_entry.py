@@ -17,12 +17,21 @@ import json
 
 import pytest
 
-from gaffer.data.my_entry import (bank_my_entry, bank_my_gw, bank_my_history,
-                                  bank_my_transfers, chip_for_gw,
-                                  gw_history_row, load_my_gw, load_my_history,
-                                  load_my_transfers, my_history_path,
-                                  my_picks_path, my_transfers_for_gw,
-                                  my_transfers_path)
+from gaffer.data.my_entry import (
+    bank_my_entry,
+    bank_my_gw,
+    bank_my_history,
+    bank_my_transfers,
+    chip_for_gw,
+    gw_history_row,
+    load_my_gw,
+    load_my_history,
+    load_my_transfers,
+    my_history_path,
+    my_picks_path,
+    my_transfers_for_gw,
+    my_transfers_path,
+)
 
 PICKS = [{"element": 7, "position": 1, "multiplier": 2, "is_captain": True,
           "is_vice_captain": False},

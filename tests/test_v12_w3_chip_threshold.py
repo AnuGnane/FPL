@@ -18,12 +18,13 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from gaffer.optimize import chips as chips_mod
-from gaffer.optimize.chip_policy import (UNKNOWN_SOURCE,
-                                         chip_thresholds_from_asset,
-                                         flat_thresholds,
-                                         threshold_with_source,
-                                         thresholds_from_priors)
+from gaffer.optimize.chip_policy import (
+    UNKNOWN_SOURCE,
+    chip_thresholds_from_asset,
+    flat_thresholds,
+    threshold_with_source,
+    thresholds_from_priors,
+)
 from gaffer.optimize.chips import wildcard_now_assessment
 from gaffer.optimize.milp import SolveInput
 

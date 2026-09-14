@@ -16,7 +16,6 @@ re-wiring, and the tests are mostly about what happens when it is absent.
 from __future__ import annotations
 
 import pandas as pd
-import pytest
 
 from gaffer.optimize.differentials import captain_table
 
@@ -97,7 +96,6 @@ def test_the_partially_covered_table_renders_a_dash_not_nan_percent(tmp_path):
     NaN is created by the assignment, so a literal ``None`` in a fixture is a
     rail that cannot see this bug."""
     from gaffer.report.render import render_report
-
     from tests.test_report import _advice
 
     advice = _advice()

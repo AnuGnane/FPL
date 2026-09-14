@@ -10,11 +10,15 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
-from gaffer.data.tier_eo import (eo_from_picks, eo_se, fetch_sample_picks,
-                                 read_tier_cache, tier_cache_path,
-                                 tier_eo_table, write_tier_cache)
+from gaffer.data.tier_eo import (
+    eo_from_picks,
+    eo_se,
+    fetch_sample_picks,
+    read_tier_cache,
+    tier_cache_path,
+    tier_eo_table,
+    write_tier_cache,
+)
 
 PICKS = {
     101: [{"element": 7, "multiplier": 2}, {"element": 8, "multiplier": 1},

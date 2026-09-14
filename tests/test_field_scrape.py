@@ -12,8 +12,12 @@ import pytest
 
 from gaffer.config import Config
 from gaffer.data import store
-from gaffer.data.field import (field_sample_path, load_field_eo,
-                               load_field_sample, run_field_scrape, scrape_gw)
+from gaffer.data.field import (
+    load_field_eo,
+    load_field_sample,
+    run_field_scrape,
+    scrape_gw,
+)
 from gaffer.data.tier_eo import tier_cache_path, write_tier_cache
 
 EVENTS = pd.DataFrame([

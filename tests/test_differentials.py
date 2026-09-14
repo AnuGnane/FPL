@@ -1,6 +1,6 @@
 import pandas as pd
-from gaffer.optimize.differentials import (captain_table, transfer_alternatives,
-                                           threat_board)
+
+from gaffer.optimize.differentials import captain_table, threat_board, transfer_alternatives
 
 EP = pd.DataFrame({
     "code": [1, 2, 3, 4], "name": ["Salah", "Haaland", "Punt", "Gordon"],

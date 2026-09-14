@@ -17,8 +17,13 @@ import pytest
 from gaffer.artifacts import ADVICE_HISTORY
 from gaffer.data import store
 from gaffer.data.my_entry import my_picks_path
-from gaffer.review import (actuals_for_gw, code_of_element, model_decisions,
-                           my_decisions, reviewable_gws)
+from gaffer.review import (
+    actuals_for_gw,
+    code_of_element,
+    model_decisions,
+    my_decisions,
+    reviewable_gws,
+)
 
 # code 100 plays twice in GW2 (a double gameweek): the frame must come back
 # with one row per code, points and minutes summed.

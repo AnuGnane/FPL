@@ -2,8 +2,7 @@ import json
 
 import pytest
 
-from gaffer.assets import (DECISION_PRIORS, decision_priors_exist,
-                           load_decision_priors)
+from gaffer.assets import DECISION_PRIORS, decision_priors_exist, load_decision_priors
 
 
 def test_the_asset_is_shipped_in_the_package():
@@ -79,10 +78,8 @@ def test_lambda_from_priors_builds_a_table_from_real_samples():
 
 
 def test_thresholds_from_absent_priors_are_the_flat_constants():
-    from gaffer.optimize.chip_policy import thresholds_from_priors
-    from gaffer.optimize.chips import CHIP_PLAY_THRESHOLD
-
     from gaffer.optimize.chip_policy import chip_thresholds_from_asset
+    from gaffer.optimize.chips import CHIP_PLAY_THRESHOLD
 
     lookup = chip_thresholds_from_asset(None)
     assert lookup("bboost", 7) == CHIP_PLAY_THRESHOLD
@@ -100,11 +97,14 @@ def test_thresholds_from_a_real_asset_vary_by_week():
 
 # --- the calibrator --------------------------------------------------------
 
-import pandas as pd
 
-from gaffer.calibrate_decisions import (PHASE_BOUNDS, best_single_transfer,
-                                        phase_of, run_calibration,
-                                        write_priors)
+from gaffer.calibrate_decisions import (
+    PHASE_BOUNDS,
+    best_single_transfer,
+    phase_of,
+    run_calibration,
+    write_priors,
+)
 
 
 def test_phase_bounds_split_the_season_into_thirds():
@@ -124,7 +124,6 @@ def test_phase_of_clamps_out_of_range_gameweeks():
 
 def test_best_single_transfer_is_the_gain_over_making_none():
     """The surplus the lambda DP consumes: what one free transfer buys."""
-    from gaffer.optimize.milp import SolveInput
     from tests.test_milp import _owned_state
     from tests.test_v4c_degradation import GOLDEN_KW, golden_pool
 
@@ -288,8 +287,8 @@ def _stub_replay(monkeypatch, seen, state_gws=(5,)):
     def fake_run_backtest(season, start_gw=5, horizon=1, **_):
         state = SolveInput(owned_codes=junk, bank=0, free_transfers=1,
                            gws=list(state_gws))
-        from tests.test_v4c_degradation import GOLDEN_KW
         from gaffer.optimize.ft_value import lambda_from_priors
+        from tests.test_v4c_degradation import GOLDEN_KW
         kw = dict(GOLDEN_KW, ft_use_penalty=0.4,
                   bench_curve=[0.21, 0.06, 0.002],
                   ft_lambda=lambda_from_priors(load_decision_priors()))

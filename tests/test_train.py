@@ -1,18 +1,22 @@
 import random
 
 import pandas as pd
-from gaffer.models.train import (CALIBRATION_HOLDOUT_GWS,
-                                 CALIBRATION_MIN_SLOTS, bonus_season_floor,
-                                 evaluate_predictions, fit_calibration,
-                                 train_all)
+
 from gaffer.assets import load_bootstrap_sample
 from gaffer.data.bootstrap import scoring_table
 from gaffer.features.engineer import ROTATION_FEATURES
 from gaffer.models.attacking import ATTACK_FEATURES
-from gaffer.models.components import (BONUS_FEATURES, DEFCON_FEATURES,
-                                      SAVES_FEATURES)
+from gaffer.models.components import BONUS_FEATURES, DEFCON_FEATURES, SAVES_FEATURES
 from gaffer.models.team import TEAM_FEATURES
-from gaffer.models.train import MINUTES_FEATURES
+from gaffer.models.train import (
+    CALIBRATION_HOLDOUT_GWS,
+    CALIBRATION_MIN_SLOTS,
+    MINUTES_FEATURES,
+    bonus_season_floor,
+    evaluate_predictions,
+    fit_calibration,
+    train_all,
+)
 
 # The exact list gate G1 (2024-25 walk-forward, ``scripts/v8a_arms.py``) kept
 # from the v8a candidate arms. All six arms were withdrawn, so: none.
@@ -485,8 +489,11 @@ def test_load_training_frame_without_understat_still_has_the_columns(
         monkeypatch):
     """No parquet on disk is the default state; every new column has to
     exist and be empty so the feature schema never depends on the scrape."""
-    from gaffer.features.engineer import (SHRUNK_FEATURES, TEAM_US_FEATURES,
-                                          understat_feature_columns)
+    from gaffer.features.engineer import (
+        SHRUNK_FEATURES,
+        TEAM_US_FEATURES,
+        understat_feature_columns,
+    )
     from gaffer.models import train as train_mod
 
     _stub_store(monkeypatch, train_mod,

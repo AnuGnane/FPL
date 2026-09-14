@@ -4,10 +4,18 @@ from __future__ import annotations
 
 from gaffer.advise import build_advice
 from gaffer.league_mode import Strategy
-from tests.advice_fixture import (GW, ScriptedSolver, a_plan,
-                                  a_scratch_working_directory,  # noqa: F401
-                                  recording, tiny_cfg, tiny_inputs, tiny_my,
-                                  tiny_squad, without_the_ladder)
+from tests.advice_fixture import (
+    GW,
+    ScriptedSolver,
+    a_plan,
+    a_scratch_working_directory,  # noqa: F401
+    recording,
+    tiny_cfg,
+    tiny_inputs,
+    tiny_my,
+    tiny_squad,
+    without_the_ladder,
+)
 
 
 def test_the_tiny_board_builds_an_advice_end_to_end():

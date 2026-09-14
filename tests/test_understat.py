@@ -4,8 +4,7 @@ import pandas as pd
 import pytest
 
 from gaffer.data.names import normalize_name
-from gaffer.data.understat import (match_player_rows, league_matches,
-                                   team_match_rows)
+from gaffer.data.understat import league_matches, match_player_rows, team_match_rows
 from gaffer.errors import GafferError
 
 
@@ -713,10 +712,13 @@ def test_load_overrides_returns_a_dict_and_skips_doc_keys():
 
 # --- parquet builders -----------------------------------------------------
 
-from gaffer.data.understat import (UNDERSTAT_TEAM_ALIASES,
-                                   UNDERSTAT_PLAYER_PATH,
-                                   UNDERSTAT_TEAM_PATH, build_understat_player,
-                                   build_understat_team)
+from gaffer.data.understat import (
+    UNDERSTAT_PLAYER_PATH,
+    UNDERSTAT_TEAM_ALIASES,
+    UNDERSTAT_TEAM_PATH,
+    build_understat_player,
+    build_understat_team,
+)
 
 
 def _league_and_match_handler(request):

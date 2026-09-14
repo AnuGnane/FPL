@@ -15,8 +15,7 @@ from fastapi.testclient import TestClient
 import gaffer.live_gw as live_gw
 import gaffer.web.routers.live as live_mod
 from gaffer.web.app import create_app
-from tests.test_web_live_v8d import (COMPONENTS, FakeClient, MY_PICKS,
-                                     _setup)
+from tests.test_web_live_v8d import COMPONENTS, MY_PICKS, FakeClient, _setup
 
 
 @pytest.fixture(autouse=True)

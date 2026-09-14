@@ -3,8 +3,13 @@ import math
 import numpy as np
 import pandas as pd
 
-from gaffer.models.dixon_coles import (GOAL_CAP, RHO_BOUNDS, fixture_outcomes,
-                                       scoreline_pmf, tau_correction)
+from gaffer.models.dixon_coles import (
+    GOAL_CAP,
+    RHO_BOUNDS,
+    fixture_outcomes,
+    scoreline_pmf,
+    tau_correction,
+)
 
 
 def test_tau_correction_is_one_away_from_the_low_score_corner():

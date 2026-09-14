@@ -17,10 +17,16 @@ import pandas as pd
 from fastapi import APIRouter, Query
 
 from gaffer.data import store
-from gaffer.models import persistence
 from gaffer.data.fixtures import season_outlook
-from gaffer.web.schemas import (FixtureMatrix, FixtureOutlook, MatrixCell,
-                                MatrixTeam, OutlookTeam, OutlookWeek)
+from gaffer.models import persistence
+from gaffer.web.schemas import (
+    FixtureMatrix,
+    FixtureOutlook,
+    MatrixCell,
+    MatrixTeam,
+    OutlookTeam,
+    OutlookWeek,
+)
 
 router = APIRouter(prefix="/api", tags=["fixtures"])
 

@@ -10,8 +10,12 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from gaffer.artifacts import (PROJECTIONS, latest_projection_before,
-                              projection_snapshots, save_projection_snapshot)
+from gaffer.artifacts import (
+    PROJECTIONS,
+    latest_projection_before,
+    projection_snapshots,
+    save_projection_snapshot,
+)
 
 DEADLINE = "2026-09-04T17:30:00+00:00"
 

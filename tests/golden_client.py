@@ -440,8 +440,8 @@ def golden_cwd(root: Path, client: FPLClient | None = None):
     a future ``time.monotonic()`` in ``data/live.py`` still works inside the
     golden rather than raising ``AttributeError``. Yields the resolved
     root."""
-    from gaffer.config import invalidate
     import gaffer.data.live as live_mod
+    from gaffer.config import invalidate
 
     root = Path(root).resolve()
     hush = (patch.object(live_mod, "time", _HushedTime())

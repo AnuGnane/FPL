@@ -30,18 +30,22 @@ import pandas as pd
 import pytest
 
 import gaffer.optimize.milp as milp
-from gaffer.config import (DEFAULT_LINEUP_PROVIDERS, Config, config_in_force,
-                           invalidate)
-from gaffer.data.news.lineups import (LINEUP_COLS, PROVIDERS, Provider,
-                                      ROTOWIRE_URL, fetch_lineups)
+from gaffer.config import DEFAULT_LINEUP_PROVIDERS, Config, config_in_force, invalidate
+from gaffer.data.news.lineups import LINEUP_COLS, PROVIDERS, ROTOWIRE_URL, Provider, fetch_lineups
 from gaffer.evaluation import score_news_shadow
 from gaffer.news_shadow import SHADOW_COLS
-from gaffer.optimize.milp import (BENCH_SLOTS, DEFAULT_BENCH_CURVE,
-                                  FRAILTY_CLAMP, KEEPER_DNP, POPULATION_DNP,
-                                  SolveInput, _frailty, solve_plan)
+from gaffer.optimize.milp import (
+    BENCH_SLOTS,
+    DEFAULT_BENCH_CURVE,
+    FRAILTY_CLAMP,
+    KEEPER_DNP,
+    POPULATION_DNP,
+    SolveInput,
+    _frailty,
+    solve_plan,
+)
 from gaffer.web.app import create_app
 from gaffer.web.job_kinds import JOB_KINDS
-
 
 # --- Block 1: §F2a, provider degradation ---------------------------------
 

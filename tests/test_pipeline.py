@@ -171,8 +171,8 @@ def test_the_advise_kind_is_the_body_defined_in_job_kinds():
 
 def test_non_web_code_does_not_import_the_advice_router():
     """Gate item 3 as a rail: the router is HTTP only."""
-    import gaffer.pipeline
     import gaffer.cli
+    import gaffer.pipeline
     import gaffer.web.job_kinds
     from gaffer.web.routers import advice as advice_router
 

@@ -1,9 +1,14 @@
 import numpy as np
 import pandas as pd
-from gaffer.models.components import (DEF_CBIT_THRESHOLD, DEFCON_PRIOR,
-                                      MID_FWD_CBIRT_THRESHOLD, BonusModel,
-                                      DefconModel, SavesModel, card_penalty,
-                                      defcon_target)
+
+from gaffer.models.components import (
+    DEF_CBIT_THRESHOLD,
+    DEFCON_PRIOR,
+    MID_FWD_CBIRT_THRESHOLD,
+    DefconModel,
+    card_penalty,
+    defcon_target,
+)
 
 
 def _defcon_frame(seed=3):

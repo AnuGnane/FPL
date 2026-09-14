@@ -6,8 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from gaffer.features.engineer import (ROLE_FEATURES, WB_BOX_TOUCHES,
-                                      WB_CROSSES, add_role_wb_share)
+from gaffer.features.engineer import ROLE_FEATURES, WB_BOX_TOUCHES, WB_CROSSES, add_role_wb_share
 
 
 def _pms(rows: list[dict]) -> pd.DataFrame:
@@ -141,9 +140,12 @@ def test_the_builder_adds_exactly_two_columns_and_reorders_nothing():
 
 from gaffer.data import store  # noqa: E402
 from gaffer.data.core_insights import ci_path  # noqa: E402
-from gaffer.features.engineer import (DENSITY_FEATURES,  # noqa: E402
-                                      DENSITY_WINDOW_DAYS, add_density_pub,
-                                      core_insights_frames)
+from gaffer.features.engineer import (  # noqa: E402
+    DENSITY_FEATURES,
+    DENSITY_WINDOW_DAYS,
+    add_density_pub,
+    core_insights_frames,
+)
 
 
 def _fx(rows: list[dict]) -> pd.DataFrame:
@@ -381,10 +383,8 @@ def test_the_frames_are_enumerated_from_disk_and_not_from_a_season_list(
 
 # --- Task 9: wiring ------------------------------------------------------
 
-from gaffer.data.core_insights import (CI_FIXTURE_COLS,  # noqa: E402
-                                       CI_PLAYER_COLS)
-from gaffer.features.engineer import (build_prediction_frame,  # noqa: E402
-                                      feature_columns)
+from gaffer.data.core_insights import CI_FIXTURE_COLS, CI_PLAYER_COLS  # noqa: E402
+from gaffer.features.engineer import build_prediction_frame, feature_columns  # noqa: E402
 from gaffer.models import train as tr  # noqa: E402
 
 

@@ -1,8 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from gaffer.zeros_diagnostic import (ZERO_STRATA, dnp_reliability, stratify,
-                                     zeros_report)
+from gaffer.zeros_diagnostic import ZERO_STRATA, dnp_reliability, stratify, zeros_report
 
 
 def _scored() -> pd.DataFrame:

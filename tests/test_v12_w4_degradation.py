@@ -22,11 +22,15 @@ from fastapi.testclient import TestClient
 
 from gaffer.config import Config
 from gaffer.data import store
-from gaffer.data.core_insights import (CI_ELO_COLS, CI_FIXTURE_COLS,
-                                       CI_PLAYER_COLS, ci_path,
-                                       download_core_insights,
-                                       load_core_insights,
-                                       season_table_stats)
+from gaffer.data.core_insights import (
+    CI_ELO_COLS,
+    CI_FIXTURE_COLS,
+    CI_PLAYER_COLS,
+    ci_path,
+    download_core_insights,
+    load_core_insights,
+    season_table_stats,
+)
 from gaffer.web.app import create_app
 from gaffer.web.job_kinds import JOB_KINDS
 
@@ -268,8 +272,7 @@ def test_role_is_fed_to_the_minutes_head_and_density_is_not(clone):
     ``role_wb_missing`` is 1.0, so a *shipped* column changes nothing about
     what a cold machine can answer.
     """
-    from gaffer.features.engineer import (DENSITY_FEATURES, ROLE_FEATURES,
-                                          feature_columns)
+    from gaffer.features.engineer import DENSITY_FEATURES, ROLE_FEATURES, feature_columns
     from gaffer.models.train import MINUTES_FEATURES
 
     for name in ROLE_FEATURES + DENSITY_FEATURES:
@@ -354,7 +357,6 @@ def test_no_override_file_leaves_the_penalty_term_exactly_as_it_was(clone):
 def test_a_half_edited_override_file_is_no_override_at_all(clone):
     """A hand-edited file is exactly the kind of thing that is half-edited at
     11pm on a Friday, and half a file must never be half a model."""
-    import pandas as pd
 
     from gaffer.data.set_piece_overrides import penalty_order_overrides
 

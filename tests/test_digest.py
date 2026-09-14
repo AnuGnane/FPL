@@ -22,8 +22,14 @@ import pandas as pd
 import pytest
 
 from gaffer import artifacts
-from gaffer.digest import (DIGEST_KINDS, friday_briefing, load_digest,
-                           run_digest, save_digest, tuesday_debrief)
+from gaffer.digest import (
+    DIGEST_KINDS,
+    friday_briefing,
+    load_digest,
+    run_digest,
+    save_digest,
+    tuesday_debrief,
+)
 
 GW = 5
 

@@ -23,8 +23,7 @@ from __future__ import annotations
 
 import dataclasses
 
-from gaffer.config import (DEFAULT_TOP_N, Config, config_in_force,
-                           load_config)
+from gaffer.config import DEFAULT_TOP_N, Config, config_in_force, load_config
 
 
 def _cfg(tmp_path, body=""):

@@ -15,13 +15,20 @@ from gaffer.artifacts import load_advice, load_components, load_snapshot
 from gaffer.config import load_config
 from gaffer.data.tier_eo import tier_eo_table
 from gaffer.errors import GafferError
-from gaffer.live_gw import (active_gameweek, entry_live_points,
-                            league_live_table, projected_multipliers,
-                            projected_points, projected_subs,
-                            provisional_bonus, race_value, remaining_ep_total,
-                            remaining_fraction, safety_margins)
-from gaffer.web.schemas import (LivePlayer, LiveRacePoint, LiveSafety,
-                                LiveState, LiveTableRow)
+from gaffer.live_gw import (
+    active_gameweek,
+    entry_live_points,
+    league_live_table,
+    projected_multipliers,
+    projected_points,
+    projected_subs,
+    provisional_bonus,
+    race_value,
+    remaining_ep_total,
+    remaining_fraction,
+    safety_margins,
+)
+from gaffer.web.schemas import LivePlayer, LiveRacePoint, LiveSafety, LiveState, LiveTableRow
 
 router = APIRouter(prefix="/api", tags=["live"])
 

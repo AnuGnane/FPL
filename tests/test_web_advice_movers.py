@@ -16,8 +16,7 @@ import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
-from gaffer.artifacts import (COMPONENT_COLS, append_advice_history,
-                              save_components)
+from gaffer.artifacts import COMPONENT_COLS, append_advice_history, save_components
 from gaffer.web.app import create_app
 
 GW = 5

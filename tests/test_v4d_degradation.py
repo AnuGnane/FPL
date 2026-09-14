@@ -17,11 +17,7 @@ and the pin here is updated deliberately — never quietly.
 
 from __future__ import annotations
 
-import pytest
-
-from gaffer.league_mode import (Strategy, compute_strategy, tilt_ep,
-                                tilted_captaincy)
-
+from gaffer.league_mode import Strategy, compute_strategy, tilt_ep, tilted_captaincy
 
 # --- rail 1: the tilt is the identity at lam = 0 ---------------------------
 
@@ -66,8 +62,7 @@ def test_the_no_league_advise_output_is_still_byte_identical(tmp_path,
                                                              monkeypatch):
     """Re-run the v4c rail now that the captain line has two conditional
     fragments. With no league both are absent and the block is unchanged."""
-    from tests.test_v4c_degradation import (
-        test_advise_prints_exactly_the_pre_v4c_block)
+    from tests.test_v4c_degradation import test_advise_prints_exactly_the_pre_v4c_block
 
     test_advise_prints_exactly_the_pre_v4c_block(tmp_path, monkeypatch)
 

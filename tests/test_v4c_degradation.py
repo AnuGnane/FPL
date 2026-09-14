@@ -63,7 +63,6 @@ def _fixture_advice():
 def test_advise_prints_exactly_the_pre_v4c_block(tmp_path, monkeypatch):
     """The rail. No scenario line, no frequency column, no seed banner when
     n = 0 — the output is character-for-character what v4b printed."""
-    import gaffer.cli as cli_mod
 
     cfg_path = tmp_path / "config.toml"
     cfg_path.write_text(

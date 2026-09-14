@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
-from gaffer.optimize.milp import (solve_plan, _solve_once, SolveInput,
-                                  build_pool)
+
+from gaffer.optimize.milp import SolveInput, _solve_once, build_pool, solve_plan
 
 OWNED = [1, 2,               # GKP x2
          3, 4, 5, 6, 7,      # DEF x5 (of 6 in pool)

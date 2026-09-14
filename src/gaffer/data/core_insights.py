@@ -41,8 +41,7 @@ import httpx
 import pandas as pd
 
 from gaffer.data import store
-from gaffer.data.cups import (CUPS_RAW_BASE, CUPS_TREE_URL, _cached_get,
-                              _http, repo_season)
+from gaffer.data.cups import CUPS_RAW_BASE, CUPS_TREE_URL, _cached_get, _http, repo_season
 from gaffer.io import atomic_save, atomic_write
 
 __all__ = ["CI_CACHE", "SEASON_TABLES", "ci_paths_from_tree", "repo_season"]

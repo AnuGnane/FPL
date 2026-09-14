@@ -18,8 +18,7 @@ from fastapi.testclient import TestClient
 from gaffer.artifacts import ADVICE_HISTORY, REPORTS
 from gaffer.config import Config
 from gaffer.data import store
-from gaffer.review import (grade_gw, load_ledger, reviewable_gws, run_review,
-                           season_summary)
+from gaffer.review import grade_gw, load_ledger, reviewable_gws, run_review, season_summary
 from gaffer.web import job_kinds
 from gaffer.web.app import create_app
 

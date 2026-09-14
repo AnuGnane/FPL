@@ -10,8 +10,7 @@ import pandas as pd
 from fastapi import APIRouter
 
 from gaffer.artifacts import upcoming_gw
-from gaffer.decisions import (REASONS, TEXT_MAX, note_for, note_state,
-                              save_note)
+from gaffer.decisions import REASONS, TEXT_MAX, note_for, note_state, save_note
 from gaffer.web.coerce import fail
 from gaffer.web.schemas import DecisionNote, DecisionWrite
 

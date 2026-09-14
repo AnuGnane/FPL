@@ -10,12 +10,23 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from gaffer.set_pieces import (ATTACK_MULT_CLAMP, EP_CLAMP, GOAL_POINTS,
-                               LEAGUE_PENS_PG, PEN_CONVERSION,
-                               PEN_XG, PenPriors, add_pen_ep,
-                               attack_multipliers, pen_estimate, pen_notices,
-                               pen_priors, pen_table, rescale_pen_after_blend,
-                               set_piece_ep, share_now)
+from gaffer.set_pieces import (
+    ATTACK_MULT_CLAMP,
+    EP_CLAMP,
+    GOAL_POINTS,
+    LEAGUE_PENS_PG,
+    PEN_CONVERSION,
+    PEN_XG,
+    PenPriors,
+    add_pen_ep,
+    attack_multipliers,
+    pen_estimate,
+    pen_notices,
+    pen_priors,
+    rescale_pen_after_blend,
+    set_piece_ep,
+    share_now,
+)
 
 
 def _players(order_1=1, order_2=2) -> pd.DataFrame:

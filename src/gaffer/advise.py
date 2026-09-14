@@ -29,69 +29,106 @@ from types import SimpleNamespace
 import pandas as pd
 
 from gaffer.api.client import FPLClient
+from gaffer.artifacts import (
+    REPORTS,
+    SolveState,
+    advice_path,
+    append_advice_history,
+    components_frame,
+    data_warning,
+    ingested_through,
+    load_advice,
+    pool_rows,
+    save_availability,
+    save_components,
+    save_snapshots,
+    save_solve_state,
+)
 from gaffer.assets import load_decision_priors
-from gaffer.artifacts import (REPORTS, SolveState, advice_path,
-                              append_advice_history, components_frame,
-                              data_warning,
-                              ingested_through, load_advice, pool_rows,
-                              save_availability, save_components,
-                              save_snapshots, save_solve_state)
 from gaffer.config import Config, cap
 from gaffer.data import store
-from gaffer.data.bootstrap import (build_events, build_players, build_teams,
-                                   next_gw, scoring_table)
+from gaffer.data.bootstrap import build_events, build_players, build_teams, next_gw, scoring_table
 from gaffer.data.entry import fetch_my_team
-from gaffer.difficulty import difficulty_by_team
-from gaffer.data.league import (effective_ownership, fetch_rival_entries,
-                                fetch_rival_history, fetch_rival_picks)
+from gaffer.data.league import (
+    effective_ownership,
+    fetch_rival_entries,
+    fetch_rival_history,
+    fetch_rival_picks,
+)
 from gaffer.data.live import refresh_live
+from gaffer.data.odds import (
+    OddsClient,
+    ags_frame,
+    blend_attacking_odds,
+    next_gw_event_ids,
+    odds_frame,
+)
+from gaffer.difficulty import difficulty_by_team
 from gaffer.errors import GafferError
-from gaffer.data.odds import (OddsClient, ags_frame, blend_attacking_odds,
-                              next_gw_event_ids, odds_frame)
 from gaffer.features.engineer import build_prediction_frame, feature_columns
+from gaffer.inputs import Inputs, LiveModels, MilpSolver, Outputs, Predictions, Solver
 from gaffer.io import atomic_write
-from gaffer.inputs import (Inputs, LiveModels, MilpSolver, Outputs,
-                           Predictions, Solver)
-from gaffer.ladder import (SEED_OFFSET as LADDER_SEED_OFFSET, ladder_payload,
-                           save_ladder, serve_rung, sigmas_from_components,
-                           step_context_from)
-from gaffer.served import (completed, decorated, price_falls,
-                           with_alternatives)
-from gaffer.league_mode import (LeagueParams, apply_stance, captain_cover,
-                                captaincy_note, captaincy_override,
-                                compute_strategy, cover_table, tilt_ep,
-                                win_probability)
+from gaffer.ladder import SEED_OFFSET as LADDER_SEED_OFFSET
+from gaffer.ladder import (
+    ladder_payload,
+    save_ladder,
+    serve_rung,
+    sigmas_from_components,
+    step_context_from,
+)
+from gaffer.league_mode import (
+    LeagueParams,
+    apply_stance,
+    captain_cover,
+    captaincy_note,
+    captaincy_override,
+    compute_strategy,
+    cover_table,
+    tilt_ep,
+    win_probability,
+)
 from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
 from gaffer.models.predict import news_availability
 from gaffer.models.team import add_team_rolling
-from gaffer.models.train import (cup_matches, load_training_frame,
-                                 understat_team_rolled)
-from gaffer.optimize.chips import (PAIR_DGW_MIN_PROB, chip_baseline,
-                                   evaluate_chips, wildcard_now_assessment)
+from gaffer.models.train import cup_matches, load_training_frame, understat_team_rolled
+from gaffer.news_shadow import write_shadow
+from gaffer.optimize.chip_policy import (
+    chip_thresholds_from_asset,
+    load_chip_scenarios,
+    threshold_with_source,
+)
+from gaffer.optimize.chips import (
+    PAIR_DGW_MIN_PROB,
+    chip_baseline,
+    evaluate_chips,
+    wildcard_now_assessment,
+)
+
 # v12 W1 §2.2 (specs/2026-09-01-gaffer-v12-program-design.md): the two
 # thresholds transfer_tag reads used to be defined here, in fractions, while
 # optimize/differentials.py carried a DIFFERENTIAL_EO of its own in percent.
 # One set now, in one unit, in the module that owns EO thresholds.
-from gaffer.optimize.differentials import (DIFFERENTIAL_EO, TEMPLATE_EO,
-                                           captain_table, threat_board,
-                                           transfer_alternatives)
-from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
-                                         load_chip_scenarios,
-                                         threshold_with_source)
+from gaffer.optimize.differentials import (
+    DIFFERENTIAL_EO,
+    TEMPLATE_EO,
+    captain_table,
+    threat_board,
+    transfer_alternatives,
+)
 from gaffer.optimize.ft_value import lambda_from_priors
 from gaffer.optimize.milp import SolveInput, build_pool
 from gaffer.optimize.policy import Thresholds, captain_frequency_of, decide
 from gaffer.optimize.scenarios import move_frequencies, xmins_by_player_gw
-from gaffer.news_shadow import write_shadow
+from gaffer.prices import price_alerts
+from gaffer.served import completed, decorated, price_falls, with_alternatives
+from gaffer.set_pieces import pen_priors, rescale_pen_after_blend
+
 # v12 W3 §4.6 (specs/2026-09-01-gaffer-v12-program-design.md): the captain
 # table's ceiling is the gameweek's own point distribution, which this module
 # has keyed on (code, gw) since v8g. Sited here rather than mid-``models.*``
 # (T8-T11 review, Minor 7): it is not a model module, and the block it split
 # is alphabetical.
 from gaffer.uncertainty import bands_by_player_gw
-from gaffer.prices import price_alerts
-from gaffer.set_pieces import pen_priors, rescale_pen_after_blend
-
 
 CHIPS = ["wildcard", "freehit", "bboost", "3xc"]
 FIRST_HALF_LAST_GW = 19

@@ -14,8 +14,14 @@ import pandas as pd
 import pytest
 
 from gaffer.data import store
-from gaffer.price_log import (PRICE_LOG_COLS, PRICE_LOG_PATH, append_prices,
-                              bank_prices, load_price_log, price_rows)
+from gaffer.price_log import (
+    PRICE_LOG_COLS,
+    PRICE_LOG_PATH,
+    append_prices,
+    bank_prices,
+    load_price_log,
+    price_rows,
+)
 
 PLAYERS = pd.DataFrame({
     "code": [11, 22, 33, 44],

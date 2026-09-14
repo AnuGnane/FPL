@@ -1,7 +1,13 @@
 import pandas as pd
 
-from gaffer.features.bps import (adjust_bps, apply_new_bps, award_bonus,
-                                 fixture_key, fixture_pair, rederive_bonus)
+from gaffer.features.bps import (
+    adjust_bps,
+    apply_new_bps,
+    award_bonus,
+    fixture_key,
+    fixture_pair,
+    rederive_bonus,
+)
 
 
 def _rows(spec):

@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from gaffer.league_sim import (Entry, FIELD_POP_N, SimInputs, field_population,
-                               simulate_field_rank)
+from gaffer.league_sim import FIELD_POP_N, Entry, SimInputs, field_population, simulate_field_rank
 
 
 def _eo(elements, value=0.5) -> dict[int, float]:

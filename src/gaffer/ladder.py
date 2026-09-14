@@ -36,9 +36,16 @@ from pathlib import Path
 import numpy as np
 
 from gaffer import artifacts
-from gaffer.artifacts import (caps_from_state, latest_gw, load_advice,
-                              load_components, load_solve_state, milp_pool,
-                              raw_ep_by, solve_kw_from_state)
+from gaffer.artifacts import (
+    caps_from_state,
+    latest_gw,
+    load_advice,
+    load_components,
+    load_solve_state,
+    milp_pool,
+    raw_ep_by,
+    solve_kw_from_state,
+)
 from gaffer.difficulty import difficulty_by_team
 from gaffer.errors import GafferError
 from gaffer.io import atomic_write

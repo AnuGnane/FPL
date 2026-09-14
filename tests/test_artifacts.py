@@ -4,11 +4,21 @@ from datetime import datetime, timezone
 import pandas as pd
 import pytest
 
-from gaffer.artifacts import (COMPONENT_COLS, SolveState, components_frame,
-                              data_warning, ingested_through, latest_gw,
-                              load_components, load_solve_state, milp_pool,
-                              pool_rows, raw_ep_by, save_components,
-                              save_solve_state)
+from gaffer.artifacts import (
+    COMPONENT_COLS,
+    SolveState,
+    components_frame,
+    data_warning,
+    ingested_through,
+    latest_gw,
+    load_components,
+    load_solve_state,
+    milp_pool,
+    pool_rows,
+    raw_ep_by,
+    save_components,
+    save_solve_state,
+)
 
 SCORING = {
     "goals_scored": {"GKP": 10, "DEF": 6, "MID": 5, "FWD": 4},

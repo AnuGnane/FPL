@@ -22,8 +22,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from gaffer.artifacts import (REPORTS, _history_stamp,
-                              advice_history_files)
+from gaffer.artifacts import REPORTS, _history_stamp, advice_history_files
 
 JOURNAL_PATH = REPORTS / "journal.json"
 """v18d §2: ``reports/`` is spelled once, in :mod:`gaffer.artifacts`.

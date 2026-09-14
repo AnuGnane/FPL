@@ -4,10 +4,15 @@ from __future__ import annotations
 
 import pandas as pd
 
-from gaffer.data.news.presser_log import (PRESSER_COLS, PRESSER_DAMP,
-                                          PRESSER_PATH, append_presser,
-                                          load_presser_log, presser_rows,
-                                          would_factor)
+from gaffer.data.news.presser_log import (
+    PRESSER_COLS,
+    PRESSER_DAMP,
+    PRESSER_PATH,
+    append_presser,
+    load_presser_log,
+    presser_rows,
+    would_factor,
+)
 
 
 def _frame() -> pd.DataFrame:

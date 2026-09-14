@@ -10,8 +10,7 @@ import httpx
 import pandas as pd
 import pytest
 
-from gaffer.calibrate_injuries import (CURVE_HORIZON, MIN_SPELLS, fit_curves,
-                                       write_curves)
+from gaffer.calibrate_injuries import CURVE_HORIZON, MIN_SPELLS, fit_curves, write_curves
 from gaffer.data.news.transfermarkt import parse_injury_spells
 
 FIXTURES = Path(__file__).parent / "data" / "news"

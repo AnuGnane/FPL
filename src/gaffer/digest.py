@@ -44,9 +44,15 @@ from pathlib import Path
 import pandas as pd
 
 from gaffer import artifacts
-from gaffer.artifacts import (data_warning, ingested_through, latest_gw,
-                              load_advice, load_availability, load_snapshot,
-                              upcoming_gw)
+from gaffer.artifacts import (
+    data_warning,
+    ingested_through,
+    latest_gw,
+    load_advice,
+    load_availability,
+    load_snapshot,
+    upcoming_gw,
+)
 from gaffer.errors import GafferError
 from gaffer.io import atomic_write
 from gaffer.watchlist import watch_targets
@@ -256,7 +262,7 @@ def _flagged_bits(gw: int | None, watched: dict[int, str],
         codes = pd.to_numeric(avail["code"], errors="coerce")
         rows = avail[codes.isin(list(watched))]
         for row in rows.itertuples():
-            code = int(getattr(row, "code"))
+            code = int(row.code)
             name = names.get(code, str(code))
             status = _text(row, "status")
             chance = _number(row, "chance_of_playing")
@@ -294,7 +300,7 @@ def _presser_bits(gw: int, watched: dict[int, str],
     for row in rows.itertuples():
         verdict = _text(row, "verdict")
         if verdict in DOUBT_VERDICTS:
-            code = int(getattr(row, "code"))
+            code = int(row.code)
             out.append(f"{names.get(code, str(code))} — the presser said "
                        f"{verdict}")
     return out
@@ -425,7 +431,7 @@ def _movers_bits(watched: dict[int, str],
         return []
     out: list[str | None] = []
     for row in alerts.itertuples():
-        code = int(getattr(row, "code"))
+        code = int(row.code)
         caveat = " (FPL still calibrating him)" \
             if _flag(row, "calibrating") else ""
         percent = _number(row, "price_change_percent")

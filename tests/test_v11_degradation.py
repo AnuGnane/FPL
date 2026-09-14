@@ -21,15 +21,19 @@ import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
-from gaffer.artifacts import (COMPONENT_COLS, SolveState, load_solve_state,
-                              save_components, save_solve_state)
+from gaffer.artifacts import (
+    COMPONENT_COLS,
+    SolveState,
+    load_solve_state,
+    save_components,
+    save_solve_state,
+)
 from gaffer.data import store
 from gaffer.data.field import FIELD_EO_COLS, append_field_eo, field_eo_rows
 from gaffer.review import season_summary
 from gaffer.web.app import create_app
 from gaffer.web.routers import plan as plan_router
 from gaffer.web.schemas import Review, ReviewGw
-
 from tests.test_web_league_sim import _artifacts
 
 # --- Block 1: §F1's honesty — the bank, and what breaks it ----------------

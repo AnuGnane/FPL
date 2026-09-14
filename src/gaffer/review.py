@@ -38,9 +38,15 @@ import pandas as pd
 from gaffer.artifacts import load_components  # noqa: F401 — Task 5's import
 from gaffer.backtest import score_gw
 from gaffer.data import store
-from gaffer.data.my_entry import (bank_my_entry, chip_for_gw, gw_history_row,
-                                  load_my_gw, load_my_history,
-                                  load_my_transfers, my_transfers_for_gw)
+from gaffer.data.my_entry import (
+    bank_my_entry,
+    chip_for_gw,
+    gw_history_row,
+    load_my_gw,
+    load_my_history,
+    load_my_transfers,
+    my_transfers_for_gw,
+)
 from gaffer.io import atomic_write
 from gaffer.journal import _code_of_element, latest_run_per_gw
 from gaffer.optimize.formation import formation_legal

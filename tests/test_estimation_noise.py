@@ -72,8 +72,7 @@ def test_the_attacking_head_takes_the_same_seam():
                            other["e_goals"].to_numpy())
 
 
-from gaffer.calibrate_noise import (EP_EDGES, MIN_CELL_OBS, XMINS_EDGES,
-                                    fit_estimation_sigmas)
+from gaffer.calibrate_noise import EP_EDGES, MIN_CELL_OBS, XMINS_EDGES, fit_estimation_sigmas
 from gaffer.optimize.scenarios import sigma_for
 
 
@@ -150,7 +149,6 @@ def test_the_first_seed_is_the_shipped_fit_so_member_zero_is_not_refit():
 
 
 def test_a_seeded_bundle_only_replaces_the_two_lightgbm_heads():
-    from gaffer.calibrate_noise import _seeded_bundle
 
     base = {"minutes": object(), "attacking": object(), "team": object(),
             "defcon": object(), "saves": object(), "bonus": object(),

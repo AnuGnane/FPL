@@ -25,8 +25,7 @@ from __future__ import annotations
 
 import dataclasses
 
-from gaffer.config import (DEFAULT_LINEUP_PROVIDERS, Config, _providers,
-                           config_in_force, load_config)
+from gaffer.config import DEFAULT_LINEUP_PROVIDERS, Config, _providers, config_in_force, load_config
 
 
 def _write(tmp_path, body: str):

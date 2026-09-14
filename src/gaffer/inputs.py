@@ -22,11 +22,10 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 import pandas as pd
 
-from gaffer.models.persistence import load_model, model_exists
-from gaffer.models.predict import MODEL_NAMES, predict_components
-
 from gaffer.data.entry import MyTeam
 from gaffer.league_mode import Strategy
+from gaffer.models.persistence import load_model, model_exists
+from gaffer.models.predict import MODEL_NAMES, predict_components
 from gaffer.optimize.milp import alternative_plans, solve_plan
 from gaffer.optimize.policy import coherent_plan
 from gaffer.optimize.scenarios import run_scenarios

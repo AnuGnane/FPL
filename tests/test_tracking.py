@@ -18,8 +18,8 @@ def test_compute_health_joins_predictions_with_actuals():
 def test_update_health_writes_summary_when_actuals_present(tmp_path, monkeypatch):
     """update_health only produces a summary once the finished GW's rows are in
     the live store — i.e. after refresh_live has run for that gameweek."""
-    from gaffer.data import store
     from gaffer import tracking
+    from gaffer.data import store
 
     monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")
     monkeypatch.chdir(tmp_path)
@@ -38,8 +38,8 @@ def test_update_health_writes_summary_when_actuals_present(tmp_path, monkeypatch
 
 
 def test_update_health_returns_none_before_live_refresh(tmp_path, monkeypatch):
-    from gaffer.data import store
     from gaffer import tracking
+    from gaffer.data import store
 
     monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")
     monkeypatch.chdir(tmp_path)
@@ -54,8 +54,8 @@ def test_update_health_carries_the_ledgers_two_points(tmp_path, monkeypatch):
     as null forever because update_health never read the ledger."""
     import json
 
-    from gaffer.data import store
     from gaffer import tracking
+    from gaffer.data import store
 
     monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")
     monkeypatch.chdir(tmp_path)
@@ -77,8 +77,8 @@ def test_update_health_carries_the_ledgers_two_points(tmp_path, monkeypatch):
 
 def test_update_health_leaves_the_two_points_null_without_a_ledger(
         tmp_path, monkeypatch):
-    from gaffer.data import store
     from gaffer import tracking
+    from gaffer.data import store
 
     monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")
     monkeypatch.chdir(tmp_path)

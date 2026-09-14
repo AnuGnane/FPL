@@ -19,9 +19,13 @@ import re
 
 import pandas as pd
 
-from gaffer.optimize.differentials import (ALTERNATIVE_EO, DIFFERENTIAL_EO,
-                                           TEMPLATE_EO, captain_table,
-                                           transfer_alternatives)
+from gaffer.optimize.differentials import (
+    ALTERNATIVE_EO,
+    DIFFERENTIAL_EO,
+    TEMPLATE_EO,
+    captain_table,
+    transfer_alternatives,
+)
 
 
 def test_all_three_constants_are_fractions():

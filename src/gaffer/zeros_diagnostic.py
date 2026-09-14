@@ -255,10 +255,8 @@ def _holdout(holdout_slots: int = 10) -> pd.DataFrame:
     from gaffer.assets import load_bootstrap_sample
     from gaffer.data.bootstrap import scoring_table
     from gaffer.evaluation import HOLDOUT_SLOTS, before_mask, holdout_boundary
-    from gaffer.models.assemble import (apply_calibration, assemble_ep,
-                                        ep_matrix)
-    from gaffer.models.train import (load_training_frame,
-                                     predict_components_simple, train_all)
+    from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
+    from gaffer.models.train import load_training_frame, predict_components_simple, train_all
 
     holdout_slots = holdout_slots or HOLDOUT_SLOTS
     df, tg, _ = load_training_frame()

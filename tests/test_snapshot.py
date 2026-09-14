@@ -7,9 +7,16 @@ import pytest
 
 from gaffer.artifacts import AVAILABILITY_COLS
 from gaffer.errors import GafferError
-from gaffer.snapshot import (SNAPSHOT_COLS, SNAPSHOT_PATH, append_snapshot,
-                             load_snapshot_log, next_unfinished_gw,
-                             run_snapshot, snap_date, snapshot_rows)
+from gaffer.snapshot import (
+    SNAPSHOT_COLS,
+    SNAPSHOT_PATH,
+    append_snapshot,
+    load_snapshot_log,
+    next_unfinished_gw,
+    run_snapshot,
+    snap_date,
+    snapshot_rows,
+)
 
 
 def _avail() -> pd.DataFrame:

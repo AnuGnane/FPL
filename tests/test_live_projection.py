@@ -11,8 +11,12 @@ still anybody's guess and is left alone.
 
 from __future__ import annotations
 
-from gaffer.live_gw import (entry_live_points, projected_multipliers,
-                            projected_points, projected_subs)
+from gaffer.live_gw import (
+    entry_live_points,
+    projected_multipliers,
+    projected_points,
+    projected_subs,
+)
 
 POS = {1: "GKP", 2: "DEF", 3: "DEF", 4: "DEF", 5: "MID", 6: "MID",
        7: "MID", 8: "MID", 9: "FWD", 10: "FWD", 11: "FWD",

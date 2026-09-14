@@ -11,13 +11,12 @@ from __future__ import annotations
 
 import json
 import math
+import tomllib
 
 import pytest
-import tomllib
 from fastapi.testclient import TestClient
 
-from gaffer.config import (LOCAL_OVERLAY, config_in_force, invalidate,
-                           load_config)
+from gaffer.config import LOCAL_OVERLAY, config_in_force, invalidate, load_config
 from gaffer.web.app import create_app
 from gaffer.web.settings_keys import BY_FIELD, WHITELIST, live_keys
 

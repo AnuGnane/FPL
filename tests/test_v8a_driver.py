@@ -28,9 +28,11 @@ def test_every_candidate_is_an_arm_of_its_own():
     """G1 ablates each F1 feature individually and each F2 variant as a
     block. Bundling two F1 features into one arm would make a withdrawal
     impossible to target."""
-    from gaffer.features.engineer import (LEAGUE_CONGESTION_FEATURES,
-                                          ROTATION_PRIOR_FEATURES,
-                                          CONGESTION_FEATURES)
+    from gaffer.features.engineer import (
+        CONGESTION_FEATURES,
+        LEAGUE_CONGESTION_FEATURES,
+        ROTATION_PRIOR_FEATURES,
+    )
 
     arms = _driver().ARMS
     assert arms["baseline"] == []

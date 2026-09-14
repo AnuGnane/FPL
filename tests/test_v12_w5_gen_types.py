@@ -14,8 +14,14 @@ import json
 import pathlib
 import re
 
-from scripts.gen_types import (NARROWING_REASON, RENAME, WIRE_ONLY,
-                               build_schema, schema_path, serialize)
+from scripts.gen_types import (
+    NARROWING_REASON,
+    RENAME,
+    WIRE_ONLY,
+    build_schema,
+    schema_path,
+    serialize,
+)
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
 

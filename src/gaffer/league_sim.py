@@ -42,9 +42,13 @@ from gaffer import artifacts
 from gaffer.data.field import load_field_sample
 from gaffer.errors import GafferError
 from gaffer.io import atomic_write
-from gaffer.optimize.scenarios import (NOISE_DENOM, NOISE_FLOOR_XMINS,
-                                       scenario_noise, sigma_for,
-                                       xmins_by_player_gw)
+from gaffer.optimize.scenarios import (
+    NOISE_DENOM,
+    NOISE_FLOOR_XMINS,
+    scenario_noise,
+    sigma_for,
+    xmins_by_player_gw,
+)
 
 SIM_N = 2000
 SIM_SEED = 20260831

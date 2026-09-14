@@ -17,9 +17,14 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from gaffer.artifacts import (COMPONENT_COLS, components_path, ep_movers,
-                              load_components, prev_components_path,
-                              save_components)
+from gaffer.artifacts import (
+    COMPONENT_COLS,
+    components_path,
+    ep_movers,
+    load_components,
+    prev_components_path,
+    save_components,
+)
 
 GW = 5
 

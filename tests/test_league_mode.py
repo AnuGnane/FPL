@@ -1,7 +1,14 @@
 import pandas as pd
 import pytest
-from gaffer.league_mode import (SIGMA, LAMBDA_CAP, Strategy,
-                                compute_strategy, tilt_ep, win_probability)
+
+from gaffer.league_mode import (
+    LAMBDA_CAP,
+    SIGMA,
+    Strategy,
+    compute_strategy,
+    tilt_ep,
+    win_probability,
+)
 from gaffer.optimize.milp import solve_plan
 from tests.test_milp import _pool, _state
 
@@ -206,10 +213,15 @@ def test_the_deadband_sentence_is_what_a_small_gap_actually_renders():
 
 
 def test_league_params_default_to_the_module_constants():
-    from gaffer.league_mode import (LAMBDA_CAP, SIGMA_CAP, SIGMA_FLOOR,
-                                    SIGMA_MIN_WEEKS, Z_SCALE, LeagueParams)
-
-    from gaffer.league_mode import Z_DEADBAND
+    from gaffer.league_mode import (
+        LAMBDA_CAP,
+        SIGMA_CAP,
+        SIGMA_FLOOR,
+        SIGMA_MIN_WEEKS,
+        Z_DEADBAND,
+        Z_SCALE,
+        LeagueParams,
+    )
 
     p = LeagueParams()
     assert (p.z_scale, p.lambda_cap) == (Z_SCALE, LAMBDA_CAP)

@@ -6,8 +6,7 @@ import dataclasses
 import pytest
 from fastapi.testclient import TestClient
 
-from gaffer.config import (HIT_BAR_HI, HIT_BAR_LO, LOCAL_OVERLAY, Config,
-                           invalidate, load_config)
+from gaffer.config import HIT_BAR_HI, HIT_BAR_LO, LOCAL_OVERLAY, Config, invalidate, load_config
 from gaffer.errors import GafferError
 
 BASE = "[fpl]\nentry_id = 1\nleague_id = 5\n"

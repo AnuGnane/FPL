@@ -15,7 +15,6 @@ import pytest
 from gaffer.config import NO_CAP, Config, load_config
 from gaffer.errors import GafferError
 
-
 # --- Block 1: the two levers ---------------------------------------------
 
 def test_the_config_gained_exactly_two_fields():
@@ -255,9 +254,8 @@ def test_a_cap_above_fifteen_is_refused_at_the_endpoint(settings_client):
 
 def test_build_ladder_on_a_saved_board_has_the_spec_shape(tmp_path,
                                                           monkeypatch):
-    from tests.test_ladder import save_state
-
     from gaffer.ladder import build_ladder
+    from tests.test_ladder import save_state
 
     monkeypatch.chdir(tmp_path)
     save_state({"max_hits": 2, "max_transfers": 15})

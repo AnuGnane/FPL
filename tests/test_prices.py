@@ -1,4 +1,5 @@
 import pandas as pd
+
 from gaffer.prices import price_alerts
 
 PLAYERS = pd.DataFrame([

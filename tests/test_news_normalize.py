@@ -5,8 +5,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from gaffer.data.news.normalize import (AVAIL_COLS, availability_frame,
-                                        gw_for_date)
+from gaffer.data.news.normalize import AVAIL_COLS, availability_frame, gw_for_date
 
 
 def _official() -> pd.DataFrame:

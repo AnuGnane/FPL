@@ -1,9 +1,13 @@
 import pandas as pd
 import pytest
 
-from gaffer.data.match_odds import (FOOTBALL_DATA_ALIASES, PRICE_TRIPLES,
-                                    TOTALS_PAIRS, parse_football_data,
-                                    resolve_fd_team)
+from gaffer.data.match_odds import (
+    FOOTBALL_DATA_ALIASES,
+    PRICE_TRIPLES,
+    TOTALS_PAIRS,
+    parse_football_data,
+    resolve_fd_team,
+)
 from gaffer.errors import GafferError
 
 
@@ -134,9 +138,13 @@ def test_price_and_totals_preference_chains_are_ordered_closing_first():
 
 import httpx
 
-from gaffer.data.match_odds import (MATCH_ODDS_PATH, build_match_odds,
-                                    download_season, join_to_fixtures,
-                                    season_slug)
+from gaffer.data.match_odds import (
+    MATCH_ODDS_PATH,
+    build_match_odds,
+    download_season,
+    join_to_fixtures,
+    season_slug,
+)
 
 _CSV = ("Date,HomeTeam,AwayTeam,AvgCH,AvgCD,AvgCA,AvgC>2.5,AvgC<2.5\n"
         "16/08/2024,Man United,Wolves,1.80,3.80,4.50,1.90,1.95\n"

@@ -4,8 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from gaffer.league_mode import (STANCES, LeagueParams, Strategy,
-                                apply_stance)
+from gaffer.league_mode import STANCES, LeagueParams, Strategy, apply_stance
 
 
 def _computed() -> Strategy:

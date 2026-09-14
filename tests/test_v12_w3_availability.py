@@ -17,11 +17,9 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-import pytest
 
 from gaffer.optimize.milp import SolveInput
-from gaffer.optimize.scenarios import (availability_draw, noised_pool,
-                                       run_scenarios)
+from gaffer.optimize.scenarios import availability_draw, noised_pool, run_scenarios
 
 SOLVE_KW = dict(decay=0.85, bench_weight=0.1, vice_weight=0.1, ft_value=1.5,
                 itb_value=0.05, hit_cost=4)

@@ -50,7 +50,6 @@ def test_a_code_outside_the_pool_is_refused_by_name_at_both_layers():
     from gaffer.optimize.milp import solve_plan
     from gaffer.web.routers import whatif as wf
     from gaffer.web.schemas import WhatIfRequest
-
     from tests.test_v12_w3_force_out import KW, _pool, _state
 
     with pytest.raises(GafferError, match="force_out: player code 9999"):
@@ -79,7 +78,6 @@ def test_a_forced_sale_credits_the_bank_and_a_ban_never_did():
     the identical squad.
     """
     from gaffer.optimize.milp import solve_plan
-
     from tests.test_v12_w3_force_out import KW, _pool, _state
 
     sold = solve_plan(_pool(), _state(force_out=[5]), **KW)
@@ -118,10 +116,8 @@ def test_a_cold_clone_is_flat_everywhere_and_says_which_kind_of_flat(
     the wildcard verdict is the pre-v12 one — the strictly-greater comparison
     against the flat bar, unchanged, because no lookup reached it.
     """
-    from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
-                                             threshold_with_source)
+    from gaffer.optimize.chip_policy import chip_thresholds_from_asset, threshold_with_source
     from gaffer.optimize.chips import wildcard_now_assessment
-
     from tests.test_v12_w3_chip_threshold import _pool, _state
 
     lookup = chip_thresholds_from_asset(None)
@@ -145,10 +141,8 @@ def test_with_an_asset_no_bar_anywhere_is_a_flat_value(sentinels):
     are two calls to the same lookup from two modules, and a sentinel reaching
     either one is a flat bar that should have been θ.
     """
-    from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
-                                             threshold_with_source)
+    from gaffer.optimize.chip_policy import chip_thresholds_from_asset, threshold_with_source
     from gaffer.optimize.chips import chip_plan
-
     from tests.test_v12_w3_chip_threshold import _priors_covering_everything
 
     lookup = chip_thresholds_from_asset(_priors_covering_everything())
@@ -195,7 +189,6 @@ def test_a_max_gap_of_zero_spends_no_solve(monkeypatch):
     whole feature off on a slow machine."""
     import gaffer.optimize.milp as milp_mod
     from gaffer.optimize.milp import alternative_plans, solve_plan
-
     from tests.test_v12_w3_alt_plans import KW, _pool, _state
 
     pool, state = _pool(), _state()
@@ -299,9 +292,7 @@ def test_the_switch_off_reproduces_the_pre_v12_sweep_on_a_fixed_seed():
     transfer the tool recommends, so "off changes nothing" is not a property
     to check once — it is the cost of admission for the whole item."""
     from gaffer.optimize.scenarios import run_scenarios
-
-    from tests.test_v12_w3_availability import (SOLVE_KW, _p_play, _pool,
-                                                _signature, _state, _xmins)
+    from tests.test_v12_w3_availability import SOLVE_KW, _p_play, _pool, _signature, _state, _xmins
 
     pool, xm = _pool(), _xmins(_pool())
     before = run_scenarios(pool, _state(), xm, n=3, seed=7, **SOLVE_KW)
@@ -316,9 +307,7 @@ def test_the_switch_on_with_no_probabilities_prints_the_lever_line(capsys):
     nothing reports zeros as evidence. The sweep says so out loud and draws
     the boards it always drew."""
     from gaffer.optimize.scenarios import run_scenarios
-
-    from tests.test_v12_w3_availability import (SOLVE_KW, _pool, _signature,
-                                                _state, _xmins)
+    from tests.test_v12_w3_availability import SOLVE_KW, _pool, _signature, _state, _xmins
 
     pool, xm = _pool(), _xmins(_pool())
     before = run_scenarios(pool, _state(), xm, n=2, seed=7, **SOLVE_KW)
@@ -336,7 +325,6 @@ def test_a_player_with_no_probability_is_never_drawn_out():
     import numpy as np
 
     from gaffer.optimize.scenarios import availability_draw
-
     from tests.test_v12_w3_availability import _pool
 
     pool = _pool()
@@ -360,7 +348,6 @@ def test_no_chip_scenarios_file_means_no_pair_row_and_five_columns(tmp_path):
     """
     from gaffer.optimize.chip_policy import load_chip_scenarios
     from gaffer.optimize.chips import PAIR_CHIP
-
     from tests.test_v12_w3_chip_pairs import _table
 
     assert load_chip_scenarios(tmp_path / "chip_scenarios.toml") == {}
@@ -375,7 +362,6 @@ def test_gw2_is_none_on_a_single_chip_row_and_never_nan():
     will parse. Checked on the mixed table, where the coercion actually
     happens."""
     from gaffer.optimize.chips import PAIR_CHIP
-
     from tests.test_v12_w3_chip_pairs import _table
 
     rows = _table(dgw_gws={3}).to_dict("records")
@@ -393,7 +379,6 @@ def test_a_plan_whose_week_carries_no_bank_prices_off_today_and_says_so(
 
     from gaffer.optimize.chips import chip_baseline, free_hit_gain
     from gaffer.optimize.milp import Plan
-
     from tests.test_v12_w3_free_hit import CFG, _pool, _state
 
     pool, state = _pool(), _state()
@@ -421,7 +406,6 @@ def test_no_components_frame_leaves_the_captain_ceiling_where_it_was(capsys,
     from gaffer.optimize.differentials import captain_table
     from gaffer.report.render import render_report
     from gaffer.uncertainty import bands_by_player_gw
-
     from tests.test_report import _advice
     from tests.test_v12_w3_dgw_captain import EO, XI, _ep
 
@@ -453,7 +437,6 @@ def test_the_banded_captain_table_gets_the_banded_header(tmp_path):
     """The positive half of the pair above: with ``p_haul_total`` on the
     options the header and its note are the gameweek-total ones."""
     from gaffer.report.render import render_report
-
     from tests.test_report import _advice
 
     advice = _advice()
@@ -474,7 +457,6 @@ def test_a_captain_with_no_band_is_an_em_dash_and_never_a_zero(tmp_path):
     The fourth null convention of the cycle, and the one a reviewer is most
     likely to propose defaulting "for the type's sake"."""
     from gaffer.report.render import render_report
-
     from tests.test_report import _advice
 
     advice = _advice()

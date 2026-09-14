@@ -22,7 +22,6 @@ from gaffer.data import store
 from gaffer.data.elo import compute_elo, expected_score
 from gaffer.data.odds import poisson_win_prob
 
-
 # Plain dataclasses, not the web schemas (v18d §2): the core owns this and
 # must not import ``web``. The field names are the schemas' own, so the route
 # converts field for field.

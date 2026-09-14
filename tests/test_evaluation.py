@@ -1,8 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from gaffer.evaluation import (RETURN_CATEGORIES, categorize,
-                               stratified_metrics)
+from gaffer.evaluation import RETURN_CATEGORIES, categorize, stratified_metrics
 
 
 def test_categorize_uses_openfpl_return_buckets():
@@ -136,8 +135,13 @@ import json  # noqa: E402
 import pytest  # noqa: E402
 
 from gaffer.errors import GafferError  # noqa: E402
-from gaffer.evaluation import (EVALUATION_PATH, git_sha,  # noqa: E402
-                               load_evaluation, run_at, save_evaluation)
+from gaffer.evaluation import (  # noqa: E402
+    EVALUATION_PATH,
+    git_sha,
+    load_evaluation,
+    run_at,
+    save_evaluation,
+)
 
 
 def test_load_evaluation_without_the_artifact_says_how_to_make_one(
@@ -239,8 +243,7 @@ def test_git_sha_is_a_string_even_outside_a_repo(tmp_path, monkeypatch):
     assert isinstance(git_sha(), str)
 
 
-from gaffer.evaluation import (baseline_metrics, before_mask,  # noqa: E402
-                               holdout_boundary)
+from gaffer.evaluation import baseline_metrics, before_mask, holdout_boundary  # noqa: E402
 
 
 def _slot_frame(slots):
@@ -296,9 +299,13 @@ def test_baseline_metrics_collapses_a_double_gameweek_to_one_row():
     assert out["all"]["n"] == 1
 
 
-from gaffer.evaluation import (BENCHMARK_CAVEAT,  # noqa: E402
-                               BENCHMARK_TEST_IDX, BENCHMARK_TRAIN_MAX_IDX,
-                               REFERENCES, benchmark_split)
+from gaffer.evaluation import (  # noqa: E402
+    BENCHMARK_CAVEAT,
+    BENCHMARK_TEST_IDX,
+    BENCHMARK_TRAIN_MAX_IDX,
+    REFERENCES,
+    benchmark_split,
+)
 from gaffer.features.engineer import add_player_rolling  # noqa: E402
 
 
@@ -411,8 +418,7 @@ def test_format_report_names_the_two_derived_decomposition_numbers():
 
 import inspect  # noqa: E402
 
-from gaffer.evaluation import (benchmark_scoring, evaluate_benchmark,  # noqa: E402
-                               evaluate_current)
+from gaffer.evaluation import benchmark_scoring, evaluate_benchmark, evaluate_current  # noqa: E402
 
 
 def test_benchmark_scoring_drops_the_defensive_contribution_rule():

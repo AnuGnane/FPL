@@ -190,8 +190,7 @@ def test_a_flags_only_week_still_writes_the_override_schema(tmp_path,
                                                             monkeypatch):
     """A4: the columns exist whether or not a feed ran and whether or not
     anybody pinned anything, so one parquet schema covers every week."""
-    from gaffer.artifacts import OVERRIDE_COLS, load_availability, \
-        save_availability
+    from gaffer.artifacts import OVERRIDE_COLS, load_availability, save_availability
 
     monkeypatch.chdir(tmp_path)
     save_availability(_avail(), 5)

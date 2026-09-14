@@ -14,7 +14,6 @@ from __future__ import annotations
 import pytest
 
 from gaffer.trace import trace_plan
-
 from tests.test_v12_w5_trace import EP, GWS, NAMES, POS, run, week
 
 

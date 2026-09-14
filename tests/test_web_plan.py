@@ -10,8 +10,7 @@ import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
-from gaffer.artifacts import (SolveState, pool_rows, save_solve_state,
-                             solve_state_paths)
+from gaffer.artifacts import SolveState, pool_rows, save_solve_state, solve_state_paths
 from gaffer.web.app import create_app
 
 ADVICE = {

@@ -17,8 +17,14 @@ import pytest
 from gaffer.artifacts import ADVICE_HISTORY, REPORTS
 from gaffer.config import Config
 from gaffer.data import store
-from gaffer.review import (append_ledger, format_review, ledger_path,
-                           load_ledger, run_review, season_summary)
+from gaffer.review import (
+    append_ledger,
+    format_review,
+    ledger_path,
+    load_ledger,
+    run_review,
+    season_summary,
+)
 
 CFG = Config(entry_id=42, league_id=5, current_season="2026-27", sim_n=50)
 

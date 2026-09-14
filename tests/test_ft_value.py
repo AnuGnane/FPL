@@ -1,7 +1,6 @@
 import pytest
 
-from gaffer.optimize.ft_value import (FT_CAP, LambdaLookup, lambda_table,
-                                      value_table)
+from gaffer.optimize.ft_value import FT_CAP, LambdaLookup, lambda_table, value_table
 
 
 def test_the_cap_is_five_free_transfers():

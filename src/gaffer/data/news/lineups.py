@@ -26,8 +26,7 @@ import pandas as pd
 
 from gaffer.config import config_in_force
 from gaffer.data.news import NEWS_CACHE, cache_path, cached_text, fetched_at
-from gaffer.data.news.normalize import (NEWS_MIN_COVERAGE, club_code,
-                                        club_code_map, match_codes)
+from gaffer.data.news.normalize import NEWS_MIN_COVERAGE, club_code, club_code_map, match_codes
 
 FFS_URL = "https://www.fantasyfootballscout.co.uk/team-news/"
 

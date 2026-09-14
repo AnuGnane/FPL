@@ -8,10 +8,19 @@ from pathlib import Path
 import pytest
 
 from gaffer import artifacts
-from gaffer.brief import (BRIEF_PROMPT_VERSION, build_facts, build_prompt,
-                          cache_key, check_brief, extract_text, fact_names,
-                          fact_numbers, first_sentence, load_brief,
-                          run_brief)
+from gaffer.brief import (
+    BRIEF_PROMPT_VERSION,
+    build_facts,
+    build_prompt,
+    cache_key,
+    check_brief,
+    extract_text,
+    fact_names,
+    fact_numbers,
+    first_sentence,
+    load_brief,
+    run_brief,
+)
 
 FACTS = {
     "gw": 4, "horizon": [4, 5, 6], "expected_pts": 61.2, "hits": 0, "hit_points": 0,

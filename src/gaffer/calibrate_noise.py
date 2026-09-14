@@ -96,13 +96,14 @@ def residual_rows(max_train_idx: int | None = None,
     from gaffer.assets import load_bootstrap_sample
     from gaffer.data.bootstrap import scoring_table
     from gaffer.errors import GafferError
-    from gaffer.evaluation import (BENCHMARK_TEST_IDX,
-                                   BENCHMARK_TRAIN_MAX_IDX,
-                                   benchmark_scoring, benchmark_split)
-    from gaffer.models.assemble import (apply_calibration, assemble_ep,
-                                        ep_matrix)
-    from gaffer.models.train import (load_training_frame,
-                                     predict_components_simple, train_all)
+    from gaffer.evaluation import (
+        BENCHMARK_TEST_IDX,
+        BENCHMARK_TRAIN_MAX_IDX,
+        benchmark_scoring,
+        benchmark_split,
+    )
+    from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
+    from gaffer.models.train import load_training_frame, predict_components_simple, train_all
     from gaffer.optimize.scenarios import xmins_by_player_gw
 
     max_train_idx = (BENCHMARK_TRAIN_MAX_IDX if max_train_idx is None
@@ -415,11 +416,14 @@ def ensemble_rows(max_train_idx: int | None = None,
     from gaffer.data.bootstrap import scoring_table
     from gaffer.errors import GafferError
     from gaffer.evaluation import benchmark_split
-    from gaffer.models.assemble import (apply_calibration, assemble_ep,
-                                        ep_matrix)
+    from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
     from gaffer.models.minutes import LGB_KW
-    from gaffer.models.train import (attacking_features, load_training_frame,
-                                     predict_components_simple, train_all)
+    from gaffer.models.train import (
+        attacking_features,
+        load_training_frame,
+        predict_components_simple,
+        train_all,
+    )
     from gaffer.optimize.scenarios import xmins_by_player_gw
 
     if int(seeds[0]) != int(LGB_KW["random_state"]):

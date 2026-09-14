@@ -8,12 +8,11 @@ test; the ``opt`` line removed fails the third.
 """
 from __future__ import annotations
 
+from dataclasses import asdict
 from datetime import datetime, timezone
 
 import pulp
 import pytest
-
-from dataclasses import asdict
 
 from gaffer.advise import build_advice
 from gaffer.errors import GafferError

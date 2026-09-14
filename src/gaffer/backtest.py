@@ -55,23 +55,27 @@ from dataclasses import replace
 import pandas as pd
 
 from gaffer.advise import chips_available_for
-from gaffer.assets import load_bootstrap_sample
+from gaffer.assets import load_bootstrap_sample, load_decision_priors
 from gaffer.config import cap, load_config
 from gaffer.data import store
 from gaffer.data.bootstrap import scoring_table
 from gaffer.data.understat import UNDERSTAT_TEAM_PATH
-from gaffer.features.engineer import (ROLL_STATS, build_prediction_frame,
-                                      feature_columns)
+from gaffer.features.engineer import ROLL_STATS, build_prediction_frame, feature_columns
 from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
-from gaffer.models.train import (DEFAULT_E_GC, DEFAULT_P_CS,  # noqa: F401
-                                 cup_matches, load_training_frame,
-                                 predict_components_simple, train_all)
-from gaffer.assets import load_decision_priors
-from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
-                                         flat_thresholds)
-from gaffer.optimize.chips import (CHIP_PLAY_THRESHOLD,  # noqa: F401
-                                   WILDCARD_RECOMMEND_THRESHOLD,  # noqa: F401
-                                   evaluate_chips)
+from gaffer.models.train import (  # noqa: F401
+    DEFAULT_E_GC,
+    DEFAULT_P_CS,
+    cup_matches,
+    load_training_frame,
+    predict_components_simple,
+    train_all,
+)
+from gaffer.optimize.chip_policy import chip_thresholds_from_asset, flat_thresholds
+from gaffer.optimize.chips import (  # noqa: F401
+    CHIP_PLAY_THRESHOLD,
+    WILDCARD_RECOMMEND_THRESHOLD,  # noqa: F401
+    evaluate_chips,
+)
 from gaffer.optimize.formation import formation_legal
 from gaffer.optimize.ft_value import lambda_from_priors
 from gaffer.optimize.milp import SolveInput, build_pool, solve_plan

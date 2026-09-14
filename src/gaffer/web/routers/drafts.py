@@ -18,18 +18,32 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from gaffer.artifacts import (caps_from_state, latest_gw, load_solve_state,
-                              milp_pool, raw_ep_by, solve_kw_from_state)
-from gaffer.drafts import (MAX_DRAFTS, add_draft, delete_draft, load_drafts)
+from gaffer.artifacts import (
+    caps_from_state,
+    latest_gw,
+    load_solve_state,
+    milp_pool,
+    raw_ep_by,
+    solve_kw_from_state,
+)
+from gaffer.drafts import add_draft, delete_draft, load_drafts
 from gaffer.errors import GafferError
 from gaffer.league_mode import cover_from_eo, tilt_ep
 from gaffer.optimize.milp import SolveInput, solve_plan
 from gaffer.web.coerce import fail
 from gaffer.web.jobs import WHATIF_TIMEOUT_S, JobQueueFull
 from gaffer.web.routers.whatif import summary, validate
-from gaffer.web.schemas import (CHIP_CODES, DraftCompare, DraftCompareRequest,
-                                DraftCompareRow, DraftList, DraftRow,
-                                DraftSaveRequest, JobAccepted, WhatIfRequest)
+from gaffer.web.schemas import (
+    CHIP_CODES,
+    DraftCompare,
+    DraftCompareRequest,
+    DraftCompareRow,
+    DraftList,
+    DraftRow,
+    DraftSaveRequest,
+    JobAccepted,
+    WhatIfRequest,
+)
 
 router = APIRouter(prefix="/api", tags=["drafts"])
 

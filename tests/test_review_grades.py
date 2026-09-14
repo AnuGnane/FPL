@@ -9,12 +9,19 @@ code, total points, minutes, position.
 from __future__ import annotations
 
 import pandas as pd
-import pytest
 
-from gaffer.review import (grade_gw_from, hindsight_gap, label_for,
-                           lane_bench, lane_captaincy, lane_chip,
-                           lane_transfers, pair_by_position, score_squad,
-                           swap_slots)
+from gaffer.review import (
+    grade_gw_from,
+    hindsight_gap,
+    label_for,
+    lane_bench,
+    lane_captaincy,
+    lane_chip,
+    lane_transfers,
+    pair_by_position,
+    score_squad,
+    swap_slots,
+)
 
 # A legal fifteen: 2 GKP, 5 DEF, 5 MID, 3 FWD, codes 1..15. Two extras nobody
 # starts with: 16 is the defender the model wanted and I never bought, 17 is

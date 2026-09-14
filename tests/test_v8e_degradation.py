@@ -8,7 +8,6 @@ switched off, is the tool exactly what it was in v8d?
 from __future__ import annotations
 
 import inspect
-import json
 
 import pandas as pd
 import pytest
@@ -74,7 +73,8 @@ def test_a_corrupt_override_file_changes_nothing_and_says_so(tmp_path,
 def test_the_flag_off_means_no_read_and_no_marker(tmp_path, monkeypatch):
     """G3: not "read it and ignore it" — the store is never opened, and the
     artifact carries no marker."""
-    from gaffer import artifacts, overrides as overrides_mod
+    from gaffer import artifacts
+    from gaffer import overrides as overrides_mod
     from gaffer.artifacts import load_availability, save_availability
 
     _client(tmp_path, monkeypatch, overrides=False)

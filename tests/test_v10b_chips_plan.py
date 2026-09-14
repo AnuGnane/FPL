@@ -19,9 +19,12 @@ cycle makes none.
 
 from __future__ import annotations
 
-from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
-                                         chip_windows, flat_thresholds,
-                                         load_chip_scenarios)
+from gaffer.optimize.chip_policy import (
+    chip_thresholds_from_asset,
+    chip_windows,
+    flat_thresholds,
+    load_chip_scenarios,
+)
 from gaffer.web.schemas import ChipPlanRow
 
 

@@ -6,12 +6,9 @@ tests/test_v5_degradation.py."""
 
 from __future__ import annotations
 
-import json
-
 import pandas as pd
 
 from gaffer.models.availability import RECOVERY, apply_availability, return_prob
-
 
 _CURVES = {
     "version": 1,

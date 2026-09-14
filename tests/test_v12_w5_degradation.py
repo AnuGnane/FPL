@@ -165,8 +165,7 @@ def test_no_snapshot_reader_defaults_a_season():
     would make a cross-season read the easy call."""
     import inspect
 
-    from gaffer.artifacts import (latest_projection_before,
-                                  projection_snapshots)
+    from gaffer.artifacts import latest_projection_before, projection_snapshots
 
     for fn in (projection_snapshots, latest_projection_before):
         season = inspect.signature(fn).parameters["season"]

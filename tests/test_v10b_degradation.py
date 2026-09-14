@@ -27,8 +27,7 @@ from gaffer.data import store
 from gaffer.data.chip_scenarios import write_chip_scenarios
 from gaffer.data.field import latest_field_eo
 from gaffer.data.fixtures import season_outlook
-from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
-                                         load_chip_scenarios)
+from gaffer.optimize.chip_policy import chip_thresholds_from_asset, load_chip_scenarios
 from gaffer.web import field_frame
 from gaffer.web.app import create_app
 from gaffer.web.job_kinds import JOB_KINDS

@@ -18,8 +18,7 @@ from fastapi import APIRouter, HTTPException
 
 from gaffer.artifacts import latest_gw, load_advice, load_solve_state
 from gaffer.errors import GafferError
-from gaffer.web.schemas import (ChipsWorkbench, ChipWorkbenchRow, SquadDiff,
-                                SquadPlayerRef)
+from gaffer.web.schemas import ChipsWorkbench, ChipWorkbenchRow, SquadDiff, SquadPlayerRef
 
 router = APIRouter(prefix="/api", tags=["chips"])
 

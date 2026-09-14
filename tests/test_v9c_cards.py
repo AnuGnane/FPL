@@ -81,8 +81,7 @@ def test_no_model_feature_list_gains_a_card_column(monkeypatch):
     argument for a cheap arm stops holding, and this is where that is
     discovered."""
     from gaffer.models.attacking import ATTACK_FEATURES
-    from gaffer.models.components import (BONUS_FEATURES, DEFCON_FEATURES,
-                                          SAVES_FEATURES)
+    from gaffer.models.components import BONUS_FEATURES, DEFCON_FEATURES, SAVES_FEATURES
     from gaffer.models.team import TEAM_FEATURES
     from gaffer.models.train import MINUTES_FEATURES
 

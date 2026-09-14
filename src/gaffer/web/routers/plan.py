@@ -14,8 +14,7 @@ from fastapi import APIRouter, HTTPException
 from gaffer.artifacts import served_plan
 from gaffer.errors import GafferError
 from gaffer.served import ServedMove, ServedWeek
-from gaffer.web.schemas import (PlanAlternative, PlanGw, PlanMove,
-                                PlanTimeline)
+from gaffer.web.schemas import PlanAlternative, PlanGw, PlanMove, PlanTimeline
 
 router = APIRouter(prefix="/api", tags=["plan"])
 

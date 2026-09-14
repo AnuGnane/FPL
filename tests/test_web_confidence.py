@@ -105,8 +105,7 @@ def test_the_report_carries_the_noise_on_the_players_that_separate_the_plans(
     """
     import math
 
-    from gaffer.uncertainty import (band_for, estimation_sigma_for,
-                                    xmins_by_player_gw)
+    from gaffer.uncertainty import band_for, estimation_sigma_for, xmins_by_player_gw
 
     (tmp_path / f"reports/sensitivity_gw{GW}.json").write_text(
         json.dumps(SENSITIVITY))

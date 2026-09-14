@@ -48,8 +48,7 @@ def test_the_head_block_names_p_start(monkeypatch):
 
 # --- the zeros diagnostic's mode cut ---------------------------------------
 
-from gaffer.zeros_diagnostic import (start_reliability,  # noqa: E402
-                                     format_diagnostic, zeros_report)
+from gaffer.zeros_diagnostic import format_diagnostic, start_reliability, zeros_report  # noqa: E402
 
 
 def _scored() -> pd.DataFrame:

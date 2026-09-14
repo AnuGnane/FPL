@@ -26,17 +26,20 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-import pandas as pd
-
 from gaffer import artifacts
-from gaffer.artifacts import (latest_gw, load_components, load_solve_state,
-                              milp_pool, raw_ep_by, solve_kw_from_state)
+from gaffer.artifacts import (
+    latest_gw,
+    load_components,
+    load_solve_state,
+    milp_pool,
+    raw_ep_by,
+    solve_kw_from_state,
+)
 from gaffer.errors import GafferError
 from gaffer.io import atomic_write
 from gaffer.league_mode import cover_from_eo, tilt_ep
 from gaffer.optimize.milp import SolveInput
-from gaffer.optimize.scenarios import (move_frequencies, run_scenarios,
-                                       xmins_by_player_gw)
+from gaffer.optimize.scenarios import move_frequencies, run_scenarios, xmins_by_player_gw
 
 SENSITIVITY_K = 20
 """Scenarios per sweep (spec D3).

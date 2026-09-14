@@ -5,8 +5,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from gaffer.data.managers import (MANAGER_TENURES_PATH, TENURE_COLS,
-                                  load_manager_tenures, spell_keys)
+from gaffer.data.managers import MANAGER_TENURES_PATH, TENURE_COLS, load_manager_tenures, spell_keys
 
 _TOML = """
 [[spell]]

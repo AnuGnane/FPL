@@ -5,8 +5,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from gaffer.features.engineer import (ROTATION_PRIOR_FEATURES,
-                                      TENURE_SHRINK_K, add_rotation_priors)
+from gaffer.features.engineer import ROTATION_PRIOR_FEATURES, TENURE_SHRINK_K, add_rotation_priors
 
 
 def _frame(managers=("A", "A", "A", "B", "B", "B")) -> pd.DataFrame:
@@ -130,9 +129,11 @@ def test_the_shuffled_frame_gets_the_same_values_as_the_sorted_one():
 
 # --- serve side ------------------------------------------------------------
 
-from gaffer.features.engineer import (build_prediction_frame,  # noqa: E402
-                                      feature_columns,
-                                      latest_rotation_priors)
+from gaffer.features.engineer import (  # noqa: E402
+    build_prediction_frame,
+    feature_columns,
+    latest_rotation_priors,
+)
 
 
 def _future(gws=(7, 8), team=3) -> pd.DataFrame:
@@ -219,9 +220,11 @@ def test_the_prior_features_are_in_the_canonical_strip_list():
 
 # --- F2: the two congestion arms ------------------------------------------
 
-from gaffer.features.engineer import (CONGESTION_FEATURES,  # noqa: E402
-                                      LEAGUE_CONGESTION_FEATURES,
-                                      add_congestion)
+from gaffer.features.engineer import (  # noqa: E402
+    CONGESTION_FEATURES,
+    LEAGUE_CONGESTION_FEATURES,
+    add_congestion,
+)
 
 
 def _cups() -> pd.DataFrame:

@@ -16,12 +16,12 @@ import pandas as pd
 from lightgbm import LGBMClassifier, LGBMRegressor
 
 from gaffer.models.dnp_calibrate import fit_dnp_calibrator
+
 # v18d §2: the mode vocabulary is a leaf module now, so the calibrator can
 # name it without reaching back in here. Imported rather than moved out of
 # reach: ``minutes.DNP`` and ``minutes.mode_labels`` are what the rest of the
 # codebase has always said.
-from gaffer.models.modes import (DNP, MODE_COLS, SIXTY_MINUTES,  # noqa: F401
-                                 START, SUB, mode_labels)
+from gaffer.models.modes import DNP, MODE_COLS, SIXTY_MINUTES, START, SUB, mode_labels  # noqa: F401
 
 LGB_KW = dict(n_estimators=300, learning_rate=0.05, num_leaves=31,
               verbose=-1, random_state=7)

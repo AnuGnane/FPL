@@ -1,7 +1,10 @@
-import pytest
 
-from gaffer.optimize.chip_policy import (FIRST_HALF_LAST_GW, chip_windows,
-                                         flat_thresholds, stopping_thresholds)
+from gaffer.optimize.chip_policy import (
+    FIRST_HALF_LAST_GW,
+    chip_windows,
+    flat_thresholds,
+    stopping_thresholds,
+)
 
 
 def test_theta_at_the_last_week_of_the_window_is_zero():
@@ -95,8 +98,7 @@ def test_the_window_boundary_belongs_to_the_first_half():
 
 def test_flat_thresholds_reproduce_todays_constants():
     """The degradation rail: no priors asset means exactly the old bars."""
-    from gaffer.optimize.chips import (CHIP_PLAY_THRESHOLD,
-                                       WILDCARD_RECOMMEND_THRESHOLD)
+    from gaffer.optimize.chips import CHIP_PLAY_THRESHOLD, WILDCARD_RECOMMEND_THRESHOLD
 
     flat = flat_thresholds()
     assert flat("bboost", 7) == CHIP_PLAY_THRESHOLD
@@ -114,10 +116,12 @@ def test_flat_thresholds_ignore_the_gameweek_entirely():
 
 # --- the DGW scenario hook -------------------------------------------------
 
-from gaffer.optimize.chip_policy import (DGW_SURPLUS_MULTIPLIER,
-                                         apply_dgw_scenarios,
-                                         load_chip_scenarios,
-                                         thresholds_from_priors)
+from gaffer.optimize.chip_policy import (
+    DGW_SURPLUS_MULTIPLIER,
+    apply_dgw_scenarios,
+    load_chip_scenarios,
+    thresholds_from_priors,
+)
 
 # ``test_the_scenario_file_is_absent_this_cycle`` lived here and is gone,
 # knowingly, on its own authority: *"If this starts failing because someone
@@ -206,8 +210,7 @@ def test_the_two_chip_halves_are_solved_independently():
 def test_a_gameweek_the_table_does_not_cover_keeps_the_flat_bar():
     """n7. A missing gameweek returned 0.0 — the most permissive bar in the
     system — which would play the chip on any positive surplus at all."""
-    from gaffer.optimize.chip_policy import (flat_thresholds,
-                                             thresholds_from_priors)
+    from gaffer.optimize.chip_policy import flat_thresholds, thresholds_from_priors
 
     flat = flat_thresholds()
     lookup = thresholds_from_priors({"bboost": {10: [3.0, 5.0, 7.0]}})

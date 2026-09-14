@@ -17,9 +17,13 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from gaffer.features.engineer import (US_WINDOWS, XG_PER_SHOT_FEATURES,
-                                      add_xg_per_shot,
-                                      build_prediction_frame, feature_columns)
+from gaffer.features.engineer import (
+    US_WINDOWS,
+    XG_PER_SHOT_FEATURES,
+    add_xg_per_shot,
+    build_prediction_frame,
+    feature_columns,
+)
 from tests.conftest import patch_view
 
 

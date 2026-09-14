@@ -6,10 +6,18 @@ import json
 
 import pandas as pd
 
-from gaffer.pen_tracker import (attach_npxg, finished_gws, format_tracker,
-                                gw_block, predicted_ep, realized_pens,
-                                save_tracker, season_totals, track_pens,
-                                tracker_path)
+from gaffer.pen_tracker import (
+    attach_npxg,
+    finished_gws,
+    format_tracker,
+    gw_block,
+    predicted_ep,
+    realized_pens,
+    save_tracker,
+    season_totals,
+    track_pens,
+    tracker_path,
+)
 
 
 def _week() -> pd.DataFrame:
@@ -239,8 +247,7 @@ def test_one_bad_gameweek_does_not_cost_the_other_one(tmp_path, monkeypatch):
     """A truncated week's row set, or a component file half written, is one
     gameweek's problem. Degrading the whole season's report to a note would
     throw away every week that read fine."""
-    from gaffer import artifacts
-    from gaffer import pen_tracker
+    from gaffer import artifacts, pen_tracker
     from gaffer.data import store as store_mod
 
     monkeypatch.setattr(store_mod, "DATA_DIR", tmp_path)

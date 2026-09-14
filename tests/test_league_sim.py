@@ -12,9 +12,18 @@ import math
 
 import pytest
 
-from gaffer.league_sim import (Entry, Pins, SimInputs, WEEKLY_SIGMA_FLOOR,
-                               entry_rate, entry_sigma, field_exposures,
-                               field_weights, multi_seed, simulate_league)
+from gaffer.league_sim import (
+    WEEKLY_SIGMA_FLOOR,
+    Entry,
+    Pins,
+    SimInputs,
+    entry_rate,
+    entry_sigma,
+    field_exposures,
+    field_weights,
+    multi_seed,
+    simulate_league,
+)
 
 EP = {7: 6.0, 8: 4.0, 9: 1.0, 10: 8.0}
 SIGMA = {7: 3.0, 8: 2.0, 9: 1.0, 10: 3.0}

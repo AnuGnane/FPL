@@ -10,15 +10,21 @@ from __future__ import annotations
 
 import json
 
-import pandas as pd
 import pytest
 
 from gaffer.data import store
-from gaffer.data.field import (FIELD_EO_COLS, FIELD_EO_PATH, RAW_FIELD,
-                               append_field_eo, field_eo_rows,
-                               field_sample_path, latest_field_eo,
-                               load_field_eo, load_field_sample,
-                               save_field_sample)
+from gaffer.data.field import (
+    FIELD_EO_COLS,
+    FIELD_EO_PATH,
+    RAW_FIELD,
+    append_field_eo,
+    field_eo_rows,
+    field_sample_path,
+    latest_field_eo,
+    load_field_eo,
+    load_field_sample,
+    save_field_sample,
+)
 
 PICKS = [
     [{"element": 7, "position": 1, "multiplier": 2},

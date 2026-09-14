@@ -356,8 +356,7 @@ def evaluate_current(holdout_slots: int = HOLDOUT_SLOTS) -> dict:
     from gaffer.data.bootstrap import scoring_table
     from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
     from gaffer.models.team import odds_blend_weight
-    from gaffer.models.train import (load_training_frame,
-                                     predict_components_simple, train_all)
+    from gaffer.models.train import load_training_frame, predict_components_simple, train_all
 
     df, tg, _ = load_training_frame()
     bs, bg = holdout_boundary(df, holdout_slots)
@@ -1096,8 +1095,7 @@ def evaluate_benchmark(max_train_idx: int = BENCHMARK_TRAIN_MAX_IDX,
     from gaffer.assets import load_bootstrap_sample
     from gaffer.data.bootstrap import scoring_table
     from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
-    from gaffer.models.train import (load_training_frame,
-                                     predict_components_simple, train_all)
+    from gaffer.models.train import load_training_frame, predict_components_simple, train_all
 
     df, tg, _ = load_training_frame()
     train_df, test_df = benchmark_split(df, max_train_idx, test_idx)

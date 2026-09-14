@@ -25,13 +25,16 @@ from fastapi.testclient import TestClient
 
 from gaffer.artifacts import SolveState, pool_rows, save_solve_state
 from gaffer.features.bps import as_of_club_code
-from gaffer.features.engineer import (ROLL_STATS, add_player_rolling,
-                                      as_of_club, build_prediction_frame,
-                                      feature_columns)
+from gaffer.features.engineer import (
+    ROLL_STATS,
+    add_player_rolling,
+    as_of_club,
+    build_prediction_frame,
+    feature_columns,
+)
 from gaffer.models.components import card_penalty
 from gaffer.web.app import create_app
 from gaffer.web.jobs import JobRunner
-
 
 # =====================================================================
 # Block 1 — the card term (D1 shipped: the arm passed, so it is live)

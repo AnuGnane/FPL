@@ -12,8 +12,7 @@ import json
 
 import pytest
 
-from gaffer.drafts import (MAX_DRAFTS, add_draft, delete_draft, drafts_path,
-                           load_drafts)
+from gaffer.drafts import MAX_DRAFTS, add_draft, delete_draft, drafts_path, load_drafts
 from gaffer.errors import GafferError
 
 CONSTRAINTS = {"lock": [11], "ban": [], "force_in": [22], "force_out": [33],

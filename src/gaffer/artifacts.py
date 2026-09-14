@@ -32,9 +32,9 @@ import pandas as pd
 from pydantic import ValidationError
 
 from gaffer.errors import GafferError
+
 # No cycle: ``gaffer.served`` imports nothing from ``gaffer`` at module level.
-from gaffer.served import (ServedPlan, completed, trace_context,
-                           with_objective_week)
+from gaffer.served import ServedPlan, completed, trace_context, with_objective_week
 
 REPORTS = Path("reports")
 
@@ -89,8 +89,7 @@ def components_frame(comp: pd.DataFrame, scoring: dict, cal,
     ``cal`` is the calibration model or ``None``; the difference it makes is
     stored as its own column rather than folded silently into ``ep``.
     """
-    from gaffer.models.assemble import (apply_calibration, assemble_ep,
-                                        ep_breakdown)
+    from gaffer.models.assemble import apply_calibration, assemble_ep, ep_breakdown
 
     assembled = assemble_ep(comp, scoring)
     out = ep_breakdown(assembled, scoring)

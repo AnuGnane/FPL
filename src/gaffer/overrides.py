@@ -32,12 +32,18 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from gaffer import artifacts
+
 # v18d §2: the read half is in ``gaffer.artifacts`` — the store is a banked
 # file and that is the banked-file reader. Re-exported here so a caller that
 # has always said ``overrides.load_overrides`` still finds it.
-from gaffer.artifacts import (OVERRIDE_COLS, attach_overrides,  # noqa: F401
-                              clipped, load_overrides, opt_float,
-                              overrides_path)
+from gaffer.artifacts import (  # noqa: F401
+    OVERRIDE_COLS,
+    attach_overrides,
+    clipped,
+    load_overrides,
+    opt_float,
+    overrides_path,
+)
 from gaffer.errors import GafferError
 from gaffer.io import atomic_write
 

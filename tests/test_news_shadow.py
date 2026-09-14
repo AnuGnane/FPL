@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from gaffer.news_shadow import (SHADOW_COLS, SHADOW_PATH, load_shadow,
-                                shadow_rows, write_shadow)
+from gaffer.news_shadow import SHADOW_COLS, SHADOW_PATH, load_shadow, shadow_rows, write_shadow
 
 
 def _comp() -> pd.DataFrame:

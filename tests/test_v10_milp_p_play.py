@@ -18,9 +18,14 @@ import pandas as pd
 import pytest
 
 import gaffer.optimize.milp as milp
-from gaffer.optimize.milp import (DEFAULT_BENCH_CURVE, FRAILTY_CLAMP,
-                                  POPULATION_DNP, SolveInput, _frailty,
-                                  solve_plan)
+from gaffer.optimize.milp import (
+    DEFAULT_BENCH_CURVE,
+    FRAILTY_CLAMP,
+    POPULATION_DNP,
+    SolveInput,
+    _frailty,
+    solve_plan,
+)
 
 GWS = [1, 2]
 KW = dict(decay=0.85, bench_weight=0.1, vice_weight=0.1, ft_value=1.5,

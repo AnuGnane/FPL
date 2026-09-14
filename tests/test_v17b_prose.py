@@ -11,14 +11,13 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from gaffer.ladder import RUNG_ORDER, load_ladder, save_ladder, serve_rung
 # Private, but this is the one test allowed to name the rung table (v17b
 # §4): every other surface reads the served ``label``.
-from gaffer.ladder import _rung_label
+from gaffer.ladder import RUNG_ORDER, _rung_label, load_ladder, save_ladder, serve_rung
 from gaffer.web.app import create_app
+from tests.test_v4c_degradation import _fixture_advice
 from tests.test_v16_ladder import _objective, _row
 from tests.test_v16_restraint import _cli
-from tests.test_v4c_degradation import _fixture_advice
 
 FIXTURE = (Path(__file__).resolve().parents[1]
            / "frontend/src/hubs/this-week/restraint-prose.fixture.json")

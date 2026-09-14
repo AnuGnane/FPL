@@ -18,15 +18,27 @@ from __future__ import annotations
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from gaffer.artifacts import (caps_from_state, latest_gw, load_solve_state,
-                              milp_pool, raw_ep_by, solve_kw_from_state)
+from gaffer.artifacts import (
+    caps_from_state,
+    latest_gw,
+    load_solve_state,
+    milp_pool,
+    raw_ep_by,
+    solve_kw_from_state,
+)
 from gaffer.errors import GafferError
 from gaffer.league_mode import cover_from_eo, tilt_ep
 from gaffer.optimize.milp import GwPlan, SolveInput, solve_plan
 from gaffer.web.coerce import fail
 from gaffer.web.jobs import WHATIF_TIMEOUT_S, JobQueueFull
-from gaffer.web.schemas import (CHIP_CODES, JobAccepted, PlanSummary,
-                                PlayerRef, WhatIfRequest, WhatIfResult)
+from gaffer.web.schemas import (
+    CHIP_CODES,
+    JobAccepted,
+    PlanSummary,
+    PlayerRef,
+    WhatIfRequest,
+    WhatIfResult,
+)
 
 router = APIRouter(prefix="/api", tags=["whatif"])
 

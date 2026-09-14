@@ -2,9 +2,13 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from gaffer.optimize.scenarios import (NOISE_DENOM, NOISE_FLOOR_XMINS,
-                                       noise_ep, noised_pool,
-                                       xmins_by_player_gw)
+from gaffer.optimize.scenarios import (
+    NOISE_DENOM,
+    NOISE_FLOOR_XMINS,
+    noise_ep,
+    noised_pool,
+    xmins_by_player_gw,
+)
 
 
 def _comp() -> pd.DataFrame:
@@ -524,7 +528,6 @@ def test_the_table_keeps_nailed_players_nailed():
     """The heuristic's nailedness scaling exists so a 90-minute starter does
     not flip between sims. The empirical table has to keep that property, and
     it does it through the xMins axis rather than through an assumption."""
-    import numpy as np
 
     from gaffer.optimize.scenarios import sigma_for
 
@@ -547,9 +550,7 @@ def test_noised_pool_uses_the_table_when_one_is_given():
     import numpy as np
     import pandas as pd
 
-    from gaffer.optimize.scenarios import noised_pool
-
-    from gaffer.optimize.scenarios import recentred_mean
+    from gaffer.optimize.scenarios import noised_pool, recentred_mean
 
     pool = pd.DataFrame({"code": [1], "ep": [{5: 1.0}]})
     draw = float(np.random.default_rng(11).standard_normal())

@@ -2,11 +2,16 @@ import inspect
 import math
 
 import pandas as pd
-from gaffer.advise import run_advise
+
 from gaffer.backtest import run_backtest
-from gaffer.models.assemble import (PEN_FACED_RATE, PEN_SAVE_RATE,
-                                    apply_calibration, assemble_ep, ep_matrix,
-                                    p_haul)
+from gaffer.models.assemble import (
+    PEN_FACED_RATE,
+    PEN_SAVE_RATE,
+    apply_calibration,
+    assemble_ep,
+    ep_matrix,
+    p_haul,
+)
 from gaffer.models.calibrate import CalibrationModel
 
 SCORING = {

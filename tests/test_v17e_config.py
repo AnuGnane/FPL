@@ -16,11 +16,24 @@ import dataclasses
 
 import pytest
 
-from gaffer.config import (BOUNDS, DEFAULT_LINEUP_PROVIDERS, DEFAULT_TOP_N,
-                           HIT_BAR_HI, HIT_BAR_LO, LOCAL_OVERLAY, NO_CAP,
-                           Config, base_exists, config_in_force, invalidate,
-                           load_config, out_of_range, read_overlay,
-                           value_source, write_overlay)
+from gaffer.config import (
+    BOUNDS,
+    DEFAULT_LINEUP_PROVIDERS,
+    DEFAULT_TOP_N,
+    HIT_BAR_HI,
+    HIT_BAR_LO,
+    LOCAL_OVERLAY,
+    NO_CAP,
+    Config,
+    base_exists,
+    config_in_force,
+    invalidate,
+    load_config,
+    out_of_range,
+    read_overlay,
+    value_source,
+    write_overlay,
+)
 from gaffer.errors import GafferError
 
 BASE = "[fpl]\nentry_id = 1\nleague_id = 5\n"

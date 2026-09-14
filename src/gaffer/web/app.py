@@ -23,15 +23,37 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from gaffer.errors import GafferError
 from gaffer.web.job_kinds import JOB_KINDS
 from gaffer.web.jobs import JobRegistry, JobRunner
-from gaffer.web.routers import (advice, assets, brief, chips, components,
-                                confidence,
-                                decisions, digest,
-                                drafts, fixtures, jobs, journal, ladder,
-                                league,
-                                league_sim, live, meta, misses, news,
-                                overrides, plan,
-                                players, prices, quality, review, sensitivity,
-                                settings, watchlist, whatif)
+from gaffer.web.routers import (
+    advice,
+    assets,
+    brief,
+    chips,
+    components,
+    confidence,
+    decisions,
+    digest,
+    drafts,
+    fixtures,
+    jobs,
+    journal,
+    ladder,
+    league,
+    league_sim,
+    live,
+    meta,
+    misses,
+    news,
+    overrides,
+    plan,
+    players,
+    prices,
+    quality,
+    review,
+    sensitivity,
+    settings,
+    watchlist,
+    whatif,
+)
 
 log = logging.getLogger("gaffer.web")
 

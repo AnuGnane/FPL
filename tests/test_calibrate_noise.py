@@ -14,9 +14,15 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from gaffer.calibrate_noise import (EP_EDGES, MIN_CELL_OBS, REQUIRED_KEYS,
-                                    SIGMA_MAX, XMINS_EDGES, fit_sigmas,
-                                    write_noise)
+from gaffer.calibrate_noise import (
+    EP_EDGES,
+    MIN_CELL_OBS,
+    REQUIRED_KEYS,
+    SIGMA_MAX,
+    XMINS_EDGES,
+    fit_sigmas,
+    write_noise,
+)
 
 FIXTURE = Path(__file__).parent / "data" / "scenario_noise.json"
 

@@ -58,8 +58,8 @@ def test_post_submits_an_anonymous_job_and_the_result_is_the_run_dict(client, mo
 
 
 def test_the_friday_headline_is_the_briefs_first_sentence(tmp_path, monkeypatch):
-    from tests.test_digest import ADVICE, EVENTS, GW  # noqa: F401 — the fixture shapes
     from gaffer.digest import friday_briefing
+    from tests.test_digest import ADVICE, EVENTS, GW  # noqa: F401 — the fixture shapes
 
     monkeypatch.chdir(tmp_path)
     artifacts.REPORTS.mkdir()

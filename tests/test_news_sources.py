@@ -222,8 +222,7 @@ def test_an_unescaped_club_and_name_resolve_to_a_code():
     """The end of that: through the alias table and the name index, which is
     where the escaping was actually costing matches."""
     from gaffer.data.news.lineups import parse_lineups
-    from gaffer.data.news.normalize import (club_code, club_code_map,
-                                            match_codes)
+    from gaffer.data.news.normalize import club_code, club_code_map, match_codes
 
     teams = pd.DataFrame([
         {"code": 36, "name": "Brighton", "short_name": "BHA"}])

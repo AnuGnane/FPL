@@ -18,12 +18,28 @@ from gaffer.artifacts import latest_gw, load_solve_state
 from gaffer.config import load_config
 from gaffer.data.league import HISTORY_COLS, STANDINGS_COLS
 from gaffer.errors import GafferError
-from gaffer.league_mode import (LeagueParams, Strategy, apply_stance,
-                                compute_strategy, explain_lam, win_probability)
-from gaffer.web.schemas import (GapPoint, GwPoint, LeagueRace, LeaguesOverview,
-                                PrivateLeagueRow, PublicLeagueRow, RivalDetail,
-                                RivalSummary, SquadPlayer, StandingRow,
-                                Trajectory, WinProb)
+from gaffer.league_mode import (
+    LeagueParams,
+    Strategy,
+    apply_stance,
+    compute_strategy,
+    explain_lam,
+    win_probability,
+)
+from gaffer.web.schemas import (
+    GapPoint,
+    GwPoint,
+    LeagueRace,
+    LeaguesOverview,
+    PrivateLeagueRow,
+    PublicLeagueRow,
+    RivalDetail,
+    RivalSummary,
+    SquadPlayer,
+    StandingRow,
+    Trajectory,
+    WinProb,
+)
 
 router = APIRouter(prefix="/api/league", tags=["league"])
 

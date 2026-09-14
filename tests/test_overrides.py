@@ -14,8 +14,13 @@ import pandas as pd
 import pytest
 
 from gaffer.errors import GafferError
-from gaffer.overrides import (attach_overrides, delete_override,
-                              load_overrides, overrides_path, set_override)
+from gaffer.overrides import (
+    attach_overrides,
+    delete_override,
+    load_overrides,
+    overrides_path,
+    set_override,
+)
 
 KNOWN = [11, 22, 33]
 

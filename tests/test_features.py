@@ -1,9 +1,14 @@
 import numpy as np
 import pandas as pd
 
-from gaffer.features.engineer import (ROTATION_FEATURES, add_player_rolling,
-                                      add_rotation, add_setpiece,
-                                      build_prediction_frame, feature_columns)
+from gaffer.features.engineer import (
+    ROTATION_FEATURES,
+    add_player_rolling,
+    add_rotation,
+    add_setpiece,
+    build_prediction_frame,
+    feature_columns,
+)
 
 
 def _frame():
@@ -410,11 +415,14 @@ def test_prediction_frame_carries_setpiece_features():
 
 # --- Understat rolling features -------------------------------------------
 
-from gaffer.features.engineer import (TEAM_US_FEATURES, US_WINDOWS,
-                                      add_understat_rolling,
-                                      add_understat_team_rolling,
-                                      merge_understat_team,
-                                      understat_feature_columns)
+from gaffer.features.engineer import (
+    TEAM_US_FEATURES,
+    US_WINDOWS,
+    add_understat_rolling,
+    add_understat_team_rolling,
+    merge_understat_team,
+    understat_feature_columns,
+)
 
 
 def _us_rows(spec, code=1):
@@ -536,9 +544,13 @@ def test_merge_understat_team_does_not_add_rows():
     assert len(merge_understat_team(df, rolled)) == 1
 
 
-from gaffer.features.engineer import (SHRINK_K, SHRINK_K_GRID,
-                                      SHRUNK_FEATURES, add_shrunken_rates,
-                                      best_shrinkage_k)
+from gaffer.features.engineer import (
+    SHRINK_K,
+    SHRINK_K_GRID,
+    SHRUNK_FEATURES,
+    add_shrunken_rates,
+    best_shrinkage_k,
+)
 
 
 def _goal_rows(spec, code=1, position="FWD", team_code=3):
@@ -652,10 +664,12 @@ def test_best_shrinkage_k_on_a_frame_with_no_holdout_returns_the_default():
     assert k == SHRINK_K
 
 
-from gaffer.features.engineer import (build_prediction_frame,
-                                      latest_shrunken_rates,
-                                      latest_understat_rolling,
-                                      latest_understat_team)
+from gaffer.features.engineer import (
+    build_prediction_frame,
+    latest_shrunken_rates,
+    latest_understat_rolling,
+    latest_understat_team,
+)
 
 
 def test_latest_understat_rolling_is_the_next_rows_form_vector():

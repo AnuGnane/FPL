@@ -9,8 +9,6 @@ number the ledger did not count.
 
 from __future__ import annotations
 
-import pytest
-
 from gaffer.confidence import MIN_GRADED, captain_confidence
 
 

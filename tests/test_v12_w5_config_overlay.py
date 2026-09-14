@@ -17,8 +17,7 @@ from __future__ import annotations
 
 import pytest
 
-from gaffer.config import (LOCAL_OVERLAY, Config, config_in_force,
-                           invalidate, load_config)
+from gaffer.config import LOCAL_OVERLAY, Config, config_in_force, invalidate, load_config
 
 # Every value here is deliberately *different* from the dataclass default, so
 # a merge bug that dropped the base file wholesale would change the number

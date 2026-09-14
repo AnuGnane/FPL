@@ -18,10 +18,15 @@ import json
 import pandas as pd
 import pytest
 
-from gaffer.artifacts import (POOL_COLS, SolveState, save_solve_state,
-                              solve_state_paths)
-from gaffer.sensitivity import (SENSITIVITY_K, _verdict, load_sensitivity,
-                                rank_plans, run_sensitivity, sensitivity_path)
+from gaffer.artifacts import POOL_COLS, SolveState, save_solve_state, solve_state_paths
+from gaffer.sensitivity import (
+    SENSITIVITY_K,
+    _verdict,
+    load_sensitivity,
+    rank_plans,
+    run_sensitivity,
+    sensitivity_path,
+)
 
 SQUAD = [("GKP", 3), ("DEF", 8), ("MID", 8), ("FWD", 5)]
 OWNED = [1, 2, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 20, 21, 22]   # legal 15

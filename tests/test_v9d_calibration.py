@@ -23,11 +23,18 @@ import pytest
 
 from gaffer.artifacts import components_path, save_components
 from gaffer.data import store
-from gaffer.evaluation import (FIXTURE_KEYS, MIN_CALIBRATION_SAMPLES,
-                               _club_clean_sheets, _key, brier,
-                               calibration_head, evaluate_calibration,
-                               format_report, load_evaluation,
-                               save_evaluation)
+from gaffer.evaluation import (
+    FIXTURE_KEYS,
+    MIN_CALIBRATION_SAMPLES,
+    _club_clean_sheets,
+    _key,
+    brier,
+    calibration_head,
+    evaluate_calibration,
+    format_report,
+    load_evaluation,
+    save_evaluation,
+)
 from gaffer.models.assemble import p_haul
 
 KICKOFF = "2025-08-16T14:00:00Z"

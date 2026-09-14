@@ -1,5 +1,6 @@
 import pandas as pd
 import pytest
+
 from gaffer import backtest as bt
 from gaffer.backtest import run_backtest, score_gw
 from gaffer.config import Config

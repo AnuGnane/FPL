@@ -16,10 +16,17 @@ import json
 import pandas as pd
 from fastapi import APIRouter
 
-from gaffer.artifacts import (advice_history_files, data_warning,
-                              diff_advice, ep_movers, ingested_through,
-                              latest_gw, load_advice, load_solve_state,
-                              upcoming_gw)
+from gaffer.artifacts import (
+    advice_history_files,
+    data_warning,
+    diff_advice,
+    ep_movers,
+    ingested_through,
+    latest_gw,
+    load_advice,
+    load_solve_state,
+    upcoming_gw,
+)
 from gaffer.errors import GafferError
 from gaffer.web.field_frame import with_field_frame
 from gaffer.web.identity import with_identity

@@ -14,11 +14,11 @@ months, so it is what this file tests hardest.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
-
-from pathlib import Path
 
 from gaffer.data import store
 from gaffer.web.app import create_app

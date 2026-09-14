@@ -23,8 +23,7 @@ from fastapi.testclient import TestClient
 from gaffer.web import job_kinds as kinds_module
 from gaffer.web import jobs as jobs_module
 from gaffer.web.app import create_app
-from gaffer.web.job_kinds import (ABANDON_TIMEOUT_S, JOB_KINDS,
-                                  SLOW_ABANDON_KINDS)
+from gaffer.web.job_kinds import ABANDON_TIMEOUT_S, JOB_KINDS, SLOW_ABANDON_KINDS
 from gaffer.web.jobs import JobAlreadyRunning, JobRunner
 
 

@@ -18,9 +18,11 @@ from __future__ import annotations
 
 import pandas as pd
 
-from gaffer.features.engineer import (TEAM_US_FEATURES,
-                                      add_understat_team_rolling,
-                                      merge_understat_team)
+from gaffer.features.engineer import (
+    TEAM_US_FEATURES,
+    add_understat_team_rolling,
+    merge_understat_team,
+)
 
 
 def _rolled() -> pd.DataFrame:

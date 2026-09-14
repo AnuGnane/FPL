@@ -17,8 +17,7 @@ from fastapi import APIRouter, Query
 
 from gaffer.artifacts import latest_gw, load_components
 from gaffer.sensitivity import load_sensitivity
-from gaffer.uncertainty import (estimation_sigma_for, shipped_table,
-                                xmins_by_player_gw)
+from gaffer.uncertainty import estimation_sigma_for, shipped_table, xmins_by_player_gw
 from gaffer.web.schemas import SensitivityReport
 
 router = APIRouter(prefix="/api", tags=["sensitivity"])

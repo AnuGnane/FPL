@@ -7,9 +7,14 @@ import httpx
 import pytest
 
 from gaffer.api.client import FPLClient
-from gaffer.data.tier_eo import (MAX_PAGE, PAGE_SIZE, eo_se,
-                                 fetch_tier_entries, sample_slots,
-                                 tier_eo_table)
+from gaffer.data.tier_eo import (
+    MAX_PAGE,
+    PAGE_SIZE,
+    eo_se,
+    fetch_tier_entries,
+    sample_slots,
+    tier_eo_table,
+)
 
 
 def test_sample_slots_are_distinct_page_slot_pairs():

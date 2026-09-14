@@ -1,6 +1,7 @@
 import pandas as pd
-from gaffer.optimize.milp import SolveInput
+
 from gaffer.optimize.chips import evaluate_chips, wildcard_now_assessment
+from gaffer.optimize.milp import SolveInput
 
 
 def _pool():
@@ -294,8 +295,8 @@ def test_chip_plan_handles_a_chip_with_no_week_in_the_window():
 from dataclasses import replace
 
 from gaffer.optimize.ft_value import LambdaLookup
-from tests.test_v4c_degradation import GOLDEN_KW, golden_pool
 from tests.test_milp import _owned_state
+from tests.test_v4c_degradation import GOLDEN_KW, golden_pool
 
 
 def test_wildcard_assessment_without_a_lambda_table_is_unchanged():

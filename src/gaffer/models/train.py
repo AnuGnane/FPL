@@ -17,38 +17,47 @@ from gaffer.config import config_in_force
 from gaffer.data import store
 from gaffer.data.bootstrap import scoring_table
 from gaffer.data.elo import compute_elo
-from gaffer.features.bps import (FIRST_NEW_RULES_SEASON, apply_new_bps,
-                                 as_of_club_code)
+from gaffer.data.match_odds import MATCH_ODDS_PATH
 from gaffer.data.understat import UNDERSTAT_PLAYER_PATH, UNDERSTAT_TEAM_PATH
-from gaffer.features.engineer import (LEAGUE_CONGESTION_FEATURES,
-                                      LEAGUE_CONGESTION_PREFIX,
-                                      ROLE_FEATURES,
-                                      ROTATION_FEATURES,
-                                      ROTATION_PRIOR_FEATURES, US_STATS,
-                                      XG_PER_SHOT_FEATURES,
-                                      add_congestion, add_context,
-                                      add_density_pub, add_player_rolling,
-                                      add_role_wb_share, add_rotation,
-                                      add_rotation_priors,
-                                      add_setpiece, add_shrunken_cards,
-                                      add_shrunken_modes,
-                                      add_shrunken_rates,
-                                      add_understat_rolling,
-                                      add_understat_team_rolling,
-                                      add_xg_per_shot, core_insights_frames,
-                                      merge_understat_team)
+from gaffer.features.bps import FIRST_NEW_RULES_SEASON, apply_new_bps, as_of_club_code
+from gaffer.features.engineer import (
+    LEAGUE_CONGESTION_PREFIX,
+    ROLE_FEATURES,
+    ROTATION_FEATURES,
+    US_STATS,
+    XG_PER_SHOT_FEATURES,
+    add_congestion,
+    add_context,
+    add_density_pub,
+    add_player_rolling,
+    add_role_wb_share,
+    add_rotation,
+    add_rotation_priors,
+    add_setpiece,
+    add_shrunken_cards,
+    add_shrunken_modes,
+    add_shrunken_rates,
+    add_understat_rolling,
+    add_understat_team_rolling,
+    add_xg_per_shot,
+    core_insights_frames,
+    merge_understat_team,
+)
 from gaffer.models.assemble import assemble_ep
 from gaffer.models.attacking import ATTACK_FEATURES, AttackingModel
 from gaffer.models.calibrate import CalibrationModel
-from gaffer.models.components import (BonusModel, DefconModel, SavesModel,
-                                      card_penalty)
-from gaffer.models.minutes import ThreeModeModel
-from gaffer.data.match_odds import MATCH_ODDS_PATH
-from gaffer.models.persistence import save_model, save_params
+from gaffer.models.components import BonusModel, DefconModel, SavesModel, card_penalty
 from gaffer.models.dixon_coles import DixonColesModel, walk_forward_cs
-from gaffer.models.team import (BLEND_PARAMS_NAME, TEAM_FEATURES, TeamModel,
-                                add_team_rolling, build_team_gw,
-                                fit_blend_weight)
+from gaffer.models.minutes import ThreeModeModel
+from gaffer.models.persistence import save_model, save_params
+from gaffer.models.team import (
+    BLEND_PARAMS_NAME,
+    TEAM_FEATURES,
+    TeamModel,
+    add_team_rolling,
+    build_team_gw,
+    fit_blend_weight,
+)
 
 MINUTES_FEATURES = ["minutes_r1", "minutes_r3", "minutes_r5", "minutes_r10",
                     "starts_r1", "starts_r3", "starts_r5", "starts_r10",

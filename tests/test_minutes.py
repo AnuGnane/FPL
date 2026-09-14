@@ -1,7 +1,8 @@
 import numpy as np
 import pandas as pd
-from gaffer.models.minutes import ThreeModeModel, apply_availability
+
 from gaffer.features.engineer import add_player_rolling
+from gaffer.models.minutes import ThreeModeModel, apply_availability
 
 
 def _training_frame(n=400, seed=0):
@@ -131,8 +132,7 @@ def test_mode_labels_treat_any_positive_starts_value_as_a_start():
     """``starts`` is an integer count in the aggregated frames — a double
     gameweek's two starts sum to 2 — and an equality against 1 silently
     demoted every doubled-up starter to a substitute."""
-    from gaffer.models.minutes import START
-    from gaffer.models.minutes import mode_labels
+    from gaffer.models.minutes import START, mode_labels
 
     df = pd.DataFrame({"minutes": [180, 90], "starts": [2, 1]})
     assert mode_labels(df).tolist() == [START, START]

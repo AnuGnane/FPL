@@ -14,8 +14,7 @@ import pandas as pd
 
 from gaffer.artifacts import attach_overrides
 from gaffer.assets import load_injury_curves
-from gaffer.data.news.presser_log import (PRESSER_COLS, would_factor,  # noqa: F401
-                                          write_presser)
+from gaffer.data.news.presser_log import PRESSER_COLS, would_factor, write_presser  # noqa: F401
 
 RECOVERY = 0.7
 """Per-gameweek decay of an availability flag over the planning horizon.

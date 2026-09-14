@@ -133,7 +133,6 @@ def test_forcing_a_player_out_actually_sells_him_on_the_wire(tmp_path,
     from fastapi.testclient import TestClient
 
     from gaffer.web.app import create_app
-
     from tests.test_web_whatif import _run, _save_state
 
     monkeypatch.chdir(tmp_path)

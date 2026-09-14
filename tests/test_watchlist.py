@@ -18,9 +18,16 @@ import pytest
 
 from gaffer import artifacts
 from gaffer.errors import GafferError
-from gaffer.watchlist import (MAX_WATCHED, NOTE_MAX, load_watchlist,
-                              save_watchlist, unwatch, watch, watch_targets,
-                              watched_codes)
+from gaffer.watchlist import (
+    MAX_WATCHED,
+    NOTE_MAX,
+    load_watchlist,
+    save_watchlist,
+    unwatch,
+    watch,
+    watch_targets,
+    watched_codes,
+)
 
 
 @pytest.fixture(autouse=True)

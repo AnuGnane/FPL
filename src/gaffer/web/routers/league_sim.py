@@ -26,13 +26,28 @@ from gaffer.config import load_config
 from gaffer.data.field import field_sample_path, latest_field_eo
 from gaffer.errors import GafferError
 from gaffer.league_mode import win_probability
-from gaffer.league_sim import (SIM_SEED, TOP10K_WAITING, Pins,
-                               append_sim_history, build_inputs,
-                               effective_picks, load_sim_history, rank_slope,
-                               simulate_field_rank, simulate_league)
-from gaffer.web.schemas import (FieldRank, LeagueSimData, LeagueWhatIfRequest,
-                                LeagueWhatIfResult, LeagueWhatIfRow, RivalBeat,
-                                SimPoint, WinProb)
+from gaffer.league_sim import (
+    SIM_SEED,
+    TOP10K_WAITING,
+    Pins,
+    append_sim_history,
+    build_inputs,
+    effective_picks,
+    load_sim_history,
+    rank_slope,
+    simulate_field_rank,
+    simulate_league,
+)
+from gaffer.web.schemas import (
+    FieldRank,
+    LeagueSimData,
+    LeagueWhatIfRequest,
+    LeagueWhatIfResult,
+    LeagueWhatIfRow,
+    RivalBeat,
+    SimPoint,
+    WinProb,
+)
 
 router = APIRouter(prefix="/api/league", tags=["league"])
 

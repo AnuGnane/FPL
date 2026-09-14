@@ -12,12 +12,16 @@ import json
 import sys
 from pathlib import Path
 
-import pandas as pd
 import pytest
 
-from gaffer.data.news.classifier import (CLASSIFIER_COLS, RETRY_BACKOFF_S,
-                                         VERDICTS, NewsText, classify_news,
-                                         text_hash)
+from gaffer.data.news.classifier import (
+    CLASSIFIER_COLS,
+    RETRY_BACKOFF_S,
+    VERDICTS,
+    NewsText,
+    classify_news,
+    text_hash,
+)
 
 _SHIPPED_BACKOFF_S = RETRY_BACKOFF_S
 

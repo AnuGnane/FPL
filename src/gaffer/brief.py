@@ -30,11 +30,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from gaffer import artifacts
-from gaffer.artifacts import (latest_gw, load_advice, load_solve_state,
-                              served_plan)
+from gaffer.artifacts import latest_gw, load_advice, load_solve_state, served_plan
+from gaffer.config import Config
 from gaffer.data.news.classifier import LLM_CACHE
 from gaffer.io import atomic_write
-from gaffer.config import Config
 from gaffer.ladder import CHIP_LABEL, load_ladder, narrated
 
 BRIEF_PROMPT_VERSION = 3

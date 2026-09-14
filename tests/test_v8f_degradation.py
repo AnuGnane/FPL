@@ -20,7 +20,6 @@ import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
-from gaffer import artifacts
 from gaffer.data import store
 from gaffer.web.app import create_app
 
@@ -259,8 +258,7 @@ def test_no_predecessor_breakdown_is_an_absent_claim_not_a_quiet_one(app):
 
 def test_a_failed_predecessor_copy_never_fails_an_advise_run(app,
                                                              monkeypatch):
-    from gaffer.artifacts import (COMPONENT_COLS, components_path,
-                                  save_components)
+    from gaffer.artifacts import COMPONENT_COLS, components_path, save_components
 
     frame = pd.DataFrame([{"code": 11, "name": "Saka", "gw": GW, "ep": 5.0}])
     for col in COMPONENT_COLS:

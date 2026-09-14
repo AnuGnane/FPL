@@ -135,8 +135,7 @@ def run_calibration(clubs: dict[str, int],
     import time
 
     from gaffer.data.news import NEWS_CACHE
-    from gaffer.data.news.transfermarkt import (fetch_player_spells,
-                                                squad_player_ids)
+    from gaffer.data.news.transfermarkt import fetch_player_spells, squad_player_ids
 
     dest = cache_dir or NEWS_CACHE
     frames: list[pd.DataFrame] = []

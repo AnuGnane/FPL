@@ -7,10 +7,21 @@ import dataclasses
 import pandas as pd
 import pytest
 
-from gaffer.inputs import (FRAMES, INT_KEYED, PAIR_KEYED, SCALARS, Inputs,
-                           LiveModels, MilpSolver, Outputs, Predictions,
-                           RecordedComponents, Solver, load_inputs,
-                           save_inputs)
+from gaffer.inputs import (
+    FRAMES,
+    INT_KEYED,
+    PAIR_KEYED,
+    SCALARS,
+    Inputs,
+    LiveModels,
+    MilpSolver,
+    Outputs,
+    Predictions,
+    RecordedComponents,
+    Solver,
+    load_inputs,
+    save_inputs,
+)
 
 
 def _inputs(**over) -> Inputs:

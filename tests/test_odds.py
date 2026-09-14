@@ -8,8 +8,14 @@ import pytest
 import gaffer.data.odds as odds_mod
 import gaffer.data.store as store
 from gaffer.config import load_config
-from gaffer.data.odds import (ODDS_FRAME_COLS, OddsClient, devig, invert_odds,
-                              odds_frame, resolve_team)
+from gaffer.data.odds import (
+    ODDS_FRAME_COLS,
+    OddsClient,
+    devig,
+    invert_odds,
+    odds_frame,
+    resolve_team,
+)
 from gaffer.errors import GafferError
 
 SAMPLE_ODDS = [{
@@ -604,8 +610,7 @@ def test_predict_components_still_blends_before_merging_onto_players():
 
 # --- anytime goalscorer props ---------------------------------------------
 
-from gaffer.data.odds import (AGS_EG_CAP, AGS_MARKET, ags_frame,
-                              next_gw_event_ids, normalize_ags)
+from gaffer.data.odds import AGS_EG_CAP, AGS_MARKET, ags_frame, next_gw_event_ids, normalize_ags
 
 _AGS_EVENT = {
     "id": "evt1", "home_team": "Arsenal", "away_team": "Manchester City",

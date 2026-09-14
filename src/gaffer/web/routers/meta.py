@@ -16,28 +16,53 @@ from pathlib import Path
 import pandas as pd
 from fastapi import APIRouter, Query
 
-from gaffer.artifacts import (REPORTS, advice_gws, advice_path,
-                              ingested_through, latest_gw, load_advice,
-                              load_solve_state, milp_pool, raw_ep_by,
-                              solve_kw_from_state)
+from gaffer.artifacts import (
+    REPORTS,
+    advice_gws,
+    advice_path,
+    ingested_through,
+    latest_gw,
+    load_advice,
+    load_solve_state,
+    milp_pool,
+    raw_ep_by,
+    solve_kw_from_state,
+)
+from gaffer.assets import load_decision_priors
+from gaffer.config import Config, config_in_force, invalidate, load_config
 from gaffer.data import store
 from gaffer.data.bootstrap import season_from_events
 from gaffer.difficulty import rate_fixtures
 from gaffer.errors import GafferError
-from gaffer.assets import load_decision_priors
-from gaffer.config import (Config, config_in_force, invalidate,
-                           load_config)
-from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
-                                         chip_windows, load_chip_scenarios,
-                                         threshold_with_source)
+from gaffer.optimize.chip_policy import (
+    chip_thresholds_from_asset,
+    chip_windows,
+    load_chip_scenarios,
+    threshold_with_source,
+)
 from gaffer.optimize.chips import chip_plan, evaluate_chips
 from gaffer.optimize.milp import SolveInput
-from gaffer.web.schemas import (ArtifactItem, BackupHealth, ChipPlan,
-                                ChipPlanRow, CoreInsightsHealth,
-                                CoreInsightsTable, Freshness, FreshnessRow,
-                                Health, History, HistoryRun, LaunchdHealth,
-                                ModelHealth, PricePoint, PriceSeries,
-                                SourceHealth, Ticker, TickerCell, TickerTeam)
+from gaffer.web.schemas import (
+    ArtifactItem,
+    BackupHealth,
+    ChipPlan,
+    ChipPlanRow,
+    CoreInsightsHealth,
+    CoreInsightsTable,
+    Freshness,
+    FreshnessRow,
+    Health,
+    History,
+    HistoryRun,
+    LaunchdHealth,
+    ModelHealth,
+    PricePoint,
+    PriceSeries,
+    SourceHealth,
+    Ticker,
+    TickerCell,
+    TickerTeam,
+)
 
 router = APIRouter(prefix="/api", tags=["meta"])
 

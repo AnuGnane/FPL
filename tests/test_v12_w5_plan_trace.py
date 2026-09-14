@@ -12,8 +12,8 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from gaffer.artifacts import POOL_COLS, SolveState
 from gaffer import price_timing as price_timing_mod
+from gaffer.artifacts import POOL_COLS, SolveState
 from gaffer.config import config_in_force
 from gaffer.web.routers import plan as plan_router
 

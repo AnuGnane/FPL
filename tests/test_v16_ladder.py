@@ -1,14 +1,9 @@
 """v16 §3 — the restraint walk on the ladder, its reasons, the served rung."""
 from __future__ import annotations
 
-import json
-
 import numpy as np
-import pytest
 
-from gaffer import ladder as lad
-from gaffer.ladder import (StepContext, explain_step, recommended_rung,
-                           serve_rung, served_note, walk)
+from gaffer.ladder import StepContext, explain_step, serve_rung, walk
 
 
 def _row(key, hits=0, transfers=0, same_as=None, buys=(), sells=(), xi=(),

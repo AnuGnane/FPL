@@ -21,8 +21,7 @@ import pandas as pd
 from gaffer import artifacts
 from gaffer.data import store
 from gaffer.io import atomic_write
-from gaffer.set_pieces import (GOAL_POINTS, LEAGUE_PENS_PG, PEN_CONVERSION,
-                               pen_estimate, share_now)
+from gaffer.set_pieces import GOAL_POINTS, LEAGUE_PENS_PG, PEN_CONVERSION, pen_estimate, share_now
 
 PLAYER_GW_PATH = "live/player_gw.parquet"
 EVENTS_PATH = "live/events.parquet"

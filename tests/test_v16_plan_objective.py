@@ -2,8 +2,8 @@
 differs from the served plan."""
 from __future__ import annotations
 
-from tests.test_v12_w5_plan_trace import P, S, _week, wired  # noqa: F401
 from gaffer.web.routers import plan as plan_router
+from tests.test_v12_w5_plan_trace import P, S, _week, wired  # noqa: F401
 
 
 def _with_objective(wired, monkeypatch, agrees):

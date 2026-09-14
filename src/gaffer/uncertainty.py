@@ -70,9 +70,14 @@ from dataclasses import dataclass
 import pandas as pd
 
 from gaffer.league_sim import OUTCOME_VAR_PER_EP
-from gaffer.optimize.scenarios import (NOISE_DENOM, NOISE_FLOOR_XMINS,
-                                       recentred_mean, scenario_noise,
-                                       sigma_for, xmins_by_player_gw)
+from gaffer.optimize.scenarios import (
+    NOISE_DENOM,
+    NOISE_FLOOR_XMINS,
+    recentred_mean,
+    scenario_noise,
+    sigma_for,
+    xmins_by_player_gw,
+)
 
 __all__ = ["BAND_Z", "BLANK_POINTS", "HAUL_POINTS", "Band", "band_for",
            "bands_by_player_gw", "estimation_sigma_for", "shipped_table",

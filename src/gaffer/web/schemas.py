@@ -10,9 +10,17 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from gaffer.served import (PlanMoveTrace, PlanWeekTrace, ServedAlternative,  # noqa: F401
-                           ServedMove, ServedObjective, ServedPlan,
-                           ServedRestraint, ServedStep, ServedWeek)
+from gaffer.served import (  # noqa: F401
+    PlanMoveTrace,
+    PlanWeekTrace,
+    ServedAlternative,
+    ServedMove,
+    ServedObjective,
+    ServedPlan,
+    ServedRestraint,
+    ServedStep,
+    ServedWeek,
+)
 
 WIRE_EXPORTS = (PlanMoveTrace, PlanWeekTrace, ServedMove, ServedWeek, ServedStep,
                 ServedRestraint, ServedObjective, ServedAlternative, ServedPlan)

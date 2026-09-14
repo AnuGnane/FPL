@@ -28,14 +28,19 @@ import math
 
 from fastapi import APIRouter
 
-from gaffer.config import (_source_of, base_exists, invalidate, load_config,
-                           out_of_range, overlay_and_base, read_overlay,
-                           write_overlay)
+from gaffer.config import (
+    _source_of,
+    base_exists,
+    invalidate,
+    load_config,
+    out_of_range,
+    overlay_and_base,
+    read_overlay,
+    write_overlay,
+)
 from gaffer.web.coerce import fail
-from gaffer.web.schemas import (SettingOption, SettingRow, SettingsPanel,
-                                SettingWrite)
-from gaffer.web.settings_keys import (BY_FIELD, WHITELIST, current_value,
-                                      live_keys)
+from gaffer.web.schemas import SettingOption, SettingRow, SettingsPanel, SettingWrite
+from gaffer.web.settings_keys import BY_FIELD, WHITELIST, current_value, live_keys
 
 router = APIRouter(prefix="/api", tags=["settings"])
 

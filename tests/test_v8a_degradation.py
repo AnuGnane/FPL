@@ -28,11 +28,12 @@ import pytest
 
 from gaffer.config import Config
 from gaffer.data.news.normalize import availability_frame
-from gaffer.features.engineer import (ROTATION_PRIOR_FEATURES,
-                                      add_rotation_priors,
-                                      latest_rotation_priors)
+from gaffer.features.engineer import (
+    ROTATION_PRIOR_FEATURES,
+    add_rotation_priors,
+    latest_rotation_priors,
+)
 from gaffer.models.availability import apply_availability
-
 
 # --- rail 1: no tenure asset ----------------------------------------------
 
@@ -65,8 +66,7 @@ def test_without_the_asset_the_frame_shape_is_unchanged():
 
 def test_a_corrupt_asset_reaches_the_builder_as_none(tmp_path, monkeypatch):
     from gaffer.data import store as store_mod
-    from gaffer.data.managers import (MANAGER_TENURES_PATH,
-                                      load_manager_tenures)
+    from gaffer.data.managers import MANAGER_TENURES_PATH, load_manager_tenures
 
     monkeypatch.setattr(store_mod, "DATA_DIR", tmp_path)
     (tmp_path / MANAGER_TENURES_PATH).write_text("not toml [[", "utf-8")

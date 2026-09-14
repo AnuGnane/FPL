@@ -25,10 +25,17 @@ import pytest
 
 import gaffer.optimize.scenarios as sc
 from gaffer.league_sim import OUTCOME_VAR_PER_EP
-from gaffer.uncertainty import (BAND_Z, BLANK_POINTS, HAUL_POINTS, Band,
-                                band_for, bands_by_player_gw,
-                                estimation_sigma_for, shipped_table,
-                                xmins_by_player_gw)
+from gaffer.uncertainty import (
+    BAND_Z,
+    BLANK_POINTS,
+    HAUL_POINTS,
+    Band,
+    band_for,
+    bands_by_player_gw,
+    estimation_sigma_for,
+    shipped_table,
+    xmins_by_player_gw,
+)
 
 TABLE = {"ep_edges": [0.0, 2.0, 4.0, 6.0], "xmins_edges": [0.0, 30.0, 60.0],
          "sigma": {"2_2": 1.5}, "ep_marginal": {"2": 2.0}, "global": 3.0}

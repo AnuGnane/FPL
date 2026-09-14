@@ -69,8 +69,7 @@ def _ticker(*cells):
     chip's number is the rating's number, and a stub that replaced the join
     would stop asserting it.
     """
-    from gaffer.difficulty import (FixtureCell, FixtureDifficulty,
-                                   TeamDifficulty)
+    from gaffer.difficulty import FixtureCell, FixtureDifficulty, TeamDifficulty
 
     return FixtureDifficulty(gws=[5], source="odds", teams=[
         TeamDifficulty(code=code, name=str(code), short_name=str(code),

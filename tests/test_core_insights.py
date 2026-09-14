@@ -9,8 +9,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from gaffer.data.core_insights import (SEASON_TABLES, ci_paths_from_tree,
-                                       repo_season)
+from gaffer.data.core_insights import SEASON_TABLES, ci_paths_from_tree, repo_season
 
 
 def _tree(paths: list[str]) -> dict:
@@ -122,11 +121,18 @@ def test_season_tables_is_the_contract_every_bundle_answers():
 
 # --- Task 2: the parsers -------------------------------------------------
 
-from gaffer.data.core_insights import (CI_ELO_COLS, CI_FIXTURE_COLS,
-                                       CI_PLAYER_COLS, PMS_KEY_COLS,
-                                       PMS_COUNT_COLS, PMS_STAT_COLS,
-                                       elo_rows, fixture_rows,
-                                       player_code_map, player_match_rows)
+from gaffer.data.core_insights import (
+    CI_ELO_COLS,
+    CI_FIXTURE_COLS,
+    CI_PLAYER_COLS,
+    PMS_COUNT_COLS,
+    PMS_KEY_COLS,
+    PMS_STAT_COLS,
+    elo_rows,
+    fixture_rows,
+    player_code_map,
+    player_match_rows,
+)
 
 PLAYERS_CSV = (
     "player_code,player_id,first_name,second_name,web_name,team_code,position\n"
@@ -359,8 +365,12 @@ def test_a_season_whose_elo_is_blank_yields_no_elo_rows():
 import pytest
 
 from gaffer.data import store
-from gaffer.data.core_insights import (ci_path, download_core_insights,
-                                       load_core_insights, season_table_stats)
+from gaffer.data.core_insights import (
+    ci_path,
+    download_core_insights,
+    load_core_insights,
+    season_table_stats,
+)
 
 
 class _FakeHTTP:
@@ -395,7 +405,6 @@ class _Resp:
 
 
 import httpx  # noqa: E402 — imported after _FakeHTTP for readability
-
 
 ARCHIVE = {
     "data/2026-2027/players.csv": PLAYERS_CSV,
@@ -540,9 +549,12 @@ def test_the_installer_loop_names_every_plist_and_no_others():
 
 # --- T1-T6 review: the cache, the season map, and the atomic write -------
 
-from gaffer.data.core_insights import (CI_CACHE,  # noqa: E402
-                                       fetch_csv, hot_gameweeks,
-                                       season_index_map)
+from gaffer.data.core_insights import (  # noqa: E402
+    CI_CACHE,
+    fetch_csv,
+    hot_gameweeks,
+    season_index_map,
+)
 
 FINISHED_FIXTURES = (
     "gameweek,kickoff_time,home_team,home_team_elo,home_score,away_score,"

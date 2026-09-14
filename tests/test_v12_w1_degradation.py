@@ -24,7 +24,6 @@ would be a protected edit that bought nothing.
 
 from __future__ import annotations
 
-
 # =====================================================================
 # Block 8 — the counts
 # =====================================================================

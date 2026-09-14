@@ -180,8 +180,7 @@ def refresh():
 def build_history_cmd():
     """Download the historical seasons into data/history/ (run once)."""
     from gaffer.config import load_config
-    from gaffer.data.history import (build_history, build_history_fixtures,
-                                     season_name_codes)
+    from gaffer.data.history import build_history, build_history_fixtures, season_name_codes
     from gaffer.data.match_odds import build_match_odds
 
     cfg = load_config()
@@ -237,8 +236,7 @@ def core_insights_cmd(
     """
     try:
         from gaffer.config import load_config
-        from gaffer.data.core_insights import (download_core_insights,
-                                               season_index_map)
+        from gaffer.data.core_insights import download_core_insights, season_index_map
 
         cfg = load_config()
         # The current season as well as the training ones. The fixture table
@@ -272,9 +270,11 @@ def understat():
     from gaffer.config import load_config
     from gaffer.data.bootstrap import build_teams
     from gaffer.data.history import season_name_codes
-    from gaffer.data.understat import (build_understat_player,
-                                       build_understat_team,
-                                       history_player_index)
+    from gaffer.data.understat import (
+        build_understat_player,
+        build_understat_team,
+        history_player_index,
+    )
 
     cfg = load_config()
     if not cfg.understat_enabled:
@@ -469,8 +469,7 @@ def league_sim(
     """
     from gaffer.api.client import FPLClient
     from gaffer.config import load_config
-    from gaffer.league_sim import (SIM_SEED, build_inputs, format_multi_seed,
-                                   multi_seed)
+    from gaffer.league_sim import SIM_SEED, build_inputs, format_multi_seed, multi_seed
 
     cfg = load_config()
     bases = [int(s) for s in seeds.split(",") if s.strip()] or [SIM_SEED]
@@ -543,8 +542,7 @@ def calibrate_decisions(start_gw: int = 5):
     Slow (one backtest per season) and refreshed rarely — once a season, or
     when the model shifts materially. The asset it writes ships in git.
     """
-    from gaffer.calibrate_decisions import (ASSET_PATH,  # noqa: F401
-                                            run_calibration, write_priors)
+    from gaffer.calibrate_decisions import ASSET_PATH, run_calibration, write_priors  # noqa: F401
     from gaffer.config import load_config
 
     cfg = load_config()
@@ -568,8 +566,7 @@ def calibrate_injuries(clubs: str = typer.Option(
     import json
     from pathlib import Path
 
-    from gaffer.calibrate_injuries import (ASSET_PATH, run_calibration,
-                                           write_curves)
+    from gaffer.calibrate_injuries import ASSET_PATH, run_calibration, write_curves
 
     path = Path(clubs)
     if not path.exists():
@@ -636,9 +633,12 @@ def calibrate_noise(
     """
     import json
 
-    from gaffer.calibrate_noise import (ASSET_PATH, run_calibration,
-                                        run_estimation_calibration,
-                                        write_noise)
+    from gaffer.calibrate_noise import (
+        ASSET_PATH,
+        run_calibration,
+        run_estimation_calibration,
+        write_noise,
+    )
 
     dest = out or ASSET_PATH
     if not estimation and out is None and not force:
@@ -693,10 +693,15 @@ def evaluate(mode: str = typer.Option(
                       "components, refits nothing, takes seconds."),
              season: str | None = None, start_gw: int = 5):
     """Score the model and write reports/evaluation.json."""
-    from gaffer.evaluation import (evaluate_benchmark, evaluate_calibration,
-                                   evaluate_current, evaluate_news_shadow,
-                                   format_report, run_decomposition,
-                                   save_evaluation)
+    from gaffer.evaluation import (
+        evaluate_benchmark,
+        evaluate_calibration,
+        evaluate_current,
+        evaluate_news_shadow,
+        format_report,
+        run_decomposition,
+        save_evaluation,
+    )
 
     if flag_latency:
         from gaffer.availability_eval import evaluate_flag_latency
@@ -738,8 +743,7 @@ def evaluate(mode: str = typer.Option(
 def track_pens_cmd(season: str = typer.Option(
         "", help="Season to track (default: fpl.current_season).")):
     """Predicted penalty EP against the penalties actually taken (v7c F3)."""
-    from gaffer.pen_tracker import (format_tracker, save_tracker_guarded,
-                                    track_pens)
+    from gaffer.pen_tracker import format_tracker, save_tracker_guarded, track_pens
 
     report = track_pens(season or None)
     # v12 W1 §2.5 (specs/2026-09-01-gaffer-v12-program-design.md). The guard

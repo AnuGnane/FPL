@@ -28,8 +28,7 @@ if TYPE_CHECKING:  # the runtime import stays lazy inside the function body
 
 def run_evaluate() -> dict:
     """``gaffer evaluate`` with its default mode."""
-    from gaffer.evaluation import (evaluate_current, format_report,
-                                   save_evaluation)
+    from gaffer.evaluation import evaluate_current, format_report, save_evaluation
 
     payload = evaluate_current()
     path = save_evaluation("current", payload)
@@ -40,8 +39,7 @@ def run_evaluate() -> dict:
 
 def run_news_shadow() -> dict:
     """``gaffer evaluate --news-shadow`` (gate N2)."""
-    from gaffer.evaluation import (evaluate_news_shadow, format_report,
-                                   save_evaluation)
+    from gaffer.evaluation import evaluate_news_shadow, format_report, save_evaluation
 
     payload = evaluate_news_shadow()
     path = save_evaluation("news_shadow", payload)
@@ -108,8 +106,7 @@ def run_track_pens() -> dict:
     tree — but a declined write is not a job failure: the record says it
     declined and why, and the banked report is still there.
     """
-    from gaffer.pen_tracker import (format_tracker, save_tracker_guarded,
-                                    track_pens)
+    from gaffer.pen_tracker import format_tracker, save_tracker_guarded, track_pens
 
     report = track_pens()
     path, refusal = save_tracker_guarded(report)

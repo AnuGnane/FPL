@@ -12,8 +12,7 @@ import pytest
 
 from gaffer.artifacts import ADVICE_HISTORY
 from gaffer.data import store
-from gaffer.journal import (JOURNAL_PATH, build_journal, latest_run_per_gw,
-                            xi_points)
+from gaffer.journal import JOURNAL_PATH, build_journal, latest_run_per_gw, xi_points
 
 
 class FakeClient:

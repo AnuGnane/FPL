@@ -28,8 +28,7 @@ from gaffer.data.news.premierinjuries import fetch_injuries
 from gaffer.models.components import card_penalty
 from gaffer.models.minutes import apply_availability
 from gaffer.models.persistence import load_model
-from gaffer.models.team import (ODDS_AGAINST_COL, blend_team_odds,
-                                odds_blend_weight)
+from gaffer.models.team import ODDS_AGAINST_COL, blend_team_odds, odds_blend_weight
 from gaffer.models.train import DEFAULT_E_GC, DEFAULT_P_CS
 from gaffer.set_pieces import add_pen_ep, attack_multipliers, pen_notices
 

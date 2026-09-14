@@ -671,8 +671,11 @@ def test_build_advice_opens_no_file(monkeypatch):
     _needs_recorded_inputs()
     # Every module build_advice reaches, imported before open() is taken
     # away: an import that is not yet in sys.modules opens a file.
-    import gaffer.advise, gaffer.assets, gaffer.config  # noqa: F401
-    import gaffer.ladder, gaffer.served  # noqa: F401
+    import gaffer.advise
+    import gaffer.assets
+    import gaffer.config  # noqa: F401
+    import gaffer.ladder
+    import gaffer.served  # noqa: F401
     from gaffer.advise import build_advice
     from gaffer.inputs import load_inputs
     from gaffer.optimize.scenarios import scenario_noise

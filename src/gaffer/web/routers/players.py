@@ -12,16 +12,21 @@ from collections.abc import Mapping
 import pandas as pd
 from fastapi import APIRouter, Query
 
-from gaffer.artifacts import (latest_gw, load_components, load_snapshot,
-                              load_solve_state)
+from gaffer.artifacts import latest_gw, load_components, load_snapshot, load_solve_state
 from gaffer.config import config_in_force
 from gaffer.data.field import field_eo_trend, latest_field_eo
 from gaffer.errors import GafferError
 from gaffer.uncertainty import band_for, shipped_table, xmins_by_player_gw
 from gaffer.web.coerce import opt_float, opt_int
-from gaffer.web.schemas import (Component, FixtureExplain, MinutesOutput,
-                                OddsInfluence, PlayerExplain, PlayerRow,
-                                UpcomingFixture)
+from gaffer.web.schemas import (
+    Component,
+    FixtureExplain,
+    MinutesOutput,
+    OddsInfluence,
+    PlayerExplain,
+    PlayerRow,
+    UpcomingFixture,
+)
 
 router = APIRouter(prefix="/api/players", tags=["players"])
 
@@ -161,8 +166,7 @@ def set_piece_orders(team_of: Mapping[int, int] | None = None
     something at a press conference, and an override that only takes effect
     after a restart is one that gets typed twice and doubted.
     """
-    from gaffer.data.set_piece_overrides import (SET_PIECE_KINDS,
-                                                 load_set_piece_overrides)
+    from gaffer.data.set_piece_overrides import SET_PIECE_KINDS, load_set_piece_overrides
 
     out: dict[str, dict[int, int | None]] = {k: {} for k in SET_PIECE_KINDS}
     for tables in load_set_piece_overrides().values():

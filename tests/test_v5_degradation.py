@@ -27,7 +27,6 @@ from gaffer.config import Config
 from gaffer.data.news.normalize import availability_frame
 from gaffer.models.availability import RECOVERY, apply_availability
 
-
 # --- rail 1: all sources empty == flags only -------------------------------
 
 def _official() -> pd.DataFrame:

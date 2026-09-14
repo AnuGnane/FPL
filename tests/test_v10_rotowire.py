@@ -19,8 +19,13 @@ import httpx
 import pandas as pd
 
 from gaffer.config import DEFAULT_LINEUP_PROVIDERS
-from gaffer.data.news.lineups import (LINEUP_COLS, PARSE_COLS, PROVIDERS,
-                                      fetch_lineups, parse_rotowire)
+from gaffer.data.news.lineups import (
+    LINEUP_COLS,
+    PARSE_COLS,
+    PROVIDERS,
+    fetch_lineups,
+    parse_rotowire,
+)
 
 _XI = ["Kjell Scherpen", "Pervis Estupinan", "Lewis Dunk", "Jan Paul van Hecke",
        "Tariq Lamptey", "Carlos Baleba", "Mats Wieffer", "Kaoru Mitoma",

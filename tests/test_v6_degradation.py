@@ -18,8 +18,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from gaffer.set_pieces import (EP_CLAMP, PenPriors, add_pen_ep,
-                               attack_multipliers)
+from gaffer.set_pieces import EP_CLAMP, PenPriors, add_pen_ep, attack_multipliers
 
 
 def _comp() -> pd.DataFrame:
@@ -192,8 +191,8 @@ def test_the_shipped_asset_is_served_by_default():
     replaced it (heuristic 1785 → estimation 1908 over the 2025-26 gated
     replay), so the shipped table is now the default serving path and this
     pins that. The off switch keeps its own rail below."""
-    from gaffer.assets import load_scenario_noise, scenario_noise_exists
     import gaffer.optimize.scenarios as sc
+    from gaffer.assets import load_scenario_noise, scenario_noise_exists
 
     assert scenario_noise_exists(), "the fitted asset is meant to stay shipped"
 

@@ -14,8 +14,7 @@ from fastapi.responses import JSONResponse
 
 from gaffer.artifacts import latest_gw, load_advice
 from gaffer.errors import GafferError
-from gaffer.ladder import (build_ladder, load_ladder, recommended_rung,
-                           served_note)
+from gaffer.ladder import build_ladder, load_ladder, recommended_rung, served_note
 from gaffer.web.jobs import WHATIF_TIMEOUT_S, JobQueueFull
 from gaffer.web.schemas import JobAccepted, LadderPayload
 

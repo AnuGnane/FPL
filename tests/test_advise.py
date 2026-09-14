@@ -15,22 +15,34 @@ order the calls happened in — which is what the ordering pins always meant.
 import dataclasses
 
 import pandas as pd
-import pytest
 
 import gaffer.advise as advise_mod
-from gaffer.models import predict as predict_mod
+from gaffer.advise import (
+    Advice,
+    build_advice,
+    chips_available_for,
+    future_fixture_frame,
+    transfer_tag,
+)
 from gaffer.config import Config
-from gaffer.advise import build_advice
 from gaffer.league_mode import Strategy
-from tests.advice_fixture import (GW, ScriptedSolver, a_plan,
-                                  a_scratch_working_directory,  # noqa: F401
-                                  codes_by_position, recording, tiny_cfg,
-                                  tiny_ep, tiny_inputs, tiny_my,
-                                  tiny_players, tiny_squad,
-                                  without_the_ladder)
+from gaffer.models import predict as predict_mod
+from tests.advice_fixture import (
+    GW,
+    ScriptedSolver,
+    a_plan,
+    a_scratch_working_directory,  # noqa: F401
+    codes_by_position,
+    recording,
+    tiny_cfg,
+    tiny_ep,
+    tiny_inputs,
+    tiny_my,
+    tiny_players,
+    tiny_squad,
+    without_the_ladder,
+)
 from tests.gather_harness import THROUGH, _comp, gather
-from gaffer.advise import (Advice, chips_available_for, future_fixture_frame,
-                           transfer_tag)
 
 
 def test_future_fixture_frame_one_row_per_player_fixture():
@@ -514,8 +526,9 @@ def test_run_advise_still_pins_every_protected_ordering(monkeypatch):
 
 
 def test_advice_carries_the_scenario_fields_with_safe_defaults():
-    from gaffer.advise import Advice
     import dataclasses
+
+    from gaffer.advise import Advice
 
     fields = {f.name: f for f in dataclasses.fields(Advice)}
     for name in ("move_frequencies", "raw_optimum_agrees", "scenarios"):
@@ -748,7 +761,6 @@ def test_run_advise_re_picks_the_captain_after_the_plan_is_fixed(monkeypatch):
 
 
 def test_advice_carries_the_demoted_captain_and_the_note():
-    from gaffer.advise import Advice
 
     a = _bare_advice()
     assert a.captain_note is None
@@ -806,8 +818,8 @@ def test_news_availability_degrades_to_the_bootstrap_slice():
     three-column frame apply_availability has always taken."""
     import pandas as pd
 
-    from gaffer.models.predict import news_availability
     from gaffer.config import Config
+    from gaffer.models.predict import news_availability
 
     players = pd.DataFrame({"code": [1], "status": ["a"],
                             "chance_of_playing": [None], "team_code": [3],
@@ -826,8 +838,8 @@ def test_news_availability_makes_no_fetch_calls_when_disabled(monkeypatch):
     only at the fetcher."""
     import pandas as pd
 
-    from gaffer.models import predict as predict_mod
     from gaffer.config import Config
+    from gaffer.models import predict as predict_mod
 
     calls = []
     monkeypatch.setattr(predict_mod, "fetch_injuries",

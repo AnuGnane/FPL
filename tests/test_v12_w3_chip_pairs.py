@@ -15,14 +15,11 @@ and this file pins that no caller but ``advise`` opts in.
 from __future__ import annotations
 
 import inspect
-from dataclasses import replace
 
 import pandas as pd
 import pytest
 
-from gaffer.optimize import chips as chips_mod
-from gaffer.optimize.chips import (PAIR_CHIP, PAIR_DGW_MIN_PROB,
-                                   _weeks_covered, evaluate_chips)
+from gaffer.optimize.chips import PAIR_CHIP, PAIR_DGW_MIN_PROB, _weeks_covered, evaluate_chips
 from gaffer.optimize.milp import SolveInput
 
 CFG = dict(decay=0.85, bench_weight=0.1, vice_weight=0.1, ft_value=1.5,
@@ -168,8 +165,7 @@ def test_the_pairs_flat_bar_is_the_sum_of_the_two_chips_it_spends():
 
 
 def test_the_pairs_theta_bar_is_the_sum_of_the_two_thetas():
-    from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
-                                             threshold_with_source)
+    from gaffer.optimize.chip_policy import chip_thresholds_from_asset, threshold_with_source
 
     lookup = chip_thresholds_from_asset(_priors_covering_everything())
     for gw in (1, 12, 19, 20, 33, 38):
@@ -182,8 +178,7 @@ def test_the_pairs_theta_bar_is_the_sum_of_the_two_thetas():
 def test_the_pairs_source_names_both_bars():
     """A reader who sees one number has to be able to see where it came from,
     and the pair's number is two numbers added."""
-    from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
-                                             threshold_with_source)
+    from gaffer.optimize.chip_policy import chip_thresholds_from_asset, threshold_with_source
 
     lookup = chip_thresholds_from_asset(_priors_covering_everything())
     _, source = threshold_with_source(lookup, PAIR_CHIP, 7)
@@ -193,9 +188,11 @@ def test_the_pairs_source_names_both_bars():
 
 def test_the_pair_cannot_play_now_where_the_lone_wildcard_waits():
     """The bug, stated as the behaviour it produced."""
-    from gaffer.optimize.chip_policy import (chip_thresholds_from_asset,
-                                             flat_thresholds,
-                                             threshold_with_source)
+    from gaffer.optimize.chip_policy import (
+        chip_thresholds_from_asset,
+        flat_thresholds,
+        threshold_with_source,
+    )
 
     for lookup in (flat_thresholds(),
                    chip_thresholds_from_asset(_priors_covering_everything())):

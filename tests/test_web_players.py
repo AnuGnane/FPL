@@ -2,8 +2,13 @@ import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
-from gaffer.artifacts import (COMPONENT_COLS, SolveState, pool_rows,
-                              save_components, save_solve_state)
+from gaffer.artifacts import (
+    COMPONENT_COLS,
+    SolveState,
+    pool_rows,
+    save_components,
+    save_solve_state,
+)
 from gaffer.web.app import create_app
 
 PLAYERS = pd.DataFrame([

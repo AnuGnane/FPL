@@ -20,8 +20,14 @@ import pandas as pd
 import pytest
 
 from gaffer.errors import GafferError
-from gaffer.optimize.milp import (ALT_PLAN_MAX, FixedMoves, SolveInput,
-                                  alternative_plans, move_set, solve_plan)
+from gaffer.optimize.milp import (
+    ALT_PLAN_MAX,
+    FixedMoves,
+    SolveInput,
+    alternative_plans,
+    move_set,
+    solve_plan,
+)
 
 GWS = [1, 2]
 KW = dict(decay=0.85, bench_weight=0.1, vice_weight=0.1, ft_value=1.5,
@@ -280,6 +286,7 @@ def test_a_failing_alternative_solve_ends_the_search_and_keeps_what_it_found(
 def test_the_lp_golden_still_matches_with_no_cuts(tmp_path):
     """Task 1's guard, re-run: ``no_good=None`` must add nothing to the
     model."""
-    from tests.test_v12_w3_force_out import GOLDEN, _capture_lp, _state as st
+    from tests.test_v12_w3_force_out import GOLDEN, _capture_lp
+    from tests.test_v12_w3_force_out import _state as st
 
     assert _capture_lp(tmp_path, st())[0] == GOLDEN.read_text()

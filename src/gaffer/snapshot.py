@@ -143,8 +143,7 @@ def run_snapshot(cfg=None) -> int | None:
     try:
         from gaffer.api.client import FPLClient
         from gaffer.config import load_config
-        from gaffer.data.bootstrap import (build_events, build_players,
-                                           build_teams)
+        from gaffer.data.bootstrap import build_events, build_players, build_teams
 
         cfg = cfg or load_config()
         raw = FPLClient().get_bootstrap()

@@ -163,9 +163,8 @@ def test_a_gameweek_with_no_banked_components_is_absent_with_a_notice(
         tmp_path, monkeypatch):
     """GW1's case, and the one G1 checks for: ``reports/components_gw1.parquet``
     does not exist and never will, so GW1 is graded in points alone."""
-    from tests.test_web_league_sim import FakeClient
-
     from gaffer.review import price_lanes_for_gw
+    from tests.test_web_league_sim import FakeClient
 
     monkeypatch.chdir(tmp_path)
 

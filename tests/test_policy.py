@@ -1,8 +1,7 @@
 import pandas as pd
 
 from gaffer.optimize.milp import GwPlan, Plan
-from gaffer.optimize.policy import (NEAR_MISS_BAND, Decision, Thresholds,
-                                    decide)
+from gaffer.optimize.policy import NEAR_MISS_BAND, Decision, Thresholds, decide
 
 
 def _freq(rows) -> pd.DataFrame:
@@ -163,7 +162,6 @@ def test_buys_and_sells_come_back_in_descending_frequency():
 
 # --- coherence re-solve ----------------------------------------------------
 
-from gaffer.optimize.milp import SolveInput, solve_plan
 from gaffer.optimize.policy import coherent_plan
 from tests.test_milp import _owned_state
 from tests.test_v4c_degradation import GOLDEN_KW, golden_pool

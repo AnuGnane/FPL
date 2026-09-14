@@ -28,7 +28,6 @@ from gaffer.artifacts import load_solve_state, save_solve_state
 from gaffer.data import store
 from gaffer.data.field import append_field_eo, field_eo_rows
 from gaffer.web.app import create_app
-
 from tests.test_web_league_sim import _artifacts
 
 

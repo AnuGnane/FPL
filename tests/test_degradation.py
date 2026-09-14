@@ -10,10 +10,13 @@ scattered across six suites.
 import numpy as np
 import pandas as pd
 
-from gaffer.features.engineer import (TEAM_US_FEATURES, add_shrunken_rates,
-                                      add_understat_rolling,
-                                      merge_understat_team,
-                                      understat_feature_columns)
+from gaffer.features.engineer import (
+    TEAM_US_FEATURES,
+    add_shrunken_rates,
+    add_understat_rolling,
+    merge_understat_team,
+    understat_feature_columns,
+)
 
 
 def _plain_history(n_players=6, n_gws=12):

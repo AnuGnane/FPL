@@ -2,9 +2,15 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from gaffer.models.team import (ODDS_BLEND_WEIGHT, TEAM_FEATURES, TeamModel,
-                                add_team_rolling, blend_team_odds,
-                                build_team_gw, odds_blend_weight)
+from gaffer.models.team import (
+    ODDS_BLEND_WEIGHT,
+    TEAM_FEATURES,
+    TeamModel,
+    add_team_rolling,
+    blend_team_odds,
+    build_team_gw,
+    odds_blend_weight,
+)
 
 
 def test_build_team_gw_two_rows_per_fixture():

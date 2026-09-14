@@ -21,10 +21,13 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from gaffer.features.engineer import (add_context, add_rotation_priors,
-                                      as_of_club, build_prediction_frame,
-                                      feature_columns)
-
+from gaffer.features.engineer import (
+    add_context,
+    add_rotation_priors,
+    as_of_club,
+    build_prediction_frame,
+    feature_columns,
+)
 
 # --- the helper itself ----------------------------------------------
 

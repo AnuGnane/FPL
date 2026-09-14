@@ -37,12 +37,13 @@ import pandas as pd
 # The three bars are ``chip_policy``'s since v18d §2 (it read them back
 # through a function-body import); they are still this module's names.
 from gaffer.optimize import chip_policy
-from gaffer.optimize.chip_policy import (CHIP_PLAY_THRESHOLD,  # noqa: F401
-                                         PAIR_CHIP,
-                                         WILDCARD_RECOMMEND_THRESHOLD,
-                                         threshold_with_source)
-from gaffer.optimize.milp import (SEASON_LAST_GW, Plan, SolveInput,
-                                  solve_plan)
+from gaffer.optimize.chip_policy import (  # noqa: F401
+    CHIP_PLAY_THRESHOLD,
+    PAIR_CHIP,
+    WILDCARD_RECOMMEND_THRESHOLD,
+    threshold_with_source,
+)
+from gaffer.optimize.milp import Plan, SolveInput, solve_plan
 
 NO_THRESHOLDS = "flat: the caller passed no threshold lookup"
 """Why a bar is flat when the *caller* is the reason. Distinct from

@@ -15,8 +15,13 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from gaffer.artifacts import (POOL_COLS, SolveState, latest_projection_before,
-                              projection_snapshots, save_solve_state)
+from gaffer.artifacts import (
+    POOL_COLS,
+    SolveState,
+    latest_projection_before,
+    projection_snapshots,
+    save_solve_state,
+)
 from tests.conftest import patch_view
 
 

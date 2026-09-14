@@ -8,8 +8,15 @@ import pytest
 from fastapi.testclient import TestClient
 
 from gaffer import artifacts
-from gaffer.decisions import (REASONS, TEXT_MAX, by_reason, load_decisions,
-                              note_for, note_state, save_note)
+from gaffer.decisions import (
+    REASONS,
+    TEXT_MAX,
+    by_reason,
+    load_decisions,
+    note_for,
+    note_state,
+    save_note,
+)
 from gaffer.web.app import create_app
 
 NOW = pd.Timestamp("2026-09-05T12:00:00Z")

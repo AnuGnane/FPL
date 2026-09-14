@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from gaffer.config import (Config, config_in_force, invalidate,
-                           load_config)
+from gaffer.config import Config, config_in_force, invalidate, load_config
 
 _TOML = """
 [fpl]

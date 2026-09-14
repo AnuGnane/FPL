@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
+
 from gaffer.models.attacking import AttackingModel
+
 
 def _frame(seed=2):
     rng = np.random.default_rng(seed)
@@ -72,8 +74,10 @@ def test_attack_features_include_setpiece_columns():
 
 
 def test_attack_features_carry_the_understat_and_shrunken_blocks():
-    from gaffer.features.engineer import (SHRUNK_FEATURES, TEAM_US_FEATURES,
-                                          understat_feature_columns)
+    from gaffer.features.engineer import (
+        SHRUNK_FEATURES,
+        understat_feature_columns,
+    )
     from gaffer.models.attacking import ATTACK_FEATURES
 
     cols = set(ATTACK_FEATURES)

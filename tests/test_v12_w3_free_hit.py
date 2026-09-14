@@ -159,6 +159,7 @@ def test_a_baseline_with_no_bank_falls_back_to_todays_position_and_says_so(
 
 def test_the_lp_golden_still_matches(tmp_path):
     """Task 1's guard. Reading a solved variable adds no constraint."""
-    from tests.test_v12_w3_force_out import GOLDEN, _capture_lp, _state as st
+    from tests.test_v12_w3_force_out import GOLDEN, _capture_lp
+    from tests.test_v12_w3_force_out import _state as st
 
     assert _capture_lp(tmp_path, st())[0] == GOLDEN.read_text()

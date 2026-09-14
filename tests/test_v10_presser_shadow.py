@@ -20,11 +20,9 @@ import pandas as pd
 import pytest
 
 from gaffer.data import store
-from gaffer.data.news.presser_log import (PRESSER_COLS, PRESSER_DAMP,
-                                          PRESSER_PATH)
+from gaffer.data.news.presser_log import PRESSER_COLS, PRESSER_DAMP, PRESSER_PATH
 from gaffer.evaluation import score_news_shadow
-from gaffer.news_shadow import (SHADOW_COLS, SHADOW_PATH, load_shadow,
-                                shadow_rows, write_shadow)
+from gaffer.news_shadow import SHADOW_COLS, SHADOW_PATH, load_shadow, shadow_rows, write_shadow
 
 SEASON = "2025-26"
 

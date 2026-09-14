@@ -15,13 +15,12 @@ from fastapi.testclient import TestClient
 
 from gaffer.config import Config
 from gaffer.data import store
-from gaffer.data.field import (FIELD_EO_PATH, latest_field_eo,
-                               load_field_sample, run_field_scrape)
+from gaffer.data.field import FIELD_EO_PATH, latest_field_eo, load_field_sample, run_field_scrape
 from gaffer.data.tier_eo import tier_eo_table
 from gaffer.models.availability import apply_availability
 from gaffer.web import job_kinds
 from gaffer.web.app import create_app
-from tests.test_web_league_sim import FakeClient, _artifacts, _comp
+from tests.test_web_league_sim import FakeClient, _artifacts
 
 
 @pytest.fixture()

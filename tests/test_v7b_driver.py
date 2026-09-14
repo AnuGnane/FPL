@@ -46,12 +46,11 @@ def test_the_vendored_head_is_not_the_shipped_head():
     assert not np.allclose(legacy["p60"], current["p60"])
 
 
+import v7b_replay  # noqa: E402
+
 import gaffer.backtest as bt  # noqa: E402
 import gaffer.features.engineer as eng  # noqa: E402
 import gaffer.models.train as tr  # noqa: E402
-import gaffer.optimize.scenarios as sc  # noqa: E402
-
-import v7b_replay  # noqa: E402
 
 
 def test_the_defaults_are_exactly_the_s2_configuration():
@@ -454,7 +453,6 @@ def test_the_restraint_arm_parses_with_its_bar_and_draws():
 def test_the_restraint_gate_serves_the_chosen_rung(monkeypatch):
     """Two rung specs that solve to different plans; the draws are zero-noise
     so the higher-scoring plan wins every draw and the walk takes it."""
-    from dataclasses import dataclass
 
     import pandas as pd
 

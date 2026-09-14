@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from gaffer.data.set_piece_overrides import (SET_PIECE_KINDS,
-                                             load_set_piece_overrides,
-                                             override_path,
-                                             penalty_order_overrides)
+from gaffer.data.set_piece_overrides import (
+    SET_PIECE_KINDS,
+    load_set_piece_overrides,
+    override_path,
+    penalty_order_overrides,
+)
 
 
 @pytest.fixture()

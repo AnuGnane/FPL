@@ -11,7 +11,6 @@ import math
 
 import pandas as pd
 
-
 PEN_FACED_RATE = 0.06
 """Penalties faced per gameweek by a starting keeper — a league-average prior,
 not modelled per team or per keeper."""

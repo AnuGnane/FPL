@@ -14,8 +14,7 @@ from __future__ import annotations
 import pandas as pd
 from lightgbm import LGBMRegressor
 
-from gaffer.features.engineer import (SHRUNK_FEATURES,
-                                      understat_feature_columns)
+from gaffer.features.engineer import SHRUNK_FEATURES, understat_feature_columns
 from gaffer.models.minutes import ENSEMBLE_KW, LGB_KW
 
 ATTACK_FEATURES = [

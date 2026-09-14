@@ -15,8 +15,7 @@ from gaffer.artifacts import COMPONENT_COLS
 from gaffer.config import Config
 from gaffer.data import store
 from gaffer.errors import GafferError
-from gaffer.league_sim import (OUTCOME_VAR_PER_EP, build_inputs, element_eps,
-                               field_rate_from_sample)
+from gaffer.league_sim import OUTCOME_VAR_PER_EP, build_inputs, element_eps, field_rate_from_sample
 
 STANDINGS = {"standings": {"has_next": False, "results": [
     {"entry": 1, "entry_name": "You FC", "player_name": "Me", "rank": 2,
@@ -212,8 +211,7 @@ def test_a_player_with_no_minutes_prediction_still_has_a_weekly_spread():
 def test_a_real_squad_clears_the_entry_floor():
     """The floor exists for an unmodellable squad. Every entry sitting on it
     is the instrument telling you it has no variance model at all."""
-    from gaffer.league_sim import (WEEKLY_SIGMA_FLOOR, Entry, element_sigmas)
-    from gaffer.league_sim import entry_sigma
+    from gaffer.league_sim import WEEKLY_SIGMA_FLOOR, Entry, element_sigmas, entry_sigma
 
     sigma_by = element_sigmas(_comp())
     picks = [{"element": 7 if i % 2 else 8, "position": i, "multiplier":

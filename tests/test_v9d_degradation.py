@@ -27,7 +27,6 @@ from fastapi.testclient import TestClient
 
 from gaffer.web.app import create_app
 
-
 # =====================================================================
 # Block 1 — §2, the single-process contract
 # =====================================================================
@@ -261,8 +260,7 @@ def test_clear_cache_exists_and_empties_the_memo():
 def test_every_job_kind_has_a_deadline_and_none_of_them_is_zero():
     """A zero would make ``start`` reap the holder unconditionally, turning
     the single lane into last-writer-wins."""
-    from gaffer.web.job_kinds import (ABANDON_TIMEOUT_S, JOB_KINDS,
-                                      SLOW_ABANDON_KINDS)
+    from gaffer.web.job_kinds import ABANDON_TIMEOUT_S, JOB_KINDS, SLOW_ABANDON_KINDS
 
     assert set(ABANDON_TIMEOUT_S) | SLOW_ABANDON_KINDS == set(JOB_KINDS)
     # Disjoint as well as complete. A kind in both would read as having a

@@ -8,9 +8,12 @@ from pathlib import Path
 import httpx
 import pandas as pd
 
-from gaffer.data.cups import (CUP_TOURNAMENTS, cup_match_rows,
-                              cup_paths_from_tree, download_cup_matches,
-                              team_code_map)
+from gaffer.data.cups import (
+    cup_match_rows,
+    cup_paths_from_tree,
+    download_cup_matches,
+    team_code_map,
+)
 
 FIXTURES = Path(__file__).parent / "data" / "cups"
 
