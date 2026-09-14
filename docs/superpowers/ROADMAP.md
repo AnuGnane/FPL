@@ -158,7 +158,7 @@ backend merge.
 | v18e | `v18e-loader` | `b1867b9` 09-14 | 4496 | 1058 | every read through `usePageData`; `Loaded`'s five states; the error boundary; 422 is empty |
 | v18f | `v18f-surface` | `bf84d7c` 09-14 | 4496 | 1098 | six cuts, Radix dialogs, `Th`, lazy routes, ESLint, `npm run check` |
 | v18g | `v18g-suite` | `bc02faf` 09-14 | 4509 | 1098 | ruff committed, one home for the job-kind pin, seam order as behaviour, the caches fixture, `slow`, a clone-runnable suite |
-| v18h | `v18h-docs` | (below) 09-14 | 4509 | 1098 | `CLAUDE.md`, GUIDE, README, ROADMAP and three specs true as of today |
+| v18h | `v18h-docs` | `1f5afaa` 09-14 | 4509 | 1098 | `CLAUDE.md`, GUIDE, README, ROADMAP and three specs true as of today |
 
 Pins routes 51 / job kinds 12 / `Config` fields 62 throughout. Rulings
 taken on the way: rail 1 exempts `cli.py` and `mcp_server.py` whole (v18d);
