@@ -4,19 +4,19 @@ import { Link, useSearchParams } from 'react-router-dom'
 import {
   CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
-import { apiPost, errorText } from '../api/client'
-import { invalidate, invalidatePrefix, usePageData } from '../api/pageData'
+import { usePageData } from '../api/pageData'
+import { useSettingWrite } from '../api/useSettingWrite'
 import {
   type Column, Callout, Card, DataTable, EmptyState, Loading, PageHeader,
   Sparkline, Stat, StatRow, TABLE_CLASS, TAB_CLASS, TAB_LIST_CLASS, THEAD_CLASS,
-  TR_CLASS, TR_SELECTED_CLASS, fmtNum, fmtPct, tdClass, thClass, toast,
-  useTabParam,
+  TR_CLASS, TR_SELECTED_CLASS, fmtNum, fmtPct, tdClass, thClass, useTabParam,
 } from '../kit'
 import type {
   AdviceLatest, LeagueRaceData, LeagueSimData, LeaguesOverview, RivalSummary,
 } from '../types'
 import FieldPanel from './league/FieldPanel'
 import LeaguesTab, { type Stance, lamText } from './league/LeaguesTab'
+import MarginFan from './league/MarginFan'
 import WhatIfSim, { type WhatIfSquadPlayer } from './league/WhatIfSim'
 
 // v15 §6.1: the overview first. `race`/`rivals`/`whatif` show the league in
@@ -28,69 +28,9 @@ function withLeague(path: string, leagueId: number | null): string {
   return leagueId === null ? path : `${path}?league_id=${leagueId}`
 }
 
-const FAN_KEYS = ['p05', 'p25', 'p50', 'p75', 'p95'] as const
-
 /** One identity for "not landed yet", so the rivals table is not handed a
  *  fresh empty array on every render of the hub. */
 const NO_RIVALS: RivalSummary[] = []
-
-/**
- * The margin fan: how far ahead of — or behind — the best rival the season
- * ends, at five centiles.
- *
- * The engine has published these since v8c and nothing rendered them, so the
- * card showed three point estimates and no spread at all. Five numbers and
- * two divs rather than a chart library: the shape here is a range with a
- * middle, which a bar says as well as an axis would and without a dependency.
- *
- * Zero is drawn wherever it falls in the range, because the only question the
- * strip has to answer at a glance is which side of it the season sits on.
- */
-function MarginFan({ quantiles }: { quantiles: Record<string, number> }) {
-  const values = FAN_KEYS.map((k) => quantiles[k])
-  if (values.some((v) => typeof v !== 'number' || !Number.isFinite(v))) {
-    return null
-  }
-  const [p05, p25, p50, p75, p95] = values
-  const span = p95 - p05
-  // A degenerate fan — no weeks left, one entry — is a point, not a bar.
-  const at = (v: number) => (span > 0 ? ((v - p05) / span) * 100 : 50)
-  const zero = Math.min(100, Math.max(0, at(0)))
-  return (
-    <div className="mb-3" data-testid="sim-margin-fan">
-      <div className="label mb-1">Final margin over the best rival</div>
-      {/* Rule 7's named league-race gap: one flat fill on the track, the
-          median in text ink, zero in muted. Ahead is a direction (rule 1), so
-          a median on the wrong side of zero draws the fan in `down`. */}
-      <div className="relative mb-1 h-1.5 w-full rounded-chip bg-border">
-        <div
-          className={`absolute h-1.5 rounded-chip ${p50 >= 0
-            ? 'bg-up' : 'bg-down'}`}
-          style={{ left: `${at(p25)}%`, width: `${at(p75) - at(p25)}%` }}
-        />
-        <div
-          className="absolute h-1.5 w-px bg-text"
-          style={{ left: `${at(p50)}%` }}
-        />
-        {span > 0 && p05 <= 0 && p95 >= 0 && (
-          <div
-            className="absolute h-1.5 w-px bg-text-muted"
-            style={{ left: `${zero}%` }}
-            data-testid="sim-margin-zero"
-          />
-        )}
-      </div>
-      <div className="flex justify-between">
-        {FAN_KEYS.map((key) => (
-          <span key={key} className="tn text-xs text-text-muted"
-                data-testid={`margin-${key}`}>
-            {fmtNum(quantiles[key], 0)}
-          </span>
-        ))}
-      </div>
-    </div>
-  )
-}
 
 export default function League() {
   const [tab, setTab] = useTabParam(TABS, 'leagues')
@@ -132,30 +72,29 @@ export default function League() {
       { code: p.code, name: p.name, position: p.position ?? '' })),
     [latest.data])
 
+  // Two URLs, because a stance or a focus written here is read on another hub
+  // (v17h §5): the ladder card holds /api/settings, which the hook clears for
+  // every caller, and the leagues overview is what This Week's league tile
+  // prints — it names the focus league and says whether the stance was set by
+  // hand.
+  //
+  // The prefix, not the overview's URL alone: since v18e §2.3 this hub's own
+  // race, rivals and sim are cached too and every one of them is answered
+  // *for the focus* when no ?league= is asked. The URLs differ by the league
+  // id, which is exactly the thing a focus write changes, so there is no
+  // single URL to name — this is `invalidatePrefix`'s case, and the overview
+  // This Week's tile prints is under the same prefix, so one sweep re-asks
+  // each once.
+  const writeSetting = useSettingWrite({ alsoPrefix: ['/api/league/'] })
+
   // Both writes go through the settings endpoint (v15 §4.2), so the Model
   // tab, the CLI and the solve job read the same file. A refusal is a toast
   // and the control stays where the server left it.
-  function write(key: 'focus' | 'stance', value: number | string,
-                 what: string) {
+  async function write(key: 'focus' | 'stance', value: number | string,
+                       what: string) {
     setBusy(true)
-    apiPost('/api/settings', { key, value })
-      .then(() => {
-        // Two URLs, because a stance or a focus written here is read on
-        // another hub (v17h §5): the ladder card holds /api/settings, and the
-        // leagues overview is what This Week's league tile prints — it names
-        // the focus league and says whether the stance was set by hand.
-        invalidate('/api/settings')
-        // The prefix, not the overview's URL alone: since v18e §2.3 this
-        // hub's own race, rivals and sim are cached too and every one of them
-        // is answered *for the focus* when no ?league= is asked. The URLs
-        // differ by the league id, which is exactly the thing a focus write
-        // changes, so there is no single URL to name — this is
-        // `invalidatePrefix`'s case, and the overview This Week's tile prints
-        // is under the same prefix, so one sweep re-asks each once.
-        invalidatePrefix('/api/league/')
-      })
-      .catch((e) => toast('negative', `Could not ${what} — ${errorText(e)}`))
-      .finally(() => setBusy(false))
+    await writeSetting(key, value, what)
+    setBusy(false)
   }
   const onFocus = (id: number) => write('focus', id, 'set the focus league')
   const onStance = (s: Stance) => write('stance', s, 'set the stance')

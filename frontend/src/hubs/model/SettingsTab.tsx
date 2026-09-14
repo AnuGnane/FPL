@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { apiPost, errorText } from '../../api/client'
-import { invalidate, usePageData } from '../../api/pageData'
+import { errorText } from '../../api/client'
+import { usePageData } from '../../api/pageData'
+import { useSettingWrite } from '../../api/useSettingWrite'
 import {
   Button, Callout, Card, EmptyState, INPUT_CLASS, Loading, Segmented,
 } from '../../kit'
@@ -136,30 +137,31 @@ export default function SettingsTab() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState<string | null>(null)
 
-  function save(key: string, value: unknown) {
+  // The re-read the hook makes answers the whole panel, so a save re-seeds
+  // every row's `source` as well as its value — which is what turns the Reset
+  // button on for the field that was just written. The response is the whole
+  // panel too, but the panel on screen is the cache's since v18e, so clearing
+  // the URL is both how this tab re-reads its own rows and how the ladder card
+  // on This Week — which holds the same entry (v17h §5) — stops printing the
+  // value the manager has just changed away from.
+  //
+  // The League hub sweeps its own prefix for the same two rows; this tab is
+  // the other writer of them, and reaches the overview through the whitelist
+  // like any other. Guarded on the key rather than cleared on every save: a
+  // horizon or a hit cost moves nothing in a league overview, and the Reset
+  // button below comes through here too, with `null` for a value.
+  const writeSetting = useSettingWrite({
+    also: (key) => (LEAGUE_KEYS.has(key) ? ['/api/league/leagues'] : []),
+    // Beside the row that failed, not in a toast: the manager is mid-form and
+    // the refusal is about the field under his cursor.
+    onError: (e, key) => setErrors((prev) => ({ ...prev, [key]: errorText(e) })),
+  })
+
+  async function save(key: string, value: unknown) {
     setBusy(key)
     setErrors((prev) => ({ ...prev, [key]: '' }))
-    apiPost<SettingsPanel>('/api/settings', { key, value })
-      // The re-read answers the whole panel, so a save re-seeds every row's
-      // `source` as well as its value — which is what turns the Reset button
-      // on for the field that was just written.
-      .then(() => {
-        // The response is the whole panel, but the panel on screen is the
-        // cache's since v18e, so clearing the URL is both how this tab
-        // re-reads its own rows and how the ladder card on This Week — which
-        // holds the same entry (v17h §5) — stops printing the value the
-        // manager has just changed away from.
-        invalidate('/api/settings')
-        // The League hub invalidates two URLs for its stance and focus
-        // writes; this tab is the other writer of the same two rows, and
-        // reaches them through the whitelist like any other. Guarded on the
-        // key rather than cleared on every save: a horizon or a hit cost
-        // moves nothing in a league overview, and the Reset button below
-        // comes through here too, with `null` for a value.
-        if (LEAGUE_KEYS.has(key)) invalidate('/api/league/leagues')
-      })
-      .catch((e) => setErrors((prev) => ({ ...prev, [key]: errorText(e) })))
-      .finally(() => setBusy(null))
+    await writeSetting(key, value)
+    setBusy(null)
   }
 
   if (page.error !== null) {

@@ -49,7 +49,7 @@ function code(file: string): string {
 }
 
 /**
- * file → the calls its write must make. Spec §5, transcribed.
+ * file → the text its write must carry. Spec §5, transcribed.
  *
  * The note that used to stand here said Evaluate, Track pens, Review and
  * Snapshot cleared nothing, because in v17h no cached URL read what they
@@ -57,19 +57,27 @@ function code(file: string): string {
  * freshness strip in the shell — and the six buttons in that header are now
  * the largest block below. `news-shadow` still writes an evaluation report
  * and still has no button in this app at all.
+ *
+ * v18f §2.1 gave the three settings writers one hook, so for those three the
+ * row is in two halves: `api/useSettingWrite.ts` clears `/api/settings` for
+ * every one of them and has a row of its own, and each caller's row names the
+ * hook it writes through plus the extra URLs it hands it — which are literal
+ * strings at the call site precisely so that this scan can still read, in the
+ * writer's own file, which cached reads that writer disturbs. A caller that
+ * stopped going through the hook, or dropped its extras, fails here.
  */
 const TABLE: Record<string, string[]> = {
   // Requests that write.
-  'src/hubs/this-week/LadderCard.tsx': ["invalidate('/api/settings')"],
-  'src/hubs/model/SettingsTab.tsx': ["invalidate('/api/settings')",
-                                     "invalidate('/api/league/leagues')"],
-  // The prefix, and not a third URL: since v18e §2.3 this hub's race, rivals
+  'src/api/useSettingWrite.ts': ["invalidate('/api/settings')"],
+  'src/hubs/this-week/LadderCard.tsx': ['useSettingWrite('],
+  'src/hubs/model/SettingsTab.tsx': ['useSettingWrite(',
+                                     "['/api/league/leagues']"],
+  // The prefix, and not a second URL: since v18e §2.3 this hub's race, rivals
   // and sim are cached under a URL that carries the league id, and a focus
   // write is precisely the thing that changes which league the bare path
-  // answers for.
-  'src/hubs/League.tsx': ["invalidate('/api/settings')",
-                          // the overview is under the prefix (v18e §2.5)
-                          "invalidatePrefix('/api/league/')"],
+  // answers for. The overview is under the prefix too (v18e §2.5).
+  'src/hubs/League.tsx':
+    ["useSettingWrite({ alsoPrefix: ['/api/league/'] })"],
   'src/hubs/this-week/DecisionPanel.tsx': ['invalidate(`/api/decisions/${gw}`)'],
   'src/hubs/players/PinDialog.tsx': ["invalidate('/api/overrides')"],
   // The spec put the unpin on the Players hub, where the pin *dialog* lives.

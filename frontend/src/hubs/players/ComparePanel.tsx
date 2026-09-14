@@ -11,6 +11,7 @@ import type {
   ComponentsBreakdown, FixtureMatrixData, PlayerRow,
 } from '../../types'
 import CompareRadar from './CompareRadar'
+import { compareColumn, compareRows } from './compareRows'
 
 /**
  * The additive terms `web/routers/components.py`'s `TERMS` writes for one
@@ -138,28 +139,7 @@ export default function ComparePanel(
     )
   }
 
-  // One row per component label, one bar series per player: the shape Recharts
-  // stacks, and the shape that makes "where does his EP come from" readable.
-  const labels = new Set<string>()
-  for (const player of components?.players ?? []) {
-    for (const fixture of player.fixtures) {
-      for (const component of fixture.components) labels.add(component.label)
-    }
-  }
-  // Keyed by code, not by name: two players can share a surname, and a series
-  // keyed by one of them would silently overwrite the other's bars. The name
-  // rides on the series as its label, which is what the legend and the
-  // tooltip print.
-  const chart = [...labels].map((label) => {
-    const row: Record<string, string | number> = { label }
-    for (const player of players) {
-      const found = components?.players.find((p) => p.code === player.code)
-      row[String(player.code)] = found?.fixtures.reduce((total, fixture) => (
-        total + (fixture.components.find((c) => c.label === label)?.points ?? 0)
-      ), 0) ?? 0
-    }
-    return row
-  })
+  const chart = compareRows(players, components)
 
   return (
     <div>
@@ -186,40 +166,8 @@ export default function ComparePanel(
       </Card>
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
         {players.map((player, column) => {
-          const team = matrix?.teams.find((t) => t.code === player.team_code)
-          const comp = components?.players.find((p) => p.code === player.code)
-          // One row per label, summed over the horizon the payload holds —
-          // the same reduction the grouped chart above performs, transposed.
-          // Zeros stay dropped: that is `components.py`'s own honesty rule
-          // ("a panel whose job is showing what moved should not print nine
-          // zeroes to get to the one number that did") and not this cycle's
-          // to overturn. The rows still sum to the total printed under them.
-          const terms = new Map<string, number>()
-          for (const fixture of comp?.fixtures ?? []) {
-            for (const c of fixture.components) {
-              terms.set(c.label, (terms.get(c.label) ?? 0) + c.points)
-            }
-          }
-          const rows = [...terms].sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
-          const total = rows.reduce((sum, [, points]) => sum + points, 0)
-          const scale = Math.max(...rows.map(([, p]) => Math.abs(p)), 0.01)
-          // Every term is already inside Goals — it was folded into e_goals
-          // before the terms were assembled — so it is an annotation under
-          // that row and never a twelfth component.
-          const pen = (comp?.fixtures ?? [])
-            .reduce((sum, f) => sum + (f.pen_taker ?? 0), 0)
-          // The requested gameweek's fixtures, both of them on a double. Not a
-          // mean: p_play averaged over two fixtures is a probability of
-          // nothing, and p60 does not add. xMins is the one of the three that
-          // does, so a total is shown beside the pair (plan A5).
-          // A total missing one of its terms is not a smaller total: 88′
-          // printed beside two fixtures reads as the pair, and it would be
-          // one of them. `plan.py`'s bank convention, on the one quantity
-          // here that adds — any null fixture blanks the total.
-          const here = (comp?.fixtures ?? []).filter((f) => f.gw === gw)
-          const xmSum = here.some((f) => f.minutes.xmins == null)
-            ? null
-            : here.reduce((sum, f) => sum + (f.minutes.xmins ?? 0), 0)
+          const { comp, team, rows, total, scale, pen, here, xmSum } =
+            compareColumn(player, gw, components, matrix)
           return (
             // No boxes (§5): the timeline's device — one hairline rule tells
             // each column from its neighbour.

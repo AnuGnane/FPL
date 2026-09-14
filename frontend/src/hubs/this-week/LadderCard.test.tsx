@@ -131,52 +131,9 @@ function mount() {
   return render(<MemoryRouter><LadderCard /></MemoryRouter>)
 }
 
+// The rung row's own cases moved to `RungRow.test.tsx` in v18f §2.1; what is
+// left here is the card around them.
 describe('LadderCard', () => {
-  it('lists one row per rung with the moves, the cost and the odds', async () => {
-    mount()
-    const row = (await screen.findByText('1 hit')).closest('tr')!
-    expect(row).toHaveTextContent('Star, Second')
-    expect(row).toHaveTextContent('−4')
-    expect(row).toHaveTextContent('74%')     // P(beats bank)
-    expect(row).toHaveTextContent('50%')     // P(best)
-    expect(screen.getByText('bank', { selector: 'span' }).closest('tr')).toHaveTextContent('—')
-  })
-
-  it('highlights the cap rung and mutes the rungs beyond it', async () => {
-    mount()
-    const cap = (await screen.findByText('2 hits')).closest('tr')!
-    expect(cap).toHaveAttribute('data-cap', 'true')
-    const beyond = screen.getByText('3 hits').closest('tr')!
-    expect(beyond).toHaveClass('text-text-faint')
-    expect(beyond).toHaveAttribute('title', 'beyond your cap')
-    expect(cap).not.toHaveClass('text-text-faint')
-  })
-
-  it('tints the cap rung accent and draws the odds as bars with the percent beside', async () => {
-    mount()
-    const cap = (await screen.findByText('2 hits')).closest('tr')!
-    expect(cap).toHaveClass('bg-accent-tint')
-    const rec = screen.getByText('1 hit').closest('tr')!
-    expect(within(rec).getByTestId('p-beats-bank-fill')).toHaveStyle({ width: '74%' })
-    expect(within(rec).getByTestId('p-best-fill')).toHaveStyle({ width: '50%' })
-    expect(rec).toHaveTextContent('74%')
-  })
-
-  it('prints the horizon cost in down ink beside the cost now', async () => {
-    mount()
-    const row = (await screen.findByText('1 hit')).closest('tr')!
-    const horizon = within(row).getByText(/over \d+ GWs?/)
-    expect(horizon).toHaveClass('text-down')
-  })
-
-  it('marks the recommended rung and says when a rung repeats the one below', async () => {
-    mount()
-    const rec = (await screen.findByText('1 hit')).closest('tr')!
-    expect(within(rec).getByText('recommended')).toBeInTheDocument()
-    expect(screen.getByText('2 hits').closest('tr'))
-      .toHaveTextContent(/solver would not spend it — same as 1 hit/)
-  })
-
   it('names the free transfers and the cap in the heading', async () => {
     mount()
     expect(await screen.findByText(/1 free transfer · cap 2 hits/))
@@ -185,18 +142,6 @@ describe('LadderCard', () => {
     expect(capText({ ...PAYLOAD, free_transfers: 2,
                      cap: { max_hits: null, max_transfers: 0 } }))
       .toBe('2 free transfers · hits uncapped · bank')
-  })
-
-  it('expands a rung to show what the last hit bought', async () => {
-    mount()
-    await userEvent.click(await screen.findByText('1 hit'))
-    expect(screen.getByText(/\+ Second for Filler/)).toBeInTheDocument()
-    // The delta is net of the *horizon* hit bill; the first week's share is
-    // spelled out beside it.
-    expect(screen.getByText(/\+1.9 xPts over 3 GWs, −12/))
-      .toBeInTheDocument()
-    expect(screen.getByText(/−4 of it now/)).toBeInTheDocument()
-    expect(screen.getByText('Back')).toBeInTheDocument()   // the XI
   })
 
   it('rebuilds through the job endpoint and reloads', async () => {
@@ -300,32 +245,6 @@ describe('LadderCard', () => {
     mount()
     expect(await screen.findByText(/no ladder for GW3/)).toBeInTheDocument()
   })
-
-  it('prints the first week\u2019s hit cost and the horizon cost when they differ',
-    async () => {
-      mount()
-      const row = (await screen.findByText('1 hit')).closest('tr')!
-      expect(row).toHaveTextContent('−4 now · −12 over 3 GWs')
-      // A rung that spends the same either way says it once.
-      expect(screen.getByText('bank', { selector: 'span' }).closest('tr')).toHaveTextContent('0')
-    })
-
-  it('prints a single cost when the horizon bill equals the first week\u2019s',
-    async () => {
-      apiGet.mockImplementation(async (path: string) => {
-        if (path === '/api/settings') return ROWS
-        if (path !== '/api/ladder') throw new Error(path)
-        return {
-          ...PAYLOAD,
-          rungs: PAYLOAD.rungs.map((r) => (r.key === 'hits1'
-            ? { ...r, horizon_hits: 1, horizon_cost: 4 } : r)),
-        }
-      })
-      mount()
-      const row = (await screen.findByText('1 hit')).closest('tr')!
-      expect(row).toHaveTextContent('−4')
-      expect(row).not.toHaveTextContent('over 3 GWs')
-    })
 
   it('says when the cap the reader asked for resolved to a lower rung',
     async () => {

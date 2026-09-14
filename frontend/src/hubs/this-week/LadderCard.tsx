@@ -1,15 +1,14 @@
-import { Fragment, useCallback, useEffect, useState } from 'react'
-import { apiPost, errorText } from '../../api/client'
-import { invalidate, usePageData } from '../../api/pageData'
+import { useCallback, useEffect, useState } from 'react'
+import { errorText } from '../../api/client'
+import { usePageData } from '../../api/pageData'
 import { useJob } from '../../api/useJob'
+import { useSettingWrite } from '../../api/useSettingWrite'
 import {
-  Bar, Button, Callout, Card, Chip, INPUT_CLASS, PlayerName, Skeleton,
-  TABLE_CLASS, THEAD_CLASS, TONE_CLASS, TONE_TINT_CLASS, TR_CLASS,
-  TR_EXPANDED_CLASS, TR_SELECTED_CLASS, fmtNum, tdClass, thClass, toneOf,
+  Button, Callout, Card, INPUT_CLASS, Skeleton, TABLE_CLASS, THEAD_CLASS,
+  thClass,
 } from '../../kit'
-import type {
-  LadderPayload, LadderRung, PlayerRef, SettingRow, SettingsPanel,
-} from '../../types'
+import type { LadderPayload, SettingRow, SettingsPanel } from '../../types'
+import RungRow from './RungRow'
 import { capText } from './ladderText'
 
 const SETTING_KEYS = ['max_hits', 'max_transfers', 'hit_bar'] as const
@@ -40,126 +39,6 @@ function SettingSelect({ row, disabled, onChange }: {
         ))}
       </select>
     </label>
-  )
-}
-
-/** A signed hit bill: `−4`, or `0` when nothing was spent. */
-function costText(n: number): string {
-  return n > 0 ? `\u2212${n}` : '0'
-}
-
-/** The cost cell.
- *
- *  `max_hits` is a *per-week* cap, so a rung that takes one hit takes it in
- *  every horizon week: the decision on the table costs 4, the plan behind it
- *  costs 12. Printing only one of those misprices the row, so both go in
- *  whenever they differ — the horizon figure in `down`, because it is the
- *  bill the reader is being warned about (spec §6.3). */
-function RungCost({ rung, weeks }: { rung: LadderRung; weeks: number }) {
-  if (rung.horizon_cost === rung.cost) return <>{costText(rung.cost)}</>
-  return (
-    <>
-      <span>{costText(rung.cost)} now</span>
-      <span className="text-text-muted"> · </span>
-      <span className="text-down">
-        {`${costText(rung.horizon_cost)} over ${weeks} GW${weeks === 1 ? '' : 's'}`}
-      </span>
-    </>
-  )
-}
-
-function pct(v: number | null | undefined): string {
-  return v === null || v === undefined ? '—' : `${Math.round(v * 100)}%`
-}
-
-function movesText(r: LadderRung): string {
-  const first = r.plan_by_gw[0]
-  if (!first || first.buys.length === 0) return 'no moves'
-  return first.buys.map((b) => b.name).join(', ')
-}
-
-function names(players: PlayerRef[]): string {
-  return players.map((p) => p.name).join(', ')
-}
-
-function Players({ players }: { players: PlayerRef[] }) {
-  if (players.length === 0) return <span className="text-text-muted">—</span>
-  return (
-    <ul className="flex flex-col gap-0.5">
-      {players.map((p) => (
-        <li key={p.code}>
-          <PlayerName code={p.code} name={p.name} pos={p.position} />
-        </li>
-      ))}
-    </ul>
-  )
-}
-
-function Expanded({ rung, weeks }: { rung: LadderRung; weeks: number }) {
-  const vb = rung.vs_below
-  const first = rung.plan_by_gw[0]
-  return (
-    <div className="grid gap-4 py-2 sm:grid-cols-2">
-      <div>
-        <p className="label mb-1">This rung&apos;s squad</p>
-        {rung.plan_by_gw.map((w) => (
-          <div key={w.gw} className="mb-2">
-            <p className="text-text-secondary">
-              GW{w.gw}
-              {w.hits > 0 && (
-                <span className="text-down">
-                  {' '}· {w.hits} hit{w.hits === 1 ? '' : 's'}
-                </span>
-              )}
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <div><span className="label">In</span><Players players={w.buys} /></div>
-              <div><span className="label">Out</span><Players players={w.sells} /></div>
-            </div>
-          </div>
-        ))}
-        {first && (
-          <div>
-            <p className="label">Starting XI (captain marked)</p>
-            <ul className="flex flex-wrap gap-x-2">
-              {first.xi.map((p) => (
-                <li key={p.code} className="text-text">
-                  {/* The name is its own element so it stays findable as the
-                      name: "Back (C)" is one string to a text query. */}
-                  <span>{p.name}</span>
-                  {p.code === first.captain.code && <span> (C)</span>}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-      <div>
-        <p className="label mb-1">What the last hit bought</p>
-        {vb === null || vb === undefined
-          ? <p className="text-text-muted">Nothing to compare against.</p>
-          : (
-            <p className="text-text">
-              {vb.extra_buys.length > 0 && `+ ${names(vb.extra_buys)}`}
-              {vb.extra_sells.length > 0 && ` for ${names(vb.extra_sells)}`}
-              {vb.dropped_buys.length > 0 && ` (drops ${names(vb.dropped_buys)})`}
-              {' '}
-              <span className={TONE_CLASS[toneOf(vb.delta_mean_pts)]}>
-                ({vb.delta_mean_pts >= 0 ? '+' : '−'}
-                {fmtNum(Math.abs(vb.delta_mean_pts), 1)} xPts over {weeks} GWs,
-                {' '}{costText(vb.delta_cost)})
-              </span>
-              {/* The delta is net of the whole horizon's hits; the first
-                  week's share of that bill is the part being decided now. */}
-              {vb.delta_cost_now !== vb.delta_cost && (
-                <span className="text-text-muted">
-                  {' '}({costText(vb.delta_cost_now)} of it now)
-                </span>
-              )}
-            </p>
-            )}
-      </div>
-    </div>
   )
 }
 
@@ -209,19 +88,20 @@ export default function LadderCard() {
     if (job.status === 'done') { reloadLadder(); reloadRows() }
   }, [job.status, reloadLadder, reloadRows])
 
+  // The hook clears the panel before the rebuild rather than after it (v17h
+  // §5). The selects are drawn from the cached panel, so a cap changed here
+  // would otherwise read back as the old one for as long as the rebuild takes
+  // — and the Settings tab on the Model hub writes the same file from the
+  // other side of the app. A refused write is the card's own callout, not a
+  // toast, and it stops the rebuild: the ladder on screen is still the one the
+  // server banked.
+  const writeSetting = useSettingWrite({
+    onError: (e) => setSaveFailed(errorText(e)),
+  })
+
   const setSetting = async (key: SettingKeyName, value: number) => {
     setSaveFailed(null)
-    try {
-      await apiPost('/api/settings', { key, value })
-    } catch (e) {
-      setSaveFailed(errorText(e))
-      return
-    }
-    // Before the rebuild, not after it (v17h §5). The selects are drawn from
-    // the cached panel, so a cap changed here would otherwise read back as the
-    // old one for as long as the rebuild takes — and the Settings tab on the
-    // Model hub writes the same file from the other side of the app.
-    invalidate('/api/settings')
+    if (!await writeSetting(key, value)) return
     rebuild()
   }
 
@@ -308,72 +188,21 @@ export default function LadderCard() {
               </tr>
             </thead>
             <tbody>
-              {rungs.map((r, i) => {
-                const isCap = r.key === data?.cap_rung
-                const beyond = capIndex >= 0 && i > capIndex
-                const vsBank = (r.mean_pts !== null && r.mean_pts !== undefined
-                  && bank?.mean_pts !== null && bank?.mean_pts !== undefined)
-                  ? r.mean_pts - bank.mean_pts : null
-                const label = r.label
-                const below = rungs.find((x) => x.key === r.same_as)
-                const rowClass = [
-                  'cursor-pointer', TR_CLASS,
-                  isCap ? TR_SELECTED_CLASS : '',
-                  beyond ? 'text-text-faint' : 'text-text',
-                ].join(' ')
-                return (
-                  <Fragment key={r.key}>
-                    <tr
-                      data-cap={isCap ? 'true' : undefined}
-                      title={beyond ? 'beyond your cap' : undefined}
-                      className={rowClass}
-                      onClick={() => setOpen(open === r.key ? null : r.key)}
-                    >
-                      <td className={tdClass()}>
-                        <span className="inline-flex items-center gap-1.5">
-                          {label}
-                          {r.key === data?.recommended && <Chip>recommended</Chip>}
-                          {r.key === data?.chosen && <Chip tone="up">chosen</Chip>}
-                        </span>
-                      </td>
-                      {r.same_as
-                        ? (
-                          <td className={`${tdClass()} text-text-muted`} colSpan={7}>
-                            solver would not spend it — same as{' '}
-                            {below ? below.label : r.same_as}
-                          </td>
-                          )
-                        : (
-                          <>
-                            <td className={tdClass()}>{movesText(r)}</td>
-                            <td className={tdClass(true)}><RungCost rung={r} weeks={weeks} /></td>
-                            <td className={tdClass(true)}>{fmtNum(r.week_pts)}</td>
-                            <td className={tdClass(true)}>{fmtNum(r.mean_pts)}</td>
-                            <td className={`${tdClass(true)} ${vsBank === null || r.key === 'bank' ? '' : TONE_TINT_CLASS[toneOf(vsBank)]}`}>
-                              {vsBank === null || r.key === 'bank' ? '—'
-                                : `${vsBank >= 0 ? '+' : '−'}${fmtNum(Math.abs(vsBank), 1)}`}
-                            </td>
-                            <td className={tdClass()}>
-                              <Bar testId="p-beats-bank" fraction={r.p_beats_bank ?? null}
-                                   text={pct(r.p_beats_bank)} />
-                            </td>
-                            <td className={tdClass()}>
-                              <Bar testId="p-best" fraction={r.p_best ?? null}
-                                   text={pct(r.p_best)} />
-                            </td>
-                          </>
-                          )}
-                    </tr>
-                    {open === r.key && !r.same_as && (
-                      <tr className={TR_EXPANDED_CLASS}>
-                        <td className="px-2.5 py-3" colSpan={8}>
-                          <Expanded rung={r} weeks={weeks} />
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                )
-              })}
+              {rungs.map((r, i) => (
+                <RungRow
+                  key={r.key}
+                  rung={r}
+                  bank={bank}
+                  below={rungs.find((x) => x.key === r.same_as)}
+                  weeks={weeks}
+                  open={open === r.key}
+                  onToggle={() => setOpen(open === r.key ? null : r.key)}
+                  isCap={r.key === data?.cap_rung}
+                  beyond={capIndex >= 0 && i > capIndex}
+                  recommended={r.key === data?.recommended}
+                  chosen={r.key === data?.chosen}
+                />
+              ))}
             </tbody>
           </table>
         </div>
