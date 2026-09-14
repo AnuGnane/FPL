@@ -2,6 +2,7 @@ import math
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from gaffer.models.dixon_coles import (
     GOAL_CAP,
@@ -10,6 +11,10 @@ from gaffer.models.dixon_coles import (
     scoreline_pmf,
     tau_correction,
 )
+
+# 19 s of wall, 18 of them the walk-forward test's repeated maximum-likelihood
+# fits of the Dixon-Coles rates; the inner loop deselects it (v18g §2.5).
+pytestmark = pytest.mark.slow
 
 
 def test_tau_correction_is_one_away_from_the_low_score_corner():

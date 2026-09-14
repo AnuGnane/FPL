@@ -1,8 +1,13 @@
 import numpy as np
 import pandas as pd
+import pytest
 
 from gaffer.features.engineer import add_player_rolling
 from gaffer.models.minutes import ThreeModeModel, apply_availability
+
+# 7 s of wall: nearly every test fits a ThreeModeModel (three LightGBM heads)
+# on the synthetic frame, so the inner loop deselects it (v18g §2.5).
+pytestmark = pytest.mark.slow
 
 
 def _training_frame(n=400, seed=0):

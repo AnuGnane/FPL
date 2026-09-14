@@ -14,6 +14,10 @@ from v7b_legacy_minutes import LegacyMinutesModel  # noqa: E402
 from gaffer.models.minutes import LGB_KW, ThreeModeModel  # noqa: E402
 from gaffer.models.train import MINUTES_FEATURES  # noqa: E402
 
+# 6 s of wall: the vendored and shipped minutes heads are both LightGBM-fitted
+# on every comparison, so the inner loop deselects the file (v18g §2.5).
+pytestmark = pytest.mark.slow
+
 
 def _frame(n: int = 240) -> pd.DataFrame:
     rng = np.random.default_rng(7)

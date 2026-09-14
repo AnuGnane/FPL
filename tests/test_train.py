@@ -1,6 +1,7 @@
 import random
 
 import pandas as pd
+import pytest
 
 from gaffer.assets import load_bootstrap_sample
 from gaffer.data.bootstrap import scoring_table
@@ -17,6 +18,10 @@ from gaffer.models.train import (
     fit_calibration,
     train_all,
 )
+
+# 80 s of wall: every test here fits the LightGBM component heads end to end,
+# so the inner loop deselects the file (v18g §2.5).
+pytestmark = pytest.mark.slow
 
 # The exact list gate G1 (2024-25 walk-forward, ``scripts/v8a_arms.py``) kept
 # from the v8a candidate arms. All six arms were withdrawn, so: none.

@@ -47,7 +47,29 @@ include = ["src/gaffer", "tests", "README.md"]
 testpaths = ["tests"]
 # v17c §2.11: the golden board runs in the default suite; a fast local loop
 # deselects it with -m "not golden".
-markers = ["golden: runs the recorded pipeline (v17c); deselect with -m 'not golden'"]
+markers = [
+    "golden: runs the recorded pipeline (v17c); deselect with -m 'not golden'",
+    # v18g §2.5: the five files whose fits cost over 5 s of wall each; the inner
+    # loop deselects them with -m "not slow and not golden".
+    "slow: fits a model head, so over 5 s of wall (v18g); deselect with -m 'not slow'",
+]
+# v18g §2.5: 11,032 warnings in a non-golden run drown the summary. Each family
+# over 100 is silenced by its message, with the reason; nothing is silenced by
+# category alone, so a new family still shows up.
+filterwarnings = [
+    # PuLP 3.3 deprecates the builders optimize/ uses; 10,927 of the 11,032.
+    # Migrate at PuLP 4 (prob.add_variable_dicts).
+    'ignore:LpVariable\.dicts is deprecated:DeprecationWarning',
+    # 96 more from reading prob.constraints as a mapping. Migrate at PuLP 4
+    # (get_constraint_by_name / prob.constraints() as a list).
+    'ignore:Using LpProblem\.constraints as a dict mapping is deprecated:DeprecationWarning',
+    # 2 from LpVariable(name, ...). Migrate at PuLP 4 (prob.add_variable).
+    'ignore:Constructing LpVariable:DeprecationWarning',
+    # 1 from the CBC solver handle. Migrate at PuLP 4 (COIN_CMD).
+    'ignore:PULP_CBC_CMD is deprecated:DeprecationWarning',
+    # 2 from joblib's numpy_pickle loader, not from src/; nothing here to fix.
+    'ignore:Setting the shape on a NumPy array has been deprecated:DeprecationWarning:joblib\.numpy_pickle',
+]
 
 [tool.ruff]
 # v18g §1: E, F, B and I at line 100; the ignores below each carry a reason.

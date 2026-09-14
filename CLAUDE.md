@@ -16,6 +16,7 @@ uv run gaffer advise                     # the weekly solve (needs models/); sin
 uv run gaffer brief                      # rewrite the LLM brief alone
 uv run gaffer ui --no-open-browser --port 8927
 .venv/bin/pytest -q                      # Python suite (~4400 tests)
+.venv/bin/pytest -q -m "not slow and not golden"   # the inner loop (~2 min); slow = the fit files, v18g
 .venv/bin/pytest -q -rs tests/test_golden_board.py tests/test_pipeline.py
                                          # the golden gate (~15 min); -rs so a stale
                                          # board's skip names the file; 0 skipped is a pass

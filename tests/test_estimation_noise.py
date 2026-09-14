@@ -1,10 +1,15 @@
 import numpy as np
 import pandas as pd
+import pytest
 
 from gaffer.calibrate_noise import EP_EDGES, MIN_CELL_OBS, XMINS_EDGES, fit_estimation_sigmas
 from gaffer.models.attacking import AttackingModel
 from gaffer.models.minutes import ENSEMBLE_KW, LGB_KW, ThreeModeModel
 from gaffer.optimize.scenarios import sigma_for
+
+# 9 s of wall: the sigma fits train the minutes and attacking LightGBM heads on
+# synthetic frames, so the inner loop deselects the file (v18g §2.5).
+pytestmark = pytest.mark.slow
 
 
 def _frame(n_codes=40, n_gws=25, seed=5) -> pd.DataFrame:
