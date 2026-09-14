@@ -18,7 +18,28 @@ Four parts, all four or no merge.
    beside the v17h one for This Week, each rendering its hub with every
    endpoint answered and asserting the **multiset of GET paths** (each URL,
    how many times). Written and committed first against `main`'s behaviour
-   (task 1; the commit hash goes here), then flipped by the conversion.
+   (task 1; committed at `8db1259`, after the kit commit `3e1ddb2` that
+   changes no fetch), then flipped by the conversion. **Control multisets
+   (`8db1259`):** Planning — Timeline `{advice/latest 1, plan/5 1,
+   ticker?weeks=2 1}`, Board `{advice/latest 1, plan/5 1, prices/movers
+   1}`, What-If `{advice/latest 1, ladder 1, settings 1, sensitivity 1,
+   overrides 1, ticker?weeks=6 1, jobs/current 1}`, Chips `{advice/latest
+   1, chips 1}`, Drafts `{advice/latest 1, drafts 1}`, Ticker
+   `{advice/latest 1, health 1, ticker?weeks=8 1}`. Players — every tab
+   `{advice/latest 1, players?… 1, overrides 1, watchlist 1}` plus: Compare
+   `{components/5 1, fixtures/matrix?from=5&n=6 1}`, Matrix
+   `{fixtures/matrix?from=1&n=6 1, fixtures/matrix?from=5&n=6 1}` (the
+   matrix mounts before the gameweek is known and fetches twice), Watchlist
+   `{watchlist +1}` (the hub's star column and the tab each read it).
+   League `{advice/latest 1, league/leagues 1, league/race 1,
+   league/rivals 1, league/sim 1}`. Live `{live 1}`. Model — Quality
+   `{jobs/current 1, quality 1, model/calibration 1, pens 1, review 1,
+   misses 1}`, Journal `{jobs/current 1, journal 1}`, Review `{jobs/current
+   1, review 1}`, Season `{jobs/current 1, model/calibration 1, review 1}`,
+   History `{jobs/current 1, history 1}`, Health `{jobs/current 1, health
+   1}`, Settings `{jobs/current 1, settings 1}`; the three-tab walk
+   `{jobs/current 1, quality 1, model/calibration 2, pens 1, review 3,
+   misses 1}`.
    Verdict rule: on the branch no hub asks for more paths than on `main`,
    no path more often, and the Model hub's three-tab walk (Quality →
    Review → Season, in `Model.fetches.test.tsx`) asks `/api/review`
