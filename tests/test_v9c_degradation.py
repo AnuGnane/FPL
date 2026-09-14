@@ -310,10 +310,12 @@ def test_a_normal_run_still_reaches_done_with_no_error():
 
 def test_the_job_kinds_are_still_twelve():
     """Spec §2: no new job kinds. A cancel is a DELETE on a lane, not a
-    thirteenth thing to run."""
+    thirteenth thing to run. The count is pinned in the v12 W1 meta-rail
+    alone (v18g §2.2)."""
     from gaffer.web.job_kinds import JOB_KINDS
 
-    assert len(JOB_KINDS) == 12
+    assert "cancel" not in JOB_KINDS
+    assert "advise" in JOB_KINDS
 
 
 def test_the_config_gained_no_field():

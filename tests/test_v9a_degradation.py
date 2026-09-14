@@ -274,10 +274,12 @@ def test_serving_the_pitch_never_touches_the_advice_artifact(wired):
 # --- pins: nothing moved this cycle -------------------------------
 
 def test_the_job_kinds_are_still_twelve(wired):
-    """Spec §2: no new job kinds. The pitch is a read, not a run."""
+    """Spec §2: no new job kinds. The pitch is a read, not a run; the count
+    is pinned in the v12 W1 meta-rail alone (v18g §2.2)."""
     from gaffer.web.job_kinds import JOB_KINDS
 
-    assert len(JOB_KINDS) == 12
+    assert "pitch" not in JOB_KINDS
+    assert "advise" in JOB_KINDS
 
 
 def test_the_config_still_has_no_assets_section(wired):

@@ -183,13 +183,12 @@ def test_comparing_drafts_with_no_solve_state_is_a_422_not_a_500(tmp_path,
 
 
 def test_the_job_kind_count_is_pinned():
-    """Lockstep with ``frontend/src/types.ts``. 9 -> 10: v8e added the
-    ``sensitivity`` kind on both sides."""
+    """Lockstep with ``frontend/src/types.ts``: v8e added the
+    ``sensitivity`` kind on both sides. The count is pinned in the v12 W1
+    meta-rail alone (v18g §2.2)."""
     from gaffer.web.job_kinds import JOB_KINDS
 
-    # 10 -> 12: v8f added digest-friday and digest-tuesday (deliberate pin
-    # update per this file's convention, authorised by the v8f orchestrator).
-    assert len(JOB_KINDS) == 12
+    assert "sensitivity" in JOB_KINDS
     assert "sensitivity" in JOB_KINDS
 
 

@@ -192,14 +192,10 @@ def test_an_empty_whatif_equals_the_sim_endpoint(bare):
 
 def test_the_job_kind_count_is_pinned():
     """Lockstep with ``frontend/src/types.ts``. A kind added on one side only
-    is a button that 404s."""
-    # 8 -> 9: v8b added the `review` kind on both sides (deliberate pin
-    # update per this file's convention, authorised by the v8b orchestrator).
-    # 9 -> 10: v8e added the `sensitivity` kind on both sides (deliberate
-    # pin update per this file's convention, authorised by the v8e orchestrator).
-    # 10 -> 12: v8f added digest-friday and digest-tuesday (deliberate pin
-    # update per this file's convention, authorised by the v8f orchestrator).
-    assert len(job_kinds.JOB_KINDS) == 12
+    is a button that 404s. The count is pinned in the v12 W1 meta-rail alone
+    (v18g §2.2)."""
+    assert "review" in job_kinds.JOB_KINDS
+    assert "tier-eo" not in job_kinds.JOB_KINDS
     assert "field-scrape" in job_kinds.JOB_KINDS
 
 

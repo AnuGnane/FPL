@@ -293,4 +293,6 @@ def test_the_ladder_route_exists_and_the_job_kinds_did_not_move(tmp_path,
     paths = create_app().openapi()["paths"]
     assert "/api/ladder" in paths
     assert {"get", "post"} <= set(paths["/api/ladder"])
-    assert len(JOB_KINDS) == 12
+    assert "ladder" not in JOB_KINDS
+    assert "advise" in JOB_KINDS
+    # The count is pinned in the v12 W1 meta-rail alone (v18g §2.2).

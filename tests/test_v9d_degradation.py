@@ -414,10 +414,12 @@ def test_the_job_kinds_are_still_twelve():
     """Spec §0: no new job kinds. The calibration report is a CLI mode and a
     GET, not a thirteenth thing to run — and it could not be a job anyway,
     because JOB_KINDS maps a kind to a zero-argument callable and there is no
-    way to pass it a flag."""
+    way to pass it a flag. The count is pinned in the v12 W1 meta-rail alone
+    (v18g §2.2)."""
     from gaffer.web.job_kinds import JOB_KINDS
 
-    assert len(JOB_KINDS) == 12
+    assert "calibration" not in JOB_KINDS
+    assert "advise" in JOB_KINDS
 
 
 def test_the_config_gained_no_field():

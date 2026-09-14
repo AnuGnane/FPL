@@ -249,14 +249,11 @@ def test_no_sensitivity_report_carries_no_decision_sigma(app):
 # --- rail 7: v8g adds no job kinds ------------------------------------
 
 def test_v8g_adds_no_job_kinds():
-    """The pin five other degradation suites already assert, asserted a sixth
-    time from this cycle's own file so a v8g task that reaches for a job kind
-    fails in its own suite rather than in somebody else's."""
+    """The kinds v8f left are the kinds this cycle runs under. The count is
+    pinned in the v12 W1 meta-rail alone (v18g §2.2)."""
     from gaffer.web.job_kinds import JOB_KINDS
 
-    # 10 -> 12: v8f added digest-friday and digest-tuesday (deliberate pin
-    # update per this file's convention, authorised by the v8f orchestrator).
-    assert len(JOB_KINDS) == 12
+    assert {"advise", "digest-friday", "digest-tuesday"} <= set(JOB_KINDS)
 
 
 def test_v8g_added_no_config_key():

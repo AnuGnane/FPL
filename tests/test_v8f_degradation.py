@@ -273,12 +273,11 @@ def test_a_failed_predecessor_copy_never_fails_an_advise_run(app,
 # --- rail 6: the pins v8f moved, asserted from v8f's own file -------
 
 def test_v8f_adds_exactly_two_job_kinds():
-    """The pin six other suites assert, asserted a seventh time from this
-    cycle's own file, so a v8h kind fails here rather than in somebody
-    else's."""
+    """The two digest kinds this cycle added, by name. The count is pinned
+    in the v12 W1 meta-rail alone (v18g §2.2)."""
     from gaffer.web.job_kinds import JOB_KINDS
 
-    assert len(JOB_KINDS) == 12
+    assert {"digest-friday", "digest-tuesday"} <= set(JOB_KINDS)
     assert "digest-friday" in JOB_KINDS and "digest-tuesday" in JOB_KINDS
 
 

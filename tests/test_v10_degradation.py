@@ -413,8 +413,10 @@ def test_the_minutes_features_docstring_records_the_g1_measurement():
 # --- Block 4: the pins ---------------------------------------------------
 
 def test_the_job_count_did_not_move():
-    """v10 adds no job: nothing here is a background task."""
-    assert len(JOB_KINDS) == 12
+    """v10 adds no job: nothing here is a background task. The count is
+    pinned in the v12 W1 meta-rail alone (v18g §2.2)."""
+    assert "lineups" not in JOB_KINDS
+    assert "advise" in JOB_KINDS
 
 
 def test_the_config_dataclass_did_not_grow(tmp_path, monkeypatch):

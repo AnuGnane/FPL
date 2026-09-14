@@ -269,8 +269,10 @@ def test_the_job_kinds_are_still_twelve():
     """Spec §0: §F2b is a writer inside refresh-data's body, not a thirteenth
     kind. A thirteenth would also need a row in ABANDON_TIMEOUT_S or
     SLOW_ABANDON_KINDS, which test_v9d_degradation.py pins as jointly
-    exhaustive — and that file is protected."""
-    assert len(JOB_KINDS) == 12
+    exhaustive — and that file is protected. The count is pinned in the v12
+    W1 meta-rail alone (v18g §2.2)."""
+    assert "refresh-data" in JOB_KINDS
+    assert "field-frame" not in JOB_KINDS
 
 
 def test_the_config_gained_no_field():

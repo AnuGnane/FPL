@@ -134,6 +134,25 @@ def test_the_job_kinds_are_still_twelve():
     assert len(JOB_KINDS) == 12
 
 
+def test_only_one_file_pins_the_job_kind_count():
+    """The third total this meta-rail keeps to one home (v18g §2.2, ruling
+    8). Seventeen files asserted ``len(JOB_KINDS) == 12`` in one spelling or
+    another; a thirteenth kind failed in seventeen places and the plan that
+    added it edited seventeen files. Those assert membership of the kinds their
+    cycle added now, and the number lives in the test above.
+
+    Blind in the same places as the other two: a count taken through any
+    name but ``JOB_KINDS`` — ``kinds = list(JOB_KINDS); assert len(kinds)``
+    — passes unseen. A guard against the copied line, not a proof.
+    """
+    import re
+
+    pin = re.compile(r"^\s*assert\s+len\(\s*(?:list\(\s*)?(?:\w+\.)?JOB_KINDS"
+                     r"\s*\)?\s*\)\s*==", re.M)
+    hits = [p.name for p in _suite_files() if pin.search(p.read_text())]
+    assert hits == ["test_v12_w1_degradation.py"]
+
+
 # =====================================================================
 # Block 1 — the atomic write (§2.11, §1)
 # =====================================================================

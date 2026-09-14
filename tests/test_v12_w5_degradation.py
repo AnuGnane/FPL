@@ -21,10 +21,9 @@ from fastapi.testclient import TestClient
 from gaffer.config import invalidate
 from gaffer.web.app import create_app
 
-# Filled in from Task 0's measurement, not assumed. JOB_KINDS is what W1-W4
-# left; W5 adds none. There is no companion constant for the `Config` field
-# count on purpose — see `test_w5_added_no_config_field` below.
-JOB_KINDS_AT_BASE = 12      # <- Task 0, measured at 5bb7d0e
+# There is no constant for the job-kind or the `Config` field count on
+# purpose — see `test_w5_added_no_config_field` below; since v18g §2.2 the
+# job-kind count is pinned in the v12 W1 meta-rail alone.
 
 
 @pytest.fixture()
@@ -121,9 +120,12 @@ def test_this_file_does_not_pin_the_absolute_route_count():
 
 
 def test_w5_added_no_job_kind():
+    """The trace is computed inside the solve; the count is pinned in the
+    v12 W1 meta-rail alone (v18g §2.2)."""
     from gaffer.web.job_kinds import JOB_KINDS
 
-    assert len(JOB_KINDS) == JOB_KINDS_AT_BASE
+    assert "advise" in JOB_KINDS
+    assert "trace" not in JOB_KINDS
 
 
 def test_w5_added_no_config_field():

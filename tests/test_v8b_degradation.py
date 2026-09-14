@@ -207,12 +207,9 @@ def test_the_review_job_kind_survives_a_review_that_grades_nothing(bare):
 
 def test_the_job_kind_count_is_pinned_on_this_side_too():
     """The frontend pins nine in ``src/types.test.ts``; a kind added on one
-    side and not the other is a button that 404s."""
-    # 9 -> 10: v8e added the `sensitivity` kind on both sides (deliberate
-    # pin update per this file's convention, authorised by the v8e orchestrator).
-    # 10 -> 12: v8f added digest-friday and digest-tuesday (deliberate pin
-    # update per this file's convention, authorised by the v8f orchestrator).
-    assert len(job_kinds.JOB_KINDS) == 12
+    side and not the other is a button that 404s. The count is pinned in the
+    v12 W1 meta-rail alone (v18g §2.2); this cycle's kind, by name."""
+    assert "review" in job_kinds.JOB_KINDS
 
 
 def test_the_protected_ordering_rails_are_carried_forward():

@@ -304,10 +304,11 @@ def test_the_job_kinds_are_still_twelve():
     """Spec §0. The Tuesday review job already exists (job_kinds.py:200) and
     this cycle adds no thirteenth — which would also need a row in
     ABANDON_TIMEOUT_S or SLOW_ABANDON_KINDS, pinned as jointly exhaustive in
-    the protected test_v9d_degradation.py."""
+    the protected test_v9d_degradation.py. The count is pinned in the v12 W1
+    meta-rail alone (v18g §2.2)."""
     from gaffer.web.job_kinds import JOB_KINDS
 
-    assert len(JOB_KINDS) == 12
+    assert "review" in JOB_KINDS
 
 
 def test_the_config_gained_no_field():

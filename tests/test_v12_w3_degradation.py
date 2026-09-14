@@ -482,10 +482,12 @@ def test_the_job_kinds_did_not_move():
     """W3 adds no job. The alternatives are two more solves inside the advise
     run, which already has a kind — and a thirteenth would also need a row in
     ABANDON_TIMEOUT_S and SLOW_ABANDON_KINDS, pinned as jointly exhaustive in
-    the protected test_v9d_degradation.py."""
+    the protected test_v9d_degradation.py. The count is pinned in the v12 W1
+    meta-rail alone (v18g §2.2)."""
     from gaffer.web.job_kinds import JOB_KINDS
 
-    assert len(JOB_KINDS) == 12
+    assert "advise" in JOB_KINDS
+    assert "alternatives" not in JOB_KINDS
 
 
 def test_the_config_gained_exactly_two_fields():

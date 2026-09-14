@@ -211,7 +211,10 @@ def test_the_health_line_on_a_cold_clone_is_a_200_that_says_why(clone):
 # --- Pins (CONVENTIONS §7; the v11 values, unmoved) ----------------------
 
 def test_the_job_kinds_are_still_twelve():
-    assert len(JOB_KINDS) == 12
+    """W4 adds no job. The count is pinned in the v12 W1 meta-rail alone
+    (v18g §2.2)."""
+    assert "advise" in JOB_KINDS
+    assert "autosub" not in JOB_KINDS
 
 
 def test_the_config_gained_no_field():
