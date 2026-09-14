@@ -1,8 +1,29 @@
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { useJob } from './useJob'
+import { POLL_MS, useJob } from './useJob'
 
-afterEach(() => vi.unstubAllGlobals())
+// v18f §2.3: the hook's clock is faked, so a wait is an advance by the hook's
+// own POLL_MS rather than a real second spent sitting there. `Date` is left
+// real — nothing here reads it, and a frozen one only makes a failure stranger.
+// Everything that advances the clock does so inside `act`, which is the point:
+// the file used to be the source of the "update was not wrapped in act(...)"
+// warning, and the afterEach below is now the rail that keeps it out.
+const FAKE_TIMERS = ['setTimeout', 'setInterval', 'clearTimeout',
+  'clearInterval'] as const
+
+/** One poll interval, and the promises the fetch it fires resolves through. */
+async function tick(ms: number = POLL_MS) {
+  await act(async () => { await vi.advanceTimersByTimeAsync(ms) })
+}
+
+/** No timer — only the promises a mount probe is already waiting on. Three
+ *  turns because a stubbed fetch settles through Response.json(), which reads
+ *  a stream and so needs more than one turn of the real event loop. */
+async function settle() {
+  await act(async () => {
+    for (let i = 0; i < 3; i += 1) await vi.advanceTimersByTimeAsync(0)
+  })
+}
 
 function stubSequence(responses: Array<[number, unknown]>) {
   let call = 0
@@ -45,7 +66,25 @@ class FakeEventSource {
   close() { this.closed = true; this.readyState = 2 }
 }
 
-beforeEach(() => { FakeEventSource.last = null })
+let consoleError: ReturnType<typeof vi.spyOn>
+
+beforeEach(() => {
+  FakeEventSource.last = null
+  vi.useFakeTimers({ toFake: [...FAKE_TIMERS] })
+  consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+})
+
+afterEach(() => {
+  const unwrapped = consoleError.mock.calls.filter(
+    ([first]) => typeof first === 'string' && first.includes('act('))
+  consoleError.mockRestore()
+  vi.useRealTimers()
+  vi.unstubAllGlobals()
+  // The rail. A state update outside `act` is a test that is watching the
+  // hook through a render React has not settled, and it is how this file's
+  // waits drifted into whole seconds in the first place.
+  expect(unwrapped).toEqual([])
+})
 
 describe('useJob', () => {
   it('polls until the job is done and exposes the result', async () => {
@@ -56,9 +95,10 @@ describe('useJob', () => {
               error: null }],
     ])
     const { result } = renderHook(() => useJob({ path: '/api/whatif' }))
-    await result.current.start({ lock: [1] })
-    await waitFor(() => expect(result.current.status).toBe('done'),
-      { timeout: 4000 })
+    await act(async () => { await result.current.start({ lock: [1] }) })
+    await tick()
+    await tick()
+    expect(result.current.status).toBe('done')
     expect(result.current.result).toEqual({ delta_xpts: -2.8 })
   })
 
@@ -69,9 +109,9 @@ describe('useJob', () => {
               error: 'no legal squad satisfies those constraints' }],
     ])
     const { result } = renderHook(() => useJob({ path: '/api/whatif' }))
-    await result.current.start({})
-    await waitFor(() => expect(result.current.status).toBe('error'),
-      { timeout: 4000 })
+    await act(async () => { await result.current.start({}) })
+    await tick()
+    expect(result.current.status).toBe('error')
     expect(result.current.error).toContain('no legal squad')
   })
 
@@ -94,20 +134,21 @@ describe('useJob', () => {
     const { result } = renderHook(() => useJob({ path: '/api/whatif' }))
     act(() => result.current.attach('jobA'))
     // Let A's first poll go out, then move the hook onto B while it hangs.
-    await new Promise((r) => setTimeout(r, 1200))
+    await tick()
     act(() => result.current.attach('jobB'))
     releaseA()
 
-    await new Promise((r) => setTimeout(r, 1500))
+    await tick()
+    await settle()
     expect(result.current.result).toBeNull()
     expect(result.current.status).toBe('running')
-  }, 10000)
+  })
 
   it('surfaces a rejected submission without starting a poll', async () => {
     stubSequence([[429, { detail: '5 jobs already queued' }]])
     const { result } = renderHook(() => useJob({ path: '/api/whatif' }))
-    await result.current.start()
-    await waitFor(() => expect(result.current.status).toBe('error'))
+    await act(async () => { await result.current.start() })
+    expect(result.current.status).toBe('error')
     expect(result.current.error).toContain('already queued')
   })
 
@@ -128,19 +169,20 @@ describe('useJob', () => {
 
     const spec = { path: '/api/whatif', slot: 'whatif' }
     const first = renderHook(() => useJob(spec))
-    await first.result.current.start({})
-    await waitFor(() => expect(first.result.current.status).toBe('running'),
-      { timeout: 4000 })
+    await act(async () => { await first.result.current.start({}) })
+    await tick()
+    expect(first.result.current.status).toBe('running')
     first.unmount()
 
     const second = renderHook(() => useJob(spec))
-    await waitFor(() => expect(second.result.current.status).toBe('running'))
+    await settle()
+    expect(second.result.current.status).toBe('running')
     done = true
-    await waitFor(() => expect(second.result.current.status).toBe('done'),
-      { timeout: 4000 })
+    await tick()
+    expect(second.result.current.status).toBe('done')
     expect(second.result.current.result).toEqual({ delta_xpts: 1.4 })
     act(() => second.result.current.reset())
-  }, 15000)
+  })
 
   it('paints a job that finished while the tab was unmounted', async () => {
     stubSequence([
@@ -151,16 +193,17 @@ describe('useJob', () => {
     ])
     const spec = { path: '/api/whatif', slot: 'finished-slot' }
     const first = renderHook(() => useJob(spec))
-    await first.result.current.start({})
-    await waitFor(() => expect(first.result.current.status).toBe('running'),
-      { timeout: 4000 })
+    await act(async () => { await first.result.current.start({}) })
+    await tick()
+    expect(first.result.current.status).toBe('running')
     first.unmount()
 
     const second = renderHook(() => useJob(spec))
-    await waitFor(() => expect(second.result.current.status).toBe('done'))
+    await settle()
+    expect(second.result.current.status).toBe('done')
     expect(second.result.current.result).toEqual({ delta_xpts: -0.5 })
     act(() => second.result.current.reset())
-  }, 15000)
+  })
 
   it('forgets a job the restarted server no longer knows about', async () => {
     stubSequence([
@@ -170,23 +213,23 @@ describe('useJob', () => {
     ])
     const spec = { path: '/api/whatif', slot: 'gone-slot' }
     const first = renderHook(() => useJob(spec))
-    await first.result.current.start({})
-    await waitFor(() => expect(first.result.current.status).toBe('running'),
-      { timeout: 4000 })
+    await act(async () => { await first.result.current.start({}) })
+    await tick()
+    expect(first.result.current.status).toBe('running')
     first.unmount()
 
     const second = renderHook(() => useJob(spec))
-    await new Promise((r) => setTimeout(r, 200))
+    await settle()
     expect(second.result.current.status).toBe('idle')
     second.unmount()
     // The id is dropped, so a third mount does not probe for it again.
     const calls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls
       .length
     renderHook(() => useJob(spec))
-    await new Promise((r) => setTimeout(r, 200))
+    await settle()
     expect((globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.length)
       .toBe(calls)
-  }, 15000)
+  })
 
   it('recovers nothing when no slot is named', async () => {
     stubSequence([
@@ -194,24 +237,24 @@ describe('useJob', () => {
       [200, { id: 'j12', status: 'running', result: null, error: null }],
     ])
     const first = renderHook(() => useJob({ path: '/api/whatif' }))
-    await first.result.current.start({})
-    await waitFor(() => expect(first.result.current.status).toBe('running'),
-      { timeout: 4000 })
+    await act(async () => { await first.result.current.start({}) })
+    await tick()
+    expect(first.result.current.status).toBe('running')
     first.unmount()
 
     const second = renderHook(() => useJob({ path: '/api/whatif' }))
-    await new Promise((r) => setTimeout(r, 200))
+    await settle()
     expect(second.result.current.status).toBe('idle')
     second.unmount()
-  }, 15000)
+  })
 
   it('unwraps a structured refusal rather than reporting the status', async () => {
     stubSequence([[422, { detail: { constraint: 'unknown_draft',
                                     error: 'no draft called ghost',
                                     players: [] } }]])
     const { result } = renderHook(() => useJob({ path: '/api/drafts/compare' }))
-    await result.current.start({ names: ['ghost'] })
-    await waitFor(() => expect(result.current.status).toBe('error'))
+    await act(async () => { await result.current.start({ names: ['ghost'] }) })
+    expect(result.current.status).toBe('error')
     expect(result.current.error).toBe('no draft called ghost')
   })
 
@@ -230,8 +273,8 @@ describe('useJob', () => {
       ])
       const polled = renderHook(() => useJob({ path: '/api/brief' }))
       await act(async () => { await polled.result.current.start() })
-      await waitFor(() => expect(polled.result.current.status).toBe('done'),
-        { timeout: 4000 })
+      await tick()
+      expect(polled.result.current.status).toBe('done')
       expect(FakeEventSource.last).toBeNull()
       expect(polled.result.current.result).toEqual({ ok: 1 })
     })
@@ -243,7 +286,7 @@ describe('useJob', () => {
       const { result } = renderHook(() => useJob({ kind: 'advise' }))
       await act(async () => { await result.current.start() })
       act(() => FakeEventSource.last!.fail(FakeEventSource.CLOSED))
-      await waitFor(() => expect(result.current.status).toBe('error'))
+      expect(result.current.status).toBe('error')
       expect(result.current.error).toContain('stream lost')
     })
 
@@ -252,8 +295,8 @@ describe('useJob', () => {
       stubSequence([[200, { id: 'j4', kind: 'advise', status: 'running' }]])
       vi.stubGlobal('EventSource', FakeEventSource)
       renderHook(() => useJob({ kind: 'advise' }))
-      await waitFor(() =>
-        expect(FakeEventSource.last?.url).toBe('/api/jobs/j4/stream'))
+      await settle()
+      expect(FakeEventSource.last?.url).toBe('/api/jobs/j4/stream')
       // Named, and counted: `/api/jobs/current` is the only route that answers
       // "what is the single-flight runner doing", and This Week's fetch rail
       // pins two of these against four buttons — one per mount wave, because
@@ -278,14 +321,15 @@ describe('useJob', () => {
       vi.stubGlobal('EventSource', FakeEventSource)
 
       const first = renderHook(() => useJob({ kind: 'advise' }))
-      await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledOnce())
+      await settle()
+      expect(globalThis.fetch).toHaveBeenCalledOnce()
       expect(FakeEventSource.last).toBeNull()
       first.unmount()
 
       running = true
       renderHook(() => useJob({ kind: 'advise' }))
-      await waitFor(() =>
-        expect(FakeEventSource.last?.url).toBe('/api/jobs/j13/stream'))
+      await settle()
+      expect(FakeEventSource.last?.url).toBe('/api/jobs/j13/stream')
     })
 
   it('leaves a kind job alone when the run in flight is another kind',
@@ -294,7 +338,7 @@ describe('useJob', () => {
                             status: 'running' }]])
       vi.stubGlobal('EventSource', FakeEventSource)
       renderHook(() => useJob({ kind: 'advise' }))
-      await new Promise((r) => setTimeout(r, 200))
+      await settle()
       expect(FakeEventSource.last).toBeNull()
     })
 
@@ -303,7 +347,7 @@ describe('useJob', () => {
       stubSequence([[200, { id: 'j6', kind: 'advise', status: 'done' }]])
       vi.stubGlobal('EventSource', FakeEventSource)
       const { result } = renderHook(() => useJob({ kind: 'advise' }))
-      await new Promise((r) => setTimeout(r, 200))
+      await settle()
       expect(FakeEventSource.last).toBeNull()
       expect(result.current.status).toBe('idle')
     })
@@ -313,7 +357,7 @@ describe('useJob', () => {
     stubSequence([[200, null]])
     vi.stubGlobal('EventSource', FakeEventSource)
     const { result } = renderHook(() => useJob({ kind: 'advise' }))
-    await new Promise((r) => setTimeout(r, 200))
+    await settle()
     expect(FakeEventSource.last).toBeNull()
     expect(result.current.status).toBe('idle')
   })
@@ -324,7 +368,7 @@ describe('useJob', () => {
     stubSequence([[503, { detail: 'offline' }]])
     vi.stubGlobal('EventSource', FakeEventSource)
     const { result } = renderHook(() => useJob({ kind: 'advise' }))
-    await new Promise((r) => setTimeout(r, 200))
+    await settle()
     expect(FakeEventSource.last).toBeNull()
     expect(result.current.status).toBe('idle')
     expect(result.current.error).toBeNull()
@@ -351,8 +395,7 @@ describe('useJob', () => {
       FakeEventSource.last!.emit('line', 'step one')
       FakeEventSource.last!.emit('line', 'step two')
     })
-    await waitFor(() => expect(result.current.lines)
-      .toEqual(['step one', 'step two']))
+    expect(result.current.lines).toEqual(['step one', 'step two'])
   })
 
   it('ends done and closes the stream', async () => {
@@ -364,7 +407,7 @@ describe('useJob', () => {
       FakeEventSource.last!.emit('end',
         JSON.stringify({ status: 'done', error: null, summary: "{'gw': 5}" }))
     })
-    await waitFor(() => expect(result.current.status).toBe('done'))
+    expect(result.current.status).toBe('done')
     expect(FakeEventSource.last!.closed).toBe(true)
   })
 
@@ -377,7 +420,7 @@ describe('useJob', () => {
       FakeEventSource.last!.emit('end', JSON.stringify(
         { status: 'failed', error: 'no models on disk', summary: null }))
     })
-    await waitFor(() => expect(result.current.status).toBe('error'))
+    expect(result.current.status).toBe('error')
     expect(result.current.error).toBe('no models on disk')
   })
 
@@ -388,8 +431,7 @@ describe('useJob', () => {
       vi.stubGlobal('EventSource', FakeEventSource)
       const { result } = renderHook(() => useJob({ kind: 'evaluate' }))
       await act(async () => { await result.current.start() })
-      await waitFor(() => expect(result.current.error)
-        .toBe('advise is already running'))
+      expect(result.current.error).toBe('advise is already running')
       expect(result.current.status).toBe('idle')
     })
 
@@ -399,7 +441,7 @@ describe('useJob', () => {
     const { result } = renderHook(() => useJob({ kind: 'advise' }))
     act(() => { result.current.attach('j9') })
     expect(FakeEventSource.last?.url).toBe('/api/jobs/j9/stream')
-    await waitFor(() => expect(result.current.status).toBe('running'))
+    expect(result.current.status).toBe('running')
   })
 
   // A restarted server forgets its in-memory runs, so the stream 404s and the
@@ -411,7 +453,7 @@ describe('useJob', () => {
     const { result } = renderHook(() => useJob({ kind: 'advise' }))
     await act(async () => { await result.current.start() })
     act(() => { FakeEventSource.last!.fail(FakeEventSource.CLOSED) })
-    await waitFor(() => expect(result.current.status).toBe('error'))
+    expect(result.current.status).toBe('error')
     expect(result.current.error).toMatch(/server may have restarted/i)
     expect(FakeEventSource.last!.closed).toBe(true)
   })
@@ -436,7 +478,7 @@ describe('useJob', () => {
     await act(async () => { await result.current.start() })
     act(() => { FakeEventSource.last!.emit('line', 'step one') })
     act(() => { FakeEventSource.last!.fail(FakeEventSource.CLOSED) })
-    await waitFor(() => expect(result.current.status).toBe('error'))
+    expect(result.current.status).toBe('error')
     expect(result.current.lines).toEqual(['step one'])
   })
 
@@ -462,7 +504,7 @@ describe('useJob', () => {
       FakeEventSource.last!.emit('end',
         JSON.stringify({ status: 'done', error: null, summary: null }))
     })
-    await waitFor(() => expect(result.current.status).toBe('done'))
+    expect(result.current.status).toBe('done')
     // Closing the source can itself fire an error; a finished job stays done.
     act(() => { FakeEventSource.last!.fail(FakeEventSource.CLOSED) })
     expect(result.current.status).toBe('done')

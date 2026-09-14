@@ -26,7 +26,9 @@ interface CurrentRun {
   status: string
 }
 
-const POLL_MS = 1000
+/** The polled transport's interval. Exported so the test can advance fake
+ *  timers by the hook's own unit rather than a copied number (v18f §2.3). */
+export const POLL_MS = 1000
 
 /**
  * Which job, and therefore which transport (v17h §6).
