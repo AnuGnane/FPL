@@ -22,3 +22,6 @@ def test_the_league_block_still_precedes_the_tilt_and_the_pool():
     src = advise_source()
     assert (src.index("fetch_rival_entries(") < src.index("tilt_ep(")
             < src.index("pool = build_pool("))
+    # v18g §2.3: the strategy is the other straddling name the four deleted
+    # copies pinned — computed in the gather half, read by the pool.
+    assert src.index("compute_strategy(") < src.index("pool = build_pool(")

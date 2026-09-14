@@ -260,32 +260,6 @@ def test_an_asset_with_no_pooled_curve_still_falls_through_to_the_constant():
 
 # --- rail 4: the protected orderings, restated -----------------------------
 
-def test_run_advise_still_orders_every_protected_seam():
-
-    from tests.advise_source import advise_source
-
-    src = advise_source()
-    league = src.index("fetch_rival_entries(")
-    tilt = src.index("tilt_ep(")
-    pool = src.index("pool = build_pool(")
-    assert league < tilt < pool
-    assert src.index("compute_strategy(") < pool
-    assert "build_pool(players, pool_ep," in src
-
-    comp = src.index("comp = predictions.components(")
-    blend = src.index("blend_attacking_odds(")
-    assemble = src.index("ep_matrix(apply_calibration(assemble_ep(")
-    assert comp < blend < assemble
-    assert "except Exception" in src[blend - 600:blend + 600]
-
-    assert 'ep_gw1 = ep_named[ep_named["gw"] == gw]' in src
-    assert "pool_ep" not in src[src.index("ep_gw1 ="):]
-
-    # v5's two insertions, both above the pool and neither naming it.
-    assert src.index("avail = news_availability(") < comp
-    assert comp < src.index("write_shadow(comp, gw)") < blend
-
-
 def test_predict_components_still_blends_before_merging_onto_players():
     import inspect
 
