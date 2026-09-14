@@ -1,22 +1,32 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiError } from './client'
 import {
   invalidate, invalidatePrefix, resetPageData, seedPageData, usePageData,
 } from './pageData'
 
 const { apiGet } = vi.hoisted(() => ({ apiGet: vi.fn() }))
-vi.mock('./client', () => ({
-  apiGet: (path: string) => apiGet(path),
-  errorText: (e: unknown) => (e instanceof Error ? e.message : String(e)),
-}))
+// The real ApiError, because `usePageData` narrows on it to fill `status`
+// (v18e §2.1) and a stand-in class would make every rejection a plain Error.
+vi.mock('./client', async () => {
+  const actual = await vi.importActual<typeof import('./client')>('./client')
+  return {
+    ApiError: actual.ApiError,
+    apiGet: (path: string) => apiGet(path),
+    errorText: (e: unknown) => (e instanceof Error ? e.message : String(e)),
+  }
+})
 
 /** A reader of one URL, printing what it has. */
 function Reader({ path, name = 'a' }: { path: string | null; name?: string }) {
-  const { data, error, reload } = usePageData<{ n: number }>(path)
+  const { data, error, status, reload } = usePageData<{ n: number }>(path)
   return (
     <div>
       <span data-testid={`${name}-data`}>{data ? String(data.n) : '—'}</span>
       <span data-testid={`${name}-error`}>{error ?? '—'}</span>
+      <span data-testid={`${name}-status`}>
+        {status === null ? '—' : String(status)}
+      </span>
       <button onClick={reload}>reload {name}</button>
     </div>
   )
@@ -239,6 +249,24 @@ describe('usePageData', () => {
     // waiting for goes away again, and it must go back to waiting.
     view.rerender(<Reader path={null} />)
     expect(screen.getByTestId('a-data')).toHaveTextContent('—')
+  })
+
+  // v18e §2.1: the status is what lets a reader tell "not written yet" from
+  // "the server broke" without reading the sentence back.
+  it('reports the status of an ApiError alongside its sentence', async () => {
+    apiGet.mockRejectedValue(new ApiError(404, 'no advice yet'))
+    render(<Reader path="/api/advice" />)
+    await waitFor(() =>
+      expect(screen.getByTestId('a-error')).toHaveTextContent('no advice yet'))
+    expect(screen.getByTestId('a-status')).toHaveTextContent('404')
+  })
+
+  it('leaves the status null when the throw was not an ApiError', async () => {
+    apiGet.mockRejectedValue(new Error('network down'))
+    render(<Reader path="/api/advice" />)
+    await waitFor(() =>
+      expect(screen.getByTestId('a-error')).toHaveTextContent('network down'))
+    expect(screen.getByTestId('a-status')).toHaveTextContent('—')
   })
 
   it('caches a null body — 204 is an answer, not an absence', async () => {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { apiGet, errorText } from './client'
+import { ApiError, apiGet, errorText } from './client'
 
 /**
  * One in-flight request per URL, one cached body per URL, shared by every
@@ -119,6 +119,15 @@ export function resetPageData(): void {
 export interface PageData<T> {
   data: T | null
   error: string | null
+  /**
+   * The HTTP status of the failure that set `error`; `null` when there is no
+   * error, or when the throw was not an `ApiError` (a network drop, a parse).
+   *
+   * Carried so a reader can tell "the artifact is not written yet" (404) from
+   * "the server broke" (everything else) without re-parsing the sentence —
+   * which is the whole of what `Loaded` branches on (v18e §2.2).
+   */
+  status: number | null
   reload: () => void
 }
 
@@ -136,12 +145,14 @@ export function usePageData<T>(path: string | null): PageData<T> {
     return held === undefined ? null : held as T
   })
   const [error, setError] = useState<string | null>(null)
+  const [status, setStatus] = useState<number | null>(null)
 
   useEffect(() => {
     // A new URL inherits neither the old one's body nor its error. State
     // survives the path change; the answer to the previous question must not
     // be painted under this one.
     setError(null)
+    setStatus(null)
     if (path === null) {
       setData(null)
       return
@@ -166,11 +177,13 @@ export function usePageData<T>(path: string | null): PageData<T> {
           if (!current()) return
           setData(body as T)
           setError(null)
+          setStatus(null)
         })
         .catch((e) => {
           if (!current()) return
           setData(null)
           setError(errorText(e))
+          setStatus(e instanceof ApiError ? e.status : null)
         })
     }
     const entry = entryFor(path)
@@ -178,6 +191,7 @@ export function usePageData<T>(path: string | null): PageData<T> {
     if (entry.body !== undefined) {
       setData(entry.body as T)
       setError(null)
+      setStatus(null)
     } else {
       setData(null)
       ask()
@@ -192,5 +206,5 @@ export function usePageData<T>(path: string | null): PageData<T> {
     if (path !== null) invalidate(path)
   }, [path])
 
-  return { data, error, reload }
+  return { data, error, status, reload }
 }

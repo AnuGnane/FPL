@@ -124,8 +124,10 @@ export default function ThisWeek() {
 
   // The armband is dereferenced unguarded all over the page below —
   // advice.captain.name in a Stat, advice.vice.code on the pitch. An artifact
-  // written without one made every one of those a TypeError during render,
-  // which React answers by unmounting the tree: a white screen, no message.
+  // written without one made every one of those a TypeError during render.
+  // The boundary in App.tsx now catches that class of render error and states
+  // it, rather than leaving the user a white screen (v18e §2.4); this guard
+  // stays because naming the missing armband beats reporting the TypeError.
   const armbandMissing = Boolean(data)
     && (!data!.advice?.captain || !data!.advice?.vice)
 

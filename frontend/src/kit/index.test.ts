@@ -6,7 +6,8 @@ describe('kit barrel', () => {
     for (const name of ['Badge', 'Card', 'DataTable', 'EmptyState',
       'PageHeader', 'PitchView', 'PlayerCard', 'PosBadge', 'Skeleton',
       'Sparkline', 'Stat', 'ThresholdBar', 'ToastOutlet',
-      'Button', 'Segmented', 'Chip', 'Bar', 'Callout', 'StatRow', 'Section']) {
+      'Button', 'Segmented', 'Chip', 'Bar', 'Callout', 'StatRow', 'Section',
+      'ErrorBoundary', 'Loaded']) {
       expect(typeof (kit as Record<string, unknown>)[name]).toBe('function')
     }
   })
