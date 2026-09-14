@@ -15,10 +15,10 @@ than an auditor, `docs/GUIDE.md` §11–12.
 `plans/2026-09-12-v18-polish-programme.md`, tracker
 `plans/2026-09-12-v18-tracker.md`), eight sub-cycles that change no number
 the advice serves. v18a (the gate), v18b (the advice path), v18c
-(measurement), v18d (the core out of the web layer) and v18e (the loader)
-are merged (`b1867b9`); the golden board had been skipping since
-the 09-11 retrain. Next: v18f the surface, then v18g–v18h; the model cycle
-follows v18 (the user's ruling, 2026-09-12).
+(measurement), v18d (the core out of the web layer), v18e (the loader)
+and v18f (the surface) are merged (`bf84d7c`); the golden board had been
+skipping since the 09-11 retrain. Next: v18g the suite, then v18h; the
+model cycle follows v18 (the user's ruling, 2026-09-12).
 
 v16 — restraint and the brief — is **merged** (`main` `9f5be20`; ff-merge
 of `v16-restraint`), on top of v15's leagues (`ed3e8fe`). The ladder's
@@ -173,6 +173,28 @@ usually the thing you cannot test*, not the lines: every card of the seven was
 found by asking what a test would have to fake.
 
 ## Shipped
+
+### v18f — the surface, correct to the hand (done, merged `bf84d7c` 2026-09-14)
+Six components cut at their seams as pure moves (`QualityTab` 1060 → 546,
+`ChipsTab` 519 → 321, `PlannerBoard` 514 → 468, `League` 483 → 422,
+`ComparePanel` 451 → 399, `LadderCard` 411 → 240), the three settings
+writers on one `api/useSettingWrite` and the two what-if solves on one
+`useWhatIfSubmit`. Both modals on Radix `Dialog` (focus trap and return);
+`kit/Th` with `scope` and `aria-sort`, every header scoped; the rung toggle a
+button; text equivalents on the tone-only chips; `--color-scrim` and
+`--color-on-accent` replacing the two Tailwind palette colours; `Badge` and
+`react-tooltip` gone; two hand types replaced by the generated names; the
+non-null assertions narrowed; lazy routes so the first paint carries no
+recharts; ESLint (flat config) and `npm run check`; `useJob`'s test on fake
+timers (13.7 s → 31 ms; suite 14.5 s → 8.4 s) with a spy that fails on an
+`act` warning. Ruling: `eslint-plugin-react-hooks` v7's compiler rule
+`set-state-in-effect` is `warn` with its reason in the config — eight
+effects trip it and each fix is a behaviour change under the pixel gate.
+Gate: twelve pairs byte-identical against a same-time control; four new
+token rules each mutation-tested live; check exit 0 with zero errors; 1058
+→ 1098 frontend tests; recharts 0 in both entry chunks. Python 4496
+untouched; pins 51 / 12 / 62. Left open: the eight warnings; Tailwind's
+scanner regenerating the two retired classes from the rail's own patterns.
 
 ### v18e — the loader, finished (done, merged `b1867b9` 2026-09-14)
 Every artifact read in `hubs/` and `kit/` goes through `usePageData`; the

@@ -666,7 +666,7 @@ Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 `reports/evaluation.json`, and the Model hub.
 
-## 11. The version history, v1 to v18e
+## 11. The version history, v1 to v18f
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
 reviewed. Every cycle ran the same way, and knowing the shape tells you where
@@ -1047,6 +1047,15 @@ the 422 every `GafferError` becomes). A boundary around the routes turns a
 render crash into a sentence instead of a white screen. Six hubs, twelve
 screenshots, not a pixel changed on the happy path. Frontend 988 →
 **1058**, Python 4496 unchanged.
+
+**v18f — the surface, correct to the hand** (2026-09-14). The two dialogs
+trap and return focus, every table header says what it governs and which
+way it is sorted, the ladder's rung opens from the keyboard, and the
+colour-only chips carry a word for a screen reader. Six components over
+four hundred lines were cut at their natural seams without moving a pixel,
+the settings write and the what-if solve exist once each, the first paint
+no longer downloads the charting library, and a linter and one `check`
+command guard it all. Frontend 1058 → **1098**, Python 4496 unchanged.
 
 The suite grew from nothing to **4,425 Python + 986 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above
