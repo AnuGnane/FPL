@@ -8,6 +8,9 @@ from gaffer.features.engineer import (
     add_setpiece,
     build_prediction_frame,
     feature_columns,
+    latest_shrunken_rates,
+    latest_understat_rolling,
+    latest_understat_team,
 )
 
 
@@ -663,13 +666,6 @@ def test_best_shrinkage_k_on_a_frame_with_no_holdout_returns_the_default():
     k = best_shrinkage_k(_goal_rows([(1, 90, 0, 0)]), holdout_slots=5)
     assert k == SHRINK_K
 
-
-from gaffer.features.engineer import (
-    build_prediction_frame,
-    latest_shrunken_rates,
-    latest_understat_rolling,
-    latest_understat_team,
-)
 
 
 def test_latest_understat_rolling_is_the_next_rows_form_vector():

@@ -62,11 +62,11 @@ def advise(fast: bool = typer.Option(
         result = weekly_run(cfg, train=False)
     except SystemExit as e:  # missing models, raised before any network call
         typer.echo(str(e))
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
     except GafferError as e:  # season boundary: no next GW at all
                               # (GW1 is handled inside run_advise)
         typer.echo(str(e))
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
     advice, path = result.advice, result.report_path
     typer.echo(f"\n=== GW{advice.gw} — deadline {advice.deadline} ===")
     if advice.data_warning:
@@ -517,7 +517,7 @@ def live():
         # Between gameweeks there is simply nothing to show. That is a quiet
         # no-op, not a failure: print the message and exit clean.
         typer.echo(str(e))
-        raise typer.Exit(0)
+        raise typer.Exit(0) from None
 
 
 @app.command()

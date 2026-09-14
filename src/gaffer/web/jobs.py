@@ -104,7 +104,9 @@ class JobRegistry:
             self._set(job_id, status="running", started_at=_now())
             box: dict[str, Any] = {}
 
-            def target() -> None:
+            def target(fn=fn, box=box) -> None:
+                # Bound as defaults: the thread is started and joined in
+                # this iteration, and the binding says so (v18g §2.1).
                 try:
                     box["result"] = fn()
                 except BaseException as exc:      # noqa: BLE001

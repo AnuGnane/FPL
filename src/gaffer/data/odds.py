@@ -336,7 +336,8 @@ def odds_frame(raw_odds: list, teams: pd.DataFrame,
     never by list position, and de-vigged with :func:`shin_devig` before
     inversion; the Over/Under pair keeps proportional :func:`devig` (a
     two-way total carries no favourite-longshot bias worth modelling, and
-    ``invert_odds`` validates nothing). The resulting (mu_h, mu_a) become goals-for/against on the home row and the
+    ``invert_odds`` validates nothing). The resulting (mu_h, mu_a) become
+    goals-for/against on the home row and the
     same pair swapped on the away row.
 
     A fixture whose ``commence_time`` falls in no gameweek window
@@ -593,8 +594,10 @@ def ags_frame(raw_ags: list | None, players: pd.DataFrame,
                 continue
             priced.append((player, name, float(outcome["price"])))
 
-        def claim(player: str, team_code: int, code: int, price: float
-                  ) -> None:
+        def claim(player: str, team_code: int, code: int, price: float,
+                  *, by_team=by_team, matched=matched) -> None:
+            # Bound as defaults: the closure is used inside this fixture's
+            # iteration only, and the binding says so (v18g §2.1).
             by_team[int(team_code)][player] = price
             matched[player] = int(code)
 
@@ -608,7 +611,8 @@ def ags_frame(raw_ags: list | None, players: pd.DataFrame,
             else:
                 unresolved.append((player, name, price))
 
-        def sweep(rule) -> None:
+        def sweep(rule, *, matched=matched, unresolved=unresolved,
+                  home_code=home_code, away_code=away_code) -> None:
             """One pass over what is still unmatched, taken only where
             exactly one unclaimed player in this fixture answers."""
             claimed = set(matched.values())

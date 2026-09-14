@@ -50,7 +50,7 @@ def test_a_snapshot_that_will_not_parse_is_still_listed_and_named(here):
     (PROJECTIONS / "2026-27-gw5-20260901T090000Z.parquet").write_bytes(b"junk")
     snaps = projection_snapshots("2026-27", 5)
     assert len(snaps) == 1
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):    # pyarrow's ArrowInvalid is one
         pd.read_parquet(snaps[0].path)
 
 

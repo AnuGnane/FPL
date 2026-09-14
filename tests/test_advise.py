@@ -61,9 +61,9 @@ def test_future_fixture_frame_one_row_per_player_fixture():
                               season_idx=4)
     assert len(ff) == 4                       # 2 players x 2 fixtures
     row = ff[(ff.code == 10) & (ff.gw == 2)].iloc[0]
-    assert row["was_home"] == True and row["opp_code"] == 200
+    assert row["was_home"] and row["opp_code"] == 200
     row3 = ff[(ff.code == 10) & (ff.gw == 3)].iloc[0]
-    assert row3["was_home"] == False
+    assert not row3["was_home"]
 
 
 def test_chips_available_for_splits_the_season_in_halves():

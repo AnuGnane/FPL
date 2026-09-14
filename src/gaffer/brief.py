@@ -168,7 +168,8 @@ def build_facts(gw: int) -> dict:
     if strat:
         league = {"name": _focus_name(), "stance": strat.get("stance"),
                   "manual": strat.get("source") == "manual",
-                  "gap": (None if strat.get("gap") is None else int(round(abs(float(strat["gap"]))))),
+                  "gap": (None if strat.get("gap") is None
+                          else int(round(abs(float(strat["gap"]))))),
                   "lam": (None if strat.get("lam") is None else round(float(strat["lam"]), 2)),
                   "rival": strat.get("rival_name")}
     chip = next(({"chip": CHIP_LABEL.get(str(r.get("chip")), str(r.get("chip"))),
@@ -299,7 +300,7 @@ def cache_key(stamp: str, version: int = BRIEF_PROMPT_VERSION) -> str:
 
 def _leaves(node):
     if isinstance(node, dict):
-        for k, v in node.items():
+        for v in node.values():
             yield from _leaves(v)
     elif isinstance(node, list):
         for v in node:

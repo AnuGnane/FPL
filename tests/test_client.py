@@ -1,6 +1,7 @@
 import json
 
 import httpx
+import pytest
 
 import gaffer.api.client as client_mod
 from gaffer.api.client import FPLClient
@@ -33,7 +34,7 @@ def test_retries_then_raises(tmp_path):
                        retries=3, backoff=0.0)
     try:
         client.get_fixtures()
-        assert False, "should have raised"
+        pytest.fail("should have raised")
     except httpx.HTTPStatusError:
         pass
     assert calls["n"] == 3
@@ -50,7 +51,7 @@ def test_no_retry_on_404(tmp_path):
                        retries=3, backoff=0.0)
     try:
         client.get_fixtures()
-        assert False, "should have raised"
+        pytest.fail("should have raised")
     except httpx.HTTPStatusError:
         pass
     assert calls["n"] == 1
@@ -67,7 +68,7 @@ def test_retries_on_429(tmp_path):
                        retries=3, backoff=0.0)
     try:
         client.get_fixtures()
-        assert False, "should have raised"
+        pytest.fail("should have raised")
     except httpx.HTTPStatusError:
         pass
     assert calls["n"] == 3
@@ -84,7 +85,7 @@ def test_no_sleep_after_final_attempt(tmp_path, monkeypatch):
                        retries=3, backoff=0.001)
     try:
         client.get_fixtures()
-        assert False, "should have raised"
+        pytest.fail("should have raised")
     except httpx.HTTPStatusError:
         pass
     assert len(sleeps) == 2

@@ -136,7 +136,7 @@ def test_a_lookup_with_no_explain_is_unknown_and_never_raises():
 def _pool() -> pd.DataFrame:
     rows, code = [], 1
     for pos, n in [("GKP", 4), ("DEF", 9), ("MID", 10), ("FWD", 7)]:
-        for i in range(n):
+        for _ in range(n):
             rows.append({"code": code, "position": pos,
                          "team_code": (code % 6) + 1,
                          "cost": 40, "sell": 40,

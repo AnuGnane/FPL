@@ -322,5 +322,5 @@ def test_the_types_are_frozen_so_a_caller_cannot_edit_a_trace():
     out = run([week(5, buys=[100], sells=[200])])
     assert isinstance(out[0], WeekTrace)
     assert isinstance(out[0].moves[0], MoveTrace)
-    with pytest.raises(Exception):
+    with pytest.raises(dataclasses.FrozenInstanceError):
         out[0].moves[0].ep_gain = 99.0

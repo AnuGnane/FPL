@@ -543,8 +543,8 @@ def plan_points(gw_plans: list[GwPlan], ep_by: dict, hit_cost: int) -> float:
     measure ``routers/whatif._summary`` and ``sensitivity.plan_value`` use."""
     total = 0.0
     for plan in gw_plans:
-        def ep(code) -> float:
-            return float(ep_by.get((int(code), int(plan.gw)), 0.0))
+        def ep(code, gw=int(plan.gw)) -> float:
+            return float(ep_by.get((int(code), gw), 0.0))
 
         total += sum(ep(c) for c in plan.xi) + ep(plan.captain)
         total -= plan.hits * hit_cost

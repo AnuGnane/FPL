@@ -79,3 +79,7 @@ ignore = ["B905"]
 # E501: prose sentences and a recorded board asserted verbatim (v18g §1).
 "tests/test_v16_brief.py" = ["E501"]
 "tests/test_golden_board.py" = ["E501"]
+
+[tool.ruff.lint.flake8-bugbear]
+# B008: typer's declarative defaults are the CLI's idiom (v18g §2.1).
+extend-immutable-calls = ["typer.Option", "typer.Argument"]

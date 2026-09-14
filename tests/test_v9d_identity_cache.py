@@ -207,7 +207,8 @@ def test_memo_survives_concurrent_eviction(monkeypatch):
                 # cache holds, so hits are rare and nearly every call reaches
                 # the store-and-evict path.
                 slot = f"slot:{(worker * iterations + i) % 32}"
-                got = identity._memo(slot, (slot, i), lambda: (slot, i))
+                got = identity._memo(slot, (slot, i),
+                                     lambda slot=slot, i=i: (slot, i))
                 assert got is not identity._FAILED
                 # Sampled *under the lock*, because that is where the bound
                 # is actually claimed. Between the store and the eviction the

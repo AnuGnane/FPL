@@ -3,6 +3,13 @@ import json
 import pytest
 
 from gaffer.assets import DECISION_PRIORS, decision_priors_exist, load_decision_priors
+from gaffer.calibrate_decisions import (
+    PHASE_BOUNDS,
+    best_single_transfer,
+    phase_of,
+    run_calibration,
+    write_priors,
+)
 
 
 def test_the_asset_is_shipped_in_the_package():
@@ -96,15 +103,6 @@ def test_thresholds_from_a_real_asset_vary_by_week():
 
 
 # --- the calibrator --------------------------------------------------------
-
-
-from gaffer.calibrate_decisions import (
-    PHASE_BOUNDS,
-    best_single_transfer,
-    phase_of,
-    run_calibration,
-    write_priors,
-)
 
 
 def test_phase_bounds_split_the_season_into_thirds():

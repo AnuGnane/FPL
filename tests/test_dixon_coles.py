@@ -388,7 +388,8 @@ def test_fit_blend_weight_lands_between_two_noisy_signals():
     rng = np.random.default_rng(2)
     truth = rng.uniform(0.1, 0.9, 8000)
     cs = (rng.random(8000) < truth).astype(float)
-    jitter = lambda: np.clip(truth + rng.normal(0, 0.12, 8000), 0.01, 0.99)
+    def jitter():
+        return np.clip(truth + rng.normal(0, 0.12, 8000), 0.01, 0.99)
     frame = pd.DataFrame({"p_cs_odds": jitter(), "p_cs_model": jitter(),
                           "cs": cs})
     w = fit_blend_weight(frame)
@@ -405,7 +406,8 @@ def test_fit_blend_weight_prefers_the_smaller_w_when_the_curve_is_flat():
     n = 2000
     truth = rng.uniform(0.1, 0.9, n)
     cs = (rng.random(n) < truth).astype(float)
-    jitter = lambda: np.clip(truth + rng.normal(0, 0.10, n), 0.01, 0.99)
+    def jitter():
+        return np.clip(truth + rng.normal(0, 0.10, n), 0.01, 0.99)
     frame = pd.DataFrame({"p_cs_odds": jitter(), "p_cs_model": jitter(),
                           "cs": cs})
     assert fit_blend_weight(frame) <= 0.30

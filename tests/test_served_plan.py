@@ -6,6 +6,7 @@ import json
 
 import pandas as pd
 import pytest
+from pydantic import ValidationError
 
 from gaffer.artifacts import POOL_COLS
 
@@ -26,7 +27,7 @@ def test_the_models_are_frozen_and_ignore_keys_they_do_not_know():
                                       "ep": 5.0, "p_haul": 0.3})
     assert move.model_dump(exclude_unset=True) == {"code": 1, "name": "A",
                                                    "position": "MID", "ep": 5.0}
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         move.price = 1.0          # frozen
 
 
@@ -453,7 +454,8 @@ def _write_pre_v17f_advice():
         "alternative_plans": [{"gap": 0.4, "plan_by_gw": [_week(6, buys=[P], sells=[S])]}]}))
 
 
-def test_the_loader_backfills_a_file_written_before_v17f_from_its_solve_state(tmp_path, monkeypatch):
+def test_the_loader_backfills_a_file_written_before_v17f_from_its_solve_state(
+        tmp_path, monkeypatch):
     from pathlib import Path
 
     from gaffer.artifacts import served_plan
@@ -530,7 +532,8 @@ def test_a_file_that_will_not_validate_is_a_gaffer_error_naming_the_field(tmp_pa
         served_plan(5)
 
 
-def test_advice_gws_enumerates_ascending_and_ignores_a_stem_that_is_not_a_number(tmp_path, monkeypatch):
+def test_advice_gws_enumerates_ascending_and_ignores_a_stem_that_is_not_a_number(
+        tmp_path, monkeypatch):
     from pathlib import Path
 
     from gaffer.artifacts import advice_gws, advice_path

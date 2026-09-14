@@ -99,7 +99,7 @@ def test_fails_fast_on_403(tmp_path, monkeypatch):
     client = OddsClient("k", client=_client(handler), backoff=0.0)
     try:
         client.get_epl_odds()
-        assert False, "should have raised"
+        pytest.fail("should have raised")
     except httpx.HTTPStatusError:
         pass
     assert calls["n"] == 1
@@ -116,7 +116,7 @@ def test_retries_on_429_then_raises(tmp_path, monkeypatch):
     client = OddsClient("k", client=_client(handler), retries=3, backoff=0.0)
     try:
         client.get_epl_odds()
-        assert False, "should have raised"
+        pytest.fail("should have raised")
     except httpx.HTTPStatusError:
         pass
     assert calls["n"] == 3
@@ -133,7 +133,7 @@ def test_no_sleep_after_final_attempt(tmp_path, monkeypatch):
     client = OddsClient("k", client=_client(handler), retries=3, backoff=0.001)
     try:
         client.get_epl_odds()
-        assert False, "should have raised"
+        pytest.fail("should have raised")
     except httpx.HTTPStatusError:
         pass
     assert len(sleeps) == 2
@@ -186,10 +186,14 @@ def _poisson_probs(mu_h, mu_a, cap=10):
     for h in range(cap + 1):
         for a in range(cap + 1):
             pr = ph[h] * pa[a]
-            if h > a: win += pr
-            elif h == a: draw += pr
-            else: away += pr
-            if h + a >= 3: over += pr
+            if h > a:
+                win += pr
+            elif h == a:
+                draw += pr
+            else:
+                away += pr
+            if h + a >= 3:
+                over += pr
     return win, draw, away, over
 
 

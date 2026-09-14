@@ -78,7 +78,8 @@ def test_a_non_list_of_providers_falls_back_with_a_line(tmp_path, capsys):
 
 
 def test_an_empty_provider_list_is_the_kill_switch(tmp_path):
-    assert load_config(_cfg(tmp_path, "[news]\nlineup_providers = []\n")).news_lineup_providers == []
+    cfg = load_config(_cfg(tmp_path, "[news]\nlineup_providers = []\n"))
+    assert cfg.news_lineup_providers == []
 
 
 def test_a_typo_under_optimizer_still_raises_loudly(tmp_path):
@@ -89,7 +90,8 @@ def test_a_typo_under_optimizer_still_raises_loudly(tmp_path):
 
 
 def test_solver_top_n_merges_over_the_shipped_default(tmp_path):
-    cfg = load_config(_cfg(tmp_path, "[optimizer]\ntop_n = {DEF = 30, XYZ = 4, MID = 0, FWD = true}\n"))
+    cfg = load_config(_cfg(
+        tmp_path, "[optimizer]\ntop_n = {DEF = 30, XYZ = 4, MID = 0, FWD = true}\n"))
     assert cfg.solver_top_n() == {**DEFAULT_TOP_N, "DEF": 30}
 
 
@@ -180,7 +182,9 @@ def test_out_of_range_is_one_sentence_with_the_section_and_the_bounds():
 
 
 def test_the_loader_refuses_with_the_same_sentence(tmp_path):
-    with pytest.raises(GafferError, match=r"\[optimizer\] max_hits = 16 — must be a whole number between 0 and 15 \(15 means no cap\)"):
+    with pytest.raises(GafferError, match=(
+            r"\[optimizer\] max_hits = 16 — must be a whole number between 0 "
+            r"and 15 \(15 means no cap\)")):
         load_config(_cfg(tmp_path, "[optimizer]\nmax_hits = 16\n"))
 
 

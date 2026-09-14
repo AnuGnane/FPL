@@ -63,6 +63,6 @@ def qr_lines(url: str) -> list[str]:
         upper = matrix[top]
         lower = matrix[top + 1] if top + 1 < len(matrix) else [False] * len(upper)
         lines.append("".join(
-            "█" if u and l else "▀" if u else "▄" if l else " "
-            for u, l in zip(upper, lower)))
+            "█" if up and lo else "▀" if up else "▄" if lo else " "
+            for up, lo in zip(upper, lower)))
     return lines

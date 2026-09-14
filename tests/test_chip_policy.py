@@ -1,9 +1,13 @@
 
 from gaffer.optimize.chip_policy import (
+    DGW_SURPLUS_MULTIPLIER,
     FIRST_HALF_LAST_GW,
+    apply_dgw_scenarios,
     chip_windows,
     flat_thresholds,
+    load_chip_scenarios,
     stopping_thresholds,
+    thresholds_from_priors,
 )
 
 
@@ -115,13 +119,6 @@ def test_flat_thresholds_ignore_the_gameweek_entirely():
 
 
 # --- the DGW scenario hook -------------------------------------------------
-
-from gaffer.optimize.chip_policy import (
-    DGW_SURPLUS_MULTIPLIER,
-    apply_dgw_scenarios,
-    load_chip_scenarios,
-    thresholds_from_priors,
-)
 
 # ``test_the_scenario_file_is_absent_this_cycle`` lived here and is gone,
 # knowingly, on its own authority: *"If this starts failing because someone

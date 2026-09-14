@@ -586,7 +586,8 @@ def move_frequencies(plans: list[Plan]) -> pd.DataFrame:
     for plan in plans:
         seen: set[tuple[str, int, int, str]] = set()
 
-        def once(kind: str, code: int, gw: int, label: str) -> None:
+        def once(kind: str, code: int, gw: int, label: str, *,
+                 seen=seen) -> None:
             key = (kind, code, gw, label)
             if key not in seen:
                 seen.add(key)

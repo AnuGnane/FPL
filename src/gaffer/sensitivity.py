@@ -124,8 +124,8 @@ def plan_value(gw_plans, ep_by: dict, weeks: int, hit_cost: int) -> float:
     """
     total = 0.0
     for plan in gw_plans[:weeks]:
-        def ep(code) -> float:
-            return float(ep_by.get((int(code), int(plan.gw)), 0.0))
+        def ep(code, gw=int(plan.gw)) -> float:
+            return float(ep_by.get((int(code), gw), 0.0))
 
         total += sum(ep(c) for c in plan.xi) + ep(plan.captain)
         total -= plan.hits * hit_cost

@@ -263,7 +263,8 @@ def test_every_rung_and_step_of_a_built_ladder_is_labelled():
             "reason": "expected points alone"}
     assert _step_line(step) == "bank → free transfers only: taken, 79% — expected points alone"
     refused = {**step, "below": "hits0", "above": "hits1", "share": 0.46, "taken": False}
-    assert _step_line(refused) == "free transfers only → 1 hit: refused, 46% — expected points alone"
+    assert _step_line(refused) == (
+        "free transfers only → 1 hit: refused, 46% — expected points alone")
 
 
 def test_the_served_block_carries_its_label_line_and_the_objectives_line():

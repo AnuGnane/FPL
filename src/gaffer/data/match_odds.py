@@ -297,7 +297,8 @@ def build_match_odds(seasons: list[str], fixtures: pd.DataFrame,
 
     A season with no archive file, no usable prices, no name table or a club
     the alias table has never heard of is skipped with a printed line; the
-    parquet is still written from what did resolve, and an entirely empty result writes an empty frame with the right
+    parquet is still written from what did resolve, and an entirely empty result
+    writes an empty frame with the right
     columns so downstream ``store.load`` never sees a missing schema.
     """
     indexes = season_indexes or {s: i for i, s in enumerate(seasons)}
