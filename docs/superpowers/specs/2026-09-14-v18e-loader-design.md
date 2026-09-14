@@ -195,4 +195,65 @@ same pixels (part 2) — the cycle changes how they fail, not how they look.
 
 ## 3. Outcome
 
-_(filled at the gate)_
+Run 2026-09-14 on `v18e-loader`, ten commits after the spec (`3e1ddb2` …
+`ad888c8`). All four parts held.
+
+1. **Fetch counts: PASS.** No hub asks for a new path or any path more
+   often than at the control (`8db1259`). What moved: Players' Watchlist
+   tab `/api/watchlist` **2 → 1** (the star column and the tab share the
+   cache); the Model hub's three-tab walk `/api/review` **3 → 1** and
+   `/api/model/calibration` **2 → 1**. Every other multiset is the
+   control's, per tab. The Players matrix tab still fetches the matrix
+   twice (`from=1` before the gameweek is known, then `from=5`) — unchanged
+   from the control, not a rise; recorded as a residual below.
+2. **Twelve screenshot pairs: PASS, byte-identical against a same-time
+   control.** The first control (`v18e-before`, shot hours earlier from a
+   `main` worktree) differed from the branch on all twelve; re-shooting the
+   control second (`v18e-before2`, same worktree, minutes before
+   `v18e-after`) gave twelve pairs identical to the byte, and the two
+   controls differ from each other — the freshness ages and the clock, not
+   the cycle (programme §2.3, the league-sim lesson again). Images kept
+   under `.superpowers/shots/v18e-{before,before2,after}/`.
+3. **500 vs the named empty: PASS.** `kit/Loaded.status.test.tsx`, nine
+   rows (JournalTab, ReviewTab, SeasonTab, FixtureMatrix, FreshnessStrip,
+   QualityTab's review and misses sections, DraftsTab, Live), each under a
+   500 and under the status its route answers on a cold clone; every case
+   mutation-tested by the implementer (flipping `absent` in `Loaded`,
+   `SeasonTab` and `Live` fails exactly the rows it should).
+4. **The raw reads that remain: PASS.** `grep -rn "apiGet(\|apiGet<"
+   frontend/src/hubs frontend/src/kit | grep -v .test.` →
+   `frontend/src/hubs/Live.tsx:66` alone (the poll). `.message` in a catch:
+   none.
+
+Alongside: `tsc` clean; vitest **1058 passed, 1 skipped** (988 at the
+start of the cycle), no `Errors` line; `tokens.test.ts` green; nothing
+under `src/`, `tests/` or `scripts/` changed (Python suite unaffected; run
+once on the branch for the record).
+
+**Ruling made during the cycle** (`47dd7fe`, §2.2): the cold clone answers
+**422**, not 404 — `web/app.py` maps every `GafferError` to 422 and only the
+plan, chips and components routes answer 404 by design. `Loaded`'s empty
+branch is `status === 404 || status === 422`, and the `empty` slot may be a
+function of the server's sentence. Task 3's implementer found this and
+left the page-level branches alone rather than paint the cold clone red;
+task 3b split them under the corrected rule. Where a component has two
+empty states or composes several pages (Players, PlannerBoard, Timeline,
+SeasonTab, QualityTab's pens and quality reads, Live), the split is inline
+in `Loaded`'s words; the rest go through `Loaded`.
+
+**New names.** `PageData.status`; `kit/Loaded` (`page`, `empty` node or
+`(message) => node`, `loading`, `isEmpty`, render-prop children);
+`kit/ErrorBoundary` (`resetKey`, around `<Routes>` in `App.tsx`);
+`hubs/{Planning,Players,League,Live,Model}.fetches.test.tsx`;
+`kit/Loaded.status.test.tsx`; invalidation rows for the watchlist, drafts,
+the league prefix, and the Model hub's job buttons (evaluate → quality,
+track-pens → pens, review → review + journal, refresh-data → health,
+freshness, players, news, fixtures prefix, snapshot and field-scrape →
+health + freshness), which replaced the three remount nonces.
+
+**Left open.** The Players matrix tab's double fetch (a `null` path until
+the gameweek is known would make it one); `FixtureTicker` has no empty
+state of its own and shows a callout for a cold clone's 422 as it always
+did (a sentence for it is a v18f wording decision); the two test doubles
+that still reject with a plain `Error` where a status would be truer are
+the ones the 500 rows do not cover.
