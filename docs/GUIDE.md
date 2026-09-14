@@ -1,7 +1,7 @@
 # The gaffer guide
 
 *A tour of everything this project does, how it got here, and how to use it.
-Last updated 2026-09-05, after v14 (the dark ledger) merged. The
+Last updated 2026-09-14, after v18h (the docs, true) merged. The
 README covers setup and reference; this document is for understanding. If you
 only read one section, read §12: it is the current to-do list.*
 
@@ -19,7 +19,7 @@ only read one section, read §12: it is the current to-do list.*
 8. [Everything the CLI can do](#8-everything-the-cli-can-do)
 9. [The data it collects and why](#9-the-data-it-collects-and-why)
 10. [How the project measures itself](#10-how-the-project-measures-itself)
-11. [The version history, v1 to v17h](#11-the-version-history-v1-to-v17h)
+11. [The version history, v1 to v18h](#11-the-version-history-v1-to-v18h)
 12. [What is pending and what was left open](#12-what-is-pending-and-what-was-left-open)
 13. [Troubleshooting](#13-troubleshooting)
 
@@ -62,8 +62,8 @@ FPL API + banked history ──► feature engineering ──► component model
   your own pins                                          │
                                                          ▼
                               MILP optimizer (PuLP → HiGHS/CBC)
-                              6-GW receding horizon, chips, hits,
-                              league tilt, scenario-sweep gating
+                              receding horizon (3 GW default), chips,
+                              hits, league tilt, scenario-sweep gating
                                                          │
                                                          ▼
                        reports/gwN-report.html + gwN-advice.json
@@ -86,7 +86,7 @@ Step by step:
    Applied last of all is *your* pin, because you watched the press
    conference and the model did not.
 5. **Optimize** — a mixed-integer program picks transfers, captain, bench
-   order and chip timing over a six-gameweek horizon (see §4). A scenario
+   order and chip timing over the receding horizon (see §4). A scenario
    sweep re-solves the board 40 times under calibrated noise and gates out
    moves that only win on a knife-edge.
 6. **Report** — terminal summary, HTML report, JSON artifact. The web UI
@@ -121,8 +121,10 @@ share for the non-taker — audited weekly by `gaffer track-pens`.
 
 A multi-period MILP (PuLP modelling, HiGHS solver, CBC fallback) that plans
 the whole squad — transfers, captain, vice, bench order, chip — over a
-**receding six-gameweek horizon**: it plans six weeks ahead, you execute only
-the first, and next week it re-plans. Key machinery, in the order it was
+**receding horizon**: it plans several weeks ahead, you execute only the
+first, and next week it re-plans. How many weeks is `[optimizer] horizon`,
+**three by default** and bounded 1–8 (`config.py`), and three is what this
+tree runs; the Settings tab moves it. Key machinery, in the order it was
 earned:
 
 - **Shadow prices for transfers** (v4c): a dynamic program values holding a
@@ -251,7 +253,9 @@ class-for-class; and the pitch is muted turf with hairline markings and dark
 If you change the UI, `frontend/src/kit/tokens.test.ts` is the rule-book your
 change is held to: no `rounded-full`, no shadows, no gradients, no raw hex
 outside `theme.css` and the shirt/turf tokens, monospace only in the job log
-and the plan trace, and none of the retired colour names. The visual gate is
+and the plan trace, and none of the retired colour names. Since v18f the
+frontend gate is one command — `cd frontend && npm run check` runs `tsc
+--noEmit`, vitest, the generated-types drift check and eslint. The visual gate is
 a screenshot pass — build the frontend, serve it with
 `uv run gaffer ui --no-open-browser --port 8927`, then
 `frontend/scripts/shots.sh <stage>` writes the six hubs in both themes to
@@ -406,10 +410,12 @@ below you with what they need.
   with its size (or `never — run gaffer backup`).
 - *Journal*: the decision journal with its deadline guard.
 - *History*: past runs, expected versus actual, price charts.
-- *Settings* (v12 W5): the nine settings the UI may edit — horizon, decay,
-  the bank's value, the bench weights, the λ tilt cap, the θ/λ priors
-  switch, the pool size per position, the price-timing charge and the
-  availability draw. It writes `config.local.toml` and **never**
+- *Settings* (v12 W5): the fourteen settings the UI may edit
+  (`web/settings_keys.py`'s `WHITELIST`) — horizon, decay, the bank's value,
+  the bench weights, the λ tilt cap, the θ/λ priors switch, the pool size per
+  position, the price-timing charge, the availability draw, and since v13 and
+  v16 the two caps and the hit bar, since v15 the focus league and the
+  stance. It writes `config.local.toml` and **never**
   `config.toml`, which carries the odds API key; one save per field, bounds
   and refusals from the server, and a setting this build does not have is
   named rather than dropped. The note under the form is the server's own
@@ -547,6 +553,11 @@ Standing intelligence:
 - `gaffer prices` — tonight's likely price changes, banked
 - `gaffer snapshot` — bank today's availability state
 - `gaffer field-scrape [--gw N]` — bank the top-10k sample
+- `gaffer core-insights [--refresh N]` — ingest FPL-Core-Insights per-match
+  stats, published cup and European fixtures and club Elo into
+  `data/core_insights/`; the launchd job runs it twice a day (§7), and
+  `--refresh N` re-fetches the last N gameweeks of each season past the
+  cache, for a week the publisher corrected after it went final
 - `gaffer review` — grade finished gameweeks into the ledger
 - `gaffer digest --kind friday|tuesday` — write and notify the digest
 - `gaffer brief` (v16) — write this week's brief from the banked advice:
@@ -649,8 +660,9 @@ and it is worth knowing because you can read the evidence yourself:
 
 - **A golden board gates every refactor** (v17c). `tests/test_golden_board.py`
   replays one recorded gameweek through the whole weekly solve in a frozen
-  working directory and compares the advice and solve state byte for byte
-  with committed expected files, on a board chosen to carry a restraint
+  working directory and compares the advice, the solve state and (since
+  v18b) the ladder byte for byte with committed expected files, on a board
+  chosen to carry a restraint
   step taken and refused, a hit, a chip row and a league tilt, so a "no
   diff" is evidence of something (CONVENTIONS §10). It skips, naming the
   file, when the models or the archive on disk are not the ones it was
@@ -666,15 +678,17 @@ Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 `reports/evaluation.json`, and the Model hub.
 
-## 11. The version history, v1 to v18g
+## 11. The version history, v1 to v18h
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
 reviewed. Every cycle ran the same way, and knowing the shape tells you where
 to look for the evidence behind any feature:
 
 1. **Research** (`docs/superpowers/research/`) — a survey of what is wrong,
-   unmined or missing, ranked. Two so far: 2026-08-25 (which produced v4–v11)
-   and 2026-09-01 (which produced v12).
+   unmined or missing, ranked. Five so far: 2026-08-25 (which produced
+   v4–v11), 2026-09-01 (v12), the 2026-09-04 current-state review, the
+   2026-09-07 architecture review (the v17 deepening programme) and the
+   2026-09-12 final review (the v18 polish programme).
 2. **Spec** (`docs/superpowers/specs/`) — the design, with the gate and its
    pass/fail rule written *before* anything runs. The spec is also where the
    results land afterwards: every spec ends in a §Gates or §Outcome section
@@ -1066,30 +1080,57 @@ with four warnings instead of eleven thousand, and a tracked advice fixture
 so it runs on a fresh clone. Python 4496 → **4509**, frontend 1098
 unchanged; no number the advice serves moved.
 
-The suite grew from nothing to **4,425 Python + 986 frontend tests** along
+**v18h — the docs, true** (2026-09-14). The last sub-cycle of the polish
+programme, and the only one that touches no code. Eight cycles of refactor
+had left the written record behind the tree: the GUIDE said the horizon was
+six gameweeks when the default is three, counted nine editable settings when
+the whitelist holds fourteen, quoted a suite two hundred tests small, and
+dated its own to-do list to 2026-09-03; the README had grown into a
+thousand-line cycle diary around the reference it was supposed to be, and
+still named three config readers v17e deleted. The GUIDE is now true
+sentence by sentence against the code, §12 is re-read as of today — three
+of its data-gated rows have filled and two residuals closed — and the README
+is a front door again: what the tool is, how to set it up, every subcommand,
+the configuration with the real defaults, the hubs, the automation, the
+tests. The history the diary held is §11's, where it was always meant to be.
+No number the advice serves moved, because nothing that computes one was
+opened.
+
+The suite grew from nothing to **4,509 Python + 1,098 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above
 so a future change cannot quietly break one.
 
 ## 12. What is pending and what was left open
 
-As of 2026-09-03. Nothing is in flight: every v12 workstream is merged and the
-program is closed. What remains falls into six groups, in the order you
+As of 2026-09-14, after v18h. Nothing is in flight: the v12 program, the v17
+deepening programme and the v18 polish programme are all closed, and the
+model cycle is next. What remains falls into six groups, in the order you
 would act on them.
 
-### 12.0 First: install the two new launchd jobs
+### 12.0 First: reload the seven launchd jobs that are not loaded
 
-`launchctl list | grep com.gaffer` shows all **nine** jobs loaded on this
-machine (checked 2026-09-08; until then `com.gaffer.backup` and
-`com.gaffer.core-insights` were never installed, which is how v17d's
-retrain incident found no backup). One command:
+`launchctl list | grep com.gaffer` on 2026-09-14 shows **two of the nine**:
+
+```
+-	0	com.gaffer.backup
+-	0	com.gaffer.core-insights
+```
+
+`advise`, `prices`, `snapshot`, `field`, `review`, `digest-friday` and
+`digest-tuesday` are not loaded on this machine today, and the gaps are
+visible in the data: the availability log stops on 2026-09-12, the price log
+holds eleven days rather than a season, and three of the rows in 12.2 below
+are waiting on collectors that are not running. The fix is one command, and
+it is **yours to run** — nothing in this repo installs launch agents on your
+behalf:
 
 ```bash
 ./scripts/install_automation.sh
 ```
 
-Then `launchctl list | grep com.gaffer` should show nine. This is the
-single most useful thing on the list: everything in §9 that cannot be
-rebuilt is unprotected until the backup job runs.
+Then `launchctl list | grep com.gaffer` should show nine. The script
+substitutes the project path into the nine plists in `scripts/`, so re-run
+it after moving the folder too.
 
 ### 12.1 Things only you can check — the live spot-checks
 
@@ -1135,25 +1176,28 @@ lines for W1, W3 and W5).
 
 ### 12.2 Waiting on data, not code
 
-Each of these is built, tested and rendered as a named empty state today.
-Nine rows, with the condition that fills each and the rough date:
+Each of these was built, tested and rendered as a named empty state. Nine
+rows, with the condition that fills each and where it stands on 2026-09-14 —
+three have **filled** since the table was written, and one is past its date
+because the collector behind it is not loaded (12.0):
 
-| Surface | Needs | Expected |
+| Surface | Needs | Where it stands |
 |---|---|---|
-| Model → Quality: **flag latency** (W2) | 14 daily availability snapshots plus one graded gameweek they cover | ~2026-09-13 (four days banked, 08-30 → 09-02, one a day at 17:00) |
-| Model → Quality: **presser grading** (W2) | a `data_checked` gameweek with classifier verdicts banked *before* its deadline; GW2 had none | GW3, once graded |
-| Players / captain frame: **EO trend** (W2) | a second gameweek in `field_eo_log.parquet` | the GW3 weekend scrape |
-| Planning → Chips: **WC + BB pair row** (W3) | a `[dgw]` entry in `data/chip_scenarios.toml`, which the writer only creates from a real double in the published list | the first rearrangement FPL announces |
-| League → Field: **`P(top-10k)`** (W4) | a top-10k weekly score-threshold series; no source gaffer reads has one | needs a new scrape — a candidate for the next spec |
-| League → Field: **expected overall-rank change** (W4) | 5 graded gameweeks carrying both `my_points` and `overall_rank`; GW1's rank is null, so 1 of 5 today | ~GW6 |
-| Model → Health: **Elo for 2026-27** (W4) | the archive publisher to fill the `elo` column for this season | out of our hands |
-| Planning → Board: **the price-timing line shows a number** (W5) | `[optimizer] price_timing` on (it is, by default) *and* a nightly price log long enough to return a row per owned player | a couple of weeks of the 23:15 job |
-| Model → Review: **a row names its projection snapshot** (W5) | the first gameweek graded after the W5 merge; earlier rows keep `null` for ever | GW3's Tuesday review |
+| Model → Quality: **presser grading** (W2) | a `data_checked` gameweek with classifier verdicts banked *before* its deadline; GW2 had none | **Filled.** GW3 is graded and `presser_log.parquet` holds 1,126 GW3 verdicts, the last of them 2026-09-04, before the deadline. Read it: `gaffer evaluate --presser-grades` |
+| Players / captain frame: **EO trend** (W2) | a second gameweek in `field_eo_log.parquet` | **Filled.** The log holds GW2 and GW3 |
+| Model → Review: **a row names its projection snapshot** (W5) | the first gameweek graded after the W5 merge; earlier rows keep `null` for ever | **Filled.** GW3's row names `20260904T155104Z`; GW1 and GW2 keep `null` for ever |
+| Model → Health: **Elo for 2026-27** (W4) | the archive publisher to fill the `elo` column for this season | **Filled.** `data/core_insights/2026-27/elo.parquet` has rows |
+| Model → Quality: **flag latency** (W2) | 14 daily availability snapshots plus one graded gameweek they cover | **Past due** (expected ~2026-09-13). Thirteen snapshot days are banked, 08-30 → 09-12 with 09-07 missing, and the 17:00 job has not run since: it is one of the seven in 12.0 |
+| Planning → Board: **the price-timing line shows a number** (W5) | `[optimizer] price_timing` on (it is, by default) *and* a nightly price log long enough to return a row per owned player | Eleven days banked; the 23:15 job is one of the seven in 12.0 |
+| League → Field: **expected overall-rank change** (W4) | 5 graded gameweeks carrying both `my_points` and `overall_rank`; GW1's rank is null | 2 of 5 (GW2, GW3) — ~GW6 |
+| Planning → Chips: **WC + BB pair row** (W3) | a `[dgw]` entry in `data/chip_scenarios.toml`, which the writer only creates from a real double in the published list | Absent, correctly: the published list has no double. The first rearrangement FPL announces |
+| League → Field: **`P(top-10k)`** (W4) | a top-10k weekly score-threshold series; no source gaffer reads has one | Unchanged — needs a new scrape, and it is candidate 3 in 12.5 |
 
 Two verdicts also accrue by gameweek rather than by code: `gaffer evaluate
---news-shadow` gets its second reading when GW3 is `data_checked` (GW2's
-said the plain flag was ahead), and the presser classifier's serving
-decision waits on the presser-grading row above.
+--news-shadow` has its second reading available now that GW3 is graded
+(GW2's said the plain flag was ahead), and the presser classifier's serving
+decision waits on somebody reading the grading report the first row above
+now has the data for.
 
 ### 12.3 One experiment queued
 
@@ -1182,11 +1226,7 @@ These are known, bounded, and each has a reason it was left. None blocks
 weekly use.
 
 - **The presser classifier only logs.** Serving stays off until the grading
-  report (12.2) has a few gameweeks in it.
-- **The trace's price line is present tense.** "Why this move" reads
-  tonight's price log and today's `price_timing` switch, not the ones the
-  solve used, because freezing them into the solve state means editing
-  `advise.py` (protected) for a decoration. The caption says so.
+  report (12.2) has a few gameweeks in it. Its first gameweek is there now.
 - **The trace does not attribute the squad-side terms**, so its lines do not
   sum to the week's xPts; the caption says that too.
 - **Plans B and C are not re-scored under Plan A's own coefficients**, so a
@@ -1199,15 +1239,15 @@ weekly use.
   today, and the fix is a ledger migration.
 - **The watchlist has no "starred at"** — `set_at` is the note's stamp, hence
   the column reads "noted".
-- **`reports/projections/` is never pruned** (~6–12 MB a season); a future
-  `gaffer tidy` target. So are ~34 MB of timestamped API snapshots under
-  `data/raw/`, outside `tidy`'s scope.
+- **`reports/projections/` is never pruned**; a future `gaffer tidy` target,
+  though at 168 KB today it is not the one that matters. The 52 MB of
+  timestamped API snapshots at the top of `data/raw/` — 557 files — are, and
+  they are outside `tidy`'s scope.
 - **The web "re-run" button does not bank a same-day price reading** the way
   the Thursday plist does, so a run from the button can solve with the
   price-timing term seeing an empty table. Run `gaffer prices` first, or use
   the plist.
-- **`threshold_source` is served but rendered nowhere**, and the chip pair's
-  "Try it" card has no What-If arm.
+- **The chip pair's "Try it" card has no What-If arm.**
 - **The generated `types.ts` half lost the client's field comments.** 119 of
   891 sentences were recovered from `schemas.py` docstrings; the rest belong
   in `schemas.py` field docstrings, where the generator can carry them.
@@ -1241,6 +1281,26 @@ weekly use.
   never goes above the objective's hits is a one-line candidate if a
   season says otherwise.
 
+Carried out of the v17 and v18 programmes, all of them small:
+
+- **The ladder's three config reads are on the router's path** (v18b), left
+  there by design: the sealed rail covers `gather_inputs` and
+  `build_advice`, and `build_ladder` is called from the route.
+- **Four private reaches across modules survive** (v18d): `journal` into
+  `artifacts._history_stamp`, `review` into `journal._code_of_element`,
+  `routers/settings` into `config._source_of`, `core_insights` into
+  `data.cups._cached_get`. Each is one call and each wants a public name.
+- **`routers/meta.py` still spells the health file's path** rather than
+  taking it from `tracking.HEALTH_PATH` (v18d).
+- **The calibration block's `p_cs` stays cumulative-only** (v18c) until a
+  gameweek carries 30 club-fixtures, which none will; a per-two-gameweek
+  window is a model-cycle candidate.
+- **Eight `react-hooks` set-state-in-effect warnings** are a `warn` by
+  ruling (v18f), not silenced per line; `FixtureTicker` still has no
+  cold-clone sentence, and `ExplainModal`'s lines are long.
+- **Four singleton warnings and four deferred PuLP filters** in the Python
+  suite (v18g); `tests/test_advise.py` runs for 3.4 s on its own.
+
 ### 12.5 Not planned — what the research proposed and v12 did not take
 
 Nothing below is spec'd or committed. It is the candidate list a next
@@ -1262,10 +1322,10 @@ brainstorm would start from, in the order the 2026-09-01 research ranked it
 6. **A "days since status last changed" `p_play` feature** off the
    availability log (B1's second half), once the flag-latency report has
    shown the log carries the signal.
-7. **Housekeeping follow-ups** from 12.4: `tidy` for projections and API
-   snapshots, the ledger season key, `starred_at`, the `schemas.py`
-   docstrings, rendering `threshold_source`, the chip pair's What-If arm, the
-   web button banking prices.
+7. **Housekeeping follow-ups** from 12.4: `tidy` for the API snapshots above
+   all, the ledger season key, `starred_at`, the `schemas.py` docstrings, the
+   chip pair's What-If arm, the web button banking prices, and the four
+   private reaches v18d recorded.
 8. **FotMob as an xG fallback (B8)** — only if Understat goes down.
 
 Still rejected, and the research confirmed it: referee and weather, price
