@@ -11,9 +11,28 @@ from __future__ import annotations
 
 import httpx
 import pandas as pd
+import pytest
 
-from gaffer.config import DEFAULT_LINEUP_PROVIDERS
+import gaffer.data.news.lineups as lineups_mod
+from gaffer.config import DEFAULT_LINEUP_PROVIDERS, Config
 from gaffer.data.news.lineups import LINEUP_COLS, PROVIDERS, fetch_lineups
+
+from .conftest import patch_view
+
+
+@pytest.fixture(autouse=True)
+def _the_news_fields_are_the_tests_own(monkeypatch):
+    """v18g §2.4: ``fetch_lineups`` reads ``[news]`` off ``config_in_force``
+    at call time, so without this every assertion below was really an
+    assertion about this machine's overlay — the unattributed flake v18b's
+    note recorded. ``lineups.py`` binds the name at import, so the patch goes
+    on that module."""
+    patch_view(monkeypatch, lambda: Config(
+        entry_id=1, league_id=1,
+        news_lineup_absence=True,
+        news_lineup_absence_damp=0.75,
+        news_lineup_providers=list(DEFAULT_LINEUP_PROVIDERS),
+    ), lineups_mod)
 
 
 def _players() -> pd.DataFrame:

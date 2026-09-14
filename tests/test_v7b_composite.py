@@ -45,10 +45,7 @@ def test_the_source_stays_estimation_so_serving_does_not_refuse_it(monkeypatch):
     assert out["source"] == "estimation"
     monkeypatch.setattr(sc, "load_scenario_noise", lambda: out)
     sc.scenario_noise.cache_clear()
-    try:
-        assert sc.scenario_noise() is out
-    finally:
-        sc.scenario_noise.cache_clear()
+    assert sc.scenario_noise() is out
 
 
 def test_a_zero_floor_is_the_identity_on_every_sigma():

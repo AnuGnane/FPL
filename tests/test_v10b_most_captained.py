@@ -64,7 +64,6 @@ def test_save_snapshots_writes_them_through(tmp_path, monkeypatch):
 
 def _wire(tmp_path, monkeypatch, *, events=None, field_log=True):
     monkeypatch.chdir(tmp_path)
-    field_frame.clear_cache()
     (tmp_path / "data" / "live").mkdir(parents=True)
     # A configured clone: the framing reads the season off ``load_config`` and
     # frames nothing without one, so the two keys ``load_config`` requires are

@@ -8,6 +8,7 @@ test makes that impossible to write by accident.
 from __future__ import annotations
 
 import functools
+import sys
 
 import pytest
 
@@ -19,6 +20,36 @@ def _config_cache_is_never_shared_between_tests():
     gaffer.config.invalidate()
     yield
     gaffer.config.invalidate()
+
+
+def _clear_process_lifetime_caches():
+    """Empty every process-lifetime cache a test can fill (v18g §2.4).
+
+    A cache that survives a test is a hidden dependency between tests: the
+    second test reads the first one's fixture and passes, or fails, for a
+    reason that is not in its own body. Looked up through ``sys.modules`` so
+    ``conftest`` does not import the web app at collection, and so a test that
+    never reached the web layer does not pay to import it.
+    """
+    for name, clear in (
+        ("gaffer.web.identity", lambda m: m.clear_cache()),
+        ("gaffer.web.field_frame", lambda m: m.clear_cache()),
+        ("gaffer.optimize.scenarios", lambda m: m.scenario_noise.cache_clear()),
+        ("gaffer.web.routers.league", lambda m: m._OVERVIEW.clear()),
+        ("gaffer.web.routers.league_sim", lambda m: m._CACHE.clear()),
+        ("gaffer.web.routers.live", lambda m: (m.RACE_SERIES.clear(),
+                                               m.RACE_RIVAL.clear())),
+    ):
+        module = sys.modules.get(name)
+        if module is not None:
+            clear(module)
+
+
+@pytest.fixture(autouse=True)
+def _module_caches_are_never_shared_between_tests():
+    _clear_process_lifetime_caches()
+    yield
+    _clear_process_lifetime_caches()
 
 
 def patch_view(monkeypatch, reader, module=None):

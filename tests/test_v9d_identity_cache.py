@@ -40,7 +40,6 @@ from gaffer.web import identity
 @pytest.fixture()
 def wired(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    identity.clear_cache()
     (tmp_path / "data" / "live").mkdir(parents=True)
     store.save(pd.DataFrame({"code": [3], "short_name": ["ARS"],
                              "team_id": [1]}), "live/teams.parquet")
@@ -58,7 +57,6 @@ def wired(tmp_path, monkeypatch):
     monkeypatch.setattr(store, "load",
                         lambda rel: (reads.append(rel), real(rel))[1])
     yield tmp_path, reads
-    identity.clear_cache()
 
 
 IDENTITY_PATHS = {"live/teams.parquet", "live/players.parquet",
@@ -190,7 +188,6 @@ def test_memo_survives_concurrent_eviction(monkeypatch):
     import sys
     import threading
 
-    identity.clear_cache()
     monkeypatch.setattr(identity, "_CACHE_MAX", 4)
     previous_interval = sys.getswitchinterval()
     sys.setswitchinterval(1e-9)
@@ -230,7 +227,6 @@ def test_memo_survives_concurrent_eviction(monkeypatch):
             thread.join()
     finally:
         sys.setswitchinterval(previous_interval)
-        identity.clear_cache()
 
     assert not errors, f"_memo raised under concurrency: {errors[:3]!r}"
     # Every size was read under the lock by a thread that had just finished a

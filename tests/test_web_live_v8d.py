@@ -131,16 +131,6 @@ def _setup(tmp_path, components=True, advice=True):
             json.dumps({"gw": 3, "expected_pts": 61.5}))
 
 
-@pytest.fixture(autouse=True)
-def _clean_series():
-    """The race series is per process, so it outlives a test unless cleared."""
-    live_mod.RACE_SERIES.clear()
-    live_mod.RACE_RIVAL.clear()
-    yield
-    live_mod.RACE_SERIES.clear()
-    live_mod.RACE_RIVAL.clear()
-
-
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)

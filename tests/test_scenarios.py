@@ -313,17 +313,12 @@ def test_run_scenarios_zero_noise_reproduces_the_deterministic_optimum(
 
     monkeypatch.setattr(sc, "load_scenario_noise", lambda: None)
     sc.scenario_noise.cache_clear()
-    try:
-        pool, state = _board()
-        xm = {(int(c), 5): 92.0 for c in pool["code"]}
-        run = run_scenarios(pool, state, xm, n=2, seed=5, **SOLVE_KW)
-        raw = solve_plan(pool, state, **SOLVE_KW)
-        for plan in run.plans:
-            assert plan.gw_plans[0].squad == raw.gw_plans[0].squad
-    finally:
-        # The cache would otherwise hold the pinned None for the rest of the
-        # process, silently putting every later test on the heuristic.
-        sc.scenario_noise.cache_clear()
+    pool, state = _board()
+    xm = {(int(c), 5): 92.0 for c in pool["code"]}
+    run = run_scenarios(pool, state, xm, n=2, seed=5, **SOLVE_KW)
+    raw = solve_plan(pool, state, **SOLVE_KW)
+    for plan in run.plans:
+        assert plan.gw_plans[0].squad == raw.gw_plans[0].squad
 
 
 # --- move_frequencies ------------------------------------------------------

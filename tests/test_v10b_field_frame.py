@@ -24,7 +24,7 @@ import pandas as pd
 import pytest
 
 from gaffer.data import store
-from gaffer.web import field_frame, identity
+from gaffer.web import field_frame
 
 
 def _payload() -> dict:
@@ -52,8 +52,6 @@ def _write_config(root) -> None:
 def wired(tmp_path, monkeypatch):
     """A snapshot that knows both id spaces, and a log that speaks elements."""
     monkeypatch.chdir(tmp_path)
-    identity.clear_cache()
-    field_frame.clear_cache()
     (tmp_path / "data" / "live").mkdir(parents=True)
     _write_config(tmp_path)
     store.save(pd.DataFrame({"code": [500, 501], "element": [411, 165],
@@ -113,7 +111,6 @@ def test_no_log_at_all_leaves_the_payload_exactly_as_it_arrived(tmp_path,
     """The §Gates rail. Not "a null key" — no key. A clone that has never run
     a scrape serves the bytes it served yesterday."""
     monkeypatch.chdir(tmp_path)
-    field_frame.clear_cache()
     payload = _payload()
     assert field_frame.with_field_frame(payload, 2) == payload
     assert "captain_field" not in field_frame.with_field_frame(payload, 2)
@@ -205,8 +202,6 @@ def test_an_unconfigured_clone_frames_no_field_eo(tmp_path, monkeypatch):
     payload as it arrived.
     """
     monkeypatch.chdir(tmp_path)
-    identity.clear_cache()
-    field_frame.clear_cache()
     (tmp_path / "data" / "live").mkdir(parents=True)
     store.save(pd.DataFrame({"code": [500], "element": [411],
                              "team_code": [14]}), "live/players.parquet")
