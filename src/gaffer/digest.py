@@ -536,6 +536,23 @@ def friday_briefing() -> dict:
 
 # --- Tuesday ----------------------------------------------------------
 
+def last_finished_gw() -> int | None:
+    """The highest gameweek the events snapshot calls finished, or ``None``.
+
+    The same disk read :func:`gaffer.data.field.banked_scrape_gw` makes, and
+    for the same reason: this is a launchd job body, so the answer has to come
+    off the snapshot the last refresh banked rather than off the network.
+    """
+    try:
+        events = load_snapshot("live/events.parquet")
+        finished = events[events["finished"].astype(bool)]
+        return int(finished["gw"].max()) if not finished.empty else None
+    except Exception:  # noqa: BLE001 — no snapshot, or a column that moved;
+        # either way the debrief still reports the gameweek it graded, which
+        # is the sentence this function only qualifies.
+        return None
+
+
 def tuesday_debrief() -> dict:
     """How last week actually went, off the ledger the review job banked."""
     from gaffer.review import load_ledger, season_summary
@@ -544,13 +561,23 @@ def tuesday_debrief() -> dict:
     row = ledger[-1] if ledger else None
     gw = int(row["gw"]) if row else None
 
+    # v19a §2.5. The ledger is the review job's output, and the review job can
+    # be a week behind — a Tuesday that re-emits GW3 the week GW4 has already
+    # been played reads as a tool that has not noticed, when in fact it is a
+    # tool waiting on a grade. Say which, once, in both places that name a
+    # gameweek.
+    finished = last_finished_gw()
+    label = f"GW{gw}"
+    if gw is not None and finished is not None and finished > gw:
+        label = f"GW{gw} (GW{finished} finished, not yet graded)"
+
     sections = []
     if row is not None:
         graded = [lane for lane in (row.get("lanes") or [])
                   if lane.get("delta_pts") is not None]
         worst = min(graded, key=lambda lane: lane["delta_pts"]) \
             if graded else None
-        sections.append(_section("verdict", f"GW{gw}", [
+        sections.append(_section("verdict", label, [
             f"You scored {row.get('my_points')}; the model's plan scored "
             f"{row.get('model_points')}."
             if row.get("model_points") is not None else
@@ -590,10 +617,10 @@ def tuesday_debrief() -> dict:
         # A ``no_advice`` week — GW1 of this season is one. The model did not
         # score badly, it never spoke, and "model None." reads as the first of
         # those while being a Python repr in a push notification.
-        headline = (f"GW{gw}: you {row.get('my_points')} — no advice "
+        headline = (f"{label}: you {row.get('my_points')} — no advice "
                     f"survived to compare.")
     else:
-        headline = (f"GW{gw}: you {row.get('my_points')}, model "
+        headline = (f"{label}: you {row.get('my_points')}, model "
                     f"{row.get('model_points')}.")
     return {"kind": "tuesday", "generated_at": _now(), "gw": gw,
             "headline": headline, "sections": kept}

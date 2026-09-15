@@ -9,4 +9,4 @@ for name in advise prices snapshot field review digest-friday digest-tuesday bac
   launchctl unload ~/Library/LaunchAgents/com.gaffer.$name.plist 2>/dev/null || true
   launchctl load ~/Library/LaunchAgents/com.gaffer.$name.plist
 done
-echo "Installed: Thursday 18:00 advise run + nightly 23:15 price check + daily 17:00 availability snapshot + Sat/Sun 12:30 field scrape + Tuesday 09:00 decision review + Friday 17:00 briefing + Tuesday 09:30 debrief + nightly 23:45 backup + 06:30/18:30 core-insights collection."
+echo "Installed: Thursday 18:00 advise run + nightly 23:15 price check + daily 17:00 availability snapshot + Sat/Sun 18:30 field scrape + Tuesday 09:00 decision review + Friday 17:00 briefing + Tuesday 09:30 debrief + nightly 23:45 backup + 06:30/18:30 core-insights collection."

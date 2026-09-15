@@ -407,6 +407,38 @@ def test_one_simulated_gameweek_is_a_level_not_a_movement(furnished,
     assert "14" in bits and "+" not in bits and "-" not in bits
 
 
+def test_a_graded_gameweek_that_is_the_last_finished_one_is_named_plainly(
+        furnished):
+    """v19a §2.5. The healthy Tuesday: the review job graded GW4 and GW4 is
+    the last one played, so there is nothing to qualify and the title must not
+    grow a parenthesis nobody needs to read."""
+    payload = tuesday_debrief()
+    assert _sections(payload)["verdict"]["title"] == "GW4"
+    assert payload["headline"] == "GW4: you 58, model 63."
+
+
+def test_a_finished_gameweek_the_review_has_not_reached_is_said_out_loud(
+        furnished, bare):
+    """The Tuesday that reads as a broken tool and is not one: the review job
+    is a week behind, so the debrief is honestly about GW4 while GW5 has been
+    played. Without the parenthesis the manager sees last week's numbers under
+    this week's date and concludes the tool stopped."""
+    EVENTS.assign(finished=[True, True, False]).to_parquet(
+        bare / "data/live/events.parquet", index=False)
+    payload = tuesday_debrief()
+    assert _sections(payload)["verdict"]["title"] == \
+        "GW4 (GW5 finished, not yet graded)"
+    assert payload["headline"] == \
+        "GW4 (GW5 finished, not yet graded): you 58, model 63."
+
+
+def test_no_events_snapshot_leaves_the_title_alone(furnished, bare):
+    """A clone that has never refreshed cannot say which gameweek finished,
+    and a digest that guessed would be worse than one that did not qualify."""
+    (bare / "data/live/events.parquet").unlink()
+    assert _sections(tuesday_debrief())["verdict"]["title"] == "GW4"
+
+
 def test_a_no_advice_gameweek_says_so_rather_than_reporting_model_none(
         bare, monkeypatch):
     """GW1 of the real season is a ``no_advice`` row: the manager played, the

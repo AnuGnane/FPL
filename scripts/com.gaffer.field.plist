@@ -8,21 +8,25 @@
     <string>cd __PROJECT_DIR__ &amp;&amp; uv run gaffer field-scrape &gt;&gt; logs/field.log 2&gt;&amp;1</string>
   </array>
   <!-- launchd reads StartCalendarInterval in the machine's LOCAL time, not
-       UTC: this is 12:30 on a UK-set machine, which is the clock FPL's
+       UTC: this is 18:30 on a UK-set machine, which is the clock FPL's
        deadlines are quoted in. On a machine set to another timezone the job
-       fires at 12:30 there and may land before the deadline, where picks are
+       fires at 18:30 there and may land before the deadline, where picks are
        404 — set the machine to Europe/London or shift the hours to match. -->
-  <!-- Saturday and Sunday at 12:30, an hour after the 11:30 deadline: picks
-       are public post-deadline and 404 before it. Two slots rather than one
-       because a Sunday-only gameweek has no Saturday squad to sample and a
-       Saturday run that failed gets a second chance the next day. Both are
-       no-ops in seconds when the gameweek is already banked. -->
+  <!-- Saturday and Sunday at 18:30, after every deadline a matchday can
+       carry: picks are public post-deadline and 404 before it. 12:30 was
+       written for an 11:30 deadline and broke on 2026-09-12, a Saturday whose
+       first kickoff was 15:00 and whose deadline was therefore 13:30 — the
+       run found the previous gameweek already banked and the new one's picks
+       not yet public (v19a §2.6, ruling 5). Two slots rather than one because
+       a Sunday-only gameweek has no Saturday squad to sample and a Saturday
+       run that failed gets a second chance the next day. Both are no-ops in
+       seconds when the gameweek is already banked. -->
   <key>StartCalendarInterval</key><array>
     <dict><key>Weekday</key><integer>6</integer>
-          <key>Hour</key><integer>12</integer>
+          <key>Hour</key><integer>18</integer>
           <key>Minute</key><integer>30</integer></dict>
     <dict><key>Weekday</key><integer>0</integer>
-          <key>Hour</key><integer>12</integer>
+          <key>Hour</key><integer>18</integer>
           <key>Minute</key><integer>30</integer></dict>
   </array>
 </dict></plist>
