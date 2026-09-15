@@ -2131,6 +2131,10 @@
      "default": null,
      "description": "Hours since the file was written, or ``None`` for \"never\".\n\nNever 0.0 for an absent file. Zero is \"just now\", which is the strongest\nclaim this row can make and the exact opposite of what an absent file\nmeans. The client colours on ``None`` first and on the number second."
     },
+    "cadence_hours": {
+     "description": "How often the job that writes this file is meant to run.\n\nv19a \u00a72.2: the strip used to colour on absolute hours, which called a\n90-hour-old nightly price bank fresh and a 90-hour-old weekly advice\nstale \u2014 both backwards. Served rather than hard-coded on the client so\nthe rule lives beside the schedule it describes.",
+     "type": "number"
+    },
     "modified_at": {
      "anyOf": [
       {
@@ -2160,13 +2164,16 @@
       "odds",
       "field",
       "advise",
-      "backup"
+      "backup",
+      "prices",
+      "snapshot"
      ],
      "type": "string"
     }
    },
    "required": [
     "age_hours",
+    "cadence_hours",
     "modified_at",
     "path",
     "source"
@@ -2301,6 +2308,64 @@
     "job_id"
    ],
    "title": "JobAccepted",
+   "type": "object"
+  },
+  "JobHealth": {
+   "description": "One ``scripts/com.gaffer.*.plist``, read off disk.\n\nv19a \u00a72.3: the Health tab knew when the *advise* log last moved and\nnothing at all about the other eight jobs, so a launchd agent that had\nstopped being loaded was invisible until a number on another page went\nquietly stale.",
+   "properties": {
+    "age_hours": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "description": "Hours since the last run, or ``None`` for \"never\" \u2014 never 0.0 for an\nabsent log, for ``FreshnessRow.age_hours``' reason."
+    },
+    "interval_hours": {
+     "description": "Hours between scheduled runs, from the calendar entries.",
+     "type": "number"
+    },
+    "label": {
+     "description": "The plist's ``Label`` minus the ``com.gaffer.`` prefix.",
+     "type": "string"
+    },
+    "log": {
+     "description": "The ``logs/<x>.log`` the plist redirects into, or \"\" when it names\nnone. This is the file whose mtime the age below is measured from.",
+     "type": "string"
+    },
+    "modified_at": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "description": "When that log was last written, or ``None`` when it never was."
+    },
+    "overdue": {
+     "description": "Has it missed a run? Half an interval of grace, because a job that\ntakes a minute to start should not alarm the page that watches it.",
+     "type": "boolean"
+    },
+    "schedule": {
+     "description": "When it is meant to run, as a sentence \u2014 \"Thu 18:00\", \"daily 23:15\".",
+     "type": "string"
+    }
+   },
+   "required": [
+    "age_hours",
+    "interval_hours",
+    "label",
+    "log",
+    "modified_at",
+    "overdue",
+    "schedule"
+   ],
+   "title": "JobHealth",
    "type": "object"
   },
   "JobRunView": {
@@ -8536,6 +8601,13 @@
      ],
      "default": null
     },
+    "jobs": {
+     "description": "Every installed plist and whether it has run lately (v19a \u00a72.3).\n\n``launchd`` above stays: it carries the advise log's *last line*, which\nis the one job whose output a reader wants quoted rather than dated.",
+     "items": {
+      "$ref": "#/definitions/JobHealth"
+     },
+     "type": "array"
+    },
     "last_backup": {
      "anyOf": [
       {
@@ -8628,6 +8700,7 @@
     "core_insights",
     "data",
     "data_through_gw",
+    "jobs",
     "last_backup",
     "launchd",
     "model_health",

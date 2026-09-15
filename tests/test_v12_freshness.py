@@ -1,11 +1,11 @@
-"""When each of the five things last happened, in one place.
+"""When each of the seven things last happened, in one place.
 
 Every hub in this app can be read as if it were current. A page of ownership
 figures from a scrape that has not run since Saturday looks exactly like a page
 of ownership figures from an hour ago, and the only cure is a line at the top of
 every page saying which it is.
 
-All five rows are file mtimes, and that is a decision rather than a shortcut: each
+All seven rows are file mtimes, and that is a decision rather than a shortcut: each
 of these artifacts is rewritten whole by the job that produces it, so the mtime is
 the run stamp. A timestamp parsed out of a file's *contents* can be stale inside a
 file that was just rewritten, which is a subtler lie than a stale mtime.
@@ -35,13 +35,17 @@ def _get(path="/api/meta/freshness"):
     return TestClient(create_app()).get(path).json()
 
 
-def test_a_cold_clone_is_five_rows_of_never(clone):
-    """The honest empty state, and the main case on a fresh install. Five
+def test_a_cold_clone_is_seven_rows_of_never(clone):
+    """The honest empty state, and the main case on a fresh install. Seven
     rows, not zero: a strip that renders nothing teaches the reader that its
-    absence means everything is fine."""
+    absence means everything is fine.
+
+    Seven since v19a §2.2: the nightly price bank and the availability
+    snapshot were the two jobs whose silence no page reported."""
     body = _get()
     assert [r["source"] for r in body["rows"]] == [
-        "refresh", "odds", "field", "advise", "backup"]
+        "refresh", "odds", "field", "advise", "backup", "prices",
+        "snapshot"]
     assert all(r["modified_at"] is None for r in body["rows"])
     assert all(r["age_hours"] is None for r in body["rows"])
 
@@ -82,6 +86,43 @@ def test_the_backup_row_reads_the_configured_directory(clone, monkeypatch):
     (clone / "bk" / "gaffer-20260901-2345.tar.gz").write_text("x")
     row = next(r for r in _get()["rows"] if r["source"] == "backup")
     assert row["modified_at"] is not None
+
+
+def test_the_price_and_snapshot_rows_read_the_nightly_banks(clone):
+    """v19a §2.2. Both jobs run every night and neither had a reader, so a
+    price bank that stopped on Tuesday looked exactly like one that ran an
+    hour ago on every page in the app."""
+    store.save(pd.DataFrame({"code": [1]}), "live/price_log.parquet")
+    store.save(pd.DataFrame({"code": [1]}), "live/availability_log.parquet")
+    rows = {r["source"]: r for r in _get()["rows"]}
+    assert rows["prices"]["path"].endswith("price_log.parquet")
+    assert rows["prices"]["age_hours"] is not None
+    assert rows["snapshot"]["path"].endswith("availability_log.parquet")
+    assert rows["snapshot"]["age_hours"] is not None
+
+
+def test_every_row_declares_how_often_its_job_runs(clone):
+    """v19a §2.2. The strip colours on age *over cadence*, so a row with no
+    cadence — or a zero one — is a row the client has to guess about, and the
+    guess it made before this field existed was "168 hours for everything"."""
+    rows = {r["source"]: r for r in _get()["rows"]}
+    assert all(r["cadence_hours"] > 0 for r in rows.values())
+    assert [rows[s]["cadence_hours"] for s in ("backup", "prices",
+                                               "snapshot")] == [24, 24, 24]
+    assert [rows[s]["cadence_hours"] for s in ("refresh", "odds", "field",
+                                               "advise")] == [168] * 4
+
+
+def test_the_two_new_rows_stat_the_paths_their_writers_name(clone):
+    """`meta.py` restates the snapshot path rather than importing it — its
+    module drags in the model stack for one string — so this is the rail that
+    catches the two spellings drifting apart."""
+    from gaffer.price_log import PRICE_LOG_PATH
+    from gaffer.snapshot import SNAPSHOT_PATH
+    from gaffer.web.routers import meta
+
+    assert meta.PRICE_LOG_PATH == PRICE_LOG_PATH
+    assert meta.SNAPSHOT_PATH == SNAPSHOT_PATH
 
 
 def test_a_broken_config_leaves_the_backup_row_at_never(clone):

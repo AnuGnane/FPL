@@ -1084,12 +1084,21 @@ export interface FreshnessRow {
    * means. The client colours on ``None`` first and on the number second.
    */
   age_hours: number | null
+  /**
+   * How often the job that writes this file is meant to run.
+   *
+   * v19a §2.2: the strip used to colour on absolute hours, which called a
+   * 90-hour-old nightly price bank fresh and a 90-hour-old weekly advice
+   * stale — both backwards. Served rather than hard-coded on the client so
+   * the rule lives beside the schedule it describes.
+   */
+  cadence_hours: number
   modified_at: string | null
   /**
    * What was actually stat'd, so a surprising age is diagnosable.
    */
   path: string | null
-  source: 'refresh' | 'odds' | 'field' | 'advise' | 'backup'
+  source: 'refresh' | 'odds' | 'field' | 'advise' | 'backup' | 'prices' | 'snapshot'
 }
 /**
  * This interface was referenced by `GafferApi`'s JSON-Schema
@@ -1131,6 +1140,50 @@ export interface HistoryRun {
  */
 export interface JobAccepted {
   job_id: string
+}
+/**
+ * One ``scripts/com.gaffer.*.plist``, read off disk.
+ *
+ * v19a §2.3: the Health tab knew when the *advise* log last moved and
+ * nothing at all about the other eight jobs, so a launchd agent that had
+ * stopped being loaded was invisible until a number on another page went
+ * quietly stale.
+ *
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "JobHealth".
+ */
+export interface JobHealth {
+  /**
+   * Hours since the last run, or ``None`` for "never" — never 0.0 for an
+   * absent log, for ``FreshnessRow.age_hours``' reason.
+   */
+  age_hours: number | null
+  /**
+   * Hours between scheduled runs, from the calendar entries.
+   */
+  interval_hours: number
+  /**
+   * The plist's ``Label`` minus the ``com.gaffer.`` prefix.
+   */
+  label: string
+  /**
+   * The ``logs/<x>.log`` the plist redirects into, or "" when it names
+   * none. This is the file whose mtime the age below is measured from.
+   */
+  log: string
+  /**
+   * When that log was last written, or ``None`` when it never was.
+   */
+  modified_at: string | null
+  /**
+   * Has it missed a run? Half an interval of grace, because a job that
+   * takes a minute to start should not alarm the page that watches it.
+   */
+  overdue: boolean
+  /**
+   * When it is meant to run, as a sentence — "Thu 18:00", "daily 23:15".
+   */
+  schedule: string
 }
 /**
  * This interface was referenced by `GafferApi`'s JSON-Schema
@@ -2936,6 +2989,13 @@ export interface WireHealth {
   core_insights: CoreInsightsHealth | null
   data: SourceHealth[]
   data_through_gw: number | null
+  /**
+   * Every installed plist and whether it has run lately (v19a §2.3).
+   *
+   * ``launchd`` above stays: it carries the advise log's *last line*, which
+   * is the one job whose output a reader wants quoted rather than dated.
+   */
+  jobs: JobHealth[]
   /**
    * The newest ``gaffer-*.tar.gz`` in the configured backup directory.
    *

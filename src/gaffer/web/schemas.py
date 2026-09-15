@@ -1060,13 +1060,42 @@ class LaunchdHealth(BaseModel):
     last_line: str | None
 
 
+class JobHealth(BaseModel):
+    """One ``scripts/com.gaffer.*.plist``, read off disk.
+
+    v19a §2.3: the Health tab knew when the *advise* log last moved and
+    nothing at all about the other eight jobs, so a launchd agent that had
+    stopped being loaded was invisible until a number on another page went
+    quietly stale.
+    """
+
+    label: str
+    """The plist's ``Label`` minus the ``com.gaffer.`` prefix."""
+    schedule: str
+    """When it is meant to run, as a sentence — "Thu 18:00", "daily 23:15"."""
+    log: str
+    """The ``logs/<x>.log`` the plist redirects into, or "" when it names
+    none. This is the file whose mtime the age below is measured from."""
+    modified_at: str | None
+    """When that log was last written, or ``None`` when it never was."""
+    age_hours: float | None
+    """Hours since the last run, or ``None`` for "never" — never 0.0 for an
+    absent log, for ``FreshnessRow.age_hours``' reason."""
+    interval_hours: float
+    """Hours between scheduled runs, from the calendar entries."""
+    overdue: bool
+    """Has it missed a run? Half an interval of grace, because a job that
+    takes a minute to start should not alarm the page that watches it."""
+
+
 class ArtifactItem(BaseModel):
     name: str
     bytes: int
 
 
 class FreshnessRow(BaseModel):
-    source: Literal["refresh", "odds", "field", "advise", "backup"]
+    source: Literal["refresh", "odds", "field", "advise", "backup",
+                    "prices", "snapshot"]
     path: str | None = None
     """What was actually stat'd, so a surprising age is diagnosable."""
     modified_at: str | None = None
@@ -1076,6 +1105,14 @@ class FreshnessRow(BaseModel):
     Never 0.0 for an absent file. Zero is "just now", which is the strongest
     claim this row can make and the exact opposite of what an absent file
     means. The client colours on ``None`` first and on the number second.
+    """
+    cadence_hours: float
+    """How often the job that writes this file is meant to run.
+
+    v19a §2.2: the strip used to colour on absolute hours, which called a
+    90-hour-old nightly price bank fresh and a 90-hour-old weekly advice
+    stale — both backwards. Served rather than hard-coded on the client so
+    the rule lives beside the schedule it describes.
     """
 
 
@@ -1115,6 +1152,12 @@ class Health(BaseModel):
     data_through_gw: int | None = None
     models: list[ModelHealth]
     launchd: LaunchdHealth
+    jobs: list[JobHealth]
+    """Every installed plist and whether it has run lately (v19a §2.3).
+
+    ``launchd`` above stays: it carries the advise log's *last line*, which
+    is the one job whose output a reader wants quoted rather than dated.
+    """
     odds_key_present: bool
     model_health: dict[str, Any] | None
     artifacts: list[ArtifactItem]
