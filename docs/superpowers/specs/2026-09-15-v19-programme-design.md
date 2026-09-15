@@ -10,7 +10,7 @@ v20.
 written after this design is approved); tracker
 `docs/superpowers/plans/2026-09-15-v19-tracker.md`.
 **Branches:** `v19<letter>-<slug>` off `main`, one at a time, ff-merged.
-**Date:** 2026-09-15. **Status:** draft, awaiting the user's review.
+**Date:** 2026-09-15. **Status:** approved by the user 2026-09-15, all eleven rulings as proposed; running.
 
 ---
 
