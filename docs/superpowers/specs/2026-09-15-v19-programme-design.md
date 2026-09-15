@@ -54,8 +54,8 @@ Three shapes were considered.
 
 **The rule for the whole programme, as in v17 and v18: no sub-cycle changes
 a number the advice serves.** Two sub-cycles change an *input's timing*
-(v19b banks a price reading before the solve; v19a may bank the field
-sample a week earlier) and each carries a ruling in §1 and a before/after
+(v19b banks a price reading before the solve; v19a scrapes the field
+sample later on the same day) and each carries a ruling in §1 and a before/after
 board diff in its gate, because "no served number moved" is not the same
 claim as "the same inputs were read". The replay-gated arms are v20.
 
@@ -86,13 +86,12 @@ strikes them before the plan is written.
    inputs are recorded) and the sub-cycle's gate includes one real
    before/after board diff read by the orchestrator. `advise.py` is not
    touched; the step lives in `pipeline.py`, which is not orchestrator-only.
-5. **The field job banks the current gameweek once its deadline has
-   passed** (v19a), not the previous finished one. Ruling: the served EO
-   moves a week earlier, so League → Field's `eo_gw` caption must say which
-   gameweek it names (it already does, W4) and the change is recorded as
-   an input-timing change with a before/after Field panel read. If the
-   user prefers the one-week lag, strike this item; nothing else depends on
-   it.
+5. **The field job's schedule moves to 18:30** (v19a). Corrected on
+   2026-09-15 when v19a's spec was written: the code already scrapes the
+   last gameweek whose deadline has passed (`data/field.py:403`); the
+   Saturday 12:30 run simply fires before a 13:30 deadline. The plist's
+   two runs move to 18:30 and the user re-runs `install_automation.sh`
+   after the merge. No logic changes and no served number moves.
 6. **`field_sample` is dropped from `Config`** (v19h), the only field
    never read outside `config.py` (backend §4). The Config pin moves 62 →
    61 in its own commit to `tests/test_v13_degradation.py`. If the user
