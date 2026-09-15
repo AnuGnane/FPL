@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { apiPost } from '../api/client'
 import { invalidate, usePageData } from '../api/pageData'
 import {
-  Bar, Button, Callout, Card, Chip, EmptyState, JobButton, Loading, PageHeader,
-  Segmented, Stat, StatRow, fmtNum, fmtPct,
+  Bar, Button, Callout, Card, Chip, Countdown, EmptyState, JobButton, Loading,
+  PageHeader, Segmented, Stat, StatRow, fmtNum, fmtPct,
 } from '../kit'
 import type {
   AdviceChipRow, AdviceLatest, ComponentsBreakdown, LadderPayload,
@@ -177,9 +177,11 @@ export default function ThisWeek() {
     <>
       <PageHeader
         title={`GW${data.gw}`}
-        context={data.staleness.stale
-          ? data.staleness.reason
-          : `deadline ${new Date(data.deadline).toLocaleString()}`}
+        // v19a §2.1: the clock, always. The header used to print the deadline
+        // *or* the staleness reason, so the page stopped saying how long is
+        // left exactly when the board went stale — the state in which a
+        // reader most needs to know whether there is time to re-run.
+        context={<Countdown deadline={data.deadline} gw={data.gw} />}
         action={(
           // Two runs, one lane: the full solve is the page's primary action;
           // the same solve with the sweep off (~5 min cheaper) is secondary.
@@ -189,9 +191,14 @@ export default function ThisWeek() {
           </div>
         )}
       />
-      {data.staleness.data_warning && (
+      {(data.staleness.stale || data.staleness.data_warning) && (
+        // One Callout, both sentences (v19a §2.1). The reason the header gave
+        // up its slot lands here, ahead of the data warning: why this board is
+        // out of date comes before what is missing underneath it, and two
+        // amber strips saying related things would read as two faults.
         <Callout tone="warn" role="alert" className="mb-4">
-          {data.staleness.data_warning}
+          {[data.staleness.stale ? data.staleness.reason : null,
+            data.staleness.data_warning].filter(Boolean).join(' · ')}
         </Callout>
       )}
       <StatRow>

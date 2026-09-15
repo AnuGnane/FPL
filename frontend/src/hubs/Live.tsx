@@ -5,9 +5,9 @@ import {
 } from 'recharts'
 import { ApiError, apiGet, errorText } from '../api/client'
 import {
-  type Column, Callout, Card, Chip, DataTable, EmptyState, ExplainModal,
-  Loading, PageHeader, PlayerCard, SERIES_COLOURS, Stat, TABLE_CLASS,
-  THEAD_CLASS, TR_CLASS, fmtNum, tdClass, thClass,
+  type Column, Button, Callout, Card, Chip, DataTable, EmptyState,
+  ExplainModal, Loading, PageHeader, PlayerCard, SERIES_COLOURS, Stat,
+  TABLE_CLASS, THEAD_CLASS, TR_CLASS, fmtNum, tdClass, thClass,
 } from '../kit'
 import type { LiveState, LiveTableRow } from '../types'
 
@@ -62,6 +62,12 @@ export default function Live() {
   // host owns one: `onSelect` names a code and the page decides what that
   // means.
   const [explain, setExplain] = useState<number | null>(null)
+  // v19a §2.4. A page that polls silently is indistinguishable from a page
+  // whose polling has stopped: the numbers on screen look the same either
+  // way, and a live gameweek is exactly when a reader needs to know which of
+  // the two they are looking at. Set on success only — a failed poll leaves
+  // the last good stamp standing, because that is when it was last true.
+  const [polledAt, setPolledAt] = useState<Date | null>(null)
 
   const load = useCallback(() => apiGet<LiveState>('/api/live')
     .then((body) => {
@@ -69,6 +75,7 @@ export default function Live() {
       setError(null)
       setStatus(null)
       setActive(body.active)
+      setPolledAt(new Date())
     })
     .catch((e: unknown) => {
       setError(errorText(e))
@@ -92,13 +99,27 @@ export default function Live() {
     </label>
   )
 
+  // "not yet" rather than nothing before the first answer: an empty slot is
+  // read as a page that has loaded, and this one has not (v19a §2.4).
+  const stamp = polledAt === null
+    ? 'not yet'
+    : `updated ${polledAt.toLocaleTimeString(undefined,
+      { hour: '2-digit', minute: '2-digit' })}`
+
   const header = (
     <PageHeader
       title="Live"
-      context={data && data.gw !== null
+      context={[data && data.gw !== null
         ? `GW${data.gw} · ${data.matches_in_play} matches in play`
-        : undefined}
-      action={pollToggle}
+        : null, stamp].filter(Boolean).join(' · ')}
+      action={(
+        <div className="flex flex-wrap items-center gap-3">
+          {pollToggle}
+          {/* The auto-poll is a minute wide and a match can turn inside it,
+              so the reader gets the same lane by hand. */}
+          <Button onClick={() => { void load() }}>Refresh</Button>
+        </div>
+      )}
     />
   )
 

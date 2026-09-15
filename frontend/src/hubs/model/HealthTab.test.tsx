@@ -30,6 +30,12 @@ beforeEach(() => {
       launchd: { log: 'logs/advise.log', present: true,
                  modified_at: '2026-09-10T09:05:00+00:00',
                  last_line: 'Report: reports/gw3-report.html' },
+      jobs: [{ label: 'advise', schedule: 'Thu 18:00', log: 'logs/advise.log',
+               modified_at: '2026-09-10T09:05:00+00:00', age_hours: 4.0,
+               interval_hours: 168, overdue: false },
+             { label: 'field', schedule: 'Sat, Sun 18:30',
+               log: 'logs/field.log', modified_at: '2026-09-01T12:30:00+00:00',
+               age_hours: 220.0, interval_hours: 84, overdue: true }],
       odds_key_present: false,
       model_health: { gw: 2, mae_starters: 1.4, captain_actual: 12 },
       artifacts: [{ name: 'reports/gw3-advice.json', bytes: 2048 }],
@@ -49,6 +55,35 @@ describe('Runs & Health', () => {
     expect(screen.getByText(/add an odds key/i)).toBeInTheDocument()
     expect(screen.getByText('reports/gw3-advice.json')).toBeInTheDocument()
   })
+
+  it('lists every installed job and names the one that has stopped',
+     async () => {
+       // v19a §2.3. A launchd job that stops is invisible everywhere else: the
+       // artifacts it writes simply age, and nothing on any page says which
+       // timer stopped writing them.
+       render(<MemoryRouter><HealthTab /></MemoryRouter>)
+       expect(await screen.findByText('advise')).toBeInTheDocument()
+       expect(screen.getByText('field')).toBeInTheDocument()
+       expect(screen.getByText('Thu 18:00')).toBeInTheDocument()
+       expect(screen.getByText('Sat, Sun 18:30')).toBeInTheDocument()
+       expect(screen.getByText('9d')).toBeInTheDocument()
+       // The word, not only the colour.
+       expect(screen.getByText('overdue')).toHaveClass('text-down')
+       expect(screen.getByText('ok')).toBeInTheDocument()
+     })
+
+  it('says no job is installed rather than drawing an empty table',
+     async () => {
+       apiGet.mockImplementation(async () => ({
+         data: [], models: [], artifacts: [], odds_key_present: true,
+         model_health: null, jobs: [],
+         launchd: { log: 'logs/advise.log', present: false, modified_at: null,
+                    last_line: null },
+       }))
+       render(<MemoryRouter><HealthTab /></MemoryRouter>)
+       expect(await screen.findByText(/No launchd jobs were found/))
+         .toBeInTheDocument()
+     })
 
   it('starts no job of its own', async () => {
     // The Model hub's JobButtons are the single control. This tab carrying a

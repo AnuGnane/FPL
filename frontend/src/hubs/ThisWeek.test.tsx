@@ -137,6 +137,28 @@ describe('This Week hub', () => {
     render(<MemoryRouter><ThisWeek /></MemoryRouter>)
     expect(await screen.findByRole('heading', { level: 1, name: /GW5/ }))
       .toBeInTheDocument()
+    // v19a §2.1: the header counts down rather than printing a bare stamp.
+    expect(screen.getByTestId('countdown'))
+      .toHaveTextContent(/to the GW5 deadline · /)
+  })
+
+  it('keeps the countdown in the header when the board is stale, and puts '
+     + 'the reason in the callout', async () => {
+    // The split the cycle exists for: a stale board is exactly when a reader
+    // needs to know how long is left, and the old header spent that slot on
+    // the reason instead.
+    apiGet.mockImplementation((path: string) => (
+      path === '/api/advice/latest'
+        ? Promise.resolve({ ...ADVICE,
+                            staleness: { ...ADVICE.staleness, stale: true,
+                                         reason: 'advice is for GW4' } })
+        : route(path)))
+    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    expect(await screen.findByTestId('countdown'))
+      .toHaveTextContent(/to the GW5 deadline · /)
+    const alert = screen.getByRole('alert')
+    expect(alert).toHaveAttribute('data-tone', 'warn')
+    expect(alert).toHaveTextContent('advice is for GW4')
   })
 
   it('shows the four stats: XI, captain, chip and league', async () => {

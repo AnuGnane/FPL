@@ -1,9 +1,40 @@
 import { usePageData } from '../../api/pageData'
 import {
-  Callout, Card, Chip, EmptyState, Loading, TABLE_CLASS, THEAD_CLASS, TR_CLASS,
-  tdClass, thClass, tone,
+  type Column, Callout, Card, Chip, DataTable, EmptyState, Loading,
+  TABLE_CLASS, THEAD_CLASS, TR_CLASS, ageText, tdClass, thClass, tone,
 } from '../../kit'
-import type { HealthData } from '../../types'
+import type { HealthData, JobHealth } from '../../types'
+
+/**
+ * Every installed plist and whether it has run lately (v19a §2.3).
+ *
+ * A job that has quietly stopped is invisible everywhere else in the app: the
+ * artifacts it writes simply age, and the freshness strip says a *file* is
+ * old without saying which timer stopped writing it. Last run is the log's
+ * mtime, so the stamp goes in the title — a reader chasing a stopped job
+ * wants the exact minute, and "3d" in the cell is what they are scanning for.
+ */
+const JOB_COLUMNS: Column<JobHealth>[] = [
+  { key: 'label', header: 'Job', primary: true, value: (job) => job.label },
+  { key: 'schedule', header: 'Schedule', primary: true,
+    value: (job) => job.schedule },
+  { key: 'last_run', header: 'Last run', primary: true,
+    value: (job) => ageText(job.age_hours),
+    render: (job) => (
+      <span className="tn" title={job.modified_at ?? 'never run'}>
+        {ageText(job.age_hours)}
+      </span>
+    ) },
+  { key: 'status', header: 'Status',
+    value: (job) => (job.overdue ? 'overdue' : 'ok'),
+    // The word, not only the colour: `down` ink alone says "something here"
+    // to a reader who can see it and nothing at all to one who cannot.
+    render: (job) => (
+      <span className={job.overdue ? 'text-down' : 'text-text-muted'}>
+        {job.overdue ? 'overdue' : 'ok'}
+      </span>
+    ) },
+]
 
 // No buttons here. This tab used to carry its own "Refresh data" and "Re-run
 // advice" pair, posting to the legacy JobRegistry routes — a second lane past
@@ -65,8 +96,12 @@ export default function HealthTab() {
                   {/* The strip's own three ages (plan R2), so one feed does
                       not read as stale here and fresh in the header. A
                       source nobody has fetched is doubt, not a failure. */}
+                  {/* A day, explicitly, since v19a §2.2 gave `tone` a
+                      cadence: these are the ingested files, every one of them
+                      written by a job that runs at least nightly, and the
+                      row carries no cadence of its own to read. */}
                   {source.present
-                    ? <span className={`tn ${tone(source.age_hours)}`}>
+                    ? <span className={`tn ${tone(source.age_hours, 24)}`}>
                         {`${source.age_hours}h ago`}
                       </span>
                     : <Chip tone="warn">missing</Chip>}
@@ -192,7 +227,23 @@ export default function HealthTab() {
         )}
       </Card>
       <Card title="Automation" className="mb-4">
-        <p className="tn text-xs text-text-faint">{data.launchd.log}</p>
+        {/* `?? []` because the field arrived in v19a: a server or a fixture
+            older than this cycle carries no jobs at all, and the table's own
+            sentence is the honest answer to both that and a machine with no
+            plists installed. */}
+        <DataTable
+          columns={JOB_COLUMNS}
+          rows={data.jobs ?? []}
+          rowKey={(job) => job.label}
+          rowLabel={(job) => job.label}
+          empty={(
+            <p className="text-text-muted">
+              No launchd jobs were found — nothing in scripts/ is installed on
+              a timer, so every run here is one somebody started by hand.
+            </p>
+          )}
+        />
+        <p className="tn mt-3 text-xs text-text-faint">{data.launchd.log}</p>
         {data.launchd.present
           ? (
             /* No box (§5): one hairline down the left says "a log line". */

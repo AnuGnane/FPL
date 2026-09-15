@@ -232,6 +232,40 @@ describe('Live', () => {
       expect(screen.queryByText('One place above')).not.toBeInTheDocument()
     })
 
+  it('stamps the header with the minute the poll succeeded', async () => {
+    // v19a §2.4. Silence and a stopped poll look identical on this page: the
+    // numbers sit there either way, which on a live gameweek is the one thing
+    // a reader must not have to guess about.
+    vi.setSystemTime(new Date('2026-08-31T14:32:00Z'))
+    await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+    expect(screen.getByTestId('page-context'))
+      .toHaveTextContent(/updated \d\d:\d\d/)
+    expect(screen.getByTestId('page-context')).not.toHaveTextContent('not yet')
+  })
+
+  it('polls again when Refresh is clicked, and moves the stamp', async () => {
+    vi.setSystemTime(new Date('2026-08-31T14:32:00Z'))
+    await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+    const first = screen.getByTestId('page-context').textContent
+    expect(apiGet).toHaveBeenCalledTimes(1)
+    // The clock moves without the interval firing, so the second stamp can
+    // only have come from the click.
+    vi.setSystemTime(new Date('2026-08-31T14:47:00Z'))
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Refresh' }))
+    })
+    expect(apiGet).toHaveBeenCalledTimes(2)
+    expect(screen.getByTestId('page-context').textContent).not.toBe(first)
+    expect(screen.getByTestId('page-context'))
+      .toHaveTextContent(/updated \d\d:\d\d/)
+  })
+
+  it('says not yet before the first answer arrives', async () => {
+    apiGet.mockReturnValue(new Promise(() => {}))
+    await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+    expect(screen.getByTestId('page-context')).toHaveTextContent('not yet')
+  })
+
   it('opens the explain modal from a player chip', async () => {
     // The affordance Live's rows did not have: the name was bare text, so
     // there was nowhere to ask why the model still expects anything of him.
