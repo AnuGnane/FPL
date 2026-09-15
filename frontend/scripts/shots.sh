@@ -81,6 +81,15 @@ if [[ "$STAGE" == v18c* ]]; then
     "journal:/model?tab=journal"
   )
 fi
+# v19a gate (specs/2026-09-15-v19a-clock-design.md §3): the six, plus the
+# Health tab (the jobs table) and Live (the poll stamp), the two pages the
+# sub-cycle names beyond This Week.
+if [[ "$STAGE" == v19a* ]]; then
+  HUBS+=(
+    "health:/model?tab=health"
+    "live:/live"
+  )
+fi
 for entry in "${HUBS[@]}"; do
   name="${entry%%:*}"; rest="${entry#*:}"
   path="${rest%%:*}"; height="${rest#*:}"
