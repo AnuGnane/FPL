@@ -598,7 +598,7 @@ def test_a_token_refuses_every_write_and_no_read(tmp_path, monkeypatch):
 def test_freshness_on_a_cold_clone_is_five_nevers_and_never_a_zero(
         tmp_path, monkeypatch):
     """`age_hours` of 0.0 means "just now", which is the exact opposite of
-    what a cold clone is. Five rows and not zero, because a strip that renders
+    what a cold clone is. Seven rows (v19a) and not zero, because a strip that renders
     nothing teaches the reader that its absence means nothing is stale."""
     from fastapi.testclient import TestClient
 
@@ -606,8 +606,11 @@ def test_freshness_on_a_cold_clone_is_five_nevers_and_never_a_zero(
 
     monkeypatch.chdir(tmp_path)
     rows = TestClient(create_app()).get("/api/meta/freshness").json()["rows"]
+    # v19a §2.2: prices and the availability snapshot join the strip, the
+    # two daily inputs that used to degrade the objective unseen.
     assert [r["source"] for r in rows] == ["refresh", "odds", "field",
-                                           "advise", "backup"]
+                                           "advise", "backup", "prices",
+                                           "snapshot"]
     assert all(r["age_hours"] is None for r in rows)
     assert not [r for r in rows if r["age_hours"] == 0.0]
 
@@ -680,7 +683,7 @@ def test_freshness_and_health_answer_without_a_tree_at_all(tmp_path,
     from gaffer import mcp_server
 
     monkeypatch.chdir(tmp_path)
-    assert len(mcp_server.TOOLS["freshness"]()["rows"]) == 5
+    assert len(mcp_server.TOOLS["freshness"]()["rows"]) == 7  # v19a §2.2
     assert "error" not in mcp_server.TOOLS["health"]()
 
 
