@@ -127,6 +127,51 @@ Tests: graded equals finished; finished ahead; no snapshot.
 7. Ruling 5's read: the field plist's diff pasted below, and after the
    merge and the user's reinstall, the first Saturday log line.
 
-## 4. Outcome
+## 4. Outcome (2026-09-15, gate run by the orchestrator)
 
-Filled at the gate.
+Commits on `v19a-clock`: `000d943` spec; `0e66f4e` the seven-row rail
+ahead of the change; `bb6deb3` freshness rows, `JobHealth`, types;
+`03e0fd3` the digest's label and the field plist; `34320a2` the README's
+deny-list string (a v8a rail red on `main` since v18h's `786b24e`);
+`33fbca0` the countdown, cadence tones, the jobs table, Live's stamp;
+`53e76fc` the screenshot stage.
+
+| Gate line | Result |
+|---|---|
+| 1 inner loop | `4383 passed, 148 deselected, 4 warnings in 72.10s` |
+| 1 ruff | `All checks passed!` |
+| 2 golden | `58 passed in 1096.05s (0:18:16)`, 0 skipped |
+| 3 npm run check | exit 0, `Tests 1114 passed \| 1 skipped (1115)`, `0 errors, 8 warnings` (the eight recorded at v18f), types check clean |
+| 4 fetch rails | untouched |
+| 5 screenshots | 16 pairs at 1400, both themes, taken 23:33:05–23:33:51 on the same served data; see below |
+| 6 mutations | seven-row rail (a `_row` dropped → 5 failures); `OVERDUE_FACTOR` 1.5 → 2.5 (the 37 h test alone fails, the 35 h side stays green); the countdown's passed comparison inverted (5 of 7 fail); `tone`'s ratio 2 → 3 (the two colouring rails fail) |
+| 7 ruling 5 | the field plist's two `Hour` values 12 → 18 (`03e0fd3`); the first Saturday line waits on the user's reinstall |
+
+**Screenshots, measured rather than eyeballed** (Pillow over the pairs):
+the five unnamed pages (Planning what-if and board, Players, League,
+Model → Settings) differ only in rows 27–38, columns 292–741, in both
+themes: the freshness strip's own line, where two cells joined and one
+cell's tone moved from absolute hours to the ratio. No row below the
+strip moved, so the strip did not wrap. This Week differs in rows 27–137
+(the strip, the countdown in the header, the reason joining the
+callout); Live in rows 27–335 (the stamp and the Refresh button); Model
+→ Health in rows 27–1599 (the jobs table pushes the page down). The
+gate's "byte-identical" for unnamed hubs is therefore read as
+"identical below the strip", which the programme design should have
+said, since the strip is on every page; recorded here and in the
+tracker.
+
+**What the jobs table said on its first live reading** (23:33, the
+after shot): `prices` daily 23:15, last run 4d, **overdue**; every other
+job ok. `launchctl list` from the agent's shell still showed two labels
+and the nightly prices job had not fired at 23:15. That reading is the
+sub-cycle's point, and the user's to act on.
+
+**Residuals, recorded:** `PLIST_DIR` reads the repo's `scripts/` copies,
+not `~/Library/LaunchAgents`, so the table shows the schedule the repo
+intends rather than the one installed (they differed today by the field
+job's hour); v19h can prefer the installed copy when present.
+`scripts/com.gaffer.core-insights.plist` carries `--refresh` inside an
+XML comment, which expat rejects; the reader strips comments on retry
+rather than the plist being edited (implementer's call, kept). The
+countdown's absolute stamp follows the browser's locale.
