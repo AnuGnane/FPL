@@ -202,6 +202,7 @@ predicted-line-up layer, every source of which degrades to the official FPL
 flag on its own; `llm_classifier = false` with `llm_shadow = true` is the
 shipped posture, so the presser classifier logs what it would have done and
 changes no advice, and its default `llm_command` hands the model no tools
+(`--disallowedTools "Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task,NotebookEdit"`)
 because every text it reads is scraped from the web. `[league]` holds the λ
 tilt's dials, plus `focus` and `stance`, which are normally set from the League
 page. `[web]` is consulted only by `gaffer ui --lan`.
