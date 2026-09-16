@@ -4,6 +4,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReviewData } from '../../types'
 import QualityTab from './QualityTab'
 
+// v19h §2.1 cut every prop-taking section out to `quality/`, and its cases
+// with it. What is left here is the tab: the one read, the empty state the
+// server's sentence fills, which cards are drawn for a given payload, and the
+// claim that a section whose own fetch fails takes nothing else down.
+
 const { FakeApiError, apiGet } = vi.hoisted(() => {
   class FakeApiError extends Error {
     status: number
@@ -127,41 +132,16 @@ beforeEach(() => {
 })
 
 describe('QualityTab', () => {
-  it('shows the holdout table beside the baselines', async () => {
+  it('composes a card per key the evaluation carries', async () => {
     render(<MemoryRouter><QualityTab /></MemoryRouter>)
     expect(await screen.findByRole('heading', { name: /holdout/i }))
       .toBeInTheDocument()
-    expect(screen.getByText(/last-10-slot holdout/i)).toBeInTheDocument()
-    expect(screen.getAllByText('Haulers').length).toBeGreaterThan(0)
-    expect(screen.getByText(/last-5 mean/i)).toBeInTheDocument()
-    expect(screen.getByText(/last-38 mean/i)).toBeInTheDocument()
-  })
-
-  it('puts the published numbers next to ours in the benchmark', async () => {
-    render(<MemoryRouter><QualityTab /></MemoryRouter>)
-    expect(await screen.findByText('OpenFPL')).toBeInTheDocument()
-    expect(screen.getByText('FPL Review')).toBeInTheDocument()
-    expect(screen.getByText('5.142')).toBeInTheDocument()
-    expect(screen.getByText(/yardstick/i)).toBeInTheDocument()
-  })
-
-  it('draws a reliability curve per probability head', async () => {
-    render(<MemoryRouter><QualityTab /></MemoryRouter>)
-    expect(await screen.findByLabelText('P(plays) reliability'))
+    expect(screen.getByRole('heading', { name: /benchmark/i }))
       .toBeInTheDocument()
-    expect(screen.getByLabelText('P(60+ minutes) reliability'))
+    expect(screen.getByRole('heading', { name: /decomposition/i }))
       .toBeInTheDocument()
-    expect(screen.getByLabelText('P(clean sheet) reliability'))
+    expect(screen.getByRole('heading', { name: /news layer/i }))
       .toBeInTheDocument()
-  })
-
-  it('spells out the two derived decomposition numbers', async () => {
-    render(<MemoryRouter><QualityTab /></MemoryRouter>)
-    expect(await screen.findByText('850')).toBeInTheDocument()
-    expect(screen.getByText('100')).toBeInTheDocument()
-    expect(screen.getByText(/better forecasting/i)).toBeInTheDocument()
-    expect(screen.getByText(/multi-week planning/i)).toBeInTheDocument()
-    expect(screen.getByText('2700')).toBeInTheDocument()
   })
 
   it('shows an empty state when nothing has been evaluated yet', async () => {
@@ -172,23 +152,7 @@ describe('QualityTab', () => {
       .toBeInTheDocument()
   })
 
-  it('scores the news layer against the flags per gameweek', async () => {
-    render(<MemoryRouter><QualityTab /></MemoryRouter>)
-    expect(await screen.findByRole('heading', { name: /news layer/i }))
-      .toBeInTheDocument()
-    expect(screen.getByText('GW3')).toBeInTheDocument()
-    expect(screen.getByText('GW4')).toBeInTheDocument()
-    expect(screen.getByText('0.095')).toBeInTheDocument()
-    expect(screen.getByText('0.11')).toBeInTheDocument()
-  })
-
-  it('states the verdict in a sentence', async () => {
-    render(<MemoryRouter><QualityTab /></MemoryRouter>)
-    expect(await screen.findByText(/news is ahead on both/i))
-      .toBeInTheDocument()
-  })
-
-  it('hides the section until a gameweek has been scored', async () => {
+  it('hides the news layer until a gameweek has been scored', async () => {
     apiGet.mockImplementation((path: string) => Promise.resolve(
       path === '/api/review' ? EMPTY_REVIEW : {
         ...payload,
@@ -207,26 +171,12 @@ describe('QualityTab', () => {
     checked_covered_gws: [3],
     histogram: [{ bucket: '1-2d', started: 1, missed: 1 },
                 { bucket: '3-5d', started: 3, missed: 0 }],
-    // Both directions of disagreement, because both are late flags: the log
-    // said 'i' and he started, and the log said 'a' and he did not.
-    late_flags: [{ gw: 3, code: 7, first_change: '2026-09-03',
-                   lead_days: 1, from_status: 'a', final_status: 'i',
-                   chance_of_playing: 0, started: true },
-                 { gw: 3, code: 9, first_change: '2026-09-02',
-                   lead_days: 2, from_status: 'i', final_status: 'a',
-                   chance_of_playing: 100, started: false }],
+    late_flags: [],
   }
 
-  const PRESSER = {
-    run_at: 'now', git_sha: 'abc1234', available: true, rows: 4, note: null,
-    verdicts_banked: 9, graded_gws: [3], absent_rows: 3,
-    confusion: [{ verdict: 'ruled_out', n: 4, started: 1, not_started: 3 }],
-    per_class: [{ verdict: 'ruled_out', n: 4, precision: 0.75, recall: 1 }],
-    by_source: [{ source: 'premierinjuries', rows: 4 }],
-    recall_population: 'verdict-carrying rows',
-  }
-
-  it('draws the lead-time histogram and the worst late flags', async () => {
+  it('draws the availability card whenever either key is present', async () => {
+    // A9: deliberately not the news-shadow rule above. An empty report still
+    // gets its card, because the page has to say what it is waiting for.
     apiGet.mockImplementation((path: string) => (
       path === '/api/quality'
         ? Promise.resolve({ flag_latency: FLAG_LATENCY })
@@ -235,63 +185,6 @@ describe('QualityTab', () => {
     expect(await screen.findByRole('heading', { name: /availability signal/i }))
       .toBeInTheDocument()
     expect(screen.getByTestId('lead-bucket-1-2d')).toHaveTextContent('1')
-    expect(screen.getByTestId('late-flag-3-7')).toHaveTextContent('started')
-    expect(screen.getByTestId('late-flag-3-9'))
-      .toHaveTextContent('did not start')
-  })
-
-  it('says what it is waiting for instead of drawing zeros', async () => {
-    // Spec §1. The bar chart of an empty histogram is a row of zeroes that
-    // reads as "nothing ever changed", which is a measurement nobody made.
-    apiGet.mockImplementation((path: string) => (
-      path === '/api/quality'
-        ? Promise.resolve({
-          flag_latency: {
-            ...FLAG_LATENCY, available: false, rows: 0, snap_dates: 3,
-            checked_covered_gws: [], histogram: [], late_flags: [],
-            note: '3 of 14 snapshot days banked, and 0 covered gameweek(s) '
-              + 'graded.',
-          },
-        })
-        : Promise.reject(new FakeApiError(422, 'nothing'))))
-    render(<MemoryRouter><QualityTab /></MemoryRouter>)
-    expect(await screen.findByTestId('flag-latency-empty'))
-      .toHaveTextContent('3 of 14 snapshot days')
-    expect(screen.queryByTestId('lead-bucket-1-2d')).toBeNull()
-  })
-
-  it('withholds the tables on an open gate with nothing in them', async () => {
-    // available && rows === 0 is a real state — fourteen days banked, a
-    // gameweek graded, and not one status moved in it. Three empty tables
-    // under a headline of "0 status changes" is the same row of zeroes as
-    // above, so the sentence stands in for them here too.
-    apiGet.mockImplementation((path: string) => (
-      path === '/api/quality'
-        ? Promise.resolve({
-          flag_latency: {
-            ...FLAG_LATENCY, rows: 0, histogram: [], late_flags: [],
-          },
-        })
-        : Promise.reject(new FakeApiError(422, 'nothing'))))
-    render(<MemoryRouter><QualityTab /></MemoryRouter>)
-    expect(await screen.findByRole('heading', { name: /availability signal/i }))
-      .toBeInTheDocument()
-    expect(screen.getByTestId('flag-latency-empty'))
-      .toHaveTextContent(/no status change/i)
-    expect(screen.queryByTestId('lead-bucket-1-2d')).toBeNull()
-  })
-
-  it('prints precision per verdict class with its denominator', async () => {
-    apiGet.mockImplementation((path: string) => (
-      path === '/api/quality'
-        ? Promise.resolve({ presser_grades: PRESSER })
-        : Promise.reject(new FakeApiError(422, 'nothing'))))
-    render(<MemoryRouter><QualityTab /></MemoryRouter>)
-    const row = await screen.findByTestId('verdict-ruled_out')
-    expect(row).toHaveTextContent('0.75')
-    expect(row).toHaveTextContent('4')
-    expect(screen.getByTestId('presser-recall-note'))
-      .toHaveTextContent('verdict-carrying rows')
   })
 
   it('draws no availability card at all on an artifact without the keys',
@@ -331,87 +224,6 @@ describe('QualityTab penalty card', () => {
   })
 })
 
-// The v8g cards each have their own fetch, so the mock has to route by path
-// rather than answer everything with the quality payload: the whole point of
-// the split is that one missing artifact cannot blank another's card.
-const RELIABILITY = [{ n: 100, pred: 0.2, obs: 0.25 },
-                     { n: 200, pred: 0.9, obs: 0.88 }]
-
-function currentWithHeads(keys: string[]) {
-  return {
-    ...payload.current,
-    heads: Object.fromEntries(keys.map(
-      (key) => [key, { log_loss: 0.2732, reliability: RELIABILITY }])),
-  }
-}
-
-let history: unknown = { runs: [] }
-let misses: unknown = { gw: null, rows: [] }
-let review: unknown = { gws: [] }
-
-function mockMisses(body: unknown) { misses = body }
-
-function renderQuality(over: { current?: unknown }) {
-  apiGet.mockImplementation((path: string) => {
-    if (path === '/api/history') return Promise.resolve(history)
-    if (path === '/api/review') return Promise.resolve(review)
-    if (path === '/api/misses') return Promise.resolve(misses)
-    if (path === '/api/pens') {
-      return Promise.reject(new FakeApiError(422, 'no pen tracker report'))
-    }
-    return Promise.resolve(
-      over.current === undefined ? payload : { ...payload, current: over.current })
-  })
-  render(<MemoryRouter><QualityTab /></MemoryRouter>)
-}
-
-describe('v8g calibration', () => {
-  beforeEach(() => {
-    history = { runs: [] }
-    misses = { gw: null, rows: [] }
-    review = { gws: [] }
-  })
-
-  it('draws a reliability curve for p_start, which nothing rendered before',
-    async () => {
-      renderQuality({ current: currentWithHeads(['p_play', 'p60', 'cs',
-                                                 'p_start']) })
-      expect(await screen.findByLabelText('P(starts) reliability'))
-        .toBeInTheDocument()
-    })
-
-  it('omits a head the evaluation does not carry', async () => {
-    renderQuality({ current: currentWithHeads(['p_play']) })
-    await screen.findByLabelText('P(plays) reliability')
-    expect(screen.queryByLabelText('P(starts) reliability')).toBeNull()
-  })
-
-  it('says how many observations each curve rests on', async () => {
-    renderQuality({ current: currentWithHeads(['p_play']) })
-    // The bins carry n; a curve over forty rows and one over forty thousand
-    // look identical without it.
-    expect(await screen.findByText(/over 300 observations/)).toBeInTheDocument()
-  })
-
-  // The scatter's four cases and the misses card's two moved beside their
-  // sections in v18f §2.1 (`quality/ScatterSection.test.tsx`,
-  // `quality/MissesSection.test.tsx`); the reliability cases above belong to
-  // `CurrentSection`, which still lives in the tab.
-
-  it('keeps the two states that were already right', async () => {
-    // Audited 2026-08-31 and left alone (plan A12): title, detail and an
-    // action that is a real command. Pinned so a later pass does not "fix"
-    // them into prose.
-    mockMisses({ gw: null, rows: [] })
-    renderQuality({})
-    expect((await screen.findAllByTestId('empty-state')).length)
-      .toBeGreaterThan(0)
-  })
-})
-
-// The v9d card. Its own fetch, its own empty state, and a footer that is as
-// much the point as the table: a calibration report whose omissions and
-// exclusions are hidden is a plausible-looking grade of hindsight.
 const CAL_HEAD = {
   status: 'scored', n: 400, brier: 0.1234, log_loss: 0.4,
   reliability: [{ n: 200, pred: 0.2, obs: 0.25 },
@@ -486,5 +298,14 @@ describe('v9d calibration by gameweek', () => {
     expect(screen.getAllByRole('heading',
                                { name: 'Calibration by gameweek' }))
       .toHaveLength(1)
+  })
+
+  it('keeps the empty states that were already right', async () => {
+    // Audited 2026-08-31 and left alone (plan A12): title, detail and an
+    // action that is a real command. Pinned so a later pass does not "fix"
+    // them into prose.
+    renderWithCalibration(calibrationPayload())
+    expect((await screen.findAllByTestId('empty-state')).length)
+      .toBeGreaterThan(0)
   })
 })
