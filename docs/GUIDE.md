@@ -1,7 +1,7 @@
 # The gaffer guide
 
 *A tour of everything this project does, how it got here, and how to use it.
-Last updated 2026-09-16, after v19e (compare and act) merged. The
+Last updated 2026-09-16, after v19f (the question box) merged. The
 README covers setup and reference; this document is for understanding. If you
 only read one section, read §12: it is the current to-do list.*
 
@@ -19,7 +19,7 @@ only read one section, read §12: it is the current to-do list.*
 8. [Everything the CLI can do](#8-everything-the-cli-can-do)
 9. [The data it collects and why](#9-the-data-it-collects-and-why)
 10. [How the project measures itself](#10-how-the-project-measures-itself)
-11. [The version history, v1 to v19e](#11-the-version-history-v1-to-v19e)
+11. [The version history, v1 to v19f](#11-the-version-history-v1-to-v19f)
 12. [What is pending and what was left open](#12-what-is-pending-and-what-was-left-open)
 13. [Troubleshooting](#13-troubleshooting)
 
@@ -679,7 +679,7 @@ Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 `reports/evaluation.json`, and the Model hub.
 
-## 11. The version history, v1 to v19e
+## 11. The version history, v1 to v19f
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
 reviewed. Every cycle ran the same way, and knowing the shape tells you where
@@ -1158,6 +1158,18 @@ so the route pin stayed at 51. Every squad tile and table row carries a
 row menu — lock, ban, must-sell — that lands on Planning → What-If with the
 constraint prefilled through the router's location state. No served
 number moved. Golden 62 passed, 0 skipped; inner loop 4394; frontend 1184.
+
+**v19f — the question box** (2026-09-16). The reader's second question,
+asked under the brief. `POST /api/ask` runs the brief's own no-tools
+command over the brief's own facts document and passes the answer through
+the brief's truth check, so a number or name not in the facts strikes the
+answer through with the offence lines beneath. The question sits after
+the facts in a quoted block labelled as words to answer, not instructions,
+so an instruction-shaped question cannot rewrite the rules above it;
+questions over 500 characters are refused before anything runs. Answers
+are session-only and never written to disk. The route pin moved 51 → 52,
+the programme's only bump. No served number moved. Golden 62 passed, 0
+skipped; inner loop 4406; frontend 1189.
 
 The suite grew from nothing to **4,509 Python + 1,098 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above

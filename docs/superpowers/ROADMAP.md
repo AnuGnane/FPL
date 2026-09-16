@@ -20,8 +20,9 @@ replay-free half and code health, none changing a served number; the
 replay-gated model arms are costed in the design's §4 and deferred to
 v20. v19a (the week's clock and health) `8354a21`, v19b (the loop closed)
 `4927a15`, v19c (the phone) `dc7cd6f`, v19d (This Week, readable)
-`f2d61d3` and v19e (compare and act) `d9881d9` are merged, all 2026-09-16;
-the ledger is in the v19 block below. Next: v19f, the question box.
+`f2d61d3`, v19e (compare and act) `d9881d9` and v19f (the question box)
+`58f5960` are merged, all 2026-09-16; the ledger is in the v19 block
+below. Next: v19g, the model's free half.
 
 **The v18 polish programme is complete** (design
 `specs/2026-09-12-v18-polish-design.md`, plan
@@ -155,6 +156,7 @@ number and needs its own gate.
 | v19c — the phone | `dc7cd6f` | 2026-09-16 | 4535 | 1149 | StackedRows beside the hand tables, not DataTable; desktop pairs identical |
 | v19d — This Week, readable | `f2d61d3` | 2026-09-16 | 4538 | 1172 | the what-if tab shares the ladder card; reports/ mounted, pin untouched |
 | v19e — compare and act | `d9881d9` | 2026-09-16 | 4542 | 1184 | ruling 2 amended: the diff path existed, pin stays 51; must-sell is force_out |
+| v19f — the question box | `58f5960` | 2026-09-16 | 4554 | 1189 | route pin 51 → 52 in its own commit; three real answers, 0 offences; answers session-only |
 
 ### The v18 polish programme (planned 2026-09-12; **complete**, all eight merged 2026-09-12 → 14)
 
@@ -243,6 +245,21 @@ usually the thing you cannot test*, not the lines: every card of the seven was
 found by asking what a test would have to fake.
 
 ## Shipped
+
+### v19f — the question box (done, merged `58f5960` 2026-09-16)
+`brief.check_question` (500 characters), `build_question_prompt` (the
+facts first, the question fenced after them and named as a question, not
+instructions), `answer_question` (the brief's command, `check_brief` on
+the answer; a failed command is an offence, not an exception; one log
+line, nothing on disk); `POST /api/ask` as an anonymous `JobRegistry`
+job, 202 / 422 / 429, `web/jobs.py` untouched; `AskRequest`/`AskAnswer`;
+`this-week/QuestionBox` at the foot of `BriefCard`, the last three
+answers of the session, a struck-through answer with its offence lines
+when the check fails. Gate: inner loop 4406, ruff clean, golden 62/0 in
+18:14, `npm run check` 1189 with the same eight warnings, fetch rails
+untouched, twelve desktop pairs identical (the box sits below the shot
+height; a tall crop approved), three real answers with 0 offences. Pins
+52 / 12 / 62.
 
 ### v19e — compare and act (done, merged `d9881d9` 2026-09-16)
 `/api/advice/diff?a=&b=` (the newest plan of each gameweek, `gw_from`/
