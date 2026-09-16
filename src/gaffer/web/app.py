@@ -141,12 +141,22 @@ def create_app(*, token: str | None = None) -> FastAPI:
     if static_assets.is_dir():
         app.mount("/assets", StaticFiles(directory=static_assets),
                   name="assets")
+    # v19d §2.4: the rendered report under ``reports/`` is the one thing the
+    # week produces that the site could not hand the reader. A mount, not a
+    # route — it is outside the OpenAPI paths the v11 rail pins — and only
+    # when the directory exists, so a cold clone mounts nothing. Reads are
+    # open everywhere else too; the token guards writes alone.
+    reports_dir = Path("reports")
+    if reports_dir.is_dir():
+        app.mount("/reports", StaticFiles(directory=reports_dir),
+                  name="reports")
 
     @app.exception_handler(StarletteHTTPException)
     async def spa(request: Request, exc: StarletteHTTPException):
         path = request.url.path
         if (exc.status_code != 404 or path.startswith("/api/")
-                or path.startswith("/assets/")):
+                or path.startswith("/assets/")
+                or path.startswith("/reports/")):
             return JSONResponse(status_code=exc.status_code,
                                 content={"detail": exc.detail})
         index = static_dir() / "index.html"
