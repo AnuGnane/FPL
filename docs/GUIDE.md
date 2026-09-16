@@ -1,7 +1,7 @@
 # The gaffer guide
 
 *A tour of everything this project does, how it got here, and how to use it.
-Last updated 2026-09-14, after v18h (the docs, true) merged. The
+Last updated 2026-09-16, after v19a (the week's clock and health) merged. The
 README covers setup and reference; this document is for understanding. If you
 only read one section, read §12: it is the current to-do list.*
 
@@ -19,7 +19,7 @@ only read one section, read §12: it is the current to-do list.*
 8. [Everything the CLI can do](#8-everything-the-cli-can-do)
 9. [The data it collects and why](#9-the-data-it-collects-and-why)
 10. [How the project measures itself](#10-how-the-project-measures-itself)
-11. [The version history, v1 to v18h](#11-the-version-history-v1-to-v18h)
+11. [The version history, v1 to v19a](#11-the-version-history-v1-to-v19a)
 12. [What is pending and what was left open](#12-what-is-pending-and-what-was-left-open)
 13. [Troubleshooting](#13-troubleshooting)
 
@@ -516,7 +516,7 @@ the project folder moves — the plists embed the path):
 | Thu 18:00 | `com.gaffer.advise` | `prices`, then `train` then `advise`; logs to `logs/prices.log` and `logs/advise.log`. The price bank comes first so the optimizer's timing term has a same-day log; a failed fetch does not stop the advice. Since v17d `advise` chains the brief, so the Thursday log ends with the brief's line (or its note) and Friday's digest headline comes from the brief. |
 | Nightly 23:15 | `com.gaffer.prices` | Banks every player's price reading; flags likely changes. |
 | Daily 17:00 | `com.gaffer.snapshot` | Banks the day's availability state (the corpus a future news model trains on). |
-| Sat & Sun 12:30 | `com.gaffer.field` | Samples ~300 top-10k squads; banks their EO with standard errors. |
+| Sat & Sun 18:30 | `com.gaffer.field` | Samples ~300 top-10k squads; banks their EO with standard errors. |
 | Tue 09:00 | `com.gaffer.review` | Grades every gameweek FPL has finalised into the decision ledger. |
 | Fri 17:00 | `com.gaffer.digest-friday` | The briefing. |
 | Tue 09:30 | `com.gaffer.digest-tuesday` | The debrief (after the review has banked). |
@@ -679,7 +679,7 @@ Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 `reports/evaluation.json`, and the Model hub.
 
-## 11. The version history, v1 to v18h
+## 11. The version history, v1 to v19a
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
 reviewed. Every cycle ran the same way, and knowing the shape tells you where
@@ -1097,6 +1097,21 @@ tests. The history the diary held is §11's, where it was always meant to be.
 No number the advice serves moved, because nothing that computes one was
 opened.
 
+**v19a — the week's clock and health** (2026-09-16). The first sub-cycle
+of the v19 programme (the surface and the week). This Week's header now
+carries a countdown to the deadline whatever the board's staleness, the
+reason having moved into the callout; the freshness strip gained the two
+daily inputs it could not show, prices and the availability snapshot, and
+colours by the ratio of age to each job's cadence rather than by absolute
+hours; Model → Health lists every launchd plist with its schedule, last
+run and an overdue flag, which on its first live reading named the nightly
+prices job four days silent; Live stamps its last successful poll and
+offers a manual refresh; the Tuesday digest says when a later gameweek has
+finished ungraded instead of re-emitting the last graded one; and the field
+scrape moved to 18:30, after any Saturday deadline, the 12:30 slot having
+fired an hour before GW4's. No served number moved. Golden 58 passed, 0
+skipped; inner loop 4383; frontend 1114.
+
 The suite grew from nothing to **4,509 Python + 1,098 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above
 so a future change cannot quietly break one.
@@ -1110,7 +1125,9 @@ would act on them.
 
 ### 12.0 First: reload the seven launchd jobs that are not loaded
 
-`launchctl list | grep com.gaffer` on 2026-09-14 shows **two of the nine**:
+`launchctl list | grep com.gaffer` on 2026-09-14 showed **two of the nine**
+(the user reinstalled on 2026-09-15; that night the prices job still did
+not fire, and since v19a Model → Health's jobs table is where that shows):
 
 ```
 -	0	com.gaffer.backup

@@ -8,7 +8,18 @@ fills, and the index below points at them. Measurement rules every cycle
 follows: `CONVENTIONS.md`. For the same material written for a reader rather
 than an auditor, `docs/GUIDE.md` §11–12.
 
-## Where things stand (2026-09-14)
+## Where things stand (2026-09-16)
+
+**The v19 programme is running** (design
+`specs/2026-09-15-v19-programme-design.md`, approved with its eleven
+rulings on 2026-09-15; plan `plans/2026-09-15-v19-programme.md`; tracker
+`plans/2026-09-15-v19-tracker.md`; research
+`research/2026-09-15-v19-research-{frontend,backend,product}.md`). Eight
+sub-cycles aimed at the site's surface and the weekly loop, the model's
+replay-free half and code health, none changing a served number; the
+replay-gated model arms are costed in the design's §4 and deferred to
+v20. v19a (the week's clock and health) merged `8354a21` on 2026-09-16;
+its ledger is in the v19 block below. Next: v19b, the loop closed.
 
 **The v18 polish programme is complete** (design
 `specs/2026-09-12-v18-polish-design.md`, plan
@@ -133,6 +144,12 @@ The model cycle (11–13, plus the role replay above and the news ablation, C1)
 follows v18 by the user's ruling of 2026-09-12; each arm moves a served
 number and needs its own gate.
 
+### The v19 programme — the surface and the week (planned 2026-09-15; running)
+
+| Sub-cycle | Merged | Date | Python | Frontend | Note |
+|---|---|---|---|---|---|
+| v19a — the week's clock and health | `8354a21` | 2026-09-16 | 4531 | 1114 | ruling 5 corrected to a schedule change; strip pairs compared below the strip |
+
 ### The v18 polish programme (planned 2026-09-12; **complete**, all eight merged 2026-09-12 → 14)
 
 The 2026-09-12 final review
@@ -220,6 +237,26 @@ usually the thing you cannot test*, not the lines: every card of the seven was
 found by asking what a test would have to fake.
 
 ## Shipped
+
+### v19a — the week's clock and health (done, merged `8354a21` 2026-09-16)
+The countdown on This Week always, the staleness reason in the callout; the
+freshness strip's seven rows (prices and the availability snapshot joined)
+toned by age over cadence, stale cells linking to Health; `Health.jobs`,
+one row per plist read with `plistlib` (schedule sentence, log path from
+the redirect, `overdue` at 1.5 × the interval), rendered as a table on
+Model → Health; Live's poll stamp and Refresh; the Tuesday debrief's
+"GW3 (GW4 finished, not yet graded)" in the section and the headline; the
+field plist at 18:30 (ruling 5 corrected: the logic already scraped the
+gameweek whose deadline had passed; the 12:30 slot fired before GW4's
+13:30). Also restored the README's LLM deny-list string, a v8a rail red
+since v18h. Gate: inner loop 4383, ruff clean, golden 58/0 in 18:16,
+`npm run check` 1114 with the eight recorded warnings, sixteen screenshot
+pairs measured with Pillow (unnamed pages differ only in the strip's
+twelve rows). Pins 51 / 12 / 62. Left open: `PLIST_DIR` reads the repo's
+plists rather than the installed copies (v19h); the core-insights plist's
+`--refresh` inside an XML comment is tolerated by the reader rather than
+fixed; `shots.sh`'s default shell path names build 1234 while 1243 is
+installed (export `CHROME_HEADLESS_SHELL`).
 
 ### v18g — the suite, one home per rule (done, merged `bc02faf` 2026-09-14)
 Ruff committed (`E`, `F`, `B`, `I` at line 100; `B905` ignored with its
