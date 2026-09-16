@@ -259,7 +259,7 @@ def core_insights_cmd(
         total = sum(sum(v.values()) for v in written.values())
         typer.echo(f"Core insights: {total} rows across {len(seasons)} "
                    "seasons -> data/core_insights/.")
-    except Exception as exc:  # noqa: BLE001 — a scheduled job never blocks
+    except Exception as exc:  # noqa: BLE001 — any download or write failure; a scheduled job never blocks
         typer.echo(f"core insights not collected: {exc}")
 
 
@@ -328,7 +328,7 @@ def prices():
 
     try:
         players = build_players(FPLClient().get_bootstrap())
-    except Exception as exc:  # noqa: BLE001 — a scheduled job never blocks
+    except Exception as exc:  # noqa: BLE001 — a network or bootstrap failure; a scheduled job never blocks
         typer.echo(f"price check failed: {exc}")
         return
     watch = players.nlargest(200, "selected_by_percent")["code"].tolist()
@@ -356,7 +356,7 @@ def snapshot():
         from gaffer.snapshot import run_snapshot
 
         run_snapshot()
-    except Exception as exc:  # noqa: BLE001 — a scheduled job never blocks
+    except Exception as exc:  # noqa: BLE001 — the deferred import, which run_snapshot cannot swallow; a scheduled job never blocks
         # run_snapshot swallows its own failures; the import cannot, and an
         # ImportError here would be the one traceback the launchd job still
         # emits every afternoon.
@@ -380,7 +380,7 @@ def field_scrape(
         from gaffer.data.field import run_field_scrape
 
         run_field_scrape(gw=gw or None, force=force)
-    except Exception as exc:  # noqa: BLE001 — a scheduled job never blocks
+    except Exception as exc:  # noqa: BLE001 — the deferred import, which run_field_scrape cannot swallow; a scheduled job never blocks
         # run_field_scrape swallows its own failures; the import cannot, and
         # an ImportError here would be the one traceback the launchd job
         # still emits every weekend.
@@ -401,7 +401,7 @@ def review(gw: int = typer.Option(0, help="Gameweek to review (default: "
         from gaffer.review import run_review
 
         run_review(gw=gw or None)
-    except Exception as exc:  # noqa: BLE001 — a scheduled job never blocks
+    except Exception as exc:  # noqa: BLE001 — the deferred import, which run_review cannot swallow; a scheduled job never blocks
         # run_review swallows its own failures; the import cannot, and an
         # ImportError here would be the one traceback the launchd job still
         # emits every Tuesday morning.
@@ -428,7 +428,7 @@ def digest(kind: str = typer.Option(
         from gaffer.digest import run_digest
 
         run_digest(kind, notify=bool(config_in_force().digest_notify))
-    except Exception as exc:  # noqa: BLE001 — a scheduled job never blocks
+    except Exception as exc:  # noqa: BLE001 — the deferred imports and an unknown kind; a scheduled job never blocks
         # run_digest swallows its own failures and raises only on an unknown
         # kind; the imports cannot, and an ImportError here would be the one
         # traceback the launchd job still emits every Friday evening.
@@ -447,7 +447,7 @@ def brief():
         from gaffer.brief import run_brief
 
         out = run_brief()
-    except Exception as exc:  # noqa: BLE001 — a scheduled job never blocks
+    except Exception as exc:  # noqa: BLE001 — any brief failure, model or disk; a scheduled job never blocks
         typer.echo(f"brief not written: {exc}")
         return
     if out.get("note"):
@@ -644,7 +644,7 @@ def calibrate_noise(
     if not estimation and out is None and not force:
         try:
             existing = json.loads(Path(dest).read_text(encoding="utf-8"))
-        except Exception:  # noqa: BLE001 — no asset, or an unreadable one
+        except (OSError, ValueError):
             existing = {}
         if existing.get("source") == "estimation":
             typer.echo(
@@ -774,7 +774,7 @@ def backup(to: Path = typer.Option(
         cfg = load_config()
         configured, target, keep = (cfg.backup_dir, cfg.backup_rsync_target,
                                     cfg.backup_keep)
-    except Exception:  # noqa: BLE001 — a clone with no config can still back up
+    except Exception:  # noqa: BLE001 — a missing or unparseable config; a clone with no config can still back up
         configured, target, keep = "", "", 14
     dest = Path(to) if to is not None else backup_dir(configured)
     path = run_backup(to=dest, rsync=rsync or target or None, keep=keep)
@@ -845,7 +845,7 @@ def ui(port: int = typer.Option(8927, help="Port to serve on (default 8927)."),
     if lan:
         try:
             token = load_config().web_token or None
-        except Exception:  # noqa: BLE001 — a clone with no config still serves
+        except Exception:  # noqa: BLE001 — a missing or unparseable config; a clone with no config still serves
             token = None
         generated = token is None
         token = token or generate_token()

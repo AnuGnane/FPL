@@ -203,13 +203,13 @@ def step_context_from(components, state, *, price_fall: dict,
             p_play = {(int(c), int(g)): float(p) for c, g, p in
                       zip(components["code"], components["gw"],
                           components["p_play"]) if p == p}         # NaN-safe
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001 — an absent or drifted component column; the step reasons lose p_play, not the ladder
             print(f"ladder: no p_play for the step reasons ({exc})")
     team_of: dict = {}
     try:
         team_of = {int(c): int(t) for c, t in
                    zip(state.pool["code"], state.pool["team_code"])}
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001 — an absent or drifted pool column; a reason that cannot name a team falls through to the next one
         pass
     chip_plan = [c for c in (state.opt.get("chip_plan") or [])
                  if isinstance(c, dict) and c.get("gw") is not None]
@@ -226,19 +226,19 @@ def step_context(gw: int, state, gws: list[int]) -> StepContext:
     components = None
     try:
         components = load_components(gw)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — no banked component frame; the step reasons lose p_play, not the ladder
         print(f"ladder: no p_play for the step reasons ({exc})")
     price_fall: dict = {}
     try:
         from gaffer.price_timing import owned_price_falls
         price_fall = {int(c): float(p) for c, p in
                       owned_price_falls(list(state.owned_codes)).items()}
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — no price-timing table; the step reasons lose the price fall, not the ladder
         print(f"ladder: no price falls for the step reasons ({exc})")
     difficulty: dict = {}
     try:
         difficulty = difficulty_by_team([int(g) for g in gws])
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — no fixture table; the step reasons lose difficulty, not the ladder
         print(f"ladder: no fixture difficulty for the step reasons ({exc})")
     return step_context_from(components, state, price_fall=price_fall,
                              difficulty=difficulty)
@@ -454,7 +454,7 @@ def _hit_bar() -> float:
     try:
         from gaffer.config import config_in_force
         return float(config_in_force().hit_bar)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — an unreadable config; the bar falls back rather than failing the ladder
         print(f"ladder: the live config would not read ({exc}); bar {HIT_BAR_FALLBACK}")
         return HIT_BAR_FALLBACK
 
@@ -472,7 +472,7 @@ def load_ladder(gw: int) -> dict | None:
         return None
     try:
         return _labelled(json.loads(path.read_text()))
-    except Exception as exc:  # noqa: BLE001 — a corrupt report is no report
+    except Exception as exc:  # noqa: BLE001 — a corrupt or drifted report is no report, and a card with a rebuild button
         print(f"ladder report unreadable: {exc}")
         return None
 
@@ -567,7 +567,7 @@ def sigma_table(gw: int) -> tuple[dict[tuple[int, int], float], str]:
     falls back cell by cell."""
     try:
         comp = load_components(gw)
-    except Exception as exc:  # noqa: BLE001 — a ladder is not worth a crash
+    except Exception as exc:  # noqa: BLE001 — no banked component frame; the ladder narrates outcome-only rather than crashing
         print(f"ladder: no component breakdown ({exc})")
         return {}, "outcome_only"
     return sigmas_from_components(comp)
@@ -1004,7 +1004,7 @@ def build_ladder(gw: int | None = None, *, n_draws: int = LADDER_DRAWS,
     sigmas, sigma_source = sigma_table(gw)
     try:
         prior_advice = load_advice(gw)
-    except Exception as exc:  # noqa: BLE001 — no advice is no chip on a row,
+    except Exception as exc:  # noqa: BLE001 — no advice on disk, or one that will not parse: no chip on a row,
         # not a crash; the note the payload carries says so.
         print(f"ladder: no served advice to mark ({exc})")
         prior_advice = None

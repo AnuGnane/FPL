@@ -99,7 +99,7 @@ def load_digest(kind: str) -> dict | None:
         return None
     try:
         payload = json.loads(path.read_text())
-    except Exception as exc:  # noqa: BLE001 — a corrupt digest is no digest
+    except (OSError, ValueError) as exc:
         print(f"digest {kind} unreadable, ignoring it: {exc}")
         return None
     return payload if isinstance(payload, dict) else None
@@ -169,7 +169,7 @@ def _names() -> dict[int, str]:
     try:
         players = load_snapshot("live/players.parquet")
         return {int(r.code): str(r.name) for r in players.itertuples()}
-    except Exception as exc:  # noqa: BLE001 — a name is not worth a failure
+    except Exception as exc:  # noqa: BLE001 — an unreadable or drifted players parquet; a missing name is never worth a failed digest
         print(f"digest: player snapshot unreadable ({exc})")
         return {}
 
@@ -179,7 +179,7 @@ def _advice(gw: int | None) -> dict | None:
         return None
     try:
         return load_advice(int(gw))
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — an absent or malformed advice payload; every section that needs it degrades to None
         print(f"digest: no advice payload for GW{gw} ({exc})")
         return None
 
@@ -228,7 +228,7 @@ def _deadline_bits(gw: int | None) -> list[str | None]:
         # degradation this module promises instead.
         if pd.isna(when):
             return []
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — an absent, unparseable or NaT deadline; the countdown line is dropped and the rest of the briefing stands
         print(f"digest: no deadline for GW{gw} ({exc})")
         return []
     hours = (when - pd.Timestamp.now(tz="UTC")).total_seconds() / 3600.0
@@ -255,7 +255,7 @@ def _flagged_bits(gw: int | None, watched: dict[int, str],
     bits: list[str | None] = []
     try:
         avail = load_availability(int(gw))
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — no banked availability for the week; the injury bits are dropped, never the message
         print(f"digest: no availability for GW{gw} ({exc})")
         avail = None
     if avail is not None and "code" in getattr(avail, "columns", []):
@@ -288,7 +288,7 @@ def _presser_bits(gw: int, watched: dict[int, str],
         from gaffer.data.news.presser_log import load_presser_log
 
         log = load_presser_log()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — no presser module or an unreadable log; the presser bits are dropped
         print(f"digest: no presser log ({exc})")
         return []
     if log is None or log.empty or "code" not in log.columns:
@@ -401,12 +401,12 @@ def freshest_prices() -> tuple[pd.DataFrame | None, str | None, str]:
     stamp = _file_stamp(PLAYERS_PATH)
     try:
         players = store.load(PLAYERS_PATH)
-    except Exception as exc:  # noqa: BLE001 — a card is never worth a 500
+    except Exception as exc:  # noqa: BLE001 — an unreadable or drifted players parquet; the prices card degrades to its stamp and is never worth a 500
         print(f"prices: player snapshot unreadable ({exc})")
         return None, stamp, "players"
     try:
         merged, log_stamp = _price_log_overlay(players, stamp)
-    except Exception as exc:  # noqa: BLE001 — a bad log is no log
+    except Exception as exc:  # noqa: BLE001 — a corrupt or drifted price log; the card shows the snapshot without the overlay
         print(f"prices: price log unusable, keeping the snapshot ({exc})")
         return players, stamp, "players"
     if merged is None:
@@ -426,7 +426,7 @@ def _movers_bits(watched: dict[int, str],
         if players is None or players.empty:
             return []
         alerts = price_alerts(players, list(watched))
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — unreadable prices or a drifted alert frame; the briefing carries no alert lines
         print(f"digest: no price readings ({exc})")
         return []
     out: list[str | None] = []
@@ -453,12 +453,12 @@ def friday_briefing() -> dict:
     gw = None
     try:
         gw = latest_gw()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — no advice banked yet; the briefing runs without a gameweek
         print(f"digest: no advice on disk ({exc})")
     upcoming = None
     try:
         upcoming = upcoming_gw()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — no events snapshot; the deadline section is dropped
         print(f"digest: no upcoming gameweek ({exc})")
     names = _names()
     watched = watch_targets()
@@ -505,7 +505,7 @@ def friday_briefing() -> dict:
 
     try:
         warning = data_warning(upcoming, ingested_through())
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — an unreadable ingest stamp; no staleness warning rather than no digest
         print(f"digest: no staleness reading ({exc})")
         warning = None
     sections.append(_section("staleness", "Data", [warning]))
@@ -528,7 +528,7 @@ def friday_briefing() -> dict:
         banked = load_brief(gw) if gw is not None else None
         if banked and banked.get("prose"):
             headline = first_sentence(banked["prose"])
-    except Exception as exc:  # noqa: BLE001 — a headline is decoration
+    except Exception as exc:  # noqa: BLE001 — no banked brief, or one without prose; a headline is decoration
         print(f"digest: no brief headline ({exc})")
     return {"kind": "friday", "generated_at": _now(), "gw": gw,
             "headline": headline, "sections": kept}
@@ -636,7 +636,7 @@ def _league_bits() -> list[str | None]:
         from gaffer.league_sim import load_sim_history
 
         history = load_sim_history()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — no simulated history on disk; the league section is dropped
         print(f"digest: no league sim history ({exc})")
         return []
     if not history:
@@ -668,7 +668,7 @@ def _miss_bits() -> list[str | None]:
         if target is None:
             return []
         rows = biggest_misses(int(target))
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — no scoreable gameweek or an unreadable frame; the misses section is dropped
         print(f"digest: no miss table ({exc})")
         return []
     if not rows:
@@ -721,7 +721,7 @@ def _notify(title: str, body: str) -> bool:
                   + (f" — {detail}" if detail else ""))
             return False
         return True
-    except Exception as exc:  # noqa: BLE001 — never a reason to fail a job
+    except Exception as exc:  # noqa: BLE001 — any notifier failure (osascript missing, timed out, refused); never a reason to fail a job
         print(f"notification not shown: {exc}")
         return False
 
@@ -757,7 +757,7 @@ def _bank_failure(kind: str, exc: BaseException) -> None:
                            "headline": f"{kind.title()} digest failed to "
                                        f"build — {reason}",
                            "sections": [], "error": reason})
-    except Exception as write_exc:  # noqa: BLE001 — two failures, still no raise
+    except Exception as write_exc:  # noqa: BLE001 — an unwritable reports directory; two failures, still no raise out of a launchd body
         print(f"digest failure not written: {write_exc}")
 
 
@@ -793,7 +793,7 @@ def run_digest(kind: str, *, notify: bool = True) -> dict | None:
         return None
     try:
         save_digest(kind, payload)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — an unwritable reports directory; the digest was built and only the banking is lost
         # The payload is still worth returning and printing: a read-only disk
         # should not also cost the user the sentence they were owed.
         print(f"digest not written: {exc}")
