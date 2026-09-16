@@ -103,6 +103,29 @@
     "gw": {
      "type": "integer"
     },
+    "gw_from": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "v19e \u00a72.1: set only on the week-against-week path (``?a=&b=``), so a\nclient can tell \"last run of this gameweek\" from \"last gameweek\"."
+    },
+    "gw_to": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
     "previous_at": {
      "anyOf": [
       {
@@ -141,6 +164,8 @@
     "ep_movers_count",
     "expected_pts_delta",
     "gw",
+    "gw_from",
+    "gw_to",
     "previous_at",
     "sells_added",
     "sells_dropped"

@@ -53,6 +53,12 @@ export interface AdviceDiff {
   ep_movers_count: number | null
   expected_pts_delta: number
   gw: number
+  /**
+   * v19e §2.1: set only on the week-against-week path (``?a=&b=``), so a
+   * client can tell "last run of this gameweek" from "last gameweek".
+   */
+  gw_from: number | null
+  gw_to: number | null
   previous_at: string | null
   sells_added: AdvicePlayer[]
   sells_dropped: AdvicePlayer[]

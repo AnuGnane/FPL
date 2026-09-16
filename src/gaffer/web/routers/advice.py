@@ -12,12 +12,14 @@ the single-flight ``JobRunner``; the route is gone, and
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pandas as pd
 from fastapi import APIRouter
 
 from gaffer.artifacts import (
     advice_history_files,
+    advice_path,
     data_warning,
     diff_advice,
     ep_movers,
@@ -177,9 +179,28 @@ def latest() -> AdviceLatest:
         staleness=staleness_for(gw, state.deadline, state.generated_at))
 
 
+def _newest_plan(gw: int) -> Path | None:
+    """The newest banked run of ``gw``, else its served advice file, else
+    nothing (v19e §2.1). History first because it is stamped; the served
+    file is what a gameweek that was never re-run has."""
+    files = advice_history_files(gw)
+    if files:
+        return files[-1]
+    path = advice_path(gw)
+    return path if path.is_file() else None
+
+
 @router.get("/diff", response_model=AdviceDiff)
-def diff(gw: int | None = None) -> AdviceDiff:
+def diff(gw: int | None = None, a: int | None = None,
+         b: int | None = None) -> AdviceDiff:
     """The "since last run" strip: this run against the one before it.
+
+    v19e §2.1: with ``a`` and ``b`` both given it is instead gameweek ``a``'s
+    newest plan against gameweek ``b``'s — the History tab's comparison and
+    This Week's "since GW n" line. The same comparison, the same never-an-
+    error contract, ``gw_from``/``gw_to`` set so the client can say which
+    question was answered. ``a`` without ``b`` (or the reverse) is the
+    one-parameter path, not a 422: the strip must never be an error.
 
     Same gameweek only. Re-running on Friday after the press conferences is
     the case this exists for, and comparing Friday's GW5 plan with last week's
@@ -193,6 +214,24 @@ def diff(gw: int | None = None) -> AdviceDiff:
     are not about the plan at all — they are about the *model*, and a first
     run of the week is exactly when a retrain happened (plan A10).
     """
+    if a is not None and b is not None:
+        movers = ep_movers(int(b))
+        extra = {"ep_movers": movers or [],
+                 "ep_movers_count": None if movers is None else len(movers),
+                 "gw_from": int(a), "gw_to": int(b)}
+        previous_path, current_path = _newest_plan(int(a)), _newest_plan(int(b))
+        if previous_path is None or current_path is None:
+            return AdviceDiff(gw=int(b), available=False, **extra)
+        try:
+            previous = json.loads(previous_path.read_text())
+            current = json.loads(current_path.read_text())
+        except (OSError, ValueError) as exc:
+            print(f"advice unreadable, no diff shown: {exc}")
+            return AdviceDiff(gw=int(b), available=False, **extra)
+        return AdviceDiff(gw=int(b), available=True,
+                          previous_at=previous_path.stem.partition("-")[2] or None,
+                          current_at=current_path.stem.partition("-")[2] or None,
+                          **diff_advice(previous, current), **extra)
     target = gw if gw is not None else latest_gw()
     if target is None:
         return AdviceDiff(gw=0, available=False)

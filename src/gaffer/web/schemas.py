@@ -946,6 +946,10 @@ class AdviceDiff(BaseModel):
     changed: bool = False
     previous_at: str | None = None
     current_at: str | None = None
+    gw_from: int | None = None
+    """v19e §2.1: set only on the week-against-week path (``?a=&b=``), so a
+    client can tell "last run of this gameweek" from "last gameweek"."""
+    gw_to: int | None = None
     buys_added: list[AdvicePlayer] = Field(default_factory=list)
     buys_dropped: list[AdvicePlayer] = Field(default_factory=list)
     sells_added: list[AdvicePlayer] = Field(default_factory=list)
