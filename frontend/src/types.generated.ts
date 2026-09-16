@@ -240,19 +240,37 @@ export interface BackupHealth {
  * via the `definition` "BenchmarkEvaluation".
  */
 export interface BenchmarkEvaluation {
+  /**
+   * Why the comparison to ``references`` is not exact.
+   */
   caveat: string
+  /**
+   * The commit the benchmarked model was built from.
+   */
   git_sha: string
+  /**
+   * Published metrics for the same cuts, from outside sources.
+   */
   references: {
     [k: string]: {
       [k: string]: ReferenceMetrics
     }
   }
+  /**
+   * When this benchmark was run.
+   */
   run_at: string
+  /**
+   * cut ("all" / "starters") -> return category -> metrics.
+   */
   stratified: {
     [k: string]: {
       [k: string]: CategoryMetrics
     }
   }
+  /**
+   * The held-out season the benchmark was scored against.
+   */
   test_season: string
 }
 /**
@@ -262,7 +280,13 @@ export interface BenchmarkEvaluation {
  * via the `definition` "ReferenceMetrics".
  */
 export interface ReferenceMetrics {
+  /**
+   * The published mean absolute error.
+   */
   mae: number
+  /**
+   * The published root-mean-square error.
+   */
   rmse: number
 }
 /**
@@ -270,8 +294,17 @@ export interface ReferenceMetrics {
  * via the `definition` "CategoryMetrics".
  */
 export interface CategoryMetrics {
+  /**
+   * Mean absolute error on this category's held-out rows.
+   */
   mae: number
+  /**
+   * How many held-out rows the category was scored over.
+   */
   n: number
+  /**
+   * Root-mean-square error on this category's held-out rows.
+   */
   rmse: number
 }
 /**
@@ -385,9 +418,6 @@ export interface DigestSection {
    * The section's identifier, distinguishing it for the client's layout.
    */
   key: string
-  /**
-   * The section's heading.
-   */
   title: string
 }
 /**
@@ -395,10 +425,19 @@ export interface DigestSection {
  * via the `definition` "CalibrationGw".
  */
 export interface CalibrationGw {
+  /**
+   * The gameweek this row scores.
+   */
   gw: number
+  /**
+   * Per-head calibration for this gameweek alone.
+   */
   heads: {
     [k: string]: CalibrationHead
   }
+  /**
+   * How many rows this gameweek contributed.
+   */
   n: number
 }
 /**
@@ -413,10 +452,25 @@ export interface CalibrationGw {
  * via the `definition` "CalibrationHead".
  */
 export interface CalibrationHead {
+  /**
+   * Brier score, when scored.
+   */
   brier: number | null
+  /**
+   * Log loss, when scored.
+   */
   log_loss: number | null
+  /**
+   * How many rows the head was scored over.
+   */
   n: number
+  /**
+   * Predicted-vs-observed calibration curve, when scored.
+   */
   reliability: ReliabilityBin[]
+  /**
+   * ``"ok"`` when scored, else why not (e.g. below the sample floor).
+   */
   status: string
 }
 /**
@@ -424,8 +478,18 @@ export interface CalibrationHead {
  * via the `definition` "ReliabilityBin".
  */
 export interface ReliabilityBin {
+  /**
+   * How many predictions fell in this bin.
+   */
   n: number
+  /**
+   * Observed frequency in this bin — what a well-calibrated head would
+   * match to ``pred``.
+   */
   obs: number
+  /**
+   * Mean predicted probability in this bin.
+   */
   pred: number
 }
 /**
@@ -1035,16 +1099,31 @@ export interface CoreInsightsTable {
  * via the `definition` "CurrentEvaluation".
  */
 export interface CurrentEvaluation {
+  /**
+   * The same stratified metrics for each naive baseline, for comparison.
+   */
   baselines: {
     [k: string]: {
       [k: string]: CategoryMetrics
     }
   }
+  /**
+   * The commit the evaluated model was built from.
+   */
   git_sha: string
+  /**
+   * Per-head calibration: ``p_play``, ``p60`` and the rest.
+   */
   heads: {
     [k: string]: HeadMetrics
   }
+  /**
+   * How many of the newest gameweek slots were held out and scored.
+   */
   holdout_slots: number
+  /**
+   * When this evaluation was run.
+   */
   run_at: string
   /**
    * cut ("all" / "starters") -> return category -> metrics.
@@ -1066,6 +1145,9 @@ export interface HeadMetrics {
    * NaN is not JSON.
    */
   log_loss: number | null
+  /**
+   * The head's predicted-vs-observed calibration curve, binned.
+   */
   reliability: ReliabilityBin[]
 }
 /**
@@ -1134,8 +1216,17 @@ export interface DecisionNote {
  * via the `definition` "DecisionRef".
  */
 export interface DecisionRef {
+  /**
+   * ISO timestamp the note was saved.
+   */
   at: string | null
+  /**
+   * The reason code the manager gave for deviating.
+   */
   reason: string | null
+  /**
+   * The manager's own words.
+   */
   text: string
 }
 /**
@@ -1157,8 +1248,17 @@ export interface DecisionWrite {
  * via the `definition` "DecompositionCell".
  */
 export interface DecompositionCell {
+  /**
+   * Hits taken over the replay window.
+   */
   hits: number
+  /**
+   * ``total`` divided by the number of gameweeks replayed.
+   */
   per_gw: number
+  /**
+   * Total points over the replay window.
+   */
   total: number
 }
 /**
@@ -1176,13 +1276,25 @@ export interface DecompositionData {
    * oracle_h3 - model_h3: what better forecasting could still win.
    */
   forecast_gap_h3: number
+  /**
+   * The commit the replayed model was built from.
+   */
   git_sha: string
   /**
    * oracle_h3 - oracle_h1: the ceiling on multi-week planning.
    */
   planning_ceiling: number
+  /**
+   * When this decomposition was run.
+   */
   run_at: string
+  /**
+   * The season replayed.
+   */
   season: string
+  /**
+   * The first gameweek of the replay window.
+   */
   start_gw: number
 }
 /**
@@ -1213,9 +1325,6 @@ export interface DraftCompareRow {
    * Players this row's plan buys.
    */
   buys: WirePlayerRef[]
-  /**
-   * This row's plan's captain.
-   */
   captain: WirePlayerRef | null
   /**
    * The chip this row's plan plays, if any.
@@ -1512,21 +1621,60 @@ export interface FieldRank {
    * its own right.
    */
   field_draws: number
+  /**
+   * The synthetic field's median expected points this gameweek, when
+   * available.
+   */
   field_median_ep: number | null
+  /**
+   * The gameweek this field ranking is for.
+   */
   gw: number
+  /**
+   * How many sampled entries the effective-ownership table was built
+   * from.
+   */
   managers: number
+  /**
+   * The manager's own expected points this gameweek, when available.
+   */
   my_ep: number | null
+  /**
+   * How many synthetic field entries were simulated.
+   */
   n: number
+  /**
+   * P(the manager's squad beats the median of the synthetic field), when
+   * a field sample is banked.
+   */
   p_green: number | null
+  /**
+   * P(finishes in the overall top 10k), when a score series exists to
+   * compute it from.
+   */
   p_top10k: number | null
   /**
    * Overall-rank places per point, from the graded ledger. Negative: more
    * points is a better (smaller) rank.
    */
   rank_slope: number | null
+  /**
+   * How many graded gameweeks ``rank_slope`` was fitted over.
+   */
   rank_slope_rows: number
+  /**
+   * What has to happen before ``rank_slope`` can be computed, when it
+   * cannot be.
+   */
   rank_waiting_for: string | null
+  /**
+   * The RNG seed the field sample was drawn with.
+   */
   seed: number
+  /**
+   * What has to happen before ``p_top10k`` can be computed, when it
+   * cannot be.
+   */
   top10k_waiting_for: string | null
   /**
    * Players in my squad the field sample never saw.
@@ -1537,6 +1685,10 @@ export interface FieldRank {
    * panel can say how much of my week the sample cannot speak to.
    */
   unsampled_picks: number
+  /**
+   * What has to happen before ``p_green`` can be computed, when it
+   * cannot be.
+   */
   waiting_for: string | null
 }
 /**
@@ -1809,7 +1961,13 @@ export interface OutlookTeam {
  * via the `definition` "FlagChange".
  */
 export interface FlagChange {
+  /**
+   * FPL's own chance-of-playing percentage at the final status.
+   */
   chance_of_playing: number | null
+  /**
+   * FPL player code.
+   */
   code: number
   /**
    * The last status recorded **before** the deadline. A snapshot taken
@@ -1821,9 +1979,21 @@ export interface FlagChange {
    * the first day a manager could have acted, not the last.
    */
   first_change: string
+  /**
+   * His status immediately before it changed.
+   */
   from_status: string
+  /**
+   * The gameweek the deadline belongs to.
+   */
   gw: number
+  /**
+   * Days between ``first_change`` and the deadline.
+   */
   lead_days: number
+  /**
+   * Whether he actually started the fixture.
+   */
   started: boolean
 }
 /**
@@ -1846,16 +2016,51 @@ export interface FlagChange {
  * via the `definition` "FlagLatencyData".
  */
 export interface FlagLatencyData {
+  /**
+   * Whether the gate is open: enough snapshot days banked and at least
+   * one covered gameweek graded.
+   */
   available: boolean
+  /**
+   * Of those, the ones that have also been graded.
+   */
   checked_covered_gws: number[]
+  /**
+   * Gameweeks with at least one pre-deadline snapshot.
+   */
   covered_gws: number[]
+  /**
+   * The commit the readout was built from.
+   */
   git_sha: string
+  /**
+   * Lead-time distribution of status changes, split by outcome.
+   */
   histogram: LeadBucket[]
+  /**
+   * Every status change scored, one row per (gameweek, player).
+   */
   late_flags: FlagChange[]
+  /**
+   * The floor ``snap_dates`` must clear for the gate to open
+   * (``availability_eval.MIN_SNAP_DATES``).
+   */
   min_snap_dates: number
+  /**
+   * Why the report is empty, when the gate is shut.
+   */
   note: string | null
+  /**
+   * How many status changes the histogram and table are built from.
+   */
   rows: number
+  /**
+   * When this readout was built.
+   */
   run_at: string
+  /**
+   * Distinct snapshot days banked in the log.
+   */
   snap_dates: number
 }
 /**
@@ -1865,8 +2070,18 @@ export interface FlagLatencyData {
  * via the `definition` "LeadBucket".
  */
 export interface LeadBucket {
+  /**
+   * The lead-time band this row covers, in prose.
+   */
   bucket: string
+  /**
+   * How many flags in this band belonged to a player who then did not
+   * start.
+   */
   missed: number
+  /**
+   * How many flags in this band belonged to a player who then started.
+   */
   started: number
 }
 /**
@@ -1923,6 +2138,9 @@ export interface GapPoint {
    * Your total minus the leader's, negative when you are behind.
    */
   gap: number
+  /**
+   * The gameweek this gap is measured at.
+   */
   gw: number
 }
 /**
@@ -1930,8 +2148,17 @@ export interface GapPoint {
  * via the `definition` "GwPoint".
  */
 export interface GwPoint {
+  /**
+   * The gameweek this point is for.
+   */
   gw: number
+  /**
+   * Points scored that gameweek.
+   */
   points: number
+  /**
+   * Running total through that gameweek.
+   */
   total: number
 }
 /**
@@ -1939,13 +2166,38 @@ export interface GwPoint {
  * via the `definition` "HistoryRun".
  */
 export interface HistoryRun {
+  /**
+   * XI points as actually scored, captain doubled, no autosubs, once the
+   * gameweek has results; ``None`` before it does.
+   */
   actual_pts: number | null
+  /**
+   * Names of players bought.
+   */
   buys: string[]
+  /**
+   * The captain's name, as advised.
+   */
   captain: string
+  /**
+   * That gameweek's deadline.
+   */
   deadline: string
+  /**
+   * Expected points at the time of the run.
+   */
   expected_pts: number
+  /**
+   * The gameweek this run advised for.
+   */
   gw: number
+  /**
+   * Hits taken.
+   */
   hits: number
+  /**
+   * Names of players sold.
+   */
   sells: string[]
 }
 /**
@@ -2063,8 +2315,17 @@ export interface JobStarted {
  * via the `definition` "JournalData".
  */
 export interface JournalData {
+  /**
+   * ISO timestamp the journal was built.
+   */
   built_at: string | null
+  /**
+   * The running totals behind the journal's chart.
+   */
   cumulative: JournalPoint[]
+  /**
+   * One row per gameweek compared, newest first.
+   */
   rows: JournalRow[]
 }
 /**
@@ -2072,9 +2333,21 @@ export interface JournalData {
  * via the `definition` "JournalPoint".
  */
 export interface JournalPoint {
+  /**
+   * Running total of the manager's actual points through this gameweek.
+   */
   actual: number
+  /**
+   * ``actual`` minus ``model``, running.
+   */
   delta: number
+  /**
+   * The gameweek this cumulative point is through.
+   */
   gw: number
+  /**
+   * Running total of the model's own points through this gameweek.
+   */
   model: number
 }
 /**
@@ -2082,13 +2355,37 @@ export interface JournalPoint {
  * via the `definition` "JournalRow".
  */
 export interface JournalRow {
+  /**
+   * The manager's own captain choice.
+   */
   actual_captain: string | null
+  /**
+   * Points the manager's own team actually scored.
+   */
   actual_pts: number
+  /**
+   * ``actual_pts`` minus ``model_pts``.
+   */
   delta: number
+  /**
+   * The gameweek this row compares.
+   */
   gw: number
+  /**
+   * Names the model would have bought that gameweek.
+   */
   model_buys: string[]
+  /**
+   * The model's captain choice, when a plan was banked.
+   */
   model_captain: string | null
+  /**
+   * Points the model's own plan would have scored.
+   */
   model_pts: number
+  /**
+   * Names the model would have sold that gameweek.
+   */
   model_sells: string[]
   /**
    * Every banked run of this gameweek was written after its deadline, so
@@ -2332,7 +2629,7 @@ export interface LadderWeek {
    * Players bought in this week of the plan.
    */
   buys: WirePlayerRef[]
-  captain: WirePlayerRef1
+  captain: WirePlayerRef
   /**
    * Expected points for this week alone, net of its hits
    * (``ladder.plan_points`` over one week).
@@ -2350,79 +2647,11 @@ export interface LadderWeek {
    * Players sold in this week of the plan.
    */
   sells: WirePlayerRef[]
-  vice: WirePlayerRef2
+  vice: WirePlayerRef
   /**
    * The starting eleven this week of the plan.
    */
   xi: WirePlayerRef[]
-}
-/**
- * The captain this week of the plan.
- */
-export interface WirePlayerRef1 {
-  /**
-   * FPL player code.
-   */
-  code: number
-  /**
-   * Expected points, as the plan payload carries him.
-   */
-  ep: number
-  /**
-   * Player name.
-   */
-  name: string
-  /**
-   * His next game, resolved at serve time by ``gaffer.web.identity``.
-   */
-  next_fixture: NextFixture | null
-  /**
-   * His position: GKP, DEF, MID or FWD.
-   */
-  position: string
-  /**
-   * His club's code, resolved at serve time by ``gaffer.web.identity``.
-   */
-  team_code: number | null
-  /**
-   * His club's short name, resolved at serve time by
-   * ``gaffer.web.identity``.
-   */
-  team_short: string | null
-}
-/**
- * The vice-captain this week of the plan.
- */
-export interface WirePlayerRef2 {
-  /**
-   * FPL player code.
-   */
-  code: number
-  /**
-   * Expected points, as the plan payload carries him.
-   */
-  ep: number
-  /**
-   * Player name.
-   */
-  name: string
-  /**
-   * His next game, resolved at serve time by ``gaffer.web.identity``.
-   */
-  next_fixture: NextFixture | null
-  /**
-   * His position: GKP, DEF, MID or FWD.
-   */
-  position: string
-  /**
-   * His club's code, resolved at serve time by ``gaffer.web.identity``.
-   */
-  team_code: number | null
-  /**
-   * His club's short name, resolved at serve time by
-   * ``gaffer.web.identity``.
-   */
-  team_short: string | null
 }
 /**
  * What the extra hit bought, against the previous distinct rung.
@@ -2532,21 +2761,55 @@ export interface LaunchdHealth {
  * via the `definition` "LeagueRaceData".
  */
 export interface LeagueRaceData {
+  /**
+   * The configured manager's entry id.
+   */
   entry_id: number
   /**
    * False when this is another private league opened for display: its
    * λ is computed from its own standings and tilts nothing (v15 §3.3).
    */
   focus: boolean
+  /**
+   * The manager's running gap to the leader, one point per scored week.
+   */
   gap: GapPoint[]
+  /**
+   * The chase/defend tilt strength the next advise would see.
+   */
   lam: number
+  /**
+   * The stance and its λ, in one sentence, from ``explain_lam``.
+   */
   lam_explained: string
+  /**
+   * The league this race is for.
+   */
   league_id: number
+  /**
+   * The league's name.
+   */
   league_name: string
+  /**
+   * ``"chase"``, ``"defend"`` or ``"neutral"``, the stance ``lam`` implies.
+   */
   stance: string
+  /**
+   * Whether ``stance`` came from the solver's own read or a manual
+   * override in config.
+   */
   stance_source: 'auto' | 'manual'
+  /**
+   * Every entry's current standing.
+   */
   standings: StandingRow[]
+  /**
+   * Every entry's points history across the season.
+   */
   trajectory: Trajectory[]
+  /**
+   * Every rival's modelled chance of finishing above the manager.
+   */
   win_probability: WinProb[]
 }
 /**
@@ -2554,12 +2817,33 @@ export interface LeagueRaceData {
  * via the `definition` "StandingRow".
  */
 export interface StandingRow {
+  /**
+   * FPL entry id.
+   */
   entry: number
+  /**
+   * Points scored in the newest gameweek.
+   */
   event_total: number
+  /**
+   * Whether this row is the configured entry.
+   */
   is_you: boolean
+  /**
+   * The entry's team name.
+   */
   name: string
+  /**
+   * The manager's own name.
+   */
   player_name: string
+  /**
+   * Current league rank.
+   */
   rank: number
+  /**
+   * Total points to date.
+   */
   total: number
 }
 /**
@@ -2567,8 +2851,17 @@ export interface StandingRow {
  * via the `definition` "Trajectory".
  */
 export interface Trajectory {
+  /**
+   * FPL entry id.
+   */
   entry: number
+  /**
+   * The entry's team name.
+   */
   name: string
+  /**
+   * The entry's points history, one entry per gameweek played.
+   */
   points: GwPoint[]
 }
 /**
@@ -2576,8 +2869,18 @@ export interface Trajectory {
  * via the `definition` "WinProb".
  */
 export interface WinProb {
+  /**
+   * The rival's team name.
+   */
   name: string
+  /**
+   * Modelled P(the manager finishes above this rival), from
+   * ``win_probability``.
+   */
   p_win: number
+  /**
+   * The rival's total points to date.
+   */
   total: number
 }
 /**
@@ -2585,7 +2888,13 @@ export interface WinProb {
  * via the `definition` "LeagueSimData".
  */
 export interface LeagueSimData {
+  /**
+   * How many entries in the league were simulated.
+   */
   entries: number
+  /**
+   * Mean simulated final rank for the manager.
+   */
   exp_finish: number
   /**
    * v12 W4 §5.3's panel. ``None`` only when the simulation itself could not
@@ -2598,23 +2907,57 @@ export interface LeagueSimData {
    * in which case rivals do not drift however ``rival_drift`` is set.
    */
   field_rate: number | null
+  /**
+   * The gameweek the simulation was run from.
+   */
   gw: number
+  /**
+   * Banked headline numbers from earlier gameweeks, for the sparkline.
+   */
   history: SimPoint[]
   /**
    * ``league_mode.win_probability``'s parametric answer, kept beside the
    * simulated one until the UI has fully switched (spec §3).
    */
   legacy_win_probability: WinProb[]
+  /**
+   * Quantiles of the simulated final points margin over the field.
+   */
   margin_quantiles: {
     [k: string]: number
   }
+  /**
+   * How many Monte Carlo draws the simulation ran.
+   */
   n: number
+  /**
+   * A caveat on the simulation, when one applies.
+   */
   notice: string | null
+  /**
+   * Modelled P(the manager finishes top 3).
+   */
   p_top3: number
+  /**
+   * Modelled P(the manager finishes first).
+   */
   p_win: number
+  /**
+   * Every rival's simulated chance of being beaten.
+   */
   per_rival: RivalBeat[]
+  /**
+   * ``[league] rival_drift`` as configured — the per-week noise applied
+   * to a rival's future scoring.
+   */
   rival_drift: number
+  /**
+   * The RNG seed the simulation was run with.
+   */
   seed: number
+  /**
+   * Gameweeks remaining in the season.
+   */
   weeks_left: number
 }
 /**
@@ -2624,10 +2967,25 @@ export interface LeagueSimData {
  * via the `definition` "SimPoint".
  */
 export interface SimPoint {
+  /**
+   * Mean simulated final rank.
+   */
   exp_finish: number
+  /**
+   * The gameweek this simulated headline was run for.
+   */
   gw: number
+  /**
+   * Modelled P(finishes top 3).
+   */
   p_top3: number
+  /**
+   * Modelled P(finishes first), from the Monte Carlo league sim.
+   */
   p_win: number
+  /**
+   * ISO timestamp the simulation was run.
+   */
   run_at: string
 }
 /**
@@ -2635,7 +2993,13 @@ export interface SimPoint {
  * via the `definition` "RivalBeat".
  */
 export interface RivalBeat {
+  /**
+   * FPL entry id.
+   */
   entry: number
+  /**
+   * The rival's team name.
+   */
   name: string
   /**
    * ``None`` when the entry's squad could not be read at all (private, or
@@ -2655,6 +3019,9 @@ export interface LeagueWhatIfPin {
    * elements against the same snapshot they were rendered from.
    */
   code: number
+  /**
+   * The score outcome to pin this player to for the simulation.
+   */
   event: string
 }
 /**
@@ -2672,12 +3039,21 @@ export interface LeagueWhatIfRequest {
    * leaves it false: there the simulation *is* the page.
    */
   cached_only?: boolean
+  /**
+   * A player code to captain instead of the manager's own pick.
+   */
   captain_override: number | null
   /**
    * Which private league to re-count (v15 §5.2); ``None`` is the focus.
    */
   league_id: number | null
+  /**
+   * Player outcomes to pin before re-running the simulation.
+   */
   pins: LeagueWhatIfPin[]
+  /**
+   * A rival entry id whose captain is pinned to blank for the run.
+   */
   rival_captain_blanks: number | null
 }
 /**
@@ -2685,13 +3061,37 @@ export interface LeagueWhatIfRequest {
  * via the `definition` "LeagueWhatIfResult".
  */
 export interface LeagueWhatIfResult {
+  /**
+   * The manager's mean simulated finish before the pins were applied.
+   */
   baseline_exp_finish: number
+  /**
+   * The manager's P(win) before the pins were applied.
+   */
   baseline_p_win: number
+  /**
+   * ``p_win`` minus ``baseline_p_win``.
+   */
   delta_p_win: number
+  /**
+   * ``exp_finish`` minus ``baseline_exp_finish``.
+   */
   delta_rank: number
+  /**
+   * The manager's mean simulated finish with the pins applied.
+   */
   exp_finish: number
+  /**
+   * The manager's P(win) with the pins applied.
+   */
   p_win: number
+  /**
+   * Every entry's simulated result under the pins.
+   */
   table: LeagueWhatIfRow[]
+  /**
+   * Pinned codes that could not be resolved against the squad snapshot.
+   */
   unknown_codes: number[]
 }
 /**
@@ -2699,15 +3099,30 @@ export interface LeagueWhatIfResult {
  * via the `definition` "LeagueWhatIfRow".
  */
 export interface LeagueWhatIfRow {
+  /**
+   * FPL entry id.
+   */
   entry: number
+  /**
+   * Mean simulated final rank under this what-if.
+   */
   exp_finish: number
+  /**
+   * Whether this row is the configured entry.
+   */
   is_you: boolean
+  /**
+   * The entry's team name.
+   */
   name: string
   /**
    * This entry's win frequency in the same run as the headline, or ``None``
    * when its squad could not be read (``league_sim.is_readable``).
    */
   p_win: number | null
+  /**
+   * Total points to date.
+   */
   total: number
 }
 /**
@@ -2720,16 +3135,34 @@ export interface LeaguesOverview {
    * state's λ with a manual stance applied (plan R2).
    */
   focus_lam: number
+  /**
+   * ``[league] league_id`` as configured.
+   */
   focus_league_id: number
   /**
    * ``None`` when the focus is not one of the private leagues, in which
    * case ``focus_warning`` says so.
    */
   focus_name: string | null
+  /**
+   * The focus league's resolved stance, auto or manual.
+   */
   focus_stance: 'chase' | 'defend' | 'neutral'
+  /**
+   * Why there is no focus league to report on, when there is none.
+   */
   focus_warning: string | null
+  /**
+   * The entry's current gameweek, from FPL's own ``current_event``.
+   */
   gw: number | null
+  /**
+   * Every private mini-league the entry is in.
+   */
   private: PrivateLeagueRow[]
+  /**
+   * Every public or system league the entry is in.
+   */
   public: PublicLeagueRow[]
   /**
    * ``[league] stance`` as configured.
@@ -2748,13 +3181,38 @@ export interface PrivateLeagueRow {
    * a scored gameweek.
    */
   entries: number | null
+  /**
+   * Points to the entry immediately ahead or behind, in the direction
+   * ``gap_kind`` names.
+   */
   gap: number | null
+  /**
+   * Whether the leader is ahead of the entry or the entry leads it.
+   */
   gap_kind: ('ahead' | 'behind') | null
+  /**
+   * Whether this is the configured focus league.
+   */
   is_focus: boolean
+  /**
+   * Rank as of the previous gameweek.
+   */
   last_rank: number | null
+  /**
+   * The league's FPL id.
+   */
   league_id: number
+  /**
+   * The league's name.
+   */
   name: string
+  /**
+   * Current rank in this league.
+   */
   rank: number | null
+  /**
+   * Whether the league has a scored gameweek yet.
+   */
   started: boolean
   /**
    * Gap-sign only — what the dial would lean to. The deadband and λ
@@ -2769,10 +3227,25 @@ export interface PrivateLeagueRow {
  * via the `definition` "PublicLeagueRow".
  */
 export interface PublicLeagueRow {
+  /**
+   * Number of entries in the league.
+   */
   entries: number | null
+  /**
+   * Rank as of the previous gameweek.
+   */
   last_rank: number | null
+  /**
+   * The league's FPL id.
+   */
   league_id: number
+  /**
+   * The league's name.
+   */
   name: string
+  /**
+   * Current rank in this league.
+   */
   rank: number | null
 }
 /**
@@ -2780,18 +3253,59 @@ export interface PublicLeagueRow {
  * via the `definition` "LivePlayer".
  */
 export interface LivePlayer {
+  /**
+   * FPL player code.
+   */
   code: number
+  /**
+   * FPL's own element id.
+   */
   element: number
+  /**
+   * Minutes played so far this gameweek.
+   */
   minutes: number
+  /**
+   * FPL's own points multiplier: 0 unused, 1 normal, 2 captain,
+   * 3 triple captain.
+   */
   multiplier: number
+  /**
+   * Player name.
+   */
   name: string
+  /**
+   * Live points so far this gameweek, multiplier applied.
+   */
   points: number
+  /**
+   * GKP, DEF, MID or FWD.
+   */
   position: string
+  /**
+   * Whether he is projected to be substituted in by an autosub.
+   */
   projected_in: boolean
+  /**
+   * Whether he is projected to be substituted out by an autosub.
+   */
   projected_out: boolean
+  /**
+   * Bonus points projected from the live BPS, before FPL confirms them.
+   */
   provisional_bonus: number
+  /**
+   * Expected points still to come this gameweek, for a player yet to
+   * finish his fixture.
+   */
   remaining_ep: number | null
+  /**
+   * FPL's own overall ownership percentage.
+   */
   selected_by_percent: number | null
+  /**
+   * Whether his fixture has finished, is live, or has not kicked off.
+   */
   status: 'played' | 'playing' | 'yet to play'
   /**
    * The other half of a projected substitution, so a chip can name him.
@@ -2801,7 +3315,14 @@ export interface LivePlayer {
    * ``"played"`` or ``"yet to play"``: how certain the incoming man is.
    */
   sub_reason: string | null
+  /**
+   * Effective ownership among the sampled top-tier managers, when a
+   * sample was taken.
+   */
   tier_eo: number | null
+  /**
+   * Standard error on ``tier_eo``, when a sample was taken.
+   */
   tier_eo_se: number | null
 }
 /**
@@ -2811,6 +3332,9 @@ export interface LivePlayer {
  * via the `definition` "LiveRacePoint".
  */
 export interface LiveRacePoint {
+  /**
+   * ISO timestamp of this poll.
+   */
   at: string
   /**
    * The tracked rival's race value — the entry pinned in ``rival_name``,
@@ -2818,6 +3342,9 @@ export interface LiveRacePoint {
    * only when I am not; when I am leading he is the man in second.
    */
   rival: number | null
+  /**
+   * The manager's own race value at this poll.
+   */
   you: number
 }
 /**
@@ -2827,16 +3354,25 @@ export interface LiveRacePoint {
  * via the `definition` "LiveSafety".
  */
 export interface LiveSafety {
+  /**
+   * FPL entry id.
+   */
   entry: number
   /**
    * Their projected total minus mine. Positive means they are ahead.
    */
   margin: number
+  /**
+   * The entry's team name.
+   */
   name: string
   /**
    * What I must add beyond my projection to pass them; 0 when I lead.
    */
   need: number
+  /**
+   * Whether this entry sits above, below the manager, or leads the league.
+   */
   role: 'above' | 'below' | 'leader'
 }
 /**
@@ -2844,13 +3380,37 @@ export interface LiveSafety {
  * via the `definition` "LiveState".
  */
 export interface LiveState {
+  /**
+   * Whether any fixture in the gameweek is live or about to be.
+   */
   active: boolean
+  /**
+   * The gameweek being tracked, or ``None`` when inactive.
+   */
   gw: number | null
+  /**
+   * How many fixtures are currently live.
+   */
   matches_in_play: number
+  /**
+   * The manager's own live points so far, no autosubs applied.
+   */
   my_points: number
+  /**
+   * The manager's season total projected with autosubs applied.
+   */
   my_projected_points: number
+  /**
+   * The manager's own race value: projected points plus what remains.
+   */
   my_race: number | null
+  /**
+   * A caveat on the tier-EO reading, when one applies.
+   */
   notice: string | null
+  /**
+   * The manager's own squad, live.
+   */
   players: LivePlayer[]
   /**
    * The race's own degradation line. Deliberately not ``notice``, which is
@@ -2861,6 +3421,9 @@ export interface LiveState {
    * This gameweek's saved ``advice.expected_pts``, when there is one.
    */
   race_reference: number | null
+  /**
+   * This session's polled race values, for the sparkline.
+   */
   race_series: LiveRacePoint[]
   /**
    * The entry the trajectory follows: the highest-placed entry that is not
@@ -2868,7 +3431,13 @@ export interface LiveState {
    * so the line cannot change whose points it is plotting mid-afternoon.
    */
   rival_name: string | null
+  /**
+   * League places worth watching, one row per rival above or below.
+   */
   safety: LiveSafety[]
+  /**
+   * The league standings, projected live.
+   */
   table: LiveTableRow[]
 }
 /**
@@ -2876,17 +3445,41 @@ export interface LiveState {
  * via the `definition` "LiveTableRow".
  */
 export interface LiveTableRow {
+  /**
+   * ``projected`` minus ``pre_total`` — this gameweek's projected gain.
+   */
   delta: number
+  /**
+   * FPL entry id.
+   */
   entry: number
+  /**
+   * This gameweek's live points, no autosubs applied.
+   */
   live: number
+  /**
+   * The entry's team name.
+   */
   name: string
+  /**
+   * Total points before this gameweek.
+   */
   pre_total: number
+  /**
+   * Season total projected with autosubs applied.
+   */
   projected: number
+  /**
+   * This gameweek's points with the projected autosubs applied.
+   */
   projected_live: number | null
   /**
    * ``projected_live + remaining_ep``: where this gameweek is heading.
    */
   race: number | null
+  /**
+   * Expected points still to come this gameweek for this entry's squad.
+   */
   remaining_ep: number | null
 }
 /**
@@ -2928,13 +3521,38 @@ export interface MinutesOutput2 {
  * via the `definition` "MissRow".
  */
 export interface MissRow {
+  /**
+   * Points actually scored this gameweek.
+   */
   actual: number
+  /**
+   * FPL player code.
+   */
   code: number
+  /**
+   * Expected points, as forecast for this gameweek.
+   */
   ep: number
+  /**
+   * Minutes actually played this gameweek.
+   */
   minutes: number
+  /**
+   * ``actual - ep``, signed: positive is an under-rated player, negative
+   * an over-rated one.
+   */
   miss: number
+  /**
+   * Player name.
+   */
   name: string
+  /**
+   * GKP, DEF, MID or FWD, when known.
+   */
   position: string
+  /**
+   * His price in £m at the time, when known.
+   */
   price: number | null
 }
 /**
@@ -2947,6 +3565,9 @@ export interface MissesData {
    * result. That is an absent card, not a card of zeros (spec D1).
    */
   gw: number | null
+  /**
+   * The biggest misses that gameweek, by absolute value.
+   */
   rows: MissRow[]
 }
 /**
@@ -3150,14 +3771,30 @@ export interface NewsRow {
  * via the `definition` "NewsShadowData".
  */
 export interface NewsShadowData {
+  /**
+   * The same metrics, one row per scored gameweek, with running totals.
+   */
   by_gw: NewsShadowGw[]
+  /**
+   * The commit the readout was built from.
+   */
   git_sha: string
+  /**
+   * The two metrics over the whole log, or ``{}`` before anything is
+   * scored.
+   */
   overall:
     | NewsShadowSummary
     | {
         [k: string]: unknown
       }
+  /**
+   * Total scored player-gameweeks across the whole log.
+   */
   rows: number
+  /**
+   * When this readout was built.
+   */
   run_at: string
 }
 /**
@@ -3165,15 +3802,49 @@ export interface NewsShadowData {
  * via the `definition` "NewsShadowGw".
  */
 export interface NewsShadowGw {
+  /**
+   * Brier score of the official-flag-only reading, this gameweek alone.
+   */
   brier_flags: number
+  /**
+   * Brier score of the news-aware reading, this gameweek alone.
+   */
   brier_news: number
+  /**
+   * Brier score of the official-flag-only reading, cumulative to this
+   * gameweek.
+   */
   cum_brier_flags: number
+  /**
+   * Brier score of the news-aware reading, cumulative to this gameweek.
+   */
   cum_brier_news: number
+  /**
+   * Mean absolute error of the official-flag-only reading, cumulative to
+   * this gameweek.
+   */
   cum_mae_flags: number
+  /**
+   * Mean absolute error of the news-aware reading, cumulative to this
+   * gameweek.
+   */
   cum_mae_news: number
+  /**
+   * The gameweek this row scores.
+   */
   gw: number
+  /**
+   * Mean absolute error of the official-flag-only reading, this
+   * gameweek alone.
+   */
   mae_flags: number
+  /**
+   * Mean absolute error of the news-aware reading, this gameweek alone.
+   */
   mae_news: number
+  /**
+   * How many player rows this gameweek's figures cover.
+   */
   rows: number
 }
 /**
@@ -3183,10 +3854,26 @@ export interface NewsShadowGw {
  * via the `definition` "NewsShadowSummary".
  */
 export interface NewsShadowSummary {
+  /**
+   * Brier score of the official-flag-only P(plays) reading.
+   */
   brier_flags: number
+  /**
+   * Brier score of the news-aware P(plays) reading.
+   */
   brier_news: number
+  /**
+   * Mean absolute error of the official-flag-only expected-minutes
+   * reading.
+   */
   mae_flags: number
+  /**
+   * Mean absolute error of the news-aware expected-minutes reading.
+   */
   mae_news: number
+  /**
+   * How many scored player-gameweeks this summary covers.
+   */
   rows: number
 }
 /**
@@ -3316,8 +4003,17 @@ export interface OverridesPanel {
  * via the `definition` "PenTrackerData".
  */
 export interface PenTrackerData {
+  /**
+   * One block per finished gameweek tracked.
+   */
   gws: PenTrackerGw[]
+  /**
+   * Caveats the tracker recorded while building the report.
+   */
   notes: string[]
+  /**
+   * The season the report covers.
+   */
   season: string
   season_totals: PenTrackerTotals
 }
@@ -3334,19 +4030,113 @@ export interface PenTrackerData {
  * via the `definition` "PenTrackerGw".
  */
 export interface PenTrackerGw {
+  /**
+   * Rows in the banked components frame the taker prediction was built
+   * from.
+   */
   component_rows: number | null
+  /**
+   * Of those, how many the chosen instrument could actually read.
+   */
   covered_rows: number | null
+  /**
+   * Why this gameweek's block could not be built, when it could not.
+   */
   error: string | null
+  /**
+   * The gameweek this block reports on.
+   */
   gw: number
+  /**
+   * Which realized-penalty reader scored this week (``pen_tracker
+   * .realized_pens``'s choice).
+   */
   instrument: string | null
+  /**
+   * Of those, how many were taken by the club's first-choice taker.
+   */
   pens_by_first_choice: number | null
+  /**
+   * ``pens_taken / team_games``, for comparison against
+   * :data:`LEAGUE_PENS_PG`.
+   */
   pens_per_team_game: number | null
+  /**
+   * Penalties actually taken this week, by the chosen instrument's count.
+   */
   pens_taken: number | null
+  /**
+   * Expected penalty points the model attributed to first-choice takers
+   * this week.
+   */
   predicted_ep_pen_taker: number | null
+  /**
+   * How many players the model identified as first-choice takers.
+   */
   predicted_takers: number | null
+  /**
+   * Points actually scored from penalty conversions this week.
+   */
   realized_pen_points: number | null
+  /**
+   * Player rows this week's live data carried.
+   */
   rows: number | null
+  /**
+   * ``pens_by_first_choice / pens_taken``, or ``None`` when none were
+   * taken — never 0/0 read as a miss.
+   */
   taker_hit_rate: number | null
+  /**
+   * Distinct (opponent, kickoff) fixtures this week, for the
+   * pens-per-game rate.
+   */
+  team_games: number | null
+}
+/**
+ * The season line summed over ``gws``.
+ */
+export interface PenTrackerTotals {
+  /**
+   * How many gameweeks are summed into this total.
+   */
+  gws: number | null
+  /**
+   * Every realized-penalty instrument used across the summed gameweeks.
+   */
+  instruments: string[]
+  /**
+   * The served league-wide penalties-per-game prior, for comparison.
+   */
+  league_pens_pg_served: number | null
+  /**
+   * Season total taken by first-choice takers.
+   */
+  pens_by_first_choice: number | null
+  /**
+   * Season ``pens_taken / team_games``.
+   */
+  pens_per_team_game: number | null
+  /**
+   * Season total of penalties taken.
+   */
+  pens_taken: number | null
+  /**
+   * Season total of expected penalty points attributed to first-choice
+   * takers.
+   */
+  predicted_ep_pen_taker: number | null
+  /**
+   * Season total of points actually scored from penalty conversions.
+   */
+  realized_pen_points: number | null
+  /**
+   * Season ``pens_by_first_choice / pens_taken``.
+   */
+  taker_hit_rate: number | null
+  /**
+   * Total team-games across the season.
+   */
   team_games: number | null
 }
 /**
@@ -3356,16 +4146,47 @@ export interface PenTrackerGw {
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "PenTrackerTotals".
  */
-export interface PenTrackerTotals {
+export interface PenTrackerTotals1 {
+  /**
+   * How many gameweeks are summed into this total.
+   */
   gws: number | null
+  /**
+   * Every realized-penalty instrument used across the summed gameweeks.
+   */
   instruments: string[]
+  /**
+   * The served league-wide penalties-per-game prior, for comparison.
+   */
   league_pens_pg_served: number | null
+  /**
+   * Season total taken by first-choice takers.
+   */
   pens_by_first_choice: number | null
+  /**
+   * Season ``pens_taken / team_games``.
+   */
   pens_per_team_game: number | null
+  /**
+   * Season total of penalties taken.
+   */
   pens_taken: number | null
+  /**
+   * Season total of expected penalty points attributed to first-choice
+   * takers.
+   */
   predicted_ep_pen_taker: number | null
+  /**
+   * Season total of points actually scored from penalty conversions.
+   */
   realized_pen_points: number | null
+  /**
+   * Season ``pens_by_first_choice / pens_taken``.
+   */
   taker_hit_rate: number | null
+  /**
+   * Total team-games across the season.
+   */
   team_games: number | null
 }
 /**
@@ -3547,7 +4368,7 @@ export interface PlanSummary {
    * Players bought into this plan.
    */
   buys: WirePlayerRef[]
-  captain: WirePlayerRef3
+  captain: WirePlayerRef
   /**
    * Raw expected points for ``gw`` alone, net of hits.
    */
@@ -3568,79 +4389,11 @@ export interface PlanSummary {
    * Players sold out of this plan.
    */
   sells: WirePlayerRef[]
-  vice: WirePlayerRef4
+  vice: WirePlayerRef
   /**
    * The starting eleven.
    */
   xi: WirePlayerRef[]
-}
-/**
- * The captain.
- */
-export interface WirePlayerRef3 {
-  /**
-   * FPL player code.
-   */
-  code: number
-  /**
-   * Expected points, as the plan payload carries him.
-   */
-  ep: number
-  /**
-   * Player name.
-   */
-  name: string
-  /**
-   * His next game, resolved at serve time by ``gaffer.web.identity``.
-   */
-  next_fixture: NextFixture | null
-  /**
-   * His position: GKP, DEF, MID or FWD.
-   */
-  position: string
-  /**
-   * His club's code, resolved at serve time by ``gaffer.web.identity``.
-   */
-  team_code: number | null
-  /**
-   * His club's short name, resolved at serve time by
-   * ``gaffer.web.identity``.
-   */
-  team_short: string | null
-}
-/**
- * The vice-captain.
- */
-export interface WirePlayerRef4 {
-  /**
-   * FPL player code.
-   */
-  code: number
-  /**
-   * Expected points, as the plan payload carries him.
-   */
-  ep: number
-  /**
-   * Player name.
-   */
-  name: string
-  /**
-   * His next game, resolved at serve time by ``gaffer.web.identity``.
-   */
-  next_fixture: NextFixture | null
-  /**
-   * His position: GKP, DEF, MID or FWD.
-   */
-  position: string
-  /**
-   * His club's code, resolved at serve time by ``gaffer.web.identity``.
-   */
-  team_code: number | null
-  /**
-   * His club's short name, resolved at serve time by
-   * ``gaffer.web.identity``.
-   */
-  team_short: string | null
 }
 /**
  * v12 §3.2's readout, or its refusal.
@@ -3654,17 +4407,54 @@ export interface WirePlayerRef4 {
  * via the `definition` "PresserGradesData".
  */
 export interface PresserGradesData {
+  /**
+   * Players with no presser verdict at all, over the graded gameweeks.
+   */
   absent_rows: number
+  /**
+   * Whether enough verdicts have been graded to report.
+   */
   available: boolean
+  /**
+   * How many verdicts came from each presser source.
+   */
   by_source: SourceRows[]
+  /**
+   * Started/not-started counts, one row per verdict.
+   */
   confusion: VerdictRow[]
+  /**
+   * The commit the readout was built from.
+   */
   git_sha: string
+  /**
+   * Gameweeks with at least one graded verdict.
+   */
   graded_gws: number[]
+  /**
+   * Why the report is empty, when it is.
+   */
   note: string | null
+  /**
+   * Precision and recall, one row per verdict.
+   */
   per_class: VerdictScore[]
+  /**
+   * What ``recall`` is measured over, stated so the number is not read
+   * against a larger population by mistake.
+   */
   recall_population: string
+  /**
+   * How many verdicts the tables below are built from.
+   */
   rows: number
+  /**
+   * When this readout was built.
+   */
   run_at: string
+  /**
+   * Total presser verdicts on record, graded or not.
+   */
   verdicts_banked: number
 }
 /**
@@ -3672,7 +4462,13 @@ export interface PresserGradesData {
  * via the `definition` "SourceRows".
  */
 export interface SourceRows {
+  /**
+   * How many verdicts came from this source.
+   */
   rows: number
+  /**
+   * The presser source's name.
+   */
   source: string
 }
 /**
@@ -3680,9 +4476,21 @@ export interface SourceRows {
  * via the `definition` "VerdictRow".
  */
 export interface VerdictRow {
+  /**
+   * How many verdicts of this kind were graded.
+   */
   n: number
+  /**
+   * Of those, how many players did not start.
+   */
   not_started: number
+  /**
+   * Of those, how many players then started.
+   */
   started: number
+  /**
+   * The presser verdict this row scores (e.g. "doubtful", "OUT").
+   */
   verdict: string
 }
 /**
@@ -3690,13 +4498,22 @@ export interface VerdictRow {
  * via the `definition` "VerdictScore".
  */
 export interface VerdictScore {
+  /**
+   * How many verdicts of this kind were graded.
+   */
   n: number
   /**
    * P(did not start | this verdict). Absence is the event every class
    * claims, which is what makes the four numbers comparable.
    */
   precision: number
+  /**
+   * P(this verdict | did not start), over the verdict-carrying rows.
+   */
   recall: number
+  /**
+   * The presser verdict this row scores.
+   */
   verdict: string
 }
 /**
@@ -3704,7 +4521,13 @@ export interface VerdictScore {
  * via the `definition` "PricePoint".
  */
 export interface PricePoint {
+  /**
+   * The gameweek this price was recorded at.
+   */
   gw: number
+  /**
+   * The player's price in £m.
+   */
   price: number
 }
 /**
@@ -3712,8 +4535,17 @@ export interface PricePoint {
  * via the `definition` "PriceSeries".
  */
 export interface PriceSeries {
+  /**
+   * FPL player code.
+   */
   code: number
+  /**
+   * Player name.
+   */
   name: string
+  /**
+   * His price at every gameweek he was owned.
+   */
   points: PricePoint[]
 }
 /**
@@ -3723,11 +4555,29 @@ export interface PriceSeries {
  * via the `definition` "QualityData".
  */
 export interface QualityData {
+  /**
+   * The newest benchmark against published references, or ``None``.
+   */
   benchmark: BenchmarkEvaluation | null
+  /**
+   * The newest holdout evaluation, or ``None`` if none has been run.
+   */
   current: CurrentEvaluation | null
+  /**
+   * The newest forecast-vs-planning replay decomposition, or ``None``.
+   */
   decomposition: DecompositionData | null
+  /**
+   * v12 §3.1's flag-latency readout, or ``None`` if never scored.
+   */
   flag_latency: FlagLatencyData | null
+  /**
+   * Gate N2's standing readout, or ``None`` if never scored.
+   */
   news_shadow: NewsShadowData | null
+  /**
+   * v12 §3.2's presser-verdict readout, or ``None`` if never scored.
+   */
   presser_grades: PresserGradesData | null
 }
 /**
@@ -3738,8 +4588,17 @@ export interface QualityData {
  * via the `definition` "ReasonTally".
  */
 export interface ReasonTally {
+  /**
+   * How many graded gameweeks carried this reason.
+   */
   count: number
+  /**
+   * Mean transfers-lane points delta over those gameweeks.
+   */
   mean_delta_pts: number | null
+  /**
+   * The deviation reason code.
+   */
   reason: string
 }
 /**
@@ -3747,7 +4606,13 @@ export interface ReasonTally {
  * via the `definition` "ReviewAccuracyPoint".
  */
 export interface ReviewAccuracyPoint {
+  /**
+   * That gameweek's ``ReviewGw.accuracy``.
+   */
   accuracy: number
+  /**
+   * The gameweek this accuracy point is for.
+   */
   gw: number
 }
 /**
@@ -3758,25 +4623,68 @@ export interface ReviewAccuracyPoint {
  * via the `definition` "ReviewGw".
  */
 export interface ReviewGw {
+  /**
+   * ``my_points`` as a percentage of ``model_points``, capped at 100.
+   */
   accuracy: number | null
+  /**
+   * The chip I played this gameweek, if any.
+   */
   chip: string | null
   /**
    * Why I did something other than what the advice said. ``None`` is "no
    * note was written", which is not the same as a note with no reason.
    */
   decision: DecisionRef | null
+  /**
+   * The gameweek this grade is for.
+   */
   gw: number
   hindsight: ReviewHindsight
+  /**
+   * Hits I took this gameweek.
+   */
   hits: number
+  /**
+   * Every decision lane graded this gameweek.
+   */
   lanes: ReviewLane[]
+  /**
+   * Moves the model flagged that I did not make and that paid off anyway.
+   */
   misses: ReviewMiss[]
+  /**
+   * The chip the model would have played this gameweek, if any.
+   */
   model_chip: string | null
+  /**
+   * Points the model's own plan would have scored this gameweek.
+   */
   model_points: number | null
+  /**
+   * My XI's points, captain doubled, no autosubs — the review's own
+   * reading, independent of FPL's official figure.
+   */
   my_points: number | null
+  /**
+   * No advice existed for this gameweek to grade against.
+   */
   no_advice: boolean
+  /**
+   * Caveats on this gameweek's grade.
+   */
   notices: string[]
+  /**
+   * FPL's own points figure before hits are subtracted.
+   */
   official_gross: number | null
+  /**
+   * FPL's own points figure for this gameweek, net of any hits.
+   */
   official_points: number | null
+  /**
+   * Points scored by the players the model's own plan would have benched.
+   */
   our_bench_points: number | null
   /**
    * My overall FPL rank at the end of this gameweek.
@@ -3790,7 +4698,13 @@ export interface ReviewGw {
    * rank in the game.
    */
   overall_rank: number | null
+  /**
+   * Points scored by players left on my bench.
+   */
   points_on_bench: number | null
+  /**
+   * Every banked run of this gameweek was written after its deadline.
+   */
   post_deadline: boolean
   /**
    * The snapshot named above cannot be trusted to predate the deadline.
@@ -3819,26 +4733,49 @@ export interface ReviewGw {
    * a zero or a blank that reads like one.
    */
   projection_snapshot: string | null
+  /**
+   * The smallest ``delta_pwin`` this simulation could resolve, in
+   * percentage points — ``100 / pwin_n``.
+   */
   pwin_granularity_pp: number | null
+  /**
+   * How many Monte Carlo draws the lanes' ``delta_pwin`` figures were
+   * simulated over.
+   */
   pwin_n: number | null
+  /**
+   * The RNG seed those draws used.
+   */
   pwin_seed: number | null
+  /**
+   * Whether ``my_points`` (net of hits) matches ``official_points``, or
+   * ``None`` when the entry history was never banked.
+   */
   reconciled: boolean | null
+  /**
+   * ISO timestamp this grade was banked.
+   */
   reviewed_at: string | null
 }
 /**
- * The best legal eleven out of the fifteen I owned, by actual points.
- *
- * ``points`` and ``gap`` are ``None`` — never zero — when no legal eleven
- * could be built at all, which is what a fifteen the results frame does not
- * cover looks like. A zero there would bank a *negative* gap.
- *
- * This interface was referenced by `GafferApi`'s JSON-Schema
- * via the `definition` "ReviewHindsight".
+ * The best legal eleven I could have picked from my actual fifteen.
  */
 export interface ReviewHindsight {
+  /**
+   * That eleven's best captain choice, by code.
+   */
   captain: number | null
+  /**
+   * ``points`` minus what my actual eleven scored.
+   */
   gap: number | null
+  /**
+   * Points the best legal eleven from my fifteen would have scored.
+   */
   points: number | null
+  /**
+   * That eleven's player codes.
+   */
   xi: number[]
 }
 /**
@@ -3854,7 +4791,13 @@ export interface ReviewHindsight {
  * via the `definition` "ReviewLane".
  */
 export interface ReviewLane {
+  /**
+   * Whether my choice and the model's agreed on this lane.
+   */
   aligned: boolean
+  /**
+   * My choice's points minus the model's, on this lane.
+   */
   delta_pts: number | null
   /**
    * My choice minus the model's, in percentage points of P(win the
@@ -3862,10 +4805,25 @@ export interface ReviewLane {
    * simulation normalises every squad to its eleven and one armband.
    */
   delta_pwin: number | null
+  /**
+   * The lane's verdict in one word, from the points delta's band.
+   */
   label: ('Brilliant' | 'Good' | 'Aligned' | 'Inaccuracy' | 'Blunder') | null
+  /**
+   * Which decision this lane grades.
+   */
   lane: 'transfers' | 'captaincy' | 'bench' | 'chip'
+  /**
+   * What I did, in prose.
+   */
   mine: string | null
+  /**
+   * What the model would have done, in prose.
+   */
   model: string | null
+  /**
+   * Why the lane could not be graded, when ``delta_pts`` is ``None``.
+   */
   note: string | null
 }
 /**
@@ -3875,10 +4833,50 @@ export interface ReviewLane {
  * via the `definition` "ReviewMiss".
  */
 export interface ReviewMiss {
+  /**
+   * FPL player code.
+   */
   code: number
+  /**
+   * Points this move would have gained over what I actually did.
+   */
   gain: number
+  /**
+   * Player name.
+   */
   name: string
+  /**
+   * The player he was recommended over.
+   */
   over: string
+}
+/**
+ * The best legal eleven out of the fifteen I owned, by actual points.
+ *
+ * ``points`` and ``gap`` are ``None`` — never zero — when no legal eleven
+ * could be built at all, which is what a fifteen the results frame does not
+ * cover looks like. A zero there would bank a *negative* gap.
+ *
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "ReviewHindsight".
+ */
+export interface ReviewHindsight1 {
+  /**
+   * That eleven's best captain choice, by code.
+   */
+  captain: number | null
+  /**
+   * ``points`` minus what my actual eleven scored.
+   */
+  gap: number | null
+  /**
+   * Points the best legal eleven from my fifteen would have scored.
+   */
+  points: number | null
+  /**
+   * That eleven's player codes.
+   */
+  xi: number[]
 }
 /**
  * This interface was referenced by `GafferApi`'s JSON-Schema
@@ -3899,8 +4897,17 @@ export interface ReviewLaneTotal {
    * denominator is ``graded``.
    */
   losses: number
+  /**
+   * Total points delta on this lane, summed over graded gameweeks.
+   */
   pts: number
+  /**
+   * Total P(win) delta on this lane, summed over graded gameweeks.
+   */
   pwin: number
+  /**
+   * Graded weeks this lane gained points over the model.
+   */
   wins: number
 }
 /**
@@ -3908,18 +4915,58 @@ export interface ReviewLaneTotal {
  * via the `definition` "RivalDetailData".
  */
 export interface RivalDetailData {
+  /**
+   * The rival's captain in ``squad_gw``.
+   */
   captain: SquadPlayer | null
+  /**
+   * Chips the rival has played this season.
+   */
   chips_used: string[]
+  /**
+   * FPL entry id.
+   */
   entry: number
+  /**
+   * The rival's in-play points for the current gameweek, when one is
+   * live; ``None`` otherwise.
+   */
   live_points: number | null
+  /**
+   * The rival's team name.
+   */
   name: string
+  /**
+   * The rival manager's own name.
+   */
   player_name: string
+  /**
+   * Players both the rival and the manager own.
+   */
   shared: SquadPlayer[]
+  /**
+   * The rival's full squad for ``squad_gw``.
+   */
   squad: SquadPlayer[]
+  /**
+   * The gameweek the served squad was picked for.
+   */
   squad_gw: number
+  /**
+   * The rival's squad value in £m.
+   */
   team_value: number
+  /**
+   * Players the rival owns that the manager does not.
+   */
   their_differentials: SquadPlayer[]
+  /**
+   * The rival's total points to date.
+   */
   total: number
+  /**
+   * Players the manager owns that the rival does not.
+   */
   your_differentials: SquadPlayer[]
 }
 /**
@@ -3927,12 +4974,34 @@ export interface RivalDetailData {
  * via the `definition` "SquadPlayer".
  */
 export interface SquadPlayer {
+  /**
+   * FPL player code.
+   */
   code: number
+  /**
+   * FPL's own element id.
+   */
   element: number
+  /**
+   * Whether he was captained (multiplier 2 or more).
+   */
   is_captain: boolean
+  /**
+   * FPL's own points multiplier for him: 0 unused, 1 normal, 2 captain,
+   * 3 triple captain.
+   */
   multiplier: number
+  /**
+   * Player name.
+   */
   name: string
+  /**
+   * GKP, DEF, MID or FWD.
+   */
   position: string
+  /**
+   * His price in £m at the time the squad was picked.
+   */
   price: number
 }
 /**
@@ -3940,13 +5009,37 @@ export interface SquadPlayer {
  * via the `definition` "RivalSummary".
  */
 export interface RivalSummary {
+  /**
+   * Players in the rival's squad the manager does not own.
+   */
   differentials: number
+  /**
+   * FPL entry id.
+   */
   entry: number
+  /**
+   * The rival's points in the newest gameweek.
+   */
   event_total: number
+  /**
+   * The rival's team name.
+   */
   name: string
+  /**
+   * Players shared with the manager's own squad.
+   */
   overlap: number
+  /**
+   * The rival manager's own name.
+   */
   player_name: string
+  /**
+   * The rival's current league rank.
+   */
   rank: number
+  /**
+   * The rival's total points to date.
+   */
   total: number
 }
 /**
@@ -4223,7 +5316,13 @@ export interface ServedStep {
  * via the `definition` "SettingOption".
  */
 export interface SettingOption {
+  /**
+   * The word the select shows for it.
+   */
   label: string
+  /**
+   * The value this option sets.
+   */
   value: number
 }
 /**
@@ -4238,17 +5337,38 @@ export interface SettingRow {
    * §4.2). Empty for every other kind.
    */
   choices: string[]
+  /**
+   * A short explanation of what the setting does.
+   */
   help: string
+  /**
+   * The upper bound the tab should enforce, when the setting has one.
+   */
   hi: number | null
+  /**
+   * The config field this row edits, dotted to its section.
+   */
   key: string
+  /**
+   * What kind of control the tab should render for it.
+   */
   kind: 'int' | 'float' | 'bool' | 'floats3' | 'pool' | 'choice'
+  /**
+   * The setting's name in prose.
+   */
   label: string
+  /**
+   * The lower bound the tab should enforce, when the setting has one.
+   */
   lo: number | null
   /**
    * What a select offers, in order, the saved value included when it is
    * not offered (v17e §2.5). Empty for a row the tab types into.
    */
   options: SettingOption[]
+  /**
+   * The config section the field lives in, for grouping on the tab.
+   */
   section: string
   /**
    * Which file this value came from. ``local`` is ``config.local.toml``,
@@ -4268,6 +5388,9 @@ export interface SettingRow {
  * via the `definition` "SettingWrite".
  */
 export interface SettingWrite {
+  /**
+   * The config field to write, dotted to its section.
+   */
   key: string
   /**
    * ``None`` removes the key from the overlay, so the value falls back to
@@ -4280,6 +5403,9 @@ export interface SettingWrite {
  * via the `definition` "SettingsPanel".
  */
 export interface SettingsPanel {
+  /**
+   * The standing note on when a saved change takes effect.
+   */
   apply_note: string
   /**
    * Why ``config.local.toml`` is being ignored, or ``None``. Also carries
@@ -4660,7 +5786,7 @@ export interface PlanSummary1 {
    * Players bought into this plan.
    */
   buys: WirePlayerRef[]
-  captain: WirePlayerRef3
+  captain: WirePlayerRef
   /**
    * Raw expected points for ``gw`` alone, net of hits.
    */
@@ -4681,7 +5807,7 @@ export interface PlanSummary1 {
    * Players sold out of this plan.
    */
   sells: WirePlayerRef[]
-  vice: WirePlayerRef4
+  vice: WirePlayerRef
   /**
    * The starting eleven.
    */
@@ -4699,7 +5825,7 @@ export interface PlanSummary2 {
    * Players bought into this plan.
    */
   buys: WirePlayerRef[]
-  captain: WirePlayerRef3
+  captain: WirePlayerRef
   /**
    * Raw expected points for ``gw`` alone, net of hits.
    */
@@ -4720,7 +5846,7 @@ export interface PlanSummary2 {
    * Players sold out of this plan.
    */
   sells: WirePlayerRef[]
-  vice: WirePlayerRef4
+  vice: WirePlayerRef
   /**
    * The starting eleven.
    */
@@ -4812,24 +5938,58 @@ export interface Staleness1 {
  * via the `definition` "WireCalibrationReport".
  */
 export interface WireCalibrationReport {
+  /**
+   * Whether a calibration report is banked at all.
+   */
   available: boolean
+  /**
+   * Per-head calibration over the whole season to date.
+   */
   cumulative: {
     [k: string]: CalibrationHead
   }
+  /**
+   * Rows dropped from the report, whatever shape the scorer recorded.
+   */
   excluded: {
     [k: string]: unknown
   }[]
+  /**
+   * Per-gameweek calibration, for heads with enough rows to report weekly.
+   */
   gameweeks: CalibrationGw[]
+  /**
+   * The commit the report was built from.
+   */
   git_sha: string | null
+  /**
+   * Gameweeks with no calibration data at all.
+   */
   missing: number[]
+  /**
+   * Why the report is unavailable, when it is.
+   */
   note: string | null
+  /**
+   * Heads left out of the report entirely, with the reason.
+   */
   omitted: {
     [k: string]: string
   }
+  /**
+   * Heads reported cumulatively only, with the reason — see the comment
+   * above.
+   */
   per_gw_omitted: {
     [k: string]: string
   }
+  /**
+   * When the report was built.
+   */
   run_at: string | null
+  /**
+   * The season the report covers.
+   */
   season: string | null
 }
 /**
@@ -4977,10 +6137,19 @@ export interface WireModelHealth {
  * via the `definition` "WireHistory".
  */
 export interface WireHistory {
+  /**
+   * Banked backtest log rows, whatever shape the replay tooling wrote.
+   */
   backtests: {
     [k: string]: unknown
   }[]
+  /**
+   * Price history for every player ever owned.
+   */
   prices: PriceSeries[]
+  /**
+   * Every advised gameweek, newest first.
+   */
   runs: HistoryRun[]
 }
 /**
@@ -5255,7 +6424,13 @@ export interface WirePlayerRow {
  * via the `definition` "WireReview".
  */
 export interface WireReview {
+  /**
+   * Every graded gameweek's own row.
+   */
   gws: ReviewGw[]
+  /**
+   * The season totals over ``gws``, or ``None`` when nothing is graded.
+   */
   summary: WireReviewSummary | null
 }
 /**
@@ -5263,7 +6438,14 @@ export interface WireReview {
  * via the `definition` "WireReviewSummary".
  */
 export interface WireReviewSummary {
+  /**
+   * The accuracy series across graded gameweeks.
+   */
   accuracy: ReviewAccuracyPoint[]
+  /**
+   * The best-graded gameweek's own row, whatever shape the summariser
+   * picked.
+   */
   best: {
     [k: string]: unknown
   } | null
@@ -5272,20 +6454,47 @@ export interface WireReviewSummary {
    * graded gameweek are absent — a nought would read as a measurement.
    */
   by_reason: ReasonTally[]
+  /**
+   * Every graded gameweek the summary covers.
+   */
   gws: number[]
+  /**
+   * Season total of points left on the table versus each week's best
+   * legal eleven.
+   */
   hindsight_gap: number
+  /**
+   * How many gameweeks that total covers.
+   */
   hindsight_gap_gws: number
+  /**
+   * Season totals, one entry per decision lane.
+   */
   lanes: {
     [k: string]: ReviewLaneTotal
   }
+  /**
+   * Season total of points left on the bench.
+   */
   points_on_bench: number
   /**
    * How many gameweeks that total covers. A season of unbanked histories
    * sums to zero over zero gameweeks, which is not an empty bench.
    */
   points_on_bench_gws: number
+  /**
+   * Graded gameweeks where the review's points matched FPL's official
+   * figure.
+   */
   reconciled_gws: number
+  /**
+   * Graded gameweeks where they did not, or could not be checked.
+   */
   unreconciled_gws: number
+  /**
+   * The worst-graded gameweek's own row, whatever shape the summariser
+   * picked.
+   */
   worst: {
     [k: string]: unknown
   } | null

@@ -327,9 +327,11 @@
   "BenchmarkEvaluation": {
    "properties": {
     "caveat": {
+     "description": "Why the comparison to ``references`` is not exact.",
      "type": "string"
     },
     "git_sha": {
+     "description": "The commit the benchmarked model was built from.",
      "type": "string"
     },
     "references": {
@@ -339,9 +341,11 @@
       },
       "type": "object"
      },
+     "description": "Published metrics for the same cuts, from outside sources.",
      "type": "object"
     },
     "run_at": {
+     "description": "When this benchmark was run.",
      "type": "string"
     },
     "stratified": {
@@ -351,9 +355,11 @@
       },
       "type": "object"
      },
+     "description": "cut (\"all\" / \"starters\") -> return category -> metrics.",
      "type": "object"
     },
     "test_season": {
+     "description": "The held-out season the benchmark was scored against.",
      "type": "string"
     }
    },
@@ -471,6 +477,7 @@
   "CalibrationGw": {
    "properties": {
     "gw": {
+     "description": "The gameweek this row scores.",
      "type": "integer"
     },
     "heads": {
@@ -478,9 +485,11 @@
       "$ref": "#/definitions/CalibrationHead"
      },
      "default": {},
+     "description": "Per-head calibration for this gameweek alone.",
      "type": "object"
     },
     "n": {
+     "description": "How many rows this gameweek contributed.",
      "type": "integer"
     }
    },
@@ -504,7 +513,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Brier score, when scored."
     },
     "log_loss": {
      "anyOf": [
@@ -515,19 +525,23 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Log loss, when scored."
     },
     "n": {
+     "description": "How many rows the head was scored over.",
      "type": "integer"
     },
     "reliability": {
      "default": [],
+     "description": "Predicted-vs-observed calibration curve, when scored.",
      "items": {
       "$ref": "#/definitions/ReliabilityBin"
      },
      "type": "array"
     },
     "status": {
+     "description": "``\"ok\"`` when scored, else why not (e.g. below the sample floor).",
      "type": "string"
     }
    },
@@ -594,12 +608,15 @@
   "CategoryMetrics": {
    "properties": {
     "mae": {
+     "description": "Mean absolute error on this category's held-out rows.",
      "type": "number"
     },
     "n": {
+     "description": "How many held-out rows the category was scored over.",
      "type": "integer"
     },
     "rmse": {
+     "description": "Root-mean-square error on this category's held-out rows.",
      "type": "number"
     }
    },
@@ -1279,21 +1296,26 @@
       },
       "type": "object"
      },
+     "description": "The same stratified metrics for each naive baseline, for comparison.",
      "type": "object"
     },
     "git_sha": {
+     "description": "The commit the evaluated model was built from.",
      "type": "string"
     },
     "heads": {
      "additionalProperties": {
       "$ref": "#/definitions/HeadMetrics"
      },
+     "description": "Per-head calibration: ``p_play``, ``p60`` and the rest.",
      "type": "object"
     },
     "holdout_slots": {
+     "description": "How many of the newest gameweek slots were held out and scored.",
      "type": "integer"
     },
     "run_at": {
+     "description": "When this evaluation was run.",
      "type": "string"
     },
     "stratified": {
@@ -1453,7 +1475,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "ISO timestamp the note was saved."
     },
     "reason": {
      "anyOf": [
@@ -1464,10 +1487,12 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The reason code the manager gave for deviating."
     },
     "text": {
      "default": "",
+     "description": "The manager's own words.",
      "type": "string"
     }
    },
@@ -1501,12 +1526,15 @@
   "DecompositionCell": {
    "properties": {
     "hits": {
+     "description": "Hits taken over the replay window.",
      "type": "integer"
     },
     "per_gw": {
+     "description": "``total`` divided by the number of gameweeks replayed.",
      "type": "number"
     },
     "total": {
+     "description": "Total points over the replay window.",
      "type": "integer"
     }
    },
@@ -1532,6 +1560,7 @@
      "type": "number"
     },
     "git_sha": {
+     "description": "The commit the replayed model was built from.",
      "type": "string"
     },
     "planning_ceiling": {
@@ -1539,12 +1568,15 @@
      "type": "number"
     },
     "run_at": {
+     "description": "When this decomposition was run.",
      "type": "string"
     },
     "season": {
+     "description": "The season replayed.",
      "type": "string"
     },
     "start_gw": {
+     "description": "The first gameweek of the replay window.",
      "type": "integer"
     }
    },
@@ -1660,7 +1692,6 @@
      "type": "string"
     },
     "title": {
-     "description": "The section's heading.",
      "type": "string"
     }
    },
@@ -1732,8 +1763,7 @@
        "type": "null"
       }
      ],
-     "default": null,
-     "description": "This row's plan's captain."
+     "default": null
     },
     "chip": {
      "anyOf": [
@@ -1984,12 +2014,15 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The synthetic field's median expected points this gameweek, when\navailable."
     },
     "gw": {
+     "description": "The gameweek this field ranking is for.",
      "type": "integer"
     },
     "managers": {
+     "description": "How many sampled entries the effective-ownership table was built\nfrom.",
      "type": "integer"
     },
     "my_ep": {
@@ -2001,9 +2034,11 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The manager's own expected points this gameweek, when available."
     },
     "n": {
+     "description": "How many synthetic field entries were simulated.",
      "type": "integer"
     },
     "p_green": {
@@ -2015,7 +2050,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "P(the manager's squad beats the median of the synthetic field), when\na field sample is banked."
     },
     "p_top10k": {
      "anyOf": [
@@ -2026,7 +2062,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "P(finishes in the overall top 10k), when a score series exists to\ncompute it from."
     },
     "rank_slope": {
      "anyOf": [
@@ -2042,6 +2079,7 @@
     },
     "rank_slope_rows": {
      "default": 0,
+     "description": "How many graded gameweeks ``rank_slope`` was fitted over.",
      "type": "integer"
     },
     "rank_waiting_for": {
@@ -2053,9 +2091,11 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "What has to happen before ``rank_slope`` can be computed, when it\ncannot be."
     },
     "seed": {
+     "description": "The RNG seed the field sample was drawn with.",
      "type": "integer"
     },
     "top10k_waiting_for": {
@@ -2067,7 +2107,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "What has to happen before ``p_top10k`` can be computed, when it\ncannot be."
     },
     "unsampled_picks": {
      "default": 0,
@@ -2083,7 +2124,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "What has to happen before ``p_green`` can be computed, when it\ncannot be."
     }
    },
    "required": [
@@ -2277,9 +2319,11 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "FPL's own chance-of-playing percentage at the final status."
     },
     "code": {
+     "description": "FPL player code.",
      "type": "integer"
     },
     "final_status": {
@@ -2291,15 +2335,19 @@
      "type": "string"
     },
     "from_status": {
+     "description": "His status immediately before it changed.",
      "type": "string"
     },
     "gw": {
+     "description": "The gameweek the deadline belongs to.",
      "type": "integer"
     },
     "lead_days": {
+     "description": "Days between ``first_change`` and the deadline.",
      "type": "number"
     },
     "started": {
+     "description": "Whether he actually started the fixture.",
      "type": "boolean"
     }
    },
@@ -2321,10 +2369,12 @@
    "properties": {
     "available": {
      "default": false,
+     "description": "Whether the gate is open: enough snapshot days banked and at least\none covered gameweek graded.",
      "type": "boolean"
     },
     "checked_covered_gws": {
      "default": [],
+     "description": "Of those, the ones that have also been graded.",
      "items": {
       "type": "integer"
      },
@@ -2332,16 +2382,19 @@
     },
     "covered_gws": {
      "default": [],
+     "description": "Gameweeks with at least one pre-deadline snapshot.",
      "items": {
       "type": "integer"
      },
      "type": "array"
     },
     "git_sha": {
+     "description": "The commit the readout was built from.",
      "type": "string"
     },
     "histogram": {
      "default": [],
+     "description": "Lead-time distribution of status changes, split by outcome.",
      "items": {
       "$ref": "#/definitions/LeadBucket"
      },
@@ -2349,6 +2402,7 @@
     },
     "late_flags": {
      "default": [],
+     "description": "Every status change scored, one row per (gameweek, player).",
      "items": {
       "$ref": "#/definitions/FlagChange"
      },
@@ -2356,6 +2410,7 @@
     },
     "min_snap_dates": {
      "default": 14,
+     "description": "The floor ``snap_dates`` must clear for the gate to open\n(``availability_eval.MIN_SNAP_DATES``).",
      "type": "integer"
     },
     "note": {
@@ -2367,17 +2422,21 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Why the report is empty, when the gate is shut."
     },
     "rows": {
      "default": 0,
+     "description": "How many status changes the histogram and table are built from.",
      "type": "integer"
     },
     "run_at": {
+     "description": "When this readout was built.",
      "type": "string"
     },
     "snap_dates": {
      "default": 0,
+     "description": "Distinct snapshot days banked in the log.",
      "type": "integer"
     }
    },
@@ -2486,6 +2545,7 @@
      "type": "integer"
     },
     "gw": {
+     "description": "The gameweek this gap is measured at.",
      "type": "integer"
     }
    },
@@ -2499,12 +2559,15 @@
   "GwPoint": {
    "properties": {
     "gw": {
+     "description": "The gameweek this point is for.",
      "type": "integer"
     },
     "points": {
+     "description": "Points scored that gameweek.",
      "type": "integer"
     },
     "total": {
+     "description": "Running total through that gameweek.",
      "type": "integer"
     }
    },
@@ -2530,6 +2593,7 @@
      "description": "``None`` for a head with nothing to score \u2014 see\n:func:`gaffer.evaluation.head_metrics`. Nullable rather than NaN because\nNaN is not JSON."
     },
     "reliability": {
+     "description": "The head's predicted-vs-observed calibration curve, binned.",
      "items": {
       "$ref": "#/definitions/ReliabilityBin"
      },
@@ -2553,30 +2617,38 @@
       {
        "type": "null"
       }
-     ]
+     ],
+     "description": "XI points as actually scored, captain doubled, no autosubs, once the\ngameweek has results; ``None`` before it does."
     },
     "buys": {
+     "description": "Names of players bought.",
      "items": {
       "type": "string"
      },
      "type": "array"
     },
     "captain": {
+     "description": "The captain's name, as advised.",
      "type": "string"
     },
     "deadline": {
+     "description": "That gameweek's deadline.",
      "type": "string"
     },
     "expected_pts": {
+     "description": "Expected points at the time of the run.",
      "type": "number"
     },
     "gw": {
+     "description": "The gameweek this run advised for.",
      "type": "integer"
     },
     "hits": {
+     "description": "Hits taken.",
      "type": "integer"
     },
     "sells": {
+     "description": "Names of players sold.",
      "items": {
       "type": "string"
      },
@@ -2775,15 +2847,18 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "ISO timestamp the journal was built."
     },
     "cumulative": {
+     "description": "The running totals behind the journal's chart.",
      "items": {
       "$ref": "#/definitions/JournalPoint"
      },
      "type": "array"
     },
     "rows": {
+     "description": "One row per gameweek compared, newest first.",
      "items": {
       "$ref": "#/definitions/JournalRow"
      },
@@ -2801,15 +2876,19 @@
   "JournalPoint": {
    "properties": {
     "actual": {
+     "description": "Running total of the manager's actual points through this gameweek.",
      "type": "integer"
     },
     "delta": {
+     "description": "``actual`` minus ``model``, running.",
      "type": "integer"
     },
     "gw": {
+     "description": "The gameweek this cumulative point is through.",
      "type": "integer"
     },
     "model": {
+     "description": "Running total of the model's own points through this gameweek.",
      "type": "integer"
     }
    },
@@ -2833,18 +2912,23 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The manager's own captain choice."
     },
     "actual_pts": {
+     "description": "Points the manager's own team actually scored.",
      "type": "integer"
     },
     "delta": {
+     "description": "``actual_pts`` minus ``model_pts``.",
      "type": "integer"
     },
     "gw": {
+     "description": "The gameweek this row compares.",
      "type": "integer"
     },
     "model_buys": {
+     "description": "Names the model would have bought that gameweek.",
      "items": {
       "type": "string"
      },
@@ -2859,12 +2943,15 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The model's captain choice, when a plan was banked."
     },
     "model_pts": {
+     "description": "Points the model's own plan would have scored.",
      "type": "integer"
     },
     "model_sells": {
+     "description": "Names the model would have sold that gameweek.",
      "items": {
       "type": "string"
      },
@@ -3508,8 +3595,7 @@
      "type": "array"
     },
     "captain": {
-     "$ref": "#/definitions/WirePlayerRef",
-     "description": "The captain this week of the plan."
+     "$ref": "#/definitions/WirePlayerRef"
     },
     "expected_pts": {
      "description": "Expected points for this week alone, net of its hits\n(``ladder.plan_points`` over one week).",
@@ -3531,8 +3617,7 @@
      "type": "array"
     },
     "vice": {
-     "$ref": "#/definitions/WirePlayerRef",
-     "description": "The vice-captain this week of the plan."
+     "$ref": "#/definitions/WirePlayerRef"
     },
     "xi": {
      "description": "The starting eleven this week of the plan.",
@@ -3602,12 +3687,15 @@
    "description": "One band of the lead-time histogram, split by what happened.",
    "properties": {
     "bucket": {
+     "description": "The lead-time band this row covers, in prose.",
      "type": "string"
     },
     "missed": {
+     "description": "How many flags in this band belonged to a player who then did not\nstart.",
      "type": "integer"
     },
     "started": {
+     "description": "How many flags in this band belonged to a player who then started.",
      "type": "integer"
     }
    },
@@ -3622,6 +3710,7 @@
   "LeagueRaceData": {
    "properties": {
     "entry_id": {
+     "description": "The configured manager's entry id.",
      "type": "integer"
     },
     "focus": {
@@ -3630,29 +3719,36 @@
      "type": "boolean"
     },
     "gap": {
+     "description": "The manager's running gap to the leader, one point per scored week.",
      "items": {
       "$ref": "#/definitions/GapPoint"
      },
      "type": "array"
     },
     "lam": {
+     "description": "The chase/defend tilt strength the next advise would see.",
      "type": "number"
     },
     "lam_explained": {
+     "description": "The stance and its \u03bb, in one sentence, from ``explain_lam``.",
      "type": "string"
     },
     "league_id": {
+     "description": "The league this race is for.",
      "type": "integer"
     },
     "league_name": {
      "default": "",
+     "description": "The league's name.",
      "type": "string"
     },
     "stance": {
+     "description": "``\"chase\"``, ``\"defend\"`` or ``\"neutral\"``, the stance ``lam`` implies.",
      "type": "string"
     },
     "stance_source": {
      "default": "auto",
+     "description": "Whether ``stance`` came from the solver's own read or a manual\noverride in config.",
      "enum": [
       "auto",
       "manual"
@@ -3660,18 +3756,21 @@
      "type": "string"
     },
     "standings": {
+     "description": "Every entry's current standing.",
      "items": {
       "$ref": "#/definitions/StandingRow"
      },
      "type": "array"
     },
     "trajectory": {
+     "description": "Every entry's points history across the season.",
      "items": {
       "$ref": "#/definitions/Trajectory"
      },
      "type": "array"
     },
     "win_probability": {
+     "description": "Every rival's modelled chance of finishing above the manager.",
      "items": {
       "$ref": "#/definitions/WinProb"
      },
@@ -3698,9 +3797,11 @@
   "LeagueSimData": {
    "properties": {
     "entries": {
+     "description": "How many entries in the league were simulated.",
      "type": "integer"
     },
     "exp_finish": {
+     "description": "Mean simulated final rank for the manager.",
      "type": "number"
     },
     "field": {
@@ -3728,9 +3829,11 @@
      "description": "The sampled field's weekly rate, or ``None`` when nothing is banked \u2014\nin which case rivals do not drift however ``rival_drift`` is set."
     },
     "gw": {
+     "description": "The gameweek the simulation was run from.",
      "type": "integer"
     },
     "history": {
+     "description": "Banked headline numbers from earlier gameweeks, for the sparkline.",
      "items": {
       "$ref": "#/definitions/SimPoint"
      },
@@ -3747,9 +3850,11 @@
      "additionalProperties": {
       "type": "number"
      },
+     "description": "Quantiles of the simulated final points margin over the field.",
      "type": "object"
     },
     "n": {
+     "description": "How many Monte Carlo draws the simulation ran.",
      "type": "integer"
     },
     "notice": {
@@ -3761,27 +3866,34 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "A caveat on the simulation, when one applies."
     },
     "p_top3": {
+     "description": "Modelled P(the manager finishes top 3).",
      "type": "number"
     },
     "p_win": {
+     "description": "Modelled P(the manager finishes first).",
      "type": "number"
     },
     "per_rival": {
+     "description": "Every rival's simulated chance of being beaten.",
      "items": {
       "$ref": "#/definitions/RivalBeat"
      },
      "type": "array"
     },
     "rival_drift": {
+     "description": "``[league] rival_drift`` as configured \u2014 the per-week noise applied\nto a rival's future scoring.",
      "type": "number"
     },
     "seed": {
+     "description": "The RNG seed the simulation was run with.",
      "type": "integer"
     },
     "weeks_left": {
+     "description": "Gameweeks remaining in the season.",
      "type": "integer"
     }
    },
@@ -3814,6 +3926,7 @@
     },
     "event": {
      "default": "blank",
+     "description": "The score outcome to pin this player to for the simulation.",
      "type": "string"
     }
    },
@@ -3840,7 +3953,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "A player code to captain instead of the manager's own pick."
     },
     "league_id": {
      "anyOf": [
@@ -3855,6 +3969,7 @@
      "description": "Which private league to re-count (v15 \u00a75.2); ``None`` is the focus."
     },
     "pins": {
+     "description": "Player outcomes to pin before re-running the simulation.",
      "items": {
       "$ref": "#/definitions/LeagueWhatIfPin"
      },
@@ -3869,7 +3984,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "A rival entry id whose captain is pinned to blank for the run."
     }
    },
    "required": [
@@ -3884,30 +4000,38 @@
   "LeagueWhatIfResult": {
    "properties": {
     "baseline_exp_finish": {
+     "description": "The manager's mean simulated finish before the pins were applied.",
      "type": "number"
     },
     "baseline_p_win": {
+     "description": "The manager's P(win) before the pins were applied.",
      "type": "number"
     },
     "delta_p_win": {
+     "description": "``p_win`` minus ``baseline_p_win``.",
      "type": "number"
     },
     "delta_rank": {
+     "description": "``exp_finish`` minus ``baseline_exp_finish``.",
      "type": "number"
     },
     "exp_finish": {
+     "description": "The manager's mean simulated finish with the pins applied.",
      "type": "number"
     },
     "p_win": {
+     "description": "The manager's P(win) with the pins applied.",
      "type": "number"
     },
     "table": {
+     "description": "Every entry's simulated result under the pins.",
      "items": {
       "$ref": "#/definitions/LeagueWhatIfRow"
      },
      "type": "array"
     },
     "unknown_codes": {
+     "description": "Pinned codes that could not be resolved against the squad snapshot.",
      "items": {
       "type": "integer"
      },
@@ -3930,15 +4054,19 @@
   "LeagueWhatIfRow": {
    "properties": {
     "entry": {
+     "description": "FPL entry id.",
      "type": "integer"
     },
     "exp_finish": {
+     "description": "Mean simulated final rank under this what-if.",
      "type": "number"
     },
     "is_you": {
+     "description": "Whether this row is the configured entry.",
      "type": "boolean"
     },
     "name": {
+     "description": "The entry's team name.",
      "type": "string"
     },
     "p_win": {
@@ -3954,6 +4082,7 @@
      "description": "This entry's win frequency in the same run as the headline, or ``None``\nwhen its squad could not be read (``league_sim.is_readable``)."
     },
     "total": {
+     "description": "Total points to date.",
      "type": "integer"
     }
    },
@@ -3975,6 +4104,7 @@
      "type": "number"
     },
     "focus_league_id": {
+     "description": "``[league] league_id`` as configured.",
      "type": "integer"
     },
     "focus_name": {
@@ -3990,6 +4120,7 @@
      "description": "``None`` when the focus is not one of the private leagues, in which\ncase ``focus_warning`` says so."
     },
     "focus_stance": {
+     "description": "The focus league's resolved stance, auto or manual.",
      "enum": [
       "chase",
       "defend",
@@ -4006,7 +4137,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Why there is no focus league to report on, when there is none."
     },
     "gw": {
      "anyOf": [
@@ -4017,15 +4149,18 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The entry's current gameweek, from FPL's own ``current_event``."
     },
     "private": {
+     "description": "Every private mini-league the entry is in.",
      "items": {
       "$ref": "#/definitions/PrivateLeagueRow"
      },
      "type": "array"
     },
     "public": {
+     "description": "Every public or system league the entry is in.",
      "items": {
       "$ref": "#/definitions/PublicLeagueRow"
      },
@@ -4059,35 +4194,45 @@
   "LivePlayer": {
    "properties": {
     "code": {
+     "description": "FPL player code.",
      "type": "integer"
     },
     "element": {
+     "description": "FPL's own element id.",
      "type": "integer"
     },
     "minutes": {
+     "description": "Minutes played so far this gameweek.",
      "type": "integer"
     },
     "multiplier": {
+     "description": "FPL's own points multiplier: 0 unused, 1 normal, 2 captain,\n3 triple captain.",
      "type": "integer"
     },
     "name": {
+     "description": "Player name.",
      "type": "string"
     },
     "points": {
+     "description": "Live points so far this gameweek, multiplier applied.",
      "type": "integer"
     },
     "position": {
+     "description": "GKP, DEF, MID or FWD.",
      "type": "string"
     },
     "projected_in": {
      "default": false,
+     "description": "Whether he is projected to be substituted in by an autosub.",
      "type": "boolean"
     },
     "projected_out": {
      "default": false,
+     "description": "Whether he is projected to be substituted out by an autosub.",
      "type": "boolean"
     },
     "provisional_bonus": {
+     "description": "Bonus points projected from the live BPS, before FPL confirms them.",
      "type": "integer"
     },
     "remaining_ep": {
@@ -4099,7 +4244,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Expected points still to come this gameweek, for a player yet to\nfinish his fixture."
     },
     "selected_by_percent": {
      "anyOf": [
@@ -4110,9 +4256,11 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "FPL's own overall ownership percentage."
     },
     "status": {
+     "description": "Whether his fixture has finished, is live, or has not kicked off.",
      "enum": [
       "played",
       "playing",
@@ -4153,7 +4301,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Effective ownership among the sampled top-tier managers, when a\nsample was taken."
     },
     "tier_eo_se": {
      "anyOf": [
@@ -4164,7 +4313,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Standard error on ``tier_eo``, when a sample was taken."
     }
    },
    "required": [
@@ -4193,6 +4343,7 @@
    "description": "One poll's snapshot of the race, held in memory for this session only.",
    "properties": {
     "at": {
+     "description": "ISO timestamp of this poll.",
      "type": "string"
     },
     "rival": {
@@ -4208,6 +4359,7 @@
      "description": "The tracked rival's race value \u2014 the entry pinned in ``rival_name``,\nwhich is the top entry in the league that is not me. He is the leader\nonly when I am not; when I am leading he is the man in second."
     },
     "you": {
+     "description": "The manager's own race value at this poll.",
      "type": "number"
     }
    },
@@ -4223,6 +4375,7 @@
    "description": "One league place worth watching, priced in points.",
    "properties": {
     "entry": {
+     "description": "FPL entry id.",
      "type": "integer"
     },
     "margin": {
@@ -4230,6 +4383,7 @@
      "type": "integer"
     },
     "name": {
+     "description": "The entry's team name.",
      "type": "string"
     },
     "need": {
@@ -4237,6 +4391,7 @@
      "type": "integer"
     },
     "role": {
+     "description": "Whether this entry sits above, below the manager, or leads the league.",
      "enum": [
       "above",
       "below",
@@ -4258,6 +4413,7 @@
   "LiveState": {
    "properties": {
     "active": {
+     "description": "Whether any fixture in the gameweek is live or about to be.",
      "type": "boolean"
     },
     "gw": {
@@ -4268,16 +4424,20 @@
       {
        "type": "null"
       }
-     ]
+     ],
+     "description": "The gameweek being tracked, or ``None`` when inactive."
     },
     "matches_in_play": {
+     "description": "How many fixtures are currently live.",
      "type": "integer"
     },
     "my_points": {
+     "description": "The manager's own live points so far, no autosubs applied.",
      "type": "integer"
     },
     "my_projected_points": {
      "default": 0,
+     "description": "The manager's season total projected with autosubs applied.",
      "type": "integer"
     },
     "my_race": {
@@ -4289,7 +4449,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The manager's own race value: projected points plus what remains."
     },
     "notice": {
      "anyOf": [
@@ -4300,9 +4461,11 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "A caveat on the tier-EO reading, when one applies."
     },
     "players": {
+     "description": "The manager's own squad, live.",
      "items": {
       "$ref": "#/definitions/LivePlayer"
      },
@@ -4333,6 +4496,7 @@
      "description": "This gameweek's saved ``advice.expected_pts``, when there is one."
     },
     "race_series": {
+     "description": "This session's polled race values, for the sparkline.",
      "items": {
       "$ref": "#/definitions/LiveRacePoint"
      },
@@ -4351,12 +4515,14 @@
      "description": "The entry the trajectory follows: the highest-placed entry that is not\nme, picked on the gameweek's first poll and then pinned for the rest of it\nso the line cannot change whose points it is plotting mid-afternoon."
     },
     "safety": {
+     "description": "League places worth watching, one row per rival above or below.",
      "items": {
       "$ref": "#/definitions/LiveSafety"
      },
      "type": "array"
     },
     "table": {
+     "description": "The league standings, projected live.",
      "items": {
       "$ref": "#/definitions/LiveTableRow"
      },
@@ -4385,21 +4551,27 @@
   "LiveTableRow": {
    "properties": {
     "delta": {
+     "description": "``projected`` minus ``pre_total`` \u2014 this gameweek's projected gain.",
      "type": "integer"
     },
     "entry": {
+     "description": "FPL entry id.",
      "type": "integer"
     },
     "live": {
+     "description": "This gameweek's live points, no autosubs applied.",
      "type": "integer"
     },
     "name": {
+     "description": "The entry's team name.",
      "type": "string"
     },
     "pre_total": {
+     "description": "Total points before this gameweek.",
      "type": "integer"
     },
     "projected": {
+     "description": "Season total projected with autosubs applied.",
      "type": "integer"
     },
     "projected_live": {
@@ -4411,7 +4583,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "This gameweek's points with the projected autosubs applied."
     },
     "race": {
      "anyOf": [
@@ -4434,7 +4607,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Expected points still to come this gameweek for this entry's squad."
     }
    },
    "required": [
@@ -4576,26 +4750,33 @@
    "description": "One player-gameweek the forecast got most wrong.\n\n``miss`` is ``actual - ep``, so it is signed: a positive one is a player\nthe model under-rated and a negative one is a transfer it may have talked\nsomebody into. Both directions are shown, which is why the card sorts on\nthe absolute value and prints the sign.",
    "properties": {
     "actual": {
+     "description": "Points actually scored this gameweek.",
      "type": "integer"
     },
     "code": {
+     "description": "FPL player code.",
      "type": "integer"
     },
     "ep": {
+     "description": "Expected points, as forecast for this gameweek.",
      "type": "number"
     },
     "minutes": {
      "default": 0,
+     "description": "Minutes actually played this gameweek.",
      "type": "integer"
     },
     "miss": {
+     "description": "``actual - ep``, signed: positive is an under-rated player, negative\nan over-rated one.",
      "type": "number"
     },
     "name": {
+     "description": "Player name.",
      "type": "string"
     },
     "position": {
      "default": "",
+     "description": "GKP, DEF, MID or FWD, when known.",
      "type": "string"
     },
     "price": {
@@ -4607,7 +4788,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "His price in \u00a3m at the time, when known."
     }
    },
    "required": [
@@ -4638,6 +4820,7 @@
      "description": "``None`` when no gameweek has both a banked forecast and a banked\nresult. That is an absent card, not a card of zeros (spec D1)."
     },
     "rows": {
+     "description": "The biggest misses that gameweek, by absolute value.",
      "items": {
       "$ref": "#/definitions/MissRow"
      },
@@ -4946,12 +5129,14 @@
    "description": "Gate N2's standing readout.\n\n``rows`` is the field that says whether any of it means anything: the log\nis written every week and scored only once a gameweek has been played, so\na fresh install carries a payload with ``rows: 0``, an empty ``overall``\nand no gameweeks. That is not an error state \u2014 it is \"come back Monday\".",
    "properties": {
     "by_gw": {
+     "description": "The same metrics, one row per scored gameweek, with running totals.",
      "items": {
       "$ref": "#/definitions/NewsShadowGw"
      },
      "type": "array"
     },
     "git_sha": {
+     "description": "The commit the readout was built from.",
      "type": "string"
     },
     "overall": {
@@ -4963,12 +5148,15 @@
        "additionalProperties": true,
        "type": "object"
       }
-     ]
+     ],
+     "description": "The two metrics over the whole log, or ``{}`` before anything is\nscored."
     },
     "rows": {
+     "description": "Total scored player-gameweeks across the whole log.",
      "type": "integer"
     },
     "run_at": {
+     "description": "When this readout was built.",
      "type": "string"
     }
    },
@@ -4985,33 +5173,43 @@
   "NewsShadowGw": {
    "properties": {
     "brier_flags": {
+     "description": "Brier score of the official-flag-only reading, this gameweek alone.",
      "type": "number"
     },
     "brier_news": {
+     "description": "Brier score of the news-aware reading, this gameweek alone.",
      "type": "number"
     },
     "cum_brier_flags": {
+     "description": "Brier score of the official-flag-only reading, cumulative to this\ngameweek.",
      "type": "number"
     },
     "cum_brier_news": {
+     "description": "Brier score of the news-aware reading, cumulative to this gameweek.",
      "type": "number"
     },
     "cum_mae_flags": {
+     "description": "Mean absolute error of the official-flag-only reading, cumulative to\nthis gameweek.",
      "type": "number"
     },
     "cum_mae_news": {
+     "description": "Mean absolute error of the news-aware reading, cumulative to this\ngameweek.",
      "type": "number"
     },
     "gw": {
+     "description": "The gameweek this row scores.",
      "type": "integer"
     },
     "mae_flags": {
+     "description": "Mean absolute error of the official-flag-only reading, this\ngameweek alone.",
      "type": "number"
     },
     "mae_news": {
+     "description": "Mean absolute error of the news-aware reading, this gameweek alone.",
      "type": "number"
     },
     "rows": {
+     "description": "How many player rows this gameweek's figures cover.",
      "type": "integer"
     }
    },
@@ -5034,18 +5232,23 @@
    "description": "Both sides of gate N2's two metrics over one slice of the log.",
    "properties": {
     "brier_flags": {
+     "description": "Brier score of the official-flag-only P(plays) reading.",
      "type": "number"
     },
     "brier_news": {
+     "description": "Brier score of the news-aware P(plays) reading.",
      "type": "number"
     },
     "mae_flags": {
+     "description": "Mean absolute error of the official-flag-only expected-minutes\nreading.",
      "type": "number"
     },
     "mae_news": {
+     "description": "Mean absolute error of the news-aware expected-minutes reading.",
      "type": "number"
     },
     "rows": {
+     "description": "How many scored player-gameweeks this summary covers.",
      "type": "integer"
     }
    },
@@ -5385,12 +5588,14 @@
    "description": "``reports/pen_tracker.json``, as written by ``gaffer track-pens``.",
    "properties": {
     "gws": {
+     "description": "One block per finished gameweek tracked.",
      "items": {
       "$ref": "#/definitions/PenTrackerGw"
      },
      "type": "array"
     },
     "notes": {
+     "description": "Caveats the tracker recorded while building the report.",
      "items": {
       "type": "string"
      },
@@ -5398,10 +5603,12 @@
     },
     "season": {
      "default": "",
+     "description": "The season the report covers.",
      "type": "string"
     },
     "season_totals": {
-     "$ref": "#/definitions/PenTrackerTotals"
+     "$ref": "#/definitions/PenTrackerTotals",
+     "description": "The season line summed over ``gws``."
     }
    },
    "required": [
@@ -5425,7 +5632,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Rows in the banked components frame the taker prediction was built\nfrom."
     },
     "covered_rows": {
      "anyOf": [
@@ -5436,7 +5644,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Of those, how many the chosen instrument could actually read."
     },
     "error": {
      "anyOf": [
@@ -5447,9 +5656,11 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Why this gameweek's block could not be built, when it could not."
     },
     "gw": {
+     "description": "The gameweek this block reports on.",
      "type": "integer"
     },
     "instrument": {
@@ -5461,7 +5672,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Which realized-penalty reader scored this week (``pen_tracker\n.realized_pens``'s choice)."
     },
     "pens_by_first_choice": {
      "anyOf": [
@@ -5472,7 +5684,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Of those, how many were taken by the club's first-choice taker."
     },
     "pens_per_team_game": {
      "anyOf": [
@@ -5483,7 +5696,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "``pens_taken / team_games``, for comparison against\n:data:`LEAGUE_PENS_PG`."
     },
     "pens_taken": {
      "anyOf": [
@@ -5494,7 +5708,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Penalties actually taken this week, by the chosen instrument's count."
     },
     "predicted_ep_pen_taker": {
      "anyOf": [
@@ -5505,7 +5720,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Expected penalty points the model attributed to first-choice takers\nthis week."
     },
     "predicted_takers": {
      "anyOf": [
@@ -5516,7 +5732,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "How many players the model identified as first-choice takers."
     },
     "realized_pen_points": {
      "anyOf": [
@@ -5527,7 +5744,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Points actually scored from penalty conversions this week."
     },
     "rows": {
      "anyOf": [
@@ -5538,7 +5756,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Player rows this week's live data carried."
     },
     "taker_hit_rate": {
      "anyOf": [
@@ -5549,7 +5768,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "``pens_by_first_choice / pens_taken``, or ``None`` when none were\ntaken \u2014 never 0/0 read as a miss."
     },
     "team_games": {
      "anyOf": [
@@ -5560,7 +5780,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Distinct (opponent, kickoff) fixtures this week, for the\npens-per-game rate."
     }
    },
    "required": [
@@ -5594,9 +5815,11 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "How many gameweeks are summed into this total."
     },
     "instruments": {
+     "description": "Every realized-penalty instrument used across the summed gameweeks.",
      "items": {
       "type": "string"
      },
@@ -5611,7 +5834,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The served league-wide penalties-per-game prior, for comparison."
     },
     "pens_by_first_choice": {
      "anyOf": [
@@ -5622,7 +5846,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Season total taken by first-choice takers."
     },
     "pens_per_team_game": {
      "anyOf": [
@@ -5633,7 +5858,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Season ``pens_taken / team_games``."
     },
     "pens_taken": {
      "anyOf": [
@@ -5644,7 +5870,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Season total of penalties taken."
     },
     "predicted_ep_pen_taker": {
      "anyOf": [
@@ -5655,7 +5882,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Season total of expected penalty points attributed to first-choice\ntakers."
     },
     "realized_pen_points": {
      "anyOf": [
@@ -5666,7 +5894,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Season total of points actually scored from penalty conversions."
     },
     "taker_hit_rate": {
      "anyOf": [
@@ -5677,7 +5906,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Season ``pens_by_first_choice / pens_taken``."
     },
     "team_games": {
      "anyOf": [
@@ -5688,7 +5918,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Total team-games across the season."
     }
    },
    "required": [
@@ -5980,8 +6211,7 @@
      "type": "array"
     },
     "captain": {
-     "$ref": "#/definitions/WirePlayerRef",
-     "description": "The captain."
+     "$ref": "#/definitions/WirePlayerRef"
     },
     "expected_pts": {
      "description": "Raw expected points for ``gw`` alone, net of hits.",
@@ -6007,8 +6237,7 @@
      "type": "array"
     },
     "vice": {
-     "$ref": "#/definitions/WirePlayerRef",
-     "description": "The vice-captain."
+     "$ref": "#/definitions/WirePlayerRef"
     },
     "xi": {
      "description": "The starting eleven.",
@@ -6152,14 +6381,17 @@
    "properties": {
     "absent_rows": {
      "default": 0,
+     "description": "Players with no presser verdict at all, over the graded gameweeks.",
      "type": "integer"
     },
     "available": {
      "default": false,
+     "description": "Whether enough verdicts have been graded to report.",
      "type": "boolean"
     },
     "by_source": {
      "default": [],
+     "description": "How many verdicts came from each presser source.",
      "items": {
       "$ref": "#/definitions/SourceRows"
      },
@@ -6167,16 +6399,19 @@
     },
     "confusion": {
      "default": [],
+     "description": "Started/not-started counts, one row per verdict.",
      "items": {
       "$ref": "#/definitions/VerdictRow"
      },
      "type": "array"
     },
     "git_sha": {
+     "description": "The commit the readout was built from.",
      "type": "string"
     },
     "graded_gws": {
      "default": [],
+     "description": "Gameweeks with at least one graded verdict.",
      "items": {
       "type": "integer"
      },
@@ -6191,10 +6426,12 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Why the report is empty, when it is."
     },
     "per_class": {
      "default": [],
+     "description": "Precision and recall, one row per verdict.",
      "items": {
       "$ref": "#/definitions/VerdictScore"
      },
@@ -6202,17 +6439,21 @@
     },
     "recall_population": {
      "default": "verdict-carrying rows",
+     "description": "What ``recall`` is measured over, stated so the number is not read\nagainst a larger population by mistake.",
      "type": "string"
     },
     "rows": {
      "default": 0,
+     "description": "How many verdicts the tables below are built from.",
      "type": "integer"
     },
     "run_at": {
+     "description": "When this readout was built.",
      "type": "string"
     },
     "verdicts_banked": {
      "default": 0,
+     "description": "Total presser verdicts on record, graded or not.",
      "type": "integer"
     }
    },
@@ -6236,9 +6477,11 @@
   "PricePoint": {
    "properties": {
     "gw": {
+     "description": "The gameweek this price was recorded at.",
      "type": "integer"
     },
     "price": {
+     "description": "The player's price in \u00a3m.",
      "type": "number"
     }
    },
@@ -6252,12 +6495,15 @@
   "PriceSeries": {
    "properties": {
     "code": {
+     "description": "FPL player code.",
      "type": "integer"
     },
     "name": {
+     "description": "Player name.",
      "type": "string"
     },
     "points": {
+     "description": "His price at every gameweek he was owned.",
      "items": {
       "$ref": "#/definitions/PricePoint"
      },
@@ -6296,7 +6542,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Points to the entry immediately ahead or behind, in the direction\n``gap_kind`` names."
     },
     "gap_kind": {
      "anyOf": [
@@ -6311,9 +6558,11 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Whether the leader is ahead of the entry or the entry leads it."
     },
     "is_focus": {
+     "description": "Whether this is the configured focus league.",
      "type": "boolean"
     },
     "last_rank": {
@@ -6325,12 +6574,15 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Rank as of the previous gameweek."
     },
     "league_id": {
+     "description": "The league's FPL id.",
      "type": "integer"
     },
     "name": {
+     "description": "The league's name.",
      "type": "string"
     },
     "rank": {
@@ -6342,9 +6594,11 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Current rank in this league."
     },
     "started": {
+     "description": "Whether the league has a scored gameweek yet.",
      "type": "boolean"
     },
     "would": {
@@ -6391,7 +6645,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Number of entries in the league."
     },
     "last_rank": {
      "anyOf": [
@@ -6402,12 +6657,15 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Rank as of the previous gameweek."
     },
     "league_id": {
+     "description": "The league's FPL id.",
      "type": "integer"
     },
     "name": {
+     "description": "The league's name.",
      "type": "string"
     },
     "rank": {
@@ -6419,7 +6677,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Current rank in this league."
     }
    },
    "required": [
@@ -6444,7 +6703,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The newest benchmark against published references, or ``None``."
     },
     "current": {
      "anyOf": [
@@ -6455,7 +6715,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The newest holdout evaluation, or ``None`` if none has been run."
     },
     "decomposition": {
      "anyOf": [
@@ -6466,7 +6727,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The newest forecast-vs-planning replay decomposition, or ``None``."
     },
     "flag_latency": {
      "anyOf": [
@@ -6477,7 +6739,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "v12 \u00a73.1's flag-latency readout, or ``None`` if never scored."
     },
     "news_shadow": {
      "anyOf": [
@@ -6488,7 +6751,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Gate N2's standing readout, or ``None`` if never scored."
     },
     "presser_grades": {
      "anyOf": [
@@ -6499,7 +6763,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "v12 \u00a73.2's presser-verdict readout, or ``None`` if never scored."
     }
    },
    "required": [
@@ -6517,6 +6782,7 @@
    "description": "One reason code's row in the season tally: how many graded gameweeks\ncarried it, and the mean transfers-lane delta over them.",
    "properties": {
     "count": {
+     "description": "How many graded gameweeks carried this reason.",
      "type": "integer"
     },
     "mean_delta_pts": {
@@ -6528,9 +6794,11 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Mean transfers-lane points delta over those gameweeks."
     },
     "reason": {
+     "description": "The deviation reason code.",
      "type": "string"
     }
    },
@@ -6546,9 +6814,11 @@
    "description": "A published number: no row count, because we did not measure it.",
    "properties": {
     "mae": {
+     "description": "The published mean absolute error.",
      "type": "number"
     },
     "rmse": {
+     "description": "The published root-mean-square error.",
      "type": "number"
     }
    },
@@ -6562,12 +6832,15 @@
   "ReliabilityBin": {
    "properties": {
     "n": {
+     "description": "How many predictions fell in this bin.",
      "type": "integer"
     },
     "obs": {
+     "description": "Observed frequency in this bin \u2014 what a well-calibrated head would\nmatch to ``pred``.",
      "type": "number"
     },
     "pred": {
+     "description": "Mean predicted probability in this bin.",
      "type": "number"
     }
    },
@@ -6582,9 +6855,11 @@
   "ReviewAccuracyPoint": {
    "properties": {
     "accuracy": {
+     "description": "That gameweek's ``ReviewGw.accuracy``.",
      "type": "integer"
     },
     "gw": {
+     "description": "The gameweek this accuracy point is for.",
      "type": "integer"
     }
    },
@@ -6607,7 +6882,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "``my_points`` as a percentage of ``model_points``, capped at 100."
     },
     "chip": {
      "anyOf": [
@@ -6618,7 +6894,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The chip I played this gameweek, if any."
     },
     "decision": {
      "anyOf": [
@@ -6633,22 +6910,27 @@
      "description": "Why I did something other than what the advice said. ``None`` is \"no\nnote was written\", which is not the same as a note with no reason."
     },
     "gw": {
+     "description": "The gameweek this grade is for.",
      "type": "integer"
     },
     "hindsight": {
-     "$ref": "#/definitions/ReviewHindsight"
+     "$ref": "#/definitions/ReviewHindsight",
+     "description": "The best legal eleven I could have picked from my actual fifteen."
     },
     "hits": {
      "default": 0,
+     "description": "Hits I took this gameweek.",
      "type": "integer"
     },
     "lanes": {
+     "description": "Every decision lane graded this gameweek.",
      "items": {
       "$ref": "#/definitions/ReviewLane"
      },
      "type": "array"
     },
     "misses": {
+     "description": "Moves the model flagged that I did not make and that paid off anyway.",
      "items": {
       "$ref": "#/definitions/ReviewMiss"
      },
@@ -6663,7 +6945,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The chip the model would have played this gameweek, if any."
     },
     "model_points": {
      "anyOf": [
@@ -6674,7 +6957,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Points the model's own plan would have scored this gameweek."
     },
     "my_points": {
      "anyOf": [
@@ -6685,13 +6969,16 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "My XI's points, captain doubled, no autosubs \u2014 the review's own\nreading, independent of FPL's official figure."
     },
     "no_advice": {
      "default": false,
+     "description": "No advice existed for this gameweek to grade against.",
      "type": "boolean"
     },
     "notices": {
+     "description": "Caveats on this gameweek's grade.",
      "items": {
       "type": "string"
      },
@@ -6706,7 +6993,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "FPL's own points figure before hits are subtracted."
     },
     "official_points": {
      "anyOf": [
@@ -6717,7 +7005,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "FPL's own points figure for this gameweek, net of any hits."
     },
     "our_bench_points": {
      "anyOf": [
@@ -6728,7 +7017,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Points scored by the players the model's own plan would have benched."
     },
     "overall_rank": {
      "anyOf": [
@@ -6751,10 +7041,12 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Points scored by players left on my bench."
     },
     "post_deadline": {
      "default": false,
+     "description": "Every banked run of this gameweek was written after its deadline.",
      "type": "boolean"
     },
     "projection_post_deadline": {
@@ -6783,7 +7075,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The smallest ``delta_pwin`` this simulation could resolve, in\npercentage points \u2014 ``100 / pwin_n``."
     },
     "pwin_n": {
      "anyOf": [
@@ -6794,7 +7087,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "How many Monte Carlo draws the lanes' ``delta_pwin`` figures were\nsimulated over."
     },
     "pwin_seed": {
      "anyOf": [
@@ -6805,7 +7099,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The RNG seed those draws used."
     },
     "reconciled": {
      "anyOf": [
@@ -6816,7 +7111,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Whether ``my_points`` (net of hits) matches ``official_points``, or\n``None`` when the entry history was never banked."
     },
     "reviewed_at": {
      "anyOf": [
@@ -6827,7 +7123,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "ISO timestamp this grade was banked."
     }
    },
    "required": [
@@ -6873,7 +7170,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "That eleven's best captain choice, by code."
     },
     "gap": {
      "anyOf": [
@@ -6884,7 +7182,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "``points`` minus what my actual eleven scored."
     },
     "points": {
      "anyOf": [
@@ -6895,9 +7194,11 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Points the best legal eleven from my fifteen would have scored."
     },
     "xi": {
+     "description": "That eleven's player codes.",
      "items": {
       "type": "integer"
      },
@@ -6918,6 +7219,7 @@
    "properties": {
     "aligned": {
      "default": false,
+     "description": "Whether my choice and the model's agreed on this lane.",
      "type": "boolean"
     },
     "delta_pts": {
@@ -6929,7 +7231,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "My choice's points minus the model's, on this lane."
     },
     "delta_pwin": {
      "anyOf": [
@@ -6959,9 +7262,11 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The lane's verdict in one word, from the points delta's band."
     },
     "lane": {
+     "description": "Which decision this lane grades.",
      "enum": [
       "transfers",
       "captaincy",
@@ -6979,7 +7284,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "What I did, in prose."
     },
     "model": {
      "anyOf": [
@@ -6990,7 +7296,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "What the model would have done, in prose."
     },
     "note": {
      "anyOf": [
@@ -7001,7 +7308,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Why the lane could not be graded, when ``delta_pts`` is ``None``."
     }
    },
    "required": [
@@ -7031,14 +7339,17 @@
     },
     "pts": {
      "default": 0.0,
+     "description": "Total points delta on this lane, summed over graded gameweeks.",
      "type": "number"
     },
     "pwin": {
      "default": 0.0,
+     "description": "Total P(win) delta on this lane, summed over graded gameweeks.",
      "type": "number"
     },
     "wins": {
      "default": 0,
+     "description": "Graded weeks this lane gained points over the model.",
      "type": "integer"
     }
    },
@@ -7056,15 +7367,19 @@
    "description": "A move the model flagged, I did not make, and that returned anyway.",
    "properties": {
     "code": {
+     "description": "FPL player code.",
      "type": "integer"
     },
     "gain": {
+     "description": "Points this move would have gained over what I actually did.",
      "type": "integer"
     },
     "name": {
+     "description": "Player name.",
      "type": "string"
     },
     "over": {
+     "description": "The player he was recommended over.",
      "type": "string"
     }
    },
@@ -7080,9 +7395,11 @@
   "RivalBeat": {
    "properties": {
     "entry": {
+     "description": "FPL entry id.",
      "type": "integer"
     },
     "name": {
+     "description": "The rival's team name.",
      "type": "string"
     },
     "p_beat": {
@@ -7116,15 +7433,18 @@
       {
        "type": "null"
       }
-     ]
+     ],
+     "description": "The rival's captain in ``squad_gw``."
     },
     "chips_used": {
+     "description": "Chips the rival has played this season.",
      "items": {
       "type": "string"
      },
      "type": "array"
     },
     "entry": {
+     "description": "FPL entry id.",
      "type": "integer"
     },
     "live_points": {
@@ -7135,42 +7455,52 @@
       {
        "type": "null"
       }
-     ]
+     ],
+     "description": "The rival's in-play points for the current gameweek, when one is\nlive; ``None`` otherwise."
     },
     "name": {
+     "description": "The rival's team name.",
      "type": "string"
     },
     "player_name": {
+     "description": "The rival manager's own name.",
      "type": "string"
     },
     "shared": {
+     "description": "Players both the rival and the manager own.",
      "items": {
       "$ref": "#/definitions/SquadPlayer"
      },
      "type": "array"
     },
     "squad": {
+     "description": "The rival's full squad for ``squad_gw``.",
      "items": {
       "$ref": "#/definitions/SquadPlayer"
      },
      "type": "array"
     },
     "squad_gw": {
+     "description": "The gameweek the served squad was picked for.",
      "type": "integer"
     },
     "team_value": {
+     "description": "The rival's squad value in \u00a3m.",
      "type": "number"
     },
     "their_differentials": {
+     "description": "Players the rival owns that the manager does not.",
      "items": {
       "$ref": "#/definitions/SquadPlayer"
      },
      "type": "array"
     },
     "total": {
+     "description": "The rival's total points to date.",
      "type": "integer"
     },
     "your_differentials": {
+     "description": "Players the manager owns that the rival does not.",
      "items": {
       "$ref": "#/definitions/SquadPlayer"
      },
@@ -7198,27 +7528,35 @@
   "RivalSummary": {
    "properties": {
     "differentials": {
+     "description": "Players in the rival's squad the manager does not own.",
      "type": "integer"
     },
     "entry": {
+     "description": "FPL entry id.",
      "type": "integer"
     },
     "event_total": {
+     "description": "The rival's points in the newest gameweek.",
      "type": "integer"
     },
     "name": {
+     "description": "The rival's team name.",
      "type": "string"
     },
     "overlap": {
+     "description": "Players shared with the manager's own squad.",
      "type": "integer"
     },
     "player_name": {
+     "description": "The rival manager's own name.",
      "type": "string"
     },
     "rank": {
+     "description": "The rival's current league rank.",
      "type": "integer"
     },
     "total": {
+     "description": "The rival's total points to date.",
      "type": "integer"
     }
    },
@@ -8025,6 +8363,7 @@
    "description": "One value a select offers and the word for it (v17e \u00a72.4).\n\nServed rather than hard-coded on the client so that the words a manager\npicks between are stated once, beside the bound they live inside.",
    "properties": {
     "label": {
+     "description": "The word the select shows for it.",
      "type": "string"
     },
     "value": {
@@ -8035,7 +8374,8 @@
       {
        "type": "integer"
       }
-     ]
+     ],
+     "description": "The value this option sets."
     }
    },
    "required": [
@@ -8056,6 +8396,7 @@
      "type": "array"
     },
     "help": {
+     "description": "A short explanation of what the setting does.",
      "type": "string"
     },
     "hi": {
@@ -8067,12 +8408,15 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The upper bound the tab should enforce, when the setting has one."
     },
     "key": {
+     "description": "The config field this row edits, dotted to its section.",
      "type": "string"
     },
     "kind": {
+     "description": "What kind of control the tab should render for it.",
      "enum": [
       "int",
       "float",
@@ -8084,6 +8428,7 @@
      "type": "string"
     },
     "label": {
+     "description": "The setting's name in prose.",
      "type": "string"
     },
     "lo": {
@@ -8095,7 +8440,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The lower bound the tab should enforce, when the setting has one."
     },
     "options": {
      "description": "What a select offers, in order, the saved value included when it is\nnot offered (v17e \u00a72.5). Empty for a row the tab types into.",
@@ -8105,6 +8451,7 @@
      "type": "array"
     },
     "section": {
+     "description": "The config section the field lives in, for grouping on the tab.",
      "type": "string"
     },
     "source": {
@@ -8140,6 +8487,7 @@
   "SettingWrite": {
    "properties": {
     "key": {
+     "description": "The config field to write, dotted to its section.",
      "type": "string"
     },
     "value": {
@@ -8158,6 +8506,7 @@
   "SettingsPanel": {
    "properties": {
     "apply_note": {
+     "description": "The standing note on when a saved change takes effect.",
      "type": "string"
     },
     "overlay_error": {
@@ -8199,18 +8548,23 @@
    "description": "One banked gameweek of the headline, for the card's sparkline.",
    "properties": {
     "exp_finish": {
+     "description": "Mean simulated final rank.",
      "type": "number"
     },
     "gw": {
+     "description": "The gameweek this simulated headline was run for.",
      "type": "integer"
     },
     "p_top3": {
+     "description": "Modelled P(finishes top 3).",
      "type": "number"
     },
     "p_win": {
+     "description": "Modelled P(finishes first), from the Monte Carlo league sim.",
      "type": "number"
     },
     "run_at": {
+     "description": "ISO timestamp the simulation was run.",
      "type": "string"
     }
    },
@@ -8274,9 +8628,11 @@
   "SourceRows": {
    "properties": {
     "rows": {
+     "description": "How many verdicts came from this source.",
      "type": "integer"
     },
     "source": {
+     "description": "The presser source's name.",
      "type": "string"
     }
    },
@@ -8359,24 +8715,31 @@
   "SquadPlayer": {
    "properties": {
     "code": {
+     "description": "FPL player code.",
      "type": "integer"
     },
     "element": {
+     "description": "FPL's own element id.",
      "type": "integer"
     },
     "is_captain": {
+     "description": "Whether he was captained (multiplier 2 or more).",
      "type": "boolean"
     },
     "multiplier": {
+     "description": "FPL's own points multiplier for him: 0 unused, 1 normal, 2 captain,\n3 triple captain.",
      "type": "integer"
     },
     "name": {
+     "description": "Player name.",
      "type": "string"
     },
     "position": {
+     "description": "GKP, DEF, MID or FWD.",
      "type": "string"
     },
     "price": {
+     "description": "His price in \u00a3m at the time the squad was picked.",
      "type": "number"
     }
    },
@@ -8504,24 +8867,31 @@
   "StandingRow": {
    "properties": {
     "entry": {
+     "description": "FPL entry id.",
      "type": "integer"
     },
     "event_total": {
+     "description": "Points scored in the newest gameweek.",
      "type": "integer"
     },
     "is_you": {
+     "description": "Whether this row is the configured entry.",
      "type": "boolean"
     },
     "name": {
+     "description": "The entry's team name.",
      "type": "string"
     },
     "player_name": {
+     "description": "The manager's own name.",
      "type": "string"
     },
     "rank": {
+     "description": "Current league rank.",
      "type": "integer"
     },
     "total": {
+     "description": "Total points to date.",
      "type": "integer"
     }
    },
@@ -8671,12 +9041,15 @@
   "Trajectory": {
    "properties": {
     "entry": {
+     "description": "FPL entry id.",
      "type": "integer"
     },
     "name": {
+     "description": "The entry's team name.",
      "type": "string"
     },
     "points": {
+     "description": "The entry's points history, one entry per gameweek played.",
      "items": {
       "$ref": "#/definitions/GwPoint"
      },
@@ -8718,15 +9091,19 @@
   "VerdictRow": {
    "properties": {
     "n": {
+     "description": "How many verdicts of this kind were graded.",
      "type": "integer"
     },
     "not_started": {
+     "description": "Of those, how many players did not start.",
      "type": "integer"
     },
     "started": {
+     "description": "Of those, how many players then started.",
      "type": "integer"
     },
     "verdict": {
+     "description": "The presser verdict this row scores (e.g. \"doubtful\", \"OUT\").",
      "type": "string"
     }
    },
@@ -8742,6 +9119,7 @@
   "VerdictScore": {
    "properties": {
     "n": {
+     "description": "How many verdicts of this kind were graded.",
      "type": "integer"
     },
     "precision": {
@@ -8749,9 +9127,11 @@
      "type": "number"
     },
     "recall": {
+     "description": "P(this verdict | did not start), over the verdict-carrying rows.",
      "type": "number"
     },
     "verdict": {
+     "description": "The presser verdict this row scores.",
      "type": "string"
     }
    },
@@ -8982,12 +9362,15 @@
   "WinProb": {
    "properties": {
     "name": {
+     "description": "The rival's team name.",
      "type": "string"
     },
     "p_win": {
+     "description": "Modelled P(the manager finishes above this rival), from\n``win_probability``.",
      "type": "number"
     },
     "total": {
+     "description": "The rival's total points to date.",
      "type": "integer"
     }
    },
@@ -9038,6 +9421,7 @@
    "properties": {
     "available": {
      "default": false,
+     "description": "Whether a calibration report is banked at all.",
      "type": "boolean"
     },
     "cumulative": {
@@ -9045,10 +9429,12 @@
       "$ref": "#/definitions/CalibrationHead"
      },
      "default": {},
+     "description": "Per-head calibration over the whole season to date.",
      "type": "object"
     },
     "excluded": {
      "default": [],
+     "description": "Rows dropped from the report, whatever shape the scorer recorded.",
      "items": {
       "additionalProperties": true,
       "type": "object"
@@ -9057,6 +9443,7 @@
     },
     "gameweeks": {
      "default": [],
+     "description": "Per-gameweek calibration, for heads with enough rows to report weekly.",
      "items": {
       "$ref": "#/definitions/CalibrationGw"
      },
@@ -9071,10 +9458,12 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The commit the report was built from."
     },
     "missing": {
      "default": [],
+     "description": "Gameweeks with no calibration data at all.",
      "items": {
       "type": "integer"
      },
@@ -9089,13 +9478,15 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Why the report is unavailable, when it is."
     },
     "omitted": {
      "additionalProperties": {
       "type": "string"
      },
      "default": {},
+     "description": "Heads left out of the report entirely, with the reason.",
      "type": "object"
     },
     "per_gw_omitted": {
@@ -9103,6 +9494,7 @@
       "type": "string"
      },
      "default": {},
+     "description": "Heads reported cumulatively only, with the reason \u2014 see the comment\nabove.",
      "type": "object"
     },
     "run_at": {
@@ -9114,7 +9506,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "When the report was built."
     },
     "season": {
      "anyOf": [
@@ -9125,7 +9518,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The season the report covers."
     }
    },
    "required": [
@@ -9330,6 +9724,7 @@
   "WireHistory": {
    "properties": {
     "backtests": {
+     "description": "Banked backtest log rows, whatever shape the replay tooling wrote.",
      "items": {
       "additionalProperties": true,
       "type": "object"
@@ -9337,12 +9732,14 @@
      "type": "array"
     },
     "prices": {
+     "description": "Price history for every player ever owned.",
      "items": {
       "$ref": "#/definitions/PriceSeries"
      },
      "type": "array"
     },
     "runs": {
+     "description": "Every advised gameweek, newest first.",
      "items": {
       "$ref": "#/definitions/HistoryRun"
      },
@@ -9873,6 +10270,7 @@
   "WireReview": {
    "properties": {
     "gws": {
+     "description": "Every graded gameweek's own row.",
      "items": {
       "$ref": "#/definitions/ReviewGw"
      },
@@ -9887,7 +10285,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The season totals over ``gws``, or ``None`` when nothing is graded."
     }
    },
    "required": [
@@ -9900,6 +10299,7 @@
   "WireReviewSummary": {
    "properties": {
     "accuracy": {
+     "description": "The accuracy series across graded gameweeks.",
      "items": {
       "$ref": "#/definitions/ReviewAccuracyPoint"
      },
@@ -9915,7 +10315,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The best-graded gameweek's own row, whatever shape the summariser\npicked."
     },
     "by_reason": {
      "description": "The deviation tally, ``REASONS`` order then ``none``. Codes with no\ngraded gameweek are absent \u2014 a nought would read as a measurement.",
@@ -9925,6 +10326,7 @@
      "type": "array"
     },
     "gws": {
+     "description": "Every graded gameweek the summary covers.",
      "items": {
       "type": "integer"
      },
@@ -9932,20 +10334,24 @@
     },
     "hindsight_gap": {
      "default": 0,
+     "description": "Season total of points left on the table versus each week's best\nlegal eleven.",
      "type": "integer"
     },
     "hindsight_gap_gws": {
      "default": 0,
+     "description": "How many gameweeks that total covers.",
      "type": "integer"
     },
     "lanes": {
      "additionalProperties": {
       "$ref": "#/definitions/ReviewLaneTotal"
      },
+     "description": "Season totals, one entry per decision lane.",
      "type": "object"
     },
     "points_on_bench": {
      "default": 0,
+     "description": "Season total of points left on the bench.",
      "type": "integer"
     },
     "points_on_bench_gws": {
@@ -9955,10 +10361,12 @@
     },
     "reconciled_gws": {
      "default": 0,
+     "description": "Graded gameweeks where the review's points matched FPL's official\nfigure.",
      "type": "integer"
     },
     "unreconciled_gws": {
      "default": 0,
+     "description": "Graded gameweeks where they did not, or could not be checked.",
      "type": "integer"
     },
     "worst": {
@@ -9971,7 +10379,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The worst-graded gameweek's own row, whatever shape the summariser\npicked."
     }
    },
    "required": [

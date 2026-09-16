@@ -213,9 +213,7 @@ class PlanSummary(BaseModel):
     bench: list[PlayerRef]
     """The bench, in order."""
     captain: PlayerRef
-    """The captain."""
     vice: PlayerRef
-    """The vice-captain."""
     buys: list[PlayerRef]
     """Players bought into this plan."""
     sells: list[PlayerRef]
@@ -252,104 +250,156 @@ class WhatIfResult(BaseModel):
 
 class StandingRow(BaseModel):
     entry: int
+    """FPL entry id."""
     name: str
+    """The entry's team name."""
     player_name: str
+    """The manager's own name."""
     rank: int
+    """Current league rank."""
     total: int
+    """Total points to date."""
     event_total: int
+    """Points scored in the newest gameweek."""
     is_you: bool
+    """Whether this row is the configured entry."""
 
 
 class GwPoint(BaseModel):
     gw: int
+    """The gameweek this point is for."""
     points: int
+    """Points scored that gameweek."""
     total: int
+    """Running total through that gameweek."""
 
 
 class Trajectory(BaseModel):
     entry: int
+    """FPL entry id."""
     name: str
+    """The entry's team name."""
     points: list[GwPoint]
+    """The entry's points history, one entry per gameweek played."""
 
 
 class GapPoint(BaseModel):
     gw: int
+    """The gameweek this gap is measured at."""
     gap: int
     """Your total minus the leader's, negative when you are behind."""
 
 
 class WinProb(BaseModel):
     name: str
+    """The rival's team name."""
     total: int
+    """The rival's total points to date."""
     p_win: float
+    """Modelled P(the manager finishes above this rival), from
+    ``win_probability``."""
 
 
 class LeagueRace(BaseModel):
     league_id: int
+    """The league this race is for."""
     entry_id: int
+    """The configured manager's entry id."""
     standings: list[StandingRow]
+    """Every entry's current standing."""
     trajectory: list[Trajectory]
+    """Every entry's points history across the season."""
     gap: list[GapPoint]
+    """The manager's running gap to the leader, one point per scored week."""
     win_probability: list[WinProb]
+    """Every rival's modelled chance of finishing above the manager."""
     lam: float
+    """The chase/defend tilt strength the next advise would see."""
     stance: str
+    """``"chase"``, ``"defend"`` or ``"neutral"``, the stance ``lam`` implies."""
     lam_explained: str
+    """The stance and its λ, in one sentence, from ``explain_lam``."""
     league_name: str = ""
+    """The league's name."""
     focus: bool = True
     """False when this is another private league opened for display: its
     λ is computed from its own standings and tilts nothing (v15 §3.3)."""
     stance_source: Literal["auto", "manual"] = "auto"
+    """Whether ``stance`` came from the solver's own read or a manual
+    override in config."""
 
 
 class PrivateLeagueRow(BaseModel):
     """One private mini-league the entry is in (v15 §5.1)."""
 
     league_id: int
+    """The league's FPL id."""
     name: str
+    """The league's name."""
     rank: int | None = None
+    """Current rank in this league."""
     last_rank: int | None = None
+    """Rank as of the previous gameweek."""
     entries: int | None = None
     """``rank_count`` from the entry payload; ``None`` before the league has
     a scored gameweek."""
     started: bool
+    """Whether the league has a scored gameweek yet."""
     gap: int | None = None
+    """Points to the entry immediately ahead or behind, in the direction
+    ``gap_kind`` names."""
     gap_kind: Literal["ahead", "behind"] | None = None
+    """Whether the leader is ahead of the entry or the entry leads it."""
     would: Literal["chase", "defend"] | None = None
     """Gap-sign only — what the dial would lean to. The deadband and λ
     appear when the league is opened (``/race?league_id=``)."""
     is_focus: bool
+    """Whether this is the configured focus league."""
 
 
 class PublicLeagueRow(BaseModel):
     """A public or system league: rank line only (v15 §1.1)."""
 
     league_id: int
+    """The league's FPL id."""
     name: str
+    """The league's name."""
     rank: int | None = None
+    """Current rank in this league."""
     last_rank: int | None = None
+    """Rank as of the previous gameweek."""
     entries: int | None = None
+    """Number of entries in the league."""
 
 
 class LeaguesOverview(BaseModel):
     focus_league_id: int
+    """``[league] league_id`` as configured."""
     focus_name: str | None = None
     """``None`` when the focus is not one of the private leagues, in which
     case ``focus_warning`` says so."""
     stance: Literal["auto", "chase", "defend", "neutral"]
     """``[league] stance`` as configured."""
     focus_stance: Literal["chase", "defend", "neutral"]
+    """The focus league's resolved stance, auto or manual."""
     focus_lam: float
     """The focus league's tilt as the next advise will see it: the solve
     state's λ with a manual stance applied (plan R2)."""
     focus_warning: str | None = None
+    """Why there is no focus league to report on, when there is none."""
     private: list[PrivateLeagueRow] = Field(default_factory=list)
+    """Every private mini-league the entry is in."""
     public: list[PublicLeagueRow] = Field(default_factory=list)
+    """Every public or system league the entry is in."""
     gw: int | None = None
+    """The entry's current gameweek, from FPL's own ``current_event``."""
 
 
 class RivalBeat(BaseModel):
     entry: int
+    """FPL entry id."""
     name: str
+    """The rival's team name."""
     p_beat: float | None = None
     """``None`` when the entry's squad could not be read at all (private, or
     joined after the gameweek). Such an entry is listed but not simulated —
@@ -360,10 +410,15 @@ class SimPoint(BaseModel):
     """One banked gameweek of the headline, for the card's sparkline."""
 
     gw: int
+    """The gameweek this simulated headline was run for."""
     p_win: float
+    """Modelled P(finishes first), from the Monte Carlo league sim."""
     p_top3: float
+    """Modelled P(finishes top 3)."""
     exp_finish: float
+    """Mean simulated final rank."""
     run_at: str
+    """ISO timestamp the simulation was run."""
 
 
 class FieldRank(BaseModel):
@@ -378,9 +433,14 @@ class FieldRank(BaseModel):
     """
 
     gw: int
+    """The gameweek this field ranking is for."""
     n: int
+    """How many synthetic field entries were simulated."""
     seed: int
+    """The RNG seed the field sample was drawn with."""
     managers: int
+    """How many sampled entries the effective-ownership table was built
+    from."""
     eo_source: str
     """``"deadline-trend"`` (§3.3's extrapolation), ``"last-sample"`` (the
     newest scrape), or ``"none"``. A trend EO and a last-sample EO are
@@ -406,35 +466,63 @@ class FieldRank(BaseModel):
     ownership 0.0 — nobody in the field has him — and counted here so the
     panel can say how much of my week the sample cannot speak to."""
     p_green: float | None = None
+    """P(the manager's squad beats the median of the synthetic field), when
+    a field sample is banked."""
     waiting_for: str | None = None
+    """What has to happen before ``p_green`` can be computed, when it
+    cannot be."""
     p_top10k: float | None = None
+    """P(finishes in the overall top 10k), when a score series exists to
+    compute it from."""
     top10k_waiting_for: str | None = None
+    """What has to happen before ``p_top10k`` can be computed, when it
+    cannot be."""
     rank_slope: float | None = None
     """Overall-rank places per point, from the graded ledger. Negative: more
     points is a better (smaller) rank."""
     rank_slope_rows: int = 0
+    """How many graded gameweeks ``rank_slope`` was fitted over."""
     rank_waiting_for: str | None = None
+    """What has to happen before ``rank_slope`` can be computed, when it
+    cannot be."""
     my_ep: float | None = None
+    """The manager's own expected points this gameweek, when available."""
     field_median_ep: float | None = None
+    """The synthetic field's median expected points this gameweek, when
+    available."""
 
 
 class LeagueSimData(BaseModel):
     gw: int
+    """The gameweek the simulation was run from."""
     entries: int
+    """How many entries in the league were simulated."""
     weeks_left: int
+    """Gameweeks remaining in the season."""
     n: int
+    """How many Monte Carlo draws the simulation ran."""
     seed: int
+    """The RNG seed the simulation was run with."""
     rival_drift: float
+    """``[league] rival_drift`` as configured — the per-week noise applied
+    to a rival's future scoring."""
     p_win: float
+    """Modelled P(the manager finishes first)."""
     p_top3: float
+    """Modelled P(the manager finishes top 3)."""
     exp_finish: float
+    """Mean simulated final rank for the manager."""
     per_rival: list[RivalBeat]
+    """Every rival's simulated chance of being beaten."""
     margin_quantiles: dict[str, float]
+    """Quantiles of the simulated final points margin over the field."""
     history: list[SimPoint]
+    """Banked headline numbers from earlier gameweeks, for the sparkline."""
     field_rate: float | None = None
     """The sampled field's weekly rate, or ``None`` when nothing is banked —
     in which case rivals do not drift however ``rival_drift`` is set."""
     notice: str | None = None
+    """A caveat on the simulation, when one applies."""
     legacy_win_probability: list[WinProb] = Field(default_factory=list)
     """``league_mode.win_probability``'s parametric answer, kept beside the
     simulated one until the UI has fully switched (spec §3)."""
@@ -450,12 +538,16 @@ class LeagueWhatIfPin(BaseModel):
     squad table and the compare panel all speak codes, and the router maps to
     elements against the same snapshot they were rendered from."""
     event: str = "blank"          # "haul" | "blank" | "score"
+    """The score outcome to pin this player to for the simulation."""
 
 
 class LeagueWhatIfRequest(BaseModel):
     pins: list[LeagueWhatIfPin] = Field(default_factory=list)
+    """Player outcomes to pin before re-running the simulation."""
     captain_override: int | None = None
+    """A player code to captain instead of the manager's own pick."""
     rival_captain_blanks: int | None = None
+    """A rival entry id whose captain is pinned to blank for the run."""
     league_id: int | None = None
     """Which private league to re-count (v15 §5.2); ``None`` is the focus."""
     cached_only: bool = False
@@ -470,63 +562,106 @@ class LeagueWhatIfRequest(BaseModel):
 
 class LeagueWhatIfRow(BaseModel):
     entry: int
+    """FPL entry id."""
     name: str
+    """The entry's team name."""
     is_you: bool
+    """Whether this row is the configured entry."""
     total: int
+    """Total points to date."""
     p_win: float | None = None
     """This entry's win frequency in the same run as the headline, or ``None``
     when its squad could not be read (``league_sim.is_readable``)."""
     exp_finish: float
+    """Mean simulated final rank under this what-if."""
 
 
 class LeagueWhatIfResult(BaseModel):
     baseline_p_win: float
+    """The manager's P(win) before the pins were applied."""
     p_win: float
+    """The manager's P(win) with the pins applied."""
     delta_p_win: float
+    """``p_win`` minus ``baseline_p_win``."""
     baseline_exp_finish: float
+    """The manager's mean simulated finish before the pins were applied."""
     exp_finish: float
+    """The manager's mean simulated finish with the pins applied."""
     delta_rank: float
+    """``exp_finish`` minus ``baseline_exp_finish``."""
     table: list[LeagueWhatIfRow]
+    """Every entry's simulated result under the pins."""
     unknown_codes: list[int] = Field(default_factory=list)
+    """Pinned codes that could not be resolved against the squad snapshot."""
 
 
 class RivalSummary(BaseModel):
     entry: int
+    """FPL entry id."""
     name: str
+    """The rival's team name."""
     player_name: str
+    """The rival manager's own name."""
     rank: int
+    """The rival's current league rank."""
     total: int
+    """The rival's total points to date."""
     event_total: int
+    """The rival's points in the newest gameweek."""
     overlap: int
+    """Players shared with the manager's own squad."""
     differentials: int
+    """Players in the rival's squad the manager does not own."""
 
 
 class SquadPlayer(BaseModel):
     code: int
+    """FPL player code."""
     element: int
+    """FPL's own element id."""
     name: str
+    """Player name."""
     position: str
+    """GKP, DEF, MID or FWD."""
     price: float
+    """His price in £m at the time the squad was picked."""
     is_captain: bool
+    """Whether he was captained (multiplier 2 or more)."""
     multiplier: int
+    """FPL's own points multiplier for him: 0 unused, 1 normal, 2 captain,
+    3 triple captain."""
 
 
 class RivalDetail(BaseModel):
     entry: int
+    """FPL entry id."""
     name: str
+    """The rival's team name."""
     player_name: str
+    """The rival manager's own name."""
     total: int
+    """The rival's total points to date."""
     team_value: float
+    """The rival's squad value in £m."""
     chips_used: list[str]
+    """Chips the rival has played this season."""
     captain: SquadPlayer | None
+    """The rival's captain in ``squad_gw``."""
     # The gameweek the squad was picked in — picks are public for finished
     # gameweeks only, so this trails ``live_points`` while one is in play.
     squad_gw: int
+    """The gameweek the served squad was picked for."""
     squad: list[SquadPlayer]
+    """The rival's full squad for ``squad_gw``."""
     shared: list[SquadPlayer]
+    """Players both the rival and the manager own."""
     their_differentials: list[SquadPlayer]
+    """Players the rival owns that the manager does not."""
     your_differentials: list[SquadPlayer]
+    """Players the manager owns that the rival does not."""
     live_points: int | None
+    """The rival's in-play points for the current gameweek, when one is
+    live; ``None`` otherwise."""
 
 
 # --- Live: the in-play scoreboard -----------------------------------------
@@ -534,43 +669,69 @@ class RivalDetail(BaseModel):
 
 class LivePlayer(BaseModel):
     element: int
+    """FPL's own element id."""
     code: int
+    """FPL player code."""
     name: str
+    """Player name."""
     position: str
+    """GKP, DEF, MID or FWD."""
     multiplier: int
+    """FPL's own points multiplier: 0 unused, 1 normal, 2 captain,
+    3 triple captain."""
     points: int
+    """Live points so far this gameweek, multiplier applied."""
     provisional_bonus: int
+    """Bonus points projected from the live BPS, before FPL confirms them."""
     minutes: int
+    """Minutes played so far this gameweek."""
     status: Literal["played", "playing", "yet to play"]
+    """Whether his fixture has finished, is live, or has not kicked off."""
     # v4d: display only, and all three optional — a tracker with no tier
     # sample renders exactly the table it rendered before.
     tier_eo: float | None = None
+    """Effective ownership among the sampled top-tier managers, when a
+    sample was taken."""
     tier_eo_se: float | None = None
+    """Standard error on ``tier_eo``, when a sample was taken."""
     selected_by_percent: float | None = None
+    """FPL's own overall ownership percentage."""
     # v8d: the auto-sub projection and what this player still owes. All
     # defaulted — a payload built without a component file carries the same
     # row it always did.
     projected_out: bool = False
+    """Whether he is projected to be substituted out by an autosub."""
     projected_in: bool = False
+    """Whether he is projected to be substituted in by an autosub."""
     sub_partner: int | None = None
     """The other half of a projected substitution, so a chip can name him."""
     sub_reason: str | None = None
     """``"played"`` or ``"yet to play"``: how certain the incoming man is."""
     remaining_ep: float | None = None
+    """Expected points still to come this gameweek, for a player yet to
+    finish his fixture."""
 
 
 class LiveTableRow(BaseModel):
     entry: int
+    """FPL entry id."""
     name: str
+    """The entry's team name."""
     pre_total: int
+    """Total points before this gameweek."""
     live: int
+    """This gameweek's live points, no autosubs applied."""
     projected: int
+    """Season total projected with autosubs applied."""
     delta: int
+    """``projected`` minus ``pre_total`` — this gameweek's projected gain."""
     # v8d. ``live`` stays the no-autosub figure ``entry_live_points`` returns;
     # ``projected_live`` is the same gameweek with the projected subs applied,
     # and is what ``projected`` (the season total) is now built from.
     projected_live: int | None = None
+    """This gameweek's points with the projected autosubs applied."""
     remaining_ep: float | None = None
+    """Expected points still to come this gameweek for this entry's squad."""
     race: float | None = None
     """``projected_live + remaining_ep``: where this gameweek is heading."""
 
@@ -579,8 +740,11 @@ class LiveSafety(BaseModel):
     """One league place worth watching, priced in points."""
 
     entry: int
+    """FPL entry id."""
     name: str
+    """The entry's team name."""
     role: Literal["above", "below", "leader"]
+    """Whether this entry sits above, below the manager, or leads the league."""
     margin: int
     """Their projected total minus mine. Positive means they are ahead."""
     need: int
@@ -591,7 +755,9 @@ class LiveRacePoint(BaseModel):
     """One poll's snapshot of the race, held in memory for this session only."""
 
     at: str
+    """ISO timestamp of this poll."""
     you: float
+    """The manager's own race value at this poll."""
     rival: float | None = None
     """The tracked rival's race value — the entry pinned in ``rival_name``,
     which is the top entry in the league that is not me. He is the leader
@@ -600,18 +766,29 @@ class LiveRacePoint(BaseModel):
 
 class LiveState(BaseModel):
     active: bool
+    """Whether any fixture in the gameweek is live or about to be."""
     gw: int | None
+    """The gameweek being tracked, or ``None`` when inactive."""
     my_points: int
+    """The manager's own live points so far, no autosubs applied."""
     matches_in_play: int
+    """How many fixtures are currently live."""
     players: list[LivePlayer]
+    """The manager's own squad, live."""
     table: list[LiveTableRow]
+    """The league standings, projected live."""
     notice: str | None = None
+    """A caveat on the tier-EO reading, when one applies."""
     my_projected_points: int = 0
+    """The manager's season total projected with autosubs applied."""
     my_race: float | None = None
+    """The manager's own race value: projected points plus what remains."""
     race_reference: float | None = None
     """This gameweek's saved ``advice.expected_pts``, when there is one."""
     race_series: list[LiveRacePoint] = Field(default_factory=list)
+    """This session's polled race values, for the sparkline."""
     safety: list[LiveSafety] = Field(default_factory=list)
+    """League places worth watching, one row per rival above or below."""
     rival_name: str | None = None
     """The entry the trajectory follows: the highest-placed entry that is not
     me, picked on the gameweek's first poll and then pinned for the rest of it
@@ -1250,30 +1427,47 @@ class NewsPanelData(BaseModel):
 
 class HistoryRun(BaseModel):
     gw: int
+    """The gameweek this run advised for."""
     deadline: str
+    """That gameweek's deadline."""
     captain: str
+    """The captain's name, as advised."""
     buys: list[str]
+    """Names of players bought."""
     sells: list[str]
+    """Names of players sold."""
     hits: int
+    """Hits taken."""
     expected_pts: float
+    """Expected points at the time of the run."""
     actual_pts: int | None
+    """XI points as actually scored, captain doubled, no autosubs, once the
+    gameweek has results; ``None`` before it does."""
 
 
 class PricePoint(BaseModel):
     gw: int
+    """The gameweek this price was recorded at."""
     price: float
+    """The player's price in £m."""
 
 
 class PriceSeries(BaseModel):
     code: int
+    """FPL player code."""
     name: str
+    """Player name."""
     points: list[PricePoint]
+    """His price at every gameweek he was owned."""
 
 
 class History(BaseModel):
     runs: list[HistoryRun]
+    """Every advised gameweek, newest first."""
     prices: list[PriceSeries]
+    """Price history for every player ever owned."""
     backtests: list[dict[str, Any]]
+    """Banked backtest log rows, whatever shape the replay tooling wrote."""
 
 
 # --- jobs and health: what is fresh, what is stale, what broke ------------
@@ -1579,21 +1773,30 @@ class Ticker(BaseModel):
 
 class CategoryMetrics(BaseModel):
     rmse: float
+    """Root-mean-square error on this category's held-out rows."""
     mae: float
+    """Mean absolute error on this category's held-out rows."""
     n: int
+    """How many held-out rows the category was scored over."""
 
 
 class ReferenceMetrics(BaseModel):
     """A published number: no row count, because we did not measure it."""
 
     rmse: float
+    """The published root-mean-square error."""
     mae: float
+    """The published mean absolute error."""
 
 
 class ReliabilityBin(BaseModel):
     n: int
+    """How many predictions fell in this bin."""
     pred: float
+    """Mean predicted probability in this bin."""
     obs: float
+    """Observed frequency in this bin — what a well-calibrated head would
+    match to ``pred``."""
 
 
 class HeadMetrics(BaseModel):
@@ -1602,38 +1805,57 @@ class HeadMetrics(BaseModel):
     :func:`gaffer.evaluation.head_metrics`. Nullable rather than NaN because
     NaN is not JSON."""
     reliability: list[ReliabilityBin]
+    """The head's predicted-vs-observed calibration curve, binned."""
 
 
 class CurrentEvaluation(BaseModel):
     run_at: str
+    """When this evaluation was run."""
     git_sha: str
+    """The commit the evaluated model was built from."""
     holdout_slots: int
+    """How many of the newest gameweek slots were held out and scored."""
     stratified: dict[str, dict[str, CategoryMetrics]]
     """cut ("all" / "starters") -> return category -> metrics."""
     heads: dict[str, HeadMetrics]
+    """Per-head calibration: ``p_play``, ``p60`` and the rest."""
     baselines: dict[str, dict[str, CategoryMetrics]]
+    """The same stratified metrics for each naive baseline, for comparison."""
 
 
 class BenchmarkEvaluation(BaseModel):
     run_at: str
+    """When this benchmark was run."""
     git_sha: str
+    """The commit the benchmarked model was built from."""
     test_season: str
+    """The held-out season the benchmark was scored against."""
     stratified: dict[str, dict[str, CategoryMetrics]]
+    """cut ("all" / "starters") -> return category -> metrics."""
     references: dict[str, dict[str, ReferenceMetrics]]
+    """Published metrics for the same cuts, from outside sources."""
     caveat: str
+    """Why the comparison to ``references`` is not exact."""
 
 
 class DecompositionCell(BaseModel):
     total: int
+    """Total points over the replay window."""
     per_gw: float
+    """``total`` divided by the number of gameweeks replayed."""
     hits: int
+    """Hits taken over the replay window."""
 
 
 class Decomposition(BaseModel):
     run_at: str
+    """When this decomposition was run."""
     git_sha: str
+    """The commit the replayed model was built from."""
     season: str
+    """The season replayed."""
     start_gw: int
+    """The first gameweek of the replay window."""
     cells: dict[str, DecompositionCell]
     """``{model,oracle}_h{1,3}`` -> that replay's outcome."""
     forecast_gap_h3: float
@@ -1646,23 +1868,43 @@ class NewsShadowSummary(BaseModel):
     """Both sides of gate N2's two metrics over one slice of the log."""
 
     brier_news: float
+    """Brier score of the news-aware P(plays) reading."""
     brier_flags: float
+    """Brier score of the official-flag-only P(plays) reading."""
     mae_news: float
+    """Mean absolute error of the news-aware expected-minutes reading."""
     mae_flags: float
+    """Mean absolute error of the official-flag-only expected-minutes
+    reading."""
     rows: int
+    """How many scored player-gameweeks this summary covers."""
 
 
 class NewsShadowGw(BaseModel):
     gw: int
+    """The gameweek this row scores."""
     brier_news: float
+    """Brier score of the news-aware reading, this gameweek alone."""
     brier_flags: float
+    """Brier score of the official-flag-only reading, this gameweek alone."""
     mae_news: float
+    """Mean absolute error of the news-aware reading, this gameweek alone."""
     mae_flags: float
+    """Mean absolute error of the official-flag-only reading, this
+    gameweek alone."""
     rows: int
+    """How many player rows this gameweek's figures cover."""
     cum_brier_news: float
+    """Brier score of the news-aware reading, cumulative to this gameweek."""
     cum_brier_flags: float
+    """Brier score of the official-flag-only reading, cumulative to this
+    gameweek."""
     cum_mae_news: float
+    """Mean absolute error of the news-aware reading, cumulative to this
+    gameweek."""
     cum_mae_flags: float
+    """Mean absolute error of the official-flag-only reading, cumulative to
+    this gameweek."""
 
 
 class NewsShadow(BaseModel):
@@ -1675,35 +1917,51 @@ class NewsShadow(BaseModel):
     """
 
     run_at: str
+    """When this readout was built."""
     git_sha: str
+    """The commit the readout was built from."""
     rows: int
+    """Total scored player-gameweeks across the whole log."""
     overall: NewsShadowSummary | dict = Field(default_factory=dict)
+    """The two metrics over the whole log, or ``{}`` before anything is
+    scored."""
     by_gw: list[NewsShadowGw] = Field(default_factory=list)
+    """The same metrics, one row per scored gameweek, with running totals."""
 
 
 class LeadBucket(BaseModel):
     """One band of the lead-time histogram, split by what happened."""
 
     bucket: str
+    """The lead-time band this row covers, in prose."""
     started: int
+    """How many flags in this band belonged to a player who then started."""
     missed: int
+    """How many flags in this band belonged to a player who then did not
+    start."""
 
 
 class FlagChange(BaseModel):
     """One (gameweek, player) whose status moved before the deadline."""
 
     gw: int
+    """The gameweek the deadline belongs to."""
     code: int
+    """FPL player code."""
     first_change: str
     """The snapshot day the status first differed from what it had been —
     the first day a manager could have acted, not the last."""
     lead_days: float
+    """Days between ``first_change`` and the deadline."""
     from_status: str
+    """His status immediately before it changed."""
     final_status: str
     """The last status recorded **before** the deadline. A snapshot taken
     afterwards told nobody anything and is not in this window."""
     chance_of_playing: float | None = None
+    """FPL's own chance-of-playing percentage at the final status."""
     started: bool
+    """Whether he actually started the fixture."""
 
 
 class FlagLatency(BaseModel):
@@ -1724,37 +1982,59 @@ class FlagLatency(BaseModel):
     """
 
     run_at: str
+    """When this readout was built."""
     git_sha: str
+    """The commit the readout was built from."""
     available: bool = False
+    """Whether the gate is open: enough snapshot days banked and at least
+    one covered gameweek graded."""
     rows: int = 0
+    """How many status changes the histogram and table are built from."""
     note: str | None = None
+    """Why the report is empty, when the gate is shut."""
     snap_dates: int = 0
+    """Distinct snapshot days banked in the log."""
     min_snap_dates: int = 14
+    """The floor ``snap_dates`` must clear for the gate to open
+    (``availability_eval.MIN_SNAP_DATES``)."""
     covered_gws: list[int] = []
+    """Gameweeks with at least one pre-deadline snapshot."""
     checked_covered_gws: list[int] = []
+    """Of those, the ones that have also been graded."""
     histogram: list[LeadBucket] = []
+    """Lead-time distribution of status changes, split by outcome."""
     late_flags: list[FlagChange] = []
+    """Every status change scored, one row per (gameweek, player)."""
 
 
 class VerdictRow(BaseModel):
     verdict: str
+    """The presser verdict this row scores (e.g. "doubtful", "OUT")."""
     n: int
+    """How many verdicts of this kind were graded."""
     started: int
+    """Of those, how many players then started."""
     not_started: int
+    """Of those, how many players did not start."""
 
 
 class VerdictScore(BaseModel):
     verdict: str
+    """The presser verdict this row scores."""
     n: int
+    """How many verdicts of this kind were graded."""
     precision: float
     """P(did not start | this verdict). Absence is the event every class
     claims, which is what makes the four numbers comparable."""
     recall: float
+    """P(this verdict | did not start), over the verdict-carrying rows."""
 
 
 class SourceRows(BaseModel):
     source: str
+    """The presser source's name."""
     rows: int
+    """How many verdicts came from this source."""
 
 
 class PresserGrades(BaseModel):
@@ -1767,33 +2047,52 @@ class PresserGrades(BaseModel):
     """
 
     run_at: str
+    """When this readout was built."""
     git_sha: str
+    """The commit the readout was built from."""
     available: bool = False
+    """Whether enough verdicts have been graded to report."""
     rows: int = 0
+    """How many verdicts the tables below are built from."""
     note: str | None = None
+    """Why the report is empty, when it is."""
     verdicts_banked: int = 0
+    """Total presser verdicts on record, graded or not."""
     graded_gws: list[int] = []
+    """Gameweeks with at least one graded verdict."""
     absent_rows: int = 0
+    """Players with no presser verdict at all, over the graded gameweeks."""
     confusion: list[VerdictRow] = []
+    """Started/not-started counts, one row per verdict."""
     per_class: list[VerdictScore] = []
+    """Precision and recall, one row per verdict."""
     by_source: list[SourceRows] = []
+    """How many verdicts came from each presser source."""
     recall_population: str = "verdict-carrying rows"
+    """What ``recall`` is measured over, stated so the number is not read
+    against a larger population by mistake."""
 
 
 class Quality(BaseModel):
     """Whichever modes have been run. Each is independent and may be absent."""
 
     current: CurrentEvaluation | None = None
+    """The newest holdout evaluation, or ``None`` if none has been run."""
     benchmark: BenchmarkEvaluation | None = None
+    """The newest benchmark against published references, or ``None``."""
     decomposition: Decomposition | None = None
+    """The newest forecast-vs-planning replay decomposition, or ``None``."""
     # v6: `gaffer evaluate --news-shadow` has written this key since v5, but
     # nothing declared it here, so it never reached the page.
     news_shadow: NewsShadow | None = None
+    """Gate N2's standing readout, or ``None`` if never scored."""
     # v12 W2 §3.1/§3.2 (specs/2026-09-01-gaffer-v12-program-design.md). Same
     # trap news_shadow fell into for a cycle: the CLI writes the key, and an
     # undeclared field is dropped here without a word.
     flag_latency: FlagLatency | None = None
+    """v12 §3.1's flag-latency readout, or ``None`` if never scored."""
     presser_grades: PresserGrades | None = None
+    """v12 §3.2's presser-verdict readout, or ``None`` if never scored."""
 
 
 class CalibrationHead(BaseModel):
@@ -1806,16 +2105,24 @@ class CalibrationHead(BaseModel):
     """
 
     status: str
+    """``"ok"`` when scored, else why not (e.g. below the sample floor)."""
     n: int
+    """How many rows the head was scored over."""
     brier: float | None = None
+    """Brier score, when scored."""
     log_loss: float | None = None
+    """Log loss, when scored."""
     reliability: list[ReliabilityBin] = []
+    """Predicted-vs-observed calibration curve, when scored."""
 
 
 class CalibrationGw(BaseModel):
     gw: int
+    """The gameweek this row scores."""
     n: int
+    """How many rows this gameweek contributed."""
     heads: dict[str, CalibrationHead] = {}
+    """Per-head calibration for this gameweek alone."""
 
 
 class CalibrationReport(BaseModel):
@@ -1827,19 +2134,31 @@ class CalibrationReport(BaseModel):
     """
 
     available: bool = False
+    """Whether a calibration report is banked at all."""
     run_at: str | None = None
+    """When the report was built."""
     git_sha: str | None = None
+    """The commit the report was built from."""
     season: str | None = None
+    """The season the report covers."""
     gameweeks: list[CalibrationGw] = []
+    """Per-gameweek calibration, for heads with enough rows to report weekly."""
     cumulative: dict[str, CalibrationHead] = {}
+    """Per-head calibration over the whole season to date."""
     omitted: dict[str, str] = {}
+    """Heads left out of the report entirely, with the reason."""
     #: Heads that *are* graded but not per gameweek — p_cs, whose club-fixture
     #: grain supplies about twenty rows a week against a thirty-row floor. The
     #: card prints the reason under the table rather than a column of refusals.
     per_gw_omitted: dict[str, str] = {}
+    """Heads reported cumulatively only, with the reason — see the comment
+    above."""
     excluded: list[dict[str, Any]] = []
+    """Rows dropped from the report, whatever shape the scorer recorded."""
     missing: list[int] = []
+    """Gameweeks with no calibration data at all."""
     note: str | None = None
+    """Why the report is unavailable, when it is."""
 
 
 # --- Planning: the multi-week plan timeline -------------------------------
@@ -2053,13 +2372,21 @@ class FixtureOutlook(BaseModel):
 
 class JournalRow(BaseModel):
     gw: int
+    """The gameweek this row compares."""
     model_pts: int
+    """Points the model's own plan would have scored."""
     actual_pts: int
+    """Points the manager's own team actually scored."""
     delta: int
+    """``actual_pts`` minus ``model_pts``."""
     model_captain: str | None = None
+    """The model's captain choice, when a plan was banked."""
     actual_captain: str | None = None
+    """The manager's own captain choice."""
     model_buys: list[str] = Field(default_factory=list)
+    """Names the model would have bought that gameweek."""
     model_sells: list[str] = Field(default_factory=list)
+    """Names the model would have sold that gameweek."""
     post_deadline: bool = False
     """Every banked run of this gameweek was written after its deadline, so
     the model's side of the comparison had the team news the user did not."""
@@ -2067,15 +2394,22 @@ class JournalRow(BaseModel):
 
 class JournalPoint(BaseModel):
     gw: int
+    """The gameweek this cumulative point is through."""
     model: int
+    """Running total of the model's own points through this gameweek."""
     actual: int
+    """Running total of the manager's actual points through this gameweek."""
     delta: int
+    """``actual`` minus ``model``, running."""
 
 
 class Journal(BaseModel):
     rows: list[JournalRow] = Field(default_factory=list)
+    """One row per gameweek compared, newest first."""
     cumulative: list[JournalPoint] = Field(default_factory=list)
+    """The running totals behind the journal's chart."""
     built_at: str | None = None
+    """ISO timestamp the journal was built."""
 
 
 # --- Model: the penalty-taker tracker -------------------------------------
@@ -2092,19 +2426,39 @@ class PenTrackerGw(BaseModel):
     """
 
     gw: int
+    """The gameweek this block reports on."""
     instrument: str | None = None
+    """Which realized-penalty reader scored this week (``pen_tracker
+    .realized_pens``'s choice)."""
     rows: int | None = None
+    """Player rows this week's live data carried."""
     covered_rows: int | None = None
+    """Of those, how many the chosen instrument could actually read."""
     team_games: int | None = None
+    """Distinct (opponent, kickoff) fixtures this week, for the
+    pens-per-game rate."""
     component_rows: int | None = None
+    """Rows in the banked components frame the taker prediction was built
+    from."""
     predicted_ep_pen_taker: float | None = None
+    """Expected penalty points the model attributed to first-choice takers
+    this week."""
     predicted_takers: int | None = None
+    """How many players the model identified as first-choice takers."""
     pens_taken: float | None = None
+    """Penalties actually taken this week, by the chosen instrument's count."""
     pens_by_first_choice: float | None = None
+    """Of those, how many were taken by the club's first-choice taker."""
     taker_hit_rate: float | None = None
+    """``pens_by_first_choice / pens_taken``, or ``None`` when none were
+    taken — never 0/0 read as a miss."""
     pens_per_team_game: float | None = None
+    """``pens_taken / team_games``, for comparison against
+    :data:`LEAGUE_PENS_PG`."""
     realized_pen_points: float | None = None
+    """Points actually scored from penalty conversions this week."""
     error: str | None = None
+    """Why this gameweek's block could not be built, when it could not."""
 
 
 class PenTrackerTotals(BaseModel):
@@ -2112,24 +2466,39 @@ class PenTrackerTotals(BaseModel):
     reached a single finished gameweek writes ``{}`` here."""
 
     gws: int | None = None
+    """How many gameweeks are summed into this total."""
     instruments: list[str] = Field(default_factory=list)
+    """Every realized-penalty instrument used across the summed gameweeks."""
     team_games: int | None = None
+    """Total team-games across the season."""
     predicted_ep_pen_taker: float | None = None
+    """Season total of expected penalty points attributed to first-choice
+    takers."""
     pens_taken: float | None = None
+    """Season total of penalties taken."""
     pens_by_first_choice: float | None = None
+    """Season total taken by first-choice takers."""
     taker_hit_rate: float | None = None
+    """Season ``pens_by_first_choice / pens_taken``."""
     pens_per_team_game: float | None = None
+    """Season ``pens_taken / team_games``."""
     league_pens_pg_served: float | None = None
+    """The served league-wide penalties-per-game prior, for comparison."""
     realized_pen_points: float | None = None
+    """Season total of points actually scored from penalty conversions."""
 
 
 class PenTracker(BaseModel):
     """``reports/pen_tracker.json``, as written by ``gaffer track-pens``."""
 
     season: str = ""
+    """The season the report covers."""
     gws: list[PenTrackerGw] = Field(default_factory=list)
+    """One block per finished gameweek tracked."""
     season_totals: PenTrackerTotals = Field(default_factory=PenTrackerTotals)
+    """The season line summed over ``gws``."""
     notes: list[str] = Field(default_factory=list)
+    """Caveats the tracker recorded while building the report."""
 
 
 # --- Model: the season review ---------------------------------------------
@@ -2146,26 +2515,37 @@ class ReviewLane(BaseModel):
     """
 
     lane: Literal["transfers", "captaincy", "bench", "chip"]
+    """Which decision this lane grades."""
     delta_pts: float | None = None
+    """My choice's points minus the model's, on this lane."""
     delta_pwin: float | None = None
     """My choice minus the model's, in percentage points of P(win the
     league). ``0.0`` on the bench and chip lanes by construction — the
     simulation normalises every squad to its eleven and one armband."""
     label: Literal["Brilliant", "Good", "Aligned", "Inaccuracy",
                    "Blunder"] | None = None
+    """The lane's verdict in one word, from the points delta's band."""
     aligned: bool = False
+    """Whether my choice and the model's agreed on this lane."""
     mine: str | None = None
+    """What I did, in prose."""
     model: str | None = None
+    """What the model would have done, in prose."""
     note: str | None = None
+    """Why the lane could not be graded, when ``delta_pts`` is ``None``."""
 
 
 class ReviewMiss(BaseModel):
     """A move the model flagged, I did not make, and that returned anyway."""
 
     code: int
+    """FPL player code."""
     name: str
+    """Player name."""
     over: str
+    """The player he was recommended over."""
     gain: int
+    """Points this move would have gained over what I actually did."""
 
 
 class ReviewHindsight(BaseModel):
@@ -2177,17 +2557,24 @@ class ReviewHindsight(BaseModel):
     """
 
     points: int | None = None
+    """Points the best legal eleven from my fifteen would have scored."""
     xi: list[int] = Field(default_factory=list)
+    """That eleven's player codes."""
     captain: int | None = None
+    """That eleven's best captain choice, by code."""
     gap: int | None = None
+    """``points`` minus what my actual eleven scored."""
 
 
 class DecisionRef(BaseModel):
     """The deviation note beside a grade (v16 §5)."""
 
     reason: str | None = None
+    """The reason code the manager gave for deviating."""
     text: str = ""
+    """The manager's own words."""
     at: str | None = None
+    """ISO timestamp the note was saved."""
 
 
 class ReasonTally(BaseModel):
@@ -2195,8 +2582,11 @@ class ReasonTally(BaseModel):
     carried it, and the mean transfers-lane delta over them."""
 
     reason: str
+    """The deviation reason code."""
     count: int
+    """How many graded gameweeks carried this reason."""
     mean_delta_pts: float | None = None
+    """Mean transfers-lane points delta over those gameweeks."""
 
 
 class ReviewGw(BaseModel):
@@ -2204,17 +2594,31 @@ class ReviewGw(BaseModel):
     a ledger written by an older build still renders."""
 
     gw: int
+    """The gameweek this grade is for."""
     reviewed_at: str | None = None
+    """ISO timestamp this grade was banked."""
     no_advice: bool = False
+    """No advice existed for this gameweek to grade against."""
     post_deadline: bool = False
+    """Every banked run of this gameweek was written after its deadline."""
     my_points: int | None = None
+    """My XI's points, captain doubled, no autosubs — the review's own
+    reading, independent of FPL's official figure."""
     official_points: int | None = None
+    """FPL's own points figure for this gameweek, net of any hits."""
     official_gross: int | None = None
+    """FPL's own points figure before hits are subtracted."""
     hits: int = 0
+    """Hits I took this gameweek."""
     reconciled: bool | None = None
+    """Whether ``my_points`` (net of hits) matches ``official_points``, or
+    ``None`` when the entry history was never banked."""
     chip: str | None = None
+    """The chip I played this gameweek, if any."""
     model_chip: str | None = None
+    """The chip the model would have played this gameweek, if any."""
     points_on_bench: int | None = None
+    """Points scored by players left on my bench."""
     overall_rank: int | None = None
     """My overall FPL rank at the end of this gameweek.
 
@@ -2251,15 +2655,27 @@ class ReviewGw(BaseModel):
     above — which is about the advice payload rather than the EP table — and
     the two can disagree."""
     our_bench_points: int | None = None
+    """Points scored by the players the model's own plan would have benched."""
     model_points: int | None = None
+    """Points the model's own plan would have scored this gameweek."""
     accuracy: int | None = None
+    """``my_points`` as a percentage of ``model_points``, capped at 100."""
     pwin_n: int | None = None
+    """How many Monte Carlo draws the lanes' ``delta_pwin`` figures were
+    simulated over."""
     pwin_seed: int | None = None
+    """The RNG seed those draws used."""
     pwin_granularity_pp: float | None = None
+    """The smallest ``delta_pwin`` this simulation could resolve, in
+    percentage points — ``100 / pwin_n``."""
     lanes: list[ReviewLane] = Field(default_factory=list)
+    """Every decision lane graded this gameweek."""
     misses: list[ReviewMiss] = Field(default_factory=list)
+    """Moves the model flagged that I did not make and that paid off anyway."""
     hindsight: ReviewHindsight = Field(default_factory=ReviewHindsight)
+    """The best legal eleven I could have picked from my actual fifteen."""
     notices: list[str] = Field(default_factory=list)
+    """Caveats on this gameweek's grade."""
     decision: DecisionRef | None = None
     """Why I did something other than what the advice said. ``None`` is "no
     note was written", which is not the same as a note with no reason."""
@@ -2267,11 +2683,14 @@ class ReviewGw(BaseModel):
 
 class ReviewLaneTotal(BaseModel):
     pts: float = 0.0
+    """Total points delta on this lane, summed over graded gameweeks."""
     pwin: float = 0.0
+    """Total P(win) delta on this lane, summed over graded gameweeks."""
     graded: int = 0
     """How many gameweeks this lane was gradeable in. ``pts`` of zero over
     ``graded`` of zero is "never measured", not "never wrong"."""
     wins: int = 0
+    """Graded weeks this lane gained points over the model."""
     losses: int = 0
     """Graded weeks this lane gained / lost points, counted strictly.
 
@@ -2284,23 +2703,39 @@ class ReviewLaneTotal(BaseModel):
 
 class ReviewAccuracyPoint(BaseModel):
     gw: int
+    """The gameweek this accuracy point is for."""
     accuracy: int
+    """That gameweek's ``ReviewGw.accuracy``."""
 
 
 class ReviewSummary(BaseModel):
     gws: list[int] = Field(default_factory=list)
+    """Every graded gameweek the summary covers."""
     lanes: dict[str, ReviewLaneTotal] = Field(default_factory=dict)
+    """Season totals, one entry per decision lane."""
     accuracy: list[ReviewAccuracyPoint] = Field(default_factory=list)
+    """The accuracy series across graded gameweeks."""
     points_on_bench: int = 0
+    """Season total of points left on the bench."""
     points_on_bench_gws: int = 0
     """How many gameweeks that total covers. A season of unbanked histories
     sums to zero over zero gameweeks, which is not an empty bench."""
     hindsight_gap: int = 0
+    """Season total of points left on the table versus each week's best
+    legal eleven."""
     hindsight_gap_gws: int = 0
+    """How many gameweeks that total covers."""
     reconciled_gws: int = 0
+    """Graded gameweeks where the review's points matched FPL's official
+    figure."""
     unreconciled_gws: int = 0
+    """Graded gameweeks where they did not, or could not be checked."""
     best: dict[str, Any] | None = None
+    """The best-graded gameweek's own row, whatever shape the summariser
+    picked."""
     worst: dict[str, Any] | None = None
+    """The worst-graded gameweek's own row, whatever shape the summariser
+    picked."""
     by_reason: list[ReasonTally] = Field(default_factory=list)
     """The deviation tally, ``REASONS`` order then ``none``. Codes with no
     graded gameweek are absent — a nought would read as a measurement."""
@@ -2308,7 +2743,9 @@ class ReviewSummary(BaseModel):
 
 class Review(BaseModel):
     gws: list[ReviewGw] = Field(default_factory=list)
+    """Every graded gameweek's own row."""
     summary: ReviewSummary | None = None
+    """The season totals over ``gws``, or ``None`` when nothing is graded."""
 
 
 # --- Planning: the manager's own team news --------------------------------
@@ -2498,9 +2935,7 @@ class LadderWeek(BaseModel):
     bench: list[PlayerRef] = Field(default_factory=list)
     """The bench this week of the plan."""
     captain: PlayerRef
-    """The captain this week of the plan."""
     vice: PlayerRef
-    """The vice-captain this week of the plan."""
     expected_pts: float
     """Expected points for this week alone, net of its hits
     (``ladder.plan_points`` over one week)."""
@@ -2700,7 +3135,6 @@ class DraftCompareRow(BaseModel):
     sells: list[PlayerRef] = Field(default_factory=list)
     """Players this row's plan sells."""
     captain: PlayerRef | None = None
-    """This row's plan's captain."""
     error: str | None = None
     """Why this row is empty. An infeasible draft is a row with a reason, not
     a failed comparison."""
@@ -2769,13 +3203,22 @@ class MissRow(BaseModel):
     """
 
     code: int
+    """FPL player code."""
     name: str
+    """Player name."""
     position: str = ""
+    """GKP, DEF, MID or FWD, when known."""
     price: float | None = None
+    """His price in £m at the time, when known."""
     ep: float
+    """Expected points, as forecast for this gameweek."""
     actual: int
+    """Points actually scored this gameweek."""
     minutes: int = 0
+    """Minutes actually played this gameweek."""
     miss: float
+    """``actual - ep``, signed: positive is an under-rated player, negative
+    an over-rated one."""
 
 
 class Misses(BaseModel):
@@ -2783,6 +3226,7 @@ class Misses(BaseModel):
     """``None`` when no gameweek has both a banked forecast and a banked
     result. That is an absent card, not a card of zeros (spec D1)."""
     rows: list[MissRow] = Field(default_factory=list)
+    """The biggest misses that gameweek, by absolute value."""
 
 
 # --- Players: the watchlist -----------------------------------------------
@@ -2891,7 +3335,6 @@ class DigestSection(BaseModel):
     key: str
     """The section's identifier, distinguishing it for the client's layout."""
     title: str
-    """The section's heading."""
     bits: list[str] = Field(default_factory=list)
     """The section's clauses, joined by the client into prose."""
 
@@ -3003,21 +3446,28 @@ class SettingOption(BaseModel):
     picks between are stated once, beside the bound they live inside."""
 
     value: float | int
+    """The value this option sets."""
     label: str
+    """The word the select shows for it."""
 
 
 class SettingRow(BaseModel):
     """One editable setting, as the Settings tab receives it (v12 W5 §6.2)."""
 
     key: str
+    """The config field this row edits, dotted to its section."""
     label: str
+    """The setting's name in prose."""
     kind: Literal["int", "float", "bool", "floats3", "pool", "choice"]
+    """What kind of control the tab should render for it."""
     value: Any
     """Whatever the merged config holds. ``None`` only for ``bench_curve``,
     where it means "no curve — one flat bench weight", which is a real
     setting and not an absent one."""
     lo: float | None = None
+    """The lower bound the tab should enforce, when the setting has one."""
     hi: float | None = None
+    """The upper bound the tab should enforce, when the setting has one."""
     choices: list[str] = Field(default_factory=list)
     """For ``kind == "choice"`` the allowed strings, in display order (v15
     §4.2). Empty for every other kind."""
@@ -3025,7 +3475,9 @@ class SettingRow(BaseModel):
     """What a select offers, in order, the saved value included when it is
     not offered (v17e §2.5). Empty for a row the tab types into."""
     section: str
+    """The config section the field lives in, for grouping on the tab."""
     help: str
+    """A short explanation of what the setting does."""
     source: Literal["local", "base", "default"]
     """Which file this value came from. ``local`` is ``config.local.toml``,
     ``base`` is ``config.toml``, ``default`` is the dataclass — and the three
@@ -3042,10 +3494,12 @@ class SettingsPanel(BaseModel):
     """Why ``config.local.toml`` is being ignored, or ``None``. Also carries
     the "no config.toml at all" case, which is the state a cold clone is in."""
     apply_note: str
+    """The standing note on when a saved change takes effect."""
 
 
 class SettingWrite(BaseModel):
     key: str
+    """The config field to write, dotted to its section."""
     value: Any = None
     """``None`` removes the key from the overlay, so the value falls back to
     ``config.toml`` or the dataclass default."""
