@@ -103,6 +103,28 @@ closes and remembers; a throwing storage still renders open.
    disclosure's storage read (invert the default), the print rule (drop
    `nav` from the block).
 
-## 4. Outcome
+## 4. Outcome (2026-09-16, gate run by the orchestrator)
 
-Filled at the gate.
+Commits on `v19d-readable`: `35bea43` spec; `5344769` the reports mount
+(orchestrator; three tests, the route pin untouched at 51); `6b8cad9`
+the frontend (`ContextStrip`, `Disclosure`, `Countdown short`, `Card id`,
+the board's one note, copy, the report link, the print block).
+
+| Gate line | Result |
+|---|---|
+| 1 inner loop | `4390 passed, 148 deselected, 4 warnings in 71.69s`; ruff `All checks passed!` |
+| 2 golden | `62 passed in 1096.21s (0:18:16)`, 0 skipped |
+| 3 npm run check | exit 0, `Tests 1172 passed \| 1 skipped (1173)`, `0 errors, 8 warnings`; fetch rails untouched |
+| 4 screenshots | twelve desktop pairs 15:22:55–15:23:13, storage clear: Players, League, Model identical whole-image; This Week rows 113–1599 and the board rows 27–666 as named; **Planning → what-if rows 561–1599 unnamed but explained** — the What-If tab renders the same `LadderCard`, so the ladder's new disclosure line appears there too (a page the spec should have named); phone shots at 375 approved with the desktop pair by the user |
+| 5 mutations | a second `board-try-note` (five tests fail); the disclosure's `'closed'` branch dropped (its test fails); `nav` dropped from the print block (the tokens rule fails) |
+
+**Judgement calls kept:** no negative margins on the sticky strip (three
+paddings to track); the board's "Starting bank" line stays outside the
+disclosure because it prints a served number; `Disclosure` renders its
+content `hidden` rather than as `<details>` so the print block can force
+it open; `Countdown short` carries its own testid.
+
+**Residual, recorded:** the What-If tab's ladder prose is behind the same
+disclosure as This Week's, sharing `storageKey="ladder-help"`, so closing
+it on one page closes it on both — intended, but worth a sentence in the
+GUIDE.
