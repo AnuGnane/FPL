@@ -47,13 +47,31 @@ export default function WhatIfSim(
   const [rivalBlank, setRivalBlank] = useState<number | null>(null)
   const [result, setResult] = useState<LeagueWhatIfResult | null>(null)
   const [failed, setFailed] = useState(false)
-  const [busy, setBusy] = useState(false)
 
   const empty = Object.keys(pins).length === 0 && captain === null
     && rivalBlank === null
 
+  // The question the panel is asking right now, as a string, and the last one
+  // it has an answer to. v19h §2.1: `busy` is derived from the two rather than
+  // stored and set at the top of the effect below — "have I heard back about
+  // what is pinned?" is a comparison, and a comparison kept in state is a
+  // second copy of the truth that an effect has to keep honest.
+  const asked = empty ? null : JSON.stringify(
+    [pins, captain, rivalBlank, leagueId])
+  const [settled, setSettled] = useState<string | null>(null)
+  const busy = asked !== null && settled !== asked
+
+  // Unpinning the last event withdraws the question, so the verdict under it
+  // goes too. A guarded render-phase set, because it re-seeds from `empty`,
+  // which is in hand.
+  const [wasEmpty, setWasEmpty] = useState(empty)
+  if (wasEmpty !== empty) {
+    setWasEmpty(empty)
+    if (empty) { setResult(null); setFailed(false); setSettled(null) }
+  }
+
   useEffect(() => {
-    if (empty) { setResult(null); setFailed(false); return }
+    if (asked === null) return
     const body: LeagueWhatIfRequest = {
       pins: Object.entries(pins).map(([code, event]) => (
         { code: Number(code), event })),
@@ -62,13 +80,12 @@ export default function WhatIfSim(
       league_id: leagueId,
     }
     let cancelled = false
-    setBusy(true)
     apiPost<LeagueWhatIfResult>('/api/league/whatif', body)
       .then((out) => { if (!cancelled) { setResult(out); setFailed(false) } })
       .catch(() => { if (!cancelled) { setResult(null); setFailed(true) } })
-      .finally(() => { if (!cancelled) setBusy(false) })
+      .finally(() => { if (!cancelled) setSettled(asked) })
     return () => { cancelled = true }
-  }, [pins, captain, rivalBlank, empty, leagueId])
+  }, [asked, pins, captain, rivalBlank, leagueId])
 
   if (squad.length === 0) {
     return (

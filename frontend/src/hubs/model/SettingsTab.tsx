@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { errorText } from '../../api/client'
 import { usePageData } from '../../api/pageData'
 import { useSettingWrite } from '../../api/useSettingWrite'
@@ -53,7 +53,15 @@ function Field(
   // Re-seed when the server sends a new value — after a save, or after a
   // reset. Keyed on the serialized value so a re-render with the same answer
   // does not stamp on what the user is typing.
-  useEffect(() => { setDraft(serialized) }, [serialized])
+  //
+  // v19h §2.1: a guarded render-phase set. The draft mirrors a value already
+  // in hand, and an effect would leave one painted frame in which the input
+  // still showed the value the save replaced.
+  const [seeded, setSeeded] = useState(serialized)
+  if (seeded !== serialized) {
+    setSeeded(serialized)
+    setDraft(serialized)
+  }
 
   if (row.kind === 'bool') {
     return (

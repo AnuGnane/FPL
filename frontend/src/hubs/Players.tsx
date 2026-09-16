@@ -1,5 +1,5 @@
 import * as Tabs from '@radix-ui/react-tabs'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { apiDelete, apiPost, errorText } from '../api/client'
 import { invalidate, usePageData } from '../api/pageData'
 import { useDebounced } from '../api/useDebounced'
@@ -69,10 +69,16 @@ export default function Players() {
   // not a round trip later. It is re-seeded from the cache whenever the
   // served answer changes — the write's own invalidate is what brings that
   // about — so nothing here is the source of truth for longer than a request.
+  //
+  // v19h §2.1: the re-seed is a guarded render-phase set, keyed on the served
+  // answer itself — it mirrors a value already in hand, so an effect would buy
+  // a second render and paint one frame of the previous week's stars.
   const [starred, setStarred] = useState<number[] | null>(null)
-  useEffect(() => {
+  const [seeded, setSeeded] = useState(served)
+  if (seeded !== served) {
+    setSeeded(served)
     setStarred(served === null ? null : served.rows.map((r) => r.code))
-  }, [served])
+  }
 
   // A star is a bookmark and its success is the flip itself — no toast (spec
   // D3): a toast for every bookmark on a six-hundred-row table is noise. Its

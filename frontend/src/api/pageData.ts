@@ -147,16 +147,28 @@ export function usePageData<T>(path: string | null): PageData<T> {
   const [error, setError] = useState<string | null>(null)
   const [status, setStatus] = useState<number | null>(null)
 
-  useEffect(() => {
-    // A new URL inherits neither the old one's body nor its error. State
-    // survives the path change; the answer to the previous question must not
-    // be painted under this one.
+  // A new URL inherits neither the old one's body nor its error. State
+  // survives the path change; the answer to the previous question must not be
+  // painted under this one.
+  //
+  // v19h §2.1: adjusted during render, the way `QuestionBox` does, rather than
+  // at the top of the effect below. Not `useSyncExternalStore` — the store
+  // holds one body per URL, and `error`, `status` and the ask counter are this
+  // reader's alone, so a snapshot function would have to invent a per-reader
+  // store to live in. This is a re-seed from the `path` prop, which is the
+  // cheaper of the two mechanisms and the one that fits: the reset lands in
+  // the same render as the new path rather than a paint later.
+  const [seen, setSeen] = useState(path)
+  if (seen !== path) {
+    setSeen(path)
     setError(null)
     setStatus(null)
-    if (path === null) {
-      setData(null)
-      return
-    }
+    const held = path === null ? undefined : entries.get(path)?.body
+    setData(held === undefined ? null : held as T)
+  }
+
+  useEffect(() => {
+    if (path === null) return
     // Closed over by `ask`, so a response can only reach the reader that is
     // still mounted on this path. Cleanup runs before the next effect, so a
     // remount or a path change leaves the outgoing closure dead and the
@@ -188,14 +200,10 @@ export function usePageData<T>(path: string | null): PageData<T> {
     }
     const entry = entryFor(path)
     entry.subscribers.add(ask)
-    if (entry.body !== undefined) {
-      setData(entry.body as T)
-      setError(null)
-      setStatus(null)
-    } else {
-      setData(null)
-      ask()
-    }
+    // The warm body is already in hand — the initializer above read it on
+    // mount, the render-phase re-seed on every path change — so all that is
+    // left here is the cold ask.
+    if (entry.body === undefined) ask()
     return () => {
       alive = false
       entry.subscribers.delete(ask)

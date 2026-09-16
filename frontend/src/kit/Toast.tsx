@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useSyncExternalStore } from 'react'
 
 export type ToastTone = 'positive' | 'negative'
 
@@ -15,13 +15,13 @@ export const DISMISS_MS = 6000
 
 let nextId = 1
 let live: Toast[] = []
-const listeners = new Set<(toasts: Toast[]) => void>()
+const listeners = new Set<() => void>()
 /** Pending auto-dismissals, by toast id, so one can be cancelled with the
  *  toast it belongs to rather than firing into whatever comes later. */
 const timers = new Map<number, number>()
 
 function emit(): void {
-  for (const listener of listeners) listener(live)
+  for (const listener of listeners) listener()
 }
 
 /**
@@ -96,16 +96,20 @@ export function currentToasts(): Toast[] {
   return live
 }
 
+function subscribe(onChange: () => void): () => void {
+  listeners.add(onChange)
+  return () => { listeners.delete(onChange) }
+}
+
 export function useToasts(): Toast[] {
-  const [shown, setShown] = useState<Toast[]>(live)
-  useEffect(() => {
-    listeners.add(setShown)
-    // Re-read on subscribe: a toast raised between render and effect would
-    // otherwise never reach this outlet.
-    setShown(live)
-    return () => { listeners.delete(setShown) }
-  }, [])
-  return shown
+  // v19h §2.1. The list lives outside React — `toast()` is importable
+  // anywhere, including where no outlet is mounted — which is exactly the
+  // shape `useSyncExternalStore` is for. It also closes by construction the
+  // hazard the old effect had to re-read for: a toast raised between the
+  // render and the effect is in the snapshot React takes on subscribing, so
+  // it cannot be missed. `live` is replaced, never mutated, so identity is a
+  // sound snapshot.
+  return useSyncExternalStore(subscribe, currentToasts, currentToasts)
 }
 
 /** One outlet, mounted once by `AppShell`. */

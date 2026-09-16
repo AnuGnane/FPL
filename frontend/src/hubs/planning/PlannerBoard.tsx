@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { usePageData } from '../../api/pageData'
 import {
   Button, Callout, Card, Chip, Disclosure, EmptyState, Loading, PosBadge,
@@ -96,7 +96,15 @@ export default function PlannerBoard(
   // left of the fetching effect this card used to run: v18e §2.3 retired its
   // `live` guard along with the stale-response class the hook's ask counter
   // now closes.
-  useEffect(() => { setPick(0) }, [gw])
+  //
+  // v19h §2.1: a guarded render-phase set rather than an effect or a `key` on
+  // the board — a key would remount the card and throw away the two reads
+  // below with it. The pick re-seeds from the `gw` prop, which is in hand.
+  const [seenGw, setSeenGw] = useState(gw)
+  if (seenGw !== gw) {
+    setSeenGw(gw)
+    setPick(0)
+  }
 
   // The price decoration, read beside the plan and never inside it: null
   // while it loads and after any failure, because a price warning must never

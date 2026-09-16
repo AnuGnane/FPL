@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { apiPost, errorText } from '../../api/client'
 import { invalidate, usePageData } from '../../api/pageData'
 import {
@@ -31,13 +31,20 @@ export default function DecisionPanel({ gw }: { gw: number }) {
   const [saved, setSaved] = useState(false)
   const [failed, setFailed] = useState<string | null>(null)
 
+  // v19h §2.1: a guarded render-phase set, keyed on the banked row — the
+  // three fields mirror a value already in hand, and an effect would paint one
+  // frame of the previous note under the new gameweek's heading.
   const read = banked.data
-  useEffect(() => {
+  const [seeded, setSeeded] = useState<DecisionNote | null | undefined>(
+    undefined)
+  if (seeded !== read) {
+    setSeeded(read)
     setNote(read)
-    if (read === null) return
-    setReason((read.reason as Reason | null) ?? null)
-    setText(read.text ?? '')
-  }, [read])
+    if (read !== null) {
+      setReason((read.reason as Reason | null) ?? null)
+      setText(read.text ?? '')
+    }
+  }
 
   if (note === null) return null
 

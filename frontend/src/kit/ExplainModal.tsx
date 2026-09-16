@@ -1,5 +1,5 @@
 import * as Dialog from '@radix-ui/react-dialog'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { usePageData } from '../api/pageData'
 import type { PlayerExplain } from '../types'
 import Bar from './Bar'
@@ -33,7 +33,15 @@ export default function ExplainModal(
 
   // A new player is a new photo, and the previous one's failure says nothing
   // about it.
-  useEffect(() => { setPhotoFailed(false) }, [code])
+  //
+  // v19h §2.1: a guarded render-phase set, not a `key` at the call site — the
+  // modal is mounted only while it is open and a remount would re-run the
+  // focus handling Radix and `useOpener` own between them.
+  const [seenCode, setSeenCode] = useState(code)
+  if (seenCode !== code) {
+    setSeenCode(code)
+    setPhotoFailed(false)
+  }
 
   // v18f §2.2. Radix owns the modal behaviour that was three hand-rolled
   // effects: the focus trap, the return of focus to whatever opened it,

@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "test": "vitest",
     "types": "node scripts/gen_types.ts",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
     "check": "tsc --noEmit && vitest run && npm run types -- --check && npm run lint"
   },
   "dependencies": {

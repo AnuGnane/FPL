@@ -233,36 +233,44 @@ export function useJob({ kind, path, slot }: JobSpec): Job {
   // the single-flight runner can only answer with a 409. Ask once, on mount,
   // and if the run in flight is ours, watch it as though we had started it.
   //
-  // Through `probeCurrent`, so four buttons mounting together share the one
-  // request without any of them keeping the answer (v17h §6).
+  // One effect, because a spec names one transport and therefore one probe;
+  // it was two in v17h, each carrying an `exhaustive-deps` disable, and a
+  // disable is a rule nobody can see being broken (v19h §2.1).
+  //
+  // The deps are the spec's identity — `kind` for the streamed half, `slot`
+  // for the polled one — plus the two callbacks the branches use, which is the
+  // honest list and still asks once: `watch` and `poll` close over `close` and
+  // `stop`, which take no deps at all, so `watch` never re-forms and `poll`
+  // re-forms only when `slot` does, which is already a new spec. That is the
+  // trap the two disables were guarding — a dep that re-forms every render
+  // would re-attach over the stream, or fight the poll, this hook already
+  // owns — and it is closed by the callbacks being stable rather than by
+  // hiding them.
   useEffect(() => {
-    if (kind === undefined) return
     let cancelled = false
-    probeCurrent()
-      .then((run) => {
-        if (cancelled || !run) return
-        if (run.kind !== kind || run.status !== 'running') return
-        watch(run.id)
-      })
-      // A probe that cannot reach the server is not a failed job: leave the
-      // button alone and let the click report the problem if it is still there.
-      .catch(() => {})
-    return () => { cancelled = true }
-    // The probe asks once. Re-running it when `watch` or `probeCurrent`
-    // changes identity would re-attach over the stream this hook already owns.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only
-  }, [kind])
-
-  // The one-shot probe. A finished job is painted from the record the server
-  // still holds rather than re-polled, so a tab reopened long after the solve
-  // ended still shows what it produced. A 404 is a server that has been
-  // restarted and forgotten the run: drop the id rather than probing for it
-  // again on every future mount.
-  useEffect(() => {
+    if (kind !== undefined) {
+      // Through `probeCurrent`, so four buttons mounting together share the
+      // one request without any of them keeping the answer (v17h §6).
+      probeCurrent()
+        .then((run) => {
+          if (cancelled || !run) return
+          if (run.kind !== kind || run.status !== 'running') return
+          watch(run.id)
+        })
+        // A probe that cannot reach the server is not a failed job: leave the
+        // button alone and let the click report the problem if it is still
+        // there.
+        .catch(() => {})
+      return () => { cancelled = true }
+    }
+    // The polled half's one-shot probe. A finished job is painted from the
+    // record the server still holds rather than re-polled, so a tab reopened
+    // long after the solve ended still shows what it produced. A 404 is a
+    // server that has been restarted and forgotten the run: drop the id rather
+    // than probing for it again on every future mount.
     if (!slot) return
     const id = remembered.get(slot)
     if (id === undefined) return
-    let cancelled = false
     // Status is left alone until the probe answers, as the kind probe above
     // leaves its button alone: guessing 'running' would flash a spinner over a
     // result that has been sitting finished on the server for an hour.
@@ -282,10 +290,7 @@ export function useJob({ kind, path, slot }: JobSpec): Job {
       })
       .catch(() => { remembered.delete(slot) })
     return () => { cancelled = true }
-    // The one-shot probe runs once per slot. Re-running it when `poll` changes
-    // identity would fight the poll this hook already owns.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only
-  }, [slot])
+  }, [kind, slot, watch, poll])
 
   const start = useCallback(async (body?: unknown) => {
     if (kind !== undefined) {
