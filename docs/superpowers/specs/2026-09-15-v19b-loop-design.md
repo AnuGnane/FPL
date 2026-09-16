@@ -117,6 +117,36 @@ rail changes by exactly that one fetch, declared.
 6. New rails mutation-tested: the pins line (rows with `active` false),
    the price step's order, the ticker's 500 path.
 
-## 4. Outcome
+## 4. Outcome (2026-09-16, gate run by the orchestrator)
 
-Filled at the gate.
+Commits on `v19b-loop`: `7a3cf47` spec; `07107b1` the price step in
+`weekly_run` (orchestrator, with the `test_pipeline.py` and parity-harness
+stubs); `7691100` the suite-wide stub in `conftest.py`; `f1dad1a` the
+frontend (pins line, pin from news, the empty state as the action, the
+token prompt inside `Callout`, the ticker's empty state, the matrix's
+single fetch; `PinDialog` moved to `kit/`).
+
+| Gate line | Result |
+|---|---|
+| 1 inner loop | `4387 passed, 148 deselected, 4 warnings in 67.77s` |
+| 1 ruff | `All checks passed!` |
+| 2 golden | `62 passed in 1081.23s (0:18:01)`, 0 skipped (58 + the four pipeline tests) |
+| 3 real run | **deferred to the user's Thursday run** (2026-09-17 18:00): a real `gaffer advise` rewrites served advice and spends odds quota, which the v18h ruling reserves to the user; the trace's price line on that run is the reading, to be pasted here |
+| 4 npm run check | exit 0, `Tests 1135 passed \| 1 skipped (1136)`, `0 errors, 8 warnings`; the Players fetch rail lost exactly `/api/fixtures/matrix?from=1&n=6`; This Week's rail unchanged because `WhyPanel` already read `/api/overrides` |
+| 5 screenshots | twelve pairs at 1400, both themes, 10:45:29–10:45:42: eleven byte-identical; `planning-board-dark` differed by one pixel, and two same-code re-shoots matched the before image exactly (a render flake, the v18f rule applied) |
+| 6 mutations | pins line (`active` flipped → its test fails alone); the ticker's status split (500 → empty state → its test fails alone); the pipeline order test (the price step is the one call banked before a raising solve) |
+
+The named hubs' pairs are identical because the served tree has no pins,
+is not cold and is not on LAN: every new rendering is in a state the
+screenshots cannot reach on this data. The unit tests carry them.
+
+**A fault found and closed on the branch.** The first inner-loop run after
+`07107b1` reached the live bootstrap through the new step from a CLI test
+that stubs `run_advise` and wrote a real row (2026-09-16, 659 players,
+09:22) into the working tree's `data/live/price_log.parquet`. The
+`conftest.py` autouse stub is the fix; the row is a genuine reading and
+tonight's 23:15 job replaces it (`append_prices` keys on the day).
+
+**Residuals, recorded:** the chip pair's What-If arm (not taken, §1);
+`Callout`'s `onRetry` is wired only in `PinDialog`, the other seven
+refused-write panels get the field and the manager clicks again.
