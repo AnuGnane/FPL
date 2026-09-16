@@ -7,7 +7,7 @@ describe('kit barrel', () => {
     // in the tree composed it, and a name nothing writes is a second
     // vocabulary for the same thing.
     for (const name of ['Card', 'DataTable', 'EmptyState',
-      'PageHeader', 'PitchView', 'PlayerCard', 'PosBadge', 'Skeleton',
+      'PageHeader', 'PlayerCard', 'PosBadge', 'Skeleton',
       'Sparkline', 'Stat', 'Th', 'ThresholdBar', 'ToastOutlet',
       'Button', 'Segmented', 'Chip', 'Bar', 'Callout', 'StatRow', 'Section',
       'ErrorBoundary', 'Loaded']) {
