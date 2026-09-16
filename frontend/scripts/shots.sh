@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # v14 gate (spec §7): the six hubs in both themes, headless, into
-# .superpowers/shots/<stage>/<hub>-<theme>.png. Serve a fresh build first:
+# .superpowers/shots/<stage>/<hub>-<theme>.png, at 1400 wide by default.
+# WIDTHS="1400 820 375" takes all three and names the files
+# <hub>-<theme>-<width>.png (v19c §2.6). Serve a fresh build first:
 #   cd frontend && npm run build && cd .. && \
 #   (lsof -iTCP:8927 -sTCP:LISTEN >/dev/null || uv run gaffer ui --no-open-browser --port 8927 &)
 # Dark is forced through Blink's preferred colour scheme (0 = dark); the
@@ -9,8 +11,13 @@ set -eo pipefail
 STAGE="${1:?usage: shots.sh <stage>}"
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 OUT="$ROOT/.superpowers/shots/$STAGE"
-SHELL_BIN="${CHROME_HEADLESS_SHELL:-$HOME/Library/Caches/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-mac-arm64/chrome-headless-shell}"
+SHELL_BIN="${CHROME_HEADLESS_SHELL:-$HOME/Library/Caches/ms-playwright/chromium_headless_shell-1243/chrome-headless-shell-mac-arm64/chrome-headless-shell}"
 BASE="${GAFFER_UI:-http://localhost:8927}"
+# v19c §2.6: the phone and the tablet are widths, not stages. One width keeps
+# the old filenames, because the desktop gate compares these bytes against an
+# earlier stage's; more than one appends the width so the sets do not collide.
+WIDTHS="${WIDTHS:-1400}"
+read -r -a SET_WIDTHS <<< "$WIDTHS"
 mkdir -p "$OUT"
 HUBS=(
   "this-week:/"
@@ -95,15 +102,25 @@ for entry in "${HUBS[@]}"; do
   path="${rest%%:*}"; height="${rest#*:}"
   [[ "$height" == "$path" ]] && height=1600
   for theme in dark light; do
-    if [[ "$theme" == dark ]]; then
-      "$SHELL_BIN" --headless --blink-settings=preferredColorScheme=0 \
-        --hide-scrollbars --run-all-compositor-stages-before-draw --window-size=1400,$height --virtual-time-budget=15000 \
-        --screenshot="$OUT/$name-$theme.png" "$BASE$path" >/dev/null 2>&1
-    else
-      "$SHELL_BIN" --headless \
-        --hide-scrollbars --run-all-compositor-stages-before-draw --window-size=1400,$height --virtual-time-budget=15000 \
-        --screenshot="$OUT/$name-$theme.png" "$BASE$path" >/dev/null 2>&1
-    fi
-    echo "$OUT/$name-$theme.png"
+    for width in $WIDTHS; do
+      # One width keeps the old name; several disambiguate. Written as an `if`
+      # because `[[ … ]] && x=y` returns 1 when false and `set -e` would end
+      # the run on the first single-width shot.
+      if (( ${#SET_WIDTHS[@]} > 1 )); then
+        shot="$OUT/$name-$theme-$width.png"
+      else
+        shot="$OUT/$name-$theme.png"
+      fi
+      if [[ "$theme" == dark ]]; then
+        "$SHELL_BIN" --headless --blink-settings=preferredColorScheme=0 \
+          --hide-scrollbars --run-all-compositor-stages-before-draw --window-size=$width,$height --virtual-time-budget=15000 \
+          --screenshot="$shot" "$BASE$path" >/dev/null 2>&1
+      else
+        "$SHELL_BIN" --headless \
+          --hide-scrollbars --run-all-compositor-stages-before-draw --window-size=$width,$height --virtual-time-budget=15000 \
+          --screenshot="$shot" "$BASE$path" >/dev/null 2>&1
+      fi
+      echo "$shot"
+    done
   done
 done

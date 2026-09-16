@@ -300,7 +300,7 @@ export default function ChipsTab() {
             + 'boost do. Pick either of those rows above to re-solve it.'
           )}
         </p>
-        <ConstraintsPanel value={request} onChange={setRequest} />
+        <ConstraintsPanel value={request} onChange={setRequest} level={3} />
         <Button onClick={solve} disabled={busy || !armed}>
           {busy ? 'Solving…' : 'Re-solve'}
         </Button>

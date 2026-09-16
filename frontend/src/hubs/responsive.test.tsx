@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -49,6 +49,27 @@ function phone() {
     addListener: () => {}, removeListener: () => {},
     dispatchEvent: () => false,
   }))
+}
+
+/**
+ * A width, answered honestly (v19c §2.6). `phone()` above says yes to every
+ * query, which is enough when only one breakpoint is in play; the three shell
+ * layouts are chosen by three different queries at once, so the tests below
+ * need a stub that reads the width out of the query it was handed.
+ */
+function viewport(width: number) {
+  vi.stubGlobal('matchMedia', (query: string) => {
+    const min = /min-width:\s*(\d+)px/.exec(query)
+    const max = /max-width:\s*(\d+)px/.exec(query)
+    const matches = (!min || width >= Number(min[1]))
+      && (!max || width <= Number(max[1]))
+    return {
+      matches, media: query, onchange: null,
+      addEventListener: () => {}, removeEventListener: () => {},
+      addListener: () => {}, removeListener: () => {},
+      dispatchEvent: () => false,
+    }
+  })
 }
 
 beforeEach(() => {
@@ -320,5 +341,62 @@ describe('a phone screen scrolls nothing sideways', () => {
     // that the empty state itself draws none.
     await screen.findByTestId('empty-state')
     wrapped(0)
+  })
+})
+
+describe('the shell at each of the three widths', () => {
+  // The shell mounts FreshnessStrip, which fetches; these tests are about the
+  // frame alone, so the fetch is left pending and the strip renders nothing
+  // rather than settling after the assertions and warning about act().
+  function render_shell() {
+    apiGet.mockImplementation(() => new Promise(() => {}))
+    render(
+      <MemoryRouter>
+        <AppShell><h1>This Week</h1></AppShell>
+      </MemoryRouter>)
+    return screen.getByTestId('nav')
+  }
+
+  it('gives the tab bar the six hubs and nothing else at 375', () => {
+    // v19c §2.2. The seventh slot was the theme control, which squeezed six
+    // destinations into a row sized for seven; it now sits at the top of the
+    // page, where a phone reader can still reach it.
+    viewport(375)
+    const nav = render_shell()
+    expect(nav).toHaveAttribute('data-mode', 'tabbar')
+    expect(within(nav).getAllByRole('link')).toHaveLength(6)
+    expect(within(nav).queryByRole('button', { name: /^Theme/ })).toBeNull()
+    expect(screen.getByRole('button', { name: /^Theme/ })).toBeInTheDocument()
+  })
+
+  it('draws an icon rail on a tablet and the labelled sidebar on a desktop',
+    () => {
+      // v19c §2.3: 900 is a landscape phone or an iPad, where 200px of nav is
+      // the reason the table beside it double-scrolled.
+      viewport(900)
+      const rail = render_shell()
+      expect(rail).toHaveAttribute('data-mode', 'rail')
+      // The labels are gone from the page but not from the accessibility
+      // tree: an icon with no name is a link to nowhere a screen reader can
+      // describe.
+      expect(within(rail).getByRole('link', { name: 'Planning' }))
+        .toBeInTheDocument()
+      expect(rail.textContent).not.toMatch(/Planning/)
+    })
+
+  it('draws the labelled sidebar at 1400', () => {
+    viewport(1400)
+    expect(render_shell()).toHaveAttribute('data-mode', 'sidebar')
+  })
+
+  it('names the main landmark so the skip link has somewhere to land', () => {
+    // v19c §2.5. The link itself is in index.html, before the bundle; its
+    // target is the one thing React has to provide, in every layout.
+    for (const width of [375, 900, 1400]) {
+      viewport(width)
+      render_shell()
+      expect(screen.getByRole('main')).toHaveAttribute('id', 'main')
+      cleanup()
+    }
   })
 })

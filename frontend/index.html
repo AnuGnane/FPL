@@ -2,7 +2,12 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover (v19c §2.2): without it env(safe-area-inset-*)
+         is zero and the bottom bar sits under the home indicator. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
     <title>gaffer</title>
     <script>
       // Before the first paint: the bundle applies the same attribute from
@@ -19,6 +24,16 @@
     </script>
   </head>
   <body>
+    <!-- v19c §2.5: the first stop of a keyboard tab, so a reader who lands on
+         the page does not walk the whole nav to reach the answer. It lives
+         here rather than in the bundle so it exists before React mounts;
+         #main is AppShell's <main> in all three layouts. -->
+    <a
+      href="#main"
+      class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4
+             focus:z-50 focus:bg-raised focus:px-3 focus:py-2 focus:text-text"
+      >Skip to content</a
+    >
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

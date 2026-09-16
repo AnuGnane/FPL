@@ -83,15 +83,19 @@ describe('AppShell', () => {
     }
   })
 
-  it('gives the tab bar a seventh, icon-only slot on mobile', () => {
-    stubMatchMedia(true)
-    render(<MemoryRouter><AppShell><p>page</p></AppShell></MemoryRouter>)
-    const nav = screen.getByTestId('nav')
-    expect(within(nav).getByRole('button', { name: /^Theme: / }))
-      .toBeInTheDocument()
-    // Still six hubs: the toggle is a button, never a seventh destination.
-    expect(within(nav).getAllByRole('link')).toHaveLength(6)
-  })
+  it('keeps the tab bar to the six hubs and moves the theme control up',
+    () => {
+      // v19c §2.2. The bar was six destinations and a control sharing a row
+      // sized for seven; the control is chrome, so it goes to the top corner
+      // of the page and the six get the width back.
+      stubMatchMedia(true)
+      render(<MemoryRouter><AppShell><p>page</p></AppShell></MemoryRouter>)
+      const nav = screen.getByTestId('nav')
+      expect(within(nav).getAllByRole('link')).toHaveLength(6)
+      expect(within(nav).queryByRole('button', { name: /^Theme: / })).toBeNull()
+      expect(within(screen.getByRole('main'))
+        .getByRole('button', { name: /^Theme: / })).toBeInTheDocument()
+    })
 
   it('draws an icon, not a glyph character, beside every hub (v14)', () => {
     render(<MemoryRouter><AppShell><p>page</p></AppShell></MemoryRouter>)

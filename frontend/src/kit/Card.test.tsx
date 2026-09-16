@@ -32,10 +32,18 @@ describe('Card', () => {
     expect(screen.queryByRole('heading')).toBeNull()
   })
 
-  it('renders the title at heading level 3, below the page h1/h2', () => {
+  it('renders the title at heading level 2, one step below the page h1', () => {
     render(<Card title="Squad"><p>inside</p></Card>)
-    expect(screen.getByRole('heading', { level: 3, name: 'Squad' }))
+    expect(screen.getByRole('heading', { level: 2, name: 'Squad' }))
       .toBeInTheDocument()
+  })
+
+  it('drops the title to level 3 for a section inside another section', () => {
+    // v19c §2.5. The rank is the only thing that moves: the class is the
+    // same, so a nested section looks exactly as it did.
+    render(<Card title="Constraints" level={3}><p>inside</p></Card>)
+    const heading = screen.getByRole('heading', { level: 3, name: 'Constraints' })
+    expect(heading).toHaveClass('label')
   })
 
   it('renders the title as a small uppercase label by default', () => {
@@ -68,22 +76,22 @@ describe('Card', () => {
         <p>inside</p>
       </Card>,
     )
-    const heading = screen.getByRole('heading', { level: 3 })
+    const heading = screen.getByRole('heading', { level: 2 })
     expect(within(heading).getByRole('button', { name: 'Saka' }))
       .toBeInTheDocument()
   })
 
-  it('keeps the h3 and its size class for a heading', () => {
+  it('keeps the heading rank and its size class for rich heading content', () => {
     render(
       <Card heading={<span>Saka</span>} titleSize="lg"><p>inside</p></Card>,
     )
-    const heading = screen.getByRole('heading', { level: 3, name: 'Saka' })
+    const heading = screen.getByRole('heading', { level: 2, name: 'Saka' })
     expect(heading).toHaveClass('text-lg')
     expect(heading).not.toHaveClass('label')
   })
 
   it('opens the header row for a heading with no title', () => {
     render(<Card heading={<span>Saka</span>}><p>inside</p></Card>)
-    expect(screen.getByRole('heading', { level: 3 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2 })).toBeInTheDocument()
   })
 })

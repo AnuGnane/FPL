@@ -25,3 +25,23 @@ export function useMediaQuery(query: string): boolean {
 export function useIsMobile(): boolean {
   return useMediaQuery('(max-width: 767px)')
 }
+
+/**
+ * The tablet band (v19c §2.3): wide enough for a sidebar beside the page, too
+ * narrow to spend 200 px on one. A landscape phone and an iPad both land here,
+ * and both were double-scrolling — the page sideways inside a rail that had
+ * already taken the room the table needed.
+ */
+export function useIsCompact(): boolean {
+  return useMediaQuery('(min-width: 768px) and (max-width: 1023px)')
+}
+
+/**
+ * Past the gate's screenshot width (v19c §2.4). The cap is lifted only beyond
+ * 1440 because at 1400 exactly the 1180 px cap still binds — 1400 less the
+ * 200 px sidebar is 1200 — so lifting it there would move desktop pixels the
+ * sub-cycle promised not to move.
+ */
+export function useIsWide(): boolean {
+  return useMediaQuery('(min-width: 1441px)')
+}

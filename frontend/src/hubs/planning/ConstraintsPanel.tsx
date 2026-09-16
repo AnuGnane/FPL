@@ -99,9 +99,12 @@ function PlayerPicker(
 }
 
 export default function ConstraintsPanel(
-  { value, onChange }: {
+  { value, onChange, level = 2 }: {
     value: WhatIfRequest
     onChange: (next: WhatIfRequest) => void
+    /** v19c §2.5: 3 where the panel sits inside another section's body —
+     *  the Chips tab's "Try it" card — so the ladder does not repeat a rank. */
+    level?: 2 | 3
   },
 ) {
   const [names, setNames] = useState<Record<number, string>>({})
@@ -116,7 +119,7 @@ export default function ConstraintsPanel(
     onChange({ ...value, [key]: value[key].filter((c) => c !== code) })
 
   return (
-    <Card title="Constraints" className="mb-4">
+    <Card title="Constraints" level={level} className="mb-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {(Object.keys(LABELS) as ListKey[]).map((key) => (
           <PlayerPicker

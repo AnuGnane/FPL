@@ -90,6 +90,15 @@ describe('the ledger rules (spec §3–§5)', () => {
       .not.toMatch(/\bBadge\b/)
   })
 
+  it('pads a fixed bottom bar for the home indicator, never by a flat 4rem',
+    () => {
+      // v19c §2.6. `pb-16` was the height of the tab bar and nothing else, so
+      // on a phone with a home indicator the last row of every hub sat under
+      // the glass. The inset-aware form is the only bottom padding a page
+      // above a fixed bar may carry.
+      expect(offenders(/\bpb-16\b/)).toEqual([])
+    })
+
   it('scopes every column header, by hand or through Th', () => {
     // A `<th>` with no `scope` leaves a screen reader to guess which cells
     // the header governs. `<Th>` emits it; the hand-written ones say it.

@@ -8,7 +8,7 @@ describe('Skeleton', () => {
     expect(screen.getByTestId('skeleton')).toBeInTheDocument()
     // The frame is the point (plan A8): the panel that is about to appear has
     // a border, and the wait for it must not collapse the layout.
-    expect(screen.getByRole('heading', { level: 3 })).toHaveTextContent('Solving')
+    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Solving')
     expect(screen.getByRole('status')).toHaveTextContent('Solving the board…')
   })
 
