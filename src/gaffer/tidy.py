@@ -6,10 +6,20 @@ Measured on the real tree the day this shipped: 33 files matching
 ``data/live/backtest_log_*.parquet``, 28 of them paired with a
 ``reports/v7b_<tag>.json``, five orphans totalling **54 KB**. That is the whole
 prize, and it is written here so nobody mistakes this for a disk-space tool.
-The 150 MB under ``data/raw/`` — 67 MB of scrape cache, 34 MB of timestamped
-API snapshots nothing prunes — is out of §2.7's scope, deliberately, and is
-recorded as a residual instead. Widening a delete command past its spec is the
-most expensive kind of helpfulness available here.
+Nothing under ``data/raw/`` is swept, and v19h §1 closed the question for
+good rather than leaving it a residual a fourth reader would reopen. The
+timestamped API snapshots are already pruned by their own writer:
+``api/client.py:80`` keeps the newest ``KEEP_DUMPS`` (20) per FPL kind on
+every write, so bootstrap, fixtures and the entry sit at 20 apiece and a
+keep-newest-N target here would find nothing to delete. The ``odds-*`` and
+``ags-*`` snapshots are the other and much larger half, and they are a
+corpus, not output: ``data/odds.py:663`` keeps them until a season of them
+can fit the anytime-scorer weight that is a bare prior today, so a sweep
+would delete the only training set that weight will ever have. The scrape
+cache under ``data/raw/news/`` stays out of scope for §2.7's original
+reason. A sweep there would delete a corpus or nothing, and widening a
+delete command past its spec is the most expensive kind of helpfulness
+available here.
 
 Four exclusions, each with a named reader:
 
