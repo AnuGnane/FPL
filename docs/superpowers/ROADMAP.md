@@ -19,8 +19,9 @@ sub-cycles aimed at the site's surface and the weekly loop, the model's
 replay-free half and code health, none changing a served number; the
 replay-gated model arms are costed in the design's §4 and deferred to
 v20. v19a (the week's clock and health) `8354a21`, v19b (the loop closed)
-`4927a15` and v19c (the phone) `dc7cd6f` are merged, all 2026-09-16; the
-ledger is in the v19 block below. Next: v19d, This Week readable.
+`4927a15`, v19c (the phone) `dc7cd6f` and v19d (This Week, readable)
+`f2d61d3` are merged, all 2026-09-16; the ledger is in the v19 block below.
+Next: v19e, compare and act.
 
 **The v18 polish programme is complete** (design
 `specs/2026-09-12-v18-polish-design.md`, plan
@@ -152,6 +153,7 @@ number and needs its own gate.
 | v19a — the week's clock and health | `8354a21` | 2026-09-16 | 4531 | 1114 | ruling 5 corrected to a schedule change; strip pairs compared below the strip |
 | v19b — the loop closed | `4927a15` | 2026-09-16 | 4535 | 1135 | the chip pair's arm not taken; the real-run line waits on Thursday's job |
 | v19c — the phone | `dc7cd6f` | 2026-09-16 | 4535 | 1149 | StackedRows beside the hand tables, not DataTable; desktop pairs identical |
+| v19d — This Week, readable | `f2d61d3` | 2026-09-16 | 4538 | 1172 | the what-if tab shares the ladder card; reports/ mounted, pin untouched |
 
 ### The v18 polish programme (planned 2026-09-12; **complete**, all eight merged 2026-09-12 → 14)
 
@@ -240,6 +242,19 @@ usually the thing you cannot test*, not the lines: every card of the seven was
 found by asking what a test would have to fake.
 
 ## Shipped
+
+### v19d — This Week, readable (done, merged `f2d61d3` 2026-09-16)
+`this-week/ContextStrip` (sticky, `Countdown short`, six anchors onto
+`Card id`s); the board's `board-try-note` once, the hits clause appended
+when any week exceeds three; `kit/Disclosure` with a `storageKey` in
+try/catch, wrapping the ladder's paragraph and the board's two gap
+paragraphs; Copy on the moves card (clipboard or a `<pre>` fallback, a
+toast); the report link to `/reports/gw{gw}-report.html`, served by a
+`StaticFiles` mount when `reports/` exists (three tests; not an OpenAPI
+path); an `@media print` block pinned by a tokens rule. Gate: inner loop
+4390, ruff clean, golden 62/0 in 18:16, `npm run check` 1172, desktop
+pairs as named plus the What-If tab (it renders the same ladder card),
+phone shot approved. Pins 51 / 12 / 62.
 
 ### v19c — the phone (done, merged `dc7cd6f` 2026-09-16)
 Six-item tab bar (`ThemeToggle` above the strip; `pb-[calc(0.25rem+env(
