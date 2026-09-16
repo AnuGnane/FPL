@@ -215,25 +215,40 @@ describe('PlannerBoard', () => {
       expect(onTry.mock.calls[0][0].horizon).toBe(6)
       // …and the sentence says the solve stops short rather than leaving the
       // reader to infer it from a result.
-      expect(screen.getByTestId('board-try-note-20'))
-        .toHaveTextContent(/stops short of GW20/)
+      // v19d §2.2: one note under the row, so the reach is stated once —
+      // as the last week the lab can get to, not per column.
+      expect(screen.getByTestId('board-try-note'))
+        .toHaveTextContent(/A week after GW10 is past that reach/)
     })
 
   it('says what a carried-over sell actually means, without a hover',
     async () => {
       render(<PlannerBoard gw={5} onTry={vi.fn()} />)
       expect(await screen.findByText(/does not solve/)).toBeInTheDocument()
-      const note = screen.getByTestId('board-try-note-5')
+      const note = screen.getByTestId('board-try-note')
       // The apology for the missing constraint goes with the constraint.
       expect(note.textContent).not.toMatch(/rules out buying him back/i)
       expect(note.textContent).toMatch(/sold in the solve's first week/i)
     })
 
+  it('prints its caveat once however many weeks carry moves', async () => {
+    // v19d §2.2: nine lines under every column was the same apology five
+    // times over, and the only per-week fact in it — the week the solve
+    // starts from — is the same for every button, because the lab solves
+    // from now.
+    wire(plan([WEEK, { ...WEEK, gw: 6 }, { ...WEEK, gw: 7 }]))
+    render(<PlannerBoard gw={5} onTry={vi.fn()} />)
+    await screen.findByTestId('board-week-7')
+    expect(screen.getAllByTestId('board-try-note')).toHaveLength(1)
+    // The buttons stay where the weeks they prefill are.
+    expect(screen.getAllByText('Try these changes')).toHaveLength(3)
+  })
+
   it('says the solve starts now, and what that costs a future week',
     async () => {
       wire(plan([WEEK, { ...WEEK, gw: 7 }]))
       render(<PlannerBoard gw={5} onTry={vi.fn()} />)
-      const note = await screen.findByTestId('board-try-note-7')
+      const note = await screen.findByTestId('board-try-note')
       expect(note).toHaveTextContent(/starts now at GW5/)
       expect(note).toHaveTextContent(/earlier sells first/)
       expect(note).toHaveTextContent(/first week, not scheduled/)
@@ -243,10 +258,11 @@ describe('PlannerBoard', () => {
     async () => {
       wire(plan([{ ...WEEK, gw: 5, hits: 5 }, { ...WEEK, gw: 6, hits: 2 }]))
       render(<PlannerBoard gw={5} onTry={vi.fn()} />)
-      expect(await screen.findByTestId('board-try-note-5'))
+      // The clause is the row's, not the column's: one week over the cap is
+      // enough for the note to name it, and it is named once.
+      expect(await screen.findByTestId('board-try-note'))
         .toHaveTextContent(/capped at 3/)
-      expect(screen.getByTestId('board-try-note-6'))
-        .not.toHaveTextContent(/capped at 3/)
+      expect(screen.getAllByTestId('board-try-note')).toHaveLength(1)
     })
 
   it('renders at 390px with no console error', async () => {

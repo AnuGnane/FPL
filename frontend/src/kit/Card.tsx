@@ -22,6 +22,9 @@ import type { ReactNode } from 'react'
  */
 export interface CardProps {
   title?: string
+  /** v19d §2.1: the anchor the context strip jumps to. On the `<section>`
+   *  itself, so the heading the reader lands on is the one that names it. */
+  id?: string
   /** Rich heading content; `title` stays the string form of the same thing. */
   heading?: ReactNode
   titleSize?: 'sm' | 'lg'
@@ -37,12 +40,14 @@ const TITLE_CLASS = {
 } as const
 
 export default function Card({
-  title, heading, titleSize = 'sm', level = 2, action, children, className,
+  title, id, heading, titleSize = 'sm', level = 2, action, children,
+  className,
 }: CardProps) {
   const shown = heading ?? title
   const Heading = level === 2 ? 'h2' : 'h3'
   return (
-    <section data-kit="section" className={`min-w-0 ${className ?? ''}`}>
+    <section id={id} data-kit="section"
+             className={`min-w-0 ${className ?? ''}`}>
       {(shown || action) && (
         <header className="mb-3 flex min-h-8 items-center justify-between
                            gap-3 border-b border-border pb-1.5">

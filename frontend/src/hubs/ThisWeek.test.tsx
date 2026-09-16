@@ -137,6 +137,28 @@ beforeEach(() => {
   jobStart.mockReset()
 })
 
+/** Every card This Week draws, so the anchors in the strip all have
+ *  somewhere to land (v19d §2.1). The three the hub renders from are in
+ *  BODIES; these are the four that render their own section. */
+const WHOLE_PAGE: Record<string, unknown> = {
+  '/api/brief': {
+    gw: 5, prose: 'The week in a paragraph.', note: null, fallback: null,
+    checked_at: null, model_command: null, run_stamp: null,
+  },
+  '/api/news/5': {
+    gw: 5,
+    moved: 1,
+    rows: [{
+      code: 1, name: 'Salah', team_name: 'LIV',
+      p_play_news: 0.4, p_play_flags: 0.75, e_min_news: 30.0,
+      e_min_flags: 62.0, status: 'd', chance_of_playing: 75,
+      official_note: 'Knock', injury_type: 'knock', expected_return_gw: 6,
+      p_start_hint: 0.3, lineup_hint: 'doubt', source: 'lineups',
+      fetched_at: '2026-09-04T08:00:00Z',
+    }],
+  },
+}
+
 describe('This Week hub', () => {
   it('heads the page with the gameweek and the deadline', async () => {
     render(<MemoryRouter><ThisWeek /></MemoryRouter>)
@@ -164,6 +186,30 @@ describe('This Week hub', () => {
     const alert = screen.getByRole('alert')
     expect(alert).toHaveAttribute('data-tone', 'warn')
     expect(alert).toHaveTextContent('advice is for GW4')
+  })
+
+  // --- v19d §2.1: the context strip and its anchors ------------------------
+
+  it('heads the page with the week in one line under the title', async () => {
+    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    const strip = await screen.findByTestId('context-strip')
+    expect(strip).toHaveTextContent('GW5')
+    expect(strip).toHaveTextContent('captain Salah')
+    expect(strip).toHaveTextContent('1 move')
+  })
+
+  it('anchors every link in the strip to a section of the page', async () => {
+    apiGet.mockImplementation((path: string) => (
+      path in WHOLE_PAGE ? Promise.resolve(WHOLE_PAGE[path]) : route(path)))
+    const { container } = render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    const strip = await screen.findByTestId('context-strip')
+    await screen.findByRole('heading', { name: 'News' })
+    const targets = within(strip).getAllByRole('link')
+      .map((a) => (a.getAttribute('href') ?? '').slice(1))
+    expect(targets.length).toBe(6)
+    for (const id of targets) {
+      expect(container.querySelector(`#${id}`)).not.toBeNull()
+    }
   })
 
   it('shows the four stats: XI, captain, chip and league', async () => {

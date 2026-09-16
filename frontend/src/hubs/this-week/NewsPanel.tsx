@@ -51,6 +51,7 @@ export default function NewsPanel({ gw }: { gw: number }) {
   return (
     <Card
       title="News"
+      id="news"
       className="mb-4"
       action={(
         <span className="text-text-muted">

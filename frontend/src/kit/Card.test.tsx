@@ -32,6 +32,20 @@ describe('Card', () => {
     expect(screen.queryByRole('heading')).toBeNull()
   })
 
+  it('carries an anchor id on the section itself, and nothing else', () => {
+    // v19d §2.1: the context strip's links land on the section, so the
+    // heading the reader arrives at is the one that names it. Invisible —
+    // the class string is what it was without an id.
+    const bare = render(<Card title="Squad"><p>inside</p></Card>)
+      .container.innerHTML
+    const { container } = render(
+      <Card title="Squad" id="squad"><p>inside</p></Card>)
+    const root = container.firstChild as HTMLElement
+    expect(root.id).toBe('squad')
+    expect(root.className).toBe(
+      (bare as unknown as string).match(/class="([^"]*)"/)![1])
+  })
+
   it('renders the title at heading level 2, one step below the page h1', () => {
     render(<Card title="Squad"><p>inside</p></Card>)
     expect(screen.getByRole('heading', { level: 2, name: 'Squad' }))

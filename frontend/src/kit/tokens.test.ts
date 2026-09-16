@@ -99,6 +99,19 @@ describe('the ledger rules (spec §3–§5)', () => {
       expect(offenders(/\bpb-16\b/)).toEqual([])
     })
 
+  it('keeps a print block that drops the chrome a sheet of paper cannot use',
+    () => {
+      // v19d §2.4. The nav and the freshness strip are the two pieces of
+      // chrome that cost a printed page a whole band at the top, and a print
+      // rule is invisible in every screenshot gate — nothing but a rail
+      // catches it going missing.
+      const css = readFileSync(join(SRC, 'styles/theme.css'), 'utf8')
+      const block = css.slice(css.indexOf('@media print'))
+      expect(block).toMatch(/@media print/)
+      expect(block).toMatch(/\bnav\b/)
+      expect(block).toMatch(/freshness-strip/)
+    })
+
   it('scopes every column header, by hand or through Th', () => {
     // A `<th>` with no `scope` leaves a screen reader to guess which cells
     // the header governs. `<Th>` emits it; the hand-written ones say it.

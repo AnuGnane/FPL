@@ -44,6 +44,10 @@ export interface CountdownProps {
   /** The served ISO instant the gameweek locks at. */
   deadline: string
   gw: number
+  /** v19d §2.1: the remaining text alone, for the context strip. The strip is
+   *  one line that already names the gameweek, and the absolute stamp beside
+   *  it would be the deadline said twice on one page. */
+  short?: boolean
 }
 
 /**
@@ -55,10 +59,20 @@ export interface CountdownProps {
  * question is most urgent. Both now have a home: the clock here, the reason
  * in the warn Callout below the header.
  */
-export default function Countdown({ deadline, gw }: CountdownProps) {
+export default function Countdown({ deadline, gw, short }: CountdownProps) {
   const now = useNow(TICK_MS)
   const at = new Date(deadline)
   const left = at.getTime() - now.getTime()
+  // Its own testid, because This Week now prints two of these — the header's
+  // full clock and the strip's short one — and a page with two "countdown"s
+  // makes every existing assertion about the header ambiguous (v19d §2.1).
+  if (short) {
+    return (
+      <span data-testid="countdown-short">
+        {left <= 0 ? 'passed' : remainingText(left)}
+      </span>
+    )
+  }
   return (
     <span data-testid="countdown">
       {left <= 0

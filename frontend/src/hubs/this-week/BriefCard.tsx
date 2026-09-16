@@ -45,6 +45,7 @@ export default function BriefCard() {
   return (
     <Card
       title="The week"
+      id="brief"
       className="mb-4"
       action={(
         <div className="flex flex-wrap items-baseline gap-3">

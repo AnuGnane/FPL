@@ -75,6 +75,21 @@ describe('the countdown', () => {
     expect(text).not.toMatch(/:\d\d:\d\d/)
   })
 
+  it('drops the gameweek and the stamp in its short form', () => {
+    // v19d §2.1: the context strip is one line that has already named the
+    // gameweek, and the header above it prints the stamp.
+    at('2026-09-16T13:30:00Z')
+    render(<Countdown deadline={DEADLINE} gw={5} short />)
+    expect(screen.getByTestId('countdown-short')).toHaveTextContent(/^2d 4h$/)
+  })
+
+  it('says passed, in a word, in its short form', () => {
+    at('2026-09-19T09:00:00Z')
+    render(<Countdown deadline={DEADLINE} gw={5} short />)
+    expect(screen.getByTestId('countdown-short'))
+      .toHaveTextContent(/^passed$/)
+  })
+
   it('moves on its own a minute later', () => {
     at('2026-09-18T16:48:00Z')
     render(<Countdown deadline={DEADLINE} gw={5} />)

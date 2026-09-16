@@ -11,6 +11,7 @@ import type {
   LeaguesOverview, LeagueWhatIfResult, OverridesPanel, PlayerRow,
 } from '../types'
 import BriefCard from './this-week/BriefCard'
+import ContextStrip from './this-week/ContextStrip'
 import ConfidenceLine from './this-week/ConfidenceLine'
 import DecisionPanel from './this-week/DecisionPanel'
 import LadderCard from './this-week/LadderCard'
@@ -236,6 +237,16 @@ export default function ThisWeek() {
           </div>
         )}
       />
+      {/* v19d §2.1: the week in one line, and the only way down a page that
+          is four thousand pixels long. Directly under the header, so it is
+          what takes the header's place once the header scrolls away. */}
+      <ContextStrip
+        gw={data.gw}
+        deadline={data.deadline}
+        captain={advice.captain.name}
+        moves={advice.buys.length}
+        pts={advice.expected_pts}
+      />
       {(data.staleness.stale || data.staleness.data_warning) && (
         // One Callout, both sentences (v19a §2.1). The reason the header gave
         // up its slot lands here, ahead of the data warning: why this board is
@@ -302,6 +313,7 @@ export default function ThisWeek() {
           parent. */}
       <Card
         title="Squad"
+        id="squad"
         className="mb-4"
         action={(
           <span className="flex flex-wrap items-center gap-3
@@ -391,7 +403,9 @@ export default function ThisWeek() {
                      ? capText(ladder.data) : null}
                    restraint={advice.restraint ?? null}
                    objective={advice.objective ?? null}
-                   pins={pins.data} />
+                   pins={pins.data}
+                   captain={advice.captain.name}
+                   gw={data.gw} />
       </div>
       {/* v16 §5: what you actually did, beside the moves it departs from. */}
       <DecisionPanel gw={data.gw} />

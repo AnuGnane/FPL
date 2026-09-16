@@ -173,3 +173,19 @@ body {
   outline: 2px solid var(--color-accent);
   outline-offset: 1px;
 }
+
+/* v19d §2.4: a page that can be taken away on paper. The chrome goes — the
+   nav, the two strips and every button, none of which a sheet of paper can
+   be asked to do anything with — and the prose folded behind a disclosure
+   comes back, because a printed page has no way to open one. `[data-kit=
+   "section"]` is the one box worth keeping whole across a page break. */
+@media print {
+  nav,
+  [data-testid="freshness-strip"],
+  [data-testid="context-strip"],
+  button { display: none !important; }
+
+  [data-kit="section"] { break-inside: avoid; }
+
+  [data-disclosure] { display: block !important; }
+}

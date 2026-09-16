@@ -1,6 +1,20 @@
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
-import MovesCard from './MovesCard'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { currentToasts } from '../../kit'
+import MovesCard, { movesText } from './MovesCard'
+
+/** A clipboard, or the absence of one: `navigator.clipboard` is undefined
+ *  over plain http on some phones, which is the whole reason the fallback
+ *  exists (v19d §2.4). */
+function clipboard(writeText: ((t: string) => Promise<void>) | null) {
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: writeText === null ? undefined : { writeText },
+  })
+}
+
+afterEach(() => { clipboard(null) })
 
 const BUYS = [{ code: 1, name: 'Wirtz', ep: 6.1, frequency: 0.82, tag: 'attack' }]
 const SELLS = [{ code: 2, name: 'Isak', ep: 3.2, frequency: 0.79 }]
@@ -121,5 +135,50 @@ describe('MovesCard', () => {
   it('prints neither line on a payload without the walk', () => {
     render(<MovesCard buys={[]} sells={[]} hits={0} />)
     expect(screen.queryByTestId('moves-restraint-line')).toBeNull()
+  })
+
+  // --- v19d §2.4: something to take away -----------------------------------
+
+  it('writes the moves as one out, one in, then the hits and the captain', () => {
+    expect(movesText(BUYS, SELLS, 1, 'Haaland'))
+      .toBe('OUT Isak → IN Wirtz\n1 hit · captain Haaland')
+  })
+
+  it('gives an unpaired move a line of its own rather than a partner', () => {
+    expect(movesText(BUYS, [], 0, 'Haaland'))
+      .toBe('IN Wirtz\ncaptain Haaland')
+  })
+
+  it('copies the moves to the clipboard and says so', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    clipboard(writeText)
+    render(<MovesCard buys={BUYS} sells={SELLS} hits={1} captain="Haaland" />)
+    await userEvent.click(screen.getByRole('button', { name: 'Copy' }))
+    expect(writeText).toHaveBeenCalledWith(
+      'OUT Isak → IN Wirtz\n1 hit · captain Haaland')
+    await waitFor(() => expect(currentToasts()[0]?.text).toBe('Moves copied'))
+  })
+
+  it('shows the text to copy by hand when the browser has no clipboard',
+    async () => {
+      // Plain http on a LAN: the API is simply not there, and a button that
+      // silently does nothing is worse than no button.
+      clipboard(null)
+      render(<MovesCard buys={BUYS} sells={SELLS} hits={1} captain="Haaland" />)
+      expect(screen.queryByTestId('moves-text')).toBeNull()
+      await userEvent.click(screen.getByRole('button', { name: 'Copy' }))
+      expect(screen.getByTestId('moves-text'))
+        .toHaveTextContent('OUT Isak → IN Wirtz')
+    })
+
+  it('links to the rendered report for the gameweek it is showing', () => {
+    render(<MovesCard buys={BUYS} sells={SELLS} hits={0} gw={5} />)
+    expect(screen.getByRole('link', { name: 'Open the GW5 report' }))
+      .toHaveAttribute('href', '/reports/gw5-report.html')
+  })
+
+  it('offers no report link on a card that was given no gameweek', () => {
+    render(<MovesCard buys={BUYS} sells={SELLS} hits={0} />)
+    expect(screen.queryByRole('link')).toBeNull()
   })
 })

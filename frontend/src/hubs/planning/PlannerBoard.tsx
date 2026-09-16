@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { usePageData } from '../../api/pageData'
 import {
-  Button, Callout, Card, Chip, EmptyState, Loading, PosBadge, StackedRows,
-  fmtNum, segmentClass, useIsMobile,
+  Button, Callout, Card, Chip, Disclosure, EmptyState, Loading, PosBadge,
+  StackedRows, fmtNum, segmentClass, useIsMobile,
 } from '../../kit'
 import type { StackedRow } from '../../kit'
 import type {
   MoverRow, MoversPanel, PlanGw, PlanMove, PlanTimeline, WhatIfRequest,
 } from '../../types'
 import TraceMoves from './TraceMoves'
-import { HORIZON_MAX, boardRequest, horizonFor } from './boardRequest'
+import { HORIZON_MAX, boardRequest } from './boardRequest'
 
 /**
  * v11 §F1 — the solved horizon, week by week.
@@ -178,6 +178,12 @@ export default function PlannerBoard(
       && !(planAMoves.get(week.gw)?.has(move.code) ?? false)
   }
 
+  // v19d §2.2: the note is one paragraph about the whole row, so what it has
+  // to say is read off every week shown rather than off the week it sits in.
+  const anyMoves = weeks.some((w) => w.buys.length > 0 || w.sells.length > 0)
+  const beyondReach = weeks.some((w) => w.gw - gw + 1 > HORIZON_MAX)
+  const anyCapped = weeks.some((w) => w.hits > 3)
+
   /** The week's moves in the order the column prints them — buys, then sells
    *  — computed once for both renderings (v19c §2.1). */
   function moves(week: PlanGw): Array<{ key: string
@@ -289,7 +295,12 @@ export default function PlannerBoard(
             ))}
         </div>
       )}
+      {/* v19d §2.3: the frame an alternative's gap has to be read in, and the
+          reason it carries no trace — both worth reading once, and both in
+          the way of the columns on every visit after that. One disclosure,
+          because they are two halves of the same explanation. */}
       {shown !== null && (
+      <Disclosure summary="How to read this" storageKey="board-help">
         <p className="mb-2 text-text-muted" data-testid="plan-gap">
           {shown.gap === null
             ? 'This plan’s distance from Plan A could not be read.'
@@ -308,16 +319,15 @@ export default function PlannerBoard(
            + 'discounted and banked transfers are priced, so this is not a '
            + 'raw xPts gap.'}
         </p>
-      )}
-      {/* v12 W5 §6.5: the trace is the objective's terms at the plan the
-          solver returned, and this is not that plan. Said here rather than
-          left as an absent control the reader has to notice. */}
-      {shown !== null && (
+        {/* v12 W5 §6.5: the trace is the objective's terms at the plan the
+            solver returned, and this is not that plan. Said here rather than
+            left as an absent control the reader has to notice. */}
         <p className="mb-2 text-text-faint" data-testid="plan-no-trace">
           {'“Why this move” is shown for Plan A only: the trace prices the '
            + 'plan the solver returned, and this one came out of a different '
            + 'solve with its own free-transfer count.'}
         </p>
+      </Disclosure>
       )}
       {/* One column per week the plan names, and never a padded sixth: a
           shorter horizon is a shorter board. */}
@@ -511,32 +521,34 @@ export default function PlannerBoard(
                   >
                     Try these changes
                   </Button>
-                  <p data-testid={`board-try-note-${week.gw}`}
-                     className="mt-1 text-text-faint">
-                    {'This prefills the lab; it does not solve. A planned sell '
-                     + 'is carried across as "must sell": he is sold in the '
-                     + 'solve\'s first week and the bank receives his selling '
-                     + 'price. The bank itself is still not a constraint the '
-                     + 'lab accepts.'}
-                    {/* The horizon spans the week, but the solve still starts
-                        this week — every limit of that is said here rather
-                        than left to be discovered in the result. */}
-                    {` The constraints are applied to a solve that starts now `
-                     + `at GW${gw}, over ${horizonFor({ week, gw })} week(s)`
-                     + `${week.gw - gw + 1 > HORIZON_MAX
-                       ? `, which is as far as the lab reaches and stops short `
-                         + `of GW${week.gw}` : ''} — a future week's buys may `
-                     + `need earlier sells first, and a prefilled chip is `
-                     + `played in the solve's first week, not scheduled.`}
-                    {week.hits > 3
-                      && ' Hits capped at 3 (the lab’s limit).'}
-                  </p>
                 </div>
               )}
             </Card>
           </div>
         ))}
       </div>
+      {/* v19d §2.2: one caveat, under the row it is about. It used to be
+          printed under every week column that had moves — nine lines, five
+          times over, saying the same thing about the same lab — so the board
+          read as a wall of apology rather than a horizon. The one per-week
+          fact in it, the week the solve starts from, is the same for every
+          button, because the lab always solves from now. */}
+      {onTry && shown === null && anyMoves && (
+        <p data-testid="board-try-note" className="mt-3 text-text-faint">
+          {'Each button prefills the lab; it does not solve. A planned sell '
+           + 'is carried across as "must sell": he is sold in the solve\'s '
+           + 'first week and the bank receives his selling price. The bank '
+           + 'itself is still not a constraint the lab accepts.'}
+          {` The constraints are applied to a solve that starts now at GW${gw}`
+           + `, over at most ${HORIZON_MAX} weeks — a later week's buys may `
+           + `need earlier sells first, and a prefilled chip is played in the `
+           + `solve's first week, not scheduled.`}
+          {beyondReach
+            && ` A week after GW${gw + HORIZON_MAX - 1} is past that reach, `
+              + `so its solve stops short of it.`}
+          {anyCapped && ' Hits capped at 3 (the lab’s limit).'}
+        </p>
+      )}
     </div>
   )
 }

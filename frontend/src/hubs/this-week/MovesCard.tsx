@@ -1,6 +1,7 @@
+import { useState } from 'react'
 import {
-  Bar, Card, Chip, PosBadge, StackedRows, TABLE_CLASS, THEAD_CLASS, TR_CLASS,
-  fmtNum, fmtPct, tdClass, thClass, useIsMobile,
+  Bar, Button, Card, Chip, PosBadge, StackedRows, TABLE_CLASS, THEAD_CLASS,
+  TR_CLASS, fmtNum, fmtPct, tdClass, thClass, toast, useIsMobile,
 } from '../../kit'
 import type { StackedRow } from '../../kit'
 import type {
@@ -35,6 +36,40 @@ export interface MovesCardProps {
    *  re-run, apply, and until now nothing on This Week closed it — the pin
    *  was taken on Players and this page never mentioned it again. */
   pins?: OverridesPanel | null
+  /** v19d §2.4: the armband, so the text the reader takes away carries the
+   *  one decision that is not a transfer. */
+  captain?: string
+  /** v19d §2.4: the gameweek the rendered report under `reports/` is for. */
+  gw?: number
+}
+
+/**
+ * The moves as a line of text a reader can paste into a group chat
+ * (v19d §2.4).
+ *
+ * Buys and sells are paired by position because that is how the plan reads —
+ * one out, one in — and an unpaired move keeps its own line rather than being
+ * matched with nothing. No prices and no xPts: this is what to do, and the
+ * page is where the reasons are.
+ */
+export function movesText(
+  buys: Move[], sells: Move[], hits: number, captain?: string,
+): string {
+  const pairs = Math.max(buys.length, sells.length)
+  const lines: string[] = []
+  for (let i = 0; i < pairs; i += 1) {
+    const out = sells[i]
+    const inn = buys[i]
+    if (out && inn) lines.push(`OUT ${out.name} → IN ${inn.name}`)
+    else if (out) lines.push(`OUT ${out.name}`)
+    else if (inn) lines.push(`IN ${inn.name}`)
+  }
+  if (lines.length === 0) lines.push('No transfers')
+  const tail = [
+    hits > 0 ? `${hits} hit${hits === 1 ? '' : 's'}` : null,
+    captain ? `captain ${captain}` : null,
+  ].filter(Boolean)
+  return [...lines, ...(tail.length > 0 ? [tail.join(' · ')] : [])].join('\n')
 }
 
 /** The pins line, or null when there is nothing to say.
@@ -78,10 +113,27 @@ function MoveName({ move }: { move: Move }) {
 }
 
 export default function MovesCard(
-  { buys, sells, hits, capLine, restraint, objective, pins }: MovesCardProps,
+  { buys, sells, hits, capLine, restraint, objective, pins, captain, gw }:
+  MovesCardProps,
 ) {
   const mobile = useIsMobile()
   const pinsLine = pinsText(pins)
+  // v19d §2.4: the text itself, shown only when the clipboard cannot take it
+  // — the app is served over plain http on a LAN, where some phones have no
+  // `navigator.clipboard` at all, and a Copy button that silently does
+  // nothing is worse than no button.
+  const [shownText, setShownText] = useState<string | null>(null)
+  const text = movesText(buys, sells, hits, captain)
+
+  function copy(): void {
+    if (!navigator.clipboard) {
+      setShownText(text)
+      return
+    }
+    navigator.clipboard.writeText(text)
+      .then(() => { toast('positive', 'Moves copied') })
+      .catch(() => { setShownText(text) })
+  }
   const rows: MoveCells[] = [
     ...buys.map((m) => ['IN', m] as ['IN', Move]),
     ...sells.map((m) => ['OUT', m] as ['OUT', Move]),
@@ -110,7 +162,11 @@ export default function MovesCard(
             { label: 'Sims', value: row.sims, numeric: true }],
   }))
   return (
-    <Card title="Recommended moves">
+    <Card
+      title="Recommended moves"
+      id="moves"
+      action={<Button onClick={copy}>Copy</Button>}
+    >
       {capLine && (
         <p className="mb-2 text-text-secondary" data-testid="moves-cap-line">
           {capLine}
@@ -183,6 +239,28 @@ export default function MovesCard(
           {typeof restraint?.hit_cost === 'number' && (
             <>: <span className="tn text-down">{`−${hits * restraint.hit_cost} pts`}</span></>
           )}
+        </p>
+      )}
+      {shownText !== null && (
+        <pre data-testid="moves-text"
+             className="tn mt-2 whitespace-pre-wrap text-text-secondary">
+          {shownText}
+        </pre>
+      )}
+      {/* v19d §2.4: the rendered report `reports/` holds, served from the
+          static mount. Unconditional — a week with no report answers 404,
+          which is the browser's sentence to say, not a claim this card has
+          the standing to make. */}
+      {gw !== undefined && (
+        <p className="mt-3">
+          <a
+            href={`/reports/gw${gw}-report.html`}
+            target="_blank"
+            rel="noreferrer"
+            className="text-text-muted hover:text-text"
+          >
+            {`Open the GW${gw} report`}
+          </a>
         </p>
       )}
     </Card>

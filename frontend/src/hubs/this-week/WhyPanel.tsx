@@ -200,7 +200,7 @@ export default function WhyPanel({ gw, codes }: { gw: number
           ))}
         </Callout>
       )}
-      <Card title="Why this plan" className="mb-4">
+      <Card title="Why this plan" id="why" className="mb-4">
         <p className="mb-2 text-text-muted">
           Click a name for the terms that produced his expected points.
         </p>

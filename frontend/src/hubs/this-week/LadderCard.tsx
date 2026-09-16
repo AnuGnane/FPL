@@ -4,8 +4,8 @@ import { usePageData } from '../../api/pageData'
 import { useJob } from '../../api/useJob'
 import { useSettingWrite } from '../../api/useSettingWrite'
 import {
-  Button, Callout, Card, INPUT_CLASS, Skeleton, StackedRows, TABLE_CLASS,
-  THEAD_CLASS, thClass, useIsMobile,
+  Button, Callout, Card, Disclosure, INPUT_CLASS, Skeleton, StackedRows,
+  TABLE_CLASS, THEAD_CLASS, thClass, useIsMobile,
 } from '../../kit'
 import type { LadderPayload, SettingRow, SettingsPanel } from '../../types'
 import RungRow, { type RungRowProps, rungStackedRow } from './RungRow'
@@ -143,6 +143,7 @@ export default function LadderCard() {
   return (
     <Card
       title="Transfer ladder"
+      id="ladder"
       className="mb-4"
       action={(
         <Button onClick={rebuild} disabled={busy || !data?.gw}>
@@ -161,14 +162,19 @@ export default function LadderCard() {
           )}
         </p>
       )}
-      <p className="mb-3 text-text-muted">
-        Every rung of appetite solved on the same board, then every plan
-        scored on the same {data?.n_draws || 200} noise draws — so the rows
-        are comparable and the players they share cancel out. Your cap is
-        highlighted; the rungs beyond it stay visible so you can see what it
-        costs. The walk steps up one rung at a time and stops at the first
-        rung that does not clear the bar; the rung it stops on is the advice.
-      </p>
+      {/* v19d §2.3: five lines that are worth reading once and are in the
+          way on the tenth visit. Open on a first visit, folded after the
+          reader folds it. */}
+      <Disclosure summary="How to read this" storageKey="ladder-help">
+        <p className="mb-3 text-text-muted">
+          Every rung of appetite solved on the same board, then every plan
+          scored on the same {data?.n_draws || 200} noise draws — so the rows
+          are comparable and the players they share cancel out. Your cap is
+          highlighted; the rungs beyond it stay visible so you can see what it
+          costs. The walk steps up one rung at a time and stops at the first
+          rung that does not clear the bar; the rung it stops on is the advice.
+        </p>
+      </Disclosure>
       <div className="mb-3 flex flex-wrap gap-3">
         {rows.map((row) => (
           <SettingSelect
