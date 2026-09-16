@@ -167,6 +167,39 @@ Four rulings taken here, before anything runs:
 7. The three docstring commits each leave `npm run types -- --check`
    clean and name in their report every field left without a sentence.
 
-## 4. Outcome
+## 4. Outcome (2026-09-16, gate run by the orchestrator)
 
-GATE_TABLE
+Commits on `v19h-health`: `a03c707` spec; `de9bbad` tidy's scope paragraph;
+`ed264aa` `starred_at` and the season-keyed ledger (with the types);
+`e40a250` the BLE001 reasons; `d626816`, `f43fe21`, `9ab55c3` the three
+docstring commits (sonnet); `87101b5` PitchView deleted; `5a0695d` the
+Quality tab in eight files; `835712c` useJob's one probe effect and the
+eight warnings closed, pinned with `--max-warnings 0`; `7bbc8a6` types.ts;
+`4018ca6` the v19h shots stage (orchestrator).
+
+| Gate line | Result |
+|---|---|
+| 1 full suite | `4581 passed, 1 xfailed, 4 warnings in 1284.02s (0:21:24)`, 0 skipped (the slow fit files included); ruff `All checks passed!` |
+| 2 npm run check | exit 0, `Tests 1201 passed \| 1 skipped (1202)`; `eslint . --max-warnings 0` printed nothing; `npm run types -- --check` clean |
+| 3 golden | inside the full run: 62 collected, 62 passed, 0 skipped |
+| 4 screenshots | eighteen pairs at 1400, both themes (the six, quality, health, chips; the stage added in `4018ca6` and the branch's script run against main for the before set): seventeen identical below the strip; Health's age column ticked 128.03h → 128.04h between the two shoots, the clock and nothing else |
+| 5 pins | routes 52, `JOB_KINDS` 12, `Config` 62 (ruling 6 amended: `field_sample` stays) — the three rails in the full run |
+| 6 mutations | implementers': `starred_at` stamped on every write (three watchlist tests fail); the season filter dropped (two ledger tests fail); a synchronous set in an effect (`npm run lint` exits 1); the slot-probe branch short-circuited (two useJob tests fail). Orchestrator's own: a set-in-effect injected into `Toast.tsx` → lint exit 1, restored → 0 |
+| 7 docstrings | 178 → 1024 of 1031 fields with a sentence; seven left with reasons (five `PlayerRef`-typed captain/vice fields, whose sibling description would split the shared wire type and fail `types.test.ts`; two fields that are the generator's own no-sentence fixtures in `test_v12_w5_gen_types.py`); `npm run types -- --check` clean after each commit |
+
+**Judgement calls kept:** `starred_at` is `str`, not `str | None`, because
+`load_watchlist` fills it from `set_at` and the router always has one; the
+season is read through a private `review._ledger_season()` with a
+function-local config import, as `served.py` and `brief.py` do; two
+BLE001 sites narrowed to `(OSError, ValueError)` (a file read and a JSON
+parse), every launchd body and pandas loader kept `Exception` with a
+reason; the `pageData` warning closed by a guarded render-phase set, not
+`useSyncExternalStore`, because the store holds one body per URL while
+`error` and `status` are the reader's own; `Toast` did move to
+`useSyncExternalStore`; no `key` reset anywhere, because keying
+`PlannerBoard` or `ExplainModal` would remount them; useJob's one effect
+carries the honest dependency list `[kind, slot, watch, poll]`; `types.ts`
+lost nothing, since no interface had a generated twin, and two review
+unions now derive from `ReviewLane`. The preserved-through-edit watchlist
+test first passed under its own mutation because two stamps landed in the
+same second; it now ages the dates on disk.
