@@ -1,7 +1,22 @@
-import { render, screen, within } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { render as rtlRender, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
+import { describe, expect, it, vi } from 'vitest'
 import SquadTable, { type SquadRow } from './SquadTable'
+
+const navigate = vi.hoisted(() => vi.fn())
+vi.mock('react-router-dom', async () => ({
+  ...await vi.importActual<typeof import('react-router-dom')>(
+    'react-router-dom'),
+  useNavigate: () => navigate,
+}))
+
+/** Every rendering sits in a router since v19e §2.4: each row carries a menu
+ *  whose items navigate to the What-If lab. */
+function render(ui: ReactElement) {
+  return rtlRender(<MemoryRouter>{ui}</MemoryRouter>)
+}
 
 const ROWS: SquadRow[] = [
   {
@@ -148,5 +163,55 @@ describe('SquadTable: the field column (v10b §F1a)', () => {
     // all three for no assertion's benefit.
     render(<SquadTable rows={ROWS} breakdown={{}} />)
     expect(screen.getByText('Salah')).toBeInTheDocument()
+  })
+})
+
+describe('the row menu (v19e §2.4)', () => {
+  it('is in the stacked row\'s title on a phone, not behind a disclosure',
+    async () => {
+      // v19c §2.1 draws the squad as stacked rows under 768px, and a row
+      // there has no last cell — the trigger rides with the name, where it is
+      // reachable without opening anything.
+      vi.stubGlobal('matchMedia', (query: string) => ({
+        matches: true, media: query, onchange: null,
+        addEventListener: () => {}, removeEventListener: () => {},
+        addListener: () => {}, removeListener: () => {},
+        dispatchEvent: () => false,
+      }))
+      try {
+        navigate.mockReset()
+        render(<SquadTable rows={ROWS} breakdown={{}} />)
+        await userEvent.click(
+          screen.getByRole('button', { name: 'actions for Salah' }))
+        await userEvent.click(screen.getByRole('menuitem', { name: 'Lock' }))
+        expect(navigate).toHaveBeenCalledWith('/planning?tab=whatif', {
+          state: { whatif: expect.objectContaining({ lock: [1] }) },
+        })
+      } finally {
+        vi.unstubAllGlobals()
+      }
+    })
+
+  it('sends the player to the What-If lab as a ban', async () => {
+    navigate.mockReset()
+    render(<SquadTable rows={ROWS} breakdown={{}} />)
+    await userEvent.click(
+      screen.getByRole('button', { name: 'actions for Salah' }))
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Ban' }))
+    expect(navigate).toHaveBeenCalledWith('/planning?tab=whatif', {
+      state: { whatif: expect.objectContaining({ ban: [1], lock: [],
+                                                 force_out: [] }) },
+    })
+  })
+
+  it('carries a must-sell as force_out, which is what sells him', async () => {
+    navigate.mockReset()
+    render(<SquadTable rows={ROWS} breakdown={{}} />)
+    await userEvent.click(
+      screen.getByRole('button', { name: 'actions for Gabriel' }))
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Must sell' }))
+    expect(navigate).toHaveBeenCalledWith('/planning?tab=whatif', {
+      state: { whatif: expect.objectContaining({ force_out: [2], ban: [] }) },
+    })
   })
 })

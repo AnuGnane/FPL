@@ -120,7 +120,26 @@ const MISSES = { gw: null, rows: [] }
 
 const JOURNAL = { built_at: null, cumulative: [], rows: [] }
 
-const HISTORY = { runs: [], prices: [], backtests: [] }
+// Two runs, and not none: the History tab's comparison (v19e §2.2) offers
+// itself only where there are two gameweeks to compare, and a rail whose
+// fixture cannot reach the card would count a read that never happens.
+const HISTORY = {
+  runs: [
+    { gw: 3, deadline: '2026-09-11T17:30:00Z', captain: 'Salah', buys: [],
+      sells: [], hits: 0, expected_pts: 61.5, actual_pts: null },
+    { gw: 2, deadline: '2026-09-04T17:30:00Z', captain: 'Salah', buys: [],
+      sells: [], hits: 0, expected_pts: 58.0, actual_pts: 64 },
+  ],
+  prices: [], backtests: [],
+}
+
+const DIFF = {
+  gw: 3, gw_from: 2, gw_to: 3, available: false, changed: false,
+  current_at: null, previous_at: null, buys_added: [], buys_dropped: [],
+  sells_added: [], sells_dropped: [], captain_from: null, captain_to: null,
+  chip_from: null, chip_to: null, expected_pts_delta: 0, ep_movers: [],
+  ep_movers_count: null,
+}
 
 const HEALTH = {
   data: [], models: [], odds_key_present: false,
@@ -140,6 +159,8 @@ const BODIES: Record<string, unknown> = {
   '/api/misses': MISSES,
   '/api/journal': JOURNAL,
   '/api/history': HISTORY,
+  // The comparison's read, on the two newest gameweeks the fixture lists.
+  '/api/advice/diff?a=2&b=3': DIFF,
   '/api/health': HEALTH,
   '/api/settings': SETTINGS,
 }
@@ -221,10 +242,12 @@ describe('Model, one tab at a time', () => {
     render(<MemoryRouter initialEntries={['/model?tab=history']}>
       <Model />
     </MemoryRouter>)
-    await waitFor(() => expect(apiGet).toHaveBeenCalledWith('/api/history'))
+    await waitFor(() => expect(apiGet)
+      .toHaveBeenCalledWith('/api/advice/diff?a=2&b=3'))
     expect(counted()).toEqual({
       '/api/jobs/current': 1,
       '/api/history': 1,
+      '/api/advice/diff?a=2&b=3': 1,
     })
   })
 

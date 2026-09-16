@@ -2,12 +2,14 @@ import {
   CartesianGrid, Legend, Line, LineChart as RLineChart, ResponsiveContainer,
   Tooltip, XAxis, YAxis,
 } from 'recharts'
+import { useState } from 'react'
 import { usePageData } from '../../api/pageData'
 import {
-  Callout, Card, EmptyState, Loading, SERIES_COLOURS, SERIES_DASH, TABLE_CLASS,
-  THEAD_CLASS, TR_CLASS, fmtNum, tdClass, thClass,
+  Callout, Card, EmptyState, INPUT_CLASS, Loading, SERIES_COLOURS, SERIES_DASH,
+  TABLE_CLASS, THEAD_CLASS, TR_CLASS, fmtNum, tdClass, thClass,
 } from '../../kit'
-import type { HistoryData } from '../../types'
+import type { AdviceDiff, HistoryData } from '../../types'
+import AdviceDiffRows from '../this-week/AdviceDiffRows'
 
 /** Recharts wants one row per x with a column per series. */
 function priceRows(prices: HistoryData['prices']): Array<Record<string, number>> {
@@ -20,6 +22,54 @@ function priceRows(prices: HistoryData['prices']): Array<Record<string, number>>
     }
   }
   return [...byGw.values()].sort((a, b) => a.gw - b.gw)
+}
+
+/**
+ * One week's served plan against another's (v19e §2.2).
+ *
+ * The table above lists what each week did; nothing said what changed
+ * between two of them, which is the question a reader of a run history
+ * actually has. The sentence is `AdviceDiffRows` — the same one This Week's
+ * "since last run" strip prints — because the payload is the same payload.
+ *
+ * Fewer than two gameweeks is no comparison to offer, so the caller renders
+ * nothing at all rather than a card with one week in both selects.
+ */
+function CompareCard({ gws }: { gws: number[] }) {
+  const [from, setFrom] = useState(gws[1])
+  const [to, setTo] = useState(gws[0])
+  const { data } = usePageData<AdviceDiff>(
+    `/api/advice/diff?a=${from}&b=${to}`)
+
+  return (
+    <Card title="Compare" className="mb-4">
+      <div className="mb-2 flex flex-wrap items-center gap-3">
+        <label className="flex items-center gap-2">
+          <span className="label">From</span>
+          <select aria-label="From" className={INPUT_CLASS} value={from}
+                  onChange={(e) => setFrom(Number(e.target.value))}>
+            {gws.map((gw) => <option key={gw} value={gw}>{`GW${gw}`}</option>)}
+          </select>
+        </label>
+        <label className="flex items-center gap-2">
+          <span className="label">To</span>
+          <select aria-label="To" className={INPUT_CLASS} value={to}
+                  onChange={(e) => setTo(Number(e.target.value))}>
+            {gws.map((gw) => <option key={gw} value={gw}>{`GW${gw}`}</option>)}
+          </select>
+        </label>
+      </div>
+      {/* A week whose plan was never banked is not a fault, here or on the
+          server, which answers `available: false` rather than an error. */}
+      {data && (data.available
+        ? <AdviceDiffRows diff={data} />
+        : (
+          <p className="text-text-muted">
+            no served plan for one of these gameweeks
+          </p>
+          ))}
+    </Card>
+  )
 }
 
 export default function HistoryTab() {
@@ -40,6 +90,10 @@ export default function HistoryTab() {
   if (!data) return <Loading />
 
   const rows = priceRows(data.prices)
+  // Newest first, deduplicated: the select offers gameweeks, and a week the
+  // history lists twice is still one week to compare against.
+  const gws = [...new Set(data.runs.map((run) => run.gw))]
+    .sort((a, b) => b - a)
 
   return (
     <>
@@ -88,6 +142,7 @@ export default function HistoryTab() {
           </table>
         </div>
       </Card>
+      {gws.length >= 2 && <CompareCard gws={gws} />}
       <Card title="Price history" className="mb-4">
         <div aria-label="Price history">
           <ResponsiveContainer width="100%" height={220}>

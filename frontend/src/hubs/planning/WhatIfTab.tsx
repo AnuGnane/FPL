@@ -11,7 +11,12 @@ import PlanDiffTable from './PlanDiffTable'
 import SensitivityCard from './SensitivityCard'
 import { useWhatIfSubmit } from './useWhatIfSubmit'
 
-const EMPTY: WhatIfRequest = {
+/** The unconstrained request the lab opens on.
+ *
+ *  Exported since v19e §2.4: the squad's row menu builds its handoff from the
+ *  same object the lab itself starts from, so a field added to the request
+ *  cannot arrive in one of them and not the other. */
+export const EMPTY_WHATIF: WhatIfRequest = {
   lock: [], ban: [], force_in: [], force_out: [], max_hits: 0,
   max_transfers: null, chip: 'none', horizon: null,
 }
@@ -28,7 +33,7 @@ export default function WhatIfTab({ value, onChange }: {
 } = {}) {
   // Controlled when Planning hands the constraints down (so the Drafts tab
   // can save them), uncontrolled when the tab is rendered on its own.
-  const [own, setOwn] = useState<WhatIfRequest>(EMPTY)
+  const [own, setOwn] = useState<WhatIfRequest>(EMPTY_WHATIF)
   const request = value ?? own
   const setRequest = onChange ?? setOwn
   const [invalid, setInvalid] = useState<StructuredError | null>(null)

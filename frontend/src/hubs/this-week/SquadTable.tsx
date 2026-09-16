@@ -5,6 +5,7 @@ import {
 } from '../../kit'
 import type { StackedPair, StackedRow } from '../../kit'
 import type { NextFixture } from '../../types'
+import PlayerActions from './PlayerActions'
 
 export interface SquadRow {
   code: number
@@ -182,6 +183,11 @@ function columnsFor(mobile: boolean): Column<SquadRow>[] { return [
   { key: 'last4', header: 'Last 4', numeric: true,
     value: (r) => r.last4.length ? r.last4[r.last4.length - 1] : null,
     render: (r) => <Sparkline values={r.last4} /> },
+  // v19e §2.4: the row's own menu, at its end because it is not a fact about
+  // the player — it is what to do about him. Headerless, so the table reads
+  // exactly as it did with one glyph more per row.
+  { key: 'actions', header: '', value: () => null,
+    render: (r) => <PlayerActions code={r.code} name={r.name} /> },
 ] }
 
 /** The columns a stacked row shows before it is opened (v19c §2.1): what he
@@ -241,7 +247,7 @@ export default function SquadTable({ rows, breakdown }: SquadTableProps) {
     // The position is the dot beside the name and the name is the title, so
     // neither is a pair; everything else the table draws is one.
     const rest = columns.filter((c) => c.key !== 'name' && c.key !== 'position'
-      && !PHONE_PAIRS.includes(c.key))
+      && c.key !== 'actions' && !PHONE_PAIRS.includes(c.key))
     // The order the advice served — the XI, then the bench. The desktop table
     // sorts, and the rows arrive in that order (v19c §2.1).
     const stacked: StackedRow[] = rows.map((row) => ({
@@ -251,6 +257,9 @@ export default function SquadTable({ rows, breakdown }: SquadTableProps) {
         <span className="inline-flex items-center gap-1.5">
           <PosBadge pos={row.position} variant="dot" />
           {row.name}
+          {/* v19e §2.4: in the title, because a stacked row has no last cell
+              to put it in and the disclosure would hide it. */}
+          <PlayerActions code={row.code} name={row.name} />
         </span>
       ),
       pairs: pairsFrom(shown, row),

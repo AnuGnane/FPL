@@ -81,6 +81,15 @@ const BODIES: Record<string, unknown> = {
     sells_dropped: [], captain_from: null, captain_to: null, chip_from: null,
     chip_to: null, expected_pts_delta: 0, ep_movers: [], ep_movers_count: null,
   },
+  // v19e §2.3: the since-line's read, a4 against b5 — the week before the
+  // one the page is showing, against it.
+  '/api/advice/diff?a=4&b=5': {
+    gw: 5, gw_from: 4, gw_to: 5, available: false, changed: false,
+    current_at: null, previous_at: null, buys_added: [], buys_dropped: [],
+    sells_added: [], sells_dropped: [], captain_from: null, captain_to: null,
+    chip_from: null, chip_to: null, expected_pts_delta: 0, ep_movers: [],
+    ep_movers_count: null,
+  },
   '/api/overrides': { rows: [] },
   '/api/news/5': { gw: 5, moved: 0, rows: [] },
   '/api/confidence': { captain: null },
@@ -136,6 +145,7 @@ describe("This Week's first render", () => {
       '/api/settings': 1,
       '/api/brief': 1,
       '/api/advice/diff?gw=5': 1,
+      '/api/advice/diff?a=4&b=5': 1,
       '/api/overrides': 1,
       '/api/news/5': 1,
       '/api/confidence': 1,
@@ -143,10 +153,10 @@ describe("This Week's first render", () => {
     expect(apiDelete).not.toHaveBeenCalled()
   })
 
-  it('makes fourteen GETs in all', async () => {
+  it('makes fifteen GETs in all', async () => {
     render(<MemoryRouter><ThisWeek /></MemoryRouter>)
     await waitFor(() => expect(asked()).toContain('/api/confidence'))
     await waitFor(() => expect(asked()).toContain('/api/news/5'))
-    expect(asked()).toHaveLength(14)
+    expect(asked()).toHaveLength(15)
   })
 })

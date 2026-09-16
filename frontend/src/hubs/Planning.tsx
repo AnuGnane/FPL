@@ -1,5 +1,6 @@
 import * as Tabs from '@radix-ui/react-tabs'
 import { useMemo, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { usePageData } from '../api/pageData'
 import {
   EmptyState, PageHeader, TAB_CLASS, TAB_LIST_CLASS, useTabParam,
@@ -40,7 +41,17 @@ export default function Planning() {
   // The hub keeps its own error slot, as the `.catch` it replaces was: a read
   // that failed here is this hub's empty state and nobody else's (v17h §0.1).
   const latest = usePageData<AdviceLatest>('/api/advice/latest')
-  const [whatif, setWhatif] = useState<WhatIfRequest>(EMPTY_WHATIF)
+  // v19e §2.4: the request the squad's row menu navigated here with, read
+  // once. An initialiser and not an effect, so the panel's first paint
+  // already carries the constraint rather than flashing the empty one — and
+  // so that a reader who then edits it is not overwritten by his own arrival.
+  // The state is deliberately left in the history entry: clearing it would
+  // make a reload lose the constraint the reader came here to solve, and
+  // returning to the same entry meaning the same thing is what the back
+  // button promises.
+  const arrived = (useLocation().state as { whatif?: WhatIfRequest } | null)
+    ?.whatif
+  const [whatif, setWhatif] = useState<WhatIfRequest>(arrived ?? EMPTY_WHATIF)
   const [tab, setTab] = useTabParam(TABS, 'timeline')
 
   const body = latest.data

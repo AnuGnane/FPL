@@ -136,6 +136,25 @@ describe('Planning hub', () => {
     expect(screen.getByText('Run advise')).toBeInTheDocument()
   })
 
+  // v19e §2.4: the squad's row menu navigates here with the request in
+  // `location.state`, and the lab has to open already holding it.
+  it('opens carrying the constraint the squad menu navigated with',
+    async () => {
+      render(
+        <MemoryRouter initialEntries={[{
+          pathname: '/planning', search: '?tab=whatif',
+          state: { whatif: { lock: [], ban: [7], force_in: [],
+                             force_out: [], max_hits: 0,
+                             max_transfers: null, chip: 'none',
+                             horizon: null } },
+        }]}>
+          <Planning />
+        </MemoryRouter>)
+      expect(await screen.findByText('whatif panel')).toBeInTheDocument()
+      expect(screen.getByText('force_in: ban:7 force_out:'))
+        .toBeInTheDocument()
+    })
+
   it('hands the timeline a code-to-team map from the advice it already has',
     async () => {
       // No extra request: the enrichment rides on /api/advice/latest, and a

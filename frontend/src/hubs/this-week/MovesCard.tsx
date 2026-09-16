@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import {
   Bar, Button, Card, Chip, PosBadge, StackedRows, TABLE_CLASS, THEAD_CLASS,
-  TR_CLASS, fmtNum, fmtPct, tdClass, thClass, toast, useIsMobile,
+  TR_CLASS, fmtDelta, fmtNum, fmtPct, tdClass, thClass, toast, useIsMobile,
 } from '../../kit'
 import type { StackedRow } from '../../kit'
 import type {
-  OverridesPanel, ServedObjective, ServedRestraint,
+  AdviceDiff, OverridesPanel, ServedObjective, ServedRestraint,
 } from '../../types.generated'
 
 export interface Move {
@@ -41,6 +41,10 @@ export interface MovesCardProps {
   captain?: string
   /** v19d §2.4: the gameweek the rendered report under `reports/` is for. */
   gw?: number
+  /** v19e §2.3: last week's served plan against this week's, so the card
+   *  that prints the moves also says what moved. Absent on a first gameweek
+   *  and on a tree with nothing banked for the week before. */
+  since?: AdviceDiff | null
 }
 
 /**
@@ -70,6 +74,36 @@ export function movesText(
     captain ? `captain ${captain}` : null,
   ].filter(Boolean)
   return [...lines, ...(tail.length > 0 ? [tail.join(' · ')] : [])].join('\n')
+}
+
+/** "since GW4: captain unchanged · 1 buy swapped (Palmer → Bruno Fernandes)
+ *  · +1.4 pts", or null (v19e §2.3).
+ *
+ *  Three claims and no more, because this line sits under the table it
+ *  annotates and a fourth clause would be a paragraph: what happened to the
+ *  armband, how many of the transfers are different ones, and what the week
+ *  is now worth against what it was. The whole diff is a click away in the
+ *  strip above and on the History tab — this is the glance.
+ *
+ *  Silent when the comparison is unavailable: "nothing changed" and "we have
+ *  no plan for last week" are different claims, and only the first is one
+ *  this card has the standing to make. */
+export function sinceText(since: AdviceDiff | null | undefined): string | null {
+  if (!since || !since.available) return null
+  const from = since.gw_from ?? since.gw - 1
+  const changed = since.captain_to
+    && since.captain_to.code !== since.captain_from?.code
+  const bits = [changed
+    ? `captain ${since.captain_from?.name ?? 'none'} → ${since.captain_to?.name}`
+    : 'captain unchanged']
+  const swaps = Math.max(since.buys_added.length, since.buys_dropped.length)
+  if (swaps > 0) {
+    const pair = since.buys_dropped[0] && since.buys_added[0]
+      ? ` (${since.buys_dropped[0].name} → ${since.buys_added[0].name})` : ''
+    bits.push(`${swaps} buy${swaps === 1 ? '' : 's'} swapped${pair}`)
+  }
+  bits.push(`${fmtDelta(since.expected_pts_delta)} pts`)
+  return `since GW${from}: ${bits.join(' · ')}`
 }
 
 /** The pins line, or null when there is nothing to say.
@@ -113,11 +147,12 @@ function MoveName({ move }: { move: Move }) {
 }
 
 export default function MovesCard(
-  { buys, sells, hits, capLine, restraint, objective, pins, captain, gw }:
-  MovesCardProps,
+  { buys, sells, hits, capLine, restraint, objective, pins, captain, gw,
+    since }: MovesCardProps,
 ) {
   const mobile = useIsMobile()
   const pinsLine = pinsText(pins)
+  const sinceLine = sinceText(since)
   // v19d §2.4: the text itself, shown only when the clipboard cannot take it
   // — the app is served over plain http on a LAN, where some phones have no
   // `navigator.clipboard` at all, and a Copy button that silently does
@@ -231,6 +266,13 @@ export default function MovesCard(
           </table>
           </div>
           )}
+      {/* v19e §2.3: under the table, because it is what the table says
+          against last week rather than part of this week's plan. */}
+      {sinceLine && (
+        <p className="mt-3 text-text-muted" data-testid="moves-since">
+          {sinceLine}
+        </p>
+      )}
       {hits > 0 && (
         <p className="mt-3 text-text-secondary">
           {hits} hit{hits === 1 ? '' : 's'}

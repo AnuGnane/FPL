@@ -1,4 +1,5 @@
 import { PlayerCard } from '../../kit'
+import PlayerActions from './PlayerActions'
 import type { SquadRow } from './SquadTable'
 
 /**
@@ -53,9 +54,13 @@ export default function SquadPitch(
     ['OTHER', loose] as [string, SquadRow[]],
   ].filter(([, players]) => players.length > 0)
 
+  // v19e §2.4: the menu is laid over the card's own top-right corner rather
+  // than drawn inside it — `PlayerCard` is a closed kit primitive with no
+  // slot, and a control added to its flow would push the shirt, the name and
+  // the fixture chip of every tile down. Nothing about the tile moves.
   const card = (player: SquadRow) => (
+    <span key={player.code} className="relative inline-flex">
     <PlayerCard
-      key={player.code}
       code={player.code}
       name={player.name}
       position={player.position}
@@ -70,6 +75,9 @@ export default function SquadPitch(
       fieldClass={player.fieldClass ?? null}
       onSelect={onSelect}
     />
+      <PlayerActions code={player.code} name={player.name}
+                     className="absolute right-0 top-0" />
+    </span>
   )
 
   return (

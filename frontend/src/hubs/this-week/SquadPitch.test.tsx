@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import type { ComponentProps } from 'react'
+import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import SquadPitch from './SquadPitch'
 import type { SquadRow } from './SquadTable'
@@ -37,9 +38,12 @@ const BENCH: SquadRow[] = [
   row({ code: 15, name: 'Wood', position: 'FWD' }),
 ]
 
+// In a router since v19e §2.4: every card carries a menu that navigates.
 function pitch(over: Partial<ComponentProps<typeof SquadPitch>> = {}) {
   return render(
-    <SquadPitch xi={XI} bench={BENCH} captain={6} vice={10} {...over} />,
+    <MemoryRouter>
+      <SquadPitch xi={XI} bench={BENCH} captain={6} vice={10} {...over} />
+    </MemoryRouter>,
   )
 }
 
@@ -151,17 +155,23 @@ describe('SquadPitch: the EO lens (v10b §F1c, v14 as a tint)', () => {
     i === 0 ? { ...p, fieldEo: 45, fieldClass: 'sword' as const } : p))
 
   it('tints through the one card() funnel when the lens is on', () => {
-    render(<SquadPitch xi={lensXi} bench={BENCH} captain={1} vice={2} lens />)
+    render(<MemoryRouter>
+      <SquadPitch xi={lensXi} bench={BENCH} captain={1} vice={2} lens />
+    </MemoryRouter>)
     expect(tinted()).toHaveLength(1)
   })
 
   it('tints a bench card on the same rule as an XI card', () => {
-    render(<SquadPitch xi={XI} bench={lensBench} captain={1} vice={2} lens />)
+    render(<MemoryRouter>
+      <SquadPitch xi={XI} bench={lensBench} captain={1} vice={2} lens />
+    </MemoryRouter>)
     expect(tinted()).toHaveLength(1)
   })
 
   it('tints nothing when the lens is off', () => {
-    render(<SquadPitch xi={lensXi} bench={lensBench} captain={1} vice={2} />)
+    render(<MemoryRouter>
+      <SquadPitch xi={lensXi} bench={lensBench} captain={1} vice={2} />
+    </MemoryRouter>)
     expect(tinted()).toHaveLength(0)
   })
 
@@ -169,7 +179,9 @@ describe('SquadPitch: the EO lens (v10b §F1c, v14 as a tint)', () => {
      () => {
        // Plan A6's "optional", asserted: three factories in two files predate
        // fieldEo/fieldClass and none of them should have to change.
-       render(<SquadPitch xi={XI} bench={BENCH} captain={1} vice={2} lens />)
+       render(<MemoryRouter>
+         <SquadPitch xi={XI} bench={BENCH} captain={1} vice={2} lens />
+       </MemoryRouter>)
        expect(screen.getByTestId('pitch-row-MID')).toBeInTheDocument()
      })
 })

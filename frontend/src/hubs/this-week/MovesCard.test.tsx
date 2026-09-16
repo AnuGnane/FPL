@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { currentToasts } from '../../kit'
 import MovesCard, { movesText } from './MovesCard'
+import type { AdviceDiff } from '../../types'
 
 /** A clipboard, or the absence of one: `navigator.clipboard` is undefined
  *  over plain http on some phones, which is the whole reason the fallback
@@ -180,5 +181,58 @@ describe('MovesCard', () => {
   it('offers no report link on a card that was given no gameweek', () => {
     render(<MovesCard buys={BUYS} sells={SELLS} hits={0} />)
     expect(screen.queryByRole('link')).toBeNull()
+  })
+})
+
+/** Last week's served plan against this week's, as the card is handed it. */
+function diff(): AdviceDiff {
+  return {
+    gw: 5, gw_from: 4, gw_to: 5, available: true, changed: true,
+    current_at: null, previous_at: null,
+    buys_added: [{ code: 9, name: 'Bruno Fernandes' }],
+    buys_dropped: [{ code: 8, name: 'Palmer' }],
+    sells_added: [], sells_dropped: [],
+    captain_from: { code: 1, name: 'Salah' },
+    captain_to: { code: 1, name: 'Salah' },
+    chip_from: null, chip_to: null, expected_pts_delta: 1.4,
+    ep_movers: [], ep_movers_count: null,
+  } as AdviceDiff
+}
+
+describe('the since line (v19e §2.3)', () => {
+  it('names the week, the armband, the swap and the points', () => {
+    render(<MovesCard buys={BUYS} sells={SELLS} hits={0}
+                      since={diff()} />)
+    expect(screen.getByTestId('moves-since')).toHaveTextContent(
+      'since GW4: captain unchanged · 1 buy swapped '
+      + '(Palmer → Bruno Fernandes) · +1.4 pts')
+  })
+
+  it('names both captains when the armband moved', () => {
+    render(<MovesCard buys={BUYS} sells={SELLS} hits={0}
+                      since={{ ...diff(),
+                               captain_to: { code: 2, name: 'Haaland' } }} />)
+    expect(screen.getByTestId('moves-since'))
+      .toHaveTextContent('captain Salah → Haaland')
+  })
+
+  it('drops the swap clause when the buys are the same players', () => {
+    render(<MovesCard buys={BUYS} sells={SELLS} hits={0}
+                      since={{ ...diff(), buys_added: [],
+                               buys_dropped: [],
+                               expected_pts_delta: -0.6 }} />)
+    expect(screen.getByTestId('moves-since'))
+      .toHaveTextContent('since GW4: captain unchanged · -0.6 pts')
+  })
+
+  it('says nothing at all when there is no plan for the week before', () => {
+    render(<MovesCard buys={BUYS} sells={SELLS} hits={0}
+                      since={{ ...diff(), available: false }} />)
+    expect(screen.queryByTestId('moves-since')).toBeNull()
+  })
+
+  it('says nothing on a card that was handed no comparison', () => {
+    render(<MovesCard buys={BUYS} sells={SELLS} hits={0} />)
+    expect(screen.queryByTestId('moves-since')).toBeNull()
   })
 })

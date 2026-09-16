@@ -7,7 +7,7 @@ import {
   Loading, PageHeader, Segmented, Stat, StatRow, fmtNum, fmtPct,
 } from '../kit'
 import type {
-  AdviceChipRow, AdviceLatest, ComponentsBreakdown, LadderPayload,
+  AdviceChipRow, AdviceDiff, AdviceLatest, ComponentsBreakdown, LadderPayload,
   LeaguesOverview, LeagueWhatIfResult, OverridesPanel, PlayerRow,
 } from '../types'
 import BriefCard from './this-week/BriefCard'
@@ -123,6 +123,13 @@ export default function ThisWeek() {
   // rail does not move (v17h §2); behind the advice like the two decorations
   // above, so a cold tree asks for nothing it cannot use.
   const pins = usePageData<OverridesPanel>(data ? '/api/overrides' : null)
+  // v19e §2.3: last week's served plan against this week's, for the one line
+  // under the moves. A null path in GW1, where there is no week before to
+  // compare with — and behind the advice like the decorations above, because
+  // the gameweek to ask about is the one the page is showing.
+  const since = usePageData<AdviceDiff>(
+    data && data.gw > 1
+      ? `/api/advice/diff?a=${data.gw - 1}&b=${data.gw}` : null)
 
   // v17h §5: the same three the old `load` refetched — an advise run rewrites
   // the advice, and the players and components rows are read against it. The
@@ -405,7 +412,8 @@ export default function ThisWeek() {
                    objective={advice.objective ?? null}
                    pins={pins.data}
                    captain={advice.captain.name}
-                   gw={data.gw} />
+                   gw={data.gw}
+                   since={since.data} />
       </div>
       {/* v16 §5: what you actually did, beside the moves it departs from. */}
       <DecisionPanel gw={data.gw} />
