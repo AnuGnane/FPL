@@ -100,6 +100,29 @@ the What-If tab with the code in `ban`.
    navigation state.
 6. The route pin: `tests/test_v11_degradation.py` passes unchanged at 51.
 
-## 4. Outcome
+## 4. Outcome (2026-09-16, gate run by the orchestrator)
 
-Filled at the gate.
+Commits on `v19e-compare`: `c394ea1` spec; `2d93a2d` the two-gameweek
+diff path (orchestrator; `gw_from`/`gw_to`; four tests; the route pin
+untouched); `be966c2` the frontend (`AdviceDiffRows` extracted with no
+markup change, the History comparison, the since-line, the row menus on
+the table and the pitch, `Planning` reading `location.state.whatif`).
+
+| Gate line | Result |
+|---|---|
+| 1 inner loop | `4393 passed` with one failure that passed alone and on a second full run (`test_advice_fixture.py::test_the_tiny_board_builds_an_advice_end_to_end`, a file the diff does not touch; recorded as a flake); ruff `All checks passed!` |
+| 2 golden | `62 passed in 1098.26s (0:18:18)`, 0 skipped |
+| 3 npm run check | exit 0, `Tests 1184 passed \| 1 skipped (1185)`, `0 errors, 8 warnings`; rails: Model `+/api/advice/diff?a=2&b=3`, This Week `+/api/advice/diff?a=4&b=5` (14 → 15 GETs), nothing else |
+| 4 screenshots | twelve desktop pairs 15:57:04–15:57:22: Planning (both tabs), Players, League, Model identical whole-image; This Week rows 415–1599 (the ⋯ controls on every tile and row); the since-line and the History comparison need a previous gameweek's plan on disk, which the served tree lacks; This Week at 1400 and 375 approved by the user |
+| 5 mutations | the since-line guard (unavailable → rendered → its test fails); the request's code dropped (both row-menu tests fail); the two-gameweek path (swapped `a`/`b` reverses `captain_from`/`captain_to`, asserted) |
+| 6 route pin | `tests/test_v11_degradation.py` passes unchanged at 51 |
+
+**Ruling 2, amended and recorded:** the diff path existed; it took `a`
+and `b`. The programme's only route bump is now v19f's 51 → 52.
+
+**Judgement calls kept:** *Must sell* is `force_out` (the request has no
+`must_sell`); `Planning` does not clear `location.state`, so a reload
+re-prefills the constraint the reader arrived to solve; the pitch's
+control is laid over the tile in a wrapper so `PlayerCard` is untouched;
+`EMPTY_WHATIF` exported from `WhatIfTab` and duplicated in `Planning`
+because that hub's test mocks the module.
