@@ -294,6 +294,45 @@ export interface ReliabilityBin {
   pred: number
 }
 /**
+ * The fitted EP calibration, one delta per position group (v19g §2.1).
+ *
+ * A position is fitted only once it has ``min_rows`` 60-minute appearances
+ * (``models/calibrate.py``, ``MIN_ROWS``), so the GKP row arrived by accrual
+ * part-way through a season and nothing anywhere said so. Nothing said when
+ * one dropped back out either, which is the failure this reports: an
+ * unfitted position is the identity, and identity is indistinguishable from
+ * "calibrated to zero" unless the absence is named.
+ *
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "CalibrationHealth".
+ */
+export interface CalibrationHealth {
+  /**
+   * Position group -> the additive correction a nailed starter takes.
+   */
+  by_pos: {
+    [k: string]: number
+  }
+  /**
+   * The keys of ``by_pos``, in ``GKP DEF MID FWD`` order.
+   */
+  fitted_positions: string[]
+  /**
+   * The floor a group must clear to be fitted at all — the number the tab
+   * quotes when it says why a position is absent.
+   */
+  min_rows: number
+  /**
+   * Which of the four groups carry no fitted delta, in the same order.
+   */
+  missing: string[]
+  /**
+   * From the model's own ``.meta.json`` sidecar, or ``None`` when there is
+   * none: an artifact old enough to predate the sidecar still renders.
+   */
+  saved_at: string | null
+}
+/**
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "ChipPlan".
  */
@@ -2887,6 +2926,41 @@ export interface Staleness {
   stale: boolean
 }
 /**
+ * The week's goals-conceded band, read off the banked components.
+ *
+ * v19g §2.2: over GW4-6 the raw ``p_cs_model`` spanned 0.085-0.957 and every
+ * GW6 club-fixture carried ``odds_weight = 0``, so a third of the horizon
+ * was priced on the unbounded team model with no market to blend against.
+ * The clip itself is replay-gated (v20); naming the band and the zero-odds
+ * count costs nothing and is what makes the drift visible in the meantime.
+ *
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "TeamModelHealth".
+ */
+export interface TeamModelHealth {
+  /**
+   * Club-fixtures after de-duplication, not player rows.
+   */
+  fixtures: number
+  /**
+   * The newest gameweek in the file, which is the week these numbers
+   * describe.
+   */
+  gw: number
+  /**
+   * The two ends the model actually reached this week. A minimum expected
+   * goals-conceded near zero and a clean-sheet probability near one are the
+   * same fixture seen twice.
+   */
+  max_p_cs_model: number
+  min_e_gc_model: number
+  /**
+   * How many of those were priced with no market at all — ``odds_weight``
+   * zero or absent.
+   */
+  zero_odds_fixtures: number
+}
+/**
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "TickerCell".
  */
@@ -3043,6 +3117,14 @@ export interface WireCalibrationReport {
  */
 export interface WireHealth {
   artifacts: ArtifactItem[]
+  /**
+   * The fitted EP calibration's deltas, or ``None`` when no calibration
+   * artifact is on disk (v19g §2.1). Absent is a real state — a clone that has
+   * never trained — and it is not the same news as a calibration fitted on
+   * three positions, which is why the four-way ``missing`` list travels with
+   * the values rather than being inferred from a short dict at the page.
+   */
+  calibration: CalibrationHealth | null
   core_insights: CoreInsightsHealth | null
   data: SourceHealth[]
   data_through_gw: number | null
@@ -3097,6 +3179,12 @@ export interface WireHealth {
   solver_top_n: {
     [k: string]: number
   } | null
+  /**
+   * The newest banked components' goals-conceded band (v19g §2.2), or
+   * ``None`` when nothing has been banked or the file predates the model
+   * columns.
+   */
+  team_model: TeamModelHealth | null
 }
 /**
  * This interface was referenced by `GafferApi`'s JSON-Schema

@@ -22,6 +22,7 @@ from gaffer.artifacts import (
     REPORTS,
     advice_gws,
     advice_path,
+    components_path,
     ingested_through,
     latest_gw,
     load_advice,
@@ -48,6 +49,7 @@ from gaffer.price_log import PRICE_LOG_PATH
 from gaffer.web.schemas import (
     ArtifactItem,
     BackupHealth,
+    CalibrationHealth,
     ChipPlan,
     ChipPlanRow,
     CoreInsightsHealth,
@@ -63,6 +65,7 @@ from gaffer.web.schemas import (
     PricePoint,
     PriceSeries,
     SourceHealth,
+    TeamModelHealth,
     Ticker,
     TickerCell,
     TickerTeam,
@@ -433,6 +436,94 @@ def freshness() -> Freshness:
     ])
 
 
+def calibration_health() -> CalibrationHealth | None:
+    """The fitted EP calibration's per-position deltas (v19g §2.1).
+
+    Read through the model's own loader rather than a bare ``joblib.load``
+    here, so this cannot drift from where training writes. The import is
+    inside the function for the reason ``SNAPSHOT_PATH`` above is restated:
+    unpickling reaches ``gaffer.models.calibrate``, and a route module that
+    pulls the models package in at import time pays for it on every worker
+    start whether or not anyone opens the Health tab.
+
+    Never raises — ``/api/health`` is polled by an open tab, so a missing
+    artifact, an unreadable one and a pickle written by an older build are all
+    ``None`` rather than a 500 on the page somebody opened to find out what
+    was wrong.
+    """
+    try:
+        from gaffer.models.calibrate import MIN_ROWS, POSITION_GROUPS
+        from gaffer.models.persistence import load_model, model_exists
+
+        if not model_exists("calibration"):
+            return None
+        model = load_model("calibration")
+        by_pos = {str(pos): float(delta)
+                  for pos, delta in dict(model.by_pos).items()}
+    except Exception:  # noqa: BLE001 — no artifact is a valid state here
+        return None
+    # `POSITION_GROUPS` order, not the dict's: the four groups are read as a
+    # row and a row whose columns move between polls is unreadable.
+    fitted = [pos for pos in POSITION_GROUPS if pos in by_pos]
+    saved_at = None
+    try:
+        meta_path = MODELS_DIR / "calibration.meta.json"
+        if meta_path.exists():
+            saved_at = json.loads(meta_path.read_text()).get("saved_at")
+    except Exception:  # noqa: BLE001 — a stamp is never worth the page
+        saved_at = None
+    return CalibrationHealth(
+        by_pos=by_pos, fitted_positions=fitted,
+        missing=[pos for pos in POSITION_GROUPS if pos not in by_pos],
+        min_rows=int(MIN_ROWS),
+        saved_at=str(saved_at) if saved_at is not None else None)
+
+
+def team_model_health() -> TeamModelHealth | None:
+    """The newest banked components' goals-conceded band (v19g §2.2).
+
+    ``p_cs_model``, ``e_gc_model`` and ``odds_weight`` are per club-fixture
+    but the file is per player, so the frame is reduced first. The key is
+    ``(team_code, gw, opp_code)`` and not ``(team_code, gw)``: a double
+    gameweek gives a club two fixtures in one week, and keying on the week
+    alone would count one of them and hide the other — which is the week the
+    reading matters most.
+
+    Never raises, for :func:`calibration_health`'s reason.
+    """
+    try:
+        from gaffer.misses import component_gws
+
+        gws = component_gws()
+        if not gws:
+            return None
+        frame = pd.read_parquet(components_path(gws[-1]))
+        needed = ["team_code", "gw", "opp_code", "p_cs_model", "e_gc_model"]
+        if any(col not in frame.columns for col in needed):
+            return None
+        fixtures = frame.drop_duplicates(
+            subset=["team_code", "gw", "opp_code"])
+        e_gc = pd.to_numeric(fixtures["e_gc_model"], errors="coerce").dropna()
+        p_cs = pd.to_numeric(fixtures["p_cs_model"], errors="coerce").dropna()
+        if e_gc.empty or p_cs.empty:
+            return None
+        # A missing `odds_weight` column is every fixture priced with no
+        # market, which is the same news as a column of zeros and is reported
+        # as such rather than as an absence.
+        if "odds_weight" in fixtures.columns:
+            weight = pd.to_numeric(fixtures["odds_weight"], errors="coerce")
+            zero = int((weight.isna() | (weight == 0)).sum())
+        else:
+            zero = int(len(fixtures))
+        return TeamModelHealth(
+            gw=int(fixtures["gw"].max()),
+            min_e_gc_model=round(float(e_gc.min()), 3),
+            max_p_cs_model=round(float(p_cs.max()), 3),
+            fixtures=int(len(fixtures)), zero_odds_fixtures=zero)
+    except Exception:  # noqa: BLE001 — a diagnostic never takes the page down
+        return None
+
+
 @router.get("/health", response_model=Health)
 def health() -> Health:
     from gaffer.config import load_config
@@ -568,6 +659,8 @@ def health() -> Health:
 
     return Health(data=sources, data_through_gw=ingested_through(),
                   models=models,
+                  calibration=calibration_health(),
+                  team_model=team_model_health(),
                   launchd=LaunchdHealth(log=str(ADVISE_LOG),
                                         present=log_present,
                                         modified_at=log_modified,

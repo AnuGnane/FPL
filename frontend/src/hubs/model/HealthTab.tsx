@@ -3,7 +3,81 @@ import {
   type Column, Callout, Card, Chip, DataTable, EmptyState, Loading,
   TABLE_CLASS, THEAD_CLASS, TR_CLASS, ageText, tdClass, thClass, tone,
 } from '../../kit'
-import type { HealthData, JobHealth } from '../../types'
+import type {
+  CalibrationHealth, HealthData, JobHealth, TeamModelHealth,
+} from '../../types'
+
+// The four groups in the order the model fits them, so the row's columns do
+// not move between polls. `fitted_positions` and `missing` each arrive in this
+// order; the line interleaves them, which needs the order itself.
+const POSITIONS = ['GKP', 'DEF', 'MID', 'FWD']
+
+/**
+ * The fitted EP calibration, one delta per position (v19g §2.1).
+ *
+ * A position is fitted only once it clears `min_rows` sixty-minute
+ * appearances, so the GKP delta arrived by accrual part-way through a season
+ * and nothing said so — and an unfitted position is the identity, which on a
+ * page of numbers is indistinguishable from a delta of zero unless the
+ * absence is spelled out. Hence `not fitted`, in `warn` ink, rather than a
+ * dash or a blank.
+ */
+function CalibrationLine({ cal }: { cal: CalibrationHealth }) {
+  return (
+    <p className="mt-3" data-testid="calibration-by-pos">
+      <span className="label">Calibration by position: </span>
+      {POSITIONS.map((pos, i) => {
+        const delta = cal.by_pos[pos]
+        return (
+          <span key={pos}>
+            {i > 0 && <span className="text-text-faint"> · </span>}
+            {delta === undefined
+              ? (
+                <span className="text-warn">
+                  {pos} not fitted (n &lt; {cal.min_rows})
+                </span>
+                )
+              : (
+                <span className="tn text-text">
+                  {pos} {delta.toFixed(2)}
+                </span>
+                )}
+          </span>
+        )
+      })}
+    </p>
+  )
+}
+
+/**
+ * The week's goals-conceded band, off the newest banked components (v19g
+ * §2.2).
+ *
+ * "horizon through GW6" and not "GW6": the components file holds every
+ * gameweek of the solved horizon, and the counts are over all of them. A
+ * single week's label over three weeks of fixtures would be the kind of
+ * quiet miscount this line exists to catch.
+ */
+function TeamModelLine({ team }: { team: TeamModelHealth }) {
+  return (
+    <p className="mt-1" data-testid="team-model-band">
+      <span className="label">Team model, horizon through GW{team.gw}: </span>
+      <span className="tn text-text">
+        min e_gc {team.min_e_gc_model.toFixed(3)}
+      </span>
+      <span className="text-text-faint"> · </span>
+      <span className="tn text-text">
+        max p_cs {team.max_p_cs_model.toFixed(3)}
+      </span>
+      <span className="text-text-faint"> · </span>
+      <span className={`tn ${team.zero_odds_fixtures > 0
+        ? 'text-warn' : 'text-text-muted'}`}>
+        {team.zero_odds_fixtures} of {team.fixtures} fixtures without market
+        odds
+      </span>
+    </p>
+  )
+}
 
 /**
  * Every installed plist and whether it has run lately (v19a §2.3).
@@ -225,6 +299,11 @@ export default function HealthTab() {
             </span>
           </p>
         )}
+        {/* Both lines are null on a clone that has never trained or never
+            advised, and both stay silent rather than rendering zeros: a band
+            of zeros reads as a measurement of a model that was flat. */}
+        {data.calibration && <CalibrationLine cal={data.calibration} />}
+        {data.team_model && <TeamModelLine team={data.team_model} />}
       </Card>
       <Card title="Automation" className="mb-4">
         {/* `?? []` because the field arrived in v19a: a server or a fixture

@@ -1057,6 +1057,63 @@ class ModelHealth(BaseModel):
     metrics: dict[str, Any]
 
 
+class CalibrationHealth(BaseModel):
+    """The fitted EP calibration, one delta per position group (v19g §2.1).
+
+    A position is fitted only once it has ``min_rows`` 60-minute appearances
+    (``models/calibrate.py``, ``MIN_ROWS``), so the GKP row arrived by accrual
+    part-way through a season and nothing anywhere said so. Nothing said when
+    one dropped back out either, which is the failure this reports: an
+    unfitted position is the identity, and identity is indistinguishable from
+    "calibrated to zero" unless the absence is named.
+    """
+
+    by_pos: dict[str, float]
+    """Position group -> the additive correction a nailed starter takes."""
+
+    fitted_positions: list[str]
+    """The keys of ``by_pos``, in ``GKP DEF MID FWD`` order."""
+
+    missing: list[str]
+    """Which of the four groups carry no fitted delta, in the same order."""
+
+    min_rows: int
+    """The floor a group must clear to be fitted at all — the number the tab
+    quotes when it says why a position is absent."""
+
+    saved_at: str | None
+    """From the model's own ``.meta.json`` sidecar, or ``None`` when there is
+    none: an artifact old enough to predate the sidecar still renders."""
+
+
+class TeamModelHealth(BaseModel):
+    """The week's goals-conceded band, read off the banked components.
+
+    v19g §2.2: over GW4-6 the raw ``p_cs_model`` spanned 0.085-0.957 and every
+    GW6 club-fixture carried ``odds_weight = 0``, so a third of the horizon
+    was priced on the unbounded team model with no market to blend against.
+    The clip itself is replay-gated (v20); naming the band and the zero-odds
+    count costs nothing and is what makes the drift visible in the meantime.
+    """
+
+    gw: int
+    """The newest gameweek in the file, which is the week these numbers
+    describe."""
+
+    min_e_gc_model: float
+    max_p_cs_model: float
+    """The two ends the model actually reached this week. A minimum expected
+    goals-conceded near zero and a clean-sheet probability near one are the
+    same fixture seen twice."""
+
+    fixtures: int
+    """Club-fixtures after de-duplication, not player rows."""
+
+    zero_odds_fixtures: int
+    """How many of those were priced with no market at all — ``odds_weight``
+    zero or absent."""
+
+
 class LaunchdHealth(BaseModel):
     log: str
     present: bool
@@ -1155,6 +1212,16 @@ class Health(BaseModel):
     # File mtimes say when the ingest ran; this says what it got.
     data_through_gw: int | None = None
     models: list[ModelHealth]
+    calibration: CalibrationHealth | None = None
+    """The fitted EP calibration's deltas, or ``None`` when no calibration
+    artifact is on disk (v19g §2.1). Absent is a real state — a clone that has
+    never trained — and it is not the same news as a calibration fitted on
+    three positions, which is why the four-way ``missing`` list travels with
+    the values rather than being inferred from a short dict at the page."""
+    team_model: TeamModelHealth | None = None
+    """The newest banked components' goals-conceded band (v19g §2.2), or
+    ``None`` when nothing has been banked or the file predates the model
+    columns."""
     launchd: LaunchdHealth
     jobs: list[JobHealth]
     """Every installed plist and whether it has run lately (v19a §2.3).

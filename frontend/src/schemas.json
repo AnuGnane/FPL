@@ -513,6 +513,56 @@
    "title": "CalibrationHead",
    "type": "object"
   },
+  "CalibrationHealth": {
+   "description": "The fitted EP calibration, one delta per position group (v19g \u00a72.1).\n\nA position is fitted only once it has ``min_rows`` 60-minute appearances\n(``models/calibrate.py``, ``MIN_ROWS``), so the GKP row arrived by accrual\npart-way through a season and nothing anywhere said so. Nothing said when\none dropped back out either, which is the failure this reports: an\nunfitted position is the identity, and identity is indistinguishable from\n\"calibrated to zero\" unless the absence is named.",
+   "properties": {
+    "by_pos": {
+     "additionalProperties": {
+      "type": "number"
+     },
+     "description": "Position group -> the additive correction a nailed starter takes.",
+     "type": "object"
+    },
+    "fitted_positions": {
+     "description": "The keys of ``by_pos``, in ``GKP DEF MID FWD`` order.",
+     "items": {
+      "type": "string"
+     },
+     "type": "array"
+    },
+    "min_rows": {
+     "description": "The floor a group must clear to be fitted at all \u2014 the number the tab\nquotes when it says why a position is absent.",
+     "type": "integer"
+    },
+    "missing": {
+     "description": "Which of the four groups carry no fitted delta, in the same order.",
+     "items": {
+      "type": "string"
+     },
+     "type": "array"
+    },
+    "saved_at": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "description": "From the model's own ``.meta.json`` sidecar, or ``None`` when there is\nnone: an artifact old enough to predate the sidecar still renders."
+    }
+   },
+   "required": [
+    "by_pos",
+    "fitted_positions",
+    "min_rows",
+    "missing",
+    "saved_at"
+   ],
+   "title": "CalibrationHealth",
+   "type": "object"
+  },
   "CategoryMetrics": {
    "properties": {
     "mae": {
@@ -8140,6 +8190,39 @@
    "title": "StandingRow",
    "type": "object"
   },
+  "TeamModelHealth": {
+   "description": "The week's goals-conceded band, read off the banked components.\n\nv19g \u00a72.2: over GW4-6 the raw ``p_cs_model`` spanned 0.085-0.957 and every\nGW6 club-fixture carried ``odds_weight = 0``, so a third of the horizon\nwas priced on the unbounded team model with no market to blend against.\nThe clip itself is replay-gated (v20); naming the band and the zero-odds\ncount costs nothing and is what makes the drift visible in the meantime.",
+   "properties": {
+    "fixtures": {
+     "description": "Club-fixtures after de-duplication, not player rows.",
+     "type": "integer"
+    },
+    "gw": {
+     "description": "The newest gameweek in the file, which is the week these numbers\ndescribe.",
+     "type": "integer"
+    },
+    "max_p_cs_model": {
+     "description": "The two ends the model actually reached this week. A minimum expected\ngoals-conceded near zero and a clean-sheet probability near one are the\nsame fixture seen twice.",
+     "type": "number"
+    },
+    "min_e_gc_model": {
+     "type": "number"
+    },
+    "zero_odds_fixtures": {
+     "description": "How many of those were priced with no market at all \u2014 ``odds_weight``\nzero or absent.",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "fixtures",
+    "gw",
+    "max_p_cs_model",
+    "min_e_gc_model",
+    "zero_odds_fixtures"
+   ],
+   "title": "TeamModelHealth",
+   "type": "object"
+  },
   "TickerCell": {
    "properties": {
     "difficulty": {
@@ -8675,6 +8758,18 @@
      },
      "type": "array"
     },
+    "calibration": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/CalibrationHealth"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "The fitted EP calibration's deltas, or ``None`` when no calibration\nartifact is on disk (v19g \u00a72.1). Absent is a real state \u2014 a clone that has\nnever trained \u2014 and it is not the same news as a calibration fitted on\nthree positions, which is why the four-way ``missing`` list travels with\nthe values rather than being inferred from a short dict at the page."
+    },
     "core_insights": {
      "anyOf": [
       {
@@ -8795,10 +8890,23 @@
      ],
      "default": null,
      "description": "Players per position the solver may consider, on top of the ones you own.\n\nNamed for what it is on the wire \u2014 a solver pool \u2014 since a schema field\ncarries no TOML section with it. The value is\n``config_in_force().solver_top_n()``'s, so it is what an actual solve\nwould get rather than what the file says."
+    },
+    "team_model": {
+     "anyOf": [
+      {
+       "$ref": "#/definitions/TeamModelHealth"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "The newest banked components' goals-conceded band (v19g \u00a72.2), or\n``None`` when nothing has been banked or the file predates the model\ncolumns."
     }
    },
    "required": [
     "artifacts",
+    "calibration",
     "core_insights",
     "data",
     "data_through_gw",
@@ -8811,7 +8919,8 @@
     "season_config",
     "season_ingested",
     "season_ok",
-    "solver_top_n"
+    "solver_top_n",
+    "team_model"
    ],
    "title": "WireHealth",
    "type": "object"
