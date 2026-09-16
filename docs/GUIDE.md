@@ -1,7 +1,7 @@
 # The gaffer guide
 
 *A tour of everything this project does, how it got here, and how to use it.
-Last updated 2026-09-16, after v19b (the loop closed) merged. The
+Last updated 2026-09-16, after v19c (the phone) merged. The
 README covers setup and reference; this document is for understanding. If you
 only read one section, read §12: it is the current to-do list.*
 
@@ -19,7 +19,7 @@ only read one section, read §12: it is the current to-do list.*
 8. [Everything the CLI can do](#8-everything-the-cli-can-do)
 9. [The data it collects and why](#9-the-data-it-collects-and-why)
 10. [How the project measures itself](#10-how-the-project-measures-itself)
-11. [The version history, v1 to v19b](#11-the-version-history-v1-to-v19b)
+11. [The version history, v1 to v19c](#11-the-version-history-v1-to-v19c)
 12. [What is pending and what was left open](#12-what-is-pending-and-what-was-left-open)
 13. [Troubleshooting](#13-troubleshooting)
 
@@ -679,7 +679,7 @@ Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 `reports/evaluation.json`, and the Model hub.
 
-## 11. The version history, v1 to v19b
+## 11. The version history, v1 to v19c
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
 reviewed. Every cycle ran the same way, and knowing the shape tells you where
@@ -1125,6 +1125,18 @@ explorer no longer fires a fetch before the gameweek is known. The chip
 pair's What-If arm was not taken: a pair is two chips and the What-If
 request carries one. No served number moved. Golden 62 passed, 0 skipped;
 inner loop 4387; frontend 1135.
+
+**v19c — the phone** (2026-09-16). The phone layout designed rather than
+merely not broken: a six-item tab bar with the theme control moved above
+the freshness strip and the home indicator's inset respected; an icon-only
+rail between 768 and 1023 px so a tablet stops double-scrolling; the
+Players table allowed past the 1180 px column above 1440; a skip link, an
+`id` on the main landmark and card headings at h2; and the four tables a
+Thursday reader meets on a phone — moves, squad, ladder rungs, the board's
+columns — rendered as stacked rows (`kit/StackedRows`) under the mobile
+switch, their desktop markup untouched byte for byte. Screenshots now come
+at three widths (`WIDTHS="1400 820 375"`). No served number moved; the
+twelve desktop pairs were identical. Frontend 1149.
 
 The suite grew from nothing to **4,509 Python + 1,098 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above

@@ -18,9 +18,9 @@ rulings on 2026-09-15; plan `plans/2026-09-15-v19-programme.md`; tracker
 sub-cycles aimed at the site's surface and the weekly loop, the model's
 replay-free half and code health, none changing a served number; the
 replay-gated model arms are costed in the design's §4 and deferred to
-v20. v19a (the week's clock and health) merged `8354a21` and v19b (the loop
-closed) `4927a15`, both 2026-09-16; the ledger is in the v19 block below.
-Next: v19c, the phone.
+v20. v19a (the week's clock and health) `8354a21`, v19b (the loop closed)
+`4927a15` and v19c (the phone) `dc7cd6f` are merged, all 2026-09-16; the
+ledger is in the v19 block below. Next: v19d, This Week readable.
 
 **The v18 polish programme is complete** (design
 `specs/2026-09-12-v18-polish-design.md`, plan
@@ -151,6 +151,7 @@ number and needs its own gate.
 |---|---|---|---|---|---|
 | v19a — the week's clock and health | `8354a21` | 2026-09-16 | 4531 | 1114 | ruling 5 corrected to a schedule change; strip pairs compared below the strip |
 | v19b — the loop closed | `4927a15` | 2026-09-16 | 4535 | 1135 | the chip pair's arm not taken; the real-run line waits on Thursday's job |
+| v19c — the phone | `dc7cd6f` | 2026-09-16 | 4535 | 1149 | StackedRows beside the hand tables, not DataTable; desktop pairs identical |
 
 ### The v18 polish programme (planned 2026-09-12; **complete**, all eight merged 2026-09-12 → 14)
 
@@ -239,6 +240,19 @@ usually the thing you cannot test*, not the lines: every card of the seven was
 found by asking what a test would have to fake.
 
 ## Shipped
+
+### v19c — the phone (done, merged `dc7cd6f` 2026-09-16)
+Six-item tab bar (`ThemeToggle` above the strip; `pb-[calc(0.25rem+env(
+safe-area-inset-bottom))]`; `viewport-fit=cover`); `useIsCompact` and an
+icon-only rail at 768–1023 (`data-mode="rail"`); `useIsWide` (1441+) lifts
+the 1180 cap on Players alone; a skip link in `index.html`, `id="main"`,
+`Card level=3` defaulting to h2; `kit/StackedRows` rendered by the
+moves, squad, ladder and board under `useIsMobile()`, the `<table>` markup
+untouched (§2.1 corrected from `DataTable`, whose desktop mode carries
+sort headers and an expand column); `shots.sh` at three widths with the
+installed shell build. Rails: six-item bar, rail mode, no `pb-16`, no
+table at 375 in the four cards. Gate: `npm run check` 1149, twelve desktop
+pairs byte-identical, 36 phone/tablet shots approved. Pins 51 / 12 / 62.
 
 ### v19b — the loop closed (done, merged `4927a15` 2026-09-16)
 `weekly_run` banks a price reading before the solve through one seam,
