@@ -12,6 +12,13 @@
  * eleven narrowings of the `Wire*` models — each one an `Omit` (or, for
  * `PlayerRef`, a `Partial`) of its generated twin, so the shared fields are
  * described in exactly one place.
+ *
+ * Audited name by name in v19h §2.1 against the generated half. Nothing here
+ * had a generated twin to be deleted in favour of — every interface either
+ * types a `dict[str, Any]` the schema cannot see into, or narrows a `Wire*`
+ * model, and every one now says which in a line above it. The two that were a
+ * plain copy of literals the generated file already carries, `ReviewLaneName`
+ * and `ReviewLabel`, are read off `ReviewLane` instead.
  */
 
 // The generated half: every pydantic response model, compiled from
@@ -53,6 +60,9 @@ export interface PlayerRef extends Partial<WirePlayerRef> {
   frequency?: number
 }
 
+/** One row of `Advice.move_frequencies`, which rides inside the artifact's
+ *  `dict[str, Any]`: the server declares no model for it, so there is no
+ *  generated twin to narrow. */
 export interface MoveFrequency {
   kind: 'buy' | 'sell' | 'hit' | 'chip' | 'captain' | 'no_transfer'
   code: number
@@ -62,6 +72,8 @@ export interface MoveFrequency {
   frequency: number
 }
 
+/** The scenario sweep's own block inside the artifact — again a shape the
+ *  server never validates, so it is described here or nowhere. */
 export interface ScenarioReport {
   n: number
   completed: number
@@ -73,6 +85,7 @@ export interface ScenarioReport {
                        frequency: number }>
 }
 
+/** The league stance inside the artifact, likewise undeclared on the wire. */
 export interface Strategy {
   lam: number
   gap: number
@@ -99,6 +112,10 @@ export interface AdviceChipRow {
   note?: string | null
 }
 
+/** The advice artifact itself. `AdviceLatest.advice` is `dict[str, Any]` —
+ *  the artifact goes to the browser unvalidated — so every field below is a
+ *  claim about what `advise` writes, not about what a response model
+ *  promises, and the optional ones say which cycle added them. */
 export interface Advice {
   gw: number
   xi: PlayerRef[]
@@ -234,6 +251,9 @@ export interface HealthData extends Omit<WireHealth, 'model_health'> {
   model_health: Record<string, unknown> | null
 }
 
+/** The evaluation's stratified table, keyed by category. `CategoryMetrics` is
+ *  the generated row; only the mapping is hand-written, because the server
+ *  declares the table as a `dict` and the keys are OpenFPL's categories. */
 export type StratifiedTable = Record<string, CategoryMetrics>
 
 /** `WireCalibrationReport` with `excluded` narrowed. The server declares it as
@@ -281,12 +301,16 @@ export interface PlanTimeline
   alternatives?: PlanAlternative[]
 }
 
+/** Narrows `LeagueWhatIfPin.event`, which the wire types as a bare `string`:
+ *  the three the router accepts, so a typo is a compile error and not a 422. */
 export type LeagueWhatIfEvent = 'haul' | 'blank' | 'score'
 
-export type ReviewLaneName = 'transfers' | 'captaincy' | 'bench' | 'chip'
+/** v19h §2.1: both were a second copy of unions `ReviewLane` already declares
+ *  inline, so they are read off it — the names the tree imports stay, and the
+ *  literals now live in exactly one place, the generated file. */
+export type ReviewLaneName = ReviewLane['lane']
 
-export type ReviewLabel =
-  'Brilliant' | 'Good' | 'Aligned' | 'Inaccuracy' | 'Blunder'
+export type ReviewLabel = NonNullable<ReviewLane['label']>
 
 /** `WireReviewSummary` with `best` and `worst` narrowed. The server declares
  *  both as `dict[str, Any] | None`; each is a graded lane with the gameweek it
