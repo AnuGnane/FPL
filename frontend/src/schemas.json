@@ -205,6 +205,83 @@
    "title": "ArtifactItem",
    "type": "object"
   },
+  "AskAnswer": {
+   "description": "The job record's ``result`` for ``POST /api/ask`` (v19f \u00a72.2).\n\nThe answer is never banked, so this shape exists only as the job's\nresult: the frontend reads it through ``useJob`` and forgets it.",
+   "properties": {
+    "answer": {
+     "description": "The prose, or ``\"\"`` when the command did not answer.",
+     "type": "string"
+    },
+    "at": {
+     "description": "When the answer was made, UTC.",
+     "type": "string"
+    },
+    "gw": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "The gameweek whose facts the answer was drawn from."
+    },
+    "model_command": {
+     "description": "The command's first word, as the brief records it.",
+     "type": "string"
+    },
+    "offences": {
+     "description": "``check_brief``'s verdict; non-empty means the answer is not trusted.",
+     "items": {
+      "type": "string"
+     },
+     "type": "array"
+    },
+    "question": {
+     "description": "The question as asked, stripped.",
+     "type": "string"
+    }
+   },
+   "required": [
+    "answer",
+    "at",
+    "gw",
+    "model_command",
+    "offences",
+    "question"
+   ],
+   "title": "AskAnswer",
+   "type": "object"
+  },
+  "AskRequest": {
+   "description": "The body of ``POST /api/ask`` (v19f \u00a72.2).",
+   "properties": {
+    "gw": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "The gameweek to answer about; ``None`` is the newest on disk."
+    },
+    "question": {
+     "description": "The manager's own words, refused over 500 characters.",
+     "type": "string"
+    }
+   },
+   "required": [
+    "gw",
+    "question"
+   ],
+   "title": "AskRequest",
+   "type": "object"
+  },
   "BackupHealth": {
    "properties": {
     "bytes": {

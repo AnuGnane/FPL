@@ -25,6 +25,7 @@ from gaffer.web.job_kinds import JOB_KINDS
 from gaffer.web.jobs import JobRegistry, JobRunner
 from gaffer.web.routers import (
     advice,
+    ask,
     assets,
     brief,
     chips,
@@ -104,6 +105,7 @@ def create_app(*, token: str | None = None) -> FastAPI:
         return {"ok": True, "app": "gaffer"}
 
     app.include_router(advice.router)
+    app.include_router(ask.router)
     app.include_router(assets.router)
     app.include_router(brief.router)
     app.include_router(chips.router)

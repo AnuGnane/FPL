@@ -93,6 +93,57 @@ export interface ArtifactItem {
   name: string
 }
 /**
+ * The job record's ``result`` for ``POST /api/ask`` (v19f §2.2).
+ *
+ * The answer is never banked, so this shape exists only as the job's
+ * result: the frontend reads it through ``useJob`` and forgets it.
+ *
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "AskAnswer".
+ */
+export interface AskAnswer {
+  /**
+   * The prose, or ``""`` when the command did not answer.
+   */
+  answer: string
+  /**
+   * When the answer was made, UTC.
+   */
+  at: string
+  /**
+   * The gameweek whose facts the answer was drawn from.
+   */
+  gw: number | null
+  /**
+   * The command's first word, as the brief records it.
+   */
+  model_command: string
+  /**
+   * ``check_brief``'s verdict; non-empty means the answer is not trusted.
+   */
+  offences: string[]
+  /**
+   * The question as asked, stripped.
+   */
+  question: string
+}
+/**
+ * The body of ``POST /api/ask`` (v19f §2.2).
+ *
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "AskRequest".
+ */
+export interface AskRequest {
+  /**
+   * The gameweek to answer about; ``None`` is the newest on disk.
+   */
+  gw: number | null
+  /**
+   * The manager's own words, refused over 500 characters.
+   */
+  question: string
+}
+/**
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "BackupHealth".
  */

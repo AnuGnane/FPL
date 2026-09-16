@@ -2459,3 +2459,36 @@ class SettingWrite(BaseModel):
     value: Any = None
     """``None`` removes the key from the overlay, so the value falls back to
     ``config.toml`` or the dataclass default."""
+
+
+# --- This Week: the question box (v19f §2.2) -------------------------------
+
+
+class AskRequest(BaseModel):
+    """The body of ``POST /api/ask`` (v19f §2.2)."""
+
+    question: str
+    """The manager's own words, refused over 500 characters."""
+    gw: int | None = None
+    """The gameweek to answer about; ``None`` is the newest on disk."""
+
+
+class AskAnswer(BaseModel):
+    """The job record's ``result`` for ``POST /api/ask`` (v19f §2.2).
+
+    The answer is never banked, so this shape exists only as the job's
+    result: the frontend reads it through ``useJob`` and forgets it.
+    """
+
+    gw: int | None = None
+    """The gameweek whose facts the answer was drawn from."""
+    question: str
+    """The question as asked, stripped."""
+    answer: str
+    """The prose, or ``""`` when the command did not answer."""
+    offences: list[str] = Field(default_factory=list)
+    """``check_brief``'s verdict; non-empty means the answer is not trusted."""
+    model_command: str
+    """The command's first word, as the brief records it."""
+    at: str
+    """When the answer was made, UTC."""
