@@ -69,7 +69,7 @@ def run_train_and_advise(cfg: "Config | None" = None) -> dict:
     ``cfg`` defaults to ``None`` — that is, to ``load_config()`` — so the
     zero-argument call the runner makes is untouched. The keyword exists
     for ``advise-fast``, which hands it ``scenarios_n=0``. Exactly what the
-    launchd Thursday run does, less the price bank the plist runs first.
+    launchd Thursday run does, price bank included since v19b §2.1.
     """
     from gaffer.config import load_config
     from gaffer.pipeline import weekly_run

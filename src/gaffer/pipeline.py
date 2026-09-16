@@ -33,6 +33,9 @@ class RunResult:
     brief: dict
     trained: bool
     training_rows: int | None
+    prices_banked: int | None = None
+    """v19b §2.1: rows the price step wrote before the solve, ``None`` when
+    the step was off or could not bank (a note in the log, never a failure)."""
 
     def record(self) -> dict:
         """``{"gw", "expected_pts", "brief"}`` — byte-for-byte what the
@@ -41,10 +44,37 @@ class RunResult:
                 "brief": self.brief}
 
 
+def bank_price_reading(client: "FPLClient | None" = None, *,
+                       log: Callable[[str], None] = print) -> int | None:
+    """Bank today's price reading, the way the Thursday plist's ``gaffer
+    prices`` does, so a browser or CLI solve sees a same-day price table.
+
+    v19b §2.1 (ruling 4). Until v19b only the plist banked prices before the
+    solve, so a Friday re-run from the web saw Thursday's table and an
+    untimed sale — GUIDE §12.4's first residual. Never raises: the price
+    table is an input the solve can do without, which is why the plist
+    chained the two commands with ``;`` rather than ``&&``. The bootstrap is
+    fetched once more rather than threaded out of ``run_advise``, because a
+    same-day re-bank replaces the day's rows (``append_prices``) and a
+    second fetch is cheaper than a second seam through the advice path.
+    """
+    try:
+        from gaffer.api.client import FPLClient
+        from gaffer.data.bootstrap import build_players
+        from gaffer.price_log import bank_prices
+
+        players = build_players((client or FPLClient()).get_bootstrap())
+        return bank_prices(players)
+    except Exception as exc:  # noqa: BLE001 — an input the solve can do without
+        log(f"price reading not banked: {exc}")
+        return None
+
+
 def weekly_run(cfg: "Config", *, client: "FPLClient | None" = None,
-               train: bool = True,
+               train: bool = True, bank_prices: bool = True,
                log: Callable[[str], None] = print) -> RunResult:
-    """Train (when asked), advise, render, brief.
+    """Train (when asked), bank prices (unless told not to), advise, render,
+    brief.
 
     Train, advise and render raise as they always have — ``SystemExit`` for
     a missing model before any network call, ``GafferError`` for no next
@@ -65,6 +95,10 @@ def weekly_run(cfg: "Config", *, client: "FPLClient | None" = None,
     from gaffer.report.render import render_report
     from gaffer.tracking import latest_health
 
+    # v19b §2.1: before the solve, after training, so the price line the
+    # trace reads is today's. A module-level call so the golden harness and
+    # the unit tests stub one name (``gaffer.pipeline.bank_price_reading``).
+    prices = bank_price_reading(client, log=log) if bank_prices else None
     advice = run_advise(cfg, client=client)
     report_path = Path(render_report(advice, model_health=latest_health()))
     # v16 §6.5 (plan R1), now v17d §2.2: the brief is chained here, after
@@ -78,4 +112,4 @@ def weekly_run(cfg: "Config", *, client: "FPLClient | None" = None,
                  "note": f"brief not written: {exc}", "path": None}
         log(brief["note"])
     return RunResult(advice=advice, report_path=report_path, brief=brief,
-                     trained=trained, training_rows=rows)
+                     trained=trained, training_rows=rows, prices_banked=prices)

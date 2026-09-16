@@ -24,6 +24,11 @@ def _wire(monkeypatch, calls, *, advice=None, brief=None, run_advise=None):
     # load_training_frame` would otherwise bind the stub below for the rest
     # of the process, once the first golden-marked test imports it live.
     import gaffer.advise  # noqa: F401
+    # v19b §2.1: the price step is one module-level name, stubbed here so
+    # no unit test reaches for a bootstrap.
+    monkeypatch.setattr("gaffer.pipeline.bank_price_reading",
+                        lambda client=None, log=print:
+                        calls.append(("prices", client)) or 3)
     monkeypatch.setattr("gaffer.models.train.load_training_frame",
                         lambda: ([1, 2, 3], "team_frame", None))
     monkeypatch.setattr("gaffer.models.train.train_all",
@@ -40,18 +45,22 @@ def _wire(monkeypatch, calls, *, advice=None, brief=None, run_advise=None):
                             brief or {"gw": gw, "written": True, "note": None, "path": "p"}))
 
 
-def test_the_steps_run_in_order_train_advise_render_brief(monkeypatch):
+def test_the_steps_run_in_order_train_prices_advise_render_brief(monkeypatch):
+    """v19b §2.1: the price reading is banked after training and before the
+    solve, so the trace's price line is today's."""
     from gaffer.pipeline import weekly_run
 
     calls = []
     _wire(monkeypatch, calls)
     cfg = object()
     out = weekly_run(cfg)
-    assert [c[0] for c in calls] == ["train", "advise", "render", "brief"]
+    assert [c[0] for c in calls] == ["train", "prices", "advise", "render",
+                                     "brief"]
+    assert out.prices_banked == 3
     assert calls[0] == ("train", 3, "team_frame", True)
     assert out.trained is True and out.training_rows == 3
     assert out.advice.gw == 4 and out.report_path == Path("reports/gw4-report.html")
-    assert calls[2][2] == {"h": 1}  # the latest health reaches the render
+    assert calls[3][2] == {"h": 1}  # the latest health reaches the render
 
 
 def test_train_false_skips_the_train_step_and_says_so(monkeypatch):
@@ -60,7 +69,7 @@ def test_train_false_skips_the_train_step_and_says_so(monkeypatch):
     calls = []
     _wire(monkeypatch, calls)
     out = weekly_run(object(), train=False)
-    assert [c[0] for c in calls] == ["advise", "render", "brief"]
+    assert [c[0] for c in calls] == ["prices", "advise", "render", "brief"]
     assert out.trained is False and out.training_rows is None
 
 
@@ -71,7 +80,7 @@ def test_the_client_reaches_run_advise(monkeypatch):
     _wire(monkeypatch, calls)
     cfg, client = object(), object()
     weekly_run(cfg, client=client, train=False)
-    assert calls[0] == ("advise", cfg, client)
+    assert calls[1] == ("advise", cfg, client)
 
 
 def test_the_brief_gets_the_gw_and_the_config_in_force(monkeypatch):
@@ -95,7 +104,8 @@ def test_the_brief_does_not_fire_when_advise_raises(monkeypatch):
     _wire(monkeypatch, calls, run_advise=boom)
     with pytest.raises(RuntimeError):
         weekly_run(object(), train=False)
-    assert [c[0] for c in calls] == []
+    # v19b: the price step precedes the solve, so it is the one call banked.
+    assert [c[0] for c in calls] == ["prices"]
 
 
 def test_a_brief_that_raises_is_a_note_not_a_failed_run(monkeypatch):
@@ -112,6 +122,65 @@ def test_a_brief_that_raises_is_a_note_not_a_failed_run(monkeypatch):
     assert out.brief == {"gw": 4, "written": False,
                          "note": "brief not written: import failed", "path": None}
     assert logged == ["brief not written: import failed"]
+
+
+def test_bank_prices_false_skips_the_price_step_and_says_nothing(monkeypatch):
+    """The golden harness and a hand re-run that already banked today pass
+    ``bank_prices=False``; the step is absent, not a note (v19b §2.1)."""
+    from gaffer.pipeline import weekly_run
+
+    calls, logged = [], []
+    _wire(monkeypatch, calls)
+    out = weekly_run(object(), train=False, bank_prices=False,
+                     log=logged.append)
+    assert [c[0] for c in calls] == ["advise", "render", "brief"]
+    assert out.prices_banked is None
+    assert not [line for line in logged if "price" in line]
+
+
+def test_the_price_step_gets_the_client_the_run_was_handed(monkeypatch):
+    from gaffer.pipeline import weekly_run
+
+    calls = []
+    _wire(monkeypatch, calls)
+    client = object()
+    weekly_run(object(), client=client, train=False)
+    assert ("prices", client) in calls
+
+
+def test_a_price_reading_that_cannot_be_banked_is_a_note_not_a_failed_run():
+    """``bank_price_reading`` never raises (v19b §2.1): the price table is an
+    input the solve can do without, which is why the plist chained the two
+    commands with ``;``."""
+    from gaffer.pipeline import bank_price_reading
+
+    class Broken:
+        def get_bootstrap(self):
+            raise ConnectionError("fpl is down")
+
+    logged = []
+    assert bank_price_reading(Broken(), log=logged.append) is None
+    assert logged == ["price reading not banked: fpl is down"]
+
+
+def test_the_price_step_banks_what_the_bootstrap_says(monkeypatch):
+    """The happy path through the real seams: the players frame built from
+    the client's bootstrap reaches ``bank_prices`` and its count comes back."""
+    from gaffer import pipeline
+
+    seen = {}
+    monkeypatch.setattr("gaffer.data.bootstrap.build_players",
+                        lambda raw: (seen.__setitem__("raw", raw), "players")[1])
+    monkeypatch.setattr("gaffer.price_log.bank_prices",
+                        lambda players, day=None:
+                        (seen.__setitem__("players", players), 7)[1])
+
+    class Client:
+        def get_bootstrap(self):
+            return {"elements": []}
+
+    assert pipeline.bank_price_reading(Client()) == 7
+    assert seen == {"raw": {"elements": []}, "players": "players"}
 
 
 def test_the_train_step_logs_the_rows_it_trained_on(monkeypatch):
@@ -279,6 +348,11 @@ def _parity_run(root: Path, monkeypatch, entry: str):
     client = gc.RecordedClient()
     monkeypatch.setattr("gaffer.config.load_config", lambda path="config.toml": cfg)
     monkeypatch.setattr("gaffer.advise.FPLClient", lambda: client)
+    # v19b §2.1: the price step is stubbed too — the board's price log is a
+    # recorded input, and a same-day re-bank into the scratch tree would
+    # move the trace's price line under the parity assertion.
+    monkeypatch.setattr("gaffer.pipeline.bank_price_reading",
+                        lambda client=None, log=print: None)
     monkeypatch.setattr("gaffer.models.train.load_training_frame", lambda: ([], None, None))
     monkeypatch.setattr("gaffer.models.train.train_all", lambda *a, **k: None)
     with gc.golden_cwd(root, client):
