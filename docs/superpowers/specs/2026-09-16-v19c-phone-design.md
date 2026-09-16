@@ -121,6 +121,35 @@ when more than one width is asked for, the 1400 name unchanged when not.
 6. `hubs/responsive.test.tsx`'s existing "scrolls nothing sideways"
    rules still pass at 375 with the new layout.
 
-## 4. Outcome
+## 4. Outcome (2026-09-16, gate run by the orchestrator)
 
-Filled at the gate.
+Commits on `v19c-phone`: `f0aa8e9` spec; `3c3cf3d` the shell (tab bar,
+rail, wide Players past 1440, skip link, `Card` levels, the three rails,
+`shots.sh` widths and its shell path); `13d8024` the bar's 4 px restored
+beside the inset; `189a1e1` §2.1 corrected; `4e2fb8f` `StackedRows` and
+the four tables under the mobile switch.
+
+| Gate line | Result |
+|---|---|
+| 1 npm run check | exit 0, `Tests 1149 passed \| 1 skipped (1150)`, `0 errors, 8 warnings` |
+| 2 fetch rails | untouched |
+| 3 desktop pairs | twelve pairs at 1400, both themes, 15:07:59–15:08:22: **all byte-identical**, whole image (not only below the strip) |
+| 4 phone and tablet | 36 shots per set (six hubs × two themes × three widths), the after set sent to the user for approval; before set kept for the record |
+| 5 mutations | the toggle back in the bar (one rail fails); the rail's breakpoint moved (two fail); `pb-16` planted in Live (the tokens rule names the line); the `useIsMobile` switch removed from `MovesCard` (the stacked rail fails alone) |
+| 6 existing responsive rules | pass at 375 with the new layout |
+
+**Corrections on the way.** §2.1 was rewritten before task 2 ran:
+`DataTable`'s desktop mode carries sortable headers and an expand
+column, so the four tables keep their hand markup and render
+`StackedRows` under `useIsMobile()` instead. The 1441 px guard on the
+Players opt-out was needed (at 1400 the 1180 cap binds by 20 px). The
+squad table has no XI/bench grouping to carry: `ThisWeek` hands it one
+flat array, so the stacked rows keep the served order. The board's
+columns never drew a `<table>`; its 375 rail asserts the stacked list.
+
+**Residuals, recorded:** the skip link's classes are compiled from
+`index.html` because Tailwind's Vite plugin scans it; a build that stops
+scanning `index.html` would silently lose them (a rule in `tokens.test.ts`
+could pin the link's presence, v19h). `responsive.test.tsx`'s `apiPost`
+now rejects by default, which the file's older tests relied on
+implicitly.
