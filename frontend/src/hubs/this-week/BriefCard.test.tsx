@@ -47,4 +47,11 @@ describe('BriefCard', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Write the brief' }))
     await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/api/brief', undefined))
   })
+
+  it('carries the question box at the foot of the card (v19f §2.3)', async () => {
+    serve(BRIEF)
+    render(<BriefCard />)
+    expect(await screen.findByLabelText('ask about this week')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Ask' })).toBeInTheDocument()
+  })
 })

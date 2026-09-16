@@ -4,6 +4,7 @@ import { useJob } from '../../api/useJob'
 import { Button, Callout, Card, JobButton } from '../../kit'
 import type { BriefPanel } from '../../types'
 import DigestCard from './DigestCard'
+import QuestionBox from './QuestionBox'
 
 /** The week, written (v16 §6). A brief that exists replaces the digest's
  *  prose; the two digest buttons stay. The button posts an anonymous job
@@ -66,6 +67,13 @@ export default function BriefCard() {
         Written from the banked facts and checked against them: every number
         and every name above is in the advice, the ladder or the ledger.
       </p>
+      {/* v19f §2.3: the second question belongs where the first was answered,
+          under a hairline so it reads as a continuation of the brief rather
+          than a card of its own. */}
+      <div className="mt-3 border-t border-border pt-3">
+        <h3 className="label mb-2">Ask</h3>
+        <QuestionBox modelCommand={panel.model_command} />
+      </div>
     </Card>
   )
 }
