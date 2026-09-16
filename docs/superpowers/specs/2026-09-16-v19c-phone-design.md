@@ -36,23 +36,21 @@ level).
 
 ### 2.1 Stacked rows for the four tables read on a phone
 
-`kit/table.ts` gains no stacked variant; the four tables move to
-`kit/DataTable.tsx`, whose card mode (`:104-166`, `collapse`) already
-stacks a row as its primary columns and a disclosure. The four, in the
-order a Thursday reader meets them: the moves table
-(`this-week/MovesCard.tsx:60`), the squad table
+Corrected before task 2 ran: `kit/DataTable.tsx`'s desktop mode renders
+sortable headers and an expand column, so moving a hand table onto it
+would change the 1400-wide paint, which this sub-cycle promises not to.
+Instead `kit/StackedRows.tsx` is a small component — a list of rows, each
+a heading line and up to four label/value pairs, in the ledger style
+(hairline between rows, no card) — and each of the four tables renders it
+under `useIsMobile()` and its existing `<table>` otherwise, so the desktop
+path is untouched byte for byte. The four, in the order a Thursday reader
+meets them: the moves table (`this-week/MovesCard.tsx`), the squad table
 (`this-week/SquadTable.tsx`), the ladder's rungs
-(`this-week/LadderCard.tsx:181`, whose `RungRow` keeps its keyboard
-toggle from v18f as the `expand` render), and the board's plan columns
-(`planning/PlannerBoard.tsx`, one `DataTable` per week column, `collapse`
-on). `DataTable`'s `collapse` reads `useIsMobile()` so the desktop
-markup is a `<table>` with the same classes as today; the implementer
-proves the 1400-wide render of each is unchanged by the screenshot pair
-before touching the next. Where `DataTable`'s column model cannot carry
-a cell (the moves table's IN/OUT chip, the squad table's tone chips),
-`render` does; where a table's markup carries something `DataTable` has
-no slot for, the implementer stops and says so rather than extending
-`DataTable` with a one-off prop.
+(`this-week/LadderCard.tsx`, whose `RungRow` toggle becomes the stacked
+row's disclosure on a phone), and the board's plan columns
+(`planning/PlannerBoard.tsx`). Each component keeps one source of truth
+for what a row says: the cells are computed once and handed to either
+rendering, so the phone cannot drift from the desktop.
 
 ### 2.2 The tab bar
 
@@ -97,7 +95,7 @@ move.
 ### 2.6 The rails
 
 `hubs/responsive.test.tsx` gains: the four named tables render no
-`<table>` at 375 (a `DataTable` in card mode); the tab bar has six
+`<table>` at 375 (`StackedRows`); the tab bar has six
 items and no theme toggle; the nav is `data-mode="rail"` at 900 and
 `sidebar` at 1400; `<main>` has `id="main"` and the skip link targets it.
 `kit/tokens.test.ts` gains one rule: no `pb-16` under `kit/` or `hubs/`
