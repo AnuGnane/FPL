@@ -53,7 +53,12 @@ def watchlist_path() -> Path:
 
 
 def load_watchlist() -> dict[int, dict]:
-    """``{code: {note, set_at}}``. Never raises.
+    """``{code: {note, set_at, starred_at}}``. Never raises.
+
+    A row with no ``starred_at`` reads it as its ``set_at`` (v19h §2.2): the
+    file has only ever carried the one date, and the write that stamped it is
+    the best evidence of when the star went on. Every reader therefore sees
+    both keys and none has to know the store predates the split.
 
     An absent file, a hand-edited one, a half-written one and a file whose
     top-level shape has drifted all come back as ``{}``. The print is what
@@ -73,8 +78,11 @@ def load_watchlist() -> dict[int, dict]:
         for code, row in rows.items():
             if not isinstance(row, dict):
                 continue
+            set_at = str(row.get("set_at") or "")
             out[int(code)] = {"note": str(row.get("note") or ""),
-                              "set_at": str(row.get("set_at") or "")}
+                              "set_at": set_at,
+                              "starred_at": str(row.get("starred_at")
+                                                or set_at)}
         return out
     except Exception as exc:  # noqa: BLE001 — a bad store is an empty one
         print(f"watchlist store unreadable, ignoring it: {exc}")
@@ -83,6 +91,9 @@ def load_watchlist() -> dict[int, dict]:
 
 def save_watchlist(rows: dict[int, dict]) -> Path:
     """Write the whole store atomically.
+
+    Every key the row carries goes to disk, which since v19h §2.2 is both
+    dates: ``starred_at`` as well as ``set_at``.
 
     ``overrides.save_overrides``'s idiom. An empty store is written as an
     empty object rather than deleted: a reader cannot tell an absent file from
@@ -107,11 +118,19 @@ def watch(code: int, *, note: str | None = None, known_codes=None) -> dict:
     """Star ``code``. ``note`` is a tri-state, and that is the whole point.
 
     ``None`` — the default, and what a caller that only wants the star sends —
-    leaves an existing row exactly as it is: the note *and* the ``set_at``,
-    because ``set_at`` is the star date and a click that said nothing about the
-    note has no business moving it. Re-starring a player who is already starred
-    is then idempotent. ``""`` clears the note; text sets it. Either of those
-    two is a write, and a write stamps the row with the time it happened.
+    leaves an existing row exactly as it is: the note *and* both dates, because
+    a click that said nothing about the note has no business moving either. Re-
+    starring a player who is already starred is then idempotent. ``""`` clears
+    the note; text sets it. Either of those two is a write, and a write stamps
+    ``set_at`` with the time it happened.
+
+    The row carries two dates because they answer two questions (v19h §2.2).
+    ``starred_at`` is written once, when the row is created, and is carried
+    through every later write untouched: it is how long the player has been on
+    the list, which is what the manager is asking when the row has no note.
+    ``set_at`` is the stamp of the write itself, so it says when the note was
+    last touched. One date had to mean both, and a note edited on Friday then
+    read as "watching since Friday" is the wrong answer to either question.
 
     It used to take one string with ``""`` for a default, which made "star him"
     and "clear his note" the same request — so the explorer's ☆, which sends no
@@ -139,8 +158,10 @@ def watch(code: int, *, note: str | None = None, known_codes=None) -> dict:
     existing = rows.get(code)
     if note is None and existing is not None:
         return dict(existing)
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     row = {"note": str(note or ""),
-           "set_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+           "set_at": now,
+           "starred_at": str((existing or {}).get("starred_at") or now)}
     rows[code] = row
     save_watchlist(rows)
     return row

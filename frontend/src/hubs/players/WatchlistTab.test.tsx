@@ -37,8 +37,16 @@ vi.mock('../../api/client', () => ({
 
 const PANEL: WatchlistPanel = {
   rows: [
-    { code: 100, name: 'Salah', note: 'if he starts', set_at: '2026-09-01T10:00:00+00:00' },
-    { code: 200, name: 'Haaland', note: '', set_at: '2026-08-30T10:00:00+00:00' },
+    {
+      code: 100, name: 'Salah', note: 'if he starts',
+      set_at: '2026-09-01T10:00:00+00:00',
+      starred_at: '2026-08-10T10:00:00+00:00',
+    },
+    {
+      code: 200, name: 'Haaland', note: '',
+      set_at: '2026-08-30T10:00:00+00:00',
+      starred_at: '2026-08-12T10:00:00+00:00',
+    },
   ],
 }
 
@@ -123,13 +131,23 @@ describe('WatchlistTab', () => {
     })
   })
 
-  it('labels the date "noted", because saving a note resets it', async () => {
-    render(<WatchlistTab onChange={vi.fn()} />)
-    // One label per row, and the fixture has two — so `findAllByText`, which
-    // the plan wrote as `findByText` and which throws on the second match.
-    expect(await screen.findAllByText(/Noted/)).toHaveLength(2)
-    expect(screen.queryByText(/Watching since/)).toBeNull()
-  })
+  it('labels a row that has a note "noted", because saving a note resets it',
+    async () => {
+      // One label per row, and only the fixture's first row has a note — so
+      // `findAllByText`, which the plan wrote as `findByText` and which throws
+      // on the second match.
+      render(<WatchlistTab onChange={vi.fn()} />)
+      expect(await screen.findAllByText(/Noted 2026-09-01/)).toHaveLength(1)
+      expect(screen.queryByText(/Watching since/)).toBeNull()
+    })
+
+  it('labels a row with no note "starred", off the date the star went on',
+    async () => {
+      // v19h §2.2: `starred_at` is the older of the two dates and survives
+      // every later write, so it is what "how long have I watched him" means.
+      render(<WatchlistTab onChange={vi.fn()} />)
+      expect(await screen.findAllByText(/Starred 2026-08-12/)).toHaveLength(1)
+    })
 
   it('says what re-starring from the explorer does to a note', async () => {
     // Which, since the note tri-state landed server-side, is nothing. The old

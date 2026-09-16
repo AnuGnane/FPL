@@ -8439,13 +8439,18 @@
     },
     "set_at": {
      "type": "string"
+    },
+    "starred_at": {
+     "description": "When the star went on, carried unchanged through every later write, so\na row with no note can say how long it has been watched rather than when\nits note was last touched (v19h \u00a72.2).",
+     "type": "string"
     }
    },
    "required": [
     "code",
     "name",
     "note",
-    "set_at"
+    "set_at",
+    "starred_at"
    ],
    "title": "WatchRow",
    "type": "object"

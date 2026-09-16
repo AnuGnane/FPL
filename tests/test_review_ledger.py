@@ -94,6 +94,10 @@ class FakeClient:
 @pytest.fixture()
 def here(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
+    # v19h §2.2: the ledger is keyed by the season in force, and the cached
+    # config view outlives a chdir, so the season is pinned here rather than
+    # left to whatever an earlier test loaded.
+    monkeypatch.setattr("gaffer.config.config_in_force", lambda: CFG)
     monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")
     monkeypatch.setattr("gaffer.data.my_entry.RAW_LEAGUE",
                         tmp_path / "data/raw/league")
@@ -112,7 +116,8 @@ def test_the_ledger_starts_empty_rather_than_missing(here):
 def test_a_row_lands_under_reports_and_reads_back(here):
     append_ledger({"gw": 3, "my_points": 50})
     assert ledger_path() == REPORTS / "decision_ledger.json"
-    assert load_ledger() == [{"gw": 3, "my_points": 50}]
+    assert load_ledger() == [{"gw": 3, "my_points": 50,
+                              "season": "2026-27"}]
 
 
 def test_a_second_row_for_one_gameweek_replaces_the_first(here):
@@ -387,3 +392,37 @@ def test_a_lock_left_behind_by_a_dead_review_never_blocks_the_next_one(here):
     os.utime(R.lock_path(), (time.time() - 3600, time.time() - 3600))
     append_ledger({"gw": 4, "my_points": 60})
     assert [r["gw"] for r in load_ledger()] == [3, 4]
+
+
+def test_the_reader_returns_the_season_in_force_alone(here):
+    """v19h §2.2: a rollover makes GW1 ambiguous, and every reader of this
+    ledger means this season's GW1."""
+    ledger_path().write_text(json.dumps({"gws": [
+        {"gw": 1, "my_points": 40, "season": "2025-26"},
+        {"gw": 1, "my_points": 50, "season": "2026-27"}]}))
+    assert [r["my_points"] for r in load_ledger()] == [50]
+
+
+def test_a_row_with_no_season_reads_as_the_current_one(here):
+    """The file has only ever held one season, so a legacy row is this
+    season's row."""
+    ledger_path().write_text(json.dumps({"gws": [{"gw": 1, "my_points": 40}]}))
+    assert [r["gw"] for r in load_ledger()] == [1]
+
+
+def test_an_append_writes_the_season_key_onto_the_legacy_rows(here):
+    ledger_path().write_text(json.dumps({"gws": [{"gw": 1, "my_points": 40}]}))
+    append_ledger({"gw": 2, "my_points": 50})
+    banked = json.loads(ledger_path().read_text())["gws"]
+    assert [r["season"] for r in banked] == ["2026-27", "2026-27"]
+
+
+def test_a_re_review_replaces_within_its_season_and_not_across_it(here):
+    ledger_path().write_text(json.dumps({"gws": [
+        {"gw": 1, "my_points": 40, "season": "2025-26"},
+        {"gw": 1, "my_points": 50, "season": "2026-27"}]}))
+    append_ledger({"gw": 1, "my_points": 61})
+    banked = json.loads(ledger_path().read_text())["gws"]
+    assert sorted((r["season"], r["my_points"]) for r in banked) \
+        == [("2025-26", 40), ("2026-27", 61)]
+    assert [r["my_points"] for r in load_ledger()] == [61]

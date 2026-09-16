@@ -200,3 +200,59 @@ def test_a_second_writers_temp_file_survives_this_writers_unlink(monkeypatch):
     assert other["tmp"].exists(), "A's finally unlinked B's temp file"
     real_replace(other["tmp"], path)
     assert list(load_watchlist()) == [7]
+
+
+def test_a_new_star_carries_both_dates():
+    """v19h §2.2: the row is created with ``starred_at``, and on a first
+    write the two dates are the same moment."""
+    row = watch(11, note="presser")
+    assert row["starred_at"] == row["set_at"] != ""
+
+
+def test_a_note_edit_moves_set_at_and_leaves_starred_at_alone():
+    """The whole reason the two dates exist: the star date must survive every
+    later write, or "watching since" is really "noted on"."""
+    watch(11, note="one")
+    # Both dates are aged on disk, and to different values: a star re-stamped
+    # on every write would land in the same second as the first one and pass a
+    # test that only compared two fresh stamps.
+    stored = json.loads((artifacts.REPORTS / "watchlist.json").read_text())
+    stored["watchlist"]["11"]["set_at"] = "2020-01-01T00:00:00+00:00"
+    stored["watchlist"]["11"]["starred_at"] = "2019-06-06T06:00:00+00:00"
+    (artifacts.REPORTS / "watchlist.json").write_text(json.dumps(stored))
+    edited = watch(11, note="two")
+    assert edited["starred_at"] == "2019-06-06T06:00:00+00:00"
+    assert edited["set_at"] != "2020-01-01T00:00:00+00:00"
+
+
+def test_clearing_a_note_leaves_the_star_date_where_it_was():
+    stored_first = watch(11, note="one")
+    path = artifacts.REPORTS / "watchlist.json"
+    stored = json.loads(path.read_text())
+    stored["watchlist"]["11"]["starred_at"] = "2019-06-06T06:00:00+00:00"
+    path.write_text(json.dumps(stored))
+    assert stored_first["starred_at"]
+    cleared = watch(11, note="")
+    assert cleared["note"] == ""
+    assert cleared["starred_at"] == "2019-06-06T06:00:00+00:00"
+
+
+def test_a_row_written_before_the_split_reads_its_set_at_as_the_star_date():
+    """The migration: the file has only ever carried ``set_at``, which is the
+    best evidence there is of when the star went on."""
+    (artifacts.REPORTS / "watchlist.json").write_text(json.dumps(
+        {"watchlist": {"11": {"note": "old", "set_at": "2026-08-01T09:00:00"}}}))
+    assert load_watchlist()[11]["starred_at"] == "2026-08-01T09:00:00"
+
+
+def test_the_migrated_star_date_survives_the_next_write():
+    (artifacts.REPORTS / "watchlist.json").write_text(json.dumps(
+        {"watchlist": {"11": {"note": "old", "set_at": "2026-08-01T09:00:00"}}}))
+    assert watch(11, note="new")["starred_at"] == "2026-08-01T09:00:00"
+
+
+def test_save_watchlist_writes_both_dates_to_disk():
+    save_watchlist({11: {"note": "a", "set_at": "s", "starred_at": "t"}})
+    stored = json.loads((artifacts.REPORTS / "watchlist.json").read_text())
+    assert stored["watchlist"]["11"] == {"note": "a", "set_at": "s",
+                                         "starred_at": "t"}

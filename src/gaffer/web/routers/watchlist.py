@@ -43,7 +43,8 @@ def _panel() -> WatchlistPanel:
     return WatchlistPanel(rows=[
         WatchRow(code=code, name=resolved.get(code, str(code)),
                  note=str(row.get("note") or ""),
-                 set_at=str(row.get("set_at") or ""))
+                 set_at=str(row.get("set_at") or ""),
+                 starred_at=str(row.get("starred_at") or ""))
         for code, row in sorted(load_watchlist().items())])
 
 

@@ -2339,6 +2339,10 @@ class WatchRow(BaseModel):
     name: str
     note: str
     set_at: str
+    starred_at: str
+    """When the star went on, carried unchanged through every later write, so
+    a row with no note can say how long it has been watched rather than when
+    its note was last touched (v19h §2.2)."""
 
 
 class WatchlistPanel(BaseModel):

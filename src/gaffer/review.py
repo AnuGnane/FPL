@@ -1088,12 +1088,25 @@ class _ledger_lock:
         return False
 
 
-def load_ledger() -> list[dict]:
-    """Every banked grade, oldest gameweek first. ``[]`` on any failure.
+def _ledger_season() -> str:
+    """The season the ledger is read and written under (v19h §2.2).
 
-    A corrupt ledger reads as an empty one and is rebuilt by the next review
-    (spec G2) — the alternative is a Model hub that shows a stack trace
-    because a laptop lost power during a write six weeks ago.
+    Read through the cached config view at call time, and imported inside the
+    function the way :mod:`gaffer.served` and :mod:`gaffer.brief` reach it —
+    the config imports nothing from here and this module must not pull the
+    config in at import, and a call-time read is what lets a test point the
+    ledger at a different season without reloading the module.
+    """
+    from gaffer.config import config_in_force
+
+    return str(getattr(config_in_force(), "current_season", "") or "")
+
+
+def _all_ledger_rows() -> list[dict]:
+    """Every row on disk, of every season, oldest gameweek first.
+
+    Private because nothing outside this module wants the other seasons: the
+    nine readers ask :func:`load_ledger` and get the season in force.
     """
     path = ledger_path()
     if not path.exists():
@@ -1107,10 +1120,37 @@ def load_ledger() -> list[dict]:
                    and "gw" in r], key=lambda r: int(r["gw"]))
 
 
-def append_ledger(row: dict):
-    """Bank one gameweek's grade, replacing any earlier row for that week.
+def load_ledger() -> list[dict]:
+    """The season in force's banked grades, oldest gameweek first. ``[]`` on
+    any failure.
 
-    ``league_sim.append_sim_history``'s idiom exactly: replace-by-gameweek,
+    Keyed by season since v19h §2.2, because a rollover makes GW1 ambiguous:
+    last season's GW1 grade and this season's are two different rows and every
+    reader here — the digest, the brief, the decisions list, the Model hub —
+    means this season's. A row with no ``season`` reads as the current one,
+    because the ledger has only ever held a single season, and the next
+    :func:`append_ledger` writes the key onto it.
+
+    A corrupt ledger reads as an empty one and is rebuilt by the next review
+    (spec G2) — the alternative is a Model hub that shows a stack trace
+    because a laptop lost power during a write six weeks ago.
+    """
+    season = _ledger_season()
+    return [r for r in _all_ledger_rows()
+            if str(r.get("season") or season) == season]
+
+
+def append_ledger(row: dict):
+    """Bank one gameweek's grade, replacing any earlier row for that season's
+    week.
+
+    The banked row carries ``season`` (v19h §2.2) and the replacement is by
+    ``(season, gw)``, so banking this season's GW1 cannot overwrite last
+    season's. Legacy rows carrying no season at all are rewritten with the
+    current key on the way past, which is the migration: the file has only
+    ever held one season, so reading them as current is reading them right.
+
+    ``league_sim.append_sim_history``'s idiom otherwise: replace-by-gameweek,
     written to a sibling and renamed so a reader sees the whole old file or
     the whole new one, and ``allow_nan=False`` because NaN is not JSON and a
     file the browser cannot parse is a hub that shows nothing at all.
@@ -1119,12 +1159,20 @@ def append_ledger(row: dict):
 
     artifacts.REPORTS.mkdir(parents=True, exist_ok=True)
     path = ledger_path()
+    season = _ledger_season()
+    banked = {**dict(row), "season": str(row.get("season") or season)}
     # The lock spans the read as well as the write: the race this guards is
     # the read-modify-write, not the rename, which was already atomic.
     with _ledger_lock(lock_path()):
-        rows = [r for r in load_ledger() if int(r["gw"]) != int(row["gw"])]
-        rows.append(dict(row))
-        rows.sort(key=lambda r: int(r["gw"]))
+        rows = []
+        for r in _all_ledger_rows():
+            r = {**r, "season": str(r.get("season") or season)}
+            if r["season"] == banked["season"] \
+                    and int(r["gw"]) == int(banked["gw"]):
+                continue
+            rows.append(r)
+        rows.append(banked)
+        rows.sort(key=lambda r: (str(r.get("season") or ""), int(r["gw"])))
         atomic_write(path, json.dumps({"gws": rows}, indent=1,
                                       allow_nan=False))
     return path

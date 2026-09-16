@@ -21,9 +21,13 @@ import type { WatchRow, WatchlistPanel } from '../../types'
  * server-side, because a second tab, a second device and a failed watchlist
  * read all reach the same click.
  *
- * `set_at` is still labelled "Noted" and not "watching since": a *write* —
- * `''` or text — stamps the row with the time it happened, so the date is
- * when the note was last touched and not when the star went on.
+ * The date column says one of two words, because the row carries two dates
+ * since v19h §2.2. A *write* — `''` or text — stamps `set_at` with the time it
+ * happened, so for a row that has a note the honest word is "Noted": it is
+ * when that sentence was last touched. `starred_at` is written once and
+ * carried through every later write, so for a row with no note — where there
+ * is no sentence to date — the column can answer the question actually being
+ * asked, which is how long the player has been on the list.
  *
  * Each row seeds its field from the panel it was mounted with and keeps the
  * manager's typing thereafter, so a note changed by another surface while
@@ -88,7 +92,11 @@ function Row(
     <div className="flex flex-col gap-1 border-b border-divider py-2">
       <div className="flex flex-wrap items-center gap-2">
         <PlayerName code={row.code} name={row.name} />
-        <span className="text-text-faint">{`Noted ${stamp(row.set_at)}`}</span>
+        <span className="text-text-faint">
+          {row.note
+            ? `Noted ${stamp(row.set_at)}`
+            : `Starred ${stamp(row.starred_at)}`}
+        </span>
         <button
           type="button"
           className="ml-auto text-text-muted hover:text-text"

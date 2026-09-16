@@ -40,7 +40,8 @@ def test_starring_answers_the_whole_panel_name_resolved(client):
     body = client.post("/api/watchlist",
                        json={"code": 11, "note": "presser"}).json()
     assert body["rows"] == [{"code": 11, "name": "Saka", "note": "presser",
-                             "set_at": body["rows"][0]["set_at"]}]
+                             "set_at": body["rows"][0]["set_at"],
+                             "starred_at": body["rows"][0]["starred_at"]}]
 
 
 def test_the_rows_come_back_sorted_by_code(client):
@@ -140,3 +141,17 @@ def test_a_first_star_with_no_note_is_starred_with_an_empty_one(client):
     body = client.post("/api/watchlist", json={"code": 11}).json()
     assert body["rows"][0]["note"] == ""
     assert body["rows"][0]["set_at"]
+
+
+def test_the_route_serves_the_star_date_beside_the_note_date(client):
+    """v19h §2.2: the Watchlist tab needs both to choose its word."""
+    body = client.post("/api/watchlist", json={"code": 11}).json()
+    assert body["rows"][0]["starred_at"] == body["rows"][0]["set_at"] != ""
+
+
+def test_a_note_edit_leaves_the_served_star_date_where_it_was(client):
+    first = client.post("/api/watchlist",
+                        json={"code": 11, "note": "one"}).json()
+    again = client.post("/api/watchlist",
+                        json={"code": 11, "note": "two"}).json()
+    assert again["rows"][0]["starred_at"] == first["rows"][0]["starred_at"]
