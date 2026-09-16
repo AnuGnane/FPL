@@ -29,14 +29,43 @@ export interface GafferApi {
  * via the `definition` "AdviceDiff".
  */
 export interface AdviceDiff {
+  /**
+   * Whether two runs exist to compare — false on a first run of the week.
+   */
   available: boolean
+  /**
+   * Players in ``buys`` now that were not in the earlier run.
+   */
   buys_added: AdvicePlayer[]
+  /**
+   * Players in the earlier run's ``buys`` that dropped out.
+   */
   buys_dropped: AdvicePlayer[]
+  /**
+   * The earlier run's captain, set only when the captain changed.
+   */
   captain_from: AdvicePlayer | null
+  /**
+   * The later run's captain, set only when the captain changed.
+   */
   captain_to: AdvicePlayer | null
+  /**
+   * Whether anything in the plan moved, from ``diff_advice`` in
+   * `artifacts.py`: any buy, sell, captain or chip change, or a nonzero
+   * expected-points delta.
+   */
   changed: boolean
+  /**
+   * The earlier run's recommended chip, set only when it changed.
+   */
   chip_from: string | null
+  /**
+   * The later run's recommended chip, set only when it changed.
+   */
   chip_to: string | null
+  /**
+   * Timestamp stem of the later of the two compared files.
+   */
   current_at: string | null
   /**
    * Players whose expected points moved between the two newest component
@@ -51,16 +80,34 @@ export interface AdviceDiff {
    * the strip renders only the second.
    */
   ep_movers_count: number | null
+  /**
+   * Later run's ``expected_pts`` minus the earlier run's, rounded to 2dp.
+   */
   expected_pts_delta: number
+  /**
+   * The gameweek being diffed, or the ``b`` week-against-week path's target.
+   */
   gw: number
   /**
    * v19e §2.1: set only on the week-against-week path (``?a=&b=``), so a
    * client can tell "last run of this gameweek" from "last gameweek".
    */
   gw_from: number | null
+  /**
+   * The ``b`` gameweek on the week-against-week path, paired with ``gw_from``.
+   */
   gw_to: number | null
+  /**
+   * Timestamp stem of the earlier of the two compared files.
+   */
   previous_at: string | null
+  /**
+   * Players in ``sells`` now that were not in the earlier run.
+   */
   sells_added: AdvicePlayer[]
+  /**
+   * Players in the earlier run's ``sells`` that dropped out.
+   */
   sells_dropped: AdvicePlayer[]
 }
 /**
@@ -68,7 +115,13 @@ export interface AdviceDiff {
  * via the `definition` "AdvicePlayer".
  */
 export interface AdvicePlayer {
+  /**
+   * FPL player code.
+   */
   code: number
+  /**
+   * Player name, as stored on the advice payload being diffed.
+   */
   name: string
 }
 /**
@@ -78,10 +131,25 @@ export interface AdvicePlayer {
  * via the `definition` "EpMover".
  */
 export interface EpMover {
+  /**
+   * FPL player code.
+   */
   code: number
+  /**
+   * ``ep_now - ep_prev``, points.
+   */
   delta: number
+  /**
+   * Expected points after the newest retrain.
+   */
   ep_now: number
+  /**
+   * Expected points before the newest retrain.
+   */
   ep_prev: number
+  /**
+   * Player name.
+   */
   name: string
 }
 /**
@@ -89,7 +157,13 @@ export interface EpMover {
  * via the `definition` "ArtifactItem".
  */
 export interface ArtifactItem {
+  /**
+   * File size in bytes, from ``path.stat().st_size``.
+   */
   bytes: number
+  /**
+   * The file's path under ``reports/``, e.g. ``reports/health.json``.
+   */
   name: string
 }
 /**
@@ -148,8 +222,17 @@ export interface AskRequest {
  * via the `definition` "BackupHealth".
  */
 export interface BackupHealth {
+  /**
+   * Its size on disk.
+   */
   bytes: number
+  /**
+   * When it was written.
+   */
   modified_at: string
+  /**
+   * The newest backup archive's path, from ``gaffer.backup.latest_backup``.
+   */
   path: string
 }
 /**
@@ -198,15 +281,34 @@ export interface CategoryMetrics {
  * via the `definition` "BriefPanel".
  */
 export interface BriefPanel {
+  /**
+   * ISO timestamp the brief was checked and banked, from ``run_brief``.
+   */
   checked_at: string | null
+  /**
+   * The newest digest, offered in place of a brief that was never
+   * written or did not pass its truth check.
+   */
   fallback: DigestPanel | null
+  /**
+   * The gameweek the brief is about.
+   */
   gw: number | null
+  /**
+   * The command name of the LLM the brief was generated with.
+   */
   model_command: string | null
   /**
    * Why there is no brief for the newest gameweek, when there is none.
    */
   note: string | null
+  /**
+   * The LLM's written brief, once it has passed the truth check.
+   */
   prose: string | null
+  /**
+   * The advice run this brief was written against, for staleness checks.
+   */
   run_stamp: string | null
 }
 /**
@@ -220,7 +322,14 @@ export interface BriefPanel {
  * via the `definition` "DigestPanel".
  */
 export interface DigestPanel {
+  /**
+   * Whether a digest was found — the requested kind, or the newer of
+   * both when no kind was asked for.
+   */
   available: boolean
+  /**
+   * The digest, when ``available`` is true.
+   */
   digest: Digest | null
 }
 /**
@@ -234,10 +343,27 @@ export interface Digest {
    * rather than falling back to the never-run empty state.
    */
   error: string | null
+  /**
+   * ISO timestamp the digest was built.
+   */
   generated_at: string
+  /**
+   * The gameweek the digest is about.
+   */
   gw: number | null
+  /**
+   * The digest's one-line summary — the brief's first sentence when a
+   * brief exists, else a fact composed in `digest.py`.
+   */
   headline: string
+  /**
+   * ``"friday"`` or ``"tuesday"`` — which of the two banked digests this
+   * is, from ``DIGEST_KINDS``.
+   */
   kind: string
+  /**
+   * The digest's body, one entry per non-empty section.
+   */
   sections: DigestSection[]
 }
 /**
@@ -251,8 +377,17 @@ export interface Digest {
  * via the `definition` "DigestSection".
  */
 export interface DigestSection {
+  /**
+   * The section's clauses, joined by the client into prose.
+   */
   bits: string[]
+  /**
+   * The section's identifier, distinguishing it for the client's layout.
+   */
   key: string
+  /**
+   * The section's heading.
+   */
   title: string
 }
 /**
@@ -604,6 +739,46 @@ export interface ConfidenceData {
   captain: ConfidenceTier
 }
 /**
+ * The captaincy record's own tier and counts — the only lane the card
+ * reports today.
+ */
+export interface ConfidenceTier {
+  /**
+   * Weeks I took the model's own captain — reviewed, but not graded, since
+   * there is nothing to compare.
+   */
+  aligned: number
+  /**
+   * Reviewed gameweeks where the lane was actually comparable. The gap
+   * between this and ``reviewed`` is the weeks the model's captain was not in
+   * the eleven, which is not evidence either way.
+   */
+  graded: number
+  /**
+   * Graded weeks mine beat the model's.
+   */
+  losses: number
+  /**
+   * Gameweeks with a captaincy lane worth the name — excludes weeks the
+   * advice was pruned to nothing.
+   */
+  reviewed: number
+  /**
+   * The one sentence quoting these counts, composed by
+   * ``captain_confidence``.
+   */
+  text: string
+  /**
+   * How strong the record is, from ``gaffer.confidence.captain_confidence``:
+   * ``"early"`` below the graded floor, else split on the win rate.
+   */
+  tier: 'early' | 'mixed' | 'backed'
+  /**
+   * Graded weeks the model's captain beat mine.
+   */
+  wins: number
+}
+/**
  * One record-derived claim, with the counts that back it.
  *
  * ``text`` is the whole product — a sentence quoting counts. The counts are
@@ -614,7 +789,11 @@ export interface ConfidenceData {
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "ConfidenceTier".
  */
-export interface ConfidenceTier {
+export interface ConfidenceTier1 {
+  /**
+   * Weeks I took the model's own captain — reviewed, but not graded, since
+   * there is nothing to compare.
+   */
   aligned: number
   /**
    * Reviewed gameweeks where the lane was actually comparable. The gap
@@ -622,10 +801,28 @@ export interface ConfidenceTier {
    * the eleven, which is not evidence either way.
    */
   graded: number
+  /**
+   * Graded weeks mine beat the model's.
+   */
   losses: number
+  /**
+   * Gameweeks with a captaincy lane worth the name — excludes weeks the
+   * advice was pruned to nothing.
+   */
   reviewed: number
+  /**
+   * The one sentence quoting these counts, composed by
+   * ``captain_confidence``.
+   */
   text: string
+  /**
+   * How strong the record is, from ``gaffer.confidence.captain_confidence``:
+   * ``"early"`` below the graded floor, else split on the win rate.
+   */
   tier: 'early' | 'mixed' | 'backed'
+  /**
+   * Graded weeks the model's captain beat mine.
+   */
   wins: number
 }
 /**
@@ -633,8 +830,18 @@ export interface ConfidenceTier {
  * via the `definition` "CoreInsightsHealth".
  */
 export interface CoreInsightsHealth {
+  /**
+   * Whether any of the collector's tables exist for ``season``.
+   */
   collected: boolean
+  /**
+   * The season the collector fetches for, from config or its default.
+   */
   season: string
+  /**
+   * Row counts and latest date per table, when ``collected`` is true;
+   * empty otherwise.
+   */
   tables: CoreInsightsTable[]
   /**
    * What has to happen before these numbers mean anything, or ``None`` when
@@ -655,7 +862,13 @@ export interface CoreInsightsTable {
    * highest gameweek instead.
    */
   latest: string | null
+  /**
+   * How many rows the collector has banked for it.
+   */
   rows: number
+  /**
+   * The core-insights table's name.
+   */
   table: string
 }
 /**
@@ -701,8 +914,19 @@ export interface HeadMetrics {
  * via the `definition` "DecisionGrade".
  */
 export interface DecisionGrade {
+  /**
+   * My points minus the model's on the transfers lane, from the review
+   * ledger.
+   */
   delta_pts: number | null
+  /**
+   * The review ledger's own label for how the lane graded.
+   */
   label: string | null
+  /**
+   * Always ``"transfers"``: the one review lane a deviation note grades
+   * against.
+   */
   lane: string
 }
 /**
@@ -712,12 +936,36 @@ export interface DecisionGrade {
  * via the `definition` "DecisionNote".
  */
 export interface DecisionNote {
+  /**
+   * ISO timestamp the note was saved.
+   */
   at: string | null
+  /**
+   * The gameweek's deadline, from the advice payload or the events
+   * snapshot.
+   */
   deadline: string | null
+  /**
+   * The transfers lane's grade, once the gameweek has been reviewed.
+   */
   grade: DecisionGrade | null
+  /**
+   * The gameweek the note is for.
+   */
   gw: number
+  /**
+   * One of ``decisions.REASONS`` — why the manager deviated, or ``None``
+   * when no note has been saved.
+   */
   reason: string | null
+  /**
+   * Whether the note may still be written: not yet open, open, or closed
+   * because the gameweek has been graded (``decisions.note_state``).
+   */
   state: 'before_deadline' | 'open' | 'graded'
+  /**
+   * The manager's own words, up to ``decisions.TEXT_MAX`` characters.
+   */
   text: string
 }
 /**
@@ -736,7 +984,13 @@ export interface DecisionRef {
  * via the `definition` "DecisionWrite".
  */
 export interface DecisionWrite {
+  /**
+   * One of ``decisions.REASONS``; refused with ``unknown_reason`` otherwise.
+   */
   reason: string
+  /**
+   * The manager's own words, up to ``decisions.TEXT_MAX`` characters.
+   */
   text: string
 }
 /**
@@ -1165,6 +1419,9 @@ export interface LeadBucket {
  * via the `definition` "Freshness".
  */
 export interface Freshness {
+  /**
+   * One row per standing job (v12 W1 §2.9, v19a §2.2).
+   */
   rows: FreshnessRow[]
 }
 /**
@@ -1189,11 +1446,17 @@ export interface FreshnessRow {
    * the rule lives beside the schedule it describes.
    */
   cadence_hours: number
+  /**
+   * When the file was last written, or ``None`` when it never was.
+   */
   modified_at: string | null
   /**
    * What was actually stat'd, so a surprising age is diagnosable.
    */
   path: string | null
+  /**
+   * Which of the seven standing jobs this row reports on.
+   */
   source: 'refresh' | 'odds' | 'field' | 'advise' | 'backup' | 'prices' | 'snapshot'
 }
 /**
@@ -1235,6 +1498,9 @@ export interface HistoryRun {
  * via the `definition` "JobAccepted".
  */
 export interface JobAccepted {
+  /**
+   * The v6 ``JobRegistry`` id the caller polls at ``GET /api/jobs/{job_id}``.
+   */
   job_id: string
 }
 /**
@@ -1286,13 +1552,38 @@ export interface JobHealth {
  * via the `definition` "JobRunView".
  */
 export interface JobRunView {
+  /**
+   * The failure reason, set only when ``status`` is ``"failed"``.
+   */
   error: string | null
+  /**
+   * ISO timestamp the run ended, or ``None`` while it is still going.
+   */
   finished_at: string | null
+  /**
+   * The run's id, as minted by ``JobRunner.start``.
+   */
   id: string
+  /**
+   * Which of the runner's four named kinds this run is.
+   */
   kind: string
+  /**
+   * Total stdout lines captured so far, including any dropped from the
+   * 500-line ring buffer (``JobRun.first_line_index + len(lines)``).
+   */
   line_count: number
+  /**
+   * ISO timestamp the run began, from ``JobRun.started_at``.
+   */
   started_at: string
+  /**
+   * The run's lifecycle state, from ``JobRun.status`` in `web/jobs.py`.
+   */
   status: 'queued' | 'running' | 'done' | 'failed'
+  /**
+   * The one-line result the job wrote for itself on success.
+   */
   summary: string | null
 }
 /**
@@ -1303,7 +1594,13 @@ export interface JobRunView {
  * via the `definition` "JobStarted".
  */
 export interface JobStarted {
+  /**
+   * The v7 ``JobRunner`` id, minted by ``JobRunner.start`` in `web/jobs.py`.
+   */
   job_id: string
+  /**
+   * The job kind the caller posted to, echoed back from the path parameter.
+   */
   kind: string
 }
 /**
@@ -1349,7 +1646,14 @@ export interface JournalRow {
  * via the `definition` "LadderCap".
  */
 export interface LadderCap {
+  /**
+   * The hit cap the ladder solved every rung under, or ``None`` for none.
+   */
   max_hits: number | null
+  /**
+   * The transfer cap the ladder solved every rung under, or ``None`` for
+   * none; 0 means bank.
+   */
   max_transfers: number | null
 }
 /**
@@ -1361,7 +1665,7 @@ export interface LadderPayload {
    * The hit bar the walk used (v16 §3.2).
    */
   bar: number | null
-  cap: LadderCap
+  cap: LadderCap1
   /**
    * Set when the saved ``max_transfers`` has no rung of its own.
    */
@@ -1385,10 +1689,25 @@ export interface LadderPayload {
    * The rung the walk stopped on — the served advice's plan.
    */
   chosen: string | null
+  /**
+   * Free transfers available going into ``gw``, from the saved state.
+   */
   free_transfers: number | null
+  /**
+   * ISO timestamp the ladder was built.
+   */
   generated_at: string | null
+  /**
+   * The gameweek the ladder was built for.
+   */
   gw: number | null
+  /**
+   * Every gameweek in the solve horizon, first entry ``gw``.
+   */
   gws: number[]
+  /**
+   * How many Monte Carlo draws the rungs were scored on.
+   */
   n_draws: number
   /**
    * Why ``rungs`` is empty, when it is: no state, or no ladder banked.
@@ -1398,12 +1717,21 @@ export interface LadderPayload {
    * Rungs dropped because they would not solve.
    */
   notes: string[]
+  /**
+   * The rung key the served advice on disk matches, when it matches one.
+   */
   recommended: string | null
   /**
    * Why ``recommended`` is ``None``, when it is.
    */
   recommended_note: string | null
+  /**
+   * Every rung the ladder solved, in ``RUNG_ORDER``.
+   */
   rungs: LadderRung[]
+  /**
+   * The RNG seed the draws were built with.
+   */
   seed: number | null
   /**
    * Set by the router when a rebuild's choice differs from the advice
@@ -1414,9 +1742,34 @@ export interface LadderPayload {
    * Player-weeks that fell back to the outcome σ for want of a band.
    */
   sigma_fallbacks: number
+  /**
+   * ``"bands"``, ``"outcome"`` or ``"bands+outcome"`` — where the scoring
+   * σ came from, the mixed value set when some player-week fell back.
+   */
   sigma_source: string | null
+  /**
+   * The restraint walk's steps, from the lowest rung up to ``chosen``.
+   */
   steps: LadderStep[]
+  /**
+   * Seconds the solve took, timed from inside ``ladder.ladder_payload``,
+   * excluding whatever loaded the state beforehand.
+   */
   wall_s: number | null
+}
+/**
+ * The hit and transfer caps every rung solved under.
+ */
+export interface LadderCap1 {
+  /**
+   * The hit cap the ladder solved every rung under, or ``None`` for none.
+   */
+  max_hits: number | null
+  /**
+   * The transfer cap the ladder solved every rung under, or ``None`` for
+   * none; 0 means bank.
+   */
+  max_transfers: number | null
 }
 /**
  * One row. Every number is ``None`` on a ``same_as`` row, which repeats
@@ -1434,13 +1787,22 @@ export interface LadderRung {
    * Hits taken in the **first** week — the decision on the table now.
    */
   hits: number
+  /**
+   * ``horizon_hits`` in points.
+   */
   horizon_cost: number
   /**
    * Hits over the whole horizon, which is what ``horizon_pts`` and
    * ``mean_pts`` are already net of.
    */
   horizon_hits: number
+  /**
+   * Expected points summed over the whole horizon, net of hits.
+   */
   horizon_pts: number | null
+  /**
+   * The rung's identifier: ``"bank"``, ``"open"``, or ``"hits{n}"``.
+   */
   key: string
   /**
    * The rung's name in prose (v17b §3.1): ``bank``, ``free transfers
@@ -1448,17 +1810,58 @@ export interface LadderRung {
    * it.
    */
   label: string
+  /**
+   * Mean simulated points across the ladder's shared draws.
+   */
   mean_pts: number | null
+  /**
+   * The MILP's own objective value for this rung's solve.
+   */
   objective: number | null
+  /**
+   * 10th percentile of the rung's simulated points.
+   */
   p10_pts: number | null
+  /**
+   * 90th percentile of the rung's simulated points.
+   */
   p90_pts: number | null
+  /**
+   * Share of shared draws this rung outscores the bank rung, or ``None``
+   * for the bank rung itself or when the bank rung did not solve.
+   */
   p_beats_bank: number | null
+  /**
+   * Share of shared draws this rung outscores the top (highest-hit)
+   * rung, or ``None`` for the top rung itself.
+   */
   p_beats_top: number | null
+  /**
+   * Share of shared draws this rung scores the maximum among all rungs,
+   * ties split evenly (``ladder.p_best``).
+   */
   p_best: number | null
+  /**
+   * This rung's plan, one entry per gameweek in the horizon.
+   */
   plan_by_gw: LadderWeek[]
+  /**
+   * The distinct rung's key this row repeats, when the solve collapsed
+   * onto an earlier rung's first-week decision (``ladder.collapse``).
+   */
   same_as: string | null
+  /**
+   * Number of buys in the first week's plan.
+   */
   transfers: number
+  /**
+   * What this rung buys over the previous distinct rung, or ``None`` for
+   * the lowest rung.
+   */
   vs_below: LadderVsBelow | null
+  /**
+   * Expected points for the first week alone, net of its hits.
+   */
   week_pts: number | null
 }
 /**
@@ -1466,15 +1869,61 @@ export interface LadderRung {
  * via the `definition` "LadderWeek".
  */
 export interface LadderWeek {
+  /**
+   * The bench this week of the plan.
+   */
   bench: WirePlayerRef[]
+  /**
+   * Players bought in this week of the plan.
+   */
   buys: WirePlayerRef[]
-  captain: WirePlayerRef
+  captain: WirePlayerRef1
+  /**
+   * Expected points for this week alone, net of its hits
+   * (``ladder.plan_points`` over one week).
+   */
   expected_pts: number
+  /**
+   * The gameweek this week of the rung's plan is for.
+   */
   gw: number
+  /**
+   * Hits taken in this week alone.
+   */
   hits: number
+  /**
+   * Players sold in this week of the plan.
+   */
   sells: WirePlayerRef[]
-  vice: WirePlayerRef
+  vice: WirePlayerRef2
+  /**
+   * The starting eleven this week of the plan.
+   */
   xi: WirePlayerRef[]
+}
+/**
+ * The captain this week of the plan.
+ */
+export interface WirePlayerRef1 {
+  code: number
+  ep: number
+  name: string
+  next_fixture: NextFixture | null
+  position: string
+  team_code: number | null
+  team_short: string | null
+}
+/**
+ * The vice-captain this week of the plan.
+ */
+export interface WirePlayerRef2 {
+  code: number
+  ep: number
+  name: string
+  next_fixture: NextFixture | null
+  position: string
+  team_code: number | null
+  team_short: string | null
 }
 /**
  * What the extra hit bought, against the previous distinct rung.
@@ -1493,10 +1942,26 @@ export interface LadderVsBelow {
    * The first week's difference alone.
    */
   delta_cost_now: number
+  /**
+   * This rung's mean simulated points minus the rung below's, from
+   * ``ladder.vs_below``.
+   */
   delta_mean_pts: number
+  /**
+   * The rung below's first-week buys this rung does not make.
+   */
   dropped_buys: WirePlayerRef[]
+  /**
+   * The rung below's first-week sells this rung does not make.
+   */
   dropped_sells: WirePlayerRef[]
+  /**
+   * First-week buys this rung makes that the rung below did not.
+   */
   extra_buys: WirePlayerRef[]
+  /**
+   * First-week sells this rung makes that the rung below did not.
+   */
   extra_sells: WirePlayerRef[]
 }
 /**
@@ -1507,16 +1972,37 @@ export interface LadderVsBelow {
  * via the `definition` "LadderStep".
  */
 export interface LadderStep {
+  /**
+   * The rung key it considered stepping to.
+   */
   above: string
+  /**
+   * The rung key the walk was standing on.
+   */
   below: string
   /**
    * The step as one sentence (v17b §3.1), composed once by
    * ``ladder._step_line``.
    */
   line: string
+  /**
+   * Why the step was or was not taken, in prose (``ladder.explain_step``
+   * or the cap sentence in ``ladder.walk``).
+   */
   reason: string
+  /**
+   * ``"cap"`` when a hit or transfer cap refused the step; otherwise
+   * which kind of evidence ``explain_step`` picked.
+   */
   reason_kind: string
+  /**
+   * Share of the shared draws in which ``above`` outscored ``below``.
+   */
   share: number
+  /**
+   * Whether the walk took this step — ``share >= hit_bar``, unless a
+   * cap refused it first.
+   */
   taken: boolean
 }
 /**
@@ -1524,9 +2010,22 @@ export interface LadderStep {
  * via the `definition` "LaunchdHealth".
  */
 export interface LaunchdHealth {
+  /**
+   * The log's last non-blank line — the advise job's own report of what
+   * it did.
+   */
   last_line: string | null
+  /**
+   * Path to the advise job's redirect log.
+   */
   log: string
+  /**
+   * When it was last written, or ``None`` if it never was.
+   */
   modified_at: string | null
+  /**
+   * Whether that log file exists.
+   */
   present: boolean
 }
 /**
@@ -1988,8 +2487,18 @@ export interface NamedPlayer {
  * via the `definition` "NewsPanelData".
  */
 export interface NewsPanelData {
+  /**
+   * The gameweek the panel is reporting on.
+   */
   gw: number
+  /**
+   * How many players cleared ``MOVED_EPSILON`` between the news-aware and
+   * flag-only readings — ``len(rows)``.
+   */
   moved: number
+  /**
+   * The moved players, biggest disagreement first.
+   */
   rows: NewsRow[]
 }
 /**
@@ -2003,25 +2512,76 @@ export interface NewsPanelData {
  * via the `definition` "NewsRow".
  */
 export interface NewsRow {
+  /**
+   * FPL's own percentage chance of playing, from the live players
+   * snapshot.
+   */
   chance_of_playing: number | null
+  /**
+   * FPL player code.
+   */
   code: number
+  /**
+   * Expected minutes under the official-flag-only reading, rounded to 1dp.
+   */
   e_min_flags: number
+  /**
+   * Expected minutes under the news-aware reading, rounded to 1dp.
+   */
   e_min_news: number
+  /**
+   * The gameweek the availability frame expects him back, when known.
+   */
   expected_return_gw: number | null
+  /**
+   * ISO timestamp the availability evidence was fetched.
+   */
   fetched_at: string | null
+  /**
+   * The injury or absence category this run's availability frame recorded
+   * for him, when it has one.
+   */
   injury_type: string | null
   /**
    * ``xi`` / ``doubt`` / ``out`` — ``p_start_hint`` named, because a
    * probability in a caption reads as a forecast rather than as a listing.
    */
   lineup_hint: string | null
+  /**
+   * Player name, from the live players snapshot.
+   */
   name: string
+  /**
+   * FPL's own news text for the player, from the live players snapshot.
+   */
   official_note: string | null
+  /**
+   * P(starts) as it would read off the official flag alone, rounded to
+   * 3dp — the comparison figure ``p_play_news`` disagrees with.
+   */
   p_play_flags: number
+  /**
+   * This run's P(starts), as predicted from the news-aware availability
+   * frame, rounded to 3dp.
+   */
   p_play_news: number
+  /**
+   * The availability frame's own P(starts), separate from the news-model
+   * figures above.
+   */
   p_start_hint: number | null
+  /**
+   * Where the availability evidence came from (e.g. a news feed name).
+   */
   source: string | null
+  /**
+   * FPL's own status code for the player (e.g. injured, doubtful), from
+   * the live players snapshot.
+   */
   status: string | null
+  /**
+   * Player's club name, from the live teams snapshot.
+   */
   team_name: string
 }
 /**
@@ -2904,10 +3464,25 @@ export interface SettingsPanel {
  * via the `definition` "SourceHealth".
  */
 export interface SourceHealth {
+  /**
+   * Hours since ``modified_at``, or ``None`` when the source is absent.
+   */
   age_hours: number | null
+  /**
+   * When it was last written, or ``None`` if it never was.
+   */
   modified_at: string | null
+  /**
+   * Where it lives under ``data/``, for ``_stat`` in `routers/meta.py`.
+   */
   path: string
+  /**
+   * Whether the file exists on disk.
+   */
   present: boolean
+  /**
+   * The ingested source's name, from ``DATA_SOURCES`` or the odds bank.
+   */
   source: string
 }
 /**
@@ -2915,14 +3490,47 @@ export interface SourceHealth {
  * via the `definition` "Staleness".
  */
 export interface Staleness {
+  /**
+   * The gameweek the saved advice was solved for.
+   */
   advice_gw: number
+  /**
+   * ``upcoming_gw()``'s answer now — the deadline the user is actually
+   * facing, which can be later than ``advice_gw`` when the advice is old.
+   */
   current_gw: number | null
+  /**
+   * The last gameweek ``ingested_through()`` finds fully scored in the
+   * banked parquet, independent of when the advice itself was solved.
+   */
   data_through_gw: number | null
+  /**
+   * ``data_warning(current_gw, data_through_gw)``'s sentence when the
+   * model's ingested data trails the current gameweek, else ``None``.
+   */
   data_warning: string | null
+  /**
+   * ISO timestamp of ``advice_gw``'s deadline.
+   */
   deadline: string
+  /**
+   * Whether ``deadline`` is before now, computed in ``staleness_for``
+   * (`routers/advice.py`) against ``pd.Timestamp.now(tz="UTC")``.
+   */
   deadline_passed: boolean
+  /**
+   * ISO timestamp the advice was solved, from the saved solve state.
+   */
   generated_at: string
+  /**
+   * The one sentence ``staleness_for`` builds explaining ``stale``, or
+   * confirming the advice is current.
+   */
   reason: string
+  /**
+   * ``deadline_passed or current_gw > advice_gw``: the advice is behind
+   * the gameweek the user needs, either way.
+   */
   stale: boolean
 }
 /**
@@ -2953,6 +3561,9 @@ export interface TeamModelHealth {
    * same fixture seen twice.
    */
   max_p_cs_model: number
+  /**
+   * The lowest expected-goals-conceded the team model reached this week.
+   */
   min_e_gc_model: number
   /**
    * How many of those were priced with no market at all — ``odds_weight``
@@ -3078,13 +3689,75 @@ export interface WhatIfResult {
  * via the `definition` "WireAdviceLatest".
  */
 export interface WireAdviceLatest {
+  /**
+   * The banked advice payload, enriched at serve time with position,
+   * identity, the attacking haul rename and the field frame (`latest()` in
+   * `routers/advice.py`).
+   */
   advice: {
     [k: string]: unknown
   }
+  /**
+   * ISO timestamp of ``gw``'s deadline, from the saved solve state.
+   */
   deadline: string
+  /**
+   * The gameweek this advice was solved for, from ``latest_gw()``.
+   */
   gw: number
+  /**
+   * The solve state's mode (e.g. ``"normal"``, a chip), as saved by
+   * ``advise.py`` and read back by ``load_solve_state``.
+   */
   mode: string
-  staleness: Staleness
+  staleness: Staleness1
+}
+/**
+ * Whether this advice is still current, from ``staleness_for``.
+ */
+export interface Staleness1 {
+  /**
+   * The gameweek the saved advice was solved for.
+   */
+  advice_gw: number
+  /**
+   * ``upcoming_gw()``'s answer now — the deadline the user is actually
+   * facing, which can be later than ``advice_gw`` when the advice is old.
+   */
+  current_gw: number | null
+  /**
+   * The last gameweek ``ingested_through()`` finds fully scored in the
+   * banked parquet, independent of when the advice itself was solved.
+   */
+  data_through_gw: number | null
+  /**
+   * ``data_warning(current_gw, data_through_gw)``'s sentence when the
+   * model's ingested data trails the current gameweek, else ``None``.
+   */
+  data_warning: string | null
+  /**
+   * ISO timestamp of ``advice_gw``'s deadline.
+   */
+  deadline: string
+  /**
+   * Whether ``deadline`` is before now, computed in ``staleness_for``
+   * (`routers/advice.py`) against ``pd.Timestamp.now(tz="UTC")``.
+   */
+  deadline_passed: boolean
+  /**
+   * ISO timestamp the advice was solved, from the saved solve state.
+   */
+  generated_at: string
+  /**
+   * The one sentence ``staleness_for`` builds explaining ``stale``, or
+   * confirming the advice is current.
+   */
+  reason: string
+  /**
+   * ``deadline_passed or current_gw > advice_gw``: the advice is behind
+   * the gameweek the user needs, either way.
+   */
+  stale: boolean
 }
 /**
  * The banked report, or the honest empty one.
@@ -3122,6 +3795,9 @@ export interface WireCalibrationReport {
  * via the `definition` "WireHealth".
  */
 export interface WireHealth {
+  /**
+   * Every file under ``reports/``, name and size.
+   */
   artifacts: ArtifactItem[]
   /**
    * The fitted EP calibration's deltas, or ``None`` when no calibration
@@ -3131,8 +3807,17 @@ export interface WireHealth {
    * the values rather than being inferred from a short dict at the page.
    */
   calibration: CalibrationHealth | null
+  /**
+   * The core-insights collector's own state (v12 W4 §5.1).
+   */
   core_insights: CoreInsightsHealth | null
+  /**
+   * One row per ingested source, from ``DATA_SOURCES`` plus the odds bank.
+   */
   data: SourceHealth[]
+  /**
+   * The last gameweek ``ingested_through()`` finds fully scored on disk.
+   */
   data_through_gw: number | null
   /**
    * Every installed plist and whether it has run lately (v19a §2.3).
@@ -3150,11 +3835,22 @@ export interface WireHealth {
    * empty, which is the one outcome this feature exists to prevent.
    */
   last_backup: BackupHealth | null
-  launchd: LaunchdHealth
+  launchd: LaunchdHealth1
+  /**
+   * ``reports/health.json``'s contents, whatever a fit run last wrote
+   * there, or ``None`` when no such report exists.
+   */
   model_health: {
     [k: string]: unknown
   } | null
+  /**
+   * Every fitted model's ``.meta.json`` under ``MODELS_DIR``.
+   */
   models: WireModelHealth[]
+  /**
+   * Whether ``config.toml``'s ``[odds] api_key`` is set — never the key
+   * itself.
+   */
   odds_key_present: boolean
   /**
    * What ``config.toml`` says this season is.
@@ -3193,14 +3889,45 @@ export interface WireHealth {
   team_model: TeamModelHealth | null
 }
 /**
+ * The advise job's own log health, kept separate from ``jobs`` below.
+ */
+export interface LaunchdHealth1 {
+  /**
+   * The log's last non-blank line — the advise job's own report of what
+   * it did.
+   */
+  last_line: string | null
+  /**
+   * Path to the advise job's redirect log.
+   */
+  log: string
+  /**
+   * When it was last written, or ``None`` if it never was.
+   */
+  modified_at: string | null
+  /**
+   * Whether that log file exists.
+   */
+  present: boolean
+}
+/**
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "WireModelHealth".
  */
 export interface WireModelHealth {
+  /**
+   * The rest of the sidecar's contents — whatever the trainer recorded.
+   */
   metrics: {
     [k: string]: unknown
   }
+  /**
+   * The model's filename stem, from its ``.meta.json`` sidecar.
+   */
   name: string
+  /**
+   * When the model was fitted, from the sidecar's ``saved_at`` key.
+   */
   saved_at: string | null
 }
 /**

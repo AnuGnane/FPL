@@ -35,6 +35,7 @@ generated names."""
 
 class JobAccepted(BaseModel):
     job_id: str
+    """The v6 ``JobRegistry`` id the caller polls at ``GET /api/jobs/{job_id}``."""
 
 
 class JobStarted(BaseModel):
@@ -42,18 +43,29 @@ class JobStarted(BaseModel):
     queue endpoints, whose clients read only ``job_id``."""
 
     job_id: str
+    """The v7 ``JobRunner`` id, minted by ``JobRunner.start`` in `web/jobs.py`."""
     kind: str
+    """The job kind the caller posted to, echoed back from the path parameter."""
 
 
 class JobRunView(BaseModel):
     id: str
+    """The run's id, as minted by ``JobRunner.start``."""
     kind: str
+    """Which of the runner's four named kinds this run is."""
     status: Literal["queued", "running", "done", "failed"]
+    """The run's lifecycle state, from ``JobRun.status`` in `web/jobs.py`."""
     started_at: str
+    """ISO timestamp the run began, from ``JobRun.started_at``."""
     line_count: int
+    """Total stdout lines captured so far, including any dropped from the
+    500-line ring buffer (``JobRun.first_line_index + len(lines)``)."""
     finished_at: str | None = None
+    """ISO timestamp the run ended, or ``None`` while it is still going."""
     error: str | None = None
+    """The failure reason, set only when ``status`` is ``"failed"``."""
     summary: str | None = None
+    """The one-line result the job wrote for itself on success."""
 
 
 # --- This Week: the served advice and how old it is -----------------------
@@ -61,24 +73,47 @@ class JobRunView(BaseModel):
 
 class Staleness(BaseModel):
     advice_gw: int
+    """The gameweek the saved advice was solved for."""
     current_gw: int | None
+    """``upcoming_gw()``'s answer now — the deadline the user is actually
+    facing, which can be later than ``advice_gw`` when the advice is old."""
     generated_at: str
+    """ISO timestamp the advice was solved, from the saved solve state."""
     deadline: str
+    """ISO timestamp of ``advice_gw``'s deadline."""
     deadline_passed: bool
+    """Whether ``deadline`` is before now, computed in ``staleness_for``
+    (`routers/advice.py`) against ``pd.Timestamp.now(tz="UTC")``."""
     stale: bool
+    """``deadline_passed or current_gw > advice_gw``: the advice is behind
+    the gameweek the user needs, either way."""
     reason: str
+    """The one sentence ``staleness_for`` builds explaining ``stale``, or
+    confirming the advice is current."""
     # A different kind of stale: the advice can be current for the upcoming
     # gameweek and still have been built without last gameweek's results.
     data_through_gw: int | None = None
+    """The last gameweek ``ingested_through()`` finds fully scored in the
+    banked parquet, independent of when the advice itself was solved."""
     data_warning: str | None = None
+    """``data_warning(current_gw, data_through_gw)``'s sentence when the
+    model's ingested data trails the current gameweek, else ``None``."""
 
 
 class AdviceLatest(BaseModel):
     gw: int
+    """The gameweek this advice was solved for, from ``latest_gw()``."""
     mode: str
+    """The solve state's mode (e.g. ``"normal"``, a chip), as saved by
+    ``advise.py`` and read back by ``load_solve_state``."""
     deadline: str
+    """ISO timestamp of ``gw``'s deadline, from the saved solve state."""
     advice: dict[str, Any]
+    """The banked advice payload, enriched at serve time with position,
+    identity, the attacking haul rename and the field frame (`latest()` in
+    `routers/advice.py`)."""
     staleness: Staleness
+    """Whether this advice is still current, from ``staleness_for``."""
 
 
 CHIP_CODES = {"wc": "wildcard", "bb": "bboost", "fh": "freehit",
@@ -920,17 +955,24 @@ class ComponentsBreakdown(BaseModel):
 
 class AdvicePlayer(BaseModel):
     code: int
+    """FPL player code."""
     name: str
+    """Player name, as stored on the advice payload being diffed."""
 
 
 class EpMover(BaseModel):
     """One player the newest retrain moved, in the gameweek being decided."""
 
     code: int
+    """FPL player code."""
     name: str
+    """Player name."""
     ep_prev: float
+    """Expected points before the newest retrain."""
     ep_now: float
+    """Expected points after the newest retrain."""
     delta: float
+    """``ep_now - ep_prev``, points."""
 
 
 class AdviceDiff(BaseModel):
@@ -942,23 +984,40 @@ class AdviceDiff(BaseModel):
     """
 
     gw: int
+    """The gameweek being diffed, or the ``b`` week-against-week path's target."""
     available: bool
+    """Whether two runs exist to compare — false on a first run of the week."""
     changed: bool = False
+    """Whether anything in the plan moved, from ``diff_advice`` in
+    `artifacts.py`: any buy, sell, captain or chip change, or a nonzero
+    expected-points delta."""
     previous_at: str | None = None
+    """Timestamp stem of the earlier of the two compared files."""
     current_at: str | None = None
+    """Timestamp stem of the later of the two compared files."""
     gw_from: int | None = None
     """v19e §2.1: set only on the week-against-week path (``?a=&b=``), so a
     client can tell "last run of this gameweek" from "last gameweek"."""
     gw_to: int | None = None
+    """The ``b`` gameweek on the week-against-week path, paired with ``gw_from``."""
     buys_added: list[AdvicePlayer] = Field(default_factory=list)
+    """Players in ``buys`` now that were not in the earlier run."""
     buys_dropped: list[AdvicePlayer] = Field(default_factory=list)
+    """Players in the earlier run's ``buys`` that dropped out."""
     sells_added: list[AdvicePlayer] = Field(default_factory=list)
+    """Players in ``sells`` now that were not in the earlier run."""
     sells_dropped: list[AdvicePlayer] = Field(default_factory=list)
+    """Players in the earlier run's ``sells`` that dropped out."""
     captain_from: AdvicePlayer | None = None
+    """The earlier run's captain, set only when the captain changed."""
     captain_to: AdvicePlayer | None = None
+    """The later run's captain, set only when the captain changed."""
     chip_from: str | None = None
+    """The earlier run's recommended chip, set only when it changed."""
     chip_to: str | None = None
+    """The later run's recommended chip, set only when it changed."""
     expected_pts_delta: float = 0.0
+    """Later run's ``expected_pts`` minus the earlier run's, rounded to 2dp."""
     ep_movers: list[EpMover] = Field(default_factory=list)
     """Players whose expected points moved between the two newest component
     breakdowns. Independent of ``available``: a first run of the week has no
@@ -982,31 +1041,56 @@ class NewsRow(BaseModel):
     """
 
     code: int
+    """FPL player code."""
     name: str
+    """Player name, from the live players snapshot."""
     team_name: str
+    """Player's club name, from the live teams snapshot."""
     p_play_news: float
+    """This run's P(starts), as predicted from the news-aware availability
+    frame, rounded to 3dp."""
     p_play_flags: float
+    """P(starts) as it would read off the official flag alone, rounded to
+    3dp — the comparison figure ``p_play_news`` disagrees with."""
     e_min_news: float
+    """Expected minutes under the news-aware reading, rounded to 1dp."""
     e_min_flags: float
+    """Expected minutes under the official-flag-only reading, rounded to 1dp."""
     # Official flag, from the bootstrap snapshot.
     status: str | None = None
+    """FPL's own status code for the player (e.g. injured, doubtful), from
+    the live players snapshot."""
     chance_of_playing: float | None = None
+    """FPL's own percentage chance of playing, from the live players
+    snapshot."""
     official_note: str | None = None
+    """FPL's own news text for the player, from the live players snapshot."""
     # The availability frame this run predicted on.
     injury_type: str | None = None
+    """The injury or absence category this run's availability frame recorded
+    for him, when it has one."""
     expected_return_gw: int | None = None
+    """The gameweek the availability frame expects him back, when known."""
     p_start_hint: float | None = None
+    """The availability frame's own P(starts), separate from the news-model
+    figures above."""
     lineup_hint: str | None = None
     """``xi`` / ``doubt`` / ``out`` — ``p_start_hint`` named, because a
     probability in a caption reads as a forecast rather than as a listing."""
     source: str | None = None
+    """Where the availability evidence came from (e.g. a news feed name)."""
     fetched_at: str | None = None
+    """ISO timestamp the availability evidence was fetched."""
 
 
 class NewsPanelData(BaseModel):
     gw: int
+    """The gameweek the panel is reporting on."""
     moved: int
+    """How many players cleared ``MOVED_EPSILON`` between the news-aware and
+    flag-only readings — ``len(rows)``."""
     rows: list[NewsRow]
+    """The moved players, biggest disagreement first."""
 
 
 # --- Model: the run history and its price series --------------------------
@@ -1045,16 +1129,24 @@ class History(BaseModel):
 
 class SourceHealth(BaseModel):
     source: str
+    """The ingested source's name, from ``DATA_SOURCES`` or the odds bank."""
     path: str
+    """Where it lives under ``data/``, for ``_stat`` in `routers/meta.py`."""
     present: bool
+    """Whether the file exists on disk."""
     modified_at: str | None
+    """When it was last written, or ``None`` if it never was."""
     age_hours: float | None
+    """Hours since ``modified_at``, or ``None`` when the source is absent."""
 
 
 class ModelHealth(BaseModel):
     name: str
+    """The model's filename stem, from its ``.meta.json`` sidecar."""
     saved_at: str | None
+    """When the model was fitted, from the sidecar's ``saved_at`` key."""
     metrics: dict[str, Any]
+    """The rest of the sidecar's contents — whatever the trainer recorded."""
 
 
 class CalibrationHealth(BaseModel):
@@ -1101,6 +1193,7 @@ class TeamModelHealth(BaseModel):
     describe."""
 
     min_e_gc_model: float
+    """The lowest expected-goals-conceded the team model reached this week."""
     max_p_cs_model: float
     """The two ends the model actually reached this week. A minimum expected
     goals-conceded near zero and a clean-sheet probability near one are the
@@ -1116,9 +1209,14 @@ class TeamModelHealth(BaseModel):
 
 class LaunchdHealth(BaseModel):
     log: str
+    """Path to the advise job's redirect log."""
     present: bool
+    """Whether that log file exists."""
     modified_at: str | None
+    """When it was last written, or ``None`` if it never was."""
     last_line: str | None
+    """The log's last non-blank line — the advise job's own report of what
+    it did."""
 
 
 class JobHealth(BaseModel):
@@ -1151,15 +1249,19 @@ class JobHealth(BaseModel):
 
 class ArtifactItem(BaseModel):
     name: str
+    """The file's path under ``reports/``, e.g. ``reports/health.json``."""
     bytes: int
+    """File size in bytes, from ``path.stat().st_size``."""
 
 
 class FreshnessRow(BaseModel):
     source: Literal["refresh", "odds", "field", "advise", "backup",
                     "prices", "snapshot"]
+    """Which of the seven standing jobs this row reports on."""
     path: str | None = None
     """What was actually stat'd, so a surprising age is diagnosable."""
     modified_at: str | None = None
+    """When the file was last written, or ``None`` when it never was."""
     age_hours: float | None = None
     """Hours since the file was written, or ``None`` for "never".
 
@@ -1179,17 +1281,23 @@ class FreshnessRow(BaseModel):
 
 class Freshness(BaseModel):
     rows: list[FreshnessRow] = Field(default_factory=list)
+    """One row per standing job (v12 W1 §2.9, v19a §2.2)."""
 
 
 class BackupHealth(BaseModel):
     path: str
+    """The newest backup archive's path, from ``gaffer.backup.latest_backup``."""
     modified_at: str
+    """When it was written."""
     bytes: int
+    """Its size on disk."""
 
 
 class CoreInsightsTable(BaseModel):
     table: str
+    """The core-insights table's name."""
     rows: int
+    """How many rows the collector has banked for it."""
     latest: str | None = None
     """Newest kickoff date in the table, ``YYYY-MM-DD``, or ``None`` when the
     table has no dated rows. A table with rows and no date is possible — the
@@ -1199,8 +1307,12 @@ class CoreInsightsTable(BaseModel):
 
 class CoreInsightsHealth(BaseModel):
     season: str
+    """The season the collector fetches for, from config or its default."""
     collected: bool
+    """Whether any of the collector's tables exist for ``season``."""
     tables: list[CoreInsightsTable]
+    """Row counts and latest date per table, when ``collected`` is true;
+    empty otherwise."""
     waiting_for: str | None = None
     """What has to happen before these numbers mean anything, or ``None`` when
     they already do. Spec §1: a view whose data does not exist yet says what
@@ -1209,9 +1321,12 @@ class CoreInsightsHealth(BaseModel):
 
 class Health(BaseModel):
     data: list[SourceHealth]
+    """One row per ingested source, from ``DATA_SOURCES`` plus the odds bank."""
     # File mtimes say when the ingest ran; this says what it got.
     data_through_gw: int | None = None
+    """The last gameweek ``ingested_through()`` finds fully scored on disk."""
     models: list[ModelHealth]
+    """Every fitted model's ``.meta.json`` under ``MODELS_DIR``."""
     calibration: CalibrationHealth | None = None
     """The fitted EP calibration's deltas, or ``None`` when no calibration
     artifact is on disk (v19g §2.1). Absent is a real state — a clone that has
@@ -1223,6 +1338,7 @@ class Health(BaseModel):
     ``None`` when nothing has been banked or the file predates the model
     columns."""
     launchd: LaunchdHealth
+    """The advise job's own log health, kept separate from ``jobs`` below."""
     jobs: list[JobHealth]
     """Every installed plist and whether it has run lately (v19a §2.3).
 
@@ -1230,8 +1346,13 @@ class Health(BaseModel):
     is the one job whose output a reader wants quoted rather than dated.
     """
     odds_key_present: bool
+    """Whether ``config.toml``'s ``[odds] api_key`` is set — never the key
+    itself."""
     model_health: dict[str, Any] | None
+    """``reports/health.json``'s contents, whatever a fit run last wrote
+    there, or ``None`` when no such report exists."""
     artifacts: list[ArtifactItem]
+    """Every file under ``reports/``, name and size."""
     season_ok: bool | None = None
     """Does the banked data's season match ``config.current_season``?
 
@@ -1262,6 +1383,7 @@ class Health(BaseModel):
     empty, which is the one outcome this feature exists to prevent.
     """
     core_insights: CoreInsightsHealth | None = None
+    """The core-insights collector's own state (v12 W4 §5.1)."""
 
 
 # --- Planning: the fixture ticker -----------------------------------------
@@ -2092,10 +2214,16 @@ class LadderVsBelow(BaseModel):
     """What the extra hit bought, against the previous distinct rung."""
 
     extra_buys: list[PlayerRef] = Field(default_factory=list)
+    """First-week buys this rung makes that the rung below did not."""
     extra_sells: list[PlayerRef] = Field(default_factory=list)
+    """First-week sells this rung makes that the rung below did not."""
     dropped_buys: list[PlayerRef] = Field(default_factory=list)
+    """The rung below's first-week buys this rung does not make."""
     dropped_sells: list[PlayerRef] = Field(default_factory=list)
+    """The rung below's first-week sells this rung does not make."""
     delta_mean_pts: float
+    """This rung's mean simulated points minus the rung below's, from
+    ``ladder.vs_below``."""
     delta_cost: int
     """The **horizon** hit cost this rung carries over the rung below.
     ``max_hits`` is a per-gameweek cap, so a rung can pay it every week, and
@@ -2106,14 +2234,24 @@ class LadderVsBelow(BaseModel):
 
 class LadderWeek(BaseModel):
     gw: int
+    """The gameweek this week of the rung's plan is for."""
     hits: int
+    """Hits taken in this week alone."""
     buys: list[PlayerRef] = Field(default_factory=list)
+    """Players bought in this week of the plan."""
     sells: list[PlayerRef] = Field(default_factory=list)
+    """Players sold in this week of the plan."""
     xi: list[PlayerRef] = Field(default_factory=list)
+    """The starting eleven this week of the plan."""
     bench: list[PlayerRef] = Field(default_factory=list)
+    """The bench this week of the plan."""
     captain: PlayerRef
+    """The captain this week of the plan."""
     vice: PlayerRef
+    """The vice-captain this week of the plan."""
     expected_pts: float
+    """Expected points for this week alone, net of its hits
+    (``ladder.plan_points`` over one week)."""
 
 
 class LadderRung(BaseModel):
@@ -2121,6 +2259,7 @@ class LadderRung(BaseModel):
     the rung below rather than re-solving it."""
 
     key: str
+    """The rung's identifier: ``"bank"``, ``"open"``, or ``"hits{n}"``."""
     label: str = ""
     """The rung's name in prose (v17b §3.1): ``bank``, ``free transfers
     only``, ``1 hit``, ``no cap``. Every surface renders this; none composes
@@ -2128,24 +2267,43 @@ class LadderRung(BaseModel):
     hits: int
     """Hits taken in the **first** week — the decision on the table now."""
     transfers: int
+    """Number of buys in the first week's plan."""
     cost: int
     """The first week's hits, in points."""
     horizon_hits: int = 0
     """Hits over the whole horizon, which is what ``horizon_pts`` and
     ``mean_pts`` are already net of."""
     horizon_cost: int = 0
+    """``horizon_hits`` in points."""
     same_as: str | None = None
+    """The distinct rung's key this row repeats, when the solve collapsed
+    onto an earlier rung's first-week decision (``ladder.collapse``)."""
     plan_by_gw: list[LadderWeek] = Field(default_factory=list)
+    """This rung's plan, one entry per gameweek in the horizon."""
     week_pts: float | None = None
+    """Expected points for the first week alone, net of its hits."""
     horizon_pts: float | None = None
+    """Expected points summed over the whole horizon, net of hits."""
     objective: float | None = None
+    """The MILP's own objective value for this rung's solve."""
     mean_pts: float | None = None
+    """Mean simulated points across the ladder's shared draws."""
     p10_pts: float | None = None
+    """10th percentile of the rung's simulated points."""
     p90_pts: float | None = None
+    """90th percentile of the rung's simulated points."""
     p_beats_bank: float | None = None
+    """Share of shared draws this rung outscores the bank rung, or ``None``
+    for the bank rung itself or when the bank rung did not solve."""
     p_beats_top: float | None = None
+    """Share of shared draws this rung outscores the top (highest-hit)
+    rung, or ``None`` for the top rung itself."""
     p_best: float | None = None
+    """Share of shared draws this rung scores the maximum among all rungs,
+    ties split evenly (``ladder.p_best``)."""
     vs_below: LadderVsBelow | None = None
+    """What this rung buys over the previous distinct rung, or ``None`` for
+    the lowest rung."""
 
 
 class LadderStep(BaseModel):
@@ -2153,11 +2311,20 @@ class LadderStep(BaseModel):
     the shared draws in which ``above`` outscored ``below``."""
 
     below: str
+    """The rung key the walk was standing on."""
     above: str
+    """The rung key it considered stepping to."""
     share: float
+    """Share of the shared draws in which ``above`` outscored ``below``."""
     taken: bool
+    """Whether the walk took this step — ``share >= hit_bar``, unless a
+    cap refused it first."""
     reason: str = ""
+    """Why the step was or was not taken, in prose (``ladder.explain_step``
+    or the cap sentence in ``ladder.walk``)."""
     reason_kind: str = "points"
+    """``"cap"`` when a hit or transfer cap refused the step; otherwise
+    which kind of evidence ``explain_step`` picked."""
     line: str = ""
     """The step as one sentence (v17b §3.1), composed once by
     ``ladder._step_line``."""
@@ -2165,15 +2332,23 @@ class LadderStep(BaseModel):
 
 class LadderCap(BaseModel):
     max_hits: int | None = None
+    """The hit cap the ladder solved every rung under, or ``None`` for none."""
     max_transfers: int | None = None
+    """The transfer cap the ladder solved every rung under, or ``None`` for
+    none; 0 means bank."""
 
 
 class LadderPayload(BaseModel):
     gw: int | None = None
+    """The gameweek the ladder was built for."""
     gws: list[int] = Field(default_factory=list)
+    """Every gameweek in the solve horizon, first entry ``gw``."""
     generated_at: str | None = None
+    """ISO timestamp the ladder was built."""
     free_transfers: int | None = None
+    """Free transfers available going into ``gw``, from the saved state."""
     cap: LadderCap = Field(default_factory=LadderCap)
+    """The hit and transfer caps every rung solved under."""
     cap_source: str | None = None
     """Where ``cap`` came from: ``"config"``, the live settings the card
     writes, or ``"state"`` when that could not be read and the caps the saved
@@ -2186,6 +2361,7 @@ class LadderPayload(BaseModel):
     cap_note: str | None = None
     """Set when the saved ``max_transfers`` has no rung of its own."""
     recommended: str | None = None
+    """The rung key the served advice on disk matches, when it matches one."""
     recommended_note: str | None = None
     """Why ``recommended`` is ``None``, when it is."""
     bar: float | None = None
@@ -2193,18 +2369,26 @@ class LadderPayload(BaseModel):
     chosen: str | None = None
     """The rung the walk stopped on — the served advice's plan."""
     steps: list[LadderStep] = Field(default_factory=list)
+    """The restraint walk's steps, from the lowest rung up to ``chosen``."""
     served_note: str | None = None
     """Set by the router when a rebuild's choice differs from the advice
     on disk."""
     n_draws: int = 0
+    """How many Monte Carlo draws the rungs were scored on."""
     seed: int | None = None
+    """The RNG seed the draws were built with."""
     sigma_source: str | None = None
+    """``"bands"``, ``"outcome"`` or ``"bands+outcome"`` — where the scoring
+    σ came from, the mixed value set when some player-week fell back."""
     sigma_fallbacks: int = 0
     """Player-weeks that fell back to the outcome σ for want of a band."""
     wall_s: float | None = None
+    """Seconds the solve took, timed from inside ``ladder.ladder_payload``,
+    excluding whatever loaded the state beforehand."""
     notes: list[str] = Field(default_factory=list)
     """Rungs dropped because they would not solve."""
     rungs: list[LadderRung] = Field(default_factory=list)
+    """Every rung the ladder solved, in ``RUNG_ORDER``."""
     note: str | None = None
     """Why ``rungs`` is empty, when it is: no state, or no ladder banked."""
 
@@ -2272,19 +2456,31 @@ class ConfidenceTier(BaseModel):
     """
 
     tier: Literal["early", "mixed", "backed"] = "early"
+    """How strong the record is, from ``gaffer.confidence.captain_confidence``:
+    ``"early"`` below the graded floor, else split on the win rate."""
     reviewed: int = 0
+    """Gameweeks with a captaincy lane worth the name — excludes weeks the
+    advice was pruned to nothing."""
     graded: int = 0
     """Reviewed gameweeks where the lane was actually comparable. The gap
     between this and ``reviewed`` is the weeks the model's captain was not in
     the eleven, which is not evidence either way."""
     wins: int = 0
+    """Graded weeks the model's captain beat mine."""
     losses: int = 0
+    """Graded weeks mine beat the model's."""
     aligned: int = 0
+    """Weeks I took the model's own captain — reviewed, but not graded, since
+    there is nothing to compare."""
     text: str = ""
+    """The one sentence quoting these counts, composed by
+    ``captain_confidence``."""
 
 
 class Confidence(BaseModel):
     captain: ConfidenceTier = Field(default_factory=ConfidenceTier)
+    """The captaincy record's own tier and counts — the only lane the card
+    reports today."""
 
 
 # --- Model: the misses table ----------------------------------------------
@@ -2407,16 +2603,26 @@ class DigestSection(BaseModel):
     """
 
     key: str
+    """The section's identifier, distinguishing it for the client's layout."""
     title: str
+    """The section's heading."""
     bits: list[str] = Field(default_factory=list)
+    """The section's clauses, joined by the client into prose."""
 
 
 class Digest(BaseModel):
     kind: str
+    """``"friday"`` or ``"tuesday"`` — which of the two banked digests this
+    is, from ``DIGEST_KINDS``."""
     generated_at: str = ""
+    """ISO timestamp the digest was built."""
     gw: int | None = None
+    """The gameweek the digest is about."""
     headline: str
+    """The digest's one-line summary — the brief's first sentence when a
+    brief exists, else a fact composed in `digest.py`."""
     sections: list[DigestSection] = Field(default_factory=list)
+    """The digest's body, one entry per non-empty section."""
     error: str | None = None
     """Set only on a digest that failed to build. A run that crashes still
     banks an artifact so the card can say "Friday's briefing did not build"
@@ -2432,20 +2638,30 @@ class DigestPanel(BaseModel):
     """
 
     available: bool
+    """Whether a digest was found — the requested kind, or the newer of
+    both when no kind was asked for."""
     digest: Digest | None = None
+    """The digest, when ``available`` is true."""
 
 
 class BriefPanel(BaseModel):
     """The newest brief, or the digest to fall back on (v16 §6.5)."""
 
     gw: int | None = None
+    """The gameweek the brief is about."""
     prose: str | None = None
+    """The LLM's written brief, once it has passed the truth check."""
     checked_at: str | None = None
+    """ISO timestamp the brief was checked and banked, from ``run_brief``."""
     run_stamp: str | None = None
+    """The advice run this brief was written against, for staleness checks."""
     model_command: str | None = None
+    """The command name of the LLM the brief was generated with."""
     note: str | None = None
     """Why there is no brief for the newest gameweek, when there is none."""
     fallback: DigestPanel | None = None
+    """The newest digest, offered in place of a brief that was never
+    written or did not pass its truth check."""
 
 
 # --- This Week: the deviation note ----------------------------------------
@@ -2453,25 +2669,42 @@ class BriefPanel(BaseModel):
 
 class DecisionGrade(BaseModel):
     lane: str = "transfers"
+    """Always ``"transfers"``: the one review lane a deviation note grades
+    against."""
     label: str | None = None
+    """The review ledger's own label for how the lane graded."""
     delta_pts: int | None = None
+    """My points minus the model's on the transfers lane, from the review
+    ledger."""
 
 
 class DecisionNote(BaseModel):
     """v16 §5: one gameweek's deviation note and whether it may be edited."""
 
     gw: int
+    """The gameweek the note is for."""
     reason: str | None = None
+    """One of ``decisions.REASONS`` — why the manager deviated, or ``None``
+    when no note has been saved."""
     text: str = ""
+    """The manager's own words, up to ``decisions.TEXT_MAX`` characters."""
     at: str | None = None
+    """ISO timestamp the note was saved."""
     state: Literal["before_deadline", "open", "graded"] = "open"
+    """Whether the note may still be written: not yet open, open, or closed
+    because the gameweek has been graded (``decisions.note_state``)."""
     deadline: str | None = None
+    """The gameweek's deadline, from the advice payload or the events
+    snapshot."""
     grade: DecisionGrade | None = None
+    """The transfers lane's grade, once the gameweek has been reviewed."""
 
 
 class DecisionWrite(BaseModel):
     reason: str
+    """One of ``decisions.REASONS``; refused with ``unknown_reason`` otherwise."""
     text: str = ""
+    """The manager's own words, up to ``decisions.TEXT_MAX`` characters."""
 
 
 # --- Model: the settings tab ----------------------------------------------

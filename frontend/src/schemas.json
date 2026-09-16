@@ -4,15 +4,18 @@
    "description": "What changed between the two newest runs of one gameweek.\n\n``available`` is false on a first run of the week \u2014 the ordinary case, not\nan error \u2014 and everything else is then empty, so the client renders\nnothing without having to special-case a status code.",
    "properties": {
     "available": {
+     "description": "Whether two runs exist to compare \u2014 false on a first run of the week.",
      "type": "boolean"
     },
     "buys_added": {
+     "description": "Players in ``buys`` now that were not in the earlier run.",
      "items": {
       "$ref": "#/definitions/AdvicePlayer"
      },
      "type": "array"
     },
     "buys_dropped": {
+     "description": "Players in the earlier run's ``buys`` that dropped out.",
      "items": {
       "$ref": "#/definitions/AdvicePlayer"
      },
@@ -27,7 +30,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The earlier run's captain, set only when the captain changed."
     },
     "captain_to": {
      "anyOf": [
@@ -38,10 +42,12 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The later run's captain, set only when the captain changed."
     },
     "changed": {
      "default": false,
+     "description": "Whether anything in the plan moved, from ``diff_advice`` in\n`artifacts.py`: any buy, sell, captain or chip change, or a nonzero\nexpected-points delta.",
      "type": "boolean"
     },
     "chip_from": {
@@ -53,7 +59,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The earlier run's recommended chip, set only when it changed."
     },
     "chip_to": {
      "anyOf": [
@@ -64,7 +71,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The later run's recommended chip, set only when it changed."
     },
     "current_at": {
      "anyOf": [
@@ -75,7 +83,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Timestamp stem of the later of the two compared files."
     },
     "ep_movers": {
      "description": "Players whose expected points moved between the two newest component\nbreakdowns. Independent of ``available``: a first run of the week has no\nplan to diff and may still have a retrain to report (plan A10).",
@@ -98,9 +107,11 @@
     },
     "expected_pts_delta": {
      "default": 0.0,
+     "description": "Later run's ``expected_pts`` minus the earlier run's, rounded to 2dp.",
      "type": "number"
     },
     "gw": {
+     "description": "The gameweek being diffed, or the ``b`` week-against-week path's target.",
      "type": "integer"
     },
     "gw_from": {
@@ -124,7 +135,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The ``b`` gameweek on the week-against-week path, paired with ``gw_from``."
     },
     "previous_at": {
      "anyOf": [
@@ -135,15 +147,18 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Timestamp stem of the earlier of the two compared files."
     },
     "sells_added": {
+     "description": "Players in ``sells`` now that were not in the earlier run.",
      "items": {
       "$ref": "#/definitions/AdvicePlayer"
      },
      "type": "array"
     },
     "sells_dropped": {
+     "description": "Players in the earlier run's ``sells`` that dropped out.",
      "items": {
       "$ref": "#/definitions/AdvicePlayer"
      },
@@ -176,9 +191,11 @@
   "AdvicePlayer": {
    "properties": {
     "code": {
+     "description": "FPL player code.",
      "type": "integer"
     },
     "name": {
+     "description": "Player name, as stored on the advice payload being diffed.",
      "type": "string"
     }
    },
@@ -192,9 +209,11 @@
   "ArtifactItem": {
    "properties": {
     "bytes": {
+     "description": "File size in bytes, from ``path.stat().st_size``.",
      "type": "integer"
     },
     "name": {
+     "description": "The file's path under ``reports/``, e.g. ``reports/health.json``.",
      "type": "string"
     }
    },
@@ -285,12 +304,15 @@
   "BackupHealth": {
    "properties": {
     "bytes": {
+     "description": "Its size on disk.",
      "type": "integer"
     },
     "modified_at": {
+     "description": "When it was written.",
      "type": "string"
     },
     "path": {
+     "description": "The newest backup archive's path, from ``gaffer.backup.latest_backup``.",
      "type": "string"
     }
    },
@@ -358,7 +380,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "ISO timestamp the brief was checked and banked, from ``run_brief``."
     },
     "fallback": {
      "anyOf": [
@@ -369,7 +392,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The newest digest, offered in place of a brief that was never\nwritten or did not pass its truth check."
     },
     "gw": {
      "anyOf": [
@@ -380,7 +404,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The gameweek the brief is about."
     },
     "model_command": {
      "anyOf": [
@@ -391,7 +416,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The command name of the LLM the brief was generated with."
     },
     "note": {
      "anyOf": [
@@ -414,7 +440,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The LLM's written brief, once it has passed the truth check."
     },
     "run_stamp": {
      "anyOf": [
@@ -425,7 +452,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The advice run this brief was written against, for staleness checks."
     }
    },
    "required": [
@@ -1066,7 +1094,8 @@
   "ConfidenceData": {
    "properties": {
     "captain": {
-     "$ref": "#/definitions/ConfidenceTier"
+     "$ref": "#/definitions/ConfidenceTier",
+     "description": "The captaincy record's own tier and counts \u2014 the only lane the card\nreports today."
     }
    },
    "required": [
@@ -1080,6 +1109,7 @@
    "properties": {
     "aligned": {
      "default": 0,
+     "description": "Weeks I took the model's own captain \u2014 reviewed, but not graded, since\nthere is nothing to compare.",
      "type": "integer"
     },
     "graded": {
@@ -1089,18 +1119,22 @@
     },
     "losses": {
      "default": 0,
+     "description": "Graded weeks mine beat the model's.",
      "type": "integer"
     },
     "reviewed": {
      "default": 0,
+     "description": "Gameweeks with a captaincy lane worth the name \u2014 excludes weeks the\nadvice was pruned to nothing.",
      "type": "integer"
     },
     "text": {
      "default": "",
+     "description": "The one sentence quoting these counts, composed by\n``captain_confidence``.",
      "type": "string"
     },
     "tier": {
      "default": "early",
+     "description": "How strong the record is, from ``gaffer.confidence.captain_confidence``:\n``\"early\"`` below the graded floor, else split on the win rate.",
      "enum": [
       "early",
       "mixed",
@@ -1110,6 +1144,7 @@
     },
     "wins": {
      "default": 0,
+     "description": "Graded weeks the model's captain beat mine.",
      "type": "integer"
     }
    },
@@ -1128,12 +1163,15 @@
   "CoreInsightsHealth": {
    "properties": {
     "collected": {
+     "description": "Whether any of the collector's tables exist for ``season``.",
      "type": "boolean"
     },
     "season": {
+     "description": "The season the collector fetches for, from config or its default.",
      "type": "string"
     },
     "tables": {
+     "description": "Row counts and latest date per table, when ``collected`` is true;\nempty otherwise.",
      "items": {
       "$ref": "#/definitions/CoreInsightsTable"
      },
@@ -1176,9 +1214,11 @@
      "description": "Newest kickoff date in the table, ``YYYY-MM-DD``, or ``None`` when the\ntable has no dated rows. A table with rows and no date is possible \u2014 the\nplayer table is keyed on gameweek, not on a timestamp \u2014 and reads as its\nhighest gameweek instead."
     },
     "rows": {
+     "description": "How many rows the collector has banked for it.",
      "type": "integer"
     },
     "table": {
+     "description": "The core-insights table's name.",
      "type": "string"
     }
    },
@@ -1249,7 +1289,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "My points minus the model's on the transfers lane, from the review\nledger."
     },
     "label": {
      "anyOf": [
@@ -1260,10 +1301,12 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The review ledger's own label for how the lane graded."
     },
     "lane": {
      "default": "transfers",
+     "description": "Always ``\"transfers\"``: the one review lane a deviation note grades\nagainst.",
      "type": "string"
     }
    },
@@ -1287,7 +1330,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "ISO timestamp the note was saved."
     },
     "deadline": {
      "anyOf": [
@@ -1298,7 +1342,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The gameweek's deadline, from the advice payload or the events\nsnapshot."
     },
     "grade": {
      "anyOf": [
@@ -1309,9 +1354,11 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The transfers lane's grade, once the gameweek has been reviewed."
     },
     "gw": {
+     "description": "The gameweek the note is for.",
      "type": "integer"
     },
     "reason": {
@@ -1323,10 +1370,12 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "One of ``decisions.REASONS`` \u2014 why the manager deviated, or ``None``\nwhen no note has been saved."
     },
     "state": {
      "default": "open",
+     "description": "Whether the note may still be written: not yet open, open, or closed\nbecause the gameweek has been graded (``decisions.note_state``).",
      "enum": [
       "before_deadline",
       "open",
@@ -1336,6 +1385,7 @@
     },
     "text": {
      "default": "",
+     "description": "The manager's own words, up to ``decisions.TEXT_MAX`` characters.",
      "type": "string"
     }
    },
@@ -1392,10 +1442,12 @@
   "DecisionWrite": {
    "properties": {
     "reason": {
+     "description": "One of ``decisions.REASONS``; refused with ``unknown_reason`` otherwise.",
      "type": "string"
     },
     "text": {
      "default": "",
+     "description": "The manager's own words, up to ``decisions.TEXT_MAX`` characters.",
      "type": "string"
     }
    },
@@ -1484,6 +1536,7 @@
     },
     "generated_at": {
      "default": "",
+     "description": "ISO timestamp the digest was built.",
      "type": "string"
     },
     "gw": {
@@ -1495,15 +1548,19 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The gameweek the digest is about."
     },
     "headline": {
+     "description": "The digest's one-line summary \u2014 the brief's first sentence when a\nbrief exists, else a fact composed in `digest.py`.",
      "type": "string"
     },
     "kind": {
+     "description": "``\"friday\"`` or ``\"tuesday\"`` \u2014 which of the two banked digests this\nis, from ``DIGEST_KINDS``.",
      "type": "string"
     },
     "sections": {
+     "description": "The digest's body, one entry per non-empty section.",
      "items": {
       "$ref": "#/definitions/DigestSection"
      },
@@ -1525,6 +1582,7 @@
    "description": "The newest digest, or a stated absence.\n\n``available`` false covers all three ways there is nothing to show \u2014 never\nrun, deleted, unparseable \u2014 because the card's empty state says the same\nsentence for each of them: press the button, or wait for Friday.",
    "properties": {
     "available": {
+     "description": "Whether a digest was found \u2014 the requested kind, or the newer of\nboth when no kind was asked for.",
      "type": "boolean"
     },
     "digest": {
@@ -1536,7 +1594,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The digest, when ``available`` is true."
     }
    },
    "required": [
@@ -1550,15 +1609,18 @@
    "description": "One block of a digest. ``bits`` is prose the client joins.\n\nThe DiffStrip idiom: clauses assembled server-side, rendered by joining\nthem, so there is no markdown dependency anywhere in the client. A section\nwith no bits never reaches here \u2014 the builder drops it (plan A5).",
    "properties": {
     "bits": {
+     "description": "The section's clauses, joined by the client into prose.",
      "items": {
       "type": "string"
      },
      "type": "array"
     },
     "key": {
+     "description": "The section's identifier, distinguishing it for the client's layout.",
      "type": "string"
     },
     "title": {
+     "description": "The section's heading.",
      "type": "string"
     }
    },
@@ -1799,18 +1861,23 @@
    "description": "One player the newest retrain moved, in the gameweek being decided.",
    "properties": {
     "code": {
+     "description": "FPL player code.",
      "type": "integer"
     },
     "delta": {
+     "description": "``ep_now - ep_prev``, points.",
      "type": "number"
     },
     "ep_now": {
+     "description": "Expected points after the newest retrain.",
      "type": "number"
     },
     "ep_prev": {
+     "description": "Expected points before the newest retrain.",
      "type": "number"
     },
     "name": {
+     "description": "Player name.",
      "type": "string"
     }
    },
@@ -2257,6 +2324,7 @@
   "Freshness": {
    "properties": {
     "rows": {
+     "description": "One row per standing job (v12 W1 \u00a72.9, v19a \u00a72.2).",
      "items": {
       "$ref": "#/definitions/FreshnessRow"
      },
@@ -2296,7 +2364,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "When the file was last written, or ``None`` when it never was."
     },
     "path": {
      "anyOf": [
@@ -2311,6 +2380,7 @@
      "description": "What was actually stat'd, so a surprising age is diagnosable."
     },
     "source": {
+     "description": "Which of the seven standing jobs this row reports on.",
      "enum": [
       "refresh",
       "odds",
@@ -2453,6 +2523,7 @@
   "JobAccepted": {
    "properties": {
     "job_id": {
+     "description": "The v6 ``JobRegistry`` id the caller polls at ``GET /api/jobs/{job_id}``.",
      "type": "string"
     }
    },
@@ -2531,7 +2602,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The failure reason, set only when ``status`` is ``\"failed\"``."
     },
     "finished_at": {
      "anyOf": [
@@ -2542,21 +2614,27 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "ISO timestamp the run ended, or ``None`` while it is still going."
     },
     "id": {
+     "description": "The run's id, as minted by ``JobRunner.start``.",
      "type": "string"
     },
     "kind": {
+     "description": "Which of the runner's four named kinds this run is.",
      "type": "string"
     },
     "line_count": {
+     "description": "Total stdout lines captured so far, including any dropped from the\n500-line ring buffer (``JobRun.first_line_index + len(lines)``).",
      "type": "integer"
     },
     "started_at": {
+     "description": "ISO timestamp the run began, from ``JobRun.started_at``.",
      "type": "string"
     },
     "status": {
+     "description": "The run's lifecycle state, from ``JobRun.status`` in `web/jobs.py`.",
      "enum": [
       "queued",
       "running",
@@ -2574,7 +2652,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The one-line result the job wrote for itself on success."
     }
    },
    "required": [
@@ -2594,9 +2673,11 @@
    "description": "The v7 runner's accept body. ``JobAccepted`` above still serves the v6\nqueue endpoints, whose clients read only ``job_id``.",
    "properties": {
     "job_id": {
+     "description": "The v7 ``JobRunner`` id, minted by ``JobRunner.start`` in `web/jobs.py`.",
      "type": "string"
     },
     "kind": {
+     "description": "The job kind the caller posted to, echoed back from the path parameter.",
      "type": "string"
     }
    },
@@ -2744,7 +2825,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The hit cap the ladder solved every rung under, or ``None`` for none."
     },
     "max_transfers": {
      "anyOf": [
@@ -2755,7 +2837,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The transfer cap the ladder solved every rung under, or ``None`` for\nnone; 0 means bank."
     }
    },
    "required": [
@@ -2780,7 +2863,8 @@
      "description": "The hit bar the walk used (v16 \u00a73.2)."
     },
     "cap": {
-     "$ref": "#/definitions/LadderCap"
+     "$ref": "#/definitions/LadderCap",
+     "description": "The hit and transfer caps every rung solved under."
     },
     "cap_note": {
      "anyOf": [
@@ -2851,7 +2935,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Free transfers available going into ``gw``, from the saved state."
     },
     "generated_at": {
      "anyOf": [
@@ -2862,7 +2947,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "ISO timestamp the ladder was built."
     },
     "gw": {
      "anyOf": [
@@ -2873,9 +2959,11 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The gameweek the ladder was built for."
     },
     "gws": {
+     "description": "Every gameweek in the solve horizon, first entry ``gw``.",
      "items": {
       "type": "integer"
      },
@@ -2883,6 +2971,7 @@
     },
     "n_draws": {
      "default": 0,
+     "description": "How many Monte Carlo draws the rungs were scored on.",
      "type": "integer"
     },
     "note": {
@@ -2913,7 +3002,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The rung key the served advice on disk matches, when it matches one."
     },
     "recommended_note": {
      "anyOf": [
@@ -2928,6 +3018,7 @@
      "description": "Why ``recommended`` is ``None``, when it is."
     },
     "rungs": {
+     "description": "Every rung the ladder solved, in ``RUNG_ORDER``.",
      "items": {
       "$ref": "#/definitions/LadderRung"
      },
@@ -2942,7 +3033,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The RNG seed the draws were built with."
     },
     "served_note": {
      "anyOf": [
@@ -2970,9 +3062,11 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "``\"bands\"``, ``\"outcome\"`` or ``\"bands+outcome\"`` \u2014 where the scoring\n\u03c3 came from, the mixed value set when some player-week fell back."
     },
     "steps": {
+     "description": "The restraint walk's steps, from the lowest rung up to ``chosen``.",
      "items": {
       "$ref": "#/definitions/LadderStep"
      },
@@ -2987,7 +3081,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Seconds the solve took, timed from inside ``ladder.ladder_payload``,\nexcluding whatever loaded the state beforehand."
     }
    },
    "required": [
@@ -3031,6 +3126,7 @@
     },
     "horizon_cost": {
      "default": 0,
+     "description": "``horizon_hits`` in points.",
      "type": "integer"
     },
     "horizon_hits": {
@@ -3047,9 +3143,11 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Expected points summed over the whole horizon, net of hits."
     },
     "key": {
+     "description": "The rung's identifier: ``\"bank\"``, ``\"open\"``, or ``\"hits{n}\"``.",
      "type": "string"
     },
     "label": {
@@ -3066,7 +3164,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Mean simulated points across the ladder's shared draws."
     },
     "objective": {
      "anyOf": [
@@ -3077,7 +3176,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The MILP's own objective value for this rung's solve."
     },
     "p10_pts": {
      "anyOf": [
@@ -3088,7 +3188,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "10th percentile of the rung's simulated points."
     },
     "p90_pts": {
      "anyOf": [
@@ -3099,7 +3200,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "90th percentile of the rung's simulated points."
     },
     "p_beats_bank": {
      "anyOf": [
@@ -3110,7 +3212,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Share of shared draws this rung outscores the bank rung, or ``None``\nfor the bank rung itself or when the bank rung did not solve."
     },
     "p_beats_top": {
      "anyOf": [
@@ -3121,7 +3224,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Share of shared draws this rung outscores the top (highest-hit)\nrung, or ``None`` for the top rung itself."
     },
     "p_best": {
      "anyOf": [
@@ -3132,9 +3236,11 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Share of shared draws this rung scores the maximum among all rungs,\nties split evenly (``ladder.p_best``)."
     },
     "plan_by_gw": {
+     "description": "This rung's plan, one entry per gameweek in the horizon.",
      "items": {
       "$ref": "#/definitions/LadderWeek"
      },
@@ -3149,9 +3255,11 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The distinct rung's key this row repeats, when the solve collapsed\nonto an earlier rung's first-week decision (``ladder.collapse``)."
     },
     "transfers": {
+     "description": "Number of buys in the first week's plan.",
      "type": "integer"
     },
     "vs_below": {
@@ -3163,7 +3271,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "What this rung buys over the previous distinct rung, or ``None`` for\nthe lowest rung."
     },
     "week_pts": {
      "anyOf": [
@@ -3174,7 +3283,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Expected points for the first week alone, net of its hits."
     }
    },
    "required": [
@@ -3205,9 +3315,11 @@
    "description": "One step of the restraint walk (v16 \u00a73.1). ``share`` is the share of\nthe shared draws in which ``above`` outscored ``below``.",
    "properties": {
     "above": {
+     "description": "The rung key it considered stepping to.",
      "type": "string"
     },
     "below": {
+     "description": "The rung key the walk was standing on.",
      "type": "string"
     },
     "line": {
@@ -3217,16 +3329,20 @@
     },
     "reason": {
      "default": "",
+     "description": "Why the step was or was not taken, in prose (``ladder.explain_step``\nor the cap sentence in ``ladder.walk``).",
      "type": "string"
     },
     "reason_kind": {
      "default": "points",
+     "description": "``\"cap\"`` when a hit or transfer cap refused the step; otherwise\nwhich kind of evidence ``explain_step`` picked.",
      "type": "string"
     },
     "share": {
+     "description": "Share of the shared draws in which ``above`` outscored ``below``.",
      "type": "number"
     },
     "taken": {
+     "description": "Whether the walk took this step \u2014 ``share >= hit_bar``, unless a\ncap refused it first.",
      "type": "boolean"
     }
    },
@@ -3255,27 +3371,32 @@
      "type": "integer"
     },
     "delta_mean_pts": {
+     "description": "This rung's mean simulated points minus the rung below's, from\n``ladder.vs_below``.",
      "type": "number"
     },
     "dropped_buys": {
+     "description": "The rung below's first-week buys this rung does not make.",
      "items": {
       "$ref": "#/definitions/WirePlayerRef"
      },
      "type": "array"
     },
     "dropped_sells": {
+     "description": "The rung below's first-week sells this rung does not make.",
      "items": {
       "$ref": "#/definitions/WirePlayerRef"
      },
      "type": "array"
     },
     "extra_buys": {
+     "description": "First-week buys this rung makes that the rung below did not.",
      "items": {
       "$ref": "#/definitions/WirePlayerRef"
      },
      "type": "array"
     },
     "extra_sells": {
+     "description": "First-week sells this rung makes that the rung below did not.",
      "items": {
       "$ref": "#/definitions/WirePlayerRef"
      },
@@ -3297,39 +3418,48 @@
   "LadderWeek": {
    "properties": {
     "bench": {
+     "description": "The bench this week of the plan.",
      "items": {
       "$ref": "#/definitions/WirePlayerRef"
      },
      "type": "array"
     },
     "buys": {
+     "description": "Players bought in this week of the plan.",
      "items": {
       "$ref": "#/definitions/WirePlayerRef"
      },
      "type": "array"
     },
     "captain": {
-     "$ref": "#/definitions/WirePlayerRef"
+     "$ref": "#/definitions/WirePlayerRef",
+     "description": "The captain this week of the plan."
     },
     "expected_pts": {
+     "description": "Expected points for this week alone, net of its hits\n(``ladder.plan_points`` over one week).",
      "type": "number"
     },
     "gw": {
+     "description": "The gameweek this week of the rung's plan is for.",
      "type": "integer"
     },
     "hits": {
+     "description": "Hits taken in this week alone.",
      "type": "integer"
     },
     "sells": {
+     "description": "Players sold in this week of the plan.",
      "items": {
       "$ref": "#/definitions/WirePlayerRef"
      },
      "type": "array"
     },
     "vice": {
-     "$ref": "#/definitions/WirePlayerRef"
+     "$ref": "#/definitions/WirePlayerRef",
+     "description": "The vice-captain this week of the plan."
     },
     "xi": {
+     "description": "The starting eleven this week of the plan.",
      "items": {
       "$ref": "#/definitions/WirePlayerRef"
      },
@@ -3360,9 +3490,11 @@
       {
        "type": "null"
       }
-     ]
+     ],
+     "description": "The log's last non-blank line \u2014 the advise job's own report of what\nit did."
     },
     "log": {
+     "description": "Path to the advise job's redirect log.",
      "type": "string"
     },
     "modified_at": {
@@ -3373,9 +3505,11 @@
       {
        "type": "null"
       }
-     ]
+     ],
+     "description": "When it was last written, or ``None`` if it never was."
     },
     "present": {
+     "description": "Whether that log file exists.",
      "type": "boolean"
     }
    },
@@ -4530,12 +4664,15 @@
   "NewsPanelData": {
    "properties": {
     "gw": {
+     "description": "The gameweek the panel is reporting on.",
      "type": "integer"
     },
     "moved": {
+     "description": "How many players cleared ``MOVED_EPSILON`` between the news-aware and\nflag-only readings \u2014 ``len(rows)``.",
      "type": "integer"
     },
     "rows": {
+     "description": "The moved players, biggest disagreement first.",
      "items": {
       "$ref": "#/definitions/NewsRow"
      },
@@ -4562,15 +4699,19 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "FPL's own percentage chance of playing, from the live players\nsnapshot."
     },
     "code": {
+     "description": "FPL player code.",
      "type": "integer"
     },
     "e_min_flags": {
+     "description": "Expected minutes under the official-flag-only reading, rounded to 1dp.",
      "type": "number"
     },
     "e_min_news": {
+     "description": "Expected minutes under the news-aware reading, rounded to 1dp.",
      "type": "number"
     },
     "expected_return_gw": {
@@ -4582,7 +4723,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The gameweek the availability frame expects him back, when known."
     },
     "fetched_at": {
      "anyOf": [
@@ -4593,7 +4735,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "ISO timestamp the availability evidence was fetched."
     },
     "injury_type": {
      "anyOf": [
@@ -4604,7 +4747,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The injury or absence category this run's availability frame recorded\nfor him, when it has one."
     },
     "lineup_hint": {
      "anyOf": [
@@ -4619,6 +4763,7 @@
      "description": "``xi`` / ``doubt`` / ``out`` \u2014 ``p_start_hint`` named, because a\nprobability in a caption reads as a forecast rather than as a listing."
     },
     "name": {
+     "description": "Player name, from the live players snapshot.",
      "type": "string"
     },
     "official_note": {
@@ -4630,12 +4775,15 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "FPL's own news text for the player, from the live players snapshot."
     },
     "p_play_flags": {
+     "description": "P(starts) as it would read off the official flag alone, rounded to\n3dp \u2014 the comparison figure ``p_play_news`` disagrees with.",
      "type": "number"
     },
     "p_play_news": {
+     "description": "This run's P(starts), as predicted from the news-aware availability\nframe, rounded to 3dp.",
      "type": "number"
     },
     "p_start_hint": {
@@ -4647,7 +4795,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The availability frame's own P(starts), separate from the news-model\nfigures above."
     },
     "source": {
      "anyOf": [
@@ -4658,7 +4807,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Where the availability evidence came from (e.g. a news feed name)."
     },
     "status": {
      "anyOf": [
@@ -4669,9 +4819,11 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "FPL's own status code for the player (e.g. injured, doubtful), from\nthe live players snapshot."
     },
     "team_name": {
+     "description": "Player's club name, from the live teams snapshot.",
      "type": "string"
     }
    },
@@ -7911,7 +8063,8 @@
       {
        "type": "null"
       }
-     ]
+     ],
+     "description": "Hours since ``modified_at``, or ``None`` when the source is absent."
     },
     "modified_at": {
      "anyOf": [
@@ -7921,15 +8074,19 @@
       {
        "type": "null"
       }
-     ]
+     ],
+     "description": "When it was last written, or ``None`` if it never was."
     },
     "path": {
+     "description": "Where it lives under ``data/``, for ``_stat`` in `routers/meta.py`.",
      "type": "string"
     },
     "present": {
+     "description": "Whether the file exists on disk.",
      "type": "boolean"
     },
     "source": {
+     "description": "The ingested source's name, from ``DATA_SOURCES`` or the odds bank.",
      "type": "string"
     }
    },
@@ -8090,6 +8247,7 @@
   "Staleness": {
    "properties": {
     "advice_gw": {
+     "description": "The gameweek the saved advice was solved for.",
      "type": "integer"
     },
     "current_gw": {
@@ -8100,7 +8258,8 @@
       {
        "type": "null"
       }
-     ]
+     ],
+     "description": "``upcoming_gw()``'s answer now \u2014 the deadline the user is actually\nfacing, which can be later than ``advice_gw`` when the advice is old."
     },
     "data_through_gw": {
      "anyOf": [
@@ -8111,7 +8270,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The last gameweek ``ingested_through()`` finds fully scored in the\nbanked parquet, independent of when the advice itself was solved."
     },
     "data_warning": {
      "anyOf": [
@@ -8122,21 +8282,27 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "``data_warning(current_gw, data_through_gw)``'s sentence when the\nmodel's ingested data trails the current gameweek, else ``None``."
     },
     "deadline": {
+     "description": "ISO timestamp of ``advice_gw``'s deadline.",
      "type": "string"
     },
     "deadline_passed": {
+     "description": "Whether ``deadline`` is before now, computed in ``staleness_for``\n(`routers/advice.py`) against ``pd.Timestamp.now(tz=\"UTC\")``.",
      "type": "boolean"
     },
     "generated_at": {
+     "description": "ISO timestamp the advice was solved, from the saved solve state.",
      "type": "string"
     },
     "reason": {
+     "description": "The one sentence ``staleness_for`` builds explaining ``stale``, or\nconfirming the advice is current.",
      "type": "string"
     },
     "stale": {
+     "description": "``deadline_passed or current_gw > advice_gw``: the advice is behind\nthe gameweek the user needs, either way.",
      "type": "boolean"
     }
    },
@@ -8206,6 +8372,7 @@
      "type": "number"
     },
     "min_e_gc_model": {
+     "description": "The lowest expected-goals-conceded the team model reached this week.",
      "type": "number"
     },
     "zero_odds_fixtures": {
@@ -8619,19 +8786,24 @@
    "properties": {
     "advice": {
      "additionalProperties": true,
+     "description": "The banked advice payload, enriched at serve time with position,\nidentity, the attacking haul rename and the field frame (`latest()` in\n`routers/advice.py`).",
      "type": "object"
     },
     "deadline": {
+     "description": "ISO timestamp of ``gw``'s deadline, from the saved solve state.",
      "type": "string"
     },
     "gw": {
+     "description": "The gameweek this advice was solved for, from ``latest_gw()``.",
      "type": "integer"
     },
     "mode": {
+     "description": "The solve state's mode (e.g. ``\"normal\"``, a chip), as saved by\n``advise.py`` and read back by ``load_solve_state``.",
      "type": "string"
     },
     "staleness": {
-     "$ref": "#/definitions/Staleness"
+     "$ref": "#/definitions/Staleness",
+     "description": "Whether this advice is still current, from ``staleness_for``."
     }
    },
    "required": [
@@ -8758,6 +8930,7 @@
   "WireHealth": {
    "properties": {
     "artifacts": {
+     "description": "Every file under ``reports/``, name and size.",
      "items": {
       "$ref": "#/definitions/ArtifactItem"
      },
@@ -8784,9 +8957,11 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The core-insights collector's own state (v12 W4 \u00a75.1)."
     },
     "data": {
+     "description": "One row per ingested source, from ``DATA_SOURCES`` plus the odds bank.",
      "items": {
       "$ref": "#/definitions/SourceHealth"
      },
@@ -8801,7 +8976,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The last gameweek ``ingested_through()`` finds fully scored on disk."
     },
     "jobs": {
      "description": "Every installed plist and whether it has run lately (v19a \u00a72.3).\n\n``launchd`` above stays: it carries the advise log's *last line*, which\nis the one job whose output a reader wants quoted rather than dated.",
@@ -8823,7 +8999,8 @@
      "description": "The newest ``gaffer-*.tar.gz`` in the configured backup directory.\n\n``None`` means *never*, and the tab renders it as \"never \u2014 run `gaffer\nbackup`\" rather than as a blank cell. A zero-byte dict would have been the\nother option and it is worse: it renders as a backup that happened and was\nempty, which is the one outcome this feature exists to prevent."
     },
     "launchd": {
-     "$ref": "#/definitions/LaunchdHealth"
+     "$ref": "#/definitions/LaunchdHealth",
+     "description": "The advise job's own log health, kept separate from ``jobs`` below."
     },
     "model_health": {
      "anyOf": [
@@ -8834,15 +9011,18 @@
       {
        "type": "null"
       }
-     ]
+     ],
+     "description": "``reports/health.json``'s contents, whatever a fit run last wrote\nthere, or ``None`` when no such report exists."
     },
     "models": {
+     "description": "Every fitted model's ``.meta.json`` under ``MODELS_DIR``.",
      "items": {
       "$ref": "#/definitions/WireModelHealth"
      },
      "type": "array"
     },
     "odds_key_present": {
+     "description": "Whether ``config.toml``'s ``[odds] api_key`` is set \u2014 never the key\nitself.",
      "type": "boolean"
     },
     "season_config": {
@@ -8964,9 +9144,11 @@
    "properties": {
     "metrics": {
      "additionalProperties": true,
+     "description": "The rest of the sidecar's contents \u2014 whatever the trainer recorded.",
      "type": "object"
     },
     "name": {
+     "description": "The model's filename stem, from its ``.meta.json`` sidecar.",
      "type": "string"
     },
     "saved_at": {
@@ -8977,7 +9159,8 @@
       {
        "type": "null"
       }
-     ]
+     ],
+     "description": "When the model was fitted, from the sidecar's ``saved_at`` key."
     }
    },
    "required": [
