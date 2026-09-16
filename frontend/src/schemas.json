@@ -614,12 +614,14 @@
   "ChipPlan": {
    "properties": {
     "chips": {
+     "description": "One row per chip, best gain first.",
      "items": {
       "$ref": "#/definitions/ChipPlanRow"
      },
      "type": "array"
     },
     "gw": {
+     "description": "The gameweek the plan was solved from.",
      "type": "integer"
     }
    },
@@ -633,15 +635,19 @@
   "ChipPlanRow": {
    "properties": {
     "best_gain": {
+     "description": "The total gain at ``best_gw``.",
      "type": "number"
     },
     "best_gain_per_week": {
+     "description": "The per-week gain at ``best_gw`` \u2014 the figure ``best_gw`` is chosen on.",
      "type": "number"
     },
     "best_gw": {
+     "description": "The gameweek with the best ``per_week`` gain \u2014 not necessarily the\nbest total (``optimize.chips.chip_plan``).",
      "type": "integer"
     },
     "chip": {
+     "description": "The chip this row is about: wildcard, bench boost, free hit or triple\ncaptain.",
      "type": "string"
     },
     "now_gain": {
@@ -652,7 +658,8 @@
       {
        "type": "null"
       }
-     ]
+     ],
+     "description": "The gain if played this gameweek, or ``None`` when it cannot be\nplayed now."
     },
     "play_now": {
      "anyOf": [
@@ -663,7 +670,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Whether ``now_gain`` clears ``threshold_now`` \u2014 the chip policy's own\nverdict on playing this week rather than waiting."
     },
     "play_now_delta": {
      "anyOf": [
@@ -673,7 +681,8 @@
       {
        "type": "null"
       }
-     ]
+     ],
+     "description": "``now_gain`` minus ``best_gain`` \u2014 the total-points price of playing\nnow rather than waiting, or ``None`` when it cannot be played now."
     },
     "thetas": {
      "default": [],
@@ -708,6 +717,7 @@
      "description": "See ``ChipWorkbenchRow.threshold_source``. Filled at the router from the\nsame lookup ``thetas`` is built from (v12 W3 \u00a74.2)."
     },
     "weeks": {
+     "description": "Every horizon gameweek this chip could be played in, with its gain.",
      "items": {
       "$ref": "#/definitions/ChipWeek"
      },
@@ -747,9 +757,11 @@
   "ChipWeek": {
    "properties": {
     "gain": {
+     "description": "Total expected-points gain from playing the chip in ``gw``, from\n``optimize/chips.py``'s ``evaluate_chips``.",
      "type": "number"
     },
     "gw": {
+     "description": "A gameweek the chip could be played in.",
      "type": "integer"
     },
     "per_week": {
@@ -769,12 +781,15 @@
    "description": "One (chip, gameweek) cell of the advice run's own chip table.\n\n``threshold`` is the \u03b8 bar that week \u2014 the surplus the best remaining week\nis expected to offer \u2014 so the workbench can draw the gain against the bar\nrather than against an arbitrary axis. Both it and ``play_now`` are\noptional because an advice payload written before the chip policy landed\ncarries neither.",
    "properties": {
     "chip": {
+     "description": "The chip this cell prices: wildcard, bench boost, free hit or triple\ncaptain.",
      "type": "string"
     },
     "gain": {
+     "description": "Expected-points gain from playing the chip in this cell, as the\nadvice run's own chip table priced it.",
      "type": "number"
     },
     "gw": {
+     "description": "The gameweek this cell is for.",
      "type": "integer"
     },
     "gw2": {
@@ -798,7 +813,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "A caveat on this cell, when the advice run's chip table wrote one."
     },
     "per_week": {
      "anyOf": [
@@ -809,10 +825,12 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "``gain`` divided by the weeks it is credited with."
     },
     "play_now": {
      "default": false,
+     "description": "Whether ``gain`` clears ``threshold`` this cell.",
      "type": "boolean"
     },
     "threshold": {
@@ -824,7 +842,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The \u03b8 bar this gain is judged against \u2014 see the class docstring."
     },
     "threshold_source": {
      "anyOf": [
@@ -856,12 +875,14 @@
   "ChipsWorkbench": {
    "properties": {
     "chips": {
+     "description": "Every (chip, gameweek) cell in the advice run's own chip table.",
      "items": {
       "$ref": "#/definitions/ChipWorkbenchRow"
      },
      "type": "array"
     },
     "gw": {
+     "description": "The gameweek the workbench is showing.",
      "type": "integer"
     },
     "wildcard": {
@@ -873,7 +894,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The wildcard candidate squad against the owned one, or ``None`` when\nthe advice payload carries no ``wildcard_now``."
     }
    },
    "required": [
@@ -887,9 +909,11 @@
   "Component": {
    "properties": {
     "label": {
+     "description": "The scoring category this term covers (e.g. minutes, goals, saves).",
      "type": "string"
     },
     "points": {
+     "description": "Its contribution to ``ep`` for this fixture, summed over the\ncategory's columns.",
      "type": "number"
     }
    },
@@ -904,18 +928,22 @@
    "description": "One player-fixture's additive terms.\n\nDeliberately shaped like :class:`FixtureExplain` (the explain modal's\nper-fixture row) without being it: this one is read from the saved\ncomponents parquet with no model loading at all, and carries only what a\nwhy-panel renders.",
    "properties": {
     "components": {
+     "description": "The scoring categories that summed to ``ep``, from the saved\ncomponents parquet.",
      "items": {
       "$ref": "#/definitions/Component"
      },
      "type": "array"
     },
     "ep": {
+     "description": "Expected points for this fixture, the sum ``components`` explains.",
      "type": "number"
     },
     "gw": {
+     "description": "The gameweek of this fixture.",
      "type": "integer"
     },
     "home": {
+     "description": "Whether the fixture is at home.",
      "type": "boolean"
     },
     "kickoff_time": {
@@ -926,12 +954,15 @@
       {
        "type": "null"
       }
-     ]
+     ],
+     "description": "ISO kickoff time, or ``None`` when not yet known."
     },
     "minutes": {
-     "$ref": "#/definitions/MinutesOutput"
+     "$ref": "#/definitions/MinutesOutput",
+     "description": "The minutes model's own prediction for this fixture."
     },
     "opponent": {
+     "description": "The opponent's name.",
      "type": "string"
     },
     "pen_taker": {
@@ -963,6 +994,7 @@
   "ComponentPlayer": {
    "properties": {
     "code": {
+     "description": "FPL player code.",
      "type": "integer"
     },
     "ep": {
@@ -990,7 +1022,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "p75 of ``ep_gw``'s distribution, same contract as ``ep_lo``."
     },
     "ep_lo": {
      "anyOf": [
@@ -1005,12 +1038,14 @@
      "description": "p25 / p75 of the distribution ``noise_ep`` draws from. ``None``, never\nzero, when the frame carries no minutes model for him."
     },
     "fixtures": {
+     "description": "Every horizon fixture's breakdown from the saved components parquet.",
      "items": {
       "$ref": "#/definitions/ComponentFixture"
      },
      "type": "array"
     },
     "name": {
+     "description": "Player name.",
      "type": "string"
     },
     "p_blank": {
@@ -1022,7 +1057,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "``P(points <= 2)`` under the same distribution."
     },
     "p_haul": {
      "anyOf": [
@@ -1037,6 +1073,7 @@
      "description": "``uncertainty.Band.p_haul``: P(total points >= 10) in the tail of the\nwhole forecast. The advice payload's attacking quantity is a different\nnumber on a different scale and is served as ``p_attacking_haul``\n(spec D3)."
     },
     "position": {
+     "description": "GKP, DEF, MID or FWD.",
      "type": "string"
     },
     "sigma": {
@@ -1052,6 +1089,7 @@
      "description": "The scenario sweep's own \u03c3 for this player-gameweek, in points."
     },
     "team_name": {
+     "description": "His club's name.",
      "type": "string"
     }
    },
@@ -1075,9 +1113,11 @@
   "ComponentsBreakdown": {
    "properties": {
     "gw": {
+     "description": "The gameweek this breakdown was requested for.",
      "type": "integer"
     },
     "players": {
+     "description": "Every candidate's EP decomposition for this gameweek.",
      "items": {
       "$ref": "#/definitions/ComponentPlayer"
      },
@@ -1635,15 +1675,18 @@
   "DraftCompare": {
    "properties": {
     "gw": {
+     "description": "The gameweek the comparison was solved from.",
      "type": "integer"
     },
     "rows": {
+     "description": "The reference row and every requested draft's re-solve.",
      "items": {
       "$ref": "#/definitions/DraftCompareRow"
      },
      "type": "array"
     },
     "weeks": {
+     "description": "The shared window every row was scored over \u2014 the shortest plan's\nhorizon.",
      "type": "integer"
     }
    },
@@ -1658,6 +1701,7 @@
   "DraftCompareRequest": {
    "properties": {
     "names": {
+     "description": "Which saved drafts to compare, up to :data:`MAX_COMPARE`.",
      "items": {
       "type": "string"
      },
@@ -1673,6 +1717,7 @@
   "DraftCompareRow": {
    "properties": {
     "buys": {
+     "description": "Players this row's plan buys.",
      "items": {
       "$ref": "#/definitions/WirePlayerRef"
      },
@@ -1687,7 +1732,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "This row's plan's captain."
     },
     "chip": {
      "anyOf": [
@@ -1698,7 +1744,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The chip this row's plan plays, if any."
     },
     "delta_xpts": {
      "anyOf": [
@@ -1709,7 +1756,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "This row's ``horizon_pts`` minus the reference row's."
     },
     "error": {
      "anyOf": [
@@ -1732,7 +1780,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Expected points for the first week alone, net of hits."
     },
     "hits": {
      "anyOf": [
@@ -1743,7 +1792,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Hits this row's plan takes."
     },
     "horizon": {
      "anyOf": [
@@ -1766,7 +1816,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Expected points summed over the comparison's shared window."
     },
     "is_reference": {
      "default": false,
@@ -1774,9 +1825,11 @@
      "type": "boolean"
     },
     "name": {
+     "description": "The draft's name, or the reference row's own label.",
      "type": "string"
     },
     "sells": {
+     "description": "Players this row's plan sells.",
      "items": {
       "$ref": "#/definitions/WirePlayerRef"
      },
@@ -1784,6 +1837,7 @@
     },
     "solved_at": {
      "default": "",
+     "description": "ISO timestamp this row's re-solve completed.",
      "type": "string"
     }
    },
@@ -1808,6 +1862,7 @@
   "DraftList": {
    "properties": {
     "drafts": {
+     "description": "Every saved draft.",
      "items": {
       "$ref": "#/definitions/DraftRow"
      },
@@ -1823,13 +1878,16 @@
   "DraftRow": {
    "properties": {
     "constraints": {
-     "$ref": "#/definitions/WhatIfRequest"
+     "$ref": "#/definitions/WhatIfRequest",
+     "description": "The what-if lab request this draft pins."
     },
     "created_at": {
      "default": "",
+     "description": "ISO timestamp the draft was saved.",
      "type": "string"
     },
     "name": {
+     "description": "The draft's name, as the manager saved it.",
      "type": "string"
     }
    },
@@ -1844,9 +1902,11 @@
   "DraftSaveRequest": {
    "properties": {
     "constraints": {
-     "$ref": "#/definitions/WhatIfRequest"
+     "$ref": "#/definitions/WhatIfRequest",
+     "description": "The what-if lab request to pin."
     },
     "name": {
+     "description": "The name to save this draft under.",
      "type": "string"
     }
    },
@@ -2051,21 +2111,26 @@
   "FixtureExplain": {
    "properties": {
     "calibration_delta": {
+     "description": "The fitted EP calibration's adjustment for this position, 0.0 when\nthe frame carries no calibration column.",
      "type": "number"
     },
     "components": {
+     "description": "The scoring categories that summed to ``ep``, each with nonzero\ncolumns.",
      "items": {
       "$ref": "#/definitions/Component"
      },
      "type": "array"
     },
     "ep": {
+     "description": "Expected points for this fixture, the sum ``components`` explains.",
      "type": "number"
     },
     "gw": {
+     "description": "The gameweek this fixture falls in.",
      "type": "integer"
     },
     "home": {
+     "description": "Whether the fixture is at home.",
      "type": "boolean"
     },
     "kickoff_time": {
@@ -2076,15 +2141,19 @@
       {
        "type": "null"
       }
-     ]
+     ],
+     "description": "ISO kickoff time, or ``None`` when not yet known."
     },
     "minutes": {
-     "$ref": "#/definitions/MinutesOutput"
+     "$ref": "#/definitions/MinutesOutput",
+     "description": "The minutes model's own prediction for this fixture."
     },
     "odds": {
-     "$ref": "#/definitions/OddsInfluence"
+     "$ref": "#/definitions/OddsInfluence",
+     "description": "How the bookmaker odds influenced this fixture's team numbers."
     },
     "opponent": {
+     "description": "The opponent's name.",
      "type": "string"
     }
    },
@@ -2105,12 +2174,14 @@
   "FixtureMatrixData": {
    "properties": {
     "gws": {
+     "description": "Every gameweek rated.",
      "items": {
       "type": "integer"
      },
      "type": "array"
     },
     "source": {
+     "description": "Whether the ratings came from the Dixon-Coles model or there was\nnothing to rate.",
      "enum": [
       "dixon_coles",
       "none"
@@ -2118,6 +2189,7 @@
      "type": "string"
     },
     "teams": {
+     "description": "Every club's attack and defence ratings.",
      "items": {
       "$ref": "#/definitions/MatrixTeam"
      },
@@ -2144,7 +2216,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The first gameweek in ``weeks``, or ``None`` when there is nothing to\nshow."
     },
     "has_blanks": {
      "default": false,
@@ -2153,6 +2226,7 @@
     },
     "has_doubles": {
      "default": false,
+     "description": "Whether any served week has a double gameweek.",
      "type": "boolean"
     },
     "note": {
@@ -2164,7 +2238,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Why the card is empty, when it is \u2014 a missing fixture list, an\nunreadable one, or nothing to report."
     },
     "teams_known": {
      "default": false,
@@ -2172,6 +2247,7 @@
      "type": "boolean"
     },
     "weeks": {
+     "description": "The season's remaining gameweeks, doubles and blanks per week.",
      "items": {
       "$ref": "#/definitions/OutlookWeek"
      },
@@ -4386,12 +4462,15 @@
      "type": "number"
     },
     "gw": {
+     "description": "The gameweek this cell rates.",
      "type": "integer"
     },
     "home": {
+     "description": "Whether the fixture is at home.",
      "type": "boolean"
     },
     "opponent": {
+     "description": "The opponent's short name.",
      "type": "string"
     }
    },
@@ -4408,24 +4487,30 @@
   "MatrixTeam": {
    "properties": {
     "cells": {
+     "description": "One cell per rated gameweek.",
      "items": {
       "$ref": "#/definitions/MatrixCell"
      },
      "type": "array"
     },
     "code": {
+     "description": "The club's code.",
      "type": "integer"
     },
     "mean_attack": {
+     "description": "Mean of ``cells``' attack difficulty.",
      "type": "number"
     },
     "mean_defence": {
+     "description": "Mean of ``cells``' defence difficulty.",
      "type": "number"
     },
     "name": {
+     "description": "The club's full name.",
      "type": "string"
     },
     "short_name": {
+     "description": "The club's short name, as shown on ``cells``.",
      "type": "string"
     }
    },
@@ -4574,6 +4659,7 @@
      "type": "boolean"
     },
     "code": {
+     "description": "FPL player code.",
      "type": "integer"
     },
     "direction": {
@@ -4581,6 +4667,7 @@
      "type": "string"
     },
     "name": {
+     "description": "Player name.",
      "type": "string"
     },
     "now_cost": {
@@ -4588,6 +4675,7 @@
      "type": "number"
     },
     "price_change_percent": {
+     "description": "FPL's own predictor reading, how close he is to a change tonight.",
      "type": "number"
     },
     "source": {
@@ -4619,12 +4707,15 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "When the underlying snapshot was written \u2014 the reading's own age,\nnot the request's."
     },
     "available": {
+     "description": "Whether the players snapshot could be read at all.",
      "type": "boolean"
     },
     "rows": {
+     "description": "Watched, squad or planned players near a price change tonight.",
      "items": {
       "$ref": "#/definitions/MoverRow"
      },
@@ -4643,13 +4734,16 @@
    "description": "A player a report names but does not price.",
    "properties": {
     "code": {
+     "description": "FPL player code.",
      "type": "integer"
     },
     "name": {
+     "description": "Player name.",
      "type": "string"
     },
     "position": {
      "default": "",
+     "description": "GKP, DEF, MID or FWD, when known.",
      "type": "string"
     }
    },
@@ -4977,9 +5071,11 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The ticker's 0-1 rating for the fixture, or ``None`` when it could\nnot be rated."
     },
     "home": {
+     "description": "Whether the fixture is at home.",
      "type": "boolean"
     },
     "kickoff_utc": {
@@ -4991,7 +5087,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "ISO kickoff time, or ``None`` while FPL still has it as TBC."
     },
     "opponent_short": {
      "anyOf": [
@@ -5002,7 +5099,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The next opponent's short club name, or ``None`` when he has no game."
     }
    },
    "required": [
@@ -5017,9 +5115,11 @@
   "OddsInfluence": {
    "properties": {
     "e_gc_blended": {
+     "description": "Expected goals conceded after blending with the odds market, or the\nmodel's own figure when there is no market weight.",
      "type": "number"
     },
     "e_gc_model": {
+     "description": "The team model's own expected goals conceded, before any odds blend.",
      "type": "number"
     },
     "e_goals_against": {
@@ -5030,15 +5130,19 @@
       {
        "type": "null"
       }
-     ]
+     ],
+     "description": "The odds market's own expected goals against, when priced."
     },
     "p_cs_blended": {
+     "description": "P(clean sheet) after blending with the odds market, or the model's\nown figure when there is no market weight.",
      "type": "number"
     },
     "p_cs_model": {
+     "description": "The team model's own P(clean sheet), before any odds blend.",
      "type": "number"
     },
     "weight": {
+     "description": "How much the bookmaker odds blend counts for this fixture, 0-1;\n0.0 for a frame banked before the blend existed.",
      "type": "number"
     }
    },
@@ -5057,6 +5161,7 @@
    "description": "A club in the outlook. ``short_name`` is null when the teams snapshot\ncould not be read \u2014 the counts are still true, only the label is missing,\nand losing the whole answer over a cosmetic join is the wrong trade.",
    "properties": {
     "code": {
+     "description": "The club's code, or the raw FPL team id when ``teams_known`` is false.",
      "type": "integer"
     },
     "short_name": {
@@ -5068,7 +5173,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The club's short name, or ``None`` when the teams snapshot could not\nbe read."
     }
    },
    "required": [
@@ -5081,21 +5187,25 @@
   "OutlookWeek": {
    "properties": {
     "blanks": {
+     "description": "Clubs with no fixture this gameweek.",
      "items": {
       "$ref": "#/definitions/OutlookTeam"
      },
      "type": "array"
     },
     "doubles": {
+     "description": "Clubs with more than one fixture this gameweek.",
      "items": {
       "$ref": "#/definitions/OutlookTeam"
      },
      "type": "array"
     },
     "fixtures": {
+     "description": "How many fixtures fall in this gameweek.",
      "type": "integer"
     },
     "gw": {
+     "description": "The gameweek this row is about.",
      "type": "integer"
     }
    },
@@ -5112,6 +5222,7 @@
    "description": "One pin. At least one of the two values must be present.",
    "properties": {
     "code": {
+     "description": "FPL player code.",
      "type": "integer"
     },
     "e_min": {
@@ -5123,10 +5234,12 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The manager's own expected minutes, overriding the model's."
     },
     "note": {
      "default": "",
+     "description": "Why the pin was made, in the manager's own words.",
      "type": "string"
     },
     "p_play": {
@@ -5138,7 +5251,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The manager's own P(plays), overriding the model's."
     }
    },
    "required": [
@@ -5153,6 +5267,7 @@
   "OverrideRow": {
    "properties": {
     "code": {
+     "description": "FPL player code.",
      "type": "integer"
     },
     "e_min": {
@@ -5164,7 +5279,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The manager's own pinned expected minutes."
     },
     "model_e_min": {
      "anyOf": [
@@ -5175,7 +5291,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "What the served pipeline had for his expected minutes when the pin\nwas made."
     },
     "model_p_play": {
      "anyOf": [
@@ -5190,10 +5307,12 @@
      "description": "What the served pipeline had for him when the pin was made, so the\nwhy-panel can say \"the model had 0.82\" without re-deriving anything."
     },
     "name": {
+     "description": "Player name, from the bootstrap snapshot.",
      "type": "string"
     },
     "note": {
      "default": "",
+     "description": "Why the pin was made, in the manager's own words.",
      "type": "string"
     },
     "p_play": {
@@ -5205,10 +5324,12 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The manager's own pinned P(plays)."
     },
     "set_at": {
      "default": "",
+     "description": "ISO timestamp the pin was saved.",
      "type": "string"
     }
    },
@@ -5233,6 +5354,7 @@
      "type": "boolean"
     },
     "rows": {
+     "description": "Every pin on record.",
      "items": {
       "$ref": "#/definitions/OverrideRow"
      },
@@ -5604,6 +5726,7 @@
      "type": "string"
     },
     "weeks": {
+     "description": "This alternative's plan, one entry per horizon gameweek.",
      "items": {
       "$ref": "#/definitions/PlanGw"
      },
@@ -5633,6 +5756,7 @@
      "description": "What is left in the bank after this week's moves, in millions.\n\n``None`` means *unknown*, and it means it for one reason: some move in\nthis week or an earlier one had no price, so the running total is broken\nand stays broken. Never 0.0 \u2014 that is \"fully invested\", which is a real\nand different state a manager can be in."
     },
     "buys": {
+     "description": "Players bought this week.",
      "items": {
       "$ref": "#/definitions/PlanMove"
      },
@@ -5647,7 +5771,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The captain this week."
     },
     "chip": {
      "anyOf": [
@@ -5658,21 +5783,27 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The chip played this week, if any."
     },
     "expected_pts": {
+     "description": "Expected points for this week alone, net of hits.",
      "type": "number"
     },
     "gw": {
+     "description": "The gameweek this week of the plan is for.",
      "type": "integer"
     },
     "hit_cost": {
+     "description": "Points those hits cost.",
      "type": "integer"
     },
     "hits": {
+     "description": "Hits taken this week.",
      "type": "integer"
     },
     "sells": {
+     "description": "Players sold this week.",
      "items": {
       "$ref": "#/definitions/PlanMove"
      },
@@ -5699,7 +5830,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The vice-captain this week."
     }
    },
    "required": [
@@ -5721,15 +5853,19 @@
   "PlanMove": {
    "properties": {
     "code": {
+     "description": "FPL player code.",
      "type": "integer"
     },
     "ep": {
+     "description": "Expected points for the week this move is made in.",
      "type": "number"
     },
     "name": {
+     "description": "Player name.",
      "type": "string"
     },
     "position": {
+     "description": "GKP, DEF, MID or FWD.",
      "type": "string"
     },
     "price": {
@@ -5830,28 +5966,33 @@
   "PlanSummary": {
    "properties": {
     "bench": {
+     "description": "The bench, in order.",
      "items": {
       "$ref": "#/definitions/WirePlayerRef"
      },
      "type": "array"
     },
     "buys": {
+     "description": "Players bought into this plan.",
      "items": {
       "$ref": "#/definitions/WirePlayerRef"
      },
      "type": "array"
     },
     "captain": {
-     "$ref": "#/definitions/WirePlayerRef"
+     "$ref": "#/definitions/WirePlayerRef",
+     "description": "The captain."
     },
     "expected_pts": {
      "description": "Raw expected points for ``gw`` alone, net of hits.",
      "type": "number"
     },
     "gw": {
+     "description": "The gameweek this plan is for.",
      "type": "integer"
     },
     "hits": {
+     "description": "Hits taken to reach this plan.",
      "type": "integer"
     },
     "horizon_pts": {
@@ -5859,15 +6000,18 @@
      "type": "number"
     },
     "sells": {
+     "description": "Players sold out of this plan.",
      "items": {
       "$ref": "#/definitions/WirePlayerRef"
      },
      "type": "array"
     },
     "vice": {
-     "$ref": "#/definitions/WirePlayerRef"
+     "$ref": "#/definitions/WirePlayerRef",
+     "description": "The vice-captain."
     },
     "xi": {
+     "description": "The starting eleven.",
      "items": {
       "$ref": "#/definitions/WirePlayerRef"
      },
@@ -7094,25 +7238,32 @@
   "SensitivityMove": {
    "properties": {
     "code": {
+     "description": "FPL player code.",
      "type": "integer"
     },
     "count": {
+     "description": "How many of the sweep's re-solves made this move.",
      "type": "integer"
     },
     "frequency": {
+     "description": "``count`` divided by the number of completed re-solves.",
      "type": "number"
     },
     "gw": {
+     "description": "The gameweek the move is made in.",
      "type": "integer"
     },
     "kind": {
+     "description": "Which decision this move is: a buy, a sell or the captaincy.",
      "type": "string"
     },
     "label": {
+     "description": "The move described in prose, for the frequency table.",
      "type": "string"
     },
     "name": {
      "default": "",
+     "description": "Player name.",
      "type": "string"
     }
    },
@@ -7131,6 +7282,7 @@
   "SensitivityPlan": {
    "properties": {
     "buys": {
+     "description": "Players this plan buys.",
      "items": {
       "$ref": "#/definitions/NamedPlayer"
      },
@@ -7145,16 +7297,20 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "This plan's captain."
     },
     "count": {
+     "description": "How many of the sweep's re-solves reached this exact plan.",
      "type": "integer"
     },
     "hits": {
      "default": 0,
+     "description": "Hits this plan takes.",
      "type": "integer"
     },
     "sells": {
+     "description": "Players this plan sells.",
      "items": {
       "$ref": "#/definitions/NamedPlayer"
      },
@@ -7181,10 +7337,12 @@
    "properties": {
     "available": {
      "default": false,
+     "description": "Whether a sweep for this gameweek was found and is current.",
      "type": "boolean"
     },
     "completed": {
      "default": 0,
+     "description": "How many re-solves actually finished.",
      "type": "integer"
     },
     "decision_sigma": {
@@ -7201,9 +7359,11 @@
     },
     "failures": {
      "default": 0,
+     "description": "How many re-solves failed.",
      "type": "integer"
     },
     "frequencies": {
+     "description": "The first horizon week's moves, ranked by how often the sweep made\nthem.",
      "items": {
       "$ref": "#/definitions/SensitivityMove"
      },
@@ -7218,7 +7378,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "ISO timestamp the sweep was run."
     },
     "gw": {
      "anyOf": [
@@ -7229,14 +7390,17 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The gameweek the report is about."
     },
     "horizon": {
      "default": 0,
+     "description": "How many gameweeks the sweep solved over.",
      "type": "integer"
     },
     "k": {
      "default": 0,
+     "description": "How many re-solves the sweep asked for.",
      "type": "integer"
     },
     "margin": {
@@ -7248,7 +7412,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "``modal``'s value minus ``runner_up``'s, on the true EP table."
     },
     "modal": {
      "anyOf": [
@@ -7259,7 +7424,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The plan the sweep reached most often."
     },
     "notice": {
      "anyOf": [
@@ -7270,7 +7436,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "A caveat on the sweep, e.g. that expected minutes had to be guessed."
     },
     "runner_up": {
      "anyOf": [
@@ -7281,7 +7448,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The next most frequent *distinct* plan, or ``None`` when every\nre-solve agreed."
     },
     "seed": {
      "anyOf": [
@@ -7292,7 +7460,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The RNG seed the sweep's scenarios were drawn with."
     },
     "verdict": {
      "anyOf": [
@@ -7303,7 +7472,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The sweep's one-line summary of the modal plan and the runner-up."
     },
     "wall_s": {
      "anyOf": [
@@ -7314,7 +7484,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "Seconds the sweep took."
     }
    },
    "required": [
@@ -8120,27 +8291,32 @@
    "description": "A candidate squad against the one you own, resolved server-side.",
    "properties": {
     "added": {
+     "description": "Players the candidate squad brings in that were not owned.",
      "items": {
       "$ref": "#/definitions/SquadPlayerRef"
      },
      "type": "array"
     },
     "dropped": {
+     "description": "Owned players the candidate squad does not keep, priced at sell value.",
      "items": {
       "$ref": "#/definitions/SquadPlayerRef"
      },
      "type": "array"
     },
     "gain_over_horizon": {
+     "description": "Expected-points gain of the candidate squad over the owned one,\nsummed across the solve horizon.",
      "type": "number"
     },
     "kept": {
+     "description": "Owned players the candidate squad keeps.",
      "items": {
       "$ref": "#/definitions/SquadPlayerRef"
      },
      "type": "array"
     },
     "recommend": {
+     "description": "Whether ``gain_over_horizon`` clears ``threshold``.",
      "type": "boolean"
     },
     "threshold": {
@@ -8219,18 +8395,23 @@
   "SquadPlayerRef": {
    "properties": {
     "code": {
+     "description": "FPL player code.",
      "type": "integer"
     },
     "ep": {
+     "description": "Expected points, from the saved pool's first horizon gameweek.",
      "type": "number"
     },
     "name": {
+     "description": "Player name.",
      "type": "string"
     },
     "position": {
+     "description": "GKP, DEF, MID or FWD.",
      "type": "string"
     },
     "price": {
+     "description": "His price in \u00a3m \u2014 cost to buy or hold, sell price for a squad he is\nleaving (`routers/chips.py`'s ``_refs``).",
      "type": "number"
     }
    },
@@ -8393,15 +8574,19 @@
   "TickerCell": {
    "properties": {
     "difficulty": {
+     "description": "The 0-1 rating, from bookmaker odds when available, else Elo.",
      "type": "number"
     },
     "gw": {
+     "description": "The gameweek this cell rates.",
      "type": "integer"
     },
     "home": {
+     "description": "Whether the fixture is at home.",
      "type": "boolean"
     },
     "opponent": {
+     "description": "The opponent's short name.",
      "type": "string"
     }
    },
@@ -8417,12 +8602,14 @@
   "TickerData": {
    "properties": {
     "gws": {
+     "description": "Every gameweek rated.",
      "items": {
       "type": "integer"
      },
      "type": "array"
     },
     "source": {
+     "description": "Whether the ratings came from bookmaker odds or the Elo fallback.",
      "enum": [
       "odds",
       "elo"
@@ -8430,6 +8617,7 @@
      "type": "string"
     },
     "teams": {
+     "description": "Every club, sorted by mean difficulty.",
      "items": {
       "$ref": "#/definitions/TickerTeam"
      },
@@ -8447,21 +8635,26 @@
   "TickerTeam": {
    "properties": {
     "cells": {
+     "description": "One cell per rated gameweek.",
      "items": {
       "$ref": "#/definitions/TickerCell"
      },
      "type": "array"
     },
     "code": {
+     "description": "The club's code.",
      "type": "integer"
     },
     "mean_difficulty": {
+     "description": "Mean of ``cells``' difficulty, the figure teams are sorted by.",
      "type": "number"
     },
     "name": {
+     "description": "The club's full name.",
      "type": "string"
     },
     "short_name": {
+     "description": "The club's short name, as shown on ``cells``.",
      "type": "string"
     }
    },
@@ -8502,12 +8695,15 @@
    "description": "One of the next three league games, as the explain panel lists them.\n\nDeliberately *not* ``NextFixture`` (``:87``), whose name it shadowed until\nv12 W5: that one is the advised gameweek's single game, with an opponent\nshort name, a kickoff and a difficulty; this one is a gameweek number and\nan opponent's full name. Two response models under one name gave the\nschema generator two definitions it could only tell apart by mangling\nboth, and gave every ``from .schemas import NextFixture`` in the tree the\nsecond class rather than the first.",
    "properties": {
     "gw": {
+     "description": "The gameweek of this upcoming fixture.",
      "type": "integer"
     },
     "home": {
+     "description": "Whether the fixture is at home.",
      "type": "boolean"
     },
     "opponent": {
+     "description": "The opponent's full name.",
      "type": "string"
     }
    },
@@ -8572,6 +8768,7 @@
    "description": "A star, and optionally a sentence about why.",
    "properties": {
     "code": {
+     "description": "FPL player code to star or update.",
      "type": "integer"
     },
     "note": {
@@ -8596,15 +8793,19 @@
   "WatchRow": {
    "properties": {
     "code": {
+     "description": "FPL player code.",
      "type": "integer"
     },
     "name": {
+     "description": "Player name, from the bootstrap snapshot.",
      "type": "string"
     },
     "note": {
+     "description": "The manager's own note on why he is watched.",
      "type": "string"
     },
     "set_at": {
+     "description": "ISO timestamp the note was last written.",
      "type": "string"
     },
     "starred_at": {
@@ -8626,6 +8827,7 @@
    "description": "Every starred player, name-resolved.\n\n``rows`` is empty on a fresh clone and on a broken store alike \u2014 the\ndistinction is a printed line on the server, not a field here, because a\nclient that rendered \"your watchlist may be corrupt\" would be showing the\nuser a problem they cannot act on.",
    "properties": {
     "rows": {
+     "description": "Every starred player, sorted by code.",
      "items": {
       "$ref": "#/definitions/WatchRow"
      },
@@ -8641,6 +8843,7 @@
   "WhatIfRequest": {
    "properties": {
     "ban": {
+     "description": "Player codes excluded from the candidate pool entirely, owned or not.",
      "items": {
       "type": "integer"
      },
@@ -8648,6 +8851,7 @@
     },
     "chip": {
      "default": "none",
+     "description": "The chip to play on the first horizon gameweek, if any.",
      "enum": [
       "none",
       "wc",
@@ -8658,6 +8862,7 @@
      "type": "string"
     },
     "force_in": {
+     "description": "Unowned player codes the solve must buy.",
      "items": {
       "type": "integer"
      },
@@ -8679,9 +8884,11 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "How many gameweeks to solve over; ``None`` takes the saved state's."
     },
     "lock": {
+     "description": "Owned player codes the solve may not sell.",
      "items": {
       "type": "integer"
      },
@@ -8689,6 +8896,7 @@
     },
     "max_hits": {
      "default": 0,
+     "description": "The most hits the solve may take in the first horizon gameweek.",
      "type": "integer"
     },
     "max_transfers": {
@@ -8700,7 +8908,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "The most transfers the solve may make; ``None`` is no cap, 0 is bank."
     }
    },
    "required": [
@@ -8719,34 +8928,42 @@
   "WhatIfResult": {
    "properties": {
     "baseline": {
-     "$ref": "#/definitions/PlanSummary"
+     "$ref": "#/definitions/PlanSummary",
+     "description": "The served advice's own plan."
     },
     "captain_changed": {
+     "description": "Whether the two plans captain different players.",
      "type": "boolean"
     },
     "delta_xpts": {
+     "description": "``yours``' horizon points minus ``baseline``'s.",
      "type": "number"
     },
     "transfers_changed": {
+     "description": "Whether the two plans buy different players.",
      "type": "boolean"
     },
     "verdict": {
+     "description": "The lab's one-line summary of the comparison.",
      "type": "string"
     },
     "xi_in": {
+     "description": "Players in ``yours``' eleven that were not in ``baseline``'s.",
      "items": {
       "$ref": "#/definitions/WirePlayerRef"
      },
      "type": "array"
     },
     "xi_out": {
+     "description": "Players in ``baseline``'s eleven that are not in ``yours``'.",
      "items": {
       "$ref": "#/definitions/WirePlayerRef"
      },
      "type": "array"
     },
     "yours": {
-     "$ref": "#/definitions/PlanSummary"
+     "$ref": "#/definitions/PlanSummary",
+     "description": "The plan solved under the what-if lab's request."
     }
    },
    "required": [
@@ -9194,9 +9411,11 @@
      "description": "What is in the bank before the horizon's first move, in millions.\n\n``SolveState.bank`` in tenths, through the same conversion every price on\nthis payload takes. ``None`` means the solve state carried no usable\nfigure \u2014 never 0.0, which is \"fully invested\"."
     },
     "generated_at": {
+     "description": "ISO timestamp the plan was generated.",
      "type": "string"
     },
     "gw": {
+     "description": "The gameweek the plan was solved for.",
      "type": "integer"
     },
     "objective": {
@@ -9212,6 +9431,7 @@
      "description": "v16 \u00a74: the solver's own week one, traced, when the served plan is a\ndifferent rung of the ladder. ``None`` when they agree or when the\npayload predates the field."
     },
     "weeks": {
+     "description": "The recommended plan, one entry per horizon gameweek.",
      "items": {
       "$ref": "#/definitions/PlanGw"
      },
@@ -9232,27 +9452,33 @@
   "WirePlayerExplain": {
    "properties": {
     "code": {
+     "description": "FPL player code.",
      "type": "integer"
     },
     "ep_next": {
+     "description": "Expected points for the first horizon gameweek, summed from\n``fixtures``.",
      "type": "number"
     },
     "fixtures": {
+     "description": "The scoring breakdown for every horizon fixture found in the banked\ncomponents.",
      "items": {
       "$ref": "#/definitions/FixtureExplain"
      },
      "type": "array"
     },
     "name": {
+     "description": "Player name.",
      "type": "string"
     },
     "next_fixtures": {
+     "description": "His next three league games, off the fixtures snapshot.",
      "items": {
       "$ref": "#/definitions/UpcomingFixture"
      },
      "type": "array"
     },
     "position": {
+     "description": "GKP, DEF, MID or FWD.",
      "type": "string"
     },
     "set_pieces": {
@@ -9277,6 +9503,7 @@
      "type": "array"
     },
     "team_name": {
+     "description": "His club's name.",
      "type": "string"
     }
    },
@@ -9297,12 +9524,15 @@
   "WirePlayerRef": {
    "properties": {
     "code": {
+     "description": "FPL player code.",
      "type": "integer"
     },
     "ep": {
+     "description": "Expected points, as the plan payload carries him.",
      "type": "number"
     },
     "name": {
+     "description": "Player name.",
      "type": "string"
     },
     "next_fixture": {
@@ -9314,9 +9544,11 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "His next game, resolved at serve time by ``gaffer.web.identity``."
     },
     "position": {
+     "description": "His position: GKP, DEF, MID or FWD.",
      "type": "string"
     },
     "team_code": {
@@ -9328,7 +9560,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "His club's code, resolved at serve time by ``gaffer.web.identity``."
     },
     "team_short": {
      "anyOf": [
@@ -9339,7 +9572,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "His club's short name, resolved at serve time by\n``gaffer.web.identity``."
     }
    },
    "required": [
@@ -9357,6 +9591,7 @@
   "WirePlayerRow": {
    "properties": {
     "available": {
+     "description": "Whether his status is outside :data:`UNAVAILABLE_STATUS`.",
      "type": "boolean"
     },
     "chance_of_playing": {
@@ -9367,9 +9602,11 @@
       {
        "type": "null"
       }
-     ]
+     ],
+     "description": "FPL's own chance-of-playing percentage."
     },
     "code": {
+     "description": "FPL player code.",
      "type": "integer"
     },
     "corners_order": {
@@ -9380,9 +9617,11 @@
       {
        "type": "null"
       }
-     ]
+     ],
+     "description": "His club's corner-taking rank, from ``data/set_pieces.toml`` or FPL."
     },
     "element": {
+     "description": "FPL's own element id, as the bootstrap snapshot carries him.",
      "type": "integer"
     },
     "ep_hi": {
@@ -9394,9 +9633,11 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "p75 of ``ep_next``'s distribution, same contract as ``ep_lo``."
     },
     "ep_horizon": {
+     "description": "Expected points summed over the solve horizon.",
      "type": "number"
     },
     "ep_lo": {
@@ -9412,6 +9653,7 @@
      "description": "p25 of the noise model's distribution for ``ep_next`` \u2014 see\n:mod:`gaffer.uncertainty`. Deliberately **not** ``ep_next`` minus\nsomething: the calibrated path recentres, so the pair is quartiles rather\nthan a symmetric interval, and the UI labels it that way.\n\n``None`` \u2014 never ``ep_next`` \u2014 when the components frame carries no\nminutes model for him, or is absent altogether. A zero-width band on the\nleast-known player in the pool would read as certainty."
     },
     "ep_next": {
+     "description": "Expected points for the next gameweek alone.",
      "type": "number"
     },
     "field_class": {
@@ -9499,9 +9741,11 @@
       {
        "type": "null"
       }
-     ]
+     ],
+     "description": "His club's free-kick-taking rank, from ``data/set_pieces.toml`` or FPL."
     },
     "in_squad": {
+     "description": "Whether he is currently owned.",
      "type": "boolean"
     },
     "last4": {
@@ -9512,15 +9756,19 @@
      "type": "array"
     },
     "league_eo": {
+     "description": "Effective ownership among the manager's rivals \u2014 captaincy weighted\ndouble \u2014 from the saved solve state's ``league_eo``.",
      "type": "number"
     },
     "name": {
+     "description": "Player name.",
      "type": "string"
     },
     "news": {
+     "description": "FPL's own news text for the player.",
      "type": "string"
     },
     "ownership": {
+     "description": "FPL's own overall ownership percentage.",
      "type": "number"
     },
     "p_blank": {
@@ -9555,12 +9803,15 @@
       {
        "type": "null"
       }
-     ]
+     ],
+     "description": "His club's penalty-taking rank, from ``data/set_pieces.toml`` or FPL."
     },
     "position": {
+     "description": "GKP, DEF, MID or FWD.",
      "type": "string"
     },
     "price": {
+     "description": "Current price in \u00a3m, from FPL's ``now_cost`` divided by ten.",
      "type": "number"
     },
     "set_piece_manual": {
@@ -9571,12 +9822,15 @@
      "type": "array"
     },
     "status": {
+     "description": "FPL's own status code for the player.",
      "type": "string"
     },
     "team_code": {
+     "description": "His club's code.",
      "type": "integer"
     },
     "team_name": {
+     "description": "His club's name.",
      "type": "string"
     }
    },

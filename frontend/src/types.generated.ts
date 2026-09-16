@@ -472,7 +472,13 @@ export interface CalibrationHealth {
  * via the `definition` "ChipPlan".
  */
 export interface ChipPlan {
+  /**
+   * One row per chip, best gain first.
+   */
   chips: ChipPlanRow[]
+  /**
+   * The gameweek the plan was solved from.
+   */
   gw: number
 }
 /**
@@ -480,12 +486,38 @@ export interface ChipPlan {
  * via the `definition` "ChipPlanRow".
  */
 export interface ChipPlanRow {
+  /**
+   * The total gain at ``best_gw``.
+   */
   best_gain: number
+  /**
+   * The per-week gain at ``best_gw`` — the figure ``best_gw`` is chosen on.
+   */
   best_gain_per_week: number
+  /**
+   * The gameweek with the best ``per_week`` gain — not necessarily the
+   * best total (``optimize.chips.chip_plan``).
+   */
   best_gw: number
+  /**
+   * The chip this row is about: wildcard, bench boost, free hit or triple
+   * captain.
+   */
   chip: string
+  /**
+   * The gain if played this gameweek, or ``None`` when it cannot be
+   * played now.
+   */
   now_gain: number | null
+  /**
+   * Whether ``now_gain`` clears ``threshold_now`` — the chip policy's own
+   * verdict on playing this week rather than waiting.
+   */
   play_now: boolean | null
+  /**
+   * ``now_gain`` minus ``best_gain`` — the total-points price of playing
+   * now rather than waiting, or ``None`` when it cannot be played now.
+   */
   play_now_delta: number | null
   /**
    * θ per week, aligned by index with ``weeks``. Built at the router by
@@ -507,6 +539,9 @@ export interface ChipPlanRow {
    * same lookup ``thetas`` is built from (v12 W3 §4.2).
    */
   threshold_source: string | null
+  /**
+   * Every horizon gameweek this chip could be played in, with its gain.
+   */
   weeks: ChipWeek[]
   /**
    * How many gameweeks were looked at, so the UI can say how far ahead
@@ -525,7 +560,14 @@ export interface ChipPlanRow {
  * via the `definition` "ChipWeek".
  */
 export interface ChipWeek {
+  /**
+   * Total expected-points gain from playing the chip in ``gw``, from
+   * ``optimize/chips.py``'s ``evaluate_chips``.
+   */
   gain: number
+  /**
+   * A gameweek the chip could be played in.
+   */
   gw: number
   /**
    * ``gain`` divided by the horizon weeks the chip is credited with — the
@@ -546,8 +588,19 @@ export interface ChipWeek {
  * via the `definition` "ChipWorkbenchRow".
  */
 export interface ChipWorkbenchRow {
+  /**
+   * The chip this cell prices: wildcard, bench boost, free hit or triple
+   * captain.
+   */
   chip: string
+  /**
+   * Expected-points gain from playing the chip in this cell, as the
+   * advice run's own chip table priced it.
+   */
   gain: number
+  /**
+   * The gameweek this cell is for.
+   */
   gw: number
   /**
    * The second week of a chip *pair* — the bench boost's, where ``gw`` is
@@ -556,9 +609,21 @@ export interface ChipWorkbenchRow {
    * carries a double.
    */
   gw2: number | null
+  /**
+   * A caveat on this cell, when the advice run's chip table wrote one.
+   */
   note: string | null
+  /**
+   * ``gain`` divided by the weeks it is credited with.
+   */
   per_week: number | null
+  /**
+   * Whether ``gain`` clears ``threshold`` this cell.
+   */
   play_now: boolean
+  /**
+   * The θ bar this gain is judged against — see the class docstring.
+   */
   threshold: number | null
   /**
    * Where ``threshold`` came from: ``"theta"``, or ``"flat: <reason>"``.
@@ -576,8 +641,18 @@ export interface ChipWorkbenchRow {
  * via the `definition` "ChipsWorkbench".
  */
 export interface ChipsWorkbench {
+  /**
+   * Every (chip, gameweek) cell in the advice run's own chip table.
+   */
   chips: ChipWorkbenchRow[]
+  /**
+   * The gameweek the workbench is showing.
+   */
   gw: number
+  /**
+   * The wildcard candidate squad against the owned one, or ``None`` when
+   * the advice payload carries no ``wildcard_now``.
+   */
   wildcard: SquadDiff | null
 }
 /**
@@ -587,10 +662,26 @@ export interface ChipsWorkbench {
  * via the `definition` "SquadDiff".
  */
 export interface SquadDiff {
+  /**
+   * Players the candidate squad brings in that were not owned.
+   */
   added: SquadPlayerRef[]
+  /**
+   * Owned players the candidate squad does not keep, priced at sell value.
+   */
   dropped: SquadPlayerRef[]
+  /**
+   * Expected-points gain of the candidate squad over the owned one,
+   * summed across the solve horizon.
+   */
   gain_over_horizon: number
+  /**
+   * Owned players the candidate squad keeps.
+   */
   kept: SquadPlayerRef[]
+  /**
+   * Whether ``gain_over_horizon`` clears ``threshold``.
+   */
   recommend: boolean
   /**
    * The bar ``recommend`` was decided against. Until v12 this was always
@@ -608,10 +699,26 @@ export interface SquadDiff {
  * via the `definition` "SquadPlayerRef".
  */
 export interface SquadPlayerRef {
+  /**
+   * FPL player code.
+   */
   code: number
+  /**
+   * Expected points, from the saved pool's first horizon gameweek.
+   */
   ep: number
+  /**
+   * Player name.
+   */
   name: string
+  /**
+   * GKP, DEF, MID or FWD.
+   */
   position: string
+  /**
+   * His price in £m — cost to buy or hold, sell price for a squad he is
+   * leaving (`routers/chips.py`'s ``_refs``).
+   */
   price: number
 }
 /**
@@ -619,7 +726,14 @@ export interface SquadPlayerRef {
  * via the `definition` "Component".
  */
 export interface Component {
+  /**
+   * The scoring category this term covers (e.g. minutes, goals, saves).
+   */
   label: string
+  /**
+   * Its contribution to ``ep`` for this fixture, summed over the
+   * category's columns.
+   */
   points: number
 }
 /**
@@ -634,12 +748,31 @@ export interface Component {
  * via the `definition` "ComponentFixture".
  */
 export interface ComponentFixture {
+  /**
+   * The scoring categories that summed to ``ep``, from the saved
+   * components parquet.
+   */
   components: Component[]
+  /**
+   * Expected points for this fixture, the sum ``components`` explains.
+   */
   ep: number
+  /**
+   * The gameweek of this fixture.
+   */
   gw: number
+  /**
+   * Whether the fixture is at home.
+   */
   home: boolean
+  /**
+   * ISO kickoff time, or ``None`` when not yet known.
+   */
   kickoff_time: string | null
   minutes: MinutesOutput
+  /**
+   * The opponent's name.
+   */
   opponent: string
   /**
    * How much of the Goals term is penalty duty, when any of it is.
@@ -654,8 +787,7 @@ export interface ComponentFixture {
   pen_taker: number | null
 }
 /**
- * This interface was referenced by `GafferApi`'s JSON-Schema
- * via the `definition` "MinutesOutput".
+ * The minutes model's own prediction for this fixture.
  */
 export interface MinutesOutput {
   /**
@@ -685,6 +817,9 @@ export interface MinutesOutput {
  * via the `definition` "ComponentPlayer".
  */
 export interface ComponentPlayer {
+  /**
+   * FPL player code.
+   */
   code: number
   /**
    * Summed over every fixture in this payload — a horizon total, not a
@@ -700,14 +835,26 @@ export interface ComponentPlayer {
    * seen. The band brackets this one instead (plan A2).
    */
   ep_gw: number | null
+  /**
+   * p75 of ``ep_gw``'s distribution, same contract as ``ep_lo``.
+   */
   ep_hi: number | null
   /**
    * p25 / p75 of the distribution ``noise_ep`` draws from. ``None``, never
    * zero, when the frame carries no minutes model for him.
    */
   ep_lo: number | null
+  /**
+   * Every horizon fixture's breakdown from the saved components parquet.
+   */
   fixtures: ComponentFixture[]
+  /**
+   * Player name.
+   */
   name: string
+  /**
+   * ``P(points <= 2)`` under the same distribution.
+   */
   p_blank: number | null
   /**
    * ``uncertainty.Band.p_haul``: P(total points >= 10) in the tail of the
@@ -716,11 +863,17 @@ export interface ComponentPlayer {
    * (spec D3).
    */
   p_haul: number | null
+  /**
+   * GKP, DEF, MID or FWD.
+   */
   position: string
   /**
    * The scenario sweep's own σ for this player-gameweek, in points.
    */
   sigma: number | null
+  /**
+   * His club's name.
+   */
   team_name: string
 }
 /**
@@ -728,7 +881,13 @@ export interface ComponentPlayer {
  * via the `definition` "ComponentsBreakdown".
  */
 export interface ComponentsBreakdown {
+  /**
+   * The gameweek this breakdown was requested for.
+   */
   gw: number
+  /**
+   * Every candidate's EP decomposition for this gameweek.
+   */
   players: ComponentPlayer[]
 }
 /**
@@ -1031,8 +1190,18 @@ export interface DecompositionData {
  * via the `definition` "DraftCompare".
  */
 export interface DraftCompare {
+  /**
+   * The gameweek the comparison was solved from.
+   */
   gw: number
+  /**
+   * The reference row and every requested draft's re-solve.
+   */
   rows: DraftCompareRow[]
+  /**
+   * The shared window every row was scored over — the shortest plan's
+   * horizon.
+   */
   weeks: number
 }
 /**
@@ -1040,16 +1209,34 @@ export interface DraftCompare {
  * via the `definition` "DraftCompareRow".
  */
 export interface DraftCompareRow {
+  /**
+   * Players this row's plan buys.
+   */
   buys: WirePlayerRef[]
+  /**
+   * This row's plan's captain.
+   */
   captain: WirePlayerRef | null
+  /**
+   * The chip this row's plan plays, if any.
+   */
   chip: string | null
+  /**
+   * This row's ``horizon_pts`` minus the reference row's.
+   */
   delta_xpts: number | null
   /**
    * Why this row is empty. An infeasible draft is a row with a reason, not
    * a failed comparison.
    */
   error: string | null
+  /**
+   * Expected points for the first week alone, net of hits.
+   */
   expected_pts: number | null
+  /**
+   * Hits this row's plan takes.
+   */
   hits: number | null
   /**
    * Gameweeks this row's plan actually covers, which is not always the
@@ -1057,13 +1244,25 @@ export interface DraftCompareRow {
    * the shorter shared window every row was then *scored* over.
    */
   horizon: number | null
+  /**
+   * Expected points summed over the comparison's shared window.
+   */
   horizon_pts: number | null
   /**
    * The unconstrained optimum, so every other row has a "worse than what".
    */
   is_reference: boolean
+  /**
+   * The draft's name, or the reference row's own label.
+   */
   name: string
+  /**
+   * Players this row's plan sells.
+   */
   sells: WirePlayerRef[]
+  /**
+   * ISO timestamp this row's re-solve completed.
+   */
   solved_at: string
 }
 /**
@@ -1071,12 +1270,34 @@ export interface DraftCompareRow {
  * via the `definition` "WirePlayerRef".
  */
 export interface WirePlayerRef {
+  /**
+   * FPL player code.
+   */
   code: number
+  /**
+   * Expected points, as the plan payload carries him.
+   */
   ep: number
+  /**
+   * Player name.
+   */
   name: string
+  /**
+   * His next game, resolved at serve time by ``gaffer.web.identity``.
+   */
   next_fixture: NextFixture | null
+  /**
+   * His position: GKP, DEF, MID or FWD.
+   */
   position: string
+  /**
+   * His club's code, resolved at serve time by ``gaffer.web.identity``.
+   */
   team_code: number | null
+  /**
+   * His club's short name, resolved at serve time by
+   * ``gaffer.web.identity``.
+   */
   team_short: string | null
 }
 /**
@@ -1096,9 +1317,22 @@ export interface WirePlayerRef {
  * via the `definition` "NextFixture".
  */
 export interface NextFixture {
+  /**
+   * The ticker's 0-1 rating for the fixture, or ``None`` when it could
+   * not be rated.
+   */
   difficulty: number | null
+  /**
+   * Whether the fixture is at home.
+   */
   home: boolean
+  /**
+   * ISO kickoff time, or ``None`` while FPL still has it as TBC.
+   */
   kickoff_utc: string | null
+  /**
+   * The next opponent's short club name, or ``None`` when he has no game.
+   */
   opponent_short: string | null
 }
 /**
@@ -1106,6 +1340,9 @@ export interface NextFixture {
  * via the `definition` "DraftCompareRequest".
  */
 export interface DraftCompareRequest {
+  /**
+   * Which saved drafts to compare, up to :data:`MAX_COMPARE`.
+   */
   names: string[]
 }
 /**
@@ -1113,6 +1350,9 @@ export interface DraftCompareRequest {
  * via the `definition` "DraftList".
  */
 export interface DraftList {
+  /**
+   * Every saved draft.
+   */
   drafts: DraftRow[]
 }
 /**
@@ -1121,16 +1361,30 @@ export interface DraftList {
  */
 export interface DraftRow {
   constraints: WhatIfRequest
+  /**
+   * ISO timestamp the draft was saved.
+   */
   created_at: string
+  /**
+   * The draft's name, as the manager saved it.
+   */
   name: string
 }
 /**
- * This interface was referenced by `GafferApi`'s JSON-Schema
- * via the `definition` "WhatIfRequest".
+ * The what-if lab request this draft pins.
  */
 export interface WhatIfRequest {
+  /**
+   * Player codes excluded from the candidate pool entirely, owned or not.
+   */
   ban: number[]
+  /**
+   * The chip to play on the first horizon gameweek, if any.
+   */
   chip: 'none' | 'wc' | 'bb' | 'fh' | 'tc'
+  /**
+   * Unowned player codes the solve must buy.
+   */
   force_in: number[]
   /**
    * Owned players the solve must sell in the first horizon gameweek.
@@ -1146,9 +1400,21 @@ export interface WhatIfRequest {
    * approximating with ``ban`` since v11.
    */
   force_out: number[]
+  /**
+   * How many gameweeks to solve over; ``None`` takes the saved state's.
+   */
   horizon: number | null
+  /**
+   * Owned player codes the solve may not sell.
+   */
   lock: number[]
+  /**
+   * The most hits the solve may take in the first horizon gameweek.
+   */
   max_hits: number
+  /**
+   * The most transfers the solve may make; ``None`` is no cap, 0 is bank.
+   */
   max_transfers: number | null
 }
 /**
@@ -1156,8 +1422,58 @@ export interface WhatIfRequest {
  * via the `definition` "DraftSaveRequest".
  */
 export interface DraftSaveRequest {
-  constraints: WhatIfRequest
+  constraints: WhatIfRequest1
+  /**
+   * The name to save this draft under.
+   */
   name: string
+}
+/**
+ * The what-if lab request to pin.
+ */
+export interface WhatIfRequest1 {
+  /**
+   * Player codes excluded from the candidate pool entirely, owned or not.
+   */
+  ban: number[]
+  /**
+   * The chip to play on the first horizon gameweek, if any.
+   */
+  chip: 'none' | 'wc' | 'bb' | 'fh' | 'tc'
+  /**
+   * Unowned player codes the solve must buy.
+   */
+  force_in: number[]
+  /**
+   * Owned players the solve must sell in the first horizon gameweek.
+   *
+   * He is then out of the squad **for the whole horizon**: ``milp`` pins squad
+   * membership to 0 in every week, not only the first, so this is not a sale
+   * the solver may reverse later. The bank is credited with his selling price.
+   *
+   * Not ``ban``: banning an owned player removes him from the candidate pool
+   * entirely, so he never enters the squad and — because he leaves the pool
+   * rather than the squad — the sale money never arrives. This says "sell
+   * him", which is the instruction the planner board's handoff has been
+   * approximating with ``ban`` since v11.
+   */
+  force_out: number[]
+  /**
+   * How many gameweeks to solve over; ``None`` takes the saved state's.
+   */
+  horizon: number | null
+  /**
+   * Owned player codes the solve may not sell.
+   */
+  lock: number[]
+  /**
+   * The most hits the solve may take in the first horizon gameweek.
+   */
+  max_hits: number
+  /**
+   * The most transfers the solve may make; ``None`` is no cap, 0 is bank.
+   */
+  max_transfers: number | null
 }
 /**
  * v12 W4 §5.3. One gameweek against a synthetic field drawn from EO.
@@ -1228,26 +1544,95 @@ export interface FieldRank {
  * via the `definition` "FixtureExplain".
  */
 export interface FixtureExplain {
+  /**
+   * The fitted EP calibration's adjustment for this position, 0.0 when
+   * the frame carries no calibration column.
+   */
   calibration_delta: number
+  /**
+   * The scoring categories that summed to ``ep``, each with nonzero
+   * columns.
+   */
   components: Component[]
+  /**
+   * Expected points for this fixture, the sum ``components`` explains.
+   */
   ep: number
+  /**
+   * The gameweek this fixture falls in.
+   */
   gw: number
+  /**
+   * Whether the fixture is at home.
+   */
   home: boolean
+  /**
+   * ISO kickoff time, or ``None`` when not yet known.
+   */
   kickoff_time: string | null
-  minutes: MinutesOutput
+  minutes: MinutesOutput1
   odds: OddsInfluence
+  /**
+   * The opponent's name.
+   */
   opponent: string
 }
 /**
- * This interface was referenced by `GafferApi`'s JSON-Schema
- * via the `definition` "OddsInfluence".
+ * The minutes model's own prediction for this fixture.
+ */
+export interface MinutesOutput1 {
+  /**
+   * The same convention, on the probability beside it. 0.0 here is
+   * "expected off before the hour", which is a forecast a frame banked
+   * without a minutes model never made — and it is the number ``xmins``
+   * weights the second half by, so a zero propagates into a claim about
+   * minutes as well.
+   */
+  p60: number | null
+  /**
+   * ``None`` — never 0.0 — for a frame banked without a minutes model. Zero
+   * here reads as "expected not to play", which is the strongest claim this
+   * payload can make about a player, and the compare radar drew it as a
+   * zero-length spoke on the minutes axis.
+   */
+  p_play: number | null
+  /**
+   * Expected minutes, ``p_play * (45 + 45 * p60)``. ``None`` when either
+   * probability is missing: an un-modelled player is not a player expected to
+   * play no minutes.
+   */
+  xmins: number | null
+}
+/**
+ * How the bookmaker odds influenced this fixture's team numbers.
  */
 export interface OddsInfluence {
+  /**
+   * Expected goals conceded after blending with the odds market, or the
+   * model's own figure when there is no market weight.
+   */
   e_gc_blended: number
+  /**
+   * The team model's own expected goals conceded, before any odds blend.
+   */
   e_gc_model: number
+  /**
+   * The odds market's own expected goals against, when priced.
+   */
   e_goals_against: number | null
+  /**
+   * P(clean sheet) after blending with the odds market, or the model's
+   * own figure when there is no market weight.
+   */
   p_cs_blended: number
+  /**
+   * The team model's own P(clean sheet), before any odds blend.
+   */
   p_cs_model: number
+  /**
+   * How much the bookmaker odds blend counts for this fixture, 0-1;
+   * 0.0 for a frame banked before the blend existed.
+   */
   weight: number
 }
 /**
@@ -1255,8 +1640,18 @@ export interface OddsInfluence {
  * via the `definition` "FixtureMatrixData".
  */
 export interface FixtureMatrixData {
+  /**
+   * Every gameweek rated.
+   */
   gws: number[]
+  /**
+   * Whether the ratings came from the Dixon-Coles model or there was
+   * nothing to rate.
+   */
   source: 'dixon_coles' | 'none'
+  /**
+   * Every club's attack and defence ratings.
+   */
   teams: MatrixTeam[]
 }
 /**
@@ -1264,11 +1659,29 @@ export interface FixtureMatrixData {
  * via the `definition` "MatrixTeam".
  */
 export interface MatrixTeam {
+  /**
+   * One cell per rated gameweek.
+   */
   cells: MatrixCell[]
+  /**
+   * The club's code.
+   */
   code: number
+  /**
+   * Mean of ``cells``' attack difficulty.
+   */
   mean_attack: number
+  /**
+   * Mean of ``cells``' defence difficulty.
+   */
   mean_defence: number
+  /**
+   * The club's full name.
+   */
   name: string
+  /**
+   * The club's short name, as shown on ``cells``.
+   */
   short_name: string
 }
 /**
@@ -1289,8 +1702,17 @@ export interface MatrixCell {
    * Driven by the opponent's *attack* strength.
    */
   defence: number
+  /**
+   * The gameweek this cell rates.
+   */
   gw: number
+  /**
+   * Whether the fixture is at home.
+   */
   home: boolean
+  /**
+   * The opponent's short name.
+   */
   opponent: string
 }
 /**
@@ -1304,6 +1726,10 @@ export interface MatrixCell {
  * via the `definition` "FixtureOutlook".
  */
 export interface FixtureOutlook {
+  /**
+   * The first gameweek in ``weeks``, or ``None`` when there is nothing to
+   * show.
+   */
   from_gw: number | null
   /**
    * A claim about the **served slice**, not the season: both flags are
@@ -1316,13 +1742,23 @@ export interface FixtureOutlook {
    * that will one day branch on ``weeks.length`` by mistake.
    */
   has_blanks: boolean
+  /**
+   * Whether any served week has a double gameweek.
+   */
   has_doubles: boolean
+  /**
+   * Why the card is empty, when it is — a missing fixture list, an
+   * unreadable one, or nothing to report.
+   */
   note: string | null
   /**
    * False when the teams snapshot was unreadable and the codes above are
    * raw team ids. The counts hold; the names do not.
    */
   teams_known: boolean
+  /**
+   * The season's remaining gameweeks, doubles and blanks per week.
+   */
   weeks: OutlookWeek[]
 }
 /**
@@ -1330,9 +1766,21 @@ export interface FixtureOutlook {
  * via the `definition` "OutlookWeek".
  */
 export interface OutlookWeek {
+  /**
+   * Clubs with no fixture this gameweek.
+   */
   blanks: OutlookTeam[]
+  /**
+   * Clubs with more than one fixture this gameweek.
+   */
   doubles: OutlookTeam[]
+  /**
+   * How many fixtures fall in this gameweek.
+   */
   fixtures: number
+  /**
+   * The gameweek this row is about.
+   */
   gw: number
 }
 /**
@@ -1344,7 +1792,14 @@ export interface OutlookWeek {
  * via the `definition` "OutlookTeam".
  */
 export interface OutlookTeam {
+  /**
+   * The club's code, or the raw FPL team id when ``teams_known`` is false.
+   */
   code: number
+  /**
+   * The club's short name, or ``None`` when the teams snapshot could not
+   * be read.
+   */
   short_name: string | null
 }
 /**
@@ -1905,24 +2360,68 @@ export interface LadderWeek {
  * The captain this week of the plan.
  */
 export interface WirePlayerRef1 {
+  /**
+   * FPL player code.
+   */
   code: number
+  /**
+   * Expected points, as the plan payload carries him.
+   */
   ep: number
+  /**
+   * Player name.
+   */
   name: string
+  /**
+   * His next game, resolved at serve time by ``gaffer.web.identity``.
+   */
   next_fixture: NextFixture | null
+  /**
+   * His position: GKP, DEF, MID or FWD.
+   */
   position: string
+  /**
+   * His club's code, resolved at serve time by ``gaffer.web.identity``.
+   */
   team_code: number | null
+  /**
+   * His club's short name, resolved at serve time by
+   * ``gaffer.web.identity``.
+   */
   team_short: string | null
 }
 /**
  * The vice-captain this week of the plan.
  */
 export interface WirePlayerRef2 {
+  /**
+   * FPL player code.
+   */
   code: number
+  /**
+   * Expected points, as the plan payload carries him.
+   */
   ep: number
+  /**
+   * Player name.
+   */
   name: string
+  /**
+   * His next game, resolved at serve time by ``gaffer.web.identity``.
+   */
   next_fixture: NextFixture | null
+  /**
+   * His position: GKP, DEF, MID or FWD.
+   */
   position: string
+  /**
+   * His club's code, resolved at serve time by ``gaffer.web.identity``.
+   */
   team_code: number | null
+  /**
+   * His club's short name, resolved at serve time by
+   * ``gaffer.web.identity``.
+   */
   team_short: string | null
 }
 /**
@@ -2391,6 +2890,33 @@ export interface LiveTableRow {
   remaining_ep: number | null
 }
 /**
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "MinutesOutput".
+ */
+export interface MinutesOutput2 {
+  /**
+   * The same convention, on the probability beside it. 0.0 here is
+   * "expected off before the hour", which is a forecast a frame banked
+   * without a minutes model never made — and it is the number ``xmins``
+   * weights the second half by, so a zero propagates into a claim about
+   * minutes as well.
+   */
+  p60: number | null
+  /**
+   * ``None`` — never 0.0 — for a frame banked without a minutes model. Zero
+   * here reads as "expected not to play", which is the strongest claim this
+   * payload can make about a player, and the compare radar drew it as a
+   * zero-length spoke on the minutes axis.
+   */
+  p_play: number | null
+  /**
+   * Expected minutes, ``p_play * (45 + 45 * p60)``. ``None`` when either
+   * probability is missing: an un-modelled player is not a player expected to
+   * play no minutes.
+   */
+  xmins: number | null
+}
+/**
  * One player-gameweek the forecast got most wrong.
  *
  * ``miss`` is ``actual - ep``, so it is signed: a positive one is a player
@@ -2435,6 +2961,9 @@ export interface MoverRow {
    * the row carries rather than a reason to hide it.
    */
   calibrating: boolean
+  /**
+   * FPL player code.
+   */
   code: number
   /**
    * ``rise`` or ``drop``. Never ``flat``: this list is only ever rows past
@@ -2442,12 +2971,18 @@ export interface MoverRow {
    * value.
    */
   direction: string
+  /**
+   * Player name.
+   */
   name: string
   /**
    * In millions, the way the UI shows a price — not the 0.1m integer the
    * bootstrap carries.
    */
   now_cost: number
+  /**
+   * FPL's own predictor reading, how close he is to a change tonight.
+   */
   price_change_percent: number
   /**
    * ``squad`` / ``plan`` / ``watchlist``, resolved in that order. The
@@ -2467,8 +3002,18 @@ export interface MoverRow {
  * via the `definition` "MoversPanel".
  */
 export interface MoversPanel {
+  /**
+   * When the underlying snapshot was written — the reading's own age,
+   * not the request's.
+   */
   as_of: string | null
+  /**
+   * Whether the players snapshot could be read at all.
+   */
   available: boolean
+  /**
+   * Watched, squad or planned players near a price change tonight.
+   */
   rows: MoverRow[]
 }
 /**
@@ -2478,8 +3023,17 @@ export interface MoversPanel {
  * via the `definition` "NamedPlayer".
  */
 export interface NamedPlayer {
+  /**
+   * FPL player code.
+   */
   code: number
+  /**
+   * Player name.
+   */
   name: string
+  /**
+   * GKP, DEF, MID or FWD, when known.
+   */
   position: string
 }
 /**
@@ -2636,15 +3190,60 @@ export interface NewsShadowSummary {
   rows: number
 }
 /**
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "OddsInfluence".
+ */
+export interface OddsInfluence1 {
+  /**
+   * Expected goals conceded after blending with the odds market, or the
+   * model's own figure when there is no market weight.
+   */
+  e_gc_blended: number
+  /**
+   * The team model's own expected goals conceded, before any odds blend.
+   */
+  e_gc_model: number
+  /**
+   * The odds market's own expected goals against, when priced.
+   */
+  e_goals_against: number | null
+  /**
+   * P(clean sheet) after blending with the odds market, or the model's
+   * own figure when there is no market weight.
+   */
+  p_cs_blended: number
+  /**
+   * The team model's own P(clean sheet), before any odds blend.
+   */
+  p_cs_model: number
+  /**
+   * How much the bookmaker odds blend counts for this fixture, 0-1;
+   * 0.0 for a frame banked before the blend existed.
+   */
+  weight: number
+}
+/**
  * One pin. At least one of the two values must be present.
  *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "OverrideRequest".
  */
 export interface OverrideRequest {
+  /**
+   * FPL player code.
+   */
   code: number
+  /**
+   * The manager's own expected minutes, overriding the model's.
+   */
   e_min: number | null
+  /**
+   * Why the pin was made, in the manager's own words.
+   */
   note: string
+  /**
+   * The manager's own P(plays), overriding the model's.
+   */
   p_play: number | null
 }
 /**
@@ -2652,17 +3251,39 @@ export interface OverrideRequest {
  * via the `definition` "OverrideRow".
  */
 export interface OverrideRow {
+  /**
+   * FPL player code.
+   */
   code: number
+  /**
+   * The manager's own pinned expected minutes.
+   */
   e_min: number | null
+  /**
+   * What the served pipeline had for his expected minutes when the pin
+   * was made.
+   */
   model_e_min: number | null
   /**
    * What the served pipeline had for him when the pin was made, so the
    * why-panel can say "the model had 0.82" without re-deriving anything.
    */
   model_p_play: number | null
+  /**
+   * Player name, from the bootstrap snapshot.
+   */
   name: string
+  /**
+   * Why the pin was made, in the manager's own words.
+   */
   note: string
+  /**
+   * The manager's own pinned P(plays).
+   */
   p_play: number | null
+  /**
+   * ISO timestamp the pin was saved.
+   */
   set_at: string
 }
 /**
@@ -2675,6 +3296,9 @@ export interface OverridesPanel {
    * applied, which the panel says out loud rather than showing nothing.
    */
   active: boolean
+  /**
+   * Every pin on record.
+   */
   rows: OverrideRow[]
   /**
    * Accepted, and worth a second look. Set on a write whose two numbers
@@ -2766,6 +3390,9 @@ export interface PlanAlternative {
    * build reads correctly on another.
    */
   label: string
+  /**
+   * This alternative's plan, one entry per horizon gameweek.
+   */
   weeks: PlanGw[]
 }
 /**
@@ -2782,13 +3409,37 @@ export interface PlanGw {
    * and different state a manager can be in.
    */
   bank: number | null
+  /**
+   * Players bought this week.
+   */
   buys: PlanMove[]
+  /**
+   * The captain this week.
+   */
   captain: PlanMove | null
+  /**
+   * The chip played this week, if any.
+   */
   chip: string | null
+  /**
+   * Expected points for this week alone, net of hits.
+   */
   expected_pts: number
+  /**
+   * The gameweek this week of the plan is for.
+   */
   gw: number
+  /**
+   * Points those hits cost.
+   */
   hit_cost: number
+  /**
+   * Hits taken this week.
+   */
   hits: number
+  /**
+   * Players sold this week.
+   */
   sells: PlanMove[]
   /**
    * Why this week's moves, in the objective's own terms (v12 W5 §6.5).
@@ -2802,6 +3453,9 @@ export interface PlanGw {
    * solve. The board says so under the strip.
    */
   trace: PlanWeekTrace | null
+  /**
+   * The vice-captain this week.
+   */
   vice: PlanMove | null
 }
 /**
@@ -2809,9 +3463,21 @@ export interface PlanGw {
  * via the `definition` "PlanMove".
  */
 export interface PlanMove {
+  /**
+   * FPL player code.
+   */
   code: number
+  /**
+   * Expected points for the week this move is made in.
+   */
   ep: number
+  /**
+   * Player name.
+   */
   name: string
+  /**
+   * GKP, DEF, MID or FWD.
+   */
   position: string
   /**
    * Buy price for an in, sell value for an out — in millions.
@@ -2873,22 +3539,108 @@ export interface PlanMoveTrace {
  * via the `definition` "PlanSummary".
  */
 export interface PlanSummary {
+  /**
+   * The bench, in order.
+   */
   bench: WirePlayerRef[]
+  /**
+   * Players bought into this plan.
+   */
   buys: WirePlayerRef[]
-  captain: WirePlayerRef
+  captain: WirePlayerRef3
   /**
    * Raw expected points for ``gw`` alone, net of hits.
    */
   expected_pts: number
+  /**
+   * The gameweek this plan is for.
+   */
   gw: number
+  /**
+   * Hits taken to reach this plan.
+   */
   hits: number
   /**
    * The same measure summed over the gameweeks the two plans share.
    */
   horizon_pts: number
+  /**
+   * Players sold out of this plan.
+   */
   sells: WirePlayerRef[]
-  vice: WirePlayerRef
+  vice: WirePlayerRef4
+  /**
+   * The starting eleven.
+   */
   xi: WirePlayerRef[]
+}
+/**
+ * The captain.
+ */
+export interface WirePlayerRef3 {
+  /**
+   * FPL player code.
+   */
+  code: number
+  /**
+   * Expected points, as the plan payload carries him.
+   */
+  ep: number
+  /**
+   * Player name.
+   */
+  name: string
+  /**
+   * His next game, resolved at serve time by ``gaffer.web.identity``.
+   */
+  next_fixture: NextFixture | null
+  /**
+   * His position: GKP, DEF, MID or FWD.
+   */
+  position: string
+  /**
+   * His club's code, resolved at serve time by ``gaffer.web.identity``.
+   */
+  team_code: number | null
+  /**
+   * His club's short name, resolved at serve time by
+   * ``gaffer.web.identity``.
+   */
+  team_short: string | null
+}
+/**
+ * The vice-captain.
+ */
+export interface WirePlayerRef4 {
+  /**
+   * FPL player code.
+   */
+  code: number
+  /**
+   * Expected points, as the plan payload carries him.
+   */
+  ep: number
+  /**
+   * Player name.
+   */
+  name: string
+  /**
+   * His next game, resolved at serve time by ``gaffer.web.identity``.
+   */
+  next_fixture: NextFixture | null
+  /**
+   * His position: GKP, DEF, MID or FWD.
+   */
+  position: string
+  /**
+   * His club's code, resolved at serve time by ``gaffer.web.identity``.
+   */
+  team_code: number | null
+  /**
+   * His club's short name, resolved at serve time by
+   * ``gaffer.web.identity``.
+   */
+  team_short: string | null
 }
 /**
  * v12 §3.2's readout, or its refusal.
@@ -3202,12 +3954,33 @@ export interface RivalSummary {
  * via the `definition` "SensitivityMove".
  */
 export interface SensitivityMove {
+  /**
+   * FPL player code.
+   */
   code: number
+  /**
+   * How many of the sweep's re-solves made this move.
+   */
   count: number
+  /**
+   * ``count`` divided by the number of completed re-solves.
+   */
   frequency: number
+  /**
+   * The gameweek the move is made in.
+   */
   gw: number
+  /**
+   * Which decision this move is: a buy, a sell or the captaincy.
+   */
   kind: string
+  /**
+   * The move described in prose, for the frequency table.
+   */
   label: string
+  /**
+   * Player name.
+   */
   name: string
 }
 /**
@@ -3215,10 +3988,25 @@ export interface SensitivityMove {
  * via the `definition` "SensitivityPlan".
  */
 export interface SensitivityPlan {
+  /**
+   * Players this plan buys.
+   */
   buys: NamedPlayer[]
+  /**
+   * This plan's captain.
+   */
   captain: NamedPlayer | null
+  /**
+   * How many of the sweep's re-solves reached this exact plan.
+   */
   count: number
+  /**
+   * Hits this plan takes.
+   */
   hits: number
+  /**
+   * Players this plan sells.
+   */
   sells: NamedPlayer[]
   /**
    * Horizon expected points on the **true** EP table, so two signatures are
@@ -3231,7 +4019,13 @@ export interface SensitivityPlan {
  * via the `definition` "SensitivityReport".
  */
 export interface SensitivityReport {
+  /**
+   * Whether a sweep for this gameweek was found and is current.
+   */
   available: boolean
+  /**
+   * How many re-solves actually finished.
+   */
   completed: number
   /**
    * The scenario sweep's own *estimation* noise on the players that
@@ -3250,18 +4044,59 @@ export interface SensitivityReport {
    * which is what it did before.
    */
   decision_sigma: number | null
+  /**
+   * How many re-solves failed.
+   */
   failures: number
+  /**
+   * The first horizon week's moves, ranked by how often the sweep made
+   * them.
+   */
   frequencies: SensitivityMove[]
+  /**
+   * ISO timestamp the sweep was run.
+   */
   generated_at: string | null
+  /**
+   * The gameweek the report is about.
+   */
   gw: number | null
+  /**
+   * How many gameweeks the sweep solved over.
+   */
   horizon: number
+  /**
+   * How many re-solves the sweep asked for.
+   */
   k: number
+  /**
+   * ``modal``'s value minus ``runner_up``'s, on the true EP table.
+   */
   margin: number | null
+  /**
+   * The plan the sweep reached most often.
+   */
   modal: SensitivityPlan | null
+  /**
+   * A caveat on the sweep, e.g. that expected minutes had to be guessed.
+   */
   notice: string | null
+  /**
+   * The next most frequent *distinct* plan, or ``None`` when every
+   * re-solve agreed.
+   */
   runner_up: SensitivityPlan | null
+  /**
+   * The RNG seed the sweep's scenarios were drawn with.
+   */
   seed: number | null
+  /**
+   * The sweep's one-line summary of the modal plan and the runner-up.
+   */
   verdict: string | null
+  /**
+   * Seconds the sweep took.
+   */
   wall_s: number | null
 }
 /**
@@ -3576,9 +4411,21 @@ export interface TeamModelHealth {
  * via the `definition` "TickerCell".
  */
 export interface TickerCell {
+  /**
+   * The 0-1 rating, from bookmaker odds when available, else Elo.
+   */
   difficulty: number
+  /**
+   * The gameweek this cell rates.
+   */
   gw: number
+  /**
+   * Whether the fixture is at home.
+   */
   home: boolean
+  /**
+   * The opponent's short name.
+   */
   opponent: string
 }
 /**
@@ -3586,8 +4433,17 @@ export interface TickerCell {
  * via the `definition` "TickerData".
  */
 export interface TickerData {
+  /**
+   * Every gameweek rated.
+   */
   gws: number[]
+  /**
+   * Whether the ratings came from bookmaker odds or the Elo fallback.
+   */
   source: 'odds' | 'elo'
+  /**
+   * Every club, sorted by mean difficulty.
+   */
   teams: TickerTeam[]
 }
 /**
@@ -3595,10 +4451,25 @@ export interface TickerData {
  * via the `definition` "TickerTeam".
  */
 export interface TickerTeam {
+  /**
+   * One cell per rated gameweek.
+   */
   cells: TickerCell[]
+  /**
+   * The club's code.
+   */
   code: number
+  /**
+   * Mean of ``cells``' difficulty, the figure teams are sorted by.
+   */
   mean_difficulty: number
+  /**
+   * The club's full name.
+   */
   name: string
+  /**
+   * The club's short name, as shown on ``cells``.
+   */
   short_name: string
 }
 /**
@@ -3616,8 +4487,17 @@ export interface TickerTeam {
  * via the `definition` "UpcomingFixture".
  */
 export interface UpcomingFixture {
+  /**
+   * The gameweek of this upcoming fixture.
+   */
   gw: number
+  /**
+   * Whether the fixture is at home.
+   */
   home: boolean
+  /**
+   * The opponent's full name.
+   */
   opponent: string
 }
 /**
@@ -3627,6 +4507,9 @@ export interface UpcomingFixture {
  * via the `definition` "WatchRequest".
  */
 export interface WatchRequest {
+  /**
+   * FPL player code to star or update.
+   */
   code: number
   /**
    * Three requests, not two. ``None`` — the key omitted — is "star him and
@@ -3645,9 +4528,21 @@ export interface WatchRequest {
  * via the `definition` "WatchRow".
  */
 export interface WatchRow {
+  /**
+   * FPL player code.
+   */
   code: number
+  /**
+   * Player name, from the bootstrap snapshot.
+   */
   name: string
+  /**
+   * The manager's own note on why he is watched.
+   */
   note: string
+  /**
+   * ISO timestamp the note was last written.
+   */
   set_at: string
   /**
    * When the star went on, carried unchanged through every later write, so
@@ -3668,21 +4563,168 @@ export interface WatchRow {
  * via the `definition` "WatchlistPanel".
  */
 export interface WatchlistPanel {
+  /**
+   * Every starred player, sorted by code.
+   */
   rows: WatchRow[]
+}
+/**
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "WhatIfRequest".
+ */
+export interface WhatIfRequest2 {
+  /**
+   * Player codes excluded from the candidate pool entirely, owned or not.
+   */
+  ban: number[]
+  /**
+   * The chip to play on the first horizon gameweek, if any.
+   */
+  chip: 'none' | 'wc' | 'bb' | 'fh' | 'tc'
+  /**
+   * Unowned player codes the solve must buy.
+   */
+  force_in: number[]
+  /**
+   * Owned players the solve must sell in the first horizon gameweek.
+   *
+   * He is then out of the squad **for the whole horizon**: ``milp`` pins squad
+   * membership to 0 in every week, not only the first, so this is not a sale
+   * the solver may reverse later. The bank is credited with his selling price.
+   *
+   * Not ``ban``: banning an owned player removes him from the candidate pool
+   * entirely, so he never enters the squad and — because he leaves the pool
+   * rather than the squad — the sale money never arrives. This says "sell
+   * him", which is the instruction the planner board's handoff has been
+   * approximating with ``ban`` since v11.
+   */
+  force_out: number[]
+  /**
+   * How many gameweeks to solve over; ``None`` takes the saved state's.
+   */
+  horizon: number | null
+  /**
+   * Owned player codes the solve may not sell.
+   */
+  lock: number[]
+  /**
+   * The most hits the solve may take in the first horizon gameweek.
+   */
+  max_hits: number
+  /**
+   * The most transfers the solve may make; ``None`` is no cap, 0 is bank.
+   */
+  max_transfers: number | null
 }
 /**
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "WhatIfResult".
  */
 export interface WhatIfResult {
-  baseline: PlanSummary
+  baseline: PlanSummary1
+  /**
+   * Whether the two plans captain different players.
+   */
   captain_changed: boolean
+  /**
+   * ``yours``' horizon points minus ``baseline``'s.
+   */
   delta_xpts: number
+  /**
+   * Whether the two plans buy different players.
+   */
   transfers_changed: boolean
+  /**
+   * The lab's one-line summary of the comparison.
+   */
   verdict: string
+  /**
+   * Players in ``yours``' eleven that were not in ``baseline``'s.
+   */
   xi_in: WirePlayerRef[]
+  /**
+   * Players in ``baseline``'s eleven that are not in ``yours``'.
+   */
   xi_out: WirePlayerRef[]
-  yours: PlanSummary
+  yours: PlanSummary2
+}
+/**
+ * The served advice's own plan.
+ */
+export interface PlanSummary1 {
+  /**
+   * The bench, in order.
+   */
+  bench: WirePlayerRef[]
+  /**
+   * Players bought into this plan.
+   */
+  buys: WirePlayerRef[]
+  captain: WirePlayerRef3
+  /**
+   * Raw expected points for ``gw`` alone, net of hits.
+   */
+  expected_pts: number
+  /**
+   * The gameweek this plan is for.
+   */
+  gw: number
+  /**
+   * Hits taken to reach this plan.
+   */
+  hits: number
+  /**
+   * The same measure summed over the gameweeks the two plans share.
+   */
+  horizon_pts: number
+  /**
+   * Players sold out of this plan.
+   */
+  sells: WirePlayerRef[]
+  vice: WirePlayerRef4
+  /**
+   * The starting eleven.
+   */
+  xi: WirePlayerRef[]
+}
+/**
+ * The plan solved under the what-if lab's request.
+ */
+export interface PlanSummary2 {
+  /**
+   * The bench, in order.
+   */
+  bench: WirePlayerRef[]
+  /**
+   * Players bought into this plan.
+   */
+  buys: WirePlayerRef[]
+  captain: WirePlayerRef3
+  /**
+   * Raw expected points for ``gw`` alone, net of hits.
+   */
+  expected_pts: number
+  /**
+   * The gameweek this plan is for.
+   */
+  gw: number
+  /**
+   * Hits taken to reach this plan.
+   */
+  hits: number
+  /**
+   * The same measure summed over the gameweeks the two plans share.
+   */
+  horizon_pts: number
+  /**
+   * Players sold out of this plan.
+   */
+  sells: WirePlayerRef[]
+  vice: WirePlayerRef4
+  /**
+   * The starting eleven.
+   */
+  xi: WirePlayerRef[]
 }
 /**
  * This interface was referenced by `GafferApi`'s JSON-Schema
@@ -3960,7 +5002,13 @@ export interface WirePlanTimeline {
    * figure — never 0.0, which is "fully invested".
    */
   bank: number | null
+  /**
+   * ISO timestamp the plan was generated.
+   */
   generated_at: string
+  /**
+   * The gameweek the plan was solved for.
+   */
   gw: number
   /**
    * v16 §4: the solver's own week one, traced, when the served plan is a
@@ -3968,6 +5016,9 @@ export interface WirePlanTimeline {
    * payload predates the field.
    */
   objective: PlanGw | null
+  /**
+   * The recommended plan, one entry per horizon gameweek.
+   */
   weeks: PlanGw[]
 }
 /**
@@ -3975,11 +5026,31 @@ export interface WirePlanTimeline {
  * via the `definition` "WirePlayerExplain".
  */
 export interface WirePlayerExplain {
+  /**
+   * FPL player code.
+   */
   code: number
+  /**
+   * Expected points for the first horizon gameweek, summed from
+   * ``fixtures``.
+   */
   ep_next: number
+  /**
+   * The scoring breakdown for every horizon fixture found in the banked
+   * components.
+   */
   fixtures: FixtureExplain[]
+  /**
+   * Player name.
+   */
   name: string
+  /**
+   * His next three league games, off the fixtures snapshot.
+   */
   next_fixtures: UpcomingFixture[]
+  /**
+   * GKP, DEF, MID or FWD.
+   */
   position: string
   /**
    * ``penalties`` / ``free_kicks`` / ``corners``, each the user's override
@@ -3995,6 +5066,9 @@ export interface WirePlayerExplain {
    * does not read it is unaffected.
    */
   set_pieces_manual: string[]
+  /**
+   * His club's name.
+   */
   team_name: string
 }
 /**
@@ -4002,12 +5076,33 @@ export interface WirePlayerExplain {
  * via the `definition` "WirePlayerRow".
  */
 export interface WirePlayerRow {
+  /**
+   * Whether his status is outside :data:`UNAVAILABLE_STATUS`.
+   */
   available: boolean
+  /**
+   * FPL's own chance-of-playing percentage.
+   */
   chance_of_playing: number | null
+  /**
+   * FPL player code.
+   */
   code: number
+  /**
+   * His club's corner-taking rank, from ``data/set_pieces.toml`` or FPL.
+   */
   corners_order: number | null
+  /**
+   * FPL's own element id, as the bootstrap snapshot carries him.
+   */
   element: number
+  /**
+   * p75 of ``ep_next``'s distribution, same contract as ``ep_lo``.
+   */
   ep_hi: number | null
+  /**
+   * Expected points summed over the solve horizon.
+   */
   ep_horizon: number
   /**
    * p25 of the noise model's distribution for ``ep_next`` — see
@@ -4020,6 +5115,9 @@ export interface WirePlayerRow {
    * least-known player in the pool would read as certainty.
    */
   ep_lo: number | null
+  /**
+   * Expected points for the next gameweek alone.
+   */
   ep_next: number
   /**
    * ``shield`` | ``sword`` | ``threat``, or ``None`` for the quadrant with
@@ -4071,7 +5169,13 @@ export interface WirePlayerRow {
    * statement than any number on this row is entitled to make.
    */
   field_se: number | null
+  /**
+   * His club's free-kick-taking rank, from ``data/set_pieces.toml`` or FPL.
+   */
   free_kicks_order: number | null
+  /**
+   * Whether he is currently owned.
+   */
   in_squad: boolean
   /**
    * Points from the last four *finished* gameweeks, oldest first.
@@ -4080,9 +5184,22 @@ export interface WirePlayerRow {
    * sparkline then renders an em dash rather than a flat line at zero.
    */
   last4: number[]
+  /**
+   * Effective ownership among the manager's rivals — captaincy weighted
+   * double — from the saved solve state's ``league_eo``.
+   */
   league_eo: number
+  /**
+   * Player name.
+   */
   name: string
+  /**
+   * FPL's own news text for the player.
+   */
   news: string
+  /**
+   * FPL's own overall ownership percentage.
+   */
   ownership: number
   /**
    * ``P(points <= 2)`` under the same distribution.
@@ -4098,8 +5215,17 @@ export interface WirePlayerRow {
    * quantities, one page, one name until v9c (spec D3).
    */
   p_haul: number | null
+  /**
+   * His club's penalty-taking rank, from ``data/set_pieces.toml`` or FPL.
+   */
   penalties_order: number | null
+  /**
+   * GKP, DEF, MID or FWD.
+   */
   position: string
+  /**
+   * Current price in £m, from FPL's ``now_cost`` divided by ten.
+   */
   price: number
   /**
    * Kinds of set piece whose order above came from ``data/set_pieces.toml``
@@ -4111,8 +5237,17 @@ export interface WirePlayerRow {
    * the numbers on this row and nothing else.
    */
   set_piece_manual: string[]
+  /**
+   * FPL's own status code for the player.
+   */
   status: string
+  /**
+   * His club's code.
+   */
   team_code: number
+  /**
+   * His club's name.
+   */
   team_name: string
 }
 /**

@@ -126,8 +126,11 @@ CHIP_CODES = {"wc": "wildcard", "bb": "bboost", "fh": "freehit",
 
 class WhatIfRequest(BaseModel):
     lock: list[int] = Field(default_factory=list)
+    """Owned player codes the solve may not sell."""
     ban: list[int] = Field(default_factory=list)
+    """Player codes excluded from the candidate pool entirely, owned or not."""
     force_in: list[int] = Field(default_factory=list)
+    """Unowned player codes the solve must buy."""
     # v12 W3 §4.1 (specs/2026-09-01-gaffer-v12-program-design.md)
     force_out: list[int] = Field(default_factory=list)
     """Owned players the solve must sell in the first horizon gameweek.
@@ -143,11 +146,15 @@ class WhatIfRequest(BaseModel):
     approximating with ``ban`` since v11.
     """
     max_hits: int = 0
+    """The most hits the solve may take in the first horizon gameweek."""
     # v13 §2.3. ``None`` is "no cap" (the baseline's cap is the saved state's,
     # never this); 0 is bank.
     max_transfers: int | None = None
+    """The most transfers the solve may make; ``None`` is no cap, 0 is bank."""
     chip: Literal["none", "wc", "bb", "fh", "tc"] = "none"
+    """The chip to play on the first horizon gameweek, if any."""
     horizon: int | None = None
+    """How many gameweeks to solve over; ``None`` takes the saved state's."""
 
 
 class NextFixture(BaseModel):
@@ -165,35 +172,56 @@ class NextFixture(BaseModel):
     """
 
     opponent_short: str | None = None
+    """The next opponent's short club name, or ``None`` when he has no game."""
     home: bool
+    """Whether the fixture is at home."""
     kickoff_utc: str | None = None
+    """ISO kickoff time, or ``None`` while FPL still has it as TBC."""
     difficulty: float | None = None
+    """The ticker's 0-1 rating for the fixture, or ``None`` when it could
+    not be rated."""
 
 
 class PlayerRef(BaseModel):
     code: int
+    """FPL player code."""
     name: str
+    """Player name."""
     position: str
+    """His position: GKP, DEF, MID or FWD."""
     ep: float
+    """Expected points, as the plan payload carries him."""
     # v9a: identity, resolved at serve time by ``gaffer.web.identity`` and
     # never written into the advice artifact — ``advise.py`` is protected, so
     # the fields are a decoration on the way out of the route. All three
     # default to None, so a plan payload built without the enrichment (the
     # what-if lab, ``/api/plan``) types exactly as it did.
     team_short: str | None = None
+    """His club's short name, resolved at serve time by
+    ``gaffer.web.identity``."""
     team_code: int | None = None
+    """His club's code, resolved at serve time by ``gaffer.web.identity``."""
     next_fixture: NextFixture | None = None
+    """His next game, resolved at serve time by ``gaffer.web.identity``."""
 
 
 class PlanSummary(BaseModel):
     gw: int
+    """The gameweek this plan is for."""
     xi: list[PlayerRef]
+    """The starting eleven."""
     bench: list[PlayerRef]
+    """The bench, in order."""
     captain: PlayerRef
+    """The captain."""
     vice: PlayerRef
+    """The vice-captain."""
     buys: list[PlayerRef]
+    """Players bought into this plan."""
     sells: list[PlayerRef]
+    """Players sold out of this plan."""
     hits: int
+    """Hits taken to reach this plan."""
     expected_pts: float
     """Raw expected points for ``gw`` alone, net of hits."""
     horizon_pts: float
@@ -202,13 +230,21 @@ class PlanSummary(BaseModel):
 
 class WhatIfResult(BaseModel):
     baseline: PlanSummary
+    """The served advice's own plan."""
     yours: PlanSummary
+    """The plan solved under the what-if lab's request."""
     delta_xpts: float
+    """``yours``' horizon points minus ``baseline``'s."""
     xi_in: list[PlayerRef]
+    """Players in ``yours``' eleven that were not in ``baseline``'s."""
     xi_out: list[PlayerRef]
+    """Players in ``baseline``'s eleven that are not in ``yours``'."""
     transfers_changed: bool
+    """Whether the two plans buy different players."""
     captain_changed: bool
+    """Whether the two plans captain different players."""
     verdict: str
+    """The lab's one-line summary of the comparison."""
 
 
 # --- League: the standings, the race and the rivals -----------------------
@@ -590,16 +626,28 @@ class LiveState(BaseModel):
 
 class PlayerRow(BaseModel):
     code: int
+    """FPL player code."""
     element: int
+    """FPL's own element id, as the bootstrap snapshot carries him."""
     name: str
+    """Player name."""
     position: str
+    """GKP, DEF, MID or FWD."""
     team_code: int
+    """His club's code."""
     team_name: str
+    """His club's name."""
     price: float
+    """Current price in £m, from FPL's ``now_cost`` divided by ten."""
     ep_next: float
+    """Expected points for the next gameweek alone."""
     ep_horizon: float
+    """Expected points summed over the solve horizon."""
     ownership: float
+    """FPL's own overall ownership percentage."""
     league_eo: float
+    """Effective ownership among the manager's rivals — captaincy weighted
+    double — from the saved solve state's ``league_eo``."""
     field_eo: float | None = None
     """Top-10k effective ownership from the latest banked scrape.
 
@@ -643,12 +691,19 @@ class PlayerRow(BaseModel):
     which the generated types then repeated, and the pitch's shirt colours
     stopped compiling against."""
     available: bool
+    """Whether his status is outside :data:`UNAVAILABLE_STATUS`."""
     status: str
+    """FPL's own status code for the player."""
     news: str
+    """FPL's own news text for the player."""
     chance_of_playing: float | None
+    """FPL's own chance-of-playing percentage."""
     penalties_order: int | None
+    """His club's penalty-taking rank, from ``data/set_pieces.toml`` or FPL."""
     free_kicks_order: int | None
+    """His club's free-kick-taking rank, from ``data/set_pieces.toml`` or FPL."""
     corners_order: int | None
+    """His club's corner-taking rank, from ``data/set_pieces.toml`` or FPL."""
     set_piece_manual: list[str] = Field(default_factory=list)
     """Kinds of set piece whose order above came from ``data/set_pieces.toml``
     rather than from FPL. Empty on every machine with no override file.
@@ -658,6 +713,7 @@ class PlayerRow(BaseModel):
     a rank is. Only ``penalties`` reaches expected points; the other two move
     the numbers on this row and nothing else."""
     in_squad: bool
+    """Whether he is currently owned."""
     last4: list[int] = Field(default_factory=list)
     """Points from the last four *finished* gameweeks, oldest first.
 
@@ -674,6 +730,7 @@ class PlayerRow(BaseModel):
     minutes model for him, or is absent altogether. A zero-width band on the
     least-known player in the pool would read as certainty."""
     ep_hi: float | None = None
+    """p75 of ``ep_next``'s distribution, same contract as ``ep_lo``."""
     p_haul: float | None = None
     """``P(points >= 10)`` under the same distribution. Crude by construction:
     it prices *forecast* error, not football's own variance.
@@ -688,7 +745,10 @@ class PlayerRow(BaseModel):
 
 class Component(BaseModel):
     label: str
+    """The scoring category this term covers (e.g. minutes, goals, saves)."""
     points: float
+    """Its contribution to ``ep`` for this fixture, summed over the
+    category's columns."""
 
 
 class MinutesOutput(BaseModel):
@@ -711,23 +771,43 @@ class MinutesOutput(BaseModel):
 
 class OddsInfluence(BaseModel):
     weight: float
+    """How much the bookmaker odds blend counts for this fixture, 0-1;
+    0.0 for a frame banked before the blend existed."""
     e_goals_against: float | None
+    """The odds market's own expected goals against, when priced."""
     p_cs_model: float
+    """The team model's own P(clean sheet), before any odds blend."""
     p_cs_blended: float
+    """P(clean sheet) after blending with the odds market, or the model's
+    own figure when there is no market weight."""
     e_gc_model: float
+    """The team model's own expected goals conceded, before any odds blend."""
     e_gc_blended: float
+    """Expected goals conceded after blending with the odds market, or the
+    model's own figure when there is no market weight."""
 
 
 class FixtureExplain(BaseModel):
     gw: int
+    """The gameweek this fixture falls in."""
     opponent: str
+    """The opponent's name."""
     home: bool
+    """Whether the fixture is at home."""
     kickoff_time: str | None
+    """ISO kickoff time, or ``None`` when not yet known."""
     components: list[Component]
+    """The scoring categories that summed to ``ep``, each with nonzero
+    columns."""
     minutes: MinutesOutput
+    """The minutes model's own prediction for this fixture."""
     calibration_delta: float
+    """The fitted EP calibration's adjustment for this position, 0.0 when
+    the frame carries no calibration column."""
     odds: OddsInfluence
+    """How the bookmaker odds influenced this fixture's team numbers."""
     ep: float
+    """Expected points for this fixture, the sum ``components`` explains."""
 
 
 class UpcomingFixture(BaseModel):
@@ -743,18 +823,30 @@ class UpcomingFixture(BaseModel):
     """
 
     gw: int
+    """The gameweek of this upcoming fixture."""
     opponent: str
+    """The opponent's full name."""
     home: bool
+    """Whether the fixture is at home."""
 
 
 class PlayerExplain(BaseModel):
     code: int
+    """FPL player code."""
     name: str
+    """Player name."""
     position: str
+    """GKP, DEF, MID or FWD."""
     team_name: str
+    """His club's name."""
     ep_next: float
+    """Expected points for the first horizon gameweek, summed from
+    ``fixtures``."""
     fixtures: list[FixtureExplain]
+    """The scoring breakdown for every horizon fixture found in the banked
+    components."""
     next_fixtures: list[UpcomingFixture]
+    """His next three league games, off the fixtures snapshot."""
     set_pieces: dict[str, int | None]
     """``penalties`` / ``free_kicks`` / ``corners``, each the user's override
     file's word where it has one and FPL's otherwise — the same numbers
@@ -770,7 +862,10 @@ class PlayerExplain(BaseModel):
 
 class ChipWeek(BaseModel):
     gw: int
+    """A gameweek the chip could be played in."""
     gain: float
+    """Total expected-points gain from playing the chip in ``gw``, from
+    ``optimize/chips.py``'s ``evaluate_chips``."""
     per_week: float
     """``gain`` divided by the horizon weeks the chip is credited with — the
     weeks from ``gw`` onwards for a wildcard, one for every other chip."""
@@ -778,15 +873,26 @@ class ChipWeek(BaseModel):
 
 class ChipPlanRow(BaseModel):
     chip: str
+    """The chip this row is about: wildcard, bench boost, free hit or triple
+    captain."""
     weeks: list[ChipWeek]
+    """Every horizon gameweek this chip could be played in, with its gain."""
     best_gw: int
+    """The gameweek with the best ``per_week`` gain — not necessarily the
+    best total (``optimize.chips.chip_plan``)."""
     best_gain: float
+    """The total gain at ``best_gw``."""
     best_gain_per_week: float
+    """The per-week gain at ``best_gw`` — the figure ``best_gw`` is chosen on."""
     weeks_scored: int
     """How many gameweeks were looked at, so the UI can say how far ahead
     "best" reaches rather than implying the whole season."""
     now_gain: float | None
+    """The gain if played this gameweek, or ``None`` when it cannot be
+    played now."""
     play_now_delta: float | None
+    """``now_gain`` minus ``best_gain`` — the total-points price of playing
+    now rather than waiting, or ``None`` when it cannot be played now."""
 
     threshold_now: float | None = None
     """θ for this chip in the current gameweek: the surplus the best remaining
@@ -796,6 +902,8 @@ class ChipPlanRow(BaseModel):
     reaches the page and nothing fails while it doesn't."""
 
     play_now: bool | None = None
+    """Whether ``now_gain`` clears ``threshold_now`` — the chip policy's own
+    verdict on playing this week rather than waiting."""
 
     threshold_source: str | None = None
     """See ``ChipWorkbenchRow.threshold_source``. Filled at the router from the
@@ -815,7 +923,9 @@ class ChipPlanRow(BaseModel):
 
 class ChipPlan(BaseModel):
     gw: int
+    """The gameweek the plan was solved from."""
     chips: list[ChipPlanRow]
+    """One row per chip, best gain first."""
 
 
 class ChipWorkbenchRow(BaseModel):
@@ -829,7 +939,10 @@ class ChipWorkbenchRow(BaseModel):
     """
 
     chip: str
+    """The chip this cell prices: wildcard, bench boost, free hit or triple
+    captain."""
     gw: int
+    """The gameweek this cell is for."""
     gw2: int | None = None
     """The second week of a chip *pair* — the bench boost's, where ``gw`` is
     the wildcard's. ``None`` on every single-chip row, which is every row on
@@ -837,8 +950,12 @@ class ChipWorkbenchRow(BaseModel):
     carries a double."""
 
     gain: float
+    """Expected-points gain from playing the chip in this cell, as the
+    advice run's own chip table priced it."""
     per_week: float | None = None
+    """``gain`` divided by the weeks it is credited with."""
     threshold: float | None = None
+    """The θ bar this gain is judged against — see the class docstring."""
     threshold_source: str | None = None
     """Where ``threshold`` came from: ``"theta"``, or ``"flat: <reason>"``.
 
@@ -849,22 +966,33 @@ class ChipWorkbenchRow(BaseModel):
     (v12 W3 §4.2)."""
 
     play_now: bool = False
+    """Whether ``gain`` clears ``threshold`` this cell."""
     note: str | None = None
+    """A caveat on this cell, when the advice run's chip table wrote one."""
 
 
 class SquadPlayerRef(BaseModel):
     code: int
+    """FPL player code."""
     name: str
+    """Player name."""
     position: str
+    """GKP, DEF, MID or FWD."""
     price: float
+    """His price in £m — cost to buy or hold, sell price for a squad he is
+    leaving (`routers/chips.py`'s ``_refs``)."""
     ep: float
+    """Expected points, from the saved pool's first horizon gameweek."""
 
 
 class SquadDiff(BaseModel):
     """A candidate squad against the one you own, resolved server-side."""
 
     gain_over_horizon: float
+    """Expected-points gain of the candidate squad over the owned one,
+    summed across the solve horizon."""
     recommend: bool
+    """Whether ``gain_over_horizon`` clears ``threshold``."""
     threshold: float | None = None
     """The bar ``recommend`` was decided against. Until v12 this was always
     the flat 8.0 and was never served, so the card asserted a verdict and
@@ -874,14 +1002,21 @@ class SquadDiff(BaseModel):
     """See ``ChipWorkbenchRow.threshold_source``."""
 
     kept: list[SquadPlayerRef]
+    """Owned players the candidate squad keeps."""
     dropped: list[SquadPlayerRef]
+    """Owned players the candidate squad does not keep, priced at sell value."""
     added: list[SquadPlayerRef]
+    """Players the candidate squad brings in that were not owned."""
 
 
 class ChipsWorkbench(BaseModel):
     gw: int
+    """The gameweek the workbench is showing."""
     chips: list[ChipWorkbenchRow]
+    """Every (chip, gameweek) cell in the advice run's own chip table."""
     wildcard: SquadDiff | None = None
+    """The wildcard candidate squad against the owned one, or ``None`` when
+    the advice payload carries no ``wildcard_now``."""
 
 
 # --- Players: the saved EP decomposition ----------------------------------
@@ -897,10 +1032,16 @@ class ComponentFixture(BaseModel):
     """
 
     gw: int
+    """The gameweek of this fixture."""
     opponent: str
+    """The opponent's name."""
     home: bool
+    """Whether the fixture is at home."""
     kickoff_time: str | None
+    """ISO kickoff time, or ``None`` when not yet known."""
     components: list[Component]
+    """The scoring categories that summed to ``ep``, from the saved
+    components parquet."""
     pen_taker: float | None = None
     """How much of the Goals term is penalty duty, when any of it is.
 
@@ -912,19 +1053,26 @@ class ComponentFixture(BaseModel):
     panel can tell "no term" from "a term that rounded to zero".
     """
     minutes: MinutesOutput
+    """The minutes model's own prediction for this fixture."""
     ep: float
+    """Expected points for this fixture, the sum ``components`` explains."""
 
 
 class ComponentPlayer(BaseModel):
     code: int
+    """FPL player code."""
     name: str
+    """Player name."""
     position: str
+    """GKP, DEF, MID or FWD."""
     team_name: str
+    """His club's name."""
     ep: float
     """Summed over every fixture in this payload — a horizon total, not a
     gameweek's, because the components parquet carries the whole solve
     horizon."""
     fixtures: list[ComponentFixture]
+    """Every horizon fixture's breakdown from the saved components parquet."""
     ep_gw: float | None = None
     """Expected points for the *requested* gameweek alone.
 
@@ -937,17 +1085,21 @@ class ComponentPlayer(BaseModel):
     """p25 / p75 of the distribution ``noise_ep`` draws from. ``None``, never
     zero, when the frame carries no minutes model for him."""
     ep_hi: float | None = None
+    """p75 of ``ep_gw``'s distribution, same contract as ``ep_lo``."""
     p_haul: float | None = None
     """``uncertainty.Band.p_haul``: P(total points >= 10) in the tail of the
     whole forecast. The advice payload's attacking quantity is a different
     number on a different scale and is served as ``p_attacking_haul``
     (spec D3)."""
     p_blank: float | None = None
+    """``P(points <= 2)`` under the same distribution."""
 
 
 class ComponentsBreakdown(BaseModel):
     gw: int
+    """The gameweek this breakdown was requested for."""
     players: list[ComponentPlayer]
+    """Every candidate's EP decomposition for this gameweek."""
 
 
 # --- This Week: what moved since the last run -----------------------------
@@ -1391,23 +1543,35 @@ class Health(BaseModel):
 
 class TickerCell(BaseModel):
     gw: int
+    """The gameweek this cell rates."""
     opponent: str
+    """The opponent's short name."""
     home: bool
+    """Whether the fixture is at home."""
     difficulty: float
+    """The 0-1 rating, from bookmaker odds when available, else Elo."""
 
 
 class TickerTeam(BaseModel):
     code: int
+    """The club's code."""
     name: str
+    """The club's full name."""
     short_name: str
+    """The club's short name, as shown on ``cells``."""
     cells: list[TickerCell]
+    """One cell per rated gameweek."""
     mean_difficulty: float
+    """Mean of ``cells``' difficulty, the figure teams are sorted by."""
 
 
 class Ticker(BaseModel):
     gws: list[int]
+    """Every gameweek rated."""
     source: Literal["odds", "elo"]
+    """Whether the ratings came from bookmaker odds or the Elo fallback."""
     teams: list[TickerTeam]
+    """Every club, sorted by mean difficulty."""
 
 
 # --- Model: the evaluation, the shadows and the calibration ---------------
@@ -1683,23 +1847,36 @@ class CalibrationReport(BaseModel):
 
 class PlanMove(BaseModel):
     code: int
+    """FPL player code."""
     name: str
+    """Player name."""
     position: str
+    """GKP, DEF, MID or FWD."""
     ep: float
+    """Expected points for the week this move is made in."""
     price: float | None = None
     """Buy price for an in, sell value for an out — in millions."""
 
 
 class PlanGw(BaseModel):
     gw: int
+    """The gameweek this week of the plan is for."""
     buys: list[PlanMove]
+    """Players bought this week."""
     sells: list[PlanMove]
+    """Players sold this week."""
     hits: int
+    """Hits taken this week."""
     hit_cost: int
+    """Points those hits cost."""
     chip: str | None = None
+    """The chip played this week, if any."""
     captain: PlanMove | None = None
+    """The captain this week."""
     vice: PlanMove | None = None
+    """The vice-captain this week."""
     expected_pts: float
+    """Expected points for this week alone, net of hits."""
     bank: float | None = None
     """What is left in the bank after this week's moves, in millions.
 
@@ -1737,12 +1914,16 @@ class PlanAlternative(BaseModel):
     could not be read; never 0.0, which is "exactly level".
     """
     weeks: list[PlanGw]
+    """This alternative's plan, one entry per horizon gameweek."""
 
 
 class PlanTimeline(BaseModel):
     gw: int
+    """The gameweek the plan was solved for."""
     generated_at: str
+    """ISO timestamp the plan was generated."""
     weeks: list[PlanGw]
+    """The recommended plan, one entry per horizon gameweek."""
     bank: float | None = None
     """What is in the bank before the horizon's first move, in millions.
 
@@ -1767,8 +1948,11 @@ class PlanTimeline(BaseModel):
 
 class MatrixCell(BaseModel):
     gw: int
+    """The gameweek this cell rates."""
     opponent: str
+    """The opponent's short name."""
     home: bool
+    """Whether the fixture is at home."""
     attack: float
     """Difficulty for your attackers, 0 easiest to 1 hardest.
 
@@ -1784,17 +1968,27 @@ class MatrixCell(BaseModel):
 
 class MatrixTeam(BaseModel):
     code: int
+    """The club's code."""
     name: str
+    """The club's full name."""
     short_name: str
+    """The club's short name, as shown on ``cells``."""
     cells: list[MatrixCell]
+    """One cell per rated gameweek."""
     mean_attack: float
+    """Mean of ``cells``' attack difficulty."""
     mean_defence: float
+    """Mean of ``cells``' defence difficulty."""
 
 
 class FixtureMatrix(BaseModel):
     gws: list[int]
+    """Every gameweek rated."""
     teams: list[MatrixTeam]
+    """Every club's attack and defence ratings."""
     source: Literal["dixon_coles", "none"]
+    """Whether the ratings came from the Dixon-Coles model or there was
+    nothing to rate."""
 
 
 class OutlookTeam(BaseModel):
@@ -1803,14 +1997,21 @@ class OutlookTeam(BaseModel):
     and losing the whole answer over a cosmetic join is the wrong trade."""
 
     code: int
+    """The club's code, or the raw FPL team id when ``teams_known`` is false."""
     short_name: str | None = None
+    """The club's short name, or ``None`` when the teams snapshot could not
+    be read."""
 
 
 class OutlookWeek(BaseModel):
     gw: int
+    """The gameweek this row is about."""
     fixtures: int
+    """How many fixtures fall in this gameweek."""
     doubles: list[OutlookTeam] = Field(default_factory=list)
+    """Clubs with more than one fixture this gameweek."""
     blanks: list[OutlookTeam] = Field(default_factory=list)
+    """Clubs with no fixture this gameweek."""
 
 
 class FixtureOutlook(BaseModel):
@@ -1822,8 +2023,12 @@ class FixtureOutlook(BaseModel):
     """
 
     from_gw: int | None = None
+    """The first gameweek in ``weeks``, or ``None`` when there is nothing to
+    show."""
     weeks: list[OutlookWeek] = Field(default_factory=list)
+    """The season's remaining gameweeks, doubles and blanks per week."""
     has_doubles: bool = False
+    """Whether any served week has a double gameweek."""
     has_blanks: bool = False
     """A claim about the **served slice**, not the season: both flags are
     computed over the same ``weeks`` this response carries, so a ``from_gw``
@@ -1839,6 +2044,8 @@ class FixtureOutlook(BaseModel):
     raw team ids. The counts hold; the names do not."""
 
     note: str | None = None
+    """Why the card is empty, when it is — a missing fixture list, an
+    unreadable one, or nothing to report."""
 
 
 # --- Model: the decision journal ------------------------------------------
@@ -2111,22 +2318,34 @@ class OverrideRequest(BaseModel):
     """One pin. At least one of the two values must be present."""
 
     code: int
+    """FPL player code."""
     p_play: float | None = None
+    """The manager's own P(plays), overriding the model's."""
     e_min: float | None = None
+    """The manager's own expected minutes, overriding the model's."""
     note: str = ""
+    """Why the pin was made, in the manager's own words."""
 
 
 class OverrideRow(BaseModel):
     code: int
+    """FPL player code."""
     name: str
+    """Player name, from the bootstrap snapshot."""
     p_play: float | None = None
+    """The manager's own pinned P(plays)."""
     e_min: float | None = None
+    """The manager's own pinned expected minutes."""
     note: str = ""
+    """Why the pin was made, in the manager's own words."""
     set_at: str = ""
+    """ISO timestamp the pin was saved."""
     model_p_play: float | None = None
     """What the served pipeline had for him when the pin was made, so the
     why-panel can say "the model had 0.82" without re-deriving anything."""
     model_e_min: float | None = None
+    """What the served pipeline had for his expected minutes when the pin
+    was made."""
 
 
 class OverridesPanel(BaseModel):
@@ -2134,6 +2353,7 @@ class OverridesPanel(BaseModel):
     """``[news] overrides``. False means the pins are stored and *not* being
     applied, which the panel says out loud rather than showing nothing."""
     rows: list[OverrideRow] = Field(default_factory=list)
+    """Every pin on record."""
     warning: str | None = None
     """Accepted, and worth a second look. Set on a write whose two numbers
     disagree with each other — expected minutes implying a player starts,
@@ -2149,26 +2369,41 @@ class NamedPlayer(BaseModel):
     """A player a report names but does not price."""
 
     code: int
+    """FPL player code."""
     name: str
+    """Player name."""
     position: str = ""
+    """GKP, DEF, MID or FWD, when known."""
 
 
 class SensitivityMove(BaseModel):
     kind: str
+    """Which decision this move is: a buy, a sell or the captaincy."""
     code: int
+    """FPL player code."""
     gw: int
+    """The gameweek the move is made in."""
     label: str
+    """The move described in prose, for the frequency table."""
     name: str = ""
+    """Player name."""
     count: int
+    """How many of the sweep's re-solves made this move."""
     frequency: float
+    """``count`` divided by the number of completed re-solves."""
 
 
 class SensitivityPlan(BaseModel):
     count: int
+    """How many of the sweep's re-solves reached this exact plan."""
     buys: list[NamedPlayer] = Field(default_factory=list)
+    """Players this plan buys."""
     sells: list[NamedPlayer] = Field(default_factory=list)
+    """Players this plan sells."""
     captain: NamedPlayer | None = None
+    """This plan's captain."""
     hits: int = 0
+    """Hits this plan takes."""
     value: float = 0.0
     """Horizon expected points on the **true** EP table, so two signatures are
     compared on the board the manager faces rather than on their own draws."""
@@ -2176,19 +2411,35 @@ class SensitivityPlan(BaseModel):
 
 class SensitivityReport(BaseModel):
     available: bool = False
+    """Whether a sweep for this gameweek was found and is current."""
     gw: int | None = None
+    """The gameweek the report is about."""
     k: int = 0
+    """How many re-solves the sweep asked for."""
     completed: int = 0
+    """How many re-solves actually finished."""
     failures: int = 0
+    """How many re-solves failed."""
     seed: int | None = None
+    """The RNG seed the sweep's scenarios were drawn with."""
     horizon: int = 0
+    """How many gameweeks the sweep solved over."""
     wall_s: float | None = None
+    """Seconds the sweep took."""
     generated_at: str | None = None
+    """ISO timestamp the sweep was run."""
     notice: str | None = None
+    """A caveat on the sweep, e.g. that expected minutes had to be guessed."""
     frequencies: list[SensitivityMove] = Field(default_factory=list)
+    """The first horizon week's moves, ranked by how often the sweep made
+    them."""
     modal: SensitivityPlan | None = None
+    """The plan the sweep reached most often."""
     runner_up: SensitivityPlan | None = None
+    """The next most frequent *distinct* plan, or ``None`` when every
+    re-solve agreed."""
     margin: float | None = None
+    """``modal``'s value minus ``runner_up``'s, on the true EP table."""
     decision_sigma: float | None = None
     """The scenario sweep's own *estimation* noise on the players that
     separate the two plans, in quadrature (plan A6).
@@ -2205,6 +2456,7 @@ class SensitivityReport(BaseModel):
     in the symmetric difference — the card then prints its margin unqualified,
     which is what it did before."""
     verdict: str | None = None
+    """The sweep's one-line summary of the modal plan and the runner-up."""
 
 
 # --- This Week: the transfer ladder (v13 §3) ------------------------------
@@ -2398,40 +2650,57 @@ class LadderPayload(BaseModel):
 
 class DraftRow(BaseModel):
     name: str
+    """The draft's name, as the manager saved it."""
     created_at: str = ""
+    """ISO timestamp the draft was saved."""
     constraints: WhatIfRequest
+    """The what-if lab request this draft pins."""
 
 
 class DraftList(BaseModel):
     drafts: list[DraftRow] = Field(default_factory=list)
+    """Every saved draft."""
 
 
 class DraftSaveRequest(BaseModel):
     name: str
+    """The name to save this draft under."""
     constraints: WhatIfRequest = Field(default_factory=WhatIfRequest)
+    """The what-if lab request to pin."""
 
 
 class DraftCompareRequest(BaseModel):
     names: list[str] = Field(default_factory=list)
+    """Which saved drafts to compare, up to :data:`MAX_COMPARE`."""
 
 
 class DraftCompareRow(BaseModel):
     name: str
+    """The draft's name, or the reference row's own label."""
     is_reference: bool = False
     """The unconstrained optimum, so every other row has a "worse than what"."""
     solved_at: str = ""
+    """ISO timestamp this row's re-solve completed."""
     horizon_pts: float | None = None
+    """Expected points summed over the comparison's shared window."""
     expected_pts: float | None = None
+    """Expected points for the first week alone, net of hits."""
     delta_xpts: float | None = None
+    """This row's ``horizon_pts`` minus the reference row's."""
     hits: int | None = None
+    """Hits this row's plan takes."""
     chip: str | None = None
+    """The chip this row's plan plays, if any."""
     horizon: int | None = None
     """Gameweeks this row's plan actually covers, which is not always the
     comparison's. A free hit is a one-week squad; ``DraftCompare.weeks`` is
     the shorter shared window every row was then *scored* over."""
     buys: list[PlayerRef] = Field(default_factory=list)
+    """Players this row's plan buys."""
     sells: list[PlayerRef] = Field(default_factory=list)
+    """Players this row's plan sells."""
     captain: PlayerRef | None = None
+    """This row's plan's captain."""
     error: str | None = None
     """Why this row is empty. An infeasible draft is a row with a reason, not
     a failed comparison."""
@@ -2439,8 +2708,12 @@ class DraftCompareRow(BaseModel):
 
 class DraftCompare(BaseModel):
     gw: int
+    """The gameweek the comparison was solved from."""
     weeks: int
+    """The shared window every row was scored over — the shortest plan's
+    horizon."""
     rows: list[DraftCompareRow] = Field(default_factory=list)
+    """The reference row and every requested draft's re-solve."""
 
 
 # --- This Week: the confidence line ---------------------------------------
@@ -2519,6 +2792,7 @@ class WatchRequest(BaseModel):
     """A star, and optionally a sentence about why."""
 
     code: int
+    """FPL player code to star or update."""
     note: str | None = None
     """Three requests, not two. ``None`` — the key omitted — is "star him and
     say nothing about the note", which keeps whatever note and star date the
@@ -2532,9 +2806,13 @@ class WatchRequest(BaseModel):
 
 class WatchRow(BaseModel):
     code: int
+    """FPL player code."""
     name: str
+    """Player name, from the bootstrap snapshot."""
     note: str
+    """The manager's own note on why he is watched."""
     set_at: str
+    """ISO timestamp the note was last written."""
     starred_at: str
     """When the star went on, carried unchanged through every later write, so
     a row with no note can say how long it has been watched rather than when
@@ -2551,6 +2829,7 @@ class WatchlistPanel(BaseModel):
     """
 
     rows: list[WatchRow] = Field(default_factory=list)
+    """Every starred player, sorted by code."""
 
 
 # --- Planning: the price movers card --------------------------------------
@@ -2560,11 +2839,14 @@ class MoverRow(BaseModel):
     """One watched player FPL's predictor has near a threshold tonight."""
 
     code: int
+    """FPL player code."""
     name: str
+    """Player name."""
     now_cost: float
     """In millions, the way the UI shows a price — not the 0.1m integer the
     bootstrap carries."""
     price_change_percent: float
+    """FPL's own predictor reading, how close he is to a change tonight."""
     direction: str
     """``rise`` or ``drop``. Never ``flat``: this list is only ever rows past
     the alert threshold, where the price log (which sees everyone) has a third
@@ -2587,8 +2869,12 @@ class MoversPanel(BaseModel):
     """
 
     available: bool
+    """Whether the players snapshot could be read at all."""
     as_of: str | None = None
+    """When the underlying snapshot was written — the reading's own age,
+    not the request's."""
     rows: list[MoverRow] = Field(default_factory=list)
+    """Watched, squad or planned players near a price change tonight."""
 
 
 # --- This Week: the digest and the LLM brief ------------------------------
