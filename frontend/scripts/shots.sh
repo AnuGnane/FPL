@@ -106,6 +106,16 @@ if [[ "$STAGE" == v19g* ]]; then
     "chips:/planning?tab=chips"
   )
 fi
+# v19h gate (specs/2026-09-16-v19h-health-design.md §3): every page the
+# programme changed must be identical below the strip, so the six, the
+# Quality tab (refactored into files), Health and Chips are all shot.
+if [[ "$STAGE" == v19h* ]]; then
+  HUBS+=(
+    "quality:/model?tab=quality"
+    "health:/model?tab=health"
+    "chips:/planning?tab=chips"
+  )
+fi
 for entry in "${HUBS[@]}"; do
   name="${entry%%:*}"; rest="${entry#*:}"
   path="${rest%%:*}"; height="${rest#*:}"
