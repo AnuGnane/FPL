@@ -95,7 +95,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           data-mode="tabbar"
           className="fixed inset-x-0 bottom-0 flex justify-around border-t
                      border-border bg-base py-1
-                     pb-[env(safe-area-inset-bottom)]"
+                     pb-[calc(0.25rem+env(safe-area-inset-bottom))]"
         >
           {links('tabbar')}
         </nav>
