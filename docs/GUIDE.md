@@ -1,7 +1,7 @@
 # The gaffer guide
 
 *A tour of everything this project does, how it got here, and how to use it.
-Last updated 2026-09-16, after v19a (the week's clock and health) merged. The
+Last updated 2026-09-16, after v19b (the loop closed) merged. The
 README covers setup and reference; this document is for understanding. If you
 only read one section, read §12: it is the current to-do list.*
 
@@ -19,7 +19,7 @@ only read one section, read §12: it is the current to-do list.*
 8. [Everything the CLI can do](#8-everything-the-cli-can-do)
 9. [The data it collects and why](#9-the-data-it-collects-and-why)
 10. [How the project measures itself](#10-how-the-project-measures-itself)
-11. [The version history, v1 to v19a](#11-the-version-history-v1-to-v19a)
+11. [The version history, v1 to v19b](#11-the-version-history-v1-to-v19b)
 12. [What is pending and what was left open](#12-what-is-pending-and-what-was-left-open)
 13. [Troubleshooting](#13-troubleshooting)
 
@@ -679,7 +679,7 @@ Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 `reports/evaluation.json`, and the Model hub.
 
-## 11. The version history, v1 to v19a
+## 11. The version history, v1 to v19b
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
 reviewed. Every cycle ran the same way, and knowing the shape tells you where
@@ -1111,6 +1111,20 @@ finished ungraded instead of re-emitting the last graded one; and the field
 scrape moved to 18:30, after any Saturday deadline, the 12:30 slot having
 fired an hour before GW4's. No served number moved. Golden 58 passed, 0
 skipped; inner loop 4383; frontend 1114.
+
+**v19b — the loop closed** (2026-09-16). The Friday loop is pin, re-run,
+apply, and it now happens on one hub with the inputs the Thursday job has:
+`weekly_run` banks a same-day price reading before the solve, so the web
+re-run, the CLI and the plist share it (ruling 4; the golden stubs the
+step); the moves card says how many pins are live, or stored and not
+applied; a news line on This Week can pin without a trip to Players; the
+cold tree's empty state starts the solve itself; a refused write over LAN
+offers a field for the token beneath the sentence; the fixture ticker's
+cold clone is an empty state rather than an error; and the Players
+explorer no longer fires a fetch before the gameweek is known. The chip
+pair's What-If arm was not taken: a pair is two chips and the What-If
+request carries one. No served number moved. Golden 62 passed, 0 skipped;
+inner loop 4387; frontend 1135.
 
 The suite grew from nothing to **4,509 Python + 1,098 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above

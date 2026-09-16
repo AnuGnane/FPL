@@ -18,8 +18,9 @@ rulings on 2026-09-15; plan `plans/2026-09-15-v19-programme.md`; tracker
 sub-cycles aimed at the site's surface and the weekly loop, the model's
 replay-free half and code health, none changing a served number; the
 replay-gated model arms are costed in the design's §4 and deferred to
-v20. v19a (the week's clock and health) merged `8354a21` on 2026-09-16;
-its ledger is in the v19 block below. Next: v19b, the loop closed.
+v20. v19a (the week's clock and health) merged `8354a21` and v19b (the loop
+closed) `4927a15`, both 2026-09-16; the ledger is in the v19 block below.
+Next: v19c, the phone.
 
 **The v18 polish programme is complete** (design
 `specs/2026-09-12-v18-polish-design.md`, plan
@@ -149,6 +150,7 @@ number and needs its own gate.
 | Sub-cycle | Merged | Date | Python | Frontend | Note |
 |---|---|---|---|---|---|
 | v19a — the week's clock and health | `8354a21` | 2026-09-16 | 4531 | 1114 | ruling 5 corrected to a schedule change; strip pairs compared below the strip |
+| v19b — the loop closed | `4927a15` | 2026-09-16 | 4535 | 1135 | the chip pair's arm not taken; the real-run line waits on Thursday's job |
 
 ### The v18 polish programme (planned 2026-09-12; **complete**, all eight merged 2026-09-12 → 14)
 
@@ -237,6 +239,21 @@ usually the thing you cannot test*, not the lines: every card of the seven was
 found by asking what a test would have to fake.
 
 ## Shipped
+
+### v19b — the loop closed (done, merged `4927a15` 2026-09-16)
+`weekly_run` banks a price reading before the solve through one seam,
+`pipeline.bank_price_reading`, stubbed suite-wide in `conftest.py` after a
+CLI test reached the live bootstrap and wrote a real row (the fault and
+its fix are both on the branch); the moves card's pins line in three
+states; pin from a This Week news line (`PinDialog` now in `kit/`); the
+cold tree's `EmptyState` starts the solve; `TokenPrompt` inside `Callout`
+beneath the LAN refusal sentence, matched on the header's name; the
+ticker's 404/422 empty state; the matrix's pre-gameweek fetch removed
+(Players rail −1). Not taken: the chip pair's What-If arm
+(`WhatIfRequest.chip` is one chip). Gate: inner loop 4387, ruff clean,
+golden 62/0 in 18:01, `npm run check` 1135, twelve pairs identical (one
+render flake settled by a same-code control); the real-run price line is
+pasted into the spec after Thursday's job. Pins 51 / 12 / 62.
 
 ### v19a — the week's clock and health (done, merged `8354a21` 2026-09-16)
 The countdown on This Week always, the staleness reason in the callout; the
