@@ -368,10 +368,15 @@ def test_the_route_total_did_not_move_and_this_is_where_it_is_pinned(
     # v16 §6 (specs/2026-09-06-gaffer-v16-restraint-brief-design.md), plan R1
     50 → 51, and the one is ``/api/brief`` — GET and POST share one path key
     — the brief and its anonymous job. No thirteenth job kind.
+
+    # v19f §2.2 (specs/2026-09-16-v19f-ask-design.md)
+    51 → 52, and the one is ``/api/ask`` — the question box over the brief's
+    facts, an anonymous job like the brief's. No thirteenth job kind.
     """
     monkeypatch.chdir(tmp_path)
     paths = set(create_app().openapi()["paths"])
-    assert len(paths) == 51
+    assert len(paths) == 52
+    assert "/api/ask" in paths
     assert "/api/brief" in paths
     assert "/api/meta/freshness" in paths
     assert "/api/settings" in paths
