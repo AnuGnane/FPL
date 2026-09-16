@@ -411,3 +411,80 @@ describe('the season outlook segment (v10b §F2c)', () => {
     expect(await screen.findByText('Wirtz')).toBeInTheDocument()
   })
 })
+
+describe('Where a chip’s bar came from', () => {
+  // v19g §2.3. `threshold_source` has been served on every row since v12 and
+  // the marker read it as one bit — θ or flat. Four different reasons produce
+  // a flat bar, with four different fixes, so the suffix names the one this
+  // row got and the title spells it out in a sentence.
+  const serveSources = (sources: (string | null)[]) => {
+    apiGet.mockImplementation((path: string) => {
+      if (path.startsWith('/api/chips')) return Promise.resolve({
+        ...CHIPS,
+        chips: sources.map((source, i) => ({
+          chip: 'bboost', gw: 4 + i, gain: 5, per_week: 5, threshold: 4.2,
+          threshold_source: source, play_now: false, note: null,
+        })),
+      })
+      if (path.startsWith('/api/players')) return Promise.resolve(PLAYERS)
+      return Promise.resolve({})
+    })
+  }
+
+  it('names each flat bar’s own reason', async () => {
+    serveSources([
+      'flat: no calibrated priors asset',
+      'flat: priors asset has no usable chip_surplus',
+      'flat: no calibrated surplus for this chip',
+      'flat: gameweek outside the calibrated window',
+    ])
+    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    const why = await screen.findAllByTestId('bar-source-why')
+    expect(why.map((n) => n.textContent)).toEqual([
+      '(no calibrated priors asset)',
+      '(priors asset has no usable chip_surplus)',
+      '(no calibrated surplus for this chip)',
+      '(gameweek outside the calibrated window)',
+    ])
+  })
+
+  it('explains each source in a sentence on the title', async () => {
+    serveSources(['flat: gameweek outside the calibrated window'])
+    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    const why = await screen.findByTestId('bar-source-why')
+    expect(why.getAttribute('title'))
+      .toMatch(/outside the window calibration covered/)
+    // The marker beside it carries the same sentence, so a reader who hovers
+    // either half gets the same answer.
+    expect(screen.getByTestId('bar-source').getAttribute('title'))
+      .toBe(why.getAttribute('title'))
+  })
+
+  it('leaves a θ bar with the marker alone', async () => {
+    // θ already says where the bar came from; "(theta)" beside it would be
+    // the same word twice.
+    serveSources(['theta'])
+    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    expect(await screen.findByTestId('bar-source')).toHaveTextContent('θ')
+    expect(screen.queryByTestId('bar-source-why')).toBeNull()
+  })
+
+  it('says nothing at all for a payload with no source', async () => {
+    serveSources([null])
+    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    await screen.findAllByText(/bench boost/i)
+    expect(screen.queryByTestId('bar-source')).toBeNull()
+    expect(screen.queryByTestId('bar-source-why')).toBeNull()
+  })
+
+  it('falls back to the served string for a reason it has not seen', async () => {
+    // The reason is written server-side; a build that has not caught up with
+    // a new one renders it verbatim rather than dropping it.
+    serveSources(['flat: some reason invented after this build'])
+    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    const why = await screen.findByTestId('bar-source-why')
+    expect(why).toHaveTextContent('(some reason invented after this build)')
+    expect(why.getAttribute('title'))
+      .toBe('flat: some reason invented after this build')
+  })
+})

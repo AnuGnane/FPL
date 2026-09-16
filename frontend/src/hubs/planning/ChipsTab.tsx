@@ -37,6 +37,43 @@ function GainBar({ gain, threshold }: { gain: number
   )
 }
 
+// v19g §2.3. Every flat bar carries a reason and they are four different
+// pieces of news — no asset, an asset that says nothing usable, no surplus for
+// this chip, a week outside the calibrated window — with four different
+// fixes. The marker said only "flat"; the caption names which one, so the
+// reader of a bar that is not θ can tell "install the priors asset" from
+// "this week was never calibrated" without opening the server.
+const SOURCE_TITLES: Record<string, string> = {
+  theta:
+    'θ: the surplus the best remaining week is expected to offer '
+    + '(v4c stopping rule).',
+  'flat: no calibrated priors asset':
+    'No calibrated priors asset is installed, so the bar is the pre-v4c '
+    + 'constant rather than a learned surplus.',
+  'flat: priors asset has no usable chip_surplus':
+    'The priors asset is installed but its chip_surplus is empty or '
+    + 'unparseable, so the bar fell back to the constant.',
+  'flat: no calibrated surplus for this chip':
+    'Calibration learned a surplus for other chips but none for this one, '
+    + 'so this bar is the constant.',
+  'flat: gameweek outside the calibrated window':
+    'This gameweek sits outside the window calibration covered, so the bar '
+    + 'is the constant rather than θ for the week.',
+  'flat: the caller passed no threshold lookup':
+    'This bar was computed with no threshold lookup at all — the pre-v4c '
+    + 'constant, not a policy decision.',
+}
+
+/** The words for the suffix, from the source's own leading token. */
+function sourceCaption(source: string): string {
+  if (source === 'theta' || source.startsWith('theta:')) return 'θ'
+  // "flat: gameweek outside the calibrated window" -> the reason alone. The
+  // word "flat" is already the marker; repeating it in the parenthesis would
+  // read as "flat (flat: …)".
+  const colon = source.indexOf(':')
+  return colon === -1 ? source : source.slice(colon + 1).trim()
+}
+
 // θ or the pre-v4c constant, in the words the server sent. A bar with no
 // source is a payload written before v12 and says nothing rather than
 // guessing (v12 W3 §4.2).
@@ -47,14 +84,28 @@ function BarSource({ source }: { source?: string | null }) {
   // 4.00" — so the marker matches on the leading token rather than on the
   // whole string, which would have read a θ bar as flat.
   const theta = source === 'theta' || source.startsWith('theta:')
+  // A source with no entry in the table falls back to the served string, for
+  // BarSource's own standing rule: the reason is written server-side and a
+  // string this build has not seen is still the truest thing available.
+  const title = SOURCE_TITLES[source] ?? source
+  const caption = sourceCaption(source)
   return (
-    <span className="ml-1 text-text-faint" data-testid="bar-source"
-          title={source === 'theta'
-            ? 'θ: the surplus the best remaining week is expected to offer '
-              + '(v4c stopping rule)'
-            : source}>
-      {theta ? 'θ' : 'flat'}
-    </span>
+    <>
+      <span className="ml-1 text-text-faint" data-testid="bar-source"
+            title={title}>
+        {theta ? 'θ' : 'flat'}
+      </span>
+      {/* v19g §2.3: the suffix names the source, not only its shape. A
+          sibling and not a child, so the marker's own text stays the one word
+          the v12 rails read. Muted, because this is provenance beside a
+          number and never the number. */}
+      {caption !== 'θ' && (
+        <span className="ml-1 text-text-faint" data-testid="bar-source-why"
+              title={title}>
+          ({caption})
+        </span>
+      )}
+    </>
   )
 }
 
