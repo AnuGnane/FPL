@@ -62,3 +62,21 @@ def patch_view(monkeypatch, reader, module=None):
     ``gaffer.config`` when it imports lazily (``gaffer.ladder``)."""
     monkeypatch.setattr(module or gaffer.config, "config_in_force",
                         functools.lru_cache(maxsize=1)(reader))
+
+@pytest.fixture(autouse=True)
+def _the_price_step_never_reaches_the_network(request, monkeypatch):
+    """v19b §2.1: ``weekly_run`` banks a price reading through the live
+    bootstrap before the solve. Every test that stubs ``run_advise`` and runs
+    the CLI or the job kind would otherwise reach FPL for real and write a
+    row into the working tree's ``data/live/price_log.parquet`` — which one
+    did, on 2026-09-16, before this fixture existed. The seam is one
+    module-level name, so it is stubbed here for the whole suite; only
+    ``test_pipeline.py`` sees the real function, because it is the file that
+    tests it (and it stubs the seam itself wherever it runs the pipeline).
+    """
+    if request.node.fspath.basename == "test_pipeline.py":
+        return
+    import gaffer.pipeline
+
+    monkeypatch.setattr(gaffer.pipeline, "bank_price_reading",
+                        lambda client=None, log=print: None)
