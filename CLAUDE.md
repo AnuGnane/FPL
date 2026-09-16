@@ -15,13 +15,14 @@ uv run gaffer advise                     # the weekly solve (needs models/); sin
                                          # v17d it chains the brief, as the web job does
 uv run gaffer brief                      # rewrite the LLM brief alone
 uv run gaffer ui --no-open-browser --port 8927
-.venv/bin/pytest -q                      # Python suite (~4500 tests, ~22 min with the golden)
+.venv/bin/pytest -q                      # Python suite (~4580 tests, ~22 min with the golden)
 .venv/bin/pytest -q -m "not slow and not golden"   # the inner loop (~2 min); slow = the fit files, v18g
 .venv/bin/pytest -q -rs tests/test_golden_board.py tests/test_pipeline.py
                                          # the golden gate (~18 min); -rs so a stale
                                          # board's skip names the file; 0 skipped is a pass
 uvx ruff check src tests                 # the linter, a gate line since v18g
-cd frontend && npm run check             # tsc, ~1100 vitest tests, types drift, eslint (v18f)
+cd frontend && npm run check             # tsc, ~1200 vitest tests, types drift, eslint at
+                                         # zero warnings (--max-warnings 0 since v19h)
 cd frontend && npm run dev               # Vite on :5173, proxies /api to :8927
 cd frontend && npm run build             # emits src/gaffer/web/static/ (untracked)
 ```
@@ -55,7 +56,8 @@ is hand-written and must never be regenerated.
 - `frontend/src/` — `hubs/` (This Week, Planning, Players, League, Live,
   Model), `kit/` (shared components and tokens), `api/`, `styles/theme.css`.
 - `tests/` — pytest. The rails that pin counts and honesty rules live in
-  `tests/test_v*_degradation.py` (v4c to v13), in `tests/test_v16_restraint.py`
+  `tests/test_v*_degradation.py` (v4c to v13, and v19 for the calibration
+  keys and the served team-model band), in `tests/test_v16_restraint.py`
   (the CLI's restraint lines; its source-order pins moved to
   `tests/test_served_plan.py` in v17f and became behaviour in v17g), in
   `tests/test_web_job_kinds*.py`, in `tests/test_golden_board.py` with
@@ -111,7 +113,7 @@ pin only when the plan says so, in its own commit.
 
 | Pin | Value | Where |
 |---|---|---|
-| API routes | 51 | `tests/test_v11_degradation.py` |
+| API routes | 52 | `tests/test_v11_degradation.py` (52 since v19f, `/api/ask`) |
 | `JOB_KINDS` | 12 | `tests/test_v12_w1_degradation.py` alone since v18g (the other rails assert membership); never add a kind, run new work as an anonymous JobRegistry job |
 | `Config` fields | 62 | `tests/test_v13_degradation.py` |
 
@@ -123,7 +125,8 @@ never a new home for a number.
 Orchestrator-only files, which subagent implementers must not touch:
 `src/gaffer/advise.py`, `set_pieces.py`, `optimize/**`, `web/jobs.py`,
 `web/routers/whatif.py`, `tests/test_advise.py`, `test_odds.py`,
-`test_web_jobs.py`, every pre-existing `tests/test_v*_degradation.py`,
+`test_web_jobs.py`, every `tests/test_v*_degradation.py` (the v19 file
+included),
 `tests/test_v16_restraint.py`, `tests/test_web_job_kinds*.py`,
 `tests/test_served_plan.py`, `tests/test_golden_board.py`,
 `tests/test_pipeline.py`, `tests/test_advise_order.py`, `tests/test_layering.py`
@@ -171,6 +174,10 @@ grey palette. Pages render in dark and light; screenshots for a gate come from
 ## Writing style in code and docs
 
 Comments and docstrings cite the cycle and section that introduced a rule
-(`v16 §4`), and say why, not what. Test names are sentences
+(`v16 §4`), and say why, not what. A broad `except Exception:` carries
+`# noqa: BLE001 — <what is swallowed and why that is safe here>`; a bare
+`noqa` with no reason is not accepted, and where the try body's only raisers
+are evident (a JSON parse, a file read) the `except` names that class
+instead (v19h §1). Test names are sentences
 (`test_an_agreeing_objective_is_not_repeated`). Docs go in the GUIDE and
 ROADMAP at the end of a cycle, not scattered in new files.

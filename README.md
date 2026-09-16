@@ -263,8 +263,9 @@ Six hubs, and `docs/GUIDE.md` §5 has the detail on each:
 
 - **This Week** — the answer: the advised XI on a pitch, the transfers, the
   captain sentence against the top-10k field, the transfer ladder with the
-  rung the walk chose and the step it refused, your deviation note, and the
-  week written as prose by the brief.
+  rung the walk chose and the step it refused, your deviation note, the
+  week written as prose by the brief, and a question box that answers from
+  the same facts under the same truth check (v19f).
 - **Planning** — the future, in six tabs: the solved Board with Plan A/B/C
   and "why this move", the What-If lab (which re-solves the real MILP under
   your locks, bans, forced buys and must-sells), Drafts, Timeline, the Chips
@@ -274,17 +275,19 @@ Six hubs, and `docs/GUIDE.md` §5 has the detail on each:
   Dixon-Coles fixture Matrix, and your Watchlist.
 - **League** — every league you are in, one of which drives the plan: the
   race with real Monte Carlo win probabilities, rival squads and
-  differentials, a league what-if, and the Field panel.
+  differentials, a league what-if, and the Field panel. Compare two weeks'
+  advice side by side and act on the difference (v19e).
 - **Live** — matchday: live points with autosubs projected, provisional bonus
   from BPS, and a race chart against the pre-gameweek plan.
 - **Model** — the mirror: holdout quality and calibration, the graded
-  decision Review, the Season dashboard, Health, the Journal, History, and
-  the Settings tab that writes `config.local.toml`.
+  decision Review, the Season dashboard, Health (the launchd jobs, the
+  calibration by position and the team model's band since v19), the
+  Journal, History, and the Settings tab that writes `config.local.toml`.
 
 The whole app is drawn in one design language (v14): hairline rules rather than
 cards, tabular figures, colour spent only where it means something.
 `frontend/src/styles/theme.css` holds the tokens, `kit/tokens.test.ts` the
-rules. Pages render in dark and light.
+rules. Pages render in dark and light, and at phone width (v19c).
 
 ## Automation
 
@@ -376,11 +379,11 @@ morning it matters.
 ## Tests
 
 ```
-.venv/bin/pytest -q                                   # 4509 Python tests
+.venv/bin/pytest -q                                   # 4581 Python tests
 .venv/bin/pytest -q -m "not slow and not golden"      # the inner loop, ~70 s
 .venv/bin/pytest -q -rs tests/test_golden_board.py tests/test_pipeline.py
                                                       # the golden gate, ~18 min
-cd frontend && npm run check                          # 1098 tests, types, drift, lint
+cd frontend && npm run check                          # 1201 tests, types, drift, lint at zero warnings
 ```
 
 The golden gate replays one recorded gameweek through the whole weekly solve in
@@ -392,7 +395,7 @@ its exit code.
 
 A large share of the Python suite is *degradation rails*: tests that pin the
 honesty rules and the counts a later change must not move silently — API routes
-(51), job kinds (12), `Config` fields (62), the files a cycle was not authorised
+(52), job kinds (12), `Config` fields (62), the files a cycle was not authorised
 to edit, and the staging rules that keep `config.toml` out of git. A rail
 failing after an edit is telling you which rule the edit crossed, and its
 message names the file that owns it. Do not edit a rail to make it pass.

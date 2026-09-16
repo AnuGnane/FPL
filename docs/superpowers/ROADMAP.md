@@ -10,7 +10,7 @@ than an auditor, `docs/GUIDE.md` §11–12.
 
 ## Where things stand (2026-09-16)
 
-**The v19 programme is running** (design
+**The v19 programme is complete** (design
 `specs/2026-09-15-v19-programme-design.md`, approved with its eleven
 rulings on 2026-09-15; plan `plans/2026-09-15-v19-programme.md`; tracker
 `plans/2026-09-15-v19-tracker.md`; research
@@ -21,9 +21,13 @@ replay-gated model arms are costed in the design's §4 and deferred to
 v20. v19a (the week's clock and health) `8354a21`, v19b (the loop closed)
 `4927a15`, v19c (the phone) `dc7cd6f`, v19d (This Week, readable)
 `f2d61d3`, v19e (compare and act) `d9881d9`, v19f (the question box)
-`58f5960` and v19g (the model's free half) `508025e` are merged, all
-2026-09-16; the ledger is in the v19 block below. Next: v19h, code health
-and the docs, the programme's last.
+`58f5960`, v19g (the model's free half) `508025e` and v19h (code health
+and the docs) `9e28f71` are merged, all 2026-09-16; the ledger is in the v19
+block below. Suite 4581 Python + 1201 frontend; pins routes 52 / job
+kinds 12 / `Config` 62. Next: the model cycle, v20 — the `e_gc`/`p_cs`
+clip against v19g's band rail, the price reading banked minutes before the
+solve, the bonus head, and the replay-gated arms costed in the design's
+§4 — after the Thursday 18:00 run's price line is read into v19b's spec.
 
 **The v18 polish programme is complete** (design
 `specs/2026-09-12-v18-polish-design.md`, plan
@@ -118,12 +122,12 @@ below hold the originals. Headlines: the trace's price line and switch are
 read in the present tense (freezing them needs `advise.py`); the trace does
 not attribute squad-side terms; Plan B/C not re-scored under Plan A's
 coefficients; the free hit excludes horizon effects; `overall_rank` and
-`projection_snapshot` fill forward only; the ledger has no season key; no
-`starred_at` on the watchlist; `reports/projections/` and ~34 MB of API
-snapshots unpruned; the web re-run button does not bank a price reading
-first; `threshold_source` served but unrendered; the chip pair's Try-it
-card has no What-If arm; the generated `types.ts` half lost the client's
-field comments; `density_pub_7d` built on both seams and fed to no head.
+`projection_snapshot` fill forward only; `reports/projections/` unpruned
+(the API snapshots are a corpus, v19h §1); the web re-run button does not
+bank a price reading first; the chip pair's Try-it card has no What-If
+arm; `density_pub_7d` built on both seams and fed to no head. Closed by
+v19: the ledger's season key and `starred_at` (v19h), `threshold_source`
+rendered (v19g), the schema field sentences (v19h).
 
 ## Candidates for the next spec (not planned, not committed)
 
@@ -136,7 +140,7 @@ Detail in `docs/GUIDE.md` §12.5.
 4. C2 `p_play` top-bin recalibration (0.936 predicted vs 0.912 observed, n=1519)
 5. C3 home/away rolling splits
 6. B1's second half — a "days since status last changed" `p_play` feature off the availability log, after the flag-latency report has shown the signal
-7. Housekeeping from the residuals: `tidy` for projections and API snapshots, ledger season key, `starred_at`, `schemas.py` field docstrings, render `threshold_source`, chip-pair What-If arm, web button banking prices
+7. Housekeeping from the residuals, what v19 left: `tidy` for projections (the API snapshots are a corpus), the chip-pair What-If arm, the web button banking prices
 8. B8 FotMob xG fallback — only if Understat goes down
 9. **A blended league stance** (v15 deferred): per-league λ and cover tables merged by weight. Chasing in one league and defending in another largely cancel, so it needs a replay to justify before it touches protected solver code
 10. **The in-app chat** (v16 deferred, gated on a few briefs read): a question box on This Week over the same facts document the brief reads, the same no-tools command, the same truth check on every answer
@@ -149,7 +153,7 @@ The model cycle (11–13, plus the role replay above and the news ablation, C1)
 follows v18 by the user's ruling of 2026-09-12; each arm moves a served
 number and needs its own gate.
 
-### The v19 programme — the surface and the week (planned 2026-09-15; running)
+### The v19 programme — the surface and the week (planned 2026-09-15; **complete**, all eight merged 2026-09-16)
 
 | Sub-cycle | Merged | Date | Python | Frontend | Note |
 |---|---|---|---|---|---|
@@ -160,6 +164,7 @@ number and needs its own gate.
 | v19e — compare and act | `d9881d9` | 2026-09-16 | 4542 | 1184 | ruling 2 amended: the diff path existed, pin stays 51; must-sell is force_out |
 | v19f — the question box | `58f5960` | 2026-09-16 | 4554 | 1189 | route pin 51 → 52 in its own commit; three real answers, 0 offences; answers session-only |
 | v19g — the model's free half | `508025e` | 2026-09-16 | 4569 | 1200 | the band rail: market-backed rows held, all rows strict xfail until v20's clip; two readings, nothing moved |
+| v19h — code health and the docs | `9e28f71` | 2026-09-16 | 4581 | 1201 | ruling 6 amended, `field_sample` stays; Live stays raw; no snapshot tidy; warnings pinned at zero; 1,024 field sentences |
 
 ### The v18 polish programme (planned 2026-09-12; **complete**, all eight merged 2026-09-12 → 14)
 
@@ -248,6 +253,24 @@ usually the thing you cannot test*, not the lines: every card of the seven was
 found by asking what a test would have to fake.
 
 ## Shipped
+
+### v19h — code health and the docs (done, merged `9e28f71` 2026-09-16)
+`starred_at` written once and preserved on the watchlist, the column
+"starred" or "noted"; the ledger keyed by season (`review._ledger_season`,
+readers see the season in force, legacy rows rewritten on the next
+append); every BLE001 in `digest`, `ladder` and `cli` with its reason, two
+narrowed to `(OSError, ValueError)`; `tidy`'s scope paragraph; 1,024 of
+1,031 schema fields with a sentence, in three sonnet commits, carried into
+the generated types; `PitchView` gone; `QualityTab` 546 → 65 lines over
+eight files, pixel-identical; `useJob`'s one probe effect, both
+`eslint-disable` lines gone; the eight `set-state-in-effect` warnings
+closed and `--max-warnings 0` in `npm run check`; `types.ts` audited, two
+review unions derived from `ReviewLane`. Four rulings (spec §1):
+`field_sample` stays, pin 62; Live off `usePageData`; no snapshot tidy;
+BLE001 narrows only where evident. Gate: full suite 4581 + 1 xfail in
+21:24 with the golden's 62, ruff clean, `npm run check` 1201 at zero
+warnings, eighteen pairs identical (Health's age column ticked a hundredth
+of an hour). Pins 52 / 12 / 62.
 
 ### v19g — the model's free half (done, merged `508025e` 2026-09-16)
 `CalibrationHealth` and `TeamModelHealth` on `/api/health` (the loader

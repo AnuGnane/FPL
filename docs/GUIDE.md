@@ -1,7 +1,8 @@
 # The gaffer guide
 
 *A tour of everything this project does, how it got here, and how to use it.
-Last updated 2026-09-16, after v19g (the model's free half) merged. The
+Last updated 2026-09-16, after v19h (code health and the docs) merged,
+which closed the v19 programme. The
 README covers setup and reference; this document is for understanding. If you
 only read one section, read §12: it is the current to-do list.*
 
@@ -350,7 +351,7 @@ falls back to the digest with the reason.
   expected minutes, set-piece order, next-six difficulty strip, all three
   ownership numbers (global / your league / top-10k with ±SE), and a radar.
 - *Matrix*: the Dixon-Coles fixture matrix.
-- *Watchlist* (v12 W5): the starred players, each with a note you can edit
+- *Watchlist* (v12 W5; "starred" or "noted" dates since v19h): the starred players, each with a note you can edit
   (Enter saves it) and an unstar button. This is the only surface that writes
   a note: the explorer's ☆ sends the code and nothing else, and a request
   that says nothing about the note leaves the note and the star date alone.
@@ -679,7 +680,7 @@ Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 `reports/evaluation.json`, and the Model hub.
 
-## 11. The version history, v1 to v19g
+## 11. The version history, v1 to v19h
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
 reviewed. Every cycle ran the same way, and knowing the shape tells you where
@@ -1192,15 +1193,48 @@ candidate for v20 is to bank the price reading minutes before the solve.
 No served number moved. Golden 62 passed, 0 skipped; inner loop 4421 with
 the one xfail; frontend 1200.
 
-The suite grew from nothing to **4,509 Python + 1,098 frontend tests** along
+**v19h — code health and the docs** (2026-09-16). The programme's last
+sub-cycle, closing the research's code-health list on both sides without a
+served number moving. Backend: `starred_at` beside `set_at` on the watchlist,
+so the column can say "starred" for a bare star and "noted" for a note; the
+decision ledger keyed by season, with the season in force the only one a
+reader sees and legacy rows rewritten with the key on the next append;
+every broad except in `digest.py`, `ladder.py` and `cli.py` naming what it
+swallows, two of them narrowed to the file-and-JSON classes they can raise;
+`tidy`'s scope paragraph saying why the API snapshots stay (the FPL client
+prunes its own kinds and the odds snapshots are a corpus). A sentence under
+1,024 of the 1,031 schema fields, carried into the generated types (the
+seven left out are the shared `PlayerRef` fields and the generator's own
+fixtures). Frontend: `PitchView` deleted; the Quality tab split into eight
+files, pixel for pixel; `useJob`'s two mount probes as one effect with the
+honest dependency list; the eight `set-state-in-effect` warnings closed and
+pinned at zero with `--max-warnings 0`; `types.ts` audited, nothing
+deleted, every narrowing explained. Four rulings: `field_sample` stays (the
+field scrape reads it; the `Config` pin is 62, not 61), Live stays off the
+page loader (a liveness question must not be cached), no tidy target for
+the snapshots, and BLE001 narrows only where the raisers are evident. Full
+suite 4581 passed with the one expected failure, golden 62/0, frontend 1201
+at zero warnings, eighteen pairs identical.
+
+**The v19 programme, closed.** Eight sub-cycles in two days (2026-09-15 →
+16), none changing a served number: the week's clock and the health table
+(v19a), the loop closed with a price reading inside `weekly_run` and the
+chip pair's arm (v19b), the phone (v19c), This Week readable (v19d),
+compare and act (v19e), the question box (v19f), the model's free half
+(v19g) and this one. The route pin moved once, 51 → 52. What it left for
+v20 is the model cycle: the `e_gc`/`p_cs` clip measured against v19g's
+band rail, the price reading banked minutes before the solve, the bonus
+head, and the replay-gated arms costed in the programme design's §4.
+
+The suite grew from nothing to **4,581 Python + 1,201 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above
 so a future change cannot quietly break one.
 
 ## 12. What is pending and what was left open
 
-As of 2026-09-14, after v18h. Nothing is in flight: the v12 program, the v17
-deepening programme and the v18 polish programme are all closed, and the
-model cycle is next. What remains falls into six groups, in the order you
+As of 2026-09-16, after v19h. Nothing is in flight: the v12 program and the
+v17, v18 and v19 programmes are all closed, and the model cycle (v20) is
+next. What remains falls into six groups, in the order you
 would act on them.
 
 ### 12.0 First: reload the seven launchd jobs that are not loaded
@@ -1333,22 +1367,23 @@ weekly use.
   two-branch horizon solve).
 - **`overall_rank` and `projection_snapshot` fill forward only** — grades are
   banked and never rewritten, so rows from before v11/W5 keep `null`.
-- **The decision ledger has no season key**; nothing reads across a rollover
-  today, and the fix is a ledger migration.
-- **The watchlist has no "starred at"** — `set_at` is the note's stamp, hence
-  the column reads "noted".
+- ~~The decision ledger has no season key~~ — closed in v19h: rows carry
+  `season`, readers see the season in force.
+- ~~The watchlist has no "starred at"~~ — closed in v19h: `starred_at` is
+  written once and preserved; the column says "starred" or "noted".
 - **`reports/projections/` is never pruned**; a future `gaffer tidy` target,
-  though at 168 KB today it is not the one that matters. The 52 MB of
-  timestamped API snapshots at the top of `data/raw/` — 557 files — are, and
-  they are outside `tidy`'s scope.
+  though at 168 KB today it is not the one that matters. The timestamped
+  API snapshots at the top of `data/raw/` are not a target either (v19h
+  §1): the FPL client prunes its own kinds to twenty, and the `odds-*` and
+  `ags-*` files are the corpus the anytime-scorer weight waits a season for.
 - **The web "re-run" button does not bank a same-day price reading** the way
   the Thursday plist does, so a run from the button can solve with the
   price-timing term seeing an empty table. Run `gaffer prices` first, or use
   the plist.
 - **The chip pair's "Try it" card has no What-If arm.**
-- **The generated `types.ts` half lost the client's field comments.** 119 of
-  891 sentences were recovered from `schemas.py` docstrings; the rest belong
-  in `schemas.py` field docstrings, where the generator can carry them.
+- ~~The generated `types.ts` half lost the client's field comments~~ —
+  closed in v19h: 1,024 of 1,031 schema fields carry a sentence the
+  generator copies into `types.generated.ts`.
 - **`density_pub_7d` is built on both seams and fed to no head**, kept for a
   later re-measure with a replay half of its own.
 - **The light theme's turf reads more saturated than the mockup** (v14). The
@@ -1393,9 +1428,10 @@ Carried out of the v17 and v18 programmes, all of them small:
 - **The calibration block's `p_cs` stays cumulative-only** (v18c) until a
   gameweek carries 30 club-fixtures, which none will; a per-two-gameweek
   window is a model-cycle candidate.
-- **Eight `react-hooks` set-state-in-effect warnings** are a `warn` by
-  ruling (v18f), not silenced per line; `FixtureTicker` still has no
-  cold-clone sentence, and `ExplainModal`'s lines are long.
+- ~~Eight `react-hooks` set-state-in-effect warnings~~ — closed in v19h,
+  each by the mechanism that fit its site, and pinned at zero by
+  `--max-warnings 0`; `FixtureTicker` still has no cold-clone sentence, and
+  `ExplainModal`'s lines are long.
 - **Four singleton warnings and four deferred PuLP filters** in the Python
   suite (v18g); `tests/test_advise.py` runs for 3.4 s on its own.
 
