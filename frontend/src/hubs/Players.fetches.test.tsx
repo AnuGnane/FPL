@@ -80,11 +80,6 @@ const BODIES: Record<string, unknown> = {
   '/api/watchlist': WATCHLIST,
   '/api/components/5': COMPONENTS,
   '/api/fixtures/matrix?from=5&n=6': MATRIX,
-  // FixtureMatrix mounts with `from={gw ?? 1}` before `/api/advice/latest`
-  // has resolved, so its first render asks for gameweek 1 and a second
-  // effect run asks again once `gw` becomes 5 — a real double-fetch on the
-  // Fixture matrix tab's first paint, recorded rather than hidden.
-  '/api/fixtures/matrix?from=1&n=6': MATRIX,
 }
 
 /** path -> how many times it was requested. */
@@ -149,9 +144,14 @@ describe('Players, one tab at a time', () => {
     </MemoryRouter>)
     await waitFor(() => expect(apiGet)
       .toHaveBeenCalledWith('/api/fixtures/matrix?from=5&n=6'))
+    // One, where the control arm recorded two. FixtureMatrix used to mount
+    // with `from={gw ?? 1}` before `/api/advice/latest` had resolved and ask
+    // for gameweek 1's matrix — an answer nothing ever rendered — then ask
+    // again once `gw` became 5. Since v19b §2.6 it is passed `null` until the
+    // gameweek is known and the first request never fires. This is the only
+    // count this cycle moves on Players, and it moved down.
     expect(counted()).toEqual({
       ...BASE,
-      '/api/fixtures/matrix?from=1&n=6': 1,
       '/api/fixtures/matrix?from=5&n=6': 1,
     })
   })

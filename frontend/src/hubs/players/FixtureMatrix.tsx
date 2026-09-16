@@ -8,9 +8,14 @@ import type { FixtureMatrixData, MatrixCell } from '../../types'
 
 type View = 'attack' | 'defence'
 
-export default function FixtureMatrix({ from }: { from: number }) {
+export default function FixtureMatrix({ from }: { from: number | null }) {
+  // v19b §2.6: `null` until the gameweek is known, so the first paint no
+  // longer asks for gameweek 1's matrix — a request whose answer nothing ever
+  // rendered, fired only because `from={gw ?? 1}` invented a week to spell a
+  // URL with (the v18e residual). A null path fetches nothing, and `Loaded`
+  // reads the absent body as the loading state below.
   const page = usePageData<FixtureMatrixData>(
-    `/api/fixtures/matrix?from=${from}&n=6`)
+    from === null ? null : `/api/fixtures/matrix?from=${from}&n=6`)
 
   // The catch this replaces synthesised `{ gws: [], teams: [], source:
   // 'none' }` — so a server that broke drew "no team model has been fitted",

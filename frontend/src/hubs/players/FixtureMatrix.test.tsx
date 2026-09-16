@@ -32,6 +32,16 @@ beforeEach(() => {
 })
 
 describe('FixtureMatrix', () => {
+  // v19b §2.6, the v18e residual. The panel used to be handed `gw ?? 1` and
+  // ask for gameweek 1's matrix before the advice had said which week this
+  // is — an answer nothing ever rendered, because the real request followed
+  // the moment `gw` landed.
+  it('asks for nothing until the gameweek is known', async () => {
+    render(<FixtureMatrix from={null} />)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(apiGet).not.toHaveBeenCalled()
+  })
+
   it('draws a row per team and a column per gameweek', async () => {
     render(<FixtureMatrix from={5} />)
     expect(await screen.findByText('LIV')).toBeInTheDocument()

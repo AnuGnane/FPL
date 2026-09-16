@@ -51,6 +51,45 @@ describe('MovesCard', () => {
       .toHaveTextContent('1 free transfer · cap 2 hits')
   })
 
+  // v19b §2.2. The pins line closes the Friday loop on the page the loop ends
+  // on: pin, re-run, apply. Three states, because a stored pin that `[news]
+  // overrides` is not applying would otherwise be reported as one waiting for
+  // a solve, and the re-run it asks for would change nothing.
+  it('says how many pins are waiting for the next solve', () => {
+    render(<MovesCard buys={BUYS} sells={SELLS} hits={0}
+                      pins={{ active: true, warning: null, rows: [
+                        { code: 1 }, { code: 2 }] as never }} />)
+    expect(screen.getByTestId('moves-pins-line'))
+      .toHaveTextContent('2 pins live · re-run to apply')
+  })
+
+  it('counts one pin in the singular', () => {
+    render(<MovesCard buys={BUYS} sells={SELLS} hits={0}
+                      pins={{ active: true, warning: null,
+                              rows: [{ code: 1 }] as never }} />)
+    expect(screen.getByTestId('moves-pins-line'))
+      .toHaveTextContent('1 pin live · re-run to apply')
+  })
+
+  it('names the setting when the pins are stored but not applied', () => {
+    render(<MovesCard buys={BUYS} sells={SELLS} hits={0}
+                      pins={{ active: false, warning: null, rows: [
+                        { code: 1 }, { code: 2 }] as never }} />)
+    expect(screen.getByTestId('moves-pins-line'))
+      .toHaveTextContent('2 pins stored, not applied ([news] overrides is off)')
+  })
+
+  it('says nothing about pins when the manager has taken none', () => {
+    render(<MovesCard buys={BUYS} sells={SELLS} hits={0}
+                      pins={{ active: true, warning: null, rows: [] }} />)
+    expect(screen.queryByTestId('moves-pins-line')).not.toBeInTheDocument()
+  })
+
+  it('says nothing about pins when the panel has not loaded', () => {
+    render(<MovesCard buys={BUYS} sells={SELLS} hits={0} pins={null} />)
+    expect(screen.queryByTestId('moves-pins-line')).not.toBeInTheDocument()
+  })
+
   it('prints no cap line without one', () => {
     render(<MovesCard buys={[]} sells={[]} hits={0} />)
     expect(screen.queryByTestId('moves-cap-line')).not.toBeInTheDocument()

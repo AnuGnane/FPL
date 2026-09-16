@@ -1,11 +1,16 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { useState } from 'react'
-import { apiPost, errorText } from '../../api/client'
-import { invalidate } from '../../api/pageData'
-import {
-  Button, Callout, INPUT_CLASS, buttonClass, toast, useOpener,
-} from '../../kit'
-import type { OverrideRequest, OverridesPanel } from '../../types'
+import { apiPost, errorText } from '../api/client'
+import { invalidate } from '../api/pageData'
+import type { OverrideRequest, OverridesPanel } from '../types'
+// v19b §2.3: the dialog is kit now — This Week's news rows open it as well as
+// the Players explorer — so its siblings are imported by file rather than
+// through the barrel, which would import this file back.
+import Button, { buttonClass } from './Button'
+import Callout from './Callout'
+import { INPUT_CLASS } from './field'
+import { toast } from './Toast'
+import useOpener from './useOpener'
 
 /** `overrides.NOTE_MAX`. The store refuses a longer note rather than
  *  truncating it — a silently halved note is a sentence the user did not
@@ -155,7 +160,14 @@ export default function PinDialog(
                          onChange={(e) => setNote(e.target.value)} />
                 </span>
               </label>
-              {error && <Callout tone="error">{error}</Callout>}
+              {/* v19b §2.5: `onRetry` is the same `save`, so a token typed
+                  into the refusal takes the pin that was refused rather than
+                  making the manager fill the dialog in again. */}
+              {error && (
+                <Callout tone="error" onRetry={() => { void save() }}>
+                  {error}
+                </Callout>
+              )}
               {warning && <Callout tone="warn">{warning}</Callout>}
               <Button variant="primary" className="self-end" onClick={save}>
                 Pin

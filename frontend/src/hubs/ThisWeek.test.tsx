@@ -6,12 +6,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { seedPageData } from '../api/pageData'
 import ThisWeek from './ThisWeek'
 
-const { FakeApiError, apiGet, apiPost } = vi.hoisted(() => {
+const { FakeApiError, apiGet, apiPost, jobStart } = vi.hoisted(() => {
   class FakeApiError extends Error {
     status = 0
     detail: unknown = null
   }
-  return { FakeApiError, apiGet: vi.fn(), apiPost: vi.fn() }
+  // One shared spy, not a fresh one per `useJob` call: v19b §2.4 makes the
+  // cold tree's empty state start the job itself, and the test has to be able
+  // to say that the click reached the hook.
+  return { FakeApiError, apiGet: vi.fn(), apiPost: vi.fn(),
+           jobStart: vi.fn() }
 })
 
 vi.mock('../api/client', () => ({
@@ -30,7 +34,7 @@ vi.mock('../api/useJob', () => ({
   resetJobSlots: () => {},
   useJob: () => ({
     status: 'idle', lines: [], result: null, error: null, jobId: null,
-    start: vi.fn(), attach: vi.fn(), reset: vi.fn(),
+    start: jobStart, attach: vi.fn(), reset: vi.fn(),
   }),
 }))
 
@@ -130,6 +134,7 @@ beforeEach(() => {
   // which every test but the chip's own expects to be silent.
   apiPost.mockReset()
   apiPost.mockRejectedValue(new Error('no sim'))
+  jobStart.mockReset()
 })
 
 describe('This Week hub', () => {
@@ -263,19 +268,43 @@ describe('This Week hub', () => {
       .toBeInTheDocument()
   })
 
+  // v19b §2.4. The empty state used to name the run in a code box and then
+  // draw a second button that did it, so the page with the least to say
+  // carried its one action twice. There is now exactly one control, and it is
+  // the empty state's own.
+  const cold = () => {
+    apiGet.mockImplementation((path: string) => (
+      path === '/api/advice/latest'
+        ? Promise.reject(Object.assign(new FakeApiError('no advice on disk '
+          + 'yet — run `gaffer advise` first'), { status: 422 }))
+        : route(path)
+    ))
+  }
+
   it('shows an empty state naming the button when there is no advice',
     async () => {
-      apiGet.mockImplementation((path: string) => (
-        path === '/api/advice/latest'
-          ? Promise.reject(Object.assign(new FakeApiError('no advice on disk '
-            + 'yet — run `gaffer advise` first'), { status: 422 }))
-          : route(path)
-      ))
+      cold()
       render(<MemoryRouter><ThisWeek /></MemoryRouter>)
       expect(await screen.findByText(/no advice/i)).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Run advise' }))
         .toBeInTheDocument()
     })
+
+  it('offers one control on a cold tree, not the same one twice',
+    async () => {
+      cold()
+      render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+      await screen.findByTestId('empty-state')
+      expect(screen.getAllByRole('button', { name: /advise/i })).toHaveLength(1)
+    })
+
+  it('starts the solve from the empty state itself', async () => {
+    cold()
+    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    await screen.findByTestId('empty-state')
+    fireEvent.click(screen.getByRole('button', { name: 'Run advise' }))
+    expect(jobStart).toHaveBeenCalled()
+  })
 
   it('prints the cap line on the moves card once the ladder has loaded',
     async () => {

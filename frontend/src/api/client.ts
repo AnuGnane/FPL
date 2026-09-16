@@ -65,6 +65,27 @@ export function readToken(): string {
   }
 }
 
+/**
+ * Store a token typed into the page, for `readToken` to find on the next
+ * request (v19b §2.5).
+ *
+ * The storage half of `readToken` above, and its try/catch for the same
+ * reason: a browser refusing site data must leave the tab working rather than
+ * throwing out of a click handler. Nothing is reported back, because a token
+ * that would not store and a token that is simply wrong fail in the same
+ * place and with the same sentence — the retry the caller makes straight
+ * after is the only report worth having, and it is the server's.
+ */
+export function writeToken(token: string): void {
+  try {
+    localStorage.setItem(TOKEN_KEY, token)
+  } catch {
+    // A tab with site data blocked cannot be given a token this way; the
+    // retry refuses again and says so, which is the honest outcome. The
+    // `?token=` on the URL is the path that still works there.
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   // On every request, GETs included. Simpler than branching on the method,
   // harmless on loopback where nothing reads it, and a read route that

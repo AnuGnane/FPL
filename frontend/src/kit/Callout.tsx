@@ -1,5 +1,6 @@
 import { TriangleAlert } from 'lucide-react'
 import type { HTMLAttributes, ReactNode } from 'react'
+import TokenPrompt from './TokenPrompt'
 
 /** note: information (rule 4). warn: doubt — a data warning, a stale feed
  *  (rule 2), the amber strip with the icon spec §5 asks for. error: a job
@@ -16,10 +17,23 @@ const TONE: Record<CalloutTone, string> = {
 export interface CalloutProps extends HTMLAttributes<HTMLDivElement> {
   tone?: CalloutTone
   children: ReactNode
+  /** v19b §2.5: what to do once a write token has been typed beneath a LAN
+   *  refusal. Only ever reached through `TokenPrompt`, which renders nothing
+   *  for any other sentence, so a callout that passes none is unchanged. */
+  onRetry?: () => void
 }
 
+/**
+ * v19b §2.5: the token field lives here, and not in each caller, because
+ * eight panels render a refused write and every one of them renders it as
+ * `<Callout tone="error">{sentence}</Callout>`. This is the shared error
+ * rendering the cycle was told to put the prompt inside rather than touching
+ * all eight. `TokenPrompt` renders null unless the sentence is the LAN
+ * refusal, so nothing else on the page changes; reads are open, so a read
+ * error can never reach it.
+ */
 export default function Callout(
-  { tone = 'note', children, className = '', ...rest }: CalloutProps,
+  { tone = 'note', children, className = '', onRetry, ...rest }: CalloutProps,
 ) {
   return (
     <div
@@ -32,7 +46,11 @@ export default function Callout(
         <TriangleAlert aria-hidden size={14}
                        className="mt-0.5 shrink-0 text-warn" />
       )}
-      <div className="min-w-0 flex-1">{children}</div>
+      <div className="min-w-0 flex-1">
+        {children}
+        {tone === 'error'
+          && <TokenPrompt sentence={children} onRetry={onRetry} />}
+      </div>
     </div>
   )
 }

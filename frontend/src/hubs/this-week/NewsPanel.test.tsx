@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import NewsPanel from './NewsPanel'
@@ -9,6 +10,8 @@ vi.mock('../../api/client', () => ({
   ApiError: class extends Error {},
   apiGet: (path: string) => apiGet(path),
   apiPost: vi.fn(),
+  // v19b §2.3: the pin dialog the rows now open writes through this module.
+  writeToken: vi.fn(),
   // `usePageData` reads the real one to turn a rejection into a card's
   // error string (v17h §2), so the mock must carry it.
   errorText: (e: unknown) => (e instanceof Error ? e.message : String(e)),
@@ -64,6 +67,26 @@ describe('NewsPanel', () => {
     expect(screen.getByText(/official 75%/i)).toBeInTheDocument()
     expect(screen.getByText(/knock, back GW6/i)).toBeInTheDocument()
     expect(screen.getByText(/line-up: out/i)).toBeInTheDocument()
+  })
+
+  // v19b §2.3: the loop starts where the doubt is. This panel is where a
+  // disagreement with the news layer is read, and acting on it used to mean
+  // finding the same player again on the Players hub.
+  it('opens the pin dialog for the row whose star was clicked', async () => {
+    render(<MemoryRouter><NewsPanel gw={5} /></MemoryRouter>)
+    await screen.findByText('Gibbs-White')
+    await userEvent.click(
+      screen.getByRole('button', { name: 'pin Gibbs-White' }))
+    expect(await screen.findByRole('heading', { name: 'Pin Gibbs-White' }))
+      .toBeInTheDocument()
+  })
+
+  it('offers the pin on every moved row, not just the first', async () => {
+    render(<MemoryRouter><NewsPanel gw={5} /></MemoryRouter>)
+    await screen.findByText('Fit Lad')
+    await userEvent.click(screen.getByRole('button', { name: 'pin Fit Lad' }))
+    expect(await screen.findByRole('heading', { name: 'Pin Fit Lad' }))
+      .toBeInTheDocument()
   })
 
   it('says nothing at all when the layer moved nobody', async () => {

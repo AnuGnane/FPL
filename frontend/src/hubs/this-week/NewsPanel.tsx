@@ -1,7 +1,8 @@
+import { useState } from 'react'
 import { usePageData } from '../../api/pageData'
 import {
-  Card, Chip, PlayerName, TABLE_CLASS, THEAD_CLASS, TR_CLASS, tdClass,
-  thClass,
+  Button, Card, Chip, PinDialog, PlayerName, TABLE_CLASS, THEAD_CLASS,
+  TR_CLASS, tdClass, thClass,
 } from '../../kit'
 import type { NewsPanelData, NewsRow } from '../../types'
 
@@ -39,6 +40,11 @@ export default function NewsPanel({ gw }: { gw: number }) {
   // The error is deliberately unread: a panel nobody can fetch and a week the
   // news moved nobody render identically, which is the rule above.
   const { data } = usePageData<NewsPanelData>(`/api/news/${gw}`)
+  // v19b §2.3: the row the manager is overruling, or null. This panel is
+  // where a disagreement with the news layer is *read*, and until now acting
+  // on it meant finding the same player again on the Players hub — the pin
+  // now starts where the doubt is.
+  const [pinning, setPinning] = useState<NewsRow | null>(null)
 
   if (!data || data.moved === 0) return null
 
@@ -60,6 +66,7 @@ export default function NewsPanel({ gw }: { gw: number }) {
             <th scope="col" className={thClass(true)}>P(plays) news / flags</th>
             <th scope="col" className={thClass(true)}>xMins news / flags</th>
             <th scope="col" className={thClass()}>Why</th>
+            <th scope="col" className={thClass()} />
           </tr>
         </thead>
         <tbody>
@@ -85,11 +92,29 @@ export default function NewsPanel({ gw }: { gw: number }) {
                   ))}
                 </span>
               </td>
+              <td className={`${tdClass()} text-right`}>
+                <Button
+                  variant="ghost"
+                  aria-label={`pin ${row.name}`}
+                  title="Pin this player's availability over the model"
+                  onClick={() => setPinning(row)}
+                >
+                  ☆
+                </Button>
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
       </div>
+      {/* No `onSaved`: the dialog invalidates `/api/overrides`, and both the
+          moves card's pins line and the Why panel's list read that URL
+          through the cache, so the write reaches them without being handed
+          back up (v18e §2.3, v19b §2.2). */}
+      {pinning && (
+        <PinDialog code={pinning.code} name={pinning.name}
+                   onClose={() => setPinning(null)} />
+      )}
     </Card>
   )
 }

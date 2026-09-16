@@ -3,12 +3,26 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import FixtureTicker from './FixtureTicker'
 
-const apiGet = vi.hoisted(() => vi.fn())
+const { FakeApiError, apiGet } = vi.hoisted(() => {
+  class FakeApiError extends Error {
+    status = 0
+    detail: unknown = null
+  }
+  return { FakeApiError, apiGet: vi.fn() }
+})
+
 vi.mock('../../api/client', () => ({
-  ApiError: class extends Error {},
+  ApiError: FakeApiError,
   apiGet: (path: string) => apiGet(path),
   apiPost: vi.fn(),
+  // `usePageData` reads the real one to turn a rejection into a card's error
+  // string (v17h §2), so the mock must carry it for the two refusals below.
+  errorText: (e: unknown) => (e instanceof Error ? e.message : String(e)),
 }))
+
+/** A rejection with a status, which is what the status split reads. */
+const refusal = (status: number, text: string) =>
+  Object.assign(new FakeApiError(text), { status })
 
 beforeEach(() => {
   apiGet.mockReset()
@@ -61,6 +75,32 @@ describe('FixtureTicker', () => {
       expect(await screen.findByText(/odds-implied/)).toBeInTheDocument()
       expect(screen.queryByText(/add an odds key/i)).not.toBeInTheDocument()
     })
+
+  // v19b §2.6 settles what v18e ruling 7 left open here. A 404 and a 422 both
+  // mean "nothing on disk yet, run the job", which is an empty state; a 500
+  // is a server that broke, and a page must never render a failure as a
+  // healthy empty.
+  it('shows an empty state when there is no snapshot to rate', async () => {
+    apiGet.mockRejectedValue(refusal(422, 'live/teams.parquet is missing'))
+    render(<FixtureTicker weeks={2} />)
+    expect(await screen.findByTestId('empty-state')).toBeInTheDocument()
+    expect(screen.getByText('No fixtures yet')).toBeInTheDocument()
+    expect(screen.getByText('Refresh data')).toBeInTheDocument()
+  })
+
+  it('says the same for a route that declares the artifact absent',
+    async () => {
+      apiGet.mockRejectedValue(refusal(404, 'no ticker'))
+      render(<FixtureTicker weeks={2} />)
+      expect(await screen.findByTestId('empty-state')).toBeInTheDocument()
+    })
+
+  it('keeps the error callout for a server that broke', async () => {
+    apiGet.mockRejectedValue(refusal(500, 'the ticker blew up'))
+    render(<FixtureTicker weeks={2} />)
+    expect(await screen.findByText('the ticker blew up')).toBeInTheDocument()
+    expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument()
+  })
 
   it('hides the key notice on Elo when a key is already configured',
     async () => {

@@ -2,7 +2,9 @@ import {
   Bar, Card, Chip, PosBadge, TABLE_CLASS, THEAD_CLASS, TR_CLASS, fmtNum,
   fmtPct, tdClass, thClass,
 } from '../../kit'
-import type { ServedObjective, ServedRestraint } from '../../types.generated'
+import type {
+  OverridesPanel, ServedObjective, ServedRestraint,
+} from '../../types.generated'
 
 export interface Move {
   code: number
@@ -27,11 +29,33 @@ export interface MovesCardProps {
   /** v16: the solver's own week, printed when it differs from the served
    *  plan; v17b: the card renders its served `line`. */
   objective?: ServedObjective | null
+  /** v19b §2.2: the manager's own team news, so the card that prints the
+   *  moves says a pin is waiting on the next solve. The Friday loop is pin,
+   *  re-run, apply, and until now nothing on This Week closed it — the pin
+   *  was taken on Players and this page never mentioned it again. */
+  pins?: OverridesPanel | null
+}
+
+/** The pins line, or null when there is nothing to say.
+ *
+ *  v19b §2.2. Three states and not two: a stored pin that `[news] overrides`
+ *  is not applying looks identical to an applied one everywhere else in the
+ *  app, and "re-run to apply" would then be a lie — the re-run would change
+ *  nothing. No pins is silence, because a manager who has pinned nobody has
+ *  no loop to close. */
+function pinsText(pins: OverridesPanel | null | undefined): string | null {
+  const count = pins?.rows.length ?? 0
+  if (!pins || count === 0) return null
+  const noun = `${count} pin${count === 1 ? '' : 's'}`
+  return pins.active
+    ? `${noun} live · re-run to apply`
+    : `${noun} stored, not applied ([news] overrides is off)`
 }
 
 export default function MovesCard(
-  { buys, sells, hits, capLine, restraint, objective }: MovesCardProps,
+  { buys, sells, hits, capLine, restraint, objective, pins }: MovesCardProps,
 ) {
+  const pinsLine = pinsText(pins)
   const rows: Array<['IN' | 'OUT', Move]> = [
     ...buys.map((m) => ['IN', m] as ['IN', Move]),
     ...sells.map((m) => ['OUT', m] as ['OUT', Move]),
@@ -41,6 +65,11 @@ export default function MovesCard(
       {capLine && (
         <p className="mb-2 text-text-secondary" data-testid="moves-cap-line">
           {capLine}
+        </p>
+      )}
+      {pinsLine && (
+        <p className="mb-2 text-text-secondary" data-testid="moves-pins-line">
+          {pinsLine}
         </p>
       )}
       {restraint?.line && (

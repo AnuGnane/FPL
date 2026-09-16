@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { usePageData } from '../../api/pageData'
 import {
-  Callout, Card, Chip, TABLE_CLASS, THEAD_CLASS, TR_CLASS, difficultyTone,
-  fmtNum, tdClass, thClass,
+  Callout, Card, Chip, EmptyState, TABLE_CLASS, THEAD_CLASS, TR_CLASS,
+  difficultyTone, fmtNum, tdClass, thClass,
 } from '../../kit'
 import type { TickerData } from '../../types'
 
@@ -18,22 +18,30 @@ export default function FixtureTicker(
   const [ascending, setAscending] = useState(true)
   const data = page.data
 
-  // Not split on the status (v18e ruling 7), and the reason is that there is
-  // nothing to split *to*. A cold clone does reach a 422 here — `rate_fixtures`
-  // opens `live/teams.parquet` through `load_snapshot`, which raises a
-  // `GafferError` the app-wide handler maps (app.py:67-69) — but this card has
-  // never had an empty state of its own for that: the callout below is what it
-  // rendered for a cold clone before v18e and after it, so a split would
-  // *change* the cold-clone pixels rather than preserve them. Giving the ticker
-  // an empty state is a design change and not this task's.
-  //
-  // What v18e did change is the sentence: the hook reads every rejection
-  // through `errorText`, so a refusal that carries a structured body prints its
-  // `error` rather than `[object Object]`.
-  if (page.error !== null) {
+  // v19b §2.6 takes the design decision v18e left open. The split is ruling
+  // 7's: a cold clone reaches a 422 here — `rate_fixtures` opens
+  // `live/teams.parquet` through `load_snapshot`, which raises a `GafferError`
+  // the app-wide handler maps (app.py:67-69) — and a 404 says the same thing,
+  // that there is nothing on disk yet and a job fixes it. That is an empty
+  // state, not a fault. Every other status is a server that broke, and keeps
+  // the callout with the sentence `errorText` unwrapped for it in v18e.
+  const absent = page.status === 404 || page.status === 422
+  if (page.error !== null && !absent) {
     return (
       <Card title="Fixture ticker" className="mb-4">
         <Callout tone="error">{page.error}</Callout>
+      </Card>
+    )
+  }
+  if (page.error !== null) {
+    return (
+      <Card title="Fixture ticker" className="mb-4">
+        <EmptyState
+          title="No fixtures yet"
+          detail="The ticker rates the fixtures in the live snapshot, and no
+                  snapshot has been downloaded on this machine."
+          action="Refresh data"
+        />
       </Card>
     )
   }

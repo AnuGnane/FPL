@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiPost } from '../api/client'
 import { invalidate, usePageData } from '../api/pageData'
+import { useJob } from '../api/useJob'
 import {
-  Bar, Button, Callout, Card, Chip, Countdown, EmptyState, JobButton, Loading,
-  PageHeader, Segmented, Stat, StatRow, fmtNum, fmtPct,
+  Bar, Button, Callout, Card, Chip, Countdown, EmptyState, JobButton, JobLog,
+  Loading, PageHeader, Segmented, Stat, StatRow, fmtNum, fmtPct,
 } from '../kit'
 import type {
   AdviceChipRow, AdviceLatest, ComponentsBreakdown, LadderPayload,
-  LeaguesOverview, LeagueWhatIfResult, PlayerRow,
+  LeaguesOverview, LeagueWhatIfResult, OverridesPanel, PlayerRow,
 } from '../types'
 import BriefCard from './this-week/BriefCard'
 import ConfidenceLine from './this-week/ConfidenceLine'
@@ -41,6 +42,50 @@ function gapUnit(stance: string): string {
   return 'gap'
 }
 
+/**
+ * The cold tree's one control (v19b §2.4).
+ *
+ * The empty state used to name the button in a code box and then draw that
+ * button underneath it, so the page with the least to say carried its single
+ * action twice. This is `JobButton`'s own hook and its once-per-run `onDone`,
+ * arranged so the empty state itself starts the job.
+ *
+ * Its own component, and not a hook at the top of `ThisWeek`, because
+ * `useJob({ kind })` probes `/api/jobs/current` on mount: mounted on the warm
+ * path it would ask a third time, after the header's two buttons and the
+ * brief card's two, for a run this branch never renders (the This Week fetch
+ * rail counts that probe). Mounted only here, it mounts exactly where the
+ * `JobButton` it replaces did.
+ */
+function NothingSolved(
+  { detail, onDone }: { detail: string; onDone: () => void },
+) {
+  const job = useJob({ kind: 'advise' })
+  const fired = useRef(false)
+
+  useEffect(() => {
+    if (job.status === 'done' && !fired.current) {
+      fired.current = true
+      onDone()
+    }
+    if (job.status === 'running') fired.current = false
+  }, [job.status, onDone])
+
+  return (
+    <>
+      <EmptyState
+        title="Nothing solved yet"
+        detail={detail}
+        action="Run advise"
+        onAction={() => job.start()}
+      />
+      {/* The log stays: a run started here streams for minutes, and watching
+          it happen is the whole of the feedback the button gives. */}
+      <JobLog status={job.status} lines={job.lines} error={job.error} />
+    </>
+  )
+}
+
 export default function ThisWeek() {
   const latest = usePageData<AdviceLatest>('/api/advice/latest')
   const data = latest.data
@@ -72,6 +117,11 @@ export default function ThisWeek() {
   // (v17h §3), which is what the payload's old trip up through `onLoaded` and
   // back down into MovesCard was standing in for.
   const ladder = usePageData<LadderPayload>('/api/ladder')
+  // v19b §2.2: the pins the moves card names. The same URL the Why panel below
+  // already reads, so the cache answers both from one request and the fetch
+  // rail does not move (v17h §2); behind the advice like the two decorations
+  // above, so a cold tree asks for nothing it cannot use.
+  const pins = usePageData<OverridesPanel>(data ? '/api/overrides' : null)
 
   // v17h §5: the same three the old `load` refetched — an advise run rewrites
   // the advice, and the players and components rows are read against it. The
@@ -142,19 +192,14 @@ export default function ThisWeek() {
         <PageHeader title="This Week" />
         {error || armbandMissing
           ? (
-            // The action is named, not wired: the JobButton underneath is the
-            // one control that starts the run, so there is exactly one.
-            <EmptyState
-              title="Nothing solved yet"
+            <NothingSolved
               detail={error ?? 'The saved advice names no captain or vice, so '
                 + 'there is no team to lay out. Re-running the solve rewrites '
                 + 'it.'}
-              action="Run advise"
+              onDone={reloadAdvice}
             />
             )
           : <Loading />}
-        {(error || armbandMissing)
-          && <JobButton kind="advise" onDone={reloadAdvice} />}
       </>
     )
   }
@@ -345,7 +390,8 @@ export default function ThisWeek() {
                    capLine={ladder.data && ladder.data.rungs.length > 0
                      ? capText(ladder.data) : null}
                    restraint={advice.restraint ?? null}
-                   objective={advice.objective ?? null} />
+                   objective={advice.objective ?? null}
+                   pins={pins.data} />
       </div>
       {/* v16 §5: what you actually did, beside the moves it departs from. */}
       <DecisionPanel gw={data.gw} />

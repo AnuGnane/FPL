@@ -79,7 +79,8 @@ const TABLE: Record<string, string[]> = {
   'src/hubs/League.tsx':
     ["useSettingWrite({ alsoPrefix: ['/api/league/'] })"],
   'src/hubs/this-week/DecisionPanel.tsx': ['invalidate(`/api/decisions/${gw}`)'],
-  'src/hubs/players/PinDialog.tsx': ["invalidate('/api/overrides')"],
+  // v19b §2.3: the dialog is `kit/` since This Week's news rows open it too.
+  'src/kit/PinDialog.tsx': ["invalidate('/api/overrides')"],
   // The spec put the unpin on the Players hub, where the pin *dialog* lives.
   // The DELETE is the planning card's, and the reader it disturbs — the Why
   // panel's pin list — is the same one either way. Since v18e the card is a

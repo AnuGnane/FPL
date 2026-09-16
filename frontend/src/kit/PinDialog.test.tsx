@@ -4,9 +4,9 @@ import { useState } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import PinDialog from './PinDialog'
-import { currentToasts } from '../../kit/Toast'
+import { currentToasts } from './Toast'
 
-const { FakeApiError, apiPost } = vi.hoisted(() => {
+const { FakeApiError, apiPost, writeToken } = vi.hoisted(() => {
   class FakeApiError extends Error {
     status: number
     detail: unknown
@@ -16,13 +16,15 @@ const { FakeApiError, apiPost } = vi.hoisted(() => {
       this.detail = detail
     }
   }
-  return { FakeApiError, apiPost: vi.fn() }
+  return { FakeApiError, apiPost: vi.fn(), writeToken: vi.fn() }
 })
 
-vi.mock('../../api/client', () => ({
+vi.mock('../api/client', () => ({
   ApiError: FakeApiError,
   apiGet: vi.fn(),
   apiPost: (path: string, body: unknown) => apiPost(path, body),
+  // v19b §2.5: the token field under a refused write stores through this.
+  writeToken: (token: string) => writeToken(token),
   errorText: (e: unknown) => {
     if (e instanceof FakeApiError && e.detail && typeof e.detail === 'object'
         && 'error' in e.detail) {
@@ -47,6 +49,7 @@ function open(onClose = vi.fn(), onSaved?: (panel: unknown) => void) {
 beforeEach(() => {
   apiPost.mockReset()
   apiPost.mockResolvedValue(PANEL)
+  writeToken.mockReset()
 })
 
 describe('PinDialog', () => {
@@ -224,4 +227,26 @@ describe('PinDialog', () => {
     expect(currentToasts()[0].tone).toBe('negative')
     expect(await screen.findByText(/did not answer/)).toBeInTheDocument()
   })
+
+  // v19b §2.5. A phone on a bare LAN URL was refused and given nowhere to put
+  // the token the terminal had printed. The retry is this dialog's own `save`,
+  // so the pin the manager already filled in is the one that goes — asking him
+  // to type the two numbers again would be a second refusal in all but name.
+  it('offers a token field when the LAN refuses the write, and retries it',
+    async () => {
+      apiPost.mockRejectedValue(Object.assign(new FakeApiError(
+        403, 'this gaffer is served to the network; writes need the '
+          + 'X-Gaffer-Token header printed when `gaffer ui --lan` started')))
+      open()
+      await userEvent.type(screen.getByLabelText('expected minutes'), '85')
+      await userEvent.click(screen.getByRole('button', { name: 'Pin' }))
+      const field = await screen.findByLabelText('write token')
+      apiPost.mockResolvedValue(PANEL)
+      await userEvent.type(field, 'hunter2')
+      await userEvent.click(screen.getByRole('button', { name: 'Use token' }))
+      expect(writeToken).toHaveBeenCalledWith('hunter2')
+      await waitFor(() => expect(apiPost).toHaveBeenCalledTimes(2))
+      expect(apiPost.mock.calls[1]).toEqual(['/api/overrides',
+        { code: 100, p_play: null, e_min: 85, note: '' }])
+    })
 })

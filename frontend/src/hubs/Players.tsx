@@ -5,7 +5,7 @@ import { invalidate, usePageData } from '../api/pageData'
 import { useDebounced } from '../api/useDebounced'
 import {
   type Column, Bar, Button, Callout, Card, DataTable, EmptyState, INPUT_CLASS,
-  Loading, PageHeader, PlayerName, PosBadge, Sparkline, TAB_CLASS,
+  Loading, PageHeader, PinDialog, PlayerName, PosBadge, Sparkline, TAB_CLASS,
   TAB_LIST_CLASS, fmtNum, segmentClass, toast, useTabParam,
 } from '../kit'
 import type {
@@ -13,7 +13,6 @@ import type {
 } from '../types'
 import ComparePanel from './players/ComparePanel'
 import FixtureMatrix from './players/FixtureMatrix'
-import PinDialog from './players/PinDialog'
 import WatchlistTab from './players/WatchlistTab'
 
 const POSITIONS = ['', 'GKP', 'DEF', 'MID', 'FWD']
@@ -356,7 +355,9 @@ export default function Players() {
                               pool={rows ?? []} />}
         </Tabs.Content>
         <Tabs.Content value="matrix">
-          <FixtureMatrix from={gw ?? 1} />
+          {/* v19b §2.6: the gameweek itself, `null` and all. The `?? 1` here
+              was what made the panel ask for a week nobody had chosen. */}
+          <FixtureMatrix from={gw} />
         </Tabs.Content>
         <Tabs.Content value="watchlist">
           {/* The hub already owns `starred` for the explorer's star column,
