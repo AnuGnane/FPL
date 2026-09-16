@@ -20,9 +20,10 @@ replay-free half and code health, none changing a served number; the
 replay-gated model arms are costed in the design's §4 and deferred to
 v20. v19a (the week's clock and health) `8354a21`, v19b (the loop closed)
 `4927a15`, v19c (the phone) `dc7cd6f`, v19d (This Week, readable)
-`f2d61d3`, v19e (compare and act) `d9881d9` and v19f (the question box)
-`58f5960` are merged, all 2026-09-16; the ledger is in the v19 block
-below. Next: v19g, the model's free half.
+`f2d61d3`, v19e (compare and act) `d9881d9`, v19f (the question box)
+`58f5960` and v19g (the model's free half) `508025e` are merged, all
+2026-09-16; the ledger is in the v19 block below. Next: v19h, code health
+and the docs, the programme's last.
 
 **The v18 polish programme is complete** (design
 `specs/2026-09-12-v18-polish-design.md`, plan
@@ -140,8 +141,9 @@ Detail in `docs/GUIDE.md` §12.5.
 9. **A blended league stance** (v15 deferred): per-league λ and cover tables merged by weight. Chasing in one league and defending in another largely cancel, so it needs a replay to justify before it touches protected solver code
 10. **The in-app chat** (v16 deferred, gated on a few briefs read): a question box on This Week over the same facts document the brief reads, the same no-tools command, the same truth check on every answer
 11. **The bonus head sees goals** (09-04 review item 3): feed `e_goals`, `e_assists` and `position` to the bonus model — the review's clearest structural defect. The model cycle's first arm; replay-gated
-12. **Bound `e_gc_model`** (item 4): a Dixon-Coles sanity floor so 0.035 expected goals conceded cannot be served. Replay-gated
-13. **A GKP calibration delta, or the reason there is none** (item 7): `by_pos` has no goalkeeper row
+12. **Bound `e_gc_model`** (item 4): a Dixon-Coles sanity floor so 0.035 expected goals conceded cannot be served. Replay-gated; v19g pre-registered the band (`p_cs` 0.02–0.85, `e_gc` 0.15–4.0) as a strict xfail rail, so the clip is measured by removing the mark
+13. ~~A GKP calibration delta~~ — closed by accrual and pinned in v19g (four keys, the floor named on Health)
+14. **Bank the price reading minutes before the solve** (v19g's price-timing reading): a midday solve reads a log dated the night before, so the term charges nothing or reads unknown; the Thursday 18:00 run is the first that can show a charge
 
 The model cycle (11–13, plus the role replay above and the news ablation, C1)
 follows v18 by the user's ruling of 2026-09-12; each arm moves a served
@@ -157,6 +159,7 @@ number and needs its own gate.
 | v19d — This Week, readable | `f2d61d3` | 2026-09-16 | 4538 | 1172 | the what-if tab shares the ladder card; reports/ mounted, pin untouched |
 | v19e — compare and act | `d9881d9` | 2026-09-16 | 4542 | 1184 | ruling 2 amended: the diff path existed, pin stays 51; must-sell is force_out |
 | v19f — the question box | `58f5960` | 2026-09-16 | 4554 | 1189 | route pin 51 → 52 in its own commit; three real answers, 0 offences; answers session-only |
+| v19g — the model's free half | `508025e` | 2026-09-16 | 4569 | 1200 | the band rail: market-backed rows held, all rows strict xfail until v20's clip; two readings, nothing moved |
 
 ### The v18 polish programme (planned 2026-09-12; **complete**, all eight merged 2026-09-12 → 14)
 
@@ -245,6 +248,24 @@ usually the thing you cannot test*, not the lines: every card of the seven was
 found by asking what a test would have to fake.
 
 ## Shipped
+
+### v19g — the model's free half (done, merged `508025e` 2026-09-16)
+`CalibrationHealth` and `TeamModelHealth` on `/api/health` (the loader
+imported inside the function; the components reduced on `team_code, gw,
+opp_code`; never raising); two lines on Model → Health; the chip bar's
+`threshold_source` captioned on Planning → Chips; the v19 rail
+(`tests/test_v19_degradation.py`): four calibration keys on a synthetic
+fit, `missing` names the position under the floor, market-backed
+club-fixtures inside `p_cs` [0.02, 0.85] / `e_gc` [0.15, 4.0], every
+served row a strict `xfail` that flips when the clip lands. Readings: the
+flag-latency report (34 of 35 flags held; nothing to change) and the
+price-timing line (0.0 or unknown from a midday solve; v20 banks the
+reading minutes before the solve). Gate: inner loop 4421 + 1 xfail, ruff
+clean, golden 62/0 in 18:11, `npm run check` 1200 with the same eight
+warnings, five default pairs identical, This Week's one-line difference a
+live-odds flicker shown by two same-code controls, Health and Chips
+approved. A GW5 advise ran at 16:59 from the UI left on port 8927, not
+from the gate; reported. Pins 52 / 12 / 62.
 
 ### v19f — the question box (done, merged `58f5960` 2026-09-16)
 `brief.check_question` (500 characters), `build_question_prompt` (the

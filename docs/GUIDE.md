@@ -1,7 +1,7 @@
 # The gaffer guide
 
 *A tour of everything this project does, how it got here, and how to use it.
-Last updated 2026-09-16, after v19f (the question box) merged. The
+Last updated 2026-09-16, after v19g (the model's free half) merged. The
 README covers setup and reference; this document is for understanding. If you
 only read one section, read §12: it is the current to-do list.*
 
@@ -679,7 +679,7 @@ Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 `reports/evaluation.json`, and the Model hub.
 
-## 11. The version history, v1 to v19f
+## 11. The version history, v1 to v19g
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
 reviewed. Every cycle ran the same way, and knowing the shape tells you where
@@ -1170,6 +1170,27 @@ questions over 500 characters are refused before anything runs. Answers
 are session-only and never written to disk. The route pin moved 51 → 52,
 the programme's only bump. No served number moved. Golden 62 passed, 0
 skipped; inner loop 4406; frontend 1189.
+
+**v19g — the model's free half** (2026-09-16). The replay-free half of
+the model cycle's three candidates. Model → Health gains two lines under
+Models: the calibration deltas per position, with a position under the
+200-row floor named as not fitted, and the team model's band over the
+newest banked components with the count of fixtures priced without a
+market. Planning → Chips captions each bar with where its threshold came
+from (`threshold_source`, served since v12 and read nowhere until now).
+A new rail, `tests/test_v19_degradation.py`, pins four calibration keys on
+a synthetic fit and holds every market-backed club-fixture inside the
+served band `p_cs` 0.02–0.85, `e_gc` 0.15–4.0; every served row is a
+strict expected failure, because the bare model breaches the band on the
+week the market has not priced (GW7's Spurs and Hull City at 0.95 / 0.06),
+and the day v20's clip makes the band hold the test fails by passing and
+the mark comes off. Two readings were taken and moved nothing: 34 of 35
+availability flags over fourteen snapshot days ended the way the flag
+said, and the served plan's price-timing line charges nothing or reads
+unknown because a midday solve reads a log dated the night before, so the
+candidate for v20 is to bank the price reading minutes before the solve.
+No served number moved. Golden 62 passed, 0 skipped; inner loop 4421 with
+the one xfail; frontend 1200.
 
 The suite grew from nothing to **4,509 Python + 1,098 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above
