@@ -1,7 +1,7 @@
 # The gaffer guide
 
 *A tour of everything this project does, how it got here, and how to use it.
-Last updated 2026-09-16, after v19d (This Week, readable) merged. The
+Last updated 2026-09-16, after v19e (compare and act) merged. The
 README covers setup and reference; this document is for understanding. If you
 only read one section, read §12: it is the current to-do list.*
 
@@ -19,7 +19,7 @@ only read one section, read §12: it is the current to-do list.*
 8. [Everything the CLI can do](#8-everything-the-cli-can-do)
 9. [The data it collects and why](#9-the-data-it-collects-and-why)
 10. [How the project measures itself](#10-how-the-project-measures-itself)
-11. [The version history, v1 to v19d](#11-the-version-history-v1-to-v19d)
+11. [The version history, v1 to v19e](#11-the-version-history-v1-to-v19e)
 12. [What is pending and what was left open](#12-what-is-pending-and-what-was-left-open)
 13. [Troubleshooting](#13-troubleshooting)
 
@@ -679,7 +679,7 @@ Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
 `reports/evaluation.json`, and the Model hub.
 
-## 11. The version history, v1 to v19d
+## 11. The version history, v1 to v19e
 
 Twenty-odd merge cycles, each spec'd, planned, implemented, gated and
 reviewed. Every cycle ran the same way, and knowing the shape tells you where
@@ -1149,6 +1149,15 @@ and the What-If tab); the moves copied as text, a print stylesheet, and
 the gameweek's rendered report served from `reports/` as a static mount,
 outside the route pin. No served number moved. Golden 62 passed, 0
 skipped; inner loop 4390; frontend 1172.
+
+**v19e — compare and act** (2026-09-16). Two things a reader wanted and
+could not do. `GET /api/advice/diff` now takes two gameweeks (`a`, `b`)
+beside its same-gameweek form, so the History tab compares any two served
+plans and the moves card says "since GW n" in one line; the route existed,
+so the route pin stayed at 51. Every squad tile and table row carries a
+row menu — lock, ban, must-sell — that lands on Planning → What-If with the
+constraint prefilled through the router's location state. No served
+number moved. Golden 62 passed, 0 skipped; inner loop 4394; frontend 1184.
 
 The suite grew from nothing to **4,509 Python + 1,098 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above

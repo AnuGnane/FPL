@@ -19,9 +19,9 @@ sub-cycles aimed at the site's surface and the weekly loop, the model's
 replay-free half and code health, none changing a served number; the
 replay-gated model arms are costed in the design's §4 and deferred to
 v20. v19a (the week's clock and health) `8354a21`, v19b (the loop closed)
-`4927a15`, v19c (the phone) `dc7cd6f` and v19d (This Week, readable)
-`f2d61d3` are merged, all 2026-09-16; the ledger is in the v19 block below.
-Next: v19e, compare and act.
+`4927a15`, v19c (the phone) `dc7cd6f`, v19d (This Week, readable)
+`f2d61d3` and v19e (compare and act) `d9881d9` are merged, all 2026-09-16;
+the ledger is in the v19 block below. Next: v19f, the question box.
 
 **The v18 polish programme is complete** (design
 `specs/2026-09-12-v18-polish-design.md`, plan
@@ -154,6 +154,7 @@ number and needs its own gate.
 | v19b — the loop closed | `4927a15` | 2026-09-16 | 4535 | 1135 | the chip pair's arm not taken; the real-run line waits on Thursday's job |
 | v19c — the phone | `dc7cd6f` | 2026-09-16 | 4535 | 1149 | StackedRows beside the hand tables, not DataTable; desktop pairs identical |
 | v19d — This Week, readable | `f2d61d3` | 2026-09-16 | 4538 | 1172 | the what-if tab shares the ladder card; reports/ mounted, pin untouched |
+| v19e — compare and act | `d9881d9` | 2026-09-16 | 4542 | 1184 | ruling 2 amended: the diff path existed, pin stays 51; must-sell is force_out |
 
 ### The v18 polish programme (planned 2026-09-12; **complete**, all eight merged 2026-09-12 → 14)
 
@@ -242,6 +243,19 @@ usually the thing you cannot test*, not the lines: every card of the seven was
 found by asking what a test would have to fake.
 
 ## Shipped
+
+### v19e — compare and act (done, merged `d9881d9` 2026-09-16)
+`/api/advice/diff?a=&b=` (the newest plan of each gameweek, `gw_from`/
+`gw_to` set; the one-parameter strip unchanged; four tests; pin 51);
+`this-week/AdviceDiffRows` extracted from `WhyPanel` with no markup
+change; the History tab's Compare card (two selects, the two newest by
+default); the moves card's since-line; row menus on `SquadTable` and over
+`SquadPitch`'s tiles (lock, ban, `force_out`) navigating to
+`/planning?tab=whatif` with `location.state.whatif`, read once by
+`Planning`. Gate: inner loop 4394 (one flake, passed twice after), ruff
+clean, golden 62/0 in 18:18, `npm run check` 1184, rails +2 declared, five
+desktop pairs identical, This Week approved at 1400 and 375. Pins
+51 / 12 / 62.
 
 ### v19d — This Week, readable (done, merged `f2d61d3` 2026-09-16)
 `this-week/ContextStrip` (sticky, `Countdown short`, six anchors onto
