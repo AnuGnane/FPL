@@ -98,6 +98,43 @@ lines; three answers kept; the fourth drops the oldest.
 7. New rails mutation-tested: the question-after-facts order (swap
    them), the length limit, the offence rendering.
 
-## 4. Outcome
+## 4. Outcome (2026-09-16, gate run by the orchestrator)
 
-Filled at the gate.
+Commits on `v19f-ask`: `8a46655` spec; `ba5cefe` the route pin at 52
+ahead of the route (orchestrator); `6656cad` `check_question`,
+`build_question_prompt`, `answer_question`, `POST /api/ask`, the schemas
+and types; `2f4632a` `QuestionBox` at the foot of the brief card.
+
+| Gate line | Result |
+|---|---|
+| 1 inner loop | `4406 passed, 148 deselected, 4 warnings in 72.40s`; ruff `All checks passed!` |
+| 2 golden | `62 passed in 1094.45s (0:18:14)`, 0 skipped |
+| 3 npm run check | exit 0, `Tests 1189 passed \| 1 skipped (1190)`, `0 errors, 8 warnings`; fetch rails untouched (the POST is not in the GET multiset) |
+| 4 screenshots | twelve desktop pairs 16:28:58–16:29:16 all identical: the brief card sits below the 1600 px shot; a 4600 px after-shot of This Week shows the box under the brief's check line, sent to the user |
+| 5 route pin | `tests/test_v11_degradation.py` 51 → 52 in `ba5cefe`, naming `/api/ask` |
+| 6 three answers | below, through `answer_question` with the config in force, no served advice rewritten |
+| 7 mutations | facts and question swapped (the order test fails); the limit 500 → 600 (both length rails fail); the offence rendering (its test fails); the three-answer cap at four (its test fails) |
+
+**The three answers (GW4's facts, the brief's command, 0 offences each):**
+
+- *Who is the captain this week and how sure is the model?* — "The
+  armband goes to Rogers this week, and the model is only half convinced:
+  the pick comes out top in 50% of sims. That is the same player the plan
+  brings in for Gakpo, a move worth 9.3 points over gameweeks 4 to 6."
+- *Should I take a hit this week, and what would it gain?* — "No — the
+  step to a hit was refused at 43%, below the 60% bar, because a Bench
+  Boost is planned for GW6. The free move, Rogers in for Gakpo, is worth
+  9.3 points over gameweeks 4 to 6, and this week's starting eleven is on
+  59.8 points with no hits paid."
+- *What is the weather forecast for Saturday's matches?* — "The facts
+  here cover the plan for this week, not the weather, so that question
+  cannot be answered from them."
+
+**Judgement calls kept:** `check_brief` unchanged (a stricter variant
+would drift from the brief's; the prompt carries the no-player-first
+rule; the residual is a one-sentence answer opening with an invented
+name); the timeout margin imported from the brief router; no `JobLog`
+(a polled anonymous job has no ring buffer, as the brief); one list of
+answers rather than a current answer plus a history; the banking of an
+answer is a guarded render-phase set, not an effect, to keep the warning
+count at eight. `web/jobs.py` untouched; `JOB_KINDS` 12.
