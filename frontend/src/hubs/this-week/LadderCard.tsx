@@ -4,11 +4,11 @@ import { usePageData } from '../../api/pageData'
 import { useJob } from '../../api/useJob'
 import { useSettingWrite } from '../../api/useSettingWrite'
 import {
-  Button, Callout, Card, INPUT_CLASS, Skeleton, TABLE_CLASS, THEAD_CLASS,
-  thClass,
+  Button, Callout, Card, INPUT_CLASS, Skeleton, StackedRows, TABLE_CLASS,
+  THEAD_CLASS, thClass, useIsMobile,
 } from '../../kit'
 import type { LadderPayload, SettingRow, SettingsPanel } from '../../types'
-import RungRow from './RungRow'
+import RungRow, { type RungRowProps, rungStackedRow } from './RungRow'
 import { capText } from './ladderText'
 
 const SETTING_KEYS = ['max_hits', 'max_transfers', 'hit_bar'] as const
@@ -43,6 +43,7 @@ function SettingSelect({ row, disabled, onChange }: {
 }
 
 export default function LadderCard() {
+  const mobile = useIsMobile()
   const ladder = usePageData<LadderPayload>('/api/ladder')
   const settings = usePageData<SettingsPanel>('/api/settings')
   const [open, setOpen] = useState<string | null>(null)
@@ -123,6 +124,22 @@ export default function LadderCard() {
       + `${resolved?.label ?? data.cap_rung ?? '\u2014'}`
     : null
 
+  /** One rung's props, built once (v19c §2.1): the table row and the phone's
+   *  stacked row are the same rung said twice, and a prop computed in two
+   *  places is how they stop being. */
+  const rungProps = (r: typeof rungs[number], i: number): RungRowProps => ({
+    rung: r,
+    bank,
+    below: rungs.find((x) => x.key === r.same_as),
+    weeks,
+    open: open === r.key,
+    onToggle: () => setOpen(open === r.key ? null : r.key),
+    isCap: r.key === data?.cap_rung,
+    beyond: capIndex >= 0 && i > capIndex,
+    recommended: r.key === data?.recommended,
+    chosen: r.key === data?.chosen,
+  })
+
   return (
     <Card
       title="Transfer ladder"
@@ -176,7 +193,16 @@ export default function LadderCard() {
       {!busy && data && rungs.length === 0 && (
         <p className="text-text-muted">{data.note ?? 'No ladder yet.'}</p>
       )}
-      {!busy && rungs.length > 0 && (
+      {/* v19c §2.1: eight columns in a phone-wide scroller put every figure
+          out of sight of its heading, and the rung the reader came for is the
+          one he has to scroll to reach. Stacked, each rung is a heading line
+          and its numbers, and the disclosure is the same open the table's
+          toggle owns — so rotating the phone keeps the rung open. */}
+      {!busy && rungs.length > 0 && mobile && (
+        <StackedRows testId="ladder-stacked"
+                     rows={rungs.map((r, i) => rungStackedRow(rungProps(r, i)))} />
+      )}
+      {!busy && rungs.length > 0 && !mobile && (
         <div className="overflow-x-auto">
           <table className={TABLE_CLASS}>
             <thead className={THEAD_CLASS}>
@@ -193,19 +219,7 @@ export default function LadderCard() {
             </thead>
             <tbody>
               {rungs.map((r, i) => (
-                <RungRow
-                  key={r.key}
-                  rung={r}
-                  bank={bank}
-                  below={rungs.find((x) => x.key === r.same_as)}
-                  weeks={weeks}
-                  open={open === r.key}
-                  onToggle={() => setOpen(open === r.key ? null : r.key)}
-                  isCap={r.key === data?.cap_rung}
-                  beyond={capIndex >= 0 && i > capIndex}
-                  recommended={r.key === data?.recommended}
-                  chosen={r.key === data?.chosen}
-                />
+                <RungRow key={r.key} {...rungProps(r, i)} />
               ))}
             </tbody>
           </table>

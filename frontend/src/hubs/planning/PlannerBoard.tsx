@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { usePageData } from '../../api/pageData'
 import {
-  Button, Callout, Card, Chip, EmptyState, Loading, PosBadge,
-  fmtNum, segmentClass,
+  Button, Callout, Card, Chip, EmptyState, Loading, PosBadge, StackedRows,
+  fmtNum, segmentClass, useIsMobile,
 } from '../../kit'
+import type { StackedRow } from '../../kit'
 import type {
   MoverRow, MoversPanel, PlanGw, PlanMove, PlanTimeline, WhatIfRequest,
 } from '../../types'
@@ -22,6 +23,20 @@ import { HORIZON_MAX, boardRequest, horizonFor } from './boardRequest'
  *
  * **The board never solves.** It draws the plan the advice run wrote.
  */
+
+/** How far through the threshold he is, and which way — the whole of what a
+ *  price row is allowed to say (plan A9). Computed here so the column and the
+ *  phone's pair print one string (v19c §2.1). */
+function moverText(mover: MoverRow): string {
+  return `${mover.direction === 'rise' ? '▲' : '▼'} `
+    + `${Math.round(Math.abs(mover.price_change_percent))}%`
+}
+
+function moverTitle(move: PlanMove, mover: MoverRow): string {
+  return `${move.name} is ${Math.round(
+    Math.abs(mover.price_change_percent))}% of the way to a price `
+    + `${mover.direction}`
+}
 
 function MoveRow(
   { move, side, mover, differs = false }: { move: PlanMove
@@ -53,12 +68,9 @@ function MoveRow(
         <span
           data-testid={`board-mover-${move.code}`}
           className="text-text-faint"
-          title={`${move.name} is ${Math.round(
-            Math.abs(mover.price_change_percent))}% of the way to a price `
-            + `${mover.direction}`}
+          title={moverTitle(move, mover)}
         >
-          {`${mover.direction === 'rise' ? '▲' : '▼'} `
-           + `${Math.round(Math.abs(mover.price_change_percent))}%`}
+          {moverText(mover)}
         </span>
       )}
     </p>
@@ -71,6 +83,7 @@ export default function PlannerBoard(
                     *  board draws no handoff — it never solves either way. */
                    onTry?: (request: WhatIfRequest) => void },
 ) {
+  const mobile = useIsMobile()
   const plan = usePageData<PlanTimeline>(`/api/plan/${gw}`)
   // Which plan the strip is on. Plan A is the recommendation and is index 0;
   // an alternative is 1-based into `data.alternatives`. Not persisted, for
@@ -163,6 +176,64 @@ export default function PlannerBoard(
   function differs(week: PlanGw, move: PlanMove): boolean {
     return shown !== null
       && !(planAMoves.get(week.gw)?.has(move.code) ?? false)
+  }
+
+  /** The week's moves in the order the column prints them — buys, then sells
+   *  — computed once for both renderings (v19c §2.1). */
+  function moves(week: PlanGw): Array<{ key: string
+                                        side: 'in' | 'out'
+                                        move: PlanMove }> {
+    return [
+      ...week.buys.map((move) => (
+        { key: `in-${move.code}`, side: 'in' as const, move })),
+      ...week.sells.map((move) => (
+        { key: `out-${move.code}`, side: 'out' as const, move })),
+    ]
+  }
+
+  function stackedMoves(week: PlanGw): StackedRow[] {
+    return moves(week).map(({ key, side, move }) => {
+      const mover = movers?.get(move.code)
+      const differing = differs(week, move)
+      return {
+        key,
+        // The direction the arrow and the colour carried on the wide board,
+        // said in a word as well: a colour alone is not a direction to a
+        // reader who cannot see it.
+        lead: (
+          <Chip tone={side === 'in' ? 'up' : 'down'}>
+            {side === 'in' ? 'IN' : 'OUT'}
+          </Chip>
+        ),
+        title: (
+          <span
+            data-testid={`board-${side}-${move.code}`}
+            data-differs={String(differing)}
+            className="inline-flex flex-wrap items-center gap-1.5"
+          >
+            <PosBadge pos={move.position} variant="dot" />
+            {move.name}
+            {/* The left rule the wide board draws on a differing move; a
+                stacked row has no column to hang it on. */}
+            {differing && <Chip>not in Plan A</Chip>}
+          </span>
+        ),
+        pairs: [
+          ...(move.price !== null
+            ? [{ label: 'Price', value: fmtNum(move.price), numeric: true }]
+            : []),
+          ...(mover
+            ? [{ label: 'Ticker',
+                 value: (
+                   <span data-testid={`board-mover-${move.code}`}
+                         title={moverTitle(move, mover)}>
+                     {moverText(mover)}
+                   </span>
+                 ) }]
+            : []),
+        ],
+      }
+    })
   }
 
   return (
@@ -265,19 +336,22 @@ export default function PlannerBoard(
               action={week.chip ? <Chip>{week.chip}</Chip> : null}
             >
               <div className="flex flex-col gap-0.5">
-                {week.buys.map((m) => (
-                  <MoveRow key={`in-${m.code}`} move={m} side="in"
-                           mover={movers?.get(m.code)}
-                           differs={differs(week, m)} />
-                ))}
-                {week.sells.map((m) => (
-                  <MoveRow key={`out-${m.code}`} move={m} side="out"
-                           mover={movers?.get(m.code)}
-                           differs={differs(week, m)} />
-                ))}
-                {week.buys.length === 0 && week.sells.length === 0 && (
+                {moves(week).length === 0 && (
                   <p className="text-text-muted">No moves.</p>
                 )}
+                {/* v19c §2.1: five columns of board pushed side by side is
+                    one column of board on a phone, and a move row that wraps
+                    mid-name is unreadable. Stacked, the player is the line
+                    and his price and his ticker are labelled under it. */}
+                {mobile && moves(week).length > 0 && (
+                  <StackedRows testId={`board-stacked-${week.gw}`}
+                               rows={stackedMoves(week)} />
+                )}
+                {!mobile && moves(week).map(({ key, side, move }) => (
+                  <MoveRow key={key} move={move} side={side}
+                           mover={movers?.get(move.code)}
+                           differs={differs(week, move)} />
+                ))}
               </div>
               {week.hits > 0 && (
                 <p data-testid={`board-hits-${week.gw}`} className="mt-2">

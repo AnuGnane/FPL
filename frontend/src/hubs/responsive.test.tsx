@@ -10,15 +10,17 @@ import Players from './Players'
 import ThisWeek from './ThisWeek'
 import ChipsTab from './planning/ChipsTab'
 import DraftsTab from './planning/DraftsTab'
+import PlannerBoard from './planning/PlannerBoard'
 import SensitivityCard from './planning/SensitivityCard'
 import type { WhatIfRequest } from '../types'
 
-const { apiGet } = vi.hoisted(() => ({ apiGet: vi.fn() }))
+const { apiGet, apiPost } = vi.hoisted(
+  () => ({ apiGet: vi.fn(), apiPost: vi.fn() }))
 
 vi.mock('../api/client', () => ({
   ApiError: class extends Error { status = 0; detail: unknown = null },
   apiGet: (path: string) => apiGet(path),
-  apiPost: vi.fn(),
+  apiPost: (path: string, body: unknown) => apiPost(path, body),
   errorText: (e: unknown) => (e instanceof Error ? e.message : String(e)),
 }))
 
@@ -74,6 +76,12 @@ function viewport(width: number) {
 
 beforeEach(() => {
   apiGet.mockReset()
+  // The captaincy chip's league what-if is fire-and-forget and This Week
+  // mounts it the moment a real payload lands (v19c §2.1's rail is the first
+  // test here to serve one): an unmocked POST hands the effect `undefined`
+  // and the hub dies in a passive effect rather than in an assertion.
+  apiPost.mockReset()
+  apiPost.mockRejectedValue(new Error('no sim'))
   // Every hub must survive a total absence of artifacts on a phone: the
   // cold-clone-on-mobile case, which is the one that used to crash.
   apiGet.mockRejectedValue(Object.assign(
@@ -341,6 +349,166 @@ describe('a phone screen scrolls nothing sideways', () => {
     // that the empty state itself draws none.
     await screen.findByTestId('empty-state')
     wrapped(0)
+  })
+})
+
+describe('the four tables a phone reader meets (v19c §2.1)', () => {
+  // A real-shaped payload, deliberately: a hub rendered against a rejecting
+  // fetch draws no table either way, so "no table at 375" would pass on an
+  // empty page and mean nothing. The same bodies serve both widths, and the
+  // 1400 case is the control — the desktop `<table>` is still there.
+  const ADVICE = {
+    gw: 5, mode: 'weekly', deadline: '2099-09-18T17:30:00Z',
+    advice: {
+      gw: 5, deadline: '2099-09-18T17:30:00Z', expected_pts: 61.5, hits: 1,
+      xi: [{ code: 1, name: 'Salah', position: 'MID', ep: 6.4,
+             team_short: 'LIV', team_code: 14, next_fixture: null }],
+      bench: [{ code: 2, name: 'Gabriel', position: 'DEF', ep: 4.6,
+                team_short: 'ARS', team_code: 3, next_fixture: null }],
+      captain: { code: 1, name: 'Salah', ep: 6.4 },
+      vice: { code: 2, name: 'Gabriel', ep: 4.6 },
+      buys: [{ code: 3, name: 'Wirtz', ep: 6.1, frequency: 0.82 }],
+      sells: [{ code: 4, name: 'Isak', ep: 3.2, frequency: 0.79 }],
+      scenarios: { n: 200, completed: 200, seed: 7, captain_frequency: 0.74 },
+    },
+    staleness: {
+      advice_gw: 5, current_gw: 5, generated_at: '2026-08-29T09:00:00Z',
+      deadline: '2099-09-18T17:30:00Z', deadline_passed: false, stale: false,
+      reason: 'current for GW5', data_through_gw: 4, data_warning: null,
+    },
+  }
+
+  const PLAYERS = [
+    { code: 1, name: 'Salah', position: 'MID', team_code: 300,
+      team_name: 'LIV', price: 13.0, ep_next: 6.4, ep_horizon: 12.0,
+      ownership: 42.1, league_eo: 61.5, available: true, status: 'a',
+      news: '', chance_of_playing: null, penalties_order: 1,
+      free_kicks_order: 1, corners_order: null, in_squad: true,
+      last4: [2, 9, 5, 12], element: 7, field_eo: 55.2,
+      field_class: 'shield' },
+    { code: 2, name: 'Gabriel', position: 'DEF', team_code: 301,
+      team_name: 'ARS', price: 6.0, ep_next: 4.6, ep_horizon: 9.0,
+      ownership: 30.0, league_eo: 12.0, available: true, status: 'a',
+      news: '', chance_of_playing: null, penalties_order: null,
+      free_kicks_order: null, corners_order: null, in_squad: true,
+      last4: [], element: 8, field_eo: null, field_class: null },
+  ]
+
+  const ref = (code: number, name: string) => ({
+    code, name, position: 'MID', ep: 5.0, next_fixture: null,
+    team_code: null, team_short: null,
+  })
+
+  const LADDER = {
+    gw: 5, gws: [5, 6, 7], generated_at: '2026-09-04T13:00:00+00:00',
+    free_transfers: 1, cap: { max_hits: 2, max_transfers: null },
+    cap_source: 'config', cap_rung: 'hits0', cap_rung_requested: 'hits0',
+    cap_note: null, recommended: 'hits0', recommended_note: null, notes: [],
+    bar: 0.6, chosen: 'hits0', served_note: null, steps: [], n_draws: 200,
+    seed: 7, sigma_source: 'bands', sigma_fallbacks: 0, wall_s: 31.2,
+    note: null,
+    rungs: [
+      { key: 'bank', hits: 0, transfers: 0, cost: 0, same_as: null,
+        horizon_hits: 0, horizon_cost: 0, label: 'bank',
+        plan_by_gw: [{ gw: 5, hits: 0, buys: [], sells: [],
+                       xi: [ref(1, 'Salah')], bench: [ref(2, 'Gabriel')],
+                       captain: ref(1, 'Salah'), vice: ref(2, 'Gabriel'),
+                       expected_pts: 60 }],
+        week_pts: 60, horizon_pts: 180, objective: 170, mean_pts: 180,
+        p10_pts: 160, p90_pts: 200, p_beats_bank: null, p_beats_top: 0.42,
+        p_best: 0.2, vs_below: null },
+      { key: 'hits0', hits: 0, transfers: 1, cost: 0, same_as: null,
+        horizon_hits: 0, horizon_cost: 0, label: 'free transfers only',
+        plan_by_gw: [{ gw: 5, hits: 0, buys: [ref(3, 'Wirtz')],
+                       sells: [ref(4, 'Isak')], xi: [ref(1, 'Salah')],
+                       bench: [ref(2, 'Gabriel')], captain: ref(1, 'Salah'),
+                       vice: ref(2, 'Gabriel'), expected_pts: 63 }],
+        week_pts: 63, horizon_pts: 186, objective: 176, mean_pts: 186,
+        p10_pts: 165, p90_pts: 207, p_beats_bank: 0.71, p_beats_top: 0.5,
+        p_best: 0.3, vs_below: null },
+    ],
+  }
+
+  const PLAN = {
+    gw: 5, bank: 1.4, alternatives: [], objective: null,
+    weeks: [{ gw: 5, hits: 0, hit_cost: 0, bank: 1.4, expected_pts: 61.5,
+              chip: null, trace: null,
+              buys: [{ code: 3, name: 'Wirtz', position: 'MID',
+                       price: 8.6 }],
+              sells: [{ code: 4, name: 'Isak', position: 'FWD',
+                        price: 9.1 }] }],
+  }
+
+  function serveThisWeek() {
+    const bodies: Record<string, unknown> = {
+      '/api/advice/latest': ADVICE,
+      '/api/players': PLAYERS,
+      '/api/ladder': LADDER,
+    }
+    apiGet.mockImplementation((path: string) => (
+      path in bodies
+        ? Promise.resolve(bodies[path])
+        // Every other card degrades to its own empty state, which is the
+        // isolation This Week is built on and not this rail's business.
+        : Promise.reject(new Error(`absent: ${path}`))))
+  }
+
+  function section(name: string): HTMLElement {
+    return screen.getByRole('heading', { name })
+      .closest('[data-kit="section"]') as HTMLElement
+  }
+
+  /** This Week with the squad shown as a table rather than as the pitch: the
+   *  table is the thing under test and the hub opens on the pitch. */
+  async function renderThisWeek() {
+    serveThisWeek()
+    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    await screen.findByRole('heading', { name: 'Recommended moves' })
+    await userEvent.click(screen.getByRole('button', { name: 'Table' }))
+  }
+
+  it('stacks the moves, the squad and the rungs on a phone', async () => {
+    viewport(375)
+    await renderThisWeek()
+    for (const name of ['Recommended moves', 'Squad', 'Transfer ladder']) {
+      expect(within(section(name)).queryByRole('table')).toBeNull()
+    }
+    expect(screen.getByTestId('moves-stacked')).toBeInTheDocument()
+    expect(screen.getByTestId('squad-stacked')).toBeInTheDocument()
+    expect(screen.getByTestId('ladder-stacked')).toBeInTheDocument()
+  })
+
+  it('draws the same three as tables at 1400', async () => {
+    viewport(1400)
+    await renderThisWeek()
+    for (const name of ['Recommended moves', 'Squad', 'Transfer ladder']) {
+      expect(within(section(name)).getByRole('table')).toBeInTheDocument()
+    }
+    expect(screen.queryByTestId('moves-stacked')).toBeNull()
+  })
+
+  it('stacks a week of the board on a phone and lists it at 1400', async () => {
+    // The board never drew a `<table>`: its columns are rows of paragraphs
+    // side by side, five of them wide. The claim at 375 is that a column's
+    // moves are a stacked list, and at 1400 that they are the move rows the
+    // wide board has always drawn.
+    viewport(375)
+    apiGet.mockImplementation((path: string) => (
+      path === '/api/plan/5'
+        ? Promise.resolve(PLAN)
+        : Promise.reject(new Error(`absent: ${path}`))))
+    render(<MemoryRouter><PlannerBoard gw={5} /></MemoryRouter>)
+    const week = await screen.findByTestId('board-week-5')
+    expect(within(week).queryAllByRole('table')).toHaveLength(0)
+    expect(within(week).getByTestId('board-stacked-5')).toBeInTheDocument()
+    expect(within(week).getByText('8.6')).toBeInTheDocument()
+    cleanup()
+
+    viewport(1400)
+    render(<MemoryRouter><PlannerBoard gw={5} /></MemoryRouter>)
+    const wide = await screen.findByTestId('board-week-5')
+    expect(within(wide).queryByTestId('board-stacked-5')).toBeNull()
+    expect(within(wide).getByTestId('board-in-3')).toBeInTheDocument()
   })
 })
 

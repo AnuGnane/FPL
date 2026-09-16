@@ -1,8 +1,9 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
-  Bar, Chip, type Column, DataTable, PosBadge, Sparkline, TABLE_CLASS,
-  TR_CLASS, fmtNum, fmtPct, tdClass, useIsMobile,
+  Bar, Chip, type Column, DataTable, PosBadge, Sparkline, StackedPairs,
+  StackedRows, TABLE_CLASS, TR_CLASS, fmtNum, fmtPct, tdClass, useIsMobile,
 } from '../../kit'
+import type { StackedPair, StackedRow } from '../../kit'
 import type { NextFixture } from '../../types'
 
 export interface SquadRow {
@@ -67,6 +68,48 @@ function pct(value: number): string {
   return `${Math.round(value * 100)}%`
 }
 
+/** The three verdict chips a row can carry.
+ *
+ *  v18f §2.2. Three chips whose tone carries the verdict — doubt, upside,
+ *  downside — and a bare percentage in a colour says nothing to a screen
+ *  reader. Each names its own tone in `sr-only` text, which is absolutely
+ *  positioned and so changes no layout.
+ *
+ *  Lifted out of the name cell in v19c §2.1, unchanged, so the phone's
+ *  stacked row can lead with the same chips the column draws. */
+function Verdicts({ row: r }: { row: SquadRow }) {
+  return (
+    <>
+      {r.news && (
+        <Chip tone="warn" title={r.news}>
+          <span className="sr-only">doubt: </span>
+          {r.chanceOfPlaying === null ? 'News' : `${r.chanceOfPlaying}%`}
+        </Chip>
+      )}
+      {r.penalties && <Chip>Pens</Chip>}
+      {r.pHaul !== null && r.pHaul >= HAUL_CHIP && (
+        <Chip tone="up"
+              title={`${pct(r.pHaul)} chance of 10+ points — the upper `
+                 + 'tail of his outcome distribution, which is his '
+                 + 'expected points plus the variance a footballer’s week '
+                 + 'carries, not a guess at his ceiling'}>
+          <span className="sr-only">upside: </span>
+          {`10+ pts ${pct(r.pHaul)}`}
+        </Chip>
+      )}
+      {r.pBlank !== null && r.pBlank >= BLANK_CHIP && (
+        <Chip tone="down"
+              title={`${pct(r.pBlank)} chance of 2 points or fewer — the `
+                + 'lower tail of the same distribution. A blank is an '
+                + 'appearance and nothing else, not a missed match'}>
+          <span className="sr-only">downside: </span>
+          {`blank ${pct(r.pBlank)}`}
+        </Chip>
+      )}
+    </>
+  )
+}
+
 // The collapsed card shows only the primary columns, and Pos is not one of
 // them — so on mobile the position rides along with the name as a dot rather
 // than disappearing until the row is expanded.
@@ -80,36 +123,7 @@ function columnsFor(mobile: boolean): Column<SquadRow>[] { return [
       <span className="flex items-center gap-1.5">
         {mobile && <PosBadge pos={r.position} variant="dot" />}
         {r.name}
-        {/* v18f §2.2. Three chips whose tone carries the verdict — doubt,
-            upside, downside — and a bare percentage in a colour says nothing
-            to a screen reader. Each names its own tone in `sr-only` text,
-            which is absolutely positioned and so changes no layout. */}
-        {r.news && (
-          <Chip tone="warn" title={r.news}>
-            <span className="sr-only">doubt: </span>
-            {r.chanceOfPlaying === null ? 'News' : `${r.chanceOfPlaying}%`}
-          </Chip>
-        )}
-        {r.penalties && <Chip>Pens</Chip>}
-        {r.pHaul !== null && r.pHaul >= HAUL_CHIP && (
-          <Chip tone="up"
-                title={`${pct(r.pHaul)} chance of 10+ points — the upper `
-                   + 'tail of his outcome distribution, which is his '
-                   + 'expected points plus the variance a footballer’s week '
-                   + 'carries, not a guess at his ceiling'}>
-            <span className="sr-only">upside: </span>
-            {`10+ pts ${pct(r.pHaul)}`}
-          </Chip>
-        )}
-        {r.pBlank !== null && r.pBlank >= BLANK_CHIP && (
-          <Chip tone="down"
-                title={`${pct(r.pBlank)} chance of 2 points or fewer — the `
-                  + 'lower tail of the same distribution. A blank is an '
-                  + 'appearance and nothing else, not a missed match'}>
-            <span className="sr-only">downside: </span>
-            {`blank ${pct(r.pBlank)}`}
-          </Chip>
-        )}
+        <Verdicts row={r} />
       </span>
     ),
   },
@@ -170,10 +184,93 @@ function columnsFor(mobile: boolean): Column<SquadRow>[] { return [
     render: (r) => <Sparkline values={r.last4} /> },
 ] }
 
+/** The columns a stacked row shows before it is opened (v19c §2.1): what he
+ *  is worth, how wide the forecast is, whether he plays, and where he puts
+ *  you against your league. Every other column is a pair inside the
+ *  disclosure, so the phone loses nothing the table has. */
+const PHONE_PAIRS = ['ep', 'range', 'xmins', 'leagueEo']
+
+/** The columns as label/value pairs — the same `render` the `<td>` calls, so
+ *  the two renderings print one number and not two. */
+function pairsFrom(
+  columns: Column<SquadRow>[], row: SquadRow): StackedPair[] {
+  return columns.map((column) => ({
+    label: column.header,
+    value: column.render ? column.render(row) : column.value(row),
+    numeric: column.numeric,
+  }))
+}
+
+/** The EP decomposition, as pairs rather than as the desktop's two-column
+ *  table: a phone row must carry no `<table>` of its own (v19c §2.1), and the
+ *  numbers are `breakdown`'s either way. */
+function PhoneBreakdown({ detail }: { detail: SquadBreakdown | undefined }) {
+  if (!detail) {
+    return (
+      <p className="text-text-muted">
+        No saved breakdown for this player — run advise to write one.
+      </p>
+    )
+  }
+  return (
+    <>
+      <StackedPairs
+        pairs={[...detail.components.map((c) => ({
+          label: c.label, value: fmtNum(c.points), numeric: true,
+        })), { label: 'Total', value: fmtNum(detail.ep), numeric: true }]}
+      />
+      {detail.penTaker !== null && (
+        <p className="mt-2 text-text-muted">
+          {fmtNum(detail.penTaker, 1)} of Goals is penalty duty.
+        </p>
+      )}
+    </>
+  )
+}
+
 export default function SquadTable({ rows, breakdown }: SquadTableProps) {
   const mobile = useIsMobile()
   // A fresh array on every render would defeat DataTable's sort memo.
   const columns = useMemo(() => columnsFor(mobile), [mobile])
+  // The phone's open rows. DataTable owns the desktop's; this is the same
+  // fact for the rendering that does not go through it.
+  const [open, setOpen] = useState<Set<number>>(new Set())
+
+  if (mobile) {
+    const shown = columns.filter((c) => PHONE_PAIRS.includes(c.key))
+    // The position is the dot beside the name and the name is the title, so
+    // neither is a pair; everything else the table draws is one.
+    const rest = columns.filter((c) => c.key !== 'name' && c.key !== 'position'
+      && !PHONE_PAIRS.includes(c.key))
+    // The order the advice served — the XI, then the bench. The desktop table
+    // sorts, and the rows arrive in that order (v19c §2.1).
+    const stacked: StackedRow[] = rows.map((row) => ({
+      key: row.code,
+      lead: <Verdicts row={row} />,
+      title: (
+        <span className="inline-flex items-center gap-1.5">
+          <PosBadge pos={row.position} variant="dot" />
+          {row.name}
+        </span>
+      ),
+      pairs: pairsFrom(shown, row),
+      detail: (
+        <div className="flex flex-col gap-2">
+          <StackedPairs pairs={pairsFrom(rest, row)} />
+          <PhoneBreakdown detail={breakdown[row.code]} />
+        </div>
+      ),
+      open: open.has(row.code),
+      onToggle: () => setOpen((prev) => {
+        const next = new Set(prev)
+        if (next.has(row.code)) next.delete(row.code)
+        else next.add(row.code)
+        return next
+      }),
+    }))
+    return <StackedRows rows={stacked} testId="squad-stacked" />
+  }
+
   return (
     <DataTable
       columns={columns}

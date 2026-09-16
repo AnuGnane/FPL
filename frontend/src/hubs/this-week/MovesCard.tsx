@@ -1,7 +1,8 @@
 import {
-  Bar, Card, Chip, PosBadge, TABLE_CLASS, THEAD_CLASS, TR_CLASS, fmtNum,
-  fmtPct, tdClass, thClass,
+  Bar, Card, Chip, PosBadge, StackedRows, TABLE_CLASS, THEAD_CLASS, TR_CLASS,
+  fmtNum, fmtPct, tdClass, thClass, useIsMobile,
 } from '../../kit'
+import type { StackedRow } from '../../kit'
 import type {
   OverridesPanel, ServedObjective, ServedRestraint,
 } from '../../types.generated'
@@ -52,14 +53,62 @@ function pinsText(pins: OverridesPanel | null | undefined): string | null {
     : `${noun} stored, not applied ([news] overrides is off)`
 }
 
+/** One printed row of the moves table, computed once (v19c §2.1).
+ *
+ *  Both renderings below read these strings rather than formatting their own,
+ *  which is the only thing that stops the phone's stacked row from quietly
+ *  disagreeing with the column a laptop reader is looking at. */
+interface MoveCells {
+  key: string
+  side: 'IN' | 'OUT'
+  move: Move
+  xpts: string
+  sims: string
+  fraction: number | null
+}
+
+/** The player as the table prints him: his position as a dot, then his name. */
+function MoveName({ move }: { move: Move }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <PosBadge pos={move.position} variant="dot" />
+      {move.name}
+    </span>
+  )
+}
+
 export default function MovesCard(
   { buys, sells, hits, capLine, restraint, objective, pins }: MovesCardProps,
 ) {
+  const mobile = useIsMobile()
   const pinsLine = pinsText(pins)
-  const rows: Array<['IN' | 'OUT', Move]> = [
+  const rows: MoveCells[] = [
     ...buys.map((m) => ['IN', m] as ['IN', Move]),
     ...sells.map((m) => ['OUT', m] as ['OUT', Move]),
-  ]
+  ].map(([side, move]) => ({
+    key: `${side}-${move.code}`,
+    side,
+    move,
+    xpts: fmtNum(move.ep),
+    sims: fmtPct(move.frequency ?? null),
+    fraction: move.frequency ?? null,
+  }))
+  const stacked: StackedRow[] = rows.map((row) => ({
+    key: row.key,
+    // In/out is a direction (rule 1), and on a phone it is the first thing
+    // read rather than a column away.
+    lead: <Chip tone={row.side === 'IN' ? 'up' : 'down'}>{row.side}</Chip>,
+    title: (
+      <span className="inline-flex flex-wrap items-center gap-1.5">
+        <MoveName move={row.move} />
+        {row.move.tag && <Chip>{row.move.tag}</Chip>}
+      </span>
+    ),
+    // The sims share is the number, not the bar: a bar is several rows
+    // against one ceiling (rule 7), and stacked rows are read one at a time.
+    pairs: [{ label: 'xPts', value: row.xpts, numeric: true },
+            { label: 'Sims', value: row.sims, numeric: true }],
+  }))
   return (
     <Card title="Recommended moves">
       {capLine && (
@@ -84,7 +133,11 @@ export default function MovesCard(
       )}
       {rows.length === 0
         ? <p className="text-text-muted">No transfers — bank the free transfer.</p>
-        : (
+        : mobile
+          // v19c §2.1: five columns do not fit a phone, and the scroller they
+          // used to sit in put every number out of sight of its heading.
+          ? <StackedRows rows={stacked} testId="moves-stacked" />
+          : (
           <div className="overflow-x-auto">
           <table className={TABLE_CLASS}>
             <thead className={THEAD_CLASS}>
@@ -97,25 +150,21 @@ export default function MovesCard(
               </tr>
             </thead>
             <tbody>
-              {rows.map(([side, move]) => (
-                <tr key={`${side}-${move.code}`} className={TR_CLASS}>
+              {rows.map(({ key, side, move, xpts, sims, fraction }) => (
+                <tr key={key} className={TR_CLASS}>
                   <td className={tdClass()}>
                     {/* In/out is a direction (rule 1). */}
                     <Chip tone={side === 'IN' ? 'up' : 'down'}>{side}</Chip>
                   </td>
                   <td className={`${tdClass()} text-text`}>
-                    <span className="inline-flex items-center gap-1.5">
-                      <PosBadge pos={move.position} variant="dot" />
-                      {move.name}
-                    </span>
+                    <MoveName move={move} />
                   </td>
                   <td className={`${tdClass(true)} text-text`}>
-                    {fmtNum(move.ep)}
+                    {xpts}
                   </td>
                   <td className={tdClass()}>
                     {/* Scenario support: several rows, one ceiling (rule 7). */}
-                    <Bar testId="sims" fraction={move.frequency ?? null}
-                         text={fmtPct(move.frequency ?? null)} />
+                    <Bar testId="sims" fraction={fraction} text={sims} />
                   </td>
                   <td className={`${tdClass()} text-right`}>
                     {move.tag && <Chip>{move.tag}</Chip>}

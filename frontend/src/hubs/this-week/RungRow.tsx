@@ -1,8 +1,9 @@
-import { Fragment } from 'react'
+import { Fragment, type ReactNode } from 'react'
 import {
   Bar, Chip, PlayerName, TONE_CLASS, TONE_TINT_CLASS, TR_CLASS,
   TR_EXPANDED_CLASS, TR_SELECTED_CLASS, fmtNum, tdClass, toneOf,
 } from '../../kit'
+import type { StackedRow } from '../../kit'
 import type { LadderRung, PlayerRef } from '../../types'
 
 /**
@@ -153,18 +154,103 @@ export interface RungRowProps {
   chosen: boolean
 }
 
+/** What a rung prints, computed once (v19c §2.1).
+ *
+ *  The row and the phone's stacked rendering read these, so a rung cannot say
+ *  one thing in a column and another down the page. */
+interface RungCells {
+  moves: string
+  cost: ReactNode
+  weekPts: string
+  meanPts: string
+  vsBank: string
+  /** The tint the vs-bank figure carries; empty on the bank rung itself. */
+  vsBankClass: string
+  pBeatsBank: string
+  pBest: string
+}
+
+function rungCells(
+  r: LadderRung, bank: LadderRung | undefined, weeks: number): RungCells {
+  const vsBank = (r.mean_pts !== null && r.mean_pts !== undefined
+    && bank?.mean_pts !== null && bank?.mean_pts !== undefined)
+    ? r.mean_pts - bank.mean_pts : null
+  return {
+    moves: movesText(r),
+    cost: <RungCost rung={r} weeks={weeks} />,
+    weekPts: fmtNum(r.week_pts),
+    meanPts: fmtNum(r.mean_pts),
+    vsBank: vsBank === null || r.key === 'bank' ? '—'
+      : `${vsBank >= 0 ? '+' : '−'}${fmtNum(Math.abs(vsBank), 1)}`,
+    // Lifted out of the cell only to keep the line under a hundred; the
+    // string it builds is the one the card built.
+    vsBankClass: vsBank === null || r.key === 'bank'
+      ? '' : TONE_TINT_CLASS[toneOf(vsBank)],
+    pBeatsBank: pct(r.p_beats_bank),
+    pBest: pct(r.p_best),
+  }
+}
+
+/** The rung's title line: its label and the verdicts the desktop row says
+ *  with a tint and a hover (v19c §2.1). A phone has neither, so the cap and
+ *  what lies beyond it are chips instead. */
+function rungTitle(
+  { rung: r, isCap, beyond, recommended, chosen }: RungRowProps) {
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5">
+      {r.label}
+      {recommended && <Chip>recommended</Chip>}
+      {chosen && <Chip tone="up">chosen</Chip>}
+      {isCap && <Chip>your cap</Chip>}
+      {beyond && <Chip>beyond your cap</Chip>}
+    </span>
+  )
+}
+
+/** One rung as a stacked row (v19c §2.1). `open` and `onToggle` are the
+ *  card's own, which is why a rung opened here is still open when the table
+ *  takes over on rotation. */
+export function rungStackedRow(props: RungRowProps): StackedRow {
+  const { rung: r, below, weeks, open, onToggle } = props
+  const title = rungTitle(props)
+  if (r.same_as) {
+    return {
+      key: r.key,
+      title,
+      pairs: [{ label: 'Moves',
+                value: `solver would not spend it — same as ${
+                  below ? below.label : r.same_as}` }],
+    }
+  }
+  const c = rungCells(r, props.bank, weeks)
+  return {
+    key: r.key,
+    title,
+    // The bars are gone and their numbers are not: a bar is several rows
+    // against one ceiling (rule 7), and a stacked row is read alone.
+    pairs: [
+      { label: 'Moves', value: c.moves },
+      { label: 'Cost', value: c.cost, numeric: true },
+      { label: 'GW xPts', value: c.weekPts, numeric: true },
+      { label: `${weeks}-GW xPts`, value: c.meanPts, numeric: true },
+      { label: 'vs bank',
+        value: <span className={c.vsBankClass}>{c.vsBank}</span>,
+        numeric: true },
+      { label: 'P(beats bank)', value: c.pBeatsBank, numeric: true },
+      { label: 'P(best)', value: c.pBest, numeric: true },
+    ],
+    detail: <Expanded rung={r} weeks={weeks} />,
+    open,
+    onToggle,
+  }
+}
+
 export default function RungRow({
   rung: r, bank, below, weeks, open, onToggle, isCap, beyond, recommended,
   chosen,
 }: RungRowProps) {
-  const vsBank = (r.mean_pts !== null && r.mean_pts !== undefined
-    && bank?.mean_pts !== null && bank?.mean_pts !== undefined)
-    ? r.mean_pts - bank.mean_pts : null
   const label = r.label
-  // Lifted out of the cell only to keep the line under a hundred; the string
-  // it builds is the one the card built.
-  const vsBankClass = vsBank === null || r.key === 'bank'
-    ? '' : TONE_TINT_CLASS[toneOf(vsBank)]
+  const c = rungCells(r, bank, weeks)
   const rowClass = [
     'cursor-pointer', TR_CLASS,
     isCap ? TR_SELECTED_CLASS : '',
@@ -208,21 +294,20 @@ export default function RungRow({
             )
           : (
             <>
-              <td className={tdClass()}>{movesText(r)}</td>
-              <td className={tdClass(true)}><RungCost rung={r} weeks={weeks} /></td>
-              <td className={tdClass(true)}>{fmtNum(r.week_pts)}</td>
-              <td className={tdClass(true)}>{fmtNum(r.mean_pts)}</td>
-              <td className={`${tdClass(true)} ${vsBankClass}`}>
-                {vsBank === null || r.key === 'bank' ? '—'
-                  : `${vsBank >= 0 ? '+' : '−'}${fmtNum(Math.abs(vsBank), 1)}`}
+              <td className={tdClass()}>{c.moves}</td>
+              <td className={tdClass(true)}>{c.cost}</td>
+              <td className={tdClass(true)}>{c.weekPts}</td>
+              <td className={tdClass(true)}>{c.meanPts}</td>
+              <td className={`${tdClass(true)} ${c.vsBankClass}`}>
+                {c.vsBank}
               </td>
               <td className={tdClass()}>
                 <Bar testId="p-beats-bank" fraction={r.p_beats_bank ?? null}
-                     text={pct(r.p_beats_bank)} />
+                     text={c.pBeatsBank} />
               </td>
               <td className={tdClass()}>
                 <Bar testId="p-best" fraction={r.p_best ?? null}
-                     text={pct(r.p_best)} />
+                     text={c.pBest} />
               </td>
             </>
             )}
