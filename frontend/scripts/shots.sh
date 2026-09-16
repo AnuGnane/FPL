@@ -97,6 +97,15 @@ if [[ "$STAGE" == v19a* ]]; then
     "live:/live"
   )
 fi
+# v19g gate (specs/2026-09-16-v19g-model-free-design.md §3): the six, plus
+# the Health tab (the calibration and team-model lines) and the Chips tab
+# (the threshold's source caption), the two pages the sub-cycle names.
+if [[ "$STAGE" == v19g* ]]; then
+  HUBS+=(
+    "health:/model?tab=health"
+    "chips:/planning?tab=chips"
+  )
+fi
 for entry in "${HUBS[@]}"; do
   name="${entry%%:*}"; rest="${entry#*:}"
   path="${rest%%:*}"; height="${rest#*:}"
