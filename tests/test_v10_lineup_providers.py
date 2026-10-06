@@ -9,6 +9,8 @@ Task 5's merge rules are appended below, at ``--- the merge ---``.
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import httpx
 import pandas as pd
 import pytest
@@ -227,17 +229,23 @@ def test_a_doubt_beats_a_start_and_loses_to_an_out(tmp_path):
 
 
 def test_one_silent_provider_leaves_the_other_alone(tmp_path):
-    """Both directions, and byte-identical to the single-provider frame."""
+    """Both directions, and byte-identical to the single-provider frame.
+
+    One fixed ``now`` for all four fetches (holiday F-1): ``fetched_at`` is
+    stamped to the second, so two fetches that straddle a second boundary
+    differed in that column alone and the comparison failed, which a CI tick
+    cannot tell from a real regression."""
+    now = datetime(2026, 9, 1, 12, 0, tzinfo=timezone.utc)
     alone = fetch_lineups(_players(), _teams(), cache_dir=tmp_path / "a",
                           client=_both(_ffs_html(), None),
-                          providers=["ffs"], absence=False)
-    merged = _fetch(tmp_path / "b", _ffs_html(), None)
+                          providers=["ffs"], absence=False, now=now)
+    merged = _fetch(tmp_path / "b", _ffs_html(), None, now=now)
     pd.testing.assert_frame_equal(alone, merged)
 
     rw_alone = fetch_lineups(_players(), _teams(), cache_dir=tmp_path / "c",
                              client=_both(None, _rotowire_html()),
-                             providers=["rotowire"], absence=False)
-    rw_merged = _fetch(tmp_path / "d", None, _rotowire_html())
+                             providers=["rotowire"], absence=False, now=now)
+    rw_merged = _fetch(tmp_path / "d", None, _rotowire_html(), now=now)
     pd.testing.assert_frame_equal(rw_alone, rw_merged)
 
 
