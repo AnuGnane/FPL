@@ -584,9 +584,11 @@ Housekeeping (v12):
   `data/raw/field/`, `data/raw/tier_eo/`, `reports/` and `models/`; keeps the
   newest fourteen locally and never prunes across `--rsync`
 - `gaffer tidy [--apply] [--older-than DAYS]` — dry run by default; lists
-  replay logs whose report never appeared and stale `logs/*.log`. It reclaims
-  54 KB on this tree, and it never touches the shared backtest log, the S2 arm
-  logs, the corpus logs or `logs/advise.log`
+  replay logs whose report never appeared, stale `logs/*.log`, and (holiday
+  F-2) the `reports/projections/` snapshots of a graded week other than the
+  one its ledger row names. It reclaims 54 KB on this tree, and it never
+  touches the shared backtest log, the S2 arm logs, the corpus logs,
+  `logs/advise.log`, an ungraded week's snapshots or the API snapshots
 - `gaffer mcp` — a stdio MCP server for Claude Code:
   `claude mcp add gaffer -- gaffer mcp`. Six read tools, no writes
 - `cd frontend && npm run types` (v12 W5, one command since v17a) — not a
@@ -1371,8 +1373,9 @@ weekly use.
   `season`, readers see the season in force.
 - ~~The watchlist has no "starred at"~~ — closed in v19h: `starred_at` is
   written once and preserved; the column says "starred" or "noted".
-- **`reports/projections/` is never pruned**; a future `gaffer tidy` target,
-  though at 168 KB today it is not the one that matters. The timestamped
+- ~~`reports/projections/` is never pruned~~ — closed by holiday F-2:
+  `gaffer tidy` names the snapshots of a graded week other than the one its
+  ledger row names, and keeps every ungraded week whole. The timestamped
   API snapshots at the top of `data/raw/` are not a target either (v19h
   §1): the FPL client prunes its own kinds to twenty, and the `odds-*` and
   `ags-*` files are the corpus the anytime-scorer weight waits a season for.
