@@ -35,7 +35,12 @@ jobs:
       # test_config_toml_loads reads the working tree's config.toml, which is
       # gitignored and never created here (CLAUDE.md "Secrets"). Every other
       # test that needs local data skips on its own and names what it lacks.
+      # TERM=dumb: Typer forces a colour terminal when GITHUB_ACTIONS is set,
+      # and the ANSI codes split "--port" and "--fast" in the --help text that
+      # tests/test_cli.py reads; a dumb terminal renders it plain, as locally.
       - name: pytest (inner loop)
+        env:
+          TERM: dumb
         run: >-
           uv run --locked pytest -q -rs -m "not slow and not golden"
           --deselect tests/test_odds.py::test_config_toml_loads
