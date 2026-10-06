@@ -122,8 +122,9 @@ below hold the originals. Headlines: the trace's price line and switch are
 read in the present tense (freezing them needs `advise.py`); the trace does
 not attribute squad-side terms; Plan B/C not re-scored under Plan A's
 coefficients; the free hit excludes horizon effects; `overall_rank` and
-`projection_snapshot` fill forward only; `reports/projections/` unpruned
-(the API snapshots are a corpus, v19h §1); the web re-run button does not
+`projection_snapshot` fill forward only; ~~`reports/projections/`
+unpruned~~ (closed by holiday F-2: `tidy` sweeps a graded week's superseded
+snapshots; the API snapshots are a corpus, v19h §1); the web re-run button does not
 bank a price reading first; the chip pair's Try-it card has no What-If
 arm; `density_pub_7d` built on both seams and fed to no head. Closed by
 v19: the ledger's season key and `starred_at` (v19h), `threshold_source`
@@ -140,7 +141,7 @@ Detail in `docs/GUIDE.md` §12.5.
 4. C2 `p_play` top-bin recalibration (0.936 predicted vs 0.912 observed, n=1519)
 5. C3 home/away rolling splits
 6. B1's second half — a "days since status last changed" `p_play` feature off the availability log, after the flag-latency report has shown the signal
-7. Housekeeping from the residuals, what v19 left: `tidy` for projections (the API snapshots are a corpus), the chip-pair What-If arm, the web button banking prices
+7. Housekeeping from the residuals, what v19 left: ~~`tidy` for projections~~ (holiday F-2; the API snapshots are a corpus), the chip-pair What-If arm, the web button banking prices
 8. B8 FotMob xG fallback — only if Understat goes down
 9. **A blended league stance** (v15 deferred): per-league λ and cover tables merged by weight. Chasing in one league and defending in another largely cancel, so it needs a replay to justify before it touches protected solver code
 10. **The in-app chat** (v16 deferred, gated on a few briefs read): a question box on This Week over the same facts document the brief reads, the same no-tools command, the same truth check on every answer
