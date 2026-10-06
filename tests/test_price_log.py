@@ -157,8 +157,10 @@ def test_a_reading_banked_in_a_running_process_reaches_its_next_solve():
     owned_price_falls.cache_clear()
     yesterday = (pd.Timestamp(snap_date()) - pd.Timedelta(days=1)).strftime(
         "%Y-%m-%d")
-    append_prices(price_rows(PLAYERS, day=yesterday))
-    assert owned_price_falls([22], price_timing=True) == {}
-    bank_prices(PLAYERS)
-    assert owned_price_falls([22], price_timing=True) == {22: 1.0}
-    owned_price_falls.cache_clear()
+    try:
+        append_prices(price_rows(PLAYERS, day=yesterday))
+        assert owned_price_falls([22], price_timing=True) == {}
+        bank_prices(PLAYERS)
+        assert owned_price_falls([22], price_timing=True) == {22: 1.0}
+    finally:
+        owned_price_falls.cache_clear()

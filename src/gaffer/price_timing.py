@@ -44,11 +44,10 @@ solving the same problem. ``scripts/com.gaffer.advise.plist`` now runs
 ``gaffer prices`` before it trains, so the scheduled advice sees the day's
 reading.
 
-**Residual: the web UI's advise button does not bank first.** A solve started
-from the browser during the day gets an empty table and an untimed sale, which
-is the pre-v12 behaviour and never wrong — only silent. Recorded rather than
-fixed: a job kind that fetches prices as a side effect of asking for advice is
-a scope change, and W2 adds no job kinds.
+**The web UI's advise button banks first** (v19b §2.1, through
+``pipeline.weekly_run``), and since holiday F-3 the bank clears this module's
+cache, so a table cached by a plan page earlier the same day is not the one
+the solve reads. This was W2's recorded residual.
 
 Nothing here raises. It is read on the solve path and a missing log, a corrupt
 log or a machine that has never run ``gaffer prices`` must cost the term and
