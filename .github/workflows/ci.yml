@@ -1,0 +1,61 @@
+# Holiday F-1: the three gates a contributor runs locally (CLAUDE.md
+# "Commands"), on every pull request and on main. The golden gate and the
+# slow fits stay on the Mac: they need models/ and data/, which are untracked.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # Full history: the v12 degradation rails diff named commit ranges and
+      # skip when those commits are unreachable, which a shallow clone makes
+      # them.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version-file: .python-version
+      - run: uv sync --locked
+      - name: ruff
+        run: uvx ruff check src tests
+      # test_config_toml_loads reads the working tree's config.toml, which is
+      # gitignored and never created here (CLAUDE.md "Secrets"). Every other
+      # test that needs local data skips on its own and names what it lacks.
+      - name: pytest (inner loop)
+        run: >-
+          uv run --locked pytest -q -rs -m "not slow and not golden"
+          --deselect tests/test_odds.py::test_config_toml_loads
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      # npm run types -- --check runs scripts/gen_types.py with .venv/bin/python.
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version-file: .python-version
+      - run: uv sync --locked
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run check
+        working-directory: frontend
