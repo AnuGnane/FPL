@@ -1,4 +1,4 @@
-"""``gaffer tidy`` — the two kinds of file that pile up and are safe to lose.
+"""``gaffer tidy`` — the three kinds of file that pile up and are safe to lose.
 
 Spec §2.7 (specs/2026-09-01-gaffer-v12-program-design.md).
 
@@ -31,10 +31,25 @@ Four exclusions, each with a named reader:
 * ``logs/advise.log`` is ``/api/health``'s launchd line;
 * the availability, field EO, price and presser logs are the corpus, not
   output.
+
+The third kind, from the holiday's F-2 (ROADMAP candidate 7): the frozen EP
+tables under ``reports/projections/`` that a banked grade has already passed
+over. Their one reader is ``artifacts.latest_projection_before``, called by
+``review.grade_gw``, and grades are banked and never re-derived (spec D2). So
+once the decision ledger holds a ``(season, gw)`` row naming the stamp it was
+read against, every *other* snapshot of that week is one nothing will select,
+and the named one stays so the row can still be re-checked. A week with no
+banked row, a row naming no snapshot, or a row with no ``season`` key (the
+v19h legacy shape, rewritten by the next ``append_ledger``) keeps everything:
+choosing for Review before Review has chosen is the call ``artifacts``'
+``PROJECTIONS`` note refuses to make, and it is refused here too. Measured at
+168 KB the day the GUIDE named it, so this is order, not disk space.
 """
 
 from __future__ import annotations
 
+import json
+import re
 import time
 from pathlib import Path
 
@@ -46,14 +61,83 @@ BACKTEST_GLOB = "backtest_log_v7b_*.parquet"
 KEEP_LOGS = {"advise.log"}
 """Log files that are never candidates, whatever their age."""
 
+PROJECTIONS = REPORTS / "projections"
+LEDGER = REPORTS / "decision_ledger.json"
+"""``artifacts.PROJECTIONS`` and ``review.ledger_path()``, spelled out here
+the way ``LIVE`` and ``REPORTS`` are, so the sweep stays relative to the
+working directory a test ``chdir``s into and ``tidy`` pulls in neither
+module."""
+
+SNAPSHOT_NAME = re.compile(
+    r"^(?P<season>.+)-gw(?P<gw>\d+)-(?P<stamp>\d{8}T\d{6}Z)\.parquet$")
+"""``artifacts.projection_path``'s name. Anything else in the directory —
+an ``io.atomic_path`` temp mid-write above all — is never a candidate."""
+
 
 def _report_for(path: Path) -> Path:
     tag = path.name.removeprefix("backtest_log_").removesuffix(".parquet")
     return REPORTS / f"{tag}.json"
 
 
+def _graded_stamps() -> dict[tuple[str, int], str]:
+    """``{(season, gw): stamp}`` for every banked grade that names a snapshot.
+
+    Read off the file rather than through ``review.load_ledger``, which keeps
+    the season in force only: a past season's superseded snapshots are as
+    dead as this one's. A row without ``season`` is left out rather than read
+    as the current season, because that would need the config and a wrong
+    guess here deletes. A ledger that will not parse names nothing.
+    """
+    try:
+        payload = json.loads(LEDGER.read_text())
+    except (OSError, ValueError):
+        return {}
+    rows = payload.get("gws") if isinstance(payload, dict) else payload
+    out = {}
+    for row in rows if isinstance(rows, list) else []:
+        if not isinstance(row, dict):
+            continue
+        season, gw = row.get("season"), row.get("gw")
+        stamp = row.get("projection_snapshot")
+        if not season or gw is None or not stamp:
+            continue
+        try:
+            out[(str(season), int(gw))] = str(stamp)
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
+def superseded_projections() -> list[Path]:
+    """Snapshots of a graded week other than the one its grade names.
+
+    Only when the named snapshot is still on disk: a row pointing at a file
+    that has gone is a row whose week is already past re-checking, and
+    deleting its siblings too would leave a later ``gaffer review --gw`` with
+    nothing at all to read.
+    """
+    if not PROJECTIONS.is_dir():
+        return []
+    graded = _graded_stamps()
+    weeks: dict[tuple[str, int], list[tuple[str, Path]]] = {}
+    for path in PROJECTIONS.glob("*.parquet"):
+        match = SNAPSHOT_NAME.match(path.name)
+        if match is None or not path.is_file():
+            continue
+        key = (match["season"], int(match["gw"]))
+        weeks.setdefault(key, []).append((match["stamp"], path))
+    out = []
+    for key, snaps in weeks.items():
+        named = graded.get(key)
+        if named is None or named not in {stamp for stamp, _ in snaps}:
+            continue
+        out += [path for stamp, path in snaps if stamp != named]
+    return sorted(out)
+
+
 def candidates(older_than: int = 30) -> dict[str, list[Path]]:
-    """``{"backtests": [...], "logs": [...]}`` — what ``--apply`` would delete.
+    """``{"backtests": [...], "logs": [...], "projections": [...]}`` — what
+    ``--apply`` would delete.
 
     ``older_than`` applies to ``logs/`` alone. An orphaned backtest log is
     orphaned whatever its age: the report it would have been paired with is
@@ -84,7 +168,8 @@ def candidates(older_than: int = 30) -> dict[str, list[Path]]:
     cutoff = time.time() - older_than * 86400
     logs = [p for p in sorted(LOGS.glob("*.log"))
             if p.name not in KEEP_LOGS and p.stat().st_mtime < cutoff]
-    return {"backtests": backtests, "logs": logs}
+    return {"backtests": backtests, "logs": logs,
+            "projections": superseded_projections()}
 
 
 def _size(paths) -> int:
@@ -94,7 +179,7 @@ def _size(paths) -> int:
 def run_tidy(*, apply: bool = False, older_than: int = 30) -> dict:
     """Print what would go; delete it only under ``apply``."""
     found = candidates(older_than)
-    every = found["backtests"] + found["logs"]
+    every = found["backtests"] + found["logs"] + found["projections"]
     if not every:
         print("nothing to tidy")
         return found

@@ -186,3 +186,136 @@ def test_the_cli_exits_non_zero_on_both_refusals(tmp_path, monkeypatch):
     negative = runner.invoke(cli.app, ["tidy", "--older-than", "-1"])
     assert negative.exit_code == 1
     assert "negative" in negative.stdout
+
+
+# The holiday's F-2 (ROADMAP candidate 7): superseded projection snapshots.
+# One reader, review.grade_gw through artifacts.latest_projection_before, and
+# grades are banked and never re-derived, so a graded week's other snapshots
+# are dead and the one its row names is the re-check.
+
+S = "2026-27"
+
+
+def _snap(tree, season, gw, stamp, size=100):
+    path = tree / "reports" / "projections" / f"{season}-gw{gw}-{stamp}.parquet"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"x" * size)
+    return path
+
+
+def _ledger(tree, *rows):
+    import json
+
+    (tree / "reports" / "decision_ledger.json").write_text(
+        json.dumps({"gws": list(rows)}))
+
+
+def test_a_graded_weeks_other_snapshots_are_candidates_and_its_named_one_is_not(
+        tree):
+    early = _snap(tree, S, 5, "20261001T090000Z")
+    named = _snap(tree, S, 5, "20261003T090000Z")
+    late = _snap(tree, S, 5, "20261004T190000Z")
+    _ledger(tree, {"season": S, "gw": 5,
+                   "projection_snapshot": "20261003T090000Z"})
+    found = [p.name for p in tidy.candidates()["projections"]]
+    assert found == sorted([early.name, late.name])
+    assert named.name not in found
+
+
+def test_an_ungraded_week_keeps_every_snapshot(tree):
+    """Review has not chosen yet, and choosing for it is the call the
+    PROJECTIONS note refuses to make."""
+    _snap(tree, S, 6, "20261008T090000Z")
+    _snap(tree, S, 6, "20261009T090000Z")
+    _ledger(tree, {"season": S, "gw": 5,
+                   "projection_snapshot": "20261003T090000Z"})
+    assert tidy.candidates()["projections"] == []
+
+
+def test_no_ledger_means_no_projection_candidates(tree):
+    _snap(tree, S, 5, "20261001T090000Z")
+    _snap(tree, S, 5, "20261003T090000Z")
+    assert tidy.candidates()["projections"] == []
+
+
+def test_a_corrupt_ledger_names_nothing(tree):
+    _snap(tree, S, 5, "20261001T090000Z")
+    _snap(tree, S, 5, "20261003T090000Z")
+    (tree / "reports" / "decision_ledger.json").write_text("{not json")
+    assert tidy.candidates()["projections"] == []
+
+
+def test_a_row_naming_no_snapshot_keeps_the_week(tree):
+    _snap(tree, S, 5, "20261001T090000Z")
+    _ledger(tree, {"season": S, "gw": 5, "projection_snapshot": None})
+    assert tidy.candidates()["projections"] == []
+
+
+def test_a_row_naming_a_snapshot_that_has_gone_keeps_the_rest(tree):
+    """Deleting the siblings too would leave a later `review --gw` nothing."""
+    _snap(tree, S, 5, "20261001T090000Z")
+    _ledger(tree, {"season": S, "gw": 5,
+                   "projection_snapshot": "20261003T090000Z"})
+    assert tidy.candidates()["projections"] == []
+
+
+def test_a_legacy_row_with_no_season_keeps_the_week(tree):
+    """Reading it as the season in force would need the config, and a wrong
+    guess here deletes. The next append_ledger writes the key on."""
+    _snap(tree, S, 5, "20261001T090000Z")
+    _snap(tree, S, 5, "20261003T090000Z")
+    _ledger(tree, {"gw": 5, "projection_snapshot": "20261003T090000Z"})
+    assert tidy.candidates()["projections"] == []
+
+
+def test_the_season_is_matched_exactly(tree):
+    """Last season's GW5 is not this season's GW5 (v19h §2.2)."""
+    other = _snap(tree, "2025-26", 5, "20250901T090000Z")
+    _snap(tree, S, 5, "20261003T090000Z")
+    _ledger(tree, {"season": S, "gw": 5,
+                   "projection_snapshot": "20261003T090000Z"})
+    assert tidy.candidates()["projections"] == []
+    assert other.exists()
+
+
+def test_a_past_seasons_graded_week_is_swept_too(tree):
+    """load_ledger keeps the season in force; the sweep reads every row."""
+    dead = _snap(tree, "2025-26", 5, "20250901T090000Z")
+    _snap(tree, "2025-26", 5, "20250903T090000Z")
+    _ledger(tree, {"season": "2025-26", "gw": 5,
+                   "projection_snapshot": "20250903T090000Z"},
+            {"season": S, "gw": 5, "projection_snapshot": None})
+    assert [p.name for p in tidy.candidates()["projections"]] == [dead.name]
+
+
+def test_a_file_that_is_not_a_snapshot_name_is_never_a_candidate(tree):
+    """An io.atomic_path temp mid-write above all."""
+    _snap(tree, S, 5, "20261003T090000Z")
+    stray = tree / "reports" / "projections" / "notes.parquet"
+    stray.write_text("x")
+    _ledger(tree, {"season": S, "gw": 5,
+                   "projection_snapshot": "20261003T090000Z"})
+    assert tidy.candidates()["projections"] == []
+
+
+def test_apply_deletes_superseded_snapshots_and_keeps_the_named_one(tree):
+    doomed = _snap(tree, S, 5, "20261001T090000Z")
+    kept = _snap(tree, S, 5, "20261003T090000Z")
+    _ledger(tree, {"season": S, "gw": 5,
+                   "projection_snapshot": "20261003T090000Z"})
+    tidy.run_tidy(apply=True)
+    assert not doomed.exists()
+    assert kept.exists()
+    assert (tree / "reports" / "decision_ledger.json").exists()
+
+
+def test_the_paths_agree_with_the_writer_and_the_ledger():
+    """tidy spells them out rather than importing; this is what holds them."""
+    from gaffer import artifacts, review
+
+    assert tidy.PROJECTIONS == artifacts.PROJECTIONS
+    assert tidy.LEDGER == review.ledger_path()
+    name = artifacts.projection_path(S, 12, "20261003T090000Z").name
+    match = tidy.SNAPSHOT_NAME.match(name)
+    assert (match["season"], int(match["gw"]), match["stamp"]) == \
+        (S, 12, "20261003T090000Z")
