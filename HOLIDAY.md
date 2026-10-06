@@ -1,6 +1,6 @@
 # Holiday queue (6 to 23 October 2026)
 
-Anu is away with a phone and, now and then, the laptop. Scheduled cloud agents work this queue one package a run and open a PR; Anu approves from the phone. Nothing reaches `main` without that approval. The playbook is in the private repo `AnuGnane/autopilot`.
+Anu is away with a phone and, now and then, the laptop. Scheduled cloud agents work this queue one package a run, and from 6 October 14:00 London they merge their own work: Anu has handed the holiday over and nothing waits for approval. The protections are the gate and a review, not a person (see **Merging**). The playbook is in the private repo `AnuGnane/autopilot`.
 
 `CLAUDE.md` rules, including the pins, the orchestrator-only files, the secrets rule and explicit-path staging. This file only says what a cloud run may do, how it reports, and what is queued. A holiday package is small enough that one agent does it directly: no subagents, no cycle branch, no screenshots gate. The full cycle machinery is for when Anu is back.
 
@@ -15,13 +15,27 @@ A Linux sandbox cloned from GitHub. `config.toml`, `config.local.toml`, `data/`,
 
 ## One package a run
 
-1. `git fetch origin`. A package is **done** when its box below is ticked on `main`. It is **in review** when a branch `holiday/<id>` (or `claude/holiday-<id>`) exists on origin and is not merged into `main`; leave it alone. It is **blocked** when a package it depends on is not done.
-2. Take the first package that is neither done, in review nor blocked. If there is none, stop; write one line saying so.
-3. Branch from `origin/main` as `holiday/<id>` (if the push is refused, `claude/holiday-<id>`). Subject lines `<type>(holiday): ...`, one change per commit.
-4. Tick the package's box in this file in the same branch.
-5. Open the PR with the body below. Then stop. Do not start a second package.
+1. `git fetch origin`. A package is **done** when its box below is ticked on `main`. It is **blocked** when a package it depends on is not done.
+2. **Resume first.** A branch `holiday/<id>` (or `claude/holiday-<id>`) on origin that is not merged into `main` and is not a `needs-mac` PR is an unfinished run, most likely cut off by a usage limit. Check it out, read its commits and PR, finish it under **Merging**, and only then consider a new package. Never leave a second unfinished branch behind.
+3. Take the first package that is neither done, blocked, nor waiting on the Mac. If there is none, **refill** (below). If the queue is full and nothing is ready, stop; write one line saying so.
+4. Branch from `origin/main` as `holiday/<id>` (if the push is refused, `claude/holiday-<id>`). Subject lines `<type>(holiday): ...`, one change per commit.
+5. Tick the package's box in this file in the same branch (a `needs-mac` package is ticked by the Mac when it merges).
+6. Open the PR with the body below, then follow **Merging**. Do not start a second package.
 
-A ruling is a decision only Anu can make. Do not block on it: pick a default, state it in the PR, and carry on. If Anu merges without comment, the default stands.
+A ruling is a decision only Anu can make. Do not block on it: pick a default, state it in the PR, and carry on. The default stands; if Anu comments on the PR later, the next run applies the comment as a package.
+
+### Refill
+
+When no package is ready, add up to three new ones, each sized for one run and runnable here, each traced to a numbered candidate in `docs/superpowers/ROADMAP.md` or an "Operational" line there, or to a §-numbered item of the v20 spec that is code rather than a replay. Never a replay, never a model-cycle arm (those are the Mac's), never a pin move, a new job kind, a `Config` field or an orchestrator-only file. Commit the refill on `holiday/refill-<date>`, merge it under **Merging**, and stop; the next run takes the first new package.
+
+## Merging
+
+1. **The gate is green** on the branch's final commit, run here and pasted into the PR: `uvx ruff check src tests`, the inner loop, and `npm run check` when `frontend/` changed.
+2. **The golden gate is the Mac's.** Read the imports of `tests/test_golden_board.py` and `tests/test_pipeline.py`. If the diff touches any of those modules under `src/gaffer/`, the PR does not merge here: put `needs-mac` at the start of its title and stop; the Mac lane runs the golden board on the branch, then merges. At most one open `needs-mac` PR at a time; if one is open, take a package that will not need it.
+3. **Review before merging.** Reread the whole diff (`git diff origin/main...HEAD`) as a reviewer would, with the Task tool's subagent if it is available: anything the package did not ask for, any test weakened or deleted, any key, config value or data path, any pin moved, anything `CLAUDE.md` forbids. Fix what it finds; rerun the gate.
+4. **Rebase on `origin/main`** just before merging. If the rebase touched a file, rerun the gate.
+5. **Merge** with the GitHub MCP tool (`merge_pull_request`, method `rebase`, since this repo keeps a linear history). If that is unavailable, `git push origin HEAD:main` after the rebase (a fast-forward); GitHub marks the PR merged. Delete the branch. Never force-push; never rewrite `main`.
+6. **Report:** the PR is the record for the phone. Finish with one push notification: the package id, merged or `needs-mac`, the gate line.
 
 ### PR body
 
@@ -39,7 +53,7 @@ A ruling is a decision only Anu can make. Do not block on it: pick a default, st
 
 - [x] **F-S1 The v20 spec.** `docs/superpowers/specs/2026-10-07-v20-model-cycle-design.md`, written the way the v19 design was (`specs/2026-09-15-v19-programme-design.md`): research first (`docs/GUIDE.md` §12.5, `docs/superpowers/ROADMAP.md` "Candidates" 11, 12 and 14, the K ≥ 5 role replay under "One experiment", `CONVENTIONS.md`), then one arm per section with its gate and verdict rule pre-registered before anything runs: the bonus head fed `e_goals`, `e_assists` and `position`; the Dixon-Coles floor on `e_gc_model` measured by removing v19g's xfail mark; the price reading banked minutes before the solve; the role replay at K ≥ 5. Each arm names the seed bases, the control, the spread rule and what withdraws it. The spec is the deliverable; no code. Replays run on the Mac in the night shift, one seed at a time (`CLAUDE.md`'s memory note).
 
-### Implementation (Opus, 12:00 London)
+### Implementation (Opus, four runs a day)
 
 - [x] **F-1 CI on pull requests.** `.github/workflows/ci.yml`: `uvx ruff check src tests`, `pytest -q -m "not slow and not golden"` under `uv`, and `cd frontend && npm ci && npm run check`, on every PR and on `main`. Python 3.12 (`.python-version`). The PR records which tests skipped or were deselected for lack of local data, and why, so a green tick on later PRs means what it says. Do not weaken a test to make CI pass; deselect by marker or path and say so.
 - [ ] **F-2 Tidy for projections.** ROADMAP candidate 7, the residual "`reports/projections/` unpruned": extend `gaffer tidy` so it names and prunes projection reports by the rule the GUIDE gives for `tidy`'s scope, keeping the API snapshots (v19h §1 calls them a corpus). Tests with a temporary tree. Gate: ruff and the inner loop.
@@ -53,6 +67,6 @@ Notes from Anu's phone land here, newest last.
 
 - (empty)
 
-## Night shift (the Mac, not the cloud)
+## The Mac (not the cloud)
 
-`AnuGnane/autopilot` `NIGHTSHIFT.md`: the golden gate on open holiday branches, the K ≥ 5 role replay, the Thursday advise run when the laptop is open before a deadline.
+`AnuGnane/autopilot` `NIGHTSHIFT.md`: the golden gate on `needs-mac` branches and then their merge, the golden board on `main` after a day of merges, the K ≥ 5 role replay, the advise run when the laptop is open before a deadline. It runs by itself whenever the laptop is open and on power.
