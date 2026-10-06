@@ -586,8 +586,8 @@ Housekeeping (v12):
 - `gaffer tidy [--apply] [--older-than DAYS]` — dry run by default; lists
   replay logs whose report never appeared, stale `logs/*.log`, and (holiday
   F-2) the `reports/projections/` snapshots of a graded week other than the
-  one its ledger row names. It reclaims 54 KB on this tree, and it never
-  touches the shared backtest log, the S2 arm logs, the corpus logs,
+  one its ledger row names. The backtest orphans came to 54 KB on this
+  tree, and it never touches the shared backtest log, the S2 arm logs, the corpus logs,
   `logs/advise.log`, an ungraded week's snapshots or the API snapshots
 - `gaffer mcp` — a stdio MCP server for Claude Code:
   `claude mcp add gaffer -- gaffer mcp`. Six read tools, no writes

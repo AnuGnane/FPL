@@ -35,10 +35,13 @@ Four exclusions, each with a named reader:
 The third kind, from the holiday's F-2 (ROADMAP candidate 7): the frozen EP
 tables under ``reports/projections/`` that a banked grade has already passed
 over. Their one reader is ``artifacts.latest_projection_before``, called by
-``review.grade_gw``, and grades are banked and never re-derived (spec D2). So
-once the decision ledger holds a ``(season, gw)`` row naming the stamp it was
-read against, every *other* snapshot of that week is one nothing will select,
-and the named one stays so the row can still be re-checked. A week with no
+``review.grade_gw``, and a grade is only taken of a finished week
+(``run_review`` refuses the rest), so every snapshot that week will ever have
+already exists when the ledger row names one. Once the siblings are gone a
+``gaffer review --gw N`` re-grade can only select the named one again; if the
+advice payload has been pruned by then it is flagged ``post_deadline``, where
+without the sweep the re-grade would have named a newer, later snapshot. The
+named one stays so the row can still be re-checked. A week with no
 banked row, a row naming no snapshot, or a row with no ``season`` key (the
 v19h legacy shape, rewritten by the next ``append_ledger``) keeps everything:
 choosing for Review before Review has chosen is the call ``artifacts``'
@@ -70,8 +73,9 @@ module."""
 
 SNAPSHOT_NAME = re.compile(
     r"^(?P<season>.+)-gw(?P<gw>\d+)-(?P<stamp>\d{8}T\d{6}Z)\.parquet$")
-"""``artifacts.projection_path``'s name. Anything else in the directory —
-an ``io.atomic_path`` temp mid-write above all — is never a candidate."""
+"""``artifacts.projection_path``'s name. A ``.parquet`` file it did not
+write is never a candidate; ``io.atomic_path``'s ``.tmp`` temp never reaches
+the glob at all."""
 
 
 def _report_for(path: Path) -> Path:

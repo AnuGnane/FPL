@@ -289,10 +289,14 @@ def test_a_past_seasons_graded_week_is_swept_too(tree):
 
 
 def test_a_file_that_is_not_a_snapshot_name_is_never_a_candidate(tree):
-    """An io.atomic_path temp mid-write above all."""
+    """A .parquet that projection_path did not write, and io.atomic_path's
+    temp, which the glob never reaches."""
     _snap(tree, S, 5, "20261003T090000Z")
     stray = tree / "reports" / "projections" / "notes.parquet"
     stray.write_text("x")
+    temp = tree / "reports" / "projections" / \
+        f"{S}-gw5-20261001T090000Z.parquet.123.tmp"
+    temp.write_text("x")
     _ledger(tree, {"season": S, "gw": 5,
                    "projection_snapshot": "20261003T090000Z"})
     assert tidy.candidates()["projections"] == []
@@ -319,3 +323,13 @@ def test_the_paths_agree_with_the_writer_and_the_ledger():
     match = tidy.SNAPSHOT_NAME.match(name)
     assert (match["season"], int(match["gw"]), match["stamp"]) == \
         (S, 12, "20261003T090000Z")
+
+
+def test_a_dry_run_lists_superseded_snapshots_and_deletes_none(tree, capsys):
+    doomed = _snap(tree, S, 5, "20261001T090000Z")
+    _snap(tree, S, 5, "20261003T090000Z")
+    _ledger(tree, {"season": S, "gw": 5,
+                   "projection_snapshot": "20261003T090000Z"})
+    tidy.run_tidy(apply=False)
+    assert doomed.exists()
+    assert doomed.name in capsys.readouterr().out
