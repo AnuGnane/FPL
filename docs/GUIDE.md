@@ -381,7 +381,8 @@ number: the field is an ownership portfolio rather than a set of legal squads,
 and the EO comes from the *previous* gameweek's sample, which is the only one
 a scrape can have banked before a deadline. Its other two rows are empty
 states with their conditions named: `P(top-10k)` needs a weekly score
-threshold that exists in no source this project reads, and the overall-rank
+threshold, which the snapshot job has banked since holiday F-4 and nothing
+reads yet, and the overall-rank
 response needs five graded gameweeks.
 
 **Live** — matchday. Your live points with FPL's autosub rules projected,
@@ -516,7 +517,7 @@ the project folder moves — the plists embed the path):
 |---|---|---|
 | Thu 18:00 | `com.gaffer.advise` | `prices`, then `train` then `advise`; logs to `logs/prices.log` and `logs/advise.log`. The price bank comes first so the optimizer's timing term has a same-day log; a failed fetch does not stop the advice. Since v17d `advise` chains the brief, so the Thursday log ends with the brief's line (or its note) and Friday's digest headline comes from the brief. |
 | Nightly 23:15 | `com.gaffer.prices` | Banks every player's price reading; flags likely changes. |
-| Daily 17:00 | `com.gaffer.snapshot` | Banks the day's availability state (the corpus a future news model trains on). |
+| Daily 17:00 | `com.gaffer.snapshot` | Banks the day's availability state (the corpus a future news model trains on), and since holiday F-4 the top-10k threshold: one standings request, under `[league] field_scrape`. |
 | Sat & Sun 18:30 | `com.gaffer.field` | Samples ~300 top-10k squads; banks their EO with standard errors. |
 | Tue 09:00 | `com.gaffer.review` | Grades every gameweek FPL has finalised into the decision ledger. |
 | Fri 17:00 | `com.gaffer.digest-friday` | The briefing. |
@@ -623,6 +624,11 @@ that cannot be backfilled — the tool started banking early:
 - `data/live/field_eo_log.parquet` + `data/raw/field/` — the top-10k
   effective-ownership log and the anonymised squads behind it. Feeds the EO
   columns, the captain sentence, and the correlated league simulation.
+- `data/live/top_threshold_log.parquet` — the season total at overall rank
+  10,000, one reading a day (holiday F-4), read off page 200 of the overall
+  standings with no entry kept. A gameweek's latest day is its final line;
+  `threshold_series(season)` returns that series. Read by nothing yet: it is
+  the input `P(top-10k)` was waiting on.
 - `data/raw/league/` — every rival's squad per finished gameweek (and your
   own), so December can grade September without re-asking the API.
 - `reports/decision_ledger.json` — the graded decision record; written
@@ -1325,7 +1331,7 @@ because the collector behind it is not loaded (12.0):
 | Planning → Board: **the price-timing line shows a number** (W5) | `[optimizer] price_timing` on (it is, by default) *and* a nightly price log long enough to return a row per owned player | Eleven days banked; the 23:15 job is one of the seven in 12.0 |
 | League → Field: **expected overall-rank change** (W4) | 5 graded gameweeks carrying both `my_points` and `overall_rank`; GW1's rank is null | 2 of 5 (GW2, GW3) — ~GW6 |
 | Planning → Chips: **WC + BB pair row** (W3) | a `[dgw]` entry in `data/chip_scenarios.toml`, which the writer only creates from a real double in the published list | Absent, correctly: the published list has no double. The first rearrangement FPL announces |
-| League → Field: **`P(top-10k)`** (W4) | a top-10k weekly score-threshold series; no source gaffer reads has one | Unchanged — needs a new scrape, and it is candidate 3 in 12.5 |
+| League → Field: **`P(top-10k)`** (W4) | a top-10k weekly score-threshold series; no source gaffer reads had one | Banking since holiday F-4 (`data/live/top_threshold_log.parquet`, daily); the row itself is still to be built on it |
 
 Two verdicts also accrue by gameweek rather than by code: `gaffer evaluate
 --news-shadow` has its second reading available now that GW3 is graded
@@ -1452,8 +1458,8 @@ brainstorm would start from, in the order the 2026-09-01 research ranked it
    blanks and zeros buckets *and* a K ≥ 5 replay.
 2. **The K ≥ 5 role replay** (12.3) — small, and it should go first because
    it changes what the minutes model ships with.
-3. **A top-10k score-threshold scrape**, which is the only thing between the
-   Field panel and `P(top-10k)`.
+3. ~~A top-10k score-threshold scrape~~ — banked daily since holiday F-4;
+   what is left is the Field panel's `P(top-10k)` row built on the series.
 4. **`p_play` top-bin recalibration (C2)** — 0.936 predicted vs 0.912
    observed on n=1519; an isotonic step, tiny and measurable.
 5. **Home/away rolling splits (C3)** — cheap, never in any arm.

@@ -18,6 +18,7 @@ import pandas as pd
 from gaffer.artifacts import AVAILABILITY_COLS, attach_overrides
 from gaffer.clock import snap_date
 from gaffer.data import store
+from gaffer.data.top_threshold import bank_threshold
 from gaffer.errors import GafferError
 from gaffer.io import atomic_save
 from gaffer.models.predict import news_availability
@@ -124,6 +125,16 @@ def load_snapshot_log() -> pd.DataFrame:
     return store.load(SNAPSHOT_PATH)
 
 
+def _bank_threshold(cfg, client, events) -> None:
+    """Holiday F-4: the top-10k threshold rides the daily job, one request
+    behind the bootstrap it already paid for, under the switch that governs
+    the other top-10k scrape. After the availability rows, so a slow
+    standings page cannot delay the corpus, and with its own swallow inside
+    ``bank_threshold``, so neither reading can cost the other."""
+    if getattr(cfg, "field_scrape", True):
+        bank_threshold(client, events, str(cfg.current_season or ""))
+
+
 def run_snapshot(cfg=None) -> int | None:
     """Bank today's availability state. Rows written, or ``None``.
 
@@ -137,8 +148,10 @@ def run_snapshot(cfg=None) -> int | None:
 
     Prints its own one-line result, success or degradation, so the launchd
     log, the CLI and the web job all say the same sentence without three
-    copies of it. Every failure lands in the one ``except``: this is
-    instrumentation, and instrumentation never blocks.
+    copies of it; since holiday F-4 a second line follows when the top-10k
+    threshold was fetched (:func:`_bank_threshold`). Every failure lands in
+    the one ``except``: this is instrumentation, and instrumentation never
+    blocks.
     """
     try:
         from gaffer.api.client import FPLClient
@@ -146,7 +159,8 @@ def run_snapshot(cfg=None) -> int | None:
         from gaffer.data.bootstrap import build_events, build_players, build_teams
 
         cfg = cfg or load_config()
-        raw = FPLClient().get_bootstrap()
+        client = FPLClient()
+        raw = client.get_bootstrap()
         events = build_events(raw)
         gw = next_unfinished_gw(events)
         avail = news_availability(cfg, build_players(raw), build_teams(raw),
@@ -154,12 +168,14 @@ def run_snapshot(cfg=None) -> int | None:
         if avail is None or len(avail) == 0:
             print("availability snapshot not written: the news layer returned "
                   "no rows")
+            _bank_threshold(cfg, client, events)
             return None
         day = snap_date()
         rows = snapshot_rows(avail, gw, season=str(cfg.current_season or ""),
                              day=day)
         n = append_snapshot(rows)
         print(f"Snapshot: {n} availability rows for gw{gw} at {day}.")
+        _bank_threshold(cfg, client, events)
         return n
     except Exception as exc:  # noqa: BLE001 — a scheduled job never blocks
         print(f"availability snapshot not written: {exc}")
