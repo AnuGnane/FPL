@@ -24,6 +24,7 @@ from fastapi import APIRouter, Response
 from gaffer.artifacts import latest_gw, load_snapshot, solve_state_paths
 from gaffer.config import load_config
 from gaffer.data.field import field_sample_path, latest_field_eo
+from gaffer.data.top_threshold import threshold_series
 from gaffer.errors import GafferError
 from gaffer.league_mode import win_probability
 from gaffer.league_sim import (
@@ -349,8 +350,11 @@ def _field_panel(cfg, inputs, gw: int) -> FieldRank:
     season = str(getattr(cfg, "current_season", "") or "")
     eo_gw = eo_gw_for(gw)
     table, source = deadline_eo_table(season, eo_gw)
+    # holiday F-6: the threshold log is a display read that answers ``{}``
+    # on any failure, which is the short-log null rather than a 500.
     out = simulate_field_rank(inputs, table, n=int(cfg.sim_n),
-                              seed=SIM_SEED, gw=int(gw))
+                              seed=SIM_SEED, gw=int(gw),
+                              threshold=threshold_series(season))
     try:
         slope = rank_slope(_ledger_upto(load_ledger(), gw))
     except Exception:  # noqa: BLE001 — an unreadable ledger is an empty one
