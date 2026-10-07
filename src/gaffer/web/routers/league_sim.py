@@ -29,7 +29,6 @@ from gaffer.errors import GafferError
 from gaffer.league_mode import win_probability
 from gaffer.league_sim import (
     SIM_SEED,
-    TOP10K_WAITING,
     Pins,
     append_sim_history,
     build_inputs,
@@ -339,7 +338,7 @@ def _field_rank(cfg, inputs, gw: int) -> FieldRank:
             eo_gw=None, field_draws=0,
             waiting_for=f"the field panel could not be computed ({exc}) — "
                         f"the rest of this page is unaffected",
-            top10k_waiting_for=TOP10K_WAITING,
+            top10k_waiting_for="the field panel could not be computed",
             rank_waiting_for="the field panel could not be computed")
 
 

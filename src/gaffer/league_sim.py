@@ -964,9 +964,9 @@ TOP10K_WAITING = (
 
 It used to say no such series existed anywhere (v12 W4 plan A4), which was
 true until holiday F-4 banked page 200's 10,000th total each day
-(:mod:`gaffer.data.top_threshold`). The router's own failure path still
-quotes this sentence, because a panel that could not be computed has not
-read the log either. Spec §1: a null with a reason, never a zero."""
+(:mod:`gaffer.data.top_threshold`). :func:`top10k_waiting` is the counted
+form the panel serves; this is the uncounted one, for a caller that has not
+read the log. Spec §1: a null with a reason, never a zero."""
 
 
 def top10k_waiting(banked: int, gw: int) -> str:
@@ -1006,7 +1006,8 @@ def project_threshold(series: dict[int, int], gw: int) -> dict | None:
     first, last = weeks[0], weeks[-1]
     rise = (float(series[last]) - float(series[first])) / (last - first)
     return {"threshold": float(series[last]) + rise * (int(gw) - last),
-            "from_gw": last, "weeks": len(weeks), "rise": rise}
+            "from_gw": last, "weeks": len(weeks), "rise": rise,
+            "gw": int(gw), "under_way": int(gw) in {int(g) for g in series}}
 
 
 def _p_top10k(me, mine, projection) -> tuple[float | None, str | None]:
@@ -1015,12 +1016,24 @@ def _p_top10k(me, mine, projection) -> tuple[float | None, str | None]:
     ``>=`` because FPL ranks ties equal, so a total level with the 10,000th
     is inside the top 10k (``THRESHOLD_COLS``' ``rank`` note).
     ``me.total`` is the league standings' season total as
-    :func:`build_inputs` read it, which before the deadline is the total
-    through the last scored week; read mid-week it already holds part of
-    this one, and the probability leans optimistic by that much.
+    :func:`build_inputs` read it, the total through the last scored week
+    before the deadline. Once the deadline has passed it holds part or all
+    of this week, and adding a simulated week would count it twice, so a
+    week the log already has a reading under (``under_way``, which
+    :func:`gaffer.data.top_threshold.bank_threshold` banks only after a
+    deadline) is a named null rather than a number that can be a whole week
+    wrong. Between the deadline and the next daily snapshot the log cannot
+    know yet; that window is at most a day.
     """
     if projection is None:
         return None, None
+    if projection.get("under_way"):
+        return None, (f"the end of gw{projection['gw']} — the log has a "
+                      f"reading under it, so its deadline has passed and "
+                      f"your season total already holds part of the week; "
+                      f"adding a whole simulated week on top would count "
+                      f"it twice, so the probability returns with the next "
+                      f"gameweek's advice")
     total = getattr(me, "total", None) if me is not None else None
     if total is None:
         return None, ("your season total — no entry flagged as yours in "
