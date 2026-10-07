@@ -55,16 +55,20 @@ def parse_threshold(payload: dict) -> dict | None:
 
     The row with the largest ``rank_sort`` on the page, rather than
     ``results[-1]``, so a payload served out of order still names the right
-    entry. ``None`` when the page is empty or shaped differently: early in a
-    season with fewer than 10,000 entries the page does not exist, and a
-    changed API is a missing reading, not an exception.
+    entry. ``None`` when the page is empty, short or shaped differently: a
+    page whose last position is not 10,000 is a league with fewer entries,
+    whose last row is not the line, and a changed API is a missing reading,
+    not an exception.
     """
     try:
         results = payload["standings"]["results"]
-        rows = [r for r in results if r.get("rank_sort") is not None]
+        rows = [r for r in results
+                if isinstance(r, dict) and r.get("rank_sort") is not None]
         if not rows:
             return None
         row = max(rows, key=lambda r: int(r["rank_sort"]))
+        if int(row["rank_sort"]) != THRESHOLD_RANK:
+            return None
         return {"rank_sort": int(row["rank_sort"]),
                 "rank": int(row.get("rank") or 0),
                 "total": int(row["total"]),
@@ -140,14 +144,14 @@ def threshold_series(season: str) -> dict[int, int]:
     """
     try:
         log = load_threshold_log()
-    except Exception:  # noqa: BLE001 — a display read never blocks a page
+        log = log[log["season"].astype(str) == str(season)]
+        out: dict[int, int] = {}
+        for gw, part in log.groupby("gw"):
+            day = max(str(d) for d in part["snap_date"])
+            out[int(gw)] = int(part[part["snap_date"].astype(str) == day]
+                               ["total"].iloc[-1])
+    except Exception:  # noqa: BLE001 — a display read never blocks a page, and an old log's null cell is no series
         return {}
-    log = log[log["season"].astype(str) == str(season)]
-    out: dict[int, int] = {}
-    for gw, part in log.groupby("gw"):
-        day = max(str(d) for d in part["snap_date"])
-        out[int(gw)] = int(part[part["snap_date"].astype(str) == day]
-                           ["total"].iloc[-1])
     return dict(sorted(out.items()))
 
 
