@@ -137,7 +137,7 @@ Detail in `docs/GUIDE.md` §12.5.
 
 1. **C1 news-layer ablation vs the plain FPL flag** — the research's most important experiment; GW2's news-shadow reading points the same way. Both halves pre-registered (buckets + K ≥ 5 replay)
 2. The K ≥ 5 role replay above — first, because it decides what the minutes model ships with
-3. A top-10k weekly score-threshold scrape (unblocks `P(top-10k)`)
+3. ~~A top-10k weekly score-threshold scrape~~ (holiday F-4: banked daily by the snapshot job into `data/live/top_threshold_log.parquet`); what is left is the `P(top-10k)` row that reads it
 4. C2 `p_play` top-bin recalibration (0.936 predicted vs 0.912 observed, n=1519)
 5. C3 home/away rolling splits
 6. B1's second half — a "days since status last changed" `p_play` feature off the availability log, after the flag-latency report has shown the signal
