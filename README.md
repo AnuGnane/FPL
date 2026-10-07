@@ -294,6 +294,8 @@ rules. Pages render in dark and light, and at phone width (v19c).
 `./scripts/install_automation.sh` substitutes the project path into the nine
 plists in `scripts/`, copies them to `~/Library/LaunchAgents/` and loads them.
 Re-run it after moving the project — the plists embed the path.
+`./scripts/install_automation.sh --status` only reads: it prints each job's
+launchd state and next fire time and changes nothing.
 
 | When | Job | What it does |
 |---|---|---|
