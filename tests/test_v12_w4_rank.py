@@ -255,6 +255,16 @@ def test_the_plan_weeks_own_mid_week_reading_is_not_the_line():
     assert project_threshold({5: 300, 6: 999}, 6) is None
 
 
+def test_a_week_already_under_way_is_a_named_null_not_a_double_count():
+    """Past the deadline my standings total already holds part of the week,
+    so adding a simulated week would count it twice."""
+    out = simulate_field_rank(_me_on(360), _eo(range(30)), n=500, seed=1,
+                              gw=6, threshold={4: 240, 5: 300, 6: 330})
+    assert out["p_top10k"] is None
+    assert "count it twice" in out["top10k_waiting_for"]
+    assert out["p_green"] is not None
+
+
 def test_a_total_far_above_the_line_is_in_and_far_below_is_out():
     series = {4: 240, 5: 300}               # the line for gw6 is 360
     high = simulate_field_rank(_me_on(500), _eo(range(30)), n=1000, seed=1,

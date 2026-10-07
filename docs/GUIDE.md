@@ -383,7 +383,8 @@ a scrape can have banked before a deadline. `P(top-10k)` (holiday F-6)
 is the chance your banked total plus this simulated week reaches the
 10,000th total projected for the gameweek: the last banked threshold plus
 the mean weekly rise over the banked weeks before it, so it stays a named
-empty state until two gameweeks are banked. The overall-rank response is an
+empty state until two gameweeks are banked, and again once the week is under
+way, when your total already holds part of it. The overall-rank response is an
 empty state until five graded gameweeks.
 
 **Live** — matchday. Your live points with FPL's autosub rules projected,
