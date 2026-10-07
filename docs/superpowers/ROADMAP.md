@@ -1306,6 +1306,7 @@ branch `v14-ledger` off `main` at `bb6ae40`, 15 commits.
 ## Operational / housekeeping
 - [x] Untrack `reports/` artifacts + `.claude/`; gitignore both (`31dc239`)
 - [x] Set odds API key in `config.toml` `[odds]` (done 2026-08-25; G3 live spot-check recorded in v4b spec §13)
+- [x] `./scripts/install_automation.sh --status` reads the install box in one command: each `com.gaffer.*` job as loaded, unloaded (copied but not loaded) or missing (never copied), with its next fire in local time from `scripts/automation_status.py`. Read-only: it calls `launchctl list` and nothing else (holiday F-5)
 
 ## Explicitly rejected (don't re-add)
 - Price-change chasing · per-player finishing multipliers · big horizon extension · fabricated "EO thresholds"
