@@ -18,6 +18,7 @@ import pandas as pd
 from gaffer.artifacts import AVAILABILITY_COLS, attach_overrides
 from gaffer.clock import snap_date
 from gaffer.data import store
+from gaffer.data.top_threshold import bank_threshold
 from gaffer.errors import GafferError
 from gaffer.io import atomic_save
 from gaffer.models.predict import news_availability
@@ -146,8 +147,15 @@ def run_snapshot(cfg=None) -> int | None:
         from gaffer.data.bootstrap import build_events, build_players, build_teams
 
         cfg = cfg or load_config()
-        raw = FPLClient().get_bootstrap()
+        client = FPLClient()
+        raw = client.get_bootstrap()
         events = build_events(raw)
+        # Holiday F-4: the top-10k threshold rides the daily job, one request
+        # behind the bootstrap it already paid for, under the switch that
+        # governs the other top-10k scrape. Its own line and its own swallow,
+        # so neither reading can cost the other.
+        if getattr(cfg, "field_scrape", True):
+            bank_threshold(client, events, str(cfg.current_season or ""))
         gw = next_unfinished_gw(events)
         avail = news_availability(cfg, build_players(raw), build_teams(raw),
                                   events, gw)
