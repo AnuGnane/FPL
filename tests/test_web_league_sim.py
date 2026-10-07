@@ -447,6 +447,33 @@ def test_the_field_panel_is_a_named_empty_state_on_a_cold_clone(client):
     assert "field-scrape" in field["waiting_for"]
 
 
+def _bank_thresholds(rows):
+    from gaffer.data.top_threshold import append_threshold, threshold_rows
+
+    for gw, total in rows:
+        append_threshold(threshold_rows(
+            {"rank_sort": 10000, "rank": 10000, "total": total,
+             "event_total": 0, "last_updated": ""},
+            gw, "2026-27", day=f"2026-09-0{gw}"))
+
+
+def test_the_field_panel_reads_p_top10k_off_a_banked_threshold_log(client):
+    """Holiday F-6, end to end: plan gameweek 3, the line banked under 1 and
+    2 at 60 and 120, so 180 is projected; my 170 plus a ~15-point week
+    clears it some of the time and not all of it."""
+    _bank_thresholds([(1, 60), (2, 120)])
+    field = client.get("/api/league/sim").json()["field"]
+    assert field["top10k_waiting_for"] is None
+    assert 0.0 < field["p_top10k"] < 1.0
+
+
+def test_one_banked_threshold_week_is_still_the_named_null(client):
+    _bank_thresholds([(2, 120)])
+    field = client.get("/api/league/sim").json()["field"]
+    assert field["p_top10k"] is None
+    assert "1 is in the log" in field["top10k_waiting_for"]
+
+
 # --- the cached-only path This Week's chip takes ---------------------------
 
 

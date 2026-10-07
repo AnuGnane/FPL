@@ -210,13 +210,102 @@ def test_no_entry_flagged_as_mine_is_an_empty_state():
     assert out["p_green"] is None
 
 
-def test_p_top10k_is_always_none_and_says_what_it_waits_for():
-    """No top-10k weekly score series exists anywhere in this tree (plan A4).
-    An honest null beats a number nobody can source."""
+def test_p_top10k_without_a_threshold_log_is_none_and_says_what_it_waits_for():
+    """v12 W4 plan A4 had no series to read; holiday F-4 banks one, and F-6
+    reads it. With no log handed in the null stays, naming the log."""
     out = simulate_field_rank(_inputs(range(11)), _eo(range(30)), n=500,
                               seed=1, gw=6)
     assert out["p_top10k"] is None
-    assert "top-10k weekly score" in out["top10k_waiting_for"]
+    assert "top-10k threshold" in out["top10k_waiting_for"]
+    assert "0 are in the log" in out["top10k_waiting_for"]
+
+
+# --- holiday F-6: P(top-10k) off the threshold log -----------------------
+
+from gaffer.league_sim import TOP10K_MIN_WEEKS, project_threshold  # noqa: E402
+
+
+def _me_on(total: int, picks_elements=range(15), **kw) -> SimInputs:
+    ins = _inputs(picks_elements, **kw)
+    ins.entries[0].total = int(total)
+    return ins
+
+
+def test_two_banked_weeks_are_the_bar():
+    assert TOP10K_MIN_WEEKS == 2
+
+
+def test_one_banked_week_is_a_named_empty_state_with_its_count():
+    out = simulate_field_rank(_me_on(300), _eo(range(30)), n=500, seed=1,
+                              gw=6, threshold={5: 300})
+    assert out["p_top10k"] is None
+    assert "1 is in the log" in out["top10k_waiting_for"]
+
+
+def test_the_line_is_the_last_threshold_plus_the_mean_weekly_rise():
+    """gw2 120, gw4 240: 60 a week across the missed gw3, so gw6 is 360."""
+    proj = project_threshold({2: 120, 4: 240}, 6)
+    assert proj["threshold"] == 360.0
+    assert proj["rise"] == 60.0 and proj["from_gw"] == 4 and proj["weeks"] == 2
+
+
+def test_the_plan_weeks_own_mid_week_reading_is_not_the_line():
+    """A reading banked under the plan gameweek is a standing mid-week."""
+    assert project_threshold({4: 240, 5: 300, 6: 999}, 6)["threshold"] == 360.0
+    assert project_threshold({5: 300, 6: 999}, 6) is None
+
+
+def test_a_total_far_above_the_line_is_in_and_far_below_is_out():
+    series = {4: 240, 5: 300}               # the line for gw6 is 360
+    high = simulate_field_rank(_me_on(500), _eo(range(30)), n=1000, seed=1,
+                               gw=6, threshold=series)
+    low = simulate_field_rank(_me_on(100), _eo(range(30)), n=1000, seed=1,
+                              gw=6, threshold=series)
+    assert high["p_top10k"] == 1.0 and high["top10k_waiting_for"] is None
+    assert low["p_top10k"] == 0.0 and low["top10k_waiting_for"] is None
+
+
+def test_a_total_one_mean_week_short_of_the_line_is_about_a_half():
+    """Fifteen picks at 4.0 EP is a 60-point mean week, so a 300 total
+    against a 360 line clears it about half the time."""
+    out = simulate_field_rank(_me_on(300), _eo(range(30)), n=4000, seed=3,
+                              gw=6, threshold={4: 240, 5: 300})
+    assert 0.45 <= out["p_top10k"] <= 0.55
+
+
+def test_reading_the_threshold_leaves_p_green_untouched():
+    """The probability reuses my simulated week and draws nothing new on
+    the field path, so p_green is the same number with or without a log."""
+    ins = _me_on(300)
+    bare = simulate_field_rank(ins, _eo(range(30)), n=1000, seed=7, gw=6)
+    read = simulate_field_rank(ins, _eo(range(30)), n=1000, seed=7, gw=6,
+                               threshold={4: 240, 5: 300})
+    assert bare["p_green"] == read["p_green"]
+    assert bare["my_ep"] == read["my_ep"]
+
+
+def test_a_missing_field_sample_still_answers_p_top10k():
+    """It needs my week and the line, not the field."""
+    out = simulate_field_rank(_me_on(500), {}, n=500, seed=1, gw=6,
+                              threshold={4: 240, 5: 300})
+    assert out["p_green"] is None and "field-scrape" in out["waiting_for"]
+    assert out["p_top10k"] == 1.0
+
+
+def test_no_entry_of_mine_is_a_named_empty_state_for_p_top10k():
+    ins = _me_on(500)
+    ins.entries[0].is_me = False
+    out = simulate_field_rank(ins, _eo(range(30)), n=500, seed=1, gw=6,
+                              threshold={4: 240, 5: 300})
+    assert out["p_top10k"] is None
+    assert "your season total" in out["top10k_waiting_for"]
+
+
+def test_no_picks_of_mine_is_a_named_empty_state_for_p_top10k():
+    out = simulate_field_rank(_me_on(500, picks_elements=[]), {}, n=500,
+                              seed=1, gw=6, threshold={4: 240, 5: 300})
+    assert out["p_top10k"] is None
+    assert "your squad" in out["top10k_waiting_for"]
 
 
 def test_the_payload_carries_its_provenance():

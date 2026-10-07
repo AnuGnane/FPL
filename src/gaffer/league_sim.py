@@ -948,20 +948,111 @@ def field_population(deadline_eo: dict[int, float], *,
             + (draws[:, :, 1] < second).astype("float64"))
 
 
-TOP10K_WAITING = (
-    "a top-10k weekly score threshold — no such series exists on this "
-    "machine or in any source gaffer reads (build-history stores player and "
-    "fixture tables only, and the events table carries no scores), so the "
-    "probability is not computed rather than guessed")
-"""What ``p_top10k`` is waiting for, said in full.
+TOP10K_MIN_WEEKS = 2
+"""Banked gameweeks of the top-10k threshold before a rise can be measured.
 
-Spec §5.3 asks for ``P(top-10k)`` "using the historical distribution of
-top-10k weekly scores by GW from ``build-history``". There is no such
-distribution: ``build_history`` writes ``history/player_gw.parquet`` and
-``history/fixtures.parquet`` and nothing event-level, and
-``data/live/events.parquet`` carries no score column at all. The honest answer
-is a null with this sentence beside it (spec §1: never render zeros as if they
-were measurements)."""
+Two because a rise is a difference: one banked week is a level with no
+slope, and projecting it forward would be guessing the field's week. The
+number is the arithmetic minimum, not a fit (holiday F-6)."""
+
+TOP10K_WAITING = (
+    "at least two banked gameweeks of the top-10k threshold — the daily "
+    "snapshot banks page 200 of the overall standings (`gaffer snapshot`), "
+    "and until two weeks are in the log the line cannot be projected, so the "
+    "probability is not computed rather than guessed")
+"""What ``p_top10k`` is waiting for when the threshold log is short.
+
+It used to say no such series existed anywhere (v12 W4 plan A4), which was
+true until holiday F-4 banked page 200's 10,000th total each day
+(:mod:`gaffer.data.top_threshold`). The router's own failure path still
+quotes this sentence, because a panel that could not be computed has not
+read the log either. Spec §1: a null with a reason, never a zero."""
+
+
+def top10k_waiting(banked: int, gw: int) -> str:
+    """:data:`TOP10K_WAITING` with the count, for the panel's own path."""
+    return (f"at least {TOP10K_MIN_WEEKS} banked gameweeks of the top-10k "
+            f"threshold before gw{int(gw)}, and {int(banked)} "
+            f"{'is' if int(banked) == 1 else 'are'} in the log — the daily "
+            f"snapshot banks page 200 of the overall standings (`gaffer "
+            f"snapshot`), so the probability is not computed rather than "
+            f"guessed")
+
+
+def project_threshold(series: dict[int, int], gw: int) -> dict | None:
+    """The 10,000th season total projected for the end of gameweek ``gw``.
+
+    **The rule (holiday F-6):** the last banked threshold plus the mean
+    weekly rise over the banked weeks, times the weeks between them and
+    ``gw``. The mean rise is ``(last - first) / (last_gw - first_gw)`` over
+    the banked gameweeks, so a missed scrape week is a gap the slope spans
+    rather than a zero rise.
+
+    Only gameweeks **before** ``gw`` count. ``gw``'s own reading, if the log
+    has one, is a mid-week standing (``threshold_series`` keeps a week's
+    latest day, and the week is not over), and reading it as the line would
+    make the answer depend on what time of the week the page was opened —
+    :func:`gaffer.web.routers.league_sim.eo_gw_for`'s argument for the EO
+    sample. ``None`` with fewer than :data:`TOP10K_MIN_WEEKS` such weeks.
+
+    Linear on purpose: the line's weekly rise is roughly the top-10k's mean
+    week, which drifts with doubles and blanks, and a two-point slope cannot
+    see that. It is a projection a reader can check by hand, and the
+    docstring is where its limits live.
+    """
+    weeks = sorted(int(g) for g in series if int(g) < int(gw))
+    if len(weeks) < TOP10K_MIN_WEEKS:
+        return None
+    first, last = weeks[0], weeks[-1]
+    rise = (float(series[last]) - float(series[first])) / (last - first)
+    return {"threshold": float(series[last]) + rise * (int(gw) - last),
+            "from_gw": last, "weeks": len(weeks), "rise": rise}
+
+
+def _p_top10k(me, mine, projection) -> tuple[float | None, str | None]:
+    """``P(banked total + this week >= the projected line)``, or a reason.
+
+    ``>=`` because FPL ranks ties equal, so a total level with the 10,000th
+    is inside the top 10k (``THRESHOLD_COLS``' ``rank`` note).
+    ``me.total`` is the league standings' season total as
+    :func:`build_inputs` read it, which before the deadline is the total
+    through the last scored week; read mid-week it already holds part of
+    this one, and the probability leans optimistic by that much.
+    """
+    if projection is None:
+        return None, None
+    total = getattr(me, "total", None) if me is not None else None
+    if total is None:
+        return None, ("your season total — no entry flagged as yours in "
+                      "this league (set fpl.entry_id in config.toml), so "
+                      "there is no banked total to add this week to")
+    if mine is None:
+        return None, ("your squad for this gameweek — no picks were read "
+                      "for your entry, so there is no week to simulate")
+    clears = (float(total) + np.asarray(mine)) >= projection["threshold"]
+    return round(float(clears.mean()), 4), None
+
+
+def _my_week(inputs: SimInputs, picks, *, n: int, seed: int):
+    """My simulated week alone, for the paths where the field cannot run.
+
+    ``P(top-10k)`` needs my week and the threshold, not the field, so a
+    missing EO sample is no reason to withhold it. Its own stream
+    (``[seed, 3]``) so the field path's draws, and so ``p_green``, are
+    untouched."""
+    if not picks:
+        return None
+    elements = sorted({int(e) for e, _ in picks})
+    index = {element: i for i, element in enumerate(elements)}
+    eps = np.array([float(inputs.ep_by_element.get(e, 0.0)) for e in elements])
+    sds = np.array([float(inputs.sigma_by_element.get(e, 0.0))
+                    for e in elements])
+    rng = np.random.default_rng([int(seed), 3])
+    weeks = eps + sds * rng.standard_normal((int(n), len(elements)))
+    mine = np.zeros(int(n))
+    for element, mult in picks:
+        mine += float(mult) * weeks[:, index[int(element)]]
+    return mine
 
 
 FIELD_DRAWS = 8
@@ -989,7 +1080,8 @@ measurement rather than from the model's intent."""
 def simulate_field_rank(inputs: SimInputs, deadline_eo: dict[int, float], *,
                         n: int = SIM_N, seed: int = SIM_SEED,
                         gw: int, n_managers: int = FIELD_POP_N,
-                        draws: int = FIELD_DRAWS) -> dict:
+                        draws: int = FIELD_DRAWS,
+                        threshold: dict[int, int] | None = None) -> dict:
     """One gameweek against a synthetic field: ``P(green arrow)`` and friends.
 
     **Green arrow is defined against the population's own median week**, not
@@ -1027,26 +1119,53 @@ def simulate_field_rank(inputs: SimInputs, deadline_eo: dict[int, float], *,
     a squad sharing nothing with the sample is a different season's element
     ids, not a differential.
 
-    Returns a dict rather than a dataclass because two of its three headline
-    numbers are ``None`` today and a dataclass would invite a caller to treat
-    the nulls as zeros. Every null carries a ``waiting_for`` sentence.
+    **``P(top-10k)`` reads the threshold log** (holiday F-6). ``threshold``
+    is :func:`gaffer.data.top_threshold.threshold_series` for the season,
+    ``gw -> the 10,000th total``; the line for this gameweek is projected by
+    :func:`project_threshold` (the last banked threshold plus the mean weekly
+    rise over the banked weeks), and the answer is the share of simulated
+    weeks in which my banked total plus ``mine`` reaches it. It needs my week
+    and not the field's, so the empty states that withhold ``p_green`` draw
+    my week alone (:func:`_my_week`) rather than withholding it too. ``None``
+    or a short log is the null with :func:`top10k_waiting`'s sentence.
+
+    Returns a dict rather than a dataclass because its headline numbers can
+    be ``None`` and a dataclass would invite a caller to treat the nulls as
+    zeros. Every null carries a ``waiting_for`` sentence.
     """
     me = next((e for e in inputs.entries if e.is_me), None)
+    series = dict(threshold or {})
+    projection = project_threshold(series, gw)
+    banked = sum(1 for g in series if int(g) < int(gw))
     base = {"gw": int(gw), "n": int(n), "seed": int(seed),
             "managers": int(n_managers), "draws": int(draws), "p_green": None,
-            "p_top10k": None, "top10k_waiting_for": TOP10K_WAITING,
+            "p_top10k": None,
+            "top10k_waiting_for": (top10k_waiting(banked, gw)
+                                   if projection is None else None),
             "waiting_for": None, "unsampled_picks": 0}
+    picks = effective_picks(me.picks) if me is not None else []
+
+    def _top(mine) -> dict:
+        p, why = _p_top10k(me, mine, projection)
+        if projection is None:
+            return {}
+        return {"p_top10k": p, "top10k_waiting_for": why}
+
+    def _alone() -> dict:
+        if projection is None:
+            return {}
+        return _top(_my_week(inputs, picks, n=n, seed=seed))
+
     if not deadline_eo:
-        return {**base, "waiting_for":
+        return {**base, **_alone(), "waiting_for":
                 "a banked field EO sample for this gameweek — run "
                 "`gaffer field-scrape`"}
     if me is None:
-        return {**base, "waiting_for":
+        return {**base, **_top(None), "waiting_for":
                 "an entry flagged as yours in this league — set fpl.entry_id "
                 "in config.toml"}
-    picks = effective_picks(me.picks)
     if not any(element in deadline_eo for element, _ in picks):
-        return {**base, "waiting_for":
+        return {**base, **_alone(), "waiting_for":
                 "no player in your squad appears in the banked field sample, "
                 "so there is nothing to compare against — the sample is from "
                 "a different gameweek, or a different season's element ids"}
@@ -1075,7 +1194,7 @@ def simulate_field_rank(inputs: SimInputs, deadline_eo: dict[int, float], *,
         median = np.median(weeks @ masks.T, axis=1)   # (n,) over managers
         greens.append(float((mine > median).mean()))
         medians.append(float(median.mean()))
-    return {**base,
+    return {**base, **_top(mine),
             "p_green": round(float(np.mean(greens)), 4),
             "field_median_ep": round(float(np.mean(medians)), 2),
             "my_ep": round(float(mine.mean()), 2),
