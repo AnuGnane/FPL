@@ -2,7 +2,7 @@
 
 The fixture ``tests/data/top10k_standings_page200.json`` is the overall
 league's page 200 as served on 2026-10-07, with entry ids and names replaced
-at record time. Its last row is rank_sort 10,000 on 398 points.
+at record time and `last_rank` zeroed. Its last row is rank_sort 10,000 on 398 points.
 """
 
 from __future__ import annotations
@@ -79,9 +79,16 @@ def test_nothing_that_names_an_entry_survives_the_parse():
         "season", "gw", "snap_date"}
 
 
+def test_a_short_page_is_no_reading_rather_than_a_false_line():
+    page = _page()
+    page["standings"]["results"] = page["standings"]["results"][:-1]
+    assert parse_threshold(page) is None
+
+
 @pytest.mark.parametrize("payload", [
     {}, {"standings": {"results": []}}, {"standings": None},
-    {"standings": {"results": [{"rank_sort": 1}]}}])
+    {"standings": {"results": ["not a row"]}},
+    {"standings": {"results": [{"rank_sort": 10_000}]}}])
 def test_an_empty_or_reshaped_page_is_no_reading(payload):
     assert parse_threshold(payload) is None
 
@@ -147,9 +154,8 @@ def test_the_series_takes_each_weeks_latest_day_within_one_season(here):
     assert threshold_series("2024-25") == {}
 
 
-def test_the_snapshot_job_banks_the_threshold_beside_its_rows(here,
-                                                               monkeypatch,
-                                                               capsys):
+def test_the_snapshot_job_banks_the_threshold_even_when_the_news_is_empty(
+        here, monkeypatch, capsys):
     from gaffer.snapshot import run_snapshot
 
     client = _Client()
