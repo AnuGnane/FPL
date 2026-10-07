@@ -379,11 +379,12 @@ against 300 synthetic managers drawn from the banked top-10k EO — a green
 arrow is beating the field's median week — and states its limits beside the
 number: the field is an ownership portfolio rather than a set of legal squads,
 and the EO comes from the *previous* gameweek's sample, which is the only one
-a scrape can have banked before a deadline. Its other two rows are empty
-states with their conditions named: `P(top-10k)` needs a weekly score
-threshold, which the snapshot job has banked since holiday F-4 and nothing
-reads yet, and the overall-rank
-response needs five graded gameweeks.
+a scrape can have banked before a deadline. `P(top-10k)` (holiday F-6)
+is the chance your banked total plus this simulated week reaches the
+10,000th total projected for the gameweek: the last banked threshold plus
+the mean weekly rise over the banked weeks before it, so it stays a named
+empty state until two gameweeks are banked. The overall-rank response is an
+empty state until five graded gameweeks.
 
 **Live** — matchday. Your live points with FPL's autosub rules projected,
 provisional bonus reconstructed from BPS, a race chart of where your score
@@ -627,8 +628,8 @@ that cannot be backfilled — the tool started banking early:
 - `data/live/top_threshold_log.parquet` — the season total at overall rank
   10,000, one reading a day (holiday F-4), read off page 200 of the overall
   standings with no entry kept. A gameweek's latest day is its final line;
-  `threshold_series(season)` returns that series. Read by nothing yet: it is
-  the input `P(top-10k)` was waiting on.
+  `threshold_series(season)` returns that series, and the Field panel's
+  `P(top-10k)` reads it (holiday F-6).
 - `data/raw/league/` — every rival's squad per finished gameweek (and your
   own), so December can grade September without re-asking the API.
 - `reports/decision_ledger.json` — the graded decision record; written
@@ -1331,7 +1332,7 @@ because the collector behind it is not loaded (12.0):
 | Planning → Board: **the price-timing line shows a number** (W5) | `[optimizer] price_timing` on (it is, by default) *and* a nightly price log long enough to return a row per owned player | Eleven days banked; the 23:15 job is one of the seven in 12.0 |
 | League → Field: **expected overall-rank change** (W4) | 5 graded gameweeks carrying both `my_points` and `overall_rank`; GW1's rank is null | 2 of 5 (GW2, GW3) — ~GW6 |
 | Planning → Chips: **WC + BB pair row** (W3) | a `[dgw]` entry in `data/chip_scenarios.toml`, which the writer only creates from a real double in the published list | Absent, correctly: the published list has no double. The first rearrangement FPL announces |
-| League → Field: **`P(top-10k)`** (W4) | a top-10k weekly score-threshold series; no source gaffer reads had one | Banking since holiday F-4 (`data/live/top_threshold_log.parquet`, daily); the row itself is still to be built on it |
+| League → Field: **`P(top-10k)`** (W4) | a top-10k weekly score-threshold series; no source gaffer reads had one | Banking since holiday F-4 (`data/live/top_threshold_log.parquet`, daily); the row reads it since F-6 and waits only for two banked gameweeks |
 
 Two verdicts also accrue by gameweek rather than by code: `gaffer evaluate
 --news-shadow` has its second reading available now that GW3 is graded
@@ -1457,8 +1458,8 @@ brainstorm would start from, in the order the 2026-09-01 research ranked it
    blanks and zeros buckets *and* a K ≥ 5 replay.
 2. **The K ≥ 5 role replay** (12.3) — small, and it should go first because
    it changes what the minutes model ships with.
-3. ~~A top-10k score-threshold scrape~~ — banked daily since holiday F-4;
-   what is left is the Field panel's `P(top-10k)` row built on the series.
+3. ~~A top-10k score-threshold scrape~~ — banked daily since holiday F-4,
+   and read by the Field panel's `P(top-10k)` row since F-6.
 4. **`p_play` top-bin recalibration (C2)** — 0.936 predicted vs 0.912
    observed on n=1519; an isotonic step, tiny and measurable.
 5. **Home/away rolling splits (C3)** — cheap, never in any arm.
