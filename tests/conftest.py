@@ -36,7 +36,8 @@ def _clear_process_lifetime_caches():
         ("gaffer.web.field_frame", lambda m: m.clear_cache()),
         ("gaffer.optimize.scenarios", lambda m: m.scenario_noise.cache_clear()),
         ("gaffer.web.routers.league", lambda m: m._OVERVIEW.clear()),
-        ("gaffer.web.routers.league_sim", lambda m: m._CACHE.clear()),
+        ("gaffer.web.routers.league_sim", lambda m: (m._CACHE.clear(),
+                                                       m._FRESH.clear())),
         ("gaffer.web.routers.live", lambda m: (m.RACE_SERIES.clear(),
                                                m.RACE_RIVAL.clear())),
     ):

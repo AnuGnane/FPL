@@ -601,7 +601,8 @@ def test_the_ninth_key_evicts_the_oldest_stored(cache):
     assert cache._FRESH <= set(cache._CACHE)
 
 
-def test_a_restored_key_moves_to_the_newest_end(cache):
+def test_a_key_stored_again_moves_to_the_newest_end(cache):
+    """A fresh run for a league is the newest entry, whatever it replaced (F-9)."""
     cache._cache_store("a", ("sim-a", "in-a"))
     cache._cache_store("b", ("sim-b", "in-b"))
     cache._cache_store("a", ("sim-a2", "in-a2"))
@@ -659,6 +660,7 @@ def test_cached_only_still_answers_none_on_a_miss(client, fake):
     client.get("/api/league/sim")
     fetched = len(fake.calls)
 
+    assert league_sim._run(load_config(), 3, cached_only=True) is not None
     assert league_sim._run(load_config(), 3, cached_only=True,
                            league_id=9) is None
     assert len(fake.calls) == fetched

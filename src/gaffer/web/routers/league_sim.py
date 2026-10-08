@@ -76,7 +76,7 @@ switching back re-ran the Monte Carlo (GUIDE §12.4's v15 residual).
 
 
 CACHE_ENTRIES = 8
-"""How many ``(league, run)`` answers the cache keeps.
+"""How many ``(league, run)`` answers the cache keeps (holiday F-9).
 
 An entry carries fifty squads' inputs, so the map is bounded; eight covers
 the leagues one entry plays in with room for the keys a fresh advise run
