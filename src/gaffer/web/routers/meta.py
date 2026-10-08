@@ -46,6 +46,7 @@ from gaffer.optimize.chip_policy import (
 from gaffer.optimize.chips import chip_plan, evaluate_chips
 from gaffer.optimize.milp import SolveInput
 from gaffer.price_log import PRICE_LOG_PATH
+from gaffer.tracking import latest_health
 from gaffer.web.schemas import (
     ArtifactItem,
     BackupHealth,
@@ -621,10 +622,9 @@ def health() -> Health:
     except Exception:  # noqa: BLE001 — no config, no directory: never is fine
         last_backup = None
 
-    model_health = None
-    health_file = REPORTS / "health.json"
-    if health_file.exists():
-        model_health = json.loads(health_file.read_text())
+    # v18d §2's residual, closed in the holiday's F-8: the health file's path
+    # lives in ``tracking.HEALTH_PATH`` alone, so this route reads it there.
+    model_health = latest_health()
 
     artifacts = []
     for path in sorted(REPORTS.glob("*")):
