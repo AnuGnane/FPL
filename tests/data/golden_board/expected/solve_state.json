@@ -174,11 +174,11 @@
   "chip_plan": [
    {
     "chip": "bboost",
-    "gw": 7
+    "gw": 8
    },
    {
     "chip": "bboost",
-    "gw": 8
+    "gw": 7
    },
    {
     "chip": "bboost",
@@ -190,11 +190,11 @@
    },
    {
     "chip": "bboost",
-    "gw": 4
+    "gw": 5
    },
    {
     "chip": "bboost",
-    "gw": 5
+    "gw": 4
    }
   ],
   "decay": 0.85,

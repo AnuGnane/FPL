@@ -1,9 +1,9 @@
 {
  "recorded_at": "2026-09-08T09:29:43+00:00",
- "written_at": "2026-09-12T12:11:43+00:00",
+ "written_at": "2026-10-08T21:17:29+00:00",
  "recorded_by": "python -m tests.golden_client --record; --write after a retrain",
  "gw": 4,
- "commit": "1af3ac0",
+ "commit": "8ddd892",
  "config": {
   "entry_id": 2210493,
   "league_id": 1794743,
@@ -94,21 +94,21 @@
   "data/history/understat_player.parquet": "85414f1da6b4f8394d82abe5b97ba26ee3c70cc2018a926cf684869e117cd78c",
   "data/history/understat_team.parquet": "f26f291a0bc26d3f9ac32cb037e3a6789cb6af039ecca0a8f80368e7937f5848",
   "data/set_pieces.toml": "absent",
-  "models/attacking.joblib": "935a9b61b1fcb1645215b4ad5e89ac1728f291c549e9811f2a6b3593dd495df0",
-  "models/attacking.meta.json": "3bd2e0e75fdb6550bc575e80ac038e53bc73cc1b449c8317789a689b75e240af",
-  "models/blend.params.json": "039ec203c2593931071b44593834f0fc5795d0150644214543b3f74a2b6a66c6",
-  "models/bonus.joblib": "614570ce94d91d364f52d3404b6caff2149f9365e4e1f0351a71bebfeb5cc1fe",
-  "models/bonus.meta.json": "445ccaa8bd2037bb4a3d1600c187e9b5c0b6c7b16de67824624b7cdbc36fcca0",
-  "models/calibration.joblib": "34743051990bb2245ae5e94f47f842f8f1480f48e1b852342d2cb845380256d7",
-  "models/calibration.meta.json": "e53a6fefd613d8f56b92436bf018bb9331f917157d218cbdf5d579e60708aa08",
-  "models/defcon.joblib": "9a8cd20d61c05138a492d33c97c1f2cd75d4676eacd755b73ac2503fb162e81d",
-  "models/defcon.meta.json": "0d060ffc436c5ff720357ab1e19bee57b293946b73b0035d3d0b99235c033237",
-  "models/minutes.joblib": "bde9040abcfcde81aea969638b989ac08376b6185821d1d5beca71b01e57e5fa",
-  "models/minutes.meta.json": "cb8c525130e70f5b8856e07138ffae6c1448df3d07965fbc588d5908c677b2e6",
-  "models/saves.joblib": "9db988b641c1e6d2e64aa602ec7019a84e44476abc8d6e5ff84950c592afb9c8",
-  "models/saves.meta.json": "2e719fbe5a8c6c82058925c5f6e0c6b9e515cac19c2cf7f290c5a4b0172806ac",
-  "models/team.joblib": "db292e8eb957b159c1439962732cd9268170a7c161848be33f491c10fe340a9a",
-  "models/team.meta.json": "73dba721b95eb5e5f352dadd8982ae376d41b09f4765f71dd1ed4ab3f35be9ea"
+  "models/attacking.joblib": "5bc18cd1d99b537c941cfd78b5982387a2883cc91556eeec03e52bfa47a335c6",
+  "models/attacking.meta.json": "52482fa5da1311df3401fe9736779c27e75d20c38a482e9d47a8fbf8ade7e8dc",
+  "models/blend.params.json": "b0a61c5a2a0bb9e8231eea17f9438ac20662de6f04cebc424358b5553a060d82",
+  "models/bonus.joblib": "290f9d7c91f83a5a51f39d101f91b794e89acd9e8dd8f77fc85014983452e41e",
+  "models/bonus.meta.json": "a5d209514862293bef01792d86dbc3797afa913a66fdfd7df0c31f2e7f42aa59",
+  "models/calibration.joblib": "cd98d95ef314cd4f7a91116f66f52b2a6f3f4611d1e1601c0aba897cf5a32212",
+  "models/calibration.meta.json": "0e6ae5535610192c43b7345731d5d15c34ee779b16761cf3584496287645a431",
+  "models/defcon.joblib": "6c9788c5c2b8da7a40ed469fbf74765977c725714e47541bee27112187e685c5",
+  "models/defcon.meta.json": "62acc18b2fc77115c0e605162004247e6b6c1a6dd6237f260654fc9d59d677ac",
+  "models/minutes.joblib": "eddada4549643e0035e328245941c88b4164e29566c85f2cda8696dcc5561a6f",
+  "models/minutes.meta.json": "1f6382671760ec45577def1dd5151ede160c6318e2d00db8454f3b344e6fff07",
+  "models/saves.joblib": "ef775791ba02b3d91a1bff18e30083d123290fe64f46bee19be493aac38c2879",
+  "models/saves.meta.json": "332874bc97286a56551dd2bd3f3a7666a6c4673948a413c98b9e4451702a280c",
+  "models/team.joblib": "84b192cee7db49a7f222678527455593c4ef5152d6eac561b4eaab217b6216f9",
+  "models/team.meta.json": "a7f4648f47455ae036384d7ff4ce42e9bc78c740e49e44d8d6e361e7e613372c"
  },
  "responses": {
   "count": 759,
@@ -124,5 +124,5 @@
   "vice": true,
   "plan_weeks": 6
  },
- "runtime_s": 160.6
+ "runtime_s": 502.1
 }
