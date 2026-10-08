@@ -571,20 +571,43 @@ def cache(monkeypatch):
     return league_sim
 
 
-def test_a_second_store_replaces_the_first_and_answers_for_the_newest(cache):
-    """Storing is one step, not a clear and then an assignment.
+def test_a_second_store_keeps_the_first_beside_it(cache):
+    """Two leagues' answers live side by side (F-9; the slot used to be one).
 
-    It used to be two, and a second request's clear ran between the first's,
-    discarding the answer it had just banked: a what-if asking for
-    ``cached_only`` a second after a sim it had watched succeed got a 204.
+    Storing is still one step under the lock, and ``_FRESH`` still only
+    describes entries the cache holds.
     """
     cache._cache_store("a", ("sim-a", "in-a"))
     cache._cache_store("b", ("sim-b", "in-b"))
 
-    assert list(cache._CACHE) == ["b"]        # one gameweek at a time
+    assert list(cache._CACHE) == ["a", "b"]
+    assert cache._cache_get("a") == ("sim-a", "in-a")
     assert cache._cache_get("b") == ("sim-b", "in-b")
-    assert cache._cache_get("a") is None
     assert cache._FRESH <= set(cache._CACHE)  # never describes a gone entry
+
+
+def test_the_ninth_key_evicts_the_oldest_stored(cache):
+    """Bounded at eight, oldest stored first, and a read does not refresh."""
+    for i in range(cache.CACHE_ENTRIES):
+        cache._cache_store(i, (f"sim-{i}", f"in-{i}"))
+    assert cache._cache_get(0) == ("sim-0", "in-0")  # a read, not a refresh
+
+    cache._cache_store("ninth", ("sim-9", "in-9"))
+
+    assert len(cache._CACHE) == cache.CACHE_ENTRIES == 8
+    assert cache._cache_get(0) is None
+    assert cache._cache_get(1) == ("sim-1", "in-1")
+    assert 0 not in cache._FRESH
+    assert cache._FRESH <= set(cache._CACHE)
+
+
+def test_a_restored_key_moves_to_the_newest_end(cache):
+    cache._cache_store("a", ("sim-a", "in-a"))
+    cache._cache_store("b", ("sim-b", "in-b"))
+    cache._cache_store("a", ("sim-a2", "in-a2"))
+
+    assert list(cache._CACHE) == ["b", "a"]
+    assert cache._cache_get("a") == ("sim-a2", "in-a2")
 
 
 def test_a_run_is_banked_once_however_often_it_is_read(cache):
@@ -595,14 +618,14 @@ def test_a_run_is_banked_once_however_often_it_is_read(cache):
     assert cache._take_fresh("a") is False
 
 
-def test_a_second_request_landing_mid_swap_does_not_lose_its_answer(cache,
-                                                                    monkeypatch):
+def test_a_second_request_landing_mid_store_does_not_lose_its_answer(cache,
+                                                                     monkeypatch):
     """The interleaving itself, driven rather than raced.
 
     Uvicorn serves these endpoints on a thread pool, so two page loads a
-    moment apart really do land in the swap together. Here the first store's
-    ``clear()`` hands control to a second one; the second's answer is the one
-    banked last and must be the one the cache holds.
+    moment apart really do land in the store together. Here the first
+    store's assignment hands control to a second one; under the lock the
+    second waits, and both answers are held once it has run.
     """
     import threading
 
@@ -611,19 +634,34 @@ def test_a_second_request_landing_mid_swap_does_not_lose_its_answer(cache,
     tripped = threading.Event()
 
     class Interleaving(dict):
-        def clear(self):
+        def __setitem__(self, key, value):
             if not tripped.is_set():
                 tripped.set()
                 second.start()
-                second.join(0.5)  # under the fix this is a timeout, not a wait
-            super().clear()
+                second.join(0.5)  # under the lock this is a timeout, not a wait
+            super().__setitem__(key, value)
 
     monkeypatch.setattr(cache, "_CACHE", Interleaving())
     cache._cache_store("a", ("sim-a", "in-a"))
     second.join()
 
-    assert len(cache._CACHE) == 1
+    assert list(cache._CACHE) == ["a", "b"]  # the second waited its turn
+    assert cache._FRESH == {"a", "b"}
+    assert cache._cache_get("a") == ("sim-a", "in-a")
     assert cache._cache_get("b") == ("sim-b", "in-b")
+
+
+def test_cached_only_still_answers_none_on_a_miss(client, fake):
+    """Another league's entry in the map is not this league's answer."""
+    from gaffer.config import load_config
+    from gaffer.web.routers import league_sim
+
+    client.get("/api/league/sim")
+    fetched = len(fake.calls)
+
+    assert league_sim._run(load_config(), 3, cached_only=True,
+                           league_id=9) is None
+    assert len(fake.calls) == fetched
 
 
 def test_the_sim_defaults_to_the_focus_league(client, fake):
@@ -650,3 +688,17 @@ def test_the_whatif_carries_the_league(client, fake):
                        json={"pins": [], "league_id": 9})
     assert resp.status_code == 200
     assert 9 in {c[0] for c in fake.calls if isinstance(c, tuple)}
+
+
+def test_two_leagues_alternated_are_both_answered_from_the_cache(client,
+                                                                 fake):
+    """F-9: switching back to a league does not re-run its Monte Carlo."""
+    client.get("/api/league/sim")
+    client.get("/api/league/sim?league_id=9")
+    fetched = len(fake.calls)
+
+    for _ in range(2):
+        assert client.get("/api/league/sim").status_code == 200
+        assert client.get("/api/league/sim?league_id=9").status_code == 200
+
+    assert len(fake.calls) == fetched
