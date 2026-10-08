@@ -90,7 +90,83 @@ MAX_FREE_TRANSFERS = 5
 # constants in the backtest rather than run through the team model (see
 # DEFAULT_P_CS / DEFAULT_E_GC, re-exported above from models.train). It keeps
 # the replay to one model refit per window and removes a source of
-# per-gameweek variance that is not what this harness measures.
+# per-gameweek variance that is not what this harness measures. Since v20c
+# step zero REPLAY_TEAM_MODEL below can route them through the team head.
+
+REPLAY_TEAM_MODEL = False
+"""v20 §2 v20c step zero: replay ``p_cs``/``e_gc`` through the team model.
+
+``train_all`` refits ``models["team"]`` every window and, until this switch,
+nothing in the replay read it: the simple component path holds clean sheets
+at the constants above, so a change to the team head could not move a replay
+by a point. On, the weekly loop predicts the horizon's club-fixtures through
+the refit head and merges them onto the player rows as ``predict.py`` does,
+with no market (the replay has no odds in the loop). Off by default so every
+replay banked before v20 stays reproducible; the K = 5 re-baseline pair
+(``MULTISEED_DONE v20c0-harness-*``) is the Mac's.
+"""
+
+
+def club_fixtures(rows: pd.DataFrame) -> pd.DataFrame:
+    """One row per club-fixture in ``rows``, in the team model's frame.
+
+    Built from the player rows the replay already has, the way
+    ``advise.build_team_future`` builds its future frame: the club column is
+    ``code`` and ``home`` is ``was_home`` as a float (the engineered ``home``
+    where ``was_home`` is absent, and neutral where both are, which
+    Dixon-Coles reads as no home edge). The shipped head reads nothing else
+    (v20 §2 v20c step zero).
+    """
+    tg = (rows[["team_code", "opp_code", "gw", "season_idx"]]
+          .assign(home=rows["was_home"].astype(float)
+                  if "was_home" in rows.columns
+                  else rows.get("home", float("nan")))
+          .drop_duplicates(subset=["team_code", "gw", "opp_code"])
+          .rename(columns={"team_code": "code"})
+          .reset_index(drop=True))
+    return tg
+
+
+def with_team_model(comp: pd.DataFrame, rows: pd.DataFrame,
+                    team_model) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """``comp`` with ``p_cs``/``e_gc`` from ``team_model`` instead of constants.
+
+    ``comp`` is :func:`predict_components_simple`'s output for ``rows``,
+    positionally aligned with it, so ``opp_code`` is borrowed from ``rows``
+    for the merge and dropped after: the result keeps ``comp``'s columns in
+    the same order. The merge is ``predict.py``'s, keyed by club-fixture, so
+    a double gameweek's two fixtures each get their own clean sheet; a
+    fixture the team frame lacks takes the ``DEFAULT_P_CS`` fill. Also
+    returns the per-club-fixture predictions, which the lever line reads.
+    """
+    tg = club_fixtures(rows.reset_index(drop=True))
+    tp = team_model.predict(tg)
+    tp["opp_code"] = tg["opp_code"].values
+    tp = tp.rename(columns={"code": "team_code"})
+    cols = list(comp.columns)
+    out = comp.drop(columns=["p_cs", "e_gc"])
+    out["opp_code"] = rows["opp_code"].values
+    out = out.merge(tp, on=["team_code", "season_idx", "gw", "opp_code"],
+                    how="left")
+    out["p_cs"] = out["p_cs"].fillna(DEFAULT_P_CS)
+    out["e_gc"] = out["e_gc"].fillna(DEFAULT_E_GC)
+    return out[cols], tp
+
+
+def team_model_lever_line(fixtures: pd.DataFrame) -> str:
+    """The v20c step-zero lever check: does the replay's ``p_cs`` vary?
+
+    Over the season's distinct club-fixtures, the min, the max and the count
+    of distinct ``p_cs`` values. A harness whose line reads 0.25 at both ends
+    is the constant path, not the team model (v20 §2 v20c step zero).
+    """
+    if fixtures.empty:
+        return "REPLAY_TEAM_MODEL p_cs n=0"
+    uniq = fixtures.drop_duplicates(subset=["team_code", "gw", "opp_code"])
+    p = uniq["p_cs"]
+    return (f"REPLAY_TEAM_MODEL p_cs min={p.min():.4f} max={p.max():.4f} "
+            f"distinct={p.round(6).nunique()} n={len(uniq)}")
+
 
 # Scoring rules for the replay. The live rules come from the API; a replay
 # must run offline, so it reads the same payload shape from the bundled
@@ -441,6 +517,7 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
     played_by_gw: dict[int, str] = {}
     log: list[dict] = []
     total = 0
+    team_fixtures: list[pd.DataFrame] = []
 
     for gw in range(start_gw, LAST_GW + 1):
         rows = season_rows[season_rows["gw"] == gw]
@@ -479,6 +556,9 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
             ep = oracle_ep(season_rows, gws)
         else:
             comp = predict_components_simple(models, horizon_rows)
+            if REPLAY_TEAM_MODEL:
+                comp, tp = with_team_model(comp, horizon_rows, models["team"])
+                team_fixtures.append(tp[tp["gw"] == gw])
             ep = ep_matrix(apply_calibration(assemble_ep(comp, scoring),
                                              models.get("calibration")))
         ep_by = {(int(r.code), int(r.gw)): float(r.ep) for r in ep.itertuples()}
@@ -620,6 +700,11 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
                         else round(float(plan.expected_pts), 2))})
         print(f"gw{gw}: {pts} (total {total})", flush=True)
 
+    if REPLAY_TEAM_MODEL:
+        print(team_model_lever_line(
+            pd.concat(team_fixtures, ignore_index=True) if team_fixtures
+            else pd.DataFrame(columns=["team_code", "gw", "opp_code",
+                                       "p_cs"])), flush=True)
     per_gw = round(total / len(log), 2) if log else 0.0
     store.save(pd.DataFrame(log), "live/backtest_log.parquet")
     return {"season": season, "from_gw": start_gw, "total": total,
