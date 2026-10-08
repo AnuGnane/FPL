@@ -61,12 +61,26 @@ a goal, an assist and the appearance — the week a captain "hauls" in ordinary
 FPL speech."""
 
 _CACHE: dict = {}
-"""``{key: (LeagueSim, SimInputs)}`` for one gameweek and one advice run.
+"""``{key: (LeagueSim, SimInputs)}``, one entry per league and advice run.
 
 The League hub, the What-if tab and This Week's chip all want the same answer
 inside a second of each other, and the what-if panel wants the *inputs* back
 so a pinned re-run does not re-fetch fifty squads. Keyed on the solve state's
 mtime, so a fresh advise run invalidates it without anybody clearing anything.
+
+Since holiday F-9 it holds up to :data:`CACHE_ENTRIES` keys, oldest stored
+evicted first (a plain dict keeps insertion order). It used to hold one, so
+switching leagues on the What-if tab threw the focus league's answer away and
+switching back re-ran the Monte Carlo (GUIDE §12.4's v15 residual).
+"""
+
+
+CACHE_ENTRIES = 8
+"""How many ``(league, run)`` answers the cache keeps.
+
+An entry carries fifty squads' inputs, so the map is bounded; eight covers
+the leagues one entry plays in with room for the keys a fresh advise run
+orphans, which are never asked for again and age out.
 """
 
 
@@ -106,17 +120,21 @@ def _cache_get(key):
 
 
 def _cache_store(key, value) -> None:
-    """Make ``key`` the one cached answer, in one indivisible step.
+    """Store ``key``'s answer and evict past the bound, in one indivisible step.
 
-    One gameweek's answer at a time; this is not an LRU. ``_FRESH`` is
-    replaced rather than added to, so it never outlives the entry it
+    Oldest *stored* goes first; a read does not refresh an entry, so this is
+    not an LRU (F-9). A re-stored key moves to the newest end. An evicted key
+    leaves ``_FRESH`` with its entry, so the set never outlives what it
     describes.
     """
     with _LOCK:
-        _CACHE.clear()
+        _CACHE.pop(key, None)
         _CACHE[key] = value
-        _FRESH.clear()
         _FRESH.add(key)
+        while len(_CACHE) > CACHE_ENTRIES:
+            oldest = next(iter(_CACHE))
+            del _CACHE[oldest]
+            _FRESH.discard(oldest)
 
 
 def _take_fresh(key) -> bool:
@@ -176,7 +194,8 @@ def _run(cfg, gw: int | None = None, *, cached_only: bool = False,
     page load, at the hour everybody in the country is loading pages.
 
     ``league_id`` (v15 §5.2) runs another of the entry's leagues; ``None`` is
-    the focus. It is part of the cache key, so the two never share an answer.
+    the focus. It is part of the cache key, so the two never share an answer,
+    and since F-9 each keeps its own entry rather than evicting the other's.
     """
     plan_gw = int(gw) if gw is not None else latest_gw()
     if plan_gw is None:

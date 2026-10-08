@@ -1408,9 +1408,6 @@ weekly use.
   defend, anything else says chase, with no dead-band, because the row costs
   one standings page and the dial's real answer (which honours the band)
   appears when the league is opened. The column is labelled "would".
-- **A non-focus league's sim shares the focus league's one-entry cache
-  slot** (v15): switching leagues on the What-if tab re-runs the Monte
-  Carlo rather than remembering both.
 - **The chip step reason needs a `chip_plan` on the solve state** (v16):
   `advise.py` writes it from the chip table's `play_now` rows, so a ladder
   rebuilt off a state written before v16 gives no chip reason and falls
