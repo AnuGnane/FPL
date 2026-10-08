@@ -216,11 +216,11 @@ def download_cup_matches(seasons: list[str], season_indexes: dict[str, int],
         if season not in codes_by_season:
             teams_path = f"data/{folder}/teams.csv"
             text = cached_get(http, f"{CUPS_RAW_BASE}/{teams_path}",
-                               Path(cache_dir) / teams_path)
+                              Path(cache_dir) / teams_path)
             codes_by_season[season] = (team_code_map(text, names)
                                        if text else {})
         text = cached_get(http, f"{CUPS_RAW_BASE}/{path}",
-                           Path(cache_dir) / path)
+                          Path(cache_dir) / path)
         if not text:
             continue
         frames.append(cup_match_rows(
