@@ -1,42 +1,56 @@
 {
  "alternative_plans": [
   {
-   "gap": -0.24,
+   "gap": 0.09,
    "plan_by_gw": [
     {
-     "bank": 0.3,
+     "bank": 0.4,
      "buys": [
       {
-       "code": 146426,
-       "ep": 6.83,
-       "name": "Ajayi",
+       "code": 455084,
+       "ep": 6.84,
+       "name": "Davis",
        "position": "DEF",
-       "price": 4.1
+       "price": 4.0
       },
       {
-       "code": 244851,
-       "ep": 8.32,
-       "name": "Palmer",
+       "code": 83299,
+       "ep": 9.08,
+       "name": "Dunk",
+       "position": "DEF",
+       "price": 4.5
+      },
+      {
+       "code": 244850,
+       "ep": 7.42,
+       "name": "Rogers",
        "position": "MID",
-       "price": 9.6
+       "price": 7.6
       }
      ],
      "chip": "bboost",
-     "expected_pts": 76.64,
+     "expected_pts": 81.8,
      "gw": 4,
-     "hit_cost": 4,
-     "hits": 1,
+     "hit_cost": 8,
+     "hits": 2,
      "sells": [
       {
-       "code": 494521,
-       "ep": 4.52,
-       "name": "Truffert",
+       "code": 451284,
+       "ep": 2.29,
+       "name": "van Ewijk",
        "position": "DEF",
-       "price": 5.5
+       "price": 4.0
+      },
+      {
+       "code": 219924,
+       "ep": 2.45,
+       "name": "Diop",
+       "position": "DEF",
+       "price": 4.0
       },
       {
        "code": 466052,
-       "ep": 3.88,
+       "ep": 3.44,
        "name": "Cherki",
        "position": "MID",
        "price": 7.7
@@ -44,53 +58,39 @@
      ]
     },
     {
-     "bank": 0.5,
+     "bank": 0.9,
      "buys": [
       {
        "code": 473284,
-       "ep": 7.26,
+       "ep": 5.12,
        "name": "Tzolakis",
        "position": "GKP",
        "price": 4.6
       },
       {
-       "code": 446008,
-       "ep": 7.13,
-       "name": "Mbeumo",
+       "code": 201658,
+       "ep": 6.55,
+       "name": "Tavernier",
        "position": "MID",
-       "price": 7.9
-      },
-      {
-       "code": 444102,
-       "ep": 5.07,
-       "name": "Evanilson",
-       "position": "FWD",
        "price": 6.0
       }
      ],
      "chip": "bboost",
-     "expected_pts": 74.32,
+     "expected_pts": 72.46,
      "gw": 5,
-     "hit_cost": 8,
-     "hits": 2,
+     "hit_cost": 4,
+     "hits": 1,
      "sells": [
       {
        "code": 243298,
-       "ep": 5.54,
+       "ep": 5.72,
        "name": "Gakpo",
        "position": "MID",
        "price": 7.1
       },
       {
-       "code": 475168,
-       "ep": 4.11,
-       "name": "Jo\u00e3o Pedro",
-       "position": "FWD",
-       "price": 7.6
-      },
-      {
        "code": 67089,
-       "ep": 0.41,
+       "ep": 0.35,
        "name": "Dubravka",
        "position": "GKP",
        "price": 4.0
@@ -98,40 +98,40 @@
      ]
     },
     {
-     "bank": 0.5,
+     "bank": 0.9,
      "buys": [],
      "chip": "bboost",
-     "expected_pts": 71.22,
+     "expected_pts": 70.55,
      "gw": 6,
      "hit_cost": 0,
      "hits": 0,
      "sells": []
     },
     {
-     "bank": 0.5,
+     "bank": 0.9,
      "buys": [],
      "chip": "bboost",
-     "expected_pts": 77.42,
+     "expected_pts": 74.71,
      "gw": 7,
      "hit_cost": 0,
      "hits": 0,
      "sells": []
     },
     {
-     "bank": 0.5,
+     "bank": 0.9,
      "buys": [],
      "chip": "bboost",
-     "expected_pts": 75.77,
+     "expected_pts": 72.26,
      "gw": 8,
      "hit_cost": 0,
      "hits": 0,
      "sells": []
     },
     {
-     "bank": 0.5,
+     "bank": 0.9,
      "buys": [],
      "chip": "bboost",
-     "expected_pts": 74.33,
+     "expected_pts": 75.3,
      "gw": 9,
      "hit_cost": 0,
      "hits": 0,
@@ -140,42 +140,56 @@
    ]
   },
   {
-   "gap": -0.24,
+   "gap": 0.33,
    "plan_by_gw": [
     {
-     "bank": 0.3,
+     "bank": 0.4,
      "buys": [
       {
-       "code": 146426,
-       "ep": 6.83,
-       "name": "Ajayi",
+       "code": 455084,
+       "ep": 6.84,
+       "name": "Davis",
        "position": "DEF",
-       "price": 4.1
+       "price": 4.0
       },
       {
-       "code": 244851,
-       "ep": 8.32,
-       "name": "Palmer",
+       "code": 83299,
+       "ep": 9.08,
+       "name": "Dunk",
+       "position": "DEF",
+       "price": 4.5
+      },
+      {
+       "code": 244850,
+       "ep": 7.42,
+       "name": "Rogers",
        "position": "MID",
-       "price": 9.6
+       "price": 7.6
       }
      ],
      "chip": "bboost",
-     "expected_pts": 76.64,
+     "expected_pts": 81.8,
      "gw": 4,
-     "hit_cost": 4,
-     "hits": 1,
+     "hit_cost": 8,
+     "hits": 2,
      "sells": [
       {
-       "code": 494521,
-       "ep": 4.52,
-       "name": "Truffert",
+       "code": 451284,
+       "ep": 2.29,
+       "name": "van Ewijk",
        "position": "DEF",
-       "price": 5.5
+       "price": 4.0
+      },
+      {
+       "code": 219924,
+       "ep": 2.45,
+       "name": "Diop",
+       "position": "DEF",
+       "price": 4.0
       },
       {
        "code": 466052,
-       "ep": 3.88,
+       "ep": 3.44,
        "name": "Cherki",
        "position": "MID",
        "price": 7.7
@@ -183,53 +197,39 @@
      ]
     },
     {
-     "bank": 0.4,
+     "bank": 0.3,
      "buys": [
       {
        "code": 473284,
-       "ep": 7.26,
+       "ep": 5.12,
        "name": "Tzolakis",
        "position": "GKP",
        "price": 4.6
       },
       {
-       "code": 446008,
-       "ep": 7.13,
-       "name": "Mbeumo",
-       "position": "MID",
-       "price": 7.9
-      },
-      {
-       "code": 219847,
-       "ep": 4.16,
-       "name": "Havertz",
-       "position": "FWD",
-       "price": 7.5
+       "code": 465642,
+       "ep": 5.44,
+       "name": "Thiaw",
+       "position": "DEF",
+       "price": 5.0
       }
      ],
      "chip": "bboost",
-     "expected_pts": 73.41,
+     "expected_pts": 71.52,
      "gw": 5,
-     "hit_cost": 8,
-     "hits": 2,
+     "hit_cost": 4,
+     "hits": 1,
      "sells": [
       {
-       "code": 243298,
-       "ep": 5.54,
-       "name": "Gakpo",
-       "position": "MID",
-       "price": 7.1
-      },
-      {
-       "code": 219168,
-       "ep": 4.47,
-       "name": "Isak",
-       "position": "FWD",
-       "price": 9.0
+       "code": 494521,
+       "ep": 4.63,
+       "name": "Truffert",
+       "position": "DEF",
+       "price": 5.5
       },
       {
        "code": 67089,
-       "ep": 0.41,
+       "ep": 0.35,
        "name": "Dubravka",
        "position": "GKP",
        "price": 4.0
@@ -237,40 +237,40 @@
      ]
     },
     {
-     "bank": 0.4,
+     "bank": 0.3,
      "buys": [],
      "chip": "bboost",
-     "expected_pts": 71.96,
+     "expected_pts": 73.61,
      "gw": 6,
      "hit_cost": 0,
      "hits": 0,
      "sells": []
     },
     {
-     "bank": 0.4,
+     "bank": 0.3,
      "buys": [],
      "chip": "bboost",
-     "expected_pts": 77.47,
+     "expected_pts": 72.38,
      "gw": 7,
      "hit_cost": 0,
      "hits": 0,
      "sells": []
     },
     {
-     "bank": 0.4,
+     "bank": 0.3,
      "buys": [],
      "chip": "bboost",
-     "expected_pts": 76.59,
+     "expected_pts": 72.41,
      "gw": 8,
      "hit_cost": 0,
      "hits": 0,
      "sells": []
     },
     {
-     "bank": 0.4,
+     "bank": 0.3,
      "buys": [],
      "chip": "bboost",
-     "expected_pts": 73.75,
+     "expected_pts": 73.55,
      "gw": 9,
      "hit_cost": 0,
      "hits": 0,
@@ -282,66 +282,59 @@
  "alternatives": [
   {
    "code": 204120,
-   "ep": 8.478773817017343,
+   "ep": 7.80848712292144,
    "league_eo": 0.0,
    "name": "Boscagli",
-   "p_haul": 0.05530440609871334
-  },
-  {
-   "code": 83299,
-   "ep": 7.974629789869021,
-   "league_eo": 0.0,
-   "name": "Dunk",
-   "p_haul": 0.03086010871445144
+   "p_haul": 0.04353039698395256
   },
   {
    "code": 610799,
-   "ep": 7.904057421813982,
+   "ep": 7.401991924709125,
    "league_eo": 6.1,
    "name": "Vuskovic",
-   "p_haul": 0.01980000921774161
+   "p_haul": 0.017711519991964297
   },
   {
-   "code": 232351,
-   "ep": 6.521453784504822,
-   "league_eo": 0.0,
-   "name": "Giles",
-   "p_haul": 0.0001526126135096284
+   "code": 226597,
+   "ep": 7.073679384817714,
+   "league_eo": 4.1,
+   "name": "Gabriel",
+   "p_haul": 0.006064672078198274
   },
   {
    "code": 231416,
-   "ep": 6.445779089606916,
+   "ep": 6.7641698437591655,
    "league_eo": 0.0,
    "name": "F.Kad\u0131o\u011flu",
-   "p_haul": 0.030862234680478218
+   "p_haul": 0.05245974809333931
   }
  ],
  "bank": 0.8,
  "bench": [
   {
-   "code": 475168,
-   "ep": 4.92,
-   "name": "Jo\u00e3o Pedro",
-   "position": "FWD",
-   "price": 7.7
+   "code": 209036,
+   "ep": 4.42,
+   "name": "Gu\u00e9hi",
+   "position": "DEF",
+   "price": 6.0
   },
   {
-   "code": 451284,
-   "ep": 3.73,
-   "name": "van Ewijk",
-   "position": "DEF",
-   "price": 4.0
+   "code": 219168,
+   "ep": 3.89,
+   "name": "Isak",
+   "position": "FWD",
+   "price": 9.1
   },
   {
    "code": 219924,
-   "ep": 2.57,
+   "ep": 2.45,
    "name": "Diop",
    "position": "DEF",
    "price": 4.0
   },
   {
    "code": 67089,
-   "ep": 0.4,
+   "ep": 0.35,
    "name": "Dubravka",
    "position": "GKP",
    "price": 4.0
@@ -349,21 +342,21 @@
  ],
  "buys": [
   {
-   "code": 146426,
-   "ep": 6.83,
-   "frequency": 0.8,
-   "name": "Ajayi",
+   "code": 455084,
+   "ep": 6.84,
+   "frequency": 0.925,
+   "name": "Davis",
    "position": "DEF",
-   "price": 4.1,
+   "price": 4.0,
    "tag": "attack"
   },
   {
-   "code": 244851,
-   "ep": 8.32,
-   "frequency": 0.925,
-   "name": "Palmer",
+   "code": 244850,
+   "ep": 7.42,
+   "frequency": 0.475,
+   "name": "Rogers",
    "position": "MID",
-   "price": 9.6,
+   "price": 7.6,
    "tag": "attack"
   }
  ],
@@ -372,109 +365,110 @@
   "max_transfers": 15
  },
  "captain": {
-  "code": 244851,
-  "ep": 8.32,
-  "name": "Palmer",
+  "code": 60307,
+  "ep": 11.01,
+  "name": "Gro\u00df",
   "position": "MID",
-  "price": 9.6
+  "price": 5.5
  },
  "captain_note": null,
  "captain_options": [
   {
-   "code": 244851,
-   "differential": true,
-   "ep": 8.32246395211265,
-   "league_eo": 14.3,
-   "name": "Palmer",
-   "p_haul_total": 0.3638,
-   "position": "MID"
-  },
-  {
-   "code": 108416,
-   "differential": true,
-   "ep": 8.295236157351553,
-   "league_eo": 8.2,
-   "name": "Egan",
-   "p_haul_total": 0.3616,
-   "position": "DEF"
-  },
-  {
    "code": 60307,
    "differential": true,
-   "ep": 8.218896802831257,
+   "ep": 11.013536796783239,
    "league_eo": 28.6,
    "name": "Gro\u00df",
-   "p_haul_total": 0.3553,
+   "p_haul_total": 0.5626,
    "position": "MID"
+  },
+  {
+   "code": 83299,
+   "differential": true,
+   "ep": 9.079773510386214,
+   "league_eo": 0.0,
+   "name": "Dunk",
+   "p_haul_total": 0.4245,
+   "position": "DEF"
   },
   {
    "code": 489639,
    "differential": false,
-   "ep": 7.709086535362299,
+   "ep": 7.868700063398022,
    "league_eo": 40.8,
    "name": "Verbruggen",
-   "p_haul_total": 0.3128,
+   "p_haul_total": 0.3262,
    "position": "GKP"
+  },
+  {
+   "code": 244850,
+   "differential": false,
+   "ep": 7.42131027116291,
+   "league_eo": 18.4,
+   "name": "Rogers",
+   "p_haul_total": 0.2885,
+   "position": "MID"
   },
   {
    "code": 222531,
    "differential": false,
-   "ep": 7.464754309653381,
+   "ep": 7.2397142205630125,
    "league_eo": 6.1,
    "name": "Gibbs-White",
-   "p_haul_total": 0.2922,
+   "p_haul_total": 0.2732,
    "position": "MID"
   }
  ],
  "chip_table": [
   {
    "chip": "bboost",
-   "gain": 18.36,
+   "gain": 16.81,
+   "gw": 8,
+   "gw2": null,
+   "per_week": 16.81,
+   "play_now": true,
+   "threshold": 11.33,
+   "threshold_source": "theta"
+  },
+  {
+   "chip": "bboost",
+   "gain": 16.11,
    "gw": 7,
    "gw2": null,
-   "per_week": 18.36,
+   "per_week": 16.11,
    "play_now": true,
    "threshold": 11.94,
    "threshold_source": "theta"
   },
   {
    "chip": "bboost",
-   "gain": 18.04,
-   "gw": 8,
-   "gw2": null,
-   "per_week": 18.04,
-   "play_now": true,
-   "threshold": 11.33,
-   "threshold_source": "theta"
-  },
-  {
-   "chip": "bboost",
-   "gain": 17.94,
+   "gain": 15.91,
    "gw": 9,
    "gw2": null,
-   "per_week": 17.94,
+   "per_week": 15.91,
    "play_now": true,
    "threshold": 11.33,
    "threshold_source": "theta"
   },
   {
    "chip": "bboost",
-   "gain": 17.26,
+   "gain": 15.52,
    "gw": 6,
    "gw2": null,
-   "per_week": 17.26,
+   "per_week": 15.52,
    "play_now": true,
    "threshold": 12.33,
    "threshold_source": "theta"
   },
   {
-   "chip": "bboost",
-   "gain": 16.09,
+   "chip": "freehit",
+   "gain": 15.22,
    "gw": 4,
    "gw2": null,
-   "per_week": 16.09,
-   "play_now": true,
-   "threshold": 12.79,
+   "note": "excludes horizon effects",
+   "per_week": 15.22,
+   "play_now": false,
+   "threshold": 15.61,
    "threshold_source": "theta"
   },
   {
@@ -488,67 +482,66 @@
    "threshold_source": "theta"
   },
   {
-   "chip": "freehit",
-   "gain": 13.54,
+   "chip": "bboost",
+   "gain": 13.51,
    "gw": 4,
    "gw2": null,
-   "note": "excludes horizon effects",
-   "per_week": 13.54,
-   "play_now": false,
-   "threshold": 15.61,
+   "per_week": 13.51,
+   "play_now": true,
+   "threshold": 12.79,
    "threshold_source": "theta"
   },
   {
    "chip": "freehit",
-   "gain": 8.0,
+   "gain": 7.76,
    "gw": 5,
    "gw2": null,
    "note": "excludes horizon effects",
-   "per_week": 8.0,
+   "per_week": 7.76,
    "play_now": false,
    "threshold": 15.61,
    "threshold_source": "theta"
   },
   {
    "chip": "freehit",
-   "gain": 6.4,
+   "gain": 5.2,
    "gw": 6,
    "gw2": null,
    "note": "excludes horizon effects",
-   "per_week": 6.4,
+   "per_week": 5.2,
    "play_now": false,
    "threshold": 15.61,
    "threshold_source": "theta"
   },
   {
    "chip": "freehit",
-   "gain": 1.72,
-   "gw": 8,
-   "gw2": null,
-   "note": "excludes horizon effects",
-   "per_week": 1.72,
-   "play_now": false,
-   "threshold": 15.61,
-   "threshold_source": "theta"
-  },
-  {
-   "chip": "freehit",
-   "gain": 1.23,
+   "gain": 4.07,
    "gw": 7,
    "gw2": null,
    "note": "excludes horizon effects",
-   "per_week": 1.23,
+   "per_week": 4.07,
    "play_now": false,
    "threshold": 15.61,
    "threshold_source": "theta"
   },
   {
    "chip": "freehit",
-   "gain": 1.18,
+   "gain": 2.57,
+   "gw": 8,
+   "gw2": null,
+   "note": "excludes horizon effects",
+   "per_week": 2.57,
+   "play_now": false,
+   "threshold": 15.61,
+   "threshold_source": "theta"
+  },
+  {
+   "chip": "freehit",
+   "gain": 0.22,
    "gw": 9,
    "gw2": null,
    "note": "excludes horizon effects",
-   "per_week": 1.18,
+   "per_week": 0.22,
    "play_now": false,
    "threshold": 14.89,
    "threshold_source": "theta"
@@ -558,13 +551,13 @@
  "data_warning": null,
  "deadline": "2026-09-12T12:30:00Z",
  "demoted_captain": null,
- "expected_pts": 76.64,
+ "expected_pts": 77.49,
  "gw": 4,
  "hits": 1,
  "mode": "weekly",
  "move_frequencies": [
   {
-   "code": 244851,
+   "code": 455084,
    "count": 37,
    "frequency": 0.925,
    "gw": 4,
@@ -572,15 +565,15 @@
    "label": "buy"
   },
   {
-   "code": 146426,
-   "count": 32,
-   "frequency": 0.8,
+   "code": 83299,
+   "count": 29,
+   "frequency": 0.725,
    "gw": 4,
    "kind": "buy",
    "label": "buy"
   },
   {
-   "code": 444102,
+   "code": 201658,
    "count": 21,
    "frequency": 0.525,
    "gw": 4,
@@ -588,23 +581,31 @@
    "label": "buy"
   },
   {
-   "code": 232351,
-   "count": 6,
-   "frequency": 0.15,
+   "code": 244850,
+   "count": 19,
+   "frequency": 0.475,
    "gw": 4,
    "kind": "buy",
    "label": "buy"
   },
   {
    "code": 473284,
-   "count": 6,
-   "frequency": 0.15,
+   "count": 5,
+   "frequency": 0.125,
    "gw": 4,
    "kind": "buy",
    "label": "buy"
   },
   {
-   "code": 219847,
+   "code": 177815,
+   "count": 4,
+   "frequency": 0.1,
+   "gw": 4,
+   "kind": "buy",
+   "label": "buy"
+  },
+  {
+   "code": 226597,
    "count": 2,
    "frequency": 0.05,
    "gw": 4,
@@ -612,7 +613,7 @@
    "label": "buy"
   },
   {
-   "code": 204120,
+   "code": 85633,
    "count": 1,
    "frequency": 0.025,
    "gw": 4,
@@ -620,39 +621,23 @@
    "label": "buy"
   },
   {
-   "code": 446008,
+   "code": 513418,
    "count": 1,
    "frequency": 0.025,
    "gw": 4,
    "kind": "buy",
    "label": "buy"
-  },
-  {
-   "code": 244851,
-   "count": 15,
-   "frequency": 0.375,
-   "gw": 4,
-   "kind": "captain",
-   "label": "captain"
-  },
-  {
-   "code": 108416,
-   "count": 13,
-   "frequency": 0.325,
-   "gw": 4,
-   "kind": "captain",
-   "label": "captain"
   },
   {
    "code": 60307,
-   "count": 11,
-   "frequency": 0.275,
+   "count": 39,
+   "frequency": 0.975,
    "gw": 4,
    "kind": "captain",
    "label": "captain"
   },
   {
-   "code": 204120,
+   "code": 83299,
    "count": 1,
    "frequency": 0.025,
    "gw": 4,
@@ -669,9 +654,17 @@
   },
   {
    "code": 0,
-   "count": 38,
-   "frequency": 0.95,
+   "count": 34,
+   "frequency": 0.85,
    "gw": 5,
+   "kind": "hit",
+   "label": "hit"
+  },
+  {
+   "code": 0,
+   "count": 3,
+   "frequency": 0.075,
+   "gw": 6,
    "kind": "hit",
    "label": "hit"
   },
@@ -679,7 +672,7 @@
    "code": 0,
    "count": 2,
    "frequency": 0.05,
-   "gw": 9,
+   "gw": 7,
    "kind": "hit",
    "label": "hit"
   },
@@ -693,40 +686,24 @@
   },
   {
    "code": 466052,
-   "count": 38,
-   "frequency": 0.95,
-   "gw": 4,
-   "kind": "sell",
-   "label": "sell"
-  },
-  {
-   "code": 494521,
-   "count": 20,
-   "frequency": 0.5,
+   "count": 37,
+   "frequency": 0.925,
    "gw": 4,
    "kind": "sell",
    "label": "sell"
   },
   {
    "code": 219924,
-   "count": 17,
-   "frequency": 0.425,
+   "count": 32,
+   "frequency": 0.8,
    "gw": 4,
    "kind": "sell",
    "label": "sell"
   },
   {
-   "code": 219168,
-   "count": 15,
-   "frequency": 0.375,
-   "gw": 4,
-   "kind": "sell",
-   "label": "sell"
-  },
-  {
-   "code": 475168,
-   "count": 8,
-   "frequency": 0.2,
+   "code": 451284,
+   "count": 32,
+   "frequency": 0.8,
    "gw": 4,
    "kind": "sell",
    "label": "sell"
@@ -740,9 +717,33 @@
    "label": "sell"
   },
   {
-   "code": 451284,
-   "count": 2,
-   "frequency": 0.05,
+   "code": 219168,
+   "count": 4,
+   "frequency": 0.1,
+   "gw": 4,
+   "kind": "sell",
+   "label": "sell"
+  },
+  {
+   "code": 243298,
+   "count": 4,
+   "frequency": 0.1,
+   "gw": 4,
+   "kind": "sell",
+   "label": "sell"
+  },
+  {
+   "code": 494521,
+   "count": 3,
+   "frequency": 0.075,
+   "gw": 4,
+   "kind": "sell",
+   "label": "sell"
+  },
+  {
+   "code": 209036,
+   "count": 1,
+   "frequency": 0.025,
    "gw": 4,
    "kind": "sell",
    "label": "sell"
@@ -751,95 +752,95 @@
  "objective": {
   "buys": [
    {
-    "code": 146426,
-    "ep": 6.83,
-    "name": "Ajayi",
+    "code": 455084,
+    "ep": 6.84,
+    "name": "Davis",
     "position": "DEF"
    },
    {
-    "code": 244851,
-    "ep": 8.32,
-    "name": "Palmer",
-    "position": "MID"
+    "code": 83299,
+    "ep": 9.08,
+    "name": "Dunk",
+    "position": "DEF"
    },
    {
-    "code": 444102,
-    "ep": 6.08,
-    "name": "Evanilson",
-    "position": "FWD"
+    "code": 244850,
+    "ep": 7.42,
+    "name": "Rogers",
+    "position": "MID"
    }
   ],
-  "expected_pts": 77.05,
+  "expected_pts": 81.8,
   "hits": 2,
-  "line": "the objective wanted: Ajayi, Palmer, Evanilson in; Jo\u00e3o Pedro, Truffert, Cherki out; 2 hits",
+  "line": "the objective wanted: Davis, Dunk, Rogers in; van Ewijk, Diop, Cherki out; 2 hits",
   "sells": [
    {
-    "code": 475168,
-    "ep": 4.92,
-    "name": "Jo\u00e3o Pedro",
-    "position": "FWD"
+    "code": 451284,
+    "ep": 2.29,
+    "name": "van Ewijk",
+    "position": "DEF"
    },
    {
-    "code": 494521,
-    "ep": 4.52,
-    "name": "Truffert",
+    "code": 219924,
+    "ep": 2.45,
+    "name": "Diop",
     "position": "DEF"
    },
    {
     "code": 466052,
-    "ep": 3.88,
+    "ep": 3.44,
     "name": "Cherki",
     "position": "MID"
    }
   ],
   "week": {
-   "bank": 1.9,
+   "bank": 0.4,
    "buys": [
     {
-     "code": 146426,
-     "ep": 6.83,
-     "name": "Ajayi",
+     "code": 455084,
+     "ep": 6.84,
+     "name": "Davis",
      "position": "DEF",
-     "price": 4.1
+     "price": 4.0
     },
     {
-     "code": 244851,
-     "ep": 8.32,
-     "name": "Palmer",
+     "code": 83299,
+     "ep": 9.08,
+     "name": "Dunk",
+     "position": "DEF",
+     "price": 4.5
+    },
+    {
+     "code": 244850,
+     "ep": 7.42,
+     "name": "Rogers",
      "position": "MID",
-     "price": 9.6
-    },
-    {
-     "code": 444102,
-     "ep": 6.08,
-     "name": "Evanilson",
-     "position": "FWD",
-     "price": 6.0
+     "price": 7.6
     }
    ],
    "chip": "bboost",
-   "expected_pts": 77.05,
+   "expected_pts": 81.8,
    "gw": 4,
    "hit_cost": 8,
    "hits": 2,
    "sells": [
     {
-     "code": 475168,
-     "ep": 4.92,
-     "name": "Jo\u00e3o Pedro",
-     "position": "FWD",
-     "price": 7.6
+     "code": 451284,
+     "ep": 2.29,
+     "name": "van Ewijk",
+     "position": "DEF",
+     "price": 4.0
     },
     {
-     "code": 494521,
-     "ep": 4.52,
-     "name": "Truffert",
+     "code": 219924,
+     "ep": 2.45,
+     "name": "Diop",
      "position": "DEF",
-     "price": 5.5
+     "price": 4.0
     },
     {
      "code": 466052,
-     "ep": 3.88,
+     "ep": 3.44,
      "name": "Cherki",
      "position": "MID",
      "price": 7.7
@@ -847,7 +848,7 @@
    ],
    "trace": {
     "bank_value": null,
-    "ep_gain": 28.085,
+    "ep_gain": 42.248,
     "ft_after": 1,
     "ft_basis": "lambda",
     "ft_shadow": 5.8396,
@@ -857,31 +858,31 @@
     "hit_cost": 8.0,
     "moves": [
      {
-      "buy_code": 146426,
-      "buy_name": "Ajayi",
-      "ep_gain": 10.445,
-      "lambda_tilt": 0.0,
+      "buy_code": 455084,
+      "buy_name": "Davis",
+      "ep_gain": 14.899,
+      "lambda_tilt": -0.0,
       "note": "",
-      "sell_code": 494521,
-      "sell_name": "Truffert"
+      "sell_code": 451284,
+      "sell_name": "van Ewijk"
      },
      {
-      "buy_code": 244851,
-      "buy_name": "Palmer",
-      "ep_gain": 14.256,
+      "buy_code": 83299,
+      "buy_name": "Dunk",
+      "ep_gain": 13.206,
+      "lambda_tilt": 0.0,
+      "note": "",
+      "sell_code": 219924,
+      "sell_name": "Diop"
+     },
+     {
+      "buy_code": 244850,
+      "buy_name": "Rogers",
+      "ep_gain": 14.143,
       "lambda_tilt": 0.0,
       "note": "",
       "sell_code": 466052,
       "sell_name": "Cherki"
-     },
-     {
-      "buy_code": 444102,
-      "buy_name": "Evanilson",
-      "ep_gain": 3.384,
-      "lambda_tilt": 1.668,
-      "note": "",
-      "sell_code": 475168,
-      "sell_name": "Jo\u00e3o Pedro"
      }
     ],
     "note": "a bboost is recommended this week; these terms are the base plan's, which the solver returned without it",
@@ -892,45 +893,45 @@
  },
  "plan_by_gw": [
   {
-   "bank": 0.3,
+   "bank": 0.9,
    "buys": [
     {
-     "code": 146426,
-     "ep": 6.83,
-     "frequency": 0.8,
-     "name": "Ajayi",
+     "code": 455084,
+     "ep": 6.84,
+     "frequency": 0.925,
+     "name": "Davis",
      "position": "DEF",
-     "price": 4.1,
+     "price": 4.0,
      "tag": "attack"
     },
     {
-     "code": 244851,
-     "ep": 8.32,
-     "frequency": 0.925,
-     "name": "Palmer",
+     "code": 244850,
+     "ep": 7.42,
+     "frequency": 0.475,
+     "name": "Rogers",
      "position": "MID",
-     "price": 9.6,
+     "price": 7.6,
      "tag": "attack"
     }
    ],
    "chip": "bboost",
-   "expected_pts": 76.64,
+   "expected_pts": 77.49,
    "gw": 4,
    "hit_cost": 4,
    "hits": 1,
    "sells": [
     {
-     "code": 494521,
-     "ep": 4.52,
-     "frequency": 0.5,
-     "name": "Truffert",
+     "code": 451284,
+     "ep": 2.29,
+     "frequency": 0.8,
+     "name": "van Ewijk",
      "position": "DEF",
-     "price": 5.5
+     "price": 4.0
     },
     {
      "code": 466052,
-     "ep": 3.88,
-     "frequency": 0.95,
+     "ep": 3.44,
+     "frequency": 0.925,
      "name": "Cherki",
      "position": "MID",
      "price": 7.7
@@ -938,7 +939,7 @@
    ],
    "trace": {
     "bank_value": null,
-    "ep_gain": 24.701,
+    "ep_gain": 29.042,
     "ft_after": 1,
     "ft_basis": "lambda",
     "ft_shadow": 5.8396,
@@ -948,18 +949,18 @@
     "hit_cost": 4.0,
     "moves": [
      {
-      "buy_code": 146426,
-      "buy_name": "Ajayi",
-      "ep_gain": 10.445,
-      "lambda_tilt": 0.0,
+      "buy_code": 455084,
+      "buy_name": "Davis",
+      "ep_gain": 14.899,
+      "lambda_tilt": -0.0,
       "note": "",
-      "sell_code": 494521,
-      "sell_name": "Truffert"
+      "sell_code": 451284,
+      "sell_name": "van Ewijk"
      },
      {
-      "buy_code": 244851,
-      "buy_name": "Palmer",
-      "ep_gain": 14.256,
+      "buy_code": 244850,
+      "buy_name": "Rogers",
+      "ep_gain": 14.143,
       "lambda_tilt": 0.0,
       "note": "",
       "sell_code": 466052,
@@ -972,39 +973,39 @@
    }
   },
   {
-   "bank": 1.3,
+   "bank": 1.4,
    "buys": [
     {
      "code": 473284,
-     "ep": 7.26,
+     "ep": 5.12,
      "name": "Tzolakis",
      "position": "GKP",
      "price": 4.6
     },
     {
-     "code": 444102,
-     "ep": 5.07,
-     "name": "Evanilson",
-     "position": "FWD",
+     "code": 513418,
+     "ep": 6.9,
+     "name": "Schade",
+     "position": "MID",
      "price": 6.0
     }
    ],
    "chip": "bboost",
-   "expected_pts": 72.73,
+   "expected_pts": 72.8,
    "gw": 5,
    "hit_cost": 4,
    "hits": 1,
    "sells": [
     {
-     "code": 475168,
-     "ep": 4.11,
-     "name": "Jo\u00e3o Pedro",
-     "position": "FWD",
-     "price": 7.6
+     "code": 243298,
+     "ep": 5.72,
+     "name": "Gakpo",
+     "position": "MID",
+     "price": 7.1
     },
     {
      "code": 67089,
-     "ep": 0.41,
+     "ep": 0.35,
      "name": "Dubravka",
      "position": "GKP",
      "price": 4.0
@@ -1012,7 +1013,7 @@
    ],
    "trace": {
     "bank_value": null,
-    "ep_gain": 23.85,
+    "ep_gain": 19.294,
     "ft_after": 1,
     "ft_basis": "lambda",
     "ft_shadow": 5.8396,
@@ -1024,20 +1025,20 @@
      {
       "buy_code": 473284,
       "buy_name": "Tzolakis",
-      "ep_gain": 21.625,
-      "lambda_tilt": -0.0,
+      "ep_gain": 16.013,
+      "lambda_tilt": 0.0,
       "note": "",
       "sell_code": 67089,
       "sell_name": "Dubravka"
      },
      {
-      "buy_code": 444102,
-      "buy_name": "Evanilson",
-      "ep_gain": 2.225,
-      "lambda_tilt": 1.238,
+      "buy_code": 513418,
+      "buy_name": "Schade",
+      "ep_gain": 3.281,
+      "lambda_tilt": 0.0,
       "note": "",
-      "sell_code": 475168,
-      "sell_name": "Jo\u00e3o Pedro"
+      "sell_code": 243298,
+      "sell_name": "Gakpo"
      }
     ],
     "note": "the chance of a price fall was not recorded for every player sold here, so the price-timing charge is unknown; a bboost is recommended this week; these terms are the base plan's, which the solver returned without it",
@@ -1046,33 +1047,33 @@
    }
   },
   {
-   "bank": 0.5,
+   "bank": 0.4,
    "buys": [
     {
-     "code": 446008,
-     "ep": 7.2,
-     "name": "Mbeumo",
-     "position": "MID",
-     "price": 7.9
+     "code": 465642,
+     "ep": 8.67,
+     "name": "Thiaw",
+     "position": "DEF",
+     "price": 5.0
     }
    ],
    "chip": "bboost",
-   "expected_pts": 71.21,
+   "expected_pts": 74.77,
    "gw": 6,
    "hit_cost": 0,
    "hits": 0,
    "sells": [
     {
-     "code": 243298,
-     "ep": 5.26,
-     "name": "Gakpo",
-     "position": "MID",
-     "price": 7.1
+     "code": 219924,
+     "ep": 2.95,
+     "name": "Diop",
+     "position": "DEF",
+     "price": 4.0
     }
    ],
    "trace": {
     "bank_value": null,
-    "ep_gain": 3.175,
+    "ep_gain": 8.158,
     "ft_after": 1,
     "ft_basis": "lambda",
     "ft_shadow": 5.8396,
@@ -1082,13 +1083,13 @@
     "hit_cost": 0.0,
     "moves": [
      {
-      "buy_code": 446008,
-      "buy_name": "Mbeumo",
-      "ep_gain": 3.175,
+      "buy_code": 465642,
+      "buy_name": "Thiaw",
+      "ep_gain": 8.158,
       "lambda_tilt": 0.0,
       "note": "",
-      "sell_code": 243298,
-      "sell_name": "Gakpo"
+      "sell_code": 219924,
+      "sell_name": "Diop"
      }
     ],
     "note": "the chance of a price fall was not recorded for every player sold here, so the price-timing charge is unknown; a bboost is recommended this week; these terms are the base plan's, which the solver returned without it",
@@ -1097,10 +1098,10 @@
    }
   },
   {
-   "bank": 0.5,
+   "bank": 0.4,
    "buys": [],
    "chip": "bboost",
-   "expected_pts": 77.41,
+   "expected_pts": 72.9,
    "gw": 7,
    "hit_cost": 0,
    "hits": 0,
@@ -1122,10 +1123,10 @@
    }
   },
   {
-   "bank": 0.5,
+   "bank": 0.4,
    "buys": [],
    "chip": "bboost",
-   "expected_pts": 75.79,
+   "expected_pts": 72.7,
    "gw": 8,
    "hit_cost": 0,
    "hits": 0,
@@ -1147,16 +1148,16 @@
    }
   },
   {
-   "bank": 0.5,
+   "bank": 0.4,
    "buys": [],
    "chip": "bboost",
-   "expected_pts": 74.34,
+   "expected_pts": 75.42,
    "gw": 9,
    "hit_cost": 0,
    "hits": 0,
    "sells": [],
    "trace": {
-    "bank_value": 0.04,
+    "bank_value": 0.032,
     "ep_gain": 0.0,
     "ft_after": 4,
     "ft_basis": "lambda",
@@ -1188,84 +1189,77 @@
   "chosen": "hits1",
   "hit_cost": 4,
   "label": "1 hit",
-  "line": "restraint: 1 hit; the step to 2 hits was refused, 41% \u2014 a Bench Boost is planned for GW7",
+  "line": "restraint: 1 hit; the step to 2 hits was refused, 40% \u2014 a Bench Boost is planned for GW8",
   "note": "the objective's plan was the 1 hit rung's neighbour; the walk stopped at 1 hit",
   "steps": [
    {
     "above": "hits0",
     "below": "bank",
-    "line": "bank \u2192 free transfers only: taken, 95% \u2014 a Bench Boost is planned for GW7",
-    "reason": "a Bench Boost is planned for GW7",
+    "line": "bank \u2192 free transfers only: taken, 94% \u2014 a Bench Boost is planned for GW8",
+    "reason": "a Bench Boost is planned for GW8",
     "reason_kind": "chip",
-    "share": 0.949,
+    "share": 0.935,
     "taken": true
    },
    {
     "above": "hits1",
     "below": "hits0",
-    "line": "free transfers only \u2192 1 hit: taken, 60% \u2014 a Bench Boost is planned for GW7",
-    "reason": "a Bench Boost is planned for GW7",
+    "line": "free transfers only \u2192 1 hit: taken, 61% \u2014 a Bench Boost is planned for GW8",
+    "reason": "a Bench Boost is planned for GW8",
     "reason_kind": "chip",
-    "share": 0.605,
+    "share": 0.6095,
     "taken": true
    },
    {
     "above": "hits2",
     "below": "hits1",
-    "line": "1 hit \u2192 2 hits: refused, 41% \u2014 a Bench Boost is planned for GW7",
-    "reason": "a Bench Boost is planned for GW7",
+    "line": "1 hit \u2192 2 hits: refused, 40% \u2014 a Bench Boost is planned for GW8",
+    "reason": "a Bench Boost is planned for GW8",
     "reason_kind": "chip",
-    "share": 0.4065,
+    "share": 0.4035,
     "taken": false
    }
   ]
  },
  "scenarios": {
   "captain_agrees": true,
-  "captain_frequency": 0.375,
-  "captain_wanted": 244851,
+  "captain_frequency": 0.975,
+  "captain_wanted": 60307,
   "completed": 40,
   "failures": 0,
   "hold": false,
   "n": 40,
   "near_misses": [
    {
-    "code": 444102,
+    "code": 201658,
     "frequency": 0.525,
     "gw": 4,
     "kind": "buy",
     "label": "buy"
    },
    {
-    "code": 494521,
-    "frequency": 0.5,
+    "code": 244850,
+    "frequency": 0.475,
     "gw": 4,
-    "kind": "sell",
-    "label": "sell"
-   },
-   {
-    "code": 219924,
-    "frequency": 0.425,
-    "gw": 4,
-    "kind": "sell",
-    "label": "sell"
+    "kind": "buy",
+    "label": "buy"
    }
   ],
   "seed": 20260829
  },
  "sells": [
   {
-   "code": 494521,
-   "ep": 4.52,
-   "frequency": 0.5,
-   "name": "Truffert",
+   "code": 451284,
+   "ep": 2.29,
+   "frequency": 0.8,
+   "name": "van Ewijk",
    "position": "DEF",
-   "price": 5.5
+   "price": 4.0
   },
   {
    "code": 466052,
-   "ep": 3.88,
-   "frequency": 0.95,
+   "ep": 3.44,
+   "frequency": 0.925,
    "name": "Cherki",
    "position": "MID",
    "price": 7.7
@@ -1286,40 +1280,33 @@
  },
  "threats": [
   {
-   "code": 141746,
-   "ep": 6.251541676928719,
-   "league_eo": 79.6,
-   "name": "B.Fernandes",
-   "position": "MID"
-  },
-  {
-   "code": 475168,
-   "ep": 4.917659233740931,
-   "league_eo": 81.6,
-   "name": "Jo\u00e3o Pedro",
-   "position": "FWD"
-  },
-  {
    "code": 466075,
-   "ep": 4.681084580991584,
+   "ep": 4.305875351271202,
    "league_eo": 71.4,
    "name": "Calafiori",
    "position": "DEF"
   },
   {
+   "code": 141746,
+   "ep": 4.291431814758177,
+   "league_eo": 79.6,
+   "name": "B.Fernandes",
+   "position": "MID"
+  },
+  {
    "code": 466052,
-   "ep": 3.8814846605526885,
+   "ep": 3.4413582438728447,
    "league_eo": 53.1,
    "name": "Cherki",
    "position": "MID"
   }
  ],
  "vice": {
-  "code": 108416,
-  "ep": 8.3,
-  "name": "Egan",
-  "position": "DEF",
-  "price": 4.1
+  "code": 489639,
+  "ep": 7.87,
+  "name": "Verbruggen",
+  "position": "GKP",
+  "price": 4.5
  },
  "wildcard_now": null,
  "win_probs": [
@@ -1572,80 +1559,80 @@
  "xi": [
   {
    "code": 489639,
-   "ep": 7.71,
+   "ep": 7.87,
    "name": "Verbruggen",
    "position": "GKP",
    "price": 4.5
   },
   {
    "code": 108416,
-   "ep": 8.3,
+   "ep": 6.02,
    "name": "Egan",
    "position": "DEF",
    "price": 4.1
   },
   {
-   "code": 146426,
-   "ep": 6.83,
-   "name": "Ajayi",
+   "code": 455084,
+   "ep": 6.84,
+   "name": "Davis",
    "position": "DEF",
-   "price": 4.1
+   "price": 4.0
   },
   {
-   "code": 209036,
-   "ep": 5.11,
-   "name": "Gu\u00e9hi",
+   "code": 494521,
+   "ep": 4.77,
+   "name": "Truffert",
    "position": "DEF",
-   "price": 6.0
-  },
-  {
-   "code": 244851,
-   "ep": 8.32,
-   "name": "Palmer",
-   "position": "MID",
-   "price": 9.6
-  },
-  {
-   "code": 222531,
-   "ep": 7.46,
-   "name": "Gibbs-White",
-   "position": "MID",
-   "price": 7.9
+   "price": 5.5
   },
   {
    "code": 60307,
-   "ep": 8.22,
+   "ep": 11.01,
    "name": "Gro\u00df",
    "position": "MID",
    "price": 5.5
   },
   {
+   "code": 244850,
+   "ep": 7.42,
+   "name": "Rogers",
+   "position": "MID",
+   "price": 7.6
+  },
+  {
+   "code": 222531,
+   "ep": 7.24,
+   "name": "Gibbs-White",
+   "position": "MID",
+   "price": 7.9
+  },
+  {
    "code": 424876,
-   "ep": 6.61,
+   "ep": 5.85,
    "name": "Szoboszlai",
    "position": "MID",
    "price": 7.0
   },
   {
    "code": 243298,
-   "ep": 5.94,
+   "ep": 6.13,
    "name": "Gakpo",
    "position": "MID",
    "price": 7.2
   },
   {
    "code": 223094,
-   "ep": 6.46,
+   "ep": 7.19,
    "name": "Haaland",
    "position": "FWD",
    "price": 15.5
   },
   {
-   "code": 219168,
-   "ep": 5.68,
-   "name": "Isak",
+   "code": 475168,
+   "ep": 7.15,
+   "name": "Jo\u00e3o Pedro",
    "position": "FWD",
-   "price": 9.1
+   "price": 7.7
   }
  ]
 }
