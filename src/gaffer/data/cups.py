@@ -163,8 +163,11 @@ def _http(client: httpx.Client | None) -> httpx.Client:
         headers={"User-Agent": "gaffer/1.0 (FPL advisor; cup fixtures)"})
 
 
-def _cached_get(http: httpx.Client, url: str, dest: Path) -> str | None:
+def cached_get(http: httpx.Client, url: str, dest: Path) -> str | None:
     """One file, cached forever under ``dest``.
+
+    Public since the holiday's F-8, because ``core_insights`` fetches through
+    it too (v18d's residual named the private reach).
 
     A finished cup match never changes, and the ingest is a once-a-season job,
     so a file on disk is never re-fetched. A 404 or a dead connection returns
@@ -212,11 +215,11 @@ def download_cup_matches(seasons: list[str], season_indexes: dict[str, int],
             continue
         if season not in codes_by_season:
             teams_path = f"data/{folder}/teams.csv"
-            text = _cached_get(http, f"{CUPS_RAW_BASE}/{teams_path}",
+            text = cached_get(http, f"{CUPS_RAW_BASE}/{teams_path}",
                                Path(cache_dir) / teams_path)
             codes_by_season[season] = (team_code_map(text, names)
                                        if text else {})
-        text = _cached_get(http, f"{CUPS_RAW_BASE}/{path}",
+        text = cached_get(http, f"{CUPS_RAW_BASE}/{path}",
                            Path(cache_dir) / path)
         if not text:
             continue
