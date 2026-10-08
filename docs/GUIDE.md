@@ -1431,19 +1431,20 @@ Carried out of the v17 and v18 programmes, all of them small:
 - **The ladder's three config reads are on the router's path** (v18b), left
   there by design: the sealed rail covers `gather_inputs` and
   `build_advice`, and `build_ladder` is called from the route.
-- **Four private reaches across modules survive** (v18d): `journal` into
-  `artifacts._history_stamp`, `review` into `journal._code_of_element`,
-  `routers/settings` into `config._source_of`, `core_insights` into
-  `data.cups._cached_get`. Each is one call and each wants a public name.
-- **`routers/meta.py` still spells the health file's path** rather than
-  taking it from `tracking.HEALTH_PATH` (v18d).
+- **Two private reaches across modules survive** (v18d): `journal` into
+  `artifacts._history_stamp` and `routers/settings` into
+  `config._source_of`. Both sit in modules the golden board imports, so
+  they wait for a cycle that runs it. The other two closed in the holiday's
+  F-8: `journal.code_of_element` and `data.cups.cached_get` are public, and
+  `routers/meta.py` reads the health file through `tracking.latest_health`
+  rather than spelling its path.
 - **The calibration block's `p_cs` stays cumulative-only** (v18c) until a
   gameweek carries 30 club-fixtures, which none will; a per-two-gameweek
   window is a model-cycle candidate.
 - ~~Eight `react-hooks` set-state-in-effect warnings~~ — closed in v19h,
   each by the mechanism that fit its site, and pinned at zero by
-  `--max-warnings 0`; `FixtureTicker` still has no cold-clone sentence, and
-  `ExplainModal`'s lines are long.
+  `--max-warnings 0`; `ExplainModal`'s lines are long. (`FixtureTicker`'s
+  cold-clone sentence came in v19b §2.6.)
 - **Four singleton warnings and four deferred PuLP filters** in the Python
   suite (v18g); `tests/test_advise.py` runs for 3.4 s on its own.
 
