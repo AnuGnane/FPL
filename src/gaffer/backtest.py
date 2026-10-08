@@ -114,14 +114,16 @@ def club_fixtures(rows: pd.DataFrame) -> pd.DataFrame:
     ``advise.build_team_future`` builds its future frame: the club column is
     ``code`` and ``home`` is ``was_home`` as a float (the engineered ``home``
     where ``was_home`` is absent, and neutral where both are, which
-    Dixon-Coles reads as no home edge). The shipped head reads nothing else
-    (v20 §2 v20c step zero).
+    Dixon-Coles reads as no home edge). The shipped Dixon-Coles head reads
+    nothing else; the GBM head (``TEAM_MODEL = "gbm"``) needs the rolled team
+    features and would fail here (v20 §2 v20c step zero).
     """
     tg = (rows[["team_code", "opp_code", "gw", "season_idx"]]
           .assign(home=rows["was_home"].astype(float)
                   if "was_home" in rows.columns
                   else rows.get("home", float("nan")))
-          .drop_duplicates(subset=["team_code", "gw", "opp_code"])
+          .drop_duplicates(subset=["team_code", "season_idx", "gw",
+                                   "opp_code"])
           .rename(columns={"team_code": "code"})
           .reset_index(drop=True))
     return tg
