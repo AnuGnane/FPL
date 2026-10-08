@@ -377,7 +377,7 @@ class _FakeHTTP:
     """An httpx.Client stand-in that serves a path -> text dict.
 
     Anything it is not given 404s the way the real archive does, which is what
-    ``_cached_get`` turns into a printed skip.
+    ``cached_get`` turns into a printed skip.
     """
 
     def __init__(self, files: dict[str, str]):

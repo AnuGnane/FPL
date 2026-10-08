@@ -48,7 +48,7 @@ from gaffer.data.my_entry import (
     my_transfers_for_gw,
 )
 from gaffer.io import atomic_write
-from gaffer.journal import _code_of_element, latest_run_per_gw
+from gaffer.journal import code_of_element, latest_run_per_gw
 from gaffer.optimize.formation import formation_legal
 
 __all__ = ["ACTUAL_COLS", "CHIP_SCORING", "LANES", "LEDGER", "MISS_BAR",
@@ -70,16 +70,6 @@ PLAYER_GW = "live/player_gw.parquet"
 
 XI_SIZE = 11
 """Picks at a higher ``position`` than this are the bench, in that order."""
-
-
-def code_of_element() -> dict[int, int]:
-    """``element -> code`` off the live players table.
-
-    A re-export of ``journal._code_of_element`` rather than a copy of it:
-    ``journal.py`` is import-only this cycle (spec §5) and its row shape is
-    pinned by existing tests, so the sharing goes this way round.
-    """
-    return _code_of_element()
 
 
 def names_by_code() -> dict[int, str]:

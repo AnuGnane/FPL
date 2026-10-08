@@ -116,7 +116,13 @@ def _points_by_gw() -> dict[int, dict[int, int]]:
     return out
 
 
-def _code_of_element() -> dict[int, int]:
+def code_of_element() -> dict[int, int]:
+    """``element -> code`` off the live players table, or ``{}`` before one
+    is banked.
+
+    Public since the holiday's F-8: ``review`` reached for it under a private
+    name (v18d's residual), and a name another module calls is an interface.
+    """
     from gaffer.data import store
 
     if not store.exists("live/players.parquet"):
@@ -134,7 +140,7 @@ def build_journal(client, entry_id: int) -> dict:
     """Score every gameweek that has both a banked run and a finished result."""
     runs = latest_run_per_gw()
     points_by_gw = _points_by_gw()
-    code_of = _code_of_element()
+    code_of = code_of_element()
 
     rows: list[dict] = []
     for gw in sorted(runs):

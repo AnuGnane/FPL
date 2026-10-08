@@ -41,7 +41,7 @@ import httpx
 import pandas as pd
 
 from gaffer.data import store
-from gaffer.data.cups import CUPS_RAW_BASE, CUPS_TREE_URL, _cached_get, _http, repo_season
+from gaffer.data.cups import CUPS_RAW_BASE, CUPS_TREE_URL, _http, cached_get, repo_season
 from gaffer.io import atomic_save, atomic_write
 
 __all__ = ["CI_CACHE", "SEASON_TABLES", "ci_paths_from_tree", "repo_season"]
@@ -193,10 +193,10 @@ def fetch_csv(path: str, http: httpx.Client,
     dest = Path(cache_dir) / path
     url = f"{CUPS_RAW_BASE}/{path}"
     if not refresh or not dest.exists():
-        return _cached_get(http, url, dest)
+        return cached_get(http, url, dest)
     previous = dest.read_text()
     dest.unlink()
-    text = _cached_get(http, url, dest)
+    text = cached_get(http, url, dest)
     if text is None:
         atomic_write(dest, previous)
         return previous
