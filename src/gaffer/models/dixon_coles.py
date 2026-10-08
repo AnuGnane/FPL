@@ -46,6 +46,15 @@ RHO_BOUNDS = (-0.4, 0.4)
 is what stops the optimizer wandering into the region where the corrected
 pmf can go negative."""
 
+MU_BOUNDS: tuple[float, float] | None = None
+"""v20c's clip (v20 spec §2 v20c, ruling 6): a floor and a ceiling on both
+Poisson means, applied in :meth:`DixonColesModel.predict` before
+:func:`fixture_outcomes`, so the clean sheet, the goals-conceded mean and the
+result probabilities all come off one clipped pmf rather than a band pasted
+on the outputs. ``None`` is off and byte-identical to the unclipped path; the
+arm turns it on at ``(0.2, 3.5)``, the floor that keeps a bare-model week's
+``p_cs`` inside the v19g band. It ships off until the arm's replay rules."""
+
 
 def tau_correction(x: int, y: int, lam: float, mu: float,
                    rho: float) -> float:
@@ -305,6 +314,7 @@ class DixonColesModel:
                 if "home" in rows.columns
                 else pd.Series(0.5, index=rows.index, dtype="float64"))
         p_cs, e_gc = [], []
+        clipped = 0
         for code, opp, is_home in zip(rows["code"], rows["opp_code"], home):
             att, dfn = self._params(code)
             opp_att, opp_dfn = self._params(opp)
@@ -313,11 +323,21 @@ class DixonColesModel:
             lam = math.exp(att + opp_dfn + self.gamma_ * float(is_home))
             mu = math.exp(opp_att + dfn
                           + self.gamma_ * (1.0 - float(is_home)))
+            if MU_BOUNDS is not None:
+                # v20c ruling 6: clip the means, not the outputs, so every
+                # derived number stays on the one pmf.
+                lo, hi = MU_BOUNDS
+                clipped += not (lo <= lam <= hi and lo <= mu <= hi)
+                lam, mu = min(max(lam, lo), hi), min(max(mu, lo), hi)
             stats = fixture_outcomes(lam, mu, self.rho_, self.cap)
             p_cs.append(stats["p_cs_home"])
             e_gc.append(stats["e_gc_home"])
         out["p_cs"] = p_cs
         out["e_gc"] = e_gc
+        if MU_BOUNDS is not None:
+            # The v20c lever line: zero on every fold means the fit never
+            # left the band, and a replay measured nothing about the clip.
+            print(f"DC_CLIP n={clipped} of {len(rows)}")
         return out
 
 
