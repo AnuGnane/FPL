@@ -13,6 +13,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
+from gaffer.clock import snap_date
 from gaffer.data import store
 from gaffer.price_log import (
     PRICE_LOG_COLS,
@@ -143,3 +144,23 @@ def test_banking_with_no_day_stamps_today(monkeypatch):
     monkeypatch.setattr("gaffer.price_log.snap_date", lambda: "2026-12-25")
     bank_prices(PLAYERS)
     assert set(load_price_log()["snap_date"]) == {"2026-12-25"}
+
+
+def test_a_reading_banked_in_a_running_process_reaches_its_next_solve():
+    """Holiday F-3. The web re-run banks today's reading inside the `gaffer
+    ui` process, and the price-fall table there is cached on (day, squad).
+    A plan page read before the button has cached yesterday's log as an
+    empty table; the rewrite has to drop it, or the solve never sees the
+    reading it was banked for."""
+    from gaffer.price_timing import owned_price_falls
+
+    owned_price_falls.cache_clear()
+    yesterday = (pd.Timestamp(snap_date()) - pd.Timedelta(days=1)).strftime(
+        "%Y-%m-%d")
+    try:
+        append_prices(price_rows(PLAYERS, day=yesterday))
+        assert owned_price_falls([22], price_timing=True) == {}
+        bank_prices(PLAYERS)
+        assert owned_price_falls([22], price_timing=True) == {22: 1.0}
+    finally:
+        owned_price_falls.cache_clear()

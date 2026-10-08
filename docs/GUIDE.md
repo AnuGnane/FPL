@@ -1387,10 +1387,11 @@ weekly use.
   API snapshots at the top of `data/raw/` are not a target either (v19h
   §1): the FPL client prunes its own kinds to twenty, and the `odds-*` and
   `ags-*` files are the corpus the anytime-scorer weight waits a season for.
-- **The web "re-run" button does not bank a same-day price reading** the way
-  the Thursday plist does, so a run from the button can solve with the
-  price-timing term seeing an empty table. Run `gaffer prices` first, or use
-  the plist.
+- ~~The web "re-run" button does not bank a same-day price reading~~ —
+  banked since v19b (`weekly_run` banks before the solve), and holiday F-3
+  closed the half that was left: the bank now clears the price-fall cache,
+  so a plan page read earlier the same day no longer hands the solve the
+  pre-bank (stale, so empty) table.
 - **The chip pair's "Try it" card has no What-If arm.**
 - ~~The generated `types.ts` half lost the client's field comments~~ —
   closed in v19h: 1,024 of 1,031 schema fields carry a sentence the
@@ -1469,8 +1470,8 @@ brainstorm would start from, in the order the 2026-09-01 research ranked it
    shown the log carries the signal.
 7. **Housekeeping follow-ups** from 12.4: `tidy` for the API snapshots above
    all, the ledger season key, `starred_at`, the `schemas.py` docstrings, the
-   chip pair's What-If arm, the web button banking prices, and the four
-   private reaches v18d recorded.
+   chip pair's What-If arm, ~~the web button banking prices~~ (holiday
+   F-3), and the four private reaches v18d recorded.
 8. **FotMob as an xG fallback (B8)** — only if Understat goes down.
 
 Still rejected, and the research confirmed it: referee and weather, price

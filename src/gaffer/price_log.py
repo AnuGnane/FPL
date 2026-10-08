@@ -124,6 +124,14 @@ def append_prices(rows: pd.DataFrame) -> int:
     merged = (pd.concat(frames, ignore_index=True) if frames
               else rows[PRICE_LOG_COLS])
     atomic_save(merged, PRICE_LOG_PATH)
+    # Holiday F-3: the web re-run banks inside the `gaffer ui` process, whose
+    # price-fall table is cached on (day, squad). A plan page read earlier
+    # the same day has cached the pre-bank table (stale, so empty), and the
+    # solve would be handed it. Imported here because `price_timing` imports
+    # this module.
+    from gaffer.price_timing import owned_price_falls
+
+    owned_price_falls.cache_clear()
     return int(len(rows))
 
 
