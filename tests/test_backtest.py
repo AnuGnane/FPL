@@ -746,3 +746,117 @@ def test_backtest_owned_squad_solve_carries_the_default_caps(monkeypatch):
     for state in states[1:]:
         assert state.max_hits == 2
         assert state.max_transfers is None
+
+
+# --- v20c step zero: the replay sees the team model ------------------------
+
+
+class _FakeTeamModel:
+    """A team head whose clean sheet differs per club-fixture, so a merge
+    that crossed two fixtures, or a constant that leaked through, shows."""
+
+    def __init__(self):
+        self.seen = []
+
+    def predict(self, tg):
+        self.seen.append(tg.copy())
+        out = tg[["code", "season_idx", "gw"]].copy().reset_index(drop=True)
+        out["p_cs"] = (0.1 + 0.01 * tg["code"].values
+                       + 0.001 * tg["opp_code"].values)
+        out["e_gc"] = 1.0 + 0.1 * tg["code"].values
+        return out
+
+
+def _with_fixtures(rows):
+    rows = rows.copy()
+    rows["opp_code"] = rows["team_code"] % 7 + 1
+    rows["was_home"] = rows["team_code"] % 2 == 0
+    return rows
+
+
+def _simple_comp(models, rows):
+    rows = rows.reset_index(drop=True)
+    comp = rows[["code", "season_idx", "gw", "position", "team_code"]].copy()
+    comp["p_play"] = 1.0
+    comp["p_cs"] = bt.DEFAULT_P_CS
+    comp["e_gc"] = bt.DEFAULT_E_GC
+    return comp
+
+
+def test_with_team_model_gives_each_fixture_of_a_double_its_own_clean_sheet():
+    rows = pd.DataFrame({
+        "code": [1, 1, 2], "season_idx": 0, "gw": [5, 5, 5],
+        "position": "DEF", "team_code": [3, 3, 4],
+        "opp_code": [6, 7, 8], "was_home": [True, False, True]})
+    model = _FakeTeamModel()
+    out, tp = bt.with_team_model(_simple_comp({}, rows), rows, model)
+
+    assert list(out.columns) == list(_simple_comp({}, rows).columns)
+    assert out["p_cs"].round(4).tolist() == [0.136, 0.137, 0.148]
+    assert out["e_gc"].round(4).tolist() == [1.3, 1.3, 1.4]
+    assert len(tp) == 3
+    assert model.seen[0]["home"].tolist() == [1.0, 0.0, 1.0]
+
+
+def test_with_team_model_fills_a_fixture_the_team_frame_lacks():
+    rows = pd.DataFrame({
+        "code": [1, 2], "season_idx": 0, "gw": [5, 5], "position": "DEF",
+        "team_code": [3, 4], "opp_code": [6, 8], "was_home": [True, True]})
+
+    class _Partial(_FakeTeamModel):
+        def predict(self, tg):
+            out = super().predict(tg)
+            out.loc[out["code"] == 4, ["p_cs", "e_gc"]] = float("nan")
+            return out
+
+    out, _ = bt.with_team_model(_simple_comp({}, rows), rows, _Partial())
+    assert out["p_cs"].tolist()[1] == bt.DEFAULT_P_CS
+    assert out["e_gc"].tolist()[1] == bt.DEFAULT_E_GC
+
+
+def test_the_lever_line_counts_distinct_clean_sheets_over_club_fixtures():
+    tp = pd.DataFrame({"team_code": [1, 1, 2], "gw": [1, 1, 1],
+                       "opp_code": [2, 2, 1], "p_cs": [0.3, 0.3, 0.2]})
+    assert bt.team_model_lever_line(tp) == (
+        "REPLAY_TEAM_MODEL p_cs min=0.2000 max=0.3000 distinct=2 n=2")
+
+
+def _replay_with_team_head(monkeypatch, capsys, on):
+    rows = _with_fixtures(_season_rows([1, 2, 3]))
+    _install_stubs(monkeypatch, rows)
+    seen = []
+    model = _FakeTeamModel()
+    monkeypatch.setattr(bt, "train_all", lambda *a, **k: {"team": model})
+    monkeypatch.setattr(bt, "predict_components_simple", _simple_comp)
+    monkeypatch.setattr(bt, "assemble_ep",
+                        lambda comp, scoring: seen.append(comp) or comp)
+    monkeypatch.setattr(bt, "REPLAY_TEAM_MODEL", on)
+    out = run_backtest(season="2025-26", start_gw=1, retrain_every=4)
+    return out, pd.concat(seen), model, capsys.readouterr().out
+
+
+def test_the_replay_holds_clean_sheets_constant_with_the_harness_off(
+        monkeypatch, capsys):
+    off, comp, model, printed = _replay_with_team_head(monkeypatch, capsys,
+                                                       False)
+    assert set(comp["p_cs"]) == {bt.DEFAULT_P_CS}
+    assert model.seen == []
+    assert "REPLAY_TEAM_MODEL" not in printed
+    _install_stubs(monkeypatch, _with_fixtures(_season_rows([1, 2, 3])))
+    assert off == run_backtest(season="2025-26", start_gw=1, retrain_every=4)
+
+
+def test_the_replay_reads_the_team_head_with_the_harness_on(
+        monkeypatch, capsys):
+    _, comp, model, printed = _replay_with_team_head(monkeypatch, capsys,
+                                                     True)
+    assert comp["p_cs"].nunique() > 1
+    assert bt.DEFAULT_P_CS not in set(comp["p_cs"])
+    assert len(model.seen) == 3
+    lever = [ln for ln in printed.splitlines()
+             if ln.startswith("REPLAY_TEAM_MODEL")]
+    assert len(lever) == 1 and "distinct=7 n=21" in lever[0]
+
+
+def test_the_replay_team_harness_ships_off():
+    assert bt.REPLAY_TEAM_MODEL is False
