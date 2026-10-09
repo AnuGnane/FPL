@@ -1401,9 +1401,10 @@ weekly use.
 - **The light theme's turf reads more saturated than the mockup** (v14). The
   final screenshots flagged it; the value shipped is the spec's, so changing
   it is a decision rather than a fix.
-- **The empty state's shell command borrows the browser's monospace face**
-  (v14) — it is a bare `<code>`, with no `font-mono` class, which is also why
-  `tokens.test.ts` cannot see it.
+- ~~The empty state's shell command borrows the browser's monospace face~~
+  (v14) — closed by holiday F-11: its `<code>` and the overrides card's name
+  `font-sans`, and `tokens.test.ts` fails any `<code>` in `hubs/` or `kit/`
+  that names no face.
 - **The overview's "would" word is gap-sign only** (v15): rank 1 says
   defend, anything else says chase, with no dead-band, because the row costs
   one standings page and the dial's real answer (which honours the band)
