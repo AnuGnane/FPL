@@ -53,10 +53,12 @@ describe('the ledger rules (spec §3–§5)', () => {
     // v14 residual (holiday F-11): a bare <code> takes the user agent's
     // monospace face, which the font-mono scan above cannot see. The tag may
     // span lines, so this reads whole files rather than single lines.
-    const bare = FILES.flatMap((path) => [...readFileSync(path, 'utf8')
-      .matchAll(/<code\b[^>]*>/g)]
-      .filter((m) => !/\bfont-(sans|mono)\b/.test(m[0]))
-      .map(() => rel(path)))
+    const bare = FILES.flatMap((path) => {
+      const text = readFileSync(path, 'utf8')
+      return [...text.matchAll(/<code\b[^>]*>/g)]
+        .filter((m) => !/\bfont-(sans|mono)\b/.test(m[0]))
+        .map((m) => `${rel(path)}:${text.slice(0, m.index).split('\n').length}`)
+    })
     expect(bare).toEqual([])
   })
 
