@@ -119,3 +119,12 @@ def test_a_clip_that_costs_the_goals_mean_fails_on_that_row(monkeypatch):
                         lambda tg: _frame(0.80, 0.0))
     out = v20c_head.head_reading(build_team_gw(_fixtures(seasons=1)))
     assert out["verdict"] == "fail: overall_mae_egc"
+
+
+def test_a_band_the_fit_never_leaves_is_no_reading_with_a_reason(monkeypatch):
+    frame = _frame(0.99, 0.01)
+    frame[["p_cs_off", "p_cs_on"]] = 0.5
+    frame[["e_gc_off", "e_gc_on"]] = 1.0
+    monkeypatch.setattr(v20c_head, "fold_predictions", lambda tg: frame)
+    out = v20c_head.head_reading(build_team_gw(_fixtures(seasons=1)))
+    assert out["verdict"] == "no reading" and "bit nothing" in out["reason"]

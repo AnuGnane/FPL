@@ -23,7 +23,9 @@ nothing to bite on.
 Read-only. It writes nothing and turns nothing on; a missing or unreadable
 fixture history prints the line with ``n=0`` and a reason, never a
 traceback, because the night shift transcribes the line into the spec's §6
-whatever it says.
+whatever it says. With the clip on, ``predict`` prints its own
+``DC_CLIP n=… of …`` lever line once per fold before that; the
+``V20C_HEAD`` line, last, is the one to transcribe.
 
     uv run python scripts/v20c_head.py
 """
@@ -67,9 +69,17 @@ def _scores(p_cs: np.ndarray, e_gc: np.ndarray, cs: np.ndarray,
         return {"logloss": None, "brier": None, "mae_egc": None}
     p = np.clip(p_cs, EPS, 1.0 - EPS)
     logloss = -float(np.mean(cs * np.log(p) + (1.0 - cs) * np.log(1.0 - p)))
-    return {"logloss": round(logloss, 6),
-            "brier": round(float(np.mean((p_cs - cs) ** 2)), 6),
-            "mae_egc": round(float(np.mean(np.abs(e_gc - ga))), 6)}
+    return {"logloss": logloss,
+            "brier": float(np.mean((p_cs - cs) ** 2)),
+            "mae_egc": float(np.mean(np.abs(e_gc - ga)))}
+
+
+def _rounded(side: dict) -> dict:
+    """Six places for the printed line only; the verdict reads the raw
+    floats, so a real but small move is never rounded into a tie."""
+    return {subset: {k: (None if v is None else round(v, 6))
+                     for k, v in scores.items()}
+            for subset, scores in side.items()}
 
 
 def fold_predictions(tg: pd.DataFrame, xi: float = dixon_coles.DEFAULT_XI
@@ -136,8 +146,10 @@ def head_reading(tg: pd.DataFrame | None) -> dict:
           "extreme": _scores(p_on[extreme], e_on[extreme],
                              cs[extreme], ga[extreme])}
     n_extreme = int(extreme.sum())
+    reason = None
     if n_extreme == 0:
-        verdict = "no reading: no fixture outside the band, the clip bit nothing"
+        verdict = "no reading"
+        reason = "no fixture outside the band, the clip bit nothing"
     else:
         rows = {
             "overall_logloss": (on["all"]["logloss"]
@@ -151,7 +163,8 @@ def head_reading(tg: pd.DataFrame | None) -> dict:
     return {"n": int(len(frame)), "n_extreme": n_extreme,
             "clip_bit": int(bit.sum()),
             "folds": int(frame["_fold"].nunique()),
-            "off": off, "on": on, "verdict": verdict, "reason": None}
+            "off": _rounded(off), "on": _rounded(on), "verdict": verdict,
+            "reason": reason}
 
 
 def load_team_gw() -> pd.DataFrame | None:
