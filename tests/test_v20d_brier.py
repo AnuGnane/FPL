@@ -17,7 +17,7 @@ from gaffer.price_log import PRICE_LOG_COLS, PRICE_LOG_PATH
 
 sys.path.insert(0, "scripts")
 
-import v20d_brier  # noqa: E402
+import v20d_brier  # noqa: E402 — scripts/ is not a package; the path insert must come first
 
 
 def _row(day, code, cost, pct, calibrating=False):
@@ -46,12 +46,36 @@ SYNTHETIC = [
 
 def test_a_fall_and_a_hold_are_scored_and_the_gap_and_missing_days_are_not():
     out = v20d_brier.brier_reading(_log(SYNTHETIC))
-    assert out["n"] == 2 and out["drop_rows"] == 2 and out["drop_days"] == 1
+    assert out["n"] == 2 and out["drop_rows"] == 4 and out["drop_days"] == 1
     assert out["falls"] == 1 and out["base_rate"] == 0.5
     # Term: ((0.8 - 1)^2 + (0.4 - 0)^2) / 2 = (0.04 + 0.16) / 2.
     assert out["brier_term"] == pytest.approx(0.1)
     assert out["brier_base"] == pytest.approx(0.25)
     assert out["verdict"].startswith("short: 1 drop-days")
+
+
+def test_a_code_seen_again_two_days_later_is_not_scored_across_the_gap():
+    rows = [_row("2026-10-01", 1, 60, -80.0), _row("2026-10-03", 1, 59, 0.0)]
+    out = v20d_brier.brier_reading(_log(rows))
+    assert out["n"] == 0 and out["drop_rows"] == 1
+
+
+def test_a_calibrating_next_day_row_still_gives_the_outcome():
+    rows = [_row("2026-10-01", 1, 60, -80.0),
+            _row("2026-10-02", 1, 59, 0.0, calibrating=True)]
+    out = v20d_brier.brier_reading(_log(rows))
+    assert out["n"] == 1 and out["falls"] == 1
+
+
+def test_a_log_missing_a_column_prints_the_line_and_no_traceback(
+        tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(store, "DATA_DIR", tmp_path)
+    (tmp_path / "live").mkdir()
+    _log(SYNTHETIC).drop(columns=["now_cost"]).to_parquet(
+        tmp_path / PRICE_LOG_PATH)
+    assert v20d_brier.main() == 0
+    payload = json.loads(capsys.readouterr().out.removeprefix("V20D_BRIER "))
+    assert payload["n"] == 0 and "unreadable" in payload["reason"]
 
 
 def test_a_reading_past_a_hundred_percent_is_clipped_to_one():
