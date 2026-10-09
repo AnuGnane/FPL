@@ -49,6 +49,17 @@ describe('the ledger rules (spec §3–§5)', () => {
       'hubs/planning/TraceMoves.tsx'])).toEqual([])
   })
 
+  it('names a face on every <code>, so none borrows the browser mono', () => {
+    // v14 residual (holiday F-11): a bare <code> takes the user agent's
+    // monospace face, which the font-mono scan above cannot see. The tag may
+    // span lines, so this reads whole files rather than single lines.
+    const bare = FILES.flatMap((path) => [...readFileSync(path, 'utf8')
+      .matchAll(/<code\b[^>]*>/g)]
+      .filter((m) => !/\bfont-(sans|mono)\b/.test(m[0]))
+      .map(() => rel(path)))
+    expect(bare).toEqual([])
+  })
+
   it('uses tabular figures, never the retired num class', () => {
     expect(offenders(/["'` ]num["'` ]/)).toEqual([])
   })
