@@ -25,8 +25,10 @@ export default function EmptyState(
       {onAction
         ? <Button className="mt-2" onClick={onAction}>{action}</Button>
         : (
-          <code className="tn mt-2 rounded-ctl border border-border bg-input
-                           px-2 py-1 text-text-secondary">
+          // v14 residual, struck in the holiday's F-11: the face is named so
+          // the command reads in the ledger's sans, not the browser's mono.
+          <code className="font-sans tn mt-2 rounded-ctl border border-border
+                           bg-input px-2 py-1 text-text-secondary">
             {action}
           </code>
           )}

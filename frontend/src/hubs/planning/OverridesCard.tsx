@@ -41,7 +41,7 @@ export default function OverridesCard() {
       {/* Rule 2: doubt about whether your own pins act at all. */}
       {!data.active && (
         <Callout tone="warn" className="mb-3">
-          These are saved but not being applied: <code>[news] overrides</code>
+          These are saved but not being applied: <code className="font-sans">[news] overrides</code>
           {' '}is false in config.toml.
         </Callout>
       )}
