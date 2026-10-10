@@ -82,6 +82,15 @@ def test_the_verdict_names_a_falling_position_and_a_moved_level():
     assert verdict == "fail: corr_DEF, level" and reason is None
 
 
+def test_a_position_the_branch_cannot_read_fails():
+    side = {"corr": 0.30, "level": 0.0,
+            "corr_by_position": {"GKP": None, "DEF": 0.2, "MID": 0.3,
+                                 "FWD": 0.3}}
+    branch = {**side, "corr": 0.40,
+              "corr_by_position": {**side["corr_by_position"], "FWD": None}}
+    assert v20b_head._verdict(side, branch)[0] == "fail: corr_FWD"
+
+
 def test_too_few_slots_is_no_reading_with_its_reason():
     out = v20b_head.head_reading(_frame(seasons=1, gws=12), attack_cols=ATTACK)
     assert out["n"] == 0 and out["verdict"] == "no reading"

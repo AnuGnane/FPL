@@ -39,6 +39,7 @@ import json
 
 import numpy as np
 import pandas as pd
+from lightgbm.basic import LightGBMError
 
 from gaffer.data import store
 from gaffer.models.attacking import AttackingModel
@@ -170,7 +171,9 @@ def _verdict(main: dict, branch: dict) -> tuple[str, str | None]:
         failed.append("overall_corr")
     for p in POSITIONS:
         m, b = main["corr_by_position"][p], branch["corr_by_position"][p]
-        if m is not None and b is not None and b - m < -POSITION_SLACK:
+        # A position the control reads and the branch cannot (a constant
+        # prediction) has collapsed, so it fails rather than being skipped.
+        if m is not None and (b is None or b - m < -POSITION_SLACK):
             failed.append(f"corr_{p}")
     if abs(branch["level"] - main["level"]) > LEVEL_SLACK:
         failed.append("level")
@@ -233,9 +236,10 @@ def main() -> int:
         else:
             df, _, _ = load_training_frame()
             payload = head_reading(df)
-    except (OSError, ValueError, KeyError, TypeError) as exc:
+    except (OSError, ValueError, KeyError, TypeError, LightGBMError) as exc:
         # A corrupt parquet raises ArrowInvalid (a ValueError); a frame
-        # missing a column raises KeyError, in the feature build or the fit.
+        # missing a column raises KeyError, in the feature build or the fit;
+        # a degenerate fit raises LightGBMError.
         payload = _empty(f"feature frame unreadable: {type(exc).__name__}")
     print(f"V20B_HEAD {json.dumps(payload, sort_keys=True)}")
     return 0
