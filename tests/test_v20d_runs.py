@@ -49,23 +49,34 @@ def _header(gw):
     return f"=== GW{gw} — deadline 2026-09-19T10:00:00Z ==="
 
 
-def test_a_banked_run_with_a_charged_drop_sale_reads_live():
+def _banked(day, n=700):
+    return f"Banked {n} price readings for {day} to live/price_log.parquet."
+
+
+def _run(gw, day):
+    """A Thursday run's log chunk: the bank line, then the CLI's header."""
+    return _log(_banked(day), _header(gw)).rstrip("\n")
+
+
+def test_a_banked_run_with_a_head_week_drop_sale_reads_live():
     prices = _prices([_row(GW5, 1, -80.0), _row(GW5, 2, 10.0)])
-    payloads = [_payload(5, f"{GW5}T17:02:00+00:00", [1], 0.42)]
-    runs, row = v20d_runs.reading(_log("Trained on 9 rows.", _header(5)),
+    # The head week's charge is 0.0 by design (trace.py, W2 §3.4).
+    payloads = [_payload(5, f"{GW5}T17:02:00+00:00", [1], 0.0)]
+    runs, row = v20d_runs.reading(_log("Trained on 9 rows.", _run(5, GW5)),
                                   payloads, prices)
     assert len(runs) == 1
     run = runs[0]
     assert run["rows_that_day"] == 2 and run["drop_sells"] == [1]
     assert run["log_failure"] is None and run["log_runs"] == 1
+    assert run["log_banked"] == 700 and run["log_banked_day"] == GW5
     assert run["lever"] == "banked, drop sale charged"
     assert row["row"] == "live" and row["short"] is True and row["runs"] == 1
 
 
 def test_a_run_whose_step_failed_is_the_first_row_whatever_the_price_log_holds():
     prices = _prices([_row(GW6, 1, -80.0)])
-    text = _log(_header(5), "price reading not banked: timed out", _header(6))
-    payloads = [_payload(6, f"{GW6}T17:00:00+00:00", [1], 0.4)]
+    text = _log(_run(5, GW5), "price reading not banked: timed out", _header(6))
+    payloads = [_payload(6, f"{GW6}T17:00:00+00:00", [1], 0.0)]
     runs, row = v20d_runs.reading(text, payloads, prices)
     assert runs[0]["log_failure"] == "price reading not banked: timed out"
     assert runs[0]["lever"] == "step: not banked"
@@ -75,16 +86,35 @@ def test_a_run_whose_step_failed_is_the_first_row_whatever_the_price_log_holds()
 def test_a_failure_line_belongs_to_the_header_below_it_not_above():
     text = _log("price reading not banked: x", _header(5), _header(6))
     logged = v20d_runs.log_runs(text)
-    assert logged[5]["failures"] == ["price reading not banked: x"]
-    assert logged[6]["failures"] == []
+    assert logged[5][0]["failure"] == "price reading not banked: x"
+    assert logged[6][0]["failure"] is None
+
+
+def test_a_later_failing_rerun_does_not_relabel_the_thursday_run():
+    text = _log(_run(5, GW5), "price reading not banked: x", _header(5))
+    prices = _prices([_row(GW5, 1, -80.0)])
+    payloads = [_payload(5, f"{GW5}T17:00:00+00:00", [1], 0.0)]
+    runs, row = v20d_runs.reading(text, payloads, prices)
+    assert runs[0]["log_runs"] == 2 and runs[0]["log_failure"] is None
+    assert row["row"] == "live"
+
+
+def test_a_bank_failure_printed_by_bank_prices_is_a_failure_too():
+    text = _log("price log not written: disk full", _header(5))
+    prices = _prices([_row(GW5, 1, -80.0)])  # the nightly bank's rows
+    payloads = [_payload(5, f"{GW5}T17:00:00+00:00", [1], 0.0)]
+    runs, row = v20d_runs.reading(text, payloads, prices)
+    assert runs[0]["lever"] == "step: not banked" and row["row"] == "step"
 
 
 def test_a_run_banked_a_day_early_is_the_first_row():
-    prices = _prices([_row("2026-09-30", 1, -80.0)])
+    # The nightly bank later wrote rows for the run's own day, so the
+    # price log alone would call this banked; the advise log does not.
+    prices = _prices([_row("2026-09-30", 1, -80.0), _row(GW7, 1, -80.0)])
     payloads = [_payload(7, f"{GW7}T17:00:00+00:00", [1], 0.0)]
-    runs, row = v20d_runs.reading(_log(_header(7)), payloads, prices)
-    assert runs[0]["rows_that_day"] == 0
-    assert runs[0]["last_banked_before"] == "2026-09-30"
+    runs, row = v20d_runs.reading(_run(7, "2026-09-30"), payloads, prices)
+    assert runs[0]["rows_that_day"] == 1
+    assert runs[0]["log_banked_day"] == "2026-09-30"
     assert runs[0]["lever"] == "step: banked a different day"
     assert row["row"] == "step"
 
@@ -95,17 +125,19 @@ def test_every_run_banked_and_no_drop_sale_is_no_evidence():
     payloads = [_payload(5, f"{GW5}T17:00:00+00:00", [2], None),
                 _payload(6, f"{GW6}T17:00:00+00:00", [], None),
                 _payload(7, f"{GW7}T17:00:00+00:00", [2], None)]
-    text = _log(_header(5), _header(6), _header(7))
+    text = _log(_run(5, GW5), _run(6, GW6), _run(7, GW7))
     runs, row = v20d_runs.reading(text, payloads, prices)
     assert [r["lever"] for r in runs] == ["banked, no drop sale"] * 3
-    assert row == {"runs": 3, "short": False, "row": "no evidence", "reason": None}
+    assert row == {"runs": 3, "short": False, "row": "no evidence",
+                   "missing": [], "reason": None}
 
 
-def test_an_uncharged_drop_sale_is_the_reader_row_even_beside_a_charged_one():
+def test_an_unpriced_drop_sale_is_the_reader_row_even_beside_a_priced_one():
     prices = _prices([_row(GW5, 1, -80.0), _row(GW6, 1, -80.0)])
-    payloads = [_payload(5, f"{GW5}T17:00:00+00:00", [1], 0.3),
-                _payload(6, f"{GW6}T17:00:00+00:00", [1], 0.0)]
-    runs, row = v20d_runs.reading(_log(_header(5), _header(6)), payloads, prices)
+    payloads = [_payload(5, f"{GW5}T17:00:00+00:00", [1], 0.0),
+                _payload(6, f"{GW6}T17:00:00+00:00", [1], None)]
+    runs, row = v20d_runs.reading(_run(5, GW5) + "\n" + _run(6, GW6),
+                                  payloads, prices)
     assert runs[1]["lever"] == "banked, drop sale uncharged"
     assert row["row"] == "reader"
 
@@ -113,13 +145,14 @@ def test_an_uncharged_drop_sale_is_the_reader_row_even_beside_a_charged_one():
 def test_a_calibrating_drop_is_not_a_drop_sale():
     prices = _prices([_row(GW5, 1, -80.0, calibrating=True)])
     payloads = [_payload(5, f"{GW5}T17:00:00+00:00", [1], None)]
-    runs, _ = v20d_runs.reading(_log(_header(5)), payloads, prices)
+    runs, _ = v20d_runs.reading(_run(5, GW5), payloads, prices)
     assert runs[0]["drop_sells"] == [] and runs[0]["lever"] == "banked, no drop sale"
 
 
 def test_only_the_earliest_thursday_payload_since_gw5_is_a_run():
     payloads = [_payload(5, f"{GW5}T19:30:00+00:00", [], None),   # a web re-run
                 _payload(5, f"{GW5}T17:01:00+00:00", [], None),   # the plist's
+                _payload(5, f"{GW5}T08:00:00+00:00", [], None),   # a morning run
                 _payload(5, "2026-09-18T08:00:00+00:00", [], None),  # a Friday
                 _payload(4, "2026-09-10T17:00:00+00:00", [], None)]  # before v19b
     runs = v20d_runs.thursday_runs(payloads)
@@ -128,7 +161,7 @@ def test_only_the_earliest_thursday_payload_since_gw5_is_a_run():
 
 def test_a_missing_log_reads_no_reading_with_its_reason():
     prices = _prices([_row(GW5, 1, -80.0)])
-    payloads = [_payload(5, f"{GW5}T17:00:00+00:00", [1], 0.3)]
+    payloads = [_payload(5, f"{GW5}T17:00:00+00:00", [1], 0.0)]
     runs, row = v20d_runs.reading(None, payloads, prices)
     assert runs[0]["lever"] == "no reading"
     assert "no advise log" in runs[0]["reason"]
@@ -151,15 +184,33 @@ def test_main_reads_a_whole_tree_and_tolerates_a_corrupt_report(
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")
     (tmp_path / "logs").mkdir()
-    (tmp_path / "logs" / "advise.log").write_text(_log(_header(5)))
+    (tmp_path / "logs" / "advise.log").write_text(_log(_run(5, GW5)))
     (tmp_path / "data" / "live").mkdir(parents=True)
     _prices([_row(GW5, 1, -80.0)]).to_parquet(tmp_path / "data" / PRICE_LOG_PATH)
     history = tmp_path / "reports" / "advice_history"
     history.mkdir(parents=True)
     (history / f"gw5-{GW5}T17:00:00+00:00.json").write_text(
-        json.dumps(_payload(5, f"{GW5}T17:00:00+00:00", [1], 0.4)))
+        json.dumps(_payload(5, f"{GW5}T17:00:00+00:00", [1], 0.0)))
     (tmp_path / "reports" / "gw5-advice.json").write_text("{not json")
     assert v20d_runs.main() == 0
     lines = capsys.readouterr().out.strip().splitlines()
     assert [ln.split(" ", 1)[0] for ln in lines] == ["V20D_RUN", "V20D_ROW"]
     assert json.loads(lines[1].split(" ", 1)[1])["row"] == "live"
+
+
+def test_a_logged_gameweek_whose_payload_is_gone_is_named_missing():
+    prices = _prices([_row(GW6, 1, 5.0)])
+    payloads = [_payload(6, f"{GW6}T17:00:00+00:00", [], None)]
+    text = _log(_run(5, GW5), _run(6, GW6))
+    runs, row = v20d_runs.reading(text, payloads, prices)
+    assert [(r["gw"], r["lever"]) for r in runs] == [
+        (6, "banked, no drop sale"), (5, "missing")]
+    assert row["missing"] == [5] and row["row"] == "no evidence"
+
+
+def test_a_run_with_neither_bank_line_is_no_reading_not_a_bank():
+    prices = _prices([_row(GW5, 1, -80.0)])
+    payloads = [_payload(5, f"{GW5}T17:00:00+00:00", [1], 0.0)]
+    runs, row = v20d_runs.reading(_log(_header(5)), payloads, prices)
+    assert runs[0]["lever"] == "no reading" and "nightly" in runs[0]["reason"]
+    assert row["row"] is None
