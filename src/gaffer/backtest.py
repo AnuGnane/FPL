@@ -170,6 +170,28 @@ def team_model_lever_line(fixtures: pd.DataFrame) -> str:
             f"distinct={p.round(6).nunique()} n={len(uniq)}")
 
 
+LEVER_HEADS = (("minutes", "feature_cols"), ("bonus", "cols_"))
+"""v20 §2 v20a and v20b lever checks: each head and the attribute naming its columns.
+
+``ThreeModeModel`` keeps the list it was built with in ``feature_cols`` and
+has no ``cols_``; ``BonusModel`` records in ``cols_`` the columns it actually
+fitted on, which is what a disconnected lever would show (CONVENTIONS §10).
+"""
+
+
+def lever_cols_line(name: str, head, attr: str) -> str:
+    """One ``LEVER <head> cols=[…]`` line, printed once per replay.
+
+    A head absent from ``models``, or one without the attribute, reads
+    ``cols=missing`` rather than raising: the line is evidence about the
+    lever, and a replay must not die for want of it (v20 §2 v20a, v20b).
+    """
+    cols = getattr(head, attr, None) if head is not None else None
+    if cols is None:
+        return f"LEVER {name} cols=missing"
+    return f"LEVER {name} cols=[{', '.join(str(c) for c in cols)}]"
+
+
 # Scoring rules for the replay. The live rules come from the API; a replay
 # must run offline, so it reads the same payload shape from the bundled
 # package asset (gaffer.assets), which works from an installed wheel too.
@@ -520,6 +542,7 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
     log: list[dict] = []
     total = 0
     team_fixtures: list[pd.DataFrame] = []
+    levers_logged = False
 
     for gw in range(start_gw, LAST_GW + 1):
         rows = season_rows[season_rows["gw"] == gw]
@@ -532,6 +555,13 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
             df, tg, _ = load_training_frame(max_season_idx=season_idx,
                                             max_gw=gw)
             models = train_all(df, tg, save=False)
+            # v20 §2 v20a/v20b lever check: the first refit names the minutes
+            # and bonus heads' columns, so a pair without them is no reading.
+            if not levers_logged:
+                for name, attr in LEVER_HEADS:
+                    print(lever_cols_line(name, models.get(name), attr),
+                          flush=True)
+                levers_logged = True
 
         # Plan over the horizon, execute the first week only. Blank
         # gameweeks inside the horizon simply have no rows here: build_pool
