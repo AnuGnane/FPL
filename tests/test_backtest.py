@@ -860,3 +860,64 @@ def test_the_replay_reads_the_team_head_with_the_harness_on(
 
 def test_the_replay_team_harness_ships_off():
     assert bt.REPLAY_TEAM_MODEL is False
+
+
+class _FakeMinutesHead:
+    """Carries only what the v20a lever line reads: no fit, no ``cols_``."""
+
+    def __init__(self, feature_cols):
+        self.feature_cols = feature_cols
+
+
+class _FakeBonusHead:
+    """Carries only the fitted ``cols_`` the v20b lever line reads."""
+
+    def __init__(self, cols):
+        self.cols_ = cols
+
+
+def _replay_lever_lines(monkeypatch, capsys, models):
+    _install_stubs(monkeypatch, _season_rows([1, 2, 3]))
+    fits = []
+    monkeypatch.setattr(bt, "train_all",
+                        lambda *a, **k: fits.append(1) or dict(models))
+    run_backtest(season="2025-26", start_gw=1, retrain_every=1)
+    printed = capsys.readouterr().out.splitlines()
+    return [ln for ln in printed if ln.startswith("LEVER ")], len(fits)
+
+
+def test_the_replay_names_each_heads_columns_once_on_the_first_refit(
+        monkeypatch, capsys):
+    lines, fits = _replay_lever_lines(monkeypatch, capsys, {
+        "minutes": _FakeMinutesHead(["mins_r3", "role_wb_share",
+                                     "role_wb_missing"]),
+        "bonus": _FakeBonusHead(["bps_r3", "e_goals"])})
+    assert fits == 3
+    assert lines == [
+        "LEVER minutes cols=[mins_r3, role_wb_share, role_wb_missing]",
+        "LEVER bonus cols=[bps_r3, e_goals]"]
+
+
+def test_a_head_missing_from_the_models_prints_its_lever_line_as_missing(
+        monkeypatch, capsys):
+    lines, _ = _replay_lever_lines(monkeypatch, capsys, {
+        "minutes": _FakeMinutesHead(["mins_r3"])})
+    assert lines == ["LEVER minutes cols=[mins_r3]",
+                     "LEVER bonus cols=missing"]
+
+
+def test_a_head_without_its_columns_attribute_reads_as_missing():
+    assert bt.lever_cols_line("bonus", object(), "cols_") == (
+        "LEVER bonus cols=missing")
+    assert bt.lever_cols_line("minutes", None, "feature_cols") == (
+        "LEVER minutes cols=missing")
+
+
+def test_an_oracle_replay_fits_nothing_and_prints_no_lever_line(
+        monkeypatch, capsys):
+    _install_stubs(monkeypatch, _season_rows([1, 2, 3]))
+    monkeypatch.setattr(bt, "oracle_ep",
+                        lambda rows, gws: rows[rows["gw"].isin(gws)][
+                            ["code", "gw"]].assign(ep=1.0))
+    run_backtest(season="2025-26", start_gw=1, ep_source="oracle")
+    assert "LEVER " not in capsys.readouterr().out
