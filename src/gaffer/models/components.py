@@ -8,6 +8,7 @@ these models only supply probabilities and expected counts.
 
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 from lightgbm import LGBMClassifier, LGBMRegressor
 
@@ -111,6 +112,45 @@ class SavesModel:
 BONUS_FEATURES = ["bps_r3", "bps_r5", "bps_r38", "xgi_r5", "bonus_r5",
                   "bonus_r38", "elo_diff", "home"]
 
+BONUS_SEES_ATTACK = False
+"""v20 spec §2 v20b: the bonus head is shown the attacking head's output.
+
+On, ``BonusModel`` reads :data:`BONUS_ATTACK_FEATURES`: the eight above plus
+``e_goals``/``e_assists`` (out of fold at fit time, the attacking head's raw
+output at serve time; ruling 5) and three position indicators, GKP the base.
+Ships off (holiday F-18): the head half and the replay are the Mac's, and the
+arm turns it on only on their verdict. Off, the head is byte-identical to the
+pre-v20 one.
+"""
+
+BONUS_ATTACK_COLS = ["e_goals", "e_assists"]
+BONUS_POSITION_COLS = ["pos_DEF", "pos_MID", "pos_FWD"]
+BONUS_ATTACK_FEATURES = (BONUS_FEATURES + BONUS_ATTACK_COLS
+                         + BONUS_POSITION_COLS)
+
+
+def bonus_features() -> list[str]:
+    """The bonus head's feature list under :data:`BONUS_SEES_ATTACK`, read
+    when the head is built, so a fitted head keeps the list it was fitted on."""
+    return list(BONUS_ATTACK_FEATURES if BONUS_SEES_ATTACK else BONUS_FEATURES)
+
+
+def bonus_sees_attack(model) -> bool:
+    """Whether a fitted bonus head reads the attacking columns.
+
+    Read off the head's own ``cols_`` rather than the flag, so a head pickled
+    with the arm on is fed what it was fitted on whatever the flag says now
+    (v20b §2), and a pre-v20 pickle is fed exactly what it always was.
+    """
+    return any(c in BONUS_ATTACK_COLS for c in getattr(model, "cols_", ()))
+
+
+def with_attack(rows: pd.DataFrame, e_goals, e_assists) -> pd.DataFrame:
+    """``rows`` with the attacking head's two columns attached positionally
+    (one prediction per input row, in input order; see ``predict.py``)."""
+    return rows.assign(e_goals=np.asarray(e_goals, dtype="float64"),
+                       e_assists=np.asarray(e_assists, dtype="float64"))
+
 
 class BonusModel:
     """E[bonus] per appearance, trained on the newest seasons only.
@@ -124,13 +164,26 @@ class BonusModel:
     of the history.
     """
 
-    def __init__(self, feature_cols: list[str] = BONUS_FEATURES,
+    def __init__(self, feature_cols: list[str] | None = None,
                  min_season_idx: int = 3):
-        self.feature_cols = feature_cols
+        self.feature_cols = (bonus_features() if feature_cols is None
+                             else feature_cols)
         self.min_season_idx = min_season_idx
         self.reg = LGBMRegressor(**LGB_KW)
 
+    def _frame(self, df: pd.DataFrame) -> pd.DataFrame:
+        """The position indicators, derived from ``position`` when the head
+        reads them and the frame lacks them (v20b §2). A head on the eight
+        pre-v20 features gets ``df`` itself, untouched."""
+        missing = [c for c in BONUS_POSITION_COLS
+                   if c in self.feature_cols and c not in df.columns]
+        if not missing or "position" not in df.columns:
+            return df
+        return df.assign(**{c: (df["position"] == c[4:]).astype(float)
+                            for c in missing})
+
     def fit(self, df: pd.DataFrame) -> "BonusModel":
+        df = self._frame(df)
         sub = df[(df["minutes"] > 0) & (df["season_idx"] >= self.min_season_idx)
                  & df["bonus"].notna()]
         self.cols_ = [c for c in self.feature_cols if c in sub.columns]
@@ -138,6 +191,7 @@ class BonusModel:
         return self
 
     def predict(self, df: pd.DataFrame) -> pd.DataFrame:
+        df = self._frame(df)
         out = df[["code", "season_idx", "gw"]].copy()
         out["e_bonus"] = self.reg.predict(df[self.cols_]).clip(0, 3)
         return out

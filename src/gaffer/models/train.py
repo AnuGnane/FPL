@@ -43,10 +43,19 @@ from gaffer.features.engineer import (
     core_insights_frames,
     merge_understat_team,
 )
+from gaffer.models import components
 from gaffer.models.assemble import assemble_ep
 from gaffer.models.attacking import ATTACK_FEATURES, AttackingModel
 from gaffer.models.calibrate import CalibrationModel
-from gaffer.models.components import BonusModel, DefconModel, SavesModel, card_penalty
+from gaffer.models.components import (
+    BONUS_ATTACK_COLS,
+    BonusModel,
+    DefconModel,
+    SavesModel,
+    bonus_sees_attack,
+    card_penalty,
+    with_attack,
+)
 from gaffer.models.dixon_coles import DixonColesModel, walk_forward_cs
 from gaffer.models.minutes import ThreeModeModel
 from gaffer.models.persistence import save_model, save_params
@@ -477,7 +486,12 @@ def predict_components_simple(models: dict, rows: pd.DataFrame) -> pd.DataFrame:
                        ("defcon", ["p_defcon"]),
                        ("saves", ["e_saves"]),
                        ("bonus", ["e_bonus"])):
-        out = models[name].predict(rows)
+        # v20b §2: bonus comes after attacking, so a head fitted with the
+        # arm on reads this run's own e_goals/e_assists, as the solve does.
+        seen = (with_attack(rows, comp["e_goals"], comp["e_assists"])
+                if name == "bonus" and bonus_sees_attack(models[name])
+                else rows)
+        out = models[name].predict(seen)
         for col in cols:
             comp[col] = out[col].values
     comp["p_cs"] = DEFAULT_P_CS
@@ -595,6 +609,33 @@ def attacking_features() -> list[str]:
                                     if config_in_force().xg_per_shot else [])
 
 
+def oof_attack(df: pd.DataFrame, floor: int,
+               attack_cols: list[str]) -> pd.DataFrame:
+    """``df`` with out-of-fold ``e_goals``/``e_assists`` for the bonus fit.
+
+    v20 spec ruling 5: each season of the bonus window (``season_idx >=
+    floor``) is predicted by an attacking head refit on every other season,
+    because an in-sample prediction is sharper than anything the head serves
+    and the bonus head would learn a dependence the live path never feeds
+    it. Older rows, which the bonus fit never reads, carry 0.0, as does a
+    window season with no other appearance to fit on (one season of
+    history). The same rule as ``scripts/v20b_head.py``'s ``attach_attack``.
+    """
+    out = df.copy()
+    for col in BONUS_ATTACK_COLS:
+        out[col] = 0.0
+    for season in sorted(out.loc[out["season_idx"] >= floor,
+                                 "season_idx"].unique()):
+        rest = df[df["season_idx"] != season]
+        if not (rest["minutes"] > 0).any():
+            continue
+        mask = (df["season_idx"] == season).to_numpy()
+        pred = AttackingModel(attack_cols).fit(rest).predict(df[mask])
+        for col in BONUS_ATTACK_COLS:
+            out.loc[mask, col] = pred[col].to_numpy()
+    return out
+
+
 def train_all(df: pd.DataFrame, tg: pd.DataFrame, save: bool = True,
               _fit_cal: bool = True) -> dict:
     """Fit every component on the given frames.
@@ -604,6 +645,8 @@ def train_all(df: pd.DataFrame, tg: pd.DataFrame, save: bool = True,
     needed to have data to fit on. On a truncated backtest frame the window
     is measured against the newest season the backtest is allowed to see,
     not the newest on disk.
+    With :data:`~gaffer.models.components.BONUS_SEES_ATTACK` on it is fitted
+    on :func:`oof_attack`'s frame (v20b §2); off, on ``df`` itself.
 
     ``_fit_cal`` is the recursion guard for :func:`fit_calibration`, which
     calls back in here to refit the components on its own inner split. It
@@ -614,7 +657,10 @@ def train_all(df: pd.DataFrame, tg: pd.DataFrame, save: bool = True,
     attacking = AttackingModel(attacking_features()).fit(df)
     defcon = DefconModel().fit(df)
     saves = SavesModel().fit(df)
-    bonus = BonusModel(min_season_idx=bonus_season_floor(df)).fit(df)
+    floor = bonus_season_floor(df)
+    bonus = BonusModel(min_season_idx=floor).fit(
+        oof_attack(df, floor, attacking_features())
+        if components.BONUS_SEES_ATTACK else df)
     models = {"minutes": minutes, "team": team, "attacking": attacking,
               "defcon": defcon, "saves": saves, "bonus": bonus}
     if _fit_cal:
