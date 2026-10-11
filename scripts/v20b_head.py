@@ -208,7 +208,10 @@ def head_reading(df: pd.DataFrame | None,
     if hold.empty:
         return _empty("no held-out appearance with a bonus")
 
-    main_model = BonusModel(min_season_idx=floor).fit(train)
+    # The control names its eight columns: BonusModel's default follows
+    # BONUS_SEES_ATTACK (holiday F-18), and the control must not.
+    main_model = BonusModel(feature_cols=BONUS_FEATURES,
+                            min_season_idx=floor).fit(train)
     branch_model = BranchBonusModel(min_season_idx=floor).fit(train)
     e_main = main_model.predict(hold)["e_bonus"].to_numpy()
     e_branch = branch_model.predict(hold)["e_bonus"].to_numpy()

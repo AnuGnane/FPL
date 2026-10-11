@@ -11,7 +11,7 @@ themselves never saw a row from GW30 onwards during fitting.
 from gaffer.assets import load_bootstrap_sample
 from gaffer.data.bootstrap import scoring_table
 from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
-from gaffer.models.components import card_penalty
+from gaffer.models.components import bonus_sees_attack, card_penalty, with_attack
 from gaffer.models.train import (evaluate_predictions, load_training_frame,
                                  train_all)
 
@@ -32,7 +32,11 @@ mp = models["minutes"].predict(holdout)
 ap = models["attacking"].predict(holdout)
 dp = models["defcon"].predict(holdout)
 sp = models["saves"].predict(holdout)
-bp = models["bonus"].predict(holdout)
+# v20b §2: a head fitted with BONUS_SEES_ATTACK on reads the attacking
+# head's output; an off head reads the holdout as it always did.
+bp = models["bonus"].predict(
+    with_attack(holdout, ap["e_goals"], ap["e_assists"])
+    if bonus_sees_attack(models["bonus"]) else holdout)
 tg_holdout = tg_full[(tg_full.season_idx == HOLDOUT_SEASON) &
                      (tg_full.gw >= HOLDOUT_FROM)].dropna(subset=["elo_diff"])
 tp = models["team"].predict(tg_holdout)
