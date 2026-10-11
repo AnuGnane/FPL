@@ -8,11 +8,17 @@ The holdout is ``fit_calibration``'s: the last ``CALIBRATION_HOLDOUT_GWS``
 gameweek slots, with the minutes head fitted on the rows strictly before the
 first of them. The head is the shipped one, ``ThreeModeModel`` on
 ``MINUTES_FEATURES`` with ``DNP_CALIBRATION_DEFAULT`` as it stands, so
-"raw" below means ``p_play`` as a live run serves it, its own DNP calibrator
-included. The step is an isotonic map ``p_play -> P(minutes > 0)`` fitted on
-the training rows' out-of-fold predictions (one minutes refit per left-out
-training season, each predicting its season from the others) and applied to
-the held-out rows' raw ``p_play``.
+"raw" below means ``p_play`` as the fitted head predicts it, its own DNP
+calibrator included, before the live availability override (which needs news
+history this reading does not have). The step is an isotonic map
+``p_play -> P(minutes > 0)`` fitted on the training rows' out-of-fold
+predictions (one minutes refit per left-out training season, each predicting
+its season from the others) and applied to the held-out rows' raw
+``p_play``, bounded to ``[STEP_BOUND, 1 - STEP_BOUND]``: an isotonic map ends
+in blocks of exactly 0 and 1, and one held-out row landing in such a block
+and going the other way would add more than the whole bar to the log loss,
+so the verdict could turn on a single row. The line counts the held-out rows
+the step sends to a bound.
 
 The line carries the reliability table over ten equal-width bins of the raw
 ``p_play`` (n, mean raw, mean stepped, observed share of ``minutes > 0``),
@@ -57,6 +63,9 @@ N_BINS = 10
 LOG_GAIN = 0.001
 BIN_SLACK = 0.01
 """The pre-registered pass rule (holiday F-17's default)."""
+
+STEP_BOUND = 1e-3
+"""The isotonic step's floor and ceiling, part of the pre-registration."""
 
 EPS = 1e-6
 """Probabilities are clipped to ``[EPS, 1 - EPS]`` for the log loss only, so
@@ -179,7 +188,7 @@ def pplay_reading(df: pd.DataFrame | None,
     oof_p, oof_y, folds = out_of_fold(train, cols)
     step = None
     if folds:
-        iso = IsotonicRegression(y_min=0.0, y_max=1.0,
+        iso = IsotonicRegression(y_min=STEP_BOUND, y_max=1 - STEP_BOUND,
                                  out_of_bounds="clip").fit(oof_p, oof_y)
         step = iso.predict(raw)
 
@@ -194,7 +203,9 @@ def pplay_reading(df: pd.DataFrame | None,
                   "observed": _r(b["observed"])} for b in bins],
         "raw": {"log_loss": _r(raw_ll), "brier": _r(_brier(raw, y))},
         "step": (None if step is None else
-                 {"log_loss": _r(step_ll), "brier": _r(_brier(step, y))}),
+                 {"log_loss": _r(step_ll), "brier": _r(_brier(step, y)),
+                  "at_bound": int(((step <= STEP_BOUND)
+                                   | (step >= 1 - STEP_BOUND)).sum())}),
         "verdict": verdict, "reason": reason}
 
 

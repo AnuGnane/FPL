@@ -25,8 +25,9 @@ import c2_pplay_bins  # noqa: E402 — scripts/ is not a package; the path inser
 def _frame(seasons: int = 3, gws: int = 20, players: int = 300,
            seed: int = 0) -> pd.DataFrame:
     """Three kinds of player on a grid of true rates; each plays an exact
-    share of every season's gameweeks in a random order, so a bin's observed
-    share sits on its rate and sampling noise cannot move a bin."""
+    share of every season's gameweeks in a random order. The share is exact
+    per season, so the half-season holdout sits close to each rate rather
+    than on it, well inside the bar's margins at this seed."""
     rng = np.random.default_rng(seed)
     rate = np.resize([0.35, 0.6, 0.9], players)
     rows = []
@@ -118,7 +119,7 @@ def test_the_real_minutes_head_prints_a_full_line():
     assert out["reason"] is None and out["oof_folds"] == 3
     assert len(out["bins"]) == 10
     assert sum(b["n"] for b in out["bins"]) == out["n"] == 600
-    assert set(out["step"]) == {"log_loss", "brier"}
+    assert set(out["step"]) == {"log_loss", "brier", "at_bound"}
 
 
 def test_too_few_slots_is_no_reading_with_its_reason():
@@ -149,3 +150,49 @@ def test_an_unreadable_feature_frame_prints_the_line_not_a_traceback(
                          .removeprefix("C2_PPLAY "))
     assert payload["verdict"] == "no reading"
     assert payload["reason"].startswith("feature frame unreadable")
+
+
+class _Recording(_Stretched):
+    """``_Stretched`` that records the seasons and slots each fit saw and
+    refuses to predict a season it was fitted on, outside the outer fit."""
+
+    fits: list = []
+
+    def fit(self, df):
+        self.seen = set(df["season_idx"].unique())
+        self.slots = set(zip(df["season_idx"], df["gw"]))
+        _Recording.fits.append(self)
+        return self
+
+    def predict(self, df):
+        self.predicted = set(df["season_idx"].unique())
+        return super().predict(df)
+
+
+def test_each_fold_predicts_a_season_it_never_fitted_on(monkeypatch):
+    _Recording.fits = []
+    monkeypatch.setattr(c2_pplay_bins, "ThreeModeModel", _Recording)
+    c2_pplay_bins.pplay_reading(_frame(players=30), feature_cols=["rate"])
+    outer, *folds = _Recording.fits
+    assert max(outer.slots) == (2, 10)
+    assert len(folds) == 3
+    for fold in folds:
+        assert fold.predicted.isdisjoint(fold.seen)
+
+
+def test_a_holdout_across_a_season_boundary_is_fit_calibrations_last_ten_slots(
+        stretched):
+    df = _frame(seasons=3, gws=6, players=30)
+    out = c2_pplay_bins.pplay_reading(df, feature_cols=["rate"])
+    assert out["n_train"] == 8 * 30 and out["n"] == 10 * 30
+    _, hold = c2_pplay_bins.split_holdout(df)
+    slots = sorted(set(zip(df["season_idx"], df["gw"])))
+    assert set(zip(hold["season_idx"], hold["gw"])) == set(slots[-10:])
+
+
+def test_the_step_never_reaches_zero_or_one(stretched):
+    out = c2_pplay_bins.pplay_reading(_frame(), feature_cols=["rate"])
+    assert out["step"]["at_bound"] == 0
+    assert all(c2_pplay_bins.STEP_BOUND <= b["step"]
+               <= 1 - c2_pplay_bins.STEP_BOUND
+               for b in out["bins"] if b["n"])
