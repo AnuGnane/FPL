@@ -25,7 +25,7 @@ from gaffer.config import Config
 from gaffer.data.news.lineups import fetch_lineups
 from gaffer.data.news.normalize import availability_frame
 from gaffer.data.news.premierinjuries import fetch_injuries
-from gaffer.models.components import card_penalty
+from gaffer.models.components import bonus_sees_attack, card_penalty, with_attack
 from gaffer.models.minutes import apply_availability
 from gaffer.models.persistence import load_model
 from gaffer.models.team import ODDS_AGAINST_COL, blend_team_odds, odds_blend_weight
@@ -141,7 +141,13 @@ def predict_components(pred_frame: pd.DataFrame, tg_future: pd.DataFrame,
                        ("defcon", ["p_defcon"]),
                        ("saves", ["e_saves"]),
                        ("bonus", ["e_bonus"])):
-        out = load_model(name).predict(pf)
+        model = load_model(name)
+        # v20b §2: a bonus head fitted with the arm on reads the attacking
+        # head's raw output, before set pieces fold into e_goals below and
+        # before advise's anytime-scorer blend; any other head reads pf.
+        seen = (with_attack(pf, comp["e_goals"], comp["e_assists"])
+                if name == "bonus" and bonus_sees_attack(model) else pf)
+        out = model.predict(seen)
         for col in cols:
             comp[col] = out[col].values
 
