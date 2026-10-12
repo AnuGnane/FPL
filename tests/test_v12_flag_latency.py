@@ -16,6 +16,8 @@ flag is the one that arrived latest.
 
 from __future__ import annotations
 
+import warnings
+
 import pandas as pd
 import pytest
 
@@ -323,8 +325,6 @@ def test_an_unparseable_snapshot_date_is_dropped_without_a_warning():
     """Holiday F-22: the row inference coerced to ``NaT`` is still dropped,
     and the named format means pandas no longer warns that it fell back to
     ``dateutil`` row by row."""
-    import warnings
-
     log = _log([(3, "not-a-date", 1, "a", None),
                 (3, "2026-09-01", 2, "a", None)])
     with warnings.catch_warnings():

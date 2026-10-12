@@ -96,8 +96,10 @@ def pre_deadline(log: pd.DataFrame,
                                       utc=True)
     # The format is named (holiday F-22): ``clock.snap_date`` writes
     # ``YYYY-MM-DD`` and every form the log has held is ISO 8601, so naming it
-    # parses each of them to the value inference gave, without pandas' "Could
-    # not infer format" warning when an unparseable row comes first.
+    # parses a one-form log to the values inference gave, without pandas'
+    # "Could not infer format" warning when an unparseable row comes first. A
+    # log mixing dates and timestamps would now keep the rows inference
+    # coerced to ``NaT``; ``clock.snap_date`` never writes one.
     out["_taken"] = pd.to_datetime(out["snap_date"], errors="coerce", utc=True,
                                    format="ISO8601")
     out = out[out["_deadline"].notna() & out["_taken"].notna()]
