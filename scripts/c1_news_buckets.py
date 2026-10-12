@@ -78,8 +78,11 @@ def _sides(rows: pd.DataFrame) -> dict:
     played = (rows["minutes"] > SHADOW_PLAYED_MINUTES).astype("float64")
     out: dict = {"n": n}
     for side in ("news", "flags"):
-        out[f"brier_{side}"] = _r(((rows[f"p_play_{side}"] - played) ** 2)
-                                  .mean())
+        brier = float(((rows[f"p_play_{side}"] - played) ** 2).mean())
+        # Unrounded beside the printed figure: the 0.002 bar is read on the
+        # exact gain, so rounding cannot carry a 0.00196 over it.
+        out[f"_brier_{side}"] = brier
+        out[f"brier_{side}"] = _r(brier)
         out[f"mae_{side}"] = _r((rows[f"e_min_{side}"] - rows["minutes"])
                                 .abs().mean())
     return out
@@ -101,7 +104,10 @@ def joined_rows(shadow: pd.DataFrame | None, actuals: pd.DataFrame | None,
     key = (["season", "gw", "code"] if "season" in shadow.columns
            else ["gw", "code"])
     cols = key + ["p_play_news", "p_play_flags", "e_min_news", "e_min_flags"]
-    last = shadow[cols].groupby(key, as_index=False).last()
+    # A row banked with a null prediction cannot be scored on either side,
+    # and left in it would count in ``n`` while ``mean`` skipped it.
+    last = (shadow[cols].groupby(key, as_index=False).last()
+            .dropna(subset=cols[len(key):]))
     last["gw"] = pd.to_numeric(last["gw"], errors="coerce")
     last["code"] = pd.to_numeric(last["code"], errors="coerce")
     truth = actuals.assign(
@@ -122,7 +128,7 @@ def _verdict(buckets: dict) -> str:
         if dis["n"] < MIN_DISAGREE:
             return (f"insufficient: {name} has {dis['n']} disagreeing rows, "
                     f"the rule needs {MIN_DISAGREE}")
-        gains.append((name, dis["brier_flags"] - dis["brier_news"]))
+        gains.append((name, dis["_brier_flags"] - dis["_brier_news"]))
     short = [f"{name} {gain:+.4f}" for name, gain in gains
              if gain < BRIER_GAIN]
     if short:
@@ -155,8 +161,13 @@ def buckets_reading(shadow: pd.DataFrame | None,
                else cats == name)
         buckets[name] = {**_sides(rows[sel]),
                          "disagree": _sides(rows[sel & dis.to_numpy()])}
+    verdict = _verdict(buckets)
+    for block in buckets.values():
+        for part in (block, block["disagree"]):
+            part.pop("_brier_news", None)
+            part.pop("_brier_flags", None)
     return {"n": int(len(rows)), "season": season, "buckets": buckets,
-            "verdict": _verdict(buckets), "reason": None}
+            "verdict": verdict, "reason": None}
 
 
 def _season() -> str:
