@@ -52,7 +52,7 @@ def test_the_archive_extracts_to_a_tree_that_matches(tree, tmp_path):
     out = tmp_path / "restored"
     out.mkdir()
     with tarfile.open(archive) as tar:
-        tar.extractall(out)
+        tar.extractall(out, filter="data")
     for rel in ("data/live/player_gw.parquet", "data/raw/field/2026-27/gw2.json",
                 "reports/decision_ledger.json", "models/minutes.joblib"):
         assert (out / rel).read_text() == (tree / rel).read_text()

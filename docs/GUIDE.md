@@ -1443,8 +1443,10 @@ Carried out of the v17 and v18 programmes, all of them small:
   each by the mechanism that fit its site, and pinned at zero by
   `--max-warnings 0`; `ExplainModal`'s lines are long. (`FixtureTicker`'s
   cold-clone sentence came in v19b §2.6.)
-- **Four singleton warnings and four deferred PuLP filters** in the Python
-  suite (v18g); `tests/test_advise.py` runs for 3.4 s on its own.
+- **Two singleton warnings and four deferred PuLP filters** in the Python
+  suite (v18g; holiday F-22 fixed the two off the golden path): `ladder.py`'s
+  divide on an all-NaN sigma and `data/match_odds.py`'s inferred date format,
+  both queued as F-24; `tests/test_advise.py` runs for 3.4 s on its own.
 
 ### 12.5 Not planned — what the research proposed and v12 did not take
 
