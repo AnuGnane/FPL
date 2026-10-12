@@ -304,3 +304,30 @@ def test_both_scorers_survive_a_row_shaped_like_the_real_log():
     # would have reported "premierinjuries" here — the earlier row's source
     # against the later row's verdict.
     assert grades["by_source"] == [{"source": "", "rows": 1}]
+
+
+@pytest.mark.parametrize("snap_date, lead_days", [
+    ("2026-09-01", 3),
+    ("2026-09-01T10:30:00Z", 2),
+])
+def test_a_snapshot_date_keeps_the_lead_inference_gave(snap_date, lead_days):
+    """Holiday F-22: the named format moves no date. Against the gameweek-3
+    deadline day (2026-09-04), a date-only string is three whole days out and
+    a mid-morning timestamp the same day two, as they were before."""
+    kept = ae.pre_deadline(_log([(3, snap_date, 1, "a", None)]),
+                           ae.deadlines(EVENTS))
+    assert kept["lead_days"].tolist() == [lead_days]
+
+
+def test_an_unparseable_snapshot_date_is_dropped_without_a_warning():
+    """Holiday F-22: the row inference coerced to ``NaT`` is still dropped,
+    and the named format means pandas no longer warns that it fell back to
+    ``dateutil`` row by row."""
+    import warnings
+
+    log = _log([(3, "not-a-date", 1, "a", None),
+                (3, "2026-09-01", 2, "a", None)])
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        kept = ae.pre_deadline(log, ae.deadlines(EVENTS))
+    assert kept["code"].tolist() == [2]
