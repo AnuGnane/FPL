@@ -142,3 +142,22 @@ def test_results_without_points_are_named_not_raised():
     out = c1_news_buckets.buckets_reading(
         SHADOW, RESULTS.drop(columns="total_points"), "2026-27")
     assert out["n"] == 0 and "total_points" in out["reason"]
+
+
+def test_a_row_with_a_null_prediction_is_neither_counted_nor_scored():
+    nulled = pd.concat([SHADOW, _shadow([(5, 9, float("nan"), 0.5, 0.0,
+                                          0.0)])], ignore_index=True)
+    results = pd.concat([RESULTS, _results([(5, 9, 0, 0)])],
+                        ignore_index=True)
+    out = c1_news_buckets.buckets_reading(nulled, results, "2026-27")
+    assert out["n"] == 3 and out["buckets"]["zeros"]["n"] == 1
+
+
+def test_the_bar_is_read_on_the_unrounded_gain():
+    buckets = {name: {"disagree": {"n": 30, "_brier_news": 0.10004,
+                                   "_brier_flags": 0.1020,
+                                   "brier_news": 0.1000,
+                                   "brier_flags": 0.1020}}
+               for name in c1_news_buckets.RULE_BUCKETS}
+    # The rounded figures show 0.0020; the exact gain is 0.00196.
+    assert c1_news_buckets._verdict(buckets).startswith("retire candidate")
