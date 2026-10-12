@@ -99,7 +99,10 @@ def with_ages(log: pd.DataFrame) -> pd.DataFrame:
     will not parse are dropped, since they cannot be placed in the sequence.
     """
     frame = log.copy()
-    frame["_day"] = pd.to_datetime(frame["snap_date"], errors="coerce")
+    # ``utc=True`` as ``pre_deadline`` parses the same column, so the two
+    # readings of a day cannot disagree.
+    frame["_day"] = pd.to_datetime(frame["snap_date"], errors="coerce",
+                                   utc=True)
     frame["code"] = pd.to_numeric(frame["code"], errors="coerce")
     frame = frame[frame["_day"].notna() & frame["code"].notna()]
     # ``drop_duplicates`` and not ``groupby().last()``: ``last`` skips nulls
@@ -127,13 +130,12 @@ def with_ages(log: pd.DataFrame) -> pd.DataFrame:
     return frame.drop(columns=["_value", "_since", "_from_first"])
 
 
-
 def graded_rows(log: pd.DataFrame, actuals: pd.DataFrame,
                 events: pd.DataFrame, shadow: pd.DataFrame | None,
                 season: str = "") -> pd.DataFrame:
     """One row per graded ``(gw, code)``: status, bucket, started, flags."""
     aged = with_ages(_season_cut(log, season))
-    window = pre_deadline(aged.drop(columns=["_day"]), deadlines(events))
+    window = pre_deadline(aged, deadlines(events))
     if window.empty:
         return pd.DataFrame()
     truth = actuals.assign(
@@ -142,8 +144,10 @@ def graded_rows(log: pd.DataFrame, actuals: pd.DataFrame,
     truth = truth[truth["gw"].notna() & truth["code"].notna()]
     truth = truth.assign(started=start_truth(truth)).groupby(
         ["gw", "code"], as_index=False).agg(started=("started", "max"))
-    last = (window.assign(_day=pd.to_datetime(window["snap_date"]))
-            .sort_values(["gw", "code", "_day"], kind="stable")
+    # A boolean, as ``_outcomes`` reads it: a results frame carrying a
+    # double's starts summed to 2 must not lift a share above 1.
+    truth["started"] = (truth["started"] > 0.0).astype("float64")
+    last = (window.sort_values(["gw", "code", "_day"], kind="stable")
             .drop_duplicates(["gw", "code"], keep="last"))
     last["code"] = pd.to_numeric(last["code"], errors="coerce")
     rows = last.merge(truth, on=["gw", "code"], how="inner")
@@ -180,8 +184,11 @@ def _status_verdict(cells: dict) -> dict | None:
     if len(ok) < 2:
         return None
     young, old = ok[0], ok[-1]
-    gap = cells[young]["_share"] - cells[old]["_share"]
-    return {"young": young, "old": old, "gap": round(gap, 4),
+    # Read on the printed figure: 0.6 - 0.5 is 0.0999... in floating point,
+    # and a line printing ``gap: 0.1`` beside ``passes: false`` would
+    # contradict the rule it states.
+    gap = round(cells[young]["_share"] - cells[old]["_share"], 4)
+    return {"young": young, "old": old, "gap": gap,
             "passes": abs(gap) >= SHARE_GAP}
 
 
