@@ -152,12 +152,29 @@ def _big(young_share: float, old_share: float):
     return _log(spec), results
 
 
-def test_a_gap_of_a_tenth_within_a_status_is_worth_an_arm():
+def test_a_wide_gap_within_a_status_is_worth_an_arm():
     log, results = _big(0.8, 0.5)
     out = b1_status_age.status_age_reading(log, results, EVENTS, None, SEASON)
     rule = out["statuses"]["d"]["rule"]
     assert rule == {"young": "0-1", "old": "8+", "gap": 0.3, "passes": True}
     assert out["verdict"].startswith("worth an arm: d 0-1 vs 8+")
+
+
+def test_a_gap_of_exactly_a_tenth_passes_and_just_under_does_not():
+    log, results = _big(0.6, 0.5)
+    out = b1_status_age.status_age_reading(log, results, EVENTS, None, SEASON)
+    assert out["statuses"]["d"]["rule"]["gap"] == 0.1
+    assert out["statuses"]["d"]["rule"]["passes"] is True
+    log, results = _big(0.6, 16 / 30)
+    out = b1_status_age.status_age_reading(log, results, EVENTS, None, SEASON)
+    assert out["statuses"]["d"]["rule"]["passes"] is False
+
+
+def test_a_double_summed_to_two_starts_still_reads_as_one_start():
+    results = RESULTS.assign(starts=[2, 0, 0, 1])
+    out = b1_status_age.status_age_reading(_log(SPEC), results, EVENTS,
+                                           None, SEASON)
+    assert out["statuses"]["d"]["buckets"]["0-1"]["start_share"] == 1.0
 
 
 def test_a_flat_share_is_not_worth_an_arm():
