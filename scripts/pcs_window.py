@@ -12,7 +12,9 @@ It grades the banked ``p_cs`` at club-fixture grain the way
 that block's readers (``_key``, ``_club_clean_sheets``, ``_first_kickoff_ns``)
 are private and ``evaluation.py`` is not edited: the season's
 ``data/live/player_gw.parquet`` (cut to its newest ``season`` when the column
-is there) names the graded gameweeks; each one's
+is there, so last season's GW n is never windowed beside this season's; the
+block grades every row when called with ``season=None``) names the graded
+gameweeks; each one's
 ``reports/components_gw{n}.parquet`` is refused when it was written after the
 gameweek's **first** kickoff (``evaluation.POST_HOC_REASON``) or when no
 kickoff is known, and joined to the graded rows on
@@ -74,6 +76,8 @@ def _keyed(frame: pd.DataFrame) -> pd.DataFrame:
 
 
 def _num(frame: pd.DataFrame, name: str) -> pd.Series:
+    """``evaluation._column``: a missing head is all-NaN, which the grading
+    drops, rather than a ``KeyError``."""
     if name not in frame.columns:
         return pd.Series(float("nan"), index=frame.index, dtype="float64")
     return pd.to_numeric(frame[name], errors="coerce")
@@ -101,6 +105,8 @@ def club_fixtures(joined: pd.DataFrame) -> pd.DataFrame:
 
 
 def _first_kickoff_ns(fixtures: pd.DataFrame | None, gw: int) -> int | None:
+    """``evaluation._first_kickoff_ns`` on a fixtures frame read once for the
+    season rather than once a gameweek; ``None`` excludes, never passes."""
     if fixtures is None or not {"gw", "kickoff_time"} <= set(fixtures.columns):
         return None
     week = fixtures[pd.to_numeric(fixtures["gw"], errors="coerce") == gw]
@@ -130,9 +136,11 @@ def grade_week(gw: int, truth: pd.DataFrame, fixtures: pd.DataFrame | None,
     if "team_code" not in comp.columns:
         return "components carry no club"
     comp, truth = _keyed(comp), _keyed(truth)
-    if (comp.duplicated(subset=list(FIXTURE_KEYS)).any()
-            or truth.duplicated(subset=list(FIXTURE_KEYS)).any()):
-        return "duplicate rows per player-fixture"
+    sides = [name for name, frame in (("components", comp),
+                                      ("graded rows", truth))
+             if frame.duplicated(subset=list(FIXTURE_KEYS)).any()]
+    if sides:
+        return f"duplicate rows per player-fixture ({', '.join(sides)})"
     joined = comp.merge(truth, on=list(FIXTURE_KEYS), how="inner",
                         suffixes=("", "_truth"))
     if joined.empty:
