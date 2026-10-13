@@ -1,6 +1,6 @@
 # Holiday queue (6 to 23 October 2026)
 
-Anu is away with a phone and, now and then, the laptop. Scheduled cloud agents work this queue one package a run, and from 6 October 14:00 London they merge their own work: Anu has handed the holiday over and nothing waits for approval. The protections are the gate and a review, not a person (see **Merging**). The playbook is in the private repo `AnuGnane/autopilot`.
+Anu is away with a phone and, now and then, the laptop. Scheduled cloud agents work this queue a package at a time, and from 6 October 14:00 London they merge their own work: Anu has handed the holiday over and nothing waits for approval. The protections are the gate and a review, not a person (see **Merging**). The playbook is in the private repo `AnuGnane/autopilot`.
 
 `CLAUDE.md` rules, including the pins, the orchestrator-only files, the secrets rule and explicit-path staging. This file only says what a cloud run may do, how it reports, and what is queued. A holiday package is small enough that one agent does it directly: no subagents, no cycle branch, no screenshots gate. The full cycle machinery is for when Anu is back.
 
@@ -13,18 +13,20 @@ A Linux sandbox cloned from GitHub. `config.toml`, `config.local.toml`, `data/`,
 - Do not touch the orchestrator-only files listed in `CLAUDE.md`, do not move a pin, do not add a job kind or a `Config` field. A package that would need any of that stops and says so in its PR instead.
 - `git add` explicit paths only.
 
-## One package a run
+## A run
 
 1. `git fetch origin`. A package is **done** when its box below is ticked on `main`. It is **blocked** when a package it depends on is not done.
 2. **Resume first.** A branch `holiday/<id>` (or `claude/holiday-<id>`) on origin that is not merged into `main` and is not a `needs-mac` PR is an unfinished run, most likely cut off by a usage limit. Check it out, read its commits and PR, finish it under **Merging**, and only then consider a new package. Never leave a second unfinished branch behind.
 3. Take the first package that is neither done, blocked, nor waiting on the Mac. If there is none, **refill** (below). If the queue is full and nothing is ready, stop; write one line saying so.
 4. Branch from `origin/main` as `holiday/<id>` (if the push is refused, `claude/holiday-<id>`). Subject lines `<type>(holiday): ...`, one change per commit.
 5. Tick the package's box in this file in the same branch (a `needs-mac` package is ticked by the Mac when it merges).
-6. Open the PR with the body below, then follow **Merging**. Do not start a second package.
+6. Open the PR with the body below, then follow **Merging**. If the package lands (merged, or opened as `needs-mac`) with time left in the run, go back to step 3 and take the next ready package; stop when none is ready or there is not time to finish one, never leaving a branch half done.
 
 A ruling is a decision only Anu can make. Do not block on it: pick a default, state it in the PR, and carry on. The default stands; if Anu comments on the PR later, the next run applies the comment as a package.
 
 ### Refill
+
+`holiday-queues`, a Fable planning lane that runs twice a day, keeps this queue at 8 or more ready packages. Refilling here is the fallback, for a run that finds none ready.
 
 When no package is ready, add up to three new ones, each sized for one run and runnable here, each traced to a numbered candidate in `docs/superpowers/ROADMAP.md` or an "Operational" line there, or to a §-numbered item of the v20 spec that is code rather than a replay. Never a replay, never a model-cycle arm (those are the Mac's), never a pin move, a new job kind, a `Config` field or an orchestrator-only file. Commit the refill on `holiday/refill-<date>`, merge it under **Merging**, and stop; the next run takes the first new package.
 
