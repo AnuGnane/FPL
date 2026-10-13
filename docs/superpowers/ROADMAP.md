@@ -151,7 +151,7 @@ Detail in `docs/GUIDE.md` §12.5.
 13. ~~A GKP calibration delta~~ — closed by accrual and pinned in v19g (four keys, the floor named on Health)
 14. **Bank the price reading minutes before the solve** (v19g's price-timing reading): a midday solve reads a log dated the night before, so the term charges nothing or reads unknown; the Thursday 18:00 run is the first that can show a charge
 
-The model cycle (11–13, plus the role replay above and the news ablation, C1)
+The model cycle (11–13, plus the news ablation, C1; the role replay above is closed)
 follows v18 by the user's ruling of 2026-09-12; each arm moves a served
 number and needs its own gate.
 

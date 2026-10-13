@@ -240,7 +240,7 @@ standard deviation of the paired deltas over √K.
 *The one experiment the GUIDE queued: does the minutes head's `role`
 feature cost season points, or was −27 at K = 3 the seed?*
 
-- **What.** `MINUTES_FEATURES` (`models/train.py:62`) is
+- **What.** `MINUTES_FEATURES` (`models/train.py:73`) is
   `… + ROTATION_FEATURES + ROLE_FEATURES`. The "off" side is a branch
   `v20a-role-off` with `ROLE_FEATURES` removed from that list and nothing
   else changed: the features are still built (`features/engineer.py:1565`)
@@ -585,10 +585,11 @@ the off side's 32 over the same five bases, with seeds 02 and 03 the on
 side's best two and 04 and 05 its worst two. Five draws cannot say whether
 `role` widens the season's variance; nobody should read it as if they could.
 
-**The pinned set** (CONVENTIONS §1). K = 5 (NIGHTSHIFT item 6; the arm
-allows K ≥ 5, ruling 10 asked for ten "if time", and the Mac's lane took
-five, one seed at a time, `CLAUDE.md`'s note that two concurrent restraint
-seeds were OOM-killed). The off side is `fbd60df`, one commit on `10952eb` that removes
+**The pinned set** (CONVENTIONS §1). `SEEDS` was set to five, not ten read
+early: ruling 10 plans K = 10 and reads the verdict at whatever K ≥ 5 has
+finished, and the Mac lane's NIGHTSHIFT item 6 asked for K = 5, one seed at
+a time (`CLAUDE.md`: two concurrent restraint seeds were OOM-killed). The
+off side is `fbd60df`, one commit on `10952eb` that removes
 `+ ROLE_FEATURES` from `MINUTES_FEATURES` (`src/gaffer/models/train.py:73`)
 and nothing else; the on side is `main` at `10952eb` in a detached
 worktree the launcher created by hand (the primary checkout holds `main`)
@@ -605,8 +606,9 @@ the user can close by reading the file. `data/core_insights/` was present
 with seasons **2024-25, 2025-26 and 2026-27**, collected **2026-10-12
 19:34 to 19:36 +08**, and unchanged through both sides (the off side banked
 its five reports 2026-10-13 00:19 to 01:42 +08, the on side finished
-22:31 +08 after the laptop hibernated at 1 % battery between its seeds 2
-and 3 and was plugged in). Lever check (CONVENTIONS §10) held: the off
+22:31 +08; the log has no timestamps, and the orchestrator's account is
+that the laptop hibernated at 1 % battery between on-side seeds 2 and 3
+and resumed once plugged in). Lever check (CONVENTIONS §10) held: the off
 side's `LEVER minutes` line lacks `role_wb_share, role_wb_missing`, the on
 side's carries them; the bonus line is identical on both sides.
 
