@@ -1354,7 +1354,8 @@ built): on `[1834, 1911, 1903, 1800, 1796]` mean 1848.8, off `[1848, 1873,
 1866, 1862, 1841]` mean 1858.0; paired off − on `[+14, −38, −37, +62, +45]`,
 Δ = +9.2, SE 20.6, inside 2·SE = 41.1, so under the spec's rule
 (`specs/2026-10-07-v20-model-cycle-design.md` §2 v20a, evidence in §6.1)
-the feature is kept and the experiment is closed. The −27 was the seed.
+the feature is kept and the experiment is closed; the −27 sat inside the
+seed spread.
 Recorded, not concluded (CONVENTIONS §5): the on side's spread was 115 to
 the off side's 32. No further role replay runs in this programme. It
 remains the second time a head-metric gain did not show up as season
@@ -1465,8 +1466,8 @@ brainstorm would start from, in the order the 2026-09-01 research ranked it
    news-shadow reading points the same way. It could retire the v5/v6 news
    subsystem or justify it; either answer is worth having. Gate on the
    blanks and zeros buckets *and* a K ≥ 5 replay.
-2. **The K ≥ 5 role replay** (12.3) — small, and it should go first because
-   it changes what the minutes model ships with.
+2. ~~**The K ≥ 5 role replay** (12.3)~~ — ran 2026-10-13 (v20a): `role`
+   stays, the minutes model ships as it is.
 3. ~~A top-10k score-threshold scrape~~ — banked daily since holiday F-4,
    and read by the Field panel's `P(top-10k)` row since F-6.
 4. **`p_play` top-bin recalibration (C2)** — 0.936 predicted vs 0.912
