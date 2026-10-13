@@ -349,8 +349,18 @@ def fact_names(facts: dict) -> set[str]:
     return out
 
 
-def check_brief(prose: str, facts: dict) -> list[str]:
-    """The offences, one string each; ``[]`` is a pass (§6.4, plan R8)."""
+def check_brief(prose: str, facts: dict, *,
+                known_names: set[str] | frozenset[str] | None = None) -> list[str]:
+    """The offences, one string each; ``[]`` is a pass (§6.4, plan R8).
+
+    A sentence's first word is skipped by default, because English
+    capitalises openers and the check has no dictionary (GUIDE §12.4's v16
+    residual). ``known_names`` closes the gap for players (holiday F-23):
+    when given, the opener, de-possessived, is an offence iff it is in that
+    set and not in the facts' names. An ordinary opener ("The", "Both",
+    "Today's") is never a player's name, so it still passes; ``None`` keeps
+    the old behaviour byte for byte.
+    """
     numbers, names = fact_numbers(facts), fact_names(facts)
     offences: list[str] = []
     for sentence in _SENTENCE.split(str(prose or "").strip()):
@@ -362,7 +372,12 @@ def check_brief(prose: str, facts: dict) -> list[str]:
                 offences.append(f"number {norm} is not in the facts: {sentence}")
         for i, word in enumerate(sentence.split()):
             clean = _POSSESSIVE.sub("", word.strip(_STRIP))
-            if i == 0 or not clean or not clean[0].isupper():
+            if i == 0:
+                if (known_names is not None and clean in known_names
+                        and clean not in ALLOW and clean not in names):
+                    offences.append(f"name {clean} is not in the facts: {sentence}")
+                continue
+            if not clean or not clean[0].isupper():
                 continue
             if clean in ALLOW or re.fullmatch(r"GW\d+", clean):
                 continue

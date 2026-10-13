@@ -1420,10 +1420,14 @@ weekly use.
   `advise.py` writes it from the chip table's `play_now` rows, so a ladder
   rebuilt off a state written before v16 gives no chip reason and falls
   through to the next one.
-- **Sentence-initial names escape the truth check** (v16): English
-  capitalises sentence starts, so the first word of a sentence is never
-  checked; the prompt forbids opening a sentence with a player's name,
-  and the check catches the same name anywhere else.
+- **Sentence-initial names escape the truth check unless the caller
+  knows the names** (v16; narrowed by holiday F-23): English capitalises
+  sentence starts, so `check_brief` skips a sentence's first word unless
+  it is given `known_names`, when an opener in that set and not in the
+  facts is an offence. `run_brief` reads no bootstrap, so it passes
+  `None` and the brief's openers are still unchecked; the prompt forbids
+  opening a sentence with a player's name, and the check catches the same
+  name anywhere else. A caller with the season's names closes the gap.
 - **The walk can step past the objective's own hit count** (v16): the
   policy is symmetric by design — on the GW4 board it served one hit where
   the objective wanted none, on a 60.25% share — and the replay in §4 is
