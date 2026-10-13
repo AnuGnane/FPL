@@ -29,10 +29,9 @@ more gameweeks this season served more hits than the objective wanted
 a replay arm, the Mac's; this script writes nothing, edits neither
 ``ladder.py`` nor ``advise.py`` and changes no default.
 
-A missing ``reports/``, an unreadable file, a restraint block
-``ladder.narrated`` cannot read or an advice without an ``objective`` block
-prints its line with a reason, never a traceback,
-because the night shift transcribes the lines.
+A missing ``reports/``, an unreadable file, an advice ``ladder.narrated``
+cannot read or an advice without an ``objective`` block prints its line with
+a reason, never a traceback, because the night shift transcribes the lines.
 
     uv run python scripts/walk_hits.py
 """
@@ -40,6 +39,7 @@ because the night shift transcribes the lines.
 from __future__ import annotations
 
 import json
+import math
 import re
 from datetime import date, datetime
 from pathlib import Path
@@ -66,22 +66,30 @@ def _season_start(day: date) -> date:
 
 def read_week(gw: int, payload: dict) -> dict:
     """One ``WALK_HITS_GW`` row: the hits on both sides and the walk's
-    choice, or ``reason`` when the payload cannot be read against them."""
+    choice, or ``reason`` when the payload cannot be read against them.
+
+    An advice with no ``restraint`` block at all (banked before v16) reads
+    ``chosen: None``, not "bank": no walk is on record. A non-finite share
+    reads ``None`` so the line stays strict JSON."""
     try:
         advice = narrated(payload)
-    except (KeyError, TypeError, ValueError) as exc:
-        return {"gw": gw, "reason": f"unreadable restraint block: {exc.__class__.__name__}"}
-    objective = advice.get("objective")
-    if not isinstance(objective, dict):
-        return {"gw": gw, "reason": "no objective block"}
-    restraint = advice.get("restraint") if isinstance(advice.get("restraint"), dict) else {}
-    taken = [s for s in restraint.get("steps") or [] if s.get("taken")]
-    served, wanted = int(advice.get("hits") or 0), int(objective.get("hits") or 0)
+        objective = advice.get("objective")
+        if not isinstance(objective, dict):
+            return {"gw": gw, "reason": "no objective block"}
+        restraint = advice.get("restraint")
+        walked = isinstance(restraint, dict)
+        steps = (restraint.get("steps") or []) if walked else []
+        taken = [s for s in steps if s.get("taken")]
+        share = float(taken[-1]["share"]) if taken else None
+        served, wanted = int(advice.get("hits") or 0), int(objective.get("hits") or 0)
+    except (AttributeError, KeyError, TypeError, ValueError) as exc:
+        return {"gw": gw, "reason": f"unreadable advice: {exc.__class__.__name__}"}
     relation = "above" if served > wanted else "below" if served < wanted else "equal"
     return {"gw": gw, "served_hits": served, "objective_hits": wanted,
-            "relation": relation, "chosen": restraint.get("chosen") or "bank",
-            "label": restraint.get("label"),
-            "last_taken_share": float(taken[-1]["share"]) if taken else None}
+            "relation": relation,
+            "chosen": (restraint.get("chosen") or "bank") if walked else None,
+            "label": restraint.get("label") if walked else None,
+            "last_taken_share": share if share is None or math.isfinite(share) else None}
 
 
 def read_season(reports: Path = REPORTS) -> tuple[list[dict], dict]:

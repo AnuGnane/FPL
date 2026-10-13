@@ -115,5 +115,21 @@ def test_a_restraint_block_narrated_cannot_read_is_named_not_raised(tmp_path):
     broken = _advice(4, 1, 0, steps=[{"below": "bank", "above": "ft1", "share": 0.3,
                                       "taken": False}])
     rows, summary = walk_hits.read_season(_tree(tmp_path, {4: broken}))
-    assert rows == [{"gw": 4, "reason": "unreadable restraint block: KeyError"}]
+    assert rows == [{"gw": 4, "reason": "unreadable advice: KeyError"}]
     assert summary["read"] == 0
+
+
+def test_an_advice_with_no_restraint_block_reads_no_walk_not_bank(tmp_path):
+    payload = _advice(4, 0, 0)
+    del payload["restraint"]
+    rows, _ = walk_hits.read_season(_tree(tmp_path, {4: payload}))
+    assert rows[0]["chosen"] is None and rows[0]["relation"] == "equal"
+
+
+def test_a_nan_share_reads_null_so_the_line_stays_json(tmp_path, capsys):
+    payload = _advice(4, 1, 0, steps=[{"below": "bank", "above": "hits1",
+                                       "share": float("nan"), "taken": True,
+                                       "line": "written at bank time"}])
+    walk_hits.main(_tree(tmp_path, {4: payload}))
+    line = capsys.readouterr().out.splitlines()[0]
+    assert "NaN" not in line and json.loads(line.split(" ", 1)[1])["last_taken_share"] is None
