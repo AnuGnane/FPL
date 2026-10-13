@@ -182,9 +182,11 @@ def _archive_dates(raw: pd.Series) -> pd.Series:
     so the two forms are named and tried in turn (holiday F-24): ``%y`` first,
     because ``%Y`` would read a two-digit year as the year 24 rather than
     fail, and ``%y`` cannot match a four-digit year (two digits are left
-    over). That gives every archive date the value ``dayfirst=True``'s
-    per-element fallback gave, without pandas' "Could not infer format"
-    warning; a date is all we join on, so the time of day is noise.
+    over). A file in one form, as every archive season is, parses to the
+    values ``dayfirst=True`` gave, without pandas' "Could not infer format"
+    warning; a file mixing the two now keeps the short-form rows that
+    inference from a long-form first row coerced to ``NaT``. A date is all
+    we join on, so the time of day is noise.
     """
     short = pd.to_datetime(raw, format="%d/%m/%y", errors="coerce")
     long = pd.to_datetime(raw, format="%d/%m/%Y", errors="coerce")
