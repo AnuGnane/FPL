@@ -619,7 +619,12 @@ def p_best(scores: dict[str, np.ndarray]) -> dict[str, float]:
     keys = list(scores)
     matrix = np.stack([scores[k] for k in keys])            # rungs × draws
     winners = (matrix == matrix.max(axis=0)).astype(float)
-    share = winners / winners.sum(axis=0)
+    # A draw with a NaN anywhere has no winner, so its column sums to zero
+    # and its share is 0/0 = NaN, which the mean carries to a NaN ``p_best``
+    # that ``save_ladder`` banks as null (F5). That NaN is the answer, so the
+    # divide's warning is silenced rather than the value changed (holiday F-24).
+    with np.errstate(invalid="ignore"):
+        share = winners / winners.sum(axis=0)
     return {k: float(share[i].mean()) for i, k in enumerate(keys)}
 
 

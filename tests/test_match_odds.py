@@ -83,6 +83,31 @@ def test_parse_football_data_accepts_four_digit_years_too():
     assert out.loc[0, "date"] == pd.Timestamp("2024-08-16").date()
 
 
+@pytest.mark.parametrize("raw, expected", [
+    ("16/08/24", pd.Timestamp("2024-08-16").date()),
+    ("05/01/2025", pd.Timestamp("2025-01-05").date()),
+])
+def test_parse_football_data_names_both_date_forms_without_a_warning(raw,
+                                                                     expected):
+    """Holiday F-24: each archive form parses to the value ``dayfirst=True``
+    gave, with no "Could not infer format" warning."""
+    import warnings
+
+    rows = _csv_rows({"Date": [raw, raw]})
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        out = parse_football_data(rows, season="2024-25", season_idx=2)
+    assert list(out["date"]) == [expected, expected]
+
+
+def test_parse_football_data_drops_an_unparseable_date():
+    """Holiday F-24: a date neither form reads is dropped, as the coerced
+    ``NaT`` was before."""
+    rows = _csv_rows({"Date": ["16/08/2024", "not a date"]})
+    out = parse_football_data(rows, season="2024-25", season_idx=2)
+    assert list(out["date"]) == [pd.Timestamp("2024-08-16").date()]
+
+
 def test_parse_football_data_falls_back_down_the_price_chain():
     """Closing averages are the first choice; a season that predates them
     still has to parse."""
