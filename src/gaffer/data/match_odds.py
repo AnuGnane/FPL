@@ -159,9 +159,7 @@ def parse_football_data(raw: pd.DataFrame, season: str,
         p_over = [devig([float(o), float(u)])[0]
                   for o, u in zip(totals[pair[0]], totals[pair[1]])]
 
-    # dayfirst covers both dd/mm/yy and dd/mm/yyyy, which the archive mixes
-    # across seasons; a date is all we join on, so the time of day is noise.
-    dates = pd.to_datetime(df["Date"], dayfirst=True, errors="coerce")
+    dates = _archive_dates(df["Date"])
     out = pd.DataFrame({
         "season": season,
         "season_idx": int(season_idx),
@@ -174,6 +172,23 @@ def parse_football_data(raw: pd.DataFrame, season: str,
         "p_over25": p_over,
     })
     return out[out["date"].notna()].reset_index(drop=True)[OUT_COLS]
+
+
+def _archive_dates(raw: pd.Series) -> pd.Series:
+    """football-data's ``Date`` column as timestamps, ``NaT`` where it does
+    not parse.
+
+    The archive mixes dd/mm/yy (older seasons) and dd/mm/yyyy (newer ones),
+    so the two forms are named and tried in turn (holiday F-24): ``%y`` first,
+    because ``%Y`` would read a two-digit year as the year 24 rather than
+    fail, and ``%y`` cannot match a four-digit year (two digits are left
+    over). That gives every archive date the value ``dayfirst=True``'s
+    per-element fallback gave, without pandas' "Could not infer format"
+    warning; a date is all we join on, so the time of day is noise.
+    """
+    short = pd.to_datetime(raw, format="%d/%m/%y", errors="coerce")
+    long = pd.to_datetime(raw, format="%d/%m/%Y", errors="coerce")
+    return short.fillna(long)
 
 
 def season_slug(season: str) -> str:

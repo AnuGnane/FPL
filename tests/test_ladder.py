@@ -398,6 +398,22 @@ def test_p_best_splits_ties():
     assert shares == {"a": 0.75, "b": 0.25}
 
 
+def test_p_best_on_a_nan_draw_is_nan_and_says_nothing():
+    """Holiday F-24: a NaN draw has no winner; its share stays the NaN the
+    banked null comes from, and the 0/0 divide no longer warns."""
+    import warnings
+
+    from gaffer.ladder import p_best
+
+    nan = float("nan")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        all_nan = p_best({"a": np.array([nan, nan]), "b": np.array([nan, nan])})
+        one_nan = p_best({"a": np.array([1.0, nan]), "b": np.array([0.0, 2.0])})
+    assert all(np.isnan(v) for v in all_nan.values())
+    assert all(np.isnan(v) for v in one_nan.values())
+
+
 def test_vs_below_is_set_arithmetic_on_the_first_week():
     from gaffer.ladder import vs_below
 
