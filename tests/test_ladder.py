@@ -400,7 +400,8 @@ def test_p_best_splits_ties():
 
 def test_p_best_on_a_nan_draw_is_nan_and_says_nothing():
     """Holiday F-24: a NaN draw has no winner; its share stays the NaN the
-    banked null comes from, and the 0/0 divide no longer warns."""
+    banked null comes from, so one NaN draw makes every rung's mean NaN, as
+    it did before, and the 0/0 divide no longer warns."""
     import warnings
 
     from gaffer.ladder import p_best
