@@ -456,7 +456,9 @@ def run_brief(gw: int | None = None, *, cfg=None,
                                           "at": _now()}), encoding="utf-8")
         except Exception:  # noqa: BLE001 — an unwritable cache is not an outage
             pass
-    offences = check_brief(prose, facts)
+    # Holiday F-23: no bootstrap is read on this path, so the brief's
+    # openers stay unchecked until a caller has the season's names.
+    offences = check_brief(prose, facts, known_names=None)
     if offences:
         for line in offences:
             print(f"brief check: {line}")
