@@ -357,3 +357,45 @@ def test_an_unreadable_served_plan_is_swallowed_into_no_gains(monkeypatch,
     monkeypatch.setattr(brief_mod, "served_plan", raise_it)
     assert brief_mod.move_gains(4) == {}
     assert "no trace gains" in capsys.readouterr().out
+
+
+# --- holiday F-23: a sentence's first word, when it is a player's name -----
+
+KNOWN = frozenset({"Salah", "M.Salah", "Haaland", "Guéhi", "Isak"})
+
+
+@pytest.mark.parametrize("prose", ["Salah's form makes him the pick.",
+                                   "Salah is the obvious captain."])
+def test_a_known_name_opening_a_sentence_outside_the_facts_is_flagged(prose):
+    assert check_brief(prose, FACTS, known_names=KNOWN) == [
+        f"name Salah is not in the facts: {prose}"]
+
+
+@pytest.mark.parametrize("prose", ["Salah's form makes him the pick.",
+                                   "Salah is the obvious captain."])
+def test_a_known_name_opening_a_sentence_passes_when_the_facts_name_him(prose):
+    facts = {**FACTS, "captain": {**FACTS["captain"], "name": "Salah"}}
+    assert check_brief(prose, facts, known_names=KNOWN) == []
+
+
+def test_an_ordinary_opener_is_never_a_known_name():
+    prose = ("The Gibbs-White move stands. Both steps were weighed. "
+             "Today's pick is Guéhi.")
+    assert check_brief(prose, FACTS, known_names=KNOWN) == []
+
+
+def test_a_known_name_in_the_facts_may_open_a_sentence():
+    assert check_brief("Isak was the gut call.", FACTS, known_names=KNOWN) == []
+
+
+def test_no_known_names_keeps_the_opener_unchecked():
+    prose = "Salah is the obvious captain. Haaland's 55% is solid."
+    assert check_brief(prose, FACTS) == check_brief(prose, FACTS, known_names=None)
+    assert check_brief(prose, FACTS) == []
+
+
+def test_a_club_after_an_ordinary_opener_is_judged_as_it_was_before():
+    prose = "The Arsenal defence is the worry."
+    assert (check_brief(prose, FACTS, known_names=KNOWN)
+            == check_brief(prose, FACTS)
+            == [f"name Arsenal is not in the facts: {prose}"])
