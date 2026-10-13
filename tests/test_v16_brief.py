@@ -361,7 +361,7 @@ def test_an_unreadable_served_plan_is_swallowed_into_no_gains(monkeypatch,
 
 # --- holiday F-23: a sentence's first word, when it is a player's name -----
 
-KNOWN = frozenset({"Salah", "M.Salah", "Haaland", "Guéhi", "Isak"})
+KNOWN = frozenset({"Salah", "Haaland", "Guéhi", "Isak"})
 
 
 @pytest.mark.parametrize("prose", ["Salah's form makes him the pick.",
@@ -399,3 +399,9 @@ def test_a_club_after_an_ordinary_opener_is_judged_as_it_was_before():
     assert (check_brief(prose, FACTS, known_names=KNOWN)
             == check_brief(prose, FACTS)
             == [f"name Arsenal is not in the facts: {prose}"])
+
+
+def test_a_known_name_that_the_allow_list_carries_is_not_flagged_as_an_opener():
+    # Mid-sentence, an ALLOW word is never a name; the opener reads the same.
+    assert check_brief("Friday is the deadline.", FACTS,
+                       known_names=KNOWN | {"Friday"}) == []
