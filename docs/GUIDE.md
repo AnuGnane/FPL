@@ -1341,26 +1341,32 @@ Two verdicts also accrue by gameweek rather than by code: `gaffer evaluate
 decision waits on somebody reading the grading report the first row above
 now has the data for.
 
-### 12.3 One experiment queued
+### 12.3 One experiment, run and closed
 
-**A K ≥ 5 role-on-vs-off replay** (ten seeds if time allows). W4 shipped the
-`role_wb_share` minutes feature on its pre-registered rule, but a post-hoc
-three-seed replay with the feature on scored −27 on the mean (`[1813, 1847,
-1846]` vs `[1798, 1917, 1872]`), inside the spread. The read it was
-pre-registered under lets the flip stand; the honest next step is a replay
-with enough seeds to say whether −27 is real. Negative beyond its own spread
-withdraws the arm. It is the second time in the program a head-metric gain
-did not show up as season points (xG-per-shot was the first), which is why
-CONVENTIONS §9 now requires both halves up front.
+**The K ≥ 5 role-on-vs-off replay ran on 2026-10-13 (v20a):
+`role` stays.** W4 shipped the `role_wb_share` minutes feature on its
+pre-registered rule, but a post-hoc three-seed replay with the feature on
+scored −27 on the mean (`[1813, 1847, 1846]` vs `[1798, 1917, 1872]`), inside
+the spread, and the question was whether −27 was real. At K = 5, seeds
+20260901 to 05, `main` at `10952eb` (role on) against `v20a-role-off` at
+`fbd60df` (`ROLE_FEATURES` out of `MINUTES_FEATURES`, the features still
+built): on `[1834, 1911, 1903, 1800, 1796]` mean 1848.8, off `[1848, 1873,
+1866, 1862, 1841]` mean 1858.0; paired off − on `[+14, −38, −37, +62, +45]`,
+Δ = +9.2, SE 20.6, inside 2·SE = 41.1, so under the spec's rule
+(`specs/2026-10-07-v20-model-cycle-design.md` §2 v20a, evidence in §6.1)
+the feature is kept and the experiment is closed. The −27 was the seed.
+Recorded, not concluded (CONVENTIONS §5): the on side's spread was 115 to
+the off side's 32. No further role replay runs in this programme. It
+remains the second time a head-metric gain did not show up as season
+points (xG-per-shot was the first), which is why CONVENTIONS §9 requires
+both halves up front.
 
-How to run it: `scripts/replay_pair.sh <tag>` from a branch worktree runs
-both sides through `scripts/v7b_replay.py --seed-bases …`; the "off" side is
-a branch with `ROLE_FEATURES` removed from `MINUTES_FEATURES`
-(`src/gaffer/models/train.py:53`), the "on" side is `main`. Both sides need
-`config.toml` byte-identical and `data/core_insights/` present, with its
-seasons and collection date named in the write-up (CONVENTIONS §1). The W4
-runs took about an hour per three seeds a side on this machine, so K=10 is an
-overnight job — `caffeinate -i` it, as `replay_pair.sh`'s header shows.
+How it was run: `scripts/replay_pair.sh v20a-role` from the branch
+worktree, `SEEDS=20260901,…,20260905 CONCURRENT=0`, under `caffeinate -i`,
+with `config.toml`, `models/` and `data/` symlinked to the primary checkout
+and `data/core_insights/` (2024-25, 2025-26, 2026-27, collected 2026-10-12)
+named in the write-up (CONVENTIONS §1). About twenty minutes a seed a side
+on this machine.
 
 ### 12.4 Deliberately open — recorded, not fixed
 

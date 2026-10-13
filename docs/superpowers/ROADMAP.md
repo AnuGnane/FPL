@@ -113,7 +113,7 @@ gameweeks.
 
 ### One experiment
 
-- [ ] **K ≥ 5 role-on-vs-off replay** (ten if time). W4's post-hoc K=3 with `role` on read `[1813, 1847, 1846]` vs `[1798, 1917, 1872]`, mean −27, inside the spread; the flip stands under its pre-registered read. Negative beyond its own spread withdraws the arm. `scripts/replay_pair.sh`, off-side = a branch with `ROLE_FEATURES` out of `MINUTES_FEATURES` (`models/train.py`), `data/core_insights/` state named (CONVENTIONS §1). ~1 h per three seeds a side
+- [x] **K ≥ 5 role-on-vs-off replay** (ten if time). **Ran 2026-10-13 at K = 5 (v20a, spec §6.1): `role` stays** — on `[1834, 1911, 1903, 1800, 1796]` vs off `[1848, 1873, 1866, 1862, 1841]`, paired off − on mean +9.2 inside 2·SE = 41.1; closed, no served number moves. W4's post-hoc K=3 with `role` on read `[1813, 1847, 1846]` vs `[1798, 1917, 1872]`, mean −27, inside the spread; the flip stands under its pre-registered read. Negative beyond its own spread withdraws the arm. `scripts/replay_pair.sh`, off-side = a branch with `ROLE_FEATURES` out of `MINUTES_FEATURES` (`models/train.py`), `data/core_insights/` state named (CONVENTIONS §1). ~1 h per three seeds a side
 
 ### Residuals carried out of v12 (recorded, not fixed)
 
@@ -137,7 +137,7 @@ From the 2026-09-01 research, items v12 did not take, in its ranking.
 Detail in `docs/GUIDE.md` §12.5.
 
 1. **C1 news-layer ablation vs the plain FPL flag** — the research's most important experiment; GW2's news-shadow reading points the same way. Both halves pre-registered (buckets + K ≥ 5 replay)
-2. The K ≥ 5 role replay above — first, because it decides what the minutes model ships with
+2. ~~The K ≥ 5 role replay above~~ (ran 2026-10-13, v20a: `role` stays; the minutes model ships as it is)
 3. ~~A top-10k weekly score-threshold scrape~~ (holiday F-4: banked daily by the snapshot job into `data/live/top_threshold_log.parquet`); and the `P(top-10k)` row reads it (holiday F-6: the last banked threshold plus the mean weekly rise, against my banked total plus the simulated week)
 4. C2 `p_play` top-bin recalibration (0.936 predicted vs 0.912 observed, n=1519)
 5. C3 home/away rolling splits

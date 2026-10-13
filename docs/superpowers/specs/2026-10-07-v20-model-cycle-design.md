@@ -14,7 +14,8 @@ role arm's record). Every rule below is held to
 written after the rulings in §1 are confirmed; tracker beside it.
 **Branches:** `v20<letter>-<slug>` off `main`, one at a time, ff-merged.
 **Date:** 2026-10-07. **Status:** draft, written unattended on the holiday
-queue (`HOLIDAY.md` F-S1). Nothing has run. Every ruling in §1 carries a
+queue (`HOLIDAY.md` F-S1). v20a ran 2026-10-13 and is closed (§6: `role`
+stays); v20b to v20d have not run. Every ruling in §1 carries a
 default; the user confirms, changes or strikes them from the phone, and a
 merge without comment lets the defaults stand.
 
@@ -563,11 +564,80 @@ As v19 §3, with the replay rules added.
 ## 6. Evidence appendix
 
 Transcribed verbatim as the night shift prints them, per CONVENTIONS §4;
-`logs/` is gitignored. Empty on 2026-10-07: nothing has run.
+`logs/` is gitignored. v20a below; v20b to v20d are empty, nothing has run.
+
+### 6.1 v20a — the role replay, K = 5 (run 2026-10-13, closed)
+
+**Verdict: `role` stays; the experiment is closed.** Δ = mean(off − on) =
+**+9.2**, SE = 20.6, so Δ is inside 2·SE = 41.1 and the first clause of the
+rule fails; `neg` = 3 of 5 would have cleared K − 3 = 2 but does not matter.
+W4's −27 at K = 3 was the seed. `MINUTES_FEATURES` is untouched, no served
+number moves, the golden board is not re-recorded, and no pin moved.
+
+| side | SHA | seeds 20260901 … 05 | mean | spread | hits |
+|---|---|---|---|---|---|
+| on (`main`) | `10952eb` | 1834, 1911, 1903, 1800, 1796 | 1848.8 | 115 | 16, 14, 15, 17, 19 |
+| off (`v20a-role-off`) | `fbd60df` | 1848, 1873, 1866, 1862, 1841 | 1858.0 | 32 | 17, 15, 20, 16, 15 |
+| paired off − on | | +14, −38, −37, +62, +45 | +9.2 | sd 46.0, SE 20.6 | |
+
+Recorded, not concluded (CONVENTIONS §5): the on side's spread is 115 to
+the off side's 32 over the same five bases, with seeds 02 and 03 the on
+side's best two and 04 and 05 its worst two. Five draws cannot say whether
+`role` widens the season's variance; nobody should read it as if they could.
+
+**The pinned set** (CONVENTIONS §1). K = 5 (NIGHTSHIFT item 6; the arm
+allows K ≥ 5, ruling 10 asked for ten "if time", and the Mac's lane took
+five, one seed at a time, `CLAUDE.md`'s note that two concurrent restraint
+seeds were OOM-killed). The off side is `fbd60df`, one commit on `10952eb` that removes
+`+ ROLE_FEATURES` from `MINUTES_FEATURES` (`src/gaffer/models/train.py:73`)
+and nothing else; the on side is `main` at `10952eb` in a detached
+worktree the launcher created by hand (the primary checkout holds `main`)
+and `replay_pair.sh` removed at the end. Driver: `scripts/v7b_replay.py
+--arm heur --n 40 --chips` over `run_backtest(season="2025-26", start_gw=5,
+horizon=3)`; config echo as the `config` field of each `V7B_ARM_DONE` line
+below (`priors`, `minutes` and `frame` all `current`, `noise_asset` null,
+`hit_bar` 0.6, `ladder_draws` 2000). `config.toml`, `models/` and `data/`
+(`core_insights`, `history`, `live`, `raw`) are symlinks from the branch
+worktree to the primary checkout, so both sides read the same bytes; the
+orchestrator did not open `config.toml` (it holds the odds key) and so does
+not transcribe its `[model]` values here, which is a gap against §1 that
+the user can close by reading the file. `data/core_insights/` was present
+with seasons **2024-25, 2025-26 and 2026-27**, collected **2026-10-12
+19:34 to 19:36 +08**, and unchanged through both sides (the off side banked
+its five reports 2026-10-13 00:19 to 01:42 +08, the on side finished
+22:31 +08 after the laptop hibernated at 1 % battery between its seeds 2
+and 3 and was plugged in). Lever check (CONVENTIONS §10) held: the off
+side's `LEVER minutes` line lacks `role_wb_share, role_wb_missing`, the on
+side's carries them; the bonus line is identical on both sides.
+
+Raw lines, in the order the log printed them (each distinct `LEVER` line
+once: the minutes line differs by side, the bonus line is the same on both,
+and the log repeats the pair per seed):
 
 ```
-# pinned set (first night shift): core_insights seasons + date, config echo, SHAs
-# v20a: MULTISEED_DONE v20a-role-branch … / v20a-role-main … ; lever lines
+MAIN_SHA 10952ebf61f2ca27d8b2501a9b1483b63c9a7f48 BRANCH_SHA fbd60dfd082c6e13540e1b26968172ccf455f0fa
+LEVER minutes cols=[minutes_r1, minutes_r3, minutes_r5, minutes_r10, starts_r1, starts_r3, starts_r5, starts_r10, days_rest, home, season_start_share, days_since_last_start, sub_streak]
+LEVER bonus cols=[bps_r3, bps_r5, bps_r38, xgi_r5, bonus_r5, bonus_r38, elo_diff, home]
+V7B_ARM_DONE v20a-role-branch-s20260901 {"total": 1848, "hits": 17, "transfers": 67, "gated_weeks": 33, "held_weeks": 7, "steps_taken": 0, "steps_refused": 0, "caps": {"max_hits": 2, "max_transfers": 15}, "chips_played": {"6": "bboost", "9": "wildcard", "18": "freehit", "19": "3xc", "26": "freehit", "33": "bboost", "36": "3xc", "38": "wildcard"}, "chip_points": {"3xc": 145, "bboost": 165, "freehit": 115, "wildcard": 87}, "composite_floor": null, "config": {"arm": "heur", "tag": "v20a-role-branch-s20260901", "seed_base": 20260901, "n": 40, "chips": true, "priors": "current", "minutes": "current", "frame": "current", "noise_asset": null, "hit_bar": 0.6, "ladder_draws": 2000}}
+V7B_ARM_DONE v20a-role-branch-s20260902 {"total": 1873, "hits": 15, "transfers": 66, "gated_weeks": 33, "held_weeks": 7, "steps_taken": 0, "steps_refused": 0, "caps": {"max_hits": 2, "max_transfers": 15}, "chips_played": {"6": "bboost", "9": "wildcard", "18": "freehit", "19": "3xc", "26": "freehit", "33": "bboost", "36": "3xc", "38": "wildcard"}, "chip_points": {"3xc": 149, "bboost": 165, "freehit": 115, "wildcard": 87}, "composite_floor": null, "config": {"arm": "heur", "tag": "v20a-role-branch-s20260902", "seed_base": 20260902, "n": 40, "chips": true, "priors": "current", "minutes": "current", "frame": "current", "noise_asset": null, "hit_bar": 0.6, "ladder_draws": 2000}}
+V7B_ARM_DONE v20a-role-branch-s20260903 {"total": 1866, "hits": 20, "transfers": 68, "gated_weeks": 33, "held_weeks": 4, "steps_taken": 0, "steps_refused": 0, "caps": {"max_hits": 2, "max_transfers": 15}, "chips_played": {"6": "bboost", "9": "wildcard", "18": "freehit", "19": "3xc", "31": "freehit", "33": "bboost", "35": "wildcard", "36": "3xc"}, "chip_points": {"3xc": 132, "bboost": 152, "freehit": 99, "wildcard": 71}, "composite_floor": null, "config": {"arm": "heur", "tag": "v20a-role-branch-s20260903", "seed_base": 20260903, "n": 40, "chips": true, "priors": "current", "minutes": "current", "frame": "current", "noise_asset": null, "hit_bar": 0.6, "ladder_draws": 2000}}
+V7B_ARM_DONE v20a-role-branch-s20260904 {"total": 1862, "hits": 16, "transfers": 64, "gated_weeks": 33, "held_weeks": 7, "steps_taken": 0, "steps_refused": 0, "caps": {"max_hits": 2, "max_transfers": 15}, "chips_played": {"6": "bboost", "9": "wildcard", "18": "freehit", "19": "3xc", "31": "freehit", "33": "bboost", "34": "wildcard", "38": "3xc"}, "chip_points": {"3xc": 124, "bboost": 151, "freehit": 99, "wildcard": 84}, "composite_floor": null, "config": {"arm": "heur", "tag": "v20a-role-branch-s20260904", "seed_base": 20260904, "n": 40, "chips": true, "priors": "current", "minutes": "current", "frame": "current", "noise_asset": null, "hit_bar": 0.6, "ladder_draws": 2000}}
+V7B_ARM_DONE v20a-role-branch-s20260905 {"total": 1841, "hits": 15, "transfers": 66, "gated_weeks": 33, "held_weeks": 7, "steps_taken": 0, "steps_refused": 0, "caps": {"max_hits": 2, "max_transfers": 15}, "chips_played": {"6": "bboost", "9": "wildcard", "18": "freehit", "19": "3xc", "26": "freehit", "33": "bboost", "36": "3xc", "37": "wildcard"}, "chip_points": {"3xc": 150, "bboost": 175, "freehit": 115, "wildcard": 89}, "composite_floor": null, "config": {"arm": "heur", "tag": "v20a-role-branch-s20260905", "seed_base": 20260905, "n": 40, "chips": true, "priors": "current", "minutes": "current", "frame": "current", "noise_asset": null, "hit_bar": 0.6, "ladder_draws": 2000}}
+MULTISEED_DONE v20a-role-branch {"totals": [1848, 1873, 1866, 1862, 1841], "mean": 1858.0, "spread": 32, "range": [1841, 1873], "seed_bases": [20260901, 20260902, 20260903, 20260904, 20260905]}
+LEVER minutes cols=[minutes_r1, minutes_r3, minutes_r5, minutes_r10, starts_r1, starts_r3, starts_r5, starts_r10, days_rest, home, season_start_share, days_since_last_start, sub_streak, role_wb_share, role_wb_missing]
+V7B_ARM_DONE v20a-role-main-s20260901 {"total": 1834, "hits": 16, "transfers": 65, "gated_weeks": 33, "held_weeks": 4, "steps_taken": 0, "steps_refused": 0, "caps": {"max_hits": 2, "max_transfers": 15}, "chips_played": {"6": "bboost", "9": "wildcard", "18": "freehit", "19": "3xc", "31": "freehit", "33": "bboost", "34": "wildcard", "38": "3xc"}, "chip_points": {"3xc": 136, "bboost": 160, "freehit": 88, "wildcard": 83}, "composite_floor": null, "config": {"arm": "heur", "tag": "v20a-role-main-s20260901", "seed_base": 20260901, "n": 40, "chips": true, "priors": "current", "minutes": "current", "frame": "current", "noise_asset": null, "hit_bar": 0.6, "ladder_draws": 2000}}
+V7B_ARM_DONE v20a-role-main-s20260902 {"total": 1911, "hits": 14, "transfers": 65, "gated_weeks": 33, "held_weeks": 8, "steps_taken": 0, "steps_refused": 0, "caps": {"max_hits": 2, "max_transfers": 15}, "chips_played": {"6": "bboost", "9": "wildcard", "18": "freehit", "19": "3xc", "31": "freehit", "33": "bboost", "36": "3xc", "38": "wildcard"}, "chip_points": {"3xc": 161, "bboost": 161, "freehit": 88, "wildcard": 85}, "composite_floor": null, "config": {"arm": "heur", "tag": "v20a-role-main-s20260902", "seed_base": 20260902, "n": 40, "chips": true, "priors": "current", "minutes": "current", "frame": "current", "noise_asset": null, "hit_bar": 0.6, "ladder_draws": 2000}}
+V7B_ARM_DONE v20a-role-main-s20260903 {"total": 1903, "hits": 15, "transfers": 65, "gated_weeks": 33, "held_weeks": 6, "steps_taken": 0, "steps_refused": 0, "caps": {"max_hits": 2, "max_transfers": 15}, "chips_played": {"6": "bboost", "9": "wildcard", "18": "freehit", "19": "3xc", "31": "freehit", "33": "bboost", "34": "wildcard", "38": "3xc"}, "chip_points": {"3xc": 128, "bboost": 179, "freehit": 88, "wildcard": 96}, "composite_floor": null, "config": {"arm": "heur", "tag": "v20a-role-main-s20260903", "seed_base": 20260903, "n": 40, "chips": true, "priors": "current", "minutes": "current", "frame": "current", "noise_asset": null, "hit_bar": 0.6, "ladder_draws": 2000}}
+V7B_ARM_DONE v20a-role-main-s20260904 {"total": 1800, "hits": 17, "transfers": 68, "gated_weeks": 33, "held_weeks": 6, "steps_taken": 0, "steps_refused": 0, "caps": {"max_hits": 2, "max_transfers": 15}, "chips_played": {"6": "bboost", "9": "wildcard", "18": "freehit", "19": "3xc", "26": "freehit", "33": "bboost", "34": "wildcard", "36": "3xc"}, "chip_points": {"3xc": 132, "bboost": 160, "freehit": 127, "wildcard": 96}, "composite_floor": null, "config": {"arm": "heur", "tag": "v20a-role-main-s20260904", "seed_base": 20260904, "n": 40, "chips": true, "priors": "current", "minutes": "current", "frame": "current", "noise_asset": null, "hit_bar": 0.6, "ladder_draws": 2000}}
+V7B_ARM_DONE v20a-role-main-s20260905 {"total": 1796, "hits": 19, "transfers": 70, "gated_weeks": 33, "held_weeks": 6, "steps_taken": 0, "steps_refused": 0, "caps": {"max_hits": 2, "max_transfers": 15}, "chips_played": {"6": "bboost", "9": "wildcard", "18": "freehit", "19": "3xc", "33": "bboost", "34": "wildcard", "36": "3xc", "38": "freehit"}, "chip_points": {"3xc": 147, "bboost": 173, "freehit": 87, "wildcard": 96}, "composite_floor": null, "config": {"arm": "heur", "tag": "v20a-role-main-s20260905", "seed_base": 20260905, "n": 40, "chips": true, "priors": "current", "minutes": "current", "frame": "current", "noise_asset": null, "hit_bar": 0.6, "ladder_draws": 2000}}
+MULTISEED_DONE v20a-role-main {"totals": [1834, 1911, 1903, 1800, 1796], "mean": 1848.8, "spread": 115, "range": [1796, 1911], "seed_bases": [20260901, 20260902, 20260903, 20260904, 20260905]}
+REPLAY_PAIR_WORKTREE_REMOVED ../gaffer-main-v20a-role
+RUN_EXIT 0
+```
+
+### 6.2 v20b, v20c0, v20c, v20d
+
+```
 # v20b: V20B_HEAD main … / branch … ; MULTISEED_DONE v20b-bonus-branch … / -main …
 # v20c0: MULTISEED_DONE v20c0-harness-branch … / -main … ; p_cs spread lines
 # v20c: V20C_HEAD … ; DC_CLIP … ; MULTISEED_DONE v20c-clip-branch … / -main …
