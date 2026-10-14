@@ -147,6 +147,30 @@ def test_off_page_one_the_gap_uses_the_entry_payloads_total(client):
     assert (row["gap"], row["gap_kind"], row["would"]) == (112, "behind", "chase")
 
 
+def test_off_page_one_a_total_past_the_page_one_leader_reads_ahead(
+        client, monkeypatch):
+    """Holiday F-41: mid-gameweek the ranks lag the totals, so an entry off
+    page one can already out-total every page-one row. The direction reads
+    the totals the stance reads, so the gap is never negative."""
+    lagging = {"standings": {"has_next": True, "results": [
+        {**STANDINGS[9]["standings"]["results"][0], "total": 250}]}}
+    monkeypatch.setitem(STANDINGS, 9, lagging)
+    row = next(r for r in client.get("/api/league/leagues").json()["private"]
+               if r["league_id"] == 9)
+    assert row["rank"] == 55
+    assert (row["gap"], row["gap_kind"]) == (50, "ahead")
+
+
+def test_a_tie_with_the_leader_off_rank_one_reads_behind_by_nothing(
+        client, monkeypatch):
+    tied = {"standings": {"has_next": True, "results": [
+        {**STANDINGS[9]["standings"]["results"][0], "total": 300}]}}
+    monkeypatch.setitem(STANDINGS, 9, tied)
+    row = next(r for r in client.get("/api/league/leagues").json()["private"]
+               if r["league_id"] == 9)
+    assert (row["gap"], row["gap_kind"]) == (0, "behind")
+
+
 def test_a_league_of_one_has_no_gap(client):
     row = next(r for r in client.get("/api/league/leagues").json()["private"]
                if r["league_id"] == 77)
