@@ -96,14 +96,14 @@ Nine rows. The box for each lives in its cycle block (W2, W3, W4, W5 below).
 
 | Row | Unblocks when | Expected |
 |---|---|---|
-| W2 §3.1 flag latency | 14 snapshot days + one graded covered GW (4 banked, 08-30 → 09-02) | ~2026-09-13 — past due at v18h, unread |
+| W2 §3.1 flag latency | 14 snapshot days + one graded covered GW (4 banked, 08-30 → 09-02) | ~2026-09-13 — past due at v18h, unread; read with `gaffer evaluate --flag-latency`, printed as a `FLAG_LATENCY` line by `scripts/evaluate_lines.py` (holiday F-46) |
 | W2 §3.2 presser grading | a `data_checked` GW with verdicts banked before its deadline (GW2 had none) | **met** (GW3 graded, v18c) |
 | W2 §3.3 EO trend | a second GW in `field_eo_log.parquet` | **met** (GW3's scrape) |
 | W3 §4.5 WC+BB pair row | a `[dgw]` entry in `data/chip_scenarios.toml` — only written from a real double | first announced rearrangement |
-| W4 §5.3 `P(top-10k)` | ~~a top-10k weekly threshold series~~ banked since holiday F-4 and read since F-6; needs two banked gameweeks | done (holiday F-6) |
-| W4 §5.3 overall-rank change | 5 graded GWs with both `my_points` and `overall_rank` (1 of 5 today: GW1's rank is null) | ~GW6 |
+| W4 §5.3 `P(top-10k)` | ~~a top-10k weekly threshold series~~ banked since holiday F-4 and read since F-6; needs two banked gameweeks | done (holiday F-6); the projection rule is backtested by `scripts/top10k_projection.py` (holiday F-35) |
+| W4 §5.3 overall-rank change | 5 graded GWs with both `my_points` and `overall_rank` (1 of 5 today: GW1's rank is null) | ~GW6; GW1's null is filled by `scripts/backfill_overall_rank.py` (holiday F-33, dry run by default) |
 | W4 §5.1 Elo 2026-27 | the publisher fills the `elo` column | out of our hands |
-| W5 §6.5 price-timing line shows a number | `price_timing` on (default) **and** a price log long enough for a row per owned player | ~2 weeks of the 23:15 job |
+| W5 §6.5 price-timing line shows a number | `price_timing` on (default) **and** a price log long enough for a row per owned player | ~2 weeks of the 23:15 job; whether the term charged is read per Thursday run by `scripts/v20d_runs.py` (holiday F-16) |
 | W5 §6.4 Review row names its snapshot | the first GW graded after the W5 merge; earlier rows stay `null` | **met** (GW3's review row) |
 
 Accruing verdicts, not boxes: `gaffer evaluate --news-shadow` after each
