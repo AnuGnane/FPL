@@ -837,7 +837,8 @@ replay to run. Frontend suite 814 → **866**; pins unchanged.
 classic league the manager is in; nothing read it. Now the League hub opens
 on all of them: the private mini-leagues (the FPL `league_type` flag, no
 size rule) in one table with rank, move, gap and the "would chase / would
-defend" word (or "would hold" inside the dead-band, holiday F-29), the public ones as a rank line. One squad can only be tilted
+defend" word (or "would hold" inside the dead-band, holiday F-29), the
+public ones as a rank line. One squad can only be tilted
 one way, so exactly one league — the **focus** — reaches the solver, as
 before; the others get the full race, rivals and what-if for display, each
 computing its own Strategy from its own standings. The user's three
