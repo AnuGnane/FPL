@@ -35,10 +35,11 @@ too, each under the script that prints it (``READINGS``), after the v20
 arms and before ``unclaimed``: ``C1_BUCKETS``, ``C2_PPLAY``,
 ``C3_HOME_AWAY``, ``B1_STATUS_AGE``, ``DENSITY_HEAD``, ``TOP10K_PROJ``,
 ``WALK_HITS``/``WALK_HITS_GW``, ``PCS_WINDOW``/``PCS_WINDOWS``,
-``PRESSER_GW``/``PRESSER_SERVE`` and ``NEWS_SHADOW_GW``/``NEWS_SHADOW``/
-``FLAG_LATENCY`` (holiday F-46), matched as a whole word at the start of a
-line. A reading is not a run, so it never anchors a lever line: the v20
-grouping above is the same with or without them.
+``PRESSER_GW``/``PRESSER_SERVE``, ``NEWS_SHADOW_GW``/``NEWS_SHADOW``/
+``FLAG_LATENCY`` (holiday F-46) and ``BACKFILL_RANK`` (holiday F-51),
+matched as a whole word at the start of a line. A reading is not a run, so
+it never anchors a lever line: the v20 grouping above is the same with or
+without them.
 
 Nothing is deduplicated: a v20c replay prints ``DC_CLIP`` on every predict,
 so its block is long, and the night shift trims when it transcribes. With the
@@ -82,6 +83,7 @@ READINGS: list[tuple[str, tuple[str, ...]]] = [
     ("scripts/presser_serve.py", ("PRESSER_GW", "PRESSER_SERVE")),
     ("scripts/evaluate_lines.py", ("NEWS_SHADOW_GW", "NEWS_SHADOW",
                                    "FLAG_LATENCY")),
+    ("scripts/backfill_overall_rank.py", ("BACKFILL_RANK",)),
 ]
 """Holiday F-40: each reading script and the prefixes it prints, in the
 order its group prints."""
