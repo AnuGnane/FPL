@@ -48,6 +48,7 @@ from gaffer.optimize.milp import SolveInput
 from gaffer.price_log import PRICE_LOG_PATH
 from gaffer.tracking import latest_health
 from gaffer.web.schemas import (
+    ArmSwitch,
     ArtifactItem,
     BackupHealth,
     CalibrationHealth,
@@ -480,6 +481,27 @@ def calibration_health() -> CalibrationHealth | None:
         saved_at=str(saved_at) if saved_at is not None else None)
 
 
+def arm_switches() -> list[ArmSwitch]:
+    """The three v20 switches by name, ``on`` and value (holiday F-30).
+
+    Read as module attributes at call time rather than bound by ``from …
+    import``, which would freeze each at the value the router saw when it was
+    imported and miss a constant flipped for a screenshot pair.
+    """
+    import gaffer.backtest as backtest
+    from gaffer.models import components, dixon_coles
+
+    values = [("models.components.BONUS_SEES_ATTACK",
+               components.BONUS_SEES_ATTACK),
+              ("models.dixon_coles.MU_BOUNDS", dixon_coles.MU_BOUNDS),
+              ("backtest.REPLAY_TEAM_MODEL", backtest.REPLAY_TEAM_MODEL)]
+    return [ArmSwitch(name=name,
+                      on=bool(value) if isinstance(value, bool)
+                      else value is not None,
+                      value=repr(value))
+            for name, value in values]
+
+
 def team_model_health() -> TeamModelHealth | None:
     """The newest banked components' goals-conceded band (v19g §2.2).
 
@@ -661,6 +683,7 @@ def health() -> Health:
                   models=models,
                   calibration=calibration_health(),
                   team_model=team_model_health(),
+                  arms=arm_switches(),
                   launchd=LaunchdHealth(log=str(ADVISE_LOG),
                                         present=log_present,
                                         modified_at=log_modified,

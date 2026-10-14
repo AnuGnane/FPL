@@ -4,7 +4,7 @@ import {
   TABLE_CLASS, THEAD_CLASS, TR_CLASS, ageText, tdClass, thClass, tone,
 } from '../../kit'
 import type {
-  CalibrationHealth, HealthData, JobHealth, TeamModelHealth,
+  ArmSwitch, CalibrationHealth, HealthData, JobHealth, TeamModelHealth,
 } from '../../types'
 
 // The four groups in the order the model fits them, so the row's columns do
@@ -75,6 +75,23 @@ function TeamModelLine({ team }: { team: TeamModelHealth }) {
         {team.zero_odds_fixtures} of {team.fixtures} fixtures without market
         odds
       </span>
+    </p>
+  )
+}
+
+/**
+ * One v20 arm's switch as the serving process sees it (holiday F-30).
+ *
+ * The night shift's screenshot pairs are only a reading if the page says
+ * which switches were on when it was taken. Both states are a neutral chip:
+ * on is information, not doubt, and the value beside it says how far.
+ */
+function ArmLine({ arm }: { arm: ArmSwitch }) {
+  return (
+    <p className="mt-1 flex items-center gap-1.5" data-testid="arm-switch">
+      <span className="label">{arm.name}</span>
+      <Chip tone="neutral">{arm.on ? 'on' : 'off'}</Chip>
+      <span className="tn text-text-muted">{arm.value}</span>
     </p>
   )
 }
@@ -304,6 +321,9 @@ export default function HealthTab() {
             of zeros reads as a measurement of a model that was flat. */}
         {data.calibration && <CalibrationLine cal={data.calibration} />}
         {data.team_model && <TeamModelLine team={data.team_model} />}
+        {/* `?? []` because the field arrived in holiday F-30: an older
+            server or fixture carries no switches, and none render. */}
+        {(data.arms ?? []).map((arm) => <ArmLine key={arm.name} arm={arm} />)}
       </Card>
       <Card title="Automation" className="mb-4">
         {/* `?? []` because the field arrived in v19a: a server or a fixture

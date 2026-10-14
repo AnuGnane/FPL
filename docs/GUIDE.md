@@ -1375,7 +1375,10 @@ These are known, bounded, and each has a reason it was left. None blocks
 weekly use.
 
 - **The presser classifier only logs.** Serving stays off until the grading
-  report (12.2) has a few gameweeks in it. Its first gameweek is there now.
+  report (12.2) has a few gameweeks in it. Its first gameweek is there now;
+  its serving rule is pre-registered and read by `scripts/presser_serve.py`
+  (holiday F-38: `PRESSER_GW`/`PRESSER_SERVE`), the Mac's to run; serving
+  itself is a model-cycle arm.
 - **The trace does not attribute the squad-side terms**, so its lines do not
   sum to the week's xPts; the caption says that too.
 - **Plans B and C are not re-scored under Plan A's own coefficients**, so a
@@ -1403,12 +1406,22 @@ weekly use.
   closed the half that was left: the bank now clears the price-fall cache,
   so a plan page read earlier the same day no longer hands the solve the
   pre-bank (stale, so empty) table.
-- **The chip pair's "Try it" card has no What-If arm.**
+- **The chip pair's "Try it" card has no What-If arm** (the arm is written
+  out as a design note in PR #45, holiday F-36: `bb_gw` on `WhatIfRequest`,
+  validation and solve in `web/routers/whatif.py`, orchestrator-only, and a
+  scoring fix in its `summary()`; Anu applies it as a `needs-mac` package).
+- **The What-If lab's `summary()` counts a bench boost and a triple captain
+  in every horizon week**, not only the chip's week, so a lone chip over a
+  multi-week horizon is over-scored. Open, orchestrator-only
+  (`web/routers/whatif.py`); the fix is hunk 2 of PR #45's design note
+  (holiday F-36).
 - ~~The generated `types.ts` half lost the client's field comments~~ —
   closed in v19h: 1,024 of 1,031 schema fields carry a sentence the
   generator copies into `types.generated.ts`.
 - **`density_pub_7d` is built on both seams and fed to no head**, kept for a
-  later re-measure with a replay half of its own.
+  later re-measure with a replay half of its own; its head half is
+  `scripts/density_head.py` (holiday F-32), the Mac's to run; the replay
+  half waits on a pass.
 - **The light theme's turf reads more saturated than the mockup** (v14). The
   final screenshots flagged it; the value shipped is the spec's, so changing
   it is a decision rather than a fix.
@@ -1416,10 +1429,11 @@ weekly use.
   (v14) — closed by holiday F-11: its `<code>` and the overrides card's name
   `font-sans`, and `tokens.test.ts` fails any `<code>` in `hubs/` or `kit/`
   that names no face.
-- **The overview's "would" word is gap-sign only** (v15): rank 1 says
-  defend, anything else says chase, with no dead-band, because the row costs
-  one standings page and the dial's real answer (which honours the band)
-  appears when the league is opened. The column is labelled "would".
+- ~~The overview's "would" word is gap-sign only~~ (v15) — closed by
+  holiday F-29: `would` is `compute_strategy`'s stance on the one standings
+  page the overview already fetches (`history=None`, so every sigma is the
+  fallback), so a gap inside `z_deadband` reads `neutral`, rendered "would
+  hold". The history-fed dial still appears when the league is opened.
 - **The chip step reason needs a `chip_plan` on the solve state** (v16):
   `advise.py` writes it from the chip table's `play_now` rows, so a ladder
   rebuilt off a state written before v16 gives no chip reason and falls
@@ -1440,7 +1454,9 @@ weekly use.
   the objective wanted none, on a 60.25% share — and the replay in §4 is
   the evidence it is net positive over a season. A rule that the walk
   never goes above the objective's hits is a one-line candidate if a
-  season says otherwise.
+  season says otherwise; the season's count is read by
+  `scripts/walk_hits.py` (holiday F-25: `WALK_HITS`, an arm iff three or
+  more gameweeks stepped above).
 
 Carried out of the v17 and v18 programmes, all of them small:
 
@@ -1454,7 +1470,9 @@ Carried out of the v17 and v18 programmes, all of them small:
   `config.source_of` public for `journal` and `routers/settings`.
 - **The calibration block's `p_cs` stays cumulative-only** (v18c) until a
   gameweek carries 30 club-fixtures, which none will; a per-two-gameweek
-  window is a model-cycle candidate.
+  window is a model-cycle candidate. A two-gameweek window is read by
+  `scripts/pcs_window.py` (holiday F-26: `PCS_WINDOWS`), a card only if
+  every complete window clears the floor.
 - ~~Eight `react-hooks` set-state-in-effect warnings~~ — closed in v19h,
   each by the mechanism that fit its site, and pinned at zero by
   `--max-warnings 0`; `ExplainModal`'s lines are long. (`FixtureTicker`'s

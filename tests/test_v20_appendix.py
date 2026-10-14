@@ -169,3 +169,78 @@ def test_a_head_runs_clip_lines_go_with_its_reading_not_the_next_replay():
 def test_a_file_named_twice_is_read_once(logs):
     g = ap.collect([logs, logs / "b.log"])
     assert [f.name for f, _, _ in g["v20b"]] == ["b.log"]
+
+
+# Holiday F-40: the holiday reading scripts' one-line readings, each under the
+# script that prints it, between the v20 arms and "unclaimed".
+
+READINGS_LOG = """\
+V7B_ARM_DONE v20d-price-main-s20260901 {"total": 1848}
+C2_PPLAY {"top_bin": 0.93}
+WALK_HITS_GW {"gw": 5, "walk": 1, "objective": 0}
+WALK_HITS {"above": 1, "verdict": "hold"}
+LEVER minutes cols=[minutes_r1]
+V7B_ARM_DONE v20a-role-main-s20260901 {"total": 1852}
+C2_PPLAY {"top_bin": 0.91}
+"""
+
+
+def test_readings_land_under_their_script_beside_a_v20_line(tmp_path):
+    (tmp_path / "r.log").write_text(READINGS_LOG)
+    g = ap.collect([tmp_path])
+    assert _lines(g, "scripts/c2_pplay_bins.py") == [
+        'C2_PPLAY {"top_bin": 0.93}', 'C2_PPLAY {"top_bin": 0.91}']
+    assert _lines(g, "scripts/walk_hits.py") == [
+        'WALK_HITS_GW {"gw": 5, "walk": 1, "objective": 0}',
+        'WALK_HITS {"above": 1, "verdict": "hold"}']
+    assert _lines(g, "v20d") == [
+        'V7B_ARM_DONE v20d-price-main-s20260901 {"total": 1848}']
+    # A reading is not a run: the lever line still takes the next replay's arm.
+    assert _lines(g, "v20a") == [
+        "LEVER minutes cols=[minutes_r1]",
+        'V7B_ARM_DONE v20a-role-main-s20260901 {"total": 1852}']
+    assert _lines(g, "unclaimed") == []
+
+
+def test_reading_groups_print_after_the_arms_and_before_unclaimed(
+        tmp_path, capsys):
+    (tmp_path / "r.log").write_text(
+        READINGS_LOG + "V7B_ARM_DONE v19x-other-s1 {}\n")
+    ap.main([str(tmp_path)])
+    heads = [ln for ln in capsys.readouterr().out.splitlines()
+             if ln.startswith("### ")]
+    assert heads == ["### v20a", "### v20d", "### scripts/c2_pplay_bins.py",
+                     "### scripts/walk_hits.py", "### unclaimed"]
+
+
+def test_a_log_with_only_presser_serve_prints_that_group_alone(
+        tmp_path, capsys):
+    line = 'PRESSER_SERVE {"n": 0, "reason": "no log", "verdict": "insufficient"}'
+    (tmp_path / "p.log").write_text(f"starting\n{line}\nRUN_EXIT 0\n")
+    ap.main([str(tmp_path)])
+    out = capsys.readouterr().out
+    assert [ln for ln in out.splitlines() if ln.startswith("### ")] == [
+        "### scripts/presser_serve.py"]
+    assert out.split("```\n", 1)[1].rsplit("\n```", 1)[0] == line
+
+
+@pytest.mark.parametrize("line, group", [
+    ("C1_BUCKETS {}", "scripts/c1_news_buckets.py"),
+    ("C2_PPLAY {}", "scripts/c2_pplay_bins.py"),
+    ("C3_HOME_AWAY {}", "scripts/c3_home_away.py"),
+    ("B1_STATUS_AGE {}", "scripts/b1_status_age.py"),
+    ("DENSITY_HEAD {}", "scripts/density_head.py"),
+    ("TOP10K_PROJ {}", "scripts/top10k_projection.py"),
+    ("WALK_HITS_GW {}", "scripts/walk_hits.py"),
+    ("WALK_HITS {}", "scripts/walk_hits.py"),
+    ("PCS_WINDOW {}", "scripts/pcs_window.py"),
+    ("PCS_WINDOWS {}", "scripts/pcs_window.py"),
+    ("PRESSER_GW {}", "scripts/presser_serve.py"),
+    ("PRESSER_SERVE {}", "scripts/presser_serve.py"),
+])
+def test_each_reading_prefix_has_its_script(line, group):
+    assert ap.file_lines(line) == [(group, line)]
+
+
+def test_a_prefix_inside_a_longer_word_is_not_a_reading():
+    assert ap.file_lines("WALK_HITS_TOTAL {}\nC2_PPLAYS {}\n") == []

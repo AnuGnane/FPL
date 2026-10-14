@@ -76,8 +76,11 @@ OVERVIEW_TTL_S = 300.0
 eight FPL calls uncached, asked for by two hubs."""
 
 _OVERVIEW: dict[int, tuple[float, dict]] = {}
-"""entry_id -> (monotonic stamp, rows). Holds only what the FPL API said —
-never the focus or the stance, which come from config on every request."""
+"""entry_id -> (monotonic stamp, rows). Holds what the FPL API said and
+each row's ``would`` — never the focus or the stance, which come from config
+on every request. ``would`` reads the dial's params (``z_deadband`` among
+them) when the page is fetched, so a changed band shows within
+``OVERVIEW_TTL_S`` (holiday F-29)."""
 _OVERVIEW_LOCK = threading.Lock()
 
 
@@ -87,6 +90,19 @@ def _maybe_int(value) -> int | None:
 
 def _stance_of(lam: float) -> str:
     return "neutral" if lam == 0 else ("chase" if lam > 0 else "defend")
+
+
+def _overview_stance(cfg, total: int, rivals: list[dict],
+                     gw: int | None) -> str:
+    """The dial's stance from the one standings page the overview already
+    holds (holiday F-29, closing v15's gap-sign residual): a |z| under
+    ``z_deadband`` reads neutral, as it does when the league is opened. No
+    history is fetched, so every sigma is the fallback (``history=None`` is
+    ``compute_strategy``'s documented path)."""
+    frame = pd.DataFrame(rivals, columns=STANDINGS_COLS)
+    return compute_strategy(total, frame, (gw or 0) + 1, history=None,
+                            my_entry=cfg.entry_id,
+                            params=LeagueParams.from_config(cfg)).stance
 
 
 def _league_rows(client, cfg) -> dict:
@@ -105,6 +121,7 @@ def _league_rows(client, cfg) -> dict:
             return hit[1]
     entry = _guard(client.get_entry, cfg.entry_id)
     my_total = int(entry.get("summary_overall_points") or 0)
+    gw = _maybe_int(entry.get("current_event"))
     private, public = [], []
     for league in (entry.get("leagues") or {}).get("classic") or []:
         base = {"league_id": int(league["id"]), "name": str(league["name"]),
@@ -122,20 +139,20 @@ def _league_rows(client, cfg) -> dict:
             mine = next((r for r in results
                          if int(r["entry"]) == cfg.entry_id), None)
             total = int(mine["total"]) if mine else my_total
-            others = sorted((int(r["total"]) for r in results
-                             if int(r["entry"]) != cfg.entry_id), reverse=True)
+            rivals = [r for r in results if int(r["entry"]) != cfg.entry_id]
+            others = sorted((int(r["total"]) for r in rivals), reverse=True)
             if others:
                 if base["rank"] == 1:
-                    gap, gap_kind, would = total - others[0], "ahead", "defend"
+                    gap, gap_kind = total - others[0], "ahead"
                 else:
-                    gap, gap_kind, would = others[0] - total, "behind", "chase"
+                    gap, gap_kind = others[0] - total, "behind"
+                would = _overview_stance(cfg, total, rivals, gw)
         private.append({**base, "started": started, "gap": gap,
                         "gap_kind": gap_kind, "would": would})
     private.sort(key=lambda r: (r["rank"] if r["rank"] is not None else 10**9,
                                 -(r["entries"] or 0)))
     public.sort(key=lambda r: -(r["entries"] or 0))
-    rows = {"private": private, "public": public,
-            "gw": _maybe_int(entry.get("current_event"))}
+    rows = {"private": private, "public": public, "gw": gw}
     with _OVERVIEW_LOCK:
         _OVERVIEW[cfg.entry_id] = (now, rows)
     return rows

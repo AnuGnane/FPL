@@ -41,6 +41,12 @@ function gapText(row: PrivateLeagueRow): string {
     ? `+${n(row.gap)} on 2nd` : `−${n(row.gap)} to 1st`
 }
 
+/** A gap inside the dial's dead-band reads "would hold" (holiday F-29):
+ *  "would neutral" is not English, and hold is what a zero λ does. */
+function wouldWord(would: NonNullable<PrivateLeagueRow['would']>): string {
+  return would === 'neutral' ? 'hold' : would
+}
+
 /** λ with its sign, the minus a real minus like every other number here. */
 export function lamText(lam: number): string {
   const body = fmtNum(Math.abs(lam), 2)
@@ -123,7 +129,7 @@ export default function LeaguesTab(
                             <Chip tone="warn">manual</Chip>
                           )}
                         </span>
-                      ) : row.would ? `would ${row.would}` : '—'}
+                      ) : row.would ? `would ${wouldWord(row.would)}` : '—'}
                     </td>
                     <td className={tdClass()}>
                       {row.is_focus ? (

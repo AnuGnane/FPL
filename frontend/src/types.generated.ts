@@ -153,6 +153,30 @@ export interface EpMover {
   name: string
 }
 /**
+ * One v20 arm's module switch as the serving process sees it (holiday
+ * F-30, v20 spec §3's gate line): the night shift's screenshot pairs name
+ * which switches were on, so a pair taken with one left over from a replay
+ * cannot pass as the arm's effect.
+ *
+ * This interface was referenced by `GafferApi`'s JSON-Schema
+ * via the `definition` "ArmSwitch".
+ */
+export interface ArmSwitch {
+  /**
+   * The constant's dotted name under ``gaffer``, as the spec names it.
+   */
+  name: string
+  /**
+   * Whether the arm is live: ``True`` for a boolean switch, any value but
+   * ``None`` for a bounds switch.
+   */
+  on: boolean
+  /**
+   * The constant's ``repr``, so a clip reads with its two ends.
+   */
+  value: string
+}
+/**
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "ArtifactItem".
  */
@@ -3215,10 +3239,12 @@ export interface PrivateLeagueRow {
    */
   started: boolean
   /**
-   * Gap-sign only — what the dial would lean to. The deadband and λ
-   * appear when the league is opened (``/race?league_id=``).
+   * What the dial would lean to on this page's totals, the dead-band
+   * honoured, so a gap inside it reads ``neutral`` (holiday F-29). Every
+   * sigma is the fallback here; the history-fed dial and λ appear when the
+   * league is opened (``/race?league_id=``).
    */
-  would: ('chase' | 'defend') | null
+  would: ('chase' | 'defend' | 'neutral') | null
 }
 /**
  * A public or system league: rank line only (v15 §1.1).
@@ -5997,6 +6023,12 @@ export interface WireCalibrationReport {
  * via the `definition` "WireHealth".
  */
 export interface WireHealth {
+  /**
+   * Every v20 arm's switch, in the spec's arm order (holiday F-30). Read
+   * off the modules at request time, so a patched or flipped constant shows
+   * on the next poll.
+   */
+  arms: ArmSwitch[]
   /**
    * Every file under ``reports/``, name and size.
    */
