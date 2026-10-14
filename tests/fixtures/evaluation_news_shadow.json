@@ -1,0 +1,39 @@
+{
+ "news_shadow": {
+  "run_at": "2026-10-10T06:00:00+00:00",
+  "git_sha": "0000000",
+  "rows": 412,
+  "overall": {"brier_news": 0.1184, "brier_flags": 0.1251, "mae_news": 21.4,
+              "mae_flags": 23.9, "rows": 412},
+  "by_gw": [
+   {"gw": 6, "brier_news": 0.1212, "brier_flags": 0.1302, "mae_news": 22.1,
+    "mae_flags": 24.6, "rows": 205, "cum_brier_news": 0.1212,
+    "cum_brier_flags": 0.1302, "cum_mae_news": 22.1, "cum_mae_flags": 24.6},
+   {"gw": 7, "brier_news": 0.1156, "brier_flags": 0.12, "mae_news": 20.7,
+    "mae_flags": 23.2, "rows": 207, "cum_brier_news": 0.1184,
+    "cum_brier_flags": 0.1251, "cum_mae_news": 21.4, "cum_mae_flags": 23.9}
+  ]
+ },
+ "flag_latency": {
+  "run_at": "2026-10-10T06:05:00+00:00",
+  "git_sha": "0000000",
+  "kind": "flag_latency",
+  "available": true,
+  "rows": 9,
+  "note": null,
+  "histogram": [
+   {"bucket": "<1d", "started": 2, "missed": 3},
+   {"bucket": "1-2d", "started": 1, "missed": 1},
+   {"bucket": "7d+", "started": 0, "missed": 2}
+  ],
+  "late_flags": [
+   {"gw": 6, "code": 100, "first_change": "2026-09-26", "lead_days": 0.4,
+    "from_status": "a", "final_status": "i", "chance_of_playing": 0.0,
+    "started": true},
+   {"gw": 7, "code": 101, "first_change": "2026-10-03", "lead_days": 1.2,
+    "from_status": "a", "final_status": "a", "chance_of_playing": null,
+    "started": false}
+  ],
+  "changes": []
+ }
+}
