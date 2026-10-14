@@ -1375,7 +1375,10 @@ These are known, bounded, and each has a reason it was left. None blocks
 weekly use.
 
 - **The presser classifier only logs.** Serving stays off until the grading
-  report (12.2) has a few gameweeks in it. Its first gameweek is there now.
+  report (12.2) has a few gameweeks in it. Its first gameweek is there now;
+  its serving rule is pre-registered and read by `scripts/presser_serve.py`
+  (holiday F-38: `PRESSER_GW`/`PRESSER_SERVE`), the Mac's to run; serving
+  itself is a model-cycle arm.
 - **The trace does not attribute the squad-side terms**, so its lines do not
   sum to the week's xPts; the caption says that too.
 - **Plans B and C are not re-scored under Plan A's own coefficients**, so a
@@ -1451,7 +1454,9 @@ weekly use.
   the objective wanted none, on a 60.25% share — and the replay in §4 is
   the evidence it is net positive over a season. A rule that the walk
   never goes above the objective's hits is a one-line candidate if a
-  season says otherwise.
+  season says otherwise; the season's count is read by
+  `scripts/walk_hits.py` (holiday F-25: `WALK_HITS`, an arm iff three or
+  more gameweeks stepped above).
 
 Carried out of the v17 and v18 programmes, all of them small:
 
@@ -1467,7 +1472,9 @@ Carried out of the v17 and v18 programmes, all of them small:
   rather than spelling its path.
 - **The calibration block's `p_cs` stays cumulative-only** (v18c) until a
   gameweek carries 30 club-fixtures, which none will; a per-two-gameweek
-  window is a model-cycle candidate.
+  window is a model-cycle candidate. A two-gameweek window is read by
+  `scripts/pcs_window.py` (holiday F-26: `PCS_WINDOWS`), a card only if
+  every complete window clears the floor.
 - ~~Eight `react-hooks` set-state-in-effect warnings~~ — closed in v19h,
   each by the mechanism that fit its site, and pinned at zero by
   `--max-warnings 0`; `ExplainModal`'s lines are long. (`FixtureTicker`'s
