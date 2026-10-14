@@ -239,6 +239,8 @@ def test_a_log_with_only_presser_serve_prints_that_group_alone(
     ("PCS_WINDOWS {}", "scripts/pcs_window.py"),
     ("PRESSER_GW {}", "scripts/presser_serve.py"),
     ("PRESSER_SERVE {}", "scripts/presser_serve.py"),
+    ("BACKFILL_RANK gw=1 was=null now=123456",
+     "scripts/backfill_overall_rank.py"),
 ])
 def test_each_reading_prefix_has_its_script(line, group):
     assert ap.file_lines(line) == [(group, line)]
