@@ -1433,9 +1433,12 @@ weekly use.
   later re-measure with a replay half of its own; its head half is
   `scripts/density_head.py` (holiday F-32), the Mac's to run; the replay
   half waits on a pass.
-- **The light theme's turf reads more saturated than the mockup** (v14). The
-  final screenshots flagged it; the value shipped is the spec's, so changing
-  it is a decision rather than a fix.
+- ~~The light theme's turf reads more saturated than the mockup~~ (v14) —
+  ruled by holiday F-48: the v14 spec names both values, `--color-turf`
+  `#1b3a2b` dark and `#2f6b45` light, and the light one ships as the spec's.
+  Kept by default on 2026-10-14; a screenshot pair decides otherwise (a
+  desaturated value nearer the mockup is the alternative, and changing it is
+  a decision rather than a fix).
 - ~~The empty state's shell command borrows the browser's monospace face~~
   (v14) — closed by holiday F-11: its `<code>` and the overrides card's name
   `font-sans`, and `tokens.test.ts` fails any `<code>` in `hubs/` or `kit/`
