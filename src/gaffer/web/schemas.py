@@ -350,9 +350,11 @@ class PrivateLeagueRow(BaseModel):
     ``gap_kind`` names."""
     gap_kind: Literal["ahead", "behind"] | None = None
     """Whether the leader is ahead of the entry or the entry leads it."""
-    would: Literal["chase", "defend"] | None = None
-    """Gap-sign only — what the dial would lean to. The deadband and λ
-    appear when the league is opened (``/race?league_id=``)."""
+    would: Literal["chase", "defend", "neutral"] | None = None
+    """What the dial would lean to on this page's totals, the dead-band
+    honoured, so a gap inside it reads ``neutral`` (holiday F-29). Every
+    sigma is the fallback here; the history-fed dial and λ appear when the
+    league is opened (``/race?league_id=``)."""
     is_focus: bool
     """Whether this is the configured focus league."""
 

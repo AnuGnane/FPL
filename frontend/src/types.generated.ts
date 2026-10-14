@@ -3215,10 +3215,12 @@ export interface PrivateLeagueRow {
    */
   started: boolean
   /**
-   * Gap-sign only — what the dial would lean to. The deadband and λ
-   * appear when the league is opened (``/race?league_id=``).
+   * What the dial would lean to on this page's totals, the dead-band
+   * honoured, so a gap inside it reads ``neutral`` (holiday F-29). Every
+   * sigma is the fallback here; the history-fed dial and λ appear when the
+   * league is opened (``/race?league_id=``).
    */
-  would: ('chase' | 'defend') | null
+  would: ('chase' | 'defend' | 'neutral') | null
 }
 /**
  * A public or system league: rank line only (v15 §1.1).
