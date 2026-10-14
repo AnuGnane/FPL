@@ -1382,8 +1382,12 @@ weekly use.
   small gap of either sign can be two coefficient sets rather than two plans.
 - **The free hit re-solve excludes horizon effects** (pricing them needs a
   two-branch horizon solve).
-- **`overall_rank` and `projection_snapshot` fill forward only** — grades are
-  banked and never rewritten, so rows from before v11/W5 keep `null`.
+- **`projection_snapshot` fills forward only** — grades are banked and never
+  rewritten, so rows from before v12 W5 keep `null`. `overall_rank` no
+  longer does (holiday F-33): `scripts/backfill_overall_rank.py` fills a
+  null rank from the banked entry history (dry run by default, `--write`
+  banks it through `review.append_ledger`); the snapshot has no public
+  source to fill it from.
 - ~~The decision ledger has no season key~~ — closed in v19h: rows carry
   `season`, readers see the season in force.
 - ~~The watchlist has no "starred at"~~ — closed in v19h: `starred_at` is
