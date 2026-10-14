@@ -20,6 +20,7 @@ from gaffer.brief import (
     first_sentence,
     load_brief,
     run_brief,
+    season_names,
 )
 
 FACTS = {
@@ -405,3 +406,57 @@ def test_a_known_name_that_the_allow_list_carries_is_not_flagged_as_an_opener():
     # Mid-sentence, an ALLOW word is never a name; the opener reads the same.
     assert check_brief("Friday is the deadline.", FACTS,
                        known_names=KNOWN | {"Friday"}) == []
+
+
+# --- holiday F-27: run_brief reads the season's names off the newest snapshot -
+
+def _snapshot(raw: Path, stamp: str, elements) -> None:
+    raw.mkdir(parents=True, exist_ok=True)
+    (raw / f"bootstrap-{stamp}.json").write_text(json.dumps({"elements": elements}))
+
+
+def _salah_cfg(tmp_path: Path):
+    return type("C", (), {"news_llm_command": _fake(tmp_path, "Salah's form is the story."),
+                          "news_llm_timeout_s": 10})()
+
+
+def test_a_snapshot_naming_a_player_outside_the_facts_fails_his_opener(artifacts_on_disk):
+    _snapshot(artifacts_on_disk / "data" / "raw", "20260910T080000",
+              [{"web_name": "M.Salah", "second_name": "Salah"}])
+    out = run_brief(4, cfg=_salah_cfg(artifacts_on_disk), cache_dir=artifacts_on_disk / "cache")
+    assert out["written"] is False
+    assert "name Salah is not in the facts" in out["note"]
+
+
+def test_no_snapshot_leaves_the_opener_unchecked(artifacts_on_disk):
+    out = run_brief(4, cfg=_salah_cfg(artifacts_on_disk), cache_dir=artifacts_on_disk / "cache")
+    assert out["written"] is True and out["note"] is None
+
+
+def test_an_ordinary_opener_passes_with_a_snapshot_on_disk(artifacts_on_disk):
+    _snapshot(artifacts_on_disk / "data" / "raw", "20260910T080000",
+              [{"web_name": "M.Salah", "second_name": "Salah"}])
+    cfg = type("C", (), {"news_llm_command": _fake(artifacts_on_disk, TRUE),
+                         "news_llm_timeout_s": 10})()
+    out = run_brief(4, cfg=cfg, cache_dir=artifacts_on_disk / "cache")
+    assert out["written"] is True and out["note"] is None
+
+
+def test_the_newest_of_two_snapshots_is_the_one_read(tmp_path):
+    _snapshot(tmp_path, "20260901T080000", [{"web_name": "Old", "second_name": "Gone"}])
+    _snapshot(tmp_path, "20260910T080000",
+              [{"web_name": "M.Salah", "second_name": "Salah"},
+               {"web_name": "Haaland", "second_name": "Haaland"}])
+    assert season_names(tmp_path) == frozenset({"M.Salah", "Salah", "Haaland"})
+
+
+@pytest.mark.parametrize("body", ["not json", json.dumps({"teams": []}),
+                                  json.dumps([1, 2]), json.dumps({"elements": []}),
+                                  json.dumps({"elements": "x"})])
+def test_an_unreadable_or_empty_snapshot_is_no_names(tmp_path, body):
+    (tmp_path / "bootstrap-20260910T080000.json").write_text(body)
+    assert season_names(tmp_path) is None
+
+
+def test_a_missing_raw_directory_is_no_names(tmp_path):
+    assert season_names(tmp_path / "absent") is None
