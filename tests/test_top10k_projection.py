@@ -42,11 +42,12 @@ def test_a_rise_across_a_missed_week_is_per_gameweek():
 
 
 def test_the_line_scores_every_week_with_two_weeks_before_it():
-    out = tp.reading(SERIES)
+    out = tp.reading(SERIES, include_latest=True)
     assert out["n"] == 3 and out["banked"] == 5 and out["reason"] is None
     assert [w["gw"] for w in out["weeks"]] == [3, 4, 6]
     assert out["weeks"][0] == {"gw": 3, "banked": 190, "f6": 180.0,
-                               "last_rise": 180.0, "median_rise": 180.0}
+                               "last_rise": 180.0, "median_rise": 180.0,
+                               "scored": True}
     # f6 errors: -10, +5, 250 + 380/3 - 400 = -23.33; last_rise -10, +10, -30.
     assert out["rules"]["f6"]["mae"] == pytest.approx((10 + 5 + 70 / 3) / 3,
                                                       abs=0.01)
@@ -60,12 +61,30 @@ def test_the_line_scores_every_week_with_two_weeks_before_it():
 def test_fewer_than_three_banked_weeks_prints_the_waiting_sentence():
     out = tp.reading({1: 60, 2: 120})
     assert out["n"] == 0 and out["verdict"] == "waiting"
-    assert "2 banked gameweek(s)" in out["reason"]
+    assert out["reason"].startswith("2 banked gameweeks;")
+    assert tp.reading({1: 60})["reason"].startswith("1 banked gameweek;")
     assert tp.reading({})["verdict"] == "waiting"
+
+
+def test_the_newest_week_is_listed_but_not_scored_by_default():
+    out = tp.reading(SERIES)
+    assert [(w["gw"], w["scored"]) for w in out["weeks"]] == [
+        (3, True), (4, True), (6, False)]
+    assert out["n"] == 2
+    # f6 over gw3 and gw4 alone: errors -10 and +5.
+    assert out["rules"]["f6"] == {"mae": 7.5, "bias": -2.5}
+
+
+def test_three_banked_weeks_wait_on_the_newest_unless_it_is_included():
+    out = tp.reading({1: 60, 2: 120, 3: 190})
+    assert out["verdict"] == "waiting" and out["n"] == 0
+    assert "gw3" in out["reason"] and len(out["weeks"]) == 1
+    assert tp.reading({1: 60, 2: 120, 3: 190}, include_latest=True)["n"] == 1
 
 
 @pytest.mark.parametrize("other, verdict", [
     (9.0, "ruling: last_rise beats f6"),     # 10 % below: clears the bar
+    (8.0, "ruling: last_rise beats f6"),
     (9.5, "f6 stays"),                       # 5 % below: does not
     (11.0, "f6 stays"),
 ])
@@ -73,6 +92,12 @@ def test_the_verdict_needs_ten_percent_over_five_weeks(other, verdict):
     mae = {"f6": 10.0, "last_rise": other, "median_rise": 12.0}
     assert tp._verdict(5, mae) == verdict
     assert tp._verdict(4, mae) == "insufficient"
+
+
+def test_both_alternatives_clearing_the_bar_are_both_named():
+    assert tp._verdict(5, {"f6": 10.0, "last_rise": 8.0,
+                           "median_rise": 9.0}) == (
+        "ruling: last_rise and median_rise beat f6")
 
 
 def test_two_perfect_rules_leave_f6_in_place():
@@ -83,7 +108,7 @@ def test_two_perfect_rules_leave_f6_in_place():
 def test_a_steady_rise_over_enough_weeks_keeps_f6():
     series = {gw: 60 * gw for gw in range(1, 10)}
     out = tp.reading(series)
-    assert out["n"] == 7 and out["verdict"] == "f6 stays"
+    assert out["n"] == 6 and out["verdict"] == "f6 stays"
     assert out["rules"]["f6"] == {"mae": 0.0, "bias": 0.0}
 
 
