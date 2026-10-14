@@ -29,13 +29,13 @@ import math
 from fastapi import APIRouter
 
 from gaffer.config import (
-    _source_of,
     base_exists,
     invalidate,
     load_config,
     out_of_range,
     overlay_and_base,
     read_overlay,
+    source_of,
     write_overlay,
 )
 from gaffer.web.coerce import fail
@@ -116,7 +116,7 @@ def _panel() -> SettingsPanel:
             value=value, lo=entry.lo, hi=entry.hi,
             choices=list(entry.choices), options=_options(entry, value),
             section=entry.section, help=entry.help,
-            source=_source_of(local, base, entry.section, entry.toml_key)))
+            source=source_of(local, base, entry.section, entry.toml_key)))
     return SettingsPanel(
         rows=rows,
         unavailable=[e.field for e in WHITELIST if e.field not in live],

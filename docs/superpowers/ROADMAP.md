@@ -1298,11 +1298,9 @@ branch `v14-ledger` off `main` at `bb6ae40`, 15 commits.
     were removed in the sweep task; `sage`/`rust` stay declared and unused.
   - R12 `Card` keeps its name over the Section rendering (100 call sites);
     `Badge` stays exported as a thin alias of `Chip`.
-- [ ] Open for a later cycle, both flagged by the final screenshots: the
-  light theme's turf (`#2f6b45`, the spec's own value) reads more saturated
-  than the mockup; `EmptyState`'s shell-command `<code>` takes the browser's
-  monospace face and carries no `font-mono` class, so `tokens.test.ts`
-  cannot see it.
+- [ ] Open for a later cycle, flagged by the final screenshots: the light
+  theme's turf (`#2f6b45`, the spec's own value) reads more saturated than
+  the mockup. (`EmptyState`'s bare `<code>` closed in holiday F-11.)
 
 ## Operational / housekeeping
 - [x] Untrack `reports/` artifacts + `.claude/`; gitignore both (`31dc239`)

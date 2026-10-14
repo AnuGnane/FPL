@@ -22,7 +22,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from gaffer.artifacts import REPORTS, _history_stamp, advice_history_files
+from gaffer.artifacts import REPORTS, advice_history_files, history_stamp
 
 JOURNAL_PATH = REPORTS / "journal.json"
 """v18d §2: ``reports/`` is spelled once, in :mod:`gaffer.artifacts`.
@@ -81,7 +81,7 @@ def latest_run_per_gw() -> dict[int, dict]:
         if gw is None:
             continue
         candidates.setdefault(int(gw), []).append(
-            (_as_utc(_history_stamp(path)), payload))
+            (_as_utc(history_stamp(path)), payload))
 
     out: dict[int, dict] = {}
     for gw, runs in candidates.items():

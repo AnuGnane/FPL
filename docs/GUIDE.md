@@ -1447,13 +1447,11 @@ Carried out of the v17 and v18 programmes, all of them small:
 - **The ladder's three config reads are on the router's path** (v18b), left
   there by design: the sealed rail covers `gather_inputs` and
   `build_advice`, and `build_ladder` is called from the route.
-- **Two private reaches across modules survive** (v18d): `journal` into
-  `artifacts._history_stamp` and `routers/settings` into
-  `config._source_of`. Both sit in modules the golden board imports, so
-  they wait for a cycle that runs it. The other two closed in the holiday's
-  F-8: `journal.code_of_element` and `data.cups.cached_get` are public, and
-  `routers/meta.py` reads the health file through `tracking.latest_health`
-  rather than spelling its path.
+- ~~**Two private reaches across modules survive** (v18d)~~ — closed: the
+  holiday's F-8 made `journal.code_of_element` and `data.cups.cached_get`
+  public and had `routers/meta.py` read the health file through
+  `tracking.latest_health`; F-28 made `artifacts.history_stamp` and
+  `config.source_of` public for `journal` and `routers/settings`.
 - **The calibration block's `p_cs` stays cumulative-only** (v18c) until a
   gameweek carries 30 club-fixtures, which none will; a per-two-gameweek
   window is a model-cycle candidate.
@@ -1491,7 +1489,8 @@ brainstorm would start from, in the order the 2026-09-01 research ranked it
 7. **Housekeeping follow-ups** from 12.4: `tidy` for the API snapshots above
    all, the ledger season key, `starred_at`, the `schemas.py` docstrings, the
    chip pair's What-If arm, ~~the web button banking prices~~ (holiday
-   F-3), and the four private reaches v18d recorded.
+   F-3), and ~~the four private reaches v18d recorded~~ (holiday F-8 and
+   F-28).
 8. **FotMob as an xG fallback (B8)** — only if Understat goes down.
 
 Still rejected, and the research confirmed it: referee and weather, price

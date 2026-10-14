@@ -748,7 +748,7 @@ only ever reads the newest two of one gameweek.
 """
 
 
-def _history_stamp(path: Path) -> str:
+def history_stamp(path: Path) -> str:
     """The ISO timestamp out of ``gw{N}-{stamp}.json``.
 
     Sorting on this rather than on mtime: two runs a second apart can share an
@@ -767,7 +767,7 @@ def advice_history_files(gw: int | None = None) -> list[Path]:
     files = [p for p in ADVICE_HISTORY.glob("gw*-*.json") if p.is_file()]
     if gw is not None:
         files = [p for p in files if p.name.startswith(f"gw{int(gw)}-")]
-    return sorted(files, key=_history_stamp)
+    return sorted(files, key=history_stamp)
 
 
 def prune_advice_history(keep: int = ADVICE_HISTORY_KEEP) -> int:
@@ -971,7 +971,7 @@ class ProjectionSnapshot:
     """The writer's own UTC stamp, ``%Y%m%dT%H%M%SZ``. Sorts
     lexicographically, which is why it is the sort key rather than mtime: two
     runs a second apart can share an mtime, and a copied ``reports/`` has
-    mtimes that say nothing at all (``_history_stamp``'s reasoning).
+    mtimes that say nothing at all (``history_stamp``'s reasoning).
 
     The resolution is one second, and that is also the collision: two advise
     runs that start inside the same second write the same filename and the
