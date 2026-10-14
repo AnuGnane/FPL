@@ -1,0 +1,147 @@
+"""scripts/v20_appendix.py, the §6 evidence lines collected (holiday F-34).
+
+Two logs in a temporary directory, their modification times set by hand: an
+older v20b replay with its lever lines and a head reading, and a newer one
+mixing the v20c harness and clip with a tag no arm claims. A third log has
+no evidence line at all.
+"""
+
+from __future__ import annotations
+
+import os
+import sys
+from datetime import date, datetime, timezone
+
+import pytest
+
+sys.path.insert(0, "scripts")
+
+import v20_appendix as ap  # noqa: E402 — scripts/ is not a package; the path insert must come first
+
+OLD = datetime(2026, 10, 13, 22, 0, tzinfo=timezone.utc).timestamp()
+NEW = datetime(2026, 10, 15, 6, 0, tzinfo=timezone.utc).timestamp()
+
+B_LOG = """\
+starting replay
+LEVER minutes cols=[minutes_r1, home]
+LEVER bonus cols=[bps_r3, e_goals, e_assists]
+V7B_ARM_DONE v20b-bonus-branch-s20260901 {"total": 1850}
+MULTISEED_DONE v20b-bonus-branch {"totals": [1850], "mean": 1850.0}
+V20B_HEAD {"overall": 0.41, "verdict": "pass"}
+RUN_EXIT 0
+"""
+
+C_LOG = """\
+REPLAY_TEAM_MODEL p_cs min=0.0812 max=0.6123 distinct=310 n=380
+V7B_ARM_DONE v20c0-harness-branch-s20260901 {"total": 1849}
+DC_CLIP n=12 of 380
+V7B_ARM_DONE v20c-clip-branch-s20260901 {"total": 1851}
+V20C_HEAD {"verdict": "fail: extreme"}
+V7B_ARM_DONE v19x-other-s20260901 {"total": 1700}
+V20D_BRIER {"n": 0, "reason": "no log"}
+"""
+
+
+@pytest.fixture()
+def logs(tmp_path):
+    (tmp_path / "b.log").write_text(B_LOG)
+    (tmp_path / "c.log").write_text(C_LOG)
+    (tmp_path / "quiet.log").write_text("nothing to see\nRUN_EXIT 0\n")
+    os.utime(tmp_path / "b.log", (OLD, OLD))
+    os.utime(tmp_path / "c.log", (NEW, NEW))
+    os.utime(tmp_path / "quiet.log", (NEW, NEW))
+    return tmp_path
+
+
+def _lines(grouped, arm):
+    return [ln for _, _, lines in grouped[arm] for ln in lines]
+
+
+def test_each_line_lands_under_its_arm_verbatim(logs):
+    g = ap.collect([logs])
+    assert _lines(g, "v20b") == [ln for ln in B_LOG.splitlines()
+                                 if ln.split()[0] in {"LEVER", "V7B_ARM_DONE",
+                                                      "MULTISEED_DONE",
+                                                      "V20B_HEAD"}]
+    assert _lines(g, "v20c0") == [
+        "REPLAY_TEAM_MODEL p_cs min=0.0812 max=0.6123 distinct=310 n=380",
+        'V7B_ARM_DONE v20c0-harness-branch-s20260901 {"total": 1849}']
+    assert _lines(g, "v20c") == [
+        "DC_CLIP n=12 of 380",
+        'V7B_ARM_DONE v20c-clip-branch-s20260901 {"total": 1851}',
+        'V20C_HEAD {"verdict": "fail: extreme"}']
+    assert _lines(g, "v20d") == ['V20D_BRIER {"n": 0, "reason": "no log"}']
+    assert _lines(g, "v20a") == []
+
+
+def test_a_tag_no_arm_claims_goes_under_unclaimed(logs):
+    assert _lines(ap.collect([logs]), "unclaimed") == [
+        'V7B_ARM_DONE v19x-other-s20260901 {"total": 1700}']
+
+
+def test_files_are_ordered_by_modification_time(logs):
+    os.utime(logs / "b.log", (NEW + 60, NEW + 60))
+    os.utime(logs / "c.log", (OLD, OLD))
+    (logs / "c.log").write_text(C_LOG + "V20B_HEAD {\"late\": true}\n")
+    os.utime(logs / "c.log", (OLD, OLD))
+    g = ap.collect([logs])
+    assert [f.name for f, _, _ in g["v20b"]] == ["c.log", "b.log"]
+
+
+def test_since_keeps_only_files_modified_on_or_after_the_date(logs):
+    g = ap.collect([logs], since=date(2026, 10, 14))
+    assert g["v20b"] == []
+    assert _lines(g, "v20d") == ['V20D_BRIER {"n": 0, "reason": "no log"}']
+    assert ap.collect([logs], since=date(2026, 10, 13))["v20b"]
+
+
+def test_a_log_with_no_such_line_prints_nothing(tmp_path, capsys):
+    (tmp_path / "quiet.log").write_text("nothing to see\nRUN_EXIT 0\n")
+    assert ap.main([str(tmp_path)]) == 0
+    assert capsys.readouterr().out == ""
+
+
+def test_a_missing_path_prints_nothing(tmp_path, capsys):
+    assert ap.main([str(tmp_path / "absent")]) == 0
+    assert capsys.readouterr().out == ""
+
+
+def test_the_block_is_section_six_shaped(logs, capsys):
+    assert ap.main([str(logs / "b.log")]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith("### v20b\n\n`")
+    assert "modified 2026-10-13 (UTC)" in out
+    body = out.split("```\n", 1)[1].rsplit("\n```", 1)[0]
+    assert body.splitlines()[0] == "LEVER minutes cols=[minutes_r1, home]"
+    assert len(body.splitlines()) == 5
+
+
+def test_the_arms_print_in_order(logs, capsys):
+    ap.main([str(logs)])
+    heads = [ln for ln in capsys.readouterr().out.splitlines()
+             if ln.startswith("### ")]
+    assert heads == ["### v20b", "### v20c0", "### v20c", "### v20d",
+                     "### unclaimed"]
+
+
+def test_a_lever_line_after_the_last_tag_takes_that_replays_arm():
+    out = ap.file_lines("V7B_ARM_DONE v20a-role-main-s1 {}\n"
+                        "LEVER bonus cols=[bps_r3]\n")
+    assert out[-1] == ("v20a", "LEVER bonus cols=[bps_r3]")
+
+
+def test_a_lever_line_with_no_v20_replay_falls_back_by_its_prefix():
+    out = dict((line.split()[0], arm) for arm, line in ap.file_lines(
+        "DC_CLIP n=3 of 10\nREPLAY_TEAM_MODEL p_cs n=0\n"
+        "LEVER minutes cols=missing\n"))
+    assert out == {"DC_CLIP": "v20c", "REPLAY_TEAM_MODEL": "v20c0",
+                   "LEVER": "unclaimed"}
+
+
+@pytest.mark.parametrize("tag, arm", [("v20c0-harness-main", "v20c0"),
+                                      ("v20c-clip-main", "v20c"),
+                                      ("v20c", "v20c"),
+                                      ("v20cx-thing", "unclaimed"),
+                                      ("v7b-old", "unclaimed")])
+def test_the_tag_prefix_rule(tag, arm):
+    assert ap.tag_arm(tag) == arm
