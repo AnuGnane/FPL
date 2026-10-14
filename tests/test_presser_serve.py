@@ -87,6 +87,24 @@ def test_one_counted_week_out_of_order_keeps_serving_off():
     assert serve["verdict"].startswith("stays off")
 
 
+def test_three_weeks_in_order_do_not_outvote_a_fourth_out_of_order():
+    log, res, events = _frames({3: IN_ORDER, 4: IN_ORDER, 6: IN_ORDER,
+                                7: OUT_OF_ORDER})
+    _, serve = presser_serve.readings(log, res, events, SEASON)
+    assert serve["counted_gws"] == [3, 4, 6, 7]
+    assert serve["out_of_order_gws"] == [7]
+    assert serve["verdict"].startswith("stays off")
+
+
+def test_a_week_banked_only_after_its_deadline_is_not_listed_as_graded():
+    log, res, events = _frames({3: IN_ORDER, 4: IN_ORDER})
+    log.loc[log["gw"] == 4, "snap_date"] = "2026-09-20"
+    weeks, serve = presser_serve.readings(log, res, events, SEASON)
+    assert [w["gw"] for w in weeks] == [3, 4]
+    assert weeks[1]["n"] == 0 and weeks[1]["note"]
+    assert serve["graded_gws"] == [3]
+
+
 def test_a_tie_does_not_break_the_order_and_a_missing_class_is_skipped():
     assert presser_serve.in_order([
         {"verdict": "ruled_out", "precision": 0.5},

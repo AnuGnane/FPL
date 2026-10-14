@@ -18,15 +18,17 @@ verdict rows. ``PRESSER_SERVE`` then reads the rule below.
 
 The pre-registered rule, written here before the script has run on real
 data. A gameweek **counts** when it carries at least ``MIN_ROWS`` (20)
-verdict rows. Serving is worth a model-cycle arm iff, in each of at least
-``MIN_WEEKS`` (3) counted gameweeks:
+verdict rows. Serving is worth a model-cycle arm iff there are at least
+``MIN_WEEKS`` (3) counted gameweeks and, in **every** counted gameweek (one
+out of order keeps serving off, however many others are in order):
 
 - the precision of absence falls in the order the classes are named from
   most to least absent, ``ABSENCE_ORDER`` (``ruled_out``, ``assess``,
   ``knock``, ``rotation_risk``, ``confirmed_starter``; ``irrelevant`` says
   nothing about availability and is not ordered). "Falls" is non-increasing
-  over the classes present that week: a tie does not break the order, and a
-  class with no rows that week is skipped;
+  over the classes present that week: a tie does not break the order, a
+  class with no rows that week is skipped, and so a week with one ordered
+  class present passes this half trivially;
 
 and, pooled over the counted gameweeks, the precision of the most confident
 absence class (``ruled_out``) beats the base absence rate over all of those
@@ -115,8 +117,8 @@ def week_reading(log: pd.DataFrame, actuals: pd.DataFrame,
                     for c in per_class},
         "top_n": next((c["n"] for c in per_class
                        if c["verdict"] == TOP_CLASS), 0),
-        "top_absent": next((round(c["precision"] * c["n"])
-                            for c in per_class
+        "top_absent": next((c["not_started"]
+                            for c in graded.get("confusion") or []
                             if c["verdict"] == TOP_CLASS), 0),
         "in_order": in_order(per_class) if n else None,
         "counts": n >= MIN_ROWS,
@@ -128,7 +130,10 @@ def serve_reading(weeks: list[dict], season: str) -> dict:
     """The ``PRESSER_SERVE`` payload over the per-gameweek readings."""
     counted = [w for w in weeks if w["counts"]]
     out = {"n": sum(w["n"] for w in weeks), "season": season,
-           "graded_gws": [w["gw"] for w in weeks],
+           # The weeks the grader scored: one whose verdicts all came after
+           # its deadline prints its line (and the grader's note) but is not
+           # graded.
+           "graded_gws": [w["gw"] for w in weeks if w["n"]],
            "counted_gws": [w["gw"] for w in counted],
            "out_of_order_gws": [w["gw"] for w in counted
                                 if not w["in_order"]],
