@@ -292,7 +292,9 @@ describe('The v20 arm switches', () => {
     expect(within(rows[1]).getByText('on')).toBeInTheDocument()
     expect(within(rows[1]).queryByText('off')).toBeNull()
     expect(rows[1].textContent).toContain('(0.1, 9.0)')
+    expect(rows[0].textContent).toContain('False')
     expect(rows[2].textContent).toContain('backtest.REPLAY_TEAM_MODEL')
+    expect(within(rows[2]).getByText('off')).toBeInTheDocument()
   })
 
   it('renders no switch rows for a server older than the field', async () => {
