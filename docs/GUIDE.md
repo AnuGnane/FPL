@@ -1326,7 +1326,8 @@ lines for W1, W3 and W5).
 ### 12.2 Waiting on data, not code
 
 Each of these was built, tested and rendered as a named empty state. Nine
-rows, with the condition that fills each and where it stands on 2026-09-14 —
+rows, with the condition that fills each and where it stands on 2026-09-14
+(rows re-read 2026-10-14) —
 three have **filled** since the table was written, and one is past its date
 because the collector behind it is not loaded (12.0):
 
@@ -1336,11 +1337,11 @@ because the collector behind it is not loaded (12.0):
 | Players / captain frame: **EO trend** (W2) | a second gameweek in `field_eo_log.parquet` | **Filled.** The log holds GW2 and GW3 |
 | Model → Review: **a row names its projection snapshot** (W5) | the first gameweek graded after the W5 merge; earlier rows keep `null` for ever | **Filled.** GW3's row names `20260904T155104Z`; GW1 and GW2 keep `null` for ever |
 | Model → Health: **Elo for 2026-27** (W4) | the archive publisher to fill the `elo` column for this season | **Filled.** `data/core_insights/2026-27/elo.parquet` has rows |
-| Model → Quality: **flag latency** (W2) | 14 daily availability snapshots plus one graded gameweek they cover | **Past due** (expected ~2026-09-13). Thirteen snapshot days are banked, 08-30 → 09-12 with 09-07 missing, and the 17:00 job has not run since: it is one of the seven in 12.0 |
-| Planning → Board: **the price-timing line shows a number** (W5) | `[optimizer] price_timing` on (it is, by default) *and* a nightly price log long enough to return a row per owned player | Eleven days banked; the 23:15 job is one of the seven in 12.0 |
-| League → Field: **expected overall-rank change** (W4) | 5 graded gameweeks carrying both `my_points` and `overall_rank`; GW1's rank is null | 2 of 5 (GW2, GW3) — ~GW6 |
+| Model → Quality: **flag latency** (W2) | 14 daily availability snapshots plus one graded gameweek they cover | **Past due** (expected ~2026-09-13). On 2026-09-14 thirteen snapshot days were banked, 08-30 → 09-12 with 09-07 missing, and the 17:00 job had not run since: it is one of the seven in 12.0. The reading is `gaffer evaluate --flag-latency`, printed as a `FLAG_LATENCY` line by `scripts/evaluate_lines.py` (holiday F-46) |
+| Planning → Board: **the price-timing line shows a number** (W5) | `[optimizer] price_timing` on (it is, by default) *and* a nightly price log long enough to return a row per owned player | Eleven days banked on 2026-09-14; the 23:15 job is one of the seven in 12.0. Whether the term charged is read per Thursday run by `scripts/v20d_runs.py` (holiday F-16, its `V20D_RUN` and `V20D_ROW` lines) |
+| League → Field: **expected overall-rank change** (W4) | 5 graded gameweeks carrying both `my_points` and `overall_rank`; GW1's rank is null | 2 of 5 on 2026-09-14 (GW2, GW3) — ~GW6. GW1's null rank is filled from the banked entry history by `scripts/backfill_overall_rank.py` (holiday F-33; a dry run by default, `--write` banks it) |
 | Planning → Chips: **WC + BB pair row** (W3) | a `[dgw]` entry in `data/chip_scenarios.toml`, which the writer only creates from a real double in the published list | Absent, correctly: the published list has no double. The first rearrangement FPL announces |
-| League → Field: **`P(top-10k)`** (W4) | a top-10k weekly score-threshold series; no source gaffer reads had one | Banking since holiday F-4 (`data/live/top_threshold_log.parquet`, daily); the row reads it since F-6 and waits only for two banked gameweeks |
+| League → Field: **`P(top-10k)`** (W4) | a top-10k weekly score-threshold series; no source gaffer reads had one | Banking since holiday F-4 (`data/live/top_threshold_log.parquet`, daily); the row reads it since F-6 and waits only for two banked gameweeks; `scripts/top10k_projection.py` (holiday F-35) backtests F-6's projection rule on the banked weeks |
 
 Two verdicts also accrue by gameweek rather than by code: `gaffer evaluate
 --news-shadow` has its second reading available now that GW3 is graded
