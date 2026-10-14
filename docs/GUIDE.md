@@ -1403,12 +1403,22 @@ weekly use.
   closed the half that was left: the bank now clears the price-fall cache,
   so a plan page read earlier the same day no longer hands the solve the
   pre-bank (stale, so empty) table.
-- **The chip pair's "Try it" card has no What-If arm.**
+- **The chip pair's "Try it" card has no What-If arm** (the arm is written
+  out as a design note in PR #45, holiday F-36: `bb_gw` on `WhatIfRequest`,
+  validation and solve in `web/routers/whatif.py`, orchestrator-only, and a
+  scoring fix in its `summary()`; Anu applies it as a `needs-mac` package).
+- **The What-If lab's `summary()` counts a bench boost and a triple captain
+  in every horizon week**, not only the chip's week, so a lone chip over a
+  multi-week horizon is over-scored. Open, orchestrator-only
+  (`web/routers/whatif.py`); the fix is hunk 2 of PR #45's design note
+  (holiday F-36).
 - ~~The generated `types.ts` half lost the client's field comments~~ —
   closed in v19h: 1,024 of 1,031 schema fields carry a sentence the
   generator copies into `types.generated.ts`.
 - **`density_pub_7d` is built on both seams and fed to no head**, kept for a
-  later re-measure with a replay half of its own.
+  later re-measure with a replay half of its own; its head half is
+  `scripts/density_head.py` (holiday F-32), the Mac's to run; the replay
+  half waits on a pass.
 - **The light theme's turf reads more saturated than the mockup** (v14). The
   final screenshots flagged it; the value shipped is the spec's, so changing
   it is a decision rather than a fix.
