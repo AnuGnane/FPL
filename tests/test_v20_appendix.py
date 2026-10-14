@@ -9,8 +9,10 @@ no evidence line at all.
 from __future__ import annotations
 
 import os
+import re
 import sys
 from datetime import date, datetime, timezone
+from pathlib import Path
 
 import pytest
 
@@ -244,3 +246,26 @@ def test_each_reading_prefix_has_its_script(line, group):
 
 def test_a_prefix_inside_a_longer_word_is_not_a_reading():
     assert ap.file_lines("WALK_HITS_TOTAL {}\nC2_PPLAYS {}\n") == []
+
+
+NOT_EVIDENCE = {
+    # scripts/v12_w4_arms.py: a skip notice for an arm already shipped, not a
+    # measurement, so the night shift has nothing to transcribe from it.
+    "W4_ARM_SHIPPED",
+}
+"""Holiday F-43: printed prefixes the appendix leaves out on purpose."""
+
+_PRINTED = re.compile(r'print\(f"([A-Z][A-Z0-9_]+) \{')
+
+
+def test_every_reading_prefix_a_script_prints_is_collected():
+    """Holiday F-43 (F-40's risk): a script that prints a new one-line
+    reading must have it collected under its script or a v20 arm, or be
+    named in ``NOT_EVIDENCE``; else it falls outside even ``unclaimed``."""
+    printed = {m.group(1) for path in sorted(Path("scripts").glob("*.py"))
+               for m in _PRINTED.finditer(path.read_text())}
+    assert "C2_PPLAY" in printed and "V20D_BRIER" in printed
+    missed = sorted(p for p in printed - NOT_EVIDENCE
+                    if not ap.file_lines(p + " {}"))
+    assert missed == []
+    assert NOT_EVIDENCE <= printed
