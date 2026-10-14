@@ -30,6 +30,15 @@ Each goes under one arm, in ``ARMS`` order:
   there is ``unclaimed``, since both heads print one in every replay and the
   line alone cannot say which arm ran.
 
+Holiday F-40: the one-line readings the holiday scripts print are collected
+too, each under the script that prints it (``READINGS``), after the v20
+arms and before ``unclaimed``: ``C1_BUCKETS``, ``C2_PPLAY``,
+``C3_HOME_AWAY``, ``B1_STATUS_AGE``, ``DENSITY_HEAD``, ``TOP10K_PROJ``,
+``WALK_HITS``/``WALK_HITS_GW``, ``PCS_WINDOW``/``PCS_WINDOWS`` and
+``PRESSER_GW``/``PRESSER_SERVE``, matched as a whole word at the start of a
+line. A reading is not a run, so it never anchors a lever line: the v20
+grouping above is the same with or without them.
+
 Nothing is deduplicated: a v20c replay prints ``DC_CLIP`` on every predict,
 so its block is long, and the night shift trims when it transcribes. With the
 clip on, the live advise log carries ``DC_CLIP`` lines too and is appended to
@@ -56,8 +65,29 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 
 ARMS = ["v20a", "v20b", "v20c0", "v20c", "v20d", "unclaimed"]
-"""Output order. ``v20c0`` is v20c's step zero, the harness re-baseline,
+"""The v20 arms and ``unclaimed``, in output order (``GROUPS`` puts the
+readings between them). ``v20c0`` is v20c's step zero, the harness re-baseline,
 which §6.2 transcribes apart from the clip's own pair."""
+
+READINGS: list[tuple[str, tuple[str, ...]]] = [
+    ("scripts/c1_news_buckets.py", ("C1_BUCKETS",)),
+    ("scripts/c2_pplay_bins.py", ("C2_PPLAY",)),
+    ("scripts/c3_home_away.py", ("C3_HOME_AWAY",)),
+    ("scripts/b1_status_age.py", ("B1_STATUS_AGE",)),
+    ("scripts/density_head.py", ("DENSITY_HEAD",)),
+    ("scripts/top10k_projection.py", ("TOP10K_PROJ",)),
+    ("scripts/walk_hits.py", ("WALK_HITS", "WALK_HITS_GW")),
+    ("scripts/pcs_window.py", ("PCS_WINDOW", "PCS_WINDOWS")),
+    ("scripts/presser_serve.py", ("PRESSER_GW", "PRESSER_SERVE")),
+]
+"""Holiday F-40: each reading script and the prefixes it prints, in the
+order its group prints."""
+
+GROUPS = ARMS[:-1] + [script for script, _ in READINGS] + ARMS[-1:]
+"""Output order: the v20 arms, the reading scripts, then ``unclaimed``."""
+
+_READING_SCRIPT = {prefix: script for script, prefixes in READINGS
+                   for prefix in prefixes}
 
 TAG_ARMS = ["v20a", "v20b", "v20c0", "v20c", "v20d"]
 """Tag prefixes, tried in this order: ``v20c0`` before ``v20c``."""
@@ -88,8 +118,10 @@ def file_lines(text: str) -> list[tuple[str, str]]:
             found.append(("v20" + m.group(1).lower(), "reading", line))
         elif _LEVER.match(line):
             found.append((None, "lever", line))
+        elif (script := _READING_SCRIPT.get(line.split(" ", 1)[0])):
+            found.append((script, "holiday", line))
     anchors = [(i, arm) for i, (arm, kind, _) in enumerate(found)
-               if kind != "lever"]
+               if kind in ("tagged", "reading")]
     out = []
     for i, (arm, kind, line) in enumerate(found):
         if kind == "lever":
@@ -135,7 +167,7 @@ def collect(paths: list[Path], since: date | None = None
         files.append((stamp, str(f), f))
     files.sort()
     grouped: dict[str, list[tuple[Path, datetime, list[str]]]] = {
-        a: [] for a in ARMS}
+        a: [] for a in GROUPS}
     for stamp, _, f in files:
         try:
             text = f.read_text(encoding="utf-8", errors="replace")
@@ -151,7 +183,7 @@ def collect(paths: list[Path], since: date | None = None
 
 def render(grouped: dict[str, list[tuple[Path, datetime, list[str]]]]) -> str:
     blocks = []
-    for arm in ARMS:
+    for arm in GROUPS:
         if not grouped.get(arm):
             continue
         parts = [f"### {arm}"]
