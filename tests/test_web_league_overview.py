@@ -120,12 +120,25 @@ def test_the_focus_row_is_marked_and_named(client):
     assert [r["league_id"] for r in focus] == [5]
 
 
-def test_a_leader_is_ahead_of_second_and_would_defend(client):
+def test_a_ten_point_lead_inside_the_dead_band_would_read_neutral(client):
+    """Holiday F-29: ten points with 33 weeks left is z ~ 0.1 on the fallback
+    sigma, under ``z_deadband``, so the row says what the dial says."""
     row = next(r for r in client.get("/api/league/leagues").json()["private"]
                if r["league_id"] == 5)
     assert (row["rank"], row["last_rank"], row["entries"]) == (1, 2, 3)
     assert row["started"] is True
-    assert (row["gap"], row["gap_kind"], row["would"]) == (10, "ahead", "defend")
+    assert (row["gap"], row["gap_kind"], row["would"]) == (10, "ahead", "neutral")
+
+
+def test_a_clear_lead_would_defend(client, monkeypatch):
+    clear = {"standings": {"has_next": False, "results": [
+        {**STANDINGS[5]["standings"]["results"][0]},
+        {**STANDINGS[5]["standings"]["results"][1], "total": 150},
+        {**STANDINGS[5]["standings"]["results"][2]}]}}
+    monkeypatch.setitem(STANDINGS, 5, clear)
+    row = next(r for r in client.get("/api/league/leagues").json()["private"]
+               if r["league_id"] == 5)
+    assert (row["gap"], row["gap_kind"], row["would"]) == (150, "ahead", "defend")
 
 
 def test_off_page_one_the_gap_uses_the_entry_payloads_total(client):

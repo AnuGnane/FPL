@@ -18,6 +18,9 @@ const OVERVIEW: LeaguesOverview = {
     { league_id: 99, name: 'Next Season', rank: 3, last_rank: 0,
       entries: null, started: false, gap: null, gap_kind: null,
       would: null, is_focus: false },
+    { league_id: 41, name: 'Level Pegging', rank: 2, last_rank: 2,
+      entries: 6, started: true, gap: 3, gap_kind: 'behind',
+      would: 'neutral', is_focus: false },
   ],
   public: [
     { league_id: 314, name: 'Overall', rank: 430473, last_rank: 2562053,
@@ -48,6 +51,13 @@ describe('LeaguesTab', () => {
     const nlt = screen.getByTestId('league-9')
     expect(within(nlt).getByText('+9 on 2nd')).toBeInTheDocument()
     expect(within(nlt).getByText('would defend')).toBeInTheDocument()
+  })
+
+  it('reads a gap inside the dead-band as would hold', () => {
+    mount()
+    const level = screen.getByTestId('league-41')
+    expect(within(level).getByText('would hold')).toBeInTheDocument()
+    expect(within(level).queryByText(/neutral/)).toBeNull()
   })
 
   it('marks the focus row and shows its live stance and tilt', () => {
