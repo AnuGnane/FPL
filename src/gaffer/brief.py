@@ -41,6 +41,10 @@ BRIEF_PROMPT_VERSION = 3
 
 BRIEF_CACHE = LLM_CACHE / "brief"
 
+BOOTSTRAP_RAW = Path("data/raw")
+"""Where ``FPLClient`` dumps its ``bootstrap-*.json`` snapshots (its default
+``raw_dir``); :func:`season_names` reads the newest one (holiday F-27)."""
+
 NOTE_FILE = "brief_note.json"
 """Why there is no brief for the newest gameweek, for the card."""
 
@@ -386,6 +390,33 @@ def check_brief(prose: str, facts: dict, *,
     return offences
 
 
+def season_names(raw_dir: Path | str = BOOTSTRAP_RAW) -> frozenset[str] | None:
+    """Every player's ``web_name`` and ``second_name`` from the newest
+    bootstrap snapshot, or ``None`` (holiday F-27).
+
+    The snapshots are globbed and sorted by name here, as the client's
+    private ``_dumps`` does (a ``%Y%m%dT%H%M%S`` stamp sorts in time), rather
+    than through the client, whose constructor would ``mkdir``. No snapshot,
+    an unreadable one or one with no ``elements`` is ``None``, which leaves
+    the openers unchecked as before F-27; this never raises, because the
+    brief never blocks on its check's inputs.
+    """
+    try:
+        dumps = sorted(Path(raw_dir).glob("bootstrap-*.json"))
+        if not dumps:
+            return None
+        elements = json.loads(dumps[-1].read_text(encoding="utf-8")).get("elements")
+    except (OSError, ValueError, AttributeError):
+        return None
+    if not isinstance(elements, list):
+        return None
+    names = {str(el.get(key) or "").strip()
+             for el in elements if isinstance(el, dict)
+             for key in ("web_name", "second_name")}
+    names.discard("")
+    return frozenset(names) or None
+
+
 # --- the run ------------------------------------------------------------------
 
 def _now() -> str:
@@ -456,9 +487,10 @@ def run_brief(gw: int | None = None, *, cfg=None,
                                           "at": _now()}), encoding="utf-8")
         except Exception:  # noqa: BLE001 — an unwritable cache is not an outage
             pass
-    # Holiday F-23: no bootstrap is read on this path, so the brief's
-    # openers stay unchecked until a caller has the season's names.
-    offences = check_brief(prose, facts, known_names=None)
+    # Holiday F-27: the newest bootstrap snapshot names the season's
+    # players, so an opener that is one of them and not in the facts fails;
+    # with no snapshot the openers stay unchecked, as F-23 left them.
+    offences = check_brief(prose, facts, known_names=season_names())
     if offences:
         for line in offences:
             print(f"brief check: {line}")
