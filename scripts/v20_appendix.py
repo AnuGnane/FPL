@@ -21,14 +21,22 @@ Each goes under one arm, in ``ARMS`` order:
 - a tagged line by its tag's prefix (``v20c0-…`` is the harness step, so it
   is tried before ``v20c``); a tag no arm claims is ``unclaimed``;
 - a reading by its own prefix (``V20B_`` is v20b);
-- a lever line by the replay it was printed in: the arm of the next tagged
-  line in the same file (a replay prints its lever lines before its
-  ``ARM_DONE``), else the last one before it. A file with no v20 tagged line
-  falls back to ``DC_CLIP`` → v20c and ``REPLAY_TEAM_MODEL`` → v20c0; a
-  ``LEVER`` line there is ``unclaimed``, since both heads print one in every
-  replay and the line alone cannot say which arm ran.
+- a lever line by the run it was printed in: the arm of the next tagged line
+  or reading in the same file (a replay prints its lever lines before its
+  ``ARM_DONE``, and ``scripts/v20c_head.py`` its ``DC_CLIP`` lines before
+  ``V20C_HEAD``), else of the last one before it, so a lever line of a
+  replay no arm claims is ``unclaimed`` too. A file with neither falls back
+  to ``DC_CLIP`` → v20c and ``REPLAY_TEAM_MODEL`` → v20c0; a ``LEVER`` line
+  there is ``unclaimed``, since both heads print one in every replay and the
+  line alone cannot say which arm ran.
 
-Files are ordered by modification time, then name, and lines keep their order
+Nothing is deduplicated: a v20c replay prints ``DC_CLIP`` on every predict,
+so its block is long, and the night shift trims when it transcribes. With the
+clip on, the live advise log carries ``DC_CLIP`` lines too and is appended to
+daily, so ``--since`` keeps it; pass the replay's own log files to leave it
+out (holiday F-34's ruling: no file is skipped by name).
+
+Files are ordered by modification time, then path, and lines keep their order
 within a file. The output is one ``### <arm>`` heading per arm with lines,
 then, per file, its name and modification date (UTC) and its lines verbatim
 in a fenced block. ``--since YYYY-MM-DD`` keeps only files modified on or
@@ -74,20 +82,19 @@ def file_lines(text: str) -> list[tuple[str, str]]:
     """``(arm, line)`` for every evidence line in one file, in file order."""
     found: list[tuple[str | None, str, str]] = []   # (arm or None, kind, line)
     for line in text.splitlines():
-        line = line.rstrip("\r")
         if m := _TAGGED.match(line):
             found.append((tag_arm(m.group(1)), "tagged", line))
         elif m := _READING.match(line):
             found.append(("v20" + m.group(1).lower(), "reading", line))
         elif _LEVER.match(line):
             found.append((None, "lever", line))
-    tagged = [(i, arm) for i, (arm, kind, _) in enumerate(found)
-              if kind == "tagged" and arm != "unclaimed"]
+    anchors = [(i, arm) for i, (arm, kind, _) in enumerate(found)
+               if kind != "lever"]
     out = []
     for i, (arm, kind, line) in enumerate(found):
         if kind == "lever":
-            after = next((a for j, a in tagged if j > i), None)
-            before = next((a for j, a in reversed(tagged) if j < i), None)
+            after = next((a for j, a in anchors if j > i), None)
+            before = next((a for j, a in reversed(anchors) if j < i), None)
             arm = after or before or _LEVER_DEFAULT.get(line.split()[0],
                                                          "unclaimed")
         out.append((arm, line))
@@ -95,12 +102,17 @@ def file_lines(text: str) -> list[tuple[str, str]]:
 
 
 def _files(paths: list[Path]) -> list[Path]:
-    out = []
+    """Every file named or under a named directory, once each: ``logs/`` and
+    ``logs/b.log`` together, or a link and its target, are one file."""
+    out, seen = [], set()
     for p in paths:
-        if p.is_dir():
-            out.extend(f for f in p.rglob("*") if f.is_file())
-        elif p.is_file():
-            out.append(p)
+        found = ([f for f in p.rglob("*") if f.is_file()] if p.is_dir()
+                 else [p] if p.is_file() else [])
+        for f in found:
+            key = f.resolve()
+            if key not in seen:
+                seen.add(key)
+                out.append(f)
     return out
 
 

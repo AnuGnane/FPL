@@ -145,3 +145,27 @@ def test_a_lever_line_with_no_v20_replay_falls_back_by_its_prefix():
                                       ("v7b-old", "unclaimed")])
 def test_the_tag_prefix_rule(tag, arm):
     assert ap.tag_arm(tag) == arm
+
+
+def test_a_lever_line_of_a_replay_no_arm_claims_is_unclaimed():
+    out = ap.file_lines("LEVER bonus cols=[a]\n"
+                        "V7B_ARM_DONE v19x-s1 {}\n"
+                        "LEVER bonus cols=[b]\n"
+                        "V7B_ARM_DONE v20b-x-s1 {}\n")
+    assert out == [("unclaimed", "LEVER bonus cols=[a]"),
+                   ("unclaimed", "V7B_ARM_DONE v19x-s1 {}"),
+                   ("v20b", "LEVER bonus cols=[b]"),
+                   ("v20b", "V7B_ARM_DONE v20b-x-s1 {}")]
+
+
+def test_a_head_runs_clip_lines_go_with_its_reading_not_the_next_replay():
+    out = ap.file_lines("DC_CLIP n=4 of 90\n"
+                        "V20C_HEAD {}\n"
+                        "REPLAY_TEAM_MODEL p_cs n=0\n"
+                        "V7B_ARM_DONE v20c0-harness-main-s1 {}\n")
+    assert [arm for arm, _ in out] == ["v20c", "v20c", "v20c0", "v20c0"]
+
+
+def test_a_file_named_twice_is_read_once(logs):
+    g = ap.collect([logs, logs / "b.log"])
+    assert [f.name for f, _, _ in g["v20b"]] == ["b.log"]
