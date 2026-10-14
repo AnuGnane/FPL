@@ -1419,14 +1419,15 @@ weekly use.
   so a plan page read earlier the same day no longer hands the solve the
   pre-bank (stale, so empty) table.
 - **The chip pair's "Try it" card has no What-If arm** (the arm is written
-  out as a design note in PR #45, holiday F-36: `bb_gw` on `WhatIfRequest`,
+  out in `docs/superpowers/specs/2026-10-14-whatif-chip-arm-design.md`,
+  holiday F-36 and F-50: `bb_gw` on `WhatIfRequest`,
   validation and solve in `web/routers/whatif.py`, orchestrator-only, and a
   scoring fix in its `summary()`; Anu applies it as a `needs-mac` package).
 - **The What-If lab's `summary()` counts a bench boost and a triple captain
   in every horizon week**, not only the chip's week, so a lone chip over a
   multi-week horizon is over-scored. Open, orchestrator-only
-  (`web/routers/whatif.py`); the fix is hunk 2 of PR #45's design note
-  (holiday F-36).
+  (`web/routers/whatif.py`); the fix is hunk 2 of
+  `docs/superpowers/specs/2026-10-14-whatif-chip-arm-design.md` (holiday F-36, F-50).
 - ~~The generated `types.ts` half lost the client's field comments~~ —
   closed in v19h: 1,024 of 1,031 schema fields carry a sentence the
   generator copies into `types.generated.ts`.
