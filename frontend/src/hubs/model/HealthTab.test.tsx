@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import HealthTab from './HealthTab'
@@ -255,4 +255,50 @@ describe('The model’s two free readings', () => {
        expect(screen.getByText(/0 of 20 fixtures/))
          .toHaveClass('text-text-muted')
      })
+})
+
+describe('The v20 arm switches', () => {
+  // Holiday F-30: the night shift's screenshot pairs need the page to say
+  // which switches were on when it was taken.
+  const ARMS = [
+    { name: 'models.components.BONUS_SEES_ATTACK', on: false, value: 'False' },
+    { name: 'models.dixon_coles.MU_BOUNDS', on: true, value: '(0.1, 9.0)' },
+    { name: 'backtest.REPLAY_TEAM_MODEL', on: false, value: 'False' },
+  ]
+
+  const withArms = (arms: unknown) => {
+    apiGet.mockImplementation(async (path: string) => {
+      if (path.startsWith('/api/jobs/')) {
+        return { id: 'j1', status: 'done', result: null, error: null }
+      }
+      return {
+        data: [], models: [], artifacts: [], odds_key_present: true,
+        model_health: null, jobs: [],
+        launchd: { log: 'logs/advise.log', present: false,
+                   modified_at: null, last_line: null },
+        calibration: null, team_model: null, arms,
+      }
+    })
+  }
+
+  it('renders one row per switch with its state and value', async () => {
+    withArms(ARMS)
+    render(<MemoryRouter><HealthTab /></MemoryRouter>)
+    const rows = await screen.findAllByTestId('arm-switch')
+    expect(rows).toHaveLength(3)
+    expect(rows[0].textContent).toContain('models.components.BONUS_SEES_ATTACK')
+    expect(within(rows[0]).getByText('off')).toBeInTheDocument()
+    expect(rows[1].textContent).toContain('models.dixon_coles.MU_BOUNDS')
+    expect(within(rows[1]).getByText('on')).toBeInTheDocument()
+    expect(within(rows[1]).queryByText('off')).toBeNull()
+    expect(rows[1].textContent).toContain('(0.1, 9.0)')
+    expect(rows[2].textContent).toContain('backtest.REPLAY_TEAM_MODEL')
+  })
+
+  it('renders no switch rows for a server older than the field', async () => {
+    withArms(undefined)
+    render(<MemoryRouter><HealthTab /></MemoryRouter>)
+    await screen.findByText('Models')
+    expect(screen.queryByTestId('arm-switch')).toBeNull()
+  })
 })
