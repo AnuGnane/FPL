@@ -1426,10 +1426,11 @@ weekly use.
   (v14) — closed by holiday F-11: its `<code>` and the overrides card's name
   `font-sans`, and `tokens.test.ts` fails any `<code>` in `hubs/` or `kit/`
   that names no face.
-- **The overview's "would" word is gap-sign only** (v15): rank 1 says
-  defend, anything else says chase, with no dead-band, because the row costs
-  one standings page and the dial's real answer (which honours the band)
-  appears when the league is opened. The column is labelled "would".
+- ~~The overview's "would" word is gap-sign only~~ (v15) — closed by
+  holiday F-29: `would` is `compute_strategy`'s stance on the one standings
+  page the overview already fetches (`history=None`, so every sigma is the
+  fallback), so a gap inside `z_deadband` reads `neutral`, rendered "would
+  hold". The history-fed dial still appears when the league is opened.
 - **The chip step reason needs a `chip_plan` on the solve state** (v16):
   `advise.py` writes it from the chip table's `play_now` rows, so a ladder
   rebuilt off a state written before v16 gives no chip reason and falls
