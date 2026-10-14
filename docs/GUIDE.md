@@ -1540,8 +1540,9 @@ without a model cycle. Each prints one-line readings the night shift pastes
 into the v20 spec's §6, never retypes (v20 spec §3), and
 `scripts/v20_appendix.py` collects them from the logs. Every prefix below is
 one its `READINGS` collects; `tests/test_guide_readings.py` parses this table
-and fails if one is not. Each script's docstring holds its pass rule,
-written before it ran. A verdict is a **card** (a reading the app could
+and fails if one is not. A script with a verdict holds its pass rule in its
+docstring, written before it ran; `evaluate_lines` and
+`backfill_overall_rank` report rather than decide. A verdict is a **card** (a reading the app could
 show), an **arm** (a model-cycle arm, the Mac's) or a **ruling** (Anu's
 call).
 
@@ -1556,8 +1557,8 @@ call).
 | `scripts/walk_hits.py` (holiday F-25) | `WALK_HITS_GW`, `WALK_HITS` | 12.4's v16 walk-hits line | arm: restraint bounded by the objective |
 | `scripts/pcs_window.py` (holiday F-26) | `PCS_WINDOW`, `PCS_WINDOWS` | 12.4's v18c `p_cs` line | card: a per-window `p_cs` row |
 | `scripts/presser_serve.py` (holiday F-38) | `PRESSER_GW`, `PRESSER_SERVE` | 12.4's presser serving line, 12.2's serving decision | arm: serving the classifier |
-| `scripts/evaluate_lines.py` (holiday F-46) | `NEWS_SHADOW_GW`, `NEWS_SHADOW`, `FLAG_LATENCY` | 12.2's accruing verdicts and flag-latency row | card: the Quality card's own reports, as lines |
-| `scripts/backfill_overall_rank.py` (holiday F-33; `--write` banks) | `BACKFILL_RANK` | 12.4's fill-forward `overall_rank` line, 12.2's overall-rank row | card: the Field panel's overall-rank row fills |
+| `scripts/evaluate_lines.py` (holiday F-46) | `NEWS_SHADOW_GW`, `NEWS_SHADOW`, `FLAG_LATENCY` | 12.2's accruing verdicts and flag-latency row | card: reports the Quality card's own verdicts, decides none |
+| `scripts/backfill_overall_rank.py` (holiday F-33; `--write` banks) | `BACKFILL_RANK` | 12.4's fill-forward `overall_rank` line, 12.2's overall-rank row | card: fills the Field panel's overall-rank row, decides none |
 | `scripts/v20_appendix.py` (holiday F-34, F-40) | collects the lines above and the v20 arms' lines; prints none of its own | v20 spec §3 | — |
 
 ## 13. Troubleshooting
