@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -12,6 +13,15 @@ runner = CliRunner()
 SRC = Path(__file__).resolve().parent.parent / "src"
 """So a subprocess started in a tmp_path can still import gaffer."""
 
+_ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+
+
+def _plain(output: str) -> str:
+    """Help text without its ANSI escapes (holiday F-47): Typer forces a
+    colour terminal when ``GITHUB_ACTIONS`` is set, and the codes split
+    "--port" and "--fast", so the help tests read the same under any TERM."""
+    return _ANSI.sub("", output)
+
 
 def test_cli_help_lists_commands():
     result = runner.invoke(app, ["--help"])
@@ -19,7 +29,7 @@ def test_cli_help_lists_commands():
     for cmd in ["advise", "refresh", "train", "prices", "league", "live",
                 "backtest", "evaluate", "build-history", "ui",
                 "calibrate-decisions", "brief"]:
-        assert cmd in result.output
+        assert cmd in _plain(result.output)
 
 
 def test_advise_fails_cleanly_without_models(tmp_path, monkeypatch):
@@ -96,8 +106,8 @@ def test_league_reports_empty_league(tmp_path, monkeypatch):
 def test_ui_command_is_registered_and_documents_its_port():
     result = runner.invoke(app, ["ui", "--help"])
     assert result.exit_code == 0
-    assert "8927" in result.output
-    assert "--port" in result.output
+    assert "8927" in _plain(result.output)
+    assert "--port" in _plain(result.output)
 
 
 def test_ui_binds_loopback_and_opens_the_browser(monkeypatch):
@@ -598,7 +608,7 @@ def test_advise_without_fast_keeps_the_configured_sweep(tmp_path, monkeypatch):
 
 
 def test_advise_help_names_the_fast_flag():
-    out = runner.invoke(app, ["advise", "--help"]).output
+    out = _plain(runner.invoke(app, ["advise", "--help"]).output)
     assert "--fast" in out
 
 
