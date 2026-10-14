@@ -358,12 +358,12 @@ def overlay_and_base() -> tuple[dict, dict, str | None]:
     return local, base, local_err
 
 
-def _source_of(local: dict, base: dict, section: str, key: str) -> str:
+def source_of(local: dict, base: dict, section: str, key: str) -> str:
     """:func:`value_source` over an already-parsed pair.
 
-    Underscored because it is the rule, not the question: the question is
-    :func:`value_source`. The settings panel is the one caller outside this
-    module, and it holds the pair from :func:`overlay_and_base` so that its
+    The rule rather than the question (the question is :func:`value_source`),
+    public since holiday F-28 because the settings panel calls it from outside
+    this module: it holds the pair from :func:`overlay_and_base` so that its
     fourteen rows are classified without fourteen pairs of file reads."""
     if key in _table(local, section):
         return "local"
@@ -380,9 +380,9 @@ def value_source(section: str, key: str) -> str:
 
     Over the same pair :func:`base_exists` reads. One key, so one read of
     each file; a caller with many keys asks :func:`overlay_and_base` once
-    and classifies through :func:`_source_of`."""
+    and classifies through :func:`source_of`."""
     local, base, _ = overlay_and_base()
-    return _source_of(local, base, section, key)
+    return source_of(local, base, section, key)
 
 
 SPLATTED_SECTIONS = ("optimizer", "data")
