@@ -412,7 +412,11 @@ below you with what they need.
 - *Health*: data freshness, model ages, the launchd log, re-run buttons —
   plus (v12) a red banner when the season on disk is not the season your
   config names, the solver's per-position pool sizes, and the last backup
-  with its size (or `never — run gaffer backup`).
+  with its size (or `never — run gaffer backup`). Since holiday F-30 it
+  lists each v20 arm's switch (`models.components.BONUS_SEES_ATTACK`,
+  `models.dixon_coles.MU_BOUNDS`, `backtest.REPLAY_TEAM_MODEL`) with its
+  state and value, under the team model's band, so a screenshot says which
+  switches were on.
 - *Journal*: the decision journal with its deadline guard.
 - *History*: past runs, expected versus actual, price charts.
 - *Settings* (v12 W5): the fourteen settings the UI may edit
@@ -833,7 +837,7 @@ replay to run. Frontend suite 814 → **866**; pins unchanged.
 classic league the manager is in; nothing read it. Now the League hub opens
 on all of them: the private mini-leagues (the FPL `league_type` flag, no
 size rule) in one table with rank, move, gap and the "would chase / would
-defend" word, the public ones as a rank line. One squad can only be tilted
+defend" word (or "would hold" inside the dead-band, holiday F-29), the public ones as a rank line. One squad can only be tilted
 one way, so exactly one league — the **focus** — reaches the solver, as
 before; the others get the full race, rivals and what-if for display, each
 computing its own Strategy from its own standings. The user's three
