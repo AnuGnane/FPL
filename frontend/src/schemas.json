@@ -6606,7 +6606,8 @@
       {
        "enum": [
         "chase",
-        "defend"
+        "defend",
+        "neutral"
        ],
        "type": "string"
       },
@@ -6615,7 +6616,7 @@
       }
      ],
      "default": null,
-     "description": "Gap-sign only \u2014 what the dial would lean to. The deadband and \u03bb\nappear when the league is opened (``/race?league_id=``)."
+     "description": "What the dial would lean to on this page's totals, the dead-band\nhonoured, so a gap inside it reads ``neutral`` (holiday F-29). Every\nsigma is the fallback here; the history-fed dial and \u03bb appear when the\nleague is opened (``/race?league_id=``)."
     }
    },
    "required": [
