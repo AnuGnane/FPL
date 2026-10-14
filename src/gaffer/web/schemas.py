@@ -1667,6 +1667,21 @@ class CoreInsightsHealth(BaseModel):
     it is waiting for and never renders zeros as if they were measurements."""
 
 
+class ArmSwitch(BaseModel):
+    """One v20 arm's module switch as the serving process sees it (holiday
+    F-30, v20 spec §3's gate line): the night shift's screenshot pairs name
+    which switches were on, so a pair taken with one left over from a replay
+    cannot pass as the arm's effect."""
+
+    name: str
+    """The constant's dotted name under ``gaffer``, as the spec names it."""
+    on: bool
+    """Whether the arm is live: ``True`` for a boolean switch, any value but
+    ``None`` for a bounds switch."""
+    value: str
+    """The constant's ``repr``, so a clip reads with its two ends."""
+
+
 class Health(BaseModel):
     data: list[SourceHealth]
     """One row per ingested source, from ``DATA_SOURCES`` plus the odds bank."""
@@ -1685,6 +1700,10 @@ class Health(BaseModel):
     """The newest banked components' goals-conceded band (v19g §2.2), or
     ``None`` when nothing has been banked or the file predates the model
     columns."""
+    arms: list[ArmSwitch] = []
+    """Every v20 arm's switch, in the spec's arm order (holiday F-30). Read
+    off the modules at request time, so a patched or flipped constant shows
+    on the next poll."""
     launchd: LaunchdHealth
     """The advise job's own log health, kept separate from ``jobs`` below."""
     jobs: list[JobHealth]

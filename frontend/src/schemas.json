@@ -206,6 +206,30 @@
    "title": "AdvicePlayer",
    "type": "object"
   },
+  "ArmSwitch": {
+   "description": "One v20 arm's module switch as the serving process sees it (holiday\nF-30, v20 spec \u00a73's gate line): the night shift's screenshot pairs name\nwhich switches were on, so a pair taken with one left over from a replay\ncannot pass as the arm's effect.",
+   "properties": {
+    "name": {
+     "description": "The constant's dotted name under ``gaffer``, as the spec names it.",
+     "type": "string"
+    },
+    "on": {
+     "description": "Whether the arm is live: ``True`` for a boolean switch, any value but\n``None`` for a bounds switch.",
+     "type": "boolean"
+    },
+    "value": {
+     "description": "The constant's ``repr``, so a clip reads with its two ends.",
+     "type": "string"
+    }
+   },
+   "required": [
+    "name",
+    "on",
+    "value"
+   ],
+   "title": "ArmSwitch",
+   "type": "object"
+  },
   "ArtifactItem": {
    "properties": {
     "bytes": {
@@ -9541,6 +9565,14 @@
   },
   "WireHealth": {
    "properties": {
+    "arms": {
+     "default": [],
+     "description": "Every v20 arm's switch, in the spec's arm order (holiday F-30). Read\noff the modules at request time, so a patched or flipped constant shows\non the next poll.",
+     "items": {
+      "$ref": "#/definitions/ArmSwitch"
+     },
+     "type": "array"
+    },
     "artifacts": {
      "description": "Every file under ``reports/``, name and size.",
      "items": {
@@ -9702,6 +9734,7 @@
     }
    },
    "required": [
+    "arms",
     "artifacts",
     "calibration",
     "core_insights",
