@@ -450,6 +450,18 @@ def test_the_newest_of_two_snapshots_is_the_one_read(tmp_path):
     assert season_names(tmp_path) == frozenset({"M.Salah", "Salah", "Haaland"})
 
 
+def test_a_file_without_a_stamp_is_not_read_as_the_newest(tmp_path):
+    _snapshot(tmp_path, "20260910T080000", [{"web_name": "Haaland", "second_name": "Haaland"}])
+    _snapshot(tmp_path, "sample", [{"web_name": "Stray", "second_name": "Stray"}])
+    assert season_names(tmp_path) == frozenset({"Haaland"})
+
+
+def test_odd_elements_are_skipped_rather_than_raised_on(tmp_path):
+    _snapshot(tmp_path, "20260910T080000",
+              [1, "x", None, {"web_name": None, "second_name": 7}, {"web_name": "Isak"}])
+    assert season_names(tmp_path) == frozenset({"7", "Isak"})
+
+
 @pytest.mark.parametrize("body", ["not json", json.dumps({"teams": []}),
                                   json.dumps([1, 2]), json.dumps({"elements": []}),
                                   json.dumps({"elements": "x"})])

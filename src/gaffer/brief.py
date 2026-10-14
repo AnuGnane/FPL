@@ -390,19 +390,26 @@ def check_brief(prose: str, facts: dict, *,
     return offences
 
 
+_STAMPED = re.compile(r"bootstrap-\d{8}T\d{6}\.json")
+
+
 def season_names(raw_dir: Path | str = BOOTSTRAP_RAW) -> frozenset[str] | None:
     """Every player's ``web_name`` and ``second_name`` from the newest
     bootstrap snapshot, or ``None`` (holiday F-27).
 
     The snapshots are globbed and sorted by name here, as the client's
     private ``_dumps`` does (a ``%Y%m%dT%H%M%S`` stamp sorts in time), rather
-    than through the client, whose constructor would ``mkdir``. No snapshot,
+    than through the client, whose constructor would ``mkdir``; a file whose
+    suffix is not such a stamp is skipped, so a stray ``bootstrap-sample.json``
+    never reads as the newest. The default ``raw_dir`` is relative, like the
+    client's, so a run started outside the repo root finds none. No snapshot,
     an unreadable one or one with no ``elements`` is ``None``, which leaves
     the openers unchecked as before F-27; this never raises, because the
     brief never blocks on its check's inputs.
     """
     try:
-        dumps = sorted(Path(raw_dir).glob("bootstrap-*.json"))
+        dumps = sorted(p for p in Path(raw_dir).glob("bootstrap-*.json")
+                       if _STAMPED.fullmatch(p.name))
         if not dumps:
             return None
         elements = json.loads(dumps[-1].read_text(encoding="utf-8")).get("elements")
