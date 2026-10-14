@@ -482,7 +482,11 @@ As v19 §3, with the replay rules added.
   collection date named; the two SHAs; `REPLAY_TEAM_MODEL`'s value.
 - Every `*_ARM_DONE`, `MULTISEED_DONE`, `V20*_HEAD` and `V20D_BRIER` line
   is transcribed into §6 of this document and into the arm's spec the day
-  it prints (CONVENTIONS §4).
+  it prints (CONVENTIONS §4). `scripts/v20_appendix.py` (holiday F-34,
+  F-40) collects those lines and the holiday readings from the logs for
+  pasting, and `tests/test_v20_appendix.py::test_every_reading_prefix_a_script_prints_is_collected`
+  (holiday F-43) guards that a new reading prefix is collected or named as
+  not evidence.
 - A verdict is written under the arm's rule in §2 before any other number
   is looked at; a rule is never edited after its run (CONVENTIONS §2). A
   failing arm ships off behind its constant with the result recorded
