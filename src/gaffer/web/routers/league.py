@@ -111,7 +111,8 @@ def _league_rows(client, cfg) -> dict:
     ``OVERVIEW_TTL_S``.
 
     The gap is the leader's or the runner-up's total against mine: when I am
-    not on page 1 my total is the entry payload's own. A league of one, or
+    not on page 1 my total is the entry payload's own. Its direction comes
+    from those totals, not the rank (holiday F-41). A league of one, or
     one with no scored gameweek yet, has no gap.
     """
     now = time.monotonic()
@@ -142,7 +143,11 @@ def _league_rows(client, cfg) -> dict:
             rivals = [r for r in results if int(r["entry"]) != cfg.entry_id]
             others = sorted((int(r["total"]) for r in rivals), reverse=True)
             if others:
-                if base["rank"] == 1:
+                # Holiday F-41: the direction reads the totals ``would``
+                # reads, not the rank, which lags them mid-gameweek; a tie
+                # goes to whoever FPL ranks first, so the gap is never < 0.
+                if total > others[0] or (total == others[0]
+                                         and base["rank"] == 1):
                     gap, gap_kind = total - others[0], "ahead"
                 else:
                     gap, gap_kind = others[0] - total, "behind"
