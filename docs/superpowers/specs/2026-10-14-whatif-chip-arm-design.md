@@ -38,7 +38,7 @@ from this note. Hunk 1 (`src/gaffer/web/schemas.py`) and hunk 3
 2. Only a pair whose wildcard is in this gameweek gets the button, because the lab plays chips in its first gameweek only. A later pair keeps today's disabled button, with a sentence naming its wildcard week. **Default: this week only.**
 3. The note found a bug in existing code: `summary()` counts the bench boost and the triple captain in every horizon week, not only the chip's week. It is in the same orchestrator-only file, so it is noted here and not fixed. **Default: fix it in the same package as the arm (hunk 2).**
 
-**Risk (PR #45):** Nobody has run this note. Once hunk 2 lands, the lab shows different numbers for a single bench boost or triple captain over a multi-week horizon. The new numbers are the correct ones, but the change should be called out when it lands.
+**Risk (PR #45):** Nobody has run this note. Line references are to `main` at `ad1c110`. Once hunk 2 lands, the lab shows different numbers for a single bench boost or triple captain over a multi-week horizon. The new numbers are the correct ones, but the change should be called out when it lands.
 
 ## The design
 
