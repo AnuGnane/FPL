@@ -1346,7 +1346,11 @@ Two verdicts also accrue by gameweek rather than by code: `gaffer evaluate
 --news-shadow` has its second reading available now that GW3 is graded
 (GW2's said the plain flag was ahead), and the presser classifier's serving
 decision waits on somebody reading the grading report the first row above
-now has the data for.
+now has the data for. `uv run python scripts/evaluate_lines.py` (holiday
+F-46) prints the news-shadow verdict and the flag-latency report from
+`reports/evaluation.json` as `NEWS_SHADOW_GW`, `NEWS_SHADOW` and
+`FLAG_LATENCY` lines, which `scripts/v20_appendix.py` collects, so each
+reading is transcribed the day it prints.
 
 ### 12.3 One experiment, run and closed
 
