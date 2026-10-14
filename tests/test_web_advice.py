@@ -290,17 +290,31 @@ def test_advice_diff_compares_the_two_newest_runs_of_the_same_gw(client,
 
 
 def test_advice_diff_survives_a_history_file_it_cannot_read(client,
-                                                            tmp_path):
+                                                            tmp_path,
+                                                            monkeypatch):
     """The strip promises never to be an error. A file listed a moment ago and
     unreadable now — a rerun rotating history underneath the read, a lost
     permission — is exactly as much of a "no diff to show" as malformed JSON,
-    and an OSError escaping here would 500 the whole This Week page."""
+    and an OSError escaping here would 500 the whole This Week page.
+
+    The read is refused by a patched `Path.read_text` as well as the chmod
+    (holiday F-44): root reads a 0o000 file anyway, so under the cloud
+    sandbox the chmod alone left the route's `except OSError` unexercised."""
     from datetime import datetime, timezone
 
     _advice_on_disk(tmp_path)
     _history(tmp_path, 5, datetime(2026, 9, 3, 9, 0, tzinfo=timezone.utc))
     written = _history(tmp_path, 5,
                        datetime(2026, 9, 4, 9, 0, tzinfo=timezone.utc))
+    unreadable = Path(written).resolve()
+    original = Path.read_text
+
+    def refusing(self, *args, **kwargs):
+        if self.resolve() == unreadable:
+            raise PermissionError(13, "Permission denied", str(self))
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", refusing)
     Path(written).chmod(0o000)
     try:
         body = client.get("/api/advice/diff").json()
