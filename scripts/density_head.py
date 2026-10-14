@@ -165,7 +165,9 @@ def density_reading(df: pd.DataFrame | None,
     branch_cols = (list(branch_cols) if branch_cols is not None
                    else control_cols + [c for c in DENSITY_FEATURES
                                         if c not in control_cols])
-    missing = [c for c in DENSITY_FEATURES if c not in df.columns]
+    # The branch list holds the control's, so one check names any column
+    # either fit would otherwise fail on as a bare KeyError.
+    missing = [c for c in branch_cols if c not in df.columns]
     if missing:
         return _empty(f"feature frame has no {', '.join(missing)}")
     split = split_holdout(df)
