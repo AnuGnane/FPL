@@ -15,17 +15,23 @@ whose gameweek the history carries with a rank. ``--write`` banks exactly
 those rows again through ``review.append_ledger``, the ledger's own save path
 and its lock, each row as ``review.load_ledger`` read it with that one cell
 filled, so points, grades, ``projection_snapshot`` and every row that already
-has a rank stay as they are. A second ``--write`` finds nothing to fill.
+has a rank keep their values. ``append_ledger`` rewrites the whole file as it
+always does: it re-sorts by ``(season, gw)`` and writes the current season
+onto a legacy row that carries none, the v19h §2.2 migration ``load_ledger``
+already reads them under, and no cell's value moves. A second ``--write``
+finds nothing to fill.
 ``projection_snapshot`` is out of scope: it has no public source.
 
-``append_ledger`` takes the lock per row and the rows are read just before,
-outside it; a review banking the same gameweek in that window would be
-overwritten with the row as read. The window is one JSON dump wide and the
-script is run by hand, so it reuses the save path rather than reaching into
-``review``'s private lock.
+The rows are read once, before the first write, outside the lock that
+``append_ledger`` takes per row (and gives up after two seconds, by its own
+design); a review banking one of those gameweeks while the script writes
+would be overwritten with the row as read. The script is run by hand, once,
+away from the Tuesday review, so it reuses the save path rather than reaching
+into ``review``'s private lock.
 
-A missing or unreadable history prints a sentence and exits 0, never a
-traceback: the Mac runs this unattended and transcribes what it prints.
+A missing or unreadable history, or one whose ``current`` is not a list of
+rows, prints a sentence and exits 0, never a traceback: the night shift
+transcribes what it prints.
 
     uv run python scripts/backfill_overall_rank.py            # dry run
     uv run python scripts/backfill_overall_rank.py --write
@@ -41,6 +47,12 @@ from gaffer.data.my_entry import gw_history_row, load_my_history, my_history_pat
 
 
 def _rank(history: dict | None, gw: int) -> int | None:
+    # ``gw_history_row`` calls ``.get`` on each element of ``current``; a
+    # payload of another shape is no rank, not an AttributeError.
+    current = (history or {}).get("current")
+    if not isinstance(current, list) or not all(isinstance(r, dict)
+                                                for r in current):
+        return None
     row = gw_history_row(history, gw)
     if row is None or row.get("overall_rank") is None:
         return None

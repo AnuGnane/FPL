@@ -125,3 +125,23 @@ def test_main_reads_the_season_and_entry_in_force(tree, monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "BACKFILL_RANK gw=1 was=null now=1234567" in out
     assert _rows(ledger)[0]["overall_rank"] is None
+
+
+def test_a_legacy_row_with_no_season_is_filled_and_keeps_its_values(tree):
+    ledger, raw = tree
+    rows = _rows(ledger)
+    del rows[0]["season"]
+    ledger.write_text(json.dumps({"gws": rows}))
+    bf.backfill(SEASON, ENTRY, write=True, raw_dir=raw)
+    gw1 = next(r for r in _rows(ledger) if r["gw"] == 1 and r["season"] == SEASON)
+    assert gw1 == {**LEDGER[0], "overall_rank": 1_234_567}
+
+
+@pytest.mark.parametrize("current", ["oops", {"event": 1}, [1, "x"], None])
+def test_a_history_of_another_shape_fills_nothing_and_never_raises(tree, current):
+    ledger, raw = tree
+    my_history_path(SEASON, ENTRY, raw).write_text(json.dumps({"current": current}))
+    before = ledger.read_text()
+    assert bf.backfill(SEASON, ENTRY, write=True, raw_dir=raw) == [
+        "no graded row with a null overall_rank that the history can fill"]
+    assert ledger.read_text() == before
