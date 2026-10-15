@@ -895,7 +895,8 @@ def test_the_replay_names_each_heads_columns_once_on_the_first_refit(
     assert fits == 3
     assert lines == [
         "LEVER minutes cols=[mins_r3, role_wb_share, role_wb_missing]",
-        "LEVER bonus cols=[bps_r3, e_goals]"]
+        "LEVER bonus cols=[bps_r3, e_goals]",
+        "LEVER bonus corr(e_goals,e_bonus)=missing"]
 
 
 def test_a_head_missing_from_the_models_prints_its_lever_line_as_missing(
@@ -903,7 +904,45 @@ def test_a_head_missing_from_the_models_prints_its_lever_line_as_missing(
     lines, _ = _replay_lever_lines(monkeypatch, capsys, {
         "minutes": _FakeMinutesHead(["mins_r3"])})
     assert lines == ["LEVER minutes cols=[mins_r3]",
-                     "LEVER bonus cols=missing"]
+                     "LEVER bonus cols=missing",
+                     "LEVER bonus corr(e_goals,e_bonus)=missing"]
+
+
+def test_the_corr_lever_line_reads_a_known_correlation():
+    """v20 §2 v20b, holiday F-64: Pearson on the predicted rows, six
+    decimals, with the row count."""
+    comp = pd.DataFrame({"e_goals": [0.1, 0.2, 0.3],
+                         "e_bonus": [0.3, 0.1, 0.2]})
+    assert bt.lever_corr_line(comp) == (
+        "LEVER bonus corr(e_goals,e_bonus)=-0.500000 n=3")
+
+
+def test_the_corr_lever_line_reads_missing_rather_than_raising():
+    missing = "LEVER bonus corr(e_goals,e_bonus)=missing"
+    assert bt.lever_corr_line(pd.DataFrame({"e_goals": [0.1, 0.2]})) == missing
+    assert bt.lever_corr_line(pd.DataFrame(
+        {"e_goals": [0.1], "e_bonus": [0.2]})) == missing
+    assert bt.lever_corr_line(pd.DataFrame(
+        {"e_goals": [0.1, 0.1], "e_bonus": [0.2, 0.3]})) == missing
+    assert bt.lever_corr_line(None) == missing
+
+
+def test_the_replay_prints_the_first_folds_corr_once_across_folds(
+        monkeypatch, capsys):
+    season = _season_rows([1, 2, 3])
+    season = season.assign(e_goals=season["value"] / 100.0,
+                           e_bonus=season["value"] / 50.0)
+    _install_stubs(monkeypatch, season)
+    folds = []
+    real = bt.predict_components_simple
+    monkeypatch.setattr(bt, "predict_components_simple",
+                        lambda models, rows: folds.append(1) or real(models, rows))
+    run_backtest(season="2025-26", start_gw=1, retrain_every=1)
+    corr = [ln for ln in capsys.readouterr().out.splitlines()
+            if ln.startswith("LEVER bonus corr")]
+    assert len(folds) >= 2
+    assert len(corr) == 1
+    assert corr[0].startswith("LEVER bonus corr(e_goals,e_bonus)=1.000000 n=")
 
 
 def test_a_head_without_its_columns_attribute_reads_as_missing():

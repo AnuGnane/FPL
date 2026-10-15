@@ -132,6 +132,15 @@ def test_a_lever_line_after_the_last_tag_takes_that_replays_arm():
     assert out[-1] == ("v20a", "LEVER bonus cols=[bps_r3]")
 
 
+def test_the_corr_lever_line_goes_with_its_v20b_replay():
+    """Holiday F-64: v20b's second lever line is collected like its first."""
+    out = ap.file_lines("LEVER bonus cols=[bps_r3, e_goals]\n"
+                        "LEVER bonus corr(e_goals,e_bonus)=0.412300 n=640\n"
+                        "V7B_ARM_DONE v20b-bonus-branch-s1 {}\n")
+    assert out[1] == ("v20b",
+                      "LEVER bonus corr(e_goals,e_bonus)=0.412300 n=640")
+
+
 def test_a_lever_line_with_no_v20_replay_falls_back_by_its_prefix():
     out = dict((line.split()[0], arm) for arm, line in ap.file_lines(
         "DC_CLIP n=3 of 10\nREPLAY_TEAM_MODEL p_cs n=0\n"

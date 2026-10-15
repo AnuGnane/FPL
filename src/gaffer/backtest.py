@@ -192,6 +192,32 @@ def lever_cols_line(name: str, head, attr: str) -> str:
     return f"LEVER {name} cols=[{', '.join(str(c) for c in cols)}]"
 
 
+def lever_corr_line(comp) -> str:
+    """One ``LEVER bonus corr(e_goals,e_bonus)=…`` line, printed once per
+    replay on the first fold's predicted rows (v20 §2 v20b lever check,
+    holiday F-64).
+
+    The branch side's bonus head reads ``e_goals``, so the two columns
+    should move together there and less on ``main``. A frame without either
+    column, with fewer than two rows, or with no variance reads ``=missing``
+    rather than raising, as ``lever_cols_line`` does.
+    """
+    cols = ("e_goals", "e_bonus")
+    missing = "LEVER bonus corr(e_goals,e_bonus)=missing"
+    if (comp is None or any(c not in getattr(comp, "columns", ()) for c in cols)
+            or len(comp) < 2):
+        return missing
+    goals, bonus = (comp[c].astype(float) for c in cols)
+    # A constant column has no correlation; asking numpy anyway divides by a
+    # zero spread and warns, and the suite keeps its warnings at zero (v19h).
+    if goals.nunique() < 2 or bonus.nunique() < 2:
+        return missing
+    r = goals.corr(bonus)
+    if pd.isna(r):
+        return missing
+    return f"LEVER bonus corr(e_goals,e_bonus)={r:.6f} n={len(comp)}"
+
+
 # Scoring rules for the replay. The live rules come from the API; a replay
 # must run offline, so it reads the same payload shape from the bundled
 # package asset (gaffer.assets), which works from an installed wheel too.
@@ -543,6 +569,7 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
     total = 0
     team_fixtures: list[pd.DataFrame] = []
     levers_logged = False
+    corr_logged = False
 
     for gw in range(start_gw, LAST_GW + 1):
         rows = season_rows[season_rows["gw"] == gw]
@@ -588,6 +615,11 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
             ep = oracle_ep(season_rows, gws)
         else:
             comp = predict_components_simple(models, horizon_rows)
+            # v20 §2 v20b lever check, its second half (holiday F-64): the
+            # first fold's predicted rows, once per replay.
+            if not corr_logged:
+                print(lever_corr_line(comp), flush=True)
+                corr_logged = True
             if REPLAY_TEAM_MODEL:
                 comp, tp = with_team_model(comp, horizon_rows, models["team"])
                 team_fixtures.append(tp[tp["gw"] == gw])

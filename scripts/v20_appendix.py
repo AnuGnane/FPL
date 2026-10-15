@@ -14,7 +14,8 @@ The lines, matched at the start of a line:
 - the readings: ``V20<arm>_<NAME> …`` (``V20B_HEAD``, ``V20C_HEAD``,
   ``V20D_BRIER``, ``V20D_RUN``, ``V20D_ROW``);
 - the lever lines: ``LEVER minutes cols=``, ``LEVER bonus cols=``,
-  ``DC_CLIP n=`` and the harness's ``REPLAY_TEAM_MODEL p_cs`` line.
+  ``LEVER bonus corr(e_goals,e_bonus)=`` (holiday F-64), ``DC_CLIP n=`` and
+  the harness's ``REPLAY_TEAM_MODEL p_cs`` line.
 
 Each goes under one arm, in ``ARMS`` order:
 
@@ -99,7 +100,8 @@ TAG_ARMS = ["v20a", "v20b", "v20c0", "v20c", "v20d"]
 
 _TAGGED = re.compile(r"^(?:[A-Z0-9]+_ARM_DONE|MULTISEED_DONE) (\S+)")
 _READING = re.compile(r"^V20([A-D])_[A-Z]+\b")
-_LEVER = re.compile(r"^(?:LEVER (?:minutes|bonus) cols=|DC_CLIP n=|"
+_LEVER = re.compile(r"^(?:LEVER (?:minutes|bonus) cols=|"
+                    r"LEVER bonus corr\(e_goals,e_bonus\)=|DC_CLIP n=|"
                     r"REPLAY_TEAM_MODEL p_cs\b)")
 _LEVER_DEFAULT = {"DC_CLIP": "v20c", "REPLAY_TEAM_MODEL": "v20c0"}
 
