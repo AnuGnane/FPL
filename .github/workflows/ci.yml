@@ -35,7 +35,7 @@ jobs:
       # Holiday F-57: install_automation.sh is a zsh script, and its --status
       # test skips without zsh, which ubuntu-latest lacks, so F-5's only test
       # ran nowhere but the Mac.
-      - name: zsh
+      - name: install zsh
         run: sudo apt-get update -q && sudo apt-get install -y zsh
       - name: zsh -n install_automation.sh
         run: zsh -n scripts/install_automation.sh
