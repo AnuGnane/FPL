@@ -683,6 +683,65 @@ def test_the_step_context_reads_the_values_it_is_handed(tmp_path, monkeypatch):
     assert ctx.chip_plan == []
 
 
+def _advice_with_chips(gw, rows):
+    """A saved advice file for ``gw`` carrying only a chip table."""
+    import json
+
+    from gaffer.artifacts import advice_path
+
+    path = advice_path(gw)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"chip_table": rows}))
+
+
+def test_a_state_written_before_v16_takes_its_chip_plan_from_the_saved_advice(
+        tmp_path, monkeypatch):
+    """Holiday F-71 (GUIDE §12.4's v16 line): a state with no ``chip_plan``
+    key was written before v16 §3.3, and its gameweek's advice file still
+    says which chip the table would play now."""
+    from gaffer.ladder import step_context_from
+
+    state = _saved_state(tmp_path, monkeypatch)
+    assert "chip_plan" not in state.opt
+    _advice_with_chips(state.gw, [
+        {"chip": "bboost", "gw": 2, "play_now": True},
+        {"chip": "freehit", "gw": 1, "play_now": False}])
+    ctx = step_context_from(None, state, price_fall={}, difficulty={})
+    assert ctx.chip_plan == [{"gw": 2, "chip": "bboost"}]
+
+
+def test_an_empty_chip_plan_on_the_state_is_not_overridden_by_the_advice(
+        tmp_path, monkeypatch):
+    """Absent and empty are different answers: an empty list is a v16 state
+    whose table played nothing, so the advice is not consulted."""
+    from gaffer.ladder import step_context_from
+
+    state = _saved_state(tmp_path, monkeypatch)
+    state.opt["chip_plan"] = []
+    _advice_with_chips(state.gw, [{"chip": "bboost", "gw": 2,
+                                   "play_now": True}])
+    ctx = step_context_from(None, state, price_fall={}, difficulty={})
+    assert ctx.chip_plan == []
+
+
+def test_a_pre_v16_state_with_an_unreadable_advice_file_plans_no_chip(
+        tmp_path, monkeypatch, capsys):
+    """No advice, a malformed one or one with no chip table leaves the list
+    empty as before F-71, and the reason falls through without a word."""
+    from gaffer.artifacts import advice_path
+    from gaffer.ladder import step_context_from
+
+    state = _saved_state(tmp_path, monkeypatch)
+    empty = dict(price_fall={}, difficulty={})
+    assert step_context_from(None, state, **empty).chip_plan == []
+    advice_path(state.gw).parent.mkdir(parents=True, exist_ok=True)
+    for body in ("{not json", "[]", '{"headline": "no table"}',
+                 '{"chip_table": [1, {"gw": null, "play_now": true}]}'):
+        advice_path(state.gw).write_text(body)
+        assert step_context_from(None, state, **empty).chip_plan == []
+    assert capsys.readouterr().out == ""
+
+
 def test_a_components_frame_it_cannot_read_costs_the_p_play_and_nothing_else(
         tmp_path, monkeypatch, capsys):
     """Every source in the context has always degraded to an empty map, and
