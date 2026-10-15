@@ -62,7 +62,7 @@ def fetch_tier_entries(client, slots: list[tuple[int, int]]) -> list[int]:
             try:
                 data = client.get_league_standings(TIER_LEAGUE, page)
                 by_page[page] = data["standings"]["results"]
-            except Exception:
+            except Exception:  # noqa: BLE001 — a standings page that will not load is one fewer page of samples, never a raise (module docstring)
                 by_page[page] = []      # a page that will not load is skipped
         results = by_page[page]
         if slot < len(results):
@@ -146,7 +146,7 @@ def fetch_sample_picks(client, gw: int, sample: int = TIER_SAMPLE,
         try:
             out.append(list(client.get_entry_picks(int(entry),
                                                    int(gw))["picks"]))
-        except Exception:
+        except Exception:  # noqa: BLE001 — a private or missing entry is one fewer sample, never a raise (docstring)
             continue        # private or missing entry — one fewer sample
     return out
 
