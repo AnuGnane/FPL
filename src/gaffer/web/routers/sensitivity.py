@@ -83,7 +83,7 @@ def decision_sigma(payload: dict, gw: int) -> float | None:
         xmins = xmins_by_player_gw(comp)
         ep = (comp[comp["gw"].astype(int) == int(gw)]
               .groupby("code")["ep"].sum().to_dict())
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — a components frame without ep or minutes drops the noise line, an honesty line and never a 500
         print(f"sensitivity: components frame unusable ({exc})")
         return None
 

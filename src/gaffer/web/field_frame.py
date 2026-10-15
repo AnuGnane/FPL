@@ -156,7 +156,7 @@ def _modal_captain(gw: int) -> dict | None:
             pairs = events[["gw", "most_captained"]].dropna()
             return {int(g): int(e)
                     for g, e in zip(pairs["gw"], pairs["most_captained"])}
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001 — a missing or drifted events snapshot reads as no most-captained figure; the failure is printed and not memoised
             print(f"field_frame: events snapshot unreadable ({exc})")
             return identity._FAILED
 
@@ -204,7 +204,7 @@ def _field_table(gw: int) -> dict[int, dict]:
         return {}
     try:
         return latest_field_eo(gw, season=season)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — an unreadable field EO log leaves the captain unframed, this module's documented degradation
         print(f"field_frame: field EO log unreadable ({exc})")
         return {}
 
@@ -223,7 +223,7 @@ def _trend_table(gw: int) -> dict[int, dict]:
         from gaffer.data.field import field_eo_trend
 
         return field_eo_trend(season, gw)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — an unreadable EO trend leaves the trend line off; framing is display only
         print(f"field_frame: EO trend unreadable ({exc})")
         return {}
 

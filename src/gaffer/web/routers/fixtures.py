@@ -199,7 +199,7 @@ def outlook(from_: int | None = Query(None, alias="from")) -> FixtureOutlook:
                    for t, c in zip(teams["team_id"], teams["code"])}
         short_of = {int(c): str(s)
                     for c, s in zip(teams["code"], teams["short_name"])}
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001 — no teams snapshot names clubs by team id, and the note says so
         note = ("No teams snapshot — the counts are the published fixture "
                 "list's own, but the clubs are named by team id.")
 
@@ -246,7 +246,7 @@ def _last_published(fixtures: pd.DataFrame) -> int | None:
     try:
         gws = pd.to_numeric(fixtures["gw"], errors="coerce").dropna()
         return int(gws.max()) if not gws.empty else None
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001 — a frame that cannot say its last gameweek gives no explanation rather than a guessed 38
         return None
 
 
@@ -274,5 +274,5 @@ def _first_unfinished(fixtures: pd.DataFrame) -> int | None:
         left = fixtures[~fixtures["finished"].fillna(False).astype(bool)]
         gws = pd.to_numeric(left["gw"], errors="coerce").dropna()
         return int(gws.min()) if not gws.empty else None
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001 — a frame that cannot say its next unplayed gameweek gives no start rather than a guessed one
         return None

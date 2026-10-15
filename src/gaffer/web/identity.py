@@ -218,7 +218,7 @@ def _player_teams() -> dict[int, int]:
             pairs = players[["code", "team_code"]].dropna()
             return {int(c): int(t)
                     for c, t in zip(pairs["code"], pairs["team_code"])}
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001 — a missing or drifted players snapshot drops the club chips; printed, and _FAILED is never memoised
             print(f"identity: player snapshot unreadable ({exc})")
             return _FAILED
 
@@ -255,7 +255,7 @@ def _fixture_by_team(gw: int, code_of: dict[int, int],
             week = fixtures[(fixtures["gw"] == int(gw))
                             & (~fixtures["finished"].astype(bool))]
             week = week.sort_values("kickoff_time", na_position="last")
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001 — missing or drifted fixtures drop the next-fixture chips; printed, and _FAILED is never memoised
             print("identity: fixtures unreadable, no next-fixture chips "
                   f"({exc})")
             return _FAILED

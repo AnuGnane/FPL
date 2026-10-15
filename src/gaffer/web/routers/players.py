@@ -82,7 +82,7 @@ def _xmins_first_gw(gw: int) -> dict[int, float]:
     try:
         return {code: xm for (code, g), xm in
                 xmins_by_player_gw(comp).items() if int(g) == int(gw)}
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — a components frame without the minutes columns costs the bands, never the explorer
         print(f"players explorer: component breakdown unusable ({exc})")
         return {}
 
@@ -283,11 +283,11 @@ def players(position: str | None = None, team: int | None = None,
     # matches — the same empty map the bare `except` below produced.
     try:
         season = str(config_in_force().current_season)
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001 — an unreadable config leaves the season empty, which no banked row matches
         season = ""
     try:
         field_eo = latest_field_eo(season=season)
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001 — an unreadable field EO log is an empty map, so the explorer renders without EO
         field_eo = {}
     # v12 W2 §3.3 (specs/2026-09-01-gaffer-v12-program-design.md, plan A5).
     #
