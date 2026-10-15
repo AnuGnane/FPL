@@ -1520,11 +1520,14 @@ brainstorm would start from, in the order the 2026-09-01 research ranked it
 6. **A "days since status last changed" `p_play` feature** off the
    availability log (B1's second half), once the flag-latency report has
    shown the log carries the signal.
-7. **Housekeeping follow-ups** from 12.4: `tidy` for the API snapshots above
-   all, the ledger season key, `starred_at`, the `schemas.py` docstrings, the
-   chip pair's What-If arm, ~~the web button banking prices~~ (holiday
-   F-3), and ~~the four private reaches v18d recorded~~ (holiday F-8 and
-   F-28).
+7. **Housekeeping follow-ups** from 12.4: ~~`tidy` for the API snapshots
+   above all~~ (v19h §1 and holiday F-2: the snapshots are a corpus `tidy`
+   never targets), ~~the ledger season key~~ (v19h), ~~`starred_at`~~
+   (v19h), ~~the `schemas.py` docstrings~~ (v19h), the chip pair's What-If
+   arm (holiday F-36's note, filed as
+   `docs/superpowers/specs/2026-10-14-whatif-chip-arm-design.md` by F-50),
+   ~~the web button banking prices~~ (holiday F-3), and ~~the four private
+   reaches v18d recorded~~ (holiday F-8 and F-28).
 8. **FotMob as an xG fallback (B8)** — only if Understat goes down.
 
 Still rejected, and the research confirmed it: referee and weather, price
