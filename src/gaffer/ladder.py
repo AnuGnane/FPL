@@ -211,11 +211,29 @@ def step_context_from(components, state, *, price_fall: dict,
                    zip(state.pool["code"], state.pool["team_code"])}
     except Exception:  # noqa: BLE001 — an absent or drifted pool column; a reason that cannot name a team falls through to the next one
         pass
-    chip_plan = [c for c in (state.opt.get("chip_plan") or [])
+    raw_plan = (state.opt["chip_plan"] if "chip_plan" in state.opt
+                else _chip_plan_from_advice(state.gw))
+    chip_plan = [c for c in (raw_plan or [])
                  if isinstance(c, dict) and c.get("gw") is not None]
     return StepContext(p_play=p_play, price_fall=price_fall,
                        difficulty=difficulty, team_of=team_of,
                        chip_plan=chip_plan)
+
+
+def _chip_plan_from_advice(gw: int) -> list[dict]:
+    """The ``chip_plan`` a state written before v16 §3.3 never carried
+    (holiday F-71): the same ``{"gw", "chip"}`` rows ``build_advice`` writes,
+    off the ``play_now`` rows of that gameweek's saved chip table. Absent and
+    empty differ: only a state with no key comes here, so a v16 state whose
+    table played nothing keeps its empty list. No advice, or one this cannot
+    read, is the empty list as before, silently, since the reason falls
+    through."""
+    try:
+        table = artifacts.load_advice(gw)["chip_table"]
+        return [{"gw": int(r["gw"]), "chip": str(r["chip"])}
+                for r in table if isinstance(r, dict) and r.get("play_now")]
+    except (GafferError, OSError, ValueError, KeyError, TypeError):
+        return []
 
 
 def step_context(gw: int, state, gws: list[int]) -> StepContext:
