@@ -27,8 +27,9 @@ cd frontend && npm run dev               # Vite on :5173, proxies /api to :8927
 cd frontend && npm run build             # emits src/gaffer/web/static/ (untracked)
 ```
 
-Read vitest's `Errors  N error` line as a failure; an unhandled rejection does
-not change its exit code.
+vitest's `Errors  N error` line fails `npm run check` on its own: vitest 2
+(the lock pins 2.1.9) exits 1 on an unhandled rejection even when every test
+passes, so the check's exit code is the verdict (proved in holiday F-74).
 
 One `gaffer ui` process at a time. The job runner is per-instance, so a second
 worker breaks job polling silently.
