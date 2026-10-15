@@ -250,6 +250,7 @@ def test_a_log_with_only_presser_serve_prints_that_group_alone(
     ("PRESSER_SERVE {}", "scripts/presser_serve.py"),
     ("BACKFILL_RANK gw=1 was=null now=123456",
      "scripts/backfill_overall_rank.py"),
+    ("LEAGUE_BLEND {}", "scripts/league_blend.py"),
 ])
 def test_each_reading_prefix_has_its_script(line, group):
     assert ap.file_lines(line) == [(group, line)]

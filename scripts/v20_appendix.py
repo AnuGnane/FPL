@@ -37,7 +37,8 @@ arms and before ``unclaimed``: ``C1_BUCKETS``, ``C2_PPLAY``,
 ``C3_HOME_AWAY``, ``B1_STATUS_AGE``, ``DENSITY_HEAD``, ``TOP10K_PROJ``,
 ``WALK_HITS``/``WALK_HITS_GW``, ``PCS_WINDOW``/``PCS_WINDOWS``,
 ``PRESSER_GW``/``PRESSER_SERVE``, ``NEWS_SHADOW_GW``/``NEWS_SHADOW``/
-``FLAG_LATENCY`` (holiday F-46) and ``BACKFILL_RANK`` (holiday F-51),
+``FLAG_LATENCY`` (holiday F-46), ``BACKFILL_RANK`` (holiday F-51) and
+``LEAGUE_BLEND`` (holiday F-72),
 matched as a whole word at the start of a line. A reading is not a run, so
 it never anchors a lever line: the v20 grouping above is the same with or
 without them.
@@ -85,6 +86,7 @@ READINGS: list[tuple[str, tuple[str, ...]]] = [
     ("scripts/evaluate_lines.py", ("NEWS_SHADOW_GW", "NEWS_SHADOW",
                                    "FLAG_LATENCY")),
     ("scripts/backfill_overall_rank.py", ("BACKFILL_RANK",)),
+    ("scripts/league_blend.py", ("LEAGUE_BLEND",)),
 ]
 """Holiday F-40: each reading script and the prefixes it prints, in the
 order its group prints."""
