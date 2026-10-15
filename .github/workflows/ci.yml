@@ -32,6 +32,13 @@ jobs:
       - run: uv sync --locked
       - name: ruff
         run: uvx ruff check src tests
+      # Holiday F-57: install_automation.sh is a zsh script, and its --status
+      # test skips without zsh, which ubuntu-latest lacks, so F-5's only test
+      # ran nowhere but the Mac.
+      - name: zsh
+        run: sudo apt-get update -q && sudo apt-get install -y zsh
+      - name: zsh -n install_automation.sh
+        run: zsh -n scripts/install_automation.sh
       # test_config_toml_loads reads the working tree's config.toml, which is
       # gitignored and never created here (CLAUDE.md "Secrets"). Every other
       # test that needs local data skips on its own and names what it lacks.
