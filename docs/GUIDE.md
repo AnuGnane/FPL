@@ -1330,7 +1330,7 @@ lines for W1, W3 and W5).
 Each of these was built, tested and rendered as a named empty state. Nine
 rows, with the condition that fills each and where it stands on 2026-09-14
 (rows re-read 2026-10-14) —
-three have **filled** since the table was written, and one is past its date
+four have **filled** since the table was written (Elo included), and one is past its date
 because the collector behind it is not loaded (12.0):
 
 | Surface | Needs | Where it stands |
