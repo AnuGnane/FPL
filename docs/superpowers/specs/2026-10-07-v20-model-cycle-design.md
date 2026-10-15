@@ -266,7 +266,9 @@ feature cost season points, or was −27 at K = 3 the seed?*
 - **Lever check (CONVENTIONS §10).** Each side's first fold logs the
   minutes head's `cols_`; the off side's omits `role_wb_share` and
   `role_wb_missing`, the on side's carries them. Without those two lines
-  the pair is not a measurement.
+  the pair is not a measurement. (Printed since holiday F-14 by
+  `backtest.py` as `LEVER minutes cols=[…]`, once per run on the first
+  refit.)
 - **Served numbers move** only if `role` is withdrawn, and then every
   `p_play` moves; the golden board is re-recorded (ruling 8).
 
@@ -292,7 +294,8 @@ No pin moves.
   exercises the same path the solve does. The existing eight features
   stay. `advise.py` is not touched: the anytime-scorer blend at `:563`
   stays after `predict_components`, and the bonus head never sees it, at
-  fit or at serve. M.
+  fit or at serve. M. (Shipped off by holiday F-18: `BONUS_SEES_ATTACK =
+  False` in `models/components.py`.)
 - **Head half.** On the same ten-slot holdout `fit_calibration` uses
   (`CALIBRATION_HOLDOUT_GWS`, `models/train.py:233`): refit every
   component on the rows strictly before the first held-out slot, predict
@@ -302,7 +305,8 @@ No pin moves.
   **Pass** iff overall `corr` rises by ≥ 0.05 absolute, no position's
   `corr` falls by more than 0.02, and the level stays within ±0.02 of the
   control's. The script is the orchestrator's, under `scripts/`, and its
-  output line `V20B_HEAD {…}` is transcribed into §6. The review's own
+  output line `V20B_HEAD {…}` is transcribed into §6 (holiday F-15 wrote
+  it as `scripts/v20b_head.py`). The review's own
   numbers (GW2 live: MID 0.13, FWD 0.03) are the motivation, not the
   control; the control is `main`'s head on the same holdout.
 - **Replay half.** Runs only after the head half passes (CONVENTIONS §9
@@ -326,7 +330,9 @@ No pin moves.
 - **Lever check.** The branch side logs the bonus head's `cols_` (thirteen
   columns) and the first fold's `corr(e_goals, e_bonus)` on the predicted
   rows; `main` logs eight columns. A branch log with eight columns is a
-  disconnected lever and the pair is discarded.
+  disconnected lever and the pair is discarded. (The columns half is
+  printed since holiday F-14 as `LEVER bonus cols=[…]`; the
+  `corr(e_goals, e_bonus)` half is not yet shipped.)
 - **Served numbers move:** every `e_bonus` and so every `ep`; the board,
   the ladder and the components file. The Model → Quality page's bonus
   column is read by eye after the first live run; the golden board is
@@ -360,7 +366,8 @@ programme's re-baseline (`MULTISEED_DONE v20c0-harness-*`), and the lever
 check is that the on side's replay log carries a `p_cs` column that varies
 across the season's club-fixtures (min, max and count of distinct values
 logged) where the off side's is 0.25 everywhere. A pair whose on side logs
-0.25 is not a harness.
+0.25 is not a harness. (Shipped off by holiday F-7:
+`REPLAY_TEAM_MODEL = False` in `backtest.py`.)
 
 **The clip (S).** `MU_BOUNDS = (0.2, 3.5)` in `models/dixon_coles.py`;
 `DixonColesModel.predict` (`:290`) clips `lam` and `mu` to it before
@@ -370,6 +377,9 @@ result probabilities, the 2+ band — comes off one consistent pmf
 same class, so the blend weight refit on the next `gaffer train` sees the
 clipped model too; the write-up records the weight before and after
 (`models/blend.params.json`), and a move of more than 0.05 is a finding.
+(Shipped off by holiday F-10: `MU_BOUNDS = None` in
+`models/dixon_coles.py`, which prints the `DC_CLIP n=… of …` line below
+whenever it is set.)
 
 - **Head half.** The walk-forward folds `walk_forward_cs` already defines
   (half-season folds, Dixon-Coles fit on every match strictly before,
@@ -381,7 +391,8 @@ clipped model too; the write-up records the weight before and after
   log-loss improves, and overall `e_gc` MAE does not worsen. The clip is
   meant to bite only where the model is absurd; a clip that costs
   calibration everywhere is the wrong clip. Script the orchestrator's,
-  line `V20C_HEAD {…}` into §6.
+  line `V20C_HEAD {…}` into §6 (holiday F-13 wrote it as
+  `scripts/v20c_head.py`).
 - **The band.** With the clip on, `tests/test_v19_degradation.py`'s strict
   `xfail` fails by passing on the first components file that carries a
   bare-model week; that is the pre-registered signal and the mark comes
@@ -426,7 +437,8 @@ Nothing has read whether the term then charged anything.*
   not banked: …"), the price log's row count for that UTC day, and the
   served plan's head-week trace (`price_charge`, `price_fall` and the
   week note; `reports/gw{n}-advice.json`). No code lands unless the table
-  below says so. S, orchestrator.
+  below says so. S, orchestrator. (Holiday F-16 wrote the per-run
+  reading as `scripts/v20d_runs.py`, lines `V20D_RUN` and `V20D_ROW`.)
 - **Lever check per run.** The step banked (a row count in the log and a
   `snap_date` equal to the run's UTC day in `data/live/price_log.parquet`)
   **and** the solve ran the same UTC day. A run failing either is not
@@ -449,7 +461,8 @@ Nothing has read whether the term then charged anything.*
   change `[optimizer] price_timing`'s default to off (a default, not a
   field; `config.py:180`) goes to the user with the numbers; otherwise the
   line is recorded and the default stands. Script the orchestrator's,
-  line `V20D_BRIER {…}` into §6.
+  line `V20D_BRIER {…}` into §6 (holiday F-12 wrote it as
+  `scripts/v20d_brier.py`).
 - **Served numbers move:** none from this arm as written; only the first
   row's fix would move the trace's price line, and only when a bank had
   silently failed.
