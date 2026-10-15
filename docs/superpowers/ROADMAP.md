@@ -285,10 +285,10 @@ found by asking what a test would have to fake.
 `starred_at` written once and preserved on the watchlist, the column
 "starred" or "noted"; the ledger keyed by season (`review._ledger_season`,
 readers see the season in force, legacy rows rewritten on the next
-append); every BLE001 with its reason, the rule now kept under `src/` and
-`scripts/` by holiday F-69's rail (`tests/test_noqa_reasons.py`, its
-`ALLOWED` naming the six golden or orchestrator-only files still owed one),
-two narrowed to `(OSError, ValueError)`; `tidy`'s scope paragraph; 1,024 of
+append); every BLE001 in `digest`, `ladder` and `cli` with its reason and
+two narrowed to `(OSError, ValueError)`, a rule now kept under `src/` and
+`scripts/` by holiday F-69's rail (`tests/test_noqa_reasons.py`, whose
+`ALLOWED` names the six golden or orchestrator-only files still owed one); `tidy`'s scope paragraph; 1,024 of
 1,031 schema fields with a sentence, in three sonnet commits, carried into
 the generated types; `PitchView` gone; `QualityTab` 546 → 65 lines over
 eight files, pixel-identical; `useJob`'s one probe effect, both
