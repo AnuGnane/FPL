@@ -24,10 +24,12 @@ Waiting on the Mac are v20b's and v20c's replays, v20c0's re-baseline and
 v20d's Thursday readings. §6.2 records them as empty: "nothing has run".
 The holiday's readings are listed in `docs/GUIDE.md` §12.5 "The readings" and
 collected by `scripts/v20_appendix.py`. The holiday queue has merged F-1 to
-F-53, and no `needs-mac` PR is open; `HOLIDAY.md` is the record. Pins: routes
+F-74, and no `needs-mac` PR is open; `HOLIDAY.md` is the record. Pins: routes
 52 (`tests/test_v11_degradation.py`), job kinds 12
 (`tests/test_v12_w1_degradation.py`), `Config` 62
-(`tests/test_v13_degradation.py`).
+(`tests/test_v13_degradation.py`); beside them, the holiday's two allowlist
+rails, every broad except's reason (`tests/test_noqa_reasons.py`, F-69) and
+test names as sentences (`tests/test_test_names.py`, F-73).
 
 **The v19 programme is complete** (design
 `specs/2026-09-15-v19-programme-design.md`, approved with its eleven
@@ -283,8 +285,10 @@ found by asking what a test would have to fake.
 `starred_at` written once and preserved on the watchlist, the column
 "starred" or "noted"; the ledger keyed by season (`review._ledger_season`,
 readers see the season in force, legacy rows rewritten on the next
-append); every BLE001 in `digest`, `ladder` and `cli` with its reason, two
-narrowed to `(OSError, ValueError)`; `tidy`'s scope paragraph; 1,024 of
+append); every BLE001 with its reason, the rule now kept under `src/` and
+`scripts/` by holiday F-69's rail (`tests/test_noqa_reasons.py`, its
+`ALLOWED` naming the six golden or orchestrator-only files still owed one),
+two narrowed to `(OSError, ValueError)`; `tidy`'s scope paragraph; 1,024 of
 1,031 schema fields with a sentence, in three sonnet commits, carried into
 the generated types; `PitchView` gone; `QualityTab` 546 → 65 lines over
 eight files, pixel-identical; `useJob`'s one probe effect, both

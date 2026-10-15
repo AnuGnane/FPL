@@ -1251,7 +1251,10 @@ so a future change cannot quietly break one.
 
 The model cycle, v20, opened on 2026-10-07. Its record is
 `docs/superpowers/specs/2026-10-07-v20-model-cycle-design.md` (§6 holds what
-has run), and the holiday's packages are recorded in `HOLIDAY.md`.
+has run), and the holiday's packages are recorded in `HOLIDAY.md`. The
+holiday added two allowlist rails beside the pins: every broad except's reason
+(`tests/test_noqa_reasons.py`, F-69) and test names as sentences
+(`tests/test_test_names.py`, F-73).
 
 ## 12. What is pending and what was left open
 
