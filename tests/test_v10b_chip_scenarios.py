@@ -19,10 +19,9 @@ The write *rule* is the part that needs care, and it is three rules:
 
 from __future__ import annotations
 
-import os
+from pathlib import Path
 
 import pandas as pd
-import pytest
 
 from gaffer.data.chip_scenarios import write_chip_scenarios
 from gaffer.optimize.chip_policy import load_chip_scenarios
@@ -143,8 +142,7 @@ def test_an_unreadable_frame_is_a_zero_not_an_exception(tmp_path):
     assert not path.exists()
 
 
-@pytest.mark.skipif(os.geteuid() == 0, reason="root ignores mode bits")
-def test_an_unwritable_directory_is_a_zero(tmp_path):
+def test_an_unwritable_directory_is_a_zero(tmp_path, monkeypatch):
     """The same claim as the test above, on the write rather than the frame:
     a destination this process cannot write to is a zero, not an exception
     that fails the weekly data refresh.
@@ -155,9 +153,22 @@ def test_an_unwritable_directory_is_a_zero(tmp_path):
     for the twelve other call sites that were doing the mkdir themselves — so
     the unwritable case is made unwritable rather than absent. The claim is
     the one the test was written for either way.
+
+    The directory is refused by a patched ``Path.mkdir`` as well as the chmod
+    (holiday F-56, the shape of F-44's patch): root ignores mode bits, so
+    under CI and the cloud sandbox the chmod alone left the writer's
+    ``except`` unexercised and the test skipped.
     """
     denied = tmp_path / "denied"
     denied.mkdir()
+    original = Path.mkdir
+
+    def refusing(self, *args, **kwargs):
+        if denied in self.parents:
+            raise PermissionError(13, "Permission denied", str(self))
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "mkdir", refusing)
     denied.chmod(0o500)
     try:
         assert write_chip_scenarios(
