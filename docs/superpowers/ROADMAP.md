@@ -18,7 +18,7 @@ that default off: v20c0's harness step zero, `REPLAY_TEAM_MODEL`
 (`src/gaffer/backtest.py`, holiday F-7); v20c's clip, `MU_BOUNDS`
 (`src/gaffer/models/dixon_coles.py`, F-10); and v20b's bonus head,
 `BONUS_SEES_ATTACK` (`src/gaffer/models/components.py`, F-18). Beside them
-are the replay's lever log lines (F-14) and the head-half scripts for v20c
+are the replay's lever log lines (F-14, F-64) and the head-half scripts for v20c
 (F-13) and v20b (F-15). v20d has no switch, only its scripts (F-12, F-16).
 Waiting on the Mac are v20b's and v20c's replays, v20c0's re-baseline and
 v20d's Thursday readings. §6.2 records them as empty: "nothing has run".

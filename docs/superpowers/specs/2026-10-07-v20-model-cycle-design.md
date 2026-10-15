@@ -332,7 +332,8 @@ No pin moves.
   rows; `main` logs eight columns. A branch log with eight columns is a
   disconnected lever and the pair is discarded. (The columns half is
   printed since holiday F-14 as `LEVER bonus cols=[…]`; the
-  `corr(e_goals, e_bonus)` half is not yet shipped.)
+  `corr(e_goals, e_bonus)` half since holiday F-64 as
+  `LEVER bonus corr(e_goals,e_bonus)=… n=…`.)
 - **Served numbers move:** every `e_bonus` and so every `ep`; the board,
   the ladder and the components file. The Model → Quality page's bonus
   column is read by eye after the first live run; the golden board is
