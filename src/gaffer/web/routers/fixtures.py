@@ -199,7 +199,7 @@ def outlook(from_: int | None = Query(None, alias="from")) -> FixtureOutlook:
                    for t, c in zip(teams["team_id"], teams["code"])}
         short_of = {int(c): str(s)
                     for c, s in zip(teams["code"], teams["short_name"])}
-    except Exception:  # noqa: BLE001 — no teams snapshot names clubs by team id, and the note says so
+    except Exception:  # noqa: BLE001 — a missing or drifted teams snapshot names clubs by team id, and the note says so
         note = ("No teams snapshot — the counts are the published fixture "
                 "list's own, but the clubs are named by team id.")
 
