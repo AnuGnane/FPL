@@ -20,7 +20,7 @@ only read one section, read §12: it is the current to-do list.*
 8. [Everything the CLI can do](#8-everything-the-cli-can-do)
 9. [The data it collects and why](#9-the-data-it-collects-and-why)
 10. [How the project measures itself](#10-how-the-project-measures-itself)
-11. [The version history, v1 to v19f](#11-the-version-history-v1-to-v19f)
+11. [The version history, v1 to v19h](#11-the-version-history-v1-to-v19h)
 12. [What is pending and what was left open](#12-what-is-pending-and-what-was-left-open)
 13. [Troubleshooting](#13-troubleshooting)
 
@@ -1235,8 +1235,10 @@ at zero warnings, eighteen pairs identical.
 
 **The v19 programme, closed.** Eight sub-cycles in two days (2026-09-15 →
 16), none changing a served number: the week's clock and the health table
-(v19a), the loop closed with a price reading inside `weekly_run` and the
-chip pair's arm (v19b), the phone (v19c), This Week readable (v19d),
+(v19a), the loop closed with a price reading inside `weekly_run` (v19b,
+which did not take the chip pair's What-If arm: its design is filed as
+`docs/superpowers/specs/2026-10-14-whatif-chip-arm-design.md`, holiday
+F-50), the phone (v19c), This Week readable (v19d),
 compare and act (v19e), the question box (v19f), the model's free half
 (v19g) and this one. The route pin moved once, 51 → 52. What it left for
 v20 is the model cycle: the `e_gc`/`p_cs` clip measured against v19g's
