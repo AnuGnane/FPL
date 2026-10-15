@@ -123,7 +123,7 @@ def _model_values(code: int) -> tuple[float | None, float | None]:
             value = float(pd.to_numeric(rows["p_play"],
                                         errors="coerce").mean())
             p_play = opt_float(value, 3)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — no component reading leaves p_play None; the pin still banks without a model comparison
         print(f"overrides: no component reading for {code} ({exc})")
     try:
         from gaffer.data import store
@@ -138,7 +138,7 @@ def _model_values(code: int) -> tuple[float | None, float | None]:
                 newest = rows.sort_values("run_at").iloc[-1]
                 value = float(newest["e_min_news"])
                 e_min = opt_float(value, 1)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — an unreadable or drifted news shadow leaves e_min None; the pin still banks
         print(f"overrides: no shadow reading for {code} ({exc})")
     return p_play, e_min
 

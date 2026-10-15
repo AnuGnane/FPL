@@ -212,7 +212,7 @@ def _serve(kind: str, cache_name: str, url: str, media_type: str) -> Response:
         return _fallback(kind)
     try:
         _bank(path, data)
-    except Exception as exc:  # noqa: BLE001
+    except OSError as exc:
         # The bytes are already in hand: a read-only disk costs the cache,
         # not the shirt, and the next load simply fetches again.
         print(f"asset not cached ({cache_name}): {exc}")
