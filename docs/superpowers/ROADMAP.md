@@ -10,22 +10,22 @@ than an auditor, `docs/GUIDE.md` §11–12.
 
 ## Where things stand (2026-10-15)
 
-**The model cycle, v20, is open, and the holiday has run it as far as the
-cloud can.** v20a closed on 2026-10-13: `role` stays, because Δ = mean(off − on) =
-+9.2 is inside 2·SE = 41.1 at K = 5. No served number moved and no pin
-moved (`specs/2026-10-07-v20-model-cycle-design.md` §6.1). The other three
-arms are shipped off, with their code on `main` behind switches that default
-off: `REPLAY_TEAM_MODEL` (`src/gaffer/backtest.py`, holiday F-7),
-`MU_BOUNDS` (`src/gaffer/models/dixon_coles.py`, F-10), `BONUS_SEES_ATTACK`
-(`src/gaffer/models/components.py`, F-18) and the replay's lever lines (F-14).
-The head-half scripts are F-13 (v20c) and F-15 (v20b), and v20d's scripts are F-12
-and F-16. All of them wait on the Mac:
-v20b's and v20c's replays, v20c0's harness re-baseline and v20d's Thursday
-readings, which is why the spec's §6.2 is still empty. The holiday's
-readings are listed in `docs/GUIDE.md` §12.5 "The readings" and collected by
-`scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-53, and no
-`needs-mac` PR is open; `HOLIDAY.md` is the record. Pins: routes 52
-(`tests/test_v11_degradation.py`), job kinds 12
+**The model cycle, v20, is open.** v20a closed on 2026-10-13: `role`
+stays, because Δ = mean(off − on) = +9.2 is inside 2·SE = 41.1 at K = 5. No
+served number moved and no pin moved (`specs/2026-10-07-v20-model-cycle-design.md`
+§6.1). The holiday has shipped the rest of v20's code off, behind switches
+that default off: v20c0's harness step zero, `REPLAY_TEAM_MODEL`
+(`src/gaffer/backtest.py`, holiday F-7); v20c's clip, `MU_BOUNDS`
+(`src/gaffer/models/dixon_coles.py`, F-10); and v20b's bonus head,
+`BONUS_SEES_ATTACK` (`src/gaffer/models/components.py`, F-18). Beside them
+are the replay's lever log lines (F-14) and the head-half scripts for v20c
+(F-13) and v20b (F-15). v20d has no switch, only its scripts (F-12, F-16).
+Waiting on the Mac are v20b's and v20c's replays, v20c0's re-baseline and
+v20d's Thursday readings. §6.2 records them as empty: "nothing has run".
+The holiday's readings are listed in `docs/GUIDE.md` §12.5 "The readings" and
+collected by `scripts/v20_appendix.py`. The holiday queue has merged F-1 to
+F-53, and no `needs-mac` PR is open; `HOLIDAY.md` is the record. Pins: routes
+52 (`tests/test_v11_degradation.py`), job kinds 12
 (`tests/test_v12_w1_degradation.py`), `Config` 62
 (`tests/test_v13_degradation.py`).
 
