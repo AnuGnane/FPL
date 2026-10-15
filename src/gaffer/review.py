@@ -144,7 +144,7 @@ def reviewable_gws() -> list[int]:
         return []
     try:
         frame = store.load(PLAYER_GW)
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001 — an unreadable player_gw table reads as no reviewable weeks, as an absent one does
         return []
     if frame.empty:
         return []

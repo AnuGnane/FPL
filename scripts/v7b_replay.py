@@ -408,7 +408,7 @@ def config_caps() -> dict:
         cfg = load_config()
         return {"max_hits": int(cfg.max_hits),
                 "max_transfers": int(cfg.max_transfers)}
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — no config.toml on a fresh clone or tmp dir; the replay only quotes the caps (docstring)
         print(f"v7b: the config would not read ({exc}); no caps on the report")
         return {"max_hits": None, "max_transfers": None}
 

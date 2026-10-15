@@ -83,7 +83,7 @@ def load_drafts() -> list[dict]:
                  "created_at": str(r.get("created_at") or ""),
                  "constraints": normalize(r.get("constraints"))}
                 for r in rows if isinstance(r, dict) and r.get("name")]
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — a corrupt or drifted drafts file reads as no drafts rather than breaking the planner
         print(f"drafts store unreadable, ignoring it: {exc}")
         return []
 

@@ -209,7 +209,7 @@ def watch_targets() -> dict[int, str]:
         try:
             for code in load_solve_state(int(gw)).owned_codes:
                 out.setdefault(int(code), "squad")
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001 — an absent or unreadable solve state drops the squad rows; a watch set is never fatal
             print(f"watch set: no solve state for GW{gw} ({exc})")
         try:
             advice = load_advice(int(gw))
@@ -218,7 +218,7 @@ def watch_targets() -> dict[int, str]:
                     code = (player or {}).get("code")
                     if code is not None:
                         out.setdefault(int(code), "plan")
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001 — an absent or malformed advice payload drops the plan rows; a watch set is never fatal
             print(f"watch set: no advice payload for GW{gw} ({exc})")
     for code in watched_codes():
         out.setdefault(int(code), "watchlist")

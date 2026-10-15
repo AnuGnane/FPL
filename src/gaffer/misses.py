@@ -96,7 +96,7 @@ def _context() -> tuple[dict[int, str], dict[int, str], dict[int, float]]:
     """
     try:
         players = artifacts.load_snapshot(PLAYERS)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — an absent or drifted player snapshot leaves codes where names would be (docstring)
         print(f"misses: player snapshot unreadable ({exc})")
         return {}, {}, {}
     names = {int(r.code): str(r.name) for r in players.itertuples()}
