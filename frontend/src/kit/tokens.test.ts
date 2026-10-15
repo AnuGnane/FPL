@@ -17,7 +17,10 @@ function walk(dir: string): string[] {
   })
 }
 
-const FILES = [...walk(join(SRC, 'hubs')), ...walk(join(SRC, 'kit'))]
+// Holiday F-70: `App.tsx` and `api/` joined the scan, which CLAUDE.md had
+// left to be checked by hand.
+const FILES = [...walk(join(SRC, 'hubs')), ...walk(join(SRC, 'kit')),
+  join(SRC, 'App.tsx'), ...walk(join(SRC, 'api'))]
 const rel = (path: string) => path.slice(SRC.length)
 
 function offenders(pattern: RegExp, allow: string[] = []): string[] {
@@ -36,7 +39,9 @@ describe('the ledger rules (spec §3–§5)', () => {
   it('has no raw hex outside theme.css and the bundled plain shirt', () => {
     // The plain shirt is an inline SVG data URI whose two greys are part of
     // the drawing, not of the palette.
-    expect(offenders(/#[0-9a-fA-F]{6}\b/, ['kit/PlayerCard.tsx'])).toEqual([])
+    // The three- and four-digit forms are a colour too (holiday F-70).
+    expect(offenders(/#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3,4}\b(?![0-9a-fA-F])/,
+      ['kit/PlayerCard.tsx'])).toEqual([])
   })
 
   it('uses the mono face only in the job log and the plan trace', () => {
