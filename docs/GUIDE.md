@@ -1249,7 +1249,31 @@ The suite grew from nothing to **4,581 Python + 1,201 frontend tests** along
 the way, with a set of degradation rails that pin every honesty rule above
 so a future change cannot quietly break one.
 
+The model cycle, v20, opened on 2026-10-07. Its record is
+`docs/superpowers/specs/2026-10-07-v20-model-cycle-design.md` (§6 holds what
+has run), and the holiday's packages are recorded in `HOLIDAY.md`.
+
 ## 12. What is pending and what was left open
+
+**As of 2026-10-15, the model cycle, v20, is open.** v20a closed on
+2026-10-13: `role` stays, because Δ = mean(off − on) = +9.2 is inside
+2·SE = 41.1 at K = 5. No served number moved and no pin moved
+(`docs/superpowers/specs/2026-10-07-v20-model-cycle-design.md` §6.1). The
+holiday has shipped the rest of v20's code off, behind switches that
+default off: v20c0's harness step zero, `REPLAY_TEAM_MODEL`
+(`src/gaffer/backtest.py`, holiday F-7); v20c's clip, `MU_BOUNDS`
+(`src/gaffer/models/dixon_coles.py`, F-10); and v20b's bonus head,
+`BONUS_SEES_ATTACK` (`src/gaffer/models/components.py`, F-18). Beside them
+are the replay's lever log lines (F-14) and the head-half scripts for v20c
+(F-13) and v20b (F-15). v20d has no switch, only its scripts (F-12, F-16).
+Waiting on the Mac are v20b's and v20c's replays, v20c0's re-baseline and
+v20d's Thursday readings. §6.2 records them as empty: "nothing has run".
+The holiday's readings are listed in §12.5 "The readings" and collected by
+`scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-61, and no
+`needs-mac` PR is open; `HOLIDAY.md` is the record. Pins: routes 52
+(`tests/test_v11_degradation.py`), job kinds 12
+(`tests/test_v12_w1_degradation.py`), `Config` 62
+(`tests/test_v13_degradation.py`).
 
 As of 2026-09-16, after v19h. Nothing is in flight: the v12 program and the
 v17, v18 and v19 programmes are all closed, and the model cycle (v20) is
