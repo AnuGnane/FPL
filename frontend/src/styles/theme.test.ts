@@ -37,14 +37,10 @@ const DARK: Array<[string, string]> = [
   ['--color-turf-line', '#ffffff1f'],
 ]
 
-// Retired names kept for one cycle (spec §3, plan R11): same value as the
-// name that replaced them, so a class not yet swept renders identically.
-const ALIASES: Array<[string, string]> = [
-  ['--color-sage', '--color-up'],
-  ['--color-rust', '--color-down'],
-]
+// Retired by v14 (spec §3, plan R11) and deleted by holiday F-58.
+const RETIRED = ['--color-sage', '--color-rust']
 
-const TOKENS = [...DARK.map(([name]) => name), ...ALIASES.map(([name]) => name)]
+const TOKENS = DARK.map(([name]) => name)
 
 /** The declarations between `opener` and the first `}` that follows it. */
 function block(opener: string): string {
@@ -93,14 +89,16 @@ describe('theme tokens', () => {
     }
   })
 
-  it('keeps every retired name as a literal copy of its replacement', () => {
+  it('declares neither retired name in any block', () => {
     for (const scope of ['@theme {', '[data-theme="light"] {',
       ':root:not([data-theme="dark"]) {']) {
       const source = block(scope)
-      for (const [alias, real] of ALIASES) {
-        expect(valueOf(source, alias), `${alias} in ${scope}`)
-          .toBe(valueOf(source, real))
+      for (const name of RETIRED) {
+        expect(source, `${name} in ${scope}`).not.toContain(`${name}:`)
       }
+    }
+    for (const name of RETIRED) {
+      expect(css, name).not.toContain(`${name}:`)
     }
   })
 

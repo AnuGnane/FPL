@@ -55,10 +55,6 @@
   --color-scrim: #000000b3;
   --color-on-accent: #ffffff;
 
-  /* Retired, unused, deleted next cycle (spec §3). */
-  --color-sage: #5fcf94;
-  --color-rust: #f0876a;
-
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'SF Mono', Menlo, monospace;
 
@@ -104,8 +100,6 @@
   --color-pos-fwd: #b04f78;
   --color-turf: #2f6b45;
   --color-turf-line: #ffffff47;
-  --color-sage: #25703f;
-  --color-rust: #a3471f;
 }
 
 /* "System" is the absence of the attribute, so the OS preference speaks
@@ -138,8 +132,6 @@
     --color-pos-fwd: #b04f78;
     --color-turf: #2f6b45;
     --color-turf-line: #ffffff47;
-    --color-sage: #25703f;
-    --color-rust: #a3471f;
   }
 }
 
